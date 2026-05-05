@@ -6,3 +6,6 @@ node_modules/
 .vscode/
 .idea/
 .wrangler/
+
+# Credenciales locales — nunca commitear
+public/js/config.js

@@ -5,9 +5,11 @@
    todo pasa por RPC functions que validan el token internamente.
    ============================================================= */
 
-// TODO: inyectar en build de Cloudflare Pages (ver README → Configurar credenciales)
-const SUPABASE_URL     = 'https://gydinputrtptqakdzyvc.supabase.co';
-const SUPABASE_ANON_KEY = ''; // pegar anon public key del dashboard: Settings → API
+// Credenciales leídas de config.js (ignorado en git).
+// Para local: copiar public/js/config.example.js → public/js/config.js y completar.
+// Para Cloudflare Pages: inyectar MYPUMP_CONFIG vía build script o páginas worker.
+const SUPABASE_URL      = window.MYPUMP_CONFIG?.SUPABASE_URL      || '';
+const SUPABASE_ANON_KEY = window.MYPUMP_CONFIG?.SUPABASE_ANON_KEY || '';
 
 const DEV_MODE = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
