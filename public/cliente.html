@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MyPump</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+</head>
+
+<body>
+  <main class="container" style="padding-top: var(--space-10); padding-bottom: var(--space-10);">
+    <h1 style="margin-bottom: var(--space-4);">MyPump</h1>
+    <p style="margin-bottom: var(--space-2);">Página del cliente — placeholder</p>
+
+    <p style="margin-bottom: var(--space-2);">
+      Token: <code id="token-display"></code>
+    </p>
+
+    <p id="status" style="margin-bottom: var(--space-4); font-weight: 500;"></p>
+
+    <pre id="data-preview" style="margin-bottom: var(--space-6);"></pre>
+
+    <p class="muted">Esta página se completa en el Prompt 2.</p>
+  </main>
+
+  <!-- Supabase JS (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/theme.js"></script>
+  <script>
+    // Extrae el token del primer segmento del pathname: /TOKEN → "TOKEN"
+    const token = window.location.pathname.split('/').filter(Boolean)[0];
+
+    document.getElementById('token-display').textContent = token || '(sin token)';
+
+    if (token) {
+      window.mypumpDB.init();
+
+      const status  = document.getElementById('status');
+      const preview = document.getElementById('data-preview');
+
+      window.mypumpDB.getClienteInfo(token).then(info => {
+        if (info) {
+          status.textContent = `✓ Cliente válido: ${info.nombre} (${info.perfil})`;
+          status.style.color = 'var(--color-success)';
+
+          Promise.all([
+            window.mypumpDB.getRutinaActiva(token),
+            window.mypumpDB.getDietaActiva(token),
+          ]).then(([rutina, dieta]) => {
+            preview.textContent = JSON.stringify({
+              tieneRutina: !!rutina,
+              tieneDieta:  !!dieta,
+              rutina:      rutina?.estructura?.nombre_plan  ?? null,
+              dieta:       dieta?.estructura?.macros_target ?? null,
+            }, null, 2);
+          });
+        } else {
+          status.textContent = '✗ Token inválido o cliente revocado';
+          status.style.color = 'var(--color-danger)';
+        }
+      });
+    } else {
+      document.getElementById('status').textContent = 'Sin token en la URL.';
+      document.getElementById('status').style.color = 'var(--color-text-muted)';
+    }
+  </script>
+</body>
+</html>
