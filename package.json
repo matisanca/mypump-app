@@ -1,0 +1,9 @@
+{
+  "name": "mypump-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve public -l 3000",
+    "format": "echo 'TODO: configurar prettier'"
+  }
+}
