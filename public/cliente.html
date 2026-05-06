@@ -152,6 +152,9 @@ main{padding:var(--space-4)}
 .btn-secondary-outline{width:100%;height:48px;background:transparent;color:var(--color-text-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2)}
 .btn-secondary-outline:hover{background:var(--color-bg-secondary);color:var(--color-text-primary)}
 .ex-manual-badge{background:color-mix(in oklab,var(--color-warning) 15%,var(--color-bg-secondary));border-color:color-mix(in oklab,var(--color-warning) 30%,var(--color-border));color:var(--color-text-secondary);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;vertical-align:middle;margin-left:6px}
+.week-advance-wrap{padding:var(--space-4) 0 var(--space-2);border-top:1px solid var(--color-border);margin-top:var(--space-4)}
+.btn-week-advance{width:100%;height:44px;background:transparent;color:var(--color-text-muted);border:1px dashed var(--color-border);border-radius:var(--radius-md);font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);letter-spacing:.01em}
+.btn-week-advance:hover{background:var(--color-bg-secondary);color:var(--color-text-secondary);border-style:solid}
 
 /* EARLY FINISH WARNING */
 .early-finish-warning{background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));border-radius:var(--radius-md);padding:var(--space-3) var(--space-4)}
@@ -829,6 +832,54 @@ async function writeFinish(notas) {
   await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null);
 }
 
+/* ---- AVANCE DE SEMANA ---- */
+// Simplificación: verifica solo el día actual (no todos los días de la semana).
+// El chequeo multi-día requeriría RPCs adicionales (pendiente Parte B).
+function isWeekCompleted() {
+  return checkIfDayCompleted();
+}
+
+async function doAvanzarSemana() {
+  const nueva = await window.mypumpDB.avanzarSemana(TOKEN);
+  if (nueva != null) {
+    // Limpiar sesiones cacheadas de la semana anterior
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith(`mypump_sesion_${TOKEN}_`)) localStorage.removeItem(k);
+    });
+    location.reload();
+  }
+}
+
+async function confirmAvanzarSemana() {
+  const semana = DATA.rutina.semana_actual || 1;
+  const total  = DATA.rutina.semanas_total || 12;
+  if (semana >= total) return; // ya en la última semana
+
+  const diaCompleto = checkIfDayCompleted();
+  const ok = await MyPump.ui.showConfirmModal({
+    title:        `Pasar a Semana ${semana + 1}`,
+    body:         diaCompleto
+      ? `¿Confirmás que querés avanzar a la SEMANA ${semana + 1}?`
+      : `Todavía tenés ejercicios sin completar en la SEMANA ${semana}. Si avanzás, la semana nueva empieza con progresión actualizada. ¿Continuar?`,
+    confirmLabel: `Pasar a SEM ${semana + 1} →`,
+    cancelLabel:  'Cancelar',
+  });
+  if (ok) await doAvanzarSemana();
+}
+
+async function showWeekCompletedModal() {
+  const semana = DATA.rutina.semana_actual || 1;
+  const total  = DATA.rutina.semanas_total || 12;
+  if (semana >= total) return;
+  const ok = await MyPump.ui.showConfirmModal({
+    title:        '🎉 ¡Día completado!',
+    body:         `Terminaste todos los ejercicios de hoy (SEMANA ${semana}). ¿Querés pasar a la SEMANA ${semana + 1}?`,
+    confirmLabel: `Pasar a SEM ${semana + 1} →`,
+    cancelLabel:  'Ahora no',
+  });
+  if (ok) await doAvanzarSemana();
+}
+
 /* ---- RESTAURAR REGISTROS DE CARGA ---- */
 // Lee los sets guardados en Supabase y los vuelca en STATE.session.
 // Solo sobrescribe sets que aún no estén confirmados localmente.
@@ -1020,6 +1071,18 @@ function renderTrain() {
     </section>`;
   }
 
+  // Botón de avance de semana — siempre visible si no es demo y no es la última semana
+  const _semanaActual = DATA.rutina.semana_actual || 1;
+  const _semanasTotal = DATA.rutina.semanas_total || 12;
+  if (!DATA._isDemo && _semanaActual < _semanasTotal) {
+    html += `
+    <div class="week-advance-wrap">
+      <button class="btn-week-advance" onclick="confirmAvanzarSemana()">
+        Pasar a Semana ${_semanaActual + 1} →
+      </button>
+    </div>`;
+  }
+
   // Footer: siempre visible cuando hay sesión iniciada
   if (!allDone) {
     const hasStarted = _sesionIniciada || completedCount > 0;
@@ -1202,6 +1265,10 @@ function bindTrainEvents() {
       startRest(ex.descanso_segundos);
     }
     renderTrain();
+    // Auto-detectar día completo → ofrecer avance de semana
+    if (!DATA._isDemo && (DATA.rutina.semana_actual||1) < (DATA.rutina.semanas_total||12) && checkIfDayCompleted()) {
+      setTimeout(() => showWeekCompletedModal(), 500);
+    }
   }));
 
   $$('[data-edit]').forEach(btn => btn.addEventListener('click', () => {
@@ -1231,6 +1298,9 @@ function bindTrainEvents() {
     if (next) STATE.expandedId = next.id;
     stopRest();
     renderTrain();
+    if (!DATA._isDemo && (DATA.rutina.semana_actual||1) < (DATA.rutina.semanas_total||12) && checkIfDayCompleted()) {
+      setTimeout(() => showWeekCompletedModal(), 500);
+    }
   }));
 
   // "Terminé este ejercicio" — sin datos, con confirmación si 0 series cargadas
@@ -1259,6 +1329,9 @@ function bindTrainEvents() {
     if (next) STATE.expandedId = next.id;
     stopRest();
     renderTrain();
+    if (!DATA._isDemo && (DATA.rutina.semana_actual||1) < (DATA.rutina.semanas_total||12) && checkIfDayCompleted()) {
+      setTimeout(() => showWeekCompletedModal(), 500);
+    }
   }));
 
   // Reabrir un ejercicio ya completado
