@@ -127,9 +127,6 @@ main{padding:var(--space-4)}
 .ex-extra-content.video{aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:var(--space-2);background-image:repeating-linear-gradient(45deg,var(--color-bg-tertiary) 0,var(--color-bg-tertiary) 8px,var(--color-border) 8px,var(--color-border) 9px);color:var(--color-text-muted);font-family:var(--font-mono);font-size:12px}
 .ex-extra-content.video .play{width:56px;height:56px;border-radius:50%;background:var(--color-bg-primary);border:1px solid var(--color-border-strong);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow-md)}
 .ex-extra-content.video iframe{width:100%;height:100%;border:0;border-radius:var(--radius-md)}
-.mark-complete{width:100%;height:48px;border:1px solid var(--color-border);background:var(--color-bg-primary);border-radius:var(--radius-md);color:var(--color-text-secondary);font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2)}
-.mark-complete.is-ready{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
-.mark-complete svg{width:16px;height:16px}
 
 /* FINISH BANNER */
 .finish-card{margin-top:var(--space-4);padding:var(--space-5);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);display:flex;flex-direction:column;gap:var(--space-4)}
@@ -194,11 +191,8 @@ main{padding:var(--space-4)}
 .macro.c .bar span{background:#f59e0b}
 .macro.f .bar span{background:#dc2626}
 .meal{background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:var(--space-3)}
-.meal.is-done{background:color-mix(in oklab,var(--color-brand-subtle) 60%,var(--color-bg-primary));border-color:color-mix(in oklab,var(--color-brand) 50%,var(--color-border))}
 .meal-head{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);cursor:pointer;width:100%;text-align:left;background:transparent;border:0}
 .meal-head .meal-num{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--color-border-strong);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--color-text-muted)}
-.meal.is-done .meal-num{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
-.meal.is-done .meal-num svg{width:16px;height:16px}
 .meal-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .meal-name{font-size:var(--font-size-base);font-weight:600;letter-spacing:-.01em}
 .meal-sub{font-family:var(--font-mono);font-size:11px;color:var(--color-text-muted)}
@@ -219,7 +213,31 @@ main{padding:var(--space-4)}
 .meal-totals{display:flex;justify-content:space-between;padding:var(--space-3);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-family:var(--font-mono);font-size:12px}
 .meal-totals strong{color:var(--color-text-primary)}
 .meal-totals .lbl{color:var(--color-text-muted);text-transform:uppercase;font-size:10px;letter-spacing:.06em;font-weight:600}
-.meal-actions{display:flex;gap:var(--space-2)}
+
+/* TIPO DÍA SELECTOR */
+.tipo-dia-sel{display:flex;gap:4px;padding:4px;background:var(--color-bg-tertiary);border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:var(--space-4)}
+.tipo-dia-btn{flex:1;height:36px;border:0;background:transparent;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:background .15s,color .15s}
+.tipo-dia-btn.is-active{background:var(--color-brand);color:var(--color-on-brand)}
+
+/* FOOD SWAP */
+.swap-btn{background:transparent;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:2px 5px;font-size:11px;cursor:pointer;color:var(--color-text-muted);margin-left:4px;line-height:1}
+.swap-btn:hover{background:var(--color-bg-tertiary);color:var(--color-text-primary)}
+.swap-badge{font-size:11px;color:var(--color-brand);cursor:pointer;margin-left:4px;text-decoration:none}
+.swap-original{padding:var(--space-3);background:var(--color-bg-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:var(--space-3)}
+.swap-original .sw-name{font-weight:600;font-size:15px}
+.swap-original .sw-meta{font-family:var(--font-mono);font-size:11px;color:var(--color-text-muted);margin-top:2px}
+.swap-subs-title{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);font-weight:600;padding:var(--space-2) 0}
+.swap-list{display:flex;flex-direction:column;gap:var(--space-2);max-height:50vh;overflow-y:auto}
+.swap-card{padding:var(--space-3);border:1.5px solid var(--color-border);border-radius:var(--radius-md);cursor:pointer;display:flex;align-items:center;gap:var(--space-3);background:var(--color-bg-secondary)}
+.swap-card.is-selected{border-color:var(--color-brand);background:var(--color-brand-subtle)}
+.swap-card-info{flex:1;min-width:0}
+.swap-card-name{font-size:14px;font-weight:600}
+.swap-card-qty{font-family:var(--font-mono);font-size:11px;color:var(--color-text-muted);margin-top:1px}
+.swap-card-macros{font-family:var(--font-mono);font-size:10px;color:var(--color-text-muted);margin-top:2px}
+.swap-delta{font-family:var(--font-mono);font-size:11px;font-weight:700;min-width:44px;text-align:right;flex:0 0 auto}
+.swap-delta.ok{color:#16a34a}
+.swap-delta.warn{color:#f59e0b}
+.swap-empty{padding:var(--space-6) var(--space-4);text-align:center;color:var(--color-text-muted);font-size:14px;line-height:1.6}
 
 /* PROGRESO */
 .prog-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-2);margin-bottom:var(--space-4)}
@@ -355,6 +373,8 @@ main{padding:var(--space-4)}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/config.js"></script>
 <script src="/js/supabase-client.js"></script>
+<script src="/js/food-db.js"></script>
+<script src="/js/app.js"></script>
 <script>
 /* ====================================================================
    MyPump — Cliente
@@ -386,13 +406,15 @@ let _sesionIniciada = false;
 let _sessionStart  = null; // Date.now() when first set confirmed
 
 const STATE = {
-  scene:      'train',
-  expandedId: null,
-  rest:       null,   // {remaining, target, intervalId}
-  session:    {},     // exId → {sets:[{reps,kg,rir,confirmed}], completed}
-  meals:      {},     // comidaId → {selectedOpt, done}
+  scene:         'train',
+  expandedId:    null,
+  rest:          null,       // {remaining, target, intervalId}
+  session:       {},         // exId → {sets:[{reps,kg,rir,confirmed}], completed}
+  meals:         {},         // comidaId → {selectedOpt}
+  foodSwaps:     {},         // swapKey → {original, current}
+  activeTipoDia: null,       // id del tipo-día activo (Formato B)
   progressLoaded: false,
-  progressData: null,
+  progressData:  null,
 };
 
 /* ---- SAMPLE DATA (fallback when no rutina/dieta published) ---- */
@@ -582,10 +604,38 @@ function buildSession() {
   return s;
 }
 
+function getActivePlan() {
+  if (DIET.tipos_dia && DIET.tipos_dia.length) {
+    return DIET.tipos_dia.find(t => t.id === STATE.activeTipoDia) || DIET.tipos_dia[0];
+  }
+  return DIET;
+}
+
 function buildMeals() {
   const m = {};
-  for (const c of DIET.comidas) m[c.id] = { selectedOpt:0, done:false };
+  for (const c of getActivePlan().comidas) m[c.id] = { selectedOpt: 0 };
   return m;
+}
+
+function inferFoodCategory(food) {
+  const total = (food.prot||0) + (food.carb||0) + (food.fat||0);
+  if (total === 0) return 'condimento';
+  const pPct = food.prot/total, cPct = food.carb/total, fPct = food.fat/total;
+  if (pPct > 0.5) return 'proteina';
+  if (cPct > 0.5) return 'carbohidrato';
+  if (fPct > 0.5) return 'grasa';
+  if (food.prot > 0 && food.carb > 0 && fPct < 0.3) return 'lacteo';
+  if (cPct > 0.4) return 'fruta_verdura';
+  return 'mixto';
+}
+
+function getEffectiveFood(f, comidaId, optIdx, foodIdx) {
+  const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
+  return STATE.foodSwaps[key] ? STATE.foodSwaps[key].current : f;
+}
+
+function persistSwaps() {
+  localStorage.setItem(`mypump_food_swaps_${DIETA_ID||'demo'}`, JSON.stringify(STATE.foodSwaps));
 }
 
 /* ---- SUPABASE WRITES ---- */
@@ -617,11 +667,6 @@ async function writeSet(exId, setIdx) {
 async function writeFinish(notas) {
   if (!RUTINA_ID || !_sesionId) return;
   await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null);
-}
-
-async function writeMealChoice(comidaId, optName, done) {
-  if (!DIETA_ID) return;
-  await window.mypumpDB.elegirOpcionComida(TOKEN, DIETA_ID, TODAY, comidaId, optName, done);
 }
 
 /* ---- LAZY LOAD HISTORICO ---- */
@@ -1026,77 +1071,95 @@ $$('[data-rest]').forEach(btn => btn.addEventListener('click', () => {
 /* ---- DIET SCENE ---- */
 function renderDiet() {
   const root = $('#scene-diet');
-  let tot = {kcal:0,prot:0,carb:0,fat:0};
-  for (const c of DIET.comidas) {
-    if (STATE.meals[c.id] && STATE.meals[c.id].done) {
-      const opt = c.options[STATE.meals[c.id].selectedOpt] || c.options[0];
-      for (const f of opt.foods) { tot.kcal+=f.kcal; tot.prot+=f.prot; tot.carb+=f.carb; tot.fat+=f.fat; }
-    }
+  const plan = getActivePlan();
+  const tg = plan.macros_target;
+
+  let tipoDiaHtml = '';
+  if (DIET.tipos_dia && DIET.tipos_dia.length > 1) {
+    const activeId = STATE.activeTipoDia || DIET.tipos_dia[0].id;
+    tipoDiaHtml = `<div class="tipo-dia-sel">${
+      DIET.tipos_dia.map(t =>
+        `<button class="tipo-dia-btn${t.id===activeId?' is-active':''}" data-tipodía="${t.id}">${t.nombre}</button>`
+      ).join('')
+    }</div>`;
   }
-  const tg = DIET.macros_target;
-  const kcalPct = Math.min(1, tot.kcal/tg.kcal);
-  const C = 2*Math.PI*36;
-  const dash = `${kcalPct*C} ${C}`;
 
   root.innerHTML = `
+  ${tipoDiaHtml}
   <div class="diet-hdr">
     <div class="diet-hdr-top">
       <div class="kcal-ring">
         <svg viewBox="0 0 88 88">
           <circle class="track" cx="44" cy="44" r="36"/>
-          <circle class="fill" cx="44" cy="44" r="36" stroke-dasharray="${dash}"/>
         </svg>
-        <div class="center"><span class="num">${Math.round(tot.kcal)}</span><span class="lbl">/ ${tg.kcal} kcal</span></div>
+        <div class="center"><span class="num">${tg.kcal.toLocaleString('es-AR')}</span><span class="lbl">kcal</span></div>
       </div>
       <div class="diet-info">
-        <div class="eyebrow">DIETA · HOY</div>
-        <h2>${tg.kcal} kcal · ${tg.prot}p / ${tg.carb}c / ${tg.fat}g</h2>
-        <div class="target">Llevás <strong>${Math.round(tot.kcal)}</strong> kcal · ${Math.round(kcalPct*100)}% del día</div>
+        <div class="eyebrow">DIETA · SEM ${DATA.rutina.semana_actual}/${DATA.rutina.semanas_total}</div>
+        <h2>${tg.kcal} kcal objetivo</h2>
+        <div class="target"><strong>${tg.prot}g</strong> prot · <strong>${tg.carb}g</strong> carb · <strong>${tg.fat}g</strong> gra</div>
       </div>
     </div>
     <div class="macros-row">
-      ${renderMacro('p','Proteína',tot.prot,tg.prot,'g')}
-      ${renderMacro('c','Carbs',tot.carb,tg.carb,'g')}
-      ${renderMacro('f','Grasa',tot.fat,tg.fat,'g')}
+      ${renderMacroTarget('p','Proteína',tg.prot,'g')}
+      ${renderMacroTarget('c','Carbs',tg.carb,'g')}
+      ${renderMacroTarget('f','Grasa',tg.fat,'g')}
     </div>
   </div>
-  ${DIET.comidas.map(renderMeal).join('')}`;
+  ${plan.comidas.map((c,i) => renderMeal(c,i)).join('')}`;
   bindDietEvents();
 }
 
-function renderMacro(cls, label, val, target, unit) {
-  const pct = Math.min(100, Math.round((val/target)*100));
+function renderMacroTarget(cls, label, target, unit) {
   return `
     <div class="macro ${cls}">
       <span class="lbl">${label}</span>
-      <span class="val">${Math.round(val)}<small>/${target}${unit}</small></span>
-      <div class="bar"><span style="width:${pct}%"></span></div>
+      <span class="val">${target}<small>${unit}</small></span>
     </div>`;
 }
 
-function renderMeal(c) {
-  const st = STATE.meals[c.id] || {selectedOpt:0,done:false};
-  const opt = c.options[st.selectedOpt] || c.options[0];
-  const tot = opt.foods.reduce((a,f) => ({kcal:a.kcal+f.kcal,prot:a.prot+f.prot,carb:a.carb+f.carb,fat:a.fat+f.fat}),{kcal:0,prot:0,carb:0,fat:0});
+function renderFood(originalFood, comidaId, optIdx, foodIdx) {
+  const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
+  const swap = STATE.foodSwaps[key];
+  const f = swap ? swap.current : originalFood;
+  const isSwapped = !!swap;
+  const cat = originalFood.category || inferFoodCategory(originalFood);
+  const swappable = originalFood.swappable !== false && cat !== 'condimento';
 
-  if (st.done) {
-    return `
-    <div class="meal is-done">
-      <button class="meal-head" data-meal="${c.id}">
-        <span class="meal-num">${ICONS.check}</span>
-        <div class="meal-info">
-          <div class="meal-name">${c.name} <span style="color:var(--color-text-muted);font-weight:400;font-size:12px">· opción ${opt.name}</span></div>
-          <div class="meal-sub">${Math.round(tot.kcal)} kcal · ${Math.round(tot.prot)}p / ${Math.round(tot.carb)}c / ${Math.round(tot.fat)}g</div>
-        </div>
-        <span class="meal-kcal">${ICONS.check}</span>
-      </button>
-    </div>`;
-  }
+  return `
+  <div class="food">
+    <div class="food-info">
+      <div class="food-name">${f.name}${isSwapped
+        ? ` <span class="swap-badge" data-revert="${comidaId}|${optIdx}|${foodIdx}" title="Toca para volver al original">↔</span>`
+        : ''}</div>
+      <div class="food-qty">${f.qty} ${f.unit} · ${f.kcal} kcal</div>
+    </div>
+    <div class="food-macros">
+      <span><strong>${f.prot}</strong>p</span>
+      <span><strong>${f.carb}</strong>c</span>
+      <span><strong>${f.fat}</strong>g</span>
+      ${swappable
+        ? `<button class="swap-btn" data-swap="${comidaId}|${optIdx}|${foodIdx}" title="Sustituir">↔</button>`
+        : ''}
+    </div>
+  </div>`;
+}
+
+function renderMeal(c, idx) {
+  const st = STATE.meals[c.id] || {selectedOpt:0};
+  const optIdx = st.selectedOpt || 0;
+  const opt = c.options[optIdx] || c.options[0];
+  const displayFoods = opt.foods.map((f,fi) => getEffectiveFood(f, c.id, optIdx, fi));
+  const tot = displayFoods.reduce((a,f) => ({
+    kcal: a.kcal+(f.kcal||0), prot: a.prot+(f.prot||0),
+    carb: a.carb+(f.carb||0), fat:  a.fat+(f.fat||0)
+  }), {kcal:0,prot:0,carb:0,fat:0});
+  const mealNum = idx !== undefined ? idx+1 : c.id.replace('c','');
 
   return `
   <div class="meal">
     <button class="meal-head" data-meal="${c.id}">
-      <span class="meal-num">${c.id.replace('c','')}</span>
+      <span class="meal-num">${mealNum}</span>
       <div class="meal-info">
         <div class="meal-name">${c.name}</div>
         <div class="meal-sub">opción ${opt.name} · ${opt.foods.length} alimentos</div>
@@ -1105,56 +1168,60 @@ function renderMeal(c) {
     </button>
     <div class="meal-body">
       <div class="opt-tabs">
-        ${c.options.map((o,i) => `<button class="opt-tab${i===st.selectedOpt?' is-active':''}" data-opt="${c.id}|${i}">Opción ${o.name}</button>`).join('')}
+        ${c.options.map((o,i) =>
+          `<button class="opt-tab${i===optIdx?' is-active':''}" data-opt="${c.id}|${i}">Opción ${o.name}</button>`
+        ).join('')}
       </div>
       <div class="foods">
-        ${opt.foods.map(f => `
-          <div class="food">
-            <div class="food-info">
-              <div class="food-name">${f.name}</div>
-              <div class="food-qty">${f.qty} ${f.unit} · ${f.kcal} kcal</div>
-            </div>
-            <div class="food-macros">
-              <span><strong>${f.prot}</strong>p</span>
-              <span><strong>${f.carb}</strong>c</span>
-              <span><strong>${f.fat}</strong>g</span>
-            </div>
-          </div>`).join('')}
+        ${opt.foods.map((f,fi) => renderFood(f, c.id, optIdx, fi)).join('')}
       </div>
       <div class="meal-totals">
         <span><span class="lbl">TOTAL</span></span>
         <span><strong>${Math.round(tot.kcal)}</strong> kcal · <strong>${Math.round(tot.prot)}</strong>p / <strong>${Math.round(tot.carb)}</strong>c / <strong>${Math.round(tot.fat)}</strong>g</span>
-      </div>
-      <div class="meal-actions">
-        <button class="btn-primary" data-mealdone="${c.id}">${ICONS.check} Marcar comida realizada</button>
       </div>
     </div>
   </div>`;
 }
 
 function bindDietEvents() {
-  $$('[data-meal]').forEach(btn => btn.addEventListener('click', e => {
-    if (e.target.closest('[data-opt]') || e.target.closest('[data-mealdone]')) return;
-    const id = btn.getAttribute('data-meal');
-    STATE.meals[id].done = !STATE.meals[id].done;
-    if (STATE.meals[id].done) {
-      const opt = DIET.comidas.find(c=>c.id===id).options[STATE.meals[id].selectedOpt];
-      writeMealChoice(id, opt.name, true);
-    }
+  // Selector tipo-día (Formato B)
+  $$('[data-tipodía]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    STATE.activeTipoDia = btn.getAttribute('data-tipodía');
+    localStorage.setItem('mypump_tipo_dia', STATE.activeTipoDia);
+    STATE.meals = buildMeals();
     renderDiet();
   }));
+  // Expand/collapse meal (sin acciones hijas)
+  $$('[data-meal]').forEach(btn => btn.addEventListener('click', e => {
+    if (e.target.closest('[data-opt]') || e.target.closest('[data-swap]') || e.target.closest('[data-revert]')) return;
+    renderDiet();
+  }));
+  // Cambio de opción
   $$('[data-opt]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
     const [id, idx] = btn.getAttribute('data-opt').split('|');
     STATE.meals[id].selectedOpt = +idx;
     renderDiet();
   }));
-  $$('[data-mealdone]').forEach(btn => btn.addEventListener('click', e => {
+  // Abrir modal swap
+  $$('[data-swap]').forEach(btn => btn.addEventListener('click', e => {
     e.stopPropagation();
-    const id = btn.getAttribute('data-mealdone');
-    STATE.meals[id].done = true;
-    const opt = DIET.comidas.find(c=>c.id===id).options[STATE.meals[id].selectedOpt];
-    writeMealChoice(id, opt.name, true);
+    const [comidaId, optIdx, foodIdx] = btn.getAttribute('data-swap').split('|');
+    const plan = getActivePlan();
+    const comida = plan.comidas.find(c => c.id === comidaId);
+    if (!comida) return;
+    const food = comida.options[+optIdx]?.foods[+foodIdx];
+    if (!food) return;
+    openSwapModal(food, comidaId, +optIdx, +foodIdx);
+  }));
+  // Revertir swap
+  $$('[data-revert]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const [comidaId, optIdx, foodIdx] = btn.getAttribute('data-revert').split('|');
+    const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
+    delete STATE.foodSwaps[key];
+    persistSwaps();
     renderDiet();
   }));
 }
@@ -1383,32 +1450,25 @@ async function init() {
     };
   }
 
-  if (dieta && dieta.estructura && dieta.estructura.comidas) {
+  if (dieta && dieta.estructura && (dieta.estructura.comidas || dieta.estructura.tipos_dia)) {
     DIETA_ID = dieta.id;
     DIET = dieta.estructura;
   } else {
     DIET = SAMPLE_DIET;
   }
 
-  // Restore meal choices from today
-  if (DIETA_ID) {
-    const elecciones = await window.mypumpDB.getEleccionesDia(TOKEN, DIETA_ID, TODAY);
-    if (elecciones && elecciones.length) {
-      const meals = buildMeals();
-      for (const e of elecciones) {
-        if (meals[e.comida_id]) {
-          const optIdx = DIET.comidas.find(c=>c.id===e.comida_id)?.options.findIndex(o=>o.name===e.opcion_elegida) ?? 0;
-          meals[e.comida_id].selectedOpt = optIdx >= 0 ? optIdx : 0;
-          meals[e.comida_id].done = !!e.completada;
-        }
-      }
-      STATE.meals = meals;
-    } else {
-      STATE.meals = buildMeals();
-    }
-  } else {
-    STATE.meals = buildMeals();
+  // Restaurar tipo-día seleccionado (Formato B)
+  if (DIET.tipos_dia && DIET.tipos_dia.length) {
+    const savedTipo = localStorage.getItem('mypump_tipo_dia');
+    STATE.activeTipoDia = (DIET.tipos_dia.find(t => t.id === savedTipo) || DIET.tipos_dia[0]).id;
   }
+
+  STATE.meals = buildMeals();
+
+  // Cargar swaps persistidos (se resetean cuando cambia DIETA_ID)
+  STATE.foodSwaps = JSON.parse(
+    localStorage.getItem(`mypump_food_swaps_${DIETA_ID||'demo'}`) || '{}'
+  );
 
   STATE.session = buildSession();
 
@@ -1423,6 +1483,103 @@ async function init() {
   renderTrain();
   renderDiet();
   // Progress loads lazily when tab is opened
+}
+
+/* ---- SWAP MODAL ---- */
+let _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null };
+const _swapCache = {};
+
+function openSwapModal(food, comidaId, optIdx, foodIdx) {
+  _swapState = { comidaId, optIdx, foodIdx, original:food, selected:null };
+  const cat = food.category || inferFoodCategory(food);
+
+  if (cat === 'condimento') {
+    $('#modalHost').innerHTML = `
+    <div class="modal-back" id="swapModalBack">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Sin sustitutos</div>
+        <div class="swap-empty">Este alimento no se puede sustituir.</div>
+        <button class="btn-secondary" onclick="closeSwapModal()">Cerrar</button>
+      </div>
+    </div>`;
+    $('#swapModalBack').addEventListener('click', e => { if(e.target===e.currentTarget) closeSwapModal(); });
+    return;
+  }
+
+  const cacheKey = `${food.name}__${cat}`;
+  if (!_swapCache[cacheKey]) {
+    const db = window.MYPUMP_FOOD_DB || [];
+    _swapCache[cacheKey] = window.MyPump
+      ? window.MyPump.foodSwap.findSubstitutes(food)
+      : [];
+  }
+  const subs = _swapCache[cacheKey];
+
+  const subsHtml = subs.length === 0
+    ? `<div class="swap-empty">No hay sustitutos equivalentes disponibles (±15% kcal).</div>`
+    : `<div class="swap-list">${subs.map((s,i) => {
+        const origKcal = food.kcal * (food.qty/100);
+        const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
+        const sign = kcalDiff > 0 ? '+' : '';
+        const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
+        return `<div class="swap-card" data-sub="${i}" onclick="selectSwapCard(this,${i})">
+          <div class="swap-card-info">
+            <div class="swap-card-name">${s.name}</div>
+            <div class="swap-card-qty">${s.qty} ${s.unit}</div>
+            <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
+          </div>
+          <span class="swap-delta ${dCls}">${sign}${kcalDiff}%</span>
+        </div>`;
+      }).join('')}</div>`;
+
+  $('#modalHost').innerHTML = `
+  <div class="modal-back" id="swapModalBack">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Sustituir alimento</div>
+      <div class="swap-original">
+        <div class="sw-name">${food.name}</div>
+        <div class="sw-meta">${food.qty} ${food.unit} · ${food.kcal} kcal · ${food.prot}p / ${food.carb}c / ${food.fat}g</div>
+      </div>
+      <div class="swap-subs-title">Equivalentes — ${cat}</div>
+      ${subsHtml}
+      <div style="display:flex;gap:8px;margin-top:var(--space-4)">
+        <button class="btn-secondary" style="flex:1" onclick="closeSwapModal()">Cancelar</button>
+        <button class="btn-primary" style="flex:2" id="swapConfirmBtn" disabled onclick="confirmSwap()">Sustituir</button>
+      </div>
+    </div>
+  </div>`;
+  $('#swapModalBack').addEventListener('click', e => { if(e.target===e.currentTarget) closeSwapModal(); });
+}
+
+function selectSwapCard(el, idx) {
+  $$('.swap-card').forEach(c => c.classList.remove('is-selected'));
+  el.classList.add('is-selected');
+  _swapState.selected = idx;
+  const btn = $('#swapConfirmBtn');
+  if (btn) btn.disabled = false;
+}
+
+function closeSwapModal() {
+  $('#modalHost').innerHTML = '';
+  _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null };
+}
+
+function confirmSwap() {
+  if (_swapState.selected === null) return;
+  const { comidaId, optIdx, foodIdx, original } = _swapState;
+  const cat = original.category || inferFoodCategory(original);
+  const cacheKey = `${original.name}__${cat}`;
+  const subs = _swapCache[cacheKey] || [];
+  const sub = subs[_swapState.selected];
+  if (!sub) return;
+
+  const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
+  STATE.foodSwaps[key] = { original, current: sub };
+  persistSwaps();
+  closeSwapModal();
+  renderDiet();
 }
 
 init();

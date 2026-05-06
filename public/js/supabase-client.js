@@ -94,15 +94,6 @@ window.mypumpDB = {
     });
   },
 
-  // Devuelve array de {comida_id, opcion_elegida, completada} para la fecha dada.
-  async getEleccionesDia(token, dietaId, fecha) {
-    return await rpc('mypump_get_elecciones_dia', {
-      p_token: token,
-      p_dieta_id: dietaId,
-      p_fecha: fecha,
-    });
-  },
-
   // ─── ESCRITURA ────────────────────────────────────────────
 
   // Inicia una sesión de entrenamiento. Devuelve {success, data: sesionId, error}.
@@ -140,15 +131,4 @@ window.mypumpDB = {
     });
   },
 
-  // UPSERT de elección de opción de comida. Devuelve {success, data: boolean, error}.
-  async elegirOpcionComida(token, dietaId, fecha, comidaId, opcion, completada = false) {
-    return await rpcMutation('mypump_elegir_opcion_comida', {
-      p_token:      token,
-      p_dieta_id:   dietaId,
-      p_fecha:      fecha,
-      p_comida_id:  comidaId,
-      p_opcion:     opcion,
-      p_completada: completada,
-    });
-  },
 };
