@@ -3,6 +3,10 @@
 # Landing page
 /                  /index.html       200
 
+# CF Pages hace 301 automático: /cliente.html → /cliente ("Clean URLs")
+# Esta regla intercepta ese destino ANTES de que lo atrape /:token
+/cliente           /cliente.html     200
+
 # Archivos estáticos directos (no redirect)
 /cliente.html      /cliente.html     200
 /css/*             /css/:splat       200
