@@ -1,8 +1,13 @@
 # Cloudflare Pages — Routing
 
-# Landing en la raíz
-/  /index.html  200
+# Landing page
+/                  /index.html       200
 
-# Cualquier path de un segmento (token del cliente) → cliente.html
-# JS extrae el token de window.location.pathname
-/:token  /cliente.html  200
+# Archivos estáticos directos (no redirect)
+/cliente.html      /cliente.html     200
+/css/*             /css/:splat       200
+/js/*              /js/:splat        200
+/assets/*          /assets/:splat    200
+
+# Tokens de cliente (catch-all SOLO para paths sin extensión)
+/:token            /cliente.html     200
