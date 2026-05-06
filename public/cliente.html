@@ -42,8 +42,11 @@ button{font:inherit;color:inherit}
 /* DAY PICKER */
 .day-picker{display:flex;gap:var(--space-2);padding:0 var(--space-4) var(--space-3);overflow-x:auto;scrollbar-width:none}
 .day-picker::-webkit-scrollbar{display:none}
-.day-pill{flex:0 0 auto;padding:4px 12px;border:1px solid var(--color-border);background:var(--color-bg-primary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap;letter-spacing:.04em}
+.day-pill{flex:0 0 auto;padding:6px 14px;border:1px solid var(--color-border);background:var(--color-bg-primary);border-radius:var(--radius-md);font-family:var(--font-mono);color:var(--color-text-secondary);cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:60px}
+.dp-n{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.65}
+.dp-name{font-size:12px;font-weight:600;letter-spacing:.01em}
 .day-pill.is-active{background:var(--color-text-primary);color:var(--color-bg-primary);border-color:var(--color-text-primary)}
+.day-pill.is-active .dp-n{opacity:.7}
 .day-pill.is-done{border-color:color-mix(in oklab,var(--color-brand) 50%,var(--color-border));color:var(--color-brand)}
 
 /* PROGRESS BAR */
@@ -457,7 +460,7 @@ const SAMPLE_RUTINA = {
   split: 'PPL ×2 — 6 días',
   semanas_total: 12,
   dias: [
-    { id:'lun', nombre:'Tirón A — Ancho', abreviado:'LUN · TIRÓN A',
+    { id:'lun', n:1, nombre:'Tirón A — Ancho',
       bloques:[
         { titulo:'BLOQUE 0', subtitulo:'Calentamiento', ejercicios:[
           { id:'ex_001', nombre:'Movilidad de hombros con banda', tipo:'calentamiento', series:2, reps:'10', rir_objetivo:null, descanso_segundos:30 },
@@ -474,7 +477,7 @@ const SAMPLE_RUTINA = {
         ]},
       ],
     },
-    { id:'mar', nombre:'Empuje A — Pecho / Hombro', abreviado:'MAR · EMPUJE A',
+    { id:'mar', n:2, nombre:'Empuje A — Pecho / Hombro',
       bloques:[
         { titulo:'BLOQUE 1', subtitulo:'Pecho', ejercicios:[
           { id:'ex_100', nombre:'Press banca plano con barra', tipo:'compuesto', series:4, reps:'6-8', rir_objetivo:'1-2', descanso_segundos:180 },
@@ -486,7 +489,7 @@ const SAMPLE_RUTINA = {
         ]},
       ],
     },
-    { id:'mie', nombre:'Pierna A — Quad / Glúteo', abreviado:'MIE · PIERNA A',
+    { id:'mie', n:3, nombre:'Pierna A — Quad / Glúteo',
       bloques:[
         { titulo:'BLOQUE 1', subtitulo:'Cuádriceps', ejercicios:[
           { id:'ex_200', nombre:'Sentadilla con barra', tipo:'compuesto', series:4, reps:'6-8', rir_objetivo:'1-2', descanso_segundos:240 },
@@ -618,10 +621,38 @@ function suggestedKg(exId, idx) {
   return ref ? String(ref.peso_kg) : '';
 }
 
-function pickTodayDia(dias) {
-  const names = ['dom','lun','mar','mie','jue','vie','sab'];
-  const name = names[new Date().getDay()];
-  return dias.find(d => d.id === name) || dias[0];
+/* ---- DAY HELPERS ---- */
+// Extrae el nombre corto de un día de entrenamiento (agnóstico al calendario).
+// "TIRÓN A — ANCHO" → "Tirón" · "Empuje A" → "Empuje" · "FULLBODY" → "Fullbody"
+function getDayShortName(diaNombre) {
+  if (!diaNombre) return '';
+  const first = diaNombre.split(/[\s–—\-\/]/)[0].trim();
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
+// Devuelve el número del día dentro de la rutina (1-based).
+// Usa dia.n si está disponible; si no, la posición en el array.
+function getDayNum(dia, allDias) {
+  if (dia.n != null) return dia.n;
+  const idx = (allDias || []).findIndex(d => d.id === dia.id);
+  return idx >= 0 ? idx + 1 : 1;
+}
+
+// Elige el día a mostrar al abrir la app — sin usar el calendario real.
+// Orden de prioridad: último día visualizado (localStorage) → primer día.
+function getSuggestedDay(dias, rutinaId) {
+  const key = `mypump_dia_visualizado_${rutinaId || 'demo'}`;
+  const lastId = localStorage.getItem(key);
+  if (lastId) {
+    const last = dias.find(d => d.id === lastId);
+    if (last) return last;
+  }
+  return dias[0];
+}
+
+// Persiste el día actual en localStorage para restaurarlo la próxima visita.
+function persistLastDay(diaId, rutinaId) {
+  localStorage.setItem(`mypump_dia_visualizado_${rutinaId || 'demo'}`, diaId);
 }
 
 /* ---- SESSION STATE BUILDERS ---- */
@@ -792,14 +823,28 @@ function showApp() {
   $('#appRoot').hidden = false;
 }
 
+/* ---- DAY HEADER ---- */
+// Actualiza el eyebrow del header de entrenamiento con "DÍA N" agnóstico al calendario.
+function updateDayHeader() {
+  const dias = DATA._dias || [DATA.dia];
+  const num  = getDayNum(DATA.dia, dias);
+  $('#hdrEyebrow').textContent = `DÍA ${num}`;
+  $('#hdrTitle').textContent = DATA.dia.nombre;
+}
+
 /* ---- DAY PICKER ---- */
 function renderDayPicker() {
   const dias = DATA._dias || [DATA.dia];
   if (dias.length <= 1) return;
   const picker = $('#dayPicker');
-  picker.innerHTML = dias.map(d =>
-    `<button class="day-pill${d.id === DATA.dia.id ? ' is-active' : ''}" data-dayid="${d.id}">${d.abreviado || d.id.toUpperCase()}</button>`
-  ).join('');
+  picker.innerHTML = dias.map(d => {
+    const num  = getDayNum(d, dias);
+    const name = getDayShortName(d.nombre);
+    return `<button class="day-pill${d.id === DATA.dia.id ? ' is-active' : ''}" data-dayid="${d.id}">
+      <span class="dp-n">DÍA ${num}</span>
+      <span class="dp-name">${name}</span>
+    </button>`;
+  }).join('');
   picker.hidden = false;
   $$('.day-pill').forEach(btn => btn.addEventListener('click', () => {
     const id = btn.getAttribute('data-dayid');
@@ -814,6 +859,8 @@ function renderDayPicker() {
     STATE.expandedId = null;
     _sesionIniciada = false;
     _sesionId = null;
+    persistLastDay(dia.id, RUTINA_ID);
+    updateDayHeader();
     renderDayPicker();
     renderTrain();
   }));
@@ -1596,8 +1643,7 @@ function setScene(scene) {
   const hp = $('#hdrProgress');
 
   if (scene === 'train') {
-    $('#hdrEyebrow').textContent = DATA.dia.abreviado || DATA.dia.nombre.toUpperCase();
-    $('#hdrTitle').textContent = DATA.dia.nombre;
+    updateDayHeader();
     if (dp) dp.hidden = (DATA._dias || []).length <= 1;
     if (hp) hp.hidden = false;
   } else if (scene === 'diet') {
@@ -1652,12 +1698,12 @@ async function init() {
   if (rutina && rutina.estructura && rutina.estructura.dias) {
     RUTINA_ID = rutina.id;
     const est = rutina.estructura;
-    const dia = pickTodayDia(est.dias);
+    const dia = getSuggestedDay(est.dias, rutina.id);
     DATA = {
       cliente: { nombre: info.nombre, perfil: info.perfil },
       rutina: {
         nombre_plan: est.nombre_plan || 'Mi plan',
-        split: est.split || '',
+        split: est.split || est.perfil?.split || '',
         semana_actual: rutina.semana_actual || 1,
         semanas_total: est.semanas_total || 1,
       },
@@ -1666,9 +1712,10 @@ async function init() {
       _dias: est.dias,
       _isDemo: false,
     };
+    persistLastDay(dia.id, rutina.id); // persiste el día sugerido como punto de partida
   } else {
     // Demo fallback
-    const dia = pickTodayDia(SAMPLE_RUTINA.dias);
+    const dia = getSuggestedDay(SAMPLE_RUTINA.dias, 'demo');
     DATA = {
       cliente: { nombre: info.nombre, perfil: info.perfil },
       rutina: { ...SAMPLE_RUTINA, semana_actual: 1 },
@@ -1704,8 +1751,7 @@ async function init() {
   // Update header initial state
   $('#hdrWeek').textContent = DATA.rutina.semana_actual;
   $('#hdrWeekTotal').textContent = DATA.rutina.semanas_total;
-  $('#hdrEyebrow').textContent = DATA.dia.abreviado || DATA.dia.nombre.toUpperCase();
-  $('#hdrTitle').textContent = DATA.dia.nombre;
+  updateDayHeader();
 
   showApp();
   renderDayPicker();
