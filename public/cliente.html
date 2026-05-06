@@ -1087,7 +1087,6 @@ function renderExCard(ex, blockIdx) {
             ? `<span class="chip mono">${prog.reps || '—'}</span>`
             : `<span class="chip mono"><span class="lbl">×</span>${prog.series} <span class="lbl">·</span> ${prog.reps} <span class="lbl">reps</span></span>`
           }
-          ${prog.rir ? `<span class="chip mono"><span class="lbl">RIR</span> ${prog.rir}</span>` : ''}
           <span class="chip mono"><span class="lbl">desc</span> ${fmtTime(ex.descanso_segundos)}</span>
         </div>
         ${!isExpanded ? `<div class="ex-historic"><span class="lbl">Última:</span><span class="val">${last || 'Primera vez con este ejercicio'}</span></div>` : ''}
