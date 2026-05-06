@@ -937,6 +937,28 @@ function renderDayPicker() {
 }
 
 /* ---- TRAIN SCENE ---- */
+
+/**
+ * Extrae el nombre visible del bloque con soporte para dos formatos:
+ *  - Seed legacy:  { subtitulo: 'Calentamiento' }           → "CALENTAMIENTO"
+ *  - Cerebro:      { titulo: 'BLOQUE 0 — CALENTAMIENTO' }   → "CALENTAMIENTO"
+ * Si el titulo no tiene separador (em/en-dash o guion), lo devuelve en mayusculas.
+ */
+function getNombreBloque(bloque) {
+  // Formato seed: campo subtitulo separado
+  if (bloque.subtitulo) return bloque.subtitulo.toUpperCase();
+
+  // Formato Cerebro: titulo incluye el numero y nombre juntos
+  const raw = bloque.titulo || bloque.nombre || bloque.title || '';
+  if (!raw) return '';
+
+  // "BLOQUE 0 — CALENTAMIENTO" → "CALENTAMIENTO"
+  const match = raw.match(/^bloque\s+\d+\s*[—–-]\s*(.+)$/i);
+  if (match) return match[1].trim().toUpperCase();
+
+  return raw.toUpperCase();
+}
+
 function renderTrain() {
   const root = $('#scene-train');
   const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios);
@@ -989,7 +1011,7 @@ function renderTrain() {
     <section class="block">
       <div class="block-header">
         <span class="block-num">B${bi}</span>
-        <span class="block-title">${b.subtitulo}</span>
+        <span class="block-title">${getNombreBloque(b)}</span>
         <span class="block-meta">${done}/${b.ejercicios.length}</span>
       </div>
       <div class="block-list">
