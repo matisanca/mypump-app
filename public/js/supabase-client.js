@@ -155,4 +155,15 @@ window.mypumpDB = {
     });
   },
 
+  // Devuelve array de registros de mypump_registros_carga para la sesión.
+  // Campos clave: ejercicio_id, serie_numero, peso_kg, reps_realizadas, rir_real, notas.
+  // Usado para restaurar los valores exactos de cada serie al recargar la página.
+  async getRegistrosSesion(token, sesionId) {
+    const rows = await rpc('mypump_get_registros_sesion', {
+      p_token:     token,
+      p_sesion_id: sesionId,
+    });
+    return { success: rows !== null, data: rows || [] };
+  },
+
 };
