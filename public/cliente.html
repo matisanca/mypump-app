@@ -148,6 +148,7 @@ main{padding:var(--space-4)}
 .btn-finish-ex:hover{background:var(--color-bg-secondary);color:var(--color-text-secondary);border-color:var(--color-border-strong)}
 .btn-secondary-outline{width:100%;height:48px;background:transparent;color:var(--color-text-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2)}
 .btn-secondary-outline:hover{background:var(--color-bg-secondary);color:var(--color-text-primary)}
+.ex-manual-badge{background:color-mix(in oklab,var(--color-warning) 15%,var(--color-bg-secondary));border-color:color-mix(in oklab,var(--color-warning) 30%,var(--color-border));color:var(--color-text-secondary);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;vertical-align:middle;margin-left:6px}
 
 /* EARLY FINISH WARNING */
 .early-finish-warning{background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));border-radius:var(--radius-md);padding:var(--space-3) var(--space-4)}
@@ -437,6 +438,7 @@ const STATE = {
   rest:               null,       // {remaining, target, intervalId}
   session:            {},         // exId → {sets:[{reps,kg,rir,confirmed}], completed, status}
   exerciseStates:     {},         // exId → 'pendiente'|'completo'|'completo_sin_datos'|'saltado'
+  exerciseMeta:       {},         // exId → {series_completadas, marcado_manualmente}
   diaCompletadoMostrado: false,
   meals:              {},         // comidaId → {selectedOpt}
   foodSwaps:          {},         // swapKey → {original, current}
@@ -674,10 +676,10 @@ function getExStatus(exId) {
 }
 
 // Actualiza el estado en STATE y dispara persistencia a Supabase (fire-and-forget)
-function setExStatus(exId, newStatus) {
+function setExStatus(exId, newStatus, marcadoManualmente = false) {
   STATE.exerciseStates[exId] = newStatus;
   if (STATE.session[exId]) STATE.session[exId].status = newStatus;
-  writeExerciseStatus(exId, newStatus); // fire-and-forget
+  writeExerciseStatus(exId, newStatus, marcadoManualmente); // fire-and-forget
 }
 
 // Determina si todos los ejercicios del día están en estado terminal
@@ -688,9 +690,13 @@ function checkIfDayCompleted() {
 }
 
 // Escribe el estado al servidor (sin bloquear la UI)
-async function writeExerciseStatus(exId, estado) {
+async function writeExerciseStatus(exId, status, marcadoManualmente = false) {
   if (!RUTINA_ID || !_sesionId) return;
-  await window.mypumpDB.marcarEjercicioEstado(TOKEN, _sesionId, exId, estado);
+  const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+  await window.mypumpDB.marcarEjercicioEstado(
+    TOKEN, _sesionId, DATA.dia.id, exId,
+    ex ? ex.series : 0, status, marcadoManualmente
+  );
 }
 
 // Carga los estados de ejercicios desde Supabase (recuperación de sesión)
@@ -699,11 +705,15 @@ async function loadExerciseStates() {
   const rows = await window.mypumpDB.getEjerciciosEstado(TOKEN, _sesionId);
   if (!rows || !rows.length) return;
   for (const row of rows) {
-    STATE.exerciseStates[row.ejercicio_id] = row.estado;
+    STATE.exerciseStates[row.ejercicio_id] = row.status;
+    STATE.exerciseMeta[row.ejercicio_id] = {
+      series_completadas:   row.series_completadas   || 0,
+      marcado_manualmente:  row.marcado_manualmente  || false,
+    };
     if (STATE.session[row.ejercicio_id]) {
-      STATE.session[row.ejercicio_id].status = row.estado;
+      STATE.session[row.ejercicio_id].status = row.status;
       // Si el ejercicio ya estaba completo, reflejar en .completed también
-      if (row.estado === 'completo' || row.estado === 'completo_sin_datos') {
+      if (row.status === 'completo' || row.status === 'completo_sin_datos') {
         STATE.session[row.ejercicio_id].completed = true;
       }
     }
@@ -794,6 +804,7 @@ function renderDayPicker() {
     DATA.dia = dia;
     DATA.historico_por_ejercicio = {};
     STATE.exerciseStates = {};
+    STATE.exerciseMeta = {};
     STATE.diaCompletadoMostrado = false;
     STATE.session = buildSession();
     STATE.expandedId = null;
@@ -894,6 +905,8 @@ function renderExCard(ex, blockIdx) {
   const isWarmup = ex.tipo === 'calentamiento';
   const completedSets = exState.sets.filter(s => s.confirmed).length;
   const last = lastSessionStr(ex.id);
+  const meta = STATE.exerciseMeta[ex.id] || {};
+  const isManual = meta.marcado_manualmente === true;
 
   // CSS class based on status
   let cls = 'ex-card';
@@ -911,6 +924,11 @@ function renderExCard(ex, blockIdx) {
         ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`
         : `<span>${blockIdx}</span>`;
 
+  // Badge "manual" para completo_sin_datos marcado manualmente desde DB
+  const manualBadge = (status === 'completo_sin_datos' && isManual)
+    ? `<span class="chip ex-manual-badge">manual</span>`
+    : '';
+
   let pips = '';
   for (let i=0; i<ex.series; i++) pips += `<span class="pip${i<completedSets?' done':''}"></span>`;
 
@@ -918,7 +936,7 @@ function renderExCard(ex, blockIdx) {
     <button class="ex-head" data-toggle="${ex.id}" aria-expanded="${isExpanded}">
       <div class="ex-status">${statusIcon}</div>
       <div class="ex-body">
-        <div class="ex-name">${ex.nombre}</div>
+        <div class="ex-name">${ex.nombre}${manualBadge}</div>
         <div class="ex-meta">
           ${isWarmup ? '<span class="chip warm">CALENT.</span>' : ''}
           <span class="chip mono"><span class="lbl">×</span>${ex.series} <span class="lbl">·</span> ${ex.reps} <span class="lbl">reps</span></span>
@@ -1084,8 +1102,9 @@ function bindTrainEvents() {
     }
     if (!confirmed) return;
     const newStatus = confirmedCount > 0 ? 'completo' : 'completo_sin_datos';
+    // marcadoManualmente = true porque el botón fue presionado explícitamente
     await ensureSesionIniciada();
-    setExStatus(id, newStatus);
+    setExStatus(id, newStatus, true);
     exState.completed = true;
     const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
     const i = all.findIndex(e => e.id === id);
