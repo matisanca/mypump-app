@@ -131,4 +131,24 @@ window.mypumpDB = {
     });
   },
 
+  // Marca o actualiza el estado de un ejercicio en la sesión.
+  // estado: 'pendiente' | 'completo' | 'completo_sin_datos' | 'saltado'
+  // Devuelve {success, data, error}.
+  async marcarEjercicioEstado(token, sesionId, ejercicioId, estado) {
+    return await rpcMutation('mypump_marcar_ejercicio_estado', {
+      p_token:        token,
+      p_sesion_id:    sesionId,
+      p_ejercicio_id: ejercicioId,
+      p_estado:       estado,
+    });
+  },
+
+  // Devuelve array de {ejercicio_id, estado, updated_at} para la sesión.
+  async getEjerciciosEstado(token, sesionId) {
+    return await rpc('mypump_get_ejercicios_estado', {
+      p_token:     token,
+      p_sesion_id: sesionId,
+    });
+  },
+
 };

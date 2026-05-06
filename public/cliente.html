@@ -128,6 +128,32 @@ main{padding:var(--space-4)}
 .ex-extra-content.video .play{width:56px;height:56px;border-radius:50%;background:var(--color-bg-primary);border:1px solid var(--color-border-strong);display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow-md)}
 .ex-extra-content.video iframe{width:100%;height:100%;border:0;border-radius:var(--radius-md)}
 
+/* EXERCISE STATUS STATES */
+.ex-card.is-completo{border-color:color-mix(in oklab,var(--color-brand) 50%,var(--color-border));background:color-mix(in oklab,var(--color-brand-subtle) 60%,var(--color-bg-primary))}
+.ex-card.is-completo .ex-status{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
+.ex-card.is-completo .ex-name{color:var(--color-text-secondary)}
+.ex-card.is-completo-sin-datos{border-color:color-mix(in oklab,var(--color-warning) 50%,var(--color-border));background:color-mix(in oklab,var(--color-warning) 6%,var(--color-bg-primary))}
+.ex-card.is-completo-sin-datos .ex-status{background:var(--color-warning);border-color:var(--color-warning);color:#000}
+.ex-card.is-completo-sin-datos .ex-name{color:var(--color-text-secondary)}
+.ex-card.is-saltado{opacity:.6}
+.ex-card.is-saltado .ex-status{background:var(--color-bg-tertiary);color:var(--color-text-muted)}
+.ex-card.is-saltado .ex-name{color:var(--color-text-muted);text-decoration:line-through}
+
+/* EXERCISE PANEL ACTIONS */
+.ex-actions{display:flex;flex-direction:column;gap:var(--space-2)}
+.mark-complete{width:100%;height:48px;background:var(--color-bg-secondary);color:var(--color-text-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);transition:background .15s,color .15s,border-color .15s}
+.mark-complete.is-ready{background:color-mix(in oklab,var(--color-brand) 10%,var(--color-bg-primary));border-color:color-mix(in oklab,var(--color-brand) 40%,var(--color-border));color:var(--color-brand);font-weight:600}
+.mark-complete.is-reopen{background:transparent;border-color:var(--color-border);color:var(--color-text-muted);font-size:13px}
+.btn-finish-ex{width:100%;height:44px;background:transparent;color:var(--color-text-muted);border:1px dashed var(--color-border);border-radius:var(--radius-md);font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2)}
+.btn-finish-ex:hover{background:var(--color-bg-secondary);color:var(--color-text-secondary);border-color:var(--color-border-strong)}
+.btn-secondary-outline{width:100%;height:48px;background:transparent;color:var(--color-text-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2)}
+.btn-secondary-outline:hover{background:var(--color-bg-secondary);color:var(--color-text-primary)}
+
+/* EARLY FINISH WARNING */
+.early-finish-warning{background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));border-radius:var(--radius-md);padding:var(--space-3) var(--space-4)}
+.ewarn-label{font-size:13px;font-weight:600;color:var(--color-text-primary);margin-bottom:var(--space-2)}
+.ewarn-list{margin:0;padding-left:var(--space-4);font-size:13px;color:var(--color-text-secondary);display:flex;flex-direction:column;gap:4px}
+
 /* FINISH BANNER */
 .finish-card{margin-top:var(--space-4);padding:var(--space-5);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);display:flex;flex-direction:column;gap:var(--space-4)}
 .finish-card .eyebrow{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-brand);font-weight:700}
@@ -406,15 +432,17 @@ let _sesionIniciada = false;
 let _sessionStart  = null; // Date.now() when first set confirmed
 
 const STATE = {
-  scene:         'train',
-  expandedId:    null,
-  rest:          null,       // {remaining, target, intervalId}
-  session:       {},         // exId → {sets:[{reps,kg,rir,confirmed}], completed}
-  meals:         {},         // comidaId → {selectedOpt}
-  foodSwaps:     {},         // swapKey → {original, current}
-  activeTipoDia: null,       // id del tipo-día activo (Formato B)
-  progressLoaded: false,
-  progressData:  null,
+  scene:              'train',
+  expandedId:         null,
+  rest:               null,       // {remaining, target, intervalId}
+  session:            {},         // exId → {sets:[{reps,kg,rir,confirmed}], completed, status}
+  exerciseStates:     {},         // exId → 'pendiente'|'completo'|'completo_sin_datos'|'saltado'
+  diaCompletadoMostrado: false,
+  meals:              {},         // comidaId → {selectedOpt}
+  foodSwaps:          {},         // swapKey → {original, current}
+  activeTipoDia:      null,       // id del tipo-día activo (Formato B)
+  progressLoaded:     false,
+  progressData:       null,
 };
 
 /* ---- SAMPLE DATA (fallback when no rutina/dieta published) ---- */
@@ -598,6 +626,7 @@ function buildSession() {
       s[ex.id] = {
         sets: Array.from({length: ex.series}, () => ({reps:'',kg:'',rir:'',confirmed:false})),
         completed: false,
+        status: STATE.exerciseStates[ex.id] || 'pendiente',
       };
     }
   }
@@ -636,6 +665,49 @@ function getEffectiveFood(f, comidaId, optIdx, foodIdx) {
 
 function persistSwaps() {
   localStorage.setItem(`mypump_food_swaps_${DIETA_ID||'demo'}`, JSON.stringify(STATE.foodSwaps));
+}
+
+/* ---- EXERCISE STATUS HELPERS ---- */
+// Devuelve el estado actual del ejercicio (del STATE unificado)
+function getExStatus(exId) {
+  return STATE.session[exId]?.status || STATE.exerciseStates[exId] || 'pendiente';
+}
+
+// Actualiza el estado en STATE y dispara persistencia a Supabase (fire-and-forget)
+function setExStatus(exId, newStatus) {
+  STATE.exerciseStates[exId] = newStatus;
+  if (STATE.session[exId]) STATE.session[exId].status = newStatus;
+  writeExerciseStatus(exId, newStatus); // fire-and-forget
+}
+
+// Determina si todos los ejercicios del día están en estado terminal
+function checkIfDayCompleted() {
+  const terminalStates = new Set(['completo','completo_sin_datos','saltado']);
+  const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios);
+  return allEx.every(ex => terminalStates.has(getExStatus(ex.id)));
+}
+
+// Escribe el estado al servidor (sin bloquear la UI)
+async function writeExerciseStatus(exId, estado) {
+  if (!RUTINA_ID || !_sesionId) return;
+  await window.mypumpDB.marcarEjercicioEstado(TOKEN, _sesionId, exId, estado);
+}
+
+// Carga los estados de ejercicios desde Supabase (recuperación de sesión)
+async function loadExerciseStates() {
+  if (!RUTINA_ID || !_sesionId) return;
+  const rows = await window.mypumpDB.getEjerciciosEstado(TOKEN, _sesionId);
+  if (!rows || !rows.length) return;
+  for (const row of rows) {
+    STATE.exerciseStates[row.ejercicio_id] = row.estado;
+    if (STATE.session[row.ejercicio_id]) {
+      STATE.session[row.ejercicio_id].status = row.estado;
+      // Si el ejercicio ya estaba completo, reflejar en .completed también
+      if (row.estado === 'completo' || row.estado === 'completo_sin_datos') {
+        STATE.session[row.ejercicio_id].completed = true;
+      }
+    }
+  }
 }
 
 /* ---- SUPABASE WRITES ---- */
@@ -721,6 +793,8 @@ function renderDayPicker() {
     if (!dia || dia.id === DATA.dia.id) return;
     DATA.dia = dia;
     DATA.historico_por_ejercicio = {};
+    STATE.exerciseStates = {};
+    STATE.diaCompletadoMostrado = false;
     STATE.session = buildSession();
     STATE.expandedId = null;
     _sesionIniciada = false;
@@ -734,9 +808,12 @@ function renderDayPicker() {
 function renderTrain() {
   const root = $('#scene-train');
   const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios);
-  const completedCount = allEx.filter(ex => STATE.session[ex.id].completed).length;
+  const TERMINAL = new Set(['completo','completo_sin_datos','saltado']);
+  const completedCount = allEx.filter(ex => TERMINAL.has(getExStatus(ex.id))).length;
   const totalEx = allEx.length;
   const allDone = completedCount === totalEx;
+  const pendingCount = totalEx - completedCount;
+  const mins = _sessionStart ? Math.round((Date.now()-_sessionStart)/60000) : 0;
 
   $('#progFill').style.width = `${(completedCount/totalEx)*100}%`;
   $('#progDone').textContent = completedCount;
@@ -760,7 +837,6 @@ function renderTrain() {
         }
       }
     }
-    const mins = _sessionStart ? Math.round((Date.now()-_sessionStart)/60000) : '—';
     html += `
     <div class="finish-card">
       <div class="eyebrow">SESIÓN COMPLETA</div>
@@ -768,7 +844,7 @@ function renderTrain() {
       <div class="finish-summary">
         <div class="fs-cell"><span class="lbl">Series</span><span class="val">${totalSets}</span></div>
         <div class="fs-cell"><span class="lbl">Volumen</span><span class="val">${Math.round(tonnage)}<small>kg</small></span></div>
-        <div class="fs-cell"><span class="lbl">Duración</span><span class="val">${mins}<small>min</small></span></div>
+        <div class="fs-cell"><span class="lbl">Duración</span><span class="val">${mins||'—'}<small>min</small></span></div>
       </div>
       <button class="btn-primary" id="finishBtn">${ICONS.flag} Cerrar sesión de hoy</button>
     </div>`;
@@ -776,7 +852,7 @@ function renderTrain() {
 
   for (let bi=0; bi<DATA.dia.bloques.length; bi++) {
     const b = DATA.dia.bloques[bi];
-    const done = b.ejercicios.filter(ex => STATE.session[ex.id].completed).length;
+    const done = b.ejercicios.filter(ex => TERMINAL.has(getExStatus(ex.id))).length;
     html += `
     <section class="block">
       <div class="block-header">
@@ -790,15 +866,19 @@ function renderTrain() {
     </section>`;
   }
 
+  // Footer: siempre visible cuando hay sesión iniciada
   if (!allDone) {
+    const hasStarted = _sesionIniciada || completedCount > 0;
     html += `
     <div class="finish-card" style="margin-top:0">
       <div class="finish-summary">
         <div class="fs-cell"><span class="lbl">Hechos</span><span class="val">${completedCount}/${totalEx}</span></div>
-        <div class="fs-cell"><span class="lbl">Tiempo</span><span class="val">${_sessionStart ? Math.round((Date.now()-_sessionStart)/60000) : '—'}<small>min</small></span></div>
-        <div class="fs-cell"><span class="lbl">Restan</span><span class="val">${totalEx-completedCount}<small>ej</small></span></div>
+        <div class="fs-cell"><span class="lbl">Tiempo</span><span class="val">${mins||'—'}<small>min</small></span></div>
+        <div class="fs-cell"><span class="lbl">Restan</span><span class="val">${pendingCount}<small>ej</small></span></div>
       </div>
-      <button class="btn-primary" disabled>Completá los ejercicios para finalizar</button>
+      <button class="btn-secondary-outline" id="earlyFinishBtn" ${!hasStarted?'style="opacity:.5"':''}>
+        ${ICONS.flag} Cerrar sesión de hoy
+      </button>
     </div>`;
   }
 
@@ -809,18 +889,34 @@ function renderTrain() {
 function renderExCard(ex, blockIdx) {
   const exState = STATE.session[ex.id];
   const isExpanded = STATE.expandedId === ex.id;
-  const isCompleted = exState.completed;
+  const status = getExStatus(ex.id);          // 'pendiente'|'completo'|'completo_sin_datos'|'saltado'
+  const isCompleted = status !== 'pendiente';  // cualquier estado terminal
   const isWarmup = ex.tipo === 'calentamiento';
   const completedSets = exState.sets.filter(s => s.confirmed).length;
   const last = lastSessionStr(ex.id);
-  const cls = 'ex-card' + (isExpanded?' is-expanded':'') + (isCompleted?' is-completed':'');
+
+  // CSS class based on status
+  let cls = 'ex-card';
+  if (isExpanded) cls += ' is-expanded';
+  if (status === 'completo') cls += ' is-completo';
+  else if (status === 'completo_sin_datos') cls += ' is-completo-sin-datos';
+  else if (status === 'saltado') cls += ' is-saltado';
+
+  // Status icon for the head
+  const statusIcon = status === 'completo'
+    ? ICONS.check
+    : status === 'completo_sin_datos'
+      ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/><circle cx="12" cy="12" r="10" opacity=".2"/></svg>`
+      : status === 'saltado'
+        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`
+        : `<span>${blockIdx}</span>`;
 
   let pips = '';
   for (let i=0; i<ex.series; i++) pips += `<span class="pip${i<completedSets?' done':''}"></span>`;
 
   const head = `
     <button class="ex-head" data-toggle="${ex.id}" aria-expanded="${isExpanded}">
-      <div class="ex-status">${isCompleted ? ICONS.check : `<span>${blockIdx}</span>`}</div>
+      <div class="ex-status">${statusIcon}</div>
       <div class="ex-body">
         <div class="ex-name">${ex.nombre}</div>
         <div class="ex-meta">
@@ -861,11 +957,17 @@ function renderExCard(ex, blockIdx) {
                 : `<div class="play">${ICONS.play}</div><span>video tutorial</span>`}
             </div>` : ''}
         </div>` : ''}
-      <button class="mark-complete${allConfirmed ? ' is-ready' : ''}" data-mark="${ex.id}">
+      <div class="ex-actions">
         ${isCompleted
-          ? `${ICONS.check} Completado · tocá para reabrir`
-          : (allConfirmed ? `${ICONS.check} Marcar ejercicio completo` : 'Confirmá las series para completar')}
-      </button>
+          ? `<button class="mark-complete is-reopen" data-reopen="${ex.id}">${ICONS.edit} Reabrir ejercicio</button>`
+          : `<button class="mark-complete${allConfirmed?' is-ready':''}" data-mark="${ex.id}">
+               ${allConfirmed ? `${ICONS.check} Marcar ejercicio completo` : 'Confirmá las series para completar'}
+             </button>
+             <button class="btn-finish-ex" data-finish="${ex.id}">
+               Terminé este ejercicio
+             </button>`
+        }
+      </div>
     </div>`;
   }
 
@@ -920,7 +1022,20 @@ function bindTrainEvents() {
     await ensureSesionIniciada();
     writeSet(exId, +idx); // fire-and-forget
     const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
-    if (ex.tipo !== 'calentamiento') startRest(ex.descanso_segundos);
+    // Auto-complete: si se confirmaron TODAS las series → marcar 'completo'
+    const allConfirmed = STATE.session[exId].sets.every(s => s.confirmed);
+    if (allConfirmed && getExStatus(exId) === 'pendiente') {
+      setExStatus(exId, 'completo');
+      STATE.session[exId].completed = true;
+      stopRest();
+      // Abrir el siguiente ejercicio pendiente automáticamente
+      const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
+      const i = all.findIndex(e => e.id === exId);
+      const next = all.slice(i+1).find(e => getExStatus(e.id) === 'pendiente');
+      if (next) STATE.expandedId = next.id;
+    } else if (ex.tipo !== 'calentamiento') {
+      startRest(ex.descanso_segundos);
+    }
     renderTrain();
   }));
 
@@ -928,6 +1043,7 @@ function bindTrainEvents() {
     const [exId, idx] = btn.getAttribute('data-edit').split('|');
     STATE.session[exId].sets[+idx].confirmed = false;
     STATE.session[exId].completed = false;
+    if (getExStatus(exId) === 'completo') setExStatus(exId, 'pendiente');
     renderTrain();
   }));
 
@@ -936,19 +1052,54 @@ function bindTrainEvents() {
     openRirPicker(exId, +idx);
   }));
 
+  // Botón clásico (series todas confirmadas → completo)
   $$('[data-mark]').forEach(btn => btn.addEventListener('click', () => {
     const id = btn.getAttribute('data-mark');
     const exState = STATE.session[id];
     const allConfirmed = exState.sets.every(s => s.confirmed);
-    if (!allConfirmed && !exState.completed) return;
-    exState.completed = !exState.completed;
-    if (exState.completed) {
-      const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
-      const i = all.findIndex(e => e.id === id);
-      const next = all.slice(i+1).find(e => !STATE.session[e.id].completed);
-      if (next) STATE.expandedId = next.id;
-      stopRest();
+    if (!allConfirmed) return; // sólo funciona si todas las series están confirmadas
+    setExStatus(id, 'completo');
+    exState.completed = true;
+    const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
+    const i = all.findIndex(e => e.id === id);
+    const next = all.slice(i+1).find(e => getExStatus(e.id) === 'pendiente');
+    if (next) STATE.expandedId = next.id;
+    stopRest();
+    renderTrain();
+  }));
+
+  // "Terminé este ejercicio" — sin datos, con confirmación si 0 series cargadas
+  $$('[data-finish]').forEach(btn => btn.addEventListener('click', async () => {
+    const id = btn.getAttribute('data-finish');
+    const exState = STATE.session[id];
+    const confirmedCount = exState.sets.filter(s => s.confirmed).length;
+    let confirmed = true;
+    if (confirmedCount === 0) {
+      confirmed = await MyPump.ui.showConfirmModal({
+        title: 'Terminaste sin cargar datos',
+        body: 'No confirmaste ninguna serie. ¿Querés marcar este ejercicio como terminado de todas formas?',
+        confirmLabel: 'Sí, terminé',
+        cancelLabel: 'Volver',
+      });
     }
+    if (!confirmed) return;
+    const newStatus = confirmedCount > 0 ? 'completo' : 'completo_sin_datos';
+    await ensureSesionIniciada();
+    setExStatus(id, newStatus);
+    exState.completed = true;
+    const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
+    const i = all.findIndex(e => e.id === id);
+    const next = all.slice(i+1).find(e => getExStatus(e.id) === 'pendiente');
+    if (next) STATE.expandedId = next.id;
+    stopRest();
+    renderTrain();
+  }));
+
+  // Reabrir un ejercicio ya completado
+  $$('[data-reopen]').forEach(btn => btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-reopen');
+    setExStatus(id, 'pendiente');
+    STATE.session[id].completed = false;
     renderTrain();
   }));
 
@@ -962,6 +1113,10 @@ function bindTrainEvents() {
 
   const fb = $('#finishBtn');
   if (fb) fb.addEventListener('click', openFinishModal);
+
+  // Botón "Cerrar sesión" visible antes de que todo esté completo
+  const efb = $('#earlyFinishBtn');
+  if (efb) efb.addEventListener('click', openEarlyFinishModal);
 }
 
 /* ---- RIR PICKER ---- */
@@ -1021,6 +1176,57 @@ function openFinishModal() {
   $('#finConfirm').addEventListener('click', async () => {
     const notas = $('#sessionNotes').value.trim();
     closeModal();
+    await writeFinish(notas);
+  });
+  $('#finCancel').addEventListener('click', closeModal);
+}
+
+/* ---- EARLY FINISH MODAL (cerrar sesión con ejercicios pendientes) ---- */
+async function openEarlyFinishModal() {
+  const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios);
+  const TERMINAL = new Set(['completo','completo_sin_datos','saltado']);
+  const pending = allEx.filter(ex => !TERMINAL.has(getExStatus(ex.id)));
+  const pendingNames = pending.slice(0, 3).map(ex => `<li>${ex.nombre}</li>`).join('');
+  const extra = pending.length > 3 ? `<li>y ${pending.length - 3} más…</li>` : '';
+
+  let totalSets=0, tonnage=0;
+  for (const exId of Object.keys(STATE.session)) {
+    for (const s of STATE.session[exId].sets) {
+      if (s.confirmed) {
+        totalSets++;
+        tonnage += (parseInt(s.reps)||0) * (parseFloat(s.kg)||0);
+      }
+    }
+  }
+  const mins = _sessionStart ? Math.round((Date.now()-_sessionStart)/60000) : 0;
+
+  const warningHtml = pending.length > 0
+    ? `<div class="early-finish-warning">
+        <div class="ewarn-label">Quedan ${pending.length} ejercicio${pending.length>1?'s':''} sin completar:</div>
+        <ul class="ewarn-list">${pendingNames}${extra}</ul>
+       </div>`
+    : '';
+
+  $('#modalHost').innerHTML = `
+    <div class="modal-back" id="finBack">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Cerrar sesión de hoy</div>
+        <div class="modal-text">${totalSets} series · ${Math.round(tonnage)}kg de volumen · ${mins||'—'} min.</div>
+        ${warningHtml}
+        <div>
+          <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--color-text-secondary);font-weight:500">Notas de la sesión <span style="color:var(--color-text-muted);font-weight:400">· opcional</span></label>
+          <textarea class="session-textarea" id="sessionNotes" placeholder="ej: poco tiempo hoy, saltó press de banca…"></textarea>
+        </div>
+        <button class="btn-primary" id="finConfirm">${ICONS.flag} Confirmar y cerrar</button>
+        <button class="btn-secondary" id="finCancel">Cancelar</button>
+      </div>
+    </div>`;
+  $('#finBack').addEventListener('click', e => { if (e.target.id==='finBack') closeModal(); });
+  $('#finConfirm').addEventListener('click', async () => {
+    const notas = $('#sessionNotes').value.trim();
+    closeModal();
+    await ensureSesionIniciada();
     await writeFinish(notas);
   });
   $('#finCancel').addEventListener('click', closeModal);

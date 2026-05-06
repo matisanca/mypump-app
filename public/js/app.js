@@ -90,3 +90,45 @@ window.MyPump.foodSwap = {
     return 'fat';
   },
 };
+
+/* ---- UI HELPERS ---- */
+window.MyPump.ui = {
+
+  /**
+   * Muestra un modal de confirmación genérico.
+   * @param {object} opts
+   * @param {string} opts.title        — Título del modal
+   * @param {string} [opts.body]       — Texto descriptivo (opcional)
+   * @param {string} [opts.confirmLabel] — Label del botón de confirmar (default: "Confirmar")
+   * @param {string} [opts.cancelLabel]  — Label del botón de cancelar (default: "Cancelar")
+   * @returns {Promise<boolean>}        — true si confirmó, false si canceló/cerró
+   */
+  showConfirmModal({ title, body = '', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar' }) {
+    return new Promise(resolve => {
+      const host = document.getElementById('modalHost');
+      if (!host) { resolve(false); return; }
+
+      host.innerHTML = `
+        <div class="modal-back" id="confirmBack">
+          <div class="modal-sheet" style="max-width:380px">
+            <div class="modal-handle"></div>
+            <div class="modal-title">${title}</div>
+            ${body ? `<div class="modal-text">${body}</div>` : ''}
+            <button class="btn-primary" id="confirmYes">${confirmLabel}</button>
+            <button class="btn-secondary" id="confirmNo">${cancelLabel}</button>
+          </div>
+        </div>`;
+
+      function close(result) {
+        host.innerHTML = '';
+        resolve(result);
+      }
+
+      document.getElementById('confirmYes').addEventListener('click', () => close(true));
+      document.getElementById('confirmNo').addEventListener('click',  () => close(false));
+      document.getElementById('confirmBack').addEventListener('click', e => {
+        if (e.target.id === 'confirmBack') close(false);
+      });
+    });
+  },
+};
