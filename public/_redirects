@@ -1,17 +1,18 @@
 # Cloudflare Pages — Routing
+#
+# IMPORTANTE: NO usar /cliente.html como destino de rewrite.
+# CF Pages (Clean URLs) hace 301 automatico de /xxx.html -> /xxx.
+# Si el destino del 200-rewrite termina en .html, CF manda el browser
+# a la version sin extension -> el catch-all /:token lo atrapa -> loop.
+# Solucion: rewrite a /cliente (sin .html); CF sabe que sirve cliente.html.
 
 # Landing page
 /                  /index.html       200
 
-# CF Pages hace 301 automático: /cliente.html → /cliente ("Clean URLs")
-# Esta regla intercepta ese destino ANTES de que lo atrape /:token
-/cliente           /cliente.html     200
-
-# Archivos estáticos directos (no redirect)
-/cliente.html      /cliente.html     200
+# Archivos estaticos directos
 /css/*             /css/:splat       200
 /js/*              /js/:splat        200
 /assets/*          /assets/:splat    200
 
-# Tokens de cliente (catch-all SOLO para paths sin extensión)
-/:token            /cliente.html     200
+# Tokens de cliente — destino /cliente (extensionless, no dispara Clean URL redirect)
+/:token            /cliente          200
