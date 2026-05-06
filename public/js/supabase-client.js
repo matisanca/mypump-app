@@ -155,6 +155,15 @@ window.mypumpDB = {
     });
   },
 
+  // Avanza semana_actual en la rutina activa del cliente.
+  // Si semanaDestino es null, avanza +1. Devuelve la nueva semana (integer) o null.
+  async avanzarSemana(token, semanaDestino = null) {
+    return await rpc('mypump_avanzar_semana', {
+      p_token:          token,
+      p_semana_destino: semanaDestino,
+    });
+  },
+
   // Devuelve array de registros de mypump_registros_carga para la sesión.
   // Campos clave: ejercicio_id, serie_numero, peso_kg, reps_realizadas, rir_real, notas.
   // Usado para restaurar los valores exactos de cada serie al recargar la página.
