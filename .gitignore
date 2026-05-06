@@ -7,5 +7,6 @@ node_modules/
 .idea/
 .wrangler/
 
-# Credenciales locales — nunca commitear
-public/js/config.js
+# config.js: anon key pública — SÍ se commitea (es necesario para el deploy estático).
+# Si algún día se agrega una key privada, moverla a env vars de Cloudflare Pages.
+# public/js/config.js  ← NO ignorar
