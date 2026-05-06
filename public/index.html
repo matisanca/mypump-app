@@ -224,5 +224,16 @@
       window.mypumpTheme.toggle();
     });
   </script>
+
+  <!-- Deteccion de token: si la URL tiene ?t=TOKEN, redirigir a la app del cliente -->
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get('t');
+      if (token && /^[a-zA-Z0-9_-]{16,64}$/.test(token)) {
+        window.location.replace('/cliente.html?t=' + encodeURIComponent(token));
+      }
+    })();
+  </script>
 </body>
 </html>

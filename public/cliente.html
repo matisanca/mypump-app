@@ -428,7 +428,20 @@ const ICONS = {
 };
 
 /* ---- GLOBALS ---- */
-const TOKEN = window.location.pathname.split('/').filter(Boolean)[0] || '';
+const TOKEN = (function() {
+  // Prioridad 1: query string ?t=xxx (produccion Cloudflare Pages via index.html)
+  var params = new URLSearchParams(window.location.search);
+  var fromQuery = params.get('t');
+  if (fromQuery) return fromQuery;
+
+  // Prioridad 2: pathname /xxx (compatibilidad local con npx serve)
+  var fromPath = window.location.pathname.split('/').filter(Boolean)[0];
+  if (fromPath && fromPath !== 'cliente.html' && fromPath !== 'cliente') {
+    return fromPath;
+  }
+
+  return '';
+})();
 const TODAY = new Date().toISOString().split('T')[0];
 
 let DATA = null;   // {cliente, rutina, dia, historico_por_ejercicio, _dias, _isDemo}
