@@ -795,11 +795,17 @@ async function loadExerciseStates() {
 /* ---- SUPABASE WRITES ---- */
 async function ensureSesionIniciada() {
   if (_sesionIniciada) return;
-  _sesionIniciada = true;
+  _sesionIniciada = true;   // guard contra llamadas concurrentes
   _sessionStart = Date.now();
-  if (!RUTINA_ID) return; // demo mode — no writes
+  if (!RUTINA_ID) return;   // demo mode — no writes
   const res = await window.mypumpDB.iniciarSesion(TOKEN, DATA.dia.id, DATA.rutina.semana_actual || 1);
-  if (res.success) _sesionId = res.data;
+  if (res.success && res.data) {
+    _sesionId = res.data;
+    // Persistir para restaurar estado al recargar la página
+    const key = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
+    localStorage.setItem(key, _sesionId);
+    localStorage.setItem(`${key}_semana`, DATA.rutina.semana_actual || 1);
+  }
 }
 
 async function writeSet(exId, setIdx) {
@@ -821,6 +827,33 @@ async function writeSet(exId, setIdx) {
 async function writeFinish(notas) {
   if (!RUTINA_ID || !_sesionId) return;
   await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null);
+}
+
+/* ---- RESTAURAR REGISTROS DE CARGA ---- */
+// Lee los sets guardados en Supabase y los vuelca en STATE.session.
+// Solo sobrescribe sets que aún no estén confirmados localmente.
+// Columnas reales: serie_numero, peso_kg, reps_realizadas, rir_real, notas.
+async function loadRegistrosCarga() {
+  if (!RUTINA_ID || !_sesionId) return;
+  const result = await window.mypumpDB.getRegistrosSesion(TOKEN, _sesionId);
+  if (!result.success || !result.data.length) return;
+
+  for (const reg of result.data) {
+    const exSession = STATE.session[reg.ejercicio_id];
+    if (!exSession) continue;
+
+    const setIdx = reg.serie_numero - 1;  // DB es 1-indexed, array es 0-indexed
+    if (setIdx < 0 || setIdx >= exSession.sets.length) continue;
+
+    const setObj = exSession.sets[setIdx];
+    if (setObj.confirmed) continue;  // no pisar datos que el usuario ya ingresó en esta carga
+
+    setObj.kg        = reg.peso_kg        != null ? String(reg.peso_kg)        : '';
+    setObj.reps      = reg.reps_realizadas != null ? String(reg.reps_realizadas) : '';
+    setObj.rir       = reg.rir_real        != null ? String(reg.rir_real)        : '';
+    setObj.confirmed = true;
+  }
+  console.log(`[mypump] Restauradas ${result.data.length} series desde sesión ${_sesionId}`);
 }
 
 /* ---- LAZY LOAD HISTORICO ---- */
@@ -1789,6 +1822,28 @@ async function init() {
   );
 
   STATE.session = buildSession();
+
+  // Intentar restaurar sesión activa del día desde localStorage
+  if (RUTINA_ID) {
+    const sesionKey = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
+    const savedSesionId = localStorage.getItem(sesionKey);
+    const savedSemana   = parseInt(localStorage.getItem(`${sesionKey}_semana`) || '0', 10);
+    const semanaActual  = DATA.rutina.semana_actual || 1;
+
+    if (savedSesionId && savedSemana === semanaActual) {
+      // La sesión es de la semana actual — recuperar
+      _sesionId       = savedSesionId;
+      _sesionIniciada = true;
+      // 1. Restaurar estados (completo / pendiente / saltado)
+      await loadExerciseStates();
+      // 2. Restaurar valores exactos de cada serie (peso / reps / RIR)
+      await loadRegistrosCarga();
+    } else if (savedSesionId && savedSemana !== semanaActual) {
+      // La semana cambió — descartar sesión vieja
+      localStorage.removeItem(sesionKey);
+      localStorage.removeItem(`${sesionKey}_semana`);
+    }
+  }
 
   // Update header initial state
   $('#hdrWeek').textContent = DATA.rutina.semana_actual;
