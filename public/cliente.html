@@ -634,6 +634,30 @@ function suggestedKg(exId, idx) {
   return ref ? String(ref.peso_kg) : '';
 }
 
+/* ---- PROGRESION HELPER ---- */
+/**
+ * Lee series/reps/rir de la semana actual del ejercicio.
+ * Soporta dos formatos:
+ *   - Formato Cerebro: progresion[] con un entry por semana
+ *   - Formato seed legacy: campos directos series/reps/rir_objetivo
+ */
+function getProgresionActual(ej, semana) {
+  if (Array.isArray(ej.progresion) && ej.progresion.length > 0) {
+    const idx = Math.max(0, Math.min((semana || 1) - 1, ej.progresion.length - 1));
+    const p = ej.progresion[idx];
+    return {
+      series: p.series ?? null,
+      reps:   p.reps   ?? null,
+      rir:    p.rir    ?? null,
+    };
+  }
+  return {
+    series: ej.series       ?? null,
+    reps:   ej.reps         ?? null,
+    rir:    ej.rir_objetivo ?? ej.rir ?? null,
+  };
+}
+
 /* ---- DAY HELPERS ---- */
 // Extrae el nombre corto de un día de entrenamiento (agnóstico al calendario).
 // "TIRÓN A — ANCHO" → "Tirón" · "Empuje A" → "Empuje" · "FULLBODY" → "Fullbody"
@@ -674,7 +698,7 @@ function buildSession() {
   for (const b of DATA.dia.bloques) {
     for (const ex of b.ejercicios) {
       s[ex.id] = {
-        sets: Array.from({length: ex.series}, () => ({reps:'',kg:'',rir:'',confirmed:false})),
+        sets: Array.from({length: getProgresionActual(ex, DATA.rutina.semana_actual).series ?? 0}, () => ({reps:'',kg:'',rir:'',confirmed:false})),
         completed: false,
         status: STATE.exerciseStates[ex.id] || 'pendiente',
       };
@@ -743,7 +767,7 @@ async function writeExerciseStatus(exId, status, marcadoManualmente = false) {
   const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
   await window.mypumpDB.marcarEjercicioEstado(
     TOKEN, _sesionId, DATA.dia.id, exId,
-    ex ? ex.series : 0, status, marcadoManualmente
+    ex ? (getProgresionActual(ex, DATA.rutina.semana_actual).series ?? 0) : 0, status, marcadoManualmente
   );
 }
 
@@ -971,6 +995,7 @@ function renderExCard(ex, blockIdx) {
   const last = lastSessionStr(ex.id);
   const meta = STATE.exerciseMeta[ex.id] || {};
   const isManual = meta.marcado_manualmente === true;
+  const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
 
   // CSS class based on status
   let cls = 'ex-card';
@@ -994,7 +1019,7 @@ function renderExCard(ex, blockIdx) {
     : '';
 
   let pips = '';
-  for (let i=0; i<ex.series; i++) pips += `<span class="pip${i<completedSets?' done':''}"></span>`;
+  for (let i=0; i<(prog.series ?? 0); i++) pips += `<span class="pip${i<completedSets?' done':''}"></span>`;
 
   const head = `
     <button class="ex-head" data-toggle="${ex.id}" aria-expanded="${isExpanded}">
@@ -1003,8 +1028,11 @@ function renderExCard(ex, blockIdx) {
         <div class="ex-name">${ex.nombre}${manualBadge}</div>
         <div class="ex-meta">
           ${isWarmup ? '<span class="chip warm">CALENT.</span>' : ''}
-          <span class="chip mono"><span class="lbl">×</span>${ex.series} <span class="lbl">·</span> ${ex.reps} <span class="lbl">reps</span></span>
-          ${ex.rir_objetivo ? `<span class="chip mono"><span class="lbl">RIR</span> ${ex.rir_objetivo}</span>` : ''}
+          ${(ex.tipo === 'cardio' || prog.series === null)
+            ? `<span class="chip mono">${prog.reps || '—'}</span>`
+            : `<span class="chip mono"><span class="lbl">×</span>${prog.series} <span class="lbl">·</span> ${prog.reps} <span class="lbl">reps</span></span>`
+          }
+          ${prog.rir ? `<span class="chip mono"><span class="lbl">RIR</span> ${prog.rir}</span>` : ''}
           <span class="chip mono"><span class="lbl">desc</span> ${fmtTime(ex.descanso_segundos)}</span>
         </div>
         ${!isExpanded ? `<div class="ex-historic"><span class="lbl">Última:</span><span class="val">${last || 'Primera vez con este ejercicio'}</span></div>` : ''}
@@ -1059,11 +1087,12 @@ function renderExCard(ex, blockIdx) {
 function renderSetRow(ex, s, i, isActive) {
   const conf = s.confirmed;
   const isWarmup = ex.tipo === 'calentamiento';
+  const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
   const cls = 'set-row' + (conf?' is-confirmed':'') + (!conf&&!isActive?' is-pending':'') + (isActive?' is-active':'');
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
     <span class="set-num">${i+1}</span>
-    <input class="set-input" inputmode="numeric" placeholder="${ex.reps}" value="${s.reps}" data-field="reps" ${conf?'readonly':''} />
+    <input class="set-input" inputmode="numeric" placeholder="${prog.reps || ''}" value="${s.reps}" data-field="reps" ${conf?'readonly':''} />
     <input class="set-input" inputmode="decimal" placeholder="${isWarmup?'—':suggestedKg(ex.id,i)}" value="${s.kg}" data-field="kg" ${conf||isWarmup?'readonly':''} />
     <button class="rir-btn" data-rir="${ex.id}|${i}">${s.rir!=='' ? `<span class="lbl">RIR</span>${s.rir}` : `<span class="lbl">RIR</span>·`}</button>
     ${conf
