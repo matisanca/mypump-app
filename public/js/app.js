@@ -15,8 +15,9 @@ window.MyPump.foodSwap = {
     if (originalCat === 'condimento') return [];
 
     const dominantMacro = this._getDominantMacro(originalFood);
-    const targetMacroGrams = (originalFood[dominantMacro] || 0) * (originalFood.qty / 100);
-    const originalKcal = originalFood.kcal * (originalFood.qty / 100);
+    // kcal y macros ya son totales de porción (MyPump v2 data model — Cerebro calcula antes de publicar)
+    const targetMacroGrams = (originalFood[dominantMacro] || 0);
+    const originalKcal = originalFood.kcal;
 
     return db
       .filter(food =>
@@ -63,7 +64,7 @@ window.MyPump.foodSwap = {
       })
       .filter(Boolean)
       .sort((a, b) => {
-        const targetKcal = originalFood.kcal * (originalFood.qty / 100);
+        const targetKcal = originalFood.kcal; // ya es total de porción
         return Math.abs(a.kcal - targetKcal) - Math.abs(b.kcal - targetKcal);
       })
       .slice(0, 6);

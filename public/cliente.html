@@ -1985,7 +1985,7 @@ function openSwapModal(food, comidaId, optIdx, foodIdx) {
   const subsHtml = subs.length === 0
     ? `<div class="swap-empty">No hay sustitutos equivalentes disponibles (±15% kcal).</div>`
     : `<div class="swap-list">${subs.map((s,i) => {
-        const origKcal = food.kcal * (food.qty/100);
+        const origKcal = food.kcal; // ya es total de porción (MyPump v2 data model)
         const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
         const sign = kcalDiff > 0 ? '+' : '';
         const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
