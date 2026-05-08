@@ -191,12 +191,62 @@ main{padding:var(--space-4)}
 .rest-bar.is-done .rest-progress-fill{background:var(--color-on-brand)}
 
 /* TAB BAR */
-.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;background:color-mix(in oklab,var(--color-bg-primary) 95%,transparent);backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);border-top:1px solid var(--color-border);padding:var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:4px;z-index:35}
-.tab{background:transparent;border:0;padding:var(--space-2) 4px;border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--color-text-muted);font-size:11px;font-weight:500;letter-spacing:.02em;min-height:56px}
-.tab svg{width:22px;height:22px;stroke-width:1.7}
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;background:color-mix(in oklab,var(--color-bg-primary) 95%,transparent);backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);border-top:1px solid var(--color-border);padding:var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:2px;z-index:35}
+.tab{background:transparent;border:0;padding:var(--space-2) 2px;border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--color-text-muted);font-size:10px;font-weight:500;letter-spacing:.02em;min-height:56px}
+.tab svg{width:20px;height:20px;stroke-width:1.7}
 .tab.is-active{color:var(--color-text-primary)}
 .tab.is-active .tab-dot{background:var(--color-brand)}
 .tab-dot{width:18px;height:3px;border-radius:var(--radius-full);background:transparent;margin-top:-2px}
+
+/* MI DÍA */
+.myday-streak{background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-5) var(--space-4);display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)}
+.streak-left{display:flex;flex-direction:column;flex:1;gap:2px}
+.streak-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--color-text-muted)}
+.streak-num-row{display:flex;align-items:baseline;gap:var(--space-2)}
+.streak-num{font-family:var(--font-mono);font-size:52px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--color-brand)}
+.streak-dias{font-size:18px;font-weight:600;color:var(--color-text-secondary)}
+.streak-sub{font-size:13px;color:var(--color-text-muted);margin-top:2px}
+.streak-icon{font-size:44px;line-height:1;flex:0 0 auto}
+.myday-date{font-size:14px;font-weight:500;color:var(--color-text-secondary);margin-bottom:var(--space-4);padding:0 var(--space-1)}
+.myday-section{background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:var(--space-3)}
+.myday-section-hdr{padding:var(--space-3) var(--space-4) var(--space-2);display:flex;align-items:center;gap:var(--space-2)}
+.myday-section-icon{font-size:16px}
+.myday-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted)}
+.myday-section-body{padding:0 var(--space-4) var(--space-4)}
+.train-options{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
+.train-opt{height:56px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background .15s,border-color .15s,color .15s;color:var(--color-text-secondary)}
+.train-opt .opt-icon{font-size:20px}
+.train-opt.is-active.opt-entrene{background:color-mix(in oklab,var(--color-brand) 12%,var(--color-bg-primary));border-color:var(--color-brand);color:var(--color-brand)}
+.train-opt.is-active.opt-descanso{background:color-mix(in oklab,#8b5cf6 10%,var(--color-bg-primary));border-color:#8b5cf6;color:#8b5cf6}
+.train-opt.is-active.opt-falte{background:color-mix(in oklab,var(--color-warning) 12%,var(--color-bg-primary));border-color:var(--color-warning);color:var(--color-warning)}
+.habito-row{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) 0;border-bottom:1px solid var(--color-border)}
+.habito-row:last-child{border-bottom:0;padding-bottom:0}
+.habito-row:first-child{padding-top:0}
+.habito-info{flex:1;display:flex;flex-direction:column;gap:1px}
+.habito-text{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.habito-sub{font-size:12px;color:var(--color-text-muted)}
+.habito-btns{display:flex;gap:var(--space-2);flex:0 0 auto}
+.hb{width:42px;height:42px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
+.hb.is-yes.is-active{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));border-color:var(--color-brand)}
+.hb.is-no.is-active{background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border-color:#ef4444}
+.agua-counter{display:flex;align-items:center;justify-content:center;gap:var(--space-5);padding:var(--space-2) 0 0}
+.agua-btn{width:52px;height:52px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:50%;font-size:24px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .1s;color:var(--color-text-secondary)}
+.agua-btn:active{background:var(--color-bg-tertiary)}
+.agua-display{display:flex;flex-direction:column;align-items:center;gap:0}
+.agua-num{font-family:var(--font-mono);font-size:44px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--color-text-primary)}
+.agua-unit{font-size:11px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.agua-glasses{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:var(--space-3);min-height:28px}
+.agua-glass{font-size:20px;line-height:1;transition:opacity .15s}
+.agua-glass.empty{opacity:.2}
+.adh-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);background:transparent;border:0;border-top:1px solid var(--color-border);text-align:left;cursor:pointer;font-size:13px;color:var(--color-text-secondary);font-weight:500;gap:var(--space-2)}
+.adh-toggle .chev{transition:transform .2s;flex:0 0 auto;color:var(--color-text-muted)}
+.adh-toggle.is-open .chev{transform:rotate(180deg)}
+.adh-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:0 var(--space-4) var(--space-4)}
+.adh-day{width:100%;aspect-ratio:1;border-radius:4px}
+.adh-day.valido{background:var(--color-brand);opacity:.85}
+.adh-day.parcial{background:color-mix(in oklab,var(--color-brand) 30%,var(--color-border))}
+.adh-day.vacio{background:var(--color-bg-tertiary);border:1px solid var(--color-border)}
+.adh-day.hoy{outline:2px solid var(--color-text-primary);outline-offset:1px}
 
 /* DIETA */
 .diet-hdr{padding:var(--space-4);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);margin-bottom:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)}
@@ -366,6 +416,7 @@ button svg:not([width]),a svg:not([width]){width:1em;height:1em}
     <section class="scene is-active" id="scene-train"></section>
     <section class="scene" id="scene-diet"></section>
     <section class="scene" id="scene-progress"></section>
+    <section class="scene" id="scene-myday"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -390,12 +441,17 @@ button svg:not([width]),a svg:not([width]){width:1em;height:1em}
   <nav class="tabbar" role="tablist">
     <button class="tab is-active" data-scene="train" role="tab" aria-selected="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/></svg>
-      <span>Entrenamiento</span>
+      <span>Pump</span>
       <span class="tab-dot"></span>
     </button>
     <button class="tab" data-scene="diet" role="tab" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/></svg>
       <span>Dieta</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" data-scene="myday" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      <span>Mi Día</span>
       <span class="tab-dot"></span>
     </button>
     <button class="tab" data-scene="progress" role="tab" aria-selected="false">
@@ -446,6 +502,8 @@ const TOKEN = (function() {
   return '';
 })();
 const TODAY = new Date().toISOString().split('T')[0];
+// Fecha local del cliente (YYYY-MM-DD en su timezone)
+const TODAY_LOCAL = new Date().toLocaleDateString('en-CA');
 
 let DATA = null;   // {cliente, rutina, dia, historico_por_ejercicio, _dias, _isDemo}
 let DIET = null;   // {macros_target, comidas}
@@ -454,6 +512,8 @@ let RUTINA_ID = null;
 let _sesionId = null;      // ID de sesión activa en Supabase
 let _sesionIniciada = false;
 let _sessionStart  = null; // Date.now() when first set confirmed
+let MYDAY = null;          // Hábitos del día actual {entrenamiento, comio_segun_plan, durmio_bien, vasos_agua}
+let STREAK = null;         // {streak, ultimo_dia_valido}
 
 const STATE = {
   scene:              'train',
@@ -468,6 +528,9 @@ const STATE = {
   activeTipoDia:      null,       // id del tipo-día activo (Formato B)
   progressLoaded:     false,
   progressData:       null,
+  mydayLoaded:        false,
+  adhOpen:            false,
+  adhData:            null,
 };
 
 /* ---- SAMPLE DATA (fallback when no rutina/dieta published) ---- */
@@ -1798,6 +1861,298 @@ function openDetail(exId) {
   $('#detClose').addEventListener('click', closeModal);
 }
 
+/* ---- MI DÍA ---- */
+function formatFechaLocal(isoDate) {
+  // isoDate = 'YYYY-MM-DD'
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+async function loadMyday() {
+  if (!TOKEN) return;
+  try {
+    const [habitos, streak] = await Promise.all([
+      window.mypumpDB.getHabitosDia(TOKEN, TODAY_LOCAL),
+      window.mypumpDB.getStreak(TOKEN),
+    ]);
+    MYDAY  = habitos;
+    STREAK = streak;
+    STATE.mydayLoaded = true;
+    // Si el tab ya está abierto, re-renderizar ahora que tenemos datos
+    if (STATE.scene === 'myday') renderMyday();
+  } catch(e) {
+    console.error('[Mi Día] error cargando hábitos:', e);
+    MYDAY  = null;
+    STREAK = { streak: 0, ultimo_dia_valido: null };
+    STATE.mydayLoaded = true;
+    if (STATE.scene === 'myday') renderMyday();
+  }
+}
+
+async function setHabito(campo, valor) {
+  if (!TOKEN) return;
+  const res = await window.mypumpDB.setHabito(TOKEN, TODAY_LOCAL, campo, valor);
+  if (res.success && res.data && res.data.length > 0) {
+    MYDAY = res.data[0];
+    // Re-render solo las partes que cambiaron
+    renderMyday();
+    // Actualizar streak si fue un hábito que afecta streak
+    if (['entrenamiento','comio_segun_plan','durmio_bien'].includes(campo)) {
+      const streakData = await window.mypumpDB.getStreak(TOKEN);
+      if (streakData) STREAK = streakData;
+      renderMydayStreak();
+    }
+  }
+}
+
+function renderMydayStreak() {
+  const el = $('#myday-streak');
+  if (!el) return;
+  const n = STREAK?.streak || 0;
+  const icon = n >= 7 ? '🔥' : n >= 3 ? '⚡' : n >= 1 ? '✨' : '💤';
+  const sub  = n === 0
+    ? 'Completá hoy para empezar tu racha'
+    : n === 1
+    ? '¡Primer día, seguí así!'
+    : `Último día válido: ${STREAK?.ultimo_dia_valido ? formatFechaLocal(STREAK.ultimo_dia_valido) : '—'}`;
+  el.innerHTML = `
+    <div class="streak-left">
+      <div class="streak-label">Racha activa</div>
+      <div class="streak-num-row">
+        <span class="streak-num">${n}</span>
+        <span class="streak-dias">día${n !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="streak-sub">${sub}</div>
+    </div>
+    <div class="streak-icon">${icon}</div>`;
+}
+
+function renderMyday() {
+  const root = $('#scene-myday');
+  if (!root) return;
+
+  if (!STATE.mydayLoaded) {
+    root.innerHTML = `<div style="padding:var(--space-8);text-align:center;color:var(--color-text-muted);font-size:14px">Cargando hábitos…</div>`;
+    return;
+  }
+
+  const h = MYDAY || {};
+  const vasos = h.vasos_agua ?? 0;
+
+  root.innerHTML = `
+    <!-- STREAK -->
+    <div class="myday-streak" id="myday-streak"></div>
+
+    <!-- FECHA -->
+    <div class="myday-date">${formatFechaLocal(TODAY_LOCAL)}</div>
+
+    <!-- ENTRENAMIENTO -->
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">🏋️</span>
+        <span class="myday-section-title">Entrenamiento</span>
+      </div>
+      <div class="myday-section-body">
+        <div class="train-options">
+          <button class="train-opt opt-entrene${h.entrenamiento === 'entrene' ? ' is-active' : ''}" data-val="entrene">
+            <span class="opt-icon">💪</span>Entrené
+          </button>
+          <button class="train-opt opt-descanso${h.entrenamiento === 'descanso' ? ' is-active' : ''}" data-val="descanso">
+            <span class="opt-icon">😴</span>Descansé
+          </button>
+          <button class="train-opt opt-falte${h.entrenamiento === 'falte' ? ' is-active' : ''}" data-val="falte">
+            <span class="opt-icon">😞</span>Falté
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HÁBITOS -->
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">✅</span>
+        <span class="myday-section-title">Hábitos</span>
+      </div>
+      <div class="myday-section-body">
+        <div class="habito-row">
+          <div class="habito-info">
+            <div class="habito-text">Comí según el plan</div>
+            <div class="habito-sub">Seguiste tu dieta hoy</div>
+          </div>
+          <div class="habito-btns">
+            <button class="hb is-yes${h.comio_segun_plan === true ? ' is-active' : ''}" data-campo="comio_segun_plan" data-val="true">✓</button>
+            <button class="hb is-no${h.comio_segun_plan === false ? ' is-active' : ''}" data-campo="comio_segun_plan" data-val="false">✗</button>
+          </div>
+        </div>
+        <div class="habito-row">
+          <div class="habito-info">
+            <div class="habito-text">Dormí bien</div>
+            <div class="habito-sub">7 horas o más</div>
+          </div>
+          <div class="habito-btns">
+            <button class="hb is-yes${h.durmio_bien === true ? ' is-active' : ''}" data-campo="durmio_bien" data-val="true">✓</button>
+            <button class="hb is-no${h.durmio_bien === false ? ' is-active' : ''}" data-campo="durmio_bien" data-val="false">✗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGUA -->
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">💧</span>
+        <span class="myday-section-title">Agua</span>
+      </div>
+      <div class="myday-section-body">
+        <div class="agua-counter">
+          <button class="agua-btn" id="aguaMinus">−</button>
+          <div class="agua-display">
+            <span class="agua-num" id="aguaNum">${vasos}</span>
+            <span class="agua-unit">vasos</span>
+          </div>
+          <button class="agua-btn" id="aguaPlus">+</button>
+        </div>
+        <div class="agua-glasses" id="aguaGlasses">${renderAguaGlasses(vasos)}</div>
+      </div>
+    </div>
+
+    <!-- ADHERENCIA 30D -->
+    <div class="myday-section" style="margin-bottom:var(--space-6)">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">📊</span>
+        <span class="myday-section-title">Mis últimos 30 días</span>
+      </div>
+      <button class="adh-toggle${STATE.adhOpen ? ' is-open' : ''}" id="adhToggle">
+        <span>Ver mi historial de adherencia</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="adhContent" style="${STATE.adhOpen ? '' : 'display:none'}"></div>
+    </div>`;
+
+  // Render streak
+  renderMydayStreak();
+
+  // Bind entrenamiento buttons
+  Array.from(root.querySelectorAll('.train-opt')).forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const val = btn.dataset.val;
+      // Toggle: si ya está activo, lo quita (null)
+      const newVal = (MYDAY?.entrenamiento === val) ? null : val;
+      await setHabito('entrenamiento', newVal);
+    });
+  });
+
+  // Bind hábito buttons
+  Array.from(root.querySelectorAll('.hb')).forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const campo = btn.dataset.campo;
+      const valStr = btn.dataset.val; // 'true' | 'false'
+      const current = MYDAY?.[campo];
+      // Toggle: si ya está activo, vuelve a null
+      const newVal = (String(current) === valStr) ? null : valStr;
+      await setHabito(campo, newVal);
+    });
+  });
+
+  // Bind agua
+  const aguaMinus = $('#aguaMinus');
+  const aguaPlus  = $('#aguaPlus');
+  if (aguaMinus) aguaMinus.addEventListener('click', () => cambiarAgua(-1));
+  if (aguaPlus)  aguaPlus.addEventListener('click',  () => cambiarAgua(+1));
+
+  // Bind adherencia toggle
+  const adhToggle = $('#adhToggle');
+  if (adhToggle) {
+    adhToggle.addEventListener('click', async () => {
+      STATE.adhOpen = !STATE.adhOpen;
+      adhToggle.classList.toggle('is-open', STATE.adhOpen);
+      const content = $('#adhContent');
+      if (!content) return;
+      if (STATE.adhOpen) {
+        content.style.display = '';
+        if (!STATE.adhData) {
+          content.innerHTML = `<div style="padding:var(--space-4);text-align:center;color:var(--color-text-muted);font-size:13px">Cargando…</div>`;
+          STATE.adhData = await window.mypumpDB.getAdherencia30d(TOKEN);
+        }
+        content.innerHTML = renderAdhGrid(STATE.adhData || []);
+      } else {
+        content.style.display = 'none';
+      }
+    });
+    // Si ya estaba abierto, cargar contenido inmediatamente
+    if (STATE.adhOpen && !STATE.adhData) {
+      const content = $('#adhContent');
+      if (content) {
+        content.innerHTML = `<div style="padding:var(--space-4);text-align:center;color:var(--color-text-muted);font-size:13px">Cargando…</div>`;
+        window.mypumpDB.getAdherencia30d(TOKEN).then(data => {
+          STATE.adhData = data || [];
+          if (content) content.innerHTML = renderAdhGrid(STATE.adhData);
+        });
+      }
+    }
+  }
+}
+
+function renderAguaGlasses(n) {
+  let html = '';
+  for (let i = 0; i < 12; i++) {
+    html += `<span class="agua-glass${i < n ? '' : ' empty'}">💧</span>`;
+  }
+  return html;
+}
+
+let _aguaTimer = null;
+function cambiarAgua(delta) {
+  const current = MYDAY?.vasos_agua ?? 0;
+  const next = Math.max(0, Math.min(12, current + delta));
+  if (next === current) return;
+
+  // Actualizar UI inmediatamente (optimistic)
+  if (MYDAY) MYDAY.vasos_agua = next;
+  else MYDAY = { vasos_agua: next };
+  const numEl = $('#aguaNum');
+  const glassEl = $('#aguaGlasses');
+  if (numEl) numEl.textContent = next;
+  if (glassEl) glassEl.innerHTML = renderAguaGlasses(next);
+
+  // Debounce: guardar al servidor 600ms después del último clic
+  clearTimeout(_aguaTimer);
+  _aguaTimer = setTimeout(() => {
+    window.mypumpDB.setHabito(TOKEN, TODAY_LOCAL, 'vasos_agua', String(next)).then(res => {
+      if (res.success && res.data?.length > 0) MYDAY = res.data[0];
+    });
+  }, 600);
+}
+
+function renderAdhGrid(rows) {
+  if (!rows || rows.length === 0) {
+    return `<div style="padding:var(--space-4);text-align:center;color:var(--color-text-muted);font-size:13px">Sin datos aún</div>`;
+  }
+  // rows ordenados más reciente primero (desde la RPC)
+  // Necesitamos reversed para mostrar cronológicamente de izq a der
+  const sorted = [...rows].reverse(); // más antiguo primero
+  let html = '<div class="adh-grid">';
+  sorted.forEach(row => {
+    const isHoy = row.fecha === TODAY_LOCAL;
+    let cls = 'adh-day vacio';
+    if (row.es_valido) cls = 'adh-day valido';
+    else if (row.entrenamiento || row.comio_segun_plan != null || row.durmio_bien != null) cls = 'adh-day parcial';
+    if (isHoy) cls += ' hoy';
+    const label = new Date(row.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    html += `<div class="${cls}" title="${label}"></div>`;
+  });
+  html += '</div>';
+  // Leyenda
+  const validos = rows.filter(r => r.es_valido).length;
+  html += `<div style="padding:0 var(--space-4) var(--space-4);display:flex;gap:var(--space-3);font-size:12px;color:var(--color-text-muted);align-items:center">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--color-brand);display:inline-block;opacity:.85"></span> Día cumplido</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--color-bg-tertiary);border:1px solid var(--color-border);display:inline-block"></span> Sin datos</span>
+    <span style="margin-left:auto;font-weight:600;color:var(--color-text-secondary)">${validos}/30</span>
+  </div>`;
+  return html;
+}
+
 /* ---- TABS / THEME ---- */
 function setScene(scene) {
   STATE.scene = scene;
@@ -1820,6 +2175,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = 'Plan de alimentación';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'myday') {
+    $('#hdrEyebrow').textContent = 'HÁBITOS · HOY';
+    $('#hdrTitle').textContent = 'Mi Día';
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   } else {
     $('#hdrEyebrow').textContent = `PROGRESO · ${DATA.rutina.nombre_plan.split('—')[0].trim().toUpperCase()}`;
     $('#hdrTitle').textContent = 'Tu evolución';
@@ -1829,6 +2189,7 @@ function setScene(scene) {
 
   if (scene === 'train') renderTrain();
   if (scene === 'diet') renderDiet();
+  if (scene === 'myday') renderMyday();
   if (scene === 'progress') renderProgress();
   window.scrollTo(0, 0);
 }
@@ -1948,7 +2309,8 @@ async function init() {
   renderDayPicker();
   renderTrain();
   renderDiet();
-  // Progress loads lazily when tab is opened
+  // Mi Día y Progress cargan de forma lazy cuando se abre el tab
+  loadMyday(); // inicia en background; cuando termina, STATE.mydayLoaded = true
 }
 
 /* ---- SWAP MODAL ---- */

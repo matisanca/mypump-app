@@ -175,4 +175,34 @@ window.mypumpDB = {
     return { success: rows !== null, data: rows || [] };
   },
 
+  // ─── MI DÍA / HÁBITOS ─────────────────────────────────────
+
+  // Devuelve el registro de hábitos del día (o crea uno vacío). fecha = 'YYYY-MM-DD'.
+  async getHabitosDia(token, fecha) {
+    const rows = await rpc('mypump_get_habitos_dia', { p_token: token, p_fecha: fecha });
+    return rows?.[0] || null;
+  },
+
+  // Actualiza un campo del día. valor debe ser string ('true','false','null', o número).
+  // Devuelve {success, data: rowActualizada, error}.
+  async setHabito(token, fecha, campo, valor) {
+    return await rpcMutation('mypump_set_habito', {
+      p_token: token,
+      p_fecha: fecha,
+      p_campo: campo,
+      p_valor: valor === null ? 'null' : String(valor),
+    });
+  },
+
+  // Devuelve {streak: integer, ultimo_dia_valido: DATE|null}.
+  async getStreak(token) {
+    const rows = await rpc('mypump_get_streak', { p_token: token });
+    return rows?.[0] || { streak: 0, ultimo_dia_valido: null };
+  },
+
+  // Devuelve array de 30 filas (más reciente primero) con adherencia del cliente.
+  async getAdherencia30d(token) {
+    return await rpc('mypump_get_adherencia_30d', { p_token: token });
+  },
+
 };
