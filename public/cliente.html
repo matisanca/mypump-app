@@ -2313,7 +2313,9 @@ async function init() {
 
   STATE.session = buildSession();
 
-  // Intentar restaurar sesión activa del día desde localStorage
+  // Intentar restaurar sesión activa del día — primero localStorage, después server.
+  // Esto permite reconectar con la sesión real aunque localStorage esté vacío
+  // (cambio de dispositivo, modo incógnito, cache limpio, retroceso manual de semana).
   if (RUTINA_ID) {
     const sesionKey = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
     const savedSesionId = localStorage.getItem(sesionKey);
@@ -2321,17 +2323,32 @@ async function init() {
     const semanaActual  = DATA.rutina.semana_actual || 1;
 
     if (savedSesionId && savedSemana === semanaActual) {
-      // La sesión es de la semana actual — recuperar
+      // La sesión local es de la semana actual — recuperar
       _sesionId       = savedSesionId;
       _sesionIniciada = true;
-      // 1. Restaurar estados (completo / pendiente / saltado)
       await loadExerciseStates();
-      // 2. Restaurar valores exactos de cada serie (peso / reps / RIR)
       await loadRegistrosCarga();
-    } else if (savedSesionId && savedSemana !== semanaActual) {
-      // La semana cambió — descartar sesión vieja
-      localStorage.removeItem(sesionKey);
-      localStorage.removeItem(`${sesionKey}_semana`);
+    } else {
+      // No hay sesión local válida — preguntar al server si hay una existente
+      if (savedSesionId && savedSemana !== semanaActual) {
+        // Limpiar localStorage stale antes del fallback al server
+        localStorage.removeItem(sesionKey);
+        localStorage.removeItem(`${sesionKey}_semana`);
+      }
+      try {
+        const remote = await window.mypumpDB.getSesionDia(TOKEN, DATA.dia.id, semanaActual);
+        if (remote && remote.id) {
+          _sesionId       = remote.id;
+          _sesionIniciada = true;
+          // Re-poblar localStorage para que las próximas cargas sean instantáneas
+          localStorage.setItem(sesionKey, remote.id);
+          localStorage.setItem(`${sesionKey}_semana`, semanaActual);
+          await loadExerciseStates();
+          await loadRegistrosCarga();
+        }
+      } catch(e) {
+        console.warn('[init] error consultando sesión remota:', e);
+      }
     }
   }
 

@@ -175,6 +175,19 @@ window.mypumpDB = {
     return { success: rows !== null, data: rows || [] };
   },
 
+  // Devuelve la sesión más reciente para (cliente, dia, semana) o null.
+  // Permite reconectar con una sesión existente sin depender de localStorage
+  // (útil cuando el cliente cambia de dispositivo, borra cache, o el admin
+  // retrocede manualmente la semana de la rutina).
+  async getSesionDia(token, diaId, semana) {
+    const rows = await rpc('mypump_get_sesion_dia', {
+      p_token:  token,
+      p_dia_id: diaId,
+      p_semana: semana,
+    });
+    return rows && rows.length > 0 ? rows[0] : null;
+  },
+
   // ─── MI DÍA / HÁBITOS ─────────────────────────────────────
 
   // Devuelve el registro de hábitos del día (o crea uno vacío). fecha = 'YYYY-MM-DD'.
