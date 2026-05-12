@@ -930,17 +930,52 @@ async function confirmAvanzarSemana() {
   if (ok) await doAvanzarSemana();
 }
 
-async function showWeekCompletedModal() {
-  const semana = DATA.rutina.semana_actual || 1;
-  const total  = DATA.rutina.semanas_total || 12;
-  if (semana >= total) return;
+async function showDayCompletedModal() {
+  // Idempotente: si ya se mostró para este día, no volver a abrir.
+  if (STATE.diaCompletadoMostrado) return;
+  STATE.diaCompletadoMostrado = true;
+
+  const dias = DATA._dias || [];
+  const currentIdx = dias.findIndex(d => d.id === DATA.dia.id);
+  const nextDia = currentIdx >= 0 ? dias[currentIdx + 1] : null;
+
+  if (!nextDia) {
+    // Último día de la lista — solo felicitar, sin avance automático.
+    // El cliente debe usar el botón manual "Pasar a Semana N+1" cuando él decida.
+    await MyPump.ui.showConfirmModal({
+      title:        '🎉 ¡Día completado!',
+      body:         'Buen trabajo. Cuando hayas terminado todos los días de la semana, usá el botón "Pasar a Semana N+1" abajo para avanzar.',
+      confirmLabel: 'Listo',
+      cancelLabel:  'Cerrar',
+    });
+    return;
+  }
+
+  const nextNombre = nextDia.nombre || `Día ${currentIdx + 2}`;
   const ok = await MyPump.ui.showConfirmModal({
     title:        '🎉 ¡Día completado!',
-    body:         `Terminaste todos los ejercicios de hoy (SEMANA ${semana}). ¿Querés pasar a la SEMANA ${semana + 1}?`,
-    confirmLabel: `Pasar a SEM ${semana + 1} →`,
+    body:         `Buen trabajo. ¿Querés ir al siguiente día (${nextNombre})?`,
+    confirmLabel: `Ir a ${nextNombre} →`,
     cancelLabel:  'Ahora no',
   });
-  if (ok) await doAvanzarSemana();
+
+  if (ok) {
+    // Cambiar día activo — replicar lógica del click del day-pill (línea ~1033)
+    DATA.dia = nextDia;
+    DATA.historico_por_ejercicio = {};
+    STATE.exerciseStates = {};
+    STATE.exerciseMeta = {};
+    STATE.diaCompletadoMostrado = false;
+    STATE.session = buildSession();
+    STATE.expandedId = null;
+    _sesionIniciada = false;
+    _sesionId = null;
+    persistLastDay(nextDia.id, RUTINA_ID);
+    updateDayHeader();
+    renderDayPicker();
+    renderTrain();
+    window.scrollTo(0, 0);
+  }
 }
 
 /* ---- RESTAURAR REGISTROS DE CARGA ---- */
@@ -1328,9 +1363,9 @@ function bindTrainEvents() {
       startRest(ex.descanso_segundos);
     }
     renderTrain();
-    // Auto-detectar día completo → ofrecer avance de semana
-    if (!DATA._isDemo && (DATA.rutina.semana_actual||1) < (DATA.rutina.semanas_total||12) && checkIfDayCompleted()) {
-      setTimeout(() => showWeekCompletedModal(), 500);
+    // Auto-detectar día completo → ofrecer ir al siguiente día (NO avanza semana)
+    if (!DATA._isDemo && checkIfDayCompleted()) {
+      setTimeout(() => showDayCompletedModal(), 500);
     }
   }));
 
@@ -1361,8 +1396,8 @@ function bindTrainEvents() {
     if (next) STATE.expandedId = next.id;
     stopRest();
     renderTrain();
-    if (!DATA._isDemo && (DATA.rutina.semana_actual||1) < (DATA.rutina.semanas_total||12) && checkIfDayCompleted()) {
-      setTimeout(() => showWeekCompletedModal(), 500);
+    if (!DATA._isDemo && checkIfDayCompleted()) {
+      setTimeout(() => showDayCompletedModal(), 500);
     }
   }));
 
@@ -1392,8 +1427,8 @@ function bindTrainEvents() {
     if (next) STATE.expandedId = next.id;
     stopRest();
     renderTrain();
-    if (!DATA._isDemo && (DATA.rutina.semana_actual||1) < (DATA.rutina.semanas_total||12) && checkIfDayCompleted()) {
-      setTimeout(() => showWeekCompletedModal(), 500);
+    if (!DATA._isDemo && checkIfDayCompleted()) {
+      setTimeout(() => showDayCompletedModal(), 500);
     }
   }));
 
