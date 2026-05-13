@@ -1029,6 +1029,10 @@ function showError(type, detail) {
     $('#errTitle').textContent = 'Sin acceso';
     $('#errSub').textContent = 'Esta URL no incluye un token de acceso. Usá el enlace que te envió tu coach.';
     $('#errCode').textContent = '';
+  } else if (type === 'service-down') {
+    $('#errTitle').textContent = 'Servicio fuera de línea';
+    $('#errSub').textContent = 'No pudimos cargar tu plan. Probá de nuevo en unos minutos. Si persiste, avisale a tu coach — tu acceso sigue activo, es un problema temporal del servidor.';
+    $('#errCode').textContent = detail || '';
   } else {
     $('#errTitle').textContent = 'Enlace inválido';
     $('#errSub').textContent = 'Este enlace no existe o fue revocado. Contactá a tu coach para obtener un nuevo acceso.';
@@ -2252,7 +2256,20 @@ async function init() {
   window.mypumpDB.init();
 
   const info = await window.mypumpDB.getClienteInfo(TOKEN);
-  if (!info) { showError('invalid', TOKEN.slice(0,8)+'…'); return; }
+  if (!info) {
+    // Distinguir: token inválido (sin error) vs servicio caído (error de red/cuota/server)
+    const lastErr = window.mypumpDB._lastError;
+    if (lastErr) {
+      // Hubo un error de servicio (402 cuota, 503 server, network down, etc.)
+      // NO mostrar "Acceso revocado" — el token podría estar perfecto.
+      console.error('[init] Service error:', lastErr);
+      showError('service-down', TOKEN.slice(0,8)+'…');
+    } else {
+      // Sin error pero info=null → el token realmente no existe o está revocado
+      showError('invalid', TOKEN.slice(0,8)+'…');
+    }
+    return;
+  }
 
   const [rutina, dieta] = await Promise.all([
     window.mypumpDB.getRutinaActiva(TOKEN),

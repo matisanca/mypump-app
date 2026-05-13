@@ -26,14 +26,24 @@ function logDev(...args) {
   if (DEV_MODE) console.warn('[mypumpDB]', ...args);
 }
 
-// Llamada RPC de solo lectura — devuelve data o null ante error
+// Llamada RPC de solo lectura — devuelve data o null ante error.
+// Guarda el último error en window.mypumpDB._lastError para que el frontend
+// pueda distinguir "token inválido" (null sin error) de "servicio caído" (error existente).
 async function rpc(fn, params) {
   try {
     const { data, error } = await getClient().rpc(fn, params);
-    if (error) { logDev(`RPC ${fn} error:`, error); return null; }
+    if (error) {
+      logDev(`RPC ${fn} error:`, error);
+      if (window.mypumpDB) window.mypumpDB._lastError = error;
+      return null;
+    }
+    if (window.mypumpDB) window.mypumpDB._lastError = null;
     return data;
   } catch (e) {
     logDev(`RPC ${fn} exception:`, e);
+    if (window.mypumpDB) {
+      window.mypumpDB._lastError = { code: 'NETWORK', message: e.message || String(e) };
+    }
     return null;
   }
 }
@@ -44,16 +54,24 @@ async function rpcMutation(fn, params) {
     const { data, error } = await getClient().rpc(fn, params);
     if (error) {
       logDev(`RPC ${fn} error:`, error);
+      if (window.mypumpDB) window.mypumpDB._lastError = error;
       return { success: false, data: null, error: error.message };
     }
+    if (window.mypumpDB) window.mypumpDB._lastError = null;
     return { success: true, data, error: null };
   } catch (e) {
     logDev(`RPC ${fn} exception:`, e);
+    if (window.mypumpDB) {
+      window.mypumpDB._lastError = { code: 'NETWORK', message: e.message || String(e) };
+    }
     return { success: false, data: null, error: e.message };
   }
 }
 
 window.mypumpDB = {
+  _lastError: null,  // populated por rpc/rpcMutation — útil para distinguir
+                     // "token inválido" (info===null && _lastError===null) de
+                     // "servicio caído" (info===null && _lastError!==null).
   init() {
     if (!SUPABASE_ANON_KEY) {
       console.error('[mypumpDB] SUPABASE_ANON_KEY no configurada. Ver README → Configurar credenciales.');
