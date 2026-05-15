@@ -5,7 +5,49 @@
    ============================================================= */
 
 (function () {
+  // Categoría por keyword primero (más confiable que la heurística porcentual,
+  // que clasificaba "asado de tira" como grasa o "milanesa de pollo" como lácteo).
+  // Si ningún keyword matchea, cae al fallback heurístico.
   function inferCategory(food) {
+    const name = (food.name || '').toLowerCase();
+
+    // 1) PROTEÍNAS — carnes, pescados, huevos, fiambres, sustitutos vegetales
+    if (/\b(carne|asado|bife|lomo|paleta|matambre|vacío|vacio|costill|nalga|cuadril|cuadrada|entraña|entrana|hígado|higado|cerdo|lechón|lechon|bondiola|jam[óo]n|salame|chorizo|longaniza|morcilla|salchicha|panceta|tocino|pollo|pavo|pato|pechuga|muslo|alita|pescado|salm[óo]n|merluza|atún|atun|sardin|trucha|lenguado|langostino|camar[óo]n|camaron|mejill[óo]n|mejillon|calamar|pulpo|kani|surimi|huevo|clara de huevo|tofu|tempeh|seit[áa]n|seitan|prote[íi]na (whey|de soja|vegetal)|pavita|cordero|cabrito|conejo|vísc|visc|chinchulín|riñón|rinon|mondongo|carpaccio|carne picada|hamburguesa)/.test(name)
+        && !/leche|yogur|queso/.test(name)) return 'proteina';
+
+    // 2) LÁCTEOS — leche, yogur, quesos, derivados frescos
+    if (/\b(leche(?! de coco)|yogur|yoghurt|kéfir|kefir|requesón|cottage|cuajada|nata|burrata|mozzarella|mozarella|provolone|provoleta|parmesano|reggianito|queso|cheddar|gouda|gruyere|brie|camembert|gorgonzola|fontina|sardo|tybo|port salut|ricotta|cottage|crema de leche|caf[ée] con leche|leche de soja|cacao con leche|chocolatada)\b/.test(name))
+      return 'lacteo';
+
+    // 3) GRASAS — aceites, frutos secos, derivados grasos
+    if (/\b(aceite|manteca|mantequilla|margarina|mayonesa|crema (?!de leche)|nuez|nueces|almendra|cacahuet|cacahuete|man[íi] |\bmaní$|pistacho|avellana|castaña|piñ[óo]n|semilla|ch[íi]a|lin(o|aza)|s[ée]samo|sesamo|chía|coco rallado|leche de coco|aceitun|olivas|palta|aguacate|tahini|mantequilla de maní|mantequilla de almendras|ghee|sebo)\b/.test(name))
+      return 'grasa';
+
+    // 4) FRUTAS Y VERDURAS — todo lo fresco vegetal (excepto tubérculos densos)
+    // EXCEPCIONES: polenta, harinas y cereales procesados son carbohidrato aunque deriven del maíz/trigo.
+    if (!/polenta|harina|copos? de ma[íi]z|corn flakes|trigo (sarraceno|burgol)/.test(name) && (
+        /\b(manzana|banana|plátano|platano|naranja|mandarina|kiwi|fresa|frutilla|uva|pera|durazno|melocot[óo]n|melocoton|ciruela|mel[óo]n|melon|sandía|sandia|pomelo|mango|ananá|anana|piña|pina|ar[áa]ndano|arandano|cereza|lim[óo]n|limon|papaya|mam[óo]n|maracuyá|maracuya|higo|frambuesa|mora|d[áa]til|datil|grosella|granada|guayaba|caqui|chirimoya|tuna|nispero|n[íi]spero|carambola|pitaya|lychee|rambut[áa]n|fruta de la pasi[óo]n|coco fresco)\b/.test(name) ||
+        /\b(zanahoria|calabaza|zapallito|zucchini|tomate|pepino|lechuga|rúcula|rucula|apio|repollo|berenjena|morr[óo]n|morron|pimiento|cebolla|ajo(?! en polvo)|chauch|arveja|guisante|remolacha|champiñ[óo]n|champinon|hongo|esp[áa]rrago|esparrago|alcauci|alcachof|palmito|ma[íi]z|choclo|puerro|acelga|radicheta|endivia|escarola|espinaca|brócoli|brocoli|coliflor|kale|repollito|rabanito|r[áa]bano|nabo|hinojo|jengibre fresco|cúrcuma fresca|verduras? salteadas|wok de verduras|ensalada (?!cesar|c[ée]sar))/.test(name)
+      ))
+      return 'fruta_verdura';
+
+    // 5) TUBÉRCULOS densos → carbohidrato (papa, batata, yuca, plátano macho)
+    if (/\b(papa(?! frita)|patata(?! frita)|batata|camote|boniato|yuca|mandioca|cassava|tap[íi]oca|tapioca|polenta|plátano macho|platano macho)\b/.test(name))
+      return 'carbohidrato';
+
+    // 6) LEGUMBRES — Mati las usa como carbo (ver prompts de Cerebro)
+    if (/\b(lenteja|garbanzo|frijol|poroto|jud[íi]a blanca|judia blanca|alubia|haba|soja cocida|soya|edamame|chícharo|chicharo)\b/.test(name))
+      return 'carbohidrato';
+
+    // 7) CARBOHIDRATOS clásicos
+    if (/\b(arroz|pasta|fideo|spaguett|spaghet|tallarines|ravioli|ñoqui|gnocch|pan(?! con|cake)|pancake|hotcake|tostada|harina|avena|cuscus|cousc[óo]us|quinoa|cebada|bulgur|trigo (sarraceno)?|cereal|granola|galleta|tortilla(?! española)|bollillo|telera|pita|wrap|arepa|crouton|chocolate|miel|az[úu]car|edulcorante|mermelada|dulce de leche|alfajor|barrita|snack|cracker|chip|salsa de tomate|kétchup|ketchup|panqueque|waffle|donut|crep|brownie|muffin|budín|budin|bizcoch|torta|magdalena|barra cereal|gomitas|caramelo|chuche)\b/.test(name))
+      return 'carbohidrato';
+
+    // 8) CONDIMENTOS — sin valor calórico significativo
+    if (/\b(mostaza|vinagre|sal\b|pimienta|albahaca|comino|perejil|orégano|oregano|romero|tomillo|laurel|nuez moscada|p[áa]prika|cilantro|hierba|condimento|caldo cubo|sazonador|chimichurri|salsa picante|tabasco|sriracha)\b/.test(name))
+      return 'condimento';
+
+    // FALLBACK heurístico (cuando no matchea ningún keyword)
     const total = (food.prot || 0) + (food.carb || 0) + (food.fat || 0);
     if (total === 0) return 'condimento';
     const pPct = food.prot / total, cPct = food.carb / total, fPct = food.fat / total;
