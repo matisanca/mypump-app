@@ -29,8 +29,28 @@ window.MyPump.foodSwap = {
     const targetMacroGrams = (originalFood[dominantMacro] || 0);
     const originalKcal = originalFood.kcal;
     const originalProt = originalFood.prot || 0;
-    // Tolerancia 10% para no devolver lista vacía si el original tiene mucha prot.
-    const minProt = originalProt * 0.9;
+
+    // Regla anti-reducción de proteína (adaptativa):
+    //  - 15% tolerancia relativa (era 10%, muy estricto para foods de poca prot)
+    //  - O 3g de tolerancia absoluta
+    //  - Usamos el MENOR de los dos thresholds (más permisivo) para no descartar
+    //    sustitutos razonables cuando el original ya tiene poca prot (ej: papa).
+    //  - Si el food original tiene <5g de prot total, regla off (irrelevante).
+    const minProt = originalProt < 5
+      ? 0
+      : Math.min(originalProt * 0.85, originalProt - 3);
+
+    // Cantidad del original en gramos absolutos (para acotar el tamaño del sustituto).
+    // Si el original viene en unidad/rebanada/etc., usamos unitGrams si está.
+    const originalQtyG = (() => {
+      const q = originalFood.qty || 0;
+      if (originalFood.unit === 'g' || originalFood.unit === 'ml') return q;
+      if (originalFood.unitGrams) return q * originalFood.unitGrams;
+      return q; // fallback: asumir gramos
+    })();
+    // Tope absoluto: el sustituto no puede requerir más de 3× la cantidad del
+    // original (con piso de 500g para no descartar foods razonables en porciones chicas).
+    const maxQty = Math.max(originalQtyG * 3, 500);
 
     return db
       .filter(food =>
@@ -42,6 +62,10 @@ window.MyPump.foodSwap = {
         if (macroPerGram === 0) return null;
 
         const requiredQty = targetMacroGrams / macroPerGram;
+
+        // Filtro de cantidad absurda (ej: 2kg de alcaparras como sustituto de papa)
+        if (requiredQty > maxQty) return null;
+
         const factor = requiredQty / 100;
 
         let qty = Math.round(requiredQty);
@@ -74,7 +98,7 @@ window.MyPump.foodSwap = {
         const kcalRatio = result.kcal / originalKcal;
         if (kcalRatio < 0.90 || kcalRatio > 1.10) return null;
 
-        // 2) Regla anti-reducción de proteína
+        // 2) Regla anti-reducción de proteína (adaptativa, ver arriba)
         if (result.prot < minProt) return null;
 
         return result;
@@ -108,9 +132,10 @@ window.MyPump.foodSwap = {
       return 'lacteo';
     if (/\b(aceite|manteca|mantequilla|margarina|mayonesa|crema (?!de leche)|nuez|nueces|almendra|cacahuet|cacahuete|man[íi] |\bmaní$|pistacho|avellana|castaña|piñ[óo]n|semilla|ch[íi]a|lin(o|aza)|s[ée]samo|sesamo|chía|coco rallado|leche de coco|aceitun|olivas|palta|aguacate|tahini|mantequilla de maní|mantequilla de almendras|ghee|sebo)\b/.test(name))
       return 'grasa';
-    if (!/polenta|harina|copos? de ma[íi]z|corn flakes|trigo (sarraceno|burgol)/.test(name) && (
-        /\b(manzana|banana|plátano|platano|naranja|mandarina|kiwi|fresa|frutilla|uva|pera|durazno|melocot[óo]n|melocoton|ciruela|mel[óo]n|melon|sandía|sandia|pomelo|mango|ananá|anana|piña|pina|ar[áa]ndano|arandano|cereza|lim[óo]n|limon|papaya|mam[óo]n|maracuyá|maracuya|higo|frambuesa|mora|d[áa]til|datil|grosella|granada|guayaba|caqui|chirimoya|tuna|nispero|n[íi]spero|carambola|pitaya|lychee|rambut[áa]n|fruta de la pasi[óo]n|coco fresco)\b/.test(name) ||
-        /\b(zanahoria|calabaza|zapallito|zucchini|tomate|pepino|lechuga|rúcula|rucula|apio|repollo|berenjena|morr[óo]n|morron|pimiento|cebolla|ajo(?! en polvo)|chauch|arveja|guisante|remolacha|champiñ[óo]n|champinon|hongo|esp[áa]rrago|esparrago|alcauci|alcachof|palmito|ma[íi]z|choclo|puerro|acelga|radicheta|endivia|escarola|espinaca|brócoli|brocoli|coliflor|kale|repollito|rabanito|r[áa]bano|nabo|hinojo|jengibre fresco|cúrcuma fresca|verduras? salteadas|wok de verduras|ensalada (?!cesar|c[ée]sar))/.test(name)
+    if (!/polenta|harina|copos? de ma[íi]z|corn flakes|trigo (sarraceno|burgol)|helado|tarta|torta|kuchen|pie|mermelada|jugo|néctar|nectar|licuado|smoothie|jarabe|sirope/.test(name) && (
+        /\b(manzana|banan|pl[áa]tano|naranja|mandarin|kiwi|fres|frutilla|uva|pera|durazno|melocot[óo]n|ciruela|mel[óo]n|melon|sand[íi]a|pomelo|mango|anan[áa]|piña|pina|ar[áa]ndano|arandano|cereza|lim[óo]n|limon|papaya|mam[óo]n|maracuy[áa]|higo|frambuesa|mora|d[áa]til|datil|grosella|granada|guayaba|caqui|chirimoya|tuna|n[íi]spero|nispero|carambola|pitaya|lychee|rambut[áa]n|fruta de la pasi[óo]n|coco fresco)\w*/.test(name) ||
+        /\b(zanahoria|calabaza|zapallit|zucchini|tomate|pepino|lechug|r[úu]cula|rucula|apio|repollo|berenjena|morr[óo]n|morron|pimiento|cebolla|chauch|arveja|guisante|remolach|champiñ[óo]n|champinon|hongo|esp[áa]rrago|esparrago|alcauci|alcachof|palmito|ma[íi]z|choclo|puerro|acelga|radicheta|endivia|escarola|espinac|br[óo]coli|brocoli|coliflor|kale|repollito|rabanit|r[áa]bano|nabo|hinojo|jalapeñ|jalapeno|chile(?! con carne)|aj[íi] (picante|verde|rojo|amarillo)|pimentón fresco|jengibre fresco|cúrcuma fresca|verduras? salteadas|wok de verduras|ensalada (?!cesar|c[ée]sar))\w*/.test(name) ||
+        /^ajo$|^ajos$|^cabeza de ajo/.test(name)
       )) return 'fruta_verdura';
     if (/\b(papa(?! frita)|patata(?! frita)|batata|camote|boniato|yuca|mandioca|cassava|tap[íi]oca|tapioca|polenta|plátano macho|platano macho)\b/.test(name))
       return 'carbohidrato';

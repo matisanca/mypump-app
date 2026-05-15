@@ -24,10 +24,16 @@
       return 'grasa';
 
     // 4) FRUTAS Y VERDURAS — todo lo fresco vegetal (excepto tubérculos densos)
-    // EXCEPCIONES: polenta, harinas y cereales procesados son carbohidrato aunque deriven del maíz/trigo.
-    if (!/polenta|harina|copos? de ma[íi]z|corn flakes|trigo (sarraceno|burgol)/.test(name) && (
-        /\b(manzana|banana|plátano|platano|naranja|mandarina|kiwi|fresa|frutilla|uva|pera|durazno|melocot[óo]n|melocoton|ciruela|mel[óo]n|melon|sandía|sandia|pomelo|mango|ananá|anana|piña|pina|ar[áa]ndano|arandano|cereza|lim[óo]n|limon|papaya|mam[óo]n|maracuyá|maracuya|higo|frambuesa|mora|d[áa]til|datil|grosella|granada|guayaba|caqui|chirimoya|tuna|nispero|n[íi]spero|carambola|pitaya|lychee|rambut[áa]n|fruta de la pasi[óo]n|coco fresco)\b/.test(name) ||
-        /\b(zanahoria|calabaza|zapallito|zucchini|tomate|pepino|lechuga|rúcula|rucula|apio|repollo|berenjena|morr[óo]n|morron|pimiento|cebolla|ajo(?! en polvo)|chauch|arveja|guisante|remolacha|champiñ[óo]n|champinon|hongo|esp[áa]rrago|esparrago|alcauci|alcachof|palmito|ma[íi]z|choclo|puerro|acelga|radicheta|endivia|escarola|espinaca|brócoli|brocoli|coliflor|kale|repollito|rabanito|r[áa]bano|nabo|hinojo|jengibre fresco|cúrcuma fresca|verduras? salteadas|wok de verduras|ensalada (?!cesar|c[ée]sar))/.test(name)
+    // EXCEPCIONES: polenta, harinas y cereales procesados son carbohidrato.
+    // Usamos \w* en sufijo para tolerar plurales (frutillas, manzanas, etc.) y
+    // diminutivos (zapallitos). Para evitar falsos positivos con foods que
+    // contienen estas palabras en otro contexto (ej. "Helado de fresa"),
+    // el regex valida que sea palabra inicial o tras separadores.
+    if (!/polenta|harina|copos? de ma[íi]z|corn flakes|trigo (sarraceno|burgol)|helado|tarta|torta|kuchen|pie|mermelada|jugo|néctar|nectar|licuado|smoothie|jarabe|sirope/.test(name) && (
+        /\b(manzana|banan|pl[áa]tano|naranja|mandarin|kiwi|fres|frutilla|uva|pera|durazno|melocot[óo]n|ciruela|mel[óo]n|melon|sand[íi]a|pomelo|mango|anan[áa]|piña|pina|ar[áa]ndano|arandano|cereza|lim[óo]n|limon|papaya|mam[óo]n|maracuy[áa]|higo|frambuesa|mora|d[áa]til|datil|grosella|granada|guayaba|caqui|chirimoya|tuna|n[íi]spero|nispero|carambola|pitaya|lychee|rambut[áa]n|fruta de la pasi[óo]n|coco fresco)\w*/.test(name) ||
+        /\b(zanahoria|calabaza|zapallit|zucchini|tomate|pepino|lechug|r[úu]cula|rucula|apio|repollo|berenjena|morr[óo]n|morron|pimiento|cebolla|chauch|arveja|guisante|remolach|champiñ[óo]n|champinon|hongo|esp[áa]rrago|esparrago|alcauci|alcachof|palmito|ma[íi]z|choclo|puerro|acelga|radicheta|endivia|escarola|espinac|br[óo]coli|brocoli|coliflor|kale|repollito|rabanit|r[áa]bano|nabo|hinojo|jalapeñ|jalapeno|chile(?! con carne)|aj[íi] (picante|verde|rojo|amarillo)|pimentón fresco|jengibre fresco|cúrcuma fresca|verduras? salteadas|wok de verduras|ensalada (?!cesar|c[ée]sar))\w*/.test(name) ||
+        // ajo solo (sin "en polvo")
+        /^ajo$|^ajos$|^cabeza de ajo/.test(name)
       ))
       return 'fruta_verdura';
 
