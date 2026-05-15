@@ -135,6 +135,13 @@ main{padding:var(--space-4)}
 .set-confirm svg{width:18px;height:18px}
 .set-row.is-confirmed .set-confirm.is-edit{background:transparent;border-color:transparent;color:var(--color-text-muted)}
 
+/* EXERCISE IMAGES — mini thumbnail (colapsado) + grid grande (expandido) */
+.ex-thumb{width:44px;height:44px;border-radius:var(--radius-md);object-fit:cover;flex:0 0 auto;background:var(--color-bg-tertiary);margin-top:2px}
+.ex-images{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-top:var(--space-2)}
+.ex-img-card{margin:0;background:var(--color-bg-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);overflow:hidden;display:flex;flex-direction:column}
+.ex-img-card img{width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;display:block;background:var(--color-bg-tertiary)}
+.ex-img-card figcaption{padding:6px 8px;font-size:10px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.06em;text-align:center;background:var(--color-bg-primary);border-top:1px solid var(--color-border)}
+
 /* Accordions */
 .ex-extras{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-2)}
 .ex-extra-row{width:100%;display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3);background:var(--color-bg-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);color:var(--color-text-secondary);font-size:14px;cursor:pointer;text-align:left}
@@ -1456,9 +1463,16 @@ function renderExCard(ex, blockIdx) {
   let pips = '';
   for (let i=0; i<(prog.series ?? 0); i++) pips += `<span class="pip${i<completedSets?' done':''}"></span>`;
 
+  // Thumbnail mini si hay imágenes del ejercicio (Fase 1 PWA images).
+  // Usa la fase concéntrica (pico) por ser más reconocible visualmente.
+  const thumbHtml = ex.images && ex.images.concentric
+    ? `<img class="ex-thumb" src="${ex.images.concentric}" alt="" loading="lazy" onerror="this.style.display='none'">`
+    : '';
+
   const head = `
     <button class="ex-head" data-toggle="${ex.id}" aria-expanded="${isExpanded}">
       <div class="ex-status">${statusIcon}</div>
+      ${thumbHtml}
       <div class="ex-body">
         <div class="ex-name">${ex.nombre}${manualBadge}</div>
         <div class="ex-meta">
@@ -1488,6 +1502,17 @@ function renderExCard(ex, blockIdx) {
         ${exState.sets.map((s,i) => renderSetRow(ex, s, i, i===activeIdx)).join('')}
       </div>
       ${last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">Última sesión:</span><span class="val">${last}</span></div>` : ''}
+      ${ex.images && (ex.images.eccentric || ex.images.concentric) ? `
+        <div class="ex-images">
+          ${ex.images.eccentric ? `<figure class="ex-img-card">
+            <img src="${ex.images.eccentric}" alt="Posición inicial" loading="lazy" onerror="this.parentElement.style.display='none'">
+            <figcaption>Inicio</figcaption>
+          </figure>` : ''}
+          ${ex.images.concentric ? `<figure class="ex-img-card">
+            <img src="${ex.images.concentric}" alt="Pico del movimiento" loading="lazy" onerror="this.parentElement.style.display='none'">
+            <figcaption>Pico</figcaption>
+          </figure>` : ''}
+        </div>` : ''}
       ${(ex.notas_tecnica || ex.video_url) ? `
         <div class="ex-extras">
           ${ex.notas_tecnica ? `
