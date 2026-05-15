@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pump Team">
+  <!-- Fondo brand -->
+  <rect width="512" height="512" rx="96" fill="#10b981"/>
+  <!-- Átomo: 3 orbitales rotados + núcleo. Trazo blanco gordo, look fitness/tech. -->
+  <g transform="translate(256,256)" fill="none" stroke="#ffffff" stroke-width="20" stroke-linecap="round">
+    <ellipse cx="0" cy="0" rx="180" ry="68"/>
+    <ellipse cx="0" cy="0" rx="180" ry="68" transform="rotate(60)"/>
+    <ellipse cx="0" cy="0" rx="180" ry="68" transform="rotate(120)"/>
+    <circle cx="0" cy="0" r="34" fill="#ffffff" stroke="none"/>
+  </g>
+</svg>
