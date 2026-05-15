@@ -502,11 +502,11 @@ button svg:not([width]),a svg:not([width]){width:1em;height:1em}
 <div id="errorScreen" hidden>
   <div class="error-icon">🔒</div>
   <div class="error-title" id="errTitle">Enlace inválido</div>
-  <div class="error-sub" id="errSub">Este enlace no existe o fue revocado. Pedile a tu coach un nuevo acceso.</div>
+  <div class="error-sub" id="errSub">Este enlace no existe o fue revocado. Escribile a Mati por WhatsApp para que te mande uno nuevo.</div>
   <div class="error-code" id="errCode"></div>
   <!-- Form para pegar el link manualmente (caso PWA en iOS sin localStorage compartido) -->
   <div class="error-paste" id="errorPasteWrap" hidden>
-    <div class="error-paste-hint">Pegá acá el link que te envió tu coach:</div>
+    <div class="error-paste-hint">Pegá acá el link que te mandó Mati por WhatsApp:</div>
     <input type="text" id="errorPasteInput" class="error-paste-input"
            placeholder="https://app.mypumpteam.com/?t=…"
            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
@@ -1209,8 +1209,8 @@ function showError(type, detail) {
   const pasteWrap = $('#errorPasteWrap');
   if (pasteWrap) pasteWrap.hidden = (type !== 'no-token'); // form solo en 'no-token'
   if (type === 'no-token') {
-    $('#errTitle').textContent = 'Sin acceso';
-    $('#errSub').textContent = 'Esta URL no incluye un token. Pegá abajo el link que te mandó tu coach (lo encontrás en WhatsApp).';
+    $('#errTitle').textContent = 'Bienvenido a MyPump';
+    $('#errSub').textContent = 'Pegá abajo el link que te mandó Mati. Solo lo hacés esta vez — después la app abre directo.';
     $('#errCode').textContent = '';
     // Activar el form de pegado
     const inp = $('#errorPasteInput'), btn = $('#errorPasteBtn'), errEl = $('#errorPasteErr');
@@ -1246,11 +1246,11 @@ function showError(type, detail) {
     }
   } else if (type === 'service-down') {
     $('#errTitle').textContent = 'Servicio fuera de línea';
-    $('#errSub').textContent = 'No pudimos cargar tu plan. Probá de nuevo en unos minutos. Si persiste, avisale a tu coach — tu acceso sigue activo, es un problema temporal del servidor.';
+    $('#errSub').textContent = 'No pudimos cargar tu plan. Probá de nuevo en unos minutos. Si sigue sin entrar, avisale a Mati — tu acceso está bien, es un problema temporal del servidor.';
     $('#errCode').textContent = detail || '';
   } else {
     $('#errTitle').textContent = 'Enlace inválido';
-    $('#errSub').textContent = 'Este enlace no existe o fue revocado. Contactá a tu coach para obtener un nuevo acceso.';
+    $('#errSub').textContent = 'Este enlace no existe o fue revocado. Escribile a Mati por WhatsApp para que te mande uno nuevo.';
     $('#errCode').textContent = detail || '';
   }
 }
@@ -1345,7 +1345,7 @@ function renderTrain() {
   let html = '';
 
   if (DATA._isDemo) {
-    html += `<div class="demo-banner">⚠ <strong>Modo demo</strong> — tu coach aún no publicó tu plan. Los datos mostrados son de ejemplo.</div>`;
+    html += `<div class="demo-banner">⚠ <strong>Modo demo</strong> — Mati todavía no publicó tu plan. Los datos que ves son de ejemplo.</div>`;
   }
 
   if (allDone) {
@@ -1491,7 +1491,7 @@ function renderExCard(ex, blockIdx) {
       ${(ex.notas_tecnica || ex.video_url) ? `
         <div class="ex-extras">
           ${ex.notas_tecnica ? `
-            <button class="ex-extra-row is-note" data-acc="note-${ex.id}">${ICONS.note}<span class="label">Nota técnica del coach</span><span class="chev">${ICONS.chevron}</span></button>
+            <button class="ex-extra-row is-note" data-acc="note-${ex.id}">${ICONS.note}<span class="label">Nota técnica de Mati</span><span class="chev">${ICONS.chevron}</span></button>
             <div class="ex-extra-content" id="note-${ex.id}" hidden>${ex.notas_tecnica}</div>` : ''}
           ${ex.video_url ? `
             <button class="ex-extra-row" data-acc="video-${ex.id}">${ICONS.video}<span class="label">Ver video tutorial</span><span class="chev">${ICONS.chevron}</span></button>
