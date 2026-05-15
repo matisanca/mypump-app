@@ -236,4 +236,91 @@ window.mypumpDB = {
     return await rpc('mypump_get_adherencia_30d', { p_token: token });
   },
 
+  // ─── COMIDAS MARCADAS (tracking granular de macros) ──────
+
+  // Devuelve array de marcas del día. Cada fila: {comida_id, opcion_elegida, estado, marcada_en}.
+  async getComidasMarcadas(token, fecha) {
+    return await rpc('mypump_get_comidas_marcadas', { p_token: token, p_fecha: fecha });
+  },
+
+  // Marca (o re-marca) una comida. estado: 'comido' | 'saltado'.
+  // Devuelve {success, data, error}.
+  async marcarComida(token, fecha, comidaId, opcion, estado) {
+    return await rpcMutation('mypump_marcar_comida', {
+      p_token:     token,
+      p_fecha:     fecha,
+      p_comida_id: comidaId,
+      p_opcion:    opcion,
+      p_estado:    estado,
+    });
+  },
+
+  // Desmarca (vuelve a pendiente eliminando la fila). Devuelve {success, data:boolean, error}.
+  async desmarcarComida(token, fecha, comidaId) {
+    return await rpcMutation('mypump_desmarcar_comida', {
+      p_token:     token,
+      p_fecha:     fecha,
+      p_comida_id: comidaId,
+    });
+  },
+
+  // ─── FOOD SWAPS (persistencia backend multi-device) ──────
+
+  // Devuelve array de swaps del cliente para esa dieta.
+  // Cada fila: {comida_id, opt_idx, food_idx, food_data}.
+  async getFoodSwaps(token, dietaId) {
+    return await rpc('mypump_get_food_swaps', {
+      p_token:    token,
+      p_dieta_id: dietaId,
+    });
+  },
+
+  // Guarda (upsert) un swap. food_data debe ser el objeto food completo
+  // {name, qty, unit, kcal, prot, carb, fat, category}.
+  async saveFoodSwap(token, dietaId, comidaId, optIdx, foodIdx, foodData) {
+    return await rpcMutation('mypump_save_food_swap', {
+      p_token:     token,
+      p_dieta_id:  dietaId,
+      p_comida_id: comidaId,
+      p_opt_idx:   optIdx,
+      p_food_idx:  foodIdx,
+      p_food_data: foodData,
+    });
+  },
+
+  // Elimina un swap (deshacer). Devuelve {success, data:boolean, error}.
+  async deleteFoodSwap(token, dietaId, comidaId, optIdx, foodIdx) {
+    return await rpcMutation('mypump_delete_food_swap', {
+      p_token:     token,
+      p_dieta_id:  dietaId,
+      p_comida_id: comidaId,
+      p_opt_idx:   optIdx,
+      p_food_idx:  foodIdx,
+    });
+  },
+
+  // ─── CUSTOM FOODS (alimentos personalizados del cliente) ──
+
+  // Devuelve array de custom foods del cliente.
+  async getCustomFoods(token) {
+    return await rpc('mypump_get_custom_foods', { p_token: token });
+  },
+
+  // Crea (o actualiza si nombre repetido) un custom food.
+  // foodData: {name, kcal, prot, carb, fat, unit, unitGrams, category}.
+  // Devuelve {success, data, error}.
+  async createCustomFood(token, foodData) {
+    return await rpcMutation('mypump_create_custom_food', {
+      p_token:      token,
+      p_name:       foodData.name,
+      p_kcal:       foodData.kcal,
+      p_prot:       foodData.prot,
+      p_carb:       foodData.carb,
+      p_fat:        foodData.fat,
+      p_unit:       foodData.unit || 'g',
+      p_unit_grams: foodData.unitGrams ?? null,
+      p_category:   foodData.category || null,
+    });
+  },
+
 };

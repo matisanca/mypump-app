@@ -273,7 +273,36 @@ main{padding:var(--space-4)}
 .macro.p .bar span{background:#3b82f6}
 .macro.c .bar span{background:#f59e0b}
 .macro.f .bar span{background:#dc2626}
-.meal{background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:var(--space-3)}
+
+/* RING PROGRESS — fill animado del kcal-ring */
+.kcal-ring .ring{stroke:var(--color-brand);fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .4s ease}
+
+/* CONSUMIDO HOY — barra de progreso + macros consumidos */
+.consumido-row{display:flex;flex-direction:column;gap:6px;padding-top:var(--space-3);border-top:1px solid var(--color-border)}
+.consumido-hdr{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--color-text-muted)}
+.consumido-lbl{font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.consumido-progreso{font-family:var(--font-mono)}
+.consumido-bar{height:6px;background:var(--color-bg-tertiary);border-radius:var(--radius-full);overflow:hidden}
+.consumido-bar-fill{height:100%;background:var(--color-brand);border-radius:var(--radius-full);transition:width .3s ease}
+.consumido-macros{font-family:var(--font-mono);font-size:12px;color:var(--color-text-secondary)}
+
+/* MEAL — variantes de estado tracking */
+.meal{background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:var(--space-3);transition:border-color .2s,opacity .2s}
+.meal.is-comido{border-left:3px solid var(--color-brand)}
+.meal.is-saltado{opacity:.55}
+.meal.is-saltado .meal-name,.meal.is-saltado .meal-sub{text-decoration:line-through}
+.meal-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:var(--radius-sm);font-size:11px;font-weight:700;line-height:1}
+.meal-badge.ok{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));color:var(--color-brand)}
+.meal-badge.skip{background:var(--color-bg-tertiary);color:var(--color-text-muted)}
+
+/* MEAL TRACK — botones ✓ Comí / ✗ Salté */
+.meal-track{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 var(--space-4) var(--space-3)}
+.track-btn{height:38px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--color-text-secondary);transition:background .15s,border-color .15s}
+.track-btn:active{transform:scale(.97)}
+.track-btn.track-yes.is-active{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));border-color:var(--color-brand);color:var(--color-brand)}
+.track-btn.track-no.is-active{background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border-color:#ef4444;color:#ef4444}
+
+
 .meal-head{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);cursor:pointer;width:100%;text-align:left;background:transparent;border:0}
 .meal-head .meal-num{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--color-border-strong);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--color-text-muted)}
 .meal-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -531,6 +560,8 @@ const STATE = {
   mydayLoaded:        false,
   adhOpen:            false,
   adhData:            null,
+  comidasMarcadas:    {},          // comida_id → {opcion, estado, marcada_en}
+  comidasLoaded:      false,
 };
 
 /* ---- SAMPLE DATA (fallback when no rutina/dieta published) ---- */
@@ -1734,6 +1765,96 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* ---- DIET SCENE ---- */
+/* ---- DIET TRACKING (marcar qué comí + macros consumidos) ----
+ * Una marca por (cliente, fecha, comida_id). Si no hay fila → pendiente.
+ * Estado: 'comido' | 'saltado'. La marca guarda la opción A/B/C elegida
+ * AL MOMENTO de marcar, así si el cliente cambia el tab a otra opción
+ * después, el cálculo de macros consumidos mantiene la opción real.
+ */
+async function loadComidasMarcadas() {
+  if (!TOKEN || (DATA && DATA._isDemo)) {
+    STATE.comidasMarcadas = {};
+    STATE.comidasLoaded = true;
+    if (STATE.scene === 'diet') renderDiet();
+    return;
+  }
+  try {
+    const rows = await window.mypumpDB.getComidasMarcadas(TOKEN, TODAY_LOCAL);
+    const map = {};
+    (rows || []).forEach(r => {
+      map[r.comida_id] = {
+        opcion:     r.opcion_elegida,
+        estado:     r.estado,
+        marcada_en: r.marcada_en,
+      };
+    });
+    STATE.comidasMarcadas = map;
+    STATE.comidasLoaded = true;
+    if (STATE.scene === 'diet') renderDiet();
+  } catch(e) {
+    console.error('[Diet] error cargando comidas marcadas:', e);
+    STATE.comidasMarcadas = {};
+    STATE.comidasLoaded = true;
+  }
+}
+
+async function toggleComidaEstado(comidaId, nuevoEstado) {
+  // nuevoEstado: 'comido' | 'saltado' | null (null = desmarcar)
+  const plan = getActivePlan();
+  const comida = plan.comidas.find(c => c.id === comidaId);
+  if (!comida) return;
+  const optIdx = STATE.meals[comidaId]?.selectedOpt || 0;
+  const opcionNombre = comida.options[optIdx]?.name || 'A';
+
+  // Optimistic update
+  const prev = STATE.comidasMarcadas[comidaId];
+  if (nuevoEstado === null) delete STATE.comidasMarcadas[comidaId];
+  else STATE.comidasMarcadas[comidaId] = { opcion: opcionNombre, estado: nuevoEstado };
+  renderDiet();
+
+  // Modo demo: solo memoria, no backend
+  if (!TOKEN || (DATA && DATA._isDemo)) return;
+
+  let res;
+  if (nuevoEstado === null) {
+    res = await window.mypumpDB.desmarcarComida(TOKEN, TODAY_LOCAL, comidaId);
+  } else {
+    res = await window.mypumpDB.marcarComida(TOKEN, TODAY_LOCAL, comidaId, opcionNombre, nuevoEstado);
+  }
+  if (!res.success) {
+    // Rollback
+    if (prev) STATE.comidasMarcadas[comidaId] = prev;
+    else delete STATE.comidasMarcadas[comidaId];
+    renderDiet();
+    console.error('[Diet] error marcando comida:', res.error);
+  }
+}
+
+function calcularConsumido() {
+  const plan = getActivePlan();
+  const tot = { kcal: 0, prot: 0, carb: 0, fat: 0 };
+  let nComidas = 0, nComidasMarcadas = 0;
+  for (const c of plan.comidas) {
+    nComidas++;
+    const mark = STATE.comidasMarcadas[c.id];
+    if (!mark || mark.estado !== 'comido') continue;
+    nComidasMarcadas++;
+    // Usar la opción guardada en la marca (no la actualmente seleccionada en UI)
+    const optIdx = c.options.findIndex(o => o.name === mark.opcion);
+    const opt = c.options[optIdx >= 0 ? optIdx : 0];
+    const idxFinal = optIdx >= 0 ? optIdx : 0;
+    // Aplicar swaps con getEffectiveFood (respeta sustituciones del cliente)
+    const foods = opt.foods.map((f, fi) => getEffectiveFood(f, c.id, idxFinal, fi));
+    for (const f of foods) {
+      tot.kcal += f.kcal || 0;
+      tot.prot += f.prot || 0;
+      tot.carb += f.carb || 0;
+      tot.fat  += f.fat  || 0;
+    }
+  }
+  return { ...tot, nComidas, nComidasMarcadas };
+}
+
 function renderDiet() {
   const root = $('#scene-diet');
   const plan = getActivePlan();
@@ -1749,6 +1870,13 @@ function renderDiet() {
     }</div>`;
   }
 
+  // Calcular consumido y porcentaje del ring de kcal
+  const consumido = calcularConsumido();
+  const pctKcal = tg.kcal > 0 ? Math.min(100, (consumido.kcal / tg.kcal) * 100) : 0;
+  // Ring SVG: circunferencia = 2 * PI * r (r=36) ≈ 226.19
+  const RING_CIRC = 226.19;
+  const ringOffset = RING_CIRC * (1 - pctKcal / 100);
+
   root.innerHTML = `
   ${tipoDiaHtml}
   <div class="diet-hdr">
@@ -1756,8 +1884,11 @@ function renderDiet() {
       <div class="kcal-ring">
         <svg viewBox="0 0 88 88">
           <circle class="track" cx="44" cy="44" r="36"/>
+          <circle class="ring" cx="44" cy="44" r="36"
+                  stroke-dasharray="${RING_CIRC.toFixed(2)}"
+                  stroke-dashoffset="${ringOffset.toFixed(2)}"/>
         </svg>
-        <div class="center"><span class="num">${tg.kcal.toLocaleString('es-AR')}</span><span class="lbl">kcal</span></div>
+        <div class="center"><span class="num">${Math.round(consumido.kcal).toLocaleString('es-AR')}</span><span class="lbl">/${tg.kcal}</span></div>
       </div>
       <div class="diet-info">
         <div class="eyebrow">DIETA · SEM ${DATA.rutina.semana_actual}/${DATA.rutina.semanas_total}</div>
@@ -1769,6 +1900,21 @@ function renderDiet() {
       ${renderMacroTarget('p','Proteína',tg.prot,'g')}
       ${renderMacroTarget('c','Carbs',tg.carb,'g')}
       ${renderMacroTarget('f','Grasa',tg.fat,'g')}
+    </div>
+    <div class="consumido-row">
+      <div class="consumido-hdr">
+        <span class="consumido-lbl">Consumido hoy</span>
+        <span class="consumido-progreso">${consumido.nComidasMarcadas}/${consumido.nComidas} comidas</span>
+      </div>
+      <div class="consumido-bar">
+        <div class="consumido-bar-fill" style="width:${pctKcal.toFixed(1)}%"></div>
+      </div>
+      <div class="consumido-macros">
+        <strong>${Math.round(consumido.kcal)}</strong> / ${tg.kcal} kcal ·
+        <strong>${Math.round(consumido.prot)}</strong>p ·
+        <strong>${Math.round(consumido.carb)}</strong>c ·
+        <strong>${Math.round(consumido.fat)}</strong>g
+      </div>
     </div>
   </div>
   ${plan.comidas.map((c,i) => renderMeal(c,i)).join('')}`;
@@ -1821,16 +1967,32 @@ function renderMeal(c, idx) {
   }), {kcal:0,prot:0,carb:0,fat:0});
   const mealNum = idx !== undefined ? idx+1 : c.id.replace('c','');
 
+  // Estado de tracking (comido/saltado/pendiente)
+  const mark = STATE.comidasMarcadas[c.id];
+  const estado = mark?.estado;
+  const mealCls = 'meal' + (estado === 'comido' ? ' is-comido' : estado === 'saltado' ? ' is-saltado' : '');
+  const badge = estado === 'comido'  ? ' <span class="meal-badge ok">✓</span>'
+              : estado === 'saltado' ? ' <span class="meal-badge skip">✗</span>'
+              : '';
+
   return `
-  <div class="meal">
+  <div class="${mealCls}">
     <button class="meal-head" data-meal="${c.id}">
       <span class="meal-num">${mealNum}</span>
       <div class="meal-info">
-        <div class="meal-name">${c.name}</div>
+        <div class="meal-name">${c.name}${badge}</div>
         <div class="meal-sub">opción ${opt.name} · ${opt.foods.length} alimentos</div>
       </div>
       <span class="meal-kcal">${Math.round(tot.kcal)}<small>kcal</small></span>
     </button>
+    <div class="meal-track">
+      <button class="track-btn track-yes${estado==='comido' ? ' is-active' : ''}"
+              data-comida-mark="${c.id}|comido"
+              aria-label="Marcar como comido">✓ Comí</button>
+      <button class="track-btn track-no${estado==='saltado' ? ' is-active' : ''}"
+              data-comida-mark="${c.id}|saltado"
+              aria-label="Marcar como saltado">✗ Salté</button>
+    </div>
     <div class="meal-body">
       <div class="opt-tabs">
         ${c.options.map((o,i) =>
@@ -1859,8 +2021,16 @@ function bindDietEvents() {
   }));
   // Expand/collapse meal (sin acciones hijas)
   $$('[data-meal]').forEach(btn => btn.addEventListener('click', e => {
-    if (e.target.closest('[data-opt]') || e.target.closest('[data-swap]') || e.target.closest('[data-revert]')) return;
+    if (e.target.closest('[data-opt]') || e.target.closest('[data-swap]') || e.target.closest('[data-revert]') || e.target.closest('[data-comida-mark]')) return;
     renderDiet();
+  }));
+  // Toggle "✓ Comí" / "✗ Salté" — no expande el meal
+  $$('[data-comida-mark]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const [comidaId, accion] = btn.getAttribute('data-comida-mark').split('|');
+    const current = STATE.comidasMarcadas[comidaId]?.estado;
+    const nuevo = current === accion ? null : accion; // toggle: re-tap desmarca
+    toggleComidaEstado(comidaId, nuevo);
   }));
   // Cambio de opción
   $$('[data-opt]').forEach(btn => btn.addEventListener('click', e => {
@@ -2498,6 +2668,8 @@ async function init() {
   renderDiet();
   // Mi Día y Progress cargan de forma lazy cuando se abre el tab
   loadMyday(); // inicia en background; cuando termina, STATE.mydayLoaded = true
+  // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
+  loadComidasMarcadas();
 }
 
 /* ---- SWAP MODAL ---- */
