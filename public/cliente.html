@@ -350,6 +350,26 @@ main{padding:var(--space-4)}
 .swap-delta.ok{color:#16a34a}
 .swap-delta.warn{color:#f59e0b}
 .swap-empty{padding:var(--space-6) var(--space-4);text-align:center;color:var(--color-text-muted);font-size:14px;line-height:1.6}
+.swap-sheet{max-height:88vh;display:flex;flex-direction:column}
+.swap-search-row{display:flex;align-items:center;gap:var(--space-2);margin:var(--space-2) 0}
+.swap-search{flex:1;height:40px;padding:0 var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:14px;outline:none;transition:border-color .15s}
+.swap-search:focus{border-color:var(--color-brand);background:var(--color-bg-primary)}
+.swap-count{font-family:var(--font-mono);font-size:11px;color:var(--color-text-muted);flex:0 0 auto;padding:0 var(--space-2)}
+.swap-custom-badge{display:inline-block;margin-left:6px;padding:1px 6px;font-size:9px;font-weight:700;border-radius:var(--radius-sm);background:color-mix(in oklab,#8b5cf6 14%,var(--color-bg-primary));color:#8b5cf6;letter-spacing:.04em;text-transform:uppercase}
+.btn-custom-food{width:100%;height:44px;background:transparent;color:var(--color-text-secondary);border:1px dashed var(--color-border);border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer;margin-top:var(--space-3);display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s,border-color .15s}
+.btn-custom-food:hover{background:var(--color-bg-secondary);color:var(--color-text-primary);border-color:var(--color-border-strong);border-style:solid}
+
+/* CUSTOM FOOD MODAL */
+.custom-food-sheet{max-width:440px}
+.cf-hint{font-size:12px;color:var(--color-text-muted);margin-bottom:var(--space-3);line-height:1.5}
+.cf-form{display:flex;flex-direction:column;gap:var(--space-3)}
+.cf-field{display:flex;flex-direction:column;gap:4px;flex:1}
+.cf-field>span{font-size:11px;color:var(--color-text-muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.cf-field input,.cf-field select{height:40px;padding:0 var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:14px;outline:none;font-family:inherit;color:var(--color-text-primary)}
+.cf-field input:focus,.cf-field select:focus{border-color:var(--color-brand);background:var(--color-bg-primary)}
+.cf-macros-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
+.cf-unit-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}
+.cf-err{padding:var(--space-2) var(--space-3);background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border:1px solid #ef4444;border-radius:var(--radius-md);color:#ef4444;font-size:12px;margin-top:var(--space-2)}
 
 /* PROGRESO */
 .prog-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-2);margin-bottom:var(--space-4)}
@@ -2050,15 +2070,75 @@ function bindDietEvents() {
     if (!food) return;
     openSwapModal(food, comidaId, +optIdx, +foodIdx);
   }));
-  // Revertir swap
-  $$('[data-revert]').forEach(btn => btn.addEventListener('click', e => {
+  // Revertir swap — local + backend
+  $$('[data-revert]').forEach(btn => btn.addEventListener('click', async e => {
     e.stopPropagation();
     const [comidaId, optIdx, foodIdx] = btn.getAttribute('data-revert').split('|');
     const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
     delete STATE.foodSwaps[key];
     persistSwaps();
     renderDiet();
+    if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
+      const res = await window.mypumpDB.deleteFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx);
+      if (!res.success) console.warn('[swap] error borrando swap en backend:', res.error);
+    }
   }));
+}
+
+// Hidrata foodSwaps + custom foods desde Supabase y re-renderiza la dieta.
+// También migra los swaps de localStorage al backend la primera vez (one-shot).
+async function hydrateSwapsAndCustomFoodsFromBackend() {
+  try {
+    // 1. Custom foods → agregar a MYPUMP_FOOD_DB
+    const customs = await window.mypumpDB.getCustomFoods(TOKEN) || [];
+    customs.forEach(cf => {
+      const food = {
+        name: cf.name,
+        kcal: Number(cf.kcal),
+        prot: Number(cf.prot),
+        carb: Number(cf.carb),
+        fat:  Number(cf.fat),
+        unit: cf.unit,
+        unitGrams: cf.unit_grams ? Number(cf.unit_grams) : undefined,
+        category: cf.category,
+        _isCustom: true,
+      };
+      const idx = window.MYPUMP_FOOD_DB.findIndex(f => f.name.toLowerCase() === food.name.toLowerCase());
+      if (idx >= 0) window.MYPUMP_FOOD_DB[idx] = food;
+      else window.MYPUMP_FOOD_DB.push(food);
+    });
+
+    // 2. Food swaps remotos
+    const remoteSwaps = await window.mypumpDB.getFoodSwaps(TOKEN, DIETA_ID) || [];
+
+    if (remoteSwaps.length === 0 && Object.keys(STATE.foodSwaps).length > 0) {
+      // Caso migración: hay swaps en localStorage pero ninguno en backend → subir los locales
+      const promises = [];
+      for (const [key, swap] of Object.entries(STATE.foodSwaps)) {
+        if (!swap || !swap.current) continue;
+        // key format: swap_${DIETA_ID}_${comidaId}_${optIdx}_${foodIdx}
+        const m = key.match(new RegExp(`^swap_${DIETA_ID}_(.+?)_(\\d+)_(\\d+)$`));
+        if (!m) continue;
+        const [, comidaId, optIdx, foodIdx] = m;
+        promises.push(window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, swap.current));
+      }
+      await Promise.allSettled(promises);
+    } else if (remoteSwaps.length > 0) {
+      // Backend es la fuente de verdad — sobrescribir STATE.foodSwaps
+      const newSwaps = {};
+      remoteSwaps.forEach(s => {
+        const key = `swap_${DIETA_ID}_${s.comida_id}_${s.opt_idx}_${s.food_idx}`;
+        newSwaps[key] = { original: null, current: s.food_data };
+      });
+      STATE.foodSwaps = newSwaps;
+      persistSwaps(); // mantener cache local sincronizado
+    }
+
+    // Si estamos en la escena de dieta, re-renderizar para reflejar swaps/custom foods
+    if (STATE.scene === 'diet') renderDiet();
+  } catch (e) {
+    console.warn('[init] hydrate swaps/custom foods error:', e);
+  }
 }
 
 /* ---- PROGRESS SCENE ---- */
@@ -2611,10 +2691,16 @@ async function init() {
 
   STATE.meals = buildMeals();
 
-  // Cargar swaps persistidos (se resetean cuando cambia DIETA_ID)
+  // Cargar swaps persistidos del localStorage (fast path; sirve como cache de lectura)
   STATE.foodSwaps = JSON.parse(
     localStorage.getItem(`mypump_food_swaps_${DIETA_ID||'demo'}`) || '{}'
   );
+
+  // Hidratar foodSwaps + custom foods desde Supabase (multi-device + truth of source)
+  // Es paralelo y no bloqueante; re-renderiza la dieta cuando termina.
+  if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
+    hydrateSwapsAndCustomFoodsFromBackend();
+  }
 
   STATE.session = buildSession();
 
@@ -2673,11 +2759,11 @@ async function init() {
 }
 
 /* ---- SWAP MODAL ---- */
-let _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null };
+let _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null, query:'' };
 const _swapCache = {};
 
 function openSwapModal(food, comidaId, optIdx, foodIdx) {
-  _swapState = { comidaId, optIdx, foodIdx, original:food, selected:null };
+  _swapState = { comidaId, optIdx, foodIdx, original:food, selected:null, query:'' };
   const cat = food.category || inferFoodCategory(food);
 
   if (cat === 'condimento') {
@@ -2694,25 +2780,43 @@ function openSwapModal(food, comidaId, optIdx, foodIdx) {
     return;
   }
 
-  const cacheKey = `${food.name}__${cat}`;
+  // Cache de sustitutos (recalcula si se agregó un custom food después)
+  const cacheKey = `${food.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
   if (!_swapCache[cacheKey]) {
-    const db = window.MYPUMP_FOOD_DB || [];
     _swapCache[cacheKey] = window.MyPump
       ? window.MyPump.foodSwap.findSubstitutes(food)
       : [];
   }
-  const subs = _swapCache[cacheKey];
+
+  renderSwapModal();
+}
+
+function renderSwapModal() {
+  const { original: food, query } = _swapState;
+  const cat = food.category || inferFoodCategory(food);
+  const cacheKey = `${food.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
+  const allSubs = _swapCache[cacheKey] || [];
+
+  // Filtro por query (búsqueda libre por nombre)
+  const subs = query
+    ? allSubs.filter(s => s.name.toLowerCase().includes(query.toLowerCase().trim()))
+    : allSubs;
 
   const subsHtml = subs.length === 0
-    ? `<div class="swap-empty">No hay sustitutos equivalentes disponibles (±15% kcal).</div>`
-    : `<div class="swap-list">${subs.map((s,i) => {
-        const origKcal = food.kcal; // ya es total de porción (MyPump v2 data model)
+    ? `<div class="swap-empty">${query
+        ? `Sin resultados para "${query}". Probá crear tu alimento personalizado.`
+        : 'No hay sustitutos equivalentes disponibles dentro del rango de macros.'}</div>`
+    : `<div class="swap-list">${subs.map((s) => {
+        // Encontrar el índice original en allSubs para que selectSwapCard funcione tras filtros
+        const origIdx = allSubs.indexOf(s);
+        const origKcal = food.kcal;
         const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
         const sign = kcalDiff > 0 ? '+' : '';
         const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
-        return `<div class="swap-card" data-sub="${i}" onclick="selectSwapCard(this,${i})">
+        const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
+        return `<div class="swap-card${origIdx===_swapState.selected?' is-selected':''}" data-sub="${origIdx}" onclick="selectSwapCard(this,${origIdx})">
           <div class="swap-card-info">
-            <div class="swap-card-name">${s.name}</div>
+            <div class="swap-card-name">${s.name}${customBadge}</div>
             <div class="swap-card-qty">${s.qty} ${s.unit}</div>
             <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
           </div>
@@ -2722,22 +2826,76 @@ function openSwapModal(food, comidaId, optIdx, foodIdx) {
 
   $('#modalHost').innerHTML = `
   <div class="modal-back" id="swapModalBack">
-    <div class="modal-sheet">
+    <div class="modal-sheet swap-sheet">
       <div class="modal-handle"></div>
       <div class="modal-title">Sustituir alimento</div>
       <div class="swap-original">
         <div class="sw-name">${food.name}</div>
         <div class="sw-meta">${food.qty} ${food.unit} · ${food.kcal} kcal · ${food.prot}p / ${food.carb}c / ${food.fat}g</div>
       </div>
-      <div class="swap-subs-title">Equivalentes — ${cat}</div>
+      <div class="swap-search-row">
+        <input type="text" id="swapSearch" class="swap-search" placeholder="Buscar alimento..." value="${query.replace(/"/g,'&quot;')}" />
+        <span class="swap-count">${subs.length}/${allSubs.length}</span>
+      </div>
+      <div class="swap-subs-title">Equivalentes — categoría: ${cat}</div>
       ${subsHtml}
-      <div style="display:flex;gap:8px;margin-top:var(--space-4)">
+      <button class="btn-custom-food" onclick="openCustomFoodModal()">
+        + Crear alimento personalizado
+      </button>
+      <div style="display:flex;gap:8px;margin-top:var(--space-3)">
         <button class="btn-secondary" style="flex:1" onclick="closeSwapModal()">Cancelar</button>
-        <button class="btn-primary" style="flex:2" id="swapConfirmBtn" disabled onclick="confirmSwap()">Sustituir</button>
+        <button class="btn-primary" style="flex:2" id="swapConfirmBtn" ${_swapState.selected===null?'disabled':''} onclick="confirmSwap()">Sustituir</button>
       </div>
     </div>
   </div>`;
   $('#swapModalBack').addEventListener('click', e => { if(e.target===e.currentTarget) closeSwapModal(); });
+  // Bind del search input — re-render con el filtro
+  const search = $('#swapSearch');
+  if (search) {
+    search.addEventListener('input', e => {
+      _swapState.query = e.target.value;
+      // Solo re-renderizar la lista, no todo el modal, para no perder el foco
+      _swapRenderListOnly();
+    });
+    // Auto-focus solo si ya había query (evita el teclado pop al abrir)
+    if (query) { search.focus(); search.setSelectionRange(query.length, query.length); }
+  }
+}
+
+// Re-render parcial solo de la lista de sustitutos (evita perder el foco del input)
+function _swapRenderListOnly() {
+  const { original: food, query } = _swapState;
+  const cat = food.category || inferFoodCategory(food);
+  const cacheKey = `${food.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
+  const allSubs = _swapCache[cacheKey] || [];
+  const subs = query
+    ? allSubs.filter(s => s.name.toLowerCase().includes(query.toLowerCase().trim()))
+    : allSubs;
+
+  const listEl = $('.swap-list, .swap-empty');
+  if (!listEl) return;
+  const newEl = document.createElement('div');
+  newEl.innerHTML = subs.length === 0
+    ? `<div class="swap-empty">${query ? `Sin resultados para "${query}". Probá crear tu alimento personalizado.` : 'Sin sustitutos disponibles.'}</div>`
+    : `<div class="swap-list">${subs.map(s => {
+        const origIdx = allSubs.indexOf(s);
+        const origKcal = food.kcal;
+        const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
+        const sign = kcalDiff > 0 ? '+' : '';
+        const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
+        const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
+        return `<div class="swap-card${origIdx===_swapState.selected?' is-selected':''}" data-sub="${origIdx}" onclick="selectSwapCard(this,${origIdx})">
+          <div class="swap-card-info">
+            <div class="swap-card-name">${s.name}${customBadge}</div>
+            <div class="swap-card-qty">${s.qty} ${s.unit}</div>
+            <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
+          </div>
+          <span class="swap-delta ${dCls}">${sign}${kcalDiff}%</span>
+        </div>`;
+      }).join('')}</div>`;
+  listEl.replaceWith(newEl.firstElementChild);
+  const countEl = $('.swap-count');
+  if (countEl) countEl.textContent = `${subs.length}/${allSubs.length}`;
 }
 
 function selectSwapCard(el, idx) {
@@ -2750,14 +2908,14 @@ function selectSwapCard(el, idx) {
 
 function closeSwapModal() {
   $('#modalHost').innerHTML = '';
-  _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null };
+  _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null, query:'' };
 }
 
-function confirmSwap() {
+async function confirmSwap() {
   if (_swapState.selected === null) return;
   const { comidaId, optIdx, foodIdx, original } = _swapState;
   const cat = original.category || inferFoodCategory(original);
-  const cacheKey = `${original.name}__${cat}`;
+  const cacheKey = `${original.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
   const subs = _swapCache[cacheKey] || [];
   const sub = subs[_swapState.selected];
   if (!sub) return;
@@ -2767,6 +2925,159 @@ function confirmSwap() {
   persistSwaps();
   closeSwapModal();
   renderDiet();
+
+  // Persistir en backend (paralelo, no bloqueante). Demo mode: solo local.
+  if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
+    const res = await window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, sub);
+    if (!res.success) console.warn('[swap] error guardando swap en backend:', res.error);
+  }
+}
+
+// ---- CUSTOM FOOD MODAL ----
+function openCustomFoodModal() {
+  const original = _swapState.original;
+  if (!original) return;
+  const originalCat = original.category || inferFoodCategory(original);
+
+  $('#modalHost').innerHTML = `
+  <div class="modal-back" id="customFoodBack">
+    <div class="modal-sheet custom-food-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Crear alimento personalizado</div>
+      <div class="cf-hint">Ingresá los macros del alimento por porción (lo que realmente vas a comer).</div>
+      <div class="cf-form">
+        <label class="cf-field"><span>Nombre</span>
+          <input type="text" id="cfName" placeholder="Ej: Pan integral marca X" />
+        </label>
+        <label class="cf-field"><span>Kcal por porción</span>
+          <input type="number" id="cfKcal" min="0" step="1" placeholder="0" />
+        </label>
+        <div class="cf-macros-row">
+          <label class="cf-field"><span>Prot (g)</span>
+            <input type="number" id="cfProt" min="0" step="0.1" placeholder="0" />
+          </label>
+          <label class="cf-field"><span>Carbo (g)</span>
+            <input type="number" id="cfCarb" min="0" step="0.1" placeholder="0" />
+          </label>
+          <label class="cf-field"><span>Grasa (g)</span>
+            <input type="number" id="cfFat" min="0" step="0.1" placeholder="0" />
+          </label>
+        </div>
+        <div class="cf-unit-row">
+          <label class="cf-field"><span>Unidad</span>
+            <select id="cfUnit">
+              <option value="g">gramos (g)</option>
+              <option value="ml">mililitros (ml)</option>
+              <option value="unidad">unidad</option>
+              <option value="rebanada">rebanada</option>
+              <option value="taza">taza</option>
+              <option value="porcion">porción</option>
+              <option value="cucharada">cucharada</option>
+            </select>
+          </label>
+          <label class="cf-field" id="cfUnitGramsField" style="display:none"><span>Gramos por unidad</span>
+            <input type="number" id="cfUnitGrams" min="1" step="1" placeholder="60" />
+          </label>
+        </div>
+        <input type="hidden" id="cfCategory" value="${originalCat}" />
+      </div>
+      <div class="cf-err" id="cfErr" style="display:none"></div>
+      <div style="display:flex;gap:8px;margin-top:var(--space-3)">
+        <button class="btn-secondary" style="flex:1" onclick="closeCustomFoodModal()">Cancelar</button>
+        <button class="btn-primary" style="flex:2" onclick="saveCustomFood()">Crear y usar</button>
+      </div>
+    </div>
+  </div>`;
+  $('#customFoodBack').addEventListener('click', e => { if(e.target===e.currentTarget) closeCustomFoodModal(); });
+
+  // Toggle del campo "gramos por unidad" según unidad seleccionada
+  const unitSel = $('#cfUnit');
+  const unitGramsField = $('#cfUnitGramsField');
+  function syncUnitGramsField() {
+    const v = unitSel.value;
+    unitGramsField.style.display = (v === 'g' || v === 'ml') ? 'none' : 'flex';
+  }
+  unitSel.addEventListener('change', syncUnitGramsField);
+  syncUnitGramsField();
+  // Auto-focus nombre
+  setTimeout(() => { const n = $('#cfName'); if (n) n.focus(); }, 60);
+}
+
+function closeCustomFoodModal() {
+  // Volver al swap modal en vez de cerrar todo
+  if (_swapState.original) renderSwapModal();
+  else $('#modalHost').innerHTML = '';
+}
+
+async function saveCustomFood() {
+  const name = $('#cfName').value.trim();
+  const kcal = parseFloat($('#cfKcal').value);
+  const prot = parseFloat($('#cfProt').value);
+  const carb = parseFloat($('#cfCarb').value);
+  const fat  = parseFloat($('#cfFat').value);
+  const unit = $('#cfUnit').value;
+  const unitGramsRaw = $('#cfUnitGrams') ? $('#cfUnitGrams').value : '';
+  const unitGrams = (unit === 'g' || unit === 'ml') ? null : parseFloat(unitGramsRaw);
+  const category = $('#cfCategory').value;
+
+  const errEl = $('#cfErr');
+  function showErr(msg) { if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; } }
+
+  if (!name) { showErr('El nombre es obligatorio.'); return; }
+  if (!(kcal >= 0) || !(prot >= 0) || !(carb >= 0) || !(fat >= 0)) {
+    showErr('Los macros deben ser números válidos (≥ 0).'); return;
+  }
+  if (unit !== 'g' && unit !== 'ml' && (!unitGrams || unitGrams <= 0)) {
+    showErr(`Para "${unit}" tenés que indicar gramos por unidad.`); return;
+  }
+
+  const foodData = {
+    name, kcal, prot, carb, fat, unit,
+    unitGrams: unitGrams || undefined,
+    category,
+  };
+
+  // Demo / sin token: agregar solo en memoria
+  if (!TOKEN || (DATA && DATA._isDemo)) {
+    const localFood = { ...foodData, _isCustom: true };
+    if (!window.MYPUMP_FOOD_DB.find(f => f.name.toLowerCase() === name.toLowerCase())) {
+      window.MYPUMP_FOOD_DB.push(localFood);
+    }
+    _invalidateSwapCache();
+    closeCustomFoodModal();
+    return;
+  }
+
+  // Backend
+  const res = await window.mypumpDB.createCustomFood(TOKEN, foodData);
+  if (!res.success) {
+    showErr(res.error || 'No se pudo crear el alimento. Probá de nuevo.');
+    return;
+  }
+  // Agregar a la DB local para que aparezca en los sustitutos
+  const created = res.data && res.data[0];
+  if (created) {
+    const localFood = {
+      name: created.name,
+      kcal: Number(created.kcal),
+      prot: Number(created.prot),
+      carb: Number(created.carb),
+      fat:  Number(created.fat),
+      unit: created.unit,
+      unitGrams: created.unit_grams ? Number(created.unit_grams) : undefined,
+      category: created.category,
+      _isCustom: true,
+    };
+    const existingIdx = window.MYPUMP_FOOD_DB.findIndex(f => f.name.toLowerCase() === localFood.name.toLowerCase());
+    if (existingIdx >= 0) window.MYPUMP_FOOD_DB[existingIdx] = localFood;
+    else window.MYPUMP_FOOD_DB.push(localFood);
+  }
+  _invalidateSwapCache();
+  closeCustomFoodModal();
+}
+
+function _invalidateSwapCache() {
+  for (const k of Object.keys(_swapCache)) delete _swapCache[k];
 }
 
 init();

@@ -4,7 +4,18 @@
 
 window.MyPump = {};
 
-/* ---- FOOD SWAP ---- */
+/* ---- FOOD SWAP ----
+ * Política (decidida con Mati):
+ *  - Misma categoría (no cross — proteína por proteína, etc.)
+ *  - Mismo macro dominante
+ *  - kcal ratio estrecho (±10%) → "macros muy parecidos"
+ *  - REGLA ANTI-REDUCCIÓN DE PROTEÍNA: el sustituto no puede tener
+ *    significativamente menos prot que el original (tolerancia 10%
+ *    para no devolver lista vacía). Esto preserva la prot total del día.
+ *  - Top 30 (era 6) → habilita búsqueda libre y "dieta flexible".
+ *  - qty calculada para matchear el macro dominante en gramos.
+ *  - Incluye custom foods del cliente (push al MYPUMP_FOOD_DB al login).
+ */
 window.MyPump.foodSwap = {
 
   findSubstitutes(originalFood) {
@@ -15,9 +26,11 @@ window.MyPump.foodSwap = {
     if (originalCat === 'condimento') return [];
 
     const dominantMacro = this._getDominantMacro(originalFood);
-    // kcal y macros ya son totales de porción (MyPump v2 data model — Cerebro calcula antes de publicar)
     const targetMacroGrams = (originalFood[dominantMacro] || 0);
     const originalKcal = originalFood.kcal;
+    const originalProt = originalFood.prot || 0;
+    // Tolerancia 10% para no devolver lista vacía si el original tiene mucha prot.
+    const minProt = originalProt * 0.9;
 
     return db
       .filter(food =>
@@ -54,20 +67,34 @@ window.MyPump.foodSwap = {
           fat:  Math.round(food.fat  * factor * 10) / 10,
           category: food.category,
         };
+        if (food._isCustom) result._isCustom = true;
 
-        // Validate kcal ratio against ORIGINAL (not scaled)
+        // 1) kcal ratio estrecho (±10%)
         if (originalKcal === 0) return null;
         const kcalRatio = result.kcal / originalKcal;
-        if (kcalRatio < 0.85 || kcalRatio > 1.15) return null;
+        if (kcalRatio < 0.90 || kcalRatio > 1.10) return null;
+
+        // 2) Regla anti-reducción de proteína
+        if (result.prot < minProt) return null;
 
         return result;
       })
       .filter(Boolean)
       .sort((a, b) => {
-        const targetKcal = originalFood.kcal; // ya es total de porción
+        const targetKcal = originalFood.kcal;
         return Math.abs(a.kcal - targetKcal) - Math.abs(b.kcal - targetKcal);
       })
-      .slice(0, 6);
+      .slice(0, 30);
+  },
+
+  // Búsqueda libre por nombre dentro de los sustitutos válidos.
+  // Mantiene todos los constraints de findSubstitutes (misma categoría,
+  // mismo macro dominante, kcal ±10%, no reduce proteína).
+  searchSubstitutes(originalFood, query) {
+    const all = this.findSubstitutes(originalFood);
+    if (!query) return all;
+    const q = query.toLowerCase().trim();
+    return all.filter(f => f.name.toLowerCase().includes(q));
   },
 
   _inferCategory(food) {
