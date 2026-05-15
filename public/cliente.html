@@ -27,6 +27,13 @@ button{font:inherit;color:inherit}
 
 /* LOADING / ERROR */
 #loadScreen,#errorScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:var(--space-4);background:var(--color-bg-secondary);z-index:100;padding:var(--space-6)}
+.error-paste{display:flex;flex-direction:column;gap:var(--space-3);width:100%;max-width:340px;margin-top:var(--space-4)}
+.error-paste-hint{font-size:13px;color:var(--color-text-muted);text-align:center;line-height:1.5}
+.error-paste-input{width:100%;height:44px;padding:0 var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-primary);border-radius:var(--radius-md);font-size:14px;outline:none;color:var(--color-text-primary);font-family:var(--font-mono)}
+.error-paste-input:focus{border-color:var(--color-brand);background:var(--color-bg-primary)}
+.error-paste-btn{width:100%;height:44px;background:var(--color-brand);color:var(--color-on-brand);border:0;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+.error-paste-btn:hover{background:var(--color-brand-hover)}
+.error-paste-err{padding:var(--space-2) var(--space-3);background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border:1px solid #ef4444;border-radius:var(--radius-md);color:#ef4444;font-size:12px}
 .spinner{width:36px;height:36px;border:3px solid var(--color-border);border-top-color:var(--color-brand);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-title{font-size:var(--font-size-sm);color:var(--color-text-muted);font-weight:500}
@@ -497,6 +504,15 @@ button svg:not([width]),a svg:not([width]){width:1em;height:1em}
   <div class="error-title" id="errTitle">Enlace inválido</div>
   <div class="error-sub" id="errSub">Este enlace no existe o fue revocado. Pedile a tu coach un nuevo acceso.</div>
   <div class="error-code" id="errCode"></div>
+  <!-- Form para pegar el link manualmente (caso PWA en iOS sin localStorage compartido) -->
+  <div class="error-paste" id="errorPasteWrap" hidden>
+    <div class="error-paste-hint">Pegá acá el link que te envió tu coach:</div>
+    <input type="text" id="errorPasteInput" class="error-paste-input"
+           placeholder="https://app.mypumpteam.com/?t=…"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    <button class="error-paste-btn" id="errorPasteBtn">Entrar</button>
+    <div class="error-paste-err" id="errorPasteErr" hidden></div>
+  </div>
 </div>
 
 <!-- APP -->
@@ -1190,10 +1206,44 @@ function showError(type, detail) {
   $('#appRoot').hidden = true;
   const err = $('#errorScreen');
   err.hidden = false;
+  const pasteWrap = $('#errorPasteWrap');
+  if (pasteWrap) pasteWrap.hidden = (type !== 'no-token'); // form solo en 'no-token'
   if (type === 'no-token') {
     $('#errTitle').textContent = 'Sin acceso';
-    $('#errSub').textContent = 'Esta URL no incluye un token de acceso. Usá el enlace que te envió tu coach.';
+    $('#errSub').textContent = 'Esta URL no incluye un token. Pegá abajo el link que te mandó tu coach (lo encontrás en WhatsApp).';
     $('#errCode').textContent = '';
+    // Activar el form de pegado
+    const inp = $('#errorPasteInput'), btn = $('#errorPasteBtn'), errEl = $('#errorPasteErr');
+    if (inp && btn) {
+      const TOKEN_RE = /^[a-zA-Z0-9_-]{16,64}$/;
+      function tryExtract(raw) {
+        if (!raw) return null;
+        raw = raw.trim();
+        // Si pegan el link completo, extraer ?t=
+        const m1 = raw.match(/[?&]t=([a-zA-Z0-9_-]{16,64})\b/);
+        if (m1) return m1[1];
+        // Si pegan el path "/TOKEN"
+        const m2 = raw.match(/\/([a-zA-Z0-9_-]{16,64})(?:[/?#]|$)/);
+        if (m2) return m2[1];
+        // Si pegan solo el token
+        if (TOKEN_RE.test(raw)) return raw;
+        return null;
+      }
+      btn.onclick = () => {
+        const tok = tryExtract(inp.value);
+        if (!tok) {
+          if (errEl) {
+            errEl.textContent = 'No reconocí ese link. Copialo de WhatsApp y pegalo entero.';
+            errEl.hidden = false;
+          }
+          return;
+        }
+        try { localStorage.setItem('mypump_token', tok); } catch(e){}
+        // Recargar con el token explícito en la URL para asegurar todos los flujos
+        window.location.replace('/cliente.html?t=' + encodeURIComponent(tok));
+      };
+      inp.onkeydown = (e) => { if (e.key === 'Enter') btn.click(); };
+    }
   } else if (type === 'service-down') {
     $('#errTitle').textContent = 'Servicio fuera de línea';
     $('#errSub').textContent = 'No pudimos cargar tu plan. Probá de nuevo en unos minutos. Si persiste, avisale a tu coach — tu acceso sigue activo, es un problema temporal del servidor.';
@@ -3335,6 +3385,44 @@ function _invalidateSwapCache() {
     b.classList.remove('is-open');
     setTimeout(() => b.remove(), 250);
   }
+})();
+
+/* ---- MANIFEST DINÁMICO ----
+ * Si tenemos un TOKEN válido, generamos un manifest blob con el token
+ * inyectado en start_url. Así cuando el cliente haga "Agregar a Inicio"
+ * en iOS Safari (que respeta el start_url del manifest), el ícono
+ * guardado abre /cliente.html?t=TOKEN directamente — sin depender de
+ * localStorage que iOS aísla entre Safari y el contexto standalone PWA.
+ *
+ * Si no hay token, dejamos el manifest estático tal cual.
+ */
+(function injectDynamicManifest() {
+  if (!TOKEN) return;
+  try {
+    const link = document.querySelector('link[rel="manifest"]');
+    if (!link) return;
+    // Construir manifest con start_url personalizado
+    const manifest = {
+      "name": "MyPump — Pump Team",
+      "short_name": "MyPump",
+      "description": "Tu sector dentro del team. Rutina, dieta y tracking diario.",
+      "start_url": "/cliente.html?t=" + encodeURIComponent(TOKEN),
+      "scope": "/",
+      "display": "standalone",
+      "orientation": "portrait",
+      "background_color": "#ffffff",
+      "theme_color": "#10b981",
+      "lang": "es",
+      "categories": ["health", "fitness", "lifestyle"],
+      "icons": [
+        { "src": "/icons/logo.svg?v=3",    "sizes": "any",      "type": "image/svg+xml", "purpose": "any" },
+        { "src": "/icons/icon-192.png?v=3","sizes": "192x192",  "type": "image/png",     "purpose": "any maskable" },
+        { "src": "/icons/icon-512.png?v=3","sizes": "512x512",  "type": "image/png",     "purpose": "any maskable" }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    link.href = URL.createObjectURL(blob);
+  } catch(e) { /* sin manifest dinámico, fallback al estático */ }
 })();
 
 init();
