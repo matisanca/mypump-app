@@ -7,9 +7,9 @@
   <title>MyPump — Pump Team</title>
 
   <!-- PWA — Add to Home Screen -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="/manifest.json?v=3">
   <meta name="theme-color" content="#10b981">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=3">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MyPump">
@@ -234,14 +234,32 @@
     });
   </script>
 
-  <!-- Deteccion de token: si la URL tiene ?t=TOKEN, redirigir a la app del cliente -->
+  <!-- Detección de token + redirección a la app del cliente.
+       1. ?t=TOKEN en URL → redirige con token (caso link del coach)
+       2. Token previamente guardado en localStorage → redirige sin token
+          (caso PWA "Agregar a inicio" en iOS, donde la URL pierde ?t=).
+          cliente.html va a recuperar el token desde localStorage. -->
   <script>
     (function () {
+      var TOKEN_KEY = 'mypump_token';
+      var TOKEN_RE = /^[a-zA-Z0-9_-]{16,64}$/;
+
       var params = new URLSearchParams(window.location.search);
       var token = params.get('t');
-      if (token && /^[a-zA-Z0-9_-]{16,64}$/.test(token)) {
+      if (token && TOKEN_RE.test(token)) {
+        try { localStorage.setItem(TOKEN_KEY, token); } catch(e) {}
         window.location.replace('/cliente.html?t=' + encodeURIComponent(token));
+        return;
       }
+
+      // Sin token en URL, pero hay uno guardado → ir a cliente.html (lee de localStorage)
+      try {
+        var stored = localStorage.getItem(TOKEN_KEY);
+        if (stored && TOKEN_RE.test(stored)) {
+          window.location.replace('/cliente.html');
+          return;
+        }
+      } catch(e) {}
     })();
   </script>
 </body>

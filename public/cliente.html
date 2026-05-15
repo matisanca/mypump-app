@@ -6,9 +6,9 @@
 <title>MyPump</title>
 
 <!-- PWA — Add to Home Screen support -->
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/manifest.json?v=3">
 <meta name="theme-color" content="#10b981">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MyPump">
@@ -596,18 +596,46 @@ const ICONS = {
   trend:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
 };
 
-/* ---- GLOBALS ---- */
+/* ---- GLOBALS ----
+ * Token de acceso: orden de prioridad para resolverlo.
+ *  1. Query string ?t=TOKEN (cuando el cliente entra por el link del coach)
+ *  2. Pathname /TOKEN (compatibilidad con dev local en npx serve)
+ *  3. localStorage 'mypump_token' (caso PWA "Agregar a inicio" en iOS:
+ *     iOS guarda la URL canónica sin query params, así que cuando el
+ *     cliente abre la app desde el ícono de inicio NO tiene ?t= en la URL.
+ *     Persistimos el token en localStorage la primera vez y lo
+ *     recuperamos en aperturas subsecuentes.)
+ *
+ * Si encontramos un token nuevo en URL, lo guardamos siempre — así si
+ * un cliente cambia de link (re-publicación con token nuevo), el
+ * localStorage se actualiza solo.
+ */
 const TOKEN = (function() {
-  // Prioridad 1: query string ?t=xxx (produccion Cloudflare Pages via index.html)
+  const TOKEN_KEY = 'mypump_token';
+  function isValidToken(t) {
+    return typeof t === 'string' && /^[a-zA-Z0-9_-]{16,64}$/.test(t);
+  }
+
+  // Prioridad 1: query string ?t=xxx
   var params = new URLSearchParams(window.location.search);
   var fromQuery = params.get('t');
-  if (fromQuery) return fromQuery;
+  if (isValidToken(fromQuery)) {
+    try { localStorage.setItem(TOKEN_KEY, fromQuery); } catch(e) {}
+    return fromQuery;
+  }
 
-  // Prioridad 2: pathname /xxx (compatibilidad local con npx serve)
+  // Prioridad 2: pathname /TOKEN (dev local con npx serve)
   var fromPath = window.location.pathname.split('/').filter(Boolean)[0];
-  if (fromPath && fromPath !== 'cliente.html' && fromPath !== 'cliente') {
+  if (fromPath && fromPath !== 'cliente.html' && fromPath !== 'cliente' && isValidToken(fromPath)) {
+    try { localStorage.setItem(TOKEN_KEY, fromPath); } catch(e) {}
     return fromPath;
   }
+
+  // Prioridad 3: localStorage (caso PWA en iOS donde la URL pierde el ?t=)
+  try {
+    var fromStorage = localStorage.getItem(TOKEN_KEY);
+    if (isValidToken(fromStorage)) return fromStorage;
+  } catch(e) {}
 
   return '';
 })();
