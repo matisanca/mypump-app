@@ -1345,6 +1345,7 @@ function bindTrainEvents() {
   });
 
   $$('[data-confirm]').forEach(btn => btn.addEventListener('click', async () => {
+    unlockAudio(); // primer user gesture confiable del flow — habilita beeps en mobile/iOS
     const [exId, idx] = btn.getAttribute('data-confirm').split('|');
     const setObj = STATE.session[exId].sets[+idx];
     if (setObj.rir === '') setObj.rir = '2';
@@ -1575,45 +1576,162 @@ async function openEarlyFinishModal() {
 
 function closeModal() { $('#modalHost').innerHTML = ''; }
 
-/* ---- REST TIMER ---- */
+/* ---- REST TIMER ----
+ * Timer wall-clock (basado en Date.now() vs setInterval decremental) para
+ * resistir el throttling que hace el navegador cuando la pestaña va a
+ * background. Si el usuario sale a otra app/tab y vuelve, el remaining se
+ * recalcula contra wall-clock — no se atrasa.
+ *
+ * Feedback al terminar:
+ *   - 3 beeps generados con Web Audio API (oscilador, sin assets)
+ *   - Vibración reforzada (patrón largo)
+ *   - Notification del sistema si la pestaña está hidden (best-effort)
+ *
+ * Limitaciones conocidas:
+ *   - Si el cliente CIERRA la pestaña: imposible notificar sin Service
+ *     Worker + PWA full. Fuera de scope MVP.
+ *   - iOS Safari suspende AudioContext si la pestaña queda background >30s.
+ *     El beep puede no sonar al volver. La vibración sí dispara.
+ *   - Sin persistencia entre recargas (descansos son cortos, raro reload).
+ */
+
+let _audioCtx       = null;
+let _audioUnlocked  = false;
+let _notifAsked     = false;
+
+function unlockAudio() {
+  if (_audioUnlocked) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    _audioCtx = new AC();
+    // Tocar un buffer silencioso para "desbloquear" iOS Safari
+    const b = _audioCtx.createBuffer(1, 1, 22050);
+    const src = _audioCtx.createBufferSource();
+    src.buffer = b; src.connect(_audioCtx.destination); src.start(0);
+    _audioUnlocked = true;
+  } catch(e) { /* sin audio, fallback a vibración */ }
+}
+
+function playRestDoneBeeps() {
+  if (!_audioCtx) return;
+  try {
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();
+    const now = _audioCtx.currentTime;
+    [0, 0.22, 0.44].forEach(offset => {
+      const osc  = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      // Envelope rápido attack (10ms) + decay corto (140ms)
+      gain.gain.setValueAtTime(0, now + offset);
+      gain.gain.linearRampToValueAtTime(0.35, now + offset + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.14);
+      osc.connect(gain); gain.connect(_audioCtx.destination);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.15);
+    });
+  } catch(e) {}
+}
+
+function fireRestDone() {
+  // 1. Beep audio
+  playRestDoneBeeps();
+  // 2. Vibración reforzada (patrón más largo que el anterior)
+  try { navigator.vibrate && navigator.vibrate([400,150,400,150,400]); } catch(e){}
+  // 3. Notificación del sistema solo si la pestaña no está visible
+  if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      const n = new Notification('Descanso completo', {
+        body: 'Volvé a la app y arrancá la próxima serie.',
+        tag: 'mypump-rest',
+        renotify: true,
+      });
+      setTimeout(() => { try { n.close(); } catch(e){} }, 8000);
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch(e) {}
+  }
+}
+
+function maybeAskNotifPermission() {
+  if (_notifAsked) return;
+  _notifAsked = true;
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'default') return;
+  try { Notification.requestPermission(); } catch(e) {}
+}
+
 function startRest(seconds) {
   stopRest();
-  STATE.rest = { remaining:seconds, target:seconds, intervalId:null };
+  const now = Date.now();
+  STATE.rest = {
+    endsAt:       now + seconds * 1000,
+    target:       seconds,
+    intervalId:   null,
+    doneFired:    false,
+    autoCloseAt:  now + (seconds + 2) * 1000,
+  };
   const bar = $('#restBar');
-  bar.hidden = false; bar.classList.remove('is-done');
+  bar.hidden = false;
+  bar.classList.remove('is-done');
   updateRestUI();
-  STATE.rest.intervalId = setInterval(() => {
-    STATE.rest.remaining -= 1;
-    if (STATE.rest.remaining === 0) {
-      bar.classList.add('is-done');
-      try { navigator.vibrate && navigator.vibrate([220,100,220]); } catch(e){}
-    }
-    if (STATE.rest.remaining <= -2) { stopRest(); return; }
-    updateRestUI();
-  }, 1000);
+  // Pedir permiso de notification la primera vez (no blocking)
+  maybeAskNotifPermission();
+  // Tick a 250ms: UI más fluida y, ante throttling, latencia ≤250ms para disparar "done"
+  STATE.rest.intervalId = setInterval(restTick, 250);
 }
+
+function restTick() {
+  if (!STATE.rest) return;
+  const now = Date.now();
+  // Dispara "done" la primera vez que cruzamos el endsAt
+  if (now >= STATE.rest.endsAt && !STATE.rest.doneFired) {
+    STATE.rest.doneFired = true;
+    $('#restBar').classList.add('is-done');
+    fireRestDone();
+  }
+  // Cerrar 2s después de done
+  if (now >= STATE.rest.autoCloseAt) { stopRest(); return; }
+  updateRestUI();
+}
+
 function stopRest() {
   if (STATE.rest && STATE.rest.intervalId) clearInterval(STATE.rest.intervalId);
   STATE.rest = null;
   $('#restBar').hidden = true;
   $('#restBar').classList.remove('is-done');
 }
+
 function updateRestUI() {
   if (!STATE.rest) return;
-  $('#restTime').textContent = fmtTime(Math.max(0, STATE.rest.remaining));
+  const remainingSec = Math.max(0, Math.ceil((STATE.rest.endsAt - Date.now()) / 1000));
+  $('#restTime').textContent = fmtTime(remainingSec);
   $('#restTarget').textContent = `/ ${fmtTime(STATE.rest.target)} objetivo`;
-  const pct = Math.max(0, Math.min(100, ((STATE.rest.target-STATE.rest.remaining)/STATE.rest.target)*100));
+  const pct = Math.max(0, Math.min(100, ((STATE.rest.target - remainingSec) / STATE.rest.target) * 100));
   $('#restProgFill').style.width = pct + '%';
 }
+
 $$('[data-rest]').forEach(btn => btn.addEventListener('click', () => {
   const v = btn.getAttribute('data-rest');
   if (!STATE.rest) return;
   if (v === 'skip') { stopRest(); return; }
-  STATE.rest.remaining = Math.max(0, STATE.rest.remaining + parseInt(v));
-  if (parseInt(v) > 0) STATE.rest.target += parseInt(v);
-  $('#restBar').classList.remove('is-done');
+  const deltaSec = parseInt(v);
+  STATE.rest.endsAt      += deltaSec * 1000;
+  STATE.rest.autoCloseAt += deltaSec * 1000;
+  if (deltaSec > 0) STATE.rest.target += deltaSec;
+  // Si estábamos en done y sumamos tiempo → salir de done y refire al llegar
+  if (STATE.rest.endsAt > Date.now()) {
+    STATE.rest.doneFired = false;
+    $('#restBar').classList.remove('is-done');
+  }
   updateRestUI();
 }));
+
+// Al volver foreground, forzar un tick para recalcular contra wall-clock
+// (compensa el throttling de setInterval cuando la pestaña estuvo background).
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && STATE.rest) restTick();
+});
 
 /* ---- DIET SCENE ---- */
 function renderDiet() {
