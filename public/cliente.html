@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>MyPump</title>
+
+<!-- PWA — Add to Home Screen support -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#10b981">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MyPump">
+<meta name="mobile-web-app-capable" content="yes">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -420,6 +430,57 @@ main{padding:var(--space-4)}
 /* Red de seguridad: ningún SVG inline debe crecer más allá de su contenedor */
 svg{max-width:100%;max-height:100%}
 button svg:not([width]),a svg:not([width]){width:1em;height:1em}
+
+/* PWA — Banner "Agregar a pantalla de inicio" */
+.a2hs-banner{
+  position:fixed;
+  left:50%;
+  bottom:calc(72px + env(safe-area-inset-bottom) + var(--space-3));
+  transform:translate(-50%, 200%);
+  width:calc(100% - var(--space-6));
+  max-width:448px;
+  background:var(--color-bg-primary);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-lg);
+  padding:var(--space-4);
+  display:flex;
+  align-items:center;
+  gap:var(--space-3);
+  box-shadow:var(--shadow-lg);
+  z-index:60;
+  opacity:0;
+  transition:transform .35s cubic-bezier(.2,.8,.3,1.2), opacity .25s ease;
+}
+.a2hs-banner.is-open{transform:translate(-50%, 0);opacity:1}
+.a2hs-close{
+  position:absolute;
+  top:6px;right:8px;
+  width:24px;height:24px;
+  background:transparent;border:0;color:var(--color-text-muted);
+  font-size:20px;line-height:1;cursor:pointer;padding:0;
+}
+.a2hs-close:hover{color:var(--color-text-primary)}
+.a2hs-icon{flex:0 0 auto;width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.a2hs-icon svg{display:block;width:44px;height:44px}
+.a2hs-body{flex:1;min-width:0;padding-right:var(--space-4)}
+.a2hs-title{font-size:14px;font-weight:600;color:var(--color-text-primary);letter-spacing:-.01em;margin-bottom:2px}
+.a2hs-text{font-size:12px;color:var(--color-text-secondary);line-height:1.4;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.a2hs-text strong{color:var(--color-text-primary);font-weight:600}
+.a2hs-share-icon{width:14px;height:14px;color:#0a84ff;flex:0 0 auto;display:inline-block;vertical-align:middle;margin:0 2px}
+.a2hs-install{
+  flex:0 0 auto;
+  background:var(--color-brand);
+  color:var(--color-on-brand);
+  border:0;
+  border-radius:var(--radius-md);
+  padding:var(--space-2) var(--space-4);
+  font-size:13px;font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:background .15s;
+}
+.a2hs-install:active{transform:scale(.97)}
+.a2hs-install:hover{background:var(--color-brand-hover)}
 </style>
 </head>
 <body>
@@ -3104,6 +3165,131 @@ async function saveCustomFood() {
 function _invalidateSwapCache() {
   for (const k of Object.keys(_swapCache)) delete _swapCache[k];
 }
+
+/* ---- PWA: AGREGAR A PANTALLA DE INICIO ----
+ * Detecta plataforma (Android Chrome vs iOS Safari) y muestra un prompt
+ * para instalar la app como PWA. Una vez instalada (display: standalone)
+ * o dismissed, no vuelve a aparecer (persiste en localStorage).
+ *
+ * Android Chrome: usa el evento beforeinstallprompt → prompt nativo.
+ * iOS Safari: NO tiene API de instalación, muestra instrucciones manuales
+ * (Compartir → Agregar a pantalla de inicio).
+ */
+(function setupA2HS() {
+  // Si ya está corriendo como PWA instalada, no hacer nada
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+  if (isStandalone) return;
+
+  // Si el usuario ya respondió (instalado o dismissed), no volver a mostrar
+  const A2HS_KEY = 'mypump_a2hs_v1';
+  const stored = localStorage.getItem(A2HS_KEY);
+  if (stored === 'installed' || stored === 'dismissed') return;
+
+  // Detección de plataforma
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/i.test(ua);
+  const isSafariIOS = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+
+  let deferredPrompt = null;
+
+  // Android Chrome: capturar el evento para disparar el prompt nativo on-demand
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Mostrar nuestro banner; el click llama deferredPrompt.prompt()
+    setTimeout(showA2HSBanner, 1500);
+  });
+
+  // Si ya está instalada (Chrome dispara 'appinstalled')
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem(A2HS_KEY, 'installed');
+    closeA2HSBanner();
+  });
+
+  // En iOS, no hay beforeinstallprompt — mostrar banner manual después del load
+  if (isSafariIOS) {
+    // Esperar a que la app cargue completamente para no interrumpir
+    setTimeout(() => {
+      if (localStorage.getItem(A2HS_KEY)) return; // por las dudas
+      showA2HSBanner();
+    }, 4000);
+  }
+
+  function showA2HSBanner() {
+    if (document.getElementById('a2hsBanner')) return; // ya está visible
+    const banner = document.createElement('div');
+    banner.id = 'a2hsBanner';
+    banner.className = 'a2hs-banner';
+
+    if (isSafariIOS) {
+      // iOS: instrucciones manuales con icono de Share
+      banner.innerHTML = `
+        <button class="a2hs-close" id="a2hsClose" aria-label="Cerrar">×</button>
+        <div class="a2hs-icon">
+          <svg viewBox="0 0 64 64" width="44" height="44">
+            <rect width="64" height="64" rx="14" fill="#10b981"/>
+            <text x="32" y="46" text-anchor="middle" fill="#fff" font-family="Inter, sans-serif" font-size="36" font-weight="700">P</text>
+          </svg>
+        </div>
+        <div class="a2hs-body">
+          <div class="a2hs-title">Instalá MyPump en tu inicio</div>
+          <div class="a2hs-text">
+            Tocá
+            <svg class="a2hs-share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v13"/><path d="m6 8 6-6 6 6"/><rect x="4" y="14" width="16" height="8" rx="2"/></svg>
+            abajo y elegí <strong>"Agregar a pantalla de inicio"</strong>.
+          </div>
+        </div>`;
+    } else {
+      // Android Chrome (o navegador con beforeinstallprompt soportado)
+      banner.innerHTML = `
+        <button class="a2hs-close" id="a2hsClose" aria-label="Cerrar">×</button>
+        <div class="a2hs-icon">
+          <svg viewBox="0 0 64 64" width="44" height="44">
+            <rect width="64" height="64" rx="14" fill="#10b981"/>
+            <text x="32" y="46" text-anchor="middle" fill="#fff" font-family="Inter, sans-serif" font-size="36" font-weight="700">P</text>
+          </svg>
+        </div>
+        <div class="a2hs-body">
+          <div class="a2hs-title">Instalá MyPump como app</div>
+          <div class="a2hs-text">Tenela en tu inicio y abrila como una app, sin el navegador.</div>
+        </div>
+        <button class="a2hs-install" id="a2hsInstall">Instalar</button>`;
+    }
+
+    document.body.appendChild(banner);
+    // Animación de entrada
+    requestAnimationFrame(() => banner.classList.add('is-open'));
+
+    // Eventos
+    document.getElementById('a2hsClose').addEventListener('click', () => {
+      localStorage.setItem(A2HS_KEY, 'dismissed');
+      closeA2HSBanner();
+    });
+
+    const installBtn = document.getElementById('a2hsInstall');
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) { closeA2HSBanner(); return; }
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') localStorage.setItem(A2HS_KEY, 'installed');
+        else localStorage.setItem(A2HS_KEY, 'dismissed');
+        deferredPrompt = null;
+        closeA2HSBanner();
+      });
+    }
+  }
+
+  function closeA2HSBanner() {
+    const b = document.getElementById('a2hsBanner');
+    if (!b) return;
+    b.classList.remove('is-open');
+    setTimeout(() => b.remove(), 250);
+  }
+})();
 
 init();
 </script>
