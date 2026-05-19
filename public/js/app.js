@@ -93,7 +93,13 @@ window.MyPump.foodSwap = {
         };
         if (food._isCustom) result._isCustom = true;
 
-        // 1) kcal ratio estrecho (±10%)
+        // Custom foods (creados por el cliente) bypassean los filtros estrictos
+        // de kcal/proteína — la intención de crear un alimento personalizado
+        // es usarlo, no que la app lo descarte por macros levemente distintos.
+        // Mantenemos solo los filtros de categoría y macro dominante (arriba).
+        if (food._isCustom) return result;
+
+        // 1) kcal ratio estrecho (±10%) — solo para alimentos del seed-DB
         if (originalKcal === 0) return null;
         const kcalRatio = result.kcal / originalKcal;
         if (kcalRatio < 0.90 || kcalRatio > 1.10) return null;

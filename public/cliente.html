@@ -2984,6 +2984,13 @@ function renderSwapModal() {
   const { original: food, query } = _swapState;
   const cat = food.category || inferFoodCategory(food);
   const cacheKey = `${food.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
+  // Si el cache está vacío para este key (ej: tras crear un custom food
+  // que invalida el cache anterior), recomputar acá en vez de mostrar lista vacía.
+  if (!_swapCache[cacheKey]) {
+    _swapCache[cacheKey] = window.MyPump
+      ? window.MyPump.foodSwap.findSubstitutes(food)
+      : [];
+  }
   const allSubs = _swapCache[cacheKey] || [];
 
   // Filtro por query (búsqueda libre por nombre)
@@ -3056,6 +3063,11 @@ function _swapRenderListOnly() {
   const { original: food, query } = _swapState;
   const cat = food.category || inferFoodCategory(food);
   const cacheKey = `${food.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
+  if (!_swapCache[cacheKey]) {
+    _swapCache[cacheKey] = window.MyPump
+      ? window.MyPump.foodSwap.findSubstitutes(food)
+      : [];
+  }
   const allSubs = _swapCache[cacheKey] || [];
   const subs = query
     ? allSubs.filter(s => s.name.toLowerCase().includes(query.toLowerCase().trim()))
