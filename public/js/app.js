@@ -173,6 +173,141 @@ window.MyPump.foodSwap = {
   },
 };
 
+/* ---- EXERCISE SWAP ----
+ * Espejo de foodSwap, pero para EJERCICIOS. Lee el catálogo en memoria
+ * (window.MYPUMP_EJERCICIO_DB, cargado en el bootstrap de cliente.html).
+ *
+ * REGLA CRÍTICA (no negociable): un sustituto SOLO es válido si tiene el
+ * MISMO patron_movimiento (gesto exacto) Y el MISMO primary_muscle que el
+ * original. NO se sustituye por otro patrón aunque comparta músculo
+ * (press inclinado ≠ press plano ≠ aperturas ≠ press militar).
+ *
+ * Caso de uso: "la máquina está ocupada, dame la MISMA variante con otro
+ * equipo" → por eso ordenamos priorizando equipo DISTINTO al del original.
+ *
+ * Fail-safe: si el ejercicio no resuelve en el catálogo, o su
+ * patron_movimiento es NULL, devolvemos [] (no ofrecemos sustitutos).
+ */
+window.MyPump.exerciseSwap = {
+
+  // Etiquetas legibles de equipamiento (free-exercise-db → español).
+  EQUIP_LABEL: {
+    'machine':       'Máquina',
+    'dumbbell':      'Mancuernas',
+    'barbell':       'Barra',
+    'cable':         'Polea',
+    'body only':     'Peso corporal',
+    'kettlebells':   'Kettlebell',
+    'bands':         'Banda',
+    'e-z curl bar':  'Barra Z',
+    'exercise ball': 'Pelota',
+    'medicine ball': 'Balón medicinal',
+    'other':         'Otro',
+  },
+
+  // Misma normalización que el RPC mypump_match_ejercicio_por_nombre:
+  // minúsculas, sin tildes, sin paréntesis, sin sufijos -d1-0, espacios colapsados.
+  _norm(s) {
+    let n = (s || '').toLowerCase();
+    n = n.replace(/[áàäâã]/g,'a').replace(/[éèëê]/g,'e').replace(/[íìïî]/g,'i')
+         .replace(/[óòöôõ]/g,'o').replace(/[úùüû]/g,'u').replace(/ñ/g,'n');
+    n = n.replace(/\(.*?\)/g,' ');        // paréntesis fuera
+    n = n.replace(/-d\d+-\d+/g,' ');       // sufijos de id del ejercicio publicado
+    n = n.replace(/[^a-z0-9 ]+/g,' ');     // solo alfanumérico
+    n = n.replace(/\s+/g,' ').trim();
+    return n;
+  },
+
+  // Etiqueta de equipo legible. "Smith" en el name_en → Multipower
+  // (free-exercise-db etiqueta los Smith como equipment 'machine'/'barbell').
+  _equipLabel(entry) {
+    if (/\bsmith\b/i.test(entry.name_en || '')) return 'Multipower';
+    return this.EQUIP_LABEL[entry.equipment] || (entry.equipment ? entry.equipment : 'Otro');
+  },
+
+  // Resuelve el ejercicio original (de la rutina) a una entrada del catálogo.
+  // Prioridad: slug exacto (la rutina lleva images._matched_slug del backfill) →
+  // catalogo_slug → nombre normalizado contra name_normalized / aliases_es.
+  _resolve(originalEjercicio) {
+    const db = window.MYPUMP_EJERCICIO_DB;
+    if (!db || !db.length) return null;
+
+    const slug = originalEjercicio.catalogo_slug
+              || originalEjercicio.images?._matched_slug
+              || originalEjercicio._matched_slug
+              || null;
+    if (slug) {
+      const bySlug = db.find(e => e.slug_en === slug);
+      if (bySlug) return bySlug;
+    }
+
+    const n = this._norm(originalEjercicio.nombre || originalEjercicio.name || '');
+    if (!n) return null;
+
+    // 1) match exacto contra name_normalized del catálogo
+    let hit = db.find(e => e.name_normalized === n);
+    if (hit) return hit;
+    // 2) alias exacto en español
+    hit = db.find(e => Array.isArray(e.aliases_es) && e.aliases_es.includes(n));
+    if (hit) return hit;
+    // 3) contains laxo (el nombre del catálogo contenido en el del cliente o viceversa)
+    hit = db.find(e => e.name_normalized && (n.includes(e.name_normalized) || e.name_normalized.includes(n)));
+    return hit || null;
+  },
+
+  // Devuelve los sustitutos válidos del ejercicio original.
+  findSubstitutes(originalEjercicio) {
+    const db = window.MYPUMP_EJERCICIO_DB;
+    if (!db || !db.length) return [];
+
+    const entry = this._resolve(originalEjercicio);
+    if (!entry) return [];
+
+    const patron = entry.patron_movimiento;
+    if (!patron) return [];                 // fail-safe: sin patrón → no sugerir
+
+    const muscle    = entry.primary_muscle;
+    const origEquip = entry.equipment;
+
+    return db
+      .filter(e =>
+        e.patron_movimiento === patron &&    // MISMO gesto exacto (hard filter)
+        e.primary_muscle === muscle &&       // MISMO músculo
+        e.slug_en !== entry.slug_en          // excluir el original
+      )
+      .map(e => ({
+        slug:          e.slug_en,
+        name:          (Array.isArray(e.aliases_es) && e.aliases_es[0]) ? e.aliases_es[0] : e.name_en,
+        name_en:       e.name_en,
+        equipo:        this._equipLabel(e),
+        equipmentRaw:  e.equipment,
+        primary_muscle:e.primary_muscle,
+        patron_movimiento: e.patron_movimiento,
+        images: {
+          eccentric:  e.image_eccentric  || null,
+          concentric: e.image_concentric || null,
+        },
+        _sameEquip: e.equipment === origEquip,
+      }))
+      // Priorizar equipo DISTINTO (máquina ocupada → dame la otra variante),
+      // luego alfabético por nombre.
+      .sort((a, b) => {
+        if (a._sameEquip !== b._sameEquip) return a._sameEquip ? 1 : -1;
+        return a.name.localeCompare(b.name, 'es');
+      })
+      .slice(0, 30);
+  },
+
+  // Búsqueda libre por nombre dentro de los sustitutos válidos
+  // (mantiene todos los constraints de findSubstitutes).
+  searchSubstitutes(originalEjercicio, query) {
+    const all = this.findSubstitutes(originalEjercicio);
+    if (!query) return all;
+    const q = query.toLowerCase().trim();
+    return all.filter(s => s.name.toLowerCase().includes(q) || (s.name_en||'').toLowerCase().includes(q));
+  },
+};
+
 /* ---- UI HELPERS ---- */
 window.MyPump.ui = {
 

@@ -299,6 +299,30 @@ window.mypumpDB = {
     });
   },
 
+  // ─── CATÁLOGO DE EJERCICIOS (lectura pública anon) ────────
+
+  // Devuelve el catálogo completo de ejercicios (para sustitución de
+  // ejercicios "mismo gesto, distinto equipo"). Es una tabla compartida de
+  // lectura pública (policy read_all_catalogo, USING(true)) — no requiere token.
+  // Lectura directa (no RPC) porque es catálogo estático cacheable, igual
+  // que MYPUMP_FOOD_DB. Devuelve array o null ante error.
+  async getCatalogoEjercicios() {
+    try {
+      const { data, error } = await getClient()
+        .from('mypump_ejercicios_catalogo')
+        .select('slug_en,name_en,name_normalized,aliases_es,primary_muscle,equipment,patron_movimiento,image_eccentric,image_concentric');
+      if (error) {
+        logDev('getCatalogoEjercicios error:', error);
+        if (window.mypumpDB) window.mypumpDB._lastError = error;
+        return null;
+      }
+      return data || [];
+    } catch (e) {
+      logDev('getCatalogoEjercicios exception:', e);
+      return null;
+    }
+  },
+
   // ─── CUSTOM FOODS (alimentos personalizados del cliente) ──
 
   // Devuelve array de custom foods del cliente.

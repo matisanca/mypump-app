@@ -382,6 +382,14 @@ main{padding:var(--space-4)}
 .swap-custom-badge{display:inline-block;margin-left:6px;padding:1px 6px;font-size:9px;font-weight:700;border-radius:var(--radius-sm);background:color-mix(in oklab,#8b5cf6 14%,var(--color-bg-primary));color:#8b5cf6;letter-spacing:.04em;text-transform:uppercase}
 .btn-custom-food{width:100%;height:44px;background:transparent;color:var(--color-text-secondary);border:1px dashed var(--color-border);border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer;margin-top:var(--space-3);display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s,border-color .15s}
 .btn-custom-food:hover{background:var(--color-bg-secondary);color:var(--color-text-primary);border-color:var(--color-border-strong);border-style:solid}
+/* ── Sustitución de EJERCICIOS (espejo del food swap) ── */
+.ex-swap-row{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-3)}
+.ex-swap-btn{flex:1 1 auto;min-height:40px;background:transparent;color:var(--color-text-secondary);border:1px dashed var(--color-border);border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s,border-color .15s}
+.ex-swap-btn:hover:not(:disabled){background:var(--color-bg-secondary);color:var(--color-text-primary);border-color:var(--color-border-strong);border-style:solid}
+.ex-swap-btn:disabled{opacity:.45;cursor:not-allowed}
+.ex-swap-revert{flex:0 0 auto;min-height:40px;padding:0 var(--space-3);background:var(--color-brand-subtle);color:var(--color-text-primary);border:1px solid var(--color-brand);border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer}
+.swap-ex-thumb{width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;flex:0 0 auto;background:var(--color-bg-tertiary)}
+.swap-card-equip{font-family:var(--font-mono);font-size:11px;color:var(--color-text-muted);margin-top:2px}
 
 /* CUSTOM FOOD MODAL */
 .custom-food-sheet{max-width:440px}
@@ -686,6 +694,7 @@ const STATE = {
   diaCompletadoMostrado: false,
   meals:              {},         // comidaId → {selectedOpt}
   foodSwaps:          {},         // swapKey → {original, current}
+  exerciseSwaps:      {},         // exId → {original:{slug,nombre,images}, current:{slug,nombre,equipment,images}}
   activeTipoDia:      null,       // id del tipo-día activo (Formato B)
   progressLoaded:     false,
   progressData:       null,
@@ -995,6 +1004,68 @@ function persistSwaps() {
   localStorage.setItem(`mypump_food_swaps_${DIETA_ID||'demo'}`, JSON.stringify(STATE.foodSwaps));
 }
 
+/* ---- EXERCISE SWAP HELPERS (espejo de food swap) ----
+ * El swap de ejercicio es VISUAL / por-sesión: reemplaza el ejercicio mostrado
+ * para esta sesión sin tocar la estructura publicada. Persiste en localStorage
+ * (mypump_exercise_swaps_<RUTINA_ID>). Se revierte con ↔ (data-revert-ex).
+ * El histórico/progresión del slot se preservan: el ejercicio_id NO cambia,
+ * solo el ejercicio_nombre que se snapshotea al registrar la carga.
+ */
+// Devuelve el ejercicio "efectivo" (con sustituto aplicado) preservando id/tipo/
+// descanso/progresión del slot original; solo override de nombre + imágenes.
+// Conserva refs al original (_orig*) para resolver/ofrecer sustitutos y revertir.
+function getEffectiveEx(ex) {
+  const sw = STATE.exerciseSwaps[ex.id];
+  const eff = sw
+    ? { ...ex, nombre: sw.current.nombre, images: sw.current.images, _isSwapped: true, _swapSlug: sw.current.slug }
+    : { ...ex };
+  eff._origNombre = ex.nombre;
+  eff._origImages = ex.images || null;
+  eff._origSlug   = ex.images?._matched_slug || ex.catalogo_slug || null;
+  return eff;
+}
+
+function persistExerciseSwaps() {
+  localStorage.setItem(`mypump_exercise_swaps_${RUTINA_ID||'demo'}`, JSON.stringify(STATE.exerciseSwaps));
+}
+
+// Lista de sustitutos del ejercicio (resuelve SIEMPRE sobre el original).
+// Cacheado por slug/nombre del original — se invalida al recargar el catálogo.
+function exGetSubs(ex) {
+  if (!window.MyPump || !window.MyPump.exerciseSwap) return [];
+  if (ex.tipo === 'calentamiento' || ex.tipo === 'cardio') return [];
+  const orig = { nombre: ex._origNombre || ex.nombre, images: ex._origImages || ex.images, catalogo_slug: ex._origSlug || ex.images?._matched_slug || null };
+  const entry = window.MyPump.exerciseSwap._resolve(orig);
+  const key = entry ? entry.slug_en : `n:${(orig.nombre||'').toLowerCase()}`;
+  if (!_exSwapCache[key]) _exSwapCache[key] = window.MyPump.exerciseSwap.findSubstitutes(orig);
+  return _exSwapCache[key];
+}
+
+/* ---- CATÁLOGO DE EJERCICIOS EN MEMORIA (calcado de MYPUMP_FOOD_DB) ----
+ * window.MYPUMP_EJERCICIO_DB se hidrata: 1) sincrónico desde localStorage
+ * (fast path), 2) async desde Supabase (fuente de verdad), re-render al llegar.
+ */
+const _EJ_CAT_CACHE_KEY = 'mypump_ejercicio_catalogo_v1';
+
+function hydrateEjercicioDBFromCache() {
+  try {
+    const raw = localStorage.getItem(_EJ_CAT_CACHE_KEY);
+    if (raw) window.MYPUMP_EJERCICIO_DB = JSON.parse(raw);
+  } catch (_) { /* cache corrupto → se rehidrata del backend */ }
+}
+
+async function loadEjercicioCatalogo() {
+  if (!window.mypumpDB || !window.mypumpDB.getCatalogoEjercicios) return;
+  const rows = await window.mypumpDB.getCatalogoEjercicios();
+  if (rows && rows.length) {
+    window.MYPUMP_EJERCICIO_DB = rows;
+    try { localStorage.setItem(_EJ_CAT_CACHE_KEY, JSON.stringify(rows)); } catch (_) {}
+    // Invalidar cache de sustitutos y re-render si estamos en entrenamiento
+    Object.keys(_exSwapCache).forEach(k => delete _exSwapCache[k]);
+    if (STATE.scene === 'train' && typeof renderTrain === 'function') renderTrain();
+  }
+}
+
 /* ---- EXERCISE STATUS HELPERS ---- */
 // Devuelve el estado actual del ejercicio (del STATE unificado)
 function getExStatus(exId) {
@@ -1066,10 +1137,14 @@ async function writeSet(exId, setIdx) {
   if (!RUTINA_ID || !_sesionId) return;
   const s = STATE.session[exId].sets[setIdx];
   const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+  // Si el cliente sustituyó el ejercicio, snapshotear el NOMBRE del sustituto
+  // (lo que realmente hizo). El ejercicio_id se mantiene → no rompe histórico/progresión.
+  const swap = STATE.exerciseSwaps[exId];
+  const ejercicioNombre = swap ? swap.current.nombre : ex.nombre;
   await window.mypumpDB.registrarCarga(TOKEN, _sesionId, {
     diaId:          DATA.dia.id,
     ejercicioId:    exId,
-    ejercicioNombre:ex.nombre,
+    ejercicioNombre:ejercicioNombre,
     serie:          setIdx + 1,
     peso:           parseFloat(s.kg) || 0,
     reps:           parseInt(s.reps) || 0,
@@ -1390,7 +1465,7 @@ function renderTrain() {
         <span class="block-meta">${done}/${b.ejercicios.length}</span>
       </div>
       <div class="block-list">
-        ${b.ejercicios.map((ex, ei) => renderExCard(ex, ei+1)).join('')}
+        ${b.ejercicios.map((ex, ei) => renderExCard(getEffectiveEx(ex), ei+1)).join('')}
       </div>
     </section>`;
   }
@@ -1474,7 +1549,7 @@ function renderExCard(ex, blockIdx) {
       <div class="ex-status">${statusIcon}</div>
       ${thumbHtml}
       <div class="ex-body">
-        <div class="ex-name">${ex.nombre}${manualBadge}</div>
+        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="Ejercicio sustituido">↔</span>` : ''}${manualBadge}</div>
         <div class="ex-meta">
           ${isWarmup ? '<span class="chip warm">CALENT.</span>' : ''}
           ${(ex.tipo === 'cardio' || prog.series === null)
@@ -1513,6 +1588,18 @@ function renderExCard(ex, blockIdx) {
             <figcaption>Pico</figcaption>
           </figure>` : ''}
         </div>` : ''}
+      ${(() => {
+        const subs = exGetSubs(ex);
+        const canSwap = subs.length > 0;
+        if (!canSwap && !ex._isSwapped) return '';
+        return `
+        <div class="ex-swap-row">
+          <button class="ex-swap-btn" data-swap-ex="${ex.id}"${canSwap ? '' : ' disabled title="No hay variantes equivalentes del mismo gesto"'}>
+            ↔ ${ex._isSwapped ? 'Cambiar sustituto' : 'Sustituir ejercicio'}
+          </button>
+          ${ex._isSwapped ? `<button class="ex-swap-revert" data-revert-ex="${ex.id}" title="Volver al original">Volver a “${ex._origNombre}”</button>` : ''}
+        </div>`;
+      })()}
       ${(ex.notas_tecnica || ex.video_url) ? `
         <div class="ex-extras">
           ${ex.notas_tecnica ? `
@@ -1699,6 +1786,23 @@ function bindTrainEvents() {
   // Botón "Cerrar sesión" visible antes de que todo esté completo
   const efb = $('#earlyFinishBtn');
   if (efb) efb.addEventListener('click', openEarlyFinishModal);
+
+  // Abrir modal de sustitución de ejercicio
+  $$('[data-swap-ex]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (btn.disabled) return;
+    const exId = btn.getAttribute('data-swap-ex');
+    const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+    if (ex) openExSwapModal(getEffectiveEx(ex));
+  }));
+  // Revertir sustitución de ejercicio (vuelve al original)
+  $$('[data-revert-ex]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const exId = btn.getAttribute('data-revert-ex');
+    delete STATE.exerciseSwaps[exId];
+    persistExerciseSwaps();
+    renderTrain();
+  }));
 }
 
 /* ---- RIR PICKER ---- */
@@ -2891,6 +2995,16 @@ async function init() {
     hydrateSwapsAndCustomFoodsFromBackend();
   }
 
+  // Swaps de ejercicio (visual/por-sesión) desde localStorage.
+  STATE.exerciseSwaps = JSON.parse(
+    localStorage.getItem(`mypump_exercise_swaps_${RUTINA_ID||'demo'}`) || '{}'
+  );
+
+  // Catálogo de ejercicios en memoria: cache local sincrónico + refresh async.
+  window.MYPUMP_EJERCICIO_DB = window.MYPUMP_EJERCICIO_DB || [];
+  hydrateEjercicioDBFromCache();
+  if (!(DATA && DATA._isDemo)) loadEjercicioCatalogo();   // no bloqueante
+
   STATE.session = buildSession();
 
   // Intentar restaurar sesión activa del día — primero localStorage, después server.
@@ -3132,6 +3246,132 @@ async function confirmSwap() {
     const res = await window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, sub);
     if (!res.success) console.warn('[swap] error guardando swap en backend:', res.error);
   }
+}
+
+/* ========================================================================
+   SUSTITUCIÓN DE EJERCICIOS — modal espejo del food swap.
+   La card muestra imagen + nombre + equipo (en vez de macros). El swap es
+   visual/por-sesión, persistido en localStorage (no toca la estructura).
+   ======================================================================== */
+let _exSwapState = { exId:null, original:null, selected:null, query:'' };
+const _exSwapCache = {};
+
+function openExSwapModal(ex) {
+  _exSwapState = { exId: ex.id, original: ex, selected: null, query: '' };
+  const subs = exGetSubs(ex);
+
+  if (!subs.length) {
+    $('#modalHost').innerHTML = `
+    <div class="modal-back" id="exSwapModalBack">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Sin variantes</div>
+        <div class="swap-empty">No hay otra variante equivalente del mismo gesto para este ejercicio.</div>
+        <button class="btn-secondary" onclick="closeExSwapModal()">Cerrar</button>
+      </div>
+    </div>`;
+    $('#exSwapModalBack').addEventListener('click', e => { if(e.target===e.currentTarget) closeExSwapModal(); });
+    return;
+  }
+  renderExSwapModal();
+}
+
+function _exSwapCardHtml(s, idx, selected) {
+  const thumb = s.images && (s.images.concentric || s.images.eccentric);
+  return `<div class="swap-card${idx===selected?' is-selected':''}" data-exsub="${idx}" onclick="selectExSwapCard(this,${idx})">
+    ${thumb ? `<img class="swap-ex-thumb" src="${thumb}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+    <div class="swap-card-info">
+      <div class="swap-card-name">${s.name}</div>
+      <div class="swap-card-equip">${s.equipo}</div>
+    </div>
+  </div>`;
+}
+
+function renderExSwapModal() {
+  const ex = _exSwapState.original;
+  const query = _exSwapState.query;
+  const all = exGetSubs(ex);
+  const subs = query ? all.filter(s => s.name.toLowerCase().includes(query.toLowerCase().trim())) : all;
+  const origEquip = window.MyPump?.exerciseSwap?._resolve({ nombre: ex._origNombre || ex.nombre, images: ex._origImages || ex.images, catalogo_slug: ex._origSlug });
+  const origEquipLabel = origEquip ? window.MyPump.exerciseSwap._equipLabel(origEquip) : '';
+
+  const subsHtml = subs.length === 0
+    ? `<div class="swap-empty">${query ? `Sin resultados para “${query}”.` : 'No hay variantes equivalentes.'}</div>`
+    : `<div class="swap-list">${subs.map(s => _exSwapCardHtml(s, all.indexOf(s), _exSwapState.selected)).join('')}</div>`;
+
+  $('#modalHost').innerHTML = `
+  <div class="modal-back" id="exSwapModalBack">
+    <div class="modal-sheet swap-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Sustituir ejercicio</div>
+      <div class="swap-original">
+        <div class="sw-name">${ex._origNombre || ex.nombre}</div>
+        <div class="sw-meta">Mismo gesto · otra variante${origEquipLabel ? ` · actual: ${origEquipLabel}` : ''}</div>
+      </div>
+      <div class="swap-search-row">
+        <input type="text" id="exSwapSearch" class="swap-search" placeholder="Buscar variante..." value="${query.replace(/"/g,'&quot;')}" />
+        <span class="swap-count">${subs.length}/${all.length}</span>
+      </div>
+      <div class="swap-subs-title">Variantes del mismo movimiento</div>
+      ${subsHtml}
+      <div style="display:flex;gap:8px;margin-top:var(--space-3)">
+        <button class="btn-secondary" style="flex:1" onclick="closeExSwapModal()">Cancelar</button>
+        <button class="btn-primary" style="flex:2" id="exSwapConfirmBtn" ${_exSwapState.selected===null?'disabled':''} onclick="confirmExSwap()">Sustituir</button>
+      </div>
+    </div>
+  </div>`;
+  $('#exSwapModalBack').addEventListener('click', e => { if(e.target===e.currentTarget) closeExSwapModal(); });
+  const search = $('#exSwapSearch');
+  if (search) {
+    search.addEventListener('input', e => { _exSwapState.query = e.target.value; _exSwapRenderListOnly(); });
+    if (query) { search.focus(); search.setSelectionRange(query.length, query.length); }
+  }
+}
+
+// Re-render parcial de la lista (no pierde el foco del input de búsqueda)
+function _exSwapRenderListOnly() {
+  const ex = _exSwapState.original;
+  const query = _exSwapState.query;
+  const all = exGetSubs(ex);
+  const subs = query ? all.filter(s => s.name.toLowerCase().includes(query.toLowerCase().trim())) : all;
+  const listEl = $('.swap-list, .swap-empty');
+  if (!listEl) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = subs.length === 0
+    ? `<div class="swap-empty">${query ? `Sin resultados para “${query}”.` : 'No hay variantes equivalentes.'}</div>`
+    : `<div class="swap-list">${subs.map(s => _exSwapCardHtml(s, all.indexOf(s), _exSwapState.selected)).join('')}</div>`;
+  listEl.replaceWith(wrap.firstElementChild);
+  const countEl = $('.swap-count');
+  if (countEl) countEl.textContent = `${subs.length}/${all.length}`;
+}
+
+function selectExSwapCard(el, idx) {
+  $$('.swap-card').forEach(c => c.classList.remove('is-selected'));
+  el.classList.add('is-selected');
+  _exSwapState.selected = idx;
+  const btn = $('#exSwapConfirmBtn');
+  if (btn) btn.disabled = false;
+}
+
+function closeExSwapModal() {
+  $('#modalHost').innerHTML = '';
+  _exSwapState = { exId:null, original:null, selected:null, query:'' };
+}
+
+function confirmExSwap() {
+  if (_exSwapState.selected === null) return;
+  const ex = _exSwapState.original;
+  const all = exGetSubs(ex);
+  const sub = all[_exSwapState.selected];
+  if (!sub) return;
+
+  STATE.exerciseSwaps[ex.id] = {
+    original: { slug: ex._origSlug || null, nombre: ex._origNombre || ex.nombre, images: ex._origImages || null },
+    current:  { slug: sub.slug, nombre: sub.name, equipment: sub.equipmentRaw, images: sub.images },
+  };
+  persistExerciseSwaps();
+  closeExSwapModal();
+  renderTrain();
 }
 
 // ---- CUSTOM FOOD MODAL ----
