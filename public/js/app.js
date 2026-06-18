@@ -225,33 +225,134 @@ window.MyPump.exerciseSwap = {
     return this.EQUIP_LABEL[entry.equipment] || (entry.equipment ? entry.equipment : 'Otro');
   },
 
+  // ── Matcher por REGLAS español → slug (gesto exacto) ──────────────
+  // Las rutinas publicadas guardan el nombre en español, sin slug y a veces sin
+  // imágenes. El RPC trigram contra el catálogo en inglés es PELIGROSO (matchea
+  // "pullover" con "crunch"), así que resolvemos con reglas determinísticas —
+  // el mismo set que usamos para asignar imágenes (semánticamente correcto).
+  // Orden = prioridad (la primera que matchea gana). Específico → general.
+  _RESOLVE_RULES: [
+    [/cinta.*trote|trote suave|cinta.*suave/, 'Jogging_Treadmill'],
+    [/cinta|caminadora|treadmill/, 'Running_Treadmill'],
+    [/rollout|ab wheel|rueda abdom/, 'Ab_Roller'],
+    [/crunch.*maquina|crunch en m/, 'Ab_Crunch_Machine'],
+    [/plancha|plank/, 'Plank'],
+    [/remo.*maquina palanca|palanca|leverage.*row|iso.?row/, 'Leverage_Iso_Row'],
+    [/remo.*polea.*sentad|seated cable row|remo en polea sentad/, 'Seated_Cable_Rows'],
+    [/remo.*menton|upright row/, 'Upright_Cable_Row'],
+    [/remo.*polea|cable row/, 'Seated_Cable_Rows'],
+    [/remo.*mancuern/, 'Bent_Over_Two-Dumbbell_Row'],
+    [/remo.*barra|remo con barra/, 'Bent_Over_Barbell_Row'],
+    [/jalon.*neutr|jalon.*v.?bar|agarre neutro/, 'V-Bar_Pulldown'],
+    [/jalon.*pecho|jalon.*prono|pulldown|jalon/, 'Wide-Grip_Lat_Pulldown'],
+    [/pajaro|reverse.*fly|reverse pec deck|deltoides posterior/, 'Reverse_Machine_Flyes'],
+    [/face pull/, 'Face_Pull'],
+    [/elevac.*later.*polea|elevac.*later.*cable|elevac.*later.*una mano/, 'Cable_Seated_Lateral_Raise'],
+    [/elevac.*later/, 'Side_Lateral_Raise'],
+    [/extension.*overhead.*cuerda|overhead.*cuerda|rope.*overhead/, 'Cable_Rope_Overhead_Triceps_Extension'],
+    [/extension.*overhead.*mancuern|overhead.*mancuern/, 'Seated_Triceps_Press'],
+    [/extension.*polea alta|extension.*tricep.*polea|polea alta.*tricep|extension.*barra.*tricep|extension de tricep/, 'Triceps_Pushdown'],
+    [/push.?down/, 'Triceps_Pushdown'],
+    [/patada.*tricep|tricep.*kickback/, 'Tricep_Dumbbell_Kickback'],
+    [/press cerrad.*smith|press cerrad.*multipower/, 'Smith_Machine_Close-Grip_Bench_Press'],
+    [/press cerrad|close.?grip.*bench/, 'Close-Grip_Barbell_Bench_Press'],
+    [/press.*inclin.*maquin/, 'Leverage_Incline_Chest_Press'],
+    [/press.*inclin.*mancuern/, 'Incline_Dumbbell_Press'],
+    [/press.*inclin.*smith|press.*inclin.*multipower/, 'Smith_Machine_Incline_Bench_Press'],
+    [/press.*inclin/, 'Barbell_Incline_Bench_Press_-_Medium_Grip'],
+    [/press.*plano.*maquin/, 'Leverage_Chest_Press'],
+    [/press.*plano.*mancuern/, 'Dumbbell_Bench_Press'],
+    [/press.*plano.*smith|press.*plano.*multipower/, 'Smith_Machine_Bench_Press'],
+    [/press.*plano|press banca/, 'Barbell_Bench_Press_-_Medium_Grip'],
+    [/press.*militar.*maquin|press hombros?.*maquin|press.*hombro.*maquin/, 'Machine_Shoulder_Military_Press'],
+    [/press.*mancuern.*sentad|press hombros?.*mancuern|press.*hombro.*mancuern/, 'Seated_Dumbbell_Press'],
+    [/press.*hombro|press.*militar/, 'Seated_Dumbbell_Press'],
+    [/apertur.*inclin/, 'Incline_Dumbbell_Flyes'],
+    [/cruce.*polea.*bajo|low cable cross/, 'Low_Cable_Crossover'],
+    [/apertur.*polea|cruce.*polea|crossover/, 'Cable_Crossover'],
+    [/apertur|pec deck|butterfly/, 'Butterfly'],
+    [/fondos|dips/, 'Dips_-_Chest_Version'],
+    [/curl.*predicad.*maquin|preacher.*machine/, 'Machine_Preacher_Curls'],
+    [/curl.*predicad/, 'Preacher_Curl'],
+    [/curl.*martillo|hammer/, 'Hammer_Curls'],
+    [/curl.*spider|spider/, 'Spider_Curl'],
+    [/curl.*inclin/, 'Incline_Dumbbell_Curl'],
+    [/curl.*invers|reverse.*curl|curl inverso/, 'Reverse_Cable_Curl'],
+    [/curl.*polea.*una mano|curl.*cable.*una mano|curl en cable a una mano/, 'Standing_One-Arm_Cable_Curl'],
+    [/curl.*polea|curl.*cable/, 'Standing_Biceps_Cable_Curl'],
+    [/curl.*mancuern.*sentad/, 'Seated_Dumbbell_Curl'],
+    [/curl.*mancuern/, 'Dumbbell_Bicep_Curl'],
+    [/curl.*barra/, 'Barbell_Curl'],
+    [/curl femoral.*sentad|leg curl.*sentad|femoral sentad/, 'Seated_Leg_Curl'],
+    [/curl femoral|leg curl|hamstring curl|femoral/, 'Lying_Leg_Curls'],
+    [/extension.*cuad|leg extension|cuadricep/, 'Leg_Extensions'],
+    [/prensa|leg press/, 'Leg_Press'],
+    [/hack squat|sentadilla hack|sentadilla jaca/, 'Hack_Squat'],
+    [/sentadilla.*bulgar|split squat|bulgara/, 'Split_Squat_with_Dumbbells'],
+    [/sentadilla.*smith|smith.*squat|sentadilla.*multipower/, 'Smith_Machine_Squat'],
+    [/sentadilla|squat/, 'Barbell_Squat'],
+    [/zancada|lunge|estocada/, 'Dumbbell_Lunges'],
+    [/peso muerto.*rumano|romanian|rdl.*mancuern/, 'Stiff-Legged_Dumbbell_Deadlift'],
+    [/\brdl\b|peso muerto.*rigid|stiff.?leg/, 'Romanian_Deadlift'],
+    [/peso muerto|deadlift/, 'Barbell_Deadlift'],
+    [/hip thrust|empuje de cadera/, 'Barbell_Hip_Thrust'],
+    [/puente.*gluteo|glute bridge/, 'Barbell_Glute_Bridge'],
+    [/patada.*gluteo|patada.*tras|kickback.*glute/, 'One-Legged_Cable_Kickback'],
+    [/abductor|abduccion/, 'Thigh_Abductor'],
+    [/aductor|aduccion/, 'Thigh_Adductor'],
+    [/soleo|talon sentad|seated calf/, 'Seated_Calf_Raise'],
+    [/talon.*multipower|talon.*smith|smith.*calf/, 'Smith_Machine_Calf_Raise'],
+    [/talon|gemelo|\bcalf\b|gastrocnem|pantorrilla/, 'Standing_Calf_Raises'],
+    [/encogim|shrug|trapecio/, 'Dumbbell_Shrug'],
+    [/elevac.*frontal|front raise/, 'Front_Cable_Raise'],
+    [/pullover.*mancuern/, 'Straight-Arm_Dumbbell_Pullover'],
+    [/pullover/, 'Straight-Arm_Pulldown'],
+    [/skull|press frances|french|rompecraneo/, 'EZ-Bar_Skullcrusher'],
+    [/dominad|pull.?up|pullup/, 'Pullups'],
+    [/flexion|push.?up|lagartij/, 'Pushups'],
+  ],
+
+  _resolveByRules(nombre) {
+    const n = this._norm(nombre);
+    if (!n) return null;
+    for (const [re, slug] of this._RESOLVE_RULES) {
+      if (re.test(n)) return slug;
+    }
+    return null;
+  },
+
   // Resuelve el ejercicio original (de la rutina) a una entrada del catálogo.
-  // Prioridad: slug exacto (la rutina lleva images._matched_slug del backfill) →
-  // catalogo_slug → nombre normalizado contra name_normalized / aliases_es.
+  // Prioridad: slug explícito → slug embebido en la URL de imagen →
+  // matcher por reglas (ES→slug) → alias/nombre exacto. SIN trigram (peligroso).
   _resolve(originalEjercicio) {
     const db = window.MYPUMP_EJERCICIO_DB;
     if (!db || !db.length) return null;
 
-    const slug = originalEjercicio.catalogo_slug
-              || originalEjercicio.images?._matched_slug
-              || originalEjercicio._matched_slug
-              || null;
-    if (slug) {
-      const bySlug = db.find(e => e.slug_en === slug);
-      if (bySlug) return bySlug;
-    }
+    const byId = {};
+    for (const e of db) byId[e.slug_en] = e;
 
-    const n = this._norm(originalEjercicio.nombre || originalEjercicio.name || '');
-    if (!n) return null;
+    // 1) slug explícito (catalogo_slug / _matched_slug)
+    let slug = originalEjercicio.catalogo_slug
+            || originalEjercicio.images?._matched_slug
+            || originalEjercicio._matched_slug
+            || null;
+    if (slug && byId[slug]) return byId[slug];
 
-    // 1) match exacto contra name_normalized del catálogo
-    let hit = db.find(e => e.name_normalized === n);
+    // 2) slug embebido en la URL de imagen: .../exercise-images/<SLUG>/<0|1>.jpg
+    const imgUrl = originalEjercicio.images?.eccentric || originalEjercicio.images?.concentric || '';
+    const m = /exercise-images\/([^/]+)\//.exec(imgUrl);
+    if (m && byId[m[1]]) return byId[m[1]];
+
+    // 3) matcher por reglas español → slug (gesto exacto)
+    slug = this._resolveByRules(originalEjercicio.nombre || originalEjercicio.name || '');
+    if (slug && byId[slug]) return byId[slug];
+
+    // 4) alias / nombre normalizado exacto (sin contains laxo: evita falsos cruces)
+    const nn = this._norm(originalEjercicio.nombre || originalEjercicio.name || '');
+    if (!nn) return null;
+    let hit = db.find(e => e.name_normalized === nn);
     if (hit) return hit;
-    // 2) alias exacto en español
-    hit = db.find(e => Array.isArray(e.aliases_es) && e.aliases_es.includes(n));
-    if (hit) return hit;
-    // 3) contains laxo (el nombre del catálogo contenido en el del cliente o viceversa)
-    hit = db.find(e => e.name_normalized && (n.includes(e.name_normalized) || e.name_normalized.includes(n)));
+    hit = db.find(e => Array.isArray(e.aliases_es) && e.aliases_es.includes(nn));
     return hit || null;
   },
 
@@ -277,7 +378,9 @@ window.MyPump.exerciseSwap = {
       )
       .map(e => ({
         slug:          e.slug_en,
-        name:          (Array.isArray(e.aliases_es) && e.aliases_es[0]) ? e.aliases_es[0] : e.name_en,
+        // aliases_es del catálogo son keywords genéricas ('remo','jalon'), no
+        // sirven para distinguir variantes → mostramos el nombre específico (name_en).
+        name:          e.name_en || (Array.isArray(e.aliases_es) && e.aliases_es[0]) || e.slug_en.replace(/_/g,' '),
         name_en:       e.name_en,
         equipo:        this._equipLabel(e),
         equipmentRaw:  e.equipment,
