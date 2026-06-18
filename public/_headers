@@ -1,0 +1,32 @@
+# Cloudflare Pages — Cache-Control
+#
+# Problema: por default CF Pages sirve los assets con max-age=14400 (4h) SIN
+# revalidar, así que tras un deploy los usuarios seguían con el HTML/JS viejo
+# hasta 4 horas (o hasta hacer hard-refresh). Eso hacía que features nuevas no
+# aparecieran aunque el deploy estuviera OK.
+#
+# Fix: no-cache en HTML + JS + CSS. "no-cache" NO desactiva el cache; obliga a
+# revalidar con el server en cada carga (ETag/Last-Modified → 304 si no cambió,
+# o 200 con la versión nueva). Resultado: el código nuevo llega al instante,
+# con bandwidth mínimo (la mayoría de las veces es un 304).
+#
+# Las imágenes y el manifest mantienen el cache largo por default (son estáticas
+# y versionadas por path).
+
+/cliente
+  Cache-Control: no-cache
+
+/cliente.html
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/marketing.html
+  Cache-Control: no-cache
+
+/js/*
+  Cache-Control: no-cache
+
+/css/*
+  Cache-Control: no-cache
