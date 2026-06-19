@@ -417,6 +417,11 @@ main{padding:var(--space-4)}
 .ex-prog-nota.is-mantener,.ex-prog-nota.is-calibracion{background:var(--color-bg-tertiary);border-color:var(--color-border);border-left-color:var(--color-text-muted)}
 .ex-prog-nota-lbl{font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--color-text-secondary)}
 .ex-prog-nota-txt{font-size:13px;line-height:1.45;color:var(--color-text-primary)}
+.finish-cerrado-msg{text-align:center;font-size:14px;font-weight:600;color:var(--color-brand);padding:var(--space-2) 0}
+/* ── Dato de la sesión anterior (MEJORA 3) ── */
+.ex-prev-sesion{display:flex;align-items:baseline;gap:6px;margin-top:var(--space-1)}
+.ex-prev-sesion .lbl{font-size:11px;color:var(--color-text-muted);font-weight:500}
+.ex-prev-sesion .val{font-family:var(--font-mono);font-size:12px;color:var(--color-text-secondary);font-weight:600}
 
 /* CUSTOM FOOD MODAL */
 .custom-food-sheet{max-width:440px}
@@ -707,6 +712,7 @@ let DIETA_ID  = null;
 let RUTINA_ID = null;
 let _sesionId = null;      // ID de sesión activa en Supabase
 let _sesionIniciada = false;
+let _diaFinalizado = false; // sesión del día actual cerrada (finalizada_en) → día HECHO
 let _sessionStart  = null; // Date.now() when first set confirmed
 let MYDAY = null;          // Hábitos del día actual {entrenamiento, comio_segun_plan, durmio_bien, vasos_agua}
 let STREAK = null;         // {streak, ultimo_dia_valido}
@@ -903,6 +909,33 @@ function suggestedKg(exId, idx) {
   const h = DATA.historico_por_ejercicio[exId] || [];
   const ref = h.find(r => r.serie_numero === idx+1) || h[0];
   return ref ? String(ref.peso_kg) : '';
+}
+
+// Dato de la SESIÓN ANTERIOR (la última vez que se hizo el ejercicio, excluyendo
+// la de hoy): serie tope (más pesada) + nº de series + cuándo. Para que el cliente
+// sepa qué superar. Devuelve {val, rel} o null.
+function prevSessionStr(exId) {
+  const h = DATA.historico_por_ejercicio[exId] || [];
+  if (!h.length) return null;
+  const dayStr = (iso) => { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+  const hoy = dayStr(new Date().toISOString());
+  // Rows ya vienen ordenadas por fecha DESC. La sesión anterior = el día más
+  // reciente que NO sea hoy.
+  const prev = h.filter(r => dayStr(r.registrado_en) !== hoy);
+  if (!prev.length) return null;
+  const sesionDay = dayStr(prev[0].registrado_en);
+  const sets = prev.filter(r => dayStr(r.registrado_en) === sesionDay);
+  const top = sets.reduce((a, b) => ((b.peso_kg||0) > (a.peso_kg||0) ? b : a), sets[0]);
+  // Relativo legible
+  const diasAtras = Math.round((new Date(hoy) - new Date(sesionDay)) / 86400000);
+  let rel;
+  if (diasAtras <= 1) rel = 'ayer';
+  else if (diasAtras < 7) rel = `hace ${diasAtras} días`;
+  else if (diasAtras < 14) rel = 'la semana pasada';
+  else { const d = new Date(prev[0].registrado_en); rel = d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }); }
+  const reps = top.reps_realizadas != null ? top.reps_realizadas : top.reps;
+  const nSeries = sets.length;
+  return { val: `${top.peso_kg}kg × ${reps}${nSeries > 1 ? ` · ${nSeries} series` : ''}`, rel };
 }
 
 /* ---- PROGRESION HELPER ---- */
@@ -1329,8 +1362,21 @@ async function writeSet(exId, setIdx) {
 }
 
 async function writeFinish(notas) {
-  if (!RUTINA_ID || !_sesionId) return;
-  await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null);
+  if (!RUTINA_ID) return;
+  // Garantizar que exista la sesión antes de finalizar (defensivo: el cliente
+  // podría cerrar sin haber confirmado ninguna serie).
+  await ensureSesionIniciada();
+  if (!_sesionId) { alert('No se pudo guardar la sesión. Revisá tu conexión e intentá de nuevo.'); return; }
+
+  const res = await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null);
+  if (!res || res.success === false) {
+    alert('No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo.');
+    return;
+  }
+  // Día cerrado = día HECHO (aunque no se hayan tildado todos los ejercicios).
+  _diaFinalizado = true;
+  localStorage.setItem(`mypump_sesion_${TOKEN}_${DATA.dia.id}_finalizada`, '1');
+  renderTrain();
 }
 
 /* ---- AVANCE DE SEMANA ---- */
@@ -1443,6 +1489,52 @@ async function loadRegistrosCarga() {
   console.log(`[mypump] Restauradas ${result.data.length} series desde sesión ${_sesionId}`);
 }
 
+/* Restaura la sesión del día ACTUAL (DATA.dia) desde localStorage o el server:
+ * _sesionId, estados de ejercicios, series cargadas y si el día ya fue cerrado
+ * (_diaFinalizado). Se usa en el bootstrap Y al cambiar de día — antes el cambio
+ * de día NO restauraba nada, así que un día ya hecho aparecía vacío/pendiente. */
+async function restoreSesionDelDia() {
+  _sesionId = null;
+  _sesionIniciada = false;
+  _diaFinalizado = false;
+  if (!RUTINA_ID || (DATA && DATA._isDemo)) return;
+
+  const sesionKey    = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
+  const savedSesionId = localStorage.getItem(sesionKey);
+  const savedSemana   = parseInt(localStorage.getItem(`${sesionKey}_semana`) || '0', 10);
+  const semanaActual  = DATA.rutina.semana_actual || 1;
+
+  if (savedSesionId && savedSemana === semanaActual) {
+    // Sesión local de la semana actual — recuperar
+    _sesionId       = savedSesionId;
+    _sesionIniciada = true;
+    _diaFinalizado  = localStorage.getItem(`${sesionKey}_finalizada`) === '1';
+    await loadExerciseStates();
+    await loadRegistrosCarga();
+  } else {
+    if (savedSesionId && savedSemana !== semanaActual) {
+      localStorage.removeItem(sesionKey);
+      localStorage.removeItem(`${sesionKey}_semana`);
+      localStorage.removeItem(`${sesionKey}_finalizada`);
+    }
+    try {
+      const remote = await window.mypumpDB.getSesionDia(TOKEN, DATA.dia.id, semanaActual);
+      if (remote && remote.id) {
+        _sesionId       = remote.id;
+        _sesionIniciada = true;
+        _diaFinalizado  = !!remote.finalizada_en;   // ← día cerrado = día HECHO
+        localStorage.setItem(sesionKey, remote.id);
+        localStorage.setItem(`${sesionKey}_semana`, semanaActual);
+        if (_diaFinalizado) localStorage.setItem(`${sesionKey}_finalizada`, '1');
+        await loadExerciseStates();
+        await loadRegistrosCarga();
+      }
+    } catch (e) {
+      console.warn('[mypump] error restaurando sesión del día:', e);
+    }
+  }
+}
+
 /* ---- LAZY LOAD HISTORICO ---- */
 async function loadHistorico(exId) {
   if (DATA.historico_por_ejercicio[exId] !== undefined) return;
@@ -1543,7 +1635,7 @@ function renderDayPicker() {
     </button>`;
   }).join('');
   picker.hidden = false;
-  $$('.day-pill').forEach(btn => btn.addEventListener('click', () => {
+  $$('.day-pill').forEach(btn => btn.addEventListener('click', async () => {
     const id = btn.getAttribute('data-dayid');
     const dia = dias.find(d => d.id === id);
     if (!dia || dia.id === DATA.dia.id) return;
@@ -1554,11 +1646,12 @@ function renderDayPicker() {
     STATE.diaCompletadoMostrado = false;
     STATE.session = buildSession();
     STATE.expandedId = null;
-    _sesionIniciada = false;
-    _sesionId = null;
     persistLastDay(dia.id, RUTINA_ID);
     updateDayHeader();
     renderDayPicker();
+    renderTrain();
+    // Restaurar la sesión del nuevo día (estados/series/cerrado) y re-render.
+    await restoreSesionDelDia();
     renderTrain();
   }));
 }
@@ -1592,7 +1685,8 @@ function renderTrain() {
   const TERMINAL = new Set(['completo','completo_sin_datos','saltado']);
   const completedCount = allEx.filter(ex => TERMINAL.has(getExStatus(ex.id))).length;
   const totalEx = allEx.length;
-  const allDone = completedCount === totalEx;
+  const allTerminal = completedCount === totalEx;
+  const allDone = allTerminal || _diaFinalizado;   // día cerrado también cuenta como hecho
   const pendingCount = totalEx - completedCount;
   const mins = _sessionStart ? Math.round((Date.now()-_sessionStart)/60000) : 0;
 
@@ -1620,14 +1714,16 @@ function renderTrain() {
     }
     html += `
     <div class="finish-card">
-      <div class="eyebrow">SESIÓN COMPLETA</div>
+      <div class="eyebrow">${_diaFinalizado ? '✓ DÍA CERRADO' : 'SESIÓN COMPLETA'}</div>
       <h2>${completedCount}/${totalEx} ejercicios listos</h2>
       <div class="finish-summary">
         <div class="fs-cell"><span class="lbl">Series</span><span class="val">${totalSets}</span></div>
         <div class="fs-cell"><span class="lbl">Volumen</span><span class="val">${Math.round(tonnage)}<small>kg</small></span></div>
         <div class="fs-cell"><span class="lbl">Duración</span><span class="val">${mins||'—'}<small>min</small></span></div>
       </div>
-      <button class="btn-primary" id="finishBtn">${ICONS.flag} Cerrar sesión de hoy</button>
+      ${_diaFinalizado
+        ? `<div class="finish-cerrado-msg">Tu sesión de hoy quedó guardada. 💪</div>`
+        : `<button class="btn-primary" id="finishBtn">${ICONS.flag} Cerrar sesión de hoy</button>`}
     </div>`;
   }
 
@@ -1768,7 +1864,13 @@ function renderExCard(ex, blockIdx) {
       <div class="sets-list">
         ${exState.sets.map((s,i) => renderSetRow(ex, s, i, i===activeIdx)).join('')}
       </div>
-      ${last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">🏆 Récord a superar:</span><span class="val">${last}</span></div>` : ''}
+      ${(() => {
+        const prev = prevSessionStr(ex.id);
+        const recordHtml = last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">🏆 Récord a superar:</span><span class="val">${last}</span></div>` : '';
+        const prevHtml = prev ? `<div class="ex-prev-sesion"><span class="lbl">📅 Última vez (${prev.rel}):</span><span class="val">${prev.val}</span></div>` : '';
+        if (!recordHtml && !prevHtml) return '';
+        return `<div style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)">${prevHtml}${last ? `<div class="ex-historic" style="margin-top:${prevHtml?'var(--space-1)':'0'}"><span class="lbl">🏆 Récord a superar:</span><span class="val">${last}</span></div>` : ''}</div>`;
+      })()}
       ${ex.images && (ex.images.eccentric || ex.images.concentric) ? `
         <div class="ex-images">
           ${ex.images.eccentric ? `<figure class="ex-img-card">
@@ -3234,44 +3336,10 @@ async function init() {
 
   STATE.session = buildSession();
 
-  // Intentar restaurar sesión activa del día — primero localStorage, después server.
-  // Esto permite reconectar con la sesión real aunque localStorage esté vacío
-  // (cambio de dispositivo, modo incógnito, cache limpio, retroceso manual de semana).
-  if (RUTINA_ID) {
-    const sesionKey = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
-    const savedSesionId = localStorage.getItem(sesionKey);
-    const savedSemana   = parseInt(localStorage.getItem(`${sesionKey}_semana`) || '0', 10);
-    const semanaActual  = DATA.rutina.semana_actual || 1;
-
-    if (savedSesionId && savedSemana === semanaActual) {
-      // La sesión local es de la semana actual — recuperar
-      _sesionId       = savedSesionId;
-      _sesionIniciada = true;
-      await loadExerciseStates();
-      await loadRegistrosCarga();
-    } else {
-      // No hay sesión local válida — preguntar al server si hay una existente
-      if (savedSesionId && savedSemana !== semanaActual) {
-        // Limpiar localStorage stale antes del fallback al server
-        localStorage.removeItem(sesionKey);
-        localStorage.removeItem(`${sesionKey}_semana`);
-      }
-      try {
-        const remote = await window.mypumpDB.getSesionDia(TOKEN, DATA.dia.id, semanaActual);
-        if (remote && remote.id) {
-          _sesionId       = remote.id;
-          _sesionIniciada = true;
-          // Re-poblar localStorage para que las próximas cargas sean instantáneas
-          localStorage.setItem(sesionKey, remote.id);
-          localStorage.setItem(`${sesionKey}_semana`, semanaActual);
-          await loadExerciseStates();
-          await loadRegistrosCarga();
-        }
-      } catch(e) {
-        console.warn('[init] error consultando sesión remota:', e);
-      }
-    }
-  }
+  // Restaurar la sesión del día (estados + series + si el día ya fue cerrado).
+  // Reconecta con la sesión real aunque localStorage esté vacío (cambio de
+  // dispositivo, incógnito, cache limpio, retroceso de semana).
+  await restoreSesionDelDia();
 
   // Update header initial state
   $('#hdrWeek').textContent = DATA.rutina.semana_actual;
@@ -3712,7 +3780,7 @@ async function saveCustomFood() {
       window.MYPUMP_FOOD_DB.push(localFood);
     }
     _invalidateSwapCache();
-    closeCustomFoodModal();
+    await aplicarCustomFoodComoSwap(name);
     return;
   }
 
@@ -3741,7 +3809,33 @@ async function saveCustomFood() {
     else window.MYPUMP_FOOD_DB.push(localFood);
   }
   _invalidateSwapCache();
-  closeCustomFoodModal();
+  // "Crear y usar" → aplicarlo de una como sustituto de la comida (antes solo lo
+  // agregaba a la lista; si el cliente no lo seleccionaba + Sustituir, no quedaba
+  // aplicado y al recargar la comida volvía al original → "desaparecía").
+  await aplicarCustomFoodComoSwap(name);
+}
+
+// Aplica el custom food recién creado como sustituto del alimento del swap actual
+// (persiste local + backend) y muestra la dieta. Replica el flujo de confirmSwap.
+async function aplicarCustomFoodComoSwap(name) {
+  const orig = _swapState.original;
+  if (!orig || _swapState.comidaId == null) { closeCustomFoodModal(); return; }
+  const subs = window.MyPump.foodSwap.findSubstitutes(orig) || [];
+  const sub  = subs.find(s => s.name.toLowerCase() === name.toLowerCase());
+  if (!sub) { closeCustomFoodModal(); return; }  // fallback: queda en la lista para elegir
+
+  const { comidaId, optIdx, foodIdx } = _swapState;
+  const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
+  STATE.foodSwaps[key] = { original: orig, current: sub };
+  persistSwaps();
+  $('#modalHost').innerHTML = '';
+  _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null, query:'' };
+  renderDiet();
+
+  if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
+    const r = await window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, sub);
+    if (!r.success) console.warn('[customfood] error guardando swap en backend:', r.error);
+  }
 }
 
 function _invalidateSwapCache() {
