@@ -410,6 +410,13 @@ main{padding:var(--space-4)}
 .ex-comment-input:focus{border-color:var(--color-brand);background:var(--color-bg-primary)}
 .ex-comment-send{flex:0 0 auto;height:40px;padding:0 var(--space-4);background:var(--color-brand);color:var(--color-on-brand);border:none;border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer}
 .ex-comment-send:disabled{opacity:.6;cursor:default}
+/* ── Nota automática de progresión ── */
+.prog-banner{background:var(--color-brand-subtle);border:1px solid var(--color-brand);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin-bottom:var(--space-3);font-size:13px;line-height:1.4;color:var(--color-text-primary)}
+.prog-banner.is-calibracion{background:var(--color-bg-tertiary);border-color:var(--color-border)}
+.ex-prog-nota{display:flex;flex-direction:column;gap:2px;background:var(--color-brand-subtle);border:1px solid var(--color-brand);border-left-width:3px;border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin-bottom:var(--space-3)}
+.ex-prog-nota.is-mantener,.ex-prog-nota.is-calibracion{background:var(--color-bg-tertiary);border-color:var(--color-border);border-left-color:var(--color-text-muted)}
+.ex-prog-nota-lbl{font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--color-text-secondary)}
+.ex-prog-nota-txt{font-size:13px;line-height:1.45;color:var(--color-text-primary)}
 
 /* CUSTOM FOOD MODAL */
 .custom-food-sheet{max-width:440px}
@@ -916,6 +923,57 @@ function getProgresionActual(ej, semana) {
     reps:   ej.reps         ?? null,
     rir:    ej.rir_objetivo ?? ej.rir ?? null,
   };
+}
+
+/* Nota automática de progresión: explica el cambio de la semana actual vs la
+ * anterior siguiendo la lógica de sobrecarga progresiva. Solo lógica de frontend
+ * (la progresión ya viene en la estructura). Devuelve {texto, cambia, calibracion}
+ * o null si no hay datos de progresión.
+ */
+function computeProgresionNota(ej, semanaActual) {
+  if (!Array.isArray(ej.progresion) || ej.progresion.length === 0) return null;
+  const sem = semanaActual || 1;
+  // Límite superior de un valor que puede venir como rango ("8-10") o número.
+  const upper = (v) => {
+    const nums = String(v == null ? '' : v).match(/\d+/g);
+    return (nums && nums.length) ? Math.max(...nums.map(Number)) : null;
+  };
+  const byWeek = (s) => ej.progresion.find(p => p.semana === s)
+                     || ej.progresion[Math.max(0, Math.min(s - 1, ej.progresion.length - 1))];
+
+  const cur = byWeek(sem);
+  if (!cur) return null;
+
+  const prev = (sem > 1) ? (ej.progresion.find(p => p.semana === sem - 1) || ej.progresion[sem - 2]) : null;
+  if (!prev) {
+    return { texto: 'Semana de calibración: encontrá los pesos correctos sin ir al fallo.', cambia: false, calibracion: true };
+  }
+
+  const curReps   = upper(cur.reps),   prevReps   = upper(prev.reps);
+  const curSeries = upper(cur.series), prevSeries = upper(prev.series);
+  const curRir    = upper(cur.rir),    prevRir    = upper(prev.rir);
+
+  const repsDown   = curReps   != null && prevReps   != null && curReps   <  prevReps;
+  const repsUp     = curReps   != null && prevReps   != null && curReps   >  prevReps;
+  const repsSame   = curReps   != null && prevReps   != null && curReps   === prevReps;
+  const seriesUp   = curSeries != null && prevSeries != null && curSeries >  prevSeries;
+  const seriesSame = curSeries != null && prevSeries != null && curSeries === prevSeries;
+  const rirDown    = curRir    != null && prevRir    != null && curRir    <  prevRir;
+
+  const parts = [];
+  if      (repsDown && seriesSame) parts.push(`Esta semana bajan las reps (de ${prev.reps} a ${cur.reps}). Subí la carga: apuntá a más kilos que la semana pasada, manteniendo buena técnica.`);
+  else if (repsDown && seriesUp)   parts.push(`Más series y menos reps: subí un poco la carga y sumá volumen.`);
+  else if (seriesUp && repsSame)   parts.push(`Sumamos una serie: mismo peso, más volumen total esta semana.`);
+  else if (repsUp && seriesSame)   parts.push(`Suben las reps con el mismo peso. Si las completás sobrado, subí la carga la próxima.`);
+
+  if (rirDown) parts.push(`Bajamos el RIR: acercate más al fallo en cada serie.`);
+
+  const cambia = parts.length > 0;
+  if (!cambia) {
+    if (repsSame && seriesSame) parts.push(`Mantené las cargas de la semana pasada y buscá mejorar técnica/conexión; si te sobra, subí un poco.`);
+    else parts.push(`Seguí la pauta de esta semana (${cur.series ?? '—'}×${cur.reps ?? '—'}); si te sobra, subí la carga.`);
+  }
+  return { texto: parts.join(' '), cambia, calibracion: false };
 }
 
 /* ---- DAY HELPERS ---- */
@@ -1567,6 +1625,16 @@ function renderTrain() {
     </div>`;
   }
 
+  // Banner-resumen: cuántos ejercicios cambian carga/volumen esta semana.
+  const _exDia = DATA.dia.bloques.flatMap(b => b.ejercicios);
+  const _nCambian = _exDia.filter(ex => ex.tipo !== 'calentamiento' && computeProgresionNota(ex, DATA.rutina.semana_actual)?.cambia).length;
+  const _esCalibracion = (DATA.rutina.semana_actual || 1) <= 1;
+  if (_nCambian > 0) {
+    html += `<div class="prog-banner">📈 Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
+  } else if (_esCalibracion) {
+    html += `<div class="prog-banner is-calibracion">🎯 Semana de calibración: buscá los pesos correctos sin ir al fallo.</div>`;
+  }
+
   for (let bi=0; bi<DATA.dia.bloques.length; bi++) {
     const b = DATA.dia.bloques[bi];
     const done = b.ejercicios.filter(ex => TERMINAL.has(getExStatus(ex.id))).length;
@@ -1680,9 +1748,14 @@ function renderExCard(ex, blockIdx) {
   if (isExpanded) {
     const allConfirmed = exState.sets.every(s => s.confirmed);
     const activeIdx = exState.sets.findIndex(s => !s.confirmed);
+    const _progNota = isWarmup ? null : computeProgresionNota(ex, DATA.rutina.semana_actual);
     panel = `
     <div class="ex-panel">
       <div class="divider"></div>
+      ${_progNota ? `<div class="ex-prog-nota ${_progNota.cambia ? 'is-cambio' : (_progNota.calibracion ? 'is-calibracion' : 'is-mantener')}">
+        <span class="ex-prog-nota-lbl">${_progNota.cambia ? '📈 Cambio de la semana' : (_progNota.calibracion ? '🎯 Semana 1' : '📋 Esta semana')}</span>
+        <span class="ex-prog-nota-txt">${_progNota.texto}</span>
+      </div>` : ''}
       <div class="sets-head">
         <span></span><span>Reps</span><span>${isWarmup ? '—' : 'Kg'}</span><span>RIR</span><span></span>
       </div>
