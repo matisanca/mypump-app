@@ -356,6 +356,118 @@ window.MyPump.exerciseSwap = {
     return hit || null;
   },
 
+  // ── Traductor compositivo name_en → español ───────────────────────
+  // El catálogo (free-exercise-db) está en inglés. Para mostrar los sustitutos
+  // en español componemos: BASE (gesto) + MODIFICADORES (inclinado/sentado…) +
+  // EQUIPO (con barra / en polea…). Orden de listas = específico → general.
+  _BASE_ES: [
+    [/romanian deadlift/, 'Peso muerto rumano'],
+    [/stiff.?leg.*deadlift|stiff legged/, 'Peso muerto piernas rígidas'],
+    [/sumo deadlift/, 'Peso muerto sumo'],
+    [/trap bar deadlift/, 'Peso muerto con trap bar'],
+    [/deadlift/, 'Peso muerto'],
+    [/good morning/, 'Buenos días'],
+    [/leg press/, 'Prensa de piernas'],
+    [/hack squat/, 'Hack squat'],
+    [/split squat|bulgarian/, 'Sentadilla búlgara'],
+    [/front squat/, 'Sentadilla frontal'],
+    [/squat/, 'Sentadilla'],
+    [/walking lunge/, 'Zancadas caminando'],
+    [/lunge|lunges/, 'Zancadas'],
+    [/step-?up/, 'Subida al cajón'],
+    [/leg extension/, 'Extensión de cuádriceps'],
+    [/lying leg curl/, 'Curl femoral acostado'],
+    [/seated leg curl/, 'Curl femoral sentado'],
+    [/leg curl|glute ham|nordic/, 'Curl femoral'],
+    [/hip thrust/, 'Hip thrust'],
+    [/glute bridge/, 'Puente de glúteos'],
+    [/(glute|cable) kickback|kickback/, 'Patada de glúteo'],
+    [/thigh abductor|hip abduction|abductor/, 'Abductores'],
+    [/thigh adductor|hip adduction|adductor/, 'Aductores'],
+    [/seated calf raise|calf raise.*seated/, 'Elevación de talones sentado'],
+    [/calf raise|calf press|calves/, 'Elevación de talones'],
+    [/bench press/, 'Press de banca'],
+    [/chest press/, 'Press de pecho'],
+    [/shoulder press|military press/, 'Press militar'],
+    [/overhead press|push press/, 'Press sobre la cabeza'],
+    [/arnold press/, 'Press Arnold'],
+    [/floor press/, 'Press en el piso'],
+    [/\bpress\b/, 'Press'],
+    [/lat pulldown|pulldown|pull-down|pull down/, 'Jalón al pecho'],
+    [/chin-?up/, 'Dominadas supinas'],
+    [/pull-?up|pullup/, 'Dominadas'],
+    [/straight-?arm|pullover/, 'Pullover'],
+    [/upright row/, 'Remo al mentón'],
+    [/t-bar row/, 'Remo en T'],
+    [/\brows?\b/, 'Remo'],
+    [/face pull/, 'Face pull'],
+    [/rear delt|reverse fly|reverse machine fly|rear lateral/, 'Pájaros'],
+    [/lateral raise|side lateral/, 'Elevaciones laterales'],
+    [/front raise/, 'Elevaciones frontales'],
+    [/shrug/, 'Encogimientos'],
+    [/pec deck|butterfly/, 'Pec deck'],
+    [/crossover|cross over|cable cross/, 'Cruce de poleas'],
+    [/fly|flye/, 'Aperturas'],
+    [/hammer curl/, 'Curl martillo'],
+    [/preacher curl/, 'Curl predicador'],
+    [/spider curl/, 'Curl araña'],
+    [/concentration curl/, 'Curl concentrado'],
+    [/reverse curl/, 'Curl invertido'],
+    [/wrist curl/, 'Curl de muñeca'],
+    [/bicep.*curl|curl/, 'Curl de bíceps'],
+    [/pushdown|push-down|push down/, 'Extensión de tríceps en polea'],
+    [/skull|french press|nose breaker/, 'Press francés'],
+    [/overhead.*(triceps|extension)|triceps.*overhead/, 'Extensión de tríceps sobre la cabeza'],
+    [/triceps? (extension|press)|extension.*triceps/, 'Extensión de tríceps'],
+    [/dips?\b/, 'Fondos'],
+    [/push-?up|pushup/, 'Flexiones'],
+    [/rollout|roller|ab wheel/, 'Rollout'],
+    [/plank/, 'Plancha'],
+    [/hanging.*raise|leg raise|knee raise/, 'Elevación de piernas'],
+    [/russian twist|oblique|woodchop|wood chop/, 'Oblicuos'],
+    [/crunch|sit-?up/, 'Crunch'],
+    [/hyperextension|back extension/, 'Hiperextensiones'],
+  ],
+  _EQUIP_ES: [
+    [/\bsmith\b/, 'en multipower'],
+    [/leverage|lever |machine/, 'en máquina'],
+    [/cable|pulley/, 'en polea'],
+    [/e-?z[ -]?(curl )?bar/, 'con barra Z'],
+    [/dumbbell|\bdb\b/, 'con mancuernas'],
+    [/barbell/, 'con barra'],
+    [/kettlebell/, 'con kettlebell'],
+    [/\bband\b|bands/, 'con banda'],
+    [/exercise ball|ball /, 'con pelota'],
+  ],
+  _MOD_ES: [
+    [/incline/, 'inclinado'],
+    [/decline/, 'declinado'],
+    [/close-?grip/, 'agarre cerrado'],
+    [/wide-?grip/, 'agarre ancho'],
+    [/one-?arm|single-?arm|one arm/, 'a una mano'],
+  ],
+
+  // Traduce el nombre de un ejercicio del catálogo a español compositivo.
+  // Devuelve el name_en si no encuentra base (mejor inglés que algo roto).
+  _toEs(entry) {
+    const en = (entry.name_en || '').toLowerCase();
+    if (!en) return entry.slug_en ? entry.slug_en.replace(/_/g, ' ') : '';
+    let base = null;
+    for (const [re, es] of this._BASE_ES) { if (re.test(en)) { base = es; break; } }
+    if (!base) return entry.name_en;          // fallback: inglés
+    let eq = '';
+    for (const [re, es] of this._EQUIP_ES) { if (re.test(en)) { eq = es; break; } }
+    const mods = [];
+    for (const [re, es] of this._MOD_ES) { if (re.test(en)) mods.push(es); }
+    let out = base;
+    if (mods.length) out += ' ' + mods.join(' ');
+    // Evitar redundancia: no agregar el equipo si la base ya lo implica
+    // ('Cruce de poleas' ya tiene polea, 'Prensa de piernas' no lleva equipo, etc.)
+    const eqCore = { 'en polea':'polea','en máquina':'máquina','en multipower':'multipower','con barra':'barra','con mancuernas':'mancuern','con kettlebell':'kettlebell','con banda':'banda','con barra Z':'barra z','con pelota':'pelota' };
+    if (eq && !out.toLowerCase().includes(eqCore[eq] || eq.toLowerCase())) out += ' ' + eq;
+    return out;
+  },
+
   // Devuelve los sustitutos válidos del ejercicio original.
   findSubstitutes(originalEjercicio) {
     const db = window.MYPUMP_EJERCICIO_DB;
@@ -378,9 +490,9 @@ window.MyPump.exerciseSwap = {
       )
       .map(e => ({
         slug:          e.slug_en,
-        // aliases_es del catálogo son keywords genéricas ('remo','jalon'), no
-        // sirven para distinguir variantes → mostramos el nombre específico (name_en).
-        name:          e.name_en || (Array.isArray(e.aliases_es) && e.aliases_es[0]) || e.slug_en.replace(/_/g,' '),
+        // Nombre traducido al español (compositivo). aliases_es del catálogo son
+        // keywords genéricas ('remo','jalon'), no sirven para distinguir variantes.
+        name:          this._toEs(e),
         name_en:       e.name_en,
         equipo:        this._equipLabel(e),
         equipmentRaw:  e.equipment,
@@ -398,6 +510,9 @@ window.MyPump.exerciseSwap = {
         if (a._sameEquip !== b._sameEquip) return a._sameEquip ? 1 : -1;
         return a.name.localeCompare(b.name, 'es');
       })
+      // Dedup por nombre+equipo: varias variantes casi idénticas traducen al
+      // mismo nombre ('Dominadas [Peso corporal]' ×3). Conservamos la primera.
+      .filter((s, i, arr) => arr.findIndex(x => x.name === s.name && x.equipo === s.equipo) === i)
       .slice(0, 30);
   },
 

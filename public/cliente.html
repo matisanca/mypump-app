@@ -1016,12 +1016,28 @@ function persistSwaps() {
 // Conserva refs al original (_orig*) para resolver/ofrecer sustitutos y revertir.
 function getEffectiveEx(ex) {
   const sw = STATE.exerciseSwaps[ex.id];
-  const eff = sw
-    ? { ...ex, nombre: sw.current.nombre, images: sw.current.images, _isSwapped: true, _swapSlug: sw.current.slug }
-    : { ...ex };
+  let eff;
+  if (sw) {
+    eff = { ...ex, nombre: sw.current.nombre, images: sw.current.images, _isSwapped: true, _swapSlug: sw.current.slug };
+  } else {
+    eff = { ...ex };
+    // Si la rutina NO trae foto (ejercicio creado en NutriPlan sin match), la
+    // derivamos del catálogo resolviendo el nombre ES → slug. Así toda la base
+    // queda "macheada" sin republicar, fuente única de verdad = catálogo.
+    if (!(eff.images && eff.images.eccentric) && window.MyPump?.exerciseSwap) {
+      const entry = window.MyPump.exerciseSwap._resolve(ex);
+      if (entry && entry.image_eccentric) {
+        eff.images = {
+          eccentric:  entry.image_eccentric,
+          concentric: entry.image_concentric,
+          _matched_slug: entry.slug_en,
+        };
+      }
+    }
+  }
   eff._origNombre = ex.nombre;
   eff._origImages = ex.images || null;
-  eff._origSlug   = ex.images?._matched_slug || ex.catalogo_slug || null;
+  eff._origSlug   = ex.images?._matched_slug || ex.catalogo_slug || eff.images?._matched_slug || null;
   return eff;
 }
 
