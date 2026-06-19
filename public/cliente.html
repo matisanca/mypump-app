@@ -888,11 +888,15 @@ function fmtTime(s) {
   return `${m}:${String(sec).padStart(2,'0')}`;
 }
 
+// Mejor marca histórica del ejercicio (set más pesado registrado) = récord a
+// superar. Sirve de referencia/motivación en las semanas de progresión.
 function lastSessionStr(exId) {
   const h = (DATA.historico_por_ejercicio[exId] || []);
   if (!h.length) return null;
-  const top = h.reduce((a,b) => b.peso_kg > a.peso_kg ? b : a, h[0]);
-  return `${top.peso_kg}kg × ${top.reps_realizadas || top.reps} RIR${top.rir_real}`;
+  const top = h.reduce((a,b) => (b.peso_kg||0) > (a.peso_kg||0) ? b : a, h[0]);
+  const reps = top.reps_realizadas || top.reps;
+  const rir  = (top.rir_real != null) ? ` · RIR ${top.rir_real}` : '';
+  return `${top.peso_kg}kg × ${reps}${rir}`;
 }
 
 function suggestedKg(exId, idx) {
@@ -944,9 +948,11 @@ function computeProgresionNota(ej, semanaActual) {
   const cur = byWeek(sem);
   if (!cur) return null;
 
+  const _CALIBRACION = 'Semana de calibración: buscá el fallo muscular, no te guardes reps. Las reps son una guía (±2-3): si apuntás a 12 y te salen 9 o 14, perfecto. La idea es encontrar tu peso real llegando cerca del fallo.';
+
   const prev = (sem > 1) ? (ej.progresion.find(p => p.semana === sem - 1) || ej.progresion[sem - 2]) : null;
   if (!prev) {
-    return { texto: 'Semana de calibración: encontrá los pesos correctos sin ir al fallo.', cambia: false, calibracion: true };
+    return { texto: _CALIBRACION, cambia: false, calibracion: true };
   }
 
   const curReps   = upper(cur.reps),   prevReps   = upper(prev.reps);
@@ -970,8 +976,8 @@ function computeProgresionNota(ej, semanaActual) {
 
   const cambia = parts.length > 0;
   if (!cambia) {
-    if (repsSame && seriesSame) parts.push(`Mantené las cargas de la semana pasada y buscá mejorar técnica/conexión; si te sobra, subí un poco.`);
-    else parts.push(`Seguí la pauta de esta semana (${cur.series ?? '—'}×${cur.reps ?? '—'}); si te sobra, subí la carga.`);
+    if (repsSame && seriesSame) parts.push(`Mantené el peso de la semana pasada e intentá superar tus reps, siempre cerca del fallo. Si te sobra, subí la carga.`);
+    else parts.push(`Seguí la pauta de esta semana (${cur.series ?? '—'}×${cur.reps ?? '—'}) y trabajá cerca del fallo; si te sobra, subí la carga.`);
   }
   return { texto: parts.join(' '), cambia, calibracion: false };
 }
@@ -1632,7 +1638,7 @@ function renderTrain() {
   if (_nCambian > 0) {
     html += `<div class="prog-banner">📈 Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
   } else if (_esCalibracion) {
-    html += `<div class="prog-banner is-calibracion">🎯 Semana de calibración: buscá los pesos correctos sin ir al fallo.</div>`;
+    html += `<div class="prog-banner is-calibracion">🎯 Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3) — no te guardes reps.</div>`;
   }
 
   for (let bi=0; bi<DATA.dia.bloques.length; bi++) {
@@ -1739,7 +1745,7 @@ function renderExCard(ex, blockIdx) {
           }
           <span class="chip mono"><span class="lbl">desc</span> ${fmtTime(ex.descanso_segundos)}</span>
         </div>
-        ${!isExpanded ? `<div class="ex-historic"><span class="lbl">Última:</span><span class="val">${last || 'Primera vez con este ejercicio'}</span></div>` : ''}
+        ${!isExpanded ? `<div class="ex-historic"><span class="lbl">${last ? '🏆 Récord:' : 'Última:'}</span><span class="val">${last || 'Primera vez con este ejercicio'}</span></div>` : ''}
       </div>
       ${!isExpanded ? `<div class="ex-pip-row">${pips}</div>` : `<div class="ex-chevron">${ICONS.chevron}</div>`}
     </button>`;
@@ -1762,7 +1768,7 @@ function renderExCard(ex, blockIdx) {
       <div class="sets-list">
         ${exState.sets.map((s,i) => renderSetRow(ex, s, i, i===activeIdx)).join('')}
       </div>
-      ${last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">Última sesión:</span><span class="val">${last}</span></div>` : ''}
+      ${last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">🏆 Récord a superar:</span><span class="val">${last}</span></div>` : ''}
       ${ex.images && (ex.images.eccentric || ex.images.concentric) ? `
         <div class="ex-images">
           ${ex.images.eccentric ? `<figure class="ex-img-card">
