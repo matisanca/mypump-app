@@ -323,6 +323,41 @@ window.mypumpDB = {
     }
   },
 
+  // ─── COMENTARIOS (coach ↔ cliente) ───────────────────────
+
+  // Devuelve los comentarios del cliente, opcionalmente filtrados por ámbito y
+  // referencia (p.ej. ambito='ejercicio', referenciaId=ejercicio.id).
+  // Cada fila: {id, ambito, referencia_id, referencia_nombre, autor, contenido,
+  // leido_por_cliente, leido_por_coach, created_at}.
+  async getComentarios(token, ambito = null, referenciaId = null) {
+    return await rpc('mypump_get_comentarios', {
+      p_token:         token,
+      p_ambito:        ambito,
+      p_referencia_id: referenciaId,
+    });
+  },
+
+  // Agrega un comentario del cliente. Devuelve {success, data: id, error}.
+  async agregarComentario(token, ambito, referenciaId, referenciaNombre, contenido) {
+    return await rpcMutation('mypump_agregar_comentario', {
+      p_token:             token,
+      p_ambito:            ambito,
+      p_referencia_id:     referenciaId,
+      p_referencia_nombre: referenciaNombre,
+      p_contenido:         contenido,
+    });
+  },
+
+  // Marca como leídos los comentarios del coach (opcionalmente por ámbito/ref).
+  // Devuelve {success, data: cantidad, error}.
+  async marcarLeidos(token, ambito = null, referenciaId = null) {
+    return await rpcMutation('mypump_marcar_leidos_cliente', {
+      p_token:         token,
+      p_ambito:        ambito,
+      p_referencia_id: referenciaId,
+    });
+  },
+
   // ─── CUSTOM FOODS (alimentos personalizados del cliente) ──
 
   // Devuelve array de custom foods del cliente.

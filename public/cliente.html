@@ -390,6 +390,26 @@ main{padding:var(--space-4)}
 .ex-swap-revert{flex:0 0 auto;min-height:40px;padding:0 var(--space-3);background:var(--color-brand-subtle);color:var(--color-text-primary);border:1px solid var(--color-brand);border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer}
 .swap-ex-thumb{width:48px;height:48px;border-radius:var(--radius-md);object-fit:cover;flex:0 0 auto;background:var(--color-bg-tertiary)}
 .swap-card-equip{font-family:var(--font-mono);font-size:11px;color:var(--color-text-muted);margin-top:2px}
+/* ── Comentarios coach ↔ cliente ── */
+.ex-comment-badge{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;font-size:11px;font-weight:700;border-radius:999px;background:var(--color-brand);color:var(--color-on-brand);vertical-align:middle}
+.dp-com-badge{position:absolute;top:4px;right:5px;font-size:10px;line-height:1}
+.day-pill{position:relative}
+.ex-comments{margin-top:var(--space-3);border-top:1px dashed var(--color-border);padding-top:var(--space-3)}
+.ex-comments-title{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted);font-weight:600;margin-bottom:var(--space-2)}
+.ex-comments-list{display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-2)}
+.ex-com{padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);font-size:13px;line-height:1.45;max-width:88%}
+.ex-com.is-coach{background:var(--color-brand-subtle);border:1px solid var(--color-brand);align-self:flex-start}
+.ex-com.is-cliente{background:var(--color-bg-tertiary);border:1px solid var(--color-border);align-self:flex-end}
+.ex-com-head{display:flex;justify-content:space-between;gap:var(--space-3);margin-bottom:2px}
+.ex-com-autor{font-weight:700;font-size:11px;color:var(--color-text-secondary)}
+.ex-com-fecha{font-family:var(--font-mono);font-size:10px;color:var(--color-text-muted)}
+.ex-com-texto{color:var(--color-text-primary);white-space:pre-wrap;word-break:break-word}
+.ex-com-empty{font-size:12px;color:var(--color-text-muted);padding:var(--space-2) 0;text-align:center}
+.ex-comment-form{display:flex;gap:var(--space-2);align-items:flex-end}
+.ex-comment-input{flex:1;min-height:40px;resize:vertical;padding:var(--space-2) var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:13px;font-family:inherit;color:var(--color-text-primary);outline:none;transition:border-color .15s}
+.ex-comment-input:focus{border-color:var(--color-brand);background:var(--color-bg-primary)}
+.ex-comment-send{flex:0 0 auto;height:40px;padding:0 var(--space-4);background:var(--color-brand);color:var(--color-on-brand);border:none;border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer}
+.ex-comment-send:disabled{opacity:.6;cursor:default}
 
 /* CUSTOM FOOD MODAL */
 .custom-food-sheet{max-width:440px}
@@ -695,6 +715,8 @@ const STATE = {
   meals:              {},         // comidaId → {selectedOpt}
   foodSwaps:          {},         // swapKey → {original, current}
   exerciseSwaps:      {},         // exId → {original:{slug,nombre,images}, current:{slug,nombre,equipment,images}}
+  comentariosByRef:   {},         // 'ambito|referencia_id' → [comentarios]
+  comentariosUnread:  {},         // 'ambito|referencia_id' → cantidad no leída del coach
   activeTipoDia:      null,       // id del tipo-día activo (Formato B)
   progressLoaded:     false,
   progressData:       null,
@@ -1045,6 +1067,79 @@ function persistExerciseSwaps() {
   localStorage.setItem(`mypump_exercise_swaps_${RUTINA_ID||'demo'}`, JSON.stringify(STATE.exerciseSwaps));
 }
 
+/* ---- COMENTARIOS (coach ↔ cliente) ----
+ * Tabla aparte (mypump_comentarios) keyeada por (cliente_id, referencia_id);
+ * sobrevive a la republicación de la rutina. Se cargan todos en el bootstrap
+ * (loadComentarios) y se indexan por 'ambito|referencia_id' para los badges.
+ */
+const _comKey = (ambito, refId) => `${ambito}|${refId || ''}`;
+
+function rebuildComentarioIndexes(rows) {
+  const byRef = {}, unread = {};
+  for (const c of (rows || [])) {
+    const k = _comKey(c.ambito, c.referencia_id);
+    (byRef[k] = byRef[k] || []).push(c);
+    if (c.autor === 'coach' && !c.leido_por_cliente) unread[k] = (unread[k] || 0) + 1;
+  }
+  STATE.comentariosByRef = byRef;
+  STATE.comentariosUnread = unread;
+}
+
+function getComentariosFor(ambito, refId) {
+  return STATE.comentariosByRef[_comKey(ambito, refId)] || [];
+}
+function getUnreadFor(ambito, refId) {
+  return STATE.comentariosUnread[_comKey(ambito, refId)] || 0;
+}
+// No leídos del coach para todos los ejercicios de un día (badge del selector).
+function getUnreadDia(dia) {
+  let n = 0;
+  for (const b of (dia.bloques || [])) for (const e of (b.ejercicios || [])) {
+    n += getUnreadFor('ejercicio', e.id);
+  }
+  return n;
+}
+
+async function loadComentarios() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB || !window.mypumpDB.getComentarios) return;
+  const rows = await window.mypumpDB.getComentarios(TOKEN);
+  rebuildComentarioIndexes(rows || []);
+  if (STATE.scene === 'train' && typeof renderTrain === 'function') renderTrain();
+}
+
+// Envía un comentario del cliente anclado a un ejercicio y re-renderiza.
+async function enviarComentarioEjercicio(exId, exNombre, contenido) {
+  contenido = (contenido || '').trim();
+  if (!contenido || !TOKEN || (DATA && DATA._isDemo)) return;
+  const res = await window.mypumpDB.agregarComentario(TOKEN, 'ejercicio', exId, exNombre, contenido);
+  if (!res || !res.success) { alert('No se pudo enviar el comentario. Probá de nuevo.'); return; }
+  await loadComentarios();
+}
+
+// Marca como leídos los comentarios del coach de un ejercicio (al expandir).
+async function marcarLeidosEjercicio(exId) {
+  if (getUnreadFor('ejercicio', exId) === 0) return;
+  // Optimista: limpiar local para que el badge desaparezca ya
+  const k = _comKey('ejercicio', exId);
+  STATE.comentariosUnread[k] = 0;
+  for (const c of (STATE.comentariosByRef[k] || [])) if (c.autor === 'coach') c.leido_por_cliente = true;
+  if (TOKEN && !(DATA && DATA._isDemo)) {
+    await window.mypumpDB.marcarLeidos(TOKEN, 'ejercicio', exId);
+  }
+}
+
+function fmtComentarioFecha(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }) + ' · ' +
+           d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  } catch (_) { return ''; }
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
 // Lista de sustitutos del ejercicio (resuelve SIEMPRE sobre el original).
 // Cacheado por slug/nombre del original — se invalida al recargar el catálogo.
 function exGetSubs(ex) {
@@ -1376,9 +1471,11 @@ function renderDayPicker() {
   picker.innerHTML = dias.map(d => {
     const num  = getDayNum(d, dias);
     const name = getDayShortName(d.nombre);
+    const unread = getUnreadDia(d);
     return `<button class="day-pill${d.id === DATA.dia.id ? ' is-active' : ''}" data-dayid="${d.id}">
       <span class="dp-n">DÍA ${num}</span>
       <span class="dp-name">${name}</span>
+      ${unread > 0 ? `<span class="dp-com-badge" title="${unread} comentario(s) nuevo(s) de Mati">💬</span>` : ''}
     </button>`;
   }).join('');
   picker.hidden = false;
@@ -1565,7 +1662,7 @@ function renderExCard(ex, blockIdx) {
       <div class="ex-status">${statusIcon}</div>
       ${thumbHtml}
       <div class="ex-body">
-        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="Ejercicio sustituido">↔</span>` : ''}${manualBadge}</div>
+        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="Ejercicio sustituido">↔</span>` : ''}${manualBadge}${(() => { const u = getUnreadFor('ejercicio', ex.id); return u > 0 ? ` <span class="ex-comment-badge" title="${u} comentario(s) nuevo(s) de Mati">💬 ${u}</span>` : ''; })()}</div>
         <div class="ex-meta">
           ${isWarmup ? '<span class="chip warm">CALENT.</span>' : ''}
           ${(ex.tipo === 'cardio' || prog.series === null)
@@ -1614,6 +1711,25 @@ function renderExCard(ex, blockIdx) {
             ↔ ${ex._isSwapped ? 'Cambiar sustituto' : 'Sustituir ejercicio'}
           </button>
           ${ex._isSwapped ? `<button class="ex-swap-revert" data-revert-ex="${ex.id}" title="Volver al original">Volver a “${ex._origNombre}”</button>` : ''}
+        </div>`;
+      })()}
+      ${(() => {
+        const coms = getComentariosFor('ejercicio', ex.id);
+        const items = coms.map(c => {
+          const esCoach = c.autor === 'coach';
+          return `<div class="ex-com ${esCoach ? 'is-coach' : 'is-cliente'}">
+            <div class="ex-com-head"><span class="ex-com-autor">${esCoach ? 'Mati' : 'Vos'}</span><span class="ex-com-fecha">${fmtComentarioFecha(c.created_at)}</span></div>
+            <div class="ex-com-texto">${escapeHtml(c.contenido)}</div>
+          </div>`;
+        }).join('');
+        return `
+        <div class="ex-comments">
+          <div class="ex-comments-title">💬 Comentarios</div>
+          <div class="ex-comments-list">${items || '<div class="ex-com-empty">Todavía no hay comentarios. Dejale una nota a Mati o contale cómo te fue.</div>'}</div>
+          <div class="ex-comment-form">
+            <textarea class="ex-comment-input" rows="2" placeholder="Escribí una nota… (ej: hice plano con mancuernas porque la máquina estaba ocupada)" data-comment-input="${ex.id}"></textarea>
+            <button class="ex-comment-send" data-comment-send="${ex.id}">Enviar</button>
+          </div>
         </div>`;
       })()}
       ${(ex.notas_tecnica || ex.video_url) ? `
@@ -1668,9 +1784,22 @@ function bindTrainEvents() {
     const id = btn.getAttribute('data-toggle');
     const wasExpanded = STATE.expandedId === id;
     STATE.expandedId = wasExpanded ? null : id;
-    if (!wasExpanded && DATA.historico_por_ejercicio[id] === undefined) {
-      await loadHistorico(id);
+    if (!wasExpanded) {
+      if (DATA.historico_por_ejercicio[id] === undefined) await loadHistorico(id);
+      marcarLeidosEjercicio(id);   // limpia el badge (optimista) + backend en background
     }
+    renderTrain();
+  }));
+
+  // Enviar comentario del cliente anclado al ejercicio
+  $$('[data-comment-send]').forEach(btn => btn.addEventListener('click', async () => {
+    const exId  = btn.getAttribute('data-comment-send');
+    const input = document.querySelector(`textarea[data-comment-input="${exId}"]`);
+    const txt   = input ? input.value : '';
+    if (!txt.trim()) return;
+    const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    await enviarComentarioEjercicio(exId, ex ? ex.nombre : '', txt);
     renderTrain();
   }));
 
@@ -3020,6 +3149,9 @@ async function init() {
   window.MYPUMP_EJERCICIO_DB = window.MYPUMP_EJERCICIO_DB || [];
   hydrateEjercicioDBFromCache();
   if (!(DATA && DATA._isDemo)) loadEjercicioCatalogo();   // no bloqueante
+
+  // Comentarios coach ↔ cliente (para badges + secciones). No bloqueante.
+  if (!(DATA && DATA._isDemo)) loadComentarios();
 
   STATE.session = buildSession();
 
