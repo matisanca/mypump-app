@@ -2775,17 +2775,22 @@ function renderProgress() {
   }
   html += `</div>`;
   if (pd.exercises.length) {
-    html += `<div class="prog-section-title"><span>Ejercicios</span><span class="meta">máx por sesión</span></div>`;
-    for (const ex of pd.exercises) {
-      html += `
-      <button class="exer-row" data-detail="${ex.id}">
-        <div class="info">
-          <div class="name">${ex.name}</div>
-          <div class="meta">Top: <strong>${ex.top}</strong>${ex.best ? ' · '+ex.best : ''}</div>
-        </div>
-        ${sparkSVG(ex.series, 88, 36)}
-        <div class="delta${ex.delta && ex.delta.startsWith('-') ? ' neg' : ''}">${ex.delta || '—'}</div>
-      </button>`;
+    // Agrupar por día (preserva el orden de la rutina)
+    const byDia = {};
+    for (const ex of pd.exercises) { (byDia[ex.dia] = byDia[ex.dia] || []).push(ex); }
+    for (const [dia, exs] of Object.entries(byDia)) {
+      html += `<div class="prog-section-title"><span>${dia}</span><span class="meta">máx por sesión</span></div>`;
+      for (const ex of exs) {
+        html += `
+        <button class="exer-row" data-detail="${ex.id}">
+          <div class="info">
+            <div class="name">${ex.name}</div>
+            <div class="meta">Top: <strong>${ex.top}</strong></div>
+          </div>
+          ${sparkSVG(ex.series, 88, 36)}
+          <div class="delta${ex.delta && ex.delta.startsWith('-') ? ' neg' : ''}">${ex.delta || '—'}</div>
+        </button>`;
+      }
     }
   } else {
     html += `<div class="prog-empty">Aún no hay historial registrado.<br>Empezá tu primera sesión para ver el progreso aquí.</div>`;
@@ -2795,10 +2800,27 @@ function renderProgress() {
 }
 
 async function loadProgressAndRender() {
-  const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios).filter(ex => ex.tipo !== 'calentamiento');
+  // Recorrer TODOS los días de la rutina (no solo el día actual): el progreso
+  // debe mostrar cada ejercicio que el cliente entrenó en cualquiera de sus días.
+  const dias = DATA._dias || [DATA.dia];
+  const allEx = [];
+  const seen = new Set();
+  for (const d of dias) {
+    const diaNombre = (d.nombre || `Día ${getDayNum(d, dias)}`);
+    for (const b of (d.bloques || [])) {
+      for (const ex of (b.ejercicios || [])) {
+        if (ex.tipo === 'calentamiento') continue;
+        if (seen.has(ex.id)) continue;     // ids únicos por slot/día
+        seen.add(ex.id);
+        allEx.push({ id: ex.id, nombre: ex.nombre, dia: diaNombre });
+      }
+    }
+  }
+
   const results = await Promise.all(
     allEx.map(ex => window.mypumpDB.getHistoricoEjercicio(TOKEN, ex.id, 24)
-      .then(rows => ({id:ex.id, name:ex.nombre, rows: rows || []}))
+      .then(rows => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: rows || [] }))
+      .catch(() => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }))
     )
   );
   // Cache into DATA
@@ -2822,6 +2844,7 @@ async function loadProgressAndRender() {
       return {
         id: r.id,
         name: r.name,
+        dia: r.dia,
         series,
         top: `${topVal}kg`,
         delta: delta ? `${delta > 0 ? '+' : ''}${delta}%` : null,
@@ -2829,10 +2852,17 @@ async function loadProgressAndRender() {
       };
     }).filter(Boolean);
 
+  // Sesiones entrenadas = fechas distintas con registros
+  const fechas = new Set();
+  for (const r of results) for (const row of r.rows) {
+    const dt = (row.registrado_en || '').split('T')[0];
+    if (dt) fechas.add(dt);
+  }
+
   STATE.progressData = {
     stats: [
-      {lbl:'Ejercicios hoy', val: DATA.dia.bloques.flatMap(b=>b.ejercicios).length, suffix:'', delta:null},
-      {lbl:'Con historial',  val: exercises.length, suffix:'', delta:null},
+      {lbl:'Ejercicios',  val: exercises.length, suffix:'', delta:null},
+      {lbl:'Sesiones',    val: fechas.size,      suffix:'', delta:null},
     ],
     exercises,
   };
