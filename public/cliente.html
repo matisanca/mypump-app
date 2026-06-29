@@ -2708,6 +2708,14 @@ function bindDietEvents() {
 // También migra los swaps de localStorage al backend la primera vez (one-shot).
 async function hydrateSwapsAndCustomFoodsFromBackend() {
   try {
+    // 0. Preferencias del cliente (restricciones alimentarias, ej: sin cerdo).
+    //    El swap (app.js) lee window.MYPUMP_PREFS.excluir para esconder esos
+    //    alimentos de las sugerencias. Invalidar el cache de sustitutos por las dudas.
+    try {
+      window.MYPUMP_PREFS = await window.mypumpDB.getClientePrefs(TOKEN);
+    } catch (e) { window.MYPUMP_PREFS = { excluir: [], idioma: 'es' }; }
+    if (typeof _swapCache !== 'undefined') { for (const k in _swapCache) delete _swapCache[k]; }
+
     // 1. Custom foods → agregar a MYPUMP_FOOD_DB
     const customs = await window.mypumpDB.getCustomFoods(TOKEN) || [];
     customs.forEach(cf => {

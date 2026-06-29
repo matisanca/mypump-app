@@ -118,6 +118,24 @@ window.MyPump.foodSwap = {
     return '';
   },
 
+  // Grupos de exclusión por preferencia del cliente (window.MYPUMP_PREFS.excluir,
+  // tags que vienen de mypump_cliente_prefs). El regex corre sobre el nombre
+  // normalizado (sin tilde). Sumar un grupo nuevo = agregar acá, sin migración.
+  // Ojo: 'chorizo' como sausage de cerdo, pero "Bife de chorizo" es CORTE DE RES
+  // → lookbehind para no excluirlo.
+  _EXCLUDE_GROUPS: {
+    cerdo:    /\bcerdo\b|lechon|bondiola|\bpanceta\b|\btocino\b|\bjamon\b|\bsalame\b|\bsalami\b|(?<!bife de )\bchorizo\b|longaniza|morcilla|salchicha|mortadela|prosciutto|pancetta|\bbacon\b/,
+    mariscos: /langostino|camaron|\bgamba\b|mejillon|\bcalamar\b|\bpulpo\b|almeja|\bostra\b|vieira|cangrejo|\bkani\b|surimi|\bmarisco|\bsepia\b|jibia|scallop/,
+    lacteos:  /\bleche\b|yogur|\bqueso\b|ricota|\bnata\b|mozzarella|parmesano|provolone|cottage|\bcasein/,
+  },
+
+  // Devuelve un array de RegExp activos según window.MYPUMP_PREFS.excluir.
+  _excludeRegexes() {
+    const tags = (typeof window !== 'undefined' && window.MYPUMP_PREFS && Array.isArray(window.MYPUMP_PREFS.excluir))
+      ? window.MYPUMP_PREFS.excluir : [];
+    return tags.map(t => this._EXCLUDE_GROUPS[t]).filter(Boolean);
+  },
+
   findSubstitutes(originalFood) {
     const db = window.MYPUMP_FOOD_DB;
     if (!db || !db.length) return [];
@@ -152,10 +170,14 @@ window.MyPump.foodSwap = {
     // original (con piso de 500g para no descartar foods razonables en porciones chicas).
     const maxQty = Math.max(originalQtyG * 3, 500);
 
+    // Exclusiones por preferencia del cliente (ej: sin cerdo para Egipto).
+    const excludeRes = this._excludeRegexes();
+
     const ranked = db
       .filter(food =>
         food.category === originalCat &&
-        food.name.toLowerCase() !== originalFood.name.toLowerCase()
+        food.name.toLowerCase() !== originalFood.name.toLowerCase() &&
+        !(excludeRes.length && excludeRes.some(re => re.test(this._norm(food.name))))
       )
       .map(food => {
         const macroPerGram = (food[dominantMacro] || 0) / 100;

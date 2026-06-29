@@ -103,6 +103,14 @@ window.mypumpDB = {
     return rows[0];
   },
 
+  // Preferencias del cliente (restricciones alimentarias). Devuelve
+  // {excluir:[], idioma:'es'} — defaults si el cliente no tiene fila.
+  async getClientePrefs(token) {
+    const rows = await rpc('mypump_get_cliente_prefs', { p_token: token });
+    const r = rows && rows[0];
+    return { excluir: (r && r.excluir) || [], idioma: (r && r.idioma) || 'es' };
+  },
+
   // Devuelve array de {registrado_en, peso_kg, reps_realizadas, rir_real, serie_numero}.
   async getHistoricoEjercicio(token, ejercicioId, limit = 10) {
     return await rpc('mypump_get_historico_ejercicio', {
