@@ -25,8 +25,13 @@ window.MyPump.foodSwap = {
   // aparezcan) y la UI los destaca arriba. Editable por Mati: qué se considera
   // "universal" es una decisión de coaching.
   _UNIVERSAL: [
-    // proteína
-    'pechuga de pollo','huevo entero','clara de huevo','atun al natural','merluza','carne vacuna picada','pavo pechuga',
+    // proteína — pollo, pavo, huevo, pescado blanco/atún, y CORTES DE RES.
+    // (Pedido de Gerardo/Egipto: res en distintos cortes + pescado tipo sea bass.
+    //  El cerdo NO entra: no se consigue en muchos países → no es "universal".)
+    'pechuga de pollo','muslo de pollo','pollo entero','pavo pechuga',
+    'huevo entero','clara de huevo',
+    'atun al natural','merluza','lenguado','salmon','trucha',
+    'carne vacuna picada','nalga','cuadril','lomo vacuno','bife de chorizo','bife de costilla','asado de tira','vacio','entrana','paleta vacuna','matambre',
     // lácteo
     'leche','yogur','queso cottage','queso mozzarella','ricota',
     // carbohidrato (incluye legumbres: en este código son carbo, pero son
@@ -40,10 +45,77 @@ window.MyPump.foodSwap = {
 
   _isUniversal(name) {
     if (!this._uniRe) this._uniRe = new RegExp('\\b(' + this._UNIVERSAL.join('|') + ')\\b');
-    const n = (name || '').toLowerCase()
+    return this._uniRe.test(this._norm(name));
+  },
+
+  _norm(name) {
+    return (name || '').toLowerCase()
       .replace(/[áàäâã]/g,'a').replace(/[éèëê]/g,'e').replace(/[íìïî]/g,'i')
       .replace(/[óòöôõ]/g,'o').replace(/[úùüû]/g,'u').replace(/ñ/g,'n');
-    return this._uniRe.test(n);
+  },
+
+  // Etiqueta en inglés para clientes internacionales (Gerardo, Egipto: "usa
+  // nombres en inglés"). Se muestra SOLO en las cards universales. Orden:
+  // específico → general (la primera keyword que matchea gana).
+  _EN: [
+    ['carne vacuna picada (magra', 'Lean ground beef (90/10)'],
+    ['carne vacuna picada (comun', 'Ground beef (80/20)'],
+    ['carne vacuna picada',        'Ground beef'],
+    ['nalga',          'Beef round / topside'],
+    ['cuadril',        'Beef rump'],
+    ['lomo vacuno',    'Beef tenderloin'],
+    ['bife de chorizo','Beef sirloin'],
+    ['bife de costilla','Beef rib steak'],
+    ['asado de tira',  'Beef short ribs'],
+    ['vacio',          'Beef flank steak'],
+    ['entrana',        'Beef skirt steak'],
+    ['paleta vacuna',  'Beef shoulder / chuck'],
+    ['matambre',       'Beef flank (matambre)'],
+    ['pechuga de pollo','Chicken breast'],
+    ['muslo de pollo', 'Chicken thigh'],
+    ['pollo entero',   'Whole chicken'],
+    ['pavo pechuga',   'Turkey breast'],
+    ['clara de huevo', 'Egg whites'],
+    ['huevo entero',   'Whole egg'],
+    ['atun al natural','Canned tuna (in water)'],
+    ['merluza',        'White fish (hake / sea bass)'],
+    ['lenguado',       'White fish (sole)'],
+    ['salmon',         'Salmon'],
+    ['trucha',         'Trout'],
+    ['leche',          'Milk'],
+    ['yogur',          'Yogurt'],
+    ['queso cottage',  'Cottage cheese'],
+    ['queso mozzarella','Mozzarella'],
+    ['ricota',         'Ricotta'],
+    ['arroz',          'Rice'],
+    ['avena',          'Oats'],
+    ['fideos',         'Pasta'],
+    ['pan',            'Bread'],
+    ['papa',           'Potato'],
+    ['patata',         'Potato'],
+    ['lentejas',       'Lentils'],
+    ['garbanzos',      'Chickpeas'],
+    ['porotos',        'Beans'],
+    ['aceite de oliva','Olive oil'],
+    ['palta',          'Avocado'],
+    ['aguacate',       'Avocado'],
+    ['mani',           'Peanut'],
+    ['almendras',      'Almonds'],
+    ['nueces',         'Walnuts'],
+    ['banana',         'Banana'],
+    ['manzana',        'Apple'],
+    ['naranja',        'Orange'],
+    ['tomate',         'Tomato'],
+    ['zanahoria',      'Carrot'],
+    ['cebolla',        'Onion'],
+    ['lechuga',        'Lettuce'],
+    ['espinaca',       'Spinach'],
+  ],
+
+  _enLabel(name) {
+    const n = this._norm(name);
+    for (const [k, en] of this._EN) { if (n.includes(k)) return en; }
+    return '';
   },
 
   findSubstitutes(originalFood) {
@@ -126,7 +198,7 @@ window.MyPump.foodSwap = {
         // igual que los custom foods — y la UI los destaca arriba. La cantidad ya
         // viene ajustada al macro dominante (prot para proteínas).
         const isUni = this._isUniversal(food.name);
-        if (isUni) result._universal = true;
+        if (isUni) { result._universal = true; result._en = this._enLabel(food.name); }
 
         // Custom foods y universales bypassean los filtros estrictos de
         // kcal/proteína — se mantienen solo los filtros de categoría, macro

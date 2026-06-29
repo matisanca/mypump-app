@@ -3429,9 +3429,11 @@ function _swapCardHtml(s, allSubs, food) {
   const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
   const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
   const uniBadge = s._universal ? '<span class="swap-uni-badge" style="margin-left:6px">🌍</span>' : '';
+  const enLabel = s._en ? `<div class="swap-card-en" style="font-size:11px;color:var(--color-text-muted);margin-top:1px">${s._en}</div>` : '';
   return `<div class="swap-card${origIdx===_swapState.selected?' is-selected':''}" data-sub="${origIdx}" onclick="selectSwapCard(this,${origIdx})">
     <div class="swap-card-info">
       <div class="swap-card-name">${s.name}${uniBadge}${customBadge}</div>
+      ${enLabel}
       <div class="swap-card-qty">${s.qty} ${s.unit}</div>
       <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
     </div>
