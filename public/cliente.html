@@ -3419,6 +3419,48 @@ function openSwapModal(food, comidaId, optIdx, foodIdx) {
   renderSwapModal();
 }
 
+// Card de un sustituto. data-sub usa el índice en allSubs (no en la lista
+// mostrada) para que selectSwapCard/confirmSwap sigan funcionando tras agrupar/filtrar.
+function _swapCardHtml(s, allSubs, food) {
+  const origIdx = allSubs.indexOf(s);
+  const origKcal = food.kcal;
+  const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
+  const sign = kcalDiff > 0 ? '+' : '';
+  const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
+  const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
+  const uniBadge = s._universal ? '<span class="swap-uni-badge" style="margin-left:6px">🌍</span>' : '';
+  return `<div class="swap-card${origIdx===_swapState.selected?' is-selected':''}" data-sub="${origIdx}" onclick="selectSwapCard(this,${origIdx})">
+    <div class="swap-card-info">
+      <div class="swap-card-name">${s.name}${uniBadge}${customBadge}</div>
+      <div class="swap-card-qty">${s.qty} ${s.unit}</div>
+      <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
+    </div>
+    <span class="swap-delta ${dCls}">${sign}${kcalDiff}%</span>
+  </div>`;
+}
+
+// Lista de sustitutos agrupada: universales (disponibles en cualquier país)
+// arriba, el resto debajo. Todo dentro de un único wrapper para el re-render parcial.
+function _swapListHtml(subs, allSubs, food, query) {
+  if (!subs.length) {
+    return `<div class="swap-empty">${query
+      ? `Sin resultados para "${query}". Probá crear tu alimento personalizado.`
+      : 'No hay sustitutos equivalentes disponibles dentro del rango de macros.'}</div>`;
+  }
+  const uni  = subs.filter(s => s._universal);
+  const rest = subs.filter(s => !s._universal);
+  let html = '';
+  if (uni.length) {
+    html += `<div class="swap-subs-title">🌍 Disponibles en cualquier país</div>`;
+    html += `<div class="swap-list">${uni.map(s => _swapCardHtml(s, allSubs, food)).join('')}</div>`;
+  }
+  if (rest.length) {
+    if (uni.length) html += `<div class="swap-subs-title">Otras opciones</div>`;
+    html += `<div class="swap-list">${rest.map(s => _swapCardHtml(s, allSubs, food)).join('')}</div>`;
+  }
+  return html;
+}
+
 function renderSwapModal() {
   const { original: food, query } = _swapState;
   const cat = food.category || inferFoodCategory(food);
@@ -3437,28 +3479,6 @@ function renderSwapModal() {
     ? allSubs.filter(s => s.name.toLowerCase().includes(query.toLowerCase().trim()))
     : allSubs;
 
-  const subsHtml = subs.length === 0
-    ? `<div class="swap-empty">${query
-        ? `Sin resultados para "${query}". Probá crear tu alimento personalizado.`
-        : 'No hay sustitutos equivalentes disponibles dentro del rango de macros.'}</div>`
-    : `<div class="swap-list">${subs.map((s) => {
-        // Encontrar el índice original en allSubs para que selectSwapCard funcione tras filtros
-        const origIdx = allSubs.indexOf(s);
-        const origKcal = food.kcal;
-        const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
-        const sign = kcalDiff > 0 ? '+' : '';
-        const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
-        const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
-        return `<div class="swap-card${origIdx===_swapState.selected?' is-selected':''}" data-sub="${origIdx}" onclick="selectSwapCard(this,${origIdx})">
-          <div class="swap-card-info">
-            <div class="swap-card-name">${s.name}${customBadge}</div>
-            <div class="swap-card-qty">${s.qty} ${s.unit}</div>
-            <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
-          </div>
-          <span class="swap-delta ${dCls}">${sign}${kcalDiff}%</span>
-        </div>`;
-      }).join('')}</div>`;
-
   $('#modalHost').innerHTML = `
   <div class="modal-back" id="swapModalBack">
     <div class="modal-sheet swap-sheet">
@@ -3473,7 +3493,8 @@ function renderSwapModal() {
         <span class="swap-count">${subs.length}/${allSubs.length}</span>
       </div>
       <div class="swap-subs-title">Equivalentes — categoría: ${cat}</div>
-      ${subsHtml}
+      <div class="swap-help" style="font-size:12px;color:var(--color-text-muted);margin:0 0 8px;line-height:1.4">¿No conseguís este alimento? Elegí una opción 🌍 disponible en cualquier país.</div>
+      <div id="swapListWrap">${_swapListHtml(subs, allSubs, food, query)}</div>
       <button class="btn-custom-food" onclick="openCustomFoodModal()">
         + Crear alimento personalizado
       </button>
@@ -3512,28 +3533,8 @@ function _swapRenderListOnly() {
     ? allSubs.filter(s => s.name.toLowerCase().includes(query.toLowerCase().trim()))
     : allSubs;
 
-  const listEl = $('.swap-list, .swap-empty');
-  if (!listEl) return;
-  const newEl = document.createElement('div');
-  newEl.innerHTML = subs.length === 0
-    ? `<div class="swap-empty">${query ? `Sin resultados para "${query}". Probá crear tu alimento personalizado.` : 'Sin sustitutos disponibles.'}</div>`
-    : `<div class="swap-list">${subs.map(s => {
-        const origIdx = allSubs.indexOf(s);
-        const origKcal = food.kcal;
-        const kcalDiff = origKcal > 0 ? Math.round((s.kcal - origKcal) / origKcal * 100) : 0;
-        const sign = kcalDiff > 0 ? '+' : '';
-        const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
-        const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
-        return `<div class="swap-card${origIdx===_swapState.selected?' is-selected':''}" data-sub="${origIdx}" onclick="selectSwapCard(this,${origIdx})">
-          <div class="swap-card-info">
-            <div class="swap-card-name">${s.name}${customBadge}</div>
-            <div class="swap-card-qty">${s.qty} ${s.unit}</div>
-            <div class="swap-card-macros">${s.kcal} kcal · ${s.prot}p / ${s.carb}c / ${s.fat}g</div>
-          </div>
-          <span class="swap-delta ${dCls}">${sign}${kcalDiff}%</span>
-        </div>`;
-      }).join('')}</div>`;
-  listEl.replaceWith(newEl.firstElementChild);
+  const wrap = $('#swapListWrap');
+  if (wrap) wrap.innerHTML = _swapListHtml(subs, allSubs, food, query);
   const countEl = $('.swap-count');
   if (countEl) countEl.textContent = `${subs.length}/${allSubs.length}`;
 }

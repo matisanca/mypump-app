@@ -18,6 +18,34 @@ window.MyPump = {};
  */
 window.MyPump.foodSwap = {
 
+  // Staples disponibles en CUALQUIER país (clientes internacionales, ej. Egipto).
+  // Keywords en minúsculas y sin tilde; un alimento es "universal" si su nombre
+  // matchea alguno como palabra (\b...\b → "pan" no matchea "panceta"). Estos
+  // NUNCA se filtran por kcal/proteína en findSubstitutes (se garantiza que
+  // aparezcan) y la UI los destaca arriba. Editable por Mati: qué se considera
+  // "universal" es una decisión de coaching.
+  _UNIVERSAL: [
+    // proteína
+    'pechuga de pollo','huevo entero','clara de huevo','atun al natural','merluza','carne vacuna picada','pavo pechuga',
+    // lácteo
+    'leche','yogur','queso cottage','queso mozzarella','ricota',
+    // carbohidrato (incluye legumbres: en este código son carbo, pero son
+    // fuente proteica universal — aparecen al swapear un carbo)
+    'arroz blanco','arroz integral','avena','pan','papa','patata','lentejas','garbanzos','porotos','fideos',
+    // grasa
+    'aceite de oliva','palta','aguacate','mani','almendras','nueces',
+    // fruta/verdura
+    'banana','manzana','naranja','tomate','zanahoria','cebolla','lechuga','espinaca',
+  ],
+
+  _isUniversal(name) {
+    if (!this._uniRe) this._uniRe = new RegExp('\\b(' + this._UNIVERSAL.join('|') + ')\\b');
+    const n = (name || '').toLowerCase()
+      .replace(/[áàäâã]/g,'a').replace(/[éèëê]/g,'e').replace(/[íìïî]/g,'i')
+      .replace(/[óòöôõ]/g,'o').replace(/[úùüû]/g,'u').replace(/ñ/g,'n');
+    return this._uniRe.test(n);
+  },
+
   findSubstitutes(originalFood) {
     const db = window.MYPUMP_FOOD_DB;
     if (!db || !db.length) return [];
@@ -52,7 +80,7 @@ window.MyPump.foodSwap = {
     // original (con piso de 500g para no descartar foods razonables en porciones chicas).
     const maxQty = Math.max(originalQtyG * 3, 500);
 
-    return db
+    const ranked = db
       .filter(food =>
         food.category === originalCat &&
         food.name.toLowerCase() !== originalFood.name.toLowerCase()
@@ -93,11 +121,17 @@ window.MyPump.foodSwap = {
         };
         if (food._isCustom) result._isCustom = true;
 
-        // Custom foods (creados por el cliente) bypassean los filtros estrictos
-        // de kcal/proteína — la intención de crear un alimento personalizado
-        // es usarlo, no que la app lo descarte por macros levemente distintos.
-        // Mantenemos solo los filtros de categoría y macro dominante (arriba).
-        if (food._isCustom) return result;
+        // Universales: staples disponibles en cualquier país (clientes
+        // internacionales). Se garantiza que aparezcan — bypassean kcal/proteína
+        // igual que los custom foods — y la UI los destaca arriba. La cantidad ya
+        // viene ajustada al macro dominante (prot para proteínas).
+        const isUni = this._isUniversal(food.name);
+        if (isUni) result._universal = true;
+
+        // Custom foods y universales bypassean los filtros estrictos de
+        // kcal/proteína — se mantienen solo los filtros de categoría, macro
+        // dominante y cantidad razonable (maxQty, arriba).
+        if (food._isCustom || isUni) return result;
 
         // 1) kcal ratio estrecho (±10%) — solo para alimentos del seed-DB
         if (originalKcal === 0) return null;
@@ -113,8 +147,20 @@ window.MyPump.foodSwap = {
       .sort((a, b) => {
         const targetKcal = originalFood.kcal;
         return Math.abs(a.kcal - targetKcal) - Math.abs(b.kcal - targetKcal);
-      })
-      .slice(0, 30);
+      });
+
+    // Los universales se garantizan SIEMPRE (todos), y el resto se corta a 30.
+    // Sin esto, el .slice(0,30) ordenado por cercanía de kcal podría descartar
+    // un staple universal con delta de kcal grande (ej. huevo entero vs pollo).
+    const universals = ranked.filter(r => r._universal);
+    const others     = ranked.filter(r => !r._universal).slice(0, 30);
+    const seen = new Set();
+    return [...universals, ...others].filter(r => {
+      const k = r.name.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
   },
 
   // Búsqueda libre por nombre dentro de los sustitutos válidos.
