@@ -121,10 +121,13 @@ window.MyPump.foodSwap = {
   // Grupos de exclusión por preferencia del cliente (window.MYPUMP_PREFS.excluir,
   // tags que vienen de mypump_cliente_prefs). El regex corre sobre el nombre
   // normalizado (sin tilde). Sumar un grupo nuevo = agregar acá, sin migración.
-  // Ojo: 'chorizo' como sausage de cerdo, pero "Bife de chorizo" es CORTE DE RES
-  // → lookbehind para no excluirlo.
+  // Ojo: 'chorizo' es sausage de cerdo, pero "Bife de chorizo" es CORTE DE RES.
+  // Antes usábamos lookbehind (?<!bife de ) para no excluirlo, pero el lookbehind
+  // ROMPE en Safari iOS < 16.4 (SyntaxError al parsear app.js → se cae la app en
+  // iPhones viejos). Solución iOS-safe: matchear 'chorizo fresco' (el ítem de
+  // cerdo real del catálogo), que nunca colisiona con "Bife de chorizo".
   _EXCLUDE_GROUPS: {
-    cerdo:    /\bcerdo\b|lechon|bondiola|\bpanceta\b|\btocino\b|\bjamon\b|\bsalame\b|\bsalami\b|(?<!bife de )\bchorizo\b|longaniza|morcilla|salchicha|mortadela|prosciutto|pancetta|\bbacon\b/,
+    cerdo:    /\bcerdo\b|lechon|bondiola|\bpanceta\b|\btocino\b|\bjamon\b|\bsalame\b|\bsalami\b|chorizo fresco|longaniza|morcilla|salchicha|mortadela|prosciutto|pancetta|\bbacon\b/,
     mariscos: /langostino|camaron|\bgamba\b|mejillon|\bcalamar\b|\bpulpo\b|almeja|\bostra\b|vieira|cangrejo|\bkani\b|surimi|\bmarisco|\bsepia\b|jibia|scallop/,
     lacteos:  /\bleche\b|yogur|\bqueso\b|ricota|\bnata\b|mozzarella|parmesano|provolone|cottage|\bcasein/,
   },
