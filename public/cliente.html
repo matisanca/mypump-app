@@ -1444,6 +1444,7 @@ async function showDayCompletedModal() {
   });
 
   if (ok) {
+    stopRest(); // limpiar el descanso de la última serie antes de cambiar de día
     // Cambiar día activo — replicar lógica del click del day-pill (línea ~1033)
     DATA.dia = nextDia;
     DATA.historico_por_ejercicio = {};
@@ -2006,19 +2007,23 @@ function bindTrainEvents() {
     await ensureSesionIniciada();
     writeSet(exId, +idx); // fire-and-forget
     const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+    // Descanso tras CADA serie de trabajo confirmada, incluida la que cierra el
+    // ejercicio. Antes el startRest vivía en el 'else' del auto-completar, así que
+    // la última serie confirmada (que en un ejercicio de 1 serie ES la primera)
+    // nunca recibía descanso — reportado por clientes que entrenan cerca del fallo.
+    if (ex.tipo !== 'calentamiento') startRest(ex.descanso_segundos);
     // Auto-complete: si se confirmaron TODAS las series → marcar 'completo'
     const allConfirmed = STATE.session[exId].sets.every(s => s.confirmed);
     if (allConfirmed && getExStatus(exId) === 'pendiente') {
       setExStatus(exId, 'completo');
       STATE.session[exId].completed = true;
-      stopRest();
+      // NO cortamos el descanso: dejamos correr el de la última serie. El #restBar
+      // es fixed (sobrevive al re-render) y se auto-cierra solo al terminar.
       // Abrir el siguiente ejercicio pendiente automáticamente
       const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
       const i = all.findIndex(e => e.id === exId);
       const next = all.slice(i+1).find(e => getExStatus(e.id) === 'pendiente');
       if (next) STATE.expandedId = next.id;
-    } else if (ex.tipo !== 'calentamiento') {
-      startRest(ex.descanso_segundos);
     }
     renderTrain();
     // Auto-detectar día completo → ofrecer ir al siguiente día (NO avanza semana)
@@ -3057,6 +3062,16 @@ function renderMyday() {
           <div class="habito-btns">
             <button class="hb is-yes${h.durmio_bien === true ? ' is-active' : ''}" data-campo="durmio_bien" data-val="true">✓</button>
             <button class="hb is-no${h.durmio_bien === false ? ' is-active' : ''}" data-campo="durmio_bien" data-val="false">✗</button>
+          </div>
+        </div>
+        <div class="habito-row">
+          <div class="habito-info">
+            <div class="habito-text">Hice cardio</div>
+            <div class="habito-sub">Sesión de cardio hoy</div>
+          </div>
+          <div class="habito-btns">
+            <button class="hb is-yes${h.cardio === true ? ' is-active' : ''}" data-campo="cardio" data-val="true">✓</button>
+            <button class="hb is-no${h.cardio === false ? ' is-active' : ''}" data-campo="cardio" data-val="false">✗</button>
           </div>
         </div>
       </div>
