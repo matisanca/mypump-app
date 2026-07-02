@@ -359,6 +359,10 @@ main{padding:var(--space-4)}
 .swap-btn{background:transparent;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:2px 5px;font-size:11px;cursor:pointer;color:var(--color-text-muted);margin-left:4px;line-height:1}
 .swap-btn:hover{background:var(--color-bg-tertiary);color:var(--color-text-primary)}
 .swap-badge{font-size:11px;color:var(--color-brand);cursor:pointer;margin-left:4px;text-decoration:none}
+.porcion-btn{background:transparent;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:2px 5px;font-size:11px;cursor:pointer;color:var(--color-text-muted);margin-left:4px;line-height:1}
+.porcion-btn:hover,.porcion-btn.is-active{background:var(--color-bg-tertiary);color:var(--color-text-primary)}
+.porcion-ref{margin-top:3px;font-size:11px;color:var(--color-text-secondary);font-family:var(--font-mono);line-height:1.3}
+.porcion-ref[hidden]{display:none}
 .swap-original{padding:var(--space-3);background:var(--color-bg-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:var(--space-3)}
 .swap-original .sw-name{font-weight:600;font-size:15px}
 .swap-original .sw-meta{font-family:var(--font-mono);font-size:11px;color:var(--color-text-muted);margin-top:2px}
@@ -2573,6 +2577,180 @@ function renderMacroTarget(cls, label, target, unit) {
     </div>`;
 }
 
+// ============================================================
+// porcionReferencia(food) — referencia de porción casera (mano/objeto/unidades)
+// para clientes que no usan balanza. Deriva la equivalencia de los gramos o
+// unidades que ya trae el alimento. Devuelve un string (sin el prefijo "≈",
+// que lo agrega la UI) o null si no hay match. 100% frontend, no toca backend.
+// ============================================================
+function porcionReferencia(food) {
+  if (!food || typeof food !== 'object') return null;
+  const norm = s => (s || '').toString().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  const name = norm(food.name);
+  if (!name) return null;
+  const qty = Number(food.qty);
+  if (!isFinite(qty) || qty <= 0) return null;
+  const unitRaw = norm(food.unit);
+  const unitGrams = Number(food.unitGrams);
+  const GRAM_UNITS = ['g', 'gr', 'grs', 'gramo', 'gramos'];
+  const ML_UNITS = ['ml', 'cc', 'mililitro', 'mililitros'];
+  const isMl = ML_UNITS.includes(unitRaw);
+  const isGram = unitRaw === '' || GRAM_UNITS.includes(unitRaw) || isMl;
+  const UNIT_WORDS = ['u', 'un', 'uni', 'unid', 'unidad', 'unidades'];
+
+  // helpers de formato
+  const singular = w => {
+    if (w.length > 4 && /ces$/.test(w)) return w.slice(0, -3) + 'z';
+    if (w.length > 3 && /es$/.test(w))  return w.slice(0, -2);
+    if (w.length > 3 && /s$/.test(w))   return w.slice(0, -1);
+    return w;
+  };
+  const plural = w => /[aeiou]$/.test(w) ? w + 's' : w + 'es';
+  const nStr = n => {
+    n = Math.round(n * 2) / 2;
+    const whole = Math.floor(n);
+    const half = (n - whole) === 0.5;
+    if (whole === 0) return '½';
+    return half ? (whole + '½') : String(whole);
+  };
+  const fmtCount = (n, base) => {
+    n = Math.round(n * 2) / 2;
+    if (n <= 0) return null;
+    const whole = Math.floor(n);
+    const half = (n - whole) === 0.5;
+    if (whole === 0) return '½ ' + base;
+    if (half) return whole + '½ ' + plural(base);
+    return whole + ' ' + (n === 1 ? base : plural(base));
+  };
+  const nounFromName = () => {
+    const stop = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'al', 'con', 'a', 'en', 'sin', 'y']);
+    const tokens = name.split(/[\s/]+/).filter(t => t && !stop.has(t));
+    return singular(tokens[0] || name);
+  };
+
+  // ---- Rama unidad (unit no gramo → qty ya es conteo; o spec: unitGrams) ----
+  if (!isGram) {
+    let n, base;
+    if (unitGrams > 0 && qty > 20) {
+      n = qty / unitGrams;
+      base = (unitRaw && !UNIT_WORDS.includes(unitRaw)) ? singular(unitRaw) : nounFromName();
+    } else if (UNIT_WORDS.includes(unitRaw)) {
+      n = qty;
+      base = nounFromName();
+    } else {
+      return null; // unidad ya casera (plato, taza…): no aporta info nueva
+    }
+    return fmtCount(n, base);
+  }
+
+  // ---- Rama gramos / ml ----
+  const has = (...kw) => kw.some(k => name.includes(k));
+  const g = qty;
+
+  if (has('mani', 'cacahuate') && has('mantequilla', 'manteca', 'crema', 'pasta', 'untable')) {
+    if (g <= 8) return '1 cucharadita';
+    if (g <= 20) return '1 cucharada';
+    return nStr(g / 16) + ' cucharadas';
+  }
+  if (isMl || has('aceite', 'oliva', 'ghee') || has('manteca', 'mantequilla')) {
+    if (g <= 7) return '1 cucharadita';
+    if (g <= 12) return '1 cucharada';
+    return nStr(g / 10) + ' cucharadas';
+  }
+  if (has('almendra', 'nuez', 'nueces', 'castana', 'avellana', 'pistacho', 'mani',
+          'cacahuate', 'frutos secos', 'semilla', 'girasol', 'chia', 'lino', 'mix de')) {
+    if (g <= 40) return '1 puñado';
+    if (g <= 70) return '2 puñados';
+    return nStr(g / 30) + ' puñados';
+  }
+  if (has('whey', 'proteina en polvo', 'caseina') || (has('proteina') && g <= 60)) {
+    const scoops = Math.max(1, Math.round(g / 30));
+    return scoops === 1 ? '1 scoop (1 medida)' : scoops + ' scoops';
+  }
+  if (has('atun')) {
+    const n = g / 120;
+    const frac = n - Math.floor(n);
+    if (frac >= 0.75) return 'casi ' + Math.ceil(n) + ' latas';
+    const nh = Math.round(n * 2) / 2;
+    const whole = Math.floor(nh);
+    if (nh - whole === 0.5) return whole >= 1 ? (whole + ' lata' + (whole > 1 ? 's' : '') + ' y media') : 'media lata';
+    return whole + ' lata' + (whole > 1 ? 's' : '') + ' escurrida' + (whole > 1 ? 's' : '');
+  }
+  if (has('pollo', 'pechuga', 'carne', 'nalga', 'bife', 'cerdo', 'lomo', 'pescado',
+          'merluza', 'pavo', 'salmon', 'cuadril', 'cuadrada', 'peceto', 'asado',
+          'bondiola', 'milanesa', 'tira', 'magra', 'roast', 'colita')) {
+    if (g < 120) return 'media palma';
+    if (g < 170) return '1 palma';
+    if (g <= 220) return '1 palma grande y gruesa';
+    return '1 palma extra grande';
+  }
+  if (has('arroz', 'fideo', 'pasta', 'avena', 'quinoa', 'polenta', 'tallarin',
+          'noqui', 'cuscus', 'couscous', 'trigo')) {
+    const cocido = has('cocid', 'hervid', 'al dente');
+    if (cocido) {
+      if (g <= 90) return '½ taza';
+      if (g <= 180) return '1 taza';
+      if (g <= 280) return '1½ tazas';
+      return nStr(g / 180) + ' tazas';
+    }
+    const spoons = Math.max(1, Math.round(g / 10));
+    let cook;
+    if (g <= 25) cook = 'medio pocillo cocido';
+    else if (g <= 50) cook = '1 pocillo cocido';
+    else if (g <= 80) cook = '1 taza cocido';
+    else cook = '1½–2 tazas cocido';
+    return spoons + ' cucharadas crudo (≈ ' + cook + ')';
+  }
+  if (has('lenteja', 'garbanzo', 'poroto', 'alubia', 'frijol', 'chaucha seca')) {
+    if (g <= 90) return '½ taza';
+    if (g <= 200) return '1 taza';
+    return nStr(g / 180) + ' tazas';
+  }
+  if (has('papa', 'patata', 'batata', 'boniato') && !has('papaya')) {
+    if (g < 130) return '1 chica (tamaño huevo grande)';
+    if (g <= 200) return '1 mediana';
+    return '1 grande o 2 medianas';
+  }
+  if (has('lechuga', 'rucula', 'radicheta', 'escarola', 'hojas verdes', 'mix de hojas')) {
+    return 'libre 🥗';
+  }
+  if (has('brocoli', 'brecol', 'coliflor', 'calabaza', 'zapallo', 'zanahoria',
+          'espinaca', 'morron', 'pimiento', 'berenjena', 'zucchini', 'zapallito',
+          'repollo', 'remolacha', 'chaucha', 'cebolla', 'tomate', 'verdura')) {
+    if (g < 125) return '1 puño';
+    if (g < 185) return '2 puños';
+    return '2-3 puños';
+  }
+  if (has('ricota', 'untable', 'yogur', 'yoghurt', 'queso blanco', 'queso crema',
+          'cottage', 'requeson')) {
+    if (g <= 130) return '½ pote chico (media taza)';
+    if (g <= 230) return '1 pote chico (1 taza)';
+    return nStr(g / 200) + ' potes chicos';
+  }
+  if (has('frutilla', 'arandano', 'mora', 'frambuesa', 'frutos rojos', 'berries')) {
+    if (g <= 140) return '1 puñado';
+    if (g <= 240) return '2 puñados';
+    return nStr(g / 100) + ' puñados';
+  }
+  if (has('palta', 'aguacate')) {
+    if (g <= 120) return 'media palta chica';
+    if (g <= 250) return '1 palta';
+    return 'más de 1 palta';
+  }
+  if (has('pan') && !has('rallado')) {
+    const n = Math.max(1, Math.round(g / 28));
+    return n + ' rebanada' + (n > 1 ? 's' : '');
+  }
+  if (has('tostada')) {
+    const per = has('arroz') ? 9 : 25;
+    const n = Math.max(1, Math.round(g / per));
+    return n + ' tostada' + (n > 1 ? 's' : '');
+  }
+
+  return null;
+}
+
 function renderFood(originalFood, comidaId, optIdx, foodIdx) {
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
   const swap = STATE.foodSwaps[key];
@@ -2580,6 +2758,9 @@ function renderFood(originalFood, comidaId, optIdx, foodIdx) {
   const isSwapped = !!swap;
   const cat = originalFood.category || inferFoodCategory(originalFood);
   const swappable = originalFood.swappable !== false && cat !== 'condimento';
+  const porcion = porcionReferencia(f);
+  const porcionId = `porcion_${comidaId}_${optIdx}_${foodIdx}`;
+  const porcionPrefix = porcion && /^libre/.test(porcion) ? '' : '≈ ';
 
   return `
   <div class="food">
@@ -2588,11 +2769,17 @@ function renderFood(originalFood, comidaId, optIdx, foodIdx) {
         ? ` <span class="swap-badge" data-revert="${comidaId}|${optIdx}|${foodIdx}" title="Toca para volver al original">↔</span>`
         : ''}</div>
       <div class="food-qty">${f.qty} ${f.unit} · ${f.kcal} kcal</div>
+      ${porcion
+        ? `<div class="porcion-ref" id="${porcionId}" hidden>✋ ${porcionPrefix}${porcion}</div>`
+        : ''}
     </div>
     <div class="food-macros">
       <span><strong>${f.prot}</strong>p</span>
       <span><strong>${f.carb}</strong>c</span>
       <span><strong>${f.fat}</strong>g</span>
+      ${porcion
+        ? `<button class="porcion-btn" data-porcion="${comidaId}|${optIdx}|${foodIdx}" aria-label="Ver porción casera" title="Ver porción casera">✋</button>`
+        : ''}
       ${swappable
         ? `<button class="swap-btn" data-swap="${comidaId}|${optIdx}|${foodIdx}" title="Sustituir">↔</button>`
         : ''}
@@ -2682,6 +2869,16 @@ function bindDietEvents() {
     const [id, idx] = btn.getAttribute('data-opt').split('|');
     STATE.meals[id].selectedOpt = +idx;
     renderDiet();
+  }));
+  // Toggle referencia de porción casera (inline, sin re-render — tap mobile)
+  $$('[data-porcion]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const id = 'porcion_' + btn.getAttribute('data-porcion').replace(/\|/g, '_');
+    const ref = document.getElementById(id);
+    if (!ref) return;
+    const show = ref.hasAttribute('hidden');
+    if (show) ref.removeAttribute('hidden'); else ref.setAttribute('hidden', '');
+    btn.classList.toggle('is-active', show);
   }));
   // Abrir modal swap
   $$('[data-swap]').forEach(btn => btn.addEventListener('click', e => {
