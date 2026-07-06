@@ -1406,13 +1406,14 @@ async function confirmAvanzarSemana() {
   const total  = DATA.rutina.semanas_total || 12;
   if (semana >= total) return; // ya en la última semana
 
+  const off = DATA.rutina.semana_offset || 0;   // macrociclo 2+: labels continuados
   const diaCompleto = checkIfDayCompleted();
   const ok = await MyPump.ui.showConfirmModal({
-    title:        `Pasar a Semana ${semana + 1}`,
+    title:        `Pasar a Semana ${semana + off + 1}`,
     body:         diaCompleto
-      ? `¿Confirmás que querés avanzar a la SEMANA ${semana + 1}?`
-      : `Todavía tenés ejercicios sin completar en la SEMANA ${semana}. Si avanzás, la semana nueva empieza con progresión actualizada. ¿Continuar?`,
-    confirmLabel: `Pasar a SEM ${semana + 1} →`,
+      ? `¿Confirmás que querés avanzar a la SEMANA ${semana + off + 1}?`
+      : `Todavía tenés ejercicios sin completar en la SEMANA ${semana + off}. Si avanzás, la semana nueva empieza con progresión actualizada. ¿Continuar?`,
+    confirmLabel: `Pasar a SEM ${semana + off + 1} →`,
     cancelLabel:  'Cancelar',
   });
   if (ok) await doAvanzarSemana();
@@ -1735,7 +1736,8 @@ function renderTrain() {
   // Banner-resumen: cuántos ejercicios cambian carga/volumen esta semana.
   const _exDia = DATA.dia.bloques.flatMap(b => b.ejercicios);
   const _nCambian = _exDia.filter(ex => ex.tipo !== 'calentamiento' && computeProgresionNota(ex, DATA.rutina.semana_actual)?.cambia).length;
-  const _esCalibracion = (DATA.rutina.semana_actual || 1) <= 1;
+  // Calibración solo en la semana 1 del PRIMER macrociclo (fase 2+ continúa cargas)
+  const _esCalibracion = (DATA.rutina.semana_actual || 1) <= 1 && !(DATA.rutina.semana_offset || 0);
   if (_nCambian > 0) {
     html += `<div class="prog-banner">📈 Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
   } else if (_esCalibracion) {
@@ -1761,11 +1763,12 @@ function renderTrain() {
   // Botón de avance de semana — siempre visible si no es demo y no es la última semana
   const _semanaActual = DATA.rutina.semana_actual || 1;
   const _semanasTotal = DATA.rutina.semanas_total || 12;
+  const _semOff = DATA.rutina.semana_offset || 0;   // macrociclo 2+: label continuado
   if (!DATA._isDemo && _semanaActual < _semanasTotal) {
     html += `
     <div class="week-advance-wrap">
       <button class="btn-week-advance" onclick="confirmAvanzarSemana()">
-        Pasar a Semana ${_semanaActual + 1} →
+        Pasar a Semana ${_semanaActual + _semOff + 1} →
       </button>
     </div>`;
   }
@@ -2539,7 +2542,7 @@ function renderDiet() {
         <div class="center"><span class="num">${Math.round(consumido.kcal).toLocaleString('es-AR')}</span><span class="lbl">/${tg.kcal}</span></div>
       </div>
       <div class="diet-info">
-        <div class="eyebrow">DIETA · SEM ${DATA.rutina.semana_actual}/${DATA.rutina.semanas_total}</div>
+        <div class="eyebrow">DIETA · SEM ${DATA.rutina.semana_actual + (DATA.rutina.semana_offset || 0)}/${DATA.rutina.semanas_total + (DATA.rutina.semana_offset || 0)}</div>
         <h2>${tg.kcal} kcal objetivo</h2>
         <div class="target"><strong>${tg.prot}g</strong> prot · <strong>${tg.carb}g</strong> carb · <strong>${tg.fat}g</strong> gra</div>
       </div>
@@ -3525,6 +3528,9 @@ async function init() {
         split: est.split || est.perfil?.split || '',
         semana_actual: rutina.semana_actual || 1,
         semanas_total: est.semanas_total || 1,
+        // Macrociclo 2+: la semana se MUESTRA continuada (SEM 13/24) aunque
+        // internamente el plan siga siendo 1-12. Solo afecta labels.
+        semana_offset: Number(est.semana_offset) || 0,
       },
       dia,
       historico_por_ejercicio: {},
@@ -3591,9 +3597,10 @@ async function init() {
   // dispositivo, incógnito, cache limpio, retroceso de semana).
   await restoreSesionDelDia();
 
-  // Update header initial state
-  $('#hdrWeek').textContent = DATA.rutina.semana_actual;
-  $('#hdrWeekTotal').textContent = DATA.rutina.semanas_total;
+  // Update header initial state (con offset de macrociclo: "SEM 13/24")
+  const _wOff = DATA.rutina.semana_offset || 0;
+  $('#hdrWeek').textContent = DATA.rutina.semana_actual + _wOff;
+  $('#hdrWeekTotal').textContent = DATA.rutina.semanas_total + _wOff;
   updateDayHeader();
 
   showApp();
