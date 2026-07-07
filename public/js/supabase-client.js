@@ -190,6 +190,12 @@ window.mypumpDB = {
     });
   },
 
+  // Activa el bloque encolado (estructura_siguiente → estructura, semana 1).
+  // Devuelve true si había un bloque en cola y se activó.
+  async activarSiguiente(token) {
+    return await rpc('mypump_activar_siguiente', { p_token: token });
+  },
+
   // Devuelve array de registros de mypump_registros_carga para la sesión.
   // Campos clave: ejercicio_id, serie_numero, peso_kg, reps_realizadas, rir_real, notas.
   // Usado para restaurar los valores exactos de cada serie al recargar la página.
