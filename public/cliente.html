@@ -129,6 +129,9 @@ main{padding:var(--space-4)}
 .rir-btn{width:100%;height:48px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-family:var(--font-mono);font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px}
 .rir-btn .lbl{color:var(--color-text-muted);font-size:10px}
 .set-row.is-confirmed .rir-btn{background:var(--color-brand-subtle);border-color:color-mix(in oklab,var(--color-brand) 40%,var(--color-border))}
+.set-sug-hint{margin:4px 0 8px;padding:8px 10px;border:1px dashed color-mix(in oklab,var(--color-brand) 45%,var(--color-border));background:var(--color-brand-subtle);border-radius:var(--radius-md);font-size:12px;color:var(--color-text-secondary);cursor:pointer;line-height:1.35;text-align:center}
+.set-sug-hint b{color:var(--color-text-primary);font-family:var(--font-mono)}
+.set-sug-hint:active{opacity:.7}
 .set-confirm{width:44px;height:48px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);color:var(--color-text-secondary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .set-confirm:hover{background:var(--color-text-primary);color:var(--color-bg-primary);border-color:var(--color-text-primary)}
 .set-row.is-confirmed .set-confirm{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
@@ -1486,6 +1489,7 @@ async function showDayCompletedModal() {
     updateDayHeader();
     renderDayPicker();
     renderTrain();
+    prefetchHistoricoDia();
     window.scrollTo(0, 0);
   }
 }
@@ -1564,11 +1568,35 @@ async function restoreSesionDelDia() {
 }
 
 /* ---- LAZY LOAD HISTORICO ---- */
+const _histPromises = {};
 async function loadHistorico(exId) {
-  if (DATA.historico_por_ejercicio[exId] !== undefined) return;
-  DATA.historico_por_ejercicio[exId] = []; // mark as loading
-  const rows = await window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 12);
-  DATA.historico_por_ejercicio[exId] = rows || [];
+  // Si ya hay un fetch en vuelo (p.ej. del prefetch del día), esperarlo — así
+  // await loadHistorico() devuelve recién cuando los datos están listos, y no
+  // renderiza vacío por un fetch que corre tarde (bug del auto-avance).
+  if (_histPromises[exId]) { await _histPromises[exId]; return; }
+  if (Array.isArray(DATA.historico_por_ejercicio[exId])) return; // ya cargado
+  const p = window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 24)
+    .then(rows => { DATA.historico_por_ejercicio[exId] = rows || []; })
+    .catch(() => { DATA.historico_por_ejercicio[exId] = []; });
+  DATA.historico_por_ejercicio[exId] = []; // marca "cargando" (defined)
+  _histPromises[exId] = p;
+  await p;
+  delete _histPromises[exId];
+}
+
+// Precarga el histórico de TODOS los ejercicios de trabajo del día (en paralelo),
+// para que el peso sugerido / récord / última vez aparezcan al primer render de
+// cualquier ejercicio — incluido el que se abre solo al avanzar. Re-renderiza al
+// terminar. Fire-and-forget.
+function prefetchHistoricoDia() {
+  if (!DATA || !DATA.dia || !DATA.dia.bloques) return;
+  const ids = DATA.dia.bloques.flatMap(b => b.ejercicios || [])
+    .filter(e => e.tipo !== 'calentamiento' && !Array.isArray(DATA.historico_por_ejercicio[e.id]) && !_histPromises[e.id])
+    .map(e => e.id);
+  if (!ids.length) return;
+  Promise.all(ids.map(id => loadHistorico(id))).then(() => {
+    if (STATE.scene === 'train' && typeof renderTrain === 'function') renderTrain();
+  });
 }
 
 /* ---- UI STATE ---- */
@@ -1678,6 +1706,7 @@ function renderDayPicker() {
     updateDayHeader();
     renderDayPicker();
     renderTrain();
+    prefetchHistoricoDia();
     // Restaurar la sesión del nuevo día (estados/series/cerrado) y re-render.
     await restoreSesionDelDia();
     renderTrain();
@@ -1986,17 +2015,95 @@ function renderSetRow(ex, s, i, isActive) {
   const conf = s.confirmed;
   const isWarmup = ex.tipo === 'calentamiento';
   const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
+  const sugReps = _repsSug(prog.reps);
+  const sugKg   = isWarmup ? '' : suggestedKg(ex.id, i);
+  const hasSug  = (sugReps != null) && (isWarmup || sugKg !== '');
+  const typed   = s.reps !== '' || s.kg !== '';
+  // El check se habilita si el cliente ya cargó datos, o si hay sugerido (one-tap).
+  const canConfirm = typed ? (s.reps !== '' && (isWarmup || s.kg !== '')) : hasSug;
   const cls = 'set-row' + (conf?' is-confirmed':'') + (!conf&&!isActive?' is-pending':'') + (isActive?' is-active':'');
+  // Hint one-tap: solo en la serie activa, sin confirmar, con sugerido y sin editar.
+  const hint = (!conf && isActive && hasSug && !typed)
+    ? `<div class="set-sug-hint" data-sugconfirm="${ex.id}|${i}" role="button" tabindex="0">✓ Tocá para registrar lo sugerido${isWarmup ? '' : ` · <b>${sugKg}kg × ${sugReps}</b>`}${(!isWarmup && _rirTarget(prog.rir)!=null) ? ` (RIR ${_rirTarget(prog.rir)})` : ''} — o editá reps/peso si hiciste otra cosa</div>`
+    : '';
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
     <span class="set-num">${i+1}</span>
     <input class="set-input" inputmode="numeric" placeholder="${prog.reps || ''}" value="${s.reps}" data-field="reps" ${conf?'readonly':''} />
-    <input class="set-input" inputmode="decimal" placeholder="${isWarmup?'—':suggestedKg(ex.id,i)}" value="${s.kg}" data-field="kg" ${conf||isWarmup?'readonly':''} />
+    <input class="set-input" inputmode="decimal" placeholder="${isWarmup?'—':sugKg}" value="${s.kg}" data-field="kg" ${conf||isWarmup?'readonly':''} />
     <button class="rir-btn" data-rir="${ex.id}|${i}">${s.rir!=='' ? `<span class="lbl">RIR</span>${s.rir}` : `<span class="lbl">RIR</span>·`}</button>
     ${conf
       ? `<button class="set-confirm is-edit" data-edit="${ex.id}|${i}" aria-label="Editar">${ICONS.edit}</button>`
-      : `<button class="set-confirm" data-confirm="${ex.id}|${i}" aria-label="Confirmar serie"${(s.reps===''||(!isWarmup&&s.kg===''))?'disabled':''}>${ICONS.check}</button>`}
-  </div>`;
+      : `<button class="set-confirm" data-confirm="${ex.id}|${i}" aria-label="Registrar serie" title="${typed ? 'Registrar lo que hiciste' : 'Registrar lo sugerido'}"${canConfirm?'':' disabled'}>${ICONS.check}</button>`}
+  </div>${hint}`;
+}
+
+// Parsea el objetivo de reps del plan a un entero (top del rango). null si es
+// AMRAP/∞ (ahí el cliente TIENE que ingresar las reps reales, no hay one-tap).
+function _repsSug(reps) {
+  if (reps == null) return null;
+  const str = String(reps);
+  if (/amrap|∞|max|máx/i.test(str)) return null;
+  const nums = str.match(/\d+/g);
+  return nums ? parseInt(nums[nums.length - 1]) : null;
+}
+// RIR objetivo del plan a entero (top del rango). null si no hay número.
+function _rirTarget(rir) {
+  if (rir == null) return null;
+  const nums = String(rir).match(/\d+/g);
+  return nums ? parseInt(nums[nums.length - 1]) : null;
+}
+
+// Confirma una serie. Si el cliente NO editó nada → "cumplí lo sugerido":
+// registra con el peso sugerido (última vez), las reps objetivo del plan y el
+// RIR objetivo del plan. Si editó reps/peso → usa lo que puso (y NO fuerza RIR:
+// queda lo que el cliente eligió, o null). Un toque = registrado.
+async function confirmarSerie(exId, idx) {
+  unlockAudio(); // primer user gesture confiable — habilita beeps en iOS
+  const setObj = STATE.session[exId]?.sets?.[idx];
+  if (!setObj || setObj.confirmed) return;
+  const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+  if (!ex) return;
+  const isWarmup = ex.tipo === 'calentamiento';
+  const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
+
+  const editoManual = setObj.reps !== '' || setObj.kg !== '';
+  if (!editoManual) {
+    // One-tap: tomar los valores sugeridos (plan + historial).
+    const sugReps = _repsSug(prog.reps);
+    const sugKg   = isWarmup ? '' : suggestedKg(exId, idx);
+    if (sugReps != null) setObj.reps = String(sugReps);
+    if (!isWarmup && sugKg !== '') setObj.kg = String(sugKg);
+    if (setObj.rir === '') { const t = _rirTarget(prog.rir); if (t != null) setObj.rir = String(t); }
+  }
+  // No confirmar sin datos mínimos (ej: sin sugerido y sin editar).
+  if (setObj.reps === '' || (!isWarmup && setObj.kg === '')) return;
+
+  setObj.confirmed = true;
+  await ensureSesionIniciada();
+  writeSet(exId, idx); // fire-and-forget
+
+  if (!isWarmup) startRest(ex.descanso_segundos);
+
+  const allConfirmed = STATE.session[exId].sets.every(s => s.confirmed);
+  if (allConfirmed && getExStatus(exId) === 'pendiente') {
+    setExStatus(exId, 'completo');
+    STATE.session[exId].completed = true;
+    const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
+    const i = all.findIndex(e => e.id === exId);
+    const next = all.slice(i + 1).find(e => getExStatus(e.id) === 'pendiente');
+    if (next) {
+      STATE.expandedId = next.id;
+      // Cargar el histórico del siguiente ANTES de renderizar, para que el peso
+      // sugerido / récord / última vez aparezcan al primer load (bug del auto-avance).
+      if (!Array.isArray(DATA.historico_por_ejercicio[next.id])) await loadHistorico(next.id);
+      marcarLeidosEjercicio(next.id);
+    }
+  }
+  renderTrain();
+  if (!DATA._isDemo && checkIfDayCompleted()) {
+    setTimeout(() => showDayCompletedModal(), 500);
+  }
 }
 
 function bindTrainEvents() {
@@ -2030,44 +2137,20 @@ function bindTrainEvents() {
       const row = inp.closest('.set-row');
       const setObj = STATE.session[exId].sets[+idx];
       const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
-      const ok = setObj.reps !== '' && (ex.tipo === 'calentamiento' || setObj.kg !== '');
+      const isWarmup = ex.tipo === 'calentamiento';
+      const ok = setObj.reps !== '' && (isWarmup || setObj.kg !== '');
+      const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
+      const hasSug = (_repsSug(prog.reps) != null) && (isWarmup || suggestedKg(exId, +idx) !== '');
       const btn = row.querySelector('[data-confirm]');
-      if (btn) btn.disabled = !ok;
+      if (btn) btn.disabled = !(ok || hasSug);   // one-tap sigue disponible si hay sugerido
     });
   });
 
-  $$('[data-confirm]').forEach(btn => btn.addEventListener('click', async () => {
-    unlockAudio(); // primer user gesture confiable del flow — habilita beeps en mobile/iOS
-    const [exId, idx] = btn.getAttribute('data-confirm').split('|');
-    const setObj = STATE.session[exId].sets[+idx];
-    if (setObj.rir === '') setObj.rir = '2';
-    setObj.confirmed = true;
-    await ensureSesionIniciada();
-    writeSet(exId, +idx); // fire-and-forget
-    const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
-    // Descanso tras CADA serie de trabajo confirmada, incluida la que cierra el
-    // ejercicio. Antes el startRest vivía en el 'else' del auto-completar, así que
-    // la última serie confirmada (que en un ejercicio de 1 serie ES la primera)
-    // nunca recibía descanso — reportado por clientes que entrenan cerca del fallo.
-    if (ex.tipo !== 'calentamiento') startRest(ex.descanso_segundos);
-    // Auto-complete: si se confirmaron TODAS las series → marcar 'completo'
-    const allConfirmed = STATE.session[exId].sets.every(s => s.confirmed);
-    if (allConfirmed && getExStatus(exId) === 'pendiente') {
-      setExStatus(exId, 'completo');
-      STATE.session[exId].completed = true;
-      // NO cortamos el descanso: dejamos correr el de la última serie. El #restBar
-      // es fixed (sobrevive al re-render) y se auto-cierra solo al terminar.
-      // Abrir el siguiente ejercicio pendiente automáticamente
-      const all = DATA.dia.bloques.flatMap(b => b.ejercicios);
-      const i = all.findIndex(e => e.id === exId);
-      const next = all.slice(i+1).find(e => getExStatus(e.id) === 'pendiente');
-      if (next) STATE.expandedId = next.id;
-    }
-    renderTrain();
-    // Auto-detectar día completo → ofrecer ir al siguiente día (NO avanza semana)
-    if (!DATA._isDemo && checkIfDayCompleted()) {
-      setTimeout(() => showDayCompletedModal(), 500);
-    }
+  // El check (o el hint "cumplí lo sugerido") confirman la serie por la misma vía.
+  $$('[data-confirm], [data-sugconfirm]').forEach(btn => btn.addEventListener('click', () => {
+    const attr = btn.getAttribute('data-confirm') || btn.getAttribute('data-sugconfirm');
+    const [exId, idx] = attr.split('|');
+    confirmarSerie(exId, +idx);
   }));
 
   $$('[data-edit]').forEach(btn => btn.addEventListener('click', () => {
@@ -3624,6 +3707,7 @@ async function init() {
   if (!(DATA && DATA._isDemo)) loadComentarios();
 
   STATE.session = buildSession();
+  prefetchHistoricoDia();
 
   // Restaurar la sesión del día (estados + series + si el día ya fue cerrado).
   // Reconecta con la sesión real aunque localStorage esté vacío (cambio de
