@@ -30,3 +30,8 @@
 
 /css/*
   Cache-Control: no-cache
+
+# El service worker debe revalidarse siempre para que una versión nueva del SW
+# se detecte al instante (si no, el navegador podría tardar en verla).
+/sw.js
+  Cache-Control: no-cache

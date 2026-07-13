@@ -501,6 +501,10 @@ main{padding:var(--space-4)}
 #save-toast[data-state="saved"]{background:color-mix(in oklab,var(--color-success,#10b981) 14%,var(--color-bg-secondary));color:var(--color-success,#10b981);border:1px solid color-mix(in oklab,var(--color-success,#10b981) 40%,var(--color-border))}
 #save-toast[data-state="offline"]{background:color-mix(in oklab,var(--color-warning) 14%,var(--color-bg-secondary));color:var(--color-warning);border:1px solid color-mix(in oklab,var(--color-warning) 40%,var(--color-border))}
 
+/* OFFLINE BANNER — barra superior cuando no hay conexión (R3) */
+#offline-banner{position:fixed;top:0;left:0;right:0;z-index:70;padding:8px 14px;padding-top:calc(8px + env(safe-area-inset-top,0));background:var(--color-warning);color:#1a1a1a;font-size:12px;font-weight:600;font-family:var(--font-mono);text-align:center;line-height:1.35;transform:translateY(-100%);transition:transform .25s}
+#offline-banner.show{transform:translateY(0)}
+
 /* El atributo [hidden] siempre oculta, sin importar especificidad de otras reglas */
 [hidden]{display:none!important}
 
@@ -3861,26 +3865,39 @@ async function init() {
   showLoading();
   window.mypumpDB.init();
 
-  const info = await window.mypumpDB.getClienteInfo(TOKEN);
-  if (!info) {
-    // Distinguir: token inválido (sin error) vs servicio caído (error de red/cuota/server)
+  let info = await window.mypumpDB.getClienteInfo(TOKEN);
+  let rutina, dieta;
+  let _fromCache = false;
+  if (info) {
+    [rutina, dieta] = await Promise.all([
+      window.mypumpDB.getRutinaActiva(TOKEN),
+      window.mypumpDB.getDietaActiva(TOKEN),
+    ]);
+    // Guardar snapshot para modo offline (solo si trajo rutina real con estructura).
+    if (rutina && rutina.estructura && rutina.estructura.dias) {
+      saveOfflineSnapshot(info, rutina, dieta);
+    }
+  } else {
+    // Distinguir: token inválido (sin error) vs servicio caído / sin conexión.
     const lastErr = window.mypumpDB._lastError;
     if (lastErr) {
-      // Hubo un error de servicio (402 cuota, 503 server, network down, etc.)
-      // NO mostrar "Acceso revocado" — el token podría estar perfecto.
-      console.error('[init] Service error:', lastErr);
-      showError('service-down', TOKEN.slice(0,8)+'…');
+      // Servicio caído o sin conexión (network down, 402 cuota, 503, etc.).
+      // Antes de rendirse: intentar el último snapshot cacheado → modo offline.
+      const snap = loadOfflineSnapshot();
+      if (snap && snap.info && snap.rutina) {
+        info = snap.info; rutina = snap.rutina; dieta = snap.dieta; _fromCache = true;
+        console.warn('[init] offline → usando snapshot cacheado');
+      } else {
+        console.error('[init] Service error:', lastErr);
+        showError('service-down', TOKEN.slice(0,8)+'…');
+        return;
+      }
     } else {
       // Sin error pero info=null → el token realmente no existe o está revocado
       showError('invalid', TOKEN.slice(0,8)+'…');
+      return;
     }
-    return;
   }
-
-  const [rutina, dieta] = await Promise.all([
-    window.mypumpDB.getRutinaActiva(TOKEN),
-    window.mypumpDB.getDietaActiva(TOKEN),
-  ]);
 
   // Build DATA
   if (rutina && rutina.estructura && rutina.estructura.dias) {
@@ -3972,10 +3989,13 @@ async function init() {
   $('#hdrWeekTotal').textContent = DATA.rutina.semanas_total + _wOff;
   updateDayHeader();
 
+  DATA._offline = _fromCache;   // arrancó desde snapshot cacheado (sin conexión)
+
   showApp();
   renderDayPicker();
   renderTrain();
   renderDiet();
+  updateOfflineBanner();
   // Mi Día y Progress cargan de forma lazy cuando se abre el tab
   loadMyday(); // inicia en background; cuando termina, STATE.mydayLoaded = true
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
@@ -3987,6 +4007,37 @@ async function init() {
     if (Outbox.pending() > 0) Outbox.flushSoon(1500);   // esperar a que asiente el arranque
   }
 }
+
+/* ---- OFFLINE: snapshot de datos + banner (R3) ---- */
+// Guarda el último cliente/rutina/dieta que trajo el backend, para poder abrir
+// la app sin conexión (el gym con mala señal). Junto al service worker (sw.js)
+// que cachea el código, esto hace la app usable 100% offline.
+function saveOfflineSnapshot(info, rutina, dieta) {
+  try {
+    localStorage.setItem(`mypump_offline_${TOKEN}`, JSON.stringify({ info, rutina, dieta, ts: Date.now() }));
+  } catch (_) {}
+}
+function loadOfflineSnapshot() {
+  try { return JSON.parse(localStorage.getItem(`mypump_offline_${TOKEN}`) || 'null'); }
+  catch (_) { return null; }
+}
+function updateOfflineBanner() {
+  const offline = !navigator.onLine || (DATA && DATA._offline);
+  let el = document.getElementById('offline-banner');
+  if (offline) {
+    if (!el) { el = document.createElement('div'); el.id = 'offline-banner'; document.body.appendChild(el); }
+    el.textContent = (DATA && DATA._offline)
+      ? '⚡ Sin conexión — mostrando tu última rutina guardada. Lo que cargues se sincroniza al volver.'
+      : '⚡ Sin conexión — lo que cargues se guarda y se sincroniza al volver.';
+    el.classList.add('show');
+  } else if (el) {
+    el.classList.remove('show');
+    // Volvió la conexión: si habíamos arrancado de cache, ya no lo estamos.
+    if (DATA) DATA._offline = false;
+  }
+}
+window.addEventListener('online',  updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
 
 /* ---- SWAP MODAL ---- */
 let _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null, query:'' };
@@ -4657,6 +4708,15 @@ function _invalidateSwapCache() {
 })();
 
 init();
+
+// Service Worker — offline real (R3). Registro no bloqueante; si falla, la app
+// sigue funcionando normal (solo pierde el offline). En localhost por http se
+// permite; en producción CF Pages es https.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('[sw] no registró:', e));
+  });
+}
 </script>
 </body>
 </html>
