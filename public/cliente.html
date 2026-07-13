@@ -1391,12 +1391,17 @@ function showSaveState(state) {
     el._hideT = setTimeout(() => el.classList.remove('show'), state === 'saved' ? 1400 : 3200);
   }
 }
+function hideSaveToast() {
+  const el = document.getElementById('save-toast');
+  if (el) el.classList.remove('show');
+}
 
 const Outbox = (() => {
   const KEY = () => `mypump_outbox_${TOKEN || 'anon'}`;
   let queue = [];
   let flushing = false;
   let timer = null;
+  let hadProblem = false;   // hubo offline/fallo desde el último éxito → reasegurar con '✓ Guardado'
 
   // Ejecutores: resuelven la sesión activa al momento de enviar (no en el encolado),
   // así una carga hecha offline se adjunta a la sesión del día cuando haya conexión.
@@ -1441,9 +1446,12 @@ const Outbox = (() => {
 
   async function flush() {
     if (flushing || !OUTBOX_ENABLED || !queue.length) return;
-    if (navigator.onLine === false) { showSaveState('offline'); flushSoon(5000); return; }
+    if (navigator.onLine === false) { hadProblem = true; showSaveState('offline'); flushSoon(5000); return; }
     flushing = true;
-    showSaveState('saving');
+    // Camino feliz = SILENCIOSO (el tilde de la serie ya es el feedback). Solo se
+    // muestra 'Guardando…' si el envío tarda >900ms (conexión lenta), para no
+    // parpadear un toast en cada serie confirmada.
+    const slowTimer = setTimeout(() => showSaveState('saving'), 900);
     const remaining = [];
     let anyFail = false;
     for (const op of queue) {
@@ -1456,15 +1464,21 @@ const Outbox = (() => {
       anyFail = true;
       remaining.push(op);
     }
+    clearTimeout(slowTimer);
     queue = remaining;
     save();
     flushing = false;
     if (anyFail) {
+      hadProblem = true;
       showSaveState('offline');
       const backoff = Math.min(30000, 2000 * Math.max(1, queue[0]?.tries || 1));
       flushSoon(backoff);
-    } else {
+    } else if (hadProblem) {
+      // Recién ahí mostramos '✓ Guardado': reasegura tras una racha offline.
+      hadProblem = false;
       showSaveState('saved');
+    } else {
+      hideSaveToast();   // éxito normal → sin ruido
     }
   }
 
