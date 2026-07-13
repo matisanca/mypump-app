@@ -132,6 +132,9 @@ main{padding:var(--space-4)}
 .set-sug-hint{margin:4px 0 8px;padding:8px 10px;border:1px dashed color-mix(in oklab,var(--color-brand) 45%,var(--color-border));background:var(--color-brand-subtle);border-radius:var(--radius-md);font-size:12px;color:var(--color-text-secondary);cursor:pointer;line-height:1.35;text-align:center}
 .set-sug-hint b{color:var(--color-text-primary);font-family:var(--font-mono)}
 .set-sug-hint:active{opacity:.7}
+/* B4 — hint de calibración (informativo, no clickeable) */
+.set-sug-hint.is-calib{cursor:default;border-color:color-mix(in oklab,var(--color-warning) 45%,var(--color-border));background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary))}
+.set-sug-hint.is-calib:active{opacity:1}
 .set-confirm{width:44px;height:48px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);color:var(--color-text-secondary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .set-confirm:hover{background:var(--color-text-primary);color:var(--color-bg-primary);border-color:var(--color-text-primary)}
 .set-row.is-confirmed .set-confirm{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
@@ -219,7 +222,10 @@ main{padding:var(--space-4)}
 
 /* TAB BAR */
 .tabbar{position:fixed;left:0;right:0;bottom:0;margin-inline:auto;width:100%;max-width:480px;background:color-mix(in oklab,var(--color-bg-primary) 95%,transparent);backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);border-top:1px solid var(--color-border);padding:var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:2px;z-index:35;will-change:transform;-webkit-transform:translateZ(0);transform:translateZ(0)}
-.tab{background:transparent;border:0;padding:var(--space-2) 2px;border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--color-text-muted);font-size:10px;font-weight:500;letter-spacing:.02em;min-height:56px}
+.tab{position:relative;background:transparent;border:0;padding:var(--space-2) 2px;border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--color-text-muted);font-size:10px;font-weight:500;letter-spacing:.02em;min-height:56px}
+/* Badge global de comentarios nuevos del coach (B3) */
+.tab-badge{position:absolute;top:2px;right:calc(50% - 22px);min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--color-brand);color:var(--color-on-brand);font-size:10px;font-weight:800;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--color-bg-primary)}
+.tab-badge[hidden]{display:none}
 .tab svg{width:20px;height:20px;stroke-width:1.7}
 .tab.is-active{color:var(--color-text-primary)}
 .tab.is-active .tab-dot{background:var(--color-brand)}
@@ -640,6 +646,7 @@ button svg:not([width]),a svg:not([width]){width:1em;height:1em}
   <!-- TAB BAR -->
   <nav class="tabbar" role="tablist">
     <button class="tab is-active" data-scene="train" role="tab" aria-selected="true">
+      <span class="tab-badge" id="tabBadgeTrain" hidden></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/></svg>
       <span>Entreno</span>
       <span class="tab-dot"></span>
@@ -1222,6 +1229,22 @@ function rebuildComentarioIndexes(rows) {
   }
   STATE.comentariosByRef = byRef;
   STATE.comentariosUnread = unread;
+  updateGlobalCommentBadge();
+}
+
+// B3 — Badge global de comentarios nuevos del coach en el tab Entreno, para que
+// el cliente se entere aunque esté en otra pestaña.
+function totalUnreadComentarios() {
+  let n = 0;
+  for (const k in STATE.comentariosUnread) n += STATE.comentariosUnread[k] || 0;
+  return n;
+}
+function updateGlobalCommentBadge() {
+  const el = document.getElementById('tabBadgeTrain');
+  if (!el) return;
+  const n = totalUnreadComentarios();
+  if (n > 0) { el.textContent = n > 9 ? '9+' : String(n); el.hidden = false; }
+  else { el.hidden = true; }
 }
 
 function getComentariosFor(ambito, refId) {
@@ -1262,6 +1285,7 @@ async function marcarLeidosEjercicio(exId) {
   const k = _comKey('ejercicio', exId);
   STATE.comentariosUnread[k] = 0;
   for (const c of (STATE.comentariosByRef[k] || [])) if (c.autor === 'coach') c.leido_por_cliente = true;
+  updateGlobalCommentBadge();
   if (TOKEN && !(DATA && DATA._isDemo)) {
     await window.mypumpDB.marcarLeidos(TOKEN, 'ejercicio', exId);
   }
@@ -2195,6 +2219,11 @@ function renderSetRow(ex, s, i, isActive) {
   const hint = (!conf && isActive && hasSug && !typed)
     ? `<div class="set-sug-hint" data-sugconfirm="${ex.id}|${i}" role="button" tabindex="0">✓ Tocá para registrar lo sugerido${isWarmup ? '' : ` · <b>${sugKg}kg × ${sugReps}</b>`}${(!isWarmup && _rirTarget(prog.rir)!=null) ? ` (RIR ${_rirTarget(prog.rir)})` : ''} — o editá reps/peso si hiciste otra cosa</div>`
     : '';
+  // B4 — Primera vez con este ejercicio (sin histórico → sin peso sugerido):
+  // guiar la elección del peso en vez de dejar el input mudo.
+  const calibHint = (!conf && isActive && !hasSug && !typed && !isWarmup && sugReps != null)
+    ? `<div class="set-sug-hint is-calib">🎯 Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps dejando 1–2 en reserva. Queda de referencia para la próxima.</div>`
+    : '';
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
     <span class="set-num">${i+1}</span>
@@ -2204,7 +2233,7 @@ function renderSetRow(ex, s, i, isActive) {
     ${conf
       ? `<button class="set-confirm is-edit" data-edit="${ex.id}|${i}" aria-label="Editar">${ICONS.edit}</button>`
       : `<button class="set-confirm" data-confirm="${ex.id}|${i}" aria-label="Registrar serie" title="${typed ? 'Registrar lo que hiciste' : 'Registrar lo sugerido'}"${canConfirm?'':' disabled'}>${ICONS.check}</button>`}
-  </div>${hint}`;
+  </div>${hint}${calibHint}`;
 }
 
 // Parsea el objetivo de reps del plan a un entero (top del rango). null si es
@@ -2918,7 +2947,7 @@ function renderDiet() {
     </div>
     <div class="macros-row">
       ${renderMacroTarget('p','Proteína',tg.prot,'g')}
-      ${renderMacroTarget('c','Carbs',tg.carb,'g')}
+      ${renderMacroTarget('c','Carbos',tg.carb,'g')}
       ${renderMacroTarget('f','Grasa',tg.fat,'g')}
     </div>
     <div class="consumido-row">
