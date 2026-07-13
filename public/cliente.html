@@ -453,6 +453,7 @@ main{padding:var(--space-4)}
 .cf-field>span{font-size:11px;color:var(--color-text-muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
 .cf-field input,.cf-field select{height:40px;padding:0 var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:14px;outline:none;font-family:inherit;color:var(--color-text-primary)}
 .cf-field input:focus,.cf-field select:focus{border-color:var(--color-brand);background:var(--color-bg-primary)}
+.cf-hint{font-size:11px;color:var(--color-text-muted);font-weight:400;letter-spacing:0;text-transform:none;line-height:1.3;margin-top:2px}
 .cf-macros-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
 .cf-unit-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}
 .cf-err{padding:var(--space-2) var(--space-3);background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border:1px solid #ef4444;border-radius:var(--radius-md);color:#ef4444;font-size:12px;margin-top:var(--space-2)}
@@ -4466,6 +4467,7 @@ function openCustomFoodModal() {
           </label>
           <label class="cf-field" id="cfUnitGramsField" style="display:none"><span>Gramos por unidad</span>
             <input type="number" id="cfUnitGrams" min="1" step="1" placeholder="60" />
+            <small class="cf-hint" id="cfUnitGramsHint">Cuánto pesa 1 porción en gramos (sirve para la medida casera).</small>
           </label>
         </div>
         <input type="hidden" id="cfCategory" value="${originalCat}" />
@@ -4485,6 +4487,10 @@ function openCustomFoodModal() {
   function syncUnitGramsField() {
     const v = unitSel.value;
     unitGramsField.style.display = (v === 'g' || v === 'ml') ? 'none' : 'flex';
+    const hintEl = document.getElementById('cfUnitGramsHint');
+    if (hintEl && v !== 'g' && v !== 'ml') {
+      hintEl.textContent = `Cuánto pesa 1 ${v} en gramos (sirve para la medida casera).`;
+    }
   }
   unitSel.addEventListener('change', syncUnitGramsField);
   syncUnitGramsField();
@@ -4500,10 +4506,17 @@ function closeCustomFoodModal() {
 
 async function saveCustomFood() {
   const name = $('#cfName').value.trim();
-  const kcal = parseFloat($('#cfKcal').value);
-  const prot = parseFloat($('#cfProt').value);
-  const carb = parseFloat($('#cfCarb').value);
-  const fat  = parseFloat($('#cfFat').value);
+  // Campo vacío o inválido → 0 (no forzamos cargar los 5). Negativos se clampean.
+  const num = (id) => { const v = parseFloat($('#'+id).value); return isFinite(v) && v > 0 ? v : 0; };
+  const prot = num('cfProt');
+  const carb = num('cfCarb');
+  const fat  = num('cfFat');
+  // Si no cargaron kcal, se derivan de los macros (4/4/9). Útil: mucha gente sabe
+  // los macros pero no las calorías exactas.
+  const kcalRaw = parseFloat($('#cfKcal').value);
+  const kcal = ($('#cfKcal').value.trim() !== '' && isFinite(kcalRaw) && kcalRaw > 0)
+    ? kcalRaw
+    : Math.round(prot * 4 + carb * 4 + fat * 9);
   const unit = $('#cfUnit').value;
   const unitGramsRaw = $('#cfUnitGrams') ? $('#cfUnitGrams').value : '';
   const unitGrams = (unit === 'g' || unit === 'ml') ? null : parseFloat(unitGramsRaw);
@@ -4513,11 +4526,11 @@ async function saveCustomFood() {
   function showErr(msg) { if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; } }
 
   if (!name) { showErr('El nombre es obligatorio.'); return; }
-  if (!(kcal >= 0) || !(prot >= 0) || !(carb >= 0) || !(fat >= 0)) {
-    showErr('Los macros deben ser números válidos (≥ 0).'); return;
+  if (kcal <= 0 && prot <= 0 && carb <= 0 && fat <= 0) {
+    showErr('Cargá al menos las calorías o algún macro.'); return;
   }
   if (unit !== 'g' && unit !== 'ml' && (!unitGrams || unitGrams <= 0)) {
-    showErr(`Para "${unit}" tenés que indicar gramos por unidad.`); return;
+    showErr(`Para "${unit}" indicá cuánto pesa 1 ${unit} en gramos.`); return;
   }
 
   const foodData = {
