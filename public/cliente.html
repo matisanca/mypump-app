@@ -2661,6 +2661,41 @@ function startRest(seconds) {
   maybeAskNotifPermission();
   // Tick a 250ms: UI más fluida y, ante throttling, latencia ≤250ms para disparar "done"
   STATE.rest.intervalId = setInterval(restTick, 250);
+  persistRest();   // B2 — sobrevive cambio de tab / reload
+}
+
+/* B2 — Timer de descanso persistente. Guardamos los anclajes wall-clock
+   (endsAt/target/autoCloseAt) para poder restaurar el timer tras un reload o
+   cambio de app. Como se basa en Date.now(), el tiempo transcurrido mientras la
+   app estuvo cerrada se descuenta solo. */
+function persistRest() {
+  try {
+    if (!STATE.rest) { localStorage.removeItem(`mypump_rest_${TOKEN}`); return; }
+    localStorage.setItem(`mypump_rest_${TOKEN}`, JSON.stringify({
+      endsAt: STATE.rest.endsAt, target: STATE.rest.target, autoCloseAt: STATE.rest.autoCloseAt,
+    }));
+  } catch (_) {}
+}
+function restoreRest() {
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(`mypump_rest_${TOKEN}`) || 'null'); }
+  catch (_) { saved = null; }
+  if (!saved || !saved.autoCloseAt) return;
+  const now = Date.now();
+  if (now >= saved.autoCloseAt) { localStorage.removeItem(`mypump_rest_${TOKEN}`); return; }
+  stopRest();
+  STATE.rest = {
+    endsAt:      saved.endsAt,
+    target:      saved.target,
+    intervalId:  null,
+    doneFired:   now >= saved.endsAt,
+    autoCloseAt: saved.autoCloseAt,
+  };
+  const bar = $('#restBar');
+  bar.hidden = false;
+  bar.classList.toggle('is-done', STATE.rest.doneFired);
+  updateRestUI();
+  STATE.rest.intervalId = setInterval(restTick, 250);
 }
 
 function restTick() {
@@ -2682,6 +2717,7 @@ function stopRest() {
   STATE.rest = null;
   $('#restBar').hidden = true;
   $('#restBar').classList.remove('is-done');
+  persistRest();   // limpia el timer persistido
 }
 
 function updateRestUI() {
@@ -2707,6 +2743,7 @@ $$('[data-rest]').forEach(btn => btn.addEventListener('click', () => {
     $('#restBar').classList.remove('is-done');
   }
   updateRestUI();
+  persistRest();   // guardar los nuevos anclajes tras ±tiempo
 }));
 
 // Al volver foreground, forzar un tick para recalcular contra wall-clock
@@ -3996,6 +4033,7 @@ async function init() {
   renderTrain();
   renderDiet();
   updateOfflineBanner();
+  restoreRest();   // B2 — reanudar el timer de descanso si quedó uno corriendo
   // Mi Día y Progress cargan de forma lazy cuando se abre el tab
   loadMyday(); // inicia en background; cuando termina, STATE.mydayLoaded = true
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
