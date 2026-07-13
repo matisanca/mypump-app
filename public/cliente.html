@@ -477,6 +477,11 @@ main{padding:var(--space-4)}
 .exer-row .delta{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--color-success);min-width:40px;text-align:right}
 .exer-row .delta.neg{color:var(--color-danger)}
 .prog-empty{padding:var(--space-8) var(--space-4);text-align:center;color:var(--color-text-muted);font-size:14px}
+/* B5 — PR badge + skeleton de carga de Progreso */
+.pr-badge{display:inline-block;margin-left:6px;padding:1px 7px;font-size:10px;font-weight:800;border-radius:999px;background:color-mix(in oklab,var(--color-warning) 20%,var(--color-bg-primary));color:var(--color-warning);letter-spacing:.03em;vertical-align:middle}
+.sk-box{background:linear-gradient(90deg,var(--color-bg-secondary) 25%,color-mix(in oklab,var(--color-bg-secondary) 60%,var(--color-border)) 37%,var(--color-bg-secondary) 63%);background-size:400% 100%;animation:sk-shimmer 1.4s ease infinite;border-radius:var(--radius-md)}
+.sk-row{pointer-events:none}
+@keyframes sk-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
 
 /* MODALS */
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;display:flex;align-items:flex-end;justify-content:center}
@@ -3408,7 +3413,11 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
 function renderProgress() {
   const root = $('#scene-progress');
   if (!STATE.progressLoaded) {
-    root.innerHTML = `<div class="prog-empty">Cargando historial…</div>`;
+    // Skeleton de carga (mejor que un texto plano en 3G).
+    let sk = `<div class="prog-stats">${'<div class="prog-stat sk-box" style="height:52px"></div>'.repeat(2)}</div>`;
+    sk += `<div class="prog-section-title sk-box" style="height:16px;width:40%"></div>`;
+    sk += '<div class="exer-row sk-row"><div class="info"><div class="sk-box" style="height:14px;width:60%"></div><div class="sk-box" style="height:11px;width:35%;margin-top:6px"></div></div><div class="sk-box" style="height:36px;width:88px"></div></div>'.repeat(4);
+    root.innerHTML = sk;
     loadProgressAndRender();
     return;
   }
@@ -3428,7 +3437,7 @@ function renderProgress() {
         html += `
         <button class="exer-row" data-detail="${ex.id}">
           <div class="info">
-            <div class="name">${ex.name}</div>
+            <div class="name">${ex.name}${ex.isPR ? ` <span class="pr-badge" title="¡Récord! Tu último tope superó todo lo anterior">🏆 PR</span>` : ''}</div>
             <div class="meta">Top: <strong>${ex.top}</strong></div>
           </div>
           ${sparkSVG(ex.series, 88, 36)}
@@ -3483,14 +3492,20 @@ async function loadProgressAndRender() {
       // Ordenar por FECHA ascendente (las filas vienen DESC del backend) y
       // quedarse con las 8 sesiones MÁS RECIENTES. Así series[0]=más vieja y
       // series[último]=más nueva → el delta y la sparkline van en el sentido real.
-      const series = Object.keys(byDate)
-        .sort()                 // fechas ISO YYYY-MM-DD ordenan bien como string
+      const fechasAsc = Object.keys(byDate).sort();   // fechas ISO ordenan como string
+      const series = fechasAsc
         .slice(-8)              // 8 más recientes (antes tomaba las 8 más viejas)
         .map(date => byDate[date]);
       if (!series.length) return null;
       const topVal = Math.max(...series);
       const first = series[0], last = series[series.length-1];
       const delta = (series.length > 1 && first > 0) ? ((last-first)/first*100).toFixed(1) : null;
+      // PR (🏆): la sesión MÁS reciente marcó un récord absoluto — su peso tope
+      // supera a TODAS las sesiones anteriores (todo el histórico, no solo el
+      // window de 8). Requiere ≥2 sesiones para que "récord" tenga sentido.
+      const allVals = fechasAsc.map(d => byDate[d]);
+      const lastVal = allVals[allVals.length - 1];
+      const isPR = allVals.length > 1 && lastVal > Math.max(...allVals.slice(0, -1));
       return {
         id: r.id,
         name: r.name,
@@ -3499,6 +3514,7 @@ async function loadProgressAndRender() {
         top: `${topVal}kg`,
         delta: delta ? `${delta > 0 ? '+' : ''}${delta}%` : null,
         best: `${topVal}kg`,
+        isPR,
       };
     }).filter(Boolean);
 
