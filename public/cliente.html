@@ -494,6 +494,13 @@ main{padding:var(--space-4)}
 .demo-banner{margin:var(--space-4) 0 0;padding:var(--space-3) var(--space-4);background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));border-radius:var(--radius-md);font-size:12px;color:var(--color-text-secondary);font-family:var(--font-mono)}
 .demo-banner strong{color:var(--color-text-primary)}
 
+/* SAVE TOAST — feedback discreto del estado de guardado (Outbox) */
+#save-toast{position:fixed;left:50%;bottom:calc(72px + env(safe-area-inset-bottom,0));transform:translateX(-50%) translateY(8px);z-index:60;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:12px;font-weight:600;font-family:var(--font-mono);box-shadow:0 4px 16px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;white-space:nowrap}
+#save-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#save-toast[data-state="saving"]{background:var(--color-bg-secondary);color:var(--color-text-secondary);border:1px solid var(--color-border)}
+#save-toast[data-state="saved"]{background:color-mix(in oklab,var(--color-success,#10b981) 14%,var(--color-bg-secondary));color:var(--color-success,#10b981);border:1px solid color-mix(in oklab,var(--color-success,#10b981) 40%,var(--color-border))}
+#save-toast[data-state="offline"]{background:color-mix(in oklab,var(--color-warning) 14%,var(--color-bg-secondary));color:var(--color-warning);border:1px solid color-mix(in oklab,var(--color-warning) 40%,var(--color-border))}
+
 /* El atributo [hidden] siempre oculta, sin importar especificidad de otras reglas */
 [hidden]{display:none!important}
 
@@ -923,7 +930,15 @@ function lastSessionStr(exId) {
 
 function suggestedKg(exId, idx) {
   const h = DATA.historico_por_ejercicio[exId] || [];
-  const ref = h.find(r => r.serie_numero === idx+1) || h[0];
+  if (!h.length) return '';
+  // Filtrar PRIMERO a la última sesión (las filas vienen DESC → h[0] es la más
+  // reciente) y recién ahí buscar la serie. Antes recorría todo el histórico
+  // plano y podía sugerir el peso de una serie de hace semanas para un slot y
+  // el nuevo para otro → sugerencias inconsistentes entre series.
+  const dayOf = iso => (iso || '').split('T')[0];
+  const lastDay = dayOf(h[0].registrado_en);
+  const lastSets = h.filter(r => dayOf(r.registrado_en) === lastDay);
+  const ref = lastSets.find(r => r.serie_numero === idx+1) || lastSets[0];
   return ref ? String(ref.peso_kg) : '';
 }
 
@@ -933,7 +948,14 @@ function suggestedKg(exId, idx) {
 function prevSessionStr(exId) {
   const h = DATA.historico_por_ejercicio[exId] || [];
   if (!h.length) return null;
-  const dayStr = (iso) => { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+  // Fecha local en formato ISO real (YYYY-MM-DD, mes +1 y con zero-pad). El
+  // formato viejo "2026-6-13" no es ISO y new Date() lo parsea indefinido en
+  // Safari/iOS → diasAtras=NaN → nunca mostraba "ayer". Ahora es determinístico.
+  const dayStr = (iso) => {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
   const hoy = dayStr(new Date().toISOString());
   // Rows ya vienen ordenadas por fecha DESC. La sesión anterior = el día más
   // reciente que NO sea hoy.
@@ -1310,14 +1332,14 @@ function checkIfDayCompleted() {
   return allEx.every(ex => terminalStates.has(getExStatus(ex.id)));
 }
 
-// Escribe el estado al servidor (sin bloquear la UI)
-async function writeExerciseStatus(exId, status, marcadoManualmente = false) {
-  if (!RUTINA_ID || !_sesionId) return;
+// Encola el estado del ejercicio (Outbox: reintenta si falla la red).
+function writeExerciseStatus(exId, status, marcadoManualmente = false) {
+  if (!RUTINA_ID) return;   // demo mode — no writes
   const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
-  await window.mypumpDB.marcarEjercicioEstado(
-    TOKEN, _sesionId, DATA.dia.id, exId,
-    ex ? (getProgresionActual(ex, DATA.rutina.semana_actual).series ?? 0) : 0, status, marcadoManualmente
-  );
+  const seriesObjetivo = ex ? (getProgresionActual(ex, DATA.rutina.semana_actual).series ?? 0) : 0;
+  Outbox.enqueue('estado', {
+    diaId: DATA.dia.id, exId, seriesObjetivo, status, manual: marcadoManualmente,
+  }, `estado_${DATA.dia.id}_${exId}`);
 }
 
 // Carga los estados de ejercicios desde Supabase (recuperación de sesión)
@@ -1341,40 +1363,157 @@ async function loadExerciseStates() {
   }
 }
 
-/* ---- SUPABASE WRITES ---- */
-async function ensureSesionIniciada() {
-  if (_sesionIniciada) return;
-  _sesionIniciada = true;   // guard contra llamadas concurrentes
-  _sessionStart = Date.now();
-  if (!RUTINA_ID) return;   // demo mode — no writes
-  const res = await window.mypumpDB.iniciarSesion(TOKEN, DATA.dia.id, DATA.rutina.semana_actual || 1);
-  if (res.success && res.data) {
-    _sesionId = res.data;
-    // Persistir para restaurar estado al recargar la página
-    const key = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
-    localStorage.setItem(key, _sesionId);
-    localStorage.setItem(`${key}_semana`, DATA.rutina.semana_actual || 1);
+/* ---- OUTBOX: escrituras confiables con reintento (R1/R2) ----
+   Antes writeSet/writeExerciseStatus/saveFoodSwap eran fire-and-forget: si la
+   red fallaba, el cliente creía haber guardado y perdía datos en silencio. El
+   Outbox encola cada escritura en localStorage, la intenta, y si falla la
+   reintenta (backoff) al reconectar, al volver a foco o al reabrir la app.
+   Feature flag OUTBOX_ENABLED para poder volver al modo directo si hiciera falta. */
+const OUTBOX_ENABLED = true;
+
+function showSaveState(state) {
+  // state: 'saving' | 'saved' | 'offline'
+  let el = document.getElementById('save-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'save-toast';
+    document.body.appendChild(el);
+  }
+  const txt = state === 'saving' ? 'Guardando…'
+            : state === 'saved'  ? '✓ Guardado'
+            : '⚠ Sin conexión — se reintenta solo';
+  el.dataset.state = state;
+  el.textContent = txt;
+  el.classList.add('show');
+  clearTimeout(el._hideT);
+  // 'saving' queda visible hasta que cambie; 'saved'/'offline' se autoocultan.
+  if (state !== 'saving') {
+    el._hideT = setTimeout(() => el.classList.remove('show'), state === 'saved' ? 1400 : 3200);
   }
 }
 
-async function writeSet(exId, setIdx) {
-  if (!RUTINA_ID || !_sesionId) return;
+const Outbox = (() => {
+  const KEY = () => `mypump_outbox_${TOKEN || 'anon'}`;
+  let queue = [];
+  let flushing = false;
+  let timer = null;
+
+  // Ejecutores: resuelven la sesión activa al momento de enviar (no en el encolado),
+  // así una carga hecha offline se adjunta a la sesión del día cuando haya conexión.
+  const EXEC = {
+    async carga(p) {
+      const sid = _sesionId || await ensureSesionIniciada();
+      if (!sid) return { success: false };
+      return window.mypumpDB.registrarCarga(TOKEN, sid, p.datos);
+    },
+    async estado(p) {
+      const sid = _sesionId || await ensureSesionIniciada();
+      if (!sid) return { success: false };
+      return window.mypumpDB.marcarEjercicioEstado(
+        TOKEN, sid, p.diaId, p.exId, p.seriesObjetivo, p.status, p.manual);
+    },
+    async swap(p) {
+      return window.mypumpDB.saveFoodSwap(TOKEN, p.dietaId, p.comidaId, p.optIdx, p.foodIdx, p.food);
+    },
+  };
+
+  function load() {
+    try { queue = JSON.parse(localStorage.getItem(KEY()) || '[]'); }
+    catch { queue = []; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY(), JSON.stringify(queue)); } catch {}
+  }
+
+  // dedupeKey: reemplaza una op pendiente del mismo target (último valor gana).
+  function enqueue(kind, payload, dedupeKey) {
+    if (!OUTBOX_ENABLED) return;
+    if (dedupeKey) queue = queue.filter(op => op.dedupeKey !== dedupeKey);
+    queue.push({ kind, payload, dedupeKey, tries: 0, ts: Date.now() });
+    save();
+    flushSoon(0);
+  }
+
+  function flushSoon(delay = 0) {
+    if (timer) return;
+    timer = setTimeout(() => { timer = null; flush(); }, delay);
+  }
+
+  async function flush() {
+    if (flushing || !OUTBOX_ENABLED || !queue.length) return;
+    if (navigator.onLine === false) { showSaveState('offline'); flushSoon(5000); return; }
+    flushing = true;
+    showSaveState('saving');
+    const remaining = [];
+    let anyFail = false;
+    for (const op of queue) {
+      const exec = EXEC[op.kind];
+      if (!exec) continue;   // op desconocida → descartar
+      let res;
+      try { res = await exec(op.payload); } catch { res = { success: false }; }
+      if (res && res.success) continue;   // enviada → no re-encolar
+      op.tries++;
+      anyFail = true;
+      remaining.push(op);
+    }
+    queue = remaining;
+    save();
+    flushing = false;
+    if (anyFail) {
+      showSaveState('offline');
+      const backoff = Math.min(30000, 2000 * Math.max(1, queue[0]?.tries || 1));
+      flushSoon(backoff);
+    } else {
+      showSaveState('saved');
+    }
+  }
+
+  return { load, enqueue, flush, flushSoon, pending: () => queue.length };
+})();
+
+/* ---- SUPABASE WRITES ---- */
+let _sesionInflight = null;   // promesa de creación en vuelo (anti-concurrencia + retry-safe)
+async function ensureSesionIniciada() {
+  if (_sessionStart == null) _sessionStart = Date.now();
+  if (_sesionId) return _sesionId;
+  if (!RUTINA_ID) { _sesionIniciada = true; return null; }   // demo mode — no writes
+  if (_sesionInflight) return _sesionInflight;               // reusar llamada en vuelo
+  _sesionInflight = (async () => {
+    const res = await window.mypumpDB.iniciarSesion(TOKEN, DATA.dia.id, DATA.rutina.semana_actual || 1);
+    if (res && res.success && res.data) {
+      _sesionId = res.data;
+      _sesionIniciada = true;
+      // Persistir para restaurar estado al recargar la página
+      const key = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
+      localStorage.setItem(key, _sesionId);
+      localStorage.setItem(`${key}_semana`, DATA.rutina.semana_actual || 1);
+    }
+    _sesionInflight = null;   // liberar guard → permite reintento si falló
+    return _sesionId;
+  })();
+  return _sesionInflight;
+}
+
+function writeSet(exId, setIdx) {
+  if (!RUTINA_ID) return;   // demo mode — no writes
   const s = STATE.session[exId].sets[setIdx];
   const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
   // Si el cliente sustituyó el ejercicio, snapshotear el NOMBRE del sustituto
   // (lo que realmente hizo). El ejercicio_id se mantiene → no rompe histórico/progresión.
   const swap = STATE.exerciseSwaps[exId];
   const ejercicioNombre = swap ? swap.current.nombre : ex.nombre;
-  await window.mypumpDB.registrarCarga(TOKEN, _sesionId, {
-    diaId:          DATA.dia.id,
-    ejercicioId:    exId,
-    ejercicioNombre:ejercicioNombre,
-    serie:          setIdx + 1,
-    peso:           parseFloat(s.kg) || 0,
-    reps:           parseInt(s.reps) || 0,
-    rir:            parseInt(s.rir) || null,
-    notas:          null,
-  });
+  Outbox.enqueue('carga', {
+    datos: {
+      diaId:          DATA.dia.id,
+      ejercicioId:    exId,
+      ejercicioNombre:ejercicioNombre,
+      serie:          setIdx + 1,
+      peso:           parseFloat(s.kg) || 0,
+      reps:           parseInt(s.reps) || 0,
+      rir:            parseInt(s.rir) || null,
+      notas:          null,
+    },
+  }, `carga_${DATA.dia.id}_${exId}_${setIdx}`);
 }
 
 async function writeFinish(notas) {
@@ -1383,6 +1522,9 @@ async function writeFinish(notas) {
   // podría cerrar sin haber confirmado ninguna serie).
   await ensureSesionIniciada();
   if (!_sesionId) { alert('No se pudo guardar la sesión. Revisá tu conexión e intentá de nuevo.'); return; }
+  // Drenar el Outbox antes de cerrar: garantizar que las series pendientes se
+  // guarden antes de marcar el día como finalizado.
+  await Outbox.flush();
 
   const res = await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null);
   if (!res || res.success === false) {
@@ -2073,6 +2215,23 @@ async function confirmarSerie(exId, idx) {
   if (!setObj || setObj.confirmed) return;
   const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
   if (!ex) return;
+
+  // R5 — Si el día ya está finalizado, no dejar cargar series "fantasma" en
+  // silencio. Se ofrece reabrir explícitamente; los sets nuevos se adjuntan a la
+  // MISMA sesión (_sesionId se mantiene — mypump_iniciar_sesion no es idempotente,
+  // así que no lo re-llamamos para no duplicar la sesión).
+  if (_diaFinalizado) {
+    const reabrir = await MyPump.ui.showConfirmModal({
+      title: 'Este día ya lo cerraste',
+      body: 'Lo marcaste como terminado. ¿Querés reabrirlo para seguir cargando series?',
+      confirmLabel: 'Reabrir día',
+      cancelLabel: 'Dejarlo cerrado',
+    });
+    if (!reabrir) return;
+    _diaFinalizado = false;
+    localStorage.removeItem(`mypump_sesion_${TOKEN}_${DATA.dia.id}_finalizada`);
+    renderTrain();
+  }
   const isWarmup = ex.tipo === 'calentamiento';
   const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
 
@@ -2536,7 +2695,11 @@ $$('[data-rest]').forEach(btn => btn.addEventListener('click', () => {
 // (compensa el throttling de setInterval cuando la pestaña estuvo background).
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && STATE.rest) restTick();
+  // Al volver a foco, drenar escrituras pendientes (pudo haber vuelto la conexión).
+  if (!document.hidden && OUTBOX_ENABLED && Outbox.pending() > 0) Outbox.flushSoon(0);
 });
+// Reintentar en cuanto vuelva la conexión.
+window.addEventListener('online', () => { if (OUTBOX_ENABLED) Outbox.flushSoon(0); });
 
 /* ---- DIET SCENE ---- */
 /* ---- DIET TRACKING (marcar qué comí + macros consumidos) ----
@@ -2802,22 +2965,35 @@ function porcionReferencia(food) {
   const has = (...kw) => kw.some(k => name.includes(k));
   const g = qty;
 
+  // Formateo de tazas en cuartos (¼ ½ ¾) — la medida de cocina más práctica.
+  // Se usa SOLO para categorías que naturalmente se miden en taza (granos,
+  // legumbres, yogur). El resto usa fmtCount (mitades: palmas, puños, cucharadas).
+  const CUP_FRAC = { 0: '', 0.25: '¼', 0.5: '½', 0.75: '¾' };
+  const fmtCup = (cups) => {
+    cups = Math.round(cups * 4) / 4;
+    if (cups <= 0) return null;
+    const whole = Math.floor(cups);
+    const frac = CUP_FRAC[cups - whole] || '';
+    const num = whole === 0 ? frac : (whole + frac);
+    return num + ' ' + (cups > 1 ? 'tazas' : 'taza');
+  };
+
+  // Mantequilla/crema de maní untable — cucharadas de 16 g (cdta ≈ 8 g).
   if (has('mani', 'cacahuate') && has('mantequilla', 'manteca', 'crema', 'pasta', 'untable')) {
-    if (g <= 8) return '1 cucharadita';
-    if (g <= 20) return '1 cucharada';
-    return nStr(g / 16) + ' cucharadas';
+    if (g < 8) return '1 cucharadita';
+    return fmtCount(g / 16, 'cucharada');
   }
+  // Aceite / manteca / líquidos — cucharada = 15 ml, cucharadita = 5 ml.
   if (isMl || has('aceite', 'oliva', 'ghee') || has('manteca', 'mantequilla')) {
-    if (g <= 7) return '1 cucharadita';
-    if (g <= 12) return '1 cucharada';
-    return nStr(g / 10) + ' cucharadas';
+    if (g < 7.5) return '1 cucharadita';
+    return fmtCount(g / 15, 'cucharada');
   }
+  // Frutos secos y semillas — puñado = 30 g (porción estándar).
   if (has('almendra', 'nuez', 'nueces', 'castana', 'avellana', 'pistacho', 'mani',
           'cacahuate', 'frutos secos', 'semilla', 'girasol', 'chia', 'lino', 'mix de')) {
-    if (g <= 40) return '1 puñado';
-    if (g <= 70) return '2 puñados';
-    return nStr(g / 30) + ' puñados';
+    return fmtCount(g / 30, 'puñado');
   }
+  // Proteína en polvo — scoop = 30 g.
   if (has('whey', 'proteina en polvo', 'caseina') || (has('proteina') && g <= 60)) {
     const scoops = Math.max(1, Math.round(g / 30));
     return scoops === 1 ? '1 scoop (1 medida)' : scoops + ' scoops';
@@ -2831,69 +3007,71 @@ function porcionReferencia(food) {
     if (nh - whole === 0.5) return whole >= 1 ? (whole + ' lata' + (whole > 1 ? 's' : '') + ' y media') : 'media lata';
     return whole + ' lata' + (whole > 1 ? 's' : '') + ' escurrida' + (whole > 1 ? 's' : '');
   }
+  // Carnes y pescado — palma = 100 g COCIDO. Si el nombre dice "crudo/a",
+  // se descuenta ~25 % de merma de cocción antes de convertir. Sin techo:
+  // 300 g → "3 palmas" (antes colapsaba a "1 palma extra grande").
   if (has('pollo', 'pechuga', 'carne', 'nalga', 'bife', 'cerdo', 'lomo', 'pescado',
           'merluza', 'pavo', 'salmon', 'cuadril', 'cuadrada', 'peceto', 'asado',
           'bondiola', 'milanesa', 'tira', 'magra', 'roast', 'colita')) {
-    if (g < 120) return 'media palma';
-    if (g < 170) return '1 palma';
-    if (g <= 220) return '1 palma grande y gruesa';
-    return '1 palma extra grande';
+    const gCocido = has('crud') ? g * 0.75 : g;
+    return fmtCount(gCocido / 100, 'palma');
   }
+  // Granos. Avena en tazas secas (taza = 80 g). Arroz/fideos/quinoa: si vienen
+  // "cocido" se miden directo (taza cocida ≈ 175 g); si vienen crudos se muestra
+  // la taza cruda + su equivalente cocido con el ratio real de expansión.
   if (has('arroz', 'fideo', 'pasta', 'avena', 'quinoa', 'polenta', 'tallarin',
-          'noqui', 'cuscus', 'couscous', 'trigo')) {
+          'noqui', 'cuscus', 'couscous', 'trigo', 'mostacho', 'spaghetti', 'ravioli')) {
+    if (has('avena')) return fmtCup(g / 80);
     const cocido = has('cocid', 'hervid', 'al dente');
-    if (cocido) {
-      if (g <= 90) return '½ taza';
-      if (g <= 180) return '1 taza';
-      if (g <= 280) return '1½ tazas';
-      return nStr(g / 180) + ' tazas';
-    }
-    const spoons = Math.max(1, Math.round(g / 10));
-    let cook;
-    if (g <= 25) cook = 'medio pocillo cocido';
-    else if (g <= 50) cook = '1 pocillo cocido';
-    else if (g <= 80) cook = '1 taza cocido';
-    else cook = '1½–2 tazas cocido';
-    return spoons + ' cucharadas crudo (≈ ' + cook + ')';
+    if (cocido) return fmtCup(g / 175);
+    let ratio = 2.8, rawCup = 185;                 // arroz por defecto
+    if (has('fideo', 'pasta', 'tallarin', 'noqui', 'mostacho', 'spaghetti', 'ravioli', 'cuscus', 'couscous')) { ratio = 2.4; rawCup = 100; }
+    else if (has('quinoa')) { ratio = 2.6; rawCup = 170; }
+    else if (has('polenta')) { ratio = 4; rawCup = 150; }
+    const cruda = fmtCup(g / rawCup);
+    const cocidaTaza = fmtCup((g * ratio) / 175);
+    if (!cruda) return null;
+    return cruda + ' en crudo (≈ ' + cocidaTaza + ' cocido)';
   }
+  // Legumbres — taza cocida ≈ 190 g.
   if (has('lenteja', 'garbanzo', 'poroto', 'alubia', 'frijol', 'chaucha seca')) {
-    if (g <= 90) return '½ taza';
-    if (g <= 200) return '1 taza';
-    return nStr(g / 180) + ' tazas';
+    return fmtCup(g / 190);
   }
+  // Papa / batata — por tamaño real de verdulería, con múltiplos sin techo.
   if (has('papa', 'patata', 'batata', 'boniato') && !has('papaya')) {
-    if (g < 130) return '1 chica (tamaño huevo grande)';
-    if (g <= 200) return '1 mediana';
-    return '1 grande o 2 medianas';
+    if (g < 110) return '1 chica';
+    if (g <= 190) return '1 mediana';
+    if (g <= 280) return '1 grande';
+    const n = Math.max(2, Math.round(g / 160));
+    return n + ' medianas';
   }
   if (has('lechuga', 'rucula', 'radicheta', 'escarola', 'hojas verdes', 'mix de hojas')) {
     return 'libre 🥗';
   }
+  // Verduras — puño = 90 g (≈ 1 taza). Continuo, sin techo.
   if (has('brocoli', 'brecol', 'coliflor', 'calabaza', 'zapallo', 'zanahoria',
           'espinaca', 'morron', 'pimiento', 'berenjena', 'zucchini', 'zapallito',
           'repollo', 'remolacha', 'chaucha', 'cebolla', 'tomate', 'verdura')) {
-    if (g < 125) return '1 puño';
-    if (g < 185) return '2 puños';
-    return '2-3 puños';
+    return fmtCount(g / 90, 'puño');
   }
+  // Yogur / ricota / quesos untables — taza = 245 g. Se elimina "pote"
+  // (ambiguo: 120-190 g según marca) a favor de la taza estándar.
   if (has('ricota', 'untable', 'yogur', 'yoghurt', 'queso blanco', 'queso crema',
           'cottage', 'requeson')) {
-    if (g <= 130) return '½ pote chico (media taza)';
-    if (g <= 230) return '1 pote chico (1 taza)';
-    return nStr(g / 200) + ' potes chicos';
+    return fmtCup(g / 245);
   }
+  // Berries — puñado = 80 g. Continuo (140 g → "2 puñados", antes "1").
   if (has('frutilla', 'arandano', 'mora', 'frambuesa', 'frutos rojos', 'berries')) {
-    if (g <= 140) return '1 puñado';
-    if (g <= 240) return '2 puñados';
-    return nStr(g / 100) + ' puñados';
+    return fmtCount(g / 80, 'puñado');
   }
   if (has('palta', 'aguacate')) {
-    if (g <= 120) return 'media palta chica';
-    if (g <= 250) return '1 palta';
-    return 'más de 1 palta';
+    if (g <= 90) return 'media palta chica';
+    if (g <= 160) return '1 palta';
+    return nStr(g / 140) + ' paltas';
   }
+  // Pan — rebanada = 30 g (unificado con UNIT_FOODS).
   if (has('pan') && !has('rallado')) {
-    const n = Math.max(1, Math.round(g / 28));
+    const n = Math.max(1, Math.round(g / 30));
     return n + ' rebanada' + (n > 1 ? 's' : '');
   }
   if (has('tostada')) {
@@ -3217,7 +3395,13 @@ async function loadProgressAndRender() {
         if (!date) continue;
         if (byDate[date] === undefined || row.peso_kg > byDate[date]) byDate[date] = row.peso_kg;
       }
-      const series = Object.values(byDate).slice(-8);
+      // Ordenar por FECHA ascendente (las filas vienen DESC del backend) y
+      // quedarse con las 8 sesiones MÁS RECIENTES. Así series[0]=más vieja y
+      // series[último]=más nueva → el delta y la sparkline van en el sentido real.
+      const series = Object.keys(byDate)
+        .sort()                 // fechas ISO YYYY-MM-DD ordenan bien como string
+        .slice(-8)              // 8 más recientes (antes tomaba las 8 más viejas)
+        .map(date => byDate[date]);
       if (!series.length) return null;
       const topVal = Math.max(...series);
       const first = series[0], last = series[series.length-1];
@@ -3782,6 +3966,12 @@ async function init() {
   loadMyday(); // inicia en background; cuando termina, STATE.mydayLoaded = true
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();
+
+  // Outbox: cargar escrituras pendientes de sesiones anteriores y drenarlas.
+  if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
+    Outbox.load();
+    if (Outbox.pending() > 0) Outbox.flushSoon(1500);   // esperar a que asiente el arranque
+  }
 }
 
 /* ---- SWAP MODAL ---- */
@@ -3967,10 +4157,10 @@ async function confirmSwap() {
   closeSwapModal();
   renderDiet();
 
-  // Persistir en backend (paralelo, no bloqueante). Demo mode: solo local.
+  // Persistir en backend vía Outbox (reintenta si falla la red). Demo: solo local.
   if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
-    const res = await window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, sub);
-    if (!res.success) console.warn('[swap] error guardando swap en backend:', res.error);
+    Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: sub },
+      `swap_${DIETA_ID}_${comidaId}_${optIdx}_${foodIdx}`);
   }
 }
 
@@ -4264,8 +4454,8 @@ async function aplicarCustomFoodComoSwap(name) {
   renderDiet();
 
   if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
-    const r = await window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, sub);
-    if (!r.success) console.warn('[customfood] error guardando swap en backend:', r.error);
+    Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: sub },
+      `swap_${DIETA_ID}_${comidaId}_${optIdx}_${foodIdx}`);
   }
 }
 

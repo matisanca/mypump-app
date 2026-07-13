@@ -149,17 +149,6 @@ window.MyPump.foodSwap = {
     const dominantMacro = this._getDominantMacro(originalFood);
     const targetMacroGrams = (originalFood[dominantMacro] || 0);
     const originalKcal = originalFood.kcal;
-    const originalProt = originalFood.prot || 0;
-
-    // Regla anti-reducción de proteína (adaptativa):
-    //  - 15% tolerancia relativa (era 10%, muy estricto para foods de poca prot)
-    //  - O 3g de tolerancia absoluta
-    //  - Usamos el MENOR de los dos thresholds (más permisivo) para no descartar
-    //    sustitutos razonables cuando el original ya tiene poca prot (ej: papa).
-    //  - Si el food original tiene <5g de prot total, regla off (irrelevante).
-    const minProt = originalProt < 5
-      ? 0
-      : Math.min(originalProt * 0.85, originalProt - 3);
 
     // Cantidad del original en gramos absolutos (para acotar el tamaño del sustituto).
     // Si el original viene en unidad/rebanada/etc., usamos unitGrams si está.
