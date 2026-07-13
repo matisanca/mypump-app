@@ -250,6 +250,20 @@ window.mypumpDB = {
     return await rpc('mypump_get_adherencia_30d', { p_token: token });
   },
 
+  // ─── SALUD (wearables / Apple Health) ────────────────────
+
+  // Lee la salud del cliente en un rango. Filas: {fecha, tipo, valor, fuente, detalle}.
+  async getSalud(token, desde, hasta) {
+    return await rpc('mypump_get_salud', { p_token: token, p_desde: desde, p_hasta: hasta });
+  },
+
+  // Ingesta por token (Vía B — plugin nativo Apple Health la llama directo).
+  // registros: array de {fecha, tipo, valor, detalle?, fuente?}. Devuelve
+  // {success, data: cantidad, error}.
+  async ingestSalud(token, registros) {
+    return await rpcMutation('mypump_ingest_salud', { p_token: token, p_registros: registros });
+  },
+
   // ─── COMIDAS MARCADAS (tracking granular de macros) ──────
 
   // Devuelve array de marcas del día. Cada fila: {comida_id, opcion_elegida, estado, marcada_en}.

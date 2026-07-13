@@ -259,6 +259,13 @@ main{padding:var(--space-4)}
 .habito-text{font-size:15px;font-weight:500;color:var(--color-text-primary)}
 .habito-sub{font-size:12px;color:var(--color-text-muted)}
 .habito-btns{display:flex;gap:var(--space-2);flex:0 0 auto}
+/* SALUD (wearables) card — C0 */
+.salud-row{display:flex;gap:var(--space-4)}
+.salud-metric{display:flex;flex-direction:column;gap:2px;flex:1}
+.salud-num{font-family:var(--font-mono);font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1;color:var(--color-brand)}
+.salud-lbl{font-size:12px;color:var(--color-text-muted)}
+.salud-sub{margin-top:var(--space-3);font-size:12px;color:var(--color-text-secondary)}
+.salud-sub strong{font-family:var(--font-mono);color:var(--color-text-primary)}
 .hb{width:42px;height:42px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
 .hb.is-yes.is-active{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));border-color:var(--color-brand)}
 .hb.is-no.is-active{background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border-color:#ef4444}
@@ -3603,6 +3610,7 @@ async function loadMyday() {
     STATE.mydayLoaded = true;
     // Si el tab ya está abierto, re-renderizar ahora que tenemos datos
     if (STATE.scene === 'myday') renderMyday();
+    loadSalud();   // en background: rellena la card Salud si hay datos de wearable
   } catch(e) {
     console.error('[Mi Día] error cargando hábitos:', e);
     MYDAY  = null;
@@ -3648,6 +3656,63 @@ function renderMydayStreak() {
       <div class="streak-sub">${sub}</div>
     </div>
     <div class="streak-icon">${icon}</div>`;
+}
+
+/* ---- SALUD (wearables) en Mi Día — C0 ----
+   Los datos llegan por Apple Health (nativo) o un agregador; acá solo se leen y
+   muestran. La card SOLO aparece si hay pasos sincronizados (si no, invisible). */
+async function loadSalud() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getSalud) return;
+  try {
+    const hasta = TODAY_LOCAL;
+    const d = new Date(TODAY_LOCAL + 'T00:00:00');
+    d.setDate(d.getDate() - 6);
+    const desde = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    STATE.salud = (await window.mypumpDB.getSalud(TOKEN, desde, hasta)) || [];
+  } catch (_) { STATE.salud = []; }
+  if (STATE.scene === 'myday') renderMydaySalud();
+}
+// Valor de un tipo en una fecha, prefiriendo apple_health > rook > manual.
+function _saludValor(tipo, fecha) {
+  const pref = { apple_health: 0, rook: 1, manual: 2 };
+  const rows = (STATE.salud || []).filter(r => r.tipo === tipo && r.fecha === fecha)
+    .sort((a, b) => (pref[a.fuente] ?? 9) - (pref[b.fuente] ?? 9));
+  return rows.length ? Number(rows[0].valor) : null;
+}
+function renderMydaySalud() {
+  const el = document.getElementById('myday-salud');
+  if (!el) return;
+  const pasos = (STATE.salud || []).filter(r => r.tipo === 'pasos');
+  if (!pasos.length) { el.innerHTML = ''; return; }   // sin datos → card invisible
+
+  const fmt = n => Number(n).toLocaleString('es-AR');
+  const hoy = _saludValor('pasos', TODAY_LOCAL);
+  // Promedio de los días CON dato (una fecha = valor de la fuente preferida).
+  const fechas = [...new Set(pasos.map(r => r.fecha))].sort();
+  const vals = fechas.map(f => _saludValor('pasos', f)).filter(v => v != null);
+  const prom = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+  const actHoy = _saludValor('actividad_min', TODAY_LOCAL);
+
+  el.innerHTML = `
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">👟</span>
+        <span class="myday-section-title">Salud</span>
+      </div>
+      <div class="myday-section-body">
+        <div class="salud-row">
+          <div class="salud-metric">
+            <span class="salud-num">${hoy != null ? fmt(hoy) : '—'}</span>
+            <span class="salud-lbl">pasos hoy</span>
+          </div>
+          ${actHoy != null ? `<div class="salud-metric">
+            <span class="salud-num">${fmt(actHoy)}</span>
+            <span class="salud-lbl">min activos</span>
+          </div>` : ''}
+        </div>
+        <div class="salud-sub">Promedio ${vals.length} día${vals.length !== 1 ? 's' : ''}: <strong>${fmt(prom)}</strong> pasos</div>
+      </div>
+    </div>`;
 }
 
 function renderMyday() {
@@ -3749,6 +3814,9 @@ function renderMyday() {
       </div>
     </div>
 
+    <!-- SALUD (wearables) — solo aparece si hay datos sincronizados -->
+    <div id="myday-salud"></div>
+
     <!-- ADHERENCIA 30D -->
     <div class="myday-section" style="margin-bottom:var(--space-6)">
       <div class="myday-section-hdr">
@@ -3764,6 +3832,8 @@ function renderMyday() {
 
   // Render streak
   renderMydayStreak();
+  // Render card de Salud (si hay datos de wearable sincronizados)
+  renderMydaySalud();
 
   // Bind entrenamiento buttons
   Array.from(root.querySelectorAll('.train-opt')).forEach(btn => {
