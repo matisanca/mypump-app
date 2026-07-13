@@ -183,68 +183,69 @@ window.MyPump.foodSwap = {
         !(excludeRes.length && excludeRes.some(re => re.test(this._norm(food.name))))
       )
       .map(food => {
-        const macroPerGram = (food[dominantMacro] || 0) / 100;
-        if (macroPerGram === 0) return null;
+        const K = food.kcal || 0;                  // kcal por 100 g del sustituto
+        const M = (food[dominantMacro] || 0);      // macro dominante por 100 g
+        if (M === 0) return null;
 
-        const requiredQty = targetMacroGrams / macroPerGram;
-
-        // Filtro de cantidad absurda (ej: 2kg de alcaparras como sustituto de papa)
-        if (requiredQty > maxQty) return null;
-
-        const factor = requiredQty / 100;
+        // ── Porción por MEJOR AJUSTE combinado (kcal + macro dominante) ──
+        // Elegimos el factor f (porción/100g) que minimiza el desvío relativo de
+        // AMBOS a la vez: min  ((K·f−K0)/K0)² + ((M·f−M0)/M0)²  (pesos iguales).
+        // Solución cerrada con a=K/K0, b=M/M0:  f* = (a+b)/(a²+b²).
+        // Para alimentos de perfil parecido, kcal Y macro caen las dos <5%.
+        const K0 = originalKcal, M0 = targetMacroGrams;
+        let factor;
+        if (K0 > 0 && M0 > 0) {
+          const a = K / K0, b = M / M0;
+          const denom = a * a + b * b;
+          factor = denom > 0 ? (a + b) / denom : (M0 / M);
+        } else {
+          factor = M0 / M; // fallback: igualar el macro dominante
+        }
+        const requiredQty = factor * 100;
+        // Filtro de cantidad absurda (ej: 2 kg de alcaparras como sustituto de papa)
+        if (requiredQty <= 0 || requiredQty > maxQty) return null;
 
         let qty = Math.round(requiredQty);
         let unit = 'g';
-
         // Convert to unit-based quantity if applicable
-        const unitInfo = food.unitGrams ? food : null;
-        if (unitInfo && unitInfo.unitGrams) {
-          const units = requiredQty / unitInfo.unitGrams;
-          if (units >= 0.5) {
-            qty = Math.round(units);
-            unit = unitInfo.unit || 'unidad';
-          }
+        if (food.unitGrams) {
+          const units = requiredQty / food.unitGrams;
+          if (units >= 0.5) { qty = Math.round(units); unit = food.unit || 'unidad'; }
         }
 
         const result = {
           name: food.name,
           qty,
           unit,
-          kcal: Math.round(food.kcal * factor),
-          prot: Math.round(food.prot * factor * 10) / 10,
-          carb: Math.round(food.carb * factor * 10) / 10,
-          fat:  Math.round(food.fat  * factor * 10) / 10,
+          kcal: Math.round(K * factor),
+          prot: Math.round((food.prot || 0) * factor * 10) / 10,
+          carb: Math.round((food.carb || 0) * factor * 10) / 10,
+          fat:  Math.round((food.fat  || 0) * factor * 10) / 10,
           category: food.category,
         };
-        if (food._isCustom) result._isCustom = true;
 
-        // Universales: staples disponibles en cualquier país (clientes
-        // internacionales). Se garantiza que aparezcan — bypassean kcal/proteína
-        // igual que los custom foods — y la UI los destaca arriba. La cantidad ya
-        // viene ajustada al macro dominante (prot para proteínas).
+        // Desvío combinado (peor caso entre kcal y macro dominante) — para
+        // rankear del más exacto al menos exacto y agrupar equivalentes.
+        const kcalDev  = K0 > 0 ? Math.abs(result.kcal - K0) / K0 : 0;
+        const macroDev = M0 > 0 ? Math.abs((result[dominantMacro] || 0) - M0) / M0 : 0;
+        result._dev = Math.max(kcalDev, macroDev);
+
+        if (food._isCustom) result._isCustom = true;
         const isUni = this._isUniversal(food.name);
         if (isUni) { result._universal = true; result._en = this._enLabel(food.name); }
 
-        // Custom foods y universales bypassean los filtros estrictos de
-        // kcal/proteína — se mantienen solo los filtros de categoría, macro
-        // dominante y cantidad razonable (maxQty, arriba).
+        // Custom y universales: siempre disponibles (staples garantizados), con su
+        // porción balanceada y su desvío real (la UI los muestra con el delta honesto).
         if (food._isCustom || isUni) return result;
 
-        // 1) kcal ratio estrecho (±10%) — solo para alimentos del seed-DB
-        if (originalKcal === 0) return null;
-        const kcalRatio = result.kcal / originalKcal;
-        if (kcalRatio < 0.90 || kcalRatio > 1.10) return null;
-
-        // 2) Regla anti-reducción de proteína (adaptativa, ver arriba)
-        if (result.prot < minProt) return null;
+        // Descartar SOLO matches genuinamente malos (perfil de macros muy distinto).
+        if (result._dev > 0.35) return null;
 
         return result;
       })
       .filter(Boolean)
-      .sort((a, b) => {
-        const targetKcal = originalFood.kcal;
-        return Math.abs(a.kcal - targetKcal) - Math.abs(b.kcal - targetKcal);
-      });
+      // Más exacto primero (menor desvío combinado kcal+macro).
+      .sort((a, b) => a._dev - b._dev);
 
     // Los universales se garantizan SIEMPRE (todos), y el resto se corta a 30.
     // Sin esto, el .slice(0,30) ordenado por cercanía de kcal podría descartar
