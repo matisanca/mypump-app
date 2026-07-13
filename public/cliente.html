@@ -343,6 +343,15 @@ main{padding:var(--space-4)}
 .opt-tab.is-active{background:var(--color-bg-primary);color:var(--color-text-primary);box-shadow:var(--shadow-sm)}
 .foods{display:flex;flex-direction:column;gap:var(--space-1)}
 .food{display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3) var(--space-2);border-bottom:1px solid var(--color-border)}
+/* Consumo parcial: check por alimento cuando la comida está "comido" */
+.comi-parte-hint{font-size:11px;color:var(--color-text-muted);font-family:var(--font-mono);padding:2px var(--space-2) var(--space-2)}
+.comi-parte-hint b{color:var(--color-text-secondary)}
+.food-comi-row{display:flex;align-items:stretch;gap:var(--space-2)}
+.food-comi-row .food-comi-body{flex:1;min-width:0}
+.food-comi-check{flex:0 0 auto;align-self:center;width:24px;height:24px;border-radius:6px;border:1.5px solid var(--color-brand);background:var(--color-brand);color:var(--color-on-brand,#0a0a0a);font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.food-comi-row.is-excluido .food-comi-check{background:transparent;border-color:var(--color-border);color:transparent}
+.food-comi-row.is-excluido .food-comi-body{opacity:.4}
+.food-comi-row.is-excluido .food-name{text-decoration:line-through}
 .food:last-child{border-bottom:0}
 .food-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .food-name{font-size:14px;font-weight:500}
@@ -2551,6 +2560,7 @@ async function loadComidasMarcadas() {
         opcion:     r.opcion_elegida,
         estado:     r.estado,
         marcada_en: r.marcada_en,
+        foodsExcluidos: Array.isArray(r.foods_excluidos) ? r.foods_excluidos : [],
       };
     });
     STATE.comidasMarcadas = map;
@@ -2571,10 +2581,10 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
   const optIdx = STATE.meals[comidaId]?.selectedOpt || 0;
   const opcionNombre = comida.options[optIdx]?.name || 'A';
 
-  // Optimistic update
+  // Optimistic update. Marcar 'comido' arranca sin exclusiones (comió todo).
   const prev = STATE.comidasMarcadas[comidaId];
   if (nuevoEstado === null) delete STATE.comidasMarcadas[comidaId];
-  else STATE.comidasMarcadas[comidaId] = { opcion: opcionNombre, estado: nuevoEstado };
+  else STATE.comidasMarcadas[comidaId] = { opcion: opcionNombre, estado: nuevoEstado, foodsExcluidos: [] };
   renderDiet();
 
   // Modo demo: solo memoria, no backend
@@ -2584,7 +2594,7 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
   if (nuevoEstado === null) {
     res = await window.mypumpDB.desmarcarComida(TOKEN, TODAY_LOCAL, comidaId);
   } else {
-    res = await window.mypumpDB.marcarComida(TOKEN, TODAY_LOCAL, comidaId, opcionNombre, nuevoEstado);
+    res = await window.mypumpDB.marcarComida(TOKEN, TODAY_LOCAL, comidaId, opcionNombre, nuevoEstado, []);
   }
   if (!res.success) {
     // Rollback
@@ -2592,6 +2602,30 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
     else delete STATE.comidasMarcadas[comidaId];
     renderDiet();
     console.error('[Diet] error marcando comida:', res.error);
+  }
+}
+
+// Consumo parcial: incluir/excluir un alimento puntual de una comida ya marcada
+// 'comido'. Actualiza foodsExcluidos y re-persiste (retrocompatible).
+async function toggleFoodComido(comidaId, foodIdx) {
+  const mark = STATE.comidasMarcadas[comidaId];
+  if (!mark || mark.estado !== 'comido') return;
+  const excl = new Set(mark.foodsExcluidos || []);
+  if (excl.has(foodIdx)) excl.delete(foodIdx); else excl.add(foodIdx);
+  const nuevos = Array.from(excl).sort((a, b) => a - b);
+
+  const prev = mark.foodsExcluidos || [];
+  mark.foodsExcluidos = nuevos;          // optimistic
+  renderDiet();
+
+  if (!TOKEN || (DATA && DATA._isDemo)) return;
+  const res = await window.mypumpDB.marcarComida(
+    TOKEN, TODAY_LOCAL, comidaId, mark.opcion || 'A', 'comido', nuevos
+  );
+  if (!res.success) {
+    mark.foodsExcluidos = prev;          // rollback
+    renderDiet();
+    console.error('[Diet] error consumo parcial:', res.error);
   }
 }
 
@@ -2610,12 +2644,15 @@ function calcularConsumido() {
     const idxFinal = optIdx >= 0 ? optIdx : 0;
     // Aplicar swaps con getEffectiveFood (respeta sustituciones del cliente)
     const foods = opt.foods.map((f, fi) => getEffectiveFood(f, c.id, idxFinal, fi));
-    for (const f of foods) {
+    // Consumo parcial: no sumar los alimentos que el cliente marcó como NO comidos.
+    const excluidos = new Set(mark.foodsExcluidos || []);
+    foods.forEach((f, fi) => {
+      if (excluidos.has(fi)) return;
       tot.kcal += f.kcal || 0;
       tot.prot += f.prot || 0;
       tot.carb += f.carb || 0;
       tot.fat  += f.fat  || 0;
-    }
+    });
   }
   return { ...tot, nComidas, nComidasMarcadas };
 }
@@ -2947,8 +2984,19 @@ function renderMeal(c, idx) {
           `<button class="opt-tab${i===optIdx?' is-active':''}" data-opt="${c.id}|${i}">Opción ${o.name}</button>`
         ).join('')}
       </div>
+      ${estado === 'comido'
+        ? `<div class="comi-parte-hint">🍽️ Destildá lo que <b>no</b> comiste — solo se cuenta lo tildado.</div>`
+        : ''}
       <div class="foods">
-        ${opt.foods.map((f,fi) => renderFood(f, c.id, optIdx, fi)).join('')}
+        ${opt.foods.map((f,fi) => {
+          const foodHtml = renderFood(f, c.id, optIdx, fi);
+          if (estado !== 'comido') return foodHtml;
+          const excl = (mark.foodsExcluidos || []).includes(fi);
+          return `<div class="food-comi-row${excl ? ' is-excluido' : ''}">
+            <button class="food-comi-check" data-food-comido="${c.id}|${fi}" role="checkbox" aria-checked="${excl ? 'false' : 'true'}" aria-label="${excl ? 'No comido' : 'Comido'}">${excl ? '' : '✓'}</button>
+            <div class="food-comi-body">${foodHtml}</div>
+          </div>`;
+        }).join('')}
       </div>
       <div class="meal-totals">
         <span><span class="lbl">TOTAL</span></span>
@@ -2979,6 +3027,12 @@ function bindDietEvents() {
     const current = STATE.comidasMarcadas[comidaId]?.estado;
     const nuevo = current === accion ? null : accion; // toggle: re-tap desmarca
     toggleComidaEstado(comidaId, nuevo);
+  }));
+  // Consumo parcial: incluir/excluir un alimento de una comida marcada "comido"
+  $$('[data-food-comido]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const [comidaId, foodIdx] = btn.getAttribute('data-food-comido').split('|');
+    toggleFoodComido(comidaId, +foodIdx);
   }));
   // Cambio de opción
   $$('[data-opt]').forEach(btn => btn.addEventListener('click', e => {

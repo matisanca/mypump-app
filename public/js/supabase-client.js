@@ -258,15 +258,30 @@ window.mypumpDB = {
   },
 
   // Marca (o re-marca) una comida. estado: 'comido' | 'saltado'.
+  // foodsExcluidos: array de índices de alimentos NO comidos (consumo parcial).
   // Devuelve {success, data, error}.
-  async marcarComida(token, fecha, comidaId, opcion, estado) {
-    return await rpcMutation('mypump_marcar_comida', {
-      p_token:     token,
-      p_fecha:     fecha,
-      p_comida_id: comidaId,
-      p_opcion:    opcion,
-      p_estado:    estado,
-    });
+  async marcarComida(token, fecha, comidaId, opcion, estado, foodsExcluidos = null) {
+    const excl = (Array.isArray(foodsExcluidos) && foodsExcluidos.length) ? foodsExcluidos : null;
+    const params = {
+      p_token:           token,
+      p_fecha:           fecha,
+      p_comida_id:       comidaId,
+      p_opcion:          opcion,
+      p_estado:          estado,
+      p_foods_excluidos: excl,
+    };
+    let res = await rpcMutation('mypump_marcar_comida', params);
+    // Fallback si la migración 026 (param p_foods_excluidos) todavía no se aplicó:
+    // reintentar con la firma vieja (5 args) para no romper el marcado.
+    if (!res.success) {
+      const err = this._lastError || {};
+      const msg = `${err.code || ''} ${err.message || res.error || ''}`;
+      if (/PGRST202|could not find the function|does not exist|schema cache/i.test(msg)) {
+        const legacy = { ...params }; delete legacy.p_foods_excluidos;
+        res = await rpcMutation('mypump_marcar_comida', legacy);
+      }
+    }
+    return res;
   },
 
   // Desmarca (vuelve a pendiente eliminando la fila). Devuelve {success, data:boolean, error}.
