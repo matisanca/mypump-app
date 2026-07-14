@@ -266,6 +266,7 @@ main{padding:var(--space-4)}
 .salud-lbl{font-size:12px;color:var(--color-text-muted)}
 .salud-sub{margin-top:var(--space-3);font-size:12px;color:var(--color-text-secondary)}
 .salud-sub strong{font-family:var(--font-mono);color:var(--color-text-primary)}
+.salud-connect-txt{font-size:13px;color:var(--color-text-secondary);line-height:1.4;margin:0 0 var(--space-3)}
 .hb{width:42px;height:42px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
 .hb.is-yes.is-active{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));border-color:var(--color-brand)}
 .hb.is-no.is-active{background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border-color:#ef4444}
@@ -687,6 +688,7 @@ button svg:not([width]),a svg:not([width]){width:1em;height:1em}
 <script src="/js/config.js"></script>
 <script src="/js/supabase-client.js"></script>
 <script src="/js/food-db.js"></script>
+<script src="/js/healthkit-bridge.js"></script>
 <script src="/js/app.js"></script>
 <script>
 /* ====================================================================
@@ -3682,7 +3684,34 @@ function _saludValor(tipo, fecha) {
 function renderMydaySalud() {
   const el = document.getElementById('myday-salud');
   if (!el) return;
+  const native    = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable());
+  const connected = native && window.MyPumpHealth.isConnected();
   const pasos = (STATE.salud || []).filter(r => r.tipo === 'pasos');
+
+  // App nativa y todavía sin conectar → card de conexión (Vía B, Apple Health).
+  // En la web esto nunca aparece (native === false).
+  if (native && !connected) {
+    el.innerHTML = `
+      <div class="myday-section">
+        <div class="myday-section-hdr">
+          <span class="myday-section-icon">👟</span>
+          <span class="myday-section-title">Salud</span>
+        </div>
+        <div class="myday-section-body">
+          <p class="salud-connect-txt">Conectá Apple Health una sola vez y tus pasos y actividad se sincronizan solos para que Mati los vea.</p>
+          <button class="btn-primary" id="btnConnectHealth" style="width:100%">Conectar Apple Health</button>
+        </div>
+      </div>`;
+    const btn = document.getElementById('btnConnectHealth');
+    if (btn) btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = 'Conectando…';
+      const ok = await window.MyPumpHealth.connect();
+      if (ok) renderMyday();          // reflejar estado conectado + datos
+      else { btn.disabled = false; btn.textContent = 'Conectar Apple Health'; }
+    });
+    return;
+  }
+
   if (!pasos.length) { el.innerHTML = ''; return; }   // sin datos → card invisible
 
   const fmt = n => Number(n).toLocaleString('es-AR');

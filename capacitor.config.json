@@ -1,0 +1,12 @@
+{
+  "appId": "com.pumpteam.mypump",
+  "appName": "MyPump",
+  "webDir": "public",
+  "ios": {
+    "contentInset": "always",
+    "limitsNavigationsToAppBoundDomains": true
+  },
+  "server": {
+    "iosScheme": "https"
+  }
+}

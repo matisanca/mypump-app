@@ -4,6 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "npx serve public -l 3000",
-    "format": "echo 'TODO: configurar prettier'"
+    "format": "echo 'TODO: configurar prettier'",
+    "ios:add": "npx cap add ios",
+    "ios:sync": "npx cap sync ios",
+    "ios:open": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/ios": "^6.1.0",
+    "@perfood/capacitor-healthkit": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0"
   }
 }
