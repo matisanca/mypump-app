@@ -135,6 +135,13 @@ main{padding:var(--space-4)}
 /* B4 — hint de calibración (informativo, no clickeable) */
 .set-sug-hint.is-calib{cursor:default;border-color:color-mix(in oklab,var(--color-warning) 45%,var(--color-border));background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary))}
 .set-sug-hint.is-calib:active{opacity:1}
+/* Selector de nivel/variante (ej: rueda abdominal) — control segmentado */
+.ex-variante{display:flex;align-items:center;gap:var(--space-3);margin:0 0 var(--space-3)}
+.ex-variante-lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted);flex:0 0 auto}
+.ex-variante-opts{display:flex;gap:6px;flex:1}
+.ex-variante-op{flex:1;padding:8px 10px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;line-height:1.2}
+.ex-variante-op.is-active{background:var(--color-brand);color:var(--color-on-brand);border-color:var(--color-brand)}
+.ex-variante-op:disabled{opacity:.5;cursor:default}
 .set-confirm{width:44px;height:48px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);color:var(--color-text-secondary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .set-confirm:hover{background:var(--color-text-primary);color:var(--color-bg-primary);border-color:var(--color-text-primary)}
 .set-row.is-confirmed .set-confirm{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
@@ -1118,10 +1125,13 @@ function buildSession() {
   const s = {};
   for (const b of DATA.dia.bloques) {
     for (const ex of b.ejercicios) {
+      const _vars = getVariantesEj(ex);
       s[ex.id] = {
         sets: Array.from({length: getProgresionActual(ex, DATA.rutina.semana_actual).series ?? 0}, () => ({reps:'',kg:'',rir:'',confirmed:false})),
         completed: false,
         status: STATE.exerciseStates[ex.id] || 'pendiente',
+        // Nivel/variante elegido (ej: rueda abdominal). undefined si el ej no tiene.
+        variante: _vars ? _vars[0] : undefined,
       };
     }
   }
@@ -1568,7 +1578,9 @@ function writeSet(exId, setIdx) {
       peso:           parseFloat(s.kg) || 0,
       reps:           parseInt(s.reps) || 0,
       rir:            parseInt(s.rir) || null,
-      notas:          null,
+      // Para ejercicios con variante (ej: rueda abdominal) guardamos el nivel
+      // elegido en notas, para que el coach lo vea.
+      notas:          (STATE.session[exId] && STATE.session[exId].variante) || null,
     },
   }, `carga_${DATA.dia.id}_${exId}_${setIdx}`);
 }
@@ -1725,6 +1737,10 @@ async function loadRegistrosCarga() {
     setObj.reps      = reg.reps_realizadas != null ? String(reg.reps_realizadas) : '';
     setObj.rir       = reg.rir_real        != null ? String(reg.rir_real)        : '';
     setObj.confirmed = true;
+    // Restaurar el nivel/variante elegido (guardado en notas).
+    if (reg.notas && getVariantesEj(DATA.dia.bloques.flatMap(b=>b.ejercicios).find(x=>x.id===reg.ejercicio_id))) {
+      exSession.variante = reg.notas;
+    }
   }
   console.log(`[mypump] Restauradas ${result.data.length} series desde sesión ${_sesionId}`);
 }
@@ -2127,6 +2143,18 @@ function renderExCard(ex, blockIdx) {
     const allConfirmed = exState.sets.every(s => s.confirmed);
     const activeIdx = exState.sets.findIndex(s => !s.confirmed);
     const _progNota = isWarmup ? null : computeProgresionNota(ex, DATA.rutina.semana_actual);
+    const _noKg = exNoKg(ex);
+    const _variantes = getVariantesEj(ex);
+    const _varActual = (exState.variante || (_variantes ? _variantes[0] : ''));
+    const _diaFin = _diaFinalizado;
+    // Selector de NIVEL/variante para ejercicios que lo tienen (ej: rueda abdominal).
+    const variantePicker = _variantes ? `
+      <div class="ex-variante">
+        <span class="ex-variante-lbl">Nivel</span>
+        <div class="ex-variante-opts">
+          ${_variantes.map(o => `<button class="ex-variante-op${_varActual===o?' is-active':''}" data-variante="${ex.id}|${o}"${_diaFin?' disabled':''}>${o}</button>`).join('')}
+        </div>
+      </div>` : '';
     panel = `
     <div class="ex-panel">
       <div class="divider"></div>
@@ -2134,8 +2162,9 @@ function renderExCard(ex, blockIdx) {
         <span class="ex-prog-nota-lbl">${_progNota.cambia ? '📈 Cambio de la semana' : (_progNota.calibracion ? '🎯 Semana 1' : '📋 Esta semana')}</span>
         <span class="ex-prog-nota-txt">${_progNota.texto}</span>
       </div>` : ''}
+      ${variantePicker}
       <div class="sets-head">
-        <span></span><span>Reps</span><span>${isWarmup ? '—' : 'Kg'}</span><span>RIR</span><span></span>
+        <span></span><span>Reps</span><span>${_noKg ? '—' : 'Kg'}</span><span>RIR</span><span></span>
       </div>
       <div class="sets-list">
         ${exState.sets.map((s,i) => renderSetRow(ex, s, i, i===activeIdx)).join('')}
@@ -2219,31 +2248,54 @@ function renderExCard(ex, blockIdx) {
   return `<article class="${cls}">${head}${panel}</article>`;
 }
 
+// Ejercicios de PESO CORPORAL: se miden en REPS, sin kg. Detección conservadora
+// por nombre (solo casos claramente sin carga externa, para no ocultar el kg donde
+// sí va). Los que tienen variante de dificultad también cuentan como sin peso.
+const VARIANTES_EJ = [
+  { re: /rueda\s*abdom|ab\s*wheel|abdominal\s*wheel|rollout|roller\s*abdom/i,
+    ops: ['Rodillas flexionadas', 'Rodillas extendidas'] },
+];
+function getVariantesEj(ex) {
+  const m = VARIANTES_EJ.find(v => v.re.test((ex && ex.nombre) || ''));
+  return m ? m.ops : null;
+}
+const _SIN_PESO_RE = /rueda\s*abdom|ab\s*wheel|rollout|plancha\b|abdominal(es)?\b|crunch|lagartija|flexi(o|ó)n(es)?\s+de\s+brazo|elevaci(o|ó)n(es)?\s+de\s+piernas|mountain\s*climber|hollow/i;
+function esSinPeso(ex) {
+  if (!ex || ex.tipo === 'calentamiento') return false;   // el warmup se maneja aparte
+  return !!getVariantesEj(ex) || _SIN_PESO_RE.test(ex.nombre || '');
+}
+// ¿Este ejercicio NO usa columna de peso? (warmup o peso corporal)
+function exNoKg(ex) {
+  return (ex && ex.tipo === 'calentamiento') || esSinPeso(ex);
+}
+
 function renderSetRow(ex, s, i, isActive) {
   const conf = s.confirmed;
   const isWarmup = ex.tipo === 'calentamiento';
+  const noKg = exNoKg(ex);
   const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
   const sugReps = _repsSug(prog.reps);
-  const sugKg   = isWarmup ? '' : suggestedKg(ex.id, i);
-  const hasSug  = (sugReps != null) && (isWarmup || sugKg !== '');
+  const sugKg   = noKg ? '' : suggestedKg(ex.id, i);
+  const hasSug  = (sugReps != null) && (noKg || sugKg !== '');
   const typed   = s.reps !== '' || s.kg !== '';
   // El check se habilita si el cliente ya cargó datos, o si hay sugerido (one-tap).
-  const canConfirm = typed ? (s.reps !== '' && (isWarmup || s.kg !== '')) : hasSug;
+  const canConfirm = typed ? (s.reps !== '' && (noKg || s.kg !== '')) : hasSug;
   const cls = 'set-row' + (conf?' is-confirmed':'') + (!conf&&!isActive?' is-pending':'') + (isActive?' is-active':'');
   // Hint one-tap: solo en la serie activa, sin confirmar, con sugerido y sin editar.
   const hint = (!conf && isActive && hasSug && !typed)
-    ? `<div class="set-sug-hint" data-sugconfirm="${ex.id}|${i}" role="button" tabindex="0">✓ Tocá para registrar lo sugerido${isWarmup ? '' : ` · <b>${sugKg}kg × ${sugReps}</b>`}${(!isWarmup && _rirTarget(prog.rir)!=null) ? ` (RIR ${_rirTarget(prog.rir)})` : ''} — o editá reps/peso si hiciste otra cosa</div>`
+    ? `<div class="set-sug-hint" data-sugconfirm="${ex.id}|${i}" role="button" tabindex="0">✓ Tocá para registrar lo sugerido${noKg ? ` · <b>${sugReps} reps</b>` : ` · <b>${sugKg}kg × ${sugReps}</b>`}${(!noKg && _rirTarget(prog.rir)!=null) ? ` (RIR ${_rirTarget(prog.rir)})` : ''} — o editá si hiciste otra cosa</div>`
     : '';
   // B4 — Primera vez con este ejercicio (sin histórico → sin peso sugerido):
-  // guiar la elección del peso en vez de dejar el input mudo.
-  const calibHint = (!conf && isActive && !hasSug && !typed && !isWarmup && sugReps != null)
+  // guiar la elección del peso en vez de dejar el input mudo. No aplica a los
+  // ejercicios sin peso (peso corporal).
+  const calibHint = (!conf && isActive && !hasSug && !typed && !noKg && sugReps != null)
     ? `<div class="set-sug-hint is-calib">🎯 Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps dejando 1–2 en reserva. Queda de referencia para la próxima.</div>`
     : '';
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
     <span class="set-num">${i+1}</span>
     <input class="set-input" inputmode="numeric" placeholder="${prog.reps || ''}" value="${s.reps}" data-field="reps" ${conf?'readonly':''} />
-    <input class="set-input" inputmode="decimal" placeholder="${isWarmup?'—':sugKg}" value="${s.kg}" data-field="kg" ${conf||isWarmup?'readonly':''} />
+    <input class="set-input" inputmode="decimal" placeholder="${noKg?'—':sugKg}" value="${noKg ? '' : s.kg}" data-field="kg" ${conf||noKg?'readonly':''} />
     <button class="rir-btn" data-rir="${ex.id}|${i}">${s.rir!=='' ? `<span class="lbl">RIR</span>${s.rir}` : `<span class="lbl">RIR</span>·`}</button>
     ${conf
       ? `<button class="set-confirm is-edit" data-edit="${ex.id}|${i}" aria-label="Editar">${ICONS.edit}</button>`
@@ -2295,19 +2347,22 @@ async function confirmarSerie(exId, idx) {
     renderTrain();
   }
   const isWarmup = ex.tipo === 'calentamiento';
+  const noKg = exNoKg(ex);
   const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
 
   const editoManual = setObj.reps !== '' || setObj.kg !== '';
   if (!editoManual) {
     // One-tap: tomar los valores sugeridos (plan + historial).
     const sugReps = _repsSug(prog.reps);
-    const sugKg   = isWarmup ? '' : suggestedKg(exId, idx);
+    const sugKg   = noKg ? '' : suggestedKg(exId, idx);
     if (sugReps != null) setObj.reps = String(sugReps);
-    if (!isWarmup && sugKg !== '') setObj.kg = String(sugKg);
+    if (!noKg && sugKg !== '') setObj.kg = String(sugKg);
     if (setObj.rir === '') { const t = _rirTarget(prog.rir); if (t != null) setObj.rir = String(t); }
   }
+  // Sin peso → nunca guardar kg (aunque quedara algo tipeado antes).
+  if (noKg) setObj.kg = '';
   // No confirmar sin datos mínimos (ej: sin sugerido y sin editar).
-  if (setObj.reps === '' || (!isWarmup && setObj.kg === '')) return;
+  if (setObj.reps === '' || (!noKg && setObj.kg === '')) return;
 
   setObj.confirmed = true;
   await ensureSesionIniciada();
@@ -2367,10 +2422,10 @@ function bindTrainEvents() {
       const row = inp.closest('.set-row');
       const setObj = STATE.session[exId].sets[+idx];
       const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
-      const isWarmup = ex.tipo === 'calentamiento';
-      const ok = setObj.reps !== '' && (isWarmup || setObj.kg !== '');
+      const noKg = exNoKg(ex);
+      const ok = setObj.reps !== '' && (noKg || setObj.kg !== '');
       const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
-      const hasSug = (_repsSug(prog.reps) != null) && (isWarmup || suggestedKg(exId, +idx) !== '');
+      const hasSug = (_repsSug(prog.reps) != null) && (noKg || suggestedKg(exId, +idx) !== '');
       const btn = row.querySelector('[data-confirm]');
       if (btn) btn.disabled = !(ok || hasSug);   // one-tap sigue disponible si hay sugerido
     });
@@ -2381,6 +2436,16 @@ function bindTrainEvents() {
     const attr = btn.getAttribute('data-confirm') || btn.getAttribute('data-sugconfirm');
     const [exId, idx] = attr.split('|');
     confirmarSerie(exId, +idx);
+  }));
+
+  // Selector de nivel/variante (ej: rueda abdominal). Solo cambia el nivel de las
+  // series que se confirmen DESPUÉS; las ya cargadas conservan su nivel.
+  $$('[data-variante]').forEach(btn => btn.addEventListener('click', () => {
+    const raw = btn.getAttribute('data-variante');
+    const i = raw.indexOf('|');
+    const exId = raw.slice(0, i), op = raw.slice(i + 1);
+    if (STATE.session[exId]) STATE.session[exId].variante = op;
+    renderTrain();
   }));
 
   $$('[data-edit]').forEach(btn => btn.addEventListener('click', () => {
