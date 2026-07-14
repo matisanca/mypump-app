@@ -1,93 +1,91 @@
 # MyPump iOS — Guía de build y publicación (Etapa D)
 
-> Esta guía la ejecutás **vos en tu Mac** (Xcode). El código web ya está listo y
-> es el MISMO que la web (no se bifurca): el wrapper solo lo empaqueta y le suma
-> Apple Health nativo. Lo que ya quedó preparado en el repo:
-> - `capacitor.config.json` (appId `com.pumpteam.mypump`, `webDir: public`)
-> - deps de Capacitor + `@perfood/capacitor-healthkit` en `package.json`
-> - `public/js/healthkit-bridge.js` (puente Apple Health → `mypump_ingest_salud`)
-> - botón "Conectar Apple Health" en Mi Día (solo aparece en la app nativa)
+> **El proyecto iOS ya está GENERADO y configurado a nivel de archivos.** Lo que
+> falta es lo que necesita **tu Mac con Xcode.app** y la **cuenta Apple Developer
+> aceptada**: firmar, buildear en device y subir. El código web es el MISMO que la
+> web (no se bifurca); el wrapper solo lo empaqueta y le suma Apple Health.
 >
-> **Prerrequisito bloqueante:** cuenta **Apple Developer como Organización** con
-> Pump Team LLC (necesita D-U-N-S, web corporativa y teléfono verificable).
-> USD 99/año, trámite 2-7 días. **Arrancalo YA en paralelo**, es el camino crítico.
+> Ya hecho de forma autónoma (commiteado):
+> - `capacitor.config.json` (appId `com.pumpteam.mypump`, `webDir: public`).
+> - Capacitor **8** + plugin `@capgo/capacitor-health` (Cap 8 usa **Swift Package
+>   Manager**, NO CocoaPods → no hace falta `pod install`).
+> - Proyecto Xcode en `ios/` con el bundle id ya seteado.
+> - `ios/App/App/Info.plist`: `NSHealthShareUsageDescription` +
+>   `NSHealthUpdateUsageDescription` (en español).
+> - `ios/App/App/App.entitlements`: capability HealthKit, ya cableada en el
+>   `project.pbxproj` (CODE_SIGN_ENTITLEMENTS en Debug y Release).
+> - `public/js/healthkit-bridge.js`: puente Apple Health → `mypump_ingest_salud`.
+> - Botón "Conectar Apple Health" en Mi Día (solo aparece en la app nativa).
+
+## Modelo de sincronización (importante)
+Se sincroniza **cada vez que el cliente abre la app / la trae a foco** (que para
+una app de entreno + dieta es a diario). Permiso **una sola vez**; después, cada
+apertura sube los pasos / minutos de ejercicio / kcal activas de los últimos 7
+días. **No hay background delivery "con la app cerrada"**: el plugin mantenido
+(`@capgo/capacitor-health`) no lo soporta, y declarar `UIBackgroundModes` sin
+usarlos de verdad es causa de rechazo de Apple (guideline 2.5.4). Si en el futuro
+se quiere sync con la app cerrada, requiere Swift nativo custom
+(`HKObserverQuery` + `enableBackgroundDelivery`) — anotado como mejora futura.
 
 ---
 
-## 0. Requisitos
-- Mac con **Xcode** (última estable) + Command Line Tools.
-- **CocoaPods** (`sudo gem install cocoapods`).
-- Node 18+.
-- Un **iPhone físico** para probar HealthKit (el simulador NO sirve para background).
+## 0. Requisitos (tu Mac)
+- **Xcode.app** (última estable del App Store — NO alcanza con Command Line Tools).
+- **Cuenta Apple Developer como Organización** (Pump Team LLC + D-U-N-S) **aceptada**.
+- Un **iPhone físico** para probar HealthKit (el simulador no tiene datos de Salud).
+- Node 18+ (ya usás Node en el repo).
 
-## 1. Instalar dependencias y generar el proyecto iOS
+## 1. Preparar el proyecto en tu Mac
 ```bash
 cd mypump-app
-npm install
-npx cap add ios          # genera la carpeta ios/ (proyecto Xcode)
-npx cap sync ios         # copia public/ al bundle + instala pods
-npx cap open ios         # abre Xcode
+npm install              # instala Capacitor + el plugin (ya está en package.json)
+npx cap sync ios         # re-copia public/ al bundle (corré esto tras cada cambio web)
+npx cap open ios         # abre el proyecto en Xcode
 ```
-> Cada vez que cambie el código web: `npx cap sync ios` re-copia `public/`.
-> Los DATOS (rutinas/dietas) siguen viniendo de Supabase en vivo — solo los
-> cambios de **código JS** requieren re-sync + nueva build.
+> No hace falta `cap add ios` (ya está generado) ni CocoaPods (Cap 8 usa SPM).
+> Cada vez que cambie el **código JS/HTML/CSS**: `npx cap sync ios` + nueva build.
+> Los DATOS (rutinas/dietas) siguen viniendo de Supabase en vivo, sin rebuild.
 
-## 2. Xcode — Signing & Capabilities
-En el target de la app → pestaña **Signing & Capabilities**:
+## 2. Xcode — Signing
+Target **App** → pestaña **Signing & Capabilities**:
 1. **Team**: seleccioná el equipo de la Organización (Pump Team LLC).
-2. **Bundle Identifier**: `com.pumpteam.mypump`.
-3. **+ Capability → HealthKit**. Dentro de HealthKit, tildá **Background Delivery**.
-4. **+ Capability → Background Modes** → tildá **Background fetch** (y *Background processing* si el plugin lo pide).
+2. **Bundle Identifier**: ya está en `com.pumpteam.mypump`.
+3. La capability **HealthKit** ya viene por el `App.entitlements`. Verificá que
+   aparezca en la lista de capabilities; con *Automatic signing*, Xcode habilita
+   HealthKit en el App ID del portal solo. (Si no aparece, tocá **+ Capability →
+   HealthKit** y Xcode la reconcilia con el entitlements existente.)
 
-## 3. Info.plist — claves de privacidad (obligatorias, en español)
-Agregá al `ios/App/App/Info.plist`:
-```xml
-<key>NSHealthShareUsageDescription</key>
-<string>MyPump lee tus pasos y actividad para que tu coach ajuste tu plan de entrenamiento y nutrición.</string>
-<key>NSHealthUpdateUsageDescription</key>
-<string>MyPump no escribe datos en Salud; este permiso solo se usa si en el futuro registrás datos manualmente.</string>
-```
-> Sin `NSHealthShareUsageDescription` la app **crashea** al pedir permisos y Apple
-> la rechaza. Pedí SOLO los tipos que usás (guideline 2.5.1): pasos, energía
-> activa, minutos de ejercicio.
+## 3. Verificaciones rápidas ya hechas (no toques salvo que rompa)
+- `Info.plist`: strings de privacidad de Salud presentes (obligatorio: sin
+  `NSHealthShareUsageDescription` la app crashea al pedir permisos).
+- `App.entitlements`: `com.apple.developer.healthkit = true`.
+- Pedimos SOLO los tipos que usamos (guideline 2.5.1): pasos, minutos de
+  ejercicio, energía activa. Están en `healthkit-bridge.js` (const `MAP`).
 
-## 4. Background delivery (sync automático real)
-El `healthkit-bridge.js` ya sincroniza **al abrir y al volver a foco** (fallback).
-Para el sync con la app cerrada hay que registrar el observer nativo en
-`ios/App/App/AppDelegate.swift` siguiendo la doc del plugin
-`@perfood/capacitor-healthkit` (habilitar `enableBackgroundDelivery` para cada
-`HKQuantityType` y despertar un sync). Referencia: README del plugin.
-> ⚠️ Verificá los **nombres de sample** que usa el bridge (`stepCount`,
-> `appleExerciseTime`, `activeEnergyBurned`) y la forma de `resultData` contra el
-> plugin instalado — están marcados con `⚠️ VERIFICAR` en el bridge.
-
-## 5. Token del cliente en la app nativa
-En el wrapper conviene guardar el token en **Keychain** (plugin
-`capacitor-secure-storage-plugin`) en vez de localStorage, y una pantalla de
-primer arranque "Pegá tu link de Mati" (o un Universal Link
-`app.mypumpteam.com/t/*` que abra la app con el token). El resto del flujo es
+## 4. Token del cliente en la app nativa (recomendado, no bloqueante)
+Hoy el token vive en localStorage (funciona). Mejora: guardarlo en **Keychain**
+(`capacitor-secure-storage-plugin`) + pantalla de primer arranque "Pegá tu link
+de Mati", o un Universal Link `app.mypumpteam.com/t/*`. El resto del flujo es
 idéntico a la web.
 
-## 6. Probar en iPhone físico  ✋ (esto lo hacés vos, no hay atajo)
-- Corré la app en tu iPhone desde Xcode.
-- Tocá **Conectar Apple Health** → aceptá permisos → verificá que aparezcan los
-  pasos en la card "Salud" de Mi Día.
-- **Background sync**: dejá la app cerrada, caminá, y verificá 24-48h después que
-  los datos llegaron solos (el SO decide cuándo despierta — es "best effort";
-  por eso el fallback de sync-al-abrir).
-- Revocá el permiso en Ajustes → Salud y confirmá que la app no crashea.
-- Probá el **modo avión** en el gym real (service worker + Outbox drenando al
-  volver la señal).
+## 5. Probar en iPhone físico  ✋ (esto lo hacés vos)
+- Corré la app en tu iPhone desde Xcode (Product → Run).
+- Andá a **Mi Día** → **Conectar Apple Health** → aceptá los permisos.
+- Verificá que aparezcan tus pasos en la card "Salud".
+- Cerrá y reabrí la app tras caminar un rato → los pasos deben actualizarse (sync
+  al abrir).
+- Revocá el permiso en Ajustes → Salud → MyPump y confirmá que la app no crashea.
+- Probá el **modo avión** en el gym real (service worker + Outbox drenando).
 
 ---
 
-## 7. Checklist App Store Connect
+## 6. Checklist App Store Connect
 - [ ] Apple Developer **Organización** activa (LLC + D-U-N-S).
 - [ ] App creada en App Store Connect con bundle `com.pumpteam.mypump`.
 - [ ] **Política de privacidad por URL** (ej. `app.mypumpteam.com/privacidad`) que cubra:
       datos de salud de HealthKit (qué se lee, que **NO** se comparte con terceros
       ni se usa para publicidad — guideline 5.1.3), datos de entrenamiento/dieta, y
-      **GDPR** por clientes en España (base legal, derecho de acceso/borrado, y
+      **GDPR** por clientes en España (base legal, derecho de acceso/borrado,
       transferencias internacionales Supabase/Cloudflare con SCCs).
 - [ ] **App Privacy** (nutrition labels): Health & Fitness → *linked to user*,
       *not used for tracking*.
@@ -97,9 +95,10 @@ idéntico a la web.
       rutina + dieta publicadas) para que Apple pueda entrar.
 - [ ] **TestFlight** interno primero (vos + 2-3 clientes) → después Review.
 
-## 8. Orden recomendado
-1. (En paralelo, ya) Trámite Apple Developer Org.
-2. `npm install` + `cap add ios` + build en **simulador** (verifica UI/navegación/safe-areas).
-3. Build en **iPhone físico** + HealthKit + background (sección 6).
-4. Privacidad + metadata + screenshots + TestFlight.
-5. Submit a Review.
+## 7. Orden recomendado
+1. (Bloqueante) Que Apple acepte la cuenta Developer Org.
+2. Instalar Xcode.app → `npm install` → `npx cap open ios`.
+3. Signing (Team) + build en **simulador** (verifica UI/navegación/safe-areas).
+4. Build en **iPhone físico** + probar Apple Health (sección 5).
+5. Privacidad + metadata + screenshots + TestFlight.
+6. Submit a Review.
