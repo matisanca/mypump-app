@@ -961,18 +961,27 @@ function lastSessionStr(exId) {
   return `${top.peso_kg}kg × ${reps}${rir}`;
 }
 
-function suggestedKg(exId, idx) {
+// Registro de referencia = la MISMA serie en la última sesión de este ejercicio.
+// Filtra PRIMERO a la última sesión (filas DESC → h[0] es la más reciente) y
+// recién ahí busca la serie, para no mezclar valores de semanas distintas.
+function _ultimaSerieRef(exId, idx) {
   const h = DATA.historico_por_ejercicio[exId] || [];
-  if (!h.length) return '';
-  // Filtrar PRIMERO a la última sesión (las filas vienen DESC → h[0] es la más
-  // reciente) y recién ahí buscar la serie. Antes recorría todo el histórico
-  // plano y podía sugerir el peso de una serie de hace semanas para un slot y
-  // el nuevo para otro → sugerencias inconsistentes entre series.
+  if (!h.length) return null;
   const dayOf = iso => (iso || '').split('T')[0];
   const lastDay = dayOf(h[0].registrado_en);
   const lastSets = h.filter(r => dayOf(r.registrado_en) === lastDay);
-  const ref = lastSets.find(r => r.serie_numero === idx+1) || lastSets[0];
-  return ref ? String(ref.peso_kg) : '';
+  return lastSets.find(r => r.serie_numero === idx+1) || lastSets[0] || null;
+}
+// Peso que hiciste la última vez en esta serie (para el default gris + one-tap).
+function suggestedKg(exId, idx) {
+  const ref = _ultimaSerieRef(exId, idx);
+  return ref && ref.peso_kg != null ? String(ref.peso_kg) : '';
+}
+// Reps que hiciste la última vez en esta serie (default gris + one-tap).
+function suggestedReps(exId, idx) {
+  const ref = _ultimaSerieRef(exId, idx);
+  const r = ref ? (ref.reps_realizadas != null ? ref.reps_realizadas : ref.reps) : null;
+  return r != null ? String(r) : '';
 }
 
 // Dato de la SESIÓN ANTERIOR (la última vez que se hizo el ejercicio, excluyendo
@@ -2274,27 +2283,32 @@ function renderSetRow(ex, s, i, isActive) {
   const isWarmup = ex.tipo === 'calentamiento';
   const noKg = exNoKg(ex);
   const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
-  const sugReps = _repsSug(prog.reps);
-  const sugKg   = noKg ? '' : suggestedKg(ex.id, i);
-  const hasSug  = (sugReps != null) && (noKg || sugKg !== '');
+  const sugRepsPlan = _repsSug(prog.reps);              // objetivo del plan (null si AMRAP)
+  const sugKg   = noKg ? '' : suggestedKg(ex.id, i);    // peso de la última vez
+  const sugRepsHist = suggestedReps(ex.id, i);          // reps de la última vez ('' si no hay)
+  // Para mostrar/autocompletar: preferimos lo de la última vez; si no hay, el plan.
+  const sugRepsShow = sugRepsHist !== '' ? sugRepsHist : (sugRepsPlan != null ? String(sugRepsPlan) : '');
+  // El one-tap requiere reps objetivo del plan (no AMRAP) + peso conocido (o sin peso).
+  const hasSug  = (sugRepsPlan != null) && (noKg || sugKg !== '');
   const typed   = s.reps !== '' || s.kg !== '';
   // El check se habilita si el cliente ya cargó datos, o si hay sugerido (one-tap).
   const canConfirm = typed ? (s.reps !== '' && (noKg || s.kg !== '')) : hasSug;
   const cls = 'set-row' + (conf?' is-confirmed':'') + (!conf&&!isActive?' is-pending':'') + (isActive?' is-active':'');
-  // Hint one-tap: solo en la serie activa, sin confirmar, con sugerido y sin editar.
+  // Hint one-tap: registra lo de la última vez (peso + reps). El RIR NO se
+  // autocompleta — es subjetivo, lo pone el cliente si quiere.
   const hint = (!conf && isActive && hasSug && !typed)
-    ? `<div class="set-sug-hint" data-sugconfirm="${ex.id}|${i}" role="button" tabindex="0">✓ Tocá para registrar lo sugerido${noKg ? ` · <b>${sugReps} reps</b>` : ` · <b>${sugKg}kg × ${sugReps}</b>`}${(!noKg && _rirTarget(prog.rir)!=null) ? ` (RIR ${_rirTarget(prog.rir)})` : ''} — o editá si hiciste otra cosa</div>`
+    ? `<div class="set-sug-hint" data-sugconfirm="${ex.id}|${i}" role="button" tabindex="0">✓ Tocá para registrar lo de la última vez${noKg ? ` · <b>${sugRepsShow} reps</b>` : ` · <b>${sugKg}kg × ${sugRepsShow}</b>`} — o editá si hiciste otra cosa</div>`
     : '';
   // B4 — Primera vez con este ejercicio (sin histórico → sin peso sugerido):
   // guiar la elección del peso en vez de dejar el input mudo. No aplica a los
   // ejercicios sin peso (peso corporal).
-  const calibHint = (!conf && isActive && !hasSug && !typed && !noKg && sugReps != null)
+  const calibHint = (!conf && isActive && !hasSug && !typed && !noKg && sugRepsPlan != null)
     ? `<div class="set-sug-hint is-calib">🎯 Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps dejando 1–2 en reserva. Queda de referencia para la próxima.</div>`
     : '';
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
     <span class="set-num">${i+1}</span>
-    <input class="set-input" inputmode="numeric" placeholder="${prog.reps || ''}" value="${s.reps}" data-field="reps" ${conf?'readonly':''} />
+    <input class="set-input" inputmode="numeric" placeholder="${sugRepsHist !== '' ? sugRepsHist : (prog.reps || '')}" value="${s.reps}" data-field="reps" ${conf?'readonly':''} />
     <input class="set-input" inputmode="decimal" placeholder="${noKg?'—':sugKg}" value="${noKg ? '' : s.kg}" data-field="kg" ${conf||noKg?'readonly':''} />
     <button class="rir-btn" data-rir="${ex.id}|${i}">${s.rir!=='' ? `<span class="lbl">RIR</span>${s.rir}` : `<span class="lbl">RIR</span>·`}</button>
     ${conf
@@ -2310,12 +2324,6 @@ function _repsSug(reps) {
   const str = String(reps);
   if (/amrap|∞|max|máx/i.test(str)) return null;
   const nums = str.match(/\d+/g);
-  return nums ? parseInt(nums[nums.length - 1]) : null;
-}
-// RIR objetivo del plan a entero (top del rango). null si no hay número.
-function _rirTarget(rir) {
-  if (rir == null) return null;
-  const nums = String(rir).match(/\d+/g);
   return nums ? parseInt(nums[nums.length - 1]) : null;
 }
 
@@ -2352,12 +2360,15 @@ async function confirmarSerie(exId, idx) {
 
   const editoManual = setObj.reps !== '' || setObj.kg !== '';
   if (!editoManual) {
-    // One-tap: tomar los valores sugeridos (plan + historial).
-    const sugReps = _repsSug(prog.reps);
+    // One-tap: registrar lo de la ÚLTIMA vez (reps + peso). Reps: preferimos las
+    // que hiciste la semana pasada; si no hay histórico, el objetivo del plan.
+    // El RIR NO se autocompleta — es subjetivo, lo pone el cliente si quiere.
+    const sugRepsHist = suggestedReps(exId, idx);
+    const sugRepsPlan = _repsSug(prog.reps);
+    const useReps = sugRepsHist !== '' ? sugRepsHist : (sugRepsPlan != null ? String(sugRepsPlan) : '');
     const sugKg   = noKg ? '' : suggestedKg(exId, idx);
-    if (sugReps != null) setObj.reps = String(sugReps);
+    if (useReps !== '') setObj.reps = useReps;
     if (!noKg && sugKg !== '') setObj.kg = String(sugKg);
-    if (setObj.rir === '') { const t = _rirTarget(prog.rir); if (t != null) setObj.rir = String(t); }
   }
   // Sin peso → nunca guardar kg (aunque quedara algo tipeado antes).
   if (noKg) setObj.kg = '';
