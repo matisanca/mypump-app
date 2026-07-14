@@ -1,0 +1,71 @@
+# =============================================================
+# codemagic.yaml — Build iOS en la nube (sin tocar Xcode ni la terminal)
+#
+# Compila la app Capacitor, la FIRMA sola (App Store Connect API key →
+# "automatic code signing" de Codemagic, sin certificados a mano) y la sube a
+# TestFlight. Corre en las Mac de Codemagic (ellos tienen Xcode).
+#
+# SOLO corre cuando Apple ya aceptó tu cuenta Developer. Pasos de una-sola-vez
+# en la UI de Codemagic (ver docs/IOS_CLOUD_BUILD.md):
+#   1. Crear cuenta en codemagic.io (gratis) y conectar este repo de GitHub.
+#   2. Integrations → App Store Connect → subir una API key (la generás en
+#      App Store Connect → Users and Access → Integrations). Nombrala como el
+#      valor de `app_store_connect` de abajo: "PumpTeam_ASC".
+#   3. Completar los 2 placeholders marcados con <<< ... >>> abajo.
+#   4. Start build.
+# =============================================================
+workflows:
+  ios-testflight:
+    name: MyPump iOS → TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    integrations:
+      # Nombre de la API key de App Store Connect que cargás en Codemagic UI.
+      app_store_connect: PumpTeam_ASC
+
+    environment:
+      node: 20
+      xcode: latest
+      ios_signing:
+        # Codemagic crea/gestiona el certificado y el provisioning profile solo
+        # (managed signing) usando la API key. No hace falta tocar Xcode.
+        distribution_type: app_store
+        bundle_identifier: com.pumpteam.mypump
+      vars:
+        BUNDLE_ID: "com.pumpteam.mypump"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+        # <<< Completar con el Apple ID NUMÉRICO de la app (App Store Connect →
+        #     tu app → App Information → "Apple ID"). Ej: "6748291023". >>>
+        APP_STORE_APPLE_ID: "<<<APP_STORE_APPLE_ID>>>"
+
+    scripts:
+      - name: Instalar dependencias (npm)
+        script: npm ci
+      - name: Capacitor sync iOS
+        script: npx cap sync ios
+      - name: Resolver Swift Packages
+        script: |
+          xcodebuild -resolvePackageDependencies \
+            -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
+      - name: Aplicar perfiles de firma (managed)
+        script: xcode-project use-profiles
+      - name: Compilar IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Sube el build a TestFlight (no lo manda a review de la App Store).
+        submit_to_testflight: true
+        # Descomentá y completá para auto-asignar a un grupo de testers interno:
+        # beta_groups:
+        #   - "Pump Team interno"

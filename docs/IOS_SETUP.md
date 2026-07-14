@@ -1,5 +1,11 @@
 # MyPump iOS — Guía de build y publicación (Etapa D)
 
+> 💡 **¿No querés instalar Xcode?** Usá el camino en la nube (recomendado):
+> **[docs/IOS_CLOUD_BUILD.md](IOS_CLOUD_BUILD.md)** — Codemagic compila y firma
+> solo y sube a TestFlight, sin Xcode ni terminal. Esta guía de abajo es el
+> camino manual con Xcode, por si preferís hacerlo local.
+
+
 > **El proyecto iOS ya está GENERADO y configurado a nivel de archivos.** Lo que
 > falta es lo que necesita **tu Mac con Xcode.app** y la **cuenta Apple Developer
 > aceptada**: firmar, buildear en device y subir. El código web es el MISMO que la
