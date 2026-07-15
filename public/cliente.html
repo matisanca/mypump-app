@@ -2269,9 +2269,15 @@ function getVariantesEj(ex) {
   return m ? m.ops : null;
 }
 const _SIN_PESO_RE = /rueda\s*abdom|ab\s*wheel|rollout|plancha\b|abdominal(es)?\b|crunch|lagartija|flexi(o|ó)n(es)?\s+de\s+brazo|elevaci(o|ó)n(es)?\s+de\s+piernas|mountain\s*climber|hollow/i;
+// Si el nombre menciona equipo/carga externa, el ejercicio SÍ lleva kg aunque el
+// patrón base sea "de peso corporal" (ej: "Crunch abdominal en máquina",
+// "Crunch en polea alta", "Plancha con disco", "Flexiones con lastre").
+const _CON_CARGA_RE = /m(a|á)quina|polea|cable|disco|lastre|mancuerna|barra\b|kettlebell|pesa\b|pesas\b|con\s+peso|con\s+carga|smith|multipower|banco\s+declinado\s+con/i;
 function esSinPeso(ex) {
   if (!ex || ex.tipo === 'calentamiento') return false;   // el warmup se maneja aparte
-  return !!getVariantesEj(ex) || _SIN_PESO_RE.test(ex.nombre || '');
+  const nombre = ex.nombre || '';
+  if (_CON_CARGA_RE.test(nombre)) return false;           // carga externa GANA
+  return !!getVariantesEj(ex) || _SIN_PESO_RE.test(nombre);
 }
 // ¿Este ejercicio NO usa columna de peso? (warmup o peso corporal)
 function exNoKg(ex) {
