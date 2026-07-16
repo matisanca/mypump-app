@@ -220,6 +220,13 @@ window.mypumpDB = {
     return rows && rows.length > 0 ? rows[0] : null;
   },
 
+  // Todas las sesiones de una semana (una por día, la de más actividad).
+  // Filas: {dia_id, iniciada_en, finalizada_en}. Para marcar días completados
+  // en el day picker.
+  async getSesionesSemana(token, semana) {
+    return await rpc('mypump_get_sesiones_semana', { p_token: token, p_semana: semana });
+  },
+
   // ─── MI DÍA / HÁBITOS ─────────────────────────────────────
 
   // Devuelve el registro de hábitos del día (o crea uno vacío). fecha = 'YYYY-MM-DD'.

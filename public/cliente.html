@@ -64,7 +64,12 @@ button{font:inherit;color:inherit}
 .dp-name{font-size:12px;font-weight:600;letter-spacing:.01em}
 .day-pill.is-active{background:var(--color-text-primary);color:var(--color-bg-primary);border-color:var(--color-text-primary)}
 .day-pill.is-active .dp-n{opacity:.7}
-.day-pill.is-done{border-color:color-mix(in oklab,var(--color-brand) 50%,var(--color-border));color:var(--color-brand)}
+/* F1 — día completado: verde con ✓ */
+.day-pill.is-done{background:color-mix(in oklab,var(--color-brand) 10%,var(--color-bg-primary));border-color:color-mix(in oklab,var(--color-brand) 50%,var(--color-border));color:var(--color-brand)}
+.day-pill.is-done .dp-n{opacity:.8}
+.day-pill.is-active.is-done{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
+.dp-check{position:absolute;top:2px;left:5px;font-size:10px;line-height:1;font-weight:800;color:var(--color-brand)}
+.day-pill.is-active.is-done .dp-check{color:var(--color-on-brand)}
 
 /* PROGRESS BAR */
 .hdr-progress{padding:0 var(--space-4) var(--space-3);display:flex;align-items:center;gap:var(--space-3)}
@@ -781,6 +786,7 @@ const STATE = {
   exerciseStates:     {},         // exId → 'pendiente'|'completo'|'completo_sin_datos'|'saltado'
   exerciseMeta:       {},         // exId → {series_completadas, marcado_manualmente}
   diaCompletadoMostrado: false,
+  diasCompletados:    new Set(),  // dia_id con sesión FINALIZADA esta semana (day picker ✓)
   meals:              {},         // comidaId → {selectedOpt}
   foodSwaps:          {},         // swapKey → {original, current}
   exerciseSwaps:      {},         // exId → {original:{slug,nombre,images}, current:{slug,nombre,equipment,images}}
@@ -1612,7 +1618,22 @@ async function writeFinish(notas) {
   // Día cerrado = día HECHO (aunque no se hayan tildado todos los ejercicios).
   _diaFinalizado = true;
   localStorage.setItem(`mypump_sesion_${TOKEN}_${DATA.dia.id}_finalizada`, '1');
+  // F1 — marcar el día en verde en el picker, al instante.
+  STATE.diasCompletados.add(DATA.dia.id);
+  renderDayPicker();
   renderTrain();
+}
+
+// F1 — Días con sesión finalizada esta semana → pinta el day picker.
+// No bloqueante; al avanzar de semana la página se recarga y esto trae la
+// semana nueva (reset automático).
+async function loadDiasCompletados() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getSesionesSemana) return;
+  try {
+    const rows = await window.mypumpDB.getSesionesSemana(TOKEN, DATA.rutina.semana_actual || 1);
+    STATE.diasCompletados = new Set((rows || []).filter(r => r.finalizada_en).map(r => r.dia_id));
+    renderDayPicker();
+  } catch (_) { /* sin red: el picker queda sin marcas, no rompe */ }
 }
 
 /* ---- AVANCE DE SEMANA ---- */
@@ -1917,9 +1938,14 @@ function renderDayPicker() {
     const num  = getDayNum(d, dias);
     const name = getDayShortName(d.nombre);
     const unread = getUnreadDia(d);
-    return `<button class="day-pill${d.id === DATA.dia.id ? ' is-active' : ''}" data-dayid="${d.id}">
+    // F1 — día con sesión FINALIZADA esta semana → verde con ✓ (de un vistazo
+    // se ve qué días ya hizo). Se resetea solo al avanzar de semana (el Set se
+    // recarga filtrado por semana_actual).
+    const done = STATE.diasCompletados.has(d.id);
+    return `<button class="day-pill${d.id === DATA.dia.id ? ' is-active' : ''}${done ? ' is-done' : ''}" data-dayid="${d.id}">
       <span class="dp-n">DÍA ${num}</span>
       <span class="dp-name">${name}</span>
+      ${done ? `<span class="dp-check" title="Día completado">✓</span>` : ''}
       ${unread > 0 ? `<span class="dp-com-badge" title="${unread} comentario(s) nuevo(s) de Mati">💬</span>` : ''}
     </button>`;
   }).join('');
@@ -4265,6 +4291,8 @@ async function init() {
   loadMyday(); // inicia en background; cuando termina, STATE.mydayLoaded = true
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();
+  // F1 — días completados de la semana (pinta el picker cuando llega)
+  loadDiasCompletados();
 
   // Outbox: cargar escrituras pendientes de sesiones anteriores y drenarlas.
   if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
