@@ -1037,10 +1037,32 @@ function _ultimaSerieRef(exId, idx, variante, esDefault) {
   return lastSets.find(r => r.serie_numero === idx+1) || lastSets[0] || null;
 }
 // Peso que hiciste la última vez en esta serie (para el default gris + one-tap).
+// Un histórico con peso 0 en un ejercicio QUE PIDE kg no sirve como sugerido
+// (registros viejos de cuando el ejercicio se trataba como "sin peso").
 function suggestedKg(exId, idx) {
   const { v, esDefault } = _varianteActiva(exId);
   const ref = _ultimaSerieRef(exId, idx, v, esDefault);
-  return ref && ref.peso_kg != null ? String(ref.peso_kg) : '';
+  if (!ref || ref.peso_kg == null) return '';
+  if (Number(ref.peso_kg) <= 0) {
+    const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+    if (ex && !exNoKg(ex)) return '';
+  }
+  return String(ref.peso_kg);
+}
+
+// Peso HEREDABLE dentro de la sesión de hoy: la serie confirmada más cercana
+// de este ejercicio con kg > 0. Es el patrón de toda app de gym: cargás el kg
+// una vez y las series siguientes lo arrastran (fix del reporte "no me deja
+// confirmar los últimos casilleros" — tipeaba reps y no repetía el kg).
+function kgHeredable(exId, idx) {
+  const sets = (STATE.session[exId] && STATE.session[exId].sets) || [];
+  for (let i = idx - 1; i >= 0; i--) {
+    if (sets[i] && sets[i].confirmed && parseFloat(sets[i].kg) > 0) return String(sets[i].kg);
+  }
+  for (let i = 0; i < sets.length; i++) {
+    if (i !== idx && sets[i] && sets[i].confirmed && parseFloat(sets[i].kg) > 0) return String(sets[i].kg);
+  }
+  return '';
 }
 // Reps que hiciste la última vez en esta serie (default gris + one-tap).
 function suggestedReps(exId, idx) {
@@ -2536,7 +2558,9 @@ function renderSetRow(ex, s, i, isActive) {
   const hasSug  = (sugRepsPlan != null) && (noKg || sugKg !== '');
   const typed   = s.reps !== '' || s.kg !== '';
   // El check se habilita si el cliente ya cargó datos, o si hay sugerido (one-tap).
-  const canConfirm = typed ? (s.reps !== '' && (noKg || s.kg !== '')) : hasSug;
+  // El kg puede HEREDARSE de una serie ya confirmada (no hace falta repetirlo).
+  const kgHer = noKg ? '' : kgHeredable(ex.id, i);
+  const canConfirm = typed ? (s.reps !== '' && (noKg || s.kg !== '' || kgHer !== '')) : hasSug;
   const cls = 'set-row' + (conf?' is-confirmed':'') + (!conf&&!isActive?' is-pending':'') + (isActive?' is-active':'');
   // Hint one-tap: registra lo de la última vez (peso + reps). El RIR NO se
   // autocompleta — es subjetivo, lo pone el cliente si quiere.
@@ -2553,7 +2577,7 @@ function renderSetRow(ex, s, i, isActive) {
   <div class="${cls}" data-set="${ex.id}|${i}">
     <span class="set-num">${i+1}</span>
     <input class="set-input" inputmode="numeric" placeholder="${sugRepsHist !== '' ? sugRepsHist : (prog.reps || '')}" value="${s.reps}" data-field="reps" ${conf?'readonly':''} />
-    <input class="set-input" inputmode="decimal" placeholder="${noKg?'—':sugKg}" value="${noKg ? '' : s.kg}" data-field="kg" ${conf||noKg?'readonly':''} />
+    <input class="set-input" inputmode="decimal" placeholder="${noKg ? '—' : (sugKg || kgHer)}" value="${noKg ? '' : s.kg}" data-field="kg" ${conf||noKg?'readonly':''} />
     <button class="rir-btn" data-rir="${ex.id}|${i}">${s.rir!=='' ? `<span class="lbl">RIR</span>${s.rir}` : `<span class="lbl">RIR</span>·`}</button>
     ${conf
       ? `<button class="set-confirm is-edit" data-edit="${ex.id}|${i}" aria-label="Editar">${ICONS.edit}</button>`
@@ -2616,6 +2640,12 @@ async function confirmarSerie(exId, idx) {
   }
   // Sin peso → nunca guardar kg (aunque quedara algo tipeado antes).
   if (noKg) setObj.kg = '';
+  // Kg heredado: tipeó reps pero no repitió el peso → arrastrar el de la serie
+  // confirmada anterior (fix "no me deja confirmar los últimos casilleros").
+  if (!noKg && setObj.kg === '' && setObj.reps !== '') {
+    const her = kgHeredable(exId, idx);
+    if (her !== '') setObj.kg = her;
+  }
   // No confirmar sin datos mínimos (ej: sin sugerido y sin editar).
   if (setObj.reps === '' || (!noKg && setObj.kg === '')) return;
 
@@ -2685,7 +2715,7 @@ function bindTrainEvents() {
       const setObj = STATE.session[exId].sets[+idx];
       const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
       const noKg = exNoKg(ex);
-      const ok = setObj.reps !== '' && (noKg || setObj.kg !== '');
+      const ok = setObj.reps !== '' && (noKg || setObj.kg !== '' || kgHeredable(exId, +idx) !== '');
       const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
       const hasSug = (_repsSug(prog.reps) != null) && (noKg || suggestedKg(exId, +idx) !== '');
       const btn = row.querySelector('[data-confirm]');
