@@ -259,6 +259,25 @@ window.mypumpDB = {
     return await rpc('mypump_get_adherencia_30d', { p_token: token });
   },
 
+  // ─── COMIDAS LIBRES (foto del plato / manual) ────────────
+
+  // Crea una comida libre. datos = {fecha,'HH:MM'|null hora,descripcion,kcal,prot,carb,fat,detalle}.
+  async crearComidaLibre(token, datos) {
+    return await rpcMutation('mypump_crear_comida_libre', {
+      p_token: token, p_fecha: datos.fecha, p_hora: datos.hora || null,
+      p_descripcion: datos.descripcion, p_kcal: datos.kcal, p_prot: datos.prot,
+      p_carb: datos.carb, p_fat: datos.fat, p_detalle: datos.detalle || null,
+    });
+  },
+
+  async getComidasLibres(token, fecha) {
+    return await rpc('mypump_get_comidas_libres', { p_token: token, p_fecha: fecha });
+  },
+
+  async borrarComidaLibre(token, id) {
+    return await rpcMutation('mypump_borrar_comida_libre', { p_token: token, p_id: id });
+  },
+
   // ─── SALUD (wearables / Apple Health) ────────────────────
 
   // Lee la salud del cliente en un rango. Filas: {fecha, tipo, valor, fuente, detalle}.

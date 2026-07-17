@@ -500,6 +500,21 @@ main{padding:var(--space-4)}
 .cf-scan-status{margin:0 0 var(--space-3);padding:8px 10px;border-radius:var(--radius-md);background:var(--color-bg-secondary);border:1px solid var(--color-border);font-size:12px;line-height:1.4;color:var(--color-text-secondary)}
 /* F8 — avisos del modal de sustitución */
 .swap-aviso{margin:var(--space-2) 0;padding:8px 10px;border-radius:var(--radius-md);background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));font-size:12px;line-height:1.45;color:var(--color-text-secondary)}
+/* F10 — comidas libres */
+.comidas-libres{margin-top:var(--space-4);padding:var(--space-3) var(--space-4);border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary)}
+.cl-title{font-size:13px;font-weight:700;color:var(--color-text-primary);margin-bottom:var(--space-2)}
+.cl-sub{font-size:11px;font-weight:500;color:var(--color-text-muted);margin-left:4px}
+.cl-item{display:flex;align-items:center;gap:var(--space-3);padding:8px 0;border-bottom:1px solid var(--color-border)}
+.cl-item:last-of-type{border-bottom:0}
+.cl-info{flex:1;min-width:0}
+.cl-desc{font-size:13px;font-weight:600;color:var(--color-text-primary)}
+.cl-hora{font-size:11px;font-weight:500;color:var(--color-text-muted);font-family:var(--font-mono);margin-left:4px}
+.cl-macros{font-size:11px;color:var(--color-text-secondary);font-family:var(--font-mono)}
+.cl-est{font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-muted);border:1px solid var(--color-border);border-radius:999px;padding:0 5px;margin-left:4px}
+.cl-del{flex:0 0 auto;width:26px;height:26px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:50%;color:var(--color-text-muted);cursor:pointer;font-size:12px;line-height:1}
+.cl-actions{display:flex;gap:8px;margin-top:var(--space-2)}
+.cl-actions .btn-custom-food{margin-top:0;flex:1}
+.cl-detalle{margin:0 0 var(--space-2);font-size:11px;color:var(--color-text-secondary);line-height:1.5}
 .cf-macros-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
 .cf-unit-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}
 .cf-err{padding:var(--space-2) var(--space-3);background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border:1px solid #ef4444;border-radius:var(--radius-md);color:#ef4444;font-size:12px;margin-top:var(--space-2)}
@@ -826,6 +841,7 @@ const STATE = {
   adhData:            null,
   comidasMarcadas:    {},          // comida_id → {opcion, estado, marcada_en}
   comidasLoaded:      false,
+  comidasLibres:      [],          // F10 — comidas fuera del plan (foto/manual) de HOY
 };
 
 /* ---- SAMPLE DATA (fallback when no rutina/dieta published) ---- */
@@ -3227,7 +3243,44 @@ function calcularConsumido() {
       tot.fat  += f.fat  || 0;
     });
   }
+  // F10 — sumar las comidas LIBRES del día (foto del plato / manuales)
+  for (const cl of (STATE.comidasLibres || [])) {
+    tot.kcal += Number(cl.kcal) || 0;
+    tot.prot += Number(cl.prot) || 0;
+    tot.carb += Number(cl.carb) || 0;
+    tot.fat  += Number(cl.fat)  || 0;
+  }
   return { ...tot, nComidas, nComidasMarcadas };
+}
+
+/* ---- F10: COMIDAS LIBRES (foto del plato / registro manual) ---- */
+async function loadComidasLibres() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getComidasLibres) {
+    STATE.comidasLibres = [];
+    return;
+  }
+  try {
+    STATE.comidasLibres = (await window.mypumpDB.getComidasLibres(TOKEN, TODAY_LOCAL)) || [];
+  } catch (_) { STATE.comidasLibres = []; }
+  if (STATE.scene === 'diet') renderDiet();
+}
+
+async function guardarComidaLibre(datos) {
+  const res = await window.mypumpDB.crearComidaLibre(TOKEN, { ...datos, fecha: TODAY_LOCAL });
+  if (res && res.success && res.data && res.data[0]) {
+    STATE.comidasLibres.push(res.data[0]);
+    renderDiet();
+    return true;
+  }
+  return false;
+}
+
+async function borrarComidaLibre(id) {
+  const prev = STATE.comidasLibres;
+  STATE.comidasLibres = prev.filter(c => c.id !== id);   // optimista
+  renderDiet();
+  const res = await window.mypumpDB.borrarComidaLibre(TOKEN, id);
+  if (!res || !res.success) { STATE.comidasLibres = prev; renderDiet(); }
 }
 
 function renderDiet() {
@@ -3292,8 +3345,90 @@ function renderDiet() {
       </div>
     </div>
   </div>
-  ${plan.comidas.map((c,i) => renderMeal(c,i)).join('')}`;
+  ${plan.comidas.map((c,i) => renderMeal(c,i)).join('')}
+  ${renderComidasLibres()}`;
   bindDietEvents();
+}
+
+// F10 — Sección "Comidas libres": lo que comiste fuera del plan (foto → IA
+// estimativa, o carga manual). Se suma al anillo del día.
+function renderComidasLibres() {
+  if (DATA && DATA._isDemo) return '';
+  const libres = STATE.comidasLibres || [];
+  const items = libres.map(cl => `
+    <div class="cl-item">
+      <div class="cl-info">
+        <div class="cl-desc">${cl.descripcion}${cl.hora ? ` <span class="cl-hora">${String(cl.hora).slice(0,5)}</span>` : ''}</div>
+        <div class="cl-macros">${Math.round(cl.kcal)} kcal · ${Math.round(cl.prot)}p / ${Math.round(cl.carb)}c / ${Math.round(cl.fat)}g <span class="cl-est">estimado</span></div>
+      </div>
+      <button class="cl-del" data-cl-del="${cl.id}" title="Borrar">✕</button>
+    </div>`).join('');
+  const tieneVision = !!(window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL);
+  return `
+  <section class="comidas-libres">
+    <div class="cl-title">Comidas libres <span class="cl-sub">fuera del plan</span></div>
+    ${items || ''}
+    <div class="cl-actions">
+      ${tieneVision ? `<button class="btn-custom-food" id="clFotoBtn">📷 Registrar comida con foto</button>` : ''}
+      <button class="btn-custom-food" id="clManualBtn">＋ Agregar a mano</button>
+      <input type="file" id="clFotoInput" accept="image/*" capture="environment" style="display:none">
+    </div>
+  </section>`;
+}
+
+// Modal de comida libre: con estimación de la IA (todo EDITABLE) o vacío (manual).
+function openComidaLibreModal(est) {
+  const ahora = new Date();
+  const horaDef = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
+  const d = est || {};
+  const detalleHtml = (d.alimentos && d.alimentos.length)
+    ? `<div class="cl-detalle">${d.alimentos.map(a => `<span>${a.nombre} ~${Math.round(a.gramos)}g</span>`).join(' · ')}</div>`
+    : '';
+  $('#modalHost').innerHTML = `
+  <div class="modal-back" id="clModalBack">
+    <div class="modal-sheet" style="max-width:420px">
+      <div class="modal-handle"></div>
+      <div class="modal-title">${est ? 'Revisá la estimación' : 'Comida libre'}</div>
+      ${est ? `<div class="cf-hint">La IA estimó esto de tu foto — es un ESTIMATIVO: corregí lo que haga falta.${d.confianza === 'baja' ? ' ⚠ La foto se leyó con poca claridad.' : ''}</div>` : `<div class="cf-hint">Registrá algo que comiste fuera del plan.</div>`}
+      ${detalleHtml}
+      <div class="cf-form">
+        <label class="cf-field"><span>Qué comiste</span>
+          <input type="text" id="clDesc" placeholder="Ej: Milanesa con puré" value="${(d.descripcion || '').replace(/"/g,'&quot;')}" />
+        </label>
+        <div class="cf-macros-row">
+          <label class="cf-field"><span>Kcal</span><input type="number" id="clKcal" min="0" step="1" value="${d.kcal != null ? Math.round(d.kcal) : ''}" placeholder="0" /></label>
+          <label class="cf-field"><span>Hora</span><input type="time" id="clHora" value="${horaDef}" /></label>
+        </div>
+        <div class="cf-macros-row">
+          <label class="cf-field"><span>Prot (g)</span><input type="number" id="clProt" min="0" step="0.1" value="${d.prot != null ? d.prot : ''}" placeholder="0" /></label>
+          <label class="cf-field"><span>Carbo (g)</span><input type="number" id="clCarb" min="0" step="0.1" value="${d.carb != null ? d.carb : ''}" placeholder="0" /></label>
+          <label class="cf-field"><span>Grasa (g)</span><input type="number" id="clFat" min="0" step="0.1" value="${d.fat != null ? d.fat : ''}" placeholder="0" /></label>
+        </div>
+        <div class="cf-err" id="clErr" style="display:none"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:var(--space-3)">
+        <button class="btn-secondary" style="flex:1" onclick="document.getElementById('modalHost').innerHTML=''">Cancelar</button>
+        <button class="btn-primary" style="flex:2" id="clGuardarBtn">Registrar comida</button>
+      </div>
+    </div>
+  </div>`;
+  $('#clModalBack').addEventListener('click', e => { if (e.target === e.currentTarget) $('#modalHost').innerHTML = ''; });
+  $('#clGuardarBtn').addEventListener('click', async () => {
+    const desc = $('#clDesc').value.trim();
+    const num = id => { const v = parseFloat($('#' + id).value); return isFinite(v) && v > 0 ? v : 0; };
+    const kcal = num('clKcal'), prot = num('clProt'), carb = num('clCarb'), fat = num('clFat');
+    const err = $('#clErr');
+    if (!desc) { err.textContent = 'Contá qué comiste.'; err.style.display = 'block'; return; }
+    if (kcal <= 0 && prot <= 0 && carb <= 0 && fat <= 0) { err.textContent = 'Cargá al menos las calorías o algún macro.'; err.style.display = 'block'; return; }
+    const btn = $('#clGuardarBtn'); btn.disabled = true; btn.textContent = 'Guardando…';
+    const ok = await guardarComidaLibre({
+      hora: $('#clHora').value || null, descripcion: desc,
+      kcal, prot, carb, fat,
+      detalle: (d.alimentos && d.alimentos.length) ? { alimentos: d.alimentos, confianza: d.confianza || null } : null,
+    });
+    if (ok) { $('#modalHost').innerHTML = ''; }
+    else { btn.disabled = false; btn.textContent = 'Registrar comida'; err.textContent = 'No se pudo guardar. Probá de nuevo.'; err.style.display = 'block'; }
+  });
 }
 
 function renderMacroTarget(cls, label, target, unit) {
@@ -3626,6 +3761,35 @@ function bindDietEvents() {
     const current = STATE.comidasMarcadas[comidaId]?.estado;
     const nuevo = current === accion ? null : accion; // toggle: re-tap desmarca
     toggleComidaEstado(comidaId, nuevo);
+  }));
+
+  // F10 — Comidas libres: foto → estimación editable; manual; borrar.
+  const clFoto = document.getElementById('clFotoBtn');
+  const clInput = document.getElementById('clFotoInput');
+  if (clFoto && clInput) {
+    clFoto.addEventListener('click', () => clInput.click());
+    clInput.addEventListener('change', async () => {
+      const file = clInput.files && clInput.files[0];
+      if (!file) return;
+      clFoto.disabled = true;
+      const txtOrig = clFoto.textContent;
+      clFoto.textContent = '📷 Analizando el plato… (~30s)';
+      try {
+        const est = await visionDesdeFoto(file, 'plato');
+        openComidaLibreModal(est);
+      } catch (e) {
+        alert('No pudimos leer la foto (' + (e.message || 'error') + '). Podés cargarla a mano.');
+      } finally {
+        clFoto.disabled = false;
+        clFoto.textContent = txtOrig;
+        clInput.value = '';
+      }
+    });
+  }
+  const clManual = document.getElementById('clManualBtn');
+  if (clManual) clManual.addEventListener('click', () => openComidaLibreModal(null));
+  $$('[data-cl-del]').forEach(btn => btn.addEventListener('click', () => {
+    borrarComidaLibre(btn.getAttribute('data-cl-del'));
   }));
   // Consumo parcial: incluir/excluir un alimento de una comida marcada "comido"
   $$('[data-food-comido]').forEach(btn => btn.addEventListener('click', e => {
@@ -4536,6 +4700,8 @@ async function init() {
   loadMyday(); // inicia en background; cuando termina, STATE.mydayLoaded = true
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();
+  // F10 — comidas libres de hoy (foto/manual), suman al anillo
+  loadComidasLibres();
   // F1 — días completados de la semana (pinta el picker cuando llega)
   loadDiasCompletados();
 
