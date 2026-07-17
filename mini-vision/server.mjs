@@ -82,15 +82,23 @@ async function validarToken(token) {
 }
 
 // ── Correr codex exec con la imagen ──
+// OJO: `-i` acepta MÚLTIPLES archivos → el prompt va después de `--` (si no,
+// codex lo trata como otra imagen y se cuelga leyendo stdin). `mcp_servers={}`
+// deshabilita los MCP configurados en la Mini (no hacen falta y demoran).
 function runCodex(imgPath, prompt) {
   return new Promise((resolve, reject) => {
-    const args = ['exec', '--skip-git-repo-check', '-s', 'read-only', '-i', imgPath, prompt];
+    const args = ['exec', '--skip-git-repo-check', '-s', 'read-only',
+                  '-c', 'mcp_servers={}', '-i', imgPath, '--', prompt];
     const child = execFile(CODEX_BIN, args, { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024, cwd: tmpdir() },
       (err, stdout, stderr) => {
+        if (err) console.error('[vision] codex err:', err.message, '| stderr:', String(stderr).slice(-500));
         if (err && !stdout) return reject(new Error(`codex: ${err.message} ${String(stderr).slice(0, 300)}`));
         resolve(String(stdout));
       });
     child.on('error', reject);
+    // CLAVE: cerrar stdin del child. Sin esto codex detecta un pipe abierto,
+    // queda esperando input que nunca llega y muere por timeout con stdout vacío.
+    if (child.stdin) child.stdin.end();
   });
 }
 
@@ -154,7 +162,10 @@ const server = createServer(async (req, res) => {
       await writeFile(imgPath, buf);
       const out = await runCodex(imgPath, PROMPTS[tipo]);
       const json = extraerJSON(out);
-      if (!json) return send(res, 502, { ok: false, error: 'no se pudo interpretar la foto, probá con más luz' }, origin);
+      if (!json) {
+        console.error('[vision] sin JSON parseable. Output de codex (últimos 800):', String(out).slice(-800));
+        return send(res, 502, { ok: false, error: 'no se pudo interpretar la foto, probá con más luz' }, origin);
+      }
       send(res, 200, { ok: true, data: json }, origin);
     } catch (e) {
       send(res, 502, { ok: false, error: `visión falló: ${String(e.message || e).slice(0, 200)}` }, origin);
