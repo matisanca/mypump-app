@@ -4049,6 +4049,13 @@ function renderMydaySalud() {
   const vals = fechas.map(f => _saludValor('pasos', f)).filter(v => v != null);
   const prom = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
   const actHoy = _saludValor('actividad_min', TODAY_LOCAL);
+  // F9a — recuperación: sueño anoche y HRV (si el wearable los manda).
+  // El sueño de "anoche" suele registrarse con la fecha de hoy; si no, ayer.
+  const dAyer = new Date(TODAY_LOCAL + 'T00:00:00'); dAyer.setDate(dAyer.getDate() - 1);
+  const ayer = `${dAyer.getFullYear()}-${String(dAyer.getMonth()+1).padStart(2,'0')}-${String(dAyer.getDate()).padStart(2,'0')}`;
+  const suenoMin = _saludValor('sueno_min', TODAY_LOCAL) ?? _saludValor('sueno_min', ayer);
+  const hrv      = _saludValor('hrv_ms', TODAY_LOCAL) ?? _saludValor('hrv_ms', ayer);
+  const fmtSueno = m => `${Math.floor(m/60)}h ${String(Math.round(m%60)).padStart(2,'0')}`;
 
   el.innerHTML = `
     <div class="myday-section">
@@ -4067,6 +4074,16 @@ function renderMydaySalud() {
             <span class="salud-lbl">min activos</span>
           </div>` : ''}
         </div>
+        ${(suenoMin != null || hrv != null) ? `<div class="salud-row" style="margin-top:var(--space-3)">
+          ${suenoMin != null ? `<div class="salud-metric">
+            <span class="salud-num">${fmtSueno(suenoMin)}</span>
+            <span class="salud-lbl">dormiste anoche</span>
+          </div>` : ''}
+          ${hrv != null ? `<div class="salud-metric">
+            <span class="salud-num">${Math.round(hrv)}<small style="font-size:14px"> ms</small></span>
+            <span class="salud-lbl">HRV (recuperación)</span>
+          </div>` : ''}
+        </div>` : ''}
         <div class="salud-sub">Promedio ${vals.length} día${vals.length !== 1 ? 's' : ''}: <strong>${fmt(prom)}</strong> pasos</div>
       </div>
     </div>`;

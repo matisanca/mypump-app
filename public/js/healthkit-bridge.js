@@ -18,12 +18,16 @@
   const isNative = !!(Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform());
   const HEALTH = () => (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Health) || null;
 
-  // dataType del plugin → tipo interno de mypump_salud_diaria. Extensible a
-  // 'heartRate'/'restingHeartRate'/'sleep'/'weight' cuando se quieran sumar.
+  // dataType del plugin → tipo interno de mypump_salud_diaria.
+  // agg: cómo se agrega el bucket diario ('sum' para volúmenes, 'average' para
+  // métricas puntuales como HRV/FC reposo).
   const MAP = [
-    { dataType: 'steps',        tipo: 'pasos' },
-    { dataType: 'exerciseTime', tipo: 'actividad_min' },
-    { dataType: 'calories',     tipo: 'kcal_activas' },  // energía activa
+    { dataType: 'steps',                tipo: 'pasos',         agg: 'sum' },
+    { dataType: 'exerciseTime',         tipo: 'actividad_min', agg: 'sum' },
+    { dataType: 'calories',             tipo: 'kcal_activas',  agg: 'sum' },   // energía activa
+    { dataType: 'sleep',                tipo: 'sueno_min',     agg: 'sum' },   // minutos dormidos
+    { dataType: 'heartRateVariability', tipo: 'hrv_ms',        agg: 'average' },
+    { dataType: 'restingHeartRate',     tipo: 'fc_reposo',     agg: 'average' },
   ];
 
   function ymd(iso) {
@@ -60,14 +64,14 @@
     start.setDate(start.getDate() - 7);
     const registros = [];
 
-    for (const { dataType, tipo } of MAP) {
+    for (const { dataType, tipo, agg } of MAP) {
       try {
         const res = await h.queryAggregated({
           dataType,
           startDate: start.toISOString(),
           endDate: end.toISOString(),
           bucket: 'day',
-          aggregation: 'sum',
+          aggregation: agg || 'sum',
         });
         for (const s of (res && res.samples) || []) {
           const val = Math.round(Number(s.value) || 0);
