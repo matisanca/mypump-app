@@ -977,14 +977,30 @@ function lastSessionStr(exId) {
   const top = h.reduce((a,b) => (b.peso_kg||0) > (a.peso_kg||0) ? b : a, h[0]);
   const reps = top.reps_realizadas || top.reps;
   const rir  = (top.rir_real != null) ? ` · RIR ${top.rir_real}` : '';
-  return `${top.peso_kg}kg × ${reps}${rir}`;
+  // F4 — si el récord tiene variante (agarre/nivel en notas), mostrarla.
+  const varTag = top.notas ? ` (${top.notas})` : '';
+  return `${top.peso_kg}kg × ${reps}${rir}${varTag}`;
 }
 
-// Registro de referencia = la MISMA serie en la última sesión de este ejercicio.
-// Filtra PRIMERO a la última sesión (filas DESC → h[0] es la más reciente) y
-// recién ahí busca la serie, para no mezclar valores de semanas distintas.
-function _ultimaSerieRef(exId, idx) {
-  const h = DATA.historico_por_ejercicio[exId] || [];
+// Variante activa del ejercicio (F4): la elegida en el picker, o null si el
+// ejercicio no tiene variantes. También devuelve si es la opción default.
+function _varianteActiva(exId) {
+  const s = STATE.session[exId];
+  if (!s || !s.variante) return { v: null, esDefault: false };
+  const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
+  const ops = ex ? getVariantesEj(ex) : null;
+  return { v: s.variante, esDefault: !!(ops && ops[0] === s.variante) };
+}
+
+// Registro de referencia = la MISMA serie en la última sesión de este ejercicio,
+// FILTRADO por variante cuando el ejercicio la tiene (F4): el sugerido de
+// "Soga" sale del histórico de Soga, nunca del de Barra. Los registros viejos
+// sin variante (notas null, pre-feature) cuentan solo para la opción DEFAULT.
+function _ultimaSerieRef(exId, idx, variante, esDefault) {
+  let h = DATA.historico_por_ejercicio[exId] || [];
+  if (variante) {
+    h = h.filter(r => r.notas === variante || (esDefault && r.notas == null));
+  }
   if (!h.length) return null;
   const dayOf = iso => (iso || '').split('T')[0];
   const lastDay = dayOf(h[0].registrado_en);
@@ -993,12 +1009,14 @@ function _ultimaSerieRef(exId, idx) {
 }
 // Peso que hiciste la última vez en esta serie (para el default gris + one-tap).
 function suggestedKg(exId, idx) {
-  const ref = _ultimaSerieRef(exId, idx);
+  const { v, esDefault } = _varianteActiva(exId);
+  const ref = _ultimaSerieRef(exId, idx, v, esDefault);
   return ref && ref.peso_kg != null ? String(ref.peso_kg) : '';
 }
 // Reps que hiciste la última vez en esta serie (default gris + one-tap).
 function suggestedReps(exId, idx) {
-  const ref = _ultimaSerieRef(exId, idx);
+  const { v, esDefault } = _varianteActiva(exId);
+  const ref = _ultimaSerieRef(exId, idx, v, esDefault);
   const r = ref ? (ref.reps_realizadas != null ? ref.reps_realizadas : ref.reps) : null;
   return r != null ? String(r) : '';
 }
@@ -1034,7 +1052,9 @@ function prevSessionStr(exId) {
   else { const d = new Date(prev[0].registrado_en); rel = d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }); }
   const reps = top.reps_realizadas != null ? top.reps_realizadas : top.reps;
   const nSeries = sets.length;
-  return { val: `${top.peso_kg}kg × ${reps}${nSeries > 1 ? ` · ${nSeries} series` : ''}`, rel };
+  // F4 — mostrar la variante (agarre/nivel) del set tope, si la tiene.
+  const varTag = top.notas ? ` (${top.notas})` : '';
+  return { val: `${top.peso_kg}kg × ${reps}${varTag}${nSeries > 1 ? ` · ${nSeries} series` : ''}`, rel };
 }
 
 /* ---- PROGRESION HELPER ---- */
@@ -2296,13 +2316,15 @@ function renderExCard(ex, blockIdx) {
     const activeIdx = exState.sets.findIndex(s => !s.confirmed);
     const _progNota = isWarmup ? null : computeProgresionNota(ex, DATA.rutina.semana_actual);
     const _noKg = exNoKg(ex);
-    const _variantes = getVariantesEj(ex);
+    const _varEntry = getVariantesEntry(ex);
+    const _variantes = _varEntry ? _varEntry.ops : null;
+    const _varLabel = _varEntry ? (_varEntry.label || 'Variante') : '';
     const _varActual = (exState.variante || (_variantes ? _variantes[0] : ''));
     const _diaFin = _diaFinalizado;
     // Selector de NIVEL/variante para ejercicios que lo tienen (ej: rueda abdominal).
     const variantePicker = _variantes ? `
       <div class="ex-variante">
-        <span class="ex-variante-lbl">Nivel</span>
+        <span class="ex-variante-lbl">${_varLabel}</span>
         <div class="ex-variante-opts">
           ${_variantes.map(o => `<button class="ex-variante-op${_varActual===o?' is-active':''}" data-variante="${ex.id}|${o}"${_diaFin?' disabled':''}>${o}</button>`).join('')}
         </div>
@@ -2400,15 +2422,31 @@ function renderExCard(ex, blockIdx) {
   return `<article class="${cls}">${head}${panel}</article>`;
 }
 
-// Ejercicios de PESO CORPORAL: se miden en REPS, sin kg. Detección conservadora
-// por nombre (solo casos claramente sin carga externa, para no ocultar el kg donde
-// sí va). Los que tienen variante de dificultad también cuentan como sin peso.
+// VARIANTES por ejercicio (F4): un mismo ejercicio se hace con distinto agarre
+// o nivel, y el peso/historial debe discriminarse por variante. La elegida se
+// guarda en registros_carga.notas y el sugerido se filtra por ella.
+//  - label: título del picker ("Nivel" o "Agarre").
+//  - sinPeso: true solo para las de peso corporal (rueda) — las de agarre
+//    (tríceps en polea, jalón…) SÍ llevan kg.
 const VARIANTES_EJ = [
   { re: /rueda\s*abdom|ab\s*wheel|abdominal\s*wheel|rollout|roller\s*abdom/i,
-    ops: ['Rodillas flexionadas', 'Rodillas extendidas'] },
+    ops: ['Rodillas flexionadas', 'Rodillas extendidas'], label: 'Nivel', sinPeso: true },
+  { re: /(tr(i|í)ceps|pushdown|jal(o|ó)n\s+de\s+tr(i|í)ceps).*(polea|cable)|polea.*tr(i|í)ceps/i,
+    ops: ['Barra', 'Soga', 'Maneral'], label: 'Agarre' },
+  { re: /jal(o|ó)n\s+(al|a la|de)\s+(pecho|nuca)|pulldown|dorsalera/i,
+    ops: ['Prono', 'Supino', 'Neutro'], label: 'Agarre' },
+  { re: /remo\s+(en\s+)?(polea|cable|gironda)|gironda/i,
+    ops: ['Neutro', 'Ancho', 'Supino'], label: 'Agarre' },
+  { re: /curl\s+.*(polea|cable)|polea.*curl/i,
+    ops: ['Barra', 'Soga'], label: 'Agarre' },
 ];
+// Entrada completa de variantes del ejercicio (o null).
+function getVariantesEntry(ex) {
+  return VARIANTES_EJ.find(v => v.re.test((ex && ex.nombre) || '')) || null;
+}
+// Solo las opciones (compat con los usos existentes).
 function getVariantesEj(ex) {
-  const m = VARIANTES_EJ.find(v => v.re.test((ex && ex.nombre) || ''));
+  const m = getVariantesEntry(ex);
   return m ? m.ops : null;
 }
 const _SIN_PESO_RE = /rueda\s*abdom|ab\s*wheel|rollout|plancha\b|abdominal(es)?\b|crunch|lagartija|flexi(o|ó)n(es)?\s+de\s+brazo|elevaci(o|ó)n(es)?\s+de\s+piernas|mountain\s*climber|hollow/i;
@@ -2420,7 +2458,10 @@ function esSinPeso(ex) {
   if (!ex || ex.tipo === 'calentamiento') return false;   // el warmup se maneja aparte
   const nombre = ex.nombre || '';
   if (_CON_CARGA_RE.test(nombre)) return false;           // carga externa GANA
-  return !!getVariantesEj(ex) || _SIN_PESO_RE.test(nombre);
+  const entry = getVariantesEntry(ex);
+  // Solo las variantes marcadas sinPeso (rueda) anulan el kg; las de AGARRE
+  // (tríceps polea, jalón…) llevan peso normal.
+  return (entry ? entry.sinPeso === true : false) || _SIN_PESO_RE.test(nombre);
 }
 // ¿Este ejercicio NO usa columna de peso? (warmup o peso corporal)
 function exNoKg(ex) {
