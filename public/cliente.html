@@ -147,6 +147,12 @@ main{padding:var(--space-4)}
 .ex-variante-op{flex:1;padding:8px 10px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;line-height:1.2}
 .ex-variante-op.is-active{background:var(--color-brand);color:var(--color-on-brand);border-color:var(--color-brand)}
 .ex-variante-op:disabled{opacity:.5;cursor:default}
+/* F5 — toggle "Fijar sustitución" en el modal de swap de ejercicio */
+.swap-fijar{display:flex;align-items:flex-start;gap:10px;margin-top:var(--space-3);padding:10px 12px;border:1px dashed var(--color-border);border-radius:var(--radius-md);cursor:pointer;background:var(--color-bg-secondary)}
+.swap-fijar input{margin-top:2px;accent-color:var(--color-brand)}
+.swap-fijar span{display:flex;flex-direction:column;gap:2px}
+.swap-fijar strong{font-size:13px;color:var(--color-text-primary)}
+.swap-fijar small{font-size:11px;color:var(--color-text-muted);line-height:1.35}
 .set-confirm{width:44px;height:48px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);color:var(--color-text-secondary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .set-confirm:hover{background:var(--color-text-primary);color:var(--color-bg-primary);border-color:var(--color-text-primary)}
 .set-row.is-confirmed .set-confirm{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
@@ -1259,7 +1265,7 @@ function getEffectiveEx(ex) {
   const sw = STATE.exerciseSwaps[ex.id];
   let eff;
   if (sw) {
-    eff = { ...ex, nombre: sw.current.nombre, images: sw.current.images, _isSwapped: true, _swapSlug: sw.current.slug };
+    eff = { ...ex, nombre: sw.current.nombre, images: sw.current.images, _isSwapped: true, _swapSlug: sw.current.slug, _swapFijado: !!sw.fijado };
   } else {
     eff = { ...ex };
     // Si la rutina NO trae foto (ejercicio creado en NutriPlan sin match), la
@@ -1284,6 +1290,25 @@ function getEffectiveEx(ex) {
 
 function persistExerciseSwaps() {
   localStorage.setItem(`mypump_exercise_swaps_${RUTINA_ID||'demo'}`, JSON.stringify(STATE.exerciseSwaps));
+}
+
+// F5 — Los swaps NO fijados valen solo por la sesión de su día: se descartan
+// cuando cambió la semana o cuando ese día ya quedó finalizado. Los FIJADOS
+// persisten hasta que el cliente los revierta. Corre en el bootstrap, al traer
+// los días completados y al finalizar el día.
+function pruneExerciseSwaps() {
+  if (!DATA || !DATA.rutina) return;
+  const semanaActual = DATA.rutina.semana_actual || 1;
+  let cambio = false;
+  for (const exId in STATE.exerciseSwaps) {
+    const s = STATE.exerciseSwaps[exId];
+    if (!s || s.fijado) continue;
+    const otraSemana  = s.semana != null && s.semana !== semanaActual;
+    const diaCerrado  = (s.diaId && STATE.diasCompletados.has(s.diaId))
+                     || (s.diaId === (DATA.dia && DATA.dia.id) && _diaFinalizado);
+    if (otraSemana || diaCerrado) { delete STATE.exerciseSwaps[exId]; cambio = true; }
+  }
+  if (cambio) persistExerciseSwaps();
 }
 
 /* ---- COMENTARIOS (coach ↔ cliente) ----
@@ -1692,6 +1717,8 @@ async function writeFinish(notas) {
   // F1 — marcar el día en verde en el picker, al instante.
   STATE.diasCompletados.add(DATA.dia.id);
   renderDayPicker();
+  // F5 — al cerrar el día, los swaps no fijados de este día expiran.
+  pruneExerciseSwaps();
   renderTrain();
 }
 
@@ -1704,6 +1731,8 @@ async function loadDiasCompletados() {
     const rows = await window.mypumpDB.getSesionesSemana(TOKEN, DATA.rutina.semana_actual || 1);
     STATE.diasCompletados = new Set((rows || []).filter(r => r.finalizada_en).map(r => r.dia_id));
     renderDayPicker();
+    // F5 — con los días completados a mano, expirar swaps no fijados de días cerrados.
+    pruneExerciseSwaps();
   } catch (_) { /* sin red: el picker queda sin marcas, no rompe */ }
 }
 
@@ -2296,7 +2325,7 @@ function renderExCard(ex, blockIdx) {
       <div class="ex-status">${statusIcon}</div>
       ${thumbHtml}
       <div class="ex-body">
-        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="Ejercicio sustituido">↔</span>` : ''}${manualBadge}${(() => { const u = getUnreadFor('ejercicio', ex.id); return u > 0 ? ` <span class="ex-comment-badge" title="${u} comentario(s) nuevo(s) de Mati">💬 ${u}</span>` : ''; })()}</div>
+        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="${ex._swapFijado ? 'Sustitución fijada — se mantiene las próximas semanas' : 'Sustituido solo por hoy — la próxima sesión vuelve el original'}">${ex._swapFijado ? '🔒' : '↔ hoy'}</span>` : ''}${manualBadge}${(() => { const u = getUnreadFor('ejercicio', ex.id); return u > 0 ? ` <span class="ex-comment-badge" title="${u} comentario(s) nuevo(s) de Mati">💬 ${u}</span>` : ''; })()}</div>
         <div class="ex-meta">
           ${isWarmup ? '<span class="chip warm">CALENT.</span>' : ''}
           ${(ex.tipo === 'cardio' || prog.series === null)
@@ -4421,6 +4450,14 @@ async function init() {
   STATE.exerciseSwaps = JSON.parse(
     localStorage.getItem(`mypump_exercise_swaps_${RUTINA_ID||'demo'}`) || '{}'
   );
+  // F5 — compat: swaps guardados antes del flag "fijado" se tratan como
+  // FIJADOS (la gente los eligió cuando el swap era permanente; no borrarles nada).
+  for (const k in STATE.exerciseSwaps) {
+    if (STATE.exerciseSwaps[k] && STATE.exerciseSwaps[k].fijado === undefined) {
+      STATE.exerciseSwaps[k].fijado = true;
+    }
+  }
+  pruneExerciseSwaps();
 
   // Catálogo de ejercicios en memoria: cache local sincrónico + refresh async.
   window.MYPUMP_EJERCICIO_DB = window.MYPUMP_EJERCICIO_DB || [];
@@ -4753,6 +4790,11 @@ function renderExSwapModal() {
       </div>
       <div class="swap-subs-title">Variantes del mismo movimiento</div>
       ${subsHtml}
+      <label class="swap-fijar">
+        <input type="checkbox" id="exSwapFijar" ${_exSwapState.fijar ? 'checked' : ''}>
+        <span><strong>🔒 Fijar para las próximas semanas</strong>
+        <small>Si no lo fijás, vale solo por hoy: la próxima sesión vuelve “${ex._origNombre || ex.nombre}”.</small></span>
+      </label>
       <div style="display:flex;gap:8px;margin-top:var(--space-3)">
         <button class="btn-secondary" style="flex:1" onclick="closeExSwapModal()">Cancelar</button>
         <button class="btn-primary" style="flex:2" id="exSwapConfirmBtn" ${_exSwapState.selected===null?'disabled':''} onclick="confirmExSwap()">Sustituir</button>
@@ -4804,9 +4846,15 @@ function confirmExSwap() {
   const sub = all[_exSwapState.selected];
   if (!sub) return;
 
+  // F5 — por defecto el swap vale SOLO por hoy (vuelve el original en la
+  // próxima sesión); "Fijar" lo mantiene para las semanas siguientes.
+  const fijado = !!document.getElementById('exSwapFijar')?.checked;
   STATE.exerciseSwaps[ex.id] = {
     original: { slug: ex._origSlug || null, nombre: ex._origNombre || ex.nombre, images: ex._origImages || null },
     current:  { slug: sub.slug, nombre: sub.name, equipment: sub.equipmentRaw, images: sub.images },
+    fijado,
+    semana:   DATA.rutina.semana_actual || 1,
+    diaId:    DATA.dia.id,
   };
   persistExerciseSwaps();
   closeExSwapModal();
