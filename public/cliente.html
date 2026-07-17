@@ -493,6 +493,11 @@ main{padding:var(--space-4)}
 .cf-field input,.cf-field select{height:40px;padding:0 var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:14px;outline:none;font-family:inherit;color:var(--color-text-primary)}
 .cf-field input:focus,.cf-field select:focus{border-color:var(--color-brand);background:var(--color-bg-primary)}
 .cf-hint{font-size:11px;color:var(--color-text-muted);font-weight:400;letter-spacing:0;text-transform:none;line-height:1.3;margin-top:2px}
+/* F7 — escanear etiqueta */
+.cf-scan-btn{display:block;width:100%;margin:var(--space-3) 0;padding:10px 12px;border:1px dashed color-mix(in oklab,var(--color-brand) 50%,var(--color-border));background:var(--color-brand-subtle);border-radius:var(--radius-md);font-size:13px;color:var(--color-text-primary);cursor:pointer;text-align:left;line-height:1.35}
+.cf-scan-btn small{display:block;color:var(--color-text-muted);font-size:11px}
+.cf-scan-btn:disabled{opacity:.6}
+.cf-scan-status{margin:0 0 var(--space-3);padding:8px 10px;border-radius:var(--radius-md);background:var(--color-bg-secondary);border:1px solid var(--color-border);font-size:12px;line-height:1.4;color:var(--color-text-secondary)}
 .cf-macros-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
 .cf-unit-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}
 .cf-err{padding:var(--space-2) var(--space-3);background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border:1px solid #ef4444;border-radius:var(--radius-md);color:#ef4444;font-size:12px;margin-top:var(--space-2)}
@@ -4884,6 +4889,10 @@ function openCustomFoodModal() {
       <div class="modal-handle"></div>
       <div class="modal-title">Crear alimento personalizado</div>
       <div class="cf-hint">Ingresá los macros del alimento por porción (lo que realmente vas a comer).</div>
+      ${(window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) ? `
+      <button class="cf-scan-btn" id="cfScanBtn" type="button">📷 <strong>Escanear etiqueta</strong> <small>— sacale una foto a la tabla nutricional y se completa solo (después lo podés corregir)</small></button>
+      <input type="file" id="cfScanInput" accept="image/*" capture="environment" style="display:none">
+      <div class="cf-scan-status" id="cfScanStatus" hidden></div>` : ''}
       <div class="cf-form">
         <label class="cf-field"><span>Nombre</span>
           <input type="text" id="cfName" placeholder="Ej: Pan integral marca X" />
@@ -4943,8 +4952,84 @@ function openCustomFoodModal() {
   }
   unitSel.addEventListener('change', syncUnitGramsField);
   syncUnitGramsField();
+
+  // F7 — Escanear etiqueta: foto → Codex en la Mini → prefill EDITABLE del form.
+  const scanBtn = $('#cfScanBtn'), scanInput = $('#cfScanInput'), scanStatus = $('#cfScanStatus');
+  if (scanBtn && scanInput) {
+    scanBtn.addEventListener('click', () => scanInput.click());
+    scanInput.addEventListener('change', async () => {
+      const file = scanInput.files && scanInput.files[0];
+      if (!file) return;
+      scanBtn.disabled = true;
+      scanStatus.hidden = false;
+      scanStatus.textContent = '📷 Leyendo la etiqueta… puede tardar ~30 segundos';
+      try {
+        const d = await visionDesdeFoto(file, 'etiqueta');
+        // Prefill (todo editable). porcion_g=100 → valores por 100 g (unidad g);
+        // otra porción → unidad "porcion" con sus gramos.
+        if (d.nombre) $('#cfName').value = d.nombre;
+        if (d.kcal != null) $('#cfKcal').value = Math.round(d.kcal);
+        if (d.prot != null) $('#cfProt').value = d.prot;
+        if (d.carb != null) $('#cfCarb').value = d.carb;
+        if (d.fat  != null) $('#cfFat').value  = d.fat;
+        const porg = Number(d.porcion_g);
+        if (isFinite(porg) && porg > 0 && Math.round(porg) !== 100) {
+          unitSel.value = 'porcion';
+          syncUnitGramsField();
+          const ug = $('#cfUnitGrams'); if (ug) ug.value = Math.round(porg);
+        } else {
+          unitSel.value = 'g';
+          syncUnitGramsField();
+        }
+        scanStatus.textContent = d.confianza === 'baja'
+          ? '⚠ La etiqueta se leyó con poca claridad — revisá los valores antes de guardar.'
+          : '✓ Etiqueta leída. Revisá los valores y tocá "Crear y usar".';
+      } catch (e) {
+        scanStatus.textContent = '⚠ No pudimos leer la foto (' + (e.message || 'error') + '). Cargalo a mano o probá otra foto con más luz.';
+      } finally {
+        scanBtn.disabled = false;
+        scanInput.value = '';
+      }
+    });
+  }
+
   // Auto-focus nombre
   setTimeout(() => { const n = $('#cfName'); if (n) n.focus(); }, 60);
+}
+
+/* ---- VISIÓN (F7/F10): foto → JSON vía el servicio Codex de la Mini ---- */
+async function visionDesdeFoto(file, tipo) {
+  const url = (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '';
+  if (!url) throw new Error('servicio no configurado');
+  const b64 = await _fotoABase64Reducida(file, 1024, 0.8);
+  const res = await fetch(url + '/vision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: TOKEN, tipo, imagen_base64: b64 }),
+  });
+  const j = await res.json().catch(() => null);
+  if (!res.ok || !j || !j.ok) throw new Error((j && j.error) || 'servicio no disponible');
+  return j.data;
+}
+// Reduce la foto client-side (≤maxPx, jpeg) para no subir 8 MB por 4G del gym.
+function _fotoABase64Reducida(file, maxPx, calidad) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      try {
+        const sc = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * sc));
+        c.height = Math.max(1, Math.round(img.height * sc));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', calidad));
+      } catch (e) { reject(e); }
+      finally { URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('no se pudo leer la imagen')); };
+    img.src = url;
+  });
 }
 
 function closeCustomFoodModal() {
