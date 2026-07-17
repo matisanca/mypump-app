@@ -3384,8 +3384,19 @@ function porcionReferencia(food) {
     if (g < 8) return '1 cucharadita';
     return fmtCount(g / 16, 'cucharada');
   }
-  // Aceite / manteca / líquidos — cucharada = 15 ml, cucharadita = 5 ml.
+  // F6 — Líquidos que se toman en VASO (leche, bebidas, caldos): vaso = 200 ml.
+  // Antes caían en la rama de cucharadas del aceite → "200 ml de leche = 13
+  // cucharadas". Va ANTES de la rama de aceite.
+  if (has('leche', 'bebida', 'jugo', 'zumo', 'licuado', 'gaseosa', 'kefir',
+          'caldo', 'infusion', 'yogur bebible', 'chocolatada')) {
+    return fmtCount(g / 200, 'vaso');
+  }
+  // Aceite / manteca / líquidos chicos — cucharada = 15 ml, cucharadita = 5 ml.
   if (isMl || has('aceite', 'oliva', 'ghee') || has('manteca', 'mantequilla')) {
+    // Un ml genérico grande (>100) es una bebida, no un condimento → vaso.
+    if (isMl && g > 100 && !has('aceite', 'oliva', 'ghee', 'manteca', 'mantequilla')) {
+      return fmtCount(g / 200, 'vaso');
+    }
     if (g < 7.5) return '1 cucharadita';
     return fmtCount(g / 15, 'cucharada');
   }
