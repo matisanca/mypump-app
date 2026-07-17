@@ -454,6 +454,19 @@ main{padding:var(--space-4)}
 .ex-comment-send:disabled{opacity:.6;cursor:default}
 /* ── Nota automática de progresión ── */
 .prog-banner{background:var(--color-brand-subtle);border:1px solid var(--color-brand);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin-bottom:var(--space-3);font-size:13px;line-height:1.4;color:var(--color-text-primary)}
+/* F3 — Start + cronómetro de sesión */
+.session-start{display:flex;align-items:center;gap:var(--space-3);width:100%;padding:var(--space-3) var(--space-4);margin-bottom:var(--space-3);background:var(--color-brand);color:var(--color-on-brand);border:0;border-radius:var(--radius-md);cursor:pointer;text-align:left}
+.session-start:disabled{opacity:.6}
+.session-start .ss-icon{font-size:18px;flex:0 0 auto}
+.session-start .ss-txt{display:flex;flex-direction:column;gap:2px}
+.session-start .ss-txt strong{font-size:15px}
+.session-start .ss-txt small{font-size:11px;opacity:.85;line-height:1.3}
+.session-crono{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);margin-bottom:var(--space-3);background:var(--color-bg-primary);border:1px solid color-mix(in oklab,var(--color-brand) 40%,var(--color-border));border-radius:var(--radius-md);font-family:var(--font-mono)}
+.session-crono .sc-dot{width:8px;height:8px;border-radius:50%;background:var(--color-brand);animation:sc-pulse 1.6s ease infinite}
+.session-crono .sc-lbl{font-size:9px;font-weight:800;letter-spacing:.1em;color:var(--color-brand)}
+.session-crono .sc-time{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--color-text-primary)}
+.session-crono .sc-hint{margin-left:auto;font-size:10px;color:var(--color-text-muted)}
+@keyframes sc-pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .prog-banner.is-calibracion{background:var(--color-bg-tertiary);border-color:var(--color-border)}
 .ex-prog-nota{display:flex;flex-direction:column;gap:2px;background:var(--color-brand-subtle);border:1px solid var(--color-brand);border-left-width:3px;border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin-bottom:var(--space-3)}
 .ex-prog-nota.is-mantener,.ex-prog-nota.is-calibracion{background:var(--color-bg-tertiary);border-color:var(--color-border);border-left-color:var(--color-text-muted)}
@@ -2104,6 +2117,28 @@ function renderTrain() {
     html += `<div class="prog-banner is-calibracion">🎯 Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3) — no te guardes reps.</div>`;
   }
 
+  // F3 — Inicio claro del cronómetro de sesión (el timer de DESCANSO es otro y
+  // no se toca). Si el cliente no toca Start, arranca solo con la primera serie
+  // (comportamiento histórico) y el cronómetro lo aclara.
+  if (!_diaFinalizado && !allDone) {
+    if (!_sessionStart) {
+      html += `
+      <button class="session-start" id="btnStartSesion">
+        <span class="ss-icon">▶</span>
+        <span class="ss-txt"><strong>Empezar entrenamiento</strong>
+        <small>arranca el cronómetro de la sesión — o empezá directo: corre solo con tu primera serie</small></span>
+      </button>`;
+    } else {
+      html += `
+      <div class="session-crono" id="sessionCrono">
+        <span class="sc-dot"></span>
+        <span class="sc-lbl">EN CURSO</span>
+        <span class="sc-time" id="cronoTime">${fmtCrono(Date.now() - _sessionStart)}</span>
+        ${_startedByButton ? '' : '<span class="sc-hint">⏱ arrancó con tu primera serie</span>'}
+      </div>`;
+    }
+  }
+
   for (let bi=0; bi<DATA.dia.bloques.length; bi++) {
     const b = DATA.dia.bloques[bi];
     const done = b.ejercicios.filter(ex => TERMINAL.has(getExStatus(ex.id))).length;
@@ -2160,6 +2195,38 @@ function renderTrain() {
 
   root.innerHTML = html;
   bindTrainEvents();
+  syncCronoTick();   // F3 — arrancar/parar el tick del cronómetro según estado
+}
+
+/* F3 — Cronómetro de la SESIÓN (no confundir con el timer de descanso).
+   El tiempo real vive en _sessionStart (persistido por día, F2); acá solo se
+   formatea y se refresca el span una vez por segundo sin re-render completo. */
+let _startedByButton = false;
+let _cronoInterval = null;
+function fmtCrono(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  const p = n => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${p(m)}:${p(ss)}` : `${m}:${p(ss)}`;
+}
+function syncCronoTick() {
+  const el = document.getElementById('cronoTime');
+  if (el && _sessionStart && !_diaFinalizado) {
+    if (!_cronoInterval) {
+      _cronoInterval = setInterval(() => {
+        const t = document.getElementById('cronoTime');
+        if (!t || !_sessionStart) { clearInterval(_cronoInterval); _cronoInterval = null; return; }
+        t.textContent = fmtCrono(Date.now() - _sessionStart);
+      }, 1000);
+    }
+  } else if (_cronoInterval) {
+    clearInterval(_cronoInterval); _cronoInterval = null;
+  }
+}
+async function startEntrenamiento() {
+  _startedByButton = true;
+  await ensureSesionIniciada();   // crea la sesión (iniciada_en real) + persiste _sessionStart
+  renderTrain();
 }
 
 function renderExCard(ex, blockIdx) {
@@ -2485,6 +2552,13 @@ async function confirmarSerie(exId, idx) {
 }
 
 function bindTrainEvents() {
+  // F3 — botón "Empezar entrenamiento" (inicio explícito del cronómetro)
+  const startBtn = document.getElementById('btnStartSesion');
+  if (startBtn) startBtn.addEventListener('click', () => {
+    startBtn.disabled = true;
+    startEntrenamiento();
+  });
+
   $$('[data-toggle]').forEach(btn => btn.addEventListener('click', async () => {
     const id = btn.getAttribute('data-toggle');
     const wasExpanded = STATE.expandedId === id;
