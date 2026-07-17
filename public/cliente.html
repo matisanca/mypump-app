@@ -498,6 +498,8 @@ main{padding:var(--space-4)}
 .cf-scan-btn small{display:block;color:var(--color-text-muted);font-size:11px}
 .cf-scan-btn:disabled{opacity:.6}
 .cf-scan-status{margin:0 0 var(--space-3);padding:8px 10px;border-radius:var(--radius-md);background:var(--color-bg-secondary);border:1px solid var(--color-border);font-size:12px;line-height:1.4;color:var(--color-text-secondary)}
+/* F8 — avisos del modal de sustitución */
+.swap-aviso{margin:var(--space-2) 0;padding:8px 10px;border-radius:var(--radius-md);background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));font-size:12px;line-height:1.45;color:var(--color-text-secondary)}
 .cf-macros-row{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
 .cf-unit-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)}
 .cf-err{padding:var(--space-2) var(--space-3);background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border:1px solid #ef4444;border-radius:var(--radius-md);color:#ef4444;font-size:12px;margin-top:var(--space-2)}
@@ -1633,7 +1635,9 @@ const Outbox = (() => {
     }
   }
 
-  return { load, enqueue, flush, flushSoon, pending: () => queue.length };
+  return { load, enqueue, flush, flushSoon, pending: () => queue.length,
+    // F8 — dedupeKeys pendientes (para que el hydrate no pise swaps aún no sincronizados)
+    pendingKeys: () => new Set(queue.map(op => op.dedupeKey).filter(Boolean)) };
 })();
 
 /* ---- SUPABASE WRITES ---- */
@@ -3719,12 +3723,18 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
       }
       await Promise.allSettled(promises);
     } else if (remoteSwaps.length > 0) {
-      // Backend es la fuente de verdad — sobrescribir STATE.foodSwaps
+      // F8 — MERGE (no reemplazo): el backend gana por key, pero un swap hecho
+      // recién/offline que todavía está en el Outbox NO se pisa (antes el
+      // reemplazo total lo "revertía" ante los ojos del cliente).
       const newSwaps = {};
       remoteSwaps.forEach(s => {
         const key = `swap_${DIETA_ID}_${s.comida_id}_${s.opt_idx}_${s.food_idx}`;
         newSwaps[key] = { original: null, current: s.food_data };
       });
+      const pendientes = (typeof Outbox !== 'undefined' && Outbox.pendingKeys) ? Outbox.pendingKeys() : new Set();
+      for (const key in STATE.foodSwaps) {
+        if (pendientes.has(key)) newSwaps[key] = STATE.foodSwaps[key];   // local más nuevo, aún sin subir
+      }
       STATE.foodSwaps = newSwaps;
       persistSwaps(); // mantener cache local sincronizado
     }
@@ -4654,6 +4664,16 @@ function renderSwapModal() {
         <div class="sw-name">${food.name}</div>
         <div class="sw-meta">${food.qty} ${food.unit} · ${food.kcal} kcal · ${food.prot}p / ${food.carb}c / ${food.fat}g</div>
       </div>
+      ${(() => {
+        // F8 — avisos de diagnóstico del último findSubstitutes
+        const info = window.MyPump && window.MyPump.foodSwap._lastInfo;
+        if (!info) return '';
+        let msgs = [];
+        if (info.macrosSospechosos) msgs.push('⚠ Los datos de este alimento parecen incorrectos — avisale a Mati así lo corrige.');
+        if (info.prefsFiltraron > 0 && allSubs.filter(s => !s._universal && !s._isCustom).length === 0)
+          msgs.push(`ℹ ${info.prefsFiltraron} opciones quedaron ocultas por tus restricciones alimentarias.`);
+        return msgs.length ? `<div class="swap-aviso">${msgs.join('<br>')}</div>` : '';
+      })()}
       <div class="swap-search-row">
         <input type="text" id="swapSearch" class="swap-search" placeholder="Buscar alimento..." value="${query.replace(/"/g,'&quot;')}" />
         <span class="swap-count">${subs.length}/${allSubs.length}</span>

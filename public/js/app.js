@@ -139,12 +139,31 @@ window.MyPump.foodSwap = {
     return tags.map(t => this._EXCLUDE_GROUPS[t]).filter(Boolean);
   },
 
+  // Info de diagnóstico del último findSubstitutes (para avisos en el modal):
+  // {prefsFiltraron: n, macrosSospechosos: bool, categoriaFallback: bool}
+  _lastInfo: null,
+
+  // Categoría inferida SOLO por macros (ignora el nombre) — fallback F8 para
+  // foods del Cerebro cuyo nombre no matchea keywords y caen en mixto/otra.
+  _categoryByMacros(food) {
+    const p = (food.prot || 0) * 4, c = (food.carb || 0) * 4, f = (food.fat || 0) * 9;
+    const total = p + c + f;
+    if (total <= 0) return null;
+    if (p / total > 0.45) return 'proteina';
+    if (f / total > 0.55) return 'grasa';
+    if (c / total > 0.5)  return 'carbohidrato';
+    return null;
+  },
+
   findSubstitutes(originalFood) {
     const db = window.MYPUMP_FOOD_DB;
+    this._lastInfo = { prefsFiltraron: 0, macrosSospechosos: false, categoriaFallback: false };
     if (!db || !db.length) return [];
 
     const originalCat = originalFood.category || this._inferCategory(originalFood);
-    if (originalCat === 'condimento') return [];
+    // Condimento REAL (sin calorías) no se sustituye. Un food calórico mal
+    // inferido como condimento (macros corruptos/en cero) sigue de largo (F8).
+    if (originalCat === 'condimento' && (originalFood.kcal || 0) < 30) return [];
 
     const dominantMacro = this._getDominantMacro(originalFood);
     const targetMacroGrams = (originalFood[dominantMacro] || 0);
@@ -162,15 +181,46 @@ window.MyPump.foodSwap = {
     // original (con piso de 500g para no descartar foods razonables en porciones chicas).
     const maxQty = Math.max(originalQtyG * 3, 500);
 
+    // F8 — Sanity de datos del original: densidad calórica implícita absurda =
+    // macros probablemente corruptos (per-porción guardados como per-100g en
+    // dietas viejas). No bloquea, pero el modal avisa.
+    if (originalQtyG >= 20 && originalKcal > 0) {
+      const dens = (originalKcal / originalQtyG) * 100;
+      if (dens > 950 || dens < 10) this._lastInfo.macrosSospechosos = true;
+    }
+
     // Exclusiones por preferencia del cliente (ej: sin cerdo para Egipto).
     const excludeRes = this._excludeRegexes();
 
-    const ranked = db
-      .filter(food =>
-        food.category === originalCat &&
-        food.name.toLowerCase() !== originalFood.name.toLowerCase() &&
-        !(excludeRes.length && excludeRes.some(re => re.test(this._norm(food.name))))
-      )
+    const matchCat = (food, cat) =>
+      food.category === cat &&
+      food.name.toLowerCase() !== originalFood.name.toLowerCase();
+
+    // F8 — contar los que las prefs filtran (para avisar si vacían la lista).
+    let excludedByPrefs = 0;
+    const pasaPrefs = (food) => {
+      if (!excludeRes.length) return true;
+      const ok = !excludeRes.some(re => re.test(this._norm(food.name)));
+      if (!ok) excludedByPrefs++;
+      return ok;
+    };
+
+    // F8 — fallback de categoría: si la categoría exacta rinde poco (<3 no
+    // universales), sumar candidatos de la categoría inferida por macros.
+    let pool = db.filter(f => matchCat(f, originalCat) && pasaPrefs(f));
+    const catMacros = this._categoryByMacros(originalFood);
+    if (catMacros && catMacros !== originalCat) {
+      const nReal = pool.filter(f => !this._isUniversal(f.name) && !f._isCustom).length;
+      if (nReal < 3) {
+        this._lastInfo.categoriaFallback = true;
+        const extra = db.filter(f => matchCat(f, catMacros) && pasaPrefs(f));
+        const seen = new Set(pool.map(f => f.name.toLowerCase()));
+        for (const f of extra) if (!seen.has(f.name.toLowerCase())) pool.push(f);
+      }
+    }
+    this._lastInfo.prefsFiltraron = excludedByPrefs;
+
+    const ranked = pool
       .map(food => {
         const K = food.kcal || 0;                  // kcal por 100 g del sustituto
         const M = (food[dominantMacro] || 0);      // macro dominante por 100 g
@@ -187,6 +237,10 @@ window.MyPump.foodSwap = {
           const a = K / K0, b = M / M0;
           const denom = a * a + b * b;
           factor = denom > 0 ? (a + b) / denom : (M0 / M);
+        } else if (K0 > 0 && K > 0) {
+          // F8 — original con macros en cero (datos corruptos) pero kcal válida:
+          // igualar por kcal en vez de dar lista vacía.
+          factor = K0 / K;
         } else {
           factor = M0 / M; // fallback: igualar el macro dominante
         }
