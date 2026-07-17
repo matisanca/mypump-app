@@ -148,12 +148,14 @@ window.mypumpDB = {
     });
   },
 
-  // Finaliza la sesión. Devuelve {success, data: boolean, error}.
-  async finalizarSesion(token, sesionId, notas = null) {
+  // Finaliza la sesión y persiste la duración real (segundos, opcional).
+  // Devuelve {success, data: boolean, error}.
+  async finalizarSesion(token, sesionId, notas = null, duracionSegundos = null) {
     return await rpcMutation('mypump_finalizar_sesion', {
-      p_token:     token,
-      p_sesion_id: sesionId,
-      p_notas:     notas,
+      p_token:             token,
+      p_sesion_id:         sesionId,
+      p_notas:             notas,
+      p_duracion_segundos: duracionSegundos,
     });
   },
 

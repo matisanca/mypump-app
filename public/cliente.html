@@ -1406,6 +1406,7 @@ function writeExerciseStatus(exId, status, marcadoManualmente = false) {
   const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
   const seriesObjetivo = ex ? (getProgresionActual(ex, DATA.rutina.semana_actual).series ?? 0) : 0;
   Outbox.enqueue('estado', {
+    sesionId: _sesionId || null, semana: DATA.rutina.semana_actual || 1,
     diaId: DATA.dia.id, exId, seriesObjetivo, status, manual: marcadoManualmente,
   }, `estado_${DATA.dia.id}_${exId}`);
 }
@@ -1471,16 +1472,35 @@ const Outbox = (() => {
   let timer = null;
   let hadProblem = false;   // hubo offline/fallo desde el último éxito → reasegurar con '✓ Guardado'
 
-  // Ejecutores: resuelven la sesión activa al momento de enviar (no en el encolado),
-  // así una carga hecha offline se adjunta a la sesión del día cuando haya conexión.
+  // F2 — Resuelve la sesión CORRECTA para una op encolada: la capturada al
+  // encolar, o (si aún no existía) la sesión de ESE día+semana. Un drenado
+  // tardío tras cambiar de día ya no cruza los sets a la sesión del día nuevo.
+  const _sesionPorDia = {};   // `${diaId}|${semana}` → sesionId (cache)
+  async function resolveSesion(p) {
+    if (p.sesionId) return p.sesionId;
+    const semanaActual = (DATA && DATA.rutina && DATA.rutina.semana_actual) || 1;
+    // El día encolado es el abierto ahora → usar/crear la sesión actual.
+    if (DATA && DATA.dia && p.diaId === DATA.dia.id && (p.semana == null || p.semana === semanaActual)) {
+      return _sesionId || await ensureSesionIniciada();
+    }
+    const key = `${p.diaId}|${p.semana}`;
+    if (_sesionPorDia[key]) return _sesionPorDia[key];
+    const remota = await window.mypumpDB.getSesionDia(TOKEN, p.diaId, p.semana);
+    if (remota && remota.id) { _sesionPorDia[key] = remota.id; return remota.id; }
+    // No existe sesión de ese día (raro): crear una para no perder los sets.
+    const res = await window.mypumpDB.iniciarSesion(TOKEN, p.diaId, p.semana);
+    if (res && res.success && res.data) { _sesionPorDia[key] = res.data; return res.data; }
+    return null;
+  }
+
   const EXEC = {
     async carga(p) {
-      const sid = _sesionId || await ensureSesionIniciada();
+      const sid = await resolveSesion(p);
       if (!sid) return { success: false };
       return window.mypumpDB.registrarCarga(TOKEN, sid, p.datos);
     },
     async estado(p) {
-      const sid = _sesionId || await ensureSesionIniciada();
+      const sid = await resolveSesion(p);
       if (!sid) return { success: false };
       return window.mypumpDB.marcarEjercicioEstado(
         TOKEN, sid, p.diaId, p.exId, p.seriesObjetivo, p.status, p.manual);
@@ -1554,9 +1574,20 @@ const Outbox = (() => {
 })();
 
 /* ---- SUPABASE WRITES ---- */
+// F2 — el arranque de la sesión se PERSISTE por día: la duración sobrevive
+// reloads y cierres de tab (antes _sessionStart era memoria volátil → tras un
+// reload la sesión "duraba" 0/— min y el total guardado quedaba corto).
+function persistSessionStart() {
+  try {
+    if (_sessionStart && DATA && DATA.dia) {
+      localStorage.setItem(`mypump_sesion_${TOKEN}_${DATA.dia.id}_start`, String(_sessionStart));
+    }
+  } catch (_) {}
+}
+
 let _sesionInflight = null;   // promesa de creación en vuelo (anti-concurrencia + retry-safe)
 async function ensureSesionIniciada() {
-  if (_sessionStart == null) _sessionStart = Date.now();
+  if (_sessionStart == null) { _sessionStart = Date.now(); persistSessionStart(); }
   if (_sesionId) return _sesionId;
   if (!RUTINA_ID) { _sesionIniciada = true; return null; }   // demo mode — no writes
   if (_sesionInflight) return _sesionInflight;               // reusar llamada en vuelo
@@ -1585,6 +1616,11 @@ function writeSet(exId, setIdx) {
   const swap = STATE.exerciseSwaps[exId];
   const ejercicioNombre = swap ? swap.current.nombre : ex.nombre;
   Outbox.enqueue('carga', {
+    // F2 — capturar sesión/día/semana AL ENCOLAR: un drenado tardío (tras
+    // cambiar de día) va a la sesión correcta, no a la del día abierto.
+    sesionId: _sesionId || null,
+    diaId:    DATA.dia.id,
+    semana:   DATA.rutina.semana_actual || 1,
     datos: {
       diaId:          DATA.dia.id,
       ejercicioId:    exId,
@@ -1610,7 +1646,9 @@ async function writeFinish(notas) {
   // guarden antes de marcar el día como finalizado.
   await Outbox.flush();
 
-  const res = await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null);
+  // F2 — persistir la duración real (wall-clock desde el arranque de la sesión).
+  const duracionSeg = _sessionStart ? Math.round((Date.now() - _sessionStart) / 1000) : null;
+  const res = await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null, duracionSeg);
   if (!res || res.success === false) {
     alert('No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo.');
     return;
@@ -1783,6 +1821,7 @@ async function restoreSesionDelDia() {
   _sesionId = null;
   _sesionIniciada = false;
   _diaFinalizado = false;
+  _sessionStart = null;   // F2 — el arranque es POR DÍA; se restaura abajo
   if (!RUTINA_ID || (DATA && DATA._isDemo)) return;
 
   const sesionKey    = `mypump_sesion_${TOKEN}_${DATA.dia.id}`;
@@ -1790,11 +1829,15 @@ async function restoreSesionDelDia() {
   const savedSemana   = parseInt(localStorage.getItem(`${sesionKey}_semana`) || '0', 10);
   const semanaActual  = DATA.rutina.semana_actual || 1;
 
+  // F2 — restaurar el arranque persistido (la duración sobrevive reloads)
+  const savedStart = parseInt(localStorage.getItem(`${sesionKey}_start`) || '0', 10);
+
   if (savedSesionId && savedSemana === semanaActual) {
     // Sesión local de la semana actual — recuperar
     _sesionId       = savedSesionId;
     _sesionIniciada = true;
     _diaFinalizado  = localStorage.getItem(`${sesionKey}_finalizada`) === '1';
+    if (savedStart > 0) _sessionStart = savedStart;
     await loadExerciseStates();
     await loadRegistrosCarga();
   } else {
@@ -1802,6 +1845,7 @@ async function restoreSesionDelDia() {
       localStorage.removeItem(sesionKey);
       localStorage.removeItem(`${sesionKey}_semana`);
       localStorage.removeItem(`${sesionKey}_finalizada`);
+      localStorage.removeItem(`${sesionKey}_start`);
     }
     try {
       const remote = await window.mypumpDB.getSesionDia(TOKEN, DATA.dia.id, semanaActual);
@@ -1809,6 +1853,12 @@ async function restoreSesionDelDia() {
         _sesionId       = remote.id;
         _sesionIniciada = true;
         _diaFinalizado  = !!remote.finalizada_en;   // ← día cerrado = día HECHO
+        // Arranque: preferir el persistido local (cambio de device: iniciada_en remota)
+        if (savedStart > 0) _sessionStart = savedStart;
+        else if (remote.iniciada_en) {
+          const t = new Date(remote.iniciada_en).getTime();
+          if (isFinite(t)) { _sessionStart = t; persistSessionStart(); }
+        }
         localStorage.setItem(sesionKey, remote.id);
         localStorage.setItem(`${sesionKey}_semana`, semanaActual);
         if (_diaFinalizado) localStorage.setItem(`${sesionKey}_finalizada`, '1');
