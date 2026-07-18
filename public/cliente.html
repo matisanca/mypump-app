@@ -16,7 +16,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Archivo:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/tokens.css">
 <style>
 *{box-sizing:border-box}
@@ -635,6 +635,118 @@ button svg:not([width]),a svg:not([width]){width:1em;height:1em}
 }
 .a2hs-install:active{transform:scale(.97)}
 .a2hs-install:hover{background:var(--color-brand-hover)}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN v2 — pulido visual (append-only: solo overrides, cero
+   cambios de estructura/JS). Identidad Pump: lima #b8f060 + negro,
+   estética de instrumento de rendimiento. Titulares en Archivo,
+   números en JetBrains Mono, glow lima como firma en los momentos
+   de logro (serie confirmada, día completado, descanso terminado).
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Tipografía display para titulares ── */
+.hdr-title,.ex-name,.finish-card h2,.diet-info h2,.error-title,.meal-name,.streak-dias{font-family:"Archivo",var(--font-sans)}
+.hdr-title{font-weight:800;letter-spacing:-.028em}
+.ex-name{font-weight:700;letter-spacing:-.022em}
+.finish-card h2{font-weight:800;letter-spacing:-.03em}
+.diet-info h2{font-weight:700;letter-spacing:-.02em}
+
+/* ── Atmósfera: halo lima sutil arriba del todo ── */
+body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,var(--color-brand) 9%,transparent),transparent 62%)}
+[data-theme="dark"] body{background-image:radial-gradient(130% 48% at 50% -16%,rgba(184,240,96,.08),transparent 60%)}
+.app{background:transparent}
+
+/* ── Profundidad: sombras en dos capas ── */
+.ex-card,.meal,.myday-section,.myday-streak,.diet-hdr,.finish-card,.prog-stat{box-shadow:0 1px 1px rgba(10,10,10,.025),0 1px 3px rgba(10,10,10,.03)}
+[data-theme="dark"] .ex-card,[data-theme="dark"] .meal,[data-theme="dark"] .myday-section,[data-theme="dark"] .myday-streak,[data-theme="dark"] .diet-hdr,[data-theme="dark"] .finish-card,[data-theme="dark"] .prog-stat{box-shadow:0 1px 2px rgba(0,0,0,.35)}
+.ex-card{transition:border-color .2s,box-shadow .25s,transform .2s,background .2s}
+.ex-card.is-expanded{box-shadow:0 2px 4px rgba(10,10,10,.04),0 12px 32px rgba(10,10,10,.09)}
+[data-theme="dark"] .ex-card.is-expanded{box-shadow:0 2px 6px rgba(0,0,0,.4),0 14px 36px rgba(0,0,0,.5)}
+@media (hover:hover){.ex-card:not(.is-expanded):hover{border-color:var(--color-border-strong);transform:translateY(-1px)}}
+
+/* ── Header: marca de agua de energía ── */
+.week-pill{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));border-color:color-mix(in oklab,var(--color-brand) 32%,var(--color-border));color:var(--color-text-primary);font-weight:600}
+
+/* ── Day pills: pastillas full-round con estados con carácter ── */
+.day-pill{position:relative;border-radius:var(--radius-full);padding:7px 16px;transition:background .2s,color .2s,border-color .2s,box-shadow .2s,transform .15s}
+.day-pill:active{transform:scale(.955)}
+.day-pill.is-active{box-shadow:0 3px 10px rgba(10,10,10,.16)}
+[data-theme="dark"] .day-pill.is-active{box-shadow:0 3px 12px rgba(0,0,0,.55)}
+.day-pill.is-done{background:linear-gradient(180deg,color-mix(in oklab,var(--color-brand) 17%,var(--color-bg-primary)),color-mix(in oklab,var(--color-brand) 8%,var(--color-bg-primary)))}
+.day-pill.is-active.is-done{background:linear-gradient(180deg,#c8f97c,#abe354);box-shadow:0 3px 14px color-mix(in oklab,var(--color-brand) 50%,transparent)}
+.dp-check{top:3px;left:7px}
+
+/* ── Barra de progreso del día: energía visible ── */
+.progress-track{border:0;height:7px;background:color-mix(in oklab,var(--color-text-primary) 8%,transparent)}
+.progress-fill{background:linear-gradient(90deg,color-mix(in oklab,var(--color-brand) 72%,#e8ffb8),var(--color-brand));box-shadow:0 0 10px color-mix(in oklab,var(--color-brand) 55%,transparent);border-radius:var(--radius-full);transition:width .5s cubic-bezier(.22,.9,.32,1)}
+
+/* ── Botones primarios: gradiente lima + sombra de color + press ── */
+.btn-primary,.session-start,.error-paste-btn{background:linear-gradient(180deg,#c8f97c,#addf55);box-shadow:0 1px 2px rgba(10,10,10,.08),0 6px 20px color-mix(in oklab,var(--color-brand) 35%,transparent);transition:transform .15s,box-shadow .2s,filter .2s}
+.btn-primary:hover,.session-start:hover,.error-paste-btn:hover{background:linear-gradient(180deg,#c8f97c,#a5d94c);filter:saturate(1.06)}
+.btn-primary:active,.session-start:active,.error-paste-btn:active{transform:scale(.977)}
+.btn-primary:disabled{background:var(--color-bg-tertiary);box-shadow:none;transform:none}
+.session-start{border-radius:var(--radius-lg)}
+.ex-comment-send:active,.track-btn:active,.opt-tab:active{transform:scale(.96)}
+
+/* ── Celebración: pop al confirmar ── */
+@keyframes v2-pop{0%{transform:scale(.5)}62%{transform:scale(1.14)}100%{transform:scale(1)}}
+.ex-card.is-completo .ex-status,.ex-card.is-completed .ex-status{animation:v2-pop .32s cubic-bezier(.2,.8,.3,1.15)}
+.set-row.is-confirmed .set-confirm:not(.is-edit){animation:v2-pop .26s cubic-bezier(.2,.8,.3,1.15)}
+.pip{transition:background .2s,border-color .2s}
+.pip.done{animation:v2-pop .26s cubic-bezier(.2,.8,.3,1.15)}
+.hb.is-yes.is-active,.track-btn.track-yes.is-active{animation:v2-pop .24s cubic-bezier(.2,.8,.3,1.15)}
+
+/* ── Inputs de series: foco lima decidido ── */
+.set-input:focus{border-color:color-mix(in oklab,var(--color-brand) 65%,var(--color-text-primary));box-shadow:0 0 0 3px color-mix(in oklab,var(--color-brand) 28%,transparent)}
+.set-input,.rir-btn,.set-confirm{transition:background .15s,border-color .15s,box-shadow .15s,transform .12s}
+.set-confirm:active{transform:scale(.93)}
+
+/* ── Tab bar: indicador vivo ── */
+.tab{transition:color .2s}
+.tab svg{transition:transform .2s cubic-bezier(.2,.8,.3,1.15)}
+.tab:active svg{transform:scale(.88)}
+.tab.is-active svg{transform:translateY(-1px)}
+.tab-dot{width:5px;transition:width .3s cubic-bezier(.22,.9,.32,1),background .2s}
+.tab.is-active .tab-dot{width:22px;box-shadow:0 0 8px color-mix(in oklab,var(--color-brand) 60%,transparent)}
+.tab-badge{box-shadow:0 0 0 2px var(--color-bg-primary),0 2px 8px color-mix(in oklab,var(--color-brand) 45%,transparent)}
+
+/* ── Rest bar: presencia y festejo al terminar ── */
+.rest-bar{box-shadow:0 14px 36px rgba(0,0,0,.30),0 2px 10px rgba(0,0,0,.14)}
+.rest-bar.is-done{background:linear-gradient(180deg,#c8f97c,#addf55);box-shadow:0 14px 40px color-mix(in oklab,var(--color-brand) 45%,transparent),0 2px 10px rgba(0,0,0,.12)}
+@keyframes v2-breathe{50%{transform:scale(1.012)}}
+.rest-bar.is-done{animation:v2-breathe 1.3s ease-in-out infinite}
+
+/* ── Anillo de kcal y números héroe: glow de firma ── */
+.kcal-ring .fill,.kcal-ring .ring{filter:drop-shadow(0 0 5px color-mix(in oklab,var(--color-brand) 55%,transparent))}
+.streak-num{text-shadow:0 0 22px color-mix(in oklab,var(--color-brand) 40%,transparent)}
+.salud-num{text-shadow:0 0 16px color-mix(in oklab,var(--color-brand) 30%,transparent)}
+.rest-time{font-weight:700}
+
+/* ── Toques táctiles en controles de Mi Día ── */
+.hb,.train-opt,.agua-btn,.ex-variante-op,.icon-btn{transition:background .15s,border-color .15s,color .15s,transform .12s}
+.hb:active,.train-opt:active,.ex-variante-op:active{transform:scale(.94)}
+.agua-btn:active{transform:scale(.9)}
+.icon-btn:active{transform:scale(.92)}
+
+/* ── Cronómetro de sesión: pulso con glow ── */
+.session-crono .sc-dot{box-shadow:0 0 8px color-mix(in oklab,var(--color-brand) 70%,transparent)}
+.session-crono .sc-time{font-weight:700}
+
+/* ── Comida marcada: acento más rico ── */
+.meal.is-comido{border-left-color:var(--color-brand);background:linear-gradient(90deg,color-mix(in oklab,var(--color-brand) 5%,var(--color-bg-primary)),var(--color-bg-primary) 40%)}
+
+/* ── Scrollbar discreta en desktop ── */
+@media (hover:hover){
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--color-border-strong);border-radius:99px;border:3px solid var(--color-bg-secondary)}
+  ::-webkit-scrollbar-track{background:transparent}
+}
+
+/* ── Accesibilidad: sin animaciones decorativas si el sistema lo pide ── */
+@media (prefers-reduced-motion:reduce){
+  .ex-status,.set-confirm,.pip,.rest-bar,.hb,.track-btn,.sc-dot{animation:none!important}
+  .ex-card,.day-pill,.tab svg,.tab-dot,.progress-fill{transition-duration:.01ms!important}
+}
 </style>
 </head>
 <body>
