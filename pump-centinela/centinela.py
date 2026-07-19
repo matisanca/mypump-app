@@ -182,6 +182,14 @@ def analizar(c, hoy):
             partes.append("peso: sin datos en la app todavia")
         elif (hoy - date.fromisoformat(ult)).days > 10:
             partes.append(f"peso: sin registrar hace {(hoy - date.fromisoformat(ult)).days} dias")
+    # Check semanal de la app (energia/descanso/hambre/adherencia + nota)
+    chk = c.get("ultimo_checkin")
+    if chk and any(chk.get(k) for k in ("energia", "descanso", "hambre", "adherencia")):
+        def _v(k): return chk.get(k) if chk.get(k) is not None else "-"
+        linea = f"se siente: energia {_v('energia')}/5, descanso {_v('descanso')}/5, hambre {_v('hambre')}/5, adherencia {_v('adherencia')}/5"
+        if chk.get("nota"):
+            linea += f' - "{str(chk["nota"])[:90]}"'
+        partes.append(linea)
     ficha = f"*{nombre}* (sem {c.get('semana_actual')}, {obj} {perfil})\n  " + "\n  ".join(partes)
     return alertas, ficha
 

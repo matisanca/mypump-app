@@ -757,6 +757,21 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .peso-objetivo{margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px dashed var(--color-border);font-size:12px;color:var(--color-text-muted)}
 .peso-objetivo strong{color:var(--color-text-secondary)}
 
+/* ── Check semanal (N8) ── */
+.ck-saved{margin-left:auto;font-size:11px;font-weight:700;color:var(--color-brand);letter-spacing:.02em}
+.ck-intro{font-size:12px;color:var(--color-text-muted);margin:0 0 var(--space-3);line-height:1.4}
+.ck-metric{margin-bottom:var(--space-3)}
+.ck-metric-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.ck-metric-lbl{font-size:13px;font-weight:600;color:var(--color-text-primary)}
+.ck-metric-hint{font-size:10px;color:var(--color-text-muted);letter-spacing:.02em}
+.ck-scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.ck-dot{height:40px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--color-text-secondary);cursor:pointer;transition:background .12s,border-color .12s,color .12s,transform .1s}
+.ck-dot:active{transform:scale(.92)}
+.ck-dot.is-on{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
+.ck-nota{width:100%;margin-top:var(--space-2);padding:var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-family:inherit;font-size:13px;color:var(--color-text-primary);outline:none;resize:vertical;transition:border-color .15s}
+.ck-nota:focus{border-color:color-mix(in oklab,var(--color-brand) 55%,var(--color-border));background:var(--color-bg-primary)}
+.ck-save{margin-top:var(--space-3)}
+
 /* ── Accesibilidad: sin animaciones decorativas si el sistema lo pide ── */
 @media (prefers-reduced-motion:reduce){
   .ex-status,.set-confirm,.pip,.rest-bar,.hb,.track-btn,.sc-dot{animation:none!important}
@@ -1741,6 +1756,10 @@ const Outbox = (() => {
     async peso(p) {
       // Upsert idempotente por (cliente, fecha, tipo, fuente) — mig 027.
       return window.mypumpDB.ingestSalud(TOKEN, [{ fecha: p.fecha, tipo: 'peso_kg', valor: p.valor, fuente: 'manual' }]);
+    },
+    async checkin(p) {
+      // Upsert del check semanal (mig 035). p.fecha = hoy local; el server ancla al lunes ISO.
+      return window.mypumpDB.guardarCheckin(TOKEN, p.fecha, p.datos);
     },
   };
 
@@ -4266,6 +4285,7 @@ async function loadMyday() {
     // Si el tab ya está abierto, re-renderizar ahora que tenemos datos
     if (STATE.scene === 'myday') renderMyday();
     loadSalud();   // en background: rellena la card Salud si hay datos de wearable
+    loadCheckin(); // en background: rellena el check semanal si ya lo cargó
   } catch(e) {
     console.error('[Mi Día] error cargando hábitos:', e);
     MYDAY  = null;
@@ -4553,6 +4573,79 @@ function renderMydayPeso() {
   if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); guardar(); } });
 }
 
+/* ---- CHECK SEMANAL en Mi Día — N8 ----
+   1 vez por semana: 4 escalas (energía, descanso, hambre, adherencia) + nota.
+   NO reemplaza la charla de WhatsApp con Mati; se la adelanta ordenada. */
+const CHECKIN_METRICAS = [
+  { k: 'energia',    icon: '⚡', label: 'Energía',    lo: 'muy baja', hi: 'excelente' },
+  { k: 'descanso',   icon: '😴', label: 'Descanso',   lo: 'dormí mal', hi: 'dormí bien' },
+  { k: 'hambre',     icon: '🍽', label: 'Hambre',     lo: 'sin hambre', hi: 'mucha' },
+  { k: 'adherencia', icon: '🎯', label: 'Adherencia', lo: 'me costó', hi: 'la seguí' },
+];
+
+async function loadCheckin() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getCheckinSemana) return;
+  try {
+    const res = await window.mypumpDB.getCheckinSemana(TOKEN, TODAY_LOCAL);
+    STATE.checkin = (Array.isArray(res) && res[0]) ? res[0] : null;
+  } catch (_) { STATE.checkin = null; }
+  if (STATE.scene === 'myday') renderMydayCheckin();
+}
+
+function renderMydayCheckin() {
+  const el = document.getElementById('myday-checkin');
+  if (!el) return;
+  const ck = STATE.checkinDraft || STATE.checkin || {};
+  const yaGuardado = !!(STATE.checkin && STATE.checkin.energia);
+
+  const escala = (m) => `
+    <div class="ck-metric">
+      <div class="ck-metric-top">
+        <span class="ck-metric-lbl">${m.icon} ${m.label}</span>
+        <span class="ck-metric-hint">${ck[m.k] ? '' : `${m.lo} → ${m.hi}`}</span>
+      </div>
+      <div class="ck-scale" data-k="${m.k}">
+        ${[1,2,3,4,5].map(n => `<button class="ck-dot${ck[m.k] === n ? ' is-on' : ''}" data-k="${m.k}" data-v="${n}">${n}</button>`).join('')}
+      </div>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">📝</span>
+        <span class="myday-section-title">Check de la semana</span>
+        ${yaGuardado ? '<span class="ck-saved">✓ enviado</span>' : ''}
+      </div>
+      <div class="myday-section-body">
+        <p class="ck-intro">Contame en 10 segundos cómo venís. Mati lo ve antes de tu devolución.</p>
+        ${CHECKIN_METRICAS.map(escala).join('')}
+        <textarea class="ck-nota" id="ckNota" rows="2" placeholder="Algo que quieras contarme (opcional)">${(ck.nota || '').replace(/</g,'&lt;')}</textarea>
+        <button class="ck-save btn-primary" id="ckSave">${yaGuardado ? 'Actualizar mi check' : 'Enviar mi check'}</button>
+      </div>
+    </div>`;
+
+  // Selección de escala (guarda en un draft; no manda hasta "Enviar")
+  el.querySelectorAll('.ck-dot').forEach(b => b.addEventListener('click', () => {
+    STATE.checkinDraft = { ...(STATE.checkinDraft || STATE.checkin || {}), [b.dataset.k]: Number(b.dataset.v), nota: document.getElementById('ckNota')?.value || '' };
+    renderMydayCheckin();
+  }));
+  const save = document.getElementById('ckSave');
+  if (save) save.addEventListener('click', () => {
+    const d = { ...(STATE.checkinDraft || STATE.checkin || {}), nota: document.getElementById('ckNota')?.value || '' };
+    const faltan = CHECKIN_METRICAS.filter(m => !d[m.k]);
+    if (faltan.length) {
+      save.textContent = `Faltan: ${faltan.map(m => m.label).join(', ')}`;
+      setTimeout(() => renderMydayCheckin(), 1600);
+      return;
+    }
+    const datos = { energia: d.energia, descanso: d.descanso, hambre: d.hambre, adherencia: d.adherencia, nota: (d.nota || '').trim() };
+    STATE.checkin = { ...datos };          // update optimista
+    STATE.checkinDraft = null;
+    Outbox.enqueue('checkin', { fecha: TODAY_LOCAL, datos }, 'checkin_' + TODAY_LOCAL);
+    renderMydayCheckin();
+  });
+}
+
 function renderMyday() {
   const root = $('#scene-myday');
   if (!root) return;
@@ -4652,6 +4745,9 @@ function renderMyday() {
       </div>
     </div>
 
+    <!-- CHECK SEMANAL — N8 -->
+    <div id="myday-checkin"></div>
+
     <!-- PESO CORPORAL — N1 -->
     <div id="myday-peso"></div>
 
@@ -4673,6 +4769,8 @@ function renderMyday() {
 
   // Render streak
   renderMydayStreak();
+  // Render check semanal (siempre visible)
+  renderMydayCheckin();
   // Render card de Peso (siempre visible: el input de carga vive ahí)
   renderMydayPeso();
   // Render card de Salud (si hay datos de wearable sincronizados)

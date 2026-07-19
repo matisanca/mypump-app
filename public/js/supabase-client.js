@@ -292,6 +292,22 @@ window.mypumpDB = {
     return await rpcMutation('mypump_ingest_salud', { p_token: token, p_registros: registros });
   },
 
+  // ─── CHECK SEMANAL (sliders 1-5 + nota) — N8 ─────────────
+
+  // El check de la semana que contiene la fecha (para prellenar la card).
+  async getCheckinSemana(token, fecha) {
+    return await rpc('mypump_get_checkin_semana', { p_token: token, p_fecha: fecha });
+  },
+
+  // Upsert del check de la semana. Devuelve {success, data, error}.
+  async guardarCheckin(token, fecha, { energia, descanso, hambre, adherencia, nota }) {
+    return await rpcMutation('mypump_guardar_checkin', {
+      p_token: token, p_fecha: fecha,
+      p_energia: energia, p_descanso: descanso, p_hambre: hambre,
+      p_adherencia: adherencia, p_nota: nota || null,
+    });
+  },
+
   // ─── COMIDAS MARCADAS (tracking granular de macros) ──────
 
   // Devuelve array de marcas del día. Cada fila: {comida_id, opcion_elegida, estado, marcada_en}.
