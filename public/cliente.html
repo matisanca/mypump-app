@@ -4511,7 +4511,6 @@ function renderMydayPeso() {
   if (!el) return;
   const serie = _pesoSerie();
   const hoyVal = serie.find(p => p.fecha === TODAY_LOCAL);
-  const rango = rangoPesoSemanal();
 
   // Delta semanal: media 7d vs media de los 7 días anteriores (en gramos).
   const m7 = _pesoMedia(serie, TODAY_LOCAL, 7);
@@ -4520,13 +4519,13 @@ function renderMydayPeso() {
   const m7prev = _pesoMedia(serie, fPrev, 7);
   const deltaG = (m7 != null && m7prev != null) ? Math.round((m7 - m7prev) * 1000) : null;
 
+  // El RANGO OBJETIVO no se muestra al cliente (lo interpreta Mati en su
+  // dashboard — mostrarlo acá marea: el objetivo real a veces difiere).
   let estado = '';
   if (deltaG != null) {
     const signo = deltaG > 0 ? '+' : '';
-    const enRango = deltaG >= rango.min && deltaG <= rango.max;
-    const dir = deltaG < rango.min ? 'por debajo del rango' : deltaG > rango.max ? 'por encima del rango' : 'en rango ✓';
-    estado = `<div class="peso-estado ${enRango ? 'ok' : 'warn'}">
-      Esta semana: <strong>${signo}${Math.abs(deltaG) >= 1000 ? (deltaG/1000).toFixed(1).replace('.', ',') + ' kg' : deltaG + ' g'}</strong> · ${dir}
+    estado = `<div class="peso-estado">
+      Esta semana: <strong>${signo}${Math.abs(deltaG) >= 1000 ? (deltaG/1000).toFixed(1).replace('.', ',') + ' kg' : deltaG + ' g'}</strong> vs la semana pasada
     </div>`;
   } else if (serie.length) {
     estado = `<div class="peso-estado">Cargá tu peso unos días más para ver la tendencia semanal.</div>`;
@@ -4549,7 +4548,6 @@ function renderMydayPeso() {
         <div class="peso-hint">En ayunas al despertar, siempre en la misma condición.</div>
         ${serie.length >= 2 ? pesoChartSVG(serie, 312, 110) : ''}
         ${estado}
-        <div class="peso-objetivo">Objetivo: <strong>${rango.label}</strong></div>
       </div>
     </div>`;
 
