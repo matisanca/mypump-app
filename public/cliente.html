@@ -742,6 +742,21 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
   ::-webkit-scrollbar-track{background:transparent}
 }
 
+/* ── Card Peso corporal (N1) ── */
+.peso-media{margin-left:auto;font-size:11px;color:var(--color-text-muted)}
+.peso-media strong{color:var(--color-text-primary)}
+.peso-input-row{display:flex;gap:var(--space-2)}
+.peso-input{flex:1;height:48px;padding:0 var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;font-weight:600;color:var(--color-text-primary);text-align:center;font-variant-numeric:tabular-nums;outline:none;transition:border-color .15s,box-shadow .15s}
+.peso-input:focus{border-color:color-mix(in oklab,var(--color-brand) 65%,var(--color-text-primary));box-shadow:0 0 0 3px color-mix(in oklab,var(--color-brand) 28%,transparent);background:var(--color-bg-primary)}
+.peso-save{width:auto;flex:0 0 auto;height:48px;padding:0 var(--space-5);font-size:14px}
+.peso-hint{font-size:11px;color:var(--color-text-muted);margin-top:var(--space-2)}
+.peso-chart{width:100%;height:auto;margin-top:var(--space-3);display:block}
+.peso-estado{margin-top:var(--space-2);font-size:13px;color:var(--color-text-secondary);font-family:var(--font-mono)}
+.peso-estado.ok strong{color:var(--color-success)}
+.peso-estado.warn strong{color:var(--color-warning)}
+.peso-objetivo{margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px dashed var(--color-border);font-size:12px;color:var(--color-text-muted)}
+.peso-objetivo strong{color:var(--color-text-secondary)}
+
 /* ── Accesibilidad: sin animaciones decorativas si el sistema lo pide ── */
 @media (prefers-reduced-motion:reduce){
   .ex-status,.set-confirm,.pip,.rest-bar,.hb,.track-btn,.sc-dot{animation:none!important}
@@ -1722,6 +1737,10 @@ const Outbox = (() => {
     },
     async swap(p) {
       return window.mypumpDB.saveFoodSwap(TOKEN, p.dietaId, p.comidaId, p.optIdx, p.foodIdx, p.food);
+    },
+    async peso(p) {
+      // Upsert idempotente por (cliente, fecha, tipo, fuente) — mig 027.
+      return window.mypumpDB.ingestSalud(TOKEN, [{ fecha: p.fecha, tipo: 'peso_kg', valor: p.valor, fuente: 'manual' }]);
     },
   };
 
@@ -4302,11 +4321,11 @@ async function loadSalud() {
   try {
     const hasta = TODAY_LOCAL;
     const d = new Date(TODAY_LOCAL + 'T00:00:00');
-    d.setDate(d.getDate() - 6);
+    d.setDate(d.getDate() - 59);   // 60 días: la card Peso grafica la tendencia completa
     const desde = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     STATE.salud = (await window.mypumpDB.getSalud(TOKEN, desde, hasta)) || [];
   } catch (_) { STATE.salud = []; }
-  if (STATE.scene === 'myday') renderMydaySalud();
+  if (STATE.scene === 'myday') { renderMydaySalud(); renderMydayPeso(); }
 }
 // Valor de un tipo en una fecha, prefiriendo apple_health > rook > manual.
 function _saludValor(tipo, fecha) {
@@ -4350,8 +4369,9 @@ function renderMydaySalud() {
 
   const fmt = n => Number(n).toLocaleString('es-AR');
   const hoy = _saludValor('pasos', TODAY_LOCAL);
-  // Promedio de los días CON dato (una fecha = valor de la fuente preferida).
-  const fechas = [...new Set(pasos.map(r => r.fecha))].sort();
+  // Promedio de los últimos 7 días CON dato (el fetch trae 60d para la card Peso,
+  // pero el promedio de pasos sigue siendo semanal).
+  const fechas = [...new Set(pasos.map(r => r.fecha))].sort().slice(-7);
   const vals = fechas.map(f => _saludValor('pasos', f)).filter(v => v != null);
   const prom = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
   const actHoy = _saludValor('actividad_min', TODAY_LOCAL);
@@ -4393,6 +4413,144 @@ function renderMydaySalud() {
         <div class="salud-sub">Promedio ${vals.length} día${vals.length !== 1 ? 's' : ''}: <strong>${fmt(prom)}</strong> pasos</div>
       </div>
     </div>`;
+}
+
+/* ---- PESO CORPORAL en Mi Día — N1 ----
+   El cliente carga su peso del día; el gráfico muestra 60 días con media móvil
+   7d y la banda del rango objetivo semanal según (objetivo × perfil). La media
+   que importa es la móvil de 7 días comparada con la de la semana anterior. */
+
+// Normaliza el objetivo libre del Cerebro ("superavit", "Hipertrofia", "cutting"…)
+function normObjetivo(raw) {
+  const s = String(raw || '').toLowerCase();
+  if (/defini|deficit|déficit|cut/.test(s)) return 'definicion';
+  if (/volumen|superavit|superávit|hipertrofia|bulk|masa/.test(s)) return 'volumen';
+  if (/manten/.test(s)) return 'mantenimiento';
+  return 'volumen';   // default histórico del servicio
+}
+
+// Rango objetivo semanal en GRAMOS [min, max] según objetivo × perfil.
+function rangoPesoSemanal() {
+  const obj = (DATA && DATA.cliente && DATA.cliente.objetivo) || 'volumen';
+  const farma = ((DATA && DATA.cliente && DATA.cliente.perfil) || 'natural') === 'farma';
+  if (obj === 'definicion') return { min: -1000, max: -400, label: 'perder 400 g a 1 kg/sem' };
+  if (obj === 'mantenimiento') return { min: -200, max: 200, label: 'mantener (±200 g/sem)' };
+  return farma
+    ? { min: 350, max: 500, label: 'ganar 350 a 500 g/sem' }
+    : { min: 75,  max: 250, label: 'ganar 75 a 250 g/sem' };
+}
+
+// Serie de peso por fecha (prefiere carga manual sobre wearable) ordenada asc.
+function _pesoSerie() {
+  const porFecha = {};
+  (STATE.salud || []).filter(r => r.tipo === 'peso_kg').forEach(r => {
+    const prev = porFecha[r.fecha];
+    if (!prev || (prev.fuente !== 'manual' && r.fuente === 'manual')) porFecha[r.fecha] = r;
+  });
+  return Object.values(porFecha)
+    .map(r => ({ fecha: r.fecha, kg: Number(r.valor) }))
+    .filter(p => p.kg > 0)
+    .sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+}
+
+// Media de los puntos cuya fecha cae en (fechaFin - dias, fechaFin].
+function _pesoMedia(serie, fechaFin, dias) {
+  const fin = new Date(fechaFin + 'T00:00:00');
+  const ini = new Date(fin); ini.setDate(ini.getDate() - dias);
+  const vals = serie.filter(p => {
+    const d = new Date(p.fecha + 'T00:00:00');
+    return d > ini && d <= fin;
+  }).map(p => p.kg);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
+// Gráfico SVG propio: puntos diarios tenues + línea de media móvil 7d.
+function pesoChartSVG(serie, w, h) {
+  const pad = 6;
+  const media = serie.map(p => ({ fecha: p.fecha, kg: _pesoMedia(serie, p.fecha, 7) ?? p.kg }));
+  const all = serie.map(p => p.kg).concat(media.map(p => p.kg));
+  const min = Math.min(...all), max = Math.max(...all);
+  const range = (max - min) || 1;
+  const t0 = new Date(serie[0].fecha + 'T00:00:00').getTime();
+  const t1 = new Date(serie[serie.length - 1].fecha + 'T00:00:00').getTime();
+  const span = (t1 - t0) || 1;
+  const X = f => pad + ((new Date(f + 'T00:00:00').getTime() - t0) / span) * (w - pad * 2);
+  const Y = v => h - pad - ((v - min) / range) * (h - pad * 2);
+  const dots = serie.map(p => `<circle cx="${X(p.fecha).toFixed(1)}" cy="${Y(p.kg).toFixed(1)}" r="1.8" fill="var(--color-text-muted)" opacity=".45"/>`).join('');
+  const path = media.map((p, i) => `${i === 0 ? 'M' : 'L'}${X(p.fecha).toFixed(1)},${Y(p.kg).toFixed(1)}`).join(' ');
+  const last = media[media.length - 1];
+  return `<svg class="peso-chart" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    ${dots}
+    <path d="${path}" fill="none" stroke="var(--color-brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${X(last.fecha)}" cy="${Y(last.kg)}" r="3" fill="var(--color-brand)" stroke="var(--color-bg-primary)" stroke-width="1.4"/>
+  </svg>`;
+}
+
+function renderMydayPeso() {
+  const el = document.getElementById('myday-peso');
+  if (!el) return;
+  const serie = _pesoSerie();
+  const hoyVal = serie.find(p => p.fecha === TODAY_LOCAL);
+  const rango = rangoPesoSemanal();
+
+  // Delta semanal: media 7d vs media de los 7 días anteriores (en gramos).
+  const m7 = _pesoMedia(serie, TODAY_LOCAL, 7);
+  const dPrev = new Date(TODAY_LOCAL + 'T00:00:00'); dPrev.setDate(dPrev.getDate() - 7);
+  const fPrev = `${dPrev.getFullYear()}-${String(dPrev.getMonth()+1).padStart(2,'0')}-${String(dPrev.getDate()).padStart(2,'0')}`;
+  const m7prev = _pesoMedia(serie, fPrev, 7);
+  const deltaG = (m7 != null && m7prev != null) ? Math.round((m7 - m7prev) * 1000) : null;
+
+  let estado = '';
+  if (deltaG != null) {
+    const signo = deltaG > 0 ? '+' : '';
+    const enRango = deltaG >= rango.min && deltaG <= rango.max;
+    const dir = deltaG < rango.min ? 'por debajo del rango' : deltaG > rango.max ? 'por encima del rango' : 'en rango ✓';
+    estado = `<div class="peso-estado ${enRango ? 'ok' : 'warn'}">
+      Esta semana: <strong>${signo}${Math.abs(deltaG) >= 1000 ? (deltaG/1000).toFixed(1).replace('.', ',') + ' kg' : deltaG + ' g'}</strong> · ${dir}
+    </div>`;
+  } else if (serie.length) {
+    estado = `<div class="peso-estado">Cargá tu peso unos días más para ver la tendencia semanal.</div>`;
+  }
+
+  const fmtKg = v => v.toFixed(1).replace('.', ',');
+  el.innerHTML = `
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">⚖️</span>
+        <span class="myday-section-title">Peso corporal</span>
+        ${m7 != null ? `<span class="peso-media mono">media 7d: <strong>${fmtKg(m7)} kg</strong></span>` : ''}
+      </div>
+      <div class="myday-section-body">
+        <div class="peso-input-row">
+          <input type="text" inputmode="decimal" class="peso-input mono" id="pesoInput"
+                 placeholder="${hoyVal ? '' : 'kg de hoy'}" value="${hoyVal ? fmtKg(hoyVal.kg) : ''}">
+          <button class="peso-save btn-primary" id="pesoSave">${hoyVal ? 'Corregir' : 'Guardar'}</button>
+        </div>
+        <div class="peso-hint">En ayunas al despertar, siempre en la misma condición.</div>
+        ${serie.length >= 2 ? pesoChartSVG(serie, 312, 110) : ''}
+        ${estado}
+        <div class="peso-objetivo">Objetivo: <strong>${rango.label}</strong></div>
+      </div>
+    </div>`;
+
+  const input = document.getElementById('pesoInput');
+  const btn = document.getElementById('pesoSave');
+  const guardar = () => {
+    const v = parseFloat(String(input.value).replace(',', '.'));
+    if (!isFinite(v) || v < 30 || v > 300) {
+      input.style.borderColor = 'var(--color-danger)';
+      setTimeout(() => { input.style.borderColor = ''; }, 1200);
+      return;
+    }
+    const valor = Math.round(v * 10) / 10;
+    // Update optimista de STATE.salud (el Outbox garantiza la persistencia).
+    STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === TODAY_LOCAL && r.fuente === 'manual'));
+    STATE.salud.push({ fecha: TODAY_LOCAL, tipo: 'peso_kg', valor, fuente: 'manual' });
+    Outbox.enqueue('peso', { fecha: TODAY_LOCAL, valor }, 'peso_' + TODAY_LOCAL);
+    renderMydayPeso();
+  };
+  if (btn) btn.addEventListener('click', guardar);
+  if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); guardar(); } });
 }
 
 function renderMyday() {
@@ -4494,6 +4652,9 @@ function renderMyday() {
       </div>
     </div>
 
+    <!-- PESO CORPORAL — N1 -->
+    <div id="myday-peso"></div>
+
     <!-- SALUD (wearables) — solo aparece si hay datos sincronizados -->
     <div id="myday-salud"></div>
 
@@ -4512,6 +4673,8 @@ function renderMyday() {
 
   // Render streak
   renderMydayStreak();
+  // Render card de Peso (siempre visible: el input de carga vive ahí)
+  renderMydayPeso();
   // Render card de Salud (si hay datos de wearable sincronizados)
   renderMydaySalud();
 
@@ -4738,7 +4901,7 @@ async function init() {
     const est = rutina.estructura;
     const dia = getSuggestedDay(est.dias, rutina.id);
     DATA = {
-      cliente: { nombre: info.nombre, perfil: info.perfil },
+      cliente: { nombre: info.nombre, perfil: info.perfil, objetivo: normObjetivo(est.perfil && est.perfil.objetivo) },
       rutina: {
         nombre_plan: est.nombre_plan || 'Mi plan',
         split: est.split || est.perfil?.split || '',
@@ -4760,7 +4923,7 @@ async function init() {
     // Demo fallback
     const dia = getSuggestedDay(SAMPLE_RUTINA.dias, 'demo');
     DATA = {
-      cliente: { nombre: info.nombre, perfil: info.perfil },
+      cliente: { nombre: info.nombre, perfil: info.perfil, objetivo: 'volumen' },
       rutina: { ...SAMPLE_RUTINA, semana_actual: 1 },
       dia,
       historico_por_ejercicio: {},
