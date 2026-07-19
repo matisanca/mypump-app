@@ -76,6 +76,18 @@ def fetch_rutina(cliente_id):
     rows = _sb_req(f"/rest/v1/mypump_rutinas?cliente_id=eq.{cliente_id}&estado=eq.activa&select=estructura,semana_actual&limit=1")
     return rows[0] if rows else None
 
+def fetch_suplementos(cliente_id):
+    try:
+        rows = _sb_req(f"/rest/v1/mypump_suplementos?cliente_id=eq.{cliente_id}&select=items,resumen,revisado,confianza&limit=1")
+        if not rows: return None
+        r = rows[0]
+        items = r.get("items") or []
+        if not items and not r.get("resumen"): return None
+        stack = ", ".join(i.get("nombre", "") + (f" {i['dosis']}" if i.get("dosis") else "") for i in items) or r.get("resumen")
+        return {"stack": stack, "confirmado": bool(r.get("revisado")), "confianza": r.get("confianza")}
+    except Exception:
+        return None
+
 # -- WhatsApp (Meta Cloud API, mismo camino que heartbeat.py) --
 def send_whatsapp(text):
     tok = E.get("META_ACCESS_TOKEN"); pnid = E.get("META_PHONE_NUMBER_ID"); to = E.get("COACH_PHONE_NUMBER")
@@ -389,19 +401,23 @@ def gen_ajustes(lista):
     """lista: [{nombre, chk, ctx, alertas, dieta, rutina}] -> texto para Mati"""
     datos = []
     for x in lista:
+        sup = x.get("suplementos")
         datos.append({"nombre": x["nombre"], "objetivo": x["ctx"].get("obj"), "perfil": x["ctx"].get("perfil"),
                       "check": {k: x["chk"].get(k) for k in ("energia", "descanso", "hambre", "adherencia")} if x["chk"] else None,
                       "nota": (x["chk"] or {}).get("nota"), "alertas": x["alertas"],
                       "peso_delta_g_sem": x["ctx"].get("delta_peso_g"), "var_rendimiento_pct": x["ctx"].get("var_rendimiento"),
-                      "dieta": x["dieta"], "rutina": x["rutina"]})
+                      "dieta": x["dieta"], "rutina": x["rutina"],
+                      "ya_toma_suplementos": (sup or {}).get("stack") or "sin datos"})
     prompt = (
         "Sos el asistente tecnico de Mati Sancari (coach y medico, Pump Team). Para cada cliente "
         "que viene MAL esta semana, proponele a MATI (no al cliente) ajustes concretos de "
-        "planificacion basados en los datos: dieta real, rutina real, check subjetivo, peso y "
-        "rendimiento. Por cliente: 1 linea de diagnostico + 2-4 sugerencias accionables y "
-        "especificas (ej: 'subir ~150 kcal moviendo 40g de arroz a la cena', 'recortar las series "
-        "de aislamiento del dia 2', 'evaluar magnesio a la noche'). Se puede sugerir suplementos "
-        "LEGALES (creatina, magnesio, melatonina, cafeina, omega 3, etc). "
+        "planificacion basados en los datos: dieta real, rutina real, check subjetivo, peso, "
+        "rendimiento Y los suplementos que YA TOMA. Por cliente: 1 linea de diagnostico + 2-4 "
+        "sugerencias accionables y especificas (ej: 'subir ~150 kcal moviendo 40g de arroz a la "
+        "cena', 'recortar las series de aislamiento del dia 2'). "
+        "IMPORTANTE sobre suplementos: mira 'ya_toma_suplementos' — NO sugieras algo que ya toma; "
+        "si corresponde, ajusta su dosis/timing o suma algo LEGAL que le falte (magnesio, "
+        "melatonina, creatina, omega 3, cafeina, etc). "
         "REGLA ABSOLUTA: JAMAS sugieras farmacos, hormonas, AAS ni dosis de quimica — eso es "
         "decision exclusivamente medica de Mati y NO va en este informe.\n\n"
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
@@ -414,13 +430,17 @@ def gen_ajustes(lista):
         if not sug:
             causas = []
             chk = x["chk"] or {}
+            sup = (x.get("suplementos") or {}).get("stack", "").lower()
             if (chk.get("adherencia") or 5) <= 3: causas.append(FALLBACK_AJUSTES["adherencia"])
             if (chk.get("hambre") or 1) >= 4: causas.append(FALLBACK_AJUSTES["hambre"])
-            if (chk.get("descanso") or 5) <= 2: causas.append(FALLBACK_AJUSTES["descanso"])
+            if (chk.get("descanso") or 5) <= 2 and "melatonin" not in sup and "magnesi" not in sup:
+                causas.append(FALLBACK_AJUSTES["descanso"])
             if (chk.get("energia") or 5) <= 2: causas.append(FALLBACK_AJUSTES["energia"])
             if x["alertas"]: causas.append(FALLBACK_AJUSTES["entreno"])
             sug = "; ".join(causas) or "revisar en la proxima call"
-        lineas.append(f"🔧 *{x['nombre']}*\n{sug}")
+        sup_txt = (x.get("suplementos") or {}).get("stack")
+        extra = f"\n_ya toma: {sup_txt}_" if sup_txt else ""
+        lineas.append(f"🔧 *{x['nombre']}*\n{sug}{extra}")
     return "\n\n".join(lineas)
 
 # -- Main --
@@ -457,7 +477,8 @@ def main():
                                    "ctx": ctx, "mal": mal, "alertas": alertas, "cid": cid})
             if mal:
                 ajustables.append({"nombre": nombre, "chk": chk, "ctx": ctx, "alertas": alertas,
-                                   "dieta": resumen_dieta(cid), "rutina": resumen_rutina(cid)})
+                                   "dieta": resumen_dieta(cid), "rutina": resumen_rutina(cid),
+                                   "suplementos": fetch_suplementos(cid)})
         else:
             if alertas: alertados_sin_check.append({"nombre": nombre, "alertas": alertas})
             if ficha: fichas_sin_check.append(ficha)
