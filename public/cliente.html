@@ -776,6 +776,13 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .fp-msg.is-ok{color:var(--color-brand);font-weight:600}
 .fp-msg.is-warn{color:var(--color-warning)}
 .fp-msg.is-err{color:var(--color-danger)}
+/* elegir origen: camara o galeria (capture= fuerza camara y esconde el carrete) */
+.fp-pick{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5)}
+.fp-pick-card{width:100%;max-width:420px;background:var(--color-bg-primary);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:var(--space-4);padding-bottom:calc(var(--space-4) + env(safe-area-inset-bottom));box-shadow:var(--shadow-md)}
+.fp-pick-tit{font-size:15px;font-weight:700;margin-bottom:var(--space-3);color:var(--color-text-primary)}
+.fp-pick-btn{width:100%;height:52px;margin-bottom:8px;border:1px solid var(--color-border-strong);background:var(--color-bg-secondary);color:var(--color-text-primary);border-radius:var(--radius-md);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;padding:0 var(--space-4)}
+.fp-pick-btn:active{transform:scale(.98)}
+.fp-pick-btn.is-cancel{background:transparent;border-color:transparent;color:var(--color-text-muted);height:44px;font-weight:500;justify-content:center;margin-bottom:0}
 /* galeria */
 .fp-galeria{display:none}
 .fp-galeria.is-open{display:block;background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-3);box-shadow:var(--shadow-md)}
@@ -4634,6 +4641,7 @@ const POSES = [
 ];
 const FOTOQ_KEY = () => `mypump_fotoq_${TOKEN}`;
 const FOTOS_MAX_PENDIENTES = 3;
+const FOTOS_MAX_INTENTOS = 8;   // solo cuenta errores DEL SERVER, no cortes de red
 
 function _lunesISO(fechaISO) {
   const d = new Date(`${fechaISO}T00:00:00`);
@@ -4650,23 +4658,47 @@ function _fotoqGuardar(q) {
   catch (_) { return false; }   // QuotaExceededError → el caller avisa
 }
 
-// Reduce a Blob-friendly dataURL. 900px/0.7 alcanza para comparar fisico
+// Reduce a dataURL JPEG. 900px/0.7 alcanza para comparar fisico
 // (1024/0.8 es para OCR de etiquetas). El re-encode por canvas ademas
 // ELIMINA EL EXIF, o sea la ubicacion GPS no viaja.
-function _fotoAJpeg(file, maxPx = 900, calidad = 0.7) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const esc = Math.min(1, maxPx / Math.max(img.width, img.height));
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(img.src);
-      resolve(c.toDataURL('image/jpeg', calidad));
-    };
-    img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error('no se pudo leer la imagen')); };
-    img.src = URL.createObjectURL(file);
-  });
+// Ojo: las fotos que vienen de GALERIA suelen traer orientacion EXIF; por eso
+// se decodifica con createImageBitmap({imageOrientation:'from-image'}) cuando
+// existe — si no, salen rotadas 90 grados en algunos telefonos.
+async function _fotoAJpeg(file, maxPx = 900, calidad = 0.7) {
+  let src = null, w = 0, h = 0, bmp = null, url = null;
+  try {
+    if (window.createImageBitmap) {
+      try {
+        bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        src = bmp; w = bmp.width; h = bmp.height;
+      } catch (_) { bmp = null; }
+    }
+    if (!src) {
+      url = URL.createObjectURL(file);
+      const img = await new Promise((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = () => rej(new Error('no se pudo leer la imagen'));
+        im.src = url;
+      });
+      src = img; w = img.naturalWidth || img.width; h = img.naturalHeight || img.height;
+    }
+    if (!w || !h) throw new Error('imagen vacia');
+
+    const esc = Math.min(1, maxPx / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * esc));
+    c.height = Math.max(1, Math.round(h * esc));
+    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+    const out = c.toDataURL('image/jpeg', calidad);
+    // El server valida los magic bytes: si el canvas no pudo dar JPEG, mejor
+    // fallar aca con un mensaje entendible que comerse un 400 despues.
+    if (!/^data:image\/jpeg;base64,/.test(out)) throw new Error('formato no soportado');
+    return out;
+  } finally {
+    if (bmp && bmp.close) bmp.close();
+    if (url) URL.revokeObjectURL(url);
+  }
 }
 
 const FOTOS_URL = () => (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '';
@@ -4680,8 +4712,12 @@ async function _subirFoto(pose, dataUrl, fecha) {
       body: JSON.stringify({ token: TOKEN, pose, fecha, imagen_base64: dataUrl }),
     });
     const j = await r.json().catch(() => ({}));
-    return (r.ok && j.ok) ? { ok: true, semana: j.semana_lunes } : { ok: false, error: j.error || `HTTP ${r.status}` };
-  } catch (e) { return { ok: false, error: 'sin conexión' }; }
+    if (r.ok && j.ok) return { ok: true, semana: j.semana_lunes };
+    // 4xx (salvo 429) = la foto nunca va a entrar: no tiene sentido reintentarla
+    // eternamente y dejar la cola trabada. 5xx / red = transitorio, se reintenta.
+    const fatal = r.status >= 400 && r.status < 500 && r.status !== 429;
+    return { ok: false, fatal, error: j.error || `HTTP ${r.status}` };
+  } catch (e) { return { ok: false, fatal: false, red: true, error: 'sin conexión' }; }
 }
 
 // Drena la cola de fotos pendientes (se llama al cargar y al volver la red).
@@ -4693,8 +4729,15 @@ async function flushFotos() {
     const item = q[k];
     if (!item || !item.dataUrl) { delete q[k]; continue; }
     const res = await _subirFoto(item.pose, item.dataUrl, item.fecha);
-    if (res.ok) { delete q[k]; _fotoqGuardar(q); }
-    else break;   // sin conexión / error: se reintenta después
+    if (res.ok) { delete q[k]; _fotoqGuardar(q); continue; }
+    // Un item RECHAZADO (4xx) se descarta: si no queda adelante en la cola y
+    // bloquea para siempre a las que vienen atras.
+    // Un fallo de RED no gasta intentos: si el server esta caido o el cliente
+    // sin señal, la foto tiene que sobrevivir hasta que vuelva, no perderse.
+    if (!res.red) item.intentos = (item.intentos || 0) + 1;
+    if (res.fatal || item.intentos >= FOTOS_MAX_INTENTOS) { delete q[k]; _fotoqGuardar(q); continue; }
+    _fotoqGuardar(q);
+    break;   // sin conexión / server caido: se reintenta después
   }
   _fotoqGuardar(q);
   await loadFotos();
@@ -4752,13 +4795,14 @@ function renderRecordatorio() {
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
   if (p.total === 0 || STATE.scene === 'myday') return;
 
-  const que = p.faltaCheck && p.faltanFotos ? 'tu check y tus fotos de la semana'
-            : p.faltaCheck ? 'tu check de la semana' : 'tus fotos de la semana';
+  const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan <b>tu check y tus fotos</b> de la semana'
+              : p.faltaCheck ? 'Te falta <b>tu check de la semana</b>'
+              : 'Te faltan <b>tus fotos de la semana</b>';
   const host = document.querySelector(`#scene-${STATE.scene} main, #scene-${STATE.scene}`);
   if (!host) return;
   const div = document.createElement('div');
   div.className = 'prog-banner recordatorio-semanal';
-  div.innerHTML = `📋 Te falta <b>${que}</b> — entrá a <b>Mi Día</b> para completarlo.`;
+  div.innerHTML = `📋 ${texto} — entrá a <b>Mi Día</b>.`;
   div.addEventListener('click', () => {
     const t = [...document.querySelectorAll('.tab')].find(x => x.dataset.scene === 'myday');
     if (t) t.click();
@@ -4828,24 +4872,65 @@ function renderMydayFotos() {
   if (ver) ver.addEventListener('click', abrirGaleriaFotos);
 }
 
-function _pedirFoto(pose) {
-  let inp = document.getElementById('fpInput');
+// Un input con capture= abre la camara y NO deja llegar al carrete; uno sin
+// capture= abre el selector. Son dos inputs distintos a proposito: sacar el
+// atributo en caliente no es confiable en iOS.
+function _fpInput(origen) {
+  const id = origen === 'galeria' ? 'fpInputGal' : 'fpInputCam';
+  let inp = document.getElementById(id);
   if (!inp) {
     inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
-    inp.id = 'fpInput'; inp.style.display = 'none';
+    inp.type = 'file';
+    inp.id = id;
+    inp.style.display = 'none';
+    if (origen === 'galeria') {
+      // .heic/.heif explicito: si no, iOS los muestra en gris en el carrete.
+      inp.accept = 'image/*,.heic,.heif';
+    } else {
+      inp.accept = 'image/*';
+      inp.setAttribute('capture', 'environment');
+    }
     document.body.appendChild(inp);
   }
+  return inp;
+}
+
+function _pedirFoto(pose) {
+  const et = (POSES.find(p => p.k === pose) || {}).label || 'Foto';
+  const ov = document.createElement('div');
+  ov.className = 'fp-pick';
+  ov.innerHTML = `
+    <div class="fp-pick-card" role="dialog" aria-label="Elegir foto">
+      <div class="fp-pick-tit">${et}</div>
+      <button class="fp-pick-btn" data-origen="camara">📷 Sacar la foto ahora</button>
+      <button class="fp-pick-btn" data-origen="galeria">🖼️ Elegir de la galería</button>
+      <button class="fp-pick-btn is-cancel" data-origen="">Cancelar</button>
+    </div>`;
+  const cerrar = () => ov.remove();
+  ov.addEventListener('click', (e) => {
+    if (e.target === ov) return cerrar();
+    const b = e.target.closest('.fp-pick-btn');
+    if (!b) return;
+    const origen = b.dataset.origen;
+    cerrar();
+    if (origen) _tomarFoto(pose, origen);
+  });
+  document.body.appendChild(ov);
+}
+
+async function _tomarFoto(pose, origen) {
+  const inp = _fpInput(origen);
   inp.value = '';
   inp.onchange = async () => {
     const file = inp.files && inp.files[0];
+    inp.value = '';                       // permite re-elegir el MISMO archivo
     if (!file) return;
     const msg = document.getElementById('fpMsg');
     const setMsg = (t, cls = '') => { if (msg) { msg.textContent = t; msg.className = 'fp-msg ' + cls; } };
     setMsg('Preparando la foto…');
     let dataUrl;
     try { dataUrl = await _fotoAJpeg(file); }
-    catch { return setMsg('No se pudo leer esa foto, probá de nuevo.', 'is-err'); }
+    catch { return setMsg('No se pudo leer esa foto. Probá con otra o sacala con la cámara.', 'is-err'); }
 
     // Encolar (para sobrevivir a cierres/red) y subir enseguida
     const q = _fotoqLeer();
@@ -4854,7 +4939,10 @@ function _pedirFoto(pose) {
       setMsg('Hay fotos esperando subir. Probá cuando tengas señal.', 'is-err');
       return;
     }
-    q[key] = { pose, fecha: TODAY_LOCAL, dataUrl };
+    // El server corta la conexion si el body pasa los 3 MB, y eso llega al
+    // front como 'sin conexion' → trabaria la cola. Se filtra antes de encolar.
+    if (dataUrl.length > 2.4e6) return setMsg('Esa foto es demasiado pesada. Probá sacarla con la cámara.', 'is-err');
+    q[key] = { pose, fecha: TODAY_LOCAL, dataUrl, intentos: 0 };
     const guardo = _fotoqGuardar(q);
     renderMydayFotos();
     setMsg('Subiendo…');
@@ -4865,10 +4953,16 @@ function _pedirFoto(pose) {
       await loadFotos();
       renderMydayFotos();
       setMsg('Listo, guardada ✓', 'is-ok');
+    } else if (res.fatal) {
+      // La foto no va a entrar nunca: sacarla de la cola y decir por que.
+      const q2 = _fotoqLeer(); delete q2[key]; _fotoqGuardar(q2);
+      renderMydayFotos();
+      setMsg(`No se pudo guardar: ${res.error}`, 'is-err');
     } else if (guardo) {
       renderMydayFotos();
       setMsg('Sin conexión: queda guardada y se sube sola.', 'is-warn');
     } else {
+      renderMydayFotos();
       setMsg('No se pudo guardar. Probá de nuevo con señal.', 'is-err');
     }
   };
