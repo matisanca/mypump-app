@@ -761,12 +761,17 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .fp-intro{font-size:12px;color:var(--color-text-muted);margin:0 0 var(--space-3);line-height:1.45}
 .fp-intro b{color:var(--color-text-secondary)}
 .fp-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.fp-slot{position:relative;height:88px;border:1.5px dashed var(--color-border-strong);background:var(--color-bg-secondary);border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--color-text-secondary);transition:background .15s,border-color .15s,transform .1s}
+.fp-slot{position:relative;min-height:88px;border:1.5px dashed var(--color-border-strong);background:var(--color-bg-secondary);border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--color-text-secondary);transition:background .15s,border-color .15s,transform .1s}
 .fp-slot:active{transform:scale(.96)}
 .fp-slot.is-done{border-style:solid;border-color:var(--color-brand);background:color-mix(in oklab,var(--color-brand) 12%,var(--color-bg-primary));color:var(--color-brand)}
 .fp-slot-ico{font-size:20px;line-height:1}
 .fp-slot-lbl{font-size:12px;font-weight:600}
 .fp-slot-sub{font-size:9px;color:var(--color-text-muted);font-family:var(--font-mono)}
+.fp-slot.has-thumb{border-style:solid;padding:0;overflow:hidden;justify-content:flex-end;min-height:124px}
+.fp-slot-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:calc(var(--radius-md) - 2px)}
+.fp-slot.has-thumb .fp-slot-lbl{position:relative;z-index:1;width:100%;padding:14px 4px 5px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7);background:linear-gradient(transparent,rgba(0,0,0,.65))}
+.fp-slot.has-thumb .fp-slot-sub{position:relative;z-index:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+.fp-nota-comp{margin-top:var(--space-2);font-size:11px;color:var(--color-text-muted);text-align:center}
 .fp-serie{margin-top:var(--space-3);font-size:13px;font-weight:600;color:var(--color-brand)}
 .fp-bloqueado{margin-top:var(--space-3);padding:var(--space-3);border:1px dashed var(--color-border);border-radius:var(--radius-md);font-size:12px;color:var(--color-text-secondary);line-height:1.45;text-align:center}
 .fp-bloqueado small{color:var(--color-text-muted);font-size:11px}
@@ -801,6 +806,16 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .fp-tira-item{flex:0 0 auto;width:72px;text-align:center}
 .fp-tira-item img{width:72px;height:96px;object-fit:cover;border-radius:var(--radius-sm);display:block;background:var(--color-bg-tertiary)}
 .fp-tira-item span{display:block;margin-top:3px;font-size:10px;color:var(--color-text-muted);font-family:var(--font-mono)}
+.fp-tira-item{cursor:pointer;opacity:.55;transition:opacity .15s}
+.fp-tira-item.is-on{opacity:1}
+.fp-tira-item.is-on img{outline:2px solid var(--color-brand);outline-offset:1px}
+.fp-tira-item.is-on span{color:var(--color-brand);font-weight:700}
+.fp-sem{margin-top:var(--space-4)}
+.fp-sem-tit{font-size:12px;font-weight:700;color:var(--color-text-secondary);margin-bottom:var(--space-2);letter-spacing:.02em}
+.fp-sem-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.fp-sem-grid figure{margin:0}
+.fp-sem-grid img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:var(--radius-sm);display:block;background:var(--color-bg-tertiary)}
+.fp-sem-grid figcaption{margin-top:3px;font-size:10px;color:var(--color-text-muted);text-align:center}
 
 /* ── Check semanal (N8) ── */
 .ck-saved{margin-left:auto;font-size:11px;font-weight:700;color:var(--color-brand);letter-spacing:.02em}
@@ -1037,6 +1052,7 @@ const STATE = {
   checkinDraft:       null,       // borrador local sin enviar
   salud:              [],         // registros de salud/peso — alimenta Peso y Salud
   fotos:              [],         // metadata de fotos de progreso (sin path ni URL)
+  fotosUrls:          null,       // {mapa:{'semana|pose':url}, exp} — URLs firmadas cacheadas
   adhOpen:            false,
   adhData:            null,
   comidasMarcadas:    {},          // comida_id → {opcion, estado, marcada_en}
@@ -4756,6 +4772,7 @@ async function flushFotos() {
   }
   _fotoqGuardar(q);
   await loadFotos();
+  STATE.fotosUrls = null;          // subio algo de la cola: refirmar
   if (STATE.scene === 'revision') renderMydayFotos();
 }
 
@@ -4768,6 +4785,23 @@ async function loadFotos() {
 }
 
 // URLs firmadas (1h) — solo cuando el usuario abre la galeria.
+/* Las fotos viven en un bucket PRIVADO: para mostrarlas hay que pedir URLs
+   firmadas. Duran 1h, asi que se cachean 50min y se piden UNA vez, no por
+   cada render. Sin esto el cliente subia una foto y no la veia nunca: el slot
+   quedaba con un ✓ y la galeria estaba bajo llave hasta la semana 4. */
+const FOTOS_URLS_TTL = 50 * 60 * 1000;
+
+async function cargarFotosFirmadas(forzar) {
+  const cache = STATE.fotosUrls;
+  if (!forzar && cache && cache.exp > Date.now()) return cache.mapa;
+  const fotos = await fotosFirmadas();
+  if (!fotos.length) return (cache && cache.mapa) || null;
+  const mapa = {};
+  fotos.forEach(f => { mapa[`${f.semana_lunes}|${f.pose}`] = f.url; });
+  STATE.fotosUrls = { mapa, exp: Date.now() + FOTOS_URLS_TTL };
+  return mapa;
+}
+
 async function fotosFirmadas() {
   const base = FOTOS_URL();
   if (!base) return [];
@@ -4850,20 +4884,31 @@ function renderMydayFotos() {
     if (completas[i] === esperada.toLocaleDateString('en-CA')) serie++; else break;
   }
 
+  // Miniatura de la foto de ESTA semana (si ya llegaron las URLs firmadas).
+  const urls = (STATE.fotosUrls && STATE.fotosUrls.mapa) || {};
   const slots = POSES.map(p => {
     const lista = deEstaSemana.has(p.k);
     const subiendo = Object.values(pendientes).some(x => x.pose === p.k && _lunesISO(x.fecha) === semanaAct);
-    return `<button class="fp-slot${lista ? ' is-done' : ''}" data-pose="${p.k}">
-      <span class="fp-slot-ico">${lista ? '✓' : '📷'}</span>
+    const thumb = urls[`${semanaAct}|${p.k}`];
+    return `<button class="fp-slot${lista ? ' is-done' : ''}${thumb ? ' has-thumb' : ''}" data-pose="${p.k}">
+      ${thumb ? `<img class="fp-slot-img" src="${thumb}" alt="" loading="lazy">` : ''}
+      ${thumb ? '' : `<span class="fp-slot-ico">${lista ? '✓' : '📷'}</span>`}
       <span class="fp-slot-lbl">${p.label}</span>
       ${subiendo ? '<span class="fp-slot-sub">subiendo…</span>' : ''}
     </button>`;
   }).join('');
 
+  // Ver sus propias fotos NO se bloquea nunca: es de ellos y necesitan poder
+  // chequear que la foto salio bien. Lo que espera a las 4 semanas es el
+  // COMPARADOR antes/despues, que antes de eso compara ruido (luz, hora,
+  // retencion de liquido), no cambios reales.
   const faltan = 4 - semanas.length;
-  const comparador = semanas.length >= 4
-    ? `<button class="fp-vergaleria" id="fpVerGaleria">Ver mi progreso · ${semanas.length} semanas</button>`
-    : `<div class="fp-bloqueado">Con ${semanas.length === 0 ? 'la primera foto' : `${faltan} semana${faltan > 1 ? 's' : ''} más`} vas a poder comparar tu cambio.<br><small>Antes de 4 semanas la comparación es ruido: cambia la luz, la hora y la retención de líquido, no vos.</small></div>`;
+  const comparador = semanas.length === 0
+    ? `<div class="fp-bloqueado">Con la primera foto arranca tu historial.<br><small>Mismo lugar y misma luz cada semana: asi la comparacion muestra tu cambio y no el del ambiente.</small></div>`
+    : `<button class="fp-vergaleria" id="fpVerGaleria">Ver mis fotos · ${semanas.length} semana${semanas.length === 1 ? '' : 's'}</button>` +
+      (semanas.length < 4
+        ? `<div class="fp-nota-comp">El comparador antes/después se abre en ${faltan} semana${faltan > 1 ? 's' : ''} más.</div>`
+        : '');
 
   el.innerHTML = `
     <div class="myday-section">
@@ -4882,6 +4927,17 @@ function renderMydayFotos() {
     </div>`;
 
   try { renderRecordatorio(); } catch (_) {}
+
+  // Si hay fotos pero todavia no tenemos las URLs firmadas, pedirlas y
+  // repintar. Va despues del innerHTML para no demorar el primer pintado.
+  if (semanas.length && !(STATE.fotosUrls && STATE.fotosUrls.exp > Date.now()) && !STATE._firmando) {
+    STATE._firmando = true;
+    cargarFotosFirmadas().then(m => {
+      STATE._firmando = false;
+      if (m && STATE.scene === 'revision') renderMydayFotos();
+    }).catch(() => { STATE._firmando = false; });
+  }
+
   el.querySelectorAll('.fp-slot').forEach(b => b.addEventListener('click', () => _pedirFoto(b.dataset.pose)));
   const ver = document.getElementById('fpVerGaleria');
   if (ver) ver.addEventListener('click', abrirGaleriaFotos);
@@ -4966,6 +5022,7 @@ async function _tomarFoto(pose, origen) {
     if (res.ok) {
       const q2 = _fotoqLeer(); delete q2[key]; _fotoqGuardar(q2);
       await loadFotos();
+      STATE.fotosUrls = null;      // que se refirme y aparezca la miniatura
       renderMydayFotos();
       setMsg('Listo, guardada ✓', 'is-ok');
     } else if (res.fatal) {
@@ -4987,58 +5044,95 @@ async function _tomarFoto(pose, origen) {
 async function abrirGaleriaFotos() {
   const msg = document.getElementById('fpMsg');
   if (msg) { msg.textContent = 'Cargando tus fotos…'; msg.className = 'fp-msg'; }
-  const fotos = await fotosFirmadas();
+  const mapa = await cargarFotosFirmadas();
   if (msg) msg.textContent = '';
-  if (!fotos.length) { if (msg) { msg.textContent = 'No se pudieron cargar las fotos ahora.'; msg.className = 'fp-msg is-err'; } return; }
+  if (!mapa) { if (msg) { msg.textContent = 'No se pudieron cargar las fotos ahora.'; msg.className = 'fp-msg is-err'; } return; }
 
   const porSemana = {};
-  fotos.forEach(f => { (porSemana[f.semana_lunes] = porSemana[f.semana_lunes] || {})[f.pose] = f.url; });
+  Object.keys(mapa).forEach(k => {
+    const [sem, pose] = k.split('|');
+    (porSemana[sem] = porSemana[sem] || {})[pose] = mapa[k];
+  });
   const semanas = Object.keys(porSemana).sort();
+  if (!semanas.length) return;
   const primera = semanas[0], ultima = semanas[semanas.length - 1];
 
-  // Peso real en esas fechas, para acompañar la comparación con dato duro
-  const serieP = _pesoSerie();
-  const pesoEn = (sem) => {
-    const cand = serieP.filter(p => p.fecha >= sem).sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
-    return cand ? cand.kg : null;
-  };
-  const p0 = pesoEn(primera), p1 = pesoEn(ultima);
-  const semDif = Math.round((new Date(ultima) - new Date(primera)) / 6048e5);
-  const dKg = (p0 != null && p1 != null) ? (p1 - p0) : null;
-  const resumen = `${semDif} semana${semDif === 1 ? '' : 's'}` + (dKg != null ? ` · ${dKg > 0 ? '+' : ''}${dKg.toFixed(1).replace('.', ',')} kg` : '');
+  // El comparador antes/despues espera a las 4 semanas: antes compara luz,
+  // hora y retencion de liquido, no cambios reales. La TIRA por semana no
+  // espera nada: son sus fotos y tiene que poder verlas siempre.
+  const hayComparador = semanas.length >= 4;
 
-  const poseIni = ['frente', 'perfil', 'espalda'].find(p => porSemana[primera][p] && porSemana[ultima][p]) || 'frente';
+  let bloqueComp = '';
+  if (hayComparador) {
+    const serieP = _pesoSerie();
+    const pesoEn = (sem) => {
+      const cand = serieP.filter(p => p.fecha >= sem).sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+      return cand ? cand.kg : null;
+    };
+    const p0 = pesoEn(primera), p1 = pesoEn(ultima);
+    const semDif = Math.round((new Date(ultima) - new Date(primera)) / 6048e5);
+    const dKg = (p0 != null && p1 != null) ? (p1 - p0) : null;
+    const resumen = `${semDif} semana${semDif === 1 ? '' : 's'}` + (dKg != null ? ` · ${dKg > 0 ? '+' : ''}${dKg.toFixed(1).replace('.', ',')} kg` : '');
+    const comparables = POSES.filter(p => porSemana[primera][p.k] && porSemana[ultima][p.k]);
+    if (comparables.length) {
+      bloqueComp = `
+        <div class="fp-comp-tabs">
+          ${comparables.map((p, n) => `<button class="fp-comp-tab${n === 0 ? ' is-on' : ''}" data-p="${p.k}">${p.label}</button>`).join('')}
+        </div>
+        <div class="fp-comp" id="fpComp"></div>
+        <div class="fp-comp-meta">${resumen}</div>`;
+    }
+  } else {
+    const faltan = 4 - semanas.length;
+    bloqueComp = `<div class="fp-bloqueado">El comparador antes/después se abre en ${faltan} semana${faltan > 1 ? 's' : ''} más.<br><small>Antes de 4 semanas la comparación es ruido: cambia la luz, la hora y la retención de líquido, no vos.</small></div>`;
+  }
 
-  const tira = semanas.map((s, i) => {
-    const u = porSemana[s].frente || Object.values(porSemana[s])[0];
-    return `<div class="fp-tira-item"><img src="${u}" loading="lazy" alt=""><span>Sem ${i + 1}</span></div>`;
+  const tira = semanas.map((sem, i) => {
+    const u = porSemana[sem].frente || Object.values(porSemana[sem])[0];
+    const n = Object.keys(porSemana[sem]).length;
+    return `<div class="fp-tira-item" data-sem="${sem}"><img src="${u}" loading="lazy" alt=""><span>Sem ${i + 1}${n < 3 ? ` · ${n}/3` : ''}</span></div>`;
   }).join('');
 
   const cont = document.getElementById('fpGaleria');
   cont.innerHTML = `
     <div class="fp-gal-hdr">
-      <strong>Tu progreso</strong>
+      <strong>Tus fotos</strong>
       <button class="fp-gal-close" id="fpGalClose">✕</button>
     </div>
-    <div class="fp-comp-tabs">
-      ${POSES.filter(p => porSemana[primera][p.k] && porSemana[ultima][p.k]).map(p =>
-        `<button class="fp-comp-tab${p.k === poseIni ? ' is-on' : ''}" data-p="${p.k}">${p.label}</button>`).join('')}
-    </div>
-    <div class="fp-comp" id="fpComp"></div>
-    <div class="fp-comp-meta">${resumen}</div>
-    <div class="fp-tira">${tira}</div>`;
+    ${bloqueComp}
+    <div class="fp-tira">${tira}</div>
+    <div class="fp-sem" id="fpSem"></div>`;
   cont.classList.add('is-open');
 
-  const pintarComp = (pose) => {
-    document.getElementById('fpComp').innerHTML = `
-      <figure><img src="${porSemana[primera][pose]}" alt=""><figcaption>Semana 1</figcaption></figure>
-      <figure><img src="${porSemana[ultima][pose]}" alt=""><figcaption>Semana ${semanas.length}</figcaption></figure>`;
+  // Tocar una semana de la tira abre las 3 poses de esa semana.
+  const verSemana = (sem) => {
+    const idx = semanas.indexOf(sem);
+    const fs = porSemana[sem];
+    document.getElementById('fpSem').innerHTML = `
+      <div class="fp-sem-tit">Semana ${idx + 1}</div>
+      <div class="fp-sem-grid">
+        ${POSES.filter(p => fs[p.k]).map(p =>
+          `<figure><img src="${fs[p.k]}" alt="" loading="lazy"><figcaption>${p.label}</figcaption></figure>`).join('')}
+      </div>`;
+    cont.querySelectorAll('.fp-tira-item').forEach(x => x.classList.toggle('is-on', x.dataset.sem === sem));
   };
-  pintarComp(poseIni);
-  cont.querySelectorAll('.fp-comp-tab').forEach(b => b.addEventListener('click', () => {
-    cont.querySelectorAll('.fp-comp-tab').forEach(x => x.classList.remove('is-on'));
-    b.classList.add('is-on'); pintarComp(b.dataset.p);
-  }));
+  cont.querySelectorAll('.fp-tira-item').forEach(x =>
+    x.addEventListener('click', () => verSemana(x.dataset.sem)));
+  verSemana(ultima);   // arranca mostrando la mas reciente
+
+  if (hayComparador && document.getElementById('fpComp')) {
+    const pintarComp = (pose) => {
+      document.getElementById('fpComp').innerHTML = `
+        <figure><img src="${porSemana[primera][pose]}" alt=""><figcaption>Semana 1</figcaption></figure>
+        <figure><img src="${porSemana[ultima][pose]}" alt=""><figcaption>Semana ${semanas.length}</figcaption></figure>`;
+    };
+    const primerTab = cont.querySelector('.fp-comp-tab');
+    if (primerTab) pintarComp(primerTab.dataset.p);
+    cont.querySelectorAll('.fp-comp-tab').forEach(b => b.addEventListener('click', () => {
+      cont.querySelectorAll('.fp-comp-tab').forEach(x => x.classList.remove('is-on'));
+      b.classList.add('is-on'); pintarComp(b.dataset.p);
+    }));
+  }
   document.getElementById('fpGalClose').addEventListener('click', () => cont.classList.remove('is-open'));
 }
 
