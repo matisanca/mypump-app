@@ -173,7 +173,7 @@ TONO = ("Escribi como Mati Sancari, coach de Pump Team (argentino, tuteo rioplat
         "Como mucho UN emoji, y solo al final (ej: un apreton de manos). Nunca emojis en el medio.\n"
         "Asi escribe el de verdad, calca este registro (no el contenido, el REGISTRO):\n"
         "  Buenas! cómo va el lunes? toca revisión!\n"
-        "  Mañana pesate apenas te levantes en ayunas y cargá en la app, en la parte de mi día, "
+        "  Mañana pesate apenas te levantes en ayunas y cargá en la app, en la parte de revisión, "
         "tu peso actual y las fotos de frente, perfil y espaldas.\n"
         "  Además podés contarme cómo estuvo tu semana en cuanto a energía, descanso, hambre y "
         "adherencia con 4 toques, y obvio cualquier cosa que quieras agregar me podés contar por "
@@ -350,7 +350,7 @@ ANGULOS = [
 
 FALLBACK_GENERAL = (
     "Buenas! Cómo va el finde? Mañana toca revisión. "
-    "Pesate apenas te levantes en ayunas y cargá en la app, en Mi Día, tu peso y las fotos de "
+    "Pesate apenas te levantes en ayunas y cargá en la app, en Revisión, tu peso y las fotos de "
     "frente, perfil y espalda. "
     "Ahí mismo contame cómo estuvo tu semana en energía, descanso, hambre y adherencia, son 4 "
     "toques, y cualquier cosa que quieras agregar me la podés contar por acá o en la app 🤝"
@@ -370,8 +370,12 @@ def _general_valido(m):
     # Requisito duro de Mati: el mensaje invita a contar algo mas.
     if not re.search(r"cont(a|a)me|cont(a|a)r|escribime|charlamos|mandame un audio", ml):
         return False
-    # Y tiene que decir DONDE: "mi dia" es la seccion, si no quedan dando vueltas.
-    if not re.search(r"mi d[ií]a", ml):
+    # Y tiene que decir DONDE: "Revisión" es la pestaña, si no quedan dando
+    # vueltas por la app. La clase [oó] es obligatoria: mas abajo se hace
+    # .lower() pero NO se normalizan acentos, y al modelo se le pide que
+    # escriba con tildes — sin eso el validador rechaza todo y siempre cae al
+    # fallback.
+    if not re.search(r"revisi[oó]n", ml):
         return False
     return True
 
@@ -418,7 +422,7 @@ def gen_general():
         f"{TONO}\n\nEscribi el mensaje de WhatsApp del domingo a la tarde avisando que manana "
         f"lunes toca la revision semanal. Se manda por broadcast: cada uno lo recibe como mensaje "
         f"privado e individual.\nANGULO DE ESTA SEMANA: {ang}\n"
-        "Todo se carga en la APP (MyPump), en la seccion MI DIA. Nombrala: que sepan donde ir.\n"
+        "Todo se carga en la APP (MyPump), en la pestaña REVISIÓN. Nombrala: que sepan donde ir.\n"
         "Que quede claro, en la MENOR cantidad de palabras posible:\n"
         "(1) que manana se pese apenas se levante, en ayunas, y cargue el PESO en la app. "
         "El peso NUNCA por WhatsApp.\n"
@@ -473,7 +477,7 @@ def fallback_personalizado(nombre, chk, mal):
         partes.append("En las sensaciones venís bien, pero quiero repasar un par de cosas del entreno con vos.")
     else:
         partes.append("Se te ve una buena semana, seguimos así.")
-    partes.append("Mañana al despertar subí en la app, en Mi Día, tus 3 fotos (frente, perfil y espalda) así te hago la devolución completa. Cualquier cosa que quieras agregar, contame por acá.")
+    partes.append("Mañana al despertar subí en la app, en Revisión, tus 3 fotos (frente, perfil y espalda) así te hago la devolución completa. Cualquier cosa que quieras agregar, contame por acá.")
     return " ".join(partes)
 
 def gen_personalizados(lista):
