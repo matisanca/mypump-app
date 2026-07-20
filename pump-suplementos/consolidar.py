@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 
 BOT_ENV = os.path.expanduser("~/agentkit-coach/.env")
 DRY   = "--dry" in sys.argv
+FORCE_HASH = "--all" in sys.argv   # re-procesar aunque no haya cambios
 ONLY  = None
 LIMIT = None
 for i, a in enumerate(sys.argv):
@@ -48,6 +49,48 @@ def sb(path, method="GET", body=None, prefer=None):
         return json.loads(txt) if txt.strip() else None
 
 CODEX = os.path.expanduser("~/.nvm/versions/node/v24.16.0/bin/codex")
+FATHOM_PULL = os.path.expanduser("~/pump-trazabilidad/cache/fathom-pull.json")
+HASHES = os.path.expanduser("~/pump-suplementos/hashes.json")   # cid -> hash del texto candidato
+
+import hashlib
+def _norm_mail(s): return (s or "").strip().lower()
+
+# Indice de Fathom: email de invitado -> [transcripts]; nombre -> [transcripts].
+_FATHOM_CACHE = None
+def cargar_fathom():
+    global _FATHOM_CACHE
+    if _FATHOM_CACHE is not None: return _FATHOM_CACHE
+    por_mail, por_nombre = {}, {}
+    try:
+        pull = json.load(open(FATHOM_PULL))
+        meetings = pull.get("meetings", pull) if isinstance(pull, dict) else pull
+        for m in meetings:
+            tr = m.get("transcript") or ""
+            if len(tr) < 100: continue
+            for inv in (m.get("calendar_invitees") or []):
+                em = _norm_mail(inv.get("email"))
+                if em and inv.get("is_external"): por_mail.setdefault(em, []).append(tr)
+            titulo = m.get("meeting_title") or m.get("title") or ""
+            # nombre del titulo tipo "Reunion acceso Bryan" / "VC Nacho Arnaudo"
+            nm = re.sub(r"(?i)reuni[oó]n|acceso|vc|videollamada|entrega|seguimiento|call|pump|[-|]", " ", titulo)
+            nm = norm(nm).strip()
+            if len(nm) >= 4: por_nombre.setdefault(nm, []).append(tr)
+    except Exception as ex:
+        print(f"  [fathom] no se pudo cargar: {ex}")
+    _FATHOM_CACHE = (por_mail, por_nombre)
+    return _FATHOM_CACHE
+
+def fathom_transcripts(c):
+    por_mail, por_nombre = cargar_fathom()
+    trs = []
+    em = _norm_mail(c.get("mail") or c.get("email"))
+    if em and em in por_mail: trs += por_mail[em]
+    if not trs:
+        nom = norm(((c.get("nombre") or "") + " " + (c.get("apellido") or "")).strip())
+        for k, v in por_nombre.items():
+            if nom and (nom in k or k in nom) and len(nom) >= 5:
+                trs += v
+    return trs[-2:]   # las 2 mas recientes matcheadas
 
 # Palabras que delatan un suplemento (para pre-filtrar y no mandar todo).
 KW = re.compile(r"creatin|magnesi|melatonin|omega|cafein|caf[eé]|whey|prote[ií]n|glutamin|"
@@ -117,11 +160,17 @@ def main():
         activos = [(cid, c) for cid, c in activos if cid == ONLY]
     print(f"clientes en la app: {len(activos)}")
 
+    # filas existentes: no pisar lo que Mati ya confirmo (revisado=true)
+    existentes = {r["cliente_id"]: r for r in (sb("/rest/v1/mypump_suplementos?select=cliente_id,revisado") or [])}
+    # hashes: saltear si el texto candidato no cambio desde la ultima corrida
+    try: hashes = json.load(open(HASHES))
+    except Exception: hashes = {}
+
     procesados = 0
     for cid, c in activos:
         if LIMIT and procesados >= LIMIT: break
         nombre = (c.get("nombre", "") + " " + c.get("apellido", "")).strip() or cid
-        # juntar texto candidato: memoria (por tel o nombre) + formulario
+        # juntar texto candidato: memoria (por tel o nombre) + formulario + VC + Fathom
         textos = []
         tel = solo_digitos(c.get("whatsapp"))[-10:]
         rows = mem_por_tel.get(tel, []) if tel else []
@@ -133,11 +182,21 @@ def main():
             textos.append("Formulario suplementos: " + c["suplementos"])
         for r in (c.get("vc", {}) or {}).get("realizadas", []):
             cs = (r.get("insights") or {}).get("cambios_suplementacion")
-            if cs: textos.append("Videollamada: " + cs)
+            if cs: textos.append("Videollamada (insight): " + cs)
+        for tr in fathom_transcripts(c):
+            textos.append("Transcripcion videollamada: " + tr)
 
         frag = extraer_lineas("\n".join(t for t in textos if t))
         if len(frag) < 15:
             print(f"- {nombre}: sin candidatos"); continue
+
+        # No pisar lo confirmado por Mati
+        if existentes.get(cid, {}).get("revisado"):
+            print(f"- {nombre}: confirmado por vos, no se toca"); continue
+        # Saltear si no cambio nada (ahorra tokens en las corridas autonomas)
+        h = hashlib.md5(frag.encode("utf-8", "ignore")).hexdigest()
+        if not FORCE_HASH and hashes.get(cid) == h:
+            print(f"- {nombre}: sin cambios, skip"); continue
 
         procesados += 1
         print(f"* {nombre}: {len(frag)} chars candidatos -> codex...")
@@ -155,8 +214,14 @@ def main():
                "actualizado_en": datetime.now(timezone.utc).isoformat()}
         sb("/rest/v1/mypump_suplementos?on_conflict=cliente_id", method="POST", body=row,
            prefer="resolution=merge-duplicates")
+        hashes[cid] = h
         print(f"    guardado: {len(items)} items ({row['confianza']})")
 
+    if not DRY:
+        try:
+            os.makedirs(os.path.dirname(HASHES), exist_ok=True)
+            json.dump(hashes, open(HASHES, "w"))
+        except Exception as ex: print("hashes save fail:", ex)
     print(f"\nlisto. procesados con candidatos: {procesados}")
 
 if __name__ == "__main__":

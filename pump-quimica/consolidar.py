@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 
 BOT_ENV = os.path.expanduser("~/agentkit-coach/.env")
 DRY   = "--dry" in sys.argv
+FORCE_HASH = "--all" in sys.argv
 ONLY  = None
 LIMIT = None
 for i, a in enumerate(sys.argv):
@@ -52,6 +53,46 @@ def sb(path, method="GET", body=None, prefer=None):
         return json.loads(txt) if txt.strip() else None
 
 CODEX = os.path.expanduser("~/.nvm/versions/node/v24.16.0/bin/codex")
+FATHOM_PULL = os.path.expanduser("~/pump-trazabilidad/cache/fathom-pull.json")
+HASHES = os.path.expanduser("~/pump-quimica/hashes.json")
+
+import hashlib
+def _norm_mail(s): return (s or "").strip().lower()
+
+_FATHOM_CACHE = None
+def cargar_fathom():
+    global _FATHOM_CACHE
+    if _FATHOM_CACHE is not None: return _FATHOM_CACHE
+    por_mail, por_nombre = {}, {}
+    try:
+        pull = json.load(open(FATHOM_PULL))
+        meetings = pull.get("meetings", pull) if isinstance(pull, dict) else pull
+        for m in meetings:
+            tr = m.get("transcript") or ""
+            if len(tr) < 100: continue
+            for inv in (m.get("calendar_invitees") or []):
+                em = _norm_mail(inv.get("email"))
+                if em and inv.get("is_external"): por_mail.setdefault(em, []).append(tr)
+            titulo = m.get("meeting_title") or m.get("title") or ""
+            nm = re.sub(r"(?i)reuni[oó]n|acceso|vc|videollamada|entrega|seguimiento|call|pump|[-|]", " ", titulo)
+            nm = norm(nm).strip()
+            if len(nm) >= 4: por_nombre.setdefault(nm, []).append(tr)
+    except Exception as ex:
+        print(f"  [fathom] no se pudo cargar: {ex}")
+    _FATHOM_CACHE = (por_mail, por_nombre)
+    return _FATHOM_CACHE
+
+def fathom_transcripts(c):
+    por_mail, por_nombre = cargar_fathom()
+    trs = []
+    em = _norm_mail(c.get("mail") or c.get("email"))
+    if em and em in por_mail: trs += por_mail[em]
+    if not trs:
+        nom = norm(((c.get("nombre") or "") + " " + (c.get("apellido") or "")).strip())
+        for k, v in por_nombre.items():
+            if nom and (nom in k or k in nom) and len(nom) >= 5:
+                trs += v
+    return trs[-2:]
 
 # Palabras que delatan QUIMICA / ciclo (AAS, orales, GH, insulina, peptidos,
 # ancilares). Para pre-filtrar y no mandarle todo el texto al modelo.
@@ -139,6 +180,10 @@ def main():
         activos = [(cid, c) for cid, c in activos if cid == ONLY]
     print(f"clientes en la app: {len(activos)}")
 
+    existentes = {r["cliente_id"]: r for r in (sb("/rest/v1/mypump_quimica?select=cliente_id,revisado") or [])}
+    try: hashes = json.load(open(HASHES))
+    except Exception: hashes = {}
+
     procesados = 0
     for cid, c in activos:
         if LIMIT and procesados >= LIMIT: break
@@ -159,11 +204,19 @@ def main():
             textos.append("Ficha ciclo (Cerebro): " + fd)
         for r in (c.get("vc", {}) or {}).get("realizadas", []):
             cs = (r.get("insights") or {}).get("cambios_ciclo")
-            if cs: textos.append("Videollamada (ciclo): " + cs)
+            if cs: textos.append("Videollamada (insight ciclo): " + cs)
+        for tr in fathom_transcripts(c):
+            textos.append("Transcripcion videollamada: " + tr)
 
         frag = extraer_lineas("\n".join(t for t in textos if t))
         if len(frag) < 15:
             print(f"- {nombre}: sin candidatos"); continue
+
+        if existentes.get(cid, {}).get("revisado"):
+            print(f"- {nombre}: confirmado por vos, no se toca"); continue
+        h = hashlib.md5(frag.encode("utf-8", "ignore")).hexdigest()
+        if not FORCE_HASH and hashes.get(cid) == h:
+            print(f"- {nombre}: sin cambios, skip"); continue
 
         procesados += 1
         print(f"* {nombre}: {len(frag)} chars candidatos -> codex...")
@@ -181,8 +234,14 @@ def main():
                "actualizado_en": datetime.now(timezone.utc).isoformat()}
         sb("/rest/v1/mypump_quimica?on_conflict=cliente_id", method="POST", body=row,
            prefer="resolution=merge-duplicates")
+        hashes[cid] = h
         print(f"    guardado: {len(items)} items ({row['confianza']}) fase={row['fase']}")
 
+    if not DRY:
+        try:
+            os.makedirs(os.path.dirname(HASHES), exist_ok=True)
+            json.dump(hashes, open(HASHES, "w"))
+        except Exception as ex: print("hashes save fail:", ex)
     print(f"\nlisto. procesados con candidatos: {procesados}")
 
 if __name__ == "__main__":
