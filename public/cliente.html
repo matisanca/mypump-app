@@ -239,8 +239,8 @@ main{padding:var(--space-4)}
 .rest-bar.is-done .rest-progress-fill{background:var(--color-on-brand)}
 
 /* TAB BAR */
-.tabbar{position:fixed;left:0;right:0;bottom:0;margin-inline:auto;width:100%;max-width:480px;background:color-mix(in oklab,var(--color-bg-primary) 95%,transparent);backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);border-top:1px solid var(--color-border);padding:var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:2px;z-index:35;will-change:transform;-webkit-transform:translateZ(0);transform:translateZ(0)}
-.tab{position:relative;background:transparent;border:0;padding:var(--space-2) 2px;border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--color-text-muted);font-size:10px;font-weight:500;letter-spacing:.02em;min-height:56px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;margin-inline:auto;width:100%;max-width:480px;background:color-mix(in oklab,var(--color-bg-primary) 95%,transparent);backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);border-top:1px solid var(--color-border);padding:var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;z-index:35;will-change:transform;-webkit-transform:translateZ(0);transform:translateZ(0)}
+.tab{position:relative;background:transparent;border:0;padding:var(--space-2) 2px;border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--color-text-muted);font-size:10px;font-weight:500;letter-spacing:.02em;min-height:56px;white-space:nowrap}
 /* Badge global de comentarios nuevos del coach (B3) */
 .tab-badge{position:absolute;top:2px;right:calc(50% - 22px);min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--color-brand);color:var(--color-on-brand);font-size:10px;font-weight:800;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--color-bg-primary)}
 .tab-badge[hidden]{display:none}
@@ -877,6 +877,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
     <section class="scene" id="scene-diet"></section>
     <section class="scene" id="scene-progress"></section>
     <section class="scene" id="scene-myday"></section>
+    <section class="scene" id="scene-revision"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -913,7 +914,12 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
     <button class="tab" data-scene="myday" role="tab" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
       <span>Mi Día</span>
-      <span class="tab-badge" id="tabBadgeMyday" hidden></span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" data-scene="revision" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
+      <span>Revisión</span>
+      <span class="tab-badge" id="tabBadgeRevision" hidden></span>
       <span class="tab-dot"></span>
     </button>
     <button class="tab" data-scene="progress" role="tab" aria-selected="false">
@@ -1025,6 +1031,12 @@ const STATE = {
   progressLoaded:     false,
   progressData:       null,
   mydayLoaded:        false,
+  // Escena Revisión (semanal). Se creaban al vuelo; declaradas para que se
+  // vea de donde salen y que la escena renderice bien con todo vacio.
+  checkin:            null,       // check de la semana ya guardado en el server
+  checkinDraft:       null,       // borrador local sin enviar
+  salud:              [],         // registros de salud/peso — alimenta Peso y Salud
+  fotos:              [],         // metadata de fotos de progreso (sin path ni URL)
   adhOpen:            false,
   adhData:            null,
   comidasMarcadas:    {},          // comida_id → {opcion, estado, marcada_en}
@@ -4330,9 +4342,6 @@ async function loadMyday() {
     STATE.mydayLoaded = true;
     // Si el tab ya está abierto, re-renderizar ahora que tenemos datos
     if (STATE.scene === 'myday') renderMyday();
-    loadSalud();   // en background: rellena la card Salud si hay datos de wearable
-    loadCheckin(); // en background: rellena el check semanal si ya lo cargó
-    loadFotos().then(() => { if (STATE.scene === 'myday') renderMydayFotos(); flushFotos(); });
   } catch(e) {
     console.error('[Mi Día] error cargando hábitos:', e);
     MYDAY  = null;
@@ -4340,6 +4349,16 @@ async function loadMyday() {
     STATE.mydayLoaded = true;
     if (STATE.scene === 'myday') renderMyday();
   }
+}
+
+/* Carga de la escena Revisión. Va SEPARADA de loadMyday a proposito: antes
+   loadCheckin/loadFotos colgaban del `try` de los habitos diarios, asi que si
+   la RPC getHabitosDia fallaba (red mala en el gym) el cliente se quedaba sin
+   check, sin fotos y sin peso — justo lo que el bot le pidio el domingo. */
+async function loadRevision() {
+  if (!TOKEN) return;
+  loadCheckin();
+  loadFotos().then(() => { if (STATE.scene === 'revision') renderMydayFotos(); flushFotos(); });
 }
 
 async function setHabito(campo, valor) {
@@ -4392,7 +4411,9 @@ async function loadSalud() {
     const desde = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     STATE.salud = (await window.mypumpDB.getSalud(TOKEN, desde, hasta)) || [];
   } catch (_) { STATE.salud = []; }
-  if (STATE.scene === 'myday') { renderMydaySalud(); renderMydayPeso(); }
+  // Salud vive en Mi Día y Peso en Revisión: cada una se repinta en la suya.
+  if (STATE.scene === 'myday')    renderMydaySalud();
+  if (STATE.scene === 'revision') renderMydayPeso();
 }
 // Valor de un tipo en una fecha, prefiriendo apple_health > rook > manual.
 function _saludValor(tipo, fecha) {
@@ -4482,7 +4503,7 @@ function renderMydaySalud() {
     </div>`;
 }
 
-/* ---- PESO CORPORAL en Mi Día — N1 ----
+/* ---- PESO CORPORAL en Revisión — N1 ----
    El cliente carga su peso del día; el gráfico muestra 60 días con media móvil
    7d y la banda del rango objetivo semanal según (objetivo × perfil). La media
    que importa es la móvil de 7 días comparada con la de la semana anterior. */
@@ -4618,7 +4639,7 @@ function renderMydayPeso() {
   if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); guardar(); } });
 }
 
-/* ---- CHECK SEMANAL en Mi Día — N8 ----
+/* ---- CHECK SEMANAL en Revisión — N8 ----
    1 vez por semana: 4 escalas (energía, descanso, hambre, adherencia) + nota.
    NO reemplaza la charla de WhatsApp con Mati; se la adelanta ordenada. */
 const CHECKIN_METRICAS = [
@@ -4741,7 +4762,7 @@ async function flushFotos() {
   }
   _fotoqGuardar(q);
   await loadFotos();
-  if (STATE.scene === 'myday') renderMydayFotos();
+  if (STATE.scene === 'revision') renderMydayFotos();
 }
 
 async function loadFotos() {
@@ -4768,7 +4789,7 @@ async function fotosFirmadas() {
 
 /* ═══════ RECORDATORIO SEMANAL (P4) ═══════
    Insiste TODOS los días hasta que completan (no solo el día del pedido) y
-   desaparece solo al completarse. Badge en la tab Mi Día + banner arriba en
+   desaparece solo al completarse. Badge en la tab Revisión + banner arriba en
    Entreno y Dieta. Reusa los patrones .tab-badge y .prog-banner. */
 function _pendientesSemana() {
   const sem = _lunesISO(TODAY_LOCAL);
@@ -4786,14 +4807,14 @@ function renderRecordatorio() {
   if (DATA && DATA._isDemo) return;
   const p = _pendientesSemana();
 
-  const badge = document.getElementById('tabBadgeMyday');
+  const badge = document.getElementById('tabBadgeRevision');
   if (badge) {
     if (p.total > 0) { badge.textContent = p.total; badge.hidden = false; }
     else badge.hidden = true;
   }
 
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
-  if (p.total === 0 || STATE.scene === 'myday') return;
+  if (p.total === 0 || STATE.scene === 'revision') return;
 
   const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan <b>tu check y tus fotos</b> de la semana'
               : p.faltaCheck ? 'Te falta <b>tu check de la semana</b>'
@@ -4802,9 +4823,9 @@ function renderRecordatorio() {
   if (!host) return;
   const div = document.createElement('div');
   div.className = 'prog-banner recordatorio-semanal';
-  div.innerHTML = `📋 ${texto} — entrá a <b>Mi Día</b>.`;
+  div.innerHTML = `📋 ${texto} — entrá a <b>Revisión</b>.`;
   div.addEventListener('click', () => {
-    const t = [...document.querySelectorAll('.tab')].find(x => x.dataset.scene === 'myday');
+    const t = [...document.querySelectorAll('.tab')].find(x => x.dataset.scene === 'revision');
     if (t) t.click();
   });
   host.insertBefore(div, host.firstChild);
@@ -5033,7 +5054,7 @@ async function loadCheckin() {
     const res = await window.mypumpDB.getCheckinSemana(TOKEN, TODAY_LOCAL);
     STATE.checkin = (Array.isArray(res) && res[0]) ? res[0] : null;
   } catch (_) { STATE.checkin = null; }
-  if (STATE.scene === 'myday') renderMydayCheckin();
+  if (STATE.scene === 'revision') renderMydayCheckin();
   try { renderRecordatorio(); } catch (_) {}
 }
 
@@ -5090,6 +5111,46 @@ function renderMydayCheckin() {
     renderMydayCheckin();
     try { renderRecordatorio(); } catch (_) {}
   });
+}
+
+/* ══════════ ESCENA REVISIÓN (R) — lo SEMANAL ══════════
+   Peso, check y fotos vivian dentro de Mi Día, mezclados con lo diario
+   (habitos, agua, entrenamiento). Dos problemas: para el cliente era ruido,
+   y como setHabito() re-arma el innerHTML ENTERO de Mi Día, cada vaso de agua
+   destruia el DOM del check (perdiendo lo tipeado en la nota), el mensaje de
+   "subiendo foto" y la galeria abierta. Separadas, el render diario no vuelve
+   a tocar lo semanal.
+
+   Las funciones y los ids siguen con el prefijo `myday` por historia: son ~18
+   call sites en un script inline sin linter, y todas arrancan con
+   `if (!el) return`, asi que un rename incompleto no rompe en build — rompe
+   en silencio en el celular de un cliente. El rename va aparte, si va.
+
+   A diferencia de Mi Día, esta escena NO espera a que cargue nada: las tres
+   cards degradan bien vacias (escalas en blanco, input de peso, slots de
+   fotos) y eso es justo lo que el cliente viene a usar. */
+function renderRevision() {
+  const root = $('#scene-revision');
+  if (!root) return;
+
+  root.innerHTML = `
+    <!-- FOTOS DE PROGRESO — P2/P3.
+         #fpGaleria tiene que vivir en la MISMA escena que el boton que la
+         abre: si no, se abre dentro de un display:none y parece que el boton
+         no hace nada. -->
+    <div id="myday-fotos"></div>
+    <div id="fpGaleria" class="fp-galeria"></div>
+
+    <!-- CHECK SEMANAL — N8 -->
+    <div id="myday-checkin"></div>
+
+    <!-- PESO CORPORAL — N1 (ultimo: se lleva el aire sobre el tabbar) -->
+    <div id="myday-peso" style="margin-bottom:var(--space-6)"></div>`;
+
+  // Cada render bindea sus propios handlers.
+  renderMydayFotos();
+  renderMydayCheckin();
+  renderMydayPeso();
 }
 
 function renderMyday() {
@@ -5191,16 +5252,6 @@ function renderMyday() {
       </div>
     </div>
 
-    <!-- FOTOS DE PROGRESO — P2/P3 -->
-    <div id="myday-fotos"></div>
-    <div id="fpGaleria" class="fp-galeria"></div>
-
-    <!-- CHECK SEMANAL — N8 -->
-    <div id="myday-checkin"></div>
-
-    <!-- PESO CORPORAL — N1 -->
-    <div id="myday-peso"></div>
-
     <!-- SALUD (wearables) — solo aparece si hay datos sincronizados -->
     <div id="myday-salud"></div>
 
@@ -5219,11 +5270,6 @@ function renderMyday() {
 
   // Render streak
   renderMydayStreak();
-  // Render fotos de progreso + check semanal (siempre visibles)
-  renderMydayFotos();
-  renderMydayCheckin();
-  // Render card de Peso (siempre visible: el input de carga vive ahí)
-  renderMydayPeso();
   // Render card de Salud (si hay datos de wearable sincronizados)
   renderMydaySalud();
 
@@ -5356,8 +5402,6 @@ function setScene(scene) {
     t.setAttribute('aria-selected', active);
   });
   $$('.scene').forEach(s => s.classList.toggle('is-active', s.id === `scene-${scene}`));
-  // Recordatorio semanal: se re-evalua en cada pantalla (P4)
-  try { renderRecordatorio(); } catch (_) {}
 
   const dp = $('#dayPicker');
   const hp = $('#hdrProgress');
@@ -5376,7 +5420,14 @@ function setScene(scene) {
     $('#hdrTitle').textContent = 'Mi Día';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
-  } else {
+  } else if (scene === 'revision') {
+    $('#hdrEyebrow').textContent = 'REVISIÓN · SEMANAL';
+    $('#hdrTitle').textContent = 'Revisión';
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
+  } else if (scene === 'progress') {
+    // Rama explicita a proposito: cuando esto era un `else` suelto, cualquier
+    // escena nueva heredaba el header de Progreso y parecia un bug de CSS.
     $('#hdrEyebrow').textContent = `PROGRESO · ${DATA.rutina.nombre_plan.split('—')[0].trim().toUpperCase()}`;
     $('#hdrTitle').textContent = 'Tu evolución';
     if (dp) dp.hidden = true;
@@ -5386,7 +5437,12 @@ function setScene(scene) {
   if (scene === 'train') renderTrain();
   if (scene === 'diet') renderDiet();
   if (scene === 'myday') renderMyday();
+  if (scene === 'revision') renderRevision();
   if (scene === 'progress') renderProgress();
+  // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
+  // el innerHTML entero, asi que si el banner se insertaba antes, el propio
+  // render lo borraba y solo reaparecia cuando terminaba alguna carga async.
+  try { renderRecordatorio(); } catch (_) {}
   window.scrollTo(0, 0);
 }
 
@@ -5552,8 +5608,11 @@ async function init() {
   renderDiet();
   updateOfflineBanner();
   restoreRest();   // B2 — reanudar el timer de descanso si quedó uno corriendo
-  // Mi Día y Progress cargan de forma lazy cuando se abre el tab
-  loadMyday(); // inicia en background; cuando termina, STATE.mydayLoaded = true
+  // Las escenas se pintan al abrir el tab; los datos se van cargando de fondo.
+  // Las tres son independientes entre si: si una falla, las otras cargan igual.
+  loadMyday();    // habitos diarios + streak → Mi Día
+  loadSalud();    // alimenta la card Salud (Mi Día) Y la de Peso (Revisión)
+  loadRevision(); // check + fotos → Revisión
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();
   // F10 — comidas libres de hoy (foto/manual), suman al anillo
