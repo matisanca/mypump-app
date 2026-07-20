@@ -30,7 +30,7 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
@@ -47,6 +47,18 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>WKAppBoundDomains</key>
+	<array>
+		<string>app.mypumpteam.com</string>
+		<string>vision.mypumpteam.com</string>
+		<string>gydinputrtptqakdzyvc.supabase.co</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>MyPump usa la cámara para que puedas sacar tus fotos de progreso semanales. Las ve únicamente tu coach.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MyPump accede a tus fotos para que puedas elegir del carrete tus fotos de progreso semanales. Las ve únicamente tu coach.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>MyPump lee tus pasos y actividad para que tu coach ajuste tu plan de entrenamiento y nutrición.</string>
 	<key>NSHealthUpdateUsageDescription</key>

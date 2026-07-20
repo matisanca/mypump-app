@@ -4682,44 +4682,38 @@ function _fotoqGuardar(q) {
 // Reduce a dataURL JPEG. 900px/0.7 alcanza para comparar fisico
 // (1024/0.8 es para OCR de etiquetas). El re-encode por canvas ademas
 // ELIMINA EL EXIF, o sea la ubicacion GPS no viaja.
-// Ojo: las fotos que vienen de GALERIA suelen traer orientacion EXIF; por eso
-// se decodifica con createImageBitmap({imageOrientation:'from-image'}) cuando
-// existe — si no, salen rotadas 90 grados en algunos telefonos.
-async function _fotoAJpeg(file, maxPx = 900, calidad = 0.7) {
-  let src = null, w = 0, h = 0, bmp = null, url = null;
-  try {
-    if (window.createImageBitmap) {
+//
+// Las fotos de galeria vienen con orientacion EXIF (el iPhone guarda los
+// pixeles apaisados + un flag "rotar 90"). Se decodifica con <img> a
+// proposito: desde Safari 13.4 / Chrome 81 el navegador aplica esa
+// orientacion solo, y drawImage recibe la imagen ya derecha. Se probo con
+// createImageBitmap({imageOrientation:'from-image'}), que es mas explicito,
+// pero ese diccionario de opciones recien existe en Safari 16.4: en un iPhone
+// con iOS 15/16 se ignora en silencio y la foto sale de costado.
+function _fotoAJpeg(file, maxPx = 900, calidad = 0.7) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
       try {
-        bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
-        src = bmp; w = bmp.width; h = bmp.height;
-      } catch (_) { bmp = null; }
-    }
-    if (!src) {
-      url = URL.createObjectURL(file);
-      const img = await new Promise((res, rej) => {
-        const im = new Image();
-        im.onload = () => res(im);
-        im.onerror = () => rej(new Error('no se pudo leer la imagen'));
-        im.src = url;
-      });
-      src = img; w = img.naturalWidth || img.width; h = img.naturalHeight || img.height;
-    }
-    if (!w || !h) throw new Error('imagen vacia');
-
-    const esc = Math.min(1, maxPx / Math.max(w, h));
-    const c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round(w * esc));
-    c.height = Math.max(1, Math.round(h * esc));
-    c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
-    const out = c.toDataURL('image/jpeg', calidad);
-    // El server valida los magic bytes: si el canvas no pudo dar JPEG, mejor
-    // fallar aca con un mensaje entendible que comerse un 400 despues.
-    if (!/^data:image\/jpeg;base64,/.test(out)) throw new Error('formato no soportado');
-    return out;
-  } finally {
-    if (bmp && bmp.close) bmp.close();
-    if (url) URL.revokeObjectURL(url);
-  }
+        const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if (!w || !h) throw new Error('imagen vacia');
+        const esc = Math.min(1, maxPx / Math.max(w, h));
+        const c = document.createElement('canvas');
+        c.width  = Math.max(1, Math.round(w * esc));
+        c.height = Math.max(1, Math.round(h * esc));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        const out = c.toDataURL('image/jpeg', calidad);
+        // El server valida los magic bytes: si el canvas no pudo dar JPEG,
+        // mejor fallar aca con un mensaje entendible que comerse un 400.
+        if (!/^data:image\/jpeg;base64,/.test(out)) throw new Error('formato no soportado');
+        resolve(out);
+      } catch (e) { reject(e); }
+      finally { URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('no se pudo leer la imagen')); };
+    img.src = url;
+  });
 }
 
 const FOTOS_URL = () => (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '';
