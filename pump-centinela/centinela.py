@@ -167,9 +167,18 @@ def claude_text(prompt, timeout=120):
 
 TONO = ("Escribi como Mati Sancari, coach de Pump Team (argentino, tuteo rioplatense, cercano, "
         "directo, humano). Reglas duras: singular siempre (te, vos, contame, mandame); NUNCA "
-        "signos de apertura ni ¿ ni ¡; sin punto despues del saludo ni al final; sin "
-        "guion largo; CERO emojis; nada de cierres motivacionales tipo 'a darle' o 'espero tus "
-        "novedades'; frases cortas e irregulares, que no suene a IA ni a checklist.")
+        "signos de apertura ni interrogacion ni exclamacion de apertura; sin punto al final; sin "
+        "guion largo; nada de cierres motivacionales tipo 'a darle' o 'espero tus novedades'; "
+        "frases cortas e irregulares, que no suene a IA ni a checklist. "
+        "Como mucho UN emoji, y solo al final (ej: un apreton de manos). Nunca emojis en el medio.\n"
+        "Asi escribe el de verdad, calca este registro (no el contenido, el REGISTRO):\n"
+        "  Buenas! cómo va el lunes? toca revisión!\n"
+        "  Mañana pesate apenas te levantes en ayunas y cargá en la app, en la parte de mi día, "
+        "tu peso actual y las fotos de frente, perfil y espaldas.\n"
+        "  Además podés contarme cómo estuvo tu semana en cuanto a energía, descanso, hambre y "
+        "adherencia con 4 toques, y obvio cualquier cosa que quieras agregar me podés contar por "
+        "acá o por la app donde también tenés un espacio para eso\n"
+        "Escribi CON acentos y eñes, como en el ejemplo.")
 
 # -- Analisis --
 def norm_objetivo(raw):
@@ -341,10 +350,10 @@ ANGULOS = [
 
 FALLBACK_GENERAL = (
     "Buenas! Cómo va el finde? Mañana toca revisión. "
-    "Al despertar, en ayunas antes de comer o tomar nada, pesate y cargá el peso en la app. "
-    "Aprovechá y completá ahí mismo el check de la semana, son 4 toques: energía, descanso, "
-    "hambre y adherencia. "
-    "Subí ahí también tus 3 fotos (frente, perfil y espalda) y contame cómo te fue la semana. Si querés contarme algo más, aprovechá y escribime"
+    "Pesate apenas te levantes en ayunas y cargá en la app, en Mi Día, tu peso y las fotos de "
+    "frente, perfil y espalda. "
+    "Ahí mismo contame cómo estuvo tu semana en energía, descanso, hambre y adherencia, son 4 "
+    "toques, y cualquier cosa que quieras agregar me la podés contar por acá o en la app 🤝"
 )
 
 # El mensaje DEBE mandar el peso + el check a la app. Si el modelo se desvia
@@ -359,7 +368,10 @@ def _general_valido(m):
     if re.search(r"mandame (por aca |por aqui )?(las |tus )?fotos|pas(a|a)me (las |tus )?fotos", ml):
         return False
     # Requisito duro de Mati: el mensaje invita a contar algo mas.
-    if not re.search(r"cont(a|a)me|escribime|charlamos|mandame un audio|si quer(e|e)s contarme", ml):
+    if not re.search(r"cont(a|a)me|cont(a|a)r|escribime|charlamos|mandame un audio", ml):
+        return False
+    # Y tiene que decir DONDE: "mi dia" es la seccion, si no quedan dando vueltas.
+    if not re.search(r"mi d[ií]a", ml):
         return False
     return True
 
@@ -406,18 +418,19 @@ def gen_general():
         f"{TONO}\n\nEscribi el mensaje de WhatsApp del domingo a la tarde avisando que manana "
         f"lunes toca la revision semanal. Se manda por broadcast: cada uno lo recibe como mensaje "
         f"privado e individual.\nANGULO DE ESTA SEMANA: {ang}\n"
-        "El cliente tiene una APP (MyPump) donde carga sus datos. Pedi TRES cosas para manana:\n"
-        "(1) que al despertar en ayunas, antes de comer o tomar nada, se pese y CARGUE EL PESO EN "
-        "LA APP. NUNCA le pidas que te mande el peso por WhatsApp: el peso va en la app.\n"
-        "(2) que complete en la app el CHECK DE LA SEMANA (son 4 toques rapidos: energia, "
-        "descanso, hambre y adherencia, con un campo libre opcional).\n"
-        "(3) que suba EN LA APP sus 3 fotos (frente, perfil y espalda) — ya NO se mandan por WhatsApp. "
-        "(4) cerra invitandolo a contarte por WhatsApp algo mas de su semana si tiene ganas "
-        "(redactalo distinto cada semana, que suene a interes real, no a formula). Ejemplo de idea: "
-        "si queres contarme algo mas de como venis, escribime. "
-        "audio o texto como le fue la semana.\n"
-        "3-5 oraciones, natural, sin listas ni numeracion. Nada de 'Buen dia' (es de tarde). "
-        "Devolve SOLO el mensaje, sin explicaciones."
+        "Todo se carga en la APP (MyPump), en la seccion MI DIA. Nombrala: que sepan donde ir.\n"
+        "Que quede claro, en la MENOR cantidad de palabras posible:\n"
+        "(1) que manana se pese apenas se levante, en ayunas, y cargue el PESO en la app. "
+        "El peso NUNCA por WhatsApp.\n"
+        "(2) que suba ahi mismo las FOTOS de frente, perfil y espalda. Tampoco por WhatsApp. "
+        "El peso y las fotos van juntos en la misma frase, no los separes en dos pedidos.\n"
+        "(3) el CHECK: que cuente como estuvo su semana en energia, descanso, hambre y adherencia, "
+        "'con 4 toques'. Planteado como una invitacion a contarte, no como una tarea.\n"
+        "(4) cerra diciendo que cualquier otra cosa que quiera agregar te la puede contar por "
+        "WhatsApp o en el espacio libre de la app. Redactalo distinto cada semana.\n"
+        "MAXIMO 3 oraciones. Cuanto mas corto mejor: ya saben usar la app, no expliques de mas "
+        "ni aclares para que sirve cada cosa. Sin listas ni numeracion. Nada de 'Buen dia' (es de "
+        "tarde). Devolve SOLO el mensaje, sin explicaciones."
     )
     msg = claude_text(prompt) or ""
     msg = re.sub(r"\s*(Espero\s+(tus|tu|mis)\b[^.]*|Quedo\s+(atento|a\s+la\s+espera)\b[^.]*|A\s+darle\b[^.]*)\.?\s*$",
@@ -450,17 +463,17 @@ def fallback_personalizado(nombre, chk, mal):
     v = chk.get(m) if m else None
     baja = v is not None and ((v >= 4) if m == "hambre" else (v <= 3))
     if mal and m and baja:
-        if m == "adherencia": partes.append(f"Veo que la adherencia te costo ({v}/5).")
-        elif m == "energia": partes.append(f"Veo la energia baja ({v}/5).")
+        if m == "adherencia": partes.append(f"Veo que la adherencia te costó ({v}/5).")
+        elif m == "energia": partes.append(f"Veo la energía baja ({v}/5).")
         elif m == "descanso": partes.append(f"Veo que el descanso no viene bien ({v}/5).")
-        elif m == "hambre": partes.append(f"Veo que el hambre esta pegando fuerte ({v}/5).")
+        elif m == "hambre": partes.append(f"Veo que el hambre está pegando fuerte ({v}/5).")
         if m in PREGUNTAS: partes.append(PREGUNTAS[m])
     elif mal:
         # Va mal por señales objetivas (entreno/peso), no por como se siente.
-        partes.append("En las sensaciones venis bien, pero quiero repasar un par de cosas del entreno con vos.")
+        partes.append("En las sensaciones venís bien, pero quiero repasar un par de cosas del entreno con vos.")
     else:
-        partes.append("Se te ve una buena semana, seguimos asi.")
-    partes.append("Manana al despertar subi en la app tus 3 fotos (frente, perfil y espalda) asi te hago la devolucion completa. Si queres contarme algo mas de tu semana, escribime.")
+        partes.append("Se te ve una buena semana, seguimos así.")
+    partes.append("Mañana al despertar subí en la app, en Mi Día, tus 3 fotos (frente, perfil y espalda) así te hago la devolución completa. Cualquier cosa que quieras agregar, contame por acá.")
     return " ".join(partes)
 
 def gen_personalizados(lista):
