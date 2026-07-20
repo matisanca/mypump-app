@@ -305,7 +305,7 @@ FALLBACK_GENERAL = (
     "Al despertar, en ayunas antes de comer o tomar nada, pesate y cargá el peso en la app. "
     "Aprovechá y completá ahí mismo el check de la semana, son 4 toques: energía, descanso, "
     "hambre y adherencia. "
-    "Y mandame por acá las fotos de frente, perfil y espalda, y contame cómo te fue la semana"
+    "Subí ahí también tus 3 fotos (frente, perfil y espalda) y contame cómo te fue la semana. Si querés contarme algo más, aprovechá y escribime"
 )
 
 # El mensaje DEBE mandar el peso + el check a la app. Si el modelo se desvia
@@ -315,6 +315,12 @@ def _general_valido(m):
     if len(ml) < 60: return False
     if "app" not in ml: return False
     if re.search(r"mandame (me )?(tu |el )?peso|pas(a|a)me (tu |el )?peso|envi(a|a)me (tu |el )?peso", ml):
+        return False
+    # Las fotos ahora van EN LA APP: no puede pedirlas por WhatsApp.
+    if re.search(r"mandame (por aca |por aqui )?(las |tus )?fotos|pas(a|a)me (las |tus )?fotos", ml):
+        return False
+    # Requisito duro de Mati: el mensaje invita a contar algo mas.
+    if not re.search(r"cont(a|a)me|escribime|charlamos|mandame un audio|si quer(e|e)s contarme", ml):
         return False
     return True
 
@@ -330,7 +336,10 @@ def gen_general():
         "LA APP. NUNCA le pidas que te mande el peso por WhatsApp: el peso va en la app.\n"
         "(2) que complete en la app el CHECK DE LA SEMANA (son 4 toques rapidos: energia, "
         "descanso, hambre y adherencia, con un campo libre opcional).\n"
-        "(3) que SI te mande por WhatsApp las fotos de frente, perfil y espalda, y te cuente en "
+        "(3) que suba EN LA APP sus 3 fotos (frente, perfil y espalda) — ya NO se mandan por WhatsApp. "
+        "(4) cerra invitandolo a contarte por WhatsApp algo mas de su semana si tiene ganas "
+        "(redactalo distinto cada semana, que suene a interes real, no a formula). Ejemplo de idea: "
+        "si queres contarme algo mas de como venis, escribime. "
         "audio o texto como le fue la semana.\n"
         "3-5 oraciones, natural, sin listas ni numeracion. Nada de 'Buen dia' (es de tarde). "
         "Devolve SOLO el mensaje, sin explicaciones."
@@ -369,7 +378,7 @@ def fallback_personalizado(nombre, chk, mal):
         if m and m in PREGUNTAS: partes.append(PREGUNTAS[m])
     else:
         partes.append("Se te ve una buena semana, seguimos asi.")
-    partes.append("Manana al despertar mandame las fotos de frente, perfil y espalda asi te hago la devolucion completa.")
+    partes.append("Manana al despertar subi en la app tus 3 fotos (frente, perfil y espalda) asi te hago la devolucion completa. Si queres contarme algo mas de tu semana, escribime.")
     return " ".join(partes)
 
 def gen_personalizados(lista):
@@ -394,8 +403,8 @@ def gen_personalizados(lista):
         "(2) si va_mal=true: interpretar que le puede estar pasando y hacerle UNA pregunta "
         "concreta que apunte a la causa (o un feedback accionable, no generico), "
         "(3) si viene bien: reconocimiento breve y genuino sin exagerar, "
-        "(4) cerrar pidiendo que manana lunes al despertar mande las fotos de frente, perfil y "
-        "espalda (el peso ya lo carga en la app). "
+        "(4) cerrar pidiendo que manana lunes al despertar SUBA EN LA APP sus 3 fotos (frente, perfil y "
+        "espalda; el peso tambien lo carga ahi). Invitalo a contarte algo mas de su semana si quiere. "
         "NO menciones numeros de rango de peso ni la palabra 'deficit calorico' en tono tecnico; "
         "hablale como coach cercano. NO menciones 'la app detecto' ni 'el sistema'.\n\n"
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
