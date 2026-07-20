@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pump.analisis</string>
+  <!-- JUEVES 08:00 — para entonces ya llegaron los checks de la semana.
+       El domingo (com.pump.centinela) solo se PIDE. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/matiassancari/agentkit-coach/venv/bin/python</string>
+    <string>/Users/matiassancari/pump-centinela/centinela.py</string>
+    <string>--analisis</string>
+    <string>--send</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>4</integer>
+    <key>Hour</key><integer>8</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>WorkingDirectory</key>
+  <string>/Users/matiassancari/pump-centinela</string>
+  <key>StandardOutPath</key>
+  <string>/Users/matiassancari/pump-centinela/analisis.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/matiassancari/pump-centinela/analisis.err</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

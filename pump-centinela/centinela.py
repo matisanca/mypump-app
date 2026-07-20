@@ -24,12 +24,19 @@ Seguridad: por defecto NO envia (dry-run imprime). Para enviar: --send
 """
 import os, sys, json, re, subprocess, urllib.request, urllib.error, urllib.parse
 from datetime import datetime, timedelta, date
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import analisis as AN
 
 BOT_ENV = os.path.expanduser("~/agentkit-coach/.env")
 STATE   = os.path.expanduser("~/pump-centinela/state.json")
 DRY     = "--send" not in sys.argv
 FORCE   = "--force" in sys.argv
-SEMANAS = 6
+# Dos momentos distintos: el DOMINGO se PIDE (nadie mando el check todavia) y
+# el JUEVES se ANALIZA (ya llegaron). Antes todo corria el domingo y el
+# analisis llegaba siempre vacio.
+MODO    = "analisis" if "--analisis" in sys.argv else ("pedido" if "--pedido" in sys.argv else "auto")
+SEMANAS = 12
+SEM_CHECKS = 8      # serie de checks para baseline/tendencia
 
 def load_env(p):
     e = {}
@@ -65,8 +72,17 @@ def fetch_metricas():
     return _sb_req("/rest/v1/rpc/mypump_get_metricas_coach", {"p_semanas": SEMANAS})
 
 def fetch_checks(lunes_actual, lunes_previo):
-    q = urllib.parse.quote(f"({lunes_previo},{lunes_actual})")
-    return _sb_req(f"/rest/v1/mypump_checkin_semanal?semana_lunes=in.{q}&select=*")
+    """Serie larga (8 semanas): sin historia no hay baseline ni tendencia, y
+    todo el motor de analisis se cae a umbrales absolutos."""
+    desde = str(date.fromisoformat(lunes_actual) - timedelta(weeks=SEM_CHECKS))
+    return _sb_req(f"/rest/v1/mypump_checkin_semanal?semana_lunes=gte.{desde}"
+                   f"&select=*&order=semana_lunes.asc")
+
+def fetch_fotos_semana(lunes_actual):
+    try:
+        return _sb_req(f"/rest/v1/mypump_fotos_progreso?semana_lunes=eq.{lunes_actual}&select=cliente_id,pose")
+    except Exception:
+        return []
 
 def fetch_dieta(cliente_id):
     rows = _sb_req(f"/rest/v1/mypump_dietas?cliente_id=eq.{cliente_id}&estado=eq.activa&select=estructura&limit=1")
@@ -211,6 +227,28 @@ def analizar(c, hoy):
         elif obj == "definicion" and var < -20:
             alertas.append(f"caida fuerte de rendimiento en deficit ({var:+.0f}% tonelaje)")
 
+    # -- Señales que estaban disponibles y NO se usaban --
+    # (a) Adherencia OBJETIVA de entreno: sesiones cerradas / dias del plan.
+    dias_plan = c.get("dias_plan") or 0
+    if dias_plan:
+        ses_ult = int(ses.get(ws[1], 0) or 0) or int(ses.get(ws[0], 0) or 0)
+        ctx["adh_entreno"] = round(ses_ult / dias_plan, 2)
+    # (b) Fuerza real por e1RM: el tonelaje se contamina con cambios de volumen
+    #     del programa; el e1RM se mueve con la fuerza de verdad.
+    e1 = {}
+    for x in (c.get("e1rm_top") or []):
+        e1.setdefault(x.get("ejercicio"), {})[str(x.get("semana"))] = x.get("e1rm")
+    variaciones = []
+    for _ej, porsem in e1.items():
+        sems = sorted(porsem)
+        if len(sems) >= 2:
+            ini, fin = porsem[sems[0]], porsem[sems[-1]]
+            if ini: variaciones.append((float(fin) - float(ini)) / float(ini) * 100)
+    if variaciones:
+        ctx["var_e1rm"] = round(sum(variaciones) / len(variaciones), 1)
+
+    ctx["sin_entrenar"] = bool(t[0] == 0 and t[1] == 0 and t[2] == 0)
+
     pw = [peso.get(str(w0 - timedelta(weeks=i))) for i in range(0, 3)]
     if pw[0] is not None and pw[1] is not None:
         lo, hi = rango_peso(obj, perfil)
@@ -221,6 +259,7 @@ def analizar(c, hoy):
         if pw[2] is not None:
             d2 = (float(pw[1]) - float(pw[2])) * 1000
             if (d1 < lo or d1 > hi) and (d2 < lo or d2 > hi):
+                ctx["peso_fuera_2sem"] = True
                 dir_ = "por debajo" if d1 < lo else "por encima"
                 alertas.append(f"peso {dir_} del rango 2 semanas seguidas ({d1:+.0f} g/sem, objetivo {lo:+d} a {hi:+d})")
 
@@ -324,6 +363,42 @@ def _general_valido(m):
         return False
     return True
 
+def interpretar_notas(metricas, chk_actual, chk_series):
+    """Extrae banderas/temas de las notas libres. EXTRACCION, no diagnostico:
+    la decision la toman las reglas. Valida que la `cita` sea textual para
+    descartar alucinaciones (mismo espiritu que _general_valido)."""
+    items = []
+    for c in metricas:
+        cid = c["cliente_id"]; nombre = c.get("nombre") or cid
+        chk = chk_actual.get(cid)
+        if not chk or not (chk.get("nota") or "").strip(): continue
+        previas = [r.get("nota") for r in chk_series.get(cid, [])[:-1] if r.get("nota")][-2:]
+        items.append({"nombre": nombre, "nota": chk["nota"], "notas_previas": previas})
+    if not items: return {}
+
+    prompt = (
+        "Sos un asistente que EXTRAE informacion de notas que dejaron clientes de un coach. "
+        "NO diagnostiques ni recomiendes: solo extrae. Para cada cliente devolve:\n"
+        '{"<nombre>": {"banderas": [...], "temas": [...], "sentimiento": "positivo|neutro|negativo", '
+        '"repite_tema": true|false, "cita": "fragmento TEXTUAL de la nota"}}\n'
+        "banderas posibles (solo si aparecen claras): lesion, enfermedad, viaje, evento, estres, desmotivacion.\n"
+        "repite_tema = true si el tema principal ya aparecia en notas_previas.\n"
+        "cita DEBE ser un fragmento copiado literal de la nota.\n"
+        "Responde SOLO el JSON.\n\nDATOS:\n" + json.dumps(items, ensure_ascii=False)
+    )
+    res = claude_json(prompt) or {}
+    out = {}
+    for it in items:
+        r = res.get(it["nombre"])
+        if not isinstance(r, dict): continue
+        cita = (r.get("cita") or "").strip()
+        if cita and cita.lower() not in it["nota"].lower():
+            print(f"  [notas] cita no textual en {it['nombre']}, descarto extraccion")
+            continue
+        out[it["nombre"]] = r
+    # los que no salieron por IA quedan con el fallback por regex del motor
+    return out
+
 def gen_general():
     sem = date.today().isocalendar()[1]
     ang = ANGULOS[sem % len(ANGULOS)]
@@ -369,13 +444,20 @@ PREGUNTAS = {
 def fallback_personalizado(nombre, chk, mal):
     n = nombre.split()[0]
     partes = [f"{n}! Vi tu check de la semana, gracias por completarlo."]
-    if mal:
-        m = _peor_metrica(chk)
-        if m == "adherencia": partes.append(f"Veo que la adherencia te costo ({chk.get('adherencia')}/5).")
-        elif m == "energia": partes.append(f"Veo la energia baja ({chk.get('energia')}/5).")
-        elif m == "descanso": partes.append(f"Veo que el descanso no viene bien ({chk.get('descanso')}/5).")
-        elif m == "hambre": partes.append(f"Veo que el hambre esta pegando fuerte ({chk.get('hambre')}/5).")
-        if m and m in PREGUNTAS: partes.append(PREGUNTAS[m])
+    m = _peor_metrica(chk) if mal else None
+    # Solo se nombra una metrica si REALMENTE esta baja. Decirle "la adherencia
+    # te costo" a alguien que puso 4/5 lo desmotiva y ademas es falso.
+    v = chk.get(m) if m else None
+    baja = v is not None and ((v >= 4) if m == "hambre" else (v <= 3))
+    if mal and m and baja:
+        if m == "adherencia": partes.append(f"Veo que la adherencia te costo ({v}/5).")
+        elif m == "energia": partes.append(f"Veo la energia baja ({v}/5).")
+        elif m == "descanso": partes.append(f"Veo que el descanso no viene bien ({v}/5).")
+        elif m == "hambre": partes.append(f"Veo que el hambre esta pegando fuerte ({v}/5).")
+        if m in PREGUNTAS: partes.append(PREGUNTAS[m])
+    elif mal:
+        # Va mal por señales objetivas (entreno/peso), no por como se siente.
+        partes.append("En las sensaciones venis bien, pero quiero repasar un par de cosas del entreno con vos.")
     else:
         partes.append("Se te ve una buena semana, seguimos asi.")
     partes.append("Manana al despertar subi en la app tus 3 fotos (frente, perfil y espalda) asi te hago la devolucion completa. Si queres contarme algo mas de tu semana, escribime.")
@@ -455,6 +537,12 @@ def gen_ajustes(lista):
     for x in lista:
         sug = res.get(x["nombre"])
         if not sug:
+            # Preferir las acciones del motor (deterministas y coherentes con
+            # el diagnostico) antes que los templates genericos.
+            acciones = [acc for _k, _d, acc, _s in (x.get("veredicto") or {}).get("cruces", [])]
+            if acciones:
+                sug = "; ".join(acciones[:3])
+        if not sug:
             causas = []
             chk = x["chk"] or {}
             sup = (x.get("suplementos") or {}).get("stack", "").lower()
@@ -488,66 +576,136 @@ def main():
     chk_previo = {c["cliente_id"]: c for c in checks if c["semana_lunes"] == w1}
     print(f"clientes activos: {len(metricas)} | checks esta semana: {len(chk_actual)}")
 
+    # Serie completa por cliente (8 semanas) para baseline/tendencia
+    chk_series = {}
+    for row in checks:
+        chk_series.setdefault(row["cliente_id"], []).append(row)
+    for v in chk_series.values():
+        v.sort(key=lambda r: r["semana_lunes"])
+
+    # Interpretacion de las notas (una sola llamada batcheada; si falla, el
+    # motor cae al fallback por regex y nunca queda peor que antes)
+    notas_extra = interpretar_notas(metricas, chk_actual, chk_series)
+
     alertados_sin_check, fichas_sin_check, sin_uso = [], [], []
     personalizados, ajustables = [], []
+
+    observados = []
+    ult_ajustes = (st.get("clientes") or {})
 
     for c in metricas:
         cid = c["cliente_id"]
         nombre = c.get("nombre") or cid
         alertas, ficha, ctx = analizar(c, hoy)
         chk = chk_actual.get(cid)
-        obj = ctx.get("obj")
-        mal = va_mal(alertas, chk, obj)
+
+        # -- Motor de analisis (P7): baseline propio + tendencias + cruces --
+        serie_chk = chk_series.get(cid, [])
+        ua = (ult_ajustes.get(cid) or {}).get("ultimo_ajuste")
+        if ua and ua.get("fecha"):
+            try: ua = {"semanas_atras": (hoy - date.fromisoformat(ua["fecha"])).days // 7, **ua}
+            except Exception: ua = None
+        veredicto = AN.evaluar_cliente(nombre, ctx, serie_chk, notas_extra.get(nombre), ua, hoy)
+        balde = veredicto["balde"]
+        mal = (balde == "ajustar")
 
         if chk:
             personalizados.append({"nombre": nombre, "chk": chk, "chk_prev": chk_previo.get(cid),
-                                   "ctx": ctx, "mal": mal, "alertas": alertas, "cid": cid})
+                                   "ctx": ctx, "mal": mal, "alertas": alertas, "cid": cid,
+                                   "veredicto": veredicto})
             if mal:
                 ajustables.append({"nombre": nombre, "chk": chk, "ctx": ctx, "alertas": alertas,
                                    "dieta": resumen_dieta(cid), "rutina": resumen_rutina(cid),
-                                   "suplementos": fetch_suplementos(cid)})
+                                   "suplementos": fetch_suplementos(cid), "veredicto": veredicto})
+            elif balde == "observar" and veredicto["motivos"]:
+                observados.append(f"*{nombre}*: {'; '.join(veredicto['motivos'][:2])}")
         else:
             if alertas: alertados_sin_check.append({"nombre": nombre, "alertas": alertas})
             if ficha: fichas_sin_check.append(ficha)
             elif ctx.get("nunca_uso"): sin_uso.append(nombre)
 
-    # 1) Alertas (solo sin-check; los con check van al personalizado + ajustes)
-    if alertados_sin_check:
-        lineas = ["🚨 *Centinela — clientes que necesitan tu atencion (no mandaron check)*"]
-        for a in alertados_sin_check:
-            lineas.append(f"\n🔴 *{a['nombre']}*\n· " + "\n· ".join(a["alertas"]))
-        send_multi("\n".join(lineas))
+    modo = MODO
+    if modo == "auto":
+        modo = "analisis" if hoy.weekday() == 3 else "pedido"   # jueves = 3
 
-    # 2) Mensaje general (solo para los SIN check) + sus mini-fichas
-    general = gen_general()
-    cuerpo = ["📨 *Revision semanal — mensaje general*",
-              "_Mandaselo a los de la difusion EXCEPTO a los de los mensajes personalizados de abajo:_",
-              "", general]
-    send_multi("\n".join(cuerpo))
-    if fichas_sin_check:
-        extra = ["📇 *Mini-fichas de los que NO mandaron check*"] + fichas_sin_check
-        if sin_uso:
-            extra.append("\n🕳 Sin actividad en la app: " + ", ".join(sorted(sin_uso)))
-        send_multi("\n\n".join(extra))
+    if modo == "pedido":
+        # ── DOMINGO: se pide. Nadie mando el check todavia, asi que solo van
+        #    el mensaje general y las alertas OBJETIVAS (entreno/peso).
+        if alertados_sin_check:
+            lineas = ["🚨 *Centinela — clientes que necesitan tu atencion*"]
+            for a in alertados_sin_check:
+                lineas.append(f"\n🔴 *{a['nombre']}*\n· " + "\n· ".join(a["alertas"]))
+            send_multi("\n".join(lineas))
 
-    # 3) Personalizados: nombre + mensaje, por cada cliente con check
-    if personalizados:
-        send_whatsapp(f"✅ *{len(personalizados)} cliente(s) ya mandaron su check — mensajes personalizados:*")
-        drafts = gen_personalizados(personalizados)
-        for x in personalizados:
-            send_whatsapp(f"👤 *{x['nombre']}*")
-            send_whatsapp(drafts[x["nombre"]])
+        general = gen_general()
+        send_multi("\n".join(["📨 *Revision semanal — mensaje general*",
+                              "_Mandaselo a la lista de difusion:_", "", general]))
+        if fichas_sin_check:
+            extra = ["📇 *Mini-fichas (para personalizar si querés)*"] + fichas_sin_check
+            if sin_uso:
+                extra.append("\n🕳 Sin actividad en la app: " + ", ".join(sorted(sin_uso)))
+            send_multi("\n\n".join(extra))
+        return _guardar_state(st, hoy, {})
 
-    # 4) Ajustes sugeridos a Mati (solo los que van mal)
+    # ── JUEVES: se analiza. Ya llegaron los checks. ──
+    n_ok = len([x for x in personalizados if not x["mal"]]) - len(observados)
+    resumen = (f"🔎 *Analisis de los checks*\n"
+               f"· {len(personalizados)} mandaron el check\n"
+               f"· {len(ajustables)} necesitan que ajustes algo\n"
+               f"· {len(observados)} para observar (nada que tocar)\n"
+               f"· {max(0, n_ok)} vienen bien\n"
+               f"· {len(fichas_sin_check)} no mandaron check")
+    send_multi(resumen)
+
+    # 1) Los que necesitan ajuste: mensaje al cliente + ajustes para Mati
     if ajustables:
-        send_multi("🔬 *Ajustes sugeridos (solo para vos — nada de esto va al cliente)*\n\n" + gen_ajustes(ajustables))
+        drafts = gen_personalizados([x for x in personalizados if x["mal"]])
+        send_whatsapp(f"🎯 *{len(ajustables)} para ajustar — mensaje listo para reenviar:*")
+        for x in ajustables:
+            motivos = "; ".join((x.get("veredicto") or {}).get("motivos", [])[:3])
+            send_whatsapp(f"👤 *{x['nombre']}*" + (f"\n_{motivos}_" if motivos else ""))
+            d = drafts.get(x["nombre"])
+            if d: send_whatsapp(d)
+        send_multi("🔬 *Ajustes sugeridos (solo para vos)*\n\n" + gen_ajustes(ajustables))
 
-    # El dry-run NO guarda state: si no, una prueba en domingo bloquearia la ronda real.
-    if not DRY:
-        st["last_run"] = str(hoy)
-        os.makedirs(os.path.dirname(STATE), exist_ok=True)
-        try: json.dump(st, open(STATE, "w"))
-        except Exception as ex: print("state save fail:", ex)
+    # 2) Observar: una linea, SIN sugerencia (no fabricar ajustes)
+    if observados:
+        send_multi("👀 *Para observar (no hace falta tocar nada)*\n\n" + "\n".join(observados))
+
+    # 3) Los que vienen bien: mensaje corto de refuerzo
+    bien = [x for x in personalizados if not x["mal"] and
+            f"*{x['nombre']}*" not in " ".join(observados)]
+    if bien:
+        drafts_ok = gen_personalizados(bien)
+        send_whatsapp(f"✅ *{len(bien)} vienen bien — mensajes de devolucion:*")
+        for x in bien:
+            send_whatsapp(f"👤 *{x['nombre']}*")
+            d = drafts_ok.get(x["nombre"])
+            if d: send_whatsapp(d)
+
+    # 4) Quienes siguen sin mandar el check
+    if fichas_sin_check:
+        send_multi("⏳ *Todavia no mandaron el check*\n\n" + "\n\n".join(fichas_sin_check))
+
+    # Memoria: que se sugirio, para no repetir la semana que viene
+    nuevos = {}
+    for x in ajustables:
+        v = x.get("veredicto") or {}
+        nuevos[x["nombre"]] = {"fecha": str(hoy), "senal": (v.get("motivos") or [""])[0]}
+    return _guardar_state(st, hoy, nuevos)
+
+def _guardar_state(st, hoy, ajustes_por_nombre):
+    # El dry-run NO guarda state: si no, una prueba bloquearia la ronda real.
+    if DRY: return
+    st["last_run"] = str(hoy)
+    cl = st.setdefault("clientes", {})
+    for nombre, info in (ajustes_por_nombre or {}).items():
+        cl.setdefault(nombre, {})["ultimo_ajuste"] = info
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    try:
+        json.dump(st, open(STATE, "w"))
+    except Exception as ex:
+        print("state save fail:", ex)
 
 if __name__ == "__main__":
     main()
