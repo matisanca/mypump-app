@@ -301,11 +301,22 @@ ANGULOS = [
 ]
 
 FALLBACK_GENERAL = (
-    "Buenas! Como va el finde? Manana toca revision. "
-    "Pesate en ayunas al despertar y carga el peso en la app. "
-    "Y mandame por aca las fotos de frente, perfil y espalda, y contame como estuvo la semana: "
-    "dieta, descanso, entrenos y como te sentiste. Con eso te hago la devolucion"
+    "Buenas! Cómo va el finde? Mañana toca revisión. "
+    "Al despertar, en ayunas antes de comer o tomar nada, pesate y cargá el peso en la app. "
+    "Aprovechá y completá ahí mismo el check de la semana, son 4 toques: energía, descanso, "
+    "hambre y adherencia. "
+    "Y mandame por acá las fotos de frente, perfil y espalda, y contame cómo te fue la semana"
 )
+
+# El mensaje DEBE mandar el peso + el check a la app. Si el modelo se desvia
+# (pide el peso por WhatsApp o ni menciona la app), se usa el template fijo.
+def _general_valido(m):
+    ml = (m or "").lower()
+    if len(ml) < 60: return False
+    if "app" not in ml: return False
+    if re.search(r"mandame (me )?(tu |el )?peso|pas(a|a)me (tu |el )?peso|envi(a|a)me (tu |el )?peso", ml):
+        return False
+    return True
 
 def gen_general():
     sem = date.today().isocalendar()[1]
@@ -314,15 +325,22 @@ def gen_general():
         f"{TONO}\n\nEscribi el mensaje de WhatsApp del domingo a la tarde avisando que manana "
         f"lunes toca la revision semanal. Se manda por broadcast: cada uno lo recibe como mensaje "
         f"privado e individual.\nANGULO DE ESTA SEMANA: {ang}\n"
-        "Pedi DOS cosas para manana lunes: (1) que al despertar en ayunas, antes de comer o tomar "
-        "nada, se pese y CARGUE EL PESO EN LA APP (no que lo mande por aca). (2) que mande por aca "
-        "las fotos de frente, perfil y espalda y cuente en audio o texto como estuvo la semana "
-        "(dieta, descanso, entrenos, como se sintio). 3-5 oraciones. Nada de 'Buen dia' (es de "
-        "tarde). Devolve SOLO el mensaje, sin explicaciones."
+        "El cliente tiene una APP (MyPump) donde carga sus datos. Pedi TRES cosas para manana:\n"
+        "(1) que al despertar en ayunas, antes de comer o tomar nada, se pese y CARGUE EL PESO EN "
+        "LA APP. NUNCA le pidas que te mande el peso por WhatsApp: el peso va en la app.\n"
+        "(2) que complete en la app el CHECK DE LA SEMANA (son 4 toques rapidos: energia, "
+        "descanso, hambre y adherencia, con un campo libre opcional).\n"
+        "(3) que SI te mande por WhatsApp las fotos de frente, perfil y espalda, y te cuente en "
+        "audio o texto como le fue la semana.\n"
+        "3-5 oraciones, natural, sin listas ni numeracion. Nada de 'Buen dia' (es de tarde). "
+        "Devolve SOLO el mensaje, sin explicaciones."
     )
-    msg = claude_text(prompt) or FALLBACK_GENERAL
+    msg = claude_text(prompt) or ""
     msg = re.sub(r"\s*(Espero\s+(tus|tu|mis)\b[^.]*|Quedo\s+(atento|a\s+la\s+espera)\b[^.]*|A\s+darle\b[^.]*)\.?\s*$",
                  "", msg, flags=re.IGNORECASE).strip()
+    if not _general_valido(msg):
+        print("  [general] la IA se desvio (no manda a la app), uso template fijo")
+        msg = FALLBACK_GENERAL
     return re.sub(r"\.\s*$", "", msg)
 
 def _peor_metrica(chk):
@@ -333,10 +351,10 @@ def _peor_metrica(chk):
     return peor
 
 PREGUNTAS = {
-    "energia": "Que crees que te esta bajando la energia, el descanso, la comida o el estres?",
-    "descanso": "Que te esta costando del sueno, te cuesta dormirte o te despertas durante la noche?",
-    "adherencia": "Que comida o momento del dia se te hace mas cuesta arriba seguir?",
-    "hambre": "En que momento del dia te pega mas el hambre? Ahi lo ajustamos",
+    "energia": "Qué creés que te está bajando la energía, el descanso, la comida o el estrés?",
+    "descanso": "Qué te está costando del sueño, te cuesta dormirte o te despertás durante la noche?",
+    "adherencia": "Qué comida o momento del día se te hace más cuesta arriba seguir?",
+    "hambre": "En qué momento del día te pega más el hambre? Ahí lo ajustamos",
 }
 
 def fallback_personalizado(nombre, chk, mal):
