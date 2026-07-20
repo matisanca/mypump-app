@@ -308,6 +308,14 @@ window.mypumpDB = {
     });
   },
 
+  // ─── FOTOS DE PROGRESO (bucket privado) ──────
+  // Solo METADATA (semana, pose, fechas): sin path ni URL. Con esto la card
+  // arma el timeline aunque el servicio de fotos esté caído; los píxeles se
+  // piden aparte con URLs firmadas (ver fotosFirmadas en cliente.html).
+  async getFotosProgreso(token, desde) {
+    return await rpc('mypump_get_fotos_progreso', { p_token: token, p_desde: desde || null });
+  },
+
   // ─── COMIDAS MARCADAS (tracking granular de macros) ──────
 
   // Devuelve array de marcas del día. Cada fila: {comida_id, opcion_elegida, estado, marcada_en}.

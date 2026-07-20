@@ -757,6 +757,44 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 .peso-objetivo{margin-top:var(--space-2);padding-top:var(--space-2);border-top:1px dashed var(--color-border);font-size:12px;color:var(--color-text-muted)}
 .peso-objetivo strong{color:var(--color-text-secondary)}
 
+/* ── Fotos de progreso (P2/P3) ── */
+.fp-intro{font-size:12px;color:var(--color-text-muted);margin:0 0 var(--space-3);line-height:1.45}
+.fp-intro b{color:var(--color-text-secondary)}
+.fp-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fp-slot{position:relative;height:88px;border:1.5px dashed var(--color-border-strong);background:var(--color-bg-secondary);border-radius:var(--radius-md);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--color-text-secondary);transition:background .15s,border-color .15s,transform .1s}
+.fp-slot:active{transform:scale(.96)}
+.fp-slot.is-done{border-style:solid;border-color:var(--color-brand);background:color-mix(in oklab,var(--color-brand) 12%,var(--color-bg-primary));color:var(--color-brand)}
+.fp-slot-ico{font-size:20px;line-height:1}
+.fp-slot-lbl{font-size:12px;font-weight:600}
+.fp-slot-sub{font-size:9px;color:var(--color-text-muted);font-family:var(--font-mono)}
+.fp-serie{margin-top:var(--space-3);font-size:13px;font-weight:600;color:var(--color-brand)}
+.fp-bloqueado{margin-top:var(--space-3);padding:var(--space-3);border:1px dashed var(--color-border);border-radius:var(--radius-md);font-size:12px;color:var(--color-text-secondary);line-height:1.45;text-align:center}
+.fp-bloqueado small{color:var(--color-text-muted);font-size:11px}
+.fp-vergaleria{width:100%;margin-top:var(--space-3);height:44px;border:1px solid color-mix(in oklab,var(--color-brand) 45%,var(--color-border));background:color-mix(in oklab,var(--color-brand) 8%,var(--color-bg-primary));color:var(--color-text-primary);border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer}
+.fp-vergaleria:active{transform:scale(.98)}
+.fp-msg{margin-top:var(--space-2);font-size:12px;color:var(--color-text-muted);min-height:16px}
+.fp-msg.is-ok{color:var(--color-brand);font-weight:600}
+.fp-msg.is-warn{color:var(--color-warning)}
+.fp-msg.is-err{color:var(--color-danger)}
+/* galeria */
+.fp-galeria{display:none}
+.fp-galeria.is-open{display:block;background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-3);box-shadow:var(--shadow-md)}
+.fp-gal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);font-size:15px}
+.fp-gal-close{background:transparent;border:0;font-size:18px;color:var(--color-text-muted);cursor:pointer;padding:4px 8px}
+.fp-comp-tabs{display:flex;gap:6px;margin-bottom:var(--space-3)}
+.fp-comp-tab{flex:1;height:32px;border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:12px;font-weight:600;color:var(--color-text-secondary);cursor:pointer}
+.fp-comp-tab.is-on{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
+.fp-comp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fp-comp figure{margin:0}
+.fp-comp img{width:100%;border-radius:var(--radius-md);display:block;background:var(--color-bg-tertiary)}
+.fp-comp figcaption{margin-top:4px;font-size:11px;color:var(--color-text-muted);text-align:center;font-family:var(--font-mono)}
+.fp-comp-meta{margin-top:var(--space-2);text-align:center;font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--color-text-primary)}
+.fp-tira{display:flex;gap:8px;overflow-x:auto;margin-top:var(--space-4);padding-bottom:4px;scrollbar-width:none}
+.fp-tira::-webkit-scrollbar{display:none}
+.fp-tira-item{flex:0 0 auto;width:72px;text-align:center}
+.fp-tira-item img{width:72px;height:96px;object-fit:cover;border-radius:var(--radius-sm);display:block;background:var(--color-bg-tertiary)}
+.fp-tira-item span{display:block;margin-top:3px;font-size:10px;color:var(--color-text-muted);font-family:var(--font-mono)}
+
 /* ── Check semanal (N8) ── */
 .ck-saved{margin-left:auto;font-size:11px;font-weight:700;color:var(--color-brand);letter-spacing:.02em}
 .ck-intro{font-size:12px;color:var(--color-text-muted);margin:0 0 var(--space-3);line-height:1.4}
@@ -868,6 +906,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
     <button class="tab" data-scene="myday" role="tab" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
       <span>Mi Día</span>
+      <span class="tab-badge" id="tabBadgeMyday" hidden></span>
       <span class="tab-dot"></span>
     </button>
     <button class="tab" data-scene="progress" role="tab" aria-selected="false">
@@ -4286,6 +4325,7 @@ async function loadMyday() {
     if (STATE.scene === 'myday') renderMyday();
     loadSalud();   // en background: rellena la card Salud si hay datos de wearable
     loadCheckin(); // en background: rellena el check semanal si ya lo cargó
+    loadFotos().then(() => { if (STATE.scene === 'myday') renderMydayFotos(); flushFotos(); });
   } catch(e) {
     console.error('[Mi Día] error cargando hábitos:', e);
     MYDAY  = null;
@@ -4581,6 +4621,318 @@ const CHECKIN_METRICAS = [
   { k: 'adherencia', icon: '🎯', label: 'Adherencia', lo: 'me costó', hi: 'la seguí' },
 ];
 
+/* ═══════ FOTOS DE PROGRESO (P2/P3) ═══════
+   Se suben al servicio de la Mini (bucket privado). El Blob NO puede ir al
+   Outbox (se serializa a localStorage con JSON.stringify y no sobrevive), asi
+   que las fotos tienen su propia cola en una clave aparte: si revienta la
+   cuota, no se corrompe la cola de series/peso/checks, que es data
+   irrecuperable. */
+const POSES = [
+  { k: 'frente',  label: 'Frente'  },
+  { k: 'perfil',  label: 'Perfil'  },
+  { k: 'espalda', label: 'Espalda' },
+];
+const FOTOQ_KEY = () => `mypump_fotoq_${TOKEN}`;
+const FOTOS_MAX_PENDIENTES = 3;
+
+function _lunesISO(fechaISO) {
+  const d = new Date(`${fechaISO}T00:00:00`);
+  const dow = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - dow);
+  return d.toLocaleDateString('en-CA');
+}
+
+function _fotoqLeer() {
+  try { return JSON.parse(localStorage.getItem(FOTOQ_KEY()) || '{}'); } catch { return {}; }
+}
+function _fotoqGuardar(q) {
+  try { localStorage.setItem(FOTOQ_KEY(), JSON.stringify(q)); return true; }
+  catch (_) { return false; }   // QuotaExceededError → el caller avisa
+}
+
+// Reduce a Blob-friendly dataURL. 900px/0.7 alcanza para comparar fisico
+// (1024/0.8 es para OCR de etiquetas). El re-encode por canvas ademas
+// ELIMINA EL EXIF, o sea la ubicacion GPS no viaja.
+function _fotoAJpeg(file, maxPx = 900, calidad = 0.7) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const esc = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL('image/jpeg', calidad));
+    };
+    img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error('no se pudo leer la imagen')); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+const FOTOS_URL = () => (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '';
+
+async function _subirFoto(pose, dataUrl, fecha) {
+  const base = FOTOS_URL();
+  if (!base) return { ok: false, error: 'servicio no configurado' };
+  try {
+    const r = await fetch(base + '/progreso/upload', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN, pose, fecha, imagen_base64: dataUrl }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return (r.ok && j.ok) ? { ok: true, semana: j.semana_lunes } : { ok: false, error: j.error || `HTTP ${r.status}` };
+  } catch (e) { return { ok: false, error: 'sin conexión' }; }
+}
+
+// Drena la cola de fotos pendientes (se llama al cargar y al volver la red).
+async function flushFotos() {
+  const q = _fotoqLeer();
+  const keys = Object.keys(q);
+  if (!keys.length || !navigator.onLine) return;
+  for (const k of keys) {
+    const item = q[k];
+    if (!item || !item.dataUrl) { delete q[k]; continue; }
+    const res = await _subirFoto(item.pose, item.dataUrl, item.fecha);
+    if (res.ok) { delete q[k]; _fotoqGuardar(q); }
+    else break;   // sin conexión / error: se reintenta después
+  }
+  _fotoqGuardar(q);
+  await loadFotos();
+  if (STATE.scene === 'myday') renderMydayFotos();
+}
+
+async function loadFotos() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getFotosProgreso) return;
+  try {
+    const res = await window.mypumpDB.getFotosProgreso(TOKEN, null);
+    STATE.fotos = Array.isArray(res) ? res : [];
+  } catch (_) { STATE.fotos = STATE.fotos || []; }
+}
+
+// URLs firmadas (1h) — solo cuando el usuario abre la galeria.
+async function fotosFirmadas() {
+  const base = FOTOS_URL();
+  if (!base) return [];
+  try {
+    const r = await fetch(base + '/progreso/urls', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN }),
+    });
+    const j = await r.json().catch(() => ({}));
+    return (r.ok && j.ok && Array.isArray(j.fotos)) ? j.fotos : [];
+  } catch { return []; }
+}
+
+/* ═══════ RECORDATORIO SEMANAL (P4) ═══════
+   Insiste TODOS los días hasta que completan (no solo el día del pedido) y
+   desaparece solo al completarse. Badge en la tab Mi Día + banner arriba en
+   Entreno y Dieta. Reusa los patrones .tab-badge y .prog-banner. */
+function _pendientesSemana() {
+  const sem = _lunesISO(TODAY_LOCAL);
+  const faltaCheck = !(STATE.checkin && STATE.checkin.energia);
+  let faltanFotos = false;
+  if (FOTOS_URL()) {
+    const puestas = new Set((STATE.fotos || []).filter(f => f.semana_lunes === sem).map(f => f.pose));
+    Object.values(_fotoqLeer()).forEach(p => { if (_lunesISO(p.fecha) === sem) puestas.add(p.pose); });
+    faltanFotos = puestas.size < 3;
+  }
+  return { faltaCheck, faltanFotos, total: (faltaCheck ? 1 : 0) + (faltanFotos ? 1 : 0) };
+}
+
+function renderRecordatorio() {
+  if (DATA && DATA._isDemo) return;
+  const p = _pendientesSemana();
+
+  const badge = document.getElementById('tabBadgeMyday');
+  if (badge) {
+    if (p.total > 0) { badge.textContent = p.total; badge.hidden = false; }
+    else badge.hidden = true;
+  }
+
+  document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
+  if (p.total === 0 || STATE.scene === 'myday') return;
+
+  const que = p.faltaCheck && p.faltanFotos ? 'tu check y tus fotos de la semana'
+            : p.faltaCheck ? 'tu check de la semana' : 'tus fotos de la semana';
+  const host = document.querySelector(`#scene-${STATE.scene} main, #scene-${STATE.scene}`);
+  if (!host) return;
+  const div = document.createElement('div');
+  div.className = 'prog-banner recordatorio-semanal';
+  div.innerHTML = `📋 Te falta <b>${que}</b> — entrá a <b>Mi Día</b> para completarlo.`;
+  div.addEventListener('click', () => {
+    const t = [...document.querySelectorAll('.tab')].find(x => x.dataset.scene === 'myday');
+    if (t) t.click();
+  });
+  host.insertBefore(div, host.firstChild);
+}
+
+function renderMydayFotos() {
+  const el = document.getElementById('myday-fotos');
+  if (!el) return;
+  if (!FOTOS_URL()) { el.innerHTML = ''; return; }   // servicio no configurado
+
+  const semanaAct = _lunesISO(TODAY_LOCAL);
+  const fotos = STATE.fotos || [];
+  const pendientes = _fotoqLeer();
+  const deEstaSemana = new Set(fotos.filter(f => f.semana_lunes === semanaAct).map(f => f.pose));
+  Object.values(pendientes).forEach(p => { if (_lunesISO(p.fecha) === semanaAct) deEstaSemana.add(p.pose); });
+
+  // Semanas con las 3 poses completas (para la serie y el comparador)
+  const porSemana = {};
+  fotos.forEach(f => { (porSemana[f.semana_lunes] = porSemana[f.semana_lunes] || new Set()).add(f.pose); });
+  const semanas = Object.keys(porSemana).sort();
+  const completas = semanas.filter(s => porSemana[s].size === 3);
+
+  // Serie: semanas completas consecutivas hacia atrás desde la actual/última
+  let serie = 0;
+  for (let i = completas.length - 1; i >= 0; i--) {
+    const esperada = new Date(`${completas[completas.length - 1]}T00:00:00`);
+    esperada.setDate(esperada.getDate() - (completas.length - 1 - i) * 7);
+    if (completas[i] === esperada.toLocaleDateString('en-CA')) serie++; else break;
+  }
+
+  const slots = POSES.map(p => {
+    const lista = deEstaSemana.has(p.k);
+    const subiendo = Object.values(pendientes).some(x => x.pose === p.k && _lunesISO(x.fecha) === semanaAct);
+    return `<button class="fp-slot${lista ? ' is-done' : ''}" data-pose="${p.k}">
+      <span class="fp-slot-ico">${lista ? '✓' : '📷'}</span>
+      <span class="fp-slot-lbl">${p.label}</span>
+      ${subiendo ? '<span class="fp-slot-sub">subiendo…</span>' : ''}
+    </button>`;
+  }).join('');
+
+  const faltan = 4 - semanas.length;
+  const comparador = semanas.length >= 4
+    ? `<button class="fp-vergaleria" id="fpVerGaleria">Ver mi progreso · ${semanas.length} semanas</button>`
+    : `<div class="fp-bloqueado">Con ${semanas.length === 0 ? 'la primera foto' : `${faltan} semana${faltan > 1 ? 's' : ''} más`} vas a poder comparar tu cambio.<br><small>Antes de 4 semanas la comparación es ruido: cambia la luz, la hora y la retención de líquido, no vos.</small></div>`;
+
+  el.innerHTML = `
+    <div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">📸</span>
+        <span class="myday-section-title">Fotos de la semana</span>
+        ${deEstaSemana.size === 3 ? '<span class="ck-saved">✓ completas</span>' : ''}
+      </div>
+      <div class="myday-section-body">
+        <p class="fp-intro">Mismo lugar, misma luz, en ayunas. Las ve <b>solo Mati</b>: no se publican ni salen de la app.</p>
+        <div class="fp-slots">${slots}</div>
+        ${serie >= 2 ? `<div class="fp-serie">🔥 ${serie} semanas seguidas registradas</div>` : ''}
+        ${comparador}
+        <div class="fp-msg" id="fpMsg"></div>
+      </div>
+    </div>`;
+
+  try { renderRecordatorio(); } catch (_) {}
+  el.querySelectorAll('.fp-slot').forEach(b => b.addEventListener('click', () => _pedirFoto(b.dataset.pose)));
+  const ver = document.getElementById('fpVerGaleria');
+  if (ver) ver.addEventListener('click', abrirGaleriaFotos);
+}
+
+function _pedirFoto(pose) {
+  let inp = document.getElementById('fpInput');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+    inp.id = 'fpInput'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+  }
+  inp.value = '';
+  inp.onchange = async () => {
+    const file = inp.files && inp.files[0];
+    if (!file) return;
+    const msg = document.getElementById('fpMsg');
+    const setMsg = (t, cls = '') => { if (msg) { msg.textContent = t; msg.className = 'fp-msg ' + cls; } };
+    setMsg('Preparando la foto…');
+    let dataUrl;
+    try { dataUrl = await _fotoAJpeg(file); }
+    catch { return setMsg('No se pudo leer esa foto, probá de nuevo.', 'is-err'); }
+
+    // Encolar (para sobrevivir a cierres/red) y subir enseguida
+    const q = _fotoqLeer();
+    const key = `${_lunesISO(TODAY_LOCAL)}|${pose}`;
+    if (Object.keys(q).length >= FOTOS_MAX_PENDIENTES && !q[key]) {
+      setMsg('Hay fotos esperando subir. Probá cuando tengas señal.', 'is-err');
+      return;
+    }
+    q[key] = { pose, fecha: TODAY_LOCAL, dataUrl };
+    const guardo = _fotoqGuardar(q);
+    renderMydayFotos();
+    setMsg('Subiendo…');
+
+    const res = await _subirFoto(pose, dataUrl, TODAY_LOCAL);
+    if (res.ok) {
+      const q2 = _fotoqLeer(); delete q2[key]; _fotoqGuardar(q2);
+      await loadFotos();
+      renderMydayFotos();
+      setMsg('Listo, guardada ✓', 'is-ok');
+    } else if (guardo) {
+      renderMydayFotos();
+      setMsg('Sin conexión: queda guardada y se sube sola.', 'is-warn');
+    } else {
+      setMsg('No se pudo guardar. Probá de nuevo con señal.', 'is-err');
+    }
+  };
+  inp.click();
+}
+
+async function abrirGaleriaFotos() {
+  const msg = document.getElementById('fpMsg');
+  if (msg) { msg.textContent = 'Cargando tus fotos…'; msg.className = 'fp-msg'; }
+  const fotos = await fotosFirmadas();
+  if (msg) msg.textContent = '';
+  if (!fotos.length) { if (msg) { msg.textContent = 'No se pudieron cargar las fotos ahora.'; msg.className = 'fp-msg is-err'; } return; }
+
+  const porSemana = {};
+  fotos.forEach(f => { (porSemana[f.semana_lunes] = porSemana[f.semana_lunes] || {})[f.pose] = f.url; });
+  const semanas = Object.keys(porSemana).sort();
+  const primera = semanas[0], ultima = semanas[semanas.length - 1];
+
+  // Peso real en esas fechas, para acompañar la comparación con dato duro
+  const serieP = _pesoSerie();
+  const pesoEn = (sem) => {
+    const cand = serieP.filter(p => p.fecha >= sem).sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+    return cand ? cand.kg : null;
+  };
+  const p0 = pesoEn(primera), p1 = pesoEn(ultima);
+  const semDif = Math.round((new Date(ultima) - new Date(primera)) / 6048e5);
+  const dKg = (p0 != null && p1 != null) ? (p1 - p0) : null;
+  const resumen = `${semDif} semana${semDif === 1 ? '' : 's'}` + (dKg != null ? ` · ${dKg > 0 ? '+' : ''}${dKg.toFixed(1).replace('.', ',')} kg` : '');
+
+  const poseIni = ['frente', 'perfil', 'espalda'].find(p => porSemana[primera][p] && porSemana[ultima][p]) || 'frente';
+
+  const tira = semanas.map((s, i) => {
+    const u = porSemana[s].frente || Object.values(porSemana[s])[0];
+    return `<div class="fp-tira-item"><img src="${u}" loading="lazy" alt=""><span>Sem ${i + 1}</span></div>`;
+  }).join('');
+
+  const cont = document.getElementById('fpGaleria');
+  cont.innerHTML = `
+    <div class="fp-gal-hdr">
+      <strong>Tu progreso</strong>
+      <button class="fp-gal-close" id="fpGalClose">✕</button>
+    </div>
+    <div class="fp-comp-tabs">
+      ${POSES.filter(p => porSemana[primera][p.k] && porSemana[ultima][p.k]).map(p =>
+        `<button class="fp-comp-tab${p.k === poseIni ? ' is-on' : ''}" data-p="${p.k}">${p.label}</button>`).join('')}
+    </div>
+    <div class="fp-comp" id="fpComp"></div>
+    <div class="fp-comp-meta">${resumen}</div>
+    <div class="fp-tira">${tira}</div>`;
+  cont.classList.add('is-open');
+
+  const pintarComp = (pose) => {
+    document.getElementById('fpComp').innerHTML = `
+      <figure><img src="${porSemana[primera][pose]}" alt=""><figcaption>Semana 1</figcaption></figure>
+      <figure><img src="${porSemana[ultima][pose]}" alt=""><figcaption>Semana ${semanas.length}</figcaption></figure>`;
+  };
+  pintarComp(poseIni);
+  cont.querySelectorAll('.fp-comp-tab').forEach(b => b.addEventListener('click', () => {
+    cont.querySelectorAll('.fp-comp-tab').forEach(x => x.classList.remove('is-on'));
+    b.classList.add('is-on'); pintarComp(b.dataset.p);
+  }));
+  document.getElementById('fpGalClose').addEventListener('click', () => cont.classList.remove('is-open'));
+}
+
 async function loadCheckin() {
   if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getCheckinSemana) return;
   try {
@@ -4588,6 +4940,7 @@ async function loadCheckin() {
     STATE.checkin = (Array.isArray(res) && res[0]) ? res[0] : null;
   } catch (_) { STATE.checkin = null; }
   if (STATE.scene === 'myday') renderMydayCheckin();
+  try { renderRecordatorio(); } catch (_) {}
 }
 
 function renderMydayCheckin() {
@@ -4641,6 +4994,7 @@ function renderMydayCheckin() {
     STATE.checkinDraft = null;
     Outbox.enqueue('checkin', { fecha: TODAY_LOCAL, datos }, 'checkin_' + TODAY_LOCAL);
     renderMydayCheckin();
+    try { renderRecordatorio(); } catch (_) {}
   });
 }
 
@@ -4743,6 +5097,10 @@ function renderMyday() {
       </div>
     </div>
 
+    <!-- FOTOS DE PROGRESO — P2/P3 -->
+    <div id="myday-fotos"></div>
+    <div id="fpGaleria" class="fp-galeria"></div>
+
     <!-- CHECK SEMANAL — N8 -->
     <div id="myday-checkin"></div>
 
@@ -4767,7 +5125,8 @@ function renderMyday() {
 
   // Render streak
   renderMydayStreak();
-  // Render check semanal (siempre visible)
+  // Render fotos de progreso + check semanal (siempre visibles)
+  renderMydayFotos();
   renderMydayCheckin();
   // Render card de Peso (siempre visible: el input de carga vive ahí)
   renderMydayPeso();
@@ -4903,6 +5262,8 @@ function setScene(scene) {
     t.setAttribute('aria-selected', active);
   });
   $$('.scene').forEach(s => s.classList.toggle('is-active', s.id === `scene-${scene}`));
+  // Recordatorio semanal: se re-evalua en cada pantalla (P4)
+  try { renderRecordatorio(); } catch (_) {}
 
   const dp = $('#dayPicker');
   const hp = $('#hdrProgress');
