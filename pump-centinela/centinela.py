@@ -158,7 +158,7 @@ def senales_carga(prog):
     return out
 
 def persist_analisis(cid, semana_lunes, balde, motivos, banderas, senales,
-                     mensaje_cliente, sugerencia_coach):
+                     mensaje_cliente, sugerencia_coach, mensaje_ajuste=None):
     """Upsert a mypump_analisis_semanal. La escritura a DB es INDEPENDIENTE del
     envio de WhatsApp: --no-db la desactiva, pero --dry (que silencia WhatsApp)
     igual persiste, para poder ver el panel sin spamear."""
@@ -170,7 +170,7 @@ def persist_analisis(cid, semana_lunes, balde, motivos, banderas, senales,
             "p_cliente_id": cid, "p_semana_lunes": semana_lunes, "p_balde": balde,
             "p_motivos": motivos or [], "p_banderas": banderas or [],
             "p_senales": senales or {}, "p_mensaje_cliente": mensaje_cliente,
-            "p_sugerencia_coach": sugerencia_coach})
+            "p_sugerencia_coach": sugerencia_coach, "p_mensaje_ajuste": mensaje_ajuste})
     except Exception as e:
         print(f"[persist fail] {cid}: {e}")
 
@@ -686,6 +686,65 @@ def gen_ajustes(lista):
         out[x["nombre"]] = {"sug": sug, "sup": (x.get("suplementos") or {}).get("stack")}
     return out
 
+def gen_mensajes_ajuste(lista):
+    """Segundo draft al cliente: puntual sobre lo que hay que CHARLAR/ajustar.
+    Hace referencia a lo que paso (entreno flojo, fuerza que no acompana, peso
+    fuera de rango...) y pregunta para entenderlo e intentar resolverlo. Es
+    distinto de la devolucion general del check. Solo para los 'ajustar'."""
+    datos = []
+    for x in lista:
+        v = x.get("veredicto") or {}
+        ctx = x.get("ctx") or {}
+        carga = ctx.get("carga") or {}
+        datos.append({
+            "nombre": x["nombre"], "apodo": apodo(x["nombre"]),
+            "motivos": (v.get("motivos") or [])[:4],
+            "banderas": v.get("banderas") or [],
+            "entreno_activo": ctx.get("activo"),
+            "adherencia_entreno": ctx.get("adh_entreno"),
+            "fuerza_en_retroceso": [r["ej"] for r in (carga.get("cargas_en_retroceso") or [])][:2],
+            "objetivo": ctx.get("obj"),
+        })
+    prompt = (
+        f"{TONO}\n\nMati necesita ABRIR UNA CONVERSACION con cada cliente sobre algo puntual "
+        "de su entreno/semana que hay que ajustar o entender. Para cada uno escribi UN mensaje "
+        "corto de WhatsApp (2-4 oraciones) que Mati le reenvia. El mensaje:\n"
+        "- arranca con el APODO (campo 'apodo') tal cual, en MINUSCULA, sin mayuscula al inicio;\n"
+        "- hace referencia CONCRETA a lo que se ve en los datos (entreno flojo, faltaron dias, "
+        "la fuerza no viene subiendo en tal ejercicio, el peso se fue de rango, etc.) pero SIN "
+        "tecnicismos ni numeros de escalas;\n"
+        "- le PREGUNTA para entender que paso (falta de tiempo, motivacion, algo que le molesta, "
+        "logistica) e invita a resolverlo juntos. Tono de coach cercano, nada de reto;\n"
+        "- NO repite el pedido de fotos/peso (eso va en el otro mensaje), NO menciona 'la app "
+        "detecto' ni 'el sistema', NO habla de farmacos/quimica.\n\n"
+        f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
+        'Devolve SOLO un JSON valido {"Nombre Completo": "mensaje"} sin nada mas.'
+    )
+    res = claude_json(prompt) or {}
+    out = {}
+    for x in lista:
+        m = res.get(x["nombre"])
+        if not m:
+            # Fallback determinista segun el motivo dominante.
+            ap = apodo(x["nombre"]); v = x.get("veredicto") or {}
+            mot = (v.get("motivos") or [])
+            txt = " ".join(mot).lower()
+            if "entren" in txt or "asistencia" in txt or "sin entrenar" in txt or "dias del plan" in txt:
+                cuerpo = ("vi que esta semana entrenaste menos dias de los que tenemos planeados. "
+                          "Que fue lo que se te complico, el tiempo o las ganas? Contame asi lo acomodamos.")
+            elif "fuerza" in txt or "retroces" in txt or "rendir" in txt or "e1rm" in txt.replace(" ",""):
+                cuerpo = ("vengo mirando tus cargas y en un par de ejercicios no venis progresando como "
+                          "esperaba. Como te sentis en el gym, con energia o medio pesado? Vemos que ajustar.")
+            elif "peso" in txt:
+                cuerpo = ("el peso se esta moviendo distinto a lo que buscamos para tu objetivo. "
+                          "Como venis con las comidas y el hambre esta semana? Asi afinamos el plan.")
+            else:
+                cuerpo = ("quiero repasar un par de cosas de tu semana de entrenamiento con vos. "
+                          "Como la venis llevando? Contame y vemos si hay algo para acomodar.")
+            m = f"{ap}! {cuerpo}"
+        out[x["nombre"]] = m
+    return out
+
 def fmt_ajustes(dic):
     lineas = []
     for nombre, v in dic.items():
@@ -812,6 +871,7 @@ def main():
     # solo. Una sola llamada batcheada al modelo.
     drafts = gen_personalizados(personalizados) if personalizados else {}
     ajustes = gen_ajustes(ajustables) if ajustables else {}
+    msg_ajuste = gen_mensajes_ajuste(ajustables) if ajustables else {}
 
     # ── PERSISTENCIA: cada cliente queda guardado en mypump_analisis_semanal ──
     #    (lo lee el panel "para revisar hoy" y el brief pre-call). Independiente
@@ -823,7 +883,8 @@ def main():
             v.get("motivos") or [], v.get("banderas") or [],
             _senales_dict(v, x["ctx"], (x["ctx"] or {}).get("carga")),
             drafts.get(x["nombre"]),
-            (ajustes.get(x["nombre"]) or {}).get("sug") if x["mal"] else None)
+            (ajustes.get(x["nombre"]) or {}).get("sug") if x["mal"] else None,
+            msg_ajuste.get(x["nombre"]) if x["mal"] else None)
     for x in sin_check_persist:
         v = x.get("veredicto") or {}
         persist_analisis(x["cid"], w0, "sin_check",
@@ -838,6 +899,8 @@ def main():
             send_whatsapp(f"👤 *{x['nombre']}*" + (f"\n_{motivos}_" if motivos else ""))
             d = drafts.get(x["nombre"])
             if d: send_whatsapp(d)
+            aj = msg_ajuste.get(x["nombre"])
+            if aj: send_whatsapp("↳ _y para charlar el ajuste:_\n" + aj)
         send_multi("🔬 *Ajustes sugeridos (solo para vos)*\n\n" + fmt_ajustes(ajustes))
 
     # 2) Observar: una linea, SIN sugerencia (no fabricar ajustes)
