@@ -26,6 +26,13 @@ def _norm(m, v):
     if v is None: return None
     return (6 - v) if m == 'hambre' else v
 
+def _crudo(m, valor_norm):
+    """Des-normaliza al valor REAL que ve la app: en hambre 5 = mucha (peor).
+    TODO lo que se le MUESTRA a Mati tiene que pasar por aca, si no los numeros
+    de hambre salen al reves."""
+    if valor_norm is None: return None
+    return round(6 - valor_norm) if m == 'hambre' else round(valor_norm)
+
 def lunes(d):
     return d - timedelta(days=d.weekday())
 
@@ -171,16 +178,18 @@ def evaluar_cliente(nombre, ctx, checks, nota_extra=None, ultimo_ajuste=None, ho
         motivos.append('entreno menos de la mitad de los dias del plan'); duros_suprimibles.add('adh_entreno_muy_baja')
     for m, p in perfiles.items():
         if p['estado'] == 'critico':
-            motivos.append(f'{m} en {p["valor"]}/5'); duros_suprimibles.add('metrica_critica')
+            motivos.append(f'{m} en {_crudo(m, p["valor"])}/5'); duros_suprimibles.add('metrica_critica')
 
     # -- Señales blandas (tendencia, baseline, cruces) --
     blandas = 0
     for m, p in perfiles.items():
         if p['estado'] == 'caida':
-            base = f"{p['baseline']:.0f}" if p['baseline'] is not None else '?'
-            motivos.append(f'{m} cayo a {p["valor"]}/5 (venia en {base})'); blandas += 1
+            vc = _crudo(m, p["valor"])
+            bc = _crudo(m, p['baseline']) if p['baseline'] is not None else '?'
+            motivos.append(f'{m} empeoro a {vc}/5 (venia en {bc})'); blandas += 1
         elif p['estado'] == 'bajo_cronico':
-            motivos.append(f'{m} viene bajo hace semanas ({p["valor"]}/5)'); blandas += 1
+            palabra = 'alta' if m == 'hambre' else 'baja'
+            motivos.append(f'{m} viene {palabra} hace semanas ({_crudo(m, p["valor"])}/5)'); blandas += 1
 
     cruces = señales_cruzadas(ctx, perfiles)
     for _, desc, _, sev in cruces:
