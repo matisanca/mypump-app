@@ -528,6 +528,25 @@ def gen_general():
         msg = FALLBACK_GENERAL
     return re.sub(r"\.\s*$", "", msg)
 
+# Mati casi siempre llama a la gente por su apodo, en minuscula (ezequiel->eze).
+# Mapa de los mas comunes en rioplatense; si no esta, cae al nombre en minuscula
+# (igual sin mayuscula, como el quiere). El revisa antes de mandar.
+APODOS = {
+    "ezequiel":"eze","emmanuel":"ema","facundo":"facu","matias":"mati","matías":"mati",
+    "nicolas":"nico","nicolás":"nico","gustavo":"gus","sebastian":"seba","sebastián":"seba",
+    "santiago":"santi","agustin":"agus","agustín":"agus","federico":"fede","gonzalo":"gonza",
+    "ignacio":"nacho","joaquin":"joaco","joaquín":"joaco","tomas":"tomi","tomás":"tomi",
+    "francisco":"fran","alejandro":"ale","rodrigo":"rodri","leandro":"lea","mauricio":"mauri",
+    "guillermo":"guille","gabriel":"gabo","damian":"dami","damián":"dami","maximiliano":"maxi",
+    "cristian":"cris","cristián":"cris","valentin":"valen","valentín":"valen","benjamin":"benja",
+    "benjamín":"benja","lisandro":"lisan","bautista":"bauti","juan":"juan","lucas":"lucas",
+    "franco":"franco","martin":"martin","martín":"martin","gaston":"gaston","gastón":"gaston",
+    "borja":"borja","diego":"diego","pablo":"pablo","bruno":"bruno","ivan":"iván","iván":"iván",
+}
+def apodo(nombre):
+    n = (nombre or "").strip().split()[0] if (nombre or "").strip() else ""
+    return APODOS.get(n.lower(), n.lower())
+
 def _peor_metrica(chk):
     vals = {"energia": chk.get("energia"), "descanso": chk.get("descanso"),
             "adherencia": chk.get("adherencia")}
@@ -543,24 +562,25 @@ PREGUNTAS = {
 }
 
 def fallback_personalizado(nombre, chk, mal):
-    n = nombre.split()[0]
-    partes = [f"{n}! Vi tu check de la semana, gracias por completarlo."]
+    n = apodo(nombre)
+    partes = [f"{n}! vi tu check de la semana, gracias por completarlo."]
     m = _peor_metrica(chk) if mal else None
     # Solo se nombra una metrica si REALMENTE esta baja. Decirle "la adherencia
     # te costo" a alguien que puso 4/5 lo desmotiva y ademas es falso.
+    # NO se ponen los numeros (4/5): a Mati le queda poco natural en el mensaje.
     v = chk.get(m) if m else None
     baja = v is not None and ((v >= 4) if m == "hambre" else (v <= 3))
     if mal and m and baja:
-        if m == "adherencia": partes.append(f"Veo que la adherencia te costó ({v}/5).")
-        elif m == "energia": partes.append(f"Veo la energía baja ({v}/5).")
-        elif m == "descanso": partes.append(f"Veo que el descanso no viene bien ({v}/5).")
-        elif m == "hambre": partes.append(f"Veo que el hambre está pegando fuerte ({v}/5).")
+        if m == "adherencia": partes.append("veo que la adherencia te costó un poco.")
+        elif m == "energia": partes.append("veo la energía media baja.")
+        elif m == "descanso": partes.append("veo que el descanso no viene bien.")
+        elif m == "hambre": partes.append("veo que el hambre está pegando fuerte.")
         if m in PREGUNTAS: partes.append(PREGUNTAS[m])
     elif mal:
         # Va mal por señales objetivas (entreno/peso), no por como se siente.
-        partes.append("En las sensaciones venís bien, pero quiero repasar un par de cosas del entreno con vos.")
+        partes.append("en las sensaciones venís bien, pero quiero repasar un par de cosas del entreno con vos.")
     else:
-        partes.append("Se te ve una buena semana, seguimos así.")
+        partes.append("se te ve una buena semana, seguimos así.")
     partes.append("Mañana al despertar subí en la app, en Revisión, tus 3 fotos (frente, perfil y espalda) así te hago la devolución completa. Cualquier cosa que quieras agregar, contame por acá.")
     return " ".join(partes)
 
@@ -569,7 +589,7 @@ def gen_personalizados(lista):
     datos = []
     for x in lista:
         chk, prev, ctx = x["chk"], x["chk_prev"], x["ctx"]
-        d = {"nombre": x["nombre"],
+        d = {"nombre": x["nombre"], "apodo": apodo(x["nombre"]),
              "check": {k: chk.get(k) for k in ("energia", "descanso", "hambre", "adherencia")},
              "nota": chk.get("nota"), "objetivo": ctx.get("obj"),
              "entreno_activo": ctx.get("activo"), "va_mal": x["mal"]}
@@ -581,15 +601,19 @@ def gen_personalizados(lista):
         f"{TONO}\n\nPara cada cliente escribi UN mensaje de WhatsApp del domingo a la tarde "
         "(3-6 oraciones) que Mati le va a reenviar tal cual. El cliente completo su check "
         "semanal en la app (escalas 1-5; hambre 5 = mucha hambre). El mensaje debe: "
-        "(1) arrancar con el nombre de pila y agradecer/reconocer el check con una referencia "
-        "ESPECIFICA a lo que puso (valores o su nota textual), "
+        "(1) arrancar con el APODO del cliente (campo 'apodo') tal cual viene, en MINUSCULA, "
+        "sin mayuscula al principio (asi escribe Mati). Agradecer/reconocer el check con una "
+        "referencia a como viene, PERO SIN decir los numeros del check (nada de '3/5' ni '4/5' "
+        "ni 'pusiste 2'): queda poco natural. Traducilos a palabras (mucha hambre, energia baja, "
+        "venis firme con la dieta, etc.), "
         "(2) si va_mal=true: interpretar que le puede estar pasando y hacerle UNA pregunta "
         "concreta que apunte a la causa (o un feedback accionable, no generico), "
         "(3) si viene bien: reconocimiento breve y genuino sin exagerar, "
         "(4) cerrar pidiendo que manana lunes al despertar SUBA EN LA APP sus 3 fotos (frente, perfil y "
         "espalda; el peso tambien lo carga ahi). Invitalo a contarte algo mas de su semana si quiere. "
         "NO menciones numeros de rango de peso ni la palabra 'deficit calorico' en tono tecnico; "
-        "hablale como coach cercano. NO menciones 'la app detecto' ni 'el sistema'.\n\n"
+        "hablale como coach cercano. NO menciones 'la app detecto' ni 'el sistema'. "
+        "NUNCA pongas numeros de las escalas del check en el mensaje.\n\n"
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
         'Devolve SOLO un JSON valido {"Nombre Completo": "mensaje"} sin texto extra.'
     )
