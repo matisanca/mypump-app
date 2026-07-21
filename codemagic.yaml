@@ -11,8 +11,7 @@
 #   2. Integrations → App Store Connect → subir una API key (la generás en
 #      App Store Connect → Users and Access → Integrations). Nombrala como el
 #      valor de `app_store_connect` de abajo: "PumpTeam_ASC".
-#   3. Completar los 2 placeholders marcados con <<< ... >>> abajo.
-#   4. Start build.
+#   3. Start build. (El APP_STORE_APPLE_ID ya esta cargado: 6793259380.)
 # =============================================================
 workflows:
   ios-testflight:
@@ -36,9 +35,8 @@ workflows:
         BUNDLE_ID: "com.pumpteam.mypump"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
-        # <<< Completar con el Apple ID NUMÉRICO de la app (App Store Connect →
-        #     tu app → App Information → "Apple ID"). Ej: "6748291023". >>>
-        APP_STORE_APPLE_ID: "<<<APP_STORE_APPLE_ID>>>"
+        # Apple ID numerico de la app (App Store Connect). Ya seteado.
+        APP_STORE_APPLE_ID: "6793259380"
 
     scripts:
       - name: Instalar dependencias (npm)
