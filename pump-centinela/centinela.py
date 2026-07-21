@@ -31,6 +31,7 @@ BOT_ENV = os.path.expanduser("~/agentkit-coach/.env")
 STATE   = os.path.expanduser("~/pump-centinela/state.json")
 DRY     = "--send" not in sys.argv
 FORCE   = "--force" in sys.argv
+NO_DB   = "--no-db" in sys.argv   # no persistir en mypump_analisis_semanal (solo pruebas)
 # Dos momentos distintos: el DOMINGO se PIDE (nadie mando el check todavia) y
 # el JUEVES se ANALIZA (ya llegaron). Antes todo corria el domingo y el
 # analisis llegaba siempre vacio.
@@ -105,6 +106,89 @@ def fetch_suplementos(cliente_id):
         return None
 
 # -- WhatsApp (Meta Cloud API, mismo camino que heartbeat.py) --
+
+def fetch_progresion(cliente_id):
+    """Serie de cargas por ejercicio (mejor set por sesion). La RPC ya existe
+    pero el centinela nunca la usaba: aca sacamos ESTANCAMIENTO de fuerza y el
+    RIR real, senales de AJUSTE DE RUTINA que hoy se perdian."""
+    try:
+        rows = _sb_req("/rest/v1/rpc/mypump_get_progresion_cargas",
+                       {"p_cliente_id": cliente_id, "p_semanas": SEMANAS})
+        return rows if isinstance(rows, list) else []
+    except Exception:
+        return []
+
+def senales_carga(prog):
+    """De la serie de cargas: ejercicios en RETROCESO de fuerza y el RIR medio.
+    OJO: un ejercicio 'plano' NO es senal — la carga se congela a proposito en
+    la fase de acumulacion (misma carga, +1 serie). Solo marcamos CAIDA real
+    (>=3% de e1RM en 4+ semanas), que es lo que amerita mirar. Requiere 4 puntos
+    para no confundir ruido semana a semana con una tendencia."""
+    if not prog:
+        return {}
+    por_ej = {}
+    for r in prog:
+        eid = r.get("ejercicio_id")
+        if not eid:
+            continue
+        d = por_ej.setdefault(eid, {"nombre": r.get("ejercicio"), "pts": []})
+        e1 = r.get("e1rm")
+        d["pts"].append({"sem": r.get("semana"),
+                         "e1rm": float(e1) if e1 not in (None, "") else None,
+                         "rir": r.get("rir_real")})
+    retroceso, rirs = [], []
+    for d in por_ej.values():
+        for x in d["pts"]:
+            if x["rir"] is not None:
+                try: rirs.append(float(x["rir"]))
+                except Exception: pass
+        pts = sorted([x for x in d["pts"] if x["e1rm"] is not None], key=lambda x: (x["sem"] or 0))
+        if len(pts) < 4:
+            continue
+        rec = max(x["e1rm"] for x in pts[-2:])       # mejor de las 2 recientes
+        prev = max(x["e1rm"] for x in pts[-4:-2])     # mejor de las 2 anteriores
+        if prev and rec < prev * 0.97:                # cayo 3%+
+            retroceso.append({"ej": d["nombre"], "caida_pct": round((rec / prev - 1) * 100)})
+    out = {}
+    if retroceso:
+        retroceso.sort(key=lambda x: x["caida_pct"])   # peor primero
+        out["cargas_en_retroceso"] = retroceso[:4]
+    if rirs:
+        out["rir_medio"] = round(sum(rirs) / len(rirs), 1)
+    return out
+
+def persist_analisis(cid, semana_lunes, balde, motivos, banderas, senales,
+                     mensaje_cliente, sugerencia_coach):
+    """Upsert a mypump_analisis_semanal. La escritura a DB es INDEPENDIENTE del
+    envio de WhatsApp: --no-db la desactiva, pero --dry (que silencia WhatsApp)
+    igual persiste, para poder ver el panel sin spamear."""
+    if NO_DB:
+        print(f"[no-db] {cid} -> {balde}")
+        return
+    try:
+        _sb_req("/rest/v1/rpc/mypump_upsert_analisis", {
+            "p_cliente_id": cid, "p_semana_lunes": semana_lunes, "p_balde": balde,
+            "p_motivos": motivos or [], "p_banderas": banderas or [],
+            "p_senales": senales or {}, "p_mensaje_cliente": mensaje_cliente,
+            "p_sugerencia_coach": sugerencia_coach})
+    except Exception as e:
+        print(f"[persist fail] {cid}: {e}")
+
+def _senales_dict(veredicto, ctx, carga):
+    perfiles = {}
+    for m, pf in (veredicto.get("perfiles") or {}).items():
+        perfiles[m] = {"valor": pf.get("valor"), "baseline": pf.get("baseline"),
+                       "estado": pf.get("estado")}
+    return {
+        "perfiles": perfiles,
+        "cruces": [{"clave": k, "desc": d} for k, d, _a, _sv in (veredicto.get("cruces") or [])],
+        "var_e1rm": ctx.get("var_e1rm"),
+        "adh_entreno": ctx.get("adh_entreno"),
+        "delta_peso_g": ctx.get("delta_peso_g"),
+        "peso_en_rango": ctx.get("peso_en_rango"),
+        "carga": carga or {},
+    }
+
 def send_whatsapp(text):
     tok = E.get("META_ACCESS_TOKEN"); pnid = E.get("META_PHONE_NUMBER_ID"); to = E.get("COACH_PHONE_NUMBER")
     if not (tok and pnid and to):
@@ -550,7 +634,7 @@ def gen_ajustes(lista):
         'Devolve SOLO un JSON valido {"Nombre Completo": "diagnostico y sugerencias en texto plano"} sin nada mas.'
     )
     res = claude_json(prompt) or {}
-    lineas = []
+    out = {}
     for x in lista:
         sug = res.get(x["nombre"])
         if not sug:
@@ -570,9 +654,19 @@ def gen_ajustes(lista):
             if (chk.get("energia") or 5) <= 2: causas.append(FALLBACK_AJUSTES["energia"])
             if x["alertas"]: causas.append(FALLBACK_AJUSTES["entreno"])
             sug = "; ".join(causas) or "revisar en la proxima call"
-        sup_txt = (x.get("suplementos") or {}).get("stack")
-        extra = f"\n_ya toma: {sup_txt}_" if sup_txt else ""
-        lineas.append(f"🔧 *{x['nombre']}*\n{sug}{extra}")
+        # Retroceso de fuerza: senal de RUTINA (no de dieta), va al diagnostico.
+        ret = ((x.get("ctx") or {}).get("carga") or {}).get("cargas_en_retroceso")
+        if ret:
+            det = ", ".join(f"{r['ej']} ({r['caida_pct']}%)" for r in ret[:2])
+            sug += f" · fuerza cayendo en: {det} (revisar recuperacion/tecnica)"
+        out[x["nombre"]] = {"sug": sug, "sup": (x.get("suplementos") or {}).get("stack")}
+    return out
+
+def fmt_ajustes(dic):
+    lineas = []
+    for nombre, v in dic.items():
+        extra = f"\n_ya toma: {v['sup']}_" if v.get("sup") else ""
+        lineas.append(f"🔧 *{nombre}*\n{v['sug']}{extra}")
     return "\n\n".join(lineas)
 
 # -- Main --
@@ -606,6 +700,7 @@ def main():
 
     alertados_sin_check, fichas_sin_check, sin_uso = [], [], []
     personalizados, ajustables = [], []
+    sin_check_persist = []
 
     observados = []
     ult_ajustes = (st.get("clientes") or {})
@@ -626,10 +721,15 @@ def main():
         balde = veredicto["balde"]
         mal = (balde == "ajustar")
 
+        # Senales de carga (estancamiento/RIR): solo para quienes mandaron check
+        # (es una RPC por cliente; los sin-check no se analizan a fondo).
+        if chk and MODO in ("analisis", "auto"):
+            ctx["carga"] = senales_carga(fetch_progresion(cid))
+
         if chk:
             personalizados.append({"nombre": nombre, "chk": chk, "chk_prev": chk_previo.get(cid),
                                    "ctx": ctx, "mal": mal, "alertas": alertas, "cid": cid,
-                                   "veredicto": veredicto})
+                                   "veredicto": veredicto, "balde": balde})
             if mal:
                 ajustables.append({"nombre": nombre, "chk": chk, "ctx": ctx, "alertas": alertas,
                                    "dieta": resumen_dieta(cid), "rutina": resumen_rutina(cid),
@@ -637,6 +737,11 @@ def main():
             elif balde == "observar" and veredicto["motivos"]:
                 observados.append(f"*{nombre}*: {'; '.join(veredicto['motivos'][:2])}")
         else:
+            if not ctx.get("nunca_uso"):
+                # cliente activo en la app pero sin check esta semana: se persiste
+                # como sin_check para que aparezca en el dashboard.
+                sin_check_persist.append({"cid": cid, "nombre": nombre, "balde": balde,
+                                          "veredicto": veredicto, "ctx": ctx})
             if alertas: alertados_sin_check.append({"nombre": nombre, "alertas": alertas})
             if ficha: fichas_sin_check.append(ficha)
             elif ctx.get("nunca_uso"): sin_uso.append(nombre)
@@ -664,26 +769,52 @@ def main():
             send_multi("\n\n".join(extra))
         return _guardar_state(st, hoy, {})
 
-    # ── JUEVES: se analiza. Ya llegaron los checks. ──
+    # ── LUN-JUE: se analiza a medida que llegan los checks. Solo el jueves es
+    #    el cierre; antes van llegando, asi que el texto lo aclara. ──
+    dia_sem = hoy.weekday()   # 0=lun ... 3=jue
+    cierre = (dia_sem == 3)
+    cab = "🔎 *Analisis de los checks*" if cierre else "🔎 *Checks que fueron llegando hoy*"
     n_ok = len([x for x in personalizados if not x["mal"]]) - len(observados)
-    resumen = (f"🔎 *Analisis de los checks*\n"
-               f"· {len(personalizados)} mandaron el check\n"
+    resumen = (f"{cab}\n"
+               f"· {len(personalizados)} mandaron el check{'' if cierre else ' hasta ahora'}\n"
                f"· {len(ajustables)} necesitan que ajustes algo\n"
                f"· {len(observados)} para observar (nada que tocar)\n"
                f"· {max(0, n_ok)} vienen bien\n"
-               f"· {len(fichas_sin_check)} no mandaron check")
+               f"· {len(fichas_sin_check)} {'no mandaron check' if cierre else 'todavia sin check'}")
     send_multi(resumen)
+
+    # UN mensaje personalizado por cliente CON check (ajustar, observar y bien
+    # por igual). Mati elige a quien reenviarselo desde el panel; no se manda
+    # solo. Una sola llamada batcheada al modelo.
+    drafts = gen_personalizados(personalizados) if personalizados else {}
+    ajustes = gen_ajustes(ajustables) if ajustables else {}
+
+    # ── PERSISTENCIA: cada cliente queda guardado en mypump_analisis_semanal ──
+    #    (lo lee el panel "para revisar hoy" y el brief pre-call). Independiente
+    #    de que se mande o no el WhatsApp.
+    for x in personalizados:
+        v = x.get("veredicto") or {}
+        persist_analisis(
+            x["cid"], w0, x["balde"],
+            v.get("motivos") or [], v.get("banderas") or [],
+            _senales_dict(v, x["ctx"], (x["ctx"] or {}).get("carga")),
+            drafts.get(x["nombre"]),
+            (ajustes.get(x["nombre"]) or {}).get("sug") if x["mal"] else None)
+    for x in sin_check_persist:
+        v = x.get("veredicto") or {}
+        persist_analisis(x["cid"], w0, "sin_check",
+                         v.get("motivos") or [], v.get("banderas") or [],
+                         _senales_dict(v, x["ctx"], None), None, None)
 
     # 1) Los que necesitan ajuste: mensaje al cliente + ajustes para Mati
     if ajustables:
-        drafts = gen_personalizados([x for x in personalizados if x["mal"]])
         send_whatsapp(f"🎯 *{len(ajustables)} para ajustar — mensaje listo para reenviar:*")
         for x in ajustables:
             motivos = "; ".join((x.get("veredicto") or {}).get("motivos", [])[:3])
             send_whatsapp(f"👤 *{x['nombre']}*" + (f"\n_{motivos}_" if motivos else ""))
             d = drafts.get(x["nombre"])
             if d: send_whatsapp(d)
-        send_multi("🔬 *Ajustes sugeridos (solo para vos)*\n\n" + gen_ajustes(ajustables))
+        send_multi("🔬 *Ajustes sugeridos (solo para vos)*\n\n" + fmt_ajustes(ajustes))
 
     # 2) Observar: una linea, SIN sugerencia (no fabricar ajustes)
     if observados:
@@ -693,11 +824,10 @@ def main():
     bien = [x for x in personalizados if not x["mal"] and
             f"*{x['nombre']}*" not in " ".join(observados)]
     if bien:
-        drafts_ok = gen_personalizados(bien)
         send_whatsapp(f"✅ *{len(bien)} vienen bien — mensajes de devolucion:*")
         for x in bien:
             send_whatsapp(f"👤 *{x['nombre']}*")
-            d = drafts_ok.get(x["nombre"])
+            d = drafts.get(x["nombre"])
             if d: send_whatsapp(d)
 
     # 4) Quienes siguen sin mandar el check
