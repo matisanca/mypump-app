@@ -563,6 +563,8 @@ main{padding:var(--space-4)}
 .rir-opt.is-selected{background:var(--color-brand);border-color:var(--color-brand);color:var(--color-on-brand)}
 .rir-legend{font-size:11px;color:var(--color-text-muted);text-align:center;font-family:var(--font-mono)}
 
+.error-demo-btn{display:block;width:100%;margin-top:12px;background:transparent;border:0;color:var(--color-text-muted);font-size:13px;text-decoration:underline;cursor:pointer;font-family:inherit}
+.error-demo-btn:hover{color:var(--color-text-secondary)}
 /* DEMO BANNER */
 .demo-banner{margin:var(--space-4) 0 0;padding:var(--space-3) var(--space-4);background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));border-radius:var(--radius-md);font-size:12px;color:var(--color-text-secondary);font-family:var(--font-mono)}
 .demo-banner strong{color:var(--color-text-primary)}
@@ -861,6 +863,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
     <button class="error-paste-btn" id="errorPasteBtn">Entrar</button>
     <div class="error-paste-err" id="errorPasteErr" hidden></div>
+    <button class="error-demo-btn" id="errorDemoBtn" hidden>Ver demo</button>
   </div>
 </div>
 
@@ -984,6 +987,10 @@ const ICONS = {
  * un cliente cambia de link (re-publicación con token nuevo), el
  * localStorage se actualiza solo.
  */
+// Modo demo (para la revision de la App Store, que no tiene token de cliente):
+// ?demo=1 entra sin token con datos de ejemplo. No toca la red ni escribe nada.
+const DEMO = new URLSearchParams(window.location.search).get('demo') === '1';
+
 const TOKEN = (function() {
   const TOKEN_KEY = 'mypump_token';
   function isValidToken(t) {
@@ -2285,6 +2292,12 @@ function showError(type, detail) {
         window.location.replace('/cliente.html?t=' + encodeURIComponent(tok));
       };
       inp.onkeydown = (e) => { if (e.key === 'Enter') btn.click(); };
+    }
+    // Boton "Ver demo": entra sin token con datos de ejemplo (revision App Store).
+    const demoBtn = $('#errorDemoBtn');
+    if (demoBtn) {
+      demoBtn.hidden = false;
+      demoBtn.onclick = () => { window.location.href = '?demo=1'; };
     }
   } else if (type === 'service-down') {
     $('#errTitle').textContent = 'Servicio fuera de línea';
@@ -4225,7 +4238,9 @@ async function loadProgressAndRender() {
     }
   }
 
-  const results = await Promise.all(
+  const results = DEMO
+    ? allEx.map(ex => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }))
+    : await Promise.all(
     allEx.map(ex => window.mypumpDB.getHistoricoEjercicio(TOKEN, ex.id, 24)
       .then(rows => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: rows || [] }))
       .catch(() => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }))
@@ -5551,15 +5566,18 @@ async function init() {
   document.documentElement.setAttribute('data-theme', savedTheme);
   document.body.setAttribute('data-theme', savedTheme);
 
-  if (!TOKEN) { showError('no-token'); return; }
+  if (!TOKEN && !DEMO) { showError('no-token'); return; }
 
   showLoading();
   window.mypumpDB.init();
 
-  let info = await window.mypumpDB.getClienteInfo(TOKEN);
-  let rutina, dieta;
+  let info, rutina, dieta;
   let _fromCache = false;
-  if (info) {
+  if (DEMO) {
+    // Sin red: rutina/dieta quedan sin definir y cae al SAMPLE de abajo
+    // (_isDemo:true), que ademas apaga todas las escrituras a Supabase.
+    info = { nombre: 'Demo Pump Team', perfil: 'natural' };
+  } else if ((info = await window.mypumpDB.getClienteInfo(TOKEN))) {
     [rutina, dieta] = await Promise.all([
       window.mypumpDB.getRutinaActiva(TOKEN),
       window.mypumpDB.getDietaActiva(TOKEN),
@@ -5689,6 +5707,14 @@ async function init() {
   updateDayHeader();
 
   DATA._offline = _fromCache;   // arrancó desde snapshot cacheado (sin conexión)
+
+  if (DEMO) {
+    // Sembrar Mi Día para que no quede en "Cargando…": las cargas de red
+    // cortan por !TOKEN en demo. Datos de ejemplo, no se guardan.
+    MYDAY = { entrenamiento: 'entrene', comio_segun_plan: true, durmio_bien: true, vasos_agua: 2, cardio: false };
+    STREAK = { streak: 3, ultimo_dia_valido: TODAY_LOCAL };
+    STATE.mydayLoaded = true;
+  }
 
   showApp();
   renderDayPicker();
