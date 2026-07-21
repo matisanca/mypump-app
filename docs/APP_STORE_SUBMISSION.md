@@ -22,7 +22,7 @@
 | Campo | Valor |
 |---|---|
 | Name | **MyPump** |
-| Subtitle | Tu plan de entrenamiento y nutrición |
+| Subtitle | Entrenamiento y nutrición (máx 30 car.; "Tu plan de entrenamiento y nutrición" tiene 36 y NO entra) |
 | Bundle ID | com.pumpteam.mypump |
 | Primary Category | Health & Fitness |
 | Secondary Category | (opcional) — Lifestyle |
@@ -92,7 +92,13 @@ Respondé el cuestionario de privacidad así (coincide con la política publicad
 La **app del cliente (MyPump)** es una app de fitness estándar: entrenamiento,
 dieta, hábitos, fotos de progreso. **No contiene** contenido médico, de
 farmacología, ni recomendaciones de sustancias — eso vive del lado del coach,
-fuera de esta app. Respondé todo el cuestionario en **None/No** → rating **4+**.
+fuera de esta app.
+
+> **Cargado el 21-jul → rating = 9+** (no 4+). Todo el cuestionario en None/No,
+> EXCEPTO **"Temas de salud o bienestar (health & wellness topics) = Sí"**,
+> respondido con honestidad porque la app sí da recomendaciones de dieta y
+> entrenamiento (estilo de vida). Eso solo, sube el cálculo a 9+ (Apple: 172
+> países 9+, 12+ Vietnam, A10 Brasil). Es correcto y no bloquea nada.
 
 ## 7. App Review Information (⚠️ lo más importante para no ser rechazado)
 
