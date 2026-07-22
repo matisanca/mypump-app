@@ -24,7 +24,7 @@ workflows:
       app_store_connect: PumpTeam_ASC
 
     environment:
-      node: 20
+      node: 22
       xcode: latest
       vars:
         BUNDLE_ID: "com.pumpteam.mypump"
