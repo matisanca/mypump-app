@@ -42,18 +42,18 @@ workflows:
         script: |
           xcodebuild -resolvePackageDependencies \
             -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
-      - name: Configurar firma (crea certificado + perfil si no existen)
+      - name: Configurar firma (crea certificado + perfil)
         script: |
           keychain initialize
-          # Cuenta nueva sin certificados: crear el certificado de distribución
-          # (genera la clave privada localmente). El || true evita fallar si ya
-          # existe / se llega al límite de Apple.
-          app-store-connect create-certificate \
-            --type IOS_DISTRIBUTION \
-            --save || echo "create-certificate: ya existe o límite alcanzado, sigo"
-          # Crea el provisioning profile del bundle (incluye HealthKit del App ID).
+          # Cuenta nueva sin certificado: generamos una clave privada y se la
+          # pasamos a fetch-signing-files, que con --create genera el certificado
+          # de distribución Y el provisioning profile del bundle en una sola
+          # pasada (el perfil incluye HealthKit porque está habilitado en el App ID).
+          CERT_KEY=$(mktemp /tmp/cert_key.XXXXXX)
+          openssl genrsa -out "$CERT_KEY" 2048
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
+            --certificate-key @file:"$CERT_KEY" \
             --create
           keychain add-certificates
           xcode-project use-profiles
