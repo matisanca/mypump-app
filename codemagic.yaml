@@ -45,9 +45,13 @@ workflows:
       - name: Configurar firma (crea certificado + perfil si no existen)
         script: |
           keychain initialize
-          # Crea (o reutiliza) el certificado de distribución y el provisioning
-          # profile del bundle vía la API key. El flag --create es clave en el
-          # primer build: si no existen, los genera solo (sin tocar Xcode).
+          # Cuenta nueva sin certificados: crear el certificado de distribución
+          # (genera la clave privada localmente). El || true evita fallar si ya
+          # existe / se llega al límite de Apple.
+          app-store-connect create-certificate \
+            --type IOS_DISTRIBUTION \
+            --save || echo "create-certificate: ya existe o límite alcanzado, sigo"
+          # Crea el provisioning profile del bundle (incluye HealthKit del App ID).
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
