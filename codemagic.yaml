@@ -26,11 +26,6 @@ workflows:
     environment:
       node: 20
       xcode: latest
-      ios_signing:
-        # Codemagic crea/gestiona el certificado y el provisioning profile solo
-        # (managed signing) usando la API key. No hace falta tocar Xcode.
-        distribution_type: app_store
-        bundle_identifier: com.pumpteam.mypump
       vars:
         BUNDLE_ID: "com.pumpteam.mypump"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -47,8 +42,17 @@ workflows:
         script: |
           xcodebuild -resolvePackageDependencies \
             -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
-      - name: Aplicar perfiles de firma (managed)
-        script: xcode-project use-profiles
+      - name: Configurar firma (crea certificado + perfil si no existen)
+        script: |
+          keychain initialize
+          # Crea (o reutiliza) el certificado de distribución y el provisioning
+          # profile del bundle vía la API key. El flag --create es clave en el
+          # primer build: si no existen, los genera solo (sin tocar Xcode).
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
       - name: Compilar IPA
         script: |
           xcode-project build-ipa \
