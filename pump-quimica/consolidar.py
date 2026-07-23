@@ -69,7 +69,10 @@ def cargar_fathom():
         meetings = pull.get("meetings", pull) if isinstance(pull, dict) else pull
         for m in meetings:
             tr = m.get("transcript") or ""
-            if len(tr) < 100: continue
+            # Algunos pulls guardan el transcript como lista de segmentos.
+            if isinstance(tr, list):
+                tr = "\n".join(str(x) for x in tr)
+            if not isinstance(tr, str) or len(tr) < 100: continue
             for inv in (m.get("calendar_invitees") or []):
                 em = _norm_mail(inv.get("email"))
                 if em and inv.get("is_external"): por_mail.setdefault(em, []).append(tr)
