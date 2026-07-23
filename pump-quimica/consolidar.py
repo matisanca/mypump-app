@@ -122,8 +122,14 @@ def norm(s):
     s = unicodedata.normalize("NFD", (s or "").lower())
     return "".join(c for c in s if unicodedata.category(c) != "Mn")
 
-def extraer_lineas(texto, ctx=1):
-    """Lineas que mencionan suplementos + N de contexto, deduplicadas."""
+def extraer_lineas(texto, ctx=1, cap=3000):
+    """Lineas que mencionan suplementos + N de contexto, deduplicadas.
+    OJO con el recorte: el protocolo NUEVO que indica Mati aparece al FINAL de
+    la call (la tabla del plan); lo que el cliente 'venia usando' aparece al
+    principio. Antes se cortaba a 1800 chars desde el inicio y el plan final
+    quedaba afuera (caso Lara: registro 250+100 viejos, se perdio el plan de
+    500+primo+masteron x4). Ahora, si sobra, se conserva un poco del inicio
+    (contexto de lo que traia) y TODO lo posible del final (el plan vigente)."""
     if not texto: return ""
     lineas = re.split(r"[\n\r]+|(?<=[.!?])\s+", texto)
     idx = [i for i, l in enumerate(lineas) if KW.search(l) and not (RUIDO.search(l) and not KW.search(RUIDO.sub("", l)))]
@@ -132,17 +138,30 @@ def extraer_lineas(texto, ctx=1):
         for j in range(max(0, i - ctx), min(len(lineas), i + ctx + 1)):
             keep.add(j)
     frag = " ".join(lineas[j].strip() for j in sorted(keep) if lineas[j].strip())
-    return frag[:1800]   # cap duro por cliente
+    if len(frag) <= cap:
+        return frag
+    ini = cap // 5                       # ~20% del presupuesto para el inicio
+    fin = cap - ini - 30
+    return frag[:ini] + " [...RECORTE...] " + frag[-fin:]
 
 def codex_json(texto):
     prompt = ("Sos el asistente clinico de un MEDICO especialista en farmacologia deportiva. Del "
               "texto (notas del medico sobre su paciente/cliente) extrae el PROTOCOLO FARMACOLOGICO "
-              "que la persona esta usando ACTUALMENTE: anabolicos (AAS) inyectables y orales, GH, "
+              "VIGENTE de la persona: anabolicos (AAS) inyectables y orales, GH, "
               "insulina, peptidos, y ancilares (inhibidores de aromatasa, SERM, HCG, cabergolina, "
               "etc). Esto es reconciliacion clinica para que el medico tenga presente que usa cada "
-              "paciente. Ignora lo que se descarta o dice que no usa. NO incluyas suplementos "
+              "paciente.\n"
+              "REGLA CRITICA — QUE ES 'VIGENTE': en las llamadas suele haber DOS protocolos: (a) el "
+              "que el cliente VENIA usando por su cuenta (lo cuenta al principio, 'estoy con X'), y "
+              "(b) el PLAN NUEVO que el medico le INDICA durante/al final de la conversacion (la "
+              "prescripcion: 'vamos a ir con...', 'te dejo...', la tabla del plan con dias de "
+              "aplicacion). Si existe el plan nuevo (b), ESE es el vigente y el (a) NO va en items "
+              "(como mucho, mencionalo en protocolo como 'venia con...'). Ante dosis distintas del "
+              "mismo compuesto, vale la MAS TARDIA en el texto. Presta atencion a frecuencias de "
+              "aplicacion (2x/semana, 4x/semana): el total semanal = dosis x aplicaciones.\n"
+              "Ignora lo que se descarta o dice que no usa. NO incluyas suplementos "
               "legales comunes (creatina, magnesio, omega, etc: van en otra ficha). Para cada item "
-              "marca tipo: aas|oral|gh|insulina|peptido|ai|serm|hcg|otro. Inferi la fase si se "
+              "marca tipo: aas|oral|gh|insulina|peptido|ai|serm|hcg|protector|otro. Inferi la fase si se "
               "menciona (on-cycle, off, pct, trt, cruise). Responde SOLO un JSON valido, sin texto "
               "extra: {\"items\":[{\"compuesto\":\"\",\"dosis\":\"\",\"frecuencia\":\"\",\"semanas\":\"\","
               "\"tipo\":\"\"}],\"protocolo\":\"\",\"fase\":\"\",\"confianza\":\"alta|media|baja\"}. "
