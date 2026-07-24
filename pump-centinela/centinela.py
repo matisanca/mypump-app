@@ -22,7 +22,7 @@ core (scheduler _seguimiento_semanal) queda REEMPLAZADO por este script.
 
 Seguridad: por defecto NO envia (dry-run imprime). Para enviar: --send
 """
-import os, sys, json, re, subprocess, urllib.request, urllib.error, urllib.parse
+import os, sys, json, re, subprocess, urllib.request, urllib.error, urllib.parse, time, hashlib, unicodedata
 from datetime import datetime, timedelta, date
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import analisis as AN
@@ -38,6 +38,7 @@ NO_DB   = "--no-db" in sys.argv   # no persistir en mypump_analisis_semanal (sol
 MODO    = "analisis" if "--analisis" in sys.argv else ("pedido" if "--pedido" in sys.argv else "auto")
 SEMANAS = 12
 SEM_CHECKS = 8      # serie de checks para baseline/tendencia
+CLAUDE_MODEL = os.environ.get("PUMP_CLAUDE_MODEL", "claude-opus-5")  # LLM intermedio
 
 def load_env(p):
     e = {}
@@ -157,6 +158,15 @@ def senales_carga(prog):
         out["rir_medio"] = round(sum(rirs) / len(rirs), 1)
     return out
 
+def _mensaje_persistido(cid, semana_lunes):
+    """Lee el mensaje_cliente ya guardado (para no degradarlo en re-corridas)."""
+    try:
+        rows = _sb_req(f"/rest/v1/mypump_analisis_semanal?cliente_id=eq.{cid}"
+                       f"&semana_lunes=eq.{semana_lunes}&select=mensaje_cliente&limit=1")
+        return rows[0].get("mensaje_cliente") if rows else None
+    except Exception:
+        return None
+
 def persist_analisis(cid, semana_lunes, balde, motivos, banderas, senales,
                      mensaje_cliente, sugerencia_coach, mensaje_ajuste=None):
     """Upsert a mypump_analisis_semanal. La escritura a DB es INDEPENDIENTE del
@@ -221,33 +231,64 @@ def send_multi(text, limit=3500):
     return ok
 
 # -- claude -p (best-effort; via LaunchAgent tiene keychain, via ssh no) --
+CENTINELA_LOG = os.path.expanduser("~/pump-centinela/centinela.log")
+
+def _log(msg):
+    """Deja rastro en disco Y en stdout. Antes, cuando claude devolvia vacio/no-JSON
+    el fallback era SILENCIOSO (rama `if m else None`) y los logs quedaban limpios;
+    por eso una semana entera de fallbacks no dejaba huella."""
+    try:
+        with open(CENTINELA_LOG, "a") as f:
+            f.write(f"{datetime.now().isoformat(timespec='seconds')} {msg}\n")
+    except Exception:
+        pass
+    print(msg)
+
 def claude_call(prompt, timeout=180):
+    """Devuelve (stdout, returncode, stderr). No tira excepcion: el llamador decide."""
     env = dict(os.environ)
     nvm = os.path.expanduser("~/.nvm/versions/node")
     extra = ":".join(os.path.join(nvm, d, "bin") for d in (os.listdir(nvm) if os.path.isdir(nvm) else []))
     env["PATH"] = env.get("PATH", "") + ":/opt/homebrew/bin:/usr/local/bin:" + extra
-    out = subprocess.run(["claude", "-p", prompt], capture_output=True, text=True,
-                         timeout=timeout, env=env)
-    return out.stdout
-
-def claude_json(prompt, timeout=180):
     try:
-        out = claude_call(prompt, timeout)
+        out = subprocess.run(["claude", "--model", CLAUDE_MODEL, "-p", prompt], capture_output=True, text=True,
+                             timeout=timeout, env=env)
+        return (out.stdout, out.returncode, out.stderr)
+    except Exception as ex:
+        return ("", -1, f"{type(ex).__name__}: {ex}")
+
+def _claude_retry(prompt, timeout, parse, etiqueta):
+    """Corre claude hasta 2 veces. Si falla, LOGUEA el motivo (returncode + stderr +
+    inicio del stdout) — asi un fallback deja rastro y se puede diagnosticar."""
+    for intento in (1, 2):
+        stdout, rc, stderr = claude_call(prompt, timeout)
+        val = parse(stdout) if rc == 0 else None
+        if val is not None:
+            return val
+        motivo = (f"rc={rc}"
+                  + (f" stderr={stderr.strip()[:200]!r}" if stderr and stderr.strip() else "")
+                  + (f" stdout={stdout.strip()[:160]!r}" if stdout.strip() else " stdout=<vacio>"))
+        _log(f"[claude:{etiqueta}] FALLBACK (intento {intento}/2): {motivo}")
+        if intento == 1:
+            time.sleep(8)
+    return None
+
+def claude_json(prompt, timeout=180, etiqueta="json"):
+    def parse(out):
         m = re.search(r"\{.*\}", out, re.S)
-        return json.loads(m.group(0)) if m else None
-    except Exception as ex:
-        print(f"  [claude] fallback: {ex}")
-        return None
+        if not m:
+            return None
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            return None
+    return _claude_retry(prompt, timeout, parse, etiqueta)
 
-def claude_text(prompt, timeout=120):
-    try:
-        t = claude_call(prompt, timeout).strip()
-        # sacar cercos de codigo o comillas envolventes si los hay
-        t = re.sub(r"^```[a-z]*\n?|\n?```$", "", t).strip().strip('"').strip()
+def claude_text(prompt, timeout=120, etiqueta="text"):
+    def parse(out):
+        t = re.sub(r"^```[a-z]*\n?|\n?```$", "", out.strip()).strip().strip('"').strip()
         return t if len(t) > 40 else None
-    except Exception as ex:
-        print(f"  [claude] fallback: {ex}")
-        return None
+    return _claude_retry(prompt, timeout, parse, etiqueta)
 
 TONO = ("Escribi como Mati Sancari, coach de Pump Team (argentino, tuteo rioplatense, cercano, "
         "directo, humano). Reglas duras: singular siempre (te, vos, contame, mandame); NUNCA "
@@ -486,7 +527,7 @@ def interpretar_notas(metricas, chk_actual, chk_series):
         "cita DEBE ser un fragmento copiado literal de la nota.\n"
         "Responde SOLO el JSON.\n\nDATOS:\n" + json.dumps(items, ensure_ascii=False)
     )
-    res = claude_json(prompt) or {}
+    res = claude_json(prompt, etiqueta="notas") or {}
     out = {}
     for it in items:
         r = res.get(it["nombre"])
@@ -520,7 +561,7 @@ def gen_general():
         "ni aclares para que sirve cada cosa. Sin listas ni numeracion. Nada de 'Buen dia' (es de "
         "tarde). Devolve SOLO el mensaje, sin explicaciones."
     )
-    msg = claude_text(prompt) or ""
+    msg = claude_text(prompt, etiqueta="general") or ""
     msg = re.sub(r"\s*(Espero\s+(tus|tu|mis)\b[^.]*|Quedo\s+(atento|a\s+la\s+espera)\b[^.]*|A\s+darle\b[^.]*)\.?\s*$",
                  "", msg, flags=re.IGNORECASE).strip()
     if not _general_valido(msg):
@@ -547,6 +588,23 @@ def apodo(nombre):
     n = (nombre or "").strip().split()[0] if (nombre or "").strip() else ""
     return APODOS.get(n.lower(), n.lower())
 
+def _norm_nombre(s):
+    s = str(s or "").strip().lower()
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+def _lookup(res, nombre):
+    """Match tolerante nombre->mensaje: exacto, y si no, sin acentos/case. Evita
+    que un nombre devuelto por el modelo con acento distinto caiga al fallback."""
+    if not isinstance(res, dict):
+        return None
+    if nombre in res:
+        return res[nombre]
+    n = _norm_nombre(nombre)
+    for k, v in res.items():
+        if _norm_nombre(k) == n:
+            return v
+    return None
+
 def _peor_metrica(chk):
     vals = {"energia": chk.get("energia"), "descanso": chk.get("descanso"),
             "adherencia": chk.get("adherencia")}
@@ -561,9 +619,34 @@ PREGUNTAS = {
     "hambre": "En qué momento del día te pega más el hambre? Ahí lo ajustamos",
 }
 
-def fallback_personalizado(nombre, chk, mal):
+# Variantes para NO mandar el mismo string a todos. Selección estable por
+# (nombre, semana ISO): distinta por cliente y por semana, igual entre re-corridas.
+def _variante(nombre, opciones):
+    sem = date.today().isocalendar()[1]
+    h = int(hashlib.md5(f"{nombre}-{sem}".encode()).hexdigest(), 16)
+    return opciones[h % len(opciones)]
+
+_APERTURAS = [
+    "vi tu check de la semana, gracias por completarlo.",
+    "gracias por dejar el check, ya lo miré.",
+    "recibí tu check, gracias por bancar la constancia.",
+    "vi lo que dejaste esta semana, gracias.",
+]
+_CIERRES_BIEN = [
+    "se te ve una buena semana, seguimos así.",
+    "muy buena semana, se nota que le estás metiendo.",
+    "linda semana, mantengamos este ritmo.",
+    "venís prolijo, así da gusto, seguimos.",
+    "buena semana la verdad, vamos bien.",
+    "todo en orden esta semana, seguimos por acá.",
+]
+
+def fallback_personalizado(nombre, chk, mal, fotos_ok=False, senal=None):
     n = apodo(nombre)
-    partes = [f"{n}! vi tu check de la semana, gracias por completarlo."]
+    partes = [f"{n}! {_variante(nombre, _APERTURAS)}"]
+    # Un dato concreto y relajado si lo hay (que se note que miramos la semana).
+    if senal:
+        partes.append(senal.rstrip(".") + ".")
     m = _peor_metrica(chk) if mal else None
     # Solo se nombra una metrica si REALMENTE esta baja. Decirle "la adherencia
     # te costo" a alguien que puso 4/5 lo desmotiva y ademas es falso.
@@ -579,48 +662,115 @@ def fallback_personalizado(nombre, chk, mal):
     elif mal:
         # Va mal por señales objetivas (entreno/peso), no por como se siente.
         partes.append("en las sensaciones venís bien, pero quiero repasar un par de cosas del entreno con vos.")
+    elif not senal:
+        partes.append(_variante(nombre + "b", _CIERRES_BIEN))
+    # Fotos: solo se piden si NO las subió; si ya están, se agradece. Sin "mañana"
+    # (este mensaje se manda durante la semana, no el domingo a la noche).
+    if fotos_ok:
+        partes.append("ya vi que subiste las fotos y el peso, genial. cualquier cosa que quieras agregar contame por acá.")
     else:
-        partes.append("se te ve una buena semana, seguimos así.")
-    partes.append("Mañana al despertar subí en la app, en Revisión, tus 3 fotos (frente, perfil y espalda) así te hago la devolución completa. Cualquier cosa que quieras agregar, contame por acá.")
+        partes.append("cuando puedas subí en la app, en Revisión, el peso y las 3 fotos (frente, perfil y espalda) así te hago la devolución completa. cualquier cosa que quieras agregar, contame por acá.")
     return " ".join(partes)
 
+def _senales_relajadas(x):
+    """Datos concretos del cliente, en palabras y sin números de escala 1-5, para
+    que el mensaje demuestre seguimiento. Devuelve dict {clave: frase}."""
+    ctx = x.get("ctx") or {}
+    v = x.get("veredicto") or {}
+    perfiles = v.get("perfiles") or {}
+    carga = ctx.get("carga") or {}
+    s = {}
+    palabras = {
+        "energia": ("te noté con más energía que de costumbre", "te vi la energía más baja de lo habitual"),
+        "descanso": ("venís descansando mejor que otras semanas", "el descanso viene flojo estas semanas"),
+        "adherencia": ("venís muy firme con la dieta", "la dieta te costó un poco más que de costumbre"),
+    }
+    for m in ("energia", "descanso", "adherencia"):
+        p = perfiles.get(m)
+        if not p: continue
+        est = p.get("estado")
+        if est == "mejora": s[m] = palabras[m][0]
+        elif est in ("caida", "bajo_cronico", "critico"): s[m] = palabras[m][1]
+    ph = perfiles.get("hambre")
+    if ph and ph.get("estado") in ("caida", "bajo_cronico", "critico"):
+        s["hambre"] = "esta semana el hambre te pegó más"
+    ve = ctx.get("var_e1rm")
+    if ve is not None:
+        if ve >= 2: s["fuerza"] = "la fuerza viene subiendo lindo"
+        elif ve <= -3: s["fuerza"] = "la fuerza aflojó un poco estas semanas"
+    ret = carga.get("cargas_en_retroceso") or []
+    if ret:
+        s["fuerza_baja_en"] = f"en {ret[0]['ej'].lower()} las cargas venían para atrás"
+    adh = ctx.get("adh_entreno")
+    if adh is not None:
+        if adh >= 1: s["entreno"] = "cumpliste todos los entrenos de la semana"
+        elif adh < 0.6: s["entreno"] = "faltaron varios entrenos esta semana"
+    if ctx.get("peso_en_rango") is True: s["peso"] = "el peso va en el rumbo que buscamos"
+    elif ctx.get("peso_en_rango") is False: s["peso"] = "el peso se movió distinto a lo que buscamos"
+    return s
+
+def _senal_principal(x):
+    """Elige UNA señal concreta (prioriza lo positivo/accionable) para el fallback."""
+    s = _senales_relajadas(x)
+    for k in ("fuerza", "entreno", "adherencia", "energia", "peso", "descanso", "hambre", "fuerza_baja_en"):
+        if s.get(k): return s[k]
+    return None
+
+# Nombres cuyo mensaje salio del fallback (claude no entrego). Lo usa la
+# persistencia para NO pisar un mensaje personalizado ya guardado con un fallback.
+_FALLBACK_USADO = set()
+
 def gen_personalizados(lista):
-    """lista: [{nombre, chk, chk_prev, ctx, mal}] -> {nombre: mensaje}"""
+    """lista: [{nombre, chk, chk_prev, ctx, mal, fotos_ok, veredicto}] -> {nombre: mensaje}"""
+    _FALLBACK_USADO.clear()
     datos = []
     for x in lista:
         chk, prev, ctx = x["chk"], x["chk_prev"], x["ctx"]
         d = {"nombre": x["nombre"], "apodo": apodo(x["nombre"]),
              "check": {k: chk.get(k) for k in ("energia", "descanso", "hambre", "adherencia")},
              "nota": chk.get("nota"), "objetivo": ctx.get("obj"),
-             "entreno_activo": ctx.get("activo"), "va_mal": x["mal"]}
+             "entreno_activo": ctx.get("activo"), "va_mal": x["mal"],
+             # datos concretos ya traducidos a palabras (sin numeros de escala)
+             "senales": _senales_relajadas(x),
+             "fotos_ya_subidas": bool(x.get("fotos_ok"))}
         if prev: d["check_semana_pasada"] = {k: prev.get(k) for k in ("energia", "descanso", "hambre", "adherencia")}
         if ctx.get("delta_peso_g") is not None:
             d["peso"] = {"tendencia_ok": ctx.get("peso_en_rango")}   # sin numeros de rango: el cliente no los conoce
         datos.append(d)
     prompt = (
-        f"{TONO}\n\nPara cada cliente escribi UN mensaje de WhatsApp del domingo a la tarde "
-        "(3-6 oraciones) que Mati le va a reenviar tal cual. El cliente completo su check "
-        "semanal en la app (escalas 1-5; hambre 5 = mucha hambre). El mensaje debe: "
+        f"{TONO}\n\nPara cada cliente escribi UN mensaje de WhatsApp (3-6 oraciones) que Mati "
+        "le va a reenviar tal cual, durante la semana (NO es domingo: no digas 'manana'). El "
+        "cliente completo su check semanal en la app (escalas 1-5; hambre 5 = mucha hambre). "
+        "El mensaje debe: "
         "(1) arrancar con el APODO del cliente (campo 'apodo') tal cual viene, en MINUSCULA, "
-        "sin mayuscula al principio (asi escribe Mati). Agradecer/reconocer el check con una "
-        "referencia a como viene, PERO SIN decir los numeros del check (nada de '3/5' ni '4/5' "
-        "ni 'pusiste 2'): queda poco natural. Traducilos a palabras (mucha hambre, energia baja, "
-        "venis firme con la dieta, etc.), "
-        "(2) si va_mal=true: interpretar que le puede estar pasando y hacerle UNA pregunta "
-        "concreta que apunte a la causa (o un feedback accionable, no generico), "
-        "(3) si viene bien: reconocimiento breve y genuino sin exagerar, "
-        "(4) cerrar pidiendo que manana lunes al despertar SUBA EN LA APP sus 3 fotos (frente, perfil y "
-        "espalda; el peso tambien lo carga ahi). Invitalo a contarte algo mas de su semana si quiere. "
-        "NO menciones numeros de rango de peso ni la palabra 'deficit calorico' en tono tecnico; "
-        "hablale como coach cercano. NO menciones 'la app detecto' ni 'el sistema'. "
+        "sin mayuscula al principio (asi escribe Mati). Agradecer/reconocer el check SIN decir "
+        "los numeros (nada de '3/5' ni 'pusiste 2'): queda poco natural. "
+        "(2) usar COMO MUCHO UN dato del campo 'senales' para que se note que miraste su semana "
+        "(esta redactado relajado, tal cual: 'la fuerza viene subiendo lindo', 'cumpliste todos "
+        "los entrenos', etc.). Elegí el mas relevante, no los enumeres todos. Si 'senales' viene "
+        "vacio, no inventes datos. "
+        "(3) si va_mal=true: interpretar que le puede estar pasando y hacerle UNA pregunta "
+        "concreta que apunte a la causa (o un feedback accionable, no generico). "
+        "(4) si viene bien: reconocimiento breve y genuino sin exagerar. "
+        "(5) sobre las FOTOS: si 'fotos_ya_subidas' es true, agradecele que ya subio las fotos y "
+        "el peso y NO se los vuelvas a pedir; si es false, pedile que cuando pueda suba EN LA APP "
+        "(pestaña Revisión) el peso y las 3 fotos (frente, perfil y espalda). Nunca 'manana'. "
+        "Invitalo a contarte algo mas de su semana si quiere. "
+        "NO menciones numeros de rango de peso ni 'deficit calorico' en tono tecnico; hablale como "
+        "coach cercano. NO menciones 'la app detecto' ni 'el sistema'. "
         "NUNCA pongas numeros de las escalas del check en el mensaje.\n\n"
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
         'Devolve SOLO un JSON valido {"Nombre Completo": "mensaje"} sin texto extra.'
     )
-    res = claude_json(prompt) or {}
+    res = claude_json(prompt, etiqueta="personalizados") or {}
     out = {}
     for x in lista:
-        out[x["nombre"]] = res.get(x["nombre"]) or fallback_personalizado(x["nombre"], x["chk"], x["mal"])
+        m = _lookup(res, x["nombre"])
+        if not m:
+            _FALLBACK_USADO.add(x["nombre"])
+            m = fallback_personalizado(x["nombre"], x["chk"], x["mal"],
+                                       x.get("fotos_ok"), _senal_principal(x))
+        out[x["nombre"]] = m
     return out
 
 FALLBACK_AJUSTES = {
@@ -657,10 +807,10 @@ def gen_ajustes(lista):
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
         'Devolve SOLO un JSON valido {"Nombre Completo": "diagnostico y sugerencias en texto plano"} sin nada mas.'
     )
-    res = claude_json(prompt) or {}
+    res = claude_json(prompt, etiqueta="ajustes") or {}
     out = {}
     for x in lista:
-        sug = res.get(x["nombre"])
+        sug = _lookup(res, x["nombre"])
         if not sug:
             # Preferir las acciones del motor (deterministas y coherentes con
             # el diagnostico) antes que los templates genericos.
@@ -720,10 +870,10 @@ def gen_mensajes_ajuste(lista):
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
         'Devolve SOLO un JSON valido {"Nombre Completo": "mensaje"} sin nada mas.'
     )
-    res = claude_json(prompt) or {}
+    res = claude_json(prompt, etiqueta="msg_ajuste") or {}
     out = {}
     for x in lista:
-        m = res.get(x["nombre"])
+        m = _lookup(res, x["nombre"])
         if not m:
             # Fallback determinista segun el motivo dominante.
             ap = apodo(x["nombre"]); v = x.get("veredicto") or {}
@@ -768,7 +918,13 @@ def main():
     checks = fetch_checks(w0, w1)
     chk_actual = {c["cliente_id"]: c for c in checks if c["semana_lunes"] == w0}
     chk_previo = {c["cliente_id"]: c for c in checks if c["semana_lunes"] == w1}
-    print(f"clientes activos: {len(metricas)} | checks esta semana: {len(chk_actual)}")
+    # Fotos de la semana: quien ya subio las 3 poses NO tiene que recibir el
+    # pedido de fotos (bug historico: se pedian siempre, aunque ya estuvieran).
+    fotos_por_cliente = {}
+    for f in fetch_fotos_semana(w0):
+        fotos_por_cliente.setdefault(f.get("cliente_id"), set()).add(f.get("pose"))
+    fotos_ok = {cid for cid, poses in fotos_por_cliente.items() if len(poses) >= 3}
+    print(f"clientes activos: {len(metricas)} | checks esta semana: {len(chk_actual)} | fotos completas: {len(fotos_ok)}")
 
     # Serie completa por cliente (8 semanas) para baseline/tendencia
     chk_series = {}
@@ -812,7 +968,8 @@ def main():
         if chk:
             personalizados.append({"nombre": nombre, "chk": chk, "chk_prev": chk_previo.get(cid),
                                    "ctx": ctx, "mal": mal, "alertas": alertas, "cid": cid,
-                                   "veredicto": veredicto, "balde": balde})
+                                   "veredicto": veredicto, "balde": balde,
+                                   "fotos_ok": cid in fotos_ok})
             if mal:
                 ajustables.append({"nombre": nombre, "chk": chk, "ctx": ctx, "alertas": alertas,
                                    "dieta": resumen_dieta(cid), "rutina": resumen_rutina(cid),
@@ -878,11 +1035,19 @@ def main():
     #    de que se mande o no el WhatsApp.
     for x in personalizados:
         v = x.get("veredicto") or {}
+        msg = drafts.get(x["nombre"])
+        # Anti-degradacion: si este cliente cayo al fallback (claude no entrego) y
+        # YA habia un mensaje personalizado guardado esta semana, no lo pisamos con
+        # el fallback (una re-corrida no debe empeorar lo que ya estaba bien).
+        if x["nombre"] in _FALLBACK_USADO and not (NO_DB or DRY):
+            prev = _mensaje_persistido(x["cid"], w0)
+            if prev and prev.strip() and prev != msg:
+                msg = prev
         persist_analisis(
             x["cid"], w0, x["balde"],
             v.get("motivos") or [], v.get("banderas") or [],
             _senales_dict(v, x["ctx"], (x["ctx"] or {}).get("carga")),
-            drafts.get(x["nombre"]),
+            msg,
             (ajustes.get(x["nombre"]) or {}).get("sug") if x["mal"] else None,
             msg_ajuste.get(x["nombre"]) if x["mal"] else None)
     for x in sin_check_persist:
