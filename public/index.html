@@ -156,6 +156,29 @@
       flex-shrink: 0;
     }
 
+    /* Botón primario (filled) — CTA "Ver demo" */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-6);
+      border: 0;
+      border-radius: var(--radius-md);
+      background: var(--color-brand);
+      color: var(--color-on-brand);
+      font-family: var(--font-sans);
+      font-size: var(--font-size-base);
+      font-weight: var(--font-weight-semibold);
+      text-decoration: none;
+      cursor: pointer;
+      margin-bottom: var(--space-3);
+      transition: opacity var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .btn-primary:hover { opacity: 0.92; }
+    .btn-primary:active { transform: scale(0.98); }
+
     .landing-footer {
       padding: var(--space-5);
       text-align: center;
@@ -205,7 +228,17 @@
 
     <h1 class="landing-title">MyPump</h1>
     <p class="landing-subtitle">Tu sector dentro del team.</p>
-    <p class="landing-body">Si Mati te compartió un link, abrilo desde ahí.</p>
+    <p class="landing-body">Si Mati te compartió un link, abrilo desde ahí. ¿Querés conocer la app? Mirá la demo.</p>
+
+    <!-- CTA principal: entra a la app en modo demo (datos de ejemplo, sin token
+         ni red). Permite probar la app a cualquiera, y es la vía de acceso para
+         la revisión de la App Store. -->
+    <a href="/cliente.html?demo=1" class="btn-primary" id="demoBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:16px;height:16px">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      Ver demo
+    </a>
 
     <a
       href="https://mypumpteam.com"
