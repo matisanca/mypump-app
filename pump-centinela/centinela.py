@@ -273,7 +273,7 @@ def _claude_retry(prompt, timeout, parse, etiqueta):
             time.sleep(8)
     return None
 
-def claude_json(prompt, timeout=180, etiqueta="json"):
+def claude_json(prompt, timeout=420, etiqueta="json"):   # opus-5 es más lento en prompts grandes
     def parse(out):
         m = re.search(r"\{.*\}", out, re.S)
         if not m:
@@ -284,7 +284,7 @@ def claude_json(prompt, timeout=180, etiqueta="json"):
             return None
     return _claude_retry(prompt, timeout, parse, etiqueta)
 
-def claude_text(prompt, timeout=120, etiqueta="text"):
+def claude_text(prompt, timeout=300, etiqueta="text"):   # opus-5 es más lento
     def parse(out):
         t = re.sub(r"^```[a-z]*\n?|\n?```$", "", out.strip()).strip().strip('"').strip()
         return t if len(t) > 40 else None
