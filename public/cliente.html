@@ -3648,8 +3648,22 @@ function openComidaLibreModal(est) {
   const ahora = new Date();
   const horaDef = `${String(ahora.getHours()).padStart(2,'0')}:${String(ahora.getMinutes()).padStart(2,'0')}`;
   const d = est || {};
-  const detalleHtml = (d.alimentos && d.alimentos.length)
-    ? `<div class="cl-detalle">${d.alimentos.map(a => `<span>${a.nombre} ~${Math.round(a.gramos)}g</span>`).join(' · ')}</div>`
+  // Gramos EDITABLES por alimento: la estimación por foto nunca es exacta, y
+  // corregir "205 g → 260 g" es mucho más fácil que recalcular los macros a mano.
+  // Al tocar un gramaje se re-escalan sus macros en proporción y se recalculan
+  // los totales (los campos de abajo siguen siendo editables a mano igual).
+  const _ali = (d.alimentos && d.alimentos.length) ? d.alimentos : [];
+  const detalleHtml = _ali.length
+    ? `${d.escala ? `<div class="cf-hint" style="opacity:.75;font-size:11px">📐 ${String(d.escala).replace(/</g,'&lt;')}</div>` : ''}
+       <div class="cl-detalle" style="display:flex;flex-direction:column;gap:6px">
+         ${_ali.map((a, i) => `
+           <div style="display:flex;align-items:center;gap:8px">
+             <span style="flex:1;font-size:13px">${String(a.nombre || '').replace(/</g,'&lt;')}</span>
+             <input type="number" id="clG${i}" data-cl-g="${i}" min="0" step="5" value="${Math.round(a.gramos) || 0}"
+                    style="width:74px;text-align:right;padding:4px 6px;font-size:13px" />
+             <span style="font-size:12px;opacity:.7;width:14px">g</span>
+           </div>`).join('')}
+       </div>`
     : '';
   $('#modalHost').innerHTML = `
   <div class="modal-back" id="clModalBack">
@@ -3680,6 +3694,31 @@ function openComidaLibreModal(est) {
     </div>
   </div>`;
   $('#clModalBack').addEventListener('click', e => { if (e.target === e.currentTarget) $('#modalHost').innerHTML = ''; });
+
+  // Macros por gramo de cada alimento (base para re-escalar al corregir gramos).
+  const _porGramo = _ali.map(a => {
+    const g = Math.max(1, Number(a.gramos) || 0);
+    return {
+      nombre: a.nombre, g0: Math.round(Number(a.gramos) || 0),
+      kcal: (Number(a.kcal) || 0) / g, prot: (Number(a.prot) || 0) / g,
+      carb: (Number(a.carb) || 0) / g, fat: (Number(a.fat) || 0) / g,
+    };
+  });
+  const _gramosActuales = () => _porGramo.map((b, i) => {
+    const inp = document.getElementById('clG' + i);
+    const v = inp ? parseFloat(inp.value) : NaN;
+    return isFinite(v) && v >= 0 ? v : b.g0;
+  });
+  function _recalcularDesdeGramos() {
+    const gs = _gramosActuales();
+    let kcal = 0, prot = 0, carb = 0, fat = 0;
+    _porGramo.forEach((b, i) => { kcal += b.kcal * gs[i]; prot += b.prot * gs[i]; carb += b.carb * gs[i]; fat += b.fat * gs[i]; });
+    const r1 = v => Math.round(v * 10) / 10;
+    $('#clKcal').value = Math.round(kcal);
+    $('#clProt').value = r1(prot); $('#clCarb').value = r1(carb); $('#clFat').value = r1(fat);
+  }
+  $$('[data-cl-g]').forEach(inp => inp.addEventListener('input', _recalcularDesdeGramos));
+
   $('#clGuardarBtn').addEventListener('click', async () => {
     const desc = $('#clDesc').value.trim();
     const num = id => { const v = parseFloat($('#' + id).value); return isFinite(v) && v > 0 ? v : 0; };
@@ -3691,7 +3730,18 @@ function openComidaLibreModal(est) {
     const ok = await guardarComidaLibre({
       hora: $('#clHora').value || null, descripcion: desc,
       kcal, prot, carb, fat,
-      detalle: (d.alimentos && d.alimentos.length) ? { alimentos: d.alimentos, confianza: d.confianza || null } : null,
+      // El detalle guarda los gramos YA CORREGIDOS por el cliente (no los que
+      // estimó la IA), con sus macros re-escalados.
+      detalle: _porGramo.length ? {
+        alimentos: _porGramo.map((b, i) => {
+          const g = _gramosActuales()[i];
+          const r1 = v => Math.round(v * 10) / 10;
+          return { nombre: b.nombre, gramos: Math.round(g), kcal: Math.round(b.kcal * g),
+                   prot: r1(b.prot * g), carb: r1(b.carb * g), fat: r1(b.fat * g) };
+        }),
+        confianza: d.confianza || null,
+        escala: d.escala || null,
+      } : null,
     });
     if (ok) { $('#modalHost').innerHTML = ''; }
     else { btn.disabled = false; btn.textContent = 'Registrar comida'; err.textContent = 'No se pudo guardar. Probá de nuevo.'; err.style.display = 'block'; }
@@ -6233,7 +6283,10 @@ function openCustomFoodModal() {
 async function visionDesdeFoto(file, tipo) {
   const url = (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '';
   if (!url) throw new Error('servicio no configurado');
-  const b64 = await _fotoABase64Reducida(file, 1024, 0.8);
+  // Más resolución = mejor estimación. La etiqueta necesita leer números chicos;
+  // el plato, juzgar proporciones contra el borde del plato y los cubiertos.
+  // A calidad 0.85 un jpeg de 1600px pesa ~500 KB (el tope del server es 4 MB).
+  const b64 = await _fotoABase64Reducida(file, tipo === 'etiqueta' ? 1600 : 1280, 0.85);
   const res = await fetch(url + '/vision', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

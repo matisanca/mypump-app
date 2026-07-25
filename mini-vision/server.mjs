@@ -41,7 +41,7 @@ const CODEX_BIN    = process.env.CODEX_BIN || 'codex';
 // Service key: SOLO para subir/firmar fotos de progreso (bucket privado).
 // Vive en el .env del servicio (chmod 600), nunca en el front.
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY || '';
-const TIMEOUT_MS   = 90_000;
+const TIMEOUT_MS   = 150_000;   // el prompt del plato razona antes de responder
 const MAX_IMG_B    = 4 * 1024 * 1024;      // 4 MB de imagen máx
 const MAX_FOTO_B   = 3 * 1024 * 1024;      // 3 MB por foto de progreso
 const RATE_LIMIT   = 20;                    // pedidos de VISION por token por día
@@ -67,13 +67,44 @@ Extraé los datos y respondé SOLO con un objeto JSON válido, sin texto extra, 
  "fat": number (grasas totales en g por porción),
  "confianza": "alta"|"media"|"baja" (qué tan legible estaba la tabla)}
 Si un valor no se lee, estimalo con criterio y bajá la confianza. Números con punto decimal, sin unidades.`,
-  plato: `Mirá la foto adjunta: es un plato de comida real. Identificá los alimentos, estimá la porción de cada uno en gramos (criterio conservador) y sus macros.
-Respondé SOLO con un objeto JSON válido, sin texto extra, con esta forma exacta:
-{"descripcion": string (resumen corto del plato, ej "Milanesa con puré"),
+  plato: `Sos un nutricionista deportivo experto en estimar porciones a ojo. Mirá la foto: es un plato de comida real (contexto argentino).
+Lo MÁS importante de tu respuesta es que los GRAMOS sean realistas. Seguí este método y razoná brevemente en voz alta ANTES del JSON.
+
+1) ESCALA — nunca estimes gramos sin fijar primero el tamaño real. Buscá referencias en la foto:
+   · plato playo común 24-27 cm de diámetro (asumí 26 si no hay nada mejor) · plato hondo 20-22 cm · plato de postre 19-21 cm
+   · tenedor/cuchara 19-20 cm de largo · cuchillo 21-23 cm · vaso 8-9 cm de alto (200-250 ml)
+   · lata de gaseosa 11.5 cm de alto · celular 15-16 cm · palma de la mano (sin dedos) 10x9 cm
+   Decí qué referencia usaste y cuántos cm mide el plato.
+
+2) VOLUMEN — para cada alimento estimá qué fracción del plato ocupa Y su altura (el montón tiene volumen).
+   Ej: puré que ocupa un círculo de 12 cm con 3 cm de alto ≈ 340 cm³.
+
+3) GRAMOS = volumen × densidad. Densidades (g/cm³): arroz/fideos cocidos 0.8 · puré 1.05 · carne/pollo 1.05 ·
+   guiso/salsa 1.0 · ensalada de hoja 0.2 · papas fritas 0.4 · pan 0.3 · legumbres cocidas 0.85.
+
+4) CONTRASTÁ con porciones reales típicas antes de cerrar cada número:
+   · milanesa mediana 120-180 g · pechuga entera 180-250 g · churrasco/bife 150-250 g · hamburguesa casera 100-150 g
+   · plato de fideos cocidos 250-350 g · taza colmada de arroz cocido 180-220 g · cucharón de puré ≈ 120 g
+   · huevo 50 g · pan francés 60-80 g · porción de papas fritas 150-250 g · milanesa de pollo grande hasta 220 g
+
+5) NO OLVIDES lo que no se ve pero suma calorías:
+   · aceite absorbido al freír: milanesa frita +10-20 g de aceite, salteado +5-10 g, papas fritas +8-12 g cada 100 g
+   · mayonesa/crema/queso rallado/aderezos visibles · azúcar en bebidas
+
+REGLAS DURAS DE PESO:
+- Arroz, fideos y legumbres se informan COCIDOS, tal como se ven en el plato. Un plato de fideos NO son 80 g (eso es en seco):
+  cocidos pesan 2.5-3x más. Este es el error más común, evitalo.
+- NO subestimes "por las dudas" ni exageres: dá el número MÁS PROBABLE. Un error del 30% arruina el seguimiento.
+- Verificá que las kcal cierren con los macros: kcal ≈ prot*4 + carb*4 + fat*9 (±5%). Corregí antes de responder.
+- Si el plato está a medio comer, estimá lo que QUEDA VISIBLE, no la porción original.
+
+Después del razonamiento respondé SOLO con un objeto JSON válido con esta forma exacta:
+{"descripcion": string (resumen corto, ej "Milanesa con puré"),
+ "escala": string (referencia usada y tamaño asumido, ej "plato playo 26 cm, tenedor de referencia"),
  "alimentos": [{"nombre": string, "gramos": number, "kcal": number, "prot": number, "carb": number, "fat": number}],
  "kcal": number (total), "prot": number, "carb": number, "fat": number,
- "confianza": "alta"|"media"|"baja"}
-Es un ESTIMATIVO para tracking nutricional: preferí subestimar levemente antes que exagerar. Números sin unidades.`,
+ "confianza": "alta"|"media"|"baja" (baja si no encontraste referencia de escala o el plato es ambiguo)}
+Números sin unidades. El JSON debe ser lo ÚLTIMO de tu respuesta.`,
 };
 
 // ── Rate limit en memoria, SEPARADO por feature (por token, por día) ──
@@ -170,6 +201,48 @@ function extraerJSON(texto) {
     end = texto.lastIndexOf('}', end - 1);
   }
   return null;
+}
+
+// ── Normalizar la estimación de un PLATO ──
+// El modelo a veces devuelve kcal que no cierran con los macros, o totales que
+// no son la suma de los alimentos. Como el front usa esos números para el
+// tracking del día, se corrigen acá (la fuente de verdad son los macros, que
+// derivan de los gramos: kcal = 4P + 4C + 9G).
+function normalizarPlato(j) {
+  if (!j || typeof j !== 'object') return j;
+  const num = (v) => { const n = Number(v); return isFinite(n) && n > 0 ? n : 0; };
+  const kcalDeMacros = (p, c, f) => Math.round(p * 4 + c * 4 + f * 9);
+
+  const alimentos = Array.isArray(j.alimentos) ? j.alimentos : [];
+  alimentos.forEach((a) => {
+    if (!a || typeof a !== 'object') return;
+    a.gramos = Math.round(num(a.gramos));
+    a.prot = Math.round(num(a.prot) * 10) / 10;
+    a.carb = Math.round(num(a.carb) * 10) / 10;
+    a.fat  = Math.round(num(a.fat) * 10) / 10;
+    const teorico = kcalDeMacros(a.prot, a.carb, a.fat);
+    const declarado = Math.round(num(a.kcal));
+    // Si las kcal declaradas se van >15% de lo que dan los macros, gana el cálculo.
+    a.kcal = (teorico > 0 && (declarado === 0 || Math.abs(declarado - teorico) / teorico > 0.15))
+      ? teorico : declarado;
+  });
+
+  if (alimentos.length) {
+    const suma = (k) => alimentos.reduce((s, a) => s + num(a[k]), 0);
+    j.prot = Math.round(suma('prot') * 10) / 10;
+    j.carb = Math.round(suma('carb') * 10) / 10;
+    j.fat  = Math.round(suma('fat') * 10) / 10;
+    j.kcal = Math.round(suma('kcal')) || kcalDeMacros(j.prot, j.carb, j.fat);
+  } else {
+    j.prot = Math.round(num(j.prot) * 10) / 10;
+    j.carb = Math.round(num(j.carb) * 10) / 10;
+    j.fat  = Math.round(num(j.fat) * 10) / 10;
+    const teorico = kcalDeMacros(j.prot, j.carb, j.fat);
+    const declarado = Math.round(num(j.kcal));
+    j.kcal = (teorico > 0 && (declarado === 0 || Math.abs(declarado - teorico) / teorico > 0.15))
+      ? teorico : declarado;
+  }
+  return j;
 }
 
 function send(res, status, obj, origin) {
@@ -334,7 +407,7 @@ const server = createServer(async (req, res) => {
         console.error('[vision] sin JSON parseable. Output de codex (últimos 800):', String(out).slice(-800));
         return send(res, 502, { ok: false, error: 'no se pudo interpretar la foto, probá con más luz' }, origin);
       }
-      send(res, 200, { ok: true, data: json }, origin);
+      send(res, 200, { ok: true, data: tipo === 'plato' ? normalizarPlato(json) : json }, origin);
     } catch (e) {
       send(res, 502, { ok: false, error: `visión falló: ${String(e.message || e).slice(0, 200)}` }, origin);
     } finally {
