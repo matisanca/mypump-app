@@ -55,6 +55,17 @@ entrenamiento,gimnasio,dieta,macros,rutina,fitness,nutricion,progreso,coach,pump
 - **Marketing URL** (opcional): `https://mypumpteam.com`
 - **Privacy Policy URL:** `https://app.mypumpteam.com/privacidad`  ← ya publicada.
 
+## Clasificación por edades y dispositivo médico (build 1.0(3), 26-jul-2026)
+En el cuestionario de clasificación por edades, paso 3 "Medicina o bienestar":
+- **Información médica o sobre tratamientos = Poco frecuente** (antes: Ninguna).
+  Es lo honesto: Apple rechazó la 1.0(2) diciendo que la app da "health or medical
+  recommendations". → Apple recalcula la clasificación a **13+** (antes 9+).
+- **Temas de salud o bienestar = Sí** (sin cambios).
+
+En Información de la app → **Dispositivos médicos regulados**: declarado **No**
+("no es un dispositivo médico regulado en ningún país ni región"). Obligatorio por
+estar en la categoría "Salud y forma física".
+
 ## App Privacy (Nutrition labels) — cómo declararlo
 En App Store Connect → App Privacy, declarar:
 - **Health & Fitness** → *Data Linked to You*, propósito "App Functionality".
