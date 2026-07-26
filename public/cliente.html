@@ -551,6 +551,23 @@ main{padding:var(--space-4)}
 .modal-handle{width:40px;height:4px;background:var(--color-border-strong);border-radius:var(--radius-full);margin:0 auto var(--space-2)}
 .modal-title{font-size:var(--font-size-lg);font-weight:600;letter-spacing:-.01em}
 .modal-text{font-size:14px;color:var(--color-text-secondary)}
+/* RESPALDO CIENTÍFICO (citas de las recomendaciones — App Store 1.4.1).
+   Discreto a propósito: el cliente ve una firma técnica, no una advertencia. */
+.diet-cite{margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--color-border);font-size:11px;line-height:1.5;color:var(--color-text-muted)}
+.diet-cite .cite-link{background:none;border:0;padding:0;font:inherit;color:var(--color-text-secondary);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.fuentes-link{width:100%;margin:var(--space-4) 0 var(--space-2);padding:var(--space-3) var(--space-4);display:flex;align-items:center;gap:var(--space-3);background:var(--color-bg-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);text-align:left;cursor:pointer}
+.fuentes-link-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fuentes-link-t{font-size:13px;font-weight:600;color:var(--color-text-secondary)}
+.fuentes-link-s{font-size:10px;line-height:1.4;color:var(--color-text-muted);font-family:var(--font-mono)}
+.fuentes-link-chev{color:var(--color-text-muted);font-size:18px;line-height:1}
+.fu-intro{font-size:13px;line-height:1.55;color:var(--color-text-secondary);margin-bottom:var(--space-2)}
+.fu-group{margin-top:var(--space-3)}
+.fu-group-t{font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--color-text-primary);margin-bottom:var(--space-1)}
+.fu-item{padding:var(--space-3) 0;border-top:1px solid var(--color-border)}
+.fu-ref{font-size:12px;line-height:1.5;color:var(--color-text-secondary)}
+.fu-url{display:block;margin-top:4px;font-family:var(--font-mono);font-size:10px;color:var(--color-text-muted);word-break:break-all;-webkit-user-select:text;user-select:text}
+.fu-open{margin-top:8px;background:none;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:5px 11px;font-size:11px;font-weight:600;color:var(--color-brand);cursor:pointer}
+.fu-legal{margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--color-border);font-size:10px;line-height:1.55;color:var(--color-text-muted)}
 .session-textarea{width:100%;min-height:96px;padding:var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:14px;color:var(--color-text-primary);resize:vertical}
 .detail-chart{height:160px;background:var(--color-bg-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3)}
 .detail-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px}
@@ -2526,6 +2543,7 @@ function renderTrain() {
     </div>`;
   }
 
+  html += renderFuentesFooter('entreno');
   root.innerHTML = html;
   bindTrainEvents();
   syncCronoTick();   // F3 — arrancar/parar el tick del cronómetro según estado
@@ -3194,6 +3212,134 @@ async function openEarlyFinishModal() {
   $('#finCancel').addEventListener('click', closeModal);
 }
 
+/* ---- RESPALDO CIENTÍFICO (App Store 1.4.1) ------------------------------
+   Citas de las recomendaciones de salud que da la app, agrupadas por la
+   afirmación que respaldan. Acceso: renglón dentro de la card de macros de
+   Dieta (la cita pegada al número) + fila al pie de Dieta/Entreno/Mi Día.
+   Los links abren en SFSafariViewController (@capacitor/browser) en iOS
+   nativo — el WKWebView tiene limitsNavigationsToAppBoundDomains y no puede
+   navegar afuera — y en pestaña nueva en web. La URL además se imprime como
+   texto seleccionable: la cita se lee aunque no se pueda abrir nada. */
+const FUENTES = [
+  { grupo: 'Cómo se calcula tu objetivo de calorías', items: [
+    { ref: 'Mifflin MD, St Jeor ST, Hill LA, et al. A new predictive equation for resting energy expenditure in healthy individuals. Am J Clin Nutr. 1990;51(2):241-247.',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/2305711/' },
+    { ref: 'National Institutes of Health (NIDDK). Body Weight Planner — modelo de balance energético.',
+      url: 'https://www.niddk.nih.gov/health-information/weight-management/body-weight-planner' },
+  ]},
+  { grupo: 'De dónde salen tus carbohidratos y tus grasas', items: [
+    { ref: 'National Academies of Sciences, Engineering, and Medicine (Institute of Medicine). Dietary Reference Intakes for Energy, Carbohydrate, Fiber, Fat, Fatty Acids, Cholesterol, Protein, and Amino Acids. 2005.',
+      url: 'https://www.nationalacademies.org/publications/10490' },
+    { ref: 'Aragon AA, Schoenfeld BJ, Wildman R, et al. International Society of Sports Nutrition position stand: diets and body composition. J Int Soc Sports Nutr. 2017;14:16.',
+      url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC5470183/' },
+  ]},
+  { grupo: 'Cuánta proteína y por qué', items: [
+    { ref: 'Jäger R, Kerksick CM, Campbell BI, et al. International Society of Sports Nutrition position stand: protein and exercise. J Int Soc Sports Nutr. 2017;14:20.',
+      url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC5477153/' },
+    { ref: 'Thomas DT, Erdman KA, Burke LM. Position of the Academy of Nutrition and Dietetics, Dietitians of Canada, and the American College of Sports Medicine: Nutrition and Athletic Performance. Med Sci Sports Exerc. 2016;48(3):543-568.',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/26920240/' },
+  ]},
+  { grupo: 'Elección de alimentos y porciones', items: [
+    { ref: 'Organización Mundial de la Salud. Alimentación sana (nota descriptiva).',
+      url: 'https://www.who.int/news-room/fact-sheets/detail/healthy-diet' },
+    { ref: 'U.S. Departments of Agriculture and Health and Human Services. Dietary Guidelines for Americans, 2025-2030.',
+      url: 'https://odphp.health.gov/our-work/nutrition-physical-activity/dietary-guidelines/current-dietary-guidelines' },
+  ]},
+  { grupo: 'Hidratación', items: [
+    { ref: 'National Academies of Sciences, Engineering, and Medicine (Institute of Medicine). Dietary Reference Intakes for Water, Potassium, Sodium, Chloride, and Sulfate. 2005.',
+      url: 'https://www.nationalacademies.org/publications/10925' },
+  ]},
+  { grupo: 'Entrenamiento: intensidad, volumen y progresión', items: [
+    { ref: 'American College of Sports Medicine. Position stand: Progression models in resistance training for healthy adults. Med Sci Sports Exerc. 2009;41(3):687-708.',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/19204579/' },
+    { ref: 'Garber CE, Blissmer B, Deschenes MR, et al. American College of Sports Medicine position stand: Quantity and quality of exercise for developing and maintaining fitness in apparently healthy adults. Med Sci Sports Exerc. 2011;43(7):1334-1359.',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/21694556/' },
+    { ref: 'Organización Mundial de la Salud. Actividad física (nota descriptiva).',
+      url: 'https://www.who.int/news-room/fact-sheets/detail/physical-activity' },
+    { ref: 'MedlinePlus (U.S. National Library of Medicine). Exercise and Physical Fitness.',
+      url: 'https://medlineplus.gov/exerciseandphysicalfitness.html' },
+  ]},
+  { grupo: 'Guía local (Argentina)', items: [
+    { ref: 'Ministerio de Salud de la Nación. Guías Alimentarias para la Población Argentina (GAPA).',
+      url: 'https://www.argentina.gob.ar/sites/default/files/bancos/2020-08/guias-alimentarias-para-la-poblacion-argentina.pdf' },
+  ]},
+];
+
+const FUENTES_SUB = {
+  dieta:   'Mifflin-St Jeor · ISSN · NASEM · OMS · Guías Alimentarias (Argentina)',
+  entreno: 'ACSM · OMS · MedlinePlus (NIH)',
+  myday:   'NASEM · OMS · MedlinePlus (NIH)',
+};
+
+// Renglón de atribución DENTRO de la card de macros: la cita pegada al número.
+function renderDietCite() {
+  return `<div class="diet-cite">Objetivos calculados con Mifflin-St Jeor · macros según ISSN y NASEM · <button class="cite-link" data-fuentes="dieta-hdr">Ver fuentes</button></div>`;
+}
+
+// Fila discreta al pie de una escena.
+function renderFuentesFooter(origen) {
+  return `
+  <button class="fuentes-link" data-fuentes="${origen}">
+    <span class="fuentes-link-txt">
+      <span class="fuentes-link-t">Respaldo científico del plan</span>
+      <span class="fuentes-link-s">${FUENTES_SUB[origen] || FUENTES_SUB.dieta}</span>
+    </span>
+    <span class="fuentes-link-chev">›</span>
+  </button>`;
+}
+
+// Abre una fuente: Safari in-app (nativo) → pestaña nueva (web) → copiar al
+// portapapeles. Nunca queda en silencio: siempre hay feedback en el botón.
+async function abrirFuente(url, btn) {
+  const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+  if (B && typeof B.open === 'function') {
+    try { await B.open({ url, presentationStyle: 'popover' }); return; } catch (e) { /* sigue al fallback */ }
+  }
+  try { if (window.open(url, '_blank', 'noopener,noreferrer')) return; } catch (e) { /* sigue al fallback */ }
+  const restore = (txt) => { if (!btn) return; const t = btn.textContent; btn.textContent = txt; setTimeout(() => { btn.textContent = t; }, 2200); };
+  try { await navigator.clipboard.writeText(url); restore('Link copiado ✓'); }
+  catch (e) { restore('Copiá el link de arriba'); }
+}
+
+function openFuentes() {
+  const groups = FUENTES.map(g => `
+    <div class="fu-group">
+      <div class="fu-group-t">${g.grupo}</div>
+      ${g.items.map(it => `
+        <div class="fu-item">
+          <div class="fu-ref">${it.ref}</div>
+          <span class="fu-url">${it.url}</span>
+          <button class="fu-open" data-fu-url="${it.url}">Abrir fuente</button>
+        </div>`).join('')}
+    </div>`).join('');
+
+  $('#modalHost').innerHTML = `
+  <div class="modal-back" id="fuBack">
+    <div class="modal-sheet" style="max-width:480px">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Respaldo científico</div>
+      <div class="fu-intro">Tu plan lo arma Mati, que es médico. Estas son las guías y los trabajos publicados en los que se apoyan los números y las recomendaciones que ves acá.</div>
+      ${groups}
+      <div class="fu-legal">MyPump es una herramienta para seguir tu plan de entrenamiento y nutrición, pensada para personas sanas. No es un dispositivo médico y no reemplaza la consulta con un profesional de la salud. Si tenés alguna condición médica, estás embarazada o tomás medicación, consultá con tu médico antes de empezar o de cambiar tu plan, y avisale a Mati para adaptarlo. Si algo te hace sentir mal, pará y consultá.</div>
+      <button class="btn-secondary" id="fuClose" style="margin-top:var(--space-3)">Cerrar</button>
+    </div>
+  </div>`;
+
+  $$('#modalHost [data-fu-url]').forEach(b => b.addEventListener('click', () => abrirFuente(b.getAttribute('data-fu-url'), b)));
+  $('#fuBack').addEventListener('click', e => { if (e.target.id === 'fuBack') closeModal(); });
+  $('#fuClose').addEventListener('click', closeModal);
+}
+
+// Listener delegado: cubre las 4 entradas sin tocar los bind* de cada escena.
+// stopPropagation es necesario: bindDietEvents re-renderiza al tocar la card.
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-fuentes]');
+  if (!t) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openFuentes();
+});
+
 function closeModal() { $('#modalHost').innerHTML = ''; }
 
 /* ---- REST TIMER ----
@@ -3611,9 +3757,11 @@ function renderDiet() {
         <strong>${Math.round(consumido.fat)}</strong>g
       </div>
     </div>
+    ${renderDietCite()}
   </div>
   ${plan.comidas.map((c,i) => renderMeal(c,i)).join('')}
-  ${renderComidasLibres()}`;
+  ${renderComidasLibres()}
+  ${renderFuentesFooter('dieta')}`;
   bindDietEvents();
 }
 
@@ -5419,7 +5567,8 @@ function renderMyday() {
         <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div id="adhContent" style="${STATE.adhOpen ? '' : 'display:none'}"></div>
-    </div>`;
+    </div>
+    ${renderFuentesFooter('myday')}`;
 
   // Render streak
   renderMydayStreak();
