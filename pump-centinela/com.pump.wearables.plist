@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.pump.wearables — trae datos de Oura/Whoop cada 3 horas.
+
+  Por qué cada 3h y no más seguido: los datos de recuperación se generan UNA
+  vez por día, cuando el cliente se despierta. Más frecuencia no traería nada
+  nuevo y solo gastaría rate limit (Whoop: 100 req/min).
+
+  Por qué acá y no en Cloudflare: Pages Functions no tiene Cron Triggers.
+
+  Instalación en la mini:
+    cp com.pump.wearables.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.pump.wearables.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pump.wearables</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/matiassancari/agentkit-coach/venv/bin/python</string>
+    <string>/Users/matiassancari/pump-centinela/wearables.py</string>
+    <string>--write</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>10800</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/matiassancari/pump-centinela/wearables.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/matiassancari/pump-centinela/wearables.err</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/matiassancari/pump-centinela</string>
+</dict>
+</plist>
