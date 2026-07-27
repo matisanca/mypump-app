@@ -43,6 +43,15 @@ workflows:
           xcodebuild -resolvePackageDependencies \
             -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
       - name: Configurar firma (crea certificado + perfil)
+        # OJO al agregar una capability nueva al App ID (Associated Domains,
+        # Push, etc.): Apple invalida los provisioning profiles existentes, pero
+        # `fetch-signing-files --create` REUSA el que ya existe en lugar de crear
+        # uno nuevo, así que el build muere recién en "Compilar IPA" con
+        #   error: "App" requires a provisioning profile with the X feature
+        # Fix (una sola vez, después de tocar el App ID): borrar los perfiles en
+        # developer.apple.com → Certificates, IDs & Profiles → Profiles (van a
+        # figurar como "Invalid") y relanzar el build: acá se regeneran solos ya
+        # con la capability nueva. Pasó el 27-jul-2026 con Associated Domains.
         script: |
           keychain initialize
           # Cuenta nueva sin certificado: generamos una clave privada y se la
