@@ -285,6 +285,24 @@ main{padding:var(--space-4)}
 .salud-sub{margin-top:var(--space-3);font-size:12px;color:var(--color-text-secondary)}
 .salud-sub strong{font-family:var(--font-mono);color:var(--color-text-primary)}
 .salud-connect-txt{font-size:13px;color:var(--color-text-secondary);line-height:1.4;margin:0 0 var(--space-3)}
+/* RECUPERACIÓN (score 0-100) — mig 043 */
+.rec-top{display:flex;align-items:center;gap:var(--space-4)}
+.rec-num{font-family:var(--font-mono);font-size:52px;font-weight:700;letter-spacing:-.04em;line-height:.95}
+.rec-num small{font-size:20px;font-weight:600;opacity:.5;letter-spacing:0}
+.rec-side{flex:1;min-width:0}
+.rec-banda{font-size:14px;font-weight:700;letter-spacing:-.01em;margin-bottom:2px}
+.rec-frase{font-size:12px;color:var(--color-text-secondary);line-height:1.35}
+.rec-alta{color:var(--color-success)} .rec-media{color:var(--color-warning)} .rec-baja{color:var(--color-danger)}
+.rec-spark{margin-top:var(--space-3);display:block;width:100%;height:34px;overflow:visible}
+.rec-drivers{margin-top:var(--space-3);display:flex;flex-direction:column;gap:6px}
+.rec-driver{display:flex;align-items:center;gap:var(--space-2);font-size:12px;color:var(--color-text-secondary)}
+.rec-driver b{font-family:var(--font-mono);color:var(--color-text-primary);font-weight:600}
+.rec-driver .rec-arrow{flex:0 0 auto;width:16px;text-align:center;font-size:13px}
+/* Calibrando: barra de progreso hacia los 14 días de baseline */
+.rec-cal-bar{height:6px;border-radius:99px;background:var(--color-bg-tertiary);overflow:hidden;margin:var(--space-2) 0 var(--space-2)}
+.rec-cal-fill{height:100%;background:var(--color-brand);border-radius:99px;transition:width .4s}
+.rec-cal-n{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--color-text-primary);line-height:1}
+.rec-nota{font-size:11px;color:var(--color-text-muted);line-height:1.4;margin-top:var(--space-2)}
 .hb{width:42px;height:42px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
 .hb.is-yes.is-active{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));border-color:var(--color-brand)}
 .hb.is-no.is-active{background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border-color:#ef4444}
@@ -1076,6 +1094,7 @@ const STATE = {
   checkin:            null,       // check de la semana ya guardado en el server
   checkinDraft:       null,       // borrador local sin enviar
   salud:              [],         // registros de salud/peso — alimenta Peso y Salud
+  recup:              [],         // serie diaria de recuperación (mig 043), 14 días
   fotos:              [],         // metadata de fotos de progreso (sin path ni URL)
   fotosUrls:          null,       // {mapa:{'semana|pose':url}, exp} — URLs firmadas cacheadas
   adhOpen:            false,
@@ -4652,6 +4671,133 @@ function _saludValor(tipo, fecha) {
     .sort((a, b) => (pref[a.fuente] ?? 9) - (pref[b.fuente] ?? 9));
   return rows.length ? Number(rows[0].valor) : null;
 }
+/* ---- RECUPERACIÓN (score 0-100) — mig 043 ----
+   El número sale del motor en SQL (mypump_calc_recuperacion), no se calcula acá:
+   el panel del coach y el centinela leen EXACTAMENTE el mismo valor.
+   El motor manda `motivos` como hechos estructurados y la frase se arma acá,
+   en voseo — el panel arma la suya en tono clínico con los mismos datos. */
+async function loadRecuperacion() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getRecuperacion) return;
+  try {
+    STATE.recup = (await window.mypumpDB.getRecuperacion(TOKEN, 14)) || [];
+  } catch (_) { STATE.recup = []; }
+  if (STATE.scene === 'myday') renderMydayRecuperacion();
+}
+
+const _REC_BANDA_TXT = { alta: 'Recuperado', media: 'Medio', baja: 'Poco recuperado' };
+const _fmtHs = m => `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, '0')}`;
+
+// Hechos → castellano. Devuelve las filas de "por qué" que van bajo el número.
+function _recDrivers(row) {
+  const ms = Array.isArray(row.motivos) ? row.motivos : [];
+  return ms.slice(0, 3).map(m => {
+    const sube = Number(m.dir) > 0;
+    const flecha = sube ? '↑' : '↓';
+    let txt = '';
+    if (m.tipo === 'sueno') {
+      txt = `Dormiste <b>${_fmtHs(m.valor)}</b>${m.baseline ? ` · venís de ${_fmtHs(m.baseline)}` : ''}`;
+    } else if (m.tipo === 'fc_reposo') {
+      const d = m.baseline ? Math.round(Math.abs(m.valor - m.baseline)) : null;
+      txt = `Pulso en reposo <b>${Math.round(m.valor)}</b>${d ? ` · ${d} más que tu normal` : ''}`;
+    } else if (m.tipo === 'hrv') {
+      txt = `Variabilidad <b>${Math.round(m.valor)} ms</b>${m.baseline ? ` · tu normal es ${Math.round(m.baseline)}` : ''}`;
+    } else if (m.tipo === 'carga') {
+      txt = `Entrenaste fuerte: <b>${m.agudo}</b> series duras en 3 días`;
+    } else if (m.tipo === 'regularidad') {
+      txt = `Horarios de sueño irregulares esta semana`;
+    } else { return null; }
+    return `<div class="rec-driver"><span class="rec-arrow">${flecha}</span><span>${txt}</span></div>`;
+  }).filter(Boolean).join('');
+}
+
+function _recSpark(serie) {
+  const pts = serie.filter(r => r.score != null);
+  if (pts.length < 3) return '';
+  const W = 260, H = 34, max = 100, min = 0;
+  const x = i => (i / (pts.length - 1)) * W;
+  const y = v => H - ((v - min) / (max - min)) * H;
+  const d = pts.map((r, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(r.score).toFixed(1)}`).join(' ');
+  const ult = pts[pts.length - 1];
+  const col = ult.banda === 'alta' ? 'var(--color-success)' : ult.banda === 'baja' ? 'var(--color-danger)' : 'var(--color-warning)';
+  return `<svg class="rec-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>
+    <circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(ult.score).toFixed(1)}" r="3" fill="${col}"/>
+  </svg>`;
+}
+
+function renderMydayRecuperacion() {
+  const el = document.getElementById('myday-recup');
+  if (!el) return;
+  const serie = STATE.recup || [];
+  const row = serie.length ? serie[serie.length - 1] : null;
+  const native = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable());
+  const wrap = (body) => `<div class="myday-section">
+      <div class="myday-section-hdr">
+        <span class="myday-section-icon">🔋</span>
+        <span class="myday-section-title">Recuperación</span>
+      </div>
+      <div class="myday-section-body">${body}</div>
+    </div>`;
+
+  // Sin ningún dato: NO se esconde la card. Que la de Salud se auto-ocultara
+  // es la razón por la que nadie notó que el sync estuvo roto desde el día uno.
+  if (!row || row.estado === 'insuficiente') {
+    el.innerHTML = wrap(`<p class="salud-connect-txt">Tu recuperación se calcula con lo que mide tu reloj mientras dormís: pulso en reposo, sueño y variabilidad.</p>
+      ${native
+        ? `<button class="btn-primary" id="btnConnectHealth2" style="width:100%">Conectar Apple Health</button>`
+        : `<div class="rec-nota">Si tenés reloj o anillo, conectalo desde la app de iPhone y esto se llena solo.</div>`}`);
+    const b = document.getElementById('btnConnectHealth2');
+    if (b) b.onclick = async () => {
+      b.disabled = true; b.textContent = 'Conectando…';
+      const ok = await window.MyPumpHealth.connect();
+      if (ok) { await loadRecuperacion(); await loadSalud(); }
+      else { b.disabled = false; b.textContent = 'Conectar Apple Health'; }
+    };
+    return;
+  }
+
+  // Calibrando: mostrar que está trabajando, con lo que ya sabe.
+  if (row.estado === 'calibrando' || row.score == null) {
+    const n = row.dias_datos || 0, pct = Math.min(100, Math.round(n / 14 * 100));
+    const cob = row.cobertura || {};
+    const ya = cob.sueno_min ? `Ya sé que dormís cerca de ${_fmtHs(cob.sueno_min)}.`
+             : cob.fc_reposo ? `Ya sé que tu pulso en reposo ronda los ${Math.round(cob.fc_reposo)}.` : '';
+    el.innerHTML = wrap(`<div class="rec-cal-n">${n}<small style="font-size:14px;opacity:.5"> / 14 días</small></div>
+      <div class="rec-cal-bar"><div class="rec-cal-fill" style="width:${pct}%"></div></div>
+      <div class="rec-frase">Estoy aprendiendo cómo es tu normal. ${ya}</div>
+      <div class="rec-nota">Sin unos días de historia, cualquier número sería inventado.</div>`);
+    return;
+  }
+
+  // Score.
+  const banda = row.banda || 'media';
+  const drivers = _recDrivers(row);
+  let frase;
+  if (row.discordancia) {
+    frase = 'Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís.';
+  } else if (row.estado_autonomico === 'maladaptacion') {
+    frase = 'Tu cuerpo viene peleando con la carga. Hoy conviene aflojar.';
+  } else if (row.estado_autonomico === 'fatiga_acumulada') {
+    frase = 'Venís con fatiga acumulada de varios días.';
+  } else if (!drivers) {
+    frase = banda === 'alta' ? 'Venís bien. Aprovechalo.'
+          : banda === 'baja' ? 'Hoy tu cuerpo pide más descanso.'
+          : 'Estás en tu rango normal.';
+  } else { frase = ''; }
+
+  el.innerHTML = wrap(`
+    <div class="rec-top">
+      <div class="rec-num rec-${banda}">${row.score}<small>/100</small></div>
+      <div class="rec-side">
+        <div class="rec-banda rec-${banda}">${_REC_BANDA_TXT[banda] || ''}</div>
+        ${frase ? `<div class="rec-frase">${frase}</div>` : ''}
+      </div>
+    </div>
+    ${_recSpark(serie)}
+    ${drivers ? `<div class="rec-drivers">${drivers}</div>` : ''}
+    ${row.banda_provisoria ? `<div class="rec-nota">Todavía estoy afinando tu rango normal — puede moverse un poco estos días.</div>` : ''}`);
+}
+
 function renderMydaySalud() {
   const el = document.getElementById('myday-salud');
   if (!el) return;
@@ -4683,9 +4829,14 @@ function renderMydaySalud() {
     return;
   }
 
-  if (!pasos.length) { el.innerHTML = ''; return; }   // sin datos → card invisible
+  // Sin pasos NI actividad no hay nada que mostrar acá (la recuperación tiene
+  // su propia card arriba, que sí explica qué hacer cuando no hay wearable).
+  const hayActividad = pasos.length || (STATE.salud || []).some(r => r.tipo === 'actividad_min');
+  if (!hayActividad) { el.innerHTML = ''; return; }
 
-  const fmt = n => Number(n).toLocaleString('es-AR');
+  // Math.round antes de formatear: el bridge redondea, pero un agregador puede
+  // mandar decimales y "8.548,161 pasos" queda ridículo.
+  const fmt = n => Math.round(Number(n)).toLocaleString('es-AR');
   const hoy = _saludValor('pasos', TODAY_LOCAL);
   // Promedio de los últimos 7 días CON dato (el fetch trae 60d para la card Peso,
   // pero el promedio de pasos sigue siendo semanal).
@@ -5554,7 +5705,12 @@ function renderMyday() {
       </div>
     </div>
 
-    <!-- SALUD (wearables) — solo aparece si hay datos sincronizados -->
+    <!-- RECUPERACIÓN (score 0-100) — siempre visible: si no hay wearable,
+         explica cómo conectarlo. Que la card de Salud se auto-ocultara sin
+         datos es por lo que el sync roto pasó un mes sin que nadie lo viera. -->
+    <div id="myday-recup"></div>
+
+    <!-- SALUD (wearables) — pasos y actividad del día -->
     <div id="myday-salud"></div>
 
     <!-- ADHERENCIA 30D -->
@@ -5573,7 +5729,8 @@ function renderMyday() {
 
   // Render streak
   renderMydayStreak();
-  // Render card de Salud (si hay datos de wearable sincronizados)
+  // Recuperación (score) arriba, y abajo pasos/actividad del día
+  renderMydayRecuperacion();
   renderMydaySalud();
 
   // Bind entrenamiento buttons
@@ -5926,6 +6083,7 @@ async function init() {
   // Las tres son independientes entre si: si una falla, las otras cargan igual.
   loadMyday();    // habitos diarios + streak → Mi Día
   loadSalud();    // alimenta la card Salud (Mi Día) Y la de Peso (Revisión)
+  loadRecuperacion();  // score de recuperación (Mi Día) — motor SQL, mig 043
   loadRevision(); // check + fotos → Revisión
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();

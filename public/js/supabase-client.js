@@ -292,6 +292,17 @@ window.mypumpDB = {
     return await rpcMutation('mypump_ingest_salud', { p_token: token, p_registros: registros });
   },
 
+  // ─── RECUPERACIÓN (score 0-100, mig 043) ─────────────────
+
+  // Serie diaria de recuperación, la más reciente al final. Cada fila:
+  // {fecha, score, estado, banda, dias_datos, banda_provisoria,
+  //  estado_autonomico, hrv_metrica, discordancia, cobertura, componentes, motivos}
+  // El score viene NULL cuando el estado es 'calibrando' o 'insuficiente':
+  // el motor prefiere no dar número antes que dar uno inventado.
+  async getRecuperacion(token, dias) {
+    return await rpc('mypump_get_recuperacion', { p_token: token, p_dias: dias || 14 });
+  },
+
   // ─── CHECK SEMANAL (sliders 1-5 + nota) — N8 ─────────────
 
   // El check de la semana que contiene la fecha (para prellenar la card).

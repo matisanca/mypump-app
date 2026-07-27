@@ -278,7 +278,13 @@ sa AS (
         CASE
           WHEN sc.z_hrv <= -sc.u_umbral AND sc.z_rhr >= sc.u_umbral AND sc.cv_alto      THEN 'maladaptacion'
           WHEN sc.z_hrv <= -sc.u_umbral AND sc.z_rhr >= sc.u_umbral                     THEN 'fatiga_acumulada'
-          WHEN sc.z_hrv <= -sc.u_umbral AND sc.z_rhr <= -sc.u_umbral                    THEN 'parasimpatico_saturado'
+          -- Saturación parasimpática: HRV y FC bajas A LA VEZ. Es un fenómeno de
+          -- atletas de resistencia de élite con bradicardia real, así que además
+          -- del z se exige FC en reposo < 50 lpm en términos absolutos. Sin esa
+          -- condición, cualquier día en que ambas señales caen juntas por ruido
+          -- se marcaba como saturación y se comía 55 puntos de score — lo vimos
+          -- disparar con FC de 54 en el test de la UI.
+          WHEN sc.z_hrv <= -sc.u_umbral AND sc.z_rhr <= -sc.u_umbral AND sc.rhr < 50    THEN 'parasimpatico_saturado'
           WHEN sc.z_hrv >= 0.5 AND ABS(sc.z_rhr) < 0.5                                  THEN 'recuperado'
           ELSE 'normal' END
       WHEN sc.z_rhr IS NOT NULL THEN
