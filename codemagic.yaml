@@ -53,11 +53,50 @@ workflows:
         # figurar como "Invalid") y relanzar el build: acá se regeneran solos ya
         # con la capability nueva. Pasó el 27-jul-2026 con Associated Domains.
         script: |
+          set -e
           keychain initialize
-          # Cuenta nueva sin certificado: generamos una clave privada y se la
-          # pasamos a fetch-signing-files, que con --create genera el certificado
-          # de distribución Y el provisioning profile del bundle en una sola
-          # pasada (el perfil incluye HealthKit porque está habilitado en el App ID).
+
+          # La clave privada se genera acá y muere con la máquina de build, así
+          # que los certificados de distribución que quedan en la cuenta de Apple
+          # son huérfanos: nadie puede firmar con ellos nunca más. Apple permite
+          # como máximo 3, y al cuarto responde
+          #   409: You already have a current Distribution certificate
+          # sin cortar el build — se queda sin certificado Y sin perfil, y recién
+          # revienta en "Compilar IPA" con un mensaje que apunta a otro lado
+          # ("requires a provisioning profile with the X feature"). Pasó el
+          # 27-jul-2026. Por eso los revocamos antes de pedir el nuestro.
+          echo "→ Revocando certificados de distribución huérfanos…"
+          python3 - <<'PY' || true
+          import json, subprocess
+          # Los dos tipos con los que Apple etiqueta un cert de distribución;
+          # filtrar solo uno dejaría la mitad viva y el cupo igual de lleno.
+          vistos = set()
+          for tipo in ('IOS_DISTRIBUTION', 'DISTRIBUTION'):
+              p = subprocess.run(['app-store-connect', 'list-certificates',
+                                  '--type', tipo, '--json'],
+                                 capture_output=True, text=True, stdin=subprocess.DEVNULL)
+              if p.returncode != 0:
+                  continue
+              try:
+                  certs = json.loads(p.stdout or '[]')
+              except Exception:
+                  continue
+              for c in certs if isinstance(certs, list) else []:
+                  cid = c.get('id')
+                  if not cid or cid in vistos:
+                      continue
+                  vistos.add(cid)
+                  # stdin cerrado: si algún día pide confirmación, falla en vez
+                  # de colgar el build hasta el timeout.
+                  r = subprocess.run(['app-store-connect', 'delete-certificate', cid],
+                                     capture_output=True, text=True, stdin=subprocess.DEVNULL)
+                  print(f"  {cid}: {'revocado' if r.returncode == 0 else 'no se pudo (sigo igual)'}")
+          print(f"  total: {len(vistos)}")
+          PY
+
+          # --create genera el certificado de distribución Y el provisioning
+          # profile del bundle en una sola pasada. El perfil sale con las
+          # capabilities que tenga el App ID (HealthKit + Associated Domains).
           CERT_KEY=$(mktemp /tmp/cert_key.XXXXXX)
           openssl genrsa -out "$CERT_KEY" 2048
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
@@ -66,6 +105,13 @@ workflows:
             --create
           keychain add-certificates
           xcode-project use-profiles
+
+          # Falla ruidosa: sin esto, un certificado o un perfil ausente pasa
+          # desapercibido y el error aparece dos pasos después, disfrazado.
+          ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision >/dev/null 2>&1 \
+            || { echo "✗ No se creó ningún provisioning profile — revisá el log de arriba"; exit 1; }
+          security find-identity -v -p codesigning | grep -q "0 valid identities found" \
+            && { echo "✗ No hay identidad de firma en el keychain"; exit 1; } || true
       - name: Compilar IPA
         script: |
           xcode-project build-ipa \
