@@ -1056,6 +1056,13 @@ const TOKEN = (function() {
 
   return '';
 })();
+// `const` en top-level NO crea propiedad en window (a diferencia de var o de
+// una declaración de función). healthkit-bridge.js es OTRO archivo y leía
+// window.TOKEN: le llegaba undefined SIEMPRE, y por eso el sync de Apple
+// Health nunca escribió un solo registro desde que se construyó. El bridge
+// ahora cae a localStorage por su cuenta, pero esta línea cierra el agujero
+// de raíz en vez de dejarlo dependiendo de un fallback.
+window.TOKEN = TOKEN;
 const TODAY = new Date().toISOString().split('T')[0];
 // Fecha local del cliente (YYYY-MM-DD en su timezone)
 const TODAY_LOCAL = new Date().toLocaleDateString('en-CA');
@@ -5917,11 +5924,45 @@ $('#themeToggle').addEventListener('click', () => {
 });
 
 /* ---- INIT ---- */
+/* ---- ?diag=health — diagnóstico de HealthKit ----
+   HealthKit no existe en el simulador, así que la única forma de ver qué trae
+   de verdad es un iPhone físico. Esto lo vuelca en pantalla: qué tipos
+   respondieron, cuántas muestras, y el error nativo textual del que falló.
+   Sin esto, cada iteración del bridge necesitaría Xcode conectado. */
+async function pantallaDiagSalud() {
+  document.body.innerHTML = `<div style="padding:16px;font:13px/1.5 var(--font-mono),monospace;color:var(--color-text-primary);background:var(--color-bg-primary);min-height:100vh">
+    <h2 style="font:600 16px var(--font-sans)">Diagnóstico Apple Health</h2>
+    <div id="dg">Consultando…</div></div>`;
+  const el = document.getElementById('dg');
+  if (!window.MyPumpHealth || !window.MyPumpHealth.diagnostico) {
+    el.textContent = 'Bridge no cargado.'; return;
+  }
+  try {
+    const d = await window.MyPumpHealth.diagnostico();
+    const fila = t => `<tr><td style="padding:3px 8px 3px 0">${t.tipo}</td>
+      <td style="padding:3px 8px;opacity:.6">${t.via}</td>
+      <td style="padding:3px 8px;text-align:right;font-weight:700;color:${t.n ? 'var(--color-success)' : 'var(--color-danger)'}">${t.n}</td>
+      <td style="padding:3px 8px;opacity:.6">${t.primero || ''}${t.ultimo && t.ultimo !== t.primero ? ' → ' + t.ultimo : ''}</td>
+      <td style="padding:3px 0;color:var(--color-danger);font-size:11px">${t.error ? t.error.slice(0, 90) : ''}</td></tr>`;
+    el.innerHTML = `
+      <p>nativo: <b>${d.nativo}</b> · HealthKit: <b>${d.disponible}</b> · token: <b>${d.token}</b></p>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">${(d.tipos || []).map(fila).join('')}</table>
+      <h3 style="font:600 14px var(--font-sans);margin-top:18px">Sueño por noche y por fuente</h3>
+      <p style="font-size:11px;opacity:.6">Si una noche aparece con 2 fuentes, el bridge se queda solo con la que más minutos de sueño real aportó (si no, se duplicarían las horas).</p>
+      ${(d.noches || []).slice(-10).map(n => `<div style="margin-bottom:6px"><b>${n.fecha}</b><br>${
+        Object.keys(n.fuentes).map(s => `&nbsp;&nbsp;${s}: ${Object.keys(n.fuentes[s]).map(k => k + ' ' + n.fuentes[s][k] + 'm').join(', ')}`).join('<br>')
+      }</div>`).join('') || '<i>sin datos de sueño</i>'}
+      <pre style="margin-top:18px;font-size:10px;opacity:.5;white-space:pre-wrap">${JSON.stringify(d.errores || [], null, 1)}</pre>`;
+  } catch (e) { el.textContent = 'Error: ' + (e && e.message || e); }
+}
+
 async function init() {
   // Apply saved theme
   const savedTheme = localStorage.getItem('mypump-theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
   document.body.setAttribute('data-theme', savedTheme);
+
+  if (new URLSearchParams(location.search).get('diag') === 'health') { return pantallaDiagSalud(); }
 
   if (!TOKEN && !DEMO) { showError('no-token'); return; }
 

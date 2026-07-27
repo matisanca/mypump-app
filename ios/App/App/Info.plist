@@ -60,7 +60,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>MyPump accede a tus fotos para que puedas elegir del carrete tus fotos de progreso semanales. Las ve únicamente tu coach.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>MyPump lee tus pasos y actividad para que tu coach ajuste tu plan de entrenamiento y nutrición.</string>
+	<string>MyPump lee tus pasos, actividad, sueño, frecuencia cardíaca en reposo, variabilidad cardíaca, frecuencia respiratoria, oxígeno en sangre y temperatura de muñeca para calcular tu recuperación diaria y que tu coach ajuste tu plan.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>MyPump no escribe datos en Salud; este permiso solo se usaría si en el futuro registrás datos manualmente.</string>
 </dict>
