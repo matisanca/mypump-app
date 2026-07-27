@@ -106,12 +106,20 @@ workflows:
           keychain add-certificates
           xcode-project use-profiles
 
-          # Falla ruidosa: sin esto, un certificado o un perfil ausente pasa
-          # desapercibido y el error aparece dos pasos después, disfrazado.
-          ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision >/dev/null 2>&1 \
-            || { echo "✗ No se creó ningún provisioning profile — revisá el log de arriba"; exit 1; }
-          security find-identity -v -p codesigning | grep -q "0 valid identities found" \
-            && { echo "✗ No hay identidad de firma en el keychain"; exit 1; } || true
+          # Falla ruidosa: sin esto, un perfil ausente pasa desapercibido acá y
+          # el error aparece dos pasos después disfrazado de otra cosa.
+          # Las dos rutas donde puede quedar el perfil según la versión de las
+          # CLI tools — mirar solo MobileDevice daba un falso negativo y volteaba
+          # el build con la firma ya resuelta.
+          # Dos `ls` separados a propósito: con las dos rutas en un mismo `ls`,
+          # basta que una no exista para que devuelva error aunque la otra tenga
+          # el perfil.
+          if ! ls ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/*.mobileprovision >/dev/null 2>&1 \
+             && ! ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision >/dev/null 2>&1; then
+            echo "✗ No se creó ningún provisioning profile — revisá el log de arriba"
+            exit 1
+          fi
+          echo "✓ Firma lista (certificado + provisioning profile)"
       - name: Compilar IPA
         script: |
           xcode-project build-ipa \
