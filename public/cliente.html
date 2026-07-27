@@ -303,6 +303,35 @@ main{padding:var(--space-4)}
 .rec-cal-fill{height:100%;background:var(--color-brand);border-radius:99px;transition:width .4s}
 .rec-cal-n{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--color-text-primary);line-height:1}
 .rec-nota{font-size:11px;color:var(--color-text-muted);line-height:1.4;margin-top:var(--space-2)}
+.rec-vertodo{width:100%;margin-top:var(--space-3);padding:var(--space-2) 0;background:transparent;border:0;border-top:1px solid var(--color-border);color:var(--color-text-secondary);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.rec-vertodo span:last-child{color:var(--color-text-muted)}
+/* ESCENA SALUD — detalle de todo lo que manda el reloj */
+.sd-volver{background:transparent;border:0;color:var(--color-text-secondary);font-size:14px;padding:var(--space-2) 0 var(--space-3);cursor:pointer}
+.sd-sub{font-size:12px;color:var(--color-text-muted);line-height:1.4;margin-bottom:var(--space-3)}
+.sd-fila{padding:var(--space-3) 0;border-bottom:1px solid var(--color-border)}
+.sd-fila:last-child{border-bottom:0;padding-bottom:0}
+.sd-fila-top{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3)}
+.sd-nombre{font-size:14px;color:var(--color-text-primary)}
+.sd-val{font-family:var(--font-mono);font-size:24px;font-weight:700;letter-spacing:-.02em;color:var(--color-text-primary);white-space:nowrap}
+.sd-val small{font-size:13px;font-weight:500;opacity:.55}
+.sd-delta{font-family:var(--font-sans);font-size:12px;font-weight:600;margin-left:var(--space-2)}
+.sd-spark{display:block;width:100%;height:30px;margin:var(--space-2) 0}
+.sd-ref{font-size:11px;color:var(--color-text-muted);line-height:1.45}
+.sd-ref b{font-family:var(--font-mono);color:var(--color-text-secondary)}
+.sd-nota{font-size:11px;color:var(--color-text-muted);line-height:1.45;margin-top:var(--space-2)}
+.sd-score{font-family:var(--font-mono);font-size:42px;font-weight:700;line-height:1;letter-spacing:-.03em;margin-bottom:var(--space-4)}
+.sd-score small{font-size:16px;opacity:.5}
+.sd-comp{margin-bottom:var(--space-3)}
+.sd-comp-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.sd-comp-top b{font-family:var(--font-mono)}
+.sd-comp-bar{height:5px;border-radius:99px;background:var(--color-bg-tertiary);overflow:hidden}
+.sd-comp-bar div{height:100%;border-radius:99px}
+.sd-comp-peso{font-size:10px;color:var(--color-text-muted);margin-top:3px}
+.sd-etapas{display:flex;gap:var(--space-2);align-items:flex-end;height:96px;margin:var(--space-3) 0}
+.sd-etapa{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.sd-etapa-bar{width:100%;border-radius:var(--radius-sm) var(--radius-sm) 0 0;min-height:6px}
+.sd-etapa-n{font-family:var(--font-mono);font-size:12px;margin-top:4px;color:var(--color-text-primary)}
+.sd-etapa-l{font-size:10px;color:var(--color-text-muted)}
 .hb{width:42px;height:42px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
 .hb.is-yes.is-active{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));border-color:var(--color-brand)}
 .hb.is-no.is-active{background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border-color:#ef4444}
@@ -931,6 +960,9 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
     <section class="scene" id="scene-progress"></section>
     <section class="scene" id="scene-myday"></section>
     <section class="scene" id="scene-revision"></section>
+    <!-- SALUD: todo lo que manda el reloj. No es un tab (6 tabs dejan cada uno
+         en ~62px en un iPhone SE); se entra desde la card de Mi Día. -->
+    <section class="scene" id="scene-salud"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -4802,7 +4834,199 @@ function renderMydayRecuperacion() {
     </div>
     ${_recSpark(serie)}
     ${drivers ? `<div class="rec-drivers">${drivers}</div>` : ''}
-    ${row.banda_provisoria ? `<div class="rec-nota">Todavía estoy afinando tu rango normal — puede moverse un poco estos días.</div>` : ''}`);
+    ${row.banda_provisoria ? `<div class="rec-nota">Todavía estoy afinando tu rango normal — puede moverse un poco estos días.</div>` : ''}
+    <button class="rec-vertodo" id="recVerTodo"><span>Ver todos mis datos</span><span>›</span></button>`);
+  const vt = document.getElementById('recVerTodo');
+  if (vt) vt.onclick = () => setScene('salud');
+}
+
+/* ============================================================
+   ESCENA "SALUD" — todo lo que manda el reloj, no solo el score.
+   No es un tab: 6 tabs dejan cada uno en ~62px en un iPhone SE. Se entra
+   desde la card de Recuperación en Mi Día, que es donde el cliente ya mira.
+   ============================================================ */
+
+// Serie completa de un tipo, ordenada por fecha. Prioriza la mejor fuente
+// igual que _saludValor, pero devolviendo todas las fechas.
+function _serieSalud(tipo) {
+  const pref = { oura: 0, whoop: 0, withings: 0, polar: 0, apple_health: 1, rook: 2, manual: 3 };
+  const porFecha = {};
+  for (const r of (STATE.salud || [])) {
+    if (r.tipo !== tipo) continue;
+    const p = pref[r.fuente] ?? 9;
+    if (!porFecha[r.fecha] || p < porFecha[r.fecha].p) porFecha[r.fecha] = { v: Number(r.valor), p, d: r.detalle };
+  }
+  return Object.keys(porFecha).sort().map(f => ({ fecha: f, valor: porFecha[f].v, detalle: porFecha[f].d }));
+}
+const _prom = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+
+// Sparkline genérico de una serie.
+function _sparkSalud(serie, color) {
+  const pts = serie.slice(-30);
+  if (pts.length < 3) return '';
+  const W = 300, H = 30;
+  const vs = pts.map(p => p.valor), min = Math.min(...vs), max = Math.max(...vs);
+  const rango = (max - min) || 1;
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${(i / (pts.length - 1) * W).toFixed(1)},${(H - (p.valor - min) / rango * H).toFixed(1)}`).join(' ');
+  return `<svg class="sd-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${d}" fill="none" stroke="${color || 'var(--color-brand)'}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/></svg>`;
+}
+
+/* Una fila de métrica: valor de hoy, su promedio de 7 días y la tendencia.
+   Siempre se muestra el promedio al lado del valor: un dato suelto no dice
+   nada sin su referencia, y es justo lo que hace que el cliente entienda si
+   hoy fue raro o si viene así hace una semana. */
+function _filaSalud(cfg) {
+  const s = _serieSalud(cfg.tipo);
+  if (!s.length) return '';
+  const hoy = s[s.length - 1];
+  const p7 = _prom(s.slice(-7).map(x => x.valor));
+  const p30 = _prom(s.slice(-30).map(x => x.valor));
+  const fmt = cfg.fmt || (v => Math.round(v));
+  // Δ contra el promedio de 30 días. `mejorSube` define de qué lado está lo bueno.
+  let delta = '';
+  if (p30 != null && Math.abs(hoy.valor - p30) / (p30 || 1) > 0.03) {
+    const sube = hoy.valor > p30;
+    const bueno = cfg.mejorSube === false ? !sube : sube;
+    delta = `<span class="sd-delta" style="color:${bueno ? 'var(--color-success)' : 'var(--color-warning)'}">${sube ? '↑' : '↓'} ${fmt(Math.abs(hoy.valor - p30))}</span>`;
+  }
+  return `<div class="sd-fila">
+    <div class="sd-fila-top">
+      <span class="sd-nombre">${cfg.nombre}</span>
+      <span class="sd-val">${fmt(hoy.valor)}<small>${cfg.unidad || ''}</small>${delta}</span>
+    </div>
+    ${_sparkSalud(s, cfg.color)}
+    <div class="sd-ref">promedio 7 días: <b>${fmt(p7)}${cfg.unidad || ''}</b>${s.length > 7 ? ` · 30 días: ${fmt(p30)}${cfg.unidad || ''}` : ''} · ${s.length} día${s.length !== 1 ? 's' : ''} con dato</div>
+    ${cfg.nota ? `<div class="sd-nota">${cfg.nota}</div>` : ''}
+  </div>`;
+}
+
+function _seccionSalud(icono, titulo, cuerpo, sub) {
+  if (!cuerpo || !cuerpo.trim()) return '';
+  return `<div class="myday-section">
+    <div class="myday-section-hdr"><span class="myday-section-icon">${icono}</span>
+      <span class="myday-section-title">${titulo}</span></div>
+    <div class="myday-section-body">${sub ? `<div class="sd-sub">${sub}</div>` : ''}${cuerpo}</div></div>`;
+}
+
+function renderSalud() {
+  const root = $('#scene-salud');
+  if (!root) return;
+  const hayAlgo = (STATE.salud || []).length > 0;
+  const native = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable());
+
+  if (!hayAlgo) {
+    root.innerHTML = `<button class="sd-volver" id="sdVolver">‹ Volver a Mi Día</button>
+      ${_seccionSalud('⌚️', 'Todavía no hay datos',
+        `<p class="salud-connect-txt">Cuando conectes tu reloj o tu anillo, acá vas a ver todo lo que mide: sueño con sus fases, pulso en reposo, variabilidad, respiración, oxígeno y temperatura.</p>
+         ${native ? `<button class="btn-primary" id="sdConnect" style="width:100%">Conectar Apple Health</button>`
+                  : `<div class="rec-nota">Se conecta desde la app de iPhone. Si usás Oura o Whoop, pronto vas a poder conectarlos desde acá también.</div>`}`)}`;
+    const b = document.getElementById('sdConnect');
+    if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'Conectando…';
+      if (await window.MyPumpHealth.connect()) { await loadSalud(); await loadRecuperacion(); renderSalud(); }
+      else { b.disabled = false; b.textContent = 'Conectar Apple Health'; } };
+    const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('myday');
+    return;
+  }
+
+  // ── Recuperación: el score con sus componentes abiertos ──────────────
+  const rec = (STATE.recup || [])[(STATE.recup || []).length - 1];
+  let recHtml = '';
+  if (rec && rec.score != null) {
+    const NOM = { autonomico: 'Corazón (pulso + variabilidad)', sueno: 'Sueño', carga: 'Carga del gimnasio',
+                  subjetivo: 'Cómo te sentís', otros: 'Respiración, oxígeno, temperatura' };
+    const comp = rec.componentes || {};
+    const filas = Object.keys(NOM).filter(k => comp[k]).map(k => {
+      const c = comp[k], pct = Math.round(c.score);
+      return `<div class="sd-comp">
+        <div class="sd-comp-top"><span>${NOM[k]}</span><b>${pct}</b></div>
+        <div class="sd-comp-bar"><div style="width:${pct}%;background:${pct >= 67 ? 'var(--color-success)' : pct >= 34 ? 'var(--color-warning)' : 'var(--color-danger)'}"></div></div>
+        <div class="sd-comp-peso">pesa ${Math.round(c.peso)}% en tu score</div></div>`;
+    }).join('');
+    recHtml = _seccionSalud('🔋', 'Cómo se arma tu recuperación',
+      `<div class="sd-score">${rec.score}<small>/100</small></div>${filas}
+       <div class="sd-nota">Los que no tenés no se promedian como cero: el score se reparte entre los datos que sí hay. Por eso podés tener número aunque tu reloj no mida variabilidad.</div>`);
+  }
+
+  // ── Sueño ────────────────────────────────────────────────────────────
+  const sSueno = _serieSalud('sueno_min');
+  let suenoHtml = '';
+  if (sSueno.length) {
+    const hs = m => `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, '0')}`;
+    const ult = sSueno[sSueno.length - 1];
+    const et = ['sueno_profundo_min', 'sueno_rem_min', 'sueno_ligero_min']
+      .map(t => ({ t, s: _serieSalud(t) })).filter(x => x.s.length);
+    const NOMET = { sueno_profundo_min: 'Profundo', sueno_rem_min: 'REM', sueno_ligero_min: 'Ligero' };
+    const COLET = { sueno_profundo_min: '#5b6ee1', sueno_rem_min: '#9b6ee1', sueno_ligero_min: '#8fa8d8' };
+    let etHtml = '';
+    if (et.length) {
+      const totEt = et.reduce((a, x) => a + (x.s[x.s.length - 1] || {}).valor || 0, 0) || 1;
+      etHtml = `<div class="sd-etapas">${et.map(x => {
+        const v = (x.s[x.s.length - 1] || {}).valor || 0;
+        return `<div class="sd-etapa"><div class="sd-etapa-bar" style="height:${Math.max(6, v / totEt * 100)}%;background:${COLET[x.t]}"></div>
+          <div class="sd-etapa-n">${hs(v)}</div><div class="sd-etapa-l">${NOMET[x.t]}</div></div>`;
+      }).join('')}</div>`;
+    }
+    const reg = _serieSalud('sueno_medio_min');
+    let regHtml = '';
+    if (reg.length >= 4) {
+      const ult7 = reg.slice(-7).map(x => x.valor);
+      const m = _prom(ult7);
+      const sd = Math.sqrt(_prom(ult7.map(v => (v - m) ** 2)));
+      const hhmm = mm => `${String(Math.floor(mm / 60) % 24).padStart(2, '0')}:${String(Math.round(mm % 60)).padStart(2, '0')}`;
+      regHtml = `<div class="sd-ref" style="margin-top:var(--space-3)">Te dormís en promedio cerca de las <b>${hhmm(m - 210)}</b>, con una variación de <b>±${Math.round(sd)} min</b>.
+        ${sd <= 30 ? 'Muy regular — eso ayuda tanto como dormir más.' : sd >= 90 ? 'Bastante irregular: acostarte a horarios parecidos mueve la aguja.' : 'Razonablemente regular.'}</div>`;
+    }
+    suenoHtml = _seccionSalud('😴', 'Sueño',
+      `<div class="sd-fila-top"><span class="sd-nombre">Anoche</span><span class="sd-val">${hs(ult.valor)}</span></div>
+       ${ult.detalle && ult.detalle.estimado ? '<div class="sd-nota">Estimado a partir del tiempo en la cama: tu reloj no mandó las fases.</div>' : ''}
+       ${etHtml}${_sparkSalud(sSueno, '#5b6ee1')}
+       <div class="sd-ref">promedio 7 días: <b>${hs(_prom(sSueno.slice(-7).map(x => x.valor)))}</b> · ${sSueno.length} noches con dato</div>
+       ${_filaSalud({ tipo: 'sueno_eficiencia_pct', nombre: 'Eficiencia (dormido / en cama)', unidad: '%', color: '#5b6ee1' })}
+       ${regHtml}`);
+  }
+
+  // ── Corazón ──────────────────────────────────────────────────────────
+  const hrvSerie = _serieSalud('hrv_ms');
+  const met = hrvSerie.length && hrvSerie[hrvSerie.length - 1].detalle
+    ? hrvSerie[hrvSerie.length - 1].detalle.metrica : null;
+  const corazon = [
+    _filaSalud({ tipo: 'fc_reposo', nombre: 'Pulso en reposo', unidad: ' lpm', mejorSube: false, color: '#e15b6e' }),
+    _filaSalud({ tipo: 'hrv_ms', nombre: 'Variabilidad (HRV)', unidad: ' ms', color: '#e15b6e',
+      nota: met === 'sdnn'
+        ? 'Tu reloj mide SDNN en momentos sueltos del día, así que un valor aislado varía mucho. Lo que importa es la línea, no el número de hoy.'
+        : met === 'rmssd' ? 'Medida durante la noche (rMSSD): es la más confiable para ver recuperación.' : '' }),
+  ].join('');
+
+  // ── Actividad / otras señales / composición ──────────────────────────
+  const actividad = [
+    _filaSalud({ tipo: 'pasos', nombre: 'Pasos', fmt: v => Math.round(v).toLocaleString('es-AR') }),
+    _filaSalud({ tipo: 'actividad_min', nombre: 'Minutos activos', unidad: ' min' }),
+    _filaSalud({ tipo: 'kcal_activas', nombre: 'Calorías activas', unidad: ' kcal' }),
+  ].join('');
+  const otras = [
+    _filaSalud({ tipo: 'respiracion_rpm', nombre: 'Respiración', unidad: ' /min', color: '#5bb6e1',
+      nota: 'Sube cuando estás incubando algo, con alcohol encima o durmiendo mal.' }),
+    _filaSalud({ tipo: 'spo2_pct', nombre: 'Oxígeno en sangre', unidad: '%', color: '#5bb6e1' }),
+    _filaSalud({ tipo: 'temp_muneca_c', nombre: 'Temperatura de muñeca', unidad: '°', color: '#e1a35b',
+      fmt: v => v.toFixed(1) }),
+  ].join('');
+  const cuerpo = [
+    _filaSalud({ tipo: 'peso_kg', nombre: 'Peso', unidad: ' kg', fmt: v => v.toFixed(1) }),
+    _filaSalud({ tipo: 'grasa_pct', nombre: 'Grasa corporal', unidad: '%', fmt: v => v.toFixed(1) }),
+  ].join('');
+
+  root.innerHTML = `
+    <button class="sd-volver" id="sdVolver">‹ Volver a Mi Día</button>
+    ${recHtml}
+    ${suenoHtml}
+    ${_seccionSalud('❤️', 'Corazón', corazon)}
+    ${_seccionSalud('👟', 'Actividad', actividad)}
+    ${_seccionSalud('🌡', 'Otras señales', otras, 'Solo importan comparadas con lo normal tuyo, no con una tabla general.')}
+    ${_seccionSalud('⚖️', 'Cuerpo', cuerpo)}
+    <div class="sd-nota" style="padding:0 var(--space-1) var(--space-6)">Los datos los manda tu reloj a Salud de Apple y de ahí llegan acá. Si algo no aparece, es porque tu dispositivo no lo mide.</div>
+    ${renderFuentesFooter('myday')}`;
+  const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('myday');
 }
 
 function renderMydaySalud() {
@@ -5864,7 +6088,10 @@ function renderAdhGrid(rows) {
 function setScene(scene) {
   STATE.scene = scene;
   $$('.tab').forEach(t => {
-    const active = t.getAttribute('data-scene') === scene;
+    // 'salud' no tiene tab propio (se entra desde Mi Día). Sin este mapeo el
+    // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
+    const tabDe = scene === 'salud' ? 'myday' : scene;
+    const active = t.getAttribute('data-scene') === tabDe;
     t.classList.toggle('is-active', active);
     t.setAttribute('aria-selected', active);
   });
@@ -5892,6 +6119,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = 'Revisión';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'salud') {
+    $('#hdrEyebrow').textContent = 'SALUD · TU RELOJ';
+    $('#hdrTitle').textContent = 'Mis datos';
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   } else if (scene === 'progress') {
     // Rama explicita a proposito: cuando esto era un `else` suelto, cualquier
     // escena nueva heredaba el header de Progreso y parecia un bug de CSS.
@@ -5905,6 +6137,7 @@ function setScene(scene) {
   if (scene === 'diet') renderDiet();
   if (scene === 'myday') renderMyday();
   if (scene === 'revision') renderRevision();
+  if (scene === 'salud') renderSalud();
   if (scene === 'progress') renderProgress();
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
