@@ -332,6 +332,17 @@ main{padding:var(--space-4)}
 .sd-etapa-bar{width:100%;border-radius:var(--radius-sm) var(--radius-sm) 0 0;min-height:6px}
 .sd-etapa-n{font-family:var(--font-mono);font-size:12px;margin-top:4px;color:var(--color-text-primary)}
 .sd-etapa-l{font-size:10px;color:var(--color-text-muted)}
+/* CONECTAR MI RELOJ (Via A) */
+.cx-fila{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) 0;border-bottom:1px solid var(--color-border)}
+.cx-fila:last-of-type{border-bottom:0}
+.cx-info{flex:1;min-width:0}
+.cx-nombre{font-size:14px;font-weight:600;color:var(--color-text-primary);display:flex;align-items:center;gap:var(--space-2)}
+.cx-ok{font-size:10px;font-weight:600;color:var(--color-success);border:1px solid color-mix(in oklab,var(--color-success) 40%,transparent);border-radius:99px;padding:1px 7px}
+.cx-err{font-size:10px;font-weight:600;color:var(--color-warning);border:1px solid color-mix(in oklab,var(--color-warning) 40%,transparent);border-radius:99px;padding:1px 7px}
+.cx-desc{font-size:11px;color:var(--color-text-muted);margin-top:2px}
+.cx-btn{flex:0 0 auto;padding:var(--space-2) var(--space-4);border-radius:var(--radius-md);border:1px solid var(--color-brand);background:var(--color-brand);color:var(--color-on-brand);font-size:13px;font-weight:600;cursor:pointer}
+.cx-btn.is-off{background:transparent;color:var(--color-text-secondary);border-color:var(--color-border-strong)}
+.cx-btn:disabled{opacity:.5}
 .hb{width:42px;height:42px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
 .hb.is-yes.is-active{background:color-mix(in oklab,var(--color-brand) 14%,var(--color-bg-primary));border-color:var(--color-brand)}
 .hb.is-no.is-active{background:color-mix(in oklab,#ef4444 10%,var(--color-bg-primary));border-color:#ef4444}
@@ -1134,6 +1145,8 @@ const STATE = {
   checkinDraft:       null,       // borrador local sin enviar
   salud:              [],         // registros de salud/peso — alimenta Peso y Salud
   recup:              [],         // serie diaria de recuperación (mig 043), 14 días
+  conexiones:         [],         // wearables conectados por OAuth (mig 045)
+  mostrarRecup:       true,       // preferencia del cliente (mig 043)
   fotos:              [],         // metadata de fotos de progreso (sin path ni URL)
   fotosUrls:          null,       // {mapa:{'semana|pose':url}, exp} — URLs firmadas cacheadas
   adhOpen:            false,
@@ -4720,7 +4733,17 @@ async function loadRecuperacion() {
   try {
     STATE.recup = (await window.mypumpDB.getRecuperacion(TOKEN, 14)) || [];
   } catch (_) { STATE.recup = []; }
+  // Preferencia del cliente: puede apagar el número sin dejar de capturar
+  // (ortosomnia — ver mig 046). Si la RPC falla, se muestra: el default es
+  // que el score exista, no que desaparezca por un error de red.
+  try {
+    if (window.mypumpDB.getMostrarRecuperacion) {
+      const m = await window.mypumpDB.getMostrarRecuperacion(TOKEN);
+      STATE.mostrarRecup = (m === null || m === undefined) ? true : !!m;
+    }
+  } catch (_) { STATE.mostrarRecup = true; }
   if (STATE.scene === 'myday') renderMydayRecuperacion();
+  if (STATE.scene === 'salud') renderSalud();
 }
 
 const _REC_BANDA_TXT = { alta: 'Recuperado', media: 'Medio', baja: 'Poco recuperado' };
@@ -4805,6 +4828,16 @@ function renderMydayRecuperacion() {
       <div class="rec-cal-bar"><div class="rec-cal-fill" style="width:${pct}%"></div></div>
       <div class="rec-frase">Estoy aprendiendo cómo es tu normal. ${ya}</div>
       <div class="rec-nota">Sin unos días de historia, cualquier número sería inventado.</div>`);
+    return;
+  }
+
+  // Apagado por el cliente: se sigue capturando y el coach lo sigue viendo,
+  // pero acá no aparece el número. Queda el acceso a los datos crudos.
+  if (STATE.mostrarRecup === false) {
+    el.innerHTML = wrap(`<div class="rec-frase">Tenés el score apagado. Tus datos se siguen guardando y Mati los ve igual.</div>
+      <button class="rec-vertodo" id="recVerTodo"><span>Ver todos mis datos</span><span>›</span></button>`);
+    const v0 = document.getElementById('recVerTodo');
+    if (v0) v0.onclick = () => setScene('salud');
     return;
   }
 
@@ -5024,9 +5057,23 @@ function renderSalud() {
     ${_seccionSalud('👟', 'Actividad', actividad)}
     ${_seccionSalud('🌡', 'Otras señales', otras, 'Solo importan comparadas con lo normal tuyo, no con una tabla general.')}
     ${_seccionSalud('⚖️', 'Cuerpo', cuerpo)}
+    ${_seccionSalud('⚙️', 'Preferencias',
+      `<div class="cx-fila"><div class="cx-info">
+         <div class="cx-nombre">Mostrarme el score</div>
+         <div class="cx-desc">Si preferís no ver el número, lo apagás acá. Tus datos se siguen guardando y Mati los sigue viendo igual.</div>
+       </div>
+       <button class="cx-btn${STATE.mostrarRecup === false ? '' : ' is-off'}" id="sdToggleRec">${STATE.mostrarRecup === false ? 'Mostrar' : 'Ocultar'}</button></div>`)}
     <div class="sd-nota" style="padding:0 var(--space-1) var(--space-6)">Los datos los manda tu reloj a Salud de Apple y de ahí llegan acá. Si algo no aparece, es porque tu dispositivo no lo mide.</div>
     ${renderFuentesFooter('myday')}`;
   const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('myday');
+  const tg = document.getElementById('sdToggleRec');
+  if (tg) tg.onclick = async () => {
+    const nuevo = STATE.mostrarRecup === false;   // si estaba apagado, prender
+    tg.disabled = true;
+    STATE.mostrarRecup = nuevo;                   // optimista: la UI responde ya
+    try { await window.mypumpDB.setMostrarRecuperacion(TOKEN, nuevo); } catch (e) {}
+    renderSalud();
+  };
 }
 
 function renderMydaySalud() {
@@ -5828,13 +5875,128 @@ function renderRevision() {
     <!-- CHECK SEMANAL — N8 -->
     <div id="myday-checkin"></div>
 
-    <!-- PESO CORPORAL — N1 (ultimo: se lleva el aire sobre el tabbar) -->
-    <div id="myday-peso" style="margin-bottom:var(--space-6)"></div>`;
+    <!-- PESO CORPORAL — N1 -->
+    <div id="myday-peso"></div>
+
+    <!-- CONEXIONES DE WEARABLES — Vía A. Va acá y no en Mi Día porque es
+         configuración: se toca una vez y no se vuelve a mirar. -->
+    <div id="myday-conex" style="margin-bottom:var(--space-6)"></div>`;
 
   // Cada render bindea sus propios handlers.
   renderMydayFotos();
   renderMydayCheckin();
   renderMydayPeso();
+  renderMydayConexiones();
+}
+
+/* ---- CONECTAR MI RELOJ (Vía A: Oura, Whoop) ----
+   El OAuth se abre en el navegador del sistema (SFSafariViewController, que
+   vive fuera de limitsNavigationsToAppBoundDomains). El callback NO vuelve a
+   la app: no hay esquema custom en el Info.plist y agregarlo obligaría a un
+   build nuevo. En vez de eso se pollea el estado hasta ver 'conectada'.
+   Funciona igual en la web, así que le da recuperación a los clientes de
+   Android, que nunca van a tener la app nativa. */
+const PROVEEDORES_UI = [
+  { id: 'oura',  nombre: 'Oura',  desc: 'Anillo · trae sueño, pulso y variabilidad reales' },
+  { id: 'whoop', nombre: 'WHOOP', desc: 'Banda · trae sueño, pulso y variabilidad reales' },
+];
+let _pollConex = null;
+
+async function loadConexiones() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getConexiones) return;
+  try { STATE.conexiones = (await window.mypumpDB.getConexiones(TOKEN)) || []; }
+  catch (_) { STATE.conexiones = []; }
+  if (STATE.scene === 'revision') renderMydayConexiones();
+}
+
+function renderMydayConexiones() {
+  const el = document.getElementById('myday-conex');
+  if (!el) return;
+  if (DATA && DATA._isDemo) { el.innerHTML = ''; return; }
+  const porProv = {};
+  (STATE.conexiones || []).forEach(c => { porProv[c.proveedor] = c; });
+
+  const filas = PROVEEDORES_UI.map(p => {
+    const c = porProv[p.id];
+    const conectada = c && c.estado === 'conectada';
+    const enError = c && c.estado === 'error';
+    return `<div class="cx-fila">
+      <div class="cx-info">
+        <div class="cx-nombre">${p.nombre}${conectada ? '<span class="cx-ok">conectado</span>' : ''}${enError ? '<span class="cx-err">hay que reconectar</span>' : ''}</div>
+        <div class="cx-desc">${conectada && c.ultimo_pull_en ? 'Última sincronización: ' + new Date(c.ultimo_pull_en).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }) : p.desc}</div>
+      </div>
+      <button class="cx-btn${conectada ? ' is-off' : ''}" data-prov="${p.id}" data-accion="${conectada ? 'desconectar' : 'conectar'}">${conectada ? 'Quitar' : 'Conectar'}</button>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="myday-section">
+    <div class="myday-section-hdr"><span class="myday-section-icon">⌚️</span>
+      <span class="myday-section-title">Mi reloj</span></div>
+    <div class="myday-section-body">
+      <div class="sd-sub">Si usás Oura o WHOOP, conectalos y tus datos de sueño y recuperación entran solos. Apple Watch no se conecta acá: va por Salud de Apple desde la app de iPhone.</div>
+      ${filas}
+      <div id="cxMsg" class="rec-nota" hidden></div>
+    </div></div>`;
+
+  el.querySelectorAll('.cx-btn').forEach(btn => {
+    btn.onclick = () => (btn.dataset.accion === 'conectar' ? conectarWearable(btn) : desconectarWearable(btn));
+  });
+}
+
+async function conectarWearable(btn) {
+  const prov = btn.dataset.prov;
+  const msg = document.getElementById('cxMsg');
+  const url = `${location.origin}/api/wearables/iniciar?t=${encodeURIComponent(TOKEN)}&proveedor=${prov}`;
+  btn.disabled = true; btn.textContent = 'Abriendo…';
+  if (msg) { msg.hidden = false; msg.textContent = 'Te va a abrir el sitio de ' + prov + '. Cuando termines, volvé acá — se conecta solo.'; }
+
+  const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+  try {
+    if (B && typeof B.open === 'function') await B.open({ url, presentationStyle: 'popover' });
+    else window.open(url, '_blank', 'noopener');
+  } catch (e) { window.open(url, '_blank', 'noopener'); }
+
+  // Polling: el callback no puede volver a la app, así que la app pregunta.
+  // 2 minutos como máximo — si el cliente abandona, no queda un timer vivo.
+  if (_pollConex) clearInterval(_pollConex);
+  let intentos = 0;
+  _pollConex = setInterval(async () => {
+    intentos++;
+    try {
+      const cs = (await window.mypumpDB.getConexiones(TOKEN)) || [];
+      const c = cs.find(x => x.proveedor === prov);
+      if (c && c.estado === 'conectada') {
+        clearInterval(_pollConex); _pollConex = null;
+        STATE.conexiones = cs;
+        if (B && typeof B.close === 'function') { try { await B.close(); } catch (e) {} }
+        renderMydayConexiones();
+        const m2 = document.getElementById('cxMsg');
+        if (m2) { m2.hidden = false; m2.textContent = '✅ Listo. Tus datos van a aparecer en un rato.'; }
+        loadSalud(); loadRecuperacion();
+        return;
+      }
+    } catch (e) {}
+    if (intentos >= 40) {   // 40 × 3s = 2 min
+      clearInterval(_pollConex); _pollConex = null;
+      btn.disabled = false; btn.textContent = 'Conectar';
+      const m2 = document.getElementById('cxMsg');
+      if (m2) { m2.hidden = false; m2.textContent = 'No llegué a confirmarlo. Si lo autorizaste, va a aparecer solo en unos minutos.'; }
+    }
+  }, 3000);
+}
+
+async function desconectarWearable(btn) {
+  const prov = btn.dataset.prov;
+  const ok = await MyPump.ui.showConfirmModal({
+    title: `¿Quitar ${prov}?`,
+    body: 'Dejamos de traer tus datos. Los que ya están se quedan.',
+    confirmLabel: 'Quitar', cancelLabel: 'Cancelar',
+  }).catch(() => confirm('¿Quitar ' + prov + '?'));
+  if (!ok) return;
+  btn.disabled = true;
+  try { await window.mypumpDB.desconectarWearable(TOKEN, prov); } catch (e) {}
+  await loadConexiones();
+  renderMydayConexiones();
 }
 
 function renderMyday() {
@@ -6358,6 +6520,7 @@ async function init() {
   loadMyday();    // habitos diarios + streak → Mi Día
   loadSalud();    // alimenta la card Salud (Mi Día) Y la de Peso (Revisión)
   loadRecuperacion();  // score de recuperación (Mi Día) — motor SQL, mig 043
+  loadConexiones();    // wearables conectados por OAuth (Revisión)
   loadRevision(); // check + fotos → Revisión
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();

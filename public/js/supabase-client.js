@@ -303,6 +303,27 @@ window.mypumpDB = {
     return await rpc('mypump_get_recuperacion', { p_token: token, p_dias: dias || 14 });
   },
 
+  // ─── WEARABLES conectados por OAuth (Vía A, mig 045) ─────
+
+  // [{proveedor, estado, ultimo_pull_en}]. NUNCA devuelve tokens.
+  async getConexiones(token) {
+    return await rpc('mypump_get_conexiones', { p_token: token });
+  },
+
+  async desconectarWearable(token, proveedor) {
+    return await rpcMutation('mypump_desconectar_wearable', { p_token: token, p_proveedor: proveedor });
+  },
+
+  // Preferencia de mostrar (o no) el score de recuperación al cliente.
+  // Apagarlo NO deja de capturar: el coach lo sigue viendo (mig 046).
+  async setMostrarRecuperacion(token, mostrar) {
+    return await rpcMutation('mypump_set_mostrar_recuperacion', { p_token: token, p_mostrar: !!mostrar });
+  },
+
+  async getMostrarRecuperacion(token) {
+    return await rpc('mypump_get_mostrar_recuperacion', { p_token: token });
+  },
+
   // ─── CHECK SEMANAL (sliders 1-5 + nota) — N8 ─────────────
 
   // El check de la semana que contiene la fecha (para prellenar la card).
