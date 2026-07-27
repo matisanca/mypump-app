@@ -35,3 +35,11 @@
 # se detecte al instante (si no, el navegador podría tardar en verla).
 /sw.js
   Cache-Control: no-cache
+
+# Universal Links (iOS). El archivo no tiene extensión, así que CF Pages lo
+# serviría como octet-stream y Apple lo descartaría: exige application/json,
+# sin redirects y por HTTPS. Se lo baja el CDN de Apple, no el teléfono, así
+# que un cambio acá puede tardar en propagarse (hasta 24h).
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: no-cache

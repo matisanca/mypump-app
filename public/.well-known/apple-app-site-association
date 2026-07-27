@@ -1,0 +1,24 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["7H22AXLUS4.com.pumpteam.mypump"],
+        "components": [
+          {
+            "/": "/",
+            "?": { "t": "?*" },
+            "comment": "Link de acceso del coach (app.mypumpteam.com/?t=TOKEN): abre la app si esta instalada."
+          },
+          {
+            "/": "/cliente",
+            "?": { "t": "?*" }
+          },
+          {
+            "/": "/cliente.html",
+            "?": { "t": "?*" }
+          }
+        ]
+      }
+    ]
+  }
+}

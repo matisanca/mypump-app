@@ -6,6 +6,10 @@
   <meta name="description" content="MyPump — Tu sector dentro del team.">
   <title>MyPump — Pump Team</title>
 
+  <!-- Smart App Banner: en Safari (iPhone/iPad) ofrece abrir la app si ya la
+       tiene instalada, o bajarla si no. Es inerte dentro de la app nativa. -->
+  <meta name="apple-itunes-app" content="app-id=6793259380">
+
   <!-- PWA — Add to Home Screen -->
   <link rel="manifest" href="/manifest.json?v=3">
   <meta name="theme-color" content="#10b981">
@@ -185,6 +189,67 @@
       font-size: var(--font-size-xs);
       color: var(--color-text-muted);
     }
+
+    /* Caja de acceso: la única puerta de entrada para quien bajó la app del
+       App Store. Sin esto la landing es un callejón sin salida — el link del
+       coach vive en WhatsApp y no hay dónde ponerlo. */
+    .access-box {
+      width: 100%;
+      max-width: 320px;
+      margin-top: var(--space-8);
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--color-border);
+      text-align: left;
+    }
+
+    .access-label {
+      display: block;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-medium);
+      color: var(--color-text-secondary);
+      margin-bottom: var(--space-2);
+    }
+
+    .access-input {
+      width: 100%;
+      padding: var(--space-3);
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-secondary);
+      color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      font-size: var(--font-size-base); /* 16px o iOS hace zoom al enfocar */
+    }
+
+    .access-input::placeholder { color: var(--color-text-muted); }
+
+    .access-input:focus {
+      outline: none;
+      border-color: var(--color-brand);
+    }
+
+    .access-btn {
+      width: 100%;
+      margin-top: var(--space-2);
+      padding: var(--space-3);
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-secondary);
+      color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      cursor: pointer;
+    }
+
+    .access-btn:active { transform: scale(0.99); }
+
+    .access-err {
+      margin-top: var(--space-2);
+      font-size: var(--font-size-sm);
+      color: #dc2626;
+      line-height: var(--line-height-relaxed);
+    }
   </style>
 </head>
 
@@ -254,6 +319,25 @@
       </svg>
       Ir a Pump Team
     </a>
+
+    <!-- Acceso por link pegado. Es el camino que SIEMPRE funciona: el Universal
+         Link no se dispara cuando el cliente abre el link desde el navegador
+         interno de WhatsApp, así que sin esto la app quedaría inaccesible. -->
+    <div class="access-box">
+      <label class="access-label" for="accessInput">¿Ya tenés tu link de acceso?</label>
+      <input
+        class="access-input"
+        id="accessInput"
+        type="text"
+        inputmode="url"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+        placeholder="Pegá acá el link que te pasó Mati"
+      >
+      <button class="access-btn" id="accessBtn">Entrar a mi plan</button>
+      <p class="access-err" id="accessErr" hidden></p>
+    </div>
   </main>
 
   <footer class="landing-footer">
@@ -261,10 +345,63 @@
   </footer>
 
   <script src="/js/theme.js"></script>
+  <script src="/js/deeplink.js"></script>
   <script>
     document.getElementById('theme-toggle').addEventListener('click', () => {
       window.mypumpTheme.toggle();
     });
+  </script>
+
+  <!-- Acceso por link pegado: acepta el link entero (como llega por WhatsApp,
+       con o sin parámetros de más) o el token solo. -->
+  <script>
+    (function () {
+      var TOKEN_KEY = 'mypump_token';
+      var TOKEN_RE  = /^[a-zA-Z0-9_-]{16,64}$/;
+      var input = document.getElementById('accessInput');
+      var btn   = document.getElementById('accessBtn');
+      var err   = document.getElementById('accessErr');
+
+      // Dentro de la app nativa, "abrilo desde ahí" no lleva a ningún lado:
+      // el link está en WhatsApp y no hay navegador donde abrirlo.
+      var esApp = !!(window.Capacitor && window.Capacitor.isNativePlatform &&
+                     window.Capacitor.isNativePlatform());
+      if (esApp) {
+        var body = document.querySelector('.landing-body');
+        if (body) body.textContent = 'Pegá abajo el link que te pasó Mati y entrás a tu plan. ¿Todavía no sos cliente? Mirá la demo.';
+      }
+
+      function extraer(raw) {
+        var v = String(raw || '').trim();
+        if (!v) return null;
+        try {                                   // link completo: ?t=… o /TOKEN
+          var u = new URL(v);
+          var t = u.searchParams.get('t');
+          if (t && TOKEN_RE.test(t)) return t;
+          var last = u.pathname.split('/').filter(Boolean).pop();
+          if (last && TOKEN_RE.test(last)) return last;
+        } catch (e) {}
+        var m = v.match(/[?&]t=([a-zA-Z0-9_-]{16,64})/); // link pegado a medias
+        if (m) return m[1];
+        return TOKEN_RE.test(v) ? v : null;     // token solo
+      }
+
+      function entrar() {
+        var tok = extraer(input.value);
+        if (!tok) {
+          err.textContent = 'No reconocí ese link. Copialo entero de WhatsApp y pegalo de nuevo.';
+          err.hidden = false;
+          return;
+        }
+        err.hidden = true;
+        try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
+        window.location.replace('/cliente.html?t=' + encodeURIComponent(tok));
+      }
+
+      btn.addEventListener('click', entrar);
+      input.addEventListener('keydown', function (e) { if (e.key === 'Enter') entrar(); });
+      input.addEventListener('input', function () { err.hidden = true; });
+    })();
   </script>
 
   <!-- Detección de token + redirección a la app del cliente.

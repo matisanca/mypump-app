@@ -4,5 +4,14 @@
 <dict>
 	<key>com.apple.developer.healthkit</key>
 	<true/>
+	<!-- Universal Links: hace que el link de acceso del coach
+	     (app.mypumpteam.com/?t=TOKEN) abra la app en vez del navegador.
+	     Necesita las dos patas: este entitlement + el archivo
+	     public/.well-known/apple-app-site-association, y la capability
+	     "Associated Domains" habilitada en el App ID del portal. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app.mypumpteam.com</string>
+	</array>
 </dict>
 </plist>
