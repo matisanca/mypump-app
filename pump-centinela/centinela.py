@@ -38,6 +38,7 @@ NO_DB   = "--no-db" in sys.argv   # no persistir en mypump_analisis_semanal (sol
 MODO    = "analisis" if "--analisis" in sys.argv else ("pedido" if "--pedido" in sys.argv else "auto")
 SEMANAS = 12
 SEM_CHECKS = 8      # serie de checks para baseline/tendencia
+RECUP = {}          # cliente_id -> resumen de recuperacion (mig 044), se llena en main()
 CLAUDE_MODEL = os.environ.get("PUMP_CLAUDE_MODEL", "claude-opus-5")  # LLM intermedio
 
 def load_env(p):
@@ -72,6 +73,18 @@ def _sb_req(path, body=None):
 
 def fetch_metricas():
     return _sb_req("/rest/v1/rpc/mypump_get_metricas_coach", {"p_semanas": SEMANAS})
+
+def fetch_recuperacion():
+    """Resumen de recuperacion por cliente (mig 044). Devuelve {} si la
+    migracion todavia no esta aplicada o si nadie tiene wearable: en ese caso
+    las reglas de recuperacion simplemente no se evaluan, que es lo correcto
+    (la mayoria de los clientes no tiene HRV por ningun camino en iOS)."""
+    try:
+        filas = _sb_req("/rest/v1/rpc/mypump_get_recuperacion_resumen", {"p_dias": 14}) or []
+        return {f["cliente_id"]: f for f in filas if f.get("cliente_id")}
+    except Exception as e:
+        _log(f"fetch_recuperacion fallo (sigo sin ella): {e}")
+        return {}
 
 def fetch_checks(lunes_actual, lunes_previo):
     """Serie larga (8 semanas): sin historia no hay baseline ni tendencia, y
@@ -914,6 +927,10 @@ def main():
     metricas = fetch_metricas()
     metricas = [c for c in metricas if not str(c.get("cliente_id", "")).startswith("test")
                 and "test" not in (c.get("nombre") or "").lower()]
+    # Recuperacion de TODOS en una sola RPC (mig 044). Global y no por cliente:
+    # con 100 clientes, una llamada en vez de cien.
+    global RECUP
+    RECUP = fetch_recuperacion()
     w0 = str(lunes(hoy)); w1 = str(lunes(hoy) - timedelta(weeks=1))
     checks = fetch_checks(w0, w1)
     chk_actual = {c["cliente_id"]: c for c in checks if c["semana_lunes"] == w0}
@@ -964,6 +981,9 @@ def main():
         # (es una RPC por cliente; los sin-check no se analizan a fondo).
         if chk and MODO in ("analisis", "auto"):
             ctx["carga"] = senales_carga(fetch_progresion(cid))
+            # Recuperacion objetiva del wearable. Ya viene fetcheada de una sola
+            # RPC para todos, asi que aca es un lookup — no una llamada por cliente.
+            ctx["recup"] = AN.perfil_recuperacion(RECUP.get(cid))
 
         if chk:
             personalizados.append({"nombre": nombre, "chk": chk, "chk_prev": chk_previo.get(cid),

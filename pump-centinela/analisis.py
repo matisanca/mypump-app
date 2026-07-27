@@ -113,7 +113,63 @@ def señales_cruzadas(ctx, perfiles):
         out.append(('sobrealcance',
                     'descanso y energia bajos con la fuerza cayendo',
                     'considerar deload esta semana', 3))
+
+    # ── Recuperacion objetiva (motor SQL, mig 043) ─────────────────────────
+    # Solo entra si el cliente tiene wearable sincronizado; si no, ctx['recup']
+    # es None y estas tres reglas no existen. NO reemplazan al check subjetivo:
+    # lo cruzan.
+    rec = ctx.get('recup') or {}
+    r_delta = rec.get('delta')            # media 7d - media 7d previa
+    r_bajos = rec.get('dias_banda_baja')  # dias en rojo de los ultimos 7
+    r_hoy   = rec.get('score_hoy')
+    ton     = ctx.get('t') or []          # tonelaje por semana
+
+    # La carga le esta ganando: recuperacion cayendo MIENTRAS el volumen sube.
+    # Cualquiera de las dos sola no dice nada; juntas son la definicion
+    # practica de que el estimulo supera lo que puede absorber.
+    if r_delta is not None and r_delta <= -10 and len(ton) >= 2:
+        prev, act = ton[-2], ton[-1]
+        if prev and act and act >= prev * 1.15:
+            out.append(('recup_cae_con_carga',
+                        'la recuperacion viene cayendo mientras el tonelaje sube',
+                        'evaluar deload o bajar volumen: la carga le esta ganando', 3))
+
+    # Racha, no mal dia. Un dia en rojo es ruido; 4 de 7 es tendencia.
+    if r_bajos is not None and r_bajos >= 4:
+        out.append(('recup_baja_cronica',
+                    f'{r_bajos} de los ultimos 7 dias con recuperacion baja',
+                    'no es un mal dia, es una racha: revisar sueno, estres y volumen', 2))
+
+    # El numero y la persona se contradicen. Severidad 1 A PROPOSITO: cuando
+    # eso pasa corresponde PREGUNTAR, no ajustar. Gana lo que el cliente
+    # siente — el sensor puede estar midiendo mal, la persona no.
+    if r_hoy is not None and r_hoy <= 40 and ener is not None and ener >= 4:
+        out.append(('discordancia_recup',
+                    'los numeros del reloj dan bajo pero el se siente bien',
+                    'PREGUNTAR como se siente de verdad antes de tocar nada', 1))
     return out
+
+
+def perfil_recuperacion(fila):
+    """Normaliza una fila de mypump_get_recuperacion_resumen a lo que consume
+    el motor de reglas. Devuelve None si el cliente no tiene wearable — en ese
+    caso las reglas de recuperacion simplemente no aplican, que es lo correcto:
+    la mayoria de los clientes no tiene HRV por ningun camino en iOS.
+    """
+    if not fila:
+        return None
+    return {
+        'score_hoy':       fila.get('score_hoy'),
+        'estado':          fila.get('estado'),
+        'banda':           fila.get('banda'),
+        'media_7d':        fila.get('media_7d'),
+        'delta':           fila.get('delta_7d'),
+        'dias_banda_baja': fila.get('dias_banda_baja'),
+        'autonomico':      fila.get('estado_autonomico'),
+        # De que sensor sale importa: con el SDNN del Apple Watch (~29% de
+        # error) las conclusiones son mas debiles que con rMSSD nocturno.
+        'hrv_metrica':     fila.get('hrv_metrica'),
+    }
 
 # ══════════════ 3) Interpretación de la nota (banderas) ══════════════
 # Fallback determinista por si no hay LLM disponible. Nunca peor que hoy.
