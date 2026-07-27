@@ -1,5 +1,9 @@
 # MyPump — Metadata para App Store Connect (copiar/pegar)
 
+> **✅ Publicada el 27-jul-2026 — 1.0 (3)** · https://apps.apple.com/app/id6793259380
+> Lo de acá abajo es lo que quedó cargado en la ficha (más el histórico de qué se
+> corrigió en cada envío). Ver `APP_STORE_SUBMISSION.md` para el resumen.
+
 > Todo en español rioplatense. Los límites de caracteres son los de Apple.
 > Cuando crees la app en App Store Connect, pegás cada campo acá.
 

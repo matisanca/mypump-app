@@ -1,8 +1,23 @@
 # MyPump — Checklist y metadata para App Store Connect
 
-> Todo lo que hay que pegar/configurar en App Store Connect cuando se active la
-> cuenta (Enrollment KN4AV357RA). Lo técnico de la app ya está listo (ver el
-> final). Copiá cada bloque tal cual.
+> ## ✅ PUBLICADA — 27-jul-2026
+> **1.0 (3) aprobada, "Lista para distribución".** Ficha viva en
+> https://apps.apple.com/app/id6793259380 (Apple ID 6793259380).
+> Así quedó: Health & Fitness · Gratis · **13+** · iPhone + iPad · 2.4 MB.
+>
+> Costó tres envíos. Lo que hubo que corregir, para no repetirlo en la 1.1:
+> 1. **Rechazo 2.1a (24-jul)** — el revisor no encontraba cómo entrar: el botón
+>    "Ver demo" existía solo en la pantalla de login de `cliente.html`, no en la
+>    landing que abre Capacitor. Fix: CTA "Ver demo" en `public/index.html`.
+> 2. **Rechazo 1.4.1 (25-jul)** — recomendaciones de salud sin citas en la sección
+>    de dieta. Fix: la cita pegada al número + pantalla "Respaldo científico" con 14
+>    referencias y links (hizo falta `@capacitor/browser`: con
+>    `limitsNavigationsToAppBoundDomains` un link externo no abre desde el WebView).
+> 3. En el reenvío, además: bloque "RESPALDO Y AVISO" en la descripción,
+>    "Información médica o sobre tratamientos = Poco frecuente" (⇒ 13+) y
+>    "Dispositivo médico regulado = No".
+>
+> Lo de abajo es la referencia de campos; el estado real es el de arriba.
 
 ---
 
