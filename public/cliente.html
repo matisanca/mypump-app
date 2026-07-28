@@ -530,6 +530,14 @@ main{padding:var(--space-4)}
 .session-crono .sc-lbl{font-size:9px;font-weight:800;letter-spacing:.1em;color:var(--color-brand)}
 .session-crono .sc-time{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--color-text-primary)}
 .session-crono .sc-hint{margin-left:auto;font-size:10px;color:var(--color-text-muted)}
+/* Sesión que quedó abierta de otro día: sin punto pulsando (no está pasando
+   nada ahora) y en gris, para que no compita con el verde de "en curso". */
+.session-crono.is-vieja{border-color:var(--color-border);flex-wrap:wrap}
+.session-crono.is-vieja .sc-dot{background:var(--color-text-muted);animation:none}
+.session-crono.is-vieja .sc-lbl{color:var(--color-text-muted)}
+.session-crono.is-vieja .sc-hint{margin-left:0;flex:1 1 auto}
+.session-crono .sc-reset{margin-left:auto;padding:4px 12px;border:1px solid var(--color-border-strong);border-radius:var(--radius-sm);background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:12px;font-weight:600;cursor:pointer}
+.session-crono .sc-reset:disabled{opacity:.5}
 @keyframes sc-pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .prog-banner.is-calibracion{background:var(--color-bg-tertiary);border-color:var(--color-border)}
 .ex-prog-nota{display:flex;flex-direction:column;gap:2px;background:var(--color-brand-subtle);border:1px solid var(--color-brand);border-left-width:3px;border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin-bottom:var(--space-3)}
@@ -1119,6 +1127,10 @@ let _sesionId = null;      // ID de sesión activa en Supabase
 let _sesionIniciada = false;
 let _diaFinalizado = false; // sesión del día actual cerrada (finalizada_en) → día HECHO
 let _sessionStart  = null; // Date.now() when first set confirmed
+// Tope de duración de una sesión. Más que esto no es un entrenamiento largo:
+// es un día que quedó sin cerrar. Se usa para no mostrar un cronómetro
+// absurdo (llegamos a ver 76:18:53) y para no guardar esa duración en la base.
+const SESION_MAX_H = 6;
 let MYDAY = null;          // Hábitos del día actual {entrenamiento, comio_segun_plan, durmio_bien, vasos_agua}
 let STREAK = null;         // {streak, ultimo_dia_valido}
 
@@ -2073,7 +2085,15 @@ async function writeFinish(notas) {
   await Outbox.flush();
 
   // F2 — persistir la duración real (wall-clock desde el arranque de la sesión).
-  const duracionSeg = _sessionStart ? Math.round((Date.now() - _sessionStart) / 1000) : null;
+  //
+  // Con tope: si el cliente se olvidó de cerrar el día y lo cierra recién a la
+  // mañana siguiente, el wall-clock da 15 horas y eso entra a la base como
+  // "duración del entrenamiento". El coach después mira tonelaje por hora y ve
+  // cualquier cosa. Nadie entrena más de SESION_MAX_H seguidas: pasado eso el
+  // número no es una medición, es un olvido — y un null es más honesto que un
+  // dato inventado.
+  const _durBruta = _sessionStart ? Math.round((Date.now() - _sessionStart) / 1000) : null;
+  const duracionSeg = (_durBruta != null && _durBruta <= SESION_MAX_H * 3600) ? _durBruta : null;
   const res = await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null, duracionSeg);
   if (!res || res.success === false) {
     alert('No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo.');
@@ -2551,6 +2571,17 @@ function renderTrain() {
         <span class="ss-txt"><strong>Empezar entrenamiento</strong>
         <small>arranca el cronómetro de la sesión — o empezá directo: corre solo con tu primera serie</small></span>
       </button>`;
+    } else if (Date.now() - _sessionStart > SESION_MAX_H * 3600000) {
+      // La sesión quedó abierta de otro día. Mostrar "76:18:53 EN CURSO" es
+      // mentira y además pone nervioso. Se ofrece reiniciar el conteo, que es
+      // lo que el cliente realmente quiere hacer al volver al gym.
+      html += `
+      <div class="session-crono is-vieja" id="sessionCrono">
+        <span class="sc-dot"></span>
+        <span class="sc-lbl">SIN CERRAR</span>
+        <span class="sc-hint">quedó abierta de antes — no te preocupes, no perdiste nada</span>
+        <button class="sc-reset" id="btnReiniciarCrono">Empezar de nuevo</button>
+      </div>`;
     } else {
       html += `
       <div class="session-crono" id="sessionCrono">
@@ -3010,6 +3041,18 @@ function bindTrainEvents() {
   if (startBtn) startBtn.addEventListener('click', () => {
     startBtn.disabled = true;
     startEntrenamiento();
+  });
+
+  // Sesión que quedó abierta de otro día: reiniciar el conteo desde ahora.
+  // Solo mueve el arranque del cronómetro — las series ya registradas y el
+  // estado de los ejercicios quedan intactos.
+  const resetBtn = document.getElementById('btnReiniciarCrono');
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    resetBtn.disabled = true;
+    _sessionStart = Date.now();
+    _startedByButton = true;
+    persistSessionStart();
+    renderTrain();
   });
 
   $$('[data-toggle]').forEach(btn => btn.addEventListener('click', async () => {

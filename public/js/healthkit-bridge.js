@@ -545,17 +545,52 @@
    * de "denegó" para poder mandarlo a Ajustes. Antes devolvía false para los
    * dos casos y el cliente que denegaba podía tocar el botón cien veces sin
    * que pasara nada — iOS no reabre la hoja de un tipo ya respondido. */
+  /* Rastro del último intento de conexión.
+   *
+   * Cuando esto falla, el cliente ve "no se pudo activar" y nosotros no
+   * teníamos NADA para saber por qué: ni el motivo, ni si el plugin estaba
+   * presente, ni qué versión de iOS. Sin eso, un cliente que reporta "no me
+   * anda la salud" es imposible de ayudar sin tenerle el teléfono en la mano.
+   * Queda en localStorage (no viaja a ningún lado) y se muestra en Mis datos. */
+  const K_DIAG = 'mypump_health_diag';
+  function anotarIntento(datos) {
+    try {
+      localStorage.setItem(K_DIAG, JSON.stringify(Object.assign({
+        cuando: new Date().toISOString(),
+        ios: iosMajor(),
+        nativo: isNative,
+        plugin: !!HEALTH(),
+      }, datos)));
+    } catch (e) {}
+  }
+
   async function connect(onProgreso) {
-    if (!(await hkAvailable())) {
+    if (!isNative) {
+      anotarIntento({ paso: 'plataforma', motivo: 'no_nativo' });
       return { ok: false, motivo: 'no_disponible' };
     }
+    if (!HEALTH()) {
+      // El plugin no está registrado: es un problema de build, no del cliente.
+      anotarIntento({ paso: 'plugin', motivo: 'plugin_ausente' });
+      return { ok: false, motivo: 'no_disponible' };
+    }
+    let disp = false, errDisp = null;
+    try { const r0 = await HEALTH().isAvailable(); disp = !!(r0 && r0.available); }
+    catch (e) { errDisp = String((e && e.message) || e); }
+    if (!disp) {
+      anotarIntento({ paso: 'isAvailable', motivo: 'no_disponible', error: errDisp });
+      return { ok: false, motivo: 'no_disponible', detalle: errDisp };
+    }
+
     const r = await requestPermission();
     if (!r.ok) {
+      anotarIntento({ paso: 'permiso', motivo: r.motivo, error: r.detalle || null });
       if (r.motivo === 'denegado') {
         try { localStorage.setItem(K_DENEG, '1'); } catch (e) {}
       }
       return r;
     }
+    anotarIntento({ paso: 'ok', autorizados: r.autorizados, total: r.total });
     try { localStorage.removeItem(K_DENEG); } catch (e) {}
     localStorage.setItem('mypump_health_connected', '1');
     await sync();

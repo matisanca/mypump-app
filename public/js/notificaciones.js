@@ -188,6 +188,21 @@
       if (!ok) return { ok: false, motivo: 'denegado' };
     }
     const r = await reprogramar();
+
+    // Registrar el dispositivo para push APENAS se concede el permiso.
+    //
+    // Sin esto había un agujero que se comía avisos: el único registro vivía
+    // en el listener de 'load', que corre cuando la app arranca — o sea ANTES
+    // de que el cliente acepte, la primera vez. Entonces aceptaba, las locales
+    // quedaban programadas, y el device NO se registraba hasta el próximo
+    // arranque. Y mientras tanto `mypump_encolar_push` descarta lo que se
+    // encole (no hay dispositivo activo), así que un comentario del coach en
+    // esa ventana se perdía para siempre, en silencio.
+    //
+    // Va sin await a propósito: el registro depende de que APNs conteste y no
+    // tiene por qué demorar el onboarding. Si falla, no rompe nada.
+    activarPushSiCorresponde().catch(() => {});
+
     return r.ok ? { ok: true, programadas: r.programadas } : r;
   }
 

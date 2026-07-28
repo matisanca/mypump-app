@@ -74,8 +74,19 @@ echo "▸ Sincronizando el bundle web…"
 npx cap sync ios >/dev/null
 
 # ── Compilar para simulador ───────────────────────────────────
-# Sin firma: el simulador no la necesita, y así no dependemos de
-# certificados ni provisioning profiles para probar.
+# Se deja que Xcode firme como lo hace desde el IDE. NO usar
+# CODE_SIGNING_ALLOWED=NO: sin firma el binario queda sin entitlements y
+# HealthKit falla con este error exacto, que costó encontrar porque la UI
+# solo dice "no se pudo activar":
+#
+#     Missing com.apple.developer.healthkit entitlement.
+#
+# Sí: el simulador VALIDA ese entitlement, aunque no valide otras cosas.
+#
+# Tampoco sirve re-firmar después con `codesign --force --entitlements`: los
+# entitlements quedan en el binario pero la app deja de arrancar (SpringBoard
+# la rechaza con POSIX 163), incluso firmando antes los frameworks internos y
+# con `codesign --verify --deep --strict` en verde.
 echo "▸ Compilando (esto tarda la primera vez)…"
 DERIVED=$(mktemp -d)
 xcodebuild -project ios/App/App.xcodeproj \
@@ -83,11 +94,13 @@ xcodebuild -project ios/App/App.xcodeproj \
            -configuration Debug \
            -sdk iphonesimulator \
            -derivedDataPath "$DERIVED" \
-           CODE_SIGNING_ALLOWED=NO \
            -quiet build
 
 APP=$(find "$DERIVED/Build/Products" -name "*.app" -maxdepth 3 | head -1)
 [ -z "$APP" ] && { echo "✗ No se generó el .app"; exit 1; }
+
+# NO re-firmar acá. Ver el comentario de arriba: meter los entitlements a mano
+# con `codesign --force` deja la app sin poder arrancar.
 
 echo "▸ Instalando $(basename "$APP")…"
 xcrun simctl install "$UDID" "$APP"
