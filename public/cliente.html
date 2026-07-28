@@ -6736,8 +6736,24 @@ async function pantallaDiagSalud() {
       <td style="padding:3px 8px;text-align:right;font-weight:700;color:${t.n ? 'var(--color-success)' : 'var(--color-danger)'}">${t.n}</td>
       <td style="padding:3px 8px;opacity:.6">${t.primero || ''}${t.ultimo && t.ultimo !== t.primero ? ' → ' + t.ultimo : ''}</td>
       <td style="padding:3px 0;color:var(--color-danger);font-size:11px">${t.error ? t.error.slice(0, 90) : ''}</td></tr>`;
+    // Estado y último intento: es lo primero que hay que mirar cuando un
+    // cliente dice "no me anda la salud". Con esto solo ya se distingue entre
+    // no llegó a pedir permiso, lo pidió y falló, o pidió bien y no viene nada
+    // — que son tres problemas distintos con tres soluciones distintas.
+    const est = await window.MyPumpHealth.estado();
+    let ultimo = null;
+    try { ultimo = JSON.parse(localStorage.getItem('mypump_health_diag') || 'null'); } catch (e) {}
+
     el.innerHTML = `
       <p>nativo: <b>${d.nativo}</b> · HealthKit: <b>${d.disponible}</b> · token: <b>${d.token}</b></p>
+      <p style="font-size:12px">conectado: <b>${est.conectado}</b> · no llega nada: <b>${est.sinDatos}</b>
+         · tipos ya preguntados: <b>${est.preguntados == null ? '?' : est.preguntados + '/' + est.total}</b>
+         · última sync: <b>${est.ultimaSync || 'nunca'}</b>
+         ${est.errEstado ? `<br><span style="color:var(--color-danger)">checkAuthorization: ${est.errEstado}</span>` : ''}</p>
+      <p style="font-size:11px;opacity:.6">"tipos ya preguntados" NO es "permisos dados": HealthKit no informa
+         el permiso de lectura. Si dice 20/20 y abajo todo da 0, es que se denegó.</p>
+      ${ultimo ? `<pre style="font-size:11px;background:var(--color-bg-secondary);padding:8px;border-radius:6px;white-space:pre-wrap">último intento de conectar:
+${JSON.stringify(ultimo, null, 1)}</pre>` : '<p style="font-size:11px;opacity:.6">(todavía no se intentó conectar)</p>'}
       <table style="width:100%;border-collapse:collapse;font-size:12px">${(d.tipos || []).map(fila).join('')}</table>
       <h3 style="font:600 14px var(--font-sans);margin-top:18px">Sueño por noche y por fuente</h3>
       <p style="font-size:11px;opacity:.6">Si una noche aparece con 2 fuentes, el bridge se queda solo con la que más minutos de sueño real aportó (si no, se duplicarían las horas).</p>
