@@ -245,6 +245,92 @@
     });
   }
 
+  /* ── PUSH: los avisos que nacen del lado del coach ────────────────────
+   *
+   * Las locales de arriba las arma el teléfono solo y cubren lo previsible por
+   * calendario. Esto cubre lo otro: "Mati te dejó un comentario", "tenés rutina
+   * nueva" — lo que pasa cuando el cliente no está mirando la app.
+   *
+   * El registro es deliberadamente silencioso: si falla, la app sigue igual y
+   * el cliente ni se entera. Push es un extra; que se caiga no puede romper
+   * nada de lo que ya funciona.
+   */
+  const K_PUSH_TOKEN = 'mypump_push_token';
+
+  function PUSH() {
+    const P = window.Capacitor && window.Capacitor.Plugins;
+    return (P && P.PushNotifications) || null;
+  }
+
+  function tokenAcceso() {
+    if (window.TOKEN) return window.TOKEN;
+    try { return localStorage.getItem('mypump_token') || ''; } catch (e) { return ''; }
+  }
+
+  async function registrarPush() {
+    const P = PUSH();
+    if (!P || !tokenAcceso()) return { ok: false, motivo: 'no_disponible' };
+
+    return new Promise((resolve) => {
+      let listo = false;
+      // Si APNs no contesta, no dejamos la promesa colgada para siempre.
+      const cortar = setTimeout(() => {
+        if (!listo) { listo = true; resolve({ ok: false, motivo: 'timeout' }); }
+      }, 15000);
+
+      P.addListener('registration', async (t) => {
+        if (listo) return;
+        listo = true; clearTimeout(cortar);
+        const dev = t && t.value;
+        try {
+          // Se recuerda el último token enviado para no repetir la RPC en cada
+          // arranque: APNs devuelve el mismo salvo reinstalación o restore.
+          const previo = localStorage.getItem(K_PUSH_TOKEN);
+          if (dev && dev !== previo && window.mypumpDB && window.mypumpDB.registrarPush) {
+            const r = await window.mypumpDB.registrarPush(tokenAcceso(), dev);
+            if (r && r.success) localStorage.setItem(K_PUSH_TOKEN, dev);
+          }
+        } catch (e) { console.warn('[push] registrar:', e); }
+        resolve({ ok: true });
+      });
+
+      P.addListener('registrationError', (e) => {
+        if (listo) return;
+        listo = true; clearTimeout(cortar);
+        console.warn('[push] registrationError:', e);
+        resolve({ ok: false, motivo: 'error_apns' });
+      });
+
+      P.register().catch((e) => {
+        if (listo) return;
+        listo = true; clearTimeout(cortar);
+        resolve({ ok: false, motivo: String((e && e.message) || e) });
+      });
+    });
+  }
+
+  // Tocar la notificación tiene que llevar a donde dice, no solo abrir la app.
+  function cablearTapsPush() {
+    const P = PUSH();
+    if (!P) return;
+    P.addListener('pushNotificationActionPerformed', (ev) => {
+      const d = ev && ev.notification && ev.notification.data;
+      const destino = d && d.destino;
+      if (destino && typeof window.setScene === 'function') {
+        try { window.setScene(destino); } catch (e) {}
+      }
+    });
+  }
+
+  /* Se engancha al permiso que YA se pide para las locales: iOS usa el mismo
+   * permiso para ambas, así que pedirlo aparte sería pedirle al cliente lo
+   * mismo dos veces. */
+  async function activarPushSiCorresponde() {
+    if ((await permisoEstado()) !== 'granted') return { ok: false, motivo: 'sin_permiso' };
+    cablearTapsPush();
+    return registrarPush();
+  }
+
   window.MyPumpNotif = {
     estado,
     activar,
@@ -252,12 +338,14 @@
     setPref,
     prefs,
     reprogramar,
+    registrarPush: activarPushSiCorresponde,
     TEXTOS,
   };
 
-  /* PENDIENTE (push real, requiere infra que hoy no existe):
-     para "Mati te dejó un comentario" o "tenés rutina nueva" hace falta
-     @capacitor/push-notifications + una key APNs de Apple + tabla de tokens de
-     dispositivo + envío desde la mini. Es la otra mitad del problema y no se
-     resuelve del lado del cliente. */
+  // Al arrancar con permiso ya dado, re-registrar: el device token de APNs
+  // puede cambiar (restore de backup, reinstalación) y si no lo actualizamos
+  // el push deja de llegar sin ningún error visible en ningún lado.
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    window.addEventListener('load', () => { activarPushSiCorresponde().catch(() => {}); });
+  }
 })();

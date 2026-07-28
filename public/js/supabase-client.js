@@ -308,6 +308,18 @@ window.mypumpDB = {
     return await rpc('mypump_get_gasto_real', { p_token: token, p_dias: dias || 14 });
   },
 
+  // Registro del dispositivo para push (mig 048). Se llama en cada arranque con
+  // permiso dado; la RPC es idempotente por device token, así que repetirla
+  // no duplica ni pisa nada.
+  async registrarPush(token, deviceToken, plataforma, appVersion) {
+    return await rpcMutation('mypump_registrar_push', {
+      p_token: token,
+      p_device: deviceToken,
+      p_plataforma: plataforma || 'ios',
+      p_app_version: appVersion || null,
+    });
+  },
+
   // ─── RECUPERACIÓN (score 0-100, mig 043) ─────────────────
 
   // Serie diaria de recuperación, la más reciente al final. Cada fila:

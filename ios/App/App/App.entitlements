@@ -13,5 +13,11 @@
 	<array>
 		<string>applinks:app.mypumpteam.com</string>
 	</array>
+	<!-- Push. 'production' aunque el build sea de desarrollo: desde iOS 9 el
+	     token de APNs sirve para los dos entornos y usar 'development' rompería
+	     los envíos desde TestFlight/App Store, que es donde corre de verdad.
+	     Necesita la capability "Push Notifications" habilitada en el App ID. -->
+	<key>aps-environment</key>
+	<string>production</string>
 </dict>
 </plist>

@@ -4,8 +4,17 @@
 <dict>
     <key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
+	<!-- La app está enteramente en español rioplatense. Con 'en' acá, la ficha
+	     de la App Store publicaba "Idiomas: Inglés", que a alguien que la busca
+	     le dice justo lo contrario de lo que se va a encontrar.
+	     es-419 = español de Latinoamérica. -->
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>es-419</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>es-419</string>
+		<string>es</string>
+	</array>
 	<key>CFBundleDisplayName</key>
         <string>MyPump</string>
 	<key>CFBundleExecutable</key>
