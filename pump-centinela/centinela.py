@@ -720,6 +720,20 @@ def _senales_relajadas(x):
         elif adh < 0.6: s["entreno"] = "faltaron varios entrenos esta semana"
     if ctx.get("peso_en_rango") is True: s["peso"] = "el peso va en el rumbo que buscamos"
     elif ctx.get("peso_en_rango") is False: s["peso"] = "el peso se movió distinto a lo que buscamos"
+
+    # Recuperación del wearable (solo si tiene uno conectado). Se traduce a
+    # frase igual que el resto: al cliente NUNCA se le manda el número.
+    # Decirle "tu recuperación dio 34" invita a discutir el dato; decirle "el
+    # reloj te viene marcando poco descanso" invita a contar qué le pasa.
+    rec = ctx.get("recup") or {}
+    if rec.get("estado") == "ok":
+        d, bajos = rec.get("delta"), rec.get("dias_banda_baja")
+        if d is not None and d <= -10:
+            s["recuperacion"] = "el reloj te viene marcando peor recuperación que la semana pasada"
+        elif bajos is not None and bajos >= 4:
+            s["recuperacion"] = "el reloj marcó varios días seguidos de poca recuperación"
+        elif d is not None and d >= 10:
+            s["recuperacion"] = "venís recuperando mejor que la semana pasada"
     return s
 
 def _senal_principal(x):
@@ -799,11 +813,21 @@ def gen_ajustes(lista):
     datos = []
     for x in lista:
         sup = x.get("suplementos")
+        rec = (x["ctx"].get("recup") or {})
         datos.append({"nombre": x["nombre"], "objetivo": x["ctx"].get("obj"), "perfil": x["ctx"].get("perfil"),
                       "check": {k: x["chk"].get(k) for k in ("energia", "descanso", "hambre", "adherencia")} if x["chk"] else None,
                       "nota": (x["chk"] or {}).get("nota"), "alertas": x["alertas"],
                       "peso_delta_g_sem": x["ctx"].get("delta_peso_g"), "var_rendimiento_pct": x["ctx"].get("var_rendimiento"),
                       "dieta": x["dieta"], "rutina": x["rutina"],
+                      # Recuperación objetiva del wearable. Va con la METRICA
+                      # incluida a propósito: no es lo mismo concluir sobre un
+                      # rMSSD nocturno de Oura que sobre el SDNN esporádico de
+                      # un Apple Watch, y el modelo tiene que poder pesarlo.
+                      "recuperacion": ({"score_hoy": rec.get("score_hoy"), "media_7d": rec.get("media_7d"),
+                                        "cambio_vs_semana_previa": rec.get("delta"),
+                                        "dias_en_rojo_de_7": rec.get("dias_banda_baja"),
+                                        "estado_autonomico": rec.get("autonomico"),
+                                        "sensor_hrv": rec.get("hrv_metrica")} if rec.get("estado") == "ok" else None),
                       "ya_toma_suplementos": (sup or {}).get("stack") or "sin datos"})
     prompt = (
         "Sos el asistente tecnico de Mati Sancari (coach y medico, Pump Team). Para cada cliente "
@@ -815,6 +839,14 @@ def gen_ajustes(lista):
         "IMPORTANTE sobre suplementos: mira 'ya_toma_suplementos' — NO sugieras algo que ya toma; "
         "si corresponde, ajusta su dosis/timing o suma algo LEGAL que le falte (magnesio, "
         "melatonina, creatina, omega 3, cafeina, etc). "
+        "SOBRE 'recuperacion' (solo algunos clientes la tienen, viene de su reloj): es un dato "
+        "objetivo que complementa al check subjetivo, NO lo reemplaza. Mira 'sensor_hrv': si dice "
+        "'sdnn' el dato es de Apple Watch, que mide en momentos aleatorios del dia con ~29% de "
+        "error, asi que solo vale como tendencia — no bases un deload solo en eso. Si dice "
+        "'rmssd' es medicion nocturna y es confiable. Si 'estado_autonomico' es 'maladaptacion' o "
+        "'fatiga_acumulada' Y la fuerza viene cayendo, ahi si el deload esta justificado. "
+        "Si el numero da mal pero el cliente reporta energia alta, la instruccion es PREGUNTAR, "
+        "no ajustar: el sensor puede medir mal, la persona no. "
         "REGLA ABSOLUTA: JAMAS sugieras farmacos, hormonas, AAS ni dosis de quimica — eso es "
         "decision exclusivamente medica de Mati y NO va en este informe.\n\n"
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
