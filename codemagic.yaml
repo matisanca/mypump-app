@@ -11,7 +11,14 @@
 #   2. Integrations → App Store Connect → subir una API key (la generás en
 #      App Store Connect → Users and Access → Integrations). Nombrala como el
 #      valor de `app_store_connect` de abajo: "PumpTeam_ASC".
-#   3. Start build. (El APP_STORE_APPLE_ID ya esta cargado: 6793259380.)
+#   3. Environment variables → CERTIFICATE_PRIVATE_KEY (marcada "Secure"), con
+#      el contenido de una clave RSA que generes vos:
+#          openssl genrsa -out firma.key 2048
+#      Guardá firma.key en tu gestor de contraseñas. ES LA MISMA PARA SIEMPRE:
+#      el certificado de distribución de Apple no sirve sin ella, y si la
+#      perdés hay que revocar y empezar de nuevo. El paso de firma corta el
+#      build con instrucciones si falta.
+#   4. Start build. (El APP_STORE_APPLE_ID ya esta cargado: 6793259380.)
 # =============================================================
 workflows:
   ios-testflight:
@@ -75,52 +82,56 @@ workflows:
           set -e
           keychain initialize
 
-          # La clave privada se genera acá y muere con la máquina de build, así
-          # que los certificados de distribución que quedan en la cuenta de Apple
-          # son huérfanos: nadie puede firmar con ellos nunca más. Apple permite
-          # como máximo 3, y al cuarto responde
+          # ── La clave privada tiene que SOBREVIVIR entre builds ──
+          #
+          # Un certificado de distribución de Apple no vale nada sin la clave
+          # privada con la que se pidió. Antes acá se hacía `openssl genrsa` en
+          # cada build: la clave moría con la máquina, el certificado quedaba
+          # huérfano (nadie puede volver a firmar con él nunca) y al siguiente
+          # build había que pedir otro. Apple permite pocos y al llenarse
+          # responde:
+          #
           #   409: You already have a current Distribution certificate
-          # sin cortar el build — se queda sin certificado Y sin perfil, y recién
-          # revienta en "Compilar IPA" con un mensaje que apunta a otro lado
-          # ("requires a provisioning profile with the X feature"). Pasó el
-          # 27-jul-2026. Por eso los revocamos antes de pedir el nuestro.
-          echo "→ Revocando certificados de distribución huérfanos…"
-          python3 - <<'PY' || true
-          import json, subprocess
-          # Los dos tipos con los que Apple etiqueta un cert de distribución;
-          # filtrar solo uno dejaría la mitad viva y el cupo igual de lleno.
-          vistos = set()
-          for tipo in ('IOS_DISTRIBUTION', 'DISTRIBUTION'):
-              p = subprocess.run(['app-store-connect', 'list-certificates',
-                                  '--type', tipo, '--json'],
-                                 capture_output=True, text=True, stdin=subprocess.DEVNULL)
-              if p.returncode != 0:
-                  continue
-              try:
-                  certs = json.loads(p.stdout or '[]')
-              except Exception:
-                  continue
-              for c in certs if isinstance(certs, list) else []:
-                  cid = c.get('id')
-                  if not cid or cid in vistos:
-                      continue
-                  vistos.add(cid)
-                  # stdin cerrado: si algún día pide confirmación, falla en vez
-                  # de colgar el build hasta el timeout.
-                  r = subprocess.run(['app-store-connect', 'delete-certificate', cid],
-                                     capture_output=True, text=True, stdin=subprocess.DEVNULL)
-                  print(f"  {cid}: {'revocado' if r.returncode == 0 else 'no se pudo (sigo igual)'}")
-          print(f"  total: {len(vistos)}")
-          PY
+          #
+          # Pasó el 28-jul-2026 en el build #14, con 3 certificados huérfanos ya
+          # acumulados. Cada build gastaba un cupo que nunca iba a usar.
+          #
+          # Con CERTIFICATE_PRIVATE_KEY seteada, `fetch-signing-files` encuentra
+          # el certificado que YA existe para esa clave y lo reusa: no crea
+          # nada, no gasta cupo, y el problema no vuelve.
+          #
+          # POR QUÉ NO SE REVOCAN SOLOS: acá había un paso que borraba todos los
+          # certificados de distribución de la cuenta antes de pedir el suyo.
+          # Nunca funcionó (reportaba "total: 0" porque se tragaba sus propios
+          # errores), y menos mal: arreglarlo habría hecho que cada build borre
+          # certificados de la cuenta de Apple sin preguntar, incluido el que se
+          # use en Xcode. Es irreversible y no es algo que deba pasar solo.
+          if [ -z "${CERTIFICATE_PRIVATE_KEY:-}" ]; then
+            echo "✗ Falta la variable CERTIFICATE_PRIVATE_KEY."
+            echo
+            echo "  Sin ella cada build pide un certificado nuevo a Apple, y Apple"
+            echo "  ya los rechaza (409: You already have a current Distribution"
+            echo "  certificate). Es de una sola vez:"
+            echo
+            echo "  1. developer.apple.com → Certificates, IDs & Profiles → Certificates."
+            echo "     Revisá los de tipo Distribution. Los que no uses en ninguna Mac"
+            echo "     son huérfanos de builds viejos: revocalos (dejá como mucho uno)."
+            echo "  2. Generá una clave: openssl genrsa -out firma.key 2048"
+            echo "  3. Codemagic → app settings → Environment variables:"
+            echo "     nombre CERTIFICATE_PRIVATE_KEY, valor = el contenido de firma.key,"
+            echo "     marcá 'Secure'. Guardá firma.key en tu gestor de contraseñas:"
+            echo "     si se pierde, el certificado que genere queda inservible."
+            echo "  4. Relanzá el build. De acá en más reusa siempre el mismo."
+            exit 1
+          fi
 
-          # --create genera el certificado de distribución Y el provisioning
-          # profile del bundle en una sola pasada. El perfil sale con las
-          # capabilities que tenga el App ID (HealthKit + Associated Domains).
-          CERT_KEY=$(mktemp /tmp/cert_key.XXXXXX)
-          openssl genrsa -out "$CERT_KEY" 2048
+          # --create crea el certificado y el provisioning profile SOLO si no
+          # existen para esta clave; si ya existen, los reusa. El perfil sale con
+          # las capabilities que tenga el App ID (HealthKit + Associated Domains).
+          echo "→ Usando la clave persistida (reusa el certificado si ya existe)"
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --certificate-key @file:"$CERT_KEY" \
+            --certificate-key "@env:CERTIFICATE_PRIVATE_KEY" \
             --create
           keychain add-certificates
           xcode-project use-profiles
