@@ -1131,6 +1131,20 @@ let _sessionStart  = null; // Date.now() when first set confirmed
 // es un día que quedó sin cerrar. Se usa para no mostrar un cronómetro
 // absurdo (llegamos a ver 76:18:53) y para no guardar esa duración en la base.
 const SESION_MAX_H = 6;
+/* Minutos de la sesión, o null si el número no es creíble.
+ *
+ * Único lugar donde se decide esto: lo que se GUARDA y lo que se MUESTRA tienen
+ * que coincidir. Antes no coincidían — la escritura tenía el tope y las tres
+ * pantallas que muestran la duración no, así que la base guardaba null y la
+ * app le mostraba al cliente "4595 min" en la misma pantalla.
+ *
+ * null y no 0: 0 min es una medición ("entrenó nada"), null es "no lo sabemos",
+ * y la UI lo pinta como "—". */
+function minutosSesion() {
+  if (!_sessionStart) return null;
+  const seg = Math.round((Date.now() - _sessionStart) / 1000);
+  return (seg >= 0 && seg <= SESION_MAX_H * 3600) ? Math.round(seg / 60) : null;
+}
 let MYDAY = null;          // Hábitos del día actual {entrenamiento, comio_segun_plan, durmio_bien, vasos_agua}
 let STREAK = null;         // {streak, ultimo_dia_valido}
 
@@ -2092,9 +2106,9 @@ async function writeFinish(notas) {
   // cualquier cosa. Nadie entrena más de SESION_MAX_H seguidas: pasado eso el
   // número no es una medición, es un olvido — y un null es más honesto que un
   // dato inventado.
-  const _durBruta = _sessionStart ? Math.round((Date.now() - _sessionStart) / 1000) : null;
-  const duracionSeg = (_durBruta != null && _durBruta <= SESION_MAX_H * 3600) ? _durBruta : null;
-  const res = await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null, duracionSeg);
+  const _min = minutosSesion();
+  const res = await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null,
+                                                    _min != null ? _min * 60 : null);
   if (!res || res.success === false) {
     alert('No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo.');
     return;
@@ -2510,7 +2524,7 @@ function renderTrain() {
   const allTerminal = completedCount === totalEx;
   const allDone = allTerminal || _diaFinalizado;   // día cerrado también cuenta como hecho
   const pendingCount = totalEx - completedCount;
-  const mins = _sessionStart ? Math.round((Date.now()-_sessionStart)/60000) : 0;
+  const mins = minutosSesion();
 
   $('#progFill').style.width = `${(completedCount/totalEx)*100}%`;
   $('#progDone').textContent = completedCount;
@@ -3429,7 +3443,7 @@ async function openEarlyFinishModal() {
       }
     }
   }
-  const mins = _sessionStart ? Math.round((Date.now()-_sessionStart)/60000) : 0;
+  const mins = minutosSesion();
 
   const warningHtml = pending.length > 0
     ? `<div class="early-finish-warning">
