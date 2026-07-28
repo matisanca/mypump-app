@@ -19,6 +19,25 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 60
 
+    # Disparo por TAG, no por push a main.
+    #
+    # Hasta acá el build se arrancaba SOLO a mano desde la UI, y cuando el
+    # dashboard de Codemagic se degrada (pasó el 27 y el 28 de julio: el
+    # diálogo de "Start new build" no abre) no hay forma de compilar. Con esto
+    # el disparador es un tag de git, que no depende de que su web ande.
+    #
+    # Por tag y no por push a main a propósito: no todo commit merece un build
+    # de 3 minutos de Mac ni una subida a TestFlight. El tag es la señal
+    # explícita de "esto va".
+    #
+    #   git tag v1.0.2 && git push origin v1.0.2
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*'
+          include: true
+
     integrations:
       # Nombre de la API key de App Store Connect que cargás en Codemagic UI.
       app_store_connect: PumpTeam_ASC
