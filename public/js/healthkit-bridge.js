@@ -150,45 +150,78 @@
       catch (e) { console.warn('[health] tanda secundaria falló (sigue igual):', e); }
     }
 
-    // El veredicto REAL. requestAuthorization resuelve OK aunque el usuario
-    // destilde todo — en HealthKit "success" significa "se mostró la hoja", no
-    // "me dieron permiso". Antes devolvíamos true acá y marcábamos conectado:
-    // el que denegaba quedaba como conectado para siempre, sin datos y sin que
-    // nadie se enterara. Por eso ahora se consulta el estado y, si no hay nada
-    // autorizado, se dice que no.
+    // requestAuthorization resuelve OK aunque el cliente destilde todo: en
+    // HealthKit "success" significa "se mostró la hoja", no "me dieron
+    // permiso". Acá no hay veredicto posible — ver estadoPermisos().
     const est = await estadoPermisos();
-    if (est.conocido && est.autorizados === 0) return { ok: false, motivo: 'denegado' };
-    return { ok: alguna, autorizados: est.autorizados, total: est.total };
+    return { ok: alguna, preguntados: est.preguntados, total: est.total, errEstado: est.error };
   }
 
-  /* Estado real de los permisos, para poder distinguir "no conectó todavía" de
-   * "conectó pero denegó". iOS NO vuelve a mostrar la hoja de un tipo ya
-   * respondido: sin esto, el que deniega no tiene forma de volver. */
+  /* Lo único que HealthKit deja saber, que es MENOS de lo que parece.
+   *
+   * checkAuthorization corre por debajo getRequestStatusForAuthorization, que
+   * devuelve `.unnecessary` cuando YA SE PREGUNTÓ — le haya dicho el cliente
+   * que sí o que no. Apple NUNCA revela si hay permiso de LECTURA, y es a
+   * propósito: si lo revelara, la app podría deducir que el cliente le esconde
+   * algo, y esconder datos dejaría de servir de defensa.
+   *
+   * O sea que de acá sale "ya preguntamos" vs "falta preguntar", nada más. El
+   * campo se llamaba `autorizados` y eso era una mentira que además se le
+   * mostraba al cliente en pantalla ("12 de 20 permisos dados"): eran los que
+   * ya se habían preguntado.
+   *
+   * Saber si hay permiso real tiene una sola vía: leer y ver si viene algo. De
+   * eso se encarga registrarCosecha(). */
   async function estadoPermisos() {
     const h = HEALTH();
     const tipos = tiposLectura();
-    if (!h || typeof h.checkAuthorization !== 'function') {
-      return { conocido: false, autorizados: null, total: tipos.length, faltantes: [] };
-    }
+    const vacio = { conocido: false, preguntados: null, total: tipos.length, pendientes: [], error: null };
+    if (!h || typeof h.checkAuthorization !== 'function') return vacio;
     try {
       const r = await h.checkAuthorization({ read: tipos, write: [] });
-      // El plugin puede devolver la lista de autorizados/denegados o un mapa.
-      // Se toleran las dos formas: no quiero que un cambio de shape del plugin
-      // vuelva a dejar esto mintiendo en silencio.
-      const okList = (r && (r.readAuthorized || r.authorized)) || [];
-      const noList = (r && (r.readDenied || r.denied)) || [];
-      if (Array.isArray(okList) || Array.isArray(noList)) {
-        return {
-          conocido: true,
-          autorizados: Array.isArray(okList) ? okList.length : 0,
-          total: tipos.length,
-          faltantes: Array.isArray(noList) ? noList.slice() : [],
-        };
-      }
-      return { conocido: false, autorizados: null, total: tipos.length, faltantes: [] };
+      // Se toleran las dos formas de respuesta: no quiero que un cambio de
+      // shape del plugin vuelva a dejar esto mintiendo en silencio.
+      const ya     = (r && (r.readAuthorized || r.authorized)) || null;
+      const faltan = (r && (r.readDenied || r.denied)) || [];
+      if (!Array.isArray(ya)) return vacio;
+      return {
+        conocido: true,
+        preguntados: ya.length,
+        total: tipos.length,
+        pendientes: Array.isArray(faltan) ? faltan.slice() : [],
+        error: null,
+      };
     } catch (e) {
-      return { conocido: false, autorizados: null, total: tipos.length, faltantes: [] };
+      // El error textual importa: es lo que dice si falló por un tipo que esta
+      // versión de iOS no conoce o por otra cosa.
+      return Object.assign({}, vacio, { error: String((e && e.message) || e) });
     }
+  }
+
+  /* Sospecha de "no tenemos permiso", deducida de los datos.
+   *
+   * Es la única detección posible (ver estadoPermisos). La señal: pedimos, y no
+   * viene NADA de ningún tipo, varias veces seguidas. Un iPhone real siempre
+   * tiene pasos — los cuenta el coprocesador de movimiento, sin reloj ni nada.
+   * Así que cero muestras de todo, tres veces, es permiso denegado y no un día
+   * tranquilo.
+   *
+   * Se cuenta lo que entregó HealthKit, NO lo que aceptó el servidor: si falla
+   * la subida es un problema de red, y hacerlo pasar por falta de permiso
+   * mandaría al cliente a Ajustes a tocar algo que ya estaba bien. */
+  const K_RACHA = 'mypump_health_racha_vacia';
+  const RACHA_PARA_SOSPECHAR = 3;
+  function registrarCosecha(nRecolectados) {
+    try {
+      if (nRecolectados > 0) {
+        localStorage.setItem(K_RACHA, '0');
+        localStorage.removeItem(K_DENEG);
+        return;
+      }
+      const r = (parseInt(localStorage.getItem(K_RACHA), 10) || 0) + 1;
+      localStorage.setItem(K_RACHA, String(r));
+      if (r >= RACHA_PARA_SOSPECHAR) localStorage.setItem(K_DENEG, '1');
+    } catch (e) {}
   }
 
   // ── readSamples con detección de truncamiento ──────────────────────────
@@ -487,6 +520,7 @@
     const hasta = new Date(), desde = new Date();
     desde.setDate(desde.getDate() - 7);
     const registros = await recolectar(desde, hasta);
+    registrarCosecha(registros.length);
     const n = registros.length ? await postear(registros) : 0;
     // Los entrenos van por su propia vía: si esa falla, las métricas diarias
     // ya quedaron guardadas igual.
@@ -507,17 +541,21 @@
   async function backfill(onProgreso) {
     if (!isNative || !getToken()) return { ok: false };
     try { if (localStorage.getItem(FLAG_BACKFILL) === '1') return { ok: true, saltado: true }; } catch (e) {}
-    let total = 0;
+    let total = 0, cosechados = 0;
     for (let off = 60; off > 0; off -= 5) {
       const hasta = new Date(); hasta.setDate(hasta.getDate() - (off - 5));
       const desde = new Date(); desde.setDate(desde.getDate() - off);
       try {
         const regs = await recolectar(desde, hasta);
+        cosechados += regs.length;
         total += await postear(regs);
         await postearEntrenos(await recolectarEntrenos(desde, hasta));
       } catch (e) { console.warn('[health] backfill ventana', off, e); }
       if (typeof onProgreso === 'function') onProgreso(60 - off + 5, 60);
     }
+    // 60 días sin una sola muestra de nada es la señal más fuerte que vamos a
+    // tener de que no hay permiso: pesa como una racha entera.
+    if (cosechados === 0) { try { localStorage.setItem(K_DENEG, '1'); } catch (e) {} }
     try { localStorage.setItem(FLAG_BACKFILL, '1'); } catch (e) {}
     if (typeof window.loadSalud === 'function') window.loadSalud();
     if (typeof window.loadRecuperacion === 'function') window.loadRecuperacion();
@@ -585,18 +623,21 @@
     const r = await requestPermission();
     if (!r.ok) {
       anotarIntento({ paso: 'permiso', motivo: r.motivo, error: r.detalle || null });
-      if (r.motivo === 'denegado') {
-        try { localStorage.setItem(K_DENEG, '1'); } catch (e) {}
-      }
       return r;
     }
-    anotarIntento({ paso: 'ok', autorizados: r.autorizados, total: r.total });
-    try { localStorage.removeItem(K_DENEG); } catch (e) {}
+    anotarIntento({ paso: 'ok', preguntados: r.preguntados, total: r.total, errEstado: r.errEstado || null });
+    // Se arranca de cero: si antes sospechábamos que no había permiso y el
+    // cliente volvió a pasar por la hoja, la sospecha se descarta y se vuelve a
+    // juzgar por los datos que lleguen de acá en más.
+    try { localStorage.removeItem(K_DENEG); localStorage.setItem(K_RACHA, '0'); } catch (e) {}
     localStorage.setItem('mypump_health_connected', '1');
     await sync();
     marcarSync();
     await backfill(onProgreso);   // trae la historia para que el score arranque ya
-    return { ok: true, autorizados: r.autorizados, total: r.total };
+    // Pasó por la hoja pero no vino ni una muestra en 60 días: casi seguro
+    // destildó todo. Se avisa acá para que el cliente no tenga que descubrirlo
+    // solo tres días después.
+    return { ok: true, preguntados: r.preguntados, total: r.total, sinDatos: fueDenegado() };
   }
 
   function disconnect() {
@@ -612,15 +653,18 @@
   // Estado completo para la pantalla de conexión.
   async function estado() {
     const disp = await hkAvailable();
-    const est  = disp ? await estadoPermisos() : { conocido: false, autorizados: null, total: 0, faltantes: [] };
+    const est  = disp ? await estadoPermisos() : { conocido: false, preguntados: null, total: 0, pendientes: [], error: null };
     return {
       nativo: isNative,
       disponible: disp,
       conectado: isConnected(),
-      denegado: fueDenegado() || (est.conocido && est.autorizados === 0),
-      autorizados: est.autorizados,
+      // "sinDatos" y no "denegado": es una sospecha por falta de datos, no un
+      // veredicto de HealthKit, que nunca lo da (ver estadoPermisos).
+      sinDatos: fueDenegado(),
+      preguntados: est.preguntados,
       total: est.total,
-      faltantes: est.faltantes,
+      pendientes: est.pendientes,
+      errEstado: est.error,
       ultimaSync: ultimaSync(),
       ios: iosMajor(),
     };

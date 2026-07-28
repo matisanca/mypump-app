@@ -3261,6 +3261,9 @@ async function mostrarOnboardingPermisos() {
   if (hayHealth) pasos.push('salud');
   if (hayNotif)  pasos.push('notif');
   let i = 0;
+  // Aviso que sobrevive al cambio de paso: pintar() rehace el HTML entero, así
+  // que escribirle al DOM justo antes de avanzar no se vería nunca.
+  let aviso = null;
 
   function pintar() {
     if (i >= pasos.length) { _cerrarOnboarding(); return; }
@@ -3305,6 +3308,8 @@ async function mostrarOnboardingPermisos() {
     const btnNo = document.getElementById('obNo');
     const err   = document.getElementById('obErr');
 
+    if (aviso) { err.hidden = false; err.innerHTML = aviso; aviso = null; }
+
     btnSi.onclick = async () => {
       btnSi.disabled = true; btnNo.disabled = true;
       btnSi.textContent = 'Un momento…';
@@ -3316,6 +3321,14 @@ async function mostrarOnboardingPermisos() {
 
       if (r && r.ok) {
         if (paso === 'salud') { try { await loadSalud(); await loadRecuperacion(); } catch (e) {} }
+        // Aceptó la hoja pero no llegó nada: se sigue igual (ya está conectado),
+        // y el aviso viaja al paso siguiente para que después no busque el
+        // problema a ciegas. Si era el último paso se pierde, pero eso ya lo
+        // cubre la card de Salud en Mis datos, que es permanente.
+        if (r.sinDatos) {
+          aviso = 'Salud quedó conectada, aunque todavía no llegó ningún dato. Si sigue así, revisá '
+                + '<b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.';
+        }
         i++; pintar();
         return;
       }
@@ -4904,28 +4917,36 @@ function _saludValor(tipo, fecha) {
  */
 async function _conectarSalud(btn, textoOriginal, onOk) {
   const r = await window.MyPumpHealth.connect();
-  if (r && r.ok) { if (typeof onOk === 'function') await onOk(r); return true; }
+  if (r && r.ok) {
+    if (typeof onOk === 'function') await onOk(r);
+    // Conectó, pero no llegó ni un dato: se avisa igual. Apple no dice si el
+    // cliente denegó la lectura, así que esto es lo más cerca que se puede
+    // estar de saberlo, y callarlo lo dejaría con una card vacía sin motivo.
+    if (r.sinDatos) _avisoSalud(btn, 'Quedó conectado pero no llegó ningún dato. Fijate que esté todo '
+      + 'activado en <b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.');
+    return true;
+  }
 
-  const cont = btn && btn.parentElement;
   const motivo = (r && r.motivo) || 'error';
   let msg;
-  if (motivo === 'denegado') {
-    msg = 'Le dijiste que no a los permisos. Para activarlo: abrí <b>Ajustes</b> del iPhone → '
-        + '<b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>, y activá lo que quieras compartir.';
-  } else if (motivo === 'no_disponible') {
+  if (motivo === 'no_disponible') {
     msg = 'Este iPhone no tiene Apple Salud disponible.';
   } else {
     msg = 'No pudimos conectar. Probá de nuevo en un rato; si sigue igual, avisale a Mati.';
   }
-  if (cont && !cont.querySelector('.salud-err')) {
-    const d = document.createElement('div');
-    d.className = 'salud-err rec-nota';
-    d.style.cssText = 'margin-top:10px;line-height:1.5';
-    d.innerHTML = msg;
-    cont.appendChild(d);
-  }
+  _avisoSalud(btn, msg);
   if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
   return false;
+}
+
+function _avisoSalud(btn, html) {
+  const cont = btn && btn.parentElement;
+  if (!cont || cont.querySelector('.salud-err')) return;
+  const d = document.createElement('div');
+  d.className = 'salud-err rec-nota';
+  d.style.cssText = 'margin-top:10px;line-height:1.5';
+  d.innerHTML = html;
+  cont.appendChild(d);
 }
 
 async function loadRecuperacion() {
@@ -5311,16 +5332,16 @@ async function renderAppleHealthEstado() {
   if (!e.disponible) {
     cuerpo = '<div class="cx-desc">Este iPhone no tiene Salud de Apple.</div>';
     boton  = '';
-  } else if (e.denegado) {
-    cuerpo = '<div class="cx-desc">Está sin permiso. Para activarlo: <b>Ajustes</b> → '
-           + '<b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.</div>';
+  } else if (e.sinDatos) {
+    // No decimos "denegaste": Apple no informa el permiso de lectura, esto es
+    // deducido de que no llega nada. Se describe el síntoma, que además es lo
+    // único que el cliente puede verificar.
+    cuerpo = '<div class="cx-desc">No está llegando ningún dato. Revisá que esté todo activado en '
+           + '<b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.</div>';
     boton  = '<button class="cx-btn" id="ahReintentar">Reintentar</button>';
   } else if (e.conectado) {
     const u = fmt(e.ultimaSync);
-    const parcial = (e.autorizados != null && e.total && e.autorizados < e.total);
-    cuerpo = `<div class="cx-desc">${u ? 'Última sincronización: ' + u : 'Conectado'}`
-           + (parcial ? ` · ${e.autorizados} de ${e.total} permisos dados` : '')
-           + '</div>';
+    cuerpo = `<div class="cx-desc">${u ? 'Última sincronización: ' + u : 'Conectado'}</div>`;
     boton  = '<button class="cx-btn" id="ahSync">Sincronizar</button>';
   } else {
     cuerpo = '<div class="cx-desc">Conectalo y tus pasos, sueño y pulso entran solos.</div>';
@@ -5333,7 +5354,7 @@ async function renderAppleHealthEstado() {
     <div class="myday-section-body">
       <div class="cx-fila">
         <div class="cx-info">
-          <div class="cx-nombre">iPhone y Apple Watch${e.conectado && !e.denegado ? '<span class="cx-ok">activo</span>' : ''}</div>
+          <div class="cx-nombre">iPhone y Apple Watch${e.conectado && !e.sinDatos ? '<span class="cx-ok">activo</span>' : ''}</div>
           ${cuerpo}
         </div>
         ${boton}

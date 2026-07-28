@@ -93,14 +93,45 @@ await t('conectar con permisos concedidos devuelve ok', async () => {
   if (!r || typeof r !== 'object') throw new Error('connect() debe devolver un objeto, no un booleano');
 });
 
-await t('DENEGAR TODO no debe marcar conectado', async () => {
-  // El bug original: requestAuthorization resuelve OK aunque el usuario
-  // destilde todo, y el bridge devolvía true igual.
-  globalThis.Capacitor.Plugins.Health.checkAuthorization = async () => ({ readAuthorized: [], readDenied: ['steps','sleep'] });
-  delete store['mypump_health_connected'];
+/* Los dos tests de abajo cubren la parte más contraintuitiva de todo esto.
+ *
+ * HealthKit NO informa si hay permiso de LECTURA. checkAuthorization corre por
+ * debajo getRequestStatusForAuthorization, que devuelve `.unnecessary` cuando
+ * ya se preguntó — le haya dicho el cliente que sí o que no. Es a propósito: si
+ * lo informara, la app podría deducir que el cliente le esconde algo, y
+ * esconder datos dejaría de servir de defensa.
+ *
+ * Acá había un test que afirmaba lo contrario ("0 autorizados = denegó") y
+ * pasaba, porque el mock devolvía justo lo que el código creía. Un mock que
+ * confirma el malentendido del autor no prueba nada. La única señal real es la
+ * de abajo: pedimos y no llega NADA, de ningún tipo. */
+const limpiarSalud = () => {
+  for (const k of ['mypump_health_connected', 'mypump_health_denegado',
+                   'mypump_health_backfill_v1', 'mypump_health_racha_vacia']) delete store[k];
+  for (const k of Object.keys(MUESTRAS)) MUESTRAS[k] = [];
+};
+
+await t('denegar todo se detecta por la falta de datos (HealthKit no lo dice)', async () => {
+  // El plugin contesta "ya preguntado" para TODOS los tipos, exactamente igual
+  // que cuando el cliente concede: por ese lado no hay nada que distinguir.
+  globalThis.Capacitor.Plugins.Health.checkAuthorization = async ({ read }) => ({ readAuthorized: read, readDenied: [] });
+  store['mypump_token'] = 'tok-de-prueba';
+  limpiarSalud();
   const r = await H.connect();
-  if (r.ok) throw new Error('marcó conectado con 0 permisos autorizados');
-  if (r.motivo !== 'denegado') throw new Error(`motivo debería ser "denegado", fue "${r.motivo}"`);
+  if (!r.ok) throw new Error('no debería fallar: la hoja se mostró y el cliente la respondió');
+  if (!r.sinDatos) throw new Error('60 días sin una sola muestra tienen que marcar sinDatos');
+  const e = await H.estado();
+  if (!e.sinDatos) throw new Error('estado() tiene que reportarlo también, no solo connect()');
+});
+
+await t('que empiece a llegar un dato levanta la sospecha', async () => {
+  store['mypump_token'] = 'tok-de-prueba';
+  limpiarSalud();
+  store['mypump_health_denegado'] = '1';        // veníamos sospechando
+  MUESTRAS.weight = [{ startDate: iso(21, 8), endDate: iso(21, 8), value: 80, unit: 'kilogram' }];
+  await H.sync();
+  const e = await H.estado();
+  if (e.sinDatos) throw new Error('con datos entrando no se puede seguir diciendo que no llega nada');
 });
 
 console.log('\nProcesamiento de sueño');
