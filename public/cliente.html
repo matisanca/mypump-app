@@ -1033,6 +1033,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 <script src="/js/supabase-client.js"></script>
 <script src="/js/food-db.js"></script>
 <script src="/js/healthkit-bridge.js"></script>
+<script src="/js/notificaciones.js"></script>
 <script src="/js/app.js"></script>
 <script>
 /* ====================================================================
@@ -3172,6 +3173,128 @@ function bindTrainEvents() {
 }
 
 /* ---- RIR PICKER ---- */
+/* ══════════════════════════════════════════════════════════════════════
+   ONBOARDING DE PERMISOS — primera apertura
+
+   Antes, los permisos vivían en botones enterrados dentro de cards que el
+   cliente tenía que encontrar solo. Resultado: la mayoría nunca conectaba
+   nada, y la app quedaba a medias sin que nadie se enterara.
+
+   POR QUÉ NO SE DISPARA LA HOJA DEL SISTEMA DE UNA:
+   En iOS la hoja de permiso se muestra UNA sola vez. Si el cliente la ve sin
+   entender qué le están pidiendo, toca "No permitir" y no hay vuelta atrás
+   salvo ir a Ajustes. Por eso primero se explica con pantalla propia y recién
+   cuando dice que sí se pide el permiso real: la hoja del sistema llega cuando
+   ya sabe para qué es.
+
+   "Ahora no" NUNCA quema el permiso: no dispara nada, así que puede activarlo
+   más tarde desde Mis datos con la hoja todavía disponible.
+   ══════════════════════════════════════════════════════════════════════ */
+const K_ONBOARDING = 'mypump_onboarding_v1';
+
+function _onboardingPendiente() {
+  if (DEMO) return false;                       // la demo de Apple no pide nada
+  if (!window.Capacitor || !window.Capacitor.isNativePlatform()) return false;
+  try { return localStorage.getItem(K_ONBOARDING) !== '1'; } catch (e) { return false; }
+}
+
+function _cerrarOnboarding() {
+  try { localStorage.setItem(K_ONBOARDING, '1'); } catch (e) {}
+  const h = document.getElementById('modalHost');
+  if (h) h.innerHTML = '';
+}
+
+async function mostrarOnboardingPermisos() {
+  const host = document.getElementById('modalHost');
+  if (!host) return;
+
+  const hayHealth = !!(window.MyPumpHealth && await window.MyPumpHealth.isAvailable());
+  const hayNotif  = !!(window.MyPumpNotif);
+  if (!hayHealth && !hayNotif) { _cerrarOnboarding(); return; }
+
+  // Los pasos se arman según lo que este dispositivo realmente soporta: no
+  // tiene sentido ofrecerle Salud a alguien cuyo iPhone no la tiene.
+  const pasos = [];
+  if (hayHealth) pasos.push('salud');
+  if (hayNotif)  pasos.push('notif');
+  let i = 0;
+
+  function pintar() {
+    if (i >= pasos.length) { _cerrarOnboarding(); return; }
+    const paso = pasos[i];
+    const ultimo = i === pasos.length - 1;
+
+    const contenido = paso === 'salud' ? {
+      icono: '❤️',
+      titulo: 'Conectá tu salud',
+      texto: 'MyPump puede leer lo que ya mide tu iPhone o tu reloj: pasos, sueño, '
+           + 'pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando '
+           + 'de verdad y te ajusta el plan con datos, no a ojo.',
+      detalle: 'Se lee solo. Nunca escribimos nada en tu app de Salud.',
+      cta: 'Permitir acceso a Salud',
+    } : {
+      icono: '🔔',
+      titulo: 'Que no se te pase nada',
+      texto: 'Un recordatorio para entrenar, y el aviso del check de los domingos. '
+           + 'Nada más: no te vamos a llenar el teléfono de notificaciones.',
+      detalle: 'Podés elegir cuáles querés y a qué hora, cuando quieras.',
+      cta: 'Activar recordatorios',
+    };
+
+    host.innerHTML = `
+      <div class="modal-back" id="obBack">
+        <div class="modal-sheet" style="max-width:420px">
+          <div class="modal-handle"></div>
+          <div style="text-align:center;font-size:40px;line-height:1;margin:4px 0 10px">${contenido.icono}</div>
+          <div class="modal-title" style="text-align:center">${contenido.titulo}</div>
+          <div class="modal-text" style="text-align:center;line-height:1.6">${contenido.texto}</div>
+          <div class="rec-nota" style="text-align:center;margin-top:-4px">${contenido.detalle}</div>
+          <div id="obErr" class="rec-nota" style="line-height:1.5" hidden></div>
+          <button class="btn-primary" id="obSi" style="width:100%">${contenido.cta}</button>
+          <button class="btn-secondary" id="obNo" style="width:100%">Ahora no</button>
+          <div class="rec-nota" style="text-align:center;font-size:10px;opacity:.7">
+            ${pasos.length > 1 ? `paso ${i + 1} de ${pasos.length} · ` : ''}esto lo podés cambiar después en Mis datos
+          </div>
+        </div>
+      </div>`;
+
+    const btnSi = document.getElementById('obSi');
+    const btnNo = document.getElementById('obNo');
+    const err   = document.getElementById('obErr');
+
+    btnSi.onclick = async () => {
+      btnSi.disabled = true; btnNo.disabled = true;
+      btnSi.textContent = 'Un momento…';
+      let r;
+      try {
+        r = paso === 'salud' ? await window.MyPumpHealth.connect()
+                             : await window.MyPumpNotif.activar();
+      } catch (e) { r = { ok: false, motivo: 'error' }; }
+
+      if (r && r.ok) {
+        if (paso === 'salud') { try { await loadSalud(); await loadRecuperacion(); } catch (e) {} }
+        i++; pintar();
+        return;
+      }
+      // Denegó: se lo dice y se sigue. No se insiste — la hoja ya no vuelve.
+      if (err) {
+        err.hidden = false;
+        err.innerHTML = (r && r.motivo === 'denegado')
+          ? 'Quedó sin permiso. Si cambiás de idea: <b>Ajustes</b> → <b>Privacidad y seguridad</b> → '
+            + (paso === 'salud' ? '<b>Salud</b> → <b>MyPump</b>.' : '<b>Notificaciones</b> → <b>MyPump</b>.')
+          : 'No se pudo activar ahora. Podés intentarlo más tarde desde Mis datos.';
+      }
+      btnSi.hidden = true;
+      btnNo.disabled = false;
+      btnNo.textContent = ultimo ? 'Entendido' : 'Seguir';
+    };
+
+    btnNo.onclick = () => { i++; pintar(); };
+  }
+
+  pintar();
+}
+
 function openRirPicker(exId, idx) {
   const set = STATE.session[exId].sets[idx];
   const cur = set.rir;
@@ -4728,6 +4851,40 @@ function _saludValor(tipo, fecha) {
    el panel del coach y el centinela leen EXACTAMENTE el mismo valor.
    El motor manda `motivos` como hechos estructurados y la frase se arma acá,
    en voseo — el panel arma la suya en tono clínico con los mismos datos. */
+/* Resultado de conectar Apple Health, en un solo lugar.
+ *
+ * connect() devuelve un objeto y no un booleano por un motivo concreto: iOS NO
+ * vuelve a mostrar la hoja de permisos de un tipo ya respondido. Antes los tres
+ * botones trataban "denegó" igual que "falló": dejaban el botón como estaba, y
+ * el cliente podía tocarlo cincuenta veces sin que pasara nada ni supiera por
+ * qué. La única salida real es Ajustes, y hay que decírselo.
+ */
+async function _conectarSalud(btn, textoOriginal, onOk) {
+  const r = await window.MyPumpHealth.connect();
+  if (r && r.ok) { if (typeof onOk === 'function') await onOk(r); return true; }
+
+  const cont = btn && btn.parentElement;
+  const motivo = (r && r.motivo) || 'error';
+  let msg;
+  if (motivo === 'denegado') {
+    msg = 'Le dijiste que no a los permisos. Para activarlo: abrí <b>Ajustes</b> del iPhone → '
+        + '<b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>, y activá lo que quieras compartir.';
+  } else if (motivo === 'no_disponible') {
+    msg = 'Este iPhone no tiene Apple Salud disponible.';
+  } else {
+    msg = 'No pudimos conectar. Probá de nuevo en un rato; si sigue igual, avisale a Mati.';
+  }
+  if (cont && !cont.querySelector('.salud-err')) {
+    const d = document.createElement('div');
+    d.className = 'salud-err rec-nota';
+    d.style.cssText = 'margin-top:10px;line-height:1.5';
+    d.innerHTML = msg;
+    cont.appendChild(d);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+  return false;
+}
+
 async function loadRecuperacion() {
   if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getRecuperacion) return;
   try {
@@ -4811,9 +4968,9 @@ function renderMydayRecuperacion() {
     const b = document.getElementById('btnConnectHealth2');
     if (b) b.onclick = async () => {
       b.disabled = true; b.textContent = 'Conectando…';
-      const ok = await window.MyPumpHealth.connect();
-      if (ok) { await loadRecuperacion(); await loadSalud(); }
-      else { b.disabled = false; b.textContent = 'Conectar Apple Health'; }
+      await _conectarSalud(b, 'Conectar Apple Health', async () => {
+        await loadRecuperacion(); await loadSalud();
+      });
     };
     return;
   }
@@ -4953,11 +5110,19 @@ function renderSalud() {
       ${_seccionSalud('⌚️', 'Todavía no hay datos',
         `<p class="salud-connect-txt">Cuando conectes tu reloj o tu anillo, acá vas a ver todo lo que mide: sueño con sus fases, pulso en reposo, variabilidad, respiración, oxígeno y temperatura.</p>
          ${native ? `<button class="btn-primary" id="sdConnect" style="width:100%">Conectar Apple Health</button>`
-                  : `<div class="rec-nota">Se conecta desde la app de iPhone. Si usás Oura o Whoop, pronto vas a poder conectarlos desde acá también.</div>`}`)}`;
+                  : `<div class="rec-nota">Se conecta desde la app de iPhone. Si usás Oura o Whoop, pronto vas a poder conectarlos desde acá también.</div>`}`)}
+      <div id="sdAppleHealth"></div>
+      <div id="sdNotif"></div>`;
     const b = document.getElementById('sdConnect');
     if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'Conectando…';
-      if (await window.MyPumpHealth.connect()) { await loadSalud(); await loadRecuperacion(); renderSalud(); }
-      else { b.disabled = false; b.textContent = 'Conectar Apple Health'; } };
+      await _conectarSalud(b, 'Conectar Apple Health', async () => {
+        await loadSalud(); await loadRecuperacion(); renderSalud();
+      }); };
+    // Las conexiones y los recordatorios van TAMBIÉN acá: este es el estado
+    // del cliente que todavía no conectó nada, o sea justo el que más
+    // necesita encontrar dónde se activan las cosas.
+    try { renderAppleHealthEstado(); } catch (e) {}
+    try { renderNotifPrefs(); } catch (e) {}
     const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('myday');
     return;
   }
@@ -5063,8 +5228,14 @@ function renderSalud() {
          <div class="cx-desc">Si preferís no ver el número, lo apagás acá. Tus datos se siguen guardando y Mati los sigue viendo igual.</div>
        </div>
        <button class="cx-btn${STATE.mostrarRecup === false ? '' : ' is-off'}" id="sdToggleRec">${STATE.mostrarRecup === false ? 'Mostrar' : 'Ocultar'}</button></div>`)}
+    <div id="sdAppleHealth"></div>
+    <div id="sdNotif"></div>
     <div class="sd-nota" style="padding:0 var(--space-1) var(--space-6)">Los datos los manda tu reloj a Salud de Apple y de ahí llegan acá. Si algo no aparece, es porque tu dispositivo no lo mide.</div>
     ${renderFuentesFooter('myday')}`;
+  // Las dos secciones son async (consultan permisos al sistema) y se pintan
+  // después: si el chequeo se colgara, el resto de la pantalla ya está.
+  try { renderAppleHealthEstado(); } catch (e) {}
+  try { renderNotifPrefs(); } catch (e) {}
   const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('myday');
   const tg = document.getElementById('sdToggleRec');
   if (tg) tg.onclick = async () => {
@@ -5074,6 +5245,156 @@ function renderSalud() {
     try { await window.mypumpDB.setMostrarRecuperacion(TOKEN, nuevo); } catch (e) {}
     renderSalud();
   };
+}
+
+/* Estado real de Apple Health. Antes el único indicador era un flag de
+ * localStorage que se ponía en 1 aunque el cliente hubiera denegado todo: la
+ * app decía "conectado" y no llegaba un solo dato, sin forma de notarlo. */
+async function renderAppleHealthEstado() {
+  const el = document.getElementById('sdAppleHealth');
+  if (!el || !window.MyPumpHealth || !window.MyPumpHealth.estado) return;
+  const e = await window.MyPumpHealth.estado();
+  if (!e.nativo) { el.innerHTML = ''; return; }   // en la web no aplica
+
+  const fmt = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso), h = (Date.now() - d) / 3600000;
+    if (h < 1) return 'recién';
+    if (h < 24) return `hace ${Math.round(h)} h`;
+    return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+  };
+
+  let cuerpo, boton;
+  if (!e.disponible) {
+    cuerpo = '<div class="cx-desc">Este iPhone no tiene Salud de Apple.</div>';
+    boton  = '';
+  } else if (e.denegado) {
+    cuerpo = '<div class="cx-desc">Está sin permiso. Para activarlo: <b>Ajustes</b> → '
+           + '<b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.</div>';
+    boton  = '<button class="cx-btn" id="ahReintentar">Reintentar</button>';
+  } else if (e.conectado) {
+    const u = fmt(e.ultimaSync);
+    const parcial = (e.autorizados != null && e.total && e.autorizados < e.total);
+    cuerpo = `<div class="cx-desc">${u ? 'Última sincronización: ' + u : 'Conectado'}`
+           + (parcial ? ` · ${e.autorizados} de ${e.total} permisos dados` : '')
+           + '</div>';
+    boton  = '<button class="cx-btn" id="ahSync">Sincronizar</button>';
+  } else {
+    cuerpo = '<div class="cx-desc">Conectalo y tus pasos, sueño y pulso entran solos.</div>';
+    boton  = '<button class="cx-btn" id="ahConectar">Conectar</button>';
+  }
+
+  el.innerHTML = `<div class="myday-section">
+    <div class="myday-section-hdr"><span class="myday-section-icon">❤️</span>
+      <span class="myday-section-title">Salud de Apple</span></div>
+    <div class="myday-section-body">
+      <div class="cx-fila">
+        <div class="cx-info">
+          <div class="cx-nombre">iPhone y Apple Watch${e.conectado && !e.denegado ? '<span class="cx-ok">activo</span>' : ''}</div>
+          ${cuerpo}
+        </div>
+        ${boton}
+      </div>
+      <div id="ahMsg" class="rec-nota" hidden></div>
+    </div></div>`;
+
+  const msg = document.getElementById('ahMsg');
+  const decir = (t) => { if (msg) { msg.hidden = false; msg.textContent = t; } };
+
+  const bC = document.getElementById('ahConectar');
+  if (bC) bC.onclick = async () => {
+    bC.disabled = true; bC.textContent = '…';
+    await _conectarSalud(bC, 'Conectar', async () => {
+      await loadSalud(); await loadRecuperacion(); renderSalud();
+    });
+  };
+
+  const bR = document.getElementById('ahReintentar');
+  if (bR) bR.onclick = async () => {
+    bR.disabled = true; bR.textContent = '…';
+    // Reintentar tiene sentido solo si volvió de Ajustes y activó algo: si
+    // sigue denegado, iOS no muestra nada y el botón vuelve como estaba.
+    const r = await window.MyPumpHealth.connect();
+    if (r && r.ok) { await loadSalud(); await loadRecuperacion(); renderSalud(); }
+    else { bR.disabled = false; bR.textContent = 'Reintentar'; decir('Sigue sin permiso. Activalo en Ajustes y volvé.'); }
+  };
+
+  const bS = document.getElementById('ahSync');
+  if (bS) bS.onclick = async () => {
+    bS.disabled = true; bS.textContent = '…';
+    try {
+      const r = await window.MyPumpHealth.sync();
+      await loadSalud(); await loadRecuperacion();
+      decir(r && r.ingresados ? `Listo: ${r.ingresados} datos nuevos.` : 'Ya estabas al día.');
+    } catch (e) { decir('No se pudo sincronizar ahora.'); }
+    bS.disabled = false; bS.textContent = 'Sincronizar';
+  };
+}
+
+/* Recordatorios. Cada uno con su switch: una notificación que no sirve termina
+ * en "desactivar todas", y de ahí a app borrada hay un paso. */
+async function renderNotifPrefs() {
+  const el = document.getElementById('sdNotif');
+  if (!el || !window.MyPumpNotif) return;
+  const e = await window.MyPumpNotif.estado();
+  if (!e.nativo || !e.disponible) { el.innerHTML = ''; return; }
+
+  const ITEMS = [
+    { k: 'entreno', nombre: 'Entrenar',        desc: 'Todos los días a la tarde.' },
+    { k: 'check',   nombre: 'Check semanal',   desc: 'Domingos, para contarle a Mati cómo venís.' },
+    { k: 'racha',   nombre: 'Cerrar el día',   desc: 'A la noche, si te quedó algo sin marcar.' },
+    { k: 'peso',    nombre: 'Pesarte',         desc: 'A la mañana. Está apagado por defecto.' },
+  ];
+
+  if (e.permiso !== 'granted') {
+    el.innerHTML = `<div class="myday-section">
+      <div class="myday-section-hdr"><span class="myday-section-icon">🔔</span>
+        <span class="myday-section-title">Recordatorios</span></div>
+      <div class="myday-section-body">
+        <div class="sd-sub">Un aviso para entrenar y el del check de los domingos. Nada más.</div>
+        ${e.permiso === 'denied'
+          ? '<div class="rec-nota">Están bloqueados. Para activarlos: <b>Ajustes</b> → <b>Notificaciones</b> → <b>MyPump</b>.</div>'
+          : '<button class="btn-primary" id="ntActivar" style="width:100%">Activar recordatorios</button>'}
+      </div></div>`;
+    const b = document.getElementById('ntActivar');
+    if (b) b.onclick = async () => {
+      b.disabled = true; b.textContent = 'Activando…';
+      const r = await window.MyPumpNotif.activar();
+      if (r && r.ok) renderNotifPrefs();
+      else {
+        b.disabled = false; b.textContent = 'Activar recordatorios';
+        const d = document.createElement('div');
+        d.className = 'rec-nota'; d.style.marginTop = '8px';
+        d.innerHTML = 'No quedaron activos. Podés darles permiso en <b>Ajustes</b> → <b>Notificaciones</b> → <b>MyPump</b>.';
+        b.parentElement.appendChild(d);
+      }
+    };
+    return;
+  }
+
+  const p = e.prefs;
+  const hh = (x) => `${String(x.hora).padStart(2, '0')}:${String(x.min).padStart(2, '0')}`;
+  el.innerHTML = `<div class="myday-section">
+    <div class="myday-section-hdr"><span class="myday-section-icon">🔔</span>
+      <span class="myday-section-title">Recordatorios</span></div>
+    <div class="myday-section-body">
+      ${ITEMS.map(it => `<div class="cx-fila">
+        <div class="cx-info">
+          <div class="cx-nombre">${it.nombre}${p[it.k].on ? `<span class="cx-ok">${hh(p[it.k])}</span>` : ''}</div>
+          <div class="cx-desc">${it.desc}</div>
+        </div>
+        <button class="cx-btn${p[it.k].on ? ' is-off' : ''}" data-nt="${it.k}">${p[it.k].on ? 'Quitar' : 'Activar'}</button>
+      </div>`).join('')}
+    </div></div>`;
+
+  el.querySelectorAll('[data-nt]').forEach(b => {
+    b.onclick = async () => {
+      const k = b.dataset.nt;
+      b.disabled = true;
+      await window.MyPumpNotif.setPref(k, { on: !window.MyPumpNotif.prefs()[k].on });
+      renderNotifPrefs();
+    };
+  });
 }
 
 function renderMydaySalud() {
@@ -5100,9 +5421,7 @@ function renderMydaySalud() {
     const btn = document.getElementById('btnConnectHealth');
     if (btn) btn.addEventListener('click', async () => {
       btn.disabled = true; btn.textContent = 'Conectando…';
-      const ok = await window.MyPumpHealth.connect();
-      if (ok) renderMyday();          // reflejar estado conectado + datos
-      else { btn.disabled = false; btn.textContent = 'Conectar Apple Health'; }
+      await _conectarSalud(btn, 'Conectar Apple Health', () => renderMyday());
     });
     return;
   }
@@ -6533,6 +6852,14 @@ async function init() {
   if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
     Outbox.load();
     if (Outbox.pending() > 0) Outbox.flushSoon(1500);   // esperar a que asiente el arranque
+  }
+
+  // Onboarding de permisos — primera apertura, con la app YA pintada detrás.
+  // El delay no es cosmético: si la hoja del sistema aparece sobre una pantalla
+  // en blanco, el cliente no tiene idea de qué le está pidiendo permiso y
+  // dice que no. Que vea su plan primero cambia por completo la respuesta.
+  if (_onboardingPendiente()) {
+    setTimeout(() => { try { mostrarOnboardingPermisos(); } catch (e) { console.warn('[onboarding]', e); } }, 1200);
   }
 }
 

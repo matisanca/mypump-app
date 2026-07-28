@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v13-20260727';
+const VERSION       = 'v14-20260727';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -26,6 +26,7 @@ const SHELL = [
   '/js/supabase-client.js',
   '/js/food-db.js',
   '/js/healthkit-bridge.js',
+  '/js/notificaciones.js',
   '/js/app.js',
   '/js/theme.js',
   '/js/deeplink.js',

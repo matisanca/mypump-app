@@ -49,9 +49,35 @@
     { dataType: 'exerciseTime',                  tipo: 'actividad_min',  como: 'sum' },
     { dataType: 'respiratoryRate',               tipo: 'respiracion_rpm', como: 'mediana' },
     { dataType: 'oxygenSaturation',              tipo: 'spo2_pct',        como: 'mediana', escala: 100 },
-    { dataType: 'appleSleepingWristTemperature', tipo: 'temp_muneca_c',   como: 'mediana' },
+    { dataType: 'appleSleepingWristTemperature', tipo: 'temp_muneca_c',   como: 'mediana', minIOS: 16 },
     { dataType: 'bodyFat',                       tipo: 'grasa_pct',       como: 'mediana', escala: 100 },
+    // ── Ampliación de cobertura ──
+    // El peso ya lo aceptaba la DB y lo mostraba el panel, pero nadie lo leía
+    // de acá: quien tiene balanza inteligente lo estaba tipeando a mano al
+    // pedo. Va 'ultimo' y no mediana — el peso del día es la última pesada.
+    { dataType: 'weight',          tipo: 'peso_kg',         como: 'ultimo' },
+    { dataType: 'distance',        tipo: 'distancia_km',    como: 'sum', escala: 0.001 }, // m → km
+    { dataType: 'flightsClimbed',  tipo: 'pisos',           como: 'sum' },
+    // Basales + totales = TDEE medido. Hoy sale de Mifflin-St Jeor, que tiene
+    // ±10% de error individual; esto es el gasto de ESTA persona.
+    { dataType: 'basalCalories',   tipo: 'kcal_basales',    como: 'sum' },
+    { dataType: 'totalCalories',   tipo: 'kcal_totales',    como: 'sum' },
+    { dataType: 'vo2Max',          tipo: 'vo2max',          como: 'mediana' },
+    { dataType: 'bodyTemperature', tipo: 'temp_corporal_c', como: 'mediana' },
+    { dataType: 'bloodGlucose',    tipo: 'glucosa_mg_dl',   como: 'mediana' },
+    { dataType: 'mindfulness',     tipo: 'mindful_min',     como: 'sum' },
+    { dataType: 'heartRate',       tipo: 'fc_media',        como: 'mediana' },
   ];
+
+  // Versión de iOS. Existe por un motivo puntual: pedir un tipo que el sistema
+  // del cliente no conoce hace que el plugin tire error ANTES de mostrar la
+  // hoja de permisos, así que un solo tipo iOS16+ dejaba a todo iOS 15 sin
+  // poder conectar nunca — sin hoja, sin error visible, sin explicación.
+  function iosMajor() {
+    const m = /OS (\d+)[_.]/.exec(navigator.userAgent || '');
+    return m ? parseInt(m[1], 10) : 0;
+  }
+  const soportado = (m) => !m.minIOS || iosMajor() === 0 || iosMajor() >= m.minIOS;
 
   const ymd = (d) => {
     const x = (d instanceof Date) ? d : new Date(d);
@@ -80,17 +106,89 @@
     catch { return false; }
   }
 
+  // Núcleo: lo que sostiene el score de recuperación. Si esto no entra, la
+  // función no tiene sentido, así que va en la primera tanda y solo.
+  const NUCLEO = ['steps', 'calories', 'restingHeartRate', 'sleep', 'heartRateVariability', 'weight'];
+
   function tiposLectura() {
     return AGG.map(m => m.dataType)
-      .concat(SAMPLES.map(m => m.dataType))
+      .concat(SAMPLES.filter(soportado).map(m => m.dataType))
       .concat(['sleep', 'heartRateVariability']);
   }
 
+  /* PEDIDO POR TANDAS — no es paranoia, arregla un bug que dejaba iOS 15 muerto.
+   *
+   * El plugin valida los tipos ANTES de abrir la hoja de Apple: si uno solo no
+   * existe en esa versión de iOS, tira y no se muestra NADA. Con
+   * appleSleepingWristTemperature (iOS 16+) en la lista, todo iPhone en iOS 15
+   * tocaba "Conectar", no pasaba nada, y no había forma de saber por qué.
+   *
+   * Ahora: primero el núcleo (existe desde iOS 8) para que la hoja aparezca sí
+   * o sí; después el resto en una tanda aparte que puede fallar sin arrastrar
+   * a la primera. Peor caso: el cliente conecta igual y pierde los tipos
+   * exóticos, en vez de perder todo.
+   */
   async function requestPermission() {
     const h = HEALTH();
-    if (!h) return false;
-    try { await h.requestAuthorization({ read: tiposLectura(), write: [] }); return true; }
-    catch (e) { console.warn('[health] permiso denegado/err:', e); return false; }
+    if (!h) return { ok: false, motivo: 'sin_plugin' };
+
+    let alguna = false;
+    try {
+      await h.requestAuthorization({ read: NUCLEO, write: [] });
+      alguna = true;
+    } catch (e) {
+      console.warn('[health] falló la tanda núcleo:', e);
+      // Reintento pelado: si hasta el núcleo falla, probamos con lo mínimo
+      // indispensable antes de darnos por vencidos.
+      try { await h.requestAuthorization({ read: ['steps', 'sleep'], write: [] }); alguna = true; }
+      catch (e2) { return { ok: false, motivo: 'error_nativo', detalle: String(e2 && e2.message || e2) }; }
+    }
+
+    const resto = tiposLectura().filter(t => NUCLEO.indexOf(t) === -1);
+    if (resto.length) {
+      try { await h.requestAuthorization({ read: resto, write: [] }); }
+      catch (e) { console.warn('[health] tanda secundaria falló (sigue igual):', e); }
+    }
+
+    // El veredicto REAL. requestAuthorization resuelve OK aunque el usuario
+    // destilde todo — en HealthKit "success" significa "se mostró la hoja", no
+    // "me dieron permiso". Antes devolvíamos true acá y marcábamos conectado:
+    // el que denegaba quedaba como conectado para siempre, sin datos y sin que
+    // nadie se enterara. Por eso ahora se consulta el estado y, si no hay nada
+    // autorizado, se dice que no.
+    const est = await estadoPermisos();
+    if (est.conocido && est.autorizados === 0) return { ok: false, motivo: 'denegado' };
+    return { ok: alguna, autorizados: est.autorizados, total: est.total };
+  }
+
+  /* Estado real de los permisos, para poder distinguir "no conectó todavía" de
+   * "conectó pero denegó". iOS NO vuelve a mostrar la hoja de un tipo ya
+   * respondido: sin esto, el que deniega no tiene forma de volver. */
+  async function estadoPermisos() {
+    const h = HEALTH();
+    const tipos = tiposLectura();
+    if (!h || typeof h.checkAuthorization !== 'function') {
+      return { conocido: false, autorizados: null, total: tipos.length, faltantes: [] };
+    }
+    try {
+      const r = await h.checkAuthorization({ read: tipos, write: [] });
+      // El plugin puede devolver la lista de autorizados/denegados o un mapa.
+      // Se toleran las dos formas: no quiero que un cambio de shape del plugin
+      // vuelva a dejar esto mintiendo en silencio.
+      const okList = (r && (r.readAuthorized || r.authorized)) || [];
+      const noList = (r && (r.readDenied || r.denied)) || [];
+      if (Array.isArray(okList) || Array.isArray(noList)) {
+        return {
+          conocido: true,
+          autorizados: Array.isArray(okList) ? okList.length : 0,
+          total: tipos.length,
+          faltantes: Array.isArray(noList) ? noList.slice() : [],
+        };
+      }
+      return { conocido: false, autorizados: null, total: tipos.length, faltantes: [] };
+    } catch (e) {
+      return { conocido: false, autorizados: null, total: tipos.length, faltantes: [] };
+    }
   }
 
   // ── readSamples con detección de truncamiento ──────────────────────────
@@ -276,19 +374,33 @@
       }
     }
 
-    for (const { dataType, tipo, como, escala } of SAMPLES) {
+    // .filter(soportado): saltea los tipos que esta versión de iOS no conoce.
+    // Sin esto se pierde tiempo en llamadas que el nativo va a rechazar igual.
+    for (const { dataType, tipo, como, escala, factor } of SAMPLES.filter(soportado)) {
       const ms = await leerMuestras(dataType, desde, hasta);
       const porFecha = {};
       for (const s of ms) {
         let v = Number(s.value);
         if (!isFinite(v)) continue;
         if (escala && v <= 1) v = v * escala;   // SpO2/grasa a veces vienen 0-1
-        (porFecha[ymd(s.startDate)] = porFecha[ymd(s.startDate)] || []).push(v);
+        if (factor) v = v * factor;             // conversión fija de unidad (m → km)
+        // Se guarda con su hora: 'ultimo' necesita saber cuál vino después.
+        (porFecha[ymd(s.startDate)] = porFecha[ymd(s.startDate)] || []).push({ v, t: +new Date(s.startDate) });
       }
       for (const fecha of Object.keys(porFecha)) {
         const xs = porFecha[fecha];
-        const val = como === 'sum' ? xs.reduce((a, b) => a + b, 0) : mediana(xs);
+        let val;
+        if (como === 'sum') {
+          val = xs.reduce((a, b) => a + b.v, 0);
+        } else if (como === 'ultimo') {
+          // Peso: el del día es la última pesada, no el promedio. Si se pesó
+          // antes y después de entrenar, vale la de después.
+          val = xs.slice().sort((a, b) => a.t - b.t).pop().v;
+        } else {
+          val = mediana(xs.map(x => x.v));
+        }
         if (!(val > 0)) continue;
+        // Peso y distancia necesitan 1 decimal; el resto redondea igual.
         registros.push({ fecha, tipo, valor: Math.round(val * 10) / 10, fuente: 'apple_health' });
       }
     }
@@ -315,6 +427,59 @@
     return ok;
   }
 
+  /* ── Entrenamientos ────────────────────────────────────────────────────
+   * queryWorkouts existía en el plugin desde el día uno y no se llamaba nunca.
+   * Es lo que hace visible el cardio, el fútbol de los jueves, la bici: todo
+   * lo que el cliente entrena FUERA de la app y que hoy se le calculaba como
+   * si no existiera. Va a su propia tabla porque son eventos (varios por día,
+   * con tipo y duración), no una serie diaria. */
+  async function recolectarEntrenos(desde, hasta) {
+    const h = HEALTH();
+    if (!h || typeof h.queryWorkouts !== 'function') return [];
+    let ws = [];
+    try {
+      const r = await h.queryWorkouts({ startDate: desde.toISOString(), endDate: hasta.toISOString() });
+      ws = (r && (r.workouts || r.samples)) || [];
+    } catch (e) {
+      console.warn('[health] queryWorkouts:', e);
+      return [];
+    }
+    const out = [];
+    for (const w of ws) {
+      const ini = w.startDate || w.start;
+      if (!ini) continue;
+      const fin = w.endDate || w.end || null;
+      const dur = (w.duration != null)
+        ? Number(w.duration) / 60                      // el plugin da segundos
+        : (fin ? (new Date(fin) - new Date(ini)) / 60000 : null);
+      const km = (w.totalDistance != null) ? Number(w.totalDistance) / 1000 : null;
+      out.push({
+        inicio: new Date(ini).toISOString(),
+        fin: fin ? new Date(fin).toISOString() : null,
+        tipo: String(w.workoutType || w.type || 'other'),
+        duracion_min: (dur != null && isFinite(dur)) ? Math.round(dur * 10) / 10 : null,
+        kcal: (w.totalEnergyBurned != null && isFinite(+w.totalEnergyBurned)) ? Math.round(+w.totalEnergyBurned) : null,
+        distancia_km: (km != null && isFinite(km) && km > 0) ? Math.round(km * 100) / 100 : null,
+        fc_media: (w.averageHeartRate != null) ? Math.round(+w.averageHeartRate) : null,
+        fc_max: (w.maxHeartRate != null) ? Math.round(+w.maxHeartRate) : null,
+        fuente: 'apple_health',
+      });
+    }
+    return out;
+  }
+
+  async function postearEntrenos(entrenos) {
+    const token = getToken();
+    if (!token || !entrenos.length) return 0;
+    if (!window.mypumpDB || !window.mypumpDB.ingestEntrenos) return 0;
+    let ok = 0;
+    for (let i = 0; i < entrenos.length; i += 200) {
+      const r = await window.mypumpDB.ingestEntrenos(token, entrenos.slice(i, i + 200));
+      if (r && r.success) ok += Number(r.data) || 0;
+    }
+    return ok;
+  }
+
   // ── Sync incremental (últimos 7 días) ─────────────────────────────────
   async function sync() {
     if (!isNative) return { ok: false, reason: 'no-native' };
@@ -322,11 +487,16 @@
     const hasta = new Date(), desde = new Date();
     desde.setDate(desde.getDate() - 7);
     const registros = await recolectar(desde, hasta);
-    if (!registros.length) return { ok: true, ingresados: 0 };
-    const n = await postear(registros);
+    const n = registros.length ? await postear(registros) : 0;
+    // Los entrenos van por su propia vía: si esa falla, las métricas diarias
+    // ya quedaron guardadas igual.
+    let nEnt = 0;
+    try { nEnt = await postearEntrenos(await recolectarEntrenos(desde, hasta)); }
+    catch (e) { console.warn('[health] entrenos:', e); }
+    marcarSync();
     if (typeof window.loadSalud === 'function') window.loadSalud();
     if (typeof window.loadRecuperacion === 'function') window.loadRecuperacion();
-    return { ok: true, ingresados: n };
+    return { ok: true, ingresados: n, entrenos: nEnt };
   }
 
   // ── Backfill de 60 días, una sola vez ─────────────────────────────────
@@ -344,6 +514,7 @@
       try {
         const regs = await recolectar(desde, hasta);
         total += await postear(regs);
+        await postearEntrenos(await recolectarEntrenos(desde, hasta));
       } catch (e) { console.warn('[health] backfill ventana', off, e); }
       if (typeof onProgreso === 'function') onProgreso(60 - off + 5, 60);
     }
@@ -357,13 +528,67 @@
     return localStorage.getItem('mypump_health_connected') === '1';
   }
 
+  const K_ULTIMA = 'mypump_health_last_sync';
+  const K_DENEG  = 'mypump_health_denegado';
+
+  function ultimaSync() {
+    try { return localStorage.getItem(K_ULTIMA) || null; } catch (e) { return null; }
+  }
+  function marcarSync() {
+    try { localStorage.setItem(K_ULTIMA, new Date().toISOString()); } catch (e) {}
+  }
+  function fueDenegado() {
+    try { return localStorage.getItem(K_DENEG) === '1'; } catch (e) { return false; }
+  }
+
+  /* Devuelve un OBJETO, no un booleano: la UI necesita distinguir "no conectó"
+   * de "denegó" para poder mandarlo a Ajustes. Antes devolvía false para los
+   * dos casos y el cliente que denegaba podía tocar el botón cien veces sin
+   * que pasara nada — iOS no reabre la hoja de un tipo ya respondido. */
   async function connect(onProgreso) {
-    if (!(await hkAvailable())) return false;
-    if (!(await requestPermission())) return false;
+    if (!(await hkAvailable())) {
+      return { ok: false, motivo: 'no_disponible' };
+    }
+    const r = await requestPermission();
+    if (!r.ok) {
+      if (r.motivo === 'denegado') {
+        try { localStorage.setItem(K_DENEG, '1'); } catch (e) {}
+      }
+      return r;
+    }
+    try { localStorage.removeItem(K_DENEG); } catch (e) {}
     localStorage.setItem('mypump_health_connected', '1');
     await sync();
+    marcarSync();
     await backfill(onProgreso);   // trae la historia para que el score arranque ya
-    return true;
+    return { ok: true, autorizados: r.autorizados, total: r.total };
+  }
+
+  function disconnect() {
+    // Solo local: los datos ya subidos quedan (son del cliente y el coach los
+    // usa). Esto corta la sincronización, no borra la historia.
+    try {
+      localStorage.removeItem('mypump_health_connected');
+      localStorage.removeItem(K_ULTIMA);
+      localStorage.removeItem(FLAG_BACKFILL);
+    } catch (e) {}
+  }
+
+  // Estado completo para la pantalla de conexión.
+  async function estado() {
+    const disp = await hkAvailable();
+    const est  = disp ? await estadoPermisos() : { conocido: false, autorizados: null, total: 0, faltantes: [] };
+    return {
+      nativo: isNative,
+      disponible: disp,
+      conectado: isConnected(),
+      denegado: fueDenegado() || (est.conocido && est.autorizados === 0),
+      autorizados: est.autorizados,
+      total: est.total,
+      faltantes: est.faltantes,
+      ultimaSync: ultimaSync(),
+      ios: iosMajor(),
+    };
   }
 
   // ── Diagnóstico: ?diag=health ─────────────────────────────────────────
@@ -421,6 +646,9 @@
     isAvailable: () => isNative,
     isConnected,
     connect,
+    disconnect,
+    estado,          // estado real: conectado / denegado / cuántos permisos / última sync
+    ultimaSync,
     sync,
     backfill,
     diagnostico,

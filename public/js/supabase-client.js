@@ -292,6 +292,22 @@ window.mypumpDB = {
     return await rpcMutation('mypump_ingest_salud', { p_token: token, p_registros: registros });
   },
 
+  // Entrenamientos de Apple Health (mig 047). Tabla propia y no salud_diaria
+  // porque son eventos: puede haber varios por día, con tipo y duración.
+  async ingestEntrenos(token, entrenos) {
+    return await rpcMutation('mypump_ingest_entrenos', { p_token: token, p_entrenos: entrenos });
+  },
+
+  async getEntrenosHealth(token, dias) {
+    return await rpc('mypump_get_entrenos_health', { p_token: token, p_dias: dias || 30 });
+  },
+
+  // Gasto energético MEDIDO por el dispositivo (mediana de N días). Sirve para
+  // contrastar contra el TDEE de fórmula, que tiene ±10% de error individual.
+  async getGastoReal(token, dias) {
+    return await rpc('mypump_get_gasto_real', { p_token: token, p_dias: dias || 14 });
+  },
+
   // ─── RECUPERACIÓN (score 0-100, mig 043) ─────────────────
 
   // Serie diaria de recuperación, la más reciente al final. Cada fila:
