@@ -553,8 +553,14 @@
       } catch (e) { console.warn('[health] backfill ventana', off, e); }
       if (typeof onProgreso === 'function') onProgreso(60 - off + 5, 60);
     }
-    // 60 días sin una sola muestra de nada es la señal más fuerte que vamos a
-    // tener de que no hay permiso: pesa como una racha entera.
+    // 60 días sin una sola muestra: se avisa ya, sin esperar la racha.
+    //
+    // Un iPhone estrenado hoy da el mismo cero y se lleva el aviso sin
+    // merecerlo — son indistinguibles en ese instante y no hay forma de
+    // separarlos. Se acepta a propósito: el texto describe el síntoma ("todavía
+    // no llegó ningún dato") en vez de acusar a nadie, y se borra solo apenas
+    // entra el primer dato. El caso caro es el otro: el que denegó y se va
+    // convencido de que quedó andando.
     if (cosechados === 0) { try { localStorage.setItem(K_DENEG, '1'); } catch (e) {} }
     try { localStorage.setItem(FLAG_BACKFILL, '1'); } catch (e) {}
     if (typeof window.loadSalud === 'function') window.loadSalud();
