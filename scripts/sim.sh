@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# =============================================================
+# sim.sh — compila MyPump y la instala en el Simulador de iOS.
+#
+# PARA QUÉ
+# Poder probar la app de verdad (no el bundle web en un navegador) sin
+# depender de un iPhone físico ni de una vuelta completa por TestFlight, que
+# son 3 minutos de build en la nube + procesamiento de Apple.
+#
+# QUÉ SÍ Y QUÉ NO PRUEBA EL SIMULADOR
+#   SÍ  · toda la UI, navegación y flujos reales dentro de WKWebView
+#       · que la app arranque y no crashee con los plugins nativos cargados
+#       · HealthKit: el framework existe; los datos se cargan a mano en la app
+#         Salud del simulador (Health → Explorar → agregar)
+#       · notificaciones: `xcrun simctl push` inyecta un payload y permite ver
+#         si la app reacciona y si el tap lleva a la escena correcta
+#   NO  · el device token REAL de APNs (el simulador no tiene uno)
+#       · el envío real desde la mini (eso necesita un iPhone)
+#       · datos de sensores reales (HRV, sueño de un reloj)
+#
+# USO
+#   ./scripts/sim.sh              # compila e instala en el simulador por defecto
+#   ./scripts/sim.sh --boot-only  # solo arranca el simulador
+#   ./scripts/sim.sh --device "iPhone 17 Pro"
+# =============================================================
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+DEVICE="${DEVICE:-iPhone 17 Pro}"
+SOLO_BOOT=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --boot-only) SOLO_BOOT=1; shift ;;
+    --device)    DEVICE="$2"; shift 2 ;;
+    *) echo "opción desconocida: $1"; exit 1 ;;
+  esac
+done
+
+# ── Xcode presente? ───────────────────────────────────────────
+if ! xcrun simctl help >/dev/null 2>&1; then
+  echo "✗ No hay Xcode (falta simctl)."
+  echo "  Instalalo desde el App Store y después corré:"
+  echo "    sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+  exit 1
+fi
+
+# ── Simulador ─────────────────────────────────────────────────
+UDID=$(xcrun simctl list devices available \
+       | grep -m1 "$DEVICE (" | grep -oE '[0-9A-F-]{36}' || true)
+if [ -z "$UDID" ]; then
+  echo "✗ No encontré el simulador '$DEVICE'. Disponibles:"
+  xcrun simctl list devices available | grep -E '^\s+iPhone' | head -10
+  exit 1
+fi
+
+echo "▸ Simulador: $DEVICE ($UDID)"
+xcrun simctl boot "$UDID" 2>/dev/null || true   # ya booteado no es error
+open -a Simulator
+
+[ "$SOLO_BOOT" = "1" ] && { echo "✓ Simulador arrancado."; exit 0; }
+
+# ── Bundle web al día ─────────────────────────────────────────
+echo "▸ Sincronizando el bundle web…"
+npx cap sync ios >/dev/null
+
+# ── Compilar para simulador ───────────────────────────────────
+# Sin firma: el simulador no la necesita, y así no dependemos de
+# certificados ni provisioning profiles para probar.
+echo "▸ Compilando (esto tarda la primera vez)…"
+DERIVED=$(mktemp -d)
+xcodebuild -project ios/App/App.xcodeproj \
+           -scheme App \
+           -configuration Debug \
+           -sdk iphonesimulator \
+           -derivedDataPath "$DERIVED" \
+           CODE_SIGNING_ALLOWED=NO \
+           -quiet build
+
+APP=$(find "$DERIVED/Build/Products" -name "*.app" -maxdepth 3 | head -1)
+[ -z "$APP" ] && { echo "✗ No se generó el .app"; exit 1; }
+
+echo "▸ Instalando $(basename "$APP")…"
+xcrun simctl install "$UDID" "$APP"
+xcrun simctl launch "$UDID" com.pumpteam.mypump
+
+echo "✓ Listo. La app está corriendo en el simulador."
+echo
+echo "  Notificación de prueba:"
+echo "    xcrun simctl push $UDID com.pumpteam.mypump scripts/push-test.json"

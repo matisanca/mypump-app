@@ -1,0 +1,12 @@
+{
+  "Simulator Target Bundle": "com.pumpteam.mypump",
+  "aps": {
+    "alert": {
+      "title": "Mati comentó Press banca",
+      "body": "Ojo con el arco lumbar en la última serie, se te fue un poco."
+    },
+    "sound": "default",
+    "badge": 1
+  },
+  "destino": "comentarios"
+}
