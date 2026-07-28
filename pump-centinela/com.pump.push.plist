@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.pump.push — vacía la cola de notificaciones cada 5 minutos.
+
+  Por qué 5 min y no al instante: un push de "te dejé un comentario" no es
+  urgente al segundo, y el polling deja UN solo camino donde mirar cuando algo
+  no llega. Si en algún momento hace falta inmediatez, se dispara este mismo
+  script desde el trigger vía webhook, sin mover nada más.
+
+  Por qué no más espaciado: media hora para enterarte de que tu coach te
+  escribió ya se siente roto.
+
+  Instalación:
+    cp com.pump.push.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.pump.push.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pump.push</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/matiassancari/agentkit-coach/venv/bin/python</string>
+    <string>/Users/matiassancari/pump-centinela/push.py</string>
+    <string>--enviar</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/matiassancari/pump-centinela/push.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/matiassancari/pump-centinela/push.err</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/matiassancari/pump-centinela</string>
+</dict>
+</plist>

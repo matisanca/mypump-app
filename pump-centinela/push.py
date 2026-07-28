@@ -38,14 +38,39 @@ import urllib.request
 import urllib.error
 
 # ── Config ────────────────────────────────────────────────────────────
-SB_URL = os.environ.get("SUPABASE_URL", "https://gydinputrtptqakdzyvc.supabase.co")
-SB_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+# Dos .env, como el resto de la mini: la service key vive en el del bot
+# (compartida con centinela/wearables) y lo de APNs en el de pump-centinela.
+# Se leen los dos y el segundo pisa al primero.
+BOT_ENV  = os.path.expanduser("~/agentkit-coach/.env")
+PUSH_ENV = os.path.expanduser("~/pump-centinela/.env")
 
-APNS_KEY_PATH = os.environ.get("APNS_KEY_PATH", "")
-APNS_KEY_ID   = os.environ.get("APNS_KEY_ID", "")
-APNS_TEAM_ID  = os.environ.get("APNS_TEAM_ID", "")
-APNS_TOPIC    = os.environ.get("APNS_TOPIC", "com.pumpteam.mypump")
-APNS_ENV      = os.environ.get("APNS_ENV", "prod")
+
+def load_env(p):
+    e = {}
+    try:
+        for line in open(p):
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                e[k.strip()] = v.strip().strip('"').strip("'")
+    except FileNotFoundError:
+        pass
+    return e
+
+
+E = load_env(BOT_ENV)
+E.update(load_env(PUSH_ENV))
+# os.environ gana sobre los archivos: permite override puntual en una corrida.
+_g = lambda k, d="": os.environ.get(k) or E.get(k) or d
+
+SB_URL = _g("SUPABASE_URL", "https://gydinputrtptqakdzyvc.supabase.co").rstrip("/")
+SB_KEY = _g("SUPABASE_SERVICE_KEY") or _g("SUPABASE_KEY")
+
+APNS_KEY_PATH = os.path.expanduser(_g("APNS_KEY_PATH"))
+APNS_KEY_ID   = _g("APNS_KEY_ID")
+APNS_TEAM_ID  = _g("APNS_TEAM_ID")
+APNS_TOPIC    = _g("APNS_TOPIC", "com.pumpteam.mypump")
+APNS_ENV      = _g("APNS_ENV", "prod")
 
 APNS_HOST = ("api.push.apple.com" if APNS_ENV == "prod"
              else "api.sandbox.push.apple.com")
