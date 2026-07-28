@@ -38,9 +38,18 @@ while [ $# -gt 0 ]; do
 done
 
 # ── Xcode presente? ───────────────────────────────────────────
+# DEVELOPER_DIR le gana a xcode-select y no necesita sudo. Sirve cuando Xcode
+# está instalado pero el developer dir sigue apuntando a CommandLineTools:
+# así se puede compilar y usar el simulador sin pedirle la contraseña a nadie.
+if [ -d /Applications/Xcode.app/Contents/Developer ]; then
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+fi
+
 if ! xcrun simctl help >/dev/null 2>&1; then
   echo "✗ No hay Xcode (falta simctl)."
-  echo "  Instalalo desde el App Store y después corré:"
+  echo "  Instalalo desde el App Store. Si ya está instalado, el developer dir"
+  echo "  apunta al lugar equivocado; para dejarlo fijo (y habilitar el panel"
+  echo "  visual del simulador) corré:"
   echo "    sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
   exit 1
 fi
