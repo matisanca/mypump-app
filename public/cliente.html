@@ -1115,9 +1115,19 @@ const TOKEN = (function() {
 // ahora cae a localStorage por su cuenta, pero esta línea cierra el agujero
 // de raíz en vez de dejarlo dependiendo de un fallback.
 window.TOKEN = TOKEN;
-const TODAY = new Date().toISOString().split('T')[0];
-// Fecha local del cliente (YYYY-MM-DD en su timezone)
-const TODAY_LOCAL = new Date().toLocaleDateString('en-CA');
+/* Fecha local del cliente (YYYY-MM-DD en su timezone).
+ *
+ * FUNCIÓN Y NO CONSTANTE: era una const calculada UNA SOLA VEZ al
+ * cargar la página. En un teléfono la app queda abierta de fondo durante días,
+ * así que quien la abría a la noche y la usaba después de las 00:00 escribía
+ * las comidas, los hábitos y el peso de HOY con la fecha de AYER — y encima
+ * pisando lo que ya había marcado el día anterior, porque las tablas son
+ * upsert por (cliente, fecha, …).
+ *
+ * `en-CA` da YYYY-MM-DD, que es el formato que esperan las RPC.
+ * (Se sacó también `TODAY`, en UTC: no lo usaba nadie y en Argentina apuntaba
+ * al día siguiente desde las 21:00.) */
+function hoyLocal() { return new Date().toLocaleDateString('en-CA'); }
 
 let DATA = null;   // {cliente, rutina, dia, historico_por_ejercicio, _dias, _isDemo}
 let DIET = null;   // {macros_target, comidas}
@@ -3909,7 +3919,7 @@ async function loadComidasMarcadas() {
     return;
   }
   try {
-    const rows = await window.mypumpDB.getComidasMarcadas(TOKEN, TODAY_LOCAL);
+    const rows = await window.mypumpDB.getComidasMarcadas(TOKEN, hoyLocal());
     const map = {};
     (rows || []).forEach(r => {
       map[r.comida_id] = {
@@ -3948,9 +3958,9 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
 
   let res;
   if (nuevoEstado === null) {
-    res = await window.mypumpDB.desmarcarComida(TOKEN, TODAY_LOCAL, comidaId);
+    res = await window.mypumpDB.desmarcarComida(TOKEN, hoyLocal(), comidaId);
   } else {
-    res = await window.mypumpDB.marcarComida(TOKEN, TODAY_LOCAL, comidaId, opcionNombre, nuevoEstado, []);
+    res = await window.mypumpDB.marcarComida(TOKEN, hoyLocal(), comidaId, opcionNombre, nuevoEstado, []);
   }
   if (!res.success) {
     // Rollback
@@ -3976,7 +3986,7 @@ async function toggleFoodComido(comidaId, foodIdx) {
 
   if (!TOKEN || (DATA && DATA._isDemo)) return;
   const res = await window.mypumpDB.marcarComida(
-    TOKEN, TODAY_LOCAL, comidaId, mark.opcion || 'A', 'comido', nuevos
+    TOKEN, hoyLocal(), comidaId, mark.opcion || 'A', 'comido', nuevos
   );
   if (!res.success) {
     mark.foodsExcluidos = prev;          // rollback
@@ -4027,13 +4037,13 @@ async function loadComidasLibres() {
     return;
   }
   try {
-    STATE.comidasLibres = (await window.mypumpDB.getComidasLibres(TOKEN, TODAY_LOCAL)) || [];
+    STATE.comidasLibres = (await window.mypumpDB.getComidasLibres(TOKEN, hoyLocal())) || [];
   } catch (_) { STATE.comidasLibres = []; }
   if (STATE.scene === 'diet') renderDiet();
 }
 
 async function guardarComidaLibre(datos) {
-  const res = await window.mypumpDB.crearComidaLibre(TOKEN, { ...datos, fecha: TODAY_LOCAL });
+  const res = await window.mypumpDB.crearComidaLibre(TOKEN, { ...datos, fecha: hoyLocal() });
   if (res && res.success && res.data && res.data[0]) {
     STATE.comidasLibres.push(res.data[0]);
     renderDiet();
@@ -4917,7 +4927,7 @@ async function loadMyday() {
   if (!TOKEN) return;
   try {
     const [habitos, streak] = await Promise.all([
-      window.mypumpDB.getHabitosDia(TOKEN, TODAY_LOCAL),
+      window.mypumpDB.getHabitosDia(TOKEN, hoyLocal()),
       window.mypumpDB.getStreak(TOKEN),
     ]);
     MYDAY  = habitos;
@@ -4946,7 +4956,7 @@ async function loadRevision() {
 
 async function setHabito(campo, valor) {
   if (!TOKEN) return;
-  const res = await window.mypumpDB.setHabito(TOKEN, TODAY_LOCAL, campo, valor);
+  const res = await window.mypumpDB.setHabito(TOKEN, hoyLocal(), campo, valor);
   if (res.success && res.data && res.data.length > 0) {
     MYDAY = res.data[0];
     // Re-render solo las partes que cambiaron
@@ -4988,8 +4998,8 @@ function renderMydayStreak() {
 async function loadSalud() {
   if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getSalud) return;
   try {
-    const hasta = TODAY_LOCAL;
-    const d = new Date(TODAY_LOCAL + 'T00:00:00');
+    const hasta = hoyLocal();
+    const d = new Date(hoyLocal() + 'T00:00:00');
     d.setDate(d.getDate() - 59);   // 60 días: la card Peso grafica la tendencia completa
     const desde = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     STATE.salud = (await window.mypumpDB.getSalud(TOKEN, desde, hasta)) || [];
@@ -5631,19 +5641,19 @@ function renderMydaySalud() {
   // Math.round antes de formatear: el bridge redondea, pero un agregador puede
   // mandar decimales y "8.548,161 pasos" queda ridículo.
   const fmt = n => Math.round(Number(n)).toLocaleString('es-AR');
-  const hoy = _saludValor('pasos', TODAY_LOCAL);
+  const hoy = _saludValor('pasos', hoyLocal());
   // Promedio de los últimos 7 días CON dato (el fetch trae 60d para la card Peso,
   // pero el promedio de pasos sigue siendo semanal).
   const fechas = [...new Set(pasos.map(r => r.fecha))].sort().slice(-7);
   const vals = fechas.map(f => _saludValor('pasos', f)).filter(v => v != null);
   const prom = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
-  const actHoy = _saludValor('actividad_min', TODAY_LOCAL);
+  const actHoy = _saludValor('actividad_min', hoyLocal());
   // F9a — recuperación: sueño anoche y HRV (si el wearable los manda).
   // El sueño de "anoche" suele registrarse con la fecha de hoy; si no, ayer.
-  const dAyer = new Date(TODAY_LOCAL + 'T00:00:00'); dAyer.setDate(dAyer.getDate() - 1);
+  const dAyer = new Date(hoyLocal() + 'T00:00:00'); dAyer.setDate(dAyer.getDate() - 1);
   const ayer = `${dAyer.getFullYear()}-${String(dAyer.getMonth()+1).padStart(2,'0')}-${String(dAyer.getDate()).padStart(2,'0')}`;
-  const suenoMin = _saludValor('sueno_min', TODAY_LOCAL) ?? _saludValor('sueno_min', ayer);
-  const hrv      = _saludValor('hrv_ms', TODAY_LOCAL) ?? _saludValor('hrv_ms', ayer);
+  const suenoMin = _saludValor('sueno_min', hoyLocal()) ?? _saludValor('sueno_min', ayer);
+  const hrv      = _saludValor('hrv_ms', hoyLocal()) ?? _saludValor('hrv_ms', ayer);
   const fmtSueno = m => `${Math.floor(m/60)}h ${String(Math.round(m%60)).padStart(2,'0')}`;
 
   el.innerHTML = `
@@ -5753,11 +5763,11 @@ function renderMydayPeso() {
   const el = document.getElementById('myday-peso');
   if (!el) return;
   const serie = _pesoSerie();
-  const hoyVal = serie.find(p => p.fecha === TODAY_LOCAL);
+  const hoyVal = serie.find(p => p.fecha === hoyLocal());
 
   // Delta semanal: media 7d vs media de los 7 días anteriores (en gramos).
-  const m7 = _pesoMedia(serie, TODAY_LOCAL, 7);
-  const dPrev = new Date(TODAY_LOCAL + 'T00:00:00'); dPrev.setDate(dPrev.getDate() - 7);
+  const m7 = _pesoMedia(serie, hoyLocal(), 7);
+  const dPrev = new Date(hoyLocal() + 'T00:00:00'); dPrev.setDate(dPrev.getDate() - 7);
   const fPrev = `${dPrev.getFullYear()}-${String(dPrev.getMonth()+1).padStart(2,'0')}-${String(dPrev.getDate()).padStart(2,'0')}`;
   const m7prev = _pesoMedia(serie, fPrev, 7);
   const deltaG = (m7 != null && m7prev != null) ? Math.round((m7 - m7prev) * 1000) : null;
@@ -5805,9 +5815,9 @@ function renderMydayPeso() {
     }
     const valor = Math.round(v * 10) / 10;
     // Update optimista de STATE.salud (el Outbox garantiza la persistencia).
-    STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === TODAY_LOCAL && r.fuente === 'manual'));
-    STATE.salud.push({ fecha: TODAY_LOCAL, tipo: 'peso_kg', valor, fuente: 'manual' });
-    Outbox.enqueue('peso', { fecha: TODAY_LOCAL, valor }, 'peso_' + TODAY_LOCAL);
+    STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === hoyLocal() && r.fuente === 'manual'));
+    STATE.salud.push({ fecha: hoyLocal(), tipo: 'peso_kg', valor, fuente: 'manual' });
+    Outbox.enqueue('peso', { fecha: hoyLocal(), valor }, 'peso_' + hoyLocal());
     renderMydayPeso();
   };
   if (btn) btn.addEventListener('click', guardar);
@@ -5979,7 +5989,7 @@ async function fotosFirmadas() {
    desaparece solo al completarse. Badge en la tab Revisión + banner arriba en
    Entreno y Dieta. Reusa los patrones .tab-badge y .prog-banner. */
 function _pendientesSemana() {
-  const sem = _lunesISO(TODAY_LOCAL);
+  const sem = _lunesISO(hoyLocal());
   const faltaCheck = !(STATE.checkin && STATE.checkin.energia);
   let faltanFotos = false;
   if (FOTOS_URL()) {
@@ -6023,7 +6033,7 @@ function renderMydayFotos() {
   if (!el) return;
   if (!FOTOS_URL()) { el.innerHTML = ''; return; }   // servicio no configurado
 
-  const semanaAct = _lunesISO(TODAY_LOCAL);
+  const semanaAct = _lunesISO(hoyLocal());
   const fotos = STATE.fotos || [];
   const pendientes = _fotoqLeer();
   const deEstaSemana = new Set(fotos.filter(f => f.semana_lunes === semanaAct).map(f => f.pose));
@@ -6164,7 +6174,7 @@ async function _tomarFoto(pose, origen) {
 
     // Encolar (para sobrevivir a cierres/red) y subir enseguida
     const q = _fotoqLeer();
-    const key = `${_lunesISO(TODAY_LOCAL)}|${pose}`;
+    const key = `${_lunesISO(hoyLocal())}|${pose}`;
     if (Object.keys(q).length >= FOTOS_MAX_PENDIENTES && !q[key]) {
       setMsg('Hay fotos esperando subir. Probá cuando tengas señal.', 'is-err');
       return;
@@ -6172,12 +6182,12 @@ async function _tomarFoto(pose, origen) {
     // El server corta la conexion si el body pasa los 3 MB, y eso llega al
     // front como 'sin conexion' → trabaria la cola. Se filtra antes de encolar.
     if (dataUrl.length > 2.4e6) return setMsg('Esa foto es demasiado pesada. Probá sacarla con la cámara.', 'is-err');
-    q[key] = { pose, fecha: TODAY_LOCAL, dataUrl, intentos: 0 };
+    q[key] = { pose, fecha: hoyLocal(), dataUrl, intentos: 0 };
     const guardo = _fotoqGuardar(q);
     renderMydayFotos();
     setMsg('Subiendo…');
 
-    const res = await _subirFoto(pose, dataUrl, TODAY_LOCAL);
+    const res = await _subirFoto(pose, dataUrl, hoyLocal());
     if (res.ok) {
       const q2 = _fotoqLeer(); delete q2[key]; _fotoqGuardar(q2);
       await loadFotos();
@@ -6298,7 +6308,7 @@ async function abrirGaleriaFotos() {
 async function loadCheckin() {
   if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getCheckinSemana) return;
   try {
-    const res = await window.mypumpDB.getCheckinSemana(TOKEN, TODAY_LOCAL);
+    const res = await window.mypumpDB.getCheckinSemana(TOKEN, hoyLocal());
     STATE.checkin = (Array.isArray(res) && res[0]) ? res[0] : null;
   } catch (_) { STATE.checkin = null; }
   if (STATE.scene === 'revision') renderMydayCheckin();
@@ -6354,7 +6364,7 @@ function renderMydayCheckin() {
     const datos = { energia: d.energia, descanso: d.descanso, hambre: d.hambre, adherencia: d.adherencia, nota: (d.nota || '').trim() };
     STATE.checkin = { ...datos };          // update optimista
     STATE.checkinDraft = null;
-    Outbox.enqueue('checkin', { fecha: TODAY_LOCAL, datos }, 'checkin_' + TODAY_LOCAL);
+    Outbox.enqueue('checkin', { fecha: hoyLocal(), datos }, 'checkin_' + hoyLocal());
     renderMydayCheckin();
     try { renderRecordatorio(); } catch (_) {}
   });
@@ -6538,7 +6548,7 @@ function renderMyday() {
     <div class="myday-streak" id="myday-streak"></div>
 
     <!-- FECHA -->
-    <div class="myday-date">${formatFechaLocal(TODAY_LOCAL)}</div>
+    <div class="myday-date">${formatFechaLocal(hoyLocal())}</div>
 
     <!-- ENTRENAMIENTO -->
     <div class="myday-section">
@@ -6734,7 +6744,7 @@ function cambiarAgua(delta) {
   // Debounce: guardar al servidor 600ms después del último clic
   clearTimeout(_aguaTimer);
   _aguaTimer = setTimeout(() => {
-    window.mypumpDB.setHabito(TOKEN, TODAY_LOCAL, 'vasos_agua', String(next)).then(res => {
+    window.mypumpDB.setHabito(TOKEN, hoyLocal(), 'vasos_agua', String(next)).then(res => {
       if (res.success && res.data?.length > 0) MYDAY = res.data[0];
     });
   }, 600);
@@ -6749,7 +6759,7 @@ function renderAdhGrid(rows) {
   const sorted = [...rows].reverse(); // más antiguo primero
   let html = '<div class="adh-grid">';
   sorted.forEach(row => {
-    const isHoy = row.fecha === TODAY_LOCAL;
+    const isHoy = row.fecha === hoyLocal();
     let cls = 'adh-day vacio';
     if (row.es_valido) cls = 'adh-day valido';
     else if (row.entrenamiento || row.comio_segun_plan != null || row.durmio_bien != null) cls = 'adh-day parcial';
@@ -7043,7 +7053,7 @@ async function init() {
     // Sembrar Mi Día para que no quede en "Cargando…": las cargas de red
     // cortan por !TOKEN en demo. Datos de ejemplo, no se guardan.
     MYDAY = { entrenamiento: 'entrene', comio_segun_plan: true, durmio_bien: true, vasos_agua: 2, cardio: false };
-    STREAK = { streak: 3, ultimo_dia_valido: TODAY_LOCAL };
+    STREAK = { streak: 3, ultimo_dia_valido: hoyLocal() };
     STATE.mydayLoaded = true;
   }
 
