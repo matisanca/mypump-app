@@ -66,6 +66,11 @@
   }
 
   const UNIT_FOODS = {
+    // Clara y yema van ANTES y con nombre completo: son unidades reales, y
+    // antes heredaban por substring la del huevo entero (60 g) — una clara
+    // sola no pesa 60 g. Un huevo mediano son ~33 g de clara y ~17 de yema.
+    'clara de huevo': { unit: 'unidad', unitGrams: 33 },
+    'yema de huevo':  { unit: 'unidad', unitGrams: 17 },
     'huevo':     { unit: 'unidad',   unitGrams: 60  },
     'banana':    { unit: 'unidad',   unitGrams: 120 },
     'plátano':   { unit: 'unidad',   unitGrams: 120 },
@@ -85,10 +90,35 @@
     'tostada':   { unit: 'unidad',   unitGrams: 25  },
   };
 
+  /* La medida casera se aplica solo si el alimento ES esa cosa, no si su
+   * nombre la contiene.
+   *
+   * Con `includes` alcanzaba con que la palabra apareciera en cualquier lado:
+   *   Panceta                     → 'pan'     → rebanada de 30 g
+   *   Empanada de carne           → 'pan'     → rebanada de 30 g
+   *   Milanesa de pollo (empanada)→ 'pan'     → rebanada de 30 g
+   *   Jugo de naranja natural     → 'naranja' → unidad de 150 g
+   *
+   * Y ese unitGrams falso alimenta la conversión de porciones del swap: la
+   * app llegaba a ofrecer "Empanada de jamón y queso · 1 rebanada · 64 kcal"
+   * cuando una empanada real pesa ~120 g y son ~340 kcal. El cliente lee
+   * "1 rebanada", se come la empanada entera y registra un quinto.
+   *
+   * Regla: la palabra tiene que ser la CABEZA del nombre — que empiece con
+   * ella, como palabra completa y admitiendo el plural. "Pan de molde" sí;
+   * "Empanada" y "Jugo de naranja" no. Se saca el acento de los dos lados
+   * para que 'platano' y 'plátano' caigan igual. */
   function detectUnit(name) {
-    const lower = (name || '').toLowerCase();
+    const sinAcento = (s) => String(s || '').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const n = sinAcento(name).trim();
     for (const [key, val] of Object.entries(UNIT_FOODS)) {
-      if (lower.includes(key)) return val;
+      const k = sinAcento(key);
+      // ^clave (+ 's' opcional) seguido de fin o de un no-letra.
+      if (n === k || n === k + 's' || n.startsWith(k + ' ') || n.startsWith(k + 's ') ||
+          n.startsWith(k + ',') || n.startsWith(k + '(')) {
+        return val;
+      }
     }
     return null;
   }

@@ -250,20 +250,40 @@ window.MyPump.foodSwap = {
 
         let qty = Math.round(requiredQty);
         let unit = 'g';
+        // Gramos que el cliente REALMENTE va a comer. Si la cantidad se
+        // redondea (a gramos enteros, o peor, a unidades enteras), los macros
+        // tienen que salir de ESE número y no del cálculo exacto de antes.
+        let gramosReales = qty;
         // Convert to unit-based quantity if applicable
         if (food.unitGrams) {
           const units = requiredQty / food.unitGrams;
-          if (units >= 0.5) { qty = Math.round(units); unit = food.unit || 'unidad'; }
+          if (units >= 0.5) {
+            qty = Math.round(units);
+            unit = food.unit || 'unidad';
+            gramosReales = qty * food.unitGrams;
+          }
         }
+
+        // El factor se RECALCULA sobre los gramos redondeados.
+        //
+        // Antes los macros salían del factor exacto mientras la cantidad ya
+        // estaba redondeada, y con unidades el desfase es grande: para una
+        // manzana de 80 g / 42 kcal la app ofrecía "Pomelo · 1 unidad ·
+        // 43 kcal" cuando un pomelo entero son 200 g = 84 kcal. El cliente se
+        // come la fruta entera y registra la mitad. El sesgo queda persistido
+        // en mypump_food_swaps y se repite todos los días en calcularConsumido.
+        // El peor caso es 0.5 unidades —el umbral exacto de arriba— donde se
+        // muestra una unidad entera y se contabiliza media.
+        const factorReal = gramosReales / 100;
 
         const result = {
           name: food.name,
           qty,
           unit,
-          kcal: Math.round(K * factor),
-          prot: Math.round((food.prot || 0) * factor * 10) / 10,
-          carb: Math.round((food.carb || 0) * factor * 10) / 10,
-          fat:  Math.round((food.fat  || 0) * factor * 10) / 10,
+          kcal: Math.round(K * factorReal),
+          prot: Math.round((food.prot || 0) * factorReal * 10) / 10,
+          carb: Math.round((food.carb || 0) * factorReal * 10) / 10,
+          fat:  Math.round((food.fat  || 0) * factorReal * 10) / 10,
           category: food.category,
         };
 

@@ -4518,6 +4518,10 @@ function renderMeal(c, idx) {
   // Estado de tracking (comido/saltado/pendiente)
   const mark = STATE.comidasMarcadas[c.id];
   const estado = mark?.estado;
+  // ¿La opción que se está viendo es la misma con la que se marcó "comí"?
+  // De eso depende que los tildes por alimento signifiquen algo: son índices
+  // sobre la lista de UNA opción, y se persisten contra mark.opcion.
+  const viendoLaMarcada = !mark || !mark.opcion || (opt && opt.name === mark.opcion);
   const mealCls = 'meal' + (estado === 'comido' ? ' is-comido' : estado === 'saltado' ? ' is-saltado' : '');
   const badge = estado === 'comido'  ? ' <span class="meal-badge ok">✓</span>'
               : estado === 'saltado' ? ' <span class="meal-badge skip">✗</span>'
@@ -4548,12 +4552,22 @@ function renderMeal(c, idx) {
         ).join('')}
       </div>
       ${estado === 'comido'
-        ? `<div class="comi-parte-hint">🍽️ Destildá lo que <b>no</b> comiste — solo se cuenta lo tildado.</div>`
+        ? (viendoLaMarcada
+            ? `<div class="comi-parte-hint">🍽️ Destildá lo que <b>no</b> comiste — solo se cuenta lo tildado.</div>`
+            : `<div class="comi-parte-hint">👀 Estás mirando la opción ${opt.name}, pero comiste la <b>${(mark.opcion || 'A')}</b>. Volvé a esa para marcar qué dejaste.</div>`)
         : ''}
       <div class="foods">
         ${opt.foods.map((f,fi) => {
           const foodHtml = renderFood(f, c.id, optIdx, fi);
-          if (estado !== 'comido') return foodHtml;
+          // Los tildes SOLO si se está viendo la opción con la que se marcó.
+          //
+          // foodsExcluidos son ÍNDICES, y se guardan contra mark.opcion. Si el
+          // cliente marcaba "comí" con la opción A abierta, pasaba a la B y
+          // destildaba el 2º ítem que veía, se guardaba [1] contra la opción A:
+          // calcularConsumido descontaba el 2º alimento de A —otro alimento,
+          // otras calorías— y los tildes en pantalla tampoco correspondían a
+          // nada. Un índice no significa nada sin saber de qué lista es.
+          if (estado !== 'comido' || !viendoLaMarcada) return foodHtml;
           const excl = (mark.foodsExcluidos || []).includes(fi);
           return `<div class="food-comi-row${excl ? ' is-excluido' : ''}">
             <button class="food-comi-check" data-food-comido="${c.id}|${fi}" role="checkbox" aria-checked="${excl ? 'false' : 'true'}" aria-label="${excl ? 'No comido' : 'Comido'}">${excl ? '' : '✓'}</button>
@@ -7127,6 +7141,29 @@ window.addEventListener('offline', updateOfflineBanner);
 let _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null, query:'' };
 const _swapCache = {};
 
+/* Clave del cache de sustitutos.
+ *
+ * Incluye la PORCIÓN del original, no solo su nombre. findSubstitutes escala
+ * todas las cantidades por las kcal y los gramos de macro del alimento que se
+ * está reemplazando, así que "Arroz blanco 100 g" y "Arroz blanco 250 g" dan
+ * listas distintas — con las mismas opciones pero otras porciones.
+ *
+ * La clave era `nombre__categoría__tamañoDeLaDB`, que no los distingue. Una
+ * dieta con el mismo alimento en dos comidas (arroz en el almuerzo y en la
+ * cena, pollo 150 y 200 g — lo más común del mundo) mostraba en la segunda
+ * las porciones calculadas para la primera. Y confirmSwap persiste eso en
+ * mypump_food_swaps: la comida queda con una porción que no es la que
+ * corresponde, y el error se arrastra todos los días.
+ *
+ * El tamaño de la DB se mantiene para que crear un alimento personalizado
+ * invalide las entradas viejas. */
+function _swapKey(food, cat) {
+  const n = (x) => Math.round((Number(x) || 0) * 10) / 10;
+  return [food.name, cat, food.qty, food.unit,
+          n(food.kcal), n(food.prot), n(food.carb), n(food.fat),
+          (window.MYPUMP_FOOD_DB || []).length].join('__');
+}
+
 function openSwapModal(food, comidaId, optIdx, foodIdx) {
   _swapState = { comidaId, optIdx, foodIdx, original:food, selected:null, query:'' };
   const cat = food.category || inferFoodCategory(food);
@@ -7146,7 +7183,7 @@ function openSwapModal(food, comidaId, optIdx, foodIdx) {
   }
 
   // Cache de sustitutos (recalcula si se agregó un custom food después)
-  const cacheKey = `${food.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
+  const cacheKey = _swapKey(food, cat);
   if (!_swapCache[cacheKey]) {
     _swapCache[cacheKey] = window.MyPump
       ? window.MyPump.foodSwap.findSubstitutes(food)
@@ -7203,7 +7240,7 @@ function _swapListHtml(subs, allSubs, food, query) {
 function renderSwapModal() {
   const { original: food, query } = _swapState;
   const cat = food.category || inferFoodCategory(food);
-  const cacheKey = `${food.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
+  const cacheKey = _swapKey(food, cat);
   // Si el cache está vacío para este key (ej: tras crear un custom food
   // que invalida el cache anterior), recomputar acá en vez de mostrar lista vacía.
   if (!_swapCache[cacheKey]) {
@@ -7271,7 +7308,7 @@ function renderSwapModal() {
 function _swapRenderListOnly() {
   const { original: food, query } = _swapState;
   const cat = food.category || inferFoodCategory(food);
-  const cacheKey = `${food.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
+  const cacheKey = _swapKey(food, cat);
   if (!_swapCache[cacheKey]) {
     _swapCache[cacheKey] = window.MyPump
       ? window.MyPump.foodSwap.findSubstitutes(food)
@@ -7305,7 +7342,7 @@ async function confirmSwap() {
   if (_swapState.selected === null) return;
   const { comidaId, optIdx, foodIdx, original } = _swapState;
   const cat = original.category || inferFoodCategory(original);
-  const cacheKey = `${original.name}__${cat}__${(window.MYPUMP_FOOD_DB||[]).length}`;
+  const cacheKey = _swapKey(original, cat);
   const subs = _swapCache[cacheKey] || [];
   const sub = subs[_swapState.selected];
   if (!sub) return;
