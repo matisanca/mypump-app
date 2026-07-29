@@ -94,7 +94,15 @@ export function faltaConfig(env, prov) {
   return null;
 }
 
-export const redirectUri = (env) => `${env.OAUTH_REDIRECT_BASE}/api/wearables/callback`;
+// Se le saca la barra final a la base antes de pegar el path. Parece un
+// detalle y no lo es: los proveedores comparan la redirect_uri CARÁCTER POR
+// CARÁCTER contra la que quedó registrada en su panel, así que un
+// "https://app.mypumpteam.com//api/wearables/callback" se rechaza con
+// redirect_uri_mismatch — un error que llega del lado del proveedor, sin
+// explicar cuál es la diferencia. Y pegar la URL con barra final al cargar la
+// env var es lo más normal del mundo.
+export const redirectUri = (env) =>
+  `${String(env.OAUTH_REDIRECT_BASE || '').replace(/\/+$/, '')}/api/wearables/callback`;
 
 // Página mínima de cierre. No intenta volver a la app con un esquema custom
 // (no existe en el Info.plist y agregarlo obligaría a un build nuevo): la app
