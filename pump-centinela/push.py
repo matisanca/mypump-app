@@ -34,6 +34,10 @@ import sys
 import json
 import time
 import datetime as dt
+import subprocess
+import tempfile
+# urllib sigue para las llamadas a Supabase (HTTP/1.1 le sirve). APNs NO: exige
+# HTTP/2 y va por curl — ver enviar_uno().
 import urllib.request
 import urllib.error
 
@@ -142,6 +146,25 @@ def jwt_apns():
 
 
 # ── Envío ─────────────────────────────────────────────────────────────
+# APNs EXIGE HTTP/2. No es una preferencia: la conexión en HTTP/1.1 ni se
+# establece. Verificado contra api.push.apple.com el 28-jul-2026:
+#
+#   curl --http1.1 ...  →  HTTP 000 (no conecta)
+#   curl --http2   ...  →  HTTP 403 (llega y contesta: falta el token, correcto)
+#   urllib          →  BadStatusLine: "Unexpected HTTP/1.x request: POST /3/device/..."
+#
+# Acá había urllib.request.urlopen, que habla SOLO HTTP/1.1. O sea que ninguna
+# notificación pudo salir nunca: todos los envíos caían en el `except Exception`
+# y se reportaban como fallidos. Como el error quedaba en la cola y no a la
+# vista, no se notó — y del otro lado tampoco, porque encima ningún dispositivo
+# llegaba a registrarse (mypump_registrar_push consultaba una tabla inexistente,
+# arreglado en la mig 049).
+#
+# Se usa curl y no httpx porque httpx necesita el paquete `h2`, que no está
+# instalado en el venv de la mini; curl ya viene con nghttp2 y no agrega nada
+# que mantener. Ni el JWT ni el payload van por argv (serían visibles en `ps`):
+# las cabeceras viajan en un archivo de config con permisos 600 y el cuerpo por
+# stdin.
 def enviar_uno(device_token, titulo, cuerpo, destino, jwt):
     """Devuelve (ok, error, baja_device)."""
     payload = {
@@ -154,34 +177,53 @@ def enviar_uno(device_token, titulo, cuerpo, destino, jwt):
     if destino:
         payload["destino"] = destino   # lo lee cablearTapsPush() en el cliente
 
-    req = urllib.request.Request(
-        f"https://{APNS_HOST}/3/device/{device_token}",
-        data=json.dumps(payload).encode(),
-        headers={
-            "authorization": f"bearer {jwt}",
-            "apns-topic": APNS_TOPIC,
-            "apns-push-type": "alert",
-            "apns-priority": "10",
-            "content-type": "application/json",
-        },
-        method="POST",
-    )
+    cfg = None
     try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return (200 <= r.status < 300), None, False
-    except urllib.error.HTTPError as e:
-        detalle = ""
-        try:
-            detalle = (e.read() or b"").decode()[:200]
-        except Exception:
-            pass
-        # 410 Gone = la app ya no está en ese dispositivo. 400 BadDeviceToken
-        # también es terminal: seguir intentando contra ese token es tirar
-        # requests para siempre.
-        baja = e.code == 410 or "BadDeviceToken" in detalle
-        return False, f"HTTP {e.code} {detalle}", baja
+        fd, cfg = tempfile.mkstemp(prefix="apns_", suffix=".conf")
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(f'header = "authorization: bearer {jwt}"\n'
+                    f'header = "apns-topic: {APNS_TOPIC}"\n'
+                    'header = "apns-push-type: alert"\n'
+                    'header = "apns-priority: 10"\n'
+                    'header = "content-type: application/json"\n')
+
+        p = subprocess.run(
+            ["curl", "--http2", "--silent", "--show-error",
+             "--config", cfg,
+             "--request", "POST",
+             "--data-binary", "@-",
+             "--max-time", "20",
+             # El cuerpo primero y el código al final, separados por \n: el
+             # cuerpo de APNs es JSON de una línea, así que la última línea es
+             # siempre el código.
+             "--write-out", "\n%{http_code}",
+             f"https://{APNS_HOST}/3/device/{device_token}"],
+            input=json.dumps(payload), capture_output=True, text=True, timeout=30)
     except Exception as e:
-        return False, str(e)[:200], False
+        return False, f"curl: {type(e).__name__}: {str(e)[:160]}", False
+    finally:
+        if cfg:
+            try: os.unlink(cfg)
+            except OSError: pass
+
+    if p.returncode != 0:
+        return False, f"curl rc={p.returncode} {(p.stderr or '').strip()[:160]}", False
+
+    partes = (p.stdout or "").rsplit("\n", 1)
+    detalle = partes[0].strip()[:200] if len(partes) == 2 else ""
+    try:
+        codigo = int(partes[-1].strip())
+    except ValueError:
+        return False, f"respuesta ilegible: {(p.stdout or '')[:120]!r}", False
+
+    if 200 <= codigo < 300:
+        return True, None, False
+    # 410 Gone = la app ya no está en ese dispositivo. 400 BadDeviceToken
+    # también es terminal: seguir intentando contra ese token es tirar
+    # requests para siempre.
+    baja = codigo == 410 or "BadDeviceToken" in detalle
+    return False, f"HTTP {codigo} {detalle}", baja
 
 
 def main():
