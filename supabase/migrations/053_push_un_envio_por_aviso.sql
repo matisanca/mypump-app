@@ -61,6 +61,12 @@ BEGIN
   -- c.id primero porque DISTINCT ON lo exige; dentro de cada aviso gana el
   -- dispositivo visto más recientemente (NULLS LAST: uno sin visto_en es de
   -- antes de que se registrara la columna, y pierde contra cualquiera).
+  --
+  -- Esto cambia el ORDER BY externo de `c.creado_en` a `c.id`, así que vale
+  -- preguntarse si se pierde el FIFO de la cola. No: `id` es bigserial
+  -- (048:44), o sea monótono con la inserción — ordenar por id es ordenar por
+  -- orden de llegada. La única forma de romperlo sería insertar con un id
+  -- explícito fuera de secuencia, y nadie escribe en esta tabla a mano.
   ORDER BY c.id, d.visto_en DESC NULLS LAST
   LIMIT LEAST(GREATEST(COALESCE(p_limite, 50), 1), 500);
 END;
