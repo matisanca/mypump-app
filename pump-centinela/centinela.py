@@ -284,7 +284,42 @@ def _claude_retry(prompt, timeout, parse, etiqueta):
         _log(f"[claude:{etiqueta}] FALLBACK (intento {intento}/2): {motivo}")
         if intento == 1:
             time.sleep(8)
+    _CLAUDE_FALLOS.append((etiqueta, motivo))
     return None
+
+# Etapas que se cayeron del todo (agotaron los 2 intentos) en esta corrida.
+_CLAUDE_FALLOS = []
+
+def avisar_si_la_ia_no_anduvo():
+    """Si la IA no entrego NADA en toda la corrida, avisarle a Mati.
+
+    POR QUE EXISTE: el 27-jul vencio el token de Claude en la mini y el
+    centinela siguio corriendo DOS NOCHES sin generar una sola linea, cayendo
+    a los templates fijos. El unico rastro quedo en centinela.log, que nadie
+    mira. La corrida "terminaba bien" y los clientes recibian el texto
+    generico. Lo encontramos de casualidad, mirando los logs por otra cosa.
+
+    Un fallback suelto NO dispara nada: puede ser un timeout y el reintento
+    suele salvarlo. Lo que se avisa es que se cayeron TODAS las etapas, que ya
+    no es mala suerte sino algo roto.
+
+    Va al numero del coach (COACH_PHONE_NUMBER). Ningun cliente ve esto.
+    """
+    if not _CLAUDE_FALLOS:
+        return
+    etapas = sorted({e for e, _ in _CLAUDE_FALLOS})
+    motivos = " ".join(m for _, m in _CLAUDE_FALLOS)
+    # El caso que ya paso lleva el comando exacto: la idea es que cuando esto
+    # llegue un lunes a la noche se arregle sin tener que investigar nada.
+    if "OAuth access token has expired" in motivos or "401" in motivos:
+        detalle = ("Vencio la sesion de Claude en la mini.\n"
+                   "Arreglo: entra por ssh a la mini y responde `claude` una vez para reloguear.")
+    else:
+        detalle = f"Motivo: {motivos[:180]}"
+    send_whatsapp(
+        "⚠️ *El centinela corrio sin IA*\n\n"
+        f"Se cayeron todas las etapas ({', '.join(etapas)}): los mensajes salieron "
+        "con el texto fijo en vez del personalizado.\n\n" + detalle)
 
 def claude_json(prompt, timeout=420, etiqueta="json"):   # opus-5 es más lento en prompts grandes
     def parse(out):
@@ -1160,3 +1195,7 @@ def _guardar_state(st, hoy, ajustes_por_nombre):
 
 if __name__ == "__main__":
     main()
+    # Va aca y no adentro de main() porque main tiene dos salidas (la temprana
+    # cuando no hay nada que analizar y la normal), y el aviso tiene que salir
+    # por las dos. En dry-run no manda nada: send_whatsapp solo imprime.
+    avisar_si_la_ia_no_anduvo()
