@@ -311,5 +311,63 @@ await t('iOS 15 NO debe pedir tipos que son 16+', () => {
   eq(soportado({}, 15), true, 'un tipo sin mínimo debe pedirse siempre');
 });
 
+console.log('\nVentanas de consulta (el día del borde se guardaba partido)');
+
+// Espía sobre queryAggregated: devuelve las fechas de inicio que pidió el bridge.
+const inicios = async () => {
+  const vistos = [];
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (o) => { vistos.push(o.startDate); return { samples: [] }; };
+  try { await H.sync(); } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  if (!vistos.length) throw new Error('sync() no consultó nada: el test no probó nada');
+  return vistos;
+};
+
+await t('sync() arranca la ventana a la MEDIANOCHE local, no a la hora actual', async () => {
+  prepararSync();
+  for (const s of await inicios()) {
+    const d = new Date(s);
+    if (d.getHours() || d.getMinutes() || d.getSeconds()) {
+      throw new Error(`arranca ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')} y no 00:00 — `
+        + 'el día del borde se lee partido y pisa el valor completo que ya estaba guardado');
+    }
+  }
+});
+
+await t('la ventana mide 7 días completos hacia atrás', async () => {
+  prepararSync();
+  const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0);
+  const dias = Math.round((hoy0 - new Date((await inicios())[0])) / 86400000);
+  eq(dias, 7, 'la ventana no mide 7 días');
+});
+
+console.log('\nIngesta rechazada (la app decía "conectado" con el 100% tirado)');
+
+await t('sync() avisa cuando el servidor rechaza el lote', async () => {
+  prepararSync();
+  MUESTRAS.weight = [{ startDate: iso(28, 8), endDate: iso(28, 8), value: 81.2, unit: 'kg' }];
+  const orig = window.mypumpDB.ingestSalud;
+  window.mypumpDB.ingestSalud = async () => ({ success: false, data: null, error: { message: 'permission denied for function' } });
+  let r;
+  try { r = await H.sync(); } finally { window.mypumpDB.ingestSalud = orig; }
+
+  eq(r.ingresados, 0, 'contó como ingresado algo que el servidor rechazó');
+  if (!r.errorIngesta) {
+    throw new Error('sync() devolvió ok:true sin decir que el servidor rechazó TODO — '
+      + 'indistinguible de "el cliente no tenía datos"');
+  }
+  if (!/permission denied/.test(r.errorIngesta)) {
+    throw new Error('el error llega sin su texto: ' + r.errorIngesta);
+  }
+});
+
+await t('en el camino feliz errorIngesta queda null', async () => {
+  prepararSync();
+  MUESTRAS.weight = [{ startDate: iso(28, 8), endDate: iso(28, 8), value: 81.2, unit: 'kg' }];
+  const r = await H.sync();
+  eq(r.errorIngesta, null, 'inventó un error donde no lo hubo');
+  if (!(r.ingresados > 0)) throw new Error('no ingresó nada en el camino feliz');
+});
+
 console.log(`\n${ok} pasaron, ${fail} fallaron\n`);
 process.exit(fail ? 1 : 0);

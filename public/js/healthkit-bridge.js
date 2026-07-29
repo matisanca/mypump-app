@@ -108,6 +108,21 @@
     const x = (d instanceof Date) ? d : new Date(d);
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
   };
+  /* Toda ventana de consulta arranca a la MEDIANOCHE local del día.
+   *
+   * `new Date(); d.setDate(d.getDate() - 7)` conserva la hora: si el cliente
+   * abre la app 21:40, la ventana empieza el día D-7 a las 21:40. HealthKit
+   * devuelve entonces solo las muestras de ESE pedazo del día, el bridge las
+   * agrupa por fecha igual, y el upsert pisa el valor COMPLETO que ya estaba
+   * guardado para D-7 con uno parcial. Cada apertura de la app corrompía el
+   * día del borde — y de noche, cuando más se abre, con el pedazo más chico.
+   *
+   * Lo mismo en el backfill: las 12 ventanas de 5 días se tocaban a la hora
+   * del reloj, así que el día de cada costura salía partido en dos y la
+   * ventana siguiente lo pisaba con su mitad. */
+  const aMedianoche = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const haceNDias = (n) => { const x = new Date(); x.setDate(x.getDate() - n); return aMedianoche(x); };
+
   const mediana = (xs) => {
     if (!xs.length) return null;
     const s = xs.slice().sort((a, b) => a - b), m = s.length >> 1;
@@ -555,13 +570,29 @@
     return registros;
   }
 
+  // Último error de ingesta. Sirve para distinguir "no había nada que subir"
+  // de "el servidor rechazó todo", que sin esto eran el mismo 0.
+  let _ultimoErrorIngesta = null;
+
   async function postear(registros) {
     const token = getToken();
     if (!token || !window.mypumpDB || !window.mypumpDB.ingestSalud) return 0;
     let ok = 0;
     for (let i = 0; i < registros.length; i += 300) {   // lotes: evita payloads gigantes
-      const r = await window.mypumpDB.ingestSalud(token, registros.slice(i, i + 300));
+      const lote = registros.slice(i, i + 300);
+      const r = await window.mypumpDB.ingestSalud(token, lote);
       if (r && r.success) ok += Number(r.data) || 0;
+      else {
+        /* El `else` faltaba y no era inocuo: rpcMutation NUNCA tira
+         * (supabase-client.js devuelve {success:false, error} ante un error de
+         * PostgREST o de red). Sin esta rama, un rechazo del servidor era
+         * indistinguible de "no había nada que subir": postear() devolvía 0,
+         * sync() decía ok:true, y la UI mostraba "conectado / activo" con el
+         * 100% de la ingesta rechazada. Justo el modo de falla que hace que el
+         * cliente diga "no anda" y del lado nuestro no haya ningún rastro. */
+        _ultimoErrorIngesta = String((r && r.error && (r.error.message || r.error)) || 'error desconocido');
+        console.warn('[health] la ingesta rechazó un lote:', _ultimoErrorIngesta);
+      }
     }
     return ok;
   }
@@ -623,8 +654,10 @@
   async function sync() {
     if (!isNative) return { ok: false, reason: 'no-native' };
     if (!getToken()) return { ok: false, reason: 'no-token' };
-    const hasta = new Date(), desde = new Date();
-    desde.setDate(desde.getDate() - 7);
+    _ultimoErrorIngesta = null;   // el error es de ESTE intento, no del anterior
+    // `hasta` sí va con la hora actual: hoy es parcial por definición y se
+    // vuelve a pisar en la próxima sync. `desde` va a medianoche (ver aMedianoche).
+    const hasta = new Date(), desde = haceNDias(7);
     const registros = await recolectar(desde, hasta);
     registrarCosecha(registros.length);
     const n = registros.length ? await postear(registros) : 0;
@@ -636,7 +669,10 @@
     marcarSync();
     if (typeof window.loadSalud === 'function') window.loadSalud();
     if (typeof window.loadRecuperacion === 'function') window.loadRecuperacion();
-    return { ok: true, ingresados: n, entrenos: nEnt };
+    // `ok:true` significa "corrí", no "se guardó". Si el servidor rechazó la
+    // ingesta hay que decirlo acá: con solo `ingresados:0` es indistinguible de
+    // "el cliente no tenía datos esos días", y la UI mostraba activo igual.
+    return { ok: true, ingresados: n, entrenos: nEnt, errorIngesta: _ultimoErrorIngesta };
   }
 
   // ── Backfill de 60 días, una sola vez ─────────────────────────────────
@@ -649,8 +685,10 @@
     try { if (localStorage.getItem(FLAG_BACKFILL) === '1') return { ok: true, saltado: true }; } catch (e) {}
     let total = 0, cosechados = 0;
     for (let off = 60; off > 0; off -= 5) {
-      const hasta = new Date(); hasta.setDate(hasta.getDate() - (off - 5));
-      const desde = new Date(); desde.setDate(desde.getDate() - off);
+      // Las dos puntas a medianoche: si no, la costura entre ventanas cae a
+      // media tarde y el día de la juntura sale partido en las dos.
+      const hasta = haceNDias(off - 5);
+      const desde = haceNDias(off);
       try {
         const regs = await recolectar(desde, hasta);
         cosechados += regs.length;
@@ -795,9 +833,10 @@
   // requeriría cable.
   async function diagnostico() {
     window.__MYPUMP_DIAG = [];
-    const out = { nativo: isNative, disponible: await hkAvailable(), token: !!getToken(), tipos: [], noches: [] };
+    const out = { nativo: isNative, disponible: await hkAvailable(), token: !!getToken(),
+      errorIngesta: _ultimoErrorIngesta, tipos: [], noches: [] };
     if (!out.disponible) return out;
-    const hasta = new Date(), desde = new Date(); desde.setDate(desde.getDate() - 14);
+    const hasta = new Date(), desde = haceNDias(14);
 
     for (const { dataType, tipo, agg } of AGG) {
       try {
