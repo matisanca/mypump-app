@@ -208,6 +208,31 @@ await t('el punto medio lo fija la noche, no la siesta', async () => {
     (m[0].valor === 920 ? ' — ese es el medio de la SIESTA (15:20)' : ''));
 });
 
+await t('la siesta no infla la eficiencia (numerador y denominador del mismo bloque)', async () => {
+  // Regresión real del 28-jul, introducida por el arreglo de la siesta: el
+  // total sumaba noche + siesta pero `cama` solo sumaba los bloques CON
+  // muestras inBed — y una siesta casi nunca las trae. La fracción se iba
+  // arriba de 1 y el clamp la dejaba clavada en 100%.
+  prepararSync();
+  MUESTRAS.sleep = [
+    // Noche: 8 h en cama, 7 h dormido → 87,5% de eficiencia.
+    { startDate: iso(20,23), endDate: iso(21,7), sleepState: 'inBed',  sourceId: 'watch' },
+    { startDate: iso(20,23), endDate: iso(21,6), sleepState: 'asleep', sourceId: 'watch' },
+    // Siesta: 40 min dormido, sin inBed.
+    { startDate: iso(21,15), endDate: iso(21,15,40), sleepState: 'asleep', sourceId: 'watch' },
+  ];
+  const regs = await capturar(() => H.sync());
+  const e = delTipo(regs, 'sueno_eficiencia_pct');
+  if (!e.length) throw new Error('no mandó eficiencia');
+  if (e[0].valor !== 88) {
+    throw new Error(`420/480 = 87.5 → 88, mandó ${e[0].valor}` +
+      (e[0].valor === 100 ? ' — la siesta entró al numerador y no al denominador' : ''));
+  }
+  // Y el total sí tiene que incluirla: son minutos dormidos de verdad.
+  const s = delTipo(regs, 'sueno_min');
+  if (s[0].valor !== 460) throw new Error(`420 + 40 = 460, mandó ${s[0].valor}`);
+});
+
 console.log('\nUnidades que manda a la base');
 
 await t('la distancia va en KM, no en metros', async () => {

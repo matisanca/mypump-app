@@ -356,12 +356,19 @@
       const fecha = ymd(new Date(fin));
 
       const d = porFecha[fecha] || (porFecha[fecha] = {
-        total: 0, cama: 0, etapas: {}, estimado: false, fuente: mejor,
-        masLargo: -1, medio: null, ini, fin,
+        total: 0, cama: 0, dormidoEnCama: 0, etapas: {}, estimado: false,
+        fuente: mejor, masLargo: -1, medio: null, ini, fin,
       });
       d.total += total;
       if (estimado) d.estimado = true;
-      if (enCama.length && dormido.length) d.cama += mins(enCama);
+      // La eficiencia es dormido/en-cama, así que numerador y denominador
+      // tienen que venir DE LOS MISMOS bloques. Una siesta casi nunca trae
+      // muestras `inBed`: sumarla solo al total inflaba la fracción y la
+      // dejaba clavada en 100 por el clamp. Se acumulan de a pares.
+      if (enCama.length && dormido.length) {
+        d.cama += mins(enCama);
+        d.dormidoEnCama += total;
+      }
       for (const st of Object.keys(ETAPAS)) {
         const e = evsN.filter(x => x.st === st);
         if (e.length) d.etapas[ETAPAS[st]] = (d.etapas[ETAPAS[st]] || 0) + mins(e);
@@ -387,7 +394,7 @@
       if (d.medio != null) filas.push({ fecha, tipo: 'sueno_medio_min', valor: d.medio });
       if (d.cama > 0) {
         filas.push({ fecha, tipo: 'sueno_eficiencia_pct',
-                     valor: Math.round(Math.min(100, d.total / d.cama * 100)) });
+                     valor: Math.round(Math.min(100, d.dormidoEnCama / d.cama * 100)) });
       }
       for (const tipo of Object.keys(d.etapas)) {
         filas.push({ fecha, tipo, valor: Math.round(d.etapas[tipo]) });
