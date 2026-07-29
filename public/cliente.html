@@ -5070,7 +5070,13 @@ async function _conectarSalud(btn, textoOriginal, onOk) {
     // Conectó, pero no llegó ni un dato: se avisa igual. Apple no dice si el
     // cliente denegó la lectura, así que esto es lo más cerca que se puede
     // estar de saberlo, y callarlo lo dejaría con una card vacía sin motivo.
-    if (r.sinDatos) _avisoSalud(btn, 'Quedó conectado pero no llegó ningún dato. Fijate que esté todo '
+    //
+    // El contenedor se resuelve ACÁ, después de onOk(), y no se usa el `btn`
+    // que entró por parámetro: onOk() reemplaza el innerHTML de la card, así
+    // que ese nodo ya no está en el documento. El mensaje se le colgaba a un
+    // huérfano y no lo veía nadie — y es justo el mensaje que explica por qué
+    // la card sigue vacía después de conectar.
+    if (r.sinDatos) _avisoSalud(_contenedorSalud(btn), 'Quedó conectado pero no llegó ningún dato. Fijate que esté todo '
       + 'activado en <b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.');
     return true;
   }
@@ -5082,13 +5088,25 @@ async function _conectarSalud(btn, textoOriginal, onOk) {
   } else {
     msg = 'No pudimos conectar. Probá de nuevo en un rato; si sigue igual, avisale a Mati.';
   }
-  _avisoSalud(btn, msg);
+  // Acá el botón NO se re-renderizó (no hubo onOk), así que sigue en el DOM.
+  _avisoSalud(btn && btn.parentElement, msg);
   if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
   return false;
 }
 
-function _avisoSalud(btn, html) {
-  const cont = btn && btn.parentElement;
+/* Dónde colgar un aviso de salud, resuelto en el momento de usarlo.
+ * Después de un re-render el botón viejo quedó fuera del documento, así que se
+ * busca el que está vivo ahora; y si la card pasó a un estado sin botón, se cae
+ * al cuerpo de la sección de Recuperación, que siempre existe. */
+function _contenedorSalud(btnViejo) {
+  const vivo = document.querySelector('[id^="btnConnectHealth"]');
+  if (vivo && vivo.parentElement) return vivo.parentElement;
+  const cuerpo = document.querySelector('#myday-recup .myday-section-body');
+  if (cuerpo) return cuerpo;
+  return (btnViejo && btnViejo.isConnected) ? btnViejo.parentElement : null;
+}
+
+function _avisoSalud(cont, html) {
   if (!cont || cont.querySelector('.salud-err')) return;
   const d = document.createElement('div');
   d.className = 'salud-err rec-nota';

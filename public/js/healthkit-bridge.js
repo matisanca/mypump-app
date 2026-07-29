@@ -78,7 +78,16 @@
     // "TDEE medido" salía ~750 kcal, MENOR que el basal. Un número imposible
     // que igual se le mostraba al coach como dato medido.
     { dataType: 'basalCalories',   tipo: 'kcal_basales',    como: 'sum' },
-    { dataType: 'vo2Max',          tipo: 'vo2max',          como: 'mediana' },
+    // NO agregar 'vo2Max'. El plugin lo declara en su union HealthDataType
+    // (definitions.d.ts) pero NO lo implementa en iOS: el enum de Swift
+    // (Health.swift:557) tiene 23 casos y ese no está — cero menciones en todo
+    // el fuente nativo. TypeScript te deja escribirlo y compila igual.
+    //
+    // Y no falla solo él: el plugin parsea TODOS los tipos ANTES de hablar con
+    // HealthKit, así que uno desconocido tira la tanda ENTERA. Con esta línea
+    // puesta, los 13 tipos de la tanda secundaria se quedaban sin pedir permiso
+    // y después cada readSamples devolvía "Authorization not determined".
+    // Verificado en el simulador el 29-jul-2026 leyendo el log de com.apple.HealthKit.
     { dataType: 'bodyTemperature', tipo: 'temp_corporal_c', como: 'mediana' },
     { dataType: 'bloodGlucose',    tipo: 'glucosa_mg_dl',   como: 'mediana' },
     { dataType: 'mindfulness',     tipo: 'mindful_min',     como: 'sum' },
@@ -129,7 +138,13 @@
   function tiposLectura() {
     return AGG.map(m => m.dataType)
       .concat(SAMPLES.filter(soportado).map(m => m.dataType))
-      .concat(['sleep', 'heartRateVariability']);
+      // 'workouts' es el permiso de HKWorkoutTypeIdentifier, y NO sale de las
+      // tablas de arriba: los entrenamientos se leen por queryWorkouts, aparte.
+      // Faltaba acá, así que se pedía la lectura de algo que nunca se había
+      // autorizado y HealthKit devolvía "Authorization not determined" — el
+      // cardio, el fútbol y la bici del cliente no llegaban nunca.
+      // Verificado en el simulador el 29-jul-2026.
+      .concat(['sleep', 'heartRateVariability', 'workouts']);
   }
 
   /* PEDIDO POR TANDAS — no es paranoia, arregla un bug que dejaba iOS 15 muerto.
@@ -160,17 +175,46 @@
       catch (e2) { return { ok: false, motivo: 'error_nativo', detalle: String(e2 && e2.message || e2) }; }
     }
 
+    /* La tanda secundaria se reintenta DE A UNO si falla en bloque.
+     *
+     * El plugin valida todos los identificadores antes de hablar con HealthKit
+     * (Health.swift:817 `parseTypesWithWorkouts`), así que uno solo que no
+     * conozca hace fallar el pedido COMPLETO. Antes eso caía en un
+     * `console.warn` y listo: los 13 tipos secundarios quedaban sin permiso, y
+     * el síntoma aparecía mucho después y en otro lado — cada readSamples
+     * devolviendo "Authorization not determined" sin que nada lo mostrara.
+     *
+     * Pasó de verdad con 'vo2Max' (declarado en los tipos del plugin, no
+     * implementado en su código iOS). Que un tipo se pierda es aceptable; que
+     * se lleve puestos a los otros doce, no. */
     const resto = tiposLectura().filter(t => NUCLEO.indexOf(t) === -1);
+    const rechazados = [];
     if (resto.length) {
-      try { await h.requestAuthorization({ read: resto, write: [] }); }
-      catch (e) { console.warn('[health] tanda secundaria falló (sigue igual):', e); }
+      try {
+        await h.requestAuthorization({ read: resto, write: [] });
+      } catch (e) {
+        console.warn('[health] la tanda secundaria falló en bloque, reintento uno por uno:', e);
+        for (const t of resto) {
+          try { await h.requestAuthorization({ read: [t], write: [] }); }
+          catch (e2) { rechazados.push({ tipo: t, error: String((e2 && e2.message) || e2) }); }
+        }
+      }
     }
 
     // requestAuthorization resuelve OK aunque el cliente destilde todo: en
     // HealthKit "success" significa "se mostró la hoja", no "me dieron
     // permiso". Acá no hay veredicto posible — ver estadoPermisos().
     const est = await estadoPermisos();
-    return { ok: alguna, preguntados: est.preguntados, total: est.total, errEstado: est.error };
+    return {
+      ok: alguna,
+      preguntados: est.preguntados,
+      total: est.total,
+      errEstado: est.error,
+      // Los tipos que el plugin rechazó uno por uno. Va al diagnóstico: un tipo
+      // que se pierde en silencio es exactamente cómo esto se rompió la vez
+      // pasada y tardó semanas en notarse.
+      rechazados,
+    };
   }
 
   /* Lo único que HealthKit deja saber, que es MENOS de lo que parece.
@@ -693,7 +737,13 @@
       anotarIntento({ paso: 'permiso', motivo: r.motivo, error: r.detalle || null });
       return r;
     }
-    anotarIntento({ paso: 'ok', preguntados: r.preguntados, total: r.total, errEstado: r.errEstado || null });
+    anotarIntento({
+      paso: 'ok',
+      preguntados: r.preguntados,
+      total: r.total,
+      errEstado: r.errEstado || null,
+      rechazados: (r.rechazados && r.rechazados.length) ? r.rechazados : null,
+    });
     // Se arranca de cero: si antes sospechábamos que no había permiso y el
     // cliente volvió a pasar por la hoja, la sospecha se descarta y se vuelve a
     // juzgar por los datos que lleguen de acá en más.
