@@ -1936,7 +1936,14 @@ const Outbox = (() => {
     if (_sesionPorDia[key]) return _sesionPorDia[key];
     const remota = await window.mypumpDB.getSesionDia(TOKEN, p.diaId, p.semana);
     if (remota && remota.id) { _sesionPorDia[key] = remota.id; return remota.id; }
-    // No existe sesión de ese día (raro): crear una para no perder los sets.
+    // null significa DOS cosas distintas: "no hay sesión" o "no pude
+    // preguntar". Si no se distinguen, un fallo de red se lee como "no
+    // existe" y se crea una SEGUNDA sesión para el mismo día+semana —
+    // mypump_iniciar_sesion no es idempotente. Las series quedan repartidas
+    // entre dos sesiones y la duración y el tonelaje del día salen partidos.
+    // _lastError existe justo para esto (supabase-client.js:31).
+    if (window.mypumpDB._lastError) return null;   // no se pudo leer → reintentar después
+    // Acá sí: la sesión no existe. Se crea para no perder los sets.
     const res = await window.mypumpDB.iniciarSesion(TOKEN, p.diaId, p.semana);
     if (res && res.success && res.data) { _sesionPorDia[key] = res.data; return res.data; }
     return null;
@@ -1975,11 +1982,26 @@ const Outbox = (() => {
     try { localStorage.setItem(KEY(), JSON.stringify(queue)); } catch {}
   }
 
+  // Tope de reintentos. Sin esto, un error PERMANENTE (ej. el check semanal
+  // con una fecha fuera de rango, mig 035) se reintenta cada 30 s para
+  // siempre y además deja el cartel de "sin conexión" pegado: el cliente ve
+  // que algo falla siempre, aunque todo lo demás se esté guardando bien.
+  // La cola de fotos de este mismo archivo ya hacía esto (FOTOS_MAX_INTENTOS).
+  const MAX_TRIES = 8;
+
+  let _idSeq = 0;
+
   // dedupeKey: reemplaza una op pendiente del mismo target (último valor gana).
   function enqueue(kind, payload, dedupeKey) {
     if (!OUTBOX_ENABLED) return;
-    if (dedupeKey) queue = queue.filter(op => op.dedupeKey !== dedupeKey);
-    queue.push({ kind, payload, dedupeKey, tries: 0, ts: Date.now() });
+    // splice y no reasignación: flush() puede estar iterando la cola en este
+    // mismo momento y necesita ver la MISMA referencia (ver flush()).
+    if (dedupeKey) {
+      for (let i = queue.length - 1; i >= 0; i--) {
+        if (queue[i].dedupeKey === dedupeKey) queue.splice(i, 1);
+      }
+    }
+    queue.push({ _id: `${Date.now()}_${++_idSeq}`, kind, payload, dedupeKey, tries: 0, ts: Date.now() });
     save();
     flushSoon(0);
   }
@@ -1989,30 +2011,78 @@ const Outbox = (() => {
     timer = setTimeout(() => { timer = null; flush(); }, delay);
   }
 
-  async function flush() {
-    if (flushing || !OUTBOX_ENABLED || !queue.length) return;
+  /* ¿La escritura entró de verdad?
+   *
+   * rpcMutation devuelve success:true con cualquier HTTP 200, pero las RPC de
+   * este proyecto señalan el rechazo DEVOLVIENDO VACÍO, no con un error:
+   * mypump_registrar_carga hace `IF v_cliente_id IS NULL THEN RETURN NULL`, e
+   * ingest_salud devuelve 0. O sea que con un token revocado o vencido, cada
+   * escritura contesta 200 con null y el Outbox las borraba de la cola como
+   * si se hubieran guardado — la UI mostraba el tilde y no había nada en la
+   * base. Silencioso y sin vuelta atrás.
+   *
+   * Un 0 o un null significan "no se guardó", pase lo que pase. Se reintenta,
+   * y si es permanente lo corta MAX_TRIES. */
+  function seGuardo(res) {
+    if (!res || !res.success) return false;
+    const d = res.data;
+    if (d === null || d === undefined) return false;
+    if (typeof d === 'number' && d === 0) return false;
+    if (Array.isArray(d) && d.length === 0) return false;
+    return true;
+  }
+
+  let _enVuelo = null;
+
+  function flush() {
+    // Promesa compartida: si ya hay un drenado en curso, `await flush()`
+    // espera a ESE en vez de volver al instante. writeFinish depende de eso
+    // para no marcar el día como cerrado con series todavía sin mandar.
+    if (_enVuelo) return _enVuelo;
+    _enVuelo = _flush().finally(() => { _enVuelo = null; });
+    return _enVuelo;
+  }
+
+  async function _flush() {
+    if (!OUTBOX_ENABLED || !queue.length) return;
     if (navigator.onLine === false) { hadProblem = true; showSaveState('offline'); flushSoon(5000); return; }
     flushing = true;
     // Camino feliz = SILENCIOSO (el tilde de la serie ya es el feedback). Solo se
     // muestra 'Guardando…' si el envío tarda >900ms (conexión lenta), para no
     // parpadear un toast en cada serie confirmada.
     const slowTimer = setTimeout(() => showSaveState('saving'), 900);
-    const remaining = [];
+    // Copia de la tanda a procesar. La cola REAL se sigue tocando mientras
+    // esto corre (el cliente confirma otra serie), así que al terminar NO se
+    // puede reasignar `queue`: hay que sacar de ella solo las que se
+    // resolvieron. Antes se hacía `queue = remaining` y toda op encolada
+    // durante el vuelo desaparecía de memoria Y de localStorage sin haberse
+    // mandado nunca — con el tilde ya puesto en pantalla.
+    const tanda = queue.slice();
+    const resueltas = new Set();
+    const abandonadas = [];
     let anyFail = false;
-    for (const op of queue) {
+    for (const op of tanda) {
       const exec = EXEC[op.kind];
-      if (!exec) continue;   // op desconocida → descartar
+      if (!exec) { resueltas.add(op._id); continue; }   // op desconocida → descartar
       let res;
       try { res = await exec(op.payload); } catch { res = { success: false }; }
-      if (res && res.success) continue;   // enviada → no re-encolar
+      if (seGuardo(res)) { resueltas.add(op._id); continue; }
       op.tries++;
+      if (op.tries >= MAX_TRIES) { resueltas.add(op._id); abandonadas.push(op); continue; }
       anyFail = true;
-      remaining.push(op);
     }
     clearTimeout(slowTimer);
-    queue = remaining;
+    if (resueltas.size) queue = queue.filter(op => !resueltas.has(op._id));
     save();
     flushing = false;
+    if (abandonadas.length) {
+      // Se abandona, pero NO en silencio: el cliente tiene que saber que eso
+      // no quedó guardado. Es lo contrario de lo que hacía antes, que era
+      // reintentar para siempre y dejar el cartel de error pegado.
+      console.warn('[outbox] abandonadas tras', MAX_TRIES, 'intentos:', abandonadas);
+      hadProblem = false;
+      showSaveState('offline');
+    }
     if (anyFail) {
       hadProblem = true;
       showSaveState('offline');
@@ -2025,6 +2095,10 @@ const Outbox = (() => {
     } else {
       hideSaveToast();   // éxito normal → sin ruido
     }
+    // Lo que se encoló DURANTE este drenado quedó en la cola sin procesar:
+    // se dispara otra pasada. Antes esto no hacía falta porque esas ops
+    // directamente se perdían.
+    if (queue.length && !anyFail) flushSoon(0);
   }
 
   return { load, enqueue, flush, flushSoon, pending: () => queue.length,
@@ -5248,12 +5322,21 @@ function renderSalud() {
     const NOM = { autonomico: 'Corazón (pulso + variabilidad)', sueno: 'Sueño', carga: 'Carga del gimnasio',
                   subjetivo: 'Cómo te sentís', otros: 'Respiración, oxígeno, temperatura' };
     const comp = rec.componentes || {};
-    const filas = Object.keys(NOM).filter(k => comp[k]).map(k => {
+    const presentes = Object.keys(NOM).filter(k => comp[k] && comp[k].score != null);
+    // El motor manda los pesos SIN normalizar (45/25/20/12/8): la
+    // renormalización pasa en la división num/w_tot, no en el campo `peso`.
+    // Mostrarlos crudos como porcentaje daba una lista que suma 110% cuando
+    // están todos, y 70% cuando falta la mitad — encima justo debajo de una
+    // frase que dice que el score se reparte entre los datos que sí hay.
+    // Se reparten sobre el total de los PRESENTES, que es el aporte real.
+    const wTot = presentes.reduce((s, k) => s + (Number(comp[k].peso) || 0), 0) || 1;
+    const filas = presentes.map(k => {
       const c = comp[k], pct = Math.round(c.score);
+      const aporte = Math.round((Number(c.peso) || 0) / wTot * 100);
       return `<div class="sd-comp">
         <div class="sd-comp-top"><span>${NOM[k]}</span><b>${pct}</b></div>
         <div class="sd-comp-bar"><div style="width:${pct}%;background:${pct >= 67 ? 'var(--color-success)' : pct >= 34 ? 'var(--color-warning)' : 'var(--color-danger)'}"></div></div>
-        <div class="sd-comp-peso">pesa ${Math.round(c.peso)}% en tu score</div></div>`;
+        <div class="sd-comp-peso">pesa ${aporte}% en tu score</div></div>`;
     }).join('');
     recHtml = _seccionSalud('🔋', 'Cómo se arma tu recuperación',
       `<div class="sd-score">${rec.score}<small>/100</small></div>${filas}
@@ -7378,7 +7461,11 @@ function openCustomFoodModal() {
     <div class="modal-sheet custom-food-sheet">
       <div class="modal-handle"></div>
       <div class="modal-title">Crear alimento personalizado</div>
-      <div class="cf-hint">Ingresá los macros del alimento por porción (lo que realmente vas a comer).</div>
+      <!-- La base la dice el propio label y se actualiza al elegir la unidad
+           (ver syncUnitGramsField). Antes decía "por porción" a secas, y con
+           unidad en gramos eso es ambiguo: la etiqueta trae por 100 g. Esa
+           ambigüedad es lo que hacía que entraran macros en la base
+           equivocada. -->
       ${(window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) ? `
       <button class="cf-scan-btn" id="cfScanBtn" type="button">📷 <strong>Escanear etiqueta</strong> <small>— sacale una foto a la tabla nutricional y se completa solo (después lo podés corregir)</small></button>
       <input type="file" id="cfScanInput" accept="image/*" capture="environment" style="display:none">
@@ -7387,7 +7474,8 @@ function openCustomFoodModal() {
         <label class="cf-field"><span>Nombre</span>
           <input type="text" id="cfName" placeholder="Ej: Pan integral marca X" />
         </label>
-        <label class="cf-field"><span>Kcal por porción</span>
+        <div class="cf-hint" id="cfBase">Poné los valores <b>por 100 g</b>, como vienen en la etiqueta.</div>
+        <label class="cf-field"><span>Kcal</span>
           <input type="number" id="cfKcal" min="0" step="1" placeholder="0" />
         </label>
         <div class="cf-macros-row">
@@ -7434,13 +7522,28 @@ function openCustomFoodModal() {
   const unitGramsField = $('#cfUnitGramsField');
   function syncUnitGramsField() {
     const v = unitSel.value;
-    unitGramsField.style.display = (v === 'g' || v === 'ml') ? 'none' : 'flex';
+    const porUnidad = (v !== 'g' && v !== 'ml');
+    unitGramsField.style.display = porUnidad ? 'flex' : 'none';
     const hintEl = document.getElementById('cfUnitGramsHint');
-    if (hintEl && v !== 'g' && v !== 'ml') {
+    if (hintEl && porUnidad) {
       hintEl.textContent = `Cuánto pesa 1 ${v} en gramos (sirve para la medida casera).`;
+    }
+    // El label dice EN QUÉ BASE se están pidiendo los números, y cambia con la
+    // unidad. Decir "por porción" a secas con la unidad en gramos era ambiguo
+    // —la etiqueta trae por 100 g— y por ahí se colaban macros en la base
+    // equivocada, que después la app convertía mal.
+    const baseEl = document.getElementById('cfBase');
+    if (baseEl) {
+      const ug = Number((document.getElementById('cfUnitGrams') || {}).value) || 0;
+      baseEl.innerHTML = porUnidad
+        ? `Poné los valores <b>de 1 ${v}</b>${ug ? ` (${ug} g)` : ''}, lo que realmente comés.`
+        : 'Poné los valores <b>por 100 g</b>, como vienen en la etiqueta.';
     }
   }
   unitSel.addEventListener('change', syncUnitGramsField);
+  // También al tipear los gramos, para que el label muestre "de 1 porción
+  // (30 g)" y el cliente vea exactamente sobre qué está cargando.
+  if ($('#cfUnitGrams')) $('#cfUnitGrams').addEventListener('input', syncUnitGramsField);
   syncUnitGramsField();
 
   // F7 — Escanear etiqueta: foto → Codex en la Mini → prefill EDITABLE del form.
@@ -7560,8 +7663,35 @@ async function saveCustomFood() {
     showErr(`Para "${unit}" indicá cuánto pesa 1 ${unit} en gramos.`); return;
   }
 
+  // ── A POR-100g ANTES DE GUARDAR ──
+  //
+  // El modal pide los macros POR PORCIÓN ("lo que realmente vas a comer"),
+  // pero MYPUMP_FOOD_DB y el motor de sustitución trabajan SIEMPRE por 100 g
+  // (app.js:225 "kcal por 100 g del sustituto", y el factor sale de
+  // requiredQty = factor * 100). `unitGrams` es solo la medida casera — mirá
+  // food-db: 'Huevo entero' es kcal 143 (por 100 g) con unitGrams 60.
+  //
+  // Sin esta conversión, un yogur escaneado de porción 30 g / 75 kcal entraba
+  // al catálogo como si fueran 75 kcal por 100 g. El motor le calculaba "7
+  // porciones · 152 kcal" cuando 7 porciones son 210 g = 525 kcal reales, y
+  // ese food_data quedaba persistido en mypump_food_swaps: el anillo del día
+  // y la adherencia que ve el coach quedaban ~3,5x por debajo. El error crece
+  // cuanto más chica es la porción de la etiqueta.
+  //
+  // Es la misma familia que las macros corruptas de julio (per-porción
+  // guardada en un campo per-100g), esta vez del lado del cliente.
+  //
+  // 'g' y 'ml' NO se convierten: ahí la porción ES 100 (lo confirma el
+  // escaneo, que solo cambia a unidad 'porcion' cuando porcion_g != 100).
+  const porcionG = (unit === 'g' || unit === 'ml') ? 100 : Number(unitGrams);
+  const aCien = (porcionG > 0) ? 100 / porcionG : 1;
+  const r1 = (x) => Math.round((Number(x) || 0) * aCien * 10) / 10;
+
   const foodData = {
-    name, kcal, prot, carb, fat, unit,
+    name,
+    kcal: Math.round((Number(kcal) || 0) * aCien),
+    prot: r1(prot), carb: r1(carb), fat: r1(fat),
+    unit,
     unitGrams: unitGrams || undefined,
     category,
   };

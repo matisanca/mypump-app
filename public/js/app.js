@@ -290,11 +290,24 @@ window.MyPump.foodSwap = {
       // Más exacto primero (menor desvío combinado kcal+macro).
       .sort((a, b) => a._dev - b._dev);
 
-    // Los universales se garantizan SIEMPRE (todos), y el resto se corta a 30.
+    // Universales Y CUSTOM se garantizan SIEMPRE; el resto se corta a 30.
     // Sin esto, el .slice(0,30) ordenado por cercanía de kcal podría descartar
     // un staple universal con delta de kcal grande (ej. huevo entero vs pollo).
-    const universals = ranked.filter(r => r._universal);
-    const others     = ranked.filter(r => !r._universal).slice(0, 30);
+    //
+    // Los custom estaban exentos del filtro de calidad (línea 282) pero NO de
+    // este corte, y ahí se caían: el cliente cargaba su barrita, tocaba "Crear
+    // y usar", y el flujo hacía `subs.find(...)` → undefined → cerraba el modal
+    // SIN aplicar nada y sin avisar. Volvía a la misma lista, sin su alimento,
+    // y buscarlo por nombre tampoco lo encontraba (la búsqueda filtra esta
+    // lista YA cortada). Reintentar daba exactamente lo mismo, porque el
+    // ranking es determinista.
+    //
+    // Pega justo cuando el perfil del alimento es lejano al original —una
+    // barrita o un snack envasado— que es el caso para el que existe la
+    // función. Son pocos por cliente, así que garantizarlos no infla la lista.
+    const garantizado = (r) => r._universal || r._isCustom;
+    const universals = ranked.filter(garantizado);
+    const others     = ranked.filter(r => !garantizado(r)).slice(0, 30);
     const seen = new Set();
     return [...universals, ...others].filter(r => {
       const k = r.name.toLowerCase();
