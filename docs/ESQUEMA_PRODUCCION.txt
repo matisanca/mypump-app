@@ -1,0 +1,447 @@
+======================================================================
+FUNCIONES (nombre + argumentos exactos)
+======================================================================
+_mypump_push_on_comentario()
+_mypump_upsert_salud(p_cliente_id text, p_registros jsonb, p_fuente_default text)
+bot_merge_client(p_row_id text, p_client_id text, p_client jsonb)
+generate_mypump_token()
+get_benchmarks_90d()
+gin_extract_query_trgm(text, internal, smallint, internal, internal, internal, internal)
+gin_extract_value_trgm(text, internal)
+gin_trgm_consistent(internal, smallint, text, integer, internal, internal, internal, internal)
+gin_trgm_triconsistent(internal, smallint, text, integer, internal, internal, internal)
+gtrgm_compress(internal)
+gtrgm_consistent(internal, text, smallint, oid, internal)
+gtrgm_decompress(internal)
+gtrgm_distance(internal, text, smallint, oid, internal)
+gtrgm_in(cstring)
+gtrgm_options(internal)
+gtrgm_out(gtrgm)
+gtrgm_penalty(internal, internal, internal)
+gtrgm_picksplit(internal, internal)
+gtrgm_same(gtrgm, gtrgm, internal)
+gtrgm_union(internal, internal)
+mypump_activar_siguiente(p_token text)
+mypump_agregar_comentario(p_token text, p_ambito text, p_referencia_id text, p_referencia_nombre text, p_contenido text)
+mypump_avanzar_semana(p_token text, p_semana_destino integer DEFAULT NULL::integer)
+mypump_borrar_comida_libre(p_token text, p_id uuid)
+mypump_calc_recuperacion(p_cliente_id text, p_desde date, p_hasta date)
+mypump_coach_comentar(p_cliente_id text, p_ambito text, p_referencia_id text, p_referencia_nombre text, p_contenido text)
+mypump_crear_comida_libre(p_token text, p_fecha date, p_hora time without time zone, p_descripcion text, p_kcal numeric, p_prot numeric, p_carb numeric, p_fat numeric, p_detalle jsonb DEFAULT NULL::jsonb)
+mypump_create_custom_food(p_token text, p_name text, p_kcal numeric, p_prot numeric, p_carb numeric, p_fat numeric, p_unit text, p_unit_grams numeric, p_category text)
+mypump_delete_food_swap(p_token text, p_dieta_id uuid, p_comida_id text, p_opt_idx integer, p_food_idx integer)
+mypump_desconectar_wearable(p_token text, p_proveedor text)
+mypump_desmarcar_comida(p_token text, p_fecha date, p_comida_id text)
+mypump_elegir_opcion_comida(p_token text, p_dieta_id uuid, p_fecha date, p_comida_id text, p_opcion text, p_completada boolean)
+mypump_encolar_push(p_cliente_id text, p_titulo text, p_cuerpo text, p_destino text DEFAULT NULL::text, p_dedupe text DEFAULT NULL::text)
+mypump_encolar_siguiente(p_cliente_id text, p_estructura jsonb)
+mypump_finalizar_sesion(p_token text, p_sesion_id uuid, p_notas text, p_duracion_segundos integer DEFAULT NULL::integer)
+mypump_get_adherencia_30d(p_token text)
+mypump_get_adherencia_global()
+mypump_get_adherencia_macrociclo(p_cliente_id text)
+mypump_get_analisis_cliente(p_cliente_id text, p_limite integer DEFAULT 8)
+mypump_get_analisis_pendientes(p_semana_lunes date DEFAULT NULL::date)
+mypump_get_checkin_semana(p_token text, p_fecha date)
+mypump_get_cliente_id_from_token(token text)
+mypump_get_cliente_info(p_token text)
+mypump_get_cliente_prefs(p_token text)
+mypump_get_comentarios(p_token text, p_ambito text DEFAULT NULL::text, p_referencia_id text DEFAULT NULL::text)
+mypump_get_comidas_libres(p_token text, p_fecha date)
+mypump_get_comidas_marcadas(p_token text, p_fecha date)
+mypump_get_conexiones(p_token text)
+mypump_get_custom_foods(p_token text)
+mypump_get_dieta_activa(p_token text)
+mypump_get_ejercicios_estado(p_token text, p_sesion_id uuid)
+mypump_get_elecciones_dia(p_token text, p_dieta_id uuid, p_fecha date)
+mypump_get_entrenos_health(p_token text, p_dias integer DEFAULT 30)
+mypump_get_food_swaps(p_token text, p_dieta_id uuid)
+mypump_get_fotos_progreso(p_token text, p_desde date DEFAULT NULL::date)
+mypump_get_gasto_real(p_token text, p_dias integer DEFAULT 14)
+mypump_get_habitos_dia(p_token text, p_fecha date)
+mypump_get_historico_ejercicio(p_token text, p_ejercicio_id text, p_limit integer DEFAULT 10)
+mypump_get_metricas_coach(p_semanas integer DEFAULT 6)
+mypump_get_mostrar_recuperacion(p_token text)
+mypump_get_progresion_cargas(p_cliente_id text, p_semanas integer DEFAULT 12)
+mypump_get_recuperacion(p_token text, p_dias integer DEFAULT 14)
+mypump_get_recuperacion_cliente_coach(p_cliente_id text, p_dias integer DEFAULT 21)
+mypump_get_recuperacion_global(p_dias integer DEFAULT 14)
+mypump_get_recuperacion_resumen(p_dias integer DEFAULT 14)
+mypump_get_registros_sesion(p_token text, p_sesion_id uuid)
+mypump_get_rutina_activa(p_token text)
+mypump_get_salud(p_token text, p_desde date, p_hasta date)
+mypump_get_salud_global(p_dias integer DEFAULT 14)
+mypump_get_sesion_dia(p_token text, p_dia_id text, p_semana integer)
+mypump_get_sesiones_semana(p_token text, p_semana integer)
+mypump_get_streak(p_token text)
+mypump_get_suplementos(p_token text)
+mypump_guardar_checkin(p_token text, p_fecha date, p_energia smallint, p_descanso smallint, p_hambre smallint, p_adherencia smallint, p_nota text DEFAULT NULL::text)
+mypump_ingest_entrenos(p_token text, p_entrenos jsonb)
+mypump_ingest_salud(p_token text, p_registros jsonb)
+mypump_ingest_salud_service(p_cliente_id text, p_registros jsonb)
+mypump_iniciar_sesion(p_token text, p_dia_id text, p_semana integer)
+mypump_marcar_comida(p_token text, p_fecha date, p_comida_id text, p_opcion text, p_estado text, p_foods_excluidos jsonb DEFAULT NULL::jsonb)
+mypump_marcar_ejercicio_estado(p_token text, p_sesion_id uuid, p_dia_id text, p_ejercicio_id text, p_series_objetivo integer, p_status text, p_marcado_manualmente boolean DEFAULT false)
+mypump_marcar_leidos_cliente(p_token text, p_ambito text DEFAULT NULL::text, p_referencia_id text DEFAULT NULL::text)
+mypump_match_ejercicio_por_nombre(p_query text)
+mypump_notify_coach_comentario()
+mypump_notify_coach_semana()
+mypump_oauth_completar_service(p_state text, p_acc_enc text, p_ref_enc text, p_kid text, p_expira timestamp with time zone, p_prov_user text, p_scopes text[])
+mypump_oauth_iniciar_service(p_token text, p_proveedor text, p_state text, p_verifier text)
+mypump_publicar_cliente(p_cliente_id text, p_nombre text, p_perfil text, p_rutina jsonb, p_dieta jsonb)
+mypump_push_pendientes(p_limite integer DEFAULT 50)
+mypump_push_resultado(p_id bigint, p_ok boolean, p_error text DEFAULT NULL::text, p_device_token text DEFAULT NULL::text, p_baja_device boolean DEFAULT false)
+mypump_regenerar_token(p_cliente_id text)
+mypump_registrar_carga(p_token text, p_sesion_id uuid, p_dia_id text, p_ejercicio_id text, p_ejercicio_nombre text, p_serie integer, p_peso numeric, p_reps integer, p_rir integer, p_notas text)
+mypump_registrar_push(p_token text, p_device text, p_plataforma text DEFAULT 'ios'::text, p_app_version text DEFAULT NULL::text)
+mypump_reset_semana(p_cliente_id text, p_semana integer DEFAULT 1)
+mypump_resolver_analisis(p_cliente_id text, p_semana_lunes date)
+mypump_revocar_acceso(p_cliente_id text)
+mypump_salud_valor_plausible(p_tipo text, p_valor numeric)
+mypump_save_food_swap(p_token text, p_dieta_id uuid, p_comida_id text, p_opt_idx integer, p_food_idx integer, p_food_data jsonb)
+mypump_set_cliente_prefs(p_token text, p_excluir text[], p_idioma text DEFAULT 'es'::text)
+mypump_set_ejercicio_imagen(p_rutina_id uuid, p_dia_idx integer, p_bloque_idx integer, p_ejercicio_idx integer, p_slug_en text)
+mypump_set_habito(p_token text, p_fecha date, p_campo text, p_valor text)
+mypump_set_mostrar_recuperacion(p_token text, p_mostrar boolean)
+mypump_upsert_analisis(p_cliente_id text, p_semana_lunes date, p_balde text, p_motivos jsonb DEFAULT '[]'::jsonb, p_banderas jsonb DEFAULT '[]'::jsonb, p_senales jsonb DEFAULT '{}'::jsonb, p_mensaje_cliente text DEFAULT NULL::text, p_sugerencia_coach text DEFAULT NULL::text, p_mensaje_ajuste text DEFAULT NULL::text)
+pcs_calc_derived()
+pcs_calc_multiplicador()
+set_limit(real)
+show_limit()
+show_trgm(text)
+similarity(text, text)
+similarity_dist(text, text)
+similarity_op(text, text)
+strict_word_similarity(text, text)
+strict_word_similarity_commutator_op(text, text)
+strict_word_similarity_dist_commutator_op(text, text)
+strict_word_similarity_dist_op(text, text)
+strict_word_similarity_op(text, text)
+update_clientes_memoria_updated_at()
+word_similarity(text, text)
+word_similarity_commutator_op(text, text)
+word_similarity_dist_commutator_op(text, text)
+word_similarity_dist_op(text, text)
+word_similarity_op(text, text)
+
+======================================================================
+TABLAS Y COLUMNAS
+======================================================================
+
+alertas:
+  id uuid, cliente_id text, fecha_deteccion timestamp with time zone, severidad text, categoria text, titulo text, descripcion text, keywords_detectadas ARRAY, fuente text, fuente_id uuid, contexto_raw text, estado text, resuelta_at timestamp with time zone, notas_resolucion text, notificado_al_bot boolean, notificado_at timestamp with time zone, metadata jsonb, created_at timestamp with time zone
+
+alertas_clinicas:
+  id bigint, chat_name text, severidad text, tipo text, resumen text, evidencia text, accion_sugerida text, created_at timestamp without time zone, resolved boolean, resolved_at timestamp without time zone, resolved_notes text
+
+audios_enviados:
+  id bigint, cliente_id text, chat_id text, camino text, audio_reutilizable_id uuid, score_match double precision, texto_input text, duracion_seg integer, bytes_size integer, costo_usd double precision, modelo_voice text, voice_id text, provider_status text, provider_wamid text, error_detail text, created_at timestamp with time zone
+
+audios_log:
+  id uuid, chat_id text, cliente_id text, texto text, url_audio text, bytes integer, duracion_seg numeric, modelo_tts text, voice_id text, costo_usd numeric, origen text, borrador_log_id uuid, enviado boolean, enviado_at timestamp with time zone, descartado boolean, razon_descarte text, metadata jsonb, generado_at timestamp with time zone
+
+audios_reutilizables:
+  id uuid, audio_id text, audio_path text, chat_origen text, cliente_origen text, fecha_grabacion date, texto_transcripcion text, word_count integer, duracion_seg numeric, tema text, subtemas ARRAY, score_filtro numeric, razones_aprobacion ARRAY, mensaje_cliente_previo text, aprobado_manualmente boolean, aprobado_por text, aprobado_at timestamp with time zone, veces_sugerido integer, veces_usado integer, veces_descartado integer, ultima_vez_usado_at timestamp with time zone, bloqueado boolean, embedding jsonb, metadata jsonb, created_at timestamp with time zone
+
+audit_log_borradores:
+  id bigint, chat_name text, chat_id text, mensaje_cliente text, tipo_clasificado text, confianza_clasificacion real, faq_match_id text, faq_match_score real, template_usado text, skills_cargadas ARRAY, fewshots_count integer, chunks_obsidian_usados integer, modelo_llm text, auth_method text, latencia_ms integer, tokens_input integer, tokens_output integer, costo_usd real, enviado_sin_editar boolean, edited_chars integer, created_at timestamp without time zone
+
+borradores_log:
+  id uuid, cliente_id text, fecha_generacion timestamp with time zone, fecha_envio timestamp with time zone, mensaje_cliente_trigger text, tipo_consulta text, prioridad text, borrador_mensajes jsonb, modelo_usado text, tokens_input integer, tokens_output integer, costo_usd numeric, latencia_ms integer, mensajes_enviados jsonb, fue_editado boolean, fue_usado boolean, diff jsonb, origen text, skills_cargadas ARRAY, metadata jsonb, fue_rechazado boolean, fecha_rechazo timestamp with time zone, respuesta_real_post_rechazo text
+
+borradores_pendientes:
+  id uuid, cliente_id text, mensaje_cliente_trigger text, fecha_mensaje_cliente timestamp with time zone, borrador_mensajes jsonb, tipo_consulta text, prioridad text, modelo_usado text, contexto_usado jsonb, estado text, enviado_al_bot_at timestamp with time zone, usado_at timestamp with time zone, descartado_at timestamp with time zone, expira_at timestamp with time zone, es_preview_parcial boolean, mensaje_al_bot text, metadata jsonb, created_at timestamp with time zone
+
+briefs_preentrega:
+  id bigint, client_id text, cliente_nombre text, fecha_entrega date, origen text, markdown text, pdf_url text, insumos_faltantes jsonb, modelo text, created_at timestamp with time zone
+
+checkins_structured:
+  id uuid, cliente_id text, fecha date, semana_numero integer, peso_kg numeric, peso_delta_kg numeric, cintura_cm numeric, cadera_cm numeric, brazo_cm numeric, pecho_cm numeric, pierna_cm numeric, adherencia_dieta integer, adherencia_entreno integer, adherencia_cardio integer, hambre integer, energia integer, sueno_horas numeric, estres integer, libido integer, estado_animo text, en_ciclo boolean, semana_ciclo integer, compuestos_activos ARRAY, fotos_urls ARRAY, notas_cliente text, notas_mati text, alertas ARRAY, raw_text text, metadata jsonb, created_at timestamp with time zone
+
+client_plan_dates:
+  nutriplan_id text, nombre text, fecha_entrega date, plan_meses integer, plan_vencimiento date, fecha_source text, meses_source text, estimado boolean, updated_at timestamp with time zone, updated_by text
+
+clientes_memoria:
+  id bigint, chat_name text, chat_id text, md_content text, mensajes_count integer, tokens_used integer, created_at timestamp without time zone, updated_at timestamp without time zone, tratamiento_tipo text, estado_actual text
+
+conversaciones_log:
+  id uuid, cliente_id text, fecha timestamp with time zone, autor text, contenido text, tipo_mensaje text, categoria text, modelo_usado text, fue_borrador_ia boolean, borrador_original text, fue_editado boolean, borrador_log_id uuid, origen text, metadata jsonb
+
+extension_debug_logs:
+  id uuid, created_at timestamp with time zone, tag text, level text, message text, data jsonb, source text
+
+informes_cliente:
+  id bigint, client_id text, cliente_nombre text, trigger text, markdown text, pdf_url text, cambios_relevantes jsonb, modelo text, created_at timestamp with time zone
+
+lid_phone_map:
+  id uuid, lid text, phone text, pushname text, resolved_at timestamp with time zone, last_seen_at timestamp with time zone, attempts integer, status text
+
+message_cache:
+  id uuid, cliente_id text, chat_whatsapp_id text, fecha_mensaje timestamp with time zone, autor text, contenido text, tipo text, transcripcion text, duracion_segundos integer, hash_dedup text, leido_por_extension_at timestamp with time zone, metadata jsonb
+
+mypump_analisis_semanal:
+  id uuid, cliente_id text, semana_lunes date, balde text, motivos jsonb, banderas jsonb, senales jsonb, mensaje_cliente text, sugerencia_coach text, corrida_el timestamp with time zone, resuelto_el timestamp with time zone, created_at timestamp with time zone, mensaje_ajuste text
+
+mypump_checkin_semanal:
+  id uuid, cliente_id text, semana_lunes date, energia smallint, descanso smallint, hambre smallint, adherencia smallint, nota text, created_at timestamp with time zone, updated_at timestamp with time zone
+
+mypump_cliente_prefs:
+  cliente_id text, excluir ARRAY, idioma text, updated_at timestamp with time zone, mostrar_recuperacion boolean
+
+mypump_clientes:
+  id uuid, cliente_id text, nombre text, perfil text, access_token text, access_token_active boolean, created_at timestamp with time zone, updated_at timestamp with time zone, last_accessed_at timestamp with time zone
+
+mypump_comentarios:
+  id uuid, cliente_id text, ambito text, referencia_id text, referencia_nombre text, autor text, contenido text, leido_por_cliente boolean, leido_por_coach boolean, created_at timestamp with time zone, updated_at timestamp with time zone
+
+mypump_comidas_libres:
+  id uuid, cliente_id text, fecha date, hora time without time zone, descripcion text, kcal numeric, prot numeric, carb numeric, fat numeric, detalle jsonb, created_at timestamp with time zone
+
+mypump_comidas_marcadas:
+  id uuid, cliente_id text, fecha date, comida_id text, opcion_elegida text, estado text, marcada_en timestamp with time zone, updated_at timestamp with time zone, foods_excluidos jsonb
+
+mypump_custom_foods:
+  id uuid, cliente_id text, name text, kcal numeric, prot numeric, carb numeric, fat numeric, unit text, unit_grams numeric, category text, created_at timestamp with time zone
+
+mypump_dietas:
+  id uuid, cliente_id text, version integer, estado text, estructura jsonb, created_at timestamp with time zone, created_by uuid, updated_at timestamp with time zone
+
+mypump_dietas_elecciones:
+  id uuid, cliente_id text, dieta_id uuid, fecha date, comida_id text, opcion_elegida text, completada boolean, registrado_en timestamp with time zone
+
+mypump_ejercicios_catalogo:
+  id uuid, slug_en text, name_en text, name_normalized text, primary_muscle text, equipment text, mechanic text, force text, image_eccentric text, image_concentric text, aliases_es ARRAY, created_at timestamp with time zone, patron_movimiento text
+
+mypump_ejercicios_estado:
+  id uuid, cliente_id text, sesion_id uuid, ejercicio_id text, status text, marcado_en timestamp with time zone, rutina_id uuid, dia_id text, series_objetivo integer, series_completadas integer, marcado_manualmente boolean
+
+mypump_entrenos_health:
+  id bigint, cliente_id text, fecha date, inicio timestamp with time zone, fin timestamp with time zone, tipo text, duracion_min numeric, kcal numeric, distancia_km numeric, fc_media numeric, fc_max numeric, fuente text
+
+mypump_food_swaps:
+  id uuid, cliente_id text, dieta_id uuid, comida_id text, opt_idx integer, food_idx integer, food_data jsonb, created_at timestamp with time zone, updated_at timestamp with time zone
+
+mypump_fotos_progreso:
+  id uuid, cliente_id text, semana_lunes date, pose text, path text, bytes integer, tomada_el date, created_at timestamp with time zone, updated_at timestamp with time zone
+
+mypump_habitos_diarios:
+  id uuid, cliente_id text, fecha date, entrenamiento text, comio_segun_plan boolean, durmio_bien boolean, vasos_agua smallint, created_at timestamp with time zone, updated_at timestamp with time zone, cardio boolean
+
+mypump_oauth_estados:
+  state text, cliente_id text, proveedor text, code_verifier text, expira_en timestamp with time zone, usado_en timestamp with time zone, created_at timestamp with time zone
+
+mypump_push_cola:
+  id bigint, cliente_id text, titulo text, cuerpo text, destino text, dedupe_key text, estado text, intentos integer, error text, creado_en timestamp with time zone, enviado_en timestamp with time zone
+
+mypump_push_devices:
+  id bigint, cliente_id text, token text, plataforma text, app_version text, activo boolean, ultimo_error text, registrado_en timestamp with time zone, visto_en timestamp with time zone
+
+mypump_quimica:
+  cliente_id text, items jsonb, protocolo text, fase text, confianza text, revisado boolean, notas text, actualizado_en timestamp with time zone
+
+mypump_registros_carga:
+  id uuid, cliente_id text, rutina_id uuid, sesion_id uuid, dia_id text, ejercicio_id text, ejercicio_nombre text, serie_numero integer, peso_kg numeric, reps_realizadas integer, rir_real integer, notas text, registrado_en timestamp with time zone
+
+mypump_rutinas:
+  id uuid, cliente_id text, version integer, estado text, estructura jsonb, semana_actual integer, fecha_inicio date, fecha_fin date, created_at timestamp with time zone, created_by uuid, updated_at timestamp with time zone, estructura_siguiente jsonb
+
+mypump_salud_diaria:
+  id uuid, cliente_id text, fecha date, tipo text, valor numeric, detalle jsonb, fuente text, created_at timestamp with time zone, updated_at timestamp with time zone
+
+mypump_sesiones:
+  id uuid, cliente_id text, rutina_id uuid, dia_id text, semana integer, iniciada_en timestamp with time zone, finalizada_en timestamp with time zone, notas_sesion text, duracion_segundos integer
+
+mypump_suplementos:
+  cliente_id text, items jsonb, resumen text, fuente text, confianza text, revisado boolean, notas text, actualizado_en timestamp with time zone
+
+mypump_wearable_conexiones:
+  id uuid, cliente_id text, proveedor text, proveedor_user_id text, estado text, scopes ARRAY, access_token_enc text, refresh_token_enc text, enc_kid text, token_expira_en timestamp with time zone, ultimo_pull_en timestamp with time zone, ultimo_pull_hasta date, ultimo_error text, intentos_fallidos integer, created_at timestamp with time zone, updated_at timestamp with time zone
+
+nutriplan_data:
+  id text, payload jsonb, updated_at timestamp with time zone
+
+onboarding_leads:
+  id bigint, nombre text, apellido text, email text, whatsapp text, plan text, tipo text, va_a_usar_farma boolean, payload jsonb, linked_client_id text, created_at timestamp with time zone
+
+patrones_aprendidos:
+  id uuid, tipo_patron text, token text, frequency integer, distinct_drafts integer, ejemplos jsonb, regla_texto text, regla_refinada text, estado text, primera_deteccion timestamp with time zone, ultima_deteccion timestamp with time zone, aprobada_at timestamp with time zone, aprobada_por text, veces_aplicada integer, impacto_medido jsonb, metadata jsonb
+
+patrones_detectados:
+  id uuid, fecha_deteccion date, periodo_inicio date, periodo_fin date, tipo_patron text, descripcion text, ejemplos jsonb, ocurrencias integer, fix_sugerido text, fix_aplicado boolean, fix_aplicado_at timestamp with time zone, fix_detalles text, severidad text, metadata jsonb, created_at timestamp with time zone
+
+pcs_account_snapshots:
+  id uuid, fecha date, followers integer, following integer, alcance_semanal integer, impresiones_semanales integer, visitas_perfil integer, clicks_link integer, nuevos_seguidores integer, seguidores_perdidos integer, created_at timestamp with time zone, posts_count integer
+
+pcs_ai_analyses:
+  id uuid, reel_id uuid, idea_id uuid, tipo text, pregunta text, respuesta text, created_at timestamp with time zone
+
+pcs_competitor_reels:
+  id uuid, competitor_id uuid, ig_media_id text, ig_url text, titulo text, caption text, thumbnail_url text, fecha_publicacion date, duracion_segundos integer, views_totales integer, likes integer, comments integer, saves integer, shares integer, like_rate numeric, save_rate numeric, comment_rate numeric, engagement_rate numeric, created_at timestamp with time zone, cta_text text, pilares ARRAY, tipo text
+
+pcs_competitors:
+  id uuid, username text, nombre text, nicho text, idioma text, followers_aprox integer, followers_actual integer, notas text, ultimo_scraping timestamp with time zone, created_at timestamp with time zone, total_reels_scrapeados integer, avg_views_reels numeric, avg_like_rate_reels numeric
+
+pcs_guiones:
+  id uuid, idea_id uuid, reel_id uuid, version integer, titulo text, hook text, desarrollo text, cta text, guion_completo text, duracion_estimada_segundos integer, ppm_objetivo integer, created_at timestamp with time zone
+
+pcs_ideas:
+  id uuid, titulo text, descripcion text, pilar text, subtema text, formato_narrativo text, hook_tipo text, hook_propuesto text, cta_propuesto text, estado text, prioridad integer, inspirado_en uuid, notas text, created_at timestamp with time zone
+
+pcs_reels:
+  id uuid, ig_url text, ig_media_id text, titulo text, caption text, cta_text text, fecha_publicacion date, duracion_segundos integer, thumbnail_url text, tipo text, pilares ARRAY, subtema text, formato_narrativo text, hook_tipo text, tiene_ads boolean, likes integer, comments integer, views_totales integer, views_organicas integer, reach_organico integer, reach_total integer, saves integer, shares integer, watch_time_total_minutos numeric, retencion_estimada numeric, abandono_promedio_segundos numeric, views_paid integer, reach_paid integer, impr_paid integer, spend numeric, ctr_pago numeric, cpv numeric, cpm numeric, clicks integer, engagement_rate numeric, save_rate numeric, share_rate numeric, comment_rate numeric, like_rate numeric, watch_time_promedio_segundos numeric, views_reach_ratio numeric, multiplicador numeric, genero_ventas boolean, producto_vendido text, ventas_atribuidas integer, revenue_atribuido numeric, transcripcion text, palabras_por_minuto numeric, hook_text text, estructura_narrativa text, datos_completos boolean, created_at timestamp with time zone, updated_at timestamp with time zone
+
+pcs_scraping_log:
+  id uuid, fecha_scraping timestamp with time zone, reels_encontrados integer, reels_nuevos integer, reels_actualizados integer, errores ARRAY, status text
+
+pending_classifications:
+  id bigint, recording_id text, client_id text, asesorado_norm text, chat_name text, fathom_url text, meeting_dt timestamp with time zone, detected_at timestamp with time zone, classified_at timestamp with time zone, status text, retry_count integer, last_attempt_at timestamp with time zone, last_error text
+
+phone_overrides:
+  id bigint, nutriplan_id text, phone text, nombre_completo text, source text, notes text, created_at timestamp with time zone, updated_at timestamp with time zone
+
+pump_notifications_log:
+  notification_id text, tipo text, sent_at timestamp with time zone, status text, payload jsonb
+
+resumenes_semanales:
+  id uuid, cliente_id text, semana_inicio date, semana_fin date, resumen text, temas_principales ARRAY, cantidad_mensajes_cliente integer, cantidad_mensajes_mati integer, cantidad_audios integer, peso_reportado numeric, peso_delta_semana numeric, adherencia_reportada text, alertas ARRAY, estado_general text, modelo_resumen text, tokens_input integer, tokens_output integer, generado_at timestamp with time zone, metadata jsonb
+
+routine_checkpoints:
+  id bigint, run_id bigint, step text, status text, started_at timestamp with time zone, completed_at timestamp with time zone, duration_ms integer, payload_summary jsonb, error_message text, retry_count integer
+
+routine_runs:
+  run_id bigint, started_at timestamp with time zone, completed_at timestamp with time zone, status text, triggered_by text, total_steps integer, completed_steps integer, failed_steps integer, error_message text, metadata jsonb
+
+routine_runs_summary:
+  run_id bigint, started_at timestamp with time zone, completed_at timestamp with time zone, duration_sec integer, status text, triggered_by text, total_steps integer, completed_steps integer, failed_steps integer, error_message text, steps json
+
+sistema_config:
+  key text, value text, descripcion text, updated_at timestamp with time zone
+
+sugerencias_audio_log:
+  id uuid, audio_reutilizable_id uuid, chat_destino text, cliente_destino text, mensaje_trigger text, score_similaridad numeric, accion text, fecha_sugerencia timestamp with time zone, metadata jsonb
+
+training_chats:
+  id uuid, cliente_id text, nombre_archivo text, fecha_export date, fecha_inicio_chat timestamp with time zone, fecha_fin_chat timestamp with time zone, cantidad_mensajes_total integer, cantidad_mensajes_mati integer, cantidad_mensajes_cliente integer, cantidad_audios integer, idioma text, mensajes jsonb, metadata jsonb, created_at timestamp with time zone
+
+voice_examples:
+  id uuid, tipo_consulta text, perfil_cliente text, input_cliente text, output_mati_mensajes jsonb, contexto jsonb, tags ARRAY, calidad_score integer, aprobado_por_mati boolean, notas text, created_at timestamp with time zone, updated_at timestamp with time zone
+
+======================================================================
+CHECK CONSTRAINTS
+======================================================================
+briefs_preentrega.briefs_preentrega_origen_check: CHECK ((origen = ANY (ARRAY['nocturno'::text, 'ondemand'::text, 'auto-lote'::text])))
+mypump_analisis_semanal.mypump_analisis_semanal_balde_check: CHECK ((balde = ANY (ARRAY['ajustar'::text, 'observar'::text, 'bien'::text, 'sin_check'::text])))
+mypump_checkin_semanal.mypump_checkin_semanal_adherencia_check: CHECK (((adherencia >= 1) AND (adherencia <= 5)))
+mypump_checkin_semanal.mypump_checkin_semanal_descanso_check: CHECK (((descanso >= 1) AND (descanso <= 5)))
+mypump_checkin_semanal.mypump_checkin_semanal_energia_check: CHECK (((energia >= 1) AND (energia <= 5)))
+mypump_checkin_semanal.mypump_checkin_semanal_hambre_check: CHECK (((hambre >= 1) AND (hambre <= 5)))
+mypump_clientes.mypump_clientes_perfil_check: CHECK ((perfil = ANY (ARRAY['natural'::text, 'farma'::text])))
+mypump_comentarios.mypump_comentarios_ambito_check: CHECK ((ambito = ANY (ARRAY['ejercicio'::text, 'dia'::text, 'rutina'::text, 'dieta'::text, 'comida'::text, 'general'::text])))
+mypump_comentarios.mypump_comentarios_autor_check: CHECK ((autor = ANY (ARRAY['cliente'::text, 'coach'::text])))
+mypump_comidas_marcadas.mypump_comidas_marcadas_estado_check: CHECK ((estado = ANY (ARRAY['comido'::text, 'saltado'::text])))
+mypump_custom_foods.mypump_custom_foods_carb_check: CHECK ((carb >= (0)::numeric))
+mypump_custom_foods.mypump_custom_foods_category_check: CHECK ((category = ANY (ARRAY['proteina'::text, 'carbohidrato'::text, 'grasa'::text, 'lacteo'::text, 'fruta_verdura'::text, 'mixto'::text, 'condimento'::text])))
+mypump_custom_foods.mypump_custom_foods_fat_check: CHECK ((fat >= (0)::numeric))
+mypump_custom_foods.mypump_custom_foods_kcal_check: CHECK ((kcal >= (0)::numeric))
+mypump_custom_foods.mypump_custom_foods_prot_check: CHECK ((prot >= (0)::numeric))
+mypump_dietas.mypump_dietas_estado_check: CHECK ((estado = ANY (ARRAY['activa'::text, 'archivada'::text])))
+mypump_dietas_elecciones.mypump_dietas_elecciones_opcion_elegida_check: CHECK ((opcion_elegida = ANY (ARRAY['A'::text, 'B'::text, 'C'::text, 'D'::text])))
+mypump_ejercicios_estado.mypump_ejercicios_estado_status_check: CHECK ((status = ANY (ARRAY['pendiente'::text, 'completo'::text, 'completo_sin_datos'::text, 'saltado'::text])))
+mypump_fotos_progreso.mypump_fotos_progreso_pose_check: CHECK ((pose = ANY (ARRAY['frente'::text, 'perfil'::text, 'espalda'::text])))
+mypump_habitos_diarios.mypump_habitos_diarios_entrenamiento_check: CHECK (((entrenamiento IS NULL) OR (entrenamiento = ANY (ARRAY['entrene'::text, 'descanso'::text, 'falte'::text]))))
+mypump_habitos_diarios.mypump_habitos_diarios_vasos_agua_check: CHECK (((vasos_agua >= 0) AND (vasos_agua <= 12)))
+mypump_push_cola.mypump_push_cola_estado_check: CHECK ((estado = ANY (ARRAY['pendiente'::text, 'enviado'::text, 'error'::text, 'descartado'::text])))
+mypump_quimica.mypump_quimica_confianza_check: CHECK ((confianza = ANY (ARRAY['alta'::text, 'media'::text, 'baja'::text])))
+mypump_registros_carga.mypump_registros_carga_rir_real_check: CHECK (((rir_real >= 0) AND (rir_real <= 5)))
+mypump_registros_carga.mypump_registros_carga_serie_numero_check: CHECK ((serie_numero > 0))
+mypump_rutinas.mypump_rutinas_estado_check: CHECK ((estado = ANY (ARRAY['activa'::text, 'archivada'::text])))
+mypump_salud_diaria.mypump_salud_diaria_fuente_check: CHECK ((fuente = ANY (ARRAY['apple_health'::text, 'rook'::text, 'manual'::text, 'whoop'::text, 'oura'::text, 'withings'::text, 'polar'::text])))
+mypump_salud_diaria.mypump_salud_diaria_tipo_check: CHECK ((tipo = ANY (ARRAY['pasos'::text, 'actividad_min'::text, 'kcal_activas'::text, 'distancia_km'::text, 'pisos'::text, 'kcal_basales'::text, 'kcal_totales'::text, 'fc_reposo'::text, 'hrv_ms'::text, 'fc_media'::text, 'fc_max'::text, 'vo2max'::text, 'sueno_min'::text, 'sueno_profundo_min'::text, 'sueno_rem_min'::text, 'sueno_ligero_min'::text, 'sueno_medio_min'::text, 'sueno_eficiencia_pct'::tex
+mypump_suplementos.mypump_suplementos_confianza_check: CHECK ((confianza = ANY (ARRAY['alta'::text, 'media'::text, 'baja'::text])))
+mypump_wearable_conexiones.mypump_wearable_conexiones_estado_check: CHECK ((estado = ANY (ARRAY['pendiente'::text, 'conectada'::text, 'expirada'::text, 'revocada'::text, 'error'::text])))
+mypump_wearable_conexiones.mypump_wearable_conexiones_proveedor_check: CHECK ((proveedor = ANY (ARRAY['oura'::text, 'whoop'::text, 'withings'::text, 'polar'::text])))
+
+======================================================================
+PERMISOS DE EJECUCION (proacl NULL = ABIERTO A PUBLIC)
+======================================================================
+mypump_activar_siguiente: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_agregar_comentario: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_avanzar_semana: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_borrar_comida_libre: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_calc_recuperacion: postgres=X/postgres | service_role=X/postgres
+mypump_coach_comentar: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_crear_comida_libre: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_create_custom_food: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_delete_food_swap: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_desconectar_wearable: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_desmarcar_comida: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_elegir_opcion_comida: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_encolar_push: postgres=X/postgres | service_role=X/postgres
+mypump_encolar_siguiente: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_finalizar_sesion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_adherencia_30d: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_adherencia_global: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_adherencia_macrociclo: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_analisis_cliente: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_analisis_pendientes: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_checkin_semana: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_cliente_id_from_token: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_cliente_info: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_cliente_prefs: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_comentarios: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_comidas_libres: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_comidas_marcadas: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_conexiones: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_custom_foods: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_dieta_activa: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_ejercicios_estado: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_elecciones_dia: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_entrenos_health: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_food_swaps: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_fotos_progreso: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_gasto_real: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_habitos_dia: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_historico_ejercicio: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_metricas_coach: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_mostrar_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_progresion_cargas: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_recuperacion_cliente_coach: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_recuperacion_global: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_recuperacion_resumen: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_registros_sesion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_rutina_activa: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_salud: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_salud_global: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_sesion_dia: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_sesiones_semana: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_streak: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_suplementos: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_guardar_checkin: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_ingest_entrenos: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_ingest_salud: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_ingest_salud_service: postgres=X/postgres | service_role=X/postgres
+mypump_iniciar_sesion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_marcar_comida: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_marcar_ejercicio_estado: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_marcar_leidos_cliente: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_match_ejercicio_por_nombre: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_notify_coach_comentario: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_notify_coach_semana: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_oauth_completar_service: postgres=X/postgres | service_role=X/postgres
+mypump_oauth_iniciar_service: postgres=X/postgres | service_role=X/postgres
+mypump_publicar_cliente: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_push_pendientes: postgres=X/postgres | service_role=X/postgres
+mypump_push_resultado: postgres=X/postgres | service_role=X/postgres
+mypump_regenerar_token: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_registrar_carga: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_registrar_push: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_reset_semana: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_resolver_analisis: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_revocar_acceso: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_salud_valor_plausible: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_save_food_swap: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_set_cliente_prefs: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_set_ejercicio_imagen: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_set_habito: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_set_mostrar_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_upsert_analisis: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
