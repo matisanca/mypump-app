@@ -103,6 +103,38 @@ def descifrar(blob):
         return None
 
 
+def _b64u_enc(b):
+    return base64.b64encode(b).decode().replace('+', '-').replace('/', '_').rstrip('=')
+
+
+def cifrar(texto):
+    """La mitad que faltaba. Mismo formato que la Pages Function: iv.ct en
+    base64url, AES-GCM con la clave del .env.
+
+    Estaba solo descifrar, con la idea de que el token nuevo lo cifraba el
+    servidor web. Pero el servidor web solo interviene en el ALTA: los refrescos
+    posteriores los hace este script, y sin cifrar no tenía dónde guardarlos.
+    Ver el bloque de refresco más abajo para lo que eso rompía."""
+    if not texto:
+        return None
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    except ImportError:
+        _log("FALTA la lib cryptography: pip install cryptography")
+        return None
+    key = base64.b64decode(E.get("OAUTH_ENC_KEY", ""))
+    if len(key) != 32:
+        _log("OAUTH_ENC_KEY ausente o con largo != 32 bytes")
+        return None
+    iv = os.urandom(12)
+    try:
+        ct = AESGCM(key).encrypt(iv, texto.encode(), None)
+        return _b64u_enc(iv) + '.' + _b64u_enc(ct)
+    except Exception as e:
+        _log(f"no pude cifrar: {e}")
+        return None
+
+
 def _http_json(url, headers=None, data=None, method=None):
     req = urllib.request.Request(url, data=data, headers=headers or {}, method=method)
     with urllib.request.urlopen(req, timeout=45) as r:
@@ -333,12 +365,40 @@ def main():
             if (vencido or not access) and refresh:
                 access, refresh, venc = refrescar(prov, refresh)
                 if WRITE and access:
-                    # El token nuevo se cifra del lado del servidor web; acá se
-                    # guarda solo la fecha de vencimiento para no duplicar la
-                    # cripto. El access dura lo suficiente para esta corrida.
-                    _sb(f"/rest/v1/mypump_wearable_conexiones?id=eq.{c['id']}",
-                        {"token_expira_en": venc, "updated_at": datetime.now(timezone.utc).isoformat()},
-                        method="PATCH")
+                    # HAY QUE GUARDAR LOS TOKENS NUEVOS, no solo el vencimiento.
+                    #
+                    # Oura y Whoop ROTAN el refresh token: al usarlo devuelven
+                    # uno nuevo e invalidan el anterior. Antes acá se guardaba
+                    # solo `token_expira_en` — con el comentario de que el
+                    # cifrado lo hacía el servidor web. Pero el servidor web
+                    # solo interviene en el alta; los refrescos los hace este
+                    # script. Resultado:
+                    #
+                    #   corrida 1: usa R1 → recibe A2+R2 → los tira → guarda
+                    #              el vencimiento NUEVO con los tokens VIEJOS
+                    #   corrida 2: descifra R1 (que Oura ya invalidó) → 400
+                    #              invalid_grant → suma un fallo. A los 5,
+                    #              estado='error' y la conexión muere.
+                    #
+                    # O sea: el reloj de cada cliente se habría desconectado
+                    # solo a los pocos días, sin que nadie entendiera por qué.
+                    campos = {"token_expira_en": venc,
+                              "updated_at": datetime.now(timezone.utc).isoformat()}
+                    acc_enc = cifrar(access)
+                    ref_enc = cifrar(refresh) if refresh else None
+                    if acc_enc: campos["access_token_enc"] = acc_enc
+                    # Si el proveedor NO rota, refrescar() devuelve el mismo y
+                    # se re-cifra igual: es idempotente y sale más barato que
+                    # decidir si cambió.
+                    if ref_enc: campos["refresh_token_enc"] = ref_enc
+                    if not acc_enc:
+                        # Sin cripto no se puede persistir: mejor no tocar nada
+                        # que dejar un vencimiento nuevo con un token viejo.
+                        _log(f"  {cid}/{prov}: no pude cifrar el token nuevo, no guardo")
+                        campos = None
+                    if campos:
+                        _sb(f"/rest/v1/mypump_wearable_conexiones?id=eq.{c['id']}",
+                            campos, method="PATCH")
             if not access:
                 raise RuntimeError("sin access token")
 

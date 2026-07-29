@@ -6358,7 +6358,13 @@ function renderMydayConexiones() {
 async function conectarWearable(btn) {
   const prov = btn.dataset.prov;
   const msg = document.getElementById('cxMsg');
-  const url = `${location.origin}/api/wearables/iniciar?t=${encodeURIComponent(TOKEN)}&proveedor=${prov}`;
+  // APP_URL y no location.origin: esta URL se abre AFUERA del WebView (en
+  // Safari), y en la app nativa location.origin es `capacitor://localhost` —
+  // un esquema que Safari no sabe abrir. El cliente tocaba Conectar y le
+  // aparecía "no se puede conectar con el servidor", sin más explicación.
+  // En la web las dos coinciden, por eso nunca se notó.
+  const base = (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.APP_URL) || location.origin;
+  const url = `${base.replace(/\/+$/, '')}/api/wearables/iniciar?t=${encodeURIComponent(TOKEN)}&proveedor=${prov}`;
   btn.disabled = true; btn.textContent = 'Abriendo…';
   if (msg) { msg.hidden = false; msg.textContent = 'Te va a abrir el sitio de ' + prov + '. Cuando termines, volvé acá — se conecta solo.'; }
 

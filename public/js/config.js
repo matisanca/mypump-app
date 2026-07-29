@@ -12,4 +12,10 @@ window.MYPUMP_CONFIG = {
   // Servicio de visión (Codex en la Mini): escanear etiqueta / foto del plato.
   // Auth por token del cliente (validado contra Supabase); sin secretos acá.
   VISION_URL:        'https://vision.mypumpteam.com',
+  // Base pública del sitio, para armar URLs que se abren FUERA del WebView
+  // (el OAuth de los wearables). NO usar location.origin para eso: en la app
+  // nativa vale `capacitor://localhost`, y una URL con ese esquema no la puede
+  // abrir Safari — el cliente veía "no se puede conectar con el servidor".
+  // Tiene que coincidir con OAUTH_REDIRECT_BASE de Cloudflare Pages.
+  APP_URL:           'https://app.mypumpteam.com',
 };
