@@ -4924,11 +4924,32 @@ async function loadSalud() {
   if (STATE.scene === 'myday')    renderMydaySalud();
   if (STATE.scene === 'revision') renderMydayPeso();
 }
-// Valor de un tipo en una fecha, prefiriendo apple_health > rook > manual.
+/* Valor de un tipo en una fecha, eligiendo la MEJOR fuente.
+ *
+ * El orden es EL MISMO que usa el motor de recuperación (043:100-104). Tiene
+ * que serlo: si acá gana una fuente y allá otra, la card de Mi Día y el score
+ * salen de números distintos para el mismo día, y no hay forma de explicar la
+ * diferencia mirando la pantalla.
+ *
+ * Antes la tabla era { apple_health, rook, manual } y todo lo demás caía al
+ * `?? 9` — o sea que oura, whoop, withings y polar quedaban POR DEBAJO de un
+ * valor tipeado a mano. Justo al revés: son los únicos que dan rMSSD real
+ * (Apple Health solo tiene SDNN, con ~29% de error). El cliente con un Oura
+ * conectado veía el peor de sus dos datos.
+ *
+ * `rmssd` primero dentro de la misma fuente, igual que el motor: para HRV, la
+ * métrica importa más que de dónde venga. */
+const _PREF_FUENTE = {
+  whoop: 0, oura: 0, withings: 0, polar: 0,   // API directa: rMSSD real
+  apple_health: 1,                             // SDNN, muestreo aleatorio
+  rook: 2,
+  manual: 3,
+};
 function _saludValor(tipo, fecha) {
-  const pref = { apple_health: 0, rook: 1, manual: 2 };
+  const rank = (r) => (_PREF_FUENTE[r.fuente] ?? 4);
+  const esRmssd = (r) => (tipo === 'hrv_ms' && r.detalle && r.detalle.metrica === 'rmssd') ? 0 : 1;
   const rows = (STATE.salud || []).filter(r => r.tipo === tipo && r.fecha === fecha)
-    .sort((a, b) => (pref[a.fuente] ?? 9) - (pref[b.fuente] ?? 9));
+    .sort((a, b) => (esRmssd(a) - esRmssd(b)) || (rank(a) - rank(b)));
   return rows.length ? Number(rows[0].valor) : null;
 }
 /* ---- RECUPERACIÓN (score 0-100) — mig 043 ----

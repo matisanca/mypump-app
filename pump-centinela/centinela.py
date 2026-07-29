@@ -1036,7 +1036,9 @@ def main():
 
         # -- Motor de analisis (P7): baseline propio + tendencias + cruces --
         serie_chk = chk_series.get(cid, [])
-        ua = (ult_ajustes.get(cid) or {}).get("ultimo_ajuste")
+        # cid primero; el nombre queda como fallback para las entradas viejas
+        # del state.json, que se escribieron con esa clave (ver _guardar_state).
+        ua = (ult_ajustes.get(cid) or ult_ajustes.get(nombre) or {}).get("ultimo_ajuste")
         if ua and ua.get("fecha"):
             try: ua = {"semanas_atras": (hoy - date.fromisoformat(ua["fecha"])).days // 7, **ua}
             except Exception: ua = None
@@ -1173,11 +1175,23 @@ def main():
     if fichas_sin_check:
         send_multi("⏳ *Todavia no mandaron el check*\n\n" + "\n\n".join(fichas_sin_check))
 
-    # Memoria: que se sugirio, para no repetir la semana que viene
+    # Memoria: que se sugirio, para no repetir la semana que viene.
+    #
+    # POR CLIENTE_ID, no por nombre. Se escribia con el nombre y se leia con el
+    # cliente_id (linea 1039), asi que las claves NUNCA coincidian: `ua` salia
+    # None siempre y el guardarrail de "ya se le ajusto hace menos de 2
+    # semanas" no se activo una sola vez.
+    #
+    # Lo que eso provocaba: a un cliente al que se le ajusto la dieta el lunes
+    # por adherencia baja, el jueves se le volvia a proponer otro ajuste — un
+    # cambio de dieta no se ve en 3 dias, asi que las señales blandas siguen
+    # ahi. El guardarrail existe justo para eso.
+    #
+    # El id ademas no cambia; el nombre se puede corregir y perdia el historial.
     nuevos = {}
     for x in ajustables:
         v = x.get("veredicto") or {}
-        nuevos[x["nombre"]] = {"fecha": str(hoy), "senal": (v.get("motivos") or [""])[0]}
+        nuevos[x["cid"]] = {"fecha": str(hoy), "senal": (v.get("motivos") or [""])[0]}
     return _guardar_state(st, hoy, nuevos)
 
 def _guardar_state(st, hoy, ajustes_por_nombre):

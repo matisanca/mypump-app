@@ -158,32 +158,62 @@ def mapear_oura(payloads):
     en el contexto correcto. Es exactamente lo que Apple Health no da, y la
     razón por la que esta integración existe.
     """
-    regs = []
+    # ── Se agrega POR DÍA antes de emitir ──
+    #
+    # /v2/usercollection/sleep devuelve UN DOCUMENTO POR PERÍODO de sueño, y
+    # todos los del mismo día traen el mismo `day`. Una siesta de 25 min es un
+    # documento aparte con esa misma fecha, así que emitía un segundo juego de
+    # registros con la misma clave (fecha, tipo, fuente) y el upsert la dejaba
+    # ganar: la noche de 7 h se convertía en la siesta, y el HRV nocturno —el
+    # dato por el que existe esta integración— quedaba pisado por el de una
+    # siesta de la tarde, que no es comparable.
+    #
+    # Mismo criterio que el bridge de HealthKit, para que las dos fuentes
+    # signifiquen lo mismo:
+    #   · duraciones (total y etapas) → SUMAN, la siesta es descanso real
+    #   · HRV, FC reposo, respiración, punto medio y eficiencia → del período
+    #     MÁS LARGO, que es la noche. Son fisiología medida en un contexto, no
+    #     cantidades acumulables.
+    porDia = {}
     for s in (payloads.get("sleep") or {}).get("data", []) or []:
         f = _dia(s.get("day"))
         if not f: continue
-        fs = str(f)
-        if s.get("average_hrv"):
-            regs.append({"fecha": fs, "tipo": "hrv_ms", "valor": s["average_hrv"],
-                         "fuente": "oura",
-                         "detalle": {"metrica": "rmssd", "ventana": "nocturna"}})
-        if s.get("lowest_heart_rate"):
-            regs.append({"fecha": fs, "tipo": "fc_reposo", "valor": s["lowest_heart_rate"], "fuente": "oura"})
-        if s.get("total_sleep_duration"):
-            regs.append({"fecha": fs, "tipo": "sueno_min",
-                         "valor": round(s["total_sleep_duration"] / 60), "fuente": "oura"})
+        dur = s.get("total_sleep_duration") or 0
+        d = porDia.setdefault(str(f), {"total": 0, "etapas": {}, "largo": -1, "principal": None})
+        d["total"] += dur
         for k, tipo in (("deep_sleep_duration", "sueno_profundo_min"),
                         ("rem_sleep_duration", "sueno_rem_min"),
                         ("light_sleep_duration", "sueno_ligero_min")):
             if s.get(k):
-                regs.append({"fecha": fs, "tipo": tipo, "valor": round(s[k] / 60), "fuente": "oura"})
-        if s.get("efficiency"):
-            regs.append({"fecha": fs, "tipo": "sueno_eficiencia_pct", "valor": s["efficiency"], "fuente": "oura"})
-        if s.get("average_breath"):
+                d["etapas"][tipo] = d["etapas"].get(tipo, 0) + s[k]
+        if dur > d["largo"]:
+            d["largo"] = dur
+            d["principal"] = s
+
+    regs = []
+    for fs in sorted(porDia):
+        d = porDia[fs]
+        p = d["principal"] or {}
+        if d["total"]:
+            regs.append({"fecha": fs, "tipo": "sueno_min",
+                         "valor": round(d["total"] / 60), "fuente": "oura"})
+        for tipo, seg in d["etapas"].items():
+            regs.append({"fecha": fs, "tipo": tipo, "valor": round(seg / 60), "fuente": "oura"})
+        if p.get("average_hrv"):
+            regs.append({"fecha": fs, "tipo": "hrv_ms", "valor": p["average_hrv"],
+                         "fuente": "oura",
+                         "detalle": {"metrica": "rmssd", "ventana": "nocturna"}})
+        if p.get("lowest_heart_rate"):
+            regs.append({"fecha": fs, "tipo": "fc_reposo", "valor": p["lowest_heart_rate"], "fuente": "oura"})
+        if p.get("efficiency"):
+            regs.append({"fecha": fs, "tipo": "sueno_eficiencia_pct", "valor": p["efficiency"], "fuente": "oura"})
+        if p.get("average_breath"):
             regs.append({"fecha": fs, "tipo": "respiracion_rpm",
-                         "valor": round(float(s["average_breath"]), 1), "fuente": "oura"})
+                         "valor": round(float(p["average_breath"]), 1), "fuente": "oura"})
         # Punto medio del sueño: insumo de la regularidad (su desvío en 7 días).
-        bt, wt = s.get("bedtime_start"), s.get("bedtime_end")
+        # Del período principal: el punto medio de una siesta a las 16:00 no es
+        # comparable con el de una noche y dispara el desvío, que es la señal.
+        bt, wt = p.get("bedtime_start"), p.get("bedtime_end")
         if bt and wt:
             try:
                 d1 = datetime.fromisoformat(bt.replace("Z", "+00:00"))
