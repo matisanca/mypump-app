@@ -445,3 +445,121 @@ mypump_set_ejercicio_imagen: =X/postgres | postgres=X/postgres | anon=X/postgres
 mypump_set_habito: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_set_mostrar_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_upsert_analisis: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+
+======================================================================
+POLITICAS RLS (qual='true' = no filtra nada)
+======================================================================
+
+mypump_analisis_semanal  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_analisis_semanal  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_checkin_semanal  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_checkin_semanal  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_cliente_prefs  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_cliente_prefs  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_clientes  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_clientes  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+
+mypump_comentarios  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_comentarios  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_comidas_libres  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_comidas_libres  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_comidas_marcadas  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_comidas_marcadas  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_custom_foods  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_custom_foods  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_dietas  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_dietas  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+
+mypump_dietas_elecciones  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_dietas_elecciones  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+
+mypump_ejercicios_catalogo  (RLS ON, 2 politica/s)
+  [ALL] admin_write_catalogo  roles={public}
+      USING (auth.role() = ANY (ARRAY['authenticated'::text, 'service_role'::text]))
+      CHECK (auth.role() = ANY (ARRAY['authenticated'::text, 'service_role'::text]))
+  [SELECT] read_all_catalogo  roles={public}
+      USING true
+
+mypump_food_swaps  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_food_swaps  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_fotos_progreso  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_fotos_progreso  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_habitos_diarios  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_habitos_diarios  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_oauth_estados  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_oauth_estados  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_quimica  (RLS ON, 1 politica/s)
+  [ALL] coach only mypump_quimica  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_registros_carga  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_registros_carga  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+
+mypump_rutinas  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_rutinas  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+
+mypump_salud_diaria  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_salud_diaria  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_sesiones  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_sesiones  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+
+mypump_suplementos  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_suplementos  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_wearable_conexiones  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_wearable_conexiones  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
+
+mypump_ejercicios_estado  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
+
+mypump_entrenos_health  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
+
+mypump_push_cola  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
+
+mypump_push_devices  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
