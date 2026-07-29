@@ -49,9 +49,26 @@ const RATE_FOTOS   = 12;                    // subidas de FOTO por token por dí
 const BUCKET_FOTOS = 'progreso';
 const POSES        = new Set(['frente', 'perfil', 'espalda']);
 
-// CORS: la app en prod + local dev.
+/* CORS: la app en prod, la app NATIVA, y el dev local.
+ *
+ * `capacitor://localhost` es el origen del WebView en el iPhone, y FALTABA.
+ * Sin él, el preflight se contestaba 204 sin Access-Control-Allow-Origin y
+ * WKWebView abortaba el fetch: en la app del App Store, las fotos de progreso
+ * y "comida por foto" NO ANDABAN. Del lado del cliente cada llamada está
+ * envuelta en try/catch con fallback silencioso (`catch { return []; }`), así
+ * que el síntoma era "la galería está vacía" — sin un error a la vista. En el
+ * navegador funciona, por eso nunca se ejercitó el camino nativo.
+ *
+ * OJO CON EL NOMBRE: capacitor.config.json declara `"iosScheme": "https"`,
+ * pero Capacitor LO DESCARTA. normalize() en CAPInstanceDescriptor.swift exige
+ * `WKWebView.handlesURLScheme(scheme) == false`, y https lo maneja WebKit
+ * nativamente → el scheme vuelve al default `capacitor` (hostname `localhost`).
+ * O sea que el origen real es capacitor://localhost, NO https://localhost.
+ * Poner el que dice el config y no el real dejaría esto igual de roto.
+ */
 const ALLOWED_ORIGINS = new Set([
   'https://app.mypumpteam.com',
+  'capacitor://localhost',
   'http://localhost:8790',
   'http://localhost:3000',
 ]);

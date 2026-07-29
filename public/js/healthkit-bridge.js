@@ -56,12 +56,28 @@
     // de acá: quien tiene balanza inteligente lo estaba tipeando a mano al
     // pedo. Va 'ultimo' y no mediana — el peso del día es la última pesada.
     { dataType: 'weight',          tipo: 'peso_kg',         como: 'ultimo' },
-    { dataType: 'distance',        tipo: 'distancia_km',    como: 'sum', escala: 0.001 }, // m → km
+    // factor y NO escala: `escala` solo se aplica si el valor es <= 1 (esa es la
+    // heurística de SpO2/grasa, que a veces vienen 0-1). Una distancia en metros
+    // nunca es <= 1, así que la conversión NUNCA corría y los metros se
+    // guardaban como si fueran km: 5420 en vez de 5.4. El guardrail de la base
+    // (0-200 km) tiraba la fila, así que la distancia no llegaba nunca.
+    { dataType: 'distance',        tipo: 'distancia_km',    como: 'sum', factor: 0.001 }, // m → km
     { dataType: 'flightsClimbed',  tipo: 'pisos',           como: 'sum' },
-    // Basales + totales = TDEE medido. Hoy sale de Mifflin-St Jeor, que tiene
-    // ±10% de error individual; esto es el gasto de ESTA persona.
+    // Basales + activas = TDEE medido. Hoy el TDEE sale de Mifflin-St Jeor, que
+    // tiene ±10% de error individual; esto es el gasto de ESTA persona.
+    //
+    // Solo se piden las BASALES: las activas ya vienen por queryAggregated
+    // ('calories' → kcal_activas), y el total lo arma mypump_get_gasto_real con
+    // COALESCE(tot, bas + act).
+    //
+    // NO pedir 'totalCalories'. En este plugin es un nombre que miente:
+    // Health.swift:649 hace `case .totalCalories: identifier = .activeEnergyBurned`
+    // — el MISMO identificador que 'calories'. HealthKit no tiene un tipo de
+    // energía total; hay que sumarlo. Con esa línea puesta, kcal_totales era una
+    // copia de las activas y el COALESCE la prefería sobre la suma correcta: el
+    // "TDEE medido" salía ~750 kcal, MENOR que el basal. Un número imposible
+    // que igual se le mostraba al coach como dato medido.
     { dataType: 'basalCalories',   tipo: 'kcal_basales',    como: 'sum' },
-    { dataType: 'totalCalories',   tipo: 'kcal_totales',    como: 'sum' },
     { dataType: 'vo2Max',          tipo: 'vo2max',          como: 'mediana' },
     { dataType: 'bodyTemperature', tipo: 'temp_corporal_c', como: 'mediana' },
     { dataType: 'bloodGlucose',    tipo: 'glucosa_mg_dl',   como: 'mediana' },
@@ -293,6 +309,25 @@
     };
     const mins = (ivs) => fusionar(ivs).reduce((t, i) => t + (i.fin - i.ini), 0) / 60000;
 
+    /* Se acumula por FECHA antes de emitir nada.
+     *
+     * `noches` corta un bloque nuevo cada vez que hay más de 60 min sin
+     * muestras, así que una siesta de la tarde es un bloque aparte — pero cae
+     * en la MISMA fecha que la noche anterior. Como el upsert de la base tiene
+     * clave (cliente_id, fecha, tipo, fuente), la segunda fila PISABA a la
+     * primera: quien dormía 8 h y se echaba 40 min de siesta terminaba con
+     * sueno_min = 40 y sueno_medio_min = 920 (las 15:20 de la tarde). El motor
+     * leía eso como una noche catastrófica y un horario errático.
+     *
+     * Cómo se agrega cada cosa, que no es lo mismo para todas:
+     *  · sueno_min y las etapas: se SUMAN — una siesta suma descanso al día.
+     *  · sueno_medio_min: solo del bloque MÁS LARGO. Mide regularidad de
+     *    horario; el punto medio de una siesta no es comparable con el de una
+     *    noche y ensucia el desvío de 7 días, que es justo la señal.
+     *  · sueno_eficiencia_pct: se recalcula al final sobre los totales
+     *    sumados, no se promedian porcentajes.
+     */
+    const porFecha = {};
     const filas = [];
     for (const noche of noches) {
       // Fuente ganadora = la que más minutos de sueño REAL aportó.
@@ -320,27 +355,47 @@
       const ini = Math.min(...evsN.map(e => e.ini));
       const fecha = ymd(new Date(fin));
 
-      filas.push({ fecha, tipo: 'sueno_min', valor: Math.round(total),
-                   detalle: estimado ? { estimado: true, fuente_id: mejor } : { fuente_id: mejor } });
-
-      // Punto medio del sueño, en minutos desde medianoche: insumo de la
-      // REGULARIDAD (su desvío en 7 días dice si los horarios son estables).
-      const medio = new Date((ini + fin) / 2);
-      filas.push({ fecha, tipo: 'sueno_medio_min',
-                   valor: Math.round(medio.getHours() * 60 + medio.getMinutes()) });
-
-      if (enCama.length && dormido.length) {
-        const cama = mins(enCama);
-        if (cama > 0) filas.push({ fecha, tipo: 'sueno_eficiencia_pct',
-                                   valor: Math.round(Math.min(100, total / cama * 100)) });
-      }
+      const d = porFecha[fecha] || (porFecha[fecha] = {
+        total: 0, cama: 0, etapas: {}, estimado: false, fuente: mejor,
+        masLargo: -1, medio: null, ini, fin,
+      });
+      d.total += total;
+      if (estimado) d.estimado = true;
+      if (enCama.length && dormido.length) d.cama += mins(enCama);
       for (const st of Object.keys(ETAPAS)) {
         const e = evsN.filter(x => x.st === st);
-        if (e.length) filas.push({ fecha, tipo: ETAPAS[st], valor: Math.round(mins(e)) });
+        if (e.length) d.etapas[ETAPAS[st]] = (d.etapas[ETAPAS[st]] || 0) + mins(e);
       }
-      // Guardado aparte: el intervalo de la noche sirve para filtrar la HRV.
+      // El punto medio se queda con el del bloque más largo del día.
+      if (total > d.masLargo) {
+        d.masLargo = total;
+        const medio = new Date((ini + fin) / 2);
+        d.medio = Math.round(medio.getHours() * 60 + medio.getMinutes());
+        d.fuente = mejor;
+        d.ini = ini; d.fin = fin;
+      }
+    }
+
+    for (const fecha of Object.keys(porFecha).sort()) {
+      const d = porFecha[fecha];
+      if (!(d.total > 0)) continue;
+      filas.push({ fecha, tipo: 'sueno_min', valor: Math.round(d.total),
+                   detalle: d.estimado ? { estimado: true, fuente_id: d.fuente }
+                                       : { fuente_id: d.fuente } });
+      // Punto medio del sueño, en minutos desde medianoche: insumo de la
+      // REGULARIDAD (su desvío en 7 días dice si los horarios son estables).
+      if (d.medio != null) filas.push({ fecha, tipo: 'sueno_medio_min', valor: d.medio });
+      if (d.cama > 0) {
+        filas.push({ fecha, tipo: 'sueno_eficiencia_pct',
+                     valor: Math.round(Math.min(100, d.total / d.cama * 100)) });
+      }
+      for (const tipo of Object.keys(d.etapas)) {
+        filas.push({ fecha, tipo, valor: Math.round(d.etapas[tipo]) });
+      }
+      // Guardado aparte: el intervalo del bloque principal sirve para filtrar
+      // la HRV nocturna (una siesta no define la ventana de la noche).
       filas._noches = filas._noches || [];
-      filas._noches.push({ fecha, ini, fin });
+      filas._noches.push({ fecha, ini: d.ini, fin: d.fin });
     }
     return filas;
   }

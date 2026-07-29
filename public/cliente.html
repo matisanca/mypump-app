@@ -1131,6 +1131,13 @@ let _sessionStart  = null; // Date.now() when first set confirmed
 // es un día que quedó sin cerrar. Se usa para no mostrar un cronómetro
 // absurdo (llegamos a ver 76:18:53) y para no guardar esa duración en la base.
 const SESION_MAX_H = 6;
+/* RIR de una serie, distinguiendo "0" (fue al fallo) de "" (no lo cargó).
+ * Existe porque `parseInt(x) || null` los confunde: 0 es falsy. */
+function rirDeSet(v) {
+  if (v === '' || v == null) return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+}
 /* Minutos de la sesión, o null si el número no es creíble.
  *
  * Único lugar donde se decide esto: lo que se GUARDA y lo que se MUESTRA tienen
@@ -2080,7 +2087,15 @@ function writeSet(exId, setIdx) {
       serie:          setIdx + 1,
       peso:           parseFloat(s.kg) || 0,
       reps:           parseInt(s.reps) || 0,
-      rir:            parseInt(s.rir) || null,
+      // RIR 0 es "fue al fallo" — un dato, no la falta de un dato. Con
+      // `parseInt(s.rir) || null` se perdía: 0 es falsy y el || lo pisaba con
+      // null, o sea que la serie más dura del día se guardaba como "no me
+      // dijo nada". Indistinguible de no haberlo cargado, por eso nunca se
+      // notó. El CHECK de la tabla acepta 0-5, así que el 0 siempre fue
+      // válido del lado de la base.
+      // OJO: peso y reps de arriba NO son el mismo caso — ahí 0 no significa
+      // nada y el fallback es a propósito (peso corporal).
+      rir:            rirDeSet(s.rir),
       // Para ejercicios con variante (ej: rueda abdominal) guardamos el nivel
       // elegido en notas, para que el coach lo vea.
       notas:          (STATE.session[exId] && STATE.session[exId].variante) || null,

@@ -56,6 +56,20 @@ globalThis.Capacitor = {
   },
 };
 
+/* Cliente de base mockeado: captura EXACTAMENTE los registros que el bridge
+ * manda a Supabase. Es la unica forma de probar procesarSueno, la conversion
+ * de unidades y la agregacion — nada de eso esta exportado, y probar lo que se
+ * exporta en vez de lo que se manda es como probar otra cosa. Un test que
+ * revisa una variable intermedia no habria visto los metros guardados como km:
+ * el bug estaba en el registro final. */
+const ENVIADOS = [];
+globalThis.window.mypumpDB = {
+  ingestSalud: async (_token, registros) => { ENVIADOS.push(...registros); return { success: true, data: registros.length }; },
+  ingestEntrenos: async () => ({ success: true, data: 0 }),
+};
+const capturar = async (fn) => { ENVIADOS.length = 0; await fn(); return ENVIADOS.slice(); };
+const delTipo = (regs, tipo) => regs.filter(r => r.tipo === tipo);
+
 // El bridge es un IIFE que se registra en window.MyPumpHealth.
 const src = fs.readFileSync(path.join(raiz, 'public/js/healthkit-bridge.js'), 'utf8');
 new Function(src)();
@@ -134,18 +148,101 @@ await t('que empiece a llegar un dato levanta la sospecha', async () => {
   if (e.sinDatos) throw new Error('con datos entrando no se puede seguir diciendo que no llega nada');
 });
 
+/* Los tests de abajo miran lo que el bridge MANDA A LA BASE, no variables
+ * internas. Es la única forma de agarrar bugs de unidad o de agregación, que
+ * son los que aparecieron: los metros guardados como km y la siesta pisando la
+ * noche estaban los dos en el registro final. */
+const prepararSync = () => {
+  store['mypump_token'] = 'tok-de-prueba';
+  store['mypump_health_connected'] = '1';
+  store['mypump_health_backfill_v1'] = '1';   // que no dispare el backfill de 60 días
+  for (const k of Object.keys(MUESTRAS)) MUESTRAS[k] = [];
+};
+
 console.log('\nProcesamiento de sueño');
-await t('dos fuentes la misma noche no duplican minutos', () => {
-  // iPhone + reloj registran la misma noche. Sin dedup, 8h se vuelven 16h.
+
+await t('dos fuentes la misma noche no duplican minutos', async () => {
+  // iPhone + reloj registran la misma noche. Sin dedup, 8 h se vuelven 16.
+  prepararSync();
   MUESTRAS.sleep = [
     { startDate: iso(20,23), endDate: iso(21,7), sleepState: 'asleep', sourceId: 'iphone' },
     { startDate: iso(20,23), endDate: iso(21,7), sleepState: 'asleep', sourceId: 'watch'  },
   ];
-  // procesarSueno no está exportada; se ejerce por el camino público.
-  // Acá se verifica la invariante: el total de una noche no puede superar
-  // la ventana real entre inicio y fin.
-  const horas = (new Date(iso(21,7)) - new Date(iso(20,23))) / 3600000;
-  if (horas !== 8) throw new Error('la ventana de prueba debería ser de 8 h');
+  const regs = await capturar(() => H.sync());
+  const s = delTipo(regs, 'sueno_min');
+  if (s.length !== 1) throw new Error(`esperaba 1 fila de sueño, vinieron ${s.length}`);
+  if (s[0].valor !== 480) throw new Error(`8 h son 480 min, mandó ${s[0].valor}`);
+});
+
+await t('una siesta SUMA al día en vez de pisar la noche', async () => {
+  // El bug: `noches` corta bloques cada 60 min sin muestras, así que la siesta
+  // era un bloque aparte con la MISMA fecha. Como el upsert de la base tiene
+  // clave (cliente_id, fecha, tipo, fuente), la segunda fila pisaba a la
+  // primera: 8 h de sueño se convertían en los 40 min de la siesta.
+  prepararSync();
+  MUESTRAS.sleep = [
+    { startDate: iso(20,23), endDate: iso(21,7),     sleepState: 'asleep', sourceId: 'watch' },
+    { startDate: iso(21,15), endDate: iso(21,15,40), sleepState: 'asleep', sourceId: 'watch' },
+  ];
+  const regs = await capturar(() => H.sync());
+  const s = delTipo(regs, 'sueno_min');
+  if (s.length !== 1) throw new Error(`una fecha = una fila; vinieron ${s.length} (la 2ª pisa a la 1ª en la base)`);
+  if (s[0].valor !== 520) throw new Error(`480 + 40 = 520, mandó ${s[0].valor}`);
+});
+
+await t('el punto medio lo fija la noche, no la siesta', async () => {
+  // sueno_medio_min alimenta la REGULARIDAD (su desvío en 7 días). El punto
+  // medio de una siesta de la tarde no es comparable con el de una noche y
+  // dispara el desvío, que es justo la señal que se quiere medir.
+  prepararSync();
+  MUESTRAS.sleep = [
+    { startDate: iso(20,23), endDate: iso(21,7),     sleepState: 'asleep', sourceId: 'watch' },
+    { startDate: iso(21,15), endDate: iso(21,15,40), sleepState: 'asleep', sourceId: 'watch' },
+  ];
+  const regs = await capturar(() => H.sync());
+  const m = delTipo(regs, 'sueno_medio_min');
+  if (m.length !== 1) throw new Error(`esperaba 1, vinieron ${m.length}`);
+  // 23:00 → 07:00 tiene su punto medio a las 03:00 = 180 min desde medianoche.
+  // El de la siesta sería 15:20 = 920.
+  if (m[0].valor !== 180) throw new Error(`esperaba 180 (03:00), mandó ${m[0].valor}` +
+    (m[0].valor === 920 ? ' — ese es el medio de la SIESTA (15:20)' : ''));
+});
+
+console.log('\nUnidades que manda a la base');
+
+await t('la distancia va en KM, no en metros', async () => {
+  // Iba con `escala`, que solo se aplica si el valor es <= 1 (heurística de
+  // SpO2/grasa). Una distancia en metros nunca es <= 1 → nunca convertía, y el
+  // guardrail de la base (0-200 km) tiraba la fila en silencio.
+  prepararSync();
+  MUESTRAS.distance = [
+    { startDate: iso(21,8),  endDate: iso(21,9),  value: 3200, unit: 'meter' },
+    { startDate: iso(21,18), endDate: iso(21,19), value: 2220, unit: 'meter' },
+  ];
+  const regs = await capturar(() => H.sync());
+  const d = delTipo(regs, 'distancia_km');
+  if (!d.length) throw new Error('no mandó distancia');
+  // 5420 m = 5.42 km, y el bridge redondea a 1 decimal a propósito (100 m de
+  // precisión alcanza y de sobra para esto): 5.4.
+  if (d[0].valor !== 5.4) {
+    throw new Error(`5420 m son 5.4 km redondeado, mandó ${d[0].valor}` +
+      (d[0].valor > 200 ? ' — está en METROS, y la base lo tira (rango 0-200 km)' : ''));
+  }
+});
+
+await t('no manda kcal_totales (en el plugin es una copia de las activas)', async () => {
+  // Health.swift:649 hace `case .totalCalories: identifier = .activeEnergyBurned`,
+  // el MISMO identificador que 'calories'. HealthKit no tiene energía total.
+  // Con esa línea puesta, mypump_get_gasto_real prefería ese valor sobre
+  // COALESCE(bas+act) y el "TDEE medido" salía MENOR que el basal.
+  prepararSync();
+  MUESTRAS.basalCalories = [{ startDate: iso(21,8), endDate: iso(21,9), value: 1700, unit: 'kilocalorie' }];
+  MUESTRAS.totalCalories = [{ startDate: iso(21,8), endDate: iso(21,9), value: 750,  unit: 'kilocalorie' }];
+  const regs = await capturar(() => H.sync());
+  if (delTipo(regs, 'kcal_totales').length) {
+    throw new Error('mandó kcal_totales: eso es solo la energía ACTIVA y se lee como TDEE');
+  }
+  if (!delTipo(regs, 'kcal_basales').length) throw new Error('perdimos las basales');
 });
 
 console.log('\nRangos fisiológicos (los mismos que valida la DB)');
