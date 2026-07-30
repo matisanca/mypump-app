@@ -369,5 +369,139 @@ await t('en el camino feliz errorIngesta queda null', async () => {
   if (!(r.ingresados > 0)) throw new Error('no ingresó nada en el camino feliz');
 });
 
+console.log('\nconnect(): repintados y veredicto de "no llega nada"');
+
+await t('connect() repinta UNA sola vez, no una por cada etapa interna', async () => {
+  prepararSync();
+  store['mypump_health_backfill_v1'] = '1';    // que no dispare el backfill
+  let n = 0;
+  const oS = window.loadSalud, oR = window.loadRecuperacion;
+  window.loadSalud = () => { n++; };
+  window.loadRecuperacion = () => {};
+  try { await H.connect(); } finally { window.loadSalud = oS; window.loadRecuperacion = oR; }
+  // sync() repintaba, backfill() repintaba, y connect() dejaba que pasara: cada
+  // repintado destruia el boton "Conectando…" a mitad de vuelo.
+  eq(n, 1, `repinto ${n} veces desde adentro de connect()`);
+});
+
+await t('"Reintentar" NO apaga el cartel si no llego ni un dato', async () => {
+  prepararSync();
+  store['mypump_health_backfill_v1'] = '1';    // backfill ya hecho: es un reintento
+  store['mypump_health_denegado'] = '1';       // el cartel esta prendido
+  // Sin muestras: el reintento no trae nada.
+  await H.connect();
+  eq(store['mypump_health_denegado'], '1',
+     'apago el cartel sin haber leido una sola muestra — el cliente cree que se arreglo');
+});
+
+await t('si llega un dato, el cartel SI se apaga', async () => {
+  prepararSync();
+  store['mypump_health_backfill_v1'] = '1';
+  store['mypump_health_denegado'] = '1';
+  MUESTRAS.weight = [{ startDate: iso(28, 8), endDate: iso(28, 8), value: 80, unit: 'kg' }];
+  await H.connect();
+  eq(store['mypump_health_denegado'], undefined, 'dejo el cartel prendido con datos entrando');
+});
+
+console.log('\nbackfill(): no marcarse como hecho si fallo entero');
+
+await t('si TODAS las ventanas fallan, el backfill NO queda marcado como hecho', async () => {
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  MUESTRAS.weight = [{ startDate: iso(28, 8), endDate: iso(28, 8), value: 80, unit: 'kg' }];
+  const orig = window.mypumpDB.ingestSalud;
+  window.mypumpDB.ingestSalud = async () => { throw new Error('base caida'); };
+  let r;
+  try { r = await H.backfill(); } finally { window.mypumpDB.ingestSalud = orig; }
+
+  eq(store['mypump_health_backfill_v1'], undefined,
+     'quedo marcado como hecho con las 12 ventanas rotas: no se reintenta nunca mas');
+  eq(r.ok, false, 'devolvio ok:true con todo fallado');
+  // Y no debe acusar de "denego": nunca se lo pudo consultar.
+  eq(store['mypump_health_denegado'], undefined,
+     'marco "no llega nada" cuando en realidad no se pudo ni preguntar');
+});
+
+console.log('\nleerMuestras: el corte por truncamiento no puede duplicar');
+
+await t('la muestra que cruza el punto de corte se cuenta UNA vez', async () => {
+  prepararSync();
+  // El plugin usa predicateForSamples(options: []) — sin limites estrictos — asi
+  // que una muestra que se solapa con las dos mitades sale en las dos.
+  const compartida = { startDate: iso(25, 12), endDate: iso(25, 13), value: 30, unit: 'min', sourceId: 'w' };
+  const orig = Capacitor.Plugins.Health.readSamples;
+  let llamada = 0;
+  Capacitor.Plugins.Health.readSamples = async ({ dataType }) => {
+    if (dataType !== 'exerciseTime') return { samples: [] };
+    llamada++;
+    if (llamada === 1) {
+      // ventana completa: devuelve el limite exacto -> dispara el corte
+      return { samples: Array.from({ length: 5000 }, () => compartida) };
+    }
+    // cada mitad devuelve UNA PROPIA distinta mas la compartida del borde
+    const dia = llamada === 2 ? 24 : 26;
+    return { samples: [
+      { startDate: iso(dia, 10), endDate: iso(dia, 11), value: 10, unit: 'min', sourceId: 'w' },
+      compartida,
+    ] };
+  };
+  const regs = await capturar(() => H.sync());
+  Capacitor.Plugins.Health.readSamples = orig;
+
+  const act = delTipo(regs, 'actividad_min');
+  const total = act.reduce((a, r) => a + r.valor, 0);
+  // 10 (mitad A) + 10 (mitad B) + 30 (compartida, UNA vez) = 50. Con el bug: 80.
+  eq(total, 50, `sumo ${total} min: la muestra del borde se conto dos veces`);
+});
+
+console.log('\nEntrenos: la FC se calcula, no viene en el payload');
+
+await t('fc_media y fc_max salen de las muestras de heartRate del entreno', async () => {
+  prepararSync();
+  const oW = Capacitor.Plugins.Health.queryWorkouts;
+  Capacitor.Plugins.Health.queryWorkouts = async () => ({ workouts: [{
+    workoutType: 'running', duration: 1800,
+    startDate: iso(28, 10), endDate: iso(28, 10, 30),
+    totalEnergyBurned: 300, totalDistance: 5000,
+  }] });
+  MUESTRAS.heartRate = [
+    { startDate: iso(28, 10, 5),  endDate: iso(28, 10, 5),  value: 140, unit: 'bpm' },
+    { startDate: iso(28, 10, 15), endDate: iso(28, 10, 15), value: 160, unit: 'bpm' },
+    { startDate: iso(28, 10, 25), endDate: iso(28, 10, 25), value: 150, unit: 'bpm' },
+    // fuera del entreno: no debe entrar en el promedio
+    { startDate: iso(28, 14),     endDate: iso(28, 14),     value: 60,  unit: 'bpm' },
+  ];
+  let enviados = [];
+  const oI = window.mypumpDB.ingestEntrenos;
+  window.mypumpDB.ingestEntrenos = async (_t, e) => { enviados = e; return { success: true, data: e.length }; };
+  try { await H.sync(); } finally {
+    Capacitor.Plugins.Health.queryWorkouts = oW;
+    window.mypumpDB.ingestEntrenos = oI;
+    MUESTRAS.heartRate = [];
+  }
+
+  if (!enviados.length) throw new Error('no se envio ningun entreno');
+  const w = enviados[0];
+  eq(w.fc_media, 150, 'la media de 140/160/150 es 150');
+  eq(w.fc_max, 160, 'el maximo es 160');
+});
+
+await t('sin muestras de FC en la ventana, fc_media y fc_max quedan null', async () => {
+  prepararSync();
+  const oW = Capacitor.Plugins.Health.queryWorkouts;
+  Capacitor.Plugins.Health.queryWorkouts = async () => ({ workouts: [{
+    workoutType: 'running', duration: 1800, startDate: iso(28, 10), endDate: iso(28, 10, 30),
+  }] });
+  let enviados = [];
+  const oI = window.mypumpDB.ingestEntrenos;
+  window.mypumpDB.ingestEntrenos = async (_t, e) => { enviados = e; return { success: true, data: e.length }; };
+  try { await H.sync(); } finally {
+    Capacitor.Plugins.Health.queryWorkouts = oW;
+    window.mypumpDB.ingestEntrenos = oI;
+  }
+  eq(enviados[0].fc_media, null, 'invento una FC sin muestras');
+  eq(enviados[0].fc_max, null);
+});
+
 console.log(`\n${ok} pasaron, ${fail} fallaron\n`);
 process.exit(fail ? 1 : 0);

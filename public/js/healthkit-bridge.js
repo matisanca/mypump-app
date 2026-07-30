@@ -324,7 +324,27 @@
       const medio = new Date((desde.getTime() + hasta.getTime()) / 2);
       const a = await leerMuestras(dataType, desde, medio, (prof || 0) + 1);
       const b = await leerMuestras(dataType, medio, hasta, (prof || 0) + 1);
-      return a.concat(b);
+      /* Dedup obligatorio al pegar las mitades.
+       *
+       * El plugin arma el predicado con `options: []` (Health.swift:872), o sea
+       * SIN límites estrictos: HealthKit devuelve toda muestra que se SOLAPE con
+       * la ventana. Una muestra que cruza el punto de corte —o que arranca justo
+       * ahí— sale en las dos mitades, y `a.concat(b)` la contaba dos veces. En
+       * los tipos que se colapsan con 'sum' (minutos de ejercicio, distancia,
+       * pisos, basales, mindfulness) eso inflaba el día. En los de mediana
+       * corría el percentil.
+       *
+       * El plugin no expone el UUID de la muestra (Health.swift:1058-1068 emite
+       * value/unit/startDate/endDate/sourceName/sourceId), así que la identidad
+       * se arma con eso: dos muestras de la MISMA fuente con idéntico inicio,
+       * fin y valor son indistinguibles y no deben sumarse dos veces. */
+      const vistas = new Set();
+      return a.concat(b).filter((s) => {
+        const k = `${s.startDate}|${s.endDate}|${s.value}|${s.sourceId || ''}`;
+        if (vistas.has(k)) return false;
+        vistas.add(k);
+        return true;
+      });
     }
     return arr;
   }
@@ -614,6 +634,34 @@
       console.warn('[health] queryWorkouts:', e);
       return [];
     }
+    /* FC del entreno: se calcula, no viene en el payload.
+     *
+     * Acá se leía `w.averageHeartRate` y `w.maxHeartRate`. Esas claves NO
+     * existen: workoutToPayload (Health.swift:1702-1762) emite exactamente
+     * workoutType, duration, startDate, endDate, totalEnergyBurned,
+     * totalDistance, metadata y workoutEvents. O sea que fc_media y fc_max
+     * viajaban SIEMPRE en null y la columna estaba vacía para todos.
+     *
+     * Se calculan de las muestras de frecuencia cardíaca que caen dentro de
+     * cada entreno. Una sola lectura para toda la ventana, no una por entreno. */
+    let hr = [];
+    if (ws.length) {
+      hr = (await leerMuestras('heartRate', desde, hasta))
+        .map((s) => ({ t: +new Date(s.startDate), v: Number(s.value) }))
+        .filter((s) => isFinite(s.t) && isFinite(s.v) && s.v > 0)
+        .sort((a, b) => a.t - b.t);
+    }
+    const fcDe = (iniMs, finMs) => {
+      if (!hr.length || !(finMs > iniMs)) return { media: null, max: null };
+      const dentro = hr.filter((s) => s.t >= iniMs && s.t <= finMs);
+      if (!dentro.length) return { media: null, max: null };
+      const suma = dentro.reduce((a, s) => a + s.v, 0);
+      return {
+        media: Math.round(suma / dentro.length),
+        max: Math.round(dentro.reduce((m, s) => (s.v > m ? s.v : m), 0)),
+      };
+    };
+
     const out = [];
     for (const w of ws) {
       const ini = w.startDate || w.start;
@@ -623,6 +671,7 @@
         ? Number(w.duration) / 60                      // el plugin da segundos
         : (fin ? (new Date(fin) - new Date(ini)) / 60000 : null);
       const km = (w.totalDistance != null) ? Number(w.totalDistance) / 1000 : null;
+      const fc = fcDe(+new Date(ini), fin ? +new Date(fin) : NaN);
       out.push({
         inicio: new Date(ini).toISOString(),
         fin: fin ? new Date(fin).toISOString() : null,
@@ -630,8 +679,8 @@
         duracion_min: (dur != null && isFinite(dur)) ? Math.round(dur * 10) / 10 : null,
         kcal: (w.totalEnergyBurned != null && isFinite(+w.totalEnergyBurned)) ? Math.round(+w.totalEnergyBurned) : null,
         distancia_km: (km != null && isFinite(km) && km > 0) ? Math.round(km * 100) / 100 : null,
-        fc_media: (w.averageHeartRate != null) ? Math.round(+w.averageHeartRate) : null,
-        fc_max: (w.maxHeartRate != null) ? Math.round(+w.maxHeartRate) : null,
+        fc_media: fc.media,
+        fc_max: fc.max,
         fuente: 'apple_health',
       });
     }
@@ -651,6 +700,27 @@
   }
 
   // ── Sync incremental (últimos 7 días) ─────────────────────────────────
+  /* Refresco de la UI, con freno mientras connect() está en vuelo.
+   *
+   * sync() y backfill() repintan la card al terminar, y connect() llama a los
+   * dos. O sea que connect() repintaba la card DOS VECES desde adentro, y cada
+   * repintado destruía el botón que el handler había dejado en "Conectando…":
+   * el cliente veía el botón volver a la normalidad mientras el backfill de 60
+   * días seguía corriendo, y podía tocarlo de nuevo y disparar un segundo
+   * connect() en paralelo. Peor: si connect() después fallaba, el
+   * `btn.disabled = false` del handler escribía sobre un nodo ya desprendido y
+   * el error no se veía en ningún lado.
+   *
+   * Ahora connect() silencia los repintados intermedios y hace UNO solo al
+   * final. De paso se ahorran dos rondas de loadSalud + loadRecuperacion
+   * (cuatro RPC) que no le servían a nadie. */
+  let _silencioUI = false;
+  function refrescarUI() {
+    if (_silencioUI) return;
+    if (typeof window.loadSalud === 'function') window.loadSalud();
+    if (typeof window.loadRecuperacion === 'function') window.loadRecuperacion();
+  }
+
   async function sync() {
     if (!isNative) return { ok: false, reason: 'no-native' };
     if (!getToken()) return { ok: false, reason: 'no-token' };
@@ -667,8 +737,7 @@
     try { nEnt = await postearEntrenos(await recolectarEntrenos(desde, hasta)); }
     catch (e) { console.warn('[health] entrenos:', e); }
     marcarSync();
-    if (typeof window.loadSalud === 'function') window.loadSalud();
-    if (typeof window.loadRecuperacion === 'function') window.loadRecuperacion();
+    refrescarUI();
     // `ok:true` significa "corrí", no "se guardó". Si el servidor rechazó la
     // ingesta hay que decirlo acá: con solo `ingresados:0` es indistinguible de
     // "el cliente no tenía datos esos días", y la UI mostraba activo igual.
@@ -683,18 +752,19 @@
   async function backfill(onProgreso) {
     if (!isNative || !getToken()) return { ok: false };
     try { if (localStorage.getItem(FLAG_BACKFILL) === '1') return { ok: true, saltado: true }; } catch (e) {}
-    let total = 0, cosechados = 0;
+    let total = 0, cosechados = 0, ventanas = 0, fallaron = 0;
     for (let off = 60; off > 0; off -= 5) {
       // Las dos puntas a medianoche: si no, la costura entre ventanas cae a
       // media tarde y el día de la juntura sale partido en las dos.
       const hasta = haceNDias(off - 5);
       const desde = haceNDias(off);
+      ventanas++;
       try {
         const regs = await recolectar(desde, hasta);
         cosechados += regs.length;
         total += await postear(regs);
         await postearEntrenos(await recolectarEntrenos(desde, hasta));
-      } catch (e) { console.warn('[health] backfill ventana', off, e); }
+      } catch (e) { fallaron++; console.warn('[health] backfill ventana', off, e); }
       if (typeof onProgreso === 'function') onProgreso(60 - off + 5, 60);
     }
     // 60 días sin una sola muestra: se avisa ya, sin esperar la racha.
@@ -705,11 +775,23 @@
     // no llegó ningún dato") en vez de acusar a nadie, y se borra solo apenas
     // entra el primer dato. El caso caro es el otro: el que denegó y se va
     // convencido de que quedó andando.
-    if (cosechados === 0) { try { localStorage.setItem(K_DENEG, '1'); } catch (e) {} }
-    try { localStorage.setItem(FLAG_BACKFILL, '1'); } catch (e) {}
-    if (typeof window.loadSalud === 'function') window.loadSalud();
-    if (typeof window.loadRecuperacion === 'function') window.loadRecuperacion();
-    return { ok: true, ingresados: total };
+    // ...pero solo si el backfill REALMENTE pudo mirar. Si las 12 ventanas
+    // tiraron error (HealthKit inaccesible, la base caída), `cosechados` también
+    // es 0 y estaríamos acusando de "denegó" a alguien que nunca fue consultado.
+    const todoFallo = fallaron === ventanas;
+    if (cosechados === 0 && !todoFallo) { try { localStorage.setItem(K_DENEG, '1'); } catch (e) {} }
+
+    /* El flag de "backfill hecho" se escribía SIEMPRE, fuera de toda condición
+     * de éxito. Si las 12 ventanas fallaban quedaba marcado como completo y no
+     * se reintentaba nunca más: el cliente arrancaba sin historia y el motor no
+     * le daba score por 14 días, sin que nada lo explicara. Y disconnect(), lo
+     * único que borra el flag, no se llama desde ningún lado.
+     * Ahora solo se marca si al menos una ventana pudo correr. */
+    if (!todoFallo) { try { localStorage.setItem(FLAG_BACKFILL, '1'); } catch (e) {} }
+    else console.warn('[health] las', ventanas, 'ventanas del backfill fallaron: no se marca como hecho, se reintenta');
+
+    refrescarUI();
+    return { ok: !todoFallo, ingresados: total, ventanasFallidas: fallaron };
   }
 
   function isConnected() {
@@ -758,9 +840,13 @@
       return { ok: false, motivo: 'no_disponible' };
     }
     if (!HEALTH()) {
-      // El plugin no está registrado: es un problema de build, no del cliente.
+      /* El plugin no está registrado en el WebView: es un problema de BUILD,
+       * no del teléfono del cliente. Devolvía 'no_disponible' igual que un
+       * iPhone sin Apple Salud, y la UI le decía al cliente "este iPhone no
+       * tiene Apple Salud disponible" — una mentira que además nos escondía a
+       * nosotros que el build había salido mal. Motivo propio. */
       anotarIntento({ paso: 'plugin', motivo: 'plugin_ausente' });
-      return { ok: false, motivo: 'no_disponible' };
+      return { ok: false, motivo: 'plugin_ausente' };
     }
     let disp = false, errDisp = null;
     try { const r0 = await HEALTH().isAvailable(); disp = !!(r0 && r0.available); }
@@ -782,14 +868,32 @@
       errEstado: r.errEstado || null,
       rechazados: (r.rechazados && r.rechazados.length) ? r.rechazados : null,
     });
-    // Se arranca de cero: si antes sospechábamos que no había permiso y el
-    // cliente volvió a pasar por la hoja, la sospecha se descarta y se vuelve a
-    // juzgar por los datos que lleguen de acá en más.
-    try { localStorage.removeItem(K_DENEG); localStorage.setItem(K_RACHA, '0'); } catch (e) {}
+    /* Se reinicia LA RACHA, no el veredicto.
+     *
+     * Acá se hacía `removeItem(K_DENEG)` antes de sincronizar. O sea: el botón
+     * "Reintentar" que se le ofrece al cliente cuando la card dice "no está
+     * llegando ningún dato" APAGABA el cartel sin haber leído una sola muestra,
+     * y lo mantenía apagado por tres syncs vacías más. El cliente tocaba,
+     * el cartel desaparecía, y volvía tres días después.
+     *
+     * No hace falta borrarlo acá: registrarCosecha() ya lo borra en cuanto
+     * entra el primer dato, y backfill() lo vuelve a poner si 60 días vinieron
+     * vacíos. Reiniciar la racha sí es justo — acaba de pasar por la hoja. */
+    try { localStorage.setItem(K_RACHA, '0'); } catch (e) {}
     localStorage.setItem('mypump_health_connected', '1');
-    await sync();
-    marcarSync();
-    await backfill(onProgreso);   // trae la historia para que el score arranque ya
+
+    // Silencio de UI: sync() y backfill() repintan la card al terminar, y eso
+    // destruía el botón "Conectando…" a mitad de vuelo. Un solo repintado, al final.
+    _silencioUI = true;
+    try {
+      await sync();
+      marcarSync();
+      await backfill(onProgreso);   // trae la historia para que el score arranque ya
+    } finally {
+      _silencioUI = false;
+    }
+    refrescarUI();
+
     // Pasó por la hoja pero no vino ni una muestra en 60 días: casi seguro
     // destildó todo. Se avisa acá para que el cliente no tenga que descubrirlo
     // solo tres días después.

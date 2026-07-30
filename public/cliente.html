@@ -5085,6 +5085,13 @@ async function _conectarSalud(btn, textoOriginal, onOk) {
   let msg;
   if (motivo === 'no_disponible') {
     msg = 'Este iPhone no tiene Apple Salud disponible.';
+  } else if (motivo === 'plugin_ausente') {
+    // Problema NUESTRO, de build: el plugin no quedó registrado en el WebView.
+    // Antes caía en el mismo mensaje que "este iPhone no tiene Apple Salud", y
+    // el cliente se quedaba con una explicación falsa mientras nosotros no nos
+    // enterábamos de que el build había salido mal.
+    msg = 'Hay un problema de nuestro lado con esta versión de la app. '
+        + 'Avisale a Mati así te la actualizamos — no es tu teléfono.';
   } else {
     msg = 'No pudimos conectar. Probá de nuevo en un rato; si sigue igual, avisale a Mati.';
   }
@@ -5523,9 +5530,18 @@ async function renderAppleHealthEstado() {
     boton  = '<button class="cx-btn" id="ahConectar">Conectar</button>';
   }
 
+  /* El título es la entrada al diagnóstico: 5 toques.
+   *
+   * ?diag=health no se podía abrir desde el iPhone — en el WebView nativo no
+   * hay barra de direcciones y ningún elemento de la app navegaba a esa URL.
+   * O sea que la pantalla que existe justamente para depurar "no me llega nada"
+   * era inalcanzable en el único lugar donde hace falta.
+   *
+   * Cinco toques y no un botón visible: es una herramienta nuestra, no una
+   * función del producto. Un cliente no la va a encontrar de casualidad. */
   el.innerHTML = `<div class="myday-section">
     <div class="myday-section-hdr"><span class="myday-section-icon">❤️</span>
-      <span class="myday-section-title">Salud de Apple</span></div>
+      <span class="myday-section-title" id="ahTitulo" style="cursor:default;-webkit-user-select:none;user-select:none">Salud de Apple</span></div>
     <div class="myday-section-body">
       <div class="cx-fila">
         <div class="cx-info">
@@ -5536,6 +5552,17 @@ async function renderAppleHealthEstado() {
       </div>
       <div id="ahMsg" class="rec-nota" hidden></div>
     </div></div>`;
+
+  const tit = document.getElementById('ahTitulo');
+  if (tit) {
+    let toques = 0, ultimo = 0;
+    tit.onclick = () => {
+      const ahora = Date.now();
+      toques = (ahora - ultimo < 1500) ? toques + 1 : 1;   // la racha se corta sola
+      ultimo = ahora;
+      if (toques >= 5) { toques = 0; pantallaDiagSalud(); }
+    };
+  }
 
   const msg = document.getElementById('ahMsg');
   const decir = (t) => { if (msg) { msg.hidden = false; msg.textContent = t; } };
@@ -6883,15 +6910,27 @@ $('#themeToggle').addEventListener('click', () => {
 });
 
 /* ---- INIT ---- */
-/* ---- ?diag=health — diagnóstico de HealthKit ----
-   HealthKit no existe en el simulador, así que la única forma de ver qué trae
-   de verdad es un iPhone físico. Esto lo vuelca en pantalla: qué tipos
-   respondieron, cuántas muestras, y el error nativo textual del que falló.
-   Sin esto, cada iteración del bridge necesitaría Xcode conectado. */
+/* ---- Diagnóstico de HealthKit ----
+   Vuelca qué tipos respondieron, cuántas muestras y el error nativo textual del
+   que falló. Sin esto, cada iteración del bridge necesitaría Xcode conectado.
+
+   Dos entradas: `?diag=health` en la web, y cinco toques en el título "Salud de
+   Apple" dentro de Revisión → Mis datos (la única que sirve en el iPhone, donde
+   no hay barra de direcciones).
+
+   Nota: el runtime de iOS 26.5 SÍ trae Health.app y HealthKit.framework, así
+   que buena parte de esto también se puede ver en el Simulador. */
 async function pantallaDiagSalud() {
   document.body.innerHTML = `<div style="padding:16px;font:13px/1.5 var(--font-mono),monospace;color:var(--color-text-primary);background:var(--color-bg-primary);min-height:100vh">
-    <h2 style="font:600 16px var(--font-sans)">Diagnóstico Apple Health</h2>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <button id="dgVolver" style="font:600 13px var(--font-sans);padding:6px 12px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-bg-secondary);color:var(--color-text-primary)">← Volver</button>
+      <h2 style="font:600 16px var(--font-sans);margin:0">Diagnóstico Apple Health</h2>
+    </div>
     <div id="dg">Consultando…</div></div>`;
+  // Sin esto quedabas encerrado: la pantalla pisa el body entero y en el
+  // WebView nativo no hay barra de direcciones para volver a la app.
+  const volver = document.getElementById('dgVolver');
+  if (volver) volver.onclick = () => location.reload();
   const el = document.getElementById('dg');
   if (!window.MyPumpHealth || !window.MyPumpHealth.diagnostico) {
     el.textContent = 'Bridge no cargado.'; return;
@@ -6919,6 +6958,8 @@ async function pantallaDiagSalud() {
          ${est.errEstado ? `<br><span style="color:var(--color-danger)">checkAuthorization: ${est.errEstado}</span>` : ''}</p>
       <p style="font-size:11px;opacity:.6">"tipos ya preguntados" NO es "permisos dados": HealthKit no informa
          el permiso de lectura. Si dice 20/20 y abajo todo da 0, es que se denegó.</p>
+      ${d.errorIngesta ? `<p style="color:var(--color-danger);font-size:12px">⚠ El servidor rechazó la última ingesta: <b>${d.errorIngesta}</b><br>
+         <span style="opacity:.7">Los datos se leen bien de HealthKit pero no se están guardando. Es un problema del backend, no del teléfono.</span></p>` : ''}
       ${ultimo ? `<pre style="font-size:11px;background:var(--color-bg-secondary);padding:8px;border-radius:6px;white-space:pre-wrap">último intento de conectar:
 ${JSON.stringify(ultimo, null, 1)}</pre>` : '<p style="font-size:11px;opacity:.6">(todavía no se intentó conectar)</p>'}
       <table style="width:100%;border-collapse:collapse;font-size:12px">${(d.tipos || []).map(fila).join('')}</table>
