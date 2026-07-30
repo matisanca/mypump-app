@@ -49,6 +49,23 @@ for (const m of seccionFns.matchAll(/^(mypump_[a-z0-9_]+|_mypump_[a-z0-9_]+)\(([
 }
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
+/* Funciones declaradas en las migraciones del repo, aplicadas o no.
+ * Sirve para distinguir "typo" de "migración todavía sin correr". */
+const enMigraciones = new Set();
+const dirMig = path.join(raiz, 'supabase/migrations');
+if (fs.existsSync(dirMig)) {
+  for (const f of fs.readdirSync(dirMig).filter((x) => x.endsWith('.sql'))) {
+    const sql = fs.readFileSync(path.join(dirMig, f), 'utf8');
+    // Solo definiciones reales: las líneas comentadas del bloque ROLLBACK no cuentan.
+    for (const l of sql.split('\n')) {
+      if (/^\s*--/.test(l)) continue;
+      const m = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+([a-z0-9_]+)/i.exec(l);
+      if (m) enMigraciones.add(m[1]);
+    }
+  }
+}
+const pendientes = [];
+
 // ── 2. Llamadas en el código ────────────────────────────────────────────
 const archivos = [];
 const juntar = (dir, exts, prof = 0) => {
@@ -99,8 +116,21 @@ for (const archivo of archivos) {
       const linea = src.slice(0, m.index).split('\n').length;
 
       if (!firmas.has(fn)) {
-        problemas.push({ rel, linea, fn, tipo: 'no existe',
-          detalle: 'no hay ninguna función con ese nombre en producción' });
+        /* Dos cosas MUY distintas se ven igual acá:
+         *   (a) un typo o una función que no existe en ningún lado → error;
+         *   (b) una función que SÍ está escrita en una migración del repo pero
+         *       todavía no se aplicó en producción → pendiente, no error.
+         *
+         * El caso (b) es el patrón normal cuando el código sale antes que la
+         * migración (con fallback en el cliente). Tratarlo como error obliga a
+         * elegir entre romper el test o no poder deployar en ese orden, y lo
+         * que termina pasando es que alguien apaga el test entero. */
+        if (enMigraciones.has(fn)) {
+          pendientes.push({ rel, linea, fn });
+        } else {
+          problemas.push({ rel, linea, fn, tipo: 'no existe',
+            detalle: 'no está en producción NI en ninguna migración del repo (¿typo?)' });
+        }
         continue;
       }
       const validos = firmas.get(fn);
@@ -117,8 +147,20 @@ for (const archivo of archivos) {
 // ── 3. Informe ──────────────────────────────────────────────────────────
 console.log(`llamadas RPC encontradas: ${llamadas} en ${archivos.length} archivos\n`);
 
+if (pendientes.length) {
+  console.log(`⏳ ${pendientes.length} llamada(s) a funciones de MIGRACIONES SIN APLICAR en producción:\n`);
+  for (const p of pendientes) {
+    console.log(`  ${p.rel}:${p.linea}`);
+    console.log(`    ${p.fn} — está escrita en una migración del repo pero NO en la base\n`);
+  }
+  console.log('  Hasta que se aplique, el código tiene que tener fallback. Aplicá la migración');
+  console.log('  y volvé a volcar el esquema:');
+  console.log('    ssh mini "~/agentkit-coach/venv/bin/python3 ~/esquema.py" > docs/ESQUEMA_PRODUCCION.txt\n');
+}
+
 if (!problemas.length) {
-  console.log('✓ toda llamada RPC coincide con la firma real de producción');
+  console.log('✓ toda llamada RPC coincide con la firma real de producción'
+    + (pendientes.length ? ' (salvo las pendientes de arriba)' : ''));
   process.exit(0);
 }
 console.log(`✗ ${problemas.length} desajuste(s):\n`);

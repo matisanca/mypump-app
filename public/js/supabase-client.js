@@ -48,6 +48,11 @@ async function rpc(fn, params) {
   }
 }
 
+/* Se prende cuando mypump_get_historico_ejercicios (migración 055) no está en
+ * la base. Evita sondearla en cada render. Se resetea al recargar la app, así
+ * que apenas se aplique la migración el batch vuelve solo. */
+let _sinBatchHistorico = false;
+
 // Llamada RPC de escritura — devuelve {success, data, error}
 async function rpcMutation(fn, params) {
   try {
@@ -118,6 +123,56 @@ window.mypumpDB = {
       p_ejercicio_id: ejercicioId,
       p_limit: limit,
     });
+  },
+
+  /* El histórico de VARIOS ejercicios en una sola llamada.
+   *
+   * La pantalla de Progreso pedía uno por uno: medido en el navegador el
+   * 29-jul-2026, **9 llamadas a mypump_get_historico_ejercicio en un solo
+   * arranque**, y ese número es el de ejercicios del plan entero — un plan de
+   * 4 días con 9 ejercicios cada uno son 36 round trips, cada uno pagando
+   * latencia completa y volviendo a resolver el token.
+   *
+   * Devuelve un objeto {ejercicioId: [filas...]}.
+   *
+   * CAE SOLA al camino de a uno si la migración 055 todavía no está aplicada:
+   * PostgREST responde 404 PGRST202 ("function not found") y ahí reintenta en
+   * paralelo como antes. Así la app anda igual con la base vieja y se acelera
+   * el día que la función exista, sin necesidad de coordinar los dos deploys. */
+  async getHistoricoEjercicios(token, ejercicioIds, limit = 24) {
+    const ids = (ejercicioIds || []).filter(Boolean);
+    const porId = {};
+    for (const id of ids) porId[id] = [];
+    if (!ids.length) return porId;
+
+    // Se sondea UNA sola vez por sesión. Sin esto, con la migración sin
+    // aplicar el fallback costaba N+1 llamadas en vez de N —o sea que la
+    // "optimización" empeoraba las cosas hasta que alguien corriera el SQL.
+    if (!_sinBatchHistorico) {
+      const filas = await rpc('mypump_get_historico_ejercicios', {
+        p_token: token,
+        p_ejercicio_ids: ids,
+        p_limit_por_ej: limit,
+      });
+
+      if (Array.isArray(filas)) {
+        for (const f of filas) {
+          if (f && f.ejercicio_id && porId[f.ejercicio_id]) porId[f.ejercicio_id].push(f);
+        }
+        return porId;
+      }
+      _sinBatchHistorico = true;
+      console.warn('[db] mypump_get_historico_ejercicios no disponible; de acá en más, de a uno');
+    }
+
+    // Camino viejo, uno por ejercicio.
+    const sueltos = await Promise.all(ids.map((id) =>
+      this.getHistoricoEjercicio(token, id, limit)
+        .then((r) => [id, r || []])
+        .catch(() => [id, []])
+    ));
+    for (const [id, r] of sueltos) porId[id] = r;
+    return porId;
   },
 
   // ─── ESCRITURA ────────────────────────────────────────────

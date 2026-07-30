@@ -4814,14 +4814,25 @@ async function loadProgressAndRender() {
     }
   }
 
-  const results = DEMO
-    ? allEx.map(ex => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }))
-    : await Promise.all(
-    allEx.map(ex => window.mypumpDB.getHistoricoEjercicio(TOKEN, ex.id, 24)
-      .then(rows => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: rows || [] }))
-      .catch(() => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }))
-    )
-  );
+  /* UNA llamada para todos los ejercicios, no una por cada uno.
+   *
+   * Esto pedía el histórico ejercicio por ejercicio. Medido en el navegador el
+   * 29-jul-2026: 9 llamadas a mypump_get_historico_ejercicio en un solo
+   * arranque — y `allEx` recorre el plan ENTERO, no el día, así que un plan de
+   * 4 días con 9 ejercicios son 36 round trips. Promise.all los paraleliza pero
+   * igual son 36 conexiones, 36 resoluciones del token y 36 veces la latencia
+   * del peor caso.
+   *
+   * getHistoricoEjercicios cae sola al camino de a uno si la migración 055
+   * todavía no está aplicada, así que esto anda igual con la base vieja. */
+  let results;
+  if (DEMO) {
+    results = allEx.map(ex => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }));
+  } else {
+    const porId = await window.mypumpDB.getHistoricoEjercicios(TOKEN, allEx.map(e => e.id), 24)
+      .catch(() => ({}));
+    results = allEx.map(ex => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: (porId && porId[ex.id]) || [] }));
+  }
   // Cache into DATA
   for (const r of results) DATA.historico_por_ejercicio[r.id] = r.rows;
 
