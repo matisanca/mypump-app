@@ -85,17 +85,70 @@ def cargar_fathom():
     _FATHOM_CACHE = (por_mail, por_nombre)
     return _FATHOM_CACHE
 
+def tokens_identidad(c):
+    """Primer nombre + primer apellido, normalizados.
+
+    Devuelve None si falta el apellido: sin apellido NO se matchea por nombre.
+    En el padron hay tres Gerardos, dos Gustavos, dos Emmanueles y tres
+    Ignacios — el nombre de pila solo no identifica a nadie.
+    """
+    nom = norm(c.get("nombre") or "").split()
+    ape = norm(c.get("apellido") or "").split()
+    if not nom or not ape:
+        return None
+    return {nom[0], ape[0]}
+
+
 def fathom_transcripts(c):
+    """Transcripciones de videollamada que son de ESTE cliente.
+
+    El mail del invitado externo es la clave confiable. El nombre es el
+    fallback, y ahi estaba el bug mas caro del archivo:
+
+        if nom and (nom in k or k in nom) and len(nom) >= 5
+
+    Substring, y encima BIDIRECCIONAL. Un titulo que normalizaba a "gerardo"
+    matcheaba con Gerardo Casal, Gerardo Farias Y Gerardo Luis Mendez a la vez.
+    Y lo que se copia de una transcripcion en este archivo es el PROTOCOLO DE
+    QUIMICA: dosis de testosterona, trembolona, GH, insulina. O sea que el
+    ciclo de uno terminaba escrito en la ficha clinica de otro, y Mati tomaba
+    decisiones medicas con eso.
+
+    Ahora se exigen nombre Y apellido como TOKENS COMPLETOS del titulo, y los
+    titulos que matchean a mas de un cliente se descartan antes (ver
+    descartar_titulos_ambiguos). Ante la duda, mejor un campo vacio que el
+    protocolo de otra persona.
+    """
     por_mail, por_nombre = cargar_fathom()
     trs = []
     em = _norm_mail(c.get("mail") or c.get("email"))
-    if em and em in por_mail: trs += por_mail[em]
+    if em and em in por_mail:
+        trs += por_mail[em]
     if not trs:
-        nom = norm(((c.get("nombre") or "") + " " + (c.get("apellido") or "")).strip())
-        for k, v in por_nombre.items():
-            if nom and (nom in k or k in nom) and len(nom) >= 5:
-                trs += v
+        toks = tokens_identidad(c)
+        if toks:
+            for k, v in por_nombre.items():
+                if toks <= set(k.split()):
+                    trs += v
     return trs[-2:]
+
+
+def descartar_titulos_ambiguos(activos):
+    """Saca del indice por nombre los titulos que matchean a mas de un cliente.
+
+    Cubre el caso que el match por tokens no puede: "Juan Pagan" y "Juan Pablo
+    Pagan" comparten {juan, pagan}, asi que un titulo con los tres tokens le
+    pega a los dos. Corre UNA vez, con el padron completo a la vista.
+    """
+    _, por_nombre = cargar_fathom()
+    tokens = [(cid, tokens_identidad(c)) for cid, c in activos]
+    tokens = [(cid, t) for cid, t in tokens if t]
+    for k in list(por_nombre.keys()):
+        toks_tit = set(k.split())
+        duenos = [cid for cid, t in tokens if t <= toks_tit]
+        if len(duenos) > 1:
+            print(f"  [fathom] titulo ambiguo '{k}' -> {len(duenos)} clientes, se descarta")
+            del por_nombre[k]
 
 # Palabras que delatan QUIMICA / ciclo (AAS, orales, GH, insulina, peptidos,
 # ancilares). Para pre-filtrar y no mandarle todo el texto al modelo.
@@ -202,6 +255,26 @@ def main():
         activos = [(cid, c) for cid, c in activos if cid == ONLY]
     print(f"clientes en la app: {len(activos)}")
 
+    # Con el padron completo a la vista: tirar los titulos de videollamada que
+    # matchean a mas de un cliente, y saber que nombres de pila se repiten.
+    # OJO: con --only el padron esta filtrado, asi que la desambiguacion se
+    # calcula sobre TODOS los clientes, no sobre el subconjunto.
+    todos = [(cid, c) for cid, c in clients.items()
+             if isinstance(c, dict) and (c.get("mypump") or {}).get("token")]
+    descartar_titulos_ambiguos(todos)
+    pila_repetida = set()
+    _vistos = {}
+    for _cid, _c in todos:
+        _n = norm(_c.get("nombre") or "").split()
+        if not _n:
+            continue
+        _vistos.setdefault(_n[0], set()).add(_cid)
+    for _n, _ids in _vistos.items():
+        if len(_ids) > 1:
+            pila_repetida.add(_n)
+    if pila_repetida:
+        print(f"  [memoria] nombres de pila repetidos, no se usan solos: {', '.join(sorted(pila_repetida))}")
+
     existentes = {r["cliente_id"]: r for r in (sb("/rest/v1/mypump_quimica?select=cliente_id,revisado") or [])}
     try: hashes = json.load(open(HASHES))
     except Exception: hashes = {}
@@ -215,7 +288,17 @@ def main():
         tel = solo_digitos(c.get("whatsapp"))[-10:]
         rows = mem_por_tel.get(tel, []) if tel else []
         if not rows:
-            rows = mem_por_nombre.get(norm(c.get("nombre")), []) + mem_por_nombre.get(norm(nombre), [])
+            # El telefono es la clave confiable. Por nombre se busca el COMPLETO;
+            # el de pila solo se acepta si es unico en el padron.
+            #
+            # Antes se hacia mem_por_nombre.get(norm(c.get("nombre"))) siempre:
+            # con tres Gerardos, un chat guardado como "Gerardo" le entregaba la
+            # misma conversacion a los tres, y de ahi sale la quimica que se
+            # escribe en su ficha clinica.
+            pila = norm(c.get("nombre") or "").split()
+            rows = list(mem_por_nombre.get(norm(nombre), []))
+            if pila and pila[0] not in pila_repetida:
+                rows += mem_por_nombre.get(pila[0], [])
         for m in rows:
             textos.append(m.get("md_content", ""))
         # farmaData del Cerebro (tab Ciclo) + flag usaCiclo
