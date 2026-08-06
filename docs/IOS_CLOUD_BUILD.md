@@ -38,25 +38,48 @@
   lo cambio en el archivo).
 
 ### 4. Completar el número de la app en el repo
-- En `codemagic.yaml` hay una línea con `APP_STORE_APPLE_ID: "<<<APP_STORE_APPLE_ID>>>"`.
-- Reemplazá ese `<<<...>>>` por el número que copiaste en el paso 1.
-- **Decime el número y yo te lo dejo puesto y commiteado** — no hace falta que
-  toques el archivo vos.
+- ✅ **HECHO.** `APP_STORE_APPLE_ID: "6793259380"` ya está en `codemagic.yaml`.
 
-### 5. Correr la build
-- En Codemagic, elegí el repo → workflow **"MyPump iOS → TestFlight"** →
-  **Start new build**.
+### 5. El certificado de distribución
+✅ **HECHO el 5-ago-2026.** Queda documentado porque es el paso que más veces
+rompió el pipeline y hay que rehacerlo cuando el certificado venza
+(**5-ago-2027**).
+
+- **Codemagic → Settings → Code signing identities → iOS certificates →
+  "Generate certificate"**, tipo **Apple Distribution**, con la key
+  `PumpTeam_ASC`. Nombre de referencia: `mypump-dist-2026`.
+- La clave privada queda del lado de Codemagic. **No hay nada que descargar ni
+  que pegar en ninguna variable de entorno.**
+
+> **Por qué no se hace de otra forma:** un certificado de Apple no sirve sin la
+> clave privada con la que se pidió. Antes el pipeline generaba la clave dentro
+> del build (`openssl genrsa`), así que moría con la máquina y el certificado
+> quedaba huérfano. Se juntaron 3 y Apple empezó a devolver
+> `409: You already have a current Distribution certificate` — eso volteó el
+> build #14 el 28-jul-2026, y los 24 commits siguientes nunca compilaron.
+> Generándolo desde Codemagic el problema no puede volver.
+
+### 6. Correr la build
+El disparador es un **tag de git**, no un botón:
+
+```bash
+git tag v1.0.4 && git push origin v1.0.4
+```
+
 - Tarda ~10-20 min. Al terminar, el build aparece solo en **TestFlight**
   (App Store Connect → tu app → TestFlight).
 - Instalá **TestFlight** en tu iPhone (App Store), entrá con tu Apple ID y ya
   podés abrir MyPump nativo para probar Apple Health.
 
-## Después de la primera vez
-Cada vez que quieras una build nueva: entrás a Codemagic y tocás **Start new
-build** (o se puede configurar que se dispare solo con cada push a `main`).
-Nunca más Xcode.
+> Es por tag y no por push a main a propósito, por dos razones: no todo commit
+> merece un build de Mac ni una subida a TestFlight, y cuando el dashboard de
+> Codemagic se degrada (pasó el 27 y el 28 de julio: el diálogo de "Start new
+> build" no abre) el tag sigue funcionando porque no depende de su web.
 
 ## Si algo falla
-Copiame el log de Codemagic (lo muestra en la misma pantalla de la build) y lo
-resuelvo. Los puntos típicos: el nombre de la API key no coincide con
-`PumpTeam_ASC`, o falta completar el `APP_STORE_APPLE_ID`.
+Copiame el log de Codemagic y lo resuelvo. Los puntos típicos:
+- el nombre de la API key no coincide con `PumpTeam_ASC`;
+- **`Code signing identities` quedó vacío** → rehacer el paso 5;
+- `"App" requires a provisioning profile with the X feature` → agregaste una
+  capability al App ID. Con la firma automática de hoy se arregla solo en el
+  build siguiente; si no, borrá los perfiles "Invalid" en developer.apple.com.

@@ -1,24 +1,49 @@
 # =============================================================
 # codemagic.yaml — Build iOS en la nube (sin tocar Xcode ni la terminal)
 #
-# Compila la app Capacitor, la FIRMA sola (App Store Connect API key →
-# "automatic code signing" de Codemagic, sin certificados a mano) y la sube a
-# TestFlight. Corre en las Mac de Codemagic (ellos tienen Xcode).
+# Compila la app Capacitor, la FIRMA sola y la sube a TestFlight. Corre en las
+# Mac de Codemagic (ellos tienen Xcode).
 #
-# SOLO corre cuando Apple ya aceptó tu cuenta Developer. Pasos de una-sola-vez
-# en la UI de Codemagic (ver docs/IOS_CLOUD_BUILD.md):
+# Pasos de una-sola-vez en la UI de Codemagic (ver docs/IOS_CLOUD_BUILD.md):
 #   1. Crear cuenta en codemagic.io (gratis) y conectar este repo de GitHub.
 #   2. Integrations → App Store Connect → subir una API key (la generás en
 #      App Store Connect → Users and Access → Integrations). Nombrala como el
 #      valor de `app_store_connect` de abajo: "PumpTeam_ASC".
-#   3. Environment variables → CERTIFICATE_PRIVATE_KEY (marcada "Secure"), con
-#      el contenido de una clave RSA que generes vos:
-#          openssl genrsa -out firma.key 2048
-#      Guardá firma.key en tu gestor de contraseñas. ES LA MISMA PARA SIEMPRE:
-#      el certificado de distribución de Apple no sirve sin ella, y si la
-#      perdés hay que revocar y empezar de nuevo. El paso de firma corta el
-#      build con instrucciones si falta.
+#   3. Settings → Code signing identities → iOS certificates → "Generate
+#      certificate" (tipo Apple Distribution, con la API key de arriba).
+#      HECHO el 5-ago-2026: "mypump-dist-2026", vence el 5-ago-2027.
 #   4. Start build. (El APP_STORE_APPLE_ID ya esta cargado: 6793259380.)
+#
+# ── Por qué la firma ya no se arma a mano en un script ──
+#
+# Hasta el 5-ago-2026 este archivo hacía `app-store-connect fetch-signing-files
+# --certificate-key "@env:CERTIFICATE_PRIVATE_KEY"`, o sea: la clave privada del
+# certificado vivía en una variable de entorno que alguien tenía que generar con
+# `openssl genrsa` y pegar a mano. Antes de eso el `openssl genrsa` corría DENTRO
+# del build, así que la clave moría con la máquina y el certificado quedaba
+# huérfano — nadie podía volver a firmar con él nunca. Se acumularon 3 y Apple
+# empezó a rechazar:
+#
+#   409: You already have a current Distribution certificate
+#
+# Eso volteó el build #14 el 28-jul-2026, y con él los 24 commits siguientes
+# nunca llegaron a compilar (por eso Apple Health "seguía roto" en el teléfono:
+# el fix estaba escrito pero nunca se había buildeado).
+#
+# Ahora el certificado lo genera y lo guarda Codemagic (Settings → Code signing
+# identities): la clave privada queda del lado de ellos, no la maneja nadie a
+# mano, y no hay variable que se pueda perder. El 5-ago-2026 se revocaron los 3
+# certificados huérfanos y se borraron los 3 provisioning profiles que habían
+# quedado "Invalid" con "Certificates: 0".
+#
+# El bloque `ios_signing` de abajo es firma AUTOMÁTICA: en cada build Codemagic
+# le pide a Apple el provisioning profile del bundle id, reusando el certificado
+# que ya tiene guardado. Que el perfil se rehaga en cada build arregla de paso el
+# otro problema histórico: al agregar una capability al App ID (Associated
+# Domains, HealthKit, Push) Apple invalida los perfiles existentes, y el script
+# viejo REUSABA el inválido en vez de crear uno nuevo — el build moría recién en
+# "Compilar IPA" con `"App" requires a provisioning profile with the X feature`.
+# Pasó el 27-jul-2026 con Associated Domains.
 # =============================================================
 workflows:
   ios-testflight:
@@ -52,6 +77,12 @@ workflows:
     environment:
       node: 22
       xcode: latest
+      # Firma automática: Codemagic inicializa el keychain, mete el certificado
+      # que tiene guardado ("mypump-dist-2026") y le pide a Apple el provisioning
+      # profile de este bundle id, todo antes de que corra el primer script.
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.pumpteam.mypump
       vars:
         BUNDLE_ID: "com.pumpteam.mypump"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -68,76 +99,18 @@ workflows:
         script: |
           xcodebuild -resolvePackageDependencies \
             -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
-      - name: Configurar firma (crea certificado + perfil)
-        # OJO al agregar una capability nueva al App ID (Associated Domains,
-        # Push, etc.): Apple invalida los provisioning profiles existentes, pero
-        # `fetch-signing-files --create` REUSA el que ya existe en lugar de crear
-        # uno nuevo, así que el build muere recién en "Compilar IPA" con
-        #   error: "App" requires a provisioning profile with the X feature
-        # Fix (una sola vez, después de tocar el App ID): borrar los perfiles en
-        # developer.apple.com → Certificates, IDs & Profiles → Profiles (van a
-        # figurar como "Invalid") y relanzar el build: acá se regeneran solos ya
-        # con la capability nueva. Pasó el 27-jul-2026 con Associated Domains.
+      - name: Verificar la firma
+        # El bloque `ios_signing` del environment ya dejó el certificado en el
+        # keychain y el provisioning profile en disco. Esto NO firma nada: solo
+        # se planta acá para que, si la firma no quedó, el build muera con un
+        # mensaje claro en vez de morir dos pasos después en "Compilar IPA"
+        # disfrazado de un error de Xcode.
         script: |
           set -e
-          keychain initialize
-
-          # ── La clave privada tiene que SOBREVIVIR entre builds ──
-          #
-          # Un certificado de distribución de Apple no vale nada sin la clave
-          # privada con la que se pidió. Antes acá se hacía `openssl genrsa` en
-          # cada build: la clave moría con la máquina, el certificado quedaba
-          # huérfano (nadie puede volver a firmar con él nunca) y al siguiente
-          # build había que pedir otro. Apple permite pocos y al llenarse
-          # responde:
-          #
-          #   409: You already have a current Distribution certificate
-          #
-          # Pasó el 28-jul-2026 en el build #14, con 3 certificados huérfanos ya
-          # acumulados. Cada build gastaba un cupo que nunca iba a usar.
-          #
-          # Con CERTIFICATE_PRIVATE_KEY seteada, `fetch-signing-files` encuentra
-          # el certificado que YA existe para esa clave y lo reusa: no crea
-          # nada, no gasta cupo, y el problema no vuelve.
-          #
-          # POR QUÉ NO SE REVOCAN SOLOS: acá había un paso que borraba todos los
-          # certificados de distribución de la cuenta antes de pedir el suyo.
-          # Nunca funcionó (reportaba "total: 0" porque se tragaba sus propios
-          # errores), y menos mal: arreglarlo habría hecho que cada build borre
-          # certificados de la cuenta de Apple sin preguntar, incluido el que se
-          # use en Xcode. Es irreversible y no es algo que deba pasar solo.
-          if [ -z "${CERTIFICATE_PRIVATE_KEY:-}" ]; then
-            echo "✗ Falta la variable CERTIFICATE_PRIVATE_KEY."
-            echo
-            echo "  Sin ella cada build pide un certificado nuevo a Apple, y Apple"
-            echo "  ya los rechaza (409: You already have a current Distribution"
-            echo "  certificate). Es de una sola vez:"
-            echo
-            echo "  1. developer.apple.com → Certificates, IDs & Profiles → Certificates."
-            echo "     Revisá los de tipo Distribution. Los que no uses en ninguna Mac"
-            echo "     son huérfanos de builds viejos: revocalos (dejá como mucho uno)."
-            echo "  2. Generá una clave: openssl genrsa -out firma.key 2048"
-            echo "  3. Codemagic → app settings → Environment variables:"
-            echo "     nombre CERTIFICATE_PRIVATE_KEY, valor = el contenido de firma.key,"
-            echo "     marcá 'Secure'. Guardá firma.key en tu gestor de contraseñas:"
-            echo "     si se pierde, el certificado que genere queda inservible."
-            echo "  4. Relanzá el build. De acá en más reusa siempre el mismo."
-            exit 1
-          fi
-
-          # --create crea el certificado y el provisioning profile SOLO si no
-          # existen para esta clave; si ya existen, los reusa. El perfil sale con
-          # las capabilities que tenga el App ID (HealthKit + Associated Domains).
-          echo "→ Usando la clave persistida (reusa el certificado si ya existe)"
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --certificate-key "@env:CERTIFICATE_PRIVATE_KEY" \
-            --create
-          keychain add-certificates
+          # `use-profiles` es idempotente: si Codemagic ya escribió los ajustes
+          # de firma en el proyecto, no cambia nada.
           xcode-project use-profiles
 
-          # Falla ruidosa: sin esto, un perfil ausente pasa desapercibido acá y
-          # el error aparece dos pasos después disfrazado de otra cosa.
           # Las dos rutas donde puede quedar el perfil según la versión de las
           # CLI tools — mirar solo MobileDevice daba un falso negativo y volteaba
           # el build con la firma ya resuelta.
@@ -146,7 +119,20 @@ workflows:
           # el perfil.
           if ! ls ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/*.mobileprovision >/dev/null 2>&1 \
              && ! ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision >/dev/null 2>&1; then
-            echo "✗ No se creó ningún provisioning profile — revisá el log de arriba"
+            echo "✗ No hay ningún provisioning profile."
+            echo
+            echo "  Codemagic lo trae solo con el bloque ios_signing del environment."
+            echo "  Si falta, casi siempre es una de estas dos:"
+            echo "   · Settings → Code signing identities → iOS certificates está vacío"
+            echo "     (se genera con 'Generate certificate', tipo Apple Distribution)."
+            echo "   · La integración App Store Connect 'PumpTeam_ASC' perdió permisos."
+            exit 1
+          fi
+
+          # Que el certificado esté en el keychain es lo otro que puede faltar, y
+          # solo se nota al firmar. security devuelve 1 si no hay ninguna.
+          if ! security find-identity -v -p codesigning | grep -q "Apple Distribution"; then
+            echo "✗ No hay ninguna identidad 'Apple Distribution' en el keychain."
             exit 1
           fi
           echo "✓ Firma lista (certificado + provisioning profile)"
