@@ -59,7 +59,25 @@ rompió el pipeline y hay que rehacerlo cuando el certificado venza
 > build #14 el 28-jul-2026, y los 24 commits siguientes nunca compilaron.
 > Generándolo desde Codemagic el problema no puede volver.
 
-### 6. Correr la build
+### 6. El provisioning profile
+✅ **HECHO el 5-ago-2026.** Son dos pasos y hay que hacer **los dos**:
+
+1. **developer.apple.com → Profiles → + → App Store Connect** → App ID `MyPump`
+   → tildar el certificado del paso 5 → nombre `MyPump App Store` → Generate.
+   (No hace falta descargarlo.)
+2. **Codemagic → Settings → Code signing identities → iOS provisioning profiles
+   → "Fetch profiles"** → tildar `MyPump App Store` → nombre de referencia
+   `mypump-appstore-profile` → **Download selected**.
+
+> **El paso 2 es el que se olvida.** `codemagic.yaml` resuelve la firma contra
+> las identidades guardadas **en Codemagic**, no contra la cuenta de Apple: si el
+> perfil existe en Apple pero no se importó, el build muere en 2 segundos, sin
+> log y sin llegar a levantar la Mac, con
+> `No matching profiles found for bundle identifier "com.pumpteam.mypump"`.
+> Ese mensaje **no** significa que falte en Apple. Voltearon así los builds
+> #15 y #16.
+
+### 7. Correr la build
 El disparador es un **tag de git**, no un botón:
 
 ```bash

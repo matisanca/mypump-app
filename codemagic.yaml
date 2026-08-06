@@ -12,7 +12,13 @@
 #   3. Settings → Code signing identities → iOS certificates → "Generate
 #      certificate" (tipo Apple Distribution, con la API key de arriba).
 #      HECHO el 5-ago-2026: "mypump-dist-2026", vence el 5-ago-2027.
-#   4. Start build. (El APP_STORE_APPLE_ID ya esta cargado: 6793259380.)
+#   4. Crear el provisioning profile en developer.apple.com → Profiles → + →
+#      App Store Connect → App ID MyPump → el certificado del paso 3.
+#      HECHO: "MyPump App Store", vence el 5-ago-2027.
+#   5. Settings → Code signing identities → iOS provisioning profiles →
+#      "Fetch profiles" → tildar el del paso 4 → Download selected.
+#      HECHO: referencia "mypump-appstore-profile".
+#   6. Start build. (El APP_STORE_APPLE_ID ya esta cargado: 6793259380.)
 #
 # ── Por qué la firma ya no se arma a mano en un script ──
 #
@@ -77,9 +83,18 @@ workflows:
     environment:
       node: 22
       xcode: latest
-      # Firma automática: Codemagic inicializa el keychain, mete el certificado
-      # que tiene guardado ("mypump-dist-2026") y le pide a Apple el provisioning
-      # profile de este bundle id, todo antes de que corra el primer script.
+      # Codemagic inicializa el keychain y mete el certificado + el provisioning
+      # profile antes de que corra el primer script.
+      #
+      # OJO: esto resuelve contra las "Code signing identities" GUARDADAS EN
+      # CODEMAGIC, no contra la cuenta de Apple. No crea nada. Si el perfil no
+      # está guardado ahí, el build muere en 2 segundos, sin log ni máquina, con:
+      #
+      #   No matching profiles found for bundle identifier "com.pumpteam.mypump"
+      #   and distribution type "app_store"
+      #
+      # y eso NO quiere decir que falte en Apple — quiere decir que falta el
+      # "Fetch profiles" del paso 5 de arriba. Pasó en los builds #15 y #16.
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.pumpteam.mypump
