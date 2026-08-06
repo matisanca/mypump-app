@@ -104,6 +104,81 @@ def _sb_req(fn, payload):
         return json.loads(cuerpo) if cuerpo.strip() else None
 
 
+# ── Libreta de entregados ─────────────────────────────────────────────
+# Un aviso sale de la cola cuando `mypump_push_resultado` lo marca. Si esa RPC
+# falla — un timeout, un corte de red de 3 segundos — el aviso YA llegó al
+# iPhone pero sigue pendiente en la base, y como este script corre cada 5
+# minutos, el cliente recibe la misma notificación una y otra vez hasta que la
+# base vuelva. Ahí no hay a quién culpar: para el usuario es spam nuestro.
+#
+# Entonces lo entregado se anota primero acá, en la mini, apenas Apple acepta.
+# La base sigue siendo la fuente de verdad de la cola; esta libreta solo
+# responde una pregunta: "¿esto ya salió?". Si dice que sí, no se vuelve a
+# mandar — se reintenta nada más el reporte, para que el aviso termine de
+# salir de la cola.
+LEDGER = os.path.expanduser(_g("PUSH_LEDGER", "~/pump-centinela/.push_entregados"))
+LEDGER_DIAS = 7   # más viejo que esto ya no puede seguir en la cola
+
+
+def cargar_entregados():
+    """ids ya entregados a APNs -> set. Poda lo viejo de paso."""
+    corte = time.time() - LEDGER_DIAS * 86400
+    vivos, ids = [], set()
+    try:
+        for linea in open(LEDGER):
+            try:
+                r = json.loads(linea)
+            except ValueError:
+                continue          # línea a medio escribir: se descarta sola
+            if r.get("ts", 0) >= corte:
+                vivos.append(r)
+                ids.add(r["id"])
+    except FileNotFoundError:
+        return set()
+    # Reescribir solo cuando algo se cayó por viejo: si no, esto es un write
+    # inútil cada 5 minutos.
+    if len(vivos) != sum(1 for _ in open(LEDGER)):
+        _guardar_ledger(vivos)
+    return ids
+
+
+def _guardar_ledger(registros):
+    tmp = LEDGER + ".tmp"
+    with open(tmp, "w") as f:
+        for r in registros:
+            f.write(json.dumps(r) + "\n")
+    os.replace(tmp, LEDGER)   # atómico: nunca se ve un archivo a medias
+
+
+def anotar_entregado(push_id):
+    """Se llama APENAS Apple acepta, antes de reportar a Supabase."""
+    try:
+        os.makedirs(os.path.dirname(LEDGER), exist_ok=True)
+        with open(LEDGER, "a") as f:
+            f.write(json.dumps({"id": push_id, "ts": int(time.time())}) + "\n")
+    except Exception as e:
+        # Sin libreta el peor caso vuelve a ser el de antes (un aviso repetido),
+        # así que no se corta el envío por esto — pero que quede en el log.
+        _log(f"  ojo: no pude anotar {push_id} en la libreta: {e}")
+
+
+def reportar(p, exito, error, baja, intentos=3):
+    """Marca el aviso en la base. Reintenta: es lo único que lo saca de la cola."""
+    for i in range(intentos):
+        try:
+            _sb_req("mypump_push_resultado", {
+                "p_id": p["id"], "p_ok": exito, "p_error": error,
+                "p_device_token": p["device_token"], "p_baja_device": baja,
+            })
+            return True
+        except Exception as e:
+            if i == intentos - 1:
+                _log(f"  no pude reportar el resultado de {p['id']}: {e}")
+                return False
+            time.sleep(2 ** i)
+    return False
+
+
 # ── JWT de APNs ───────────────────────────────────────────────────────
 # Apple pide un JWT ES256 firmado con la .p8. Se cachea porque rechaza tokens
 # pedidos con menos de 20 minutos de diferencia (TooManyProviderTokenUpdates).
@@ -265,25 +340,34 @@ def main():
         _log("no pude firmar el JWT de APNs")
         return 1
 
-    ok = err = 0
+    entregados = cargar_entregados()
+
+    ok = err = repetidos = 0
     for p in pendientes:
+        if p["id"] in entregados:
+            # Ya salió en una corrida anterior; quedó en la cola solo porque el
+            # reporte no llegó. Se reintenta el reporte y NO se vuelve a mandar.
+            repetidos += 1
+            reportar(p, True, None, False)
+            continue
+
         exito, error, baja = enviar_uno(
             p["device_token"], p["titulo"], p["cuerpo"], p.get("destino"), jwt
         )
-        try:
-            _sb_req("mypump_push_resultado", {
-                "p_id": p["id"], "p_ok": exito, "p_error": error,
-                "p_device_token": p["device_token"], "p_baja_device": baja,
-            })
-        except Exception as e:
-            _log(f"  no pude reportar el resultado de {p['id']}: {e}")
+        # Anotar ANTES de reportar: entre el ok de Apple y el ok de Supabase es
+        # justo donde se colaban los avisos repetidos.
+        if exito:
+            anotar_entregado(p["id"])
+        reportar(p, exito, error, baja)
+
         if exito:
             ok += 1
         else:
             err += 1
             _log(f"  fallo {p['cliente_id']}: {error}")
 
-    _log(f"listo: {ok} enviados, {err} con error")
+    extra = f", {repetidos} ya entregados (solo se reporto)" if repetidos else ""
+    _log(f"listo: {ok} enviados, {err} con error{extra}")
     return 0
 
 

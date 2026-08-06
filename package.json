@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node scripts/test-bridge.mjs && node scripts/test-outbox.mjs && node scripts/test-wearables.mjs && node scripts/check-contratos.mjs && node scripts/check-healthkit-tipos.mjs && python3 scripts/test_consolidar_identidad.py",
+    "test": "node scripts/test-bridge.mjs && node scripts/test-outbox.mjs && node scripts/test-wearables.mjs && node scripts/check-contratos.mjs && node scripts/check-healthkit-tipos.mjs && python3 scripts/test_consolidar_identidad.py && python3 scripts/test_centinela_guardrail.py",
     "dev": "npx serve public -l 3000",
     "format": "echo 'TODO: configurar prettier'",
     "ios:add": "npx cap add ios",

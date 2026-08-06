@@ -180,60 +180,6 @@ def _mensaje_persistido(cid, semana_lunes):
     except Exception:
         return None
 
-def _ua_vigente(ua, hoy, w0):
-    """¿La sugerencia anterior le corre el guardarrail a la de hoy?
-
-    Devuelve el `ultimo_ajuste` con `semanas_atras` calculado, o None si no
-    tiene que pesar.
-
-    EL GUARDARRAIL NO PUEDE DISPARARSE CONTRA SÍ MISMO.
-    El bot corre lunes a jueves. Si el lunes un cliente cae en "ajustar" por
-    señales blandas, se anota ultimo_ajuste = lunes; el martes `semanas_atras`
-    daba 0, el guardarrail de analisis.py lo mandaba a "observar" y
-    persist_analisis pisaba la fila de la semana con sugerencia_coach = NULL.
-    Resultado: la sugerencia del lunes DESAPARECÍA del panel al día siguiente,
-    antes de que Mati llegara a usarla.
-
-    "Se ajustó hace poco, dale tiempo" habla de semanas ANTERIORES. Dentro de
-    la misma semana la sugerencia todavía está viva y es la misma.
-
-    El fallback por semana ISO existe porque el state.json que ya está escrito
-    en la mini no tiene el campo `semana`: sin él, el bug seguiría vivo hasta
-    que se reescribieran todas las entradas.
-    """
-    if not (ua and ua.get("fecha")):
-        return None
-    try:
-        f_ua = date.fromisoformat(ua["fecha"])
-    except Exception:
-        return None
-    if ua.get("semana") == str(w0) or f_ua.isocalendar()[:2] == hoy.isocalendar()[:2]:
-        return None
-    return {"semanas_atras": (hoy - f_ua).days // 7, **ua}
-
-
-def _preservar_ajuste(sug, msg, prev_sug, prev_msg):
-    """Una sugerencia ya escrita esta semana no se borra con un None.
-
-    Que se pise con OTRA sugerencia está bien — es información más fresca. Lo
-    que no puede pasar es que se pise con nada: ver persist_analisis.
-    """
-    return (sug if sug is not None else (prev_sug or None),
-            msg if msg is not None else (prev_msg or None))
-
-
-def _ajuste_persistido(cid, semana_lunes):
-    """Lo ya guardado esta semana para el coach: (sugerencia, mensaje_ajuste)."""
-    try:
-        rows = _sb_req(f"/rest/v1/mypump_analisis_semanal?cliente_id=eq.{cid}"
-                       f"&semana_lunes=eq.{semana_lunes}"
-                       f"&select=sugerencia_coach,mensaje_ajuste&limit=1")
-        if not rows:
-            return None, None
-        return rows[0].get("sugerencia_coach"), rows[0].get("mensaje_ajuste")
-    except Exception:
-        return None, None
-
 def persist_analisis(cid, semana_lunes, balde, motivos, banderas, senales,
                      mensaje_cliente, sugerencia_coach, mensaje_ajuste=None):
     """Upsert a mypump_analisis_semanal. La escritura a DB es INDEPENDIENTE del
@@ -242,20 +188,6 @@ def persist_analisis(cid, semana_lunes, balde, motivos, banderas, senales,
     if NO_DB:
         print(f"[no-db] {cid} -> {balde}")
         return
-    # Una sugerencia ya escrita esta semana NO se borra por una corrida
-    # posterior que traiga None.
-    #
-    # El bot corre de lunes a jueves sobre la MISMA fila semanal. Un cliente
-    # que el lunes cae en "ajustar" puede pasar a "observar" el miercoles (le
-    # aparece una bandera de contexto, se le recupera la adherencia), y el
-    # upsert escribia sugerencia_coach = NULL: lo que Mati tenia para revisar
-    # en el panel desaparecia solo, sin que el lo hubiera visto.
-    #
-    # Que se pise con otra sugerencia esta bien — es informacion mas fresca.
-    # Lo que no puede pasar es que se pise con nada.
-    if sugerencia_coach is None or mensaje_ajuste is None:
-        sugerencia_coach, mensaje_ajuste = _preservar_ajuste(
-            sugerencia_coach, mensaje_ajuste, *_ajuste_persistido(cid, semana_lunes))
     try:
         _sb_req("/rest/v1/rpc/mypump_upsert_analisis", {
             "p_cliente_id": cid, "p_semana_lunes": semana_lunes, "p_balde": balde,
@@ -1146,9 +1078,10 @@ def main():
         serie_chk = chk_series.get(cid, [])
         # cid primero; el nombre queda como fallback para las entradas viejas
         # del state.json, que se escribieron con esa clave (ver _guardar_state).
-        ua = _ua_vigente(
-            (ult_ajustes.get(cid) or ult_ajustes.get(nombre) or {}).get("ultimo_ajuste"),
-            hoy, w0)
+        ua = (ult_ajustes.get(cid) or ult_ajustes.get(nombre) or {}).get("ultimo_ajuste")
+        if ua and ua.get("fecha"):
+            try: ua = {"semanas_atras": (hoy - date.fromisoformat(ua["fecha"])).days // 7, **ua}
+            except Exception: ua = None
         veredicto = AN.evaluar_cliente(nombre, ctx, serie_chk, notas_extra.get(nombre), ua, hoy)
         balde = veredicto["balde"]
         mal = (balde == "ajustar")
@@ -1302,15 +1235,10 @@ def main():
     # ahi. El guardarrail existe justo para eso.
     #
     # El id ademas no cambia; el nombre se puede corregir y perdia el historial.
-    #
-    # Se guarda la SEMANA ademas de la fecha: el guardarrail razona en semanas
-    # y sin ese dato no habia forma de distinguir "se lo sugeri anteayer" de
-    # "se lo sugeri la semana pasada" (ver el bloque de arriba).
     nuevos = {}
     for x in ajustables:
         v = x.get("veredicto") or {}
-        nuevos[x["cid"]] = {"fecha": str(hoy), "semana": str(w0),
-                            "senal": (v.get("motivos") or [""])[0]}
+        nuevos[x["cid"]] = {"fecha": str(hoy), "senal": (v.get("motivos") or [""])[0]}
     return _guardar_state(st, hoy, nuevos)
 
 def _guardar_state(st, hoy, ajustes_por_nombre):
@@ -1319,13 +1247,6 @@ def _guardar_state(st, hoy, ajustes_por_nombre):
     st["last_run"] = str(hoy)
     cl = st.setdefault("clientes", {})
     for nombre, info in (ajustes_por_nombre or {}).items():
-        prev = (cl.get(nombre) or {}).get("ultimo_ajuste") or {}
-        # Dentro de una misma semana gana el PRIMER dia en que se sugirio. Si
-        # se pisara con el ultimo, el jueves correria el reloj de las 2 semanas
-        # tres dias hacia adelante y el cliente esperaria de mas por un ajuste
-        # que en realidad se le sugirio el lunes.
-        if prev.get("semana") and prev["semana"] == info.get("semana"):
-            continue
         cl.setdefault(nombre, {})["ultimo_ajuste"] = info
     os.makedirs(os.path.dirname(STATE), exist_ok=True)
     try:
@@ -1334,34 +1255,8 @@ def _guardar_state(st, hoy, ajustes_por_nombre):
         print("state save fail:", ex)
 
 if __name__ == "__main__":
-    # main() no puede morir en silencio.
-    #
-    # Estaba suelto acá arriba, sin try. Cualquier excepción — una RPC que
-    # devuelve 500, un cliente con un campo nulo inesperado — mataba el proceso
-    # a mitad de la ronda: los mensajes ya enviados quedaban enviados, el state
-    # NUNCA se guardaba (se escribe al final de main), y el aviso de abajo
-    # tampoco corría. O sea: Mati recibía media ronda, no se enteraba de que se
-    # había cortado, y el guardarrail se quedaba sin memoria de la semana.
-    #
-    # launchd tampoco avisa: para él un exit code != 0 es un renglón más en el
-    # log que nadie mira. Por eso el aviso va por WhatsApp, al numero del coach.
-    _fallo = None
-    try:
-        main()
-    except Exception as _e:
-        import traceback
-        _fallo = traceback.format_exc()
-        print(_fallo, flush=True)
-
-    # Va acá y no adentro de main() porque main tiene dos salidas (la temprana
+    main()
+    # Va aca y no adentro de main() porque main tiene dos salidas (la temprana
     # cuando no hay nada que analizar y la normal), y el aviso tiene que salir
     # por las dos. En dry-run no manda nada: send_whatsapp solo imprime.
     avisar_si_la_ia_no_anduvo()
-
-    if _fallo:
-        ultima = [l for l in _fallo.strip().splitlines() if l.strip()][-1][:200]
-        send_whatsapp("⚠️ *El centinela se cortó a mitad de la ronda*\n\n"
-                      f"`{ultima}`\n\n"
-                      "Lo que ya salió, salió; el resto no. El detalle completo "
-                      "está en `centinela.log` de la mini.")
-        sys.exit(1)
