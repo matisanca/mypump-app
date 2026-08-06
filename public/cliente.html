@@ -6498,8 +6498,38 @@ const PROVEEDORES_UI = [
 ];
 let _pollConex = null;
 
+/* Qué proveedores tienen credenciales OAuth cargadas AHORA.
+   null = todavía no se preguntó; [] = ninguno.
+
+   Sin esto la sección "Mi reloj" ofrecía Conectar siempre, y como las env
+   vars de Cloudflare todavía no están cargadas, el cliente terminaba en una
+   pantalla "Todavía no está habilitado". Un botón que no hace nada es motivo
+   de rechazo de Apple por la guideline 2.1 — a esta app ya la rechazaron una
+   vez por eso, con el botón "Ver demo" de la landing.
+
+   Se le pregunta al servidor en vez de usar una constante en config.js para
+   que el día que se carguen las credenciales la sección aparezca sola, sin
+   tener que buildear y pasar por revisión de nuevo. */
+let _provDisponibles = null;
+
+async function cargarProveedoresDisponibles() {
+  if (_provDisponibles) return _provDisponibles;
+  const base = (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.APP_URL) || location.origin;
+  try {
+    const r = await fetch(`${base.replace(/\/+$/, '')}/api/wearables/disponibles`);
+    const j = await r.json();
+    _provDisponibles = Array.isArray(j.proveedores) ? j.proveedores.map(p => p.id) : [];
+  } catch (_) {
+    // Sin red no se inventa: no mostrar es el fallo seguro — a lo sumo el
+    // cliente no ve una sección que igual no podría usar estando offline.
+    _provDisponibles = [];
+  }
+  return _provDisponibles;
+}
+
 async function loadConexiones() {
   if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getConexiones) return;
+  await cargarProveedoresDisponibles();
   try { STATE.conexiones = (await window.mypumpDB.getConexiones(TOKEN)) || []; }
   catch (_) { STATE.conexiones = []; }
   if (STATE.scene === 'revision') renderMydayConexiones();
@@ -6512,7 +6542,14 @@ function renderMydayConexiones() {
   const porProv = {};
   (STATE.conexiones || []).forEach(c => { porProv[c.proveedor] = c; });
 
-  const filas = PROVEEDORES_UI.map(p => {
+  // Se muestra un proveedor si el server lo tiene habilitado O si el cliente
+  // ya lo tenía conectado — si mañana se cae una credencial, el que ya está
+  // conectado tiene que poder seguir viéndolo y desconectarlo.
+  const visibles = PROVEEDORES_UI.filter(p =>
+    (_provDisponibles || []).includes(p.id) || porProv[p.id]);
+  if (!visibles.length) { el.innerHTML = ''; return; }
+
+  const filas = visibles.map(p => {
     const c = porProv[p.id];
     const conectada = c && c.estado === 'conectada';
     const enError = c && c.estado === 'error';
@@ -6529,7 +6566,7 @@ function renderMydayConexiones() {
     <div class="myday-section-hdr"><span class="myday-section-icon">⌚️</span>
       <span class="myday-section-title">Mi reloj</span></div>
     <div class="myday-section-body">
-      <div class="sd-sub">Si usás Oura o WHOOP, conectalos y tus datos de sueño y recuperación entran solos. Apple Watch no se conecta acá: va por Salud de Apple desde la app de iPhone.</div>
+      <div class="sd-sub">Si usás ${visibles.map(p => p.nombre).join(' o ')}, conectalo y tus datos de sueño y recuperación entran solos. Apple Watch no se conecta acá: va por Salud de Apple desde la app de iPhone.</div>
       ${filas}
       <div id="cxMsg" class="rec-nota" hidden></div>
     </div></div>`;
