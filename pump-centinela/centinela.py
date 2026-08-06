@@ -257,14 +257,54 @@ def _log(msg):
         pass
     print(msg)
 
+_TOKEN_ENV  = os.path.expanduser("~/pump-trazabilidad/.env")
+_CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
+
+
+def _oauth_token():
+    """Token OAuth del plan Max (sk-ant-oat01...), de larga duracion.
+
+    POR QUE EXISTE (fix 2026-08-02): bajo launchd NO hay shell de login, asi
+    que `claude` no encontraba CLAUDE_CODE_OAUTH_TOKEN en el entorno y caia a
+    ~/.claude/.credentials.json — la sesion INTERACTIVA, que vence cada pocos
+    dias. Vencio el 2026-07-29 06:14 y el centinela del 2026-08-02 corrio SIN
+    IA: todas las etapas (general, notas) salieron con el texto fijo. El token
+    del .env no depende de que alguien reloguee a mano en la mini.
+    """
+    t = (os.environ.get("CLAUDE_CODE_OAUTH_TOKEN") or "").strip()
+    if t:
+        return t
+    try:
+        with open(_TOKEN_ENV) as fh:
+            for linea in fh:
+                if linea.startswith("CLAUDE_CODE_OAUTH_TOKEN="):
+                    return linea.split("=", 1)[1].strip().strip("\"'")
+    except Exception:
+        pass
+    return ""
+
+
 def claude_call(prompt, timeout=180):
     """Devuelve (stdout, returncode, stderr). No tira excepcion: el llamador decide."""
     env = dict(os.environ)
     nvm = os.path.expanduser("~/.nvm/versions/node")
     extra = ":".join(os.path.join(nvm, d, "bin") for d in (os.listdir(nvm) if os.path.isdir(nvm) else []))
     env["PATH"] = env.get("PATH", "") + ":/opt/homebrew/bin:/usr/local/bin:" + extra
+
+    tok = _oauth_token()
+    if not tok:
+        return ("", -1, "sin CLAUDE_CODE_OAUTH_TOKEN (ni en env ni en "
+                        "~/pump-trazabilidad/.env) — no se puede autenticar")
+    env["CLAUDE_CODE_OAUTH_TOKEN"] = tok
+    # Regla del proyecto: CERO gasto de API paga. Si alguna de estas quedara en
+    # el entorno, el CLI podria facturar por token en vez de usar el plan Max.
+    for _v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+               "ANTHROPIC_API_KEY_FALLBACK"):
+        env.pop(_v, None)
+
+    binario = _CLAUDE_BIN if os.path.exists(_CLAUDE_BIN) else "claude"
     try:
-        out = subprocess.run(["claude", "--model", CLAUDE_MODEL, "-p", prompt], capture_output=True, text=True,
+        out = subprocess.run([binario, "--model", CLAUDE_MODEL, "-p", prompt], capture_output=True, text=True,
                              timeout=timeout, env=env)
         return (out.stdout, out.returncode, out.stderr)
     except Exception as ex:
@@ -1060,7 +1100,14 @@ def main():
                                    "veredicto": veredicto, "balde": balde,
                                    "fotos_ok": cid in fotos_ok})
             if mal:
+                # fix 2026-08-02: faltaba "cid". _guardar_state hace x["cid"] y
+                # tiraba KeyError SIEMPRE que hubiera algun ajustable — pero
+                # recien al final, despues de haber mandado todos los mensajes,
+                # asi que se perdia el state entero y el guardarrail de "ya se
+                # le ajusto hace menos de 2 semanas" no quedaba registrado para
+                # NADIE. Es la causa del exit 1 de com.pump.analisis.
                 ajustables.append({"nombre": nombre, "chk": chk, "ctx": ctx, "alertas": alertas,
+                                   "cid": cid,
                                    "dieta": resumen_dieta(cid), "rutina": resumen_rutina(cid),
                                    "suplementos": fetch_suplementos(cid), "veredicto": veredicto})
             elif balde == "observar" and veredicto["motivos"]:
