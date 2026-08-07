@@ -38,6 +38,7 @@ const PLUGIN = join(RAIZ, 'node_modules/@capgo/capacitor-health');
 const BRIDGE = join(RAIZ, 'public/js/healthkit-bridge.js');
 const SWIFT = join(PLUGIN, 'ios/Sources/HealthPlugin/Health.swift');
 const DTS = join(PLUGIN, 'dist/esm/definitions.d.ts');
+const KOTLIN = join(PLUGIN, 'android/src/main/java/app/capgo/plugin/health/HealthDataType.kt');
 
 const leer = (p) => {
   try { return readFileSync(p, 'utf8'); }
@@ -53,6 +54,22 @@ if (!mEnum) {
   process.exit(1);
 }
 const swiftTipos = [...mEnum[1].matchAll(/^\s*case (\w+)/gm)].map((m) => m[1]);
+
+/* ── 1b. Lo que el plugin implementa en ANDROID (enum de Kotlin) ──────
+   Mismo razonamiento que con Swift, y por el mismo bug: el union de
+   TypeScript es común a las dos plataformas y miente en las dos. El enum de
+   Kotlin tiene 21 casos, el de Swift 23, y NO son subconjunto uno del otro.
+   Un tipo que Android no conoce voltea el pedido de permisos entero — igual
+   que vo2Max en iOS.
+
+   El identificador que importa es el STRING del primer parámetro, no el
+   nombre del case: HEART_RATE("heartRate", ...) → 'heartRate'. */
+const kotlinSrc = leer(KOTLIN);
+const kotlinTipos = [...kotlinSrc.matchAll(/^\s+[A-Z_]+\("(\w+)"/gm)].map((m) => m[1]);
+if (kotlinTipos.length < 15) {
+  console.error(`✗ Solo encontré ${kotlinTipos.length} tipos en HealthDataType.kt — el plugin cambió de forma.`);
+  process.exit(1);
+}
 
 // 'workouts' no es un case del enum: parseTypesWithWorkouts lo trata aparte
 // (Health.swift:1349) antes de intentar el HealthDataType(rawValue:).
@@ -185,8 +202,45 @@ if (trampas.length) {
 }
 
 console.log('');
+
+/* ── 5. ANDROID: lo mismo, contra el enum de Kotlin ────────────────────
+   Un tipo que Android no conoce voltea el pedido de permisos entero, igual
+   que en iOS. La diferencia es que acá el bridge SÍ tiene una salida: la
+   marca `soloIOS`, que lo saca de la lista antes de pedir nada.
+
+   Este bloque falla si un tipo NO está en Kotlin y TAMPOCO está marcado
+   soloIOS — o sea, si alguien agrega un tipo nuevo pensando solo en iPhone.
+   Es el guardarraíl que evita repetir el bug de vo2Max, ahora en Android. */
+console.log('5. ANDROID: todo tipo pedido existe en el enum de Kotlin (o está marcado soloIOS)');
+const antes5 = fallas;
+const soloIOS = new Set(
+  [...bloque('SAMPLES').matchAll(/\{[^}]*dataType:\s*'([^']+)'[^}]*soloIOS:\s*true[^}]*\}/g)]
+    .map((m) => m[1])
+);
+// 'workouts' tampoco es un case del enum de Kotlin: el plugin lo maneja por
+// queryWorkouts, aparte, igual que en iOS.
+const ACEPTA_ANDROID = new Set([...kotlinTipos, 'workouts']);
+for (const t of pedidos) {
+  if (ACEPTA_ANDROID.has(t) || soloIOS.has(t)) continue;
+  fallar(
+    `'${t}' NO está en el enum de Kotlin y NO está marcado soloIOS.\n` +
+    `      En Android eso tira el pedido de permisos ENTERO y ningún tipo queda autorizado.\n` +
+    `      Agregale \`soloIOS: true\` en la tabla SAMPLES del bridge.`
+  );
+}
+okSi(antes5, `los ${pedidos.length - soloIOS.size} que van a Android entran; ${soloIOS.size} marcados soloIOS`);
+
+// El inverso: un tipo marcado soloIOS que en realidad SÍ existe en Android.
+// No rompe nada, pero le está negando un dato a los clientes de Android.
+const negadosDeMas = [...soloIOS].filter((t) => ACEPTA_ANDROID.has(t));
+if (negadosDeMas.length) {
+  console.log(`   ⚠ ${negadosDeMas.join(', ')} están marcados soloIOS pero SÍ existen en Kotlin — les estás negando el dato a los Android.`);
+}
+console.log('');
+
 if (fallas) {
   console.error(`✗ ${fallas} problema(s). El pedido de permisos se rompe en silencio.`);
   process.exit(1);
 }
-console.log('✓ los tipos del bridge coinciden con lo que el plugin implementa en iOS');
+console.log(`✓ los tipos del bridge coinciden con el plugin en las DOS plataformas`);
+console.log(`  (iOS: ${swiftTipos.length} tipos en Swift · Android: ${kotlinTipos.length} en Kotlin)`);

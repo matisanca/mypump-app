@@ -32,6 +32,37 @@
   const isNative = !!(Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform());
   const HEALTH = () => (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Health) || null;
 
+  /* ── Plataforma ────────────────────────────────────────────────────────
+   * 'ios' → HealthKit · 'android' → Health Connect · 'web' → nada.
+   *
+   * El plugin expone la MISMA API de JS para las dos, pero NO los mismos
+   * tipos: el enum de Swift tiene 23 y el de Kotlin 21, y no son subconjunto
+   * uno del otro. Pedir un tipo que la plataforma no conoce no falla solo ese
+   * tipo — voltea el pedido de permisos ENTERO, en silencio. Ya nos pasó en
+   * iOS con vo2Max: los 13 tipos de la tanda secundaria se quedaban sin
+   * autorizar y cada readSamples devolvía "Authorization not determined".
+   * Verificado en el simulador el 29-jul-2026.
+   *
+   * Por eso la plataforma se resuelve UNA sola vez, acá, y las tablas se
+   * filtran con ella antes de pedir nada. */
+  const plataforma = (Cap && typeof Cap.getPlatform === 'function') ? Cap.getPlatform() : 'web';
+  const esAndroid = plataforma === 'android';
+
+  /* La fuente que se graba en mypump_salud_diaria.fuente. NO es cosmética:
+   * el motor de recuperación desempata por fuente cuando hay dos lecturas del
+   * mismo día (054:84-87), y el panel del coach muestra de dónde salió el
+   * dato. Marcar como 'apple_health' algo que vino de un Galaxy Watch sería
+   * mentirle al motor y al coach. */
+  const FUENTE = esAndroid ? 'health_connect' : 'apple_health';
+
+  /* La métrica de HRV, que es lo que decide cuánto pesa en el score.
+   * HealthKit solo tiene SDNN (heartRateVariabilitySDNN). Health Connect solo
+   * tiene rMSSD (HeartRateVariabilityRmssdRecord) — no existe un tipo SDNN.
+   * El motor le da MÁS peso al rMSSD (45 vs 40) porque el SDNN del Apple Watch
+   * se muestrea en momentos aleatorios y tiene ~29% de error. O sea: en
+   * Android el score sale mejor, y solo si esto está bien etiquetado. */
+  const HRV_METRICA = esAndroid ? 'rmssd' : 'sdnn';
+
   // ── Camino A: queryAggregated. SOLO estos 3 — es todo lo que el plugin
   //    agrega en iOS sin rechazar la llamada.
   const AGG = [
@@ -46,10 +77,12 @@
   //      mediana  → métricas puntuales; robusta ante un outlier suelto, que es
   //                 lo que pasa con el muestreo aleatorio de Apple
   const SAMPLES = [
-    { dataType: 'exerciseTime',                  tipo: 'actividad_min',  como: 'sum' },
+    // soloIOS: el enum de Kotlin no tiene estos dos, y un tipo desconocido
+    // voltea el pedido de permisos entero (ver el comentario de `plataforma`).
+    { dataType: 'exerciseTime',                  tipo: 'actividad_min',  como: 'sum', soloIOS: true },
     { dataType: 'respiratoryRate',               tipo: 'respiracion_rpm', como: 'mediana' },
     { dataType: 'oxygenSaturation',              tipo: 'spo2_pct',        como: 'mediana', escala: 100 },
-    { dataType: 'appleSleepingWristTemperature', tipo: 'temp_muneca_c',   como: 'mediana', minIOS: 16 },
+    { dataType: 'appleSleepingWristTemperature', tipo: 'temp_muneca_c',   como: 'mediana', minIOS: 16, soloIOS: true },
     { dataType: 'bodyFat',                       tipo: 'grasa_pct',       como: 'mediana', escala: 100 },
     // ── Ampliación de cobertura ──
     // El peso ya lo aceptaba la DB y lo mostraba el panel, pero nadie lo leía
@@ -77,7 +110,23 @@
     // copia de las activas y el COALESCE la prefería sobre la suma correcta: el
     // "TDEE medido" salía ~750 kcal, MENOR que el basal. Un número imposible
     // que igual se le mostraba al coach como dato medido.
-    { dataType: 'basalCalories',   tipo: 'kcal_basales',    como: 'sum' },
+    //
+    // comoAndroid: 'mediana' — NO es un detalle de estilo, es un factor 4x.
+    //
+    // En iOS, basalCalories son HKQuantityTypeIdentifierBasalEnergyBurned:
+    // muestras de ENERGÍA que cubren un intervalo cada una, así que sumarlas
+    // da el basal del día. Bien.
+    //
+    // En Android, Health Connect no tiene un tipo así. El plugin resuelve
+    // BASAL_CALORIES leyendo BasalMetabolicRateRecord y devolviendo
+    // `record.basalMetabolicRate.inKilocaloriesPerDay`
+    // (HealthManager.kt:380-388) — o sea una TASA, el mismo ~1.800 repetido en
+    // cada lectura del día. Sumarlo da 1.800 × N: con 4 lecturas, 7.200 kcal
+    // de metabolismo basal. Ese número entra a mypump_get_gasto_real y el
+    // coach lo lee como "TDEE medido".
+    //
+    // La mediana de una tasa repetida ES la tasa. Es la lectura correcta.
+    { dataType: 'basalCalories',   tipo: 'kcal_basales',    como: 'sum', comoAndroid: 'mediana' },
     // NO agregar 'vo2Max'. El plugin lo declara en su union HealthDataType
     // (definitions.d.ts) pero NO lo implementa en iOS: el enum de Swift
     // (Health.swift:557) tiene 23 casos y ese no está — cero menciones en todo
@@ -102,7 +151,19 @@
     const m = /OS (\d+)[_.]/.exec(navigator.userAgent || '');
     return m ? parseInt(m[1], 10) : 0;
   }
-  const soportado = (m) => !m.minIOS || iosMajor() === 0 || iosMajor() >= m.minIOS;
+  /* Un tipo se pide solo si la plataforma lo conoce Y la versión lo tiene.
+   * `soloIOS` corta en Android; `minIOS` corta en iPhones viejos. Los dos
+   * filtros existen por el mismo motivo: un tipo que el sistema no reconoce
+   * hace que el plugin rechace la tanda entera antes de mostrar la hoja. */
+  const soportado = (m) => {
+    if (m.soloIOS && esAndroid) return false;
+    if (esAndroid) return true;              // minIOS no aplica fuera de iOS
+    return !m.minIOS || iosMajor() === 0 || iosMajor() >= m.minIOS;
+  };
+  /* Cómo se colapsan las muestras de un día, con override por plataforma.
+   * Existe porque el MISMO dataType puede venir con semántica distinta de cada
+   * sistema — ver basalCalories. */
+  const comoDe = (m) => (esAndroid && m.comoAndroid) ? m.comoAndroid : m.como;
 
   const ymd = (d) => {
     const x = (d instanceof Date) ? d : new Date(d);
@@ -521,7 +582,7 @@
     return Object.keys(mejor).map(fecha => {
       const m = mejor[fecha];
       return { fecha, tipo: 'hrv_ms', valor: Math.round(mediana(m.vals)),
-               detalle: { metrica: 'sdnn', ventana: m.ventana, n: m.vals.length } };
+               detalle: { metrica: HRV_METRICA, ventana: m.ventana, n: m.vals.length } };
     });
   }
 
@@ -540,7 +601,7 @@
         for (const s of (res && res.samples) || []) {
           const val = Number(s.value);
           if (!(val > 0)) continue;
-          registros.push({ fecha: ymd(s.startDate), tipo, valor: Math.round(val), fuente: 'apple_health' });
+          registros.push({ fecha: ymd(s.startDate), tipo, valor: Math.round(val), fuente: FUENTE });
         }
       } catch (e) {
         if (window.__MYPUMP_DIAG) window.__MYPUMP_DIAG.push({ dataType, error: String(e && e.message || e) });
@@ -550,7 +611,9 @@
 
     // .filter(soportado): saltea los tipos que esta versión de iOS no conoce.
     // Sin esto se pierde tiempo en llamadas que el nativo va a rechazar igual.
-    for (const { dataType, tipo, como, escala, factor } of SAMPLES.filter(soportado)) {
+    for (const m of SAMPLES.filter(soportado)) {
+      const { dataType, tipo, escala, factor } = m;
+      const como = comoDe(m);
       const ms = await leerMuestras(dataType, desde, hasta);
       const porFecha = {};
       for (const s of ms) {
@@ -575,17 +638,17 @@
         }
         if (!(val > 0)) continue;
         // Peso y distancia necesitan 1 decimal; el resto redondea igual.
-        registros.push({ fecha, tipo, valor: Math.round(val * 10) / 10, fuente: 'apple_health' });
+        registros.push({ fecha, tipo, valor: Math.round(val * 10) / 10, fuente: FUENTE });
       }
     }
 
     const msSueno = await leerMuestras('sleep', desde, hasta);
     const filasSueno = procesarSueno(msSueno);
     const noches = filasSueno._noches || [];
-    filasSueno.forEach(f => registros.push(Object.assign({ fuente: 'apple_health' }, f)));
+    filasSueno.forEach(f => registros.push(Object.assign({ fuente: FUENTE }, f)));
 
     const msHrv = await leerMuestras('heartRateVariability', desde, hasta);
-    procesarHRV(msHrv, noches).forEach(f => registros.push(Object.assign({ fuente: 'apple_health' }, f)));
+    procesarHRV(msHrv, noches).forEach(f => registros.push(Object.assign({ fuente: FUENTE }, f)));
 
     return registros;
   }
@@ -681,7 +744,7 @@
         distancia_km: (km != null && isFinite(km) && km > 0) ? Math.round(km * 100) / 100 : null,
         fc_media: fc.media,
         fc_max: fc.max,
-        fuente: 'apple_health',
+        fuente: FUENTE,
       });
     }
     return out;

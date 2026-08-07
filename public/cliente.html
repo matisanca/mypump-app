@@ -5244,6 +5244,11 @@ async function loadSalud() {
 const _PREF_FUENTE = {
   whoop: 0, oura: 0, withings: 0, polar: 0,   // API directa: rMSSD real
   apple_health: 1,                             // SDNN, muestreo aleatorio
+  // Health Connect (Android) va al MISMO nivel: los dos son agregadores del
+  // sistema que retransmiten lo que escribió el reloj, no la fuente original.
+  // Su HRV igual gana donde importa, porque el desempate por `metrica` (rMSSD
+  // antes que SDNN) corre ANTES que el de fuente — ver esRmssd() abajo.
+  health_connect: 1,
   rook: 2,
   manual: 3,
 };
@@ -5582,11 +5587,19 @@ function renderMydayRecuperacion() {
 // Serie completa de un tipo, ordenada por fecha. Prioriza la mejor fuente
 // igual que _saludValor, pero devolviendo todas las fechas.
 function _serieSalud(tipo) {
-  const pref = { oura: 0, whoop: 0, withings: 0, polar: 0, apple_health: 1, rook: 2, manual: 3 };
+  /* Usa _PREF_FUENTE, la MISMA tabla que _saludValor.
+   *
+   * Acá había una segunda copia literal — { oura, whoop, withings, polar,
+   * apple_health, rook, manual } — y ya se había desincronizado: cuando se
+   * agregó health_connect arriba, esta seguía sin conocerlo y lo mandaba al
+   * `?? 9`, o sea por debajo de un peso tipeado a mano. Es el mismo bug que el
+   * comentario de _PREF_FUENTE dice haber arreglado una vez, repetido en otro
+   * lugar del archivo. Dos tablas que tienen que decir lo mismo siempre
+   * terminan diciendo cosas distintas: ahora hay una sola. */
   const porFecha = {};
   for (const r of (STATE.salud || [])) {
     if (r.tipo !== tipo) continue;
-    const p = pref[r.fuente] ?? 9;
+    const p = _PREF_FUENTE[r.fuente] ?? 9;
     if (!porFecha[r.fecha] || p < porFecha[r.fecha].p) porFecha[r.fecha] = { v: Number(r.valor), p, d: r.detalle };
   }
   return Object.keys(porFecha).sort().map(f => ({ fecha: f, valor: porFecha[f].v, detalle: porFecha[f].d }));
