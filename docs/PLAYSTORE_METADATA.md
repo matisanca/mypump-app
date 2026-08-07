@@ -144,10 +144,16 @@ con terceros.**
 # Health apps declaration
 
 Es la que decide si la app puede leer Health Connect. Hay que justificar los
-**17 permisos**, y el manifest ya está recortado para que sean exactamente los
-que la app usa — ni uno de más.
+**14 permisos** uno por uno, y el manifest está recortado para que sean
+exactamente los que la app usa — ni uno de más. `check-android-permisos.mjs`
+falla si el manifest y el bridge dejan de coincidir.
 
-**Justificación (sirve la misma para los 17):**
+> Eran 17. Glucosa en sangre, temperatura corporal y mindfulness se cortaron a
+> propósito **solo en Android**: aportan al componente "otros" del score, que
+> vale 8 de 100, y `READ_BLOOD_GLUCOSE` en una app de coaching fitness es de lo
+> que un revisor mira dos veces. En iOS se siguen leyendo. Ver `docs/ANDROID.md`.
+
+**Justificación (sirve la misma para los 14):**
 
 ```
 MyPump es una app de coaching personalizado 1 a 1. El cliente accede con un enlace privado que le envía su entrenador, quien ajusta su plan de entrenamiento y su nutrición semana a semana.
@@ -158,9 +164,8 @@ USO DE CADA CATEGORÍA
 • Pasos, distancia, pisos, calorías activas y basales, ejercicio: volumen de actividad diaria y gasto energético real, que determinan el objetivo calórico del plan.
 • Frecuencia cardíaca, frecuencia cardíaca en reposo y variabilidad (HRV): son el componente autonómico del puntaje de recuperación, el de mayor peso.
 • Sueño: duración, etapas y regularidad; segundo componente del puntaje.
-• Frecuencia respiratoria, saturación de oxígeno, temperatura corporal: se comparan contra la línea de base del propio usuario para detectar desvíos.
+• Frecuencia respiratoria y saturación de oxígeno: se comparan contra la línea de base del propio usuario para detectar desvíos.
 • Peso, porcentaje de grasa: seguimiento de composición corporal contra el rango objetivo del plan.
-• Mindfulness: contexto de recuperación.
 
 COMPROMISOS
 • SOLO LECTURA. La app no escribe ningún dato en Health Connect. Los permisos de escritura están explícitamente removidos del manifest.
@@ -189,6 +194,36 @@ alcanzan.
 | **Anuncios** | **No contiene anuncios** |
 | **Acceso a la app** | ⚠️ **"Todas o algunas funciones tienen acceso restringido"** — hay que dar credenciales de prueba. Poner la URL del demo: `https://app.mypumpteam.com/cliente?demo=1`, con la instrucción "tocar Ver demo en la pantalla de inicio; no requiere usuario ni contraseña". Es exactamente lo que resolvió el rechazo 2.1 de Apple. |
 | **Government apps** | No |
+
+---
+
+# El alta de la cuenta — las respuestas que no son datos personales
+
+Queda acá porque si el alta se traba y hay que rehacerla, esto no se reescribe
+de memoria.
+
+| pantalla | campo | valor |
+|---|---|---|
+| Nombre del programador | nombre público | `Pump Team` |
+| Tu organización | tamaño | 1 - 10 |
+| Tu organización | sitio web | `https://mypumpteam.com` (**sin `www`** — el www da 522) |
+| Perfil público | email del desarrollador | `info@mypumpteam.com` (no el de Gmail; el dominio recibe mail por Yandex) |
+| Acerca de ti | otras cuentas de Google | lo contesta Mati: es una declaración sobre su historial |
+
+**Acerca de ti — texto libre** (solo lo ve él, admite links de respaldo):
+
+```
+Soy el fundador de Pump Team, un servicio de asesoramiento personalizado de entrenamiento y nutrición. Desarrollé MyPump, la app que usan mis clientes para ver su rutina, su plan de comidas y su progreso.
+
+MyPump ya está publicada en la App Store de Apple desde julio de 2026:
+https://apps.apple.com/app/id6793259380
+
+Es mi primera app en Android y no tengo experiencia previa con Play Console.
+
+Detalles técnicos: la app está construida con Capacitor (una base web empaquetada como app nativa), con backend en Supabase y hosting en Cloudflare Pages. Los builds de iOS y Android se compilan y firman en Codemagic. El proyecto Android ya está generado y produce un Android App Bundle.
+
+En Android la app se integra con Health Connect, solo con permisos de lectura y siempre opcionales, para calcular un puntaje diario de recuperación que el cliente ve en la app y que yo uso como su entrenador para ajustarle la carga de entrenamiento semana a semana.
+```
 
 ---
 

@@ -137,9 +137,23 @@
     // puesta, los 13 tipos de la tanda secundaria se quedaban sin pedir permiso
     // y después cada readSamples devolvía "Authorization not determined".
     // Verificado en el simulador el 29-jul-2026 leyendo el log de com.apple.HealthKit.
-    { dataType: 'bodyTemperature', tipo: 'temp_corporal_c', como: 'mediana' },
-    { dataType: 'bloodGlucose',    tipo: 'glucosa_mg_dl',   como: 'mediana' },
-    { dataType: 'mindfulness',     tipo: 'mindful_min',     como: 'sum' },
+    // Estos tres son soloIOS por una razón distinta a la de arriba: Android SÍ
+    // los tiene. Se cortan a propósito.
+    //
+    // Google hace justificar cada permiso de salud UNO POR UNO en la Health apps
+    // declaration, y READ_BLOOD_GLUCOSE en una app de coaching fitness es de las
+    // que un revisor mira dos veces. Los tres suman dentro del componente
+    // "otros", que vale 8 de 100 en el score, y en la práctica casi nadie tiene
+    // un sensor que los escriba a Health Connect. La cuenta no cierra: el
+    // rechazo de una app de salud cuesta semanas, el dato cuesta nada.
+    //
+    // En iOS quedan como estaban: Apple ya los aprobó y ahí no hay que
+    // justificar nada por separado. Para revertirlo alcanza con sacar el
+    // soloIOS de estas tres líneas y volver a poner los tres permisos en
+    // AndroidManifest.xml — check-android-permisos.mjs avisa si falta uno.
+    { dataType: 'bodyTemperature', tipo: 'temp_corporal_c', como: 'mediana', soloIOS: true },
+    { dataType: 'bloodGlucose',    tipo: 'glucosa_mg_dl',   como: 'mediana', soloIOS: true },
+    { dataType: 'mindfulness',     tipo: 'mindful_min',     como: 'sum',     soloIOS: true },
     { dataType: 'heartRate',       tipo: 'fc_media',        como: 'mediana' },
   ];
 

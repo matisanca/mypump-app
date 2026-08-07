@@ -99,12 +99,20 @@
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <uses-permission android:name="android.permission.health.READ_RESPIRATORY_RATE" />
     <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION" />
-    <uses-permission android:name="android.permission.health.READ_BODY_TEMPERATURE" />
-    <uses-permission android:name="android.permission.health.READ_BLOOD_GLUCOSE" />
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
-    <uses-permission android:name="android.permission.health.READ_MINDFULNESS" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+
+    <!-- ── Cortados a propósito en Android, aunque en iOS sí se leen ──────
+         Google hace justificar cada permiso de salud uno por uno, y pedir
+         glucosa en sangre en una app de coaching fitness invita a preguntas.
+         Los tres pesan dentro del componente "otros" del score (8 de 100) y
+         casi nadie tiene un sensor que los escriba a Health Connect.
+         Van con node="remove" y no borrados a secas: el manifest del plugin
+         los declara y el merger los volvería a meter. -->
+    <uses-permission android:name="android.permission.health.READ_BODY_TEMPERATURE" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_BLOOD_GLUCOSE" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_MINDFULNESS" tools:node="remove" />
 
     <!-- ── Lo que el plugin trae y NO se usa ─────────────────────────────
          Lectura: tipos que el bridge no pide.

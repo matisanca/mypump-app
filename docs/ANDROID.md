@@ -194,17 +194,25 @@ que la justificación es la misma para todos: *calcular un score de recuperació
 que el cliente ve y su coach usa para ajustar el plan; lectura únicamente; no
 se comparte con terceros ni se usa para publicidad*.
 
-## Una decisión que te dejo a vos
+## Tres permisos cortados a propósito (17 → 14)
 
-Entre los 17 permisos hay tres que la app lee pero que casi no mueven el score:
-**glucosa en sangre**, **temperatura corporal** y **mindfulness**. Pesan dentro
-del componente "otros", que vale 8 puntos de 100.
+**Glucosa en sangre**, **temperatura corporal** y **mindfulness** se leen en
+iOS pero **no** en Android. Van con `soloIOS: true` en el bridge y con
+`tools:node="remove"` en el manifest.
 
-Pedir *glucosa en sangre* en una app de coaching fitness es de las cosas que un
-revisor de Google mira dos veces. Si querés bajar el riesgo de fricción en la
-revisión, se sacan del bridge y quedan 14 permisos — y el score prácticamente
-no se entera. Decime y lo hago; no lo toqué solo porque también los lee en iOS
-y Apple ya los aprobó.
+El motivo es de revisión, no técnico: Google hace justificar cada permiso de
+salud **uno por uno**, y `READ_BLOOD_GLUCOSE` en una app de coaching fitness es
+de las cosas que un revisor mira dos veces. Los tres pesan dentro del
+componente "otros" del score, que vale 8 puntos de 100, y en la práctica casi
+nadie tiene un sensor que los escriba a Health Connect. Un rechazo de una app
+de salud cuesta semanas; el dato no cuesta nada.
+
+En iOS quedan igual que siempre: Apple ya los aprobó y ahí no hay que
+justificar permiso por permiso.
+
+**Para revertirlo:** sacar `soloIOS` de esas tres líneas en
+`healthkit-bridge.js` y volver a declarar los tres permisos en el manifest.
+`check-android-permisos.mjs` falla si te olvidás de una de las dos mitades.
 
 ## Lo que Android no tiene y iOS sí
 
