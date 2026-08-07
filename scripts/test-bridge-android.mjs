@@ -171,6 +171,63 @@ await t('4 lecturas de ~1.800 kcal/día NO dan 7.200', async () => {
      `kcal_basales = ${v}. Es una tasa repetida: sumarla da ~7.200 y el coach lo lee como "TDEE medido"`);
 });
 
+// ── Sueño: la sesión trae las etapas aparte ─────────────────────────────
+console.log('\nSueño en Health Connect: una sesión + stages[]');
+
+/* Lo que devuelve HealthManager.kt:218-246 de verdad: UNA muestra por
+ * SleepSessionRecord con value = duración en MINUTOS, más `stages` aparte.
+ * HealthKit, en cambio, manda una muestra por etapa con `sleepState`. */
+function nocheAndroid({ conEtapas = true } = {}) {
+  const s = {
+    startDate: iso(20, 23), endDate: iso(21, 7),
+    value: 480, unit: 'minute', sourceName: 'Samsung Health',
+    hasStageData: conEtapas,
+  };
+  if (conEtapas) {
+    s.stages = [
+      { startDate: iso(20, 23),     endDate: iso(20, 23, 20), stage: 'awake', durationMinutes: 20 },
+      { startDate: iso(20, 23, 20), endDate: iso(21, 1),      stage: 'light', durationMinutes: 100 },
+      { startDate: iso(21, 1),      endDate: iso(21, 3),      stage: 'deep',  durationMinutes: 120 },
+      { startDate: iso(21, 3),      endDate: iso(21, 5),      stage: 'rem',   durationMinutes: 120 },
+      { startDate: iso(21, 5),      endDate: iso(21, 7),      stage: 'light', durationMinutes: 120 },
+    ];
+  }
+  return [s];
+}
+
+await t('las etapas llegan: profundo, REM y ligero dejan de perderse', async () => {
+  prepararSync();
+  MUESTRAS.sleep = nocheAndroid();
+  const filas = await capturar(() => H.sync());
+  for (const tipo of ['sueno_profundo_min', 'sueno_rem_min', 'sueno_ligero_min']) {
+    const f = delTipo(filas, tipo);
+    si(f.length && f[0].valor > 0,
+       `${tipo} vino vacío. El bridge está tomando la sesión como un solo bloque y ` +
+       'descartando stages[], que es donde Health Connect pone el desglose');
+  }
+});
+
+await t('el rato DESPIERTO no se cuenta como sueño', async () => {
+  prepararSync();
+  MUESTRAS.sleep = nocheAndroid();
+  const s = delTipo(await capturar(() => H.sync()), 'sueno_min');
+  si(s.length, 'no se mandó sueno_min');
+  const v = s[0].valor;
+  // La sesión abarca 480 min pero 20 son 'awake': dormido = 460.
+  si(v > 440 && v < 470,
+     `sueno_min = ${v}, se esperaban ~460. Si da ~480 se está contando la sesión ` +
+     'entera, incluidos los 20 minutos despierto');
+});
+
+await t('una sesión SIN etapas se toma como sueño, no como el número 480', async () => {
+  prepararSync();
+  MUESTRAS.sleep = nocheAndroid({ conEtapas: false });
+  const s = delTipo(await capturar(() => H.sync()), 'sueno_min');
+  si(s.length && s[0].valor > 0,
+     'sin stages, `value` es la duración (un número) y antes quedaba como etiqueta de ' +
+     'estado: st = "480", que no matchea nada. Un reloj que no desglosa dejaba la noche en cero');
+});
+
 // ── Que no se haya roto iOS de rebote ───────────────────────────────────
 console.log('\nEl filtro por plataforma no se pasa de largo');
 

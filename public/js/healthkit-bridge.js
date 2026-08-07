@@ -465,12 +465,42 @@
   //     antes de sumar.
   const ETAPAS = { light: 'sueno_ligero_min', deep: 'sueno_profundo_min', rem: 'sueno_rem_min' };
   function procesarSueno(muestras) {
-    const evs = muestras.map(s => ({
-      ini: new Date(s.startDate).getTime(),
-      fin: new Date(s.endDate).getTime(),
-      st: String(s.sleepState || s.value || '').toLowerCase(),
-      src: s.sourceId || s.sourceName || '?',
-    })).filter(e => e.fin > e.ini).sort((a, b) => a.ini - b.ini);
+    const evs = muestras.flatMap(s => {
+      const src = s.sourceId || s.sourceName || '?';
+      const ini = new Date(s.startDate).getTime();
+      const fin = new Date(s.endDate).getTime();
+
+      /* HEALTH CONNECT manda UNA muestra por SleepSessionRecord, con
+       * value = la DURACIÓN en minutos, y las etapas aparte en `stages`
+       * (HealthManager.kt:218-246). HealthKit, en cambio, manda una muestra por
+       * etapa con `sleepState`.
+       *
+       * Antes esto era `String(s.sleepState || s.value)`, así que en Android
+       * `st` terminaba valiendo "432". Eso no matchea ninguna etapa —se perdían
+       * profundo, REM y ligero— pero SÍ pasa el filtro de "dormido" de abajo,
+       * así que el rato despierto se contaba como sueño y la eficiencia se
+       * quedaba sin denominador. Ninguna de las tres cosas daba error.
+       *
+       * Se expanden las etapas a un evento cada una y se agrega un `inbed` con
+       * el span de la sesión: con eso el cálculo de abajo funciona igual en las
+       * dos plataformas, sin una rama aparte que después se desincronice. */
+      if (Array.isArray(s.stages) && s.stages.length) {
+        const etapas = s.stages.map(g => ({
+          ini: new Date(g.startDate).getTime(),
+          fin: new Date(g.endDate).getTime(),
+          st: String(g.stage || '').toLowerCase(),
+          src,
+        })).filter(e => e.fin > e.ini);
+        if (etapas.length) return etapas.concat([{ ini, fin, st: 'inbed', src }]);
+      }
+
+      /* Sin etapas. Si `value` es un número, es una sesión que el escritor no
+       * desglosó (pasa con varios relojes baratos): es sueño, no un estado. */
+      const st = s.sleepState ? String(s.sleepState).toLowerCase()
+               : (typeof s.value === 'number' ? 'asleep'
+                                              : String(s.value || '').toLowerCase());
+      return [{ ini, fin, st, src }];
+    }).filter(e => e.fin > e.ini).sort((a, b) => a.ini - b.ini);
     if (!evs.length) return [];
 
     // Agrupar en noches: corte cuando hay más de 60 min sin nada.
@@ -1136,7 +1166,14 @@
     const porNoche = {};
     for (const s of msS) {
       const k = ymd(s.endDate), src = s.sourceName || s.sourceId || '?';
-      const st = String(s.sleepState || s.value || '').toLowerCase();
+      // Mismo criterio que procesarSueno: en Health Connect `value` es la
+      // duración, no un estado, y las etapas vienen aparte. Si el diagnóstico
+      // usara otra regla mostraría algo distinto de lo que se ingesta, que es
+      // justo lo contrario de para lo que existe.
+      const st = s.sleepState ? String(s.sleepState).toLowerCase()
+               : (Array.isArray(s.stages) && s.stages.length ? 'sesion+etapas'
+               : (typeof s.value === 'number' ? 'asleep'
+                                              : String(s.value || '').toLowerCase()));
       const min = (new Date(s.endDate) - new Date(s.startDate)) / 60000;
       porNoche[k] = porNoche[k] || {};
       porNoche[k][src] = porNoche[k][src] || {};

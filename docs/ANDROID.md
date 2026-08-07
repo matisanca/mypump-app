@@ -62,6 +62,23 @@ incluso desde un Samsung. Y el `CHECK` de la tabla no conocía `health_connect`,
 así que las filas se descartaban **una por una, en silencio**
 (`_mypump_upsert_salud` hace `CONTINUE WHEN check_violation`). Migración 056.
 
+**4. El sueño perdía las etapas y contaba el rato despierto.** Health Connect
+manda **una** muestra por `SleepSessionRecord`, con `value` = la duración en
+minutos, y las etapas aparte en `stages[]` (`HealthManager.kt:218-246`).
+HealthKit manda una muestra **por etapa**, con `sleepState`. El bridge hacía
+`String(s.sleepState || s.value)`, así que en Android `st` valía `"432"`: no
+matcheaba ninguna etapa —se perdían profundo, REM y ligero— pero **sí** pasaba
+el filtro de "dormido", con lo cual el rato despierto se contaba como sueño y
+la eficiencia se quedaba sin denominador. Ahora las etapas se expanden a un
+evento cada una más un `inbed` con el span de la sesión, así el cálculo es el
+mismo en las dos plataformas.
+
+**5. Toda la UI de salud le hablaba de Apple a un Android.** Decía "Salud de
+Apple", "iPhone y Apple Watch", "Conectar Apple Health" y mandaba a Ajustes →
+Salud, que en Android no existe. Eran quince lugares. Ahora hay una tabla,
+`_TXT_SALUD`, y `_T(clave)`; `test-textos-salud.mjs` falla si alguien vuelve a
+cablear un texto de Apple fuera de la tabla.
+
 ## ⛔ El único bloqueante que queda del lado de la base
 
 **La migración 056 NO está aplicada.** Verificado contra
