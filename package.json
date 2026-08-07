@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node scripts/test-bridge.mjs && node scripts/test-bridge-android.mjs && node scripts/test-outbox.mjs && node scripts/test-wearables.mjs && node scripts/test-salud-sintetica.mjs && node scripts/test-normalizar-plan.mjs && node scripts/test-plan-sintetico.mjs && node scripts/check-contratos.mjs && node scripts/check-healthkit-tipos.mjs && python3 scripts/test_consolidar_identidad.py && python3 scripts/test_centinela_guardrail.py",
+    "test": "node scripts/test-bridge.mjs && node scripts/test-bridge-android.mjs && node scripts/test-outbox.mjs && node scripts/test-wearables.mjs && node scripts/test-salud-sintetica.mjs && node scripts/test-normalizar-plan.mjs && node scripts/test-plan-sintetico.mjs && node scripts/check-contratos.mjs && node scripts/check-healthkit-tipos.mjs && node scripts/check-android-permisos.mjs && python3 scripts/test_consolidar_identidad.py && python3 scripts/test_centinela_guardrail.py",
     "dev": "npx serve public -l 3000",
     "format": "echo 'TODO: configurar prettier'",
     "ios:add": "npx cap add ios",
     "ios:sync": "npx cap sync ios",
-    "ios:open": "npx cap open ios"
+    "ios:open": "npx cap open ios",
+    "android:sync": "npx cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
     "@capacitor/app": "^8.1.1",
     "@capacitor/browser": "^8.0.4",
     "@capacitor/core": "^8.0.0",

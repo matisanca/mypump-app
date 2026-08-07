@@ -183,3 +183,125 @@ workflows:
         # Descomentá y completá para auto-asignar a un grupo de testers interno:
         # beta_groups:
         #   - "Pump Team interno"
+
+  # =============================================================
+  # Android → Google Play
+  #
+  # Dispara con un tag `a*` (a1.0.5), separado del `v*` de iOS a propósito: las
+  # dos tiendas tienen tiempos y rechazos distintos, y no queremos que arreglar
+  # algo de Apple obligue a re-subir a Google ni al revés.
+  #
+  #   git tag a1.0.5 && git push origin a1.0.5
+  #
+  # PASOS DE UNA SOLA VEZ, antes del primer build:
+  #   1. Play Console → cuenta de ORGANIZACIÓN (obligatoria para apps de salud).
+  #      D-U-N-S de PUMP TEAM LLC: el mismo que se usó en Apple.
+  #      La app tiene que NACER en esa cuenta — migrar una app de una cuenta
+  #      personal a una de organización deja la consola pidiendo los 14 días de
+  #      testing cerrado y soporte no lo destraba.
+  #   2. Play Console → Configuración → Acceso a la API → crear una cuenta de
+  #      servicio y bajar su JSON.
+  #   3. Codemagic → Settings → Integrations → Google Play → subir ese JSON.
+  #   4. Codemagic → Settings → Code signing identities → Android keystores →
+  #      "Generate keystore". Referencia: mypump-upload. NO se pierde: con Play
+  #      App Signing, esta es solo la clave de SUBIDA; Google guarda la de
+  #      firma real y se puede resetear la de subida si hace falta.
+  #   5. Con el primer AAB subido: Play Console → Integridad de la app → copiar
+  #      el SHA-256 de "Certificado de firma de la app" y pegarlo en
+  #      public/.well-known/assetlinks.json. Sin eso los links del coach abren
+  #      el navegador en vez de la app, sin avisar.
+  #   6. Play Console → Contenido de la app → "Health apps declaration":
+  #      justificar los 17 permisos de lectura. El manifest ya está recortado
+  #      para que sean exactamente los que la app usa.
+  # =============================================================
+  android-play:
+    name: MyPump Android → Google Play
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'a*'
+          include: true
+
+    environment:
+      node: 22
+      java: 21
+      android_signing:
+        - mypump-upload
+      groups:
+        - google-play
+      vars:
+        PACKAGE_NAME: "com.pumpteam.mypump"
+
+    scripts:
+      - name: Instalar dependencias (npm)
+        script: npm ci
+
+      - name: Chequeos que no necesitan compilar
+        # Corren ANTES del build para que una desincronización entre el bridge
+        # y el manifest se vea en 10 segundos y no después de 4 minutos de
+        # Gradle. check-android-permisos es el que evita el SecurityException
+        # que solo aparecería en el teléfono del cliente.
+        script: |
+          set -e
+          node scripts/check-android-permisos.mjs
+          node scripts/check-healthkit-tipos.mjs
+          node scripts/test-bridge-android.mjs
+
+      - name: Capacitor sync Android
+        script: npx cap sync android
+
+      - name: Sacar el banco de pruebas del binario
+        # Mismo motivo que en iOS: `cap sync` copia public/ entero, así que el
+        # mock de salud y su generador terminarían adentro del AAB que se sube
+        # a Play. Son inertes (su compuerta exige que NO haya Capacitor real y
+        # que el host sea localhost), pero es superficie que no hace falta en
+        # una app que además pasa por la Health apps declaration.
+        script: |
+          rm -fv android/app/src/main/assets/public/js/health-mock.js \
+                 android/app/src/main/assets/public/js/salud-sintetica.js
+
+      - name: Compilar AAB
+        # AAB y no APK: Play lo exige para apps nuevas desde agosto de 2021.
+        # El APK se sigue generando aparte para poder probar por sideload sin
+        # pasar por Play (ver docs/ANDROID.md).
+        script: |
+          set -e
+          cd android
+          ./gradlew bundleRelease
+          ./gradlew assembleRelease
+
+      - name: Verificar que no se coló un permiso de escritura
+        # El manifest FUENTE está recortado, pero el que importa es el MERGEADO
+        # — el que queda adentro del AAB después de sumar los de las librerías.
+        # Si el merger ignorara un tools:node="remove", acá se ve; en el
+        # manifest fuente, no.
+        script: |
+          set -e
+          MERGED=$(find android/app/build -name "AndroidManifest.xml" -path "*release*" | head -1)
+          if [ -z "$MERGED" ]; then
+            echo "✗ no encontré el manifest mergeado"; exit 1
+          fi
+          echo "→ $MERGED"
+          if grep -q "permission.health.WRITE_" "$MERGED"; then
+            echo "✗ el APK pide permisos de ESCRITURA de salud. MyPump solo lee."
+            grep -o "permission.health.WRITE_[A-Z_]*" "$MERGED" | sort -u
+            exit 1
+          fi
+          echo "✓ solo lectura: $(grep -o 'permission.health.READ_[A-Z_]*' "$MERGED" | sort -u | wc -l | tr -d ' ') permisos"
+
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/mapping.txt
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        # internal: llega a los testers internos en minutos, sin revisión.
+        # Cuando esté probado se promueve a producción desde la consola.
+        track: internal
+        submit_as_draft: true

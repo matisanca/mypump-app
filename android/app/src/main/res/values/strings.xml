@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MyPump</string>
+    <string name="title_activity_main">MyPump</string>
+    <string name="package_name">com.pumpteam.mypump</string>
+    <string name="custom_url_scheme">com.pumpteam.mypump</string>
+</resources>
