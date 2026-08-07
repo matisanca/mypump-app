@@ -1156,6 +1156,9 @@ function hoyLocal() { return new Date().toLocaleDateString('en-CA'); }
 
 let DATA = null;   // {cliente, rutina, dia, historico_por_ejercicio, _dias, _isDemo}
 let DIET = null;   // {macros_target, comidas}
+/* Lo que le faltaba al plan publicado. Lo llena normalizarRutina/normalizarDieta
+ * en el arranque y lo muestra avisarPlanIncompleto una sola vez. */
+let _PLAN_PROBLEMAS = [];
 let DIETA_ID  = null;
 let RUTINA_ID = null;
 let _sesionId = null;      // ID de sesión activa en Supabase
@@ -1585,6 +1588,133 @@ function getDayNum(dia, allDias) {
 
 // Elige el día a mostrar al abrir la app — sin usar el calendario real.
 // Orden de prioridad: último día visualizado (localStorage) → primer día.
+/* ── Normalización del plan publicado ─────────────────────────────────────
+ *
+ * TODO plan que entra a la app pasa por acá primero.
+ *
+ * POR QUÉ EXISTE
+ * El Cerebro publica JSON libre en mypump_rutinas.estructura y
+ * mypump_dietas.estructura. Nada del lado de la base valida su forma: es una
+ * columna jsonb. Un plan al que le falte una clave llega igual al teléfono del
+ * cliente, y la app lo desreferencia sin preguntar en ~8 lugares
+ * (DATA.dia.bloques.flatMap(...)). Cinco formas publicables que la tumban:
+ *
+ *   · dias: []            → getSuggestedDay devuelve undefined y NO arranca.
+ *                           Ojo: `[]` es truthy, así que pasaba la guarda de
+ *                           `rutina.estructura.dias` sin que nadie lo notara.
+ *   · día sin bloques     → .flatMap de undefined
+ *   · ejercicio sin       → chip "NaN:NaN" y el timer de descanso no termina
+ *     descanso_segundos     nunca
+ *   · dieta sin           → renderDiet hace tg.kcal → TypeError, y eso se
+ *     macros_target         lleva puesto el ARRANQUE ENTERO: pantalla en
+ *                           blanco, el cliente no puede ni entrenar
+ *   · comida sin options  → renderMeal rompe
+ *
+ * LA DECISIÓN: normalizar en la puerta, no parchar los 8 sitios.
+ * Poner `?.` en cada desreferencia esconde el problema y deja la app
+ * mostrando huecos sin explicación. Acá se rellena lo que se puede rellenar
+ * con un default honesto, y lo que NO se puede se reporta en `problemas` para
+ * que la app diga la verdad en vez de morirse en silencio.
+ *
+ * Un plan sin UN SOLO ejercicio no es rellenable: eso devuelve usable:false.  */
+const DESCANSO_POR_DEFECTO = 90;   // segundos; lo que usa el generador para aislados
+
+function normalizarRutina(est) {
+  const problemas = [];
+  const e = { ...(est || {}) };
+
+  if (!Array.isArray(e.dias) || !e.dias.length) {
+    return { usable: false, est: e, problemas: ['El plan no tiene días cargados.'] };
+  }
+
+  e.dias = e.dias.map((d, i) => {
+    const dia = { ...d };
+    dia.id = dia.id || `d${i + 1}`;
+    dia.nombre = dia.nombre || `Día ${i + 1}`;
+    if (!Array.isArray(dia.bloques)) { dia.bloques = []; problemas.push(`${dia.nombre}: sin bloques.`); }
+    dia.bloques = dia.bloques.map(b => {
+      const bloque = { ...b };
+      if (!Array.isArray(bloque.ejercicios)) bloque.ejercicios = [];
+      bloque.ejercicios = bloque.ejercicios.map(x => ({
+        ...x,
+        // Sin esto el chip muestra NaN:NaN y el timer arranca y no para.
+        descanso_segundos: Number(x.descanso_segundos) > 0
+          ? Number(x.descanso_segundos) : DESCANSO_POR_DEFECTO,
+        series: Number(x.series) > 0 ? Number(x.series) : 1,
+      }));
+      return bloque;
+    });
+    if (!dia.bloques.some(b => b.ejercicios.length)) problemas.push(`${dia.nombre}: sin ejercicios.`);
+    return dia;
+  });
+
+  // semanas_total ausente: el front decía 1 y el server 12, así que el cliente
+  // veía "SEM 4/1" y el botón de avanzar semana desaparecía.
+  if (!(Number(e.semanas_total) > 0)) {
+    e.semanas_total = 12;
+    problemas.push('El plan no dice cuántas semanas dura; se asume 12.');
+  }
+
+  const conEjercicios = e.dias.filter(d => d.bloques.some(b => b.ejercicios.length));
+  if (!conEjercicios.length) {
+    return { usable: false, est: e, problemas: ['Ningún día del plan tiene ejercicios.'] };
+  }
+  return { usable: true, est: e, problemas };
+}
+
+function normalizarDieta(est) {
+  const problemas = [];
+  const e = { ...(est || {}) };
+
+  // Formato B con tipos_dia vacío: getActivePlan devuelve la raíz, que no tiene
+  // .comidas, y buildMeals rompe. Un array vacío es lo mismo que no tenerlo.
+  if (Array.isArray(e.tipos_dia) && !e.tipos_dia.length) delete e.tipos_dia;
+
+  const planes = e.tipos_dia && e.tipos_dia.length ? e.tipos_dia : [e];
+  for (const p of planes) {
+    if (!Array.isArray(p.comidas)) p.comidas = [];
+    p.comidas = p.comidas.filter(c => {
+      const ok = c && Array.isArray(c.options) && c.options.some(o => o && Array.isArray(o.foods) && o.foods.length);
+      if (!ok) problemas.push(`${(c && c.name) || 'Una comida'}: sin opciones cargadas.`);
+      return ok;
+    }).map(c => ({ ...c, options: c.options.filter(o => o && Array.isArray(o.foods) && o.foods.length) }));
+
+    // macros_target ausente: se deriva de la opción A de cada comida. Es una
+    // aproximación, pero infinitamente mejor que la pantalla en blanco — y el
+    // anillo queda coherente con lo que el cliente realmente tiene servido.
+    const tg = p.macros_target;
+    if (!tg || !(Number(tg.kcal) > 0)) {
+      const s = p.comidas.reduce((a, c) => {
+        for (const f of (c.options[0]?.foods || [])) {
+          a.kcal += Number(f.kcal) || 0; a.prot += Number(f.prot) || 0;
+          a.carb += Number(f.carb) || 0; a.fat += Number(f.fat) || 0;
+        }
+        return a;
+      }, { kcal: 0, prot: 0, carb: 0, fat: 0 });
+      p.macros_target = { kcal: Math.round(s.kcal), prot: Math.round(s.prot), carb: Math.round(s.carb), fat: Math.round(s.fat) };
+      problemas.push('El plan no traía el objetivo de calorías; se calculó con la opción A.');
+    }
+  }
+
+  const usable = planes.some(p => p.comidas.length);
+  return { usable, est: e, problemas };
+}
+
+/* Un aviso arriba de todo, una sola vez. No es para el cliente: es para que
+ * cuando mande la captura se vea qué le pasó al plan, en vez de "no me carga". */
+function avisarPlanIncompleto(problemas) {
+  if (!problemas || !problemas.length) return;
+  console.warn('[plan] problemas detectados:', problemas);
+  const d = document.createElement('div');
+  d.className = 'rec-nota';
+  d.style.cssText = 'margin:10px 14px;line-height:1.5';
+  d.innerHTML = 'A tu plan le falta información y algunas cosas pueden verse raras. '
+    + 'Avisale a Mati y lo republica.<br><small style="opacity:.7">' +
+    problemas.slice(0, 3).map(p => p.replace(/</g, '&lt;')).join(' · ') + '</small>';
+  const cont = document.getElementById('scene-myday') || document.body;
+  cont.insertBefore(d, cont.firstChild);
+}
+
 function getSuggestedDay(dias, rutinaId) {
   const key = `mypump_dia_visualizado_${rutinaId || 'demo'}`;
   const lastId = localStorage.getItem(key);
@@ -4008,8 +4138,13 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
   else STATE.comidasMarcadas[comidaId] = { opcion: opcionNombre, estado: nuevoEstado, foodsExcluidos: [] };
   renderDiet();
 
-  // Modo demo: solo memoria, no backend
-  if (!TOKEN || (DATA && DATA._isDemo)) return;
+  // Modo demo: solo memoria, no backend.
+  //
+  // _dietaEjemplo entra por el mismo lado: cuando el cliente no tiene dieta
+  // publicada ve SAMPLE_DIET, y marcar ahí escribía filas REALES contra ids de
+  // comida (c1, c2…) que no pertenecen a ningún plan suyo. Después el coach
+  // leía adherencia de dieta de alguien que no tiene dieta.
+  if (!TOKEN || (DATA && (DATA._isDemo || DATA._dietaEjemplo))) return;
 
   let res;
   if (nuevoEstado === null) {
@@ -4039,7 +4174,7 @@ async function toggleFoodComido(comidaId, foodIdx) {
   mark.foodsExcluidos = nuevos;          // optimistic
   renderDiet();
 
-  if (!TOKEN || (DATA && DATA._isDemo)) return;
+  if (!TOKEN || (DATA && (DATA._isDemo || DATA._dietaEjemplo))) return;
   const res = await window.mypumpDB.marcarComida(
     TOKEN, hoyLocal(), comidaId, mark.opcion || 'A', 'comido', nuevos
   );
@@ -7244,9 +7379,15 @@ async function init() {
   }
 
   // Build DATA
-  if (rutina && rutina.estructura && rutina.estructura.dias) {
+  //
+  // La estructura publicada pasa SIEMPRE por normalizarRutina antes de tocar
+  // nada. `rutina.estructura.dias` sola no alcanza como guarda: un array vacío
+  // es truthy, así que `dias: []` entraba acá y reventaba en getSuggestedDay.
+  const _nr = normalizarRutina(rutina && rutina.estructura);
+  _PLAN_PROBLEMAS = _nr.problemas;
+  if (rutina && rutina.estructura && _nr.usable) {
     RUTINA_ID = rutina.id;
-    const est = rutina.estructura;
+    const est = _nr.est;
     const dia = getSuggestedDay(est.dias, rutina.id);
     DATA = {
       cliente: { nombre: info.nombre, perfil: info.perfil, objetivo: normObjetivo(est.perfil && est.perfil.objetivo) },
@@ -7280,11 +7421,27 @@ async function init() {
     };
   }
 
-  if (dieta && dieta.estructura && (dieta.estructura.comidas || dieta.estructura.tipos_dia)) {
+  const _nd = normalizarDieta(dieta && dieta.estructura);
+  if (dieta && dieta.estructura && _nd.usable) {
     DIETA_ID = dieta.id;
-    DIET = dieta.estructura;
+    DIET = _nd.est;
+    _PLAN_PROBLEMAS = _PLAN_PROBLEMAS.concat(_nd.problemas);
   } else {
+    /* Sin dieta publicada se cae a SAMPLE_DIET — 3200 kcal, 5 comidas — y el
+     * cliente la lee como si fuera SU plan, sin ningún aviso.
+     *
+     * Peor: marcar una comida de esa dieta de ejemplo escribía filas REALES en
+     * mypump_comidas_marcadas, contra ids de comida que no existen en ningún
+     * plan suyo. Después el coach ve adherencia de dieta de alguien que no
+     * tiene dieta. Por eso acá se marca _dietaEjemplo: las escrituras de
+     * comida lo miran y no salen. */
     DIET = SAMPLE_DIET;
+    DIETA_ID = null;
+    if (DATA) DATA._dietaEjemplo = true;
+    if (!(DATA && DATA._isDemo)) {
+      _PLAN_PROBLEMAS = _PLAN_PROBLEMAS.concat(
+        dieta ? ['Tu dieta está publicada pero incompleta.'] : ['Todavía no tenés dieta publicada.']);
+    }
   }
 
   // Restaurar tipo-día seleccionado (Formato B)
@@ -7355,6 +7512,9 @@ async function init() {
   renderDayPicker();
   renderTrain();
   renderDiet();
+  // Después de showApp(): el contenedor de Mi Día ya existe. En demo no va —
+  // el revisor de Apple no tiene por qué ver un cartel de plan incompleto.
+  if (!(DATA && DATA._isDemo)) avisarPlanIncompleto(_PLAN_PROBLEMAS);
   updateOfflineBanner();
   restoreRest();   // B2 — reanudar el timer de descanso si quedó uno corriendo
   // Las escenas se pintan al abrir el tab; los datos se van cargando de fondo.
