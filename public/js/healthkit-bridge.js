@@ -1174,6 +1174,10 @@
     // tener que haberse guardado lo que devolvió connect().
     backfillEnCurso: () => _backfillEnCurso,
     backfillProgreso: () => _progresoBackfill,
+    /* 'ios' | 'android' | 'web'. La UI la necesita para no llamarle "Salud de
+     * Apple" a Health Connect ni mandar a un Android a Ajustes → Salud, que en
+     * Android no existe. Se resuelve UNA vez, al evaluarse el bridge. */
+    plataforma: () => plataforma,
     /* null en iOS y hasta que se piden permisos. En Android:
      *   { autorizado: bool, disponible: bool }
      * autorizado=false → Health Connect solo devuelve los últimos 30 días, y

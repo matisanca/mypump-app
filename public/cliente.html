@@ -3561,7 +3561,7 @@ async function mostrarOnboardingPermisos() {
     const contenido = paso === 'salud' ? {
       icono: '❤️',
       titulo: 'Conectá tu salud',
-      texto: 'MyPump puede leer lo que ya mide tu iPhone o tu reloj: pasos, sueño, '
+      texto: 'MyPump puede leer lo que ya mide ' + _T('telefono') + ' o tu reloj: pasos, sueño, '
            + 'pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando '
            + 'de verdad y te ajusta el plan con datos, no a ojo.',
       detalle: 'Se lee solo. Nunca escribimos nada en tu app de Salud.',
@@ -5261,6 +5261,52 @@ async function loadSalud() {
  *
  * `rmssd` primero dentro de la misma fuente, igual que el motor: para HRV, la
  * métrica importa más que de dónde venga. */
+/* ── Vocabulario de la sección de salud, por plataforma ────────────────────
+ *
+ * Toda esta sección se escribió cuando MyPump era solo de iPhone, así que dice
+ * "Salud de Apple", "iPhone y Apple Watch" y manda a Ajustes → Salud. En un
+ * Android nada de eso existe: el cliente lee instrucciones de un teléfono que
+ * no tiene y no encuentra ninguna de las pantallas que se le nombran.
+ *
+ * Es un texto por clave y no un `? :` desparramado, porque los call-sites son
+ * quince y cada uno olvidado es un cliente leyendo la palabra "iPhone" en un
+ * Samsung. */
+function _esAndroid() {
+  const H = window.MyPumpHealth;
+  if (H && typeof H.plataforma === 'function') return H.plataforma() === 'android';
+  const C = window.Capacitor;
+  return !!(C && typeof C.getPlatform === 'function' && C.getPlatform() === 'android');
+}
+
+const _TXT_SALUD = {
+  ios: {
+    app:        'Salud de Apple',
+    boton:      'Conectar Apple Health',
+    dispositivo:'iPhone y Apple Watch',
+    telefono:   'tu iPhone',
+    esteTel:    'Este iPhone',
+    sinApp:     'Este iPhone no tiene Salud de Apple.',
+    relojes:    'Apple Watch, Oura, Garmin…',
+    sincroniza: 'la app Salud del iPhone',
+    desdeApp:   'la app de iPhone',
+    revocar:    'Ajustes → Privacidad y seguridad → Salud → MyPump',
+  },
+  android: {
+    app:        'Health Connect',
+    boton:      'Conectar Health Connect',
+    dispositivo:'Tu teléfono y tu reloj',
+    telefono:   'tu teléfono',
+    esteTel:    'Este teléfono',
+    // Health Connect viene en Android 14+; en 9-13 se instala de Play Store.
+    sinApp:     'Este teléfono no tiene Health Connect. Se instala gratis desde Google Play.',
+    relojes:    'Galaxy Watch, Mi Band, Garmin, Fitbit…',
+    sincroniza: 'Health Connect',
+    desdeApp:   'la app del teléfono',
+    revocar:    'Ajustes → Salud y bienestar → Health Connect → MyPump',
+  },
+};
+const _T = (k) => _TXT_SALUD[_esAndroid() ? 'android' : 'ios'][k];
+
 const _PREF_FUENTE = {
   whoop: 0, oura: 0, withings: 0, polar: 0,   // API directa: rMSSD real
   apple_health: 1,                             // SDNN, muestreo aleatorio
@@ -5326,7 +5372,7 @@ async function _conectarSalud(btn, textoOriginal, onOk) {
   const motivo = (r && r.motivo) || 'error';
   let msg;
   if (motivo === 'no_disponible') {
-    msg = 'Este iPhone no tiene Apple Salud disponible.';
+    msg = _T('sinApp');
   } else if (motivo === 'plugin_ausente') {
     // Problema NUESTRO, de build: el plugin no quedó registrado en el WebView.
     // Antes caía en el mismo mensaje que "este iPhone no tiene Apple Salud", y
@@ -5478,14 +5524,14 @@ function _recupSinScoreConectado() {
    *    leería "necesitás un reloj" teniendo uno puesto. */
   if (!nocturnosReciente && nocturnosAlguna) {
     return `<div class="rec-frase">Estos días no están llegando los datos de la noche.</div>
-      <div class="rec-nota">Fijate que el reloj esté sincronizando con la app Salud del iPhone.</div>`;
+      <div class="rec-nota">Fijate que el reloj esté sincronizando con ${_T('sincroniza')}.</div>`;
   }
 
   // 3. El iPhone manda pasos, pero nadie mide la noche, y nunca lo hizo. Es el
   //    cliente sin reloj: no es un error, y hay que decirlo sin prometer nada.
   if (diurnosReciente) {
-    return `<div class="rec-frase">Tu iPhone ya está mandando pasos y actividad. 👌</div>
-      <div class="rec-nota">Para el score de recuperación hace falta lo que se mide durmiendo — pulso en reposo, sueño y variabilidad — y eso lo da un reloj o un anillo (Apple Watch, Oura, Garmin…). En cuanto uses uno, esto se arma solo.</div>`;
+    return `<div class="rec-frase">${_T('esteTel')} ya está mandando pasos y actividad. 👌</div>
+      <div class="rec-nota">Para el score de recuperación hace falta lo que se mide durmiendo — pulso en reposo, sueño y variabilidad — y eso lo da un reloj o un anillo (${_T('relojes')}). En cuanto uses uno, esto se arma solo.</div>`;
   }
 
   // 4. Conectado y cero datos. Si el backfill ya miró 60 días y no vio nada,
@@ -5494,7 +5540,7 @@ function _recupSinScoreConectado() {
     return `<div class="rec-frase">Salud está conectada pero no llegó ningún dato.</div>
       <div class="rec-nota">Fijate que esté todo activado en <b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.</div>`;
   }
-  return `<div class="rec-frase">Conectado. Esperando los primeros datos de tu iPhone…</div>
+  return `<div class="rec-frase">Conectado. Esperando los primeros datos de ${_T('telefono')}…</div>
     <div class="rec-nota">Si tenés reloj o anillo, con eso el score arranca mucho más rápido.</div>`;
 }
 
@@ -5527,12 +5573,12 @@ function renderMydayRecuperacion() {
     if (!conectado) {
       el.innerHTML = wrap(`<p class="salud-connect-txt">Tu recuperación se calcula con lo que mide tu reloj mientras dormís: pulso en reposo, sueño y variabilidad.</p>
         ${native
-          ? `<button class="btn-primary" id="btnConnectHealth2" style="width:100%">Conectar Apple Health</button>`
-          : `<div class="rec-nota">Si tenés reloj o anillo, conectalo desde la app de iPhone y esto se llena solo.</div>`}`);
+          ? `<button class="btn-primary" id="btnConnectHealth2" style="width:100%">${_T('boton')}</button>`
+          : `<div class="rec-nota">Si tenés reloj o anillo, conectalo desde ${_T('desdeApp')} y esto se llena solo.</div>`}`);
       const b = document.getElementById('btnConnectHealth2');
       if (b) b.onclick = async () => {
         b.disabled = true; b.textContent = 'Conectando…';
-        await _conectarSalud(b, 'Conectar Apple Health', async () => {
+        await _conectarSalud(b, _T('boton'), async () => {
           await loadRecuperacion(); await loadSalud();
         });
       };
@@ -5685,13 +5731,13 @@ function renderSalud() {
     root.innerHTML = `<button class="sd-volver" id="sdVolver">‹ Volver a Mi Día</button>
       ${_seccionSalud('⌚️', 'Todavía no hay datos',
         `<p class="salud-connect-txt">Cuando conectes tu reloj o tu anillo, acá vas a ver todo lo que mide: sueño con sus fases, pulso en reposo, variabilidad, respiración, oxígeno y temperatura.</p>
-         ${native ? `<button class="btn-primary" id="sdConnect" style="width:100%">Conectar Apple Health</button>`
-                  : `<div class="rec-nota">Se conecta desde la app de iPhone. Si usás Oura o Whoop, pronto vas a poder conectarlos desde acá también.</div>`}`)}
+         ${native ? `<button class="btn-primary" id="sdConnect" style="width:100%">${_T('boton')}</button>`
+                  : `<div class="rec-nota">Se conecta desde ${_T('desdeApp')}. Si usás Oura o Whoop, pronto vas a poder conectarlos desde acá también.</div>`}`)}
       <div id="sdAppleHealth"></div>
       <div id="sdNotif"></div>`;
     const b = document.getElementById('sdConnect');
     if (b) b.onclick = async () => { b.disabled = true; b.textContent = 'Conectando…';
-      await _conectarSalud(b, 'Conectar Apple Health', async () => {
+      await _conectarSalud(b, _T('boton'), async () => {
         await loadSalud(); await loadRecuperacion(); renderSalud();
       }); };
     // Las conexiones y los recordatorios van TAMBIÉN acá: este es el estado
@@ -5815,7 +5861,7 @@ function renderSalud() {
        <button class="cx-btn${STATE.mostrarRecup === false ? '' : ' is-off'}" id="sdToggleRec">${STATE.mostrarRecup === false ? 'Mostrar' : 'Ocultar'}</button></div>`)}
     <div id="sdAppleHealth"></div>
     <div id="sdNotif"></div>
-    <div class="sd-nota" style="padding:0 var(--space-1) var(--space-6)">Los datos los manda tu reloj a Salud de Apple y de ahí llegan acá. Si algo no aparece, es porque tu dispositivo no lo mide.</div>
+    <div class="sd-nota" style="padding:0 var(--space-1) var(--space-6)">Los datos los manda tu reloj a ${_T('app')} y de ahí llegan acá. Si algo no aparece, es porque tu dispositivo no lo mide.</div>
     ${renderFuentesFooter('myday')}`;
   // Las dos secciones son async (consultan permisos al sistema) y se pintan
   // después: si el chequeo se colgara, el resto de la pantalla ya está.
@@ -5851,7 +5897,7 @@ async function renderAppleHealthEstado() {
 
   let cuerpo, boton;
   if (!e.disponible) {
-    cuerpo = '<div class="cx-desc">Este iPhone no tiene Salud de Apple.</div>';
+    cuerpo = `<div class="cx-desc">${_T('sinApp')}</div>`;
     boton  = '';
   } else if (e.sinDatos) {
     // No decimos "denegaste": Apple no informa el permiso de lectura, esto es
@@ -5880,11 +5926,11 @@ async function renderAppleHealthEstado() {
    * función del producto. Un cliente no la va a encontrar de casualidad. */
   el.innerHTML = `<div class="myday-section">
     <div class="myday-section-hdr"><span class="myday-section-icon">❤️</span>
-      <span class="myday-section-title" id="ahTitulo" style="cursor:default;-webkit-user-select:none;user-select:none">Salud de Apple</span></div>
+      <span class="myday-section-title" id="ahTitulo" style="cursor:default;-webkit-user-select:none;user-select:none">${_T('app')}</span></div>
     <div class="myday-section-body">
       <div class="cx-fila">
         <div class="cx-info">
-          <div class="cx-nombre">iPhone y Apple Watch${e.conectado && !e.sinDatos ? '<span class="cx-ok">activo</span>' : ''}</div>
+          <div class="cx-nombre">${_T('dispositivo')}${e.conectado && !e.sinDatos ? '<span class="cx-ok">activo</span>' : ''}</div>
           ${cuerpo}
         </div>
         ${boton}
@@ -6019,14 +6065,14 @@ function renderMydaySalud() {
           <span class="myday-section-title">Salud</span>
         </div>
         <div class="myday-section-body">
-          <p class="salud-connect-txt">Conectá Apple Health una sola vez y tus pasos y actividad se sincronizan solos para que Mati los vea.</p>
-          <button class="btn-primary" id="btnConnectHealth" style="width:100%">Conectar Apple Health</button>
+          <p class="salud-connect-txt">Conectá ${_T('app')} una sola vez y tus pasos y actividad se sincronizan solos para que Mati los vea.</p>
+          <button class="btn-primary" id="btnConnectHealth" style="width:100%">${_T('boton')}</button>
         </div>
       </div>`;
     const btn = document.getElementById('btnConnectHealth');
     if (btn) btn.addEventListener('click', async () => {
       btn.disabled = true; btn.textContent = 'Conectando…';
-      await _conectarSalud(btn, 'Conectar Apple Health', () => renderMyday());
+      await _conectarSalud(btn, _T('boton'), () => renderMyday());
     });
     return;
   }
@@ -6907,7 +6953,7 @@ function renderMydayConexiones() {
     <div class="myday-section-hdr"><span class="myday-section-icon">⌚️</span>
       <span class="myday-section-title">Mi reloj</span></div>
     <div class="myday-section-body">
-      <div class="sd-sub">Si usás ${visibles.map(p => p.nombre).join(' o ')}, conectalo y tus datos de sueño y recuperación entran solos. Apple Watch no se conecta acá: va por Salud de Apple desde la app de iPhone.</div>
+      <div class="sd-sub">Si usás ${visibles.map(p => p.nombre).join(' o ')}, conectalo y tus datos de sueño y recuperación entran solos. ${_esAndroid() ? 'Tu reloj no se conecta acá: va por Health Connect.' : 'Apple Watch no se conecta acá: va por Salud de Apple desde la app de iPhone.'}</div>
       ${filas}
       <div id="cxMsg" class="rec-nota" hidden></div>
     </div></div>`;
