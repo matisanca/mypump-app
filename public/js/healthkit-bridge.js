@@ -749,10 +749,26 @@
   // cliente que conecta hoy tendría que esperar dos semanas para ver algo;
   // con él, ve su score el primer día.
   const FLAG_BACKFILL = 'mypump_health_backfill_v1';
+
+  /* Progreso del backfill en curso, para que la UI pueda decir "40/60 días".
+   * null = no hay backfill corriendo. Lo lee backfillProgreso() desde afuera. */
+  let _progresoBackfill = null;
+
   async function backfill(onProgreso) {
     if (!isNative || !getToken()) return { ok: false };
     try { if (localStorage.getItem(FLAG_BACKFILL) === '1') return { ok: true, saltado: true }; } catch (e) {}
+    try {
+      return await _backfill(onProgreso);
+    } finally {
+      // Pase lo que pase, el progreso se apaga. Si quedara colgado en un valor,
+      // la card mostraría "Trayendo tu historial… 25/60" para siempre.
+      _progresoBackfill = null;
+    }
+  }
+
+  async function _backfill(onProgreso) {
     let total = 0, cosechados = 0, ventanas = 0, fallaron = 0;
+    _progresoBackfill = { hecho: 0, total: 60 };
     for (let off = 60; off > 0; off -= 5) {
       // Las dos puntas a medianoche: si no, la costura entre ventanas cae a
       // media tarde y el día de la juntura sale partido en las dos.
@@ -765,6 +781,7 @@
         total += await postear(regs);
         await postearEntrenos(await recolectarEntrenos(desde, hasta));
       } catch (e) { fallaron++; console.warn('[health] backfill ventana', off, e); }
+      _progresoBackfill = { hecho: 60 - off + 5, total: 60 };
       if (typeof onProgreso === 'function') onProgreso(60 - off + 5, 60);
     }
     // 60 días sin una sola muestra: se avisa ya, sin esperar la racha.
@@ -834,7 +851,42 @@
     } catch (e) {}
   }
 
-  async function connect(onProgreso) {
+  /* Promesa del backfill que está corriendo de fondo, o null.
+   * La expone backfillEnCurso() para que la UI sepa que hay algo en vuelo sin
+   * tener que guardarse la promesa que devolvió connect(). */
+  let _backfillEnCurso = null;
+
+  /* connect(opciones)
+   *
+   * opciones: función → se trata como onProgreso (firma vieja, sigue andando)
+   *           objeto  → { onProgreso?, esperarBackfill? = false }
+   *
+   * ESPERA: permisos → sync() de los últimos 7 días → un solo repintado.
+   * NO ESPERA: el backfill de 60 días. Sale de fondo y se devuelve su promesa.
+   *
+   * POR QUÉ SE PARTIÓ EN DOS
+   * Antes esto esperaba el backfill entero antes de volver. Son 12 ventanas
+   * seriales de 5 días, cada una con ~19 consultas nativas, y leerMuestras()
+   * bisecta hasta 31 llamadas por tipo cuando una ventana devuelve exactamente
+   * el límite de 5000 muestras. En un iPhone con años de historial eso son
+   * minutos. El llamador del onboarding hacía `await connect()` con los dos
+   * botones deshabilitados, así que la app quedaba congelada en "Un momento…"
+   * sin barra de progreso ni forma de salir. Le pasó a Mati en el primer
+   * arranque de la 1.0.4 y tuvo que matar la app.
+   *
+   * Lo que el cliente necesita para seguir usando la app es el permiso y los
+   * últimos 7 días; la historia larga puede llegar sola mientras tanto.
+   *
+   * Devuelve { ok, preguntados, total, sinDatos, backfill }
+   *   sinDatos → veredicto AL MOMENTO del return (post-sync de 7 días). Casi
+   *              siempre false: el veredicto que vale es el de la promesa.
+   *   backfill → Promise<{ ok, ingresados, ventanasFallidas, saltado?, sinDatos }>
+   *              sinDatos re-evaluado cuando el backfill TERMINA — ahí sí se
+   *              miraron los 60 días. Nunca rechaza (tiene su propio catch).
+   */
+  async function connect(opciones) {
+    const opt = typeof opciones === 'function' ? { onProgreso: opciones } : (opciones || {});
+    const onProgreso = opt.onProgreso;
     if (!isNative) {
       anotarIntento({ paso: 'plataforma', motivo: 'no_nativo' });
       return { ok: false, motivo: 'no_disponible' };
@@ -882,22 +934,38 @@
     try { localStorage.setItem(K_RACHA, '0'); } catch (e) {}
     localStorage.setItem('mypump_health_connected', '1');
 
-    // Silencio de UI: sync() y backfill() repintan la card al terminar, y eso
-    // destruía el botón "Conectando…" a mitad de vuelo. Un solo repintado, al final.
+    // Silencio de UI mientras corre el sync: repinta la card al terminar y eso
+    // destruía el botón "Conectando…" a mitad de vuelo. Un solo repintado.
     _silencioUI = true;
     try {
       await sync();
       marcarSync();
-      await backfill(onProgreso);   // trae la historia para que el score arranque ya
     } finally {
       _silencioUI = false;
     }
     refrescarUI();
 
-    // Pasó por la hoja pero no vino ni una muestra en 60 días: casi seguro
-    // destildó todo. Se avisa acá para que el cliente no tenga que descubrirlo
-    // solo tres días después.
-    return { ok: true, preguntados: r.preguntados, total: r.total, sinDatos: fueDenegado() };
+    /* El backfill sale de fondo. No se espera acá (ver el comentario de arriba).
+     * `.catch` propio: si nadie mira la promesa devuelta, un error de ventana no
+     * puede terminar en un unhandledrejection. */
+    const pBackfill = backfill(onProgreso)
+      // El veredicto "no llegó NADA" solo tiene sentido después de haber mirado
+      // los 60 días: por eso se re-evalúa acá y no en el return de abajo.
+      .then(b => Object.assign({ sinDatos: fueDenegado() }, b))
+      .catch(e => ({ ok: false, error: String((e && e.message) || e), sinDatos: false }));
+    _backfillEnCurso = pBackfill;
+    pBackfill.finally(() => { if (_backfillEnCurso === pBackfill) _backfillEnCurso = null; });
+
+    // Los tests (y cualquiera que necesite el estado final) piden esperarlo.
+    if (opt.esperarBackfill) await pBackfill;
+
+    return {
+      ok: true,
+      preguntados: r.preguntados,
+      total: r.total,
+      sinDatos: fueDenegado(),
+      backfill: pBackfill,
+    };
   }
 
   function disconnect() {
@@ -992,5 +1060,13 @@
     sync,
     backfill,
     diagnostico,
+    // Veredicto "pasó por la hoja pero no llegó nada". La UI lo necesita para
+    // distinguir "conectado y esperando" de "conectado y destildó todo".
+    sinDatos: fueDenegado,
+    // Backfill de fondo: la promesa en vuelo (o null) y su avance {hecho,total}.
+    // Con esto la card puede decir "Trayendo tu historial… 40/60 días" sin
+    // tener que haberse guardado lo que devolvió connect().
+    backfillEnCurso: () => _backfillEnCurso,
+    backfillProgreso: () => _progresoBackfill,
   };
 })();

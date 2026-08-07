@@ -96,14 +96,26 @@ const iso = (d, h, m = 0) => new Date(`2026-07-${String(d).padStart(2,'0')}T${St
 
 console.log('\nAPI pública del bridge');
 await t('expone todo lo que cliente.html usa', () => {
-  for (const k of ['isAvailable','isConnected','connect','disconnect','estado','ultimaSync','sync','backfill','diagnostico']) {
+  for (const k of ['isAvailable','isConnected','connect','disconnect','estado','ultimaSync','sync','backfill','diagnostico',
+                   'sinDatos','backfillEnCurso','backfillProgreso']) {
     if (typeof H[k] !== 'function' && k !== 'isConnected') throw new Error(`falta ${k}`);
   }
 });
 
+/* connect() ya NO espera el backfill: lo larga de fondo y devuelve su promesa.
+ *
+ * Para los tests eso es una trampa: si un test no la espera, el backfill del
+ * test anterior sigue posteando filas MIENTRAS corre el siguiente y le
+ * contamina ENVIADOS. Pasó de verdad al hacer el cambio — los tres tests de
+ * sueño empezaron a ver 2 filas donde esperaban 1, y el bug no estaba ni en el
+ * sueño ni en el backfill.
+ *
+ * Regla para este archivo: TODO connect() se espera hasta el final. */
+const conectarCompleto = (opt) => H.connect(Object.assign({ esperarBackfill: true }, opt || {}));
+
 console.log('\nPermisos');
 await t('conectar con permisos concedidos devuelve ok', async () => {
-  const r = await H.connect();
+  const r = await conectarCompleto();
   if (!r || typeof r !== 'object') throw new Error('connect() debe devolver un objeto, no un booleano');
 });
 
@@ -133,7 +145,10 @@ await t('denegar todo se detecta por la falta de datos (HealthKit no lo dice)', 
   limpiarSalud();
   const r = await H.connect();
   if (!r.ok) throw new Error('no debería fallar: la hoja se mostró y el cliente la respondió');
-  if (!r.sinDatos) throw new Error('60 días sin una sola muestra tienen que marcar sinDatos');
+  // El veredicto viaja en la promesa del backfill, NO en el return: cuando
+  // connect() vuelve solo se miraron 7 días, y 7 días vacíos no prueban nada.
+  const b = await r.backfill;
+  if (!b.sinDatos) throw new Error('60 días sin una sola muestra tienen que marcar sinDatos');
   const e = await H.estado();
   if (!e.sinDatos) throw new Error('estado() tiene que reportarlo también, no solo connect()');
 });
@@ -378,7 +393,7 @@ await t('connect() repinta UNA sola vez, no una por cada etapa interna', async (
   const oS = window.loadSalud, oR = window.loadRecuperacion;
   window.loadSalud = () => { n++; };
   window.loadRecuperacion = () => {};
-  try { await H.connect(); } finally { window.loadSalud = oS; window.loadRecuperacion = oR; }
+  try { await conectarCompleto(); } finally { window.loadSalud = oS; window.loadRecuperacion = oR; }
   // sync() repintaba, backfill() repintaba, y connect() dejaba que pasara: cada
   // repintado destruia el boton "Conectando…" a mitad de vuelo.
   eq(n, 1, `repinto ${n} veces desde adentro de connect()`);
@@ -389,7 +404,7 @@ await t('"Reintentar" NO apaga el cartel si no llego ni un dato', async () => {
   store['mypump_health_backfill_v1'] = '1';    // backfill ya hecho: es un reintento
   store['mypump_health_denegado'] = '1';       // el cartel esta prendido
   // Sin muestras: el reintento no trae nada.
-  await H.connect();
+  await conectarCompleto();
   eq(store['mypump_health_denegado'], '1',
      'apago el cartel sin haber leido una sola muestra — el cliente cree que se arreglo');
 });
@@ -399,8 +414,100 @@ await t('si llega un dato, el cartel SI se apaga', async () => {
   store['mypump_health_backfill_v1'] = '1';
   store['mypump_health_denegado'] = '1';
   MUESTRAS.weight = [{ startDate: iso(28, 8), endDate: iso(28, 8), value: 80, unit: 'kg' }];
-  await H.connect();
+  await conectarCompleto();
   eq(store['mypump_health_denegado'], undefined, 'dejo el cartel prendido con datos entrando');
+});
+
+/* ── connect() no espera el backfill ─────────────────────────────────────
+ *
+ * POR QUE IMPORTA: connect() esperaba el backfill entero de 60 dias antes de
+ * volver. Son 12 ventanas seriales de ~19 consultas nativas cada una, y
+ * leerMuestras() bisecta hasta 31 llamadas por tipo cuando una ventana devuelve
+ * exactamente el limite. En un iPhone con anos de historial son minutos. El
+ * onboarding hacia `await connect()` con los dos botones deshabilitados: la app
+ * quedaba congelada en "Un momento…" sin progreso ni salida. Le paso a Mati en
+ * el primer arranque de la 1.0.4 y tuvo que matar la app.
+ *
+ * Lo que estos tests fijan es el contrato nuevo, que es lo unico que impide que
+ * alguien vuelva a poner el await adentro sin darse cuenta.                  */
+console.log('\nconnect(): el backfill va de fondo');
+
+await t('connect() vuelve ANTES de que el backfill termine', async () => {
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  /* Traba SOLO las lecturas del backfill, no las del sync.
+   * Se distinguen por la ventana: sync() mira los ultimos 7 dias, el backfill
+   * arranca 60 dias atras. Trabar por numero de llamada no sirve — sync() hace
+   * una lectura por cada tipo y se colgaba a si mismo. */
+  let soltar;
+  const trabado = new Promise(res => { soltar = res; });
+  const corte = Date.now() - 8 * 86400000;
+  const orig = Capacitor.Plugins.Health.readSamples;
+  Capacitor.Plugins.Health.readSamples = async (arg) => {
+    if (new Date(arg.startDate).getTime() < corte) await trabado;
+    return orig(arg);
+  };
+  try {
+    /* Carrera contra un reloj, en vez de un await pelado.
+     * Si connect() volviera a esperar el backfill, un `await H.connect()` se
+     * quedaria colgado del `trabado` que todavia no se solto y el suite entero
+     * se congelaria sin decir nada — el peor modo de falla para un test. Asi
+     * falla en 2 segundos y con el motivo escrito. */
+    const r = await Promise.race([
+      H.connect(),
+      new Promise(res => setTimeout(() => res('TIMEOUT'), 2000)),
+    ]);
+    if (r === 'TIMEOUT') {
+      throw new Error('connect() no volvio en 2s con el backfill trabado: volvio a esperarlo adentro');
+    }
+    eq(r.ok, true, 'connect() no volvio ok');
+    if (!r.backfill || typeof r.backfill.then !== 'function') {
+      throw new Error('connect() tiene que devolver la promesa del backfill');
+    }
+    if (!H.backfillEnCurso()) throw new Error('backfillEnCurso() deberia exponer la promesa en vuelo');
+    soltar();
+    const b = await r.backfill;
+    if (!b || typeof b !== 'object') throw new Error('la promesa del backfill no resolvio a un objeto');
+  } finally {
+    soltar();
+    Capacitor.Plugins.Health.readSamples = orig;
+  }
+  // Y al terminar, nada queda colgado.
+  eq(H.backfillEnCurso(), null, 'quedo una promesa de backfill colgada despues de terminar');
+  eq(H.backfillProgreso(), null, 'quedo progreso fantasma: la card mostraria "25/60" para siempre');
+});
+
+await t('onProgreso avanza monotonico y cierra en 60/60', async () => {
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  const ticks = [];
+  await H.connect({ onProgreso: (hecho, total) => ticks.push([hecho, total]), esperarBackfill: true });
+  if (!ticks.length) throw new Error('onProgreso nunca se llamo — la UI no puede mostrar avance');
+  eq(ticks.length, 12, `esperaba 12 ventanas, hubo ${ticks.length}`);
+  for (let i = 1; i < ticks.length; i++) {
+    if (ticks[i][0] <= ticks[i - 1][0]) throw new Error(`el progreso retrocedio: ${ticks[i-1]} -> ${ticks[i]}`);
+  }
+  eq(ticks[ticks.length - 1][0], 60, 'no cerro en 60');
+  eq(ticks[ticks.length - 1][1], 60, 'el total no es 60');
+});
+
+await t('la firma vieja connect(fn) sigue tratando fn como onProgreso', async () => {
+  // cliente.html viejo (y cualquier build en la calle) llama connect(fn).
+  // Romper eso dejaria la conexion sin progreso en silencio.
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  const ticks = [];
+  const r = await H.connect((hecho, total) => ticks.push([hecho, total]));
+  await r.backfill;
+  if (!ticks.length) throw new Error('la firma vieja dejo de invocar onProgreso');
+});
+
+await t('esperarBackfill:true no vuelve hasta tener los 60 dias posteados', async () => {
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  MUESTRAS.weight = [{ startDate: iso(28, 8), endDate: iso(28, 8), value: 80, unit: 'kg' }];
+  const regs = await capturar(() => conectarCompleto());
+  if (!regs.length) throw new Error('volvio sin haber posteado nada del backfill');
 });
 
 console.log('\nbackfill(): no marcarse como hecho si fallo entero');

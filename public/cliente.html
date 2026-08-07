@@ -1040,6 +1040,31 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 <script src="/js/config.js"></script>
 <script src="/js/supabase-client.js"></script>
 <script src="/js/food-db.js"></script>
+<script>
+/* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
+ *
+ * TIENE que evaluarse ANTES que healthkit-bridge.js, porque el bridge decide
+ * `isNative` mirando window.Capacitor en el momento en que se evalúa. Por eso
+ * document.write y no appendChild: es lo único que garantiza que estos dos
+ * scripts corran antes del siguiente <script src> que ya está en el parser.
+ * Un type="module" tampoco serviría — siempre queda diferido.
+ *
+ * TRIPLE COMPUERTA, para que esto no pueda activarse en producción:
+ *   1. ?mockhealth=1 explícito
+ *   2. no hay un Capacitor real → nunca dentro de la app nativa
+ *   3. solo en localhost → un cliente en app.mypumpteam.com no puede prenderlo
+ * Ver docs/BANCO_PRUEBAS_SALUD.md.
+ */
+(function () {
+  var q = new URLSearchParams(location.search);
+  var capReal = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if (q.get('mockhealth') === '1' && !capReal && local) {
+    document.write('<script src="/js/salud-sintetica.js"><\/script>');
+    document.write('<script src="/js/health-mock.js"><\/script>');
+  }
+})();
+</script>
 <script src="/js/healthkit-bridge.js"></script>
 <script src="/js/notificaciones.js"></script>
 <script src="/js/app.js"></script>
@@ -3424,24 +3449,42 @@ async function mostrarOnboardingPermisos() {
     if (aviso) { err.hidden = false; err.innerHTML = aviso; aviso = null; }
 
     btnSi.onclick = async () => {
-      btnSi.disabled = true; btnNo.disabled = true;
+      /* "Ahora no" NO se deshabilita.
+       *
+       * Antes se deshabilitaban los dos y se hacía `await connect()` sin
+       * timeout — y connect() esperaba el backfill de 60 días. En el primer
+       * arranque de la 1.0.4, con años de historial en Salud, eso dejó la
+       * pantalla congelada en "Un momento…" sin barra ni salida: Mati tuvo que
+       * matar la app. La regla es que la puerta de salida nunca se traba. */
+      btnSi.disabled = true;
       btnSi.textContent = 'Un momento…';
+      const gen = ++_obGen;
       let r;
       try {
-        r = paso === 'salud' ? await window.MyPumpHealth.connect()
-                             : await window.MyPumpNotif.activar();
+        r = paso === 'salud'
+          ? await _conTimeout(window.MyPumpHealth.connect({ onProgreso: _progresoBackfillUI }), 20000)
+          : await window.MyPumpNotif.activar();
       } catch (e) { r = { ok: false, motivo: 'error' }; }
+
+      // Si el cliente tocó "Ahora no" mientras esto estaba en vuelo, este paso
+      // ya no existe: no se repinta nada encima de lo que está viendo ahora.
+      if (gen !== _obGen) return;
+
+      if (r && r.timeout) {
+        // El permiso sigue resolviéndose de fondo. Se avanza igual: quedarse
+        // acá esperando es exactamente el bug que estamos arreglando.
+        aviso = 'Salud está tardando un poco más de lo normal — sigue conectándose de fondo.';
+        i++; pintar();
+        return;
+      }
 
       if (r && r.ok) {
         if (paso === 'salud') { try { await loadSalud(); await loadRecuperacion(); } catch (e) {} }
-        // Aceptó la hoja pero no llegó nada: se sigue igual (ya está conectado),
-        // y el aviso viaja al paso siguiente para que después no busque el
-        // problema a ciegas. Si era el último paso se pierde, pero eso ya lo
-        // cubre la card de Salud en Mis datos, que es permanente.
-        if (r.sinDatos) {
-          aviso = 'Salud quedó conectada, aunque todavía no llegó ningún dato. Si sigue así, revisá '
-                + '<b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.';
-        }
+        /* Acá se avisaba "conectó pero no llegó nada" mirando r.sinDatos.
+         * Ya no: connect() vuelve tras 7 días y ese veredicto necesita los 60.
+         * Avisarlo ahora sería acusar de denegar a alguien que no entrenó esta
+         * semana. Cuando el backfill termina, el veredicto lo muestran las
+         * cards de Mi Día, que son permanentes y están mejor ubicadas. */
         i++; pintar();
         return;
       }
@@ -3458,10 +3501,22 @@ async function mostrarOnboardingPermisos() {
       btnNo.textContent = ultimo ? 'Entendido' : 'Seguir';
     };
 
-    btnNo.onclick = () => { i++; pintar(); };
+    // Bumpea la generación: una conexión en vuelo ya no puede repintar encima.
+    btnNo.onclick = () => { _obGen++; i++; pintar(); };
   }
 
   pintar();
+}
+
+/* Generación del paso de onboarding que está en pantalla. Sirve para descartar
+ * la continuación de un connect() lento cuyo paso ya fue cerrado a mano. */
+let _obGen = 0;
+
+/* Espera `p`, pero como mucho `ms`. No cancela nada — lo que quedó en vuelo
+ * sigue: solo deja de bloquear a la UI. Devuelve {ok:true, timeout:true} para
+ * que el llamador lo distinga de un éxito real. */
+function _conTimeout(p, ms) {
+  return Promise.race([p, new Promise(res => setTimeout(() => res({ ok: true, timeout: true }), ms))]);
 }
 
 function openRirPicker(exId, idx) {
@@ -5030,7 +5085,10 @@ async function loadSalud() {
     STATE.salud = (await window.mypumpDB.getSalud(TOKEN, desde, hasta)) || [];
   } catch (_) { STATE.salud = []; }
   // Salud vive en Mi Día y Peso en Revisión: cada una se repinta en la suya.
-  if (STATE.scene === 'myday')    renderMydaySalud();
+  // Recuperación también: desde que su estado "conectado pero sin score" decide
+  // el texto mirando STATE.salud, si no se repinta acá el cliente se queda con
+  // la copy que se calculó cuando STATE.salud todavía estaba vacío.
+  if (STATE.scene === 'myday')  { renderMydaySalud(); renderMydayRecuperacion(); }
   if (STATE.scene === 'revision') renderMydayPeso();
 }
 /* Valor de un tipo en una fecha, eligiendo la MEJOR fuente.
@@ -5074,21 +5132,34 @@ function _saludValor(tipo, fecha) {
  * el cliente podía tocarlo cincuenta veces sin que pasara nada ni supiera por
  * qué. La única salida real es Ajustes, y hay que decírselo.
  */
+/* Pinta el avance del backfill donde sea que esté visible ahora.
+ * Se busca el nodo en cada tick a propósito: cada re-render de las cards lo
+ * reemplaza, así que guardarse la referencia una vez no sirve. */
+function _progresoBackfillUI(hecho, total) {
+  const s = document.getElementById('saludBackfillProg')
+         || document.getElementById('recupBackfillProg');
+  if (s) s.textContent = `${hecho}/${total}`;
+}
+
 async function _conectarSalud(btn, textoOriginal, onOk) {
-  const r = await window.MyPumpHealth.connect();
+  const r = await window.MyPumpHealth.connect({ onProgreso: _progresoBackfillUI });
   if (r && r.ok) {
     if (typeof onOk === 'function') await onOk(r);
-    // Conectó, pero no llegó ni un dato: se avisa igual. Apple no dice si el
-    // cliente denegó la lectura, así que esto es lo más cerca que se puede
-    // estar de saberlo, y callarlo lo dejaría con una card vacía sin motivo.
-    //
-    // El contenedor se resuelve ACÁ, después de onOk(), y no se usa el `btn`
-    // que entró por parámetro: onOk() reemplaza el innerHTML de la card, así
-    // que ese nodo ya no está en el documento. El mensaje se le colgaba a un
-    // huérfano y no lo veía nadie — y es justo el mensaje que explica por qué
-    // la card sigue vacía después de conectar.
-    if (r.sinDatos) _avisoSalud(_contenedorSalud(btn), 'Quedó conectado pero no llegó ningún dato. Fijate que esté todo '
-      + 'activado en <b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.');
+    /* El aviso de "no llegó nada" espera al backfill.
+     *
+     * connect() ya no lo espera (vuelve apenas termina el sync de 7 días), así
+     * que su `sinDatos` mira una semana y no prueba nada: avisar con eso sería
+     * acusar de haber denegado a alguien que simplemente no entrenó esta
+     * semana. El veredicto que vale es el de los 60 días, y llega después.
+     *
+     * El contenedor se resuelve al completarse, no ahora: onOk() ya reemplazó
+     * el innerHTML de la card, así que el `btn` que entró por parámetro es un
+     * nodo huérfano y el mensaje no lo vería nadie — y es justo el mensaje que
+     * explica por qué la card sigue vacía. */
+    if (r.backfill) r.backfill.then(b => {
+      if (b && b.sinDatos) _avisoSalud(_contenedorSalud(btn), 'Quedó conectado pero no llegó ningún dato. Fijate que esté todo '
+        + 'activado en <b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.');
+    });
     return true;
   }
 
@@ -5113,15 +5184,33 @@ async function _conectarSalud(btn, textoOriginal, onOk) {
 }
 
 /* Dónde colgar un aviso de salud, resuelto en el momento de usarlo.
- * Después de un re-render el botón viejo quedó fuera del documento, así que se
- * busca el que está vivo ahora; y si la card pasó a un estado sin botón, se cae
- * al cuerpo de la sección de Recuperación, que siempre existe. */
+ *
+ * Después de un re-render el botón que se tocó quedó fuera del documento, así
+ * que hay que encontrar su reemplazo. Lo importante es que sea EL DE SU CARD:
+ * antes esto arrancaba con `querySelector('[id^="btnConnectHealth"]')`, y ese
+ * prefijo matchea tanto btnConnectHealth (card Salud) como btnConnectHealth2
+ * (card Recuperación). Como Recuperación se emite primero en el DOM, ganaba
+ * siempre: conectabas desde Salud y el aviso aparecía bajo la otra card, sin
+ * relación visible con lo que acababas de tocar. */
 function _contenedorSalud(btnViejo) {
-  const vivo = document.querySelector('[id^="btnConnectHealth"]');
-  if (vivo && vivo.parentElement) return vivo.parentElement;
-  const cuerpo = document.querySelector('#myday-recup .myday-section-body');
-  if (cuerpo) return cuerpo;
-  return (btnViejo && btnViejo.isConnected) ? btnViejo.parentElement : null;
+  // 1. El mismo botón, si nadie lo re-renderizó.
+  if (btnViejo && btnViejo.isConnected && btnViejo.parentElement) return btnViejo.parentElement;
+  // 2. Su gemelo tras el re-render: mismo id, nodo nuevo.
+  if (btnViejo && btnViejo.id) {
+    const gemelo = document.getElementById(btnViejo.id);
+    if (gemelo && gemelo.parentElement) return gemelo.parentElement;
+  }
+  // 3. La card a la que pertenecía, aunque ya no tenga botón.
+  const cardDe = { btnConnectHealth: '#myday-salud', btnConnectHealth2: '#myday-recup' };
+  const sel = btnViejo && cardDe[btnViejo.id];
+  if (sel) {
+    const cuerpo = document.querySelector(`${sel} .myday-section-body`);
+    if (cuerpo) return cuerpo;
+  }
+  // 4. Último recurso: cualquier card de salud que esté en pantalla.
+  return document.querySelector('#myday-recup .myday-section-body')
+      || document.querySelector('#myday-salud .myday-section-body')
+      || null;
 }
 
 function _avisoSalud(cont, html) {
@@ -5192,6 +5281,63 @@ function _recSpark(serie) {
   </svg>`;
 }
 
+/* ¿Llegó alguno de estos tipos en los últimos N días?
+ * STATE.salud ya trae 60 días cargados por loadSalud(), así que esto se
+ * responde sin una consulta nueva. */
+function _saludTieneReciente(tipos, dias) {
+  const corte = new Date(hoyLocal() + 'T00:00:00');
+  corte.setDate(corte.getDate() - (dias || 7));
+  return (STATE.salud || []).some(r =>
+    tipos.indexOf(r.tipo) !== -1 && r.valor != null &&
+    new Date(r.fecha + 'T00:00:00') >= corte);
+}
+
+/* Qué decirle a alguien que YA conectó Apple Salud pero todavía no tiene score.
+ *
+ * Son cuatro situaciones distintas y antes las cuatro mostraban el mismo botón
+ * inerte. Lo que las separa es qué está llegando, no cuánto falta. */
+const _TIPOS_NOCTURNOS = ['fc_reposo', 'hrv_ms', 'sueno_min'];
+function _recupSinScoreConectado() {
+  const H = window.MyPumpHealth;
+  const prog = H && H.backfillProgreso && H.backfillProgreso();
+
+  // 1. Todavía trayendo la historia: es cuestión de esperar, y se ve el avance.
+  if (prog) {
+    return `<div class="rec-frase">Trayendo tu historial de Salud… <span id="recupBackfillProg" class="rec-nota" style="font-family:var(--font-mono)">${prog.hecho}/${prog.total}</span> días</div>
+      <div class="rec-nota">Puede tardar un rato la primera vez. Podés seguir usando la app.</div>`;
+  }
+
+  const nocturnosReciente = _saludTieneReciente(_TIPOS_NOCTURNOS, 7);
+  // 60 días es todo lo que trae loadSalud(): "alguna vez" es eso.
+  const nocturnosAlguna   = _saludTieneReciente(_TIPOS_NOCTURNOS, 60);
+  const diurnosReciente   = _saludTieneReciente(['pasos', 'actividad_min', 'kcal_activas'], 7);
+
+  /* 2. Tuvo datos de la noche y dejó de tenerlos: el reloj se desincronizó, se
+   *    quedó sin batería, lo dejó de usar. Va PRIMERO que el caso del iPhone
+   *    pelado — si no, alguien que tiene reloj pero se le cortó hace tres días
+   *    leería "necesitás un reloj" teniendo uno puesto. */
+  if (!nocturnosReciente && nocturnosAlguna) {
+    return `<div class="rec-frase">Estos días no están llegando los datos de la noche.</div>
+      <div class="rec-nota">Fijate que el reloj esté sincronizando con la app Salud del iPhone.</div>`;
+  }
+
+  // 3. El iPhone manda pasos, pero nadie mide la noche, y nunca lo hizo. Es el
+  //    cliente sin reloj: no es un error, y hay que decirlo sin prometer nada.
+  if (diurnosReciente) {
+    return `<div class="rec-frase">Tu iPhone ya está mandando pasos y actividad. 👌</div>
+      <div class="rec-nota">Para el score de recuperación hace falta lo que se mide durmiendo — pulso en reposo, sueño y variabilidad — y eso lo da un reloj o un anillo (Apple Watch, Oura, Garmin…). En cuanto uses uno, esto se arma solo.</div>`;
+  }
+
+  // 4. Conectado y cero datos. Si el backfill ya miró 60 días y no vio nada,
+  //    lo más probable es que se hayan destildado los permisos.
+  if (H && H.sinDatos && H.sinDatos()) {
+    return `<div class="rec-frase">Salud está conectada pero no llegó ningún dato.</div>
+      <div class="rec-nota">Fijate que esté todo activado en <b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Salud</b> → <b>MyPump</b>.</div>`;
+  }
+  return `<div class="rec-frase">Conectado. Esperando los primeros datos de tu iPhone…</div>
+    <div class="rec-nota">Si tenés reloj o anillo, con eso el score arranca mucho más rápido.</div>`;
+}
+
 function renderMydayRecuperacion() {
   const el = document.getElementById('myday-recup');
   if (!el) return;
@@ -5208,18 +5354,32 @@ function renderMydayRecuperacion() {
 
   // Sin ningún dato: NO se esconde la card. Que la de Salud se auto-ocultara
   // es la razón por la que nadie notó que el sync estuvo roto desde el día uno.
+  //
+  // OJO CON EL BOTÓN: esta rama se gatea por `estado`, no por si Salud está
+  // conectada. Mientras eso fue así, un cliente YA conectado seguía viendo
+  // "Conectar Apple Health" y al tocarlo no pasaba nada visible: el permiso
+  // resuelve al instante, el backfill se saltea y el onOk re-renderiza esta
+  // misma card idéntica. Mati lo reportó como "toco y no hace nada" en la
+  // 1.0.4, y sin reloj `insuficiente` no se va nunca: el botón quedaba muerto
+  // para siempre. Un botón que no cambia nada es peor que no tener botón.
   if (!row || row.estado === 'insuficiente') {
-    el.innerHTML = wrap(`<p class="salud-connect-txt">Tu recuperación se calcula con lo que mide tu reloj mientras dormís: pulso en reposo, sueño y variabilidad.</p>
-      ${native
-        ? `<button class="btn-primary" id="btnConnectHealth2" style="width:100%">Conectar Apple Health</button>`
-        : `<div class="rec-nota">Si tenés reloj o anillo, conectalo desde la app de iPhone y esto se llena solo.</div>`}`);
-    const b = document.getElementById('btnConnectHealth2');
-    if (b) b.onclick = async () => {
-      b.disabled = true; b.textContent = 'Conectando…';
-      await _conectarSalud(b, 'Conectar Apple Health', async () => {
-        await loadRecuperacion(); await loadSalud();
-      });
-    };
+    const conectado = native && window.MyPumpHealth.isConnected();
+    if (!conectado) {
+      el.innerHTML = wrap(`<p class="salud-connect-txt">Tu recuperación se calcula con lo que mide tu reloj mientras dormís: pulso en reposo, sueño y variabilidad.</p>
+        ${native
+          ? `<button class="btn-primary" id="btnConnectHealth2" style="width:100%">Conectar Apple Health</button>`
+          : `<div class="rec-nota">Si tenés reloj o anillo, conectalo desde la app de iPhone y esto se llena solo.</div>`}`);
+      const b = document.getElementById('btnConnectHealth2');
+      if (b) b.onclick = async () => {
+        b.disabled = true; b.textContent = 'Conectando…';
+        await _conectarSalud(b, 'Conectar Apple Health', async () => {
+          await loadRecuperacion(); await loadSalud();
+        });
+      };
+      return;
+    }
+    // Conectado pero sin score: se explica QUÉ falta, sin botón que no haga nada.
+    el.innerHTML = wrap(_recupSinScoreConectado());
     return;
   }
 
@@ -5706,7 +5866,20 @@ function renderMydaySalud() {
   // Sin pasos NI actividad no hay nada que mostrar acá (la recuperación tiene
   // su propia card arriba, que sí explica qué hacer cuando no hay wearable).
   const hayActividad = pasos.length || (STATE.salud || []).some(r => r.tipo === 'actividad_min');
-  if (!hayActividad) { el.innerHTML = ''; return; }
+  if (!hayActividad) {
+    // Todavía no hay nada que mostrar, pero si el backfill está trayendo la
+    // historia conviene decirlo: si no, el cliente acaba de conectar y ve la
+    // pantalla exactamente igual que antes, sin ninguna señal de que algo pasó.
+    const prog = window.MyPumpHealth && window.MyPumpHealth.backfillProgreso
+              && window.MyPumpHealth.backfillProgreso();
+    el.innerHTML = prog ? `<div class="myday-section">
+        <div class="myday-section-hdr"><span class="myday-section-icon">👟</span>
+          <span class="myday-section-title">Salud</span></div>
+        <div class="myday-section-body">
+          <div class="rec-frase">Trayendo tu historial… <span id="saludBackfillProg" style="font-family:var(--font-mono)">${prog.hecho}/${prog.total}</span> días</div>
+        </div></div>` : '';
+    return;
+  }
 
   // Math.round antes de formatear: el bridge redondea, pero un agregador puede
   // mandar decimales y "8.548,161 pasos" queda ridículo.
