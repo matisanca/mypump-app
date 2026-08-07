@@ -62,6 +62,37 @@ incluso desde un Samsung. Y el `CHECK` de la tabla no conocía `health_connect`,
 así que las filas se descartaban **una por una, en silencio**
 (`_mypump_upsert_salud` hace `CONTINUE WHEN check_violation`). Migración 056.
 
+## ⛔ El único bloqueante que queda del lado de la base
+
+**La migración 056 NO está aplicada.** Verificado contra
+`docs/ESQUEMA_PRODUCCION.txt`: el CHECK vigente de `mypump_salud_diaria.fuente`
+acepta siete valores y `health_connect` no es ninguno.
+
+Mientras siga así, un cliente de Android conecta Health Connect, la app le dice
+que sincronizó, y **no se guarda una sola fila**. No hay error, ni log, ni fila
+parcial: el `CONTINUE WHEN check_violation` las descarta de a una.
+
+Por eso `npm test` está **en rojo a propósito**:
+`check-fuentes-salud.mjs` cruza toda `fuente` que el código puede escribir
+contra la lista blanca real de producción, y falla mientras falte una. Si el
+workflow de Codemagic corre los tests, el AAB tampoco sale — que es lo que se
+busca: no publicar en Play una app cuyos datos la base descarta.
+
+Se destraba en dos pasos:
+
+1. Aplicar `supabase/migrations/056_fuente_health_connect.sql` en el editor SQL.
+2. Regenerar el volcado, o el chequeo sigue rojo aunque ya esté arreglado:
+
+```bash
+ssh mini "~/agentkit-coach/venv/bin/python3 ~/esquema.py" > docs/ESQUEMA_PRODUCCION.txt
+```
+
+> La 056 agrega el CHECK de `mypump_entrenos_health` como **`NOT VALID`** a
+> propósito. Esa tabla hoy no tiene ningún CHECK, así que ahí no hay nada roto;
+> y un `ADD CONSTRAINT` normal valida las filas existentes, de modo que una sola
+> fila con una fuente rara abortaría la transacción entera — llevándose puesto
+> el arreglo de `mypump_salud_diaria`, que es el que importa.
+
 ## Probarlo desde la Mac, sin un Android
 
 ```bash

@@ -38,6 +38,8 @@
 --   ALTER TABLE mypump_salud_diaria DROP CONSTRAINT mypump_salud_diaria_fuente_check;
 --   ALTER TABLE mypump_salud_diaria ADD CONSTRAINT mypump_salud_diaria_fuente_check
 --     CHECK (fuente IN ('apple_health','rook','manual','whoop','oura','withings','polar'));
+--   -- el de entrenos no se restaura: antes de esta migración NO existía.
+--   ALTER TABLE mypump_entrenos_health DROP CONSTRAINT mypump_entrenos_health_fuente_check;
 --   -- y volver a aplicar 054 para revertir el CASE del motor.
 -- ============================================================
 
@@ -50,14 +52,49 @@ ALTER TABLE mypump_salud_diaria
   CHECK (fuente IN ('apple_health', 'health_connect', 'rook', 'manual',
                     'whoop', 'oura', 'withings', 'polar'));
 
--- Los entrenos importados del wearable llevan su propia columna `fuente`.
+-- ── 1b. Los entrenos: NOT VALID, y el motivo importa ──
+--
+-- mypump_entrenos_health tiene columna `fuente` pero NO tiene ningún CHECK
+-- (verificado contra docs/ESQUEMA_PRODUCCION.txt, sección CHECK CONSTRAINTS:
+-- lista 19 tablas, incluidos los DOS de mypump_salud_diaria, y esta tabla no
+-- figura). O sea que acá no hay nada roto: sin constraint, los entrenos de un
+-- Android entran igual. El bug de Android es SOLO el de arriba.
+--
+-- Se agrega igual, por simetría y para que mañana no entre cualquier cosa. Pero
+-- va NOT VALID, y eso no es prolijidad: un ADD CONSTRAINT normal VALIDA las
+-- filas que ya están, y si UNA sola tiene una fuente fuera de la lista, el ALTER
+-- aborta. Como el editor SQL corre el archivo en una transacción, ese aborto se
+-- llevaría puesto el arreglo de mypump_salud_diaria, que es el único que hoy
+-- está tirando datos a la basura. No vale la pena arriesgar lo que importa por
+-- lo que no.
+--
+-- NOT VALID chequea lo que entra de ahora en adelante y deja en paz lo viejo.
 ALTER TABLE mypump_entrenos_health
   DROP CONSTRAINT IF EXISTS mypump_entrenos_health_fuente_check;
 
 ALTER TABLE mypump_entrenos_health
   ADD CONSTRAINT mypump_entrenos_health_fuente_check
   CHECK (fuente IN ('apple_health', 'health_connect', 'rook', 'manual',
-                    'whoop', 'oura', 'withings', 'polar'));
+                    'whoop', 'oura', 'withings', 'polar'))
+  NOT VALID;
+
+-- Qué hay realmente en esa columna. Si sale limpio, lo de abajo lo valida.
+DO $$
+DECLARE v_raras TEXT;
+BEGIN
+  SELECT string_agg(DISTINCT coalesce(fuente, '<NULL>'), ', ')
+    INTO v_raras
+    FROM mypump_entrenos_health
+   WHERE fuente IS NOT NULL
+     AND fuente NOT IN ('apple_health', 'health_connect', 'rook', 'manual',
+                        'whoop', 'oura', 'withings', 'polar');
+  IF v_raras IS NULL THEN
+    RAISE NOTICE 'entrenos: ninguna fuente fuera de la lista. Podés validar el constraint con:';
+    RAISE NOTICE '  ALTER TABLE mypump_entrenos_health VALIDATE CONSTRAINT mypump_entrenos_health_fuente_check;';
+  ELSE
+    RAISE WARNING 'entrenos: hay fuentes fuera de la lista -> %. El constraint queda NOT VALID a propósito.', v_raras;
+  END IF;
+END $$;
 
 -- ── 2. El motor tiene que conocer la fuente nueva ──
 --
