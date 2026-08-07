@@ -10,3 +10,6 @@ node_modules/
 # config.js: anon key pública — SÍ se commitea (es necesario para el deploy estático).
 # Si algún día se agrega una key privada, moverla a env vars de Cloudflare Pages.
 # public/js/config.js  ← NO ignorar
+
+# SQL generado por el banco de pruebas: se regenera con un comando.
+scripts/.plan-*.sql
