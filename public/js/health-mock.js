@@ -30,6 +30,18 @@
                               para volver a ver el flujo desde cero
      &mocklento=1             mete 700 ms por lectura del backfill: sirve para
                               VER el progreso y comprobar que la UI no se traba
+     &mockplataforma=android  se hace pasar por Health Connect en vez de
+                              HealthKit. Cambia tres cosas que el bridge decide
+                              por plataforma y que si salen mal NO dan error,
+                              dan datos malos:
+                                · exerciseTime y appleSleepingWristTemperature
+                                  no existen en Android; pedirlos voltea el
+                                  pedido de permisos ENTERO
+                                · la fuente pasa a 'health_connect'
+                                · el HRV se etiqueta rmssd (Health Connect no
+                                  tiene SDNN) y basalCalories es una TASA
+                              Con esto se ve la app entera como la ve un
+                              cliente de Android, desde el navegador de la Mac.
 
    Ver docs/BANCO_PRUEBAS_SALUD.md.
    ============================================================= */
@@ -125,12 +137,43 @@
     async queryWorkouts() { return { workouts: [] }; },
   };
 
+  /* La plataforma la lee el bridge UNA sola vez, al evaluarse, así que tiene
+   * que estar puesta ANTES de que se cargue healthkit-bridge.js. Por eso el
+   * loader de cliente.html mete este archivo justo antes. */
+  const plataforma = q.get('mockplataforma') === 'android' ? 'android' : 'ios';
+
   window.Capacitor = {
     isNativePlatform: () => true,
-    getPlatform: () => 'ios',
+    getPlatform: () => plataforma,
     Plugins: { Health },
   };
 
-  console.warn(`[mock] HealthKit simulado — escenario "${escenario}", ${dias} días, seed ${seed}` +
+  /* En Android el sistema no conoce estos dos tipos. El mock los rechaza igual
+   * que Health Connect: si el bridge los pidiera, acá se ve el fallo — en vez
+   * de descubrirlo cuando un cliente toca "Conectar" y no pasa nada. */
+  if (plataforma === 'android') {
+    const SIN_ANDROID = ['exerciseTime', 'appleSleepingWristTemperature'];
+    const pedir = Health.requestAuthorization;
+    Health.requestAuthorization = async (opts) => {
+      const malos = (opts && opts.read || []).filter(t => SIN_ANDROID.includes(t));
+      if (malos.length) {
+        // Igual que el plugin real: valida TODO antes de tocar el sistema, así
+        // que uno desconocido tira la tanda entera y NINGÚN tipo queda
+        // autorizado. Es el bug de vo2Max, del otro lado.
+        throw new Error(`Unknown data type(s): ${malos.join(', ')} — el pedido ENTERO se rechaza`);
+      }
+      return pedir(opts);
+    };
+    const leer = Health.readSamples;
+    Health.readSamples = async (opts) => {
+      if (SIN_ANDROID.includes(opts && opts.dataType)) {
+        throw new Error(`Unknown data type: ${opts.dataType}`);
+      }
+      return leer(opts);
+    };
+  }
+
+  console.warn(`[mock] ${plataforma === 'android' ? 'Health Connect' : 'HealthKit'} simulado — ` +
+               `escenario "${escenario}", ${dias} días, seed ${seed}` +
                (denegar ? ' · SIN DATOS (mockdeny)' : '') + (lento ? ' · LENTO' : ''));
 })();

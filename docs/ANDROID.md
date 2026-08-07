@@ -1,0 +1,183 @@
+# MyPump en Android — Health Connect y Google Play
+
+El 25% de los clientes usa Android. Este documento es cómo llega la app ahí y
+qué falta para publicarla.
+
+## Lo que ya está hecho
+
+| | estado |
+|---|---|
+| Bridge multiplataforma (iOS + Android) | ✅ commit `48d8354` |
+| Proyecto Android (`android/`) | ✅ commit `3e5c4ba` |
+| Manifest recortado a 17 permisos de lectura | ✅ |
+| Workflow de Codemagic (`android-play`) | ✅ |
+| Banco de pruebas con modo Android | ✅ |
+| Cuenta de Google Play | ❌ **falta — lo tenés que hacer vos** |
+| Keystore de subida | ❌ falta |
+| SHA-256 en `assetlinks.json` | ❌ falta (sale del primer AAB) |
+
+## De dónde salen los datos
+
+**No es Google Fit.** Sus APIs se apagan a fin de 2026 y no aceptan altas
+nuevas desde mayo de 2024. El reemplazo es **Health Connect**, que en Android
+14+ viene en el sistema y en Android 9-13 es una app aparte de la Play Store.
+
+Health Connect es un agregador: no mide nada, guarda lo que le escriben Samsung
+Health, Mi Fitness, Fitbit, Garmin y compañía.
+
+**Lo bueno:** su HRV es `HeartRateVariabilityRmssdRecord` — **rMSSD**.
+HealthKit solo tiene SDNN. El motor de recuperación le da más peso al rMSSD (45
+vs 40) porque el SDNN del Apple Watch se muestrea en momentos aleatorios y
+tiene ~29% de error. **En Android el score sale más confiable que en iPhone.**
+
+**Lo malo, y hay que saberlo antes de prometerlo:** Samsung Health **no
+escribe** frecuencia cardíaca en reposo, HRV ni frecuencia respiratoria a
+Health Connect — solo las lee. El usuario ve el dato en Samsung Health y la app
+lee vacío. Sueño y pasos sí llegan. O sea que para un cliente con Galaxy Watch
+el score puede quedar en `insuficiente` igual que un iPhone sin reloj. La card
+ya explica eso honestamente (`renderMydayRecuperacion`).
+
+## Los tres bugs que había, y por qué no se veían
+
+Ninguno daba error. Los tres daban datos malos en silencio.
+
+**1. Dos tipos que Android no conoce.** `exerciseTime` y
+`appleSleepingWristTemperature` no están en el enum de Kotlin. El plugin valida
+**todos** los tipos antes de tocar el sistema, así que uno desconocido tira el
+pedido de permisos **entero**: el cliente conecta, la app dice que sincronizó,
+y no llega nada. Es el mismo bug que `vo2Max` nos hizo en iOS. Van marcados
+`soloIOS` y `check-healthkit-tipos.mjs` valida contra los dos enums.
+
+**2. `basalCalories` era un factor 4x.** En iOS son muestras de energía y
+sumarlas está bien. En Android el plugin devuelve
+`BasalMetabolicRateRecord.inKilocaloriesPerDay` — una **tasa**, el mismo ~1.800
+repetido en cada lectura. Sumarlo daba 7.200 kcal de metabolismo basal, y ese
+número entra a `mypump_get_gasto_real` como "TDEE medido". Override
+`comoAndroid: 'mediana'`.
+
+**3. La fuente estaba hardcodeada.** Todo se grababa como `apple_health`,
+incluso desde un Samsung. Y el `CHECK` de la tabla no conocía `health_connect`,
+así que las filas se descartaban **una por una, en silencio**
+(`_mypump_upsert_salud` hace `CONTINUE WHEN check_violation`). Migración 056.
+
+## Probarlo desde la Mac, sin un Android
+
+```bash
+npm run dev
+open "http://localhost:8790/cliente?demo=1&mockhealth=1&mockplataforma=android&mockescenario=normal&mockreset=1"
+```
+
+> **Usá `/cliente`, sin `.html`.** El servidor de desarrollo (`npx serve`) hace
+> un 301 de `/cliente.html` a `/cliente` y **se come el query string**. En
+> producción (Cloudflare Pages) no pasa.
+
+El mock se hace pasar por Health Connect y **rechaza los dos tipos prohibidos
+igual que el sistema real**, así que si alguien los reintroduce se ve acá y no
+en el teléfono de un cliente.
+
+Verificado el 7-ago-2026: 17 tipos pedidos, 0 prohibidos, 517 filas todas con
+`fuente: health_connect`, HRV como `rmssd`.
+
+Los tests automáticos:
+
+```bash
+node scripts/test-bridge-android.mjs      # 8 tests del bridge como Android
+node scripts/check-android-permisos.mjs   # manifest ↔ bridge
+npm test                                  # todo
+```
+
+## Los permisos: por qué son exactamente 17
+
+El plugin declara **43** en su manifest: 22 de lectura y **21 de escritura**,
+o sea todo lo que sabe hacer, lo use la app o no. El manifest merger los suma
+solos.
+
+MyPump **solo lee**. Y Google hace justificar **cada permiso, uno por uno**, en
+la *Health apps declaration* de Play Console — uno declarado sin uso es una
+pregunta sin buena respuesta. Los 26 que sobran se sacan con
+`tools:node="remove"`.
+
+`check-android-permisos.mjs` cuida los dos modos de falla, que son silenciosos
+de maneras opuestas:
+
+- **pedir un permiso no declarado** → `SecurityException`, y no se ve ni en el
+  build ni en los tests: se ve en el teléfono del cliente, la primera vez que
+  toca "Conectar".
+- **declarar uno que no se usa** → se lo tenés que justificar a Google.
+
+El paso de Codemagic además inspecciona el manifest **mergeado** —el que queda
+adentro del AAB— porque el fuente puede estar limpio y el merger igual dejar
+pasar algo.
+
+## Lo que falta, en orden
+
+### 1. Cuenta de Google Play — te toca a vos
+
+- **US$25, pago único** (no anual como Apple).
+- **Cuenta de ORGANIZACIÓN**, no personal. Google la exige para apps de salud,
+  y además es lo que te salva de los **12 testers × 14 días** que le imponen a
+  las cuentas personales creadas después del 13-nov-2023.
+- **D-U-N-S**: el mismo de PUMP TEAM LLC que usaste en Apple sirve tal cual.
+- ⚠️ **La app tiene que NACER en esa cuenta.** El único modo de falla
+  documentado es "nació personal → se migró a organización → la consola sigue
+  pidiendo los 14 días y soporte no lo destraba".
+- ⚠️ Cargá los datos con cuidado la primera vez: hay muchos reportes de gente
+  que pagó, quedó trabada, y Google no reembolsa.
+
+### 2. Keystore
+
+Codemagic → Settings → Code signing identities → Android keystores → *Generate
+keystore*. Referencia: `mypump-upload`.
+
+Con Play App Signing esta es solo la clave de **subida**; Google guarda la de
+firma real. Si se pierde, se resetea — no es el drama irreversible que fue el
+certificado de Apple.
+
+### 3. Cuenta de servicio para publicar
+
+Play Console → Configuración → Acceso a la API → crear cuenta de servicio →
+bajar el JSON → Codemagic → Integrations → Google Play.
+
+### 4. El primer build
+
+```bash
+git tag a1.0.5 && git push origin a1.0.5
+```
+
+Va al track **internal**, que llega a los testers en minutos y sin revisión.
+
+### 5. Después del primer AAB: cerrar los App Links
+
+Play Console → Integridad de la app → copiar el SHA-256 del *certificado de
+firma de la app* → pegarlo en `public/.well-known/assetlinks.json`.
+
+**Sin eso, el link del coach abre el navegador en vez de la app**, sin ningún
+error visible. `check-android-permisos.mjs` avisa mientras siga el placeholder.
+
+### 6. Health apps declaration
+
+Play Console → Contenido de la app. Hay que justificar los 17 permisos. El
+manifest ya está recortado para que sean exactamente los que la app usa, así
+que la justificación es la misma para todos: *calcular un score de recuperación
+que el cliente ve y su coach usa para ajustar el plan; lectura únicamente; no
+se comparte con terceros ni se usa para publicidad*.
+
+## Una decisión que te dejo a vos
+
+Entre los 17 permisos hay tres que la app lee pero que casi no mueven el score:
+**glucosa en sangre**, **temperatura corporal** y **mindfulness**. Pesan dentro
+del componente "otros", que vale 8 puntos de 100.
+
+Pedir *glucosa en sangre* en una app de coaching fitness es de las cosas que un
+revisor de Google mira dos veces. Si querés bajar el riesgo de fricción en la
+revisión, se sacan del bridge y quedan 14 permisos — y el score prácticamente
+no se entera. Decime y lo hago; no lo toqué solo porque también los lee en iOS
+y Apple ya los aprobó.
+
+## Lo que Android no tiene y iOS sí
+
+- `exerciseTime` → en iOS alimenta `actividad_min`. En Android hay que
+  derivarlo de los workouts o dejarlo vacío. Hoy queda vacío.
+- `appleSleepingWristTemperature` → `temp_muneca_c`. No existe fuera de Apple.
+
+Los dos entran en el componente "otros" del score. Nada crítico.
