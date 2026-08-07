@@ -12,7 +12,9 @@ qué falta para publicarla.
 | Manifest recortado a 17 permisos de lectura | ✅ |
 | Workflow de Codemagic (`android-play`) | ✅ |
 | Banco de pruebas con modo Android | ✅ |
-| Cuenta de Google Play | ❌ **falta — lo tenés que hacer vos** |
+| Ficha de tienda redactada | ✅ `docs/PLAYSTORE_METADATA.md` |
+| Gráficos de tienda (ícono + destacado 1024×500) | ✅ `store/play/` |
+| Cuenta de Google Play | 🔄 alta en curso — **la terminás vos** |
 | Keystore de subida | ❌ falta |
 | SHA-256 en `assetlinks.json` | ❌ falta (sale del primer AAB) |
 
@@ -123,6 +125,36 @@ pasar algo.
   pidiendo los 14 días y soporte no lo destraba".
 - ⚠️ Cargá los datos con cuidado la primera vez: hay muchos reportes de gente
   que pagó, quedó trabada, y Google no reembolsa.
+
+**Los valores que van en el alta** (los que no son datos personales tuyos):
+
+| campo | valor |
+|---|---|
+| Nombre del programador (público) | `Pump Team` |
+| Tamaño de la organización | 1 - 10 |
+| Sitio web de la organización | `https://mypumpteam.com` — **sin `www`** |
+
+> El `www` **no anda**: `www.mypumpteam.com` devuelve 522 y el apex 200. Google
+> te va a hacer verificar la propiedad de ese dominio antes de publicar, así que
+> si ponés el que no resuelve, el bloqueo aparece varios pasos después, sin
+> relación aparente.
+
+#### El error mudo del formulario de alta
+
+*"Para continuar, corrige los errores"* sin decir cuál campo. Pasó con el
+teléfono: el valor era `+5491154822840` **más un `U+202C` invisible** al final
+(POP DIRECTIONAL FORMATTING), de copiarlo desde WhatsApp o Contactos. En
+pantalla se ve idéntico; el validador lo lee como "esto no es un dígito".
+
+Le pasa a cualquier campo de cualquier formulario de Google. Para verlo, en la
+consola del navegador:
+
+```js
+[...document.querySelector('input[type=text]').value]
+  .map(c => c.codePointAt(0) > 126 ? `<<U+${c.codePointAt(0).toString(16)}>>` : c).join('')
+```
+
+Se arregla escribiendo el número **a mano**, sin pegar.
 
 ### 2. Keystore
 
