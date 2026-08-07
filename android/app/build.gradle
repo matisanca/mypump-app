@@ -20,8 +20,33 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Codemagic, con `android_signing: [mypump-upload]`, deja el keystore en disco
+    // y exporta estas cuatro variables. Lo que NO hace es tocar build.gradle: eso
+    // lo hace solo en proyectos Flutter, donde además escribe android/key.properties
+    // y el template de Flutter ya lo lee. En un proyecto Android puro hay que
+    // cablearlo a mano, y si no está, Gradle NO se queja: compila y produce un AAB
+    // sin firmar. El build queda verde y recién revienta al publicar en Play.
+    signingConfigs {
+        release {
+            def ks = System.getenv("CM_KEYSTORE_PATH")
+            if (ks) {
+                storeFile     file(ks)
+                storePassword System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias      System.getenv("CM_KEY_ALIAS")
+                keyPassword   System.getenv("CM_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Solo se engancha si el keystore existe. Sin esta guarda, un
+            // assembleRelease local (sin las variables) falla con un error de
+            // Gradle sobre storeFile null en vez de dar el APK sin firmar de
+            // siempre.
+            if (System.getenv("CM_KEYSTORE_PATH")) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

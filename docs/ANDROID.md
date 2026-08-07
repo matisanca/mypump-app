@@ -199,7 +199,21 @@ certificado de Apple.
 ### 3. Cuenta de servicio para publicar
 
 Play Console → Configuración → Acceso a la API → crear cuenta de servicio →
-bajar el JSON → Codemagic → Integrations → Google Play.
+bajar el JSON.
+
+El JSON va a Codemagic como **variable de entorno**, no como integración:
+
+| campo | valor |
+|---|---|
+| nombre | `GCLOUD_SERVICE_ACCOUNT_CREDENTIALS` |
+| valor | el contenido completo del JSON, en una línea |
+| grupo | `google-play` — con guion, tal cual |
+| | marcarla como **Secure** |
+
+> Cargarlo en *Integrations → Google Play* **no sirve**: el workflow consume la
+> variable (`codemagic.yaml`, `publishing.google_play.credentials`). Si va como
+> integración, el build arranca, compila los 4 minutos y recién muere al
+> publicar, porque la variable llega vacía.
 
 ### 4. El primer build
 

@@ -103,6 +103,14 @@
     <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />
 
+    <!-- Historial más viejo que 30 días. NO es un tipo de dato: es la llave que
+         abre el pasado. Sin esto, Health Connect corta toda lectura a los
+         últimos 30 días y NO avisa — devuelve cero muestras, que no es una
+         excepción. El backfill pide 60 días, las 6 primeras ventanas vuelven
+         vacías, y la app marca el historial como completo teniendo la mitad.
+         Se pide con requestHistoryAccess:true (healthkit-bridge.js). -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
+
     <!-- ── Cortados a propósito en Android, aunque en iOS sí se leen ──────
          Google hace justificar cada permiso de salud uno por uno, y pedir
          glucosa en sangre en una app de coaching fitness invita a preguntas.

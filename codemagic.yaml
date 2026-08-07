@@ -201,7 +201,16 @@ workflows:
   #      testing cerrado y soporte no lo destraba.
   #   2. Play Console → Configuración → Acceso a la API → crear una cuenta de
   #      servicio y bajar su JSON.
-  #   3. Codemagic → Settings → Integrations → Google Play → subir ese JSON.
+  #   3. Ese JSON va como VARIABLE, no como integración — mirá la línea del
+  #      `publishing` más abajo: consume $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS.
+  #      Codemagic → Settings → Environment variables:
+  #        · nombre : GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+  #        · valor  : el contenido COMPLETO del JSON, en una línea
+  #        · grupo  : google-play   ← exactamente así, con guion (ver `groups:`)
+  #        · marcarla como SECURE
+  #      Si en vez de esto se carga en "Integrations → Google Play", el workflow
+  #      arranca igual, compila los 4 minutos y muere recién al publicar, porque
+  #      la variable llega vacía.
   #   4. Codemagic → Settings → Code signing identities → Android keystores →
   #      "Generate keystore". Referencia: mypump-upload. NO se pierde: con Play
   #      App Signing, esta es solo la clave de SUBIDA; Google guarda la de

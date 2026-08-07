@@ -249,13 +249,42 @@
    * a la primera. Peor caso: el cliente conecta igual y pierde los tipos
    * exóticos, en vez de perder todo.
    */
+  /* Veredicto del permiso de historial de Health Connect. null hasta que se
+   * pide, y siempre null en iOS (allá no existe: HealthKit da todo el historial
+   * con el permiso normal). Lo lee historialAndroid() desde afuera. */
+  let _historial = null;
+
   async function requestPermission() {
     const h = HEALTH();
     if (!h) return { ok: false, motivo: 'sin_plugin' };
 
+    /* HISTORIAL EN ANDROID.
+     *
+     * Health Connect no deja leer más allá de 30 días atrás salvo que la app
+     * tenga READ_HEALTH_DATA_HISTORY, y ese permiso se pide acá, junto con los
+     * demás. Sin él, las 6 primeras ventanas del backfill (día 60 → 30) NO dan
+     * error: devuelven cero muestras. Como devolver vacío no es una excepción,
+     * el backfill las marca hechas y la app da por completo un historial que
+     * tiene la mitad.
+     *
+     * Se guarda el veredicto para poder distinguir "el cliente lo negó" de "el
+     * Health Connect del teléfono es viejo y ni siquiera sabe qué es".
+     * En iOS la opción se ignora (el plugin la omite fuera de Android). */
+    const opts = esAndroid ? { requestHistoryAccess: true } : {};
+
     let alguna = false;
     try {
-      await h.requestAuthorization({ read: NUCLEO, write: [] });
+      const r = await h.requestAuthorization({ read: NUCLEO, write: [], ...opts });
+      if (esAndroid && r) {
+        _historial = {
+          autorizado: r.historyAccessAuthorized === true,
+          disponible: r.historyAccessAvailable !== false,
+        };
+        if (!_historial.autorizado) {
+          console.warn('[health] sin permiso de historial: Health Connect solo va a dar los últimos 30 días' +
+                       (_historial.disponible ? ' (el cliente lo negó)' : ' (este Health Connect es viejo y no lo soporta)'));
+        }
+      }
       alguna = true;
     } catch (e) {
       console.warn('[health] falló la tanda núcleo:', e);
@@ -1145,5 +1174,10 @@
     // tener que haberse guardado lo que devolvió connect().
     backfillEnCurso: () => _backfillEnCurso,
     backfillProgreso: () => _progresoBackfill,
+    /* null en iOS y hasta que se piden permisos. En Android:
+     *   { autorizado: bool, disponible: bool }
+     * autorizado=false → Health Connect solo devuelve los últimos 30 días, y
+     * lo hace sin error: las ventanas viejas del backfill vuelven vacías. */
+    historialAndroid: () => _historial,
   };
 })();

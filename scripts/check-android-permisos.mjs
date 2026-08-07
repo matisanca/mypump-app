@@ -131,13 +131,44 @@ if (fallas === antes1) console.log(`   ✓ los ${pideAndroid.length} tienen perm
 console.log('\n2. No se declara nada que no se use');
 const antes2 = fallas;
 const necesarios = new Set(pideAndroid.map((t) => PERMISO[t]).filter(Boolean));
+
+/* READ_HEALTH_DATA_HISTORY no corresponde a ningún tipo de dato: es una
+ * capacidad. Abre las lecturas más viejas que 30 días, y se pide con la opción
+ * requestHistoryAccess del requestAuthorization, no con un dataType. Por eso va
+ * aparte — pero NO exento: se exige que las dos mitades existan o ninguna, que
+ * es donde vive el bug.
+ *
+ * Declarado sin pedir  → permiso que Google te hace justificar y no usás.
+ * Pedido sin declarar  → Health Connect lo ignora y corta a 30 días EN SILENCIO:
+ *                        las ventanas viejas del backfill vuelven vacías, que no
+ *                        es una excepción, así que la app marca hecho un
+ *                        historial que tiene la mitad. */
+// Sin el prefijo android.permission.health.: así los guarda el parseo de arriba.
+const P_HIST = 'READ_HEALTH_DATA_HISTORY';
+const pideHistorial = /requestHistoryAccess\s*:\s*true/.test(bridge);
+const declaraHistorial = declarados.has(P_HIST);
+
+if (pideHistorial && !declaraHistorial) {
+  fallar(`el bridge usa requestHistoryAccess:true pero ${P_HIST} NO está declarado.\n` +
+         `      Health Connect corta a 30 días sin dar error: el backfill de 60 vuelve\n` +
+         `      medio vacío y la app lo da por completo.`);
+} else if (declaraHistorial && !pideHistorial) {
+  fallar(`${P_HIST} está declarado pero el bridge nunca pasa requestHistoryAccess:true.\n` +
+         `      Sin pedirlo en runtime el permiso no sirve, y Google te lo hace justificar igual.`);
+} else if (declaraHistorial) {
+  necesarios.add(P_HIST);   // enganchado de las dos puntas: cuenta como usado
+}
+
 for (const p of declarados) {
   if (!necesarios.has(p)) {
     fallar(`${p} está declarado pero ningún tipo del bridge lo necesita.\n` +
            `      Google lo hace justificar uno por uno en la Health apps declaration.`);
   }
 }
-if (fallas === antes2) console.log(`   ✓ los ${declarados.size} declarados se usan`);
+if (fallas === antes2) {
+  console.log(`   ✓ los ${declarados.size} declarados se usan` +
+              (declaraHistorial ? ' (incluido el de historial, pedido en runtime)' : ''));
+}
 
 console.log('\n3. Ningún permiso de ESCRITURA sobrevive al merge');
 const antes3 = fallas;
