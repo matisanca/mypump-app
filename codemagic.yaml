@@ -110,6 +110,20 @@ workflows:
         script: npm ci
       - name: Capacitor sync iOS
         script: npx cap sync ios
+      - name: Sacar el banco de pruebas del binario
+        # `cap sync` copia public/ entero, así que el mock de HealthKit y su
+        # generador terminan adentro de la app que se manda a Apple. Son
+        # inertes ahí (su compuerta exige que NO haya un Capacitor real, y en
+        # la app nativa lo hay), pero andamiaje de test dentro de un binario
+        # que pasa por App Review es superficie que no hace falta.
+        #
+        # Va acá y no como un `rm` a mano porque cap sync corre en cada build:
+        # borrarlo local no serviría de nada.
+        script: |
+          rm -fv ios/App/App/public/js/health-mock.js \
+                 ios/App/App/public/js/salud-sintetica.js
+          # El loader en cliente.html queda (son 12 líneas y se auto-desactiva),
+          # pero sin estos dos archivos no hay nada que cargar ni por accidente.
       - name: Resolver Swift Packages
         script: |
           xcodebuild -resolvePackageDependencies \
