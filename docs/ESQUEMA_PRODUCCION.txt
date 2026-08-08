@@ -59,6 +59,7 @@ mypump_get_fotos_progreso(p_token text, p_desde date DEFAULT NULL::date)
 mypump_get_gasto_real(p_token text, p_dias integer DEFAULT 14)
 mypump_get_habitos_dia(p_token text, p_fecha date)
 mypump_get_historico_ejercicio(p_token text, p_ejercicio_id text, p_limit integer DEFAULT 10)
+mypump_get_historico_ejercicios(p_token text, p_ejercicio_ids text[], p_limit_por_ej integer DEFAULT 24)
 mypump_get_metricas_coach(p_semanas integer DEFAULT 6)
 mypump_get_mostrar_recuperacion(p_token text)
 mypump_get_progresion_cargas(p_cliente_id text, p_semanas integer DEFAULT 12)
@@ -346,6 +347,7 @@ mypump_custom_foods.mypump_custom_foods_prot_check: CHECK ((prot >= (0)::numeric
 mypump_dietas.mypump_dietas_estado_check: CHECK ((estado = ANY (ARRAY['activa'::text, 'archivada'::text])))
 mypump_dietas_elecciones.mypump_dietas_elecciones_opcion_elegida_check: CHECK ((opcion_elegida = ANY (ARRAY['A'::text, 'B'::text, 'C'::text, 'D'::text])))
 mypump_ejercicios_estado.mypump_ejercicios_estado_status_check: CHECK ((status = ANY (ARRAY['pendiente'::text, 'completo'::text, 'completo_sin_datos'::text, 'saltado'::text])))
+mypump_entrenos_health.mypump_entrenos_health_fuente_check: CHECK ((fuente = ANY (ARRAY['apple_health'::text, 'health_connect'::text, 'rook'::text, 'manual'::text, 'whoop'::text, 'oura'::text, 'withings'::text, 'polar'::text])))
 mypump_fotos_progreso.mypump_fotos_progreso_pose_check: CHECK ((pose = ANY (ARRAY['frente'::text, 'perfil'::text, 'espalda'::text])))
 mypump_habitos_diarios.mypump_habitos_diarios_entrenamiento_check: CHECK (((entrenamiento IS NULL) OR (entrenamiento = ANY (ARRAY['entrene'::text, 'descanso'::text, 'falte'::text]))))
 mypump_habitos_diarios.mypump_habitos_diarios_vasos_agua_check: CHECK (((vasos_agua >= 0) AND (vasos_agua <= 12)))
@@ -354,7 +356,7 @@ mypump_quimica.mypump_quimica_confianza_check: CHECK ((confianza = ANY (ARRAY['a
 mypump_registros_carga.mypump_registros_carga_rir_real_check: CHECK (((rir_real >= 0) AND (rir_real <= 5)))
 mypump_registros_carga.mypump_registros_carga_serie_numero_check: CHECK ((serie_numero > 0))
 mypump_rutinas.mypump_rutinas_estado_check: CHECK ((estado = ANY (ARRAY['activa'::text, 'archivada'::text])))
-mypump_salud_diaria.mypump_salud_diaria_fuente_check: CHECK ((fuente = ANY (ARRAY['apple_health'::text, 'rook'::text, 'manual'::text, 'whoop'::text, 'oura'::text, 'withings'::text, 'polar'::text])))
+mypump_salud_diaria.mypump_salud_diaria_fuente_check: CHECK ((fuente = ANY (ARRAY['apple_health'::text, 'health_connect'::text, 'rook'::text, 'manual'::text, 'whoop'::text, 'oura'::text, 'withings'::text, 'polar'::text])))
 mypump_salud_diaria.mypump_salud_diaria_tipo_check: CHECK ((tipo = ANY (ARRAY['pasos'::text, 'actividad_min'::text, 'kcal_activas'::text, 'distancia_km'::text, 'pisos'::text, 'kcal_basales'::text, 'kcal_totales'::text, 'fc_reposo'::text, 'hrv_ms'::text, 'fc_media'::text, 'fc_max'::text, 'vo2max'::text, 'sueno_min'::text, 'sueno_profundo_min'::text, 'sueno_rem_min'::text, 'sueno_ligero_min'::text, 'sueno_medio_min'::text, 'sueno_eficiencia_pct'::tex
 mypump_suplementos.mypump_suplementos_confianza_check: CHECK ((confianza = ANY (ARRAY['alta'::text, 'media'::text, 'baja'::text])))
 mypump_wearable_conexiones.mypump_wearable_conexiones_estado_check: CHECK ((estado = ANY (ARRAY['pendiente'::text, 'conectada'::text, 'expirada'::text, 'revocada'::text, 'error'::text])))
@@ -384,7 +386,7 @@ mypump_get_adherencia_macrociclo: postgres=X/postgres | authenticated=X/postgres
 mypump_get_analisis_cliente: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_analisis_pendientes: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_checkin_semana: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
-mypump_get_cliente_id_from_token: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_cliente_id_from_token: =X/postgres | postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_cliente_info: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_cliente_prefs: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_comentarios: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -401,6 +403,7 @@ mypump_get_fotos_progreso: =X/postgres | postgres=X/postgres | anon=X/postgres |
 mypump_get_gasto_real: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_habitos_dia: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_historico_ejercicio: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_historico_ejercicios: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_metricas_coach: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_mostrar_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_progresion_cargas: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -450,116 +453,194 @@ mypump_upsert_analisis: postgres=X/postgres | authenticated=X/postgres | service
 POLITICAS RLS (qual='true' = no filtra nada)
 ======================================================================
 
-mypump_analisis_semanal  (RLS ON, 1 politica/s)
+mypump_analisis_semanal  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_analisis_semanal  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_checkin_semanal  (RLS ON, 1 politica/s)
+mypump_checkin_semanal  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_checkin_semanal  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_cliente_prefs  (RLS ON, 1 politica/s)
+mypump_cliente_prefs  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_cliente_prefs  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_clientes  (RLS ON, 1 politica/s)
+mypump_clientes  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_clientes  roles={public}
       USING (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_comentarios  (RLS ON, 1 politica/s)
+mypump_comentarios  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_comentarios  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_comidas_libres  (RLS ON, 1 politica/s)
+mypump_comidas_libres  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_comidas_libres  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_comidas_marcadas  (RLS ON, 1 politica/s)
+mypump_comidas_marcadas  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_comidas_marcadas  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_custom_foods  (RLS ON, 1 politica/s)
+mypump_custom_foods  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_custom_foods  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_dietas  (RLS ON, 1 politica/s)
+mypump_dietas  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_dietas  roles={public}
       USING (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_dietas_elecciones  (RLS ON, 1 politica/s)
+mypump_dietas_elecciones  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_dietas_elecciones  roles={public}
       USING (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_ejercicios_catalogo  (RLS ON, 2 politica/s)
+mypump_ejercicios_catalogo  (RLS ON, 3 politica/s)
   [ALL] admin_write_catalogo  roles={public}
       USING (auth.role() = ANY (ARRAY['authenticated'::text, 'service_role'::text]))
       CHECK (auth.role() = ANY (ARRAY['authenticated'::text, 'service_role'::text]))
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
   [SELECT] read_all_catalogo  roles={public}
       USING true
 
-mypump_food_swaps  (RLS ON, 1 politica/s)
+mypump_ejercicios_estado  (RLS ON, 1 politica/s)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
+
+mypump_entrenos_health  (RLS ON, 1 politica/s)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
+
+mypump_food_swaps  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_food_swaps  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_fotos_progreso  (RLS ON, 1 politica/s)
+mypump_fotos_progreso  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_fotos_progreso  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_habitos_diarios  (RLS ON, 1 politica/s)
+mypump_habitos_diarios  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_habitos_diarios  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_oauth_estados  (RLS ON, 1 politica/s)
+mypump_oauth_estados  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_oauth_estados  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_quimica  (RLS ON, 1 politica/s)
+mypump_push_cola  (RLS ON, 1 politica/s)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
+
+mypump_push_devices  (RLS ON, 1 politica/s)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
+
+mypump_quimica  (RLS ON, 2 politica/s)
   [ALL] coach only mypump_quimica  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_registros_carga  (RLS ON, 1 politica/s)
+mypump_registros_carga  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_registros_carga  roles={public}
       USING (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_rutinas  (RLS ON, 1 politica/s)
+mypump_rutinas  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_rutinas  roles={public}
       USING (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_salud_diaria  (RLS ON, 1 politica/s)
+mypump_salud_diaria  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_salud_diaria  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_sesiones  (RLS ON, 1 politica/s)
+mypump_sesiones  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_sesiones  roles={public}
       USING (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_suplementos  (RLS ON, 1 politica/s)
+mypump_suplementos  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_suplementos  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
 
-mypump_wearable_conexiones  (RLS ON, 1 politica/s)
+mypump_wearable_conexiones  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_wearable_conexiones  roles={public}
       USING (auth.role() = 'authenticated'::text)
       CHECK (auth.role() = 'authenticated'::text)
-
-mypump_ejercicios_estado  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
-
-mypump_entrenos_health  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
-
-mypump_push_cola  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
-
-mypump_push_devices  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
+  [ALL] coach_autenticado_todo  roles={authenticated}
+      USING true
+      CHECK true
