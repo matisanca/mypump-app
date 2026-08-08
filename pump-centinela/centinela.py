@@ -673,20 +673,28 @@ def interpretar_notas(metricas, chk_actual, chk_series):
         items.append({"nombre": nombre, "nota": chk["nota"], "notas_previas": previas})
     if not items: return {}
 
+    # La nota es texto que el cliente escribio a mano y puede contar cualquier
+    # cosa —una lesion, un problema personal—. Acá el nombre tampoco hace falta:
+    # es solo la clave para devolver cada extraccion con la suya.
+    _a2n, _n2a = _seudonimizar([it["nombre"] for it in items])
+    envio = [{"cliente": _n2a[it["nombre"]], "nota": it["nota"],
+              "notas_previas": it["notas_previas"]} for it in items]
+
     prompt = (
         "Sos un asistente que EXTRAE informacion de notas que dejaron clientes de un coach. "
         "NO diagnostiques ni recomiendes: solo extrae. Para cada cliente devolve:\n"
-        '{"<nombre>": {"banderas": [...], "temas": [...], "sentimiento": "positivo|neutro|negativo", '
+        '{"<cliente>": {"banderas": [...], "temas": [...], "sentimiento": "positivo|neutro|negativo", '
         '"repite_tema": true|false, "cita": "fragmento TEXTUAL de la nota"}}\n'
         "banderas posibles (solo si aparecen claras): lesion, enfermedad, viaje, evento, estres, desmotivacion.\n"
         "repite_tema = true si el tema principal ya aparecia en notas_previas.\n"
         "cita DEBE ser un fragmento copiado literal de la nota.\n"
-        "Responde SOLO el JSON.\n\nDATOS:\n" + json.dumps(items, ensure_ascii=False)
+        'Cada cliente viene identificado por el campo "cliente" (c1, c2, ...); usa ESAS claves.\n'
+        "Responde SOLO el JSON.\n\nDATOS:\n" + json.dumps(envio, ensure_ascii=False)
     )
     res = claude_json(prompt, etiqueta="notas") or {}
     out = {}
     for it in items:
-        r = res.get(it["nombre"])
+        r = res.get(_n2a[it["nombre"]])
         if not isinstance(r, dict): continue
         cita = (r.get("cita") or "").strip()
         if cita and cita.lower() not in it["nota"].lower():
@@ -747,6 +755,33 @@ def apodo(nombre):
 def _norm_nombre(s):
     s = str(s or "").strip().lower()
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+def _seudonimizar(nombres):
+    """Alias opaco por corrida. Devuelve (alias->nombre, nombre->alias).
+
+    POR QUE
+    gen_ajustes le mandaba a la API de Anthropic el score de recuperacion, la
+    media de 7 dias, los dias en rojo, el estado autonomico y la metrica de HRV
+    —todo derivado de lo que se leyo de Health Connect o de Apple Salud— con
+    NOMBRE Y APELLIDO al lado. El modelo no necesita saber de quien es: usa el
+    nombre solo como clave para devolver cada respuesta con la suya. Mandarlo
+    era gratis para el resultado y caro para el cliente.
+
+    DONDE NO SE APLICA, Y POR QUE NO ES UNA INCONSISTENCIA
+    En gen_personalizados y gen_msg_ajuste el nombre ES el producto: el mensaje
+    de WhatsApp arranca con el apodo del cliente, asi que seudonimizar romperia
+    el texto que Mati le reenvia. Esos dos envios, a cambio, no llevan un solo
+    dato de salud: ni recuperacion, ni HRV, ni sueno. La linea no esta puesta en
+    "que dato es sensible" sino en "que dato viaja PEGADO a un nombre".
+
+    Los alias son por corrida y no se persisten: c1 de hoy no es c1 de manana.
+    """
+    a2n, n2a = {}, {}
+    for i, n in enumerate(dict.fromkeys(nombres), 1):
+        a = f"c{i}"
+        a2n[a] = n
+        n2a[n] = a
+    return a2n, n2a
 
 def _lookup(res, nombre):
     """Match tolerante nombre->mensaje: exacto, y si no, sin acentos/case. Evita
@@ -953,11 +988,14 @@ FALLBACK_AJUSTES = {
 
 def gen_ajustes(lista):
     """lista: [{nombre, chk, ctx, alertas, dieta, rutina}] -> texto para Mati"""
+    # Este es el unico payload que lleva datos derivados del wearable, asi que
+    # es el unico donde importa que no viajen con nombre y apellido.
+    _a2n, _n2a = _seudonimizar([x["nombre"] for x in lista])
     datos = []
     for x in lista:
         sup = x.get("suplementos")
         rec = (x["ctx"].get("recup") or {})
-        datos.append({"nombre": x["nombre"], "objetivo": x["ctx"].get("obj"), "perfil": x["ctx"].get("perfil"),
+        datos.append({"cliente": _n2a[x["nombre"]], "objetivo": x["ctx"].get("obj"), "perfil": x["ctx"].get("perfil"),
                       "check": {k: x["chk"].get(k) for k in ("energia", "descanso", "hambre", "adherencia")} if x["chk"] else None,
                       "nota": (x["chk"] or {}).get("nota"), "alertas": x["alertas"],
                       "peso_delta_g_sem": x["ctx"].get("delta_peso_g"), "var_rendimiento_pct": x["ctx"].get("var_rendimiento"),
@@ -993,12 +1031,13 @@ def gen_ajustes(lista):
         "REGLA ABSOLUTA: JAMAS sugieras farmacos, hormonas, AAS ni dosis de quimica — eso es "
         "decision exclusivamente medica de Mati y NO va en este informe.\n\n"
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
-        'Devolve SOLO un JSON valido {"Nombre Completo": "diagnostico y sugerencias en texto plano"} sin nada mas.'
+        'Cada cliente viene identificado por el campo "cliente" (c1, c2, ...). Devolve SOLO un '
+        'JSON valido {"c1": "diagnostico y sugerencias en texto plano"} usando ESAS claves, sin nada mas.'
     )
     res = claude_json(prompt, etiqueta="ajustes") or {}
     out = {}
     for x in lista:
-        sug = _lookup(res, x["nombre"])
+        sug = _lookup(res, _n2a[x["nombre"]])
         if not sug:
             # Preferir las acciones del motor (deterministas y coherentes con
             # el diagnostico) antes que los templates genericos.
