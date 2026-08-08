@@ -7336,6 +7336,25 @@ function setScene(scene) {
 
 $$('.tab').forEach(t => t.addEventListener('click', () => setScene(t.getAttribute('data-scene'))));
 
+/* ?scene=dieta — abrir directo en una pantalla.
+ *
+ * Sirve para dos cosas concretas:
+ *  · los mensajes del coach pueden mandar al cliente adonde le están hablando
+ *    ("mirá tu Revisión") en vez de dejarlo buscando el tab;
+ *  · las capturas de la ficha de las tiendas se sacan sin clickear a mano, con
+ *    Chrome headless, que no puede navegar una SPA.
+ *
+ * Whitelist explícita: `scene` viene de la URL y termina en un selector
+ * (`#scene-${scene}`) y en un `data-scene`. Sin la lista, un valor con comillas
+ * o corchetes se mete en esos selectores. No es un XSS —no se inyecta HTML—
+ * pero sí rompe el render y deja la app en blanco, que para el cliente es lo
+ * mismo que si estuviera caída. */
+try {
+  const _esc = new URLSearchParams(location.search).get('scene');
+  const _VALIDAS = ['myday', 'rutina', 'dieta', 'progreso', 'revision', 'salud'];
+  if (_esc && _VALIDAS.indexOf(_esc) !== -1) setScene(_esc);
+} catch (e) {}
+
 $('#themeToggle').addEventListener('click', () => {
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur === 'dark' ? 'light' : 'dark';
