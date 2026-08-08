@@ -7352,12 +7352,20 @@ $$('.tab').forEach(t => t.addEventListener('click', () => setScene(t.getAttribut
  *
  * Se APLICA DESPUÉS de cargar los datos, no acá: llamarlo al parsear cambiaba
  * de pantalla antes de que existiera nada que pintar, y el cliente aterrizaba
- * en una Rutina vacía. Ver la llamada a _aplicarSceneDeURL() más abajo. */
-const _SCENES_URL = ['myday', 'rutina', 'dieta', 'progreso', 'revision', 'salud'];
+ * en una pantalla vacía. Ver la llamada a _aplicarSceneDeURL() más abajo.
+ *
+ * La lista de escenas válidas se SACA DEL DOM, no se tipea. La primera versión
+ * de esto llevaba una lista a mano con los nombres en español que se ven en el
+ * tabbar —'dieta', 'rutina', 'progreso'— y los ids reales son en inglés
+ * (`scene-diet`, `scene-train`, `scene-progress`). Como setScene apaga TODAS las
+ * escenas y prende la que matchea, un nombre que no existe no "no hace nada":
+ * deja la app EN BLANCO, con el header y el tabbar sin nada en el medio. */
 function _aplicarSceneDeURL() {
   try {
     const s = new URLSearchParams(location.search).get('scene');
-    if (s && _SCENES_URL.indexOf(s) !== -1) setScene(s);
+    if (!s) return;
+    const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
+    if (validas.indexOf(s) !== -1) setScene(s);
   } catch (e) {}
 }
 
