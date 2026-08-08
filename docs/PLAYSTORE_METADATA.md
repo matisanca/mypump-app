@@ -84,8 +84,48 @@ así que los assets de tienda quedan versionados sin quedar publicados.
 |---|---|---|
 | Ícono | 512×512, PNG 32 bits | `store/play/icon-512.png` ✅ |
 | **Gráfico destacado** | **1024×500, PNG/JPG sin alfa** | `store/play/featured-graphic-1024x500.png` ✅ |
-| Capturas de teléfono | mín 2, máx 8 · 16:9 o 9:16 · lado corto ≥320 px | reusar las 4 de iOS |
+| Capturas de teléfono | mín 2, máx 8 · **el lado mayor no puede medir más del doble que el menor** · cada lado entre 320 y 3840 px | ⚠ ver abajo |
 | Capturas de tablet | opcional | omitir |
+
+### ⚠ Las capturas de iOS NO se pueden reusar
+
+Este doc decía "reusar las 4 de iOS". **Está mal y haría rebotar la subida.**
+
+La regla de Play no es "16:9 o 9:16": es que *el lado mayor no puede ser más del
+doble que el menor* ([Play Console Help][1]). Una captura de iPhone 6.7" es
+**1290×2796 = 2,17:1** y se pasa. Los iPhone modernos son más largos que lo que
+Play acepta.
+
+Lo que sí entra: **1080×1920** (1,78:1), que además es la resolución típica de
+un Android. Se sacan de la app real, sin emulador ni teléfono:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+  --window-size=360,640 --force-device-scale-factor=3 --hide-scrollbars \
+  --virtual-time-budget=12000 --screenshot=train.png \
+  "https://app.mypumpteam.com/cliente?demo=1&scene=train"
+```
+
+`scene` acepta `train`, `diet`, `myday`, `revision`, `progress`.
+
+> **Dos avisos, uno de forma y uno de fondo.**
+>
+> El de forma: headless recorta a la derecha. No es un bug de la app —medido con
+> emulación real a 375×812 el documento mide 375, sin desbordes y con los 5 tabs
+> visibles—, es que `--window-size` no fija el viewport de layout sin emulación
+> de dispositivo. Para capturas finales conviene un navegador con emulación.
+>
+> El de fondo, y es el que importa: con `?demo=1` sale el cartel **"Modo demo —
+> Mati todavía no publicó tu plan"**, que en una ficha de tienda es peor que no
+> tener capturas. Las definitivas hay que sacarlas de una cuenta con plan
+> publicado. La opción limpia es sembrar un cliente sintético con el banco de
+> pruebas (`docs/BANCO_PRUEBAS.md`) y capturar eso: datos plausibles, ninguna
+> persona real, y después se borra con `scripts/cleanup-test-data.sql`.
+>
+> Las de `store/play/screenshots/` son **borradores**: sirven para ver forma y
+> calidad, no para subir.
+
+[1]: https://support.google.com/googleplay/android-developer/answer/9866151
 
 **El gráfico destacado** es el banner de arriba de la ficha, es obligatorio y
 Apple no lo pide, así que no había ninguno. Está hecho: fondo `#0a0a0a` con el
