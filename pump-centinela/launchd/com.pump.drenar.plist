@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.pump.drenar — publica en el chat lo que ya venció, cada 5 minutos.
+
+  Los mensajes del domingo se agendan repartidos en 40-60 min; este agente es el
+  que los va sacando. La resolución de 5 minutos alcanza: el escalonado ya es
+  aproximado a propósito, y clavarlo al segundo sería MENOS humano, no más.
+
+  La ventana horaria (08:00-22:59 ART) NO vive acá sino en mypump_chat_drenar:
+  si viviera en el plist, cualquiera que llame la RPC a mano un domingo a las 4
+  de la mañana despertaría a 62 personas.
+
+  Instalación:
+    cp com.pump.drenar.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.pump.drenar.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pump.drenar</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/matiassancari/agentkit-coach/venv/bin/python</string>
+    <string>/Users/matiassancari/pump-centinela/recordatorios.py</string>
+    <string>--drenar</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/matiassancari/pump-centinela/drenar.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/matiassancari/pump-centinela/drenar.err</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/matiassancari/pump-centinela</string>
+</dict>
+</plist>

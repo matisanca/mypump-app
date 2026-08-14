@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node scripts/test-bridge.mjs && node scripts/test-bridge-android.mjs && node scripts/test-outbox.mjs && node scripts/test-wearables.mjs && node scripts/test-salud-sintetica.mjs && node scripts/test-normalizar-plan.mjs && node scripts/test-textos-salud.mjs && node scripts/test-plan-sintetico.mjs && node scripts/test-notificaciones.mjs && node scripts/test-popup-descarga.mjs && node scripts/check-contratos.mjs && node scripts/check-healthkit-tipos.mjs && node scripts/check-android-permisos.mjs && node scripts/check-escenas.mjs && node scripts/check-fuentes-salud.mjs && python3 scripts/test_push_web.py && python3 scripts/test_centinela_seudonimos.py && python3 scripts/test_consolidar_identidad.py && python3 scripts/test_centinela_guardrail.py",
+    "test": "node scripts/test-bridge.mjs && node scripts/test-bridge-android.mjs && node scripts/test-outbox.mjs && node scripts/test-wearables.mjs && node scripts/test-salud-sintetica.mjs && node scripts/test-normalizar-plan.mjs && node scripts/test-textos-salud.mjs && node scripts/test-plan-sintetico.mjs && node scripts/test-notificaciones.mjs && node scripts/test-popup-descarga.mjs && node scripts/check-contratos.mjs && node scripts/check-healthkit-tipos.mjs && node scripts/check-android-permisos.mjs && node scripts/check-escenas.mjs && node scripts/check-fuentes-salud.mjs && python3 scripts/test_plantillas.py && python3 scripts/test_push_web.py && python3 scripts/test_centinela_seudonimos.py && python3 scripts/test_consolidar_identidad.py && python3 scripts/test_centinela_guardrail.py",
     "dev": "npx serve public -l 3000",
     "format": "echo 'TODO: configurar prettier'",
     "ios:add": "npx cap add ios",

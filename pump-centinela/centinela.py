@@ -1241,9 +1241,19 @@ def main():
                 lineas.append(f"\n🔴 *{a['nombre']}*\n· " + "\n· ".join(a["alertas"]))
             send_multi("\n".join(lineas))
 
+        # El mensaje del domingo YA NO se le manda a Mati para que lo reenvie.
+        # Lo programa recordatorios.py --programar (mismo horario, agente
+        # com.pump.ronda) y sale directo al chat de cada cliente, escalonado.
+        #
+        # Lo que llega acá cambia de naturaleza: de "copia y pega esto 62 veces"
+        # a "esto es lo que ya salio". Se sigue mandando el texto general porque
+        # es lo que Mati mira para saber que se dijo esta semana, pero sin la
+        # cabecera que le pedia trabajo.
         general = gen_general()
-        send_multi("\n".join(["📨 *Revision semanal — mensaje general*",
-                              "_Mandaselo a la lista de difusion:_", "", general]))
+        send_multi("\n".join([
+            "📨 *Revision semanal — ya salio sola*",
+            "_Los pedidos se estan publicando en el chat de la app, repartidos en la proxima hora._",
+            "_Este es el texto de referencia (no hace falta que mandes nada):_", "", general]))
         if fichas_sin_check:
             extra = ["📇 *Mini-fichas (para personalizar si querés)*"] + fichas_sin_check
             if sin_uso:

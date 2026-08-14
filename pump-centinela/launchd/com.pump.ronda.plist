@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.pump.ronda — la ronda del domingo y los reintentos.
+
+  Tres horarios en un solo agente (launchd acepta un array de StartCalendarInterval):
+    · Domingo 18:00 — se programa la ronda (repartida en 40-60 min).
+    · Martes  20:00 — recordatorio a quien todavía falta.
+    · Jueves  20:00 — último recordatorio antes del cierre.
+
+  Por qué NO es un flag de centinela.py: ese script corta con un guardarrail de
+  una-corrida-por-día guardado en su state. Un --recordatorios el martes, cuando
+  el análisis ya corrió, sería un no-op SILENCIOSO — no falla, no avisa, no hace
+  nada, y se descubre semanas después.
+
+  El domingo a las 18:00 se PROGRAMA, no se manda: los mensajes salen de a poco
+  y los publica com.pump.drenar. Si esta Mac está apagada el domingo, la ronda
+  no sale — es el mismo riesgo que ya tienen el centinela y el push, y la
+  alternativa (mover esto a la nube) es una pieza más para mantener.
+
+  Instalación:
+    cp com.pump.ronda.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.pump.ronda.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pump.ronda</string>
+
+  <!-- /bin/bash, NO el python del venv: ronda.sh es un script de shell y
+       lanzarlo con python muere con un SyntaxError en launchd, o sea en
+       silencio, y la ronda del domingo simplemente no pasa. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/matiassancari/pump-centinela/ronda.sh</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>0</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>0</integer></dict>
+  </array>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/matiassancari/pump-centinela/ronda.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/matiassancari/pump-centinela/ronda.err</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/matiassancari/pump-centinela</string>
+</dict>
+</plist>
