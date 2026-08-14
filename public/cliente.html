@@ -259,10 +259,25 @@ main{padding:var(--space-4)}
 .streak-sub{font-size:13px;color:var(--color-text-muted);margin-top:2px}
 .streak-icon{font-size:44px;line-height:1;flex:0 0 auto}
 .myday-date{font-size:14px;font-weight:500;color:var(--color-text-secondary);margin-bottom:var(--space-4);padding:0 var(--space-1)}
-.myday-section{background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:var(--space-3)}
-.myday-section-hdr{padding:var(--space-3) var(--space-4) var(--space-2);display:flex;align-items:center;gap:var(--space-2)}
-.myday-section-icon{font-size:16px}
-.myday-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted)}
+/* ── SUPERFICIE ────────────────────────────────────────────────────────────
+   Antes cada bloque era una caja idéntica: mismo borde de 1px, mismo radio,
+   una abajo de la otra. Eso es lo que hace que una pantalla se lea como
+   generada y no como diseñada — no hay nada que diga qué mirar primero.
+
+   Ahora la superficie se levanta con FONDO y una sombra mínima en claro, y con
+   una hairline en oscuro (donde una sombra no se ve). El borde deja de ser el
+   recurso para separar y pasa a serlo el aire. */
+.myday-section{background:var(--color-bg-primary);border:1px solid transparent;border-radius:14px;overflow:hidden;margin-bottom:var(--space-4);box-shadow:0 1px 2px rgba(0,0,0,.04),0 1px 8px rgba(0,0,0,.03)}
+[data-theme="dark"] .myday-section{background:var(--color-bg-secondary);border-color:rgba(255,255,255,.06);box-shadow:none}
+/* El emoji por sección era el delator más grande. 🔋 RECUPERACIÓN · 👟 SALUD ·
+   📊 MIS ÚLTIMOS 30 DÍAS: seis emojis distintos, uno por bloque, es la firma de
+   una pantalla armada por una máquina. Se va, y el título se sostiene solo con
+   una hairline que lo acompaña hasta el borde — que es como se resuelve un
+   encabezado de sección cuando alguien lo diseña. */
+.myday-section-hdr{padding:var(--space-4) var(--space-4) var(--space-2);display:flex;align-items:center;gap:var(--space-3)}
+.myday-section-hdr::after{content:"";flex:1;height:1px;background:var(--color-border);opacity:.7}
+.myday-section-icon{display:none}
+.myday-section-title{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--color-text-secondary);flex:none}
 .myday-section-body{padding:0 var(--space-4) var(--space-4)}
 .train-options{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
 .train-opt{height:56px;border:1.5px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background .15s,border-color .15s,color .15s;color:var(--color-text-secondary)}
@@ -287,7 +302,10 @@ main{padding:var(--space-4)}
 .salud-connect-txt{font-size:13px;color:var(--color-text-secondary);line-height:1.4;margin:0 0 var(--space-3)}
 /* RECUPERACIÓN (score 0-100) — mig 043 */
 .rec-top{display:flex;align-items:center;gap:var(--space-4)}
-.rec-num{font-family:var(--font-mono);font-size:52px;font-weight:700;letter-spacing:-.04em;line-height:.95}
+/* `tabular-nums` alinea los dígitos en columnas del mismo ancho. Sin eso, un
+   score que pasa de 45 a 68 salta de lugar mientras cambia, y esos saltitos son
+   lo que separa un número puesto de un número compuesto. */
+.rec-num{font-family:var(--font-mono);font-size:52px;font-weight:700;letter-spacing:-.045em;line-height:.92;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 .rec-num small{font-size:20px;font-weight:600;opacity:.5;letter-spacing:0}
 .rec-side{flex:1;min-width:0}
 .rec-banda{font-size:14px;font-weight:700;letter-spacing:-.01em;margin-bottom:2px}
