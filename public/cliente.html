@@ -1008,10 +1008,6 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
         <div class="hdr-eyebrow"><span id="hdrEyebrow">ENTRENAMIENTO</span><span class="dot"></span><span class="week-pill mono">SEM <strong id="hdrWeek">1</strong>/<span id="hdrWeekTotal">1</span></span></div>
         <div class="hdr-title" id="hdrTitle">Cargando…</div>
       </div>
-      <button class="icon-btn hdr-chat" id="chatBtn" aria-label="Chat con Mati">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-        <span class="chat-badge" id="chatBadge" hidden></span>
-      </button>
       <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
       </button>
@@ -1029,7 +1025,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
     <section class="scene is-active" id="scene-train"></section>
     <section class="scene" id="scene-diet"></section>
     <section class="scene" id="scene-progress"></section>
-    <section class="scene" id="scene-myday"></section>
+
     <section class="scene" id="scene-revision"></section>
     <!-- CHAT: tampoco tiene tab (ver .hdr-chat); se entra por el ícono del header. -->
     <section class="scene" id="scene-chat"></section>
@@ -1069,9 +1065,15 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
       <span>Dieta</span>
       <span class="tab-dot"></span>
     </button>
-    <button class="tab" data-scene="myday" role="tab" aria-selected="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-      <span>Mi Día</span>
+    <!-- CHAT en la tabbar, en el lugar que tenia Mi Dia.
+         Estaba como un icono chico en el header y no se encontraba: el cliente
+         no va a buscar la conversacion con su coach en una lupa arriba a la
+         derecha. Mi Dia (habitos) paso al final de Revision, que es donde
+         encaja: los dos son "contale a Mati como venis". -->
+    <button class="tab" data-scene="chat" role="tab" aria-selected="false">
+      <span class="tab-badge" id="tabBadgeChat" hidden></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      <span>Chat</span>
       <span class="tab-dot"></span>
     </button>
     <button class="tab" data-scene="revision" role="tab" aria-selected="false">
@@ -1808,7 +1810,10 @@ function avisarPlanIncompleto(problemas) {
   d.innerHTML = 'A tu plan le falta información y algunas cosas pueden verse raras. '
     + 'Avisale a Mati y lo republica.<br><small style="opacity:.7">' +
     problemas.slice(0, 3).map(p => p.replace(/</g, '&lt;')).join(' · ') + '</small>';
-  const cont = document.getElementById('scene-myday') || document.body;
+  // 'scene-myday' ya no existe (Mi Dia vive dentro de Revision). Sin este
+  // cambio el aviso caia siempre al body, o sea arriba de todo y fuera de
+  // cualquier escena.
+  const cont = document.getElementById('scene-revision') || document.body;
   cont.insertBefore(d, cont.firstChild);
 }
 
@@ -2110,7 +2115,8 @@ async function loadChat(masViejos = false) {
 }
 
 function updateChatBadge() {
-  const el = document.getElementById('chatBadge');
+  // El badge vive en el TAB desde que el chat dejo de ser un icono del header.
+  const el = document.getElementById('tabBadgeChat');
   if (!el) return;
   const n = STATE.chat.noLeidos || 0;
   if (n > 0) { el.textContent = n > 9 ? '9+' : String(n); el.hidden = false; }
@@ -5548,13 +5554,13 @@ async function loadMyday() {
     STREAK = streak;
     STATE.mydayLoaded = true;
     // Si el tab ya está abierto, re-renderizar ahora que tenemos datos
-    if (STATE.scene === 'myday') renderMyday();
+    if (STATE.scene === 'revision') renderMyday();
   } catch(e) {
     console.error('[Mi Día] error cargando hábitos:', e);
     MYDAY  = null;
     STREAK = { streak: 0, ultimo_dia_valido: null };
     STATE.mydayLoaded = true;
-    if (STATE.scene === 'myday') renderMyday();
+    if (STATE.scene === 'revision') renderMyday();
   }
 }
 
@@ -5622,7 +5628,7 @@ async function loadSalud() {
   // Recuperación también: desde que su estado "conectado pero sin score" decide
   // el texto mirando STATE.salud, si no se repinta acá el cliente se queda con
   // la copy que se calculó cuando STATE.salud todavía estaba vacío.
-  if (STATE.scene === 'myday')  { renderMydaySalud(); renderMydayRecuperacion(); }
+  if (STATE.scene === 'revision')  { renderMydaySalud(); renderMydayRecuperacion(); }
   if (STATE.scene === 'revision') renderMydayPeso();
 }
 /* Valor de un tipo en una fecha, eligiendo la MEJOR fuente.
@@ -5821,7 +5827,7 @@ async function loadRecuperacion() {
       STATE.mostrarRecup = (m === null || m === undefined) ? true : !!m;
     }
   } catch (_) { STATE.mostrarRecup = true; }
-  if (STATE.scene === 'myday') renderMydayRecuperacion();
+  if (STATE.scene === 'revision') renderMydayRecuperacion();
   if (STATE.scene === 'salud') renderSalud();
 }
 
@@ -6124,7 +6130,7 @@ function renderSalud() {
     // necesita encontrar dónde se activan las cosas.
     try { renderAppleHealthEstado(); } catch (e) {}
     try { renderNotifPrefs(); } catch (e) {}
-    const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('myday');
+    const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('revision');
     return;
   }
 
@@ -6246,7 +6252,7 @@ function renderSalud() {
   // después: si el chequeo se colgara, el resto de la pantalla ya está.
   try { renderAppleHealthEstado(); } catch (e) {}
   try { renderNotifPrefs(); } catch (e) {}
-  const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('myday');
+  const v = document.getElementById('sdVolver'); if (v) v.onclick = () => setScene('revision');
   const tg = document.getElementById('sdToggleRec');
   if (tg) tg.onclick = async () => {
     const nuevo = STATE.mostrarRecup === false;   // si estaba apagado, prender
@@ -7241,13 +7247,20 @@ function renderRevision() {
 
     <!-- CONEXIONES DE WEARABLES — Vía A. Va acá y no en Mi Día porque es
          configuración: se toca una vez y no se vuelve a mirar. -->
-    <div id="myday-conex" style="margin-bottom:var(--space-6)"></div>`;
+    <div id="myday-conex" style="margin-bottom:var(--space-6)"></div>
+
+    <!-- MI DIA (habitos, racha, salud del dia). Va al final: es lo de todos
+         los dias, debajo de lo de la semana. -->
+    <div id="myday-host"></div>`;
 
   // Cada render bindea sus propios handlers.
   renderMydayFotos();
   renderMydayCheckin();
   renderMydayPeso();
   renderMydayConexiones();
+  // Mi Dia va DESPUES de que renderRevision pise el innerHTML: al reves, el
+  // #myday-host todavia no existe y no se dibuja nada.
+  renderMyday();
 }
 
 /* ---- CONECTAR MI RELOJ (Vía A: Oura, Whoop) ----
@@ -7403,8 +7416,12 @@ async function desconectarWearable(btn) {
   renderMydayConexiones();
 }
 
+/* Mi Dia ya no es una escena: se dibuja DENTRO de Revision, al final.
+ * Son la misma conversacion — habitos del dia y revision de la semana— y
+ * separados en dos tabs, el de habitos se llevaba un lugar del tabbar que le
+ * hacia falta al chat. */
 function renderMyday() {
-  const root = $('#scene-myday');
+  const root = $('#myday-host');
   if (!root) return;
 
   if (!STATE.mydayLoaded) {
@@ -7656,7 +7673,9 @@ function setScene(scene) {
   $$('.tab').forEach(t => {
     // 'salud' no tiene tab propio (se entra desde Mi Día). Sin este mapeo el
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
-    const tabDe = scene === 'salud' ? 'myday' : scene;
+    // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
+    // que su tab marcado es el de Revision.
+    const tabDe = scene === 'salud' ? 'revision' : scene;
     const active = t.getAttribute('data-scene') === tabDe;
     t.classList.toggle('is-active', active);
     t.setAttribute('aria-selected', active);
@@ -7673,11 +7692,6 @@ function setScene(scene) {
   } else if (scene === 'diet') {
     $('#hdrEyebrow').textContent = 'DIETA · HOY';
     $('#hdrTitle').textContent = 'Plan de alimentación';
-    if (dp) dp.hidden = true;
-    if (hp) hp.hidden = true;
-  } else if (scene === 'myday') {
-    $('#hdrEyebrow').textContent = 'HÁBITOS · HOY';
-    $('#hdrTitle').textContent = 'Mi Día';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
   } else if (scene === 'revision') {
@@ -7706,7 +7720,7 @@ function setScene(scene) {
 
   if (scene === 'train') renderTrain();
   if (scene === 'diet') renderDiet();
-  if (scene === 'myday') renderMyday();
+  if (scene === 'chat') { renderChat(); chatScrollAlFondo(); marcarChatLeido(); chatPollProgramar(); }
   if (scene === 'revision') renderRevision();
   if (scene === 'salud') renderSalud();
   if (scene === 'progress') renderProgress();
@@ -7751,8 +7765,6 @@ function _aplicarSceneDeURL() {
     if (validas.indexOf(s) !== -1) setScene(s);
   } catch (e) {}
 }
-
-$('#chatBtn').addEventListener('click', () => { abrirChat(); });
 
 $('#themeToggle').addEventListener('click', () => {
   const cur = document.documentElement.getAttribute('data-theme');
