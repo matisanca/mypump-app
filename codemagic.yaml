@@ -178,8 +178,34 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # Sube el build a TestFlight (no lo manda a review de la App Store).
         submit_to_testflight: true
+
+        # Y ADEMÁS lo manda a revisión de la App Store, sin pasar por la web de
+        # App Store Connect.
+        #
+        # Por qué acá y no a mano: el submit desde ASC necesita una sesión con
+        # 2FA que se vence cada pocos días. Cada release quedaba trabado
+        # esperando que alguien estuviera con el teléfono a mano. Codemagic ya
+        # tiene la API key de App Store Connect cargada como integración, así
+        # que puede hacerlo solo — el mismo camino que ya usa para subir a
+        # TestFlight, que nunca pidió una sesión.
+        #
+        # OJO: esto exige que la versión 1.0.6 exista en ASC con su metadata
+        # obligatoria (sobre todo "Novedades de esta versión"). Si falta, el
+        # paso falla con un error explícito de la API — el build igual quedó
+        # subido a TestFlight, así que no se pierde nada y se completa a mano.
+        submit_to_app_store: true
+
+        # AFTER_APPROVAL: apenas Apple aprueba, sale. Es lo que corresponde acá:
+        # los 62 clientes están esperando el chat, y sostener una versión
+        # aprobada sin publicar no le sirve a nadie.
+        release_type: AFTER_APPROVAL
+
+        # Cancela un envío anterior que haya quedado colgado en "Waiting for
+        # Review". Sin esto, un segundo tag el mismo día choca contra el primero
+        # y el build nuevo no entra nunca.
+        cancel_previous_submissions: true
+
         # Descomentá y completá para auto-asignar a un grupo de testers interno:
         # beta_groups:
         #   - "Pump Team interno"
