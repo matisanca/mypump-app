@@ -568,6 +568,51 @@ window.mypumpDB = {
     });
   },
 
+  // ─── CHAT CON EL COACH (ambito='general', mig 057) ───────
+  //
+  // Es la misma tabla que los comentarios de ejercicio, con ambito='general'.
+  // Lo que cambia es la forma de leerla, y por eso hay RPC aparte:
+  //
+  // · getChat viene PAGINADA. mypump_get_comentarios no tiene LIMIT y se llama
+  //   entera en cada arranque; para comentarios de ejercicio (unos pocos por
+  //   cliente) da igual, pero un hilo de chat de un año no se puede traer
+  //   completo para mostrar las últimas 30 líneas.
+  // · chatNuevos trae solo lo posterior a un cursor. Es lo que corre cada
+  //   15-45 s: cuando no hay nada nuevo devuelve cero filas.
+
+  // Última página del hilo, de la más nueva a la más vieja.
+  // `antes` (ISO) pagina hacia atrás: se pasa el created_at del mensaje más
+  // viejo que ya se tenga. Cada fila: {id, autor, contenido,
+  // leido_por_cliente, created_at}.
+  async getChat(token, antes = null, limite = 30) {
+    return await rpc('mypump_get_chat', {
+      p_token:  token,
+      p_antes:  antes,
+      p_limite: limite,
+    });
+  },
+
+  // Lo llegado después de `desde` (ISO), del más viejo al más nuevo.
+  async chatNuevos(token, desde) {
+    return await rpc('mypump_chat_nuevos', { p_token: token, p_desde: desde });
+  },
+
+  // Manda un mensaje del cliente al chat. Devuelve {success, data: id, error}.
+  //
+  // referencia_id va en null a propósito: el hilo es uno solo por cliente, no
+  // hay nada a lo que anclarlo. Y el trigger de la 019 ya excluye
+  // ambito='general', así que esto NO le abre una conversación a Mati en el
+  // teléfono — que es todo el punto de la feature.
+  async enviarChat(token, contenido) {
+    return await rpcMutation('mypump_agregar_comentario', {
+      p_token:             token,
+      p_ambito:            'general',
+      p_referencia_id:     null,
+      p_referencia_nombre: null,
+      p_contenido:         contenido,
+    });
+  },
+
   // ─── CUSTOM FOODS (alimentos personalizados del cliente) ──
 
   // Devuelve array de custom foods del cliente.

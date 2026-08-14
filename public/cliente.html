@@ -510,6 +510,35 @@ main{padding:var(--space-4)}
 .ex-com-autor{font-weight:700;font-size:11px;color:var(--color-text-secondary)}
 .ex-com-fecha{font-family:var(--font-mono);font-size:10px;color:var(--color-text-muted)}
 .ex-com-texto{color:var(--color-text-primary);white-space:pre-wrap;word-break:break-word}
+/* ── CHAT CON MATI ────────────────────────────────────────────────────────
+   Reusa las burbujas de los comentarios de ejercicio (.ex-com / .is-coach /
+   .is-cliente): ya parecían un chat y no tiene sentido tener dos lenguajes
+   visuales para lo mismo. Lo propio de acá es el layout de hilo largo. */
+.chat-wrap{display:flex;flex-direction:column;gap:var(--space-2);padding-bottom:150px}
+.chat-msg{max-width:88%}
+.chat-msg.is-tmp{opacity:.55}
+.chat-msg.is-fallo{border-color:var(--color-warning);background:color-mix(in oklab,var(--color-warning) 12%,transparent)}
+.chat-msg.is-fallo .ex-com-fecha{color:var(--color-warning);font-weight:700}
+.chat-reintentar{margin-top:6px;background:none;border:1px solid var(--color-border-strong);border-radius:999px;padding:3px 10px;font:inherit;font-size:11px;font-weight:600;color:var(--color-text-primary);cursor:pointer}
+.chat-dia{align-self:center;margin:var(--space-3) 0 var(--space-1);padding:2px 10px;border-radius:999px;background:var(--color-bg-tertiary);font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted)}
+.chat-mas{align-self:center;margin-bottom:var(--space-2);background:none;border:1px solid var(--color-border);border-radius:999px;padding:6px 14px;font:inherit;font-size:12px;color:var(--color-text-secondary);cursor:pointer}
+.chat-vacio{padding:var(--space-6) var(--space-4);text-align:center;color:var(--color-text-muted);font-size:14px;line-height:1.6}
+.chat-vacio strong{display:block;color:var(--color-text-primary);font-size:16px;margin-bottom:var(--space-2)}
+/* El composer va fijo, y ARRIBA del tabbar — no encima. Dos razones:
+   · En un hilo largo, un composer que scrollea obliga a bajar hasta el fondo
+     para poder escribir.
+   · Tapando el tabbar a medias, este asomaba por arriba (mide ~72px y el
+     composer ~60), y peor: el chat no tiene botón de volver, así que el tabbar
+     es la ÚNICA salida de la escena. Taparlo dejaría al cliente encerrado.
+   Mismo cálculo de offset que .rest-bar. */
+.chat-composer{position:fixed;left:0;right:0;bottom:calc(72px + env(safe-area-inset-bottom));margin-inline:auto;width:100%;max-width:480px;z-index:36;display:flex;gap:var(--space-2);align-items:flex-end;padding:var(--space-2) var(--space-3);background:color-mix(in oklab,var(--color-bg-primary) 96%,transparent);backdrop-filter:saturate(140%) blur(12px);-webkit-backdrop-filter:saturate(140%) blur(12px);border-top:1px solid var(--color-border)}
+.chat-input{flex:1;min-width:0;resize:none;max-height:110px;padding:10px 12px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-primary);color:var(--color-text-primary);font:inherit;font-size:15px;line-height:1.4}
+.chat-send{flex:0 0 auto;width:44px;height:44px;border:0;border-radius:var(--radius-md);background:var(--color-brand);color:var(--color-on-brand);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.chat-send:disabled{opacity:.4;cursor:default}
+/* Botón del header. El chat NO es un 6º tab: seis tabs dejan cada uno en
+   ~62px en un iPhone SE. Mismo criterio que la escena Salud. */
+.hdr-chat{position:relative}
+.hdr-chat .chat-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--color-brand);color:var(--color-on-brand);font-family:var(--font-mono);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid var(--color-bg-primary)}
 .ex-com-empty{font-size:12px;color:var(--color-text-muted);padding:var(--space-2) 0;text-align:center}
 .ex-comment-form{display:flex;gap:var(--space-2);align-items:flex-end}
 .ex-comment-input{flex:1;min-height:40px;resize:vertical;padding:var(--space-2) var(--space-3);border:1px solid var(--color-border);background:var(--color-bg-secondary);border-radius:var(--radius-md);font-size:13px;font-family:inherit;color:var(--color-text-primary);outline:none;transition:border-color .15s}
@@ -979,6 +1008,10 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
         <div class="hdr-eyebrow"><span id="hdrEyebrow">ENTRENAMIENTO</span><span class="dot"></span><span class="week-pill mono">SEM <strong id="hdrWeek">1</strong>/<span id="hdrWeekTotal">1</span></span></div>
         <div class="hdr-title" id="hdrTitle">Cargando…</div>
       </div>
+      <button class="icon-btn hdr-chat" id="chatBtn" aria-label="Chat con Mati">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        <span class="chat-badge" id="chatBadge" hidden></span>
+      </button>
       <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
       </button>
@@ -998,6 +1031,8 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
     <section class="scene" id="scene-progress"></section>
     <section class="scene" id="scene-myday"></section>
     <section class="scene" id="scene-revision"></section>
+    <!-- CHAT: tampoco tiene tab (ver .hdr-chat); se entra por el ícono del header. -->
+    <section class="scene" id="scene-chat"></section>
     <!-- SALUD: todo lo que manda el reloj. No es un tab (6 tabs dejan cada uno
          en ~62px en un iPhone SE); se entra desde la card de Mi Día. -->
     <section class="scene" id="scene-salud"></section>
@@ -1260,6 +1295,15 @@ const STATE = {
   exerciseSwaps:      {},         // exId → {original:{slug,nombre,images}, current:{slug,nombre,equipment,images}}
   comentariosByRef:   {},         // 'ambito|referencia_id' → [comentarios]
   comentariosUnread:  {},         // 'ambito|referencia_id' → cantidad no leída del coach
+  // Chat con Mati (ambito='general'). Va aparte de comentariosByRef porque se
+  // pagina y se pollea, y porque su badge es el del header, no el de Entreno.
+  chat: {
+    msgs:     [],        // orden cronológico ASC (el más viejo primero)
+    cursor:   null,      // created_at del último visto → punto de partida del poll
+    hayMas:   true,      // queda historia hacia atrás
+    cargando: false,
+    noLeidos: 0,
+  },
   activeTipoDia:      null,       // id del tipo-día activo (Formato B)
   progressLoaded:     false,
   progressData:       null,
@@ -1943,7 +1987,14 @@ function rebuildComentarioIndexes(rows) {
 // el cliente se entere aunque esté en otra pestaña.
 function totalUnreadComentarios() {
   let n = 0;
-  for (const k in STATE.comentariosUnread) n += STATE.comentariosUnread[k] || 0;
+  for (const k in STATE.comentariosUnread) {
+    // El chat NO cuenta acá. `mypump_get_comentarios` trae TODOS los ámbitos,
+    // así que sin este filtro cada mensaje de Mati le pondría un número al tab
+    // Entreno — el cliente iría a buscar un comentario en un ejercicio y no
+    // encontraría nada. El chat tiene su propio badge, el del header.
+    if (k.startsWith('general|')) continue;
+    n += STATE.comentariosUnread[k] || 0;
+  }
   return n;
 }
 function updateGlobalCommentBadge() {
@@ -1996,6 +2047,270 @@ async function marcarLeidosEjercicio(exId) {
   if (TOKEN && !(DATA && DATA._isDemo)) {
     await window.mypumpDB.marcarLeidos(TOKEN, 'ejercicio', exId);
   }
+}
+
+/* ═══ CHAT CON MATI (ambito='general') ═════════════════════════════════════
+ *
+ * Todo lo que sigue existe para sacarle a Mati la ronda de WhatsApp de los
+ * domingos: hoy le escribe uno por uno a 62 clientes y eso le abre ~60
+ * conversaciones que arrancan el domingo y terminan el jueves.
+ *
+ * Es polling y no Realtime, y no por comodidad: la tabla es deny-all RLS y
+ * todo el acceso anon entra por RPC SECURITY DEFINER que validan el token
+ * adentro. Realtime no pasa por RPC — filtra por RLS usando el JWT, y acá el
+ * JWT es la anon key, la MISMA para los 62 clientes. Enchufarlo sin rediseñar
+ * la auth entera le mostraría a cada uno los mensajes de todos.
+ */
+const CHAT_PAGINA = 30;
+
+function chatEsDemo() { return !TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB || !window.mypumpDB.getChat; }
+
+// Inserta manteniendo el orden y sin repetir. El poll y la paginación pueden
+// traer la misma fila (los rangos se solapan por un instante), y un mensaje
+// duplicado en un chat se lee como un bug del coach, no de la app.
+function chatMerge(filas) {
+  const c = STATE.chat;
+  const vistos = new Set(c.msgs.map(m => m.id));
+  let entraron = 0;
+  for (const f of (filas || [])) {
+    if (!f || vistos.has(f.id)) continue;
+    // Al llegar el mensaje de verdad, se va la burbuja optimista que lo estaba
+    // representando. Se matchea por texto+autor porque el id lo pone el
+    // server: el cliente no lo puede saber de antemano.
+    if (f.autor === 'cliente') {
+      const i = c.msgs.findIndex(m => m._tmp && m.autor === 'cliente' && m.contenido === f.contenido);
+      if (i !== -1) c.msgs.splice(i, 1);
+    }
+    vistos.add(f.id);
+    c.msgs.push(f);
+    entraron++;
+  }
+  c.msgs.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+  const ultimo = c.msgs.filter(m => !m._tmp).slice(-1)[0];
+  if (ultimo) c.cursor = ultimo.created_at;
+  return entraron;
+}
+
+// Carga inicial (o una página más hacia atrás).
+async function loadChat(masViejos = false) {
+  if (chatEsDemo() || STATE.chat.cargando) return;
+  STATE.chat.cargando = true;
+  try {
+    const primero = STATE.chat.msgs.filter(m => !m._tmp)[0];
+    const antes = masViejos && primero ? primero.created_at : null;
+    const filas = await window.mypumpDB.getChat(TOKEN, antes, CHAT_PAGINA);
+    if (filas === null) return;                       // error de red: no tocar nada
+    if (filas.length < CHAT_PAGINA) STATE.chat.hayMas = false;
+    chatMerge(filas);
+    STATE.chat.noLeidos = STATE.chat.msgs.filter(m => m.autor === 'coach' && m.leido_por_cliente === false).length;
+    updateChatBadge();
+  } finally {
+    STATE.chat.cargando = false;
+  }
+}
+
+function updateChatBadge() {
+  const el = document.getElementById('chatBadge');
+  if (!el) return;
+  const n = STATE.chat.noLeidos || 0;
+  if (n > 0) { el.textContent = n > 9 ? '9+' : String(n); el.hidden = false; }
+  else { el.hidden = true; }
+}
+
+function chatFechaCorta(iso) {
+  try {
+    const d = new Date(iso), hoy = new Date();
+    const mismoDia = d.toDateString() === hoy.toDateString();
+    const ayer = new Date(hoy); ayer.setDate(ayer.getDate() - 1);
+    if (mismoDia) return 'Hoy';
+    if (d.toDateString() === ayer.toDateString()) return 'Ayer';
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+  } catch (_) { return ''; }
+}
+function chatHora(iso) {
+  try { return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); }
+  catch (_) { return ''; }
+}
+
+function renderChat() {
+  const el = document.getElementById('scene-chat');
+  if (!el) return;
+
+  const msgs = STATE.chat.msgs;
+  let hilo;
+  if (!msgs.length) {
+    hilo = `<div class="chat-vacio"><strong>Escribile a Mati</strong>
+      Contale cómo venís, qué te costó esta semana o lo que necesites.
+      Te contesta acá mismo.</div>`;
+  } else {
+    let ultimoDia = '';
+    const partes = [];
+    if (STATE.chat.hayMas) partes.push('<button class="chat-mas" id="chatMas" type="button">Ver mensajes anteriores</button>');
+    for (const m of msgs) {
+      const dia = chatFechaCorta(m.created_at);
+      if (dia && dia !== ultimoDia) { partes.push(`<div class="chat-dia">${escapeHtml(dia)}</div>`); ultimoDia = dia; }
+      const mio = m.autor === 'cliente';
+      const estado = m._fallo ? 'no salió' : (m._tmp ? 'enviando…' : escapeHtml(chatHora(m.created_at)));
+      partes.push(`<div class="ex-com chat-msg ${mio ? 'is-cliente' : 'is-coach'}${m._tmp && !m._fallo ? ' is-tmp' : ''}${m._fallo ? ' is-fallo' : ''}">
+        <div class="ex-com-head">
+          <span class="ex-com-autor">${mio ? 'Vos' : 'Mati'}</span>
+          <span class="ex-com-fecha">${estado}</span>
+        </div>
+        <div class="ex-com-texto">${escapeHtml(m.contenido)}</div>
+        ${m._fallo ? `<button class="chat-reintentar" data-rt="${escapeHtml(m.id)}" type="button">Reintentar</button>` : ''}
+      </div>`);
+    }
+    hilo = `<div class="chat-wrap">${partes.join('')}</div>`;
+  }
+
+  el.innerHTML = hilo + `
+    <div class="chat-composer">
+      <textarea class="chat-input" id="chatInput" rows="1" placeholder="Escribile a Mati…" maxlength="1000"></textarea>
+      <button class="chat-send" id="chatSend" type="button" aria-label="Enviar" disabled>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+      </button>
+    </div>`;
+
+  el.querySelectorAll('[data-rt]').forEach(b => { b.onclick = () => reintentarChat(b.dataset.rt); });
+
+  const mas = document.getElementById('chatMas');
+  if (mas) mas.onclick = async () => { mas.disabled = true; mas.textContent = 'Cargando…'; await loadChat(true); renderChat(); };
+
+  const inp = document.getElementById('chatInput');
+  const btn = document.getElementById('chatSend');
+  if (inp && btn) {
+    const ajustar = () => {
+      btn.disabled = !inp.value.trim();
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
+    };
+    inp.addEventListener('input', ajustar);
+    // Enter manda, Shift+Enter hace salto de línea — pero SOLO en escritorio.
+    // En un teclado táctil el Enter es el "listo" de siempre y mandaría a
+    // medio escribir; ahí queda el botón.
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !('ontouchstart' in window)) { e.preventDefault(); btn.click(); }
+    });
+    btn.onclick = () => {
+      const txt = inp.value.trim();
+      if (!txt) return;
+      inp.value = ''; ajustar();
+      enviarChatMsg(txt);
+    };
+  }
+}
+
+// Manda por el Outbox, no directo.
+//
+// El envío de comentarios de ejercicio SÍ va directo y tira alert() si falla
+// — inaceptable acá: la mitad de los mensajes se van a escribir parado en un
+// gimnasio con una barra de señal. Con el Outbox, el mensaje queda encolado en
+// localStorage, la burbuja aparece igual, y sale sola cuando vuelve la red.
+function enviarChatMsg(contenido) {
+  contenido = (contenido || '').trim();
+  if (!contenido || chatEsDemo()) return;
+
+  STATE.chat.msgs.push({
+    id: 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    autor: 'cliente',
+    contenido,
+    created_at: new Date().toISOString(),
+    _tmp: true,
+  });
+  renderChat();
+  chatScrollAlFondo();
+
+  // La clave de dedupe lleva el texto: dos mensajes distintos son dos ops, y
+  // el mismo mensaje reencolado por un doble tap es una sola.
+  Outbox.enqueue('chat', { contenido }, 'chat_' + Date.now() + '_' + contenido.slice(0, 40));
+}
+
+function chatScrollAlFondo() {
+  // rAF doble: una para que el navegador aplique el innerHTML nuevo y otra
+  // para que termine de medir el alto real de las burbujas.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' });
+  }));
+}
+
+// El Outbox se rindió con este mensaje: se marca la burbuja y se le da al
+// cliente la manera de reintentarlo. Nunca se borra el texto — que tenga que
+// volver a escribirlo es la segunda peor forma de perderlo.
+function marcarChatFallido(contenido) {
+  const m = STATE.chat.msgs.find(x => x._tmp && !x._fallo && x.contenido === contenido);
+  if (!m) return;
+  m._fallo = true;
+  if (STATE.scene === 'chat') renderChat();
+}
+
+function reintentarChat(id) {
+  const m = STATE.chat.msgs.find(x => x.id === id);
+  if (!m) return;
+  m._fallo = false;
+  renderChat();
+  Outbox.enqueue('chat', { contenido: m.contenido }, 'chat_' + Date.now() + '_' + m.contenido.slice(0, 40));
+}
+
+async function marcarChatLeido() {
+  if (STATE.chat.noLeidos === 0 || chatEsDemo()) return;
+  STATE.chat.noLeidos = 0;
+  for (const m of STATE.chat.msgs) if (m.autor === 'coach') m.leido_por_cliente = true;
+  updateChatBadge();
+  await window.mypumpDB.marcarLeidos(TOKEN, 'general', null);
+}
+
+/* ── El poll ───────────────────────────────────────────────────────────────
+ * 15 s con el chat abierto, 45 s en otra escena, y NADA con la app en
+ * segundo plano. Sin el corte por document.hidden, una app abierta en una
+ * pestaña olvidada pega ~5.700 requests por día por cliente para no traer
+ * nada. */
+let _chatPollTimer = null;
+
+function chatPollIntervalo() {
+  if (document.hidden) return 0;
+  return STATE.scene === 'chat' ? 15000 : 45000;
+}
+
+async function chatPollTick() {
+  if (chatEsDemo() || document.hidden) return;
+  const desde = STATE.chat.cursor;
+  if (!desde) { await loadChat(); if (STATE.scene === 'chat') renderChat(); return; }
+
+  const filas = await window.mypumpDB.chatNuevos(TOKEN, desde);
+  if (!filas || !filas.length) return;
+
+  const entraron = chatMerge(filas);
+  if (!entraron) return;
+
+  const nuevosDelCoach = filas.filter(f => f.autor === 'coach').length;
+  if (nuevosDelCoach && STATE.scene !== 'chat') {
+    STATE.chat.noLeidos += nuevosDelCoach;
+    updateChatBadge();
+  }
+  if (STATE.scene === 'chat') {
+    renderChat();
+    chatScrollAlFondo();
+    if (nuevosDelCoach) marcarChatLeido();
+  }
+}
+
+function chatPollProgramar() {
+  if (_chatPollTimer) { clearTimeout(_chatPollTimer); _chatPollTimer = null; }
+  const ms = chatPollIntervalo();
+  if (!ms) return;                                  // pestaña oculta: no se reprograma
+  _chatPollTimer = setTimeout(async () => {
+    try { await chatPollTick(); } catch (e) { console.warn('[chat] poll', e); }
+    chatPollProgramar();                            // en cadena, no setInterval:
+  }, ms);                                           // así dos ticks nunca se pisan
+}
+
+async function abrirChat() {
+  setScene('chat');
+  renderChat();
+  if (!STATE.chat.msgs.length) { await loadChat(); renderChat(); }
+  chatScrollAlFondo();
+  marcarChatLeido();
+  chatPollProgramar();                              // pasa a la cadencia de 15 s
 }
 
 function fmtComentarioFecha(iso) {
@@ -2190,6 +2505,18 @@ const Outbox = (() => {
       // Upsert del check semanal (mig 035). p.fecha = hoy local; el server ancla al lunes ISO.
       return window.mypumpDB.guardarCheckin(TOKEN, p.fecha, p.datos);
     },
+    async chat(p) {
+      const r = await window.mypumpDB.enviarChat(TOKEN, p.contenido);
+      // Traer el mensaje real APENAS entró, sin esperar al próximo tick.
+      //
+      // Sin esto la burbuja se queda en "enviando…" hasta 15 s después de que
+      // el mensaje YA está guardado, porque el reemplazo de la burbuja
+      // optimista sucede cuando el poll trae la fila de verdad. Quince
+      // segundos mirando "enviando…" se leen como que no salió, y el cliente
+      // lo manda de nuevo.
+      if (r && r.success) setTimeout(() => { chatPollTick().catch(() => {}); }, 250);
+      return r;
+    },
   };
 
   function load() {
@@ -2298,6 +2625,13 @@ const Outbox = (() => {
       // no quedó guardado. Es lo contrario de lo que hacía antes, que era
       // reintentar para siempre y dejar el cartel de error pegado.
       console.warn('[outbox] abandonadas tras', MAX_TRIES, 'intentos:', abandonadas);
+      // Un mensaje de chat abandonado necesita más que el toast. Para una serie
+      // el número sigue en pantalla y el cliente lo puede recargar; un mensaje
+      // que se quedó en "enviando…" para siempre le hace creer que Mati lo
+      // leyó. Eso no es un dato perdido, es una expectativa rota.
+      for (const op of abandonadas) {
+        if (op.kind === 'chat' && typeof marcarChatFallido === 'function') marcarChatFallido(op.payload.contenido);
+      }
       hadProblem = false;
       showSaveState('offline');
     }
@@ -4143,6 +4477,13 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && STATE.rest) restTick();
   // Al volver a foco, drenar escrituras pendientes (pudo haber vuelto la conexión).
   if (!document.hidden && OUTBOX_ENABLED && Outbox.pending() > 0) Outbox.flushSoon(0);
+
+  // El poll del chat se apaga en segundo plano y se reanuda al volver, con un
+  // tick inmediato: si Mati contestó mientras la app estaba guardada, el
+  // mensaje tiene que estar ahí cuando el cliente la vuelve a mirar, no 45
+  // segundos después.
+  if (document.hidden) { chatPollProgramar(); }
+  else { chatPollTick().catch(() => {}); chatPollProgramar(); }
 });
 // Reintentar en cuanto vuelva la conexión.
 window.addEventListener('online', () => { if (OUTBOX_ENABLED) Outbox.flushSoon(0); });
@@ -7344,6 +7685,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = 'Revisión';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'chat') {
+    $('#hdrEyebrow').textContent = 'CHAT';
+    $('#hdrTitle').textContent = 'Mati';
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   } else if (scene === 'salud') {
     $('#hdrEyebrow').textContent = 'SALUD · TU RELOJ';
     $('#hdrTitle').textContent = 'Mis datos';
@@ -7405,6 +7751,8 @@ function _aplicarSceneDeURL() {
     if (validas.indexOf(s) !== -1) setScene(s);
   } catch (e) {}
 }
+
+$('#chatBtn').addEventListener('click', () => { abrirChat(); });
 
 $('#themeToggle').addEventListener('click', () => {
   const cur = document.documentElement.getAttribute('data-theme');
@@ -7632,6 +7980,14 @@ async function init() {
 
   // Comentarios coach ↔ cliente (para badges + secciones). No bloqueante.
   if (!(DATA && DATA._isDemo)) loadComentarios();
+
+  // Chat: se trae la última página en el arranque aunque el cliente no vaya a
+  // abrirlo. Es lo que le pone el número al ícono del header — sin esto no se
+  // entera de que Mati le escribió hasta que entre por curiosidad.
+  if (!(DATA && DATA._isDemo)) {
+    loadChat().then(() => { if (STATE.scene === 'chat') renderChat(); });
+    chatPollProgramar();
+  }
 
   STATE.session = buildSession();
   prefetchHistoricoDia();
