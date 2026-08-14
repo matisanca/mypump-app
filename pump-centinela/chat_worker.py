@@ -29,14 +29,17 @@ USO
   python3 chat_worker.py --correr   # genera y guarda borradores
 """
 import json
+import math
 import os
 import pathlib
+import random
 import re
 import subprocess
 import sys
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+import datetime as dt
 from datetime import datetime
 
 import validador_chat as VAL
@@ -71,6 +74,27 @@ CODEX = os.path.expanduser(_g("CODEX_BIN", "~/.local/bin/codex"))
 MODELO = _g("CODEX_MODELO", "gpt-5.6-sol")
 
 CORRER = "--correr" in sys.argv
+
+# AUTOMATICO: la respuesta sale sola, con demora humana.
+# En OFF (modo sombra) genera y deja borrador para que Mati lo mande.
+# Se prende con --auto o con CHAT_IA_AUTO=1 en el .env, asi se puede apagar
+# desde la mini sin tocar el plist ni el codigo.
+AUTO = ("--auto" in sys.argv) or (_g("CHAT_IA_AUTO", "0") == "1")
+
+# ── La demora humana ─────────────────────────────────────────────────────
+#
+# No es un adorno. Una respuesta que llega 900 ms despues del mensaje no la
+# escribio una persona, y con eso se cae toda la premisa de la feature.
+#
+# Y ademas es el unico requisito de producto que SIMPLIFICA la ingenieria:
+# tapa por completo la latencia de Codex. 25 s de generacion adentro de 4
+# minutos es invisible.
+#
+# Mediana ~2,5 min con cola larga, recortada a [60 s, 15 min]. Mas ~1 s cada
+# 12 caracteres, que es el tiempo de tipear la respuesta.
+DEMORA_MIN_S = 60
+DEMORA_MAX_S = 900
+DEMORA_MEDIANA_S = 150
 
 # Semaforo. Con ~20 mensajes/hora de pico y 20-30s por llamada, 3 sobra 20x. El
 # cuello no es la CPU de esta Mac: es el rate limit de la cuenta.
@@ -244,6 +268,19 @@ def llamar_codex(prompt):
     return d, None
 
 
+def demora_humana(texto):
+    """Segundos hasta publicar. Log-normal recortada + tiempo de tipeo.
+
+    Log-normal y no uniforme porque asi se distribuyen los tiempos de respuesta
+    de una persona: la mayoria cerca de la mediana y una cola larga de "estaba
+    haciendo otra cosa". Una uniforme entre 1 y 15 minutos se detecta a simple
+    vista mirando diez mensajes seguidos.
+    """
+    base = random.lognormvariate(math.log(DEMORA_MEDIANA_S), 0.55)
+    tipeo = len(texto or "") / 12.0
+    return int(max(DEMORA_MIN_S, min(DEMORA_MAX_S, base + tipeo)))
+
+
 def procesar(fila):
     """Devuelve el dict que se guarda como borrador. NUNCA lanza."""
     base = {"cliente_id": fila["cliente_id"], "respuesta_a": fila["mensaje_id"],
@@ -294,7 +331,8 @@ def main():
         _log("nada para contestar")
         return 0
 
-    _log(f"{len(pendientes)} mensajes sin responder" + ("" if CORRER else "   [DRY-RUN]"))
+    modo = "AUTOMATICO" if AUTO else "SOMBRA"
+    _log(f"{len(pendientes)} mensajes sin responder  [{modo}]" + ("" if CORRER else "  [DRY-RUN]"))
 
     if not CORRER:
         for f in pendientes:
@@ -310,10 +348,38 @@ def main():
     with ThreadPoolExecutor(max_workers=CONCURRENCIA) as ex:
         resultados = list(ex.map(procesar, pendientes))
 
-    guardados = 0
+    guardados = agendados = 0
     conteo = {"simple": 0, "derivar": 0, "urgente": 0}
     for r in resultados:
         conteo[r["clase"]] = conteo.get(r["clase"], 0) + 1
+
+        # En automatico, una respuesta 'simple' que paso el validador se AGENDA
+        # con demora. Las otras dos clases NO: 'derivar' y 'urgente' necesitan a
+        # Mati por definicion, y ya quedaron escaladas al guardar el borrador.
+        if AUTO and r["clase"] == "simple" and r["respuesta"]:
+            espera = demora_humana(r["respuesta"])
+            cuando = dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=espera)
+            try:
+                pid = _sb("mypump_chat_programar", {
+                    "p_cliente_id": r["cliente_id"],
+                    "p_contenido": r["respuesta"],
+                    "p_cuando": cuando.isoformat(),
+                    "p_dedupe": f"ia-{r['respuesta_a']}",
+                    "p_origen": "ia",
+                    # `respuesta_a` es lo que activa el indice unico parcial de
+                    # la 057: hace IMPOSIBLE que este mensaje reciba dos
+                    # respuestas, aunque el worker muera y reinicie.
+                    "p_meta": {"respuesta_a": str(r["respuesta_a"])},
+                })
+                if pid:
+                    agendados += 1
+                    _log(f"  → {r['cliente_id']}: sale en {espera // 60}m {espera % 60}s")
+                else:
+                    _log(f"  · {r['cliente_id']}: ya habia una respuesta agendada")
+            except Exception as e:  # noqa: BLE001
+                _log(f"  no pude agendar la respuesta de {r['cliente_id']}: {e}")
+            continue
+
         try:
             _sb("mypump_chat_borrador_guardar", {
                 "p_cliente_id": r["cliente_id"],
@@ -329,9 +395,10 @@ def main():
             _log(f"  no pude guardar el borrador de {r['cliente_id']}: {e}")
 
     anotar_cupo(len(resultados))
-    _log(f"{guardados} borradores guardados — {conteo['simple']} simples, "
-         f"{conteo['derivar']} derivan, {conteo['urgente']} urgentes")
-    _log("MODO SOMBRA: no se publico nada. Los borradores esperan en 💬 Chats del Cerebro.")
+    _log(f"{conteo['simple']} simples, {conteo['derivar']} derivan, {conteo['urgente']} urgentes"
+         f"  →  {agendados} agendadas, {guardados} a la bandeja")
+    if not AUTO:
+        _log("MODO SOMBRA: no se publico nada. Los borradores esperan en 💬 Chats del Cerebro.")
     return 0
 
 
