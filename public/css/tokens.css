@@ -32,8 +32,48 @@
   --color-danger:  #dc2626;
 
   /* --- Tipografía --- */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  /* ── TIPOGRAFÍA ─────────────────────────────────────────────────────────
+     Antes: Inter + JetBrains Mono + Archivo, once archivos woff2 desde Google.
+     MEDIDO, no estimado: 423.908 bytes. Y el <link> a fonts.googleapis.com es
+     render-blocking y vuelve con `cache-control: private, max-age=86400`, así
+     que cada cliente, una vez por día, no pinta el primer frame hasta que
+     Google contesta. En una app que se usa en gimnasios con una barra de señal.
+
+     Inter + JetBrains Mono además es el par que sale por defecto de cualquier
+     generador de UI. Pero el problema de fondo no era la elección: era el USO.
+     `--font-mono` aparecía 84 veces contra 8 de `--font-sans`, o sea que la app
+     estaba renderizada casi entera en monoespaciada. Y de esas 84, solo 7
+     pedían `tabular-nums` — si la mono estuviera ahí para alinear dígitos, tnum
+     estaría en casi todas. No estaba. No hacía un trabajo tipográfico: hacía
+     uno estético, disfrazando de terminal una app para gente que va al gimnasio.
+
+     AHORA:
+     · Texto y UI → la pila del sistema. SF Pro en iOS. Cero bytes, disponible
+       antes del primer frame, y en un WKWebView verse nativo ES el objetivo:
+       una webfont delata a la app como un sitio adentro de un wrapper.
+     · Display → Archivo, un solo archivo variable de 27 KB, servido desde
+       nuestro dominio. Ya estaba en el proyecto (costaba 102 KB para tres
+       usos). Es de Omnibus-Type, de Buenos Aires, y con eje 400-800 cubre
+       desde una nota al pie hasta el score de 52px sin pagar un segundo peso.
+     · Mono → la del sistema, degradada a lo que de verdad es texto de máquina.
+
+     Neto: 413 KB → 27 KB · 11 requests → 1 · dos orígenes externos → cero ·
+     render-blocking → nada · y con el .woff2 en el SHELL del service worker,
+     offline se ve idéntico a online. */
+
+  /* La cara de la marca. Se carga con @font-face en cliente.html/index.html. */
+  --font-display: "Archivo", "Archivo Fallback", system-ui, sans-serif;
+
+  /* Texto y UI. Cero requests: ya está en el teléfono. */
+  --font-sans: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /* Números. Alias propio para poder cambiarles la cara algún día sin tocar
+     ochenta declaraciones — que es exactamente el lío del que venimos. */
+  --font-num: var(--font-display);
+
+  /* Monoespaciada de verdad: solo para strings que el cliente copia y pega
+     (códigos de error, el link que le mandó Mati). Del sistema, cero bytes. */
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   --font-size-xs:  12px;
   --font-size-sm:  14px;

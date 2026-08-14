@@ -19,9 +19,9 @@
   <meta name="apple-mobile-web-app-title" content="MyPump">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  
+  
 
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/base.css">
@@ -251,6 +251,27 @@
       line-height: var(--line-height-relaxed);
     }
   </style>
+<link rel="preload" href="/fonts/archivo-var-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* Archivo variable, servida desde nuestro dominio: un archivo de 27 KB contra
+   los 413 KB en once archivos que se bajaban de Google. Y sin el <link>
+   render-blocking a fonts.googleapis.com, que volvía con `private, max-age=86400`
+   y hacía que cada cliente esperara a Google una vez por día para pintar.
+
+   El fallback lleva métricas ajustadas para que el texto no salte cuando la
+   fuente termina de cargar: sin esto, `font-display:swap` produce el reflow que
+   todo el mundo asocia con "página barata". */
+@font-face{
+  font-family:"Archivo";
+  src:url("/fonts/archivo-var-latin.woff2") format("woff2");
+  font-weight:400 800; font-style:normal; font-display:swap;
+}
+@font-face{
+  font-family:"Archivo Fallback";
+  src:local("Helvetica Neue"),local("Arial"),local("Roboto");
+  size-adjust:96%; ascent-override:92%; descent-override:24%; line-gap-override:0%;
+}
+</style>
 </head>
 
 <body>

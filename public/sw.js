@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v40-20260814';
+const VERSION       = 'v41-20260814';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -22,6 +22,10 @@ const SUPABASE_LIB  = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SHELL = [
   '/cliente.html',
   '/css/tokens.css',
+  // La fuente de marca. Va en el SHELL para que offline se vea IGUAL que
+  // online: sin esto, el cliente en el gimnasio sin senal cae al fallback del
+  // sistema y la app cambia de cara justo cuando mas se usa.
+  '/fonts/archivo-var-latin.woff2',
   '/js/config.js',
   '/js/supabase-client.js',
   '/js/food-db.js',
