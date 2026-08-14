@@ -31,6 +31,7 @@
 
   const K_PREFS  = 'mypump_notif_prefs';
   const K_PEDIDO = 'mypump_notif_pedido';   // ya se le mostró la hoja de permiso
+  const K_PUSH_WEB = 'mypump_push_web_endpoint';   // último endpoint web registrado
 
   /* IDs fijos por recordatorio. Fijos y no aleatorios porque reprogramar tiene
      que PISAR lo anterior: con ids nuevos cada vez, el cliente terminaría con
@@ -298,7 +299,12 @@
           // arranque: APNs devuelve el mismo salvo reinstalación o restore.
           const previo = localStorage.getItem(K_PUSH_TOKEN);
           if (dev && dev !== previo && window.mypumpDB && window.mypumpDB.registrarPush) {
-            const r = await window.mypumpDB.registrarPush(tokenAcceso(), dev);
+            // La plataforma REAL. Antes no se pasaba y la RPC usa 'ios' por
+            // defecto: todo device entraba como iOS, así que el día que entre
+            // un Android por FCM el sender lo mandaría por APNs y fallaría con
+            // un BadDeviceToken que no explica nada.
+            const plat = (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || 'ios';
+            const r = await window.mypumpDB.registrarPush(tokenAcceso(), dev, plat);
             if (r && r.success) localStorage.setItem(K_PUSH_TOKEN, dev);
           }
         } catch (e) { console.warn('[push] registrar:', e); }
@@ -336,10 +342,81 @@
   /* Se engancha al permiso que YA se pide para las locales: iOS usa el mismo
    * permiso para ambas, así que pedirlo aparte sería pedirle al cliente lo
    * mismo dos veces. */
+  /* ── WEB PUSH ────────────────────────────────────────────────────────────
+   *
+   * Es el camino que cubre a los 62. Hoy `mypump_push_devices` está vacía
+   * porque el plugin nativo solo existe adentro de la app, y todos abren MyPump
+   * como un link del navegador. Web Push funciona ahí — con una condición que
+   * no se puede saltear: en iOS SOLO anda si la app está agregada a la pantalla
+   * de inicio. Safari no deja suscribirse desde una pestaña común. Por eso el
+   * pop-up de descarga y esto son la misma pelea.
+   *
+   * Devuelve null (y no lanza) en todos los casos en que no corresponde: sin
+   * clave configurada, sin service worker, sin permiso, o navegador viejo.
+   */
+  async function suscribirWebPush() {
+    try {
+      const cfg = window.MYPUMP_CONFIG || {};
+      const clave = cfg.VAPID_PUBLIC_KEY;
+      // Sin clave pública, Web Push está apagado a propósito. Se sale en
+      // silencio: no es un error, es una feature sin configurar.
+      if (!clave) return null;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+      if (!tokenAcceso() || !window.mypumpDB || !window.mypumpDB.registrarPushWeb) return null;
+      if (Notification.permission !== 'granted') return null;
+
+      const reg = await navigator.serviceWorker.ready;
+
+      // Reusar la suscripción existente. Cada `subscribe` nuevo invalida el
+      // anterior, así que llamarlo en cada arranque dejaría la tabla llena de
+      // endpoints muertos que el sender intenta y falla.
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          // Obligatorio en Chrome: sin esto, subscribe() rechaza. Y es honesto
+          // — un push silencioso que no muestra nada es justamente lo que
+          // hace que la gente revoque el permiso.
+          userVisibleOnly: true,
+          applicationServerKey: _b64UrlABytes(clave),
+        });
+      }
+
+      const j = sub.toJSON();
+      if (!j || !j.endpoint || !j.keys) return null;
+
+      const previo = localStorage.getItem(K_PUSH_WEB);
+      if (j.endpoint === previo) return { ok: true, yaEstaba: true };
+
+      const r = await window.mypumpDB.registrarPushWeb(tokenAcceso(), j.endpoint, j.keys.p256dh, j.keys.auth);
+      if (r && r.success && r.data) { try { localStorage.setItem(K_PUSH_WEB, j.endpoint); } catch (e) {} }
+      return { ok: !!(r && r.success) };
+    } catch (e) {
+      console.warn('[push-web]', e);
+      return null;
+    }
+  }
+
+  // La clave VAPID viaja en base64url y `applicationServerKey` pide bytes.
+  // Sin la conversión, subscribe() tira un InvalidCharacterError que no dice
+  // ni una palabra sobre la clave.
+  function _b64UrlABytes(s) {
+    const pad = '='.repeat((4 - (s.length % 4)) % 4);
+    const b64 = (s + pad).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(b64);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
   async function activarPushSiCorresponde() {
     if ((await permisoEstado()) !== 'granted') return { ok: false, motivo: 'sin_permiso' };
     cablearTapsPush();
-    return registrarPush();
+    // Nativo y web no compiten: adentro de la app corre APNs y `PUSH()` existe;
+    // en el navegador `PUSH()` devuelve null y queda Web Push. Se intentan los
+    // dos porque preguntar "¿cuál soy?" acá duplicaría la lógica de plataforma
+    // que ya vive en cada uno.
+    const [nativo] = await Promise.all([registrarPush(), suscribirWebPush()]);
+    return nativo;
   }
 
   window.MyPumpNotif = {
@@ -350,13 +427,17 @@
     prefs,
     reprogramar,
     registrarPush: activarPushSiCorresponde,
+    suscribirWebPush,
     TEXTOS,
   };
 
   // Al arrancar con permiso ya dado, re-registrar: el device token de APNs
   // puede cambiar (restore de backup, reinstalación) y si no lo actualizamos
   // el push deja de llegar sin ningún error visible en ningún lado.
-  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
-    window.addEventListener('load', () => { activarPushSiCorresponde().catch(() => {}); });
-  }
+  //
+  // Ahora corre TAMBIÉN en el navegador, que es donde están los 62. Antes la
+  // guarda de Capacitor lo dejaba fuera y por eso `mypump_push_devices` estaba
+  // vacía: el único registro que existía vivía detrás de una condición que en
+  // la web nunca se cumple.
+  window.addEventListener('load', () => { activarPushSiCorresponde().catch(() => {}); });
 })();

@@ -79,6 +79,17 @@ APNS_ENV      = _g("APNS_ENV", "prod")
 APNS_HOST = ("api.push.apple.com" if APNS_ENV == "prod"
              else "api.sandbox.push.apple.com")
 
+# ── Web Push (VAPID) ─────────────────────────────────────────────────────
+# Es el transporte que cubre a los 62 clientes que abren MyPump como link del
+# navegador — y a Android entero, sin Firebase y sin esperar a Google Play.
+#
+# La clave privada NUNCA se commitea: vive solo en el .env de esta maquina. La
+# publica que le toca es la que esta en public/js/config.js, y las dos tienen
+# que ser del MISMO par o el navegador rechaza el envio con un 403 que no
+# explica nada.
+VAPID_PRIVATE = _g("VAPID_PRIVATE_KEY")
+VAPID_SUBJECT = _g("VAPID_SUBJECT", "mailto:fuarkteam@gmail.com")
+
 ENVIAR = "--enviar" in sys.argv
 
 
@@ -301,18 +312,66 @@ def enviar_uno(device_token, titulo, cuerpo, destino, jwt):
     return False, f"HTTP {codigo} {detalle}", baja
 
 
+def enviar_web(endpoint, p256dh, auth, titulo, cuerpo, destino):
+    """Web Push. Devuelve (ok, error, baja_device) — mismo contrato que APNs.
+
+    Se usa pywebpush en vez de escribir el cifrado a mano. El payload de Web
+    Push va cifrado con aes128gcm (RFC 8291): ECDH sobre P-256, HKDF y AES-GCM.
+    Son ~60 lineas que, mal hechas, no fallan con un error: el navegador
+    responde 201 Created y la notificacion no aparece nunca. Un bug asi no se
+    detecta hasta que un cliente avisa que no le llega nada.
+    """
+    if not VAPID_PRIVATE:
+        return False, "sin VAPID_PRIVATE_KEY en el .env", False
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        return False, "falta pywebpush en el venv", False
+
+    datos = {"title": titulo, "body": cuerpo}
+    if destino:
+        datos["destino"] = destino
+
+    try:
+        webpush(
+            subscription_info={"endpoint": endpoint, "keys": {"p256dh": p256dh, "auth": auth}},
+            data=json.dumps(datos),
+            vapid_private_key=VAPID_PRIVATE,
+            vapid_claims={"sub": VAPID_SUBJECT},
+            ttl=86400,          # un dia: si el telefono esta apagado, igual llega
+        )
+        return True, None, False
+    except WebPushException as e:
+        codigo = getattr(getattr(e, "response", None), "status_code", None)
+        # 404/410 = la suscripcion murió (desinstaló la PWA, limpió el sitio).
+        # Es exactamente el 410 Gone de APNs y se trata igual: se da de baja el
+        # device. Sin esto, el mismo endpoint muerto se reintenta para siempre.
+        if codigo in (404, 410):
+            return False, f"suscripcion dada de baja ({codigo})", True
+        return False, f"webpush {codigo}: {str(e)[:160]}", False
+    except Exception as e:
+        return False, f"{type(e).__name__}: {str(e)[:160]}", False
+
+
 def main():
     faltan = [n for n, v in [
         ("APNS_KEY_PATH", APNS_KEY_PATH),
         ("APNS_KEY_ID", APNS_KEY_ID),
         ("APNS_TEAM_ID", APNS_TEAM_ID),
     ] if not v]
-    if faltan:
-        _log(f"push sin configurar (faltan {', '.join(faltan)} en el .env) — nada que hacer")
+    # APNs faltante ya NO corta la corrida: si hay VAPID configurado, los
+    # avisos web tienen que salir igual. Antes un .env sin APNS_KEY_ID
+    # significaba que NADIE recibia nada, ni siquiera los del navegador.
+    hay_apns = not faltan and os.path.exists(APNS_KEY_PATH)
+    hay_web  = bool(VAPID_PRIVATE)
+    if not hay_apns and not hay_web:
+        detalle = f"faltan {', '.join(faltan)}" if faltan else f"no existe la key en {APNS_KEY_PATH}"
+        _log(f"push sin configurar ({detalle}; tampoco hay VAPID_PRIVATE_KEY) — nada que hacer")
         return 0
-    if not os.path.exists(APNS_KEY_PATH):
-        _log(f"no existe la key en {APNS_KEY_PATH}")
-        return 1
+    if not hay_apns:
+        _log("APNs sin configurar: solo se mandan los avisos web")
+    if not hay_web:
+        _log("sin VAPID_PRIVATE_KEY: los avisos web quedan en la cola (ver docs/PUSH_WEB.md)")
     if not SB_KEY:
         _log("falta SUPABASE_SERVICE_KEY")
         return 1
@@ -331,14 +390,16 @@ def main():
 
     if not ENVIAR:
         for p in pendientes[:20]:
-            _log(f"  -> {p['cliente_id']}: {p['titulo']} | {p['cuerpo'][:60]}")
+            _log(f"  -> [{p.get('plataforma','ios')}] {p['cliente_id']}: {p['titulo']} | {p['cuerpo'][:60]}")
         _log("(dry-run: no se mando nada; usa --enviar)")
         return 0
 
-    jwt = jwt_apns()
-    if not jwt:
-        _log("no pude firmar el JWT de APNs")
-        return 1
+    jwt = None
+    if hay_apns:
+        jwt = jwt_apns()
+        if not jwt:
+            _log("no pude firmar el JWT de APNs")
+            return 1
 
     entregados = cargar_entregados()
 
@@ -351,9 +412,28 @@ def main():
             reportar(p, True, None, False)
             continue
 
-        exito, error, baja = enviar_uno(
-            p["device_token"], p["titulo"], p["cuerpo"], p.get("destino"), jwt
-        )
+        plataforma = (p.get("plataforma") or "ios").lower()
+        if plataforma == "web":
+            if not hay_web:
+                # Se deja en la cola, no se marca error: apenas se configure
+                # VAPID sale solo en la corrida siguiente. Gastar los 4
+                # intentos ahora seria perder el aviso por una config que falta.
+                continue
+            exito, error, baja = enviar_web(
+                p["device_token"], p.get("p256dh"), p.get("auth"),
+                p["titulo"], p["cuerpo"], p.get("destino")
+            )
+        elif plataforma == "android":
+            # FCM llega en la fase 6, cuando Google apruebe la cuenta. Hasta
+            # entonces Android esta cubierto por Web Push, asi que llegar aca
+            # con un device 'android' significa que algo se registro mal.
+            exito, error, baja = False, "android/FCM todavia no implementado", False
+        else:
+            if not hay_apns:
+                continue
+            exito, error, baja = enviar_uno(
+                p["device_token"], p["titulo"], p["cuerpo"], p.get("destino"), jwt
+            )
         # Anotar ANTES de reportar: entre el ok de Apple y el ok de Supabase es
         # justo donde se colaban los avisos repetidos.
         if exito:

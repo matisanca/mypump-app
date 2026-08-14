@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v38-20260813';
+const VERSION       = 'v39-20260813';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -112,3 +112,60 @@ async function cacheFirst(req, cacheName) {
     throw err;
   }
 }
+
+/* ═══ WEB PUSH ═════════════════════════════════════════════════════════════
+ *
+ * Sin estos dos handlers no hay Web Push posible: el navegador entrega el
+ * mensaje al service worker y, si nadie lo escucha, Chrome muestra una
+ * notificación genérica de "este sitio se actualizó en segundo plano" y
+ * Safari directamente no muestra nada.
+ *
+ * Esto es lo que le da timbre a los 62 clientes que usan la app como link del
+ * navegador — y a Android entero, sin Firebase y sin esperar a Google.
+ */
+
+self.addEventListener('push', (e) => {
+  let d = {};
+  // El payload puede venir vacío o no ser JSON: un push sin datos igual tiene
+  // que mostrar algo, porque el sistema operativo YA despertó al worker y si
+  // no se muestra ninguna notificación Chrome muestra la suya, que dice algo
+  // como "actualizado en segundo plano" y no significa nada para el cliente.
+  try { d = e.data ? e.data.json() : {}; } catch (_) {
+    try { d = { body: e.data.text() }; } catch (__) { d = {}; }
+  }
+
+  const titulo = d.title || 'MyPump';
+  const opciones = {
+    body: d.body || '',
+    icon: '/icons/icon-192.png?v=3',
+    badge: '/icons/icon-192.png?v=3',
+    // Un tag por destino: si llegan tres mensajes seguidos del chat, se
+    // reemplazan en vez de apilarse. Tres notificaciones para una conversación
+    // es lo que hace que se apague todo el permiso.
+    tag: d.destino ? `mypump-${d.destino}` : 'mypump',
+    renotify: true,
+    data: { destino: d.destino || 'chat' },
+  };
+  e.waitUntil(self.registration.showNotification(titulo, opciones));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const destino = (e.notification.data && e.notification.data.destino) || 'chat';
+  const url = `/cliente?scene=${encodeURIComponent(destino)}`;
+
+  e.waitUntil((async () => {
+    const abiertas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // Si la app ya está abierta, se la enfoca y se navega ahí mismo. Abrir una
+    // segunda pestaña de la misma app deja al cliente con dos, y la vieja con
+    // datos de hace rato.
+    for (const c of abiertas) {
+      if (c.url.includes('/cliente')) {
+        await c.focus();
+        if ('navigate' in c) { try { await c.navigate(url); } catch (_) {} }
+        return;
+      }
+    }
+    await self.clients.openWindow(url);
+  })());
+});

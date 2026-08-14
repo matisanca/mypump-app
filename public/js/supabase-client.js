@@ -375,6 +375,21 @@ window.mypumpDB = {
     });
   },
 
+  // Registra una suscripción de Web Push (mig 058). Es lo que le da timbre a
+  // los que usan la app desde el navegador — o sea, hoy, a todos.
+  //
+  // El endpoint va en la misma columna `token` que el device token de APNs,
+  // que ya es UNIQUE: así la garantía de "un envío por aviso por dispositivo"
+  // vale igual para los dos transportes, sin tocar el índice.
+  async registrarPushWeb(token, endpoint, p256dh, auth) {
+    return await rpcMutation('mypump_registrar_push_web', {
+      p_token:    token,
+      p_endpoint: endpoint,
+      p_p256dh:   p256dh,
+      p_auth:     auth,
+    });
+  },
+
   // ─── RECUPERACIÓN (score 0-100, mig 043) ─────────────────
 
   // Serie diaria de recuperación, la más reciente al final. Cada fila:

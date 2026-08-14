@@ -18,4 +18,19 @@ window.MYPUMP_CONFIG = {
   // abrir Safari — el cliente veía "no se puede conectar con el servidor".
   // Tiene que coincidir con OAUTH_REDIRECT_BASE de Cloudflare Pages.
   APP_URL:           'https://app.mypumpteam.com',
+
+  // Clave PÚBLICA de VAPID para Web Push. Es pública de verdad: viaja al
+  // navegador en cada suscripción y no sirve para mandar nada por sí sola —
+  // la privada, que es la que firma, vive SOLO en la mini.
+  //
+  // Vacía = Web Push apagado. La app entera sigue funcionando igual: sin
+  // clave, `suscribirWebPush()` devuelve null y no se registra ninguna
+  // suscripción. Preferimos eso a un try/catch que registre suscripciones que
+  // después nadie puede usar.
+  //
+  // Para generarlas, en la mini:
+  //   node -e "const w=require('web-push');const k=w.generateVAPIDKeys();console.log(k.publicKey);console.log(k.privateKey)"
+  // La primera línea va acá. La segunda va al .env de la mini como
+  // VAPID_PRIVATE_KEY y NO se commitea nunca.
+  VAPID_PUBLIC_KEY:  '',
 };
