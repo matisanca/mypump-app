@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.pump.chatworker — la IA lee el chat cada minuto y deja borradores.
+
+  MODO SOMBRA: genera, valida y guarda. NO publica. Lo que sale al cliente sale
+  con un click de Mati desde 💬 Chats en el Cerebro.
+
+  Por qué cada minuto y no al instante: la respuesta tarda MINUTOS A PROPÓSITO
+  (una persona no contesta en 800ms). Con eso, el polling deja UN solo lugar
+  donde mirar cuando algo no anda, y no hace falta ni webhook ni túnel.
+
+  Antes de prender el automático, mirar:
+    SELECT * FROM mypump_chat_ia_calibracion(14);
+  Si Mati envía tal cual el ~80%, el tono está. Si edita el 80%, no.
+  Si la IA escala el 70%, el prompt está mal calibrado — no el diseño.
+
+  Instalación:
+    cp com.pump.chatworker.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.pump.chatworker.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.pump.chatworker</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/matiassancari/agentkit-coach/venv/bin/python</string>
+    <string>/Users/matiassancari/pump-centinela/chat_worker.py</string>
+    <string>--correr</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>60</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/matiassancari/pump-centinela/chatworker.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/matiassancari/pump-centinela/chatworker.err</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/matiassancari/pump-centinela</string>
+</dict>
+</plist>
