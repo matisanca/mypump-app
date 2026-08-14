@@ -614,6 +614,25 @@ main{padding:var(--space-4)}
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;display:flex;align-items:flex-end;justify-content:center}
 .modal-sheet{width:100%;max-width:480px;max-height:85vh;background:var(--color-bg-primary);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3);overflow:auto;animation:slideUp .25s}
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+/* ── Pop-up de descarga (iPhone en el navegador) ──────────────────────────
+   El 100% de los clientes usa la app como link del navegador: por eso
+   `mypump_push_devices` está vacía y no hay un solo teléfono al que se le pueda
+   tocar el timbre. Este cartel existe para mover esa aguja.
+
+   Es grande a propósito, pero TIENE SALIDA. Sin salida, un cliente parado en el
+   gimnasio con la serie a medio cargar no puede seguir — y ahí perdemos mucho
+   más de lo que gana la instalación. */
+.dl-back{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:var(--space-5);background:color-mix(in oklab,var(--color-bg-secondary) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:dlIn .28s ease-out}
+@keyframes dlIn{from{opacity:0}to{opacity:1}}
+.dl-card{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;gap:var(--space-4);text-align:center;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.dl-icon{width:96px;height:96px;border-radius:22px;box-shadow:var(--shadow-lg)}
+.dl-title{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.dl-sub{font-size:15px;line-height:1.55;color:var(--color-text-secondary)}
+.dl-list{width:100%;display:flex;flex-direction:column;gap:var(--space-2);margin:var(--space-1) 0}
+.dl-li{display:flex;align-items:center;gap:var(--space-3);font-size:14px;text-align:left;color:var(--color-text-primary)}
+.dl-li span{font-size:18px;line-height:1;flex:none}
+.dl-cta{width:100%;height:56px;background:var(--color-brand);color:var(--color-on-brand);border:0;border-radius:var(--radius-md);font-size:17px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);text-decoration:none}
+.dl-salir{background:none;border:0;padding:var(--space-2);font:inherit;font-size:13px;color:var(--color-text-muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .modal-handle{width:40px;height:4px;background:var(--color-border-strong);border-radius:var(--radius-full);margin:0 auto var(--space-2)}
 .modal-title{font-size:var(--font-size-lg);font-weight:600;letter-spacing:-.01em}
 .modal-text{font-size:14px;color:var(--color-text-secondary)}
@@ -1034,6 +1053,25 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
   </nav>
 
 </div><!-- /app -->
+
+<!-- POP-UP DE DESCARGA (solo iPhone en el navegador; lo prende dlInit()).
+     Va FUERA de #appRoot a propósito: adentro heredaba su atributo `hidden` y
+     no se mostraba nunca, y además cualquier `transform` que alguien le ponga a
+     .app en el futuro le rompería el `position:fixed` sin que nada avise. -->
+<div class="dl-back" id="dlBack" hidden>
+  <div class="dl-card" role="dialog" aria-modal="true" aria-labelledby="dlTitle">
+    <img class="dl-icon" src="/icons/icon-512.png?v=3" alt="" width="96" height="96">
+    <div class="dl-title" id="dlTitle">MyPump anda mejor<br>como app</div>
+    <div class="dl-sub">Descargala del App Store. Es la misma cuenta, no tenés que volver a entrar.</div>
+    <div class="dl-list">
+      <div class="dl-li"><span>🔔</span>Te avisa cuando Mati te escribe</div>
+      <div class="dl-li"><span>📶</span>Funciona sin señal en el gimnasio</div>
+      <div class="dl-li"><span>⌚</span>Se conecta con la salud de tu teléfono</div>
+    </div>
+    <a class="dl-cta" id="dlCta" href="https://apps.apple.com/ar/app/mypump/id6793259380" target="_blank" rel="noopener">Descargar gratis</a>
+    <button class="dl-salir" id="dlSalir" type="button">Seguir en el navegador</button>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/deeplink.js"></script>
@@ -5982,8 +6020,10 @@ async function renderAppleHealthEstado() {
   };
 }
 
-/* Recordatorios. Cada uno con su switch: una notificación que no sirve termina
- * en "desactivar todas", y de ahí a app borrada hay un paso. */
+/* Recordatorios. Quedó UNO solo — la revisión del domingo — y con su switch.
+ * Antes eran cuatro y ese era el problema: cuatro avisos por semana se leen
+ * como ruido, el cliente entra a Ajustes y apaga TODO, y con eso se lleva
+ * puesto el único que importaba. Con uno solo, cuando suena ya sabe qué es. */
 async function renderNotifPrefs() {
   const el = document.getElementById('sdNotif');
   if (!el || !window.MyPumpNotif) return;
@@ -5991,10 +6031,7 @@ async function renderNotifPrefs() {
   if (!e.nativo || !e.disponible) { el.innerHTML = ''; return; }
 
   const ITEMS = [
-    { k: 'entreno', nombre: 'Entrenar',        desc: 'Todos los días a la tarde.' },
-    { k: 'check',   nombre: 'Check semanal',   desc: 'Domingos, para contarle a Mati cómo venís.' },
-    { k: 'racha',   nombre: 'Cerrar el día',   desc: 'A la noche, si te quedó algo sin marcar.' },
-    { k: 'peso',    nombre: 'Pesarte',         desc: 'A la mañana. Está apagado por defecto.' },
+    { k: 'check', nombre: 'Revisión de la semana', desc: 'Domingos al mediodía. Es el único aviso que te manda la app.' },
   ];
 
   if (e.permiso !== 'granted') {
@@ -6002,7 +6039,7 @@ async function renderNotifPrefs() {
       <div class="myday-section-hdr"><span class="myday-section-icon">🔔</span>
         <span class="myday-section-title">Recordatorios</span></div>
       <div class="myday-section-body">
-        <div class="sd-sub">Un aviso para entrenar y el del check de los domingos. Nada más.</div>
+        <div class="sd-sub">Uno solo: el domingo, para que subas tu revisión. Nada más.</div>
         ${e.permiso === 'denied'
           ? '<div class="rec-nota">Están bloqueados. Para activarlos: <b>Ajustes</b> → <b>Notificaciones</b> → <b>MyPump</b>.</div>'
           : '<button class="btn-primary" id="ntActivar" style="width:100%">Activar recordatorios</button>'}
@@ -8546,7 +8583,66 @@ function _invalidateSwapCache() {
   } catch(e) { /* sin manifest dinámico, fallback al estático */ }
 })();
 
+/* ── Pop-up de descarga ───────────────────────────────────────────────────
+ * Se muestra solo si se dan las TRES: iPhone/iPad, servido por el navegador, y
+ * no pasó por el "seguir en el navegador" en los últimos 3 días.
+ *
+ * El chequeo de standalone va por dos caminos porque ninguno cubre todo:
+ * `navigator.standalone` es de Safari (agregar a inicio) y `display-mode` es el
+ * estándar. Si se mira uno solo, alguien que YA instaló sigue viendo el cartel
+ * que le pide instalar — que es la peor versión de esto.
+ *
+ * Y la detección de iPad: desde iPadOS 13 el user agent dice "Macintosh". Sin
+ * el chequeo de maxTouchPoints, ningún iPad lo vería nunca. */
+const DL_KEY  = 'mypump_dl_pospuesto';
+const DL_DIAS = 3;
+
+function dlCorresponde() {
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return false;
+
+    const ua = navigator.userAgent || '';
+    const esIPad = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;   // iPadOS 13+ miente
+    if (!/iPad|iPhone|iPod/.test(ua) && !esIPad) return false;
+
+    const instalada = window.navigator.standalone === true
+      || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if (instalada) return false;
+
+    const t = Number(localStorage.getItem(DL_KEY) || 0);
+    if (t && Date.now() - t < DL_DIAS * 86400000) return false;
+
+    return true;
+  } catch (e) { return false; }
+}
+
+function dlInit() {
+  const back = document.getElementById('dlBack');
+  if (!back || !dlCorresponde()) return;
+
+  // Se posterga un toque: si aparece encima del splash, el cliente lo lee como
+  // una pantalla de carga rota y lo cierra sin leerlo.
+  setTimeout(() => {
+    back.hidden = false;
+    document.body.style.overflow = 'hidden';
+
+    const cerrar = () => {
+      back.hidden = true;
+      document.body.style.overflow = '';
+      try { localStorage.setItem(DL_KEY, String(Date.now())); } catch (e) {}
+    };
+
+    // El botón de descarga también posterga: si se fue al App Store y vuelve,
+    // que no se lo encuentre de nuevo en la cara.
+    const cta = document.getElementById('dlCta');
+    if (cta) cta.addEventListener('click', cerrar);
+    const salir = document.getElementById('dlSalir');
+    if (salir) salir.onclick = cerrar;
+  }, 1200);
+}
+
 init();
+dlInit();
 
 // Service Worker — offline real (R3). Registro no bloqueante; si falla, la app
 // sigue funcionando normal (solo pierde el offline). En localhost por http se

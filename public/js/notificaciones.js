@@ -35,18 +35,25 @@
   /* IDs fijos por recordatorio. Fijos y no aleatorios porque reprogramar tiene
      que PISAR lo anterior: con ids nuevos cada vez, el cliente terminaría con
      siete copias del mismo aviso. */
+  /* UN SOLO recordatorio, a propósito.
+   *
+   * Antes eran cuatro (entrenar, check, pesarse, cerrar el día). Cuatro avisos
+   * por semana de una app de coaching es ruido, y el que se vuelve ruido lo
+   * primero que recibe es un "desactivar todas" — y ahí se pierde también el
+   * único que importa. Queda la revisión sola para que cuando suene, el cliente
+   * sepa que es eso. */
   const IDS = {
-    entreno:  1001,
-    check:    1002,
-    peso:     1003,
-    racha:    1004,
+    check: 1002,
   };
 
+  /* Los tres que se eliminaron ya están AGENDADOS en el sistema operativo de
+   * todo cliente que abrió la app antes de este cambio. Sacar el código no los
+   * cancela: los seguiría recibiendo para siempre. Hay que pedirle al sistema
+   * que los borre, una vez, por id. */
+  const IDS_ELIMINADOS = [1001, 1003, 1004];   // entreno, peso, racha
+
   const DEFAULTS = {
-    entreno: { on: true,  hora: 18, min: 0 },   // antes de la hora pico del gym
-    check:   { on: true,  hora: 11, min: 0 },   // domingo a media mañana
-    peso:    { on: false, hora: 8,  min: 0 },   // opt-in: pesarse a diario no le sirve a todos
-    racha:   { on: true,  hora: 20, min: 30 },  // solo si el día viene vacío
+    check: { on: true, hora: 11, min: 0 },   // domingo a media mañana
   };
 
   function prefs() {
@@ -84,21 +91,9 @@
   /* Los textos. Cortos, en la voz de Mati, y ninguno culpabiliza: "hoy te toca
      pierna" mueve; "no entrenaste" hace que la desactive. */
   const TEXTOS = {
-    entreno: {
-      title: 'Hoy toca entrenar 💪',
-      body:  'Abrí MyPump y fijate qué te toca hoy.',
-    },
     check: {
-      title: 'Check de la semana',
+      title: 'Tu revisión de la semana',
       body:  'Contale a Mati cómo venís: 1 minuto y ya está.',
-    },
-    peso: {
-      title: 'Pesate',
-      body:  'En ayunas, después del baño. Cargalo en Mi Día.',
-    },
-    racha: {
-      title: 'Te falta cerrar el día',
-      body:  'Marcá lo que hiciste hoy para no perder la racha.',
     },
   };
 
@@ -116,23 +111,17 @@
     // recordatorio, la entrada vieja tiene que desaparecer de verdad.
     try {
       const pend = await ln.getPending();
+      // Los propios Y los eliminados: un cliente que instaló antes del cambio
+      // tiene los tres viejos agendados en el sistema y nadie más los va a
+      // borrar.
+      const aBorrar = Object.values(IDS).concat(IDS_ELIMINADOS);
       const mios = ((pend && pend.notifications) || [])
-        .filter(n => Object.values(IDS).indexOf(Number(n.id)) !== -1)
+        .filter(n => aBorrar.indexOf(Number(n.id)) !== -1)
         .map(n => ({ id: Number(n.id) }));
       if (mios.length) await ln.cancel({ notifications: mios });
     } catch (e) { console.warn('[notif] cancel', e); }
 
     const lista = [];
-
-    if (p.entreno.on) {
-      lista.push({
-        id: IDS.entreno,
-        title: TEXTOS.entreno.title,
-        body: TEXTOS.entreno.body,
-        schedule: { on: { hour: p.entreno.hora, minute: p.entreno.min }, allowWhileIdle: true },
-        extra: { destino: 'entreno' },
-      });
-    }
 
     if (p.check.on) {
       lista.push({
@@ -143,26 +132,6 @@
         // cuando el centinela arma la ronda: si llega el lunes, llega tarde.
         schedule: { on: { weekday: 1, hour: p.check.hora, minute: p.check.min }, allowWhileIdle: true },
         extra: { destino: 'revision' },
-      });
-    }
-
-    if (p.peso.on) {
-      lista.push({
-        id: IDS.peso,
-        title: TEXTOS.peso.title,
-        body: TEXTOS.peso.body,
-        schedule: { on: { hour: p.peso.hora, minute: p.peso.min }, allowWhileIdle: true },
-        extra: { destino: 'myday' },
-      });
-    }
-
-    if (p.racha.on) {
-      lista.push({
-        id: IDS.racha,
-        title: TEXTOS.racha.title,
-        body: TEXTOS.racha.body,
-        schedule: { on: { hour: p.racha.hora, minute: p.racha.min }, allowWhileIdle: true },
-        extra: { destino: 'myday' },
       });
     }
 
