@@ -75,6 +75,28 @@ if (iRender < 0 || iScene < 0) {
   console.log('   ✓ se llama después de renderDiet()');
 }
 
+console.log('\n4. El selector de dias no se cuela en otras escenas');
+// Bug visto en una captura de tienda: el day picker aparecia ENCIMA del chat.
+// setScene lo esconde, pero renderDayPicker corre despues (cuando llegan los
+// datos) y lo volvia a mostrar con un `hidden = false` pelado. Al entrar por
+// deep link ?scene=chat — que es justo como llega el push — el orden es
+// siempre ese, asi que el bug era 100% reproducible en la pantalla estrella.
+{
+  const i = src.indexOf('function renderDayPicker()');
+  const cuerpo = i < 0 ? '' : src.slice(i, i + 2000);
+  if (i < 0) {
+    fallar('no encuentro renderDayPicker()');
+  } else if (/picker\.hidden\s*=\s*false/.test(cuerpo)) {
+    fallar('renderDayPicker() hace `picker.hidden = false` sin mirar la escena.\n' +
+           '      Se cuela encima del chat/dieta/revision cuando el render corre\n' +
+           '      despues de setScene. Tiene que ser hidden = STATE.scene !== \'train\'.');
+  } else if (!/picker\.hidden\s*=\s*STATE\.scene\s*!==\s*'train'/.test(cuerpo)) {
+    fallar('renderDayPicker() no condiciona la visibilidad del picker a la escena train');
+  } else {
+    console.log('   ✓ solo se muestra en Entreno');
+  }
+}
+
 console.log('');
 if (fallas) { console.error(`✗ ${fallas} problema(s) en el ruteo de escenas\n`); process.exit(1); }
 console.log('✓ tabbar, escenas y ?scene= coinciden\n');

@@ -3170,7 +3170,12 @@ function renderDayPicker() {
       ${unread > 0 ? `<span class="dp-com-badge" title="${unread} comentario(s) nuevo(s) de Mati">💬</span>` : ''}
     </button>`;
   }).join('');
-  picker.hidden = false;
+  // Solo se muestra en Entreno, que es la unica escena con dias. Antes era un
+  // `false` pelado y por eso el selector reaparecia ENCIMA del chat: al entrar
+  // por deep link (?scene=chat, que es como llega el push) setScene lo escondia
+  // y este render, que corre despues con los datos ya cargados, lo volvia a
+  // mostrar. Pasaba igual con cualquier re-render disparado desde otra escena.
+  picker.hidden = STATE.scene !== 'train';
   $$('.day-pill').forEach(btn => btn.addEventListener('click', async () => {
     const id = btn.getAttribute('data-dayid');
     const dia = dias.find(d => d.id === id);
