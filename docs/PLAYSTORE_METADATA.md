@@ -52,9 +52,14 @@ NUTRICIÓN
 • Medidas caseras para cada alimento (la "manito"): cuánto es una palma, un puño, una taza — sin balanza.
 • Sustituí alimentos manteniendo tus macros y marcá qué comiste.
 
-TU DÍA
-• Seguí tus hábitos: entrenamiento, comidas, sueño, agua y cardio.
-• Racha de constancia y adherencia de los últimos 30 días.
+CHAT CON TU COACH
+• Escribile a tu coach desde la app y te responde ahí mismo.
+• Te avisa cuando te contesta, aunque tengas la app cerrada.
+
+TU REVISIÓN SEMANAL
+• Subí tu peso y tus fotos de progreso: las ve únicamente tu coach.
+• Contale en 10 segundos cómo venís con energía, descanso, hambre y adherencia.
+• Y tus hábitos del día: entrenamiento, comidas, sueño, agua y cardio, con tu racha de constancia y la adherencia de los últimos 30 días.
 
 SALUD Y RECUPERACIÓN
 • Conectá Health Connect (opcional) y tus pasos, sueño y pulso se suman solos para que tu coach ajuste tu plan.
@@ -62,6 +67,9 @@ SALUD Y RECUPERACIÓN
 • Funciona con lo que ya usás: Samsung Health, Mi Fitness, Fitbit y cualquier app que escriba en Health Connect.
 
 MyPump es para clientes de Pump Team: accedés con el enlace personal que te manda tu coach.
+
+SOBRE LAS RESPUESTAS DEL CHAT
+Algunas respuestas se redactan de forma automática y se limitan a confirmar que tu mensaje llegó. Nunca incluyen indicaciones de entrenamiento, nutrición, suplementación ni salud: cualquier consulta, pedido de cambio o mención de un síntoma la responde tu coach en persona, y todo lo que escribís lo ve él.
 
 RESPALDO Y AVISO
 Las recomendaciones de nutrición y entrenamiento de MyPump se apoyan en fuentes públicas y revisadas por pares (Mifflin-St Jeor, NASEM/Institute of Medicine, International Society of Sports Nutrition, American College of Sports Medicine, OMS, MedlinePlus/NIH y las Guías Alimentarias para la Población Argentina). Las referencias completas, con sus enlaces, están dentro de la app: Dieta → "Respaldo científico del plan".
