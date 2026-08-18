@@ -79,10 +79,43 @@ MODO = ("programar" if "--programar" in sys.argv else
 VENTANA_MIN = 40
 VENTANA_MAX = 60
 
+# Horas (Buenos Aires) en las que un mensaje NO SOLICITADO puede salir. Es la
+# misma ventana que aplica el drenador de la 062: fuera de ella solo publica
+# respuestas ('ia', 'humano'), nunca la ronda.
+#
+# Por que tambien va aca y no solo en el drenador: si se programa a las 00:43,
+# el drenador retiene los 61 y los suelta JUNTOS a las 08:00 — que es
+# exactamente el aluvion que el escalonado viene a evitar. El drenador protege
+# la hora; esto protege el escalonado. Hacen falta los dos.
+HORA_DESDE = 8
+HORA_HASTA = 23
+
+# Permite forzar el horario de arranque: `--a-las 18:00`. Sirve para reponer una
+# ronda que no salio (la del 16-ago murio por PGRST203) sin tener que esperar al
+# domingo siguiente ni mandar 61 mensajes a la madrugada.
+def _arg_a_las():
+    if "--a-las" not in sys.argv:
+        return None
+    try:
+        crudo = sys.argv[sys.argv.index("--a-las") + 1]
+        h, m = (int(x) for x in crudo.split(":"))
+        if not (0 <= h < 24 and 0 <= m < 60):
+            raise ValueError
+        return h, m
+    except (IndexError, ValueError):
+        print("--a-las necesita un horario valido, formato HH:MM (ej: --a-las 18:00)")
+        sys.exit(2)
+
+
+A_LAS = _arg_a_las()
+
 # Tope duro de mensajes del coach por semana y por cliente. Sin esto, quien
 # nunca sube nada recibiria domingo + martes + jueves TODAS las semanas, y eso
 # no es seguimiento: es hostigamiento, y termina en app desinstalada.
 TOPE_SEMANA = 3
+
+# Se llena al consultar faltantes(): quien ya tiene un mensaje puesto para hoy.
+_HOY = set()
 
 # Todo lo que se AGENDA va en UTC (es lo que entiende la base), pero todo lo que
 # se MUESTRA va en hora de Buenos Aires. Imprimir el UTC crudo hacia que el
@@ -106,6 +139,38 @@ def _sb(fn, payload):
     return json.loads(cuerpo) if cuerpo.strip() else None
 
 
+def _ya_recibio_hoy():
+    """cliente_ids que YA tienen un mensaje NO SOLICITADO puesto para hoy.
+
+    El tope de TOPE_SEMANA cuenta por semana, no por dia: nada impedia que la
+    ronda saliera a las 11:00 y el recordatorio del martes a las 20:00 le
+    cayeran a la misma persona el mismo dia. Con la cadencia normal
+    (domingo/martes/jueves) no pasaba nunca, y por eso no se veia — hasta que
+    hubo que REPONER una ronda perdida en un dia que ya tenia recordatorio.
+
+    Se mira `mypump_chat_programados` y no `mypump_comentarios` a proposito:
+    ahi estan tambien los que todavia no se publicaron, que son justo los que
+    hay que contar para no encimar.
+    """
+    hoy = datetime.now(TZ).date().isoformat()
+    url = (f"{SB_URL}/rest/v1/mypump_chat_programados"
+           f"?select=cliente_id&origen=eq.sistema&estado=neq.cancelado"
+           f"&programado_para=gte.{hoy}T00:00:00-03:00"
+           f"&programado_para=lt.{hoy}T23:59:59-03:00")
+    req = urllib.request.Request(url, headers={
+        "apikey": SB_KEY, "Authorization": f"Bearer {SB_KEY}"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            filas = json.loads(r.read().decode() or "[]")
+    except Exception as e:  # noqa: BLE001
+        # Si no se puede consultar, NO se asume que no recibio nada: se aborta.
+        # Mandar de mas es peor que no mandar — el cliente ve dos pedidos
+        # seguidos y el que queda raro es Mati.
+        _log(f"no pude chequear quien ya recibio hoy: {e}")
+        raise
+    return {f["cliente_id"] for f in filas}
+
+
 def apodo(nombre):
     """Primer nombre en minuscula. Es como escribe Mati: 'gerardo', no 'Gerardo'."""
     n = (nombre or "").strip()
@@ -119,14 +184,50 @@ def faltantes():
     (esos los atiende Mati), los silenciados, y los que ya llegaron al tope.
     """
     filas = _sb("mypump_chat_faltantes_semana", {}) or []
+    global _HOY
+    _HOY = _ya_recibio_hoy()
     listos = []
     for f in filas:
         if f["escalado"] or f["silenciado"]:
             continue
+        if f["cliente_id"] in _HOY:
+            continue        # ya tiene uno puesto para hoy: no se encima
         if f["avisos_semana"] >= TOPE_SEMANA:
             continue
         listos.append(f)
     return filas, listos
+
+
+def _base_horaria():
+    """Desde cuando arranca el escalonado, respetando la ventana de envio.
+
+    Sin esto, una corrida manual a la madrugada programa los 61 mensajes entre
+    las 00:43 y la 01:34; el drenador los retiene por hora y los publica todos
+    juntos a las 08:00. El cliente ve 61 mensajes en el mismo minuto y la
+    ilusion se cae — que es justo lo que el escalonado existe para evitar.
+
+    Con `--a-las HH:MM` manda el horario pedido (hoy, o manana si ya paso).
+    Sin el, si estamos fuera de la ventana, empuja al proximo HORA_DESDE.
+    """
+    ahora = datetime.now(TZ)
+
+    if A_LAS:
+        h, m = A_LAS
+        base = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
+        if base <= ahora:
+            base += timedelta(days=1)
+        _log(f"arranque forzado: {base:%a %d/%m %H:%M} (hora de Buenos Aires)")
+        return base.astimezone(timezone.utc)
+
+    if HORA_DESDE <= ahora.hour < HORA_HASTA:
+        return ahora.astimezone(timezone.utc)
+
+    base = ahora.replace(hour=HORA_DESDE, minute=0, second=0, microsecond=0)
+    if base <= ahora:
+        base += timedelta(days=1)
+    _log(f"son las {ahora:%H:%M} y la ventana es {HORA_DESDE:02d}:00-{HORA_HASTA - 1:02d}:59 — "
+         f"arranco {base:%a %d/%m %H:%M}. Para otro horario: --a-las HH:MM")
+    return base.astimezone(timezone.utc)
 
 
 def _horario(base, i, total):
@@ -152,7 +253,7 @@ def programar_ronda(recordatorio=False):
     sem = datetime.now().isocalendar()[1]
     prefijo = "rec" if recordatorio else "dom"
     dia = datetime.now().strftime("%a").lower()
-    base = datetime.now(timezone.utc)
+    base = _base_horaria()
 
     random.shuffle(listos)      # el orden tampoco puede ser siempre el mismo
     puestos = saltados = 0
