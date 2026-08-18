@@ -283,7 +283,11 @@ def demora_humana(texto):
 
 def procesar(fila):
     """Devuelve el dict que se guarda como borrador. NUNCA lanza."""
+    # `nombre` y `mensaje` viajan en el resultado porque el aviso por WhatsApp
+    # los necesita: sin ellos Mati recibiria un id opaco y ningun contexto, y
+    # tendria que abrir el Cerebro solo para saber quien le escribio.
     base = {"cliente_id": fila["cliente_id"], "respuesta_a": fila["mensaje_id"],
+            "nombre": fila.get("nombre"), "mensaje": fila.get("mensaje", ""),
             "modelo": MODELO, "bloqueos": None}
 
     d, err = llamar_codex(armar_prompt(fila))
@@ -348,6 +352,129 @@ def main():
     with ThreadPoolExecutor(max_workers=CONCURRENCIA) as ex:
         resultados = list(ex.map(procesar, pendientes))
 
+
+
+# ── El aviso a Mati ──────────────────────────────────────────────────────────
+#
+# ESTO FALTABA, Y ERA EL AGUJERO MAS GRANDE DEL DISEÑO.
+#
+# La mig 057 le saco `ambito='general'` al trigger 019 —correcto: si no, cada
+# mensaje de chat le mandaba un WhatsApp y la feature reproducia el problema que
+# venia a matar. Pero NADA lo reemplazo para las escalaciones. Resultado: la IA
+# clasificaba `derivar`, le decia al cliente "eso lo charlamos por whatsapp", y
+# Mati no se enteraba nunca. Y peor: un `urgente` (dolor de pecho, desmayo,
+# lesion aguda, ideacion suicida) no publica NADA por diseño — asi que el
+# sistema entero quedaba en silencio absoluto justo en la emergencia.
+#
+# Verificado en produccion el 18-ago: dos clientes escalados, cero avisos.
+AVISADOS = BASE / ".chat_avisados"
+SILENCIO_H = 12          # no repetir el aviso del mismo cliente antes de esto
+
+
+def whatsapp(texto):
+    tok, pnid, to = _g("META_ACCESS_TOKEN"), _g("META_PHONE_NUMBER_ID"), _g("COACH_PHONE_NUMBER")
+    if not (tok and pnid and to):
+        _log("faltan credenciales de Meta — NO PUEDO AVISAR de las escalaciones")
+        return False
+    payload = json.dumps({"messaging_product": "whatsapp", "recipient_type": "individual",
+                          "to": to, "type": "text", "text": {"body": texto}}).encode()
+    try:
+        req = urllib.request.Request(
+            f"https://graph.facebook.com/v21.0/{pnid}/messages", data=payload,
+            headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status == 200
+    except Exception as e:  # noqa: BLE001
+        _log(f"no pude mandar el WhatsApp de escalacion: {e}")
+        return False
+
+
+def _libreta():
+    try:
+        return json.loads(AVISADOS.read_text())
+    except Exception:
+        return {}
+
+
+def _ya_avisado(cid, libreta):
+    """Un cliente que escribe cinco veces seguidas no son cinco avisos.
+
+    Sin esto, alguien que manda tres mensajes en un minuto le dispara tres
+    WhatsApps y el cuello de botella se muda de la app al telefono — que es
+    exactamente lo que esta feature vino a evitar. Los `urgente` NO pasan por
+    aca: esos avisan siempre.
+    """
+    try:
+        return (datetime.now() - datetime.fromisoformat(libreta[cid])).total_seconds() < SILENCIO_H * 3600
+    except Exception:
+        return False
+
+
+def _anotar_avisados(cids, libreta):
+    ahora = datetime.now().isoformat()
+    libreta.update({c: ahora for c in cids})
+    # Poda: lo de hace mas de una semana no sirve para nada y el archivo crece solo.
+    corte = datetime.now() - dt.timedelta(days=7)
+    libreta = {c: t for c, t in libreta.items()
+               if (lambda x: x and x > corte)(_parse(t))}
+    try:
+        AVISADOS.write_text(json.dumps(libreta))
+    except Exception as e:  # noqa: BLE001
+        _log(f"no pude anotar la libreta de avisados: {e}")
+
+
+def _parse(t):
+    try:
+        return datetime.fromisoformat(t)
+    except Exception:
+        return None
+
+
+def avisar_escalaciones(resultados):
+    """Un WhatsApp por corrida con lo que necesita a Mati. Urgentes aparte.
+
+    Se agrupa a proposito: el worker corre cada 60s y si tres personas escalan
+    en el mismo minuto, va UN mensaje con las tres. Los urgentes van solos,
+    siempre, y sin pasar por la libreta de silencio.
+    """
+    urgentes = [r for r in resultados if r["clase"] == "urgente"]
+    derivan = [r for r in resultados if r["clase"] == "derivar"]
+
+    for r in urgentes:
+        nombre = r.get("nombre") or r["cliente_id"]
+        whatsapp(
+            "🚨 *URGENTE en el chat de MyPump*\n\n"
+            f"*{nombre}* escribió:\n"
+            f"_{r['mensaje'][:600]}_\n\n"
+            "La IA *no le contestó nada* — es a propósito. "
+            "Contestale vos ahora, desde 💬 Chats del Cerebro o por WhatsApp."
+        )
+
+    if not derivan:
+        return len(urgentes)
+
+    libreta = _libreta()
+    nuevos = [r for r in derivan if not _ya_avisado(r["cliente_id"], libreta)]
+    if not nuevos:
+        return len(urgentes)
+
+    if len(nuevos) == 1:
+        r = nuevos[0]
+        nombre = r.get("nombre") or r["cliente_id"]
+        cuerpo = (f"💬 *{nombre}* te escribió y necesita respuesta tuya\n\n"
+                  f"_{r['mensaje'][:600]}_\n\n"
+                  "Te espera en 💬 Chats del Cerebro.")
+    else:
+        lineas = "\n".join(
+            f"• *{(r.get('nombre') or r['cliente_id'])}*: _{r['mensaje'][:110]}_"
+            for r in nuevos)
+        cuerpo = (f"💬 *{len(nuevos)} clientes* necesitan respuesta tuya\n\n{lineas}\n\n"
+                  "Están en 💬 Chats del Cerebro.")
+
+    if whatsapp(cuerpo):
+        _anotar_avisados([r["cliente_id"] for r in nuevos], libreta)
+    return len(urgentes) + len(nuevos)
+
     guardados = agendados = 0
     conteo = {"simple": 0, "derivar": 0, "urgente": 0}
     for r in resultados:
@@ -395,6 +522,14 @@ def main():
             _log(f"  no pude guardar el borrador de {r['cliente_id']}: {e}")
 
     anotar_cupo(len(resultados))
+
+    # Va DESPUES de guardar los borradores: si el WhatsApp falla, la escalacion
+    # ya quedo en la bandeja igual. Al reves se podria avisar de algo que no se
+    # guardo, y Mati abriria el Cerebro para no encontrar nada.
+    avisados = avisar_escalaciones(resultados)
+    if avisados:
+        _log(f"  avisado a Mati por WhatsApp: {avisados}")
+
     _log(f"{conteo['simple']} simples, {conteo['derivar']} derivan, {conteo['urgente']} urgentes"
          f"  →  {agendados} agendadas, {guardados} a la bandeja")
     if not AUTO:
