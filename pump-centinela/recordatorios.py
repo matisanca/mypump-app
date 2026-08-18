@@ -70,6 +70,18 @@ _g = lambda k, d="": os.environ.get(k) or E.get(k) or d
 SB_URL = _g("SUPABASE_URL", "https://gydinputrtptqakdzyvc.supabase.co").rstrip("/")
 SB_KEY = _g("SUPABASE_SERVICE_KEY") or _g("SUPABASE_KEY")
 
+# Una bandera que no existe NO puede caer en el modo por defecto: los modos por
+# defecto de este script escriben mensajes a 62 personas. Pasar `--dry` (que
+# nunca existio) creyendo que forzaba dry-run mandaba un recordatorio de verdad,
+# porque el parseo elige la PRIMERA que matchea y `--recordar` iba antes.
+_BANDERAS = {"--programar", "--recordar", "--drenar", "--a-las"}
+_desconocidas = [a for a in sys.argv[1:]
+                 if a.startswith("--") and a not in _BANDERAS]
+if _desconocidas:
+    print(f"bandera desconocida: {' '.join(_desconocidas)}")
+    print(f"validas: {' '.join(sorted(_BANDERAS))}  (sin ninguna = dry-run)")
+    sys.exit(2)
+
 MODO = ("programar" if "--programar" in sys.argv else
         "recordar" if "--recordar" in sys.argv else
         "drenar" if "--drenar" in sys.argv else "dry")
