@@ -108,8 +108,9 @@ them. For review, the app has a built-in demo.
 
 ABOUT AUTOMATED REPLIES IN THE CHAT — please read
 
-Some replies in the chat are drafted automatically and reviewed before sending.
-We are declaring this explicitly rather than leaving it implicit:
+Some replies in the chat are generated automatically and sent without a human
+reading them first. We are declaring this explicitly rather than leaving it
+implicit:
 
 - Automated replies are strictly limited to acknowledgements: confirming that a
   message arrived, thanking the client, or letting them know their coach will

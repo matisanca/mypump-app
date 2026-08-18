@@ -225,27 +225,48 @@ workflows:
   #      La app tiene que NACER en esa cuenta — migrar una app de una cuenta
   #      personal a una de organización deja la consola pidiendo los 14 días de
   #      testing cerrado y soporte no lo destraba.
-  #   2. Play Console → Configuración → Acceso a la API → crear una cuenta de
-  #      servicio y bajar su JSON.
-  #   3. Ese JSON va como VARIABLE, no como integración — mirá la línea del
-  #      `publishing` más abajo: consume $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS.
-  #      Codemagic → Settings → Environment variables:
-  #        · nombre : GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-  #        · valor  : el contenido COMPLETO del JSON, en una línea
-  #        · grupo  : google-play   ← exactamente así, con guion (ver `groups:`)
-  #        · marcarla como SECURE
-  #      Si en vez de esto se carga en "Integrations → Google Play", el workflow
-  #      arranca igual, compila los 4 minutos y muere recién al publicar, porque
-  #      la variable llega vacía.
-  #   4. Codemagic → Settings → Code signing identities → Android keystores →
-  #      "Generate keystore". Referencia: mypump-upload. NO se pierde: con Play
-  #      App Signing, esta es solo la clave de SUBIDA; Google guarda la de
-  #      firma real y se puede resetear la de subida si hace falta.
-  #   5. Con el primer AAB subido: Play Console → Integridad de la app → copiar
+  #   2. EL KEYSTORE DE SUBIDA. Es el único paso sin el cual el build ni
+  #      arranca: el 18-ago-2026 el build #1 (tag a1.0.6) murió en 4 segundos
+  #      con `No keystores with reference 'mypump-upload' were found from code
+  #      signing identities` — ni siquiera llegó a `npm ci`.
+  #
+  #      OJO con la receta vieja de este archivo, que decía "Settings → Code
+  #      signing identities → Android keystores → Generate keystore": ESE BOTÓN
+  #      NO EXISTE. La pestaña de Android keystores solo ofrece "Upload a
+  #      keystore file". Hay que generarlo a mano y subirlo:
+  #
+  #        keytool -genkeypair -v -keystore mypump-upload.jks \
+  #          -alias mypump -keyalg RSA -keysize 2048 -validity 10000
+  #
+  #      y después Codemagic → Settings (Personal Account) → Code signing
+  #      identities → Android keystores → Upload, con:
+  #        · reference : mypump-upload   ← tiene que decir exactamente esto,
+  #                                        es lo que busca `android_signing`
+  #        · alias     : mypump
+  #        · las dos passwords que pidió keytool
+  #
+  #      Con Play App Signing esta es solo la clave de SUBIDA: la de firma real
+  #      la guarda Google. Si se pierde, se pide un reseteo de la de subida y no
+  #      se muere nadie — pero guardá igual el .jks y las passwords.
+  #
+  #   3. La publicación automática a Play (bloque `publishing` de abajo) está
+  #      COMENTADA a propósito hasta el primer release. Dos motivos:
+  #        · el primer release de producción hay que crearlo a mano en la
+  #          consola igual (Play no acepta que un AAB inaugure una app por API);
+  #        · necesita una cuenta de servicio de Google Cloud con su JSON
+  #          (Play Console → Configuración → Acceso a la API), que al 18-ago-2026
+  #          no existe. Con `credentials:` apuntando a una variable vacía, el
+  #          build compila los 4 minutos completos y recién revienta al final.
+  #      Mientras esté comentado, el AAB sale igual como ARTEFACTO y se sube a
+  #      mano desde Play Console → Producción → Crear nueva versión.
+  #      Para automatizarlo después: crear la cuenta de servicio, cargar el JSON
+  #      completo en una línea como variable GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+  #      del grupo `google-play` marcada SECURE, y descomentar los dos bloques.
+  #   4. Con el primer AAB subido: Play Console → Integridad de la app → copiar
   #      el SHA-256 de "Certificado de firma de la app" y pegarlo en
   #      public/.well-known/assetlinks.json. Sin eso los links del coach abren
   #      el navegador en vez de la app, sin avisar.
-  #   6. Play Console → Contenido de la app → "Health apps declaration":
+  #   5. Play Console → Contenido de la app → "Health apps declaration":
   #      justificar los 17 permisos de lectura. El manifest ya está recortado
   #      para que sean exactamente los que la app usa.
   # =============================================================
@@ -266,8 +287,8 @@ workflows:
       java: 21
       android_signing:
         - mypump-upload
-      groups:
-        - google-play
+      # groups:
+      #   - google-play   ← solo hace falta con el `publishing` de abajo activo
       vars:
         PACKAGE_NAME: "com.pumpteam.mypump"
 
@@ -333,10 +354,16 @@ workflows:
       - android/app/build/outputs/**/*.apk
       - android/app/build/outputs/**/mapping.txt
 
-    publishing:
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        # internal: llega a los testers internos en minutos, sin revisión.
-        # Cuando esté probado se promueve a producción desde la consola.
-        track: internal
-        submit_as_draft: true
+    # Ver el punto 3 de la cabecera: hasta que exista la cuenta de servicio de
+    # Google Cloud, publicar por API es imposible y dejar esto activo solo logra
+    # que el build compile entero y muera al final. El AAB queda como artefacto
+    # y se sube a mano. Para reactivar: cargar GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+    # y descomentar esto Y el `groups:` de arriba.
+    #
+    # publishing:
+    #   google_play:
+    #     credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+    #     # internal: llega a los testers internos en minutos, sin revisión.
+    #     # Cuando esté probado se promueve a producción desde la consola.
+    #     track: internal
+    #     submit_as_draft: true

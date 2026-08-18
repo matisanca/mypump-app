@@ -206,14 +206,45 @@ Se arregla escribiendo el número **a mano**, sin pegar.
 
 ### 2. Keystore
 
-Codemagic → Settings → Code signing identities → Android keystores → *Generate
-keystore*. Referencia: `mypump-upload`.
+**El botón "Generate keystore" no existe.** Esta guía lo dijo hasta el
+18-ago-2026 y era falso: la pestaña *Android keystores* de Codemagic solo tiene
+"Upload a keystore file". Por creerle, el build #1 (tag `a1.0.6`) murió a los 4
+segundos, antes de `npm ci`:
+
+```
+No keystores with reference 'mypump-upload' were found from code signing identities.
+```
+
+Hay que generarlo a mano, una sola vez:
+
+```bash
+keytool -genkeypair -v -keystore mypump-upload.jks \
+  -alias mypump -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Pide dos passwords (la del keystore y la de la clave; pueden ser la misma) y
+unos datos de identidad que **no se muestran en ningún lado** — con el nombre
+alcanza. Después: Codemagic → Settings → Code signing identities → Android
+keystores → *Upload a keystore file*.
+
+| campo | valor |
+|---|---|
+| reference | `mypump-upload` — exactamente así, es lo que busca `android_signing` |
+| alias | `mypump` |
+| passwords | las dos que pidió `keytool` |
 
 Con Play App Signing esta es solo la clave de **subida**; Google guarda la de
 firma real. Si se pierde, se resetea — no es el drama irreversible que fue el
-certificado de Apple.
+certificado de Apple. Igual: guardá el `.jks` y las passwords.
 
 ### 3. Cuenta de servicio para publicar
+
+> **Al 18-ago-2026 esto no existe todavía, y por eso el bloque `publishing` de
+> `codemagic.yaml` está comentado.** No hace falta para el primer release: el
+> AAB sale como artefacto de Codemagic y se sube a mano desde Play Console →
+> Producción → Crear nueva versión. El primer release de producción hay que
+> crearlo a mano igual. Esta sección es para automatizar del segundo en
+> adelante.
 
 Play Console → Configuración → Acceso a la API → crear cuenta de servicio →
 bajar el JSON.
@@ -235,10 +266,16 @@ El JSON va a Codemagic como **variable de entorno**, no como integración:
 ### 4. El primer build
 
 ```bash
-git tag a1.0.5 && git push origin a1.0.5
+git tag a1.0.6 && git push origin a1.0.6
 ```
 
-Va al track **internal**, que llega a los testers en minutos y sin revisión.
+Con el `publishing` comentado, el build **no sube nada a Play**: deja el `.aab`
+(y un `.apk` para sideload) como artefactos en la página del build de Codemagic.
+Se bajan de ahí y el `.aab` se sube a mano en Play Console → Producción → Crear
+nueva versión.
+
+Si el tag ya existe de un intento anterior, se rehace el build desde la UI de
+Codemagic (botón *Start new build*, eligiendo el tag) — no hace falta re-taggear.
 
 ### 5. Después del primer AAB: cerrar los App Links
 
