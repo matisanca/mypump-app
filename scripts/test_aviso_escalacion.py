@@ -100,20 +100,114 @@ except Exception:
 check("un envio fallido no marca al cliente como avisado", "f" not in libreta,
       f"libreta quedo con {list(libreta)}")
 
-print("\n7. El worker llama al aviso (no solo existe la funcion)")
-SRC = (RAIZ / "pump-centinela" / "chat_worker.py").read_text()
-# Ojo con buscar "avisar_escalaciones(resultados)" a secas: eso tambien matchea
-# la linea del `def`, que esta ANTES del guardado, y el chequeo de orden daba un
-# falso positivo. Hay que apuntar al call site.
-LLAMADA = "avisados = avisar_escalaciones(resultados)"
-check("avisar_escalaciones se invoca en el flujo", LLAMADA in SRC,
-      "la funcion existe pero nadie la llama: seria silencio igual que antes")
-check("se avisa DESPUES de guardar los borradores",
-      LLAMADA in SRC and SRC.index("mypump_chat_borrador_guardar") < SRC.index(LLAMADA),
-      "si avisa antes, puede avisar de algo que no se guardo")
-check("el resultado lleva nombre y mensaje",
-      '"nombre": fila.get("nombre")' in SRC and '"mensaje": fila.get("mensaje"' in SRC,
-      "sin esto el aviso muere con KeyError o manda un id opaco")
+print("\n7. main() llega hasta el final (no alcanza con que el codigo exista)")
+# Esta seccion era un grep sobre el texto del archivo: buscaba la cadena
+# "avisados = avisar_escalaciones(resultados)" y daba verde si aparecia. El
+# 18-ago el commit dc8eb3a metio ese bloque a nivel de MODULO en el medio de
+# main(): main quedo cortada en el ThreadPoolExecutor y sus ultimas 60 lineas
+# —guardar borradores, agendar respuestas, anotar cupo, avisar a Mati— quedaron
+# colgando DENTRO de avisar_escalaciones, despues de su return. Codigo muerto.
+# El grep seguia encontrando la cadena, asi que los 14 checks pasaban en verde
+# mientras en produccion cada mensaje se mandaba a OpenAI y se tiraba.
+#
+# Ahora se ejecuta main() de verdad con todo stubbeado, y se mira QUE HIZO.
+import ast  # noqa: E402
+
+FUENTE = (RAIZ / "pump-centinela" / "chat_worker.py").read_text()
+
+# 7a. Ningun bloque queda despues de un return, en NINGUNA funcion. Este es el
+#     chequeo que hubiera cazado el bug de una, y caza toda la familia.
+def _muertas(arbol):
+    malas = []
+    for nodo in ast.walk(arbol):
+        cuerpos = []
+        for campo in ("body", "orelse", "finalbody"):
+            b = getattr(nodo, campo, None)
+            if isinstance(b, list):
+                cuerpos.append(b)
+        for b in cuerpos:
+            for i, st in enumerate(b[:-1]):
+                if isinstance(st, (ast.Return, ast.Raise, ast.Continue, ast.Break)):
+                    malas.append((st.lineno, b[i + 1].lineno))
+    return malas
+
+muertas = _muertas(ast.parse(FUENTE))
+check("no hay codigo despues de un return", not muertas,
+      "inalcanzable: " + ", ".join(f"linea {b} (el return esta en {a})" for a, b in muertas))
+
+# 7b. main() corre entera y hace las cuatro cosas que tiene que hacer.
+llamadas = {"rpc": [], "cupo": [], "aviso": []}
+W.SB_KEY = "clave-de-prueba"      # sin esto main() sale en la primera guarda
+W.CORRER = True
+W.AUTO = True
+W.CUPO_DIARIO = 100
+W.cupo_usado = lambda: 0
+W.anotar_cupo = lambda n: llamadas["cupo"].append(n)
+W.avisar_escalaciones = lambda res: (llamadas["aviso"].append(len(res)), 1)[1]
+W.procesar = lambda fila: {
+    "clase": fila["_clase"], "cliente_id": fila["cliente_id"],
+    "respuesta_a": fila["mensaje_id"], "nombre": fila.get("nombre"),
+    "mensaje": fila["mensaje"], "respuesta": fila.get("_resp"),
+    "motivo": "test", "bloqueos": None, "modelo": "test",
+}
+
+COLA = [
+    {"cliente_id": "c1", "mensaje_id": "m1", "nombre": "Ana", "mensaje": "gracias!",
+     "_clase": "simple", "_resp": "de nada, ana"},
+    {"cliente_id": "c2", "mensaje_id": "m2", "nombre": "Beto", "mensaje": "me duele el pecho",
+     "_clase": "urgente", "_resp": None},
+]
+
+
+def _sb_falso(fn, args=None):
+    llamadas["rpc"].append(fn)
+    if fn == "mypump_chat_para_responder":
+        return COLA
+    if fn == "mypump_chat_programar":
+        return "id-programado"
+    return None
+
+
+W._sb = _sb_falso
+salida = W.main()
+
+check("main() devuelve 0", salida == 0, f"devolvio {salida!r}")
+check("agenda la respuesta automatica del 'simple'",
+      "mypump_chat_programar" in llamadas["rpc"],
+      "nunca se llamo a mypump_chat_programar: el cliente no recibe nada")
+check("guarda el borrador del 'urgente' en la bandeja",
+      "mypump_chat_borrador_guardar" in llamadas["rpc"],
+      "no queda nada en 💬 Chats del Cerebro")
+check("descuenta el cupo diario", llamadas["cupo"] == [2],
+      f"anotar_cupo recibio {llamadas['cupo']}")
+check("avisa a Mati de las escalaciones", llamadas["aviso"] == [2],
+      "avisar_escalaciones no se ejecuto: un urgente queda en silencio")
+
+# 7c. Mutante: si a main() le cortan la cola, 7b tiene que ponerse en rojo.
+_ORIG = W.main
+_corte = ast.parse(FUENTE)
+for _n in _corte.body:
+    if isinstance(_n, ast.FunctionDef) and _n.name == "main":
+        for _i, _st in enumerate(_n.body):
+            if isinstance(_st, ast.With):       # el ThreadPoolExecutor
+                _n.body = _n.body[: _i + 1]
+                break
+_ns = dict(W.__dict__)
+exec(compile(ast.fix_missing_locations(_corte), "<mutante>", "exec"), _ns)
+llamadas["rpc"].clear(); llamadas["cupo"].clear(); llamadas["aviso"].clear()
+_ns["_sb"] = _sb_falso
+_ns["procesar"] = W.procesar
+_ns["cupo_usado"] = lambda: 0
+_ns["anotar_cupo"] = W.anotar_cupo
+_ns["avisar_escalaciones"] = W.avisar_escalaciones
+_ns["SB_KEY"] = "clave-de-prueba"
+_ns["CORRER"] = True
+_ns["AUTO"] = True
+_ns["CUPO_DIARIO"] = 100
+_ns["main"]()
+check("MUTANTE: cortarle la cola a main() rompe el test",
+      "mypump_chat_borrador_guardar" not in llamadas["rpc"] and not llamadas["aviso"],
+      "el test no distingue una main() completa de una truncada — es un grep disfrazado")
 
 print()
 if fallas:

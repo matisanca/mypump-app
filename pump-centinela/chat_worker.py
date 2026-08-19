@@ -352,6 +352,67 @@ def main():
     with ThreadPoolExecutor(max_workers=CONCURRENCIA) as ex:
         resultados = list(ex.map(procesar, pendientes))
 
+    guardados = agendados = 0
+    conteo = {"simple": 0, "derivar": 0, "urgente": 0}
+    for r in resultados:
+        conteo[r["clase"]] = conteo.get(r["clase"], 0) + 1
+
+        # En automatico, una respuesta 'simple' que paso el validador se AGENDA
+        # con demora. Las otras dos clases NO: 'derivar' y 'urgente' necesitan a
+        # Mati por definicion, y ya quedaron escaladas al guardar el borrador.
+        if AUTO and r["clase"] == "simple" and r["respuesta"]:
+            espera = demora_humana(r["respuesta"])
+            cuando = dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=espera)
+            try:
+                pid = _sb("mypump_chat_programar", {
+                    "p_cliente_id": r["cliente_id"],
+                    "p_contenido": r["respuesta"],
+                    "p_cuando": cuando.isoformat(),
+                    "p_dedupe": f"ia-{r['respuesta_a']}",
+                    "p_origen": "ia",
+                    # `respuesta_a` es lo que activa el indice unico parcial de
+                    # la 057: hace IMPOSIBLE que este mensaje reciba dos
+                    # respuestas, aunque el worker muera y reinicie.
+                    "p_meta": {"respuesta_a": str(r["respuesta_a"])},
+                })
+                if pid:
+                    agendados += 1
+                    _log(f"  → {r['cliente_id']}: sale en {espera // 60}m {espera % 60}s")
+                else:
+                    _log(f"  · {r['cliente_id']}: ya habia una respuesta agendada")
+            except Exception as e:  # noqa: BLE001
+                _log(f"  no pude agendar la respuesta de {r['cliente_id']}: {e}")
+            continue
+
+        try:
+            _sb("mypump_chat_borrador_guardar", {
+                "p_cliente_id": r["cliente_id"],
+                "p_respuesta_a": r["respuesta_a"],
+                "p_clase": r["clase"],
+                "p_respuesta": r["respuesta"],
+                "p_motivo": r["motivo"],
+                "p_bloqueos": r["bloqueos"],
+                "p_modelo": r["modelo"],
+            })
+            guardados += 1
+        except Exception as e:  # noqa: BLE001
+            _log(f"  no pude guardar el borrador de {r['cliente_id']}: {e}")
+
+    anotar_cupo(len(resultados))
+
+    # Va DESPUES de guardar los borradores: si el WhatsApp falla, la escalacion
+    # ya quedo en la bandeja igual. Al reves se podria avisar de algo que no se
+    # guardo, y Mati abriria el Cerebro para no encontrar nada.
+    avisados = avisar_escalaciones(resultados)
+    if avisados:
+        _log(f"  avisado a Mati por WhatsApp: {avisados}")
+
+    _log(f"{conteo['simple']} simples, {conteo['derivar']} derivan, {conteo['urgente']} urgentes"
+         f"  →  {agendados} agendadas, {guardados} a la bandeja")
+    if not AUTO:
+        _log("MODO SOMBRA: no se publico nada. Los borradores esperan en 💬 Chats del Cerebro.")
+    return 0
+
 
 
 # ── El aviso a Mati ──────────────────────────────────────────────────────────
@@ -474,67 +535,6 @@ def avisar_escalaciones(resultados):
     if whatsapp(cuerpo):
         _anotar_avisados([r["cliente_id"] for r in nuevos], libreta)
     return len(urgentes) + len(nuevos)
-
-    guardados = agendados = 0
-    conteo = {"simple": 0, "derivar": 0, "urgente": 0}
-    for r in resultados:
-        conteo[r["clase"]] = conteo.get(r["clase"], 0) + 1
-
-        # En automatico, una respuesta 'simple' que paso el validador se AGENDA
-        # con demora. Las otras dos clases NO: 'derivar' y 'urgente' necesitan a
-        # Mati por definicion, y ya quedaron escaladas al guardar el borrador.
-        if AUTO and r["clase"] == "simple" and r["respuesta"]:
-            espera = demora_humana(r["respuesta"])
-            cuando = dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=espera)
-            try:
-                pid = _sb("mypump_chat_programar", {
-                    "p_cliente_id": r["cliente_id"],
-                    "p_contenido": r["respuesta"],
-                    "p_cuando": cuando.isoformat(),
-                    "p_dedupe": f"ia-{r['respuesta_a']}",
-                    "p_origen": "ia",
-                    # `respuesta_a` es lo que activa el indice unico parcial de
-                    # la 057: hace IMPOSIBLE que este mensaje reciba dos
-                    # respuestas, aunque el worker muera y reinicie.
-                    "p_meta": {"respuesta_a": str(r["respuesta_a"])},
-                })
-                if pid:
-                    agendados += 1
-                    _log(f"  → {r['cliente_id']}: sale en {espera // 60}m {espera % 60}s")
-                else:
-                    _log(f"  · {r['cliente_id']}: ya habia una respuesta agendada")
-            except Exception as e:  # noqa: BLE001
-                _log(f"  no pude agendar la respuesta de {r['cliente_id']}: {e}")
-            continue
-
-        try:
-            _sb("mypump_chat_borrador_guardar", {
-                "p_cliente_id": r["cliente_id"],
-                "p_respuesta_a": r["respuesta_a"],
-                "p_clase": r["clase"],
-                "p_respuesta": r["respuesta"],
-                "p_motivo": r["motivo"],
-                "p_bloqueos": r["bloqueos"],
-                "p_modelo": r["modelo"],
-            })
-            guardados += 1
-        except Exception as e:  # noqa: BLE001
-            _log(f"  no pude guardar el borrador de {r['cliente_id']}: {e}")
-
-    anotar_cupo(len(resultados))
-
-    # Va DESPUES de guardar los borradores: si el WhatsApp falla, la escalacion
-    # ya quedo en la bandeja igual. Al reves se podria avisar de algo que no se
-    # guardo, y Mati abriria el Cerebro para no encontrar nada.
-    avisados = avisar_escalaciones(resultados)
-    if avisados:
-        _log(f"  avisado a Mati por WhatsApp: {avisados}")
-
-    _log(f"{conteo['simple']} simples, {conteo['derivar']} derivan, {conteo['urgente']} urgentes"
-         f"  →  {agendados} agendadas, {guardados} a la bandeja")
-    if not AUTO:
-        _log("MODO SOMBRA: no se publico nada. Los borradores esperan en 💬 Chats del Cerebro.")
-    return 0
 
 
 if __name__ == "__main__":
