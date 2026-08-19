@@ -1,3 +1,15 @@
+<!-- OJO con volver a prometer push en Android.
+     Hasta el 19-ago-2026 este bloque decia "Te avisa cuando te contesta, aunque
+     tengas la app cerrada". En el AAB eso no puede pasar: notificaciones.js:272
+     apaga el push nativo en Android a proposito (sin google-services.json,
+     PushNotifications.register() tira "Default FirebaseApp is not initialized"
+     y se lleva puesto el proceso), y aun con Firebase el envio del lado del
+     servidor es APNs — el camino FCM no esta escrito. Web Push tampoco: la
+     VAPID_PUBLIC_KEY de config.js:35 esta vacia y adentro del WebView no hay
+     push web igual. Queda solo la notificacion LOCAL de la revision, que la
+     arma el telefono y no avisa de nada remoto.
+     Se puede volver a poner cuando exista Firebase + envio FCM en push.py. -->
+
 # MyPump — Metadata para Google Play Console (copiar/pegar)
 
 > Todo listo para pegar en cuanto la cuenta de desarrollador esté verificada.
@@ -54,7 +66,7 @@ NUTRICIÓN
 
 CHAT CON TU COACH
 • Escribile a tu coach desde la app y te responde ahí mismo.
-• Te avisa cuando te contesta, aunque tengas la app cerrada.
+• Sus respuestas te esperan en el chat con el contador de mensajes sin leer.
 
 TU REVISIÓN SEMANAL
 • Subí tu peso y tus fotos de progreso: las ve únicamente tu coach.

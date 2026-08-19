@@ -274,8 +274,21 @@ Con el `publishing` comentado, el build **no sube nada a Play**: deja el `.aab`
 Se bajan de ahí y el `.aab` se sube a mano en Play Console → Producción → Crear
 nueva versión.
 
-Si el tag ya existe de un intento anterior, se rehace el build desde la UI de
-Codemagic (botón *Start new build*, eligiendo el tag) — no hace falta re-taggear.
+**No rehagas un tag viejo desde la UI de Codemagic.** Es la trampa que esta
+misma guía tendía hasta el 19-ago-2026: Codemagic hace checkout DEL TAG, así que
+lee el `codemagic.yaml` **de ese commit**, no el de `main`. El tag `a1.0.6`
+apunta a 70f755d, y ahí adentro siguen vivos el `groups: - google-play` y el
+bloque `publishing` que después se comentaron justamente porque no hay cuenta de
+servicio. Rebuildearlo compila los 4 minutos enteros y muere al publicar.
+
+Si un tag ya se quemó, hacé uno nuevo desde `main`:
+
+```bash
+git tag a1.0.7 && git push origin a1.0.7
+```
+
+El número del tag no afecta al AAB: `versionCode` y `versionName` salen de
+`android/app/build.gradle`, y el disparo es por patrón `a*`.
 
 ### 5. Después del primer AAB: cerrar los App Links
 
