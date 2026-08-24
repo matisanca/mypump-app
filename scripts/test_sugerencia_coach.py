@@ -177,6 +177,33 @@ check("ya no dice que no se manda el peso",
 check("declara el resumen de la revisión", "revisión de esa" in POL and "energía, descanso" in POL)
 check("aclara que las fotos NO se envían", "solo se cuentan" in POL)
 
+
+print("\n12. La revisión se ancla a la semana DEL MENSAJE, no a hoy")
+# El lunes 24-ago la semana en curso arrancaba ese mismo día y estaba vacía. El
+# mensaje de Nicolás era del 21 (semana del 17), donde su check SÍ existía. La
+# 066 miraba now() y la IA le propuso "completá la revisión, que todavía no
+# quedó cargada" — cuando Mati ya le había dicho que le llegó. Pasa todos los
+# lunes con lo que llega el fin de semana, que es cuando llega casi todo.
+SQL67 = (RAIZ / "supabase" / "migrations" / "067_revision_de_la_semana_del_mensaje.sql").read_text()
+check("la función toma una fecha de referencia",
+      "p_ref        timestamptz DEFAULT now()" in SQL67,
+      "sin p_ref vuelve a anclar a hoy")
+check("el ancla usa p_ref y no now()",
+      "date_trunc('week', p_ref AT TIME ZONE" in SQL67 and
+      "date_trunc('week', now() AT TIME ZONE" not in SQL67,
+      "quedó algún date_trunc sobre now()")
+check("las dos RPCs pasan la fecha del mensaje",
+      SQL67.count("mypump_revision_semana(") >= 3,
+      "alguna RPC quedó llamándola sin fecha")
+check("ya_subio sale de la misma fuente",
+      "(u.rev->>'hay_check')::boolean" in SQL67 and "(x.rev->>'hay_check')::boolean" in SQL67,
+      "ya_subio con su propio date_trunc es el mismo bug esperando")
+check("el peso de la semana no se pasa de largo",
+      "sd.fecha >= l.d AND sd.fecha < l.d + 7" in SQL67,
+      "sin el tope superior, el peso de una semana vieja sumaba todo lo posterior")
+check("la revisión dice de qué semana es", "'semana',      (SELECT d FROM lunes)" in SQL67,
+      "sin eso no hay forma de auditar si se miró la semana correcta")
+
 print()
 if fallas:
     print(f"✗ {fallas} fallo(s)\n")
