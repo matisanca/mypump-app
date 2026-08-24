@@ -136,6 +136,47 @@ check("solo el resolver publica al cliente",
       SQL.count("INSERT INTO mypump_comentarios") == 1,
       "apareció otro INSERT: alguien abrió un segundo camino al cliente")
 
+
+print("\n10. La revisión de la semana llega al prompt")
+REV = {"hay_check": True, "energia": 2, "descanso": 3, "hambre": 5,
+       "adherencia": 2, "nota": "me cuesta la cena", "fotos": 3,
+       "peso_kg": 69.0, "peso_previo": 70.2}
+txt = W._revision_texto(REV)
+check("dice que SI subió", txt.startswith("SI subio"), txt[:60])
+check("traduce los 1-5 a palabras", "energía baja (2 de 5)" in txt, txt)
+check("el hambre tiene su propia escala", "mucha hambre (5 de 5)" in txt, txt)
+check("compara el peso con la semana previa", "bajó 1.2 kg" in txt, txt)
+check("dice cuántas fotos", "las 3 fotos" in txt, txt)
+check("incluye la nota textual", "me cuesta la cena" in txt, txt)
+
+check("sin check devuelve None", W._revision_texto({"hay_check": False}) is None)
+check("sin dato devuelve None", W._revision_texto(None) is None)
+
+sin_peso = W._revision_texto({"hay_check": True, "energia": 4, "fotos": 0})
+check("sin peso no inventa comparación", "kg" not in sin_peso, sin_peso)
+check("cero fotos se dice", "sin fotos" in sin_peso, sin_peso)
+
+fila_rev = {"nombre": "Nicolas Giovanetti", "contexto": [], "ya_subio": True,
+            "revision": REV}
+prompt = W.armar_prompt(fila_rev)
+check("el prompt trae los números del check", "adherencia al plan baja (2 de 5)" in prompt)
+check("el prompt manda cruzarlo", "CRUZALO CON LA REVISION" in prompt)
+check("y prohíbe volver a pedir el check", "NO le" in prompt and "pidas que lo suba" in prompt)
+
+prompt_sin = W.armar_prompt({"nombre": "Juan", "contexto": [], "ya_subio": False,
+                             "revision": {"hay_check": False}})
+check("si no subió, el prompt lo dice explícito",
+      "TODAVIA NO subio" in prompt_sin,
+      "el modelo tiene que saber que no hay check, no quedarse sin dato")
+
+print("\n11. La política de privacidad dice lo que realmente se manda")
+POL = (RAIZ / "public" / "privacidad.html").read_text()
+check("ya no dice que no se manda el peso",
+      "ni tu peso, ni tus fotos, ni lo que trae tu reloj" not in POL,
+      "quedó la frase vieja: ahora SÍ se manda el peso")
+check("declara el resumen de la revisión", "revisión de esa" in POL and "energía, descanso" in POL)
+check("aclara que las fotos NO se envían", "solo se cuentan" in POL)
+
 print()
 if fallas:
     print(f"✗ {fallas} fallo(s)\n")

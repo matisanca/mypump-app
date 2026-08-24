@@ -180,6 +180,55 @@ SCHEMA = {
 }
 
 
+def _revision_texto(rev):
+    """La revisión de la semana en prosa corta, o None si no mandó nada.
+
+    Va al prompt para que la sugerencia pueda CRUZAR lo que el cliente escribió
+    con lo que efectivamente subió. Sin esto la IA solo sabía `ya_subio` (un
+    booleano) y terminaba pidiendo cosas ya entregadas: a Nicolás le propuso
+    "cuando subas la revisión lo miro" cuando el check ya había llegado.
+
+    Los 1-5 se traducen a palabras a propósito. "energia: 2" invita al modelo a
+    hacer aritmética con un número que no entiende; "energía baja (2 de 5)" se
+    lee como lo que es.
+    """
+    if not rev or not rev.get("hay_check"):
+        return None
+
+    ESCALA = {1: "muy baja", 2: "baja", 3: "normal", 4: "buena", 5: "muy buena"}
+    HAMBRE = {1: "nada de hambre", 2: "poco hambre", 3: "hambre normal",
+              4: "bastante hambre", 5: "mucha hambre"}
+    partes = []
+    for clave, etiqueta, mapa in (("energia", "energía", ESCALA),
+                                  ("descanso", "descanso", ESCALA),
+                                  ("adherencia", "adherencia al plan", ESCALA)):
+        v = rev.get(clave)
+        if v:
+            partes.append(f"{etiqueta} {mapa.get(v, v)} ({v} de 5)")
+    if rev.get("hambre"):
+        h = rev["hambre"]
+        partes.append(f"{HAMBRE.get(h, h)} ({h} de 5)")
+
+    peso, prev = rev.get("peso_kg"), rev.get("peso_previo")
+    if peso is not None:
+        if prev is not None:
+            d = round(float(peso) - float(prev), 1)
+            comp = "igual que la semana pasada" if abs(d) < 0.2 else \
+                   f"{'subió' if d > 0 else 'bajó'} {abs(d)} kg vs la semana pasada"
+            partes.append(f"peso {peso} kg ({comp})")
+        else:
+            partes.append(f"peso {peso} kg")
+
+    fotos = rev.get("fotos") or 0
+    partes.append("las 3 fotos" if fotos >= 3
+                  else "sin fotos" if fotos == 0 else f"{fotos} de 3 fotos")
+
+    txt = "SI subio la revision de esta semana: " + ", ".join(partes) + "."
+    if rev.get("nota"):
+        txt += f'\nEn la nota escribio: "{rev["nota"]}"'
+    return txt
+
+
 def armar_prompt(fila):
     apodo = (fila.get("nombre") or "").split()
     apodo = apodo[0].lower() if apodo else "che"
@@ -187,13 +236,19 @@ def armar_prompt(fila):
     conversacion = "\n".join(
         f"{'CLIENTE' if m.get('autor') == 'cliente' else 'MATI'}: {m.get('texto','')}"
         for m in hilo[-10:])
-    subio = "ya subio su revision de esta semana" if fila.get("ya_subio") else "todavia no subio su revision"
+    rev = _revision_texto(fila.get("revision"))
+    # Si no hay check, se dice explicito: que el modelo sepa que NO subio es tan
+    # util como saber que subio, y evita que invente que vio algo.
+    subio = rev or "TODAVIA NO subio la revision de esta semana."
 
     return f"""{TONO}
 
 {REGLA_DURA}
 
-Le escribis a {apodo}, que {subio}.
+Le escribis a {apodo}.
+
+Lo que dice su revision (esto es dato real, no lo inventes ni lo contradigas):
+{subio}
 
 Conversacion (lo ultimo es lo que hay que contestar):
 {conversacion}
@@ -214,6 +269,13 @@ Devolves JSON con:
 
              Escribilo como si lo escribiera Mati, con el mismo tono de arriba.
              Dos o tres oraciones, arrancando con "{apodo}".
+
+             CRUZALO CON LA REVISION de arriba. Si ya subio el check, NO le
+             pidas que lo suba: dale por recibido y usá lo que dice. Si el
+             numero del check contradice lo que escribio —dice que viene bien
+             pero marco adherencia 2, o se queja del hambre y marco 1— nombralo,
+             que es justo lo que Mati miraria. Si falta algo puntual (las fotos,
+             la nota), pedile ESO y no "la revision" entera.
 
              LO UNICO QUE NO PODES HACER es inventar numeros ni cambios del
              plan: no ves su rutina, ni su dieta, ni sus cargas. Si escribís

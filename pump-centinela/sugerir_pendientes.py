@@ -24,7 +24,7 @@ import sys
 
 import chat_worker as W
 
-_BANDERAS = {"--correr", "--limite"}
+_BANDERAS = {"--correr", "--limite", "--forzar"}
 _desconocidas = [a for a in sys.argv[1:]
                  if a.startswith("--") and a.split("=")[0] not in _BANDERAS]
 if _desconocidas:
@@ -32,6 +32,9 @@ if _desconocidas:
     sys.exit(2)
 
 CORRER = "--correr" in sys.argv
+# Rehace una sugerencia que ya existe. Hizo falta cuando la 066 le sumó la
+# revisión al prompt: las que se habían generado antes no la tenían.
+FORZAR = "--forzar" in sys.argv
 LIMITE = 20
 for a in sys.argv[1:]:
     if a.startswith("--limite="):
@@ -78,7 +81,7 @@ def main():
             continue
         try:
             guardado = W._sb("mypump_chat_borrador_sugerir",
-                             {"p_id": f["borrador_id"], "p_sugerencia": txt})
+                             {"p_id": f["borrador_id"], "p_sugerencia": txt, "p_forzar": FORZAR})
             if guardado:
                 ok += 1
             else:
