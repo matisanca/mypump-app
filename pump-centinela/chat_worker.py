@@ -204,10 +204,27 @@ Devolves JSON con:
          sintoma. "urgente" si hay riesgo (dolor de pecho, desmayo, lesion
          aguda, ideacion suicida).
   respuesta: SOLO si clase es "simple". Una o dos oraciones, arrancando con
-             "{apodo}". Si es "derivar", el texto tiene que decir que lo
-             charlan por whatsapp, sin dar ninguna indicacion. Si es
-             "urgente", dejala vacia: no se le contesta nada automatico.
-  motivo: en una linea, por que elegiste esa clase."""
+             "{apodo}". Dejala vacia si la clase es otra: eso no se manda solo.
+  motivo: en una linea, por que elegiste esa clase.
+  sugerencia: SOLO si clase es "derivar" o "urgente". Es un borrador que le
+             proponés a MATI para que él lo apruebe, edite o descarte antes de
+             que salga. NO se manda solo, asi que aca si podés entrar en tema:
+             nombrá lo concreto que contó (el horario que cambió, la comida que
+             le cuesta, el dolor que menciona) en vez de contestar en general.
+
+             Escribilo como si lo escribiera Mati, con el mismo tono de arriba.
+             Dos o tres oraciones, arrancando con "{apodo}".
+
+             LO UNICO QUE NO PODES HACER es inventar numeros ni cambios del
+             plan: no ves su rutina, ni su dieta, ni sus cargas. Si escribís
+             "bajale a 3 series" o "sumale 200 kcal" estás adivinando, y Mati
+             lo va a tener que borrar igual. En vez de eso: reconocé lo que
+             contó, y hacé LA pregunta que Mati necesitaria para decidir, o
+             proponé el siguiente paso concreto (que le mande el horario nuevo,
+             que cuente en que comida se traba, que le avise si sigue el dolor).
+
+             Si es "urgente", la sugerencia arranca diciendole que pare y que
+             consulte, y despues le pregunta lo que haga falta."""
 
 
 def llamar_codex(prompt):
@@ -294,11 +311,24 @@ def procesar(fila):
     if err:
         # Degradar a escalar, nunca a silencio.
         return {**base, "clase": "derivar", "respuesta": None,
+                "sugerencia": None,
                 "motivo": f"la IA no pudo: {err}"}
 
     clase = d["clase"]
     if clase != "simple":
+        # `respuesta` se queda en None SIEMPRE para estas dos clases: es el
+        # campo que el automatico manda solo. Lo que redacto el modelo va a
+        # `sugerencia`, que no tiene ningun camino al cliente que no pase por
+        # el boton del Cerebro.
+        #
+        # Por eso la sugerencia NO pasa por VAL.revisar(): el validador existe
+        # para que un modelo desviado no le mande un consejo de salud a alguien
+        # sin que nadie lo mire. Aca lo mira Mati antes de que salga, que es
+        # una garantia mas fuerte que una lista de palabras. Si igual la
+        # bloquearamos, la sugerencia quedaria vacia justo en los casos donde
+        # sirve, que es todo el punto de esto.
         return {**base, "clase": clase, "respuesta": None,
+                "sugerencia": (d.get("sugerencia") or "").strip()[:1200] or None,
                 "motivo": (d.get("motivo") or clase)[:300]}
 
     texto = (d.get("respuesta") or "").strip()
@@ -308,11 +338,11 @@ def procesar(fila):
         # la respuesta automaticamente es volver a confiar en el modelo para
         # justo lo que fallo.
         return {**base, "clase": "derivar", "respuesta": None,
-                "bloqueos": bloqueos,
+                "sugerencia": None, "bloqueos": bloqueos,
                 "motivo": "el validador la freno: " + "; ".join(bloqueos[:3])}
 
     return {**base, "clase": "simple", "respuesta": texto,
-            "motivo": (d.get("motivo") or "")[:300]}
+            "sugerencia": None, "motivo": (d.get("motivo") or "")[:300]}
 
 
 def main():
@@ -393,6 +423,7 @@ def main():
                 "p_motivo": r["motivo"],
                 "p_bloqueos": r["bloqueos"],
                 "p_modelo": r["modelo"],
+                "p_sugerencia": r.get("sugerencia"),
             })
             guardados += 1
         except Exception as e:  # noqa: BLE001

@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""test_sugerencia_coach.py — la IA propone, Mati dispone. Y nunca al revés.
+
+POR QUE EXISTE
+Hasta el 24-ago-2026 la bandeja del Cerebro te dejaba el composer VACIO justo
+en los casos que mas trabajo dan: cuando la IA clasificaba `derivar` o
+`urgente`, procesar() tiraba la respuesta a proposito y Mati escribia de cero.
+
+Ahora la IA redacta una `sugerencia` para esos casos. Y como esa sugerencia NO
+pasa por el validador de salud —a proposito: la revisa una persona antes de
+salir— la garantia de que nunca se envie sola deja de ser una preferencia y
+pasa a ser lo unico que separa un borrador de un mensaje a un cliente.
+
+Este archivo prueba las dos mitades:
+  1. que la sugerencia EXISTA para derivar/urgente (si no, no sirve de nada)
+  2. que `respuesta` siga vacia en esas clases (si no, el automatico la manda)
+"""
+import ast
+import io
+import pathlib
+import sys
+
+RAIZ = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ / "pump-centinela"))
+import chat_worker as W  # noqa: E402
+
+fallas = 0
+
+
+def check(nombre, ok, detalle=""):
+    global fallas
+    print(f"  {'✓' if ok else '✗'} {nombre}")
+    if not ok:
+        fallas += 1
+        if detalle:
+            print(f"      {detalle}")
+
+
+def fila(msg="hola"):
+    return {"cliente_id": "c1", "mensaje_id": "m1", "nombre": "Felipe Velasco",
+            "mensaje": msg, "contexto": [], "ya_subio": True}
+
+
+print("\n1. Derivar: propone algo Y no manda nada solo")
+W.llamar_codex = lambda p: ({
+    "clase": "derivar",
+    "respuesta": "felipe, eso lo charlamos por whatsapp",
+    "sugerencia": "felipe, me quedo con lo del cambio de horario. contame a que "
+                  "hora te queda entrenar ahora y lo acomodamos",
+    "motivo": "cambio de horario",
+}, None)
+r = W.procesar(fila("cambie de horario y me cuesta la comida"))
+check("hay sugerencia", bool(r.get("sugerencia")), f"quedo {r.get('sugerencia')!r}")
+check("la sugerencia menciona lo que contó", "horario" in (r.get("sugerencia") or ""))
+check("respuesta queda en None", r["respuesta"] is None,
+      f"peligro: quedo {r['respuesta']!r} y el automatico la mandaria sola")
+check("la clase sigue siendo derivar", r["clase"] == "derivar")
+
+print("\n2. Urgente: tampoco contesta solo, pero te deja el borrador")
+W.llamar_codex = lambda p: ({
+    "clase": "urgente", "respuesta": None,
+    "sugerencia": "felipe, pará el entrenamiento y andá a que te vean hoy mismo. "
+                  "avisame apenas sepas algo",
+    "motivo": "dolor de pecho",
+}, None)
+r = W.procesar(fila("me duele el pecho entrenando"))
+check("hay sugerencia", bool(r.get("sugerencia")))
+check("respuesta queda en None", r["respuesta"] is None)
+check("la clase sigue siendo urgente", r["clase"] == "urgente")
+
+print("\n3. Simple: sigue como antes, sin sugerencia")
+W.llamar_codex = lambda p: (
+    {"clase": "simple", "respuesta": "de nada felipe", "motivo": "agradece"}, None)
+r = W.procesar(fila("gracias!"))
+check("respuesta presente", r["respuesta"] == "de nada felipe")
+check("sugerencia vacia", r.get("sugerencia") is None,
+      "en simple la sugerencia no tiene sentido: ya contesta solo")
+
+print("\n4. Si el modelo se rebela y manda respuesta en derivar, se ignora")
+W.llamar_codex = lambda p: ({
+    "clase": "derivar",
+    "respuesta": "felipe bajale a 3 series y sumale 200 kcal",
+    "sugerencia": None, "motivo": "x",
+}, None)
+r = W.procesar(fila("que hago?"))
+check("respuesta descartada", r["respuesta"] is None,
+      "el modelo metio una indicacion de entrenamiento y casi sale sola")
+
+print("\n5. Codex caído: degrada a derivar, sin inventar sugerencia")
+W.llamar_codex = lambda p: (None, "timeout")
+r = W.procesar(fila("hola"))
+check("clase derivar", r["clase"] == "derivar")
+check("sin respuesta", r["respuesta"] is None)
+check("sin sugerencia", r.get("sugerencia") is None,
+      "si la IA no pudo pensar, no puede proponer")
+
+print("\n6. La clave viaja a la RPC (si no, se pierde en el camino)")
+FUENTE = (RAIZ / "pump-centinela" / "chat_worker.py").read_text()
+check("main() manda p_sugerencia", '"p_sugerencia": r.get("sugerencia")' in FUENTE,
+      "el worker la calcula pero no la guarda")
+
+print("\n7. El prompt le prohíbe inventar números del plan")
+check("dice que no ve la rutina ni la dieta",
+      "no ves su rutina" in FUENTE and "adivinando" in FUENTE,
+      "sin esto el modelo escribe 'bajale a 3 series' y Mati lo borra igual")
+
+print("\n8. Ningún statement después de un return (la familia del bug de ayer)")
+def _muertas(arbol):
+    malas = []
+    for nodo in ast.walk(arbol):
+        for campo in ("body", "orelse", "finalbody"):
+            b = getattr(nodo, campo, None)
+            if not isinstance(b, list):
+                continue
+            for i, st in enumerate(b[:-1]):
+                if isinstance(st, (ast.Return, ast.Raise, ast.Continue, ast.Break)):
+                    malas.append((st.lineno, b[i + 1].lineno))
+    return malas
+
+muertas = _muertas(ast.parse(FUENTE))
+check("no hay codigo inalcanzable", not muertas,
+      ", ".join(f"linea {b} (return en {a})" for a, b in muertas))
+
+print("\n9. La migración no deja funciones duplicadas ni caminos nuevos de envío")
+SQL = (RAIZ / "supabase" / "migrations" / "064_borrador_sugerencia.sql").read_text()
+check("dropea la firma vieja de guardar",
+      "DROP FUNCTION IF EXISTS mypump_chat_borrador_guardar(text, uuid, text, text, text, text[], text)" in SQL,
+      "sin el DROP quedan dos firmas y PostgREST tira PGRST203")
+check("dropea pendientes antes de recrearla",
+      "DROP FUNCTION IF EXISTS mypump_chat_borradores_pendientes()" in SQL,
+      "CREATE OR REPLACE no puede cambiar el RETURNS TABLE")
+check("trae el guardarrail de duplicadas", "PGRST203" in SQL)
+# El unico lugar del SQL que INSERTA en mypump_comentarios tiene que ser el
+# resolver, que exige p_enviar. Si aparece otro, hay un camino de envio nuevo.
+check("solo el resolver publica al cliente",
+      SQL.count("INSERT INTO mypump_comentarios") == 1,
+      "apareció otro INSERT: alguien abrió un segundo camino al cliente")
+
+print()
+if fallas:
+    print(f"✗ {fallas} fallo(s)\n")
+    sys.exit(1)
+print("✓ la IA propone, Mati dispone\n")
