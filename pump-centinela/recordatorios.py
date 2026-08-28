@@ -74,7 +74,7 @@ SB_KEY = _g("SUPABASE_SERVICE_KEY") or _g("SUPABASE_KEY")
 # defecto de este script escriben mensajes a 62 personas. Pasar `--dry` (que
 # nunca existio) creyendo que forzaba dry-run mandaba un recordatorio de verdad,
 # porque el parseo elige la PRIMERA que matchea y `--recordar` iba antes.
-_BANDERAS = {"--programar", "--recordar", "--drenar", "--a-las"}
+_BANDERAS = {"--programar", "--recordar", "--drenar", "--a-las", "--correr"}
 _desconocidas = [a for a in sys.argv[1:]
                  if a.startswith("--") and a not in _BANDERAS]
 if _desconocidas:
@@ -82,9 +82,27 @@ if _desconocidas:
     print(f"validas: {' '.join(sorted(_BANDERAS))}  (sin ninguna = dry-run)")
     sys.exit(2)
 
-MODO = ("programar" if "--programar" in sys.argv else
-        "recordar" if "--recordar" in sys.argv else
-        "drenar" if "--drenar" in sys.argv else "dry")
+# MANDAR EXIGE --correr. Elegir el modo NO alcanza.
+#
+# `--recordar` decia "manda el recordatorio a los 62" y `--recordar` a secas
+# tambien. Dos veces en la misma sesion se corrio creyendo que era una prueba:
+# la segunda programo 53 mensajes un viernes, se cancelaron 51 a tiempo y dos
+# salieron. Un script que le escribe a 62 personas no puede tener el envio como
+# comportamiento por defecto de ninguna bandera.
+#
+# Ahora `--recordar` MUESTRA lo que haria, y `--recordar --correr` lo hace. El
+# unico que pasa --correr es ronda.sh, que es quien tiene que mandar de verdad.
+_ELEGIDO = ("programar" if "--programar" in sys.argv else
+            "recordar" if "--recordar" in sys.argv else
+            "drenar" if "--drenar" in sys.argv else "dry")
+_CORRER = "--correr" in sys.argv
+
+# `drenar` es la excepcion y por una razon: no crea nada, solo publica lo que ya
+# estaba programado y aprobado. Pedirle --correr seria ceremonia sin riesgo.
+MODO = _ELEGIDO if (_CORRER or _ELEGIDO in ("dry", "drenar")) else "dry"
+
+if _ELEGIDO not in ("dry", "drenar") and not _CORRER:
+    print(f"[{_ELEGIDO}] DRY-RUN: no se manda nada. Agregá --correr para que salga de verdad.")
 
 # Ventana del escalonado, en minutos. 40-60 es lo que tarda una persona en
 # mandar 62 mensajes sin apuro.

@@ -93,6 +93,36 @@ check("se filtra por falta_check y fotos_puestas",
       'if not f["falta_check"] and f["fotos_puestas"] >= 3:' in FUENTE,
       "si esto cambia de forma, el test de arriba puede pasar por casualidad")
 
+
+print("\n6. El drenador vuelve a chequear justo antes de publicar")
+# El filtro de faltantes() evita PROGRAMAR. Pero entre programar y publicar
+# pasan 40-60 min por el escalonado, y quien sube en ese rato —justo lo que hace
+# el que ve la notificación y va a la app— tenía el mensaje ya en la cola.
+SQL69 = (RAIZ / "supabase" / "migrations" / "069_no_pedir_lo_ya_subido.sql").read_text()
+check("el drenador consulta el check al publicar",
+      "FROM mypump_checkin_semanal k" in SQL69 and "INTO v_falta_check" in SQL69)
+check("y también las fotos", "count(DISTINCT f.pose)" in SQL69 and "INTO v_fotos" in SQL69)
+check("cancela en vez de publicar",
+      "SET estado = 'cancelado', motivo = 'ya subió la revisión completa'" in SQL69)
+check("solo toca los pedidos de revisión, no las respuestas",
+      "r.dedupe_key LIKE 'dom-%' OR r.dedupe_key LIKE 'rec-%'" in SQL69,
+      "si aplicara a todo, cancelaría respuestas de la IA que no piden nada")
+
+print("\n7. Mandar exige --correr: elegir el modo no alcanza")
+FUENTE = (RAIZ / "pump-centinela" / "recordatorios.py").read_text()
+check("--correr es bandera válida", '"--correr"' in FUENTE)
+check("el modo cae a dry sin --correr",
+      'MODO = _ELEGIDO if (_CORRER or _ELEGIDO in ("dry", "drenar")) else "dry"' in FUENTE,
+      "sin esto, --recordar solo vuelve a mandarle a los 62")
+RONDA = (RAIZ / "pump-centinela" / "ronda.sh").read_text()
+# Se miran las lineas que EJECUTAN, no el archivo entero: el comentario de
+# arriba tambien nombra --correr y contarlo daba un falso negativo.
+_execs = [l for l in RONDA.splitlines() if l.strip().startswith("7)") or l.strip().startswith("2|4)")]
+check("ronda.sh pasa --correr en los dos horarios que mandan",
+      len(_execs) == 2 and all("--correr" in l for l in _execs),
+      "si falta, la ronda deja de salir EN SILENCIO, que es peor que el bug original\n"
+      f"      lineas: {_execs}")
+
 print()
 if fallas:
     print(f"✗ {fallas} fallo(s): se le puede estar pidiendo la revisión a quien ya la mandó\n")
