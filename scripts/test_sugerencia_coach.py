@@ -100,9 +100,10 @@ check("main() manda p_sugerencia", '"p_sugerencia": r.get("sugerencia")' in FUEN
       "el worker la calcula pero no la guarda")
 
 print("\n7. El prompt le prohíbe inventar números del plan")
-check("dice que no ve la rutina ni la dieta",
-      "no ves su rutina" in FUENTE and "adivinando" in FUENTE,
-      "sin esto el modelo escribe 'bajale a 3 series' y Mati lo borra igual")
+check("dice que no invente lo que no ve",
+      "no inventes numeros que no esten arriba" in FUENTE
+      and "solo el resumen" in FUENTE,
+      "sin esto el modelo escribe numeros de cargas o comidas que no tiene")
 
 print("\n8. Ningún statement después de un return (la familia del bug de ayer)")
 def _muertas(arbol):
@@ -160,8 +161,13 @@ fila_rev = {"nombre": "Nicolas Giovanetti", "contexto": [], "ya_subio": True,
             "revision": REV}
 prompt = W.armar_prompt(fila_rev)
 check("el prompt trae los números del check", "adherencia al plan baja (2 de 5)" in prompt)
-check("el prompt manda cruzarlo", "CRUZALO CON LA REVISION" in prompt)
-check("y prohíbe volver a pedir el check", "NO le" in prompt and "pidas que lo suba" in prompt)
+check("el prompt manda usar la revisión y el plan",
+      "Tenes arriba su plan y su revision: usalos" in prompt)
+check("y prohíbe volver a pedir lo que ya mandó",
+      "NO LE PIDAS LO QUE YA MANDO" in prompt and "dalo por recibido" in prompt,
+      "es el error que le pidió a Nicolás fotos que ya estaban subidas")
+check("prohíbe el eco", "NO REPITAS lo que el cliente acaba de escribir" in prompt)
+check("obliga a contestar la pregunta", "SI TE HIZO UNA PREGUNTA, CONTESTALA" in prompt)
 
 prompt_sin = W.armar_prompt({"nombre": "Juan", "contexto": [], "ya_subio": False,
                              "revision": {"hay_check": False}})

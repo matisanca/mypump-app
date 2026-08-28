@@ -98,7 +98,10 @@
     <uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY" />
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <uses-permission android:name="android.permission.health.READ_RESPIRATORY_RATE" />
-    <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION" />
+    <!-- READ_OXYGEN_SATURATION sacado el 28-ago-2026: Google rechazó la app
+         por él ("acceso excesivo a datos de la función declarada"). No
+         alimentaba ninguna función, solo se mostraba. En iOS sigue.
+         Para volver a pedirlo tiene que existir antes una función que lo use. -->
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />

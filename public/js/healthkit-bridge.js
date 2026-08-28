@@ -81,7 +81,22 @@
     // voltea el pedido de permisos entero (ver el comentario de `plataforma`).
     { dataType: 'exerciseTime',                  tipo: 'actividad_min',  como: 'sum', soloIOS: true },
     { dataType: 'respiratoryRate',               tipo: 'respiracion_rpm', como: 'mediana' },
-    { dataType: 'oxygenSaturation',              tipo: 'spo2_pct',        como: 'mediana', escala: 100 },
+    // soloIOS desde el 28-ago-2026, y por una razón distinta a las de arriba:
+    // GOOGLE RECHAZÓ LA APP POR ESTE PERMISO. "Política de permisos de Salud
+    // conectada: acceso excesivo a datos de la función declarada — los
+    // siguientes permisos no parecen necesarios para las funciones que ofrece
+    // tu app: OxygenSaturation".
+    //
+    // Y tenían razón. Las otras 14 lecturas alimentan algo: HRV y frecuencia en
+    // reposo son dos de los tres pilares del puntaje de recuperación, el sueño
+    // el tercero, el peso la tendencia. La saturación no alimenta nada: se leía
+    // y se mostraba como dato suelto en la tarjeta de salud. Eso es exactamente
+    // lo que la política llama acceso excesivo.
+    //
+    // En iOS se queda: Apple ya la aprobó y ahí no hay un requisito de mínimo
+    // acceso equivalente. Si algún día se quiere en Android, primero tiene que
+    // existir una función que la use de verdad, y después se justifica.
+    { dataType: 'oxygenSaturation',              tipo: 'spo2_pct',        como: 'mediana', escala: 100, soloIOS: true },
     { dataType: 'appleSleepingWristTemperature', tipo: 'temp_muneca_c',   como: 'mediana', minIOS: 16, soloIOS: true },
     { dataType: 'bodyFat',                       tipo: 'grasa_pct',       como: 'mediana', escala: 100 },
     // ── Ampliación de cobertura ──

@@ -11,8 +11,14 @@ android {
         // tiendas evita el clásico "¿qué build tenía el cliente?" cuando
         // reporta algo. Ver ios/App/App.xcodeproj (MARKETING_VERSION /
         // CURRENT_PROJECT_VERSION).
-        versionCode 10
-        versionName "1.0.6"
+        // 11 / 1.0.7: Play rechazó el 10 el 26-ago por pedir
+        // READ_OXYGEN_SATURATION sin una función que lo use. El permiso salió
+        // del manifest y del bridge (ahí quedó soloIOS). Un versionCode que ya
+        // fue rechazado no se puede reusar, y la versión visible sube porque el
+        // binario de Android CAMBIÓ: iOS 1.0.6 sí lee saturación y este no.
+        // iOS debería ir a 1.0.7 en su próximo build para volver a alinearlas.
+        versionCode 11
+        versionName "1.0.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
