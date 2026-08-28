@@ -206,6 +206,21 @@ def faltantes():
             continue        # ya tiene uno puesto para hoy: no se encima
         if f["avisos_semana"] >= TOPE_SEMANA:
             continue
+        # EL QUE YA SUBIO TODO NO RECIBE NADA. Parece obvio y faltaba: la RPC
+        # calculaba `falta_check` y `fotos_puestas`, y programar_ronda los usaba
+        # SOLO para elegir el texto —fotos vs revision entera— nunca para dejar
+        # a alguien afuera. Resultado: quien tenia el check y las 3 fotos caia
+        # en el `elif recordatorio` y recibia "me falta tu revision".
+        #
+        # No es teorico. Ismael subio el check y las 3 fotos, y le llegaron
+        # recordatorios el 25 y el 27 de agosto. El 27 escribio "Ayer subi, lo
+        # habre subido mal?" y CINCO HORAS DESPUES le llego otro. Lo mismo a
+        # Gerardo ("Me falta llenar algo?") y a Jose ("Esta hecha mati").
+        #
+        # Tres clientes preguntandose si la app anda mal, cuando la app andaba
+        # bien: el que no miraba el dato era esto.
+        if not f["falta_check"] and f["fotos_puestas"] >= 3:
+            continue
         listos.append(f)
     return filas, listos
 
