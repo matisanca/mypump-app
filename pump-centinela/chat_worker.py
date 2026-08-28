@@ -229,6 +229,40 @@ def _revision_texto(rev):
     return txt
 
 
+def _plan_texto(plan):
+    """Lo que Mati le prescribio, en una linea. None si no hay plan activo.
+
+    No es lo mismo que la revision: la revision es lo que el cliente REPORTO,
+    esto es lo que se supone que tiene que hacer. Sin esto la IA no puede
+    contestar "¿agrego cardio?" ni "¿esta bien que coma X?", que es la mitad de
+    lo que preguntan.
+    """
+    if not plan:
+        return None
+    p = []
+    if plan.get("dias_entreno"):
+        p.append(f"{plan['dias_entreno']} dias de entrenamiento por semana")
+    if plan.get("semana") and plan.get("semanas_total"):
+        p.append(f"va por la semana {plan['semana']} de {plan['semanas_total']}")
+    elif plan.get("semana"):
+        p.append(f"va por la semana {plan['semana']}")
+    if plan.get("fase"):
+        p.append(f"fase: {plan['fase']}")
+    m = plan.get("macros") or {}
+    if m.get("kcal"):
+        p.append(f"objetivo {m['kcal']} kcal"
+                 + (f", {m['prot']} g de proteina" if m.get("prot") else "")
+                 + (f", {m['carb']} g de carbos" if m.get("carb") else "")
+                 + (f", {m['fat']} g de grasa" if m.get("fat") else ""))
+    if not p:
+        return None
+    # El cardio se nombra SOLO si no esta en la rutina, porque es la pregunta
+    # que mas aparece y la IA tiene que saber que no lo tiene prescrito en vez
+    # de suponer que si.
+    return ("Su plan: " + ". ".join(p) + ". La rutina no tiene cardio prescrito"
+            "; lo que haga de cardio es por fuera del plan.")
+
+
 def armar_prompt(fila):
     apodo = (fila.get("nombre") or "").split()
     apodo = apodo[0].lower() if apodo else "che"
@@ -240,6 +274,7 @@ def armar_prompt(fila):
     # Si no hay check, se dice explicito: que el modelo sepa que NO subio es tan
     # util como saber que subio, y evita que invente que vio algo.
     subio = rev or "TODAVIA NO subio la revision de esta semana."
+    plan = _plan_texto(fila.get("plan")) or "(no hay plan activo cargado)"
 
     return f"""{TONO}
 
@@ -247,8 +282,9 @@ def armar_prompt(fila):
 
 Le escribis a {apodo}.
 
-Lo que dice su revision (esto es dato real, no lo inventes ni lo contradigas):
+Lo que dice su revision (dato real, no lo inventes ni lo contradigas):
 {subio}
+{plan}
 
 Conversacion (lo ultimo es lo que hay que contestar):
 {conversacion}
@@ -261,32 +297,41 @@ Devolves JSON con:
   respuesta: SOLO si clase es "simple". Una o dos oraciones, arrancando con
              "{apodo}". Dejala vacia si la clase es otra: eso no se manda solo.
   motivo: en una linea, por que elegiste esa clase.
-  sugerencia: SOLO si clase es "derivar" o "urgente". Es un borrador que le
-             proponés a MATI para que él lo apruebe, edite o descarte antes de
-             que salga. NO se manda solo, asi que aca si podés entrar en tema:
-             nombrá lo concreto que contó (el horario que cambió, la comida que
-             le cuesta, el dolor que menciona) en vez de contestar en general.
+  sugerencia: SOLO si clase es "derivar" o "urgente". Es el mensaje que Mati
+             va a leer y mandar. El escribe LO QUE HAY QUE CONTESTAR, no un
+             acuse de recibo.
 
-             Escribilo como si lo escribiera Mati, con el mismo tono de arriba.
-             Dos o tres oraciones, arrancando con "{apodo}".
+             ESTO ES LO QUE VENIAS HACIENDO MAL Y NO SE HACE MAS:
 
-             CRUZALO CON LA REVISION de arriba. Si ya subio el check, NO le
-             pidas que lo suba: dale por recibido y usá lo que dice. Si el
-             numero del check contradice lo que escribio —dice que viene bien
-             pero marco adherencia 2, o se queja del hambre y marco 1— nombralo,
-             que es justo lo que Mati miraria. Si falta algo puntual (las fotos,
-             la nota), pedile ESO y no "la revision" entera.
+             1. NO REPITAS lo que el cliente acaba de escribir. El sabe que pesa
+                72 kg y que le cuesta entrenar 6 dias: lo escribio el. Devolverle
+                sus propias palabras no le dice nada y suena a robot.
+                MAL:  "recibi el check y vi los 72 kg, tambien que se te esta
+                       complicando entrenar 6 dias"
+                BIEN: algo que el no sabia antes de leerte.
 
-             LO UNICO QUE NO PODES HACER es inventar numeros ni cambios del
-             plan: no ves su rutina, ni su dieta, ni sus cargas. Si escribís
-             "bajale a 3 series" o "sumale 200 kcal" estás adivinando, y Mati
-             lo va a tener que borrar igual. En vez de eso: reconocé lo que
-             contó, y hacé LA pregunta que Mati necesitaria para decidir, o
-             proponé el siguiente paso concreto (que le mande el horario nuevo,
-             que cuente en que comida se traba, que le avise si sigue el dolor).
+             2. NO PREGUNTES lo que ya te contesto en ese mismo mensaje. Si dijo
+                "un poco de hambre por el deficit", preguntarle si tiene hambre
+                es no haberlo leido.
 
-             Si es "urgente", la sugerencia arranca diciendole que pare y que
-             consulte, y despues le pregunta lo que haga falta."""
+             3. SI TE HIZO UNA PREGUNTA, CONTESTALA. Es lo unico que espera.
+                Tenes arriba su plan y su revision: usalos. Si preguntó si
+                agregar cardio, la respuesta es "si", "no" o "esperemos a X" —
+                con el porque en media linea. No le devuelvas otra pregunta.
+
+             Si de verdad falta un dato para decidir, pedi ESE dato y decile
+             cuando le confirmas ("dejame ver como cierra la semana y el jueves
+             te digo"). Eso es una respuesta; "contame como venis" no.
+
+             Escribilo como Mati, con el tono de arriba. Dos o tres oraciones,
+             arrancando con "{apodo}". Va a salir con su nombre, asi que tiene
+             que sonar a el decidiendo, no a un formulario.
+
+             LIMITES: no inventes numeros que no esten arriba (no ves sus cargas
+             ni sus comidas dia por dia, solo el resumen). Si algo depende de
+             ver la semana entera, decilo en vez de improvisar.
+
+"""
 
 
 def llamar_codex(prompt):
