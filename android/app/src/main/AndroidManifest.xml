@@ -98,10 +98,19 @@
     <uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY" />
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <uses-permission android:name="android.permission.health.READ_RESPIRATORY_RATE" />
-    <!-- READ_OXYGEN_SATURATION sacado el 28-ago-2026: Google rechazó la app
-         por él ("acceso excesivo a datos de la función declarada"). No
-         alimentaba ninguna función, solo se mostraba. En iOS sigue.
-         Para volver a pedirlo tiene que existir antes una función que lo use. -->
+    <!-- READ_OXYGEN_SATURATION: Google rechazó la app por él el 26-ago-2026
+         ("acceso excesivo a datos de la función declarada"). No alimentaba
+         ninguna función: se leía y se mostraba suelto. En iOS sigue.
+
+         VA CON tools:node="remove" Y NO BORRADO A SECAS: el plugin de
+         Health Connect lo declara por su cuenta, así que sacar nuestra
+         línea NO lo saca del binario — el merge lo vuelve a meter. Se
+         verificó: el AAB del build #3, compilado sin la línea, seguía
+         trayendo el permiso.
+
+         Para volver a pedirlo tiene que existir antes una función que lo
+         use de verdad, y recién ahí se justifica. -->
+    <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION" tools:node="remove" />
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
     <uses-permission android:name="android.permission.health.READ_EXERCISE" />

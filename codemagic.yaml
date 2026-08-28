@@ -347,6 +347,23 @@ workflows:
             grep -o "permission.health.WRITE_[A-Z_]*" "$MERGED" | sort -u
             exit 1
           fi
+          # Y que el MERGE no reintrodujo un permiso de LECTURA que sacamos.
+          # El 28-ago se sacó READ_OXYGEN_SATURATION del manifest fuente (Google
+          # había rechazado la app por él) y el AAB lo siguió trayendo: lo
+          # declara el plugin de Health Connect por su cuenta, así que borrar
+          # nuestra línea no alcanza, hace falta tools:node="remove".
+          # check-android-permisos.mjs no lo vio porque compara contra el
+          # manifest FUENTE; esto compara contra el que va adentro del binario,
+          # que es el único que Google mira.
+          PROHIBIDOS="READ_OXYGEN_SATURATION"
+          for P in $PROHIBIDOS; do
+            if grep -q "permission.health.$P" "$MERGED"; then
+              echo "✗ $P sobrevivió al merge y Google ya rechazó la app por él."
+              echo "  Poné <uses-permission ... tools:node=\"remove\" /> en el manifest."
+              exit 1
+            fi
+          done
+          echo "✓ ningún permiso de la lista negra sobrevivió al merge"
           echo "✓ solo lectura: $(grep -o 'permission.health.READ_[A-Z_]*' "$MERGED" | sort -u | wc -l | tr -d ' ') permisos"
 
     artifacts:

@@ -17,7 +17,7 @@ android {
         // fue rechazado no se puede reusar, y la versión visible sube porque el
         // binario de Android CAMBIÓ: iOS 1.0.6 sí lee saturación y este no.
         // iOS debería ir a 1.0.7 en su próximo build para volver a alinearlas.
-        versionCode 11
+        versionCode 12
         versionName "1.0.7"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
