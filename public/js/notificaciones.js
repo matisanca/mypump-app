@@ -247,29 +247,25 @@
     const P = Cap && Cap.Plugins;
     if (!P || !P.PushNotifications) return null;
 
-    /* En Android, APAGADO A PROPÓSITO. No es prudencia: push en Android hoy no
-     * podría funcionar aunque no crasheara.
+    /* En Android el push depende de que el BINARIO traiga Firebase.
      *
-     * Lo que pasa si se deja prendido: el proyecto no tiene
-     * android/app/google-services.json, así que el plugin de Gradle nunca se
-     * aplica (build.gradle:51 se traga la ausencia en un try/catch y el build
-     * sale VERDE) y en el teléfono no existe el recurso google_app_id. Entonces
-     * PushNotifications.register() levanta "Default FirebaseApp is not
-     * initialized" en el hilo principal y se lleva puesto el proceso: la app se
-     * cierra sola, sin diálogo, sin mensaje. En Android 8-12 apenas abre con el
-     * link del coach; en 13+ en el momento en que el cliente acepta las
-     * notificaciones, y desde ahí en cada arranque.
+     * Si el APK no tiene google-services.json, PushNotifications.register()
+     * levanta "Default FirebaseApp is not initialized" EN EL HILO NATIVO y se
+     * lleva puesto el proceso: la app se cierra sola, sin diálogo. Un try/catch
+     * de JS no lo atrapa. En Android 8-12 pasa apenas abre con el link del
+     * coach; en 13+ cuando el cliente acepta las notificaciones, y desde ahí en
+     * cada arranque.
      *
-     * Y aun con Firebase configurado no serviría todavía: push.py manda por
-     * APNs. FCM es un envío distinto que del lado del servidor no está escrito.
+     * Antes esto era `if (android) return null` a secas, y tenía el problema
+     * opuesto: el día que Firebase existiera, había que ACORDARSE de sacarlo.
+     * Ahora lo decide el build — `fcm-flag.js` se reescribe con true si y solo
+     * si google-services.json estaba presente al compilar. Sin acordarse de
+     * nada, y sin poder crashear.
      *
-     * Las notificaciones LOCALES (las de arriba) sí andan en Android: las arma
-     * el teléfono solo y no dependen de nada de esto.
-     *
-     * Para prenderlo: crear el proyecto Firebase con package com.pumpteam.mypump,
-     * commitear google-services.json, sumar el envío FCM en push.py, y sacar
-     * estas tres líneas. */
-    if (typeof Cap.getPlatform === 'function' && Cap.getPlatform() === 'android') return null;
+     * Las notificaciones LOCALES sí andan igual en Android: las arma el
+     * teléfono y no dependen de nada de esto. */
+    const esAndroid = typeof Cap.getPlatform === 'function' && Cap.getPlatform() === 'android';
+    if (esAndroid && !window.MYPUMP_FCM) return null;
 
     return P.PushNotifications;
   }

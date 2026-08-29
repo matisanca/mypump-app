@@ -104,9 +104,13 @@ def sin_apns_igual_manda_web():
     src = pathlib.Path(m.__file__).read_text()
     i = src.index("def main()")
     cuerpo = src[i:i + 2000]
-    assert "hay_web" in cuerpo and "hay_apns" in cuerpo, "main() tiene que distinguir los dos transportes"
-    assert "if not hay_apns and not hay_web" in cuerpo, \
-        "solo se corta si NO hay ninguno de los dos; si hay VAPID, los avisos web salen igual"
+    assert "hay_web" in cuerpo and "hay_apns" in cuerpo, "main() tiene que distinguir los transportes"
+    # Desde que existe FCM son TRES, no dos. La regla no cambió —solo se corta
+    # si no hay NINGUNO— pero la condición ahora los nombra a los tres, así que
+    # buscar el texto viejo daba un falso negativo.
+    assert "hay_fcm" in cuerpo, "main() tiene que conocer también el transporte de Android"
+    assert "if not (hay_apns or hay_web or hay_fcm)" in cuerpo, \
+        "solo se corta si NO hay ninguno; con cualquiera configurado, esos avisos salen"
 t("falta APNs pero hay VAPID → los avisos web salen igual", sin_apns_igual_manda_web)
 
 

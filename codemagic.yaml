@@ -307,6 +307,26 @@ workflows:
           node scripts/check-healthkit-tipos.mjs
           node scripts/test-bridge-android.mjs
 
+      - name: Marcar si el binario lleva Firebase
+        # `cap sync` copia public/ ENTERO adentro del APK, así que este archivo
+        # tiene que quedar escrito ANTES. El flag decide si la app se anima a
+        # llamar a PushNotifications.register() en Android: sin Firebase, esa
+        # llamada mata el proceso desde el lado nativo y ningún try/catch de JS
+        # lo atrapa.
+        #
+        # Que lo decida el build y no una persona es el punto: así el día que
+        # aparezca google-services.json el push se prende solo, y si el archivo
+        # se pierde, se apaga solo. Nadie tiene que acordarse.
+        script: |
+          set -e
+          if [ -f android/app/google-services.json ]; then
+            echo 'window.MYPUMP_FCM = true;' > public/js/fcm-flag.js
+            echo "✓ google-services.json presente → push nativo de Android PRENDIDO"
+          else
+            echo 'window.MYPUMP_FCM = false;' > public/js/fcm-flag.js
+            echo "· sin google-services.json → push nativo de Android apagado (Web Push sigue andando)"
+          fi
+
       - name: Capacitor sync Android
         script: npx cap sync android
 

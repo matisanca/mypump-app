@@ -87,6 +87,18 @@ APNS_HOST = ("api.push.apple.com" if APNS_ENV == "prod"
 # publica que le toca es la que esta en public/js/config.js, y las dos tienen
 # que ser del MISMO par o el navegador rechaza el envio con un 403 que no
 # explica nada.
+# ── FCM, para el Android nativo ──────────────────────────────────────────
+# Web Push cubre a quien usa la PWA desde Chrome, que hoy son todos. Pero el
+# WebView de la app instalada NO implementa la Push API, asi que el que la baje
+# de Play no recibiria nada por ese camino: para el nativo el unico transporte
+# es FCM.
+#
+# FCM_SA_PATH es el JSON de la cuenta de servicio de Firebase. Sin el, la rama
+# de android no manda y deja el aviso en la cola, igual que Web Push sin VAPID.
+FCM_SA_PATH = os.path.expanduser(_g("FCM_SA_PATH", ""))
+FCM_PROJECT = _g("FCM_PROJECT_ID", "")
+_fcm_cred = None       # se cachea: pedir un token OAuth por cada push es absurdo
+
 VAPID_PRIVATE = _g("VAPID_PRIVATE_KEY")
 VAPID_SUBJECT = _g("VAPID_SUBJECT", "mailto:fuarkteam@gmail.com")
 
@@ -353,6 +365,83 @@ def enviar_web(endpoint, p256dh, auth, titulo, cuerpo, destino):
         return False, f"{type(e).__name__}: {str(e)[:160]}", False
 
 
+def enviar_fcm(device_token, titulo, cuerpo, destino):
+    """FCM HTTP v1. Devuelve (ok, error, baja_device) — mismo contrato que APNs.
+
+    El token OAuth se saca con google.auth, que ya esta en el venv. Escribirlo a
+    mano seria firmar un JWT RS256 y canjearlo: 40 lineas para reimplementar algo
+    que la libreria oficial hace bien, incluido el refresco cuando vence.
+
+    NO se manda el bloque `notification` sino solo `data`. Con `notification`,
+    Android arma la notificacion por su cuenta cuando la app esta en segundo
+    plano y la app no se entera: el tap no puede llevar a la pantalla del chat,
+    que es justamente para lo que sirve el aviso. Con `data` puro, el plugin de
+    Capacitor entrega el payload y el `destino` funciona igual que en iOS.
+    """
+    global _fcm_cred
+    if not FCM_SA_PATH or not FCM_PROJECT:
+        return False, "sin FCM_SA_PATH / FCM_PROJECT_ID en el .env", False
+    if not os.path.exists(FCM_SA_PATH):
+        return False, f"no existe {FCM_SA_PATH}", False
+
+    try:
+        import requests
+        from google.oauth2 import service_account
+        from google.auth.transport.requests import Request as GARequest
+    except ImportError as e:
+        return False, f"falta {e.name} en el venv", False
+
+    try:
+        if _fcm_cred is None:
+            _fcm_cred = service_account.Credentials.from_service_account_file(
+                FCM_SA_PATH,
+                scopes=["https://www.googleapis.com/auth/firebase.messaging"])
+        if not _fcm_cred.valid:
+            _fcm_cred.refresh(GARequest())
+    except Exception as e:  # noqa: BLE001
+        return False, f"no pude autenticar con FCM: {type(e).__name__}: {str(e)[:120]}", False
+
+    cuerpo_msg = {
+        "message": {
+            "token": device_token,
+            "data": {
+                "title": titulo,
+                "body": cuerpo,
+                "destino": destino or "chat",
+            },
+            "android": {
+                # `high` es lo que despierta al telefono en Doze. Con la
+                # prioridad normal, un aviso de la ronda del domingo podria
+                # entregarse recien a la mañana siguiente.
+                "priority": "high",
+                "ttl": "86400s",
+                "collapse_key": f"mypump-{destino or 'chat'}",
+            },
+        }
+    }
+
+    url = f"https://fcm.googleapis.com/v1/projects/{FCM_PROJECT}/messages:send"
+    try:
+        r = requests.post(
+            url, json=cuerpo_msg, timeout=20,
+            headers={"Authorization": f"Bearer {_fcm_cred.token}",
+                     "Content-Type": "application/json; UTF-8"})
+    except Exception as e:  # noqa: BLE001
+        return False, f"{type(e).__name__}: {str(e)[:160]}", False
+
+    if r.status_code == 200:
+        return True, None, False
+
+    # UNREGISTERED / INVALID_ARGUMENT sobre el token = el device murio
+    # (desinstalo, o el token rotó). Es el 410 de APNs y el 404 de Web Push, y
+    # se trata igual: se da de baja. Sin esto el token muerto se reintenta para
+    # siempre y ensucia el conteo de fallos.
+    txt = r.text[:300]
+    if r.status_code == 404 or "UNREGISTERED" in txt or "NOT_FOUND" in txt:
+        return False, f"device dado de baja ({r.status_code})", True
+    return False, f"fcm {r.status_code}: {txt[:160]}", False
+
+
 def main():
     faltan = [n for n, v in [
         ("APNS_KEY_PATH", APNS_KEY_PATH),
@@ -364,14 +453,23 @@ def main():
     # significaba que NADIE recibia nada, ni siquiera los del navegador.
     hay_apns = not faltan and os.path.exists(APNS_KEY_PATH)
     hay_web  = bool(VAPID_PRIVATE)
-    if not hay_apns and not hay_web:
+    hay_fcm  = bool(FCM_SA_PATH and FCM_PROJECT and os.path.exists(FCM_SA_PATH))
+    if not (hay_apns or hay_web or hay_fcm):
         detalle = f"faltan {', '.join(faltan)}" if faltan else f"no existe la key en {APNS_KEY_PATH}"
-        _log(f"push sin configurar ({detalle}; tampoco hay VAPID_PRIVATE_KEY) — nada que hacer")
+        _log(f"push sin configurar ({detalle}; tampoco hay VAPID ni FCM) — nada que hacer")
         return 0
-    if not hay_apns:
-        _log("APNs sin configurar: solo se mandan los avisos web")
+
+    # Se dice SIEMPRE qué transporte está vivo y cuál no. Un transporte apagado
+    # no es un error, pero tampoco puede ser invisible: la razón por la que
+    # Android estuvo sin push fue justamente que nada lo decía en voz alta.
+    _log("transportes: "
+         f"APNs {'ok' if hay_apns else 'APAGADO'} · "
+         f"web {'ok' if hay_web else 'APAGADO'} · "
+         f"FCM {'ok' if hay_fcm else 'APAGADO'}")
     if not hay_web:
-        _log("sin VAPID_PRIVATE_KEY: los avisos web quedan en la cola (ver docs/PUSH_WEB.md)")
+        _log("  sin VAPID_PRIVATE_KEY: los avisos web quedan en la cola (ver docs/PUSH_WEB.md)")
+    if not hay_fcm:
+        _log("  sin FCM_SA_PATH/FCM_PROJECT_ID: los avisos del Android nativo quedan en la cola")
     if not SB_KEY:
         _log("falta SUPABASE_SERVICE_KEY")
         return 1
@@ -424,10 +522,14 @@ def main():
                 p["titulo"], p["cuerpo"], p.get("destino")
             )
         elif plataforma == "android":
-            # FCM llega en la fase 6, cuando Google apruebe la cuenta. Hasta
-            # entonces Android esta cubierto por Web Push, asi que llegar aca
-            # con un device 'android' significa que algo se registro mal.
-            exito, error, baja = False, "android/FCM todavia no implementado", False
+            if not hay_fcm:
+                # Igual que Web Push sin VAPID: se deja en la cola en vez de
+                # gastar los 4 intentos. Apenas se configure FCM sale solo en la
+                # corrida siguiente, sin perder el aviso.
+                continue
+            exito, error, baja = enviar_fcm(
+                p["device_token"], p["titulo"], p["cuerpo"], p.get("destino")
+            )
         else:
             if not hay_apns:
                 continue
