@@ -32,5 +32,5 @@ window.MYPUMP_CONFIG = {
   //   node -e "const w=require('web-push');const k=w.generateVAPIDKeys();console.log(k.publicKey);console.log(k.privateKey)"
   // La primera línea va acá. La segunda va al .env de la mini como
   // VAPID_PRIVATE_KEY y NO se commitea nunca.
-  VAPID_PUBLIC_KEY:  '',
+  VAPID_PUBLIC_KEY:  'BNvglUfWzZHzfotOBnoa7mxfB-GrtWFZACAxHec7BhKaJfLINFs64jxAdV6XWFtcElQdFz6OhsSmyfBHcWz3SXs',
 };
