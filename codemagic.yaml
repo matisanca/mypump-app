@@ -119,9 +119,22 @@ workflows:
         #
         # Va acá y no como un `rm` a mano porque cap sync corre en cada build:
         # borrarlo local no serviría de nada.
+        #
+        # Comprueba que existan ANTES de borrarlos: `rm -f` sobre algo que no
+        # está devuelve 0, así que si alguien renombra el mock este paso se
+        # vuelve un no-op y sigue verde mientras el banco viaja en el binario.
         script: |
-          rm -fv ios/App/App/public/js/health-mock.js \
-                 ios/App/App/public/js/salud-sintetica.js
+          set -e
+          BASE=ios/App/App/public/js
+          for f in health-mock.js salud-sintetica.js; do
+            if [ ! -f "$BASE/$f" ]; then
+              echo "✗ no encontré $BASE/$f — ¿lo renombraron? Este paso dejó de"
+              echo "  sacar el banco de pruebas y nadie se iba a enterar."
+              exit 1
+            fi
+            rm -v "$BASE/$f"
+          done
+          echo "✓ el banco de pruebas no viaja en el .ipa"
           # El loader en cliente.html queda (son 12 líneas y se auto-desactiva),
           # pero sin estos dos archivos no hay nada que cargar ni por accidente.
       - name: Resolver Swift Packages
@@ -336,9 +349,24 @@ workflows:
         # a Play. Son inertes (su compuerta exige que NO haya Capacitor real y
         # que el host sea localhost), pero es superficie que no hace falta en
         # una app que además pasa por la Health apps declaration.
+        #
+        # Va con `set -e` y comprobando que los archivos EXISTAN antes de
+        # borrarlos. `rm -f` sobre algo que no está devuelve 0: si mañana
+        # alguien renombra el mock, este paso se vuelve un no-op y sigue verde
+        # mientras el banco de pruebas viaja adentro del AAB. Es la falla muda
+        # de siempre — el paso corre, no falla, y no hace nada.
         script: |
-          rm -fv android/app/src/main/assets/public/js/health-mock.js \
-                 android/app/src/main/assets/public/js/salud-sintetica.js
+          set -e
+          BASE=android/app/src/main/assets/public/js
+          for f in health-mock.js salud-sintetica.js; do
+            if [ ! -f "$BASE/$f" ]; then
+              echo "✗ no encontré $BASE/$f — ¿lo renombraron? Este paso dejó de"
+              echo "  sacar el banco de pruebas y nadie se iba a enterar."
+              exit 1
+            fi
+            rm -v "$BASE/$f"
+          done
+          echo "✓ el banco de pruebas no viaja en el AAB"
 
       - name: Compilar AAB
         # AAB y no APK: Play lo exige para apps nuevas desde agosto de 2021.
