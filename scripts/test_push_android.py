@@ -135,9 +135,35 @@ check("200 → éxito", (ok, err, baja) == (True, None, False), f"{ok} {err}")
 check("pega al proyecto correcto",
       enviado["url"].endswith("/v1/projects/mypump-prod/messages:send"), enviado.get("url"))
 msg = enviado["body"]["message"]
-check("manda data y NO notification", "data" in msg and "notification" not in msg,
-      "con `notification` Android arma el aviso solo y el tap no puede abrir el chat")
-check("el destino viaja", msg["data"]["destino"] == "chat")
+# ── EL AVISO TIENE QUE VERSE ────────────────────────────────────────────────
+# Esta asercion decia lo contrario hasta el 29-ago ("manda data y NO
+# notification"), y estaba mal por una premisa falsa que yo mismo escribi: que
+# con `notification` el tap no podia abrir el chat.
+#
+# Lo que pasaba de verdad con data-only: el plugin de Capacitor solo llama a
+# notificationManager.notify() adentro de `if (notification != null)`
+# (PushNotificationsPlugin.java:246-282). Con data-only ese bloque es null, no
+# entra nunca, y lo unico que hace es emitir `pushNotificationReceived` — un
+# evento que en toda la app NO ESCUCHA NADIE.
+#
+# Y FCM contesta 200 igual, asi que el ledger anotaba "entregado" y en el
+# telefono no aparecia nada. Un test verde sobre una feature que no existia.
+check("manda el bloque notification, que es lo que hace que se VEA",
+      "notification" in msg,
+      "sin notification, el plugin nunca postea nada y el aviso muere en silencio")
+check("el titulo y el cuerpo van adentro de notification",
+      msg.get("notification", {}).get("title") == "Mati"
+      and msg["notification"]["body"] == "te contesté")
+# El deep link no se pierde: handleOnNewIntent (:58-77) vuelca todas las claves
+# del intent —`destino` incluido— en notification.data antes de disparar
+# pushNotificationActionPerformed, que es el listener que si existe.
+check("el destino sigue viajando en data, que es lo que sobrevive al tap",
+      msg["data"]["destino"] == "chat")
+# Nombrar un canal que la app no creo hace que Android 8+ descarte el aviso sin
+# decir nada. Si alguien agrega channel_id, que sea a proposito.
+check("no declara channel_id",
+      "channel_id" not in msg["android"].get("notification", {}),
+      "un canal inexistente = Android descarta la notificacion en silencio")
 check("prioridad alta", msg["android"]["priority"] == "high",
       "sin high, Doze puede demorar el aviso hasta la mañana siguiente")
 

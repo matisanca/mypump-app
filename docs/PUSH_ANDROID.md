@@ -91,11 +91,36 @@ el flag en `true`, o desenchufar el router de FCM.
 
 ## Un detalle del envío que importa
 
-FCM manda **solo `data`**, sin bloque `notification`. Con `notification`, Android
-arma la notificación por su cuenta cuando la app está en segundo plano y la app
-no se entera: el tap no puede llevar a la pantalla del chat, que es para lo
-único que sirve el aviso. Con `data` puro, el plugin entrega el payload y el
-`destino` funciona igual que en iOS.
+FCM manda **`notification` y `data` juntos**. El primero es lo que hace que el
+aviso se vea; el segundo lleva el `destino` para que el tap abra la pantalla
+correcta.
+
+> **Esto decía lo contrario hasta el 29-ago, y estaba mal.** La versión vieja
+> mandaba solo `data`, con este argumento: "con `notification` el tap no puede
+> llevar al chat". Es falso, y se llevaba puesta la feature entera.
+>
+> El plugin de Capacitor postea la notificación **únicamente** adentro de
+> `if (notification != null)` (`PushNotificationsPlugin.java:246-282`, la única
+> llamada a `notificationManager.notify()` que tiene). Con data-only ese bloque
+> es `null` y no entra nunca: lo único que hace es emitir
+> `pushNotificationReceived` (`:296`), un evento que en toda la app **no
+> escucha nadie**.
+>
+> Y FCM contesta `200` igual, porque aceptó el mensaje para entrega. Así que
+> `enviar_fcm` devolvía éxito, el ledger lo anotaba como entregado, y el
+> Cerebro iba a mostrar avisos que en el teléfono nunca aparecieron.
+>
+> El miedo al deep link no tenía fundamento: `handleOnNewIntent` (`:58-77`)
+> vuelca **todas** las claves del intent —`destino` incluido— adentro de
+> `notification.data`, y recién ahí dispara `pushNotificationActionPerformed`,
+> que es el listener que sí existe en `notificaciones.js`.
+>
+> Lo cubre `scripts/test_push_android.py`, y el arreglo es **server-side**: no
+> hizo falta binario nuevo.
+
+**No se declara `channel_id`.** Si se nombra un canal que la app no creó,
+Android 8+ descarta la notificación en silencio. Sin el campo, FCM usa su canal
+de respaldo, que siempre existe.
 
 Y va con `priority: high`. Sin eso, Doze puede demorar el aviso de la ronda del
 domingo hasta la mañana siguiente.

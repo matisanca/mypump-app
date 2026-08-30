@@ -372,11 +372,36 @@ def enviar_fcm(device_token, titulo, cuerpo, destino):
     mano seria firmar un JWT RS256 y canjearlo: 40 lineas para reimplementar algo
     que la libreria oficial hace bien, incluido el refresco cuando vence.
 
-    NO se manda el bloque `notification` sino solo `data`. Con `notification`,
-    Android arma la notificacion por su cuenta cuando la app esta en segundo
-    plano y la app no se entera: el tap no puede llevar a la pantalla del chat,
-    que es justamente para lo que sirve el aviso. Con `data` puro, el plugin de
-    Capacitor entrega el payload y el `destino` funciona igual que en iOS.
+    VA `notification` ADEMAS DE `data`, Y ES LO QUE HACE QUE SE VEA.
+
+    Hasta el 29-ago esto mandaba data-only, con este razonamiento escrito aca:
+    "con `notification` el tap no puede llevar a la pantalla del chat". ERA
+    FALSO, y se llevaba puesta la feature entera:
+
+      · El plugin de Capacitor solo postea una notificacion adentro de
+        `if (notification != null)` (PushNotificationsPlugin.java:246-282). Es
+        la unica llamada a notificationManager.notify() de todo el plugin. Con
+        data-only ese bloque es null y no entra nunca: lo unico que hace es
+        emitir `pushNotificationReceived` (:296)...
+      · ...y en la app NADIE escucha ese evento. El unico listener de push es
+        `pushNotificationActionPerformed`, que se dispara al TOCAR una
+        notificacion que no iba a existir.
+
+    Peor todavia: FCM contesta 200 igual, porque acepto el mensaje para
+    entrega. Asi que `enviar_fcm` devolvia exito, el ledger lo anotaba como
+    entregado, y el Cerebro iba a mostrar avisos que en el telefono nunca
+    aparecieron. La falla muda de siempre — el dato bien calculado y nadie que
+    lo consuma.
+
+    Y el miedo al deep link no tenia fundamento: `handleOnNewIntent` (:58-77)
+    vuelca TODAS las claves del intent —incluido el `destino`, que viaja en
+    `data`— adentro de `notification.data`, y recien ahi dispara
+    `pushNotificationActionPerformed`. Que es exactamente lo que lee el
+    listener de notificaciones.js. El tap sigue llevando al chat.
+
+    No se declara `channel_id` a proposito: si se nombra un canal que la app no
+    creo, Android 8+ descarta la notificacion EN SILENCIO. Sin el campo, FCM
+    usa su canal de respaldo, que siempre existe.
     """
     global _fcm_cred
     if not FCM_SA_PATH or not FCM_PROJECT:
@@ -404,9 +429,15 @@ def enviar_fcm(device_token, titulo, cuerpo, destino):
     cuerpo_msg = {
         "message": {
             "token": device_token,
-            "data": {
+            # Sin esto el push llega, FCM contesta 200 y en la pantalla del
+            # cliente no aparece nada. Ver el docstring.
+            "notification": {
                 "title": titulo,
                 "body": cuerpo,
+            },
+            # `destino` sigue viajando en data: es lo que sobrevive al tap y
+            # lleva a la pantalla correcta.
+            "data": {
                 "destino": destino or "chat",
             },
             "android": {
@@ -416,6 +447,14 @@ def enviar_fcm(device_token, titulo, cuerpo, destino):
                 "priority": "high",
                 "ttl": "86400s",
                 "collapse_key": f"mypump-{destino or 'chat'}",
+                "notification": {
+                    # Que suene y vibre como cualquier mensaje. Sin esto, en
+                    # algunos Android entra en silencio y el cliente se entera
+                    # cuando abre el telefono por otra cosa.
+                    "default_sound": True,
+                    "default_vibrate_timings": True,
+                    "notification_priority": "PRIORITY_HIGH",
+                },
             },
         }
     }
