@@ -17,8 +17,12 @@ android {
         // fue rechazado no se puede reusar, y la versión visible sube porque el
         // binario de Android CAMBIÓ: iOS 1.0.6 sí lee saturación y este no.
         // iOS debería ir a 1.0.7 en su próximo build para volver a alinearlas.
-        versionCode 12
-        versionName "1.0.7"
+        // 13: primer build con Firebase adentro. El paso "Marcar si el
+        // binario lleva Firebase" detecta google-services.json y escribe
+        // MYPUMP_FCM=true, así que este es el primer APK donde el push nativo
+        // de Android se prende de verdad.
+        versionCode 13
+        versionName "1.0.8"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

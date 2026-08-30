@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1018918634428",
+    "project_id": "mypump-663be",
+    "storage_bucket": "mypump-663be.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1018918634428:android:6c89541c143806f4c8e1b9",
+        "android_client_info": {
+          "package_name": "com.pumpteam.mypump"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhX9Jg5WEWnCenlxpoVnI6mbROQxT8_M0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
