@@ -17,6 +17,7 @@ Ahora el flag lo decide el build y el envío existe. Este test cubre las dos
 puntas y falla si alguna se vuelve a apagar.
 """
 import io
+import json
 import pathlib
 import sys
 import types
@@ -182,8 +183,75 @@ ok, err, baja = P.enviar_fcm("d", "t", "c", None)
 check("500 → falla pero NO da de baja", (ok, baja) == (False, False),
       "un error temporal de Google no puede borrar el device del cliente")
 
+# ── 4. El aviso tiene que VERSE, no solo llegar ─────────────────────────────
+#
+# El bloque `notification` de push.py es el primero de DOS candados que tiene la
+# unica llamada a notificationManager.notify() del plugin
+# (PushNotificationsPlugin.java:246-282):
+#
+#     if (notification != null) {                 ← candado 1, push.py
+#         String[] presentation = getConfig().getArray("presentationOptions");
+#         if (presentation != null) {             ← candado 2, capacitor.config
+#             if (presentationList.contains("alert") || ...) {
+#                 notificationManager.notify(...)
+#
+# Faltaban los dos. El segundo solo afecta el PRIMER PLANO —con la app en
+# segundo plano el aviso lo postea el SDK de Firebase y este campo no
+# interviene—, y por eso no aparece si uno prueba con la app cerrada.
+print("\n4. El aviso se ve, no solo llega")
+
+_cap = json.loads((RAIZ / "capacitor.config.json").read_text(encoding="utf-8"))
+_po = _cap.get("plugins", {}).get("PushNotifications", {}).get("presentationOptions")
+check("capacitor.config declara presentationOptions", _po is not None,
+      "sin el campo, getArray() devuelve null y el plugin NUNCA postea en primer plano")
+check("presentationOptions habilita el aviso visible",
+      bool(_po) and any(o in _po for o in ("alert", "banner", "list")),
+      "el plugin solo postea si contiene alert, banner o list")
+
+# El ícono. Sin la meta-data, Firebase usa el del launcher, y desde Android 5 la
+# barra de estado lo aplasta a una silueta por el canal alfa: un ícono opaco y a
+# color sale como un CUADRADO BLANCO.
+_manifest = (RAIZ / "android/app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+check("el manifest declara el ícono del aviso",
+      "com.google.firebase.messaging.default_notification_icon" in _manifest,
+      "sin esto el aviso sale como un cuadrado blanco en la barra de estado")
+check("apunta a ic_stat_mypump",
+      "@drawable/ic_stat_mypump" in _manifest)
+
+_faltan = [d for d in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi")
+           if not (RAIZ / f"android/app/src/main/res/drawable-{d}/ic_stat_mypump.png").exists()]
+check("el drawable existe en las 5 densidades", not _faltan,
+      f"faltan: {', '.join(_faltan)} — el build falla al resolver @drawable")
+
+# Y que sea una silueta de verdad: blanco puro con alfa variable. Si alguien lo
+# reemplaza por el logo a color, esto se pone rojo antes de que lo vean los 62.
+try:
+    from PIL import Image
+    _ic = Image.open(RAIZ / "android/app/src/main/res/drawable-xxhdpi/ic_stat_mypump.png").convert("RGBA")
+    _r, _g, _b, _a = _ic.split()
+    _opaco = _a.getextrema()[1]
+    _colorido = any(c.getextrema() != (255, 255) for c in (_r, _g, _b))
+    check("el ícono es una silueta blanca, no el logo a color",
+          _opaco > 0 and not _colorido,
+          "Android lo aplasta con el alfa; cualquier color se pierde y queda un bloque")
+    # El relleno se mide DENTRO de la caja del dibujo, no sobre el icono entero.
+    #
+    # La primera version de este check miraba el icono completo con un umbral de
+    # 90%, y dejo pasar un cuadrado blanco solido: como el logo se escala al 75%
+    # del lienzo, un bloque macizo da ~56% y aprobaba. Lo vi recien al renderizar
+    # el PNG y mirarlo. Dentro de su caja, en cambio, un bloque da ~100% y el
+    # line-art del logo da ~35%: ahi los dos casos no se pisan.
+    _caja = _a.point(lambda p: 255 if p > 8 else 0).getbbox()
+    _rec = _a.crop(_caja)
+    _relleno = sum(1 for p in _rec.get_flattened_data() if p > 8) / (_rec.width * _rec.height)
+    check("el ícono es el logo, no un bloque macizo",
+          _relleno < 0.65,
+          f"relleno {_relleno:.0%} dentro de su caja: en la barra se ve un cuadrado blanco")
+except ImportError:
+    print("  · (sin Pillow: no se pudo inspeccionar el ícono)")
+
 print()
 if fallas:
     print(f"✗ {fallas} fallo(s): Android puede quedarse sin push otra vez\n")
     sys.exit(1)
-print("✓ Android tiene push por las dos vías\n")
+print("✓ Android tiene push por las dos vías, y el aviso se ve\n")

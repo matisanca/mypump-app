@@ -21,8 +21,8 @@ android {
         // binario lleva Firebase" detecta google-services.json y escribe
         // MYPUMP_FCM=true, así que este es el primer APK donde el push nativo
         // de Android se prende de verdad.
-        versionCode 14
-        versionName "1.0.9"
+        versionCode 15
+        versionName "1.0.10"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -8,5 +8,21 @@
   },
   "server": {
     "iosScheme": "https"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "_comentario": [
+        "Sin presentationOptions, con la app ABIERTA no se muestra nada.",
+        "La llamada a notificationManager.notify() del plugin vive detras de un",
+        "doble candado (PushNotificationsPlugin.java:246-282): primero exige que",
+        "el mensaje traiga bloque `notification`, y despues que",
+        "presentationOptions no sea null y contenga alert, banner o list.",
+        "Faltaban los dos. El primero se arreglo en push.py; este es el segundo.",
+        "Con la app en SEGUNDO PLANO el aviso lo postea el SDK de Firebase y",
+        "este campo no interviene. Por eso el agujero era solo el primer plano,",
+        "y por eso no aparece si uno prueba con la app cerrada."
+      ],
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
   }
 }

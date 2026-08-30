@@ -79,6 +79,26 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- EL ÍCONO DEL AVISO.
+
+             Sin esto, Firebase usa el ícono del launcher, y desde Android 5 la
+             barra de estado lo aplasta a una silueta con el canal alfa: un
+             ícono a color y opaco sale como un CUADRADO BLANCO. Es lo que iban
+             a ver los 62.
+
+             ic_stat_mypump es el logo en blanco sobre transparente, derivado
+             del foreground del adaptive icon (que ya es la silueta correcta) y
+             recortado a su caja real, porque el foreground trae el padding de
+             la zona segura y el logo hubiera salido diminuto.
+
+             No se declara default_notification_color a propósito: el verde de
+             marca (#b8f060) tintando el ícono sobre la bandeja blanca queda
+             casi invisible. Sin el campo, Android usa su propio tinte, que se
+             lee siempre. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_mypump" />
     </application>
 
     <uses-permission android:name="android.permission.INTERNET" />
