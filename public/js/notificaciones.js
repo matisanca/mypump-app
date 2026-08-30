@@ -407,11 +407,25 @@
   async function activarPushSiCorresponde() {
     if ((await permisoEstado()) !== 'granted') return { ok: false, motivo: 'sin_permiso' };
     cablearTapsPush();
-    // Nativo y web no compiten: adentro de la app corre APNs y `PUSH()` existe;
-    // en el navegador `PUSH()` devuelve null y queda Web Push. Se intentan los
-    // dos porque preguntar "¿cuál soy?" acá duplicaría la lógica de plataforma
-    // que ya vive en cada uno.
-    const [nativo] = await Promise.all([registrarPush(), suscribirWebPush()]);
+    // UNO SOLO DE LOS DOS TRANSPORTES POR TELÉFONO.
+    //
+    // Antes se lanzaban en paralelo, y era correcto solo por accidente: ningún
+    // WebView expone `PushManager`, así que adentro de la app el Web Push se
+    // caía solo. Es una limitación prestada, no una decisión nuestra — y con
+    // FCM ya prendido en el binario, el día que la levanten el mismo teléfono
+    // queda registrado dos veces y cada mensaje llega duplicado. A 62 personas.
+    //
+    // El ruteo no necesita preguntar "¿qué plataforma soy?": `registrarPush()`
+    // ya devuelve ok:true SOLO si el device quedó registrado de verdad. Si el
+    // nativo se hizo cargo, Web Push sobra.
+    //
+    // Y al revés también sirve: si el nativo falla (Android sin Firebase, APNs
+    // que no contesta, error de registro), el web queda como red. Eso antes no
+    // existía. Cuesta hasta 15s de espera en ese caso — es el timeout de
+    // `registrarPush()` — y no bloquea nada: esto corre en segundo plano.
+    const nativo = await registrarPush();
+    if (nativo && nativo.ok) return nativo;
+    await suscribirWebPush();
     return nativo;
   }
 
