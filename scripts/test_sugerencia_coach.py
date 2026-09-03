@@ -210,6 +210,24 @@ check("el peso de la semana no se pasa de largo",
 check("la revisión dice de qué semana es", "'semana',      (SELECT d FROM lunes)" in SQL67,
       "sin eso no hay forma de auditar si se miró la semana correcta")
 
+# ── El nombre no va al principio de una respuesta ───────────────────────────
+#
+# Mati lo vio en su panel el 3-sep: TODOS los mensajes arrancaban con el nombre,
+# incluso dos seguidos en la misma conversación ("sofia! avisame cuando subas lo
+# tuyo" y después "sofia, si, subi las mismas que me mandaste"). Su palabra:
+# "está bien que lo ponga, pero SIEMPRE es raro".
+#
+# La causa era el prompt: pedía explícitamente "arrancando con {apodo}" para la
+# respuesta y para la sugerencia. Nadie contesta un whatsapp con "sofia, si".
+print("\n5. El nombre no abre cada mensaje")
+WORKER = (RAIZ / "pump-centinela" / "chat_worker.py").read_text(encoding="utf-8")
+check("el prompt ya no ordena arrancar con el apodo",
+      "arrancando con" not in WORKER,
+      "volvió la orden que hacía que todos los mensajes empezaran con el nombre")
+check("y lo prohíbe explícitamente",
+      WORKER.count("NO ARRANQUES CON EL NOMBRE") >= 2,
+      "tiene que estar en `respuesta` y en `sugerencia`, que son los dos que contestan")
+
 print()
 if fallas:
     print(f"✗ {fallas} fallo(s)\n")

@@ -55,7 +55,7 @@ def todas_respetan_el_tono():
             if p:
                 malas.append(f"[{banco}] {f[:48]}… → {', '.join(p)}")
     assert not malas, "frases que rompen el tono:\n      " + "\n      ".join(malas)
-t("las 26 frases respetan el tono de Mati", todas_respetan_el_tono)
+t("todas las frases respetan el tono de Mati", todas_respetan_el_tono)
 
 
 def hay_suficiente_variedad():
@@ -84,10 +84,53 @@ t("clientes distintos reciben frases distintas", distintos_clientes_distinta_fra
 
 
 def el_apodo_entra_bien():
-    f = P.elegir(P.DOMINGO, "Gerardo Fernández", apodo)
-    assert f.startswith("gerardo"), f"tiene que arrancar con el apodo en minúscula, arrancó: {f[:20]}"
-    assert "{n}" not in f, "quedó el placeholder sin reemplazar"
-t("el apodo entra en minúscula y no queda el placeholder", el_apodo_entra_bien)
+    # Ya no se exige que TODA frase arranque con el nombre (ver el test del
+    # tope, abajo). Lo que sí: en las que lo llevan, tiene que entrar en
+    # minúscula y no quedar el placeholder crudo.
+    con_nombre = [f for f in P.DOMINGO if "{n}" in f]
+    assert con_nombre, "el banco del domingo se quedó sin ninguna frase con nombre"
+    for cruda in con_nombre:
+        f = cruda.format(n=apodo("Gerardo Fernández"))
+        assert f.startswith("gerardo"), f"el apodo tiene que ir primero y en minúscula: {f[:20]}"
+    for banco in P.BANCOS.values():
+        for cruda in banco:
+            f = cruda.format(n=apodo("Gerardo Fernández"))
+            assert "{n}" not in f, f"quedó el placeholder sin reemplazar: {f[:40]}"
+t("cuando el apodo va, entra en minúscula y sin placeholder", el_apodo_entra_bien)
+
+
+def el_nombre_no_esta_en_todas():
+    """El bug que reportó Mati el 3-sep, mirando su propio panel de chats.
+
+    Todos los mensajes del sistema arrancaban con el nombre: "nahuel, acá
+    todavía…", "facundo, todavía te espero…", "mauro, te leo cuando…", "ismael,
+    dale…", "justo, vi tu check…", "paula, buenísimo el check…". Uno solo está
+    bien; veintiséis seguidos se leen como un mailing, no como Mati.
+
+    Su palabra fue: "está bien que lo ponga, pero SIEMPRE es raro".
+
+    `problemas()` no puede ver esto porque mira una frase por vez: el defecto
+    solo existe en el conjunto.
+    """
+    malos = []
+    for banco, frases in P.BANCOS.items():
+        pr = P.problemas_banco(banco, frases)
+        if pr:
+            malos.append(f"[{banco}] {', '.join(pr)}")
+    assert not malos, "bancos desbalanceados:\n      " + "\n      ".join(malos)
+t("el nombre NO está en todas las frases de ningún banco", el_nombre_no_esta_en_todas)
+
+
+def el_tope_del_banco_detecta_de_verdad():
+    # Mismo criterio que con problemas(): si problemas_banco() devolviera
+    # siempre [], el test de arriba pasaría con el banco entero nombrado.
+    todas = ["{n}! una", "{n}, dos", "{n}! tres"]
+    assert P.problemas_banco("recordatorio", todas), "no detectó un banco 100% con nombre"
+    ninguna = ["una", "dos", "tres"]
+    assert P.problemas_banco("recordatorio", ninguna), "no detectó un banco sin ningún nombre"
+    mezcla = ["{n}! una", "dos", "tres", "cuatro"]
+    assert not P.problemas_banco("recordatorio", mezcla), "marcó como malo un banco bien mezclado"
+t("el tope del banco detecta lo que dice detectar", el_tope_del_banco_detecta_de_verdad)
 
 
 def el_validador_detecta_de_verdad():
@@ -96,7 +139,10 @@ def el_validador_detecta_de_verdad():
     casos = [
         ("{n}! ¿cómo venís?", "signo de apertura"),
         ("{n}, subí tu revisión.", "punto final"),
-        ("hola, subí tu revisión", "no arranca con el apodo"),
+        # Ojo: "hola, subí tu revisión" YA NO es un error — una frase sin
+        # nombre es válida a propósito. Lo que sigue siendo error es meter el
+        # apodo en el medio, que no lo dice nadie.
+        ("che {n}, subí tu revisión", "el apodo no va primero"),
         ("{n}! dale 💪🔥", "dos emojis"),
         ("{n}, por favor subí la revisión", "tono ajeno"),
     ]
