@@ -52,6 +52,7 @@ async function rpc(fn, params) {
  * la base. Evita sondearla en cada render. Se resetea al recargar la app, así
  * que apenas se aplique la migración el batch vuelve solo. */
 let _sinBatchHistorico = false;
+let _sinHistoricoPorClave = false;
 
 // Llamada RPC de escritura — devuelve {success, data, error}
 async function rpcMutation(fn, params) {
@@ -117,6 +118,32 @@ window.mypumpDB = {
   },
 
   // Devuelve array de {registrado_en, peso_kg, reps_realizadas, rir_real, serie_numero}.
+  /* Historial por CLAVE de ejercicio (migración 072), no por id de slot.
+   * Devuelve { clave: filas[] } con TODAS las claves pedidas presentes (vacías
+   * si no hay nada). Devuelve null si la RPC no existe todavía, para que el
+   * llamador caiga al camino viejo por id. Se sondea una vez por sesión. */
+  async getHistoricoPorClave(token, claves, limit = 24) {
+    const ks = [...new Set((claves || []).filter(Boolean))];
+    const porClave = {};
+    for (const k of ks) porClave[k] = [];
+    if (!ks.length) return porClave;
+    if (_sinHistoricoPorClave) return null;
+    const filas = await rpc('mypump_get_historico_por_clave', {
+      p_token: token,
+      p_claves: ks,
+      p_limit_por_ej: limit,
+    });
+    if (!Array.isArray(filas)) {
+      _sinHistoricoPorClave = true;
+      console.warn('[db] mypump_get_historico_por_clave no disponible; historial por id de slot');
+      return null;
+    }
+    for (const f of filas) {
+      if (f && f.clave && porClave[f.clave]) porClave[f.clave].push(f);
+    }
+    return porClave;
+  },
+
   async getHistoricoEjercicio(token, ejercicioId, limit = 10) {
     return await rpc('mypump_get_historico_ejercicio', {
       p_token: token,

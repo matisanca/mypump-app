@@ -132,6 +132,19 @@ def fetch_progresion(cliente_id):
     except Exception:
         return []
 
+def clave_ejercicio(nombre):
+    """Identidad de un ejercicio para el historial. GEMELO EXACTO de
+    mypump_clave_ejercicio() en SQL (mig 072) y claveEjercicio() en la app:
+    lower, sin acentos, sin parentesis, solo [a-z0-9 ], espacios colapsados.
+    Los tres se prueban sobre los mismos vectores (test_clave_ejercicio.py).
+    Si tocas uno, toca los tres."""
+    import unicodedata, re as _re
+    t = unicodedata.normalize("NFD", str(nombre or "").lower())
+    t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
+    t = _re.sub(r"\(.*?\)", " ", t)
+    t = _re.sub(r"[^a-z0-9 ]+", " ", t)
+    return _re.sub(r"\s+", " ", t).strip()
+
 def senales_carga(prog):
     """De la serie de cargas: ejercicios en RETROCESO de fuerza y el RIR medio.
     OJO: un ejercicio 'plano' NO es senal — la carga se congela a proposito en
@@ -140,14 +153,24 @@ def senales_carga(prog):
     para no confundir ruido semana a semana con una tendencia."""
     if not prog:
         return {}
+    # Por CLAVE del ejercicio (lo que el cliente hizo), NO por ejercicio_id.
+    # El id es del slot de la rutina: lleva el dia adentro y se conserva
+    # cuando el cliente sustituye. Agrupando por slot, una sustitucion "curl
+    # con barra 20 kg -> curl con mancuernas 15 kg" se leia como CAIDA de e1RM
+    # del mismo ejercicio y le llegaba a Mati (y al cliente) como "fuerza
+    # cayendo". Y el mismo ejercicio en dos dias eran dos series. Ver mig 072.
     por_ej = {}
     for r in prog:
-        eid = r.get("ejercicio_id")
-        if not eid:
+        clave = clave_ejercicio(r.get("ejercicio"))
+        if not clave:
             continue
-        d = por_ej.setdefault(eid, {"nombre": r.get("ejercicio"), "pts": []})
+        d = por_ej.setdefault(clave, {"nombre": r.get("ejercicio"), "sem_max": None, "pts": []})
+        # el rotulo es el nombre de la sesion MAS RECIENTE, no el de la primera fila
+        sem = r.get("semana")
+        if sem is not None and (d["sem_max"] is None or sem >= d["sem_max"]):
+            d["sem_max"] = sem; d["nombre"] = r.get("ejercicio") or d["nombre"]
         e1 = r.get("e1rm")
-        d["pts"].append({"sem": r.get("semana"),
+        d["pts"].append({"sem": sem,
                          "e1rm": float(e1) if e1 not in (None, "") else None,
                          "rir": r.get("rir_real")})
     retroceso, rirs = [], []
@@ -156,11 +179,19 @@ def senales_carga(prog):
             if x["rir"] is not None:
                 try: rirs.append(float(x["rir"]))
                 except Exception: pass
-        pts = sorted([x for x in d["pts"] if x["e1rm"] is not None], key=lambda x: (x["sem"] or 0))
+        # Un punto por SEMANA (el mejor e1RM): con la clave, el mismo ejercicio
+        # dos veces por semana son dos sesiones, y comparar "ultimas 2 vs 2
+        # anteriores" pasaria a ser 1 semana contra 1. Colapsando primero, la
+        # regla sigue siendo 2 semanas contra 2 semanas.
+        por_sem = {}
+        for x in d["pts"]:
+            if x["e1rm"] is None or x["sem"] is None: continue
+            if x["sem"] not in por_sem or x["e1rm"] > por_sem[x["sem"]]: por_sem[x["sem"]] = x["e1rm"]
+        pts = [{"sem": k, "e1rm": v} for k, v in sorted(por_sem.items())]
         if len(pts) < 4:
             continue
-        rec = max(x["e1rm"] for x in pts[-2:])       # mejor de las 2 recientes
-        prev = max(x["e1rm"] for x in pts[-4:-2])     # mejor de las 2 anteriores
+        rec = max(x["e1rm"] for x in pts[-2:])       # mejor de las 2 semanas recientes
+        prev = max(x["e1rm"] for x in pts[-4:-2])     # mejor de las 2 semanas anteriores
         if prev and rec < prev * 0.97:                # cayo 3%+
             retroceso.append({"ej": d["nombre"], "caida_pct": round((rec / prev - 1) * 100)})
     out = {}

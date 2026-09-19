@@ -1996,6 +1996,65 @@ function getEffectiveEx(ex) {
   return eff;
 }
 
+/* ── IDENTIDAD DE UN EJERCICIO PARA EL HISTORIAL ─────────────────────────
+ *
+ * El historial NO se busca por ex.id. Ese id es del SLOT de la rutina: lleva
+ * el día adentro (`curl-biceps-d1-0`, `curl-biceps-d4-2`) y cambia cuando se
+ * arma un bloque nuevo. Buscar por ahí producía tres bugs, dos reportados por
+ * clientes el 19-sep-2026:
+ *
+ *   · al sustituir un ejercicio, "Última" mostraba la carga del ORIGINAL (las
+ *     dos se registraban bajo el mismo id de slot);
+ *   · el mismo ejercicio en dos días de la semana tenía dos historiales y dos
+ *     récords;
+ *   · al activar un bloque nuevo, "última vez" y récord desaparecían aunque el
+ *     nombre fuera idéntico.
+ *
+ * La identidad es el NOMBRE EFECTIVO normalizado: lo que el cliente realmente
+ * hace (el sustituto, si sustituyó), sin acentos ni paréntesis. Es la misma
+ * función que mypump_clave_ejercicio() en SQL (migración 072), y un test corre
+ * las dos sobre los 703 nombres reales de la base y exige igualdad. Si tocás
+ * una, tocá la otra.
+ *
+ * La caché DATA.historico_por_ejercicio sigue indexada por ex.id a propósito:
+ * todos los lectores (última, récord, peso sugerido, detalle) leen por slot y
+ * no cambian. Lo que cambia es CON QUÉ se llena: con el historial de la clave
+ * del ejercicio efectivo de ese slot. Por eso, cuando el cliente aplica o
+ * revierte un swap, hay que invalidar la entrada y volver a pedirla. */
+function claveEjercicio(nombre) {
+  return String(nombre || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // acentos, ñ → n
+    .replace(/\(.*?\)/g, ' ')                           // "(cabeza medial)": es el músculo
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// El slot puede estar en cualquier día de la rutina (la pantalla de progreso
+// recorre todos), así que se busca en DATA._dias y no solo en DATA.dia.
+function _exPorSlot(exId) {
+  const dias = (DATA && (DATA._dias || [DATA.dia])) || [];
+  for (const d of dias) for (const b of (d && d.bloques) || []) {
+    const ex = (b.ejercicios || []).find(x => x.id === exId);
+    if (ex) return ex;
+  }
+  return null;
+}
+
+function claveDeSlot(exId) {
+  const ex = _exPorSlot(exId);
+  if (!ex) return null;
+  return claveEjercicio(getEffectiveEx(ex).nombre) || null;
+}
+
+// Un swap aplicado o revertido cambia la identidad del slot: lo que había en
+// caché es el historial de OTRO ejercicio. Se borra y se vuelve a pedir.
+function invalidarHistorico(exId) {
+  if (DATA && DATA.historico_por_ejercicio) delete DATA.historico_por_ejercicio[exId];
+  if (typeof _histPromises !== 'undefined') delete _histPromises[exId];
+}
+
 function persistExerciseSwaps() {
   localStorage.setItem(`mypump_exercise_swaps_${RUTINA_ID||'demo'}`, JSON.stringify(STATE.exerciseSwaps));
 }
@@ -2014,7 +2073,7 @@ function pruneExerciseSwaps() {
     const otraSemana  = s.semana != null && s.semana !== semanaActual;
     const diaCerrado  = (s.diaId && STATE.diasCompletados.has(s.diaId))
                      || (s.diaId === (DATA.dia && DATA.dia.id) && _diaFinalizado);
-    if (otraSemana || diaCerrado) { delete STATE.exerciseSwaps[exId]; cambio = true; }
+    if (otraSemana || diaCerrado) { delete STATE.exerciseSwaps[exId]; invalidarHistorico(exId); cambio = true; }
   }
   if (cambio) persistExerciseSwaps();
 }
@@ -3040,7 +3099,14 @@ async function loadHistorico(exId) {
   // renderiza vacío por un fetch que corre tarde (bug del auto-avance).
   if (_histPromises[exId]) { await _histPromises[exId]; return; }
   if (Array.isArray(DATA.historico_por_ejercicio[exId])) return; // ya cargado
-  const p = window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 24)
+  // Por CLAVE del ejercicio efectivo (ver claveEjercicio). Si la migración 072
+  // no está aplicada, getHistoricoPorClave devuelve null y se cae a la RPC
+  // vieja por id de slot: la app sigue andando con la base anterior.
+  const clave = claveDeSlot(exId);
+  const p = (clave
+      ? window.mypumpDB.getHistoricoPorClave(TOKEN, [clave], 24)
+          .then(porClave => porClave ? (porClave[clave] || []) : window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 24))
+      : window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 24))
     .then(rows => { DATA.historico_por_ejercicio[exId] = rows || []; })
     .catch(() => { DATA.historico_por_ejercicio[exId] = []; });
   DATA.historico_por_ejercicio[exId] = []; // marca "cargando" (defined)
@@ -3932,7 +3998,9 @@ function bindTrainEvents() {
     const exId = btn.getAttribute('data-revert-ex');
     delete STATE.exerciseSwaps[exId];
     persistExerciseSwaps();
+    invalidarHistorico(exId);
     renderTrain();
+    loadHistorico(exId).then(() => { if (STATE.scene === 'train') renderTrain(); });
   }));
 }
 
@@ -5451,18 +5519,25 @@ async function loadProgressAndRender() {
   // debe mostrar cada ejercicio que el cliente entrenó en cualquiera de sus días.
   const dias = DATA._dias || [DATA.dia];
   const allEx = [];
-  const seen = new Set();
+  // Una tarjeta por EJERCICIO, no por slot. Antes se deduplicaba por ex.id, así
+  // que el mismo ejercicio en dos días salía dos veces con dos historiales
+  // (bug 2). Ahora se agrupa por clave del ejercicio efectivo y se listan los
+  // días en los que aparece.
+  const porClave = new Map();
   for (const d of dias) {
     const diaNombre = (d.nombre || `Día ${getDayNum(d, dias)}`);
     for (const b of (d.bloques || [])) {
       for (const ex of (b.ejercicios || [])) {
         if (ex.tipo === 'calentamiento') continue;
-        if (seen.has(ex.id)) continue;     // ids únicos por slot/día
-        seen.add(ex.id);
-        allEx.push({ id: ex.id, nombre: ex.nombre, dia: diaNombre });
+        const eff = getEffectiveEx(ex);
+        const clave = claveEjercicio(eff.nombre) || ex.id;
+        const prev = porClave.get(clave);
+        if (prev) { if (!prev.dias.includes(diaNombre)) prev.dias.push(diaNombre); prev.ids.push(ex.id); continue; }
+        porClave.set(clave, { id: ex.id, ids: [ex.id], clave, nombre: eff.nombre, dias: [diaNombre] });
       }
     }
   }
+  for (const e of porClave.values()) allEx.push({ id: e.id, ids: e.ids, clave: e.clave, nombre: e.nombre, dia: e.dias.join(' · ') });
 
   /* UNA llamada para todos los ejercicios, no una por cada uno.
    *
@@ -5479,12 +5554,20 @@ async function loadProgressAndRender() {
   if (DEMO) {
     results = allEx.map(ex => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }));
   } else {
-    const porId = await window.mypumpDB.getHistoricoEjercicios(TOKEN, allEx.map(e => e.id), 24)
-      .catch(() => ({}));
-    results = allEx.map(ex => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: (porId && porId[ex.id]) || [] }));
+    // Por clave. Si la 072 no está, cae al camino viejo por id de slot.
+    const porClave = await window.mypumpDB.getHistoricoPorClave(TOKEN, allEx.map(e => e.clave), 24)
+      .catch(() => null);
+    if (porClave) {
+      results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: porClave[ex.clave] || [] }));
+    } else {
+      const porId = await window.mypumpDB.getHistoricoEjercicios(TOKEN, allEx.map(e => e.id), 24)
+        .catch(() => ({}));
+      results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: (porId && porId[ex.id]) || [] }));
+    }
   }
-  // Cache into DATA
-  for (const r of results) DATA.historico_por_ejercicio[r.id] = r.rows;
+  // Cache into DATA: TODOS los slots que comparten la clave reciben el mismo
+  // historial, así el día 1 y el día 4 ven la misma última carga y el mismo récord.
+  for (const r of results) for (const id of (r.ids || [r.id])) DATA.historico_por_ejercicio[id] = r.rows;
 
   const exercises = results
     .filter(r => r.rows.length > 0)
@@ -8509,7 +8592,11 @@ function confirmExSwap() {
   };
   persistExerciseSwaps();
   closeExSwapModal();
+  // El slot ahora es OTRO ejercicio: su historial es el del sustituto, no el
+  // del original. Se pide de nuevo y se re-renderiza cuando llega.
+  invalidarHistorico(ex.id);
   renderTrain();
+  loadHistorico(ex.id).then(() => { if (STATE.scene === 'train') renderTrain(); });
 }
 
 // ---- CUSTOM FOOD MODAL ----
