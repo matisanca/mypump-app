@@ -2075,7 +2075,12 @@ function pruneExerciseSwaps() {
                      || (s.diaId === (DATA.dia && DATA.dia.id) && _diaFinalizado);
     if (otraSemana || diaCerrado) { delete STATE.exerciseSwaps[exId]; invalidarHistorico(exId); cambio = true; }
   }
-  if (cambio) persistExerciseSwaps();
+  if (cambio) {
+    persistExerciseSwaps();
+    // Los slots que volvieron al original quedaron sin historial en caché:
+    // pedirlo ya, si no la card muestra "Primera vez" hasta que la expandan.
+    if (typeof prefetchHistoricoDia === 'function') prefetchHistoricoDia();
+  }
 }
 
 /* ---- COMENTARIOS (coach ↔ cliente) ----
@@ -3102,17 +3107,32 @@ async function loadHistorico(exId) {
   // Por CLAVE del ejercicio efectivo (ver claveEjercicio). Si la migración 072
   // no está aplicada, getHistoricoPorClave devuelve null y se cae a la RPC
   // vieja por id de slot: la app sigue andando con la base anterior.
+  //
+  // 48 filas y no 24: el "récord" es el máximo de lo que se trae, y con el
+  // mismo ejercicio en dos días de la semana las 24 filas cubrían la mitad de
+  // semanas que antes. El tope del servidor es 200.
   const clave = claveDeSlot(exId);
-  const p = (clave
-      ? window.mypumpDB.getHistoricoPorClave(TOKEN, [clave], 24)
-          .then(porClave => porClave ? (porClave[clave] || []) : window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 24))
-      : window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 24))
-    .then(rows => { DATA.historico_por_ejercicio[exId] = rows || []; })
-    .catch(() => { DATA.historico_por_ejercicio[exId] = []; });
+  const pedir = clave
+      ? window.mypumpDB.getHistoricoPorClave(TOKEN, [clave], 48)
+          .then(porClave => porClave ? (porClave[clave] || []) : window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 48))
+      : window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 48);
+  const p = pedir
+    .then(rows => {
+      // CARRERA: si mientras esto viajaba el cliente sustituyó (o revirtió) el
+      // slot, invalidarHistorico() ya borró esta promesa y la clave cambió. Un
+      // fetch viejo que escribe igual deja el historial del ORIGINAL bajo el
+      // slot ya sustituido — el bug 1 de vuelta, por una ventana de red.
+      if (_histPromises[exId] !== p || claveDeSlot(exId) !== clave) return;
+      // rows null = falló el request (red). Se deja SIN definir para que el
+      // próximo toque vuelva a pedir, en vez de mostrar "Primera vez".
+      if (rows === null || rows === undefined) delete DATA.historico_por_ejercicio[exId];
+      else DATA.historico_por_ejercicio[exId] = rows;
+    })
+    .catch(() => { if (_histPromises[exId] === p) delete DATA.historico_por_ejercicio[exId]; })
+    .finally(() => { if (_histPromises[exId] === p) delete _histPromises[exId]; });
   DATA.historico_por_ejercicio[exId] = []; // marca "cargando" (defined)
   _histPromises[exId] = p;
   await p;
-  delete _histPromises[exId];
 }
 
 // Precarga el histórico de TODOS los ejercicios de trabajo del día (en paralelo),
@@ -3125,7 +3145,24 @@ function prefetchHistoricoDia() {
     .filter(e => e.tipo !== 'calentamiento' && !Array.isArray(DATA.historico_por_ejercicio[e.id]) && !_histPromises[e.id])
     .map(e => e.id);
   if (!ids.length) return;
-  Promise.all(ids.map(id => loadHistorico(id))).then(() => {
+  // UNA llamada para el día entero (la 072 es batch), repartida a todos los
+  // slots que comparten clave. Si la RPC nueva no está, cae a loadHistorico
+  // de a uno, que a su vez cae a la RPC vieja.
+  const claves = [...new Set(ids.map(claveDeSlot).filter(Boolean))];
+  const lote = claves.length
+    ? window.mypumpDB.getHistoricoPorClave(TOKEN, claves, 48).catch(() => null)
+    : Promise.resolve(null);
+  const p = lote.then(porClave => {
+    if (!porClave) return Promise.all(ids.map(id => loadHistorico(id)));
+    for (const id of ids) {
+      if (_histPromises[id]) continue;                 // alguien ya lo pidió suelto
+      const k = claveDeSlot(id);
+      if (k && porClave[k]) DATA.historico_por_ejercicio[id] = porClave[k];
+    }
+    // Los que quedaron sin clave (no debería pasar) van por el camino de a uno.
+    return Promise.all(ids.filter(id => !Array.isArray(DATA.historico_por_ejercicio[id])).map(id => loadHistorico(id)));
+  });
+  p.then(() => {
     if (STATE.scene === 'train' && typeof renderTrain === 'function') renderTrain();
   });
 }
@@ -5555,7 +5592,7 @@ async function loadProgressAndRender() {
     results = allEx.map(ex => ({ id: ex.id, name: ex.nombre, dia: ex.dia, rows: [] }));
   } else {
     // Por clave. Si la 072 no está, cae al camino viejo por id de slot.
-    const porClave = await window.mypumpDB.getHistoricoPorClave(TOKEN, allEx.map(e => e.clave), 24)
+    const porClave = await window.mypumpDB.getHistoricoPorClave(TOKEN, allEx.map(e => e.clave), 48)
       .catch(() => null);
     if (porClave) {
       results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: porClave[ex.clave] || [] }));

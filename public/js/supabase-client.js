@@ -134,8 +134,18 @@ window.mypumpDB = {
       p_limit_por_ej: limit,
     });
     if (!Array.isArray(filas)) {
-      _sinHistoricoPorClave = true;
-      console.warn('[db] mypump_get_historico_por_clave no disponible; historial por id de slot');
+      // Solo se apaga el camino por clave si la RPC NO EXISTE (migración 072
+      // sin aplicar). Cualquier otro fallo —un corte de señal en el gimnasio—
+      // es de ESTA llamada: se devuelve null y la próxima vuelve a intentar.
+      // Si se apagara ante cualquier error, un request caído reactivaría el
+      // historial por slot (el bug viejo) por el resto de la sesión.
+      const err = (window.mypumpDB && window.mypumpDB._lastError) || {};
+      const noExiste = err.code === 'PGRST202'
+        || /PGRST202|could not find the function|does not exist/i.test(String(err.message || err.details || ''));
+      if (noExiste) {
+        _sinHistoricoPorClave = true;
+        console.warn('[db] mypump_get_historico_por_clave no existe; historial por id de slot');
+      }
       return null;
     }
     for (const f of filas) {

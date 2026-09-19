@@ -176,9 +176,53 @@ t('la pantalla de Progreso agrupa por ejercicio, no por slot', () => {
     throw new Error('Progreso no llena la caché de TODOS los slots que comparten la clave');
 });
 
+t('loadHistorico no deja que un fetch viejo pise al slot ya sustituido (carrera)', () => {
+  // El barrido del 19-sep lo encontró: sustituir mientras viaja el fetch de la
+  // clave vieja → el fetch viejo escribe el historial del ORIGINAL bajo el slot
+  // ya sustituido. Bug 1 de vuelta, por una ventana de red.
+  const i = HTML.indexOf('async function loadHistorico(exId)');
+  const cuerpo = HTML.slice(i, i + 2200);
+  if (!cuerpo.includes('_histPromises[exId] !== p || claveDeSlot(exId) !== clave'))
+    throw new Error('el fetch no verifica que siga siendo el vigente y de la misma clave antes de escribir');
+  if (/\n\s*delete _histPromises\[exId\];\n\}/.test(cuerpo))
+    throw new Error('vuelve a borrar la promesa a ciegas al final: un fetch viejo borraría la promesa NUEVA');
+});
+
+t('un fallo de red no marca el historial como "vacío" (se vuelve a pedir)', () => {
+  const i = HTML.indexOf('async function loadHistorico(exId)');
+  const cuerpo = HTML.slice(i, i + 2200);
+  if (!cuerpo.includes('delete DATA.historico_por_ejercicio[exId]'))
+    throw new Error('ante un fallo deja [] y la card queda en "Primera vez" toda la sesión');
+});
+
+t('el prefetch del día es UNA llamada, repartida a los slots que comparten clave', () => {
+  const i = HTML.indexOf('function prefetchHistoricoDia()');
+  const cuerpo = HTML.slice(i, i + 1800);
+  if (!cuerpo.includes('getHistoricoPorClave(TOKEN, claves')) throw new Error('el prefetch sigue pidiendo de a uno');
+  if (!cuerpo.includes('new Set(ids.map(claveDeSlot)')) throw new Error('no deduplica las claves del día');
+});
+
+t('cuando prune descarta un swap, vuelve a pedir el historial', () => {
+  const i = HTML.indexOf('function pruneExerciseSwaps()');
+  const cuerpo = HTML.slice(i, i + 1100);
+  if (!cuerpo.includes('prefetchHistoricoDia()'))
+    throw new Error('prune invalida pero no re-pide: la card vuelve al original y muestra "Primera vez" hasta que la expandan');
+});
+
+t('el cliente de Supabase solo apaga el camino por clave si la RPC NO EXISTE', () => {
+  // Un corte de señal en el gimnasio NO puede reactivar el bug viejo por el
+  // resto de la sesión. Solo PGRST202 (función inexistente) latchea.
+  const i = SBC.indexOf('async getHistoricoPorClave(');
+  const cuerpo = SBC.slice(i, i + 1600);
+  if (!cuerpo.includes("PGRST202")) throw new Error('no distingue "la RPC no existe" de "falló este request"');
+  const iLatch = cuerpo.indexOf('_sinHistoricoPorClave = true');
+  const iIf = cuerpo.lastIndexOf('if (noExiste)', iLatch);
+  if (iIf < 0) throw new Error('el latch no está condicionado a noExiste');
+});
+
 t('el cliente de Supabase devuelve null si la RPC no existe (para la caída)', () => {
   const i = SBC.indexOf('async getHistoricoPorClave(');
-  const cuerpo = SBC.slice(i, i + 900);
+  const cuerpo = SBC.slice(i, i + 1600);
   if (!cuerpo.includes('return null')) throw new Error('getHistoricoPorClave no devuelve null cuando falta la RPC');
   if (!cuerpo.includes('_sinHistoricoPorClave = true')) throw new Error('no memoriza la ausencia: sondearía en cada llamada');
 });
