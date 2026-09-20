@@ -173,7 +173,10 @@ COMMIT;
 NOTIFY pgrst, 'reload schema';
 
 -- ============================================================
--- ROLLBACK (manual):
+-- ROLLBACK (manual). OJO AL ORDEN: la 073 (mypump_get_metricas_coach) lee
+-- rc.ejercicio_clave; si se dropea la columna primero, esa función queda rota
+-- en runtime. Primero volver a la 035, después esto:
+--   -- 1) re-aplicar la 035 (CREATE OR REPLACE FUNCTION mypump_get_metricas_coach ...)
 --   DROP FUNCTION IF EXISTS mypump_get_historico_por_clave(TEXT, TEXT[], INTEGER);
 --   DROP INDEX IF EXISTS idx_mypump_registros_clave;
 --   ALTER TABLE mypump_registros_carga DROP COLUMN IF EXISTS ejercicio_clave;

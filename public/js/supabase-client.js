@@ -120,14 +120,21 @@ window.mypumpDB = {
   // Devuelve array de {registrado_en, peso_kg, reps_realizadas, rir_real, serie_numero}.
   /* Historial por CLAVE de ejercicio (migración 072), no por id de slot.
    * Devuelve { clave: filas[] } con TODAS las claves pedidas presentes (vacías
-   * si no hay nada). Devuelve null si la RPC no existe todavía, para que el
-   * llamador caiga al camino viejo por id. Se sondea una vez por sesión. */
+   * si no hay nada).
+   *
+   * Dos fallos DISTINTOS, y el llamador tiene que distinguirlos:
+   *   false → la RPC NO EXISTE (072 sin aplicar). Se memoriza por sesión y el
+   *           llamador puede caer al camino viejo por id de slot.
+   *   null  → falló ESTE request (red). NO caer al camino viejo: por slot el
+   *           historial viene mezclado (original + sustituto) y el bug 1
+   *           vuelve para ese ejercicio en silencio. Dejar sin definir y
+   *           reintentar después. */
   async getHistoricoPorClave(token, claves, limit = 24) {
     const ks = [...new Set((claves || []).filter(Boolean))];
     const porClave = {};
     for (const k of ks) porClave[k] = [];
     if (!ks.length) return porClave;
-    if (_sinHistoricoPorClave) return null;
+    if (_sinHistoricoPorClave) return false;
     const filas = await rpc('mypump_get_historico_por_clave', {
       p_token: token,
       p_claves: ks,
@@ -145,6 +152,7 @@ window.mypumpDB = {
       if (noExiste) {
         _sinHistoricoPorClave = true;
         console.warn('[db] mypump_get_historico_por_clave no existe; historial por id de slot');
+        return false;
       }
       return null;
     }

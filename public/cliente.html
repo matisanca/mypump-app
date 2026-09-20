@@ -3112,9 +3112,15 @@ async function loadHistorico(exId) {
   // mismo ejercicio en dos días de la semana las 24 filas cubrían la mitad de
   // semanas que antes. El tope del servidor es 200.
   const clave = claveDeSlot(exId);
+  // porClave === false → la 072 no existe: camino viejo por slot (única caída
+  // legítima). porClave === null → falló la red: se devuelve null y más abajo
+  // queda SIN definir para reintentar. Nunca se cae al slot por un corte de
+  // señal: por slot el historial viene mezclado y el bug 1 vuelve.
   const pedir = clave
       ? window.mypumpDB.getHistoricoPorClave(TOKEN, [clave], 48)
-          .then(porClave => porClave ? (porClave[clave] || []) : window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 48))
+          .then(porClave => porClave === false ? window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 48)
+                          : porClave === null  ? null
+                          : (porClave[clave] || []))
       : window.mypumpDB.getHistoricoEjercicio(TOKEN, exId, 48);
   const p = pedir
     .then(rows => {
@@ -3153,6 +3159,8 @@ function prefetchHistoricoDia() {
     ? window.mypumpDB.getHistoricoPorClave(TOKEN, claves, 48).catch(() => null)
     : Promise.resolve(null);
   const p = lote.then(porClave => {
+    // false = no existe la RPC → de a uno (cae al slot). null = red → de a uno
+    // también, pero loadHistorico deja cada slot sin definir para reintentar.
     if (!porClave) return Promise.all(ids.map(id => loadHistorico(id)));
     for (const id of ids) {
       if (_histPromises[id]) continue;                 // alguien ya lo pidió suelto
@@ -5596,6 +5604,10 @@ async function loadProgressAndRender() {
       .catch(() => null);
     if (porClave) {
       results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: porClave[ex.clave] || [] }));
+    } else if (porClave === null) {
+      // Falló la red: Progreso muestra vacío y se vuelve a pedir al reabrir.
+      // NO se cae al slot (mezclaría original y sustituto).
+      results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: [] }));
     } else {
       const porId = await window.mypumpDB.getHistoricoEjercicios(TOKEN, allEx.map(e => e.id), 24)
         .catch(() => ({}));

@@ -135,7 +135,7 @@ t('writeSet registra el nombre EFECTIVO (la fuente de la identidad)', () => {
 
 t('loadHistorico pide por clave del slot, con caída a la RPC vieja', () => {
   const i = HTML.indexOf('async function loadHistorico(exId)');
-  const cuerpo = HTML.slice(i, i + 1200);
+  const cuerpo = HTML.slice(i, i + 2600);
   if (!cuerpo.includes('claveDeSlot(exId)')) throw new Error('loadHistorico no calcula la clave del slot');
   if (!cuerpo.includes('getHistoricoPorClave(')) throw new Error('loadHistorico no usa la RPC por clave');
   if (!cuerpo.includes('getHistoricoEjercicio(TOKEN, exId')) throw new Error('sin caída a la RPC vieja, la app sin migración se queda sin historial');
@@ -167,7 +167,7 @@ t('cuando un swap se descarta solo (otra semana / día cerrado) también se inva
 
 t('la pantalla de Progreso agrupa por ejercicio, no por slot', () => {
   const i = HTML.indexOf('async function loadProgressAndRender()');
-  const cuerpo = HTML.slice(i, i + 3000);
+  const cuerpo = HTML.slice(i, i + 4500);
   if (cuerpo.includes('if (seen.has(ex.id)) continue;'))
     throw new Error('Progreso sigue deduplicando por ex.id: el mismo ejercicio en dos días sale dos veces');
   if (!cuerpo.includes('claveEjercicio(eff.nombre)')) throw new Error('Progreso no agrupa por clave del ejercicio efectivo');
@@ -190,7 +190,7 @@ t('loadHistorico no deja que un fetch viejo pise al slot ya sustituido (carrera)
 
 t('un fallo de red no marca el historial como "vacío" (se vuelve a pedir)', () => {
   const i = HTML.indexOf('async function loadHistorico(exId)');
-  const cuerpo = HTML.slice(i, i + 2200);
+  const cuerpo = HTML.slice(i, i + 3200);
   if (!cuerpo.includes('delete DATA.historico_por_ejercicio[exId]'))
     throw new Error('ante un fallo deja [] y la card queda en "Primera vez" toda la sesión');
 });
@@ -220,11 +220,26 @@ t('el cliente de Supabase solo apaga el camino por clave si la RPC NO EXISTE', (
   if (iIf < 0) throw new Error('el latch no está condicionado a noExiste');
 });
 
-t('el cliente de Supabase devuelve null si la RPC no existe (para la caída)', () => {
+t('el cliente de Supabase distingue "no existe" (false) de "falló la red" (null)', () => {
   const i = SBC.indexOf('async getHistoricoPorClave(');
-  const cuerpo = SBC.slice(i, i + 1600);
-  if (!cuerpo.includes('return null')) throw new Error('getHistoricoPorClave no devuelve null cuando falta la RPC');
+  const cuerpo = SBC.slice(i, i + 1800);
+  if (!cuerpo.includes('if (_sinHistoricoPorClave) return false;')) throw new Error('la ausencia memorizada no devuelve false');
+  if (!/_sinHistoricoPorClave = true;[\s\S]{0,200}return false;/.test(cuerpo)) throw new Error('al detectar PGRST202 no devuelve false');
   if (!cuerpo.includes('_sinHistoricoPorClave = true')) throw new Error('no memoriza la ausencia: sondearía en cada llamada');
+});
+
+t('un fallo de red NUNCA cae al historial por slot (mezclaría original y sustituto)', () => {
+  // El crítico del 19-sep: con señal intermitente, el request por clave falla,
+  // el de slot puede andar, y la card queda con el historial MEZCLADO. Bug 1
+  // de vuelta, en silencio, para ese ejercicio.
+  const i = HTML.indexOf('async function loadHistorico(exId)');
+  const cuerpo = HTML.slice(i, i + 2600);
+  if (!cuerpo.includes('porClave === false ? window.mypumpDB.getHistoricoEjercicio'))
+    throw new Error('loadHistorico cae al slot con cualquier valor falsy, no solo con false');
+  if (!cuerpo.includes('porClave === null  ? null')) throw new Error('un null de red no se propaga como "sin definir"');
+  const j = HTML.indexOf('async function loadProgressAndRender()');
+  const prog = HTML.slice(j, j + 4000);
+  if (!prog.includes('else if (porClave === null)')) throw new Error('Progreso cae al slot ante un fallo de red');
 });
 
 console.log(`\n${fail === 0 ? '✅' : '❌'}  ${ok} pasaron, ${fail} fallaron\n`);
