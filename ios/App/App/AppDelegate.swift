@@ -46,4 +46,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+    // PUSH (APNs). @capacitor/push-notifications NO recibe el token solo: su
+    // plugin escucha estas dos notificaciones y es el AppDelegate de la app el
+    // que tiene que postearlas (README del plugin). Sin esto, `register()`
+    // nunca dispara `registration`, la app espera 15 s y no escribe nada en
+    // mypump_push_devices: el 20-sep-2026 había 0 devices iOS con la mayoría
+    // de los clientes en iPhone. Los avisos de Mati (chat, rutina nueva)
+    // llegaban a Android y a la PWA, nunca al iPhone.
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+    }
+
 }

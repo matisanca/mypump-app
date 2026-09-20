@@ -146,7 +146,55 @@ await t('a los N intentos la abandona en vez de reintentar sin fin', async () =>
   if (intentos > 10) throw new Error(`${intentos} intentos es demasiado`);
 });
 
+/* El wrapper REAL de supabase-client.js (rpcMutation + clasificarError),
+   con un cliente falso que contesta como supabase-js v2 de verdad: ante un
+   fetch caído NO lanza, devuelve { error: { message, code: '' }, status: 0 }.
+   El 19-sep el test anterior mockeaba `_lastError = { code: 'NETWORK' }`, un
+   contrato que el cliente real nunca producía: el test pasaba y el bug seguía. */
+const SBC = fs.readFileSync(path.join(raiz, 'public/js/supabase-client.js'), 'utf8');
+const clasificarSrc = SBC.match(/function clasificarError\(error, status\) \{[\s\S]*?\n\}\n/)[0];
+const rpcMutationSrc = SBC.match(/async function rpcMutation\(fn, params\) \{[\s\S]*?\n\}\n/)[0];
+function montarConSupabase(respuestaRpc) {
+  const base = montar(async () => okRes);
+  const fn = new Function('getClient', 'logDev', 'window', clasificarSrc + rpcMutationSrc + 'return rpcMutation;');
+  const rpcMutation = fn(() => ({ rpc: async () => respuestaRpc() }), () => {}, base.ctx.window);
+  base.ctx.window.mypumpDB.registrarCarga = (_t, _s, datos) => { base.enviados.push(datos.serie); return rpcMutation('mypump_registrar_carga', {}); };
+  return base;
+}
+
 console.log('\nUn corte de red NO gasta intentos');
+
+await t('supabase-js sin red ({error, status:0}, sin excepción): 30 pasadas no abandonan nada', async () => {
+  const { Outbox } = montarConSupabase(() => ({ data: null, error: { message: 'TypeError: Failed to fetch', code: '' }, status: 0 }));
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 2 } }, 'k2');
+  for (let i = 0; i < 30; i++) await Outbox.flush();
+  if (Outbox.pending() !== 2) throw new Error(`quedaron ${Outbox.pending()} de 2: la red gastó intentos`);
+});
+
+await t('WKWebView "Load failed" y portal cautivo (SyntaxError, status 0): tampoco', async () => {
+  for (const msg of ['TypeError: Load failed', 'SyntaxError: Unexpected token <']) {
+    const { Outbox } = montarConSupabase(() => ({ data: null, error: { message: msg, code: '' }, status: 0 }));
+    Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+    for (let i = 0; i < 12; i++) await Outbox.flush();
+    if (Outbox.pending() !== 1) throw new Error(`"${msg}" abandonó la serie`);
+  }
+});
+
+await t('un 503 de Supabase es transitorio: no gasta intentos', async () => {
+  const { Outbox } = montarConSupabase(() => ({ data: null, error: { message: 'Service Unavailable', code: '' }, status: 503 }));
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  for (let i = 0; i < 12; i++) await Outbox.flush();
+  if (Outbox.pending() !== 1) throw new Error('un 503 abandonó la serie');
+});
+
+await t('un rechazo REAL del servidor (400, código de PostgREST) sí gasta intentos y se abandona', async () => {
+  const { Outbox } = montarConSupabase(() => ({ data: null, error: { message: 'invalid input syntax', code: '22P02' }, status: 400 }));
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  for (let i = 0; i < 12 && Outbox.pending(); i++) await Outbox.flush();
+  if (Outbox.pending() !== 0) throw new Error('un error permanente se reintentaría para siempre');
+});
+
 
 await t('con "conectado" pero sin internet, 30 pasadas no abandonan nada', async () => {
   // 19-sep-2026: wifi del gym sin salida. navigator.onLine dice true, cada

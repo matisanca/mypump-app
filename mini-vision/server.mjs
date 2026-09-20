@@ -149,18 +149,37 @@ function overLimit(token, feature = 'vision') {
 // ── Resolver el cliente a partir del token (antes solo validaba) ──
 // Devuelve el cliente_id o null. INVARIANTE DE SEGURIDAD: el cliente_id que
 // arma el path de las fotos sale SIEMPRE de acá, NUNCA del body del request.
+// Devuelve el cliente_id, null si el token NO existe, o lanza NoSePudoResolver
+// si Supabase no contestó. Antes las dos cosas eran null y el handler mandaba
+// 403 'token inválido' también cuando Supabase estaba caído: la app trata el
+// 4xx como definitivo, descartaba la foto de la cola y el cliente la perdía.
+class NoSePudoResolver extends Error {}
 async function resolverCliente(token) {
   if (!token || typeof token !== 'string' || token.length < 16) return null;
+  let res;
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/mypump_get_cliente_info`, {
+    res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/mypump_get_cliente_info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
       body: JSON.stringify({ p_token: token }),
     });
-    if (!res.ok) return null;
-    const rows = await res.json();
-    return (Array.isArray(rows) && rows[0] && rows[0].cliente_id) ? rows[0].cliente_id : null;
-  } catch { return null; }
+  } catch (e) { throw new NoSePudoResolver(String(e && e.message || e)); }
+  if (!res.ok) {
+    if (res.status >= 500 || res.status === 429) throw new NoSePudoResolver(`HTTP ${res.status}`);
+    return null;                                      // 4xx de PostgREST: el token no vale
+  }
+  let rows;
+  try { rows = await res.json(); } catch (e) { throw new NoSePudoResolver('respuesta no JSON'); }
+  return (Array.isArray(rows) && rows[0] && rows[0].cliente_id) ? rows[0].cliente_id : null;
+}
+// Para los handlers: (clienteId | null, o 503 ya mandado → undefined).
+async function clienteOResponder(token, res, origin) {
+  try { return await resolverCliente(token); }
+  catch (e) {
+    console.warn('[token] Supabase no contestó:', e.message);
+    send(res, 503, { ok: false, error: 'no se pudo validar el acceso, probá en un rato' }, origin);
+    return undefined;
+  }
 }
 
 // ── Helpers de fotos de progreso ──
@@ -309,7 +328,8 @@ async function handleFotoUpload(req, res, origin) {
   if (!fechaAceptable(fechaISO)) return send(res, 400, { ok: false, error: 'fecha fuera de rango' }, origin);
 
   // INVARIANTE: el cliente_id sale del TOKEN, jamás del body.
-  const clienteId = await resolverCliente(token);
+  const clienteId = await clienteOResponder(token, res, origin);
+  if (clienteId === undefined) return;
   if (!clienteId) return send(res, 403, { ok: false, error: 'token inválido' }, origin);
   if (overLimit(token, 'fotos')) return send(res, 429, { ok: false, error: 'muchas fotos por hoy, probá mañana' }, origin);
 
@@ -360,7 +380,8 @@ async function handleFotoUrls(req, res, origin) {
   if (!data) return;
   const { token, desde } = data || {};
 
-  const clienteId = await resolverCliente(token);
+  const clienteId = await clienteOResponder(token, res, origin);
+  if (clienteId === undefined) return;
   if (!clienteId) return send(res, 403, { ok: false, error: 'token inválido' }, origin);
 
   try {
@@ -417,7 +438,9 @@ const server = createServer(async (req, res) => {
     if (!PROMPTS[tipo]) return send(res, 400, { ok: false, error: 'tipo inválido' }, origin);
     if (!imagen_base64 || typeof imagen_base64 !== 'string') return send(res, 400, { ok: false, error: 'falta imagen' }, origin);
 
-    if (!(await resolverCliente(token))) return send(res, 403, { ok: false, error: 'token inválido' }, origin);
+    const cid = await clienteOResponder(token, res, origin);
+    if (cid === undefined) return;
+    if (!cid) return send(res, 403, { ok: false, error: 'token inválido' }, origin);
     if (overLimit(token, 'vision')) return send(res, 429, { ok: false, error: 'límite diario alcanzado, probá mañana' }, origin);
 
     const b64 = imagen_base64.replace(/^data:image\/\w+;base64,/, '');

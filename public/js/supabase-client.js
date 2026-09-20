@@ -27,14 +27,34 @@ function logDev(...args) {
 }
 
 // Llamada RPC de solo lectura — devuelve data o null ante error.
+/* Clasificación del error de una RPC. Importa porque el Outbox decide con
+ * esto si un fallo GASTA un intento (rechazo real del servidor) o no (red).
+ *
+ * supabase-js v2 NO lanza cuando el fetch falla: postgrest-js atrapa el
+ * rechazo y devuelve { error: { message: 'TypeError: Failed to fetch',
+ * code: '' }, status: 0 }. O sea que el `catch` de abajo, el único que ponía
+ * code:'NETWORK', era inalcanzable con un corte de red real — y el Outbox
+ * contaba cada pasada sin señal como un intento hasta abandonar las series
+ * (verificado con node y supabase-js 2.116.0 el 19-sep-2026). Ahora se
+ * clasifica por `status`: 0 = red (DNS, portal cautivo, 'Load failed' en
+ * WKWebView); 5xx/429/408 = transitorio del servidor; el resto, permanente. */
+function clasificarError(error, status) {
+  const msg = String((error && error.message) || '');
+  const red = status === 0 || status == null && !(error && error.code)
+           || /Failed to fetch|Load failed|fetch failed|NetworkError|network request failed|FetchError/i.test(msg);
+  if (red) return { code: 'NETWORK', message: msg, status: status || 0, transitorio: true };
+  const transitorio = status === 429 || status === 408 || (status >= 500 && status <= 599);
+  return { code: (error && error.code) || '', message: msg, details: error && error.details, hint: error && error.hint, status, transitorio };
+}
+
 // Guarda el último error en window.mypumpDB._lastError para que el frontend
 // pueda distinguir "token inválido" (null sin error) de "servicio caído" (error existente).
 async function rpc(fn, params) {
   try {
-    const { data, error } = await getClient().rpc(fn, params);
+    const { data, error, status } = await getClient().rpc(fn, params);
     if (error) {
       logDev(`RPC ${fn} error:`, error);
-      if (window.mypumpDB) window.mypumpDB._lastError = error;
+      if (window.mypumpDB) window.mypumpDB._lastError = clasificarError(error, status);
       return null;
     }
     if (window.mypumpDB) window.mypumpDB._lastError = null;
@@ -42,7 +62,7 @@ async function rpc(fn, params) {
   } catch (e) {
     logDev(`RPC ${fn} exception:`, e);
     if (window.mypumpDB) {
-      window.mypumpDB._lastError = { code: 'NETWORK', message: e.message || String(e) };
+      window.mypumpDB._lastError = { code: 'NETWORK', message: e.message || String(e), status: 0, transitorio: true };
     }
     return null;
   }
@@ -54,23 +74,24 @@ async function rpc(fn, params) {
 let _sinBatchHistorico = false;
 let _sinHistoricoPorClave = false;
 
-// Llamada RPC de escritura — devuelve {success, data, error}
+// Llamada RPC de escritura — devuelve {success, data, error, code, transitorio}
 async function rpcMutation(fn, params) {
   try {
-    const { data, error } = await getClient().rpc(fn, params);
+    const { data, error, status } = await getClient().rpc(fn, params);
     if (error) {
       logDev(`RPC ${fn} error:`, error);
-      if (window.mypumpDB) window.mypumpDB._lastError = error;
-      return { success: false, data: null, error: error.message };
+      const c = clasificarError(error, status);
+      if (window.mypumpDB) window.mypumpDB._lastError = c;
+      return { success: false, data: null, error: error.message, code: c.code, transitorio: c.transitorio };
     }
     if (window.mypumpDB) window.mypumpDB._lastError = null;
     return { success: true, data, error: null };
   } catch (e) {
     logDev(`RPC ${fn} exception:`, e);
     if (window.mypumpDB) {
-      window.mypumpDB._lastError = { code: 'NETWORK', message: e.message || String(e) };
+      window.mypumpDB._lastError = { code: 'NETWORK', message: e.message || String(e), status: 0, transitorio: true };
     }
-    return { success: false, data: null, error: e.message };
+    return { success: false, data: null, error: e.message, code: 'NETWORK', transitorio: true };
   }
 }
 

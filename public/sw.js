@@ -14,10 +14,10 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v43-20260919';
+const VERSION       = 'v44-20260920';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
-const SUPABASE_LIB  = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+const SUPABASE_LIB  = '/js/vendor/supabase-js.min.js';   // vendorizada el 20-sep-2026 (antes CDN)
 
 const SHELL = [
   // '/cliente' ANTES que '/cliente.html': en Cloudflare Pages, '/cliente.html'
@@ -67,13 +67,14 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;                       // POST/RPC → sin tocar
 
-  // Lib de Supabase (CDN, versión fija) → cache-first (offline la necesita).
-  if (req.url.startsWith(SUPABASE_LIB)) {
+  const url = new URL(req.url);
+  // Lib de Supabase (vendorizada, mismo origen) → cache-first: cambia solo
+  // cuando se reemplaza el archivo (y con él, VERSION).
+  if (url.origin === location.origin && url.pathname === SUPABASE_LIB) {
     e.respondWith(cacheFirst(req, RUNTIME_CACHE));
     return;
   }
 
-  const url = new URL(req.url);
   if (url.origin !== location.origin) return;             // otro origen (RPC a supabase.co, etc.) → directo
 
   // Código de la app → network-first.

@@ -35,6 +35,25 @@ export async function onRequestGet({ env }) {
       // Corto a propósito: el día que se carguen las credenciales, la app
       // tiene que enterarse sin esperar un cache largo.
       'cache-control': 'public, max-age=300',
+      // CORS abierto: la app NATIVA corre en capacitor://localhost (iOS) o
+      // https://localhost (Android) y pregunta acá cross-origin. Sin esto el
+      // fetch se bloqueaba, el catch dejaba [] y la sección "Mi reloj" no
+      // aparecía nunca adentro de la app. La respuesta es pública y no
+      // depende del cliente, así que '*' no expone nada.
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET, OPTIONS',
+    },
+  });
+}
+
+export async function onRequestOptions() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'access-control-allow-origin': '*',
+      'access-control-allow-methods': 'GET, OPTIONS',
+      'access-control-allow-headers': 'content-type',
+      'access-control-max-age': '86400',
     },
   });
 }

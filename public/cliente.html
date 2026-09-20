@@ -1162,7 +1162,13 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- supabase-js VENDORIZADO (2.116.0, copia literal del UMD de jsdelivr). Antes
+     venía del CDN: en la app nativa sin señal la etiqueta no cargaba, init() moría
+     en mypumpDB.init() y la pantalla "Cargando tu plan…" no terminaba nunca —
+     el snapshot offline no llegaba a usarse. Con la lib adentro del binario,
+     sin red la app abre igual con lo último que tenía. Para actualizarla:
+     curl -sL https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2 -o public/js/vendor/supabase-js.min.js -->
+<script src="/js/vendor/supabase-js.min.js"></script>
 <script src="/js/deeplink.js"></script>
 <script src="/js/config.js"></script>
 <script src="/js/fcm-flag.js"></script>
@@ -1379,6 +1385,7 @@ const STATE = {
   progressLoaded:     false,
   progressData:       null,
   mydayLoaded:        false,
+  mydayFecha:         null,   // fecha local de la última carga de hábitos
   // Escena Revisión (semanal). Se creaban al vuelo; declaradas para que se
   // vea de donde salen y que la escena renderice bien con todo vacio.
   checkin:            null,       // check de la semana ya guardado en el server
@@ -1970,9 +1977,33 @@ function inferFoodCategory(food) {
   return 'mixto';
 }
 
-function getEffectiveFood(f, comidaId, optIdx, foodIdx) {
+/* Un swap de comida está ANCLADO al alimento que reemplaza, no al índice.
+ *
+ * La key es posicional (comida, opción, índice) y mypump_publicar_cliente
+ * conserva el dieta_id al republicar: si Mati agrega un alimento antes, cada
+ * swap cae sobre el que ahora ocupa esa posición (la leche de Alejandro
+ * Romero, 28-ago). Desde el 19-sep cada swap guarda en food_data._orig el
+ * alimento que reemplazó (nombre, cantidad, unidad); si lo que hay hoy en
+ * esa posición no es eso, el swap no se aplica. Los swaps viejos sin _orig
+ * se anclan al alimento actual la primera vez que se hidratan. */
+function _huellaFood(f) {
+  if (!f) return '';
+  return `${String(f.name || '').trim().toLowerCase()}|${Number(f.qty) || 0}|${String(f.unit || '').trim().toLowerCase()}`;
+}
+function _swapAplicable(swap, originalFood) {
+  if (!swap || !swap.current) return false;
+  const orig = swap.current._orig;
+  if (!orig) return true;                       // legado: sin ancla, se aplica como siempre
+  return _huellaFood(orig) === _huellaFood(originalFood);
+}
+function getFoodSwap(originalFood, comidaId, optIdx, foodIdx) {
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
-  return STATE.foodSwaps[key] ? STATE.foodSwaps[key].current : f;
+  const swap = STATE.foodSwaps[key];
+  return _swapAplicable(swap, originalFood) ? swap : null;
+}
+function getEffectiveFood(f, comidaId, optIdx, foodIdx) {
+  const swap = getFoodSwap(f, comidaId, optIdx, foodIdx);
+  return swap ? swap.current : f;
 }
 
 function persistSwaps() {
@@ -2595,6 +2626,7 @@ function showSaveState(state) {
   }
   const txt = state === 'saving' ? 'Guardando…'
             : state === 'saved'  ? '✓ Guardado'
+            : state === 'perdido' ? '⚠ Algo no se pudo guardar. Revisá tus series y cargalas de nuevo.'
             : '⚠ Sin conexión — se reintenta solo';
   el.dataset.state = state;
   el.textContent = txt;
@@ -2659,6 +2691,20 @@ const Outbox = (() => {
     },
     async swap(p) {
       return window.mypumpDB.saveFoodSwap(TOKEN, p.dietaId, p.comidaId, p.optIdx, p.foodIdx, p.food);
+    },
+    async habito(p) {
+      // Hábitos de Mi Día (entrené / comí según plan / dormí bien / agua).
+      // Antes iban directo, sin optimismo ni reintento: sin señal el toque no
+      // hacía nada y nadie avisaba. dedupeKey por campo+fecha: gana el último.
+      const r = await window.mypumpDB.setHabito(TOKEN, p.fecha, p.campo, p.valor);
+      if (r && r.success && Array.isArray(r.data) && r.data.length && p.fecha === hoyLocal()) {
+        MYDAY = r.data[0];
+        if (['entrenamiento', 'comio_segun_plan', 'durmio_bien'].includes(p.campo)) {
+          try { const st = await window.mypumpDB.getStreak(TOKEN); if (st) { STREAK = st; renderMydayStreak(); } } catch (e) {}
+        }
+        if (STATE.scene === 'revision') renderMyday();
+      }
+      return r;
     },
     async swap_del(p) {
       // Revertir una sustitución. Comparte dedupeKey con la op 'swap' del
@@ -2801,8 +2847,11 @@ const Outbox = (() => {
       // backoff) se ABANDONABAN todas las series encoladas, con el tilde ya
       // puesto y el toast diciendo que se reintentaba solo. Solo cuenta un
       // rechazo real del servidor (respondió y dijo que no).
+      // La clasificación la hace supabase-client.js (clasificarError): red
+      // (status 0: supabase-js NO lanza, devuelve {error, status:0}) o
+      // transitorio del servidor (5xx/429). Ninguno de los dos gasta intentos.
       const ultimo = (window.mypumpDB && window.mypumpDB._lastError) || null;
-      const sinRed = excepcion || (ultimo && ultimo.code === 'NETWORK');
+      const sinRed = excepcion || (res && res.transitorio) || (ultimo && (ultimo.code === 'NETWORK' || ultimo.transitorio));
       if (sinRed) { anyFail = true; _rachaSinRed++; break; }   // sin red no tiene sentido seguir con las demás
       op.tries++;
       if (op.tries >= MAX_TRIES) { resueltas.add(op._id); abandonadas.push(op); continue; }
@@ -2825,7 +2874,7 @@ const Outbox = (() => {
         if (op.kind === 'chat' && typeof marcarChatFallido === 'function') marcarChatFallido(op.payload.contenido);
       }
       hadProblem = false;
-      showSaveState('offline');
+      showSaveState('perdido');   // NO 'offline': ese cartel dice "se reintenta solo", y esto ya no se reintenta
     }
     if (anyFail) {
       hadProblem = true;
@@ -2944,7 +2993,10 @@ async function writeFinish(notas) {
   const _min = minutosSesion();
   const res = await window.mypumpDB.finalizarSesion(TOKEN, _sesionId, notas || null,
                                                     _min != null ? _min * 60 : null);
-  if (!res || res.success === false) {
+  // La RPC devuelve FALSE cuando no cerró nada (token revocado, sesión de otro
+  // cliente o inexistente): antes eso pasaba como éxito y el día quedaba en
+  // verde en el teléfono sin cerrar en la base.
+  if (!res || res.success === false || res.data === false) {
     alert('No se pudo cerrar la sesión. Revisá tu conexión e intentá de nuevo.');
     return;
   }
@@ -2982,14 +3034,31 @@ function isWeekCompleted() {
 }
 
 async function doAvanzarSemana() {
-  const nueva = await window.mypumpDB.avanzarSemana(TOKEN);
+  // Se manda la semana DESTINO explícita (la que el cliente ve + 1), no un
+  // "+1 relativo": con un reintento, un segundo dispositivo o una respuesta
+  // perdida, el relativo saltaba una semana. La RPC es idempotente por destino.
+  const actual = (DATA && DATA.rutina && DATA.rutina.semana_actual) || 1;
+  const nueva = await window.mypumpDB.avanzarSemana(TOKEN, actual + 1);
   if (nueva != null) {
     // Limpiar sesiones cacheadas de la semana anterior
     Object.keys(localStorage).forEach(k => {
       if (k.startsWith(`mypump_sesion_${TOKEN}_`)) localStorage.removeItem(k);
     });
     location.reload();
+    return;
   }
+  // Antes esto fallaba en silencio: el botón no hacía nada y el cliente lo
+  // tocaba de nuevo (otro +1). Ahora se dice, y si fue la red se ofrece recargar
+  // (si la respuesta se perdió, el servidor puede haber avanzado igual).
+  const err = window.mypumpDB._lastError || {};
+  const sinRed = err.code === 'NETWORK' || err.transitorio;
+  const reintentar = await MyPump.ui.showConfirmModal({
+    title: sinRed ? 'Sin conexión' : 'No se pudo pasar de semana',
+    body: sinRed ? 'No pudimos avisarle al servidor. Cuando tengas señal, recargá y fijate en qué semana quedaste.'
+                 : 'Probá de nuevo en un rato. Si sigue así, escribile a Mati.',
+    confirmLabel: 'Recargar', cancelLabel: 'Cerrar',
+  });
+  if (reintentar) location.reload();
 }
 
 async function confirmEmpezarBloqueNuevo() {
@@ -3010,7 +3079,22 @@ async function doEmpezarBloqueNuevo() {
     });
     location.reload();
   } else {
-    MyPump.ui.showConfirmModal({ title: 'Ups', body: 'No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribile a tu coach.', confirmLabel: 'Ok', cancelLabel: '' });
+    // Si la respuesta se perdió (red), el bloque PUEDE haber quedado activado
+    // en el servidor: 'Ups' para siempre era mentira. Se ofrece recargar, que
+    // trae la rutina activa real; si el bloque ya está, se ve; si no, el botón
+    // sigue ahí.
+    const err = window.mypumpDB._lastError || {};
+    const sinRed = err.code === 'NETWORK' || err.transitorio;
+    const recargar = await MyPump.ui.showConfirmModal({
+      title: sinRed ? 'Sin conexión' : 'Ups',
+      body: sinRed ? 'No llegó la respuesta del servidor. Recargá para ver si el bloque nuevo ya quedó activo.'
+                   : 'No pudimos activar el bloque nuevo. Probá de nuevo en un rato o escribile a tu coach.',
+      confirmLabel: sinRed ? 'Recargar' : 'Ok', cancelLabel: sinRed ? 'Cerrar' : '',
+    });
+    if (sinRed && recargar) {
+      Object.keys(localStorage).forEach(k => { if (k.startsWith(`mypump_sesion_${TOKEN}_`)) localStorage.removeItem(k); });
+      location.reload();
+    }
   }
 }
 
@@ -4016,7 +4100,12 @@ async function confirmarSerie(exId, idx) {
   if (!(await _serieVerosimil(exId, idx, setObj, noKg, prog))) return;
 
   setObj.confirmed = true;
-  await ensureSesionIniciada();
+  // La serie entra al Outbox YA, sin esperar a que mypump_iniciar_sesion
+  // conteste: con un fetch colgado (señal muerta) el await de antes dejaba la
+  // serie fuera de la cola y cerrar la app la perdía. El Outbox resuelve la
+  // sesión al drenar (resolveSesion → ensureSesionIniciada, misma promesa en
+  // vuelo; y desde la 075 iniciar_sesion es idempotente).
+  ensureSesionIniciada().catch(() => {});
   writeSet(exId, idx); // fire-and-forget
 
   if (!isWarmup) startRest(ex.descanso_segundos);
@@ -4863,6 +4952,9 @@ document.addEventListener('visibilitychange', () => {
     loadComidasMarcadas();
     if (typeof loadComidasLibres === 'function') loadComidasLibres();
   }
+  if (!document.hidden && STATE.mydayFecha && STATE.mydayFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
+    loadMyday();   // hábitos y vasos de agua de HOY, no los de ayer
+  }
 });
 // Reintentar en cuanto vuelva la conexión.
 window.addEventListener('online', () => { if (OUTBOX_ENABLED) Outbox.flushSoon(0); flushFotosSoon(); });
@@ -5460,8 +5552,7 @@ function porcionReferencia(food) {
 }
 
 function renderFood(originalFood, comidaId, optIdx, foodIdx) {
-  const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
-  const swap = STATE.foodSwaps[key];
+  const swap = getFoodSwap(originalFood, comidaId, optIdx, foodIdx);
   const f = swap ? swap.current : originalFood;
   const isSwapped = !!swap;
   const cat = originalFood.category || inferFoodCategory(originalFood);
@@ -5680,6 +5771,39 @@ function bindDietEvents() {
   }));
 }
 
+// Alimento que hoy ocupa (comidaId, optIdx, foodIdx) en TODOS los planes de
+// la dieta (tipos de día incluidos). null si esa posición ya no existe.
+function _foodEnPosicion(comidaId, optIdx, foodIdx) {
+  const planes = (DIET && DIET.tipos_dia && DIET.tipos_dia.length) ? DIET.tipos_dia : [DIET];
+  for (const plan of planes) {
+    const c = plan && (plan.comidas || []).find(x => x.id === comidaId);
+    const f = c && c.options && c.options[optIdx] && c.options[optIdx].foods && c.options[optIdx].foods[foodIdx];
+    if (f) return f;
+  }
+  return null;
+}
+// Un swap remoto: si es legado (sin _orig) se ancla al alimento actual y se
+// re-sube; si tiene ancla y ya no coincide con lo que hay en esa posición
+// (Mati republicó con otro orden), se descarta acá y en el backend.
+function _anclarOSacarSwap(mapa, key, fila) {
+  const cur = mapa[key] && mapa[key].current;
+  if (!cur) return;
+  const hoy = _foodEnPosicion(fila.comida_id, fila.opt_idx, fila.food_idx);
+  if (!hoy) return;                                   // posición inexistente: no se aplica de todos modos
+  if (!cur._orig) {
+    const anclado = _conAncla(cur, hoy);
+    mapa[key].current = anclado;
+    if (OUTBOX_ENABLED && TOKEN && !(DATA && DATA._isDemo))
+      Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId: fila.comida_id, optIdx: +fila.opt_idx, foodIdx: +fila.food_idx, food: anclado }, key);
+    return;
+  }
+  if (_huellaFood(cur._orig) !== _huellaFood(hoy)) {
+    delete mapa[key];
+    if (OUTBOX_ENABLED && TOKEN && !(DATA && DATA._isDemo))
+      Outbox.enqueue('swap_del', { dietaId: DIETA_ID, comidaId: fila.comida_id, optIdx: +fila.opt_idx, foodIdx: +fila.food_idx }, key);
+  }
+}
+
 // Hidrata foodSwaps + custom foods desde Supabase y re-renderiza la dieta.
 // También migra los swaps de localStorage al backend la primera vez (one-shot).
 async function hydrateSwapsAndCustomFoodsFromBackend() {
@@ -5752,6 +5876,7 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
       remoteSwaps.forEach(s => {
         const key = `swap_${DIETA_ID}_${s.comida_id}_${s.opt_idx}_${s.food_idx}`;
         newSwaps[key] = { original: null, current: s.food_data };
+        _anclarOSacarSwap(newSwaps, key, s);
       });
       for (const key in STATE.foodSwaps) {
         if (pendientes.has(key)) newSwaps[key] = STATE.foodSwaps[key];   // local más nuevo, aún sin subir
@@ -6002,6 +6127,7 @@ async function loadMyday() {
     ]);
     MYDAY  = habitos;
     STREAK = streak;
+    STATE.mydayFecha = hoyLocal();
     STATE.mydayLoaded = true;
     // Si el tab ya está abierto, re-renderizar ahora que tenemos datos
     if (STATE.scene === 'revision') renderMyday();
@@ -6026,7 +6152,16 @@ async function loadRevision() {
 
 async function setHabito(campo, valor) {
   if (!TOKEN) return;
-  const res = await window.mypumpDB.setHabito(TOKEN, hoyLocal(), campo, valor);
+  const fecha = hoyLocal();
+  if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
+    // Optimista + cola (ver EXEC.habito). El servidor manda la fila real al
+    // drenar y re-renderiza; hasta entonces se ve lo que el cliente tocó.
+    MYDAY = { ...(MYDAY || {}), [campo]: valor };
+    renderMyday();
+    Outbox.enqueue('habito', { fecha, campo, valor }, `habito|${fecha}|${campo}`);
+    return;
+  }
+  const res = await window.mypumpDB.setHabito(TOKEN, fecha, campo, valor);
   if (res.success && res.data && res.data.length > 0) {
     MYDAY = res.data[0];
     // Re-render solo las partes que cambiaron
@@ -8154,7 +8289,12 @@ function cambiarAgua(delta) {
   // Debounce: guardar al servidor 600ms después del último clic
   clearTimeout(_aguaTimer);
   _aguaTimer = setTimeout(() => {
-    window.mypumpDB.setHabito(TOKEN, hoyLocal(), 'vasos_agua', String(next)).then(res => {
+    const fecha = hoyLocal();
+    if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
+      Outbox.enqueue('habito', { fecha, campo: 'vasos_agua', valor: String(next) }, `habito|${fecha}|vasos_agua`);
+      return;
+    }
+    window.mypumpDB.setHabito(TOKEN, fecha, 'vasos_agua', String(next)).then(res => {
       if (res.success && res.data?.length > 0) MYDAY = res.data[0];
     });
   }, 600);
@@ -8846,16 +8986,21 @@ async function confirmSwap() {
   if (!sub) return;
 
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
-  STATE.foodSwaps[key] = { original, current: sub };
+  const subAnclado = _conAncla(sub, original);
+  STATE.foodSwaps[key] = { original, current: subAnclado };
   persistSwaps();
   closeSwapModal();
   renderDiet();
 
   // Persistir en backend vía Outbox (reintenta si falla la red). Demo: solo local.
   if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
-    Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: sub },
+    Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: subAnclado },
       `swap_${DIETA_ID}_${comidaId}_${optIdx}_${foodIdx}`);
   }
+}
+// El sustituto con el alimento que reemplaza adentro (ver _swapAplicable).
+function _conAncla(sub, original) {
+  return { ...sub, _orig: { name: original.name, qty: original.qty, unit: original.unit } };
 }
 
 /* ========================================================================
@@ -9304,14 +9449,15 @@ async function aplicarCustomFoodComoSwap(name) {
 
   const { comidaId, optIdx, foodIdx } = _swapState;
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
-  STATE.foodSwaps[key] = { original: orig, current: sub };
+  const subAnclado = _conAncla(sub, orig);
+  STATE.foodSwaps[key] = { original: orig, current: subAnclado };
   persistSwaps();
   $('#modalHost').innerHTML = '';
   _swapState = { comidaId:null, optIdx:null, foodIdx:null, original:null, selected:null, query:'' };
   renderDiet();
 
   if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
-    Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: sub },
+    Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: subAnclado },
       `swap_${DIETA_ID}_${comidaId}_${optIdx}_${foodIdx}`);
   }
 }
