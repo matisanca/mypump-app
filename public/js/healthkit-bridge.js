@@ -928,10 +928,29 @@
     }
   }
 
+  // Hasta qué `off` llegó un backfill interrumpido (la app se cerró o iOS la
+  // suspendió a mitad). Se retoma desde ahí en vez de rehacer las 12 ventanas
+  // — y, sobre todo, se RETOMA: antes el único que llamaba a backfill() era
+  // connect(), y connect() solo aparece cuando NO estás conectado, así que un
+  // backfill cortado a los 40 s dejaba el historial con huecos para siempre.
+  const K_BACKFILL_OFF = 'mypump_health_backfill_off';
+  function _offPendiente() {
+    try { const v = parseInt(localStorage.getItem(K_BACKFILL_OFF) || '', 10); return (v > 0 && v <= 60) ? v : 60; } catch (e) { return 60; }
+  }
+
   async function _backfill(onProgreso) {
     let total = 0, cosechados = 0, ventanas = 0, fallaron = 0;
-    _progresoBackfill = { hecho: 0, total: 60 };
-    for (let off = 60; off > 0; off -= 5) {
+    // Android sin el permiso de historial (READ_HEALTH_DATA_HISTORY): Health
+    // Connect devuelve CERO para todo lo anterior a 30 días, sin error. Antes
+    // el backfill igual recorría las 12 ventanas, decía "60/60" y marcaba el
+    // flag: si el cliente después habilitaba el historial, nunca se volvía a
+    // pedir. Ahora se piden 30, se dice 30, y NO se marca como hecho: el
+    // próximo arranque con el permiso concedido completa el resto.
+    const sinHistorial = esAndroid && _historial && !_historial.autorizado;
+    const alcance = sinHistorial ? 30 : 60;
+    const desdeOff = Math.min(_offPendiente(), alcance);
+    _progresoBackfill = { hecho: alcance - desdeOff, total: alcance };
+    for (let off = desdeOff; off > 0; off -= 5) {
       // Las dos puntas a medianoche: si no, la costura entre ventanas cae a
       // media tarde y el día de la juntura sale partido en las dos.
       const hasta = haceNDias(off - 5);
@@ -943,8 +962,9 @@
         total += await postear(regs);
         await postearEntrenos(await recolectarEntrenos(desde, hasta));
       } catch (e) { fallaron++; console.warn('[health] backfill ventana', off, e); }
-      _progresoBackfill = { hecho: 60 - off + 5, total: 60 };
-      if (typeof onProgreso === 'function') onProgreso(60 - off + 5, 60);
+      _progresoBackfill = { hecho: alcance - off + 5, total: alcance };
+      try { localStorage.setItem(K_BACKFILL_OFF, String(off - 5)); } catch (e) {}
+      if (typeof onProgreso === 'function') onProgreso(alcance - off + 5, alcance);
     }
     // 60 días sin una sola muestra: se avisa ya, sin esperar la racha.
     //
@@ -966,8 +986,9 @@
      * le daba score por 14 días, sin que nada lo explicara. Y disconnect(), lo
      * único que borra el flag, no se llama desde ningún lado.
      * Ahora solo se marca si al menos una ventana pudo correr. */
-    if (!todoFallo) { try { localStorage.setItem(FLAG_BACKFILL, '1'); } catch (e) {} }
-    else console.warn('[health] las', ventanas, 'ventanas del backfill fallaron: no se marca como hecho, se reintenta');
+    if (!todoFallo && !sinHistorial) { try { localStorage.setItem(FLAG_BACKFILL, '1'); localStorage.removeItem(K_BACKFILL_OFF); } catch (e) {} }
+    else if (sinHistorial) { try { localStorage.removeItem(K_BACKFILL_OFF); } catch (e) {} console.warn('[health] backfill parcial (30 días): sin permiso de historial en Health Connect; se completa cuando lo habilite'); }
+    else { console.warn('[health] las', ventanas, 'ventanas del backfill fallaron: no se marca como hecho, se reintenta'); try { localStorage.removeItem(K_BACKFILL_OFF); } catch (e) {} }
 
     refrescarUI();
     return { ok: !todoFallo, ingresados: total, ventanasFallidas: fallaron };
@@ -1212,11 +1233,21 @@
 
   // Fallback del background delivery: sincronizar al abrir y al volver a foco.
   // El plugin no soporta background real con la app cerrada (ver docs/IOS_SETUP.md).
+  // Retoma un backfill que quedó a medias (ver K_BACKFILL_OFF). Corre de fondo
+  // y una sola vez por vez.
+  function _retomarBackfillSiFalta() {
+    if (!isConnected() || _backfillEnCurso) return;
+    let hecho = false; try { hecho = localStorage.getItem(FLAG_BACKFILL) === '1'; } catch (e) {}
+    if (hecho) return;
+    const p = backfill().catch((e) => console.warn('[health] backfill retomado:', e));
+    _backfillEnCurso = p;
+    p.finally(() => { if (_backfillEnCurso === p) _backfillEnCurso = null; });
+  }
   if (isNative) {
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && isConnected()) sync();
+      if (!document.hidden && isConnected()) { sync(); _retomarBackfillSiFalta(); }
     });
-    window.addEventListener('load', () => { if (isConnected()) sync(); });
+    window.addEventListener('load', () => { if (isConnected()) { sync(); _retomarBackfillSiFalta(); } });
   }
 
   window.MyPumpHealth = {

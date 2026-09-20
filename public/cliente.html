@@ -2280,6 +2280,10 @@ async function loadChat(masViejos = false) {
     chatMerge(filas);
     STATE.chat.noLeidos = STATE.chat.msgs.filter(m => m.autor === 'coach' && m.leido_por_cliente === false).length;
     updateChatBadge();
+    // Arranque en frío desde la notificación: setScene('chat') corre ANTES de
+    // que lleguen los mensajes, así que marcarChatLeido() no encontraba nada
+    // y el badge (y el "sin leer" de Mati) quedaban pegados con el chat abierto.
+    if (STATE.scene === 'chat' && !masViejos && STATE.chat.noLeidos > 0) { renderChat(); marcarChatLeido(); }
   } finally {
     STATE.chat.cargando = false;
   }
@@ -6312,9 +6316,12 @@ function _saludValor(tipo, fecha) {
  * Se busca el nodo en cada tick a propósito: cada re-render de las cards lo
  * reemplaza, así que guardarse la referencia una vez no sirve. */
 function _progresoBackfillUI(hecho, total) {
-  const s = document.getElementById('saludBackfillProg')
-         || document.getElementById('recupBackfillProg');
-  if (s) s.textContent = `${hecho}/${total}`;
+  // Las dos cards (Salud y Recuperación) pueden mostrar el contador a la vez:
+  // se actualizan las dos, si no una queda pegada en el número inicial.
+  for (const id of ['saludBackfillProg', 'recupBackfillProg']) {
+    const s = document.getElementById(id);
+    if (s) s.textContent = `${hecho}/${total}`;
+  }
 }
 
 async function _conectarSalud(btn, textoOriginal, onOk) {
@@ -6993,7 +7000,10 @@ async function renderAppleHealthEstado() {
     try {
       const r = await window.MyPumpHealth.sync();
       await loadSalud(); await loadRecuperacion();
-      decir(r && r.ingresados ? `Listo: ${r.ingresados} datos nuevos.` : 'Ya estabas al día.');
+      // sync() devuelve errorIngesta justamente porque ingresados:0 no distingue
+      // "no había nada" de "el servidor rechazó los lotes".
+      if (r && r.errorIngesta) decir(`No se pudieron guardar los datos (${r.errorIngesta}). Probá de nuevo en un rato.`);
+      else decir(r && r.ingresados ? `Listo: ${r.ingresados} datos nuevos.` : 'Ya estabas al día.');
     } catch (e) { decir('No se pudo sincronizar ahora.'); }
     bS.disabled = false; bS.textContent = 'Sincronizar';
   };
