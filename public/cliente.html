@@ -134,6 +134,8 @@ main{padding:var(--space-4)}
 .set-sug-hint{margin:4px 0 8px;padding:8px 10px;border:1px dashed color-mix(in oklab,var(--color-brand) 45%,var(--color-border));background:var(--color-brand-subtle);border-radius:var(--radius-md);font-size:12px;color:var(--color-text-secondary);cursor:pointer;line-height:1.35;text-align:center}
 .set-sug-hint b{color:var(--color-text-primary);font-family:var(--font-num)}
 .set-sug-hint:active{opacity:.7}
+.set-row.is-dudosa .set-input{border-color:#e5484d;box-shadow:0 0 0 2px color-mix(in oklab,#e5484d 35%,transparent)}
+.set-dudosa-msg{grid-column:1/-1;margin:2px 0 6px;font-size:12px;color:#e5484d;text-align:center;line-height:1.3}
 /* B4 — hint de calibración (informativo, no clickeable) */
 .set-sug-hint.is-calib{cursor:default;border-color:color-mix(in oklab,var(--color-warning) 45%,var(--color-border));background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary))}
 .set-sug-hint.is-calib:active{opacity:1}
@@ -2831,8 +2833,8 @@ function writeSet(exId, setIdx) {
       ejercicioId:    exId,
       ejercicioNombre:ejercicioNombre,
       serie:          setIdx + 1,
-      peso:           parseFloat(s.kg) || 0,
-      reps:           parseInt(s.reps) || 0,
+      peso:           parseFloat(String(s.kg).replace(',', '.')) || 0,
+      reps:           parseInt(s.reps, 10) || 0,
       // RIR 0 es "fue al fallo" — un dato, no la falta de un dato. Con
       // `parseInt(s.rir) || null` se perdía: 0 es falsy y el || lo pisaba con
       // null, o sea que la serie más dura del día se guardaba como "no me
@@ -3790,6 +3792,68 @@ function _repsSug(reps) {
 // registra con el peso sugerido (última vez), las reps objetivo del plan y el
 // RIR objetivo del plan. Si editó reps/peso → usa lo que puso (y NO fuerza RIR:
 // queda lo que el cliente eligió, o null). Un toque = registrado.
+// Topes duros (nadie hace 300 reps de una serie ni mueve 600 kg en una
+// máquina) y umbrales relativos (2,5× tu récord de kg, 3× las reps de
+// referencia) que se preguntan en vez de bloquear: el que de verdad hizo
+// 40 reps confirma y sigue.
+const LIMITES_SERIE = { repsMax: 300, kgMax: 600, saltoKg: 2.5, saltoReps: 3 };
+
+// Lo que se tipea en una serie, normalizado: kg admite coma o punto decimal
+// (una sola), reps solo dígitos. Es lo que se guarda en STATE y lo que se manda.
+function normalizarCampoSerie(field, v) {
+  v = String(v == null ? '' : v);
+  if (field === 'kg') {
+    v = v.replace(',', '.').replace(/[^0-9.]/g, '');
+    const i = v.indexOf('.');
+    if (i >= 0) v = v.slice(0, i + 1) + v.slice(i + 1).replace(/\./g, '');
+    return v;
+  }
+  if (field === 'reps') return v.replace(/[^0-9]/g, '');
+  return v;
+}
+
+function _recordKg(exId) {
+  return (DATA.historico_por_ejercicio[exId] || []).reduce((m, r) => Math.max(m, Number(r.peso_kg) || 0), 0);
+}
+
+function _marcarSerieDudosa(exId, idx, msg) {
+  const row = document.querySelector(`[data-set="${exId}|${idx}"]`);
+  if (!row) return;
+  row.classList.add('is-dudosa');
+  let m = row.querySelector('.set-dudosa-msg');
+  if (msg) {
+    if (!m) { m = document.createElement('div'); m.className = 'set-dudosa-msg'; row.appendChild(m); }
+    m.textContent = msg;
+  } else if (m) m.remove();
+  const inp = row.querySelector('input:not([readonly])');
+  if (inp) { try { inp.focus(); } catch (e) {} }
+}
+
+async function _serieVerosimil(exId, idx, setObj, noKg, prog) {
+  const reps = parseInt(setObj.reps, 10);
+  const kg = noKg ? 0 : parseFloat(String(setObj.kg).replace(',', '.'));
+  let problema = null;
+  if (!(reps >= 1) || reps > LIMITES_SERIE.repsMax) problema = `Revisá las repeticiones: ${setObj.reps}`;
+  else if (!noKg && (!(kg >= 0) || kg > LIMITES_SERIE.kgMax)) problema = `Revisá el peso: ${setObj.kg} kg`;
+  if (problema) { _marcarSerieDudosa(exId, idx, problema); return false; }
+
+  const dudas = [];
+  const record = _recordKg(exId);
+  if (!noKg && record >= 10 && kg > record * LIMITES_SERIE.saltoKg) dudas.push(`${kg} kg (tu récord era ${record} kg)`);
+  const repsHist = parseInt(suggestedReps(exId, idx), 10);
+  const repsRef = repsHist >= 1 ? repsHist : (prog && _repsSug(prog.reps)) || 0;
+  if (repsRef >= 5 && reps > Math.max(30, repsRef * LIMITES_SERIE.saltoReps)) dudas.push(`${reps} repeticiones (venías haciendo ${repsRef})`);
+  if (!dudas.length) return true;
+  const ok = await MyPump.ui.showConfirmModal({
+    title: '¿Está bien cargado?',
+    body: `Vas a registrar ${dudas.join(' y ')}. ¿Lo hiciste así?`,
+    confirmLabel: 'Sí, registrar',
+    cancelLabel: 'Corregir',
+  });
+  if (!ok) { _marcarSerieDudosa(exId, idx, null); return false; }
+  return true;
+}
+
 async function confirmarSerie(exId, idx) {
   unlockAudio(); // primer user gesture confiable — habilita beeps en iOS
   const setObj = STATE.session[exId]?.sets?.[idx];
@@ -3839,6 +3903,11 @@ async function confirmarSerie(exId, idx) {
   }
   // No confirmar sin datos mínimos (ej: sin sugerido y sin editar).
   if (setObj.reps === '' || (!noKg && setObj.kg === '')) return;
+
+  // Verosimilitud: lo imposible se rechaza y lo raro se pregunta. Un 800 kg
+  // que entraba se volvía el SUGERIDO de la semana siguiente y se repetía
+  // tres semanas con un solo toque (pasó: press plano en máquina, ago-2026).
+  if (!(await _serieVerosimil(exId, idx, setObj, noKg, prog))) return;
 
   setObj.confirmed = true;
   await ensureSesionIniciada();
@@ -3911,10 +3980,25 @@ function bindTrainEvents() {
   }));
 
   $$('[data-set] input').forEach(inp => {
+    // Al tocar el campo se selecciona todo lo que tiene. Sin esto, al EDITAR
+    // una serie ya confirmada el campo conserva el valor viejo, el cursor cae
+    // al final y lo tipeado se pega atrás: en la base había reps "1214"
+    // ("12" + "14"), "12120", y pesos de 800 y 3.530 kg ("35" + "30").
+    inp.addEventListener('focus', () => {
+      setTimeout(() => { try { inp.select(); inp.setSelectionRange(0, inp.value.length); } catch (e) {} }, 0);
+    });
     inp.addEventListener('input', () => {
       const [exId, idx] = inp.closest('[data-set]').getAttribute('data-set').split('|');
-      STATE.session[exId].sets[+idx][inp.getAttribute('data-field')] = inp.value;
+      const field = inp.getAttribute('data-field');
+      // Normalizar mientras se tipea: el teclado decimal en español pone COMA
+      // y parseFloat("62,5") es 62 — el medio kilo se perdía en silencio.
+      // Reps: solo dígitos.
+      const v = normalizarCampoSerie(field, inp.value);
+      if (v !== inp.value) inp.value = v;
+      STATE.session[exId].sets[+idx][field] = v;
       const row = inp.closest('.set-row');
+      row.classList.remove('is-dudosa');
+      const msgPrev = row.querySelector('.set-dudosa-msg'); if (msgPrev) msgPrev.remove();
       const setObj = STATE.session[exId].sets[+idx];
       const ex = DATA.dia.bloques.flatMap(b => b.ejercicios).find(x => x.id === exId);
       const noKg = exNoKg(ex);

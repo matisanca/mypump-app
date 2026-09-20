@@ -311,6 +311,41 @@ def _senales_dict(veredicto, ctx, carga):
         "carga": carga or {},
     }
 
+# Ritmo y reintentos del WhatsApp a Mati.
+#
+# El jueves 17-sep-2026 la ronda de analisis mando 64 mensajes a Mati y Meta
+# rechazo 37 con "HTTP Error 400: Bad Request" — mas de la mitad de los
+# borradores por cliente no llegaron, y el log no decia por que (solo el
+# status). En analisis.log hay 311 rechazos contra 954 aceptados, siempre con
+# el mismo dibujo: ~20 mensajes seguidos entran, los siguientes rebotan, y
+# tras una pausa (una llamada al modelo) vuelven a entrar. Es el "pair rate
+# limit" de la Cloud API (error 131056: demasiados mensajes del mismo numero
+# al mismo destinatario en poco tiempo), que Meta contesta con 400.
+#
+# Tres cosas cambian: (1) se deja al menos PASO segundos entre mensajes,
+# (2) ante un error de ritmo se espera y se reintenta, (3) se loguea el
+# cuerpo del error, para no volver a diagnosticar a ciegas.
+_META_PASO = 1.5           # segundos minimos entre dos envios
+_META_ESPERAS = (5, 20, 60)  # backoff ante rate limit
+_META_ULTIMO = [0.0]
+# Codigos de Meta que vale la pena reintentar (ritmo/carga). Todo lo demas
+# (24 h vencidas = 131047, parametro invalido = 100, numero no valido) no se
+# arregla esperando.
+_META_REINTENTABLES = {130429, 131056, 131048, 80007, 131016, 131000, 1, 2}
+
+def _meta_error(ex):
+    """(codigo de Meta o None, cuerpo recortado) de un HTTPError."""
+    try:
+        cuerpo = ex.read().decode("utf-8", "replace")
+    except Exception:
+        cuerpo = ""
+    codigo = None
+    try:
+        codigo = int((json.loads(cuerpo).get("error") or {}).get("code"))
+    except Exception:
+        pass
+    return codigo, cuerpo[:300].replace("\n", " ")
+
 def send_whatsapp(text):
     tok = E.get("META_ACCESS_TOKEN"); pnid = E.get("META_PHONE_NUMBER_ID"); to = E.get("COACH_PHONE_NUMBER")
     if not (tok and pnid and to):
@@ -319,13 +354,31 @@ def send_whatsapp(text):
         print(f"\n[DRY-RUN] WhatsApp -> {to}:\n{text}\n" + "-" * 60); return True
     payload = json.dumps({"messaging_product": "whatsapp", "recipient_type": "individual",
                           "to": to, "type": "text", "text": {"body": text}}).encode()
-    try:
-        req = urllib.request.Request(f"https://graph.facebook.com/v21.0/{pnid}/messages", data=payload,
-                                     headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            print(f"  [meta] HTTP {r.status}"); return r.status == 200
-    except Exception as ex:
-        print(f"  [meta] fail: {ex}"); return False
+    for intento in range(len(_META_ESPERAS) + 1):
+        pausa = _META_PASO - (time.time() - _META_ULTIMO[0])
+        if pausa > 0:
+            time.sleep(pausa)
+        try:
+            req = urllib.request.Request(f"https://graph.facebook.com/v21.0/{pnid}/messages", data=payload,
+                                         headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                _META_ULTIMO[0] = time.time()
+                print(f"  [meta] HTTP {r.status}"); return r.status == 200
+        except urllib.error.HTTPError as ex:
+            _META_ULTIMO[0] = time.time()
+            codigo, cuerpo = _meta_error(ex)
+            reintentar = (ex.code == 429 or ex.code >= 500 or codigo in _META_REINTENTABLES)
+            if reintentar and intento < len(_META_ESPERAS):
+                print(f"  [meta] HTTP {ex.code} (codigo {codigo}), reintento en {_META_ESPERAS[intento]} s: {cuerpo}")
+                time.sleep(_META_ESPERAS[intento]); continue
+            print(f"  [meta] fail: HTTP {ex.code} (codigo {codigo}): {cuerpo}"); return False
+        except Exception as ex:
+            _META_ULTIMO[0] = time.time()
+            # Red caida o timeout: un reintento corto y listo.
+            if intento < 1:
+                print(f"  [meta] {type(ex).__name__}: {ex} — reintento en 5 s"); time.sleep(5); continue
+            print(f"  [meta] fail: {ex}"); return False
+    return False
 
 def send_multi(text, limit=3500):
     if len(text) <= limit:
