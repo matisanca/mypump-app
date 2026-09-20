@@ -1257,6 +1257,13 @@ const TOKEN = (function() {
   var params = new URLSearchParams(window.location.search);
   var fromQuery = params.get('t');
   if (isValidToken(fromQuery)) {
+    // La PWA instalada tiene el token grabado en el start_url del manifest:
+    // si Mati lo regeneró, cada apertura desde el ícono traía el VIEJO y lo
+    // volvía a pisar sobre el nuevo que el cliente acababa de pegar. Un token
+    // que ya falló como inválido no vuelve a ganar: se usa el guardado.
+    var invalido = null; try { invalido = localStorage.getItem('mypump_token_invalido'); } catch(e) {}
+    var guardado = null; try { guardado = localStorage.getItem(TOKEN_KEY); } catch(e) {}
+    if (invalido === fromQuery && isValidToken(guardado) && guardado !== fromQuery) return guardado;
     try { localStorage.setItem(TOKEN_KEY, fromQuery); } catch(e) {}
     return fromQuery;
   }
@@ -2535,7 +2542,7 @@ function setExStatus(exId, newStatus, marcadoManualmente = false) {
 function checkIfDayCompleted() {
   const terminalStates = new Set(['completo','completo_sin_datos','saltado']);
   const allEx = DATA.dia.bloques.flatMap(b => b.ejercicios);
-  return allEx.every(ex => terminalStates.has(getExStatus(ex.id)));
+  return allEx.length > 0 && allEx.every(ex => terminalStates.has(getExStatus(ex.id)));
 }
 
 // Encola el estado del ejercicio (Outbox: reintenta si falla la red).
@@ -2652,6 +2659,13 @@ const Outbox = (() => {
     },
     async swap(p) {
       return window.mypumpDB.saveFoodSwap(TOKEN, p.dietaId, p.comidaId, p.optIdx, p.foodIdx, p.food);
+    },
+    async swap_del(p) {
+      // Revertir una sustitución. Comparte dedupeKey con la op 'swap' del
+      // mismo alimento: si el swap todavía no había salido, esto lo reemplaza
+      // en la cola y no se sube nada. FALSE = no había fila: objetivo cumplido.
+      const r = await window.mypumpDB.deleteFoodSwap(TOKEN, p.dietaId, p.comidaId, p.optIdx, p.foodIdx);
+      return r && r.success ? { success: true, data: 'ok' } : r;
     },
     async comida(p) {
       // Marcar/desmarcar una comida. Antes iba directo: sin señal el tilde
@@ -3239,11 +3253,27 @@ function showError(type, detail) {
   const err = $('#errorScreen');
   err.hidden = false;
   const pasteWrap = $('#errorPasteWrap');
-  if (pasteWrap) pasteWrap.hidden = (type !== 'no-token'); // form solo en 'no-token'
-  if (type === 'no-token') {
-    $('#errTitle').textContent = 'Bienvenido a MyPump';
-    $('#errSub').textContent = 'Pegá abajo el link que te mandó Mati. Solo lo hacés esta vez — después la app abre directo.';
-    $('#errCode').textContent = '';
+  // El form de pegar el link va en 'no-token' Y en 'invalid': con un token
+  // revocado o regenerado, la app nativa (sin barra de direcciones) quedaba
+  // en "Enlace inválido" sin ninguna salida, y el token viejo seguía en
+  // localStorage, así que index.html lo mandaba a la misma pantalla en cada
+  // apertura. Hasta reinstalar.
+  if (pasteWrap) pasteWrap.hidden = !(type === 'no-token' || type === 'invalid');
+  if (type === 'invalid') {
+    try {
+      localStorage.removeItem('mypump_token');
+      if (TOKEN) localStorage.setItem('mypump_token_invalido', TOKEN);   // para que el start_url viejo no vuelva a ganar
+    } catch (e) {}
+  }
+  if (type === 'no-token' || type === 'invalid') {
+    if (type === 'invalid') {
+      $('#errTitle').textContent = 'Este link ya no sirve';
+      $('#errSub').textContent = 'Fue reemplazado o dado de baja. Pedile a Mati el link nuevo por WhatsApp y pegalo acá abajo.';
+    } else {
+      $('#errTitle').textContent = 'Bienvenido a MyPump';
+      $('#errSub').textContent = 'Pegá abajo el link que te mandó Mati. Solo lo hacés esta vez — después la app abre directo.';
+    }
+    $('#errCode').textContent = type === 'invalid' ? (detail || '') : '';
     // Activar el form de pegado
     const inp = $('#errorPasteInput'), btn = $('#errorPasteBtn'), errEl = $('#errorPasteErr');
     if (inp && btn) {
@@ -3284,7 +3314,7 @@ function showError(type, detail) {
     // Boton "Ver demo": entra sin token con datos de ejemplo (revision App Store).
     const demoBtn = $('#errorDemoBtn');
     if (demoBtn) {
-      demoBtn.hidden = false;
+      demoBtn.hidden = (type !== 'no-token');
       demoBtn.onclick = () => { window.location.href = '?' + conParam('demo', '1'); };
     }
   } else if (type === 'service-down') {
@@ -3409,17 +3439,25 @@ function renderTrain() {
   const TERMINAL = new Set(['completo','completo_sin_datos','saltado']);
   const completedCount = allEx.filter(ex => TERMINAL.has(getExStatus(ex.id))).length;
   const totalEx = allEx.length;
-  const allTerminal = completedCount === totalEx;
+  const allTerminal = totalEx > 0 && completedCount === totalEx;
   const allDone = allTerminal || _diaFinalizado;   // día cerrado también cuenta como hecho
   const pendingCount = totalEx - completedCount;
   const mins = minutosSesion();
 
-  $('#progFill').style.width = `${(completedCount/totalEx)*100}%`;
+  $('#progFill').style.width = `${totalEx ? (completedCount/totalEx)*100 : 0}%`;
   $('#progDone').textContent = completedCount;
   $('#progTotal').textContent = totalEx;
   $('#hdrProgress').hidden = false;
 
   let html = '';
+
+  // Un día publicado sin ejercicios (descanso activo, bloques vacíos): antes
+  // 0 === 0 lo pintaba como "SESIÓN COMPLETA · 0/0" con botón de cerrar, y al
+  // tocarlo se creaba y cerraba una sesión real de 10 segundos.
+  if (totalEx === 0) {
+    root.innerHTML = `<div class="prog-empty" style="padding:32px 16px">Este día no tiene ejercicios cargados.<br>Si es un día de descanso, ¡a descansar! Si no, avisale a Mati.</div>`;
+    return;
+  }
 
   if (DATA._isDemo) {
     html += `<div class="demo-banner">⚠ <strong>Modo demo</strong> — Mati todavía no publicó tu plan. Los datos que ves son de ejemplo.</div>`;
@@ -5630,8 +5668,14 @@ function bindDietEvents() {
     persistSwaps();
     renderDiet();
     if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
-      const res = await window.mypumpDB.deleteFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx);
-      if (!res.success) console.warn('[swap] error borrando swap en backend:', res.error);
+      // Por el Outbox y con la MISMA key que el swap: antes iba directo y sin
+      // reintento, y no cancelaba un 'swap' pendiente — sin señal el
+      // sustituto volvía solo al recargar.
+      if (OUTBOX_ENABLED) Outbox.enqueue('swap_del', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx }, key);
+      else {
+        const res = await window.mypumpDB.deleteFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx);
+        if (!res.success) console.warn('[swap] error borrando swap en backend:', res.error);
+      }
     }
   }));
 }
@@ -5668,10 +5712,27 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
     });
 
     // 2. Food swaps remotos
-    const remoteSwaps = await window.mypumpDB.getFoodSwaps(TOKEN, DIETA_ID) || [];
+    const remoteRaw = await window.mypumpDB.getFoodSwaps(TOKEN, DIETA_ID);
+    // null = no se pudo preguntar (red). Antes `|| []` lo convertía en "cero
+    // swaps" y disparaba la rama de migración: un corte de señal subía de
+    // nuevo swaps que el cliente (o Mati) ya había borrado.
+    if (!Array.isArray(remoteRaw)) { if (STATE.scene === 'diet') renderDiet(); return; }
+    const remoteSwaps = remoteRaw;
+    const K_MIGRADO = `mypump_swaps_migrados_${DIETA_ID}`;
+    const pendientes = (typeof Outbox !== 'undefined' && Outbox.pendingKeys) ? Outbox.pendingKeys() : new Set();
+    let yaMigrado = false; try { yaMigrado = localStorage.getItem(K_MIGRADO) === '1'; } catch (e) {}
 
-    if (remoteSwaps.length === 0 && Object.keys(STATE.foodSwaps).length > 0) {
-      // Caso migración: hay swaps en localStorage pero ninguno en backend → subir los locales
+    if (remoteSwaps.length === 0 && Object.keys(STATE.foodSwaps).length > 0 && yaMigrado) {
+      // El backend es la fuente de verdad y está vacío: lo local son swaps
+      // borrados desde otro teléfono (o por Mati). Se descartan, salvo lo que
+      // todavía está en la cola por subir.
+      const nuevos = {};
+      for (const key in STATE.foodSwaps) if (pendientes.has(key)) nuevos[key] = STATE.foodSwaps[key];
+      STATE.foodSwaps = nuevos;
+      persistSwaps();
+    } else if (remoteSwaps.length === 0 && Object.keys(STATE.foodSwaps).length > 0) {
+      // Caso migración (UNA vez por dispositivo): hay swaps en localStorage de
+      // antes del backend y ninguno remoto → subir los locales
       const promises = [];
       for (const [key, swap] of Object.entries(STATE.foodSwaps)) {
         if (!swap || !swap.current) continue;
@@ -5682,6 +5743,7 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
         promises.push(window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, swap.current));
       }
       await Promise.allSettled(promises);
+      try { localStorage.setItem(K_MIGRADO, '1'); } catch (e) {}
     } else if (remoteSwaps.length > 0) {
       // F8 — MERGE (no reemplazo): el backend gana por key, pero un swap hecho
       // recién/offline que todavía está en el Outbox NO se pisa (antes el
@@ -5691,13 +5753,15 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
         const key = `swap_${DIETA_ID}_${s.comida_id}_${s.opt_idx}_${s.food_idx}`;
         newSwaps[key] = { original: null, current: s.food_data };
       });
-      const pendientes = (typeof Outbox !== 'undefined' && Outbox.pendingKeys) ? Outbox.pendingKeys() : new Set();
       for (const key in STATE.foodSwaps) {
         if (pendientes.has(key)) newSwaps[key] = STATE.foodSwaps[key];   // local más nuevo, aún sin subir
       }
       STATE.foodSwaps = newSwaps;
       persistSwaps(); // mantener cache local sincronizado
     }
+    // Sincronizado con el backend al menos una vez: de acá en más, un backend
+    // vacío significa "sin swaps", no "hay que migrar".
+    try { localStorage.setItem(K_MIGRADO, '1'); } catch (e) {}
 
     // Si estamos en la escena de dieta, re-renderizar para reflejar swaps/custom foods
     if (STATE.scene === 'diet') renderDiet();
@@ -8803,7 +8867,11 @@ let _exSwapState = { exId:null, original:null, selected:null, query:'' };
 const _exSwapCache = {};
 
 function openExSwapModal(ex) {
-  _exSwapState = { exId: ex.id, original: ex, selected: null, query: '' };
+  // Si ya había un swap en este slot, el checkbox "Fijar" arranca como
+  // estaba: al "Cambiar sustituto" de un swap fijado arrancaba destildado y el
+  // nuevo pasaba en silencio a "solo hoy".
+  const previo = STATE.exerciseSwaps[ex.id];
+  _exSwapState = { exId: ex.id, original: ex, selected: null, query: '', fijar: !!(previo && previo.fijado) };
   const subs = exGetSubs(ex);
 
   if (!subs.length) {
@@ -8872,6 +8940,8 @@ function renderExSwapModal() {
     </div>
   </div>`;
   $('#exSwapModalBack').addEventListener('click', e => { if(e.target===e.currentTarget) closeExSwapModal(); });
+  const fijarCb = document.getElementById('exSwapFijar');
+  if (fijarCb) fijarCb.addEventListener('change', () => { _exSwapState.fijar = fijarCb.checked; });
   const search = $('#exSwapSearch');
   if (search) {
     search.addEventListener('input', e => { _exSwapState.query = e.target.value; _exSwapRenderListOnly(); });
