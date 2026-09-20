@@ -185,6 +185,23 @@ await t('una excepción del fetch tampoco gasta intentos', async () => {
   if (Outbox.pending() !== 1) throw new Error('una excepción de red abandonó la serie');
 });
 
+console.log('\nMarcar comidas también pasa por la cola');
+
+await t('marcar y desmarcar la misma comida: gana la última (dedupe por comida+fecha)', async () => {
+  const llamadas = [];
+  const { Outbox, ctx } = montar(async () => okRes);
+  ctx.window.mypumpDB.marcarComida = async (_t, fecha, id, opcion, estado) => { llamadas.push(['marcar', id, estado]); return okRes; };
+  ctx.window.mypumpDB.desmarcarComida = async (_t, fecha, id) => { llamadas.push(['desmarcar', id]); return { success: true, data: false }; };
+  ctx.navigator.onLine = false;   // sin señal: se encolan sin mandar
+  Outbox.enqueue('comida', { fecha: '2026-09-19', comidaId: 'c2', opcion: 'A', estado: 'comido', excl: [] }, 'comida|2026-09-19|c2');
+  Outbox.enqueue('comida', { fecha: '2026-09-19', comidaId: 'c2', opcion: 'A', estado: null, excl: [] }, 'comida|2026-09-19|c2');
+  if (Outbox.pending() !== 1) throw new Error(`quedaron ${Outbox.pending()} ops para la misma comida`);
+  ctx.navigator.onLine = true;
+  await Outbox.flush();
+  if (llamadas.length !== 1 || llamadas[0][0] !== 'desmarcar') throw new Error('no mandó solo la última decisión: ' + JSON.stringify(llamadas));
+  if (Outbox.pending() !== 0) throw new Error('desmarcar con data:false (no había fila) tiene que contar como hecho');
+});
+
 console.log('\nEsperar de verdad al cerrar el día');
 
 await t('await flush() espera al drenado que ya está en curso', async () => {

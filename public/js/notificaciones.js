@@ -405,7 +405,16 @@
   }
 
   async function activarPushSiCorresponde() {
-    if ((await permisoEstado()) !== 'granted') return { ok: false, motivo: 'sin_permiso' };
+    const est = await permisoEstado();
+    // 'no_disponible' = no hay plugin nativo = NAVEGADOR / PWA. Antes esto
+    // cortaba acá con 'sin_permiso' y suscribirWebPush() no corría nunca en
+    // la web: los avisos de la PWA quedaban en 'sin_device' y se descartaban
+    // a las 24 h. Web Push chequea Notification.permission por su cuenta.
+    if (est === 'no_disponible') {
+      const web = await suscribirWebPush();
+      return (web && web.ok) ? web : { ok: false, motivo: 'sin_permiso' };
+    }
+    if (est !== 'granted') return { ok: false, motivo: 'sin_permiso' };
     cablearTapsPush();
     // UNO SOLO DE LOS DOS TRANSPORTES POR TELÉFONO.
     //

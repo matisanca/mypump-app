@@ -115,7 +115,12 @@ function montar({ plataforma, fcm, nativoResponde, pushApiEnWebview }) {
 
   const listeners = {};
   const nativoDisponible = plataforma !== 'web';
-  g.Capacitor = {
+  // En el NAVEGADOR no existe window.Capacitor (cliente.html no carga
+  // capacitor.js). El test lo montaba igual, con LocalNotifications 'granted',
+  // y por eso no vio que en la web real activarPushSiCorresponde() cortaba
+  // en 'no_disponible' antes de suscribir Web Push.
+  if (!nativoDisponible) { delete g.Capacitor; g.Notification = { permission: 'granted' }; }
+  else g.Capacitor = {
     isNativePlatform: () => nativoDisponible,
     getPlatform: () => plataforma,
     Plugins: {

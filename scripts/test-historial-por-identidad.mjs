@@ -129,8 +129,13 @@ console.log('\n=== La app usa la clave en los lugares correctos ===\n');
 t('writeSet registra el nombre EFECTIVO (la fuente de la identidad)', () => {
   const i = HTML.indexOf('function writeSet(exId, setIdx)');
   const cuerpo = HTML.slice(i, i + 1500);
-  if (!/ejercicioNombre\s*=\s*swap \? swap\.current\.nombre : ex\.nombre/.test(cuerpo))
-    throw new Error('writeSet ya no snapshotea el nombre del sustituto: la clave dejaría de reflejar lo que se hizo');
+  // El sustituto manda; si el swap ya expiró (día cerrado y reabierto) va el
+  // nombre con el que la serie se registró, y recién después el del slot.
+  if (!/ejercicioNombre\s*=\s*swap \? swap\.current\.nombre : \(s\.nombreRegistrado \|\| ex\.nombre\)/.test(cuerpo))
+    throw new Error('writeSet ya no snapshotea el nombre del sustituto (ni el registrado): la clave dejaría de reflejar lo que se hizo');
+  const j = HTML.indexOf('async function loadRegistrosCarga()');
+  if (!HTML.slice(j, j + 2500).includes('setObj.nombreRegistrado = reg.ejercicio_nombre'))
+    throw new Error('al restaurar la sesión no se guarda el nombre registrado: reabrir el día renombra la serie al original');
 });
 
 t('loadHistorico pide por clave del slot, con caída a la RPC vieja', () => {
@@ -160,9 +165,19 @@ t('aplicar y revertir un swap invalidan el historial del slot', () => {
 });
 
 t('cuando un swap se descarta solo (otra semana / día cerrado) también se invalida', () => {
-  const i = HTML.indexOf('function pruneExerciseSwaps()');
-  const cuerpo = HTML.slice(i, i + 900);
+  const i = HTML.indexOf('function pruneExerciseSwaps(opts)');
+  const cuerpo = HTML.slice(i, i + 1400);
   if (!cuerpo.includes('invalidarHistorico(exId)')) throw new Error('prune borra el swap pero deja el historial del sustituto en caché');
+});
+
+t('cerrar el día NO expira el swap del día abierto (reabrir para corregir)', () => {
+  const i = HTML.indexOf('async function writeFinish(');
+  const cuerpo = HTML.slice(i, i + 3000);
+  if (!cuerpo.includes('pruneExerciseSwaps({ conservarDiaActual: true })'))
+    throw new Error('writeFinish poda el swap de hoy: al reabrir el día la card vuelve al original y la serie corregida se renombra');
+  const j = HTML.indexOf('async function cambiarDia(dia)');
+  if (!HTML.slice(j, j + 600).includes('pruneExerciseSwaps()'))
+    throw new Error('cambiarDia no poda: los "solo hoy" del día cerrado quedarían para siempre');
 });
 
 t('la pantalla de Progreso agrupa por ejercicio, no por slot', () => {
@@ -203,8 +218,8 @@ t('el prefetch del día es UNA llamada, repartida a los slots que comparten clav
 });
 
 t('cuando prune descarta un swap, vuelve a pedir el historial', () => {
-  const i = HTML.indexOf('function pruneExerciseSwaps()');
-  const cuerpo = HTML.slice(i, i + 1100);
+  const i = HTML.indexOf('function pruneExerciseSwaps(opts)');
+  const cuerpo = HTML.slice(i, i + 1600);
   if (!cuerpo.includes('prefetchHistoricoDia()'))
     throw new Error('prune invalida pero no re-pide: la card vuelve al original y muestra "Primera vez" hasta que la expandan');
 });

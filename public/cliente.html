@@ -1386,6 +1386,7 @@ const STATE = {
   adhData:            null,
   comidasMarcadas:    {},          // comida_id → {opcion, estado, marcada_en}
   comidasLoaded:      false,
+  comidasFecha:       null,   // fecha local de la última carga de marcas (para recargar al cambiar de día)
   comidasLibres:      [],          // F10 — comidas fuera del plan (foto/manual) de HOY
 };
 
@@ -2075,13 +2076,19 @@ function persistExerciseSwaps() {
 // cuando cambió la semana o cuando ese día ya quedó finalizado. Los FIJADOS
 // persisten hasta que el cliente los revierta. Corre en el bootstrap, al traer
 // los días completados y al finalizar el día.
-function pruneExerciseSwaps() {
+function pruneExerciseSwaps(opts) {
   if (!DATA || !DATA.rutina) return;
   const semanaActual = DATA.rutina.semana_actual || 1;
+  // Al CERRAR el día se conservan los swaps del día abierto: si el cliente
+  // reabre para corregir una serie, la card tiene que seguir mostrando el
+  // sustituto (con su historial), no el original. Expiran al cambiar de día
+  // o en el próximo arranque.
+  const conservar = opts && opts.conservarDiaActual ? (DATA.dia && DATA.dia.id) : null;
   let cambio = false;
   for (const exId in STATE.exerciseSwaps) {
     const s = STATE.exerciseSwaps[exId];
     if (!s || s.fijado) continue;
+    if (conservar && s.diaId === conservar) continue;
     const otraSemana  = s.semana != null && s.semana !== semanaActual;
     const diaCerrado  = (s.diaId && STATE.diasCompletados.has(s.diaId))
                      || (s.diaId === (DATA.dia && DATA.dia.id) && _diaFinalizado);
@@ -2646,6 +2653,18 @@ const Outbox = (() => {
     async swap(p) {
       return window.mypumpDB.saveFoodSwap(TOKEN, p.dietaId, p.comidaId, p.optIdx, p.foodIdx, p.food);
     },
+    async comida(p) {
+      // Marcar/desmarcar una comida. Antes iba directo: sin señal el tilde
+      // aparecía y a los 2 s desaparecía (rollback), sin ningún aviso, aunque
+      // el banner prometía que "se sincroniza solo". Con dedupeKey por
+      // comida+fecha, la última decisión reemplaza a las pendientes.
+      if (p.estado === null) {
+        const r = await window.mypumpDB.desmarcarComida(TOKEN, p.fecha, p.comidaId);
+        // FALSE = no había fila que borrar (la marca nunca llegó): objetivo cumplido.
+        return r && r.success ? { success: true, data: 'ok' } : r;
+      }
+      return window.mypumpDB.marcarComida(TOKEN, p.fecha, p.comidaId, p.opcion, p.estado, p.excl || []);
+    },
     async peso(p) {
       // Upsert idempotente por (cliente, fecha, tipo, fuente) — mig 027.
       return window.mypumpDB.ingestSalud(TOKEN, [{ fecha: p.fecha, tipo: 'peso_kg', valor: p.valor, fuente: 'manual' }]);
@@ -2860,7 +2879,7 @@ function writeSet(exId, setIdx) {
   // Si el cliente sustituyó el ejercicio, snapshotear el NOMBRE del sustituto
   // (lo que realmente hizo). El ejercicio_id se mantiene → no rompe histórico/progresión.
   const swap = STATE.exerciseSwaps[exId];
-  const ejercicioNombre = swap ? swap.current.nombre : ex.nombre;
+  const ejercicioNombre = swap ? swap.current.nombre : (s.nombreRegistrado || ex.nombre);
   Outbox.enqueue('carga', {
     // F2 — capturar sesión/día/semana AL ENCOLAR: un drenado tardío (tras
     // cambiar de día) va a la sesión correcta, no a la del día abierto.
@@ -2921,8 +2940,9 @@ async function writeFinish(notas) {
   // F1 — marcar el día en verde en el picker, al instante.
   STATE.diasCompletados.add(DATA.dia.id);
   renderDayPicker();
-  // F5 — al cerrar el día, los swaps no fijados de este día expiran.
-  pruneExerciseSwaps();
+  // F5 — al cerrar el día expiran los swaps no fijados de OTROS días; los de
+  // hoy se conservan por si se reabre el día para corregir una serie.
+  pruneExerciseSwaps({ conservarDiaActual: true });
   renderTrain();
 }
 
@@ -3028,22 +3048,7 @@ async function showDayCompletedModal() {
   });
 
   if (ok) {
-    stopRest(); // limpiar el descanso de la última serie antes de cambiar de día
-    // Cambiar día activo — replicar lógica del click del day-pill (línea ~1033)
-    DATA.dia = nextDia;
-    DATA.historico_por_ejercicio = {};
-    STATE.exerciseStates = {};
-    STATE.exerciseMeta = {};
-    STATE.diaCompletadoMostrado = false;
-    STATE.session = buildSession();
-    STATE.expandedId = null;
-    _sesionIniciada = false;
-    _sesionId = null;
-    persistLastDay(nextDia.id, RUTINA_ID);
-    updateDayHeader();
-    renderDayPicker();
-    renderTrain();
-    prefetchHistoricoDia();
+    await cambiarDia(nextDia);
     window.scrollTo(0, 0);
   }
 }
@@ -3071,6 +3076,11 @@ async function loadRegistrosCarga() {
     setObj.reps      = reg.reps_realizadas != null ? String(reg.reps_realizadas) : '';
     setObj.rir       = reg.rir_real        != null ? String(reg.rir_real)        : '';
     setObj.confirmed = true;
+    // Con qué nombre se registró (el sustituto, si sustituyó). Si el swap
+    // "solo hoy" ya expiró y el cliente reabre el día para corregir una
+    // serie, writeSet la re-manda con ESTE nombre y no con el del original:
+    // la RPC es upsert y pisa ejercicio_nombre.
+    setObj.nombreRegistrado = reg.ejercicio_nombre || null;
     // Restaurar el nivel/variante elegido (guardado en notas).
     if (reg.notas && getVariantesEj(DATA.dia.bloques.flatMap(b=>b.ejercicios).find(x=>x.id===reg.ejercicio_id))) {
       exSession.variante = reg.notas;
@@ -3340,22 +3350,34 @@ function renderDayPicker() {
     const id = btn.getAttribute('data-dayid');
     const dia = dias.find(d => d.id === id);
     if (!dia || dia.id === DATA.dia.id) return;
-    DATA.dia = dia;
-    DATA.historico_por_ejercicio = {};
-    STATE.exerciseStates = {};
-    STATE.exerciseMeta = {};
-    STATE.diaCompletadoMostrado = false;
-    STATE.session = buildSession();
-    STATE.expandedId = null;
-    persistLastDay(dia.id, RUTINA_ID);
-    updateDayHeader();
-    renderDayPicker();
-    renderTrain();
-    prefetchHistoricoDia();
-    // Restaurar la sesión del nuevo día (estados/series/cerrado) y re-render.
-    await restoreSesionDelDia();
-    renderTrain();
+    await cambiarDia(dia);
   }));
+}
+
+// UNA sola forma de cambiar de día. El modal de "¡Día completado! → Ir a Día
+// N" tenía su propia copia sin restoreSesionDelDia(): no reseteaba el
+// cronómetro ni el flag de día cerrado, no cargaba la sesión que ese día ya
+// tuviera (todo 'pendiente' aunque el picker lo marcara hecho), y la primera
+// serie confirmada ahí creaba una SEGUNDA sesión (iniciar_sesion no es
+// idempotente) con la duración del día anterior.
+async function cambiarDia(dia) {
+  stopRest();
+  DATA.dia = dia;
+  pruneExerciseSwaps();   // los "solo hoy" del día que se deja, si estaba cerrado, expiran acá
+  DATA.historico_por_ejercicio = {};
+  STATE.exerciseStates = {};
+  STATE.exerciseMeta = {};
+  STATE.diaCompletadoMostrado = false;
+  STATE.session = buildSession();
+  STATE.expandedId = null;
+  persistLastDay(dia.id, RUTINA_ID);
+  updateDayHeader();
+  renderDayPicker();
+  renderTrain();
+  prefetchHistoricoDia();
+  // Restaurar la sesión del nuevo día (estados/series/cerrado) y re-render.
+  await restoreSesionDelDia();
+  renderTrain();
 }
 
 /* ---- TRAIN SCENE ---- */
@@ -4796,6 +4818,13 @@ document.addEventListener('visibilitychange', () => {
   // "Subiendo…" hasta que el cliente mataba la app (Sofía, 19-sep). También
   // al volver a foco y al volver la red.
   if (!document.hidden) flushFotosSoon();
+  // La app queda abierta de un día para otro (iOS la congela, no la cierra):
+  // las marcas y las comidas libres eran las de AYER y el anillo mostraba lo
+  // de ayer como "hoy". Al volver a foco en otro día se recargan.
+  if (!document.hidden && STATE.comidasFecha && STATE.comidasFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
+    loadComidasMarcadas();
+    if (typeof loadComidasLibres === 'function') loadComidasLibres();
+  }
 });
 // Reintentar en cuanto vuelva la conexión.
 window.addEventListener('online', () => { if (OUTBOX_ENABLED) Outbox.flushSoon(0); flushFotosSoon(); });
@@ -4815,7 +4844,8 @@ async function loadComidasMarcadas() {
     return;
   }
   try {
-    const rows = await window.mypumpDB.getComidasMarcadas(TOKEN, hoyLocal());
+    const fecha = hoyLocal();
+    const rows = await window.mypumpDB.getComidasMarcadas(TOKEN, fecha);
     const map = {};
     (rows || []).forEach(r => {
       map[r.comida_id] = {
@@ -4825,7 +4855,19 @@ async function loadComidasMarcadas() {
         foodsExcluidos: Array.isArray(r.foods_excluidos) ? r.foods_excluidos : [],
       };
     });
+    // Lo que el cliente marcó mientras esto viajaba (o sin señal, encolado en
+    // el Outbox) gana sobre lo que dice el servidor: si no, la comida "se
+    // desmarcaba sola" al terminar la carga.
+    if (OUTBOX_ENABLED) {
+      for (const k of Outbox.pendingKeys()) {
+        if (!k.startsWith(`comida|${fecha}|`)) continue;
+        const id = k.slice(`comida|${fecha}|`.length);
+        if (STATE.comidasMarcadas[id]) map[id] = STATE.comidasMarcadas[id];
+        else delete map[id];
+      }
+    }
     STATE.comidasMarcadas = map;
+    STATE.comidasFecha = fecha;
     STATE.comidasLoaded = true;
     if (STATE.scene === 'diet') renderDiet();
   } catch(e) {
@@ -4857,11 +4899,16 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
   // leía adherencia de dieta de alguien que no tiene dieta.
   if (!TOKEN || (DATA && (DATA._isDemo || DATA._dietaEjemplo))) return;
 
+  const fecha = hoyLocal();
+  if (OUTBOX_ENABLED) {
+    Outbox.enqueue('comida', { fecha, comidaId, opcion: opcionNombre, estado: nuevoEstado, excl: [] }, `comida|${fecha}|${comidaId}`);
+    return;
+  }
   let res;
   if (nuevoEstado === null) {
-    res = await window.mypumpDB.desmarcarComida(TOKEN, hoyLocal(), comidaId);
+    res = await window.mypumpDB.desmarcarComida(TOKEN, fecha, comidaId);
   } else {
-    res = await window.mypumpDB.marcarComida(TOKEN, hoyLocal(), comidaId, opcionNombre, nuevoEstado, []);
+    res = await window.mypumpDB.marcarComida(TOKEN, fecha, comidaId, opcionNombre, nuevoEstado, []);
   }
   if (!res.success) {
     // Rollback
@@ -4886,8 +4933,13 @@ async function toggleFoodComido(comidaId, foodIdx) {
   renderDiet();
 
   if (!TOKEN || (DATA && (DATA._isDemo || DATA._dietaEjemplo))) return;
+  const fecha = hoyLocal();
+  if (OUTBOX_ENABLED) {
+    Outbox.enqueue('comida', { fecha, comidaId, opcion: mark.opcion || 'A', estado: 'comido', excl: nuevos }, `comida|${fecha}|${comidaId}`);
+    return;
+  }
   const res = await window.mypumpDB.marcarComida(
-    TOKEN, hoyLocal(), comidaId, mark.opcion || 'A', 'comido', nuevos
+    TOKEN, fecha, comidaId, mark.opcion || 'A', 'comido', nuevos
   );
   if (!res.success) {
     mark.foodsExcluidos = prev;          // rollback
@@ -5038,10 +5090,10 @@ function renderComidasLibres() {
   const items = libres.map(cl => `
     <div class="cl-item">
       <div class="cl-info">
-        <div class="cl-desc">${cl.descripcion}${cl.hora ? ` <span class="cl-hora">${String(cl.hora).slice(0,5)}</span>` : ''}</div>
+        <div class="cl-desc">${escapeHtml(cl.descripcion || '')}${cl.hora ? ` <span class="cl-hora">${String(cl.hora).slice(0,5)}</span>` : ''}</div>
         <div class="cl-macros">${Math.round(cl.kcal)} kcal · ${Math.round(cl.prot)}p / ${Math.round(cl.carb)}c / ${Math.round(cl.fat)}g <span class="cl-est">estimado</span></div>
       </div>
-      <button class="cl-del" data-cl-del="${cl.id}" title="Borrar">✕</button>
+      <button class="cl-del" data-cl-del="${escapeHtml(String(cl.id))}" title="Borrar">✕</button>
     </div>`).join('');
   const tieneVision = !!(window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL);
   return `
@@ -6267,7 +6319,16 @@ function renderMydayRecuperacion() {
   const el = document.getElementById('myday-recup');
   if (!el) return;
   const serie = STATE.recup || [];
-  const row = serie.length ? serie[serie.length - 1] : null;
+  // La serie viene DENSA (una fila por día del calendario) y la última es
+  // "hoy" en hora ARGENTINA: sin la noche todavía (00:30 antes de dormir, o
+  // un cliente en EEUU a las 20:00), esa fila es 'insuficiente' y la card le
+  // decía a alguien con reloj y tres semanas de score que "hace falta un
+  // reloj". Se muestra el último score REAL de los últimos 3 días; solo si
+  // no hay ninguno se cae al diagnóstico.
+  const ultima = serie.length ? serie[serie.length - 1] : null;
+  const conScore = serie.slice(-3).reverse().find(r => r && r.score != null);
+  const row = conScore || ultima;
+  const rowEsVieja = !!(conScore && ultima && conScore !== ultima);
   const native = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable());
   const wrap = (body) => `<div class="myday-section">
       <div class="myday-section-hdr">
@@ -6350,6 +6411,7 @@ function renderMydayRecuperacion() {
   el.innerHTML = wrap(`
     <div class="rec-top">
       <div class="rec-num rec-${banda}">${row.score}<small>/100</small></div>
+      ${rowEsVieja ? `<div class="rec-nota">Score de ${(() => { try { return new Date(String(row.fecha).slice(0,10) + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long' }); } catch (e) { return 'la última noche con datos'; } })()}: la de anoche todavía no llegó.</div>` : ''}
       <div class="rec-side">
         <div class="rec-banda rec-${banda}">${_REC_BANDA_TXT[banda] || ''}</div>
         ${frase ? `<div class="rec-frase">${frase}</div>` : ''}
@@ -6547,8 +6609,23 @@ function renderSalud() {
       regHtml = `<div class="sd-ref" style="margin-top:var(--space-3)">Te dormís en promedio cerca de las <b>${hhmm(m - 210)}</b>, con una variación de <b>±${Math.round(sd)} min</b>.
         ${sd <= 30 ? 'Muy regular — eso ayuda tanto como dormir más.' : sd >= 90 ? 'Bastante irregular: acostarte a horarios parecidos mueve la aguja.' : 'Razonablemente regular.'}</div>`;
     }
+    // "Anoche" solo si el último dato es de hoy (la noche se imputa al día
+    // del despertar) o de ayer; si el reloj no sincroniza hace días, se dice
+    // de qué noche es en vez de hacerle creer que es la de anoche.
+    const rotuloUlt = (() => {
+      const f = ult.fecha ? String(ult.fecha).slice(0, 10) : '';
+      if (!f) return 'Anoche';
+      const hoy = hoyLocal();
+      const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
+      if (f === hoy) return 'Anoche';
+      if (f === ayer.toLocaleDateString('en-CA')) return 'Anteanoche';
+      try {
+        const d = new Date(f + 'T12:00:00');
+        return 'Noche del ' + d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+      } catch (e) { return 'Última noche con dato'; }
+    })();
     suenoHtml = _seccionSalud('😴', 'Sueño',
-      `<div class="sd-fila-top"><span class="sd-nombre">Anoche</span><span class="sd-val">${hs(ult.valor)}</span></div>
+      `<div class="sd-fila-top"><span class="sd-nombre">${rotuloUlt}</span><span class="sd-val">${hs(ult.valor)}</span></div>
        ${ult.detalle && ult.detalle.estimado ? '<div class="sd-nota">Estimado a partir del tiempo en la cama: tu reloj no mandó las fases.</div>' : ''}
        ${etHtml}${_sparkSalud(sSueno, '#5b6ee1')}
        <div class="sd-ref">promedio 7 días: <b>${hs(_prom(sSueno.slice(-7).map(x => x.valor)))}</b> · ${sSueno.length} noches con dato</div>
@@ -7561,6 +7638,13 @@ function renderMydayCheckin() {
       </div>
     </div>`;
 
+  // La nota se guarda en el borrador MIENTRAS se escribe. Antes solo entraba
+  // al draft al tocar una escala: escribir la nota al final y cambiar de tab
+  // (o que llegara un re-render) la borraba entera.
+  const nota = document.getElementById('ckNota');
+  if (nota) nota.addEventListener('input', () => {
+    STATE.checkinDraft = { ...(STATE.checkinDraft || STATE.checkin || {}), nota: nota.value };
+  });
   // Selección de escala (guarda en un draft; no manda hasta "Enviar")
   el.querySelectorAll('.ck-dot').forEach(b => b.addEventListener('click', () => {
     STATE.checkinDraft = { ...(STATE.checkinDraft || STATE.checkin || {}), [b.dataset.k]: Number(b.dataset.v), nota: document.getElementById('ckNota')?.value || '' };
