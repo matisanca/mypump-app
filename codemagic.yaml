@@ -191,6 +191,21 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
+        # OJO: este paso FALLÓ en los builds #20 (1.0.6, 14-ago) y #21 (1.0.11,
+        # 19-sep) con el mismo error, y al fallar ABORTA el post-processing, así
+        # que submit_to_app_store de abajo nunca llegó a correr:
+        #
+        #   "Complete test information is required to submit application MyPump
+        #    build for external testing. App is missing required Beta App
+        #    Information: Feedback Email. App is missing required Beta App
+        #    Review Information: First Name, Last Name, Phone Number, Email."
+        #
+        # No es del pipeline: Apple exige la "Test Information" de TestFlight
+        # aunque no haya grupos externos. Se completa UNA vez, a mano, en
+        #   https://appstoreconnect.apple.com/apps/6793259380/testflight/test-info
+        # (mail de feedback + nombre, apellido, teléfono y mail del contacto).
+        # Hasta entonces el build queda subido y procesado en ASC (eso sí anda)
+        # y la versión se crea y se manda a revisión desde la web.
         submit_to_testflight: true
 
         # Y ADEMÁS lo manda a revisión de la App Store, sin pasar por la web de
