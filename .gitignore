@@ -14,3 +14,4 @@ node_modules/
 # SQL generado por el banco de pruebas: se regenera con un comando.
 scripts/.plan-*.sql
 *.orig
+__pycache__/
