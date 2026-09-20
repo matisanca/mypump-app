@@ -1037,6 +1037,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
   <div class="error-title" id="errTitle">Enlace inválido</div>
   <div class="error-sub" id="errSub">Este enlace no existe o fue revocado. Escribile a Mati por WhatsApp para que te mande uno nuevo.</div>
   <div class="error-code" id="errCode"></div>
+  <button class="btn-primary" id="errorRetryBtn" type="button" hidden style="margin-top:16px;max-width:280px">Reintentar</button>
   <!-- Form para pegar el link manualmente (caso PWA en iOS sin localStorage compartido) -->
   <div class="error-paste" id="errorPasteWrap" hidden>
     <div class="error-paste-hint">Pegá acá el link que te mandó Mati por WhatsApp:</div>
@@ -1295,6 +1296,15 @@ window.TOKEN = TOKEN;
  * (Se sacó también `TODAY`, en UTC: no lo usaba nadie y en Argentina apuntaba
  * al día siguiente desde las 21:00.) */
 function hoyLocal() { return new Date().toLocaleDateString('en-CA'); }
+// Fecha LOCAL (YYYY-MM-DD) de un timestamp ISO del servidor. registrado_en
+// viene en UTC: en Argentina una serie de las 22:00 ya es "mañana" en UTC, y
+// cortar el string en la T partía una sesión en dos días (Progreso mostraba
+// dos sesiones y "última vez" tomaba la serie equivocada).
+function fechaLocalDe(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(d) ? String(iso).split('T')[0] : d.toLocaleDateString('en-CA');
+}
 
 let DATA = null;   // {cliente, rutina, dia, historico_por_ejercicio, _dias, _isDemo}
 let DIET = null;   // {macros_target, comidas}
@@ -1566,7 +1576,7 @@ function _ultimaSerieRef(exId, idx, variante, esDefault) {
     h = h.filter(r => r.notas === variante || (esDefault && r.notas == null));
   }
   if (!h.length) return null;
-  const dayOf = iso => (iso || '').split('T')[0];
+  const dayOf = iso => fechaLocalDe(iso);
   const lastDay = dayOf(h[0].registrado_en);
   const lastSets = h.filter(r => dayOf(r.registrado_en) === lastDay);
   return lastSets.find(r => r.serie_numero === idx+1) || lastSets[0] || null;
@@ -2257,6 +2267,13 @@ function chatHora(iso) {
 function renderChat() {
   const el = document.getElementById('scene-chat');
   if (!el) return;
+  // El hilo se rehace entero (también el textarea). Si Mati contesta mientras
+  // el cliente escribe, el poll re-renderiza y el borrador desaparecía con el
+  // cursor adentro. Se guarda y se restaura.
+  const inpPrev = document.getElementById('chatInput');
+  const borrador = inpPrev ? inpPrev.value : '';
+  const teniaFoco = !!(inpPrev && document.activeElement === inpPrev);
+  const sel = teniaFoco ? [inpPrev.selectionStart, inpPrev.selectionEnd] : null;
 
   const msgs = STATE.chat.msgs;
   let hilo;
@@ -2307,6 +2324,10 @@ function renderChat() {
       inp.style.height = Math.min(inp.scrollHeight, 110) + 'px';
     };
     inp.addEventListener('input', ajustar);
+    if (borrador) {
+      inp.value = borrador; ajustar();
+      if (teniaFoco) { try { inp.focus({ preventScroll: true }); if (sel) inp.setSelectionRange(sel[0], sel[1]); } catch (e) {} }
+    }
     // Enter manda, Shift+Enter hace salto de línea — pero SOLO en escritorio.
     // En un teclado táctil el Enter es el "listo" de siempre y mandaría a
     // medio escribir; ahí queda el botón.
@@ -2374,7 +2395,13 @@ function reintentarChat(id) {
 }
 
 async function marcarChatLeido() {
-  if (STATE.chat.noLeidos === 0 || chatEsDemo()) return;
+  if (chatEsDemo()) return;
+  // Se decide por los MENSAJES, no por el contador: con el chat abierto el
+  // poll no suma noLeidos (el cliente ya los está viendo), así que el
+  // contador daba 0 y esto volvía sin avisarle al servidor. Para Mati esos
+  // mensajes quedaban "sin leer" para siempre en el panel.
+  const pendientes = STATE.chat.msgs.some(m => m.autor === 'coach' && m.leido_por_cliente === false);
+  if (!pendientes && STATE.chat.noLeidos === 0) return;
   STATE.chat.noLeidos = 0;
   for (const m of STATE.chat.msgs) if (m.autor === 'coach') m.leido_por_cliente = true;
   updateChatBadge();
@@ -2700,6 +2727,7 @@ const Outbox = (() => {
   }
 
   let _enVuelo = null;
+  let _rachaSinRed = 0;   // pasadas seguidas que murieron por red (no gastan intentos)
 
   function flush() {
     // Promesa compartida: si ya hay un drenado en curso, `await flush()`
@@ -2731,15 +2759,24 @@ const Outbox = (() => {
     for (const op of tanda) {
       const exec = EXEC[op.kind];
       if (!exec) { resueltas.add(op._id); continue; }   // op desconocida → descartar
-      let res;
-      try { res = await exec(op.payload); } catch { res = { success: false }; }
+      let res, excepcion = false;
+      try { res = await exec(op.payload); } catch { res = { success: false }; excepcion = true; }
       if (seGuardo(res)) { resueltas.add(op._id); continue; }
+      // Un fallo de RED no gasta intentos (misma regla que la cola de fotos).
+      // navigator.onLine dice "conectado" con wifi sin internet o señal
+      // muerta en el gym: cada pasada sumaba un intento y a los 8 (≈2 min de
+      // backoff) se ABANDONABAN todas las series encoladas, con el tilde ya
+      // puesto y el toast diciendo que se reintentaba solo. Solo cuenta un
+      // rechazo real del servidor (respondió y dijo que no).
+      const ultimo = (window.mypumpDB && window.mypumpDB._lastError) || null;
+      const sinRed = excepcion || (ultimo && ultimo.code === 'NETWORK');
+      if (sinRed) { anyFail = true; _rachaSinRed++; break; }   // sin red no tiene sentido seguir con las demás
       op.tries++;
       if (op.tries >= MAX_TRIES) { resueltas.add(op._id); abandonadas.push(op); continue; }
       anyFail = true;
     }
     clearTimeout(slowTimer);
-    if (resueltas.size) queue = queue.filter(op => !resueltas.has(op._id));
+    if (resueltas.size) { queue = queue.filter(op => !resueltas.has(op._id)); _rachaSinRed = 0; }
     save();
     flushing = false;
     if (abandonadas.length) {
@@ -2760,7 +2797,9 @@ const Outbox = (() => {
     if (anyFail) {
       hadProblem = true;
       showSaveState('offline');
-      const backoff = Math.min(30000, 2000 * Math.max(1, queue[0]?.tries || 1));
+      // El backoff crece con los intentos reales Y con la racha sin red (que
+      // no gasta intentos): sin esto, sin internet se pegaba un fetch cada 2 s.
+      const backoff = Math.min(30000, 2000 * Math.max(1, queue[0]?.tries || 1, _rachaSinRed));
       flushSoon(backoff);
     } else if (hadProblem) {
       // Recién ahí mostramos '✓ Guardado': reasegura tras una racha offline.
@@ -3239,9 +3278,16 @@ function showError(type, detail) {
       demoBtn.onclick = () => { window.location.href = '?' + conParam('demo', '1'); };
     }
   } else if (type === 'service-down') {
-    $('#errTitle').textContent = 'Servicio fuera de línea';
-    $('#errSub').textContent = 'No pudimos cargar tu plan. Probá de nuevo en unos minutos. Si sigue sin entrar, avisale a Mati — tu acceso está bien, es un problema temporal del servidor.';
+    $('#errTitle').textContent = navigator.onLine === false ? 'Sin conexión' : 'Servicio fuera de línea';
+    $('#errSub').textContent = navigator.onLine === false
+      ? 'No hay señal. Cuando tengas conexión, tocá Reintentar.'
+      : 'No pudimos cargar tu plan. Probá de nuevo en unos minutos. Si sigue sin entrar, avisale a Mati — tu acceso está bien, es un problema temporal del servidor.';
     $('#errCode').textContent = detail || '';
+    // En la app nativa no hay barra de direcciones ni "recargar": sin este
+    // botón el cliente quedaba pegado en esta pantalla hasta matar la app.
+    const rt = $('#errorRetryBtn');
+    if (rt) { rt.hidden = false; rt.onclick = () => window.location.reload(); }
+    window.addEventListener('online', () => window.location.reload(), { once: true });
   } else {
     $('#errTitle').textContent = 'Enlace inválido';
     $('#errSub').textContent = 'Este enlace no existe o fue revocado. Escribile a Mati por WhatsApp para que te mande uno nuevo.';
@@ -4318,6 +4364,10 @@ function openRirPicker(exId, idx) {
     </div>`;
   $$('#modalHost [data-rirset]').forEach(b => b.addEventListener('click', () => {
     STATE.session[exId].sets[idx].rir = b.getAttribute('data-rirset');
+    // Si la serie ya estaba confirmada, el RIR elegido después quedaba solo en
+    // pantalla: la base seguía con el de antes (o sin nada). La RPC es un
+    // upsert por (sesión, ejercicio, serie), así que re-mandar la actualiza.
+    if (STATE.session[exId].sets[idx].confirmed) writeSet(exId, idx);
     closeModal();
     renderTrain();
   }));
@@ -4742,9 +4792,13 @@ document.addEventListener('visibilitychange', () => {
   // segundos después.
   if (document.hidden) { chatPollProgramar(); }
   else { chatPollTick().catch(() => {}); chatPollProgramar(); }
+  // Las fotos encoladas sin señal solo se drenaban en el arranque en frío:
+  // "Subiendo…" hasta que el cliente mataba la app (Sofía, 19-sep). También
+  // al volver a foco y al volver la red.
+  if (!document.hidden) flushFotosSoon();
 });
 // Reintentar en cuanto vuelva la conexión.
-window.addEventListener('online', () => { if (OUTBOX_ENABLED) Outbox.flushSoon(0); });
+window.addEventListener('online', () => { if (OUTBOX_ENABLED) Outbox.flushSoon(0); flushFotosSoon(); });
 
 /* ---- DIET SCENE ---- */
 /* ---- DIET TRACKING (marcar qué comí + macros consumidos) ----
@@ -5636,11 +5690,14 @@ function renderProgress() {
         </button>`;
       }
     }
+  } else if (pd.sinRed) {
+    html = `<div class="prog-empty">No pudimos traer tu historial (sin conexión).<br><button class="btn-secondary-outline" data-reintentar-progreso style="margin-top:12px;width:auto;padding:0 20px">Reintentar</button></div>`;
   } else {
     html += `<div class="prog-empty">Aún no hay historial registrado.<br>Empezá tu primera sesión para ver el progreso aquí.</div>`;
   }
   root.innerHTML = html;
   $$('[data-detail]').forEach(btn => btn.addEventListener('click', () => openDetail(btn.getAttribute('data-detail'))));
+  $$('[data-reintentar-progreso]').forEach(btn => btn.addEventListener('click', () => { STATE.progressLoaded = false; renderProgress(); }));
 }
 
 async function loadProgressAndRender() {
@@ -5689,9 +5746,15 @@ async function loadProgressAndRender() {
     if (porClave) {
       results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: porClave[ex.clave] || [] }));
     } else if (porClave === null) {
-      // Falló la red: Progreso muestra vacío y se vuelve a pedir al reabrir.
-      // NO se cae al slot (mezclaría original y sustituto).
-      results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: [] }));
+      // Falló la red. NO se cae al slot (mezclaría original y sustituto), NO
+      // se pisa la caché de Entreno con [] (dejaba todas las cards en "Primera
+      // vez" hasta recargar la app) y NO se marca cargado: al volver a abrir
+      // Progreso se vuelve a pedir.
+      STATE.progressData = { stats: [], exercises: [], sinRed: true };
+      STATE.progressLoaded = true;
+      renderProgress();
+      STATE.progressLoaded = false;
+      return;
     } else {
       const porId = await window.mypumpDB.getHistoricoEjercicios(TOKEN, allEx.map(e => e.id), 24)
         .catch(() => ({}));
@@ -5708,7 +5771,7 @@ async function loadProgressAndRender() {
       // Group by date, take max weight
       const byDate = {};
       for (const row of r.rows) {
-        const date = (row.registrado_en || '').split('T')[0];
+        const date = fechaLocalDe(row.registrado_en);
         if (!date) continue;
         if (byDate[date] === undefined || row.peso_kg > byDate[date]) byDate[date] = row.peso_kg;
       }
@@ -5744,7 +5807,7 @@ async function loadProgressAndRender() {
   // Sesiones entrenadas = fechas distintas con registros
   const fechas = new Set();
   for (const r of results) for (const row of r.rows) {
-    const dt = (row.registrado_en || '').split('T')[0];
+    const dt = fechaLocalDe(row.registrado_en);
     if (dt) fechas.add(dt);
   }
 
@@ -5792,7 +5855,7 @@ function openDetail(exId) {
           <thead><tr><th>Fecha</th><th>Peso</th><th>Reps</th><th>RIR</th></tr></thead>
           <tbody>
             ${recentRows.map(r => `<tr>
-              <td>${(r.registrado_en||'').split('T')[0]}</td>
+              <td>${fechaLocalDe(r.registrado_en)}</td>
               <td>${r.peso_kg}kg</td>
               <td>${r.reps_realizadas||r.reps||'—'}</td>
               <td>${r.rir_real ?? '—'}</td>
@@ -6327,6 +6390,25 @@ function _serieSalud(tipo) {
   return Object.keys(porFecha).sort().map(f => ({ fecha: f, valor: porFecha[f].v, detalle: porFecha[f].d }));
 }
 const _prom = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+// Promedio circular de minutos del día (0..1439) y desvío plegado a ±720.
+function _promCircularMin(vals) {
+  const v = (vals || []).map(Number).filter(x => isFinite(x));
+  if (!v.length) return { m: 0, sd: 0 };
+  const ang = v.map(x => (x / 1440) * 2 * Math.PI);
+  const cx = ang.reduce((a, t) => a + Math.cos(t), 0) / ang.length;
+  const cy = ang.reduce((a, t) => a + Math.sin(t), 0) / ang.length;
+  let a = Math.atan2(cy, cx); if (a < 0) a += 2 * Math.PI;
+  const m = (a / (2 * Math.PI)) * 1440;
+  const dev = v.map(x => { let d = (x - m) % 1440; if (d > 720) d -= 1440; if (d < -720) d += 1440; return d; });
+  const sd = Math.sqrt(dev.reduce((s2, d) => s2 + d * d, 0) / dev.length);
+  return { m, sd };
+}
+// Minutos (puede ser negativo o > 1440) → "HH:MM" en el reloj de 24 h.
+function _hhmmReloj(mm) {
+  mm = Math.round(mm);
+  mm = ((mm % 1440) + 1440) % 1440;
+  return `${String(Math.floor(mm / 60)).padStart(2, '0')}:${String(mm % 60).padStart(2, '0')}`;
+}
 
 // Sparkline genérico de una serie.
 function _sparkSalud(serie, color) {
@@ -6456,9 +6538,12 @@ function renderSalud() {
     let regHtml = '';
     if (reg.length >= 4) {
       const ult7 = reg.slice(-7).map(x => x.valor);
-      const m = _prom(ult7);
-      const sd = Math.sqrt(_prom(ult7.map(v => (v - m) ** 2)));
-      const hhmm = mm => `${String(Math.floor(mm / 60) % 24).padStart(2, '0')}:${String(Math.round(mm % 60)).padStart(2, '0')}`;
+      // Horas del reloj: promedio CIRCULAR. Con el promedio lineal, dos noches
+      // con punto medio a las 23:50 (1430) y 00:10 (10) daban "las 12:00", y
+      // un punto medio antes de las 03:30 restaba a negativo y se mostraba
+      // "-1:-30". La variación se mide contra ese promedio, plegada a ±12 h.
+      const { m, sd } = _promCircularMin(ult7);
+      const hhmm = _hhmmReloj;
       regHtml = `<div class="sd-ref" style="margin-top:var(--space-3)">Te dormís en promedio cerca de las <b>${hhmm(m - 210)}</b>, con una variación de <b>±${Math.round(sd)} min</b>.
         ${sd <= 30 ? 'Muy regular — eso ayuda tanto como dormir más.' : sd >= 90 ? 'Bastante irregular: acostarte a horarios parecidos mueve la aguja.' : 'Razonablemente regular.'}</div>`;
     }
@@ -7032,11 +7117,28 @@ async function _subirFoto(pose, dataUrl, fecha) {
   } catch (e) { return { ok: false, fatal: false, red: true, error: 'sin conexión' }; }
 }
 
-// Drena la cola de fotos pendientes (se llama al cargar y al volver la red).
+// Drena la cola de fotos pendientes (al cargar, al volver a foco y al volver
+// la red). Una sola pasada a la vez: dos drenados en paralelo subirían la
+// misma foto dos veces.
+let _fotosDrenando = false;
+function flushFotosSoon() {
+  if (typeof _fotoqLeer !== 'function') return;
+  if (!Object.keys(_fotoqLeer()).length) return;
+  setTimeout(() => { flushFotos().catch(() => {}); }, 300);
+}
 async function flushFotos() {
+  if (_fotosDrenando) return;
   const q = _fotoqLeer();
   const keys = Object.keys(q);
   if (!keys.length || !navigator.onLine) return;
+  _fotosDrenando = true;
+  try { await _flushFotosPasada(q, keys); }
+  finally {
+    _fotosDrenando = false;
+    if (STATE.scene === 'revision' && typeof renderMydayFotos === 'function') renderMydayFotos();
+  }
+}
+async function _flushFotosPasada(q, keys) {
   for (const k of keys) {
     const item = q[k];
     if (!item || !item.dataUrl) { delete q[k]; continue; }
@@ -8132,8 +8234,25 @@ async function init() {
       window.mypumpDB.getRutinaActiva(TOKEN),
       window.mypumpDB.getDietaActiva(TOKEN),
     ]);
+    // Si la rutina NO llegó por un fallo de red/servicio (getClienteInfo
+    // entró, el segundo request se cayó), antes se seguía como si el cliente
+    // no tuviera rutina: entraba al modo DEMO con la rutina de ejemplo,
+    // todas las escrituras apagadas y el chat muerto, y le decía "avisale a
+    // Mati que republique". Con snapshot, se usa el snapshot; sin snapshot,
+    // se avisa que no hay señal y se puede reintentar.
+    if (!rutina && window.mypumpDB._lastError) {
+      const snap = loadOfflineSnapshot();
+      if (snap && snap.info && snap.rutina) {
+        rutina = snap.rutina; dieta = dieta || snap.dieta; _fromCache = true;
+        console.warn('[init] rutina sin red → usando snapshot cacheado');
+      } else {
+        console.error('[init] rutina sin red y sin snapshot:', window.mypumpDB._lastError);
+        showError('service-down', TOKEN.slice(0,8)+'…');
+        return;
+      }
+    }
     // Guardar snapshot para modo offline (solo si trajo rutina real con estructura).
-    if (rutina && rutina.estructura && rutina.estructura.dias) {
+    if (!_fromCache && rutina && rutina.estructura && rutina.estructura.dias) {
       saveOfflineSnapshot(info, rutina, dieta);
     }
   } else {

@@ -730,9 +730,20 @@
       }
     }
 
-    const msSueno = await leerMuestras('sleep', desde, hasta);
-    const filasSueno = procesarSueno(msSueno);
-    const noches = filasSueno._noches || [];
+    /* El sueño se pide desde el MEDIODÍA del día anterior a `desde`. La noche
+     * que se imputa al día D-7 (el del despertar) empezó la tarde/noche de
+     * D-8: con la ventana arrancando a la medianoche de D-7, HealthKit
+     * devolvía solo el pedazo posterior a las 00:00, el bridge armaba una
+     * "noche" de 6 h en vez de 8 y el upsert pisaba la noche completa que ya
+     * estaba guardada — en cada sync, para el día del borde. La noche que se
+     * imputa a D-8 queda partida por el mismo motivo, así que se descarta
+     * (fecha < desde) en vez de subirla a medias. */
+    const desdeSueno = new Date(desde); desdeSueno.setDate(desdeSueno.getDate() - 1); desdeSueno.setHours(12, 0, 0, 0);
+    const msSueno = await leerMuestras('sleep', desdeSueno, hasta);
+    const todoSueno = procesarSueno(msSueno);
+    const corte = ymd(desde);
+    const filasSueno = todoSueno.filter(f => !f.fecha || f.fecha >= corte);
+    const noches = (todoSueno._noches || []).filter(n => !n.fecha || n.fecha >= corte);
     filasSueno.forEach(f => registros.push(Object.assign({ fuente: FUENTE }, f)));
 
     const msHrv = await leerMuestras('heartRateVariability', desde, hasta);

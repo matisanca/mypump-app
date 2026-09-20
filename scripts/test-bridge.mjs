@@ -92,7 +92,15 @@ const cerca = (a, b, tol, msg) => {
   if (Math.abs(a - b) > tol) throw new Error(`${msg || ''} esperado ~${b}, obtenido ${a}`);
 };
 
-const iso = (d, h, m = 0) => new Date(`2026-07-${String(d).padStart(2,'0')}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00-03:00`).toISOString();
+/* Fechas RELATIVAS a hoy: el "día 21" es anteayer, el "20" el día anterior,
+ * etc. sync() solo sube lo que cae dentro de su ventana de 7 días (y descarta
+ * la noche partida del borde), así que muestras con fecha fija de julio se
+ * filtrarían y estos tests no probarían nada. */
+const _BASE = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return d; })();
+const iso = (d, h, m = 0) => {
+  const x = new Date(_BASE); x.setDate(x.getDate() + (d - 21)); x.setHours(h, m, 0, 0);
+  return x.toISOString();
+};
 
 console.log('\nAPI pública del bridge');
 await t('expone todo lo que cliente.html usa', () => {
@@ -249,6 +257,45 @@ await t('la siesta no infla la eficiencia (numerador y denominador del mismo blo
 });
 
 console.log('\nUnidades que manda a la base');
+
+await t('la noche del borde (D-7) se pide entera y no se recorta a la medianoche', async () => {
+  // 19-sep-2026: sync() pedía el sueño desde la medianoche de D-7. La noche
+  // que se imputa a D-7 (el despertar) empezó la tarde/noche de D-8, así que
+  // HealthKit devolvía solo el pedazo posterior a las 00:00 y el upsert pisaba
+  // las 8 h guardadas con 6 h — en cada sync. Ahora se pide desde el mediodía
+  // de D-8 y se descarta la noche de D-8 (esa sí queda partida).
+  prepararSync();
+  const pedidos = [];
+  const orig = Capacitor.Plugins.Health.readSamples;
+  Capacitor.Plugins.Health.readSamples = async (arg) => {
+    if (arg.dataType === 'sleep') {
+      pedidos.push(new Date(arg.startDate));
+      // El mock devuelve SOLO lo que cae dentro de la ventana pedida, como HealthKit.
+      const ini = new Date(arg.startDate).getTime();
+      return { samples: (MUESTRAS.sleep || []).filter(m => new Date(m.endDate).getTime() > ini) };
+    }
+    return orig(arg);
+  };
+  try {
+    const d7 = new Date(); d7.setDate(d7.getDate() - 7); d7.setHours(0, 0, 0, 0);
+    const d8 = new Date(d7); d8.setDate(d8.getDate() - 1);
+    const hora = (base, h) => { const x = new Date(base); x.setHours(h, 0, 0, 0); return x.toISOString(); };
+    MUESTRAS.sleep = [
+      // noche D-8→D-7: 23:00 a 07:00 = 480 min, imputada a D-7
+      { startDate: hora(d8, 23), endDate: hora(d7, 7), sleepState: 'asleep', sourceId: 'watch' },
+      // noche D-9→D-8: queda fuera de la ventana de 7 días y no debe subirse a medias
+      { startDate: hora(new Date(d8.getTime() - 86400000), 23), endDate: hora(d8, 7), sleepState: 'asleep', sourceId: 'watch' },
+    ];
+    const regs = await capturar(() => H.sync());
+    const s = delTipo(regs, 'sueno_min');
+    const ymdL = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const d7row = s.find(r => r.fecha === ymdL(d7));
+    if (!d7row) throw new Error(`no subió la noche de D-7 (filas: ${JSON.stringify(s)})`);
+    if (d7row.valor !== 480) throw new Error(`la noche de D-7 llegó recortada: ${d7row.valor} min en vez de 480`);
+    if (s.some(r => r.fecha === ymdL(d8))) throw new Error('subió la noche partida de D-8');
+    if (!pedidos.length || pedidos[0].getTime() >= d7.getTime()) throw new Error('el sueño se sigue pidiendo desde la medianoche de D-7');
+  } finally { Capacitor.Plugins.Health.readSamples = orig; }
+});
 
 await t('la distancia va en KM, no en metros', async () => {
   // Iba con `escala`, que solo se aplica si el valor es <= 1 (heurística de
@@ -436,12 +483,13 @@ await t('connect() vuelve ANTES de que el backfill termine', async () => {
   prepararSync();
   delete store['mypump_health_backfill_v1'];
   /* Traba SOLO las lecturas del backfill, no las del sync.
-   * Se distinguen por la ventana: sync() mira los ultimos 7 dias, el backfill
-   * arranca 60 dias atras. Trabar por numero de llamada no sirve — sync() hace
-   * una lectura por cada tipo y se colgaba a si mismo. */
+   * Se distinguen por la ventana: sync() mira los ultimos 7 dias (el sueño,
+   * desde el mediodía del día 8 para no partir la noche del borde), el
+   * backfill arranca 60 dias atras. Trabar por numero de llamada no sirve —
+   * sync() hace una lectura por cada tipo y se colgaba a si mismo. */
   let soltar;
   const trabado = new Promise(res => { soltar = res; });
-  const corte = Date.now() - 8 * 86400000;
+  const corte = Date.now() - 10 * 86400000;
   const orig = Capacitor.Plugins.Health.readSamples;
   Capacitor.Plugins.Health.readSamples = async (arg) => {
     if (new Date(arg.startDate).getTime() < corte) await trabado;

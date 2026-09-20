@@ -146,6 +146,45 @@ await t('a los N intentos la abandona en vez de reintentar sin fin', async () =>
   if (intentos > 10) throw new Error(`${intentos} intentos es demasiado`);
 });
 
+console.log('\nUn corte de red NO gasta intentos');
+
+await t('con "conectado" pero sin internet, 30 pasadas no abandonan nada', async () => {
+  // 19-sep-2026: wifi del gym sin salida. navigator.onLine dice true, cada
+  // fetch tira, y a las 8 pasadas se abandonaban TODAS las series con el
+  // tilde puesto. La regla de la cola de fotos: la red no gasta intentos.
+  let intentos = 0;
+  const { Outbox, ctx } = montar(async () => {
+    intentos++;
+    ctx.window.mypumpDB._lastError = { code: 'NETWORK', message: 'Failed to fetch' };
+    return { success: false };
+  });
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 2 } }, 'k2');
+  for (let i = 0; i < 30; i++) await Outbox.flush();
+  if (Outbox.pending() !== 2) throw new Error(`quedaron ${Outbox.pending()} de 2: se abandonaron series por un corte de red`);
+  if (intentos > 31) throw new Error(`${intentos} envíos: sin red siguió mandando las demás ops de la tanda`);
+});
+
+await t('cuando vuelve la red, se mandan y la cola queda vacía', async () => {
+  let red = false;
+  const { Outbox, ctx } = montar(async () => {
+    if (!red) { ctx.window.mypumpDB._lastError = { code: 'NETWORK', message: 'x' }; return { success: false }; }
+    ctx.window.mypumpDB._lastError = null; return okRes;
+  });
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  for (let i = 0; i < 10; i++) await Outbox.flush();
+  red = true;
+  await Outbox.flush();
+  if (Outbox.pending() !== 0) throw new Error('volvió la red y no se mandó');
+});
+
+await t('una excepción del fetch tampoco gasta intentos', async () => {
+  const { Outbox } = montar(async () => { throw new TypeError('Failed to fetch'); });
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  for (let i = 0; i < 12; i++) await Outbox.flush();
+  if (Outbox.pending() !== 1) throw new Error('una excepción de red abandonó la serie');
+});
+
 console.log('\nEsperar de verdad al cerrar el día');
 
 await t('await flush() espera al drenado que ya está en curso', async () => {

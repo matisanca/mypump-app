@@ -96,7 +96,13 @@ const t = async (n, fn) => {
 const si = (c, m) => { if (!c) throw new Error(m); };
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${m}\n      esperado ${JSON.stringify(b)}\n      obtenido ${JSON.stringify(a)}`); };
 
-const iso = (d, h, m = 0) => new Date(`2026-07-${String(d).padStart(2,'0')}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00-03:00`).toISOString();
+/* Fechas RELATIVAS a hoy (el "día 21" es anteayer): sync() descarta lo que
+ * cae fuera de su ventana de 7 días, ver test-bridge.mjs. */
+const _BASE = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return d; })();
+const iso = (d, h, m = 0) => {
+  const x = new Date(_BASE); x.setDate(x.getDate() + (d - 21)); x.setHours(h, m, 0, 0);
+  return x.toISOString();
+};
 const prepararSync = () => {
   store['mypump_token'] = 'tok';
   store['mypump_health_connected'] = '1';

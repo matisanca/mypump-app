@@ -69,6 +69,15 @@ const POSES        = new Set(['frente', 'perfil', 'espalda']);
 const ALLOWED_ORIGINS = new Set([
   'https://app.mypumpteam.com',
   'capacitor://localhost',
+  // ANDROID. El WebView de Capacitor en Android sirve la app desde
+  // https://localhost (androidScheme por defecto es "https" y NO se descarta
+  // como en iOS). Faltaba, igual que faltó capacitor://localhost en su momento:
+  // sin este origen el preflight sale 204 SIN Access-Control-Allow-Origin, el
+  // navegador bloquea el POST y la app lo ve como "sin conexion" -> reintenta
+  // para siempre, la cola de fotos se llena y muestra "Hay fotos esperando
+  // subir. Proba cuando tengas señal". Sofia Ceppi, 7-sep, el dia que instalo
+  // la app de Play. Tambien rompia las fotos de comida (mismo servidor).
+  'https://localhost',
   'http://localhost:8790',
   'http://localhost:3000',
 ]);
