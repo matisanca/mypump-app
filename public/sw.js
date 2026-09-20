@@ -14,12 +14,18 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v42-20260816';
+const VERSION       = 'v43-20260919';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 
 const SHELL = [
+  // '/cliente' ANTES que '/cliente.html': en Cloudflare Pages, '/cliente.html'
+  // es un 308 a '/cliente', y cache.add() guarda la respuesta REDIRIGIDA. Una
+  // respuesta redirigida no sirve para una navegación (el navegador la
+  // rechaza), así que la PWA abierta sin señal desde el ícono no cargaba.
+  // En dev local (npx serve) '/cliente' puede no existir: allSettled lo tolera.
+  '/cliente',
   '/cliente.html',
   '/css/tokens.css',
   // La fuente de marca. Va en el SHELL para que offline se vea IGUAL que
@@ -84,18 +90,21 @@ self.addEventListener('fetch', (e) => {
 async function networkFirst(req) {
   try {
     const res = await fetch(req);
-    if (res && res.ok) {
+    if (res && res.ok && !res.redirected) {
       const copy = res.clone();
       caches.open(SHELL_CACHE).then((c) => c.put(req, copy)).catch(() => {});
     }
     return res;
   } catch (err) {
     const cached = await caches.match(req, { ignoreSearch: true });
-    if (cached) return cached;
+    if (cached && !(req.mode === 'navigate' && cached.redirected)) return cached;
     // Navegación offline sin match exacto (ej: /cliente?t=…) → servir el shell.
     if (req.mode === 'navigate') {
-      const shell = await caches.match('/cliente.html');
-      if (shell) return shell;
+      const candidatos = ['/cliente', '/cliente.html'];
+      for (const u of candidatos) {
+        const shell = await caches.match(u);
+        if (shell && !shell.redirected) return shell;
+      }
     }
     throw err;
   }

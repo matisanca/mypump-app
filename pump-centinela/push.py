@@ -265,11 +265,14 @@ def jwt_apns():
 # stdin.
 def enviar_uno(device_token, titulo, cuerpo, destino, jwt):
     """Devuelve (ok, error, baja_device)."""
+    # Sin "badge": era un 1 fijo y la app nunca lo limpia (Capacitor no toca
+    # el contador del ícono), así que el iPhone quedaba con un "1" pegado
+    # para siempre aunque el cliente ya hubiera leído todo. El banner y el
+    # sonido alcanzan; el contador real vive adentro de la app (tab Chat).
     payload = {
         "aps": {
             "alert": {"title": titulo, "body": cuerpo},
             "sound": "default",
-            "badge": 1,
         },
     }
     if destino:
