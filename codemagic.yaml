@@ -206,6 +206,13 @@ workflows:
         # (mail de feedback + nombre, apellido, teléfono y mail del contacto).
         # Hasta entonces el build queda subido y procesado en ASC (eso sí anda)
         # y la versión se crea y se manda a revisión desde la web.
+        #
+        # 22-sep: los contactos ya están cargados y el error cambió a
+        #   "Beta App Description is missing"
+        # Falta el ÚLTIMO campo: TestFlight → Información para las pruebas →
+        # "Descripción de la app beta" (el textarea de arriba de todo, en
+        # es-419 / Español). Con eso, submit_to_testflight deja de fallar y
+        # recién ahí corre submit_to_app_store.
         submit_to_testflight: true
 
         # Y ADEMÁS lo manda a revisión de la App Store, sin pasar por la web de
