@@ -2804,6 +2804,9 @@ const Outbox = (() => {
   // dedupeKey: reemplaza una op pendiente del mismo target (último valor gana).
   function enqueue(kind, payload, dedupeKey) {
     if (!OUTBOX_ENABLED) return;
+    // Defensivo: si alguien encola antes del load() del bootstrap, el save()
+    // de abajo escribiría una cola de UNA op sobre lo que había en disco.
+    load();
     // splice y no reasignación: flush() puede estar iterando la cola en este
     // mismo momento y necesita ver la MISMA referencia (ver flush()).
     if (dedupeKey) {
@@ -2932,9 +2935,11 @@ const Outbox = (() => {
       // Recién ahí mostramos '✓ Guardado': reasegura tras una racha offline.
       hadProblem = false;
       showSaveState('saved');
-    } else {
+    } else if (!abandonadas.length) {
       hideSaveToast();   // éxito normal → sin ruido
     }
+    // (si hubo abandonadas, el cartel 'perdido' queda: apagarlo en el mismo
+    //  tick lo dejaba sin pintar ni un frame — el cliente no veía nada)
     // Lo que se encoló DURANTE este drenado quedó en la cola sin procesar:
     // se dispara otra pasada. Antes esto no hacía falta porque esas ops
     // directamente se perdían.
@@ -6247,6 +6252,17 @@ async function loadMyday() {
       window.mypumpDB.getStreak(TOKEN),
     ]);
     MYDAY  = habitos;
+    // Lo que el cliente tocó y todavía no salió gana sobre el servidor (mismo
+    // criterio que las comidas): si la lectura salió antes de que drenara la
+    // op, la fila vieja le pisaba el toque y quedaba así toda la sesión.
+    if (OUTBOX_ENABLED && typeof Outbox !== 'undefined' && Outbox.pendingByKey) {
+      const hoy = hoyLocal();
+      for (const [k, op] of Outbox.pendingByKey()) {
+        if (!k.startsWith(`habito|${hoy}|`)) continue;
+        const campo = k.slice(`habito|${hoy}|`.length);
+        MYDAY = { ...(MYDAY || {}), [campo]: _valorHabito(campo, (op.payload || {}).valor) };
+      }
+    }
     STREAK = streak;
     STATE.mydayFecha = hoyLocal();
     STATE.mydayLoaded = true;
@@ -6272,20 +6288,23 @@ async function loadRevision() {
   loadFotos().then(() => { if (STATE.scene === 'revision') renderMydayFotos(); flushFotos(); });
 }
 
+/* El valor de un hábito como lo espera el render: llega STRING desde el
+ * dataset del botón y renderMyday compara con === true/false. Sin esto, los
+ * tres hábitos de sí/no no se pintaban hasta que contestaba el servidor. */
+function _valorHabito(campo, valor) {
+  if (campo === 'vasos_agua') return Number(valor);
+  if (campo === 'entrenamiento') return valor;
+  if (valor === null || valor === 'null') return null;
+  return valor === true || valor === 'true';
+}
+
 async function setHabito(campo, valor) {
   if (!TOKEN) return;
   const fecha = hoyLocal();
   if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
     // Optimista + cola (ver EXEC.habito). El servidor manda la fila real al
     // drenar y re-renderiza; hasta entonces se ve lo que el cliente tocó.
-    // El valor llega como STRING desde el dataset del botón; renderMyday
-    // compara con === true/false. Sin normalizar, los tres hábitos de sí/no
-    // no se pintaban hasta que contestaba el servidor.
-    const vOptimista = campo === 'vasos_agua' ? Number(valor)
-                     : campo === 'entrenamiento' ? valor
-                     : (valor === null || valor === 'null') ? null
-                     : (valor === true || valor === 'true');
-    MYDAY = { ...(MYDAY || {}), [campo]: vOptimista };
+    MYDAY = { ...(MYDAY || {}), [campo]: _valorHabito(campo, valor) };
     renderMyday();
     Outbox.enqueue('habito', { fecha, campo, valor }, `habito|${fecha}|${campo}`);
     return;

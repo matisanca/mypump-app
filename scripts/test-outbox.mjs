@@ -48,6 +48,7 @@ const dormir = (ms) => new Promise(r => setTimeout(r, ms));
 function montar(responder) {
   const store = {};
   const enviados = [];
+  const _espias = {};
   const ctx = {
     OUTBOX_ENABLED: true,
     TOKEN: 'tok',
@@ -60,7 +61,10 @@ function montar(responder) {
       setItem: (k, v) => { store[k] = String(v); },
       removeItem: k => { delete store[k]; },
     },
-    showSaveState() {}, hideSaveToast() {},
+    // Los tests pueden reemplazarlos después de montar (ctx.showSaveState = …):
+    // por eso el IIFE recibe un wrapper que mira el ctx en cada llamada.
+    showSaveState(e) { if (_espias.showSaveState) _espias.showSaveState(e); },
+    hideSaveToast() { if (_espias.hideSaveToast) _espias.hideSaveToast(); },
     console: { warn() {}, log() {}, error() {} },
     setTimeout, clearTimeout, Date,
     window: {
@@ -76,7 +80,7 @@ function montar(responder) {
   const fn = new Function(...Object.keys(ctx), `${fuente}; return Outbox;`);
   const Outbox = fn(...Object.values(ctx));
   Outbox.load();
-  return { Outbox, enviados, store, ctx };
+  return { Outbox, enviados, store, ctx, espias: _espias };
 }
 
 const okRes = { success: true, data: 'row-id' };
@@ -293,6 +297,18 @@ await t('marcar y desmarcar la misma comida: gana la última (dedupe por comida+
   await Outbox.flush();
   if (llamadas.length !== 1 || llamadas[0][0] !== 'desmarcar') throw new Error('no mandó solo la última decisión: ' + JSON.stringify(llamadas));
   if (Outbox.pending() !== 0) throw new Error('desmarcar con data:false (no había fila) tiene que contar como hecho');
+});
+
+await t('abandonar una op deja el cartel visible (no se apaga en el mismo tick)', async () => {
+  // El único aviso de que algo se perdió: si se apaga en la misma tarea, el
+  // navegador no llega a pintarlo ni un frame.
+  const estados = [];
+  const { Outbox, espias } = montar(async () => ({ success: false, data: null, error: 'boom', code: '22P02' }));
+  espias.showSaveState = (e) => estados.push(e);
+  espias.hideSaveToast = () => estados.push('hide');
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  for (let i = 0; i < 12 && Outbox.pending(); i++) await Outbox.flush();
+  if (estados[estados.length - 1] !== 'perdido') throw new Error(`el último estado fue "${estados[estados.length - 1]}": el aviso no se ve`);
 });
 
 console.log('\nEsperar de verdad al cerrar el día');
