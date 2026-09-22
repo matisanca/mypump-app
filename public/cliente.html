@@ -5778,7 +5778,12 @@ function bindDietEvents() {
 // Alimento que hoy ocupa (comidaId, optIdx, foodIdx) en TODOS los planes de
 // la dieta (tipos de día incluidos). null si esa posición ya no existe.
 function _foodEnPosicion(comidaId, optIdx, foodIdx) {
-  const planes = (DIET && DIET.tipos_dia && DIET.tipos_dia.length) ? DIET.tipos_dia : [DIET];
+  // Primero el plan que el cliente está viendo (con tipos de día, la misma
+  // posición puede tener otro alimento en otro tipo): un swap legado se ancla
+  // a lo que el cliente tiene delante, que es lo que sustituyó.
+  const activo = (typeof getActivePlan === 'function' && DIET) ? getActivePlan() : null;
+  const resto = (DIET && DIET.tipos_dia && DIET.tipos_dia.length) ? DIET.tipos_dia : [DIET];
+  const planes = activo ? [activo, ...resto.filter(p => p !== activo)] : resto;
   for (const plan of planes) {
     const c = plan && (plan.comidas || []).find(x => x.id === comidaId);
     const f = c && c.options && c.options[optIdx] && c.options[optIdx].foods && c.options[optIdx].foods[foodIdx];
