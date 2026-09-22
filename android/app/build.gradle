@@ -32,7 +32,11 @@ android {
         // Outbox que no abandona series sin señal + push de iOS registrándose
         // de verdad (AppDelegate no reenviaba el token de APNs: había 0
         // devices iOS) + swaps de comida anclados al alimento.
-        versionCode 17
+        //
+        // 18: el 17 ya se consumió el 22-sep (los builds del primer tag
+        // 1.0.12, hechos antes del último arreglo). Un versionCode no se puede
+        // reusar en Play, ni un CFBundleVersion en App Store Connect.
+        versionCode 18
         versionName "1.0.12"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
