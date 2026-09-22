@@ -953,8 +953,22 @@
   // connect(), y connect() solo aparece cuando NO estás conectado, así que un
   // backfill cortado a los 40 s dejaba el historial con huecos para siempre.
   const K_BACKFILL_OFF = 'mypump_health_backfill_off';
-  function _offPendiente() {
-    try { const v = parseInt(localStorage.getItem(K_BACKFILL_OFF) || '', 10); return (v > 0 && v <= 60) ? v : 60; } catch (e) { return 60; }
+  /* El cursor guarda TAMBIÉN el alcance con el que se escribió. Un backfill
+   * parcial de 30 días (Android sin permiso de historial) que se corta deja un
+   * cursor ≤ 30; si después el cliente habilita el historial, la corrida de 60
+   * arrancaría en ese cursor y las ventanas 60→30 no se pedirían nunca —
+   * justo el hueco permanente que el cursor venía a evitar. */
+  function _cursorGuardado() {
+    try {
+      const raw = localStorage.getItem(K_BACKFILL_OFF);
+      if (!raw) return null;
+      if (raw[0] === '{') { const o = JSON.parse(raw); return (o && o.off > 0) ? o : null; }
+      const v = parseInt(raw, 10);                       // formato viejo (solo el off)
+      return (v > 0 && v <= 60) ? { off: v, alcance: 60 } : null;
+    } catch (e) { return null; }
+  }
+  function _guardarCursor(off, alcance) {
+    try { localStorage.setItem(K_BACKFILL_OFF, JSON.stringify({ off, alcance })); } catch (e) {}
   }
 
   async function _backfill(onProgreso) {
@@ -967,7 +981,9 @@
     // próximo arranque con el permiso concedido completa el resto.
     const sinHistorial = _sinHistorialAndroid();
     const alcance = sinHistorial ? 30 : 60;
-    const desdeOff = Math.min(_offPendiente(), alcance);
+    const cur = _cursorGuardado();
+    // El cursor solo sirve si venía de un alcance igual o mayor.
+    const desdeOff = (cur && cur.alcance >= alcance) ? Math.min(cur.off, alcance) : alcance;
     _progresoBackfill = { hecho: alcance - desdeOff, total: alcance };
     for (let off = desdeOff; off > 0; off -= 5) {
       // Las dos puntas a medianoche: si no, la costura entre ventanas cae a
@@ -982,7 +998,7 @@
         await postearEntrenos(await recolectarEntrenos(desde, hasta));
       } catch (e) { fallaron++; console.warn('[health] backfill ventana', off, e); }
       _progresoBackfill = { hecho: alcance - off + 5, total: alcance };
-      try { localStorage.setItem(K_BACKFILL_OFF, String(off - 5)); } catch (e) {}
+      _guardarCursor(off - 5, alcance);
       if (typeof onProgreso === 'function') onProgreso(alcance - off + 5, alcance);
     }
     // 60 días sin una sola muestra: se avisa ya, sin esperar la racha.

@@ -591,7 +591,7 @@ await t('un backfill cortado a la mitad se RETOMA desde donde quedó', async () 
   prepararSync();
   delete store['mypump_health_backfill_v1'];
   delete store['mypump_health_backfill_intento'];
-  store['mypump_health_backfill_off'] = '20';     // quedó a mitad: faltan 20 días
+  store['mypump_health_backfill_off'] = JSON.stringify({ off: 20, alcance: 60 });   // quedó a mitad
   const ventanas = [];
   const orig = Capacitor.Plugins.Health.queryAggregated;
   Capacitor.Plugins.Health.queryAggregated = async (arg) => {
@@ -605,6 +605,34 @@ await t('un backfill cortado a la mitad se RETOMA desde donde quedó', async () 
   if (masVieja > 21) throw new Error(`rehízo el backfill entero (arrancó hace ${masVieja} días en vez de 20)`);
   eq(store['mypump_health_backfill_v1'], '1', 'terminó y no se marcó como hecho');
   eq(store['mypump_health_backfill_off'], undefined, 'quedó el cursor viejo: el próximo backfill arrancaría trunco');
+});
+
+await t('un cursor de un backfill PARCIAL (30 días) no trunca al de 60', async () => {
+  // Android sin permiso de historial corta a los 30; si después lo habilita,
+  // arrancar desde ese cursor dejaba las ventanas 60→30 sin pedir nunca.
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  delete store['mypump_health_backfill_intento'];
+  store['mypump_health_backfill_off'] = JSON.stringify({ off: 20, alcance: 30 });
+  const ventanas = [];
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (arg) => { ventanas.push(new Date(arg.startDate)); return orig(arg); };
+  try { await H.backfill(); } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  const hace = (d) => Math.round((Date.now() - d.getTime()) / 86400000);
+  if (Math.max(...ventanas.map(hace)) < 55) throw new Error('arrancó desde el cursor parcial: quedan 30 días sin traer para siempre');
+});
+
+await t('el cursor viejo (solo el número) se sigue entendiendo', async () => {
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  delete store['mypump_health_backfill_intento'];
+  store['mypump_health_backfill_off'] = '20';
+  const ventanas = [];
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (arg) => { ventanas.push(new Date(arg.startDate)); return orig(arg); };
+  try { await H.backfill(); } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  const hace = (d) => Math.round((Date.now() - d.getTime()) / 86400000);
+  if (Math.max(...ventanas.map(hace)) > 21) throw new Error('rehízo el backfill entero con un cursor del formato viejo');
 });
 
 console.log('\nleerMuestras: el corte por truncamiento no puede duplicar');

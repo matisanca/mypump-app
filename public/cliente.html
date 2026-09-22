@@ -2998,7 +2998,13 @@ function writeSet(exId, setIdx) {
       rir:            rirDeSet(s.rir),
       // Para ejercicios con variante (ej: rueda abdominal) guardamos el nivel
       // elegido en notas, para que el coach lo vea.
-      notas:          (STATE.session[exId] && STATE.session[exId].variante) || null,
+      //
+      // La variante de la SERIE, si ya se registró con una: el selector cambia
+      // la del ejercicio ("solo para las que se confirmen después"), y volver a
+      // mandar una serie vieja —poner el RIR después de confirmarla— la
+      // refilaba con la variante de ahora. El histórico filtra por esto, así
+      // que el peso sugerido salía del agarre equivocado.
+      notas:          s.varianteRegistrada || (STATE.session[exId] && STATE.session[exId].variante) || null,
     },
   }, `carga_${DATA.dia.id}_${exId}_${setIdx}`);
 }
@@ -3219,6 +3225,10 @@ async function loadRegistrosCarga() {
     if (reg.notas && getVariantesEj(DATA.dia.bloques.flatMap(b=>b.ejercicios).find(x=>x.id===reg.ejercicio_id))) {
       exSession.variante = reg.notas;
     }
+    // Y la variante CON LA QUE SE REGISTRÓ ESTA SERIE: la del ejercicio es una
+    // sola y cambia; re-mandar una serie vieja (p. ej. al poner el RIR después)
+    // no puede refilarla con la variante de ahora.
+    setObj.varianteRegistrada = reg.notas || null;
   }
   console.log(`[mypump] Restauradas ${result.data.length} series desde sesión ${_sesionId}`);
 }
@@ -4152,6 +4162,7 @@ async function confirmarSerie(exId, idx) {
   if (!(await _serieVerosimil(exId, idx, setObj, noKg, prog))) return;
 
   setObj.confirmed = true;
+  setObj.varianteRegistrada = (STATE.session[exId] && STATE.session[exId].variante) || null;
   // La serie entra al Outbox YA, sin esperar a que mypump_iniciar_sesion
   // conteste: con un fetch colgado (señal muerta) el await de antes dejaba la
   // serie fuera de la cola y cerrar la app la perdía. El Outbox resuelve la
