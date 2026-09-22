@@ -736,6 +736,7 @@ main{padding:var(--space-4)}
 #save-toast[data-state="saving"]{background:var(--color-bg-secondary);color:var(--color-text-secondary);border:1px solid var(--color-border)}
 #save-toast[data-state="saved"]{background:color-mix(in oklab,var(--color-success,#10b981) 14%,var(--color-bg-secondary));color:var(--color-success,#10b981);border:1px solid color-mix(in oklab,var(--color-success,#10b981) 40%,var(--color-border))}
 #save-toast[data-state="offline"]{background:color-mix(in oklab,var(--color-warning) 14%,var(--color-bg-secondary));color:var(--color-warning);border:1px solid color-mix(in oklab,var(--color-warning) 40%,var(--color-border))}
+#save-toast[data-state="perdido"]{background:#e5484d;color:#fff;max-width:min(92vw,420px);white-space:normal;line-height:1.35;text-align:center}
 
 /* OFFLINE BANNER — barra superior cuando no hay conexión (R3) */
 #offline-banner{position:fixed;top:0;left:0;right:0;z-index:70;padding:8px 14px;padding-top:calc(8px + env(safe-area-inset-top,0));background:var(--color-warning);color:#1a1a1a;font-size:12px;font-weight:600;font-family:var(--font-num);text-align:center;line-height:1.35;transform:translateY(-100%);transition:transform .25s}
@@ -2262,8 +2263,14 @@ function chatMerge(filas) {
     // representando. Se matchea por texto+autor porque el id lo pone el
     // server: el cliente no lo puede saber de antemano.
     if (f.autor === 'cliente') {
-      const i = c.msgs.findIndex(m => m._tmp && m.autor === 'cliente' && m.contenido === f.contenido);
-      if (i !== -1) c.msgs.splice(i, 1);
+      // TODAS las que tengan ese texto, no solo la primera: desde la mig 075
+      // el servidor deduplica el mismo mensaje dentro de 2 minutos, así que
+      // dos burbujas optimistas pueden corresponder a una sola fila — y la
+      // sobrante quedaba en "enviando…" para siempre.
+      for (let i = c.msgs.length - 1; i >= 0; i--) {
+        const m = c.msgs[i];
+        if (m && m._tmp && m.autor === 'cliente' && m.contenido === f.contenido) c.msgs.splice(i, 1);
+      }
     }
     vistos.add(f.id);
     c.msgs.push(f);
@@ -2850,8 +2857,9 @@ const Outbox = (() => {
     for (const op of tanda) {
       const exec = EXEC[op.kind];
       if (!exec) { resueltas.add(op._id); continue; }   // op desconocida → descartar
-      let res, excepcion = false;
-      try { res = await exec(op.payload); } catch { res = { success: false }; excepcion = true; }
+      let res, excMsg = null;
+      try { res = await exec(op.payload); }
+      catch (e) { res = { success: false }; excMsg = String((e && e.message) || e); }
       if (seGuardo(res)) { resueltas.add(op._id); continue; }
       // Un fallo de RED no gasta intentos (misma regla que la cola de fotos).
       // navigator.onLine dice "conectado" con wifi sin internet o señal
@@ -2862,9 +2870,16 @@ const Outbox = (() => {
       // La clasificación la hace supabase-client.js (clasificarError): red
       // (status 0: supabase-js NO lanza, devuelve {error, status:0}) o
       // transitorio del servidor (5xx/429). Ninguno de los dos gasta intentos.
+      //
+      // Una EXCEPCIÓN de JS no es un corte de red: es un bug nuestro. Si se
+      // tratara igual, la op no gastaría intentos (no se abandona nunca) y el
+      // break dejaría a todas las de atrás sin intentarse — la cola congelada
+      // por una sola op rota. Solo cuenta como red si el mensaje es de fetch.
       const ultimo = (window.mypumpDB && window.mypumpDB._lastError) || null;
-      const sinRed = excepcion || (res && res.transitorio) || (ultimo && (ultimo.code === 'NETWORK' || ultimo.transitorio));
+      const excDeRed = excMsg !== null && /Failed to fetch|Load failed|fetch failed|NetworkError|network request failed/i.test(excMsg);
+      const sinRed = excDeRed || (res && res.transitorio) || (ultimo && (ultimo.code === 'NETWORK' || ultimo.transitorio));
       if (sinRed) { anyFail = true; _rachaSinRed++; break; }   // sin red no tiene sentido seguir con las demás
+      if (excMsg !== null) console.error('[outbox] excepción en', op.kind, excMsg);
       op.tries++;
       if (op.tries >= MAX_TRIES) { resueltas.add(op._id); abandonadas.push(op); continue; }
       anyFail = true;
@@ -2890,7 +2905,7 @@ const Outbox = (() => {
     }
     if (anyFail) {
       hadProblem = true;
-      showSaveState('offline');
+      if (!abandonadas.length) showSaveState('offline');
       // El backoff crece con los intentos reales Y con la racha sin red (que
       // no gasta intentos): sin esto, sin internet se pegaba un fetch cada 2 s.
       const backoff = Math.min(30000, 2000 * Math.max(1, queue[0]?.tries || 1, _rachaSinRed));
@@ -2910,7 +2925,11 @@ const Outbox = (() => {
 
   return { load, enqueue, flush, flushSoon, pending: () => queue.length,
     // F8 — dedupeKeys pendientes (para que el hydrate no pise swaps aún no sincronizados)
-    pendingKeys: () => new Set(queue.map(op => op.dedupeKey).filter(Boolean)) };
+    pendingKeys: () => new Set(queue.map(op => op.dedupeKey).filter(Boolean)),
+    /* Lo pendiente CON su payload: en un arranque en frío la cola sobrevive
+     * (localStorage) pero el estado en memoria no, así que saber "hay algo
+     * pendiente para esta comida" no alcanza — hay que saber QUÉ. */
+    pendingByKey: () => { const m = new Map(); for (const op of queue) if (op.dedupeKey) m.set(op.dedupeKey, op); return m; } };
 })();
 
 /* ---- SUPABASE WRITES ---- */
@@ -3050,6 +3069,11 @@ async function doAvanzarSemana() {
   // "+1 relativo": con un reintento, un segundo dispositivo o una respuesta
   // perdida, el relativo saltaba una semana. La RPC es idempotente por destino.
   const actual = (DATA && DATA.rutina && DATA.rutina.semana_actual) || 1;
+  // El destino explícito hace la llamada idempotente (un reintento no salta
+  // una semana), pero `actual` puede estar viejo (snapshot offline, o Mati
+  // movió la semana desde el Cerebro con la app abierta). La mig 077 hace que
+  // el servidor NUNCA retroceda con este parámetro: toma el mayor entre su
+  // semana y la pedida.
   const nueva = await window.mypumpDB.avanzarSemana(TOKEN, actual + 1);
   if (nueva != null) {
     // Limpiar sesiones cacheadas de la semana anterior
@@ -3423,7 +3447,16 @@ function showError(type, detail) {
     // botón el cliente quedaba pegado en esta pantalla hasta matar la app.
     const rt = $('#errorRetryBtn');
     if (rt) { rt.hidden = false; rt.onclick = () => window.location.reload(); }
-    window.addEventListener('online', () => window.location.reload(), { once: true });
+    // Una sola recarga automática por sesión: con la red yendo y viniendo y el
+    // servicio caído, cada online disparaba otra recarga y la app parpadeaba.
+    let yaRecargo = false;
+    try { yaRecargo = sessionStorage.getItem('mypump_reload_online') === '1'; } catch (e) {}
+    if (!yaRecargo) {
+      window.addEventListener('online', () => {
+        try { sessionStorage.setItem('mypump_reload_online', '1'); } catch (e) {}
+        window.location.reload();
+      }, { once: true });
+    }
   } else {
     $('#errTitle').textContent = 'Enlace inválido';
     $('#errSub').textContent = 'Este enlace no existe o fue revocado. Escribile a Mati por WhatsApp para que te mande uno nuevo.';
@@ -3488,8 +3521,11 @@ function renderDayPicker() {
 // idempotente) con la duración del día anterior.
 async function cambiarDia(dia) {
   stopRest();
+  // Podar ANTES de mover DATA.dia: _diaFinalizado todavía es el del día que
+  // se deja, así que después de cambiar se estaría podando por el estado
+  // equivocado — se llevaba puestos los swaps del día al que se entra.
+  pruneExerciseSwaps();
   DATA.dia = dia;
-  pruneExerciseSwaps();   // los "solo hoy" del día que se deja, si estaba cerrado, expiran acá
   DATA.historico_por_ejercicio = {};
   STATE.exerciseStates = {};
   STATE.exerciseMeta = {};
@@ -3998,7 +4034,10 @@ function _repsSug(reps) {
 // máquina) y umbrales relativos (2,5× tu récord de kg, 3× las reps de
 // referencia) que se preguntan en vez de bloquear: el que de verdad hizo
 // 40 reps confirma y sigue.
-const LIMITES_SERIE = { repsMax: 300, kgMax: 600, saltoKg: 2.5, saltoReps: 3 };
+// kgMax: lo IMPOSIBLE (2.000 kg no existe en ningún gimnasio). kgRaro: a
+// partir de acá se pregunta pero se puede registrar — una prensa cargada o un
+// trineo pasan los 600 kg y el cliente tiene que poder cargarlos.
+const LIMITES_SERIE = { repsMax: 300, kgMax: 2000, kgRaro: 600, saltoKg: 2.5, saltoReps: 3 };
 
 // Lo que se tipea en una serie, normalizado: kg admite coma o punto decimal
 // (una sola), reps solo dígitos. Es lo que se guarda en STATE y lo que se manda.
@@ -4040,6 +4079,7 @@ async function _serieVerosimil(exId, idx, setObj, noKg, prog) {
   if (problema) { _marcarSerieDudosa(exId, idx, problema); return false; }
 
   const dudas = [];
+  if (!noKg && kg > LIMITES_SERIE.kgRaro) dudas.push(`${kg} kg`);
   const record = _recordKg(exId);
   if (!noKg && record >= 10 && kg > record * LIMITES_SERIE.saltoKg) dudas.push(`${kg} kg (tu récord era ${record} kg)`);
   const repsHist = parseInt(suggestedReps(exId, idx), 10);
@@ -5001,11 +5041,16 @@ async function loadComidasMarcadas() {
     // el Outbox) gana sobre lo que dice el servidor: si no, la comida "se
     // desmarcaba sola" al terminar la carga.
     if (OUTBOX_ENABLED) {
-      for (const k of Outbox.pendingKeys()) {
+      // Lo que el cliente decidió y todavía no salió gana sobre el servidor.
+      // Se lee del PAYLOAD de la op, no de STATE: en un arranque en frío la
+      // cola sobrevive y STATE no, y comparar contra un STATE vacío borraba
+      // la marca buena que acababa de traer el servidor.
+      for (const [k, op] of Outbox.pendingByKey()) {
         if (!k.startsWith(`comida|${fecha}|`)) continue;
         const id = k.slice(`comida|${fecha}|`.length);
-        if (STATE.comidasMarcadas[id]) map[id] = STATE.comidasMarcadas[id];
-        else delete map[id];
+        const p = op.payload || {};
+        if (p.estado === null || p.estado === undefined) delete map[id];
+        else map[id] = { opcion: p.opcion, estado: p.estado, foodsExcluidos: p.excl || [] };
       }
     }
     STATE.comidasMarcadas = map;
@@ -5015,6 +5060,7 @@ async function loadComidasMarcadas() {
   } catch(e) {
     console.error('[Diet] error cargando comidas marcadas:', e);
     STATE.comidasMarcadas = {};
+    STATE.comidasFecha = hoyLocal();   // si no, el chequeo de "cambió el día" no se dispara nunca
     STATE.comidasLoaded = true;
   }
 }
@@ -6170,6 +6216,7 @@ async function loadMyday() {
     console.error('[Mi Día] error cargando hábitos:', e);
     MYDAY  = null;
     STREAK = { streak: 0, ultimo_dia_valido: null };
+    STATE.mydayFecha = hoyLocal();
     STATE.mydayLoaded = true;
     if (STATE.scene === 'revision') renderMyday();
   }
@@ -6191,7 +6238,14 @@ async function setHabito(campo, valor) {
   if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
     // Optimista + cola (ver EXEC.habito). El servidor manda la fila real al
     // drenar y re-renderiza; hasta entonces se ve lo que el cliente tocó.
-    MYDAY = { ...(MYDAY || {}), [campo]: valor };
+    // El valor llega como STRING desde el dataset del botón; renderMyday
+    // compara con === true/false. Sin normalizar, los tres hábitos de sí/no
+    // no se pintaban hasta que contestaba el servidor.
+    const vOptimista = campo === 'vasos_agua' ? Number(valor)
+                     : campo === 'entrenamiento' ? valor
+                     : (valor === null || valor === 'null') ? null
+                     : (valor === true || valor === 'true');
+    MYDAY = { ...(MYDAY || {}), [campo]: vOptimista };
     renderMyday();
     Outbox.enqueue('habito', { fecha, campo, valor }, `habito|${fecha}|${campo}`);
     return;
@@ -8559,23 +8613,25 @@ async function init() {
     // (_isDemo:true), que ademas apaga todas las escrituras a Supabase.
     info = { nombre: 'Demo Pump Team', perfil: 'natural' };
   } else if ((info = await window.mypumpDB.getClienteInfo(TOKEN))) {
-    [rutina, dieta] = await Promise.all([
-      window.mypumpDB.getRutinaActiva(TOKEN),
-      window.mypumpDB.getDietaActiva(TOKEN),
-    ]);
+    // De a una y no en paralelo: `_lastError` es global, así que con las dos
+    // RPC en vuelo el error de la dieta se leía como "la rutina no llegó por
+    // red" y un cliente sin rutina publicada terminaba en "servicio caído".
+    rutina = await window.mypumpDB.getRutinaActiva(TOKEN);
+    const errRutina = window.mypumpDB._lastError;
+    dieta = await window.mypumpDB.getDietaActiva(TOKEN);
     // Si la rutina NO llegó por un fallo de red/servicio (getClienteInfo
     // entró, el segundo request se cayó), antes se seguía como si el cliente
     // no tuviera rutina: entraba al modo DEMO con la rutina de ejemplo,
     // todas las escrituras apagadas y el chat muerto, y le decía "avisale a
     // Mati que republique". Con snapshot, se usa el snapshot; sin snapshot,
     // se avisa que no hay señal y se puede reintentar.
-    if (!rutina && window.mypumpDB._lastError) {
+    if (!rutina && errRutina) {
       const snap = loadOfflineSnapshot();
       if (snap && snap.info && snap.rutina) {
         rutina = snap.rutina; dieta = dieta || snap.dieta; _fromCache = true;
         console.warn('[init] rutina sin red → usando snapshot cacheado');
       } else {
-        console.error('[init] rutina sin red y sin snapshot:', window.mypumpDB._lastError);
+        console.error('[init] rutina sin red y sin snapshot:', errRutina);
         showError('service-down', TOKEN.slice(0,8)+'…');
         return;
       }

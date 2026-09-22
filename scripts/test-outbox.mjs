@@ -61,7 +61,7 @@ function montar(responder) {
       removeItem: k => { delete store[k]; },
     },
     showSaveState() {}, hideSaveToast() {},
-    console: { warn() {}, log() {} },
+    console: { warn() {}, log() {}, error() {} },
     setTimeout, clearTimeout, Date,
     window: {
       mypumpDB: {
@@ -231,6 +231,40 @@ await t('una excepción del fetch tampoco gasta intentos', async () => {
   Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
   for (let i = 0; i < 12; i++) await Outbox.flush();
   if (Outbox.pending() !== 1) throw new Error('una excepción de red abandonó la serie');
+});
+
+console.log('\nUna excepción de JS NO es un corte de red');
+
+await t('un EXEC que tira gasta intentos y termina abandonado', async () => {
+  // 20-sep: tratar el throw como "sin red" hacía que la op no gastara nunca
+  // intentos (no se abandona jamás) y el break dejaba a las de atrás sin
+  // intentarse: la cola entera congelada por una sola op rota.
+  const { Outbox, ctx } = montar(async () => okRes);
+  ctx.window.mypumpDB.registrarCarga = async () => { throw new TypeError("Cannot read properties of undefined (reading 'x')"); };
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  for (let i = 0; i < 12 && Outbox.pending(); i++) await Outbox.flush();
+  if (Outbox.pending() !== 0) throw new Error('una excepción de JS se reintenta para siempre');
+});
+
+await t('…y no congela a las que están detrás', async () => {
+  const { Outbox, ctx, enviados } = montar(async () => okRes);
+  const orig = ctx.window.mypumpDB.registrarCarga;
+  ctx.window.mypumpDB.registrarCarga = async (t2, s2, datos) => {
+    if (datos.serie === 1) throw new TypeError('bug nuestro');
+    return orig(t2, s2, datos);
+  };
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 2 } }, 'k2');
+  for (let i = 0; i < 12 && Outbox.pending(); i++) await Outbox.flush();
+  if (!enviados.includes(2)) throw new Error('la serie 2 nunca se intentó: la op rota congeló la cola');
+});
+
+await t('una excepción CON mensaje de red sí se trata como red', async () => {
+  const { Outbox, ctx } = montar(async () => okRes);
+  ctx.window.mypumpDB.registrarCarga = async () => { throw new TypeError('Failed to fetch'); };
+  Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
+  for (let i = 0; i < 12; i++) await Outbox.flush();
+  if (Outbox.pending() !== 1) throw new Error('un corte de red abandonó la serie');
 });
 
 console.log('\nMarcar comidas también pasa por la cola');

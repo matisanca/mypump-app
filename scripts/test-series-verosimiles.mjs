@@ -59,7 +59,6 @@ const casos = [
   ['reps 1214', { reps: '1214', kg: '40' }, false, /repeticiones/],
   ['reps 12120', { reps: '12120', kg: '40' }, false, /repeticiones/],
   ['reps 0', { reps: '0', kg: '40' }, false, /repeticiones/],
-  ['kg 800', { reps: '10', kg: '800' }, false, /peso/],
   ['kg 3530', { reps: '12', kg: '3530' }, false, /peso/],
   ['kg 62,5 (coma vieja en STATE)', { reps: '10', kg: '62,5' }, true, null],
   ['plancha 120 s (sin kg)', { reps: '120', kg: '' }, true, null, true],
@@ -71,6 +70,28 @@ for (const [nombre, setObj, esperado, re, noKg] of casos) {
     if (r !== esperado) throw new Error(`devolvió ${r}`);
     if (re && !re.test(a.llamadas.dudosa[0] || '')) throw new Error('mensaje: ' + a.llamadas.dudosa[0]);
     if (!esperado && a.llamadas.modal.length) throw new Error('lo imposible no se pregunta, se rechaza');
+  });
+}
+
+console.log('\n2b. lo muy pesado se pregunta, no se bloquea (prensa, trineo)');
+{
+  // 800 kg es casi seguro un error de tipeo, pero una prensa cargada o un
+  // trineo pasan los 600: bloquearlos dejaba al cliente sin poder registrar.
+  let a = armar({ confirma: false });
+  let r = await a._serieVerosimil('ex1', 0, { reps: '10', kg: '800' }, false, { reps: '10' });
+  t('800 kg pregunta y, si dice "Corregir", no entra', () => {
+    if (!a.llamadas.modal.length) throw new Error('no preguntó');
+    if (!/800 kg/.test(a.llamadas.modal[0].body)) throw new Error(a.llamadas.modal[0].body);
+    if (r !== false) throw new Error('entró igual');
+  });
+  a = armar({ confirma: true });
+  r = await a._serieVerosimil('ex1', 0, { reps: '10', kg: '800' }, false, { reps: '10' });
+  t('…y si confirma, se registra', () => { if (r !== true) throw new Error('no dejó registrar una prensa pesada'); });
+  a = armar({ confirma: true });
+  r = await a._serieVerosimil('ex1', 0, { reps: '10', kg: '2500' }, false, { reps: '10' });
+  t('2.500 kg no existe: se rechaza sin preguntar', () => {
+    if (r !== false) throw new Error('entró');
+    if (a.llamadas.modal.length) throw new Error('lo imposible se rechaza, no se pregunta');
   });
 }
 
