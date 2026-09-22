@@ -60,13 +60,16 @@ globalThis.addEventListener = () => {};
 
 const MUESTRAS = {};
 const PEDIDOS = [];            // lo que se pidió autorizar, en orden
+let HISTORIAL_OK = true;       // ¿Health Connect dio acceso a >30 días?
 globalThis.Capacitor = {
   isNativePlatform: () => true,
   getPlatform: () => 'android',           // ← lo único que cambia
   Plugins: {
     Health: {
       isAvailable: async () => ({ available: true }),
-      requestAuthorization: async ({ read }) => { PEDIDOS.push(...read); return {}; },
+      // historyAccessAuthorized lo decide el test (Health Connect lo devuelve
+      // acá): sin ese permiso solo da los últimos 30 días.
+      requestAuthorization: async ({ read }) => { PEDIDOS.push(...read); return { historyAccessAuthorized: HISTORIAL_OK, historyAccessAvailable: true }; },
       checkAuthorization: async ({ read }) => ({ readAuthorized: read, readDenied: [] }),
       readSamples: async ({ dataType }) => ({ samples: MUESTRAS[dataType] || [] }),
       queryAggregated: async () => ({ samples: [] }),
@@ -248,6 +251,67 @@ await t('minIOS no descarta nada en Android (el UA no tiene versión de iOS)', a
 await t('la plataforma se resuelve como android', async () => {
   const d = await H.diagnostico();
   si(d && typeof d === 'object', 'diagnostico() no devolvió nada');
+});
+
+console.log('\nHistorial de Health Connect (permiso de >30 días)');
+const dormir = (ms) => new Promise(r => setTimeout(r, ms));
+
+await t('sin permiso de historial: 30 días y NO se marca como completo', async () => {
+  for (const k of Object.keys(store)) delete store[k];
+  store['mypump_token'] = 'tok';
+  HISTORIAL_OK = false;
+  const ventanas = [];
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (arg) => { ventanas.push(new Date(arg.startDate)); return orig(arg); };
+  try { await H.connect({ esperarBackfill: true }); } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  const hace = (d) => Math.round((Date.now() - d.getTime()) / 86400000);
+  const masVieja = Math.max(...ventanas.map(hace));
+  if (masVieja > 31) throw new Error(`pidió ${masVieja} días sin permiso de historial (Health Connect solo da 30)`);
+  eq(store['mypump_health_backfill_v1'], undefined, 'marcó el backfill como completo con solo 30 días');
+  eq(store['mypump_health_historial_ok'], '0', 'no persistió el veredicto del historial');
+});
+
+await t('y en el arranque SIGUIENTE (sin pasar por la hoja) tampoco se marca', async () => {
+  // El veredicto vive en localStorage: si se leyera solo de memoria, el
+  // reintento de fondo pediría 60 días, recibiría vacío lo anterior a 30 y lo
+  // marcaría como hecho — el bug que este arreglo evita.
+  HISTORIAL_OK = false;
+  store['mypump_health_connected'] = '1';
+  delete store['mypump_health_backfill_v1'];
+  delete store['mypump_health_backfill_off'];
+  delete store['mypump_health_backfill_intento'];
+  const ventanas = [];
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (arg) => { ventanas.push(new Date(arg.startDate)); return orig(arg); };
+  try { await H.backfill(); } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  const hace = (d) => Math.round((Date.now() - d.getTime()) / 86400000);
+  if (Math.max(...ventanas.map(hace)) > 31) throw new Error('pidió 60 días con el historial denegado');
+  eq(store['mypump_health_backfill_v1'], undefined, 'lo marcó como completo teniendo solo 30 días');
+});
+
+await t('el veredicto del historial se LEE de localStorage, no solo de memoria', () => {
+  // En un proceso de node la variable en memoria sobrevive entre tests, así
+  // que el comportamiento de "arranque nuevo" no se puede simular: se fija en
+  // el código. `_historial` se pierde al cerrar la app; el flag persistido no.
+  const src = fs.readFileSync(path.join(raiz, 'public/js/healthkit-bridge.js'), 'utf8');
+  const m = src.match(/function _sinHistorialAndroid\(\) \{[\s\S]*?\n  \}/);
+  if (!m) throw new Error('no existe _sinHistorialAndroid()');
+  if (!m[0].includes('localStorage.getItem(K_HISTORIAL)'))
+    throw new Error('_sinHistorialAndroid no lee el veredicto persistido: en el arranque siguiente pediría 60 días y marcaría el backfill como hecho con 30');
+});
+
+await t('con permiso de historial sí van los 60 días y se marca', async () => {
+  for (const k of Object.keys(store)) delete store[k];
+  store['mypump_token'] = 'tok';
+  HISTORIAL_OK = true;
+  const ventanas = [];
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (arg) => { ventanas.push(new Date(arg.startDate)); return orig(arg); };
+  try { await H.connect({ esperarBackfill: true }); } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  const hace = (d) => Math.round((Date.now() - d.getTime()) / 86400000);
+  if (Math.max(...ventanas.map(hace)) < 55) throw new Error('no llegó a los 60 días con el permiso dado');
+  eq(store['mypump_health_historial_ok'], '1', 'no persistió el veredicto positivo');
+  eq(store['mypump_health_backfill_v1'], '1', 'no lo marcó como completo');
 });
 
 console.log(`\n${ok} pasaron, ${fail} fallaron\n`);

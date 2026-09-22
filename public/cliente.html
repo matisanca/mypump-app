@@ -1990,16 +1990,24 @@ function _huellaFood(f) {
   if (!f) return '';
   return `${String(f.name || '').trim().toLowerCase()}|${Number(f.qty) || 0}|${String(f.unit || '').trim().toLowerCase()}`;
 }
-function _swapAplicable(swap, originalFood) {
+function _swapAplicable(swap, originalFood, comidaId, optIdx, foodIdx) {
   if (!swap || !swap.current) return false;
   const orig = swap.current._orig;
   if (!orig) return true;                       // legado: sin ancla, se aplica como siempre
-  return _huellaFood(orig) === _huellaFood(originalFood);
+  if (_huellaFood(orig) === _huellaFood(originalFood)) return true;
+  // TIPOS DE DÍA: la key del swap no tiene dimensión de tipo de día (ni acá ni
+  // en mypump_food_swaps), así que un swap SIEMPRE valió para todos. Y en
+  // Formato B la misma posición tiene el mismo alimento con OTRA cantidad
+  // ("Avena 80 g" entreno / "Avena 50 g" descanso): comparando solo contra el
+  // plan que se está renderizando, el swap hecho un día desaparecía al otro.
+  // Vale si el ancla coincide con esa posición en CUALQUIER tipo de día.
+  if (comidaId == null) return false;
+  return _foodsEnPosicion(comidaId, optIdx, foodIdx).some(f => _huellaFood(orig) === _huellaFood(f));
 }
 function getFoodSwap(originalFood, comidaId, optIdx, foodIdx) {
   const key = `swap_${DIETA_ID||'demo'}_${comidaId}_${optIdx}_${foodIdx}`;
   const swap = STATE.foodSwaps[key];
-  return _swapAplicable(swap, originalFood) ? swap : null;
+  return _swapAplicable(swap, originalFood, comidaId, optIdx, foodIdx) ? swap : null;
 }
 function getEffectiveFood(f, comidaId, optIdx, foodIdx) {
   const swap = getFoodSwap(f, comidaId, optIdx, foodIdx);
@@ -5775,38 +5783,46 @@ function bindDietEvents() {
   }));
 }
 
-// Alimento que hoy ocupa (comidaId, optIdx, foodIdx) en TODOS los planes de
-// la dieta (tipos de día incluidos). null si esa posición ya no existe.
-function _foodEnPosicion(comidaId, optIdx, foodIdx) {
-  // Primero el plan que el cliente está viendo (con tipos de día, la misma
-  // posición puede tener otro alimento en otro tipo): un swap legado se ancla
-  // a lo que el cliente tiene delante, que es lo que sustituyó.
+/* Alimentos que HOY ocupan (comidaId, optIdx, foodIdx). Con tipos de día hay
+ * uno por tipo: el mismo alimento con distinta cantidad, o directamente otro.
+ * El plan que el cliente está viendo va primero (es contra el que se ancla un
+ * swap legado: es lo que tiene delante). */
+function _foodsEnPosicion(comidaId, optIdx, foodIdx) {
   const activo = (typeof getActivePlan === 'function' && DIET) ? getActivePlan() : null;
   const resto = (DIET && DIET.tipos_dia && DIET.tipos_dia.length) ? DIET.tipos_dia : [DIET];
   const planes = activo ? [activo, ...resto.filter(p => p !== activo)] : resto;
+  const out = [];
   for (const plan of planes) {
     const c = plan && (plan.comidas || []).find(x => x.id === comidaId);
     const f = c && c.options && c.options[optIdx] && c.options[optIdx].foods && c.options[optIdx].foods[foodIdx];
-    if (f) return f;
+    if (f) out.push(f);
   }
-  return null;
+  return out;
+}
+function _foodEnPosicion(comidaId, optIdx, foodIdx) {
+  return _foodsEnPosicion(comidaId, optIdx, foodIdx)[0] || null;
 }
 // Un swap remoto: si es legado (sin _orig) se ancla al alimento actual y se
 // re-sube; si tiene ancla y ya no coincide con lo que hay en esa posición
 // (Mati republicó con otro orden), se descarta acá y en el backend.
-function _anclarOSacarSwap(mapa, key, fila) {
+function _anclarOSacarSwap(mapa, key, fila, pendientes) {
   const cur = mapa[key] && mapa[key].current;
   if (!cur) return;
-  const hoy = _foodEnPosicion(fila.comida_id, fila.opt_idx, fila.food_idx);
-  if (!hoy) return;                                   // posición inexistente: no se aplica de todos modos
+  // Lo que el cliente hizo y todavía no subió GANA sobre lo que dice el
+  // servidor: el dedupeKey es el mismo, así que encolar acá borraría de la
+  // cola su sustitución (o su reversión) sin que él se entere.
+  if (pendientes && pendientes.has(key)) return;
+  const candidatos = _foodsEnPosicion(fila.comida_id, fila.opt_idx, fila.food_idx);
+  if (!candidatos.length) return;                     // posición inexistente: no se aplica de todos modos
   if (!cur._orig) {
-    const anclado = _conAncla(cur, hoy);
+    const anclado = _conAncla(cur, candidatos[0]);
     mapa[key].current = anclado;
     if (OUTBOX_ENABLED && TOKEN && !(DATA && DATA._isDemo))
       Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId: fila.comida_id, optIdx: +fila.opt_idx, foodIdx: +fila.food_idx, food: anclado }, key);
     return;
   }
-  if (_huellaFood(cur._orig) !== _huellaFood(hoy)) {
+  // Solo se descarta si el ancla no coincide con NINGÚN tipo de día.
+  if (!candidatos.some(f => _huellaFood(cur._orig) === _huellaFood(f))) {
     delete mapa[key];
     if (OUTBOX_ENABLED && TOKEN && !(DATA && DATA._isDemo))
       Outbox.enqueue('swap_del', { dietaId: DIETA_ID, comidaId: fila.comida_id, optIdx: +fila.opt_idx, foodIdx: +fila.food_idx }, key);
@@ -5875,8 +5891,15 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
         const [, comidaId, optIdx, foodIdx] = m;
         promises.push(window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, swap.current));
       }
-      await Promise.allSettled(promises);
-      try { localStorage.setItem(K_MIGRADO, '1'); } catch (e) {}
+      // Solo se marca migrado si TODAS las subidas devolvieron filas. rpcMutation
+      // nunca tira (allSettled siempre "fulfilled") y con el token vencido la RPC
+      // contesta 200 con [] — marcar igual y después vaciar lo local por "el
+      // backend está vacío" le borraba los swaps al cliente.
+      const res = await Promise.allSettled(promises);
+      const todasOk = res.length > 0 && res.every(r => r.status === 'fulfilled'
+        && r.value && r.value.success && Array.isArray(r.value.data) && r.value.data.length);
+      if (todasOk) { try { localStorage.setItem(K_MIGRADO, '1'); } catch (e) {} }
+      else console.warn('[swaps] migración incompleta: no se marca, se reintenta en el próximo arranque');
     } else if (remoteSwaps.length > 0) {
       // F8 — MERGE (no reemplazo): el backend gana por key, pero un swap hecho
       // recién/offline que todavía está en el Outbox NO se pisa (antes el
@@ -5885,7 +5908,7 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
       remoteSwaps.forEach(s => {
         const key = `swap_${DIETA_ID}_${s.comida_id}_${s.opt_idx}_${s.food_idx}`;
         newSwaps[key] = { original: null, current: s.food_data };
-        _anclarOSacarSwap(newSwaps, key, s);
+        _anclarOSacarSwap(newSwaps, key, s, pendientes);
       });
       for (const key in STATE.foodSwaps) {
         if (pendientes.has(key)) newSwaps[key] = STATE.foodSwaps[key];   // local más nuevo, aún sin subir
@@ -5894,8 +5917,11 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
       persistSwaps(); // mantener cache local sincronizado
     }
     // Sincronizado con el backend al menos una vez: de acá en más, un backend
-    // vacío significa "sin swaps", no "hay que migrar".
-    try { localStorage.setItem(K_MIGRADO, '1'); } catch (e) {}
+    // vacío significa "sin swaps", no "hay que migrar". Ojo: NO se marca en la
+    // rama de migración (esa lo hace solo si subió todo).
+    if (remoteSwaps.length > 0 || !Object.keys(STATE.foodSwaps).length) {
+      try { localStorage.setItem(K_MIGRADO, '1'); } catch (e) {}
+    }
 
     // Si estamos en la escena de dieta, re-renderizar para reflejar swaps/custom foods
     if (STATE.scene === 'diet') renderDiet();

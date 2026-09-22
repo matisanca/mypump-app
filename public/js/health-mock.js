@@ -62,6 +62,11 @@
     for (const k of ['mypump_health_connected', 'mypump_health_denegado',
                      'mypump_health_backfill_v1', 'mypump_health_last_sync',
                      'mypump_health_racha_vacia', 'mypump_health_diag',
+                     // Cursor y veredictos del backfill (20-sep): sin estos, un
+                     // reset dejaba el cursor viejo y el backfill "limpio"
+                     // arrancaba en el día 5 y se daba por completo.
+                     'mypump_health_backfill_off', 'mypump_health_backfill_intento',
+                     'mypump_health_historial_ok',
                      'mypump_onboarding_v1']) {
       try { localStorage.removeItem(k); } catch (e) {}
     }

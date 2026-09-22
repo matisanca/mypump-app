@@ -268,6 +268,15 @@
    * pide, y siempre null en iOS (allá no existe: HealthKit da todo el historial
    * con el permiso normal). Lo lee historialAndroid() desde afuera. */
   let _historial = null;
+  const K_HISTORIAL = 'mypump_health_historial_ok';   // veredicto persistido (Android)
+  // true si sabemos que Health Connect NO dio el permiso de historial (en esta
+  // sesión o en una anterior). Con un null/ausente asumimos que sí: es el caso
+  // de iOS y el de un Android que todavía no pasó por la hoja.
+  function _sinHistorialAndroid() {
+    if (!esAndroid) return false;
+    if (_historial) return !_historial.autorizado;
+    try { return localStorage.getItem(K_HISTORIAL) === '0'; } catch (e) { return false; }
+  }
 
   async function requestPermission() {
     const h = HEALTH();
@@ -295,6 +304,11 @@
           autorizado: r.historyAccessAuthorized === true,
           disponible: r.historyAccessAvailable !== false,
         };
+        // PERSISTIDO: `_historial` vive en memoria y se pierde al cerrar la app.
+        // Sin esto, el backfill del arranque siguiente creía tener historial,
+        // pedía 60 días, Health Connect devolvía vacío lo anterior a 30 y lo
+        // marcaba como COMPLETO — justo lo contrario de lo que decía el código.
+        try { localStorage.setItem(K_HISTORIAL, _historial.autorizado ? '1' : '0'); } catch (e) {}
         if (!_historial.autorizado) {
           console.warn('[health] sin permiso de historial: Health Connect solo va a dar los últimos 30 días' +
                        (_historial.disponible ? ' (el cliente lo negó)' : ' (este Health Connect es viejo y no lo soporta)'));
@@ -892,7 +906,12 @@
     const hasta = new Date(), desde = haceNDias(7);
     const registros = await recolectar(desde, hasta);
     registrarCosecha(registros.length);
+    // El error se captura acá y no de la variable de módulo: el backfill de
+    // fondo también escribe _ultimoErrorIngesta y su fallo salía reportado
+    // como si fuera de este sync (el botón "Sincronizar" decía que falló).
+    const errAntes = _ultimoErrorIngesta;
     const n = registros.length ? await postear(registros) : 0;
+    const errPropio = (_ultimoErrorIngesta !== errAntes) ? _ultimoErrorIngesta : null;
     // Los entrenos van por su propia vía: si esa falla, las métricas diarias
     // ya quedaron guardadas igual.
     let nEnt = 0;
@@ -903,7 +922,7 @@
     // `ok:true` significa "corrí", no "se guardó". Si el servidor rechazó la
     // ingesta hay que decirlo acá: con solo `ingresados:0` es indistinguible de
     // "el cliente no tenía datos esos días", y la UI mostraba activo igual.
-    return { ok: true, ingresados: n, entrenos: nEnt, errorIngesta: _ultimoErrorIngesta };
+    return { ok: true, ingresados: n, entrenos: nEnt, errorIngesta: errPropio };
   }
 
   // ── Backfill de 60 días, una sola vez ─────────────────────────────────
@@ -946,7 +965,7 @@
     // flag: si el cliente después habilitaba el historial, nunca se volvía a
     // pedir. Ahora se piden 30, se dice 30, y NO se marca como hecho: el
     // próximo arranque con el permiso concedido completa el resto.
-    const sinHistorial = esAndroid && _historial && !_historial.autorizado;
+    const sinHistorial = _sinHistorialAndroid();
     const alcance = sinHistorial ? 30 : 60;
     const desdeOff = Math.min(_offPendiente(), alcance);
     _progresoBackfill = { hecho: alcance - desdeOff, total: alcance };
@@ -1131,6 +1150,8 @@
     /* El backfill sale de fondo. No se espera acá (ver el comentario de arriba).
      * `.catch` propio: si nadie mira la promesa devuelta, un error de ventana no
      * puede terminar en un unhandledrejection. */
+    // Reservar el slot antes de arrancar: entre `marcar conectado` y esta línea
+    // hay awaits, y un visibilitychange ahí adentro lanzaba un segundo backfill.
     const pBackfill = backfill(onProgreso)
       // El veredicto "no llegó NADA" solo tiene sentido después de haber mirado
       // los 60 días: por eso se re-evalúa acá y no en el return de abajo.
@@ -1233,15 +1254,30 @@
 
   // Fallback del background delivery: sincronizar al abrir y al volver a foco.
   // El plugin no soporta background real con la app cerrada (ver docs/IOS_SETUP.md).
-  // Retoma un backfill que quedó a medias (ver K_BACKFILL_OFF). Corre de fondo
-  // y una sola vez por vez.
+  /* Retoma un backfill que quedó a medias (ver K_BACKFILL_OFF).
+   *
+   * Con throttle: los dos casos que NO marcan FLAG_BACKFILL (Android sin
+   * permiso de historial, o las 12 ventanas fallando) se repetirían en CADA
+   * vuelta a foco — 6 a 12 ventanas × ~19 lecturas nativas cada vez, varias
+   * veces por entrenamiento. Una cada 6 h alcanza: lo que se espera es que el
+   * cliente habilite el historial o que vuelva la conexión. */
+  const K_BACKFILL_INTENTO = 'mypump_health_backfill_intento';
+  const BACKFILL_ESPERA_MS = 6 * 60 * 60 * 1000;
   function _retomarBackfillSiFalta() {
     if (!isConnected() || _backfillEnCurso) return;
     let hecho = false; try { hecho = localStorage.getItem(FLAG_BACKFILL) === '1'; } catch (e) {}
     if (hecho) return;
-    const p = backfill().catch((e) => console.warn('[health] backfill retomado:', e));
-    _backfillEnCurso = p;
-    p.finally(() => { if (_backfillEnCurso === p) _backfillEnCurso = null; });
+    let ultimo = 0; try { ultimo = parseInt(localStorage.getItem(K_BACKFILL_INTENTO) || '0', 10) || 0; } catch (e) {}
+    if (Date.now() - ultimo < BACKFILL_ESPERA_MS) return;
+    try { localStorage.setItem(K_BACKFILL_INTENTO, String(Date.now())); } catch (e) {}
+    // El slot se reserva ANTES de soltar el hilo: si no, connect() (que marca
+    // conectado y recién asigna _backfillEnCurso después de su sync) y esto
+    // podían correr dos backfills en paralelo sobre el mismo cursor.
+    let liberar;
+    _backfillEnCurso = new Promise(res => { liberar = res; });
+    backfill()
+      .catch((e) => console.warn('[health] backfill retomado:', e))
+      .finally(() => { liberar(); _backfillEnCurso = null; });
   }
   if (isNative) {
     document.addEventListener('visibilitychange', () => {

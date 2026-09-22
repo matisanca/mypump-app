@@ -36,7 +36,14 @@ Object.defineProperty(globalThis, 'navigator', {
   value: { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X)' },
   writable: true, configurable: true,
 });
-globalThis.document = { addEventListener() {}, hidden: false };
+/* El bridge se cablea a visibilitychange/load: se guardan los handlers para
+   poder dispararlos en los tests (el reintento del backfill cuelga de ahí). */
+const _handlers = { doc: {}, win: {} };
+globalThis.document = {
+  addEventListener(ev, fn) { (_handlers.doc[ev] = _handlers.doc[ev] || []).push(fn); },
+  hidden: false,
+};
+const _disparar = (donde, ev) => (_handlers[donde][ev] || []).forEach(fn => { try { fn(); } catch (e) {} });
 globalThis.window = globalThis;
 globalThis.addEventListener = () => {};
 
@@ -577,6 +584,29 @@ await t('si TODAS las ventanas fallan, el backfill NO queda marcado como hecho',
      'marco "no llega nada" cuando en realidad no se pudo ni preguntar');
 });
 
+await t('un backfill cortado a la mitad se RETOMA desde donde quedó', async () => {
+  // 20-sep: el cursor (mypump_health_backfill_off) existía pero nadie lo leía
+  // en un arranque nuevo, porque el único que llamaba a backfill() era
+  // connect() — y connect() solo aparece cuando NO estás conectado.
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  delete store['mypump_health_backfill_intento'];
+  store['mypump_health_backfill_off'] = '20';     // quedó a mitad: faltan 20 días
+  const ventanas = [];
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (arg) => {
+    if (arg.dataType === 'steps') ventanas.push(new Date(arg.startDate));
+    return orig(arg);
+  };
+  try { await H.backfill(); } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  if (!ventanas.length) throw new Error('no corrió ninguna ventana');
+  const hace = (d) => Math.round((Date.now() - d.getTime()) / 86400000);
+  const masVieja = Math.max(...ventanas.map(hace));
+  if (masVieja > 21) throw new Error(`rehízo el backfill entero (arrancó hace ${masVieja} días en vez de 20)`);
+  eq(store['mypump_health_backfill_v1'], '1', 'terminó y no se marcó como hecho');
+  eq(store['mypump_health_backfill_off'], undefined, 'quedó el cursor viejo: el próximo backfill arrancaría trunco');
+});
+
 console.log('\nleerMuestras: el corte por truncamiento no puede duplicar');
 
 await t('la muestra que cruza el punto de corte se cuenta UNA vez', async () => {
@@ -657,6 +687,51 @@ await t('sin muestras de FC en la ventana, fc_media y fc_max quedan null', async
   eq(enviados[0].fc_media, null, 'invento una FC sin muestras');
   eq(enviados[0].fc_max, null);
 });
+
+console.log('\nEl reintento de fondo del backfill (visibilitychange)');
+// Van al FINAL a propósito: disparan trabajo asíncrono del bridge que seguiría
+// corriendo durante los tests siguientes y les ensuciaría las muestras.
+const dormir = (ms) => new Promise(r => setTimeout(r, ms));
+
+await t('el reintento de fondo no se repite en cada vuelta a foco', async () => {
+  // Sin throttle, los dos casos que no marcan el flag (Android sin historial,
+  // o todo fallando) disparaban 6-12 ventanas CADA vez que el cliente volvía
+  // a la app.
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  store['mypump_health_backfill_intento'] = String(Date.now());   // recién intentado
+  let corrio = 0;
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (arg) => { corrio++; return orig(arg); };
+  try {
+    _disparar('doc', 'visibilitychange');
+    await dormir(120);
+  } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  // El sync() de los 7 días sí corre (1 ventana × 3 agregados); un backfill
+  // completo son 12 ventanas más, o sea 36 lecturas extra.
+  if (corrio > 10) throw new Error(`corrió un backfill igual (${corrio} lecturas; el sync solo son 3)`);
+  eq(store['mypump_health_backfill_v1'], undefined, 'se marcó hecho sin haber corrido');
+});
+
+await t('…pero si pasaron más de 6 h, sí retoma', async () => {
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  store['mypump_health_backfill_intento'] = String(Date.now() - 7 * 60 * 60 * 1000);
+  let corrio = 0;
+  const orig = Capacitor.Plugins.Health.queryAggregated;
+  Capacitor.Plugins.Health.queryAggregated = async (arg) => { corrio++; return orig(arg); };
+  try {
+    _disparar('doc', 'visibilitychange');
+    // Esperar a que el backfill de fondo termine (lo expone el bridge).
+    for (let i = 0; i < 100 && !H.backfillEnCurso(); i++) await dormir(10);
+    const p = H.backfillEnCurso();
+    if (p) await p;
+    await dormir(50);
+  } finally { Capacitor.Plugins.Health.queryAggregated = orig; }
+  if (corrio < 20) throw new Error(`no retomó el backfill (${corrio} lecturas; el sync solo son 3)`);
+  eq(store['mypump_health_backfill_v1'], '1', 'retomó pero no lo marcó como hecho');
+});
+
 
 console.log(`\n${ok} pasaron, ${fail} fallaron\n`);
 process.exit(fail ? 1 : 0);
