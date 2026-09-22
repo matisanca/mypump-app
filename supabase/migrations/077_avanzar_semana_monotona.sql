@@ -15,6 +15,11 @@
 --
 -- Con esto, un destino explícito solo puede ADELANTAR. El NULL sigue haciendo
 -- +1 como siempre, y para mover hacia atrás está mypump_reset_semana.
+--
+-- OJO: el botón "⚙️ Forzar semana" del Cerebro usaba esta RPC para las dos
+-- direcciones. Se cambió a mypump_reset_semana en el mismo momento que esto
+-- (nutriplan/index.html, forzarSemanaMyPump): si se revierte una, revertir la
+-- otra, o el botón deja de mover clientes hacia atrás sin decirlo.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION mypump_avanzar_semana(

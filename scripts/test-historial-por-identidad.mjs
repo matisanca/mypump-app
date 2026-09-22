@@ -176,8 +176,13 @@ t('cerrar el día NO expira el swap del día abierto (reabrir para corregir)', (
   if (!cuerpo.includes('pruneExerciseSwaps({ conservarDiaActual: true })'))
     throw new Error('writeFinish poda el swap de hoy: al reabrir el día la card vuelve al original y la serie corregida se renombra');
   const j = HTML.indexOf('async function cambiarDia(dia)');
-  if (!HTML.slice(j, j + 600).includes('pruneExerciseSwaps()'))
+  const cd = HTML.slice(j, j + 900);
+  if (!cd.includes('pruneExerciseSwaps({ sinPrefetch: true })'))
     throw new Error('cambiarDia no poda: los "solo hoy" del día cerrado quedarían para siempre');
+  // Y poda ANTES de mover DATA.dia: _diaFinalizado todavía es el del día que
+  // se deja, así que podar después se llevaba los swaps del día al que se entra.
+  if (cd.indexOf('pruneExerciseSwaps(') > cd.indexOf('DATA.dia = dia;'))
+    throw new Error('cambiarDia poda DESPUÉS de cambiar de día');
 });
 
 t('la pantalla de Progreso agrupa por ejercicio, no por slot', () => {

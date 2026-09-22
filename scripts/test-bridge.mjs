@@ -635,6 +635,20 @@ await t('el cursor viejo (solo el número) se sigue entendiendo', async () => {
   if (Math.max(...ventanas.map(hace)) > 21) throw new Error('rehízo el backfill entero con un cursor del formato viejo');
 });
 
+await t('sin señal, el backfill NO se marca como hecho (HealthKit es local, la ingesta no)', async () => {
+  // 22-sep: las muestras salen del teléfono y entran igual sin red; lo que
+  // falla es la subida, y postear() no tira. Así, con 0 filas guardadas, el
+  // backfill quedaba marcado como completo y no se reintentaba nunca.
+  prepararSync();
+  delete store['mypump_health_backfill_v1'];
+  delete store['mypump_health_backfill_intento'];
+  MUESTRAS.weight = [{ startDate: iso(28, 8), endDate: iso(28, 8), value: 80, unit: 'kg' }];
+  const orig = window.mypumpDB.ingestSalud;
+  window.mypumpDB.ingestSalud = async () => ({ success: false, error: 'TypeError: Failed to fetch', code: 'NETWORK' });
+  try { await H.backfill(); } finally { window.mypumpDB.ingestSalud = orig; }
+  eq(store['mypump_health_backfill_v1'], undefined, 'se marcó completo con el 100% de la ingesta rechazada');
+});
+
 console.log('\nleerMuestras: el corte por truncamiento no puede duplicar');
 
 await t('la muestra que cruza el punto de corte se cuenta UNA vez', async () => {

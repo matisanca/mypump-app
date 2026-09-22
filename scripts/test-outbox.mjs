@@ -233,6 +233,17 @@ await t('una excepción del fetch tampoco gasta intentos', async () => {
   if (Outbox.pending() !== 1) throw new Error('una excepción de red abandonó la serie');
 });
 
+let ctxPausar = false;
+await t('load() dos veces no pisa lo encolado en el medio', async () => {
+  // El bootstrap la llama temprano (el hydrate de swaps consulta la cola) y
+  // otra vez más abajo: sin guarda, la segunda pasada borraba lo encolado.
+  const { Outbox } = montar(async () => okRes);
+  Outbox.enqueue('swap', { dietaId: 'd1', comidaId: 'c1', optIdx: 0, foodIdx: 0, food: { name: 'x' } }, 'swap_d1_c1_0_0');
+  const antes = Outbox.pending();
+  Outbox.load();
+  if (Outbox.pending() < antes) throw new Error('el segundo load() borró lo que estaba en la cola');
+});
+
 console.log('\nUna excepción de JS NO es un corte de red');
 
 await t('un EXEC que tira gasta intentos y termina abandonado', async () => {

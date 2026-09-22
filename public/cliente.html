@@ -2003,6 +2003,14 @@ function _swapAplicable(swap, originalFood, comidaId, optIdx, foodIdx) {
   // plan que se está renderizando, el swap hecho un día desaparecía al otro.
   // Vale si el ancla coincide con esa posición en CUALQUIER tipo de día.
   if (comidaId == null) return false;
+  // Lo que se está renderizando tiene que ser el MISMO alimento que el ancla:
+  // si el tipo A tiene Avena y el B Tostadas en esa posición, un swap hecho
+  // sobre las tostadas no puede aplicarse sobre la avena.
+  const nom = (f) => String((f && f.name) || '').trim().toLowerCase();
+  if (nom(orig) !== nom(originalFood)) return false;
+  // Y el ancla tiene que existir tal cual (nombre + cantidad) en ALGÚN tipo de
+  // día: así "Avena 80 g / Avena 50 g" sigue valiendo, pero un cambio de
+  // cantidad publicado por Mati (Pan 60 → 80, sin que quede ningún 60) no.
   return _foodsEnPosicion(comidaId, optIdx, foodIdx).some(f => _huellaFood(orig) === _huellaFood(f));
 }
 function getFoodSwap(originalFood, comidaId, optIdx, foodIdx) {
@@ -2123,6 +2131,9 @@ function persistExerciseSwaps() {
 // cuando cambió la semana o cuando ese día ya quedó finalizado. Los FIJADOS
 // persisten hasta que el cliente los revierta. Corre en el bootstrap, al traer
 // los días completados y al finalizar el día.
+// opts.sinPrefetch: el llamador re-pide el histórico él mismo (cambiar de
+// día). Sin eso, la poda pedía el del día que se ABANDONA y la respuesta caía
+// en un mapa ya vaciado.
 function pruneExerciseSwaps(opts) {
   if (!DATA || !DATA.rutina) return;
   const semanaActual = DATA.rutina.semana_actual || 1;
@@ -2145,7 +2156,7 @@ function pruneExerciseSwaps(opts) {
     persistExerciseSwaps();
     // Los slots que volvieron al original quedaron sin historial en caché:
     // pedirlo ya, si no la card muestra "Primera vez" hasta que la expandan.
-    if (typeof prefetchHistoricoDia === 'function') prefetchHistoricoDia();
+    if (!(opts && opts.sinPrefetch) && typeof prefetchHistoricoDia === 'function') prefetchHistoricoDia();
   }
 }
 
@@ -2766,7 +2777,14 @@ const Outbox = (() => {
     },
   };
 
+  /* Carga la cola desde localStorage UNA sola vez. Idempotente a propósito:
+   * el bootstrap la llama temprano (el hydrate de swaps la consulta) y otra
+   * vez más abajo; sin la guarda, la segunda pasada pisaba con lo de disco
+   * todo lo que se hubiera encolado en el medio. */
+  let _cargada = false;
   function load() {
+    if (_cargada) return;
+    _cargada = true;
     try { queue = JSON.parse(localStorage.getItem(KEY()) || '[]'); }
     catch { queue = []; }
   }
@@ -3534,7 +3552,7 @@ async function cambiarDia(dia) {
   // Podar ANTES de mover DATA.dia: _diaFinalizado todavía es el del día que
   // se deja, así que después de cambiar se estaría podando por el estado
   // equivocado — se llevaba puestos los swaps del día al que se entra.
-  pruneExerciseSwaps();
+  pruneExerciseSwaps({ sinPrefetch: true });   // el prefetch va abajo, ya con el día nuevo
   DATA.dia = dia;
   DATA.historico_por_ejercicio = {};
   STATE.exerciseStates = {};
@@ -5878,7 +5896,7 @@ function _anclarOSacarSwap(mapa, key, fila, pendientes) {
       Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId: fila.comida_id, optIdx: +fila.opt_idx, foodIdx: +fila.food_idx, food: anclado }, key);
     return;
   }
-  // Solo se descarta si el ancla no coincide con NINGÚN tipo de día.
+  // Solo se descarta si el ancla no existe tal cual en NINGÚN tipo de día.
   if (!candidatos.some(f => _huellaFood(cur._orig) === _huellaFood(f))) {
     delete mapa[key];
     if (OUTBOX_ENABLED && TOKEN && !(DATA && DATA._isDemo))
@@ -5925,7 +5943,8 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
     if (!Array.isArray(remoteRaw)) { if (STATE.scene === 'diet') renderDiet(); return; }
     const remoteSwaps = remoteRaw;
     const K_MIGRADO = `mypump_swaps_migrados_${DIETA_ID}`;
-    const pendientes = (typeof Outbox !== 'undefined' && Outbox.pendingKeys) ? Outbox.pendingKeys() : new Set();
+    const pendOps = (typeof Outbox !== 'undefined' && Outbox.pendingByKey) ? Outbox.pendingByKey() : new Map();
+    const pendientes = new Set(pendOps.keys());
     let yaMigrado = false; try { yaMigrado = localStorage.getItem(K_MIGRADO) === '1'; } catch (e) {}
 
     if (remoteSwaps.length === 0 && Object.keys(STATE.foodSwaps).length > 0 && yaMigrado) {
@@ -5939,24 +5958,30 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
     } else if (remoteSwaps.length === 0 && Object.keys(STATE.foodSwaps).length > 0) {
       // Caso migración (UNA vez por dispositivo): hay swaps en localStorage de
       // antes del backend y ninguno remoto → subir los locales
-      const promises = [];
+      // POR EL OUTBOX y no con llamadas sueltas: lo que no suba queda
+      // pendiente, se reintenta con backoff y el merge del próximo arranque lo
+      // respeta. Con llamadas directas, una migración PARCIAL perdía los que
+      // fallaban (el merge solo conserva lo remoto y lo pendiente, y no había
+      // nada pendiente).
+      let encolados = 0;
       for (const [key, swap] of Object.entries(STATE.foodSwaps)) {
         if (!swap || !swap.current) continue;
         // key format: swap_${DIETA_ID}_${comidaId}_${optIdx}_${foodIdx}
         const m = key.match(new RegExp(`^swap_${DIETA_ID}_(.+?)_(\\d+)_(\\d+)$`));
         if (!m) continue;
         const [, comidaId, optIdx, foodIdx] = m;
-        promises.push(window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId, +optIdx, +foodIdx, swap.current));
+        if (!OUTBOX_ENABLED) continue;
+        Outbox.enqueue('swap', { dietaId: DIETA_ID, comidaId, optIdx: +optIdx, foodIdx: +foodIdx, food: swap.current }, key);
+        encolados++;
       }
-      // Solo se marca migrado si TODAS las subidas devolvieron filas. rpcMutation
-      // nunca tira (allSettled siempre "fulfilled") y con el token vencido la RPC
-      // contesta 200 con [] — marcar igual y después vaciar lo local por "el
-      // backend está vacío" le borraba los swaps al cliente.
-      const res = await Promise.allSettled(promises);
-      const todasOk = res.length > 0 && res.every(r => r.status === 'fulfilled'
-        && r.value && r.value.success && Array.isArray(r.value.data) && r.value.data.length);
-      if (todasOk) { try { localStorage.setItem(K_MIGRADO, '1'); } catch (e) {} }
-      else console.warn('[swaps] migración incompleta: no se marca, se reintenta en el próximo arranque');
+      // Migrado = la cola de swaps quedó vacía. Si algo falla queda pendiente
+      // y se reintenta; no se marca hasta que entre todo.
+      if (encolados) {
+        await Outbox.flush();
+        const quedan = [...Outbox.pendingKeys()].some(k => k.startsWith(`swap_${DIETA_ID}_`));
+        if (!quedan) { try { localStorage.setItem(K_MIGRADO, '1'); } catch (e) {} }
+        else console.warn('[swaps] migración incompleta: queda en la cola y se reintenta');
+      }
     } else if (remoteSwaps.length > 0) {
       // F8 — MERGE (no reemplazo): el backend gana por key, pero un swap hecho
       // recién/offline que todavía está en el Outbox NO se pisa (antes el
@@ -5970,6 +5995,10 @@ async function hydrateSwapsAndCustomFoodsFromBackend() {
       for (const key in STATE.foodSwaps) {
         if (pendientes.has(key)) newSwaps[key] = STATE.foodSwaps[key];   // local más nuevo, aún sin subir
       }
+      // Y una REVERSIÓN pendiente: su key ya no está en STATE.foodSwaps (el
+      // revert la borró), así que el loop de arriba no la recupera y el swap
+      // remoto la resucitaba en pantalla hasta que la cola drenara.
+      for (const [key, op] of pendOps) if (op.kind === 'swap_del') delete newSwaps[key];
       STATE.foodSwaps = newSwaps;
       persistSwaps(); // mantener cache local sincronizado
     }
@@ -8755,6 +8784,10 @@ async function init() {
   // Hidratar foodSwaps + custom foods desde Supabase (multi-device + truth of source)
   // Es paralelo y no bloqueante; re-renderiza la dieta cuando termina.
   if (DIETA_ID && TOKEN && !(DATA && DATA._isDemo)) {
+    // La cola se carga ANTES del hydrate: el hydrate la consulta para no
+    // pisar lo que el cliente hizo sin señal, y en un arranque en frío
+    // cargarla recién más abajo dejaba esa consulta contra una cola vacía.
+    if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) Outbox.load();
     hydrateSwapsAndCustomFoodsFromBackend();
   }
 
@@ -8837,10 +8870,11 @@ async function init() {
   // F1 — días completados de la semana (pinta el picker cuando llega)
   loadDiasCompletados();
 
-  // Outbox: cargar escrituras pendientes de sesiones anteriores y drenarlas.
+  // Outbox: drenar lo pendiente de sesiones anteriores (la cola ya se cargó
+  // arriba, antes del hydrate de swaps, que la consulta).
   if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
-    Outbox.load();
-    if (Outbox.pending() > 0) Outbox.flushSoon(1500);   // esperar a que asiente el arranque
+    Outbox.load();                                     // idempotente
+    if (Outbox.pending() > 0) Outbox.flushSoon(1500);  // esperar a que asiente el arranque
   }
 
   // Onboarding de permisos — primera apertura, con la app YA pintada detrás.

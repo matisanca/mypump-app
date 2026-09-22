@@ -106,6 +106,17 @@ const dietaTipos = { tipos_dia: [
   { id: 'entreno',  comidas: [{ id: 'c2', options: [{ name: 'A', foods: [food('Café', 200, 'ml'), food('Avena', 80), food('Huevos', 3, 'unidad')] }] }] },
   { id: 'descanso', comidas: [{ id: 'c2', options: [{ name: 'A', foods: [food('Café', 200, 'ml'), food('Avena', 50), food('Huevos', 3, 'unidad')] }] }] },
 ] };
+t('un swap de OTRO alimento en esa posición no se cruza entre tipos de día', () => {
+  // tipo A: Avena 80 en el índice 1; tipo B: Tostadas 2 u en el mismo índice.
+  const cruzada = { tipos_dia: [
+    { id: 'a', comidas: [{ id: 'c2', options: [{ name: 'A', foods: [food('Café', 200, 'ml'), food('Avena', 80)] }] }] },
+    { id: 'b', comidas: [{ id: 'c2', options: [{ name: 'A', foods: [food('Café', 200, 'ml'), food('Tostadas', 2, 'unidad')] }] }] },
+  ] };
+  const a = armar(cruzada);
+  a.STATE.foodSwaps['swap_d1_c2_0_1'] = { original: null, current: a._conAncla(food('Galletas', 30), food('Tostadas', 2, 'unidad')) };
+  if (a.getEffectiveFood(food('Avena', 80), 'c2', 0, 1).name !== 'Avena') throw new Error('el swap de las tostadas tapó la avena');
+});
+
 t('un swap hecho en "entreno" SIGUE valiendo en "descanso" (misma avena, otra cantidad)', () => {
   const a = armar(dietaTipos);
   a.STATE.foodSwaps['swap_d1_c2_0_1'] = { original: null, current: a._conAncla(food('Pan', 60), food('Avena', 80)) };
@@ -160,11 +171,22 @@ t('el hydrate ancla o saca cada swap remoto, pasándole la cola', () => {
   const cuerpo = HTML.slice(i, i + 5000);
   if (!cuerpo.includes('_anclarOSacarSwap(newSwaps, key, s, pendientes)')) throw new Error('hydrate no pasa por _anclarOSacarSwap con las ops pendientes');
 });
-t('la migración solo se marca hecha si TODAS las subidas devolvieron filas', () => {
+t('la migración va por el Outbox y solo se marca hecha si la cola quedó vacía', () => {
+  // Con llamadas sueltas, una migración PARCIAL perdía los swaps que fallaron:
+  // el merge del arranque siguiente conserva lo remoto y lo pendiente, y no
+  // quedaba nada pendiente.
   const i = HTML.indexOf('async function hydrateSwapsAndCustomFoodsFromBackend()');
-  const cuerpo = HTML.slice(i, i + 5000);
-  if (!/const todasOk = res\.length > 0 && res\.every/.test(cuerpo)) throw new Error('marca K_MIGRADO sin mirar los resultados');
-  if (!cuerpo.includes('if (todasOk) { try { localStorage.setItem(K_MIGRADO')) throw new Error('K_MIGRADO no depende de todasOk');
+  const cuerpo = HTML.slice(i, i + 5500);
+  if (cuerpo.includes('window.mypumpDB.saveFoodSwap(TOKEN, DIETA_ID, comidaId')) throw new Error('la migración sigue subiendo directo, sin reintento');
+  if (!/Outbox\.enqueue\('swap'/.test(cuerpo)) throw new Error('la migración no encola');
+  if (!/const quedan = \[\.\.\.Outbox\.pendingKeys\(\)\]/.test(cuerpo)) throw new Error('marca K_MIGRADO sin mirar la cola');
+});
+
+t('una reversión pendiente no la resucita el swap remoto', () => {
+  const i = HTML.indexOf('async function hydrateSwapsAndCustomFoodsFromBackend()');
+  const cuerpo = HTML.slice(i, i + 5500);
+  if (!cuerpo.includes("if (op.kind === 'swap_del') delete newSwaps[key]"))
+    throw new Error('el merge no saca del mapa lo que el cliente revirtió y todavía no subió');
 });
 
 console.log();

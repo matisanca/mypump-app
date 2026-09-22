@@ -272,6 +272,24 @@
   // true si sabemos que Health Connect NO dio el permiso de historial (en esta
   // sesión o en una anterior). Con un null/ausente asumimos que sí: es el caso
   // de iOS y el de un Android que todavía no pasó por la hoja.
+  /* Re-pregunta por el permiso de historial SIN abrir la hoja. El veredicto
+   * se guardaba al pasar por requestPermission(), y a ese camino solo se llega
+   * desde el botón "Conectar" — que no se muestra si ya estás conectado. Un
+   * cliente que negó el historial y después lo habilitó desde Health Connect
+   * se quedaba con 30 días para siempre. */
+  async function _refrescarHistorial() {
+    if (!esAndroid) return;
+    const h = HEALTH();
+    if (!h || typeof h.checkAuthorization !== 'function') return;
+    try {
+      const r = await h.checkAuthorization({ read: NUCLEO, requestHistoryAccess: true });
+      if (r && typeof r.historyAccessAuthorized === 'boolean') {
+        _historial = { autorizado: r.historyAccessAuthorized, disponible: r.historyAccessAvailable !== false };
+        try { localStorage.setItem(K_HISTORIAL, _historial.autorizado ? '1' : '0'); } catch (e) {}
+      }
+    } catch (e) { /* si no se puede preguntar, queda el veredicto anterior */ }
+  }
+
   function _sinHistorialAndroid() {
     if (!esAndroid) return false;
     if (_historial) return !_historial.autorizado;
@@ -770,15 +788,21 @@
   // de "el servidor rechazó todo", que sin esto eran el mismo 0.
   let _ultimoErrorIngesta = null;
 
-  async function postear(registros) {
+  /* Devuelve { ok, rechazados, error } — no escribe una variable de módulo.
+   * El sync manual y el backfill de fondo corren a la vez (el mismo
+   * visibilitychange dispara los dos), así que un canal compartido hacía que
+   * el fallo de uno saliera reportado como fallo del otro: el botón
+   * "Sincronizar" decía que había fallado habiendo subido todo. */
+  async function postearDetalle(registros) {
     const token = getToken();
-    if (!token || !window.mypumpDB || !window.mypumpDB.ingestSalud) return 0;
-    let ok = 0;
+    if (!token || !window.mypumpDB || !window.mypumpDB.ingestSalud) return { ok: 0, rechazados: 0, error: null };
+    let ok = 0, rechazados = 0, error = null;
     for (let i = 0; i < registros.length; i += 300) {   // lotes: evita payloads gigantes
       const lote = registros.slice(i, i + 300);
       const r = await window.mypumpDB.ingestSalud(token, lote);
       if (r && r.success) ok += Number(r.data) || 0;
       else {
+        rechazados++;
         /* El `else` faltaba y no era inocuo: rpcMutation NUNCA tira
          * (supabase-client.js devuelve {success:false, error} ante un error de
          * PostgREST o de red). Sin esta rama, un rechazo del servidor era
@@ -786,12 +810,15 @@
          * sync() decía ok:true, y la UI mostraba "conectado / activo" con el
          * 100% de la ingesta rechazada. Justo el modo de falla que hace que el
          * cliente diga "no anda" y del lado nuestro no haya ningún rastro. */
-        _ultimoErrorIngesta = String((r && r.error && (r.error.message || r.error)) || 'error desconocido');
-        console.warn('[health] la ingesta rechazó un lote:', _ultimoErrorIngesta);
+        error = String((r && r.error && (r.error.message || r.error)) || 'error desconocido');
+        _ultimoErrorIngesta = error;   // compat: lo lee el diagnóstico
+        console.warn('[health] la ingesta rechazó un lote:', error);
       }
     }
-    return ok;
+    return { ok, rechazados, error };
   }
+  // Compat para los llamadores que solo quieren el número.
+  async function postear(registros) { return (await postearDetalle(registros)).ok; }
 
   /* ── Entrenamientos ────────────────────────────────────────────────────
    * queryWorkouts existía en el plugin desde el día uno y no se llamaba nunca.
@@ -906,12 +933,10 @@
     const hasta = new Date(), desde = haceNDias(7);
     const registros = await recolectar(desde, hasta);
     registrarCosecha(registros.length);
-    // El error se captura acá y no de la variable de módulo: el backfill de
-    // fondo también escribe _ultimoErrorIngesta y su fallo salía reportado
-    // como si fuera de este sync (el botón "Sincronizar" decía que falló).
-    const errAntes = _ultimoErrorIngesta;
-    const n = registros.length ? await postear(registros) : 0;
-    const errPropio = (_ultimoErrorIngesta !== errAntes) ? _ultimoErrorIngesta : null;
+    // Su propio error, no el de la variable compartida (ver postearDetalle).
+    const envio = registros.length ? await postearDetalle(registros) : { ok: 0, error: null };
+    const n = envio.ok;
+    const errPropio = envio.error || null;
     // Los entrenos van por su propia vía: si esa falla, las métricas diarias
     // ya quedaron guardadas igual.
     let nEnt = 0;
@@ -979,6 +1004,7 @@
     // flag: si el cliente después habilitaba el historial, nunca se volvía a
     // pedir. Ahora se piden 30, se dice 30, y NO se marca como hecho: el
     // próximo arranque con el permiso concedido completa el resto.
+    await _refrescarHistorial();          // ¿lo habilitó desde Health Connect?
     const sinHistorial = _sinHistorialAndroid();
     const alcance = sinHistorial ? 30 : 60;
     const cur = _cursorGuardado();
@@ -994,7 +1020,13 @@
       try {
         const regs = await recolectar(desde, hasta);
         cosechados += regs.length;
-        total += await postear(regs);
+        const envio = await postearDetalle(regs);
+        total += envio.ok;
+        // Una ventana con muestras cuya subida fue RECHAZADA es una ventana
+        // fallida. Antes solo contaban las que tiraban, y postear no tira: sin
+        // señal, HealthKit (que es local) devolvía todo, la ingesta rechazaba
+        // todo, y el backfill se marcaba COMPLETO sin haber guardado nada.
+        if (envio.rechazados > 0) fallaron++;
         await postearEntrenos(await recolectarEntrenos(desde, hasta));
       } catch (e) { fallaron++; console.warn('[health] backfill ventana', off, e); }
       _progresoBackfill = { hecho: alcance - off + 5, total: alcance };
@@ -1013,6 +1045,8 @@
     // tiraron error (HealthKit inaccesible, la base caída), `cosechados` también
     // es 0 y estaríamos acusando de "denegó" a alguien que nunca fue consultado.
     const todoFallo = fallaron === ventanas;
+    // Se leyó algo pero NO entró nada: tampoco está hecho.
+    const nadaEntro = cosechados > 0 && total === 0;
     if (cosechados === 0 && !todoFallo) { try { localStorage.setItem(K_DENEG, '1'); } catch (e) {} }
 
     /* El flag de "backfill hecho" se escribía SIEMPRE, fuera de toda condición
@@ -1021,8 +1055,9 @@
      * le daba score por 14 días, sin que nada lo explicara. Y disconnect(), lo
      * único que borra el flag, no se llama desde ningún lado.
      * Ahora solo se marca si al menos una ventana pudo correr. */
-    if (!todoFallo && !sinHistorial) { try { localStorage.setItem(FLAG_BACKFILL, '1'); localStorage.removeItem(K_BACKFILL_OFF); } catch (e) {} }
+    if (!todoFallo && !nadaEntro && !sinHistorial) { try { localStorage.setItem(FLAG_BACKFILL, '1'); localStorage.removeItem(K_BACKFILL_OFF); } catch (e) {} }
     else if (sinHistorial) { try { localStorage.removeItem(K_BACKFILL_OFF); } catch (e) {} console.warn('[health] backfill parcial (30 días): sin permiso de historial en Health Connect; se completa cuando lo habilite'); }
+    else if (nadaEntro) console.warn('[health] el backfill leyó', cosechados, 'muestras y no entró ninguna: no se marca como hecho');
     else { console.warn('[health] las', ventanas, 'ventanas del backfill fallaron: no se marca como hecho, se reintenta'); try { localStorage.removeItem(K_BACKFILL_OFF); } catch (e) {} }
 
     refrescarUI();
@@ -1285,15 +1320,25 @@
     if (hecho) return;
     let ultimo = 0; try { ultimo = parseInt(localStorage.getItem(K_BACKFILL_INTENTO) || '0', 10) || 0; } catch (e) {}
     if (Date.now() - ultimo < BACKFILL_ESPERA_MS) return;
-    try { localStorage.setItem(K_BACKFILL_INTENTO, String(Date.now())); } catch (e) {}
+    // El sello del throttle se pone al TERMINAR y solo si el backfill NO
+    // avanzó: si avanzó (cursor distinto), el próximo foreground tiene que
+    // poder seguir retomando en vez de esperar 6 h.
+    const antes = JSON.stringify(_cursorGuardado());
     // El slot se reserva ANTES de soltar el hilo: si no, connect() (que marca
     // conectado y recién asigna _backfillEnCurso después de su sync) y esto
     // podían correr dos backfills en paralelo sobre el mismo cursor.
     let liberar;
-    _backfillEnCurso = new Promise(res => { liberar = res; });
+    const mio = new Promise(res => { liberar = res; });
+    _backfillEnCurso = mio;
     backfill()
       .catch((e) => console.warn('[health] backfill retomado:', e))
-      .finally(() => { liberar(); _backfillEnCurso = null; });
+      .finally(() => {
+        const avanzo = JSON.stringify(_cursorGuardado()) !== antes;
+        let hecho2 = false; try { hecho2 = localStorage.getItem(FLAG_BACKFILL) === '1'; } catch (e) {}
+        if (!avanzo && !hecho2) { try { localStorage.setItem(K_BACKFILL_INTENTO, String(Date.now())); } catch (e) {} }
+        liberar();
+        if (_backfillEnCurso === mio) _backfillEnCurso = null;   // no pisar el slot de otro
+      });
   }
   if (isNative) {
     document.addEventListener('visibilitychange', () => {
