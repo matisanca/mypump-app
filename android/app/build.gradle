@@ -25,9 +25,15 @@ android {
         // 19-sep): sustituir mostraba la carga del original y el mismo ejercicio
         // en dos días tenía dos récords. El arreglo vive en public/, que viaja
         // ADENTRO del binario: sin este build los nativos siguen con el bug.
-        // iOS sube a 1.0.11 (16) en el mismo tag para volver a alinearlas.
-        versionCode 16
-        versionName "1.0.11"
+        //
+        // 17 / 1.0.12: los builds 16 se compilaron ANTES de la auditoría del
+        // 19/20-sep (33 arreglos), así que no se suben a las tiendas. Este es
+        // el binario que va: historial por ejercicio + series verosímiles +
+        // Outbox que no abandona series sin señal + push de iOS registrándose
+        // de verdad (AppDelegate no reenviaba el token de APNs: había 0
+        // devices iOS) + swaps de comida anclados al alimento.
+        versionCode 17
+        versionName "1.0.12"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
