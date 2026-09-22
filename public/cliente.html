@@ -2664,12 +2664,24 @@ function showSaveState(state) {
   clearTimeout(el._hideT);
   // 'saving' queda visible hasta que cambie; 'saved'/'offline' se autoocultan.
   if (state !== 'saving') {
-    el._hideT = setTimeout(() => el.classList.remove('show'), state === 'saved' ? 1400 : 3200);
+    // 'perdido' dura más: son dos renglones y es el único aviso de que algo no
+    // quedó guardado. Y se puede cerrar tocándolo.
+    el._hideT = setTimeout(() => el.classList.remove('show'), state === 'saved' ? 1400 : state === 'perdido' ? 9000 : 3200);
+  }
+  if (state === 'perdido') {
+    el.style.pointerEvents = 'auto';
+    el.onclick = () => el.classList.remove('show');
+  } else {
+    el.style.pointerEvents = '';
+    el.onclick = null;
   }
 }
 function hideSaveToast() {
   const el = document.getElementById('save-toast');
-  if (el) el.classList.remove('show');
+  // El cartel de 'perdido' no lo apaga nadie más que su propio timer (o el
+  // cliente tocándolo): el drenado siguiente, al salir bien, lo tapaba a los
+  // pocos cientos de milisegundos y el aviso no llegaba a leerse.
+  if (el && el.dataset.state !== 'perdido') el.classList.remove('show');
 }
 
 const Outbox = (() => {

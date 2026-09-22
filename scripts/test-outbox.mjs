@@ -35,6 +35,8 @@ const ini = html.indexOf('const Outbox = (() => {');
 const fin = html.indexOf('})();', ini);
 if (ini < 0 || fin < 0) { console.error('✗ no encontré el IIFE del Outbox'); process.exit(1); }
 const fuente = html.slice(ini, fin + 5);
+const HTML_CLIENTE = html;
+const t2 = (nombre, fn) => { try { fn(); console.log(`  ✓ ${nombre}`); ok++; } catch (e) { console.log(`  ✗ ${nombre}\n      ${e.message}`); fail++; } };
 
 let ok = 0, fail = 0;
 const t = async (nombre, fn) => {
@@ -309,6 +311,15 @@ await t('abandonar una op deja el cartel visible (no se apaga en el mismo tick)'
   Outbox.enqueue('carga', { diaId: 'd1', semana: 1, datos: { serie: 1 } }, 'k1');
   for (let i = 0; i < 12 && Outbox.pending(); i++) await Outbox.flush();
   if (estados[estados.length - 1] !== 'perdido') throw new Error(`el último estado fue "${estados[estados.length - 1]}": el aviso no se ve`);
+});
+
+/* La otra mitad de la protección vive FUERA del IIFE: el drenado siguiente,
+ * al salir bien, llama a hideSaveToast() y el cartel moría a los pocos
+ * cientos de ms. Eso se fija leyendo la función real. */
+t2('hideSaveToast no apaga el cartel de perdido', () => {
+  const i = HTML_CLIENTE.indexOf('function hideSaveToast()');
+  const cuerpo = HTML_CLIENTE.slice(i, i + 500);
+  if (!cuerpo.includes("el.dataset.state !== 'perdido'")) throw new Error('hideSaveToast vuelve a apagar el aviso de "algo no se guardó"');
 });
 
 console.log('\nEsperar de verdad al cerrar el día');
