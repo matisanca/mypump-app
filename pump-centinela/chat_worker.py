@@ -366,10 +366,15 @@ def llamar_codex(prompt):
 
     cmd = [CODEX, "exec", "-m", MODELO, "--json", "-s", "read-only",
            "--skip-git-repo-check",
-           # Sin esto, cada llamada arrastra los servidores MCP de la mini y
-           # escupe errores de transporte cuando alguno esta caido. Verificado:
-           # ensucia la salida y suma latencia sin aportar nada acá.
-           "-c", "mcp_servers={}"]
+           # Sin esto, cada llamada arrastra los servidores MCP y el modelo
+           # por defecto del config del escritorio. `-c mcp_servers={}` NO
+           # alcanza: en codex-cli 0.145.0 ese override no hace nada y las
+           # corridas seguian intentando el MCP `daydream`
+           # (http://127.0.0.1:7433/mcp), que no existe con la Codex.app
+           # cerrada — tres errores de transporte y ~3 s por respuesta.
+           # --ignore-user-config saltea config.toml entero; la sesion (auth)
+           # sigue saliendo de CODEX_HOME, así que no hay que volver a loguear.
+           "--ignore-user-config"]
     try:
         p = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
                            timeout=TIMEOUT_S, env=env, cwd="/tmp")
@@ -379,7 +384,12 @@ def llamar_codex(prompt):
         return None, f"no existe {CODEX}"
 
     if p.returncode != 0:
-        return None, f"codex salio con {p.returncode}: {(p.stderr or '')[:160]}"
+        # Las ultimas lineas utiles, no las primeras: el arranque de codex
+        # escribe ruido y truncar por el principio tapaba la causa real.
+        lineas = [l.strip() for l in (p.stderr or "").splitlines()
+                  if l.strip() and "rmcp::" not in l and "Reading prompt from stdin" not in l]
+        detalle = " | ".join(lineas[-3:])[-300:] if lineas else (p.stderr or "")[-300:]
+        return None, f"codex salio con {p.returncode}: {detalle}"
 
     # La salida es JSONL. Interesa el ultimo agent_message.
     texto = None

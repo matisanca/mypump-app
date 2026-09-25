@@ -23,8 +23,10 @@ USO
 """
 import json
 import os
+import re
 import pathlib
 import subprocess
+import time
 import sys
 import urllib.request
 from datetime import datetime, timedelta
@@ -56,6 +58,9 @@ FORZAR = "--forzar" in sys.argv
 # Libreta del ultimo aviso, para no repetirlo cada hora.
 ESTADO = BASE / ".chat_salud"
 SILENCIO_H = 8
+# Cuánto se espera antes de la segunda opinión (ver main): suficiente para que
+# pase un corte de red corto, poco para que el aviso llegue tarde si es real.
+ESPERA_REINTENTO_S = 90
 
 
 def _log(*a):
@@ -96,6 +101,20 @@ def anotar_aviso():
         pass
 
 
+# Lineas de stderr que NO son el error: si se las deja, un aviso truncado a
+# 200 caracteres termina mostrando ruido y no la causa (paso el 25-sep, y el
+# aviso pedia un `codex login` que no tenia nada que ver).
+_RUIDO = re.compile(r"rmcp::|Reading prompt from stdin|^\s*$|OpenTelemetry|tracing::")
+
+
+def _err_util(stderr, limite=400):
+    """Las ultimas lineas de stderr que dicen algo."""
+    lineas = [l.strip() for l in (stderr or "").splitlines() if l.strip() and not _RUIDO.search(l)]
+    if not lineas:
+        return (stderr or "").strip()[-limite:] or "sin detalle en stderr"
+    return " | ".join(lineas[-3:])[-limite:]
+
+
 def codex_vivo():
     """(ok, detalle). Mismo comando exacto que usa el worker de verdad.
 
@@ -107,7 +126,16 @@ def codex_vivo():
     for k in ("OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_ORG_ID"):
         env.pop(k, None)
     cmd = [CODEX, "exec", "-m", MODELO, "--json", "-s", "read-only",
-           "--skip-git-repo-check", "-c", "mcp_servers={}"]
+           "--skip-git-repo-check",
+           # --ignore-user-config y NO `-c mcp_servers={}`: ese override no
+           # hace nada en codex-cli 0.145.0 y la corrida seguia levantando los
+           # servidores MCP del config del escritorio. Con la Codex.app cerrada,
+           # el MCP `daydream` (http://127.0.0.1:7433/mcp) no existe y cada
+           # llamada escupia tres errores de transporte que se comian el
+           # mensaje de error de verdad (25-sep). Ignorar el config tambien
+           # saca de la ecuacion el `model = gpt-5.5` del archivo, que esta
+           # dado de baja desde el 7-sep. La sesion (auth) NO depende de esto.
+           "--ignore-user-config"]
     try:
         p = subprocess.run(cmd, input="responde exactamente: ok",
                            capture_output=True, text=True, timeout=120, env=env, cwd="/tmp")
@@ -117,7 +145,7 @@ def codex_vivo():
         return False, f"no existe el binario en {CODEX}"
 
     if p.returncode != 0:
-        return False, f"salio con codigo {p.returncode}: {(p.stderr or '')[:200]}"
+        return False, f"salio con codigo {p.returncode}: {_err_util(p.stderr)}"
 
     for linea in (p.stdout or "").splitlines():
         try:
@@ -134,6 +162,21 @@ def codex_vivo():
 
 def main():
     ok, detalle = codex_vivo()
+
+    # SEGUNDA OPINION antes de despertar a nadie. El 25-sep el chequeo fallo
+    # una vez (a la hora siguiente ya andaba) y el aviso dijo que la IA no le
+    # contestaba a nadie. Un corte de red de 10 segundos no es una caida: si
+    # el primer intento falla, se espera y se vuelve a probar, y solo se avisa
+    # si los dos fallan.
+    if not ok and not FORZAR:
+        _log(f"primer intento fallo: {detalle} — reintento en {ESPERA_REINTENTO_S}s")
+        time.sleep(ESPERA_REINTENTO_S)
+        ok2, detalle2 = codex_vivo()
+        if ok2:
+            _log("el reintento anduvo: era pasajero, no aviso")
+            ok, detalle = True, "ok (fallo un intento y el siguiente anduvo)"
+        else:
+            detalle = f"{detalle} (y al reintentar: {detalle2})"
 
     if ok and not FORZAR:
         _log("codex ok")
@@ -153,17 +196,28 @@ def main():
         _log(f"ya avise hace menos de {SILENCIO_H}h — no repito")
         return 1
 
+    # El remedio depende del sintoma: mandar siempre "corre codex login" hacia
+    # que Mati tocara la sesion por un problema de red.
+    d = (detalle or "").lower()
+    if "sesion" in d or "login" in d or "401" in d or "unauthorized" in d or "no devolvio ningun mensaje" in d:
+        remedio = ("Parece la sesion de Codex. En la Mac mini:\n"
+                   "```\n"
+                   f"{CODEX} login\n"
+                   "```")
+    elif "no contesto en" in d or "timed out" in d or "timeout" in d:
+        remedio = "Parece red o el modelo lento. Si en la proxima hora sigue igual, avisame y lo miro."
+    elif "429" in d or "rate limit" in d or "usage limit" in d or "quota" in d:
+        remedio = "Es el limite de uso de la cuenta de Codex: se destraba solo cuando se libera la cuota."
+    else:
+        remedio = "No es la sesion (eso se dice aparte). Mandame este mensaje y lo miro."
     texto = (
         "🚨 *El chat con IA esta caido*\n\n"
         f"Codex no responde: {detalle}\n\n"
         "Los mensajes de los clientes NO se pierden: quedan escalados en 💬 Chats "
         "del Cerebro y los contestas vos. Pero hasta que esto se arregle, la IA no "
         "contesta a nadie.\n\n"
-        "Para arreglarlo, en la Mac mini:\n"
-        "```\n"
-        f"{CODEX} login\n"
-        "```\n"
-        "Y para confirmar que quedo:\n"
+        f"{remedio}\n\n"
+        "Para ver como esta ahora:\n"
         "```\n"
         "cd ~/pump-centinela && ~/agentkit-coach/venv/bin/python chat_salud.py\n"
         "```"
