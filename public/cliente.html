@@ -3272,7 +3272,9 @@ async function loadRegistrosCarga() {
  * _sesionId, estados de ejercicios, series cargadas y si el día ya fue cerrado
  * (_diaFinalizado). Se usa en el bootstrap Y al cambiar de día — antes el cambio
  * de día NO restauraba nada, así que un día ya hecho aparecía vacío/pendiente. */
+let _restoreSeq = 0;   // la restauración vigente: un cambio de día rápido deja vieja a la anterior
 async function restoreSesionDelDia() {
+  const seq = ++_restoreSeq;
   _sesionId = null;
   _sesionIniciada = false;
   _diaFinalizado = false;
@@ -3285,10 +3287,32 @@ async function restoreSesionDelDia() {
   const semanaActual  = DATA.rutina.semana_actual || 1;
 
   // F2 — restaurar el arranque persistido (la duración sobrevive reloads)
-  const savedStart = parseInt(localStorage.getItem(`${sesionKey}_start`) || '0', 10);
+  let savedStart = parseInt(localStorage.getItem(`${sesionKey}_start`) || '0', 10);
 
-  if (savedSesionId && savedSemana === semanaActual) {
-    // Sesión local de la semana actual — recuperar
+  // Que el caché sea de ESTA semana no alcanza: el servidor archiva las
+  // sesiones de un bloque viejo corriéndolas a semana - 100 (activar el
+  // siguiente, 070b/071; reiniciar la semana, 078). El teléfono que ya había
+  // abierto ese día seguía colgado de la sesión archivada — día cerrado con
+  // las series de julio, y las series nuevas iban a parar ahí — hasta que
+  // cambiaba la semana (Matoff 11-sep, Facundo Palero 26-sep). Se le pregunta
+  // al servidor cuál es la sesión del día. Si no se le pudo preguntar (null
+  // CON _lastError: supabase-js no lanza sin red) se confía en el caché, como
+  // antes — sin señal no hay cómo saber y el día tiene que seguir andando.
+  let cacheValido = !!savedSesionId && savedSemana === semanaActual;
+  let remote;   // undefined = todavía no se le preguntó al servidor
+  if (cacheValido) {
+    remote = await window.mypumpDB.getSesionDia(TOKEN, DATA.dia.id, semanaActual);
+    const sinRespuesta = !remote && !!window.mypumpDB._lastError;
+    if (seq !== _restoreSeq) return;   // se cambió de día mientras se preguntaba
+    if (!sinRespuesta && !(remote && remote.id === savedSesionId)) {
+      console.warn(`[mypump] la sesión ${savedSesionId} ya no es la del día (servidor: ${remote ? remote.id : 'ninguna'}) → se descarta el caché`);
+      cacheValido = false;
+      savedStart = 0;   // el arranque guardado era el de ESA sesión
+    }
+  }
+
+  if (cacheValido) {
+    // Sesión local de la semana actual (confirmada, o sin red para confirmarla) — recuperar
     _sesionId       = savedSesionId;
     _sesionIniciada = true;
     _diaFinalizado  = localStorage.getItem(`${sesionKey}_finalizada`) === '1';
@@ -3296,14 +3320,17 @@ async function restoreSesionDelDia() {
     await loadExerciseStates();
     await loadRegistrosCarga();
   } else {
-    if (savedSesionId && savedSemana !== semanaActual) {
+    if (savedSesionId) {   // de otra semana, o archivada en el servidor
       localStorage.removeItem(sesionKey);
       localStorage.removeItem(`${sesionKey}_semana`);
       localStorage.removeItem(`${sesionKey}_finalizada`);
       localStorage.removeItem(`${sesionKey}_start`);
     }
     try {
-      const remote = await window.mypumpDB.getSesionDia(TOKEN, DATA.dia.id, semanaActual);
+      if (remote === undefined) {
+        remote = await window.mypumpDB.getSesionDia(TOKEN, DATA.dia.id, semanaActual);
+        if (seq !== _restoreSeq) return;
+      }
       if (remote && remote.id) {
         _sesionId       = remote.id;
         _sesionIniciada = true;
