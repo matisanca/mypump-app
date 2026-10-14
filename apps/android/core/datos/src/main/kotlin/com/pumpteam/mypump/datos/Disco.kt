@@ -46,18 +46,20 @@ internal fun leerJson(archivo: File): JsonElement? = try {
     null
 }
 
+internal fun escribirAtomico(archivo: File, texto: String): Boolean = escribirAtomico(archivo, texto.toByteArray(Charsets.UTF_8))
+
 /**
  * Escribe un temporal en la misma carpeta y lo renombra encima del archivo (rename es atómico en el mismo disco). El
  * temporal se baja al disco (fsync) antes del rename: si el teléfono se apaga justo después, el archivo nuevo está
- * entero, no vacío.
+ * entero, no vacío. Lo usa también el token cifrado de :app. Devuelve si quedó escrito.
  */
-internal fun escribirAtomico(archivo: File, texto: String): Boolean = try {
+fun escribirAtomico(archivo: File, bytes: ByteArray): Boolean = try {
     val carpeta = archivo.absoluteFile.parentFile
     carpeta.mkdirs()
     val temporal = File.createTempFile(".${archivo.name}.", ".tmp", carpeta)
     try {
         java.io.FileOutputStream(temporal).use { s ->
-            s.write(texto.toByteArray(Charsets.UTF_8))
+            s.write(bytes)
             s.fd.sync()
         }
         try {
