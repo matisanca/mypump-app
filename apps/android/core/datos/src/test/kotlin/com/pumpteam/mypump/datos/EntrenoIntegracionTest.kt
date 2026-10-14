@@ -258,4 +258,42 @@ class EntrenoIntegracionTest {
         m.cargarCatalogo()
         assertTrue(e.catalogo.value.entradas.size > 500, "el del servidor (~873)")
     }
+
+    /**
+     * SER-14 de punta a punta contra el servidor real (nativa_003, aplicada el 14-oct): una sustitución fijada en un
+     * teléfono llega al otro, y "Volver a …" en el segundo llega al primero. Gemelo de
+     * IntegracionTests.unaSustitucionPasaDeUnTelefonoAOtro (iOS). Dos teléfonos = dos discos con el mismo token. Repetirla
+     * no deja basura: la vuelta al original deja la lápida, y la próxima corrida la supera (es también la prueba del piso
+     * por clave).
+     */
+    @Test
+    fun unaSustitucionPasaDeUnTelefonoAOtro() = enUnHilo { alcance ->
+        val a = armar(carpetaTemporal("mypump-sustituciones-a"), alcance)
+        val b = armar(carpetaTemporal("mypump-sustituciones-b"), alcance)
+        a.modelo.cargar()
+        b.modelo.cargar()
+        assertEquals(a.modelo.rutina.value.id, b.modelo.rutina.value.id)
+        val (lugar, sub) = lugarYSustituto(a.modelo)
+
+        // A la fija; sale por la cola al servidor.
+        a.modelo.sustituir(lugar, sub, fijar = true)
+        a.modelo.encoladoSustituciones?.join()
+        a.cola.drenar()
+        assertTrue(a.cola.operaciones().isEmpty(), "no salió de la cola de A")
+
+        // B la lee.
+        b.modelo.sincronizarSustituciones()
+        val enB = b.modelo.dia.value.sustituciones[lugar]
+        assertEquals(sub.nombre, enB?.get("current")?.get("nombre")?.comoTexto, "no llegó a B")
+        assertEquals(ValorJson.Booleano(true), enB?.get("fijado"))
+        assertEquals(sub.nombre, b.modelo.efectivo(b.modelo.dia.value.ejercicio(lugar)!!).ejercicio.nombre)
+
+        // B vuelve al original; A lo ve.
+        b.modelo.revertirSustitucion(lugar)
+        b.modelo.encoladoSustituciones?.join()
+        b.cola.drenar()
+        assertTrue(b.cola.operaciones().isEmpty(), "no salió de la cola de B")
+        a.modelo.sincronizarSustituciones()
+        assertNull(a.modelo.dia.value.sustituciones[lugar], "la vuelta al original no llegó a A")
+    }
 }
