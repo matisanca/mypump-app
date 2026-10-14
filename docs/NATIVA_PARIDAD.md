@@ -271,8 +271,10 @@ cerraron después DIA-01, DIA-06, MIG-07, GEN-03 y GEN-06 (ver la columna iOS). 
 8. ~~**Desvíos de diseño sin registrar.**~~ Aceptados por Mati: CHA-01 (D12) y ENT-17 (D13).
 9. **`?diag=health` (SAL-13, ACC-09).** Hecho (2b41011) y abierto en el iPhone de Mati; falta verlo en pantalla. El
    link de soporte lleva `t=` (el AASA no abre la app sin él).
-10. **Hecho, falta la prueba o la captura:** ENT-15, SER-11, SER-04, SES-04, SES-05, CHA-02, CHA-04, REV-04, REV-05,
-    GEN-05, GEN-08, DIE-01. Cerrados el 14-oct: APL-06 (capturas del iPad), ENT-10, ENT-11 y REV-08.
+10. **Hecho, falta la prueba o la captura:** solo REV-04. Falta una captura con 4 semanas de fotos, y el servidor no
+    deja sembrarlas porque solo acepta fechas de +1/−7 días. Cerrados el 14-oct, cada uno con su prueba (ver la
+    columna iOS): ENT-15, SER-11, SER-04, SES-04, SES-05, CHA-02, CHA-04, REV-05, GEN-05, GEN-08, DIE-01, APL-06,
+    ENT-10, ENT-11 y REV-08.
 
 **iOS 17 y 18:** la auditoría avisó que casi toda la evidencia de pantalla era de 26.5. Con la suite de interfaz en 17.5
 y 18.6 apareció un error real: comidas libres no abría nada en iOS 17. Se arregló en 424f5af. Desde entonces:
