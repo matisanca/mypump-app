@@ -7,7 +7,7 @@ import Foundation
 /// Ojo: NO usar `folding(options: .diacriticInsensitive)`. Convierte "ø" en "o", y la web la descarta. Solo se borra
 /// el rango U+0300–U+036F después de NFD, como hace JS.
 public enum ClaveEjercicio {
-    private static let parentesis = try! NSRegularExpression(pattern: #"\(.*?\)"#)
+    private static let parentesis = try! NSRegularExpression(pattern: JSRegex.traducir(#"\(.*?\)"#))   // el `.` de JS
     private static let noAlfanumerico = try! NSRegularExpression(pattern: "[^a-z0-9 ]+")
     private static let espacios = try! NSRegularExpression(pattern: " +")
 

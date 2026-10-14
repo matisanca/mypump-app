@@ -6,6 +6,8 @@ import Foundation
 /// regex de JS sin flag `u`. Ahí `\b`, `\w` y `\d` son ASCII: "á" o "ñ" NO son letras de palabra. En ICU
 /// (NSRegularExpression) sí lo son, así que `\bpan\b` daría distinto sobre "pané". Esta traducción reemplaza esas
 /// clases por sus equivalentes ASCII explícitos y escapa lo que ICU interpreta distinto adentro de `[...]`.
+/// También el `.` y el `\s`: el `.` de ICU no toma VT, FF ni NEL (el de JS solo se corta en \n, \r, U+2028 y U+2029)
+/// y el `\s` de ICU no tiene VT ni U+FEFF. Pesa en el `\(.*?\)` de `claveEjercicio` con "Curl (a\u{0B}b) martillo".
 /// Kotlin tiene el mismo problema (java.util.regex) y usa la misma traducción.
 public struct JSRegex: @unchecked Sendable {
     private let re: NSRegularExpression
@@ -30,6 +32,8 @@ public struct JSRegex: @unchecked Sendable {
     }
 
     private static let palabra = "[A-Za-z0-9_]"
+    private static let punto = #"[^\n\r\x{2028}\x{2029}]"#
+    private static let blancos = #"\t\n\x{B}\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}"#
     private static let limite = "(?:(?<=\(palabra))(?!\(palabra))|(?<!\(palabra))(?=\(palabra)))"
     private static let noLimite = "(?:(?<=\(palabra))(?=\(palabra))|(?<!\(palabra))(?!\(palabra)))"
 
@@ -47,6 +51,11 @@ public struct JSRegex: @unchecked Sendable {
                     switch e {
                     case "w": out += "A-Za-z0-9_"
                     case "d": out += "0-9"
+                    case "s": out += blancos
+                    // Los negados van como un conjunto anidado de ICU: se unen con el resto de la clase.
+                    case "W": out += "[^A-Za-z0-9_]"
+                    case "D": out += "[^0-9]"
+                    case "S": out += "[^\(blancos)]"
                     case "b": out += "\\x08"     // en JS, \b adentro de una clase es backspace
                     default: out.append(c); out.append(e)
                     }
@@ -58,6 +67,8 @@ public struct JSRegex: @unchecked Sendable {
                     case "W": out += "[^A-Za-z0-9_]"
                     case "d": out += "[0-9]"
                     case "D": out += "[^0-9]"
+                    case "s": out += "[\(blancos)]"
+                    case "S": out += "[^\(blancos)]"
                     default: out.append(c); out.append(e)
                     }
                 }
@@ -74,6 +85,10 @@ public struct JSRegex: @unchecked Sendable {
                 i = p.index(after: i)
                 // `[]` y `[^]` de JS: el ']' inmediato cierra la clase (vacía); en ICU sería literal.
                 if i < p.endIndex, p[i] == "^" { out.append("^"); i = p.index(after: i) }
+                continue
+            } else if c == "." {
+                out += punto
+                i = p.index(after: i)
                 continue
             } else if c == "$" {
                 // Sin flag `m`, el `$` de JS es el fin del texto. El de ICU también acepta un salto de línea final:

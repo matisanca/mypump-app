@@ -194,7 +194,7 @@ struct RegexWeb: @unchecked Sendable {
     init(_ patron: String, i: Bool = false) {
         let base = i ? RegexWeb.sinCaja(patron) : patron
         do {
-            re = try NSRegularExpression(pattern: JSRegex.traducir(RegexWeb.semantica(base)))
+            re = try NSRegularExpression(pattern: JSRegex.traducir(base))
         } catch {
             preconditionFailure("regex de la web que no traduce: \(patron) → \(error)")
         }
@@ -285,43 +285,4 @@ struct RegexWeb: @unchecked Sendable {
         return v
     }
 
-    /// `\s`, `\S` y `.` de JS (ICU tiene otros: su `\s` incluye NEL y no U+FEFF; su `.` no toma VT ni FF).
-    static func semantica(_ p: String) -> String {
-        let punto = #"[^\n\r\x{2028}\x{2029}]"#
-        let blancos = #"\t\n\x{B}\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}"#
-        let u = Array(p.unicodeScalars)
-        var out = ""
-        var enClase = false
-        var k = 0
-        while k < u.count {
-            let c = u[k]
-            if c == "\\", k + 1 < u.count {
-                switch (u[k + 1], enClase) {
-                case ("s", false): out += "[\(blancos)]"
-                case ("S", false): out += "[^\(blancos)]"
-                case ("s", true): out += blancos
-                default: out.unicodeScalars.append(c); out.unicodeScalars.append(u[k + 1])
-                }
-                k += 2
-                continue
-            }
-            if enClase {
-                if c == "]" { enClase = false }
-            } else if c == "[" {
-                enClase = true
-                out.append("[")
-                k += 1
-                if k < u.count, u[k] == "^" { out.append("^"); k += 1 }
-                if k < u.count, u[k] == "]" { out.append("]"); enClase = false; k += 1 }
-                continue
-            } else if c == "." {
-                out += punto
-                k += 1
-                continue
-            }
-            out.unicodeScalars.append(c)
-            k += 1
-        }
-        return out
-    }
 }
