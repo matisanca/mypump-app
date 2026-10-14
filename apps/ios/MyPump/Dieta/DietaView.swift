@@ -79,9 +79,7 @@ struct DietaView: View {
                 if modelo.token != nil {
                     ComidasLibresSeccion(modelo: modelo, analizando: $analizandoFoto)
                 }
-                RespaldoCientifico(texto: "Tu plan lo arma Mati, que es médico, con base en ISSN, NASEM y OMS")
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .multilineTextAlignment(.center)
+                PieRespaldo(origen: .dieta)
                     .padding(.top, 4)
             }
             .padding(.horizontal)
@@ -380,7 +378,7 @@ private struct Cabecera: View {
             }
             .font(.footnote)
             .contentTransition(.numericText())
-            RespaldoCientifico()
+            RenglonFuentes()
         }
         .tarjeta()
         .animation(.snappy, value: elegidas.kcal)

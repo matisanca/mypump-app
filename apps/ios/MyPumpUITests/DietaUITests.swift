@@ -87,6 +87,19 @@ final class DietaUITests: XCTestCase {
         XCTAssertTrue(fila.waitForNonExistence(timeout: 10), "La comida libre no se borró")
     }
 
+    /// Apple 1.4.1: el respaldo pegado a los números abre las 14 fuentes con el aviso legal.
+    func testElRespaldoCientificoAbreLasFuentes() throws {
+        let renglon = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Ver fuentes")).firstMatch
+        XCTAssertTrue(renglon.waitForExistence(timeout: 20), "No está el renglón de respaldo en la cabecera")
+        renglon.tap()
+        XCTAssertTrue(app.navigationBars["Respaldo científico"].waitForExistence(timeout: 5))
+        adjuntarCaptura("fuentes")
+        let abrir = app.buttons.matching(NSPredicate(format: "label == %@", "Abrir fuente"))
+        XCTAssertGreaterThanOrEqual(abrir.count, 3)
+        app.buttons["Listo"].tap()
+        XCTAssertTrue(app.navigationBars["Respaldo científico"].waitForNonExistence(timeout: 5))
+    }
+
     private func adjuntarCaptura(_ nombre: String) {
         let a = XCTAttachment(screenshot: app.screenshot())
         a.name = nombre
