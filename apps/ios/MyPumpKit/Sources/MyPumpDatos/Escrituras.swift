@@ -11,16 +11,37 @@ public struct Escrituras: Sendable {
     let token: String
     let sesiones: CacheSesiones
 
+    let verificacion: VerificacionToken
+
     public init(cliente: ClienteRPC, token: String) {
-        self.cliente = cliente; self.token = token; self.sesiones = CacheSesiones()
+        self.cliente = cliente; self.token = token; self.sesiones = CacheSesiones(); self.verificacion = VerificacionToken()
     }
 
+    /// Ejecuta la op y, si no se guardó, mira una vez si el token cayó (arreglo nativo n.º 3): un token revocado hace que
+    /// la base devuelva vacío a TODO, y sin esto la cola abandonaría todo lo del cliente en ~1 minuto. Con el token caído
+    /// las ops quedan estacionadas sin gastar intentos hasta que entre con un link nuevo.
     public func ejecutar(_ op: Operacion) async -> ResultadoOp {
+        let r = await ejecutarSinVerificar(op)
+        guard case .respuesta(let res) = r else { return r }
+        let noGuardado: Bool
+        switch res {
+        case .success(let j): noGuardado = !Outbox.seGuardo(j)
+        case .failure(let e): noGuardado = e.clase == .permanente && e.codigo != "KIND_DESCONOCIDO"
+        }
+        if noGuardado, await verificacion.cayo(cliente: cliente, token: token) { return .tokenCaido }
+        return r
+    }
+
+    func ejecutarSinVerificar(_ op: Operacion) async -> ResultadoOp {
         let p = op.payload
         let t: JSONValue = .texto(token)
         switch op.kind {
         case "carga":
-            guard let sid = await resolverSesion(p) else { return .respuesta(.failure(ErrorRPC(clase: .red, status: 0, mensaje: "sin sesión todavía"))) }
+            let sid: String
+            switch await resolverSesion(p) {
+            case .success(let s): sid = s
+            case .failure(let e): return .respuesta(.failure(e))
+            }
             let d = p["datos"] ?? .objeto([:])
             return .respuesta(await cliente.llamar("mypump_registrar_carga", [
                 "p_token": t, "p_sesion_id": .texto(sid), "p_dia_id": d["diaId"] ?? .null, "p_ejercicio_id": d["ejercicioId"] ?? .null,
@@ -28,7 +49,11 @@ public struct Escrituras: Sendable {
                 "p_reps": d["reps"] ?? .null, "p_rir": d["rir"] ?? .null, "p_notas": d["notas"] ?? .null,
             ]))
         case "estado":
-            guard let sid = await resolverSesion(p) else { return .respuesta(.failure(ErrorRPC(clase: .red, status: 0, mensaje: "sin sesión todavía"))) }
+            let sid: String
+            switch await resolverSesion(p) {
+            case .success(let s): sid = s
+            case .failure(let e): return .respuesta(.failure(e))
+            }
             return .respuesta(await cliente.llamar("mypump_marcar_ejercicio_estado", [
                 "p_token": t, "p_sesion_id": .texto(sid), "p_dia_id": p["diaId"] ?? .null, "p_ejercicio_id": p["exId"] ?? .null,
                 "p_series_objetivo": p["seriesObjetivo"] ?? .null, "p_status": p["status"] ?? .null,
@@ -98,29 +123,37 @@ public struct Escrituras: Sendable {
         return filas.contains { $0.autor == "cliente" && $0.contenido == contenido && FechaISO.ms($0.createdAt) >= ts - 60_000 }
     }
 
-    /// `resolveSesion` (cliente.html:2698): la sesión capturada al encolar, o la de ESE día y semana, o se crea. Si no se
-    /// pudo preguntar (red), nil: se reintenta después — crear una segunda sesión partiría las series del día.
-    func resolverSesion(_ p: JSONValue) async -> String? {
-        if let s = p["sesionId"]?.comoTexto, !s.isEmpty { return s }
-        guard let dia = p["diaId"]?.comoTexto else { return nil }
+    /// `resolveSesion` (cliente.html:2698): la sesión capturada al encolar, o la de ESE día y semana, o se crea. "No pude
+    /// preguntar" no es "no existe": con un fallo de red se devuelve ese error (la cola corta sin gastar intento) y nunca
+    /// se crea una segunda sesión, que partiría las series del día. Si la base no da sesión (sin rutina activa, token
+    /// revocado), es un rechazo: gasta intento y la cola sigue con las demás, como la web.
+    func resolverSesion(_ p: JSONValue) async -> Result<String, ErrorRPC> {
+        if let s = p["sesionId"]?.comoTexto, !s.isEmpty { return .success(s) }
+        guard let dia = p["diaId"]?.comoTexto else {
+            return .failure(ErrorRPC(clase: .permanente, status: 0, codigo: "SIN_DIA", mensaje: "op sin diaId"))
+        }
         let semana = p["semana"] ?? .null
         let clave = "\(dia)|\(AnclajeSwaps.numeroJS(semana.comoNumero))"
-        if let s = await sesiones.leer(clave) { return s }
+        if let s = await sesiones.leer(clave) { return .success(s) }
         switch await cliente.llamar("mypump_get_sesion_dia", ["p_token": .texto(token), "p_dia_id": .texto(dia), "p_semana": semana]) {
-        case .failure:
-            return nil
+        case .failure(let e):
+            return .failure(e)
         case .success(let r):
             if case .lista(let filas) = r, let id = filas.first?["id"]?.comoTexto {
                 await sesiones.guardar(clave, id)
-                return id
+                return .success(id)
             }
         }
-        if case .success(let id) = await cliente.llamar("mypump_iniciar_sesion", ["p_token": .texto(token), "p_dia_id": .texto(dia), "p_semana": semana]),
-           let s = id.comoTexto {
-            await sesiones.guardar(clave, s)
-            return s
+        switch await cliente.llamar("mypump_iniciar_sesion", ["p_token": .texto(token), "p_dia_id": .texto(dia), "p_semana": semana]) {
+        case .failure(let e):
+            return .failure(e)
+        case .success(let id):
+            if let s = id.comoTexto {
+                await sesiones.guardar(clave, s)
+                return .success(s)
+            }
+            return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_SESION", mensaje: "mypump_iniciar_sesion: vacío"))
         }
-        return nil
     }
 
     /// `String(valor)` de JS: null → "null", true → "true", 12 → "12".
@@ -132,6 +165,20 @@ public struct Escrituras: Sendable {
         case .some(.texto(let s)): return s
         default: return ""
         }
+    }
+}
+
+/// "¿Cayó el token?" una vez por minuto como mucho: un `get_cliente_info` que devuelve `[]` es un token revocado. Sin red
+/// no se sabe: se asume que no (decide la cola).
+actor VerificacionToken {
+    private var ultima: (cuando: Date, cayo: Bool)?
+
+    func cayo(cliente: ClienteRPC, token: String) async -> Bool {
+        if let u = ultima, Date().timeIntervalSince(u.cuando) < 60 { return u.cayo }
+        guard case .success(let r) = await cliente.llamar("mypump_get_cliente_info", ["p_token": .texto(token)]) else { return false }
+        let cayo: Bool = if case .lista(let filas) = r { filas.isEmpty } else { r == .null }
+        ultima = (Date(), cayo)
+        return cayo
     }
 }
 

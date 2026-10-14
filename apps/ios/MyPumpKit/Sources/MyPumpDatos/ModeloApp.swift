@@ -24,6 +24,16 @@ public final class ModeloApp {
     public private(set) var desdeCache = false
     /// Demo ("Ver demo", la que mira App Review): datos de la web empaquetados, sin red ni token, nada se escribe.
     public private(set) var esDemo = false
+    /// Lo que no llegó en la última carga por un corte (se muestra la copia guardada de eso, si había).
+    public private(set) var sinRedEn: Set<Parte> = []
+    /// Por qué no se pudo cargar (para decir "Sin conexión" o "Servicio fuera de línea").
+    public private(set) var ultimaFalla: ErrorRPC.Clase?
+    /// Lo pone la raíz con el `scenePhase`: los sondeos solo corren con la app a la vista.
+    public var enPrimerPlano = true {
+        didSet { if enPrimerPlano && fase != .tokenInvalido && !esDemo { chat?.empezarSondeo() } else { chat?.pararSondeo() } }
+    }
+
+    public enum Parte: Sendable, Hashable { case rutina, dieta }
     public private(set) var estadoGuardado: EstadoGuardado = .quieto
 
     // Dieta
@@ -72,7 +82,8 @@ public final class ModeloApp {
         guard let t = FormatoToken.extraer(de: texto) else { return false }
         // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de
         // WhatsApp de hace meses.
-        if t != token, t == UserDefaults.standard.string(forKey: "mypump_token_invalido"), token != nil, fase == .listo, !esDemo {
+        // No depende de la fase: al abrir la app tocando el link, la cuenta guardada todavía está cargando.
+        if t != token, t == UserDefaults.standard.string(forKey: "mypump_token_invalido"), token != nil, !esDemo {
             return false
         }
         if t == token, fase == .listo { return true }
@@ -93,6 +104,7 @@ public final class ModeloApp {
         info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil
         esDemo = false
+        sinRedEn = []
         fase = .sinToken
     }
 
@@ -104,10 +116,13 @@ public final class ModeloApp {
             return try? JSONEncoder().encode(JSONValue.objeto(["id": .texto(id), "version": .numero(1), "estructura": e,
                                                                "semana_actual": .numero(1)]))
         }
+        // La demo no escribe NADA: se suelta la cuenta en memoria (token, cola, chat…). El Keychain no se toca: si había
+        // una cuenta guardada, "Salir" de la demo vuelve a ella.
+        soltarCuentaEnMemoria()
         self.rutina = envolver(rutina, id: "demo").flatMap { try? JSONDecoder().decode(RutinaActiva.self, from: $0) }
         self.dieta = envolver(dieta, id: "demo").flatMap { try? JSONDecoder().decode(DietaActiva.self, from: $0) }
-        info = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         desdeCache = false
+        sinRedEn = []
         esDemo = true
         fase = .listo
     }
@@ -116,7 +131,22 @@ public final class ModeloApp {
     public func salirDeDemo() async {
         esDemo = false
         rutina = nil; dieta = nil; swaps = [:]
-        if token != nil { fase = .cargando; await cargar() } else { fase = .sinToken }
+        token = almacen.leer()
+        if let t = token {
+            prepararCuenta(t)
+            fase = .cargando
+            await cargar()
+        } else {
+            fase = .sinToken
+        }
+    }
+
+    private func soltarCuentaEnMemoria() {
+        token = nil
+        disco = nil
+        outbox = nil
+        info = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil
     }
 
     private func prepararCuenta(_ t: String) {
@@ -127,6 +157,7 @@ public final class ModeloApp {
         outbox = cola
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
+        if enPrimerPlano { chat?.empezarSondeo() }
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola)
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
@@ -156,11 +187,16 @@ public final class ModeloApp {
     public func cargar() async {
         if esDemo { return }   // la demo no toca la red (y "tirar para actualizar" no la cierra)
         guard let t = token else { fase = .sinToken; return }
+        // Todo lo que sigue es de ESTE token: si mientras tanto entró otro (un link tocado al abrir la app), lo que vuelva
+        // se descarta sin tocar nada (ni el Keychain ni la pantalla).
+        func vigente() -> Bool { token == t && !esDemo }
         let p: [String: JSONValue] = ["p_token": .texto(t)]
 
         let respuestaInfo: JSONValue
         switch await cliente.llamar("mypump_get_cliente_info", p) {
-        case .failure:
+        case .failure(let e):
+            guard vigente() else { return }
+            ultimaFalla = e.clase
             // Sin red o servicio caído: la copia offline, si hay.
             if let copia = disco?.leer(CopiaOffline.self, "offline.json") {
                 aplicar(copia)
@@ -171,12 +207,15 @@ public final class ModeloApp {
             }
             return
         case .success(let j):
+            guard vigente() else { return }
             respuestaInfo = j
         }
+        ultimaFalla = nil
         // `[]` sin error = token inválido o revocado (la base no tira error: devuelve vacío).
         guard case .lista(let filas) = respuestaInfo, let primera = filas.first else {
-            almacen.guardar(nil)
+            if almacen.leer() == t { almacen.guardar(nil) }
             UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
+            chat?.pararSondeo()
             fase = .tokenInvalido
             return
         }
@@ -185,17 +224,35 @@ public final class ModeloApp {
         async let r = cliente.llamar("mypump_get_rutina_activa", p)
         async let d = cliente.llamar("mypump_get_dieta_activa", p)
         let (rr, dd) = await (r, d)
-        let rutinaJSON = try? rr.get().primeraFila
-        let dietaJSON = try? dd.get().primeraFila
+        guard vigente() else { return }
+        // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
+        // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
+        let copia = disco?.leer(CopiaOffline.self, "offline.json")
+        var faltaron: Set<Parte> = []
+        let rutinaJSON: JSONValue?
+        switch rr {
+        case .success(let j): rutinaJSON = j.primeraFila
+        case .failure: rutinaJSON = copia?.rutina.flatMap { $0 == .null ? nil : $0 }; faltaron.insert(.rutina)
+        }
+        let dietaJSON: JSONValue?
+        switch dd {
+        case .success(let j): dietaJSON = j.primeraFila
+        case .failure: dietaJSON = copia?.dieta.flatMap { $0 == .null ? nil : $0 }; faltaron.insert(.dieta)
+        }
         rutina = rutinaJSON.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaJSON.flatMap { decodificar(DietaActiva.self, $0) }
-        if rutinaJSON != nil || dietaJSON != nil {
+        if rutinaJSON != nil || dietaJSON != nil || copia != nil {
             disco?.guardar(CopiaOffline(info: primera, rutina: rutinaJSON, dieta: dietaJSON, ts: Date().timeIntervalSince1970 * 1000), "offline.json")
         }
-        desdeCache = false
+        // Los reemplazos guardados en el teléfono, ANTES de mostrar Dieta (si no, se ven tarde y un reemplazo hecho en
+        // ese hueco pisaba el archivo).
+        if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] } else { swaps = [:] }
+        sinRedEn = faltaron
+        desdeCache = !faltaron.isEmpty
         fase = .listo
 
         await hidratarDieta()
+        guard vigente() else { return }
         await cargarComidasLibres()
         await outbox?.drenar()
         async let cargaChat: Void = chat?.cargar() ?? ()
@@ -207,15 +264,21 @@ public final class ModeloApp {
         diaCargado = FechaLocal.hoy()
     }
 
+    /// Volvió la red (el monitor de la raíz): sale lo pendiente y, si se estaba mostrando la copia guardada, se trae todo.
+    public func alVolverLaRed() async {
+        guard fase == .listo, !esDemo, token != nil else { return }
+        if desdeCache { await cargar(); return }
+        await outbox?.drenar()
+        await fotos?.drenar()
+    }
+
     /// Al volver a primer plano (GEN-07): salen las colas, se mira el chat, y si cambió el día se recarga lo que es "de
     /// hoy" (comidas libres, Mi Día, el check de la semana). Si se estaba mostrando la copia offline, se intenta traer
     /// todo de nuevo.
     public func alVolverAPrimerPlano() async {
         guard fase == .listo, !esDemo, token != nil else { return }
         if desdeCache { await cargar(); return }
-        await outbox?.drenar()
-        await fotos?.drenar()
-        await chat?.sondear()
+        // Primero lo "de hoy" si cambió el día (lo que se toque ahora tiene que caer en el día nuevo), después las colas.
         let hoy = FechaLocal.hoy()
         if diaCargado != hoy {
             await cargarComidasLibres()
@@ -223,6 +286,9 @@ public final class ModeloApp {
             await revision?.cargarRevision()
             diaCargado = hoy
         }
+        await outbox?.drenar()
+        await chat?.sondear()
+        await fotos?.drenar()
     }
 
     /// Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas.
@@ -395,7 +461,6 @@ public final class ModeloApp {
         if case .success(let propios) = await cliente.filas("mypump_get_custom_foods", p, como: AlimentoPropio.self) {
             alimentosPropios = propios
         }
-        if swaps.isEmpty { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(dieta.id).json") ?? [:] }
 
         let remotos: [FoodSwap]?
         switch await cliente.filas("mypump_get_food_swaps", ["p_token": .texto(t), "p_dieta_id": .texto(dieta.id)], como: FoodSwap.self) {

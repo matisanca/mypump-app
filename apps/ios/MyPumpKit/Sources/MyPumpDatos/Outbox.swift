@@ -66,6 +66,8 @@ public actor Outbox {
     private var enVuelo: Task<Void, Never>?
     private var temporizador: Task<Void, Never>?
     private var huboProblema = false
+    /// La última pasada dejó algo sin guardar (sin red, transitorio, rechazo o token caído).
+    private var ultimaFallo = false
     private var rachaSinRed = 0
     private var secuencia = 0
     private var alCambiar: (@Sendable (EstadoGuardado) -> Void)?
@@ -143,13 +145,23 @@ public actor Outbox {
         guardar()
     }
 
-    /// Una pasada. Si ya hay una en curso, espera a ESA.
+    /// Vacía la cola: pasadas hasta que no quede nada o hasta que una falle (sin red, el servidor mal, un rechazo).
+    /// Si ya hay una pasada en curso, la espera y sigue con lo que se encoló mientras tanto: así "cerrar el día" espera
+    /// el envío de TODO lo anterior.
     public func drenar() async {
-        if let t = enVuelo { await t.value; return }
-        let t = Task { await self.pasada() }
-        enVuelo = t
-        await t.value
-        enVuelo = nil
+        for _ in 0..<6 {
+            if let t = enVuelo {
+                await t.value
+            } else {
+                // `enVuelo` lo suelta la misma pasada al terminar, ANTES de programar la siguiente: si lo soltara quien
+                // la creó (después de `await`), el temporizador podía encontrarla "en vuelo" ya terminada, esperarla y
+                // volver sin pasada, con lo encolado durante el vuelo trabado (lo encontró la revisión: 15 de 200).
+                let t = Task { await self.pasada(); self.enVuelo = nil }
+                enVuelo = t
+                await t.value
+            }
+            if estado.ops.isEmpty || ultimaFallo { return }
+        }
     }
 
     private func programar(en demora: Duration) {
@@ -168,6 +180,7 @@ public actor Outbox {
     }
 
     private func pasada() async {
+        ultimaFallo = false
         guard !estado.ops.isEmpty else { return }
         let tanda = estado.ops
         var resueltas = Set<String>()
@@ -231,6 +244,7 @@ public actor Outbox {
             huboProblema = false
             avisar(.perdido)
         }
+        ultimaFallo = algunaFallo
         if algunaFallo {
             huboProblema = true
             if abandonadas.isEmpty { avisar(.sinConexion) }
