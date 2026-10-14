@@ -53,6 +53,7 @@ mypump_coach_comentar_v2(p_cliente_id text, p_contenido text, p_ambito text DEFA
 mypump_conteos_cliente(p_token text)
 mypump_crear_comida_libre(p_token text, p_fecha date, p_hora time without time zone, p_descripcion text, p_kcal numeric, p_prot numeric, p_carb numeric, p_fat numeric, p_detalle jsonb DEFAULT NULL::jsonb)
 mypump_create_custom_food(p_token text, p_name text, p_kcal numeric, p_prot numeric, p_carb numeric, p_fat numeric, p_unit text, p_unit_grams numeric, p_category text)
+mypump_delete_exercise_swap(p_token text, p_rutina_id uuid, p_ex_id text, p_ts bigint)
 mypump_delete_food_swap(p_token text, p_dieta_id uuid, p_comida_id text, p_opt_idx integer, p_food_idx integer)
 mypump_desconectar_wearable(p_token text, p_proveedor text)
 mypump_desmarcar_comida(p_token text, p_fecha date, p_comida_id text)
@@ -81,6 +82,7 @@ mypump_get_dieta_activa(p_token text)
 mypump_get_ejercicios_estado(p_token text, p_sesion_id uuid)
 mypump_get_elecciones_dia(p_token text, p_dieta_id uuid, p_fecha date)
 mypump_get_entrenos_health(p_token text, p_dias integer DEFAULT 30)
+mypump_get_exercise_swaps(p_token text, p_rutina_id uuid)
 mypump_get_food_swaps(p_token text, p_dieta_id uuid)
 mypump_get_fotos_progreso(p_token text, p_desde date DEFAULT NULL::date)
 mypump_get_gasto_real(p_token text, p_dias integer DEFAULT 14)
@@ -133,11 +135,15 @@ mypump_resolver_analisis(p_cliente_id text, p_semana_lunes date)
 mypump_revision_semana(p_cliente_id text, p_ref timestamp with time zone DEFAULT now())
 mypump_revocar_acceso(p_cliente_id text)
 mypump_salud_valor_plausible(p_tipo text, p_valor numeric)
+mypump_save_exercise_swap(p_token text, p_rutina_id uuid, p_ex_id text, p_swap jsonb)
 mypump_save_food_swap(p_token text, p_dieta_id uuid, p_comida_id text, p_opt_idx integer, p_food_idx integer, p_food_data jsonb)
 mypump_set_cliente_prefs(p_token text, p_excluir text[], p_idioma text DEFAULT 'es'::text)
 mypump_set_ejercicio_imagen(p_rutina_id uuid, p_dia_idx integer, p_bloque_idx integer, p_ejercicio_idx integer, p_slug_en text)
 mypump_set_habito(p_token text, p_fecha date, p_campo text, p_valor text)
 mypump_set_mostrar_recuperacion(p_token text, p_mostrar boolean)
+mypump_sustitucion_tope()
+mypump_sustitucion_ts(p_swap jsonb)
+mypump_sustitucion_valida(p_ex_id text, p_swap jsonb)
 mypump_upsert_analisis(p_cliente_id text, p_semana_lunes date, p_balde text, p_motivos jsonb DEFAULT '[]'::jsonb, p_banderas jsonb DEFAULT '[]'::jsonb, p_senales jsonb DEFAULT '{}'::jsonb, p_mensaje_cliente text DEFAULT NULL::text, p_sugerencia_coach text DEFAULT NULL::text, p_mensaje_ajuste text DEFAULT NULL::text)
 nutriplan_lm(c jsonb)
 nutriplan_no_retroceder()
@@ -282,6 +288,9 @@ mypump_ejercicios_estado:
 
 mypump_entrenos_health:
   id bigint, cliente_id text, fecha date, inicio timestamp with time zone, fin timestamp with time zone, tipo text, duracion_min numeric, kcal numeric, distancia_km numeric, fc_media numeric, fc_max numeric, fuente text
+
+mypump_exercise_swaps:
+  cliente_id text, rutina_id uuid, ex_id text, swap jsonb, cambiado_en bigint, creado_en timestamp with time zone, actualizado_en timestamp with time zone
 
 mypump_food_swaps:
   id uuid, cliente_id text, dieta_id uuid, comida_id text, opt_idx integer, food_idx integer, food_data jsonb, created_at timestamp with time zone, updated_at timestamp with time zone
@@ -433,6 +442,9 @@ mypump_dietas.mypump_dietas_estado_check: CHECK ((estado = ANY (ARRAY['activa'::
 mypump_dietas_elecciones.mypump_dietas_elecciones_opcion_elegida_check: CHECK ((opcion_elegida = ANY (ARRAY['A'::text, 'B'::text, 'C'::text, 'D'::text])))
 mypump_ejercicios_estado.mypump_ejercicios_estado_status_check: CHECK ((status = ANY (ARRAY['pendiente'::text, 'completo'::text, 'completo_sin_datos'::text, 'saltado'::text])))
 mypump_entrenos_health.mypump_entrenos_health_fuente_check: CHECK ((fuente = ANY (ARRAY['apple_health'::text, 'health_connect'::text, 'rook'::text, 'manual'::text, 'whoop'::text, 'oura'::text, 'withings'::text, 'polar'::text])))
+mypump_exercise_swaps.mypump_exercise_swaps_cambiado_en_check: CHECK ((cambiado_en >= 0))
+mypump_exercise_swaps.mypump_exercise_swaps_ex_id_check: CHECK (((length(ex_id) >= 1) AND (length(ex_id) <= 120)))
+mypump_exercise_swaps.mypump_exercise_swaps_swap_check: CHECK (((swap IS NULL) OR (jsonb_typeof(swap) = 'object'::text)))
 mypump_fotos_progreso.mypump_fotos_progreso_pose_check: CHECK ((pose = ANY (ARRAY['frente'::text, 'perfil'::text, 'espalda'::text])))
 mypump_habitos_diarios.mypump_habitos_diarios_entrenamiento_check: CHECK (((entrenamiento IS NULL) OR (entrenamiento = ANY (ARRAY['entrene'::text, 'descanso'::text, 'falte'::text]))))
 mypump_habitos_diarios.mypump_habitos_diarios_vasos_agua_check: CHECK (((vasos_agua >= 0) AND (vasos_agua <= 12)))
@@ -481,6 +493,7 @@ mypump_coach_comentar_v2: postgres=X/postgres | authenticated=X/postgres | servi
 mypump_conteos_cliente: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_crear_comida_libre: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_create_custom_food: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_delete_exercise_swap: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_delete_food_swap: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_desconectar_wearable: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_desmarcar_comida: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -509,6 +522,7 @@ mypump_get_dieta_activa: =X/postgres | postgres=X/postgres | anon=X/postgres | a
 mypump_get_ejercicios_estado: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_elecciones_dia: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_entrenos_health: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_exercise_swaps: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_food_swaps: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_fotos_progreso: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_gasto_real: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -561,11 +575,15 @@ mypump_resolver_analisis: postgres=X/postgres | authenticated=X/postgres | servi
 mypump_revision_semana: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_revocar_acceso: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_salud_valor_plausible: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_save_exercise_swap: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_save_food_swap: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_set_cliente_prefs: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_set_ejercicio_imagen: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_set_habito: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_set_mostrar_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_sustitucion_tope: postgres=X/postgres | service_role=X/postgres
+mypump_sustitucion_ts: postgres=X/postgres | service_role=X/postgres
+mypump_sustitucion_valida: postgres=X/postgres | service_role=X/postgres
 mypump_upsert_analisis: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 
 ======================================================================
@@ -693,6 +711,11 @@ mypump_entrenos_health  (RLS ON, 1 politica/s)
   [ALL] coach_autenticado_todo  roles={authenticated}
       USING true
       CHECK true
+
+mypump_exercise_swaps  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_exercise_swaps  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
 
 mypump_food_swaps  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_food_swaps  roles={public}
