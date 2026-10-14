@@ -77,6 +77,108 @@ struct IntegracionTests {
         #expect(e.clase == .permanente)
     }
 
+    @Test func chatEnviaPorLaColaYNoDuplicaUnReintento() async throws {
+        let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await m.cargar()
+        let t = try #require(tokenDePrueba())
+        let chat = ModeloChat(cliente: m.cliente, token: t, outbox: m.outbox)
+        await chat.cargar()
+        let texto = "Prueba nativa \(UUID().uuidString.prefix(8))"
+        await chat.enviar(texto)
+        #expect(chat.hilo.mensajes.last?.pendiente == true)
+        await m.outbox?.drenar()
+        #expect(await m.outbox?.pendientes == 0)
+        await chat.sondear()
+        #expect(chat.hilo.mensajes.contains { $0.contenido == texto && !$0.pendiente })
+        #expect(!chat.hilo.mensajes.contains { $0.pendiente })
+        // La respuesta se perdió y la cola lo reintenta: no se manda de nuevo.
+        let e = Escrituras(cliente: m.cliente, token: t)
+        let op = Operacion(id: "x", kind: "chat", payload: .objeto(["contenido": .texto(texto)]), dedupeKey: nil, tries: 0,
+                           ts: Date().timeIntervalSince1970 * 1000 - 5_000)
+        _ = await e.ejecutar(op)
+        let filas = try await m.cliente.filas("mypump_get_chat", ["p_token": .texto(t), "p_antes": .null, "p_limite": .numero(10)],
+                                              como: MensajeChat.self).get()
+        #expect(filas.filter { $0.contenido == texto }.count == 1)
+    }
+
+    @Test func miDiaYRevisionPorLaCola() async throws {
+        let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await m.cargar()
+        let t = try #require(tokenDePrueba())
+        let r = ModeloRevision(cliente: m.cliente, token: t, outbox: m.outbox)
+        await r.cargarMiDia()
+        #expect(r.miDiaCargado)
+        let previoCardio = r.habitos.cardio
+        // Tocar "hice cardio ✓" y que llegue.
+        await r.setHabito(campo: "cardio", valor: "true")
+        #expect(r.habitos.cardio == true)
+        await m.outbox?.drenar()
+        let otra = ModeloRevision(cliente: m.cliente, token: t, outbox: m.outbox)
+        await otra.cargarMiDia()
+        #expect(otra.habitos.cardio == true)
+        // Agua con la espera de 600 ms.
+        let vasos = r.habitos.vasosAgua
+        r.cambiarAgua(vasos >= 12 ? -1 : 1)
+        try await Task.sleep(for: .milliseconds(900))
+        await m.outbox?.drenar()
+        await otra.cargarMiDia()
+        #expect(otra.habitos.vasosAgua == r.habitos.vasosAgua)
+        // Dejar la cuenta como estaba.
+        await r.setHabito(campo: "cardio", valor: previoCardio.map { $0 ? "true" : "false" })
+        r.cambiarAgua(vasos - r.habitos.vasosAgua)
+        try await Task.sleep(for: .milliseconds(900))
+        await m.outbox?.drenar()
+
+        // Check: faltan escalas → no sale; completo → sale.
+        #expect(await r.enviarCheckin(Checkin(valores: ["energia": 4], nota: "")) == "Faltan: Descanso, Hambre, Adherencia")
+        #expect(await r.enviarCheckin(Checkin(valores: ["energia": 4, "descanso": 3, "hambre": 2, "adherencia": 5], nota: " prueba nativa ")) == nil)
+        #expect(r.checkinEnviado)
+        await m.outbox?.drenar()
+        await otra.cargarRevision()
+        #expect(otra.checkin?.valores["hambre"] == 2 && otra.checkin?.nota == "prueba nativa")
+
+        // Peso fuera de rango no se guarda; uno válido entra a la serie.
+        #expect(await r.guardarPeso("25") == false)
+        #expect(await r.guardarPeso("81,95"))
+        #expect(r.serieDePeso.last?.kg == 82)
+        await m.outbox?.drenar()
+        await otra.cargarRevision()
+        #expect(otra.serieDePeso.last == PesoCorporal.Punto(fecha: FechaLocal.hoy(), kg: 82))
+    }
+
+    /// Sube UNA foto chica (la de espalda de esta semana: es un upsert, repetir no suma) y pide las URLs firmadas. El
+    /// servicio deja 12 fotos por día por cliente: corre solo con `MYPUMP_PROBAR_FOTOS=1`.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["MYPUMP_PROBAR_FOTOS"] == "1"))
+    func fotoDeProgresoSubeYSeFirma() async throws {
+        let t = try #require(tokenDePrueba())
+        let m = ModeloFotos(cliente: ClienteRPC(), token: t, disco: Disco(raiz: raiz, token: t))
+        // JPEG de 8×8 gris (válido: el servidor mira los bytes mágicos).
+        let jpeg = try #require(Data(base64Encoded: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="))
+        let r = await m.subir(pose: "espalda", jpeg: jpeg)
+        #expect(r == .guardada, "subida: \(r.texto)")
+        #expect(m.fotos.contains { $0.pose == "espalda" && $0.semanaLunes == m.semanaActual })
+        #expect(await m.firmar())
+        #expect(m.urls["\(m.semanaActual)|espalda"] != nil)
+    }
+
+    @Test func progresoConElHistorialReal() async throws {
+        let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await m.cargar()
+        let p = ModeloProgreso(cliente: m.cliente, token: try #require(tokenDePrueba()))
+        await p.cargar(rutina: m.rutina)
+        #expect(p.estado == .listo)
+        #expect(!p.tarjetas.isEmpty)
+        #expect(p.sesiones > 0)
+        // Una tarjeta por clave: nunca dos con la misma.
+        #expect(Set(p.tarjetas.map(\.clave)).count == p.tarjetas.count)
+        #expect(p.tarjetas.allSatisfy { $0.resumen.serie.count <= 8 && !$0.dias.isEmpty })
+        // Sin red avisa y no deja tarjetas viejas mezcladas.
+        struct SinRed: Transporte { func enviar(_ q: URLRequest) async throws -> (Data, URLResponse) { throw URLError(.notConnectedToInternet) } }
+        let offline = ModeloProgreso(cliente: ClienteRPC(transporte: SinRed()), token: "x")
+        await offline.cargar(rutina: m.rutina)
+        #expect(offline.estado == .sinRed)
+    }
+
     @Test func sustituirLlegaAnclado_yRevertirLoBorra() async throws {
         let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
         await m.cargar()

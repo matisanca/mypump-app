@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<!-- Universal Links: hace que el link de acceso del coach
+	     (app.mypumpteam.com/?t=TOKEN) abra la app en vez del navegador.
+	     Necesita las dos patas: este entitlement + el archivo
+	     public/.well-known/apple-app-site-association, y la capability
+	     "Associated Domains" habilitada en el App ID del portal. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:app.mypumpteam.com</string>
+	</array>
+	<!-- Push. 'production' aunque el build sea de desarrollo: desde iOS 9 el
+	     token de APNs sirve para los dos entornos y usar 'development' rompería
+	     los envíos desde TestFlight/App Store, que es donde corre de verdad.
+	     Necesita la capability "Push Notifications" habilitada en el App ID. -->
+	<key>aps-environment</key>
+	<string>production</string>
+</dict>
+</plist>

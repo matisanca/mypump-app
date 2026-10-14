@@ -3,6 +3,7 @@ import MyPumpDatos
 
 @main
 struct MyPumpApp: App {
+    @UIApplicationDelegateAdaptor(DelegadoApp.self) private var delegado
     @State private var datos = Muestras.cargar()
     @State private var descanso = Descanso()
     @State private var sesion = SesionEnCurso()
