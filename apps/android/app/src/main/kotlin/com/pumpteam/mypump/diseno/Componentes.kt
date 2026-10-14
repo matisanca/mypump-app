@@ -1,9 +1,11 @@
 package com.pumpteam.mypump.diseno
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -351,12 +353,22 @@ fun Chip(texto: String, modifier: Modifier = Modifier, tono: Color = MyPump.colo
 @Composable
 fun bordeFino(): BorderStroke = BorderStroke(1.dp, MyPump.colores.borde)
 
-/** Abre un link en el navegador del teléfono (las páginas legales y las fuentes). */
+/**
+ * Abre un link dentro de la app con una Custom Tab (las páginas legales y las fuentes), como el SFSafariViewController de
+ * iOS: el cliente vuelve con Atrás sin salir de MyPump. Sin un navegador que las soporte, se abre en el navegador.
+ */
 fun abrirEnNavegador(contexto: Context, url: String) {
+    val uri = Uri.parse(url)
     try {
-        contexto.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        val pestana = CustomTabsIntent.Builder().setShowTitle(true).build()
+        if (contexto !is Activity) pestana.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        pestana.launchUrl(contexto, uri)
     } catch (_: ActivityNotFoundException) {
-        // Sin navegador no hay a dónde ir: no se hace nada (no pasa en un teléfono real).
+        try {
+            contexto.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: ActivityNotFoundException) {
+            // Sin navegador no hay a dónde ir: no se hace nada (no pasa en un teléfono real).
+        }
     }
 }
 

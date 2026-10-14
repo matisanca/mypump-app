@@ -134,11 +134,15 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.browser)
     debugImplementation(libs.compose.ui.tooling)
 
     // El token con el Keystore de verdad y las pruebas de interfaz: corren en un emulador o un teléfono
-    // (`connectedDebugAndroidTest`). Las de interfaz no usan `ui-test-junit4` (no está en el proyecto): leen el árbol de
-    // semántica de Compose con `ViewRootForTest`, ver androidTest/…/ui/Pantalla.kt.
+    // (`connectedDebugAndroidTest`). Las de interfaz usan el arnés propio (androidTest/…/ui/Pantalla.kt); desde el 14-oct
+    // está también `ui-test-junit4` (OK de Mati) para las nuevas con `createAndroidComposeRule`.
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

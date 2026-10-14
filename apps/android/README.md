@@ -57,10 +57,13 @@ y números grandes van en Archivo.
 - **El permiso para la IA (D7).** Lo que manda algo a la IA llama a `LocalPermisoIA.current.antesDeUsarIA(modelo) { acepta -> … }`
   antes del primer uso: si el cliente nunca decidió, aparece la hoja y después sigue. Lo van a usar el chat, la foto de
   una comida y el check, que todavía no existen en Android.
+- **Links (fuentes y legales).** `abrirEnNavegador` abre una Custom Tab (`androidx.browser`, OK de Mati del 14-oct),
+  como el SFSafariViewController de iOS; sin un navegador que las soporte, va al navegador.
 - **Recursos compartidos.** Gradle copia en la compilación (`app/build/generated/compartido/`) la fuente Archivo de la app
   de iOS, la demo y el catálogo de `apps/shared`: no hay copias en el repo que se puedan desfasar.
-- **Pruebas de interfaz (`androidTest/…/ui`).** `ui-test-junit4` no está en el proyecto, así que no se usa
-  `createAndroidComposeRule`. `Pantalla` lee el árbol de semántica de Compose con las mismas piezas públicas que usa esa
+- **Pruebas de interfaz (`androidTest/…/ui`).** Desde el 14-oct están `ui-test-junit4` y `ui-test-manifest` (OK de Mati):
+  las nuevas pueden usar `createAndroidComposeRule` (la primera, `CustomTabsTest`). Las anteriores siguen con el arnés
+  propio, que no lo necesitaba: `Pantalla` lee el árbol de semántica de Compose con las mismas piezas públicas que usa esa
   librería (`ViewRootForTest.onViewCreatedCallback`, `SemanticsOwner`) y toca con las acciones de semántica: busca por
   `testTag` o por texto y espera a que aparezca. El backend es `ServidorDePrueba`, que contesta con las respuestas
   grabadas de `test-nativa-real` (`apps/shared/fixtures`, en los assets del APK de pruebas), sin tokens ni red. La prueba

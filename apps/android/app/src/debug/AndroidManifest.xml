@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Solo en debug (nunca en lo que va a Play): una actividad vacía donde las pruebas de interfaz arman un componente suelto
-  (la hoja del permiso de la IA con un disparador de prueba). Es lo mismo que agrega `ui-test-manifest`, que no está en el
-  proyecto.
+  (la hoja del permiso de la IA con un disparador de prueba). `ui-test-manifest` declara la misma actividad; acá se le
+  pone el tema de la app y se la deja sin exportar (tools:replace), como estaba antes de sumar esa librería.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application>
         <activity
             android:name="androidx.activity.ComponentActivity"
             android:exported="false"
-            android:theme="@style/Tema.MyPump" />
+            android:theme="@style/Tema.MyPump"
+            tools:replace="android:exported,android:theme" />
     </application>
 </manifest>
