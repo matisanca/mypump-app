@@ -40,8 +40,8 @@ Argentine dietary guidelines) with links, plus a medical disclaimer.
 THIRD-PARTY AI (Guideline 5.1.2(i))
 
 No personal data reaches a third-party AI. Chat replies are prepared by the
-coach with AI tools (OpenAI and Anthropic) and approved by him before they are
-sent. Before a conversation leaves our own server, a model that runs on that
+coach with AI tools (OpenAI and Anthropic); anything beyond a simple
+acknowledgment is approved by him before it is sent. Before a conversation leaves our own server, a model that runs on that
 server removes the client's name, phone, email and ID numbers; the name is put
 back on our server, never by the provider. A meal or label photo is sent alone,
 without the user's name or any other data, to estimate its nutrition values,

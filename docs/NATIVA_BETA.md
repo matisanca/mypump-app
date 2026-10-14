@@ -56,8 +56,9 @@ Si algo no anda, mandale a Mati una captura por WhatsApp.
 sin cuenta. Hay que sumar lo de la IA, porque desde el 14-oct no hay pantalla de permiso:
 
 ```
-Chat replies are prepared by the coach with AI tools and approved by him before
-they are sent. Before any message leaves our own server, a local model removes
+Chat replies are prepared by the coach with AI tools; anything beyond a simple
+acknowledgment is approved by him before it is sent. Before any message leaves
+our own server, a local model removes
 the client's name and contact details; the name is put back on our server.
 ```
 
