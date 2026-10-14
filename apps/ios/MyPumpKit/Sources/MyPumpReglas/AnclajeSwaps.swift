@@ -41,7 +41,7 @@ public enum AnclajeSwaps {
     // MARK: - Semántica de JS
 
     /// `!x` de JS sobre un valor JSON: null, false, 0, NaN y "" son falsos; objetos y arrays (aun vacíos) verdaderos.
-    static func esVerdadero(_ v: JSONValue) -> Bool {
+    public static func esVerdadero(_ v: JSONValue) -> Bool {
         switch v {
         case .null: return false
         case .bool(let b): return b
@@ -52,7 +52,7 @@ public enum AnclajeSwaps {
     }
 
     /// `Number(x)`: número tal cual; texto numérico → número; vacío → 0; lo demás NaN.
-    static func numero(_ v: JSONValue?) -> Double? {
+    public static func numero(_ v: JSONValue?) -> Double? {
         switch v {
         case .numero(let d): return d
         case .texto(let s):
@@ -65,7 +65,7 @@ public enum AnclajeSwaps {
     }
 
     /// `String(x || '')` para nombre/unidad.
-    static func textoJS(_ v: JSONValue?) -> String? {
+    public static func textoJS(_ v: JSONValue?) -> String? {
         switch v {
         case .texto(let s): return s
         case .numero(let d): return d == 0 ? nil : numeroJS(d)
@@ -76,7 +76,7 @@ public enum AnclajeSwaps {
 
     /// Cómo imprime JS `Number(qty) || 0`: NaN, nil y 0 → "0"; enteros sin ".0"; el resto con su representación más
     /// corta (la de Swift coincide con la de JS en el rango que se usa).
-    static func numeroJS(_ d: Double?) -> String {
+    public static func numeroJS(_ d: Double?) -> String {
         guard let d, !d.isNaN, d != 0 else { return "0" }
         if d == d.rounded(), abs(d) < 1e21 { return String(Int64(d)) }
         return "\(d)"
