@@ -183,6 +183,7 @@ public actor Outbox {
         ultimaFallo = false
         guard !estado.ops.isEmpty else { return }
         let tanda = estado.ops
+        let hayVisibles = tanda.contains { !Self.silenciosas.contains($0.kind) }
         var resueltas = Set<String>()
         var abandonadas: [Operacion] = []
         var algunaFallo = false
@@ -190,7 +191,7 @@ public actor Outbox {
         // chequeo, el aviso salía DESPUÉS de terminar y pisaba al de "perdido" (lo encontró el test).
         let lenta = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(900))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, hayVisibles else { return }
             await self?.avisar(.guardando)
         }
 
@@ -239,21 +240,25 @@ public actor Outbox {
         }
         guardar()
 
-        if !abandonadas.isEmpty {
-            alAbandonar?(abandonadas)
+        // Las silenciosas (SER-14) no avisan: lo que el cliente hizo ya quedó en el teléfono.
+        let abandonadasVisibles = abandonadas.filter { !Self.silenciosas.contains($0.kind) }
+        if !abandonadas.isEmpty { alAbandonar?(abandonadas) }
+        if !abandonadasVisibles.isEmpty {
             huboProblema = false
             avisar(.perdido)
         }
         ultimaFallo = algunaFallo
         if algunaFallo {
-            huboProblema = true
-            if abandonadas.isEmpty { avisar(.sinConexion) }
+            if estado.ops.contains(where: { !Self.silenciosas.contains($0.kind) }) {
+                huboProblema = true
+                if abandonadasVisibles.isEmpty { avisar(.sinConexion) }
+            }
             let base = max(1, estado.ops.first?.tries ?? 1, rachaSinRed)
             programar(en: .milliseconds(min(30_000, 2_000 * base)))
         } else if huboProblema {
             huboProblema = false
             avisar(.guardado)
-        } else if abandonadas.isEmpty {
+        } else if abandonadasVisibles.isEmpty {
             avisar(.quieto)
         }
         // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta.
@@ -283,6 +288,10 @@ public actor Outbox {
             // Sin disco no hay mucho que hacer; la op sigue en memoria y se reintenta.
         }
     }
+
+    /// Kinds que no muestran avisos ("guardando", "sin conexión", "no se guardó"): las sustituciones de ejercicio
+    /// (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
+    public static let silenciosas: Set<String> = [SustitucionesServidor.kindGuardar, SustitucionesServidor.kindBorrar]
 
     /// `seGuardo` de la web: null, 0 y [] son "no se guardó". `false` SÍ cuenta (desmarcar algo que no estaba).
     public static func seGuardo(_ v: JSONValue) -> Bool {

@@ -425,26 +425,45 @@ struct MigracionLegadoTests {
         #expect(tel.disco().leer([String: SustitucionEjercicio].self, SustitucionEjercicio.archivo(rutinaId: rutinaR1))?.count == 1)
     }
 
-    /// SER-14: la primera corrida no marca nada (la primera sincronización sube lo del teléfono). Si el cliente vuelve a la
-    /// Capacitor y cambia una sustitución, la repetición la trae y marca la rutina: lo de la app vieja reemplaza lo del
-    /// servidor (si no, el servidor la pisaba con la de antes).
-    @Test func laRepeticionMarcaLasSustitucionesParaReemplazarLasDelServidor() throws {
+    /// SER-14: si el cliente vuelve a la Capacitor, solo lo que cambió AHÍ desde la corrida anterior pisa lo del teléfono
+    /// (con la hora de la corrida, para que gane también en el servidor) y lo que sacó ahí se saca; lo hecho en la nativa
+    /// queda. Antes se pisaba todo con lo de la app vieja.
+    @Test func laVueltaALaAppVieja_soloAplicaLoQueSeCambioAhi() throws {
         let tel = Telefono(); defer { tel.limpiar() }
-        let swaps = { (n: String) in
-            #"{"jalon-d1-0":{"original":{"slug":"a","nombre":"A"},"current":{"slug":"b","nombre":"\#(n)"},"fijado":true,"semana":1,"diaId":"d1"}}"#
+        func entrada(_ n: String) -> String {
+            #"{"original":{"slug":"a","nombre":"A"},"current":{"slug":"b","nombre":"\#(n)"},"fijado":true,"semana":1,"diaId":"d1"}"#
         }
-        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_exercise_swaps_\(rutinaR1)": swaps("B")])
+        let clave = "mypump_exercise_swaps_\(rutinaR1)"
+        try tel.webkit.escribir(["mypump_token": tokenA, clave: "{\"jalon-d1-0\":\(entrada("B"))}"])
         _ = try tel.faseL()
-        let archivo = SustitucionesServidor.Estado.archivo(rutinaId: rutinaR1)
-        #expect(tel.disco().leer(SustitucionesServidor.Estado.self, archivo) == nil)
-        // La nativa ya subió las suyas; el cliente vuelve a la Capacitor y cambia la sustitución.
-        tel.disco().guardar(SustitucionesServidor.Estado(subidas: true), archivo)
-        try tel.webkit.escribir(["mypump_exercise_swaps_\(rutinaR1)": swaps("C")])
-        let r = try tel.faseL()
+        let nombre = SustitucionEjercicio.archivo(rutinaId: rutinaR1)
+        let disco = tel.disco()
+        var nativa = try #require(disco.leer([String: JSONValue].self, nombre))
+        #expect(nativa["jalon-d1-0"]?["current"]?["nombre"]?.comoTexto == "B" && nativa["jalon-d1-0"]?["_ts"] == nil)
+        #expect(!FileManager.default.fileExists(atPath: disco.url(SustitucionesServidor.archivoEncoladas(rutinaId: rutinaR1)).path))
+        // En la nativa el cliente sustituye otro ejercicio.
+        let propia: JSONValue = .objeto(["current": .objeto(["nombre": .texto("Nativa")]), "fijado": .bool(true), "_ts": .numero(500)])
+        nativa["x-d1-1"] = propia
+        disco.guardar(nativa, nombre)
+        // Vuelve a la Capacitor: cambia la del jalón y agrega otra.
+        try tel.webkit.escribir([clave: "{\"jalon-d1-0\":\(entrada("C")),\"nuevo-d2-0\":\(entrada("N"))}"])
+        let momento = ahora.addingTimeInterval(3600)
+        let r = try tel.faseL(en: momento)
         #expect(r.repeticion)
-        let guardadas = tel.disco().leer([String: SustitucionEjercicio].self, SustitucionEjercicio.archivo(rutinaId: rutinaR1))
-        #expect(guardadas?["jalon-d1-0"]?.current.nombre == "C")
-        #expect(tel.disco().leer(SustitucionesServidor.Estado.self, archivo) == SustitucionesServidor.Estado(subidas: true, reemplazar: true))
+        let ms = momento.timeIntervalSince1970 * 1000
+        let despues = try #require(disco.leer([String: JSONValue].self, nombre))
+        #expect(despues["jalon-d1-0"]?["current"]?["nombre"]?.comoTexto == "C" && despues["jalon-d1-0"]?["_ts"] == .numero(ms.rounded(.down)))
+        #expect(despues["nuevo-d2-0"]?["current"]?["nombre"]?.comoTexto == "N")
+        #expect(despues["x-d1-1"] == propia, "lo hecho en la nativa quedó")
+        // Lo que había quedó anotado como ya subido: al abrir, lo cambiado sale como guardado.
+        #expect(disco.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: rutinaR1)) == nativa)
+        // Otra vuelta: saca la nueva en la Capacitor y no toca la del jalón.
+        try tel.webkit.escribir([clave: "{\"jalon-d1-0\":\(entrada("C"))}"])
+        _ = try tel.faseL(en: momento.addingTimeInterval(3600))
+        let otra = try #require(disco.leer([String: JSONValue].self, nombre))
+        #expect(otra["nuevo-d2-0"] == nil, "lo que sacó en la app vieja se sacó")
+        #expect(otra["jalon-d1-0"] == despues["jalon-d1-0"], "lo que no cambió ahí no se toca (ni su hora)")
+        #expect(otra["x-d1-1"] == propia)
     }
 
     @Test func elTokenMarcadoInvalidoNoSeUsa() throws {

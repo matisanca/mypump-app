@@ -254,16 +254,23 @@ public enum EjecutorLegado {
             }
             for (rutina, s) in plan.sustituciones {
                 let nombre = SustitucionEjercicio.archivo(rutinaId: rutina)
-                if previo != nil || !FileManager.default.fileExists(atPath: disco.url(nombre).path) {
-                    disco.guardar(s, nombre)
-                    // SER-14: en una repetición, lo de la app vieja es lo último que hizo el cliente: en la próxima
-                    // sincronización reemplaza lo del servidor (si no, el servidor lo pisaba con lo de antes).
-                    if previo != nil {
-                        let archivo = SustitucionesServidor.Estado.archivo(rutinaId: rutina)
-                        let subidas = disco.leer(SustitucionesServidor.Estado.self, archivo)?.subidas ?? false
-                        disco.guardar(SustitucionesServidor.Estado(subidas: subidas, reemplazar: true), archivo)
-                    }
+                let legado = (try? JSONDecoder().decode([String: JSONValue].self, from: JSONEncoder().encode(s))) ?? [:]
+                if previo == nil {
+                    if !FileManager.default.fileExists(atPath: disco.url(nombre).path) { disco.guardar(s, nombre) }
+                } else {
+                    // El cliente volvió a la app vieja y cambió algo ahí. SER-14: solo lo que cambió AHÍ desde la corrida
+                    // anterior pisa lo del teléfono (con la hora de ahora, para que gane también en el servidor) y lo que
+                    // sacó ahí se saca; lo hecho en la nativa o llegado de otro teléfono queda. Antes se pisaba todo.
+                    let nativa = disco.leer([String: JSONValue].self, nombre) ?? [:]
+                    let base = disco.leer([String: JSONValue].self, SustitucionesServidor.archivoLegado(rutinaId: rutina))
+                    // Lo que había se toma como ya subido: así lo que se saca sale como borrado y lo cambiado como guardado.
+                    let encoladas = SustitucionesServidor.archivoEncoladas(rutinaId: rutina)
+                    if !FileManager.default.fileExists(atPath: disco.url(encoladas).path) { disco.guardar(nativa, encoladas) }
+                    disco.guardar(SustitucionesServidor.volverDeLaAppVieja(nativa: nativa, legado: legado, base: base,
+                                                                         ms: ahora.timeIntervalSince1970 * 1000), nombre)
                 }
+                // Lo que se leyó de la app vieja: la base para la próxima vuelta.
+                disco.guardar(legado, SustitucionesServidor.archivoLegado(rutinaId: rutina))
             }
             for (dieta, s) in plan.swapsComida {
                 // El mapa local es una caché del servidor: si la nativa ya tiene el suyo, gana el suyo.

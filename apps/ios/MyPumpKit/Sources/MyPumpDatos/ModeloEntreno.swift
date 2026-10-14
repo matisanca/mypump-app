@@ -776,7 +776,10 @@ public final class ModeloEntreno {
         guard let ex = dia.ejercicio(lugar) else { return }
         let ef = efectivo(ex)
         invalidarHistorial(lugar)
-        await ejecutar(dia.sustituir(lugar, por: sub, efectivo: ef, fijado: fijar))
+        let efectos = dia.sustituir(lugar, por: sub, efectivo: ef, fijado: fijar)
+        // SER-14: la hora del cambio (en el servidor gana lo más nuevo). Es solo de la nativa: la web no la lee.
+        if let s = dia.sustituciones[lugar] { dia.sustituciones[lugar] = SustitucionesServidor.conHora(s, ahoraMs) }
+        await ejecutar(efectos)
     }
 
     /// "Volver a …"
@@ -791,14 +794,20 @@ public final class ModeloEntreno {
                                            diaFinalizado: dia.diaFinalizado, conservarDiaActual: conservarDiaActual)
         guard !r.borradas.isEmpty else { return }
         dia.sustituciones = r.quedan
-        for id in r.borradas { invalidarHistorial(id) }
+        // SER-14: la poda es solo de este teléfono y no se manda: un teléfono viejo no puede borrar en el servidor lo que
+        // el cliente fijó después en otro (lo vencido que quede allá, cada teléfono lo poda al leerlo).
+        for id in r.borradas {
+            sustitucionesGuardadas[id] = nil
+            invalidarHistorial(id)
+        }
         guardarSustituciones()
+        anotarEncoladas(sustitucionesGuardadas, rutinaId: rutina.id)
         if !sinPrecarga { Task { await self.precargarHistorial() } }
     }
 
-    /// SER-14: la primera vez que este teléfono sincroniza la rutina sube lo que tiene guardado; después lee el servidor
-    /// y lo pone por encima (con lo que sigue en la cola y lo que se tocó mientras tanto encima de eso). Sin la tabla en
-    /// la base (PGRST202), sin red o con el token caído queda lo del teléfono, como antes, y se reintenta al recargar.
+    /// SER-14: lee el servidor y lo combina con lo del teléfono clave por clave (gana lo más nuevo; ver
+    /// `SustitucionesServidor.combinar`), y sube lo que el servidor no tiene o tiene más viejo. Sin la tabla en la base
+    /// (PGRST202), sin red o con el token caído queda lo del teléfono, como antes, y se reintenta al recargar.
     public func sincronizarSustituciones() async {
         guard !demo, let token, syncSustituciones == nil else { return }
         let mia = UUID()
@@ -814,34 +823,43 @@ public final class ModeloEntreno {
         await encoladoSustituciones?.value
         guard syncSustituciones == mia else { return }
         let rutinaId = rutina.id
-        let archivoEstado = SustitucionesServidor.Estado.archivo(rutinaId: rutinaId)
-        let estado = disco?.leer(SustitucionesServidor.Estado.self, archivoEstado)
-        let reemplazar = estado?.reemplazar == true
-        let subir = estado?.subidas != true || reemplazar
-        var parametros: [String: JSONValue] = ["p_token": .texto(token), "p_rutina_id": .texto(rutinaId)]
-        if subir {
-            guard let subibles = SustitucionesServidor.subibles(dia.sustituciones) else { return }
-            parametros["p_swaps"] = .objeto(subibles)
-            parametros["p_reemplazar"] = .bool(reemplazar)
+        // Lo que está en la cola al empezar (la respuesta puede no traerlo aunque se mande en el medio) y lo que quedó en
+        // fallidos (nunca llegó): ahí queda lo del teléfono.
+        let prefijo = "swap_ej_\(rutinaId)_"
+        if let outbox {
+            let enCola = Array(await outbox.pendientesPorClave().filter { $0.key.hasPrefix(prefijo) }.values)
+            let fallidas = await outbox.fallidos.map(\.op).filter { ($0.dedupeKey ?? "").hasPrefix(prefijo) }
+            for op in enCola + fallidas { if let ex = op.payload["exId"]?.comoTexto { tocadasDuranteSync?.insert(ex) } }
         }
-        let r = await cliente.llamar(subir ? "mypump_import_exercise_swaps" : "mypump_get_exercise_swaps", parametros)
-        guard syncSustituciones == mia, rutina.id == rutinaId, case .success(.objeto(let servidor)) = r else { return }
-        if subir { disco?.guardar(SustitucionesServidor.Estado(subidas: true), archivoEstado) }
+        guard syncSustituciones == mia else { return }
+        let r = await cliente.llamar("mypump_get_exercise_swaps", ["p_token": .texto(token), "p_rutina_id": .texto(rutinaId)])
+        guard syncSustituciones == mia, rutina.id == rutinaId, case .success(let j) = r, let servidor = SustitucionesServidor.leer(j)
+        else { return }
         await encoladoSustituciones?.value
         let pendientes = await outbox?.pendientesPorClave() ?? [:]
         guard syncSustituciones == mia, rutina.id == rutinaId else { return }
-        let nuevo = SustitucionesEntreno.compat(SustitucionesServidor.combinar(
-            servidor: servidor, local: dia.sustituciones, pendientes: pendientes, rutinaId: rutinaId, tocadas: tocadasDuranteSync ?? []))
-        let cambiadas = Set(nuevo.keys).union(dia.sustituciones.keys).filter { nuevo[$0] != dia.sustituciones[$0] }
-        guard !cambiadas.isEmpty else { return }
-        // Lo que llega del servidor no vuelve a la cola: ya está allá (o en la cola, o se tocó y ya se encoló).
-        dia.sustituciones = nuevo
-        sustitucionesGuardadas = nuevo
-        disco?.guardar(nuevo, Archivo.sustituciones(rutinaId))
-        anotarEncoladas(nuevo, rutinaId: rutinaId)
+        let tocadas = tocadasDuranteSync ?? []
+        let combinado = SustitucionesEntreno.compat(SustitucionesServidor.combinar(
+            vivas: servidor.vivas, borradas: servidor.borradas, local: dia.sustituciones, pendientes: pendientes, rutinaId: rutinaId,
+            tocadas: tocadas))
+        // La poda antes de comparar: lo vencido que vuelve del servidor ni se muestra ni pide su historial de nuevo.
+        let poda = SustitucionesEntreno.podar(combinado, semanaActual: semana, diasCompletados: diasCompletados, diaActual: dia.dia.id,
+                                              diaFinalizado: dia.diaFinalizado, conservarDiaActual: false)
+        let antes = dia.sustituciones
+        let cambiadas = Set(poda.quedan.keys).union(antes.keys).filter { poda.quedan[$0] != antes[$0] }
+        // Contra lo que tiene el servidor se calcula qué subir. Lo podado no se manda, y lo que ya está en la cola (o se
+        // tocó, o quedó en fallidos) no se vuelve a encolar.
+        var base = SustitucionesEntreno.compat(servidor.vivas)
+        for id in poda.borradas { base[id] = nil }
+        for id in tocadas.union(pendientes.keys.filter { $0.hasPrefix(prefijo) }.map { String($0.dropFirst(prefijo.count)) }) {
+            base[id] = poda.quedan[id]
+        }
+        sustitucionesGuardadas = base
+        dia.sustituciones = poda.quedan
+        guardarSustituciones()
+        anotarEncoladas(sustitucionesGuardadas, rutinaId: rutinaId)
         for id in cambiadas { invalidarHistorial(id) }
-        podarSustituciones(sinPrecarga: true)
-        await precargarHistorial()
+        if !cambiadas.isEmpty { await precargarHistorial() }
     }
 
     // MARK: - Comentarios (SES-08)
@@ -984,7 +1002,7 @@ public final class ModeloEntreno {
     /// por hecho y queda solo en el teléfono, como antes).
     func encolarSustituciones() {
         let ahora = dia.sustituciones
-        let ops = SustitucionesServidor.operaciones(antes: sustitucionesGuardadas, ahora: ahora, rutinaId: rutina.id)
+        let ops = SustitucionesServidor.operaciones(antes: sustitucionesGuardadas, ahora: ahora, rutinaId: rutina.id, ms: ahoraMs)
         sustitucionesGuardadas = ahora
         guard !demo, token != nil, let outbox, !ops.isEmpty else { return }
         tocadasDuranteSync?.formUnion(ops.map(\.exId))

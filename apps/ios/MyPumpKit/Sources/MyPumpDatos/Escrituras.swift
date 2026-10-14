@@ -112,13 +112,15 @@ public struct Escrituras: Sendable {
                 "p_token": t, "p_acepta": p["acepta"] ?? .null, "p_plataforma": p["plataforma"] ?? .null, "p_app": p["app"] ?? .null,
             ]))
         case SustitucionesServidor.kindGuardar:
-            // FALSE = la rutina ya no es del cliente: no hay nada que guardar (cuenta como hecho).
+            // TRUE también si el servidor tenía algo más nuevo. FALSE = la rutina ya no es del cliente: no hay nada que
+            // guardar (cuenta como hecho).
             return .respuesta(Self.sinTablaEsHecho(await cliente.llamar("mypump_save_exercise_swap", [
                 "p_token": t, "p_rutina_id": p["rutinaId"] ?? .null, "p_ex_id": p["exId"] ?? .null, "p_swap": p["swap"] ?? .null,
             ])))
         case SustitucionesServidor.kindBorrar:
+            // Deja la lápida con la hora del borrado (gana lo más nuevo).
             return .respuesta(Self.sinTablaEsHecho(await cliente.llamar("mypump_delete_exercise_swap", [
-                "p_token": t, "p_rutina_id": p["rutinaId"] ?? .null, "p_ex_id": p["exId"] ?? .null,
+                "p_token": t, "p_rutina_id": p["rutinaId"] ?? .null, "p_ex_id": p["exId"] ?? .null, "p_ts": p["ts"] ?? .null,
             ])))
         default:
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo #2).

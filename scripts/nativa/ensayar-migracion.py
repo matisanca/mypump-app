@@ -156,7 +156,7 @@ def chequeos_002(cur, token, otro):
 
 
 def chequeos_003(cur, token, otro):
-    """nativa_003: las sustituciones de ejercicio en el servidor (SER-14)."""
+    """nativa_003: las sustituciones de ejercicio en el servidor (SER-14). Gana lo más nuevo, con lápidas."""
     rutina_de = """SELECT r.id::text FROM mypump_rutinas r JOIN mypump_clientes c ON c.cliente_id = r.cliente_id
                    WHERE c.access_token = %s AND r.estado = 'activa' ORDER BY r.created_at DESC LIMIT 1"""
     cur.execute(rutina_de, (token,))
@@ -164,19 +164,29 @@ def chequeos_003(cur, token, otro):
     cur.execute(rutina_de, (otro,))
     rutina_otro = cur.fetchone()[0]
     nadie = "no-es-un-token-de-nadie-000000"
-    swap = {"original": {"slug": "sentadilla", "nombre": "Sentadilla", "images": None},
-            "current": {"slug": "prensa-45", "nombre": "Prensa 45°", "equipment": "machine",
-                        "images": {"eccentric": "https://x/e.jpg", "concentric": None}},
-            "fijado": True, "semana": 2, "diaId": "d1"}
-    solo_hoy = {**swap, "fijado": False}
+
+    def swap(nombre, ts=None, fijado=True):
+        s = {"original": {"slug": "sentadilla", "nombre": "Sentadilla", "images": None},
+             "current": {"slug": "prensa-45", "nombre": nombre, "equipment": "machine",
+                         "images": {"eccentric": "https://x/e.jpg", "concentric": None}},
+             "fijado": fijado, "semana": 2, "diaId": "d1"}
+        if ts is not None:
+            s["_ts"] = ts
+        return s
+
     leer = "SELECT mypump_get_exercise_swaps(%s, %s::uuid)"
     guardar = "SELECT mypump_save_exercise_swap(%s, %s::uuid, %s, %s::jsonb)"
-    borrar = "SELECT mypump_delete_exercise_swap(%s, %s::uuid, %s)"
-    importar = "SELECT mypump_import_exercise_swaps(%s, %s::uuid, %s::jsonb, %s)"
+    borrar = "SELECT mypump_delete_exercise_swap(%s, %s::uuid, %s, %s)"
 
     def uno(sql, args):
         cur.execute(sql, args)
         return cur.fetchone()[0]
+
+    def vivas(t=token, r=rutina):
+        return (uno(leer, (t, r)) or {}).get("vivas")
+
+    def borradas(t=token, r=rutina):
+        return (uno(leer, (t, r)) or {}).get("borradas")
 
     def da_22023(nombre, sql, args):
         cur.execute("SAVEPOINT s")
@@ -188,86 +198,88 @@ def chequeos_003(cur, token, otro):
         cur.execute("ROLLBACK TO SAVEPOINT s")
 
     print("▸ Lectura")
-    chequear("sin filas → {}", uno(leer, (token, rutina)) == {})
+    chequear("sin filas → vivas y borradas vacías", uno(leer, (token, rutina)) == {"vivas": {}, "borradas": {}})
     chequear("token inexistente → NULL", uno(leer, (nadie, rutina)) is None)
     chequear("la rutina de otro cliente → NULL", uno(leer, (token, rutina_otro)) is None)
 
-    print("▸ Guardar")
-    chequear("guardar → TRUE", uno(guardar, (token, rutina, "e1", json.dumps(swap))) is True)
-    chequear("se lee tal cual", uno(leer, (token, rutina)) == {"e1": swap})
-    chequear("guardarla de nuevo → TRUE", uno(guardar, (token, rutina, "e1", json.dumps(solo_hoy))) is True)
-    chequear("la última gana", uno(leer, (token, rutina)) == {"e1": solo_hoy})
-    cur.execute("SELECT count(*) FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina,))
-    chequear("no duplica", cur.fetchone()[0] == 1)
-    chequear("en la rutina de otro → FALSE", uno(guardar, (token, rutina_otro, "e1", json.dumps(swap))) is False)
+    print("▸ Guardar: gana lo más nuevo")
+    chequear("guardar → TRUE", uno(guardar, (token, rutina, "e1", json.dumps(swap("Prensa", 1000)))) is True)
+    chequear("se lee tal cual", vivas() == {"e1": swap("Prensa", 1000)})
+    chequear("una más nueva → TRUE y gana", uno(guardar, (token, rutina, "e1", json.dumps(swap("Hack", 2000)))) is True
+             and vivas() == {"e1": swap("Hack", 2000)})
+    chequear("una más vieja → TRUE pero no pisa", uno(guardar, (token, rutina, "e1", json.dumps(swap("Vieja", 1500)))) is True
+             and vivas() == {"e1": swap("Hack", 2000)})
+    cur.execute("SELECT count(*), max(cambiado_en) FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina,))
+    chequear("no duplica y guarda la hora", cur.fetchone() == (1, 2000))
+    chequear("sin hora (la app vieja) entra como 0", uno(guardar, (token, rutina, "e2", json.dumps(swap("Legado")))) is True
+             and vivas().get("e2") == swap("Legado"))
+    chequear("en la rutina de otro → FALSE", uno(guardar, (token, rutina_otro, "e1", json.dumps(swap("X", 1)))) is False)
     cur.execute("SELECT count(*) FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina_otro,))
     chequear("…y no escribe nada", cur.fetchone()[0] == 0)
-    chequear("token inexistente → NULL", uno(guardar, (nadie, rutina, "e1", json.dumps(swap))) is None)
-    raro = {**swap, "current": {**swap["current"], "nombre": "Press «inclinado» 30° — mancuernas 💪"}}
+    chequear("token inexistente → NULL", uno(guardar, (nadie, rutina, "e1", json.dumps(swap("X", 9000)))) is None)
+    raro = swap("Press «inclinado» 30° — mancuernas 💪", 1234)
     uno(guardar, (token, rutina, "día-2_ñ", json.dumps(raro)))
-    chequear("unicode ida y vuelta", uno(leer, (token, rutina)).get("día-2_ñ") == raro)
-    da_22023("ex_id vacío", guardar, (token, rutina, "", json.dumps(swap)))
-    da_22023("ex_id de 121", guardar, (token, rutina, "x" * 121, json.dumps(swap)))
+    chequear("unicode ida y vuelta", vivas().get("día-2_ñ") == raro)
+    da_22023("ex_id vacío", guardar, (token, rutina, "", json.dumps(swap("X", 1))))
+    da_22023("ex_id de 121", guardar, (token, rutina, "x" * 121, json.dumps(swap("X", 1))))
     da_22023("no es un objeto", guardar, (token, rutina, "e9", json.dumps([1, 2])))
-    da_22023("más de 16 KB", guardar, (token, rutina, "e9", json.dumps({**swap, "relleno": "x" * 17000})))
+    da_22023("más de 16 KB", guardar, (token, rutina, "e9", json.dumps({**swap("X", 1), "relleno": "x" * 17000})))
+    da_22023("_ts de texto", guardar, (token, rutina, "e9", json.dumps({**swap("X"), "_ts": "ayer"})))
+    da_22023("_ts negativo", guardar, (token, rutina, "e9", json.dumps(swap("X", -5))))
 
-    print("▸ Borrar")
-    chequear("borrar → TRUE", uno(borrar, (token, rutina, "e1")) is True)
-    chequear("ya no está", "e1" not in uno(leer, (token, rutina)))
-    chequear("borrar lo que no está → TRUE", uno(borrar, (token, rutina, "e1")) is True)
-    chequear("token inexistente → NULL", uno(borrar, (nadie, rutina, "e1")) is None)
-    uno(guardar, (otro, rutina_otro, "e1", json.dumps(swap)))
-    uno(borrar, (token, rutina_otro, "e1"))
-    chequear("no borra la de otro cliente", uno(leer, (otro, rutina_otro)) == {"e1": swap})
-    uno(borrar, (token, rutina, "día-2_ñ"))
+    print("▸ Borrar: lápida con hora")
+    chequear("borrar → TRUE", uno(borrar, (token, rutina, "e1", 3000)) is True)
+    chequear("deja de estar viva y queda la lápida", "e1" not in vivas() and borradas().get("e1") == 3000)
+    chequear("una más vieja que la lápida no la revive", uno(guardar, (token, rutina, "e1", json.dumps(swap("Vieja", 2500)))) is True
+             and "e1" not in vivas())
+    chequear("la que vino sin hora tampoco", uno(guardar, (token, rutina, "e1", json.dumps(swap("Legado")))) is True
+             and "e1" not in vivas())
+    chequear("una más nueva sí", uno(guardar, (token, rutina, "e1", json.dumps(swap("Nueva", 3500)))) is True
+             and vivas().get("e1") == swap("Nueva", 3500) and "e1" not in borradas())
+    chequear("un borrado más viejo no la saca", uno(borrar, (token, rutina, "e1", 3200)) is True and "e1" in vivas())
+    chequear("borrar lo que nunca subió deja lápida", uno(borrar, (token, rutina, "e7", 100)) is True and borradas().get("e7") == 100)
+    chequear("token inexistente → NULL", uno(borrar, (nadie, rutina, "e1", 9999)) is None)
+    chequear("en la rutina de otro → FALSE", uno(borrar, (token, rutina_otro, "e1", 9999)) is False)
+    uno(guardar, (otro, rutina_otro, "e1", json.dumps(swap("Del otro", 10))))
+    chequear("no toca la del otro cliente", vivas(otro, rutina_otro) == {"e1": swap("Del otro", 10)})
+    da_22023("sin hora", borrar, (token, rutina, "e1", None))
+    da_22023("hora negativa", borrar, (token, rutina, "e1", -1))
+    da_22023("ex_id vacío", borrar, (token, rutina, "", 1))
 
-    print("▸ Importar")
-    uno(guardar, (token, rutina, "e1", json.dumps(swap)))
-    r = uno(importar, (token, rutina, json.dumps({"e1": solo_hoy, "e2": swap}), False))
-    chequear("sumar: queda la del servidor y entra la que faltaba", r == {"e1": swap, "e2": swap}, json.dumps(r))
-    r = uno(importar, (token, rutina, json.dumps({"e1": solo_hoy, "e2": swap}), False))
-    cur.execute("SELECT count(*) FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina,))
-    chequear("repetirla no duplica", r == {"e1": swap, "e2": swap} and cur.fetchone()[0] == 2)
-    chequear("con {} devuelve lo que hay", uno(importar, (token, rutina, "{}", False)) == {"e1": swap, "e2": swap})
-    r = uno(importar, (token, rutina, json.dumps({"e2": solo_hoy, "e3": swap}), True))
-    chequear("reemplazar: queda exactamente lo enviado", r == {"e2": solo_hoy, "e3": swap}, json.dumps(r))
-    chequear("token inexistente → NULL", uno(importar, (nadie, rutina, "{}", False)) is None)
-    chequear("la rutina de otro → NULL", uno(importar, (token, rutina_otro, json.dumps({"e5": swap}), False)) is None)
-    chequear("…y no le escribe", uno(leer, (otro, rutina_otro)) == {"e1": swap})
-    da_22023("una entrada inválida", importar, (token, rutina, json.dumps({"e4": swap, "e5": [1]}), False))
-    chequear("…y no guarda ninguna", uno(leer, (token, rutina)) == {"e2": solo_hoy, "e3": swap})
-    da_22023("no es un objeto", importar, (token, rutina, json.dumps([swap]), False))
-
-    print("▸ Tope de 300 por rutina")
-    trescientas = {f"t{i}": swap for i in range(300)}
-    chequear("300 entran", len(uno(importar, (token, rutina, json.dumps(trescientas), True)) or {}) == 300)
-    da_22023("la 301 por guardar", guardar, (token, rutina, "t300", json.dumps(swap)))
-    chequear("cambiar una de las 300 sí", uno(guardar, (token, rutina, "t1", json.dumps(solo_hoy))) is True)
-    da_22023("la 301 por importar", importar, (token, rutina, json.dumps({"t300": swap}), False))
-    da_22023("301 por reemplazar", importar, (token, rutina, json.dumps({**trescientas, "t300": swap}), True))
+    print("▸ Tope de 300 claves por rutina")
+    cur.execute("DELETE FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina,))
+    cur.execute("""SELECT count(*) FILTER (WHERE r) FROM (
+                     SELECT mypump_save_exercise_swap(%s, %s::uuid, 't' || g, %s::jsonb) AS r FROM generate_series(1, 300) g) x""",
+                (token, rutina, json.dumps(swap("T", 5))))
+    chequear("300 entran", cur.fetchone()[0] == 300)
+    da_22023("la 301", guardar, (token, rutina, "t301", json.dumps(swap("T", 6))))
+    chequear("cambiar una de las 300 sí", uno(guardar, (token, rutina, "t1", json.dumps(swap("T2", 7)))) is True)
+    chequear("borrar una que no está con el tope lleno → TRUE sin lápida",
+             uno(borrar, (token, rutina, "t999", 8)) is True and "t999" not in borradas())
+    chequear("borrar una de las 300 sí deja lápida", uno(borrar, (token, rutina, "t2", 9)) is True and borradas().get("t2") == 9)
 
     print("▸ Permisos")
     for f in ["mypump_get_exercise_swaps(text,uuid)", "mypump_save_exercise_swap(text,uuid,text,jsonb)",
-              "mypump_delete_exercise_swap(text,uuid,text)", "mypump_import_exercise_swaps(text,uuid,jsonb,boolean)"]:
+              "mypump_delete_exercise_swap(text,uuid,text,bigint)"]:
         cur.execute("SELECT has_function_privilege('anon', %s, 'EXECUTE')", (f,))
         chequear(f"anon puede llamar {f.split('(')[0]}", cur.fetchone()[0] is True)
-    for rol in ["anon", "authenticated"]:
-        cur.execute("SELECT has_function_privilege(%s, 'mypump_sustitucion_valida(text,jsonb)', 'EXECUTE')", (rol,))
-        chequear(f"{rol} NO puede llamar mypump_sustitucion_valida", cur.fetchone()[0] is False)
+    for f in ["mypump_sustitucion_valida(text,jsonb)", "mypump_sustitucion_ts(jsonb)"]:
+        for rol in ["anon", "authenticated"]:
+            cur.execute("SELECT has_function_privilege(%s, %s, 'EXECUTE')", (rol, f))
+            chequear(f"{rol} NO puede llamar {f.split('(')[0]}", cur.fetchone()[0] is False)
     cur.execute("SELECT relrowsecurity FROM pg_class WHERE relname = 'mypump_exercise_swaps'")
     chequear("mypump_exercise_swaps con RLS", cur.fetchone()[0] is True)
     cur.execute("SELECT count(*) FROM pg_policies WHERE tablename = 'mypump_exercise_swaps' AND 'anon' = ANY(roles)")
     chequear("sin política para anon", cur.fetchone()[0] == 0)
 
     print("▸ Como la app (rol anon)")
-    chequear("reemplazar con {} la vacía", uno(importar, (token, rutina, "{}", True)) == {})
+    cur.execute("DELETE FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina,))
     cur.execute("SAVEPOINT s")
     cur.execute("SET LOCAL ROLE anon")
     try:
-        chequear("guardar", uno(guardar, (token, rutina, "a1", json.dumps(swap))) is True)
-        chequear("importar", (uno(importar, (token, rutina, json.dumps({"a2": swap}), False)) or {}).get("a2") == swap)
-        chequear("leer", (uno(leer, (token, rutina)) or {}).get("a1") == swap)
-        chequear("borrar", uno(borrar, (token, rutina, "a1")) is True)
+        chequear("guardar", uno(guardar, (token, rutina, "a1", json.dumps(swap("A", 50)))) is True)
+        chequear("leer", vivas().get("a1") == swap("A", 50))
+        chequear("borrar", uno(borrar, (token, rutina, "a1", 60)) is True and borradas().get("a1") == 60)
         cur.execute("SAVEPOINT t")
         try:
             cur.execute("SELECT count(*) FROM mypump_exercise_swaps")
