@@ -54,6 +54,23 @@ class JsRegex(patronJs: String, banderas: String = "") {
         return (0..m.groupCount()).map { m.group(it) }
     }
 
+    /** `s.match(re)[n]` (sin flag `g`): el grupo `n` de la primera coincidencia, o null. */
+    fun grupo(s: String, n: Int): String? = primera(s)?.getOrNull(n)
+
+    /** `s.match(/…/g)`: todas las coincidencias (vacío si no hay ninguna). */
+    fun todas(s: String): List<String> {
+        val m = patron.matcher(s)
+        val out = mutableListOf<String>()
+        while (m.find()) out += m.group()
+        return out
+    }
+
+    /** `s.split(re)[0]`: lo que hay antes de la primera coincidencia (todo, si no hay). */
+    fun antesDeLaPrimera(s: String): String {
+        val m = patron.matcher(s)
+        return if (m.find()) s.substring(0, m.start()) else s
+    }
+
     /** `s.split(re)` (sin límite ni grupos de captura), con el algoritmo de la especificación. */
     fun dividir(s: String): List<String> {
         val m = patron.matcher(s)

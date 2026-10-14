@@ -9,7 +9,11 @@
     semanas), las fotos de progreso que esperan subir, la copia offline del plan y los reemplazos. Todo eso vuelve del
     servidor al entrar con el link.
   - Las preferencias (tipo de día, avisos) sí viajan: no son de la cuenta ni secretas.
+  - legado/ (la migración de la app vieja) sí viaja, salvo las copias crudas (legado/crudo/, sirven en ESTE teléfono): el
+    almacenamiento de la Capacitor (app_webview/) también va en la copia, y sin el libro mayor un teléfono restaurado
+    volvería a mandar lo que el viejo ya había mandado.
 -->
 <full-backup-content>
     <exclude domain="file" path="MyPump/" />
+    <exclude domain="file" path="legado/crudo/" />
 </full-backup-content>

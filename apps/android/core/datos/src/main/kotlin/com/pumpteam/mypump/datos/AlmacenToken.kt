@@ -31,14 +31,17 @@ interface Preferencias {
     fun guardar(clave: String, valor: String?)
 }
 
-class PreferenciasEnMemoria : Preferencias {
-    private val mapa = HashMap<String, String>()
+class PreferenciasEnMemoria(inicial: Map<String, String> = emptyMap()) : Preferencias {
+    private val mapa = HashMap(inicial)
 
     @Synchronized override fun leer(clave: String): String? = mapa[clave]
 
     @Synchronized override fun guardar(clave: String, valor: String?) {
         if (valor == null) mapa.remove(clave) else mapa[clave] = valor
     }
+
+    /** Todo lo guardado (para los tests y las vistas previas). */
+    val todo: Map<String, String> @Synchronized get() = HashMap(mapa)
 }
 
 /** El token tiene que tener esta forma (la misma regex de la web: deeplink.js y cliente.html). */

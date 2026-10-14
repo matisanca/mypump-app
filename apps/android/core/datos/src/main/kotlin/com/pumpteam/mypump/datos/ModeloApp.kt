@@ -13,6 +13,7 @@ import com.pumpteam.mypump.modelos.PreferenciasCliente
 import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.AlimentoEfectivo
+import com.pumpteam.mypump.reglas.CatalogoEjercicios
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
 import com.pumpteam.mypump.reglas.ComidaLibreNueva
 import com.pumpteam.mypump.reglas.FechaLocal
@@ -120,6 +121,10 @@ class ModeloApp(
     private val _alimentosPropios = MutableStateFlow<List<AlimentoPropio>>(emptyList())
     val alimentosPropios: StateFlow<List<AlimentoPropio>> = _alimentosPropios.asStateFlow()
 
+    /** La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido). */
+    private val _palanca = MutableStateFlow(PalancaRemota.deFabrica)
+    val palanca: StateFlow<PalancaRemota> = _palanca.asStateFlow()
+
     private val _swaps = MutableStateFlow<Map<String, SwapLocal>>(emptyMap())
     val swaps: StateFlow<Map<String, SwapLocal>> = _swaps.asStateFlow()
 
@@ -142,6 +147,21 @@ class ModeloApp(
     /** Progreso: se carga al abrir la pestaña (como la web). */
     private val _progreso = MutableStateFlow<ModeloProgreso?>(null)
     val progreso: StateFlow<ModeloProgreso?> = _progreso.asStateFlow()
+
+    /** El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada). */
+    private val _entreno = MutableStateFlow<ModeloEntreno?>(null)
+    val entreno: StateFlow<ModeloEntreno?> = _entreno.asStateFlow()
+
+    /**
+     * Salud, recuperación y Mi reloj (no existen en la demo ni sin cuenta). Se crea con la cuenta, arranca al terminar
+     * [cargar] y sincroniza en [alVolverAPrimerPlano]; la fuente del sistema la pone `:app` en
+     * [ModeloSalud.fuenteDelSistema].
+     */
+    private val _salud = MutableStateFlow<ModeloSalud?>(null)
+    val salud: StateFlow<ModeloSalud?> = _salud.asStateFlow()
+
+    /** El catálogo de ejercicios que llegó del servidor (o el guardado de la última vez). */
+    private var catalogo: CatalogoEjercicios? = null
 
     /** El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`). */
     private val _tipoDia = MutableStateFlow(preferencias.leer(CLAVE_TIPO_DIA))
@@ -185,6 +205,7 @@ class ModeloApp(
     fun salir() {
         almacen.guardar(null)
         soltarCuentaEnMemoria()
+        _entreno.value = null
         _rutina.value = null
         _dieta.value = null
         _esDemo.value = false
@@ -212,7 +233,11 @@ class ModeloApp(
         _desdeCache.value = false
         _sinRedEn.value = emptySet()
         _esDemo.value = true
+        _entreno.value = _rutina.value?.let { r ->
+            ModeloEntreno(cliente, token = null, outbox = null, disco = null, rutinaInicial = r, catalogoInicial = catalogoVigente, alcance = alcance)
+        }
         _fase.value = Fase.LISTO
+        _entreno.value?.let { e -> alcance.launch { e.cargar() } }
     }
 
     /** Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada). */
@@ -221,6 +246,7 @@ class ModeloApp(
         _rutina.value = null
         _dieta.value = null
         _swaps.value = emptyMap()
+        _entreno.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {
@@ -247,6 +273,9 @@ class ModeloApp(
         _revision.value = null
         _fotos.value = null
         _progreso.value = null
+        _salud.value?.cancelarEspera()
+        _salud.value = null
+        _entreno.value = null
     }
 
     private fun prepararCuenta(t: String) {
@@ -263,6 +292,8 @@ class ModeloApp(
         _revision.value = ModeloRevision(cliente, t, cola, alcance)
         _fotos.value = ModeloFotos(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
+        _salud.value?.cancelarEspera()
+        _salud.value = ModeloSalud(cliente, t, almacen = preferencias, alcance = alcance)
         // Los avisos llegan desde el hilo de la cola: los StateFlow se pueden tocar desde cualquier hilo y así el orden se
         // conserva (en iOS se pasa al principal con un Task por aviso).
         alcance.launch {
@@ -328,6 +359,9 @@ class ModeloApp(
                     aplicar(copia)
                     _desdeCache.value = true
                     _fase.value = Fase.LISTO
+                    // Sin red igual se puede marcar el día (sale por la cola), como la web con `MYDAY` vacío. Sin esto Mi
+                    // Día quedaba tapado hasta que volviera la señal (revisión del 14-oct, hallazgo 10).
+                    _revision.value?.let { r -> alcance.launch { r.cargarMiDia() } }
                 } else {
                     _fase.value = Fase.SIN_SERVICIO
                 }
@@ -350,12 +384,14 @@ class ModeloApp(
         }
         _info.value = decodificar(primera.aJson(), ClienteInfo::desde)
 
-        val (rr, dd) = coroutineScope {
+        val (rr, dd, palancaLeida) = coroutineScope {
             val r = async { cliente.llamar("mypump_get_rutina_activa", p) }
             val d = async { cliente.llamar("mypump_get_dieta_activa", p) }
-            r.await() to d.await()
+            val c = async { PalancaRemota.leer(cliente) }
+            Triple(r.await(), d.await(), c.await())
         }
         if (!vigente()) return
+        palancaLeida?.let { _palanca.value = it }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         val copia = leerCopia()
@@ -378,7 +414,15 @@ class ModeloApp(
         _swaps.value = _dieta.value?.id?.let(::leerSwaps) ?: emptyMap()
         _sinRedEn.value = faltaron
         _desdeCache.value = faltaron.isNotEmpty()
+        prepararEntreno()
         _fase.value = Fase.LISTO
+        _entreno.value?.let { e ->
+            alcance.launch {
+                cargarCatalogo()
+                e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
+                e.cargar()
+            }
+        }
 
         hidratarDieta()
         if (!vigente()) return
@@ -392,6 +436,8 @@ class ModeloApp(
         }
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
+        // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
+        _salud.value?.let { s -> alcance.launch { s.alAbrir() } }
     }
 
     /** Volvió la red (el monitor de conectividad): sale lo pendiente y, si se mostraba la copia guardada, se trae todo. */
@@ -427,6 +473,59 @@ class ModeloApp(
         outbox?.drenar()
         _chat.value?.sondear()
         _fotos.value?.drenar()
+        _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)
+        _entreno.value?.alVolverAPrimerPlano()
+    }
+
+    // ── Entreno ──
+
+    private val catalogoVigente: CatalogoEjercicios get() = catalogo ?: catalogoEmpaquetado
+
+    /**
+     * El motor de la rutina activa: se crea una vez por rutina; una versión nueva de la misma rutina (Mati la editó, se
+     * avanzó de semana) lo actualiza sin perder lo que está en curso.
+     */
+    private fun prepararEntreno() {
+        val rutina = _rutina.value ?: run {
+            _entreno.value = null
+            return
+        }
+        val e = _entreno.value
+        if (e != null && e.rutina.value.id == rutina.id) {
+            if (e.rutina.value != rutina) e.reemplazarRutina(rutina)
+            return
+        }
+        val nuevo = ModeloEntreno(
+            cliente, token = token, outbox = outbox, disco = disco, rutinaInicial = rutina, info = _info.value,
+            catalogoInicial = catalogoVigente, alcance = alcance,
+        )
+        nuevo.alCambiarRutina = { _rutina.value = it }
+        _entreno.value = nuevo
+    }
+
+    private val archivoCatalogo: File get() = File(raizDisco, "MyPump/catalogo-ejercicios.json")
+
+    /**
+     * `getCatalogoEjercicios`: el catálogo en el orden en que lo da el servidor (como la web: el orden decide empates en
+     * los sustitutos), guardado para arrancar sin red. Si no llega, el guardado o el empaquetado.
+     */
+    internal suspend fun cargarCatalogo() {
+        val columnas = "slug_en,name_en,name_normalized,aliases_es,primary_muscle,equipment,patron_movimiento,image_eccentric,image_concentric"
+        val j = cliente.tabla("mypump_ejercicios_catalogo", columnas).valorONull()
+        val nuevo = j?.let { leerCatalogo(it.serializar()) }
+        if (nuevo != null) {
+            catalogo = nuevo
+            escribirAtomico(archivoCatalogo, j.serializar())
+        } else if (catalogo == null) {
+            catalogo = leerJson(archivoCatalogo)?.let { leerCatalogo(it.toString()) }
+        }
+        catalogo?.let { c -> _entreno.value?.actualizarCatalogo(c) }
+    }
+
+    private fun leerCatalogo(json: String): CatalogoEjercicios? = try {
+        CatalogoEjercicios.desde(json).takeIf { it.entradas.isNotEmpty() }
+    } catch (_: Exception) {
+        null
     }
 
     /** Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas. */
@@ -443,6 +542,8 @@ class ModeloApp(
         _rutina.value = c.rutina?.let { decodificar(it.aJson(), RutinaActiva::desde) }
         _dieta.value = dietaNormalizada(c.dieta)
         _dieta.value?.id?.let { id -> _swaps.value = leerSwaps(id) }
+        prepararEntreno()
+        _entreno.value?.let { e -> alcance.launch { e.cargar() } }
     }
 
     // ── Dieta ──
@@ -465,13 +566,12 @@ class ModeloApp(
 
     /**
      * GEN-05 (`avisarPlanIncompleto`): arriba de Revisión cuando al plan publicado le falta algo. No es para el cliente: es
-     * para que la captura que le manda a Mati diga qué republicar, en vez de "no me carga". (En iOS suma también lo que
-     * le falta a la rutina según el motor de Entreno, que en Android todavía no está.)
+     * para que la captura que le manda a Mati diga qué republicar, en vez de "no me carga".
      */
     val avisoPlanIncompleto: Pair<String, String>?
         get() {
             if (_esDemo.value) return null
-            val p = _problemasDieta.value
+            val p = _problemasDieta.value + (_entreno.value?.problemas?.value ?: emptyList())
             if (p.isEmpty()) return null
             return "A tu plan le falta información y algunas cosas pueden verse raras. Avisale a Mati y lo republica." to
                 p.take(3).joinToString(" · ")
@@ -648,7 +748,7 @@ class ModeloApp(
         val yaMigrado = (disco?.leer(marca) as? JsonPrimitive)?.booleanOrNull ?: false
         val e = dieta.estructura
         val tipo = tipoDia
-        val h = SwapsDeComida.hidratar(remotos, _swaps.value, dieta.id, pendientes, yaMigrado) { c, o, f ->
+        val h = SwapsDeComida.hidratar(remotos, _swaps.value, dieta.id, pendientes, yaMigrado, _palanca.value.anclajeBorraSwaps) { c, o, f ->
             SwapsDeComida.enPosicion(e, tipo, c, o, f)
         } ?: return
         _swaps.value = h.swaps
@@ -683,6 +783,13 @@ class ModeloApp(
     }
 
     companion object {
+        /**
+         * El catálogo de ejercicios que trae la app (el de `apps/shared/catalogo-ejercicios.json`): lo pone la app al
+         * arrancar. Se usa hasta que llega el del servidor, y para arrancar sin red si nunca llegó.
+         */
+        @Volatile
+        var catalogoEmpaquetado: CatalogoEjercicios = CatalogoEjercicios(emptyList())
+
         const val CLAVE_TIPO_DIA = "mypump_tipo_dia"
         const val CLAVE_TOKEN_INVALIDO = "mypump_token_invalido"
         internal const val ARCHIVO_COPIA = "offline.json"

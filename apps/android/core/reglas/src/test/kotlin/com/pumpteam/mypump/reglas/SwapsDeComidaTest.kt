@@ -96,6 +96,17 @@ class SwapsDeComidaTest {
         assertEquals(listOf("swap_del"), r.operaciones.map { it.kind })
     }
 
+    // La palanca remota apagada (`anclaje_borra_swaps = false`): el que no coincide se oculta, pero no se borra.
+    @Test
+    fun conLaPalancaApagadaElAncladoQueNoCoincideSoloSeOculta() {
+        val r = SwapsDeComida.hidratar(listOf(fila("c2", 0, 1, anclado)), emptyMap(), "d1", emptyMap(), yaMigrado = false, borrarAnclados = false) { c, o, f ->
+            SwapsDeComida.enPosicion(v2, null, c, o, f)
+        }!!
+        assertNotNull(r.swaps["swap_d1_c2_0_1"])
+        assertTrue(r.operaciones.isEmpty())
+        assertEquals("Café", efectivo(v2, food("Café", 200.0, "ml"), r.swaps["swap_d1_c2_0_1"], idx = 1))
+    }
+
     @Test
     fun ancladoQueSigueCoincidiendoQuedaSinTrafico() {
         val r = hidratar(v1, listOf(fila("c2", 0, 1, anclado)))!!

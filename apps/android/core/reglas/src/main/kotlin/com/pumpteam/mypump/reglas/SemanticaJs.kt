@@ -36,6 +36,9 @@ object SemanticaJs {
     /** `String(x || '')` de JS: lo falso es "", un número como lo imprime JS, un array con sus elementos y comas. */
     fun texto(v: ValorJson?): String = if (!esVerdadero(v)) "" else comoTexto(v!!)
 
+    /** `${x}` de JS dentro de un template: ausente es "undefined", null "null", el resto como `String(x)`. */
+    fun plantilla(v: ValorJson?): String = if (v == null) "undefined" else comoTexto(v)
+
     /** `String(x)` de JS para un valor que llegó del JSON. */
     private fun comoTexto(v: ValorJson): String = when (v) {
         ValorJson.Nulo -> "null"
@@ -47,8 +50,8 @@ object SemanticaJs {
         is ValorJson.Objeto -> "[object Object]"
     }
 
-    /** `x || 0` sobre un número: undefined, null, 0 y NaN valen 0. */
-    fun oCero(x: Double?): Double = if (x == null || x.isNaN()) 0.0 else x
+    /** `x || 0` sobre un número: undefined, null, 0, −0 y NaN valen 0 (el +0: `-0 || 0` es 0). */
+    fun oCero(x: Double?): Double = Js.oCero(x)
 
     /** `if (x)` sobre un número: ni undefined, ni 0, ni NaN. */
     fun verdadero(x: Double?): Boolean = x != null && x != 0.0 && !x.isNaN()

@@ -63,8 +63,9 @@ data class PreferenciasAvisos(val check: Recordatorio) {
             } ?: return porDefecto
             var r = porDefecto.check
             (c["on"] as? ValorJson.Booleano)?.let { r = r.copy(on = it.valor) }
-            c["hora"]?.comoNumero?.let { r = r.copy(hora = it.toInt()) }
-            c["min"]?.comoNumero?.let { r = r.copy(min = it.toInt()) }
+            // Una hora imposible (25, 9.5, un 1e20) deja la de siempre: el aviso nunca queda sin poder sonar (como iOS).
+            c["hora"]?.comoNumero?.takeIf { it == Math.rint(it) && it in 0.0..23.0 }?.let { r = r.copy(hora = it.toInt()) }
+            c["min"]?.comoNumero?.takeIf { it == Math.rint(it) && it in 0.0..59.0 }?.let { r = r.copy(min = it.toInt()) }
             return PreferenciasAvisos(r)
         }
     }

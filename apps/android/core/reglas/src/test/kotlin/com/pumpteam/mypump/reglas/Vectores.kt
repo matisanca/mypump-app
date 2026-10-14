@@ -39,6 +39,9 @@ object Vectores {
         return p
     }
 
+    /** Un archivo de la carpeta privada (las estructuras de los planes reales que nombran los vectores privados). */
+    fun privadoRelativo(relativo: String): Path = carpetaPrivada.resolve(relativo)
+
     fun json(p: Path): JsonObject = Json.parseToJsonElement(Files.readString(p)).jsonObject
 
     fun texto(p: Path): String = Files.readString(p)

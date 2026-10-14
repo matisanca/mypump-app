@@ -2,13 +2,15 @@
 <!--
   Qué sale del teléfono desde Android 12 (android:dataExtractionRules): la copia de Google y el pase a un teléfono
   nuevo. Lo mismo que reglas_backup.xml: el token (noBackupFilesDir + clave del Keystore) nunca viaja, y la carpeta de
-  cada cuenta (MyPump/) tampoco.
+  cada cuenta (MyPump/) tampoco. Las copias crudas de la migración (legado/crudo/) tampoco; el resto de legado/ sí.
 -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="MyPump/" />
+        <exclude domain="file" path="legado/crudo/" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="MyPump/" />
+        <exclude domain="file" path="legado/crudo/" />
     </device-transfer>
 </data-extraction-rules>

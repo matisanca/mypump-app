@@ -196,18 +196,7 @@ class Outbox(
      * vuelve). Devuelve las que quedaron en la cola, en orden (también las que ya estaban por id).
      */
     suspend fun importarSinPisar(nuevas: List<Operacion>): List<Operacion> = withContext(confinado) {
-        val quedaron = mutableListOf<Operacion>()
-        for (op in nuevas) {
-            if (ops.any { it.id == op.id }) {
-                quedaron += op
-                continue
-            }
-            val k = op.dedupeKey
-            if (k != null && (ops.lastOrNull { it.dedupeKey == k }?.ts ?: Double.NEGATIVE_INFINITY) > op.ts) continue
-            if (k != null) ops.removeAll { it.dedupeKey == k }
-            ops += op
-            quedaron += op
-        }
+        val quedaron = sinPisar(ops, nuevas)
         guardar()
         quedaron
     }
@@ -386,6 +375,37 @@ class Outbox(
     }
 
     companion object {
+        /** La regla de [importarSinPisar] sobre una lista de ops. Devuelve las que quedaron (también las que ya estaban). */
+        private fun sinPisar(ops: MutableList<Operacion>, nuevas: List<Operacion>): List<Operacion> {
+            val quedaron = mutableListOf<Operacion>()
+            for (op in nuevas) {
+                if (ops.any { it.id == op.id }) {
+                    quedaron += op
+                    continue
+                }
+                val k = op.dedupeKey
+                if (k != null && (ops.lastOrNull { it.dedupeKey == k }?.ts ?: Double.NEGATIVE_INFINITY) > op.ts) continue
+                if (k != null) ops.removeAll { it.dedupeKey == k }
+                ops += op
+                quedaron += op
+            }
+            return quedaron
+        }
+
+        /**
+         * Sin una cola viva de esa cuenta en el proceso (la Fase L corre antes de crear el modelo): directo al archivo, con
+         * la misma regla. La cola que arme el modelo lo levanta al iniciar. Tira si no puede escribir: así el libro mayor
+         * no anota algo que no quedó en la cola.
+         */
+        fun importarEnArchivo(archivo: File, nuevas: List<Operacion>): List<Operacion> {
+            val j = leerJson(archivo) as? JsonObject
+            val ops = (j?.get("ops") as? JsonArray)?.mapNotNull { Operacion.desde(it) }?.toMutableList() ?: mutableListOf()
+            val quedaron = sinPisar(ops, nuevas)
+            val json = JsonObject(mapOf("ops" to JsonArray(ops.map { it.aValor().aJson() }), "fallidos" to (j?.get("fallidos") as? JsonArray ?: JsonArray(emptyList()))))
+            if (!escribirAtomico(archivo, json.toString())) throw IOException("no se pudo escribir ${archivo.name}")
+            return quedaron
+        }
+
         /** `seGuardo` de la web: null, 0 y [] son "no se guardó". `false` SÍ cuenta (desmarcar algo que no estaba). */
         fun seGuardo(v: ValorJson): Boolean = when (v) {
             ValorJson.Nulo -> false
