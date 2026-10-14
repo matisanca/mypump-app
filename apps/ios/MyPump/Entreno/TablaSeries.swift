@@ -1,72 +1,80 @@
 import SwiftUI
 import MyPumpModelos
 import MyPumpReglas
+import MyPumpDatos
 
-/// La tabla de series: campos grandes que invitan a cargar. Lo de la última vez aparece sugerido en gris; un toque
-/// en ✓ lo registra (SER-01), el kg se hereda de la serie anterior (SER-03), el RIR nunca se completa solo (SER-02) y
-/// tocar ✓ de nuevo desconfirma (SER-06). Al confirmar arranca el descanso, salvo en calentamiento y cardio.
+/// La tabla de series del motor: campos grandes que invitan a cargar. Lo de la última vez aparece sugerido en gris y un
+/// toque en ✓ lo registra (SER-01); el kg se hereda de la serie anterior (SER-03); el RIR nunca se completa solo
+/// (SER-02); lo imposible se rechaza y lo raro se pregunta (SER-05); tocar ✓ de nuevo desconfirma (SER-06). Al
+/// confirmar arranca el descanso (salvo el calentamiento) y, con la última, el ejercicio queda completo.
 struct TablaSeries: View {
-    let ejercicio: Ejercicio
-    let pauta: Pauta
-    let resumen: ResumenHistorial?
-    @Environment(SesionEnCurso.self) private var sesion
-    @Environment(Descanso.self) private var descanso
-    @FocusState private var foco: Campo?
-    @State private var aviso = 0
+    let motor: ModeloEntreno
+    let lugar: String
+    let tarjeta: ModeloEntreno.Tarjeta
+    let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
+    @Environment(Preguntador.self) private var preguntador
     @Environment(\.dynamicTypeSize) private var tamañoLetra
+    @FocusState private var foco: Campo?
+    @State private var confirmadas = 0
 
     enum Campo: Hashable { case reps(Int), kg(Int) }
 
-    private var cantidad: Int { max(pauta.series ?? 3, 1) }
-    private var esCalentamiento: Bool { ejercicio.tipo == "calentamiento" || ejercicio.tipo == "cardio" }
-    /// Sin columna de kg en calentamiento, cardio o si siempre se hizo con el peso del cuerpo (ENT-13).
-    private var sinKg: Bool {
-        if esCalentamiento { return true }
-        guard let filas = resumen?.ultima, !filas.isEmpty else { return false }
-        return filas.allSatisfy { ($0.pesoKg ?? 0) == 0 }
-    }
-    private var activa: Int? { (0..<cantidad).first { !sesion.valores(ejercicio.id, serie: $0).confirmada } }
+    private var series: [SerieLocal] { motor.dia.ejercicios[lugar]?.series ?? [] }
 
     var body: some View {
-        let hechas = sesion.confirmadas(ejercicio.id)
+        let filas = tarjeta.filas
+        let sinKg = filas.first?.sinKg ?? tarjeta.sinKg
+        let activa = filas.firstIndex { $0.activa && !$0.confirmada }
         VStack(alignment: .leading, spacing: Espacio.s) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Series").font(.title3.weight(.bold)).accessibilityAddTraits(.isHeader)
                 Spacer()
-                Text("\(hechas) de \(cantidad)")
+                Text("\(tarjeta.confirmadas) de \(filas.count)")
                     .font(.subheadline.weight(.medium).monospacedDigit())
-                    .foregroundStyle(hechas == cantidad ? Color.marcaTexto : Color.secondary)
+                    .foregroundStyle(tarjeta.confirmadas == filas.count && !filas.isEmpty ? Color.marcaTexto : Color.secondary)
                     .contentTransition(.numericText())
             }
 
-            HStack(spacing: Espacio.xs) {
-                Text(tamañoLetra.isAccessibilitySize ? "#" : "Serie").fixedSize().frame(width: 30, alignment: .center)
-                Text("Reps").frame(maxWidth: .infinity)
-                if !sinKg { Text("Kg").frame(maxWidth: .infinity) }
-                Text("RIR").frame(maxWidth: .infinity)
-                Color.clear.frame(width: 44, height: 1)
-            }
-            .font(.caption2.weight(.semibold))
-            .textCase(.uppercase)
-            .tracking(0.6)
-            .foregroundStyle(.secondary)
-            .accessibilityHidden(true)
-
-            VStack(spacing: Espacio.xs) {
-                ForEach(0..<cantidad, id: \.self) { i in fila(i) }
+            if let v = tarjeta.variantes {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(v.etiqueta).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Picker(v.etiqueta, selection: Binding(get: { tarjeta.varianteActual ?? v.opciones.first ?? "" },
+                                                          set: { motor.elegirVariante(lugar, $0) })) {
+                        ForEach(v.opciones, id: \.self) { Text($0).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .disabled(motor.dia.diaFinalizado)
+                }
+                .padding(.bottom, 2)
             }
 
-            Label(resumen == nil
-                  ? "Primera vez: buscá un peso con el que llegues cerca del fallo."
-                  : "Tocá ✓ para registrar lo de la última vez, o escribí lo que hiciste.",
-                  systemImage: resumen == nil ? "scope" : "hand.tap")
-                .labelStyle(EtiquetaCompacta())
-                .font(.caption)
+            if filas.isEmpty {
+                Text("Este ejercicio no tiene series esta semana.").font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: Espacio.xs) {
+                    Text(tamañoLetra.isAccessibilitySize ? "#" : "Serie").fixedSize().frame(width: 30, alignment: .center)
+                    Text("Reps").frame(maxWidth: .infinity)
+                    if !sinKg { Text("Kg").frame(maxWidth: .infinity) }
+                    Text("RIR").frame(maxWidth: .infinity)
+                    Color.clear.frame(width: 44, height: 1)
+                }
+                .font(.caption2.weight(.semibold))
+                .textCase(.uppercase)
+                .tracking(0.6)
                 .foregroundStyle(.secondary)
-                .padding(.top, 2)
+                .accessibilityHidden(true)
+
+                VStack(spacing: Espacio.xs) {
+                    ForEach(Array(filas.enumerated()), id: \.offset) { i, f in fila(i, f, sinKg: sinKg) }
+                }
+
+                pista(activa.map { filas[$0] })
+                    .padding(.top, 2)
+            }
         }
         .tarjeta()
-        .sensoryFeedback(.warning, trigger: aviso)
+        .sensoryFeedback(.success, trigger: confirmadas)
+        .onChange(of: tarjeta.confirmadas) { viejo, nuevo in if nuevo > viejo { confirmadas += 1 } }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -77,131 +85,139 @@ struct TablaSeries: View {
 
     // MARK: Fila
 
-    private func fila(_ i: Int) -> some View {
-        let v = sesion.valores(ejercicio.id, serie: i)
-        let previa = resumen?.ultima.first { $0.serie == i + 1 }
-        let esActiva = activa == i
-        return HStack(spacing: Espacio.xs) {
-            ZStack {
-                Circle().fill(esActiva ? Color.marca : (v.confirmada ? Color.clear : Color.campo))
-                Text("\(i + 1)")
-                    .font(.subheadline.weight(.bold).monospacedDigit())
-                    .foregroundStyle(esActiva ? Color.sobreMarca : (v.confirmada ? Color.marcaTexto : Color.secondary))
-            }
-            .frame(width: 30, height: 30)
-
-            CampoSerie(texto: enlace(i, \.reps, filtro: Self.soloDigitos),
-                       sugerencia: sugerenciaReps(i, previa: previa) ?? "–",
-                       teclado: .numberPad, confirmada: v.confirmada, foco: $foco, campo: .reps(i))
-                .accessibilityLabel("Repeticiones de la serie \(i + 1)")
-            if !sinKg {
-                CampoSerie(texto: enlace(i, \.kg, filtro: Self.decimal),
-                           sugerencia: sugerenciaKg(i, previa: previa).map { $0.kg } ?? "–",
-                           teclado: .decimalPad, confirmada: v.confirmada, foco: $foco, campo: .kg(i))
-                    .accessibilityLabel("Kilos de la serie \(i + 1)")
-            }
-            SelectorRIR(rir: Binding(get: { sesion.valores(ejercicio.id, serie: i).rir }, set: { nuevo in
-                var actual = sesion.valores(ejercicio.id, serie: i)
-                actual.rir = nuevo
-                sesion.guardar(actual, ejercicioId: ejercicio.id, serie: i)
-            }), confirmada: v.confirmada)
-            .accessibilityLabel("RIR de la serie \(i + 1)")
-
-            Button { alternar(i, previa: previa) } label: {
+    private func fila(_ i: Int, _ f: FilaSerie, sinKg: Bool) -> some View {
+        let s = i < series.count ? series[i] : SerieLocal()
+        let marcada = s.aviso != nil && !f.confirmada
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: Espacio.xs) {
                 ZStack {
-                    Circle()
-                        .fill(v.confirmada ? Color.marca : Color.clear)
-                        .overlay { Circle().strokeBorder(v.confirmada ? Color.clear : Color(uiColor: .tertiaryLabel), lineWidth: 2) }
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 15, weight: .heavy))
-                        .foregroundStyle(v.confirmada ? Color.sobreMarca : Color(uiColor: .tertiaryLabel))
-                        .symbolEffect(.bounce, value: v.confirmada)
+                    Circle().fill(f.activa && !f.confirmada ? Color.marca : (f.confirmada ? Color.clear : Color.campo))
+                    Text("\(i + 1)")
+                        .font(.subheadline.weight(.bold).monospacedDigit())
+                        .foregroundStyle(f.activa && !f.confirmada ? Color.sobreMarca : (f.confirmada ? Color.marcaTexto : Color.secondary))
                 }
-                .frame(width: 34, height: 34)
-                .frame(width: 44, height: 48)
-                .contentShape(.rect)
+                .frame(width: 30, height: 30)
+
+                CampoSerie(texto: enlace(i, "reps", valor: s.reps), sugerencia: f.placeholderReps.isEmpty ? "–" : f.placeholderReps,
+                           teclado: .numberPad, confirmada: f.confirmada, marcada: marcada, foco: $foco, campo: .reps(i))
+                    .accessibilityLabel("Repeticiones de la serie \(i + 1)")
+                if !sinKg {
+                    // Con las reps escritas y el kg vacío se guarda el kg de la serie anterior (SER-03): que la
+                    // sugerencia muestre ese, no el de la última vez.
+                    let heredado = !f.confirmada && !s.reps.isEmpty && s.kg.isEmpty ? HistorialEntreno.kgHeredable(series, indice: i) : ""
+                    let sugerido = heredado.isEmpty ? f.placeholderKg : heredado
+                    CampoSerie(texto: enlace(i, "kg", valor: s.kg), sugerencia: Self.coma(sugerido.isEmpty ? "–" : sugerido),
+                               teclado: .decimalPad, confirmada: f.confirmada, marcada: marcada, foco: $foco, campo: .kg(i))
+                        .accessibilityLabel("Kilos de la serie \(i + 1)")
+                }
+                SelectorRIR(rir: s.rir, confirmada: f.confirmada) { n in
+                    Task { await motor.elegirRIR(lugar, i, n) }
+                }
+                .accessibilityLabel("RIR de la serie \(i + 1)")
+
+                Button { tocarCheck(i, f) } label: {
+                    ZStack {
+                        Circle()
+                            .fill(f.confirmada ? Color.marca : Color.clear)
+                            .overlay {
+                                Circle().strokeBorder(f.confirmada ? Color.clear : (f.puedeConfirmar ? Color.marcaVivo : Color(uiColor: .tertiaryLabel)),
+                                                      lineWidth: 2)
+                            }
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 15, weight: .heavy))
+                            .foregroundStyle(f.confirmada ? Color.sobreMarca : (f.puedeConfirmar ? Color.marcaTexto : Color(uiColor: .tertiaryLabel)))
+                            .symbolEffect(.bounce, value: f.confirmada)
+                    }
+                    .frame(width: 34, height: 34)
+                    .frame(width: 44, height: 48)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .disabled(!f.puedeConfirmar)
+                .accessibilityLabel(f.confirmada ? "Serie \(i + 1) hecha. Tocá para corregirla" : (f.tituloConfirmar ?? "Confirmar serie \(i + 1)"))
+                .accessibilityIdentifier("confirmar-serie-\(i + 1)")
             }
-            .buttonStyle(.plain)
-            .sensoryFeedback(.success, trigger: v.confirmada) { _, nuevo in nuevo }
-            .accessibilityLabel(v.confirmada ? "Serie \(i + 1) hecha. Tocá para corregirla" : "Confirmar serie \(i + 1)")
+            .padding(.vertical, 2)
+            .animation(.snappy(duration: 0.25), value: f.confirmada)
+
+            if let aviso = s.aviso, !aviso.isEmpty, !f.confirmada {
+                Label(aviso, systemImage: "exclamationmark.triangle.fill")
+                    .labelStyle(IconoTeñido(color: .peligro))
+                    .font(.caption)
+                    .foregroundStyle(Color.peligro)
+                    .padding(.leading, 38)
+                    .transition(.opacity)
+            }
         }
-        .padding(.vertical, 2)
-        .animation(.snappy(duration: 0.25), value: v.confirmada)
     }
 
-    private func enlace(_ i: Int, _ campo: WritableKeyPath<SesionEnCurso.ValoresSerie, String>,
-                        filtro: @escaping (String) -> String) -> Binding<String> {
-        Binding(
-            get: { sesion.valores(ejercicio.id, serie: i)[keyPath: campo] },
-            set: { nuevo in
-                var v = sesion.valores(ejercicio.id, serie: i)
-                v[keyPath: campo] = filtro(nuevo)
-                sesion.guardar(v, ejercicioId: ejercicio.id, serie: i)
-            })
+    /// Lo que se escribe pasa por el motor (que normaliza: coma a punto en kg, solo dígitos en reps). En kg se muestra
+    /// con la coma de acá.
+    private func enlace(_ i: Int, _ campo: String, valor: String) -> Binding<String> {
+        Binding(get: { campo == "kg" ? Self.coma(valor) : valor },
+                set: { motor.escribir(lugar, i, campo: campo, valor: $0) })
     }
 
-    // MARK: Lógica del boceto (al cablear, va a MyPumpReglas con vectores)
-
-    private func alternar(_ i: Int, previa: RegistroHistorico?) {
-        var v = sesion.valores(ejercicio.id, serie: i)
-        if v.confirmada {
-            v.confirmada = false
-            sesion.guardar(v, ejercicioId: ejercicio.id, serie: i)
+    private func tocarCheck(_ i: Int, _ f: FilaSerie) {
+        if f.confirmada {
+            Task { await motor.editarSerie(lugar, i) }
             return
         }
-        if v.reps.isEmpty, let s = sugerenciaReps(i, previa: previa) { v.reps = s }
-        if !sinKg, v.kg.isEmpty, let kg = sugerenciaKg(i, previa: previa) { v.kg = kg.kg }
-        // AMRAP, ∞ o máx: no hay registro de un toque (SER-01). Sin kg sugerido, también hay que escribirlo.
-        guard !v.reps.isEmpty else { foco = .reps(i); aviso += 1; return }
-        guard sinKg || !v.kg.isEmpty else { foco = .kg(i); aviso += 1; return }
-        v.confirmada = true
         foco = nil
-        sesion.guardar(v, ejercicioId: ejercicio.id, serie: i)
-        if !esCalentamiento {
-            descanso.empezar(segundos: ejercicio.descansoSegundos, ejercicio: ejercicio.nombre)
+        Task {
+            let completo = await motor.confirmarSerie(lugar, i) { await preguntador.preguntar($0) }
+            if let completo { alCompletarDia(completo) }
         }
     }
 
-    /// Las reps de la última vez en esa serie; si no hay, el tope del rango ("8-10" → 10).
-    private func sugerenciaReps(_ i: Int, previa: RegistroHistorico?) -> String? {
-        if let r = previa?.reps { return String(r) }
-        let numeros = (pauta.reps ?? "").split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
-        return numeros.max().map(String.init)
-    }
-
-    /// El kg de la última vez en esa serie; si no, el de la serie anterior ya confirmada hoy.
-    private func sugerenciaKg(_ i: Int, previa: RegistroHistorico?) -> Double? {
-        if let kg = previa?.pesoKg, kg > 0 { return kg }
-        for j in stride(from: i - 1, through: 0, by: -1) {
-            let v = sesion.valores(ejercicio.id, serie: j)
-            if v.confirmada, let kg = Double(v.kg.replacingOccurrences(of: ",", with: ".")) { return kg }
+    /// La pista de la fila activa: lo de la última vez a un toque, o la calibración la primera vez.
+    @ViewBuilder
+    private func pista(_ f: FilaSerie?) -> some View {
+        if let p = f?.pista {
+            // "✓ Tocá para registrar lo de la última vez · **80kg × 10** — o editá si hiciste otra cosa", con la
+            // puntuación de una frase de iOS.
+            let antes = p.antes.replacingOccurrences(of: "✓ ", with: "").replacingOccurrences(of: " · ", with: "")
+            let despues = p.despues.replacingOccurrences(of: " — ", with: "").trimmingCharacters(in: .whitespaces)
+            Label {
+                Text("\(antes): \(Text(Bonito.carga(p.negrita)).bold().foregroundStyle(.primary)). \(despues.prefix(1).uppercased() + despues.dropFirst()).")
+            } icon: {
+                Image(systemName: "hand.tap.fill").foregroundStyle(Color.marcaTexto)
+            }
+            .labelStyle(EtiquetaCompacta())
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } else if let c = f?.calibracion {
+            Label(Bonito.sinEmoji(c), systemImage: "scope")
+                .labelStyle(IconoTeñido(color: .marcaTexto))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        return nil
     }
 
-    static func soloDigitos(_ s: String) -> String { String(s.filter(\.isNumber).prefix(3)) }
-
-    static func decimal(_ s: String) -> String {
-        var salida = "", separador = false
-        for c in s {
-            if c.isNumber { salida.append(c) } else if (c == "," || c == "."), !separador { salida.append(","); separador = true }
-        }
-        return String(salida.prefix(6))
-    }
+    static func coma(_ s: String) -> String { s.replacingOccurrences(of: ".", with: ",") }
 }
 
 /// Un campo de la tabla: grande, centrado, con la sugerencia en gris y teñido de marca cuando la serie está hecha.
+/// Mientras se escribe, el campo es dueño de su texto y cada cambio va al motor: si leyera de vuelta lo normalizado
+/// en cada tecla, al tipear rápido ("52,5") un redibujo atrasado se comía la coma y lo que seguía.
 private struct CampoSerie: View {
     @Binding var texto: String
     let sugerencia: String
     let teclado: UIKeyboardType
     let confirmada: Bool
+    let marcada: Bool
     var foco: FocusState<TablaSeries.Campo?>.Binding
     let campo: TablaSeries.Campo
+    @State private var local = ""
 
     var body: some View {
         let enfocado = foco.wrappedValue == campo
-        TextField(sugerencia, text: $texto)
+        TextField(sugerencia, text: $local)
+            .onAppear { local = texto }
+            .onChange(of: local) { _, nuevo in if nuevo != texto { texto = nuevo } }
+            // Lo que cambia el motor (confirmar, desconfirmar, otra variante) entra cuando no se está escribiendo.
+            .onChange(of: texto) { _, nuevo in if !enfocado && nuevo != local { local = nuevo } }
+            .onChange(of: enfocado) { _, ahora in if !ahora { local = texto } }
             .focused(foco, equals: campo)
             .keyboardType(teclado)
             .multilineTextAlignment(.center)
@@ -211,30 +227,36 @@ private struct CampoSerie: View {
             .background(confirmada ? Color.marcaSuave : Color.campo, in: .rect(cornerRadius: 12, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.marcaVivo, lineWidth: enfocado ? 2 : 0)
+                    .strokeBorder(marcada ? Color.peligro : Color.marcaVivo, lineWidth: enfocado || marcada ? 2 : 0)
             }
             .disabled(confirmada)
     }
 }
 
-/// RIR 0-5 en un menú (nunca se completa solo). "–" = sin dato, que no es lo mismo que 0.
+/// RIR 0-5 en un menú, con la leyenda de la web; nunca se completa solo. "–" es sin dato, que no es lo mismo que 0.
 private struct SelectorRIR: View {
-    @Binding var rir: Int?
+    let rir: String
     let confirmada: Bool
+    let elegir: (Int) -> Void
 
     var body: some View {
         Menu {
-            Picker("RIR", selection: $rir) {
-                Text("Sin dato").tag(Int?.none)
-                ForEach(0...5, id: \.self) { n in
-                    Text(n == 0 ? "0 · al fallo" : "\(n)").tag(Int?.some(n))
+            ForEach(0...5, id: \.self) { n in
+                Button {
+                    elegir(n)
+                } label: {
+                    if rir == String(n) {
+                        Label("\(n) · \(CamposSerie.leyendaRIR(String(n)))", systemImage: "checkmark")
+                    } else {
+                        Text("\(n) · \(CamposSerie.leyendaRIR(String(n)))")
+                    }
                 }
             }
         } label: {
             HStack(spacing: 2) {
-                Text(rir.map(String.init) ?? "–")
+                Text(rir.isEmpty ? "–" : rir)
                     .font(.title3.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(rir == nil ? Color.secondary : Color.primary)
+                    .foregroundStyle(rir.isEmpty ? Color.secondary : Color.primary)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.tertiary)

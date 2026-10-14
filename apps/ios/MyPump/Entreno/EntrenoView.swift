@@ -1,82 +1,97 @@
 import SwiftUI
 import MyPumpModelos
 import MyPumpReglas
+import MyPumpDatos
 
-/// Entreno: el día elegido, con su progreso, los bloques y cada ejercicio. Arriba, el título del día en Archivo; al
+/// Entreno: el día elegido con su progreso, el cronómetro de la sesión, los bloques y cada ejercicio, avanzar de semana
+/// y cerrar el día. Todo sale del motor (`ModeloEntreno`, en `Entrenamiento`). Arriba, el título del día en Archivo; al
 /// bajar, el título pasa chico a la barra.
 struct EntrenoView: View {
+    /// Las muestras quedan para las demás pestañas; Entreno ya usa el motor.
     let datos: Muestras
-    @Environment(SesionEnCurso.self) private var sesion
-    @Environment(Descanso.self) private var descanso
-    @State private var diaId: String?
-    @State private var ruta: [Ejercicio] = []
-    @State private var tituloEnBarra = false
-    @State private var confirmarAvance = false
-    @State private var confirmarCierre = false
-    @State private var demoArrancada = false
-    @ScaledMetric(relativeTo: .title) private var ladoAnillo: CGFloat = 68
-
-    private var rutina: RutinaActiva? { datos.rutina }
-    private var dias: [Dia] { rutina?.estructura.dias ?? [] }
-    private var dia: Dia? { dias.first { $0.id == diaId } ?? dias.first }
-    private var semana: Int { rutina?.semanaActual ?? 1 }
-    private var offset: Int { rutina?.estructura.semanaOffset ?? 0 }
-    private var total: Int { rutina?.estructura.semanasTotal ?? 12 }
-    private var cerrados: Set<String> { Set(datos.sesionesSemana.filter(\.cerrada).map(\.diaId)) }
+    @Environment(Entrenamiento.self) private var entrenamiento
+    @State private var ruta: [String] = []
+    @State private var preguntador = Preguntador()
+    @State private var abrioDemo = false
 
     var body: some View {
         NavigationStack(path: $ruta) {
-            contenido
-                .background(Color.fondo)
-                .navigationTitle(titulo(dia))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        VStack(spacing: 0) {
-                            Text(titulo(dia)).font(.headline)
-                            Text("Semana \(semana + offset) de \(total + offset)")
-                                .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
-                        }
-                        .opacity(tituloEnBarra ? 1 : 0)
-                        .animation(.easeOut(duration: 0.2), value: tituloEnBarra)
-                        .accessibilityHidden(!tituloEnBarra)
-                    }
+            Group {
+                if let m = entrenamiento.motor {
+                    ListaEntreno(motor: m, ejemplo: entrenamiento.ejemplo, alCompletarDia: completoDia)
+                } else {
+                    ScrollView { EsqueletoEntreno().padding(.horizontal, Espacio.m).anchoLectura() }
+                        .scrollDisabled(true)
                 }
-                .navigationDestination(for: Ejercicio.self) { e in
-                    EjercicioView(ejercicio: e, semana: semana, semanaOffset: offset, resumen: datos.resumen(de: e))
-                }
-        }
-        .onAppear(perform: arrancarDemo)
-    }
-
-    @ViewBuilder private var contenido: some View {
-        switch DemoUI.estado {
-        case .cargando:
-            ScrollView { EsqueletoEntreno().padding(.horizontal, Espacio.m).anchoLectura() }
-                .scrollDisabled(true)
-        case .error:
-            ContentUnavailableView {
-                Label("Sin conexión", systemImage: "wifi.slash")
-            } description: {
-                Text("No pudimos traer tu plan. Probá de nuevo cuando tengas señal.")
-            } actions: {
-                Button("Reintentar") {}.buttonStyle(BotonMarca(compacto: true))
             }
-        case .vacio, nil:
-            lista
+            .background(Color.fondo)
+            .navigationDestination(for: String.self) { lugar in
+                if let m = entrenamiento.motor {
+                    EjercicioView(motor: m, lugar: lugar, alCompletarDia: completoDia) { siguiente in
+                        // El siguiente pendiente reemplaza al que se terminó (como la web abre la card siguiente).
+                        ruta = [siguiente]
+                    }
+                    // Otro ejercicio es otra pantalla: arriba de todo y sin lo que quedó escrito en el anterior.
+                    .id(lugar)
+                }
+            }
+        }
+        .environment(preguntador)
+        .preguntas(preguntador)
+        .onChange(of: entrenamiento.motor?.dia.dia.id, initial: true) { _, _ in abrirParaCapturas() }
+    }
+
+    /// "🎉 ¡Día completado!" medio segundo después (como la web); con un día siguiente, ofrece ir.
+    private func completoDia(_ c: ModeloEntreno.DiaCompletado) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            let ir = await preguntador.preguntar(c.pregunta)
+            guard ir, let sig = c.siguiente?.id, let m = entrenamiento.motor else { return }
+            ruta = []
+            await m.cambiarDia(sig)
         }
     }
 
-    private var lista: some View {
+    /// Capturas: `-abrir ejercicio` entra al primer ejercicio de trabajo del día.
+    private func abrirParaCapturas() {
+        guard !abrioDemo, DemoUI.abrir == "ejercicio", let m = entrenamiento.motor else { return }
+        guard let e = m.dia.lista.first(where: { $0.tipo == "compuesto" }) ?? m.dia.lista.first else { return }
+        abrioDemo = true
+        ruta = [e.id]
+    }
+}
+
+/// El día del motor.
+private struct ListaEntreno: View {
+    let motor: ModeloEntreno
+    let ejemplo: Bool
+    let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
+    @Environment(Preguntador.self) private var preguntador
+    @State private var tituloEnBarra = false
+    @State private var cerrando = false
+    @State private var trabajando = false
+    @ScaledMetric(relativeTo: .title) private var ladoAnillo: CGFloat = 68
+
+    private var titulo: String {
+        let t = Bonito.titulo(motor.dia.dia.nombre)
+        return t.isEmpty ? "Día \(motor.numero(motor.dia.dia))" : t
+    }
+
+    var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 cabecera
+                if ejemplo {
+                    AvisoProgresion(icono: "exclamationmark.triangle.fill",
+                                    texto: Text(Bonito.sinEmoji(TextosEntreno.demo).replacingOccurrences(of: "Modo demo — ", with: "")),
+                                    tono: .alerta)
+                }
                 BannerRevision()
-                SelectorDias(dias: dias, seleccionado: dia?.id, cerrados: cerrados) { diaId = $0 }
-                if let dia, !dia.bloques.flatMap(\.ejercicios).isEmpty, DemoUI.estado != .vacio {
-                    cuerpo(de: dia)
-                } else {
+                SelectorDias(motor: motor)
+                if motor.vacio {
                     diaVacio
+                } else {
+                    cuerpo
                 }
                 PieRespaldo(origen: .entreno)
                     .padding(.top, Espacio.xs)
@@ -87,33 +102,49 @@ struct EntrenoView: View {
             .anchoLectura()
         }
         .scrollDismissesKeyboard(.interactively)
+        .refreshable { await motor.cargar() }
+        .navigationTitle(titulo)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                VStack(spacing: 0) {
+                    Text(titulo).font(.headline)
+                    Text("Semana \(motor.semanaMostrada) de \(motor.totalMostrado)")
+                        .font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                }
+                .opacity(tituloEnBarra ? 1 : 0)
+                .animation(.easeOut(duration: 0.2), value: tituloEnBarra)
+                .accessibilityHidden(!tituloEnBarra)
+            }
+        }
+        .sheet(isPresented: $cerrando) { CerrarDiaView(motor: motor) }
     }
 
     // MARK: Cabecera
 
     private var cabecera: some View {
-        let todos = dia?.bloques.flatMap(\.ejercicios) ?? []
-        let hechos = todos.filter { sesion.final($0.id) != nil }.count
-        let cerrado = cerrados.contains(dia?.id ?? "")
+        let d = motor.dia.dia
+        let total = motor.totalEjercicios, hechos = motor.hechos
+        let cerrado = motor.dia.diaFinalizado || motor.hecho(d)
         return HStack(alignment: .center, spacing: Espacio.m) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Día \(dia?.n ?? 1) · Semana \(semana + offset) de \(total + offset)").textoCeja()
-                Text(titulo(dia))
+                Text("Día \(motor.numero(d)) · Semana \(motor.semanaMostrada) de \(motor.totalMostrado)").textoCeja()
+                Text(titulo)
                     .font(.tituloDia)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .accessibilityAddTraits(.isHeader)
-                Label(cerrado ? "Día cerrado esta semana" : "\(todos.count) ejercicios",
+                Label(cerrado ? "Día cerrado esta semana" : "\(total) ejercicios",
                       systemImage: cerrado ? "checkmark.seal.fill" : "list.bullet")
                     .labelStyle(EtiquetaCompacta())
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(cerrado ? Color.marcaTexto : Color.secondary)
             }
             Spacer(minLength: 0)
-            AnilloProgreso(fraccion: Double(hechos) / Double(max(todos.count, 1)), grosor: 7) {
+            AnilloProgreso(fraccion: Double(hechos) / Double(max(total, 1)), grosor: 7) {
                 VStack(spacing: -2) {
                     Text("\(hechos)").font(.numeroChico).contentTransition(.numericText())
-                    Text("de \(todos.count)").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    Text("de \(total)").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
@@ -122,7 +153,7 @@ struct EntrenoView: View {
             .frame(width: min(ladoAnillo, 108), height: min(ladoAnillo, 108))
             .animation(.snappy, value: hechos)
             .accessibilityElement()
-            .accessibilityLabel("\(hechos) de \(todos.count) ejercicios hechos")
+            .accessibilityLabel("\(hechos) de \(total) ejercicios hechos")
         }
         .padding(.top, Espacio.xs)
         .onGeometryChange(for: Bool.self) { $0.frame(in: .scrollView).maxY < 8 } action: { tituloEnBarra = $0 }
@@ -131,88 +162,135 @@ struct EntrenoView: View {
     // MARK: Cuerpo del día
 
     @ViewBuilder
-    private func cuerpo(de dia: Dia) -> some View {
-        let todos = dia.bloques.flatMap(\.ejercicios)
-        let cambian = todos.filter { $0.tipo != "calentamiento" && Progresiones.nota($0, semanaActual: semana)?.cambia == true }.count
-        let calibracion = semana <= 1 && offset == 0
-
-        if cambian > 0 {
+    private var cuerpo: some View {
+        let banner = motor.banner
+        if banner.cambian > 0 {
             AvisoProgresion(icono: "chart.line.uptrend.xyaxis",
-                            texto: Text("Esta semana \(Text(cambian == 1 ? "1 ejercicio cambia" : "\(cambian) ejercicios cambian").bold()) carga o volumen. Mirá el detalle al abrir cada uno."))
-        } else if calibracion {
+                            texto: Text("Esta semana \(Text(banner.cambian == 1 ? "1 ejercicio cambia" : "\(banner.cambian) ejercicios cambian").bold()) carga o volumen. Mirá el detalle al abrir cada uno."))
+        } else if banner.calibracion {
             AvisoProgresion(icono: "scope",
                             texto: Text("Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3): no te guardes reps."))
         }
 
-        if !cerrados.contains(dia.id ?? "") {
-            if let inicio = sesion.inicio {
-                CronometroSesion(inicio: inicio) { confirmarCierre = true }
-            } else {
-                VStack(spacing: Espacio.xs) {
-                    Button {
-                        withAnimation(.snappy) { sesion.empezar() }
-                    } label: {
-                        Label("Empezar entrenamiento", systemImage: "play.fill")
-                    }
-                    .buttonStyle(BotonMarca())
-                    .sensoryFeedback(.impact(weight: .medium), trigger: sesion.inicio)
-                    Text("Arranca el cronómetro de la sesión. O empezá directo: corre solo con tu primera serie.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                }
-            }
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            cronometro(motor.cronometro())
         }
 
-        ForEach(Array(dia.bloques.enumerated()), id: \.offset) { i, bloque in
-            BloqueEjercicios(indice: i, bloque: bloque, primerNumero: primerNumero(bloque: i, en: dia),
-                             semana: semana, datos: datos)
+        ForEach(motor.bloques, id: \.indice) { b in
+            BloqueEjercicios(motor: motor, bloque: b, primerNumero: primerNumero(b.indice))
         }
 
-        if sesion.inicio != nil {
-            resumenSesion(todos)
+        if motor.todoHecho {
+            tarjetaCierre
+        } else {
+            resumenSesion
         }
 
-        if semana < total {
-            Button { confirmarAvance = true } label: {
-                Label("Pasar a la semana \(semana + offset + 1)", systemImage: "arrow.right")
-                    .labelStyle(TituloYFlecha())
+        if motor.puedeAvanzar {
+            Button(action: avanzar) {
+                Label(Bonito.boton(motor.botonAvanzar), systemImage: "arrow.right").labelStyle(TituloYFlecha())
             }
             .buttonStyle(BotonSecundario(tono: .marcaTexto))
-            .confirmationDialog("Pasar a la semana \(semana + offset + 1)", isPresented: $confirmarAvance, titleVisibility: .visible) {
-                Button("Pasar a la semana \(semana + offset + 1)") {}
-                Button("Cancelar", role: .cancel) {}
-            } message: {
-                Text(todos.allSatisfy { sesion.final($0.id) != nil }
-                     ? "¿Confirmás que querés avanzar a la semana \(semana + offset + 1)?"
-                     : "Todavía tenés ejercicios sin completar en la semana \(semana + offset). Si avanzás, la semana nueva empieza con la progresión actualizada.")
+            .disabled(trabajando)
+            .accessibilityIdentifier("avanzar-semana")
+        } else if motor.puedeEmpezarBloque {
+            VStack(spacing: Espacio.xs) {
+                Button(action: empezarBloque) {
+                    Label(Bonito.boton(Bonito.sinEmoji(SemanaEntreno.botonBloqueNuevo)), systemImage: "sparkles")
+                }
+                .buttonStyle(BotonMarca())
+                .disabled(trabajando)
+                Text(SemanaEntreno.detalleBloqueNuevo).font(.footnote).foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
-    private func resumenSesion(_ todos: [Ejercicio]) -> some View {
-        let hechos = todos.filter { sesion.final($0.id) != nil }.count
+    @ViewBuilder
+    private func cronometro(_ c: TiempoEntreno.Cronometro?) -> some View {
+        switch c {
+        case .empezar:
+            VStack(spacing: Espacio.xs) {
+                Button {
+                    Task { await motor.empezar() }
+                } label: {
+                    Label(TextosEntreno.empezar, systemImage: "play.fill")
+                }
+                .buttonStyle(BotonMarca())
+                .sensoryFeedback(.impact(weight: .medium), trigger: motor.inicioSesion)
+                .accessibilityIdentifier("empezar-entrenamiento")
+                Text("Arranca el cronómetro de la sesión. O empezá directo: corre solo con tu primera serie.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+            }
+        case .enCurso(let texto, let porBoton):
+            CronometroSesion(texto: texto, detalle: porBoton ? nil : "Arrancó con tu primera serie") { cerrando = true }
+        case .sinCerrar:
+            VStack(alignment: .leading, spacing: Espacio.s) {
+                Label("Sin cerrar", systemImage: "clock.badge.exclamationmark")
+                    .labelStyle(IconoTeñido(color: .alerta))
+                    .font(.headline)
+                Text("Quedó abierta de antes. No te preocupes, no perdiste nada.").font(.subheadline).foregroundStyle(.secondary)
+                Button("Empezar de nuevo") { motor.reiniciarCronometro() }
+                    .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
+            }
+            .tarjeta()
+        case nil:
+            EmptyView()
+        }
+    }
+
+    /// Todo hecho o el día cerrado: el resumen de la sesión y, si falta, cerrarla.
+    private var tarjetaCierre: some View {
+        let r = motor.resumen
+        let finalizado = motor.dia.diaFinalizado
+        return VStack(spacing: Espacio.m) {
+            if !finalizado {
+                Label("¡Día completado!", systemImage: "party.popper.fill")
+                    .labelStyle(IconoTeñido(color: .marcaTexto))
+                    .font(.headline)
+            }
+            HStack(spacing: 0) {
+                celda("Series", "\(r.series)")
+                Divider().frame(height: 36)
+                celda("Volumen", "\(JS.texto(r.volumenRedondeado)) kg")
+                Divider().frame(height: 36)
+                celda("Duración", motor.minutos.map { "\($0) min" } ?? "—")
+            }
+            if finalizado {
+                Label("Tu sesión de hoy quedó guardada.", systemImage: "checkmark.seal.fill")
+                    .labelStyle(IconoTeñido(color: .marcaTexto))
+                    .font(.subheadline.weight(.semibold))
+            } else {
+                Button { cerrando = true } label: { Label("Cerrar sesión de hoy", systemImage: "flag.checkered") }
+                    .buttonStyle(BotonMarca())
+                    .accessibilityIdentifier("cerrar-sesion")
+            }
+        }
+        .tarjeta()
+    }
+
+    /// El pie mientras se entrena: hechos, tiempo y lo que resta, y cerrar (habilitado con la sesión iniciada).
+    private var resumenSesion: some View {
+        let restan = motor.totalEjercicios - motor.hechos
         return VStack(spacing: Espacio.m) {
             HStack(spacing: 0) {
-                celda("Hechos", "\(hechos)/\(todos.count)")
+                celda("Hechos", "\(motor.hechos)/\(motor.totalEjercicios)")
                 Divider().frame(height: 36)
-                TimelineView(.periodic(from: .now, by: 30)) { ctx in
-                    celda("Tiempo", "\(Int(ctx.date.timeIntervalSince(sesion.inicio ?? ctx.date) / 60)) min")
+                TimelineView(.periodic(from: .now, by: 30)) { _ in
+                    celda("Tiempo", motor.minutos.map { "\($0) min" } ?? "—")
                 }
                 Divider().frame(height: 36)
-                celda("Restan", "\(todos.count - hechos) ej")
+                celda("Restan", "\(restan) ej")
             }
-            Button { confirmarCierre = true } label: {
+            Button { cerrando = true } label: {
                 Label("Cerrar sesión de hoy", systemImage: "flag.checkered")
             }
             .buttonStyle(BotonSecundario())
-            .confirmationDialog("¿Cerrar la sesión de hoy?", isPresented: $confirmarCierre, titleVisibility: .visible) {
-                Button("Cerrar sesión") { withAnimation(.snappy) { sesion.reiniciar() } }
-                Button("Seguir entrenando", role: .cancel) {}
-            } message: {
-                Text("Se guardan tus series y Mati ve el resumen.")
-            }
+            .disabled(!motor.cierreHabilitado)
+            .accessibilityIdentifier("cerrar-sesion")
         }
         .tarjeta()
     }
@@ -221,6 +299,7 @@ struct EntrenoView: View {
         VStack(spacing: 2) {
             Text(titulo).textoCeja()
             Text(valor).font(.numeroChico).monospacedDigit().contentTransition(.numericText())
+                .lineLimit(1).minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -230,76 +309,71 @@ struct EntrenoView: View {
         ContentUnavailableView {
             Label("Día sin ejercicios", systemImage: "figure.cooldown")
         } description: {
-            Text("Este día no tiene ejercicios cargados. Si es un día de descanso, ¡a descansar! Si no, avisale a Mati.")
+            Text(TextosEntreno.diaVacio)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Espacio.l)
     }
 
-    private func primerNumero(bloque i: Int, en dia: Dia) -> Int {
-        dia.bloques.prefix(i).reduce(0) { $0 + $1.ejercicios.count } + 1
+    private func primerNumero(_ indice: Int) -> Int {
+        motor.dia.dia.bloques.prefix(indice).reduce(0) { $0 + $1.ejercicios.count } + 1
     }
 
-    /// Los nombres que vienen todo en mayúsculas ("TIRÓN") se muestran capitalizados; los demás, tal cual.
-    private func titulo(_ dia: Dia?) -> String {
-        guard let n = dia?.nombre, !n.isEmpty else { return "Entreno" }
-        return n == n.uppercased() ? n.localizedCapitalized : n
-    }
+    // MARK: Semana y bloque
 
-    private func arrancarDemo() {
-        guard !demoArrancada else { return }
-        demoArrancada = true
-        // Solo en los bocetos de diseño: con una cuenta el descanso arranca al confirmar una serie, nunca solo.
-        guard DemoUI.bocetos || DemoUI.abrir == "ejercicio", DemoUI.estado == nil else { return }
-        // Bocetos: un descanso a mitad de camino, para ver la isla. `-abrir ejercicio` entra directo al primer
-        // ejercicio de trabajo.
-        let primero = dias.first?.bloques.flatMap(\.ejercicios).first { $0.tipo == "compuesto" }
-        if DemoUI.bocetos, !DemoUI.sinDescanso {
-            descanso.empezar(segundos: primero?.descansoSegundos ?? 150, ejercicio: primero?.nombre, yaPasaron: 66)
+    /// "Pasar a Semana N" con la confirmación de la web (cambia si el día está incompleto). Si no salió, "Recargar".
+    private func avanzar() {
+        Task {
+            guard let p = motor.preguntaAvanzar, await preguntador.preguntar(p) else { return }
+            trabajando = true
+            defer { trabajando = false }
+            if case .error(let e) = await motor.avanzarSemana(), await preguntador.preguntar(e), e.confirmar == "Recargar" {
+                await motor.recargar()
+            }
         }
-        if DemoUI.abrir == "ejercicio", ruta.isEmpty, let primero { ruta = [primero] }
     }
-}
 
-extension Ejercicio: @retroactive Hashable {
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    /// "Empezar bloque nuevo" (ENT-15).
+    private func empezarBloque() {
+        Task {
+            guard await preguntador.preguntar(SemanaEntreno.preguntaBloqueNuevo) else { return }
+            trabajando = true
+            defer { trabajando = false }
+            if case .error(let e) = await motor.empezarBloqueNuevo(), await preguntador.preguntar(e), e.confirmar == "Recargar" {
+                await motor.recargar()
+            }
+        }
+    }
 }
 
 // MARK: - Piezas
 
-/// Aviso teñido de marca arriba del día ("Esta semana 7 ejercicios cambian carga o volumen").
+/// Aviso teñido arriba del día ("Esta semana 7 ejercicios cambian carga o volumen").
 private struct AvisoProgresion: View {
     let icono: String
     let texto: Text
+    var tono: Color = .marcaTexto
 
     var body: some View {
         HStack(alignment: .top, spacing: Espacio.s) {
             Image(systemName: icono)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.marcaTexto)
+                .foregroundStyle(tono)
                 .frame(width: 22)
             texto.font(.subheadline).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
         }
         .padding(Espacio.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.marcaSuave, in: .rect(cornerRadius: Radio.control + 4, style: .continuous))
+        .background(tono == .marcaTexto ? Color.marcaSuave : tono.opacity(0.12),
+                    in: .rect(cornerRadius: Radio.control + 4, style: .continuous))
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// Título con la flecha a la derecha (para "Pasar a la semana 6 →").
-private struct TituloYFlecha: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 6) {
-            configuration.title
-            configuration.icon.font(.subheadline.weight(.bold))
-        }
     }
 }
 
 /// La sesión en curso: punto que late, "EN CURSO" y el tiempo (reemplaza al botón de empezar).
 private struct CronometroSesion: View {
-    let inicio: Date
+    let texto: String
+    let detalle: String?
     let cerrar: () -> Void
     @State private var late = false
     @Environment(\.accessibilityReduceMotion) private var reducir
@@ -319,11 +393,12 @@ private struct CronometroSesion: View {
                 }
             VStack(alignment: .leading, spacing: 0) {
                 Text("En curso").textoCeja()
-                TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                    Text(Self.reloj(ctx.date.timeIntervalSince(inicio)))
-                        .font(.numeroMediano)
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
+                Text(texto)
+                    .font(.numeroMediano)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                if let detalle {
+                    Text(detalle).font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer()
@@ -333,108 +408,112 @@ private struct CronometroSesion: View {
         .tarjeta()
         .accessibilityElement(children: .contain)
     }
-
-    static func reloj(_ t: TimeInterval) -> String {
-        let s = max(0, Int(t))
-        return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : mmss(s)
-    }
 }
 
 /// Selector de días: cápsulas con "DÍA n" y la primera palabra del nombre. La elegida va invertida y se desliza; las
-/// cerradas esta semana llevan el tilde de marca.
+/// cerradas esta semana llevan el tilde de marca, y las que tienen comentarios de Mati sin leer, el globo.
 struct SelectorDias: View {
-    let dias: [Dia]
-    let seleccionado: String?
-    let cerrados: Set<String>
-    let elegir: (String?) -> Void
+    let motor: ModeloEntreno
     @Namespace private var ns
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Espacio.xs) {
-                ForEach(Array(dias.enumerated()), id: \.offset) { i, d in
-                    let activo = d.id == seleccionado
-                    let hecho = cerrados.contains(d.id ?? "")
-                    Button {
-                        withAnimation(.snappy(duration: 0.3)) { elegir(d.id) }
-                    } label: {
-                        VStack(spacing: 1) {
-                            Text("Día \(d.n ?? i + 1)")
-                                .font(.caption2.weight(.bold))
-                                .textCase(.uppercase)
-                                .tracking(0.6)
-                                .opacity(activo ? 0.65 : 1)
-                                .foregroundStyle(activo ? Color(uiColor: .systemBackground) : Color.secondary)
-                            Text(corto(d.nombre))
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(1)
-                                .foregroundStyle(activo ? Color(uiColor: .systemBackground) : Color.primary)
-                        }
-                        .frame(minWidth: 70, minHeight: 44)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 14)
-                        .background {
-                            if activo {
-                                RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
-                                    .fill(Color.primary)
-                                    .matchedGeometryEffect(id: "seleccion", in: ns)
-                            } else {
-                                RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
-                                    .fill(Color.tarjeta)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
-                                            .strokeBorder(Color.borde, lineWidth: 1)
-                                    }
-                            }
-                        }
-                        .overlay(alignment: .topTrailing) {
-                            if hecho {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 8, weight: .heavy))
-                                    .foregroundStyle(Color.sobreMarca)
-                                    .frame(width: 16, height: 16)
-                                    .background(Color.marca, in: .circle)
-                                    .offset(x: 5, y: -5)
-                            }
-                        }
+        ScrollViewReader { lector in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Espacio.xs) {
+                    ForEach(Array(motor.dias.enumerated()), id: \.offset) { i, d in
+                        boton(d, i)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Día \(d.n ?? i + 1), \(corto(d.nombre))\(hecho ? ", cerrado esta semana" : "")")
-                    .accessibilityAddTraits(activo ? .isSelected : [])
                 }
+                .padding(.vertical, 6)
             }
-            .padding(.vertical, 6)
+            .scrollClipDisabled()
+            .onAppear { if let id = motor.dia.dia.id { lector.scrollTo(id, anchor: .center) } }
         }
-        .scrollClipDisabled()
-        .sensoryFeedback(.selection, trigger: seleccionado)
+        .sensoryFeedback(.selection, trigger: motor.dia.dia.id)
     }
 
-    private func corto(_ nombre: String?) -> String {
-        let p = (nombre ?? "").split(separator: " ").first.map(String.init) ?? ""
-        return p == p.uppercased() ? p.localizedCapitalized : p
+    private func boton(_ d: Dia, _ i: Int) -> some View {
+        let activo = d.id == motor.dia.dia.id
+        let hecho = motor.hecho(d)
+        let mensajes = motor.sinLeer(d)
+        let corto = Bonito.titulo(motor.nombreCorto(d))
+        return Button {
+            guard let id = d.id else { return }
+            Task { await motor.cambiarDia(id) }
+        } label: {
+            VStack(spacing: 1) {
+                Text("Día \(motor.numero(d))")
+                    .font(.caption2.weight(.bold))
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+                    .opacity(activo ? 0.65 : 1)
+                    .foregroundStyle(activo ? Color(uiColor: .systemBackground) : Color.secondary)
+                Text(corto.isEmpty ? "Día" : corto)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .foregroundStyle(activo ? Color(uiColor: .systemBackground) : Color.primary)
+            }
+            .frame(minWidth: 70, minHeight: 44)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .background {
+                if activo {
+                    RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
+                        .fill(Color.primary)
+                        .matchedGeometryEffect(id: "seleccion", in: ns)
+                } else {
+                    RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
+                        .fill(Color.tarjeta)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: Radio.control + 2, style: .continuous)
+                                .strokeBorder(Color.borde, lineWidth: 1)
+                        }
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if hecho {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .heavy))
+                        .foregroundStyle(Color.sobreMarca)
+                        .frame(width: 16, height: 16)
+                        .background(Color.marca, in: .circle)
+                        .offset(x: 5, y: -5)
+                } else if mensajes > 0 {
+                    Image(systemName: "bubble.left.fill")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 18, height: 18)
+                        .background(Color.peligro, in: .circle)
+                        .offset(x: 5, y: -5)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .id(d.id)
+        .accessibilityLabel("Día \(motor.numero(d)), \(corto)\(hecho ? ", cerrado esta semana" : "")\(mensajes > 0 ? ", \(mensajes) comentarios sin leer" : "")")
+        .accessibilityAddTraits(activo ? .isSelected : [])
     }
 }
 
-/// Un bloque: "B1 · Espalda · 0/3" y sus ejercicios en una sola tarjeta, separados por líneas como una lista.
+/// Un bloque: "Bloque 1 · Espalda · 0/3" y sus ejercicios en una sola tarjeta, separados por líneas como una lista.
 private struct BloqueEjercicios: View {
-    let indice: Int
-    let bloque: Bloque
+    let motor: ModeloEntreno
+    let bloque: ModeloEntreno.BloqueDelDia
     let primerNumero: Int
-    let semana: Int
-    let datos: Muestras
-    @Environment(SesionEnCurso.self) private var sesion
 
     var body: some View {
-        let hechos = bloque.ejercicios.filter { sesion.final($0.id) != nil }.count
+        let total = bloque.ejercicios.count
         VStack(alignment: .leading, spacing: Espacio.s) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Bloque \(numeroBloque)").textoCeja()
+                Text("Bloque \(bloque.indice)").textoCeja()
                 HStack(alignment: .firstTextBaseline, spacing: Espacio.xs) {
-                    Text(nombre).font(.title3.weight(.bold)).accessibilityAddTraits(.isHeader)
+                    Text(bloque.nombre.isEmpty ? "Bloque \(bloque.indice)" : bloque.nombre.enOracion)
+                        .font(.title3.weight(.bold))
+                        .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: Espacio.xs)
-                    Text("\(hechos)/\(bloque.ejercicios.count)")
+                    Text("\(bloque.hechos)/\(total)")
                         .font(.subheadline.weight(.medium).monospacedDigit())
-                        .foregroundStyle(hechos == bloque.ejercicios.count ? Color.marcaTexto : Color.secondary)
+                        .foregroundStyle(bloque.hechos == total ? Color.marcaTexto : Color.secondary)
                         .contentTransition(.numericText())
                 }
             }
@@ -443,11 +522,11 @@ private struct BloqueEjercicios: View {
 
             VStack(spacing: 0) {
                 ForEach(Array(bloque.ejercicios.enumerated()), id: \.element.id) { j, e in
-                    NavigationLink(value: e) {
-                        FilaEjercicio(ejercicio: e, numero: primerNumero + j, semana: semana, resumen: datos.resumen(de: e))
+                    NavigationLink(value: e.id) {
+                        FilaEjercicio(motor: motor, ejercicio: e, numero: primerNumero + j)
                     }
                     .buttonStyle(FilaPresionable())
-                    if j < bloque.ejercicios.count - 1 {
+                    if j < total - 1 {
                         Divider().padding(.leading, 90)
                     }
                 }
@@ -456,51 +535,41 @@ private struct BloqueEjercicios: View {
             .superficieTarjeta()
         }
     }
-
-    /// "BLOQUE 1 — ESPALDA" → 1. Si no trae número, el orden.
-    private var numeroBloque: Int {
-        let titulo = bloque.titulo ?? ""
-        let digitos = titulo.split(separator: "—").first?.filter(\.isNumber) ?? ""
-        return Int(digitos) ?? indice
-    }
-
-    /// El subtítulo si viene (formato seed); si no, lo que sigue a la raya del título ("BLOQUE 1 — ESPALDA").
-    private var nombre: String {
-        if let s = bloque.subtitulo, !s.isEmpty { return s.enOracion }
-        let titulo = bloque.titulo ?? ""
-        let partes = titulo.components(separatedBy: "—")
-        let n = (partes.count > 1 ? partes.dropFirst().joined(separator: "—") : titulo).trimmingCharacters(in: .whitespaces)
-        return n.isEmpty ? "Bloque \(indice + 1)" : n.enOracion
-    }
 }
 
-/// Fila de un ejercicio: miniatura con su número, nombre y músculo, la pauta de la semana en chips, y lo que hay que
-/// superar (o "Primera vez"). Con letra de accesibilidad, la miniatura pasa arriba y los chips saltan de renglón.
+/// La card cerrada de un ejercicio (ENT-10): miniatura con su número o estado, sustitución (fijada o solo hoy),
+/// "manual", comentarios sin leer, la pauta de la semana en chips, puntos por serie, y la última vez y el récord (o
+/// "Primera vez"). Con letra de accesibilidad, la miniatura pasa arriba y los chips saltan de renglón.
 struct FilaEjercicio: View {
+    let motor: ModeloEntreno
+    /// El ejercicio del PLAN en ese lugar (el efectivo puede ser un sustituto).
     let ejercicio: Ejercicio
     let numero: Int
-    let semana: Int
-    let resumen: ResumenHistorial?
-    @Environment(SesionEnCurso.self) private var sesion
     @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     var body: some View {
-        let pauta = Progresiones.pauta(ejercicio, semana: semana)
-        let nombre = NombreEjercicio(ejercicio.nombre)
-        let hechas = sesion.confirmadas(ejercicio.id)
-        let final = sesion.final(ejercicio.id)
+        let lugar = ejercicio.id
+        let ef = motor.efectivo(ejercicio)
+        let pauta = Progresiones.pauta(ef.ejercicio, semana: motor.semana)
+        let nombre = NombreEjercicio(ef.ejercicio.nombre)
+        let estado = motor.dia.estado(lugar)
+        let series = motor.dia.ejercicios[lugar]?.series ?? []
+        let hechas = series.filter(\.confirmada).count
+        let manual = estado == "completo_sin_datos" && motor.dia.meta[lugar]?.manual == true
+        let mensajes = motor.comentarios.sinLeer(ejercicio: lugar)
+        let tipo = ef.ejercicio.tipo
         let disposicion = tamañoLetra.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.s))
             : AnyLayout(HStackLayout(alignment: .top, spacing: 14))
 
         disposicion {
             VStack(spacing: Espacio.xs) {
-                Miniatura(url: ejercicio.imagenes?.concentric ?? ejercicio.imagenes?.eccentric, tipo: ejercicio.tipo, lado: 60)
+                Miniatura(url: ef.ejercicio.imagenes?.concentric ?? ef.ejercicio.imagenes?.eccentric, tipo: tipo, lado: 60)
                     .overlay(alignment: .topLeading) {
-                        MarcaNumero(numero: numero, final: final).offset(x: -7, y: -7)
+                        MarcaNumero(numero: numero, estado: estado).offset(x: -7, y: -7)
                     }
-                if let s = pauta.series, s > 1, ejercicio.tipo != "cardio" {
-                    PuntosSeries(total: s, hechas: hechas)
+                if series.count > 1, tipo != "cardio" {
+                    PuntosSeries(total: series.count, hechas: hechas)
                 }
             }
             VStack(alignment: .leading, spacing: 3) {
@@ -512,16 +581,23 @@ struct FilaEjercicio: View {
                     Text(d).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                 }
                 FilaFluida(espaciado: 6, interlineado: 6) {
-                    if ejercicio.tipo == "calentamiento" || ejercicio.tipo == "cardio" {
-                        Chip(texto: ejercicio.tipo == "cardio" ? "Cardio" : "Calent.", icono: "flame.fill", tono: .alerta)
+                    if ef.sustituido { InsigniaSustitucion(fijado: ef.fijado) }
+                    if manual { Chip(texto: "Manual", icono: "hand.raised.fill") }
+                    if mensajes > 0 { Chip(texto: "\(mensajes)", icono: "bubble.left.fill", tono: .peligro) }
+                    if tipo == "calentamiento" || tipo == "cardio" {
+                        Chip(texto: tipo == "cardio" ? "Cardio" : "Calent.", icono: "flame.fill", tono: .alerta)
                     }
-                    if let s = pauta.series, let r = pauta.reps, ejercicio.tipo != "cardio" { Chip(texto: "\(s) × \(r)") }
-                    else if let r = pauta.reps { Chip(texto: r) }
+                    if tipo == "cardio" || pauta.series == nil {
+                        Chip(texto: pauta.reps ?? "—")
+                    } else if let s = pauta.series {
+                        Chip(texto: "\(s) × \(pauta.reps ?? "—")")
+                    }
                     if let rir = pauta.rir { Chip(texto: "RIR \(rir)") }
-                    if let d = ejercicio.descansoSegundos, d > 0 { Chip(texto: mmss(d), icono: "timer") }
+                    Chip(texto: TiempoEntreno.fmtTiempo(Double(ejercicio.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)), icono: "timer")
                 }
                 .padding(.top, 5)
-                historial.padding(.top, 4)
+                // El cardio y lo que va por tiempo no tienen "última vez" que buscar.
+                historial(lugar, porTiempo: tipo == "cardio" || pauta.series == nil).padding(.top, 4)
             }
             .padding(.trailing, Espacio.m)
         }
@@ -536,24 +612,33 @@ struct FilaEjercicio: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Ejercicio \(numero): \(ejercicio.nombre)")
-        .accessibilityValue(estadoAccesible(final: final, hechas: hechas, de: pauta.series))
+        .accessibilityLabel("Ejercicio \(numero): \(ef.ejercicio.nombre)")
+        .accessibilityValue(Self.estadoAccesible(estado, hechas: hechas, de: series.count))
     }
 
-    @ViewBuilder private var historial: some View {
-        if let r = resumen, let s = r.ultima.last {
-            // Peso corporal (0 kg): como en la web, sin kilos.
+    @ViewBuilder
+    private func historial(_ lugar: String, porTiempo: Bool) -> some View {
+        let ultima = motor.dia.ultimaVez(lugar, ahora: .now)
+        let record = motor.dia.record(lugar)
+        if ultima != nil || record != nil {
             FilaFluida(espaciado: 8, interlineado: 2) {
-                Text("Última: \(Text(cargaTexto(s)).foregroundStyle(.secondary)) · \(Fechas.haceCuanto(r.ultimaFecha))")
-                    .foregroundStyle(.tertiary)
-                if let rec = r.recordKg, rec > 0 {
-                    Label("\(rec.kg) kg", systemImage: "trophy.fill")
+                if let u = ultima {
+                    Text("Última: \(Text(Bonito.partir(u.valor).principal).foregroundStyle(.secondary)) · \(u.cuando)")
+                        .foregroundStyle(.tertiary)
+                }
+                if let r = record {
+                    Label(Bonito.partir(r).principal, systemImage: "trophy.fill")
                         .labelStyle(EtiquetaCompacta())
                         .foregroundStyle(Color.record)
                         .fontWeight(.semibold)
+                        .accessibilityLabel("Récord: \(Bonito.carga(r))")
                 }
             }
             .font(.caption)
+        } else if porTiempo {
+            EmptyView()
+        } else if motor.historialCargando.contains(lugar) {
+            Text("Buscando tu última vez…").font(.caption).foregroundStyle(.tertiary)
         } else {
             Label("Primera vez con este ejercicio", systemImage: "sparkles")
                 .labelStyle(EtiquetaCompacta())
@@ -562,11 +647,12 @@ struct FilaEjercicio: View {
         }
     }
 
-    private func estadoAccesible(final: SesionEnCurso.Final?, hechas: Int, de total: Int?) -> String {
-        switch final {
-        case .completo: return "Completo"
-        case .completoSinDatos: return "Terminado sin series"
-        case nil: return hechas > 0 ? "\(hechas) de \(total ?? hechas) series" : "Pendiente"
+    static func estadoAccesible(_ estado: String, hechas: Int, de total: Int) -> String {
+        switch estado {
+        case "completo": return "Completo"
+        case "completo_sin_datos": return "Terminado sin series"
+        case "saltado": return "Saltado"
+        default: return hechas > 0 ? "\(hechas) de \(total) series" : "Pendiente"
         }
     }
 }
@@ -574,19 +660,22 @@ struct FilaEjercicio: View {
 /// El número del ejercicio en la esquina de la miniatura; tilde de marca cuando está completo.
 private struct MarcaNumero: View {
     let numero: Int
-    let final: SesionEnCurso.Final?
+    let estado: String
     @ScaledMetric(relativeTo: .caption2) private var lado: CGFloat = 22
 
     var body: some View {
         ZStack {
-            switch final {
-            case .completo:
+            switch estado {
+            case "completo":
                 Circle().fill(Color.marca)
                 Image(systemName: "checkmark").font(.system(size: lado * 0.45, weight: .heavy)).foregroundStyle(Color.sobreMarca)
-            case .completoSinDatos:
+            case "completo_sin_datos":
                 Circle().fill(Color.tarjeta)
                 Image(systemName: "checkmark").font(.system(size: lado * 0.45, weight: .heavy)).foregroundStyle(.secondary)
-            case nil:
+            case "saltado":
+                Circle().fill(Color.tarjeta)
+                Image(systemName: "minus").font(.system(size: lado * 0.45, weight: .heavy)).foregroundStyle(.secondary)
+            default:
                 Circle().fill(Color.tarjeta)
                 Text("\(numero)").font(.caption2.weight(.bold).monospacedDigit()).foregroundStyle(.primary)
             }
@@ -594,7 +683,7 @@ private struct MarcaNumero: View {
         .frame(width: lado, height: lado)
         .overlay { Circle().strokeBorder(Color.borde, lineWidth: 1) }
         .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
-        .symbolEffect(.bounce, value: final)
+        .symbolEffect(.bounce, value: estado)
         .accessibilityHidden(true)
     }
 }
