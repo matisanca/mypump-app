@@ -187,11 +187,13 @@ fallidos (no los borra):
 | kind | payload | dedupeKey | Ejecuta |
 |---|---|---|---|
 | `consentimiento_ia` | `{acepta, plataforma, app}` | `consentimiento_ia` | `guardar_consentimiento_ia` |
-| `swap_ej` | `{rutinaId, exId, swap}` (`swap` es la entrada de la web tal cual) | `swap_ej_<rutina>_<exId>` | `save_exercise_swap` |
-| `swap_ej_del` | `{rutinaId, exId}` | la misma que `swap_ej` | `delete_exercise_swap` |
+| `swap_ej` | `{rutinaId, exId, swap}` (`swap` es la entrada de la web tal cual, con `_ts`: la hora del cambio en ms) | `swap_ej_<rutina>_<exId>` | `save_exercise_swap` |
+| `swap_ej_del` | `{rutinaId, exId, ts}` | la misma que `swap_ej` | `delete_exercise_swap` (deja la lápida con `ts`) |
 
-Con PGRST202 (la migración 003 todavía no está en la base), `swap_ej` y `swap_ej_del` se dan por hechas: la
-sustitución queda solo en el teléfono, como antes, y sube con la primera sincronización.
+- Con PGRST202 (la migración 003 todavía no está en la base), `swap_ej` y `swap_ej_del` se dan por hechas: la
+  sustitución queda solo en el teléfono, como antes, y sube con la primera lectura que encuentre la tabla.
+- Son **silenciosas**: no muestran "guardando", "sin conexión" ni "no se guardó" (`Outbox.silenciosas`). La
+  sustitución ya quedó en el teléfono; antes no tocaba la red.
 
 ## 5. Fotos de progreso y visión (`vision.mypumpteam.com`, mini-vision)
 
@@ -334,16 +336,24 @@ Mientras una función no exista (PGRST202), la app sigue como antes.
 | 002 | `get_consentimiento_ia(token)` | `{acepta}` (null = nunca se le preguntó); NULL = token caído | al abrir |
 | 002 | `guardar_consentimiento_ia(token, acepta, plataforma, app)` | TRUE; NULL = token caído | outbox `consentimiento_ia` |
 | 002 | `clientes_sin_ia(clientes text[])` | los que dijeron que no | **solo `service_role`** (chat_worker, centinela) |
-| 003 | `get_exercise_swaps(token, rutina_id)` | `{exId: entrada}` (`{}` = ninguna); NULL = token caído o rutina ajena | al cargar Entreno, una vez que este teléfono ya subió lo suyo |
-| 003 | `import_exercise_swaps(token, rutina_id, swaps jsonb, reemplazar)` | el mapa que quedó; NULL = token caído o rutina ajena | la primera sincronización de cada rutina en cada teléfono (`reemplazar` solo cuando la migración del almacenamiento viejo se repitió) |
-| 003 | `save_exercise_swap(token, rutina_id, ex_id, swap jsonb)` | TRUE; FALSE = rutina ajena (cuenta como hecho); NULL = token caído | outbox `swap_ej` |
-| 003 | `delete_exercise_swap(token, rutina_id, ex_id)` | TRUE aunque no hubiera fila; NULL = token caído | outbox `swap_ej_del` |
+| 003 | `get_exercise_swaps(token, rutina_id)` | `{"vivas": {exId: entrada}, "borradas": {exId: ms}}`; NULL = token caído o rutina ajena | al cargar Entreno |
+| 003 | `save_exercise_swap(token, rutina_id, ex_id, swap jsonb)` | TRUE (también si allá había algo más nuevo); FALSE = rutina ajena (cuenta como hecho); NULL = token caído | outbox `swap_ej` |
+| 003 | `delete_exercise_swap(token, rutina_id, ex_id, ts)` | TRUE (deja la lápida, salvo que allá haya algo más nuevo); FALSE = rutina ajena; NULL = token caído | outbox `swap_ej_del` |
 
 **Sustituciones de ejercicio (003, SER-14).**
-- Cada fila es una entrada del mapa de la web (`exId → {original, current, fijado, semana, diaId}`), tal cual.
-- Topes de la base: clave de 1 a 120 caracteres, entrada de hasta 16 KB, 300 por rutina. Lo que no entra queda solo en
-  el teléfono.
-- La poda (las no fijadas valen por su día y su semana) la sigue haciendo la app; lo que poda sale como `swap_ej_del`.
-- Al leer, gana lo que sigue en la cola y lo que el cliente tocó mientras se esperaba la respuesta.
+- Cada fila es una entrada del mapa de la web (`exId → {original, current, fijado, semana, diaId}`) más `_ts`, la hora
+  en que el cliente la eligió (ms del teléfono). Lo de la app vieja no la tiene: cuenta como 0, lo más viejo.
+- **Gana lo más nuevo**, en el servidor y al leerlo en el teléfono. Borrar deja una **lápida** con su hora, que algo más
+  viejo no revive (por ejemplo, la primera subida de otro teléfono).
+- Que algo falte en el servidor **no es un borrado**: el teléfono lo vuelve a subir. Así nada se pierde aunque la tabla
+  se vaciara, y la primera vez de cada teléfono es una lectura más (no hay función de importar).
+- La poda (las no fijadas valen por su día y su semana) es **solo del teléfono y no se manda**: un teléfono viejo no puede
+  borrar lo que el cliente fijó después en otro. Lo vencido que quede en el servidor, cada teléfono lo poda al leerlo.
+- Al leer, queda lo del teléfono en lo que se tocó mientras se esperaba, lo que estaba en la cola al empezar y lo que
+  quedó en fallidos.
+- Si el cliente vuelve a la app vieja, la migración solo aplica lo que cambió ahí desde la corrida anterior
+  (`ejercicios-swaps-legado_<rutina>.json` es la base).
+- Topes de la base: clave de 1 a 120 caracteres (puntos de código), entrada de hasta 16 KB, 300 claves por rutina
+  (lápidas incluidas). Lo que no entra queda solo en el teléfono.
 - Sin clave foránea a `mypump_rutinas`: si el Cerebro borra y vuelve a crear una rutina, un `ON DELETE CASCADE` se
   llevaría las sustituciones.

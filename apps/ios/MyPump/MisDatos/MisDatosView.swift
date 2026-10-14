@@ -121,7 +121,9 @@ struct MisDatosView: View {
             } header: {
                 Text("Apariencia")
             } footer: {
-                Text(tema == "dark" ? "La app queda oscura aunque el teléfono esté en claro." : "La app sigue al teléfono: clara u oscura según tu iPhone.")
+                // En iPad no dice "iPhone" (lo encontró la revisión de Android).
+                let equipo = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+                Text(tema == "dark" ? "La app queda oscura aunque tu \(equipo) esté en claro." : "La app sigue a tu \(equipo): clara u oscura, como lo tengas.")
             }
 
             Section("Tu información") {

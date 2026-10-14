@@ -28,6 +28,10 @@ struct MyPumpApp: App {
         WindowGroup {
             raiz
                 .environment(entrenamiento)
+                // Los números como la web (`toLocaleString('es-AR')`), sea cual sea la región del teléfono: con la de
+                // EE. UU. se veía "2,454 kcal" al lado de "15,1 g". Lo toman los `Text` con números interpolados o con
+                // `format:` y los gráficos. Los campos son de texto (coma → punto): no cambia cómo se lee lo que se escribe.
+                .environment(\.locale, Locale(identifier: "es_AR"))
                 .tint(Color.marcaTexto)
                 .preferredColorScheme(tema == "dark" ? .dark : nil)
                 .task { entrarEnDemoSiSePide() }

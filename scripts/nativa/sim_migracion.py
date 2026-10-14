@@ -297,7 +297,8 @@ def sustituciones_en_la_base(t, rutina):
         if e.code == 404:
             return "sin tabla"
         raise
-    return sorted(f"{k}:{(v.get('current') or {}).get('nombre')}" for k, v in (m or {}).items())
+    vivas = (m or {}).get("vivas") or {}
+    return sorted(f"{k}:{(v.get('current') or {}).get('nombre')}" for k, v in vivas.items())
 
 
 def backend(salida, etiqueta):
@@ -515,8 +516,10 @@ def limpiar(salida):
     print("swaps de prueba borrados")
     if plan.get("rutina"):
         try:
-            rpc("mypump_import_exercise_swaps", {"p_token": t, "p_rutina_id": plan["rutina"], "p_swaps": {}, "p_reemplazar": True})
-            print("sustituciones de ejercicio de prueba borradas")
+            vivas = (rpc("mypump_get_exercise_swaps", {"p_token": t, "p_rutina_id": plan["rutina"]}) or {}).get("vivas") or {}
+            for k in vivas:   # quedan lápidas con la hora de ahora: más nuevas que lo que se sembró
+                rpc("mypump_delete_exercise_swap", {"p_token": t, "p_rutina_id": plan["rutina"], "p_ex_id": k, "p_ts": ahora_ms()})
+            print(f"sustituciones de ejercicio de prueba borradas: {len(vivas)}")
         except urllib.error.HTTPError as e:
             if e.code != 404:
                 raise
