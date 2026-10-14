@@ -28,9 +28,16 @@ extension Color {
     static let peligro = Color(claro: UIColor(hex: 0xDC2626), oscuro: UIColor(hex: 0xFF453A))
     static let sueno = Color(claro: UIColor(hex: 0x4F5BD5), oscuro: UIColor(hex: 0x7D8BFF))
     static let corazon = Color(claro: UIColor(hex: 0xE11D48), oscuro: UIColor(hex: 0xFF5C7A))
-    /// Récords y trofeos: oro, no naranja de alerta.
-    static let record = Color(claro: UIColor(hex: 0xB7791F), oscuro: UIColor(hex: 0xFFD60A))
+    /// Récords y trofeos: oro, no naranja de alerta (en claro, 4.9:1 sobre la tarjeta: se usa también como texto).
+    static let record = Color(claro: UIColor(hex: 0xA16207), oscuro: UIColor(hex: 0xFFD60A))
     static let agua = Color(claro: UIColor(hex: 0x0A84FF), oscuro: UIColor(hex: 0x64D2FF))
+
+    // Macros: tres tonos que se distinguen entre sí también en claro y que, como texto chico ("C 67"), pasan 4.5:1
+    // sobre la tarjeta. Para que Dieta deje `.corazon` / `.alerta` / `.sueno`, que son señales y no macros (con
+    // `.alerta` los carbos se confunden con las advertencias de la misma pantalla).
+    static let proteina = Color(claro: UIColor(hex: 0xE11D48), oscuro: UIColor(hex: 0xFF5C7A))
+    static let carbohidrato = Color(claro: UIColor(hex: 0xB45309), oscuro: UIColor(hex: 0xFFB020))
+    static let grasa = Color(claro: UIColor(hex: 0x4F5BD5), oscuro: UIColor(hex: 0x7D8BFF))
 
     static let tarjeta = Color(uiColor: .secondarySystemGroupedBackground)
     static let fondo = Color(uiColor: .systemGroupedBackground)
