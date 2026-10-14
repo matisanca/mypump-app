@@ -290,6 +290,29 @@ class MigracionLegadoTest {
         assertEquals(1, (tel.disco().leer(SustitucionEjercicio.archivo(rutinaR1))?.let(ValorJson::desde) as? ValorJson.Objeto)?.campos?.size)
     }
 
+    /**
+     * SER-14: la primera corrida no marca nada (la primera sincronización sube lo del teléfono). Si el cliente vuelve a la
+     * Capacitor y cambia una sustitución, la repetición la trae y marca la rutina: lo de la app vieja reemplaza lo del
+     * servidor (si no, el servidor la pisaba con la de antes).
+     */
+    @Test
+    fun laRepeticionMarcaLasSustitucionesParaReemplazarLasDelServidor() {
+        val tel = Telefono()
+        fun swaps(n: String) =
+            """{"jalon-d1-0":{"original":{"slug":"a","nombre":"A"},"current":{"slug":"b","nombre":"$n"},"fijado":true,"semana":1,"diaId":"d1"}}"""
+        tel.lector.escribir(mapOf("mypump_token" to tokenA, "mypump_exercise_swaps_$rutinaR1" to swaps("B")))
+        tel.faseL()
+        assertNull(SustitucionesServidor.Estado.leer(tel.disco(), rutinaR1))
+        // La nativa ya subió las suyas; el cliente vuelve a la Capacitor y cambia la sustitución.
+        tel.disco().guardar(SustitucionesServidor.Estado.archivo(rutinaR1), SustitucionesServidor.Estado(subidas = true).aValor())
+        tel.lector.escribir(mapOf("mypump_exercise_swaps_$rutinaR1" to swaps("C")))
+        val r = tel.faseL()
+        assertTrue(r.repeticion)
+        val guardadas = tel.disco().leer(SustitucionEjercicio.archivo(rutinaR1))?.let(ValorJson::desde)
+        assertEquals("C", guardadas?.get("jalon-d1-0")?.get("current")?.get("nombre")?.comoTexto)
+        assertEquals(SustitucionesServidor.Estado(subidas = true, reemplazar = true), SustitucionesServidor.Estado.leer(tel.disco(), rutinaR1))
+    }
+
     @Test
     fun elTokenMarcadoInvalidoNoSeUsa() {
         val tel = Telefono()

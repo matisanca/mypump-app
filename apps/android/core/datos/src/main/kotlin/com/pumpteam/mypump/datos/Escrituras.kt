@@ -161,10 +161,35 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
                     mapOf("p_token" to t, "p_acepta" to de(p, "acepta"), "p_plataforma" to de(p, "plataforma"), "p_app" to de(p, "app")),
                 ),
             )
+            // SER-14 (`nativa_003`). FALSE = la rutina ya no es del cliente: no hay nada que guardar (cuenta como hecho).
+            SustitucionesServidor.KIND_GUARDAR -> ResultadoOp.Respuesta(
+                sinTablaEsHecho(
+                    cliente.llamar(
+                        "mypump_save_exercise_swap",
+                        mapOf("p_token" to t, "p_rutina_id" to de(p, "rutinaId"), "p_ex_id" to de(p, "exId"), "p_swap" to de(p, "swap")),
+                    ),
+                ),
+            )
+            SustitucionesServidor.KIND_BORRAR -> ResultadoOp.Respuesta(
+                sinTablaEsHecho(
+                    cliente.llamar(
+                        "mypump_delete_exercise_swap",
+                        mapOf("p_token" to t, "p_rutina_id" to de(p, "rutinaId"), "p_ex_id" to de(p, "exId")),
+                    ),
+                ),
+            )
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
         }
     }
+
+    /**
+     * SER-14: sin la migración 003 en la base (PGRST202), la sustitución vive solo en el teléfono, como antes: la op se da
+     * por hecha (si no, gastaría intentos y terminaría en "no se guardó"). Lo del teléfono sube en la primera
+     * sincronización con la tabla ya creada.
+     */
+    private fun sinTablaEsHecho(r: Resultado<ValorJson>): Resultado<ValorJson> =
+        if (r is Resultado.Falla && r.error.funcionInexistente) Resultado.Ok(texto("sin tabla")) else r
 
     /**
      * ¿Hay en el hilo un mensaje del cliente con ese texto, escrito desde que se encoló? (con un minuto de margen por la

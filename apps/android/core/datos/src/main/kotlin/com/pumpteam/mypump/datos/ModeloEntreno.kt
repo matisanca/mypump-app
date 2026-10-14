@@ -136,6 +136,19 @@ class ModeloEntreno(
 
     /** La creación de la sesión en vuelo, por día y semana (la de otro día no sirve). */
     private var sesionEnVuelo: Pair<String, Deferred<String?>>? = null
+
+    /** SER-14: lo último que se escribió en el archivo de la rutina. Lo que cambie desde acá sale por la cola. */
+    private var sustitucionesGuardadas: Map<String, ValorJson> = emptyMap()
+
+    /** SER-14: mientras se espera al servidor, lo que se tocó en el medio (ahí gana lo del teléfono). null = no se espera. */
+    private var tocadasDuranteSync: MutableSet<String>? = null
+
+    /** SER-14: la sincronización en curso (una a la vez; cambiar de rutina la deja sin efecto). */
+    private var syncSustituciones: Any? = null
+
+    /** SER-14: los encolados de sustituciones, en fila (si no, dos cambios seguidos podían llegar a la cola al revés). */
+    internal var encoladoSustituciones: Job? = null
+        private set
     private var restauracion = 0
     private var diaCompletadoMostrado = false
 
@@ -153,6 +166,7 @@ class ModeloEntreno(
         val elegido = TextosEntreno.diaSugerido(normalizacionInicial.estructura.dias, guardado) ?: Dia(id = "d1")
         val d = DiaEnCurso(elegido, semana, demo, zona = zona)
         d.sustituciones = SustitucionesEntreno.compat(leerSustituciones(rutinaInicial.id))
+        sustitucionesGuardadas = d.sustituciones
         _dia = MutableStateFlow(d)
         dia = _dia.asStateFlow()
         guardarDiaVisualizado()
@@ -173,10 +187,12 @@ class ModeloEntreno(
         }
         coroutineScope {
             val historial = launch { precargarHistorial() }
+            val servidor = launch { sincronizarSustituciones() }
             restaurarSesion()
             val completados = launch { cargarDiasCompletados() }
             val coms = launch { cargarComentarios() }
             historial.join()
+            servidor.join()
             completados.join()
             coms.join()
         }
@@ -752,6 +768,9 @@ class ModeloEntreno(
         val elegido = TextosEntreno.diaSugerido(n.estructura.dias, disco?.let { leerTexto(it, Archivo.dia(nueva.id)) }) ?: Dia(id = "d1")
         val sustituciones = SustitucionesEntreno.compat(leerSustituciones(nueva.id))
         _dia.value = DiaEnCurso(elegido, semana, demo, zona = zona).also { it.sustituciones = sustituciones }
+        sustitucionesGuardadas = sustituciones
+        syncSustituciones = null
+        tocadasDuranteSync = null
         _diasCompletados.value = emptySet()
         diaCompletadoMostrado = false
         _inicioSesion.value = null
@@ -948,6 +967,59 @@ class ModeloEntreno(
         if (!sinPrecarga) alcance.launch { precargarHistorial() }
     }
 
+    /**
+     * SER-14: la primera vez que este teléfono sincroniza la rutina sube lo que tiene guardado; después lee el servidor y
+     * lo pone por encima (con lo que sigue en la cola y lo que se tocó mientras tanto encima de eso). Sin la tabla en la
+     * base (PGRST202), sin red o con el token caído queda lo del teléfono, como antes, y se reintenta al recargar.
+     */
+    suspend fun sincronizarSustituciones() {
+        val t = token
+        if (demo || t == null || syncSustituciones != null) return
+        val mia = Any()
+        syncSustituciones = mia
+        tocadasDuranteSync = mutableSetOf()
+        try {
+            // Lo que ya se cambió tiene que estar en la cola antes de preguntar.
+            encoladoSustituciones?.join()
+            if (syncSustituciones !== mia) return
+            val rutinaId = _rutina.value.id
+            val estado = SustitucionesServidor.Estado.leer(disco, rutinaId)
+            val reemplazar = estado?.reemplazar == true
+            val subir = estado?.subidas != true || reemplazar
+            val parametros = linkedMapOf("p_token" to texto(t), "p_rutina_id" to texto(rutinaId))
+            if (subir) {
+                val subibles = SustitucionesServidor.subibles(_dia.value.sustituciones) ?: return
+                parametros["p_swaps"] = ValorJson.Objeto(subibles)
+                parametros["p_reemplazar"] = ValorJson.Booleano(reemplazar)
+            }
+            val r = cliente.llamar(if (subir) "mypump_import_exercise_swaps" else "mypump_get_exercise_swaps", parametros)
+            if (syncSustituciones !== mia || _rutina.value.id != rutinaId) return
+            val servidor = ((r as? Resultado.Ok)?.valor as? ValorJson.Objeto)?.campos ?: return
+            if (subir) disco?.guardar(SustitucionesServidor.Estado.archivo(rutinaId), SustitucionesServidor.Estado(subidas = true).aValor())
+            encoladoSustituciones?.join()
+            val pendientes = outbox?.pendientesPorClave() ?: emptyMap()
+            if (syncSustituciones !== mia || _rutina.value.id != rutinaId) return
+            val actual = _dia.value.sustituciones
+            val nuevo = SustitucionesEntreno.compat(
+                SustitucionesServidor.combinar(servidor, actual, pendientes, rutinaId, tocadasDuranteSync ?: emptySet()),
+            )
+            val cambiadas = (nuevo.keys + actual.keys).filter { nuevo[it] != actual[it] }
+            if (cambiadas.isEmpty()) return
+            // Lo que llega del servidor no vuelve a la cola: ya está allá (o en la cola, o se tocó y ya se encoló).
+            mutarDia { it.sustituciones = nuevo }
+            sustitucionesGuardadas = nuevo
+            disco?.guardar(Archivo.sustituciones(rutinaId), ValorJson.Objeto(nuevo))
+            for (id in cambiadas) invalidarHistorial(id)
+            podarSustituciones(sinPrecarga = true)
+            precargarHistorial()
+        } finally {
+            if (syncSustituciones === mia) {
+                syncSustituciones = null
+                tocadasDuranteSync = null
+            }
+        }
+    }
+
     // ── Comentarios (SES-08) ──
 
     /** `loadComentarios`. Si falla, quedan los que había (la web los borraba hasta el próximo intento). */
@@ -1141,6 +1213,25 @@ class ModeloEntreno(
 
     internal fun guardarSustituciones() {
         disco?.guardar(Archivo.sustituciones(_rutina.value.id), ValorJson.Objeto(_dia.value.sustituciones))
+        encolarSustituciones()
+    }
+
+    /**
+     * SER-14: lo que cambió desde la última escritura sale por la cola, en orden (sin la tabla en la base, la cola lo da por
+     * hecho y queda solo en el teléfono, como antes).
+     */
+    private fun encolarSustituciones() {
+        val ahora = _dia.value.sustituciones
+        val ops = SustitucionesServidor.operaciones(sustitucionesGuardadas, ahora, _rutina.value.id)
+        sustitucionesGuardadas = ahora
+        val cola = outbox
+        if (demo || token == null || cola == null || ops.isEmpty()) return
+        tocadasDuranteSync?.addAll(ops.map { it.exId })
+        val anterior = encoladoSustituciones
+        encoladoSustituciones = alcance.launch {
+            anterior?.join()
+            for (op in ops) cola.encolar(op.kind, op.payload, op.clave)
+        }
     }
 
     internal fun guardarSesiones() {

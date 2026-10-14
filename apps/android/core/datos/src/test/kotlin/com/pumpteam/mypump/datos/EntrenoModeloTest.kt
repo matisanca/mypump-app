@@ -425,7 +425,8 @@ class EntrenoAccionesTest {
         m.escribir("jal-d1-0", 0, "reps", "10")
         m.escribir("jal-d1-0", 0, "kg", "50")
         m.confirmarSerie("jal-d1-0", 0) { true }
-        val op = b.cola.operaciones().first()
+        // Antes que la serie puede ir la sustitución (SER-14): acá importa la serie.
+        val op = b.cola.operaciones().first { it.kind == "carga" }
         assertEquals(sub.nombre, op.payload["datos"]?.get("ejercicioNombre")?.comoTexto)
         assertEquals("jal-d1-0", op.payload["datos"]?.get("ejercicioId")?.comoTexto)
         // En disco, con el formato de la web.

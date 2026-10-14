@@ -352,7 +352,15 @@ object EjecutorLegado {
             }
             for ((rutina, s) in plan.sustituciones) {
                 val nombre = SustitucionEjercicio.archivo(rutina)
-                if (previo != null || !disco.archivo(nombre).exists()) disco.guardar(nombre, ValorJson.Objeto(s.mapValues { it.value.aValor() }))
+                if (previo != null || !disco.archivo(nombre).exists()) {
+                    disco.guardar(nombre, ValorJson.Objeto(s.mapValues { it.value.aValor() }))
+                    // SER-14: en una repetición, lo de la app vieja es lo último que hizo el cliente: en la próxima
+                    // sincronización reemplaza lo del servidor (si no, el servidor lo pisaba con lo de antes).
+                    if (previo != null) {
+                        val subidas = SustitucionesServidor.Estado.leer(disco, rutina)?.subidas ?: false
+                        disco.guardar(SustitucionesServidor.Estado.archivo(rutina), SustitucionesServidor.Estado(subidas, reemplazar = true).aValor())
+                    }
+                }
             }
             for ((dieta, s) in plan.swapsComida) {
                 // El mapa local es una caché del servidor: si la nativa ya tiene el suyo, gana el suyo.
