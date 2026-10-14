@@ -1,0 +1,241 @@
+[
+ {
+  "fecha": "2026-10-01",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-02",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-03",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-04",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-05",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-06",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-07",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-08",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-09",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-10",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-11",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-12",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-13",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {},
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-14",
+  "score": null,
+  "estado": "insuficiente",
+  "banda": null,
+  "dias_datos": 0,
+  "banda_provisoria": true,
+  "estado_autonomico": null,
+  "hrv_metrica": null,
+  "discordancia": false,
+  "cobertura": {
+   "cv_alto": false
+  },
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 384,
+    "score": 0,
+    "cronico": 384
+   }
+  },
+  "motivos": [
+   {
+    "dir": 1,
+    "peso": 100,
+    "tipo": "carga",
+    "agudo": 384,
+    "cronico": 384
+   }
+  ]
+ }
+]

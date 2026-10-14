@@ -1,0 +1,736 @@
+[
+ {
+  "id": "c81c5d2e-e1e4-4abc-b272-81099b97a166",
+  "version": 1,
+  "estructura": {
+   "comidas": [
+    {
+     "id": "c1",
+     "name": "Desayuno",
+     "options": [
+      {
+       "name": "A",
+       "foods": [
+        {
+         "fat": 7,
+         "qty": 200,
+         "carb": 0,
+         "kcal": 330,
+         "name": "Pechuga de pollo",
+         "prot": 62,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 250,
+         "carb": 70,
+         "kcal": 325,
+         "name": "Arroz blanco cocido",
+         "prot": 6,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 10,
+         "qty": 70,
+         "carb": 6,
+         "kcal": 112,
+         "name": "Palta",
+         "prot": 1,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "B",
+       "foods": [
+        {
+         "fat": 11,
+         "qty": 195,
+         "carb": 0,
+         "kcal": 332,
+         "name": "Carne magra",
+         "prot": 59,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 390,
+         "carb": 74,
+         "kcal": 332,
+         "name": "Papa hervida",
+         "prot": 8,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 12,
+         "qty": 12,
+         "carb": 0,
+         "kcal": 103,
+         "name": "Aceite de oliva",
+         "prot": 0,
+         "unit": "ml",
+         "category": "grasa",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "C",
+       "foods": [
+        {
+         "fat": 5,
+         "qty": 269,
+         "carb": 0,
+         "kcal": 312,
+         "name": "Merluza",
+         "prot": 62,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 2,
+         "qty": 269,
+         "carb": 70,
+         "kcal": 344,
+         "name": "Fideos cocidos",
+         "prot": 12,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 10,
+         "qty": 19,
+         "carb": 4,
+         "kcal": 112,
+         "name": "Almendras",
+         "prot": 4,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "D",
+       "foods": [
+        {
+         "fat": 0,
+         "qty": 469,
+         "carb": 4,
+         "kcal": 235,
+         "name": "Claras de huevo",
+         "prot": 52,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 7,
+         "qty": 106,
+         "carb": 70,
+         "kcal": 401,
+         "name": "Avena",
+         "prot": 14,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 12,
+         "qty": 82,
+         "carb": 7,
+         "kcal": 131,
+         "name": "Palta",
+         "prot": 1,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "c2",
+     "name": "Almuerzo",
+     "options": [
+      {
+       "name": "A",
+       "foods": [
+        {
+         "fat": 11,
+         "qty": 200,
+         "carb": 0,
+         "kcal": 340,
+         "name": "Carne magra",
+         "prot": 60,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 400,
+         "carb": 76,
+         "kcal": 340,
+         "name": "Papa hervida",
+         "prot": 8,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 200,
+         "carb": 10,
+         "kcal": 68,
+         "name": "Brócoli",
+         "prot": 6,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "B",
+       "foods": [
+        {
+         "fat": 6,
+         "qty": 292,
+         "carb": 0,
+         "kcal": 339,
+         "name": "Merluza",
+         "prot": 68,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 2,
+         "qty": 292,
+         "carb": 76,
+         "kcal": 374,
+         "name": "Fideos cocidos",
+         "prot": 13,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 175,
+         "carb": 6,
+         "kcal": 35,
+         "name": "Ensalada mixta",
+         "prot": 2,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "C",
+       "foods": [
+        {
+         "fat": 0,
+         "qty": 490,
+         "carb": 4,
+         "kcal": 245,
+         "name": "Claras de huevo",
+         "prot": 54,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 7,
+         "qty": 110,
+         "carb": 74,
+         "kcal": 419,
+         "name": "Avena",
+         "prot": 15,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 245,
+         "carb": 12,
+         "kcal": 83,
+         "name": "Brócoli",
+         "prot": 7,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "D",
+       "foods": [
+        {
+         "fat": 8,
+         "qty": 218,
+         "carb": 0,
+         "kcal": 360,
+         "name": "Pechuga de pollo",
+         "prot": 68,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 273,
+         "carb": 76,
+         "kcal": 355,
+         "name": "Arroz blanco cocido",
+         "prot": 7,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 164,
+         "carb": 5,
+         "kcal": 33,
+         "name": "Ensalada mixta",
+         "prot": 2,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "c3",
+     "name": "Merienda",
+     "options": [
+      {
+       "name": "A",
+       "foods": [
+        {
+         "fat": 5,
+         "qty": 250,
+         "carb": 0,
+         "kcal": 290,
+         "name": "Merluza",
+         "prot": 58,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 2,
+         "qty": 250,
+         "carb": 65,
+         "kcal": 320,
+         "name": "Fideos cocidos",
+         "prot": 11,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 9,
+         "qty": 18,
+         "carb": 4,
+         "kcal": 104,
+         "name": "Almendras",
+         "prot": 4,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 150,
+         "carb": 5,
+         "kcal": 30,
+         "name": "Ensalada mixta",
+         "prot": 2,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "B",
+       "foods": [
+        {
+         "fat": 0,
+         "qty": 412,
+         "carb": 3,
+         "kcal": 206,
+         "name": "Claras de huevo",
+         "prot": 45,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 6,
+         "qty": 93,
+         "carb": 62,
+         "kcal": 352,
+         "name": "Avena",
+         "prot": 12,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 10,
+         "qty": 72,
+         "carb": 6,
+         "kcal": 115,
+         "name": "Palta",
+         "prot": 1,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 206,
+         "carb": 10,
+         "kcal": 70,
+         "name": "Brócoli",
+         "prot": 6,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "C",
+       "foods": [
+        {
+         "fat": 7,
+         "qty": 188,
+         "carb": 0,
+         "kcal": 310,
+         "name": "Pechuga de pollo",
+         "prot": 58,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 235,
+         "carb": 66,
+         "kcal": 306,
+         "name": "Arroz blanco cocido",
+         "prot": 6,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 11,
+         "qty": 11,
+         "carb": 0,
+         "kcal": 100,
+         "name": "Aceite de oliva",
+         "prot": 0,
+         "unit": "ml",
+         "category": "grasa",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 141,
+         "carb": 5,
+         "kcal": 28,
+         "name": "Ensalada mixta",
+         "prot": 2,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "D",
+       "foods": [
+        {
+         "fat": 10,
+         "qty": 175,
+         "carb": 0,
+         "kcal": 297,
+         "name": "Carne magra",
+         "prot": 52,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 349,
+         "carb": 66,
+         "kcal": 297,
+         "name": "Papa hervida",
+         "prot": 7,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 8,
+         "qty": 16,
+         "carb": 3,
+         "kcal": 91,
+         "name": "Almendras",
+         "prot": 3,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 175,
+         "carb": 9,
+         "kcal": 59,
+         "name": "Brócoli",
+         "prot": 5,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "c4",
+     "name": "Cena",
+     "options": [
+      {
+       "name": "A",
+       "foods": [
+        {
+         "fat": 0,
+         "qty": 400,
+         "carb": 3,
+         "kcal": 200,
+         "name": "Claras de huevo",
+         "prot": 44,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 6,
+         "qty": 90,
+         "carb": 60,
+         "kcal": 342,
+         "name": "Avena",
+         "prot": 12,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 10,
+         "qty": 70,
+         "carb": 6,
+         "kcal": 112,
+         "name": "Palta",
+         "prot": 1,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 200,
+         "carb": 10,
+         "kcal": 68,
+         "name": "Brócoli",
+         "prot": 6,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "B",
+       "foods": [
+        {
+         "fat": 6,
+         "qty": 183,
+         "carb": 0,
+         "kcal": 301,
+         "name": "Pechuga de pollo",
+         "prot": 57,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 228,
+         "carb": 64,
+         "kcal": 297,
+         "name": "Arroz blanco cocido",
+         "prot": 5,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 11,
+         "qty": 11,
+         "carb": 0,
+         "kcal": 97,
+         "name": "Aceite de oliva",
+         "prot": 0,
+         "unit": "ml",
+         "category": "grasa",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 137,
+         "carb": 5,
+         "kcal": 27,
+         "name": "Ensalada mixta",
+         "prot": 2,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "C",
+       "foods": [
+        {
+         "fat": 9,
+         "qty": 169,
+         "carb": 0,
+         "kcal": 288,
+         "name": "Carne magra",
+         "prot": 51,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 339,
+         "carb": 64,
+         "kcal": 288,
+         "name": "Papa hervida",
+         "prot": 7,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 8,
+         "qty": 15,
+         "carb": 3,
+         "kcal": 88,
+         "name": "Almendras",
+         "prot": 3,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        },
+        {
+         "fat": 1,
+         "qty": 169,
+         "carb": 8,
+         "kcal": 58,
+         "name": "Brócoli",
+         "prot": 5,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      },
+      {
+       "name": "D",
+       "foods": [
+        {
+         "fat": 5,
+         "qty": 240,
+         "carb": 0,
+         "kcal": 278,
+         "name": "Merluza",
+         "prot": 56,
+         "unit": "g",
+         "category": "proteina",
+         "swappable": true
+        },
+        {
+         "fat": 2,
+         "qty": 240,
+         "carb": 62,
+         "kcal": 307,
+         "name": "Fideos cocidos",
+         "prot": 11,
+         "unit": "g",
+         "category": "carbohidrato",
+         "swappable": true
+        },
+        {
+         "fat": 10,
+         "qty": 67,
+         "carb": 6,
+         "kcal": 108,
+         "name": "Palta",
+         "prot": 1,
+         "unit": "g",
+         "category": "grasa",
+         "swappable": true
+        },
+        {
+         "fat": 0,
+         "qty": 144,
+         "carb": 5,
+         "kcal": 29,
+         "name": "Ensalada mixta",
+         "prot": 2,
+         "unit": "g",
+         "category": "vegetal",
+         "swappable": true
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "macros_target": {
+    "fat": 63,
+    "carb": 315,
+    "kcal": 2800,
+    "prot": 281
+   }
+  }
+ }
+]

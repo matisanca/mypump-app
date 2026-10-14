@@ -1,0 +1,523 @@
+[
+ {
+  "id": "9ce59ad3-b0b3-4a74-9a85-f77169fae0cf",
+  "version": 1,
+  "estructura": {
+   "dias": [
+    {
+     "n": 1,
+     "id": "lun",
+     "nombre": "TIRÓN A — ANCHO",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 1 — ESPALDA",
+       "subtitulo": "ESPALDA",
+       "ejercicios": [
+        {
+         "id": "jalon-al-pecho-prono-d1-0",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Jalón al pecho prono",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=jalon-al-pe",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 180
+        },
+        {
+         "id": "remo-con-barra-d1-1",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Remo con barra",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=remo-con-ba",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        },
+        {
+         "id": "remo-en-polea-baja-d1-2",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Remo en polea baja",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=remo-en-pol",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 180
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 2 — BRAZO",
+       "subtitulo": "BRAZO",
+       "ejercicios": [
+        {
+         "id": "curl-con-barra-z-d1-3",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Curl con barra Z",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=curl-con-ba",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "extension-de-triceps-en-polea-d1-4",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Extensión de tríceps en polea",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=extension-d",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      }
+     ],
+     "abreviado": "LUN"
+    },
+    {
+     "n": 2,
+     "id": "mar",
+     "nombre": "EMPUJE A — PECHO",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 1 — PECHO",
+       "subtitulo": "PECHO",
+       "ejercicios": [
+        {
+         "id": "press-banca-d2-0",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Press banca",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=press-banca",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        },
+        {
+         "id": "press-inclinado-con-mancuernas-d2-1",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Press inclinado con mancuernas",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=press-incli",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        },
+        {
+         "id": "aperturas-en-polea-d2-2",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Aperturas en polea",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=aperturas-e",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 90
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 2 — HOMBRO",
+       "subtitulo": "HOMBRO",
+       "ejercicios": [
+        {
+         "id": "press-militar-con-mancuernas-d2-3",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Press militar con mancuernas",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=press-milit",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 180
+        },
+        {
+         "id": "elevaciones-laterales-d2-4",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Elevaciones laterales",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=elevaciones",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      }
+     ],
+     "abreviado": "MAR"
+    },
+    {
+     "n": 3,
+     "id": "mie",
+     "nombre": "PIERNA A",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 1 — PIERNA",
+       "subtitulo": "PIERNA",
+       "ejercicios": [
+        {
+         "id": "sentadilla-libre-d3-0",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Sentadilla libre",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=sentadilla-",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        },
+        {
+         "id": "prensa-45-d3-1",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Prensa 45°",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=prensa-45",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 180
+        },
+        {
+         "id": "curl-femoral-tumbado-d3-2",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Curl femoral tumbado",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=curl-femora",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "extension-de-cuadriceps-d3-3",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Extensión de cuádriceps",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=extension-d",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        },
+        {
+         "id": "peso-muerto-rumano-d3-4",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Peso muerto rumano",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=peso-muerto",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        }
+       ]
+      }
+     ],
+     "abreviado": "MIE"
+    },
+    {
+     "n": 4,
+     "id": "jue",
+     "nombre": "TIRÓN B — GROSOR",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 1 — ESPALDA",
+       "subtitulo": "ESPALDA",
+       "ejercicios": [
+        {
+         "id": "jalon-al-pecho-prono-d4-0",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Jalón al pecho prono",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=jalon-al-pe",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        },
+        {
+         "id": "remo-con-barra-d4-1",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Remo con barra",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=remo-con-ba",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 180
+        },
+        {
+         "id": "remo-en-polea-baja-d4-2",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Remo en polea baja",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=remo-en-pol",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 180
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 2 — BRAZO",
+       "subtitulo": "BRAZO",
+       "ejercicios": [
+        {
+         "id": "curl-con-barra-z-d4-3",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Curl con barra Z",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=curl-con-ba",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        },
+        {
+         "id": "extension-de-triceps-en-polea-d4-4",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Extensión de tríceps en polea",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=extension-d",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      }
+     ],
+     "abreviado": "JUE"
+    },
+    {
+     "n": 5,
+     "id": "vie",
+     "nombre": "EMPUJE B — HOMBRO",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 1 — HOMBRO",
+       "subtitulo": "HOMBRO",
+       "ejercicios": [
+        {
+         "id": "press-militar-con-mancuernas-d5-0",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Press militar con mancuernas",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=press-milit",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 180
+        },
+        {
+         "id": "elevaciones-laterales-d5-1",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Elevaciones laterales",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=elevaciones",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        },
+        {
+         "id": "pec-deck-inverso-d5-2",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Pec deck inverso",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=pec-deck-in",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 2 — PECHO",
+       "subtitulo": "PECHO",
+       "ejercicios": [
+        {
+         "id": "press-banca-d5-3",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Press banca",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=press-banca",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        },
+        {
+         "id": "press-inclinado-con-mancuernas-d5-4",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Press inclinado con mancuernas",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=press-incli",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        }
+       ]
+      }
+     ],
+     "abreviado": "VIE"
+    },
+    {
+     "n": 6,
+     "id": "sab",
+     "nombre": "PIERNA B",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 1 — PIERNA",
+       "subtitulo": "PIERNA",
+       "ejercicios": [
+        {
+         "id": "sentadilla-libre-d6-0",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Sentadilla libre",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=sentadilla-",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        },
+        {
+         "id": "prensa-45-d6-1",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Prensa 45°",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=prensa-45",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        },
+        {
+         "id": "curl-femoral-tumbado-d6-2",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Curl femoral tumbado",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=curl-femora",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": "Controlá la fase excéntrica.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "extension-de-cuadriceps-d6-3",
+         "reps": "10-12",
+         "tipo": "aislado",
+         "nombre": "Extensión de cuádriceps",
+         "series": 3,
+         "video_url": "https://www.youtube.com/watch?v=extension-d",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        },
+        {
+         "id": "peso-muerto-rumano-d6-4",
+         "reps": "6-8",
+         "tipo": "compuesto",
+         "nombre": "Peso muerto rumano",
+         "series": 4,
+         "video_url": "https://www.youtube.com/watch?v=peso-muerto",
+         "rir_objetivo": "1-2",
+         "notas_tecnica": null,
+         "descanso_segundos": 180
+        }
+       ]
+      }
+     ],
+     "abreviado": "SAB"
+    }
+   ],
+   "perfil": {
+    "nivel": "intermedio",
+    "split": "ppl-6",
+    "resumen": "Plan sintético del banco de pruebas. No es de un cliente real.",
+    "objetivo": "Hipertrofia",
+    "diasSemana": 6
+   },
+   "nombre_plan": "Mesociclo Hipertrofia — banco de pruebas",
+   "semanas_total": 12,
+   "mensajes_semana": [
+    {
+     "n": 1,
+     "msg": "Arrancamos.",
+     "titulo": "Semana 1"
+    },
+    {
+     "n": 2,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 2"
+    },
+    {
+     "n": 3,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 3"
+    },
+    {
+     "n": 4,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 4"
+    },
+    {
+     "n": 5,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 5"
+    },
+    {
+     "n": 6,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 6"
+    },
+    {
+     "n": 7,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 7"
+    },
+    {
+     "n": 8,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 8"
+    },
+    {
+     "n": 9,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 9"
+    },
+    {
+     "n": 10,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 10"
+    },
+    {
+     "n": 11,
+     "msg": "Sostené la técnica.",
+     "titulo": "Semana 11"
+    },
+    {
+     "n": 12,
+     "msg": "Última semana del bloque.",
+     "titulo": "Semana 12"
+    }
+   ]
+  },
+  "semana_actual": 4,
+  "fecha_inicio": "2026-09-23",
+  "fecha_fin": null,
+  "tiene_siguiente": false
+ }
+]

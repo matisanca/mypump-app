@@ -1,0 +1,493 @@
+[
+ {
+  "fecha": "2026-10-01",
+  "score": 54,
+  "estado": "ok",
+  "banda": "media",
+  "dias_datos": 47,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 8,
+   "hrv": 59,
+   "z_hrv": -1.49,
+   "z_rhr": 0.45,
+   "cv_alto": false,
+   "fc_reposo": 53,
+   "sueno_min": 445
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 99
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 26
+   }
+  },
+  "motivos": [
+   {
+    "dir": -1,
+    "peso": 44.826608895640064,
+    "tipo": "hrv",
+    "valor": 59,
+    "metrica": "sdnn",
+    "baseline": 65
+   }
+  ]
+ },
+ {
+  "fecha": "2026-10-02",
+  "score": 69,
+  "estado": "ok",
+  "banda": "alta",
+  "dias_datos": 48,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.6,
+   "hrv": 69,
+   "z_hrv": 0.79,
+   "z_rhr": 0.81,
+   "cv_alto": false,
+   "fc_reposo": 54,
+   "sueno_min": 475
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 100
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 50
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-03",
+  "score": 61,
+  "estado": "ok",
+  "banda": "media",
+  "dias_datos": 49,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 6.4,
+   "hrv": 58,
+   "z_hrv": -1.65,
+   "z_rhr": -0.63,
+   "cv_alto": false,
+   "fc_reposo": 52,
+   "sueno_min": 460
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 100
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 37
+   }
+  },
+  "motivos": [
+   {
+    "dir": -1,
+    "peso": 49.5673878267482,
+    "tipo": "hrv",
+    "valor": 58,
+    "metrica": "sdnn",
+    "baseline": 65
+   }
+  ]
+ },
+ {
+  "fecha": "2026-10-04",
+  "score": 75,
+  "estado": "ok",
+  "banda": "alta",
+  "dias_datos": 50,
+  "banda_provisoria": false,
+  "estado_autonomico": "recuperado",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.2,
+   "hrv": 68,
+   "z_hrv": 0.75,
+   "z_rhr": 0,
+   "cv_alto": false,
+   "fc_reposo": 53,
+   "sueno_min": 461
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 100
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 59
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-05",
+  "score": 87,
+  "estado": "ok",
+  "banda": "alta",
+  "dias_datos": 51,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.2,
+   "hrv": 70,
+   "z_hrv": 1.18,
+   "z_rhr": -1.09,
+   "cv_alto": false,
+   "fc_reposo": 51,
+   "sueno_min": 484
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 100
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 78
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-06",
+  "score": 60,
+  "estado": "ok",
+  "banda": "media",
+  "dias_datos": 52,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.6,
+   "hrv": 61,
+   "z_hrv": -0.89,
+   "z_rhr": 0.27,
+   "cv_alto": false,
+   "fc_reposo": 53,
+   "sueno_min": 485
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 100
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 36
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-07",
+  "score": 88,
+  "estado": "ok",
+  "banda": "alta",
+  "dias_datos": 53,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.7,
+   "hrv": 67,
+   "z_hrv": 0.67,
+   "z_rhr": -1.84,
+   "cv_alto": false,
+   "fc_reposo": 50,
+   "sueno_min": 442
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 98
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 81
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-08",
+  "score": 71,
+  "estado": "ok",
+  "banda": "alta",
+  "dias_datos": 54,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.9,
+   "hrv": 65,
+   "z_hrv": 0,
+   "z_rhr": -0.18,
+   "cv_alto": false,
+   "fc_reposo": 52,
+   "sueno_min": 466
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 100
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 52
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-09",
+  "score": 64,
+  "estado": "ok",
+  "banda": "media",
+  "dias_datos": 55,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 6.9,
+   "hrv": 58,
+   "z_hrv": -1.75,
+   "z_rhr": -1.38,
+   "cv_alto": false,
+   "fc_reposo": 50,
+   "sueno_min": 427
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 94
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 45
+   }
+  },
+  "motivos": [
+   {
+    "dir": -1,
+    "peso": 52.53919479093134,
+    "tipo": "hrv",
+    "valor": 58,
+    "metrica": "sdnn",
+    "baseline": 65
+   }
+  ]
+ },
+ {
+  "fecha": "2026-10-10",
+  "score": 77,
+  "estado": "ok",
+  "banda": "alta",
+  "dias_datos": 56,
+  "banda_provisoria": false,
+  "estado_autonomico": "recuperado",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.7,
+   "hrv": 70,
+   "z_hrv": 1.38,
+   "z_rhr": 0.28,
+   "cv_alto": false,
+   "fc_reposo": 52,
+   "sueno_min": 449
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 99
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 64
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-11",
+  "score": 62,
+  "estado": "ok",
+  "banda": "media",
+  "dias_datos": 57,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.1,
+   "hrv": 60,
+   "z_hrv": -1.26,
+   "z_rhr": -0.37,
+   "cv_alto": false,
+   "fc_reposo": 51,
+   "sueno_min": 480
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 100
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 39
+   }
+  },
+  "motivos": [
+   {
+    "dir": -1,
+    "peso": 37.777043179850594,
+    "tipo": "hrv",
+    "valor": 60,
+    "metrica": "sdnn",
+    "baseline": 65
+   }
+  ]
+ },
+ {
+  "fecha": "2026-10-12",
+  "score": 77,
+  "estado": "ok",
+  "banda": "alta",
+  "dias_datos": 58,
+  "banda_provisoria": false,
+  "estado_autonomico": "recuperado",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.6,
+   "hrv": 71,
+   "z_hrv": 1.45,
+   "z_rhr": 0.47,
+   "cv_alto": false,
+   "fc_reposo": 52,
+   "sueno_min": 480
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 100
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 62
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-13",
+  "score": 71,
+  "estado": "ok",
+  "banda": "alta",
+  "dias_datos": 59,
+  "banda_provisoria": false,
+  "estado_autonomico": "recuperado",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.9,
+   "hrv": 68,
+   "z_hrv": 0.78,
+   "z_rhr": 0.38,
+   "cv_alto": false,
+   "fc_reposo": 52,
+   "sueno_min": 439
+  },
+  "componentes": {
+   "sueno": {
+    "peso": 25,
+    "score": 97
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 55
+   }
+  },
+  "motivos": []
+ },
+ {
+  "fecha": "2026-10-14",
+  "score": 45,
+  "estado": "ok",
+  "banda": "media",
+  "dias_datos": 60,
+  "banda_provisoria": false,
+  "estado_autonomico": "normal",
+  "hrv_metrica": "sdnn",
+  "discordancia": false,
+  "cobertura": {
+   "cv7": 7.7,
+   "hrv": 66,
+   "z_hrv": 0,
+   "z_rhr": 1.14,
+   "cv_alto": false,
+   "fc_reposo": 53,
+   "sueno_min": 439
+  },
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 288,
+    "score": 0,
+    "cronico": 288
+   },
+   "sueno": {
+    "peso": 25,
+    "score": 97
+   },
+   "autonomico": {
+    "peso": 40,
+    "score": 36
+   }
+  },
+  "motivos": [
+   {
+    "dir": 1,
+    "peso": 100,
+    "tipo": "carga",
+    "agudo": 288,
+    "cronico": 288
+   },
+   {
+    "dir": 1,
+    "peso": 34.09911045849215,
+    "tipo": "fc_reposo",
+    "valor": 53,
+    "baseline": 51
+   }
+  ]
+ }
+]

@@ -1,0 +1,14 @@
+[
+ {
+  "id": "87c760d3-ece9-43d9-bd39-2b0b851b2499",
+  "cliente_id": "test-nativa-real",
+  "fecha": "2026-10-14",
+  "entrenamiento": null,
+  "comio_segun_plan": null,
+  "durmio_bien": null,
+  "vasos_agua": 0,
+  "created_at": "2026-10-14T03:28:15.875139+00:00",
+  "updated_at": "2026-10-14T03:28:15.875139+00:00",
+  "cardio": null
+ }
+]

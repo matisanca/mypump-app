@@ -1,0 +1,5359 @@
+[
+ {
+  "fecha": "2026-10-14",
+  "tipo": "actividad_min",
+  "valor": 39,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "hrv_ms",
+  "valor": 66,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "kcal_activas",
+  "valor": 538,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "pasos",
+  "valor": 9376,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "peso_kg",
+  "valor": 81.5,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "sueno_ligero_min",
+  "valor": 259,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "sueno_medio_min",
+  "valor": 200,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "sueno_min",
+  "valor": 439,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "sueno_profundo_min",
+  "valor": 83,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-14",
+  "tipo": "sueno_rem_min",
+  "valor": 97,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "actividad_min",
+  "valor": 25,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "hrv_ms",
+  "valor": 68,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "kcal_activas",
+  "valor": 269,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "pasos",
+  "valor": 8161,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "peso_kg",
+  "valor": 82.2,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "peso_kg",
+  "valor": 78,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "sueno_ligero_min",
+  "valor": 259,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "sueno_medio_min",
+  "valor": 202,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "sueno_min",
+  "valor": 439,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "sueno_profundo_min",
+  "valor": 83,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-13",
+  "tipo": "sueno_rem_min",
+  "valor": 97,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "actividad_min",
+  "valor": 61,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "hrv_ms",
+  "valor": 71,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "kcal_activas",
+  "valor": 287,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "pasos",
+  "valor": 5948,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "peso_kg",
+  "valor": 81.6,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "sueno_ligero_min",
+  "valor": 283,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "sueno_min",
+  "valor": 480,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "sueno_profundo_min",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "sueno_rem_min",
+  "valor": 106,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "actividad_min",
+  "valor": 20,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "fc_reposo",
+  "valor": 51,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "hrv_ms",
+  "valor": 60,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "kcal_activas",
+  "valor": 246,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "pasos",
+  "valor": 6041,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "peso_kg",
+  "valor": 78.3,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "peso_kg",
+  "valor": 82.3,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "sueno_ligero_min",
+  "valor": 283,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "sueno_min",
+  "valor": 480,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "sueno_profundo_min",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "sueno_rem_min",
+  "valor": 106,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "actividad_min",
+  "valor": 15,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "hrv_ms",
+  "valor": 70,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "kcal_activas",
+  "valor": 533,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "pasos",
+  "valor": 7193,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "peso_kg",
+  "valor": 82.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "sueno_ligero_min",
+  "valor": 265,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "sueno_medio_min",
+  "valor": 197,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "sueno_min",
+  "valor": 449,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "sueno_profundo_min",
+  "valor": 85,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "sueno_rem_min",
+  "valor": 99,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "actividad_min",
+  "valor": 25,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "hrv_ms",
+  "valor": 58,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "kcal_activas",
+  "valor": 311,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "pasos",
+  "valor": 4724,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "peso_kg",
+  "valor": 82.6,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "peso_kg",
+  "valor": 77.8,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "sueno_ligero_min",
+  "valor": 252,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "sueno_min",
+  "valor": 427,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "sueno_profundo_min",
+  "valor": 81,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "sueno_rem_min",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "actividad_min",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "hrv_ms",
+  "valor": 65,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "kcal_activas",
+  "valor": 513,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "pasos",
+  "valor": 2873,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "peso_kg",
+  "valor": 82.5,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "sueno_ligero_min",
+  "valor": 275,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "sueno_min",
+  "valor": 466,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "sueno_profundo_min",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "sueno_rem_min",
+  "valor": 103,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "actividad_min",
+  "valor": 27,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "hrv_ms",
+  "valor": 67,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "kcal_activas",
+  "valor": 324,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "pasos",
+  "valor": 5841,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "peso_kg",
+  "valor": 82.3,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "peso_kg",
+  "valor": 78.2,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "sueno_ligero_min",
+  "valor": 261,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "sueno_min",
+  "valor": 442,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "sueno_profundo_min",
+  "valor": 84,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "sueno_rem_min",
+  "valor": 97,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "actividad_min",
+  "valor": 58,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "hrv_ms",
+  "valor": 61,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "kcal_activas",
+  "valor": 601,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "pasos",
+  "valor": 7009,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "peso_kg",
+  "valor": 81.8,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "sueno_ligero_min",
+  "valor": 286,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "sueno_medio_min",
+  "valor": 202,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "sueno_min",
+  "valor": 485,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "sueno_profundo_min",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "sueno_rem_min",
+  "valor": 107,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "actividad_min",
+  "valor": 17,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "fc_reposo",
+  "valor": 51,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "hrv_ms",
+  "valor": 70,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "kcal_activas",
+  "valor": 224,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "pasos",
+  "valor": 7467,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "peso_kg",
+  "valor": 78.2,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "peso_kg",
+  "valor": 81.7,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "sueno_ligero_min",
+  "valor": 286,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "sueno_medio_min",
+  "valor": 197,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "sueno_min",
+  "valor": 484,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "sueno_profundo_min",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "sueno_rem_min",
+  "valor": 106,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "actividad_min",
+  "valor": 21,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "hrv_ms",
+  "valor": 68,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "kcal_activas",
+  "valor": 253,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "pasos",
+  "valor": 2347,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "peso_kg",
+  "valor": 81.5,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "sueno_ligero_min",
+  "valor": 272,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "sueno_medio_min",
+  "valor": 202,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "sueno_min",
+  "valor": 461,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "sueno_profundo_min",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "sueno_rem_min",
+  "valor": 101,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "actividad_min",
+  "valor": 47,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "hrv_ms",
+  "valor": 58,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "kcal_activas",
+  "valor": 395,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "pasos",
+  "valor": 9146,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "peso_kg",
+  "valor": 81.9,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "peso_kg",
+  "valor": 77.9,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "sueno_ligero_min",
+  "valor": 271,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "sueno_min",
+  "valor": 460,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "sueno_profundo_min",
+  "valor": 87,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "sueno_rem_min",
+  "valor": 101,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "actividad_min",
+  "valor": 55,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "fc_reposo",
+  "valor": 54,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "hrv_ms",
+  "valor": 69,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "kcal_activas",
+  "valor": 607,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "pasos",
+  "valor": 3487,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "peso_kg",
+  "valor": 82.1,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "sueno_ligero_min",
+  "valor": 280,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "sueno_medio_min",
+  "valor": 203,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "sueno_min",
+  "valor": 475,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "sueno_profundo_min",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "sueno_rem_min",
+  "valor": 105,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "actividad_min",
+  "valor": 37,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "hrv_ms",
+  "valor": 59,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "kcal_activas",
+  "valor": 331,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "pasos",
+  "valor": 9692,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "peso_kg",
+  "valor": 82.2,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "peso_kg",
+  "valor": 77.6,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "sueno_ligero_min",
+  "valor": 263,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "sueno_medio_min",
+  "valor": 200,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "sueno_min",
+  "valor": 445,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "sueno_profundo_min",
+  "valor": 85,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "sueno_rem_min",
+  "valor": 98,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "actividad_min",
+  "valor": 55,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "fc_reposo",
+  "valor": 54,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "hrv_ms",
+  "valor": 64,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "kcal_activas",
+  "valor": 482,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "pasos",
+  "valor": 6263,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "peso_kg",
+  "valor": 82.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "sueno_ligero_min",
+  "valor": 265,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "sueno_min",
+  "valor": 449,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "sueno_profundo_min",
+  "valor": 85,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "sueno_rem_min",
+  "valor": 99,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "actividad_min",
+  "valor": 32,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "fc_reposo",
+  "valor": 51,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "hrv_ms",
+  "valor": 67,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "kcal_activas",
+  "valor": 596,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "pasos",
+  "valor": 8917,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "peso_kg",
+  "valor": 77.8,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "peso_kg",
+  "valor": 81.8,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "sueno_ligero_min",
+  "valor": 278,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "sueno_min",
+  "valor": 472,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "sueno_profundo_min",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "sueno_rem_min",
+  "valor": 104,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "actividad_min",
+  "valor": 61,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "hrv_ms",
+  "valor": 68,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "kcal_activas",
+  "valor": 643,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "pasos",
+  "valor": 6368,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "peso_kg",
+  "valor": 82.3,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "sueno_ligero_min",
+  "valor": 274,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "sueno_medio_min",
+  "valor": 202,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "sueno_min",
+  "valor": 464,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "sueno_profundo_min",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "sueno_rem_min",
+  "valor": 102,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "actividad_min",
+  "valor": 29,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "fc_reposo",
+  "valor": 55,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "hrv_ms",
+  "valor": 68,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "kcal_activas",
+  "valor": 427,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "pasos",
+  "valor": 8479,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "peso_kg",
+  "valor": 82.3,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "peso_kg",
+  "valor": 78.1,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "sueno_ligero_min",
+  "valor": 274,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "sueno_medio_min",
+  "valor": 202,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "sueno_min",
+  "valor": 465,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "sueno_profundo_min",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "sueno_rem_min",
+  "valor": 102,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "actividad_min",
+  "valor": 26,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "hrv_ms",
+  "valor": 60,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "kcal_activas",
+  "valor": 438,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "pasos",
+  "valor": 9617,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "peso_kg",
+  "valor": 82.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "sueno_ligero_min",
+  "valor": 290,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "sueno_min",
+  "valor": 491,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "sueno_profundo_min",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "sueno_rem_min",
+  "valor": 108,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "actividad_min",
+  "valor": 30,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "hrv_ms",
+  "valor": 73,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "kcal_activas",
+  "valor": 335,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "pasos",
+  "valor": 5174,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "peso_kg",
+  "valor": 82.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "peso_kg",
+  "valor": 78.4,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "sueno_ligero_min",
+  "valor": 252,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "sueno_medio_min",
+  "valor": 200,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "sueno_min",
+  "valor": 427,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "sueno_profundo_min",
+  "valor": 81,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "sueno_rem_min",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "actividad_min",
+  "valor": 26,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "hrv_ms",
+  "valor": 58,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "kcal_activas",
+  "valor": 506,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "pasos",
+  "valor": 2477,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "peso_kg",
+  "valor": 82.2,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "sueno_ligero_min",
+  "valor": 255,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "sueno_min",
+  "valor": 432,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "sueno_profundo_min",
+  "valor": 82,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "sueno_rem_min",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "actividad_min",
+  "valor": 40,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "fc_reposo",
+  "valor": 55,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "hrv_ms",
+  "valor": 69,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "kcal_activas",
+  "valor": 564,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "pasos",
+  "valor": 8371,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "peso_kg",
+  "valor": 77.6,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "peso_kg",
+  "valor": 82,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "sueno_ligero_min",
+  "valor": 278,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "sueno_medio_min",
+  "valor": 203,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "sueno_min",
+  "valor": 471,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "sueno_profundo_min",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "sueno_rem_min",
+  "valor": 104,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "actividad_min",
+  "valor": 48,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "fc_reposo",
+  "valor": 54,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "hrv_ms",
+  "valor": 58,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "kcal_activas",
+  "valor": 458,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "pasos",
+  "valor": 3838,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "peso_kg",
+  "valor": 81.5,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "sueno_ligero_min",
+  "valor": 266,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "sueno_min",
+  "valor": 451,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "sueno_profundo_min",
+  "valor": 86,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-22",
+  "tipo": "sueno_rem_min",
+  "valor": 99,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "actividad_min",
+  "valor": 35,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "hrv_ms",
+  "valor": 72,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "kcal_activas",
+  "valor": 431,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "pasos",
+  "valor": 8965,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "peso_kg",
+  "valor": 81.5,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "sueno_ligero_min",
+  "valor": 254,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "sueno_min",
+  "valor": 430,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "sueno_profundo_min",
+  "valor": 82,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-21",
+  "tipo": "sueno_rem_min",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "actividad_min",
+  "valor": 35,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "fc_reposo",
+  "valor": 51,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "hrv_ms",
+  "valor": 65,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "kcal_activas",
+  "valor": 269,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "pasos",
+  "valor": 7179,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "peso_kg",
+  "valor": 81.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "sueno_ligero_min",
+  "valor": 273,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "sueno_min",
+  "valor": 463,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "sueno_profundo_min",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-20",
+  "tipo": "sueno_rem_min",
+  "valor": 102,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "actividad_min",
+  "valor": 28,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "hrv_ms",
+  "valor": 64,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "kcal_activas",
+  "valor": 275,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "pasos",
+  "valor": 4655,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "peso_kg",
+  "valor": 82,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "sueno_ligero_min",
+  "valor": 268,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "sueno_min",
+  "valor": 455,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "sueno_profundo_min",
+  "valor": 86,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-19",
+  "tipo": "sueno_rem_min",
+  "valor": 100,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "actividad_min",
+  "valor": 46,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "hrv_ms",
+  "valor": 70,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "kcal_activas",
+  "valor": 438,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "pasos",
+  "valor": 3567,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "peso_kg",
+  "valor": 81.9,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "sueno_ligero_min",
+  "valor": 283,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "sueno_medio_min",
+  "valor": 197,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "sueno_min",
+  "valor": 480,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "sueno_profundo_min",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-18",
+  "tipo": "sueno_rem_min",
+  "valor": 106,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "actividad_min",
+  "valor": 28,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "hrv_ms",
+  "valor": 61,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "kcal_activas",
+  "valor": 404,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "pasos",
+  "valor": 2381,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "peso_kg",
+  "valor": 82.1,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "sueno_ligero_min",
+  "valor": 257,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "sueno_medio_min",
+  "valor": 202,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "sueno_min",
+  "valor": 435,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "sueno_profundo_min",
+  "valor": 83,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-17",
+  "tipo": "sueno_rem_min",
+  "valor": 96,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "actividad_min",
+  "valor": 57,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "hrv_ms",
+  "valor": 67,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "kcal_activas",
+  "valor": 415,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "pasos",
+  "valor": 9648,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "peso_kg",
+  "valor": 82.2,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "sueno_ligero_min",
+  "valor": 281,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "sueno_min",
+  "valor": 476,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "sueno_profundo_min",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-16",
+  "tipo": "sueno_rem_min",
+  "valor": 105,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "actividad_min",
+  "valor": 21,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "fc_reposo",
+  "valor": 55,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "hrv_ms",
+  "valor": 67,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "kcal_activas",
+  "valor": 371,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "pasos",
+  "valor": 8757,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "peso_kg",
+  "valor": 81.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "sueno_ligero_min",
+  "valor": 264,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "sueno_min",
+  "valor": 448,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "sueno_profundo_min",
+  "valor": 85,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-15",
+  "tipo": "sueno_rem_min",
+  "valor": 99,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "actividad_min",
+  "valor": 57,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "fc_reposo",
+  "valor": 54,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "hrv_ms",
+  "valor": 67,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "kcal_activas",
+  "valor": 510,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "pasos",
+  "valor": 5575,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "peso_kg",
+  "valor": 81.8,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "sueno_ligero_min",
+  "valor": 266,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "sueno_min",
+  "valor": 450,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "sueno_profundo_min",
+  "valor": 86,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-14",
+  "tipo": "sueno_rem_min",
+  "valor": 99,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "actividad_min",
+  "valor": 54,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "hrv_ms",
+  "valor": 68,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "kcal_activas",
+  "valor": 488,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "pasos",
+  "valor": 9932,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "peso_kg",
+  "valor": 82.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "sueno_ligero_min",
+  "valor": 282,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "sueno_medio_min",
+  "valor": 202,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "sueno_min",
+  "valor": 478,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "sueno_profundo_min",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-13",
+  "tipo": "sueno_rem_min",
+  "valor": 105,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "actividad_min",
+  "valor": 16,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "hrv_ms",
+  "valor": 71,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "kcal_activas",
+  "valor": 241,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "pasos",
+  "valor": 7949,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "peso_kg",
+  "valor": 81.6,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "sueno_ligero_min",
+  "valor": 286,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "sueno_min",
+  "valor": 484,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "sueno_profundo_min",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-12",
+  "tipo": "sueno_rem_min",
+  "valor": 106,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "actividad_min",
+  "valor": 32,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "hrv_ms",
+  "valor": 67,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "kcal_activas",
+  "valor": 450,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "pasos",
+  "valor": 3667,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "peso_kg",
+  "valor": 82.6,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "sueno_ligero_min",
+  "valor": 284,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "sueno_min",
+  "valor": 482,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "sueno_profundo_min",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-11",
+  "tipo": "sueno_rem_min",
+  "valor": 106,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "actividad_min",
+  "valor": 55,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "hrv_ms",
+  "valor": 59,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "kcal_activas",
+  "valor": 604,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "pasos",
+  "valor": 6205,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "peso_kg",
+  "valor": 81.9,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "sueno_ligero_min",
+  "valor": 287,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "sueno_medio_min",
+  "valor": 200,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "sueno_min",
+  "valor": 486,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "sueno_profundo_min",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-10",
+  "tipo": "sueno_rem_min",
+  "valor": 107,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "actividad_min",
+  "valor": 49,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "hrv_ms",
+  "valor": 60,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "kcal_activas",
+  "valor": 612,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "pasos",
+  "valor": 5039,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "peso_kg",
+  "valor": 82.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "sueno_ligero_min",
+  "valor": 271,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "sueno_min",
+  "valor": 459,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "sueno_profundo_min",
+  "valor": 87,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-09",
+  "tipo": "sueno_rem_min",
+  "valor": 101,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "actividad_min",
+  "valor": 19,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "hrv_ms",
+  "valor": 60,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "kcal_activas",
+  "valor": 348,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "pasos",
+  "valor": 4514,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "peso_kg",
+  "valor": 81.5,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "sueno_ligero_min",
+  "valor": 280,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "sueno_min",
+  "valor": 474,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "sueno_profundo_min",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-08",
+  "tipo": "sueno_rem_min",
+  "valor": 104,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "actividad_min",
+  "valor": 28,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "hrv_ms",
+  "valor": 66,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "kcal_activas",
+  "valor": 351,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "pasos",
+  "valor": 4603,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "peso_kg",
+  "valor": 82.2,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "sueno_ligero_min",
+  "valor": 260,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "sueno_medio_min",
+  "valor": 200,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "sueno_min",
+  "valor": 441,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "sueno_profundo_min",
+  "valor": 84,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-07",
+  "tipo": "sueno_rem_min",
+  "valor": 97,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "actividad_min",
+  "valor": 29,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "hrv_ms",
+  "valor": 63,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "kcal_activas",
+  "valor": 428,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "pasos",
+  "valor": 9165,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "peso_kg",
+  "valor": 82.1,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "sueno_ligero_min",
+  "valor": 265,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "sueno_medio_min",
+  "valor": 197,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "sueno_min",
+  "valor": 449,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "sueno_profundo_min",
+  "valor": 85,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-06",
+  "tipo": "sueno_rem_min",
+  "valor": 99,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "actividad_min",
+  "valor": 33,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "hrv_ms",
+  "valor": 60,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "kcal_activas",
+  "valor": 401,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "pasos",
+  "valor": 4340,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "peso_kg",
+  "valor": 81.9,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "sueno_ligero_min",
+  "valor": 274,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "sueno_min",
+  "valor": 464,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "sueno_profundo_min",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-05",
+  "tipo": "sueno_rem_min",
+  "valor": 102,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "actividad_min",
+  "valor": 63,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "fc_reposo",
+  "valor": 51,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "hrv_ms",
+  "valor": 62,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "kcal_activas",
+  "valor": 462,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "pasos",
+  "valor": 3767,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "peso_kg",
+  "valor": 82.6,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "sueno_ligero_min",
+  "valor": 252,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "sueno_medio_min",
+  "valor": 203,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "sueno_min",
+  "valor": 427,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "sueno_profundo_min",
+  "valor": 81,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-04",
+  "tipo": "sueno_rem_min",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "actividad_min",
+  "valor": 48,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "hrv_ms",
+  "valor": 65,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "kcal_activas",
+  "valor": 522,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "pasos",
+  "valor": 2380,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "peso_kg",
+  "valor": 81.7,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "sueno_ligero_min",
+  "valor": 258,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "sueno_min",
+  "valor": 438,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "sueno_profundo_min",
+  "valor": 83,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-03",
+  "tipo": "sueno_rem_min",
+  "valor": 96,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "actividad_min",
+  "valor": 57,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "fc_reposo",
+  "valor": 51,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "hrv_ms",
+  "valor": 57,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "kcal_activas",
+  "valor": 610,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "pasos",
+  "valor": 7082,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "peso_kg",
+  "valor": 81.7,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "sueno_ligero_min",
+  "valor": 281,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "sueno_min",
+  "valor": 477,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "sueno_profundo_min",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-02",
+  "tipo": "sueno_rem_min",
+  "valor": 105,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "actividad_min",
+  "valor": 33,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "hrv_ms",
+  "valor": 71,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "kcal_activas",
+  "valor": 268,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "pasos",
+  "valor": 8339,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "peso_kg",
+  "valor": 82.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "sueno_ligero_min",
+  "valor": 264,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "sueno_min",
+  "valor": 448,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "sueno_profundo_min",
+  "valor": 85,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-01",
+  "tipo": "sueno_rem_min",
+  "valor": 99,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "actividad_min",
+  "valor": 46,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "hrv_ms",
+  "valor": 61,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "kcal_activas",
+  "valor": 358,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "pasos",
+  "valor": 3307,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "peso_kg",
+  "valor": 81.6,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "sueno_ligero_min",
+  "valor": 268,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "sueno_medio_min",
+  "valor": 202,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "sueno_min",
+  "valor": 454,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "sueno_profundo_min",
+  "valor": 86,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-31",
+  "tipo": "sueno_rem_min",
+  "valor": 100,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "actividad_min",
+  "valor": 62,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "hrv_ms",
+  "valor": 65,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "kcal_activas",
+  "valor": 288,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "pasos",
+  "valor": 3040,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "peso_kg",
+  "valor": 82.3,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "sueno_ligero_min",
+  "valor": 285,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "sueno_min",
+  "valor": 483,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "sueno_profundo_min",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-30",
+  "tipo": "sueno_rem_min",
+  "valor": 106,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "actividad_min",
+  "valor": 29,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "hrv_ms",
+  "valor": 62,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "kcal_activas",
+  "valor": 556,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "pasos",
+  "valor": 7574,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "peso_kg",
+  "valor": 82.5,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "sueno_ligero_min",
+  "valor": 255,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "sueno_medio_min",
+  "valor": 203,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "sueno_min",
+  "valor": 432,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "sueno_profundo_min",
+  "valor": 82,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-29",
+  "tipo": "sueno_rem_min",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "actividad_min",
+  "valor": 63,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "fc_reposo",
+  "valor": 51,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "hrv_ms",
+  "valor": 64,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "kcal_activas",
+  "valor": 602,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "pasos",
+  "valor": 7561,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "peso_kg",
+  "valor": 81.9,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "sueno_ligero_min",
+  "valor": 286,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "sueno_min",
+  "valor": 484,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "sueno_profundo_min",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-28",
+  "tipo": "sueno_rem_min",
+  "valor": 106,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "actividad_min",
+  "valor": 43,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "fc_reposo",
+  "valor": 54,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "hrv_ms",
+  "valor": 64,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "kcal_activas",
+  "valor": 352,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "pasos",
+  "valor": 4696,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "peso_kg",
+  "valor": 82.3,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "sueno_ligero_min",
+  "valor": 274,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "sueno_min",
+  "valor": 465,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "sueno_profundo_min",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-27",
+  "tipo": "sueno_rem_min",
+  "valor": 102,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "actividad_min",
+  "valor": 19,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "hrv_ms",
+  "valor": 60,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "kcal_activas",
+  "valor": 648,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "pasos",
+  "valor": 8575,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "peso_kg",
+  "valor": 82.1,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "sueno_ligero_min",
+  "valor": 272,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "sueno_min",
+  "valor": 461,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "sueno_profundo_min",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-26",
+  "tipo": "sueno_rem_min",
+  "valor": 101,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "actividad_min",
+  "valor": 49,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "hrv_ms",
+  "valor": 67,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "kcal_activas",
+  "valor": 621,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "pasos",
+  "valor": 2621,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "peso_kg",
+  "valor": 81.7,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "sueno_ligero_min",
+  "valor": 288,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "sueno_medio_min",
+  "valor": 201,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "sueno_min",
+  "valor": 488,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "sueno_profundo_min",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-25",
+  "tipo": "sueno_rem_min",
+  "valor": 107,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "actividad_min",
+  "valor": 19,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "fc_reposo",
+  "valor": 55,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "hrv_ms",
+  "valor": 64,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "kcal_activas",
+  "valor": 217,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "pasos",
+  "valor": 3098,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "peso_kg",
+  "valor": 81.8,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "sueno_ligero_min",
+  "valor": 290,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "sueno_min",
+  "valor": 491,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "sueno_profundo_min",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-24",
+  "tipo": "sueno_rem_min",
+  "valor": 108,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "actividad_min",
+  "valor": 48,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "fc_reposo",
+  "valor": 51,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "hrv_ms",
+  "valor": 58,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "kcal_activas",
+  "valor": 618,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "pasos",
+  "valor": 7446,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "peso_kg",
+  "valor": 81.5,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "sueno_ligero_min",
+  "valor": 278,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "sueno_min",
+  "valor": 471,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "sueno_profundo_min",
+  "valor": 89,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-23",
+  "tipo": "sueno_rem_min",
+  "valor": 104,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "actividad_min",
+  "valor": 38,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "hrv_ms",
+  "valor": 62,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "kcal_activas",
+  "valor": 300,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "pasos",
+  "valor": 8870,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "peso_kg",
+  "valor": 81.7,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "sueno_ligero_min",
+  "valor": 281,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "sueno_medio_min",
+  "valor": 203,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "sueno_min",
+  "valor": 477,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "sueno_profundo_min",
+  "valor": 91,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-22",
+  "tipo": "sueno_rem_min",
+  "valor": 105,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "actividad_min",
+  "valor": 43,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "hrv_ms",
+  "valor": 58,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "kcal_activas",
+  "valor": 318,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "pasos",
+  "valor": 6453,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "peso_kg",
+  "valor": 82.2,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "sueno_ligero_min",
+  "valor": 253,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "sueno_min",
+  "valor": 429,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "sueno_profundo_min",
+  "valor": 82,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-21",
+  "tipo": "sueno_rem_min",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "actividad_min",
+  "valor": 37,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "fc_reposo",
+  "valor": 52,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "hrv_ms",
+  "valor": 57,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "kcal_activas",
+  "valor": 566,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "pasos",
+  "valor": 8742,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "peso_kg",
+  "valor": 81.8,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "sueno_ligero_min",
+  "valor": 258,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "sueno_min",
+  "valor": 437,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "sueno_profundo_min",
+  "valor": 83,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-20",
+  "tipo": "sueno_rem_min",
+  "valor": 96,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "actividad_min",
+  "valor": 16,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "fc_reposo",
+  "valor": 49,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "hrv_ms",
+  "valor": 66,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "kcal_activas",
+  "valor": 292,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "pasos",
+  "valor": 4136,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "peso_kg",
+  "valor": 82.3,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 88,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "sueno_ligero_min",
+  "valor": 252,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "sueno_medio_min",
+  "valor": 200,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "sueno_min",
+  "valor": 427,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "sueno_profundo_min",
+  "valor": 81,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-19",
+  "tipo": "sueno_rem_min",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "actividad_min",
+  "valor": 13,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "fc_reposo",
+  "valor": 50,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "hrv_ms",
+  "valor": 65,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "kcal_activas",
+  "valor": 417,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "pasos",
+  "valor": 6885,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "peso_kg",
+  "valor": 82.4,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 93,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "sueno_ligero_min",
+  "valor": 279,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "sueno_medio_min",
+  "valor": 199,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "sueno_min",
+  "valor": 473,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "sueno_profundo_min",
+  "valor": 90,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-18",
+  "tipo": "sueno_rem_min",
+  "valor": 104,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "actividad_min",
+  "valor": 57,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "hrv_ms",
+  "valor": 71,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "kcal_activas",
+  "valor": 538,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "pasos",
+  "valor": 3999,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "peso_kg",
+  "valor": 81.8,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 95,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "sueno_ligero_min",
+  "valor": 270,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "sueno_min",
+  "valor": 458,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "sueno_profundo_min",
+  "valor": 87,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-17",
+  "tipo": "sueno_rem_min",
+  "valor": 101,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "actividad_min",
+  "valor": 22,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "fc_reposo",
+  "valor": 53,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "hrv_ms",
+  "valor": 64,
+  "fuente": "apple_health",
+  "detalle": {
+   "n": 12,
+   "metrica": "sdnn",
+   "ventana": "nocturna"
+  }
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "kcal_activas",
+  "valor": 442,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "pasos",
+  "valor": 7358,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "peso_kg",
+  "valor": 81.7,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "sueno_eficiencia_pct",
+  "valor": 94,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "sueno_ligero_min",
+  "valor": 286,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "sueno_medio_min",
+  "valor": 198,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "sueno_min",
+  "valor": 485,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "sueno_profundo_min",
+  "valor": 92,
+  "fuente": "apple_health",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-08-16",
+  "tipo": "sueno_rem_min",
+  "valor": 107,
+  "fuente": "apple_health",
+  "detalle": null
+ }
+]
