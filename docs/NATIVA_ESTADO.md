@@ -116,28 +116,37 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 - **14-oct 17:30, sustituciones de ejercicio en el servidor (SER-14, decisión de Mati de las 16:24):**
   - **Base:** `supabase/migrations/nativa_003_sustituciones_ejercicio.sql`. Una tabla (`mypump_exercise_swaps`) y cinco
     funciones; no cambia nada existente y la web no la usa. Ensayo en producción dentro de una transacción, deshecho al
-    final: **53/53**, también llamando como `anon`.
-  - **Cómo funciona (iOS 9cd1f65, Android 1d151d9):**
+    final: **60/60**, también llamando como `anon`.
+  - **Cómo funciona (iOS 9cd1f65 + 9edff18, Android 1d151d9 + d0a579b):**
     - cada entrada lleva la hora en que el cliente la eligió y **gana lo más nuevo**, en el servidor y al leerlo;
-    - borrar deja una **lápida** con su hora: otro teléfono no la revive con algo más viejo;
+    - borrar deja una **lápida** con la hora de lo que se borró: otro teléfono no la revive con algo más viejo, y no saca
+      algo más nuevo que el cliente no vio;
+    - un reloj adelantado no gana: el servidor recorta las horas a la suya + 5 minutos;
     - que algo falte en el servidor **no es un borrado**: el teléfono lo vuelve a subir (nada se pierde aunque la tabla
       se vaciara);
     - la **poda es solo del teléfono** y no se manda;
     - la cola **no muestra avisos** por estas operaciones, como antes, cuando no tocaban la red;
     - lo que no llegó a la cola porque la app se cerró se encola al volver a abrir;
     - si el cliente vuelve a la app vieja, solo se aplica lo que cambió ahí.
-  - **Revisión independiente** (subagente, solo lectura) sobre la primera versión: 7 hallazgos reales. El más grave era
-    que la poda de un teléfono viejo podía borrar en el servidor lo que el cliente fijó después en otro. Todos quedaron
-    cubiertos en la versión de arriba, cada uno con su prueba; la segunda pasada de la revisión está en curso.
+  - **Revisión independiente** (subagente, solo lectura), en rondas:
+    - sobre la primera versión, 7 hallazgos reales; el más grave, que la poda de un teléfono viejo podía borrar en el
+      servidor lo que el cliente fijó después en otro;
+    - sobre la segunda, 3 más: "Guardando…" colgado en escrituras normales, la vuelta a la app vieja que podía borrar una
+      fijada de otro teléfono, y los relojes adelantados.
+    - Todos quedaron cubiertos, cada uno con su prueba; la tercera pasada está en curso.
   - **Igual que antes mientras la 003 no esté aplicada** (PGRST202): todo queda en el teléfono y sin avisos nuevos. La
     migración en el simulador dio **25/25** (la fila nueva dice "sin tabla").
-  - **Pruebas:** iOS 358 y Android 426, en verde. Mutantes: 11 en iOS y 10 en Android, uno por protección, y caen todos.
-  - **Para aplicarla (G2, la corre Mati; el archivo ya está en la Mini, md5 `bfd16e8b…`, igual al del repo):**
+  - **Pruebas:** iOS 364 y Android 432, en verde. Mutantes: 15 en iOS y 14 en Android, uno por protección, y caen todos.
+  - **Para aplicarla (G2, la corre Mati; el archivo ya está en la Mini, md5 `aa6f7698…`, igual al del repo):**
     `ssh mini 'cd ~/agentkit-coach && venv/bin/python ~/_aplicar.py /tmp/nativa_003_sustituciones_ejercicio.sql'`
     Después: regenerar el esquema, correr `auditar_seguridad_db.py` y ver una sustitución pasar entre dos simuladores.
 - **14-oct 17:30, lo demás de la tarde:**
   - **Fotos contra el servidor real** (4a1acd8): una foto como las de la cámara (4032×3024, con GPS) queda guardada como
     JPEG de 675×900, derecha y **sin ubicación**; la de la cola de la web sube sola. Cierra MIG-03, REV-02 y REV-03.
+  - **El aviso de arriba tapaba "volver"** (a3254ff): en iOS 26, el aviso de la demo y el de "Sin conexión" tapaban el
+    botón de volver del detalle de un ejercicio. En la demo es lo que mira App Review, y sin señal le pasaba a un cliente.
+    Lo encontró la prueba nueva de Entreno, mirando la grabación. De paso, VoiceOver ahora lee la card entera (antes no
+    oía la sustitución, los mensajes, la pauta ni el récord). Suite de interfaz entera en verde, en 17.5 y en 26.5.
   - **Números como la web en iOS** (dd270a7): con el iPhone en otra región se veía "2,454 kcal" junto a "15,1 g". Ahora
     es siempre `es_AR`. Lo encontró la revisión de Android, igual que el "según tu iPhone" que aparecía en iPad.
   - **Interfaz de Android en Compose** (merge 375f970): acceso, demo, sin conexión, permiso de la IA, Dieta en lectura y
