@@ -239,6 +239,50 @@ private struct Servidor: Transporte {
     }
 }
 
+/// Una base con estado para los swaps de comida: lo que se guarda, después se lee.
+private actor BaseDeSwaps: Transporte {
+    private var swaps: [String: JSONValue] = [:]   // "comida/opt/food" → food_data
+
+    init(_ iniciales: [String]) {
+        for k in iniciales { swaps[k] = .objeto(["name": .texto("de otro teléfono")]) }
+    }
+
+    func claves() -> Set<String> { Set(swaps.keys) }
+
+    func filas() -> [FoodSwap] {
+        swaps.sorted { $0.key < $1.key }.compactMap { k, v in
+            let p = k.split(separator: "/").map(String.init)
+            let fila: JSONValue = .objeto(["comida_id": .texto(p[0]), "opt_idx": .numero(Double(p[1]) ?? 0), "food_idx": .numero(Double(p[2]) ?? 0),
+                                           "food_data": v])
+            return try? JSONDecoder().decode(FoodSwap.self, from: JSONEncoder().encode(fila))
+        }
+    }
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let fn = pedido.url!.lastPathComponent
+        let p = (try? JSONDecoder().decode(JSONValue.self, from: pedido.httpBody ?? Data())) ?? .null
+        func clave() -> String {
+            "\(p["p_comida_id"]?.comoTexto ?? "")/\(Int(p["p_opt_idx"]?.comoNumero ?? 0))/\(Int(p["p_food_idx"]?.comoNumero ?? 0))"
+        }
+        let cuerpo: String
+        switch fn {
+        case "mypump_get_dieta_activa": cuerpo = #"[{"id":"\#(dietaD)","version":1,"estructura":{"comidas":[]}}]"#
+        case "mypump_get_food_swaps":
+            cuerpo = String(decoding: try JSONEncoder().encode(JSONValue.lista(swaps.sorted { $0.key < $1.key }.map { k, v in
+                let q = k.split(separator: "/").map(String.init)
+                return .objeto(["comida_id": .texto(q[0]), "opt_idx": .numero(Double(q[1]) ?? 0), "food_idx": .numero(Double(q[2]) ?? 0), "food_data": v])
+            })), as: UTF8.self)
+        case "mypump_save_food_swap":
+            swaps[clave()] = p["p_food_data"] ?? .null
+            cuerpo = #"[{"ok":true}]"#
+        case "mypump_delete_food_swap":
+            cuerpo = swaps.removeValue(forKey: clave()) == nil ? "false" : "true"
+        default: cuerpo = "[]"
+        }
+        return (Data(cuerpo.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
 private func rutinaActiva(_ id: String, dias: [String] = ["b2d1", "b2d2", "b2d3"]) -> String {
     let d = dias.map { #"{"id":"\#($0)","nombre":"\#($0)","bloques":[]}"# }.joined(separator: ",")
     return #"[{"id":"\#(id)","version":3,"semana_actual":3,"tiene_siguiente":false,"estructura":{"dias":[\#(d)]}}]"#
@@ -762,6 +806,42 @@ struct FaseRemotaLegadoTests {
         let r = try tel.faseL()
         #expect(!r.corrio)
         #expect(FaseRemotaLegado.escrituraPendiente(entorno: tel.entorno)?.borrar == cambios.borrar)
+    }
+
+    @Test func losSwapsDeComidaSinMigrarSeSubenAntesDeDrenar() async throws {
+        // Un teléfono de la v1.0.11 (sin la marca de migrados) con un swap local que el servidor nunca vio, y en la cola
+        // vieja un swap de OTRA posición. Si la Fase R drenara primero, la hidratación del modelo vería el servidor con
+        // algo, tomaría el merge y tiraría el local (lo vio la prueba en el simulador). Se decide antes de drenar.
+        for (caso, servidorTiene, marcaNativa, esperado) in [("vacío", false, false, 1), ("ya tiene uno", true, false, 0),
+                                                           ("marca nativa", false, true, 0)] {
+            let tel = Telefono(); defer { tel.limpiar() }
+            let c1: JSONValue = .objeto(["_id": .texto("1_1"), "kind": .texto("swap"), "dedupeKey": .texto("swap_\(dietaD)_c1_0_0"),
+                                         "payload": .objeto(["dietaId": .texto(dietaD), "comidaId": .texto("c1"), "optIdx": .numero(0), "foodIdx": .numero(0),
+                                                             "food": .objeto(["name": .texto("Ricota"), "_orig": .objeto(["name": .texto("Pollo")])])]),
+                                         "tries": .numero(0), "ts": .numero(1)])
+            try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista([c1])),
+                                     "mypump_food_swaps_\(dietaD)": #"{"swap_\#(dietaD)_c3_0_0":{"original":{"name":"Merluza"},"current":{"name":"Atún","_orig":{"name":"Merluza","qty":250,"unit":"g"}}}}"#])
+            _ = try tel.faseL()
+            if marcaNativa { tel.disco().guardar(true, "swaps_migrados_\(dietaD)") }
+            let base = BaseDeSwaps(servidorTiene ? ["c4/0/0"] : [])
+            let cliente = ClienteRPC(transporte: base)
+            let escrituras = Escrituras(cliente: cliente, token: tokenA)
+            let o = Outbox(archivo: tel.disco().url("outbox.json"), reintentoAutomatico: false) { op in await escrituras.ejecutar(op) }
+            let r = await FaseRemotaLegado.correr(entorno: tel.entorno, token: tokenA, clienteId: "c1", cliente: cliente, outbox: o,
+                                                  recibo: ReciboEnDisco(carpeta: tel.entorno.carpeta.appendingPathComponent("recibos")), ahora: ahora)
+            #expect(r.swapsSinMigrar == esperado, "\(caso)")
+            await o.drenar()
+            let enLaBase = await base.claves()
+            #expect(enLaBase.contains("c1/0/0"), "\(caso)")   // el de la cola vieja sale siempre
+            #expect(enLaBase.contains("c3/0/0") == (esperado == 1), "\(caso)")
+            // Y la hidratación del modelo, corra cuando corra, ya no lo pierde: o está en la base o está en la cola.
+            let pendientes = (await o.pendientesPorClave()).mapValues(\.kind)
+            let remotos = await base.filas()
+            let locales = tel.disco().leer([String: SwapLocal].self, "swaps_\(dietaD).json") ?? [:]
+            let h = SwapsDeComida.hidratar(remotos: remotos, locales: locales, dietaId: dietaD, pendientes: pendientes,
+                                           yaMigrado: tel.disco().leer(Bool.self, "swaps_migrados_\(dietaD)") ?? false, enPosicion: { _, _, _ in [] })
+            if esperado == 1 { #expect(h?.swaps["swap_\(dietaD)_c3_0_0"] != nil, "\(caso)") }
+        }
     }
 
     @Test func elScriptCalculaLaMismaFirmaQueSwift() throws {

@@ -1,5 +1,6 @@
 import Foundation
 import MyPumpModelos
+import MyPumpReglas
 
 // MARK: - Recibo
 
@@ -87,6 +88,8 @@ public enum FaseRemotaLegado {
         public var reemplazadas = 0
         public var noResuelven = 0
         public var otroCliente = 0
+        /// Swaps de comida locales que el servidor no tenía y entraron a la cola (la migración que hacía la web).
+        public var swapsSinMigrar = 0
         public var recibo: EntregaRecibo?
     }
 
@@ -117,6 +120,12 @@ public enum FaseRemotaLegado {
                 activa = .some(fila)
                 return activa
             }
+        }
+
+        // Los swaps de comida que el teléfono tenía y el servidor nunca vio: se deciden ANTES de drenar nada.
+        switch await subirSwapsSinMigrar(entorno: entorno, token: token, cliente: cliente, outbox: outbox) {
+        case .none: r.sinRed = true
+        case .some(let n): r.swapsSinMigrar = n
         }
 
         var resueltas: Set<Int> = []
@@ -184,7 +193,7 @@ public enum FaseRemotaLegado {
         try? a.guardar(libro, "libro.json")
         try? a.guardar(pendientes, "pendientes.json")
 
-        if r.aLaCola + r.reasignadas > 0 { await outbox.drenar() }
+        if !r.sinRed, r.aLaCola + r.reasignadas + r.swapsSinMigrar > 0 { await outbox.drenar() }
 
         if !r.sinRed {
             // El recibo, con lo que quedó.
@@ -212,6 +221,38 @@ public enum FaseRemotaLegado {
         estado.faseRPendiente = r.sinRed || pendientes.contains { $0.estado == .esperando }
         try? a.guardar(estado, "estado.json")
         return r
+    }
+
+    /// "Ancla y sube los swaps de comida sin migrar": los del mapa local de la dieta activa que el servidor nunca vio (un
+    /// teléfono que viene de antes de que los swaps se guardaran en la base; la v1.0.11 no tenía la marca de migrados).
+    /// La hidratación del modelo hace lo mismo (`SwapsDeComida.hidratar`, rama de migración), pero corre EN PARALELO con
+    /// esta fase: si el drenado de acá manda primero un swap de la cola vieja, la hidratación ve el servidor con algo, toma
+    /// el merge y descarta los locales que no están en la cola. Por eso se decide acá, antes de drenar, con la misma
+    /// función: si el servidor no tiene ninguno, los locales entran a la cola y la hidratación los respeta (lo pendiente
+    /// gana). Devuelve cuántos encoló; nil = no se pudo preguntar.
+    static func subirSwapsSinMigrar(entorno: EntornoLegado, token: String, cliente: ClienteRPC, outbox: Outbox) async -> Int? {
+        let disco = entorno.disco(token)
+        switch await cliente.llamar("mypump_get_dieta_activa", ["p_token": .texto(token)]) {
+        case .failure:
+            return nil
+        case .success(let j):
+            guard let dieta = j.primeraFila?["id"]?.comoTexto, disco.leer(Bool.self, "swaps_migrados_\(dieta)") != true,
+                  let locales = disco.leer([String: SwapLocal].self, "swaps_\(dieta).json"), !locales.isEmpty else { return 0 }
+            // `null` es la red, no "cero swaps": tratarlo como vacío volvería a subir lo que se borró en otro lado.
+            guard case .success(let crudo) = await cliente.llamar("mypump_get_food_swaps", ["p_token": .texto(token), "p_dieta_id": .texto(dieta)]),
+                  crudo != .null, let remotos = try? JSONDecoder().decode([FoodSwap].self, from: JSONEncoder().encode(crudo)) else { return nil }
+            let pendientes = (await outbox.pendientesPorClave()).mapValues(\.kind)
+            guard let h = SwapsDeComida.hidratar(remotos: remotos, locales: locales, dietaId: dieta, pendientes: pendientes, yaMigrado: false,
+                                                 enPosicion: { _, _, _ in [] }), h.migrando else { return 0 }
+            var n = 0
+            for op in h.operaciones where pendientes[op.clave] == nil {
+                var payload = op.payload
+                if case .objeto(var o) = payload { o["dietaId"] = .texto(dieta); payload = .objeto(o) }
+                await outbox.encolar(op.kind, payload, dedupeKey: op.clave)
+                n += 1
+            }
+            return n
+        }
     }
 
     /// Por qué una op SIN sesión no se puede mandar (nil = se puede). Con otra rutina activa, `resolveSesion` le crearía
