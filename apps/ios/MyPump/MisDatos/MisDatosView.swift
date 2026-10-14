@@ -31,10 +31,7 @@ struct MisDatosView: View {
             if let salud = modelo.conMuestras ? nil : modelo.salud {
                 Section {
                     NavigationLink {
-                        // En la web esa pantalla se llama "Mis datos", como esta: desde acá se titula por lo que muestra,
-                        // así no se apilan dos "Mis datos".
                         SaludDetalleView(modelo: salud)
-                            .navigationTitle("Salud y recuperación")
                     } label: {
                         ResumenRecuperacion(salud: salud)
                     }
