@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Qué va en la copia de Google hasta Android 11 (android:fullBackupContent). Desde Android 12 manda
+  reglas_extraccion.xml, con lo mismo.
+
+  - El token del cliente vive en noBackupFilesDir (acceso.bin), que Android nunca copia, y cifrado con una clave del
+    Keystore que tampoco sale del teléfono: restaurado en otro teléfono no se podría leer, y la app pide el link.
+  - MyPump/ (una carpeta por cuenta) queda afuera: la cola de escrituras (repetir en otro teléfono acciones de hace
+    semanas), las fotos de progreso que esperan subir, la copia offline del plan y los reemplazos. Todo eso vuelve del
+    servidor al entrar con el link.
+  - Las preferencias (tipo de día, avisos) sí viajan: no son de la cuenta ni secretas.
+-->
+<full-backup-content>
+    <exclude domain="file" path="MyPump/" />
+</full-backup-content>
