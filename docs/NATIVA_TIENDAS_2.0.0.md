@@ -87,8 +87,16 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 
 ## Capturas
 
-La interfaz cambió entera. Hay que sacar capturas nuevas de 6,9" y 13" con la cuenta visible de prueba, nunca de un
-cliente: `scripts/capturas-tienda.mjs` es la referencia, adaptada al simulador. Las sube Mati.
+La interfaz cambió entera, así que van capturas nuevas de 6,9" y 13", nunca de un cliente. Las sube Mati.
+
+- **Borrador del 14-oct:** `scripts/nativa/capturas-tienda-ios.sh` las saca con la DEMO en los simuladores "Tienda 6,9"
+  (iPhone 17 Pro Max, 1320×2868) y "Tienda 13" (iPad Pro 13" M5, 2064×2752), en claro y oscuro, con la barra a las
+  9:41. Son 20 y están en `nativa-evidencia/tienda/20261014-144318`.
+- **Antes de subirlas falta:**
+  - sacar el cartel "Estás viendo la demo — Salir" (un modo de captura solo de DEBUG);
+  - un Progreso con historial: en la demo sale "Aún no hay historial";
+  - Dieta sin el aviso "2.454 kcal (−23 %)": la dieta de ejemplo de la web no cierra con su objetivo de 3.200, y eso
+    también lo ve el revisor de Apple en la demo.
 
 ## Etiqueta de privacidad
 
