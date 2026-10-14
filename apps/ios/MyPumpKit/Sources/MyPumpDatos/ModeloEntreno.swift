@@ -55,11 +55,14 @@ public final class ModeloEntreno {
     @ObservationIgnored var sinHistorialPorClave = false
     @ObservationIgnored var generacionHistorial: [String: Int] = [:]
     @ObservationIgnored var historialEnVuelo: [String: Task<Void, Never>] = [:]
-    @ObservationIgnored var sesionEnVuelo: Task<String?, Never>?
+    /// La creación de la sesión en vuelo, por día y semana (la de otro día no sirve).
+    @ObservationIgnored var sesionEnVuelo: (clave: String, tarea: Task<String?, Never>)?
     @ObservationIgnored var restauracion = 0
     @ObservationIgnored var diaCompletadoMostrado = false
     /// Había un día guardado en este teléfono al arrancar (si no, el del almacenamiento viejo puede ganar).
     @ObservationIgnored var habiaDiaGuardado = false
+    /// Lo último que se escribió del descanso (el tick corre cada 250 ms: se escribe solo si cambió).
+    @ObservationIgnored var descansoEnDisco: Descanso.Guardado?
 
     public init(cliente: ClienteRPC, token: String?, outbox: Outbox?, disco: Disco?, rutina: RutinaActiva, info: ClienteInfo? = nil,
                 catalogo: CatalogoEjercicios = CatalogoEjercicios([]), demo: Bool? = nil, zona: TimeZone = .current,
@@ -78,7 +81,8 @@ public final class ModeloEntreno {
         estructura = n.estructura
         usable = n.usable
         problemas = n.problemas
-        descanso = BarraDescanso(guardado: disco?.leer(Descanso.Guardado.self, Archivo.descanso))
+        let enDisco = disco?.leer(Descanso.Guardado.self, Archivo.descanso)
+        descanso = BarraDescanso(guardado: enDisco)
         sesionesLocales = disco?.leer([String: SesionLocal].self, Archivo.sesiones) ?? [:]
         let semana = rutina.semanaActual == 0 ? 1 : rutina.semanaActual
         let guardado = disco?.leer(String.self, Archivo.dia(rutina.id))
@@ -86,6 +90,7 @@ public final class ModeloEntreno {
         let elegido = TextosEntreno.diaSugerido(n.estructura.dias, ultimo: guardado) ?? Dia(id: "d1")
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: self.demo, zona: zona)
         dia.sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(rutina.id)) ?? [:])
+        descansoEnDisco = enDisco
         guardarDiaVisualizado()
     }
 
@@ -94,8 +99,12 @@ public final class ModeloEntreno {
     /// días completados de la semana y los comentarios.
     public func cargar() async {
         podarSustituciones()
-        descanso.restaurar(ahora: ahoraMs)
-        guardarDescanso()
+        // Solo si no hay uno corriendo: restaurar borra lo guardado (como la web), y un segundo `cargar()` (tirar para
+        // actualizar) dejaría el descanso en curso sin copia en disco.
+        if descanso.descanso == nil {
+            descanso.restaurar(ahora: ahoraMs)
+            guardarDescanso()
+        }
         async let historial: Void = precargarHistorial()
         await restaurarSesion()
         async let completados: Void = cargarDiasCompletados()
@@ -329,9 +338,10 @@ public final class ModeloEntreno {
         arrancarCronometro()
         if let s = dia.sesionId { return s }
         if demo { sesionIniciada = true; return nil }
-        if let t = sesionEnVuelo { return await t.value }
         guard let diaId = dia.dia.id, let token else { return nil }
         let semana = self.semana
+        let clave = "\(diaId)|\(semana)"
+        if let enVuelo = sesionEnVuelo, enVuelo.clave == clave { return await enVuelo.tarea.value }
         let t = Task { [cliente] () -> String? in
             if case .success(let v) = await cliente.llamar("mypump_iniciar_sesion",
                                                            ["p_token": .texto(token), "p_dia_id": .texto(diaId), "p_semana": .numero(Double(semana))]) {
@@ -339,9 +349,9 @@ public final class ModeloEntreno {
             }
             return nil
         }
-        sesionEnVuelo = t
+        sesionEnVuelo = (clave, t)
         let id = await t.value
-        sesionEnVuelo = nil
+        if sesionEnVuelo?.clave == clave { sesionEnVuelo = nil }
         // Si se cambió de día mientras viajaba, no es la sesión del día que se mira.
         if let id, dia.dia.id == diaId, dia.semana == semana {
             dia.sesionId = id
@@ -458,7 +468,8 @@ public final class ModeloEntreno {
         await aplicarPendientes()
     }
 
-    /// Lo que está en la cola sin mandar para el día y la semana que se miran se pinta encima de lo del servidor.
+    /// Lo que está en la cola sin mandar para el día y la semana que se miran se pinta encima de lo del servidor: es lo
+    /// más nuevo (una serie corregida sin red le gana a la que el servidor ya tenía).
     func aplicarPendientes() async {
         guard let ops = await outbox?.operaciones, let diaId = dia.dia.id else { return }
         for op in ops {
@@ -466,7 +477,7 @@ public final class ModeloEntreno {
             guard p["diaId"]?.comoTexto == diaId, p["semana"]?.comoNumero == Double(semana) else { continue }
             if op.kind == "carga", let d = p["datos"], let ex = d["ejercicioId"]?.comoTexto, let n = d["serie"]?.comoNumero {
                 let i = Int(n) - 1
-                guard var e = dia.ejercicios[ex], i >= 0, i < e.series.count, !e.series[i].confirmada else { continue }
+                guard var e = dia.ejercicios[ex], i >= 0, i < e.series.count else { continue }
                 e.series[i].kg = d["peso"]?.comoNumero.map(JS.texto) ?? ""
                 e.series[i].reps = d["reps"]?.comoNumero.map(JS.texto) ?? ""
                 e.series[i].rir = d["rir"]?.comoNumero.map(JS.texto) ?? ""
@@ -908,6 +919,8 @@ public final class ModeloEntreno {
     }
 
     func guardarDescanso() {
+        guard descanso.guardado != descansoEnDisco else { return }
+        descansoEnDisco = descanso.guardado
         if let g = descanso.guardado { disco?.guardar(g, Archivo.descanso) } else { disco?.borrar(Archivo.descanso) }
     }
 }

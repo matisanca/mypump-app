@@ -236,7 +236,8 @@ struct EntrenoSesionTests {
     @Test func loQueSigueEnLaColaSePintaEncimaDeLoDelServidor() async {
         let b = Banco()
         b.servidor.cuando("get_sesion_dia", sesionJSON("ses-1"))
-        b.servidor.cuando("get_registros_sesion", "[]")
+        // El servidor tiene la serie 2 con lo de antes; en la cola está corregida (sin red): gana la cola.
+        b.servidor.cuando("get_registros_sesion", #"[{"ejercicio_id":"jal-d1-0","serie_numero":2,"peso_kg":60,"reps_realizadas":8,"rir_real":null,"notas":null,"ejercicio_nombre":"Jalón al pecho"}]"#)
         await b.cola.encolar("carga", EscriturasEntreno.carga(sesionId: "ses-1", dia: "d1", semana: 5, ejercicio: "jal-d1-0", indice: 1,
                                                               serie: SerieLocal(reps: "9", kg: "62,5", rir: "0", varianteRegistrada: "Supino"),
                                                               nombre: "Jalón al pecho", varianteEjercicio: "Prono"),
@@ -499,6 +500,33 @@ struct EntrenoAccionesTests {
         #expect(completo.pregunta.cuerpo == "Buen trabajo. ¿Querés ir al siguiente día (PIERNA)?" && completo.siguiente?.id == "d3")
         await m.reabrir("pre-d2-0")
         #expect(await m.marcarCompleto("pre-d2-0") == nil, "ya se mostró en este día")
+    }
+
+    @Test func laSesionEnVueloDeOtroDiaNoSeReusa() async {
+        let b = Banco()
+        b.servidor.regla("iniciar_sesion") { p in
+            if p["p_dia_id"]?.comoTexto == "d1" { await demora(150); return (200, #""ses-d1""#) }
+            return (200, #""ses-d2""#)
+        }
+        let m = b.modelo()
+        async let primera = m.asegurarSesion()
+        try? await Task.sleep(for: .milliseconds(20))
+        await m.cambiarDia("d2")
+        let segunda = await m.asegurarSesion()
+        _ = await primera
+        #expect(segunda == "ses-d2" && m.dia.sesionId == "ses-d2")
+        #expect(b.sesionesEnDisco["d1"]?.sesionId == nil, "la del día 1 llegó tarde: no se guarda como la del día que se mira")
+    }
+
+    @Test func otroCargarNoBorraElDescansoEnCurso() async {
+        let b = Banco()
+        let m = b.modelo()
+        await m.cargar()
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "10")
+        m.escribir("jal-d1-0", 0, campo: "kg", valor: "60")
+        await m.confirmarSerie("jal-d1-0", 0) { _ in true }
+        await m.cargar()
+        #expect(m.descanso.visible && b.disco.leer(Descanso.Guardado.self, ModeloEntreno.Archivo.descanso) != nil)
     }
 
     @Test func demo_noEscribeNiTocaLaRed() async {
