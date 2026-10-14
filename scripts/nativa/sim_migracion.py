@@ -15,6 +15,7 @@ Uso (siempre con `python3 -I`):
   backend <salida> <etiqueta>         lo que dice la base de lo sembrado (RPC de lectura) → backend-<etiqueta>.json
   almacen <db> <salida> <etiqueta>    el localStorage con el token tapado → almacen-<etiqueta>.json
   nativa <contenedor> <salida> <etiq> copia los archivos de la nativa (legado/, cuenta) con el token tapado
+  ajustes <contenedor> <salida> <etiq> los UserDefaults `mypump*` de la app (su plist, no el dominio global del simulador)
   verificar <salida>                  junta todo y escribe informe.md; sale con 1 si algo no da
   limpiar <salida>                    deshace los swaps de prueba en la cuenta
 """
@@ -22,6 +23,7 @@ import base64
 import glob
 import json
 import os
+import plistlib
 import random
 import re
 import shutil
@@ -359,6 +361,16 @@ def nativa(contenedor, salida, etiqueta):
     print(f"archivos de la nativa ({etiqueta}): {copiados}")
 
 
+def ajustes(contenedor, salida, etiqueta):
+    """`simctl spawn … defaults read` lee el dominio global del simulador, no el del contenedor de la app: se lee su plist."""
+    t = _token()
+    p = os.path.join(contenedor, "Library", "Preferences", "com.pumpteam.mypump.plist")
+    d = plistlib.load(open(p, "rb")) if os.path.exists(p) else {}
+    out = {k.replace(t, "<TOKEN>"): (v.replace(t, "<TOKEN>") if isinstance(v, str) else v) for k, v in d.items() if k.startswith("mypump")}
+    guardar(salida, f"ajustes-{etiqueta}.json", out)
+    print(f"ajustes {etiqueta}: {sorted(out)}")
+
+
 def verificar(salida):
     plan = leer(salida, "plan.json")
     filas = []
@@ -419,6 +431,11 @@ def verificar(salida):
     estado = leer(os.path.join(salida, "nativa-segundo", "legado"), "estado.json", {})
     recibos = sorted(glob.glob(os.path.join(salida, "nativa-segundo", "legado", "recibos", "*.json")))
     recibo = json.load(open(recibos[0], encoding="utf-8")) if recibos else {}
+    aj = leer(salida, "ajustes-nativa.json", {})
+    chequeo("Ajustes: tema oscuro, tipo de día, notificaciones, onboarding, salud y día visualizado",
+            aj.get("mypump-theme") == "dark" and aj.get("mypump_tipo_dia") == "entreno" and '"check"' in aj.get("mypump_notif_prefs", "")
+            and aj.get("mypump_notif_pedido") == "1" and aj.get("mypump_onboarding_v1") == "1" and aj.get("mypump_health_connected") == "1"
+            and aj.get(f"mypump_dia_visualizado_{plan['rutina']}") == plan["otro_dia"], f"{sorted(aj)}")
     archivos_entreno = glob.glob(os.path.join(salida, "nativa-nativa", "MyPump", "cuenta-*", "legado-entreno.json"))
     entreno = json.load(open(archivos_entreno[0], encoding="utf-8")) if archivos_entreno else {}
     chequeo("Fase L: la sesión en curso y el descanso quedaron para Entreno",
@@ -474,6 +491,8 @@ def main(argv):
         almacen(*a)
     elif cmd == "nativa" and len(a) == 3:
         nativa(*a)
+    elif cmd == "ajustes" and len(a) == 3:
+        ajustes(*a)
     elif cmd == "verificar" and len(a) == 1:
         return verificar(*a)
     elif cmd == "limpiar" and len(a) == 1:

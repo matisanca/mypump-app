@@ -70,9 +70,7 @@ cerrar
 python3 -I $PY nativa "$(contenedor)" $OUT nativa
 python3 -I $PY backend $OUT nativa
 python3 -I $PY almacen "$(base)" $OUT nativa
-for k in mypump-theme mypump_tipo_dia mypump_notif_prefs mypump_notif_pedido mypump_onboarding_v1 mypump_health_connected; do
-  echo "$k = $(xcrun simctl spawn $UDID defaults read $BID $k 2>/dev/null || echo '(no está)')"
-done > $OUT/ajustes-nativa.txt
+python3 -I $PY ajustes "$(contenedor)" $OUT nativa
 
 echo "── 4. Segundo arranque de la nativa"
 xcrun simctl launch $UDID $BID -pestana dieta >/dev/null
