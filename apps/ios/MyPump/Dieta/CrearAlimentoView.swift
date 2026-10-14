@@ -153,13 +153,13 @@ struct CrearAlimentoView: View {
                     return
                 }
                 if let n = d.nombre, !n.isEmpty { nombre = n }
-                if let k = d.kcal { kcal = String(Int(jsRound(k))) }
+                if let k = d.kcal { kcal = String(k.jsEntero) }
                 if let p = d.prot { prot = p.kg }
                 if let c = d.carb { carb = c.kg }
                 if let f = d.fat { fat = f.kg }
                 if let g = d.porcionG, g.isFinite, g > 0, jsRound(g) != 100 {
                     unidad = "porcion"
-                    gramos = String(Int(jsRound(g)))
+                    gramos = String(g.jsEntero)
                 } else {
                     unidad = "g"
                 }

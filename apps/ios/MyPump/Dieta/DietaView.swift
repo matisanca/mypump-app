@@ -151,7 +151,7 @@ struct DietaView: View {
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 0) {
-                    Text(Int((total.kcal ?? 0).rounded()), format: .number)
+                    Text((total.kcal ?? 0).enteroSeguro, format: .number)
                         .font(.numeroMediano)
                         .contentTransition(.numericText())
                     Text("kcal").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
@@ -245,7 +245,7 @@ private struct FilaAlimento: View {
                             .accessibilityLabel("Reemplazado. Tocá para volver a \(original.nombre)")
                         }
                     }
-                    Text("\(FormatoDieta.cantidad(mostrado.qty, mostrado.unidad)) · \(Int((mostrado.kcal ?? 0).rounded())) kcal")
+                    Text("\(FormatoDieta.cantidad(mostrado.qty, mostrado.unidad)) · \((mostrado.kcal ?? 0).enteroSeguro) kcal")
                         .font(.subheadline).foregroundStyle(.secondary)
                     FormatoDieta.macros(mostrado)
                         .font(.caption.monospacedDigit())
@@ -342,7 +342,7 @@ private struct Cabecera: View {
         let anillo = ZStack {
             AnilloMacros(partes: [(kcalP / total, .corazon), (kcalC / total, .alerta), (kcalG / total, .sueno)])
             VStack(spacing: 0) {
-                Text(Int(objetivo.kcal ?? 0), format: .number).font(.numeroGrande).contentTransition(.numericText())
+                Text((objetivo.kcal ?? 0).enteroSeguro, format: .number).font(.numeroGrande).contentTransition(.numericText())
                     .minimumScaleFactor(0.6).lineLimit(1)
                 Text("kcal por día").font(.caption).foregroundStyle(.secondary)
             }
@@ -373,8 +373,8 @@ private struct Cabecera: View {
             HStack(spacing: 8) {
                 Image(systemName: abs(delta) <= 5 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(abs(delta) <= 5 ? Color.exito : Color.alerta)
-                Text("Con las opciones elegidas: ") + Text("\(Int(elegidas.kcal ?? 0)) kcal").bold()
-                    + Text(abs(delta) < 0.5 ? "" : " (\(delta > 0 ? "+" : "")\(Int(delta.rounded())) %)")
+                Text("Con las opciones elegidas: ") + Text("\((elegidas.kcal ?? 0).enteroSeguro) kcal").bold()
+                    + Text(abs(delta) < 0.5 ? "" : " (\(delta > 0 ? "+" : "")\(delta.enteroSeguro) %)")
             }
             .font(.footnote)
             .contentTransition(.numericText())
@@ -422,10 +422,10 @@ private struct FilaMacro: View {
             Circle().fill(color).frame(width: 9, height: 9)
             VStack(alignment: .leading, spacing: 1) {
                 Text(nombre).font(.subheadline.weight(.medium))
-                Text("\(Int((porcentaje * 100).rounded())) % de las kcal").font(.caption).foregroundStyle(.secondary)
+                Text("\((porcentaje * 100).enteroSeguro) % de las kcal").font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
-            Text("\(Int(gramos ?? 0)) g").font(.numeroMediano).monospacedDigit()
+            Text("\((gramos ?? 0).enteroSeguro) g").font(.numeroMediano).monospacedDigit()
         }
         .accessibilityElement(children: .combine)
     }
@@ -444,8 +444,8 @@ private struct ColumnaMacro: View {
                 Circle().fill(color).frame(width: 8, height: 8)
                 Text(nombre).font(.caption.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
             }
-            Text("\(Int(gramos ?? 0)) g").font(.numeroMediano).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
-            Text("\(Int((porcentaje * 100).rounded())) % kcal").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            Text("\((gramos ?? 0).enteroSeguro) g").font(.numeroMediano).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            Text("\((porcentaje * 100).enteroSeguro) % kcal").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -463,7 +463,7 @@ private struct MacroMini: View {
         HStack(spacing: 4) {
             Circle().fill(color).frame(width: 7, height: 7)
             Text(letra).font(.caption.weight(.bold)).foregroundStyle(.secondary)
-            Text("\(Int((valor ?? 0).rounded())) g").font(.caption.monospacedDigit().weight(.medium))
+            Text("\((valor ?? 0).enteroSeguro) g").font(.caption.monospacedDigit().weight(.medium))
                 .contentTransition(.numericText())
         }
     }

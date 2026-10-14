@@ -27,11 +27,11 @@ struct ComidaLibreView: View {
         let b = ComidaLibreNueva.bases(estimacion)
         bases = b
         _descripcion = State(initialValue: estimacion?.descripcion ?? "")
-        _kcal = State(initialValue: estimacion?.kcal.map { String(Int(jsRound($0))) } ?? "")
+        _kcal = State(initialValue: estimacion?.kcal.map { String($0.jsEntero) } ?? "")
         _prot = State(initialValue: estimacion?.prot.map(\.kg) ?? "")
         _carb = State(initialValue: estimacion?.carb.map(\.kg) ?? "")
         _fat = State(initialValue: estimacion?.fat.map(\.kg) ?? "")
-        _gramos = State(initialValue: b.map { String(Int($0.gramosIniciales)) })
+        _gramos = State(initialValue: b.map { String($0.gramosIniciales.enteroSeguro) })
     }
 
     var body: some View {
@@ -125,7 +125,7 @@ struct ComidaLibreView: View {
 
     private func recalcular(_ nuevos: [String]) {
         let t = ComidaLibreNueva.totales(bases, gramos: ComidaLibreNueva.gramos(bases, escritos: nuevos.map(AlimentoPropioNuevo.leerNumero)))
-        kcal = String(Int(t.kcal)); prot = t.prot.kg; carb = t.carb.kg; fat = t.fat.kg
+        kcal = String(t.kcal.enteroSeguro); prot = t.prot.kg; carb = t.carb.kg; fat = t.fat.kg
     }
 
     private func guardar() async {
