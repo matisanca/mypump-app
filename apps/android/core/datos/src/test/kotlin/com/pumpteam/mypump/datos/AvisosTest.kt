@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.datos
 
+import java.time.DayOfWeek
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -19,6 +20,28 @@ class AvisosTest {
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino("chat"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino("comentarios"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino(null))
+    }
+
+    /**
+     * El aviso del domingo llega como un mensaje de Mati (pedido del 14-oct): su nombre de título, como sus mensajes del
+     * chat, y escrito como él les escribe a los clientes (sin dos puntos, guiones ni emojis). Abre Revisión.
+     */
+    @Test
+    fun elAvisoDelDomingoEsUnMensajeDeMati() {
+        assertEquals("Mati", AvisoDomingo.TITULO)
+        assertEquals("1002", AvisoDomingo.ID, "el id de la Capacitor: reprogramar pisa el viejo")
+        assertEquals(DayOfWeek.SUNDAY, AvisoDomingo.diaDeLaSemana)
+        assertEquals(11 to 0, AvisoDomingo.HORA to AvisoDomingo.MINUTO)
+        assertEquals(DestinoAviso.REVISION, DestinoAviso.deDestino(AvisoDomingo.DESTINO))
+        val cuerpo = AvisoDomingo.CUERPO
+        assertTrue(cuerpo.isNotBlank())
+        assertTrue(listOf(":", "-", "–", "—").none { it in cuerpo }, cuerpo)
+        // Un emoji es un símbolo (So), va fuera del plano básico o lleva un selector de variación, una unión o un marco de
+        // tecla. `Character.isEmoji` recién está en Java 21, y estos módulos son para la 17.
+        val emojis = cuerpo.codePoints().filter { c ->
+            Character.getType(c) == Character.OTHER_SYMBOL.toInt() || c > 0xFFFF || c == 0xFE0F || c == 0x200D || c == 0x20E3
+        }.toArray()
+        assertTrue(emojis.isEmpty(), cuerpo)
     }
 
     @Test

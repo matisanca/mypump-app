@@ -57,6 +57,9 @@ y números grandes van en Archivo.
 - **El permiso para la IA (D7).** Lo que manda algo a la IA llama a `LocalPermisoIA.current.antesDeUsarIA(modelo) { acepta -> … }`
   antes del primer uso: si el cliente nunca decidió, aparece la hoja y después sigue. Lo van a usar el chat, la foto de
   una comida y el check, que todavía no existen en Android.
+- **El aviso del domingo** no se configura y llega como un mensaje de Mati: `AvisoDomingo` (título "Mati", id 1002 de la
+  Capacitor, domingo a las 11:00, abre Revisión), gemelo del de iOS. Las notificaciones todavía no están en Android;
+  `PreferenciasAvisos` queda por la migración, no para agendar.
 - **Links (fuentes y legales).** `abrirEnNavegador` abre una Custom Tab (`androidx.browser`, OK de Mati del 14-oct),
   como el SFSafariViewController de iOS; sin un navegador que las soporte, va al navegador.
 - **Recursos compartidos.** Gradle copia en la compilación (`app/build/generated/compartido/`) la fuente Archivo de la app

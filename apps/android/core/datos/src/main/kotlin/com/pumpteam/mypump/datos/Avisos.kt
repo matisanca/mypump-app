@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import java.time.DayOfWeek
 import kotlinx.serialization.json.Json
 
 /**
@@ -31,8 +32,28 @@ enum class DestinoAviso {
 }
 
 /**
- * `mypump_notif_prefs` (notificaciones.js): un solo recordatorio, la revisión del domingo, apagable y con hora. Lo
- * guardado se mezcla sobre los valores por defecto campo por campo; claves viejas (entreno, peso, racha) se ignoran.
+ * El aviso del domingo (pedido de Mati, 14-oct): no se configura y llega como un mensaje suyo, con el título de sus
+ * mensajes del chat ("Mati", mig 057) y su forma de escribirles a los clientes (sin dos puntos, guiones ni emojis).
+ * Reusa el id 1002 de la Capacitor: reprogramar pisa el que dejó la app vieja. Gemelo de `AvisoDomingo` de iOS; en
+ * Android las notificaciones todavía no están, y esto es lo que van a agendar.
+ */
+object AvisoDomingo {
+    const val ID = PreferenciasAvisos.ID_REVISION
+    const val TITULO = "Mati"
+    const val CUERPO = "Cómo venís esta semana? Subí tu revisión así te hago la devolución"
+    const val DESTINO = "revision"
+
+    /** Domingo a las 11:00, hora del teléfono: es cuando se arma la ronda de Mati (en iOS, el `weekday` 1). */
+    val diaDeLaSemana: DayOfWeek = DayOfWeek.SUNDAY
+    const val HORA = 11
+    const val MINUTO = 0
+}
+
+/**
+ * `mypump_notif_prefs` (notificaciones.js): un solo recordatorio, la revisión del domingo, apagable y con hora. La
+ * nativa no lo usa para agendar (el aviso del domingo es [AvisoDomingo], que no se configura): queda por los ids de la
+ * Capacitor y porque la migración trae la clave. Lo guardado se mezcla sobre los valores por defecto campo por campo;
+ * claves viejas (entreno, peso, racha) se ignoran.
  */
 data class PreferenciasAvisos(val check: Recordatorio) {
     data class Recordatorio(val on: Boolean, val hora: Int, val min: Int)
