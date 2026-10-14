@@ -60,7 +60,6 @@ import androidx.lifecycle.viewModelScope
 import com.pumpteam.mypump.ModeloAppViewModel
 import com.pumpteam.mypump.acceso.HojaPermisoIA
 import com.pumpteam.mypump.acceso.LocalPermisoIA
-import com.pumpteam.mypump.acceso.PermisoIAEstado
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.datos.EstadoGuardado
 import com.pumpteam.mypump.datos.ModeloApp
@@ -95,7 +94,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val desdeCache by modelo.desdeCache.collectAsStateWithLifecycle()
     val estadoGuardado by modelo.estadoGuardado.collectAsStateWithLifecycle()
     val destino by vm.destino.collectAsStateWithLifecycle()
-    val permisoIA = remember { PermisoIAEstado() }
+    // En el ViewModel: un pedido de permiso sobrevive a rotar la pantalla.
+    val permisoIA = vm.permisoIA
     val estadosPestanas = rememberSaveableStateHolder()
     val badges = badges(modelo, esDemo)
 

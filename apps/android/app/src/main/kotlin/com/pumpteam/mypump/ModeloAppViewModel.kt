@@ -6,6 +6,7 @@ import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pumpteam.mypump.acceso.Apariencia
+import com.pumpteam.mypump.acceso.PermisoIAEstado
 import com.pumpteam.mypump.acceso.PreferenciasCompartidas
 import com.pumpteam.mypump.acceso.TokenEnKeystore
 import com.pumpteam.mypump.datos.ClienteRpc
@@ -57,6 +58,12 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** D5: lo que eligió el cliente ("Siempre en modo oscuro"). */
     val apariencia = Apariencia(app)
+
+    /**
+     * D7: el pedido de permiso para la IA que está esperando respuesta. Vive acá y no en la pantalla: al rotar, la hoja
+     * vuelve a aparecer con lo que el cliente estaba por hacer.
+     */
+    val permisoIA = PermisoIAEstado()
 
     /** "2.0.0 (100)", como en el recibo de la migración. */
     val version: String = ArranqueMigracion.version(app)
