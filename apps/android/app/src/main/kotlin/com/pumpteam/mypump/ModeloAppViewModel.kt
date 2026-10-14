@@ -14,6 +14,7 @@ import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.Transporte
 import com.pumpteam.mypump.datos.TransporteOkHttp
+import com.pumpteam.mypump.entreno.Preguntador
 import com.pumpteam.mypump.legado.ArranqueMigracion
 import com.pumpteam.mypump.legado.RegistroLegado
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
@@ -73,6 +74,12 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Lo que anotó la migración (para "Informe de la actualización" en Mis datos). */
     val registroMigracion: File get() = RegistroLegado.archivo(app)
+
+    /**
+     * Las preguntas de Entreno que esperan respuesta (reabrir el día, "¿Está bien cargado?", "¡Día completado!"…). Viven
+     * acá: lo que las espera corre en el alcance de la app y una pregunta abierta sobrevive a rotar la pantalla.
+     */
+    val preguntasEntreno = Preguntador()
 
     /** Lo que dijo la Activity antes de que el modelo existiera. */
     private var aLaVista = true
