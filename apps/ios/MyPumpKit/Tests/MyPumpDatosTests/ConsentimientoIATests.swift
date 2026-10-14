@@ -12,6 +12,8 @@ struct ConsentimientoIATests {
     final class Estado: @unchecked Sendable {
         var respuesta: (Int, String) = (200, #"{"acepta":null}"#)
         var conRed = true
+        /// Guardar el permiso falla (transitorio) aunque haya red: la decisión sigue en la cola.
+        var guardarFalla = false
         var guardados: [JSONValue] = []
         var visiones = 0
     }
@@ -22,7 +24,9 @@ struct ConsentimientoIATests {
             switch fn {
             case "mypump_get_cliente_info": return (200, #"[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"#)
             case "mypump_get_consentimiento_ia": return e.respuesta
-            case "mypump_guardar_consentimiento_ia": e.guardados.append(cuerpo); return (200, "true")
+            case "mypump_guardar_consentimiento_ia":
+                if e.guardarFalla { return (503, "{}") }
+                e.guardados.append(cuerpo); return (200, "true")
             case "mypump_get_rutina_activa": return (200, #"[{"id":"r1","semana_actual":1,"estructura":{"dias":[]}}]"#)
             case "vision": e.visiones += 1; return (200, "{}")
             default: return (200, "[]")
@@ -81,6 +85,7 @@ struct ConsentimientoIATests {
         e.conRed = false
         await m.decidirConsentimientoIA(true)   // queda en la cola
         e.conRed = true
+        e.guardarFalla = true   // si no, la cola podía mandarla antes de recargar y el servidor de mentira sigue en null
         e.respuesta = (200, #"{"acepta":null}"#)
         // Recarga antes de que la cola salga: lo pendiente gana.
         await m.cargar()
