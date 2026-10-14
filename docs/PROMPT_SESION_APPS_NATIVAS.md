@@ -112,7 +112,9 @@ cliente como parámetro de cada RPC. No hay login con contraseña. El acceso es 
 
 **53 RPC que usa la app hoy.** Se sacaron cruzando los textos del cliente con `pg_proc`. Antes de
 escribir código, confirmá cuáles se llaman de verdad y con qué parámetros, mirando la definición
-VIGENTE: la última migración que la redefine, o `pg_get_functiondef` en la base.
+VIGENTE con `pg_get_functiondef` en la base.
+- No confíes en el último archivo de migraciones: al 13-oct la `079_publicar_conserva_ids_de_dia.sql`
+  está en el repo **sin commitear y sin aplicar**.
 
 - **Lectura (29):** `chat_nuevos`, `get_adherencia_30d`, `get_chat`, `get_checkin_semana`,
   `get_cliente_info`, `get_cliente_prefs`, `get_comentarios`, `get_comidas_libres`,
