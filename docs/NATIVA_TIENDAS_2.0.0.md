@@ -44,10 +44,21 @@ Mis datos), and at https://app.mypumpteam.com/privacidad.html.
 ```
 
 **Antes de enviar, revisar:**
-- **D7 (IA de terceros, 5.1.2(i)):** el chat puede contestar con IA, que habla como Mati, y la foto del plato usa un
-  servicio externo. Para un binario nuevo Apple puede exigir aviso y consentimiento. Decisión de Mati: o se agrega un
-  consentimiento único antes del primer uso (una pantalla, una hora de trabajo), o se explica en estas notas y se
-  arriesga el rechazo.
+- **D7 (IA de terceros, 5.1.2(i)):** Apple pide decir con quién se comparten los datos (también una IA de terceros) y
+  pedir permiso explícito antes. Lo que hay hoy (verificado en `origin/main` el 14-oct):
+  - **Chat:** `pump-centinela/chat_worker.py` corre Codex (OpenAI, con la cuenta de ChatGPT de la Mini). Ve el hilo y
+    un resumen del check de la semana, peso incluido. No ve las métricas de salud (HRV, sueño). Tiene dos modos:
+    - **sombra:** deja un borrador que Mati manda, edita o descarta;
+    - **automático** (`CHAT_IA_AUTO=1`): las respuestas "simples" salen solas, con demora humana.
+  - **Foto del plato y etiqueta:** `mini-vision/server.mjs` manda la imagen a Codex (OpenAI) y devuelve los valores.
+  - **Las opciones:**
+    - **(a)** Consentimiento único antes del primer mensaje o de la primera foto, con un "no" que el servidor respete.
+      Hace falta un campo en la base (G2) y que `chat_worker` saltee a quien no aceptó: lo contesta Mati a mano. La
+      foto sin aceptar no se analiza. Es lo más seguro para la revisión: la app ~1 h, el servidor ~1 h.
+    - **(b)** Pantalla informativa sin opción de decir que no. Más simple, pero no es el "permiso explícito" que pide
+      la guía.
+    - **(c)** Explicarlo solo en estas notas y arriesgar el rechazo. En modo sombra la respuesta la manda Mati, y eso
+      ayuda a defenderlo.
 - **iOS mínimo 17.** Hay que publicar antes la 1.0.12: es la última que van a poder instalar quienes tengan iOS 15 o 16.
 - **Lanzamiento:** `release_type: MANUAL` con phased release de 7 días. Nunca con `cancel_previous_submissions`.
 
