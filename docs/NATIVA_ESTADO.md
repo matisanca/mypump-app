@@ -53,7 +53,7 @@ commitea.
 | **Dieta (iPhone)** | ✅ datos reales, sin Comí/Salté (D10), mano, reemplazo, alimento propio con escaneo, comidas libres. XCUITest en 17.5 y 26.5. Falta: dieta de ejemplo (DIE-17), recarga al cambiar el día (DIE-18) |
 | Modelos de Chat, Revisión/Mi Día, fotos de progreso y Progreso | ✅ con tests y backend real (falta conectar las pantallas: lo hace el agente de diseño) |
 | Bienvenida, demo, sin conexión, aviso de guardado, volver a primer plano | ✅ (XCUITest de acceso) |
-| Notificaciones (local del domingo, push, destinos) | ✅ código; falta probar el push en un iPhone (TF-0) |
+| Notificaciones (local del domingo, push, destinos) | ✅ push real al iPhone de Mati aceptado por APNs (14-oct 18:34; falta que confirme que lo vio y que abrió Revisión). El del domingo, visto en lo que iOS deja agendado en el simulador. En su iPhone se ve el domingo 18-oct a las 11:00 |
 | Respaldo científico (14 fuentes), entitlements, PrivacyInfo, workflow `ios-nativa` | ✅ (el workflow no se dispara hasta que Mati acepte el contrato de Apple) |
 | Migración del almacenamiento viejo (Fase L/R + write-back) | ✅ simulador 26.5 23/23 y 17.5 22/22 (`scripts/nativa/sim-migracion.sh`). **TF-0 con la 100 falló en el iPhone** (no encontraba los archivos, ver bitácora 14-oct 14:15); arreglado en la 101 y probado contra la copia real |
 | Motor de Entreno (`ModeloEntreno` + reglas) | ✅ mergeado: 4.546 vectores públicos y 80.461 privados, integración real |
@@ -63,8 +63,9 @@ commitea.
 | Salud (HealthKit, recuperación, relojes) | ✅ mergeada: 35 casos de la web + banco en simulador 1.091/1.091 registros; el historial ya no pisa la noche de hoy (desvío a propósito, ver `NATIVA_PROPUESTAS_WEB.md`) |
 | Hoja de permisos de la primera vez (GEN-06), aviso de fin de descanso (D8), aviso de plan incompleto (GEN-05) | ✅ (XCUITest del onboarding) |
 | Android: base, reglas y capa de datos (`:core`) | ✅ mergeado en `nativa` el 14-oct (81338b8): reglas con los vectores de la web, Entreno, Salud, cola, chat, Revisión, migración (parte pura), palanca, recibo y conteos (`nativa_001`, probada contra el backend con `test-nativa-android`) |
-| Android: lector del almacenamiento viejo con WebView y arranque de la migración en `:app`, prueba en el emulador, D7 | ✅ mergeado el 14-oct (4e48457): leveldb encontrado sin rutas fijas, **24/24 de punta a punta en el emulador** (`scripts/nativa/emu-migracion.sh`), D7 en el modelo y la cola; 400 tests JVM + 9 instrumentados. Falta: un teléfono real con la 1.0.12 de Play, la pantalla del permiso en Compose y la decisión de backup de `app_webview/` |
-| Android: pantallas en Compose, Health Connect, FCM | ☐ |
+| Android: lector del almacenamiento viejo con WebView y arranque de la migración en `:app`, prueba en el emulador, D7 | ✅ mergeado el 14-oct (4e48457): leveldb encontrado sin rutas fijas, **24/24 de punta a punta en el emulador** (`scripts/nativa/emu-migracion.sh`), D7 en el modelo y la cola; 400 tests JVM + 9 instrumentados. Backup decidido (D14). Falta: un teléfono real con la 1.0.12 de Play |
+| Android: pantallas en Compose | 🟡 acceso, demo, sin conexión, permiso de la IA, Dieta en lectura y Mis datos (375f970); fuentes y legales en una Custom Tab (0c745f7); 43 pruebas instrumentadas. Entreno en curso (subagente, en un worktree). Faltan Chat, Revisión, Dieta con escritura y Progreso |
+| Android: Health Connect, FCM | ☐ |
 
 
 **Herramientas nuevas:** `scripts/nativa/lanzar-sim.sh` (abre la app con una cuenta de prueba sin que el token pase por
@@ -75,7 +76,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | Compuerta | Estado |
 |---|---|
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
-| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14): lista y ensayada en rollback (53/53, también como `anon`); falta que Mati la aplique** (comando en la bitácora del 14-oct 17:30). Pendiente para otra tanda: `mypump_borrar_serie` |
+| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14) aplicada por Mati el 14-oct a las 18:16**: API pública, esquema (solo agregados) y auditoría sin agujeros, y una sustitución pasa entre dos teléfonos contra producción. Pendiente para otra tanda: `mypump_borrar_serie` |
 | G5 · TestFlight externo | pendiente. Los internos ya están autorizados |
 | G6 · mensajes a clientes | pendiente |
 | G7 · revisión de tiendas | pendiente |
@@ -113,6 +114,32 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
 
 ## Bitácora
+
+- **14-oct 18:45, "hacelo todo vos" (Mati):**
+  - **`nativa_003` aplicada** por Mati a las 18:16 (captura de su terminal: COMMIT). Verificado:
+    - leer, guardar y borrar responden por la API pública;
+    - el esquema regenerado (b76f4d1) solo agrega;
+    - `auditar_seguridad_db.py` no encuentra agujeros (lo que marca ya estaba y es a propósito);
+    - **una sustitución pasa de un teléfono a otro y vuelve contra producción**, con la cuenta `test-nativa-real`
+      (IntegracionTests.unaSustitucionPasaDeUnTelefonoAOtro, 38b641a);
+    - la migración en el simulador sube la sustitución de la app vieja: **25/25** ("Remo sentado en polea",
+      `migracion/20261014-181947`).
+  - **Android:** `androidx.browser`, `ui-test-junit4` y `ui-test-manifest` (G4 con el OK). Las fuentes y los legales
+    abren en una Custom Tab, como el Safari de iOS (0c745f7). **43/43 instrumentadas** en un emulador propio
+    (`nativa36b`; el `nativa36` lo usa el subagente de Entreno). D14 decidido (58bac1d).
+  - **En el iPhone de Mati** (su cuenta, su único teléfono registrado, la 2.0.0 de TestFlight):
+    - **push real:** `mypump_encolar_push` a su cuenta con destino Revisión (cola 1503). `push.py` lo mandó a las 18:34
+      y APNs lo aceptó ("1 enviados, 0 con error"). Falta que confirme que lo vio y que tocarlo abrió Revisión;
+    - **`?diag=health`:** abierto con `devicectl … --payload-url`. Un link sin `t=` no cambia la cuenta
+      (`FormatoToken.extraer` da nil). No se pudo ver la pantalla: la duplicación del iPhone dice "iPhone en uso";
+    - **el AASA del CDN de Apple** solo abre la app para `/`, `/cliente` y `/cliente.html` **con `t`**. El link de
+      soporte tiene que ser `?t=<token>&diag=health` (igual que con la Capacitor: el AASA es el mismo);
+    - **el aviso del domingo:** visto en lo que iOS deja agendado en el simulador 26.5 con una prueba nueva
+      (AvisosUITests: "Activar recordatorios" con el permiso aceptado). Queda un solo pedido: 1002, domingo 11:00,
+      semanal, "Tu revisión de la semana", abre Revisión. Lo lee `scripts/nativa/avisos_programados.py <udid>`. En el
+      iPhone de Mati se verá el **domingo 18-oct a las 11:00**.
+  - **Falta en el iPhone, con el teléfono libre (bloqueado, para la duplicación):** el diagnóstico de Universal Links
+    (Ajustes → Desarrollador) con un link de prueba, sin abrirlo, y ver la hoja de `?diag=health`.
 
 - **14-oct 17:30, sustituciones de ejercicio en el servidor (SER-14, decisión de Mati de las 16:24):**
   - **Base:** `supabase/migrations/nativa_003_sustituciones_ejercicio.sql`. Una tabla (`mypump_exercise_swaps`) y cinco

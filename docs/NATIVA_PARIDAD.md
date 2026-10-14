@@ -32,7 +32,7 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| ACC-01 | Token por universal link o app link `app.mypumpteam.com/?t=`, `/cliente?t=` o `/cliente.html?t=`, con regex `^[a-zA-Z0-9_-]{16,64}$` | `deeplink.js`, AASA | 🟡 `onOpenURL` + `FormatoToken` + entitlement applinks; falta probar en un iPhone · ver auditoría 14-oct | ☐ |
+| ACC-01 | Token por universal link o app link `app.mypumpteam.com/?t=`, `/cliente?t=` o `/cliente.html?t=`, con regex `^[a-zA-Z0-9_-]{16,64}$` | `deeplink.js`, AASA | 🟡 `onOpenURL` + `FormatoToken` + entitlement applinks. El AASA que sirve el CDN de Apple (14-oct) trae `7H22AXLUS4.com.pumpteam.mypump` para `/`, `/cliente` y `/cliente.html` con `t`; falta el diagnóstico de Universal Links en un iPhone · ver auditoría 14-oct | ☐ |
 | ACC-02 | Orden de resolución: `?t=`, path, guardado. Un `?t=` igual a `mypump_token_invalido` no pisa a uno guardado válido | `C:1257-1299` | ✅ el link inválido no pisa una cuenta que anda | ☐ |
 | ACC-03 | Sin token: "Bienvenido a MyPump", campo "pegá tu link" que acepta URL entera, a medias o el token solo, y "Ver demo" | `index.html:376-423`, `C:3415+` | ✅ bienvenida/demo (XCUITest) | ☐ |
 | ACC-04 | Token inválido (`[]` sin error): "Este link ya no sirve", borra el token, guarda `token_invalido` y deja pegar uno nuevo | `C:3415-3484` | ✅ bienvenida/demo (XCUITest) | ☐ |
@@ -40,7 +40,7 @@ Hasta que se decidan, rige lo de hoy.
 | ACC-06 | Arranque sin red con copia offline: muestra plan y dieta guardados con el banner sin conexión | `C:8699-8711`, `8933` | ✅ copia offline (integración) + banner | ☐ |
 | ACC-07 | Demo: datos empaquetados, **sin red ni token**, sin chat, comentarios, comidas libres, relojes ni onboarding; Mi Día sembrado (racha 3) | `C:1240`, `1409-1550`, `8870` | ✅ bienvenida/demo (XCUITest) | ☐ |
 | ACC-08 | Sin rutina usable → rutina de ejemplo con banner "Modo demo — Mati todavía no publicó tu plan". Sin dieta → dieta de ejemplo con escrituras apagadas (`_dietaEjemplo`) | `C:8766-8800` | ➖ D11+ (decisión de Mati, 14-oct): sin rutina, "Todavía no hay rutina"; con un motor de ejemplo, el aviso de la web (ListaEntreno deEjemplo) | ☐ |
-| ACC-09 | Parámetros `?scene=<destino>` (validado contra las escenas) y `?diag=health` | `C:8587-8594`, `8673` | 🟡 ?scene= contra las 7 escenas (AvisosTests.escenaDelLink) y ?diag=health (2b41011); falta probar el link en un iPhone | ☐ |
+| ACC-09 | Parámetros `?scene=<destino>` (validado contra las escenas) y `?diag=health` | `C:8587-8594`, `8673` | 🟡 ?scene= contra las 7 escenas (AvisosTests.escenaDelLink) y ?diag=health (2b41011). En el iPhone de Mati se abrió por `devicectl` (sin `t=` no toca la cuenta). Ojo: el AASA solo abre la app si el link trae `t=`, así que el de soporte es `?t=<token>&diag=health`, igual que con la Capacitor; falta ver la hoja en pantalla | ☐ |
 | ACC-10 | Cambio de cuenta: llega un link con otro token válido → reemplaza (como la web) | `deeplink.js:15-43` | ✅ otro token válido reemplaza | ☐ |
 
 ## GEN · Estructura, avisos y ciclo de vida
@@ -96,7 +96,7 @@ Hasta que se decidan, rige lo de hoy.
 | SER-11 | Sustitutos: mismo `patron_movimiento` y `primary_muscle`, otro equipo primero, máximo 30; no aplica a calentamiento ni cardio; búsqueda; "🔒 Fijar para las próximas semanas" (sin tildar = solo hoy) | `A:692-737`, `C:9187-9324` | ✅ lista y orden en SustitucionVectoresTests; la búsqueda contra la web en BusquedaSustitutosTests.comoLaWeb (resultados de node) | ☐ |
 | SER-12 | Poda: los no fijados se borran al cambiar de semana o al cerrar ese día; los fijados duran. Una entrada sin `fijado` cuenta como fijada | `C:2137-2161`, `8826-8836` | ✅ ver auditoría 14-oct | ☐ |
 | SER-13 | Con sustitución, la serie se guarda con el nombre del sustituto (el historial lo sigue) y el `ejercicio_id` del lugar. Aplicar o revertir invalida y vuelve a pedir el historial | `C:3008-3011`, `2040-2117` | ✅ ver auditoría 14-oct | ☐ |
-| SER-14 | Sustituciones **en el servidor** (tabla nueva, G2): también desde otro dispositivo de la nativa | plan, `nativa_003` | 🟡 gana lo más nuevo (hora del servidor, lápidas con la hora de lo que se vio, relojes desfasados acotados), poda solo local, sin avisos (9cd1f65, 9edff18, d10c974; SustitucionesServidorTests: un caso por cada hallazgo de las tres rondas de revisión, 18 mutantes); migración ensayada en rollback 61/61; **falta aplicar `nativa_003` (G2, Mati)** y verlo pasar entre dos teléfonos | 🟡 lo mismo en `:core` (1d151d9, d0a579b; 14 mutantes) |
+| SER-14 | Sustituciones **en el servidor** (tabla nueva, G2): también desde otro dispositivo de la nativa | plan, `nativa_003` | ✅ gana lo más nuevo (hora del servidor, lápidas con la hora de lo que se vio, relojes desfasados acotados), poda solo local, sin avisos (9cd1f65, 9edff18, d10c974; SustitucionesServidorTests: un caso por cada hallazgo de las tres rondas de revisión, 18 mutantes); migración ensayada en rollback 61/61. **Aplicada por Mati el 14-oct a las 18:16** y verificada: una sustitución pasa de un teléfono a otro y vuelve contra producción (IntegracionTests.unaSustitucionPasaDeUnTelefonoAOtro, 38b641a) y la migración en el simulador sube la de la app vieja (25/25: "Remo sentado en polea") | 🟡 lo mismo en `:core` (1d151d9, d0a579b; 14 mutantes); falta la prueba contra el servidor |
 | SER-15 | Estados: "Marcar completo" exige todas las series confirmadas; "Terminé este ejercicio" sin series pide confirmación y lo deja `completo_sin_datos` manual; reabrir | `C:4337-4392` | ✅ ver auditoría 14-oct | ☐ |
 
 ## SES · Sesión, cronómetro, descanso y cierre
@@ -197,17 +197,17 @@ Hasta que se decidan, rige lo de hoy.
 | SAL-10 | Card Salud: pasos, minutos activos, sueño, HRV y promedio de pasos | `C:7233-7328` | ✅ ver auditoría 14-oct | ☐ |
 | SAL-11 | Mis datos: cómo se arma el score (componentes y pesos), sueño, corazón, actividad, otras señales y cuerpo, cada uno con 7 y 30 días y gráfico chico; toggle "Mostrarme el score" | `C:6886-7059` | ✅ las secciones sin datos no se muestran, como _seccionSalud (6ff7be2); componentes, 7/30 días y el interruptor con test | ☐ |
 | SAL-12 | Prioridad de fuentes: whoop/oura/withings/polar > apple_health = health_connect > rook > manual | `C:6440-6457` | ✅ ver auditoría 14-oct | ☐ |
-| SAL-13 | Diagnóstico de salud (hoy 5 toques o `?diag=health`) | `C:8605-8665` | 🟡 5 toques y ahora ?diag=health (2b41011); falta probar el link en un iPhone (el simulador no valida el AASA) | ☐ |
+| SAL-13 | Diagnóstico de salud (hoy 5 toques o `?diag=health`) | `C:8605-8665` | 🟡 5 toques y ahora ?diag=health (2b41011); con `t=` en el link (ver ACC-09); falta ver la hoja en un iPhone | ☐ |
 
 ## NOT · Notificaciones
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| NOT-01 | Registro de push desde el primer arranque con permiso: iOS = APNs hex MAYÚSCULAS `'ios'`; Android = FCM `'android'`; con `app_version` | `NT:278-323`, `push.py` | ✅ registro ✅ (hex MAYÚSCULAS, solo si cambió, sin debug); falta probar en un iPhone (TF-0) · ver auditoría 14-oct | ☐ |
+| NOT-01 | Registro de push desde el primer arranque con permiso: iOS = APNs hex MAYÚSCULAS `'ios'`; Android = FCM `'android'`; con `app_version` | `NT:278-323`, `push.py` | ✅ registro ✅ (hex MAYÚSCULAS, solo si cambió, sin debug). El iPhone de Mati con la 2.0.0 quedó registrado y un push real a su cuenta salió bien (cola 1503, APNs lo aceptó el 14-oct a las 18:34); falta que confirme que lo vio · ver auditoría 14-oct | ☐ |
 | NOT-02 | Un solo transporte por teléfono | test `test-un-solo-transporte` | ✅ ver auditoría 14-oct | ☐ |
 | NOT-03 | Tocar el aviso abre el `destino` (train, diet, progress, myday, revision, salud, chat); uno desconocido cae a Chat | `NT:326-336`, `057:342` | ✅ `DestinoAviso` (tests); falta que la raíz cambie de pestaña | ☐ |
 | NOT-04 | Con la app abierta se muestra banner y sonido (`willPresent` / canal propio en Android) | `capacitor.config.json` | ✅ willPresent banner+lista+sonido | ☐ |
-| NOT-05 | Local "Tu revisión de la semana": id 1002, domingos a las 11:00, semanal, abre Revisión; se cancelan 1001/1003/1004; apagado = nada agendado | `NT:46-147`, test `test-notificaciones` | ✅ id 1002 dom 11:00, cancela 1001/1003/1004 | ☐ |
+| NOT-05 | Local "Tu revisión de la semana": id 1002, domingos a las 11:00, semanal, abre Revisión; se cancelan 1001/1003/1004; apagado = nada agendado | `NT:46-147`, test `test-notificaciones` | ✅ id 1002 dom 11:00, cancela 1001/1003/1004. Visto en lo que iOS deja agendado (simulador 26.5, 14-oct): un solo pedido, 1002, domingo 11:00, se repite, abre Revisión (AvisosUITests + `scripts/nativa/avisos_programados.py`) | ☐ |
 | NOT-06 | Recordatorios configurables en Mis datos (`mypump_notif_prefs`) | `C:7172-7231` | ✅ ver auditoría 14-oct | ☐ |
 | NOT-07 | Android: canal propio como `default_notification_channel_id`, ícono `ic_stat_mypump`, `POST_NOTIFICATIONS` | memoria `project_push_android_web` | ➖ | ☐ |
 | NOT-08 | Al actualizar, las locales que dejó la Capacitor no se duplican (iOS: ids "1001"-"1004"; Android: PendingIntents de `TimedNotificationPublisher`) | plan | ✅ mismos ids que la Capacitor: reprogramar pisa | ☐ |
@@ -262,14 +262,15 @@ cerraron después DIA-01, DIA-06, MIG-07, GEN-03 y GEN-06 (ver la columna iOS). 
 1. ~~**Fotos (MIG-03, REV-02, REV-03).**~~ Cerrado el 14-oct: la nueva y la migrada llegan al servidor, y lo guardado es
    un JPEG de 675×900 sin GPS (IntegracionTests, con `MYPUMP_PROBAR_FOTOS=1`: el servicio deja 12 por día).
 2. **El link en un iPhone (ACC-01).** Lo prueba Mati en el TF-0, porque el simulador no valida el AASA (`FAKETEAMID`).
-3. **Sustituciones de ejercicio en el servidor (SER-14).** Hechas en las dos apps y con la migración `nativa_003`
-   ensayada; falta que Mati la aplique (G2).
+3. ~~**Sustituciones de ejercicio en el servidor (SER-14).**~~ `nativa_003` aplicada por Mati el 14-oct; en iOS pasa de
+   un teléfono a otro contra producción. En Android falta esa prueba.
 4. ~~**Rutina de ejemplo para una cuenta sin plan (ACC-08).**~~ Decidido por Mati (D11+): "Todavía no hay rutina".
 5. ~~**El tema oscuro guardado (GEN-02, D5).**~~ Se aplica desde el arranque y hay un interruptor en Mis datos.
 6. ~~**Salud (SAL-11).**~~ Las secciones sin datos se ocultan, como en la web.
 7. ~~**Entreno (ENT-01).**~~ El globo de comentarios y el ✓ van juntos; con un solo día no hay selector.
 8. ~~**Desvíos de diseño sin registrar.**~~ Aceptados por Mati: CHA-01 (D12) y ENT-17 (D13).
-9. **`?diag=health` (SAL-13, ACC-09).** Hecho (2b41011); falta abrir el link en un iPhone.
+9. **`?diag=health` (SAL-13, ACC-09).** Hecho (2b41011) y abierto en el iPhone de Mati; falta verlo en pantalla. El
+   link de soporte lleva `t=` (el AASA no abre la app sin él).
 10. **Hecho, falta la prueba o la captura:** APL-06 (iPad en ancho compacto, que App Review mira), ENT-15, SER-11,
     SER-04, SES-04, SES-05, CHA-02, CHA-04, REV-04, REV-05, REV-08, GEN-05, GEN-08, DIE-01, ENT-10, ENT-11.
 
