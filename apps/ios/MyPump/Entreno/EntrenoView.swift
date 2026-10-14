@@ -71,6 +71,7 @@ struct EntrenoView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 cabecera
+                BannerRevision()
                 SelectorDias(dias: dias, seleccionado: dia?.id, cerrados: cerrados) { diaId = $0 }
                 if let dia, !dia.bloques.flatMap(\.ejercicios).isEmpty, DemoUI.estado != .vacio {
                     cuerpo(de: dia)
@@ -248,11 +249,12 @@ struct EntrenoView: View {
     private func arrancarDemo() {
         guard !demoArrancada else { return }
         demoArrancada = true
-        guard DemoUI.estado == nil else { return }
+        // Solo en los bocetos de diseño: con una cuenta el descanso arranca al confirmar una serie, nunca solo.
+        guard DemoUI.bocetos || DemoUI.abrir == "ejercicio", DemoUI.estado == nil else { return }
         // Bocetos: un descanso a mitad de camino, para ver la isla. `-abrir ejercicio` entra directo al primer
         // ejercicio de trabajo.
         let primero = dias.first?.bloques.flatMap(\.ejercicios).first { $0.tipo == "compuesto" }
-        if !DemoUI.sinDescanso {
+        if DemoUI.bocetos, !DemoUI.sinDescanso {
             descanso.empezar(segundos: primero?.descansoSegundos ?? 150, ejercicio: primero?.nombre, yaPasaron: 66)
         }
         if DemoUI.abrir == "ejercicio", ruta.isEmpty, let primero { ruta = [primero] }
