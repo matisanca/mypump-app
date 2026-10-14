@@ -18,6 +18,11 @@ class DemoTest {
         assertTrue(m.fase.value == ModeloApp.Fase.LISTO && m.esDemo.value)
         assertFalse(m.rutina.value?.estructura?.dias.isNullOrEmpty())
         assertTrue(m.comidasDelDia.isNotEmpty())
+        // El objetivo de la demo es la suma de las opciones A (no trae `macros_target`, f7aa713): la tarjeta de macros no
+        // marca "−23 %" en lo que ve la revisión de la tienda, y la demo no avisa "a tu plan le falta información".
+        val opcionesA = ModeloApp.sumar(m.comidasDelDia.flatMap { it.opciones.first().alimentos })
+        assertEquals(opcionesA.kcal!!, m.objetivo.kcal!!, 1.0)
+        assertNull(m.avisoPlanIncompleto)
         m.cargar()   // "tirar para actualizar" en la demo: no la cierra
         assertTrue(m.fase.value == ModeloApp.Fase.LISTO && m.esDemo.value)
         // Un reemplazo en la demo queda en memoria y no sale a ningún lado.

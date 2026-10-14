@@ -48,6 +48,33 @@ cd apps/android
 - **Configuración.** `ConfigBackendProduccion.kt` se genera desde `public/js/config.js` con
   `node scripts/nativa/config-android.mjs`, como la de iOS.
 
+## La migración del almacenamiento viejo
+
+La 2.0.0 sale como update de la Capacitor y levanta lo que ella dejó en el `localStorage` de su WebView (gemelo de
+`apps/ios/MyPump/Legado/`; la parte pura está en `:core:datos`: `EjecutorLegado`, `FaseRemotaLegado`,
+`MigracionLegado`, `ServidorMigracion`).
+
+- **Dónde está.** `LevelDbLegado` recorre `app_webview*` del directorio de datos y reconoce el leveldb por su forma
+  (`Local Storage/leveldb` con su `CURRENT`). No hay rutas fijas: con el WebView 133 es `app_webview/Default/Local
+  Storage/leveldb`, con los viejos `app_webview/Local Storage/leveldb`, y en un teléfono puede ser otra (la lección del
+  TF-0 de iOS). La huella es `stat` de los archivos de datos, sin `LOCK` ni `LOG`.
+- **Cómo se lee.** `LectorWebView` (`:app/legado`): un WebView oculto con `loadDataWithBaseURL` en `https://localhost`
+  (el origen de la Capacitor; así no pasa por el service worker de la web) y sin red. `LecturaJs` firma cada valor en
+  JavaScript (FNV-1a sobre `charCodeAt`, la de `FirmaValor`) y devuelve JSON en ASCII por tramos de 1 M caracteres: un
+  surrogate suelto o un emoji partido entre tramos cruzan enteros. Timeout, reintento si muere el renderer, y un error
+  tira (no es "vacío").
+- **El arranque.** `ArranqueMigracion`: la Fase L corre ANTES de crear `ModeloApp` (el ViewModel expone el modelo
+  cuando termina; mientras tanto se ve la marca). Después, con la primera carga con red: la palanca, la Fase R, la
+  escritura de vuelta (una vez, con la app a la vista) y los recibos pendientes. Todo queda en
+  `files/legado/registro.log` (sin tokens ni contenido) y en Logcat con la etiqueta `MyPumpLegado`.
+- **Chromium baja el `localStorage` al disco en tandas** y las espacia según cuántas ya hizo el proceso: una escritura
+  puede tardar en llegar al leveldb. Por eso la escritura de vuelta se confirma en el arranque siguiente (si no llegó, se
+  repite).
+- **Pruebas.** `ScriptsLegadoTest` y `LevelDbLegadoTest` en la JVM (los scripts corren con node);
+  `LegadoWebViewTest` con el WebView de verdad (`./gradlew connectedDebugAndroidTest`); y la de punta a punta en el
+  emulador, con la Capacitor de debug compilada de `android/` sin tocarlo (`scripts/nativa/compilar-capacitor-android.sh`)
+  y la cuenta `test-nativa-android`: `scripts/nativa/emu-migracion.sh emulator-5554`.
+
 ## Vectores: la web es la fuente de verdad
 
 Los tests de `:core:reglas` leen los MISMOS archivos que los de iOS y exigen igualdad total con lo que dio la web:

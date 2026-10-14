@@ -696,6 +696,36 @@ class EntrenoLegadoTest {
         assertFalse(m.aplicarLegadoDelDisco(), "no se aplica dos veces")
     }
 
+    /**
+     * De punta a punta: lo que ESCRIBE la migración ([EjecutorLegado.guardarEntreno]) es lo que LEE Entreno, y el descanso
+     * que venía corriendo sigue después de pasar al día que se estaba viendo. Gemelo de loQueDejaLaMigracionSeLeeEntero
+     * de iOS; lo destapó la prueba de punta a punta en el emulador (scripts/nativa/emu-migracion.sh).
+     */
+    @Test
+    fun loQueDejaLaMigracionSeLeeEntero() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        b.servidor.cuando("get_sesion_dia", sesionJson("ses-1"))
+        EjecutorLegado.guardarEntreno(
+            EntrenoLegado(
+                sesiones = mapOf("d1" to SesionLegada(sesionId = "ses-1", semana = 5, start = AHORA - 600_000)),
+                descanso = DescansoLegado(endsAt = AHORA + 30_000, target = 90.0, autoCloseAt = AHORA + 32_000),
+                diaVisualizado = mapOf("otra-rutina" to "d9", "rut-prueba" to "d2"),
+            ),
+            b.disco,
+        )
+        val l = LegadoEntreno.leer(b.disco, "tok-prueba", "rut-prueba")
+        assertEquals(listOf(LegadoEntreno.SesionDia("d1", sesionId = "ses-1", semana = 5, inicio = AHORA - 600_000)), l?.sesiones)
+        assertEquals(Descanso.Guardado(AHORA + 30_000, 90.0, AHORA + 32_000), l?.descanso)
+        assertEquals("d2", l?.diaVisualizado)
+        val m = b.modelo()
+        assertTrue(m.aplicarLegadoDelDisco())
+        assertEquals("ses-1", b.sesionesEnDisco["d1"]?.sesionId)
+        assertEquals(AHORA - 600_000, b.sesionesEnDisco["d1"]?.inicio)
+        assertEquals("d2", m.dia.value.dia.id, "el día que se estaba viendo")
+        // El descanso que venía corriendo sigue: el cambio al día visto va antes (cambiar de día lo detiene).
+        assertTrue(m.descanso.value.visible && m.descanso.value.texto == "0:30", "${m.descanso.value}")
+    }
+
     @Test
     fun laSesionViejaConfirmadaSeRetoma() = enUnHilo { alcance ->
         val b = Banco(alcance)

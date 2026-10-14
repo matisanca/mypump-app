@@ -154,6 +154,13 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
                     ),
                 )
             }
+            // D7 (`nativa_002`): TRUE = guardado; NULL = token caído (la cola lo estaciona).
+            ConsentimientoIA.KIND -> ResultadoOp.Respuesta(
+                cliente.llamar(
+                    "mypump_guardar_consentimiento_ia",
+                    mapOf("p_token" to t, "p_acepta" to de(p, "acepta"), "p_plataforma" to de(p, "plataforma"), "p_app" to de(p, "app")),
+                ),
+            )
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
         }

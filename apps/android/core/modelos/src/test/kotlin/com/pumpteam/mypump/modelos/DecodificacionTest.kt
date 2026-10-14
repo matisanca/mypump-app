@@ -96,7 +96,9 @@ class FixturesTest {
         // La demo usa los campos viejos (sin progresión por semana).
         assertTrue(rutina.dias.flatMap { d -> d.bloques.flatMap { it.ejercicios } }.any { it.series != null && it.reps != null })
         val dieta = EstructuraDieta.desde(Json.parseToJsonElement(Rutas.leer(Rutas.compartido("demo/dieta.json"))))
-        assertTrue(dieta.comidas.isNotEmpty() && dieta.macrosTarget?.kcal != null)
+        // Sin `macros_target` a propósito (f7aa713): el de SAMPLE_DIET (3.200 kcal) no cierra con sus opciones A y la
+        // nativa marcaba "−23 %" en lo que ve la revisión de la tienda. normalizarDieta usa la suma de la opción A.
+        assertTrue(dieta.comidas.isNotEmpty() && dieta.macrosTarget == null)
         assertTrue(dieta.comidas.all { c -> c.opciones.all { o -> o.alimentos.all { it.nombre.isNotEmpty() } } })
     }
 }
