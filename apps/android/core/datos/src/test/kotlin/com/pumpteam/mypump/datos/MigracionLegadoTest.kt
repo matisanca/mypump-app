@@ -5,6 +5,7 @@ import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -291,26 +292,49 @@ class MigracionLegadoTest {
     }
 
     /**
-     * SER-14: la primera corrida no marca nada (la primera sincronización sube lo del teléfono). Si el cliente vuelve a la
-     * Capacitor y cambia una sustitución, la repetición la trae y marca la rutina: lo de la app vieja reemplaza lo del
-     * servidor (si no, el servidor la pisaba con la de antes).
+     * SER-14: si el cliente vuelve a la Capacitor, solo lo que cambió AHÍ desde la corrida anterior pisa lo del teléfono
+     * (con la hora de la corrida, para que gane también en el servidor) y lo que sacó ahí se saca; lo hecho en la nativa
+     * queda. Antes se pisaba todo con lo de la app vieja.
      */
     @Test
-    fun laRepeticionMarcaLasSustitucionesParaReemplazarLasDelServidor() {
+    fun laVueltaALaAppViejaSoloAplicaLoQueSeCambioAhi() {
         val tel = Telefono()
-        fun swaps(n: String) =
-            """{"jalon-d1-0":{"original":{"slug":"a","nombre":"A"},"current":{"slug":"b","nombre":"$n"},"fijado":true,"semana":1,"diaId":"d1"}}"""
-        tel.lector.escribir(mapOf("mypump_token" to tokenA, "mypump_exercise_swaps_$rutinaR1" to swaps("B")))
+        fun entrada(n: String) = """{"original":{"slug":"a","nombre":"A"},"current":{"slug":"b","nombre":"$n"},"fijado":true,"semana":1,"diaId":"d1"}"""
+        val clave = "mypump_exercise_swaps_$rutinaR1"
+        tel.lector.escribir(mapOf("mypump_token" to tokenA, clave to """{"jalon-d1-0":${entrada("B")}}"""))
         tel.faseL()
-        assertNull(SustitucionesServidor.Estado.leer(tel.disco(), rutinaR1))
-        // La nativa ya subió las suyas; el cliente vuelve a la Capacitor y cambia la sustitución.
-        tel.disco().guardar(SustitucionesServidor.Estado.archivo(rutinaR1), SustitucionesServidor.Estado(subidas = true).aValor())
-        tel.lector.escribir(mapOf("mypump_exercise_swaps_$rutinaR1" to swaps("C")))
-        val r = tel.faseL()
+        val nombre = SustitucionEjercicio.archivo(rutinaR1)
+        val disco = tel.disco()
+        fun mapa(n: String) = (disco.leer(n) as? JsonObject)?.mapValues { ValorJson.desde(it.value) }
+        val nativa = LinkedHashMap(mapa(nombre)!!)
+        assertEquals("B", nativa["jalon-d1-0"]?.get("current")?.get("nombre")?.comoTexto)
+        assertNull(nativa["jalon-d1-0"]?.get("_ts"))
+        assertFalse(disco.archivo(SustitucionesServidor.archivoEncoladas(rutinaR1)).exists())
+        // En la nativa el cliente sustituye otro ejercicio.
+        val propia = ValorJson.objeto(
+            "current" to ValorJson.objeto("nombre" to ValorJson.Texto("Nativa")), "fijado" to ValorJson.Booleano(true), "_ts" to ValorJson.Numero(500.0),
+        )
+        nativa["x-d1-1"] = propia
+        disco.guardar(nombre, ValorJson.Objeto(nativa))
+        // Vuelve a la Capacitor: cambia la del jalón y agrega otra.
+        tel.lector.escribir(mapOf(clave to """{"jalon-d1-0":${entrada("C")},"nuevo-d2-0":${entrada("N")}}"""))
+        val momento = ahoraMig.plusSeconds(3600)
+        val r = tel.faseL(momento = momento)
         assertTrue(r.repeticion)
-        val guardadas = tel.disco().leer(SustitucionEjercicio.archivo(rutinaR1))?.let(ValorJson::desde)
-        assertEquals("C", guardadas?.get("jalon-d1-0")?.get("current")?.get("nombre")?.comoTexto)
-        assertEquals(SustitucionesServidor.Estado(subidas = true, reemplazar = true), SustitucionesServidor.Estado.leer(tel.disco(), rutinaR1))
+        val despues = mapa(nombre)!!
+        assertEquals("C", despues["jalon-d1-0"]?.get("current")?.get("nombre")?.comoTexto)
+        assertEquals(ValorJson.Numero(momento.toEpochMilli().toDouble()), despues["jalon-d1-0"]?.get("_ts"))
+        assertEquals("N", despues["nuevo-d2-0"]?.get("current")?.get("nombre")?.comoTexto)
+        assertEquals(propia, despues["x-d1-1"], "lo hecho en la nativa quedó")
+        // Lo que había quedó anotado como ya subido: al abrir, lo cambiado sale como guardado.
+        assertEquals(nativa, mapa(SustitucionesServidor.archivoEncoladas(rutinaR1)))
+        // Otra vuelta: saca la nueva en la Capacitor y no toca la del jalón.
+        tel.lector.escribir(mapOf(clave to """{"jalon-d1-0":${entrada("C")}}"""))
+        tel.faseL(momento = momento.plusSeconds(3600))
+        val otra = mapa(nombre)!!
+        assertNull(otra["nuevo-d2-0"], "lo que sacó en la app vieja se sacó")
+        assertEquals(despues["jalon-d1-0"], otra["jalon-d1-0"], "lo que no cambió ahí no se toca (ni su hora)")
+        assertEquals(propia, otra["x-d1-1"])
     }
 
     @Test

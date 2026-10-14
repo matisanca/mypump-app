@@ -161,7 +161,8 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
                     mapOf("p_token" to t, "p_acepta" to de(p, "acepta"), "p_plataforma" to de(p, "plataforma"), "p_app" to de(p, "app")),
                 ),
             )
-            // SER-14 (`nativa_003`). FALSE = la rutina ya no es del cliente: no hay nada que guardar (cuenta como hecho).
+            // SER-14 (`nativa_003`). TRUE también si el servidor tenía algo más nuevo. FALSE = la rutina ya no es del
+            // cliente: no hay nada que guardar (cuenta como hecho).
             SustitucionesServidor.KIND_GUARDAR -> ResultadoOp.Respuesta(
                 sinTablaEsHecho(
                     cliente.llamar(
@@ -174,7 +175,8 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
                 sinTablaEsHecho(
                     cliente.llamar(
                         "mypump_delete_exercise_swap",
-                        mapOf("p_token" to t, "p_rutina_id" to de(p, "rutinaId"), "p_ex_id" to de(p, "exId")),
+                        // Deja la lápida con la hora del borrado (gana lo más nuevo).
+                        mapOf("p_token" to t, "p_rutina_id" to de(p, "rutinaId"), "p_ex_id" to de(p, "exId"), "p_ts" to de(p, "ts")),
                     ),
                 ),
             )

@@ -10,6 +10,8 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 
@@ -352,15 +354,22 @@ object EjecutorLegado {
             }
             for ((rutina, s) in plan.sustituciones) {
                 val nombre = SustitucionEjercicio.archivo(rutina)
-                if (previo != null || !disco.archivo(nombre).exists()) {
-                    disco.guardar(nombre, ValorJson.Objeto(s.mapValues { it.value.aValor() }))
-                    // SER-14: en una repetición, lo de la app vieja es lo último que hizo el cliente: en la próxima
-                    // sincronización reemplaza lo del servidor (si no, el servidor lo pisaba con lo de antes).
-                    if (previo != null) {
-                        val subidas = SustitucionesServidor.Estado.leer(disco, rutina)?.subidas ?: false
-                        disco.guardar(SustitucionesServidor.Estado.archivo(rutina), SustitucionesServidor.Estado(subidas, reemplazar = true).aValor())
-                    }
+                val legado = s.mapValues { it.value.aValor() }
+                if (previo == null) {
+                    if (!disco.archivo(nombre).exists()) disco.guardar(nombre, ValorJson.Objeto(legado))
+                } else {
+                    // El cliente volvió a la app vieja y cambió algo ahí. SER-14: solo lo que cambió AHÍ desde la corrida
+                    // anterior pisa lo del teléfono (con la hora de ahora, para que gane también en el servidor) y lo que
+                    // sacó ahí se saca; lo hecho en la nativa o llegado de otro teléfono queda. Antes se pisaba todo.
+                    val nativa = mapaDe(disco.leer(nombre)) ?: emptyMap()
+                    val base = mapaDe(disco.leer(SustitucionesServidor.archivoLegado(rutina)))
+                    // Lo que había se toma como ya subido: así lo que se saca sale como borrado y lo cambiado como guardado.
+                    val encoladas = SustitucionesServidor.archivoEncoladas(rutina)
+                    if (!disco.archivo(encoladas).exists()) disco.guardar(encoladas, ValorJson.Objeto(nativa))
+                    disco.guardar(nombre, ValorJson.Objeto(SustitucionesServidor.volverDeLaAppVieja(nativa, legado, base, ms)))
                 }
+                // Lo que se leyó de la app vieja: la base para la próxima vuelta.
+                disco.guardar(SustitucionesServidor.archivoLegado(rutina), ValorJson.Objeto(legado))
             }
             for ((dieta, s) in plan.swapsComida) {
                 // El mapa local es una caché del servidor: si la nativa ya tiene el suyo, gana el suyo.
@@ -539,3 +548,6 @@ data class Marca(val migracion: String, val corrida: Int, val fecha: String, val
         }
     }
 }
+
+/** Un mapa JSON del disco (`exId → entrada`), o null si no hay. */
+private fun mapaDe(e: JsonElement?): Map<String, ValorJson>? = (e as? JsonObject)?.mapValues { ValorJson.desde(it.value) }

@@ -261,13 +261,14 @@ class Outbox(
         ultimaFallo = false
         if (ops.isEmpty()) return
         val tanda = ops.toList()
+        val hayVisibles = tanda.any { it.kind !in SILENCIOSAS }
         val resueltas = HashSet<String>()
         val abandonadas = mutableListOf<Operacion>()
         var algunaFallo = false
         // "Guardando…" solo si tarda (y nunca después de terminar: cancelado, el delay corta).
         val lenta = alcance.launch(confinado) {
             delay(900)
-            avisar(EstadoGuardado.GUARDANDO)
+            if (hayVisibles) avisar(EstadoGuardado.GUARDANDO)
         }
 
         for (op in tanda) {
@@ -321,21 +322,25 @@ class Outbox(
         }
         guardar()
 
-        if (abandonadas.isNotEmpty()) {
-            alAbandonar?.invoke(abandonadas.toList())
+        // Las silenciosas (SER-14) no avisan: lo que el cliente hizo ya quedó en el teléfono.
+        val abandonadasVisibles = abandonadas.filter { it.kind !in SILENCIOSAS }
+        if (abandonadas.isNotEmpty()) alAbandonar?.invoke(abandonadas.toList())
+        if (abandonadasVisibles.isNotEmpty()) {
             huboProblema = false
             avisar(EstadoGuardado.PERDIDO)
         }
         ultimaFallo = algunaFallo
         if (algunaFallo) {
-            huboProblema = true
-            if (abandonadas.isEmpty()) avisar(EstadoGuardado.SIN_CONEXION)
+            if (ops.any { it.kind !in SILENCIOSAS }) {
+                huboProblema = true
+                if (abandonadasVisibles.isEmpty()) avisar(EstadoGuardado.SIN_CONEXION)
+            }
             val base = maxOf(1, ops.firstOrNull()?.tries ?: 1, rachaSinRed)
             programar(minOf(30_000L, 2_000L * base))
         } else if (huboProblema) {
             huboProblema = false
             avisar(EstadoGuardado.GUARDADO)
-        } else if (abandonadas.isEmpty()) {
+        } else if (abandonadasVisibles.isEmpty()) {
             avisar(EstadoGuardado.QUIETO)
         }
         // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta.
@@ -405,6 +410,12 @@ class Outbox(
             if (!escribirAtomico(archivo, json.toString())) throw IOException("no se pudo escribir ${archivo.name}")
             return quedaron
         }
+
+        /**
+         * Kinds que no muestran avisos ("guardando", "sin conexión", "no se guardó"): las sustituciones de ejercicio
+         * (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
+         */
+        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR)
 
         /** `seGuardo` de la web: null, 0 y [] son "no se guardó". `false` SÍ cuenta (desmarcar algo que no estaba). */
         fun seGuardo(v: ValorJson): Boolean = when (v) {

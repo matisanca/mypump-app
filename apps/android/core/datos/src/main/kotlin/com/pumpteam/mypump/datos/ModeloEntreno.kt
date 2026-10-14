@@ -947,7 +947,15 @@ class ModeloEntreno(
         val ex = _dia.value.ejercicio(lugar) ?: return
         val ef = efectivo(ex)
         invalidarHistorial(lugar)
-        ejecutar(mutarDia { it.sustituir(lugar, sub, ef, fijar) })
+        val ms = ahoraMs
+        ejecutar(
+            mutarDia { d ->
+                val efectos = d.sustituir(lugar, sub, ef, fijar)
+                // SER-14: la hora del cambio (en el servidor gana lo más nuevo). Es solo de la nativa: la web no la lee.
+                d.sustituciones[lugar]?.let { d.sustituciones = d.sustituciones + (lugar to SustitucionesServidor.conHora(it, ms)) }
+                efectos
+            },
+        )
     }
 
     /** "Volver a …" */
@@ -964,15 +972,19 @@ class ModeloEntreno(
         )
         if (borradas.isEmpty()) return
         mutarDia { it.sustituciones = quedan }
+        // SER-14: la poda es solo de este teléfono y no se manda: un teléfono viejo no puede borrar en el servidor lo que el
+        // cliente fijó después en otro (lo vencido que quede allá, cada teléfono lo poda al leerlo).
+        sustitucionesGuardadas = sustitucionesGuardadas - borradas.toSet()
         for (id in borradas) invalidarHistorial(id)
         guardarSustituciones()
+        anotarEncoladas(sustitucionesGuardadas, _rutina.value.id)
         if (!sinPrecarga) alcance.launch { precargarHistorial() }
     }
 
     /**
-     * SER-14: la primera vez que este teléfono sincroniza la rutina sube lo que tiene guardado; después lee el servidor y
-     * lo pone por encima (con lo que sigue en la cola y lo que se tocó mientras tanto encima de eso). Sin la tabla en la
-     * base (PGRST202), sin red o con el token caído queda lo del teléfono, como antes, y se reintenta al recargar.
+     * SER-14: lee el servidor y lo combina con lo del teléfono clave por clave (gana lo más nuevo; ver
+     * [SustitucionesServidor.combinar]), y sube lo que el servidor no tiene o tiene más viejo. Sin la tabla en la base
+     * (PGRST202), sin red o con el token caído queda lo del teléfono, como antes, y se reintenta al recargar.
      */
     suspend fun sincronizarSustituciones() {
         val t = token
@@ -985,36 +997,45 @@ class ModeloEntreno(
             encoladoSustituciones?.join()
             if (syncSustituciones !== mia) return
             val rutinaId = _rutina.value.id
-            val estado = SustitucionesServidor.Estado.leer(disco, rutinaId)
-            val reemplazar = estado?.reemplazar == true
-            val subir = estado?.subidas != true || reemplazar
-            val parametros = linkedMapOf("p_token" to texto(t), "p_rutina_id" to texto(rutinaId))
-            if (subir) {
-                val subibles = SustitucionesServidor.subibles(_dia.value.sustituciones) ?: return
-                parametros["p_swaps"] = ValorJson.Objeto(subibles)
-                parametros["p_reemplazar"] = ValorJson.Booleano(reemplazar)
+            // Lo que está en la cola al empezar (la respuesta puede no traerlo aunque se mande en el medio) y lo que quedó
+            // en fallidos (nunca llegó): ahí queda lo del teléfono.
+            val prefijo = "swap_ej_${rutinaId}_"
+            outbox?.let { cola ->
+                val enCola = cola.pendientesPorClave().filterKeys { it.startsWith(prefijo) }.values
+                val fallidas = cola.fallidos().map { it.op }.filter { (it.dedupeKey ?: "").startsWith(prefijo) }
+                for (op in enCola + fallidas) op.payload["exId"]?.comoTexto?.let { tocadasDuranteSync?.add(it) }
             }
-            val r = cliente.llamar(if (subir) "mypump_import_exercise_swaps" else "mypump_get_exercise_swaps", parametros)
+            if (syncSustituciones !== mia) return
+            val r = cliente.llamar("mypump_get_exercise_swaps", mapOf("p_token" to texto(t), "p_rutina_id" to texto(rutinaId)))
             if (syncSustituciones !== mia || _rutina.value.id != rutinaId) return
-            val servidor = ((r as? Resultado.Ok)?.valor as? ValorJson.Objeto)?.campos ?: return
-            if (subir) disco?.guardar(SustitucionesServidor.Estado.archivo(rutinaId), SustitucionesServidor.Estado(subidas = true).aValor())
+            val (vivas, borradasServidor) = (r as? Resultado.Ok)?.valor?.let { SustitucionesServidor.leer(it) } ?: return
             encoladoSustituciones?.join()
             val pendientes = outbox?.pendientesPorClave() ?: emptyMap()
             if (syncSustituciones !== mia || _rutina.value.id != rutinaId) return
-            val actual = _dia.value.sustituciones
-            val nuevo = SustitucionesEntreno.compat(
-                SustitucionesServidor.combinar(servidor, actual, pendientes, rutinaId, tocadasDuranteSync ?: emptySet()),
+            val tocadas = tocadasDuranteSync?.toSet() ?: emptySet()
+            val antes = _dia.value.sustituciones
+            val combinado = SustitucionesEntreno.compat(
+                SustitucionesServidor.combinar(vivas, borradasServidor, antes, pendientes, rutinaId, tocadas),
             )
-            val cambiadas = (nuevo.keys + actual.keys).filter { nuevo[it] != actual[it] }
-            if (cambiadas.isEmpty()) return
-            // Lo que llega del servidor no vuelve a la cola: ya está allá (o en la cola, o se tocó y ya se encoló).
-            mutarDia { it.sustituciones = nuevo }
-            sustitucionesGuardadas = nuevo
-            disco?.guardar(Archivo.sustituciones(rutinaId), ValorJson.Objeto(nuevo))
-            anotarEncoladas(nuevo, rutinaId)
+            // La poda antes de comparar: lo vencido que vuelve del servidor ni se muestra ni pide su historial de nuevo.
+            val d = _dia.value
+            val (quedan, podadas) = SustitucionesEntreno.podar(combinado, semana, _diasCompletados.value, d.dia.id, d.diaFinalizado, false)
+            val cambiadas = (quedan.keys + antes.keys).filter { quedan[it] != antes[it] }
+            // Contra lo que tiene el servidor se calcula qué subir. Lo podado no se manda, y lo que ya está en la cola (o se
+            // tocó, o quedó en fallidos) no se vuelve a encolar.
+            val base = LinkedHashMap(SustitucionesEntreno.compat(vivas))
+            for (id in podadas) base.remove(id)
+            val yaEncoladas = tocadas + pendientes.keys.filter { it.startsWith(prefijo) }.map { it.removePrefix(prefijo) }
+            for (id in yaEncoladas) {
+                val q = quedan[id]
+                if (q != null) base[id] = q else base.remove(id)
+            }
+            sustitucionesGuardadas = base
+            mutarDia { it.sustituciones = quedan }
+            guardarSustituciones()
+            anotarEncoladas(sustitucionesGuardadas, rutinaId)
             for (id in cambiadas) invalidarHistorial(id)
-            podarSustituciones(sinPrecarga = true)
-            precargarHistorial()
+            if (cambiadas.isNotEmpty()) precargarHistorial()
         } finally {
             if (syncSustituciones === mia) {
                 syncSustituciones = null
@@ -1225,7 +1246,7 @@ class ModeloEntreno(
      */
     private fun encolarSustituciones() {
         val ahora = _dia.value.sustituciones
-        val ops = SustitucionesServidor.operaciones(sustitucionesGuardadas, ahora, _rutina.value.id)
+        val ops = SustitucionesServidor.operaciones(sustitucionesGuardadas, ahora, _rutina.value.id, ahoraMs)
         sustitucionesGuardadas = ahora
         val cola = outbox
         if (demo || token == null || cola == null || ops.isEmpty()) return

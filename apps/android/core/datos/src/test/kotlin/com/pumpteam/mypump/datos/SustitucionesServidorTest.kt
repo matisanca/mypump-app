@@ -2,6 +2,7 @@ package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
+import java.util.Collections
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonObject
@@ -12,81 +13,144 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
-// Gemelo de SustitucionesServidorTests.swift. SER-14: las sustituciones de ejercicio también en el servidor
-// (`nativa_003`). Lo que importa: que nada de lo que hoy funciona cambie si la tabla no está (PGRST202), sin red o con el
-// token caído; y que con la tabla lo del teléfono suba una vez y después mande lo del servidor, sin perder lo que todavía
-// está en la cola ni lo que se tocó mientras tanto.
+// Gemelo de SustitucionesServidorTests.swift. SER-14: las sustituciones de ejercicio también en el servidor (`nativa_003`).
+// Lo que importa: que nada de lo que hoy funciona cambie si la tabla no está (PGRST202), sin red o con el token caído; que
+// gane siempre lo último que hizo el cliente, en cualquier teléfono y en cualquier orden de llegada; y que nunca se pierda
+// algo que el servidor no tiene. Los casos con nombre de hallazgo son los de la revisión independiente del 14-oct.
 
-private val X: ValorJson = ValorJson.objeto(
-    "current" to ValorJson.objeto("nombre" to ValorJson.Texto("Dominadas")), "fijado" to ValorJson.Booleano(true), "semana" to ValorJson.Numero(5.0),
-)
-private val Y: ValorJson = ValorJson.objeto(
-    "current" to ValorJson.objeto("nombre" to ValorJson.Texto("Remo en T")), "fijado" to ValorJson.Booleano(false), "semana" to ValorJson.Numero(5.0),
-)
+private fun e(nombre: String, ts: Double? = null, fijado: Boolean = true, semana: Double = 5.0): ValorJson {
+    val o = linkedMapOf<String, ValorJson>(
+        "current" to ValorJson.objeto("nombre" to ValorJson.Texto(nombre)), "fijado" to ValorJson.Booleano(fijado), "semana" to ValorJson.Numero(semana),
+    )
+    if (ts != null) o["_ts"] = ValorJson.Numero(ts)
+    return ValorJson.Objeto(o)
+}
 
 class SustitucionesServidorReglasTest {
     @Test
-    fun lasOpsSalenDeLaDiferencia() {
+    fun lasOpsSalenDeLaDiferenciaYElBorradoLlevaSuHora() {
+        val x = e("Dominadas", 10.0)
+        val y = e("Remo en T", 20.0)
         val ops = SustitucionesServidor.operaciones(
-            mapOf("a" to X, "b" to X, "c" to X), mapOf("a" to X, "b" to Y, "d" to Y, "e" to ValorJson.Texto("rara")), "R",
+            mapOf("a" to x, "b" to x, "c" to x), mapOf("a" to x, "b" to y, "d" to y, "e" to ValorJson.Texto("rara")), "R", 777.9,
         )
         assertEquals(listOf("swap_ej", "swap_ej_del", "swap_ej"), ops.map { it.kind }, "b cambia, c se va, d entra; a igual y e no se sube")
         assertEquals(listOf("b", "c", "d"), ops.map { it.exId })
         assertEquals(listOf("swap_ej_R_b", "swap_ej_R_c", "swap_ej_R_d"), ops.map { it.clave })
-        assertEquals(ValorJson.objeto("rutinaId" to ValorJson.Texto("R"), "exId" to ValorJson.Texto("b"), "swap" to Y), ops[0].payload)
-        assertEquals(ValorJson.objeto("rutinaId" to ValorJson.Texto("R"), "exId" to ValorJson.Texto("c")), ops[1].payload)
+        assertEquals(ValorJson.objeto("rutinaId" to ValorJson.Texto("R"), "exId" to ValorJson.Texto("b"), "swap" to y), ops[0].payload)
+        assertEquals(ValorJson.objeto("rutinaId" to ValorJson.Texto("R"), "exId" to ValorJson.Texto("c"), "ts" to ValorJson.Numero(777.0)), ops[1].payload)
+    }
+
+    /** Hallazgo 6: la base cuenta la clave en puntos de código (`length`), no en grafemas. */
+    @Test
+    fun soloSeSubeLoQueLaBaseAcepta() {
+        assertTrue(SustitucionesServidor.subible("a", e("X")))
+        assertTrue(SustitucionesServidor.subible("a", e("X", 1_792_000_800_000.0)))
+        assertFalse(SustitucionesServidor.subible("a", ValorJson.Lista(emptyList())))
+        assertFalse(SustitucionesServidor.subible("", e("X")))
+        assertFalse(SustitucionesServidor.subible("x".repeat(121), e("X")))
+        val combinadas = "é".repeat(61)
+        assertFalse(SustitucionesServidor.subible(combinadas, e("X")), "61 grafemas, 122 puntos de código")
+        val emojis = "💪".repeat(61)   // 61 puntos de código, 122 unidades UTF-16: entra
+        assertTrue(SustitucionesServidor.subible(emojis, e("X")))
+        assertFalse(SustitucionesServidor.subible("a", ValorJson.objeto("relleno" to ValorJson.Texto("x".repeat(13_000)))))
+        assertFalse(SustitucionesServidor.subible("a", ValorJson.objeto("_ts" to ValorJson.Texto("ayer"))))
+        assertFalse(SustitucionesServidor.subible("a", ValorJson.objeto("_ts" to ValorJson.Numero(-1.0))))
     }
 
     @Test
-    fun soloSubeLoQueLaBaseAcepta() {
-        val r = SustitucionesServidor.subibles(
-            mapOf(
-                "a" to X, "b" to ValorJson.Lista(emptyList()), "x".repeat(121) to X, "" to X,
-                "grande" to ValorJson.objeto("relleno" to ValorJson.Texto("x".repeat(13_000))),
+    fun ganaLoMasNuevoYLoQueElServidorNoTieneQueda() {
+        val r = SustitucionesServidor.combinar(
+            vivas = mapOf(
+                "nuevaAlla" to e("S", 20.0), "viejaAlla" to e("S", 5.0), "soloAlla" to e("S", 1.0), "empate" to e("S", 7.0),
+                "malo" to ValorJson.Numero(1.0),
             ),
+            borradas = mapOf("lapidaNueva" to 30.0, "lapidaVieja" to 2.0, "lapidaDeNada" to 9.0),
+            local = mapOf(
+                "nuevaAlla" to e("L", 10.0), "viejaAlla" to e("L", 15.0), "empate" to e("L", 7.0), "lapidaNueva" to e("L", 25.0),
+                "lapidaVieja" to e("L", 3.0), "soloAca" to e("L"), "rara" to ValorJson.Texto("nunca subió"),
+            ),
+            pendientes = emptyMap(), rutinaId = "R", tocadas = emptySet(),
         )
-        assertEquals(mapOf("a" to X), r)
-        val muchas = (0..300).associate { "e$it" to X }
-        assertNull(SustitucionesServidor.subibles(muchas), "con más de 300 no sube nada (quedan en el teléfono)")
+        assertEquals(
+            mapOf(
+                "nuevaAlla" to e("S", 20.0), "viejaAlla" to e("L", 15.0), "soloAlla" to e("S", 1.0), "empate" to e("S", 7.0),
+                "lapidaVieja" to e("L", 3.0), "soloAca" to e("L"), "rara" to ValorJson.Texto("nunca subió"),
+            ),
+            r,
+        )
     }
 
     @Test
-    fun combinarLaColaYLoTocadoGananAlServidor() {
+    fun laColaYLoTocadoGananAlServidor() {
         fun op(id: String, kind: String, rutina: String, ex: String, swap: ValorJson?) = Operacion(
             id, kind,
             ValorJson.Objeto(listOfNotNull("rutinaId" to ValorJson.Texto(rutina), "exId" to ValorJson.Texto(ex), swap?.let { "swap" to it }).toMap()),
             "swap_ej_${rutina}_$ex", ts = 0.0,
         )
-        val pendientes = mapOf(
-            "swap_ej_R_p" to op("1", "swap_ej", "R", "p", Y),
-            "swap_ej_R_s" to op("2", "swap_ej_del", "R", "s", null),
-            "swap_ej_OTRA_q" to op("3", "swap_ej", "OTRA", "q", Y),
-        )
         val r = SustitucionesServidor.combinar(
-            servidor = mapOf("s" to X, "t" to X, "u" to X, "malo" to ValorJson.Numero(1.0)),
-            local = mapOf("t" to Y, "v" to X, "w" to ValorJson.Texto("nunca subió")),
-            pendientes = pendientes, rutinaId = "R", tocadas = setOf("t", "u"),
+            vivas = mapOf("s" to e("S", 99.0), "t" to e("S", 99.0), "u" to e("S", 99.0)), borradas = emptyMap(),
+            local = mapOf("t" to e("L", 1.0)),
+            pendientes = mapOf(
+                "swap_ej_R_p" to op("1", "swap_ej", "R", "p", e("P", 1.0)), "swap_ej_R_s" to op("2", "swap_ej_del", "R", "s", null),
+                "swap_ej_OTRA_q" to op("3", "swap_ej", "OTRA", "q", e("Q", 1.0)),
+            ),
+            rutinaId = "R", tocadas = setOf("t", "u"),
         )
         assertEquals(
-            mapOf("p" to Y, "t" to Y, "w" to ValorJson.Texto("nunca subió")), r,
-            "p está en la cola, s se borra en la cola, t y u se tocaron (u se borró), v no está en el servidor ni en la cola",
+            mapOf("p" to e("P", 1.0), "t" to e("L", 1.0)), r,
+            "p y s en la cola; t y u se tocaron (u se borró): gana lo del teléfono aunque el servidor sea más nuevo",
         )
+    }
+
+    @Test
+    fun volverDeLaAppViejaSoloAplicaLoQueSeCambioAhi() {
+        val base = mapOf("a" to e("A"), "b" to e("B"), "c" to e("C"))
+        val legado = mapOf("a" to e("A"), "b" to e("B2"), "n" to e("N"))
+        val nativa = mapOf("a" to e("A nativa", 50.0), "b" to e("B", 0.0), "c" to e("C"), "x" to e("Solo en la nativa", 60.0))
+        assertEquals(
+            mapOf("a" to e("A nativa", 50.0), "b" to e("B2", 1000.0), "n" to e("N", 1000.0), "x" to e("Solo en la nativa", 60.0)),
+            SustitucionesServidor.volverDeLaAppVieja(nativa, legado, base, 1000.0),
+        )
+        assertEquals(
+            mapOf("a" to e("A", 1000.0), "b" to e("B2", 1000.0), "n" to e("N", 1000.0), "c" to e("C"), "x" to e("Solo en la nativa", 60.0)),
+            SustitucionesServidor.volverDeLaAppVieja(nativa, legado, null, 1000.0),
+            "sin base: todo lo de la app vieja cuenta como cambiado y no se saca nada",
+        )
+    }
+
+    @Test
+    fun laRespuestaDelServidorSeLeeConSusDosPartes() {
+        val j = ValorJson.objeto(
+            "vivas" to ValorJson.objeto("a" to e("A"), "malo" to ValorJson.Numero(3.0)), "borradas" to ValorJson.objeto("b" to ValorJson.Numero(9.0)),
+        )
+        val l = SustitucionesServidor.leer(j)!!
+        assertEquals(mapOf("a" to e("A")), l.first)
+        assertEquals(mapOf("b" to 9.0), l.second)
+        assertNull(SustitucionesServidor.leer(ValorJson.Lista(emptyList())))
+        assertNull(SustitucionesServidor.leer(ValorJson.Nulo))
     }
 }
 
 class SustitucionesServidorModeloTest {
     private val noExiste = 404 to """{"code":"PGRST202","message":"Could not find the function"}"""
+    private val ahora = AHORA
 
-    /** Una sustitución fijada de esta semana (la poda no la toca). */
-    private fun swap(nombre: String, dia: String = "d1"): ValorJson = ValorJson.objeto(
-        "original" to ValorJson.objeto("slug" to ValorJson.Nulo, "nombre" to ValorJson.Texto("Original"), "images" to ValorJson.Nulo),
-        "current" to ValorJson.objeto(
-            "slug" to ValorJson.Nulo, "nombre" to ValorJson.Texto(nombre), "equipment" to ValorJson.Nulo, "images" to ValorJson.Nulo,
-        ),
-        "fijado" to ValorJson.Booleano(true), "semana" to ValorJson.Numero(5.0), "diaId" to ValorJson.Texto(dia),
-    )
+    /** Una sustitución de esta semana (la poda no la toca si está fijada). */
+    private fun swap(nombre: String, dia: String = "d1", ts: Double? = null, fijado: Boolean = true, semana: Double = 5.0): ValorJson {
+        val o = linkedMapOf<String, ValorJson>(
+            "original" to ValorJson.objeto("slug" to ValorJson.Nulo, "nombre" to ValorJson.Texto("Original"), "images" to ValorJson.Nulo),
+            "current" to ValorJson.objeto(
+                "slug" to ValorJson.Nulo, "nombre" to ValorJson.Texto(nombre), "equipment" to ValorJson.Nulo, "images" to ValorJson.Nulo,
+            ),
+            "fijado" to ValorJson.Booleano(fijado), "semana" to ValorJson.Numero(semana), "diaId" to ValorJson.Texto(dia),
+        )
+        if (ts != null) o["_ts"] = ValorJson.Numero(ts)
+        return ValorJson.Objeto(o)
+    }
 
-    private fun json(m: Map<String, ValorJson>): String = ValorJson.Objeto(m).serializar()
+    private fun json(vivas: Map<String, ValorJson> = emptyMap(), borradas: Map<String, Double> = emptyMap()): String =
+        ValorJson.objeto("vivas" to ValorJson.Objeto(vivas), "borradas" to ValorJson.Objeto(borradas.mapValues { ValorJson.Numero(it.value) })).serializar()
 
     private fun local(b: Banco, m: Map<String, ValorJson>) {
         b.disco.guardar(ModeloEntreno.Archivo.sustituciones("rut-prueba"), ValorJson.Objeto(m))
@@ -95,84 +159,103 @@ class SustitucionesServidorModeloTest {
     private fun enDisco(b: Banco): Map<String, ValorJson>? =
         (b.disco.leer(ModeloEntreno.Archivo.sustituciones("rut-prueba")) as? JsonObject)?.mapValues { ValorJson.desde(it.value) }
 
-    private fun estado(b: Banco) = SustitucionesServidor.Estado.leer(b.disco, "rut-prueba")
-
-    private fun yaSubidas(b: Banco, reemplazar: Boolean = false) {
-        b.disco.guardar(SustitucionesServidor.Estado.archivo("rut-prueba"), SustitucionesServidor.Estado(true, reemplazar).aValor())
-    }
+    private suspend fun claves(b: Banco): List<String> = b.cola.operaciones().mapNotNull { it.dedupeKey }
 
     @Test
-    fun laPrimeraVezSubeLoDelTelefonoYDespuesLee() = enUnHilo { alcance ->
+    fun laPrimeraVezSeSubeLoDelTelefonoYLlegaLoDeOtro() = enUnHilo { alcance ->
         val b = Banco(alcance)
-        local(b, mapOf("jal-d1-0" to swap("Dominadas")))
-        // Otro teléfono ya había subido la del press.
-        b.servidor.cuando("import_exercise_swaps", json(mapOf("jal-d1-0" to swap("Dominadas"), "pre-d2-0" to swap("Press inclinado", "d2"))))
+        local(b, mapOf("jal-d1-0" to swap("Dominadas")))   // de la app vieja: sin hora
+        b.servidor.cuando("get_exercise_swaps", json(vivas = mapOf("pre-d2-0" to swap("Press inclinado", "d2", ts = 100.0))))
         val m = b.modelo()
         m.cargar()
-        val subida = b.servidor.llamadas("import_exercise_swaps")
-        assertEquals(1, subida.size)
-        assertEquals(ValorJson.objeto("jal-d1-0" to swap("Dominadas")), subida.first()["p_swaps"])
-        assertEquals(ValorJson.Booleano(false), subida.first()["p_reemplazar"])
-        assertEquals(ValorJson.Texto("rut-prueba"), subida.first()["p_rutina_id"])
-        assertEquals(listOf("jal-d1-0", "pre-d2-0"), m.dia.value.sustituciones.keys.sorted(), "la del otro teléfono llegó")
+        assertEquals(listOf("jal-d1-0", "pre-d2-0"), m.dia.value.sustituciones.keys.sorted(), "la del otro teléfono llegó y la de acá quedó")
         assertEquals(listOf("jal-d1-0", "pre-d2-0"), enDisco(b)?.keys?.sorted())
-        assertEquals(SustitucionesServidor.Estado(subidas = true), estado(b))
-        assertTrue(b.cola.operaciones().isEmpty(), "lo que llega del servidor no vuelve a la cola")
-
-        b.servidor.cuando("get_exercise_swaps", json(mapOf("pre-d2-0" to swap("Press inclinado", "d2"))))
-        m.sincronizarSustituciones()
-        assertEquals(1, b.servidor.llamadas("import_exercise_swaps").size, "subir es una sola vez")
-        assertEquals(1, b.servidor.llamadas("get_exercise_swaps").size)
-        assertEquals(listOf("pre-d2-0"), m.dia.value.sustituciones.keys.sorted(), "la del jalón se borró en otro teléfono")
-        assertFalse(m.efectivo(m.dia.value.ejercicio("jal-d1-0")!!).sustituido)
-    }
-
-    @Test
-    fun loQueLlegaDelServidorNoVuelveALaCola() = enUnHilo { alcance ->
-        val b = Banco(alcance)
-        b.servidor.cuando("import_exercise_swaps", json(mapOf("jal-d1-0" to swap("Dominadas"), "pre-d2-0" to swap("Press inclinado", "d2"))))
-        val m = b.modelo()
-        m.sincronizarSustituciones()
-        m.revertirSustitucion("jal-d1-0")
         m.encoladoSustituciones?.join()
         val ops = b.cola.operaciones()
-        assertEquals(listOf("swap_ej_del"), ops.map { it.kind }, "sale solo lo que hizo el cliente, no lo que bajó: ${ops.map { it.dedupeKey }}")
-        assertEquals(ValorJson.Texto("jal-d1-0"), ops.first().payload["exId"])
+        assertEquals(listOf("swap_ej_rut-prueba_jal-d1-0"), ops.map { it.dedupeKey }, "sube solo lo que el servidor no tiene")
+        assertEquals(swap("Dominadas"), ops.first().payload["swap"])
     }
 
-    /**
-     * La app escribió la sustitución en el archivo y se cerró antes de pasarla a la cola: al volver a abrir se encola, y la
-     * lectura del servidor (que no la tiene) no la borra.
-     */
+    /** Hallazgo 1: un teléfono viejo con una "solo hoy" vencida no borra en el servidor la que el cliente fijó después en otro. */
     @Test
-    fun loQueNoLlegoALaColaAntesDeCerrarseSeEncolaAlVolverAAbrir() = enUnHilo { alcance ->
+    fun laPodaDeUnTelefonoViejoNoBorraLoFijadoEnOtro() = enUnHilo { alcance ->
         val b = Banco(alcance)
-        yaSubidas(b)
-        b.disco.guardar(SustitucionesServidor.archivoEncoladas("rut-prueba"), ValorJson.objeto("rem-d1-1" to swap("Remo en T")))
-        local(b, mapOf("rem-d1-1" to swap("Remo en T"), "jal-d1-0" to swap("Dominadas")))
-        b.servidor.cuando("get_exercise_swaps", json(mapOf("rem-d1-1" to swap("Remo en T"))))
+        local(b, mapOf("jal-d1-0" to swap("Remo en T", ts = 1000.0, fijado = false, semana = 4.0)))
+        b.servidor.cuando("get_exercise_swaps", json(vivas = mapOf("jal-d1-0" to swap("Dominadas", ts = 5000.0))))
         val m = b.modelo()
         m.cargar()
-        val ops = b.cola.operaciones()
-        assertEquals(listOf("swap_ej_rut-prueba_jal-d1-0"), ops.map { it.dedupeKey })
-        assertEquals("swap_ej", ops.first().kind)
-        assertEquals(listOf("jal-d1-0", "rem-d1-1"), m.dia.value.sustituciones.keys.sorted(), "la lectura del servidor la borraba")
         m.encoladoSustituciones?.join()
-        val anotadas = (b.disco.leer(SustitucionesServidor.archivoEncoladas("rut-prueba")) as? JsonObject)?.keys?.sorted()
-        assertEquals(listOf("jal-d1-0", "rem-d1-1"), anotadas, "queda anotado que ya está en la cola")
+        assertTrue(claves(b).isEmpty(), "la poda mandó un borrado")
+        assertEquals(mapOf("jal-d1-0" to swap("Dominadas", ts = 5000.0)), m.dia.value.sustituciones)
+    }
+
+    @Test
+    fun loVencidoQueVuelveDelServidorSePodaSinMandarNada() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        b.servidor.cuando("get_exercise_swaps", json(vivas = mapOf("jal-d1-0" to swap("Remo en T", ts = 1000.0, fijado = false, semana = 4.0))))
+        val m = b.modelo()
+        m.cargar()
+        m.encoladoSustituciones?.join()
+        assertTrue(m.dia.value.sustituciones.isEmpty() && (enDisco(b) ?: emptyMap()).isEmpty())
+        assertTrue(claves(b).isEmpty())
+    }
+
+    @Test
+    fun loMasNuevoGanaDeUnLadoYDelOtro() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        local(b, mapOf("jal-d1-0" to swap("Dominadas", ts = 1000.0), "rem-d1-1" to swap("Remo en T", ts = 3000.0)))
+        b.servidor.cuando(
+            "get_exercise_swaps",
+            json(vivas = mapOf("jal-d1-0" to swap("Jalón cerrado", ts = 2000.0), "rem-d1-1" to swap("Remo bajo", ts = 2000.0))),
+        )
+        val m = b.modelo()
+        m.cargar()
+        m.encoladoSustituciones?.join()
+        assertEquals(swap("Jalón cerrado", ts = 2000.0), m.dia.value.sustituciones["jal-d1-0"], "el servidor era más nuevo")
+        assertEquals(swap("Remo en T", ts = 3000.0), m.dia.value.sustituciones["rem-d1-1"], "acá era más nuevo")
+        assertEquals(listOf("swap_ej_rut-prueba_rem-d1-1"), claves(b), "sube solo la más nueva de acá")
+    }
+
+    /** Hallazgo 3: una lápida más nueva saca la de acá; una más vieja no (y la de acá se vuelve a subir). */
+    @Test
+    fun lasLapidasSacanLoMasViejoYNoLoMasNuevo() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        local(b, mapOf("jal-d1-0" to swap("Dominadas", ts = 1000.0), "rem-d1-1" to swap("Remo en T", ts = 3000.0)))
+        b.servidor.cuando("get_exercise_swaps", json(borradas = mapOf("jal-d1-0" to 2000.0, "rem-d1-1" to 2000.0)))
+        val m = b.modelo()
+        m.cargar()
+        m.encoladoSustituciones?.join()
+        assertEquals(listOf("rem-d1-1"), m.dia.value.sustituciones.keys.sorted())
+        assertEquals(listOf("swap_ej_rut-prueba_rem-d1-1"), claves(b))
+    }
+
+    /** Hallazgo 2: si la tabla se vaciara (o se recreara), lo del teléfono se vuelve a subir. */
+    @Test
+    fun siElServidorNoTieneNadaNoSePierdeNadaYSeVuelveASubir() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val mio = mapOf("jal-d1-0" to swap("Dominadas", ts = 1000.0), "rem-d1-1" to swap("Remo en T", ts = 2000.0))
+        local(b, mio)
+        b.disco.guardar(SustitucionesServidor.archivoEncoladas("rut-prueba"), ValorJson.Objeto(mio))   // ya habían subido
+        b.servidor.cuando("get_exercise_swaps", json())
+        val m = b.modelo()
+        m.cargar()
+        m.encoladoSustituciones?.join()
+        assertEquals(listOf("jal-d1-0", "rem-d1-1"), m.dia.value.sustituciones.keys.sorted())
+        assertEquals(listOf("swap_ej_rut-prueba_jal-d1-0", "swap_ej_rut-prueba_rem-d1-1"), claves(b))
     }
 
     @Test
     fun sinLaTablaEnLaBaseQuedaComoHoy() = enUnHilo { alcance ->
         val b = Banco(alcance, ejecutar = true)
         local(b, mapOf("jal-d1-0" to swap("Dominadas")))
-        b.servidor.cuando("import_exercise_swaps", noExiste.first, noExiste.second)
+        b.servidor.cuando("get_exercise_swaps", noExiste.first, noExiste.second)
         b.servidor.cuando("save_exercise_swap", noExiste.first, noExiste.second)
         b.servidor.cuando("delete_exercise_swap", noExiste.first, noExiste.second)
+        val estados = Collections.synchronizedList(mutableListOf<EstadoGuardado>())
+        b.cola.observar({ estados += it }, { })
         val m = b.modelo()
         m.cargar()
         assertEquals(mapOf("jal-d1-0" to swap("Dominadas")), m.dia.value.sustituciones)
-        assertNull(estado(b), "no se marca como subida: cuando exista la tabla, sube")
         val sub = m.sustitutos("jal-d1-0").first()
         m.sustituir("jal-d1-0", sub, fijar = true)
         m.encoladoSustituciones?.join()
@@ -184,27 +267,27 @@ class SustitucionesServidorModeloTest {
         assertEquals(1, b.servidor.llamadas("delete_exercise_swap").size)
         assertTrue(b.cola.operaciones().isEmpty() && b.cola.fallidos().isEmpty(), "la cola las da por hechas: no hay 'no se guardó'")
         assertTrue(b.servidor.llamadas("get_cliente_info").isEmpty(), "ni se sospecha del token")
+        assertFalse(EstadoGuardado.PERDIDO in estados || EstadoGuardado.SIN_CONEXION in estados, "$estados")
         assertEquals(emptyMap<String, ValorJson>(), enDisco(b))
-        m.sincronizarSustituciones()
-        assertEquals(2, b.servidor.llamadas("import_exercise_swaps").size, "se vuelve a intentar subir")
     }
 
     @Test
     fun sinRedOConElTokenCaidoQuedaLoDelTelefono() = enUnHilo { alcance ->
         for (respuesta in listOf<Pair<Int, String>?>(null, 200 to "null", 200 to "[]")) {
             val b = Banco(alcance)
-            yaSubidas(b)
-            local(b, mapOf("jal-d1-0" to swap("Dominadas")))
+            local(b, mapOf("jal-d1-0" to swap("Dominadas", ts = 1.0)))
             b.servidor.regla("get_exercise_swaps") { respuesta }
             val m = b.modelo()
             m.sincronizarSustituciones()
-            assertEquals(mapOf("jal-d1-0" to swap("Dominadas")), m.dia.value.sustituciones, "con $respuesta")
-            assertEquals(mapOf("jal-d1-0" to swap("Dominadas")), enDisco(b))
+            m.encoladoSustituciones?.join()
+            assertEquals(mapOf("jal-d1-0" to swap("Dominadas", ts = 1.0)), m.dia.value.sustituciones, "con $respuesta")
+            assertEquals(mapOf("jal-d1-0" to swap("Dominadas", ts = 1.0)), enDisco(b))
+            assertTrue(claves(b).isEmpty())
         }
     }
 
     @Test
-    fun cadaCambioSaleALaColaYGanaElUltimo() = enUnHilo { alcance ->
+    fun cadaCambioSaleALaColaConSuHoraYGanaElUltimo() = enUnHilo { alcance ->
         val b = Banco(alcance)
         val m = b.modelo()
         val sub = m.sustitutos("jal-d1-0").first()
@@ -215,10 +298,13 @@ class SustitucionesServidorModeloTest {
         assertEquals(ValorJson.Texto("rut-prueba"), guardar.payload["rutinaId"])
         assertEquals(ValorJson.Texto("jal-d1-0"), guardar.payload["exId"])
         assertEquals(m.dia.value.sustituciones["jal-d1-0"], guardar.payload["swap"], "va lo mismo que queda en el teléfono")
+        assertEquals(ValorJson.Numero(ahora), guardar.payload["swap"]?.get("_ts"), "con la hora del cambio")
+        b.reloj.ms = ahora + 5000
         m.revertirSustitucion("jal-d1-0")
         m.encoladoSustituciones?.join()
         val ops = b.cola.operaciones()
         assertTrue(ops.size == 1 && ops.first().kind == "swap_ej_del", "volver al original reemplaza a la de guardar")
+        assertEquals(ValorJson.Numero(ahora + 5000), ops.first().payload["ts"])
     }
 
     @Test
@@ -236,35 +322,41 @@ class SustitucionesServidorModeloTest {
         assertEquals(ValorJson.Texto("jal-d1-0"), guardada["p_ex_id"])
         assertEquals(sub.nombre, guardada["p_swap"]?.get("current")?.get("nombre")?.comoTexto)
         assertEquals(ValorJson.Booleano(true), guardada["p_swap"]?.get("fijado"))
+        assertEquals(ValorJson.Numero(ahora), guardada["p_swap"]?.get("_ts"))
         m.revertirSustitucion("jal-d1-0")
         m.encoladoSustituciones?.join()
         b.cola.drenar()
-        assertEquals(ValorJson.Texto("jal-d1-0"), b.servidor.llamadas("delete_exercise_swap").firstOrNull()?.get("p_ex_id"))
+        val borrada = b.servidor.llamadas("delete_exercise_swap").first()
+        assertEquals(ValorJson.Texto("jal-d1-0"), borrada["p_ex_id"])
+        assertEquals(ValorJson.Numero(ahora), borrada["p_ts"])
         assertTrue(b.cola.operaciones().isEmpty() && b.cola.fallidos().isEmpty())
     }
 
     @Test
     fun loQueSigueEnLaColaNoLoPisaElServidor() = enUnHilo { alcance ->
         val b = Banco(alcance) // la cola no manda nada: queda pendiente
-        yaSubidas(b)
-        local(b, mapOf("rem-d1-1" to swap("Remo en T")))
-        b.servidor.cuando("get_exercise_swaps", json(mapOf("rem-d1-1" to swap("Remo en T"))))
+        local(b, mapOf("rem-d1-1" to swap("Remo en T", ts = 1.0)))
+        b.servidor.cuando("get_exercise_swaps", json(vivas = mapOf("rem-d1-1" to swap("Remo en T", ts = 1.0))))
         val m = b.modelo()
         val sub = m.sustitutos("jal-d1-0").first()
         m.sustituir("jal-d1-0", sub, fijar = true)
         m.revertirSustitucion("rem-d1-1")
         m.sincronizarSustituciones()
+        m.encoladoSustituciones?.join()
         assertEquals(listOf("jal-d1-0"), m.dia.value.sustituciones.keys.sorted(), "la nueva queda y la revertida no vuelve")
+        val ops = b.cola.operaciones()
+        assertEquals(listOf("swap_ej_rut-prueba_jal-d1-0", "swap_ej_rut-prueba_rem-d1-1"), ops.mapNotNull { it.dedupeKey }.sorted())
+        assertEquals(ValorJson.Numero(ahora), ops.first { it.kind == "swap_ej_del" }.payload["ts"], "no se reencoló con otra hora")
     }
 
     @Test
     fun loQueSeTocaMientrasSeEsperaNoLoPisaLaRespuesta() = enUnHilo { alcance ->
         val b = Banco(alcance, ejecutar = true)
-        yaSubidas(b)
         b.servidor.cuando("save_exercise_swap", "true")
+        val vacio = json()
         b.servidor.regla("get_exercise_swaps") {
             demora(200)
-            200 to "{}" // salió antes de que se guardara la nueva
+            200 to vacio // salió antes de que se guardara la nueva
         }
         val m = b.modelo()
         val sub = m.sustitutos("jal-d1-0").first()
@@ -276,26 +368,70 @@ class SustitucionesServidorModeloTest {
         sync.await()
         assertEquals(sub.nombre, m.dia.value.sustituciones["jal-d1-0"]?.get("current")?.get("nombre")?.comoTexto)
         assertNotNull(enDisco(b)?.get("jal-d1-0"))
+        m.encoladoSustituciones?.join()
+        assertEquals(1, b.servidor.llamadas("save_exercise_swap").size, "no se volvió a mandar")
+    }
+
+    /** Hallazgo 4: la op estaba en la cola al empezar y se mandó mientras se esperaba la respuesta (que salió antes). */
+    @Test
+    fun unaOpEncoladaAntesDeLeerQueSaleEnElMedioNoSePierde() = enUnHilo { alcance ->
+        val b = Banco(alcance, ejecutar = true)
+        b.servidor.cuando("save_exercise_swap", "true")
+        val vacio = json()
+        b.servidor.regla("get_exercise_swaps") {
+            demora(200)
+            200 to vacio
+        }
+        val m = b.modelo()
+        val sub = m.sustitutos("jal-d1-0").first()
+        m.sustituir("jal-d1-0", sub, fijar = true)
+        m.encoladoSustituciones?.join()
+        assertEquals(1, b.cola.operaciones().size)
+        val sync = async { m.sincronizarSustituciones() }
+        delay(60)
+        b.cola.drenar()
+        sync.await()
+        assertEquals(sub.nombre, m.dia.value.sustituciones["jal-d1-0"]?.get("current")?.get("nombre")?.comoTexto)
+        m.encoladoSustituciones?.join()
+        assertTrue(b.cola.operaciones().isEmpty())
+        assertEquals(1, b.servidor.llamadas("save_exercise_swap").size)
+    }
+
+    /** La app escribió la sustitución en el archivo y se cerró antes de pasarla a la cola: al volver a abrir se encola. */
+    @Test
+    fun loQueNoLlegoALaColaAntesDeCerrarseSeEncolaAlVolverAAbrir() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        b.disco.guardar(SustitucionesServidor.archivoEncoladas("rut-prueba"), ValorJson.objeto("rem-d1-1" to swap("Remo en T", ts = 1.0)))
+        local(b, mapOf("rem-d1-1" to swap("Remo en T", ts = 1.0), "jal-d1-0" to swap("Dominadas", ts = 2.0)))
+        b.servidor.sinRed("get_exercise_swaps")
+        val m = b.modelo()
+        m.cargar()
+        m.encoladoSustituciones?.join()
+        assertEquals(listOf("swap_ej_rut-prueba_jal-d1-0"), claves(b))
+        val anotadas = (b.disco.leer(SustitucionesServidor.archivoEncoladas("rut-prueba")) as? JsonObject)?.keys?.sorted()
+        assertEquals(listOf("jal-d1-0", "rem-d1-1"), anotadas, "queda anotado que ya está en la cola")
     }
 
     @Test
-    fun siLaMigracionSeRepitioLoDeLaAppViejaReemplaza() = enUnHilo { alcance ->
+    fun loQueLlegaDelServidorNoVuelveALaCola() = enUnHilo { alcance ->
         val b = Banco(alcance)
-        yaSubidas(b, reemplazar = true)
-        local(b, mapOf("jal-d1-0" to swap("Dominadas")))
-        b.servidor.cuando("import_exercise_swaps", json(mapOf("jal-d1-0" to swap("Dominadas"))))
+        b.servidor.cuando(
+            "get_exercise_swaps",
+            json(vivas = mapOf("jal-d1-0" to swap("Dominadas", ts = 1.0), "pre-d2-0" to swap("Press inclinado", "d2", ts = 1.0))),
+        )
         val m = b.modelo()
         m.sincronizarSustituciones()
-        assertEquals(ValorJson.Booleano(true), b.servidor.llamadas("import_exercise_swaps").firstOrNull()?.get("p_reemplazar"))
-        assertEquals(SustitucionesServidor.Estado(subidas = true, reemplazar = false), estado(b))
-        assertTrue(b.servidor.llamadas("get_exercise_swaps").isEmpty())
+        m.revertirSustitucion("jal-d1-0")
+        m.encoladoSustituciones?.join()
+        val ops = b.cola.operaciones()
+        assertEquals(listOf("swap_ej_del"), ops.map { it.kind }, "sale solo lo que hizo el cliente, no lo que bajó: ${ops.map { it.dedupeKey }}")
+        assertEquals(ValorJson.Texto("jal-d1-0"), ops.first().payload["exId"])
     }
 
     @Test
     fun siCambiaLaRutinaEnElMedioLaRespuestaNoSeUsa() = enUnHilo { alcance ->
         val b = Banco(alcance)
-        yaSubidas(b)
-        val respuesta = json(mapOf("jal-d1-0" to swap("Dominadas")))
+        val respuesta = json(vivas = mapOf("jal-d1-0" to swap("Dominadas", ts = 1.0)))
         b.servidor.regla("get_exercise_swaps") {
             demora(150)
             200 to respuesta
@@ -308,5 +444,49 @@ class SustitucionesServidorModeloTest {
         sync.await()
         assertTrue(m.dia.value.sustituciones.isEmpty())
         assertNull(b.disco.leer(ModeloEntreno.Archivo.sustituciones("rut-otra")))
+    }
+}
+
+/** Hallazgo 5: antes de SER-14 una sustitución no tocaba la red; sus ops no muestran avisos (las demás sí). */
+class SustitucionesSilenciosasTest {
+    private val sinRed: ResultadoOp = ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.RED, 0, mensaje = "sin red")))
+
+    @Test
+    fun sinRedUnaSustitucionSolaNoAvisaYConUnaSerieSi() = enUnHilo { alcance ->
+        val estados = Collections.synchronizedList(mutableListOf<EstadoGuardado>())
+        val o = Outbox(archivo = null, reintentoAutomatico = false, alcance = alcance) { sinRed }
+        o.observar({ estados += it }, { })
+        o.encolar("swap_ej", ValorJson.objeto(), "swap_ej_R_a")
+        o.drenar()
+        assertFalse(EstadoGuardado.SIN_CONEXION in estados, "$estados")
+        o.encolar("carga", ValorJson.objeto(), "k1")
+        o.drenar()
+        assertTrue(EstadoGuardado.SIN_CONEXION in estados)
+    }
+
+    @Test
+    fun lentaNoMuestraGuardando() = enUnHilo { alcance ->
+        val estados = Collections.synchronizedList(mutableListOf<EstadoGuardado>())
+        val o = Outbox(archivo = null, reintentoAutomatico = false, alcance = alcance) {
+            delay(1100)
+            ResultadoOp.Respuesta(Resultado.Ok(ValorJson.Booleano(true)))
+        }
+        o.observar({ estados += it }, { })
+        o.encolar("swap_ej_del", ValorJson.objeto(), "swap_ej_R_a")
+        o.drenar()
+        assertFalse(EstadoGuardado.GUARDANDO in estados, "$estados")
+    }
+
+    @Test
+    fun abandonadaNoAvisaPerdidoPeroQuedaEnFallidos() = enUnHilo { alcance ->
+        val estados = Collections.synchronizedList(mutableListOf<EstadoGuardado>())
+        val o = Outbox(archivo = null, reintentoAutomatico = false, alcance = alcance) {
+            ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 400, "22023", "inválida")))
+        }
+        o.observar({ estados += it }, { })
+        o.encolar("swap_ej", ValorJson.objeto(), "swap_ej_R_a")
+        repeat(12) { if (o.operaciones().isNotEmpty()) o.drenar() }
+        assertFalse(EstadoGuardado.PERDIDO in estados, "$estados")
+        assertEquals(1, o.fallidos().size)
     }
 }
