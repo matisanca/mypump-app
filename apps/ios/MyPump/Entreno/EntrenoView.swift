@@ -20,7 +20,8 @@ struct EntrenoView: View {
             Group {
                 switch pantalla {
                 case .dia(let m):
-                    ListaEntreno(motor: m, alCompletarDia: completoDia)
+                    // Con cuenta y un motor de ejemplo (Mati todavía no publicó el plan): el aviso de la web (ACC-08).
+                    ListaEntreno(motor: m, deEjemplo: m.demo && !modelo.esDemo, alCompletarDia: completoDia)
                 case .sinRed:
                     // Un corte dejó afuera la rutina y no había copia guardada.
                     ContentUnavailableView {
@@ -99,6 +100,7 @@ struct EntrenoView: View {
 /// El día del motor.
 private struct ListaEntreno: View {
     let motor: ModeloEntreno
+    let deEjemplo: Bool
     let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
     @Environment(Preguntador.self) private var preguntador
     @State private var tituloEnBarra = false
@@ -116,6 +118,11 @@ private struct ListaEntreno: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 cabecera
+                if deEjemplo {
+                    AvisoProgresion(icono: "exclamationmark.triangle.fill",
+                                    texto: Text(Bonito.sinEmoji(TextosEntreno.demo).replacingOccurrences(of: "Modo demo — ", with: "")),
+                                    tono: .alerta)
+                }
                 BannerRevision()
                 SelectorDias(motor: motor)
                 if motor.vacio {
