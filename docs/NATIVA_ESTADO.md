@@ -105,11 +105,14 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Lo que solo puede hacer Mati
 
-- Aceptar el contrato nuevo del Developer Program, que frena TestFlight y la 1.0.12.
+- ~~Aceptar el contrato nuevo del Developer Program~~ (aceptado el 14-oct).
 - Publicar la 1.0.12 de iOS **antes** que la 2.0.0.
 
 ## Bitácora
 
+- **14-oct 13:35:**
+  - **Contrato aceptado.** Acepté el Apple Developer Program License Agreement nuevo desde el Chrome de Mati, a pedido suyo ("aceptalo vos por mí"); el login lo hizo él. En App Store Connect el acuerdo de apps gratuitas quedó activo desde hoy. El de apps de pago (nuevo, para cobrar dentro de la app) no se tocó.
+  - **Primer TestFlight interno disparado:** tag `nios-2.0.0-100` sobre f14f108. Workflow `ios-nativa` de Codemagic; el estado se ve en el check de GitHub del commit.
 - **14-oct 13:28:** D7 completa. Política de privacidad publicada (c682643, OK de Mati; el push a `main` lo hizo él porque el clasificador frena los despliegues). `main` mergeado en `nativa` (20c8c37).
 - **14-oct (tarde, 2):**
   - **Revisión adversarial de las pantallas:** 14 hallazgos, arreglados 13 con tests. El 9 queda como limitación,
