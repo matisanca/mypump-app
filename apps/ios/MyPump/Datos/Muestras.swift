@@ -106,10 +106,6 @@ enum Fechas {
 extension Double {
     /// "52,5" / "55": como lo escribe un argentino, sin ",0".
     var kg: String {
-        let f = NumberFormatter()
-        f.locale = Locale(identifier: "es_AR")
-        f.minimumFractionDigits = 0
-        f.maximumFractionDigits = 1
-        return f.string(from: NSNumber(value: self)) ?? String(self)
+        formatted(.number.precision(.fractionLength(0...1)).grouping(.never).locale(Locale(identifier: "es_AR")))
     }
 }

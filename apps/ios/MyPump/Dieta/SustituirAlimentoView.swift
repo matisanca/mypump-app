@@ -96,6 +96,7 @@ struct SustituirAlimentoView: View {
                     Text(elegido.map { "Reemplazar por \($0.nombre)" } ?? "Elegí un alimento").lineLimit(1)
                 }
                 .buttonStyle(BotonMarca())
+                .accessibilityIdentifier("confirmar-reemplazo")
                 .disabled(elegido == nil)
                 .opacity(elegido == nil ? 0.5 : 1)
                 .padding(.horizontal).padding(.vertical, 10)
@@ -145,6 +146,8 @@ struct SustituirAlimentoView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("sustituto")
+        .accessibilityAddTraits(marcado ? .isSelected : [])
         .listRowBackground(marcado ? Color.marcaSuave : Color.tarjeta)
     }
 
