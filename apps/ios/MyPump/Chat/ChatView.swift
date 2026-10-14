@@ -171,15 +171,17 @@ struct ChatView: View {
                     TextField("Escribile a Mati…", text: $texto, axis: .vertical)
                         .lineLimit(1...5)
                         .focused($escribiendo)
-                        .onChange(of: texto) { _, nuevo in
-                            if nuevo.count > limite { texto = String(nuevo.prefix(limite)) }
-                        }
+                        // Sin recortar mientras se escribe: en un campo de varias líneas SwiftUI no siempre muestra el
+                        // recorte (quedaba un carácter de más a la vista que se perdía al mandar). Pasado el límite,
+                        // el contador va en rojo y Enviar se apaga: nunca sale más de 1000, como el maxlength de la web.
                         .accessibilityIdentifier("chat-campo")
                     if texto.count > limite - 100 {
                         Text("\(texto.count)/\(limite)")
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(texto.count >= limite ? Color.peligro : Color.secondary)
                             .padding(.bottom, 2)
+                            .accessibilityLabel(texto.count > limite ? "Te pasaste: \(texto.count) de \(limite) caracteres" : "\(texto.count) de \(limite) caracteres")
+                            .accessibilityIdentifier("chat-contador")
                     }
                 }
                 .padding(.horizontal, Espacio.m)
@@ -213,7 +215,7 @@ struct ChatView: View {
     }
 
     private var puedeEnviar: Bool {
-        chat != nil && !texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        chat != nil && !texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && texto.count <= limite
     }
 
     /// La burbuja aparece ya ("enviando…") y el mensaje sale por la cola (CHA-03).
