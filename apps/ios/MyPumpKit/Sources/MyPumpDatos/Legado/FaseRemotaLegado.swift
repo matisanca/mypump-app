@@ -18,6 +18,8 @@ public struct ReciboLegado: Codable, Equatable, Sendable {
     /// `mypump_conteos_cliente(p_token)` (G2): hasta entonces van vacíos.
     public var servidorAntes: [String: Int]?
     public var servidorDespues: [String: Int]?
+    /// El cliente de la corrida: un recibo que quedó en el disco solo se reenvía con la cuenta que lo generó.
+    public var cliente: String?
 }
 
 public struct ConteosNativos: Codable, Equatable, Sendable {
@@ -40,8 +42,8 @@ public enum EntregaRecibo: String, Codable, Sendable {
     case fallo
 }
 
-/// A dónde va el recibo. Hoy solo al disco; con G2, una RPC `mypump_registrar_migracion_nativa(p_token, p_migracion,
-/// p_corrida, p_recibo jsonb)` con tope de tamaño.
+/// A dónde va el recibo: al disco (`ReciboEnDisco`) y, con la `nativa_001` aplicada, también al servidor
+/// (`ReciboEnServidor`, `mypump_registrar_migracion_nativa`).
 public protocol ReciboMigracion: Sendable {
     func enviar(_ recibo: ReciboLegado, token: String) async -> EntregaRecibo
 }
@@ -61,7 +63,7 @@ public struct ReciboEnDisco: ReciboMigracion {
     }
 }
 
-/// Filas por tabla del cliente (G2: `mypump_conteos_cliente`). Sin la RPC, nil.
+/// Filas por tabla del cliente (`mypump_conteos_cliente`, `ConteosRPC`). Sin la RPC, nil.
 public protocol ConteosServidor: Sendable {
     func contar(token: String) async -> [String: Int]?
 }
@@ -212,7 +214,7 @@ public enum FaseRemotaLegado {
             despues.fotosFueraDeVentana = fotos.values.filter { $0.fecha < desde || $0.fecha > hasta }.count
             let rec = ReciboLegado(migracion: estado.migracion, corrida: corrida, fecha: ISO8601DateFormatter().string(from: ahora),
                                    plataforma: "ios", app: app, antes: estado.conteos, despues: despues,
-                                   servidorAntes: servidorAntes, servidorDespues: await conteos.contar(token: token))
+                                   servidorAntes: servidorAntes, servidorDespues: await conteos.contar(token: token), cliente: clienteId)
             let entrega = await recibo.enviar(rec, token: token)
             r.recibo = entrega
             estado.recibos += 1
@@ -273,6 +275,11 @@ public enum FaseRemotaLegado {
         return e.faseRPendiente || e.escritura != nil
     }
 
+    /// Solo la Fase R (sin contar la escritura de vuelta): es lo que pausa la palanca `migracion_ops_legadas`.
+    public static func faseRPendiente(entorno: EntornoLegado) -> Bool {
+        ArchivosLegado(carpeta: entorno.carpeta).estado?.faseRPendiente ?? false
+    }
+
     // MARK: - Escritura de vuelta (la hace la app con WebKit, Ruta A)
 
     /// Lo que la app tiene que escribir en el `localStorage` viejo: borrar esas claves (si siguen iguales) y dejar la
@@ -331,6 +338,21 @@ public enum FaseRemotaLegado {
         estado.escrituraUltima = estado.escritura
         estado.escritura = nil
         try? a.guardar(estado, "estado.json")
+    }
+
+    /// Los recibos que quedaron solo en el disco (la RPC todavía no existía, o no hubo red), otra vez al servidor, con la
+    /// misma cuenta que los generó. El primero que confirma arranca la cuenta de los 90 días de la copia cruda.
+    @discardableResult
+    public static func reenviarRecibos(entorno: EntornoLegado, token: String, clienteId: String, cliente: ClienteRPC,
+                                       ahora: Date = Date()) async -> Int {
+        let n = await ReciboEnServidor.reenviar(carpeta: entorno.carpeta.appendingPathComponent("recibos"), token: token,
+                                                clienteId: clienteId, cliente: cliente)
+        let a = ArchivosLegado(carpeta: entorno.carpeta)
+        if n > 0, var estado = a.estado, estado.reciboConfirmadoEn == nil {
+            estado.reciboConfirmadoEn = ahora.timeIntervalSince1970 * 1000
+            try? a.guardar(estado, "estado.json")
+        }
+        return n
     }
 
     /// La copia cruda se borra 90 días después de que el SERVIDOR confirmó el recibo (con el recibo solo en disco, nunca).

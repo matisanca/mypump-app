@@ -83,6 +83,18 @@ struct SwapsDeComidaTests {
         #expect(r.operaciones.map(\.kind) == ["swap_del"])
     }
 
+    // La palanca remota apagada (`anclaje_borra_swaps = false`): el que no coincide se oculta, pero no se borra.
+    @Test func conLaPalancaApagadaElAncladoQueNoCoincideSoloSeOculta() throws {
+        let anclado = SwapsDeComida.conAncla(json(food("Arroz", 80)), original: food("Pan lactal", 60))
+        let r = try #require(SwapsDeComida.hidratar(remotos: [try fila("c2", 0, 1, anclado)], locales: [:], dietaId: "d1", pendientes: [:],
+                                                    yaMigrado: false, borrarAnclados: false) {
+            SwapsDeComida.enPosicion(v2, tipoActivo: nil, comidaId: $0, optIdx: $1, foodIdx: $2)
+        })
+        #expect(r.swaps["swap_d1_c2_0_1"] != nil)
+        #expect(r.operaciones.isEmpty)
+        #expect(efectivo(v2, food("Café", 200, "ml"), r.swaps["swap_d1_c2_0_1"], idx: 1) == "Café")
+    }
+
     @Test func ancladoQueSigueCoincidiendoQuedaSinTrafico() throws {
         let anclado = SwapsDeComida.conAncla(json(food("Arroz", 80)), original: food("Pan lactal", 60))
         let r = try #require(hidratar(v1, remotos: [try fila("c2", 0, 1, anclado)]))

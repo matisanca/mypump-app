@@ -30,9 +30,19 @@ por TestFlight, con tu iPhone, tu firma y el push de verdad. Dura unos 15 minuto
 8. Domingo a las 11: tiene que llegar "Tu revisión de la semana" **una sola vez**. Si llegan dos, quedó agendada la
    vieja.
 
+## Cero pérdida (con la G2 aplicada)
+
+Con `nativa_001` en la base, la 2.0.0 deja un recibo por corrida en `mypump_migracion_nativa`. Trae lo que leyó del
+almacenamiento viejo, a dónde fue cada cosa y las filas del cliente en el servidor antes y después de mandar lo pendiente
+(`servidorAntes` / `servidorDespues`). Yo lo leo desde la Mini con `_q.py`. La cuenta tiene que cerrar: las filas de
+después son las de antes más lo que estaba en la cola. Sin la G2 aplicada, el recibo queda en el teléfono y se manda
+solo el día que exista la RPC.
+
 ## Qué mirar si algo falla
 
-- El informe de la migración queda en el teléfono (Ajustes de la app → diagnóstico) y en la base. El recibo con conteos
-  necesita la RPC nueva, que es la compuerta G2 y te la pido aparte.
+- El informe de la migración queda en el teléfono, en `legado/registro.log`, sin tokens ni contenido. Por ahora se lee
+  con Xcode (Devices → MyPump → descargar el contenedor). Está pendiente mostrarlo en Mis datos → diagnóstico.
+- Si la migración hace algo raro en muchos teléfonos, la palanca remota (`mypump_app_config`, G2) pausa las ops
+  viejas y la escritura de vuelta sin publicar otra versión.
 - Se puede volver atrás: reinstalar la 1.0.12 desde la App Store. La migración se repite sola al volver a la 2.0.0, sin
   duplicar.
