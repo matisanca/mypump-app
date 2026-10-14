@@ -55,7 +55,10 @@ function extraerConst(nombre) {
   throw new Error(`const ${nombre} sin cierre`);
 }
 
-const reglas = new Function(`${extraer('getProgresionActual')}\n${extraer('computeProgresionNota')}\n${extraer('claveEjercicio')}\nreturn { getProgresionActual, computeProgresionNota, claveEjercicio };`)();
+const reglas = new Function(`${extraer('getProgresionActual')}\n${extraer('computeProgresionNota')}\n${extraer('claveEjercicio')}\n${extraer('porcionReferencia')}\nreturn { getProgresionActual, computeProgresionNota, claveEjercicio, porcionReferencia };`)();
+// _swapAplicable consulta _foodsEnPosicion(comidaId, optIdx, foodIdx) (los alimentos de esa posición en TODOS los
+// tipos de día): se inyecta una versión que lee la dieta del caso.
+const anclaje = new Function('_foodsEnPosicion', `${extraer('_huellaFood')}\n${extraer('_swapAplicable')}\nreturn { _huellaFood, _swapAplicable };`);
 
 // ── Corpus ───────────────────────────────────────────────────────────
 const leer = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -101,9 +104,96 @@ function vectoresClave(nombres) {
 }
 const nombresDe = (rutinas) => ejerciciosDe(rutinas).map((e) => e.nombre);
 
+// ── Alimentos: porción casera y anclaje de swaps ─────────────────────
+const FOOD_DB = (() => {
+  const w = {};
+  new Function('window', execFileSync('git', ['show', `${REF}:public/js/food-db.js`], { cwd: RAIZ }).toString())(w);
+  return w.MYPUMP_FOOD_DB;
+})();
+const dietasPublicas = fs.readdirSync(fixtures).map((c) => leer(path.join(fixtures, c, 'get_dieta_activa.json'))[0].estructura);
+dietasPublicas.push(demo.dieta);
+// Formato B sintético: la misma posición con otra cantidad según el tipo de día ("Avena 80 g" entreno / "Avena 50 g"
+// descanso) y otro alimento en otra posición. Es el caso que rompió el anclaje el 20-sep.
+dietasPublicas.push({ tipos_dia: [
+  { id: 'entreno', nombre: 'Entreno', comidas: [{ id: 'desayuno', name: 'Desayuno', options: [{ name: 'A', foods: [
+    { name: 'Avena', qty: 80, unit: 'g', kcal: 300, prot: 10, carb: 54, fat: 6 },
+    { name: 'Leche', qty: 250, unit: 'ml', kcal: 120, prot: 8, carb: 12, fat: 4 },
+    { name: 'Tostadas', qty: 2, unit: 'unidad', kcal: 140, prot: 4, carb: 26, fat: 2 } ] }] }] },
+  { id: 'descanso', nombre: 'Descanso', comidas: [{ id: 'desayuno', name: 'Desayuno', options: [{ name: 'A', foods: [
+    { name: 'Avena', qty: 50, unit: 'g', kcal: 190, prot: 6, carb: 34, fat: 4 },
+    { name: 'Leche', qty: 250, unit: 'ml', kcal: 120, prot: 8, carb: 12, fat: 4 },
+    { name: 'Banana', qty: 1, unit: 'unidad', kcal: 105, prot: 1, carb: 27, fat: 0 } ] }] }] },
+] });
+const dietasPrivadas = fs.existsSync(path.join(PRIVADO, 'estructuras/dietas.json')) ? leer(path.join(PRIVADO, 'estructuras/dietas.json')) : [];
+const comidasDe = (d) => [...(d.comidas || []), ...(d.tipos_dia || []).flatMap((t) => t.comidas || [])];
+const alimentosDe = (dietas) => dietas.flatMap((d) => comidasDe(d).flatMap((c) => (c.options || []).flatMap((o) => o.foods || [])));
+
+// Porción casera: los alimentos de las dietas, más FOOD_DB con varias cantidades y unidades (lo que puede quedar
+// después de un swap), más casos borde.
+function corpusPorcion(dietas, conBase) {
+  const out = [...alimentosDe(dietas)];
+  if (conBase) {
+    for (const f of FOOD_DB) {
+      for (const qty of [6, 15, 30, 50, 80, 100, 120, 150, 185, 200, 245, 300, 480]) out.push({ ...f, qty, unit: 'g' });
+      if (f.unitGrams) for (const qty of [0.5, 1, 2, 3, 25, 60]) out.push({ ...f, qty, unit: f.unit || 'unidad' });
+    }
+    out.push({ name: 'Leche descremada', qty: 250, unit: 'ml' }, { name: 'Gaseosa', qty: 500, unit: 'cc' },
+      { name: 'Aceite de oliva', qty: 5, unit: 'ml' }, { name: 'Huevos', qty: 3, unit: 'u' }, { name: 'Panes', qty: 2, unit: 'unidades' },
+      { name: 'Arroz', qty: 1, unit: 'taza' }, { name: 'Atún al natural', qty: 20, unit: 'g' }, { name: 'Atún', qty: 170, unit: 'g' },
+      { name: 'Atún', qty: 240, unit: 'g' }, { name: 'Papaya', qty: 200, unit: 'g' }, { name: 'Pan rallado', qty: 30, unit: 'g' },
+      { name: 'Pechuga de pollo cruda', qty: 230, unit: 'g' }, { name: '', qty: 100, unit: 'g' }, { name: 'Pollo', qty: 0, unit: 'g' },
+      { name: 'Pollo', qty: 'abc', unit: 'g' }, { name: 'Nueces', qty: '45', unit: 'G' }, { name: 'Crema de maní', qty: 6, unit: 'g' },
+      { name: 'Lápices', qty: 40, unit: 'paquetes', unitGrams: 5 }, { name: 'Raíces', qty: 30, unit: 'unidad', unitGrams: 10 });
+  }
+  return out;
+}
+function vectoresPorcion(alimentos) {
+  const vistos = new Set();
+  const casos = [];
+  for (const f of alimentos) {
+    const k = JSON.stringify([f.name, f.qty, f.unit, f.unitGrams]);
+    if (vistos.has(k)) continue;
+    vistos.add(k);
+    casos.push({ alimento: { name: f.name, qty: f.qty, unit: f.unit, unitGrams: f.unitGrams }, porcion: reglas.porcionReferencia(f) });
+  }
+  return { casos };
+}
+
+// Anclaje: para cada dieta, swaps sintéticos sobre cada posición (ancla igual, otra cantidad, otro nombre, legado
+// sin ancla), evaluados contra lo que hay en esa posición en el tipo de día que se renderiza.
+function vectoresAnclaje(dietas) {
+  const casos = [];
+  for (const [di, d] of dietas.entries()) {
+    const tipos = (d.tipos_dia && d.tipos_dia.length) ? d.tipos_dia : [{ comidas: d.comidas || [] }];
+    const foodsEnPosicion = (comidaId, optIdx, foodIdx) => tipos.map((t) => {
+      const c = (t.comidas || []).find((x) => x.id === comidaId);
+      return c && c.options && c.options[optIdx] && (c.options[optIdx].foods || [])[foodIdx];
+    }).filter(Boolean);
+    const { _swapAplicable } = anclaje(foodsEnPosicion);
+    for (const t of tipos) for (const c of (t.comidas || [])) (c.options || []).forEach((o, oi) => (o.foods || []).forEach((f, fi) => {
+      const variantes = [
+        { name: 'X', _orig: { name: f.name, qty: f.qty, unit: f.unit } },
+        { name: 'X', _orig: { name: ` ${String(f.name).toUpperCase()} `, qty: f.qty, unit: String(f.unit || '').toUpperCase() } },
+        { name: 'X', _orig: { name: f.name, qty: (Number(f.qty) || 0) + 10, unit: f.unit } },
+        { name: 'X', _orig: { name: 'Otro alimento', qty: f.qty, unit: f.unit } },
+        { name: 'X' },
+        // El ancla es lo que hay en ESA posición en otro tipo de día (Avena 80 entreno vista en descanso con 50).
+        ...foodsEnPosicion(c.id, oi, fi).filter((g) => g !== f).map((g) => ({ name: 'X', _orig: { name: g.name, qty: g.qty, unit: g.unit } })),
+      ];
+      for (const cur of variantes) {
+        casos.push({ dieta: di, comidaId: c.id, optIdx: oi, foodIdx: fi, original: f,
+          current: cur, aplica: _swapAplicable({ current: cur }, f, c.id, oi, fi), aplicaSinComida: _swapAplicable({ current: cur }, f, null, oi, fi) });
+      }
+    }));
+  }
+  return { casos };
+}
+
 const sal = path.join(RAIZ, 'apps/shared/vectores');
 const n1 = escribir(sal, 'progresion', vectoresProgresion(rutinasPublicas));
 const n3 = escribir(sal, 'clave_ejercicio', vectoresClave([...NOMBRES_DIFICILES, ...nombresDe(rutinasPublicas)]));
+const n5 = escribir(sal, 'porcion_casera', vectoresPorcion(corpusPorcion(dietasPublicas, true)));
+const n6 = escribir(sal, 'anclaje_swaps', vectoresAnclaje(dietasPublicas));
 fs.mkdirSync(path.join(RAIZ, 'apps/shared/demo'), { recursive: true });
 fs.writeFileSync(path.join(RAIZ, 'apps/shared/demo/rutina.json'), JSON.stringify(demo.rutina, null, 1) + '\n');
 fs.writeFileSync(path.join(RAIZ, 'apps/shared/demo/dieta.json'), JSON.stringify(demo.dieta, null, 1) + '\n');
@@ -113,4 +203,9 @@ if (rutinasPrivadas.length) {
   const historicos = fs.existsSync(path.join(PRIVADO, 'estructuras/nombres-registrados.json')) ? leer(path.join(PRIVADO, 'estructuras/nombres-registrados.json')) : [];
   n4 = escribir(path.join(PRIVADO, 'vectores'), 'clave_ejercicio', vectoresClave([...nombresDe(rutinasPrivadas), ...historicos]));
 }
-console.log(`▸ cliente.html@${commit}: progresion ${n1} públicos / ${n2} privados · clave_ejercicio ${n3} públicos / ${n4} privados · demo en apps/shared/demo/`);
+let n7 = 0, n8 = 0;
+if (dietasPrivadas.length) {
+  n7 = escribir(path.join(PRIVADO, 'vectores'), 'porcion_casera', vectoresPorcion(corpusPorcion(dietasPrivadas, false)));
+  n8 = escribir(path.join(PRIVADO, 'vectores'), 'anclaje_swaps', vectoresAnclaje(dietasPrivadas));
+}
+console.log(`▸ cliente.html@${commit}: progresion ${n1}/${n2} · clave_ejercicio ${n3}/${n4} · porcion_casera ${n5}/${n7} · anclaje_swaps ${n6}/${n8} (públicos/privados) · demo en apps/shared/demo/`);
