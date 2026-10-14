@@ -227,7 +227,7 @@ private actor Llamadas {
     func de(_ f: String) -> [JSONValue] { lista.filter { $0.0 == f }.map(\.1) }
 }
 
-private struct Servidor: Transporte {
+private struct ServidorLegado: Transporte {
     let llamadas: Llamadas
     let responder: @Sendable (String, JSONValue) -> (Int, String)
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
@@ -290,7 +290,7 @@ private func rutinaActiva(_ id: String, dias: [String] = ["b2d1", "b2d2", "b2d3"
 
 /// Contesta como la base: OK a cada escritura; `get_cliente_info` según el token; la rutina activa que se pida.
 private func servidor(_ llamadas: Llamadas, activa: String = rutinaR1, clientes: [String: String] = [tokenA: "test-nativa-ios"]) -> ClienteRPC {
-    ClienteRPC(transporte: Servidor(llamadas: llamadas) { fn, p in
+    ClienteRPC(transporte: ServidorLegado(llamadas: llamadas) { fn, p in
         switch fn {
         case "mypump_get_cliente_info":
             guard let t = p["p_token"]?.comoTexto, let c = clientes[t] else { return (200, "[]") }
@@ -672,7 +672,7 @@ struct FaseRemotaLegadoTests {
         _ = try tel.faseL()
         let llamadas = Llamadas()
         // Misma rutina, pero Mati sacó el día b2d2 al republicarla.
-        let cliente = ClienteRPC(transporte: Servidor(llamadas: llamadas) { fn, p in
+        let cliente = ClienteRPC(transporte: ServidorLegado(llamadas: llamadas) { fn, p in
             switch fn {
             case "mypump_get_rutina_activa": return (200, rutinaActiva(rutinaR1, dias: ["b2d1", "b2d3"]))
             case "mypump_get_sesion_dia": return (200, "[]")
