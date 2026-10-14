@@ -18,6 +18,8 @@ struct CheckSemanal: View {
     @State private var envios = 0
     @State private var aviso: String?
     @FocusState private var escribiendo: Bool
+    /// D7: el primer check espera el permiso para la IA (la ronda del domingo lo lee; con un "no", sin IA).
+    @State private var pedidoIA: PedidoIA?
 
     /// Ícono y color de cada escala (las claves y los textos salen de `CheckinSemanal.metricas`, como en la web).
     private static let estilo: [String: (icono: String, color: Color)] = [
@@ -86,6 +88,7 @@ struct CheckSemanal: View {
         }
         .animation(.snappy, value: faltan)
         .animation(.snappy, value: enviado)
+        .permisoIA($pedidoIA, modelo: Proveedor.modelo)
         // Lo guardado (o lo que se acaba de mandar) se muestra mientras el cliente no haya tocado nada.
         .onChange(of: revision?.checkin, initial: true) { _, c in
             guard !editado, let c else { return }
@@ -112,6 +115,10 @@ struct CheckSemanal: View {
         guard let revision else {
             enviadoMuestra = true
             envios += 1
+            return
+        }
+        if Proveedor.modelo.faltaConsentimientoIA, CheckinSemanal.faltan(valores) == nil {
+            pedidoIA = PedidoIA { _ in enviar() }
             return
         }
         let check = Checkin(valores: valores, nota: nota)

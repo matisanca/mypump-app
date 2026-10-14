@@ -14,6 +14,8 @@ struct ChatView: View {
     @State private var texto = ""
     @FocusState private var escribiendo: Bool
     @State private var enviados = 0
+    /// D7: el primer mensaje espera la respuesta del permiso para la IA (con un "no" sale igual: lo contesta Mati).
+    @State private var pedidoIA: PedidoIA?
 
     private let limite = 1000
 
@@ -54,6 +56,7 @@ struct ChatView: View {
             Task { await chat?.marcarLeido() }
         }
         .onDisappear { chat?.abierto = false }
+        .permisoIA($pedidoIA, modelo: modelo)
     }
 
     @ViewBuilder private var contenido: some View {
@@ -213,6 +216,15 @@ struct ChatView: View {
 
     /// La burbuja aparece ya ("enviando…") y el mensaje sale por la cola (CHA-03).
     private func enviar() {
+        guard chat != nil, puedeEnviar else { return }
+        if modelo.faltaConsentimientoIA {
+            pedidoIA = PedidoIA { _ in mandar() }
+            return
+        }
+        mandar()
+    }
+
+    private func mandar() {
         guard let chat, puedeEnviar else { return }
         let mensaje = texto
         texto = ""

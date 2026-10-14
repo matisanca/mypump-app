@@ -170,6 +170,7 @@ struct MiDia: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(titulo): \(si ? "sí" : "no")")
+        .accessibilityValue(activo ? "marcado" : "")   // VoiceOver lo dice, y las pruebas de interfaz lo leen
         .accessibilityAddTraits(activo ? .isSelected : [])
     }
 

@@ -86,6 +86,30 @@ struct MisDatosView: View {
             }
             .disabled(modelo.conMuestras)
 
+            // D7: la decisión sobre la IA, para cambiarla cuando quiera (solo si el servidor puede respetarla).
+            if modelo.consentimientoIADisponible && !modelo.conMuestras && !modelo.esDemo {
+                Section {
+                    Toggle(isOn: Binding(get: { modelo.consentimientoIA == true }, set: { v in
+                        Task { await modelo.decidirConsentimientoIA(v) }
+                    })) {
+                        Label { Text("Asistente de IA") } icon: { IconoAzulejo("sparkles", color: .marcaTexto) }
+                    }
+                    .tint(Color.marcaVivo)
+                    .accessibilityIdentifier("asistente-ia")
+                } header: {
+                    Text("Inteligencia artificial")
+                } footer: {
+                    switch modelo.consentimientoIA {
+                    case true?:
+                        Text("Lee tus mensajes del chat, las fotos que mandes a analizar y tu check para ayudar a Mati (OpenAI y Anthropic; los datos de salud van sin tu nombre). Si lo apagás, ninguna IA lee tus datos.")
+                    case false?:
+                        Text("Apagado: ninguna IA lee tus datos. Te contesta Mati y las fotos no se analizan.")
+                    case nil:
+                        Text("Todavía no elegiste: te lo preguntamos antes de tu primer mensaje, foto o check. Si lo prendés, la IA ayuda con el chat, las fotos y tu revisión semanal.")
+                    }
+                }
+            }
+
             Section("Tu información") {
                 Button { fuentes = true } label: {
                     fila("Respaldo científico del plan", icono: "book.closed.fill", color: .marcaTexto)

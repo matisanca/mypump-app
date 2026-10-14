@@ -74,7 +74,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | Compuerta | Estado |
 |---|---|
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
-| G2 · migraciones de esquema | **tanda 1 preparada, espera OK**: `nativa_001_recibo_conteos_palanca.sql`. Agrega 2 tablas y 3 funciones; no cambia nada existente. Primero el ensayo en ROLLBACK (`scripts/nativa/ensayar-migracion.py`, en la Mini), después aplicar. La app ya funciona con y sin la migración. Las sustituciones de ejercicio en el servidor quedan para una tanda 2 |
+| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. Pendiente para otra tanda: sustituciones de ejercicio en el servidor y `mypump_borrar_serie` |
 | G5 · TestFlight externo | pendiente. Los internos ya están autorizados |
 | G6 · mensajes a clientes | pendiente |
 | G7 · revisión de tiendas | pendiente |
@@ -89,7 +89,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | D4 | Textos corregidos (recordatorio de entreno inexistente; "11:00", no "mediodía") | Que la app no mienta |
 | D5 | Tema: sigue al sistema salvo que el cliente haya guardado `'dark'` | `theme.js` escribe `'light'` siempre, así que no es una elección |
 | D6 | Lima en la interfaz; el ícono no cambia | Identidad actual |
-| D7 | IA de terceros (5.1.2(i)): **queda como hoy, pero es un RIESGO de revisión** | Decisión de producto de Mati antes de enviar (G7) |
+| D7 | IA de terceros (5.1.2(i)): **permiso con un "no" real que cubre todo** (chat, fotos y ronda del domingo). Decisión de Mati, 14-oct | App y servidor hechos. Falta aplicar `nativa_002` y desplegar `chat_worker`, `sugerir_pendientes` y `centinela` en la Mini (comandos en la bitácora) |
 | D8 | Aviso local de fin de descanso con la app en segundo plano | Mejora sin riesgo |
 | D9 | Borrado: link a `eliminar-datos.html` desde Mis datos, sin RPC | No hace falta tocar la base |
 | D10 | **Sin "Comí / Salté" en Dieta** (pedido de Mati, 14-oct). Se va también el consumo parcial; el anillo muestra el objetivo y cuánto suman las opciones elegidas | Le resultaba molesto al cliente. El coach deja de recibir esas marcas de los clientes con la nativa (la web las sigue teniendo) |
@@ -105,10 +105,31 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Lo que solo puede hacer Mati
 
-- Aceptar el contrato nuevo del Developer Program, que frena TestFlight y la 1.0.12.
+- ~~Aceptar el contrato nuevo del Developer Program~~ (aceptado el 14-oct).
 - Publicar la 1.0.12 de iOS **antes** que la 2.0.0.
 
 ## Bitácora
+
+- **14-oct 13:35:**
+  - **Contrato aceptado.** Acepté el Apple Developer Program License Agreement nuevo desde el Chrome de Mati, a pedido suyo ("aceptalo vos por mí"); el login lo hizo él. En App Store Connect el acuerdo de apps gratuitas quedó activo desde hoy. El de apps de pago (nuevo, para cobrar dentro de la app) no se tocó.
+  - **Primer TestFlight interno disparado:** tag `nios-2.0.0-100` sobre f14f108. Workflow `ios-nativa` de Codemagic; el estado se ve en el check de GitHub del commit.
+    - **Resultado: OK** (compilado, firmado, IPA revisado y subido). Apple lo procesó: 2.0.0 (100) "Lista para enviar"; vence a los 90 días.
+  - **TestFlight interno armado** (OK de Mati): grupo **"Equipo Pump"** con distribución automática y Mati como tester (fuarkteam@gmail.com, titular). Tiene las 13 compilaciones; cada build nativo nuevo le llega solo. Falta TF-0 en su iPhone (`docs/NATIVA_TF0.md`).
+- **14-oct 13:28:** D7 completa. Política de privacidad publicada (c682643, OK de Mati; el push a `main` lo hizo él porque el clasificador frena los despliegues). `main` mergeado en `nativa` (20c8c37).
+- **14-oct (tarde, 2):**
+  - **Revisión adversarial de las pantallas:** 14 hallazgos, arreglados 13 con tests. El 9 queda como limitación,
+    igual que en la web.
+  - **D7:** el permiso para la IA, en la app y en el servidor.
+  - **G2:** OK de Mati. El ensayo de `nativa_001` y `nativa_002` dio OK, pero aplicarlas lo frenó el clasificador:
+    las corre Mati.
+  - **Desplegado por Mati (14-oct 13:13):** las dos migraciones y los tres scripts, con el md5 igual al del repo. Lo que se corrió:
+    1. Las migraciones, que ya están en la Mini:
+       `ssh mini 'cd ~/agentkit-coach && venv/bin/python ~/_aplicar.py /tmp/nativa_001_recibo_conteos_palanca.sql && venv/bin/python ~/_aplicar.py /tmp/nativa_002_consentimiento_ia.sql'`
+    2. Los scripts, con backup:
+       `ssh mini 'cd ~/pump-centinela && for f in chat_worker.py sugerir_pendientes.py centinela.py; do cp $f $f.bak-pre-d7; done' && scp pump-centinela/{chat_worker.py,sugerir_pendientes.py,centinela.py} mini:pump-centinela/`
+    - Si los scripts llegan antes que la `nativa_002`, igual andan: "nadie dijo que no".
+    - **Ojo:** esos tres scripts están cambiados solo en `nativa`. Si otra sesión despliega desde `main` antes del
+      merge, se pierde el filtro.
 
 - **14-oct (tarde):**
   - **iOS:**

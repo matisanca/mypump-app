@@ -37,6 +37,15 @@ right next to it, and Entreno, Dieta and Mi Día end with "Respaldo científico
 del plan". Both open the full list of sources (ISSN, NASEM, ACSM, WHO, NIH,
 Argentine dietary guidelines) with links, plus a medical disclaimer.
 
+THIRD-PARTY AI (Guideline 5.1.2(i))
+
+Before the first chat message, the first photo analysis and the first weekly
+check, the app asks for explicit permission to use third-party AI (OpenAI and
+Anthropic) and explains what each one reads. If the user declines, no AI
+processes their data: the coach answers the chat himself, photos are not
+analyzed and the weekly review is prepared without AI. The choice can be
+changed at any time in Revisión → Mis datos → Asistente de IA.
+
 PRIVACY
 
 Privacy policy and data deletion are available inside the app (Revisión →
@@ -44,7 +53,8 @@ Mis datos), and at https://app.mypumpteam.com/privacidad.html.
 ```
 
 **Antes de enviar, revisar:**
-- **D7 (IA de terceros, 5.1.2(i)):** Apple pide decir con quién se comparten los datos (también una IA de terceros) y
+- **D7 decidido (14-oct): permiso con un "no" real que cubre TODO** (chat, fotos y la ronda del domingo). Está hecho en la app y en el servidor, y espera que se aplique `nativa_002` y se desplieguen `chat_worker`, `sugerir_pendientes` y `centinela` en la Mini. **Web:** `privacidad.html` nombra a OpenAI y a Anthropic y, desde el 14-oct, explica que se puede decir que no (c682643, publicada).
+- **Antecedentes de D7 (IA de terceros, 5.1.2(i)):** Apple pide decir con quién se comparten los datos (también una IA de terceros) y
   pedir permiso explícito antes. Lo que hay hoy (verificado en `origin/main` el 14-oct):
   - **Chat:** `pump-centinela/chat_worker.py` corre Codex (OpenAI, con la cuenta de ChatGPT de la Mini). Ve el hilo y
     un resumen del check de la semana, peso incluido. No ve las métricas de salud (HRV, sueño). Tiene dos modos:
