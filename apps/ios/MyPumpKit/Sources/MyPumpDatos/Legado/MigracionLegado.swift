@@ -456,7 +456,7 @@ public enum MigracionLegado {
             let payload = o["payload"] ?? .null
             let dedupe = o["dedupeKey"]?.comoTexto
             let ts = JSONLegado.numero(o["ts"]) ?? 0
-            let tries = max(0, Int(JSONLegado.numero(o["tries"]) ?? 0))
+            let tries = max(0, (JSONLegado.numero(o["tries"]) ?? 0).enteroTruncado)
             let contenido = JSONLegado.canonico(.lista([.texto(clave), .texto(kind), dedupe.map(JSONValue.texto) ?? .null,
                                                         .numero(ts), payload]))
             let indice = vistas[contenido, default: 0]
@@ -479,7 +479,7 @@ public enum MigracionLegado {
             let partes = k.split(separator: "|", maxSplits: 1).map(String.init)
             fotos[k] = FotoPendiente(pose: x["pose"]?.comoTexto ?? (partes.count == 2 ? partes[1] : ""),
                                      fecha: x["fecha"]?.comoTexto ?? partes.first ?? "",
-                                     dataUrl: dataUrl, intentos: Int(JSONLegado.numero(x["intentos"]) ?? 0))
+                                     dataUrl: dataUrl, intentos: max(0, (JSONLegado.numero(x["intentos"]) ?? 0).enteroTruncado))
         }
         return fotos
     }
@@ -509,7 +509,7 @@ public enum MigracionLegado {
             // Compat F5: `fijado === undefined` → fijado. Ojo: `null` no es undefined (la web lo deja como no fijado).
             let fijado = campos.keys.contains("fijado") ? JSONLegado.verdadero(campos["fijado"]) : true
             r[exId] = SustitucionEjercicio(original: ejercicio(campos["original"]), current: ejercicio(campos["current"]), fijado: fijado,
-                                           semana: JSONLegado.numero(campos["semana"]).map { Int($0) },
+                                           semana: JSONLegado.numero(campos["semana"]).map(\.enteroTruncado),
                                            diaId: JSONLegado.texto(campos["diaId"]))
         }
         return r

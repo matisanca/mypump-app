@@ -52,8 +52,9 @@ public struct PreferenciasAvisos: Codable, Equatable, Sendable {
         guard let texto, let d = texto.data(using: .utf8), let j = try? JSONDecoder().decode(JSONValue.self, from: d),
               case .objeto(let o) = j, case .objeto(let c)? = o["check"] else { return p }
         if case .bool(let on)? = c["on"] { p.check.on = on }
-        if let h = c["hora"]?.comoNumero { p.check.hora = Int(h) }
-        if let m = c["min"]?.comoNumero { p.check.min = Int(m) }
+        // Una hora imposible (o un 1e20, que cerraba la app) deja la de siempre: el aviso nunca queda sin poder sonar.
+        if let h = c["hora"]?.comoNumero, h == h.rounded(), (0...23).contains(h) { p.check.hora = Int(h) }
+        if let m = c["min"]?.comoNumero, m == m.rounded(), (0...59).contains(m) { p.check.min = Int(m) }
         return p
     }
 

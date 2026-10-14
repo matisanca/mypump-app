@@ -238,7 +238,7 @@ public struct RelojLocal: Sendable {
         cal.timeZone = TimeZone(identifier: "UTC")!
         let segundos = (ms / 1000).rounded(.down)
         let c = cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date(timeIntervalSince1970: segundos))
-        let resto = Int(ms - segundos * 1000)
+        let resto = (ms - segundos * 1000).enteroTruncado
         return String(format: "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", c.year ?? 0, c.month ?? 0, c.day ?? 0,
                       c.hour ?? 0, c.minute ?? 0, c.second ?? 0, resto)
     }

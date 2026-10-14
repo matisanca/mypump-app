@@ -50,7 +50,7 @@ public enum PesoCorporal {
     public static func deltaSemanal(_ serie: [Punto], hoy: String) -> Int? {
         guard let dHoy = DiaCalendario.numero(hoy), let m7 = media(serie, hasta: hoy, dias: 7),
               let m7prev = media(serie, hasta: DiaCalendario.texto(dHoy - 7), dias: 7) else { return nil }
-        return Int(jsRound((m7 - m7prev) * 1000))
+        return ((m7 - m7prev) * 1000).jsEntero
     }
 
     /// "+350 g" / "-1,2 kg" (la parte en negrita de "Esta semana: … vs la semana pasada").

@@ -81,7 +81,7 @@ public enum SaludVista {
         guard !pasos.isEmpty || filas.contains(where: { $0.tipo == "actividad_min" }) else { return nil }
         let fechas = Array(Set(pasos.map(\.fecha))).sorted().suffix(7)
         let vals = fechas.compactMap { valor(filas, tipo: "pasos", fecha: $0) }
-        let prom = vals.isEmpty ? 0 : Int(jsRound(vals.reduce(0, +) / Double(vals.count)))
+        let prom = vals.isEmpty ? 0 : (vals.reduce(0, +) / Double(vals.count)).jsEntero
         let ayer = DiaCalendario.numero(hoy).map { DiaCalendario.texto($0 - 1) } ?? hoy
         return ResumenSalud(
             pasosHoy: valor(filas, tipo: "pasos", fecha: hoy),
@@ -267,8 +267,8 @@ public enum SaludVista {
         let total = wTot == 0 ? 1 : wTot
         return presentes.map { k in
             let c = comp[k.clave]
-            return Componente(clave: k.clave, nombre: k.nombre, score: Int(jsRound(numero(c?["score"]) ?? 0)),
-                              aporte: Int(jsRound((numero(c?["peso"]) ?? 0) / total * 100)))
+            return Componente(clave: k.clave, nombre: k.nombre, score: (numero(c?["score"]) ?? 0).jsEntero,
+                              aporte: ((numero(c?["peso"]) ?? 0) / total * 100).jsEntero)
         }
     }
 
@@ -352,20 +352,21 @@ public enum SaludVista {
     /// `String(Math.round(x))`, sin romperse con NaN o infinito (JS escribe "NaN").
     public static func enteroJS(_ x: Double) -> String {
         guard x.isFinite else { return x.isNaN ? "NaN" : (x > 0 ? "Infinity" : "-Infinity") }
-        return "\(Int(jsRound(x)))"
+        return JS.texto(jsRound(x))   // 1e21 sale "1e+21", como en JS (`Int()` cerraba la app)
     }
 
     /// `Math.round(v).toLocaleString('es-AR')`: "8.548".
     public static func miles(_ v: Double) -> String {
         guard v.isFinite else { return "NaN" }
-        let n = Int(jsRound(v))
-        let s = String(abs(n))
+        let r = jsRound(v)
+        // Los dígitos del entero, también de uno que no entra en Int (`Int()` cerraba la app).
+        let s = String(format: "%.0f", abs(r))
         var out = ""
         for (i, c) in s.reversed().enumerated() {
             if i > 0 && i % 3 == 0 { out.append(".") }
             out.append(c)
         }
-        return (n < 0 ? "-" : "") + String(out.reversed())
+        return (r < 0 ? "-" : "") + String(out.reversed())
     }
 
     public static let entero: @Sendable (Double) -> String = { enteroJS($0) }
@@ -375,7 +376,8 @@ public enum SaludVista {
     /// `_hhmmReloj`: minutos (puede ser negativo o pasar de 1440) → "HH:MM".
     public static func horaReloj(_ mm: Double) -> String {
         guard mm.isFinite else { return "NaN:NaN" }
-        let r = Int(jsRound(mm))
+        // `%` de JS es el resto exacto del double: primero el resto, después el entero (que así siempre entra).
+        let r = Int(jsRound(mm).truncatingRemainder(dividingBy: 1440))
         let x = ((r % 1440) + 1440) % 1440
         return String(format: "%02d:%02d", x / 60, x % 60)
     }
@@ -402,8 +404,7 @@ public enum SaludVista {
     static func promedio(_ xs: [Double]) -> Double? { xs.isEmpty ? nil : xs.reduce(0, +) / Double(xs.count) }
     static func dosCifras(_ x: Double) -> String {
         guard x.isFinite else { return "NaN" }
-        let n = Int(x)
-        return n < 10 && n >= 0 ? "0\(n)" : "\(n)"
+        return x < 10 && x >= 0 ? "0\(Int(x))" : JS.texto(x)
     }
 
     static func numero(_ j: JSONValue?) -> Double? {

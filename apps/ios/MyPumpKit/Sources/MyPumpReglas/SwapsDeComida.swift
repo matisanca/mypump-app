@@ -93,7 +93,7 @@ public enum SwapsDeComida {
             // Migración, una vez por dispositivo: lo local de antes del backend sube POR LA COLA.
             let patron = "^swap_\(NSRegularExpression.escapedPattern(for: dietaId))_(.+?)_(\\d+)_(\\d+)$"
             let re = try? NSRegularExpression(pattern: patron)
-            for (clave, swap) in locales.sorted(by: { $0.key < $1.key }) where swap.current != .null {
+            for (clave, swap) in locales.sorted(by: { $0.key < $1.key }) where AnclajeSwaps.esVerdadero(swap.current) {
                 guard let re, let m = re.firstMatch(in: clave, range: NSRange(clave.startIndex..., in: clave)),
                       let rc = Range(m.range(at: 1), in: clave), let ro = Range(m.range(at: 2), in: clave),
                       let rf = Range(m.range(at: 3), in: clave), let o = Int(clave[ro]), let f = Int(clave[rf]) else { continue }
@@ -119,7 +119,7 @@ public enum SwapsDeComida {
     /// ya no coincide con NINGÚN tipo de día se saca y se borra en el backend. Lo pendiente del cliente no se toca.
     static func anclarOSacar(_ mapa: inout [String: SwapLocal], clave: String, fila: FoodSwap, pendientes: [String: String],
                              enPosicion: (String, Int, Int) -> [Alimento]) -> OpSwap? {
-        guard let actual = mapa[clave]?.current, actual != .null else { return nil }
+        guard let actual = mapa[clave]?.current, AnclajeSwaps.esVerdadero(actual) else { return nil }
         if pendientes[clave] != nil { return nil }
         let candidatos = enPosicion(fila.comidaId, fila.optIdx, fila.foodIdx)
         guard let primero = candidatos.first else { return nil }   // posición inexistente: no se aplica de todos modos

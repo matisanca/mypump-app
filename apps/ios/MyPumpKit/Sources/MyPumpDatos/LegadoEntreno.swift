@@ -49,7 +49,7 @@ public struct LegadoEntreno: Sendable, Equatable {
             guard !dia.isEmpty else { continue }
             var s = porDia[dia] ?? SesionDia(diaId: dia)
             switch campo {
-            case "_semana": s.semana = JS.parseInt(v).flatMap { $0.isFinite ? Int($0) : nil }
+            case "_semana": s.semana = JS.parseInt(v).flatMap { $0.isFinite && abs($0) < 1e15 ? Int($0) : nil }
             case "_start": s.inicio = JS.parseInt(v).flatMap { $0 > 0 ? $0 : nil }
             case "_finalizada": s.finalizada = v == "1"
             default: s.sesionId = JS.verdadero(v)
@@ -100,7 +100,7 @@ public struct LegadoEntreno: Sendable, Equatable {
                 let fin = d["_finalizada"] ?? d["finalizada"]
                 l.sesiones.append(SesionDia(
                     diaId: dia, sesionId: (d["sesionId"] ?? d["_sesionId"])?.comoTexto,
-                    semana: (numero("_semana") ?? numero("semana")).flatMap { $0.isFinite ? Int($0) : nil },
+                    semana: (numero("_semana") ?? numero("semana")).flatMap { $0.isFinite && abs($0) < 1e15 ? Int($0) : nil },
                     inicio: (numero("_start") ?? numero("inicio")).flatMap { $0 > 0 ? $0 : nil },
                     finalizada: fin == .bool(true) || fin == .texto("1") || fin == .numero(1)))
             }

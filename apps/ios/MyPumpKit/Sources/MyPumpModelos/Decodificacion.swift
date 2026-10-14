@@ -6,7 +6,8 @@ import Foundation
 extension KeyedDecodingContainer {
     func entero(_ k: Key) -> Int? {
         if let v = try? decodeIfPresent(Int.self, forKey: k) { return v }
-        if let d = try? decodeIfPresent(Double.self, forKey: k), d.isFinite { return Int(d) }
+        // `Int()` de Swift cierra la app fuera de ±2^63; más allá de 2^53 ni siquiera es un entero exacto: no sirve.
+        if let d = try? decodeIfPresent(Double.self, forKey: k), d.isFinite, abs(d) < 9_007_199_254_740_992 { return Int(d) }
         if let s = try? decodeIfPresent(String.self, forKey: k) { return Int(s.trimmingCharacters(in: .whitespaces)) }
         return nil
     }

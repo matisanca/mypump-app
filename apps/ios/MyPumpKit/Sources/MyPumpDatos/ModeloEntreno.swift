@@ -476,7 +476,7 @@ public final class ModeloEntreno {
             let p = op.payload
             guard p["diaId"]?.comoTexto == diaId, p["semana"]?.comoNumero == Double(semana) else { continue }
             if op.kind == "carga", let d = p["datos"], let ex = d["ejercicioId"]?.comoTexto, let n = d["serie"]?.comoNumero {
-                let i = Int(n) - 1
+                let i = n.enteroTruncado - 1
                 guard var e = dia.ejercicios[ex], i >= 0, i < e.series.count else { continue }
                 e.series[i].kg = d["peso"]?.comoNumero.map(JS.texto) ?? ""
                 e.series[i].reps = d["reps"]?.comoNumero.map(JS.texto) ?? ""

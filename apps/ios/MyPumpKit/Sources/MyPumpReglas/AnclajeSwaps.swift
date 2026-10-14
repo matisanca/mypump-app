@@ -28,7 +28,7 @@ public enum AnclajeSwaps {
     ///   - comidaId: nil cuando no se conoce la posición (en la web, `comidaId == null`).
     ///   - enPosicion: los alimentos de esa misma posición en TODOS los tipos de día.
     public static func aplica(foodData: JSONValue?, original: Alimento, comidaId: String?, enPosicion: () -> [Alimento]) -> Bool {
-        guard let actual = foodData, actual != .null else { return false }
+        guard let actual = foodData, esVerdadero(actual) else { return false }   // `!swap.current`: 0, "" o false tampoco
         guard let ancla = actual["_orig"], esVerdadero(ancla) else { return true }   // legado: sin ancla, se aplica
         let h = huella(ancla: ancla)
         if h == huella(original) { return true }
