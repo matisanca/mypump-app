@@ -51,6 +51,8 @@ public final class ModeloApp {
     @ObservationIgnored var disco: Disco?
     @ObservationIgnored public private(set) var outbox: Outbox?
     @ObservationIgnored let raizDisco: URL?
+    /// El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy".
+    @ObservationIgnored private var diaCargado: String?
 
     public init(cliente: ClienteRPC = ClienteRPC(), almacen: AlmacenToken = TokenEnKeychain(), raizDisco: URL? = nil) {
         self.cliente = cliente
@@ -202,6 +204,25 @@ public final class ModeloApp {
         async let cargaFotos: Void = fotos?.cargar() ?? ()
         _ = await (cargaChat, cargaMiDia, cargaRevision, cargaFotos)
         await fotos?.drenar()
+        diaCargado = FechaLocal.hoy()
+    }
+
+    /// Al volver a primer plano (GEN-07): salen las colas, se mira el chat, y si cambió el día se recarga lo que es "de
+    /// hoy" (comidas libres, Mi Día, el check de la semana). Si se estaba mostrando la copia offline, se intenta traer
+    /// todo de nuevo.
+    public func alVolverAPrimerPlano() async {
+        guard fase == .listo, !esDemo, token != nil else { return }
+        if desdeCache { await cargar(); return }
+        await outbox?.drenar()
+        await fotos?.drenar()
+        await chat?.sondear()
+        let hoy = FechaLocal.hoy()
+        if diaCargado != hoy {
+            await cargarComidasLibres()
+            await revision?.cargarMiDia()
+            await revision?.cargarRevision()
+            diaCargado = hoy
+        }
     }
 
     /// Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas.
