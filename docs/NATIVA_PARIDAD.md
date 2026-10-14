@@ -54,7 +54,7 @@ Hasta que se decidan, rige lo de hoy.
 | GEN-05 | Aviso único "a tu plan le falta información" arriba de Revisión | `C:1882-1896` | 🟡 ver auditoría 14-oct | ☐ |
 | GEN-06 | Onboarding de permisos (primera apertura, 1,2 s después de pintar): Salud → Notificaciones. "Ahora no" nunca dispara la hoja del sistema; Salud corta a los 20 s; si deniega, muestra la ruta en Ajustes. Clave `mypump_onboarding_v1` | `C:4447-4593` | ✅ en iOS HealthKit no informa la negación de lectura y healthkit-bridge.js tampoco emite 'denegado': la web muestra el mismo texto | ☐ |
 | GEN-07 | Al volver a primer plano: recalcula el descanso, drena el outbox y la cola de fotos, actualiza el chat; si cambió el día, recarga comidas, comidas libres y Mi Día | `C:5031-5058` | ✅ colas, chat, cambio de día y descanso (`ModeloEntreno.alVolverAPrimerPlano` → `tickDescanso`) | ☐ |
-| GEN-08 | Movimiento reducido respetado | `C:1000-1003` | 🟡 ver auditoría 14-oct | ☐ |
+| GEN-08 | Movimiento reducido respetado | `C:1000-1003` | ✅ las tres animaciones continuas se apagan con Reducir movimiento: el pulso de "En curso" (EntrenoView, `reducir`), el brillo del esqueleto de carga (Componentes, `reducir`) y las imágenes Inicio/Pico que se alternan (EjercicioView, `reducir`); los `.symbolEffect` los apaga el sistema; el resto son transiciones cortas | ☐ |
 | GEN-09 | Respaldo científico: fila al pie de Dieta, Entreno y Mi Día | `C:4712-4714` | ✅ `PieRespaldo` en Dieta; Entreno y Mi Día al conectar | ☐ |
 
 ## ENT · Entreno (vista)
@@ -106,8 +106,8 @@ Hasta que se decidan, rige lo de hoy.
 | SES-01 | La sesión se crea con la primera serie o con "Empezar entrenamiento" (`iniciar_sesion` idempotente) | `C:2989`, mig 075 | ✅ ver auditoría 14-oct | ☐ |
 | SES-02 | Se restaura la sesión del día **confirmándola con el servidor**: si el servidor no la devuelve, se descarta la local (nada de sesiones fantasma), sin pisar series ya confirmadas en el teléfono | `C:2983-3002`, `3235-3327`, rama `fix/sesion-cache-valida-servidor` | ✅ ver auditoría 14-oct | ☐ |
 | SES-03 | Cronómetro por día; con más de 6 h muestra "SIN CERRAR · Empezar de nuevo" y la duración va null | `C:1337-1358`, `3683-3711` | ✅ ver auditoría 14-oct | ☐ |
-| SES-04 | Descanso al confirmar una serie (salvo calentamiento): 90 s si falta o es 0; −15 / +15 / Saltar; al terminar, sonido, vibración y barra verde que se cierra a los 2 s. Persiste (`endsAt`) | `C:4841-5027` | 🟡 ver auditoría 14-oct | ☐ |
-| SES-05 | El sonido del descanso no corta la música del cliente (sesión de audio `.ambient`) | nativo | 🟡 ver auditoría 14-oct | ☐ |
+| SES-04 | Descanso al confirmar una serie (salvo calentamiento): 90 s si falta o es 0; −15 / +15 / Saltar; al terminar, sonido, vibración y barra verde que se cierra a los 2 s. Persiste (`endsAt`) | `C:4841-5027` | ✅ EntrenoTests.descanso: las secuencias de la web (iniciar, tick, −15/+15, saltar, restaurar) con el mismo texto, ancho de la barra, fin y cierre a los 2 s; EntrenoModeloTests: 90 s si viene 0, `endsAt` en disco y sobrevive al reinicio (`elDescansoSobreviveAlReinicio_yRestaurarLoBorra`); el pitido y el háptico en Entrenamiento.swift | ☐ |
+| SES-05 | El sonido del descanso no corta la música del cliente (sesión de audio `.ambient`) | nativo | ✅ Entrenamiento.swift: el pitido va con la sesión `.ambient` + `.mixWithOthers` (se mezcla con la música, no la corta, y respeta el modo silencio) | ☐ |
 | SES-06 | Cerrar el día: modal con series · reps · kg y notas (o versión anticipada con hasta 3 pendientes); **primero vacía el outbox**, después `finalizar_sesion`; con `false`, aviso | `C:4626-4709`, `3047-3085` | ✅ ver auditoría 14-oct | ☐ |
 | SES-07 | Cargar una serie en un día cerrado pregunta "Reabrir día" y usa la misma sesión | `C:4155`, `4164` | ✅ ver auditoría 14-oct | ☐ |
 | SES-08 | Comentarios por ejercicio: van directo (no por el outbox) con aviso si fallan; se marcan leídos al abrir la card | `C:2163-2246`, `3928-3946` | ✅ ver auditoría 14-oct | ☐ |
