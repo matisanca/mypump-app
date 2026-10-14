@@ -39,12 +39,15 @@ Argentine dietary guidelines) with links, plus a medical disclaimer.
 
 THIRD-PARTY AI (Guideline 5.1.2(i))
 
-Before the first chat message, the first photo analysis and the first weekly
-check, the app asks for explicit permission to use third-party AI (OpenAI and
-Anthropic) and explains what each one reads. If the user declines, no AI
-processes their data: the coach answers the chat himself, photos are not
-analyzed and the weekly review is prepared without AI. The choice can be
-changed at any time in Revisión → Mis datos → Asistente de IA.
+No personal data reaches a third-party AI. Chat replies are prepared by the
+coach with AI tools (OpenAI and Anthropic) and approved by him before they are
+sent. Before a conversation leaves our own server, a model that runs on that
+server removes the client's name, phone, email and ID numbers; the name is put
+back on our server, never by the provider. A meal or label photo is sent alone,
+without the user's name or any other data, to estimate its nutrition values,
+and it is deleted right after. The weekly report sent to Anthropic is
+pseudonymized. All of this is described in the privacy policy, available inside
+the app (Revisión → Mis datos).
 
 PRIVACY
 
@@ -53,22 +56,15 @@ Mis datos), and at https://app.mypumpteam.com/privacidad.html.
 ```
 
 **Antes de enviar, revisar:**
-- **D7 decidido (14-oct): permiso con un "no" real que cubre TODO** (chat, fotos y la ronda del domingo). Está hecho en la app y en el servidor, y espera que se aplique `nativa_002` y se desplieguen `chat_worker`, `sugerir_pendientes` y `centinela` en la Mini. **Web:** `privacidad.html` nombra a OpenAI y a Anthropic y, desde el 14-oct, explica que se puede decir que no (c682643, publicada).
-- **Antecedentes de D7 (IA de terceros, 5.1.2(i)):** Apple pide decir con quién se comparten los datos (también una IA de terceros) y
-  pedir permiso explícito antes. Lo que hay hoy (verificado en `origin/main` el 14-oct):
-  - **Chat:** `pump-centinela/chat_worker.py` corre Codex (OpenAI, con la cuenta de ChatGPT de la Mini). Ve el hilo y
-    un resumen del check de la semana, peso incluido. No ve las métricas de salud (HRV, sueño). Tiene dos modos:
-    - **sombra:** deja un borrador que Mati manda, edita o descarta;
-    - **automático** (`CHAT_IA_AUTO=1`): las respuestas "simples" salen solas, con demora humana.
-  - **Foto del plato y etiqueta:** `mini-vision/server.mjs` manda la imagen a Codex (OpenAI) y devuelve los valores.
-  - **Las opciones:**
-    - **(a)** Consentimiento único antes del primer mensaje o de la primera foto, con un "no" que el servidor respete.
-      Hace falta un campo en la base (G2) y que `chat_worker` saltee a quien no aceptó: lo contesta Mati a mano. La
-      foto sin aceptar no se analiza. Es lo más seguro para la revisión: la app ~1 h, el servidor ~1 h.
-    - **(b)** Pantalla informativa sin opción de decir que no. Más simple, pero no es el "permiso explícito" que pide
-      la guía.
-    - **(c)** Explicarlo solo en estas notas y arriesgar el rechazo. En modo sombra la respuesta la manda Mati, y eso
-      ayuda a defenderlo.
+- **D7 se sacó el 14-oct (Mati): la IA no es algo que el cliente acepte.** En su lugar, nada identificable llega a una IA
+  de terceros:
+  - el chat va sin nombre ni datos de contacto, los tapa la IA local de la Mini (`pump-centinela/deid_chat.py`), tanto
+    a Codex (borradores, `CHAT_IA_AUTO=0`) como a la sesión de Mensajes (`app_chat.py`, aprobación de Mati);
+  - la foto del plato o de la etiqueta va sola, sin datos de la persona;
+  - el informe semanal a Anthropic va seudonimizado.
+  La política de privacidad lo dice así desde e171038 (publicada el 14-oct). **Riesgo que queda:** Apple podría pedir
+  igual un permiso en la app. Si lo pide, la tabla `mypump_consentimiento_ia` (nativa_002) sigue en la base y la
+  pantalla está en la historia de git (antes de 678c5a8).
 - **iOS mínimo 17.** Hay que publicar antes la 1.0.12: es la última que van a poder instalar quienes tengan iOS 15 o 16.
 - **Lanzamiento:** `release_type: MANUAL` con phased release de 7 días. Nunca con `cancel_previous_submissions`.
 
