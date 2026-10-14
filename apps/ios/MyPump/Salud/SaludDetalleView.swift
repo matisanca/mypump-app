@@ -289,14 +289,14 @@ struct SeccionAppleHealth: View {
         if estado?.disponible == false {
             EmptyView()
         } else if modelo.sinDatos {
-            Button(ocupado ? "…" : "Reintentar") { Task { await reintentar() } }.buttonStyle(.bordered).disabled(ocupado)
+            Button(ocupado ? "…" : "Reintentar") { Task { await reintentar() } }.buttonStyle(BotonSecundario(compacto: true)).disabled(ocupado)
         } else if modelo.conectado {
             Button(ocupado || modelo.sincronizando ? "…" : "Sincronizar") { Task { await sincronizar() } }
-                .buttonStyle(.bordered).disabled(ocupado || modelo.sincronizando)
+                .buttonStyle(BotonSecundario(compacto: true)).disabled(ocupado || modelo.sincronizando)
                 .accessibilityIdentifier("sincronizar-salud")
         } else {
             Button(ocupado || modelo.conectando ? "…" : "Conectar") { Task { await conectar() } }
-                .buttonStyle(.borderedProminent).tint(Color.marca).foregroundStyle(Color.sobreMarca).disabled(ocupado)
+                .buttonStyle(BotonMarca(compacto: true)).disabled(ocupado)
         }
     }
 

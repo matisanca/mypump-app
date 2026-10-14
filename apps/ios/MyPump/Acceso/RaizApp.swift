@@ -148,9 +148,7 @@ private struct ActualizarApp: View {
             } label: {
                 Text("Abrir el App Store").fontWeight(.semibold)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.marca)
-            .foregroundStyle(Color.sobreMarca)
+            .buttonStyle(BotonMarca(compacto: true))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(FondoMarca())
@@ -178,9 +176,7 @@ private struct SinConexion: View {
                 } label: {
                     if reintentando { ProgressView() } else { Text("Reintentar").fontWeight(.semibold) }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.marca)
-                .foregroundStyle(Color.sobreMarca)
+                .buttonStyle(BotonMarca(compacto: true))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -211,10 +207,7 @@ private struct BarraDemo: View {
             Text("Estás viendo la demo").font(.subheadline.weight(.semibold))
             Spacer()
             Button("Salir") { Task { await modelo.salirDeDemo() } }
-                .font(.subheadline.weight(.semibold))
-                .buttonStyle(.bordered)
-                .buttonBorderShape(.capsule)
-                .controlSize(.small)
+                .buttonStyle(BotonSecundario(compacto: true))
                 .accessibilityIdentifier("salir-demo")
         }
         .padding(.horizontal, 16)

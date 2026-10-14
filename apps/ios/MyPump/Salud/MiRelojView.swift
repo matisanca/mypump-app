@@ -54,11 +54,11 @@ struct MiRelojView: View {
             }
             Spacer()
             if r.conectado {
-                Button("Quitar") { aQuitar = r }.buttonStyle(.bordered).controlSize(.small)
+                Button("Quitar") { aQuitar = r }.buttonStyle(BotonSecundario(compacto: true))
                     .accessibilityIdentifier("reloj-quitar-\(r.id)")
             } else {
                 Button(modelo.esperandoReloj == r.id ? "Abriendo…" : "Conectar") { conectar(r) }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(BotonSecundario(compacto: true))
                     .disabled(modelo.esperandoReloj == r.id)
                     .accessibilityIdentifier("reloj-conectar-\(r.id)")
             }
