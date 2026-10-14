@@ -9,6 +9,8 @@ import MyPumpReglas
 /// score" y el estado de Salud de Apple (cuyo título, con 5 toques, abre el diagnóstico).
 struct SaludDetalleView: View {
     let modelo: ModeloSalud
+    /// Un decimal con coma, como el resto de la app ("82,5 kg"); la web deja el punto.
+    private let unDecimal: @Sendable (Double) -> String = { SaludVista.unDecimal($0).replacingOccurrences(of: ".", with: ",") }
 
     var body: some View {
         ScrollView {
@@ -32,11 +34,11 @@ struct SaludDetalleView: View {
                                         nota: "Sube cuando estás incubando algo, con alcohol encima o durmiendo mal.")
                         FilaMetricaView(modelo: modelo, tipo: "spo2_pct", nombre: "Oxígeno en sangre", unidad: "%", color: .teal)
                         FilaMetricaView(modelo: modelo, tipo: "temp_muneca_c", nombre: "Temperatura de muñeca", unidad: "°", color: .orange,
-                                        formato: SaludVista.unDecimal)
+                                        formato: unDecimal)
                     }
                     seccion("⚖️", "Cuerpo") {
-                        FilaMetricaView(modelo: modelo, tipo: "peso_kg", nombre: "Peso", unidad: " kg", formato: SaludVista.unDecimal)
-                        FilaMetricaView(modelo: modelo, tipo: "grasa_pct", nombre: "Grasa corporal", unidad: "%", formato: SaludVista.unDecimal)
+                        FilaMetricaView(modelo: modelo, tipo: "peso_kg", nombre: "Peso", unidad: " kg", formato: unDecimal)
+                        FilaMetricaView(modelo: modelo, tipo: "grasa_pct", nombre: "Grasa corporal", unidad: "%", formato: unDecimal)
                     }
                     preferencias
                     SeccionAppleHealth(modelo: modelo)
@@ -47,7 +49,7 @@ struct SaludDetalleView: View {
             .padding(.bottom, 24)
         }
         .background(Color.fondo)
-        .navigationTitle("Mis datos")
+        .navigationTitle("Salud")   // se abre desde Mis datos: con el mismo título quedaban dos "Mis datos" apiladas
         .refreshable { await modelo.cargar() }
     }
 
