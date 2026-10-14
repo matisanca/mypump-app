@@ -42,8 +42,16 @@ public final class SincronizadorSalud {
     public static let alcance = 60
     static let esperaReintento: Double = 6 * 60 * 60 * 1000
 
+    /// Desvío a propósito de la web (bug encontrado el 14-oct): la última ventana del historial lee la noche de hoy
+    /// solo hasta la medianoche y la mandaba igual, pisando el sueño completo que había subido la sincronización de 7
+    /// días (470 → 89 minutos en el caso `conectar-primera-vez`) hasta la próxima sincronización. Con esto, en el
+    /// historial se descartan las filas con fecha igual o posterior al cierre de cada ventana (en las ventanas del medio
+    /// también, pero esas las vuelve a mandar completas la ventana siguiente). Los vectores de la web lo apagan.
+    let descartarNochesPartidas: Bool
+
     public init(fuente: any FuenteSalud, cliente: ClienteRPC, token: String, almacen: any AlmacenSalud,
-                ahora: @escaping @Sendable () -> Date = { Date() }, zona: TimeZone = .current) {
+                ahora: @escaping @Sendable () -> Date = { Date() }, zona: TimeZone = .current, descartarNochesPartidas: Bool = true) {
+        self.descartarNochesPartidas = descartarNochesPartidas
         self.fuente = fuente; self.cliente = cliente; self.token = token; self.almacen = almacen; self.ahora = ahora
         reloj = RelojLocal(zona: zona)
         recolector = RecolectorSalud(fuente: fuente, reloj: reloj)
@@ -162,8 +170,12 @@ public final class SincronizadorSalud {
             let hasta = reloj.medianoche(haceDias: off - 5, desde: ahora)
             let desde = reloj.medianoche(haceDias: off, desde: ahora)
             ventanas += 1
-            let regs = await recolector.recolectar(desde: desde, hasta: hasta, iosMayor: fuente.iosMayor)
+            var regs = await recolector.recolectar(desde: desde, hasta: hasta, iosMayor: fuente.iosMayor)
             cosechados += regs.count
+            if descartarNochesPartidas {
+                let corte = reloj.ymd(hasta)
+                regs.removeAll { $0.fecha >= corte }
+            }
             let envio = await postear(regs)
             total += envio.ok
             // Una ventana con lotes rechazados es una ventana fallida (si no, sin señal quedaba "completo" sin nada).

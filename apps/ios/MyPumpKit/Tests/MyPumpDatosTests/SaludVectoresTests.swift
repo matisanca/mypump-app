@@ -190,8 +190,9 @@ struct Corrida {
         base = BaseGrabada(c)
         almacen = AlmacenSaludEnMemoria(c.estadoInicial)
         let ahora = Date(timeIntervalSince1970: c.ahora / 1000)
+        // Contra los vectores de la web, con el bug de la web (la noche partida del historial) igual que ella.
         sinc = SincronizadorSalud(fuente: fuente, cliente: ClienteRPC(transporte: base), token: "tok-de-prueba-nativa-0001",
-                                  almacen: almacen, ahora: { ahora }, zona: TimeZone(identifier: c.tz)!)
+                                  almacen: almacen, ahora: { ahora }, zona: TimeZone(identifier: c.tz)!, descartarNochesPartidas: false)
     }
 
     /// Corre la acción del caso y devuelve todas las diferencias con la web.
@@ -307,5 +308,58 @@ struct SaludVectoresTests {
             + ["sueno_min", "sueno_medio_min", "sueno_eficiencia_pct", "sueno_ligero_min", "sueno_profundo_min", "sueno_rem_min", "hrv_ms"])
         #expect(todos.subtracting(tipos).isEmpty, "sin vector: \(todos.subtracting(tipos).sorted())")
         print("vectores de salud: \(registros) registros, \(entrenos) entrenos, \(consultas) consultas al plugin, \(tipos.count) tipos")
+    }
+}
+
+
+/// Registra lo que se manda a `ingest_salud` y contesta que entró todo.
+final class BaseQueAnota: Transporte, @unchecked Sendable {
+    private let candado = NSLock()
+    private var _lotes: [[JSONValue]] = []
+    var lotes: [[JSONValue]] { candado.withLock { _lotes } }
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let fn = pedido.url?.lastPathComponent ?? ""
+        var respuesta = "[]"
+        if fn == "mypump_ingest_salud" || fn == "mypump_ingest_entrenos" {
+            let cuerpo = pedido.httpBody.flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) }
+            if case .lista(let l)? = cuerpo?[fn == "mypump_ingest_salud" ? "p_registros" : "p_entrenos"] {
+                if fn == "mypump_ingest_salud" { candado.withLock { _lotes.append(l) } }
+                respuesta = String(l.count)
+            }
+        } else if fn == "mypump_get_mostrar_recuperacion" { respuesta = "true" }
+        return (Data(respuesta.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+@Suite("Salud: el historial no pisa la noche de hoy (desvío a propósito de la web)", .serialized)
+@MainActor
+struct SaludNocheParcialTests {
+    /// Corre "conectar-primera-vez" y devuelve las filas de sueño que mandó el HISTORIAL con fecha de hoy.
+    func suenoDeHoyEnElHistorial(descartar: Bool) async throws -> [JSONValue] {
+        let caso = try cargarSalud("salud_conectar").casos.first { $0.nombre == "conectar-primera-vez" }!
+        let ahora = Date(timeIntervalSince1970: caso.ahora / 1000)
+        let zona = TimeZone(identifier: caso.tz)!
+        let base = BaseQueAnota()
+        let sinc = SincronizadorSalud(fuente: FuenteGrabada(caso), cliente: ClienteRPC(transporte: base), token: "tok-de-prueba-nativa-0001",
+                                      almacen: AlmacenSaludEnMemoria(caso.estadoInicial), ahora: { ahora }, zona: zona,
+                                      descartarNochesPartidas: descartar)
+        let c = await sinc.conectar(esperarHistorial: true)
+        _ = await c.historial?.value
+        let hoy = RelojLocal(zona: zona).ymd(caso.ahora / 1)
+        // El primer lote es la sincronización de 7 días; lo que sigue es el historial.
+        return base.lotes.dropFirst().flatMap { $0 }.filter {
+            ($0["tipo"]?.comoTexto ?? "").hasPrefix("sueno") && $0["fecha"]?.comoTexto == hoy
+        }
+    }
+
+    @Test func conElArregloNoSeMandaLaNochePartida() async throws {
+        let partidas = try await suenoDeHoyEnElHistorial(descartar: true)
+        #expect(partidas.isEmpty, "\(partidas)")
+    }
+
+    @Test func sinElArregloSeMandaba() async throws {
+        // Lo que hace la web hoy: confirma que el test de arriba muerde.
+        let partidas = try await suenoDeHoyEnElHistorial(descartar: false)
+        #expect(!partidas.isEmpty)
     }
 }
