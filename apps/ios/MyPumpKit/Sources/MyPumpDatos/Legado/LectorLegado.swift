@@ -4,11 +4,12 @@ import SQLite3
 /// Un archivo del almacenamiento viejo, con la ruta RELATIVA a `Library`: el UUID de la carpeta del contenedor cambia
 /// al reinstalar (lo vio la espía en el simulador), así que nunca se guarda una ruta absoluta.
 public struct ArchivoLegado: Codable, Equatable, Sendable {
+    /// Las rutas van debajo de `WebKit/WebsiteData/` en el iPhone y de `WebKit/<bundle>/WebsiteData/` en el simulador.
     public enum Formato: String, Codable, Sendable {
-        /// iOS 17+: `WebKit/<bundle>/WebsiteData/Default/<hash>/<hash>/LocalStorage/localstorage.sqlite3`.
+        /// iOS 17+: `…/WebsiteData/Default/<hash>/<hash>/LocalStorage/localstorage.sqlite3`.
         case actual
-        /// iOS ≤16: `WebKit/<bundle>/WebsiteData/LocalStorage/capacitor_localhost_0.localstorage`. WebKit lo migra
-        /// recién cuando abre ese origen, así que sigue ahí si el cliente no abrió MyPump desde que actualizó iOS.
+        /// iOS ≤16: `…/WebsiteData/LocalStorage/capacitor_localhost_0.localstorage`. WebKit lo migra recién cuando abre
+        /// ese origen, así que sigue ahí si el cliente no abrió MyPump desde que actualizó iOS.
         case anterior
     }
     public let formato: Formato
@@ -69,31 +70,31 @@ public enum ErrorLegado: Error, Equatable, CustomStringConvertible {
 public enum LectorLegado {
     public static let bundle = "com.pumpteam.mypump"
 
-    static func base(_ library: URL, _ bundleID: String) -> URL {
-        library.appendingPathComponent("WebKit/\(bundleID)/WebsiteData", isDirectory: true)
-    }
-
     /// Los archivos del origen `capacitor://localhost`, del más viejo al más nuevo (al combinar, gana el último). El
     /// formato nuevo se reconoce por el archivo `origin` de su carpeta, no recalculando el hash: depende de una sal.
-    public static func ubicar(library: URL, bundleID: String = bundle) -> [ArchivoLegado] {
+    ///
+    /// Se recorre todo `Library/WebKit`, sin armar la ruta: en el iPhone WebKit guarda en `WebKit/WebsiteData` y en el
+    /// simulador en `WebKit/<bundle>/WebsiteData`. La 2.0.0 (100) buscaba solo la del simulador, y en el TF-0 (iPhone con
+    /// iOS 27) no encontró nada: arrancó como recién instalada y pidió el link.
+    public static func ubicar(library: URL) -> [ArchivoLegado] {
         let fm = FileManager.default
-        let raiz = base(library, bundleID)
         var encontrados: [(ArchivoLegado, Double)] = []
-
-        let anterior = raiz.appendingPathComponent("LocalStorage/capacitor_localhost_0.localstorage")
-        if fm.fileExists(atPath: anterior.path) {
-            encontrados.append((ArchivoLegado(formato: .anterior, ruta: relativa(anterior, a: library)), -1))
-        }
-        let porDefecto = raiz.appendingPathComponent("Default", isDirectory: true)
-        for arriba in contenido(porDefecto) {
-            for frame in contenido(arriba) {
-                guard let origen = try? Data(contentsOf: frame.appendingPathComponent("origin")), esCapacitorLocalhost(origen) else { continue }
-                let db = frame.appendingPathComponent("LocalStorage/localstorage.sqlite3")
+        guard let recorrido = fm.enumerator(at: library.appendingPathComponent("WebKit", isDirectory: true),
+                                            includingPropertiesForKeys: nil) else { return [] }
+        for case let url as URL in recorrido {
+            switch url.lastPathComponent {
+            case "capacitor_localhost_0.localstorage" where url.deletingLastPathComponent().lastPathComponent == "LocalStorage":
+                encontrados.append((ArchivoLegado(formato: .anterior, ruta: relativa(url, a: library)), -1))
+            case "origin":
+                guard let origen = try? Data(contentsOf: url), esCapacitorLocalhost(origen) else { continue }
+                let db = url.deletingLastPathComponent().appendingPathComponent("LocalStorage/localstorage.sqlite3")
                 guard fm.fileExists(atPath: db.path) else { continue }
                 encontrados.append((ArchivoLegado(formato: .actual, ruta: relativa(db, a: library)), modificado(db) ?? 0))
+            default:
+                continue
             }
         }
-        return encontrados.sorted { $0.1 < $1.1 }.map(\.0)
+        return encontrados.sorted { ($0.1, $0.0.ruta) < ($1.1, $1.0.ruta) }.map(\.0)
     }
 
     /// El archivo `origin` guarda dos orígenes (el de arriba y el del frame). Los dos tienen que ser capacitor://localhost.
@@ -120,8 +121,8 @@ public enum LectorLegado {
 
     /// Lee y combina todos los archivos. nil = no hay almacenamiento viejo. Un error de lectura TIRA: no es lo mismo
     /// que "vacío" (con el teléfono bloqueado o un archivo a medio copiar, concluir "no había nada" perdería todo).
-    public static func leer(library: URL, bundleID: String = bundle) throws -> LecturaLegado? {
-        let archivos = ubicar(library: library, bundleID: bundleID)
+    public static func leer(library: URL) throws -> LecturaLegado? {
+        let archivos = ubicar(library: library)
         guard !archivos.isEmpty else { return nil }
         let huella = huella(library: library, archivos: archivos)
         var items: [String: String] = [:]
@@ -227,10 +228,6 @@ public enum LectorLegado {
             let s = String(decoding: UnsafeBufferPointer(start: p, count: n), as: UTF8.self)
             return (s, Array(s.utf16))
         }
-    }
-
-    private static func contenido(_ dir: URL) -> [URL] {
-        ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []).sorted { $0.path < $1.path }
     }
 
     private static func modificado(_ url: URL) -> Double? {

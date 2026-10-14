@@ -6,14 +6,12 @@ import MyPumpReglas
 public struct EntornoLegado: Sendable {
     /// `Library`: ahí están los archivos de WebKit.
     public var library: URL
-    public var bundleID: String
     /// `Application Support`: la raíz de `legado/` y de las carpetas de cuenta (`Disco`).
     public var soporte: URL
 
-    public init(library: URL? = nil, bundleID: String = LectorLegado.bundle, soporte: URL? = nil) {
+    public init(library: URL? = nil, soporte: URL? = nil) {
         let fm = FileManager.default
         self.library = library ?? fm.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-        self.bundleID = bundleID
         self.soporte = soporte ?? fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     }
 
@@ -180,7 +178,7 @@ public enum EjecutorLegado {
     public static func faseLocal(entorno: EntornoLegado, almacen: AlmacenToken, ajustes: UserDefaults,
                                  ahora: Date = Date(), zona: TimeZone = .current, cuentaViva: String? = nil) throws -> Resultado {
         var r = Resultado()
-        let archivos = LectorLegado.ubicar(library: entorno.library, bundleID: entorno.bundleID)
+        let archivos = LectorLegado.ubicar(library: entorno.library)
         guard !archivos.isEmpty else { return r }
         r.huboLegado = true
         let a = ArchivosLegado(carpeta: entorno.carpeta)
@@ -222,7 +220,7 @@ public enum EjecutorLegado {
         }
 
         // 2. Leer (de una copia aparte: la cruda no se abre nunca) y planificar.
-        guard let lectura = try LectorLegado.leer(library: entorno.library, bundleID: entorno.bundleID) else { return r }
+        guard let lectura = try LectorLegado.leer(library: entorno.library) else { return r }
         let contexto = ContextoMigracion(tokenNativo: almacen.leer(), tokenInvalidoNativo: ajustes.string(forKey: "mypump_token_invalido"),
                                          anterior: previo?.anterior)
         let plan = MigracionLegado.planificar(lectura.items, firmas: lectura.firmas, ahora: ahora, zona: zona, contexto: contexto)

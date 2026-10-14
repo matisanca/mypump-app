@@ -24,20 +24,28 @@ private let baires = TimeZone(identifier: "America/Argentina/Buenos_Aires")!
 
 // MARK: - El WebKit de mentira (con archivos de verdad)
 
-/// `Library/WebKit/<bundle>/WebsiteData/…` con el formato nuevo (iOS 17+) y/o el anterior.
+/// `Library/WebKit/WebsiteData/…` (iPhone) o `Library/WebKit/<bundle>/WebsiteData/…` (simulador), con el formato nuevo
+/// (iOS 17+) y/o el anterior. Por defecto, el del iPhone: el del simulador era el único que se probaba, y en el TF-0 la
+/// 2.0.0 (100) no encontró nada en un iPhone de verdad.
 private struct WebKitFalso {
+    enum Disposicion {
+        case telefono, simulador
+        var prefijo: String { self == .telefono ? "WebKit/WebsiteData" : "WebKit/\(LectorLegado.bundle)/WebsiteData" }
+    }
+
     let library: URL
-    let bundle = LectorLegado.bundle
+    let disposicion: Disposicion
 
     var dbActual: URL {
-        library.appendingPathComponent("WebKit/\(bundle)/WebsiteData/Default/HASH_ARRIBA/HASH_FRAME/LocalStorage/localstorage.sqlite3")
+        library.appendingPathComponent("\(disposicion.prefijo)/Default/HASH_ARRIBA/HASH_FRAME/LocalStorage/localstorage.sqlite3")
     }
     var dbAnterior: URL {
-        library.appendingPathComponent("WebKit/\(bundle)/WebsiteData/LocalStorage/capacitor_localhost_0.localstorage")
+        library.appendingPathComponent("\(disposicion.prefijo)/LocalStorage/capacitor_localhost_0.localstorage")
     }
 
-    init(_ raiz: URL) {
+    init(_ raiz: URL, _ disposicion: Disposicion = .telefono) {
         library = raiz.appendingPathComponent("Library", isDirectory: true)
+        self.disposicion = disposicion
         let fm = FileManager.default
         try? fm.createDirectory(at: dbActual.deletingLastPathComponent(), withIntermediateDirectories: true)
         // El archivo `origin`: dos orígenes serializados (arriba y frame), con bytes binarios en el medio.
@@ -48,7 +56,7 @@ private struct WebKitFalso {
         }
         try? origen.write(to: dbActual.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("origin"))
         // Otro origen al lado, que no es el de la app: no se tiene que leer.
-        let otro = library.appendingPathComponent("WebKit/\(bundle)/WebsiteData/Default/OTRO/OTRO")
+        let otro = library.appendingPathComponent("\(disposicion.prefijo)/Default/OTRO/OTRO")
         try? fm.createDirectory(at: otro.appendingPathComponent("LocalStorage"), withIntermediateDirectories: true)
         try? Data("https\u{0}app.mypumpteam.com\u{0}https\u{0}app.mypumpteam.com".utf8).write(to: otro.appendingPathComponent("origin"))
     }
@@ -195,9 +203,9 @@ private struct Telefono {
     let ajustes: UserDefaults
     let suite: String
 
-    init() {
+    init(_ disposicion: WebKitFalso.Disposicion = .telefono) {
         raiz = FileManager.default.temporaryDirectory.appendingPathComponent("legado-\(UUID().uuidString)", isDirectory: true)
-        webkit = WebKitFalso(raiz)
+        webkit = WebKitFalso(raiz, disposicion)
         entorno = EntornoLegado(library: webkit.library, soporte: raiz.appendingPathComponent("Application Support", isDirectory: true))
         suite = "legado-test-\(UUID().uuidString)"
         ajustes = UserDefaults(suiteName: suite)!
@@ -455,6 +463,43 @@ struct MigracionLegadoTests {
         #expect(archivos.map(\.formato) == [.anterior, .actual])
         let items = try claves(tel.webkit)
         #expect(items["mypump_token"] == tokenA && items["mypump_tipo_dia"] == "entreno")
+    }
+
+    /// TF-0, 14-oct: en el iPhone los archivos están en `Library/WebKit/WebsiteData` (sin el bundle en la ruta). La 2.0.0
+    /// (100) los buscaba solo donde los deja el simulador, no encontró nada y mostró la bienvenida.
+    @Test func enElIphoneLosEncuentraSinElBundleEnLaRuta() throws {
+        let tel = Telefono(.telefono); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(3)))])
+        let archivos = LectorLegado.ubicar(library: tel.webkit.library)
+        #expect(archivos.map(\.ruta) == ["WebKit/WebsiteData/Default/HASH_ARRIBA/HASH_FRAME/LocalStorage/localstorage.sqlite3"])
+        let r = try tel.faseL()
+        #expect(r.huboLegado && r.corrio && r.adoptoToken && tel.almacen.leer() == tokenA)
+        #expect(r.plan?.conteos.opsPorKind.values.reduce(0, +) == 3)
+    }
+
+    @Test func enElSimuladorTambien() throws {
+        let tel = Telefono(.simulador); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA])
+        try tel.webkit.escribir(["mypump_tipo_dia": "descanso"], en: tel.webkit.dbAnterior)
+        let archivos = LectorLegado.ubicar(library: tel.webkit.library)
+        #expect(archivos.map(\.formato) == [.anterior, .actual])
+        #expect(archivos.allSatisfy { $0.ruta.hasPrefix("WebKit/\(LectorLegado.bundle)/WebsiteData/") })
+        let r = try tel.faseL()
+        #expect(r.adoptoToken && tel.almacen.leer() == tokenA)
+    }
+
+    /// Las dos a la vez no pasan en un teléfono, pero si pasaran se combinan como siempre: gana el archivo más nuevo.
+    @Test func lasDosRutasJuntasSeCombinan() throws {
+        let tel = Telefono(.telefono); defer { tel.limpiar() }
+        let sim = WebKitFalso(tel.raiz, .simulador)
+        try sim.escribir(["mypump_token": tokenB, "mypump_tipo_dia": "descanso"])
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_000_000)], ofItemAtPath: sim.dbActual.path + "-wal")
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_000_000)], ofItemAtPath: sim.dbActual.path)
+        try tel.webkit.escribir(["mypump_token": tokenA])
+        let archivos = LectorLegado.ubicar(library: tel.webkit.library)
+        #expect(archivos.count == 2 && archivos.last?.ruta.hasPrefix("WebKit/WebsiteData/") == true)
+        let items = try claves(tel.webkit)
+        #expect(items["mypump_token"] == tokenA && items["mypump_tipo_dia"] == "descanso")
     }
 
     @Test func sesionEnCursoVigenteYVencida() throws {

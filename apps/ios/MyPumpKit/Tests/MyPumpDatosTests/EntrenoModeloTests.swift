@@ -589,6 +589,25 @@ struct EntrenoLegadoTests {
         #expect(await m.aplicarLegadoDelDisco() == false, "no se aplica dos veces")
     }
 
+    /// De punta a punta: lo que ESCRIBE la migración (`EjecutorLegado.guardarEntreno`) es lo que LEE Entreno. Hasta el
+    /// 14-oct el lector esperaba otra forma (`dias`, `_start`, el día como texto) y la sesión en curso se perdía.
+    @Test func loQueDejaLaMigracionSeLeeEntero() async {
+        let b = Banco()
+        b.servidor.cuando("get_sesion_dia", sesionJSON("ses-1"))
+        EjecutorLegado.guardarEntreno(EntrenoLegado(
+            sesiones: ["d1": SesionLegada(sesionId: "ses-1", semana: 5, start: AHORA - 600_000)],
+            descanso: DescansoLegado(endsAt: AHORA + 30_000, target: 90, autoCloseAt: AHORA + 32_000),
+            diaVisualizado: ["otra-rutina": "d9", "rut-prueba": "d2"]), en: b.disco)
+        let l = LegadoEntreno.leer(b.disco, token: "tok-prueba", rutinaId: "rut-prueba")
+        #expect(l?.sesiones == [.init(diaId: "d1", sesionId: "ses-1", semana: 5, inicio: AHORA - 600_000)])
+        #expect(l?.descanso == .init(endsAt: AHORA + 30_000, target: 90, autoCloseAt: AHORA + 32_000))
+        #expect(l?.diaVisualizado == "d2")
+        let m = b.modelo()
+        #expect(await m.aplicarLegadoDelDisco())
+        #expect(m.sesionesLocales["d1"]?.sesionId == "ses-1" && m.sesionesLocales["d1"]?.inicio == AHORA - 600_000)
+        #expect(m.dia.dia.id == "d2", "el día que se estaba viendo")
+    }
+
     @Test func laSesionViejaConfirmadaSeRetoma() async {
         let b = Banco()
         b.servidor.cuando("get_sesion_dia", sesionJSON("ses-1"))

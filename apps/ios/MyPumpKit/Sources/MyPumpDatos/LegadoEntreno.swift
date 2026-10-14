@@ -68,9 +68,11 @@ public struct LegadoEntreno: Sendable, Equatable {
         return l
     }
 
-    /// `legado-entreno.json` del disco de la cuenta. Acepta las claves crudas (`{"mypump_sesion_…": "…", …}` o
-    /// `{"claves": {…}}`) o la forma por día: `{"dias": {"d1": {"sesionId", "_semana" | "semana", "_start" | "inicio",
-    /// "_finalizada" | "finalizada"}}, "descanso": {"endsAt", "target", "autoCloseAt"}, "diaVisualizado", "sustituciones"}`.
+    /// `legado-entreno.json` del disco de la cuenta. Lo escribe la migración (`EntrenoLegado`): `{"sesiones": {"d1":
+    /// {"sesionId", "semana", "start", "finalizada"}}, "descanso": {"endsAt", "target", "autoCloseAt"}, "diaVisualizado":
+    /// {"<rutinaId>": "d1"}}`. También acepta las claves crudas (`{"mypump_sesion_…": "…", …}` o `{"claves": {…}}`), y
+    /// `"dias"` en vez de `"sesiones"`, `_semana`/`_start`/`inicio`/`_finalizada` y `diaVisualizado` como texto.
+    /// Hasta el 14-oct solo leía esa otra forma: la sesión en curso y el día que se veía se perdían al migrar.
     public static func leer(_ disco: Disco, token: String, rutinaId: String) -> LegadoEntreno? {
         guard let v = disco.leer(JSONValue.self, ModeloEntreno.Archivo.legado), case .objeto(let o) = v else { return nil }
         func textos(_ o: [String: JSONValue]) -> [String: String] {
@@ -87,7 +89,7 @@ public struct LegadoEntreno: Sendable, Equatable {
         if case .objeto(let c)? = o["claves"] { return desdeAlmacenamiento(textos(c), token: token, rutinaId: rutinaId) }
         if o.keys.contains(where: { $0.hasPrefix("mypump_") }) { return desdeAlmacenamiento(textos(o), token: token, rutinaId: rutinaId) }
         var l = LegadoEntreno()
-        if case .objeto(let dias)? = o["dias"] {
+        if case .objeto(let dias)? = o["sesiones"] ?? o["dias"] {
             for (dia, x) in dias {
                 guard case .objeto(let d) = x else { continue }
                 let numero = { (k: String) -> Double? in
@@ -101,13 +103,15 @@ public struct LegadoEntreno: Sendable, Equatable {
                 l.sesiones.append(SesionDia(
                     diaId: dia, sesionId: (d["sesionId"] ?? d["_sesionId"])?.comoTexto,
                     semana: (numero("_semana") ?? numero("semana")).flatMap { $0.isFinite && abs($0) < 1e15 ? Int($0) : nil },
-                    inicio: (numero("_start") ?? numero("inicio")).flatMap { $0 > 0 ? $0 : nil },
+                    inicio: (numero("start") ?? numero("_start") ?? numero("inicio")).flatMap { $0 > 0 ? $0 : nil },
                     finalizada: fin == .bool(true) || fin == .texto("1") || fin == .numero(1)))
             }
             l.sesiones.sort { $0.diaId < $1.diaId }
         }
         if let d = o["descanso"] { l.descanso = try? JSONDecoder().decode(Descanso.Guardado.self, from: JSONEncoder().encode(d)) }
-        l.diaVisualizado = o["diaVisualizado"]?.comoTexto
+        // La migración lo guarda por rutina (`mypump_dia_visualizado_<rutinaId>`): vale solo el de la rutina activa.
+        if case .objeto(let porRutina)? = o["diaVisualizado"] { l.diaVisualizado = porRutina[rutinaId]?.comoTexto }
+        else { l.diaVisualizado = o["diaVisualizado"]?.comoTexto }
         if case .objeto(let s)? = o["sustituciones"] { l.sustituciones = s }
         return l
     }
