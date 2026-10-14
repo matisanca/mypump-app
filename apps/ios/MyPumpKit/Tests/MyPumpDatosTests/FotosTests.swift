@@ -75,4 +75,19 @@ struct FotosTests {
         #expect(otra.pendientes.count == 3)
         #expect(await m.subir(pose: "frente", jpeg: Data(count: 1_900_000)) == .muyPesada)
     }
+
+    /// REV-03: el tope es de 3 en la cola, de cualquier semana. Con 3 de la semana pasada que no salieron (por ejemplo,
+    /// las que trajo la migración), una de esta semana no entra ni sale: "cola llena".
+    @Test func conTresEnLaColaUnaCuartaNoEntra() async {
+        let g = Guion(); g.respuestas = [nil]
+        let disco = Disco(raiz: raiz, token: "tokenDePrueba_0000000000")
+        let viejas = Dictionary(uniqueKeysWithValues: ["frente", "perfil", "espalda"].map { p in
+            ("2026-10-05|\(p)", FotoPendiente(pose: p, fecha: "2026-10-07", dataUrl: "data:image/jpeg;base64,/9j/"))
+        })
+        disco.guardar(viejas, FotoPendiente.archivo)
+        let m = modelo(g)
+        #expect(m.pendientes.count == 3)
+        #expect(await m.subir(pose: "frente", jpeg: jpeg) == .colaLlena)
+        #expect(m.pendientes.count == 3 && g.pedidos.filter { $0.hasSuffix("upload") }.isEmpty)
+    }
 }
