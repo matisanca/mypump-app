@@ -1,11 +1,11 @@
 #!/bin/zsh
-# Capturas para el App Store de la 2.0.0 nativa: iPhone de 6,9" (1320×2868) y iPad de 13" (2064×2752), con la DEMO (los
-# datos de ejemplo de la web: sin cuenta, sin token, sin datos de clientes), barra de estado fija (9:41, batería llena)
-# y en claro y oscuro. Las sube Mati (G7).
+# Capturas para el App Store de la 2.0.0 nativa: iPhone de 6,9" (1320×2868) y iPad de 13" (2064×2752), con los BOCETOS
+# (la demo de la web más las respuestas grabadas de la cuenta de prueba test-nativa-real: sin token, sin datos de
+# clientes) y sin el cartel de la demo, barra de estado fija (9:41, batería llena), en claro y oscuro. Las sube Mati (G7).
 # Pantallas: Entreno, un ejercicio abierto, Dieta, Revisión y Progreso (las de la 1.0.x, docs/APP_STORE_SUBMISSION.md §8).
 # Uso: scripts/nativa/capturas-tienda-ios.sh [carpeta-salida]
 #   Los simuladores salen de nativa-evidencia/simuladores-tienda.txt ("nombre=udid"). La app, de un build Debug para
-#   simulador (`-entrar demo` es solo de DEBUG): dd/migracion o lo que diga APP=….
+#   simulador (`-bocetos` y `-captura` son solo de DEBUG): dd/migracion o lo que diga APP=….
 set -e
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 EV=~/Developer/nativa-evidencia
@@ -17,7 +17,9 @@ BID=com.pumpteam.mypump
 abrir() {   # $1 udid, $2 nombre del archivo, resto: argumentos de lanzamiento
   local udid=$1 archivo=$2; shift 2
   xcrun simctl terminate $udid $BID 2>/dev/null || true
-  xcrun simctl launch $udid $BID -entrar demo -sinOnboarding YES "$@" >/dev/null
+  # Los bocetos: la demo con las respuestas grabadas de la cuenta de prueba test-nativa-real (Progreso con historial,
+  # Revisión llena), sin el cartel de la demo. Nunca datos de un cliente.
+  xcrun simctl launch $udid $BID -bocetos YES -captura YES -sinOnboarding YES "$@" >/dev/null
   sleep 5
   xcrun simctl io $udid screenshot $OUT/$archivo.png >/dev/null 2>&1
 }
@@ -28,15 +30,16 @@ while IFS='=' read -r nombre udid; do
   xcrun simctl bootstatus $udid -b >/dev/null 2>&1
   xcrun simctl status_bar $udid override --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3 \
     --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 2>/dev/null || true
+  xcrun simctl terminate $udid com.apple.mobilesafari 2>/dev/null || true   # si no, la app muestra "◀ Safari" arriba
   xcrun simctl uninstall $udid $BID 2>/dev/null || true
   xcrun simctl install $udid $APP
   xcrun simctl ui $udid content_size large
   for modo in light dark; do
     xcrun simctl ui $udid appearance $modo
     abrir $udid "$corto-$modo-1-entreno" -pestana entreno
-    abrir $udid "$corto-$modo-2-ejercicio" -pestana entreno -abrir ejercicio
+    abrir $udid "$corto-$modo-2-ejercicio" -pestana entreno -abrir ejercicio -series 2 -descanso no
     abrir $udid "$corto-$modo-3-dieta" -pestana dieta
-    abrir $udid "$corto-$modo-4-revision" -pestana revision
+    abrir $udid "$corto-$modo-4-revision" -pestana revision -demo lleno
     abrir $udid "$corto-$modo-5-progreso" -pestana progreso
   done
   xcrun simctl terminate $udid $BID 2>/dev/null || true

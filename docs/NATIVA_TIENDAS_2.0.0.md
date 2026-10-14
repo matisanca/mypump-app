@@ -89,14 +89,15 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 
 La interfaz cambió entera, así que van capturas nuevas de 6,9" y 13", nunca de un cliente. Las sube Mati.
 
-- **Borrador del 14-oct:** `scripts/nativa/capturas-tienda-ios.sh` las saca con la DEMO en los simuladores "Tienda 6,9"
+- **Listas desde el 14-oct:** `scripts/nativa/capturas-tienda-ios.sh` saca 20 capturas en los simuladores "Tienda 6,9"
   (iPhone 17 Pro Max, 1320×2868) y "Tienda 13" (iPad Pro 13" M5, 2064×2752), en claro y oscuro, con la barra a las
-  9:41. Son 20 y están en `nativa-evidencia/tienda/20261014-144318`.
-- **Antes de subirlas falta:**
-  - sacar el cartel "Estás viendo la demo — Salir" (un modo de captura solo de DEBUG);
-  - un Progreso con historial: en la demo sale "Aún no hay historial";
-  - Dieta sin el aviso "2.454 kcal (−23 %)": la dieta de ejemplo de la web no cierra con su objetivo de 3.200, y eso
-    también lo ve el revisor de Apple en la demo.
+  9:41. Están en `nativa-evidencia/tienda/20261014-145803`.
+  - Pantallas: Entreno, un ejercicio con 2 series, Dieta, Revisión con el check y Progreso con historial.
+  - Datos: los bocetos, o sea la demo más las respuestas grabadas de la cuenta de prueba `test-nativa-real`. Nunca de
+    un cliente.
+  - `-captura YES` (solo DEBUG) saca el cartel "Estás viendo la demo".
+  - La dieta de la demo ya no muestra el "−23 %" (f7aa713): eso también lo veía el revisor.
+- Si cambia el diseño después de G1, se vuelven a sacar con el mismo script.
 
 ## Etiqueta de privacidad
 

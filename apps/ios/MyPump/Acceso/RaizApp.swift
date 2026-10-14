@@ -22,7 +22,7 @@ struct RaizApp<Contenido: View>: View {
                 } else {
                     contenido()
                         .safeAreaInset(edge: .top, spacing: 0) {
-                            if modelo.esDemo { BarraDemo(modelo: modelo) } else if modelo.desdeCache { BannerSinConexion() }
+                            if modelo.esDemo { if !DemoUI.captura { BarraDemo(modelo: modelo) } } else if modelo.desdeCache { BannerSinConexion() }
                         }
                         .overlay(alignment: .bottom) {
                             AvisoGuardado(estado: modelo.estadoGuardado)
