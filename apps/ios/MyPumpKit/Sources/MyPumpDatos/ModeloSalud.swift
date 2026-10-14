@@ -273,7 +273,8 @@ public final class ModeloSalud {
         return ok
     }
 
-    /// Si el cliente cierra la hoja sin terminar, se deja de preguntar.
+    /// Corta el sondeo (al salir de la cuenta). Cerrar el navegador NO lo corta: como en la web, se sigue preguntando
+    /// los 2 minutos, porque el callback del proveedor puede llegar después de que el cliente volvió a la app.
     public func cancelarEspera() {
         sondeo?.cancel()
         sondeo = nil
@@ -286,13 +287,9 @@ public final class ModeloSalud {
         await cargarRelojes()
     }
 
-    /// `toLocaleDateString('es-AR', {day: 'numeric', month: 'short'})`.
+    /// `new Date(iso).toLocaleDateString('es-AR', {day: 'numeric', month: 'short'})`: el día local, "12 oct".
     static func fechaCorta(_ iso: String) -> String {
         guard let ms = RelojLocal.desdeISO(iso) else { return iso }
-        let f = RelojLocal().ymd(ms)
-        let p = f.split(separator: "-").compactMap { Int($0) }
-        guard p.count == 3 else { return iso }
-        let meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"]
-        return "\(p[2]) \(meses[p[1] - 1])"
+        return SaludVista.fechaCorta(RelojLocal().ymd(ms)) ?? iso
     }
 }

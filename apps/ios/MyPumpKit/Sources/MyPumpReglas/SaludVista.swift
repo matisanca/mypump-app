@@ -317,9 +317,15 @@ public enum SaludVista {
         guard let n = DiaCalendario.numero(fecha), let h = DiaCalendario.numero(hoy) else { return "Anoche" }
         if n == h { return "Anoche" }
         if n == h - 1 { return "Anteanoche" }
+        guard let corta = fechaCorta(fecha) else { return "Última noche con dato" }
+        return "Noche del \(corta)"
+    }
+
+    /// `toLocaleDateString('es-AR', {day: 'numeric', month: 'short'})` de una fecha "YYYY-MM-DD": "12 oct".
+    public static func fechaCorta(_ fecha: String) -> String? {
         let partes = fecha.prefix(10).split(separator: "-").compactMap { Int($0) }
-        guard partes.count == 3, (1...12).contains(partes[1]) else { return "Última noche con dato" }
-        return "Noche del \(partes[2]) \(meses[partes[1] - 1])"
+        guard partes.count == 3, (1...12).contains(partes[1]) else { return nil }
+        return "\(partes[2]) \(meses[partes[1] - 1])"
     }
 
     // MARK: - Formatos (como los de la web)
