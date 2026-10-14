@@ -54,9 +54,9 @@ struct RevisionTests {
     }
 
     @Test func dias() {
-        #expect(Dia.numero("2026-10-14").map(Dia.texto) == "2026-10-14")
-        #expect(Dia.numero("2026-03-01")! - Dia.numero("2026-02-28")! == 1)
-        #expect(Dia.numero("x") == nil)
+        #expect(DiaCalendario.numero("2026-10-14").map(DiaCalendario.texto) == "2026-10-14")
+        #expect(DiaCalendario.numero("2026-03-01")! - DiaCalendario.numero("2026-02-28")! == 1)
+        #expect(DiaCalendario.numero("x") == nil)
     }
 }
 

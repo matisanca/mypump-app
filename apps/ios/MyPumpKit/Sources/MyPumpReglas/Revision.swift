@@ -33,9 +33,9 @@ public enum PesoCorporal {
 
     /// `_pesoMedia`: la media de los puntos con fecha en (fin − días, fin].
     public static func media(_ serie: [Punto], hasta fin: String, dias: Int) -> Double? {
-        guard let dFin = Dia.numero(fin) else { return nil }
+        guard let dFin = DiaCalendario.numero(fin) else { return nil }
         let vals = serie.filter { p in
-            guard let d = Dia.numero(p.fecha) else { return false }
+            guard let d = DiaCalendario.numero(p.fecha) else { return false }
             return d > dFin - dias && d <= dFin
         }.map(\.kg)
         return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
@@ -48,8 +48,8 @@ public enum PesoCorporal {
 
     /// Diferencia en gramos de la media de 7 días de hoy contra la de hace una semana (`deltaG`), o nil.
     public static func deltaSemanal(_ serie: [Punto], hoy: String) -> Int? {
-        guard let dHoy = Dia.numero(hoy), let m7 = media(serie, hasta: hoy, dias: 7),
-              let m7prev = media(serie, hasta: Dia.texto(dHoy - 7), dias: 7) else { return nil }
+        guard let dHoy = DiaCalendario.numero(hoy), let m7 = media(serie, hasta: hoy, dias: 7),
+              let m7prev = media(serie, hasta: DiaCalendario.texto(dHoy - 7), dias: 7) else { return nil }
         return Int(jsRound((m7 - m7prev) * 1000))
     }
 
@@ -107,7 +107,7 @@ public enum RachaTexto {
 }
 
 /// Días de calendario como número (días desde 1970-01-01), para comparar fechas "YYYY-MM-DD" sin zonas horarias.
-public enum Dia {
+public enum DiaCalendario {
     public static func numero(_ f: String) -> Int? {
         let p = f.prefix(10).split(separator: "-").compactMap { Int($0) }
         guard p.count == 3 else { return nil }
@@ -136,10 +136,10 @@ public enum FotosProgreso {
 
     /// `_lunesISO`: el lunes de la semana de esa fecha.
     public static func lunes(_ fecha: String) -> String {
-        guard let n = Dia.numero(fecha) else { return fecha }
+        guard let n = DiaCalendario.numero(fecha) else { return fecha }
         // 1970-01-01 fue jueves: (n + 3) % 7 da 0 para el lunes.
         let dow = ((n + 3) % 7 + 7) % 7
-        return Dia.texto(n - dow)
+        return DiaCalendario.texto(n - dow)
     }
 
     /// Las poses de esta semana: las del servidor más las que esperan subir.
@@ -157,10 +157,10 @@ public enum FotosProgreso {
         var porSemana: [String: Set<String>] = [:]
         for f in fotos { porSemana[f.semanaLunes, default: []].insert(f.pose) }
         let completas = porSemana.keys.sorted().filter { porSemana[$0]?.count == 3 }
-        guard let ultima = completas.last, let nUltima = Dia.numero(ultima) else { return 0 }
+        guard let ultima = completas.last, let nUltima = DiaCalendario.numero(ultima) else { return 0 }
         var serie = 0
         for (i, s) in completas.enumerated().reversed() {
-            if s == Dia.texto(nUltima - (completas.count - 1 - i) * 7) { serie += 1 } else { break }
+            if s == DiaCalendario.texto(nUltima - (completas.count - 1 - i) * 7) { serie += 1 } else { break }
         }
         return serie
     }
@@ -183,7 +183,7 @@ public enum FotosProgreso {
     /// El pie del comparador: "8 semanas · -2,4 kg" (el peso es el primero cargado desde el lunes de cada semana).
     public static func resumenComparador(primera: String, ultima: String, peso: [PesoCorporal.Punto]) -> String {
         func pesoEn(_ sem: String) -> Double? { peso.filter { $0.fecha >= sem }.min { $0.fecha < $1.fecha }?.kg }
-        let semDif = Int(jsRound(Double((Dia.numero(ultima) ?? 0) - (Dia.numero(primera) ?? 0)) / 7))
+        let semDif = Int(jsRound(Double((DiaCalendario.numero(ultima) ?? 0) - (DiaCalendario.numero(primera) ?? 0)) / 7))
         var r = "\(semDif) semana\(semDif == 1 ? "" : "s")"
         if let p0 = pesoEn(primera), let p1 = pesoEn(ultima) {
             let d = p1 - p0

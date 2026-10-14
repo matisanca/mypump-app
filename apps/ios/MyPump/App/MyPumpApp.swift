@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct MyPumpApp: App {
+    @UIApplicationDelegateAdaptor(DelegadoApp.self) private var delegado
     @State private var datos = Muestras.cargar()
 
     var body: some Scene {

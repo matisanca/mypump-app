@@ -28,6 +28,10 @@ struct RaizApp<Contenido: View>: View {
         .animation(.snappy, value: modelo.fase)
         .onOpenURL { url in Task { await modelo.entrar(con: url.absoluteString) } }
         .task { if modelo.fase == .cargando { await modelo.cargar() } }
+        .task(id: modelo.fase == .listo && !modelo.esDemo) {
+            // Con una cuenta: la local del domingo al día y el token de push refrescado (si ya hay permiso).
+            if modelo.fase == .listo && !modelo.esDemo { await CentroAvisos.shared.alEntrar() }
+        }
     }
 }
 

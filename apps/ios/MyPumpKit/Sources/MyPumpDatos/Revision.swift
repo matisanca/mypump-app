@@ -147,7 +147,7 @@ public final class ModeloRevision {
     public func cargarRevision() async {
         fecha = FechaLocal.hoy()
         async let c = cliente.filas("mypump_get_checkin_semana", ["p_token": t, "p_fecha": .texto(fecha)], como: CheckinSemana.self)
-        let desde = Dia.numero(fecha).map { Dia.texto($0 - 59) } ?? fecha
+        let desde = DiaCalendario.numero(fecha).map { DiaCalendario.texto($0 - 59) } ?? fecha
         async let s = cliente.filas("mypump_get_salud", ["p_token": t, "p_desde": .texto(desde), "p_hasta": .texto(fecha)], como: FilaSalud.self)
         let (rc, rs) = await (c, s)
         if case .success(let filas) = rc {
