@@ -606,6 +606,8 @@ struct EntrenoLegadoTests {
         #expect(await m.aplicarLegadoDelDisco())
         #expect(m.sesionesLocales["d1"]?.sesionId == "ses-1" && m.sesionesLocales["d1"]?.inicio == AHORA - 600_000)
         #expect(m.dia.dia.id == "d2", "el día que se estaba viendo")
+        // El descanso que venía corriendo sigue: el cambio al día visto va antes (cambiar de día lo detiene).
+        #expect(m.descanso.visible && m.descanso.texto == "0:30")
     }
 
     @Test func laSesionViejaConfirmadaSeRetoma() async {

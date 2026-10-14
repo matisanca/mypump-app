@@ -259,15 +259,20 @@ def preparar(db, salida):
         "mypump_valor_grande": "x" * (1024 * 1024),
         "mypump_unicode_∂ñ😀": "valor con \u0000 nulo, emoji 😀 y acento á",
     }
-    # La sesión en curso: la que dejó la Capacitor; si no la dejó, una igual.
+    # La sesión en curso: la que dejó la Capacitor; si no la dejó, una igual. El arranque se pisa SIEMPRE con uno de hace
+    # 5 minutos: la Capacitor guarda el `iniciada_en` del servidor, y la sesión de la cuenta de prueba puede venir de
+    # una corrida de horas antes (más de 6 h es vencida, como en la web, y la migración la deja al servidor). El caso
+    # vencido lo cubren los tests (`sesionEnCursoVigenteYVencida`).
+    inicio = ts - 5 * 60_000
     if p + dia not in actuales:
-        items.update({p + dia: sesion, p + dia + "_semana": str(semana), p + dia + "_start": str(ts - 5 * 60_000)})
+        items.update({p + dia: sesion, p + dia + "_semana": str(semana)})
+    items[p + dia + "_start"] = str(inicio)
     legado_sqlite.sembrar(db, items)
     # La Capacitor de main marcó los swaps de esta dieta como migrados al abrir (base vacía y ninguno local). Un teléfono
     # que viene de la v1.0.11 no tiene esa marca (no existía): sin ella, el swap local de arriba es uno que el servidor
     # nunca vio y la nativa lo tiene que subir. Con la marca, la nativa (igual que la web) lo descarta.
     borrar_claves(db, [f"mypump_swaps_migrados_{D}"])
-    plan.update({"run": run, "hoy": hoy_s, "rutina": rutina["id"], "dieta": D, "semana": semana, "dia": dia, "sesion": sesion,
+    plan.update({"run": run, "hoy": hoy_s, "rutina": rutina["id"], "dieta": D, "semana": semana, "dia": dia, "sesion": sesion, "inicio": inicio,
                  "ex2": ex2["id"], "ex3": ex3["id"], "ex_swap": ejs[3]["id"], "agua": agua, "peso": peso, "nota": nota, "chat": chat,
                  "chat_rotado": chat_rotado, "cardio_antes": cardio_antes, "comida": c1["id"], "swap1": f"{c1['id']}/0/0",
                  "swap3": f"{c3['id']}/0/0", "otro_dia": otro_dia, "ops_vigente": len(ops), "ops_sin_sesion": 2})
@@ -436,10 +441,23 @@ def verificar(salida):
             aj.get("mypump-theme") == "dark" and aj.get("mypump_tipo_dia") == "entreno" and '"check"' in aj.get("mypump_notif_prefs", "")
             and aj.get("mypump_notif_pedido") == "1" and aj.get("mypump_onboarding_v1") == "1" and aj.get("mypump_health_connected") == "1"
             and aj.get(f"mypump_dia_visualizado_{plan['rutina']}") == plan["otro_dia"], f"{sorted(aj)}")
-    archivos_entreno = glob.glob(os.path.join(salida, "nativa-nativa", "MyPump", "cuenta-*", "legado-entreno.json"))
-    entreno = json.load(open(archivos_entreno[0], encoding="utf-8")) if archivos_entreno else {}
-    chequeo("Fase L: la sesión en curso y el descanso quedaron para Entreno",
-            plan["dia"] in entreno.get("sesiones", {}) and entreno.get("descanso") is not None, f"{list(entreno.get('sesiones', {}))}")
+    # Entreno consume `legado-entreno.json` al cargar (lo aplica y lo borra): si ya no está, se mira lo que quedó aplicado.
+    cuenta = (glob.glob(os.path.join(salida, "nativa-nativa", "MyPump", "cuenta-*")) or [""])[0]
+    entreno = leer(cuenta, "legado-entreno.json", None)
+    if entreno is not None:
+        ok = plan["dia"] in entreno.get("sesiones", {}) and entreno.get("descanso") is not None
+        detalle = f"sin aplicar todavía: {list(entreno.get('sesiones', {}))}"
+    else:
+        # El descanso restaurado corre en memoria y su archivo se borra al restaurar, como `restoreRest` de la web: del
+        # disco se ve que la Fase L lo trajo; que siga corriendo después del cambio al día visto se ve en 2-nativa.png
+        # (y lo exige `loQueDejaLaMigracionSeLeeEntero`).
+        sesiones = leer(cuenta, "entreno-sesiones.json", {})
+        local = sesiones.get(plan["dia"], {})
+        primera = leer(os.path.join(salida, "nativa-nativa", "legado"), "estado.json", {}).get("conteos", {})
+        ok = local.get("sesionId") == plan["sesion"] and local.get("inicio") == plan.get("inicio") and primera.get("descansoVigente") is True
+        detalle = (f"aplicado: {sorted(sesiones)}, inicio {'igual' if local.get('inicio') == plan.get('inicio') else local.get('inicio')}, "
+                   f"descanso {'traído (en memoria, ver 2-nativa.png)' if primera.get('descansoVigente') else 'no'}")
+    chequeo("Fase L: la sesión en curso (con su arranque) y el descanso llegaron a Entreno", ok, detalle)
     lineas = [f"# Migración en el simulador, corrida {plan.get('run')}", "", f"- Día: {plan.get('hoy')}. Cuenta: `{CUENTA}`.",
               f"- Recibo (corrida 1): antes {json.dumps(recibo.get('antes', {}).get('opsPorKind', {}), ensure_ascii=False)}; "
               f"después {json.dumps(recibo.get('despues', {}).get('libro', {}), ensure_ascii=False)}",
