@@ -246,6 +246,94 @@ workflows:
         #   - "Pump Team interno"
 
   # =============================================================
+  # iOS NATIVA (SwiftUI) → TestFlight. Solo desde la rama `nativa`.
+  #
+  # Tag `nios-<versión>-<build>` (nios-2.0.0-100): no empieza con `v` ni con `a`,
+  # así que nunca dispara los workflows de la Capacitor, y viceversa.
+  # La versión y el número de build salen del tag (no hace falta un commit de
+  # "bump"): los builds nativos van de 100 en adelante; 19-99 quedan para
+  # hotfixes de la Capacitor (plan B).
+  #
+  # Sube a TestFlight (los testers INTERNOS lo reciben solos) y nada más:
+  #   · submit_to_testflight: false → no pide Beta App Review (grupo externo =
+  #     compuerta G5, con OK de Mati);
+  #   · NUNCA submit_to_app_store ni cancel_previous_submissions: eso cancelaría
+  #     el envío de la Capacitor que esté en revisión.
+  #
+  #   git tag nios-2.0.0-100 && git push origin nios-2.0.0-100
+  # =============================================================
+  ios-nativa:
+    name: MyPump iOS nativa → TestFlight (interno)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'nios-*'
+          include: true
+    integrations:
+      app_store_connect: PumpTeam_ASC
+    environment:
+      # Mismo Xcode mayor con el que se compila y prueba local (26.x).
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.pumpteam.mypump
+      vars:
+        XCODE_PROJECT: "apps/ios/MyPump.xcodeproj"
+        XCODE_SCHEME: "MyPump"
+    scripts:
+      - name: Versión y build desde el tag
+        script: |
+          set -e
+          TAG="${CM_TAG:?este workflow corre solo por tag}"
+          RESTO="${TAG#nios-}"
+          VERSION="${RESTO%-*}"
+          BUILD="${RESTO##*-}"
+          case "$BUILD" in (*[!0-9]*|'') echo "✗ el tag tiene que ser nios-<versión>-<build> (ej. nios-2.0.0-100)"; exit 1;; esac
+          if [ "$BUILD" -lt 100 ]; then echo "✗ los builds nativos van de 100 en adelante (19-99 son de la Capacitor)"; exit 1; fi
+          P="$XCODE_PROJECT/project.pbxproj"
+          sed -i '' -E "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = $BUILD;/g; s/MARKETING_VERSION = [0-9.]+;/MARKETING_VERSION = $VERSION;/g" "$P"
+          grep -E "CURRENT_PROJECT_VERSION|MARKETING_VERSION" "$P" | sort -u
+      - name: Recursos compartidos (base de alimentos, catálogo, demo)
+        script: sh scripts/nativa/copiar-recursos-ios.sh
+      - name: Resolver el paquete local
+        script: xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
+      - name: Verificar la firma
+        script: |
+          set -e
+          xcode-project use-profiles
+          security find-identity -v -p codesigning | grep -q "Apple Distribution" || { echo "✗ sin identidad Apple Distribution"; exit 1; }
+          echo "✓ Firma lista"
+      - name: Compilar IPA
+        script: |
+          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
+      - name: Revisar el IPA antes de subirlo
+        # Lo que tiene que viajar y lo que no: entitlements de la Capacitor,
+        # manifiesto de privacidad y nada del target de pruebas de interfaz.
+        script: |
+          set -e
+          IPA=$(ls build/ios/ipa/*.ipa | head -1)
+          rm -rf /tmp/ipa && mkdir -p /tmp/ipa && unzip -q "$IPA" -d /tmp/ipa
+          APP=$(ls -d /tmp/ipa/Payload/*.app | head -1)
+          test -f "$APP/PrivacyInfo.xcprivacy" || { echo "✗ falta PrivacyInfo.xcprivacy"; exit 1; }
+          codesign -d --entitlements :- "$APP" > /tmp/ent.plist 2>/dev/null
+          for k in com.apple.developer.healthkit com.apple.developer.associated-domains aps-environment; do
+            grep -q "$k" /tmp/ent.plist || { echo "✗ falta el entitlement $k"; exit 1; }
+          done
+          ! ls "$APP/PlugIns" 2>/dev/null | grep -qi uitest || { echo "✗ el target de pruebas viaja en el IPA"; exit 1; }
+          echo "✓ IPA revisado"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
+
+  # =============================================================
   # Android → Google Play
   #
   # Dispara con un tag `a*` (a1.0.5), separado del `v*` de iOS a propósito: las
