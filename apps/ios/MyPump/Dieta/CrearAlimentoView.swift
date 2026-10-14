@@ -20,12 +20,33 @@ struct CrearAlimentoView: View {
     @State private var gramos = ""
     @State private var error: String?
     @State private var guardando = false
+    @State private var escaneando = false
+    @State private var estadoEscaneo: String?
     @FocusState private var foco: Campo?
 
     enum Campo: Hashable { case nombre, kcal, prot, carb, fat, gramos }
 
     var body: some View {
         Form {
+            if modelo.token != nil {
+                Section {
+                    BotonFoto(maxPx: 1600, alElegir: escanear) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Escanear etiqueta").font(.body.weight(.semibold)).foregroundStyle(.primary)
+                                Text("Sacale una foto a la tabla nutricional y se completa solo").font(.caption).foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "text.viewfinder").font(.title3).foregroundStyle(Color.marcaTexto)
+                        }
+                    }
+                    if let estadoEscaneo {
+                        Text(estadoEscaneo).font(.footnote).foregroundStyle(.secondary)
+                    }
+                } footer: {
+                    Text("Después podés corregir cualquier valor.")
+                }
+            }
             Section {
                 TextField("Ej: Pan integral marca X", text: $nombre)
                     .focused($foco, equals: .nombre)
@@ -90,6 +111,14 @@ struct CrearAlimentoView: View {
             }
         }
         .sensoryFeedback(.error, trigger: error) { _, nuevo in nuevo != nil }
+        .overlay {
+            if escaneando {
+                ZStack {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                    AnalizandoFoto(texto: "Leyendo la etiqueta…")
+                }
+            }
+        }
         .onAppear { foco = .nombre }
         .animation(.snappy, value: unidad)
         .animation(.snappy, value: error)
@@ -106,6 +135,40 @@ struct CrearAlimentoView: View {
                 .frame(maxWidth: 110)
                 .monospacedDigit()
             Text(unidadTexto).foregroundStyle(.secondary).frame(minWidth: 30, alignment: .leading)
+        }
+    }
+
+    /// "Escanear etiqueta" (F7): prellena todo editable. `porcion_g` 100 = valores por 100 g (unidad g); otra porción =
+    /// unidad "porción" con sus gramos, como la web.
+    private func escanear(_ jpeg: Data) {
+        escaneando = true
+        foco = nil
+        Task {
+            let r = await modelo.analizarFoto(jpeg, tipo: .etiqueta)
+            escaneando = false
+            switch r {
+            case .success(let data):
+                guard let d = try? JSONDecoder().decode(LecturaEtiqueta.self, from: JSONEncoder().encode(data)) else {
+                    estadoEscaneo = "⚠ No pudimos leer la foto (respuesta inesperada). Cargalo a mano o probá otra foto con más luz."
+                    return
+                }
+                if let n = d.nombre, !n.isEmpty { nombre = n }
+                if let k = d.kcal { kcal = String(Int(jsRound(k))) }
+                if let p = d.prot { prot = p.kg }
+                if let c = d.carb { carb = c.kg }
+                if let f = d.fat { fat = f.kg }
+                if let g = d.porcionG, g.isFinite, g > 0, jsRound(g) != 100 {
+                    unidad = "porcion"
+                    gramos = String(Int(jsRound(g)))
+                } else {
+                    unidad = "g"
+                }
+                estadoEscaneo = d.confianza == "baja"
+                    ? "⚠ La etiqueta se leyó con poca claridad: revisá los valores antes de guardar."
+                    : "✓ Etiqueta leída. Revisá los valores y tocá \"Crear y usar\"."
+            case .failure(let e):
+                estadoEscaneo = "⚠ No pudimos leer la foto (\(e.clase == .red ? "sin conexión" : e.mensaje)). Cargalo a mano o probá otra foto con más luz."
+            }
         }
     }
 

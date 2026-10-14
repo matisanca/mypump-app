@@ -51,7 +51,7 @@ extension URLSession: Transporte {
 /// 200 vacío, no un error) o un `ErrorRPC` clasificado.
 public final class ClienteRPC: Sendable {
     public let config: ConfigBackend
-    private let transporte: any Transporte
+    let transporte: any Transporte
     private let espera: TimeInterval
 
     public init(config: ConfigBackend = .produccion, transporte: any Transporte = URLSession.shared, espera: TimeInterval = 20) {

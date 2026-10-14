@@ -11,6 +11,7 @@ struct DietaView: View {
     @State private var porcionesAbiertas: Set<String> = []
     @State private var reemplazo: Reemplazo?
     @State private var revertir: Reemplazo?
+    @State private var analizandoFoto = false
 
     /// La raíz todavía pasa las muestras de los bocetos; Dieta ya usa el modelo real y las ignora.
     init(datos: Muestras? = nil) {}
@@ -75,6 +76,9 @@ struct DietaView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 Cabecera(objetivo: modelo.objetivo, elegidas: totalElegido)
                 ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in tarjeta(c, numero: n + 1) }
+                if modelo.token != nil {
+                    ComidasLibresSeccion(modelo: modelo, analizando: $analizandoFoto)
+                }
                 RespaldoCientifico(texto: "Tu plan lo arma Mati, que es médico, con base en ISSN, NASEM y OMS")
                     .frame(maxWidth: .infinity, alignment: .center)
                     .multilineTextAlignment(.center)
@@ -87,6 +91,16 @@ struct DietaView: View {
             .frame(maxWidth: .infinity)
         }
         .refreshable { await modelo.cargar() }
+        .overlay {
+            if analizandoFoto {
+                ZStack {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                    AnalizandoFoto(texto: "Analizando el plato…")
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.snappy, value: analizandoFoto)
     }
 
     @ToolbarContentBuilder

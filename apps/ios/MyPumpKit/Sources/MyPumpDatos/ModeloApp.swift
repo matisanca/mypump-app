@@ -28,6 +28,8 @@ public final class ModeloApp {
     public private(set) var excluir: [String] = []
     public private(set) var alimentosPropios: [AlimentoPropio] = []
     public private(set) var swaps: [String: SwapLocal] = [:]
+    /// Comidas libres (fuera del plan) del día local.
+    public private(set) var comidasLibres: [ComidaLibre] = []
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet { UserDefaults.standard.set(tipoDia, forKey: "mypump_tipo_dia") }
@@ -135,6 +137,7 @@ public final class ModeloApp {
         fase = .listo
 
         await hidratarDieta()
+        await cargarComidasLibres()
         await outbox?.drenar()
     }
 
@@ -226,6 +229,56 @@ public final class ModeloApp {
             sumarPropio(a)
             return .success(a)
         }
+    }
+
+    // MARK: - Comidas libres
+
+    /// `loadComidasLibres`: las del día local. Sin cuenta (demo) no hay.
+    public func cargarComidasLibres() async {
+        guard let t = token else { comidasLibres = []; return }
+        if case .success(let filas) = await cliente.filas("mypump_get_comidas_libres", ["p_token": .texto(t), "p_fecha": .texto(FechaLocal.hoy())],
+                                                          como: ComidaLibre.self) {
+            comidasLibres = filas
+        }
+    }
+
+    /// `guardarComidaLibre`: directo, no por la cola (como la web), con la fecha local.
+    public func crearComidaLibre(_ d: ComidaLibreNueva.Datos) async -> Result<ComidaLibre, ErrorRPC> {
+        guard let t = token else { return .failure(ErrorRPC(clase: .permanente, status: 0, codigo: "SIN_CUENTA", mensaje: "demo")) }
+        let p: [String: JSONValue] = [
+            "p_token": .texto(t), "p_fecha": .texto(FechaLocal.hoy()), "p_hora": d.hora.map(JSONValue.texto) ?? .null,
+            "p_descripcion": .texto(d.descripcion), "p_kcal": .numero(d.kcal), "p_prot": .numero(d.prot),
+            "p_carb": .numero(d.carb), "p_fat": .numero(d.fat), "p_detalle": d.detalle ?? .null,
+        ]
+        switch await cliente.filas("mypump_crear_comida_libre", p, como: ComidaLibre.self) {
+        case .failure(let e):
+            return .failure(e)
+        case .success(let filas):
+            guard let c = filas.first else {
+                return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_FILA", mensaje: "mypump_crear_comida_libre: vacío"))
+            }
+            comidasLibres.append(c)
+            return .success(c)
+        }
+    }
+
+    /// `borrarComidaLibre`: optimista; si el servidor no contesta bien, vuelve a aparecer.
+    @discardableResult
+    public func borrarComidaLibre(_ id: String) async -> Bool {
+        let previas = comidasLibres
+        comidasLibres.removeAll { $0.id == id }
+        guard let t = token else { return true }
+        if case .failure = await cliente.llamar("mypump_borrar_comida_libre", ["p_token": .texto(t), "p_id": .texto(id)]) {
+            comidasLibres = previas
+            return false
+        }
+        return true
+    }
+
+    /// `visionDesdeFoto`: la foto (JPEG ya reducido) a mini-vision. Tarda ~30 s, hasta 150.
+    public func analizarFoto(_ jpeg: Data, tipo: ClienteRPC.TipoVision) async -> Result<JSONValue, ErrorRPC> {
+        guard let t = token else { return .failure(ErrorRPC(clase: .permanente, status: 0, codigo: "SIN_CUENTA", mensaje: "demo")) }
+        return await cliente.vision(token: t, tipo: tipo, jpeg: jpeg)
     }
 
     /// Como la web: reemplaza en su lugar al del mismo nombre (sin distinguir mayúsculas) o se agrega al final.

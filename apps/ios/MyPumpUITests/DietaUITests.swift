@@ -62,6 +62,31 @@ final class DietaUITests: XCTestCase {
         adjuntarCaptura("revertido")
     }
 
+    func testComidaLibreAManoSeRegistraYSeBorra() throws {
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reemplazar ")).firstMatch.waitForExistence(timeout: 20))
+        // Está al pie de una lista perezosa: no existe hasta que se llega con el scroll.
+        let aMano = app.buttons["A mano"].firstMatch
+        for _ in 0..<12 where !aMano.isHittable { app.swipeUp(velocity: .fast) }
+        XCTAssertTrue(aMano.isHittable, "No apareció la sección de comidas libres")
+        aMano.tap()
+        let descripcion = app.textFields["Ej: Milanesa con puré"]
+        XCTAssertTrue(descripcion.waitForExistence(timeout: 5))
+        descripcion.tap()
+        descripcion.typeText("Prueba UI alfajor")
+        let kcal = app.textFields.matching(identifier: "kcal-comida-libre").firstMatch
+        XCTAssertTrue(kcal.exists)
+        kcal.tap()
+        kcal.typeText("250")
+        adjuntarCaptura("comida-libre-form")
+        app.buttons["Registrar"].tap()
+        let fila = app.staticTexts["Prueba UI alfajor"]
+        XCTAssertTrue(fila.waitForExistence(timeout: 10), "La comida libre no apareció en la lista")
+        for _ in 0..<6 where !app.buttons["Borrar Prueba UI alfajor"].isHittable { app.swipeUp() }
+        adjuntarCaptura("comida-libre-lista")
+        app.buttons["Borrar Prueba UI alfajor"].tap()
+        XCTAssertTrue(fila.waitForNonExistence(timeout: 10), "La comida libre no se borró")
+    }
+
     private func adjuntarCaptura(_ nombre: String) {
         let a = XCTAttachment(screenshot: app.screenshot())
         a.name = nombre

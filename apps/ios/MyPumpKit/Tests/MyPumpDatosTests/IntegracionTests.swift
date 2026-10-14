@@ -49,6 +49,34 @@ struct IntegracionTests {
         #expect(otra.alimentosPropios.contains { $0.nombre == "Yogur prueba nativa" && $0.kcal == 250 })
     }
 
+    @Test func comidaLibreSeCreaSeListaYSeBorra() async throws {
+        let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await m.cargar()
+        let antes = m.comidasLibres.count
+        let datos = try ComidaLibreNueva.preparar(descripcion: "Prueba nativa: alfajor", hora: "10:30", kcal: 250, prot: 3,
+                                                  carb: 35, fat: 11, detalle: nil).get()
+        let creada = try await m.crearComidaLibre(datos).get()
+        #expect(creada.descripcion == "Prueba nativa: alfajor" && creada.kcal == 250)
+        #expect(m.comidasLibres.count == antes + 1)
+        let otra = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await otra.cargar()
+        #expect(otra.comidasLibres.contains { $0.id == creada.id })
+        #expect(await m.borrarComidaLibre(creada.id))
+        await otra.cargarComidasLibres()
+        #expect(!otra.comidasLibres.contains { $0.id == creada.id })
+    }
+
+    /// La plomería de mini-vision sin gastar una llamada a la IA: con un token que no existe, el servicio corta antes
+    /// (403) y el mensaje llega tal cual. Si el body estuviera mal armado contestaría 400 "falta imagen".
+    @Test func visionConTokenInvalidoCortaAntesDeLaIA() async throws {
+        let c = ClienteRPC()
+        let jpeg = Data(base64Encoded: "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==")!
+        let r = await c.vision(token: "tokenQueNoExiste_0000000000000000", tipo: .plato, jpeg: jpeg)
+        guard case .failure(let e) = r else { Issue.record("respondió ok con un token inválido"); return }
+        #expect(e.status == 403)
+        #expect(e.clase == .permanente)
+    }
+
     @Test func sustituirLlegaAnclado_yRevertirLoBorra() async throws {
         let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
         await m.cargar()
