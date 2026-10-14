@@ -116,7 +116,7 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| DIE-01 | Formato A (`comidas`) y B (`tipos_dia[]`, con su `macros_target`); selector entreno/descanso guardado en `mypump_tipo_dia` (global) | `C:1931`, `5255`, `5774`, `docs/SCHEMA_DIETA.md` | 🟡 ver auditoría 14-oct | ☐ |
+| DIE-01 | Formato A (`comidas`) y B (`tipos_dia[]`, con su `macros_target`); selector entreno/descanso guardado en `mypump_tipo_dia` (global) | `C:1931`, `5255`, `5774`, `docs/SCHEMA_DIETA.md` | ✅ los dos formatos contra los vectores de la web (NormalizarDietaTests.vectoresPublicos); DietaTipoDeDiaTests: el tipo elegido cambia comidas y objetivo, queda en `mypump_tipo_dia` (global, como la web), otro arranque lo recuerda, uno que el plan no tiene cae al primero y en el formato A no cambia nada; la migración lo trae (MigracionLegadoTests) | ☐ |
 | DIE-02 | `normalizarDieta`: sin `macros_target` → suma de la opción A; comidas sin opciones se descartan; `tipos_dia:[]` cuenta como ausente | `C:1842-1878` | ✅ ver auditoría 14-oct | ☐ |
 | DIE-03 | Cabecera: anillo de kcal consumidas/objetivo, "DIETA · SEM", macros objetivo, "Consumido hoy n/m" y **renglón de respaldo dentro de la card de macros** (Mifflin-St Jeor, ISSN, NASEM) | `C:5272-5312`, memoria `project_app_store_connect_metadata` | ✅ D10: objetivo + "con las opciones elegidas" (capturas `dieta/v3`) | ☐ |
 | DIE-04 | Opciones A/B/C/D **por comida** (se combinan entre comidas); la elegida vive en memoria y vuelve a A al recargar | `C:5693`, memoria `feedback_opciones_intercambiables_por_comida` | ✅ | ☐ |
