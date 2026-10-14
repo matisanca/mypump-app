@@ -10,7 +10,7 @@ estado de todo, `docs/NATIVA_ESTADO.md`.
 | Módulo | Qué es | Gemelo en iOS |
 |---|---|---|
 | `:core:modelos` | Kotlin/JVM. Las filas de las RPC y lo que publica el Cerebro, con decodificación tolerante (`ValorJson`, `NumeroJs`) | `MyPumpModelos` |
-| `:core:reglas` | Kotlin/JVM. Las reglas portadas de la web: progresión, clave de ejercicio, porción casera, anclaje e hidratación de swaps, categoría y sustitución de alimentos, sustitución de ejercicios, alimento propio, comida libre, progreso, peso, check y fotos de Revisión. `JsRegex` y `ColacionEspanol` dan la semántica de JS | `MyPumpReglas` |
+| `:core:reglas` | Kotlin/JVM. Las reglas portadas de la web: progresión, clave de ejercicio, porción casera, anclaje e hidratación de swaps, categoría y sustitución de alimentos, sustitución de ejercicios, alimento propio, comida libre, normalización de la dieta, progreso, peso, check y fotos de Revisión. `JsRegex` y `ColacionEspanol` dan la semántica de JS | `MyPumpReglas` |
 | `:core:datos` | Kotlin/JVM. El cliente de PostgREST y la visión (OkHttp), la cola de escrituras (`Outbox`, `Escrituras`), los archivos por cuenta (`Disco`) y los modelos de estado con `StateFlow` (`ModeloApp`, chat, Revisión y Mi Día, fotos, Progreso, avisos) | `MyPumpDatos` |
 | `:app` | Android, Compose + Material 3. La pantalla de marca, el `ModeloAppViewModel`, el token con el Keystore (`TokenEnKeystore`), las preferencias y las reglas de backup | `MyPump` |
 

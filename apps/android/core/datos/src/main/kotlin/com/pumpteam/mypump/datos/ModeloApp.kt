@@ -17,6 +17,7 @@ import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
 import com.pumpteam.mypump.reglas.ComidaLibreNueva
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
+import com.pumpteam.mypump.reglas.NormalizarDieta
 import com.pumpteam.mypump.reglas.SwapLocal
 import com.pumpteam.mypump.reglas.SwapsDeComida
 import java.io.File
@@ -104,6 +105,10 @@ class ModeloApp(
     /** Por qué no se pudo cargar (para decir "Sin conexión" o "Servicio fuera de línea"). */
     private val _ultimaFalla = MutableStateFlow<ErrorRpc.Clase?>(null)
     val ultimaFalla: StateFlow<ErrorRpc.Clase?> = _ultimaFalla.asStateFlow()
+
+    /** Lo que le falta a la dieta publicada (`normalizarDieta`): para el aviso "a tu plan le falta información". */
+    private val _problemasDieta = MutableStateFlow<List<String>>(emptyList())
+    val problemasDieta: StateFlow<List<String>> = _problemasDieta.asStateFlow()
 
     private val _estadoGuardado = MutableStateFlow(EstadoGuardado.QUIETO)
     val estadoGuardado: StateFlow<EstadoGuardado> = _estadoGuardado.asStateFlow()
@@ -203,7 +208,7 @@ class ModeloApp(
         // una cuenta guardada, "Salir" de la demo vuelve a ella.
         soltarCuentaEnMemoria()
         _rutina.value = envolver(rutina)?.let { decodificar(it, RutinaActiva::desde) }
-        _dieta.value = envolver(dieta)?.let { decodificar(it, DietaActiva::desde) }
+        _dieta.value = dietaNormalizada(envolver(dieta)?.let(ValorJson::desde))
         _desdeCache.value = false
         _sinRedEn.value = emptySet()
         _esDemo.value = true
@@ -364,7 +369,7 @@ class ModeloApp(
             is Resultado.Falla -> copia?.dieta.also { faltaron += Parte.DIETA }
         }
         _rutina.value = rutinaJson?.let { decodificar(it.aJson(), RutinaActiva::desde) }
-        _dieta.value = dietaJson?.let { decodificar(it.aJson(), DietaActiva::desde) }
+        _dieta.value = dietaNormalizada(dietaJson)
         if (rutinaJson != null || dietaJson != null || copia != null) {
             disco?.guardar(ARCHIVO_COPIA, CopiaOffline(primera, rutinaJson, dietaJson, System.currentTimeMillis().toDouble()).aValor())
         }
@@ -436,7 +441,7 @@ class ModeloApp(
     private fun aplicar(c: CopiaOffline) {
         _info.value = decodificar(c.info.aJson(), ClienteInfo::desde)
         _rutina.value = c.rutina?.let { decodificar(it.aJson(), RutinaActiva::desde) }
-        _dieta.value = c.dieta?.let { decodificar(it.aJson(), DietaActiva::desde) }
+        _dieta.value = dietaNormalizada(c.dieta)
         _dieta.value?.id?.let { id -> _swaps.value = leerSwaps(id) }
     }
 
@@ -450,14 +455,26 @@ class ModeloApp(
             return (e.tiposDia.firstOrNull { it.id == tipoDia } ?: e.tiposDia[0]).comidas
         }
 
-    /** Objetivo de macros del día. Sin `macros_target`, la suma de la opción A de cada comida (normalizarDieta). */
+    /** Objetivo de macros del día: la normalización ya lo completó (sin `macros_target`, la suma de la opción A). */
     val objetivo: Macros
         get() {
             val e = _dieta.value?.estructura ?: return Macros()
-            val tipo = e.tiposDia.firstOrNull { it.id == tipoDia } ?: e.tiposDia.firstOrNull()
-            val m = tipo?.macrosTarget ?: e.macrosTarget
-            if (m?.kcal != null) return m
-            return sumar(comidasDelDia.mapNotNull { it.opciones.firstOrNull() }.flatMap { it.alimentos })
+            if (e.tiposDia.isEmpty()) return e.macrosTarget ?: Macros()
+            return (e.tiposDia.firstOrNull { it.id == tipoDia } ?: e.tiposDia[0]).macrosTarget ?: Macros()
+        }
+
+    /**
+     * GEN-05 (`avisarPlanIncompleto`): arriba de Revisión cuando al plan publicado le falta algo. No es para el cliente: es
+     * para que la captura que le manda a Mati diga qué republicar, en vez de "no me carga". (En iOS suma también lo que
+     * le falta a la rutina según el motor de Entreno, que en Android todavía no está.)
+     */
+    val avisoPlanIncompleto: Pair<String, String>?
+        get() {
+            if (_esDemo.value) return null
+            val p = _problemasDieta.value
+            if (p.isEmpty()) return null
+            return "A tu plan le falta información y algunas cosas pueden verse raras. Avisale a Mati y lo republica." to
+                p.take(3).joinToString(" · ")
         }
 
     fun clave(comidaId: String, opt: Int, idx: Int): String = SwapsDeComida.clave(_dieta.value?.id ?: "demo", comidaId, opt, idx)
@@ -647,6 +664,22 @@ class ModeloApp(
         } else if (h.marcarMigrado) {
             disco?.guardar(marca, ValorJson.Booleano(true))
         }
+    }
+
+    /**
+     * La dieta como la usa la web: normalizada (`normalizarDieta`). Sin ninguna comida usable no hay dieta (la web mostraba
+     * la de ejemplo como si fuera del cliente; acá se dice que todavía no hay plan).
+     */
+    private fun dietaNormalizada(j: ValorJson?): DietaActiva? {
+        val d = j?.let { decodificar(it.aJson(), DietaActiva::desde) }
+        if (d == null) {
+            _problemasDieta.value = emptyList()
+            return null
+        }
+        val r = NormalizarDieta.normalizar(d.estructura)
+        _problemasDieta.value = r.problemas
+        if (!r.usable) return null
+        return d.copy(estructura = r.estructura)
     }
 
     companion object {
