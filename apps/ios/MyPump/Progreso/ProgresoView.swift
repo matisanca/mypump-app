@@ -225,13 +225,14 @@ struct PildoraVariacion: View {
 /// Insignia de récord personal: trofeo en lima con texto negro. `compacta`: solo el trofeo (en las filas).
 struct InsigniaPR: View {
     var compacta = false
+    @ScaledMetric(relativeTo: .caption2) private var lado: CGFloat = 22
 
     var body: some View {
         Group {
             if compacta {
                 Image(systemName: "trophy.fill")
                     .font(.caption2.weight(.bold))
-                    .frame(width: 22, height: 22)
+                    .frame(width: lado, height: lado)
                     .background(Color.marca, in: .circle)
             } else {
                 Label("PR", systemImage: "trophy.fill")

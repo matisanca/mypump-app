@@ -27,15 +27,18 @@ struct EjercicioView: View {
             ScrollView {
                 Group {
                     if claseAncho == .regular {
+                        // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                         HStack(alignment: .top, spacing: Espacio.l) {
                             VStack(alignment: .leading, spacing: Espacio.l) {
                                 encabezado(lector); metricas; nota; comoSeHace
                             }
                             .frame(maxWidth: .infinity)
+                            .fixedSize(horizontal: false, vertical: true)
                             VStack(alignment: .leading, spacing: Espacio.l) {
                                 series; aSuperar; acciones(lector); comentarios; cierre
                             }
                             .frame(maxWidth: .infinity)
+                            .fixedSize(horizontal: false, vertical: true)
                         }
                         .anchoLectura(Ancho.doble)
                     } else {
@@ -335,13 +338,15 @@ private struct MetricasPauta: View {
                         metrica(m.titulo, m.valor, detalle: m.detalle)
                     }
                 }
+                // El alto lo ponen los números; los separadores se estiran hasta ahí y no más.
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .tarjeta(relleno: 14)
     }
 
     private var separador: some View {
-        Rectangle().fill(Color.borde).frame(width: 1).padding(.vertical, 2)
+        Rectangle().fill(Color.borde).frame(width: 1).frame(maxHeight: .infinity).padding(.vertical, 2)
     }
 
     private func metrica(_ titulo: String, _ valor: String, detalle: String? = nil) -> some View {

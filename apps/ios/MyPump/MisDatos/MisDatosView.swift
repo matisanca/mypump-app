@@ -65,9 +65,11 @@ struct MisDatosView: View {
                 Button { fuentes = true } label: {
                     fila("Respaldo científico del plan", icono: "book.closed.fill", color: .marcaTexto)
                 }
+                .tint(.primary)
                 Button { pagina = .privacidad } label: {
                     fila("Política de privacidad", icono: "hand.raised.fill", color: .agua)
                 }
+                .tint(.primary)
                 Button(role: .destructive) { pagina = .borrado } label: {
                     Label { Text("Eliminar mis datos").foregroundStyle(Color.peligro) } icon: {
                         IconoAzulejo("trash.fill", color: .peligro)
@@ -81,6 +83,7 @@ struct MisDatosView: View {
                 Text("MyPump no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.")
             }
         }
+        .margenesDeLectura()
         .navigationTitle("Mis datos")
         .tint(Color.marcaTexto)
         .sheet(isPresented: $fuentes) { FuentesView() }

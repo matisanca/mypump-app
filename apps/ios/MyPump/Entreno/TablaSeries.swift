@@ -13,6 +13,7 @@ struct TablaSeries: View {
     @Environment(Descanso.self) private var descanso
     @FocusState private var foco: Campo?
     @State private var aviso = 0
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     enum Campo: Hashable { case reps(Int), kg(Int) }
 
@@ -39,7 +40,7 @@ struct TablaSeries: View {
             }
 
             HStack(spacing: Espacio.xs) {
-                Text("Serie").fixedSize().frame(width: 30, alignment: .center)
+                Text(tamañoLetra.isAccessibilitySize ? "#" : "Serie").fixedSize().frame(width: 30, alignment: .center)
                 Text("Reps").frame(maxWidth: .infinity)
                 if !sinKg { Text("Kg").frame(maxWidth: .infinity) }
                 Text("RIR").frame(maxWidth: .infinity)

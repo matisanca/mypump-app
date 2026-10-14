@@ -14,11 +14,14 @@ struct RevisionView: View {
                 ScrollView {
                     Group {
                         if claseAncho == .regular {
+                            // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                             HStack(alignment: .top, spacing: Espacio.l) {
                                 VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso }
                                     .frame(maxWidth: .infinity)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 VStack(alignment: .leading, spacing: Espacio.xl) { miDia; reloj }
                                     .frame(maxWidth: .infinity)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             .anchoLectura(Ancho.doble)
                         } else {

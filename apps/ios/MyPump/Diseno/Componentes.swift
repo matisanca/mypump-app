@@ -257,8 +257,27 @@ struct Esqueleto: ViewModifier {
     }
 }
 
+/// Para `List` y `Form` en iPad: los márgenes crecen para que las secciones no pasen del ancho de lectura. En el
+/// teléfono no hace nada (quedan los márgenes del sistema).
+struct MargenesDeLectura: ViewModifier {
+    var maximo: CGFloat = Ancho.lectura
+    @State private var ancho: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        Group {
+            if ancho > maximo + 2 * Espacio.l {
+                content.contentMargins(.horizontal, (ancho - maximo) / 2, for: .scrollContent)
+            } else {
+                content
+            }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { ancho = $0 }
+    }
+}
+
 extension View {
     func esqueleto() -> some View { modifier(Esqueleto()) }
+    func margenesDeLectura(_ maximo: CGFloat = Ancho.lectura) -> some View { modifier(MargenesDeLectura(maximo: maximo)) }
 
     /// Columna de lectura: en iPad el contenido no pasa de `maximo` y queda centrado.
     func anchoLectura(_ maximo: CGFloat = Ancho.lectura) -> some View {

@@ -573,22 +573,23 @@ struct FilaEjercicio: View {
 private struct MarcaNumero: View {
     let numero: Int
     let final: SesionEnCurso.Final?
+    @ScaledMetric(relativeTo: .caption2) private var lado: CGFloat = 22
 
     var body: some View {
         ZStack {
             switch final {
             case .completo:
                 Circle().fill(Color.marca)
-                Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(Color.sobreMarca)
+                Image(systemName: "checkmark").font(.system(size: lado * 0.45, weight: .heavy)).foregroundStyle(Color.sobreMarca)
             case .completoSinDatos:
                 Circle().fill(Color.tarjeta)
-                Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(.secondary)
+                Image(systemName: "checkmark").font(.system(size: lado * 0.45, weight: .heavy)).foregroundStyle(.secondary)
             case nil:
                 Circle().fill(Color.tarjeta)
                 Text("\(numero)").font(.caption2.weight(.bold).monospacedDigit()).foregroundStyle(.primary)
             }
         }
-        .frame(width: 22, height: 22)
+        .frame(width: lado, height: lado)
         .overlay { Circle().strokeBorder(Color.borde, lineWidth: 1) }
         .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
         .symbolEffect(.bounce, value: final)
