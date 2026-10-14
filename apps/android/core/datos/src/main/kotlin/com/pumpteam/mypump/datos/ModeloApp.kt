@@ -53,6 +53,8 @@ class ModeloApp(
     /** `UserDefaults` de iOS: lo poco que se recuerda fuera de la cuenta. */
     val preferencias: Preferencias,
     private val alcance: CoroutineScope,
+    /** La versión de la app ("2.0.0"): va con la decisión sobre la IA, como `CFBundleShortVersionString` en iOS. */
+    private val versionApp: String? = null,
 ) {
     enum class Fase {
         /** "Bienvenido a MyPump": pegá tu link o mirá la demo. */
@@ -135,6 +137,27 @@ class ModeloApp(
 
     private val _swaps = MutableStateFlow<Map<String, SwapLocal>>(emptyMap())
     val swaps: StateFlow<Map<String, SwapLocal>> = _swaps.asStateFlow()
+
+    // ── Permiso para la IA (D7, supabase/migrations/nativa_002) ──
+
+    /** Qué decidió el cliente: true acepta, false "sin IA", null nunca se le preguntó (o todavía no se sabe). */
+    private val _consentimientoIA = MutableStateFlow<Boolean?>(null)
+    val consentimientoIA: StateFlow<Boolean?> = _consentimientoIA.asStateFlow()
+
+    /**
+     * El servidor puede guardar la decisión. Sin eso (PGRST202) no se pregunta: un "no" no se podría respetar del otro
+     * lado, y todo sigue como hoy.
+     */
+    private val _consentimientoIADisponible = MutableStateFlow(false)
+    val consentimientoIADisponible: StateFlow<Boolean> = _consentimientoIADisponible.asStateFlow()
+
+    /** Antes del primer mensaje, de la primera foto analizada y del primer check hay que preguntar (Apple 5.1.2(i)). */
+    val faltaConsentimientoIA: Boolean
+        get() = _consentimientoIADisponible.value && _consentimientoIA.value == null && !_esDemo.value && token != null
+
+    /** La foto del plato o de la etiqueta se puede mandar a la IA: aceptó, o el servidor todavía no sabe de permisos. */
+    val analisisDeFotoPermitido: Boolean
+        get() = !_consentimientoIADisponible.value || _consentimientoIA.value == true
 
     /** Comidas libres (fuera del plan) del día local. */
     private val _comidasLibres = MutableStateFlow<List<ComidaLibre>>(emptyList())
@@ -272,6 +295,8 @@ class ModeloApp(
         outbox?.cerrar()
         outbox = null
         _info.value = null
+        _consentimientoIA.value = null
+        _consentimientoIADisponible.value = false
         _swaps.value = emptyMap()
         _comidasLibres.value = emptyList()
         _alimentosPropios.value = emptyList()
@@ -289,6 +314,9 @@ class ModeloApp(
     private fun prepararCuenta(t: String) {
         val d = Disco(raizDisco, t)
         disco = d
+        // La decisión sobre la IA es de cada cuenta: hasta la carga no se sabe la de esta (en iOS queda la anterior).
+        _consentimientoIA.value = null
+        _consentimientoIADisponible.value = false
         val escrituras = Escrituras(cliente, t)
         outbox?.cerrar()
         val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance) { op -> escrituras.ejecutar(op) }
@@ -392,14 +420,23 @@ class ModeloApp(
         }
         _info.value = decodificar(primera.aJson(), ClienteInfo::desde)
 
-        val (rr, dd, palancaLeida) = coroutineScope {
+        val rr: Resultado<ValorJson>
+        val dd: Resultado<ValorJson>
+        val palancaLeida: PalancaRemota?
+        val consentimiento: Resultado<ValorJson>
+        coroutineScope {
             val r = async { cliente.llamar("mypump_get_rutina_activa", p) }
             val d = async { cliente.llamar("mypump_get_dieta_activa", p) }
             val c = async { PalancaRemota.leer(cliente) }
-            Triple(r.await(), d.await(), c.await())
+            val ci = async { cliente.llamar("mypump_get_consentimiento_ia", p) }
+            rr = r.await()
+            dd = d.await()
+            palancaLeida = c.await()
+            consentimiento = ci.await()
         }
         if (!vigente()) return
         palancaLeida?.let { _palanca.value = it }
+        aplicarConsentimiento(consentimiento)
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         val copia = leerCopia()
@@ -547,6 +584,11 @@ class ModeloApp(
         }
 
     private fun aplicar(c: CopiaOffline) {
+        // Sin red: la decisión sobre la IA es la última guardada en el teléfono.
+        leerConsentimientoGuardado()?.let {
+            _consentimientoIADisponible.value = true
+            _consentimientoIA.value = it
+        }
         _info.value = decodificar(c.info.aJson(), ClienteInfo::desde)
         _rutina.value = c.rutina?.let { decodificar(it.aJson(), RutinaActiva::desde) }
         _dieta.value = dietaNormalizada(c.dieta)
@@ -700,7 +742,70 @@ class ModeloApp(
     /** `visionDesdeFoto`: la foto (JPEG ya reducido) a mini-vision. Tarda ~30 s, hasta 150. */
     suspend fun analizarFoto(jpeg: ByteArray, tipo: ClienteRpc.TipoVision): Resultado<ValorJson> {
         val t = token ?: return Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "SIN_CUENTA", "demo"))
+        // D7: sin permiso la foto no sale del teléfono (las pantallas no la van a ofrecer; esto es por las dudas).
+        if (!analisisDeFotoPermitido) {
+            return Resultado.Falla(
+                ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "SIN_PERMISO_IA", "No aceptaste el asistente de IA: cargala a mano o activalo en Mis datos."),
+            )
+        }
         return cliente.vision(t, tipo, jpeg)
+    }
+
+    // ── Permiso para la IA (D7) ──
+
+    private fun leerConsentimientoGuardado(): Boolean? =
+        ConsentimientoIA.Guardado.desde(disco?.leer(ConsentimientoIA.ARCHIVO)?.let(ValorJson::desde))?.acepta
+
+    /**
+     * Lo que contestó `mypump_get_consentimiento_ia`. Lo decidido en el teléfono y todavía en la cola gana; sin red (o con
+     * el token caído, que devuelve `null`) vale lo último guardado; sin la función (PGRST202), todo sigue como hoy.
+     */
+    private suspend fun aplicarConsentimiento(r: Resultado<ValorJson>) {
+        val guardado = leerConsentimientoGuardado()
+        when {
+            r is Resultado.Ok && r.valor is ValorJson.Objeto -> {
+                _consentimientoIADisponible.value = true
+                _consentimientoIA.value = (r.valor["acepta"] as? ValorJson.Booleano)?.valor
+            }
+            r is Resultado.Falla && r.error.funcionInexistente -> {
+                _consentimientoIADisponible.value = false
+                _consentimientoIA.value = null
+                return
+            }
+            guardado != null -> {
+                _consentimientoIADisponible.value = true
+                _consentimientoIA.value = guardado
+            }
+        }
+        (outbox?.pendientesPorClave()?.get(ConsentimientoIA.CLAVE)?.payload?.get("acepta") as? ValorJson.Booleano)?.let {
+            _consentimientoIA.value = it.valor
+        }
+        _consentimientoIA.value?.let { disco?.guardar(ConsentimientoIA.ARCHIVO, ConsentimientoIA.Guardado(it).aValor()) }
+    }
+
+    /**
+     * La respuesta del cliente (la pantalla del primer uso o Mis datos). Sale por la cola, ANTES de lo que dispara la
+     * pregunta (el mensaje, la foto, el check): así el servidor ya la tiene cuando llega lo otro. Con `drenar = false` solo
+     * queda encolada (quien llama encola lo suyo detrás y después vacía la cola con [drenarCola]).
+     */
+    suspend fun decidirConsentimientoIA(acepta: Boolean, drenar: Boolean = true) {
+        if (_esDemo.value || token == null) return
+        _consentimientoIA.value = acepta
+        disco?.guardar(ConsentimientoIA.ARCHIVO, ConsentimientoIA.Guardado(acepta).aValor())
+        outbox?.encolar(
+            ConsentimientoIA.KIND,
+            ValorJson.objeto(
+                "acepta" to ValorJson.Booleano(acepta), "plataforma" to texto(ConsentimientoIA.PLATAFORMA),
+                "app" to (versionApp?.let(::texto) ?: ValorJson.Nulo),
+            ),
+            ConsentimientoIA.CLAVE,
+        )
+        if (drenar) outbox?.drenar()
+    }
+
+    /** Vacía la cola ahora (por ejemplo, después de encolar la decisión sobre la IA y lo que la disparó). */
+    suspend fun drenarCola() {
+        outbox?.drenar()
     }
 
     /** Como la web: reemplaza en su lugar al del mismo nombre (sin distinguir mayúsculas) o se agrega al final. */

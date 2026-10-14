@@ -38,7 +38,10 @@ class ModeloAppViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             val m = ArranqueMigracion.arrancar(app, almacen, preferencias, viewModelScope) {
-                ModeloApp(almacen = almacen, raizDisco = app.filesDir, preferencias = preferencias, alcance = viewModelScope)
+                ModeloApp(
+                    almacen = almacen, raizDisco = app.filesDir, preferencias = preferencias, alcance = viewModelScope,
+                    versionApp = ArranqueMigracion.version(app).substringBefore(" ("),
+                )
             }
             m.enPrimerPlano = aLaVista
             _modelo.value = m
