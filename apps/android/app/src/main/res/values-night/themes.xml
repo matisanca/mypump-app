@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- En modo oscuro la ventana arranca oscura: sin esto, se ve un destello blanco antes del primer cuadro. -->
+    <style name="Tema.MyPump" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
