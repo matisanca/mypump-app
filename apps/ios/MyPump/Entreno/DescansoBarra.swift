@@ -112,26 +112,45 @@ struct DescansoBarra: View {
 }
 
 extension View {
-    /// Pone el descanso donde corresponda según la versión de iOS. Se aplica una sola vez, a la `TabView`.
-    @ViewBuilder
-    func accesorioDeDescanso(_ entrenamiento: Entrenamiento) -> some View {
-        if #available(iOS 26.1, *) {
-            tabViewBottomAccessory(isEnabled: entrenamiento.motor?.descanso.visible == true) { DescansoAccesorio() }
-        } else {
-            self
-        }
-    }
+    /// El descanso arriba de las pestañas, una sola vez sobre la `TabView`: el reloj de 250 ms mientras se ve la barra
+    /// y, desde iOS 26.1, el accesorio de la barra de pestañas.
+    func accesorioDeDescanso() -> some View { modifier(DescansoEnPestanas()) }
 
     /// Antes de iOS 26.1 el descanso va como isla en cada pestaña, encima de la barra.
-    @ViewBuilder
-    func islaDeDescanso(_ entrenamiento: Entrenamiento) -> some View {
-        if #available(iOS 26.1, *) {
-            self
-        } else {
-            safeAreaInset(edge: .bottom, spacing: 0) {
-                if entrenamiento.motor?.descanso.visible == true { DescansoBarra() }
+    func islaDeDescanso() -> some View { modifier(IslaDeDescanso()) }
+}
+
+/// Modificadores aparte (y no funciones que leen el motor): así el descanso, que cambia 4 veces por segundo, solo
+/// vuelve a dibujar esto y no toda la raíz con sus cinco pestañas.
+private struct DescansoEnPestanas: ViewModifier {
+    @Environment(Entrenamiento.self) private var entrenamiento
+
+    func body(content: Content) -> some View {
+        let visible = entrenamiento.motor?.descanso.visible == true
+        Group {
+            if #available(iOS 26.1, *) {
+                content.tabViewBottomAccessory(isEnabled: visible) { DescansoAccesorio() }
+            } else {
+                content
             }
-            .animation(.snappy, value: entrenamiento.motor?.descanso.visible)
+        }
+        .task(id: visible) { await entrenamiento.correrDescanso() }
+    }
+}
+
+private struct IslaDeDescanso: ViewModifier {
+    @Environment(Entrenamiento.self) private var entrenamiento
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            content
+        } else {
+            let visible = entrenamiento.motor?.descanso.visible == true
+            content
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if visible { DescansoBarra() }
+                }
+                .animation(.snappy, value: visible)
         }
     }
 }

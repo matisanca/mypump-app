@@ -63,7 +63,6 @@ struct Raiz: View {
     @State private var modelo = Proveedor.modelo
     // `simctl launch … -pestana dieta` abre directo en esa pestaña (capturas y pruebas de interfaz).
     @State private var navegacion = Navegacion(pestaña: Pestaña(rawValue: UserDefaults.standard.string(forKey: "pestana") ?? "") ?? .entreno)
-    @Environment(Entrenamiento.self) private var entrenamiento
 
     enum Pestaña: String, Hashable { case entreno, dieta, chat, revision, progreso }
 
@@ -102,7 +101,7 @@ struct Raiz: View {
             }
         }
         .environment(navegacion)
-        .accesorioDeDescanso(entrenamiento)
+        .accesorioDeDescanso()
         .barraQueSeAchica()
         .sensoryFeedback(.selection, trigger: navegacion.pestaña)
         // Tocar un aviso (también en un arranque en frío): a su pestaña, y el destino se consume.
@@ -111,15 +110,11 @@ struct Raiz: View {
             withAnimation(.snappy) { navegacion.ir(a: destino) }
             CentroAvisos.shared.destino = nil
         }
-        // El reloj del descanso corre solo mientras la barra está a la vista (el motor lo arma ModeloApp).
-        .task(id: modelo.entreno?.descanso.visible == true) {
-            await entrenamiento.correrDescanso()
-        }
     }
 
-    private var entreno: some View { EntrenoView(datos: datos).islaDeDescanso(entrenamiento) }
-    private var dieta: some View { DietaView(datos: datos).islaDeDescanso(entrenamiento) }
-    private var chat: some View { ChatView(datos: datos).islaDeDescanso(entrenamiento) }
-    private var revision: some View { RevisionView(datos: datos).islaDeDescanso(entrenamiento) }
-    private var progreso: some View { ProgresoView(datos: datos).islaDeDescanso(entrenamiento) }
+    private var entreno: some View { EntrenoView(datos: datos).islaDeDescanso() }
+    private var dieta: some View { DietaView(datos: datos).islaDeDescanso() }
+    private var chat: some View { ChatView(datos: datos).islaDeDescanso() }
+    private var revision: some View { RevisionView(datos: datos).islaDeDescanso() }
+    private var progreso: some View { ProgresoView(datos: datos).islaDeDescanso() }
 }
