@@ -54,6 +54,8 @@ aviso en Dieta. Solo hay una línea en Revisión. El cliente la lee como su plan
 
 ## 4. La política de privacidad cuenta que se puede decir que no a la IA (D7)
 
+**✅ Publicada el 14-oct (c682643, OK de Mati).** Al final de la sección 4, con "Desde la versión 2.0 de la app" (las 1.0.x no preguntan), y con la fecha de actualización nueva.
+
 **Qué pasa.** La app nativa pide permiso antes de usar la IA. Si el cliente dice que no, ningún proveedor recibe sus
 datos (`nativa_002`, `chat_worker`, `centinela`). `privacidad.html` ya nombra a Anthropic y a OpenAI, pero no dice que
 existe esa opción.
