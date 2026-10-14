@@ -1,0 +1,10 @@
+# Lo generado por Gradle, Android Studio y el compilador de Kotlin.
+build/
+.gradle/
+.kotlin/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
