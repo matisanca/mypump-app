@@ -1,0 +1,110 @@
+{
+  "": {
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/primary.swiftdeps"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/AvisosTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/AvisosTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/AvisosTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/AvisosTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/AvisosTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/AvisosTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/ChatTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ChatTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ChatTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ChatTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ChatTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ChatTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/DemoTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/DemoTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/DemoTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/DemoTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/DemoTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/DemoTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/EntrenoIntegracionTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoIntegracionTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoIntegracionTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoIntegracionTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoIntegracionTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoIntegracionTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/EntrenoModeloTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoModeloTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoModeloTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoModeloTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoModeloTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/EntrenoModeloTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/FotosTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/FotosTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/FotosTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/FotosTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/FotosTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/FotosTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/IntegracionTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/IntegracionTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/IntegracionTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/IntegracionTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/IntegracionTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/IntegracionTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/MigracionLegadoTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/MigracionLegadoTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/MigracionLegadoTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/MigracionLegadoTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/MigracionLegadoTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/MigracionLegadoTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/ModeloSaludTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ModeloSaludTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ModeloSaludTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ModeloSaludTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ModeloSaludTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ModeloSaludTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/NumerosAbsurdosTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/NumerosAbsurdosTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/NumerosAbsurdosTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/NumerosAbsurdosTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/NumerosAbsurdosTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/NumerosAbsurdosTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/OutboxTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/OutboxTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/OutboxTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/OutboxTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/OutboxTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/OutboxTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/RegresionesRevisionTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/RegresionesRevisionTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/RegresionesRevisionTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/RegresionesRevisionTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/RegresionesRevisionTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/RegresionesRevisionTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/SaludVectoresTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SaludVectoresTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SaludVectoresTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SaludVectoresTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SaludVectoresTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SaludVectoresTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/ServidorMigracionTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ServidorMigracionTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ServidorMigracionTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ServidorMigracionTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ServidorMigracionTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/ServidorMigracionTests.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpDatosTests/SincronizadorSaludTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SincronizadorSaludTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SincronizadorSaludTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SincronizadorSaludTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SincronizadorSaludTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpDatosTests.build/SincronizadorSaludTests.dia"
+  }
+}

@@ -92,6 +92,14 @@ struct CheckSemanal: View {
             valores = c.valores
             nota = c.nota
         }
+        // Semana nueva: el formulario arranca vacío, como en la web. Antes quedaban las respuestas (y la nota) de la
+        // anterior con "Enviar" habilitado: un toque las mandaba como las de esta semana (revisión, hallazgo 4).
+        .onChange(of: revision?.semana) { _, _ in
+            valores = [:]
+            nota = ""
+            editado = false
+            aviso = nil
+        }
         .onAppear {
             guard revision == nil, !editado, let m = muestra, m.energia != nil else { return }
             valores = ["energia": m.energia, "descanso": m.descanso, "hambre": m.hambre, "adherencia": m.adherencia].compactMapValues { $0 }

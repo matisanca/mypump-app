@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
@@ -14,7 +15,10 @@ struct MisDatosView: View {
     @State private var modelo = Proveedor.modelo
     /// `mypump_notif_prefs`: se lee al entrar y cada cambio se guarda y reprograma.
     @State private var preferencias = CentroAvisos.shared.preferencias
-    @State private var permisoNegado = false
+    /// El permiso de notificaciones (nil = todavía no se sabe). Sin permiso el interruptor mentía: "prendido" y no iba a
+    /// llegar nada (revisión del 14-oct, hallazgo 8). Como la web, en su lugar va "Activar recordatorios".
+    @State private var permiso: UNAuthorizationStatus?
+    @Environment(\.scenePhase) private var fase
     @State private var fuentes = false
     @State private var pagina: Pagina?
 
@@ -42,32 +46,40 @@ struct MisDatosView: View {
             }
 
             Section {
-                Toggle(isOn: Binding(get: { preferencias.check.on }, set: { on in
-                    withAnimation(.snappy) { preferencias.check.on = on }
-                    guardar(activar: on)
-                })) {
-                    Label { Text("Tu revisión de la semana") } icon: { IconoAzulejo("bell.badge.fill", color: .peligro) }
-                }
-                .tint(Color.marcaVivo)
-                .accessibilityIdentifier("recordatorio-domingo")
-                if preferencias.check.on {
-                    DatePicker(selection: hora, displayedComponents: .hourAndMinute) {
-                        Label { Text("Domingos a las") } icon: { IconoAzulejo("calendar", color: .agua) }
+                if conPermiso || modelo.conMuestras {
+                    Toggle(isOn: Binding(get: { preferencias.check.on }, set: { on in
+                        withAnimation(.snappy) { preferencias.check.on = on }
+                        guardar(activar: on)
+                    })) {
+                        Label { Text("Tu revisión de la semana") } icon: { IconoAzulejo("bell.badge.fill", color: .peligro) }
                     }
+                    .tint(Color.marcaVivo)
+                    .accessibilityIdentifier("recordatorio-domingo")
+                    if preferencias.check.on {
+                        DatePicker(selection: hora, displayedComponents: .hourAndMinute) {
+                            Label { Text("Domingos a las") } icon: { IconoAzulejo("calendar", color: .agua) }
+                        }
+                    }
+                } else if permiso != nil {
+                    Button {
+                        Task { await activarRecordatorios() }
+                    } label: {
+                        Label { Text(permiso == .denied ? "Activar en Ajustes" : "Activar recordatorios") } icon: {
+                            IconoAzulejo("bell.badge.fill", color: .peligro)
+                        }
+                    }
+                    .tint(.primary)
+                    .accessibilityIdentifier("activar-recordatorios")
                 }
             } header: {
                 Text("Recordatorios")
             } footer: {
                 if modelo.conMuestras {
                     Text("En la demo los recordatorios no se activan.")
-                } else if permisoNegado && preferencias.check.on {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Las notificaciones de MyPump están apagadas en el iPhone, así que el aviso no va a llegar.")
-                        Button("Activarlas en Ajustes") {
-                            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
-                        }
-                        .fontWeight(.semibold)
-                    }
+                } else if permiso == .denied {
+                    Text("Las notificaciones de MyPump están apagadas en el iPhone: el aviso del domingo no va a llegar hasta que las prendas.")
+                } else if !conPermiso {
+                    Text("El domingo te avisamos para que cargues tus fotos, tu check y tu peso. Hace falta tu permiso para mandarte notificaciones.")
                 } else {
                     Text("Te avisamos para que cargues tus fotos, tu check y tu peso antes de la devolución de Mati.")
                 }
@@ -100,7 +112,11 @@ struct MisDatosView: View {
             }
         }
         .margenesDeLectura()
-        .task { permisoNegado = await CentroAvisos.shared.permiso() == .denied }
+        .task { permiso = await CentroAvisos.shared.permiso() }
+        // Al volver de Ajustes el permiso pudo cambiar.
+        .onChange(of: fase) { _, nueva in
+            if nueva == .active { Task { permiso = await CentroAvisos.shared.permiso() } }
+        }
         .navigationTitle("Mis datos")
         .tint(Color.marcaTexto)
         .sheet(isPresented: $fuentes) { FuentesView() }
@@ -121,17 +137,31 @@ struct MisDatosView: View {
             })
     }
 
-    /// Guarda las preferencias y reprograma la local del domingo. Al prenderla sin permiso, lo pide (si ya lo negó,
-    /// iOS no vuelve a mostrar la hoja: se avisa y se lleva a Ajustes).
+    private var conPermiso: Bool { [.authorized, .provisional, .ephemeral].contains(permiso) }
+
+    /// Guarda las preferencias y reprograma la local del domingo.
     private func guardar(activar: Bool) {
         CentroAvisos.shared.preferencias = preferencias
         Task {
             if activar {
-                permisoNegado = !(await CentroAvisos.shared.activar())
+                await CentroAvisos.shared.activar()
+                permiso = await CentroAvisos.shared.permiso()
             } else {
                 await CentroAvisos.shared.reprogramar()
             }
         }
+    }
+
+    /// Pide el permiso (si ya lo negó, iOS no vuelve a mostrar la hoja: se lleva a Ajustes) y deja el aviso prendido.
+    private func activarRecordatorios() async {
+        if permiso == .denied {
+            if let url = URL(string: UIApplication.openSettingsURLString) { await UIApplication.shared.open(url) }
+            return
+        }
+        preferencias.check.on = true
+        CentroAvisos.shared.preferencias = preferencias
+        await CentroAvisos.shared.activar()
+        permiso = await CentroAvisos.shared.permiso()
     }
 
     private func fila(_ titulo: String, icono: String, color: Color) -> some View {

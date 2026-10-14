@@ -805,3 +805,39 @@ struct EntrenoVectoresTests {
         #expect(b.isEmpty, "banners: \(b.count) de \(v.semana.banners.count): \(b.prefix(3))")
     }
 }
+
+/// Revisión del 14-oct, hallazgo 1: con un sustituto de otra clase (uno lleva kg y el otro no) la fila y la confirmación
+/// tienen que decidir lo mismo. Antes la fila usaba el sustituto y la confirmación el plan: se borraba el kg o la serie
+/// no se podía registrar (261 pares así en el catálogo). La web tiene el mismo bug; acá va el arreglo.
+@Suite("Sustituto con otra clase de carga")
+struct SustitutoConOtraCargaTests {
+    func dia(_ nombre: String) throws -> Dia {
+        let j = #"{"id":"d1","nombre":"Día 1","bloques":[{"nombre":"B","ejercicios":[{"id":"e1","nombre":"\#(nombre)","series":3,"reps":"12"}]}]}"#
+        return try JSONDecoder().decode(Dia.self, from: Data(j.utf8))
+    }
+    func ejercicio(_ nombre: String) throws -> Ejercicio {
+        try JSONDecoder().decode(Ejercicio.self, from: Data(#"{"id":"e1","nombre":"\#(nombre)","series":3,"reps":"12"}"#.utf8))
+    }
+
+    @Test func delPlanSinKgAUnoConKg() throws {
+        let plan = try dia("Crunch"), sustituto = try ejercicio("Crunch en polea")
+        try #require(ReglasEjercicio.sinKg(plan.bloques[0].ejercicios[0]) && !ReglasEjercicio.sinKg(sustituto))
+        var d = DiaEnCurso(dia: plan, semana: 1, sesionId: "s1")
+        d.escribir("e1", 0, campo: "reps", valor: "12")
+        d.escribir("e1", 0, campo: "kg", valor: "20")
+        let paso = d.confirmarSerie("e1", 0, efectivo: sustituto)
+        #expect(d.ejercicios["e1"]?.series[0].confirmada == true)
+        #expect(d.ejercicios["e1"]?.series[0].kg == "20")
+        let carga = paso.efectos.compactMap { if case .encolar(let k, let p, _) = $0, k == "carga" { return p }; return nil }.first
+        #expect(carga?["datos"]?["peso"]?.comoNumero == 20)
+    }
+
+    @Test func delPlanConKgAUnoSinKg() throws {
+        let plan = try dia("Crunch en polea"), sustituto = try ejercicio("Crunch")
+        try #require(!ReglasEjercicio.sinKg(plan.bloques[0].ejercicios[0]) && ReglasEjercicio.sinKg(sustituto))
+        var d = DiaEnCurso(dia: plan, semana: 1, sesionId: "s1")
+        d.escribir("e1", 0, campo: "reps", valor: "15")
+        _ = d.confirmarSerie("e1", 0, efectivo: sustituto)
+        #expect(d.ejercicios["e1"]?.series[0].confirmada == true)   // antes: el ✓ no hacía nada (faltaba el kg)
+    }
+}

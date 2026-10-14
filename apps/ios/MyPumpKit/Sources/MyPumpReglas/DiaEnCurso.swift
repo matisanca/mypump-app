@@ -186,7 +186,9 @@ public struct DiaEnCurso: Sendable, Equatable {
     /// lo imposible se rechaza y lo raro se pregunta; confirmada, entra a la cola YA y arranca el descanso (salvo el
     /// calentamiento). Con la última serie el ejercicio pasa a completo y se abre el siguiente pendiente (ENT-17).
     /// Si devuelve una pregunta, se vuelve a llamar con la respuesta en `respuestas`.
-    public mutating func confirmarSerie(_ id: String, _ idx: Int, respuestas r: Respuestas = Respuestas()) -> Paso {
+    /// `efectivo` es lo que se muestra (el sustituto, si hay): de ahí sale si la serie lleva kg, como en la fila. La web
+    /// usa el del plan y con un sustituto de otra clase (Crunch → Crunch en polea) borraba el kg o no dejaba registrar.
+    public mutating func confirmarSerie(_ id: String, _ idx: Int, efectivo: Ejercicio? = nil, respuestas r: Respuestas = Respuestas()) -> Paso {
         guard let e = ejercicios[id], idx >= 0, idx < e.series.count, !e.series[idx].confirmada, let ex = ejercicio(id) else { return Paso() }
         var efectos: [Efecto] = []
         if diaFinalizado {
@@ -195,8 +197,8 @@ public struct DiaEnCurso: Sendable, Equatable {
             diaFinalizado = false
             efectos.append(.reabrioDia)
         }
-        let sinKg = ReglasEjercicio.sinKg(ex)
-        let prog = Progresiones.pauta(ex, semana: semana)
+        let sinKg = ReglasEjercicio.sinKg(efectivo ?? ex)
+        let prog = Progresiones.pauta(efectivo ?? ex, semana: semana)
         let repsUlt = repsUltimaVez(id, idx)
         let (serie, lista) = ConfirmacionSerie.completar(e.series[idx], sinKg: sinKg, repsPlan: prog.reps, kgUltimaVez: kgUltimaVez(id, idx),
                                                          repsUltimaVez: repsUlt, kgHeredable: kgHeredable(id, idx))

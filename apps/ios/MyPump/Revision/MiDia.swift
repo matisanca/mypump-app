@@ -295,6 +295,8 @@ private struct UltimosTreintaDias: View {
     @Binding var abierto: Bool
     let cargar: () async -> Void
     @State private var cargando = false
+    /// La carga terminó sin datos (sin red): en vez de "Cargando…" para siempre, el error y Reintentar.
+    @State private var fallo = false
 
     private struct Celda: Identifiable {
         let fecha: Date
@@ -336,6 +338,13 @@ private struct UltimosTreintaDias: View {
                         } else {
                             grilla(dias)
                         }
+                    } else if fallo && !cargando {
+                        VStack(spacing: Espacio.xs) {
+                            Text("No pudimos traer tu historial.").font(.subheadline).foregroundStyle(.secondary)
+                            Button("Reintentar") { Task { await traer() } }
+                                .buttonStyle(BotonSecundario(compacto: true))
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 120)
                     } else {
                         HStack(spacing: Espacio.xs) {
                             ProgressView()
@@ -353,10 +362,16 @@ private struct UltimosTreintaDias: View {
         .clipped()
         .task(id: abierto) {
             guard abierto, dias == nil, !cargando else { return }
-            cargando = true
-            await cargar()
-            cargando = false
+            await traer()
         }
+    }
+
+    private func traer() async {
+        cargando = true
+        fallo = false
+        await cargar()
+        cargando = false
+        fallo = dias == nil
     }
 
     private func grilla(_ dias: [DiaAdherencia]) -> some View {

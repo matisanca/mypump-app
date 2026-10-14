@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpModelosTests.build/primary.swiftdeps"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Tests/MyPumpModelosTests/DecodificacionTests.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpModelosTests.build/DecodificacionTests.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpModelosTests.build/DecodificacionTests.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpModelosTests.build/DecodificacionTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpModelosTests.build/DecodificacionTests.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpModelosTests.build/DecodificacionTests.dia"
+  }
+}

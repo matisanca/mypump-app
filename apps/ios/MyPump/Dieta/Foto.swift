@@ -14,6 +14,8 @@ struct BotonFoto<Etiqueta: View>: View {
     @State private var camara = false
     @State private var galeria = false
     @State private var item: PhotosPickerItem?
+    /// Una foto de la galería que no se pudo leer (formato raro, iCloud sin bajar): se avisa, como la web.
+    @State private var ilegible = false
 
     var body: some View {
         Menu {
@@ -40,9 +42,16 @@ struct BotonFoto<Etiqueta: View>: View {
                 if let datos = try? await nuevo.loadTransferable(type: Data.self), let imagen = UIImage(data: datos),
                    let jpeg = FotoReducida.jpeg(imagen, maxPx: maxPx, calidad: calidad) {
                     alElegir(jpeg)
+                } else {
+                    ilegible = true
                 }
                 item = nil
             }
+        }
+        .alert("No se pudo leer esa foto", isPresented: $ilegible) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Probá con otra, o sacala con la cámara.")
         }
     }
 }

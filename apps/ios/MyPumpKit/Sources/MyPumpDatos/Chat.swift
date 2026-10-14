@@ -143,8 +143,12 @@ public final class ModeloChat {
     /// Badge del tab: lo del coach que llegó con el chat cerrado.
     public private(set) var noLeidos = 0
     public private(set) var cargando = false
-    /// Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge.
-    public var abierto = false
+    /// Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge. Al
+    /// abrirlo el sondeo vuelve a arrancar: si no, la espera de 45 s que estaba corriendo seguía (como la web, que
+    /// cambia el intervalo apenas se abre; revisión del 14-oct, hallazgo 11).
+    public var abierto = false {
+        didSet { if abierto != oldValue, sondeo != nil { empezarSondeo() } }
+    }
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
@@ -179,7 +183,9 @@ public final class ModeloChat {
         guard hilo.mezclar(filas) > 0 else { return }
         let delCoach = filas.filter(\.esDelCoach).count
         if delCoach > 0 {
-            if abierto { await marcarLeido() } else { noLeidos += delCoach }
+            // `mypump_chat_nuevos` no trae `leido_por_cliente`: sin forzar, `marcarLeido` no veía nada sin leer y Mati
+            // los seguía viendo así (revisión del 14-oct, hallazgo 7; la web tiene el mismo agujero).
+            if abierto { await marcarLeido(forzar: true) } else { noLeidos += delCoach }
         }
     }
 
@@ -224,9 +230,9 @@ public final class ModeloChat {
 
     /// `marcarChatLeido`: se decide por los mensajes (con el chat abierto el contador puede dar 0 y Mati los seguiría
     /// viendo "sin leer").
-    public func marcarLeido() async {
+    public func marcarLeido(forzar: Bool = false) async {
         let habia = hilo.marcarLeidos()
-        guard habia || noLeidos > 0 else { return }
+        guard habia || noLeidos > 0 || forzar else { return }
         noLeidos = 0
         _ = await cliente.llamar("mypump_marcar_leidos_cliente", ["p_token": .texto(token), "p_ambito": .texto("general"), "p_referencia_id": .null])
     }

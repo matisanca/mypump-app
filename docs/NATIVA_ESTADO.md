@@ -95,6 +95,12 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | T1 | Cola, caché y swaps en **JSON con escritura atómica**, sin GRDB | Volumen chico; cero dependencias de terceros |
 | T2 | Cliente RPC propio (URLSession), sin supabase-swift | Hace falta el código HTTP para clasificar errores (aprobado 13-oct) |
 
+## Limitaciones conocidas (igual que la web)
+
+- **Desconfirmar una serie no la borra del servidor** (revisión del 14-oct, hallazgo 9). Si el cliente la deja sin
+  volver a confirmarla, Mati la sigue viendo. Arreglo propuesto para una tanda de G2: una RPC
+  `mypump_borrar_serie(p_token, p_sesion_id, p_ejercicio_id, p_serie)` y un kind `carga_del` en la cola de las dos apps.
+
 ## Lo que solo puede hacer Mati
 
 - Aceptar el contrato nuevo del Developer Program, que frena TestFlight y la 1.0.12.

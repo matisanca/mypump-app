@@ -81,6 +81,14 @@ struct PesoTarjeta: View {
             precargado = true
             entrada = PesoCorporal.kg(kg)
         }
+        // Día nuevo: el peso de ayer no es el de hoy. Antes quedaba en el campo y un toque lo guardaba como el de hoy
+        // (revisión del 14-oct, hallazgo 6). Si hoy ya hay uno, el onChange de arriba lo vuelve a poner.
+        .onChange(of: revision?.fecha) { _, _ in
+            entrada = ""
+            precargado = false
+            invalido = false
+            if let kg = pesoDeHoy?.kg { precargado = true; entrada = PesoCorporal.kg(kg) }
+        }
     }
 
     // MARK: Gráfico

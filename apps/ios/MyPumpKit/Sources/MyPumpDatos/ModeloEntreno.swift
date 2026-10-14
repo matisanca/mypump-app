@@ -277,8 +277,9 @@ public final class ModeloEntreno {
     public func confirmarSerie(_ lugar: String, _ idx: Int, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado?
+        let ef = dia.ejercicio(lugar).map { efectivo($0).ejercicio }
         while true {
-            let paso = dia.confirmarSerie(lugar, idx, respuestas: respuestas)
+            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas)
             if let c = await ejecutar(paso.efectos) { completo = c }
             guard let p = paso.pregunta, let motivo = paso.motivo else { return completo }
             let si = await preguntar(p)
@@ -424,7 +425,12 @@ public final class ModeloEntreno {
             remota = await consultarSesionDia(diaId, semana)
             guard seq == restauracion else { return }
         }
-        guard case .respondio(let s)? = remota, let s, let id = JS.verdadero(s.id) else { return }
+        guard case .respondio(let s)? = remota, let s, let id = JS.verdadero(s.id) else {
+            // Sin sesión conocida (sin red, o todavía no se pudo crear): lo que está en la cola para este día se pinta
+            // igual. Antes las series confirmadas sin señal aparecían vacías y un toque las pisaba (revisión, hallazgo 5).
+            await aplicarPendientes()
+            return
+        }
         dia.sesionId = id
         sesionIniciada = true
         dia.diaFinalizado = s.finalizadaEn != nil
@@ -457,7 +463,7 @@ public final class ModeloEntreno {
     /// `loadExerciseStates` + `loadRegistrosCarga`, y encima lo que sigue en la cola para este día y esta semana (lo
     /// pendiente gana: una serie confirmada sin red no vuelve a aparecer vacía si se cerró la app).
     func cargarEstadosYSeries(_ seq: Int) async {
-        guard let token, let sid = dia.sesionId else { return }
+        guard let token, let sid = dia.sesionId else { await aplicarPendientes(); return }
         let p: [String: JSONValue] = ["p_token": .texto(token), "p_sesion_id": .texto(sid)]
         async let e = cliente.filas("mypump_get_ejercicios_estado", p, como: EstadoEjercicio.self)
         async let r = cliente.filas("mypump_get_registros_sesion", p, como: RegistroSesion.self)

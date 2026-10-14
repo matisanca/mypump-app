@@ -253,6 +253,21 @@ struct EntrenoSesionTests {
         #expect(series?[0].confirmada == false)
         #expect(await b.cola.pendientes == 2, "las dos semanas conviven en la cola (dedupe con semana)")
     }
+
+    /// Revisión del 14-oct, hallazgo 5: sin señal en el gimnasio la sesión no se pudo crear y las series quedaron en la
+    /// cola. Al volver al día (o abrir la app sin red) tienen que verse confirmadas, no vacías.
+    @Test func sinSesionYSinRed_laColaIgualSePinta() async {
+        let b = Banco()
+        b.servidor.sinRed("get_sesion_dia")
+        await b.cola.encolar("carga", EscriturasEntreno.carga(sesionId: nil, dia: "d1", semana: 5, ejercicio: "jal-d1-0", indice: 0,
+                                                              serie: SerieLocal(reps: "10", kg: "60"), nombre: "Jalón al pecho", varianteEjercicio: nil),
+                              dedupeKey: EscriturasEntreno.claveCarga(dia: "d1", ejercicio: "jal-d1-0", indice: 0, semana: 5))
+        let m = b.modelo()
+        await m.restaurarSesion()
+        #expect(m.dia.sesionId == nil)
+        #expect(m.dia.ejercicios["jal-d1-0"]?.series[0].confirmada == true)
+        #expect(m.dia.ejercicios["jal-d1-0"]?.series[0].kg == "60")
+    }
 }
 
 @Suite("Entreno: historial por clave (SER-08/09/10)", .serialized)

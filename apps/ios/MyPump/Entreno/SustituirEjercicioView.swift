@@ -111,12 +111,12 @@ struct SustituirEjercicioView: View {
         .contentShape(.rect)
     }
 
+    /// La hoja se cierra ya: el cambio se aplica en el acto y el historial del sustituto llega después. Esperarlo la
+    /// dejaba abierta hasta 20 s con mala señal, sin indicador, y "Cancelar" ahí no deshacía nada (revisión, hallazgo 14).
     private func sustituir() {
         guard let i = elegido, i < todos.count else { return }
         let s = todos[i]
-        Task {
-            await motor.sustituir(lugar, por: s, fijar: fijar)
-            cerrar()
-        }
+        cerrar()
+        Task { await motor.sustituir(lugar, por: s, fijar: fijar) }
     }
 }

@@ -217,7 +217,9 @@ private struct CampoSerie: View {
             .onChange(of: local) { _, nuevo in if nuevo != texto { texto = nuevo } }
             // Lo que cambia el motor (confirmar, desconfirmar, otra variante) entra cuando no se está escribiendo.
             .onChange(of: texto) { _, nuevo in if !enfocado && nuevo != local { local = nuevo } }
-            .onChange(of: enfocado) { _, ahora in if !ahora { local = texto } }
+            .onChange(of: enfocado) { _, ahora in
+                if ahora { CampoSerie.seleccionarTodo() } else { local = texto }
+            }
             .focused(foco, equals: campo)
             .keyboardType(teclado)
             .multilineTextAlignment(.center)
@@ -230,6 +232,15 @@ private struct CampoSerie: View {
                     .strokeBorder(marcada ? Color.peligro : Color.marcaVivo, lineWidth: enfocado || marcada ? 2 : 0)
             }
             .disabled(confirmada)
+    }
+
+    /// Como la web (`select()` al enfocar): al corregir, lo que se escribe reemplaza lo anterior. Sin esto, 8 kg
+    /// corregido a 7 quedaba "87" y entraba sin pregunta (revisión del 14-oct, hallazgo 2). Va un instante después del
+    /// foco: el toque ubica el cursor al soltar y pisaría la selección.
+    static func seleccionarTodo() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
+        }
     }
 }
 

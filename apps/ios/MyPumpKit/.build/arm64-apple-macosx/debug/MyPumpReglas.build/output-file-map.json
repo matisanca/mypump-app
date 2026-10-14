@@ -1,0 +1,180 @@
+{
+  "": {
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/primary.swiftdeps"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/AlimentoPropioNuevo.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AlimentoPropioNuevo.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AlimentoPropioNuevo.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AlimentoPropioNuevo~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AlimentoPropioNuevo.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AlimentoPropioNuevo.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/AnclajeSwaps.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AnclajeSwaps.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AnclajeSwaps.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AnclajeSwaps~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AnclajeSwaps.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/AnclajeSwaps.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/BaseAlimentos.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/BaseAlimentos.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/BaseAlimentos.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/BaseAlimentos~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/BaseAlimentos.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/BaseAlimentos.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/CategoriaAlimento.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/CategoriaAlimento.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/CategoriaAlimento.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/CategoriaAlimento~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/CategoriaAlimento.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/CategoriaAlimento.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/ClaveEjercicio.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ClaveEjercicio.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ClaveEjercicio.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ClaveEjercicio~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ClaveEjercicio.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ClaveEjercicio.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/ComidaLibreNueva.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ComidaLibreNueva.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ComidaLibreNueva.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ComidaLibreNueva~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ComidaLibreNueva.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/ComidaLibreNueva.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/DiaEnCurso.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/DiaEnCurso.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/DiaEnCurso.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/DiaEnCurso~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/DiaEnCurso.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/DiaEnCurso.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/EnteroSeguro.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/EnteroSeguro.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/EnteroSeguro.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/EnteroSeguro~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/EnteroSeguro.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/EnteroSeguro.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/JSRegex.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/JSRegex.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/JSRegex.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/JSRegex~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/JSRegex.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/JSRegex.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/NormalizarDieta.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NormalizarDieta.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NormalizarDieta.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NormalizarDieta~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NormalizarDieta.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NormalizarDieta.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/NumeroJS.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NumeroJS.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NumeroJS.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NumeroJS~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NumeroJS.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/NumeroJS.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/PorcionCasera.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/PorcionCasera.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/PorcionCasera.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/PorcionCasera~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/PorcionCasera.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/PorcionCasera.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/Progresion.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progresion.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progresion.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progresion~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progresion.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progresion.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/Progreso.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progreso.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progreso.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progreso~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progreso.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Progreso.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/Revision.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Revision.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Revision.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Revision~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Revision.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Revision.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/RutinaEntreno.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/RutinaEntreno.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/RutinaEntreno.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/RutinaEntreno~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/RutinaEntreno.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/RutinaEntreno.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/Salud.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Salud.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Salud.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Salud~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Salud.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/Salud.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/SaludAgregacion.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludAgregacion.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludAgregacion.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludAgregacion~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludAgregacion.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludAgregacion.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/SaludVista.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludVista.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludVista.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludVista~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludVista.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SaludVista.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/SemanticaJS.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SemanticaJS.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SemanticaJS.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SemanticaJS~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SemanticaJS.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SemanticaJS.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/SeriesEntreno.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SeriesEntreno.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SeriesEntreno.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SeriesEntreno~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SeriesEntreno.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SeriesEntreno.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/SesionEntreno.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SesionEntreno.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SesionEntreno.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SesionEntreno~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SesionEntreno.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SesionEntreno.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/SustitucionAlimentos.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionAlimentos.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionAlimentos.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionAlimentos~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionAlimentos.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionAlimentos.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/SustitucionEjercicios.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionEjercicios.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionEjercicios.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionEjercicios~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionEjercicios.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SustitucionEjercicios.dia"
+  },
+  "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/Sources/MyPumpReglas/SwapsDeComida.swift": {
+    "dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SwapsDeComida.d",
+    "object": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SwapsDeComida.swift.o",
+    "swiftmodule": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SwapsDeComida~partial.swiftmodule",
+    "swift-dependencies": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SwapsDeComida.swiftdeps",
+    "diagnostics": "/Users/matiassancari/Developer/mypump-nativa/apps/ios/MyPumpKit/.build/arm64-apple-macosx/debug/MyPumpReglas.build/SwapsDeComida.dia"
+  }
+}
