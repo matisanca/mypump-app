@@ -6,10 +6,14 @@ import MyPumpReglas
 /// Una foto que espera subir. Mismo formato que la cola de la web (`mypump_fotoq_<TOKEN>`): así la migración del
 /// almacenamiento viejo la deja tal cual en `fotos-pendientes.json`.
 public struct FotoPendiente: Codable, Equatable, Sendable {
-    public let pose: String
-    public let fecha: String
-    public let dataUrl: String
+    public var pose: String
+    public var fecha: String
+    /// `data:image/jpeg;base64,…` (900 px, calidad 0,7, sin EXIF).
+    public var dataUrl: String
+    /// Solo cuentan los errores del servidor; con 8 se descarta.
     public var intentos: Int
+
+    public static let archivo = "fotos-pendientes.json"
 
     public init(pose: String, fecha: String, dataUrl: String, intentos: Int = 0) {
         self.pose = pose; self.fecha = fecha; self.dataUrl = dataUrl; self.intentos = intentos
@@ -53,7 +57,7 @@ public final class ModeloFotos {
     @ObservationIgnored private var drenando = false
     @ObservationIgnored private var urlsVencen: Date?
 
-    static let archivo = "fotos-pendientes.json"
+    static let archivo = FotoPendiente.archivo
 
     public init(cliente: ClienteRPC, token: String, disco: Disco?) {
         self.cliente = cliente; self.token = token; self.disco = disco

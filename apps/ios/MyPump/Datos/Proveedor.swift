@@ -17,6 +17,7 @@ enum Proveedor {
             UserDefaults.standard.removeObject(forKey: "mypump_token_invalido")
         }
         #endif
-        return ModeloApp()
+        // La migración del almacenamiento viejo corre ANTES de crear el modelo (que lee token y cola al iniciar).
+        return ArranqueMigracion.arrancar { ModeloApp() }
     }()
 }
