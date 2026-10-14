@@ -37,7 +37,7 @@ Hasta que se decidan, rige lo de hoy.
 | ACC-06 | Arranque sin red con copia offline: muestra plan y dieta guardados con el banner sin conexión | `C:8699-8711`, `8933` | ✅ copia offline (integración) + banner | ☐ |
 | ACC-07 | Demo: datos empaquetados, **sin red ni token**, sin chat, comentarios, comidas libres, relojes ni onboarding; Mi Día sembrado (racha 3) | `C:1240`, `1409-1550`, `8870` | ✅ bienvenida/demo (XCUITest) | ☐ |
 | ACC-08 | Sin rutina usable → rutina de ejemplo con banner "Modo demo — Mati todavía no publicó tu plan". Sin dieta → dieta de ejemplo con escrituras apagadas (`_dietaEjemplo`) | `C:8766-8800` | ☐ ver auditoría 14-oct | ☐ |
-| ACC-09 | Parámetros `?scene=<destino>` (validado contra las escenas) y `?diag=health` | `C:8587-8594`, `8673` | 🟡 ver auditoría 14-oct | ☐ |
+| ACC-09 | Parámetros `?scene=<destino>` (validado contra las escenas) y `?diag=health` | `C:8587-8594`, `8673` | 🟡 ?scene= contra las 7 escenas (AvisosTests.escenaDelLink) y ?diag=health (2b41011); falta probar el link en un iPhone | ☐ |
 | ACC-10 | Cambio de cuenta: llega un link con otro token válido → reemplaza (como la web) | `deeplink.js:15-43` | ✅ otro token válido reemplaza | ☐ |
 
 ## GEN · Estructura, avisos y ciclo de vida
@@ -45,7 +45,7 @@ Hasta que se decidan, rige lo de hoy.
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
 | GEN-01 | 5 tabs: Entreno · Dieta · Chat · Revisión · Progreso. Mis datos es una escena aparte que marca Revisión | `C:1109-1143`, `8498-8559` | ✅ ver auditoría 14-oct | ☐ |
-| GEN-02 | Header: "DÍA n • SEM x/y" (con `semana_offset`), título y tema | `C:1058-1075` | 🟡 ver auditoría 14-oct | ☐ |
+| GEN-02 | Header: "DÍA n • SEM x/y" (con `semana_offset`), título y tema | `C:1058-1075` | ✅ "Día n · Semana x de y" con offset y título; D5: la raíz aplica el 'dark' guardado y Mis datos tiene "Siempre en modo oscuro" (6fd1bed, probado en el simulador) | ☐ |
 | GEN-03 | Badges: Entreno = comentarios de ejercicio sin leer; Chat = mensajes sin leer; Revisión = cosas que faltan de la semana (check + fotos), con banner que lleva a Revisión desde las otras escenas | `C:2184-2202`, `2318-2325`, `7647-7684` | ✅ BannerRevision también en Chat y Progreso, como la web (todas las escenas menos Revisión) | ☐ |
 | GEN-04 | Toast de guardado con 4 estados: "Guardando…" (si tarda más de 900 ms), "✓ Guardado" (después de un problema), "Sin conexión — se reintenta solo" y "⚠ Algo no se pudo guardar…" (9 s, se cierra tocándolo) | `C:2649-2685` | ✅ `AvisoGuardado` con los estados de la cola | ☐ |
 | GEN-05 | Aviso único "a tu plan le falta información" arriba de Revisión | `C:1882-1896` | 🟡 ver auditoría 14-oct | ☐ |
@@ -58,7 +58,7 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| ENT-01 | Selector de días: "DÍA n" + primera palabra del nombre; ✓ si se cerró esta semana (`get_sesiones_semana`); 💬 si hay comentarios | `C:3528-3559` | 🟡 ver auditoría 14-oct | ☐ |
+| ENT-01 | Selector de días: "DÍA n" + primera palabra del nombre; ✓ si se cerró esta semana (`get_sesiones_semana`); 💬 si hay comentarios | `C:3528-3559` | ✅ nombre corto con vectores; ✓ y 💬 juntos y sin selector con un solo día, como renderDayPicker (314acf7) | ☐ |
 | ENT-02 | Día inicial = el último que se vio en ese teléfono (`mypump_dia_visualizado_<RUTINA>`) o el primero. No usa el calendario | `C:1898-1911` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-03 | Los ids de día son claves opacas (`d<n>`, `b<v>d<n>`, `r<n>d<n>`, `lun`…); nunca se parsean | memoria `reference_publicar_ids_dia_trainplan_viejo` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-04 | `normalizarRutina`: día sin id → `d<i>`; descanso ausente o ≤0 → 90 s; series ≤0 → 1; `semanas_total` → 12; bloques `null` se ignoran | `C:1797-1840`, memoria `reference_editar_rutina_viva` | ✅ ver auditoría 14-oct | ☐ |
@@ -192,9 +192,9 @@ Hasta que se decidan, rige lo de hoy.
 | SAL-08 | Android: basales con mediana, sueño con `stages[]`, sin los 6 tipos solo de iOS; textos sin "Apple" | test `test-bridge-android` | ➖ | ☐ |
 | SAL-09 | Card Recuperación: sin conectar (botón); conectado sin score (4 casos: trayendo historial, faltan datos de la noche, solo pasos, no llega nada); calibrando n/14; oculto por el cliente; con score: número, banda, frase, gráfico de 14 días, hasta 3 motivos y "Ver todos mis datos" | `C:6564-6788` | ✅ ver auditoría 14-oct | ☐ |
 | SAL-10 | Card Salud: pasos, minutos activos, sueño, HRV y promedio de pasos | `C:7233-7328` | ✅ ver auditoría 14-oct | ☐ |
-| SAL-11 | Mis datos: cómo se arma el score (componentes y pesos), sueño, corazón, actividad, otras señales y cuerpo, cada uno con 7 y 30 días y gráfico chico; toggle "Mostrarme el score" | `C:6886-7059` | 🟡 ver auditoría 14-oct | ☐ |
+| SAL-11 | Mis datos: cómo se arma el score (componentes y pesos), sueño, corazón, actividad, otras señales y cuerpo, cada uno con 7 y 30 días y gráfico chico; toggle "Mostrarme el score" | `C:6886-7059` | ✅ las secciones sin datos no se muestran, como _seccionSalud (6ff7be2); componentes, 7/30 días y el interruptor con test | ☐ |
 | SAL-12 | Prioridad de fuentes: whoop/oura/withings/polar > apple_health = health_connect > rook > manual | `C:6440-6457` | ✅ ver auditoría 14-oct | ☐ |
-| SAL-13 | Diagnóstico de salud (hoy 5 toques o `?diag=health`) | `C:8605-8665` | 🟡 ver auditoría 14-oct | ☐ |
+| SAL-13 | Diagnóstico de salud (hoy 5 toques o `?diag=health`) | `C:8605-8665` | 🟡 5 toques y ahora ?diag=health (2b41011); falta probar el link en un iPhone (el simulador no valida el AASA) | ☐ |
 
 ## NOT · Notificaciones
 
@@ -226,7 +226,7 @@ Hasta que se decidan, rige lo de hoy.
 |---|---|---|---|---|
 | MIG-01 | Se lee el `localStorage` viejo completo (Ruta A, verificado con la B) y se guarda una copia cruda | `NATIVA_SPIKE_ALMACENAMIENTO.md` | ✅ spike 17.5, 18.6 y 26.5 | ☐ |
 | MIG-02 | Fase L sin red, antes de la UI: token, preferencias, importar ops sin ejecutar, caché offline | plan | ✅ ver auditoría 14-oct | ☐ |
-| MIG-03 | Fase R con red: ejecutar ops (validando rutina y día), subir fotos, sustituciones, swaps sin migrar, recibo con conteos | plan | 🟡 ver auditoría 14-oct | ☐ |
+| MIG-03 | Fase R con red: ejecutar ops (validando rutina y día), subir fotos, sustituciones, swaps sin migrar, recibo con conteos | plan | ✅ la foto migrada (los 134 bytes que siembra sim_migracion.py) llegó a mypump_fotos_progreso a las 17:36:23 UTC, en la corrida 4, y no quedó fotos-pendientes.json; la subida real además en IntegracionTests.fotoDeProgresoSubeYSeFirma (MYPUMP_PROBAR_FOTOS=1, 14-oct) | ☐ |
 | MIG-04 | `anon` y `*_demo` nunca se ejecutan ni se suben | plan | ✅ ver auditoría 14-oct | ☐ |
 | MIG-05 | Escritura de vuelta: saca las ops ejecutadas y los cachés de sesión; se confirma en el arranque siguiente | spike | ✅ spike 17.5, 18.6 y 26.5 | ☐ |
 | MIG-06 | Se repite si la Capacitor volvió a escribir (downgrade, TestFlight vencido, plan B) sin duplicar | plan | ✅ ver auditoría 14-oct | ☐ |
