@@ -38,8 +38,10 @@ struct InformeBanco: Codable {
     var consultasWeb = 0
     var sync = Fase()
     var historial = Fase()
+    /// ModeloSalud encuentra FuenteHealthKit por nombre, sin que la app la registre (como en MyPump).
+    var fuenteDescubierta = false
     var error: String?
-    var iguales: Bool { error == nil && sync.iguales && historial.iguales }
+    var iguales: Bool { error == nil && sync.iguales && historial.iguales && fuenteDescubierta }
 }
 
 @MainActor @Observable
@@ -77,6 +79,7 @@ final class Banco {
         inf.ahora = RelojLocal.iso(ahora)
         inf.zona = TimeZone.current.identifier
         inf.ios = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+        inf.fuenteDescubierta = ModeloSalud.fuenteDelSistema is FuenteHealthKit
         do {
             estado = "Sembrando…"
             _ = try await Sembrador.borrar(store)

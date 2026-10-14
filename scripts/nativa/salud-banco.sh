@@ -61,7 +61,8 @@ python3 - $SALIDA <<'EOF'
 import json, sys
 i = json.load(open(sys.argv[1]))
 print(f"ahora {i['ahora']} · zona {i['zona']} · iOS {i['ios']} · {i['sembradas']} muestras sembradas · {i['consultasWeb']} consultas del bridge")
-ok = i.get('error') is None
+print(f"FuenteHealthKit encontrada por nombre: {'sí' if i['fuenteDescubierta'] else 'NO'}")
+ok = i.get('error') is None and i['fuenteDescubierta']
 for k in ('sync', 'historial'):
     f = i[k]
     ok = ok and f['iguales']
