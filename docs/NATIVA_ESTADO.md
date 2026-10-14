@@ -113,6 +113,8 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 - **14-oct 13:35:**
   - **Contrato aceptado.** Acepté el Apple Developer Program License Agreement nuevo desde el Chrome de Mati, a pedido suyo ("aceptalo vos por mí"); el login lo hizo él. En App Store Connect el acuerdo de apps gratuitas quedó activo desde hoy. El de apps de pago (nuevo, para cobrar dentro de la app) no se tocó.
   - **Primer TestFlight interno disparado:** tag `nios-2.0.0-100` sobre f14f108. Workflow `ios-nativa` de Codemagic; el estado se ve en el check de GitHub del commit.
+    - **Resultado: OK** (compilado, firmado, IPA revisado y subido). Apple lo procesó: 2.0.0 (100) "Lista para enviar"; vence a los 90 días.
+  - **TestFlight interno armado** (OK de Mati): grupo **"Equipo Pump"** con distribución automática y Mati como tester (fuarkteam@gmail.com, titular). Tiene las 13 compilaciones; cada build nativo nuevo le llega solo. Falta TF-0 en su iPhone (`docs/NATIVA_TF0.md`).
 - **14-oct 13:28:** D7 completa. Política de privacidad publicada (c682643, OK de Mati; el push a `main` lo hizo él porque el clasificador frena los despliegues). `main` mergeado en `nativa` (20c8c37).
 - **14-oct (tarde, 2):**
   - **Revisión adversarial de las pantallas:** 14 hallazgos, arreglados 13 con tests. El 9 queda como limitación,
