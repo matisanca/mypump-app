@@ -199,6 +199,45 @@ struct IntegracionTests {
         #expect(p.ancho == 675 && p.alto == 900, "en el servidor quedó \(p.ancho)×\(p.alto)")
     }
 
+    /// SER-14 de punta a punta contra el servidor real (nativa_003, aplicada el 14-oct): una sustitución fijada en un
+    /// teléfono llega al otro, y "Volver a …" en el segundo llega al primero. Dos teléfonos = dos discos con el mismo token
+    /// (la cuenta de prueba). Repetirla no deja basura: la vuelta al original deja la lápida, y la próxima corrida la
+    /// supera (es también la prueba del piso por clave).
+    @Test func unaSustitucionPasaDeUnTelefonoAOtro() async throws {
+        let t = try #require(tokenDePrueba())
+        let a = ModeloApp(almacen: TokenEnMemoria(t), raizDisco: raiz.appendingPathComponent("telefono-a"))
+        let b = ModeloApp(almacen: TokenEnMemoria(t), raizDisco: raiz.appendingPathComponent("telefono-b"))
+        await a.cargar()
+        await b.cargar()
+        await a.cargarCatalogo()
+        await b.cargarCatalogo()
+        let ea = try #require(a.entreno), eb = try #require(b.entreno)
+        await ea.cargar()
+        await eb.cargar()
+        #expect(ea.rutina.id == eb.rutina.id)
+        let lugar = try #require(ea.dia.lista.first { !ea.sustitutos($0.id).isEmpty }?.id, "ningún ejercicio con sustitutos")
+        let sub = try #require(ea.sustitutos(lugar).first)
+
+        // A fija la sustitución; sale por la cola al servidor.
+        await ea.sustituir(lugar, por: sub, fijar: true)
+        await ea.encoladoSustituciones?.value
+        await a.outbox?.drenar()
+        #expect(await a.outbox?.operaciones.isEmpty == true, "no salió de la cola de A")
+
+        // B la lee.
+        await eb.sincronizarSustituciones()
+        #expect(eb.dia.sustituciones[lugar]?["current"]?["nombre"]?.comoTexto == sub.nombre, "no llegó a B")
+        #expect(eb.dia.sustituciones[lugar]?["fijado"] == .bool(true))
+        #expect(eb.efectivo(try #require(eb.dia.ejercicio(lugar))).ejercicio.nombre == sub.nombre)
+
+        // B vuelve al original; A lo ve.
+        await eb.revertirSustitucion(lugar)
+        await eb.encoladoSustituciones?.value
+        await b.outbox?.drenar()
+        await ea.sincronizarSustituciones()
+        #expect(ea.dia.sustituciones[lugar] == nil, "la vuelta al original no llegó a A")
+    }
+
     @Test func progresoConElHistorialReal() async throws {
         let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
         await m.cargar()
