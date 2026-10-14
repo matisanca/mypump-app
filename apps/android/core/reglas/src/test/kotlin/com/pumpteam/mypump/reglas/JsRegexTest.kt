@@ -113,6 +113,22 @@ class JsRegexTest {
         Triple("a(?!b)", "ab", false),
     )
 
+    /**
+     * En la JVM 21 el `\b`, el `\w` y el `\d` de Java ya son ASCII (JDK-8264160), así que los casos de arriba pasarían
+     * aunque no se tradujeran; en Android (ICU) son Unicode y darían otra cosa. Por eso se exige que la traducción no
+     * deje NINGUNA construcción cuyo significado dependa del motor: solo `\x{…}`, `\z` y referencias `\N`.
+     */
+    @Test
+    fun laTraduccionNoDependeDelMotor() {
+        val patrones = listOf("\\bpan\\b", "\\Bx\\B", "^\\w+\\W\\d\\D\\s\\S$", "a.b", "[\\w\\s.$-]+", "(a)\\1", "x{2}", "\\bsmith\\b")
+        for (p in patrones) for (banderas in listOf("", "i")) {
+            val t = JsRegex.traducir(p, ignorarMayusculas = banderas == "i")
+            val escapes = Regex("\\\\(.)").findAll(t).map { it.groupValues[1] }.toSet()
+            assertEquals(emptySet<String>(), escapes - setOf("x", "z", "1"), "/$p/$banderas → $t")
+            assertEquals(false, t.contains('.') || t.contains('$'), "/$p/$banderas → $t")
+        }
+    }
+
     @Test
     fun reemplazoLiteral() {
         assertEquals("curl  1  x ", JsRegex("[^a-z0-9 ]+").reemplazarTodo("curl \$1 (x)", " "))
