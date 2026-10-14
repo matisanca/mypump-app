@@ -62,7 +62,7 @@ commitea.
 | Salud (HealthKit, recuperación, relojes) | ✅ mergeada: 35 casos de la web + banco en simulador 1.091/1.091 registros; el historial ya no pisa la noche de hoy (desvío a propósito, ver `NATIVA_PROPUESTAS_WEB.md`) |
 | Hoja de permisos de la primera vez (GEN-06), aviso de fin de descanso (D8), aviso de plan incompleto (GEN-05) | ✅ (XCUITest del onboarding) |
 | Android: base, reglas y capa de datos (`:core`) | ✅ mergeado en `nativa` el 14-oct (81338b8): reglas con los vectores de la web, Entreno, Salud, cola, chat, Revisión, migración (parte pura), palanca, recibo y conteos (`nativa_001`, probada contra el backend con `test-nativa-android`) |
-| Android: lector del almacenamiento viejo con WebView y arranque de la migración en `:app`, prueba en el emulador, D7 | 🟡 agente en curso (14-oct, tarde) |
+| Android: lector del almacenamiento viejo con WebView y arranque de la migración en `:app`, prueba en el emulador, D7 | ✅ mergeado el 14-oct (4e48457): leveldb encontrado sin rutas fijas, **24/24 de punta a punta en el emulador** (`scripts/nativa/emu-migracion.sh`), D7 en el modelo y la cola; 400 tests JVM + 9 instrumentados. Falta: un teléfono real con la 1.0.12 de Play, la pantalla del permiso en Compose y la decisión de backup de `app_webview/` |
 | Android: pantallas en Compose, Health Connect, FCM | ☐ |
 
 
@@ -110,6 +110,41 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **14-oct 15:55, la tarde sin el iPhone (Mati afuera):**
+  - **Auditoría de la paridad de iOS** (subagente, solo lectura): 103 ítems con evidencia; 69 ya estaban hechos.
+    Resumen y lo que falta al pie de `NATIVA_PARIDAD.md`.
+  - **Error real en iOS 17** (424f5af), lo agarró correr la suite de interfaz en 17.5: en Dieta, "A mano", "Con foto"
+    y el permiso de la IA de comidas libres no hacían nada. La sección vivía al final de un `LazyVStack`, y en iOS 17
+    sus `.sheet` no se presentan. Interfaz: **11/11 en 17.5 y en 26.5**, 10/10 en 18.6.
+  - **Cerrado de la auditoría:**
+    - DIA-01: "Último día válido" con la cuenta real;
+    - DIA-06: hábitos pendientes, con test;
+    - MIG-07: el recibo cierra con cola real, chequeo en el simulador;
+    - MIG-03: la foto migrada llegó al servidor;
+    - GEN-02 y D5: el modo oscuro guardado, y "Siempre en modo oscuro" en Mis datos;
+    - GEN-03: el aviso de Revisión en Chat y Progreso;
+    - ENT-01: ✓ y 💬 juntos, y sin selector con un día;
+    - SAL-11: Salud sin secciones vacías;
+    - SAL-13: `?diag=health`;
+    - REV-02: fotos con ImageIO, con tests de tamaño, orientación, HEIC y GPS. La galería ya no decodifica entera una
+      foto de 48 MP;
+    - REV-03 y ENT-15: tests.
+  - **Android mergeado** (4e48457): 24/24 en el emulador y D7. Encontró dos errores de iOS, arreglados en b9db8a0:
+    - el permiso de la IA quedaba de la cuenta anterior al cambiar de link;
+    - una Fase R sin red no se reintentaba hasta el arranque siguiente (`cargasConRed`).
+  - **Simulador de punta a punta: 24/24**, con el chequeo nuevo del recibo. MyPumpKit: 328 tests.
+  - **Capturas de la tienda** listas (`nativa-evidencia/tienda/20261014-145803`), sin el cartel de la demo y con
+    Progreso con datos. La dieta de la demo ya no muestra "−23 %" (f7aa713).
+  - **Build 102** disparado (`nios-2.0.0-102` sobre b9db8a0).
+  - **Decisiones pendientes de Mati:**
+    1. ACC-08: ¿D11 también para la rutina? La nativa dice "Todavía no hay rutina" en vez de la de ejemplo.
+    2. CHA-01 y ENT-17: ¿quedan como desvíos de diseño? (el chat sin "Vos"/"Mati", y "Siguiente →" en vez de abrir solo
+       el próximo ejercicio).
+    3. SER-14: ¿preparo la tabla de sustituciones de ejercicio en el servidor (G2)?
+    4. ¿Mando la 1.0.12 a revisión? Tiene que publicarse antes que la 2.0.0.
+    5. Android: ¿el backup de Google sigue llevándose `app_webview/`, donde está el token viejo? Era así con la
+       Capacitor.
+    6. TF-0 en su iPhone: tocar su link en WhatsApp, `?diag=health`, un push real y el aviso del domingo.
 - **14-oct 14:50, sin el iPhone (Mati afuera una hora):**
   - **Rama de Android mergeada** en `nativa` (81338b8). Solo toca `apps/android`.
   - **Los hallazgos de iOS del gemelo de Android, arreglados** (04a62c0):
