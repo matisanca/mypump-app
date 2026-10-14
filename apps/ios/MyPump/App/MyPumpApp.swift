@@ -1,4 +1,5 @@
 import SwiftUI
+import MyPumpDatos
 
 @main
 struct MyPumpApp: App {
@@ -8,11 +9,38 @@ struct MyPumpApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RaizApp(modelo: Proveedor.modelo) { Raiz(datos: datos) }
+            raiz
                 .environment(descanso)
                 .environment(sesion)
                 .tint(Color.marcaTexto)
+                .task { entrarEnDemoSiSePide() }
         }
+    }
+
+    @ViewBuilder @MainActor private var raiz: some View {
+        #if DEBUG
+        // Capturas de diseño (`-bocetos YES`): las pestañas con las muestras, sin pasar por la bienvenida ni usar
+        // ningún token. Solo en DEBUG.
+        if UserDefaults.standard.bool(forKey: "bocetos") {
+            Raiz(datos: datos)
+        } else {
+            RaizApp(modelo: Proveedor.modelo) { Raiz(datos: datos) }
+        }
+        #else
+        RaizApp(modelo: Proveedor.modelo) { Raiz(datos: datos) }
+        #endif
+    }
+
+    /// `-entrar demo` (DEBUG): lo mismo que tocar "Ver demo" en la bienvenida, para capturar la demo sin tocar la
+    /// pantalla (por ejemplo, Dieta con la dieta de ejemplo).
+    @MainActor private func entrarEnDemoSiSePide() {
+        #if DEBUG
+        guard UserDefaults.standard.string(forKey: "entrar") == "demo",
+              let r = Bundle.main.url(forResource: "rutina", withExtension: "json", subdirectory: "Demo.bundle"),
+              let d = Bundle.main.url(forResource: "dieta", withExtension: "json", subdirectory: "Demo.bundle"),
+              let rutina = try? Data(contentsOf: r), let dieta = try? Data(contentsOf: d) else { return }
+        Proveedor.modelo.entrarEnDemo(rutina: rutina, dieta: dieta)
+        #endif
     }
 }
 
