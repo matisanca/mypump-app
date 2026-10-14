@@ -24,7 +24,11 @@ public final class SincronizadorSalud {
     let recolector: RecolectorSalud
 
     /// Avance del historial en curso ("Trayendo tu historial… 40/60 días"); nil si no hay uno corriendo.
-    public private(set) var progresoHistorial: (hecho: Int, total: Int)?
+    public private(set) var progresoHistorial: (hecho: Int, total: Int)? {
+        didSet { alCambiarProgreso?(progresoHistorial) }
+    }
+    /// Cada cambio del avance, el 0/60 del arranque y el nil del final incluidos (para la card).
+    public var alCambiarProgreso: (@MainActor ((hecho: Int, total: Int)?) -> Void)?
     /// El historial de fondo en vuelo (`backfillEnCurso()`).
     public private(set) var historialEnCurso: Task<ResultadoHistorial, Never>?
     /// El último rechazo de la base (lo muestra el diagnóstico).

@@ -71,7 +71,7 @@ public final class ModeloSalud {
         self.token = token
         sincronizador = fuente.map { SincronizadorSalud(fuente: $0, cliente: cliente, token: token, almacen: almacen, ahora: ahora, zona: zona) }
         sincronizador?.alCambiar = { [weak self] in Task { await self?.cargar() } }
-        sincronizador?.alProgresar = { [weak self] h, t in self?.progresoHistorial = ProgresoHistorial(hecho: h, total: t) }
+        sincronizador?.alCambiarProgreso = { [weak self] p in self?.progresoHistorial = p.map { ProgresoHistorial(hecho: $0.hecho, total: $0.total) } }
         leerEstado()
     }
 
@@ -118,6 +118,31 @@ public final class ModeloSalud {
             await cargar()
         }
         return r
+    }
+
+    /// Para el onboarding de permisos (GEN-06): espera la conexión como mucho `limite` (la web corta a los 20 s con
+    /// `_conTimeout`). Si se pasa devuelve nil y la conexión SIGUE de fondo ("Salud está tardando un poco más de lo
+    /// normal — sigue conectándose de fondo"): la puerta de salida nunca se traba.
+    public func conectar(esperandoComoMucho limite: Duration) async -> ResultadoConexion? {
+        let tarea = Task { await self.conectar() }
+        let una = UnaVez()
+        return await withCheckedContinuation { (c: CheckedContinuation<ResultadoConexion?, Never>) in
+            let reloj = Task { @MainActor in
+                try? await Task.sleep(for: limite)
+                if una.primera() { c.resume(returning: nil) }
+            }
+            Task { @MainActor in
+                let r = await tarea.value
+                reloj.cancel()
+                if una.primera() { c.resume(returning: r) }
+            }
+        }
+    }
+
+    /// Lo que llega primero gana (el corte o la conexión); lo otro no vuelve a contestar.
+    @MainActor private final class UnaVez {
+        private var hecho = false
+        func primera() -> Bool { defer { hecho = true }; return !hecho }
     }
 
     /// "Sincronizar" (y al abrir y al volver): los últimos 7 días.
