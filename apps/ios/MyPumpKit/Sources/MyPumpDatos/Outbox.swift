@@ -248,18 +248,19 @@ public actor Outbox {
             avisar(.perdido)
         }
         ultimaFallo = algunaFallo
-        if algunaFallo {
-            if estado.ops.contains(where: { !Self.silenciosas.contains($0.kind) }) {
-                huboProblema = true
-                if abandonadasVisibles.isEmpty { avisar(.sinConexion) }
-            }
-            let base = max(1, estado.ops.first?.tries ?? 1, rachaSinRed)
-            programar(en: .milliseconds(min(30_000, 2_000 * base)))
+        // Si lo que falló fue solo silencioso, para el cliente la pasada salió bien: se cierra el "Guardando…" que haya.
+        if algunaFallo && estado.ops.contains(where: { !Self.silenciosas.contains($0.kind) }) {
+            huboProblema = true
+            if abandonadasVisibles.isEmpty { avisar(.sinConexion) }
         } else if huboProblema {
             huboProblema = false
             avisar(.guardado)
         } else if abandonadasVisibles.isEmpty {
             avisar(.quieto)
+        }
+        if algunaFallo {
+            let base = max(1, estado.ops.first?.tries ?? 1, rachaSinRed)
+            programar(en: .milliseconds(min(30_000, 2_000 * base)))
         }
         // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta.
         if !estado.ops.isEmpty && !algunaFallo { programar(en: .zero) }

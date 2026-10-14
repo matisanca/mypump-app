@@ -19,12 +19,27 @@ struct SustitucionesServidorReglasTests {
     @Test func lasOpsSalenDeLaDiferencia_yElBorradoLlevaSuHora() {
         let x = Self.e("Dominadas", ts: 10), y = Self.e("Remo en T", ts: 20)
         let ops = SustitucionesServidor.operaciones(antes: ["a": x, "b": x, "c": x],
-                                                    ahora: ["a": x, "b": y, "d": y, "e": .texto("rara")], rutinaId: "R", ms: 777.9)
+                                                    ahora: ["a": x, "b": y, "d": y, "e": .texto("rara")], rutinaId: "R")
         #expect(ops.map(\.kind) == ["swap_ej", "swap_ej_del", "swap_ej"], "b cambia, c se va, d entra; a igual y e no se sube")
         #expect(ops.map(\.exId) == ["b", "c", "d"])
         #expect(ops.map(\.clave) == ["swap_ej_R_b", "swap_ej_R_c", "swap_ej_R_d"])
         #expect(ops[0].payload == .objeto(["rutinaId": .texto("R"), "exId": .texto("b"), "swap": y]))
-        #expect(ops[1].payload == .objeto(["rutinaId": .texto("R"), "exId": .texto("c"), "ts": .numero(777)]))
+        #expect(ops[1].payload == .objeto(["rutinaId": .texto("R"), "exId": .texto("c"), "ts": .numero(10)]),
+                "el borrado lleva la hora de lo que se borró: no saca algo más nuevo que no se vio")
+    }
+
+    /// Revisión 2, hallazgo 3: un cambio le gana a lo que reemplaza aunque eso tenga hora del futuro.
+    @Test func laHoraDeUnCambioNuncaEsMenorQueLaDeLoQueReemplaza() {
+        #expect(SustitucionesServidor.horaDeUnCambio(1000.4, reemplaza: Self.e("X", ts: 5)) == 1000)
+        #expect(SustitucionesServidor.horaDeUnCambio(1000, reemplaza: Self.e("X", ts: 9000)) == 9001)
+        #expect(SustitucionesServidor.horaDeUnCambio(1000, reemplaza: nil) == 1000)
+    }
+
+    /// La misma elección con otra hora (el servidor recortó una del futuro): queda la del servidor y no se vuelve a subir.
+    @Test func laMismaEleccionConOtraHora_quedaLaDelServidor() {
+        let r = SustitucionesServidor.combinar(vivas: ["x": Self.e("X", ts: 3000)], borradas: [:], local: ["x": Self.e("X", ts: 9_000_000)],
+                                               pendientes: [:], rutinaId: "R", tocadas: [])
+        #expect(r == ["x": Self.e("X", ts: 3000)])
     }
 
     /// Hallazgo 6: la base cuenta la clave en puntos de código (`length`), no en grafemas.
@@ -80,6 +95,9 @@ struct SustitucionesServidorReglasTests {
         #expect(r == ["a": Self.e("A nativa", ts: 50), "b": Self.e("B2", ts: 1000), "n": Self.e("N", ts: 1000),
                       "x": Self.e("Solo en la nativa", ts: 60)])
         // Sin base (una corrida de antes de SER-14): todo lo de la app vieja cuenta como cambiado y no se saca nada.
+        // Lo cambiado le gana a lo que reemplaza aunque tenga hora del futuro.
+        let futura = SustitucionesServidor.volverDeLaAppVieja(nativa: ["b": Self.e("B", ts: 5000)], legado: legado, base: base, ms: 1000)
+        #expect(futura["b"] == Self.e("B2", ts: 5001))
         let sinBase = SustitucionesServidor.volverDeLaAppVieja(nativa: nativa, legado: legado, base: nil, ms: 1000)
         #expect(sinBase == ["a": Self.e("A", ts: 1000), "b": Self.e("B2", ts: 1000), "n": Self.e("N", ts: 1000), "c": Self.e("C"),
                             "x": Self.e("Solo en la nativa", ts: 60)])
@@ -252,7 +270,45 @@ struct SustitucionesServidorModeloTests {
         await m.encoladoSustituciones?.value
         let ops = await b.cola.operaciones
         #expect(ops.count == 1 && ops.first?.kind == "swap_ej_del", "volver al original reemplaza a la de guardar")
-        #expect(ops.first?.payload["ts"] == .numero(AHORA + 5000))
+        #expect(ops.first?.payload["ts"] == .numero(AHORA), "la hora de lo que se veía")
+    }
+
+    /// Revisión 2, hallazgo 3: con la hora de lo que reemplaza en el futuro (otro reloj), el cambio nuevo igual le gana.
+    @Test func unCambioLeGanaALoQueReemplazaAunqueVengaDelFuturo() async throws {
+        let b = Banco()
+        let manana = AHORA + 86_400_000
+        local(b, ["jal-d1-0": Self.swap("Dominadas", ts: manana)])
+        let m = b.modelo()
+        let sub = try #require(m.sustitutos("jal-d1-0").first { $0.nombre != "Dominadas" })
+        await m.sustituir("jal-d1-0", por: sub, fijar: true)
+        #expect(m.dia.sustituciones["jal-d1-0"]?["_ts"] == .numero(manana + 1))
+    }
+
+    /// El servidor recortó una hora del futuro: la misma elección baja con la hora corregida y no se vuelve a subir.
+    @Test func laHoraCorregidaPorElServidor_seAdoptaSinVolverASubir() async {
+        let b = Banco()
+        local(b, ["jal-d1-0": Self.swap("Dominadas", ts: AHORA + 86_400_000)])
+        b.servidor.cuando("get_exercise_swaps", Self.json(vivas: ["jal-d1-0": Self.swap("Dominadas", ts: AHORA + 300_000)]))
+        let m = b.modelo()
+        await m.cargar()
+        await m.encoladoSustituciones?.value
+        #expect(m.dia.sustituciones["jal-d1-0"]?["_ts"] == .numero(AHORA + 300_000))
+        #expect(await claves(b).isEmpty, "volvió a subir la del futuro")
+    }
+
+    /// Revisión 2, hallazgo 2: lo que la app vieja sacó (por ejemplo, porque la podó) sale como borrado con la hora de lo
+    /// que había, no con la de ahora: no saca lo que el cliente fijó después en otro teléfono.
+    @Test func loQueSacoLaAppVieja_seBorraConLaHoraDeLoQueHabia() async throws {
+        let b = Banco()
+        b.disco.guardar(["jal-d1-0": Self.swap("Remo en T", ts: 100, fijado: false)], SustitucionesServidor.archivoEncoladas(rutinaId: "rut-prueba"))
+        local(b, [:])
+        b.servidor.sinRed("get_exercise_swaps")
+        let m = b.modelo()
+        await m.cargar()
+        await m.encoladoSustituciones?.value
+        let ops = await b.cola.operaciones
+        #expect(ops.count == 1 && ops.first?.kind == "swap_ej_del")
+        #expect(ops.first?.payload["ts"] == .numero(100))
     }
 
     @Test func conLaTabla_laColaGuardaYBorra() async throws {
@@ -290,7 +346,7 @@ struct SustitucionesServidorModeloTests {
         #expect(m.dia.sustituciones.keys.sorted() == ["jal-d1-0"], "la nueva queda y la revertida no vuelve")
         let ops = await b.cola.operaciones
         #expect(ops.compactMap(\.dedupeKey).sorted() == ["swap_ej_rut-prueba_jal-d1-0", "swap_ej_rut-prueba_rem-d1-1"])
-        #expect(ops.first { $0.kind == "swap_ej_del" }?.payload["ts"] == .numero(AHORA), "no se reencoló con otra hora")
+        #expect(ops.first { $0.kind == "swap_ej_del" }?.payload["ts"] == .numero(1), "no se reencoló con otra hora")
     }
 
     @Test func loQueSeTocaMientrasSeEspera_noLoPisaLaRespuesta() async throws {
@@ -411,6 +467,24 @@ struct SustitucionesSilenciosasTests {
         await o.encolar("swap_ej_del", .objeto([:]), dedupeKey: "swap_ej_R_a")
         await o.drenar()
         #expect(!estados.lista.contains(.guardando), "\(estados.lista)")
+    }
+
+    /// Revisión 2, hallazgo 1: una serie que tarda y se guarda, y una sustitución que falla sin red: no queda "Guardando…".
+    @Test func unaSerieGuardadaYUnaSustitucionSinRed_noDejanGuardando() async {
+        let estados = EstadosDeGuardado()
+        let o = Outbox(archivo: nil, reintentoAutomatico: false) { op in
+            if op.kind == "carga" {
+                try? await Task.sleep(for: .milliseconds(1100))
+                return .respuesta(.success(.texto("row-id")))
+            }
+            return Self.sinRed
+        }
+        await o.observar(estado: { estados.anotar($0) }, abandonadas: { _ in })
+        await o.encolar("carga", .objeto([:]), dedupeKey: "k1")
+        await o.encolar("swap_ej", .objeto([:]), dedupeKey: "swap_ej_R_a")
+        await o.drenar()
+        #expect(estados.lista.contains(.guardando), "\(estados.lista)")
+        #expect(estados.lista.last == .quieto, "quedó colgado: \(estados.lista)")
     }
 
     @Test func abandonadaNoAvisaPerdido_peroQuedaEnFallidos() async {

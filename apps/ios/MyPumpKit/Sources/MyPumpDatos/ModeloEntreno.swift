@@ -776,9 +776,13 @@ public final class ModeloEntreno {
         guard let ex = dia.ejercicio(lugar) else { return }
         let ef = efectivo(ex)
         invalidarHistorial(lugar)
+        let previa = dia.sustituciones[lugar]
         let efectos = dia.sustituir(lugar, por: sub, efectivo: ef, fijado: fijar)
-        // SER-14: la hora del cambio (en el servidor gana lo más nuevo). Es solo de la nativa: la web no la lee.
-        if let s = dia.sustituciones[lugar] { dia.sustituciones[lugar] = SustitucionesServidor.conHora(s, ahoraMs) }
+        // SER-14: la hora del cambio (en el servidor gana lo más nuevo), nunca menos que la de lo que reemplaza. Es solo
+        // de la nativa: la web no la lee.
+        if let s = dia.sustituciones[lugar] {
+            dia.sustituciones[lugar] = SustitucionesServidor.conHora(s, SustitucionesServidor.horaDeUnCambio(ahoraMs, reemplaza: previa))
+        }
         await ejecutar(efectos)
     }
 
@@ -1002,7 +1006,7 @@ public final class ModeloEntreno {
     /// por hecho y queda solo en el teléfono, como antes).
     func encolarSustituciones() {
         let ahora = dia.sustituciones
-        let ops = SustitucionesServidor.operaciones(antes: sustitucionesGuardadas, ahora: ahora, rutinaId: rutina.id, ms: ahoraMs)
+        let ops = SustitucionesServidor.operaciones(antes: sustitucionesGuardadas, ahora: ahora, rutinaId: rutina.id)
         sustitucionesGuardadas = ahora
         guard !demo, token != nil, let outbox, !ops.isEmpty else { return }
         tocadasDuranteSync?.formUnion(ops.map(\.exId))

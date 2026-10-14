@@ -6,7 +6,8 @@ import MyPumpModelos
 /// trabajo, como antes; el servidor la respalda y la comparte.
 ///
 /// - Cada entrada lleva `_ts`: cuándo la eligió el cliente (lo de la app vieja no tiene y cuenta como 0, lo más viejo).
-///   En el servidor y al leerlo gana lo más nuevo; borrar deja una lápida con su hora, que no revive con algo más viejo.
+///   En el servidor y al leerlo gana lo más nuevo; borrar deja una lápida con la hora de lo que se borró, que no revive
+///   con algo más viejo ni saca algo más nuevo. El servidor recorta las horas del futuro (relojes adelantados).
 /// - Cada cambio del cliente sale por la cola (`swap_ej` / `swap_ej_del`, con la misma clave: gana el último). La cola no
 ///   muestra avisos por estas: la sustitución ya quedó en el teléfono.
 /// - Al leer el servidor, que algo falte allá NO es que se borró: lo del teléfono se vuelve a subir (por ejemplo, la primera
@@ -39,6 +40,19 @@ public enum SustitucionesServidor {
         return 0
     }
 
+    /// La entrada sin su hora: para ver si dos son la misma elección.
+    public static func sinHora(_ v: JSONValue?) -> JSONValue? {
+        guard case .objeto(var o)? = v else { return v }
+        o["_ts"] = nil
+        return .objeto(o)
+    }
+
+    /// La hora de un cambio que reemplaza a `actual`: la de ahora, pero nunca menos que la de lo que reemplaza + 1 (si el
+    /// reloj de este teléfono, o el del que la eligió, iba adelantado, el cambio nuevo igual tiene que ganar).
+    public static func horaDeUnCambio(_ ahora: Double, reemplaza actual: JSONValue?) -> Double {
+        max(ahora.rounded(.down), ts(actual) + 1)
+    }
+
     /// La entrada con su hora.
     public static func conHora(_ v: JSONValue, _ ms: Double) -> JSONValue {
         guard case .objeto(var o) = v else { return v }
@@ -65,8 +79,9 @@ public enum SustitucionesServidor {
         public let exId: String
     }
 
-    /// Las ops para pasar de `antes` a `ahora`, en un orden fijo (las claves ordenadas). Un borrado lleva la hora `ms`.
-    public static func operaciones(antes: [String: JSONValue], ahora: [String: JSONValue], rutinaId: String, ms: Double) -> [Op] {
+    /// Las ops para pasar de `antes` a `ahora`, en un orden fijo (las claves ordenadas). Un borrado lleva la hora de lo que
+    /// se borra (lo que el cliente veía): así nunca borra en el servidor algo más nuevo que no vio.
+    public static func operaciones(antes: [String: JSONValue], ahora: [String: JSONValue], rutinaId: String) -> [Op] {
         var ops: [Op] = []
         for exId in Set(antes.keys).union(ahora.keys).sorted() {
             var p: [String: JSONValue] = ["rutinaId": .texto(rutinaId), "exId": .texto(exId)]
@@ -75,8 +90,8 @@ public enum SustitucionesServidor {
                 guard subible(exId, n) else { continue }
                 p["swap"] = n
                 ops.append(Op(kind: kindGuardar, payload: .objeto(p), clave: clave(rutinaId: rutinaId, exId: exId), exId: exId))
-            case (_?, nil):
-                p["ts"] = .numero(ms.rounded(.down))
+            case (let a?, nil):
+                p["ts"] = .numero(ts(a).rounded(.down))
                 ops.append(Op(kind: kindBorrar, payload: .objeto(p), clave: clave(rutinaId: rutinaId, exId: exId), exId: exId))
             default:
                 continue
@@ -117,6 +132,9 @@ public enum SustitucionesServidor {
                 r[exId] = l
             } else if let op = enCola[exId] {
                 r[exId] = op.kind == kindGuardar ? op.payload["swap"] : nil
+            } else if let v = vivas[exId], let l, sinHora(v) == sinHora(l) {
+                // La misma elección con otra hora (el servidor recortó una del futuro): queda la del servidor.
+                r[exId] = v
             } else if let v = vivas[exId], l == nil || ts(v) >= ts(l) {
                 r[exId] = v
             } else if let b = borradas[exId], let l, b >= ts(l) {
@@ -136,7 +154,7 @@ public enum SustitucionesServidor {
     public static func volverDeLaAppVieja(nativa: [String: JSONValue], legado: [String: JSONValue], base: [String: JSONValue]?,
                                           ms: Double) -> [String: JSONValue] {
         var r = nativa
-        for (exId, v) in legado where base?[exId] != v { r[exId] = conHora(v, ms) }
+        for (exId, v) in legado where base?[exId] != v { r[exId] = conHora(v, horaDeUnCambio(ms, reemplaza: nativa[exId])) }
         for exId in (base ?? [:]).keys where legado[exId] == nil { r[exId] = nil }
         return r
     }

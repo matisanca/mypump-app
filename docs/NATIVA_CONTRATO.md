@@ -188,7 +188,7 @@ fallidos (no los borra):
 |---|---|---|---|
 | `consentimiento_ia` | `{acepta, plataforma, app}` | `consentimiento_ia` | `guardar_consentimiento_ia` |
 | `swap_ej` | `{rutinaId, exId, swap}` (`swap` es la entrada de la web tal cual, con `_ts`: la hora del cambio en ms) | `swap_ej_<rutina>_<exId>` | `save_exercise_swap` |
-| `swap_ej_del` | `{rutinaId, exId, ts}` | la misma que `swap_ej` | `delete_exercise_swap` (deja la lápida con `ts`) |
+| `swap_ej_del` | `{rutinaId, exId, ts}` (`ts` = la hora de lo que se borró: lo que el cliente veía) | la misma que `swap_ej` | `delete_exercise_swap` (deja la lápida con `ts`) |
 
 - Con PGRST202 (la migración 003 todavía no está en la base), `swap_ej` y `swap_ej_del` se dan por hechas: la
   sustitución queda solo en el teléfono, como antes, y sube con la primera lectura que encuentre la tabla.
@@ -343,8 +343,11 @@ Mientras una función no exista (PGRST202), la app sigue como antes.
 **Sustituciones de ejercicio (003, SER-14).**
 - Cada fila es una entrada del mapa de la web (`exId → {original, current, fijado, semana, diaId}`) más `_ts`, la hora
   en que el cliente la eligió (ms del teléfono). Lo de la app vieja no la tiene: cuenta como 0, lo más viejo.
-- **Gana lo más nuevo**, en el servidor y al leerlo en el teléfono. Borrar deja una **lápida** con su hora, que algo más
-  viejo no revive (por ejemplo, la primera subida de otro teléfono).
+- **Gana lo más nuevo**, en el servidor y al leerlo en el teléfono. Borrar deja una **lápida** con la hora de lo que se
+  borró (lo que el cliente veía): algo más viejo no la revive y ella no saca algo más nuevo que el cliente no vio.
+- Un cambio se estampa con la hora del teléfono, pero nunca menos que la de lo que reemplaza + 1. El servidor recorta
+  cualquier hora a la suya + 5 minutos (también dentro de la entrada): un reloj adelantado no le gana a lo que venga
+  después. La misma elección con otra hora se adopta del servidor sin volver a subirla.
 - Que algo falte en el servidor **no es un borrado**: el teléfono lo vuelve a subir. Así nada se pierde aunque la tabla
   se vaciara, y la primera vez de cada teléfono es una lectura más (no hay función de importar).
 - La poda (las no fijadas valen por su día y su semana) es **solo del teléfono y no se manda**: un teléfono viejo no puede
