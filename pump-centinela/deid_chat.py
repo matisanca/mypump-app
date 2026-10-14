@@ -60,11 +60,26 @@ class NoSeTapa(RuntimeError):
     """Quedó algo identificable: no se manda a ningún modelo."""
 
 
-def datos_de(ficha: dict | None, nombre_app: str | None = None) -> "D.DatosPaciente":
-    """Lo conocido de la ficha del Cerebro (el id es el mismo que en la app) y el nombre que figura en la app."""
+def nombres_de_fichas(fichas: dict | None, salvo: str | None = None) -> list[str]:
+    """Los nombres completos de todas las fichas del Cerebro (menos la del cliente): van como `otros_nombres` y se tapan
+    sin preguntarle a Qwen. Con Qwen caído, el bloque CANDIDATOS de contexto_cliente.py mostraba sin tapar a los otros
+    clientes parecidos (lo encontró la sesión de Mensajes el 14-oct)."""
+    out = []
+    for cid, f in (fichas or {}).items():
+        if cid == salvo or not isinstance(f, dict) or f.get("_dup_of"):
+            continue
+        n = " ".join(x for x in (f.get("nombre"), f.get("apellido")) if x).strip()
+        if len(n.split()) >= 2:   # un nombre suelto («Juan») se comería palabras en cualquier texto
+            out.append(n)
+    return out
+
+
+def datos_de(ficha: dict | None, nombre_app: str | None = None, otros: list[str] | None = None) -> "D.DatosPaciente":
+    """Lo conocido de la ficha del Cerebro (el id es el mismo que en la app), el nombre que figura en la app y los
+    nombres de los demás clientes (`nombres_de_fichas`)."""
     f = ficha or {}
     completo = " ".join(x for x in (f.get("nombre"), f.get("apellido")) if x).strip() or (nombre_app or None)
-    otros = [nombre_app] if nombre_app and completo and nombre_app.strip().lower() != completo.lower() else []
+    otros = list(otros or []) + ([nombre_app] if nombre_app and completo and nombre_app.strip().lower() != completo.lower() else [])
     try:
         edad = int(f["edad"]) if f.get("edad") not in (None, "") else None
     except (TypeError, ValueError):

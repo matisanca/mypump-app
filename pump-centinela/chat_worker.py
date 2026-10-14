@@ -447,7 +447,7 @@ def prompt_sin_nombre(fila):
     lanza si quedo un dato tapado sin valor. Lanza tambien si no se pudo tapar: entonces no se manda nada."""
     import deid_chat as DC
     ficha = _fichas().get(fila["cliente_id"]) or {}
-    datos = DC.datos_de(ficha, fila.get("nombre"))
+    datos = DC.datos_de(ficha, fila.get("nombre"), DC.nombres_de_fichas(_fichas(), salvo=fila["cliente_id"]))
     pila = DC.nombre_de_pila(ficha, fila.get("nombre"))
     mapa = {}
 
