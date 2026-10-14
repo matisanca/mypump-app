@@ -1,0 +1,1324 @@
+{
+ "_comentario": "Firmas VIGENTES leídas de la base (pg_proc) el 2026-10-14. Las apps nativas solo pueden llamar a lo que figura acá con la_usa_el_cliente=true. Se regenera con scripts/nativa (Fase 0) y lo coteja el check de contrato.",
+ "verificado": "2026-10-14",
+ "base": "gydinputrtptqakdzyvc",
+ "transporte": {
+  "rpc": "POST {SUPABASE_URL}/rest/v1/rpc/<nombre>",
+  "headers": [
+   "apikey: <anon>",
+   "Authorization: Bearer <anon>",
+   "Content-Type: application/json"
+  ]
+ },
+ "tabla_directa": {
+  "mypump_ejercicios_catalogo": [
+   "slug_en",
+   "name_en",
+   "name_normalized",
+   "aliases_es",
+   "primary_muscle",
+   "equipment",
+   "patron_movimiento",
+   "image_eccentric",
+   "image_concentric"
+  ]
+ },
+ "rpcs": [
+  {
+   "nombre": "mypump_activar_siguiente",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_agregar_comentario",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ambito",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_referencia_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_referencia_nombre",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_contenido",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "uuid",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "chat"
+  },
+  {
+   "nombre": "mypump_avanzar_semana",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_semana_destino",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "integer",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_borrar_comida_libre",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_id",
+     "tipo": "uuid"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_chat_nuevos",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_desde",
+     "tipo": "timestamp with time zone"
+    }
+   ],
+   "devuelve": "TABLE(id uuid, autor text, contenido text, created_at timestamp with time zone)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_crear_comida_libre",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    },
+    {
+     "nombre": "p_hora",
+     "tipo": "time without time zone"
+    },
+    {
+     "nombre": "p_descripcion",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_kcal",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_prot",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_carb",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_fat",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_detalle",
+     "tipo": "jsonb"
+    }
+   ],
+   "devuelve": "SETOF mypump_comidas_libres",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_create_custom_food",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_name",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_kcal",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_prot",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_carb",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_fat",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_unit",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_unit_grams",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_category",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "SETOF mypump_custom_foods",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_delete_food_swap",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dieta_id",
+     "tipo": "uuid"
+    },
+    {
+     "nombre": "p_comida_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_opt_idx",
+     "tipo": "integer"
+    },
+    {
+     "nombre": "p_food_idx",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "swap_del"
+  },
+  {
+   "nombre": "mypump_desconectar_wearable",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_proveedor",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_desmarcar_comida",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    },
+    {
+     "nombre": "p_comida_id",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "comida"
+  },
+  {
+   "nombre": "mypump_encolar_push",
+   "parametros": [
+    {
+     "nombre": "p_cliente_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_titulo",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_cuerpo",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_destino",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dedupe",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "bigint",
+   "security_definer": true,
+   "anon_ejecuta": false,
+   "tipo": "escritura",
+   "la_usa_el_cliente": false,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_finalizar_sesion",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_sesion_id",
+     "tipo": "uuid"
+    },
+    {
+     "nombre": "p_notas",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_duracion_segundos",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_adherencia_30d",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "TABLE(fecha date, entrenamiento text, comio_segun_plan boolean, durmio_bien boolean, vasos_agua smallint, es_valido boolean)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_chat",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_antes",
+     "tipo": "timestamp with time zone"
+    },
+    {
+     "nombre": "p_limite",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(id uuid, autor text, contenido text, leido_por_cliente boolean, created_at timestamp with time zone)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_checkin_semana",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    }
+   ],
+   "devuelve": "SETOF mypump_checkin_semanal",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_cliente_id_from_token",
+   "parametros": [
+    {
+     "nombre": "token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "text",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "servidor",
+   "la_usa_el_cliente": false,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_cliente_info",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "TABLE(cliente_id text, nombre text, perfil text)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_cliente_prefs",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "TABLE(excluir text[], idioma text)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_comentarios",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ambito",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_referencia_id",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "TABLE(id uuid, ambito text, referencia_id text, referencia_nombre text, autor text, contenido text, leido_por_cliente boolean, leido_por_coach boolean, created_at timestamp with time zone)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_comidas_libres",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    }
+   ],
+   "devuelve": "SETOF mypump_comidas_libres",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_comidas_marcadas",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    }
+   ],
+   "devuelve": "SETOF mypump_comidas_marcadas",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_conexiones",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "TABLE(proveedor text, estado text, ultimo_pull_en timestamp with time zone)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_custom_foods",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "SETOF mypump_custom_foods",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_dieta_activa",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "TABLE(id uuid, version integer, estructura jsonb)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_ejercicios_estado",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_sesion_id",
+     "tipo": "uuid"
+    }
+   ],
+   "devuelve": "SETOF mypump_ejercicios_estado",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_entrenos_health",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dias",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(fecha date, inicio timestamp with time zone, tipo text, duracion_min numeric, kcal numeric, distancia_km numeric, fc_media numeric, fc_max numeric)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": false,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_food_swaps",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dieta_id",
+     "tipo": "uuid"
+    }
+   ],
+   "devuelve": "SETOF mypump_food_swaps",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_fotos_progreso",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_desde",
+     "tipo": "date"
+    }
+   ],
+   "devuelve": "TABLE(semana_lunes date, pose text, tomada_el date, created_at timestamp with time zone)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_gasto_real",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dias",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(dias_con_dato integer, kcal_totales_med numeric, kcal_basales_med numeric, kcal_activas_med numeric, vs_estimado_pct numeric)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": false,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_habitos_dia",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    }
+   ],
+   "devuelve": "SETOF mypump_habitos_diarios",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_historico_ejercicio",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ejercicio_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_limit",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(registrado_en timestamp with time zone, peso_kg numeric, reps_realizadas integer, rir_real integer, serie_numero integer, notas text)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_historico_ejercicios",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ejercicio_ids",
+     "tipo": "text[]"
+    },
+    {
+     "nombre": "p_limit_por_ej",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(ejercicio_id text, registrado_en timestamp with time zone, peso_kg numeric, reps_realizadas integer, rir_real integer, serie_numero integer, notas text)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_historico_por_clave",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_claves",
+     "tipo": "text[]"
+    },
+    {
+     "nombre": "p_limit_por_ej",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(clave text, registrado_en timestamp with time zone, peso_kg numeric, reps_realizadas integer, rir_real integer, serie_numero integer, notas text, ejercicio_nombre text)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_mostrar_recuperacion",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_recuperacion",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dias",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(fecha date, score integer, estado text, banda text, dias_datos integer, banda_provisoria boolean, estado_autonomico text, hrv_metrica text, discordancia boolean, cobertura jsonb, componentes jsonb, motivos jsonb)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_registros_sesion",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_sesion_id",
+     "tipo": "uuid"
+    }
+   ],
+   "devuelve": "SETOF mypump_registros_carga",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_rutina_activa",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "TABLE(id uuid, version integer, estructura jsonb, semana_actual integer, fecha_inicio date, fecha_fin date, tiene_siguiente boolean)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_salud",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_desde",
+     "tipo": "date"
+    },
+    {
+     "nombre": "p_hasta",
+     "tipo": "date"
+    }
+   ],
+   "devuelve": "TABLE(fecha date, tipo text, valor numeric, fuente text, detalle jsonb)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_sesion_dia",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dia_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_semana",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(id uuid, dia_id text, semana integer, iniciada_en timestamp with time zone, finalizada_en timestamp with time zone)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_sesiones_semana",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_semana",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(dia_id text, iniciada_en timestamp with time zone, finalizada_en timestamp with time zone)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_get_streak",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "TABLE(streak integer, ultimo_dia_valido date)",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "lectura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_guardar_checkin",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    },
+    {
+     "nombre": "p_energia",
+     "tipo": "smallint"
+    },
+    {
+     "nombre": "p_descanso",
+     "tipo": "smallint"
+    },
+    {
+     "nombre": "p_hambre",
+     "tipo": "smallint"
+    },
+    {
+     "nombre": "p_adherencia",
+     "tipo": "smallint"
+    },
+    {
+     "nombre": "p_nota",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "SETOF mypump_checkin_semanal",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "checkin"
+  },
+  {
+   "nombre": "mypump_ingest_entrenos",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_entrenos",
+     "tipo": "jsonb"
+    }
+   ],
+   "devuelve": "integer",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_ingest_salud",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_registros",
+     "tipo": "jsonb"
+    }
+   ],
+   "devuelve": "integer",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "peso"
+  },
+  {
+   "nombre": "mypump_iniciar_sesion",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dia_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_semana",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "uuid",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_marcar_comida",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    },
+    {
+     "nombre": "p_comida_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_opcion",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_estado",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_foods_excluidos",
+     "tipo": "jsonb"
+    }
+   ],
+   "devuelve": "SETOF mypump_comidas_marcadas",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "comida"
+  },
+  {
+   "nombre": "mypump_marcar_ejercicio_estado",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_sesion_id",
+     "tipo": "uuid"
+    },
+    {
+     "nombre": "p_dia_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ejercicio_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_series_objetivo",
+     "tipo": "integer"
+    },
+    {
+     "nombre": "p_status",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_marcado_manualmente",
+     "tipo": "boolean"
+    }
+   ],
+   "devuelve": "uuid",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "estado"
+  },
+  {
+   "nombre": "mypump_marcar_leidos_cliente",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ambito",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_referencia_id",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "integer",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_push_pendientes",
+   "parametros": [
+    {
+     "nombre": "p_limite",
+     "tipo": "integer"
+    }
+   ],
+   "devuelve": "TABLE(id bigint, cliente_id text, titulo text, cuerpo text, destino text, device_token text, plataforma text, intentos integer, p256dh text, auth text)",
+   "security_definer": true,
+   "anon_ejecuta": false,
+   "tipo": "servidor",
+   "la_usa_el_cliente": false,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_push_resultado",
+   "parametros": [
+    {
+     "nombre": "p_id",
+     "tipo": "bigint"
+    },
+    {
+     "nombre": "p_ok",
+     "tipo": "boolean"
+    },
+    {
+     "nombre": "p_error",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_device_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_baja_device",
+     "tipo": "boolean"
+    }
+   ],
+   "devuelve": "void",
+   "security_definer": true,
+   "anon_ejecuta": false,
+   "tipo": "servidor",
+   "la_usa_el_cliente": false,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_registrar_carga",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_sesion_id",
+     "tipo": "uuid"
+    },
+    {
+     "nombre": "p_dia_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ejercicio_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_ejercicio_nombre",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_serie",
+     "tipo": "integer"
+    },
+    {
+     "nombre": "p_peso",
+     "tipo": "numeric"
+    },
+    {
+     "nombre": "p_reps",
+     "tipo": "integer"
+    },
+    {
+     "nombre": "p_rir",
+     "tipo": "integer"
+    },
+    {
+     "nombre": "p_notas",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "uuid",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "carga"
+  },
+  {
+   "nombre": "mypump_registrar_push",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_device",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_plataforma",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_app_version",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_registrar_push_web",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_endpoint",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_p256dh",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_auth",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  },
+  {
+   "nombre": "mypump_save_food_swap",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_dieta_id",
+     "tipo": "uuid"
+    },
+    {
+     "nombre": "p_comida_id",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_opt_idx",
+     "tipo": "integer"
+    },
+    {
+     "nombre": "p_food_idx",
+     "tipo": "integer"
+    },
+    {
+     "nombre": "p_food_data",
+     "tipo": "jsonb"
+    }
+   ],
+   "devuelve": "SETOF mypump_food_swaps",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "swap"
+  },
+  {
+   "nombre": "mypump_set_habito",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_fecha",
+     "tipo": "date"
+    },
+    {
+     "nombre": "p_campo",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_valor",
+     "tipo": "text"
+    }
+   ],
+   "devuelve": "SETOF mypump_habitos_diarios",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": "habito"
+  },
+  {
+   "nombre": "mypump_set_mostrar_recuperacion",
+   "parametros": [
+    {
+     "nombre": "p_token",
+     "tipo": "text"
+    },
+    {
+     "nombre": "p_mostrar",
+     "tipo": "boolean"
+    }
+   ],
+   "devuelve": "boolean",
+   "security_definer": true,
+   "anon_ejecuta": true,
+   "tipo": "escritura",
+   "la_usa_el_cliente": true,
+   "outbox_kind": null
+  }
+ ]
+}
