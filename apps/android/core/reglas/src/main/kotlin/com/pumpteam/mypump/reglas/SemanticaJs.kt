@@ -47,8 +47,8 @@ object SemanticaJs {
         is ValorJson.Objeto -> "[object Object]"
     }
 
-    /** `x || 0` sobre un número: undefined, null, 0 y NaN valen 0. */
-    fun oCero(x: Double?): Double = if (x == null || x.isNaN()) 0.0 else x
+    /** `x || 0` sobre un número: undefined, null, 0, −0 y NaN valen 0 (el +0: `-0 || 0` es 0). */
+    fun oCero(x: Double?): Double = Js.oCero(x)
 
     /** `if (x)` sobre un número: ni undefined, ni 0, ni NaN. */
     fun verdadero(x: Double?): Boolean = x != null && x != 0.0 && !x.isNaN()
