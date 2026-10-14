@@ -40,17 +40,23 @@ struct RaizApp<Contenido: View>: View {
             }
         }
         .task { if modelo.fase == .cargando { await modelo.cargar() } }
-        .onChange(of: fase) { _, nueva in
+        .onChange(of: fase, initial: true) { _, nueva in
+            // Nada de sondeos con la app en segundo plano (CHA-04).
+            modelo.enPrimerPlano = nueva == .active
             switch nueva {
             case .active:
-                modelo.chat?.empezarSondeo()
+                CentroAvisos.shared.cancelarFinDescanso()
                 Task { await modelo.alVolverAPrimerPlano() }
             case .background:
-                // Nada de sondeos con la app en segundo plano (CHA-04).
-                modelo.chat?.pararSondeo()
+                // Un descanso corriendo avisa cuando termina aunque la app no esté a la vista (D8).
+                if let d = modelo.entreno?.descanso.descanso, !d.terminado {
+                    let fin = Date(timeIntervalSince1970: d.fin / 1000)
+                    Task { await CentroAvisos.shared.programarFinDescanso(fin) }
+                }
             default: break
             }
         }
+        .background { MonitorDeRed { Task { await modelo.alVolverLaRed() } } }
         .task(id: modelo.fase == .listo && !modelo.esDemo) {
             // Con una cuenta: la local del domingo al día y el token de push refrescado (si ya hay permiso).
             if modelo.fase == .listo && !modelo.esDemo { await CentroAvisos.shared.alEntrar() }
@@ -70,19 +76,61 @@ private struct Arranque: View {
     }
 }
 
-/// Sin red y sin copia guardada (ACC-05): reintentar a mano, y una sola recarga automática cuando vuelve la red.
+/// Avisa cuando la red VUELVE (pasa de no disponible a disponible), no en el primer aviso del sistema: así un
+/// reintento automático no se gasta apenas aparece la pantalla.
+struct MonitorDeRed: View {
+    let alVolver: () -> Void
+    @State private var vigia: VigiaDeRed?
+
+    var body: some View {
+        Color.clear
+            .onAppear { vigia = VigiaDeRed(alVolver: alVolver) }
+            .onDisappear { vigia?.parar(); vigia = nil }
+            .accessibilityHidden(true)
+    }
+}
+
+@MainActor
+final class VigiaDeRed {
+    private let monitor = NWPathMonitor()
+    private var anterior: NWPath.Status?
+    private let alVolver: () -> Void
+
+    init(alVolver: @escaping () -> Void) {
+        self.alVolver = alVolver
+        monitor.pathUpdateHandler = { [weak self] camino in
+            let estado = camino.status
+            Task { @MainActor in self?.cambio(estado) }
+        }
+        monitor.start(queue: .main)
+    }
+
+    private func cambio(_ estado: NWPath.Status) {
+        defer { anterior = estado }
+        guard let previo = anterior, previo != .satisfied, estado == .satisfied else { return }
+        alVolver()
+    }
+
+    func parar() { monitor.cancel() }
+}
+
+/// Sin copia guardada y sin poder traer el plan (ACC-05): "Sin conexión" o "Servicio fuera de línea" según lo que pasó,
+/// reintentar a mano y una sola recarga automática cuando vuelve la red.
 private struct SinConexion: View {
     let modelo: ModeloApp
     @State private var reintentando = false
     @State private var yaReintentoSolo = false
-    @State private var monitor: NWPathMonitor?
+
+    private var servidorCaido: Bool { modelo.ultimaFalla != nil && modelo.ultimaFalla != .red }
 
     var body: some View {
         VStack(spacing: 22) {
             ContentUnavailableView {
-                Label("Sin conexión", systemImage: "wifi.slash")
+                Label(servidorCaido ? "Servicio fuera de línea" : "Sin conexión", systemImage: servidorCaido ? "icloud.slash" : "wifi.slash")
             } description: {
-                Text("No pudimos traer tu plan. Cuando vuelva la señal lo intentamos solos.")
+                Text(servidorCaido
+                     ? "No pudimos traer tu plan. Estamos con un problema del servicio: probá de nuevo en unos minutos."
+                     : "No pudimos traer tu plan. Cuando vuelva la señal lo intentamos solos.")
             } actions: {
                 Button {
                     Task { await reintentar() }
@@ -96,20 +144,13 @@ private struct SinConexion: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(FondoMarca())
-        .onAppear {
-            let m = NWPathMonitor()
-            m.pathUpdateHandler = { camino in
-                guard camino.status == .satisfied else { return }
-                Task { @MainActor in
-                    guard !yaReintentoSolo else { return }
-                    yaReintentoSolo = true
-                    await reintentar()
-                }
+        .background {
+            MonitorDeRed {
+                guard !yaReintentoSolo else { return }
+                yaReintentoSolo = true
+                Task { await reintentar() }
             }
-            m.start(queue: .main)
-            monitor = m
         }
-        .onDisappear { monitor?.cancel() }
     }
 
     private func reintentar() async {

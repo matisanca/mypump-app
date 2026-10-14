@@ -37,3 +37,14 @@ struct AvisosTests {
         #expect(TokenPush.hex(Data([0x0a, 0xbc, 0xff, 0x00])) == "0ABCFF00")
     }
 }
+
+@Suite("El link pegado, como index.html")
+struct LinkPegadoTests {
+    @Test func elMensajeEnteroDeWhatsApp() {
+        let t = "abcdefghij0123456789ABCDEFGHIJ_-"
+        #expect(FormatoToken.extraer(de: "Hola! Este es tu link para entrar a MyPump: https://app.mypumpteam.com/?t=\(t)\nCualquier cosa me escribís") == t)
+        #expect(FormatoToken.extraer(de: "app.mypumpteam.com/cliente.html?t=\(t)") == t)
+        #expect(FormatoToken.extraer(de: t) == t)
+        #expect(FormatoToken.extraer(de: "hola") == nil)
+    }
+}

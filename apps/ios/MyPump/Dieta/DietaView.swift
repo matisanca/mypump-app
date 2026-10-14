@@ -31,9 +31,21 @@ struct DietaView: View {
                 switch modelo.fase {
                 case .listo where !modelo.comidasDelDia.isEmpty:
                     contenido
+                case .listo where modelo.sinRedEn.contains(.dieta):
+                    ContentUnavailableView {
+                        Label("No pudimos traer tu dieta", systemImage: "wifi.slash")
+                    } description: {
+                        Text("Se cortó la conexión. Probá de nuevo cuando tengas señal.")
+                    } actions: {
+                        Button("Reintentar") { Task { await modelo.cargar() } }.buttonStyle(.bordered)
+                    }
                 case .listo:
-                    ContentUnavailableView("Todavía no hay plan de comidas", systemImage: "fork.knife",
-                                           description: Text("Cuando Mati publique tu dieta, la vas a ver acá."))
+                    ScrollView {
+                        ContentUnavailableView("Todavía no hay plan de comidas", systemImage: "fork.knife",
+                                               description: Text("Cuando Mati publique tu dieta, la vas a ver acá."))
+                            .padding(.top, 80)
+                    }
+                    .refreshable { await modelo.cargar() }
                 case .cargando:
                     ProgressView().controlSize(.large)
                 case .sinServicio:
@@ -242,6 +254,7 @@ private struct FilaAlimento: View {
                                     .background(Color.marca, in: .circle)
                             }
                             .buttonStyle(.plain)
+                            .contentShape(Rectangle().inset(by: -12))   // 44 pt de toque sin agrandar el distintivo
                             .accessibilityLabel("Reemplazado. Tocá para volver a \(original.nombre)")
                         }
                     }

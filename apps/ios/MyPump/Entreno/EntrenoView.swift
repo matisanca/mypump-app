@@ -4,12 +4,13 @@ import MyPumpReglas
 import MyPumpDatos
 
 /// Entreno: el día elegido con su progreso, el cronómetro de la sesión, los bloques y cada ejercicio, avanzar de semana
-/// y cerrar el día. Todo sale del motor (`ModeloEntreno`, en `Entrenamiento`). Arriba, el título del día en Archivo; al
-/// bajar, el título pasa chico a la barra.
+/// y cerrar el día. Todo sale del motor (`ModeloEntreno`, que arma `ModeloApp`). Arriba, el título del día en Archivo;
+/// al bajar, el título pasa chico a la barra. Sin rutina (o sin poder traerla), lo dice como Dieta.
 struct EntrenoView: View {
     /// Las muestras quedan para las demás pestañas; Entreno ya usa el motor.
     let datos: Muestras
     @Environment(Entrenamiento.self) private var entrenamiento
+    @State private var modelo = Proveedor.modelo
     @State private var ruta: [String] = []
     @State private var preguntador = Preguntador()
     @State private var abrioDemo = false
@@ -18,12 +19,30 @@ struct EntrenoView: View {
         NavigationStack(path: $ruta) {
             Group {
                 if let m = entrenamiento.motor {
-                    ListaEntreno(motor: m, ejemplo: entrenamiento.ejemplo, alCompletarDia: completoDia)
+                    ListaEntreno(motor: m, alCompletarDia: completoDia)
+                } else if modelo.fase == .listo && modelo.sinRedEn.contains(.rutina) {
+                    // Un corte dejó afuera la rutina y no había copia guardada.
+                    ContentUnavailableView {
+                        Label("No pudimos traer tu rutina", systemImage: "wifi.slash")
+                    } description: {
+                        Text("Se cortó la conexión. Probá de nuevo cuando tengas señal.")
+                    } actions: {
+                        Button("Reintentar") { Task { await modelo.cargar() } }
+                            .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
+                    }
+                } else if modelo.fase == .listo {
+                    ScrollView {
+                        ContentUnavailableView("Todavía no hay rutina", systemImage: "dumbbell",
+                                               description: Text("Cuando Mati publique tu rutina, la vas a ver acá."))
+                            .padding(.top, 80)
+                    }
+                    .refreshable { await modelo.cargar() }
                 } else {
                     ScrollView { EsqueletoEntreno().padding(.horizontal, Espacio.m).anchoLectura() }
                         .scrollDisabled(true)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.fondo)
             .navigationDestination(for: String.self) { lugar in
                 if let m = entrenamiento.motor {
@@ -64,7 +83,6 @@ struct EntrenoView: View {
 /// El día del motor.
 private struct ListaEntreno: View {
     let motor: ModeloEntreno
-    let ejemplo: Bool
     let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
     @Environment(Preguntador.self) private var preguntador
     @State private var tituloEnBarra = false
@@ -81,11 +99,6 @@ private struct ListaEntreno: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 cabecera
-                if ejemplo {
-                    AvisoProgresion(icono: "exclamationmark.triangle.fill",
-                                    texto: Text(Bonito.sinEmoji(TextosEntreno.demo).replacingOccurrences(of: "Modo demo — ", with: "")),
-                                    tono: .alerta)
-                }
                 BannerRevision()
                 SelectorDias(motor: motor)
                 if motor.vacio {
@@ -242,16 +255,22 @@ private struct ListaEntreno: View {
         }
     }
 
-    /// Todo hecho o el día cerrado: el resumen de la sesión y, si falta, cerrarla.
+    /// Todo hecho o el día cerrado: "Sesión completa" o "Día cerrado", cuántos ejercicios quedaron listos, el resumen
+    /// y, si falta, cerrarla.
     private var tarjetaCierre: some View {
         let r = motor.resumen
         let finalizado = motor.dia.diaFinalizado
         return VStack(spacing: Espacio.m) {
-            if !finalizado {
-                Label("¡Día completado!", systemImage: "party.popper.fill")
+            VStack(spacing: 4) {
+                Label(finalizado ? "Día cerrado" : "Sesión completa",
+                      systemImage: finalizado ? "checkmark.seal.fill" : "party.popper.fill")
                     .labelStyle(IconoTeñido(color: .marcaTexto))
-                    .font(.headline)
+                    .textoCeja()
+                Text("\(motor.hechos)/\(motor.totalEjercicios) ejercicios listos")
+                    .font(.title3.weight(.bold))
+                    .contentTransition(.numericText())
             }
+            .accessibilityElement(children: .combine)
             HStack(spacing: 0) {
                 celda("Series", "\(r.series)")
                 Divider().frame(height: 36)
@@ -260,7 +279,7 @@ private struct ListaEntreno: View {
                 celda("Duración", motor.minutos.map { "\($0) min" } ?? "—")
             }
             if finalizado {
-                Label("Tu sesión de hoy quedó guardada.", systemImage: "checkmark.seal.fill")
+                Label("Tu sesión de hoy quedó guardada.", systemImage: "checkmark.icloud.fill")
                     .labelStyle(IconoTeñido(color: .marcaTexto))
                     .font(.subheadline.weight(.semibold))
             } else {

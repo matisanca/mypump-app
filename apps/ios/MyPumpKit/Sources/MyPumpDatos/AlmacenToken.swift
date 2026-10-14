@@ -57,6 +57,10 @@ public enum FormatoToken {
         if let ultimo = t.split(separator: "/").last.map(String.init)?.split(separator: "?").first.map(String.init), valido(ultimo) {
             return ultimo
         }
+        // El mensaje entero de WhatsApp ("Hola! Este es tu link: https://…/?t=…"): el `[?&]t=` de la web.
+        if let r = t.range(of: #"[?&]t=[a-zA-Z0-9_-]{16,64}"#, options: .regularExpression) {
+            return String(t[r].dropFirst(3))
+        }
         return nil
     }
 }

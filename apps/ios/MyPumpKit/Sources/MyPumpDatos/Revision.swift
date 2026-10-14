@@ -101,6 +101,8 @@ public final class ModeloRevision {
     /// `setHabito`: optimista y por la cola (gana el último por campo y fecha).
     public func setHabito(campo: String, valor: String?) async {
         let v: JSONValue = valor.map { .texto($0) } ?? .null
+        // La fecha es la de AHORA (la app pudo quedar abierta de un día para otro), como `hoyLocal()` en la web.
+        let fecha = FechaLocal.hoy()
         habitos.aplicar(campo: campo, valor: v)
         _ = await outbox?.encolar("habito", .objeto(["fecha": .texto(fecha), "campo": .texto(campo), "valor": v]),
                                   dedupeKey: "habito|\(fecha)|\(campo)")
@@ -118,7 +120,7 @@ public final class ModeloRevision {
         guard nuevo != habitos.vasosAgua else { return }
         habitos.vasosAgua = nuevo
         esperaAgua?.cancel()
-        let dia = fecha
+        let dia = FechaLocal.hoy()
         esperaAgua = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled, let self else { return }
@@ -135,7 +137,7 @@ public final class ModeloRevision {
     }
 
     private func aplicarPendientes() async {
-        let prefijo = "habito|\(fecha)|"
+        let prefijo = "habito|\(FechaLocal.hoy())|"
         for (k, op) in await outbox?.pendientesPorClave() ?? [:] where k.hasPrefix(prefijo) {
             habitos.aplicar(campo: String(k.dropFirst(prefijo.count)), valor: op.payload["valor"])
         }
@@ -173,6 +175,7 @@ public final class ModeloRevision {
     /// lunes ISO).
     public func enviarCheckin(_ c: Checkin) async -> String? {
         if let faltan = CheckinSemanal.faltan(c.valores) { return faltan }
+        let fecha = FechaLocal.hoy()
         let nota = c.nota.trimmingCharacters(in: .whitespacesAndNewlines)
         checkin = Checkin(valores: c.valores, nota: nota)
         var datos: [String: JSONValue] = ["nota": .texto(nota)]
@@ -187,13 +190,14 @@ public final class ModeloRevision {
     @discardableResult
     public func guardarPeso(_ texto: String) async -> Bool {
         guard let valor = PesoCorporal.leer(texto) else { return false }
+        let fecha = FechaLocal.hoy()
         ponerPesoDeHoy(valor)
         _ = await outbox?.encolar("peso", .objeto(["fecha": .texto(fecha), "valor": .numero(valor)]), dedupeKey: "peso_\(fecha)")
         return true
     }
 
     private func ponerPesoDeHoy(_ valor: Double) {
-        let hoy = fecha
+        let hoy = FechaLocal.hoy()
         salud.removeAll { $0.tipo == "peso_kg" && $0.fecha == hoy && $0.fuente == "manual" }
         let fila: JSONValue = .objeto(["fecha": .texto(hoy), "tipo": .texto("peso_kg"), "valor": .numero(valor), "fuente": .texto("manual")])
         if let f = try? JSONDecoder().decode(FilaSalud.self, from: JSONEncoder().encode(fila)) { salud.append(f) }

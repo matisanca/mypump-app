@@ -1,5 +1,6 @@
 import SwiftUI
 import MyPumpDatos
+import MyPumpReglas
 
 @main
 struct MyPumpApp: App {
@@ -7,6 +8,16 @@ struct MyPumpApp: App {
     @State private var datos = Muestras.cargar()
     /// El motor de Entreno y su descanso: arriba de las pestañas, así el descanso se ve en cualquiera.
     @State private var entrenamiento = Entrenamiento()
+
+    init() {
+        // Apple Health cableada explícita (si no, ModeloSalud la busca por nombre y un renombre la apagaría sin avisar).
+        ModeloSalud.fuenteDelSistema = FuenteHealthKit()
+        // El catálogo de ejercicios empaquetado: hasta que llega el del servidor, y para arrancar sin red.
+        if let url = Bundle.main.url(forResource: "catalogo-ejercicios", withExtension: "json", subdirectory: "Bases.bundle"),
+           let datos = try? Data(contentsOf: url), let c = try? CatalogoEjercicios(json: datos) {
+            ModeloApp.catalogoEmpaquetado = c
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -32,10 +43,11 @@ struct MyPumpApp: App {
     }
 
     /// `-entrar demo` (DEBUG): lo mismo que tocar "Ver demo" en la bienvenida, para capturar la demo sin tocar la
-    /// pantalla (por ejemplo, Dieta con la dieta de ejemplo).
+    /// pantalla (por ejemplo, Dieta con la dieta de ejemplo). Los bocetos también entran a la demo: así Entreno y
+    /// Dieta tienen su motor y su plan de ejemplo sin cuenta.
     @MainActor private func entrarEnDemoSiSePide() {
         #if DEBUG
-        guard UserDefaults.standard.string(forKey: "entrar") == "demo",
+        guard UserDefaults.standard.string(forKey: "entrar") == "demo" || UserDefaults.standard.bool(forKey: "bocetos"),
               let r = Bundle.main.url(forResource: "rutina", withExtension: "json", subdirectory: "Demo.bundle"),
               let d = Bundle.main.url(forResource: "dieta", withExtension: "json", subdirectory: "Demo.bundle"),
               let rutina = try? Data(contentsOf: r), let dieta = try? Data(contentsOf: d) else { return }
@@ -52,15 +64,14 @@ struct Raiz: View {
     // `simctl launch … -pestana dieta` abre directo en esa pestaña (capturas y pruebas de interfaz).
     @State private var navegacion = Navegacion(pestaña: Pestaña(rawValue: UserDefaults.standard.string(forKey: "pestana") ?? "") ?? .entreno)
     @Environment(Entrenamiento.self) private var entrenamiento
-    @Environment(\.scenePhase) private var fase
 
     enum Pestaña: String, Hashable { case entreno, dieta, chat, revision, progreso }
 
     /// Entreno: comentarios de Mati sin leer en los ejercicios. Chat: lo de Mati que llegó con el chat cerrado.
-    /// Revisión: lo que falta de la semana (check y fotos).
-    private var badgeEntreno: Int { modelo.conMuestras ? 0 : entrenamiento.motor?.sinLeerEntreno ?? 0 }
-    private var badgeChat: Int { DemoUI.bocetos ? 1 : (modelo.esDemo ? 0 : modelo.chat?.noLeidos ?? 0) }
-    private var badgeRevision: Int { DemoUI.bocetos ? 2 : (modelo.esDemo ? 0 : modelo.pendientesDeLaSemana.total) }
+    /// Revisión: lo que falta de la semana (check y fotos). Siempre los reales: en la demo y en los bocetos, ninguno.
+    private var badgeEntreno: Int { modelo.conMuestras ? 0 : modelo.entreno?.sinLeerEntreno ?? 0 }
+    private var badgeChat: Int { modelo.conMuestras ? 0 : modelo.chat?.noLeidos ?? 0 }
+    private var badgeRevision: Int { modelo.conMuestras ? 0 : modelo.pendientesDeLaSemana.total }
 
     var body: some View {
         @Bindable var navegacion = navegacion
@@ -100,12 +111,9 @@ struct Raiz: View {
             withAnimation(.snappy) { navegacion.ir(a: destino) }
             CentroAvisos.shared.destino = nil
         }
-        // El motor de Entreno se arma (o rearma) cuando cambia la cuenta, la demo o la rutina.
-        .task(id: Entrenamiento.clave(app: modelo, muestras: datos)) {
-            await entrenamiento.sincronizar(app: modelo, muestras: datos)
-        }
-        .onChange(of: fase) { _, nueva in
-            if nueva == .active { Task { await entrenamiento.alVolverAPrimerPlano() } }
+        // El reloj del descanso corre solo mientras la barra está a la vista (el motor lo arma ModeloApp).
+        .task(id: modelo.entreno?.descanso.visible == true) {
+            await entrenamiento.correrDescanso()
         }
     }
 

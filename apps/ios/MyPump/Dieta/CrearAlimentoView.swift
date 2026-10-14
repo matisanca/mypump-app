@@ -129,6 +129,7 @@ struct CrearAlimentoView: View {
             Text(titulo)
             Spacer(minLength: 12)
             TextField("0", text: texto)
+                .accessibilityLabel("\(titulo) en \(unidadTexto)")
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .focused($foco, equals: campo)

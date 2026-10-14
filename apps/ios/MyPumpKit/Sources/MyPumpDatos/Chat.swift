@@ -44,6 +44,11 @@ public struct HiloChat: Equatable, Sendable {
     public mutating func mezclar(_ filas: [MensajeChat]) -> Int {
         var vistos = Set(mensajes.map(\.id))
         var entraron = 0
+        // Una fila que ya estaba puede venir con su "leído" (get_chat lo trae; chat_nuevos no): se actualiza, si no al
+        // recargar el badge quedaba en 0 con el mensaje sin leer.
+        for f in filas where vistos.contains(f.id) {
+            if let l = f.leidoPorCliente, let i = mensajes.firstIndex(where: { $0.id == f.id }) { mensajes[i].leidoPorCliente = l }
+        }
         for f in filas where !vistos.contains(f.id) {
             if f.autor == "cliente" {
                 mensajes.removeAll { $0.pendiente && $0.autor == "cliente" && $0.contenido == f.contenido }
@@ -161,11 +166,12 @@ public final class ModeloChat {
         else { return }
         if filas.count < Self.pagina { hilo.hayMas = false }
         hilo.mezclar(filas)
-        noLeidos = hilo.sinLeer
+        recontar()
         if abierto && !masViejos && noLeidos > 0 { await marcarLeido() }
     }
 
-    /// `chatPollTick`: lo nuevo desde el cursor.
+    /// `chatPollTick`: lo nuevo desde el cursor. Lo que llega del coach por acá todavía no lo leyó (la RPC no trae el
+    /// campo).
     public func sondear() async {
         guard let desde = hilo.cursor else { await cargar(); return }
         guard case .success(let filas) = await cliente.filas("mypump_chat_nuevos", ["p_token": .texto(token), "p_desde": .texto(desde)],
@@ -177,6 +183,11 @@ public final class ModeloChat {
         }
     }
 
+    /// Recalcula el badge sin bajarlo por debajo de lo que llegó por el sondeo (eso solo lo baja `marcarLeido`).
+    private func recontar() {
+        noLeidos = max(noLeidos, hilo.sinLeer)
+    }
+
     /// `enviarChatMsg`: la burbuja aparece ya y el mensaje sale por la cola (sobrevive a cerrar la app sin señal).
     public func enviar(_ texto: String) async {
         let contenido = texto.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -186,11 +197,24 @@ public final class ModeloChat {
                                           autor: "cliente", contenido: contenido, leidoPorCliente: nil,
                                           createdAt: FechaISO.texto(ahora), pendiente: true))
         await encolar(contenido)
+        traerDespuesDeMandar()
+    }
+
+    /// La burbuja deja de decir "enviando…" apenas sale (como la web, que sondea 250 ms después de un envío): esperar al
+    /// sondeo de 15-45 s hacía que el cliente creyera que no salió y lo mandara de nuevo.
+    private func traerDespuesDeMandar() {
+        Task { [weak self] in
+            guard let self else { return }
+            await self.outbox?.drenar()
+            try? await Task.sleep(for: .milliseconds(250))
+            await self.sondear()
+        }
     }
 
     public func reintentar(_ id: String) async {
         guard let b = hilo.desmarcarFallido(id: id) else { return }
         await encolar(b.contenido)
+        traerDespuesDeMandar()
     }
 
     /// La cola se rindió con un mensaje del chat.

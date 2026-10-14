@@ -5,113 +5,28 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// El motor de Entreno (`ModeloEntreno`) visto desde la app: lo arma con la cuenta de `ModeloApp` (o sin cuenta en la
-/// demo, con la rutina de ejemplo si Mati todavía no publicó el plan, y con las muestras en los bocetos), lo rearma
-/// cuando cambia la cuenta o la rutina, y hace correr el descanso: un tick cada 250 ms y, al terminar, háptico y un
-/// pitido con la sesión de audio `.ambient` (no corta la música del cliente, SES-05).
+/// El motor de Entreno visto desde la app. El motor (`ModeloEntreno`) lo arma y lo mantiene `ModeloApp`: uno por rutina
+/// (también en la demo, donde no escribe nada), con el catálogo del servidor, la sesión que trajo la migración y la
+/// versión nueva de la rutina cuando llega; también lo avisa al volver a primer plano. Acá queda lo que es de la
+/// vista: el reloj del descanso (un tick cada 250 ms mientras se ve la barra) y, al terminar, el háptico y un pitido
+/// con la sesión de audio `.ambient` (no corta la música del cliente, SES-05). El aviso con la app en segundo plano
+/// lo programa RaizApp (D8).
 ///
 /// Vive arriba de las pestañas: el descanso se ve en la barra de pestañas aunque se esté en otra.
 @MainActor @Observable
 final class Entrenamiento {
-    private(set) var motor: ModeloEntreno?
-    /// Mati todavía no publicó el plan (o no tiene días): se ve la rutina de ejemplo, sin escribir nada (ACC-08).
-    private(set) var ejemplo = false
-
-    @ObservationIgnored private var clave: String?
-    @ObservationIgnored private var reloj: Task<Void, Never>?
     @ObservationIgnored private let sonido = SonidoDescanso()
 
-    /// El catálogo empaquetado (`Bases.bundle/catalogo-ejercicios.json`): fotos y sustitutos sin red.
-    static let catalogo: CatalogoEjercicios = {
-        guard let url = Bundle.main.url(forResource: "catalogo-ejercicios", withExtension: "json", subdirectory: "Bases.bundle"),
-              let datos = try? Data(contentsOf: url), let c = try? CatalogoEjercicios(json: datos) else { return CatalogoEjercicios([]) }
-        return c
-    }()
+    /// El motor de la rutina activa, o nil sin rutina (o antes de tener cuenta).
+    var motor: ModeloEntreno? { Proveedor.modelo.entreno }
 
-    /// La rutina de ejemplo de la web (`Demo.bundle/rutina.json`), como fila de `get_rutina_activa`.
-    static let rutinaEjemplo: RutinaActiva? = {
-        guard let url = Bundle.main.url(forResource: "rutina", withExtension: "json", subdirectory: "Demo.bundle"),
-              let datos = try? Data(contentsOf: url),
-              let estructura = try? JSONDecoder().decode(JSONValue.self, from: datos),
-              let fila = try? JSONEncoder().encode(JSONValue.objeto(["id": .texto("ejemplo"), "version": .numero(1),
-                                                                     "estructura": estructura, "semana_actual": .numero(1)]))
-        else { return nil }
-        return try? JSONDecoder().decode(RutinaActiva.self, from: fila)
-    }()
-
-    /// Lo que define qué motor hace falta. Si cambia, se arma uno nuevo.
-    static func clave(app: ModeloApp, muestras: Muestras) -> String {
-        if DemoUI.bocetos { return "bocetos|\(muestras.rutina?.id ?? "-")" }
-        guard app.fase == .listo else { return "sin-cuenta" }
-        let r = app.rutina
-        return [app.esDemo ? "demo" : (app.token ?? "-"), r?.id ?? "ejemplo", String(r?.version ?? 0), String(r?.semanaActual ?? 0),
-                String(r?.tieneSiguiente ?? false)].joined(separator: "|")
-    }
-
-    /// Arma el motor que corresponde y lo carga (historial, sesión del día, días cerrados, comentarios).
-    func sincronizar(app: ModeloApp, muestras: Muestras) async {
-        let nueva = Self.clave(app: app, muestras: muestras)
-        guard nueva != clave else { return }
-        clave = nueva
-
-        let rutina: RutinaActiva?
-        var conCuenta = false
-        var deEjemplo = false
-        if DemoUI.bocetos {
-            rutina = muestras.rutina
-        } else if app.fase != .listo {
-            rutina = nil
-        } else if app.esDemo {
-            rutina = app.rutina ?? Self.rutinaEjemplo
-        } else if let r = app.rutina, !NormalizacionRutina.normalizar(r.estructura).usable {
-            rutina = Self.rutinaEjemplo
-            deEjemplo = true
-        } else if let r = app.rutina {
-            rutina = r
-            conCuenta = true
-        } else {
-            rutina = Self.rutinaEjemplo
-            deEjemplo = true
+    /// Lo corre la raíz mientras la barra del descanso está a la vista: el descanso va contra una fecha de fin y este
+    /// tick solo la mira (la barra se pinta con lo que deja).
+    func correrDescanso() async {
+        while !Task.isCancelled, let m = motor, m.descanso.visible {
+            if m.tickDescanso() { terminoDescanso() }
+            try? await Task.sleep(for: .milliseconds(250))
         }
-
-        // El motor ya tiene esta rutina (la trajo él al avanzar de semana): no se arma de nuevo.
-        if let m = motor, let r = rutina, conCuenta, m.token == app.token, m.rutina.id == r.id, m.rutina.version == r.version,
-           m.rutina.semanaActual == r.semanaActual {
-            return
-        }
-        guard let rutina else {
-            motor = nil
-            return
-        }
-        let token = conCuenta ? app.token : nil
-        let m = ModeloEntreno(cliente: app.cliente, token: token, outbox: conCuenta ? app.outbox : nil,
-                              disco: token.map { Disco(raiz: nil, token: $0) }, rutina: rutina, info: app.info,
-                              catalogo: Self.catalogo, demo: !conCuenta)
-        // Una rutina nueva (avanzar de semana, bloque nuevo) llega a toda la app.
-        m.alCambiarRutina = { _ in Task { await Proveedor.modelo.cargar() } }
-        ejemplo = deEjemplo
-        motor = m
-        await m.cargar()
-        arrancarReloj()
-    }
-
-    /// El descanso corre contra una fecha de fin: este tick solo la mira (y la barra se pinta con lo que devuelve).
-    private func arrancarReloj() {
-        guard reloj == nil else { return }
-        reloj = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(250))
-                guard let self else { return }
-                // Solo con la barra a la vista: tocar `descanso` avisa a las vistas que lo miran.
-                if let m = self.motor, m.descanso.visible, m.tickDescanso() { self.terminoDescanso() }
-            }
-        }
-    }
-
-    /// Al volver a primer plano (GEN-07): el descanso se recalcula contra el reloj y la cola sale.
-    func alVolverAPrimerPlano() async {
-        guard let m = motor else { return }
-        if await m.alVolverAPrimerPlano() { terminoDescanso() }
     }
 
     private func terminoDescanso() {
