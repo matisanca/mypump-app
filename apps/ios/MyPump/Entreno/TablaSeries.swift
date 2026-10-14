@@ -68,8 +68,10 @@ struct TablaSeries: View {
                     ForEach(Array(filas.enumerated()), id: \.offset) { i, f in fila(i, f, sinKg: sinKg) }
                 }
 
-                pista(activa.map { filas[$0] })
-                    .padding(.top, 2)
+                if let i = activa {
+                    pista(i, filas[i])
+                        .padding(.top, 2)
+                }
             }
         }
         .tarjeta()
@@ -170,23 +172,37 @@ struct TablaSeries: View {
         }
     }
 
-    /// La pista de la fila activa: lo de la última vez a un toque, o la calibración la primera vez.
+    /// La pista de la fila activa: lo de la última vez a un toque, o la calibración la primera vez. Como en la web
+    /// (`data-sugconfirm`), la pista de la última vez ES un botón: tocarla registra la serie igual que el ✓. En la 101 era
+    /// solo texto y "Tocá para registrar" no hacía nada (lo encontró Mati el 14-oct).
     @ViewBuilder
-    private func pista(_ f: FilaSerie?) -> some View {
-        if let p = f?.pista {
+    private func pista(_ i: Int, _ f: FilaSerie) -> some View {
+        if let p = f.pista {
             // "✓ Tocá para registrar lo de la última vez · **80kg × 10** — o editá si hiciste otra cosa", con la
             // puntuación de una frase de iOS.
             let antes = p.antes.replacingOccurrences(of: "✓ ", with: "").replacingOccurrences(of: " · ", with: "")
             let despues = p.despues.replacingOccurrences(of: " — ", with: "").trimmingCharacters(in: .whitespaces)
-            Label {
-                Text("\(antes): \(Text(Bonito.carga(p.negrita)).bold().foregroundStyle(.primary)). \(despues.prefix(1).uppercased() + despues.dropFirst()).")
-            } icon: {
-                Image(systemName: "hand.tap.fill").foregroundStyle(Color.marcaTexto)
+            Button { tocarCheck(i, f) } label: {
+                Label {
+                    Text("\(antes): \(Text(Bonito.carga(p.negrita)).bold().foregroundStyle(.primary)). \(despues.prefix(1).uppercased() + despues.dropFirst()).")
+                        .multilineTextAlignment(.leading)
+                } icon: {
+                    Image(systemName: "hand.tap.fill").foregroundStyle(Color.marcaTexto)
+                }
+                .labelStyle(EtiquetaCompacta())
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.marcaSuave, in: .rect(cornerRadius: 12, style: .continuous))
+                .contentShape(.rect)
             }
-            .labelStyle(EtiquetaCompacta())
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        } else if let c = f?.calibracion {
+            .buttonStyle(.plain)
+            .disabled(!f.puedeConfirmar)
+            .accessibilityLabel("Registrar lo de la última vez: \(Bonito.carga(p.negrita))")
+            .accessibilityIdentifier("registrar-ultima-vez")
+        } else if let c = f.calibracion {
             Label(Bonito.sinEmoji(c), systemImage: "scope")
                 .labelStyle(IconoTeñido(color: .marcaTexto))
                 .font(.caption)

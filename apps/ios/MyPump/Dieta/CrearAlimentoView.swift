@@ -23,7 +23,6 @@ struct CrearAlimentoView: View {
     @State private var escaneando = false
     @State private var estadoEscaneo: String?
     /// D7: la etiqueta espera el permiso; sin IA no se escanea.
-    @State private var pedidoIA: PedidoIA?
     @FocusState private var foco: Campo?
 
     enum Campo: Hashable { case nombre, kcal, prot, carb, fat, gramos }
@@ -96,7 +95,6 @@ struct CrearAlimentoView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Alimento propio")
-        .permisoIA($pedidoIA, modelo: modelo)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -145,16 +143,6 @@ struct CrearAlimentoView: View {
     /// "Escanear etiqueta" (F7): prellena todo editable. `porcion_g` 100 = valores por 100 g (unidad g); otra porción =
     /// unidad "porción" con sus gramos, como la web.
     private func escanear(_ jpeg: Data) {
-        let sinIA = "Sin el asistente de IA la etiqueta no se escanea: completala a mano (o prendé la IA en Mis datos)."
-        if modelo.faltaConsentimientoIA {
-            pedidoIA = PedidoIA { acepta in if acepta { escanearYa(jpeg) } else { estadoEscaneo = sinIA } }
-            return
-        }
-        guard modelo.analisisDeFotoPermitido else { estadoEscaneo = sinIA; return }
-        escanearYa(jpeg)
-    }
-
-    private func escanearYa(_ jpeg: Data) {
         escaneando = true
         foco = nil
         Task {

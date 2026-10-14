@@ -15,15 +15,20 @@ final class RevisionUITests: XCTestCase {
         app.launch()
     }
 
-    /// Con la `nativa_002` en la base, Mis datos ofrece el asistente de IA (D7). Solo se mira: no se cambia nada.
-    func testMisDatosOfreceElAsistenteDeIA() throws {
+    /// Pedido de Mati (14-oct): ni la IA ni el aviso del domingo son algo que el cliente configure. La IA trabaja bajo
+    /// su aprobación y el recordatorio llega como un mensaje suyo: en Mis datos no hay interruptores de ninguno de los dos.
+    func testMisDatosNoTieneInterruptorDeIANiDeRecordatorios() throws {
         let misDatos = app.buttons["Mis datos"].firstMatch
         XCTAssertTrue(misDatos.waitForExistence(timeout: 20), "No apareció el acceso a Mis datos")
         misDatos.tap()
-        let ia = app.switches["asistente-ia"].firstMatch
-        for _ in 0..<6 where !ia.exists { app.swipeUp() }
-        XCTAssertTrue(ia.waitForExistence(timeout: 5), "Mis datos no muestra el asistente de IA: ¿la app no ve la nativa_002?")
-        adjuntarCaptura("mis-datos-asistente-ia")
+        let respaldo = app.buttons["Respaldo científico del plan"].firstMatch
+        XCTAssertTrue(app.navigationBars["Mis datos"].waitForExistence(timeout: 5))
+        for _ in 0..<6 where !respaldo.isHittable { app.swipeUp() }
+        XCTAssertTrue(respaldo.exists, "No se recorrió Mis datos")
+        XCTAssertFalse(app.switches["asistente-ia"].exists, "Volvió el interruptor de la IA")
+        XCTAssertFalse(app.switches["recordatorio-domingo"].exists, "Volvió el interruptor del recordatorio")
+        XCTAssertFalse(app.staticTexts["Inteligencia artificial"].exists)
+        adjuntarCaptura("mis-datos-sin-interruptores")
     }
 
     /// 5.1.1(i) y 1.4.1: desde Mis datos se abren el respaldo científico y la política de privacidad. Las dos hojas

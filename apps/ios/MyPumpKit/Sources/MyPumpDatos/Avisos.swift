@@ -26,7 +26,22 @@ public enum DestinoAviso: String, Sendable, Equatable {
     }
 }
 
-/// `mypump_notif_prefs` (notificaciones.js): un solo recordatorio, la revisión del domingo, apagable y con hora. Lo
+/// El aviso del domingo (pedido de Mati, 14-oct): no se configura y llega como un mensaje suyo, con el título de sus
+/// mensajes del chat ("Mati", mig 057) y su forma de escribirles a los clientes (sin dos puntos, guiones ni emojis).
+/// Reusa el id 1002 de la Capacitor: reprogramar pisa el que dejó la app vieja.
+public enum AvisoDomingo {
+    public static let id = PreferenciasAvisos.idRevision
+    public static let titulo = "Mati"
+    public static let cuerpo = "Cómo venís esta semana? Subí tu revisión así te hago la devolución"
+    public static let destino = "revision"
+    /// Domingo a las 11:00, hora del teléfono: es cuando se arma la ronda de Mati.
+    public static let diaDeLaSemana = 1
+    public static let hora = 11
+    public static let minuto = 0
+}
+
+/// `mypump_notif_prefs` (notificaciones.js): un solo recordatorio, la revisión del domingo, apagable y con hora. La
+/// nativa ya no lo lee para agendar (ver `AvisoDomingo`); queda por los ids y por lo que trae la migración. Lo
 /// guardado se mezcla sobre los valores por defecto campo por campo; claves viejas (entreno, peso, racha) se ignoran.
 public struct PreferenciasAvisos: Codable, Equatable, Sendable {
     public struct Recordatorio: Codable, Equatable, Sendable {

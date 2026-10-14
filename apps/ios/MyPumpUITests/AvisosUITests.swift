@@ -1,11 +1,11 @@
 import XCTest
 
-/// NOT-05: "Activar recordatorios" pide el permiso del sistema y, con el sí, deja agendado el aviso del domingo (id 1002,
+/// NOT-05: "Activar notificaciones" pide el permiso del sistema y, con el sí, deja agendado el aviso del domingo (id 1002,
 /// como la Capacitor). Lo agendado no se ve desde la prueba: lo lee `scripts/nativa/avisos_programados.py` en la carpeta
 /// de avisos del simulador.
 @MainActor
 final class AvisosUITests: XCTestCase {
-    func testActivarRecordatoriosPideElPermisoYCierraLaHoja() throws {
+    func testActivarNotificacionesPideElPermisoYCierraLaHoja() throws {
         guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else {
             throw XCTSkip("Falta MYPUMP_TOKEN: usa una cuenta de prueba, nunca un cliente.")
         }
@@ -15,7 +15,7 @@ final class AvisosUITests: XCTestCase {
         let ahoraNo = app.buttons["Ahora no"]
         XCTAssertTrue(ahoraNo.waitForExistence(timeout: 20), "No apareció la hoja de permisos")
         // Si el simulador ofrece Salud, va primero: se saltea sin pedir nada.
-        let activar = app.buttons["Activar recordatorios"]
+        let activar = app.buttons["Activar notificaciones"]
         if !activar.exists { ahoraNo.tap() }
         XCTAssertTrue(activar.waitForExistence(timeout: 5), "No llegó el paso de los avisos")
         activar.tap()

@@ -108,6 +108,8 @@ public struct Escrituras: Sendable {
                 "p_contenido": p["contenido"] ?? .null,
             ]))
         case "consentimiento_ia":
+            // D7 se sacó el 14-oct (Mati: la IA no es algo que el cliente acepte). La app ya no lo encola; esto vacía lo que
+            // haya quedado en una cola de la 101/102. Solo registra lo que se eligió: nada del servidor lo lee.
             return .respuesta(await cliente.llamar("mypump_guardar_consentimiento_ia", [
                 "p_token": t, "p_acepta": p["acepta"] ?? .null, "p_plataforma": p["plataforma"] ?? .null, "p_app": p["app"] ?? .null,
             ]))

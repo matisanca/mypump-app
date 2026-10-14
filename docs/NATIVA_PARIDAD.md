@@ -21,7 +21,7 @@ Hasta que se decidan, rige lo de hoy.
 | D4 | Textos que mienten | el onboarding promete un recordatorio de entreno que no existe, y "Domingos al mediodía" es a las 11:00 | corregirlos |
 | D5 | Tema | arranca en claro e ignora el sistema | seguir al sistema salvo que `'dark'` esté guardado |
 | D6 | Verde | interfaz lima `#b8f060`, ícono esmeralda `#10b981` | lima en la interfaz e ícono sin cambios |
-| D7 | IA de terceros (5.1.2(i)) | sin aviso; la IA habla como Mati | consentimiento único al abrir el chat o la foto del plato |
+| D7 | IA de terceros (5.1.2(i)) | sin aviso; la IA habla como Mati | ~~consentimiento único~~ **sacado el 14-oct (Mati): la IA trabaja bajo su aprobación y no es algo que el cliente acepte.** En su lugar, el nombre se tapa con la IA local de la Mini antes de Codex (en diseño) |
 | D8 | Fin de descanso con la app en segundo plano | sin aviso | notificación local |
 | D9 | Borrado de cuenta | solo `eliminar-datos.html` (mail) | link desde Mis datos, más una RPC opcional que solo registra el pedido |
 | D11+ | Sin plan publicado | la web muestra la rutina de ejemplo con "Modo demo" | **decidido 14-oct:** como la dieta (D11), "Todavía no hay rutina"; la de ejemplo solo en la demo |
@@ -83,7 +83,7 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| SER-01 | Un toque registra las reps de la última vez (misma serie y variante) o el tope del rango, y el kg de la última vez. Con AMRAP/∞/máx no hay registro de un toque | `C:4066-4072`, `4144-4230` | ✅ ver auditoría 14-oct | ☐ |
+| SER-01 | Un toque registra las reps de la última vez (misma serie y variante) o el tope del rango, y el kg de la última vez. Con AMRAP/∞/máx no hay registro de un toque | `C:4066-4072`, `4144-4230`, `4044` | ✅ ver auditoría 14-oct. **Arreglado el 14-oct (lo encontró Mati en la 101):** la pista "Tocá para registrar lo de la última vez" era solo texto y no hacía nada; en la web es un botón (`data-sugconfirm`). Ahora confirma la serie como el ✓ (UltimaVezUITests) | ☐ |
 | SER-02 | El RIR **nunca** se autocompleta; selector 0-5 que reenvía si la serie ya estaba confirmada. RIR 0 ≠ null | `C:4595-4623`, memoria `project_motor_recuperacion` | ✅ ver auditoría 14-oct | ☐ |
 | SER-03 | El kg se hereda de la serie anterior confirmada. Pista de calibración la primera vez | `C:1618-1627`, `4049` | ✅ ver auditoría 14-oct | ☐ |
 | SER-04 | Al tocar un campo se selecciona todo; en kg la coma pasa a punto; en reps solo dígitos | `C:4275-4304`, `4089-4099` | ✅ coma → punto y solo dígitos en camposYRIR; seleccionar todo al enfocar en EntrenoUITests.testTocarUnCampoLoSeleccionaEntero (iOS 26.5 y 17.5; muerde: sin él queda "780") | ☐ |
@@ -208,7 +208,7 @@ Hasta que se decidan, rige lo de hoy.
 | NOT-03 | Tocar el aviso abre el `destino` (train, diet, progress, myday, revision, salud, chat); uno desconocido cae a Chat | `NT:326-336`, `057:342` | ✅ `DestinoAviso` (tests); falta que la raíz cambie de pestaña | ☐ |
 | NOT-04 | Con la app abierta se muestra banner y sonido (`willPresent` / canal propio en Android) | `capacitor.config.json` | ✅ willPresent banner+lista+sonido | ☐ |
 | NOT-05 | Local "Tu revisión de la semana": id 1002, domingos a las 11:00, semanal, abre Revisión; se cancelan 1001/1003/1004; apagado = nada agendado | `NT:46-147`, test `test-notificaciones` | ✅ id 1002 dom 11:00, cancela 1001/1003/1004. Visto en lo que iOS deja agendado (simulador 26.5, 14-oct): un solo pedido, 1002, domingo 11:00, se repite, abre Revisión (AvisosUITests + `scripts/nativa/avisos_programados.py`) | ☐ |
-| NOT-06 | Recordatorios configurables en Mis datos (`mypump_notif_prefs`) | `C:7172-7231` | ✅ ver auditoría 14-oct | ☐ |
+| NOT-06 | Recordatorios configurables en Mis datos (`mypump_notif_prefs`) | `C:7172-7231` | ➖ **desvío a propósito (Mati, 14-oct):** no se configura; el aviso del domingo llega como un mensaje suyo (título "Mati", su forma de escribir; `AvisoDomingo`). Mis datos solo ofrece activar las notificaciones si falta el permiso | ☐ |
 | NOT-07 | Android: canal propio como `default_notification_channel_id`, ícono `ic_stat_mypump`, `POST_NOTIFICATIONS` | memoria `project_push_android_web` | ➖ | ☐ |
 | NOT-08 | Al actualizar, las locales que dejó la Capacitor no se duplican (iOS: ids "1001"-"1004"; Android: PendingIntents de `TimedNotificationPublisher`) | plan | ✅ mismos ids que la Capacitor: reprogramar pisa | ☐ |
 

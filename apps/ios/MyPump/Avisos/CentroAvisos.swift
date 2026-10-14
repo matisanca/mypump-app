@@ -3,9 +3,9 @@ import UIKit
 import UserNotifications
 import MyPumpDatos
 
-/// Notificaciones: la local del domingo ("Tu revisión de la semana", id 1002, como la Capacitor: reprogramar la pisa y
-/// borra las viejas 1001/1003/1004 que siguen agendadas en los teléfonos que actualizan), el push de los comentarios de
-/// Mati (APNs, hex en MAYÚSCULAS) y a dónde lleva tocar cada aviso.
+/// Notificaciones: la local del domingo (`AvisoDomingo`: llega como un mensaje de Mati y no se configura; id 1002, como
+/// la Capacitor: reprogramar la pisa y borra las viejas 1001/1003/1004 que siguen agendadas en los teléfonos que
+/// actualizan), el push de los comentarios de Mati (APNs, hex en MAYÚSCULAS) y a dónde lleva tocar cada aviso.
 @MainActor @Observable
 final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
     static let shared = CentroAvisos()
@@ -18,11 +18,6 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
 
     func configurar() {
         UNUserNotificationCenter.current().delegate = self
-    }
-
-    var preferencias: PreferenciasAvisos {
-        get { PreferenciasAvisos.leer(UserDefaults.standard.string(forKey: PreferenciasAvisos.clave)) }
-        set { UserDefaults.standard.set(newValue.texto, forKey: PreferenciasAvisos.clave) }
     }
 
     func permiso() async -> UNAuthorizationStatus {
@@ -47,23 +42,22 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         return true
     }
 
-    /// Al abrir (y al cambiar las preferencias): con permiso, se borra lo nuestro y se vuelve a agendar.
+    /// Al abrir (y al dar el permiso): se borra lo nuestro y se vuelve a agendar el aviso del domingo. Sale siempre que
+    /// haya permiso: no es algo que el cliente configure (pedido de Mati, 14-oct).
     func reprogramar() async {
         let centro = UNUserNotificationCenter.current()
         guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { return }
-        centro.removePendingNotificationRequests(withIdentifiers: [PreferenciasAvisos.idRevision] + PreferenciasAvisos.idsViejos)
-        let p = preferencias
-        guard p.check.on else { return }
+        centro.removePendingNotificationRequests(withIdentifiers: [AvisoDomingo.id] + PreferenciasAvisos.idsViejos)
         let c = UNMutableNotificationContent()
-        c.title = "Tu revisión de la semana"
-        c.body = "Contale a Mati cómo venís: 1 minuto y ya está."
+        c.title = AvisoDomingo.titulo
+        c.body = AvisoDomingo.cuerpo
         c.sound = .default
-        c.userInfo = ["destino": "revision"]
+        c.userInfo = ["destino": AvisoDomingo.destino]
         var cuando = DateComponents()
-        cuando.weekday = 1          // domingo: es cuando se arma la ronda de Mati
-        cuando.hour = p.check.hora
-        cuando.minute = p.check.min
-        let pedido = UNNotificationRequest(identifier: PreferenciasAvisos.idRevision, content: c,
+        cuando.weekday = AvisoDomingo.diaDeLaSemana
+        cuando.hour = AvisoDomingo.hora
+        cuando.minute = AvisoDomingo.minuto
+        let pedido = UNNotificationRequest(identifier: AvisoDomingo.id, content: c,
                                            trigger: UNCalendarNotificationTrigger(dateMatching: cuando, repeats: true))
         try? await centro.add(pedido)
     }

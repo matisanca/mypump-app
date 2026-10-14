@@ -16,6 +16,19 @@ struct AvisosTests {
         #expect(DestinoAviso(destino: nil) == .chat)
     }
 
+    /// El aviso del domingo llega como un mensaje de Mati (pedido del 14-oct): su nombre de título, como sus mensajes del
+    /// chat, y escrito como él les escribe a los clientes (sin dos puntos, guiones ni emojis). Abre Revisión.
+    @Test func elAvisoDelDomingoEsUnMensajeDeMati() {
+        #expect(AvisoDomingo.titulo == "Mati")
+        #expect(AvisoDomingo.id == "1002", "el id de la Capacitor: reprogramar pisa el viejo")
+        #expect(AvisoDomingo.diaDeLaSemana == 1 && AvisoDomingo.hora == 11 && AvisoDomingo.minuto == 0)
+        #expect(DestinoAviso(destino: AvisoDomingo.destino) == .revision)
+        let cuerpo = AvisoDomingo.cuerpo
+        #expect(!cuerpo.isEmpty)
+        #expect(![":", "-", "–", "—"].contains { cuerpo.contains($0) }, "\(cuerpo)")
+        #expect(!cuerpo.unicodeScalars.contains { $0.properties.isEmojiPresentation }, "\(cuerpo)")
+    }
+
     @Test func escenaDelLink() {
         #expect(DestinoAviso(escena: "diet") == .dieta)
         #expect(DestinoAviso(escena: "salud") == .misDatos)

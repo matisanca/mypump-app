@@ -91,12 +91,13 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | D4 | Textos corregidos (recordatorio de entreno inexistente; "11:00", no "mediodía") | Que la app no mienta |
 | D5 | Tema: sigue al sistema salvo que el cliente haya guardado `'dark'` | `theme.js` escribe `'light'` siempre, así que no es una elección |
 | D6 | Lima en la interfaz; el ícono no cambia | Identidad actual |
-| D7 | IA de terceros (5.1.2(i)): **permiso con un "no" real que cubre todo** (chat, fotos y ronda del domingo). Decisión de Mati, 14-oct | App y servidor hechos. Falta aplicar `nativa_002` y desplegar `chat_worker`, `sugerir_pendientes` y `centinela` en la Mini (comandos en la bitácora) |
+| D7 | ~~IA de terceros (5.1.2(i)): permiso con un "no" real~~ **Sacado el 14-oct a las 18:45 (Mati): "la IA es algo que funcionaba bajo mi aprobación, no tiene que ser algo que la persona tenga que aceptar".** Sin interruptor ni hoja en las apps; los scripts de la Mini volvieron a la versión sin filtro (los restauró Mati a las 18:48). La tabla `mypump_consentimiento_ia` queda sin uso | En su lugar: el nombre se tapa con la IA local de la Mini antes de Codex, y el chat de la app escribe con la skill `responder-clientes` (en diseño, ver bitácora) |
 | D8 | Aviso local de fin de descanso con la app en segundo plano | Mejora sin riesgo |
 | D9 | Borrado: link a `eliminar-datos.html` desde Mis datos, sin RPC | No hace falta tocar la base |
 | D10 | **Sin "Comí / Salté" en Dieta** (pedido de Mati, 14-oct). Se va también el consumo parcial; el anillo muestra el objetivo y cuánto suman las opciones elegidas | Le resultaba molesto al cliente. El coach deja de recibir esas marcas de los clientes con la nativa (la web las sigue teniendo) |
 | D11 | **Sin dieta usable: "Todavía no hay plan de comidas"** (la web mostraba la dieta de ejemplo de 3.200 kcal como si fuera del cliente) | Engañaba al cliente; la demo sigue mostrando el ejemplo |
 | D14 | **Android: el backup de Google sigue llevándose `app_webview/`** (la app vieja), como con la Capacitor, **menos sus cachés**. Decidido por la sesión con el "hacelo todo vos" de Mati (14-oct) | Restaurado en un teléfono nuevo, el cliente entra sin pegar el link. La copia va cifrada de punta a punta con el bloqueo de pantalla y el token de la nativa no viaja nunca. Las cachés se regeneran y podían pasar el tope de 25 MB, que deja sin copia a todo |
+| D15 | **El aviso del domingo no se configura y llega como un mensaje de Mati** (14-oct, Mati: "tienen que parecer enviados por mí"): título "Mati", "Cómo venís esta semana? Subí tu revisión así te hago la devolución", domingos a las 11:00. Mis datos solo ofrece activar las notificaciones si falta el permiso | Quien lo había apagado en la app vieja lo vuelve a recibir; solo lo corta desde los Ajustes del teléfono |
 | T1 | Cola, caché y swaps en **JSON con escritura atómica**, sin GRDB | Volumen chico; cero dependencias de terceros |
 | T2 | Cliente RPC propio (URLSession), sin supabase-swift | Hace falta el código HTTP para clasificar errores (aprobado 13-oct) |
 
@@ -114,6 +115,23 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
 
 ## Bitácora
+
+- **14-oct 19:00, Mati probando la 101 en su iPhone:**
+  - **"El toca para registrar lo de la última vez no funciona":** la pista era texto; en la web es un botón
+    (`cliente.html:4044`, `data-sugconfirm`). Ahora confirma la serie igual que el ✓ (TablaSeries `pista`), con
+    UltimaVezUITests (cuenta de prueba: la demo no tiene historial). Avisado el agente de Entreno de Android.
+  - **D7 sacado** (ver la tabla de decisiones): sin interruptor ni hoja en iOS; la foto del plato y la de la etiqueta
+    se analizan siempre. Android, en un agente aparte. En la Mini, Mati restauró los `.bak-pre-d7` a las 18:48
+    (md5 iguales a `a42a276^`, verificado; el chat siguió corriendo). En el repo, los tres scripts vuelven a esa
+    versión y se va `scripts/test_consentimiento_ia.py`. Al momento de sacarlo, la única respuesta guardada era la de
+    la cuenta de Mati (un "no" de las 18:40): ningún cliente quedó sin IA.
+  - **D15:** el aviso del domingo llega como un mensaje de Mati y no se configura.
+  - **Pendiente, pedido de Mati:**
+    1. tapar el nombre con la IA local de la Mini (Qwen) antes de Codex y volver a ponerlo en la respuesta;
+    2. que el chat de la app escriba con la skill `responder-clientes` de la sesión "Mensajes clientes Pump Team"
+       (sus mismas reglas y capacidades: "hicimos un upgrade muy grande en la forma de escribirles");
+    3. la política de privacidad publicada dice que la 2.0 pide permiso y que se apaga en Mis datos: hay que cambiarla
+       antes de que la 2.0 salga al público (G3, toca `public/`).
 
 - **14-oct 18:45, "hacelo todo vos" (Mati):**
   - **`nativa_003` aplicada** por Mati a las 18:16 (captura de su terminal: COMMIT). Verificado:

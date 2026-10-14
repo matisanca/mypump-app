@@ -46,20 +46,9 @@ public final class ModeloApp {
     /// La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido).
     public private(set) var palanca = PalancaRemota.deFabrica
 
-    // MARK: Permiso para la IA (D7, supabase/migrations/nativa_002)
-
-    /// Qué decidió el cliente: true acepta, false "sin IA", nil nunca se le preguntó (o todavía no se sabe).
-    public private(set) var consentimientoIA: Bool?
     /// Cuántas cargas terminaron con todo traído del servidor. `cargar()` sobre una cuenta ya cargada no pasa por
     /// `.cargando`: quien espera "la próxima carga con red" (la Fase R después de un corte) mira esto.
     public private(set) var cargasConRed = 0
-    /// El servidor puede guardar la decisión. Sin eso (PGRST202) no se pregunta: un "no" no se podría respetar del otro
-    /// lado, y todo sigue como hoy.
-    public private(set) var consentimientoIADisponible = false
-    /// Antes del primer mensaje, de la primera foto analizada y del primer check hay que preguntar (Apple 5.1.2(i)).
-    public var faltaConsentimientoIA: Bool { consentimientoIADisponible && consentimientoIA == nil && !esDemo && token != nil }
-    /// La foto del plato o de la etiqueta se puede mandar a la IA: aceptó, o el servidor todavía no sabe de permisos.
-    public var analisisDeFotoPermitido: Bool { !consentimientoIADisponible || consentimientoIA == true }
     /// Comidas libres (fuera del plan) del día local.
     public private(set) var comidasLibres: [ComidaLibre] = []
     /// El chat con Mati (no existe en la demo ni sin cuenta).
@@ -128,7 +117,6 @@ public final class ModeloApp {
     public func salir() {
         almacen.guardar(nil)
         token = nil
-        consentimientoIA = nil
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
@@ -177,7 +165,6 @@ public final class ModeloApp {
 
     private func soltarCuentaEnMemoria() {
         token = nil
-        consentimientoIA = nil
         disco = nil
         outbox = nil
         info = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
@@ -187,9 +174,6 @@ public final class ModeloApp {
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
-        // El permiso para la IA es de cada cuenta: hasta que conteste la carga vale lo que ESTA cuenta decidió en el
-        // teléfono (o nada). Antes seguía valiendo el de la cuenta anterior (lo encontró el gemelo de Android).
-        consentimientoIA = disco.leer(ConsentimientoIA.Guardado.self, ConsentimientoIA.archivo)?.acepta
         let escrituras = Escrituras(cliente: cliente, token: t)
         let cola = Outbox(archivo: disco.url("outbox.json")) { op in await escrituras.ejecutar(op) }
         outbox = cola
@@ -266,11 +250,9 @@ public final class ModeloApp {
         async let r = cliente.llamar("mypump_get_rutina_activa", p)
         async let d = cliente.llamar("mypump_get_dieta_activa", p)
         async let cfg = PalancaRemota.leer(cliente)
-        async let ci = cliente.llamar("mypump_get_consentimiento_ia", p)
-        let (rr, dd, palancaLeida, consentimiento) = await (r, d, cfg, ci)
+        let (rr, dd, palancaLeida) = await (r, d, cfg)
         guard vigente() else { return }
         if let palancaLeida { palanca = palancaLeida }
-        await aplicarConsentimiento(consentimiento)
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         let copia = disco?.leer(CopiaOffline.self, "offline.json")
@@ -408,11 +390,6 @@ public final class ModeloApp {
     }
 
     private func aplicar(_ c: CopiaOffline) {
-        // Sin red: la decisión sobre la IA es la última guardada en el teléfono.
-        if let g = disco?.leer(ConsentimientoIA.Guardado.self, ConsentimientoIA.archivo) {
-            consentimientoIADisponible = true
-            consentimientoIA = g.acepta
-        }
         defer { prepararEntreno(); if let e = entreno { Task { await e.cargar() } } }
         info = decodificar(ClienteInfo.self, c.info)
         rutina = c.rutina.flatMap { decodificar(RutinaActiva.self, $0) }
@@ -549,52 +526,8 @@ public final class ModeloApp {
     /// `visionDesdeFoto`: la foto (JPEG ya reducido) a mini-vision. Tarda ~30 s, hasta 150.
     public func analizarFoto(_ jpeg: Data, tipo: ClienteRPC.TipoVision) async -> Result<JSONValue, ErrorRPC> {
         guard let t = token else { return .failure(ErrorRPC(clase: .permanente, status: 0, codigo: "SIN_CUENTA", mensaje: "demo")) }
-        // D7: sin permiso la foto no sale del teléfono (las vistas ya no la ofrecen; esto es por las dudas).
-        guard analisisDeFotoPermitido else {
-            return .failure(ErrorRPC(clase: .permanente, status: 0, codigo: "SIN_PERMISO_IA",
-                                     mensaje: "No aceptaste el asistente de IA: cargala a mano o activalo en Mis datos."))
-        }
         return await cliente.vision(token: t, tipo: tipo, jpeg: jpeg)
     }
-
-    /// Lo que contestó `mypump_get_consentimiento_ia`. Lo decidido en el teléfono y todavía en la cola gana; sin red
-    /// vale lo último guardado.
-    private func aplicarConsentimiento(_ r: Result<JSONValue, ErrorRPC>) async {
-        let guardado = disco?.leer(ConsentimientoIA.Guardado.self, ConsentimientoIA.archivo)
-        switch r {
-        case .success(.objeto(let o)):
-            consentimientoIADisponible = true
-            if case .bool(let b)? = o["acepta"] { consentimientoIA = b } else { consentimientoIA = nil }
-        case .failure(let e) where e.funcionInexistente:
-            consentimientoIADisponible = false
-            consentimientoIA = nil
-            return
-        default:
-            // Sin red, o el token cayó: lo último que se supo.
-            if let guardado { consentimientoIADisponible = true; consentimientoIA = guardado.acepta }
-        }
-        if case .bool(let b)? = await outbox?.pendientesPorClave()[ConsentimientoIA.clave]?.payload["acepta"] {
-            consentimientoIA = b
-        }
-        if let c = consentimientoIA { disco?.guardar(ConsentimientoIA.Guardado(acepta: c), ConsentimientoIA.archivo) }
-    }
-
-    /// La respuesta del cliente (la pantalla del primer uso o Mis datos). Sale por la cola, ANTES de lo que dispara la
-    /// pregunta (el mensaje, la foto, el check): así el servidor ya la tiene cuando llega lo otro. Con `drenar: false`
-    /// solo queda encolada (quien llama encola lo suyo detrás y después vacía la cola).
-    public func decidirConsentimientoIA(_ acepta: Bool, drenar: Bool = true) async {
-        guard !esDemo, token != nil else { return }
-        consentimientoIA = acepta
-        disco?.guardar(ConsentimientoIA.Guardado(acepta: acepta), ConsentimientoIA.archivo)
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-        _ = await outbox?.encolar("consentimiento_ia",
-                                  .objeto(["acepta": .bool(acepta), "plataforma": .texto("ios"), "app": version.map(JSONValue.texto) ?? .null]),
-                                  dedupeKey: ConsentimientoIA.clave)
-        if drenar { await outbox?.drenar() }
-    }
-
-    /// Vacía la cola ahora (por ejemplo, después de encolar la decisión sobre la IA y lo que la disparó).
-    public func drenarCola() async { await outbox?.drenar() }
 
     /// Como la web: reemplaza en su lugar al del mismo nombre (sin distinguir mayúsculas) o se agrega al final.
     private func sumarPropio(_ a: AlimentoPropio) {

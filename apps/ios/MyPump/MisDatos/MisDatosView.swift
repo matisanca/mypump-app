@@ -5,18 +5,17 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Mis datos (propuesta D3 de la paridad): un lugar fijo para recuperación, salud, recordatorios, privacidad y
-/// borrado. Hoy en la web solo se llega desde la card de Recuperación. Con la forma de Ajustes: filas con ícono en
-/// azulejo de color. La recuperación abre los datos de salud de `ModeloSalud` (con "Mostrarme el score" y Salud de
-/// Apple, cuyo título abre el diagnóstico con 5 toques); sin cuenta no existe. El recordatorio del domingo es el de
-/// `CentroAvisos` (NOT-05/06).
+/// Mis datos (propuesta D3 de la paridad): un lugar fijo para recuperación, salud, privacidad y borrado. Hoy en la web
+/// solo se llega desde la card de Recuperación. Con la forma de Ajustes: filas con ícono en azulejo de color. La
+/// recuperación abre los datos de salud de `ModeloSalud` (con "Mostrarme el score" y Salud de Apple, cuyo título abre el
+/// diagnóstico con 5 toques); sin cuenta no existe. Ni la IA ni el aviso del domingo se configuran acá (pedido de Mati,
+/// 14-oct): la IA trabaja bajo su aprobación y el aviso llega como un mensaje suyo (`CentroAvisos`). Solo queda, si
+/// falta, el permiso de notificaciones del sistema.
 struct MisDatosView: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
-    /// `mypump_notif_prefs`: se lee al entrar y cada cambio se guarda y reprograma.
-    @State private var preferencias = CentroAvisos.shared.preferencias
-    /// El permiso de notificaciones (nil = todavía no se sabe). Sin permiso el interruptor mentía: "prendido" y no iba a
-    /// llegar nada (revisión del 14-oct, hallazgo 8). Como la web, en su lugar va "Activar recordatorios".
+    /// El permiso de notificaciones (nil = todavía no se sabe). Sin él no llegan ni los mensajes de Mati ni su aviso del
+    /// domingo: se ofrece activarlo.
     @State private var permiso: UNAuthorizationStatus?
     @Environment(\.scenePhase) private var fase
     /// D5: "dark" o nada (sigue al teléfono). Lo lee la raíz de la app.
@@ -47,68 +46,23 @@ struct MisDatosView: View {
                 }
             }
 
-            Section {
-                if conPermiso || modelo.conMuestras {
-                    Toggle(isOn: Binding(get: { preferencias.check.on }, set: { on in
-                        withAnimation(.snappy) { preferencias.check.on = on }
-                        guardar(activar: on)
-                    })) {
-                        Label { Text("Tu revisión de la semana") } icon: { IconoAzulejo("bell.badge.fill", color: .peligro) }
-                    }
-                    .tint(Color.marcaVivo)
-                    .accessibilityIdentifier("recordatorio-domingo")
-                    if preferencias.check.on {
-                        DatePicker(selection: hora, displayedComponents: .hourAndMinute) {
-                            Label { Text("Domingos a las") } icon: { IconoAzulejo("calendar", color: .agua) }
-                        }
-                    }
-                } else if permiso != nil {
+            if permiso != nil && !conPermiso && !modelo.conMuestras {
+                Section {
                     Button {
-                        Task { await activarRecordatorios() }
+                        Task { await activarNotificaciones() }
                     } label: {
-                        Label { Text(permiso == .denied ? "Activar en Ajustes" : "Activar recordatorios") } icon: {
+                        Label { Text(permiso == .denied ? "Activar en Ajustes" : "Activar notificaciones") } icon: {
                             IconoAzulejo("bell.badge.fill", color: .peligro)
                         }
                     }
                     .tint(.primary)
-                    .accessibilityIdentifier("activar-recordatorios")
-                }
-            } header: {
-                Text("Recordatorios")
-            } footer: {
-                if modelo.conMuestras {
-                    Text("En la demo los recordatorios no se activan.")
-                } else if permiso == .denied {
-                    Text("Las notificaciones de MyPump están apagadas en el iPhone: el aviso del domingo no va a llegar hasta que las prendas.")
-                } else if !conPermiso {
-                    Text("El domingo te avisamos para que cargues tus fotos, tu check y tu peso. Hace falta tu permiso para mandarte notificaciones.")
-                } else {
-                    Text("Te avisamos para que cargues tus fotos, tu check y tu peso antes de la devolución de Mati.")
-                }
-            }
-            .disabled(modelo.conMuestras)
-
-            // D7: la decisión sobre la IA, para cambiarla cuando quiera (solo si el servidor puede respetarla).
-            if modelo.consentimientoIADisponible && !modelo.conMuestras && !modelo.esDemo {
-                Section {
-                    Toggle(isOn: Binding(get: { modelo.consentimientoIA == true }, set: { v in
-                        Task { await modelo.decidirConsentimientoIA(v) }
-                    })) {
-                        Label { Text("Asistente de IA") } icon: { IconoAzulejo("sparkles", color: .marcaTexto) }
-                    }
-                    .tint(Color.marcaVivo)
-                    .accessibilityIdentifier("asistente-ia")
+                    .accessibilityIdentifier("activar-notificaciones")
                 } header: {
-                    Text("Inteligencia artificial")
+                    Text("Notificaciones")
                 } footer: {
-                    switch modelo.consentimientoIA {
-                    case true?:
-                        Text("Lee tus mensajes del chat, las fotos que mandes a analizar y tu check para ayudar a Mati (OpenAI y Anthropic; los datos de salud van sin tu nombre). Si lo apagás, ninguna IA lee tus datos.")
-                    case false?:
-                        Text("Apagado: ninguna IA lee tus datos. Te contesta Mati y las fotos no se analizan.")
-                    case nil:
-                        Text("Todavía no elegiste: te lo preguntamos antes de tu primer mensaje, foto o check. Si lo prendés, la IA ayuda con el chat, las fotos y tu revisión semanal.")
-                    }
+                    Text(permiso == .denied
+                         ? "Las notificaciones de MyPump están apagadas en el \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"): los mensajes de Mati no te van a llegar hasta que las prendas."
+                         : "Para que te lleguen los mensajes de Mati.")
                 }
             }
 
@@ -165,41 +119,15 @@ struct MisDatosView: View {
         }
     }
 
-    /// La hora del recordatorio como `Date` para el selector (solo importan la hora y los minutos).
-    private var hora: Binding<Date> {
-        Binding(
-            get: { Calendar.current.date(from: DateComponents(hour: preferencias.check.hora, minute: preferencias.check.min)) ?? .now },
-            set: { d in
-                let c = Calendar.current.dateComponents([.hour, .minute], from: d)
-                preferencias.check.hora = c.hour ?? 11
-                preferencias.check.min = c.minute ?? 0
-                guardar(activar: false)
-            })
-    }
-
     private var conPermiso: Bool { [.authorized, .provisional, .ephemeral].contains(permiso) }
 
-    /// Guarda las preferencias y reprograma la local del domingo.
-    private func guardar(activar: Bool) {
-        CentroAvisos.shared.preferencias = preferencias
-        Task {
-            if activar {
-                await CentroAvisos.shared.activar()
-                permiso = await CentroAvisos.shared.permiso()
-            } else {
-                await CentroAvisos.shared.reprogramar()
-            }
-        }
-    }
-
-    /// Pide el permiso (si ya lo negó, iOS no vuelve a mostrar la hoja: se lleva a Ajustes) y deja el aviso prendido.
-    private func activarRecordatorios() async {
+    /// Pide el permiso (si ya lo negó, iOS no vuelve a mostrar la hoja: se lleva a Ajustes). Con el sí, `activar`
+    /// agenda el aviso del domingo y registra el push.
+    private func activarNotificaciones() async {
         if permiso == .denied {
             if let url = URL(string: UIApplication.openSettingsURLString) { await UIApplication.shared.open(url) }
             return
         }
-        preferencias.check.on = true
-        CentroAvisos.shared.preferencias = preferencias
         await CentroAvisos.shared.activar()
         permiso = await CentroAvisos.shared.permiso()
     }
