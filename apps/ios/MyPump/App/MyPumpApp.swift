@@ -5,7 +5,8 @@ import MyPumpReglas
 @main
 struct MyPumpApp: App {
     @UIApplicationDelegateAdaptor(DelegadoApp.self) private var delegado
-    @State private var datos = Muestras.cargar()
+    /// Las muestras de los bocetos (solo DEBUG; en la tienda, vacías).
+    @State private var datos = Muestras.deLaApp()
     /// El motor de Entreno y su descanso: arriba de las pestañas, así el descanso se ve en cualquiera.
     @State private var entrenamiento = Entrenamiento()
 

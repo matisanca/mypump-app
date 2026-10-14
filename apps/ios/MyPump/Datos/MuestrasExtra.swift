@@ -41,9 +41,30 @@ enum DemoUI {
 }
 
 extension ModeloApp {
-    /// Las pantallas muestran las muestras empaquetadas, sin escribir nada: en la demo ("Ver demo", sin cuenta) y en
-    /// los bocetos de diseño. Con una cuenta, todo sale de este modelo.
+    /// Sin modelo de la cuenta: en la demo ("Ver demo", sin cuenta, nada se escribe) y en los bocetos de diseño. Con una
+    /// cuenta, todo sale de este modelo.
     var conMuestras: Bool { esDemo || DemoUI.bocetos }
+}
+
+extension Muestras {
+    /// Lo que la raíz les pasa a las pantallas. Las muestras (`Muestras.bundle`, datos de la cuenta de prueba) son solo
+    /// de los bocetos de diseño: en Release el bundle no se empaqueta (EXCLUDED_SOURCE_FILE_NAMES) y esto queda vacío.
+    static func deLaApp() -> Muestras {
+        #if DEBUG
+        cargar()
+        #else
+        vacias
+        #endif
+    }
+
+    /// Lo que ve una pantalla sin cuenta: las muestras solo en los bocetos; la demo, como la web, sin datos de nadie
+    /// (Revisión vacía, el chat para escribirle a Mati, Progreso sin historial). Mi Día de la demo es la semilla de la
+    /// web (`MuestrasExtra.demo`), que no sale de acá.
+    func paraPantalla() -> Muestras { DemoUI.bocetos ? self : .vacias }
+
+    static let vacias = Muestras(info: nil, rutina: nil, dieta: nil, historial: [], sesionesSemana: [], salud: [],
+                                 recuperacion: [], chat: [], habitos: nil, racha: nil, adherencia: [], checkin: nil,
+                                 fotos: [], comidasMarcadas: [])
 }
 
 /// Mi Día y el check cuando no hay cuenta. Se arman con la MISMA forma que devuelve el servidor (decodificando JSON) y

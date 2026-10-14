@@ -6,8 +6,8 @@ import MyPumpDatos
 
 /// Progreso (PRO-01…05): totales arriba y, por día, cada ejercicio una sola vez (por clave, no por lugar) con el tope
 /// de sus últimas 8 sesiones, la variación, el 🏆 PR y una curva chica. Tocar abre el detalle con el gráfico y la
-/// tabla. Con una cuenta sale de `ModeloProgreso` (se carga al abrir la pestaña); en la demo y en los bocetos, de las
-/// muestras con las mismas reglas.
+/// tabla. Con una cuenta sale de `ModeloProgreso` (se carga al abrir la pestaña); en los bocetos, de las muestras con
+/// las mismas reglas; en la demo, como la web, sin historial.
 struct ProgresoView: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
@@ -25,12 +25,13 @@ struct ProgresoView: View {
 
     private var lineas: [LineaProgreso] {
         if let progreso { return progreso.tarjetas.map(LineaProgreso.init) }
-        return LineaProgreso.desdeMuestras(datos)
+        // La demo, como la web: sin historial. Las muestras son solo de los bocetos.
+        return LineaProgreso.desdeMuestras(datos.paraPantalla())
     }
 
     private var sesiones: Int {
         if let progreso { return progreso.sesiones }
-        return ProgresoEjercicio.sesiones(datos.historial).count
+        return ProgresoEjercicio.sesiones(datos.paraPantalla().historial).count
     }
 
     /// Agrupadas por los días donde aparece cada ejercicio ("Tirón", o "Tirón · Torso" si está en los dos), en el orden

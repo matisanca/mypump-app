@@ -23,7 +23,8 @@ struct ChatView: View {
     private var burbujas: [BurbujaChat] {
         if let chat { return chat.hilo.mensajes }
         if DemoUI.estado == .vacio { return [] }
-        return datos.chat.map {
+        // La demo, como la web: el hilo vacío para escribirle a Mati. La conversación tipo es solo de los bocetos.
+        return datos.paraPantalla().chat.map {
             BurbujaChat(id: $0.id, autor: $0.autor, contenido: $0.contenido, leidoPorCliente: true, createdAt: $0.createdAt)
         }
     }

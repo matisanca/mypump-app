@@ -16,6 +16,8 @@ struct RevisionView: View {
 
     private var revision: ModeloRevision? { modelo.conMuestras ? nil : modelo.revision }
     private var modeloFotos: ModeloFotos? { modelo.conMuestras ? nil : modelo.fotos }
+    /// Sin cuenta: las muestras en los bocetos; la demo, como la web, sin fotos, check ni peso (Mi Día trae su semilla).
+    private var muestras: Muestras { datos.paraPantalla() }
     private var salud: ModeloSalud? { modelo.conMuestras ? nil : modelo.salud }
 
     var body: some View {
@@ -118,13 +120,13 @@ struct RevisionView: View {
     }
 
     private var fotos: some View {
-        FotosSemana(modelo: modeloFotos, muestras: datos.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(datos.salud))
+        FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(muestras.salud))
             .id("fotos")
     }
     private var check: some View {
-        CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : datos.checkin).id("check")
+        CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : muestras.checkin).id("check")
     }
-    private var peso: some View { PesoTarjeta(revision: revision, saludMuestra: datos.salud).id("peso") }
+    private var peso: some View { PesoTarjeta(revision: revision, saludMuestra: muestras.salud).id("peso") }
     /// Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar). Sin cuenta no hay.
     @ViewBuilder private var reloj: some View {
         if let salud { MiRelojView(modelo: salud).id("reloj") }
@@ -137,7 +139,7 @@ struct RevisionView: View {
     private var muestraMiDia: MuestrasExtra.MiDia {
         if modelo.esDemo { return MuestrasExtra.demo }
         if DemoUI.lleno { return MuestrasExtra.lleno }
-        return MuestrasExtra.MiDia(racha: datos.racha, habitos: datos.habitos, adherencia: datos.adherencia)
+        return MuestrasExtra.MiDia(racha: muestras.racha, habitos: muestras.habitos, adherencia: muestras.adherencia)
     }
 
     /// "Semana del 12 al 18 de octubre" (de lunes a domingo).
