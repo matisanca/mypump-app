@@ -327,24 +327,36 @@ private struct Cabecera: View {
         let kcalP = (objetivo.prot ?? 0) * 4, kcalC = (objetivo.carb ?? 0) * 4, kcalG = (objetivo.fat ?? 0) * 9
         let total = max(kcalP + kcalC + kcalG, 1)
         let delta = (objetivo.kcal ?? 0) > 0 ? ((elegidas.kcal ?? 0) - (objetivo.kcal ?? 0)) / (objetivo.kcal ?? 1) * 100 : 0
+        let anillo = ZStack {
+            AnilloMacros(partes: [(kcalP / total, .corazon), (kcalC / total, .alerta), (kcalG / total, .sueno)])
+            VStack(spacing: 0) {
+                Text(Int(objetivo.kcal ?? 0), format: .number).font(.numeroGrande).contentTransition(.numericText())
+                    .minimumScaleFactor(0.6).lineLimit(1)
+                Text("kcal por día").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 14)
+        }
+        .frame(width: 132, height: 132)
+        .accessibilityElement(children: .combine)
+        let macros = [("Proteínas", objetivo.prot, kcalP / total, Color.corazon), ("Carbos", objetivo.carb, kcalC / total, Color.alerta),
+                      ("Grasas", objetivo.fat, kcalG / total, Color.sueno)]
         VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 20) {
-                ZStack {
-                    AnilloMacros(partes: [(kcalP / total, .corazon), (kcalC / total, .alerta), (kcalG / total, .sueno)])
-                    VStack(spacing: 0) {
-                        Text(Int(objetivo.kcal ?? 0), format: .number).font(.numeroGrande).contentTransition(.numericText())
-                            .minimumScaleFactor(0.6).lineLimit(1)
-                        Text("kcal por día").font(.caption).foregroundStyle(.secondary)
+            // Anillo y macros lado a lado si entran sin cortar; si no (pantallas angostas, letra grande), uno arriba
+            // del otro con los macros en tres columnas.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 20) {
+                    anillo
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(macros, id: \.0) { FilaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
                     }
-                    .padding(.horizontal, 14)
                 }
-                .frame(width: 132, height: 132)
-                .accessibilityElement(children: .combine)
-                VStack(alignment: .leading, spacing: 12) {
-                    FilaMacro(nombre: "Proteínas", gramos: objetivo.prot, porcentaje: kcalP / total, color: .corazon)
-                    FilaMacro(nombre: "Carbos", gramos: objetivo.carb, porcentaje: kcalC / total, color: .alerta)
-                    FilaMacro(nombre: "Grasas", gramos: objetivo.fat, porcentaje: kcalG / total, color: .sueno)
+                VStack(spacing: 18) {
+                    anillo
+                    HStack(alignment: .top, spacing: 10) {
+                        ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
             HStack(spacing: 8) {
                 Image(systemName: abs(delta) <= 5 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
@@ -403,6 +415,29 @@ private struct FilaMacro: View {
             Spacer(minLength: 4)
             Text("\(Int(gramos ?? 0)) g").font(.numeroMediano).monospacedDigit()
         }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Un macro en columna (cabecera angosta): nombre, gramos grandes y el porcentaje de las kcal.
+private struct ColumnaMacro: View {
+    let nombre: String
+    let gramos: Double?
+    let porcentaje: Double
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 5) {
+                Circle().fill(color).frame(width: 8, height: 8)
+                Text(nombre).font(.caption.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Text("\(Int(gramos ?? 0)) g").font(.numeroMediano).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            Text("\(Int((porcentaje * 100).rounded())) % kcal").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(color.opacity(0.08), in: .rect(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
