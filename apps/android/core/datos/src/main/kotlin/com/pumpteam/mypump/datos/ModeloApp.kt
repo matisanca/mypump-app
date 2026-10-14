@@ -148,6 +148,14 @@ class ModeloApp(
     private val _entreno = MutableStateFlow<ModeloEntreno?>(null)
     val entreno: StateFlow<ModeloEntreno?> = _entreno.asStateFlow()
 
+    /**
+     * Salud, recuperación y Mi reloj (no existen en la demo ni sin cuenta). Se crea con la cuenta, arranca al terminar
+     * [cargar] y sincroniza en [alVolverAPrimerPlano]; la fuente del sistema la pone `:app` en
+     * [ModeloSalud.fuenteDelSistema].
+     */
+    private val _salud = MutableStateFlow<ModeloSalud?>(null)
+    val salud: StateFlow<ModeloSalud?> = _salud.asStateFlow()
+
     /** El catálogo de ejercicios que llegó del servidor (o el guardado de la última vez). */
     private var catalogo: CatalogoEjercicios? = null
 
@@ -261,6 +269,8 @@ class ModeloApp(
         _revision.value = null
         _fotos.value = null
         _progreso.value = null
+        _salud.value?.cancelarEspera()
+        _salud.value = null
         _entreno.value = null
     }
 
@@ -278,6 +288,8 @@ class ModeloApp(
         _revision.value = ModeloRevision(cliente, t, cola, alcance)
         _fotos.value = ModeloFotos(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
+        _salud.value?.cancelarEspera()
+        _salud.value = ModeloSalud(cliente, t, almacen = preferencias, alcance = alcance)
         // Los avisos llegan desde el hilo de la cola: los StateFlow se pueden tocar desde cualquier hilo y así el orden se
         // conserva (en iOS se pasa al principal con un Task por aviso).
         alcance.launch {
@@ -415,6 +427,8 @@ class ModeloApp(
         }
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
+        // Salud: sus lecturas, y con la salud del sistema conectada los 7 días y el historial pendiente (sin frenar la carga).
+        _salud.value?.let { s -> alcance.launch { s.alAbrir() } }
     }
 
     /** Volvió la red (el monitor de conectividad): sale lo pendiente y, si se mostraba la copia guardada, se trae todo. */
@@ -450,6 +464,7 @@ class ModeloApp(
         outbox?.drenar()
         _chat.value?.sondear()
         _fotos.value?.drenar()
+        _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)
         _entreno.value?.alVolverAPrimerPlano()
     }
 
