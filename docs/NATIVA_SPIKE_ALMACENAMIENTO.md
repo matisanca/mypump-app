@@ -115,9 +115,9 @@ La 2.0.0 (100) de debug encima de la Capacitor 1.0.12 (18) de debug, compilada d
 3. La nativa encima (misma clave de debug: update real), con red. Después un segundo y un tercer arranque, y la
    Capacitor otra vez encima (plan B).
 
-| Qué | Resultado (corrida 5554, `nativa-evidencia/migracion-android/20261014-153011`) |
+| Qué | Resultado (corrida 5980, `nativa-evidencia/migracion-android/20261014-154010`) |
 |---|---|
-| Fase L | token adoptado, cola 6, por validar 2, estacionadas 1, anon 1: 18 claves leídas en ~1 s (con el 1 MB) |
+| Fase L | token adoptado, cola 6, por validar 2, estacionadas 1, anon 1: 18 claves leídas en 1-1,5 s (con el 1 MB) |
 | Fase R | cola 1, para revisar 1 (el día que no existe), no resuelve 1 (el token rotado), **recibo confirmado** |
 | Escritura de vuelta | borrada 4 (la cola y los 3 cachés de sesión), marca ok; ya estaba en el leveldb al mirarlo |
 | Segundo arranque | **escritura confirmada 1**, nada nuevo (ya en el libro 2); la base, igual |
@@ -140,8 +140,10 @@ Del arranque a la escritura de vuelta: 6 s. 24/24 chequeos en el informe.
   proceso, la escritura de vuelta no estaba en el disco a los 15 s. Por eso se confirma en el arranque siguiente.
 - `evaluateJavascript` pasa los textos a UTF-8: un surrogate suelto llegaría roto. La lectura firma cada valor en
   JavaScript y devuelve JSON en ASCII (`\uXXXX`) por tramos; del lado de Kotlin la firma recalculada tiene que dar igual.
-- Entreno (Android e iOS) restaura el descanso que trajo la migración y DESPUÉS cambia al día que se veía en la
-  Capacitor; `cambiarDia` lo detiene. La sesión llega bien; el descanso en curso se pierde si los días no coinciden.
+- Entreno restauraba el descanso que trajo la migración y DESPUÉS pasaba al día que se veía en la Capacitor, y
+  `cambiarDia` lo detiene: el descanso en curso se perdía si los días no coincidían. Arreglado en las dos (iOS 5eb8738,
+  Android a0b915a): primero el día y después el descanso, como la web al abrir. Desde afuera no se ve (restaurarlo borra
+  lo guardado, como en la web): lo cubre `loQueDejaLaMigracionSeLeeEntero` en los dos.
 
 ## Lo que falta
 

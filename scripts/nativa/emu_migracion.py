@@ -443,9 +443,10 @@ def verificar(salida):
             antes_r.get("sesionesVigentes") == 1 and antes_r.get("descansoVigente") is True
             and (sesiones.get(plan["dia"]) or {}).get("sesionId") == plan.get("sesion"),
             f"recibo {antes_r.get('sesionesVigentes')} sesión / descanso {antes_r.get('descansoVigente')}; Entreno {list(sesiones)}")
-    # Hasta el 14-oct aplicarLegado restauraba el descanso y DESPUÉS pasaba al día visto, que lo detiene (iOS 5eb8738).
-    chequeo("Entreno: el descanso en curso sigue después de pasar al día que se veía en la Capacitor", descanso_entreno is not None,
-            f"{descanso_entreno}")
+    # Que el descanso SIGA corriendo en Entreno no se ve desde acá: como en la web, restaurarlo borra lo guardado
+    # (entreno-descanso.json) y vive en memoria hasta el próximo tick de la pantalla. Lo cubre
+    # EntrenoLegadoTest.loQueDejaLaMigracionSeLeeEntero (el orden día → descanso, iOS 5eb8738).
+    del descanso_entreno
     if alm_v:
         chequeo("Capacitor reinstalada encima: sin la cola de la cuenta ni los cachés de sesión, con la marca",
                 alm_v.get("mypump_outbox_<TOKEN>", {}).get("ops", 0) == 0 and not any(k.startswith("mypump_sesion_<TOKEN>") for k in alm_v)
