@@ -54,6 +54,12 @@ solo el día que exista la RPC.
   la Fase L no escribe ni borra si no encuentra el almacenamiento.
 - **Con la 2.0.0 (101): OK.** Entró sola, recibo confirmado con los conteos iguales, escritura de vuelta confirmada en
   el arranque siguiente, push registrado sin duplicar. Detalle en la bitácora de `NATIVA_ESTADO.md`.
+- **Apple Salud desde el iPhone real:** a las 17:25 UTC la 101 ya había escrito 22 filas de `mypump_salud_diaria`
+  (pasos, distancia y pisos, los 7 días). Son los mismos tipos que mandaba la Capacitor: la cuenta de Mati nunca tuvo
+  sueño, pulso ni variabilidad, porque no usa reloj.
+- **Universal link:** en el simulador no se puede probar. El build local va firmado con `FAKETEAMID`, y el AASA del
+  sitio habilita solo `7H22AXLUS4.com.pumpteam.mypump`, así que el link abre Safari. Queda para el iPhone: tocar el
+  link de acceso en WhatsApp.
 - **Herramientas que sirvieron:** `xcrun devicectl device info files` / `device copy from --domain-type
   appDataContainer` leen el contenedor de una app de TestFlight. `log collect` de un iPhone pide root. La
   invitación interna se acepta con el código de canje que muestra la página de Apple en la Mac, sin tocar el link
