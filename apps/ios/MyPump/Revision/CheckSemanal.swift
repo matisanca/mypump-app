@@ -1,38 +1,37 @@
 import SwiftUI
 import MyPumpModelos
+import MyPumpReglas
+import MyPumpDatos
 
 /// Check de la semana (REV-06): cuatro escalas de 1 a 5 y una nota. Cada escala es una fila de botones redondos con
 /// sus extremos rotulados ("muy baja → excelente"); el botón dice qué falta en vez de quedar gris sin explicación.
+/// Sale por la cola (`ModeloRevision.enviarCheckin`); en la demo y en los bocetos queda en la pantalla.
 struct CheckSemanal: View {
-    let guardado: CheckinSemana?
+    /// El modelo real, o nil con las muestras.
+    let revision: ModeloRevision?
+    let muestra: CheckinSemana?
     @State private var valores: [String: Int] = [:]
     @State private var nota = ""
-    @State private var enviado = false
-    @State private var cargado = false
+    /// El cliente tocó algo: lo que llegue del servidor ya no pisa el borrador.
+    @State private var editado = false
+    @State private var enviadoMuestra = false
+    @State private var envios = 0
+    @State private var aviso: String?
     @FocusState private var escribiendo: Bool
 
-    struct Metrica: Identifiable {
-        let clave: String
-        let nombre: String
-        let icono: String
-        let color: Color
-        let bajo: String
-        let alto: String
-        var id: String { clave }
-    }
-
-    static let metricas = [
-        Metrica(clave: "energia", nombre: "Energía", icono: "bolt.fill", color: .alerta, bajo: "muy baja", alto: "excelente"),
-        Metrica(clave: "descanso", nombre: "Descanso", icono: "moon.zzz.fill", color: .sueno, bajo: "dormí mal", alto: "dormí bien"),
-        Metrica(clave: "hambre", nombre: "Hambre", icono: "fork.knife", color: .corazon, bajo: "sin hambre", alto: "mucha"),
-        Metrica(clave: "adherencia", nombre: "Adherencia", icono: "target", color: .marcaTexto, bajo: "me costó", alto: "la seguí"),
+    /// Ícono y color de cada escala (las claves y los textos salen de `CheckinSemanal.metricas`, como en la web).
+    private static let estilo: [String: (icono: String, color: Color)] = [
+        "energia": ("bolt.fill", .alerta), "descanso": ("moon.zzz.fill", .sueno),
+        "hambre": ("fork.knife", .corazon), "adherencia": ("target", .marcaTexto),
     ]
 
-    private var faltan: [String] { Self.metricas.filter { valores[$0.clave] == nil }.map(\.nombre) }
+    private var enviado: Bool { revision?.checkinEnviado ?? (enviadoMuestra || (muestra?.energia ?? 0) > 0) }
+    private var faltan: String? { CheckinSemanal.faltan(valores) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.s) {
-            EncabezadoSeccion(titulo: "Check de la semana", detalle: enviado ? nil : "\(4 - faltan.count)/4")
+            EncabezadoSeccion(titulo: "Check de la semana",
+                              detalle: enviado ? nil : "\(CheckinSemanal.metricas.count - CheckinSemanal.metricas.filter { (valores[$0.clave] ?? 0) == 0 }.count)/4")
                 .overlay(alignment: .trailing) {
                     if enviado {
                         Label("Enviado", systemImage: "checkmark.circle.fill")
@@ -48,11 +47,18 @@ struct CheckSemanal: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                ForEach(Self.metricas) { m in
-                    EscalaCinco(metrica: m, valor: Binding(get: { valores[m.clave] }, set: { valores[m.clave] = $0 }))
+                ForEach(CheckinSemanal.metricas, id: \.clave) { m in
+                    EscalaCinco(metrica: m, icono: Self.estilo[m.clave]?.icono ?? "circle",
+                                color: Self.estilo[m.clave]?.color ?? .secondary,
+                                valor: Binding(get: { valores[m.clave] }, set: {
+                                    valores[m.clave] = $0
+                                    editado = true
+                                    aviso = nil
+                                }))
                 }
 
-                TextField("Algo que quieras contarme (opcional)", text: $nota, axis: .vertical)
+                TextField("Algo que quieras contarme (opcional)", text: Binding(get: { nota }, set: { nota = $0; editado = true }),
+                          axis: .vertical)
                     .lineLimit(2...5)
                     .focused($escribiendo)
                     .padding(.horizontal, 14)
@@ -60,17 +66,15 @@ struct CheckSemanal: View {
                     .background(Color.campo, in: .rect(cornerRadius: Radio.control, style: .continuous))
 
                 VStack(spacing: Espacio.xs) {
-                    Button {
-                        escribiendo = false
-                        withAnimation(.snappy) { enviado = true }
-                    } label: {
+                    Button(action: enviar) {
                         Text(enviado ? "Actualizar mi check" : "Enviar mi check")
                     }
                     .buttonStyle(BotonMarca())
-                    .disabled(!faltan.isEmpty)
-                    .sensoryFeedback(.success, trigger: enviado) { _, nuevo in nuevo }
-                    if !faltan.isEmpty {
-                        Text("Faltan: \(faltan.joined(separator: ", "))")
+                    .disabled(faltan != nil)
+                    .sensoryFeedback(.success, trigger: envios)
+                    .accessibilityIdentifier("enviar-check")
+                    if let texto = aviso ?? faltan {
+                        Text(texto)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .contentTransition(.opacity)
@@ -81,31 +85,53 @@ struct CheckSemanal: View {
             .tarjeta()
         }
         .animation(.snappy, value: faltan)
+        .animation(.snappy, value: enviado)
+        // Lo guardado (o lo que se acaba de mandar) se muestra mientras el cliente no haya tocado nada.
+        .onChange(of: revision?.checkin, initial: true) { _, c in
+            guard !editado, let c else { return }
+            valores = c.valores
+            nota = c.nota
+        }
         .onAppear {
-            guard !cargado else { return }
-            cargado = true
-            if let g = guardado, g.energia != nil {
-                valores = ["energia": g.energia, "descanso": g.descanso, "hambre": g.hambre, "adherencia": g.adherencia]
-                    .compactMapValues { $0 }
-                nota = g.nota ?? ""
-                enviado = true
+            guard revision == nil, !editado, let m = muestra, m.energia != nil else { return }
+            valores = ["energia": m.energia, "descanso": m.descanso, "hambre": m.hambre, "adherencia": m.adherencia].compactMapValues { $0 }
+            nota = m.nota ?? ""
+        }
+    }
+
+    private func enviar() {
+        escribiendo = false
+        guard let revision else {
+            enviadoMuestra = true
+            envios += 1
+            return
+        }
+        let check = Checkin(valores: valores, nota: nota)
+        Task {
+            if let falta = await revision.enviarCheckin(check) {
+                aviso = falta
+            } else {
+                editado = false
+                envios += 1
             }
         }
     }
 }
 
-/// Una escala de 1 a 5: cinco círculos de 44 pt; el elegido, en lima.
+/// Una escala de 1 a 5: cinco círculos de 44 pt; el elegido, en lima. Tocar el elegido lo borra.
 private struct EscalaCinco: View {
-    let metrica: CheckSemanal.Metrica
+    let metrica: CheckinSemanal.Metrica
+    let icono: String
+    let color: Color
     @Binding var valor: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.xs) {
-            Label(metrica.nombre, systemImage: metrica.icono)
+            Label(metrica.etiqueta, systemImage: icono)
                 .font(.subheadline.weight(.semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.primary)
-                .labelStyle(IconoTeñido(color: metrica.color))
+                .labelStyle(IconoTeñido(color: color))
             HStack(spacing: 0) {
                 ForEach(1...5, id: \.self) { n in
                     let elegido = valor == n
@@ -121,7 +147,7 @@ private struct EscalaCinco: View {
                     }
                     .buttonStyle(.plain)
                     .frame(maxWidth: .infinity)
-                    .accessibilityLabel("\(metrica.nombre): \(n) de 5")
+                    .accessibilityLabel("\(metrica.etiqueta): \(n) de 5")
                     .accessibilityAddTraits(elegido ? .isSelected : [])
                 }
             }

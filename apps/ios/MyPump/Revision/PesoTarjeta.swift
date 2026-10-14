@@ -1,13 +1,21 @@
 import SwiftUI
 import Charts
 import MyPumpModelos
+import MyPumpReglas
+import MyPumpDatos
 
 /// Peso corporal (REV-07): la media de 7 días es lo que importa, así que va grande; el gráfico muestra los pesos del
-/// día tenues y la media como línea con degradado. Abajo, la carga del día y la tendencia contra la semana pasada.
+/// día tenues y la media como línea con degradado. Abajo, la carga del día (30-300 kg, por la cola) y la tendencia
+/// contra la semana pasada. Las cuentas son las de la web (`PesoCorporal`).
 struct PesoTarjeta: View {
-    let salud: [FilaSalud]
+    /// El modelo real, o nil con las muestras (no se guarda nada).
+    let revision: ModeloRevision?
+    let saludMuestra: [FilaSalud]
     @State private var entrada = ""
     @State private var guardados = 0
+    @State private var errores = 0
+    @State private var invalido = false
+    @State private var precargado = false
     @FocusState private var escribiendo: Bool
 
     struct Punto: Identifiable {
@@ -17,34 +25,17 @@ struct PesoTarjeta: View {
         var id: Date { fecha }
     }
 
-    /// Un peso por fecha (gana la carga manual sobre la del reloj), ordenado, con su media móvil de 7 días.
-    private var serie: [Punto] {
-        var porFecha: [String: FilaSalud] = [:]
-        for f in salud where f.tipo == "peso_kg" && (f.valor ?? 0) > 0 {
-            if let previo = porFecha[f.fecha], previo.fuente == "manual", f.fuente != "manual" { continue }
-            porFecha[f.fecha] = f
-        }
-        let crudos = porFecha.values.compactMap { f -> (Date, Double)? in
-            guard let d = Fechas.dia(f.fecha), let v = f.valor else { return nil }
-            return (d, v)
-        }.sorted { $0.0 < $1.0 }
-        return crudos.map { d, v in Punto(fecha: d, kg: v, media: Self.media(crudos, hasta: d) ?? v) }
-    }
-
-    /// Media de los pesos con fecha en (fin − 7 días, fin], como `_pesoMedia` de la web.
-    static func media(_ serie: [(Date, Double)], hasta fin: Date, dias: Int = 7) -> Double? {
-        guard let inicio = Calendar.current.date(byAdding: .day, value: -dias, to: fin) else { return nil }
-        let vals = serie.filter { $0.0 > inicio && $0.0 <= fin }.map(\.1)
-        return vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)
-    }
+    private var serie: [PesoCorporal.Punto] { revision?.serieDePeso ?? PesoCorporal.serie(saludMuestra) }
 
     var body: some View {
         let s = serie
-        let crudos = s.map { ($0.fecha, $0.kg) }
-        let hoy = Calendar.current.startOfDay(for: .now)
-        let m7 = Self.media(crudos, hasta: hoy)
-        let m7previa = Calendar.current.date(byAdding: .day, value: -7, to: hoy).flatMap { Self.media(crudos, hasta: $0) }
-        let deltaG = m7.flatMap { a in m7previa.map { b in Int(((a - b) * 1000).rounded()) } }
+        let hoy = FechaLocal.hoy()
+        let media7 = PesoCorporal.media(s, hasta: hoy, dias: 7)
+        let deltaG = PesoCorporal.deltaSemanal(s, hoy: hoy)
+        let pesoDeHoy = s.last { $0.fecha == hoy }
+        let puntos = zip(s, PesoCorporal.lineaMedia(s)).compactMap { p, m -> Punto? in
+            Fechas.dia(p.fecha).map { Punto(fecha: $0, kg: p.kg, media: m.kg) }
+        }
 
         VStack(alignment: .leading, spacing: Espacio.s) {
             EncabezadoSeccion(titulo: "Peso corporal")
@@ -52,14 +43,14 @@ struct PesoTarjeta: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Media de 7 días").textoCeja()
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(m7.map { $0.kg } ?? "—").font(.numeroGrande).contentTransition(.numericText())
+                        Text(media7.map(PesoCorporal.kg) ?? "—").font(.numeroGrande).contentTransition(.numericText())
                         Text("kg").font(.title3.weight(.semibold)).foregroundStyle(.secondary)
                     }
                     if let deltaG {
                         // El color es neutro: subir o bajar no es bueno ni malo sin el objetivo, y el rango objetivo
                         // no se le muestra al cliente (lo interpreta Mati).
                         Label {
-                            Text("Esta semana: \(Text(Self.textoDelta(deltaG)).bold().foregroundStyle(.primary)) vs la semana pasada")
+                            Text("Esta semana: \(Text(PesoCorporal.textoDelta(deltaG)).bold().foregroundStyle(.primary)) vs la semana pasada")
                         } icon: {
                             Image(systemName: deltaG > 0 ? "arrow.up.right" : (deltaG < 0 ? "arrow.down.right" : "equal"))
                                 .fontWeight(.bold)
@@ -74,15 +65,21 @@ struct PesoTarjeta: View {
                 }
                 .accessibilityElement(children: .combine)
 
-                if s.count >= 2 {
-                    grafico(s).frame(height: 168)
+                if puntos.count >= 2 {
+                    grafico(puntos).frame(height: 168)
                 }
 
                 Divider()
 
-                cargaDeHoy(hoyYa: s.last.map { Calendar.current.isDateInToday($0.fecha) } ?? false)
+                cargaDeHoy(hoyYa: pesoDeHoy != nil)
             }
             .tarjeta()
+        }
+        // Si ya cargó el de hoy, el campo lo muestra para corregirlo (como la web).
+        .onChange(of: pesoDeHoy?.kg, initial: true) { _, kg in
+            guard !precargado, let kg else { return }
+            precargado = true
+            entrada = PesoCorporal.kg(kg)
         }
     }
 
@@ -144,29 +141,62 @@ struct PesoTarjeta: View {
                         .keyboardType(.decimalPad)
                         .focused($escribiendo)
                         .font(.body.weight(.semibold).monospacedDigit())
+                        .onChange(of: entrada) { _, _ in invalido = false }
+                        .accessibilityIdentifier("peso-hoy")
                     Text("kg").foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 14)
                 .frame(minHeight: 44)
                 .background(Color.campo, in: .capsule)
-                Button(hoyYa ? "Corregir" : "Guardar") {
-                    escribiendo = false
-                    entrada = ""
-                    guardados += 1
-                }
-                .buttonStyle(BotonMarca(compacto: true))
-                .disabled(Double(entrada.replacingOccurrences(of: ",", with: ".")).map { $0 < 30 || $0 > 300 } ?? true)
-                .sensoryFeedback(.success, trigger: guardados)
+                .overlay { Capsule().strokeBorder(Color.peligro, lineWidth: invalido ? 1.5 : 0) }
+                .modifier(Sacudida(veces: CGFloat(errores)))
+                Button(hoyYa ? "Corregir" : "Guardar", action: guardar)
+                    .buttonStyle(BotonMarca(compacto: true))
+                    .disabled(entrada.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .sensoryFeedback(.success, trigger: guardados)
+                    .sensoryFeedback(.error, trigger: errores)
+                    .accessibilityIdentifier("guardar-peso")
             }
-            Text("En ayunas al despertar, siempre en la misma condición.")
+            Text(invalido ? "Tiene que estar entre 30 y 300 kg." : "En ayunas al despertar, siempre en la misma condición.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(invalido ? Color.peligro : Color.secondary)
+        }
+        .animation(.snappy, value: invalido)
+    }
+
+    private func guardar() {
+        let texto = entrada
+        guard let revision else {
+            // Muestras: se valida igual, pero no se guarda nada.
+            if PesoCorporal.leer(texto) == nil { rechazar() } else { escribiendo = false; guardados += 1 }
+            return
+        }
+        Task {
+            if await revision.guardarPeso(texto) {
+                escribiendo = false
+                if let v = PesoCorporal.leer(texto) { entrada = PesoCorporal.kg(v) }
+                guardados += 1
+            } else {
+                rechazar()
+            }
         }
     }
 
-    static func textoDelta(_ g: Int) -> String {
-        let signo = g > 0 ? "+" : (g < 0 ? "−" : "")
-        let abs = Swift.abs(g)
-        return abs >= 1000 ? "\(signo)\((Double(abs) / 1000).kg) kg" : "\(signo)\(abs) g"
+    private func rechazar() {
+        invalido = true
+        withAnimation(.linear(duration: 0.35)) { errores += 1 }
+    }
+}
+
+/// Un "no" con la cabeza: el campo se sacude cuando el valor no sirve.
+private struct Sacudida: GeometryEffect {
+    var veces: CGFloat
+    var animatableData: CGFloat {
+        get { veces }
+        set { veces = newValue }
+    }
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(CGAffineTransform(translationX: 6 * sin(veces * .pi * 4), y: 0))
     }
 }

@@ -6,6 +6,8 @@ import UIKit
 /// reducida a JPEG como la web (`_fotoABase64Reducida`: lado mayor ≤ `maxPx`, calidad 0,85, sin metadatos).
 struct BotonFoto<Etiqueta: View>: View {
     let maxPx: CGFloat
+    /// Calidad del JPEG: 0,85 para la IA (plato, etiqueta); las fotos de progreso van a 0,7 como en la web.
+    var calidad: CGFloat = 0.85
     let alElegir: (Data) -> Void
     @ViewBuilder let etiqueta: () -> Etiqueta
 
@@ -28,7 +30,7 @@ struct BotonFoto<Etiqueta: View>: View {
         .fullScreenCover(isPresented: $camara) {
             Camara { imagen in
                 camara = false
-                if let imagen, let jpeg = FotoReducida.jpeg(imagen, maxPx: maxPx) { alElegir(jpeg) }
+                if let imagen, let jpeg = FotoReducida.jpeg(imagen, maxPx: maxPx, calidad: calidad) { alElegir(jpeg) }
             }
             .ignoresSafeArea()
         }
@@ -36,7 +38,7 @@ struct BotonFoto<Etiqueta: View>: View {
             guard let nuevo else { return }
             Task {
                 if let datos = try? await nuevo.loadTransferable(type: Data.self), let imagen = UIImage(data: datos),
-                   let jpeg = FotoReducida.jpeg(imagen, maxPx: maxPx) {
+                   let jpeg = FotoReducida.jpeg(imagen, maxPx: maxPx, calidad: calidad) {
                     alElegir(jpeg)
                 }
                 item = nil

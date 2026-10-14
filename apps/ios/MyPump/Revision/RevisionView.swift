@@ -1,12 +1,20 @@
 import SwiftUI
 import MyPumpModelos
+import MyPumpReglas
+import MyPumpDatos
 
 /// Revisión: lo de la semana (fotos, check, peso), el reloj y, al final, Mi Día (lo de todos los días). Mismo orden
-/// que la web (REV-01). En iPad, en dos columnas: lo semanal a la izquierda, lo diario a la derecha.
+/// que la web (REV-01). En iPad, en dos columnas: lo semanal a la izquierda, lo diario a la derecha. Con una cuenta
+/// sale de `ModeloRevision` y `ModeloFotos`; en la demo y en los bocetos, de las muestras.
 struct RevisionView: View {
     let datos: Muestras
+    @State private var modelo = Proveedor.modelo
     @Environment(\.horizontalSizeClass) private var claseAncho
+    @Environment(Navegacion.self) private var navegacion: Navegacion?
     @State private var misDatos = false
+
+    private var revision: ModeloRevision? { modelo.conMuestras ? nil : modelo.revision }
+    private var modeloFotos: ModeloFotos? { modelo.conMuestras ? nil : modelo.fotos }
 
     var body: some View {
         NavigationStack {
@@ -34,11 +42,28 @@ struct RevisionView: View {
                     .padding(.bottom, Espacio.xl)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                // Tirar para actualizar: el check, el peso, Mi Día y las fotos (sin cuenta no hay nada que traer).
+                .refreshable {
+                    guard let revision else { return }
+                    async let r: Void = revision.cargarRevision()
+                    async let d: Void = revision.cargarMiDia()
+                    async let f: Void = modeloFotos?.cargar() ?? ()
+                    _ = await (r, d, f)
+                }
                 .task {
                     // Bocetos: `-ir peso` (o check, reloj, midia, dias) abre desplazado hasta esa sección.
                     guard let ancla = DemoUI.ir else { return }
                     try? await Task.sleep(for: .milliseconds(350))
                     lector.scrollTo(ancla, anchor: .top)
+                }
+                // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
+                .onChange(of: navegacion?.anclaRevision, initial: true) { _, ancla in
+                    guard let ancla else { return }
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(300))
+                        withAnimation(.snappy) { lector.scrollTo(ancla, anchor: .top) }
+                        navegacion?.anclaRevision = nil
+                    }
                 }
             }
             .background(Color.fondo)
@@ -55,19 +80,31 @@ struct RevisionView: View {
             .navigationDestination(isPresented: $misDatos) { MisDatosView(datos: datos) }
         }
         .onAppear { if DemoUI.abrir == "misdatos" { misDatos = true } }
+        .onChange(of: navegacion?.misDatos ?? false, initial: true) { _, abrir in
+            guard abrir else { return }
+            misDatos = true
+            navegacion?.misDatos = false
+        }
     }
 
-    private var fotos: some View { FotosSemana(fotos: datos.fotos).id("fotos") }
-    private var check: some View {
-        CheckSemanal(guardado: DemoUI.lleno ? MuestrasExtra.checkin : datos.checkin).id("check")
+    private var fotos: some View {
+        FotosSemana(modelo: modeloFotos, muestras: datos.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(datos.salud))
+            .id("fotos")
     }
-    private var peso: some View { PesoTarjeta(salud: datos.salud).id("peso") }
+    private var check: some View {
+        CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : datos.checkin).id("check")
+    }
+    private var peso: some View { PesoTarjeta(revision: revision, saludMuestra: datos.salud).id("peso") }
     private var reloj: some View { MiReloj().id("reloj") }
     private var miDia: some View {
-        MiDia(racha: DemoUI.lleno ? MuestrasExtra.racha : datos.racha,
-              habitos: DemoUI.lleno ? MuestrasExtra.habitos : datos.habitos,
-              adherencia: DemoUI.lleno ? MuestrasExtra.adherencia : datos.adherencia)
-            .id("midia")
+        MiDia(revision: revision, muestra: muestraMiDia).id("midia")
+    }
+
+    /// La demo de la web viene sembrada (racha 3); los bocetos llenos, con 30 días de historia; si no, las muestras.
+    private var muestraMiDia: MuestrasExtra.MiDia {
+        if modelo.esDemo { return MuestrasExtra.demo }
+        if DemoUI.lleno { return MuestrasExtra.lleno }
+        return MuestrasExtra.MiDia(racha: datos.racha, habitos: datos.habitos, adherencia: datos.adherencia)
     }
 
     /// "Semana del 12 al 18 de octubre" (de lunes a domingo).

@@ -1,17 +1,28 @@
 import SwiftUI
 import MyPumpModelos
+import MyPumpReglas
+import MyPumpDatos
 
-/// Mi Día: la racha, cómo fue hoy (entrenamiento, hábitos ✓/✗ y agua) y los últimos 30 días (DIA-01…05). Cierra con
-/// el respaldo científico (GEN-09).
+/// Mi Día: la racha, cómo fue hoy (entrenamiento, hábitos ✓/✗ y agua) y los últimos 30 días (DIA-01…06). Cierra con
+/// el respaldo científico (GEN-09). Con una cuenta sale de `ModeloRevision` (por la cola; lo pendiente gana sobre el
+/// servidor); en la demo y en los bocetos se toca igual pero no se guarda nada.
 struct MiDia: View {
-    let racha: Racha?
-    let habitos: HabitosDia?
-    let adherencia: [DiaAdherencia]
+    /// El modelo real, o nil con las muestras.
+    let revision: ModeloRevision?
+    let muestra: MuestrasExtra.MiDia
     @Environment(\.dynamicTypeSize) private var tamañoLetra
-    @State private var entreno: String?
-    @State private var habito: [String: Bool] = [:]
-    @State private var agua = 0
-    @State private var cargado = false
+    /// Lo de hoy con las muestras (con una cuenta manda el modelo).
+    @State private var local = HabitosHoy()
+    @State private var sembrado = false
+    @State private var abierto30 = DemoUI.lleno
+
+    private var habitos: HabitosHoy { revision?.habitos ?? local }
+    private var cargado: Bool { revision?.miDiaCargado ?? true }
+    /// Lo que cambia con un toque de entrenamiento o hábito (el agua tiene su propio háptico).
+    private var firmaHabitos: String {
+        [habitos.entrenamiento ?? "-", habitos.comioSegunPlan.map(String.init) ?? "-",
+         habitos.durmioBien.map(String.init) ?? "-", habitos.cardio.map(String.init) ?? "-"].joined(separator: "|")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.s) {
@@ -24,20 +35,26 @@ struct MiDia: View {
                 EncabezadoSeccion(titulo: "Mi día", detalle: Self.hoyTexto())
             }
             VStack(spacing: Espacio.m) {
-                TarjetaRacha(racha: racha)
-                hoy
-                UltimosTreintaDias(dias: adherencia).id("dias")
+                Group {
+                    TarjetaRacha(n: revision?.racha ?? muestra.racha?.streak ?? 0,
+                                 ultimoDiaValido: revision == nil ? muestra.racha?.ultimoDiaValido : nil)
+                    hoy
+                }
+                .redacted(reason: cargado ? [] : .placeholder)
+                .allowsHitTesting(cargado)
+                UltimosTreintaDias(dias: revision == nil ? Optional(muestra.adherencia) : revision?.adherencia, abierto: $abierto30) {
+                    await revision?.cargarAdherencia()
+                }
+                .id("dias")
                 PieRespaldo(origen: .miDia)
             }
         }
         .onAppear {
-            guard !cargado else { return }
-            cargado = true
-            entreno = habitos?.entrenamiento
-            if let v = habitos?.comioSegunPlan { habito["comio"] = v }
-            if let v = habitos?.durmioBien { habito["durmio"] = v }
-            if let v = habitos?.cardio { habito["cardio"] = v }
-            agua = habitos?.vasosAgua ?? 0
+            guard !sembrado else { return }
+            sembrado = true
+            let h = muestra.habitos
+            local = HabitosHoy(entrenamiento: h?.entrenamiento, comioSegunPlan: h?.comioSegunPlan, durmioBien: h?.durmioBien,
+                               cardio: h?.cardio, vasosAgua: h?.vasosAgua ?? 0)
         }
     }
 
@@ -59,25 +76,43 @@ struct MiDia: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 Text("Hábitos").font(.headline).padding(.bottom, Espacio.xs)
-                filaHabito("comio", "Comí según el plan", "Seguiste tu dieta hoy", "fork.knife", .alerta)
+                filaHabito("comio_segun_plan", habitos.comioSegunPlan, "Comí según el plan", "Seguiste tu dieta hoy", "fork.knife", .alerta)
                 Divider().padding(.leading, 42)
-                filaHabito("durmio", "Dormí bien", "7 horas o más", "bed.double.fill", .sueno)
+                filaHabito("durmio_bien", habitos.durmioBien, "Dormí bien", "7 horas o más", "bed.double.fill", .sueno)
                 Divider().padding(.leading, 42)
-                filaHabito("cardio", "Hice cardio", "Sesión de cardio hoy", "figure.run", .corazon)
+                filaHabito("cardio", habitos.cardio, "Hice cardio", "Sesión de cardio hoy", "figure.run", .corazon)
             }
 
             vasos
         }
         .tarjeta()
-        .sensoryFeedback(.selection, trigger: entreno)
-        .sensoryFeedback(.selection, trigger: habito)
+        .sensoryFeedback(.selection, trigger: firmaHabitos)
     }
 
-    /// Entrené / Descansé / Falté. Tocar de nuevo la elegida la borra (como la web).
+    /// Entrené / Descansé / Falté o un hábito ✓/✗: tocar de nuevo lo elegido lo borra, como la web.
+    private func tocar(_ campo: String, _ valor: String) {
+        if let revision {
+            Task { await revision.tocar(campo: campo, valor: valor) }
+            return
+        }
+        switch campo {
+        case "entrenamiento": local.entrenamiento = local.entrenamiento == valor ? nil : valor
+        case "comio_segun_plan": local.comioSegunPlan = Self.alternar(local.comioSegunPlan, valor)
+        case "durmio_bien": local.durmioBien = Self.alternar(local.durmioBien, valor)
+        case "cardio": local.cardio = Self.alternar(local.cardio, valor)
+        default: break
+        }
+    }
+
+    private static func alternar(_ actual: Bool?, _ valor: String) -> Bool? {
+        let nuevo = valor == "true"
+        return actual == nuevo ? nil : nuevo
+    }
+
     private func opcion(_ clave: String, _ titulo: String, _ icono: String) -> some View {
-        let elegida = entreno == clave
+        let elegida = habitos.entrenamiento == clave
         return Button {
-            withAnimation(.snappy(duration: 0.25)) { entreno = elegida ? nil : clave }
+            tocar("entrenamiento", clave)
         } label: {
             VStack(spacing: 6) {
                 Image(systemName: icono).font(.title3).symbolEffect(.bounce, value: elegida)
@@ -87,15 +122,15 @@ struct MiDia: View {
             .frame(maxWidth: .infinity, minHeight: 66)
             .background(elegida ? Color.marca : Color.campo, in: .rect(cornerRadius: Radio.control, style: .continuous))
             .contentShape(.rect)
+            .animation(.snappy(duration: 0.25), value: elegida)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(elegida ? .isSelected : [])
     }
 
     /// Un hábito con ✓ y ✗: sin marcar, sí o no (tocar de nuevo borra).
-    private func filaHabito(_ clave: String, _ titulo: String, _ sub: String, _ icono: String, _ color: Color) -> some View {
-        let valor = habito[clave]
-        return HStack(spacing: Espacio.s) {
+    private func filaHabito(_ campo: String, _ valor: Bool?, _ titulo: String, _ sub: String, _ icono: String, _ color: Color) -> some View {
+        HStack(spacing: Espacio.s) {
             Image(systemName: icono)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(color)
@@ -105,17 +140,17 @@ struct MiDia: View {
                 Text(sub).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: Espacio.xs)
-            botonHabito(clave, si: false, valor: valor)
-            botonHabito(clave, si: true, valor: valor)
+            botonHabito(campo, si: false, valor: valor, titulo: titulo)
+            botonHabito(campo, si: true, valor: valor, titulo: titulo)
         }
         .padding(.vertical, 10)
         .accessibilityElement(children: .contain)
     }
 
-    private func botonHabito(_ clave: String, si: Bool, valor: Bool?) -> some View {
+    private func botonHabito(_ campo: String, si: Bool, valor: Bool?, titulo: String) -> some View {
         let activo = valor == si
         return Button {
-            withAnimation(.snappy(duration: 0.25)) { habito[clave] = activo ? nil : si }
+            tocar(campo, si ? "true" : "false")
         } label: {
             Image(systemName: si ? "checkmark" : "xmark")
                 .font(.system(size: 14, weight: .bold))
@@ -125,15 +160,17 @@ struct MiDia: View {
                 .symbolEffect(.bounce, value: activo)
                 .frame(width: 44, height: 44)
                 .contentShape(.circle)
+                .animation(.snappy(duration: 0.25), value: activo)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(si ? "Sí" : "No")
+        .accessibilityLabel("\(titulo): \(si ? "sí" : "no")")
         .accessibilityAddTraits(activo ? .isSelected : [])
     }
 
-    /// Agua 0-12 vasos: doce gotas que se llenan, con − y + grandes.
+    /// Agua 0-12 vasos: doce gotas que se llenan, con − y + grandes. Se guarda sola 600 ms después del último toque.
     private var vasos: some View {
-        VStack(alignment: .leading, spacing: Espacio.s) {
+        let agua = habitos.vasosAgua
+        return VStack(alignment: .leading, spacing: Espacio.s) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Agua").font(.headline)
                 Spacer()
@@ -152,6 +189,7 @@ struct MiDia: View {
                             .frame(maxWidth: .infinity)
                     }
                 }
+                .animation(.snappy(duration: 0.2), value: agua)
                 .accessibilityElement()
                 .accessibilityLabel("\(agua) de 12 vasos de agua")
                 botonAgua("plus", 1).disabled(agua == 12).accessibilityLabel("Un vaso más")
@@ -162,7 +200,11 @@ struct MiDia: View {
 
     private func botonAgua(_ icono: String, _ delta: Int) -> some View {
         Button {
-            withAnimation(.snappy(duration: 0.2)) { agua = min(12, max(0, agua + delta)) }
+            if let revision {
+                revision.cambiarAgua(delta)
+            } else {
+                local.vasosAgua = min(12, max(0, local.vasosAgua + delta))
+            }
         } label: {
             Image(systemName: icono)
                 .font(.system(size: 15, weight: .bold))
@@ -182,12 +224,14 @@ struct MiDia: View {
 
 // MARK: - Racha
 
-/// La racha (DIA-01): el número grande en Archivo, el ícono del nivel (🔥 7+, ⚡ 3+, ✨ 1+, 💤 0) y la frase de la web.
+/// La racha (DIA-01): el número grande en Archivo, el ícono del nivel (🔥 7+, ⚡ 3+, ✨ 1+, 💤 0, como
+/// `RachaTexto.icono`) y la frase de la web.
 private struct TarjetaRacha: View {
-    let racha: Racha?
+    let n: Int
+    /// Solo con las muestras: el modelo de la cuenta todavía no trae `ultimo_dia_valido`.
+    let ultimoDiaValido: String?
 
     var body: some View {
-        let n = racha?.streak ?? 0
         let nivel = Self.nivel(n)
         HStack(alignment: .center, spacing: Espacio.m) {
             VStack(alignment: .leading, spacing: 2) {
@@ -196,7 +240,7 @@ private struct TarjetaRacha: View {
                     Text("\(n)").font(.numeroGigante).contentTransition(.numericText())
                     Text(n == 1 ? "día" : "días").font(.title3.weight(.semibold)).foregroundStyle(.secondary)
                 }
-                Text(sub(n)).font(.footnote).foregroundStyle(.secondary)
+                Text(sub).font(.footnote).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             VStack(spacing: 6) {
@@ -211,16 +255,17 @@ private struct TarjetaRacha: View {
             }
         }
         .tarjeta()
+        .animation(.snappy, value: n)
         .accessibilityElement(children: .combine)
     }
 
-    private func sub(_ n: Int) -> String {
+    private var sub: String {
         switch n {
         case 0: return "Completá hoy para empezar tu racha"
         case 1: return "¡Primer día, seguí así!"
         default:
-            let f = racha?.ultimoDiaValido.flatMap(Fechas.dia)
-            return "Último día válido: \(f?.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_AR"))) ?? "—")"
+            guard let f = ultimoDiaValido.flatMap(Fechas.dia) else { return "Días seguidos cumpliendo tu plan" }
+            return "Último día válido: \(f.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_AR"))))"
         }
     }
 
@@ -237,9 +282,13 @@ private struct TarjetaRacha: View {
 // MARK: - Últimos 30 días
 
 /// Los últimos 30 días como calendario (DIA-05): lunes a domingo, cumplido en lima, parcial en lima suave, vacío en
-/// gris, y hoy con aro.
+/// gris, y hoy con aro. Se trae al abrirla (como la web: un pedido menos al entrar a Revisión).
 private struct UltimosTreintaDias: View {
-    let dias: [DiaAdherencia]
+    /// nil = todavía no se trajo.
+    let dias: [DiaAdherencia]?
+    @Binding var abierto: Bool
+    let cargar: () async -> Void
+    @State private var cargando = false
 
     private struct Celda: Identifiable {
         let fecha: Date
@@ -249,52 +298,97 @@ private struct UltimosTreintaDias: View {
     }
 
     var body: some View {
-        let validos = dias.filter(\.esValido).count
-        let (celdas, huecos) = armar()
-        let columnas = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
         VStack(alignment: .leading, spacing: Espacio.s) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Mis últimos 30 días").font(.headline)
-                Spacer()
-                Text("\(validos)/30").font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(.secondary)
+            Button {
+                withAnimation(.snappy) { abierto.toggle() }
+            } label: {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Mis últimos 30 días").font(.headline).foregroundStyle(.primary)
+                    Spacer()
+                    if let dias {
+                        Text("\(dias.filter(\.esValido).count)/30")
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(abierto ? 180 : 0))
+                }
+                .frame(minHeight: 32)
+                .contentShape(.rect)
             }
-            if dias.isEmpty {
-                Text("Sin datos aún").font(.subheadline).foregroundStyle(.secondary)
+            .buttonStyle(.plain)
+            .accessibilityHint(abierto ? "Oculta el historial" : "Muestra tu historial de adherencia")
+            .accessibilityIdentifier("ultimos-30")
+
+            if abierto {
+                Group {
+                    if let dias {
+                        if dias.isEmpty {
+                            Text("Sin datos aún").font(.subheadline).foregroundStyle(.secondary)
+                        } else {
+                            grilla(dias)
+                        }
+                    } else {
+                        HStack(spacing: Espacio.xs) {
+                            ProgressView()
+                            Text("Cargando…").font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             } else {
-                LazyVGrid(columns: columnas, spacing: 6) {
-                    ForEach(["L", "M", "X", "J", "V", "S", "D"], id: \.self) { d in
-                        Text(d).font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
-                    }
-                    ForEach(0..<huecos, id: \.self) { _ in Color.clear.frame(height: 1) }
-                    ForEach(celdas) { c in
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(fondo(c.estado))
-                            .aspectRatio(1, contentMode: .fit)
-                            .overlay {
-                                Text(c.fecha.formatted(.dateTime.day()))
-                                    .font(.caption2.weight(c.esHoy ? .bold : .medium).monospacedDigit())
-                                    .foregroundStyle(c.estado == 2 ? Color.sobreMarca : (c.estado == 1 ? Color.primary : Color.secondary))
-                                    .minimumScaleFactor(0.6)
-                            }
-                            .overlay {
-                                if c.esHoy {
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.marcaVivo, lineWidth: 2)
-                                }
-                            }
-                            .accessibilityElement()
-                            .accessibilityLabel("\(c.fecha.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_AR")))): \(c.estado == 2 ? "cumplido" : (c.estado == 1 ? "parcial" : "sin datos"))")
-                    }
-                }
-                HStack(spacing: Espacio.s) {
-                    leyenda(fondo(2), "Cumplido")
-                    leyenda(fondo(1), "Parcial")
-                    leyenda(fondo(0), "Sin datos")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text("Ver mi historial de adherencia").font(.subheadline).foregroundStyle(.secondary)
             }
         }
         .tarjeta()
+        .clipped()
+        .task(id: abierto) {
+            guard abierto, dias == nil, !cargando else { return }
+            cargando = true
+            await cargar()
+            cargando = false
+        }
+    }
+
+    private func grilla(_ dias: [DiaAdherencia]) -> some View {
+        let (celdas, huecos) = armar(dias)
+        let columnas = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+        return VStack(alignment: .leading, spacing: Espacio.s) {
+            LazyVGrid(columns: columnas, spacing: 6) {
+                ForEach(["L", "M", "X", "J", "V", "S", "D"], id: \.self) { d in
+                    Text(d).font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+                }
+                ForEach(0..<huecos, id: \.self) { _ in Color.clear.frame(height: 1) }
+                ForEach(celdas) { c in
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(fondo(c.estado))
+                        .aspectRatio(1, contentMode: .fit)
+                        .overlay {
+                            Text(c.fecha.formatted(.dateTime.day()))
+                                .font(.caption2.weight(c.esHoy ? .bold : .medium).monospacedDigit())
+                                .foregroundStyle(c.estado == 2 ? Color.sobreMarca : (c.estado == 1 ? Color.primary : Color.secondary))
+                                .minimumScaleFactor(0.6)
+                        }
+                        .overlay {
+                            if c.esHoy {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.marcaVivo, lineWidth: 2)
+                            }
+                        }
+                        .accessibilityElement()
+                        .accessibilityLabel("\(c.fecha.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_AR")))): \(c.estado == 2 ? "cumplido" : (c.estado == 1 ? "parcial" : "sin datos"))")
+                }
+            }
+            HStack(spacing: Espacio.s) {
+                leyenda(fondo(2), "Cumplido")
+                leyenda(fondo(1), "Parcial")
+                leyenda(fondo(0), "Sin datos")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
     }
 
     private func fondo(_ estado: Int) -> Color {
@@ -313,7 +407,7 @@ private struct UltimosTreintaDias: View {
     }
 
     /// Las celdas de la más vieja a hoy, y cuántos huecos van antes para que el primer día caiga en su columna.
-    private func armar() -> ([Celda], Int) {
+    private func armar(_ dias: [DiaAdherencia]) -> ([Celda], Int) {
         let filas = dias.compactMap { d -> Celda? in
             guard let f = Fechas.dia(d.fecha) else { return nil }
             let parcial = d.entrenamiento != nil || d.comioSegunPlan != nil || d.durmioBien != nil
