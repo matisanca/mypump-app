@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Todo el arranque de la migración del almacenamiento viejo (gemelo de ArranqueMigracion.swift): la 2.0.0 sale como
@@ -50,6 +51,9 @@ internal object ArranqueMigracion {
     /** Una Fase L por vez: la del arranque y la de un reintento no se pisan. */
     private val candado = Mutex()
 
+    /** Lo más que espera la marca a la Fase L (la espía leyó más de 1 MB en 5-9 s en el emulador). */
+    private const val ESPERA_ARRANQUE_MS = 20_000L
+
     fun entorno(app: Context): EntornoLegado =
         EntornoLegado(app.filesDir, LectorWebView(app.applicationContext, anotar = { RegistroLegado.anotar(app, it) }))
 
@@ -69,7 +73,15 @@ internal object ArranqueMigracion {
      */
     suspend fun arrancar(app: Context, almacen: AlmacenToken, ajustes: Preferencias, alcance: CoroutineScope, crear: () -> ModeloApp): ModeloApp {
         val entorno = entorno(app)
-        val hecha = candado.withLock { faseLocal(app, entorno, almacen, ajustes, cuentaViva = null) } != null
+        // La marca no puede quedar en pantalla para siempre si el WebView no contesta: pasado el tope se corta (la lectura
+        // es lo único que espera; lo que viene después es sin pausas y termina igual) y la Fase L se reintenta con la app
+        // abierta, ya con la cuenta viva.
+        var termino = false
+        val r = withTimeoutOrNull(ESPERA_ARRANQUE_MS) {
+            candado.withLock { faseLocal(app, entorno, almacen, ajustes, cuentaViva = null) }.also { termino = true }
+        }
+        if (!termino) RegistroLegado.anotar(app, "Fase L: pasaron ${ESPERA_ARRANQUE_MS / 1000} s, se reintenta con la app abierta")
+        val hecha = r != null
         val modelo = crear()
         alcance.launch { seguir(app, entorno, almacen, ajustes, modelo, hecha) }
         return modelo
@@ -78,6 +90,7 @@ internal object ArranqueMigracion {
     /** null = falló la lectura (se reintenta; no es lo mismo que "no había nada"). */
     private suspend fun faseLocal(app: Context, entorno: EntornoLegado, almacen: AlmacenToken, ajustes: Preferencias, cuentaViva: String?): EjecutorLegado.Resultado? =
         try {
+            val t0 = System.currentTimeMillis()
             val r = withContext(Dispatchers.IO) { EjecutorLegado.faseLocal(entorno, almacen, ajustes, cuentaViva = cuentaViva) }
             if (r.corrio) {
                 val donde = LevelDbLegado.ubicar(app.dataDir).joinToString(" + ") { LevelDbLegado.relativa(it, app.dataDir) }
@@ -85,7 +98,8 @@ internal object ArranqueMigracion {
                     app,
                     "Fase L corrida ${r.corrida}${if (r.repeticion) " (repetición)" else ""}: token ${if (r.adoptoToken) "adoptado" else "sin cambios"}, " +
                         "cola ${r.aLaCola}, por validar ${r.porValidar}, estacionadas ${r.estacionadas}, anon ${r.anon}, ya en el libro ${r.yaEnElLibro}, " +
-                        "reemplazadas ${r.reemplazadas}, escritura confirmada ${r.escrituraConfirmada ?: "no"} [$donde]",
+                        "reemplazadas ${r.reemplazadas}, escritura confirmada ${r.escrituraConfirmada ?: "no"} " +
+                        "[${r.plan?.conteos?.claves ?: 0} claves en $donde, ${System.currentTimeMillis() - t0} ms]",
                 )
             }
             r
