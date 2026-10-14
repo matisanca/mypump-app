@@ -3,14 +3,21 @@
   Qué sale del teléfono desde Android 12 (android:dataExtractionRules): la copia de Google y el pase a un teléfono
   nuevo. Lo mismo que reglas_backup.xml: el token (noBackupFilesDir + clave del Keystore) nunca viaja, y la carpeta de
   cada cuenta (MyPump/) tampoco. Las copias crudas de la migración (legado/crudo/) tampoco; el resto de legado/ sí.
+  D14: app_webview/ (la app vieja) sí, como con la Capacitor, menos sus cachés (ver reglas_backup.xml).
 -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="MyPump/" />
         <exclude domain="file" path="legado/crudo/" />
+        <exclude domain="root" path="app_webview/Default/Cache/" />
+        <exclude domain="root" path="app_webview/Default/Code Cache/" />
+        <exclude domain="root" path="app_webview/Default/GPUCache/" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="MyPump/" />
         <exclude domain="file" path="legado/crudo/" />
+        <exclude domain="root" path="app_webview/Default/Cache/" />
+        <exclude domain="root" path="app_webview/Default/Code Cache/" />
+        <exclude domain="root" path="app_webview/Default/GPUCache/" />
     </device-transfer>
 </data-extraction-rules>

@@ -16,4 +16,10 @@
 <full-backup-content>
     <exclude domain="file" path="MyPump/" />
     <exclude domain="file" path="legado/crudo/" />
+    <!-- D14: app_webview/ (la app vieja) sigue viajando, como con la Capacitor: restaurado en un teléfono nuevo, el
+         cliente entra sin pegar el link (la migración adopta el token viejo). Sus cachés no: se regeneran solas y pueden
+         pasar el tope de 25 MB de la copia, y entonces no se copia nada. -->
+    <exclude domain="root" path="app_webview/Default/Cache/" />
+    <exclude domain="root" path="app_webview/Default/Code Cache/" />
+    <exclude domain="root" path="app_webview/Default/GPUCache/" />
 </full-backup-content>

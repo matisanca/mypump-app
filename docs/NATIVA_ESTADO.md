@@ -95,6 +95,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | D9 | Borrado: link a `eliminar-datos.html` desde Mis datos, sin RPC | No hace falta tocar la base |
 | D10 | **Sin "Comí / Salté" en Dieta** (pedido de Mati, 14-oct). Se va también el consumo parcial; el anillo muestra el objetivo y cuánto suman las opciones elegidas | Le resultaba molesto al cliente. El coach deja de recibir esas marcas de los clientes con la nativa (la web las sigue teniendo) |
 | D11 | **Sin dieta usable: "Todavía no hay plan de comidas"** (la web mostraba la dieta de ejemplo de 3.200 kcal como si fuera del cliente) | Engañaba al cliente; la demo sigue mostrando el ejemplo |
+| D14 | **Android: el backup de Google sigue llevándose `app_webview/`** (la app vieja), como con la Capacitor, **menos sus cachés**. Decidido por la sesión con el "hacelo todo vos" de Mati (14-oct) | Restaurado en un teléfono nuevo, el cliente entra sin pegar el link. La copia va cifrada de punta a punta con el bloqueo de pantalla y el token de la nativa no viaja nunca. Las cachés se regeneran y podían pasar el tope de 25 MB, que deja sin copia a todo |
 | T1 | Cola, caché y swaps en **JSON con escritura atómica**, sin GRDB | Volumen chico; cero dependencias de terceros |
 | T2 | Cliente RPC propio (URLSession), sin supabase-swift | Hace falta el código HTTP para clasificar errores (aprobado 13-oct) |
 
