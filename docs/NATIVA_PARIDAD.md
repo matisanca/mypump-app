@@ -154,7 +154,7 @@ Hasta que se decidan, rige lo de hoy.
 | REV-01 | Orden: Fotos → Check → Peso → Mi reloj → Mi Día | `C:8052-8086` | ✅ ver auditoría 14-oct | ☐ |
 | REV-02 | Fotos frente/perfil/espalda desde cámara o galería (HEIC incluido); JPEG de 900 px a 0,7, sin ubicación; orientación correcta | `C:7476-7962`, memoria `project_mypump_ios_estado` | ✅ ReduccionFotoTests: 4032×3024 con orientación 6 y GPS → 675×900 derecha y sin ubicación, HEIC, sin agrandar, 0,7 < 0,95 (f7f3a58); la galería pasa por ReduccionFoto. **En el servidor:** IntegracionTests.fotoDeProgresoSubeReducidaSinUbicacionYSeFirma sube una así y la baja por la URL firmada: JPEG de 675×900, derecho y sin GPS (14-oct, cuenta de prueba) | ☐ |
 | REV-03 | Cola de fotos: máximo 3, rechaza más de 2,4 MB, 8 intentos por errores del servidor (los de red no cuentan), 4xx distinto de 429 = definitivo; "Hay fotos esperando subir" | `C:7487-7602` | ✅ FotosTests: la red no gasta intentos, 8 intentos, 4xx definitivo, >2,4 MB, y conTresEnLaColaUnaCuartaNoEntra | ☐ |
-| REV-04 | "🔥 N semanas seguidas"; galería por semana; comparador antes/después desde 4 semanas, con Δkg | `C:7600-7660` | 🟡 reglas ✅ (racha, semanas, comparador), falta la pantalla · ver auditoría 14-oct | ☐ |
+| REV-04 | "🔥 N semanas seguidas"; galería por semana; comparador antes/después desde 4 semanas, con Δkg | `C:7600-7660` | 🟡 reglas ✅ (racha, semanas, comparador) y pantalla hecha en `FotosSemana.swift`: "N semanas seguidas registradas", "Ver mis fotos" por semana y "Antes y ahora" desde la 4.ª semana con Δkg; falta una captura con 4 semanas de fotos (la ventana +1/−7 del servidor no deja sembrarlas) | ☐ |
 | REV-05 | URLs firmadas (`/progreso/urls`), cacheadas 50 min | `C:7617-7641` | ✅ FotosTests.lasURLsFirmadasSeGuardan: la segunda firma no pide, forzar pide y subir invalida; firma real en fotoDeProgresoSubeYSeFirma (14-oct) | ☐ |
 | REV-06 | Check semanal: 4 escalas 1-5 + nota; "Faltan: X"; va por el outbox y muestra "✓ enviado" | `C:7964-8034` | ✅ modelo ✅ ("Faltan: …", cola), falta la pantalla · ver auditoría 14-oct | ☐ |
 | REV-07 | Peso 30-300 kg por el outbox (fuente manual); gráfico de 60 días con media de 7; "Esta semana ±g vs la pasada" | `C:7330-7464` | ✅ modelo ✅ (`PesoCorporal`: serie, media 7 d, delta), falta la pantalla · ver auditoría 14-oct | ☐ |
@@ -262,17 +262,14 @@ cerraron después DIA-01, DIA-06, MIG-07, GEN-03 y GEN-06 (ver la columna iOS). 
 1. ~~**Fotos (MIG-03, REV-02, REV-03).**~~ Cerrado el 14-oct: la nueva y la migrada llegan al servidor, y lo guardado es
    un JPEG de 675×900 sin GPS (IntegracionTests, con `MYPUMP_PROBAR_FOTOS=1`: el servicio deja 12 por día).
 2. **El link en un iPhone (ACC-01).** Lo prueba Mati en el TF-0, porque el simulador no valida el AASA (`FAKETEAMID`).
-3. **Sustituciones de ejercicio en el servidor (SER-14).** Hace falta una tabla nueva (G2).
-4. **Rutina de ejemplo para una cuenta sin plan (ACC-08).** La nativa muestra "Todavía no hay rutina". Hay que decidir si
-   D11 (la de ejemplo, solo en la demo) también vale para la rutina.
-5. **El tema oscuro guardado (GEN-02, D5).** La migración lo trae, pero ninguna vista lo aplica.
-6. **Salud (SAL-11).** Las secciones sin datos se ven vacías; la web las oculta.
-7. **Entreno (ENT-01).** Con el día cerrado no aparece el globo de comentarios. Con un solo día, la web oculta el
-   selector.
-8. **Desvíos de diseño sin registrar:**
-   - las burbujas del chat no dicen "Vos" ni "Mati": van a los costados, con el avatar (CHA-01);
-   - el siguiente ejercicio no se abre solo: aparece "Siguiente: … →" (ENT-17).
-9. **`?diag=health` (SAL-13, ACC-09).**
+3. **Sustituciones de ejercicio en el servidor (SER-14).** Hechas en las dos apps y con la migración `nativa_003`
+   ensayada; falta que Mati la aplique (G2).
+4. ~~**Rutina de ejemplo para una cuenta sin plan (ACC-08).**~~ Decidido por Mati (D11+): "Todavía no hay rutina".
+5. ~~**El tema oscuro guardado (GEN-02, D5).**~~ Se aplica desde el arranque y hay un interruptor en Mis datos.
+6. ~~**Salud (SAL-11).**~~ Las secciones sin datos se ocultan, como en la web.
+7. ~~**Entreno (ENT-01).**~~ El globo de comentarios y el ✓ van juntos; con un solo día no hay selector.
+8. ~~**Desvíos de diseño sin registrar.**~~ Aceptados por Mati: CHA-01 (D12) y ENT-17 (D13).
+9. **`?diag=health` (SAL-13, ACC-09).** Hecho (2b41011); falta abrir el link en un iPhone.
 10. **Hecho, falta la prueba o la captura:** APL-06 (iPad en ancho compacto, que App Review mira), ENT-15, SER-11,
     SER-04, SES-04, SES-05, CHA-02, CHA-04, REV-04, REV-05, REV-08, GEN-05, GEN-08, DIE-01, ENT-10, ENT-11.
 
