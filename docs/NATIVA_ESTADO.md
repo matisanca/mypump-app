@@ -135,7 +135,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
       fijada de otro teléfono, y los relojes adelantados.
     - Todos quedaron cubiertos, cada uno con su prueba; la tercera pasada está en curso.
   - **Igual que antes mientras la 003 no esté aplicada** (PGRST202): todo queda en el teléfono y sin avisos nuevos. La
-    migración en el simulador dio **25/25** (la fila nueva dice "sin tabla").
+    migración en el simulador dio **25/25** con la versión final (17:56; la fila nueva dice "sin tabla").
   - **Pruebas:** iOS 364 y Android 432, en verde. Mutantes: 15 en iOS y 14 en Android, uno por protección, y caen todos.
   - **Para aplicarla (G2, la corre Mati; el archivo ya está en la Mini, md5 `aa6f7698…`, igual al del repo):**
     `ssh mini 'cd ~/agentkit-coach && venv/bin/python ~/_aplicar.py /tmp/nativa_003_sustituciones_ejercicio.sql'`
