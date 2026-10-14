@@ -24,20 +24,23 @@ struct RevisionView: View {
                 ScrollView {
                     Group {
                         if claseAncho == .regular {
-                            // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
-                            HStack(alignment: .top, spacing: Espacio.l) {
-                                VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso; reloj }
-                                    .frame(maxWidth: .infinity, alignment: .top)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .topeArriba()
-                                VStack(alignment: .leading, spacing: Espacio.xl) { miDia }
-                                    .frame(maxWidth: .infinity, alignment: .top)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .topeArriba()
+                            VStack(alignment: .leading, spacing: Espacio.l) {
+                                avisoPlan
+                                // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
+                                HStack(alignment: .top, spacing: Espacio.l) {
+                                    VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso; reloj }
+                                        .frame(maxWidth: .infinity, alignment: .top)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .topeArriba()
+                                    VStack(alignment: .leading, spacing: Espacio.xl) { miDia }
+                                        .frame(maxWidth: .infinity, alignment: .top)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .topeArriba()
+                                }
                             }
                             .anchoLectura(Ancho.doble)
                         } else {
-                            VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso; reloj; miDia }
+                            VStack(alignment: .leading, spacing: Espacio.xl) { avisoPlan; fotos; check; peso; reloj; miDia }
                                 .anchoLectura()
                         }
                     }
@@ -89,6 +92,28 @@ struct RevisionView: View {
             guard abrir else { return }
             misDatos = true
             navegacion?.misDatos = false
+        }
+    }
+
+    /// GEN-05: al plan publicado le falta algo. No es para el cliente sino para la captura que le manda a Mati (qué
+    /// republicar): discreto, con el detalle chico y gris.
+    @ViewBuilder private var avisoPlan: some View {
+        if let aviso = modelo.avisoPlanIncompleto {
+            HStack(alignment: .top, spacing: Espacio.s) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.alerta)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(aviso.texto).font(.subheadline)
+                    Text(aviso.detalle).font(.caption).foregroundStyle(.secondary)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(Espacio.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.alerta.opacity(0.10), in: .rect(cornerRadius: Radio.control + 4, style: .continuous))
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("aviso-plan-incompleto")
         }
     }
 
