@@ -111,10 +111,27 @@ public struct Escrituras: Sendable {
             return .respuesta(await cliente.llamar("mypump_guardar_consentimiento_ia", [
                 "p_token": t, "p_acepta": p["acepta"] ?? .null, "p_plataforma": p["plataforma"] ?? .null, "p_app": p["app"] ?? .null,
             ]))
+        case SustitucionesServidor.kindGuardar:
+            // FALSE = la rutina ya no es del cliente: no hay nada que guardar (cuenta como hecho).
+            return .respuesta(Self.sinTablaEsHecho(await cliente.llamar("mypump_save_exercise_swap", [
+                "p_token": t, "p_rutina_id": p["rutinaId"] ?? .null, "p_ex_id": p["exId"] ?? .null, "p_swap": p["swap"] ?? .null,
+            ])))
+        case SustitucionesServidor.kindBorrar:
+            return .respuesta(Self.sinTablaEsHecho(await cliente.llamar("mypump_delete_exercise_swap", [
+                "p_token": t, "p_rutina_id": p["rutinaId"] ?? .null, "p_ex_id": p["exId"] ?? .null,
+            ])))
         default:
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo #2).
             return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 0, codigo: "KIND_DESCONOCIDO", mensaje: op.kind)))
         }
+    }
+
+    /// SER-14: sin la migración 003 en la base (PGRST202), la sustitución vive solo en el teléfono, como antes: la op se da
+    /// por hecha (si no, gastaría intentos y terminaría en "no se guardó"). Lo del teléfono sube en la primera
+    /// sincronización con la tabla ya creada.
+    static func sinTablaEsHecho(_ r: Result<JSONValue, ErrorRPC>) -> Result<JSONValue, ErrorRPC> {
+        if case .failure(let e) = r, e.funcionInexistente { return .success(.texto("sin tabla")) }
+        return r
     }
 
     /// ¿Hay en el hilo un mensaje del cliente con ese texto, escrito desde que se encoló? (con un minuto de margen por

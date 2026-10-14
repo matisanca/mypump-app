@@ -425,6 +425,28 @@ struct MigracionLegadoTests {
         #expect(tel.disco().leer([String: SustitucionEjercicio].self, SustitucionEjercicio.archivo(rutinaId: rutinaR1))?.count == 1)
     }
 
+    /// SER-14: la primera corrida no marca nada (la primera sincronización sube lo del teléfono). Si el cliente vuelve a la
+    /// Capacitor y cambia una sustitución, la repetición la trae y marca la rutina: lo de la app vieja reemplaza lo del
+    /// servidor (si no, el servidor la pisaba con la de antes).
+    @Test func laRepeticionMarcaLasSustitucionesParaReemplazarLasDelServidor() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        let swaps = { (n: String) in
+            #"{"jalon-d1-0":{"original":{"slug":"a","nombre":"A"},"current":{"slug":"b","nombre":"\#(n)"},"fijado":true,"semana":1,"diaId":"d1"}}"#
+        }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_exercise_swaps_\(rutinaR1)": swaps("B")])
+        _ = try tel.faseL()
+        let archivo = SustitucionesServidor.Estado.archivo(rutinaId: rutinaR1)
+        #expect(tel.disco().leer(SustitucionesServidor.Estado.self, archivo) == nil)
+        // La nativa ya subió las suyas; el cliente vuelve a la Capacitor y cambia la sustitución.
+        tel.disco().guardar(SustitucionesServidor.Estado(subidas: true), archivo)
+        try tel.webkit.escribir(["mypump_exercise_swaps_\(rutinaR1)": swaps("C")])
+        let r = try tel.faseL()
+        #expect(r.repeticion)
+        let guardadas = tel.disco().leer([String: SustitucionEjercicio].self, SustitucionEjercicio.archivo(rutinaId: rutinaR1))
+        #expect(guardadas?["jalon-d1-0"]?.current.nombre == "C")
+        #expect(tel.disco().leer(SustitucionesServidor.Estado.self, archivo) == SustitucionesServidor.Estado(subidas: true, reemplazar: true))
+    }
+
     @Test func elTokenMarcadoInvalidoNoSeUsa() throws {
         let tel = Telefono(); defer { tel.limpiar() }
         try tel.webkit.escribir(["mypump_token": tokenA, "mypump_token_invalido": tokenA,

@@ -57,6 +57,14 @@ public final class ModeloEntreno {
     @ObservationIgnored var historialEnVuelo: [String: Task<Void, Never>] = [:]
     /// La creación de la sesión en vuelo, por día y semana (la de otro día no sirve).
     @ObservationIgnored var sesionEnVuelo: (clave: String, tarea: Task<String?, Never>)?
+    /// SER-14: lo último que se escribió en el archivo de la rutina. Lo que cambie desde acá sale por la cola.
+    @ObservationIgnored var sustitucionesGuardadas: [String: JSONValue] = [:]
+    /// SER-14: mientras se espera al servidor, lo que se tocó en el medio (ahí gana lo del teléfono). nil = no se espera.
+    @ObservationIgnored var tocadasDuranteSync: Set<String>?
+    /// SER-14: la sincronización en curso (una a la vez; cambiar de rutina la deja sin efecto).
+    @ObservationIgnored var syncSustituciones: UUID?
+    /// SER-14: los encolados de sustituciones, en fila (si no, dos cambios seguidos podían llegar a la cola al revés).
+    @ObservationIgnored var encoladoSustituciones: Task<Void, Never>?
     @ObservationIgnored var restauracion = 0
     @ObservationIgnored var diaCompletadoMostrado = false
     /// Había un día guardado en este teléfono al arrancar (si no, el del almacenamiento viejo puede ganar).
@@ -90,6 +98,7 @@ public final class ModeloEntreno {
         let elegido = TextosEntreno.diaSugerido(n.estructura.dias, ultimo: guardado) ?? Dia(id: "d1")
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: self.demo, zona: zona)
         dia.sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(rutina.id)) ?? [:])
+        sustitucionesGuardadas = dia.sustituciones
         descansoEnDisco = enDisco
         guardarDiaVisualizado()
     }
@@ -106,10 +115,11 @@ public final class ModeloEntreno {
             guardarDescanso()
         }
         async let historial: Void = precargarHistorial()
+        async let servidor: Void = sincronizarSustituciones()
         await restaurarSesion()
         async let completados: Void = cargarDiasCompletados()
         async let coms: Void = cargarComentarios()
-        _ = await (historial, completados, coms)
+        _ = await (historial, servidor, completados, coms)
     }
 
     // MARK: - Semana y días
@@ -610,6 +620,9 @@ public final class ModeloEntreno {
         let sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(nueva.id)) ?? [:])
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
+        sustitucionesGuardadas = sustituciones
+        syncSustituciones = nil
+        tocadasDuranteSync = nil
         diasCompletados = []
         diaCompletadoMostrado = false
         inicioSesion = nil
@@ -780,6 +793,53 @@ public final class ModeloEntreno {
         if !sinPrecarga { Task { await self.precargarHistorial() } }
     }
 
+    /// SER-14: la primera vez que este teléfono sincroniza la rutina sube lo que tiene guardado; después lee el servidor
+    /// y lo pone por encima (con lo que sigue en la cola y lo que se tocó mientras tanto encima de eso). Sin la tabla en
+    /// la base (PGRST202), sin red o con el token caído queda lo del teléfono, como antes, y se reintenta al recargar.
+    public func sincronizarSustituciones() async {
+        guard !demo, let token, syncSustituciones == nil else { return }
+        let mia = UUID()
+        syncSustituciones = mia
+        tocadasDuranteSync = []
+        defer {
+            if syncSustituciones == mia {
+                syncSustituciones = nil
+                tocadasDuranteSync = nil
+            }
+        }
+        // Lo que ya se cambió tiene que estar en la cola antes de preguntar.
+        await encoladoSustituciones?.value
+        guard syncSustituciones == mia else { return }
+        let rutinaId = rutina.id
+        let archivoEstado = SustitucionesServidor.Estado.archivo(rutinaId: rutinaId)
+        let estado = disco?.leer(SustitucionesServidor.Estado.self, archivoEstado)
+        let reemplazar = estado?.reemplazar == true
+        let subir = estado?.subidas != true || reemplazar
+        var parametros: [String: JSONValue] = ["p_token": .texto(token), "p_rutina_id": .texto(rutinaId)]
+        if subir {
+            guard let subibles = SustitucionesServidor.subibles(dia.sustituciones) else { return }
+            parametros["p_swaps"] = .objeto(subibles)
+            parametros["p_reemplazar"] = .bool(reemplazar)
+        }
+        let r = await cliente.llamar(subir ? "mypump_import_exercise_swaps" : "mypump_get_exercise_swaps", parametros)
+        guard syncSustituciones == mia, rutina.id == rutinaId, case .success(.objeto(let servidor)) = r else { return }
+        if subir { disco?.guardar(SustitucionesServidor.Estado(subidas: true), archivoEstado) }
+        await encoladoSustituciones?.value
+        let pendientes = await outbox?.pendientesPorClave() ?? [:]
+        guard syncSustituciones == mia, rutina.id == rutinaId else { return }
+        let nuevo = SustitucionesEntreno.compat(SustitucionesServidor.combinar(
+            servidor: servidor, local: dia.sustituciones, pendientes: pendientes, rutinaId: rutinaId, tocadas: tocadasDuranteSync ?? []))
+        let cambiadas = Set(nuevo.keys).union(dia.sustituciones.keys).filter { nuevo[$0] != dia.sustituciones[$0] }
+        guard !cambiadas.isEmpty else { return }
+        // Lo que llega del servidor no vuelve a la cola: ya está allá (o en la cola, o se tocó y ya se encoló).
+        dia.sustituciones = nuevo
+        sustitucionesGuardadas = nuevo
+        disco?.guardar(nuevo, Archivo.sustituciones(rutinaId))
+        for id in cambiadas { invalidarHistorial(id) }
+        podarSustituciones(sinPrecarga: true)
+        await precargarHistorial()
+    }
+
     // MARK: - Comentarios (SES-08)
 
     /// `loadComentarios`. Si falla, quedan los que había (la web los borraba hasta el próximo intento).
@@ -911,7 +971,24 @@ public final class ModeloEntreno {
         disco?.guardar(id, Archivo.dia(rutina.id))
     }
 
-    func guardarSustituciones() { disco?.guardar(dia.sustituciones, Archivo.sustituciones(rutina.id)) }
+    func guardarSustituciones() {
+        disco?.guardar(dia.sustituciones, Archivo.sustituciones(rutina.id))
+        encolarSustituciones()
+    }
+
+    /// SER-14: lo que cambió desde la última escritura sale por la cola, en orden (sin la tabla en la base, la cola lo da
+    /// por hecho y queda solo en el teléfono, como antes).
+    func encolarSustituciones() {
+        let ops = SustitucionesServidor.operaciones(antes: sustitucionesGuardadas, ahora: dia.sustituciones, rutinaId: rutina.id)
+        sustitucionesGuardadas = dia.sustituciones
+        guard !demo, token != nil, let outbox, !ops.isEmpty else { return }
+        tocadasDuranteSync?.formUnion(ops.map(\.exId))
+        let anterior = encoladoSustituciones
+        encoladoSustituciones = Task {
+            await anterior?.value
+            for op in ops { await outbox.encolar(op.kind, op.payload, dedupeKey: op.clave) }
+        }
+    }
 
     func guardarSesiones() { disco?.guardar(sesionesLocales, Archivo.sesiones) }
 

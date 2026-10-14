@@ -366,7 +366,8 @@ struct EntrenoAccionesTests {
         m.escribir("jal-d1-0", 0, campo: "reps", valor: "10")
         m.escribir("jal-d1-0", 0, campo: "kg", valor: "50")
         await m.confirmarSerie("jal-d1-0", 0) { _ in true }
-        let op = try #require(await b.cola.operaciones.first)
+        // Antes que la serie va la sustitución (SER-14): acá importa la serie.
+        let op = try #require(await b.cola.operaciones.first { $0.kind == "carga" })
         #expect(op.payload["datos"]?["ejercicioNombre"]?.comoTexto == sub.nombre)
         #expect(op.payload["datos"]?["ejercicioId"]?.comoTexto == "jal-d1-0")
         // En disco, con el formato de la web.

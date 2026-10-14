@@ -181,6 +181,18 @@
    sin gastar intentos.
 4. El chat se marca "en vuelo" y, después de un corte, se mira `get_chat` antes de reenviar.
 
+**Kinds que solo genera la nativa** (ver §11). La web no los conoce, y una versión vieja de la nativa los manda a
+fallidos (no los borra):
+
+| kind | payload | dedupeKey | Ejecuta |
+|---|---|---|---|
+| `consentimiento_ia` | `{acepta, plataforma, app}` | `consentimiento_ia` | `guardar_consentimiento_ia` |
+| `swap_ej` | `{rutinaId, exId, swap}` (`swap` es la entrada de la web tal cual) | `swap_ej_<rutina>_<exId>` | `save_exercise_swap` |
+| `swap_ej_del` | `{rutinaId, exId}` | la misma que `swap_ej` | `delete_exercise_swap` |
+
+Con PGRST202 (la migración 003 todavía no está en la base), `swap_ej` y `swap_ej_del` se dan por hechas: la
+sustitución queda solo en el teléfono, como antes, y sube con la primera sincronización.
+
 ## 5. Fotos de progreso y visión (`vision.mypumpteam.com`, mini-vision)
 
 **Cómo autentica:**
@@ -307,3 +319,31 @@ Hoy ninguna regla pide una RPC nueva de lógica. Los cambios de base de la nativ
 - palanca remota.
 
 Están en el plan y pasan por G2.
+
+## 11. Lo que agregan las migraciones de la nativa (`supabase/migrations/nativa_*`)
+
+Solo agregan: ninguna cambia una tabla o una función existente, y la web no usa nada de esto. Cada una se ensaya en
+producción dentro de una transacción con `scripts/nativa/ensayar-migracion.py` y se aplica solo con el OK de Mati.
+Mientras una función no exista (PGRST202), la app sigue como antes.
+
+| Migración | Función | Devuelve | Quién la usa |
+|---|---|---|---|
+| 001 | `registrar_migracion_nativa(token, migracion uuid, corrida, recibo jsonb)` | TRUE; FALSE si el uuid es de otro cliente; NULL = token caído | el recibo de la migración del almacenamiento viejo |
+| 001 | `conteos_cliente(token)` | filas por tabla del cliente (15); NULL = token caído | el recibo (antes y después) |
+| 001 | `get_app_config()` | la palanca remota (5 valores) | al abrir |
+| 002 | `get_consentimiento_ia(token)` | `{acepta}` (null = nunca se le preguntó); NULL = token caído | al abrir |
+| 002 | `guardar_consentimiento_ia(token, acepta, plataforma, app)` | TRUE; NULL = token caído | outbox `consentimiento_ia` |
+| 002 | `clientes_sin_ia(clientes text[])` | los que dijeron que no | **solo `service_role`** (chat_worker, centinela) |
+| 003 | `get_exercise_swaps(token, rutina_id)` | `{exId: entrada}` (`{}` = ninguna); NULL = token caído o rutina ajena | al cargar Entreno, una vez que este teléfono ya subió lo suyo |
+| 003 | `import_exercise_swaps(token, rutina_id, swaps jsonb, reemplazar)` | el mapa que quedó; NULL = token caído o rutina ajena | la primera sincronización de cada rutina en cada teléfono (`reemplazar` solo cuando la migración del almacenamiento viejo se repitió) |
+| 003 | `save_exercise_swap(token, rutina_id, ex_id, swap jsonb)` | TRUE; FALSE = rutina ajena (cuenta como hecho); NULL = token caído | outbox `swap_ej` |
+| 003 | `delete_exercise_swap(token, rutina_id, ex_id)` | TRUE aunque no hubiera fila; NULL = token caído | outbox `swap_ej_del` |
+
+**Sustituciones de ejercicio (003, SER-14).**
+- Cada fila es una entrada del mapa de la web (`exId → {original, current, fijado, semana, diaId}`), tal cual.
+- Topes de la base: clave de 1 a 120 caracteres, entrada de hasta 16 KB, 300 por rutina. Lo que no entra queda solo en
+  el teléfono.
+- La poda (las no fijadas valen por su día y su semana) la sigue haciendo la app; lo que poda sale como `swap_ej_del`.
+- Al leer, gana lo que sigue en la cola y lo que el cliente tocó mientras se esperaba la respuesta.
+- Sin clave foránea a `mypump_rutinas`: si el Cerebro borra y vuelve a crear una rutina, un `ON DELETE CASCADE` se
+  llevaría las sustituciones.

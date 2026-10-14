@@ -254,7 +254,16 @@ public enum EjecutorLegado {
             }
             for (rutina, s) in plan.sustituciones {
                 let nombre = SustitucionEjercicio.archivo(rutinaId: rutina)
-                if previo != nil || !FileManager.default.fileExists(atPath: disco.url(nombre).path) { disco.guardar(s, nombre) }
+                if previo != nil || !FileManager.default.fileExists(atPath: disco.url(nombre).path) {
+                    disco.guardar(s, nombre)
+                    // SER-14: en una repetición, lo de la app vieja es lo último que hizo el cliente: en la próxima
+                    // sincronización reemplaza lo del servidor (si no, el servidor lo pisaba con lo de antes).
+                    if previo != nil {
+                        let archivo = SustitucionesServidor.Estado.archivo(rutinaId: rutina)
+                        let subidas = disco.leer(SustitucionesServidor.Estado.self, archivo)?.subidas ?? false
+                        disco.guardar(SustitucionesServidor.Estado(subidas: subidas, reemplazar: true), archivo)
+                    }
+                }
             }
             for (dieta, s) in plan.swapsComida {
                 // El mapa local es una caché del servidor: si la nativa ya tiene el suyo, gana el suyo.
