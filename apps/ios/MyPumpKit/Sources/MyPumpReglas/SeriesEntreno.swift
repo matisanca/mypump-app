@@ -543,6 +543,16 @@ public enum FechaJS {
         return Int((d.timeIntervalSince1970 / 86400).rounded())
     }
 
+    /// `formatFechaLocal`: `toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'})` de una fecha
+    /// YYYY-MM-DD tomada como local: "martes, 21 de julio". nil si no es una fecha.
+    public static func diaLargo(_ ymd: String) -> String? {
+        let p = ymd.split(separator: "-").compactMap { Int($0) }
+        guard p.count == 3 else { return nil }
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = .current
+        guard let d = cal.date(from: DateComponents(year: p[0], month: p[1], day: p[2])) else { return nil }
+        return formato("EEEE, d 'de' MMMM", .current).string(from: d)
+    }
+
     /// `toLocaleDateString('es-AR', {day:'2-digit', month:'short'})`: "04-oct", "05-sept".
     public static func diaMes(_ d: Date, zona: TimeZone) -> String {
         formato("dd-MMM", zona).string(from: d)

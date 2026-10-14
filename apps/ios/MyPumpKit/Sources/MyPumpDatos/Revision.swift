@@ -53,6 +53,8 @@ public struct Checkin: Equatable, Sendable {
 public final class ModeloRevision {
     public private(set) var habitos = HabitosHoy()
     public private(set) var racha = 0
+    /// `ultimo_dia_valido` de `get_streak` (YYYY-MM-DD): "Último día válido: martes, 21 de julio" con 2 días o más.
+    public private(set) var ultimoDiaValido: String?
     public private(set) var miDiaCargado = false
     /// Mis últimos 30 días: se trae al abrirla.
     public private(set) var adherencia: [DiaAdherencia]?
@@ -93,7 +95,7 @@ public final class ModeloRevision {
         async let r = cliente.filas("mypump_get_streak", ["p_token": t], como: Racha.self)
         let (rh, rr) = await (h, r)
         if case .success(let filas) = rh, diaDeHoy() == hoy { habitos = HabitosHoy(filas.first) }
-        if case .success(let filas) = rr { racha = filas.first?.streak ?? 0 }
+        if case .success(let filas) = rr { racha = filas.first?.streak ?? 0; ultimoDiaValido = filas.first?.ultimoDiaValido }
         await aplicarPendientes()
         miDiaCargado = true
     }
@@ -122,6 +124,7 @@ public final class ModeloRevision {
             await outbox?.drenar()
             if case .success(let filas) = await cliente.filas("mypump_get_streak", ["p_token": t], como: Racha.self) {
                 racha = filas.first?.streak ?? racha
+                if let f = filas.first { ultimoDiaValido = f.ultimoDiaValido }
             }
         }
     }

@@ -351,8 +351,9 @@ def nativa(contenedor, salida, etiqueta):
     shutil.rmtree(destino, ignore_errors=True)
     soporte = os.path.join(contenedor, "Library", "Application Support")
     copiados = 0
+    # Los recibos confirmados pasan a recibos/enviados/ (y los rechazados a recibos/rechazados/): también se copian.
     for origen in glob.glob(os.path.join(soporte, "legado", "*")) + glob.glob(os.path.join(soporte, "legado", "recibos", "*")) \
-            + glob.glob(os.path.join(soporte, "MyPump", "cuenta-*", "*")):
+            + glob.glob(os.path.join(soporte, "legado", "recibos", "*", "*")) + glob.glob(os.path.join(soporte, "MyPump", "cuenta-*", "*")):
         if os.path.isdir(origen):
             continue
         rel = os.path.relpath(origen, soporte)
@@ -434,7 +435,8 @@ def verificar(salida):
             alm_v.get("mypump_outbox_<TOKEN>", {}).get("ops", 0) in (0, "no está") and "mypump_nativa_marca" in alm_v)
 
     estado = leer(os.path.join(salida, "nativa-segundo", "legado"), "estado.json", {})
-    recibos = sorted(glob.glob(os.path.join(salida, "nativa-segundo", "legado", "recibos", "*.json")))
+    recibos = sorted(glob.glob(os.path.join(salida, "nativa-segundo", "legado", "recibos", "*.json"))
+                     + glob.glob(os.path.join(salida, "nativa-segundo", "legado", "recibos", "*", "*.json")), key=os.path.basename)
     recibo = json.load(open(recibos[0], encoding="utf-8")) if recibos else {}
     aj = leer(salida, "ajustes-nativa.json", {})
     chequeo("Ajustes: tema oscuro, tipo de día, notificaciones, onboarding, salud y día visualizado",
@@ -458,6 +460,17 @@ def verificar(salida):
         detalle = (f"aplicado: {sorted(sesiones)}, inicio {'igual' if local.get('inicio') == plan.get('inicio') else local.get('inicio')}, "
                    f"descanso {'traído (en memoria, ver 2-nativa.png)' if primera.get('descansoVigente') else 'no'}")
     chequeo("Fase L: la sesión en curso (con su arranque) y el descanso llegaron a Entreno", ok, detalle)
+    # MIG-07: el recibo cierra. Lo de después se cuenta con la cola ya vaciada: nada pendiente, ninguna tabla del
+    # cliente baja, y el libro reparte exactamente las ops que se leyeron (lo que va a revisar queda en fallidos).
+    despues = recibo.get("despues", {})
+    antes_srv, despues_srv = recibo.get("servidorAntes") or {}, recibo.get("servidorDespues") or {}
+    leidas = sum(recibo.get("antes", {}).get("opsPorKind", {}).values())
+    repartidas = sum(v for v in despues.get("libro", {}).values() if isinstance(v, int))
+    bajaron = [k for k in antes_srv if despues_srv.get(k, 0) < antes_srv[k]]
+    chequeo("Recibo: la cola quedó vacía, ninguna tabla bajó y el libro cierra con lo leído",
+            bool(recibo) and despues.get("colaPendientes") == 0 and not bajaron and leidas == repartidas and leidas > 0,
+            f"{leidas} ops leídas, {repartidas} en el libro, pendientes {despues.get('colaPendientes')}, fallidos {despues.get('fallidos')}, "
+            f"bajaron {bajaron or 'ninguna'}, cambios {dict((k, despues_srv.get(k, 0) - v) for k, v in antes_srv.items() if despues_srv.get(k, 0) != v)}")
     lineas = [f"# Migración en el simulador, corrida {plan.get('run')}", "", f"- Día: {plan.get('hoy')}. Cuenta: `{CUENTA}`.",
               f"- Recibo (corrida 1): antes {json.dumps(recibo.get('antes', {}).get('opsPorKind', {}), ensure_ascii=False)}; "
               f"después {json.dumps(recibo.get('despues', {}).get('libro', {}), ensure_ascii=False)}",
