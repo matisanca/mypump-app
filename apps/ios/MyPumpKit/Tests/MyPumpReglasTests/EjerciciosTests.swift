@@ -311,3 +311,24 @@ struct SustitucionVectoresTests {
         #expect(SustitucionEjercicios.slugDeURL("exercise-images//0.jpg") == nil)
     }
 }
+
+/// SER-11: la búsqueda de la hoja de sustitutos, como la web
+/// (`all.filter(s => s.name.toLowerCase().includes(query.toLowerCase().trim()))`; los resultados salen de node).
+@Suite("Sustitutos de ejercicio: la búsqueda")
+struct BusquedaSustitutosTests {
+    static func sustituto(_ nombre: String) -> SustitutoEjercicio {
+        SustitutoEjercicio(slug: nil, nombre: nombre, nombreIngles: nil, equipo: "Máquina", equipoCrudo: nil, musculo: nil,
+                           patron: nil, imagenes: Imagenes(eccentric: nil, concentric: nil), mismoEquipo: false)
+    }
+
+    @Test func comoLaWeb() {
+        let todos = ["Jalón al pecho", "Remo con barra", "JALÓN TRAS NUCA", "Remo en polea baja"].map(Self.sustituto)
+        func nombres(_ q: String) -> [String] { SustitucionesEntreno.filtrar(todos, q).map(\.nombre) }
+        #expect(nombres("") == todos.map(\.nombre))
+        #expect(nombres("   ") == todos.map(\.nombre))   // recortada queda vacía: entra todo
+        #expect(nombres("jalón") == ["Jalón al pecho", "JALÓN TRAS NUCA"])
+        #expect(nombres("  REMO ") == ["Remo con barra", "Remo en polea baja"])
+        #expect(nombres("jalon").isEmpty)                 // la web no pliega acentos
+        #expect(nombres("polea baja") == ["Remo en polea baja"])
+    }
+}
