@@ -15,3 +15,6 @@ node_modules/
 scripts/.plan-*.sql
 *.orig
 __pycache__/
+
+# Compilados de SwiftPM (swift build/test sin --scratch-path): nunca al repo.
+.build/
