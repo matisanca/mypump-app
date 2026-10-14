@@ -32,7 +32,7 @@
        distancia en metros, peso en kg, temperaturas en °C, glucosa en mg/dL.
 
    Lo que esto NO prueba es que HealthKit conteste lo mismo a la nativa que al plugin: eso lo
-   cubre la prueba en el simulador (docs: apps/ios/SaludBanco/LEEME.md).
+   cubre la prueba en el simulador (scripts/nativa/salud-banco.sh).
 
    Las muestras base salen de public/js/salud-sintetica.js (el mismo generador del banco de
    pruebas de la web); encima se agregan casos armados a mano para cada borde conocido.
