@@ -32,6 +32,12 @@ cd apps/android
 `scripts/nativa/emu-ui.sh [serial] [clases]` corre las instrumentadas y baja las capturas de `CapturasUiTest` (cada
 pantalla en claro y en oscuro) y el reporte a `~/Developer/nativa-evidencia/android-ui/<fecha>/`.
 
+`python3 -I scripts/nativa/lanzar-emu.py <serial> [escena]` instala el APK de debug y abre la app con el link de
+`test-nativa-android` (gemelo de `lanzar-sim.sh`): el token se lee adentro del script y va por la entrada de `adb shell`,
+nunca por argumentos. Ojo: Android 16 anota el link entero (`capturedLink=`) en los registros de transición del
+`WindowManager`, así que después conviene `adb logcat -c`. Con un teléfono de un cliente pasa lo mismo con cualquier app:
+un `adb bugreport` lleva su link.
+
 ## La interfaz
 
 Gemela de `apps/ios/MyPump/`, adaptada a Material 3: barra de pestañas abajo, hojas (`ModalBottomSheet`), snackbar
