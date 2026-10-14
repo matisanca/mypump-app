@@ -207,22 +207,14 @@ struct EjercicioView: View {
                          icono: "trophy.fill", tono: .record)
                 }
             }
-        } else if t.filas.isEmpty || t.sinKg {
-            // Por tiempo o con el peso del cuerpo: no hay un peso que buscar.
-            EmptyView()
-        } else if motor.historialCargando.contains(lugar) {
+        } else if !t.filas.isEmpty && !t.sinKg && motor.historialCargando.contains(lugar) {
             HStack(spacing: Espacio.xs) {
                 ProgressView()
                 Text("Buscando tu última vez…").font(.subheadline).foregroundStyle(.secondary)
             }
             .tarjeta()
-        } else {
-            Label("Primera vez con este ejercicio: buscá un peso con el que llegues cerca del fallo.", systemImage: "sparkles")
-                .labelStyle(EtiquetaCompacta())
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .tarjeta()
         }
+        // Sin historial no va nada acá: la primera vez ya la explica la tabla (la calibración), como en la web.
     }
 
     private func acciones(_ t: ModeloEntreno.Tarjeta, _ lector: ScrollViewProxy) -> some View {
@@ -414,6 +406,7 @@ struct EjercicioView: View {
             await motor.elegirRIR(lugar, i, i == 0 ? 1 : 0)
             _ = await motor.confirmarSerie(lugar, i) { _ in true }
         }
+        if DemoUI.sinDescanso { motor.saltarDescanso() }
     }
 }
 

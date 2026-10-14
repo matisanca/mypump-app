@@ -18,9 +18,10 @@ struct EntrenoView: View {
     var body: some View {
         NavigationStack(path: $ruta) {
             Group {
-                if let m = entrenamiento.motor {
+                switch pantalla {
+                case .dia(let m):
                     ListaEntreno(motor: m, alCompletarDia: completoDia)
-                } else if modelo.fase == .listo && modelo.sinRedEn.contains(.rutina) {
+                case .sinRed:
                     // Un corte dejó afuera la rutina y no había copia guardada.
                     ContentUnavailableView {
                         Label("No pudimos traer tu rutina", systemImage: "wifi.slash")
@@ -30,14 +31,14 @@ struct EntrenoView: View {
                         Button("Reintentar") { Task { await modelo.cargar() } }
                             .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
                     }
-                } else if modelo.fase == .listo {
+                case .sinRutina:
                     ScrollView {
                         ContentUnavailableView("Todavía no hay rutina", systemImage: "dumbbell",
                                                description: Text("Cuando Mati publique tu rutina, la vas a ver acá."))
                             .padding(.top, 80)
                     }
                     .refreshable { await modelo.cargar() }
-                } else {
+                case .cargando:
                     ScrollView { EsqueletoEntreno().padding(.horizontal, Espacio.m).anchoLectura() }
                         .scrollDisabled(true)
                 }
@@ -58,6 +59,21 @@ struct EntrenoView: View {
         .environment(preguntador)
         .preguntas(preguntador)
         .onChange(of: entrenamiento.motor?.dia.dia.id, initial: true) { _, _ in abrirParaCapturas() }
+    }
+
+    private enum Pantalla { case dia(ModeloEntreno), cargando, sinRed, sinRutina }
+
+    /// El día del motor; sin motor, cargando, sin red o sin rutina. Las capturas (`-estado`) fuerzan cada uno.
+    private var pantalla: Pantalla {
+        switch DemoUI.estado {
+        case .cargando: return .cargando
+        case .error: return .sinRed
+        case .vacio: return .sinRutina
+        case nil: break
+        }
+        if let m = entrenamiento.motor { return .dia(m) }
+        guard modelo.fase == .listo else { return .cargando }
+        return modelo.sinRedEn.contains(.rutina) ? .sinRed : .sinRutina
     }
 
     /// "🎉 ¡Día completado!" medio segundo después (como la web); con un día siguiente, ofrece ir.
@@ -89,6 +105,7 @@ private struct ListaEntreno: View {
     @State private var cerrando = false
     @State private var trabajando = false
     @ScaledMetric(relativeTo: .title) private var ladoAnillo: CGFloat = 68
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     private var titulo: String {
         let t = Bonito.titulo(motor.dia.dia.nombre)
@@ -144,8 +161,9 @@ private struct ListaEntreno: View {
                 Text("Día \(motor.numero(d)) · Semana \(motor.semanaMostrada) de \(motor.totalMostrado)").textoCeja()
                 Text(titulo)
                     .font(.tituloDia)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    // Con letra de accesibilidad el nombre del día baja de renglón en vez de cortarse.
+                    .lineLimit(tamañoLetra.isAccessibilitySize ? 3 : 1)
+                    .minimumScaleFactor(tamañoLetra.isAccessibilitySize ? 1 : 0.6)
                     .accessibilityAddTraits(.isHeader)
                 Label(cerrado ? "Día cerrado esta semana" : "\(total) ejercicios",
                       systemImage: cerrado ? "checkmark.seal.fill" : "list.bullet")
