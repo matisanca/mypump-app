@@ -116,12 +116,13 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 - **14-oct 17:30, sustituciones de ejercicio en el servidor (SER-14, decisión de Mati de las 16:24):**
   - **Base:** `supabase/migrations/nativa_003_sustituciones_ejercicio.sql`. Una tabla (`mypump_exercise_swaps`) y cinco
     funciones; no cambia nada existente y la web no la usa. Ensayo en producción dentro de una transacción, deshecho al
-    final: **60/60**, también llamando como `anon`.
-  - **Cómo funciona (iOS 9cd1f65 + 9edff18, Android 1d151d9 + d0a579b):**
+    final: **61/61**, también llamando como `anon`.
+  - **Cómo funciona (iOS 9cd1f65 + 9edff18, Android 1d151d9 + d0a579b, las dos + d10c974):**
     - cada entrada lleva la hora en que el cliente la eligió y **gana lo más nuevo**, en el servidor y al leerlo;
     - borrar deja una **lápida** con la hora de lo que se borró: otro teléfono no la revive con algo más viejo, y no saca
       algo más nuevo que el cliente no vio;
-    - un reloj adelantado no gana: el servidor recorta las horas a la suya + 5 minutos;
+    - un reloj desfasado no gana: la lectura trae la hora del servidor y el teléfono estampa corregido; además el servidor
+      recorta las horas a la suya + 5 minutos y una copia propia del futuro no le gana al servidor;
     - que algo falte en el servidor **no es un borrado**: el teléfono lo vuelve a subir (nada se pierde aunque la tabla
       se vaciara);
     - la **poda es solo del teléfono** y no se manda;
@@ -133,11 +134,16 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
       servidor lo que el cliente fijó después en otro;
     - sobre la segunda, 3 más: "Guardando…" colgado en escrituras normales, la vuelta a la app vieja que podía borrar una
       fijada de otro teléfono, y los relojes adelantados.
-    - Todos quedaron cubiertos, cada uno con su prueba; la tercera pasada está en curso.
+    - sobre la tercera, 2 restos raros de relojes desfasados, también cubiertos (d10c974).
+    - Todos quedaron cubiertos, cada uno con su prueba. Veredicto de la revisión: **se puede aplicar**; no hay pérdida de
+      datos con relojes bien puestos.
   - **Igual que antes mientras la 003 no esté aplicada** (PGRST202): todo queda en el teléfono y sin avisos nuevos. La
     migración en el simulador dio **25/25** con la versión final (17:56; la fila nueva dice "sin tabla").
-  - **Pruebas:** iOS 364 y Android 432, en verde. Mutantes: 15 en iOS y 14 en Android, uno por protección, y caen todos.
-  - **Para aplicarla (G2, la corre Mati; el archivo ya está en la Mini, md5 `aa6f7698…`, igual al del repo):**
+  - **Pruebas:** iOS 373 y Android 436, en verde. Mutantes: 18 en iOS y 17 en Android, uno por protección, y caen todos.
+  - **Regla para siempre:** una vez aplicada, las firmas de estas funciones no se cambian (ver `NATIVA_CONTRATO.md` §11):
+    la app toma "la función no existe" como "todavía no hay tabla" y perdería cambios en silencio.
+  - Ningún build con una versión anterior de SER-14 salió de la Mac: los de TestFlight (101 y 102) no tienen SER-14.
+  - **Para aplicarla (G2, la corre Mati; el archivo ya está en la Mini, md5 `1f8f52d9…`, igual al del repo):**
     `ssh mini 'cd ~/agentkit-coach && venv/bin/python ~/_aplicar.py /tmp/nativa_003_sustituciones_ejercicio.sql'`
     Después: regenerar el esquema, correr `auditar_seguridad_db.py` y ver una sustitución pasar entre dos simuladores.
 - **14-oct 17:30, lo demás de la tarde:**

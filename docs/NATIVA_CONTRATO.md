@@ -336,7 +336,7 @@ Mientras una función no exista (PGRST202), la app sigue como antes.
 | 002 | `get_consentimiento_ia(token)` | `{acepta}` (null = nunca se le preguntó); NULL = token caído | al abrir |
 | 002 | `guardar_consentimiento_ia(token, acepta, plataforma, app)` | TRUE; NULL = token caído | outbox `consentimiento_ia` |
 | 002 | `clientes_sin_ia(clientes text[])` | los que dijeron que no | **solo `service_role`** (chat_worker, centinela) |
-| 003 | `get_exercise_swaps(token, rutina_id)` | `{"vivas": {exId: entrada}, "borradas": {exId: ms}}`; NULL = token caído o rutina ajena | al cargar Entreno |
+| 003 | `get_exercise_swaps(token, rutina_id)` | `{"vivas": {exId: entrada}, "borradas": {exId: ms}, "ahora": ms del servidor}`; NULL = token caído o rutina ajena | al cargar Entreno |
 | 003 | `save_exercise_swap(token, rutina_id, ex_id, swap jsonb)` | TRUE (también si allá había algo más nuevo); FALSE = rutina ajena (cuenta como hecho); NULL = token caído | outbox `swap_ej` |
 | 003 | `delete_exercise_swap(token, rutina_id, ex_id, ts)` | TRUE (deja la lápida, salvo que allá haya algo más nuevo); FALSE = rutina ajena; NULL = token caído | outbox `swap_ej_del` |
 
@@ -345,9 +345,14 @@ Mientras una función no exista (PGRST202), la app sigue como antes.
   en que el cliente la eligió (ms del teléfono). Lo de la app vieja no la tiene: cuenta como 0, lo más viejo.
 - **Gana lo más nuevo**, en el servidor y al leerlo en el teléfono. Borrar deja una **lápida** con la hora de lo que se
   borró (lo que el cliente veía): algo más viejo no la revive y ella no saca algo más nuevo que el cliente no vio.
-- Un cambio se estampa con la hora del teléfono, pero nunca menos que la de lo que reemplaza + 1. El servidor recorta
-  cualquier hora a la suya + 5 minutos (también dentro de la entrada): un reloj adelantado no le gana a lo que venga
-  después. La misma elección con otra hora se adopta del servidor sin volver a subirla.
+- Un cambio se estampa con la hora del teléfono **corregida con la del servidor** (el `ahora` de la última lectura,
+  guardado entre arranques), nunca menos que la de lo que reemplaza + 1 ni que la más alta que tuvo esa clave en la
+  sesión (lo deshecho, las lápidas leídas). El servidor recorta cualquier hora a la suya + 5 minutos (también dentro de
+  la entrada), y una copia del teléfono con hora más allá de eso no le gana a lo que diga el servidor. La misma elección
+  con otra hora se adopta del servidor sin volver a subirla.
+- ⚠️ **Una vez aplicada, estas firmas no se cambian nunca.** La app trata PGRST202 ("la función no existe") como
+  "todavía no hay tabla" y da la op por hecha: con una firma cambiada, cada sustitución se perdería en silencio. Si hace
+  falta otra firma, se crea una función con otro nombre y la vieja queda.
 - Que algo falte en el servidor **no es un borrado**: el teléfono lo vuelve a subir. Así nada se pierde aunque la tabla
   se vaciara, y la primera vez de cada teléfono es una lectura más (no hay función de importar).
 - La poda (las no fijadas valen por su día y su semana) es **solo del teléfono y no se manda**: un teléfono viejo no puede
