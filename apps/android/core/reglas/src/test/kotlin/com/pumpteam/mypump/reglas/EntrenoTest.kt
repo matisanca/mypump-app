@@ -725,4 +725,30 @@ class EntrenoVectoresTest {
         val b = fallasBanners(p["semana"].o()!!["banners"].a(), privadas)
         assertTrue(b.isEmpty(), "banners: ${b.size}: ${b.take(3)}")
     }
+
+    /** `new Date(iso)` de V8 (node 26, TZ=America/Argentina/Buenos_Aires), con los bordes que iOS lee distinto. */
+    @Test
+    fun fechasComoJs() {
+        val ar = java.util.TimeZone.getDefault()
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Argentina/Buenos_Aires"))
+        try {
+            val casos = listOf(
+                "2026-10-04T24:30:00Z" to null,                       // iOS: 1791160200000
+                "2026-10-04T24:00:00Z" to 1791158400000L,
+                "2026-10-04T10:00:00+19:00" to 1791039600000L,        // iOS: 1791118800000 (la toma como hora local)
+                "2026-10-04T10:00:00-20:30" to 1791181800000L,        // iOS: 1791118800000
+                "2026-10-04T10:00:00+18:00" to 1791043200000L,
+                "2026-02-31" to 1772496000000L,
+                "2026-02-31T10:00:00Z" to 1772532000000L,
+                "2026-10-04 10:00:00" to 1791118800000L,
+                "2026-10-04T10:00Z" to 1791108000000L,
+                "2026-10-04T10:00:00.5+00:00" to 1791108000500L,
+                "2026-10-04T10:00:00,123Z" to null,                   // iOS la lee
+                "2026-10-04T10:00:00+0530" to 1791088200000L,
+            )
+            for ((iso, esperado) in casos) assertEquals(esperado, FechaJs.leer(iso)?.toEpochMilli(), iso)
+        } finally {
+            java.util.TimeZone.setDefault(ar)
+        }
+    }
 }

@@ -569,7 +569,8 @@ object FechaJs {
         var ms = 0
         if (toma(':')) {
             s = numero(2) ?: return null
-            if (toma('.') || toma(',')) {
+            // La fracción va con punto: V8 no lee "10:00:00,123Z" (Invalid Date).
+            if (toma('.')) {
                 val ini = i
                 while (i < iso.length && iso[i] in '0'..'9') i++
                 if (i == ini) return null
