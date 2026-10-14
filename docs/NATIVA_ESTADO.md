@@ -68,6 +68,15 @@ commitea.
 | Android: Health Connect, FCM | ☐ |
 
 
+**Control de la beta (G5):** `python3 scripts/nativa/beta_diario.py [--dias 7] [--con-pruebas]` da, por cliente con la
+nativa, su teléfono (versión, push, última vez visto), el último recibo de la migración y las sustituciones en el
+servidor. Avisa con ⚠️ si alguna tabla del servidor bajó (cero pérdida) o si quedó algo en la cola, en fallidos o en
+fotos. Solo lee y muestra ids, sin nombres. En las cuentas test-* las alertas son las que siembra
+`sim_migracion.py`: una op desconocida y una foto fuera de ventana.
+
+**Antes de G7:** regenerar las capturas de la tienda (`scripts/nativa/capturas-tienda-ios.sh`). Las del 14-oct 14:58 son
+anteriores a los cambios de esa tarde: Mis datos sin IA ni recordatorios, y la pista de la última vez como botón.
+
 **Herramientas nuevas:** `scripts/nativa/lanzar-sim.sh` (abre la app con una cuenta de prueba sin que el token pase por
 la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-legado.sh`.
 
