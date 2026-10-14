@@ -35,6 +35,9 @@ enum DemoUI {
     static var estado: Estado? { bocetos ? valor("estado").flatMap(Estado.init(rawValue:)) : nil }
     static var ir: String? { valor("ir") }
     static var abrir: String? { valor("abrir") }
+    /// `-abrir` vale una sola vez por arranque: si la vista que lo aplica se recrea (al sustituir cambia el motor), no
+    /// tiene que volver a abrir lo mismo al volver a la lista.
+    @MainActor static var abrioYa: Set<String> = []
     static var lleno: Bool { bocetos && valor("demo") == "lleno" }
     static var seriesHechas: Int { Int(valor("series") ?? "") ?? 0 }
     static var sinDescanso: Bool { valor("descanso") == "no" }

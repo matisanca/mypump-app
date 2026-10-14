@@ -56,6 +56,7 @@ struct SustituirEjercicioView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(i == elegido ? .isSelected : [])
+                        .accessibilityIdentifier("variante")
                     }
                 } header: {
                     HStack {

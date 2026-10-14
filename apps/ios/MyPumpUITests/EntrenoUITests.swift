@@ -26,4 +26,33 @@ final class EntrenoUITests: XCTestCase {
         kg.typeText("7")
         XCTAssertEqual(kg.value as? String, "7", "lo nuevo no reemplazó a lo anterior")
     }
+
+    /// ENT-10 y VoiceOver: después de sustituir y fijar, la card de la lista lo dice (antes la etiqueta fija tapaba la
+    /// sustitución, los mensajes, la pauta y el récord), con la pauta y el descanso.
+    func testLaCardDiceQueEstaSustituidaYFijada() throws {
+        let sustituir = app.buttons["Sustituir"]
+        XCTAssertTrue(sustituir.waitForExistence(timeout: 15), "No abrió el ejercicio")
+        sustituir.tap()
+        let hoja = app.navigationBars["Sustituir ejercicio"]
+        XCTAssertTrue(hoja.waitForExistence(timeout: 5), "No abrió la hoja de sustituir")
+        let variante = app.buttons.matching(identifier: "variante").firstMatch
+        XCTAssertTrue(variante.waitForExistence(timeout: 5), "No hay variantes")
+        variante.tap()
+        // El interruptor está al pie de la lista (hasta 30 variantes): la lista no lo dibuja hasta que se baja.
+        let fijar = app.switches.firstMatch
+        for _ in 0..<8 where !fijar.exists { app.swipeUp() }
+        XCTAssertTrue(fijar.waitForExistence(timeout: 3), "No aparece Fijar")
+        if (fijar.value as? String) != "1" { fijar.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap() }
+        XCTAssertEqual(fijar.value as? String, "1", "no se fijó")
+        hoja.buttons["Sustituir"].tap()
+        XCTAssertTrue(hoja.waitForNonExistence(timeout: 5), "La hoja no se cerró")
+        // Vuelve a la lista del día. En iOS 26 el botón se llama "BackButton"; en 17 y 18 es el primero de la barra.
+        let volver = app.navigationBars.buttons["BackButton"]
+        (volver.exists ? volver : app.navigationBars.buttons.element(boundBy: 0)).tap()
+        let card = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS 'sustitución fijada'")).firstMatch
+        for _ in 0..<6 where !card.waitForExistence(timeout: 1) { app.swipeUp() }   // la lista dibuja solo lo visible
+        XCTAssertTrue(card.exists, "Ninguna card dice que está sustituida")
+        let valor = card.value as? String ?? ""
+        XCTAssertTrue(valor.contains("series de") && valor.contains("descanso"), "falta la pauta: \(valor)")
+    }
 }

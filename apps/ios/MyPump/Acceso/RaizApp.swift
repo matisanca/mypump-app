@@ -20,14 +20,16 @@ struct RaizApp<Contenido: View>: View {
                 if PalancaRemota.debajo(Self.versionInstalada, de: modelo.palanca.versionMinimaIOS) {
                     ActualizarApp()
                 } else {
-                    contenido()
-                        .safeAreaInset(edge: .top, spacing: 0) {
-                            if modelo.esDemo { if !DemoUI.captura { BarraDemo(modelo: modelo) } } else if modelo.desdeCache { BannerSinConexion() }
-                        }
-                        .overlay(alignment: .bottom) {
-                            AvisoGuardado(estado: modelo.estadoGuardado)
-                                .padding(.bottom, 96)   // arriba de la barra de pestañas
-                        }
+                    // El aviso arriba y las pestañas DEBAJO (no con `safeAreaInset`: en iOS 26 las barras de navegación de
+                    // las pestañas no se corrían y el aviso tapaba el botón de volver, en la demo y sin conexión).
+                    VStack(spacing: 0) {
+                        if modelo.esDemo { if !DemoUI.captura { BarraDemo(modelo: modelo) } } else if modelo.desdeCache { BannerSinConexion() }
+                        contenido()
+                    }
+                    .overlay(alignment: .bottom) {
+                        AvisoGuardado(estado: modelo.estadoGuardado)
+                            .padding(.bottom, 96)   // arriba de la barra de pestañas
+                    }
                 }
             case .cargando:
                 Arranque()

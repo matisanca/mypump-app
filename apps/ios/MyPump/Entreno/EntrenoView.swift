@@ -13,7 +13,6 @@ struct EntrenoView: View {
     @State private var modelo = Proveedor.modelo
     @State private var ruta: [String] = []
     @State private var preguntador = Preguntador()
-    @State private var abrioDemo = false
 
     var body: some View {
         NavigationStack(path: $ruta) {
@@ -90,9 +89,9 @@ struct EntrenoView: View {
 
     /// Capturas: `-abrir ejercicio` entra al primer ejercicio de trabajo del día.
     private func abrirParaCapturas() {
-        guard !abrioDemo, DemoUI.abrir == "ejercicio", let m = entrenamiento.motor else { return }
+        guard !DemoUI.abrioYa.contains("ejercicio"), DemoUI.abrir == "ejercicio", let m = entrenamiento.motor else { return }
         guard let e = m.dia.lista.first(where: { $0.tipo == "compuesto" }) ?? m.dia.lista.first else { return }
-        abrioDemo = true
+        DemoUI.abrioYa.insert("ejercicio")
         ruta = [e.id]
     }
 }
@@ -664,7 +663,36 @@ struct FilaEjercicio: View {
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Ejercicio \(numero): \(ef.ejercicio.nombre)")
-        .accessibilityValue(Self.estadoAccesible(estado, hechas: hechas, de: series.count))
+        .accessibilityValue(valorAccesible(lugar, estado: estado, hechas: hechas, total: series.count, ef: ef, manual: manual,
+                                           mensajes: mensajes, pauta: pauta))
+    }
+
+    /// Lo que lee VoiceOver: el estado y lo mismo que se ve en la card (en la web se lee su texto). La etiqueta fija de
+    /// arriba tapaba todo lo demás: la sustitución, los mensajes, la pauta y el récord no se oían.
+    private func valorAccesible(_ lugar: String, estado: String, hechas: Int, total: Int, ef: EjercicioEfectivo, manual: Bool,
+                                mensajes: Int, pauta: Pauta) -> String {
+        let tipo = ef.ejercicio.tipo
+        var partes = [Self.estadoAccesible(estado, hechas: hechas, de: total)]
+        if ef.sustituido { partes.append(ef.fijado ? "sustitución fijada" : "sustituido solo por hoy") }
+        if manual { partes.append("marcado a mano") }
+        if mensajes > 0 { partes.append(mensajes == 1 ? "1 mensaje sin leer" : "\(mensajes) mensajes sin leer") }
+        if tipo == "calentamiento" { partes.append("calentamiento") } else if tipo == "cardio" { partes.append("cardio") }
+        let porTiempo = tipo == "cardio" || pauta.series == nil
+        if porTiempo {
+            if let r = pauta.reps { partes.append(r) }
+        } else if let s = pauta.series {
+            partes.append("\(s) series de \(pauta.reps ?? "—")")
+        }
+        if let rir = pauta.rir { partes.append("RIR \(rir)") }
+        partes.append("descanso \(TiempoEntreno.fmtTiempo(Double(ejercicio.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)))")
+        let ultima = motor.dia.ultimaVez(lugar, ahora: .now)
+        let record = motor.dia.record(lugar)
+        if let u = ultima { partes.append("última vez \(Bonito.carga(u.valor)), \(u.cuando)") }
+        if let r = record { partes.append("récord \(Bonito.carga(r))") }
+        if ultima == nil && record == nil && !porTiempo && !motor.historialCargando.contains(lugar) {
+            partes.append("primera vez con este ejercicio")
+        }
+        return partes.joined(separator: ", ")
     }
 
     @ViewBuilder
