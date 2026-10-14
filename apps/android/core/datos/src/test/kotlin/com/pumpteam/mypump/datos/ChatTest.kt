@@ -101,3 +101,54 @@ class ChatTest {
         assertEquals(1, sigue.sinLeer)
     }
 }
+
+/**
+ * Revisión del 14-oct, hallazgo 7 (ChatLeidoAlLlegarTests de iOS): lo que manda Mati con el chat abierto llega por
+ * `mypump_chat_nuevos`, que no trae `leido_por_cliente`. Antes `marcarLeido` no veía nada sin leer y no avisaba al
+ * servidor: Mati lo veía sin leer y el badge volvía a prenderse en el próximo arranque.
+ */
+class ChatLeidoAlLlegarTest {
+    private fun transporte() = TransporteProgramado { fn, _ ->
+        when (fn) {
+            "mypump_get_chat" -> 200 to """[{"id":"1","autor":"cliente","contenido":"hola","leido_por_cliente":true,"created_at":"2026-10-14T10:00:00+00:00"}]"""
+            "mypump_chat_nuevos" -> 200 to """[{"id":"2","autor":"coach","contenido":"¿cómo venís?","created_at":"2026-10-14T10:05:00+00:00"}]"""
+            else -> 200 to "true"
+        }
+    }
+
+    @Test
+    fun loNuevoDeMatiConElChatAbiertoSeMarcaEnElServidor() = enUnHilo { alcance ->
+        val t = transporte()
+        val chat = ModeloChat(ClienteRpc(transporte = t), "tok", null, alcance)
+        chat.cargar()
+        chat.abierto = true
+        chat.sondear()
+        assertTrue("mypump_marcar_leidos_cliente" in t.llamadas)
+        assertEquals(0, chat.noLeidos.value)
+    }
+
+    @Test
+    fun conElChatCerradoSumaAlBadgeYNoMarca() = enUnHilo { alcance ->
+        val t = transporte()
+        val chat = ModeloChat(ClienteRpc(transporte = t), "tok", null, alcance)
+        chat.cargar()
+        chat.sondear()
+        assertFalse("mypump_marcar_leidos_cliente" in t.llamadas)
+        assertEquals(1, chat.noLeidos.value)
+    }
+
+    /** Abrir el chat con el sondeo andando lo vuelve a arrancar (la espera de 45 s no sigue). */
+    @Test
+    fun abrirElChatReiniciaElSondeo() = enUnHilo { alcance ->
+        val t = transporte()
+        val chat = ModeloChat(ClienteRpc(transporte = t), "tok", null, alcance)
+        chat.cargar()
+        chat.empezarSondeo()
+        val antes = chat.sondeoEnCurso
+        chat.abierto = true
+        assertTrue(chat.sondeoEnCurso != null && chat.sondeoEnCurso !== antes && antes?.isCancelled == true)
+        chat.pararSondeo()
+        chat.abierto = false
+        assertTrue(chat.sondeoEnCurso == null)   // sin sondeo, cerrar no lo arranca
+    }
+}

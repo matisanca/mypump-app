@@ -752,3 +752,42 @@ class EntrenoVectoresTest {
         }
     }
 }
+
+/**
+ * Revisión del 14-oct, hallazgo 1 (SustitutoConOtraCargaTests de iOS): con un sustituto de otra clase (uno lleva kg y el
+ * otro no) la fila y la confirmación tienen que decidir lo mismo. Antes la fila usaba el sustituto y la confirmación el
+ * plan: se borraba el kg o la serie no se podía registrar. La web tiene el mismo bug; acá va el arreglo.
+ */
+class SustitutoConOtraCargaTest {
+    private fun dia(nombre: String): Dia = Dia.desde(
+        Json.parseToJsonElement("""{"id":"d1","nombre":"Día 1","bloques":[{"nombre":"B","ejercicios":[{"id":"e1","nombre":"$nombre","series":3,"reps":"12"}]}]}"""),
+    )
+
+    private fun ejercicio(nombre: String): Ejercicio = Ejercicio.desde(Json.parseToJsonElement("""{"id":"e1","nombre":"$nombre","series":3,"reps":"12"}"""))
+
+    @Test
+    fun delPlanSinKgAUnoConKg() {
+        val plan = dia("Crunch")
+        val sustituto = ejercicio("Crunch en polea")
+        assertTrue(ReglasEjercicio.sinKg(plan.bloques[0].ejercicios[0]) && !ReglasEjercicio.sinKg(sustituto))
+        val d = DiaEnCurso(plan, 1, sesionId = "s1")
+        d.escribir("e1", 0, "reps", "12")
+        d.escribir("e1", 0, "kg", "20")
+        val paso = d.confirmarSerie("e1", 0, efectivo = sustituto)
+        assertEquals(true, d.ejercicios["e1"]?.series?.get(0)?.confirmada)
+        assertEquals("20", d.ejercicios["e1"]?.series?.get(0)?.kg)
+        val carga = paso.efectos.filterIsInstance<DiaEnCurso.Efecto.Encolar>().firstOrNull { it.kind == "carga" }?.payload
+        assertEquals(20.0, carga?.get("datos")?.get("peso")?.comoNumero)
+    }
+
+    @Test
+    fun delPlanConKgAUnoSinKg() {
+        val plan = dia("Crunch en polea")
+        val sustituto = ejercicio("Crunch")
+        assertTrue(!ReglasEjercicio.sinKg(plan.bloques[0].ejercicios[0]) && ReglasEjercicio.sinKg(sustituto))
+        val d = DiaEnCurso(plan, 1, sesionId = "s1")
+        d.escribir("e1", 0, "reps", "15")
+        d.confirmarSerie("e1", 0, efectivo = sustituto)
+        assertEquals(true, d.ejercicios["e1"]?.series?.get(0)?.confirmada)   // antes: el ✓ no hacía nada (faltaba el kg)
+    }
+}

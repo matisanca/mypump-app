@@ -202,7 +202,7 @@ class DiaEnCurso(
      * calentamiento). Con la última serie el ejercicio pasa a completo y se abre el siguiente pendiente (ENT-17). Si
      * devuelve una pregunta, se vuelve a llamar con la respuesta en `respuestas`.
      */
-    fun confirmarSerie(id: String, idx: Int, respuestas: Respuestas = Respuestas()): Paso {
+    fun confirmarSerie(id: String, idx: Int, respuestas: Respuestas = Respuestas(), efectivo: Ejercicio? = null): Paso {
         val e = ejercicios[id] ?: return Paso()
         if (idx < 0 || idx >= e.series.size || e.series[idx].confirmada) return Paso()
         val ex = ejercicio(id) ?: return Paso()
@@ -213,8 +213,11 @@ class DiaEnCurso(
             diaFinalizado = false
             efectos += Efecto.ReabrioDia
         }
-        val sinKg = ReglasEjercicio.sinKg(ex)
-        val prog = Progresiones.pauta(ex, semana)
+        // `efectivo` es lo que se muestra (el sustituto, si hay): de ahí sale si la serie lleva kg, como en la fila. La web
+        // usa el del plan y con un sustituto de otra clase (Crunch → Crunch en polea) borraba el kg o no dejaba registrar
+        // (revisión del 14-oct, hallazgo 1).
+        val sinKg = ReglasEjercicio.sinKg(efectivo ?: ex)
+        val prog = Progresiones.pauta(efectivo ?: ex, semana)
         val repsUlt = repsUltimaVez(id, idx)
         val (serie, completa) = ConfirmacionSerie.completar(
             e.series[idx], sinKg, prog.reps, kgUltimaVez(id, idx), repsUlt, kgHeredable(id, idx),

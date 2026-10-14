@@ -60,4 +60,29 @@ class ModeloAppTest {
         assertNull(m.dieta.value)
         assertTrue(m.problemasDieta.value.isNotEmpty())
     }
+
+    /**
+     * Revisión del 14-oct, hallazgo 10: sin red, con la copia offline, Mi Día igual se puede marcar (sale por la cola),
+     * como la web con `MYDAY` vacío. Antes quedaba tapado hasta que volviera la señal.
+     */
+    @Test
+    fun sinRedConLaCopiaMiDiaIgualSeArma() = enUnHilo { alcance ->
+        var conRed = true
+        val t = TransporteProgramado { fn, _ ->
+            if (!conRed) throw java.io.IOException("sin conexión a internet")
+            when (fn) {
+                "mypump_get_cliente_info" -> 200 to info
+                "mypump_get_dieta_activa" -> 200 to dieta
+                else -> 200 to "[]"
+            }
+        }
+        val raiz = carpetaTemporal("offline-midia")
+        ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria("tokenDePrueba_0000000000"), raiz, PreferenciasEnMemoria(), alcance).cargar()
+        conRed = false
+        val m = ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria("tokenDePrueba_0000000000"), raiz, PreferenciasEnMemoria(), alcance)
+        m.cargar()
+        assertTrue(m.fase.value == ModeloApp.Fase.LISTO && m.desdeCache.value)
+        repeat(50) { if (m.revision.value?.miDiaCargado?.value != true) kotlinx.coroutines.delay(20) }
+        assertEquals(true, m.revision.value?.miDiaCargado?.value)
+    }
 }

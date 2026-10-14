@@ -157,10 +157,20 @@ class ModeloChat(
     private val _cargando = MutableStateFlow(false)
     val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
 
-    /** Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge. */
+    /**
+     * Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge. Al abrirlo
+     * el sondeo vuelve a arrancar: si no, la espera de 45 s que estaba corriendo seguía (como la web, que cambia el
+     * intervalo apenas se abre; revisión del 14-oct, hallazgo 11).
+     */
     @Volatile var abierto = false
+        set(v) {
+            val antes = field
+            field = v
+            if (v != antes && sondeo != null) empezarSondeo()
+        }
 
     private var sondeo: Job? = null
+    internal val sondeoEnCurso: Job? get() = sondeo
     private val t get() = texto(token)
 
     /** `loadChat`: la última página, o una más hacia atrás. Sin red no toca nada. */
@@ -192,7 +202,9 @@ class ModeloChat(
         if (entraron == 0) return
         val delCoach = filas.count { it.esDelCoach }
         if (delCoach > 0) {
-            if (abierto) marcarLeido() else _noLeidos.update { it + delCoach }
+            // `mypump_chat_nuevos` no trae `leido_por_cliente`: sin forzar, `marcarLeido` no veía nada sin leer y Mati los
+            // seguía viendo así (revisión del 14-oct, hallazgo 7; la web tiene el mismo agujero).
+            if (abierto) marcarLeido(forzar = true) else _noLeidos.update { it + delCoach }
         }
     }
 
@@ -245,10 +257,10 @@ class ModeloChat(
      * `marcarChatLeido`: se decide por los mensajes (con el chat abierto el contador puede dar 0 y Mati los seguiría viendo
      * "sin leer").
      */
-    suspend fun marcarLeido() {
+    suspend fun marcarLeido(forzar: Boolean = false) {
         var habia = false
         _hilo.update { h -> h.marcarLeidos().also { habia = it.second }.first }
-        if (!habia && _noLeidos.value == 0) return
+        if (!habia && _noLeidos.value == 0 && !forzar) return
         _noLeidos.value = 0
         cliente.llamar("mypump_marcar_leidos_cliente", mapOf("p_token" to t, "p_ambito" to texto("general"), "p_referencia_id" to ValorJson.Nulo))
     }

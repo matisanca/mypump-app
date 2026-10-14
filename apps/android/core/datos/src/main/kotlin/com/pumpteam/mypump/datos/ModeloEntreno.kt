@@ -357,8 +357,10 @@ class ModeloEntreno(
     suspend fun confirmarSerie(lugar: String, idx: Int, preguntar: suspend (Pregunta) -> Boolean): DiaCompletado? {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado? = null
+        // Lo que se muestra (el sustituto, si hay) decide si la serie lleva kg, como en la fila (revisión del 14-oct).
+        val ef = _dia.value.ejercicio(lugar)?.let { efectivo(it).ejercicio }
         while (true) {
-            val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas) }
+            val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas, ef) }
             ejecutar(paso.efectos)?.let { completo = it }
             val p = paso.pregunta ?: return completo
             val motivo = paso.motivo ?: return completo
@@ -517,8 +519,14 @@ class ModeloEntreno(
             remota = consultarSesionDia(diaId, semana)
             if (seq != restauracion) return
         }
-        val s = (remota as? ConsultaSesion.Respondio)?.sesion ?: return
-        val id = Js.verdadero(s.id) ?: return
+        val s = (remota as? ConsultaSesion.Respondio)?.sesion
+        val id = s?.let { Js.verdadero(it.id) }
+        if (s == null || id == null) {
+            // Sin sesión conocida (sin red, o todavía no se pudo crear): lo que está en la cola para este día se pinta igual.
+            // Antes las series confirmadas sin señal aparecían vacías y un toque las pisaba (revisión del 14-oct, hallazgo 5).
+            aplicarPendientes()
+            return
+        }
         mutarDia {
             it.sesionId = id
             it.diaFinalizado = s.finalizadaEn != null
@@ -561,8 +569,12 @@ class ModeloEntreno(
      * pendiente gana: una serie confirmada sin red no vuelve a aparecer vacía si se cerró la app).
      */
     internal suspend fun cargarEstadosYSeries(seq: Int) {
-        val t = token ?: return
-        val sid = _dia.value.sesionId ?: return
+        val t = token
+        val sid = _dia.value.sesionId
+        if (t == null || sid == null) {
+            aplicarPendientes()
+            return
+        }
         val p = mapOf("p_token" to texto(t), "p_sesion_id" to texto(sid))
         val (estados, registros) = coroutineScope {
             val e = async { cliente.filas("mypump_get_ejercicios_estado", p, EstadoEjercicio::desde) }

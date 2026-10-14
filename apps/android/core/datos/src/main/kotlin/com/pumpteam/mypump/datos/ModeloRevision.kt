@@ -10,6 +10,7 @@ import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.CheckinSemanal
 import com.pumpteam.mypump.reglas.DiaCalendario
 import com.pumpteam.mypump.reglas.FechaLocal
+import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.reglas.PesoCorporal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -91,21 +92,39 @@ class ModeloRevision(
     private val _fecha = MutableStateFlow(FechaLocal.hoy())
     val fecha: StateFlow<String> = _fecha.asStateFlow()
 
+    /** El lunes de la semana de [fecha]: el check es de esa semana (las vistas vacían su borrador cuando cambia). */
+    val semana: String get() = FotosProgreso.lunes(_fecha.value)
+
+    /**
+     * De qué día son los hábitos y de qué semana el check que hay en memoria. Lo de ayer no sirve ni como base: un toque
+     * sobre los 8 vasos de ayer encolaba 9 para hoy (revisión del 14-oct, hallazgos 3 y 4).
+     */
+    private var diaDeLosHabitos: String? = null
+    private var semanaDelCheck: String? = null
+
+    /** El día de hoy (los tests lo fijan para simular la medianoche con la app abierta). */
+    internal var diaDeHoy: () -> String = { FechaLocal.hoy() }
+
     private var esperaAgua: Job? = null
     private val t get() = texto(token)
 
     // ── Mi Día ──
 
-    /** `loadMyday`: hábitos de hoy y racha. Sin red quedan los de antes (o vacíos). */
+    /**
+     * `loadMyday`: hábitos de hoy y racha. Sin red quedan los de hoy si ya estaban; los de otro día no (la web vacía
+     * `MYDAY`): se puede marcar igual y sale por la cola. Lo pendiente de hoy se pinta encima.
+     */
     suspend fun cargarMiDia() {
-        val hoy = FechaLocal.hoy()
+        val hoy = diaDeHoy()
         _fecha.value = hoy
+        if (diaDeLosHabitos != hoy) _habitos.value = HabitosHoy()
+        diaDeLosHabitos = hoy
         val (rh, rr) = coroutineScope {
             val h = async { cliente.filas("mypump_get_habitos_dia", mapOf("p_token" to t, "p_fecha" to texto(hoy)), HabitosDia::desde) }
             val r = async { cliente.filas("mypump_get_streak", mapOf("p_token" to t), Racha::desde) }
             h.await() to r.await()
         }
-        rh.valorONull()?.let { filas -> _habitos.value = HabitosHoy.de(filas.firstOrNull()) }
+        rh.valorONull()?.let { filas -> if (diaDeHoy() == hoy) _habitos.value = HabitosHoy.de(filas.firstOrNull()) }
         rr.valorONull()?.let { filas -> _racha.value = filas.firstOrNull()?.streak ?: 0 }
         aplicarPendientes()
         _miDiaCargado.value = true
@@ -128,7 +147,7 @@ class ModeloRevision(
     suspend fun setHabito(campo: String, valor: String?) {
         val v: ValorJson = valor?.let { texto(it) } ?: ValorJson.Nulo
         // La fecha es la de AHORA (la app pudo quedar abierta de un día para otro), como `hoyLocal()` en la web.
-        val dia = FechaLocal.hoy()
+        val dia = diaDeHoy()
         _habitos.update { it.aplicar(campo, v) }
         outbox?.encolar("habito", ValorJson.objeto("fecha" to texto(dia), "campo" to texto(campo), "valor" to v), "habito|$dia|$campo")
         if (campo in listOf("entrenamiento", "comio_segun_plan", "durmio_bien")) {
@@ -145,7 +164,7 @@ class ModeloRevision(
         if (nuevo == _habitos.value.vasosAgua) return
         _habitos.update { it.copy(vasosAgua = nuevo) }
         esperaAgua?.cancel()
-        val dia = FechaLocal.hoy()
+        val dia = diaDeHoy()
         esperaAgua = alcance.launch {
             delay(600)
             outbox?.encolar(
@@ -162,7 +181,7 @@ class ModeloRevision(
     }
 
     private suspend fun aplicarPendientes() {
-        val prefijo = "habito|${FechaLocal.hoy()}|"
+        val prefijo = "habito|${diaDeHoy()}|"
         val pendientes = outbox?.pendientesPorClave() ?: return
         for ((k, op) in pendientes) {
             if (k.startsWith(prefijo)) _habitos.update { it.aplicar(k.removePrefix(prefijo), op.payload["valor"]) }
@@ -173,8 +192,11 @@ class ModeloRevision(
 
     /** `loadRevision` + `loadSalud`: el check de la semana y 60 días de salud (para el peso). */
     suspend fun cargarRevision() {
-        val hoy = FechaLocal.hoy()
+        val hoy = diaDeHoy()
         _fecha.value = hoy
+        // Semana nueva: el check de la anterior no es el de esta, haya red o no (la web lo vacía).
+        if (semanaDelCheck != semana) _checkin.value = null
+        semanaDelCheck = semana
         val desde = DiaCalendario.numero(hoy)?.let { DiaCalendario.texto(it - 59) } ?: hoy
         val (rc, rs) = coroutineScope {
             val c = async { cliente.filas("mypump_get_checkin_semana", mapOf("p_token" to t, "p_fecha" to texto(hoy)), CheckinSemana::desde) }
@@ -198,6 +220,20 @@ class ModeloRevision(
             // Un peso de hoy que todavía no salió gana sobre lo del servidor.
             outbox?.pendientesPorClave()?.get("peso_$hoy")?.payload?.get("valor")?.comoNumero?.let { ponerPesoDeHoy(it) }
         }
+        // Un check de esta semana que todavía no salió también (se mandó sin señal): si no, se vería sin enviar.
+        aplicarCheckPendiente()
+    }
+
+    private suspend fun aplicarCheckPendiente() {
+        val semana = semana
+        val pendientes = (outbox?.pendientesPorClave() ?: emptyMap()).filter { (k, op) ->
+            k.startsWith("checkin_") && op.payload["fecha"]?.comoTexto?.let(FotosProgreso::lunes) == semana
+        }
+        val op = pendientes.values.maxByOrNull { it.ts } ?: return
+        val d = op.payload["datos"] ?: return
+        val v = LinkedHashMap<String, Int>()
+        for (m in CheckinSemanal.metricas) d[m.clave]?.comoNumero?.let { v[m.clave] = enteroTruncado(it) }
+        _checkin.value = Checkin(v, d["nota"]?.comoTexto ?: "")
     }
 
     /** El check está enviado si tiene energía (como la web: `checkin.energia`). */
@@ -209,9 +245,10 @@ class ModeloRevision(
      */
     suspend fun enviarCheckin(c: Checkin): String? {
         CheckinSemanal.faltan(c.valores)?.let { return it }
-        val dia = FechaLocal.hoy()
+        val dia = diaDeHoy()
         val nota = TextoJs.recortar(c.nota)
         _checkin.value = Checkin(c.valores, nota)
+        semanaDelCheck = FotosProgreso.lunes(dia)
         val datos = LinkedHashMap<String, ValorJson>()
         datos["nota"] = texto(nota)
         for (m in CheckinSemanal.metricas) datos[m.clave] = numero(c.valores[m.clave] ?: 0)
@@ -224,14 +261,14 @@ class ModeloRevision(
     /** Guardar el peso de hoy (30-300 kg). Devuelve false si el valor no es válido. */
     suspend fun guardarPeso(texto: String): Boolean {
         val valor = PesoCorporal.leer(texto) ?: return false
-        val dia = FechaLocal.hoy()
+        val dia = diaDeHoy()
         ponerPesoDeHoy(valor)
         outbox?.encolar("peso", ValorJson.objeto("fecha" to texto(dia), "valor" to numero(valor)), "peso_$dia")
         return true
     }
 
     private fun ponerPesoDeHoy(valor: Double) {
-        val hoy = FechaLocal.hoy()
+        val hoy = diaDeHoy()
         val fila = FilaSalud(hoy, "peso_kg", valor, "manual", null)
         _salud.update { lista -> lista.filterNot { it.tipo == "peso_kg" && it.fecha == hoy && it.fuente == "manual" } + fila }
     }

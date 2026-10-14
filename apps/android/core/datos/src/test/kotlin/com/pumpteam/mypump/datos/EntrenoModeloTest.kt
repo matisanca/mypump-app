@@ -294,6 +294,26 @@ class EntrenoSesionTest {
         assertEquals(false, series?.get(0)?.confirmada)
         assertEquals(2, b.cola.pendientes(), "las dos semanas conviven en la cola (dedupe con semana)")
     }
+
+    /**
+     * Revisión del 14-oct, hallazgo 5: sin señal en el gimnasio la sesión no se pudo crear y las series quedaron en la
+     * cola. Al volver al día (o abrir la app sin red) tienen que verse confirmadas, no vacías.
+     */
+    @Test
+    fun sinSesionYSinRedLaColaIgualSePinta() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        b.servidor.sinRed("get_sesion_dia")
+        b.cola.encolar(
+            "carga",
+            EscriturasEntreno.carga(null, "d1", 5, "jal-d1-0", 0, SerieLocal(reps = "10", kg = "60"), "Jalón al pecho", null),
+            EscriturasEntreno.claveCarga("d1", "jal-d1-0", 0, 5),
+        )
+        val m = b.modelo()
+        m.restaurarSesion()
+        assertNull(m.dia.value.sesionId)
+        assertEquals(true, m.dia.value.ejercicios["jal-d1-0"]?.series?.get(0)?.confirmada)
+        assertEquals("60", m.dia.value.ejercicios["jal-d1-0"]?.series?.get(0)?.kg)
+    }
 }
 
 /** Historial por clave (SER-08/09/10). */
