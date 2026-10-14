@@ -6,7 +6,7 @@ struct MyPumpApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Raiz(datos: datos)
+            RaizApp(modelo: Proveedor.modelo) { Raiz(datos: datos) }
                 .tint(Color.marcaTexto)
         }
     }

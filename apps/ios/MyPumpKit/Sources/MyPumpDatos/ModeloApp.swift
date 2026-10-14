@@ -22,6 +22,8 @@ public final class ModeloApp {
     public private(set) var dieta: DietaActiva?
     /// Lo cargado vino de la copia offline (banner "sin conexión").
     public private(set) var desdeCache = false
+    /// Demo ("Ver demo", la que mira App Review): datos de la web empaquetados, sin red ni token, nada se escribe.
+    public private(set) var esDemo = false
     public private(set) var estadoGuardado: EstadoGuardado = .quieto
 
     // Dieta
@@ -58,6 +60,13 @@ public final class ModeloApp {
     @discardableResult
     public func entrar(con texto: String) async -> Bool {
         guard let t = FormatoToken.extraer(de: texto) else { return false }
+        // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de
+        // WhatsApp de hace meses.
+        if t != token, t == UserDefaults.standard.string(forKey: "mypump_token_invalido"), token != nil, fase == .listo, !esDemo {
+            return false
+        }
+        if t == token, fase == .listo { return true }
+        esDemo = false
         almacen.guardar(t)
         token = t
         prepararCuenta(t)
@@ -71,8 +80,32 @@ public final class ModeloApp {
         token = nil
         disco = nil
         outbox = nil
-        info = nil; rutina = nil; dieta = nil; swaps = [:]
+        info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        esDemo = false
         fase = .sinToken
+    }
+
+    /// "Ver demo": la rutina y la dieta de ejemplo de la web (`SAMPLE_RUTINA` / `SAMPLE_DIET`, que la app trae
+    /// empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria.
+    public func entrarEnDemo(rutina: Data, dieta: Data) {
+        func envolver(_ estructura: Data, id: String) -> Data? {
+            guard let e = try? JSONDecoder().decode(JSONValue.self, from: estructura) else { return nil }
+            return try? JSONEncoder().encode(JSONValue.objeto(["id": .texto(id), "version": .numero(1), "estructura": e,
+                                                               "semana_actual": .numero(1)]))
+        }
+        self.rutina = envolver(rutina, id: "demo").flatMap { try? JSONDecoder().decode(RutinaActiva.self, from: $0) }
+        self.dieta = envolver(dieta, id: "demo").flatMap { try? JSONDecoder().decode(DietaActiva.self, from: $0) }
+        info = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        desdeCache = false
+        esDemo = true
+        fase = .listo
+    }
+
+    /// Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada).
+    public func salirDeDemo() async {
+        esDemo = false
+        rutina = nil; dieta = nil; swaps = [:]
+        if token != nil { fase = .cargando; await cargar() } else { fase = .sinToken }
     }
 
     private func prepararCuenta(_ t: String) {
@@ -96,6 +129,7 @@ public final class ModeloApp {
     }
 
     public func cargar() async {
+        if esDemo { return }   // la demo no toca la red (y "tirar para actualizar" no la cierra)
         guard let t = token else { fase = .sinToken; return }
         let p: [String: JSONValue] = ["p_token": .texto(t)]
 

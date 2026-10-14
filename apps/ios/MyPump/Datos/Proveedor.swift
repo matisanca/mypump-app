@@ -11,6 +11,11 @@ enum Proveedor {
         if let t = UserDefaults.standard.string(forKey: "token"), FormatoToken.valido(t) {
             return ModeloApp(almacen: TokenEnMemoria(t))
         }
+        // `-reiniciar YES`: arranca como recién instalada (sin token guardado), para probar la bienvenida.
+        if UserDefaults.standard.bool(forKey: "reiniciar") {
+            TokenEnKeychain().guardar(nil)
+            UserDefaults.standard.removeObject(forKey: "mypump_token_invalido")
+        }
         #endif
         return ModeloApp()
     }()
