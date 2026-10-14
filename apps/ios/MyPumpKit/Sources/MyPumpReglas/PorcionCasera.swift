@@ -181,10 +181,7 @@ public enum PorcionCasera {
         return "\(num) \(cups > 1 ? "tazas" : "taza")"
     }
 
-    /// Lo entero como lo imprime JS: sin cerrar la app con una cantidad absurda (`Int()` de Swift se cae fuera de rango).
-    static func entero(_ d: Double) -> String {
-        guard d.isFinite else { return d.isNaN ? "NaN" : (d > 0 ? "Infinity" : "-Infinity") }
-        if abs(d) < 9e15 { return String(Int(d)) }
-        return abs(d) < 1e21 ? String(format: "%.0f", d) : String(d)
-    }
+    /// Lo entero como lo imprime JS, sin cerrar la app con una cantidad absurda (`Int()` de Swift se cae fuera de rango):
+    /// entre 2^53 y 1e21 JS escribe los dígitos más cortos con ceros ("1152921504606847000"), no los exactos.
+    static func entero(_ d: Double) -> String { JS.texto(d) }
 }

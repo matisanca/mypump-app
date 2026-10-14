@@ -63,7 +63,9 @@ const anclaje = new Function('_foodsEnPosicion', `${extraer('_huellaFood')}\n${e
 // ── Corpus ───────────────────────────────────────────────────────────
 const leer = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 const fixtures = path.join(RAIZ, 'apps/shared/fixtures');
-const rutinasPublicas = fs.readdirSync(fixtures).map((c) => leer(path.join(fixtures, c, 'get_rutina_activa.json'))[0].estructura);
+// Solo las cuentas: `errores/` tiene respuestas de error grabadas, sin rutina.
+const rutinasPublicas = fs.readdirSync(fixtures).map((c) => path.join(fixtures, c, 'get_rutina_activa.json'))
+  .filter((p) => fs.existsSync(p)).map((p) => leer(p)[0].estructura);
 const demo = { rutina: extraerConst('SAMPLE_RUTINA'), dieta: extraerConst('SAMPLE_DIET') };
 rutinasPublicas.push(demo.rutina);
 const rutinasPrivadas = fs.existsSync(path.join(PRIVADO, 'estructuras/rutinas.json'))
@@ -97,7 +99,9 @@ function escribir(destino, nombre, datos) {
 const NOMBRES_DIFICILES = ['Jalón al pecho (prono)', 'Jalon al pecho', 'Curl araña', 'Press inclinado 45° — mancuernas',
   'Ørsted row', 'Curl (cabeza larga) (polea)', 'Pájaro (x\ny) invertido', '  Sentadilla   búlgara  ', '', 'X (pectoral superior)',
   'Remo 🏋️ con barra', 'Extensión de tríceps — polea alta', 'Hip thrust 1½', 'CURL FEMORAL SENTADO', 'Prensa 45º', 'Abducción (máquina',
-  'Face-pull/con banda', 'Ｆｕｌｌ width', 'İnclinado', 'straße', 'œuvre', 'naïve café'];
+  'Face-pull/con banda', 'Ｆｕｌｌ width', 'İnclinado', 'straße', 'œuvre', 'naïve café',
+  // El `.` de ICU se corta en VT, FF y NEL; el de JS no (lo encontró el port de Android).
+  'Curl (polea\u000Balta) bíceps', 'Press (plano\u000Cagarre) banca', 'Remo (bajo\u0085cable) sentado', 'Vuelos (a\u2028b) laterales'];
 function vectoresClave(nombres) {
   const unicos = [...new Set(nombres.filter((n) => typeof n === 'string'))];
   return { casos: unicos.map((nombre) => ({ nombre, clave: reglas.claveEjercicio(nombre) })) };
@@ -110,7 +114,8 @@ const FOOD_DB = (() => {
   new Function('window', execFileSync('git', ['show', `${REF}:public/js/food-db.js`], { cwd: RAIZ }).toString())(w);
   return w.MYPUMP_FOOD_DB;
 })();
-const dietasPublicas = fs.readdirSync(fixtures).map((c) => leer(path.join(fixtures, c, 'get_dieta_activa.json'))[0].estructura);
+const dietasPublicas = fs.readdirSync(fixtures).map((c) => path.join(fixtures, c, 'get_dieta_activa.json'))
+  .filter((p) => fs.existsSync(p)).map((p) => leer(p)[0].estructura);
 dietasPublicas.push(demo.dieta);
 // Formato B sintético: la misma posición con otra cantidad según el tipo de día ("Avena 80 g" entreno / "Avena 50 g"
 // descanso) y otro alimento en otra posición. Es el caso que rompió el anclaje el 20-sep.
@@ -143,7 +148,10 @@ function corpusPorcion(dietas, conBase) {
       { name: 'Atún', qty: 240, unit: 'g' }, { name: 'Papaya', qty: 200, unit: 'g' }, { name: 'Pan rallado', qty: 30, unit: 'g' },
       { name: 'Pechuga de pollo cruda', qty: 230, unit: 'g' }, { name: '', qty: 100, unit: 'g' }, { name: 'Pollo', qty: 0, unit: 'g' },
       { name: 'Pollo', qty: 'abc', unit: 'g' }, { name: 'Nueces', qty: '45', unit: 'G' }, { name: 'Crema de maní', qty: 6, unit: 'g' },
-      { name: 'Lápices', qty: 40, unit: 'paquetes', unitGrams: 5 }, { name: 'Raíces', qty: 30, unit: 'unidad', unitGrams: 10 });
+      { name: 'Lápices', qty: 40, unit: 'paquetes', unitGrams: 5 }, { name: 'Raíces', qty: 30, unit: 'unidad', unitGrams: 10 },
+      // `\s` de JS (con VT y U+FEFF) y cantidades que no entran en un entero (entre 2^53 y 1e21 JS escribe los dígitos cortos).
+      { name: 'Huevo\uFEFFentero', qty: 2, unit: 'unidad' }, { name: 'Pan\u000Blactal', qty: 2, unit: 'unidad' },
+      { name: 'Pollo', qty: 115292150460684697600, unit: 'g' }, { name: 'Pollo', qty: 1e25, unit: 'g' }, { name: 'Arroz', qty: 9007199254740993, unit: 'g' });
   }
   return out;
 }

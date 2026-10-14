@@ -28,6 +28,28 @@ struct JSRegexTests {
         #expect(JSRegex(#"jam[óo]n"#).prueba("jamón"))
     }
 
+    @Test func puntoYBlancosComoLosDeJS() {
+        // El `.` de JS solo se corta en \n, \r, U+2028 y U+2029; el de ICU también en VT, FF y NEL.
+        for s in ["a\u{0B}b", "a\u{0C}b", "a\u{85}b", "a b"] { #expect(JSRegex(#"^a.b$"#).prueba(s)) }
+        for s in ["a\nb", "a\rb", "a\u{2028}b", "a\u{2029}b"] { #expect(!JSRegex(#"^a.b$"#).prueba(s)) }
+        // `\s` de JS: con VT y U+FEFF, sin NEL. Afuera y adentro de una clase.
+        for s in ["\u{0B}", "\u{FEFF}", "\u{A0}", "\u{3000}", "\t"] { #expect(JSRegex(#"^\s$"#).prueba(s)) }
+        #expect(!JSRegex(#"^\s$"#).prueba("\u{85}"))
+        #expect(JSRegex(#"^[\s/]+$"#).prueba("\u{FEFF}/\u{0B} "))
+        #expect(!JSRegex(#"^\S$"#).prueba("\u{FEFF}"))
+        #expect(JSRegex(#"^\S$"#).prueba("\u{85}"))
+    }
+
+    @Test func negadosAdentroDeUnaClase() {
+        #expect(JSRegex(#"^[\W]$"#).prueba("é"))          // en JS "é" no es de palabra
+        #expect(!JSRegex(#"^[\W]$"#).prueba("a"))
+        #expect(JSRegex(#"^[\D]$"#).prueba("٣"))          // ni el dígito árabe un dígito
+        #expect(!JSRegex(#"^[\D]$"#).prueba("3"))
+        #expect(JSRegex(#"^[\Sx]+$"#).prueba("abx"))
+        #expect(!JSRegex(#"^[\S]$"#).prueba("\u{FEFF}"))
+        #expect(!JSRegex(#"^[^\W]$"#).prueba("é"))
+    }
+
     @Test func reemplazoLiteral() {
         #expect(JSRegex(#"[^a-z0-9 ]+"#).reemplazarTodo("curl $1 (x)", por: " ") == "curl  1  x ")
     }

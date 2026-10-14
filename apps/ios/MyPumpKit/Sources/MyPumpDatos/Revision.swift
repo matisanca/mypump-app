@@ -27,7 +27,7 @@ public struct HabitosHoy: Equatable, Sendable {
     mutating func aplicar(campo: String, valor: JSONValue?) {
         let texto = Escrituras.stringJS(valor)
         switch campo {
-        case "vasos_agua": vasosAgua = Int(Double(texto) ?? 0)
+        case "vasos_agua": vasosAgua = (Double(JS.trim(texto)) ?? 0).enteroTruncado
         case "entrenamiento": entrenamiento = (texto == "null" || texto.isEmpty) ? nil : texto
         case "comio_segun_plan": comioSegunPlan = Self.booleano(texto)
         case "durmio_bien": durmioBien = Self.booleano(texto)

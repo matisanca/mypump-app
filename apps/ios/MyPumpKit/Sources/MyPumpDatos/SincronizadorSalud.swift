@@ -143,7 +143,7 @@ public final class SincronizadorSalud {
             guard let j = try? JSONDecoder().decode(JSONValue.self, from: Data(raw.utf8)) else { return nil }
             let off = j["off"]?.comoNumero ?? 0
             guard off > 0 else { return nil }
-            return Cursor(off: Int(off), alcance: j["alcance"]?.comoNumero.map { Int($0) })
+            return Cursor(off: off.enteroTruncado, alcance: j["alcance"]?.comoNumero.map(\.enteroTruncado))
         }
         guard let v = Self.parseInt(raw), v > 0, v <= 60 else { return nil }
         return Cursor(off: v, alcance: 60)
@@ -388,7 +388,7 @@ public final class SincronizadorSalud {
             porNoche[k, default: [:]][src, default: [:]][st, default: 0] = jsRound((porNoche[k]?[src]?[st] ?? 0) + (s.fin - s.inicio) / 60_000)
         }
         let noches = porNoche.keys.sorted().map { f in
-            DiagnosticoSalud.NocheFuente(fecha: f, fuentes: (porNoche[f] ?? [:]).mapValues { $0.mapValues { Int($0) } })
+            DiagnosticoSalud.NocheFuente(fecha: f, fuentes: (porNoche[f] ?? [:]).mapValues { $0.mapValues(\.enteroTruncado) })
         }
         return DiagnosticoSalud(disponible: true, conToken: !token.isEmpty, errorIngesta: ultimoErrorIngesta, tipos: tipos, noches: noches,
                                 errores: errores.todos)
@@ -410,8 +410,8 @@ public final class SincronizadorSalud {
     /// `Number(r.data) || 0`.
     static func numeroJS(_ j: JSONValue) -> Int {
         switch j {
-        case .numero(let d): return d.isFinite ? Int(d) : 0
-        case .texto(let s): return Int(Double(s) ?? 0)
+        case .numero(let d): return d.enteroTruncado
+        case .texto(let s): return (Double(JS.trim(s)) ?? 0).enteroTruncado
         case .bool(let b): return b ? 1 : 0
         default: return 0
         }

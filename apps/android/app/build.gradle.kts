@@ -23,6 +23,8 @@ android {
         // en Play, y el salto deja lugar a arreglos de la 1.0.x mientras la 2.0.0 está en prueba.
         versionCode = 100
         versionName = "2.0.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -61,6 +63,13 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.activity.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     debugImplementation(libs.compose.ui.tooling)
+
+    // El token con el Keystore de verdad: corre en un emulador o un teléfono (`connectedDebugAndroidTest`).
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.junit)
 }

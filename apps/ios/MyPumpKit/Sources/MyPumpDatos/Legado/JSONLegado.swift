@@ -127,7 +127,8 @@ enum JSONLegado {
     static func numero(_ v: JSONValue?) -> Double? {
         switch v {
         case .some(.numero(let d)) where d.isFinite: return d
-        case .some(.texto(let t)): return Double(t.trimmingCharacters(in: .whitespaces))
+        // "nan" o "inf" en texto también: el que no es finito no es un número que sirva (y `Int()` lo convierte cerrando la app).
+        case .some(.texto(let t)): return Double(t.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite ? $0 : nil }
         default: return nil
         }
     }

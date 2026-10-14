@@ -202,7 +202,8 @@ const igualALista = (subs, slug) => JSON.stringify(comprimir(subs)) === JSON.str
 
 // ── Corpus ───────────────────────────────────────────────────────────
 const fixtures = path.join(RAIZ, 'apps/shared/fixtures');
-const rutinasPublicas = fs.readdirSync(fixtures).sort().map((c) => leer(path.join(fixtures, c, 'get_rutina_activa.json'))[0].estructura);
+const rutinasPublicas = fs.readdirSync(fixtures).sort().map((c) => path.join(fixtures, c, 'get_rutina_activa.json'))
+  .filter((p) => fs.existsSync(p)).map((p) => leer(p)[0].estructura);   // `errores/` no tiene rutina
 rutinasPublicas.push(leer(path.join(RAIZ, 'apps/shared/demo/rutina.json')));
 const existe = (r) => fs.existsSync(path.join(PRIVADO, r));
 const rutinasPrivadas = existe('estructuras/rutinas.json')

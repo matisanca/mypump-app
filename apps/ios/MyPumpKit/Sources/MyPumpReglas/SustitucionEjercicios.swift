@@ -264,7 +264,7 @@ public enum SustitucionEjercicios {
     /// también tomaría "ſ" por "s". Por eso las clases explícitas.
     static let smith = regexJS(#"\b[Ss][Mm][Ii][Tt][Hh]\b"#)
     /// `/exercise-images\/([^/]+)\//`: hace falta el grupo, así que va directo a NSRegularExpression (misma traducción).
-    static let imagenURL = try! NSRegularExpression(pattern: JSRegex.traducir(semanticaJS(#"exercise-images\/([^/]+)\/"#)))
+    static let imagenURL = try! NSRegularExpression(pattern: JSRegex.traducir(#"exercise-images\/([^/]+)\/"#))
     static let soloEspacio = CharacterSet(charactersIn: " ")
     static let espanol = Locale(identifier: "es")
 
@@ -506,51 +506,8 @@ private struct ClaveJS: Hashable {
     init(_ s: String) { unidades = Array(s.utf16) }
 }
 
-private func regexJS(_ patron: String) -> JSRegex { JSRegex(semanticaJS(patron)) }
+private func regexJS(_ patron: String) -> JSRegex { JSRegex(patron) }
 
 /// Una lista `[[/regex/, valor], …]` de app.js, en el mismo orden.
 private func tabla(_ pares: [(String, String)]) -> [(JSRegex, String)] { pares.map { (regexJS($0.0), $0.1) } }
 
-/// JSRegex ya traduce `\b`, `\w` y `\d`. Acá van además el `.` y el `\s`, que en ICU tampoco son los de JS: el `.` de
-/// ICU no toma VT, FF ni NEL (el de JS solo se corta en \n, \r, U+2028 y U+2029), y el `\s` de ICU incluye NEL y no
-/// U+FEFF. Pesa en el `\(.*?\)` de `_norm` con un nombre como "Curl (a\u{0B}b) martillo". (`\S` adentro de una clase
-/// no se traduce: acá no hay.)
-private func semanticaJS(_ p: String) -> String {
-    let punto = #"[^\n\r\x{2028}\x{2029}]"#
-    let blancos = #"\t\n\x{B}\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}"#
-    var out = ""
-    var enClase = false
-    var i = p.startIndex
-    while i < p.endIndex {
-        let c = p[i]
-        let n = p.index(after: i)
-        if c == "\\", n < p.endIndex {
-            switch (p[n], enClase) {
-            case ("s", false): out += "[\(blancos)]"
-            case ("S", false): out += "[^\(blancos)]"
-            case ("s", true): out += blancos
-            default: out.append(c); out.append(p[n])
-            }
-            i = p.index(after: n)
-            continue
-        }
-        if enClase {
-            if c == "]" { enClase = false }
-        } else if c == "[" {
-            enClase = true
-            out.append(c)
-            i = n
-            // `[]` y `[^]`: el ']' inmediato cierra la clase (como en JSRegex).
-            if i < p.endIndex, p[i] == "^" { out.append("^"); i = p.index(after: i) }
-            if i < p.endIndex, p[i] == "]" { out.append("]"); enClase = false; i = p.index(after: i) }
-            continue
-        } else if c == "." {
-            out += punto
-            i = n
-            continue
-        }
-        out.append(c)
-        i = n
-    }
-    return out
-}

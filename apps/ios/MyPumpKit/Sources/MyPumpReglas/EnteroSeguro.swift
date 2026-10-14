@@ -9,6 +9,13 @@ extension Double {
         return Int(Swift.max(-1e15, Swift.min(1e15, rounded())))
     }
 
+    /// `Int(x)` (trunca hacia el cero) sin riesgo: NaN o infinito valen 0 y lo de más de ±10^15 se acota. Para lo que
+    /// se lee de la cola o del almacenamiento viejo: un "nan" o un 1e20 ahí cerraba la app en cada arranque.
+    public var enteroTruncado: Int {
+        guard isFinite else { return 0 }
+        return Int(Swift.max(-1e15, Swift.min(1e15, self)))
+    }
+
     /// `Math.round` de JS, sin riesgo.
     public var jsEntero: Int {
         let r = jsRound(self)

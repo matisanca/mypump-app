@@ -39,7 +39,12 @@
         <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
+    <!-- Backup: el token nunca viaja (noBackupFilesDir + clave del Keystore) y la carpeta de cada cuenta tampoco; ver
+         res/xml/reglas_backup.xml (hasta Android 11) y reglas_extraccion.xml (12+). -->
     <application
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/reglas_backup"
+        android:dataExtractionRules="@xml/reglas_extraccion"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
