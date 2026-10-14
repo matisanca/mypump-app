@@ -43,6 +43,8 @@ public final class ModeloApp {
     public private(set) var excluir: [String] = []
     public private(set) var alimentosPropios: [AlimentoPropio] = []
     public private(set) var swaps: [String: SwapLocal] = [:]
+    /// La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido).
+    public private(set) var palanca = PalancaRemota.deFabrica
     /// Comidas libres (fuera del plan) del día local.
     public private(set) var comidasLibres: [ComidaLibre] = []
     /// El chat con Mati (no existe en la demo ni sin cuenta).
@@ -240,8 +242,10 @@ public final class ModeloApp {
 
         async let r = cliente.llamar("mypump_get_rutina_activa", p)
         async let d = cliente.llamar("mypump_get_dieta_activa", p)
-        let (rr, dd) = await (r, d)
+        async let cfg = PalancaRemota.leer(cliente)
+        let (rr, dd, palancaLeida) = await (r, d, cfg)
         guard vigente() else { return }
+        if let palancaLeida { palanca = palancaLeida }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         let copia = disco?.leer(CopiaOffline.self, "offline.json")
@@ -550,7 +554,7 @@ public final class ModeloApp {
         let e = dieta.estructura
         let tipo = tipoDia
         guard let h = SwapsDeComida.hidratar(remotos: remotos, locales: swaps, dietaId: dieta.id, pendientes: pendientes, yaMigrado: yaMigrado,
-                                             enPosicion: { SwapsDeComida.enPosicion(e, tipoActivo: tipo, comidaId: $0, optIdx: $1, foodIdx: $2) })
+                                             borrarAnclados: palanca.anclajeBorraSwaps, enPosicion: { SwapsDeComida.enPosicion(e, tipoActivo: tipo, comidaId: $0, optIdx: $1, foodIdx: $2) })
         else { return }
         swaps = h.swaps
         guardarSwaps()

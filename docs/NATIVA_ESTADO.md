@@ -72,7 +72,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | Compuerta | Estado |
 |---|---|
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
-| G2 · migraciones de esquema | ninguna pedida todavía |
+| G2 · migraciones de esquema | **tanda 1 preparada, espera OK**: `nativa_001_recibo_conteos_palanca.sql`. Agrega 2 tablas y 3 funciones; no cambia nada existente. Primero el ensayo en ROLLBACK (`scripts/nativa/ensayar-migracion.py`, en la Mini), después aplicar. La app ya funciona con y sin la migración. Las sustituciones de ejercicio en el servidor quedan para una tanda 2 |
 | G5 · TestFlight externo | pendiente. Los internos ya están autorizados |
 | G6 · mensajes a clientes | pendiente |
 | G7 · revisión de tiendas | pendiente |

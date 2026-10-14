@@ -78,8 +78,10 @@ public enum SwapsDeComida {
     /// tratarlo como "cero swaps" volvía a subir lo que el cliente o Mati habían borrado.
     ///
     /// - Parameter pendientes: clave → kind de lo que está en la cola sin subir. Lo que el cliente hizo gana.
+    /// - Parameter borrarAnclados: la palanca remota (`anclaje_borra_swaps`). En false, un swap anclado que ya no coincide
+    ///   queda guardado y oculto (`aplica` da falso) en vez de borrarse del servidor.
     public static func hidratar(remotos: [FoodSwap]?, locales: [String: SwapLocal], dietaId: String,
-                                pendientes: [String: String], yaMigrado: Bool,
+                                pendientes: [String: String], yaMigrado: Bool, borrarAnclados: Bool = true,
                                 enPosicion: (String, Int, Int) -> [Alimento]) -> Hidratacion? {
         guard let remotos else { return nil }
         var swaps = locales
@@ -105,7 +107,8 @@ public enum SwapsDeComida {
             for s in remotos {
                 let clave = clave(dietaId: dietaId, comidaId: s.comidaId, optIdx: s.optIdx, foodIdx: s.foodIdx)
                 nuevos[clave] = SwapLocal(original: nil, current: s.foodData)
-                if let op = anclarOSacar(&nuevos, clave: clave, fila: s, pendientes: pendientes, enPosicion: enPosicion) { ops.append(op) }
+                if let op = anclarOSacar(&nuevos, clave: clave, fila: s, pendientes: pendientes, borrarAnclados: borrarAnclados,
+                                         enPosicion: enPosicion) { ops.append(op) }
             }
             for (clave, local) in locales where pendientes[clave] != nil { nuevos[clave] = local }   // local más nuevo, sin subir
             for (clave, kind) in pendientes where kind == "swap_del" { nuevos[clave] = nil }        // una reversión pendiente no resucita
@@ -118,7 +121,7 @@ public enum SwapsDeComida {
     /// `_anclarOSacarSwap`: un swap remoto legado (sin `_orig`) se ancla al alimento actual y se re-sube; uno anclado que
     /// ya no coincide con NINGÚN tipo de día se saca y se borra en el backend. Lo pendiente del cliente no se toca.
     static func anclarOSacar(_ mapa: inout [String: SwapLocal], clave: String, fila: FoodSwap, pendientes: [String: String],
-                             enPosicion: (String, Int, Int) -> [Alimento]) -> OpSwap? {
+                             borrarAnclados: Bool = true, enPosicion: (String, Int, Int) -> [Alimento]) -> OpSwap? {
         guard let actual = mapa[clave]?.current, AnclajeSwaps.esVerdadero(actual) else { return nil }
         if pendientes[clave] != nil { return nil }
         let candidatos = enPosicion(fila.comidaId, fila.optIdx, fila.foodIdx)
@@ -129,7 +132,7 @@ public enum SwapsDeComida {
             return OpSwap(kind: "swap", clave: clave, comidaId: fila.comidaId, optIdx: fila.optIdx, foodIdx: fila.foodIdx, food: anclado)
         }
         let h = AnclajeSwaps.huella(ancla: ancla)
-        if !candidatos.contains(where: { AnclajeSwaps.huella($0) == h }) {
+        if borrarAnclados, !candidatos.contains(where: { AnclajeSwaps.huella($0) == h }) {
             mapa[clave] = nil
             return OpSwap(kind: "swap_del", clave: clave, comidaId: fila.comidaId, optIdx: fila.optIdx, foodIdx: fila.foodIdx, food: nil)
         }

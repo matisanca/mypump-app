@@ -50,7 +50,7 @@ Hasta que se decidan, rige lo de hoy.
 | GEN-04 | Toast de guardado con 4 estados: "Guardando…" (si tarda más de 900 ms), "✓ Guardado" (después de un problema), "Sin conexión — se reintenta solo" y "⚠ Algo no se pudo guardar…" (9 s, se cierra tocándolo) | `C:2649-2685` | ✅ `AvisoGuardado` con los estados de la cola | ☐ |
 | GEN-05 | Aviso único "a tu plan le falta información" arriba de Revisión | `C:1882-1896` | ☐ | ☐ |
 | GEN-06 | Onboarding de permisos (primera apertura, 1,2 s después de pintar): Salud → Notificaciones. "Ahora no" nunca dispara la hoja del sistema; Salud corta a los 20 s; si deniega, muestra la ruta en Ajustes. Clave `mypump_onboarding_v1` | `C:4447-4593` | ☐ | ☐ |
-| GEN-07 | Al volver a primer plano: recalcula el descanso, drena el outbox y la cola de fotos, actualiza el chat; si cambió el día, recarga comidas, comidas libres y Mi Día | `C:5031-5058` | 🟡 colas, chat y cambio de día ✅; falta el descanso (motor de Entreno) | ☐ |
+| GEN-07 | Al volver a primer plano: recalcula el descanso, drena el outbox y la cola de fotos, actualiza el chat; si cambió el día, recarga comidas, comidas libres y Mi Día | `C:5031-5058` | ✅ colas, chat, cambio de día y descanso (`ModeloEntreno.alVolverAPrimerPlano` → `tickDescanso`) | ☐ |
 | GEN-08 | Movimiento reducido respetado | `C:1000-1003` | ☐ | ☐ |
 | GEN-09 | Respaldo científico: fila al pie de Dieta, Entreno y Mi Día | `C:4712-4714` | ✅ `PieRespaldo` en Dieta; Entreno y Mi Día al conectar | ☐ |
 
@@ -129,8 +129,8 @@ Hasta que se decidan, rige lo de hoy.
 | DIE-14 | Alimento propio: unidad g/ml/unidad/rebanada/taza/porción/cucharada, gramos por unidad, "📷 Escanear etiqueta", kcal 4/4/9 si faltan, se guarda **por 100 g**, "Crear y usar" lo aplica | `C:9327-9636` | ✅ `AlimentoPropioNuevoTests` + integración; escaneo sin probar con la IA | ☐ |
 | DIE-15 | Comida libre por foto del plato (~30 s, gramos editables que re-escalan macros, "estimado") o a mano; borrar con ✕ (optimista con rollback) | `C:5221-5448` | ✅ a mano: XCUITest + integración; foto sin probar con la IA | ☐ |
 | DIE-16 | Si la visión falla: aviso y carga a mano | `C:9474+` | ✅ | ☐ |
-| DIE-17 | Sin dieta: dieta de ejemplo con aviso y escrituras apagadas | `C:8784-8800` | ☐ | ☐ |
-| DIE-18 | Si cambió el día con la app abierta, al volver recarga marcas y comidas libres | `C:5049` | ☐ | ☐ |
+| DIE-17 | Sin dieta: dieta de ejemplo con aviso y escrituras apagadas | `C:8784-8800` | ✅ desvío D11: "Todavía no hay plan de comidas" (la de ejemplo solo en la demo) | ☐ |
+| DIE-18 | Si cambió el día con la app abierta, al volver recarga marcas y comidas libres | `C:5049` | ✅ `alVolverAPrimerPlano` recarga comidas libres, Mi Día y Revisión (las marcas no existen: D10) | ☐ |
 | DIE-19 | Fecha local con la tolerancia del servidor (+1/−7): marcar no se "desmarca solo" en otra zona horaria | memoria `project_timezone_marcar_comida` | ✅ `FechaLocal` | ☐ |
 
 ## DIA · Mi Día (dentro de Revisión)
