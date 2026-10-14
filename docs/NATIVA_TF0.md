@@ -46,3 +46,16 @@ solo el día que exista la RPC.
   viejas y la escritura de vuelta sin publicar otra versión.
 - Se puede volver atrás: reinstalar la 1.0.12 desde la App Store. La migración se repite sola al volver a la 2.0.0, sin
   duplicar.
+
+## Resultado (14-oct-2026)
+
+- **Con la 2.0.0 (100): falló.** En el iPhone WebKit guarda en `Library/WebKit/WebsiteData`, no en
+  `Library/WebKit/<bundle>/WebsiteData` como el simulador. La app no encontró nada y pidió el link. No se perdió nada:
+  la Fase L no escribe ni borra si no encuentra el almacenamiento.
+- **Con la 2.0.0 (101): OK.** Entró sola, recibo confirmado con los conteos iguales, escritura de vuelta confirmada en
+  el arranque siguiente, push registrado sin duplicar. Detalle en la bitácora de `NATIVA_ESTADO.md`.
+- **Herramientas que sirvieron:** `xcrun devicectl device info files` / `device copy from --domain-type
+  appDataContainer` leen el contenedor de una app de TestFlight. `log collect` de un iPhone pide root. La
+  invitación interna se acepta con el código de canje que muestra la página de Apple en la Mac, sin tocar el link
+  del mail.
+

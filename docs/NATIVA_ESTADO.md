@@ -110,6 +110,21 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **14-oct 14:25, TF-0 OK con la 101** (iPhone de Mati, iOS 27.0, su cuenta; actualizada desde TestFlight encima de la 100):
+  - **Entró sola, sin link**, con el mismo estado que la app de la tienda (Día 2, semana 5 de 12, la sesión vieja
+    "Sin cerrar"). Salud sigue conectada ("Este iPhone ya está mandando pasos y actividad") y el recordatorio del
+    domingo a las 11:00, prendido.
+  - `legado/registro.log` (copiado con `devicectl device copy from`): Fase L corrida 1 con el token adoptado y la
+    cola vieja vacía; Fase R con **recibo confirmado**; escritura de vuelta "borrada 15, ok 1". En el arranque
+    siguiente, la corrida 2 (repetición por la huella nueva) da **escritura confirmada 1** y todo lo demás en 0.
+  - **Recibo** en `mypump_migracion_nativa` (id 1, `2.0.0 (101)`, 17:20:05 UTC): `servidorAntes` = `servidorDespues`
+    en las 15 tablas (17 sesiones, 208 cargas, 46 hábitos, 346 días de salud…), como corresponde con la cola vacía.
+    Sin tokens (el `otroToken` de `opsPorCola` es el nombre de una categoría).
+  - **Push:** la nativa actualizó la fila de siempre en `mypump_push_devices` (ios, `app_version` 2.0.0, 64
+    caracteres en hex MAYÚSCULAS, activo, sin error). Sigue habiendo un solo dispositivo: no hay avisos duplicados.
+  - **Falta (lo hace Mati):** tocar su link `app.mypumpteam.com/?t=…` en WhatsApp (tiene que abrir la app), recibir
+    un push real y que el domingo a las 11 llegue un solo aviso. El informe de Mis datos lo miro en el simulador: la
+    duplicación del iPhone no hace scroll con eventos simulados.
 - **14-oct 14:15, TF-0 con la 100: falló la migración, arreglado en la 101.**
   - En el iPhone de Mati (iPhone 17 Pro Max, **iOS 27.0**, su propia cuenta) acepté los términos de TestFlight (OK de
     Mati) y canjeé la invitación con el código de la página de Apple, sin tocar el link del mail. La 2.0.0 (100) se
