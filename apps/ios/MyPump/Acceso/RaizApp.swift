@@ -9,6 +9,7 @@ struct RaizApp<Contenido: View>: View {
     let modelo: ModeloApp
     @ViewBuilder let contenido: () -> Contenido
     @Environment(\.scenePhase) private var fase
+    @State private var onboarding = false
 
     var body: some View {
         Group {
@@ -57,6 +58,15 @@ struct RaizApp<Contenido: View>: View {
             }
         }
         .background { MonitorDeRed { Task { await modelo.alVolverLaRed() } } }
+        .sheet(isPresented: $onboarding) {
+            OnboardingPermisos(modelo: modelo) { onboarding = false }
+        }
+        .task(id: modelo.fase == .listo && !modelo.esDemo && modelo.token != nil) {
+            // La primera vez con una cuenta, 1,2 s después de pintar: Salud y Notificaciones (GEN-06). Nunca en la demo.
+            guard modelo.fase == .listo, !modelo.esDemo, modelo.token != nil, OnboardingPermisos.pendiente else { return }
+            try? await Task.sleep(for: .milliseconds(1200))
+            if !Task.isCancelled, modelo.fase == .listo, !modelo.esDemo { onboarding = true }
+        }
         .task(id: modelo.fase == .listo && !modelo.esDemo) {
             // Con una cuenta: la local del domingo al día y el token de push refrescado (si ya hay permiso).
             if modelo.fase == .listo && !modelo.esDemo { await CentroAvisos.shared.alEntrar() }

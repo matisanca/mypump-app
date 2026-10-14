@@ -12,7 +12,7 @@ final class DietaUITests: XCTestCase {
         guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else {
             throw XCTSkip("Falta MYPUMP_TOKEN: estas pruebas usan una cuenta de prueba, nunca un cliente.")
         }
-        app.launchArguments = ["-token", token, "-pestana", "dieta"]
+        app.launchArguments = ["-token", token, "-pestana", "dieta", "-sinOnboarding", "YES"]
         app.launch()
     }
 
