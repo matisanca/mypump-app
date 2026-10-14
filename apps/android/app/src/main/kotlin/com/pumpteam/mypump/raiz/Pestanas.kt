@@ -64,6 +64,7 @@ import com.pumpteam.mypump.acceso.PermisoIAEstado
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.datos.EstadoGuardado
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.dieta.DietaPantalla
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
@@ -127,7 +128,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                         estadosPestanas.SaveableStateProvider(navegacion.pestana.name) {
                             when (navegacion.pestana) {
                                 Pestana.ENTRENO -> PantallaEnConstruccion(Pestana.ENTRENO, modelo)
-                                Pestana.DIETA -> PantallaEnConstruccion(Pestana.DIETA, modelo)
+                                Pestana.DIETA -> DietaPantalla(modelo)
                                 Pestana.CHAT -> PantallaEnConstruccion(Pestana.CHAT, modelo)
                                 Pestana.REVISION ->
                                     if (navegacion.misDatos) {
