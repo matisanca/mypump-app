@@ -21,6 +21,23 @@ final class Guion: Transporte, @unchecked Sendable {
     }
 }
 
+/// Las firmas de `progreso/urls` (cuenta los pedidos) y las subidas, siempre OK; lo demás, `[]`.
+final class Firmas: Transporte, @unchecked Sendable {
+    let lock = NSLock()
+    var pedidosDeURLs = 0
+    func enviar(_ p: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = p.url?.path ?? ""
+        var cuerpo = "[]"
+        if ruta.hasSuffix("progreso/urls") {
+            lock.withLock { pedidosDeURLs += 1 }
+            cuerpo = #"{"ok":true,"fotos":[{"semana_lunes":"2026-10-12","pose":"frente","url":"https://fotos.test/f.jpg"}]}"#
+        } else if ruta.hasSuffix("upload") {
+            cuerpo = #"{"ok":true}"#
+        }
+        return (Data(cuerpo.utf8), HTTPURLResponse(url: p.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
 @Suite("Fotos de progreso: la cola como la web")
 @MainActor
 struct FotosTests {
@@ -74,6 +91,23 @@ struct FotosTests {
                                disco: Disco(raiz: raiz, token: "tokenDePrueba_0000000000"))
         #expect(otra.pendientes.count == 3)
         #expect(await m.subir(pose: "frente", jpeg: Data(count: 1_900_000)) == .muyPesada)
+    }
+
+    /// REV-05: las URLs firmadas duran 1 h y se guardan 50 minutos: la segunda firma no pide; `forzar` sí, y subir una
+    /// foto invalida lo guardado (que aparezca la miniatura nueva).
+    @Test func lasURLsFirmadasSeGuardan() async {
+        let t = Firmas()
+        let m = ModeloFotos(cliente: ClienteRPC(transporte: t), token: "tokenDePrueba_0000000000",
+                            disco: Disco(raiz: raiz, token: "tokenDePrueba_0000000000"))
+        #expect(await m.firmar())
+        #expect(m.urls["2026-10-12|frente"] != nil)
+        #expect(await m.firmar())
+        #expect(t.pedidosDeURLs == 1, "la segunda no tenía que pedir")
+        #expect(await m.firmar(forzar: true))
+        #expect(t.pedidosDeURLs == 2)
+        #expect(await m.subir(pose: "perfil", jpeg: jpeg) == .guardada)
+        #expect(await m.firmar())
+        #expect(t.pedidosDeURLs == 3)
     }
 
     /// REV-03: el tope es de 3 en la cola, de cualquier semana. Con 3 de la semana pasada que no salieron (por ejemplo,
