@@ -40,6 +40,8 @@
    FLAGS
      --escenario N     cuál fabricar (--lista los muestra todos)
      --cliente ID      forzar el cliente_id (default: derivado del escenario)
+     --token T         forzar el token (default: BANCO_<ESCENARIO>_TOKEN)
+     --nombre N        forzar el nombre del cliente
      --aplicar         además de emitir el SQL, escribir la historia por RPC
      --solo-sql        emitir el SQL y nada más
      --visible-al-coach  usar un nombre que el centinela y el Radar NO filtren
@@ -89,8 +91,10 @@ const SEED = Number(val('--seed', 42));
 const VISIBLE = flag('--visible-al-coach');
 // El prefijo es lo que decide si el coach lo ve. Ver la cabecera.
 const CLIENTE_ID = val('--cliente', (VISIBLE ? 'banco-' : 'test-banco-') + NOMBRE_ESC);
-const NOMBRE_CLI = VISIBLE ? `Banco ${NOMBRE_ESC}` : `Test ${NOMBRE_ESC}`;
-const TOKEN = 'BANCO_' + NOMBRE_ESC.toUpperCase().replace(/-/g, '_') + '_TOKEN';
+const NOMBRE_CLI = val('--nombre', VISIBLE ? `Banco ${NOMBRE_ESC}` : `Test ${NOMBRE_ESC}`);
+// --token: el token por defecto se repite entre cuentas del mismo escenario y access_token es UNIQUE.
+// scripts/nativa/sembrar.mjs pasa uno aleatorio para que las cuentas de la nativa no le pisen el token a nadie.
+const TOKEN = val('--token', 'BANCO_' + NOMBRE_ESC.toUpperCase().replace(/-/g, '_') + '_TOKEN');
 
 // ── Supabase (anon: lo mismo que usa la app) ──────────────────────────
 function configDeLaApp() {
