@@ -45,6 +45,10 @@ public struct TipoDia: Decodable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey { case id, nombre, macrosTarget = "macros_target", comidas }
 
+    public init(id: String, nombre: String? = nil, macrosTarget: Macros? = nil, comidas: [Comida] = []) {
+        self.id = id; self.nombre = nombre; self.macrosTarget = macrosTarget; self.comidas = comidas
+    }
+
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = c.texto(.id) ?? ""
