@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Testing
 import MyPumpModelos
 import MyPumpReglas
@@ -146,19 +147,56 @@ struct IntegracionTests {
         #expect(otra.serieDePeso.last == PesoCorporal.Punto(fecha: FechaLocal.hoy(), kg: 82))
     }
 
-    /// Sube UNA foto chica (la de espalda de esta semana: es un upsert, repetir no suma) y pide las URLs firmadas. El
-    /// servicio deja 12 fotos por día por cliente: corre solo con `MYPUMP_PROBAR_FOTOS=1`.
+    /// REV-02/REV-03 de punta a punta: una foto como las de la cámara de un iPhone (4032×3024 apaisada con orientación 6,
+    /// o sea vertical en pantalla, con GPS y EXIF) pasa por la MISMA reducción que la galería de Revisión (900 px, 0,7),
+    /// sube (la de espalda de esta semana: es un upsert, repetir no suma), se piden las URLs firmadas y se baja lo que
+    /// quedó guardado: tiene que ser un JPEG de 675×900, derecho y sin ubicación. El servicio deja 12 fotos por día por
+    /// cliente: corre solo con `MYPUMP_PROBAR_FOTOS=1`.
     @Test(.enabled(if: ProcessInfo.processInfo.environment["MYPUMP_PROBAR_FOTOS"] == "1"))
-    func fotoDeProgresoSubeYSeFirma() async throws {
+    func fotoDeProgresoSubeReducidaSinUbicacionYSeFirma() async throws {
         let t = try #require(tokenDePrueba())
         let m = ModeloFotos(cliente: ClienteRPC(), token: t, disco: Disco(raiz: raiz, token: t))
-        // JPEG de 8×8 gris (válido: el servidor mira los bytes mágicos).
-        let jpeg = try #require(Data(base64Encoded: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="))
+        let original = try #require(ReduccionFotoTests.archivo(ReduccionFotoTests.imagen(4032, 3024), orientacion: 6))
+        let jpeg = try #require(ReduccionFoto.jpeg(original, maxPx: 900, calidad: 0.7))
         let r = await m.subir(pose: "espalda", jpeg: jpeg)
         #expect(r == .guardada, "subida: \(r.texto)")
         #expect(m.fotos.contains { $0.pose == "espalda" && $0.semanaLunes == m.semanaActual })
         #expect(await m.firmar())
-        #expect(m.urls["\(m.semanaActual)|espalda"] != nil)
+        let url = try #require(m.urls["\(m.semanaActual)|espalda"])
+        let (guardada, respuesta) = try await URLSession.shared.data(from: url)
+        #expect((respuesta as? HTTPURLResponse)?.statusCode == 200)
+        let p = ReduccionFotoTests.propiedades(guardada)
+        #expect(p.tipo == "public.jpeg" && p.ancho == 675 && p.alto == 900, "en el servidor quedó \(p.ancho)×\(p.alto) \(p.tipo ?? "?")")
+        #expect(p.props[kCGImagePropertyGPSDictionary] == nil, "en el servidor quedó con la ubicación")
+        #expect((p.props[kCGImagePropertyOrientation] as? Int ?? 1) == 1)
+        #expect(guardada.count < 400_000, "pesa \(guardada.count) bytes")
+    }
+
+    /// MIG-03: la foto que trae la migración del almacenamiento viejo (la cola de la web, `mypump_fotoq_<T>`, que la Fase L
+    /// deja tal cual en `fotos-pendientes.json`) sube sola al vaciar la cola, y queda guardada. La de perfil de esta semana
+    /// (upsert). Corre solo con `MYPUMP_PROBAR_FOTOS=1`.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["MYPUMP_PROBAR_FOTOS"] == "1"))
+    func fotoQueTraeLaMigracionSubeAlVaciarLaCola() async throws {
+        let t = try #require(tokenDePrueba())
+        let disco = Disco(raiz: raiz, token: t)
+        let original = try #require(ReduccionFotoTests.archivo(ReduccionFotoTests.imagen(3024, 4032)))
+        let jpeg = try #require(ReduccionFoto.jpeg(original, maxPx: 900, calidad: 0.7))
+        let hoy = FechaLocal.hoy()
+        let lunes = FotosProgreso.lunes(hoy)
+        // Como la deja la Fase L: "<lunes>|<pose>" → {pose, fecha, dataUrl, intentos}.
+        disco.guardar(["\(lunes)|perfil": FotoPendiente(pose: "perfil", fecha: hoy, dataUrl: "data:image/jpeg;base64," + jpeg.base64EncodedString())],
+                      FotoPendiente.archivo)
+        let m = ModeloFotos(cliente: ClienteRPC(), token: t, disco: disco)
+        #expect(m.pendientes.count == 1)
+        await m.drenar()
+        #expect(m.pendientes.isEmpty, "quedó en la cola")
+        #expect((disco.leer([String: FotoPendiente].self, FotoPendiente.archivo) ?? [:]).isEmpty, "quedó en el archivo de la cola")
+        #expect(m.fotos.contains { $0.pose == "perfil" && $0.semanaLunes == lunes })
+        #expect(await m.firmar())
+        let url = try #require(m.urls["\(lunes)|perfil"])
+        let (guardada, _) = try await URLSession.shared.data(from: url)
+        let p = ReduccionFotoTests.propiedades(guardada)
+        #expect(p.ancho == 675 && p.alto == 900, "en el servidor quedó \(p.ancho)×\(p.alto)")
     }
 
     @Test func progresoConElHistorialReal() async throws {

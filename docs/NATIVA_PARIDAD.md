@@ -152,7 +152,7 @@ Hasta que se decidan, rige lo de hoy.
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
 | REV-01 | Orden: Fotos → Check → Peso → Mi reloj → Mi Día | `C:8052-8086` | ✅ ver auditoría 14-oct | ☐ |
-| REV-02 | Fotos frente/perfil/espalda desde cámara o galería (HEIC incluido); JPEG de 900 px a 0,7, sin ubicación; orientación correcta | `C:7476-7962`, memoria `project_mypump_ios_estado` | ✅ ReduccionFotoTests: 4032×3024 con orientación 6 y GPS → 675×900 derecha y sin ubicación, HEIC, sin agrandar, 0,7 < 0,95 (f7f3a58); la galería pasa por ReduccionFoto | ☐ |
+| REV-02 | Fotos frente/perfil/espalda desde cámara o galería (HEIC incluido); JPEG de 900 px a 0,7, sin ubicación; orientación correcta | `C:7476-7962`, memoria `project_mypump_ios_estado` | ✅ ReduccionFotoTests: 4032×3024 con orientación 6 y GPS → 675×900 derecha y sin ubicación, HEIC, sin agrandar, 0,7 < 0,95 (f7f3a58); la galería pasa por ReduccionFoto. **En el servidor:** IntegracionTests.fotoDeProgresoSubeReducidaSinUbicacionYSeFirma sube una así y la baja por la URL firmada: JPEG de 675×900, derecho y sin GPS (14-oct, cuenta de prueba) | ☐ |
 | REV-03 | Cola de fotos: máximo 3, rechaza más de 2,4 MB, 8 intentos por errores del servidor (los de red no cuentan), 4xx distinto de 429 = definitivo; "Hay fotos esperando subir" | `C:7487-7602` | ✅ FotosTests: la red no gasta intentos, 8 intentos, 4xx definitivo, >2,4 MB, y conTresEnLaColaUnaCuartaNoEntra | ☐ |
 | REV-04 | "🔥 N semanas seguidas"; galería por semana; comparador antes/después desde 4 semanas, con Δkg | `C:7600-7660` | 🟡 reglas ✅ (racha, semanas, comparador), falta la pantalla · ver auditoría 14-oct | ☐ |
 | REV-05 | URLs firmadas (`/progreso/urls`), cacheadas 50 min | `C:7617-7641` | ✅ FotosTests.lasURLsFirmadasSeGuardan: la segunda firma no pide, forzar pide y subir invalida; firma real en fotoDeProgresoSubeYSeFirma (14-oct) | ☐ |
@@ -229,7 +229,7 @@ Hasta que se decidan, rige lo de hoy.
 |---|---|---|---|---|
 | MIG-01 | Se lee el `localStorage` viejo completo (Ruta A, verificado con la B) y se guarda una copia cruda | `NATIVA_SPIKE_ALMACENAMIENTO.md` | ✅ spike 17.5, 18.6 y 26.5 | ☐ |
 | MIG-02 | Fase L sin red, antes de la UI: token, preferencias, importar ops sin ejecutar, caché offline | plan | ✅ ver auditoría 14-oct | ☐ |
-| MIG-03 | Fase R con red: ejecutar ops (validando rutina y día), subir fotos, sustituciones, swaps sin migrar, recibo con conteos | plan | ✅ la foto migrada (los 134 bytes que siembra sim_migracion.py) llegó a mypump_fotos_progreso a las 17:36:23 UTC, en la corrida 4, y no quedó fotos-pendientes.json; la subida real además en IntegracionTests.fotoDeProgresoSubeYSeFirma (MYPUMP_PROBAR_FOTOS=1, 14-oct) | ☐ |
+| MIG-03 | Fase R con red: ejecutar ops (validando rutina y día), subir fotos, sustituciones, swaps sin migrar, recibo con conteos | plan | ✅ la foto migrada (los 134 bytes que siembra sim_migracion.py) llegó a mypump_fotos_progreso a las 17:36:23 UTC, en la corrida 4, y no quedó fotos-pendientes.json; la subida real además en IntegracionTests.fotoDeProgresoSubeReducidaSinUbicacionYSeFirma y fotoQueTraeLaMigracionSubeAlVaciarLaCola (la cola de la web tal cual, contra el servidor real) (MYPUMP_PROBAR_FOTOS=1, 14-oct) | ☐ |
 | MIG-04 | `anon` y `*_demo` nunca se ejecutan ni se suben | plan | ✅ ver auditoría 14-oct | ☐ |
 | MIG-05 | Escritura de vuelta: saca las ops ejecutadas y los cachés de sesión; se confirma en el arranque siguiente | spike | ✅ spike 17.5, 18.6 y 26.5 | ☐ |
 | MIG-06 | Se repite si la Capacitor volvió a escribir (downgrade, TestFlight vencido, plan B) sin duplicar | plan | ✅ ver auditoría 14-oct | ☐ |
@@ -259,9 +259,8 @@ cerraron después DIA-01, DIA-06, MIG-07, GEN-03 y GEN-06 (ver la columna iOS). 
 - **Capturas:** relativas a `~/Developer/nativa-evidencia/`.
 
 **Lo que falta de verdad, por importancia para la tienda:**
-1. **Fotos (MIG-03, REV-02, REV-03).** No hay evidencia de que una foto, migrada o nueva, llegue al servidor. Tampoco de
-   que salga a 900 px, con calidad 0,7 y sin GPS. En el simulador, la migrada quedó pendiente porque el script no sube
-   fotos a propósito: el servicio deja 12 por día.
+1. ~~**Fotos (MIG-03, REV-02, REV-03).**~~ Cerrado el 14-oct: la nueva y la migrada llegan al servidor, y lo guardado es
+   un JPEG de 675×900 sin GPS (IntegracionTests, con `MYPUMP_PROBAR_FOTOS=1`: el servicio deja 12 por día).
 2. **El link en un iPhone (ACC-01).** Lo prueba Mati en el TF-0, porque el simulador no valida el AASA (`FAKETEAMID`).
 3. **Sustituciones de ejercicio en el servidor (SER-14).** Hace falta una tabla nueva (G2).
 4. **Rutina de ejemplo para una cuenta sin plan (ACC-08).** La nativa muestra "Todavía no hay rutina". Hay que decidir si

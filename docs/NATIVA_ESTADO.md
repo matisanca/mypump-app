@@ -75,7 +75,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | Compuerta | Estado |
 |---|---|
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
-| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. Pendiente para otra tanda: sustituciones de ejercicio en el servidor y `mypump_borrar_serie` |
+| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14): lista y ensayada en rollback (56/56, también como `anon`); falta que Mati la aplique** (comando en la bitácora del 14-oct 17:30). Pendiente para otra tanda: `mypump_borrar_serie` |
 | G5 · TestFlight externo | pendiente. Los internos ya están autorizados |
 | G6 · mensajes a clientes | pendiente |
 | G7 · revisión de tiendas | pendiente |
@@ -112,6 +112,25 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
 
 ## Bitácora
+
+- **14-oct 17:30, sustituciones de ejercicio en el servidor (SER-14, decisión de Mati de las 16:24):**
+  - **Base:** `supabase/migrations/nativa_003_sustituciones_ejercicio.sql` (da54355). Una tabla
+    (`mypump_exercise_swaps`) y cuatro funciones (leer, guardar, borrar, importar); no cambia nada existente y la web no
+    la usa. Ensayo en producción dentro de una transacción, deshecho al final: **56/56**, también llamando como `anon`.
+  - **App (iOS 17196b4, Android 4b838dd, arreglo fd3e278):**
+    - cada cambio sale por la cola (`swap_ej` / `swap_ej_del`);
+    - la primera vez que un teléfono sincroniza una rutina sube lo que tenía; después lee el servidor, con lo que sigue en
+      la cola y lo que se tocó mientras tanto por encima;
+    - si la migración del almacenamiento viejo se repite, lo de la app vieja reemplaza lo del servidor;
+    - lo que no llegó a la cola antes de cerrarse la app se encola al volver a abrir.
+  - **Igual que antes mientras la 003 no esté aplicada:** la función no existe (PGRST202) y todo queda solo en el teléfono,
+    sin avisos nuevos. Lo prueban las pruebas de las dos apps y la migración en el simulador: **25/25** (la fila nueva
+    dice "sin tabla").
+  - **Pruebas:** iOS 346 y Android 415, en verde. Cada protección se probó rompiéndola a propósito (mutantes): en las dos
+    apps, todos los mutantes caen.
+  - **Para aplicarla (G2, la corre Mati; el archivo ya está en la Mini, md5 `286d3c3b…` igual al del repo):**
+    `ssh mini 'cd ~/agentkit-coach && venv/bin/python ~/_aplicar.py /tmp/nativa_003_sustituciones_ejercicio.sql'`
+    Después: regenerar el esquema, correr `auditar_seguridad_db.py` y ver una sustitución pasar entre dos simuladores.
 
 - **14-oct 16:24, decisiones de Mati y la 1.0.12:**
   - **Decisiones:**
