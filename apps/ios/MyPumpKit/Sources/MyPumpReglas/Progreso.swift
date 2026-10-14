@@ -36,9 +36,9 @@ public enum ProgresoEjercicio {
         Set(filas.map { FechaLocal.de($0.registradoEn, zona: zona) }.filter { !$0.isEmpty })
     }
 
-    /// `toFixed(1)` como número.
+    /// `toFixed(1)` (exacto como JS) como número.
     static func redondear1(_ x: Double) -> Double {
-        (abs(x) * 10).rounded(.toNearestOrAwayFromZero) / 10 * (x < 0 ? -1 : 1)
+        Double(NumeroJS.toFixed(x, 1)) ?? 0
     }
 }
 

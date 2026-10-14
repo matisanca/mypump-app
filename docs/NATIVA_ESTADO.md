@@ -52,11 +52,17 @@ commitea.
 | Bienvenida, demo, sin conexión, aviso de guardado, volver a primer plano | ✅ (XCUITest de acceso) |
 | Notificaciones (local del domingo, push, destinos) | ✅ código; falta probar el push en un iPhone (TF-0) |
 | Respaldo científico (14 fuentes), entitlements, PrivacyInfo, workflow `ios-nativa` | ✅ (el workflow no se dispara hasta que Mati acepte el contrato de Apple) |
-| Diseño "pro" de Entreno, Chat, Revisión, Progreso y Mis datos | 🟡 agente en curso (worktree): pulido hecho, ahora conecta sus pantallas a los modelos |
-| Salud (HealthKit, recuperación, relojes) | 🟡 agente en curso |
+| Migración del almacenamiento viejo (Fase L/R + write-back) | ✅ mergeada; simulador 26.5 23/23 y 17.5 22/22 (`scripts/nativa/sim-migracion.sh`). Pendiente G2: recibo, conteos, swaps de ejercicio en el servidor |
+| Motor de Entreno (`ModeloEntreno` + reglas) | ✅ mergeado: 4.546 vectores públicos y 80.461 privados, integración real |
+| Revisión adversarial del código iOS (19 hallazgos) | ✅ 18 arreglados con regresiones (`RegresionesRevisionTests`); el 19 (entitlement de HealthKit sin código, badges fijos) lo cierran Salud y diseño |
+| `normalizarDieta` | ✅ igual a la web en 11 casos públicos y las 90 dietas reales |
+| Diseño "pro" + conectar Entreno, Chat, Revisión, Progreso y Mis datos a los modelos | 🟡 agente en curso |
+| Salud (HealthKit, recuperación, relojes) | ✅ mergeada: 35 casos de la web + banco en simulador 1.091/1.091 registros; el historial ya no pisa la noche de hoy (desvío a propósito, ver `NATIVA_PROPUESTAS_WEB.md`) |
+| Hoja de permisos de la primera vez (GEN-06), aviso de fin de descanso (D8), aviso de plan incompleto (GEN-05) | ✅ (XCUITest del onboarding) |
+| Android: base + reglas (122 tests con los mismos vectores) | ✅ mergeado; la capa de datos está en curso (cuenta `test-nativa-android`) |
 | Migración del almacenamiento viejo (Fase L/R) | 🟡 agente en curso |
 | Motor de Entreno (sugeridos, topes, variantes, sesiones, historial) | 🟡 agente en curso |
-| Android: proyecto + reglas con los mismos vectores | 🟡 agente en curso |
+
 
 **Herramientas nuevas:** `scripts/nativa/lanzar-sim.sh` (abre la app con una cuenta de prueba sin que el token pase por
 la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-legado.sh`.
@@ -85,6 +91,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | D8 | Aviso local de fin de descanso con la app en segundo plano | Mejora sin riesgo |
 | D9 | Borrado: link a `eliminar-datos.html` desde Mis datos, sin RPC | No hace falta tocar la base |
 | D10 | **Sin "Comí / Salté" en Dieta** (pedido de Mati, 14-oct). Se va también el consumo parcial; el anillo muestra el objetivo y cuánto suman las opciones elegidas | Le resultaba molesto al cliente. El coach deja de recibir esas marcas de los clientes con la nativa (la web las sigue teniendo) |
+| D11 | **Sin dieta usable: "Todavía no hay plan de comidas"** (la web mostraba la dieta de ejemplo de 3.200 kcal como si fuera del cliente) | Engañaba al cliente; la demo sigue mostrando el ejemplo |
 | T1 | Cola, caché y swaps en **JSON con escritura atómica**, sin GRDB | Volumen chico; cero dependencias de terceros |
 | T2 | Cliente RPC propio (URLSession), sin supabase-swift | Hace falta el código HTTP para clasificar errores (aprobado 13-oct) |
 
@@ -97,6 +104,8 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 - **13-oct:** plan aprobado y clon creado.
 - **14-oct (madrugada):** MyPumpKit con modelos, reglas portadas con vectores (progresión, clave, porción casera, anclaje e hidratación de swaps), cliente RPC + cola offline + ModeloApp con integración real contra `test-nativa-real`. Agentes en paralelo: motor de sustitutos de alimentos, motor de sustitutos de ejercicios y pulido visual.
+- **14-oct (mañana):** Salud mergeada; `ModeloApp.entreno` con el catálogo del servidor; onboarding de permisos; borradores para las tiendas (`NATIVA_TIENDAS_2.0.0.md`) y cambios propuestos para la web (`NATIVA_PROPUESTAS_WEB.md`). 266 tests + 8 de interfaz.
+- **14-oct (5-6 h):** merges de migración y motor de Entreno (214 → 228 tests). Revisión adversarial: 4 altos (carrera del link que borraba la sesión, cola trabada, plan que desaparecía con poca señal, cola congelada sin sesión), 9 medios y 6 bajos, todos arreglados con regresiones salvo los de Salud/diseño. Android: base mergeada, sigue con datos.
 - **14-oct (4-5 h):** se reanudó tras el corte por límite: los 4 agentes retomaron con su contexto (el de diseño tenía 5 commits). Modelos nuevos con tests contra el backend: chat (con el arreglo n.º 4 que no duplica mensajes), Revisión/Mi Día, fotos de progreso (cola propia), Progreso, notificaciones; respaldo científico; entitlements y PrivacyInfo; workflow `ios-nativa`. Agente nuevo: Salud.
 - **14-oct (~2 h):** bienvenida nativa (pegar link con PasteButton, link vencido, sin conexión con reintento automático, universal links) y modo demo sin red; XCUITest de acceso pasan. **Corte por límite de uso:** los agentes de diseño, migración, motor de Entreno y Android quedaron en sus worktrees (`.claude/worktrees/agent-*`, ramas `worktree-agent-*`) con lo que hayan commiteado; retomar revisando cada rama y mergeando a `nativa`.
 - **14-oct (1-2 h):** Dieta nativa terminada salvo la dieta de ejemplo: el reemplazo da las mismas 55 opciones que la web para "Huevo entero" (lado a lado con la web local de `origin/main` y la misma cuenta). Spike del almacenamiento viejo OK en 17.5 y 18.6. Merge de los motores de sustitución (alimentos y ejercicios). Agentes nuevos: migración, motor de Entreno, Android.

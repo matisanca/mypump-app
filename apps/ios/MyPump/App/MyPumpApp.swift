@@ -1,9 +1,21 @@
 import SwiftUI
+import MyPumpDatos
+import MyPumpReglas
 
 @main
 struct MyPumpApp: App {
     @UIApplicationDelegateAdaptor(DelegadoApp.self) private var delegado
     @State private var datos = Muestras.cargar()
+
+    init() {
+        // Apple Health cableada explícita (si no, ModeloSalud la busca por nombre y un renombre la apagaría sin avisar).
+        ModeloSalud.fuenteDelSistema = FuenteHealthKit()
+        // El catálogo de ejercicios empaquetado: hasta que llega el del servidor, y para arrancar sin red.
+        if let url = Bundle.main.url(forResource: "catalogo-ejercicios", withExtension: "json", subdirectory: "Bases.bundle"),
+           let datos = try? Data(contentsOf: url), let c = try? CatalogoEjercicios(json: datos) {
+            ModeloApp.catalogoEmpaquetado = c
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

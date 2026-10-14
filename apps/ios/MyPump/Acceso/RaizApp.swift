@@ -9,6 +9,7 @@ struct RaizApp<Contenido: View>: View {
     let modelo: ModeloApp
     @ViewBuilder let contenido: () -> Contenido
     @Environment(\.scenePhase) private var fase
+    @State private var onboarding = false
 
     var body: some View {
         Group {
@@ -43,9 +44,29 @@ struct RaizApp<Contenido: View>: View {
         .onChange(of: fase, initial: true) { _, nueva in
             // Nada de sondeos con la app en segundo plano (CHA-04).
             modelo.enPrimerPlano = nueva == .active
-            if nueva == .active { Task { await modelo.alVolverAPrimerPlano() } }
+            switch nueva {
+            case .active:
+                CentroAvisos.shared.cancelarFinDescanso()
+                Task { await modelo.alVolverAPrimerPlano() }
+            case .background:
+                // Un descanso corriendo avisa cuando termina aunque la app no esté a la vista (D8).
+                if let d = modelo.entreno?.descanso.descanso, !d.terminado {
+                    let fin = Date(timeIntervalSince1970: d.fin / 1000)
+                    Task { await CentroAvisos.shared.programarFinDescanso(fin) }
+                }
+            default: break
+            }
         }
         .background { MonitorDeRed { Task { await modelo.alVolverLaRed() } } }
+        .sheet(isPresented: $onboarding) {
+            OnboardingPermisos(modelo: modelo) { onboarding = false }
+        }
+        .task(id: modelo.fase == .listo && !modelo.esDemo && modelo.token != nil) {
+            // La primera vez con una cuenta, 1,2 s después de pintar: Salud y Notificaciones (GEN-06). Nunca en la demo.
+            guard modelo.fase == .listo, !modelo.esDemo, modelo.token != nil, OnboardingPermisos.pendiente else { return }
+            try? await Task.sleep(for: .milliseconds(1200))
+            if !Task.isCancelled, modelo.fase == .listo, !modelo.esDemo { onboarding = true }
+        }
         .task(id: modelo.fase == .listo && !modelo.esDemo) {
             // Con una cuenta: la local del domingo al día y el token de push refrescado (si ya hay permiso).
             if modelo.fase == .listo && !modelo.esDemo { await CentroAvisos.shared.alEntrar() }

@@ -65,6 +65,30 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         try? await centro.add(pedido)
     }
 
+    // MARK: - Fin del descanso (D8)
+
+    static let idDescanso = "mypump-fin-descanso"
+
+    /// Con la app en segundo plano y un descanso corriendo, el aviso de que terminó (la web no lo tenía: el cliente se
+    /// quedaba mirando el teléfono). Solo con permiso de notificaciones; nunca lo pide.
+    func programarFinDescanso(_ fin: Date) async {
+        guard [.authorized, .provisional, .ephemeral].contains(await permiso()), fin.timeIntervalSinceNow > 1 else { return }
+        let c = UNMutableNotificationContent()
+        c.title = "Terminó el descanso"
+        c.body = "Seguí con la próxima serie."
+        c.sound = .default
+        c.userInfo = ["destino": "train"]
+        let pedido = UNNotificationRequest(identifier: Self.idDescanso, content: c,
+                                           trigger: UNTimeIntervalNotificationTrigger(timeInterval: fin.timeIntervalSinceNow, repeats: false))
+        try? await UNUserNotificationCenter.current().add(pedido)
+    }
+
+    func cancelarFinDescanso() {
+        let centro = UNUserNotificationCenter.current()
+        centro.removePendingNotificationRequests(withIdentifiers: [Self.idDescanso])
+        centro.removeDeliveredNotifications(withIdentifiers: [Self.idDescanso])
+    }
+
     /// Al arrancar con una cuenta: si ya hay permiso, reprograma y refresca el token de push.
     func alEntrar() async {
         guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { return }

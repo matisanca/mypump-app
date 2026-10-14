@@ -97,3 +97,20 @@ struct FotosProgresoTests {
         #expect(FotosProgreso.resumenComparador(primera: "2026-10-05", ultima: "2026-10-12", peso: []) == "1 semana")
     }
 }
+
+@Suite("toFixed como JavaScript")
+struct ToFixedTests {
+    @Test func casosDeLaRevisionYBordes() {
+        #expect(NumeroJS.toFixed((60.0 + 60.1) / 2, 1) == "60.0")   // la nativa daba 60.1
+        #expect(NumeroJS.toFixed(1150.0 / 1000, 1) == "1.1")        // "+1,1 kg", la nativa daba 1,2
+        #expect(NumeroJS.toFixed(-9950.0 / 1000, 1) == "-9.9")      // la nativa daba -10,0
+        #expect(NumeroJS.toFixed(1.25, 1) == "1.3")                 // empate exacto: el mayor
+        #expect(NumeroJS.toFixed(0.15, 1) == "0.1")                 // 0,1499…
+        #expect(NumeroJS.toFixed(-0.04, 1) == "-0.0")
+        #expect(NumeroJS.toFixed(9.96, 1) == "10.0")
+        #expect(NumeroJS.toFixed(99.95, 1) == "100.0")              // 99,9500000000000028…
+        #expect(NumeroJS.toFixed(0, 1) == "0.0")
+        #expect(NumeroJS.toFixed(13.207547169811321, 1) == "13.2")
+        #expect(PesoCorporal.textoDelta(1150) == "+1,1 kg")
+    }
+}

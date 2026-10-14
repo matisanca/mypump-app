@@ -7,7 +7,7 @@ final class AccesoUITests: XCTestCase {
 
     override func setUp() async throws {
         continueAfterFailure = false
-        app.launchArguments = ["-reiniciar", "YES"]
+        app.launchArguments = ["-reiniciar", "YES", "-sinOnboarding", "YES"]
         app.launch()
     }
 
@@ -46,7 +46,7 @@ final class AccesoUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["Dieta"].waitForExistence(timeout: 20), "No entró a la cuenta")
         // Quedó guardado: al reabrir (sin reiniciar) entra solo.
         app.terminate()
-        app.launchArguments = []
+        app.launchArguments = ["-sinOnboarding", "YES"]
         app.launch()
         XCTAssertTrue(app.tabBars.buttons["Dieta"].waitForExistence(timeout: 20), "El token no quedó guardado")
         // Limpieza: la próxima corrida arranca sin cuenta.
