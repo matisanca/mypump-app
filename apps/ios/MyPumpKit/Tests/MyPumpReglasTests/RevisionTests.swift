@@ -59,3 +59,41 @@ struct RevisionTests {
         #expect(Dia.numero("x") == nil)
     }
 }
+
+private func foto(_ semana: String, _ pose: String) -> FotoProgreso {
+    try! JSONDecoder().decode(FotoProgreso.self, from: JSONEncoder().encode(JSONValue.objeto(["semana_lunes": .texto(semana), "pose": .texto(pose)])))
+}
+
+@Suite("Fotos de progreso: semanas, racha y comparador como la web")
+struct FotosProgresoTests {
+    @Test func lunesISO() {
+        #expect(FotosProgreso.lunes("2026-10-14") == "2026-10-12")   // miércoles
+        #expect(FotosProgreso.lunes("2026-10-12") == "2026-10-12")   // lunes
+        #expect(FotosProgreso.lunes("2026-10-18") == "2026-10-12")   // domingo
+        #expect(FotosProgreso.lunes("2026-03-01") == "2026-02-23")
+    }
+
+    @Test func rachaDeSemanasCompletasHaciaAtras() {
+        var f: [FotoProgreso] = []
+        for s in ["2026-09-14", "2026-09-28", "2026-10-05"] { for p in ["frente", "perfil", "espalda"] { f.append(foto(s, p)) } }
+        f.append(foto("2026-10-12", "frente"))   // la actual, incompleta, no corta la racha
+        #expect(FotosProgreso.racha(f) == 2)      // 28/9 y 5/10; el 21/9 falta
+        #expect(FotosProgreso.semanas(f) == ["2026-09-14", "2026-09-28", "2026-10-05", "2026-10-12"])
+        #expect(FotosProgreso.racha([]) == 0)
+    }
+
+    @Test func posesDeLaSemanaConPendientes() {
+        let f = [foto("2026-10-12", "frente")]
+        let s = FotosProgreso.posesDeLaSemana(f, pendientes: [("perfil", "2026-10-14"), ("espalda", "2026-10-05")], semana: "2026-10-12")
+        #expect(s == ["frente", "perfil"])
+        let p = FotosProgreso.pendientes(checkinEnviado: true, posesDeLaSemana: s)
+        #expect(p.total == 1 && p.faltanFotos && !p.faltaCheck)
+        #expect(FotosProgreso.textoRecordatorio(faltaCheck: true, faltanFotos: true) == "Te faltan tu check y tus fotos de la semana")
+    }
+
+    @Test func resumenDelComparador() {
+        let peso = [PesoCorporal.Punto(fecha: "2026-09-15", kg: 84.0), PesoCorporal.Punto(fecha: "2026-10-13", kg: 81.6)]
+        #expect(FotosProgreso.resumenComparador(primera: "2026-09-14", ultima: "2026-10-12", peso: peso) == "4 semanas · -2,4 kg")
+        #expect(FotosProgreso.resumenComparador(primera: "2026-10-05", ultima: "2026-10-12", peso: []) == "1 semana")
+    }
+}

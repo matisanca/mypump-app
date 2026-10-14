@@ -36,6 +36,8 @@ public final class ModeloApp {
     public private(set) var chat: ModeloChat?
     /// Revisión y Mi Día (no existen en la demo ni sin cuenta).
     public private(set) var revision: ModeloRevision?
+    /// Fotos de progreso, con su cola propia en disco.
+    public private(set) var fotos: ModeloFotos?
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet { UserDefaults.standard.set(tipoDia, forKey: "mypump_tipo_dia") }
@@ -85,7 +87,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil
         esDemo = false
         fase = .sinToken
     }
@@ -122,6 +124,7 @@ public final class ModeloApp {
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola)
+        fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         Task { [weak self] in
             await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } },
                                 abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } })
@@ -193,7 +196,15 @@ public final class ModeloApp {
         async let cargaChat: Void = chat?.cargar() ?? ()
         async let cargaMiDia: Void = revision?.cargarMiDia() ?? ()
         async let cargaRevision: Void = revision?.cargarRevision() ?? ()
-        _ = await (cargaChat, cargaMiDia, cargaRevision)
+        async let cargaFotos: Void = fotos?.cargar() ?? ()
+        _ = await (cargaChat, cargaMiDia, cargaRevision, cargaFotos)
+        await fotos?.drenar()
+    }
+
+    /// Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas.
+    public var pendientesDeLaSemana: (faltaCheck: Bool, faltanFotos: Bool, total: Int) {
+        guard let revision, let fotos else { return (false, false, 0) }
+        return FotosProgreso.pendientes(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: fotos.posesDeLaSemana)
     }
 
     private func aplicar(_ c: CopiaOffline) {

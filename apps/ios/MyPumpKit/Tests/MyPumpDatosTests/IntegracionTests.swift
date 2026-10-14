@@ -146,6 +146,19 @@ struct IntegracionTests {
         #expect(otra.serieDePeso.last == PesoCorporal.Punto(fecha: FechaLocal.hoy(), kg: 82))
     }
 
+    /// Sube UNA foto chica (la de espalda de esta semana: es un upsert, repetir no suma) y pide las URLs firmadas.
+    @Test func fotoDeProgresoSubeYSeFirma() async throws {
+        let t = try #require(tokenDePrueba())
+        let m = ModeloFotos(cliente: ClienteRPC(), token: t, disco: Disco(raiz: raiz, token: t))
+        // JPEG de 8×8 gris (válido: el servidor mira los bytes mágicos).
+        let jpeg = try #require(Data(base64Encoded: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="))
+        let r = await m.subir(pose: "espalda", jpeg: jpeg)
+        #expect(r == .guardada, "subida: \(r.texto)")
+        #expect(m.fotos.contains { $0.pose == "espalda" && $0.semanaLunes == m.semanaActual })
+        #expect(await m.firmar())
+        #expect(m.urls["\(m.semanaActual)|espalda"] != nil)
+    }
+
     @Test func sustituirLlegaAnclado_yRevertirLoBorra() async throws {
         let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
         await m.cargar()

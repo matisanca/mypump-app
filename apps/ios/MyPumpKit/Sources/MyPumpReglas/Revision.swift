@@ -123,3 +123,72 @@ public enum Dia {
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 }
+
+/// Fotos de progreso (cliente.html:7476-7962): tres poses por semana (lunes ISO), la racha de semanas completas, el
+/// recordatorio semanal y el comparador antes/después (que espera a las 4 semanas: antes compara luz y retención de
+/// líquido, no cambios reales).
+public enum FotosProgreso {
+    public static let poses: [(clave: String, etiqueta: String)] = [("frente", "Frente"), ("perfil", "Perfil"), ("espalda", "Espalda")]
+    public static let maxPendientes = 3
+    public static let maxIntentos = 8
+    /// El servidor corta el body de más de 3 MB; el data URL se filtra antes de encolar.
+    public static let maxCaracteres = 2_400_000
+
+    /// `_lunesISO`: el lunes de la semana de esa fecha.
+    public static func lunes(_ fecha: String) -> String {
+        guard let n = Dia.numero(fecha) else { return fecha }
+        // 1970-01-01 fue jueves: (n + 3) % 7 da 0 para el lunes.
+        let dow = ((n + 3) % 7 + 7) % 7
+        return Dia.texto(n - dow)
+    }
+
+    /// Las poses de esta semana: las del servidor más las que esperan subir.
+    public static func posesDeLaSemana(_ fotos: [FotoProgreso], pendientes: [(pose: String, fecha: String)], semana: String) -> Set<String> {
+        var s = Set(fotos.filter { $0.semanaLunes == semana }.map(\.pose))
+        for p in pendientes where lunes(p.fecha) == semana { s.insert(p.pose) }
+        return s
+    }
+
+    /// Las semanas con alguna foto, en orden.
+    public static func semanas(_ fotos: [FotoProgreso]) -> [String] { Array(Set(fotos.map(\.semanaLunes))).sorted() }
+
+    /// "🔥 N semanas seguidas": semanas con las tres poses, consecutivas hacia atrás desde la última completa.
+    public static func racha(_ fotos: [FotoProgreso]) -> Int {
+        var porSemana: [String: Set<String>] = [:]
+        for f in fotos { porSemana[f.semanaLunes, default: []].insert(f.pose) }
+        let completas = porSemana.keys.sorted().filter { porSemana[$0]?.count == 3 }
+        guard let ultima = completas.last, let nUltima = Dia.numero(ultima) else { return 0 }
+        var serie = 0
+        for (i, s) in completas.enumerated().reversed() {
+            if s == Dia.texto(nUltima - (completas.count - 1 - i) * 7) { serie += 1 } else { break }
+        }
+        return serie
+    }
+
+    /// Lo que falta de la semana (badge de Revisión y banner en las otras pestañas).
+    public static func pendientes(checkinEnviado: Bool, posesDeLaSemana: Set<String>) -> (faltaCheck: Bool, faltanFotos: Bool, total: Int) {
+        let faltaCheck = !checkinEnviado
+        let faltanFotos = posesDeLaSemana.count < 3
+        return (faltaCheck, faltanFotos, (faltaCheck ? 1 : 0) + (faltanFotos ? 1 : 0))
+    }
+
+    /// El texto del banner ("Te faltan tu check y tus fotos de la semana").
+    public static func textoRecordatorio(faltaCheck: Bool, faltanFotos: Bool) -> String? {
+        if faltaCheck && faltanFotos { return "Te faltan tu check y tus fotos de la semana" }
+        if faltaCheck { return "Te falta tu check de la semana" }
+        if faltanFotos { return "Te faltan tus fotos de la semana" }
+        return nil
+    }
+
+    /// El pie del comparador: "8 semanas · -2,4 kg" (el peso es el primero cargado desde el lunes de cada semana).
+    public static func resumenComparador(primera: String, ultima: String, peso: [PesoCorporal.Punto]) -> String {
+        func pesoEn(_ sem: String) -> Double? { peso.filter { $0.fecha >= sem }.min { $0.fecha < $1.fecha }?.kg }
+        let semDif = Int(jsRound(Double((Dia.numero(ultima) ?? 0) - (Dia.numero(primera) ?? 0)) / 7))
+        var r = "\(semDif) semana\(semDif == 1 ? "" : "s")"
+        if let p0 = pesoEn(primera), let p1 = pesoEn(ultima) {
+            let d = p1 - p0
+            r += " · \(d > 0 ? "+" : "")\(PesoCorporal.kg(d)) kg"
+        }
+        return r
+    }
+}
