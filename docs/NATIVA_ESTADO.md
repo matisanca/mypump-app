@@ -126,12 +126,25 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
     versión y se va `scripts/test_consentimiento_ia.py`. Al momento de sacarlo, la única respuesta guardada era la de
     la cuenta de Mati (un "no" de las 18:40): ningún cliente quedó sin IA.
   - **D15:** el aviso del domingo llega como un mensaje de Mati y no se configura.
-  - **Pendiente, pedido de Mati:**
-    1. tapar el nombre con la IA local de la Mini (Qwen) antes de Codex y volver a ponerlo en la respuesta;
-    2. que el chat de la app escriba con la skill `responder-clientes` de la sesión "Mensajes clientes Pump Team"
-       (sus mismas reglas y capacidades: "hicimos un upgrade muy grande en la forma de escribirles");
-    3. la política de privacidad publicada dice que la 2.0 pide permiso y que se apaga en Mis datos: hay que cambiarla
-       antes de que la 2.0 salga al público (G3, toca `public/`).
+  - **El chat de la app lo contesta la sesión "Mensajes clientes Pump Team"** (elección de Mati, 19:10), con la skill
+    `responder-clientes` y su aprobación:
+    - `~/.claude/skills/responder-clientes/scripts/app_chat.py` (copiado a `~/pump-respuestas/` de la Mini):
+      `bandeja` / `contexto <id>` / `responder <id> [--aplicar]`;
+    - la sesión NO ve el nombre: lo tapa `agent/medical/deid_qwen` (ficha + Qwen). El mapa queda en la Mini
+      (`~/pump-respuestas/cache/app/`, 600) y el nombre vuelve al publicar;
+    - en el chat, Qwen tapaba palabras del entreno ("el cardio lo hago antes o después de entrenar" salía
+      "el [INSTITUCION_1]… de [TRABAJO_1]"). `app_chat.py` le suma al filtro el vocabulario del entreno y la dieta, y un
+      trabajo o una institución solo se tapan con nombre propio o número. El módulo compartido no se tocó;
+    - probado de punta a punta con `test-nativa-real`: el teléfono y el nombre tapados, 2 mensajes publicados como Mati
+      (`origen='ia'`, `meta.respuesta_a`, `via='sesion-mensajes'`) y un push «Mati» por mensaje;
+    - guía en `references/chat-app.md` y tres líneas en `SKILL.md`. Avisada la sesión de Mensajes.
+  - **`CHAT_IA_AUTO=0`** en `~/pump-centinela/.env` (OK de Mati, 19:20; backup `.env.bak-auto-20261014`): el worker de
+    Codex ya no manda nada solo. Sigue dejando borradores en el Cerebro y avisando.
+  - **Pendiente:**
+    1. que el worker de Codex también tape el nombre antes de Codex (primer pedido de Mati), en `chat_worker.py` y
+       `sugerir_pendientes.py`, con OK para desplegar;
+    2. la política de privacidad publicada dice que la 2.0 pide permiso, que el chat lo redacta OpenAI con el nombre de
+       pila y que hay acuses automáticos: cambiarla cuando quede el diseño final (G3, toca `public/`, la sube Mati).
 
 - **14-oct 18:45, "hacelo todo vos" (Mati):**
   - **`nativa_003` aplicada** por Mati a las 18:16 (captura de su terminal: COMMIT). Verificado:

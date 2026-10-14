@@ -149,8 +149,9 @@ def anotar_cupo(n=1):
 
 # ── El prompt ────────────────────────────────────────────────────────────
 #
-# Se antepone el TONO verbatim y se pasa apodo, ultimos ~10 mensajes y si ya
-# subio el check. CERO datos de salud: el modelo no necesita saber el HRV de
+# Se antepone el TONO verbatim y se pasan los ultimos ~10 mensajes y si ya
+# subio el check, SIN EL NOMBRE (Mati, 14-oct: lo tapa la IA local del Mini,
+# ver deid_chat.py). CERO datos de salud: el modelo no necesita saber el HRV de
 # nadie para contestar "dale, gracias".
 TONO = """Escribis como Mati, entrenador argentino, por chat con un cliente suyo.
 Tuteo rioplatense: "vos", "subi", "contame". Nunca "tu" ni "usted".
@@ -263,9 +264,10 @@ def _plan_texto(plan):
             "; lo que haga de cardio es por fuera del plan.")
 
 
-def armar_prompt(fila):
-    apodo = (fila.get("nombre") or "").split()
-    apodo = apodo[0].lower() if apodo else "che"
+def armar_prompt(fila, tapar=None):
+    """El prompt para Codex. `tapar` (ver `prompt_sin_nombre`) le saca el nombre a lo que es del cliente: revision,
+    plan y conversacion. El nombre no viaja (Mati, 14-oct): el modelo escribe {nombre} si lo necesita y se completa
+    al volver, en el Mini."""
     hilo = fila.get("contexto") or []
     conversacion = "\n".join(
         f"{'CLIENTE' if m.get('autor') == 'cliente' else 'MATI'}: {m.get('texto','')}"
@@ -275,19 +277,23 @@ def armar_prompt(fila):
     # util como saber que subio, y evita que invente que vio algo.
     subio = rev or "TODAVIA NO subio la revision de esta semana."
     plan = _plan_texto(fila.get("plan")) or "(no hay plan activo cargado)"
+    del_cliente = f"""Lo que dice su revision (dato real, no lo inventes ni lo contradigas):
+{subio}
+{plan}
+
+Conversacion (lo ultimo es lo que hay que contestar):
+{conversacion}"""
+    if tapar:
+        del_cliente = tapar(del_cliente)
 
     return f"""{TONO}
 
 {REGLA_DURA}
 
-Le escribis a {apodo}.
+Le escribis a un cliente. Su nombre no viaja: si de verdad lo necesitas, escribi {{nombre}} y se completa solo.
+Lo que aparece entre corchetes (por ejemplo [TEL_1]) es un dato tapado: no lo copies.
 
-Lo que dice su revision (dato real, no lo inventes ni lo contradigas):
-{subio}
-{plan}
-
-Conversacion (lo ultimo es lo que hay que contestar):
-{conversacion}
+{del_cliente}
 
 Devolves JSON con:
   clase: "simple" si alcanza con confirmar, agradecer o acusar recibo.
@@ -300,10 +306,10 @@ Devolves JSON con:
              NO ARRANQUES CON EL NOMBRE. Le contestas a alguien que acaba de
              escribirte, en su propio hilo: ya sabe que le hablas a el. Nadie
              contesta un whatsapp con "sofia, si". Hasta el 3-sep esto pedia
-             arrancar con "{apodo}" y el resultado fue que TODOS los mensajes
+             arrancar con el nombre y el resultado fue que TODOS los mensajes
              del sistema empezaban con el nombre, incluso dos seguidos en la
-             misma conversacion. Usalo solo si de verdad hace falta llamarle la
-             atencion sobre algo.
+             misma conversacion. Usalo ({{nombre}}) solo si de verdad hace falta
+             llamarle la atencion sobre algo.
   motivo: en una linea, por que elegiste esa clase.
   sugerencia: SOLO si clase es "derivar" o "urgente". Es el mensaje que Mati
              va a leer y mandar. El escribe LO QUE HAY QUE CONTESTAR, no un
@@ -418,6 +424,46 @@ def llamar_codex(prompt):
     return d, None
 
 
+# ── Sin el nombre (Mati, 14-oct) ─────────────────────────────────────────────
+#
+# Las fichas del Cerebro (el id es el mismo que en la app) se leen una vez por
+# pasada: de ahi salen el nombre, el apellido, el telefono y la edad que se tapan
+# sin preguntarle a ningun modelo.
+_FICHAS = None
+
+
+def _fichas():
+    global _FICHAS
+    if _FICHAS is None:
+        import asyncio
+        sys.path.insert(0, os.path.expanduser("~/agentkit-coach"))
+        from agent import supabase_client as sbc
+        _FICHAS = asyncio.run(sbc.get_all_clients()) or {}
+    return _FICHAS
+
+
+def prompt_sin_nombre(fila):
+    """(prompt sin el nombre, destapar). `destapar(texto)` le vuelve a poner el nombre a lo que conteste el modelo;
+    lanza si quedo un dato tapado sin valor. Lanza tambien si no se pudo tapar: entonces no se manda nada."""
+    import deid_chat as DC
+    ficha = _fichas().get(fila["cliente_id"]) or {}
+    datos = DC.datos_de(ficha, fila.get("nombre"))
+    pila = DC.nombre_de_pila(ficha, fila.get("nombre"))
+    mapa = {}
+
+    def tapar(texto):
+        out, m, avisos = DC.tapar(texto, datos)
+        for a in avisos:
+            _log(f"  [deid] {fila['cliente_id']}: {a}")
+        if out is None:
+            raise DC.NoSeTapa("; ".join(avisos))
+        mapa.update(m)
+        return out
+
+    prompt = armar_prompt(fila, tapar)
+    return prompt, (lambda t: DC.destapar(t, mapa, pila))
+
+
 def demora_humana(texto):
     """Segundos hasta publicar. Log-normal recortada + tiempo de tipeo.
 
@@ -440,7 +486,18 @@ def procesar(fila):
             "nombre": fila.get("nombre"), "mensaje": fila.get("mensaje", ""),
             "modelo": MODELO, "bloqueos": None}
 
-    d, err = llamar_codex(armar_prompt(fila))
+    try:
+        prompt, destapar = prompt_sin_nombre(fila)
+    except Exception as e:  # noqa: BLE001
+        # Si no se puede tapar, el chat NO va al modelo: queda para Mati.
+        return {**base, "clase": "derivar", "respuesta": None, "sugerencia": None,
+                "motivo": f"no se pudo sacar el nombre, no fue a la IA: {e}"[:300]}
+    d, err = llamar_codex(prompt)
+    if not err:
+        try:
+            d = {**d, **{k: destapar(d.get(k)) for k in ("respuesta", "sugerencia", "motivo")}}
+        except Exception as e:  # noqa: BLE001
+            err = f"la respuesta traia un dato tapado sin valor ({e})"
     if err:
         # Degradar a escalar, nunca a silencio.
         return {**base, "clase": "derivar", "respuesta": None,
@@ -512,6 +569,10 @@ def main():
         _log(f"solo quedan {cupo} del cupo: se procesan {cupo} y el resto espera")
         pendientes = pendientes[:cupo]
 
+    try:
+        _fichas()   # una vez, antes de los hilos: de ahi sale lo que se tapa
+    except Exception as e:  # noqa: BLE001
+        _log(f"no pude leer las fichas del Cerebro ({e}): sin ellas no se tapa el nombre, esta pasada queda para Mati")
     with ThreadPoolExecutor(max_workers=CONCURRENCIA) as ex:
         resultados = list(ex.map(procesar, pendientes))
 

@@ -62,7 +62,19 @@ def main():
     ok = fallos = 0
     for f in filas:
         quien = (f.get("nombre") or f["cliente_id"])[:24]
-        d, err = W.llamar_codex(W.armar_prompt(f))
+        # Sin el nombre (Mati, 14-oct): lo tapa la IA local y vuelve al final (ver deid_chat.py).
+        try:
+            prompt, destapar = W.prompt_sin_nombre(f)
+        except Exception as e:  # noqa: BLE001
+            print(f"  ✗ {quien:<24} no se pudo sacar el nombre, no fue a la IA: {e}")
+            fallos += 1
+            continue
+        d, err = W.llamar_codex(prompt)
+        if not err:
+            try:
+                d = {**d, **{k: destapar(d.get(k)) for k in ("respuesta", "sugerencia")}}
+            except Exception as e:  # noqa: BLE001
+                err = f"la respuesta traia un dato tapado sin valor ({e})"
         if err:
             print(f"  ✗ {quien:<24} la IA no pudo: {err}")
             fallos += 1
