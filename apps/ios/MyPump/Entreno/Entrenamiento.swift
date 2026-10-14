@@ -98,15 +98,17 @@ final class Preguntador {
 }
 
 extension View {
+    /// Con los textos de la app: sin el emoji del título (las alertas del sistema van limpias) y los nombres de los
+    /// días como en la lista ("Ir a EMPUJE" → "Ir a Empuje").
     func preguntas(_ p: Preguntador) -> some View {
-        alert(p.actual?.titulo ?? "", isPresented: Binding(get: { p.actual != nil }, set: { if !$0 { p.responder(false) } }),
+        alert(Bonito.sinEmoji(p.actual?.titulo ?? ""), isPresented: Binding(get: { p.actual != nil }, set: { if !$0 { p.responder(false) } }),
               presenting: p.actual) { q in
             if !q.cancelar.isEmpty {
-                Button(Bonito.boton(q.cancelar), role: .cancel) { p.responder(false) }
+                Button(Bonito.nombres(Bonito.boton(q.cancelar)), role: .cancel) { p.responder(false) }
             }
-            Button(Bonito.boton(q.confirmar)) { p.responder(true) }
+            Button(Bonito.nombres(Bonito.boton(q.confirmar))) { p.responder(true) }
         } message: { q in
-            Text(q.cuerpo)
+            Text(Bonito.nombres(q.cuerpo))
         }
     }
 }
@@ -151,6 +153,17 @@ enum Bonito {
         guard let primero = s.unicodeScalars.first, primero.properties.isEmojiPresentation || primero.properties.isEmoji,
               !("0"..."9").contains(Character(primero)) else { return s }
         return String(s.drop { !$0.isWhitespace }).trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Las palabras en mayúsculas de 4 letras o más (los nombres de los días: "EMPUJE", "TIRÓN") como nombre propio; las
+    /// siglas cortas ("RIR", "SEM") quedan igual.
+    static func nombres(_ s: String) -> String {
+        var t = s
+        let patron = #"\b[A-ZÁÉÍÓÚÑÜ]{4,}\b"#
+        while let r = t.range(of: patron, options: .regularExpression) {
+            t.replaceSubrange(r, with: t[r].lowercased().localizedCapitalized)
+        }
+        return t
     }
 
     /// "TIRÓN A — ANCHO" → "Tirón A — ancho"; lo que no viene en mayúsculas queda igual.

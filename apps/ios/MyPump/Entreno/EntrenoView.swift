@@ -185,8 +185,11 @@ private struct ListaEntreno: View {
                             texto: Text("Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3): no te guardes reps."))
         }
 
-        TimelineView(.periodic(from: .now, by: 1)) { _ in
-            cronometro(motor.cronometro())
+        // Con el día cerrado o todo hecho no hay cronómetro (está la tarjeta de cierre): ni su lugar en la pila.
+        if !motor.todoHecho {
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                cronometro(motor.cronometro())
+            }
         }
 
         ForEach(motor.bloques, id: \.indice) { b in
