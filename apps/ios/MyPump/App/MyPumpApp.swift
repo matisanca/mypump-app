@@ -20,11 +20,16 @@ struct MyPumpApp: App {
         }
     }
 
+    /// D5: el tema sigue al teléfono, salvo que el cliente haya elegido oscuro (en la web, o en Mis datos). La migración
+    /// trae solo el `'dark'`: `theme.js` escribe `'light'` en cada carga, así que el claro no es una elección.
+    @AppStorage("mypump-theme") private var tema = ""
+
     var body: some Scene {
         WindowGroup {
             raiz
                 .environment(entrenamiento)
                 .tint(Color.marcaTexto)
+                .preferredColorScheme(tema == "dark" ? .dark : nil)
                 .task { entrarEnDemoSiSePide() }
         }
     }
