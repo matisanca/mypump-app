@@ -65,7 +65,7 @@ const sw = await rpc('get_food_swaps', { p_dieta_id: dieta.id }); guardar('get_f
 
 // Misma normalización que claveEjercicio (cliente.html:2092) y mypump_clave_ejercicio (072).
 const clave = (n) => String(n || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-  .replace(/\([^)]*\)/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  .replace(/\(.*?\)/g, ' ').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const claves = [...new Set(rutina.estructura.dias.flatMap((d) => (d.bloques || []).filter(Boolean)
   .flatMap((b) => (b.ejercicios || []).map((e) => clave(e.nombre)))))];
 const hist = await rpc('get_historico_por_clave', { p_claves: claves, p_limit_por_ej: 48 }); guardar('get_historico_por_clave', hist.body);

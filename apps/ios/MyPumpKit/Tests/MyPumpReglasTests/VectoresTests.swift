@@ -88,3 +88,31 @@ struct ProgresionVectoresTests {
         #expect(Progresiones.tope("12/15/20") == 20)
     }
 }
+
+struct ArchivoClaves: Decodable {
+    struct Caso: Decodable { let nombre: String; let clave: String }
+    let casos: [Caso]
+}
+
+func fallasClave(_ archivo: URL) throws -> (Int, [String]) {
+    let v = try JSONDecoder().decode(ArchivoClaves.self, from: Data(contentsOf: archivo))
+    let fallas = v.casos.filter { ClaveEjercicio.de($0.nombre) != $0.clave }
+        .map { "\($0.nombre.debugDescription): web \($0.clave.debugDescription), swift \(ClaveEjercicio.de($0.nombre).debugDescription)" }
+    return (v.casos.count, fallas)
+}
+
+@Suite("claveEjercicio: misma clave que la web")
+struct ClaveVectoresTests {
+    @Test func vectoresPublicos() throws {
+        let (n, fallas) = try fallasClave(raizRepo.appendingPathComponent("apps/shared/vectores/clave_ejercicio.json"))
+        #expect(n > 20)
+        #expect(fallas.isEmpty, "\(fallas.count) de \(n): \(fallas.prefix(8))")
+    }
+
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: carpetaPrivada.appendingPathComponent("clave_ejercicio.json").path)))
+    func nombresRealesDeLaBase() throws {
+        let (n, fallas) = try fallasClave(carpetaPrivada.appendingPathComponent("clave_ejercicio.json"))
+        #expect(n > 500)
+        #expect(fallas.isEmpty, "\(fallas.count) de \(n): \(fallas.prefix(8))")
+    }
+}

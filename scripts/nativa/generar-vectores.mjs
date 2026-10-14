@@ -55,7 +55,7 @@ function extraerConst(nombre) {
   throw new Error(`const ${nombre} sin cierre`);
 }
 
-const reglas = new Function(`${extraer('getProgresionActual')}\n${extraer('computeProgresionNota')}\nreturn { getProgresionActual, computeProgresionNota };`)();
+const reglas = new Function(`${extraer('getProgresionActual')}\n${extraer('computeProgresionNota')}\n${extraer('claveEjercicio')}\nreturn { getProgresionActual, computeProgresionNota, claveEjercicio };`)();
 
 // ── Corpus ───────────────────────────────────────────────────────────
 const leer = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -89,11 +89,28 @@ function escribir(destino, nombre, datos) {
   return datos.casos.length;
 }
 
+// Nombres difíciles a propósito: acentos, ñ, ø (la web la descarta; el folding de Swift la volvería "o"),
+// paréntesis anidados o con salto de línea, grados, guiones largos, emoji, espacios raros.
+const NOMBRES_DIFICILES = ['Jalón al pecho (prono)', 'Jalon al pecho', 'Curl araña', 'Press inclinado 45° — mancuernas',
+  'Ørsted row', 'Curl (cabeza larga) (polea)', 'Pájaro (x\ny) invertido', '  Sentadilla   búlgara  ', '', 'X (pectoral superior)',
+  'Remo 🏋️ con barra', 'Extensión de tríceps — polea alta', 'Hip thrust 1½', 'CURL FEMORAL SENTADO', 'Prensa 45º', 'Abducción (máquina',
+  'Face-pull/con banda', 'Ｆｕｌｌ width', 'İnclinado', 'straße', 'œuvre', 'naïve café'];
+function vectoresClave(nombres) {
+  const unicos = [...new Set(nombres.filter((n) => typeof n === 'string'))];
+  return { casos: unicos.map((nombre) => ({ nombre, clave: reglas.claveEjercicio(nombre) })) };
+}
+const nombresDe = (rutinas) => ejerciciosDe(rutinas).map((e) => e.nombre);
+
 const sal = path.join(RAIZ, 'apps/shared/vectores');
 const n1 = escribir(sal, 'progresion', vectoresProgresion(rutinasPublicas));
+const n3 = escribir(sal, 'clave_ejercicio', vectoresClave([...NOMBRES_DIFICILES, ...nombresDe(rutinasPublicas)]));
 fs.mkdirSync(path.join(RAIZ, 'apps/shared/demo'), { recursive: true });
 fs.writeFileSync(path.join(RAIZ, 'apps/shared/demo/rutina.json'), JSON.stringify(demo.rutina, null, 1) + '\n');
 fs.writeFileSync(path.join(RAIZ, 'apps/shared/demo/dieta.json'), JSON.stringify(demo.dieta, null, 1) + '\n');
-let n2 = 0;
-if (rutinasPrivadas.length) n2 = escribir(path.join(PRIVADO, 'vectores'), 'progresion', vectoresProgresion(rutinasPrivadas));
-console.log(`▸ cliente.html@${commit}: progresion ${n1} vectores públicos, ${n2} privados; demo de la web en apps/shared/demo/`);
+let n2 = 0, n4 = 0;
+if (rutinasPrivadas.length) {
+  n2 = escribir(path.join(PRIVADO, 'vectores'), 'progresion', vectoresProgresion(rutinasPrivadas));
+  const historicos = fs.existsSync(path.join(PRIVADO, 'estructuras/nombres-registrados.json')) ? leer(path.join(PRIVADO, 'estructuras/nombres-registrados.json')) : [];
+  n4 = escribir(path.join(PRIVADO, 'vectores'), 'clave_ejercicio', vectoresClave([...nombresDe(rutinasPrivadas), ...historicos]));
+}
+console.log(`▸ cliente.html@${commit}: progresion ${n1} públicos / ${n2} privados · clave_ejercicio ${n3} públicos / ${n4} privados · demo en apps/shared/demo/`);
