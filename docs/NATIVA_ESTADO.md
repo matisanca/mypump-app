@@ -33,13 +33,28 @@ commitea.
 | Paso | Estado |
 |---|---|
 | Clon, hooks y estado | ✅ |
-| Toolchain Android + runtimes de iOS 17 y 18 | 🟡 JDK 21 y cmdline-tools listos; SDK 36 y emulador bajando; iOS 17.5 bajando (lento) |
+| Toolchain Android + runtimes de iOS 17 y 18 | ✅ JDK 21, SDK 36 con emulador e imagen arm64; iOS 17.5 y 18.6 (simuladores "Nativa iOS 17/18" en `simuladores-viejos.txt`) |
 | Cuentas de prueba (`scripts/nativa/sembrar.mjs`) | ✅ `test-nativa-ios`. Falta la visible para el chat |
 | `docs/NATIVA_CONTRATO.md` + `apps/shared/contrato.json` | ✅ verificado contra `pg_proc` |
 | `docs/NATIVA_PARIDAD.md` | ✅ 145 ítems con ID y 9 decisiones para G1 |
-| Prueba del almacenamiento viejo en iOS: v1.0.11, v1.0.12-b18 y main × iOS 17, 18 y 26 | 🟢 iOS 26.5 OK por las dos rutas y en las dos direcciones. Faltan 17 y 18 |
+| Prueba del almacenamiento viejo en iOS: v1.0.11, v1.0.12-b18 y main × iOS 17, 18 y 26 | ✅ 17.5, 18.6 y 26.5 por las dos rutas y en las dos direcciones (`scripts/nativa/spike-legado.sh`) |
 | Prueba del almacenamiento viejo en Android | ⏳ |
 | Bocetos en el simulador → G1 | ⏳ |
+
+## Fase 1-2 (en paralelo, desde el 14-oct)
+
+| Pieza | Estado |
+|---|---|
+| Motor: modelos, cliente RPC, cola, ModeloApp, copia offline | ✅ con integración real (`test-nativa-real`) |
+| Reglas con vectores de la web | ✅ progresión, clave, porción casera, anclaje e hidratación de swaps, sustitución de alimentos (2.510 casos) y de ejercicios (323 + 3.232 privados), alimento propio, comida libre |
+| **Dieta (iPhone)** | ✅ datos reales, sin Comí/Salté (D10), mano, reemplazo, alimento propio con escaneo, comidas libres. XCUITest en 17.5 y 26.5. Falta: dieta de ejemplo (DIE-17), recarga al cambiar el día (DIE-18) |
+| Diseño "pro" de Entreno, Chat, Revisión, Progreso y Mis datos | 🟡 agente en curso (worktree) |
+| Migración del almacenamiento viejo (Fase L/R) | 🟡 agente en curso |
+| Motor de Entreno (sugeridos, topes, variantes, sesiones, historial) | 🟡 agente en curso |
+| Android: proyecto + reglas con los mismos vectores | 🟡 agente en curso |
+
+**Herramientas nuevas:** `scripts/nativa/lanzar-sim.sh` (abre la app con una cuenta de prueba sin que el token pase por
+la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-legado.sh`.
 
 ## Compuertas
 
@@ -77,4 +92,5 @@ commitea.
 
 - **13-oct:** plan aprobado y clon creado.
 - **14-oct (madrugada):** MyPumpKit con modelos, reglas portadas con vectores (progresión, clave, porción casera, anclaje e hidratación de swaps), cliente RPC + cola offline + ModeloApp con integración real contra `test-nativa-real`. Agentes en paralelo: motor de sustitutos de alimentos, motor de sustitutos de ejercicios y pulido visual.
+- **14-oct (1-2 h):** Dieta nativa terminada salvo la dieta de ejemplo: el reemplazo da las mismas 55 opciones que la web para "Huevo entero" (lado a lado con la web local de `origin/main` y la misma cuenta). Spike del almacenamiento viejo OK en 17.5 y 18.6. Merge de los motores de sustitución (alimentos y ejercicios). Agentes nuevos: migración, motor de Entreno, Android.
 - **14-oct:** riesgo n.º 1 resuelto en iOS 26.5 (`NATIVA_SPIKE_ALMACENAMIENTO.md`). Contrato verificado contra la base: 50 RPC, ninguna duplicada; `push_pendientes` manda a cada dispositivo a propósito. Cuenta `test-nativa-ios` sembrada.
