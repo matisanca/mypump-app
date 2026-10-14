@@ -458,6 +458,23 @@ struct EntrenoAccionesTests {
         #expect(b.sesionesEnDisco.isEmpty)
     }
 
+    /// ENT-15: en la última semana, con un bloque en cola, "Empezar bloque nuevo" activa el siguiente (`activar_siguiente`
+    /// = true), borra las sesiones de este teléfono y recarga la rutina nueva.
+    @Test func empezarBloqueNuevo_activaBorraLasSesiones_yRecarga() async {
+        let b = Banco()
+        b.cacheDeSesion(["d1": .init(sesionId: "ses-1", semana: 12)])
+        b.servidor.cuando("activar_siguiente", "true")
+        b.servidor.cuando("get_rutina_activa", "[\(filaRutina(semana: 1))]")
+        let m = b.modelo(rutinaDePrueba(semana: 12, tieneSiguiente: true))
+        var avisada: RutinaActiva?
+        m.alCambiarRutina = { avisada = $0 }
+        #expect(m.puedeEmpezarBloque && !m.puedeAvanzar)
+        #expect(await m.empezarBloqueNuevo() == .listo)
+        #expect(b.servidor.llamadas("activar_siguiente").count == 1)
+        #expect(m.semana == 1 && avisada?.semanaActual == 1)
+        #expect(b.sesionesEnDisco.isEmpty)
+    }
+
     @Test func avanzarSemana_sinRed_yRechazado() async {
         let b = Banco()
         b.servidor.sinRed("avanzar_semana")
