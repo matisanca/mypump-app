@@ -1,15 +1,32 @@
 import SwiftUI
 import MyPumpModelos
+import MyPumpReglas
+import MyPumpDatos
 
-/// Chat con Mati: burbujas agrupadas por autor (con cola en la última del grupo y la hora debajo), separadores
-/// Hoy / Ayer / fecha, y el compositor flotando en vidrio como en Mensajes.
+/// Chat con Mati (CHA-01…05): burbujas agrupadas por autor (con cola en la última del grupo y la hora debajo),
+/// separadores Hoy / Ayer / fecha, "Ver mensajes anteriores" de a 30, "enviando…" y "no salió → Reintentar", y el
+/// compositor flotando en vidrio como en Mensajes. Con una cuenta sale de `ModeloChat`; en la demo y en los bocetos,
+/// la conversación de muestra (sin enviar nada).
 struct ChatView: View {
     let datos: Muestras
+    @State private var modelo = Proveedor.modelo
+    /// Lo que se está escribiendo vive acá y no en el modelo: sobrevive a que llegue un mensaje (CHA-02).
     @State private var texto = ""
     @FocusState private var escribiendo: Bool
     @State private var enviados = 0
 
     private let limite = 1000
+
+    /// El chat real, o nil en la demo y en los bocetos.
+    private var chat: ModeloChat? { modelo.conMuestras ? nil : modelo.chat }
+
+    private var burbujas: [BurbujaChat] {
+        if let chat { return chat.hilo.mensajes }
+        if DemoUI.estado == .vacio { return [] }
+        return datos.chat.map {
+            BurbujaChat(id: $0.id, autor: $0.autor, contenido: $0.contenido, leidoPorCliente: true, createdAt: $0.createdAt)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -30,13 +47,18 @@ struct ChatView: View {
                     }
                 }
         }
+        // Con el chat a la vista el sondeo va cada 15 s y lo nuevo queda leído (CHA-04).
+        .onAppear {
+            chat?.abierto = true
+            Task { await chat?.marcarLeido() }
+        }
+        .onDisappear { chat?.abierto = false }
     }
 
     @ViewBuilder private var contenido: some View {
-        switch DemoUI.estado {
-        case .cargando:
+        if DemoUI.estado == .cargando || (chat?.cargando == true && burbujas.isEmpty) {
             ScrollView { EsqueletoChat().padding(.horizontal, Espacio.m).anchoLectura() }.scrollDisabled(true)
-        case .error:
+        } else if DemoUI.estado == .error {
             ContentUnavailableView {
                 Label("Sin conexión", systemImage: "wifi.slash")
             } description: {
@@ -44,44 +66,63 @@ struct ChatView: View {
             } actions: {
                 Button("Reintentar") {}.buttonStyle(BotonMarca(compacto: true))
             }
-        case .vacio:
-            conversacion([])
-        case nil:
-            conversacion(datos.chat)
+        } else {
+            conversacion(burbujas)
         }
     }
 
-    private func conversacion(_ mensajes: [MensajeChat]) -> some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                encabezado(vacio: mensajes.isEmpty)
-                ForEach(Array(mensajes.enumerated()), id: \.element.id) { i, m in
-                    let dia = String(m.createdAt.prefix(10))
-                    let nuevoDia = i == 0 || String(mensajes[i - 1].createdAt.prefix(10)) != dia
-                    let previo = i > 0 && !nuevoDia ? mensajes[i - 1] : nil
-                    let siguiente = i + 1 < mensajes.count ? mensajes[i + 1] : nil
-                    if nuevoDia {
-                        Text(separador(dia))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.top, Espacio.l)
-                            .padding(.bottom, Espacio.xs)
-                            .accessibilityAddTraits(.isHeader)
+    private func conversacion(_ mensajes: [BurbujaChat]) -> some View {
+        ScrollViewReader { lector in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    encabezado(vacio: mensajes.isEmpty)
+                    if let chat, chat.hilo.hayMas, !mensajes.isEmpty {
+                        Button {
+                            Task { await chat.cargar(masViejos: true) }
+                        } label: {
+                            Text(chat.cargando ? "Cargando…" : "Ver mensajes anteriores")
+                        }
+                        .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
+                        .disabled(chat.cargando)
+                        .padding(.bottom, Espacio.xs)
                     }
-                    let iniciaGrupo = previo?.autor != m.autor
-                    let cierraGrupo = siguiente?.autor != m.autor
-                        || String(siguiente?.createdAt.prefix(10) ?? "") != dia
-                    Burbuja(mensaje: m, conCola: cierraGrupo, hora: cierraGrupo ? hora(m.createdAt) : nil)
+                    ForEach(Array(mensajes.enumerated()), id: \.element.id) { i, m in
+                        let dia = FechaLocal.de(m.createdAt)
+                        let nuevoDia = i == 0 || FechaLocal.de(mensajes[i - 1].createdAt) != dia
+                        let previo = i > 0 && !nuevoDia ? mensajes[i - 1] : nil
+                        let siguiente = i + 1 < mensajes.count ? mensajes[i + 1] : nil
+                        if nuevoDia {
+                            Text(separador(dia))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.top, Espacio.l)
+                                .padding(.bottom, Espacio.xs)
+                                .accessibilityAddTraits(.isHeader)
+                        }
+                        let iniciaGrupo = previo?.autor != m.autor
+                        let cierraGrupo = siguiente?.autor != m.autor || FechaLocal.de(siguiente?.createdAt ?? "") != dia
+                        Burbuja(mensaje: m, conCola: cierraGrupo, hora: cierraGrupo ? hora(m.createdAt) : nil) {
+                            Task { await chat?.reintentar(m.id) }
+                        }
                         .padding(.top, iniciaGrupo ? Espacio.s : 2)
+                        .id(m.id)
+                        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
+                    }
                 }
+                .padding(.horizontal, Espacio.m)
+                .padding(.bottom, Espacio.s)
+                .anchoLectura()
+                .animation(.snappy, value: mensajes.map(\.id))
             }
-            .padding(.horizontal, Espacio.m)
-            .padding(.bottom, Espacio.s)
-            .anchoLectura()
+            .defaultScrollAnchor(.bottom)
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) { compositor }
+            // Lo nuevo (de Mati o lo que se acaba de mandar) se ve sin buscarlo.
+            .onChange(of: mensajes.last?.id) { _, ultimo in
+                guard let ultimo else { return }
+                withAnimation(.snappy) { lector.scrollTo(ultimo, anchor: .bottom) }
+            }
         }
-        .defaultScrollAnchor(.bottom)
-        .scrollDismissesKeyboard(.interactively)
-        .safeAreaInset(edge: .bottom, spacing: 0) { compositor }
     }
 
     /// El comienzo de la conversación. Con mensajes, una línea discreta (el avatar ya está en la barra, como en
@@ -91,8 +132,8 @@ struct ChatView: View {
         if vacio {
             VStack(spacing: Espacio.xs) {
                 AvatarMati(lado: 72)
-                Text("Mati").font(.title2.weight(.bold)).padding(.top, 4)
-                Text("Escribile a Mati cuando quieras. Te responde acá.")
+                Text("Escribile a Mati").font(.title2.weight(.bold)).padding(.top, 4)
+                Text("Contale cómo venís, qué te costó esta semana o lo que necesites. Te contesta acá mismo.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -112,45 +153,52 @@ struct ChatView: View {
     }
 
     private var compositor: some View {
-        HStack(alignment: .bottom, spacing: Espacio.xs) {
-            HStack(alignment: .bottom) {
-                TextField("Mensaje", text: $texto, axis: .vertical)
-                    .lineLimit(1...5)
-                    .focused($escribiendo)
-                    .onChange(of: texto) { _, nuevo in
-                        if nuevo.count > limite { texto = String(nuevo.prefix(limite)) }
+        VStack(spacing: 6) {
+            if modelo.esDemo {
+                Label("En la demo los mensajes no se envían.", systemImage: "sparkles")
+                    .labelStyle(EtiquetaCompacta())
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(alignment: .bottom, spacing: Espacio.xs) {
+                HStack(alignment: .bottom) {
+                    TextField("Escribile a Mati…", text: $texto, axis: .vertical)
+                        .lineLimit(1...5)
+                        .focused($escribiendo)
+                        .onChange(of: texto) { _, nuevo in
+                            if nuevo.count > limite { texto = String(nuevo.prefix(limite)) }
+                        }
+                        .accessibilityIdentifier("chat-campo")
+                    if texto.count > limite - 100 {
+                        Text("\(texto.count)/\(limite)")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(texto.count >= limite ? Color.peligro : Color.secondary)
+                            .padding(.bottom, 2)
                     }
-                if texto.count > limite - 100 {
-                    Text("\(texto.count)/\(limite)")
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(texto.count >= limite ? Color.peligro : Color.secondary)
-                        .padding(.bottom, 2)
                 }
-            }
-            .padding(.horizontal, Espacio.m)
-            .padding(.vertical, 11)
-            .frame(minHeight: 44)
-            .vidrio(RoundedRectangle(cornerRadius: 22, style: .continuous), interactivo: true)
+                .padding(.horizontal, Espacio.m)
+                .padding(.vertical, 11)
+                .frame(minHeight: 44)
+                .vidrio(RoundedRectangle(cornerRadius: 22, style: .continuous), interactivo: true)
 
-            Button {
-                texto = ""
-                enviados += 1
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(vacio ? Color.secondary : Color.sobreMarca)
-                    .frame(width: 44, height: 44)
-                    .background {
-                        if vacio { Circle().fill(.clear) } else { Circle().fill(Color.marca) }
-                    }
-                    .vidrio(Circle(), interactivo: true)
-                    .contentShape(.circle)
+                Button(action: enviar) {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(puedeEnviar ? Color.sobreMarca : Color.secondary)
+                        .frame(width: 44, height: 44)
+                        .background {
+                            if puedeEnviar { Circle().fill(Color.marca) } else { Circle().fill(.clear) }
+                        }
+                        .vidrio(Circle(), interactivo: true)
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .disabled(!puedeEnviar)
+                .animation(.snappy(duration: 0.2), value: puedeEnviar)
+                .sensoryFeedback(.impact(weight: .light), trigger: enviados)
+                .accessibilityLabel("Enviar")
+                .accessibilityIdentifier("chat-enviar")
             }
-            .buttonStyle(.plain)
-            .disabled(vacio)
-            .animation(.snappy(duration: 0.2), value: vacio)
-            .sensoryFeedback(.impact(weight: .light), trigger: enviados)
-            .accessibilityLabel("Enviar")
         }
         .padding(.horizontal, Espacio.m)
         .padding(.top, Espacio.xs)
@@ -158,9 +206,20 @@ struct ChatView: View {
         .anchoLectura()
     }
 
-    private var vacio: Bool { texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var puedeEnviar: Bool {
+        chat != nil && !texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
-    /// Hoy / Ayer / "lun 12 oct", como la web.
+    /// La burbuja aparece ya ("enviando…") y el mensaje sale por la cola (CHA-03).
+    private func enviar() {
+        guard let chat, puedeEnviar else { return }
+        let mensaje = texto
+        texto = ""
+        enviados += 1
+        Task { await chat.enviar(mensaje) }
+    }
+
+    /// Hoy / Ayer / "Lunes 12 de octubre", con el día local.
     private func separador(_ dia: String) -> String {
         guard let f = Fechas.dia(dia) else { return dia }
         if Calendar.current.isDateInToday(f) { return "Hoy" }
@@ -171,7 +230,7 @@ struct ChatView: View {
 
     /// "18:52" en la hora del teléfono, en 24 h como la web (`es-AR`).
     private func hora(_ iso: String) -> String? {
-        guard let fecha = ISO8601DateFormatter().date(from: iso) else { return nil }
+        guard let fecha = FechaISO.fecha(iso) else { return nil }
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "HH:mm"
@@ -194,10 +253,13 @@ struct AvatarMati: View {
     }
 }
 
+/// Una burbuja. Las del cliente que todavía no salieron se ven más tenues con "enviando…"; las que la cola abandonó,
+/// con "no salió" y Reintentar (el texto nunca se pierde).
 struct Burbuja: View {
-    let mensaje: MensajeChat
+    let mensaje: BurbujaChat
     var conCola = true
     var hora: String?
+    var reintentar: () -> Void = {}
 
     var body: some View {
         let mio = !mensaje.esDelCoach
@@ -214,15 +276,40 @@ struct Burbuja: View {
                             if !mio { FormaBurbuja(mia: mio, conCola: conCola).stroke(Color.borde, lineWidth: 1) }
                         }
                 }
+                .opacity(mensaje.pendiente && !mensaje.fallo ? 0.6 : 1)
                 .textSelection(.enabled)
-            if let hora {
-                Text(hora).font(.caption2.monospacedDigit()).foregroundStyle(.tertiary).padding(.horizontal, 6)
-            }
+            estado
         }
         .frame(maxWidth: .infinity, alignment: mio ? .trailing : .leading)
         .padding(mio ? .leading : .trailing, 56)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(mio ? "Vos" : "Mati"): \(mensaje.contenido)")
+        .accessibilityValue(mensaje.fallo ? "No salió" : (mensaje.pendiente ? "Enviando" : ""))
+    }
+
+    @ViewBuilder private var estado: some View {
+        if mensaje.fallo {
+            HStack(spacing: 6) {
+                Label("no salió", systemImage: "exclamationmark.circle.fill")
+                    .labelStyle(EtiquetaCompacta())
+                    .foregroundStyle(Color.peligro)
+                Button("Reintentar", action: reintentar)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color.marcaTexto)
+                    .frame(minHeight: 32)
+                    .accessibilityIdentifier("chat-reintentar")
+            }
+            .font(.caption)
+            .padding(.horizontal, 6)
+        } else if mensaje.pendiente {
+            Label("enviando…", systemImage: "clock")
+                .labelStyle(EtiquetaCompacta())
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 6)
+        } else if let hora {
+            Text(hora).font(.caption2.monospacedDigit()).foregroundStyle(.tertiary).padding(.horizontal, 6)
+        }
     }
 }
 
