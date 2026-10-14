@@ -155,7 +155,131 @@ def chequeos_002(cur, token, otro):
     chequear("mypump_consentimiento_ia con RLS", cur.fetchone()[0] is True)
 
 
-CHEQUEOS = {"nativa_001": chequeos_001, "nativa_002": chequeos_002}
+def chequeos_003(cur, token, otro):
+    """nativa_003: las sustituciones de ejercicio en el servidor (SER-14)."""
+    rutina_de = """SELECT r.id::text FROM mypump_rutinas r JOIN mypump_clientes c ON c.cliente_id = r.cliente_id
+                   WHERE c.access_token = %s AND r.estado = 'activa' ORDER BY r.created_at DESC LIMIT 1"""
+    cur.execute(rutina_de, (token,))
+    rutina = cur.fetchone()[0]
+    cur.execute(rutina_de, (otro,))
+    rutina_otro = cur.fetchone()[0]
+    nadie = "no-es-un-token-de-nadie-000000"
+    swap = {"original": {"slug": "sentadilla", "nombre": "Sentadilla", "images": None},
+            "current": {"slug": "prensa-45", "nombre": "Prensa 45°", "equipment": "machine",
+                        "images": {"eccentric": "https://x/e.jpg", "concentric": None}},
+            "fijado": True, "semana": 2, "diaId": "d1"}
+    solo_hoy = {**swap, "fijado": False}
+    leer = "SELECT mypump_get_exercise_swaps(%s, %s::uuid)"
+    guardar = "SELECT mypump_save_exercise_swap(%s, %s::uuid, %s, %s::jsonb)"
+    borrar = "SELECT mypump_delete_exercise_swap(%s, %s::uuid, %s)"
+    importar = "SELECT mypump_import_exercise_swaps(%s, %s::uuid, %s::jsonb, %s)"
+
+    def uno(sql, args):
+        cur.execute(sql, args)
+        return cur.fetchone()[0]
+
+    def da_22023(nombre, sql, args):
+        cur.execute("SAVEPOINT s")
+        try:
+            cur.execute(sql, args)
+            chequear(f"{nombre} → error 22023", False, "no dio error")
+        except psycopg2.errors.InvalidParameterValue:
+            chequear(f"{nombre} → error 22023", True)
+        cur.execute("ROLLBACK TO SAVEPOINT s")
+
+    print("▸ Lectura")
+    chequear("sin filas → {}", uno(leer, (token, rutina)) == {})
+    chequear("token inexistente → NULL", uno(leer, (nadie, rutina)) is None)
+    chequear("la rutina de otro cliente → NULL", uno(leer, (token, rutina_otro)) is None)
+
+    print("▸ Guardar")
+    chequear("guardar → TRUE", uno(guardar, (token, rutina, "e1", json.dumps(swap))) is True)
+    chequear("se lee tal cual", uno(leer, (token, rutina)) == {"e1": swap})
+    chequear("guardarla de nuevo → TRUE", uno(guardar, (token, rutina, "e1", json.dumps(solo_hoy))) is True)
+    chequear("la última gana", uno(leer, (token, rutina)) == {"e1": solo_hoy})
+    cur.execute("SELECT count(*) FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina,))
+    chequear("no duplica", cur.fetchone()[0] == 1)
+    chequear("en la rutina de otro → FALSE", uno(guardar, (token, rutina_otro, "e1", json.dumps(swap))) is False)
+    cur.execute("SELECT count(*) FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina_otro,))
+    chequear("…y no escribe nada", cur.fetchone()[0] == 0)
+    chequear("token inexistente → NULL", uno(guardar, (nadie, rutina, "e1", json.dumps(swap))) is None)
+    raro = {**swap, "current": {**swap["current"], "nombre": "Press «inclinado» 30° — mancuernas 💪"}}
+    uno(guardar, (token, rutina, "día-2_ñ", json.dumps(raro)))
+    chequear("unicode ida y vuelta", uno(leer, (token, rutina)).get("día-2_ñ") == raro)
+    da_22023("ex_id vacío", guardar, (token, rutina, "", json.dumps(swap)))
+    da_22023("ex_id de 121", guardar, (token, rutina, "x" * 121, json.dumps(swap)))
+    da_22023("no es un objeto", guardar, (token, rutina, "e9", json.dumps([1, 2])))
+    da_22023("más de 16 KB", guardar, (token, rutina, "e9", json.dumps({**swap, "relleno": "x" * 17000})))
+
+    print("▸ Borrar")
+    chequear("borrar → TRUE", uno(borrar, (token, rutina, "e1")) is True)
+    chequear("ya no está", "e1" not in uno(leer, (token, rutina)))
+    chequear("borrar lo que no está → TRUE", uno(borrar, (token, rutina, "e1")) is True)
+    chequear("token inexistente → NULL", uno(borrar, (nadie, rutina, "e1")) is None)
+    uno(guardar, (otro, rutina_otro, "e1", json.dumps(swap)))
+    uno(borrar, (token, rutina_otro, "e1"))
+    chequear("no borra la de otro cliente", uno(leer, (otro, rutina_otro)) == {"e1": swap})
+    uno(borrar, (token, rutina, "día-2_ñ"))
+
+    print("▸ Importar")
+    uno(guardar, (token, rutina, "e1", json.dumps(swap)))
+    r = uno(importar, (token, rutina, json.dumps({"e1": solo_hoy, "e2": swap}), False))
+    chequear("sumar: queda la del servidor y entra la que faltaba", r == {"e1": swap, "e2": swap}, json.dumps(r))
+    r = uno(importar, (token, rutina, json.dumps({"e1": solo_hoy, "e2": swap}), False))
+    cur.execute("SELECT count(*) FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina,))
+    chequear("repetirla no duplica", r == {"e1": swap, "e2": swap} and cur.fetchone()[0] == 2)
+    chequear("con {} devuelve lo que hay", uno(importar, (token, rutina, "{}", False)) == {"e1": swap, "e2": swap})
+    r = uno(importar, (token, rutina, json.dumps({"e2": solo_hoy, "e3": swap}), True))
+    chequear("reemplazar: queda exactamente lo enviado", r == {"e2": solo_hoy, "e3": swap}, json.dumps(r))
+    chequear("token inexistente → NULL", uno(importar, (nadie, rutina, "{}", False)) is None)
+    chequear("la rutina de otro → NULL", uno(importar, (token, rutina_otro, json.dumps({"e5": swap}), False)) is None)
+    chequear("…y no le escribe", uno(leer, (otro, rutina_otro)) == {"e1": swap})
+    da_22023("una entrada inválida", importar, (token, rutina, json.dumps({"e4": swap, "e5": [1]}), False))
+    chequear("…y no guarda ninguna", uno(leer, (token, rutina)) == {"e2": solo_hoy, "e3": swap})
+    da_22023("no es un objeto", importar, (token, rutina, json.dumps([swap]), False))
+
+    print("▸ Tope de 300 por rutina")
+    trescientas = {f"t{i}": swap for i in range(300)}
+    chequear("300 entran", len(uno(importar, (token, rutina, json.dumps(trescientas), True)) or {}) == 300)
+    da_22023("la 301 por guardar", guardar, (token, rutina, "t300", json.dumps(swap)))
+    chequear("cambiar una de las 300 sí", uno(guardar, (token, rutina, "t1", json.dumps(solo_hoy))) is True)
+    da_22023("la 301 por importar", importar, (token, rutina, json.dumps({"t300": swap}), False))
+    da_22023("301 por reemplazar", importar, (token, rutina, json.dumps({**trescientas, "t300": swap}), True))
+
+    print("▸ Permisos")
+    for f in ["mypump_get_exercise_swaps(text,uuid)", "mypump_save_exercise_swap(text,uuid,text,jsonb)",
+              "mypump_delete_exercise_swap(text,uuid,text)", "mypump_import_exercise_swaps(text,uuid,jsonb,boolean)"]:
+        cur.execute("SELECT has_function_privilege('anon', %s, 'EXECUTE')", (f,))
+        chequear(f"anon puede llamar {f.split('(')[0]}", cur.fetchone()[0] is True)
+    for rol in ["anon", "authenticated"]:
+        cur.execute("SELECT has_function_privilege(%s, 'mypump_sustitucion_valida(text,jsonb)', 'EXECUTE')", (rol,))
+        chequear(f"{rol} NO puede llamar mypump_sustitucion_valida", cur.fetchone()[0] is False)
+    cur.execute("SELECT relrowsecurity FROM pg_class WHERE relname = 'mypump_exercise_swaps'")
+    chequear("mypump_exercise_swaps con RLS", cur.fetchone()[0] is True)
+    cur.execute("SELECT count(*) FROM pg_policies WHERE tablename = 'mypump_exercise_swaps' AND 'anon' = ANY(roles)")
+    chequear("sin política para anon", cur.fetchone()[0] == 0)
+
+    print("▸ Como la app (rol anon)")
+    chequear("reemplazar con {} la vacía", uno(importar, (token, rutina, "{}", True)) == {})
+    cur.execute("SAVEPOINT s")
+    cur.execute("SET LOCAL ROLE anon")
+    try:
+        chequear("guardar", uno(guardar, (token, rutina, "a1", json.dumps(swap))) is True)
+        chequear("importar", (uno(importar, (token, rutina, json.dumps({"a2": swap}), False)) or {}).get("a2") == swap)
+        chequear("leer", (uno(leer, (token, rutina)) or {}).get("a1") == swap)
+        chequear("borrar", uno(borrar, (token, rutina, "a1")) is True)
+        cur.execute("SAVEPOINT t")
+        try:
+            cur.execute("SELECT count(*) FROM mypump_exercise_swaps")
+            chequear("la tabla directa → sin filas (RLS)", cur.fetchone()[0] == 0)
+        except psycopg2.errors.InsufficientPrivilege:
+            chequear("la tabla directa → sin permiso", True)
+            cur.execute("ROLLBACK TO SAVEPOINT t")
+    finally:
+        cur.execute("ROLLBACK TO SAVEPOINT s")
+
+
+CHEQUEOS = {"nativa_001": chequeos_001, "nativa_002": chequeos_002, "nativa_003": chequeos_003}
 
 
 def main():
