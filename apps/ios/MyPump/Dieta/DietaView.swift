@@ -214,7 +214,7 @@ private struct FilaAlimento: View {
     var body: some View {
         let porcion = PorcionCasera.referencia(nombre: mostrado.nombre, qty: mostrado.qty, unidad: mostrado.unidad,
                                                gramosPorUnidad: mostrado.gramosPorUnidad)
-        let categoria = original.categoria ?? CategoriaComida.inferir(original)
+        let categoria = CategoriaComida.inferir(original)
         let sustituible = original.sustituible != false && categoria != "condimento"
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 8) {
@@ -307,11 +307,13 @@ enum FormatoDieta {
     }
 
     /// "P 15,1 · C 0,8 · G 11,4", con la letra en el color del macro (como el anillo de arriba).
-    static func macros(_ a: Alimento) -> Text {
+    static func macros(_ a: Alimento) -> Text { macros(prot: a.prot, carb: a.carb, fat: a.fat) }
+
+    static func macros(prot: Double?, carb: Double?, fat: Double?) -> Text {
         func parte(_ letra: String, _ v: Double?, _ color: Color) -> Text {
             Text(letra).foregroundColor(color).fontWeight(.bold) + Text(" \((v ?? 0).kg)")
         }
-        return parte("P", a.prot, .corazon) + Text("  ·  ") + parte("C", a.carb, .alerta) + Text("  ·  ") + parte("G", a.fat, .sueno)
+        return parte("P", prot, .corazon) + Text("  ·  ") + parte("C", carb, .alerta) + Text("  ·  ") + parte("G", fat, .sueno)
     }
 }
 

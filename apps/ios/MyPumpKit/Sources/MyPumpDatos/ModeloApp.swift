@@ -200,6 +200,43 @@ public final class ModeloApp {
                                                     "foodIdx": .numero(Double(idx))]), dedupeKey: k)
     }
 
+    /// "Crear y usar" (`saveCustomFood`): va directo, no por la cola, como en la web. Lo creado entra a la base de
+    /// sustitutos reemplazando al del mismo nombre. Sin cuenta (demo) queda solo en memoria. La función devuelve un
+    /// conjunto vacío si el token no sirve: eso también es un error para el cliente.
+    public func crearAlimentoPropio(_ d: AlimentoPropioNuevo.Datos) async -> Result<AlimentoPropio, ErrorRPC> {
+        guard let t = token else {
+            let a = AlimentoPropio(nombre: d.nombre, kcal: d.kcal, prot: d.prot, carb: d.carb, fat: d.fat, unidad: d.unidad,
+                                   gramosPorUnidad: d.gramosPorUnidad, categoria: d.categoria)
+            sumarPropio(a)
+            return .success(a)
+        }
+        let p: [String: JSONValue] = [
+            "p_token": .texto(t), "p_name": .texto(d.nombre), "p_kcal": .numero(d.kcal), "p_prot": .numero(d.prot),
+            "p_carb": .numero(d.carb), "p_fat": .numero(d.fat), "p_unit": .texto(d.unidad),
+            "p_unit_grams": d.gramosPorUnidad.map(JSONValue.numero) ?? .null,
+            "p_category": d.categoria.isEmpty ? .null : .texto(d.categoria),
+        ]
+        switch await cliente.filas("mypump_create_custom_food", p, como: AlimentoPropio.self) {
+        case .failure(let e):
+            return .failure(e)
+        case .success(let creados):
+            guard let a = creados.first else {
+                return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_FILA", mensaje: "mypump_create_custom_food: vacío"))
+            }
+            sumarPropio(a)
+            return .success(a)
+        }
+    }
+
+    /// Como la web: reemplaza en su lugar al del mismo nombre (sin distinguir mayúsculas) o se agrega al final.
+    private func sumarPropio(_ a: AlimentoPropio) {
+        if let i = alimentosPropios.firstIndex(where: { $0.nombre.lowercased() == a.nombre.lowercased() }) {
+            alimentosPropios[i] = a
+        } else {
+            alimentosPropios.append(a)
+        }
+    }
+
     private func guardarSwaps() {
         guard let id = dieta?.id else { return }
         disco?.guardar(swaps, "swaps_\(id).json")

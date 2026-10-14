@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import MyPumpModelos
+import MyPumpReglas
 @testable import MyPumpDatos
 
 /// Contra el backend REAL, con la cuenta de prueba test-nativa-real (invisible para el coach). Solo corre en la Mac de
@@ -31,6 +32,21 @@ struct IntegracionTests {
         await offline.cargar()
         #expect(offline.fase == .listo && offline.desdeCache)
         #expect(offline.dieta?.id == m.dieta?.id)
+    }
+
+    @Test func alimentoPropioSeCreaYEntraALaBase() async throws {
+        let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await m.cargar()
+        // Upsert por (cliente, nombre): correrlo de nuevo no duplica.
+        let datos = try AlimentoPropioNuevo.preparar(nombre: "Yogur prueba nativa", kcal: 75, prot: 3, carb: 10.1, fat: 2.25,
+                                                     unidad: "porcion", gramosPorUnidad: 30, categoria: "lacteo").get()
+        let creado = try await m.crearAlimentoPropio(datos).get()
+        #expect(creado.nombre == "Yogur prueba nativa")
+        #expect(creado.kcal == 250 && creado.prot == 10 && creado.gramosPorUnidad == 30 && creado.unidad == "porcion")
+        #expect(m.alimentosPropios.filter { $0.nombre == "Yogur prueba nativa" }.count == 1)
+        let otra = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await otra.cargar()
+        #expect(otra.alimentosPropios.contains { $0.nombre == "Yogur prueba nativa" && $0.kcal == 250 })
     }
 
     @Test func sustituirLlegaAnclado_yRevertirLoBorra() async throws {

@@ -193,6 +193,11 @@ public struct AlimentoPropio: Decodable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case nombre = "name", kcal, prot, carb, fat, unidad = "unit", gramosPorUnidad = "unit_grams", categoria = "category"
     }
+    public init(nombre: String, kcal: Double?, prot: Double?, carb: Double?, fat: Double?, unidad: String?,
+                gramosPorUnidad: Double?, categoria: String?) {
+        self.nombre = nombre; self.kcal = kcal; self.prot = prot; self.carb = carb; self.fat = fat
+        self.unidad = unidad; self.gramosPorUnidad = gramosPorUnidad; self.categoria = categoria
+    }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         nombre = c.texto(.nombre) ?? ""; kcal = c.decimal(.kcal); prot = c.decimal(.prot); carb = c.decimal(.carb)
