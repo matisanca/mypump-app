@@ -16,6 +16,13 @@ struct AvisosTests {
         #expect(DestinoAviso(destino: nil) == .chat)
     }
 
+    @Test func escenaDelLink() {
+        #expect(DestinoAviso(escena: "diet") == .dieta)
+        #expect(DestinoAviso(escena: "salud") == .misDatos)
+        #expect(DestinoAviso(escena: "comentarios") == nil)
+        #expect(DestinoAviso(escena: nil) == nil)
+    }
+
     @Test func preferenciasSeMezclanSobreLasDeFabrica() {
         #expect(PreferenciasAvisos.leer(nil) == .porDefecto)
         #expect(PreferenciasAvisos.leer("basura") == .porDefecto)
