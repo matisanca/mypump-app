@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Igual que ios/App/App/Info.plist de la Capacitor: la espía reproduce la configuración exacta. -->
+	<key>WKAppBoundDomains</key>
+	<array>
+		<string>app.mypumpteam.com</string>
+		<string>vision.mypumpteam.com</string>
+		<string>gydinputrtptqakdzyvc.supabase.co</string>
+	</array>
+</dict>
+</plist>
