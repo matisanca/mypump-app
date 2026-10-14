@@ -29,7 +29,7 @@ struct SustituirAlimentoView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(original.nombre).font(.headline)
-                        Text("\(FormatoDieta.cantidad(original.qty, original.unidad)) · \(Int((original.kcal ?? 0).rounded())) kcal")
+                        Text("\(FormatoDieta.cantidad(original.qty, original.unidad)) · \((original.kcal ?? 0).enteroSeguro) kcal")
                             .font(.subheadline).foregroundStyle(.secondary)
                         FormatoDieta.macros(original).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                     }
@@ -139,7 +139,7 @@ struct SustituirAlimentoView: View {
     private func fila(_ o: OpcionSustituto) -> some View {
         let s = o.sustituto
         let kcalOriginal = original.kcal ?? 0
-        let delta = kcalOriginal > 0 ? Int(jsRound((s.kcal - kcalOriginal) / kcalOriginal * 100)) : 0
+        let delta = kcalOriginal > 0 ? ((s.kcal - kcalOriginal) / kcalOriginal * 100).jsEntero : 0
         let marcado = elegido == o
         return Button {
             withAnimation(.snappy) { elegido = marcado ? nil : o }
@@ -158,7 +158,7 @@ struct SustituirAlimentoView: View {
                         }
                     }
                     if let en = s.nombreIngles, !en.isEmpty { Text(en).font(.caption).foregroundStyle(.secondary) }
-                    Text("\(FormatoDieta.cantidad(s.qty, s.unidad)) · \(Int(s.kcal.rounded())) kcal")
+                    Text("\(FormatoDieta.cantidad(s.qty, s.unidad)) · \(s.kcal.enteroSeguro) kcal")
                         .font(.subheadline).foregroundStyle(.secondary)
                     FormatoDieta.macros(prot: s.prot, carb: s.carb, fat: s.fat)
                         .font(.caption.monospacedDigit()).foregroundStyle(.secondary)

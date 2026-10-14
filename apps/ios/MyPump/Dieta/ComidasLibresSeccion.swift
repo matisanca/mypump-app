@@ -89,7 +89,7 @@ struct ComidasLibresSeccion: View {
                     if let h = c.hora, !h.isEmpty { Text(String(h.prefix(5))).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
                 }
                 HStack(spacing: 6) {
-                    Text("\(Int(jsRound(c.kcal ?? 0))) kcal").font(.subheadline).foregroundStyle(.secondary)
+                    Text("\((c.kcal ?? 0).jsEntero) kcal").font(.subheadline).foregroundStyle(.secondary)
                     Text("estimado").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Color(uiColor: .tertiarySystemFill), in: .capsule)

@@ -104,3 +104,23 @@ struct PorcionYAnclajeTests {
         #expect(!AnclajeSwaps.aplica(foodData: swap, original: avena50, comidaId: "desayuno") { [avena50] })
     }
 }
+
+@Suite("Números absurdos no cierran la app")
+struct EnteroSeguroTests {
+    @Test func conversionSegura() {
+        #expect(Double.nan.enteroSeguro == 0)
+        #expect(Double.infinity.enteroSeguro == 0)
+        #expect((1e300).enteroSeguro == 1_000_000_000_000_000)
+        #expect((-2.5).jsEntero == -2)        // Math.round de JS
+        #expect((172.5).enteroSeguro == 173)
+    }
+
+    @Test func porcionConCantidadAbsurda() {
+        // Antes: Int() fuera de rango cerraba la app.
+        _ = PorcionCasera.referencia(nombre: "Pan francés", qty: 1e300, unidad: "g", gramosPorUnidad: nil)
+        _ = PorcionCasera.referencia(nombre: "Huevo entero", qty: 1e20, unidad: "unidad", gramosPorUnidad: 60)
+        _ = PorcionCasera.referencia(nombre: "Atún al natural", qty: 9e18, unidad: "g", gramosPorUnidad: nil)
+        #expect(PorcionCasera.entero(1e20) == "100000000000000000000")
+        #expect(PorcionCasera.entero(12) == "12")
+    }
+}

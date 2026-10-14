@@ -181,5 +181,10 @@ public enum PorcionCasera {
         return "\(num) \(cups > 1 ? "tazas" : "taza")"
     }
 
-    static func entero(_ d: Double) -> String { String(Int(d)) }
+    /// Lo entero como lo imprime JS: sin cerrar la app con una cantidad absurda (`Int()` de Swift se cae fuera de rango).
+    static func entero(_ d: Double) -> String {
+        guard d.isFinite else { return d.isNaN ? "NaN" : (d > 0 ? "Infinity" : "-Infinity") }
+        if abs(d) < 9e15 { return String(Int(d)) }
+        return abs(d) < 1e21 ? String(format: "%.0f", d) : String(d)
+    }
 }

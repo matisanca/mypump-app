@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MyPump nativa (Android). Reemplaza a la app Capacitor (android/) como actualización de la MISMA app en Play: mismo
+  applicationId, misma actividad de entrada y mismo link del coach.
+
+  Permisos: los de la Capacitor. Los de Health Connect son SOLO de lectura y solo los 13 tipos que se leen más el
+  historial (ver el manifest de android/ para el porqué de cada uno). Antes de pedirlos en runtime falta declarar
+  PermissionsRationaleActivity, ViewPermissionUsageActivity y la URL de privacidad (etapa de Salud).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Avisos del coach y del fin del descanso (Android 13+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Health Connect: lectura. -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.READ_BASAL_METABOLIC_RATE" />
+    <uses-permission android:name="android.permission.health.READ_FLOORS_CLIMBED" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_RESTING_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY" />
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.health.READ_RESPIRATORY_RATE" />
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
+    <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+    <!-- Sin esto Health Connect corta toda lectura a los últimos 30 días, sin avisar. -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
+    <!-- Google rechazó la app el 26-ago-2026 por pedir saturación sin una función que la use. Va con remove (y no
+         solo ausente) por si alguna librería la vuelve a meter en el merge. -->
+    <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION" tools:node="remove" />
+
+    <!-- Android 13 y anteriores: Health Connect es una app aparte y hay que poder consultarla. -->
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Tema.MyPump">
+
+        <!-- `.MainActivity` como en la Capacitor: el launcher guarda el ícono del cliente por nombre de componente,
+             y si la actividad cambia de nombre el ícono desaparece de su pantalla al actualizar. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- El link personal del coach (https://app.mypumpteam.com/?t=TOKEN) abre la app, no el navegador.
+                 autoVerify: Android valida el dominio contra /.well-known/assetlinks.json. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.mypumpteam.com" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
