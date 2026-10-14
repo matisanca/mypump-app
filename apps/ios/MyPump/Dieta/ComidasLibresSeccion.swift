@@ -11,6 +11,9 @@ struct ComidasLibresSeccion: View {
 
     @State private var formulario: Formulario?
     @State private var errorFoto: String?
+    /// D7: la foto espera el permiso; sin IA no se analiza.
+    @State private var pedidoIA: PedidoIA?
+    @State private var fotoSinIA = false
 
     enum Formulario: Identifiable {
         case manual
@@ -73,6 +76,13 @@ struct ComidasLibresSeccion: View {
             case .estimada(let e): ComidaLibreView(modelo: modelo, estimacion: e)
             }
         }
+        .permisoIA($pedidoIA, modelo: modelo)
+        .alert("Sin el asistente de IA", isPresented: $fotoSinIA) {
+            Button("Cargar a mano") { formulario = .manual }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("La foto no se analiza: el análisis usa la IA, que está apagada. Podés cargar la comida a mano, o prenderla en Mis datos.")
+        }
         .alert("No pudimos leer la foto", isPresented: Binding(get: { errorFoto != nil }, set: { if !$0 { errorFoto = nil } })) {
             Button("Cargar a mano") { formulario = .manual }
             Button("Cancelar", role: .cancel) {}
@@ -117,6 +127,15 @@ struct ComidasLibresSeccion: View {
     }
 
     private func analizar(_ jpeg: Data) {
+        if modelo.faltaConsentimientoIA {
+            pedidoIA = PedidoIA { acepta in if acepta { analizarYa(jpeg) } else { fotoSinIA = true } }
+            return
+        }
+        guard modelo.analisisDeFotoPermitido else { fotoSinIA = true; return }
+        analizarYa(jpeg)
+    }
+
+    private func analizarYa(_ jpeg: Data) {
         analizando = true
         Task {
             let r = await modelo.analizarFoto(jpeg, tipo: .plato)

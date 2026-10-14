@@ -107,6 +107,10 @@ public struct Escrituras: Sendable {
                 "p_token": t, "p_ambito": .texto("general"), "p_referencia_id": .null, "p_referencia_nombre": .null,
                 "p_contenido": p["contenido"] ?? .null,
             ]))
+        case "consentimiento_ia":
+            return .respuesta(await cliente.llamar("mypump_guardar_consentimiento_ia", [
+                "p_token": t, "p_acepta": p["acepta"] ?? .null, "p_plataforma": p["plataforma"] ?? .null, "p_app": p["app"] ?? .null,
+            ]))
         default:
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo #2).
             return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 0, codigo: "KIND_DESCONOCIDO", mensaje: op.kind)))
