@@ -70,12 +70,8 @@ public enum PesoCorporal {
         return jsRound(v * 10) / 10
     }
 
-    /// `Number.prototype.toFixed(1)`: los empates se van lejos del cero.
-    static func toFixed1(_ x: Double) -> String {
-        let n = (abs(x) * 10).rounded(.toNearestOrAwayFromZero)
-        let s = String(format: "%.1f", n / 10)
-        return x < 0 && n != 0 ? "-" + s : s
-    }
+    /// `Number.prototype.toFixed(1)`, exacto como JS.
+    static func toFixed1(_ x: Double) -> String { NumeroJS.toFixed(x, 1) }
 }
 
 /// El check de la semana (CHECKIN_METRICAS): cuatro escalas de 1 a 5 y una nota opcional.

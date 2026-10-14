@@ -34,6 +34,9 @@ public final class ModeloApp {
     }
 
     public enum Parte: Sendable, Hashable { case rutina, dieta }
+
+    /// Lo que le falta a la dieta publicada (`normalizarDieta`): para el aviso "a tu plan le falta información".
+    public private(set) var problemasDieta: [String] = []
     public private(set) var estadoGuardado: EstadoGuardado = .quieto
 
     // Dieta
@@ -120,7 +123,7 @@ public final class ModeloApp {
         // una cuenta guardada, "Salir" de la demo vuelve a ella.
         soltarCuentaEnMemoria()
         self.rutina = envolver(rutina, id: "demo").flatMap { try? JSONDecoder().decode(RutinaActiva.self, from: $0) }
-        self.dieta = envolver(dieta, id: "demo").flatMap { try? JSONDecoder().decode(DietaActiva.self, from: $0) }
+        self.dieta = dietaNormalizada(envolver(dieta, id: "demo").flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) })
         desdeCache = false
         sinRedEn = []
         esDemo = true
@@ -240,7 +243,7 @@ public final class ModeloApp {
         case .failure: dietaJSON = copia?.dieta.flatMap { $0 == .null ? nil : $0 }; faltaron.insert(.dieta)
         }
         rutina = rutinaJSON.flatMap { decodificar(RutinaActiva.self, $0) }
-        dieta = dietaJSON.flatMap { decodificar(DietaActiva.self, $0) }
+        dieta = dietaNormalizada(dietaJSON)
         if rutinaJSON != nil || dietaJSON != nil || copia != nil {
             disco?.guardar(CopiaOffline(info: primera, rutina: rutinaJSON, dieta: dietaJSON, ts: Date().timeIntervalSince1970 * 1000), "offline.json")
         }
@@ -300,7 +303,7 @@ public final class ModeloApp {
     private func aplicar(_ c: CopiaOffline) {
         info = decodificar(ClienteInfo.self, c.info)
         rutina = c.rutina.flatMap { decodificar(RutinaActiva.self, $0) }
-        dieta = c.dieta.flatMap { decodificar(DietaActiva.self, $0) }
+        dieta = dietaNormalizada(c.dieta)
         if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] }
     }
 
@@ -313,12 +316,11 @@ public final class ModeloApp {
         return (e.tiposDia.first { $0.id == tipoDia } ?? e.tiposDia[0]).comidas
     }
 
-    /// Objetivo de macros del día. Sin `macros_target`, la suma de la opción A de cada comida (normalizarDieta).
+    /// Objetivo de macros del día: la normalización ya lo completó (sin `macros_target`, la suma de la opción A).
     public var objetivo: Macros {
         guard let e = dieta?.estructura else { return Macros() }
-        let tipo = e.tiposDia.first { $0.id == tipoDia } ?? e.tiposDia.first
-        if let m = tipo?.macrosTarget ?? e.macrosTarget, m.kcal != nil { return m }
-        return Self.sumar(comidasDelDia.compactMap { $0.opciones.first }.flatMap(\.alimentos))
+        if e.tiposDia.isEmpty { return e.macrosTarget ?? Macros() }
+        return (e.tiposDia.first { $0.id == tipoDia } ?? e.tiposDia[0]).macrosTarget ?? Macros()
     }
 
     public static func sumar(_ a: [Alimento]) -> Macros {
@@ -489,6 +491,17 @@ public final class ModeloApp {
         } else if h.marcarMigrado {
             disco?.guardar(true, marca)
         }
+    }
+
+    /// La dieta como la usa la web: normalizada (`normalizarDieta`). Sin ninguna comida usable no hay dieta (la web
+    /// mostraba la de ejemplo como si fuera del cliente; acá se dice que todavía no hay plan).
+    private func dietaNormalizada(_ j: JSONValue?) -> DietaActiva? {
+        guard var d = j.flatMap({ decodificar(DietaActiva.self, $0) }) else { problemasDieta = []; return nil }
+        let r = NormalizarDieta.normalizar(d.estructura)
+        problemasDieta = r.problemas
+        guard r.usable else { return nil }
+        d.estructura = r.estructura
+        return d
     }
 
     private func decodificar<T: Decodable>(_ tipo: T.Type, _ j: JSONValue) -> T? {

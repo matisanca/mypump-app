@@ -4,7 +4,8 @@ import Foundation
 public struct DietaActiva: Decodable, Sendable, Equatable {
     public let id: String
     public let version: Int
-    public let estructura: EstructuraDieta
+    /// `var`: la app la guarda ya normalizada (`NormalizarDieta`), como la web guarda `DIET`.
+    public var estructura: EstructuraDieta
 
     enum CodingKeys: String, CodingKey { case id, version, estructura }
 
