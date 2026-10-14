@@ -67,6 +67,35 @@ La ruta del archivo es la misma que en 26.5 (`WebsiteData/Default/<hash>/<hash>/
 - El `.pbxproj` escrito a mano con carpetas sincronizadas (objectVersion 77) compila con Xcode 26.6 y Swift 6. Es el
   mismo enfoque que va a usar `apps/ios/MyPump`.
 
+## Android (14-oct, `scripts/nativa/spike-legado-android.sh`, emulador Android 16 / WebView 133)
+
+**Funciona por la ruta A.** El procedimiento:
+1. Se instala la Capacitor de debug compilada de `main` (Capacitor 8.5; `androidScheme` por defecto, así que el origen
+   es `https://localhost`).
+2. Con la app viva se siembra la misma semilla que en iOS por el protocolo de DevTools (`scripts/nativa/cdp-localstorage.mjs`).
+3. Se cierra la app y se vuelve a leer desde ella misma: esa es la verdad, lo que quedó en disco.
+4. Se instala encima la espía (`apps/android-spike`): mismo paquete, misma firma de debug, update real.
+
+| Corrida | Espera antes del cierre forzado | Arranque 1 (lee) | Arranque 2 (marca de la espía) |
+|---|---|---|---|
+| 1 | 10 s | 21/21 iguales | sobrevivió |
+| 2 | 3 s | 23/23 iguales | sobrevivió |
+| 3 | 1 s | 23/23 iguales | sobrevivió |
+
+**Lo que se aprendió:**
+- Alcanza un `WebView` con `javaScriptEnabled` y `domStorageEnabled`, el almacén por defecto (sin sufijo de directorio),
+  una página servida por la propia app en `https://localhost` (`shouldInterceptRequest`) y `evaluateJavascript`. No hace
+  falta ningún puente: el JSON vuelve en el callback.
+- Leer las 23 claves (más de 1 MB de valores) tarda 5-9 s en el emulador, contando el arranque del WebView. Se hace
+  una sola vez, en el primer arranque.
+- La marca escrita desde el WebView nativo sobrevive a un cierre forzado 1 s después. Igual se confirma en el arranque
+  siguiente, como en iOS.
+- El WebView lo provee el sistema y es el mismo para las dos apps en el mismo teléfono: si migra su almacenamiento
+  entre versiones, lo migra para la nativa también. Lo que rompería todo es cambiar el origen (otro `androidScheme`) o
+  el directorio de datos. La app nativa no debe hacer ninguna de las dos cosas.
+- La ruta B (leer el LevelDB directo) no hace falta en Android. Las colas y los cachés se leen con la A, y la
+  confirmación de la escritura es otra lectura por la A.
+
 ## Lo que falta
 
 - [x] iOS 17.5 y 18.6: idéntico (ver tabla).
@@ -74,7 +103,9 @@ La ruta del archivo es la misma que en 26.5 (`WebsiteData/Default/<hash>/<hash>/
   arranque siguiente con la Ruta B.
 - [ ] Datos reales de una cuenta de prueba (`test-nativa-ios`, ya sembrada) escritos por la Capacitor con red, en el
   formato de `v1.0.11`.
-- [ ] Android: `WebView` en `https://localhost` + `shouldInterceptRequest`, verificado contra el LevelDB.
+- [x] Android: `WebView` en `https://localhost` + `shouldInterceptRequest` (ver la sección de Android). La verdad
+  sale de la propia Capacitor después de un cierre, no del LevelDB: es lo mismo que ve ella.
+- [ ] Android con datos reales de la versión de Play (1.0.12) en un teléfono físico.
 - [ ] En un iPhone real, actualizando desde la versión de la tienda (Hito TF-0).
 
 Evidencias: `~/Developer/nativa-evidencia/spike/` (verdad sembrada, informes de cada corrida y captura de la vuelta).

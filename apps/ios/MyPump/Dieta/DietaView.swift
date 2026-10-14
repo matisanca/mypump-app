@@ -37,7 +37,7 @@ struct DietaView: View {
                     } description: {
                         Text("Se cortó la conexión. Probá de nuevo cuando tengas señal.")
                     } actions: {
-                        Button("Reintentar") { Task { await modelo.cargar() } }.buttonStyle(.bordered)
+                        Button("Reintentar") { Task { await modelo.cargar() } }.buttonStyle(BotonSecundario(compacto: true))
                     }
                 case .listo:
                     ScrollView {
@@ -54,7 +54,7 @@ struct DietaView: View {
                     } description: {
                         Text("No pudimos traer tu plan. Probá de nuevo cuando tengas señal.")
                     } actions: {
-                        Button("Reintentar") { Task { await modelo.cargar() } }.buttonStyle(.bordered)
+                        Button("Reintentar") { Task { await modelo.cargar() } }.buttonStyle(BotonSecundario(compacto: true))
                     }
                 case .sinToken, .tokenInvalido:
                     ContentUnavailableView("Entrá con tu link", systemImage: "link",
@@ -87,6 +87,7 @@ struct DietaView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 Cabecera(objetivo: modelo.objetivo, elegidas: totalElegido)
+                BannerRevision()
                 ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in tarjeta(c, numero: n + 1) }
                 if modelo.token != nil {
                     ComidasLibresSeccion(modelo: modelo, analizando: $analizandoFoto)
@@ -199,9 +200,9 @@ struct DietaView: View {
             HStack(spacing: 16) {
                 Text("Total").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).tracking(0.5)
                 Spacer(minLength: 4)
-                MacroMini(letra: "P", valor: total.prot, color: .corazon)
-                MacroMini(letra: "C", valor: total.carb, color: .alerta)
-                MacroMini(letra: "G", valor: total.fat, color: .sueno)
+                MacroMini(letra: "P", valor: total.prot, color: .proteina)
+                MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
+                MacroMini(letra: "G", valor: total.fat, color: .grasa)
             }
             .padding(.horizontal, 12).padding(.vertical, 9)
             .background(Color(uiColor: .tertiarySystemFill).opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
@@ -338,7 +339,7 @@ enum FormatoDieta {
         func parte(_ letra: String, _ v: Double?, _ color: Color) -> Text {
             Text(letra).foregroundColor(color).fontWeight(.bold) + Text(" \((v ?? 0).kg)")
         }
-        return parte("P", prot, .corazon) + Text("  ·  ") + parte("C", carb, .alerta) + Text("  ·  ") + parte("G", fat, .sueno)
+        return parte("P", prot, .proteina) + Text("  ·  ") + parte("C", carb, .carbohidrato) + Text("  ·  ") + parte("G", fat, .grasa)
     }
 }
 
@@ -353,7 +354,7 @@ private struct Cabecera: View {
         let total = max(kcalP + kcalC + kcalG, 1)
         let delta = (objetivo.kcal ?? 0) > 0 ? ((elegidas.kcal ?? 0) - (objetivo.kcal ?? 0)) / (objetivo.kcal ?? 1) * 100 : 0
         let anillo = ZStack {
-            AnilloMacros(partes: [(kcalP / total, .corazon), (kcalC / total, .alerta), (kcalG / total, .sueno)])
+            AnilloMacros(partes: [(kcalP / total, .proteina), (kcalC / total, .carbohidrato), (kcalG / total, .grasa)])
             VStack(spacing: 0) {
                 Text((objetivo.kcal ?? 0).enteroSeguro, format: .number).font(.numeroGrande).contentTransition(.numericText())
                     .minimumScaleFactor(0.6).lineLimit(1)
@@ -363,8 +364,8 @@ private struct Cabecera: View {
         }
         .frame(width: 132, height: 132)
         .accessibilityElement(children: .combine)
-        let macros = [("Proteínas", objetivo.prot, kcalP / total, Color.corazon), ("Carbos", objetivo.carb, kcalC / total, Color.alerta),
-                      ("Grasas", objetivo.fat, kcalG / total, Color.sueno)]
+        let macros = [("Proteínas", objetivo.prot, kcalP / total, Color.proteina), ("Carbos", objetivo.carb, kcalC / total, Color.carbohidrato),
+                      ("Grasas", objetivo.fat, kcalG / total, Color.grasa)]
         VStack(alignment: .leading, spacing: 16) {
             // Anillo y macros lado a lado si entran sin cortar; si no (pantallas angostas, letra grande), uno arriba
             // del otro con los macros en tres columnas.

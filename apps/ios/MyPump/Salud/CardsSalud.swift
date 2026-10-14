@@ -165,15 +165,24 @@ struct CardRecuperacionView: View {
 struct CardSaludView: View {
     let modelo: ModeloSalud
 
+    /// Sin conectar, la tarjeta de Recuperación ya ofrece conectar: dos botones iguales seguidos se ven mal (la web los
+    /// muestra los dos). Esta lo ofrece solo si la otra no lo hace (por ejemplo, con el score oculto).
+    private var otraOfreceConectar: Bool {
+        if case .sinConectar = modelo.cardRecuperacion { return true }
+        return false
+    }
+
     var body: some View {
         if modelo.sincronizador != nil && !modelo.conectado {
-            VStack(alignment: .leading, spacing: 12) {
-                EncabezadoSalud(icono: "👟", titulo: "Salud")
-                Text("Conectá Salud de Apple una sola vez y tus pasos y actividad se sincronizan solos para que Mati los vea.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                BotonConectarSalud(modelo: modelo)
+            if !otraOfreceConectar {
+                VStack(alignment: .leading, spacing: 12) {
+                    EncabezadoSalud(icono: "👟", titulo: "Salud")
+                    Text("Conectá Salud de Apple una sola vez y tus pasos y actividad se sincronizan solos para que Mati los vea.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    BotonConectarSalud(modelo: modelo)
+                }
+                .tarjeta()
             }
-            .tarjeta()
         } else if let r = modelo.resumenSalud {
             VStack(alignment: .leading, spacing: 14) {
                 EncabezadoSalud(icono: "👟", titulo: "Salud")

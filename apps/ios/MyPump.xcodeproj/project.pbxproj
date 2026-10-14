@@ -287,6 +287,7 @@
 				CODE_SIGN_ENTITLEMENTS = MyPump.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 100;
+				EXCLUDED_SOURCE_FILE_NAMES = Muestras.bundle;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "MyPump-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = MyPump;

@@ -119,8 +119,7 @@ struct SustituirAlimentoView: View {
                 }
                 .buttonStyle(BotonMarca())
                 .accessibilityIdentifier("confirmar-reemplazo")
-                .disabled(elegido == nil)
-                .opacity(elegido == nil ? 0.5 : 1)
+                .disabled(elegido == nil)   // BotonMarca ya se ve apagado: sin opacidad encima
                 .padding(.horizontal).padding(.vertical, 10)
                 .background(.bar)
                 .sensoryFeedback(.success, trigger: elegido) { _, n in n != nil }

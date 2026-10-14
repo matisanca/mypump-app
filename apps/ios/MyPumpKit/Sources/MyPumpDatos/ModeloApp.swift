@@ -221,6 +221,9 @@ public final class ModeloApp {
                 aplicar(copia)
                 desdeCache = true
                 fase = .listo
+                // Sin red igual se puede marcar el día (sale por la cola), como la web con `MYDAY` vacío. Sin esto
+                // Mi Día quedaba tapado hasta que volviera la señal (revisión del 14-oct, hallazgo 10).
+                if let revision { Task { await revision.cargarMiDia() } }
             } else {
                 fase = .sinServicio
             }

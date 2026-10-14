@@ -60,11 +60,19 @@ public final class ModeloRevision {
     /// Las filas de salud de los últimos 60 días (peso de la card y, más adelante, salud y recuperación).
     public private(set) var salud: [FilaSalud] = []
     public private(set) var fecha = FechaLocal.hoy()
+    /// El lunes de la semana de `fecha`: el check es de esa semana (las vistas vacían su borrador cuando cambia).
+    public var semana: String { FotosProgreso.lunes(fecha) }
+    /// De qué día son los hábitos y de qué semana el check que hay en memoria. Lo de ayer no sirve ni como base: un
+    /// toque sobre los 8 vasos de ayer encolaba 9 para hoy (revisión del 14-oct, hallazgos 3 y 4).
+    @ObservationIgnored private var diaDeLosHabitos: String?
+    @ObservationIgnored private var semanaDelCheck: String?
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
     @ObservationIgnored let outbox: Outbox?
     @ObservationIgnored private var esperaAgua: Task<Void, Never>?
+    /// El día de hoy (los tests lo fijan para simular la medianoche con la app abierta).
+    @ObservationIgnored var diaDeHoy: @Sendable () -> String = { FechaLocal.hoy() }
 
     public init(cliente: ClienteRPC, token: String, outbox: Outbox?) {
         self.cliente = cliente; self.token = token; self.outbox = outbox
@@ -74,13 +82,17 @@ public final class ModeloRevision {
 
     // MARK: - Mi Día
 
-    /// `loadMyday`: hábitos de hoy y racha. Sin red quedan los de antes (o vacíos).
+    /// `loadMyday`: hábitos de hoy y racha. Sin red quedan los de hoy si ya estaban; los de otro día no (la web
+    /// vacía `MYDAY`): se puede marcar igual y sale por la cola. Lo pendiente de hoy se pinta encima.
     public func cargarMiDia() async {
-        fecha = FechaLocal.hoy()
-        async let h = cliente.filas("mypump_get_habitos_dia", ["p_token": t, "p_fecha": .texto(fecha)], como: HabitosDia.self)
+        fecha = diaDeHoy()
+        let hoy = fecha
+        if diaDeLosHabitos != hoy { habitos = HabitosHoy() }
+        diaDeLosHabitos = hoy
+        async let h = cliente.filas("mypump_get_habitos_dia", ["p_token": t, "p_fecha": .texto(hoy)], como: HabitosDia.self)
         async let r = cliente.filas("mypump_get_streak", ["p_token": t], como: Racha.self)
         let (rh, rr) = await (h, r)
-        if case .success(let filas) = rh { habitos = HabitosHoy(filas.first) }
+        if case .success(let filas) = rh, diaDeHoy() == hoy { habitos = HabitosHoy(filas.first) }
         if case .success(let filas) = rr { racha = filas.first?.streak ?? 0 }
         await aplicarPendientes()
         miDiaCargado = true
@@ -102,7 +114,7 @@ public final class ModeloRevision {
     public func setHabito(campo: String, valor: String?) async {
         let v: JSONValue = valor.map { .texto($0) } ?? .null
         // La fecha es la de AHORA (la app pudo quedar abierta de un día para otro), como `hoyLocal()` en la web.
-        let fecha = FechaLocal.hoy()
+        let fecha = diaDeHoy()
         habitos.aplicar(campo: campo, valor: v)
         _ = await outbox?.encolar("habito", .objeto(["fecha": .texto(fecha), "campo": .texto(campo), "valor": v]),
                                   dedupeKey: "habito|\(fecha)|\(campo)")
@@ -120,7 +132,7 @@ public final class ModeloRevision {
         guard nuevo != habitos.vasosAgua else { return }
         habitos.vasosAgua = nuevo
         esperaAgua?.cancel()
-        let dia = FechaLocal.hoy()
+        let dia = diaDeHoy()
         esperaAgua = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled, let self else { return }
@@ -137,7 +149,7 @@ public final class ModeloRevision {
     }
 
     private func aplicarPendientes() async {
-        let prefijo = "habito|\(FechaLocal.hoy())|"
+        let prefijo = "habito|\(diaDeHoy())|"
         for (k, op) in await outbox?.pendientesPorClave() ?? [:] where k.hasPrefix(prefijo) {
             habitos.aplicar(campo: String(k.dropFirst(prefijo.count)), valor: op.payload["valor"])
         }
@@ -147,7 +159,10 @@ public final class ModeloRevision {
 
     /// `loadRevision` + `loadSalud`: el check de la semana y 60 días de salud (para el peso).
     public func cargarRevision() async {
-        fecha = FechaLocal.hoy()
+        fecha = diaDeHoy()
+        // Semana nueva: el check de la anterior no es el de esta, haya red o no (la web lo vacía).
+        if semanaDelCheck != semana { checkin = nil }
+        semanaDelCheck = semana
         async let c = cliente.filas("mypump_get_checkin_semana", ["p_token": t, "p_fecha": .texto(fecha)], como: CheckinSemana.self)
         let desde = DiaCalendario.numero(fecha).map { DiaCalendario.texto($0 - 59) } ?? fecha
         async let s = cliente.filas("mypump_get_salud", ["p_token": t, "p_desde": .texto(desde), "p_hasta": .texto(fecha)], como: FilaSalud.self)
@@ -166,6 +181,19 @@ public final class ModeloRevision {
                 ponerPesoDeHoy(v)
             }
         }
+        // Un check de esta semana que todavía no salió también (se mandó sin señal): si no, se vería sin enviar.
+        await aplicarCheckPendiente()
+    }
+
+    private func aplicarCheckPendiente() async {
+        let semana = semana
+        let pendientes = (await outbox?.pendientesPorClave() ?? [:]).filter { k, op in
+            k.hasPrefix("checkin_") && op.payload["fecha"]?.comoTexto.map(FotosProgreso.lunes) == semana
+        }
+        guard let op = pendientes.values.max(by: { $0.ts < $1.ts }), let d = op.payload["datos"] else { return }
+        var v: [String: Int] = [:]
+        for m in CheckinSemanal.metricas { if let n = d[m.clave]?.comoNumero { v[m.clave] = n.enteroTruncado } }
+        checkin = Checkin(valores: v, nota: d["nota"]?.comoTexto ?? "")
     }
 
     /// El check está enviado si tiene energía (como la web: `checkin.energia`).
@@ -175,9 +203,10 @@ public final class ModeloRevision {
     /// lunes ISO).
     public func enviarCheckin(_ c: Checkin) async -> String? {
         if let faltan = CheckinSemanal.faltan(c.valores) { return faltan }
-        let fecha = FechaLocal.hoy()
+        let fecha = diaDeHoy()
         let nota = c.nota.trimmingCharacters(in: .whitespacesAndNewlines)
         checkin = Checkin(valores: c.valores, nota: nota)
+        semanaDelCheck = FotosProgreso.lunes(fecha)
         var datos: [String: JSONValue] = ["nota": .texto(nota)]
         for m in CheckinSemanal.metricas { datos[m.clave] = .numero(Double(c.valores[m.clave] ?? 0)) }
         _ = await outbox?.encolar("checkin", .objeto(["fecha": .texto(fecha), "datos": .objeto(datos)]), dedupeKey: "checkin_\(fecha)")
@@ -190,14 +219,14 @@ public final class ModeloRevision {
     @discardableResult
     public func guardarPeso(_ texto: String) async -> Bool {
         guard let valor = PesoCorporal.leer(texto) else { return false }
-        let fecha = FechaLocal.hoy()
+        let fecha = diaDeHoy()
         ponerPesoDeHoy(valor)
         _ = await outbox?.encolar("peso", .objeto(["fecha": .texto(fecha), "valor": .numero(valor)]), dedupeKey: "peso_\(fecha)")
         return true
     }
 
     private func ponerPesoDeHoy(_ valor: Double) {
-        let hoy = FechaLocal.hoy()
+        let hoy = diaDeHoy()
         salud.removeAll { $0.tipo == "peso_kg" && $0.fecha == hoy && $0.fuente == "manual" }
         let fila: JSONValue = .objeto(["fecha": .texto(hoy), "tipo": .texto("peso_kg"), "valor": .numero(valor), "fuente": .texto("manual")])
         if let f = try? JSONDecoder().decode(FilaSalud.self, from: JSONEncoder().encode(fila)) { salud.append(f) }

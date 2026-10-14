@@ -124,6 +124,42 @@ def _sb(fn, payload):
     return json.loads(cuerpo) if cuerpo.strip() else None
 
 
+# ── El permiso para la IA (D7, supabase/migrations/nativa_002) ─────────────────
+#
+# Quien dijo que NO en la app no pasa por el modelo: su mensaje queda escalado
+# para Mati, igual que cuando la IA no puede. Sin fila = nunca se le preguntó
+# (la web no pregunta): sigue como siempre. Si no se puede preguntar, se asume
+# que NADIE aceptó: sin saberlo, la IA no se usa. Si la función todavía no
+# existe (antes de aplicar la nativa_002), nadie pudo decir que no.
+MODELO_SIN_IA = "sin-ia"
+
+
+def clientes_sin_ia(cids):
+    cids = sorted({c for c in cids if c})
+    if not cids:
+        return set()
+    try:
+        return set(_sb("mypump_clientes_sin_ia", {"p_clientes": cids}) or [])
+    except urllib.error.HTTPError as e:
+        cuerpo = e.read().decode(errors="replace")
+        if e.code == 404 and "PGRST202" in cuerpo:
+            return set()
+        _log(f"no pude leer los permisos de IA ({e.code}): esta pasada va sin IA")
+        return set(cids)
+    except Exception as e:  # noqa: BLE001
+        _log(f"no pude leer los permisos de IA ({e}): esta pasada va sin IA")
+        return set(cids)
+
+
+def sin_permiso(fila):
+    """El cliente no aceptó la IA: no se llama al modelo y el mensaje queda para Mati."""
+    return {"cliente_id": fila["cliente_id"], "respuesta_a": fila["mensaje_id"],
+            "nombre": fila.get("nombre"), "mensaje": fila.get("mensaje", ""),
+            "modelo": MODELO_SIN_IA, "bloqueos": None, "clase": "derivar",
+            "respuesta": None, "sugerencia": None,
+            "motivo": "no aceptó la IA en la app: contestale vos"}
+
+
 def cupo_usado():
     hoy = datetime.now().strftime("%Y-%m-%d")
     try:
@@ -501,19 +537,25 @@ def main():
     modo = "AUTOMATICO" if AUTO else "SOMBRA"
     _log(f"{len(pendientes)} mensajes sin responder  [{modo}]" + ("" if CORRER else "  [DRY-RUN]"))
 
+    sin_ia = clientes_sin_ia([f["cliente_id"] for f in pendientes])
+    sin_modelo = [f for f in pendientes if f["cliente_id"] in sin_ia]
+    con_modelo = [f for f in pendientes if f["cliente_id"] not in sin_ia]
+
     if not CORRER:
         for f in pendientes:
-            _log(f"  {(f.get('nombre') or f['cliente_id'])[:22]:<22} | {f['mensaje'][:70]}")
+            marca = "  [sin IA]" if f["cliente_id"] in sin_ia else ""
+            _log(f"  {(f.get('nombre') or f['cliente_id'])[:22]:<22} | {f['mensaje'][:70]}{marca}")
         _log("(dry-run: no se llamo a Codex ni se guardo nada; usa --correr)")
         return 0
 
+    # El cupo es de llamadas al modelo: lo que va sin IA no lo gasta.
     cupo = CUPO_DIARIO - usado
-    if len(pendientes) > cupo:
+    if len(con_modelo) > cupo:
         _log(f"solo quedan {cupo} del cupo: se procesan {cupo} y el resto espera")
-        pendientes = pendientes[:cupo]
+        con_modelo = con_modelo[:cupo]
 
     with ThreadPoolExecutor(max_workers=CONCURRENCIA) as ex:
-        resultados = list(ex.map(procesar, pendientes))
+        resultados = [sin_permiso(f) for f in sin_modelo] + list(ex.map(procesar, con_modelo))
 
     guardados = agendados = 0
     conteo = {"simple": 0, "derivar": 0, "urgente": 0}
@@ -562,7 +604,7 @@ def main():
         except Exception as e:  # noqa: BLE001
             _log(f"  no pude guardar el borrador de {r['cliente_id']}: {e}")
 
-    anotar_cupo(len(resultados))
+    anotar_cupo(len(con_modelo))
 
     # Va DESPUES de guardar los borradores: si el WhatsApp falla, la escalacion
     # ya quedo en la bandeja igual. Al reves se podria avisar de algo que no se

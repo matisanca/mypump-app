@@ -75,3 +75,45 @@ struct HiloChatTests {
         #expect(FechaISO.ms("") == 0)
     }
 }
+
+/// Revisión del 14-oct, hallazgo 7: lo que manda Mati con el chat abierto llega por `mypump_chat_nuevos`, que no trae
+/// `leido_por_cliente`. Antes `marcarLeido` no veía nada sin leer y no avisaba al servidor: Mati lo veía sin leer y el
+/// badge volvía a prenderse en el próximo arranque.
+@Suite("Chat: lo que llega con el chat abierto queda leído en el servidor", .serialized)
+@MainActor
+struct ChatLeidoAlLlegarTests {
+    @Test func loNuevoDeMatiConElChatAbiertoSeMarcaEnElServidor() async {
+        let t = TransporteProgramado { fn, _ in
+            switch fn {
+            case "mypump_get_chat":
+                return (200, #"[{"id":"1","autor":"cliente","contenido":"hola","leido_por_cliente":true,"created_at":"2026-10-14T10:00:00+00:00"}]"#)
+            case "mypump_chat_nuevos":
+                return (200, #"[{"id":"2","autor":"coach","contenido":"¿cómo venís?","created_at":"2026-10-14T10:05:00+00:00"}]"#)
+            default: return (200, "true")
+            }
+        }
+        let chat = ModeloChat(cliente: ClienteRPC(config: .produccion, transporte: t), token: "tok", outbox: nil)
+        await chat.cargar()
+        chat.abierto = true
+        await chat.sondear()
+        #expect(t.llamadas.contains("mypump_marcar_leidos_cliente"))
+        #expect(chat.noLeidos == 0)
+    }
+
+    @Test func conElChatCerradoSumaAlBadgeYNoMarca() async {
+        let t = TransporteProgramado { fn, _ in
+            switch fn {
+            case "mypump_get_chat":
+                return (200, #"[{"id":"1","autor":"cliente","contenido":"hola","leido_por_cliente":true,"created_at":"2026-10-14T10:00:00+00:00"}]"#)
+            case "mypump_chat_nuevos":
+                return (200, #"[{"id":"2","autor":"coach","contenido":"¿cómo venís?","created_at":"2026-10-14T10:05:00+00:00"}]"#)
+            default: return (200, "true")
+            }
+        }
+        let chat = ModeloChat(cliente: ClienteRPC(config: .produccion, transporte: t), token: "tok", outbox: nil)
+        await chat.cargar()
+        await chat.sondear()
+        #expect(!t.llamadas.contains("mypump_marcar_leidos_cliente"))
+        #expect(chat.noLeidos == 1)
+    }
+}
