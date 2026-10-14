@@ -87,6 +87,8 @@ object SwapsDeComida {
      * tratarlo como "cero swaps" volvía a subir lo que el cliente o Mati habían borrado.
      *
      * @param pendientes clave → kind de lo que está en la cola sin subir. Lo que el cliente hizo gana.
+     * @param borrarAnclados la palanca remota (`anclaje_borra_swaps`). En false, un swap anclado que ya no coincide queda
+     *   guardado y oculto (`aplica` da falso) en vez de borrarse del servidor.
      */
     fun hidratar(
         remotos: List<FoodSwap>?,
@@ -94,6 +96,7 @@ object SwapsDeComida {
         dietaId: String,
         pendientes: Map<String, String>,
         yaMigrado: Boolean,
+        borrarAnclados: Boolean = true,
         enPosicion: (String, Int, Int) -> List<Alimento>,
     ): Hidratacion? {
         if (remotos == null) return null
@@ -121,7 +124,7 @@ object SwapsDeComida {
             for (s in remotos) {
                 val k = clave(dietaId, s.comidaId, s.optIdx, s.foodIdx)
                 nuevos[k] = SwapLocal(original = null, current = s.foodData)
-                anclarOSacar(nuevos, k, s, pendientes, enPosicion)?.let { ops += it }
+                anclarOSacar(nuevos, k, s, pendientes, borrarAnclados, enPosicion)?.let { ops += it }
             }
             for ((k, local) in locales) if (k in pendientes) nuevos[k] = local      // local más nuevo, sin subir
             for ((k, kind) in pendientes) if (kind == "swap_del") nuevos.remove(k)  // una reversión pendiente no resucita
@@ -140,6 +143,7 @@ object SwapsDeComida {
         clave: String,
         fila: FoodSwap,
         pendientes: Map<String, String>,
+        borrarAnclados: Boolean = true,
         enPosicion: (String, Int, Int) -> List<Alimento>,
     ): OpSwap? {
         val actual = mapa[clave]?.current
@@ -154,7 +158,7 @@ object SwapsDeComida {
             return OpSwap("swap", clave, fila.comidaId, fila.optIdx, fila.foodIdx, anclado)
         }
         val h = AnclajeSwaps.huella(ancla!!)
-        if (candidatos.none { AnclajeSwaps.huella(it) == h }) {
+        if (borrarAnclados && candidatos.none { AnclajeSwaps.huella(it) == h }) {
             mapa.remove(clave)
             return OpSwap("swap_del", clave, fila.comidaId, fila.optIdx, fila.foodIdx, null)
         }

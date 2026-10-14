@@ -304,7 +304,7 @@ class ModeloSalud(
                 val c = _conexiones.value.firstOrNull { it.proveedor == id }
                 if (id !in disponibles && c == null) return@mapNotNull null
                 val conectada = c?.estado == "conectada"
-                Reloj(id, nombre, descripcion, conectada, c?.estado == "error", if (conectada) c?.ultimoPullEn?.let(::fechaCorta) else null)
+                Reloj(id, nombre, descripcion, conectada, c?.estado == "error", if (conectada) c.ultimoPullEn?.let(::fechaCorta) else null)
             }
         }
 

@@ -121,6 +121,10 @@ class ModeloApp(
     private val _alimentosPropios = MutableStateFlow<List<AlimentoPropio>>(emptyList())
     val alimentosPropios: StateFlow<List<AlimentoPropio>> = _alimentosPropios.asStateFlow()
 
+    /** La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido). */
+    private val _palanca = MutableStateFlow(PalancaRemota.deFabrica)
+    val palanca: StateFlow<PalancaRemota> = _palanca.asStateFlow()
+
     private val _swaps = MutableStateFlow<Map<String, SwapLocal>>(emptyMap())
     val swaps: StateFlow<Map<String, SwapLocal>> = _swaps.asStateFlow()
 
@@ -380,12 +384,14 @@ class ModeloApp(
         }
         _info.value = decodificar(primera.aJson(), ClienteInfo::desde)
 
-        val (rr, dd) = coroutineScope {
+        val (rr, dd, palancaLeida) = coroutineScope {
             val r = async { cliente.llamar("mypump_get_rutina_activa", p) }
             val d = async { cliente.llamar("mypump_get_dieta_activa", p) }
-            r.await() to d.await()
+            val c = async { PalancaRemota.leer(cliente) }
+            Triple(r.await(), d.await(), c.await())
         }
         if (!vigente()) return
+        palancaLeida?.let { _palanca.value = it }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         val copia = leerCopia()
@@ -742,7 +748,7 @@ class ModeloApp(
         val yaMigrado = (disco?.leer(marca) as? JsonPrimitive)?.booleanOrNull ?: false
         val e = dieta.estructura
         val tipo = tipoDia
-        val h = SwapsDeComida.hidratar(remotos, _swaps.value, dieta.id, pendientes, yaMigrado) { c, o, f ->
+        val h = SwapsDeComida.hidratar(remotos, _swaps.value, dieta.id, pendientes, yaMigrado, _palanca.value.anclajeBorraSwaps) { c, o, f ->
             SwapsDeComida.enPosicion(e, tipo, c, o, f)
         } ?: return
         _swaps.value = h.swaps
