@@ -159,11 +159,13 @@ public struct Ejercicio: Decodable, Sendable, Equatable {
     public var series: Int?
     public var reps: String?
     public var rirObjetivo: String?
+    /// `rir` suelto: último respaldo de `getProgresionActual` (`ej.rir_objetivo ?? ej.rir`).
+    public var rirSuelto: String?
 
     enum CodingKeys: String, CodingKey {
         case id, nombre, tipo, descansoSegundos = "descanso_segundos", notasTecnica = "notas_tecnica"
         case videoURL = "video_url", imagenes = "images", catalogoSlug = "catalogo_slug", matchedSlug = "_matched_slug"
-        case progresion, series, reps, rirObjetivo = "rir_objetivo"
+        case progresion, series, reps, rirObjetivo = "rir_objetivo", rirSuelto = "rir"
     }
 
     public init(id: String, nombre: String, tipo: String? = nil, descansoSegundos: Int? = nil, notasTecnica: String? = nil,
@@ -190,6 +192,7 @@ public struct Ejercicio: Decodable, Sendable, Equatable {
         series = c.entero(.series)
         reps = c.texto(.reps)
         rirObjetivo = c.texto(.rirObjetivo)
+        rirSuelto = c.texto(.rirSuelto)
     }
 }
 
