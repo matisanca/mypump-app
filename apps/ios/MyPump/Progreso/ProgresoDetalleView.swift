@@ -1,8 +1,11 @@
 import SwiftUI
 import Charts
+import MyPumpModelos
+import MyPumpReglas
 
-/// Detalle de un ejercicio en Progreso (PRO-04): el máximo por sesión en un gráfico con la marca del récord y,
-/// abajo, la tabla de las últimas 8 sesiones (fecha, peso, reps, RIR). Tocar o arrastrar el gráfico muestra el valor.
+/// Detalle de un ejercicio en Progreso (PRO-04): el tope y la progresión arriba, el máximo por sesión en un gráfico con
+/// la marca del tope y, abajo, los últimos 8 registros (fecha, peso, reps, RIR) como la web. Tocar o arrastrar el
+/// gráfico muestra el valor de esa sesión.
 struct ProgresoDetalleView: View {
     let linea: LineaProgreso
     @State private var elegida: Date?
@@ -14,13 +17,8 @@ struct ProgresoDetalleView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 encabezado
-                if linea.sesiones.isEmpty {
-                    ContentUnavailableView("Sin cargas para graficar", systemImage: "chart.line.uptrend.xyaxis",
-                                           description: Text("Este ejercicio se hace con el peso del cuerpo."))
-                } else {
-                    grafico
-                    tabla
-                }
+                if linea.sesiones.count >= 2, linea.conPeso { grafico }
+                if !linea.filas.isEmpty { tabla }
             }
             .padding(.horizontal, Espacio.m)
             .padding(.top, Espacio.xs)
@@ -34,16 +32,29 @@ struct ProgresoDetalleView: View {
 
     private var encabezado: some View {
         VStack(alignment: .leading, spacing: Espacio.xs) {
-            if let d = nombre.detalle { Text(d).textoCeja() }
+            Text(nombre.detalle.map { "\($0) · Top" } ?? "Top").textoCeja()
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(linea.ultimo.kg).font(.numeroGigante)
-                Text("kg").font(.title2.weight(.semibold)).foregroundStyle(.secondary)
+                if linea.conPeso {
+                    Text(linea.resumen.tope.kg).font(.numeroGigante)
+                    Text("kg").font(.title2.weight(.semibold)).foregroundStyle(.secondary)
+                } else {
+                    Text("Peso corporal").font(.title.weight(.bold))
+                }
                 Spacer()
-                if linea.esPR { InsigniaPR() }
+                if linea.resumen.esPR { InsigniaPR() }
             }
-            HStack(spacing: Espacio.xs) {
-                PildoraVariacion(delta: linea.delta)
-                Text("en las últimas \(linea.sesiones.count) sesiones").font(.subheadline).foregroundStyle(.secondary)
+            if !linea.conPeso {
+                Text("Con el peso del cuerpo, el progreso está en las repeticiones.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else if linea.resumen.variacion == nil {
+                Text("Hace falta otra sesión para ver la progresión.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: Espacio.xs) {
+                    PildoraVariacion(variacion: linea.resumen.variacion)
+                    Text("de progresión en las últimas \(linea.resumen.serie.count) sesiones")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
             }
         }
         .accessibilityElement(children: .combine)
@@ -51,6 +62,7 @@ struct ProgresoDetalleView: View {
 
     private var grafico: some View {
         let s = linea.sesiones
+        let tope = linea.resumen.tope
         let minimo = (s.map(\.kg).min() ?? 0), maximo = (s.map(\.kg).max() ?? 1)
         let margen = max((maximo - minimo) * 0.3, 1)
         let seleccion = elegida.flatMap { e in s.min { abs($0.fecha.timeIntervalSince(e)) < abs($1.fecha.timeIntervalSince(e)) } }
@@ -67,14 +79,14 @@ struct ProgresoDetalleView: View {
                         .foregroundStyle(Color.marcaVivo)
                         .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
                     PointMark(x: .value("Fecha", p.fecha), y: .value("Kg", p.kg))
-                        .symbolSize(p.kg == linea.record ? 70 : 30)
-                        .foregroundStyle(p.kg == linea.record ? Color.record : Color.marcaVivo)
+                        .symbolSize(p.kg == tope ? 70 : 30)
+                        .foregroundStyle(p.kg == tope ? Color.record : Color.marcaVivo)
                 }
-                RuleMark(y: .value("Récord", linea.record))
+                RuleMark(y: .value("Tope", tope))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     .foregroundStyle(Color.record.opacity(0.8))
                     .annotation(position: .top, alignment: .leading, spacing: 4) {
-                        Label("Récord \(linea.record.kg) kg", systemImage: "trophy.fill")
+                        Label("Tope \(tope.kg) kg", systemImage: "trophy.fill")
                             .labelStyle(EtiquetaCompacta())
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(Color.record)
@@ -119,15 +131,18 @@ struct ProgresoDetalleView: View {
         .tarjeta()
     }
 
+    /// Los últimos 8 registros, del más nuevo al más viejo (como el detalle de la web).
     private var tabla: some View {
-        VStack(alignment: .leading, spacing: Espacio.s) {
-            Text("Últimas sesiones").font(.title3.weight(.bold)).padding(.horizontal, 4)
+        let filas = Array(linea.filas.prefix(8))
+        return VStack(alignment: .leading, spacing: Espacio.s) {
+            Text("Últimos registros").font(.title3.weight(.bold)).padding(.horizontal, 4)
             VStack(spacing: 0) {
                 fila(["Fecha", "Peso", "Reps", "RIR"], encabezado: true)
-                ForEach(Array(linea.sesiones.reversed().enumerated()), id: \.element.id) { i, s in
-                    fila([s.fecha.formatted(.dateTime.day().month(.abbreviated).locale(es)),
-                          "\(s.kg.kg) kg", s.reps.map(String.init) ?? "—", s.rir.map(String.init) ?? "—"],
-                         encabezado: false, destacada: s.kg == linea.record)
+                ForEach(Array(filas.enumerated()), id: \.offset) { i, r in
+                    let kg = r.pesoKg ?? 0
+                    fila([Self.fecha(r.registradoEn, es),
+                          kg > 0 ? "\(kg.kg) kg" : "—", r.reps.map(String.init) ?? "—", r.rir.map(String.init) ?? "—"],
+                         encabezado: false, destacada: kg > 0 && kg == linea.resumen.tope)
                         .background(i % 2 == 0 ? Color.clear : Color.campo.opacity(0.5))
                 }
             }
@@ -152,5 +167,10 @@ struct ProgresoDetalleView: View {
         .padding(.horizontal, Espacio.m)
         .padding(.vertical, encabezado ? 10 : 12)
         .accessibilityElement(children: .combine)
+    }
+
+    /// "1 oct" con el día local del registro.
+    static func fecha(_ iso: String, _ es: Locale) -> String {
+        Fechas.dia(FechaLocal.de(iso))?.formatted(.dateTime.day().month(.abbreviated).locale(es)) ?? String(iso.prefix(10))
     }
 }

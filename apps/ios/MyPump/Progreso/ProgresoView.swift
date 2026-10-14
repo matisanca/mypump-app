@@ -2,13 +2,20 @@ import SwiftUI
 import Charts
 import MyPumpModelos
 import MyPumpReglas
+import MyPumpDatos
 
-/// Progreso (PRO-01…05): totales arriba y, por día, cada ejercicio una sola vez (por clave, no por lugar) con su
-/// máximo por sesión, la variación, el PR y una curva chica. Tocar abre el detalle con el gráfico y la tabla.
+/// Progreso (PRO-01…05): totales arriba y, por día, cada ejercicio una sola vez (por clave, no por lugar) con el tope
+/// de sus últimas 8 sesiones, la variación, el 🏆 PR y una curva chica. Tocar abre el detalle con el gráfico y la
+/// tabla. Con una cuenta sale de `ModeloProgreso` (se carga al abrir la pestaña); en la demo y en los bocetos, de las
+/// muestras con las mismas reglas.
 struct ProgresoView: View {
     let datos: Muestras
+    @State private var modelo = Proveedor.modelo
     @Environment(\.horizontalSizeClass) private var claseAncho
     @State private var ruta: [LineaProgreso] = []
+    @State private var abrioDetalle = false
+
+    private var progreso: ModeloProgreso? { modelo.conMuestras ? nil : modelo.progreso }
 
     struct Seccion: Identifiable {
         let id: String
@@ -16,21 +23,29 @@ struct ProgresoView: View {
         let lineas: [LineaProgreso]
     }
 
-    /// Una sección por día de la rutina; un ejercicio que se repite entre días aparece solo en el primero.
-    private var secciones: [Seccion] {
-        var vistas = Set<String>()
-        return (datos.rutina?.estructura.dias ?? []).enumerated().compactMap { i, dia in
-            let lineas = dia.bloques.flatMap(\.ejercicios).compactMap { e -> LineaProgreso? in
-                let clave = ClaveEjercicio.de(e.nombre)
-                guard !vistas.contains(clave), let filas = datos.historialPorClave[clave], !filas.isEmpty else { return nil }
-                vistas.insert(clave)
-                // Con el peso del cuerpo no hay kilos que graficar: como en la web, no entra.
-                let linea = LineaProgreso(clave: clave, nombre: e.nombre, filas: filas)
-                return linea.sesiones.isEmpty ? nil : linea
-            }
-            guard !lineas.isEmpty else { return nil }
-            let n = dia.nombre ?? "Día \(i + 1)"
-            return Seccion(id: dia.id ?? "\(i)", titulo: n == n.uppercased() ? n.localizedCapitalized : n, lineas: lineas)
+    private var lineas: [LineaProgreso] {
+        if let progreso { return progreso.tarjetas.map(LineaProgreso.init) }
+        return LineaProgreso.desdeMuestras(datos)
+    }
+
+    private var sesiones: Int {
+        if let progreso { return progreso.sesiones }
+        return ProgresoEjercicio.sesiones(datos.historial).count
+    }
+
+    /// Agrupadas por los días donde aparece cada ejercicio ("Tirón", o "Tirón · Torso" si está en los dos), en el orden
+    /// de la rutina, como la web.
+    private func secciones(_ ls: [LineaProgreso]) -> [Seccion] {
+        var orden: [String] = []
+        var porDias: [String: [LineaProgreso]] = [:]
+        for l in ls {
+            if porDias[l.dias] == nil { orden.append(l.dias) }
+            porDias[l.dias, default: []].append(l)
+        }
+        return orden.map { d in
+            let titulo = d.components(separatedBy: " · ").map { $0 == $0.uppercased() ? $0.localizedCapitalized : $0 }
+                .joined(separator: " · ")
+            return Seccion(id: d, titulo: titulo, lineas: porDias[d] ?? [])
         }
     }
 
@@ -41,42 +56,44 @@ struct ProgresoView: View {
                 .navigationTitle("Progreso")
                 .navigationDestination(for: LineaProgreso.self) { ProgresoDetalleView(linea: $0) }
         }
-        .onAppear {
-            if DemoUI.abrir == "detalle", ruta.isEmpty, let primera = secciones.first?.lineas.first { ruta = [primera] }
+        .task {
+            // Al abrir la pestaña (como la web); si ya está, se actualiza tirando para abajo.
+            guard let progreso, progreso.tarjetas.isEmpty || progreso.estado == .sinRed else { return }
+            await progreso.cargar(rutina: modelo.rutina)
+        }
+        // Capturas: `-abrir detalle` entra al primer ejercicio apenas hay datos (una sola vez).
+        .onChange(of: lineas.count, initial: true) { _, n in
+            guard DemoUI.abrir == "detalle", !abrioDetalle, n > 0, let primera = lineas.first else { return }
+            abrioDetalle = true
+            ruta = [primera]
         }
     }
 
     @ViewBuilder private var contenido: some View {
-        let ss = secciones
-        switch DemoUI.estado {
-        case .cargando:
+        let ls = lineas
+        if DemoUI.estado == .cargando || (progreso?.estado == .cargando && ls.isEmpty) {
             ScrollView { EsqueletoProgreso().padding(.horizontal, Espacio.m).anchoLectura() }.scrollDisabled(true)
-        case .error:
+        } else if DemoUI.estado == .error || (progreso?.estado == .sinRed && ls.isEmpty) {
             ContentUnavailableView {
                 Label("No pudimos traer tu historial", systemImage: "wifi.exclamationmark")
             } description: {
-                Text("Revisá la conexión y probá de nuevo.")
+                Text("Sin conexión. Revisá la señal y probá de nuevo.")
             } actions: {
-                Button("Reintentar") {}.buttonStyle(BotonMarca(compacto: true))
+                Button("Reintentar") { Task { await progreso?.cargar(rutina: modelo.rutina) } }
+                    .buttonStyle(BotonMarca(compacto: true))
             }
-        case .vacio:
-            vacio
-        case nil:
-            if ss.isEmpty { vacio } else { lista(ss) }
+        } else if DemoUI.estado == .vacio || ls.isEmpty {
+            ContentUnavailableView {
+                Label("Aún no hay historial", systemImage: "chart.line.uptrend.xyaxis")
+            } description: {
+                Text("Aún no hay historial registrado. Empezá tu primera sesión para ver el progreso acá.")
+            }
+        } else {
+            lista(secciones(ls), ejercicios: ls.count)
         }
     }
 
-    private var vacio: some View {
-        ContentUnavailableView {
-            Label("Aún no hay historial", systemImage: "chart.line.uptrend.xyaxis")
-        } description: {
-            Text("Cuando registres tus primeras series, acá vas a ver cómo suben tus cargas sesión a sesión.")
-        }
-    }
-
-    private func lista(_ ss: [Seccion]) -> some View {
-        let ejercicios = ss.reduce(0) { $0 + $1.lineas.count }
-        let sesiones = Set(datos.historial.map { String($0.registradoEn.prefix(10)) }).count
+    private func lista(_ ss: [Seccion], ejercicios: Int) -> some View {
         let columnas = claseAncho == .regular
             ? [GridItem(.flexible(), spacing: Espacio.l, alignment: .top), GridItem(.flexible(), spacing: Espacio.l, alignment: .top)]
             : [GridItem(.flexible(), alignment: .top)]
@@ -96,6 +113,7 @@ struct ProgresoView: View {
             .padding(.bottom, Espacio.xl)
             .anchoLectura(claseAncho == .regular ? Ancho.doble : Ancho.lectura)
         }
+        .refreshable { await progreso?.cargar(rutina: modelo.rutina) }
     }
 
     @ViewBuilder
@@ -106,7 +124,7 @@ struct ProgresoView: View {
 
     private func seccion(_ s: Seccion) -> some View {
         VStack(alignment: .leading, spacing: Espacio.s) {
-            EncabezadoSeccion(titulo: s.titulo, detalle: "\(s.lineas.count)")
+            EncabezadoSeccion(titulo: s.titulo, detalle: "máx. por sesión")
             VStack(spacing: 0) {
                 ForEach(Array(s.lineas.enumerated()), id: \.element.id) { i, l in
                     NavigationLink(value: l) { FilaProgreso(linea: l) }
@@ -120,43 +138,77 @@ struct ProgresoView: View {
     }
 }
 
-/// Un ejercicio con su historial por sesión (el máximo de cada día, las últimas 8).
+/// Un ejercicio de Progreso, igual venga de la cuenta (`TarjetaProgreso`) o de las muestras.
 struct LineaProgreso: Identifiable, Hashable {
-    let clave: String
+    let id: String
     let nombre: String
+    /// "Tirón · Torso": los días donde aparece.
+    let dias: String
+    let resumen: ProgresoEjercicio.Resumen
+    /// Los registros de la más nueva a la más vieja: el detalle muestra 8.
+    let filas: [RegistroHistorico]
+    /// El máximo de cada sesión con su fecha (las 8 más recientes): los mismos valores que `resumen.serie`.
     let sesiones: [SesionProgreso]
-    var id: String { clave }
 
     struct SesionProgreso: Identifiable, Hashable {
         let fecha: Date
         let kg: Double
-        let reps: Int?
-        let rir: Int?
         var id: Date { fecha }
     }
 
-    init(clave: String, nombre: String, filas: [RegistroHistorico]) {
-        self.clave = clave
+    init(id: String, nombre: String, dias: String, resumen: ProgresoEjercicio.Resumen, filas: [RegistroHistorico]) {
+        self.id = id
         self.nombre = nombre
-        let porDia = Dictionary(grouping: filas) { String($0.registradoEn.prefix(10)) }
-        let todas = porDia.compactMap { dia, fs -> SesionProgreso? in
-            guard let f = Fechas.dia(dia), let mejor = fs.max(by: { ($0.pesoKg ?? 0) < ($1.pesoKg ?? 0) }),
-                  let kg = mejor.pesoKg, kg > 0 else { return nil }
-            return SesionProgreso(fecha: f, kg: kg, reps: mejor.reps, rir: mejor.rir)
+        self.dias = dias
+        self.resumen = resumen
+        self.filas = filas
+        var porFecha: [String: Double] = [:]
+        for f in filas {
+            let fecha = FechaLocal.de(f.registradoEn)
+            guard !fecha.isEmpty else { continue }
+            porFecha[fecha] = max(porFecha[fecha] ?? -1, f.pesoKg ?? 0)
         }
-        sesiones = Array(todas.sorted { $0.fecha < $1.fecha }.suffix(8))
+        sesiones = porFecha.keys.sorted().suffix(8).compactMap { d in
+            Fechas.dia(d).map { SesionProgreso(fecha: $0, kg: porFecha[d] ?? 0) }
+        }
     }
 
-    var ultimo: Double { sesiones.last?.kg ?? 0 }
-    var primero: Double { sesiones.first?.kg ?? 0 }
-    var record: Double { sesiones.map(\.kg).max() ?? 0 }
-    /// PR: la última sesión superó a todas las anteriores.
-    var esPR: Bool { sesiones.count > 1 && ultimo > (sesiones.dropLast().map(\.kg).max() ?? 0) }
-    /// Variación de la primera a la última de las 8 (no invertida).
-    var delta: Double { primero > 0 ? (ultimo - primero) / primero * 100 : 0 }
+    init(_ t: TarjetaProgreso) {
+        self.init(id: t.id, nombre: t.nombre, dias: t.dias, resumen: t.resumen, filas: t.filas)
+    }
 
-    static func == (a: Self, b: Self) -> Bool { a.clave == b.clave }
-    func hash(into h: inout Hasher) { h.combine(clave) }
+    /// Lo mismo que hace `ModeloProgreso.cargar` (una entrada por clave, sin calentamientos, con los días donde
+    /// aparece), pero con la rutina y el historial de las muestras.
+    static func desdeMuestras(_ datos: Muestras) -> [LineaProgreso] {
+        var orden: [String] = []
+        var entradas: [String: (id: String, nombre: String, dias: [String])] = [:]
+        for (i, d) in (datos.rutina?.estructura.dias ?? []).enumerated() {
+            let dia = d.nombre.flatMap { $0.isEmpty ? nil : $0 } ?? "Día \(d.n ?? i + 1)"
+            for e in d.bloques.flatMap(\.ejercicios) where e.tipo != "calentamiento" {
+                let c = ClaveEjercicio.de(e.nombre)
+                let clave = c.isEmpty ? e.id : c
+                if var x = entradas[clave] {
+                    if !x.dias.contains(dia) { x.dias.append(dia) }
+                    entradas[clave] = x
+                } else {
+                    entradas[clave] = (e.id, e.nombre, [dia])
+                    orden.append(clave)
+                }
+            }
+        }
+        let historial = datos.historialPorClave
+        return orden.compactMap { clave in
+            guard let e = entradas[clave], let filas = historial[clave], let r = ProgresoEjercicio.resumen(filas) else { return nil }
+            let recientes = filas.sorted { $0.registradoEn > $1.registradoEn }
+            return LineaProgreso(id: e.id, nombre: e.nombre, dias: e.dias.joined(separator: " · "), resumen: r, filas: recientes)
+        }
+    }
+
+    /// Con el peso del cuerpo no hay kilos: el tope es 0.
+    var conPeso: Bool { resumen.tope > 0 }
+
+    static func == (a: Self, b: Self) -> Bool { a.id == b.id }
+    func hash(into h: inout Hasher) { h.combine(id) }
 }
 
 private struct FilaProgreso: View {
@@ -180,14 +232,20 @@ private struct FilaProgreso: View {
                     Text(d).font(.caption).foregroundStyle(.secondary).lineLimit(grande ? nil : 1)
                 }
                 FilaFluida(espaciado: 6, interlineado: 4) {
-                    if linea.esPR { InsigniaPR(compacta: true) }
-                    Text("\(linea.ultimo.kg) kg").font(.numeroChico).foregroundStyle(.primary)
-                    PildoraVariacion(delta: linea.delta)
+                    if linea.resumen.esPR { InsigniaPR(compacta: true) }
+                    if linea.conPeso {
+                        Text("\(Text("Top").font(.caption.weight(.semibold)).foregroundStyle(.secondary)) \(linea.resumen.tope.kg) kg")
+                            .font(.numeroChico)
+                            .foregroundStyle(.primary)
+                    } else {
+                        Text("Peso corporal").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    PildoraVariacion(variacion: linea.resumen.variacion)
                 }
                 .padding(.top, 2)
             }
             if !grande { Spacer(minLength: Espacio.xs) }
-            CurvaChica(sesiones: linea.sesiones, esPR: linea.esPR)
+            CurvaChica(valores: linea.resumen.serie, esPR: linea.resumen.esPR)
                 .frame(width: grande ? nil : 84, height: grande ? 56 : 44)
                 .frame(maxWidth: grande ? .infinity : nil)
         }
@@ -202,23 +260,40 @@ private struct FilaProgreso: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(linea.nombre): \(linea.ultimo.kg) kilos, \(Int(linea.delta.rounded())) por ciento\(linea.esPR ? ", récord" : "")")
+        .accessibilityLabel(accesible)
+    }
+
+    private var accesible: String {
+        var s = "\(linea.nombre): tope \(linea.resumen.tope.kg) kilos"
+        if let v = linea.resumen.variacion { s += ", \(PildoraVariacion.texto(v)) de progresión" }
+        if linea.resumen.esPR { s += ", récord" }
+        return s
     }
 }
 
-/// "+12 %" verde si sube, rojo si baja (sin invertir: más kilos es mejor).
+/// "+12,3 %" verde si sube, rojo si baja (sin invertir: más kilos es mejor); "—" con una sola sesión.
 struct PildoraVariacion: View {
-    let delta: Double
+    let variacion: Double?
 
     var body: some View {
-        let n = Int(delta.rounded())
-        Label("\(n > 0 ? "+" : "")\(n) %", systemImage: n > 0 ? "arrow.up.right" : (n < 0 ? "arrow.down.right" : "equal"))
-            .labelStyle(EtiquetaCompacta())
-            .font(.caption.weight(.semibold).monospacedDigit())
-            .foregroundStyle(n > 0 ? Color.exito : (n < 0 ? Color.peligro : Color.secondary))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background((n > 0 ? Color.exito : (n < 0 ? Color.peligro : Color.secondary)).opacity(0.12), in: .capsule)
+        if let v = variacion {
+            let color = v > 0 ? Color.exito : (v < 0 ? Color.peligro : Color.secondary)
+            Label(Self.texto(v), systemImage: v > 0 ? "arrow.up.right" : (v < 0 ? "arrow.down.right" : "equal"))
+                .labelStyle(EtiquetaCompacta())
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .foregroundStyle(color)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(color.opacity(0.12), in: .capsule)
+        } else {
+            Text("—").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+        }
+    }
+
+    /// "+12,3 %", con la coma argentina y un decimal (como `toFixed(1)` de la web).
+    static func texto(_ v: Double) -> String {
+        let n = v.formatted(.number.precision(.fractionLength(0...1)).locale(Locale(identifier: "es_AR")))
+        return "\(v > 0 ? "+" : "")\(n) %"
     }
 }
 
@@ -248,34 +323,35 @@ struct InsigniaPR: View {
     }
 }
 
-/// La curva chica de la fila: área con degradado, línea y el último punto marcado.
+/// La curva chica de la fila (el máximo por sesión): área con degradado, línea y el último punto marcado (en oro si es
+/// récord).
 private struct CurvaChica: View {
-    let sesiones: [LineaProgreso.SesionProgreso]
+    let valores: [Double]
     var esPR = false
 
     var body: some View {
-        let minimo = (sesiones.map(\.kg).min() ?? 0), maximo = (sesiones.map(\.kg).max() ?? 1)
+        let minimo = valores.min() ?? 0, maximo = valores.max() ?? 1
         let margen = max((maximo - minimo) * 0.25, 0.5)
         Chart {
-            ForEach(sesiones) { s in
-                AreaMark(x: .value("Fecha", s.fecha), yStart: .value("Base", minimo - margen), yEnd: .value("Kg", s.kg))
+            ForEach(Array(valores.enumerated()), id: \.offset) { i, kg in
+                AreaMark(x: .value("Sesión", i), yStart: .value("Base", minimo - margen), yEnd: .value("Kg", kg))
                     .interpolationMethod(.monotone)
                     .foregroundStyle(LinearGradient(colors: [Color.marcaVivo.opacity(0.3), Color.marcaVivo.opacity(0)],
                                                     startPoint: .top, endPoint: .bottom))
-                LineMark(x: .value("Fecha", s.fecha), y: .value("Kg", s.kg))
+                LineMark(x: .value("Sesión", i), y: .value("Kg", kg))
                     .interpolationMethod(.monotone)
                     .foregroundStyle(Color.marcaVivo)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
             }
-            if let u = sesiones.last {
-                // El último punto en oro si es récord: la marca va pegada al dato.
-                PointMark(x: .value("Fecha", u.fecha), y: .value("Kg", u.kg))
+            if let u = valores.last {
+                PointMark(x: .value("Sesión", valores.count - 1), y: .value("Kg", u))
                     .symbolSize(esPR ? 40 : 28)
                     .foregroundStyle(esPR ? Color.record : Color.marcaVivo)
             }
         }
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
+        .chartXScale(domain: 0...max(valores.count - 1, 1))
         .chartYScale(domain: (minimo - margen)...(maximo + margen))
         .accessibilityHidden(true)
     }
@@ -285,7 +361,7 @@ private struct EsqueletoProgreso: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.l) {
             HStack(spacing: Espacio.s) {
-                ForEach(0..<3, id: \.self) { _ in Dato(titulo: "Ejercicios", valor: "30", icono: "dumbbell.fill") }
+                ForEach(0..<2, id: \.self) { _ in Dato(titulo: "Ejercicios", valor: "30", icono: "dumbbell.fill") }
             }
             ForEach(0..<2, id: \.self) { _ in
                 VStack(alignment: .leading, spacing: Espacio.s) {
@@ -295,10 +371,10 @@ private struct EsqueletoProgreso: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Nombre del ejercicio").font(.subheadline.weight(.semibold))
-                                    Text("58 kg · +12 %").font(.caption)
+                                    Text("Top 58 kg · +12 %").font(.caption)
                                 }
                                 Spacer()
-                                RoundedRectangle(cornerRadius: 6).fill(Color.campo).frame(width: 92, height: 44)
+                                RoundedRectangle(cornerRadius: 6).fill(Color.campo).frame(width: 84, height: 44)
                             }
                             .padding(Espacio.m)
                         }
