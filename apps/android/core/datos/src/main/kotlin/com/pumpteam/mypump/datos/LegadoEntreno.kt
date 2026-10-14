@@ -145,24 +145,28 @@ suspend fun ModeloEntreno.aplicarLegado(l: LegadoEntreno) {
         huboSesion = huboSesion || s.diaId == dia.value.dia.id
     }
     guardarSesiones()
-    val g = l.descanso
-    if (descanso.value.descanso == null && descanso.value.guardado == null && g != null) {
-        reemplazarDescanso(BarraDescanso(g).also { it.restaurar(ahoraMs) })
-        guardarDescanso()
-    }
     val sustituciones = l.sustituciones
     if (!sustituciones.isNullOrEmpty() && dia.value.sustituciones.isEmpty()) {
         ponerSustituciones(SustitucionesEntreno.compat(sustituciones))
         guardarSustituciones()
         podarSustituciones()
     }
+    // Primero el día y después el descanso, como la web al abrir: arranca en el último día visto y recién ahí
+    // `restoreRest()`. Cambiar de día detiene el descanso (`cambiarDia` → `stopRest()`), así que al revés el descanso que
+    // venía corriendo se perdía (lo encontró la prueba de punta a punta en el emulador; en iOS, 5eb8738).
+    var cambioDeDia = false
     val visto = Js.verdadero(l.diaVisualizado)
     if (!diaGuardadoAlArrancar && visto != null && visto != dia.value.dia.id && dias.any { it.id == visto }) {
         diaGuardadoAlArrancar = true
         cambiarDia(visto)
-        return
+        cambioDeDia = true
     }
-    if (huboSesion && dia.value.sesionId == null) restaurarSesion()
+    val g = l.descanso
+    if (descanso.value.descanso == null && descanso.value.guardado == null && g != null) {
+        reemplazarDescanso(BarraDescanso(g).also { it.restaurar(ahoraMs) })
+        guardarDescanso()
+    }
+    if (!cambioDeDia && huboSesion && dia.value.sesionId == null) restaurarSesion()
 }
 
 /** Lee `legado-entreno.json` del disco de la cuenta, lo aplica y lo borra (para no aplicarlo dos veces). */

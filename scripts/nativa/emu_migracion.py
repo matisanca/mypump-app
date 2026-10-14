@@ -378,7 +378,6 @@ def _registro(salida, etiqueta):
 def verificar(salida):
     plan = leer(salida, "plan.json")
     filas = []
-    observaciones = []   # lo que se mira pero no es de la migración: no hace fallar la corrida
 
     def chequeo(nombre, ok, detalle=""):
         filas.append((nombre, bool(ok), str(detalle)))
@@ -444,8 +443,9 @@ def verificar(salida):
             antes_r.get("sesionesVigentes") == 1 and antes_r.get("descansoVigente") is True
             and (sesiones.get(plan["dia"]) or {}).get("sesionId") == plan.get("sesion"),
             f"recibo {antes_r.get('sesionesVigentes')} sesión / descanso {antes_r.get('descansoVigente')}; Entreno {list(sesiones)}")
-    observaciones.append(("Entreno conservó el descanso que trajo la migración", descanso_entreno is not None,
-                          "aplicarLegado (Android e iOS) lo restaura y DESPUÉS cambia al día que se veía en la Capacitor: cambiarDia lo detiene"))
+    # Hasta el 14-oct aplicarLegado restauraba el descanso y DESPUÉS pasaba al día visto, que lo detiene (iOS 5eb8738).
+    chequeo("Entreno: el descanso en curso sigue después de pasar al día que se veía en la Capacitor", descanso_entreno is not None,
+            f"{descanso_entreno}")
     if alm_v:
         chequeo("Capacitor reinstalada encima: sin la cola de la cuenta ni los cachés de sesión, con la marca",
                 alm_v.get("mypump_outbox_<TOKEN>", {}).get("ops", 0) == 0 and not any(k.startswith("mypump_sesion_<TOKEN>") for k in alm_v)
@@ -474,10 +474,6 @@ def verificar(salida):
               "", "| Chequeo | | Detalle |", "|---|---|---|"]
     for n, ok, d in filas:
         lineas.append(f"| {n} | {'✅' if ok else '❌'} | {d[:160]} |")
-    if observaciones:
-        lineas += ["", "Observaciones (no son de la migración, no hacen fallar la corrida):", "", "| | | |", "|---|---|---|"]
-        for n, ok, d in observaciones:
-            lineas.append(f"| {n} | {'✅' if ok else '⚠️'} | {d[:200]} |")
     lineas += ["", "## Registro de la nativa", "", "```", reg.strip(), "```"]
     with open(os.path.join(salida, "informe.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lineas) + "\n")
@@ -485,9 +481,6 @@ def verificar(salida):
     print(f"{len(filas) - len(malos)}/{len(filas)} chequeos OK")
     for n in malos:
         print("  ✗", n)
-    for n, ok, _ in observaciones:
-        if not ok:
-            print("  ⚠", n)
     return 1 if malos else 0
 
 
