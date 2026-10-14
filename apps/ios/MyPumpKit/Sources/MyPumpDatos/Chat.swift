@@ -237,14 +237,17 @@ public final class ModeloChat {
         _ = await cliente.llamar("mypump_marcar_leidos_cliente", ["p_token": .texto(token), "p_ambito": .texto("general"), "p_referencia_id": .null])
     }
 
+    /// La espera entre consultas, en segundos. Los tests la cambian para ver los intervalos sin esperarlos.
+    @ObservationIgnored var dormir: @Sendable (Double) async -> Void = { s in try? await Task.sleep(for: .seconds(s)) }
+
     /// Sondeo en cadena (nunca dos a la vez): 15 s abierto, 45 s cerrado. Se corta con la app en segundo plano.
     public func empezarSondeo() {
         sondeo?.cancel()
         sondeo = Task { [weak self] in
             while !Task.isCancelled {
-                guard let abierto = self?.abierto else { return }   // el modelo ya no existe
+                guard let abierto = self?.abierto, let dormir = self?.dormir else { return }   // el modelo ya no existe
                 let espera: Double = abierto ? 15 : 45
-                try? await Task.sleep(for: .seconds(espera))
+                await dormir(espera)
                 if Task.isCancelled { return }
                 await self?.sondear()
             }
