@@ -103,6 +103,14 @@ class ModeloApp(
     private val _sinRedEn = MutableStateFlow<Set<Parte>>(emptySet())
     val sinRedEn: StateFlow<Set<Parte>> = _sinRedEn.asStateFlow()
 
+    /**
+     * Cuántas cargas terminaron con red (info, rutina y dieta del servidor, sin la copia guardada). Lo mira la migración
+     * del almacenamiento viejo para esperar "otra carga con red": `cargar` no pasa por [Fase.CARGANDO] si la cuenta ya
+     * estaba lista, así que mirar la fase no alcanza.
+     */
+    private val _cargasConRed = MutableStateFlow(0)
+    val cargasConRed: StateFlow<Int> = _cargasConRed.asStateFlow()
+
     /** Por qué no se pudo cargar (para decir "Sin conexión" o "Servicio fuera de línea"). */
     private val _ultimaFalla = MutableStateFlow<ErrorRpc.Clase?>(null)
     val ultimaFalla: StateFlow<ErrorRpc.Clase?> = _ultimaFalla.asStateFlow()
@@ -416,6 +424,7 @@ class ModeloApp(
         _desdeCache.value = faltaron.isNotEmpty()
         prepararEntreno()
         _fase.value = Fase.LISTO
+        if (faltaron.isEmpty()) _cargasConRed.update { it + 1 }
         _entreno.value?.let { e ->
             alcance.launch {
                 cargarCatalogo()
