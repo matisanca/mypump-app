@@ -70,8 +70,8 @@ Hasta que se decidan, rige lo de hoy.
 | ENT-07 | Nota de progresión contra la semana anterior (baja de reps, suba de series, baja de RIR). Banner "📈 N ejercicios cambian…" | `C:1701-1747`, `3669` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-08 | "🎯 Semana de calibración" **solo** en la semana 1 sin offset | `C:3669-3678`, memoria `reference_activar_bloque_colision_sesiones` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-09 | `semana_offset` solo cambia rótulos ("SEM 13/24", "Pasar a Semana N") | `C:3183`, `3673`, `3732`, `5286` | ✅ ver auditoría 14-oct | ☐ |
-| ENT-10 | Card cerrada: círculo de estado (n, ✓, ✓ sin datos, —), miniatura, badge de sustitución (🔒 fijada / ↔ solo hoy), chip "manual", 💬 n, chips CALENT., ×series·reps, descanso m:ss, "🏆 Récord" o "Primera vez" | `C:3816-3863` | 🟡 todo está en `FilaEjercicio` (EntrenoView.swift); capturas de la tienda (20261014-145803): número, miniatura, "Calent.", series × reps, descanso y "Primera vez"; EntrenoUITests.testLaCardDiceQueEstaSustituidaYFijada (17.5 y 26.5): la insignia de fijada y lo que lee VoiceOver (a3254ff). Falta captura de "Manual", 💬 n y 🏆 | ☐ |
-| ENT-11 | Card abierta: nota, selector de variante, tabla Reps/Kg/RIR, "📅 Última vez (ayer / hace n días)", "🏆 Récord a superar", imágenes Inicio/Pico, sustituir/volver, comentarios, nota técnica, video y acciones | `C:3866-3971` | 🟡 ver auditoría 14-oct | ☐ |
+| ENT-10 | Card cerrada: círculo de estado (n, ✓, ✓ sin datos, —), miniatura, badge de sustitución (🔒 fijada / ↔ solo hoy), chip "manual", 💬 n, chips CALENT., ×series·reps, descanso m:ss, "🏆 Récord" o "Primera vez" | `C:3816-3863` | ✅ todo está en `FilaEjercicio` (EntrenoView.swift); capturas de la tienda (20261014-145803): número, miniatura, "Calent.", series × reps, descanso y "Primera vez"; EntrenoUITests.testLaCardDiceQueEstaSustituidaYFijada (17.5 y 26.5): la insignia de fijada y lo que lee VoiceOver (a3254ff). "Manual" (estado `completo_sin_datos` marcado a mano) y 💬 n (sin leer) salen de `FilaEjercicio` con el motor: EntrenoIntegracionTests (SER-15, terminar a mano) y comentarioDirecto_yLeidos; 🏆 en la captura del iPad (`nativa-evidencia/ipad/20261014-203433/entreno.png`) | ☐ |
+| ENT-11 | Card abierta: nota, selector de variante, tabla Reps/Kg/RIR, "📅 Última vez (ayer / hace n días)", "🏆 Récord a superar", imágenes Inicio/Pico, sustituir/volver, comentarios, nota técnica, video y acciones | `C:3866-3971` | ✅ `EjercicioView`: encabezado con Inicio/Pico, métricas, nota, variante, series, última vez y récord, sustituir/comentar/video, técnica, comentarios y cierre. UltimaVezUITests (captura con variante, tabla y descanso) y EntrenoUITests (sustituir y fijar) | ☐ |
 | ENT-12 | Fotos de ejercicios: `images._matched_slug` (no `catalogo_slug` de primer nivel) | memoria `reference_sustitutos_ejercicio_app` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-13 | Sin columna de kg: calentamiento, o peso corporal por regex, salvo que el nombre mencione carga | `C:4004-4021` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-14 | Avanzar de semana: visible si semana < total; la confirmación cambia si el día está incompleto; `avanzar_semana(actual+1)`, que nunca retrocede; borra los cachés de sesión y recarga; error "Sin conexión" o "No se pudo pasar de semana" | `C:3108-3139`, `3178-3194`, mig 077 | ✅ ver auditoría 14-oct | ☐ |
@@ -158,7 +158,7 @@ Hasta que se decidan, rige lo de hoy.
 | REV-05 | URLs firmadas (`/progreso/urls`), cacheadas 50 min | `C:7617-7641` | ✅ FotosTests.lasURLsFirmadasSeGuardan: la segunda firma no pide, forzar pide y subir invalida; firma real en fotoDeProgresoSubeYSeFirma (14-oct) | ☐ |
 | REV-06 | Check semanal: 4 escalas 1-5 + nota; "Faltan: X"; va por el outbox y muestra "✓ enviado" | `C:7964-8034` | ✅ modelo ✅ ("Faltan: …", cola), falta la pantalla · ver auditoría 14-oct | ☐ |
 | REV-07 | Peso 30-300 kg por el outbox (fuente manual); gráfico de 60 días con media de 7; "Esta semana ±g vs la pasada" | `C:7330-7464` | ✅ modelo ✅ (`PesoCorporal`: serie, media 7 d, delta), falta la pantalla · ver auditoría 14-oct | ☐ |
-| REV-08 | Mi reloj: Oura/WHOOP según `/api/wearables/disponibles` o si ya estaba conectado; autorización en el navegador del sistema (SFSafariViewController); poll de `get_conexiones` cada 3 s durante 2 min; "Quitar" con confirmación | `C:8088-8239` | 🟡 ver auditoría 14-oct | ☐ |
+| REV-08 | Mi reloj: Oura/WHOOP según `/api/wearables/disponibles` o si ya estaba conectado; autorización en el navegador del sistema (SFSafariViewController); poll de `get_conexiones` cada 3 s durante 2 min; "Quitar" con confirmación | `C:8088-8239` | ✅ `MiRelojView` + `ModeloSalud`: ModeloSaludTests.relojesVisiblesYTextos, sinRedNoSeOfreceNingunReloj, esperaLaConexionYRecarga (3 s × 40), quitarDesconectaYRelee y preferenciaRelojesYConexiones | ☐ |
 
 ## PRO · Progreso
 
@@ -271,8 +271,8 @@ cerraron después DIA-01, DIA-06, MIG-07, GEN-03 y GEN-06 (ver la columna iOS). 
 8. ~~**Desvíos de diseño sin registrar.**~~ Aceptados por Mati: CHA-01 (D12) y ENT-17 (D13).
 9. **`?diag=health` (SAL-13, ACC-09).** Hecho (2b41011) y abierto en el iPhone de Mati; falta verlo en pantalla. El
    link de soporte lleva `t=` (el AASA no abre la app sin él).
-10. **Hecho, falta la prueba o la captura:** APL-06 (iPad en ancho compacto, que App Review mira), ENT-15, SER-11,
-    SER-04, SES-04, SES-05, CHA-02, CHA-04, REV-04, REV-05, REV-08, GEN-05, GEN-08, DIE-01, ENT-10, ENT-11.
+10. **Hecho, falta la prueba o la captura:** ENT-15, SER-11, SER-04, SES-04, SES-05, CHA-02, CHA-04, REV-04, REV-05,
+    GEN-05, GEN-08, DIE-01. Cerrados el 14-oct: APL-06 (capturas del iPad), ENT-10, ENT-11 y REV-08.
 
 **iOS 17 y 18:** la auditoría avisó que casi toda la evidencia de pantalla era de 26.5. Con la suite de interfaz en 17.5
 y 18.6 apareció un error real: comidas libres no abría nada en iOS 17. Se arregló en 424f5af. Desde entonces:
