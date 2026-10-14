@@ -11,7 +11,14 @@ struct CerrarDiaView: View {
     @State private var enviando = false
     @State private var aviso: String?
     @State private var cerrados = 0
+    /// Con ejercicios pendientes hay más para leer (la lista): abre alta, así las notas no quedan debajo del botón.
+    @State private var detente: PresentationDetent
     @FocusState private var escribiendo: Bool
+
+    init(motor: ModeloEntreno) {
+        self.motor = motor
+        _detente = State(initialValue: motor.todoHecho ? .medium : .large)
+    }
 
     var body: some View {
         let r = motor.resumen
@@ -70,7 +77,7 @@ struct CerrarDiaView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color.fondo)
-            .safeAreaInset(edge: .bottom) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 Button(action: confirmar) {
                     if enviando {
                         ProgressView().tint(Color.sobreMarca)
@@ -81,8 +88,17 @@ struct CerrarDiaView: View {
                 .buttonStyle(BotonMarca())
                 .disabled(enviando)
                 .padding(.horizontal, Espacio.m)
+                .padding(.top, Espacio.m)
                 .padding(.bottom, Espacio.xs)
                 .anchoLectura()
+                .frame(maxWidth: .infinity)
+                // Lo que pasa por debajo del botón se funde con el fondo (no se lee a través).
+                .background {
+                    LinearGradient(stops: [.init(color: Color.fondo.opacity(0), location: 0),
+                                           .init(color: Color.fondo, location: 0.3)],
+                                   startPoint: .top, endPoint: .bottom)
+                        .ignoresSafeArea()
+                }
                 .sensoryFeedback(.success, trigger: cerrados)
                 .accessibilityIdentifier("confirmar-cierre")
             }
@@ -90,7 +106,7 @@ struct CerrarDiaView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { cerrar() } } }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $detente)
         .presentationDragIndicator(.visible)
         .animation(.snappy, value: aviso)
     }
