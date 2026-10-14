@@ -99,9 +99,14 @@ struct MisDatosView: View {
                 } header: {
                     Text("Inteligencia artificial")
                 } footer: {
-                    Text(modelo.consentimientoIA == true
-                         ? "Lee tus mensajes del chat, las fotos que mandes a analizar y tu check para ayudar a Mati (OpenAI y Anthropic; los datos de salud van sin tu nombre). Si lo apagás, ninguna IA lee tus datos."
-                         : "Apagado: ninguna IA lee tus datos. Te contesta Mati y las fotos no se analizan.")
+                    switch modelo.consentimientoIA {
+                    case true?:
+                        Text("Lee tus mensajes del chat, las fotos que mandes a analizar y tu check para ayudar a Mati (OpenAI y Anthropic; los datos de salud van sin tu nombre). Si lo apagás, ninguna IA lee tus datos.")
+                    case false?:
+                        Text("Apagado: ninguna IA lee tus datos. Te contesta Mati y las fotos no se analizan.")
+                    case nil:
+                        Text("Todavía no elegiste: te lo preguntamos antes de tu primer mensaje, foto o check. Si lo prendés, la IA ayuda con el chat, las fotos y tu revisión semanal.")
+                    }
                 }
             }
 
