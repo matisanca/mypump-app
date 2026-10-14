@@ -186,7 +186,7 @@ fallidos (no los borra):
 
 | kind | payload | dedupeKey | Ejecuta |
 |---|---|---|---|
-| `consentimiento_ia` | `{acepta, plataforma, app}` | `consentimiento_ia` | `guardar_consentimiento_ia` |
+| `consentimiento_ia` | `{acepta, plataforma, app}` | `consentimiento_ia` | `guardar_consentimiento_ia`. **Ya no se encola** (D7 se sacó el 14-oct): queda para vaciar lo que haya quedado en una cola de la 101/102 |
 | `swap_ej` | `{rutinaId, exId, swap}` (`swap` es la entrada de la web tal cual, con `_ts`: la hora del cambio en ms) | `swap_ej_<rutina>_<exId>` | `save_exercise_swap` |
 | `swap_ej_del` | `{rutinaId, exId, ts}` (`ts` = la hora de lo que se borró: lo que el cliente veía) | la misma que `swap_ej` | `delete_exercise_swap` (deja la lápida con `ts`) |
 
@@ -333,9 +333,9 @@ Mientras una función no exista (PGRST202), la app sigue como antes.
 | 001 | `registrar_migracion_nativa(token, migracion uuid, corrida, recibo jsonb)` | TRUE; FALSE si el uuid es de otro cliente; NULL = token caído | el recibo de la migración del almacenamiento viejo |
 | 001 | `conteos_cliente(token)` | filas por tabla del cliente (15); NULL = token caído | el recibo (antes y después) |
 | 001 | `get_app_config()` | la palanca remota (5 valores) | al abrir |
-| 002 | `get_consentimiento_ia(token)` | `{acepta}` (null = nunca se le preguntó); NULL = token caído | al abrir |
-| 002 | `guardar_consentimiento_ia(token, acepta, plataforma, app)` | TRUE; NULL = token caído | outbox `consentimiento_ia` |
-| 002 | `clientes_sin_ia(clientes text[])` | los que dijeron que no | **solo `service_role`** (chat_worker, centinela) |
+| 002 | `get_consentimiento_ia(token)` | `{acepta}` (null = nunca se le preguntó); NULL = token caído | **nadie desde el 14-oct** (D7 se sacó; la tabla queda, la base solo crece) |
+| 002 | `guardar_consentimiento_ia(token, acepta, plataforma, app)` | TRUE; NULL = token caído | solo una op vieja de la cola |
+| 002 | `clientes_sin_ia(clientes text[])` | los que dijeron que no | **solo `service_role`**; nadie desde el 14-oct (los scripts de la Mini volvieron a la versión sin filtro) |
 | 003 | `get_exercise_swaps(token, rutina_id)` | `{"vivas": {exId: entrada}, "borradas": {exId: ms}, "ahora": ms del servidor}`; NULL = token caído o rutina ajena | al cargar Entreno |
 | 003 | `save_exercise_swap(token, rutina_id, ex_id, swap jsonb)` | TRUE (también si allá había algo más nuevo); FALSE = rutina ajena (cuenta como hecho); NULL = token caído | outbox `swap_ej` |
 | 003 | `delete_exercise_swap(token, rutina_id, ex_id, ts)` | TRUE (deja la lápida, salvo que allá haya algo más nuevo); FALSE = rutina ajena; NULL = token caído | outbox `swap_ej_del` |

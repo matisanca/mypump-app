@@ -39,10 +39,6 @@ MODO    = "analisis" if "--analisis" in sys.argv else ("pedido" if "--pedido" in
 SEMANAS = 12
 SEM_CHECKS = 8      # serie de checks para baseline/tendencia
 RECUP = {}          # cliente_id -> resumen de recuperacion (mig 044), se llena en main()
-# Los que en la app dijeron que NO a la IA (D7, supabase/migrations/nativa_002). Sus datos no van a
-# ningun modelo: cada envio los saca y quedan con el respaldo determinista que ya existia para
-# cuando la IA no entrega. Se llena en main().
-SIN_IA = set()
 CLAUDE_MODEL = os.environ.get("PUMP_CLAUDE_MODEL", "claude-opus-5")  # LLM intermedio
 
 def load_env(p):
@@ -74,25 +70,6 @@ def _sb_req(path, body=None):
                  "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.loads(r.read().decode())
-
-def fetch_sin_ia(cids):
-    """De estos clientes, los que dijeron que no a la IA. Si no se puede preguntar, se asume
-    que NADIE acepto (sin saberlo, la IA no se usa). Si la funcion todavia no existe (antes de
-    aplicar la nativa_002), nadie pudo decir que no."""
-    cids = sorted({c for c in cids if c})
-    if not cids:
-        return set()
-    try:
-        return set(_sb_req("/rest/v1/rpc/mypump_clientes_sin_ia", {"p_clientes": cids}) or [])
-    except urllib.error.HTTPError as e:
-        cuerpo = e.read().decode(errors="replace")
-        if e.code == 404 and "PGRST202" in cuerpo:
-            return set()
-        print(f"  [ia] no pude leer los permisos de IA ({e.code}): esta ronda va sin IA")
-        return set(cids)
-    except Exception as e:
-        print(f"  [ia] no pude leer los permisos de IA ({e}): esta ronda va sin IA")
-        return set(cids)
 
 def fetch_metricas():
     return _sb_req("/rest/v1/rpc/mypump_get_metricas_coach", {"p_semanas": SEMANAS})
@@ -774,7 +751,6 @@ def interpretar_notas(metricas, chk_actual, chk_series):
     items = []
     for c in metricas:
         cid = c["cliente_id"]; nombre = c.get("nombre") or cid
-        if cid in SIN_IA: continue   # sin permiso para la IA: queda con el fallback por regex
         chk = chk_actual.get(cid)
         if not chk or not (chk.get("nota") or "").strip(): continue
         previas = [r.get("nota") for r in chk_series.get(cid, [])[:-1] if r.get("nota")][-2:]
@@ -1038,7 +1014,6 @@ def gen_personalizados(lista):
     _FALLBACK_USADO.clear()
     datos = []
     for x in lista:
-        if x.get("cid") in SIN_IA: continue   # sin permiso para la IA: va el fallback de abajo
         chk, prev, ctx = x["chk"], x["chk_prev"], x["ctx"]
         d = {"nombre": x["nombre"], "apodo": apodo(x["nombre"]),
              "check": {k: chk.get(k) for k in ("energia", "descanso", "hambre", "adherencia")},
@@ -1076,10 +1051,10 @@ def gen_personalizados(lista):
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
         'Devolve SOLO un JSON valido {"Nombre Completo": "mensaje"} sin texto extra.'
     )
-    res = (claude_json(prompt, etiqueta="personalizados") or {}) if datos else {}
+    res = claude_json(prompt, etiqueta="personalizados") or {}
     out = {}
     for x in lista:
-        m = _lookup(res, x["nombre"]) if x.get("cid") not in SIN_IA else None
+        m = _lookup(res, x["nombre"])
         if not m:
             _FALLBACK_USADO.add(x["nombre"])
             m = fallback_personalizado(x["nombre"], x["chk"], x["mal"],
@@ -1102,7 +1077,6 @@ def gen_ajustes(lista):
     _a2n, _n2a = _seudonimizar([x["nombre"] for x in lista])
     datos = []
     for x in lista:
-        if x.get("cid") in SIN_IA: continue   # sin permiso para la IA: acciones del motor o templates
         sup = x.get("suplementos")
         rec = (x["ctx"].get("recup") or {})
         datos.append({"cliente": _n2a[x["nombre"]], "objetivo": x["ctx"].get("obj"), "perfil": x["ctx"].get("perfil"),
@@ -1144,10 +1118,10 @@ def gen_ajustes(lista):
         'Cada cliente viene identificado por el campo "cliente" (c1, c2, ...). Devolve SOLO un '
         'JSON valido {"c1": "diagnostico y sugerencias en texto plano"} usando ESAS claves, sin nada mas.'
     )
-    res = (claude_json(prompt, etiqueta="ajustes") or {}) if datos else {}
+    res = claude_json(prompt, etiqueta="ajustes") or {}
     out = {}
     for x in lista:
-        sug = _lookup(res, _n2a[x["nombre"]]) if x.get("cid") not in SIN_IA else None
+        sug = _lookup(res, _n2a[x["nombre"]])
         if not sug:
             # Preferir las acciones del motor (deterministas y coherentes con
             # el diagnostico) antes que los templates genericos.
@@ -1180,7 +1154,6 @@ def gen_mensajes_ajuste(lista):
     distinto de la devolucion general del check. Solo para los 'ajustar'."""
     datos = []
     for x in lista:
-        if x.get("cid") in SIN_IA: continue   # sin permiso para la IA: fallback por motivo
         v = x.get("veredicto") or {}
         ctx = x.get("ctx") or {}
         carga = ctx.get("carga") or {}
@@ -1208,10 +1181,10 @@ def gen_mensajes_ajuste(lista):
         f"Clientes (JSON):\n{json.dumps(datos, ensure_ascii=False)}\n\n"
         'Devolve SOLO un JSON valido {"Nombre Completo": "mensaje"} sin nada mas.'
     )
-    res = (claude_json(prompt, etiqueta="msg_ajuste") or {}) if datos else {}
+    res = claude_json(prompt, etiqueta="msg_ajuste") or {}
     out = {}
     for x in lista:
-        m = _lookup(res, x["nombre"]) if x.get("cid") not in SIN_IA else None
+        m = _lookup(res, x["nombre"])
         if not m:
             # Fallback determinista segun el motivo dominante.
             ap = apodo(x["nombre"]); v = x.get("veredicto") or {}
@@ -1252,10 +1225,6 @@ def main():
     metricas = fetch_metricas()
     metricas = [c for c in metricas if not str(c.get("cliente_id", "")).startswith("test")
                 and "test" not in (c.get("nombre") or "").lower()]
-    global SIN_IA
-    SIN_IA = fetch_sin_ia([c.get("cliente_id") for c in metricas])
-    if SIN_IA:
-        print(f"sin IA (no la aceptaron en la app): {len(SIN_IA)}")
     # Recuperacion de TODOS en una sola RPC (mig 044). Global y no por cliente:
     # con 100 clientes, una llamada en vez de cien.
     global RECUP

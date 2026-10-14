@@ -59,15 +59,9 @@ def main():
     print(f"{len(filas)} borradores sin sugerencia" + ("" if CORRER else "   [DRY-RUN]"))
     print()
 
-    # Quien dijo que NO a la IA en la app no pasa por el modelo (D7, como en el worker).
-    sin_ia = W.clientes_sin_ia([f["cliente_id"] for f in filas])
-
     ok = fallos = 0
     for f in filas:
         quien = (f.get("nombre") or f["cliente_id"])[:24]
-        if f["cliente_id"] in sin_ia:
-            print(f"  · {quien:<24} no aceptó la IA: queda sin sugerencia")
-            continue
         d, err = W.llamar_codex(W.armar_prompt(f))
         if err:
             print(f"  ✗ {quien:<24} la IA no pudo: {err}")
