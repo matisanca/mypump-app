@@ -89,7 +89,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | D4 | Textos corregidos (recordatorio de entreno inexistente; "11:00", no "mediodía") | Que la app no mienta |
 | D5 | Tema: sigue al sistema salvo que el cliente haya guardado `'dark'` | `theme.js` escribe `'light'` siempre, así que no es una elección |
 | D6 | Lima en la interfaz; el ícono no cambia | Identidad actual |
-| D7 | IA de terceros (5.1.2(i)): **queda como hoy, pero es un RIESGO de revisión** | Decisión de producto de Mati antes de enviar (G7) |
+| D7 | IA de terceros (5.1.2(i)): **permiso con un "no" real que cubre todo** (chat, fotos y ronda del domingo). Decisión de Mati, 14-oct | App y servidor hechos. Falta aplicar `nativa_002` y desplegar `chat_worker`, `sugerir_pendientes` y `centinela` en la Mini (comandos en la bitácora) |
 | D8 | Aviso local de fin de descanso con la app en segundo plano | Mejora sin riesgo |
 | D9 | Borrado: link a `eliminar-datos.html` desde Mis datos, sin RPC | No hace falta tocar la base |
 | D10 | **Sin "Comí / Salté" en Dieta** (pedido de Mati, 14-oct). Se va también el consumo parcial; el anillo muestra el objetivo y cuánto suman las opciones elegidas | Le resultaba molesto al cliente. El coach deja de recibir esas marcas de los clientes con la nativa (la web las sigue teniendo) |
@@ -109,6 +109,21 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 - Publicar la 1.0.12 de iOS **antes** que la 2.0.0.
 
 ## Bitácora
+
+- **14-oct (tarde, 2):**
+  - **Revisión adversarial de las pantallas:** 14 hallazgos, arreglados 13 con tests. El 9 queda como limitación,
+    igual que en la web.
+  - **D7:** el permiso para la IA, en la app y en el servidor.
+  - **G2:** OK de Mati. El ensayo de `nativa_001` y `nativa_002` dio OK, pero aplicarlas lo frenó el clasificador:
+    las corre Mati.
+  - **Para desplegar (en este orden):**
+    1. Las migraciones, que ya están en la Mini:
+       `ssh mini 'cd ~/agentkit-coach && venv/bin/python ~/_aplicar.py /tmp/nativa_001_recibo_conteos_palanca.sql && venv/bin/python ~/_aplicar.py /tmp/nativa_002_consentimiento_ia.sql'`
+    2. Los scripts, con backup:
+       `ssh mini 'cd ~/pump-centinela && for f in chat_worker.py sugerir_pendientes.py centinela.py; do cp $f $f.bak-pre-d7; done' && scp pump-centinela/{chat_worker.py,sugerir_pendientes.py,centinela.py} mini:pump-centinela/`
+    - Si los scripts llegan antes que la `nativa_002`, igual andan: "nadie dijo que no".
+    - **Ojo:** esos tres scripts están cambiados solo en `nativa`. Si otra sesión despliega desde `main` antes del
+      merge, se pierde el filtro.
 
 - **14-oct (tarde):**
   - **iOS:**
