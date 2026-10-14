@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import MyPumpDatos
 
 /// Elegir una foto para la IA (plato o etiqueta): cámara si hay (en el simulador no) o galería. Devuelve la imagen ya
 /// reducida a JPEG como la web (`_fotoABase64Reducida`: lado mayor ≤ `maxPx`, calidad 0,85, sin metadatos).
@@ -39,8 +40,9 @@ struct BotonFoto<Etiqueta: View>: View {
         .onChange(of: item) { _, nuevo in
             guard let nuevo else { return }
             Task {
-                if let datos = try? await nuevo.loadTransferable(type: Data.self), let imagen = UIImage(data: datos),
-                   let jpeg = FotoReducida.jpeg(imagen, maxPx: maxPx, calidad: calidad) {
+                // ImageIO directo sobre los datos: una HEIC de 48 MP no se decodifica entera (ver ReduccionFoto).
+                if let datos = try? await nuevo.loadTransferable(type: Data.self),
+                   let jpeg = ReduccionFoto.jpeg(datos, maxPx: Int(maxPx), calidad: Double(calidad)) {
                     alElegir(jpeg)
                 } else {
                     ilegible = true
@@ -56,6 +58,7 @@ struct BotonFoto<Etiqueta: View>: View {
     }
 }
 
+/// La de la cámara, que ya llega como `UIImage` (12 MP). Las de la galería van por `ReduccionFoto` (MyPumpDatos, con tests).
 enum FotoReducida {
     /// Redibuja la imagen (eso también aplica la orientación y descarta EXIF y GPS) con el lado mayor ≤ `maxPx`.
     static func jpeg(_ imagen: UIImage, maxPx: CGFloat, calidad: CGFloat = 0.85) -> Data? {
