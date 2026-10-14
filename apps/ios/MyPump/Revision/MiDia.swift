@@ -39,7 +39,7 @@ struct MiDia: View {
             VStack(spacing: Espacio.m) {
                 Group {
                     TarjetaRacha(n: revision?.racha ?? muestra.racha?.streak ?? 0,
-                                 ultimoDiaValido: revision == nil ? muestra.racha?.ultimoDiaValido : nil)
+                                 ultimoDiaValido: revision == nil ? muestra.racha?.ultimoDiaValido : revision?.ultimoDiaValido)
                     hoy
                 }
                 .redacted(reason: cargado ? [] : .placeholder)
@@ -235,7 +235,7 @@ struct MiDia: View {
 /// `RachaTexto.icono`) y la frase de la web.
 private struct TarjetaRacha: View {
     let n: Int
-    /// Solo con las muestras: el modelo de la cuenta todavía no trae `ultimo_dia_valido`.
+    /// `ultimo_dia_valido` de `get_streak` (YYYY-MM-DD), de la cuenta o de las muestras.
     let ultimoDiaValido: String?
 
     var body: some View {
@@ -271,8 +271,8 @@ private struct TarjetaRacha: View {
         case 0: return "Completá hoy para empezar tu racha"
         case 1: return "¡Primer día, seguí así!"
         default:
-            guard let f = ultimoDiaValido.flatMap(Fechas.dia) else { return "Días seguidos cumpliendo tu plan" }
-            return "Último día válido: \(f.formatted(.dateTime.day().month(.wide).locale(Locale(identifier: "es_AR"))))"
+            // `renderMydayStreak`: "martes, 21 de julio", o "—" si el servidor no lo mandó.
+            return "Último día válido: \(ultimoDiaValido.flatMap(FechaJS.diaLargo) ?? "—")"
         }
     }
 

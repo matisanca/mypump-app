@@ -20,11 +20,16 @@ struct MyPumpApp: App {
         }
     }
 
+    /// D5: el tema sigue al teléfono, salvo que el cliente haya elegido oscuro (en la web, o en Mis datos). La migración
+    /// trae solo el `'dark'`: `theme.js` escribe `'light'` en cada carga, así que el claro no es una elección.
+    @AppStorage("mypump-theme") private var tema = ""
+
     var body: some Scene {
         WindowGroup {
             raiz
                 .environment(entrenamiento)
                 .tint(Color.marcaTexto)
+                .preferredColorScheme(tema == "dark" ? .dark : nil)
                 .task { entrarEnDemoSiSePide() }
         }
     }
@@ -110,6 +115,11 @@ struct Raiz: View {
             guard let destino else { return }
             withAnimation(.snappy) { navegacion.ir(a: destino) }
             CentroAvisos.shared.destino = nil
+        }
+        // `?diag=health` (SAL-13): el diagnóstico de Salud directo, sin los cinco toques. Sin cuenta no hay qué diagnosticar.
+        .sheet(isPresented: Binding(get: { CentroAvisos.shared.diagnosticoSalud && modelo.salud != nil },
+                                    set: { if !$0 { CentroAvisos.shared.diagnosticoSalud = false } })) {
+            if let salud = modelo.salud { NavigationStack { DiagnosticoSaludView(modelo: salud) } }
         }
     }
 

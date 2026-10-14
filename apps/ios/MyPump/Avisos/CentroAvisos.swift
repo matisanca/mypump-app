@@ -12,6 +12,9 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
 
     /// El destino del último aviso tocado; la raíz lo consume y cambia de pestaña (también en un arranque en frío).
     var destino: DestinoAviso?
+    /// `?diag=health` en el link (SAL-13, ACC-09): la raíz abre el diagnóstico de Salud. Es la herramienta de soporte de la
+    /// web: a quien no puede conectar Salud, Mati le manda ese link.
+    var diagnosticoSalud = false
 
     func configurar() {
         UNUserNotificationCenter.current().delegate = self

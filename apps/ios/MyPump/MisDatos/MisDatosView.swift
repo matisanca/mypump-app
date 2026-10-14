@@ -19,6 +19,8 @@ struct MisDatosView: View {
     /// llegar nada (revisión del 14-oct, hallazgo 8). Como la web, en su lugar va "Activar recordatorios".
     @State private var permiso: UNAuthorizationStatus?
     @Environment(\.scenePhase) private var fase
+    /// D5: "dark" o nada (sigue al teléfono). Lo lee la raíz de la app.
+    @AppStorage("mypump-theme") private var tema = ""
     @State private var fuentes = false
     @State private var pagina: Pagina?
 
@@ -108,6 +110,18 @@ struct MisDatosView: View {
                         Text("Todavía no elegiste: te lo preguntamos antes de tu primer mensaje, foto o check. Si lo prendés, la IA ayuda con el chat, las fotos y tu revisión semanal.")
                     }
                 }
+            }
+
+            Section {
+                Toggle(isOn: Binding(get: { tema == "dark" }, set: { tema = $0 ? "dark" : "" })) {
+                    Label { Text("Siempre en modo oscuro") } icon: { IconoAzulejo("moon.fill", color: .sueno) }
+                }
+                .tint(Color.marcaVivo)
+                .accessibilityIdentifier("tema-oscuro")
+            } header: {
+                Text("Apariencia")
+            } footer: {
+                Text(tema == "dark" ? "La app queda oscura aunque el teléfono esté en claro." : "La app sigue al teléfono: clara u oscura según tu iPhone.")
             }
 
             Section("Tu información") {

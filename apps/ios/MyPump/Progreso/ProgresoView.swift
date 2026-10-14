@@ -97,6 +97,8 @@ struct ProgresoView: View {
     private func lista(_ ss: [Seccion], ejercicios: Int) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
+                // Como la web, arriba de todas las escenas menos Revisión (GEN-03).
+                BannerRevision()
                 // Con letra de accesibilidad los totales van uno debajo del otro (no se cortan las palabras).
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: Espacio.s) { totales(ejercicios, sesiones) }

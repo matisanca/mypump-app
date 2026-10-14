@@ -129,22 +129,26 @@ extension ModeloEntreno {
             huboSesion = huboSesion || s.diaId == dia.dia.id
         }
         guardarSesiones()
-        if descanso.descanso == nil && descanso.guardado == nil, let g = l.descanso {
-            descanso = BarraDescanso(guardado: g)
-            descanso.restaurar(ahora: ahoraMs)
-            guardarDescanso()
-        }
         if let s = l.sustituciones, !s.isEmpty, dia.sustituciones.isEmpty {
             dia.sustituciones = SustitucionesEntreno.compat(s)
             guardarSustituciones()
             podarSustituciones()
         }
+        // Primero el día y después el descanso, como la web al abrir: arranca en el último día visto y recién ahí
+        // `restoreRest()`. Cambiar de día detiene el descanso (`cambiarDia` → `stopRest()`), así que al revés el
+        // descanso que venía corriendo se perdía.
+        var cambioDeDia = false
         if !habiaDiaGuardado, let d = JS.verdadero(l.diaVisualizado), d != dia.dia.id, dias.contains(where: { $0.id == d }) {
             habiaDiaGuardado = true
             await cambiarDia(d)
-            return
+            cambioDeDia = true
         }
-        if huboSesion && dia.sesionId == nil { await restaurarSesion() }
+        if descanso.descanso == nil && descanso.guardado == nil, let g = l.descanso {
+            descanso = BarraDescanso(guardado: g)
+            descanso.restaurar(ahora: ahoraMs)
+            guardarDescanso()
+        }
+        if !cambioDeDia && huboSesion && dia.sesionId == nil { await restaurarSesion() }
     }
 
     /// Lee `legado-entreno.json` del disco de la cuenta, lo aplica y lo borra (para no aplicarlo dos veces).

@@ -22,7 +22,7 @@ struct RaizApp<Contenido: View>: View {
                 } else {
                     contenido()
                         .safeAreaInset(edge: .top, spacing: 0) {
-                            if modelo.esDemo { BarraDemo(modelo: modelo) } else if modelo.desdeCache { BannerSinConexion() }
+                            if modelo.esDemo { if !DemoUI.captura { BarraDemo(modelo: modelo) } } else if modelo.desdeCache { BannerSinConexion() }
                         }
                         .overlay(alignment: .bottom) {
                             AvisoGuardado(estado: modelo.estadoGuardado)
@@ -41,9 +41,11 @@ struct RaizApp<Contenido: View>: View {
         .onOpenURL { url in
             Task {
                 await modelo.entrar(con: url.absoluteString)
-                // `?scene=diet` abre esa pestaña (ACC-09).
-                let escena = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "scene" }?.value
+                // `?scene=diet` abre esa pestaña y `?diag=health` el diagnóstico de Salud (ACC-09).
+                let parametros = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                let escena = parametros.first { $0.name == "scene" }?.value
                 if let d = DestinoAviso(escena: escena) { CentroAvisos.shared.destino = d }
+                if parametros.first(where: { $0.name == "diag" })?.value == "health" { CentroAvisos.shared.diagnosticoSalud = true }
             }
         }
         .task { if modelo.fase == .cargando { await modelo.cargar() } }

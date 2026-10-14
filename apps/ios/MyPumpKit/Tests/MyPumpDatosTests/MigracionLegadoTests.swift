@@ -502,6 +502,44 @@ struct MigracionLegadoTests {
         #expect(items["mypump_token"] == tokenA && items["mypump_tipo_dia"] == "descanso")
     }
 
+    // Las tres que tenía el gemelo de Android y faltaban acá (3b07452).
+
+    /// La marca de OTRA migración (otro teléfono restaurado, otra instalación) no confirma nada.
+    @Test func unaMarcaAjenaNoConfirmaLaEscritura() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        let ajena = Marca(migracion: "99999999-9999-4999-8999-999999999999", corrida: 1, fecha: "2026-10-01T00:00:00Z", app: "2.0.0").texto
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_nativa_marca": ajena])
+        let r = try tel.faseL()
+        #expect(r.escrituraConfirmada == nil)
+        let estado = try #require(tel.archivos.estado)
+        #expect(estado.escrituraConfirmada == nil)
+        #expect(estado.escritura != nil, "falta dejar la marca de esta migración")
+        // La propia sí: con la de esta migración y nada para borrar, no queda escritura pendiente.
+        try tel.webkit.escribir(["mypump_nativa_marca": Marca(migracion: estado.migracion, corrida: 1, fecha: "2026-10-14T15:00:00Z", app: nil).texto])
+        let r2 = try tel.faseL()
+        #expect(r2.escrituraConfirmada == 1)
+        #expect(tel.archivos.estado?.escritura == nil)
+    }
+
+    /// Una cola que no es JSON no se importa ni se borra de la Capacitor (queda en la copia cruda y en el almacenamiento).
+    @Test func unaColaIlegibleNoSeBorra() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": "[{roto"])
+        let r = try tel.faseL()
+        #expect(r.plan?.conteos.colasIlegibles == 1)
+        #expect(tel.cola().ops.isEmpty)
+        #expect(tel.archivos.estado?.escritura?.borrar["mypump_outbox_\(tokenA)"] == nil)
+    }
+
+    /// Sin almacenamiento viejo (hay un `origin` de la Capacitor pero ningún archivo de datos) no hace nada: ni copia ni
+    /// estado, así el arranque de alguien que instaló la 2.0.0 de cero no deja rastros.
+    @Test func sinLegadoNoHaceNada() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        let r = try tel.faseL()
+        #expect(!r.huboLegado && !r.corrio)
+        #expect(!FileManager.default.fileExists(atPath: tel.entorno.carpeta.path))
+    }
+
     @Test func sesionEnCursoVigenteYVencida() throws {
         let tel = Telefono(); defer { tel.limpiar() }
         let hace1h = ahoraMs - 3_600_000, hace7h = ahoraMs - 7 * 3_600_000
@@ -851,6 +889,41 @@ struct FaseRemotaLegadoTests {
         let r = try tel.faseL()
         #expect(!r.corrio)
         #expect(FaseRemotaLegado.escrituraPendiente(entorno: tel.entorno)?.borrar == cambios.borrar)
+    }
+
+    /// Si la marca no quedó escrita (el WebView contestó "fallo"), la escritura no cuenta como hecha: sigue pendiente.
+    @Test func sinLaMarcaLaEscrituraSiguePendiente() async throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(3)))])
+        _ = try tel.faseL()
+        let cliente = servidor(Llamadas())
+        _ = await FaseRemotaLegado.correr(entorno: tel.entorno, token: tokenA, clienteId: "test-nativa-ios", cliente: cliente, outbox: cola(tel, cliente),
+                                          recibo: ReciboEnDisco(carpeta: tel.entorno.carpeta.appendingPathComponent("recibos")), ahora: ahora)
+        let cambios = try #require(FaseRemotaLegado.escrituraPendiente(entorno: tel.entorno))
+        FaseRemotaLegado.registrarEscritura(entorno: tel.entorno, cambios: cambios,
+                                            resultado: ["mypump_outbox_\(tokenA)": "borrada", "mypump_nativa_marca": "fallo"])
+        #expect(tel.archivos.estado?.escrituraHecha == nil)
+        #expect(FaseRemotaLegado.escrituraPendiente(entorno: tel.entorno)?.borrar == cambios.borrar)
+    }
+
+    /// Con el recibo confirmado por el servidor, la copia cruda se borra a los 90 días (y antes no).
+    @Test func laCopiaCrudaSeBorraNoventaDiasDespuesDelReciboConfirmado() async throws {
+        struct Confirma: ReciboMigracion { func enviar(_ r: ReciboLegado, token: String) async -> EntregaRecibo { .confirmado } }
+        let tel = Telefono(); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(3)))])
+        _ = try tel.faseL()
+        let cliente = servidor(Llamadas())
+        let r = await FaseRemotaLegado.correr(entorno: tel.entorno, token: tokenA, clienteId: "test-nativa-ios", cliente: cliente,
+                                              outbox: cola(tel, cliente), recibo: Confirma(), ahora: ahora)
+        #expect(r.recibo == .confirmado)
+        let copias = try #require(tel.archivos.estado?.copias)
+        #expect(copias.count == 1)
+        let copia = tel.entorno.carpeta.appendingPathComponent(copias[0])
+        FaseRemotaLegado.podarCopias(entorno: tel.entorno, ahora: ahora.addingTimeInterval(89 * 86_400))
+        #expect(FileManager.default.fileExists(atPath: copia.path))
+        FaseRemotaLegado.podarCopias(entorno: tel.entorno, ahora: ahora.addingTimeInterval(91 * 86_400))
+        #expect(!FileManager.default.fileExists(atPath: copia.path))
+        #expect(tel.archivos.estado?.copias.isEmpty == true)
     }
 
     @Test func losSwapsDeComidaSinMigrarSeSubenAntesDeDrenar() async throws {

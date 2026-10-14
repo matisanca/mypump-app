@@ -68,6 +68,23 @@ struct RevisionDiaNuevoTests {
         #expect(m.habitos.vasosAgua == 8)
     }
 
+    /// DIA-06: lo que todavía está en la cola para HOY le gana a lo que trae `get_habitos_dia` (la web pinta encima lo
+    /// pendiente). También un "desmarcado" (null). Lo de otro día en la cola no se mezcla.
+    @Test func unHabitoEnLaColaLeGanaAlServidor() async {
+        let s = Servidor(), reloj = Reloj("2026-10-13")   // el servidor dice 8 vasos y "entrené"
+        let (m, cola) = modelo(s, reloj)
+        func pendiente(_ fecha: String, _ campo: String, _ valor: JSONValue) async {
+            _ = await cola.encolar("habito", .objeto(["fecha": .texto(fecha), "campo": .texto(campo), "valor": valor]),
+                                   dedupeKey: "habito|\(fecha)|\(campo)")
+        }
+        await pendiente("2026-10-13", "vasos_agua", .texto("3"))
+        await pendiente("2026-10-13", "entrenamiento", .null)
+        await pendiente("2026-10-12", "vasos_agua", .texto("11"))
+        await m.cargarMiDia()
+        #expect(m.habitos.vasosAgua == 3)
+        #expect(m.habitos.entrenamiento == nil)
+    }
+
     @Test func elCheckDeLaSemanaPasadaNoQuedaEnviado() async {
         let s = Servidor(), reloj = Reloj("2026-10-18")   // domingo
         let (m, _) = modelo(s, reloj)

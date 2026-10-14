@@ -26,6 +26,29 @@ final class RevisionUITests: XCTestCase {
         adjuntarCaptura("mis-datos-asistente-ia")
     }
 
+    /// 5.1.1(i) y 1.4.1: desde Mis datos se abren el respaldo científico y la política de privacidad. Las dos hojas
+    /// cuelgan de la misma vista, así que vale correrlo también en iOS 17.
+    func testMisDatosAbreElRespaldoYLaPolitica() throws {
+        let misDatos = app.buttons["Mis datos"].firstMatch
+        XCTAssertTrue(misDatos.waitForExistence(timeout: 20), "No apareció el acceso a Mis datos")
+        misDatos.tap()
+        let respaldo = app.buttons["Respaldo científico del plan"].firstMatch
+        for _ in 0..<6 where !respaldo.isHittable { app.swipeUp() }
+        XCTAssertTrue(respaldo.isHittable, "No está el respaldo en Mis datos")
+        respaldo.tap()
+        XCTAssertTrue(app.navigationBars["Respaldo científico"].waitForExistence(timeout: 5), "El respaldo no se abrió")
+        app.buttons["Listo"].tap()
+        XCTAssertTrue(app.navigationBars["Respaldo científico"].waitForNonExistence(timeout: 5))
+        let politica = app.buttons["Política de privacidad"].firstMatch
+        XCTAssertTrue(politica.waitForExistence(timeout: 3))
+        politica.tap()
+        // SFSafariViewController con el botón de cerrar (el contenido corre en otro proceso).
+        let cerrar = app.buttons.matching(NSPredicate(format: "label IN %@", ["Cerrar", "Close", "OK", "Listo"])).firstMatch
+        XCTAssertTrue(cerrar.waitForExistence(timeout: 10), "La política de privacidad no se abrió")
+        adjuntarCaptura("politica-de-privacidad")
+        cerrar.tap()
+    }
+
     /// Un hábito se marca y, tocado otra vez, se borra (DIA-03). La cuenta queda como estaba.
     func testUnHabitoSeMarcaYSeBorra() throws {
         let si = app.buttons["Dormí bien: sí"].firstMatch

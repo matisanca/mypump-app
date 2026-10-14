@@ -67,6 +67,8 @@ struct ComidasLibresSeccion: View {
                 }
                 .buttonStyle(.plain)
             }
+            // En la fila de botones y no en la tarjeta, que ya tiene la hoja del formulario: una `.sheet` por vista.
+            .permisoIA($pedidoIA, modelo: modelo)
         }
         .tarjeta()
         .animation(.snappy, value: modelo.comidasLibres.map(\.id))
@@ -76,7 +78,6 @@ struct ComidasLibresSeccion: View {
             case .estimada(let e): ComidaLibreView(modelo: modelo, estimacion: e)
             }
         }
-        .permisoIA($pedidoIA, modelo: modelo)
         .alert("Sin el asistente de IA", isPresented: $fotoSinIA) {
             Button("Cargar a mano") { formulario = .manual }
             Button("Cancelar", role: .cancel) {}

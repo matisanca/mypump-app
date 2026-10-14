@@ -124,7 +124,8 @@ private struct ListaEntreno: View {
                                     tono: .alerta)
                 }
                 BannerRevision()
-                SelectorDias(motor: motor)
+                // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
+                if motor.dias.count > 1 { SelectorDias(motor: motor) }
                 if motor.vacio {
                     diaVacio
                 } else {
@@ -518,21 +519,24 @@ struct SelectorDias: View {
                 }
             }
             .overlay(alignment: .topTrailing) {
-                if hecho {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 8, weight: .heavy))
-                        .foregroundStyle(Color.sobreMarca)
-                        .frame(width: 16, height: 16)
-                        .background(Color.marca, in: .circle)
-                        .offset(x: 5, y: -5)
-                } else if mensajes > 0 {
-                    Image(systemName: "bubble.left.fill")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 18, height: 18)
-                        .background(Color.peligro, in: .circle)
-                        .offset(x: 5, y: -5)
+                // Los dos a la vez, como la web (ENT-01): un día cerrado puede tener comentarios nuevos de Mati.
+                HStack(spacing: 2) {
+                    if mensajes > 0 {
+                        Image(systemName: "bubble.left.fill")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 18, height: 18)
+                            .background(Color.peligro, in: .circle)
+                    }
+                    if hecho {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 8, weight: .heavy))
+                            .foregroundStyle(Color.sobreMarca)
+                            .frame(width: 16, height: 16)
+                            .background(Color.marca, in: .circle)
+                    }
                 }
+                .offset(x: 5, y: -5)
             }
         }
         .buttonStyle(.plain)

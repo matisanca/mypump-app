@@ -24,6 +24,14 @@ enum DemoUI {
         false
         #endif
     }
+    /// `-captura YES`: las capturas de la tienda, sin el cartel "Estás viendo la demo" (que un cliente nunca ve).
+    static var captura: Bool {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "captura")
+        #else
+        false
+        #endif
+    }
     static var estado: Estado? { bocetos ? valor("estado").flatMap(Estado.init(rawValue:)) : nil }
     static var ir: String? { valor("ir") }
     static var abrir: String? { valor("abrir") }

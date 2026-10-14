@@ -37,6 +37,14 @@ struct FechaJSTests {
         #expect(FechaJS.leer(iso).map { ($0.timeIntervalSince1970 * 1000).rounded() } == esperado, "\(iso)")
     }
 
+    /// `formatFechaLocal` de la web (node 26): "martes, 21 de julio".
+    @Test func diaLargoComoLaWeb() {
+        #expect(FechaJS.diaLargo("2026-07-21") == "martes, 21 de julio")
+        #expect(FechaJS.diaLargo("2026-10-14") == "miércoles, 14 de octubre")
+        #expect(FechaJS.diaLargo("2026-09-01") == "martes, 1 de septiembre")
+        #expect(FechaJS.diaLargo("no es fecha") == nil)
+    }
+
     @Test func sinZonaEsHoraLocal() {
         let local = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 10, day: 4, hour: 10))
         #expect(FechaJS.leer("2026-10-04 10:00:00") == local)
