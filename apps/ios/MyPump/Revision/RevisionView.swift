@@ -1,162 +1,122 @@
 import SwiftUI
-import Charts
 import MyPumpModelos
 
-/// Revisión: fotos de la semana, check, peso, reloj y Mi Día, en ese orden (como la web).
+/// Revisión: lo de la semana (fotos, check, peso), el reloj y, al final, Mi Día (lo de todos los días). Mismo orden
+/// que la web (REV-01). En iPad, en dos columnas: lo semanal a la izquierda, lo diario a la derecha.
 struct RevisionView: View {
     let datos: Muestras
-    @State private var check: [String: Int] = [:]
-    @State private var entreno: String?
-    @State private var habitos: Set<String> = []
-    @State private var agua = 3
+    @Environment(\.horizontalSizeClass) private var claseAncho
+    @State private var misDatos = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    fotos
-                    checkSemanal
-                    peso
-                    reloj
-                    miDia
+            ScrollViewReader { lector in
+                ScrollView {
+                    Group {
+                        if claseAncho == .regular {
+                            HStack(alignment: .top, spacing: Espacio.l) {
+                                VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso }
+                                    .frame(maxWidth: .infinity)
+                                VStack(alignment: .leading, spacing: Espacio.xl) { miDia; reloj }
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .anchoLectura(Ancho.doble)
+                        } else {
+                            VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso; reloj; miDia }
+                                .anchoLectura()
+                        }
+                    }
+                    .padding(.horizontal, Espacio.m)
+                    .padding(.top, Espacio.xs)
+                    .padding(.bottom, Espacio.xl)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 24)
+                .scrollDismissesKeyboard(.interactively)
+                .task {
+                    // Bocetos: `-ir peso` (o check, reloj, midia, dias) abre desplazado hasta esa sección.
+                    guard let ancla = DemoUI.ir else { return }
+                    try? await Task.sleep(for: .milliseconds(350))
+                    lector.scrollTo(ancla, anchor: .top)
+                }
             }
             .background(Color.fondo)
             .navigationTitle("Revisión")
+            .subtituloNavegacion(Self.semanaActual())
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { MisDatosView(datos: datos) } label: { Image(systemName: "person.crop.circle") }
-                        .accessibilityLabel("Mis datos")
+                    NavigationLink { MisDatosView(datos: datos) } label: {
+                        Image(systemName: "person.crop.circle")
+                    }
+                    .accessibilityLabel("Mis datos")
                 }
             }
+            .navigationDestination(isPresented: $misDatos) { MisDatosView(datos: datos) }
         }
+        .onAppear { if DemoUI.abrir == "misdatos" { misDatos = true } }
     }
 
-    private var fotos: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            EncabezadoSeccion(titulo: "Fotos de la semana", detalle: "0/3")
-            HStack(spacing: 10) {
-                ForEach(["Frente", "Perfil", "Espalda"], id: \.self) { pose in
-                    VStack(spacing: 8) {
-                        Image(systemName: "camera.fill").font(.title3).foregroundStyle(Color.marcaTexto)
-                        Text(pose).font(.footnote.weight(.medium))
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 110)
-                    .background(Color.tarjeta, in: .rect(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [5])))
-                }
-            }
-        }
+    private var fotos: some View { FotosSemana(fotos: datos.fotos).id("fotos") }
+    private var check: some View {
+        CheckSemanal(guardado: DemoUI.lleno ? MuestrasExtra.checkin : datos.checkin).id("check")
     }
-
-    private var checkSemanal: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            EncabezadoSeccion(titulo: "Check de la semana")
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach([("energia", "Energía"), ("descanso", "Descanso"), ("hambre", "Hambre"), ("adherencia", "Adherencia")], id: \.0) { clave, nombre in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(nombre).font(.subheadline.weight(.medium))
-                        Picker(nombre, selection: Binding(get: { check[clave] ?? 0 }, set: { check[clave] = $0 })) {
-                            ForEach(1...5, id: \.self) { Text("\($0)").tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
-                Button {} label: { Text("Enviar mi check") }.buttonStyle(BotonMarca()).disabled(check.count < 4)
-            }
-            .tarjeta()
-        }
-    }
-
-    private var peso: some View {
-        let pesos = datos.salud.filter { $0.tipo == "peso_kg" }.compactMap { f in f.valor.map { (Fechas.dia(f.fecha) ?? .now, $0) } }
-            .sorted { $0.0 < $1.0 }
-        return VStack(alignment: .leading, spacing: 10) {
-            EncabezadoSeccion(titulo: "Peso")
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(pesos.last.map { $0.1.kg } ?? "—").font(.numeroGrande)
-                    Text("kg").foregroundStyle(.secondary)
-                    Spacer()
-                    if pesos.count > 7, let a = pesos.last?.1 {
-                        let b = pesos[pesos.count - 8].1
-                        Label("\(a - b > 0 ? "+" : "")\((a - b).kg) kg vs la semana pasada", systemImage: a - b > 0 ? "arrow.up.right" : "arrow.down.right")
-                            .font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                    }
-                }
-                if !pesos.isEmpty {
-                    Chart(pesos, id: \.0) { p in
-                        LineMark(x: .value("Fecha", p.0), y: .value("Kg", p.1)).interpolationMethod(.catmullRom).foregroundStyle(Color.marcaTexto)
-                        PointMark(x: .value("Fecha", p.0), y: .value("Kg", p.1)).symbolSize(14).foregroundStyle(Color.marcaTexto)
-                    }
-                    .chartYScale(domain: .automatic(includesZero: false))
-                    .frame(height: 140)
-                }
-                Button {} label: { Label("Cargar peso de hoy", systemImage: "plus") }.buttonStyle(.bordered)
-            }
-            .tarjeta()
-        }
-    }
-
-    private var reloj: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            EncabezadoSeccion(titulo: "Mi reloj")
-            VStack(spacing: 0) {
-                ForEach(["Oura", "WHOOP"], id: \.self) { p in
-                    HStack {
-                        Image(systemName: "applewatch").foregroundStyle(.secondary)
-                        Text(p)
-                        Spacer()
-                        Button("Conectar") {}.buttonStyle(.bordered).controlSize(.small)
-                    }
-                    .padding(.vertical, 8)
-                    if p == "Oura" { Divider() }
-                }
-            }
-            .tarjeta(relleno: 14)
-        }
-    }
-
+    private var peso: some View { PesoTarjeta(salud: datos.salud).id("peso") }
+    private var reloj: some View { MiReloj().id("reloj") }
     private var miDia: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            EncabezadoSeccion(titulo: "Mi día")
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(datos.racha?.streak ?? 0)").font(.numeroGigante)
-                    VStack(alignment: .leading) {
-                        Text(racha(datos.racha?.streak ?? 0)).font(.headline)
-                        Text("días seguidos").font(.subheadline).foregroundStyle(.secondary)
+        MiDia(racha: DemoUI.lleno ? MuestrasExtra.racha : datos.racha,
+              habitos: DemoUI.lleno ? MuestrasExtra.habitos : datos.habitos,
+              adherencia: DemoUI.lleno ? MuestrasExtra.adherencia : datos.adherencia)
+            .id("midia")
+    }
+
+    /// "Semana del 12 al 18 de octubre" (de lunes a domingo).
+    static func semanaActual(_ hoy: Date = .now) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2
+        cal.locale = Locale(identifier: "es_AR")
+        guard let lunes = cal.dateInterval(of: .weekOfYear, for: hoy)?.start,
+              let domingo = cal.date(byAdding: .day, value: 6, to: lunes) else { return "" }
+        let es = Locale(identifier: "es_AR")
+        let mismoMes = cal.component(.month, from: lunes) == cal.component(.month, from: domingo)
+        let desde = mismoMes
+            ? lunes.formatted(.dateTime.day().locale(es))
+            : lunes.formatted(.dateTime.day().month(.wide).locale(es))
+        let hasta = domingo.formatted(.dateTime.day().month(.wide).locale(es))
+        return "Semana del \(desde) al \(hasta)"
+    }
+}
+
+// MARK: - Mi reloj
+
+/// Oura y WHOOP (REV-08). La autorización se abre en el navegador del sistema; acá, el boceto de las filas.
+private struct MiReloj: View {
+    private let proveedores = [
+        ("Oura", "Anillo · trae sueño, pulso y variabilidad reales", "circle.circle", Color.sueno),
+        ("WHOOP", "Banda · trae sueño, pulso y variabilidad reales", "waveform.path.ecg", Color.corazon),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Espacio.s) {
+            EncabezadoSeccion(titulo: "Mi reloj")
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Si usás Oura o WHOOP, conectalo y tus datos de sueño y recuperación entran solos. Apple Watch no se conecta acá: va por Salud de Apple.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, Espacio.s)
+                ForEach(Array(proveedores.enumerated()), id: \.offset) { i, p in
+                    HStack(spacing: Espacio.s) {
+                        IconoAzulejo(p.2, color: p.3)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(p.0).font(.body.weight(.semibold))
+                            Text(p.1).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: Espacio.xs)
+                        Button("Conectar") {}
+                            .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
                     }
-                }
-                Picker("Hoy", selection: $entreno) {
-                    Text("Entrené").tag(Optional("entrene"))
-                    Text("Descansé").tag(Optional("descanso"))
-                    Text("Falté").tag(Optional("falte"))
-                }
-                .pickerStyle(.segmented)
-                ForEach([("comio", "Comí según el plan", "fork.knife"), ("durmio", "Dormí bien", "bed.double.fill"), ("cardio", "Hice cardio", "figure.run")], id: \.0) { c, t, i in
-                    Toggle(isOn: Binding(get: { habitos.contains(c) }, set: { if $0 { habitos.insert(c) } else { habitos.remove(c) } })) {
-                        Label(t, systemImage: i)
-                    }
-                    .tint(Color.exito)
-                }
-                Stepper(value: $agua, in: 0...12) {
-                    Label("\(agua) vasos de agua", systemImage: "drop.fill").monospacedDigit()
+                    .padding(.vertical, Espacio.xs)
+                    if i < proveedores.count - 1 { Divider().padding(.leading, 42) }
                 }
             }
             .tarjeta()
-            .sensoryFeedback(.selection, trigger: habitos)
-        }
-    }
-
-    private func racha(_ n: Int) -> String {
-        switch n {
-        case 7...: return "🔥 En llamas"
-        case 3...: return "⚡ Buen ritmo"
-        case 1...: return "✨ Arrancando"
-        default: return "💤 A retomar"
         }
     }
 }
