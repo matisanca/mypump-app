@@ -74,7 +74,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | Compuerta | Estado |
 |---|---|
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
-| G2 · migraciones de esquema | **tanda 1 preparada, espera OK**: `nativa_001_recibo_conteos_palanca.sql`. Agrega 2 tablas y 3 funciones; no cambia nada existente. Primero el ensayo en ROLLBACK (`scripts/nativa/ensayar-migracion.py`, en la Mini), después aplicar. La app ya funciona con y sin la migración. Las sustituciones de ejercicio en el servidor quedan para una tanda 2 |
+| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. Pendiente para otra tanda: sustituciones de ejercicio en el servidor y `mypump_borrar_serie` |
 | G5 · TestFlight externo | pendiente. Los internos ya están autorizados |
 | G6 · mensajes a clientes | pendiente |
 | G7 · revisión de tiendas | pendiente |
@@ -116,7 +116,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   - **D7:** el permiso para la IA, en la app y en el servidor.
   - **G2:** OK de Mati. El ensayo de `nativa_001` y `nativa_002` dio OK, pero aplicarlas lo frenó el clasificador:
     las corre Mati.
-  - **Para desplegar (en este orden):**
+  - **Desplegado por Mati (14-oct 13:13):** las dos migraciones y los tres scripts, con el md5 igual al del repo. Lo que se corrió:
     1. Las migraciones, que ya están en la Mini:
        `ssh mini 'cd ~/agentkit-coach && venv/bin/python ~/_aplicar.py /tmp/nativa_001_recibo_conteos_palanca.sql && venv/bin/python ~/_aplicar.py /tmp/nativa_002_consentimiento_ia.sql'`
     2. Los scripts, con backup:
