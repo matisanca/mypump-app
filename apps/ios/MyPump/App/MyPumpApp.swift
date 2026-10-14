@@ -116,6 +116,11 @@ struct Raiz: View {
             withAnimation(.snappy) { navegacion.ir(a: destino) }
             CentroAvisos.shared.destino = nil
         }
+        // `?diag=health` (SAL-13): el diagnóstico de Salud directo, sin los cinco toques. Sin cuenta no hay qué diagnosticar.
+        .sheet(isPresented: Binding(get: { CentroAvisos.shared.diagnosticoSalud && modelo.salud != nil },
+                                    set: { if !$0 { CentroAvisos.shared.diagnosticoSalud = false } })) {
+            if let salud = modelo.salud { NavigationStack { DiagnosticoSaludView(modelo: salud) } }
+        }
     }
 
     private var entreno: some View { EntrenoView(datos: datos).islaDeDescanso() }
