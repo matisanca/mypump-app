@@ -588,8 +588,109 @@ for (const [tz, y, mo, d, nombre] of [['America/New_York', 2026, 11, 4, 'zona-nu
     almacen: a, estado: { mypump_health_connected: '1', mypump_health_last_sync: '2026-10-14T13:59:00.000Z' } });
 }
 
+// ── Las cards (cliente.html): qué valor gana cada día, los motivos del score, la regularidad ──
+// Las funciones salen de cliente.html@REF por su texto (como generar-vectores.mjs) y corren con un STATE armado.
+const HTML = mostrar('public/cliente.html');
+function extraerFn(nombre) {
+  const i = HTML.indexOf(`function ${nombre}(`);
+  if (i < 0) throw new Error(`no encontré function ${nombre}( en cliente.html@${REF}`);
+  let prof = 0;
+  for (let k = HTML.indexOf('{', i); k < HTML.length; k++) {
+    if (HTML[k] === '{') prof++;
+    else if (HTML[k] === '}' && --prof === 0) return HTML.slice(i, k + 1);
+  }
+  throw new Error(`function ${nombre} sin cierre`);
+}
+function extraerObjeto(nombre) {
+  const i = HTML.indexOf(`const ${nombre} = {`);
+  if (i < 0) throw new Error(`no encontré const ${nombre}`);
+  let prof = 0;
+  for (let k = HTML.indexOf('{', i); k < HTML.length; k++) {
+    if (HTML[k] === '{') prof++;
+    else if (HTML[k] === '}' && --prof === 0) return HTML.slice(i, k + 1) + ';';
+  }
+  throw new Error(`const ${nombre} sin cierre`);
+}
+function extraerLinea(nombre) {
+  const i = HTML.indexOf(`const ${nombre} =`);
+  if (i < 0) throw new Error(`no encontré const ${nombre}`);
+  return HTML.slice(i, HTML.indexOf('\n', i));
+}
+const STATE = { salud: [] };
+let HOY = '2026-10-14';
+const vista = new Function('STATE', 'hoyLocal', [extraerObjeto('_PREF_FUENTE'), extraerLinea('_fmtHs'), extraerFn('_saludValor'),
+  extraerFn('_serieSalud'), extraerFn('_recDrivers'), extraerFn('_promCircularMin'), extraerFn('_hhmmReloj'), extraerFn('_saludTieneReciente'),
+  'return { _saludValor, _serieSalud, _recDrivers, _promCircularMin, _hhmmReloj, _saludTieneReciente };'].join('\n'))(STATE, () => HOY);
+
+/** El HTML de un motivo → {flecha, antes, negrita, despues}. */
+function motivoDeHtml(div) {
+  const m = /<span class="rec-arrow">(.*?)<\/span><span>(.*)<\/span><\/div>$/.exec(div);
+  const t = m[2];
+  const b = /^(.*?)<b>(.*?)<\/b>(.*)$/.exec(t);
+  return b ? { flecha: m[1], antes: b[1], negrita: b[2], despues: b[3] } : { flecha: m[1], antes: t, negrita: '', despues: '' };
+}
+
+function vectoresVista() {
+  zona(BA);
+  const rnd = GEN.mulberry32(2026);
+  const elegir = (xs) => xs[Math.floor(rnd() * xs.length)];
+  const FUENTES_DB = ['apple_health', 'health_connect', 'oura', 'whoop', 'withings', 'polar', 'rook', 'manual', 'garmin'];
+  const TIPOS = ['pasos', 'hrv_ms', 'sueno_min', 'fc_reposo', 'peso_kg', 'actividad_min'];
+  const fechas = Array.from({ length: 12 }, (_, i) => `2026-10-${String(3 + i).padStart(2, '0')}`);
+  const valores = [];
+  for (let n = 0; n < 40; n++) {
+    const salud = [];
+    const filas = 1 + Math.floor(rnd() * 30);
+    for (let k = 0; k < filas; k++) {
+      const tipo = elegir(TIPOS);
+      const r = { fecha: elegir(fechas), tipo, valor: rnd() < 0.05 ? null : Math.round(rnd() * 100000) / 100, fuente: elegir(FUENTES_DB) };
+      if (tipo === 'hrv_ms' && rnd() < 0.7) r.detalle = { metrica: elegir(['sdnn', 'rmssd']), ventana: 'nocturna', n: 3 };
+      salud.push(r);
+    }
+    STATE.salud = salud;
+    const porTipo = {};
+    for (const tipo of TIPOS) {
+      porTipo[tipo] = { serie: vista._serieSalud(tipo), valores: fechas.map((f) => vista._saludValor(tipo, f)) };
+    }
+    HOY = elegir(fechas);
+    const recientes = [7, 60, 1, 0].map((dias) => ({ dias, nocturnos: vista._saludTieneReciente(['fc_reposo', 'hrv_ms', 'sueno_min'], dias),
+      diurnos: vista._saludTieneReciente(['pasos', 'actividad_min', 'kcal_activas'], dias) }));
+    valores.push({ salud, fechas, porTipo, hoy: HOY, recientes });
+  }
+  const motivos = [];
+  for (let n = 0; n < 120; n++) {
+    const ms = Array.from({ length: Math.floor(rnd() * 5) }, () => {
+      const tipo = elegir(['sueno', 'fc_reposo', 'hrv', 'carga', 'regularidad', 'otro']);
+      const m = { tipo, dir: elegir([1, -1, 0]) };
+      if (tipo === 'sueno') { m.valor = Math.round(rnd() * 6000) / 10; m.baseline = elegir([null, 0, Math.round(rnd() * 6000) / 10]); }
+      if (tipo === 'fc_reposo') { m.valor = 40 + Math.round(rnd() * 400) / 10; m.baseline = elegir([null, 0, 40 + Math.round(rnd() * 400) / 10]); }
+      if (tipo === 'hrv') { m.valor = Math.round(rnd() * 1500) / 10; m.baseline = elegir([null, 0, Math.round(rnd() * 1500) / 10]); }
+      if (tipo === 'carga') m.agudo = elegir([12, 30, 7.5, '9']);
+      return m;
+    });
+    const fila = { motivos: rnd() < 0.05 ? null : ms };
+    const html = vista._recDrivers(fila);
+    const divs = html ? html.split('</div>').filter(Boolean).map((d) => motivoDeHtml(d + '</div>')) : [];
+    motivos.push({ motivos: fila.motivos, salida: divs });
+  }
+  const circular = [];
+  for (let n = 0; n < 80; n++) {
+    const vals = Array.from({ length: 1 + Math.floor(rnd() * 7) }, () => Math.round((rnd() * 1800 - 180) * 10) / 10);
+    const { m, sd } = vista._promCircularMin(vals);
+    circular.push({ vals, m, sd, dormirse: vista._hhmmReloj(m - 210), sdRedondo: Math.round(sd) });
+  }
+  const relojes = [-1500.5, -30, -0.5, 0, 0.4999, 59.5, 719.5, 1439.5, 1440, 2879.4, 100000.5].map((x) => ({ x, hhmm: vista._hhmmReloj(x) }));
+  return { casos: [{ valores, motivos, circular, relojes }] };
+}
+
 // ── Escribir ─────────────────────────────────────────────────────────
 const sal = path.join(RAIZ, 'apps/shared/vectores');
+{
+  const v = vectoresVista();
+  fs.writeFileSync(path.join(sal, 'salud_vista.json'), JSON.stringify({ fuente: `public/cliente.html@${commit}`, ...v }) + '\n');
+  const c = v.casos[0];
+  console.log(`salud_vista: ${c.valores.length} escenarios de valores · ${c.motivos.length} de motivos · ${c.circular.length} de regularidad`);
+}
 fs.mkdirSync(sal, { recursive: true });
 async function escribir(nombre, lista) {
   const casos = [];

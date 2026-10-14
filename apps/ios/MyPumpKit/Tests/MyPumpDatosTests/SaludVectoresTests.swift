@@ -138,6 +138,11 @@ final class BaseGrabada: Transporte, @unchecked Sendable {
 
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
         let fn = pedido.url?.lastPathComponent ?? ""
+        // Las lecturas que hace el modelo para repintar (get_salud, get_recuperacion…) no son parte del vector.
+        guard fn == "mypump_ingest_salud" || fn == "mypump_ingest_entrenos" else {
+            let vacio = fn == "mypump_get_mostrar_recuperacion" ? "true" : "[]"
+            return (Data(vacio.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
         let cuerpo = pedido.httpBody.flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) }
         let e: JSONValue? = candado.withLock {
             guard i < esperado.count else { fallas.append("lote de más a \(fn)"); return nil }
