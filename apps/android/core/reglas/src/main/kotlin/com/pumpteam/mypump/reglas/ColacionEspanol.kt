@@ -24,7 +24,8 @@ import java.text.Normalizer
 internal object ColacionEspanol {
     private class Grupo(val caracteres: String, val secundarios: String, val terciarios: String)
 
-    // Generado de Intl.Collator('es') de node 26.0.0 (ICU 78.3, CLDR 48.0).
+    // ── Tablas: las genera scripts/nativa/colacion-android.mjs desde Intl.Collator('es') de node. No editar a mano. ──
+    // node 26.0.0 · ICU 78.3 · CLDR 48.0
     private val GRUPOS = arrayOf(
         Grupo("\u0009", "0", "0"),
         Grupo("\u000A", "0", "0"),
@@ -249,6 +250,7 @@ internal object ColacionEspanol {
         "\u0361",
     )
     private const val IGNORABLES = "\u00AD"
+    // ── Fin de las tablas generadas. ──
 
     /** Peso primario de los caracteres fuera de las tablas: después de todo lo conocido, por code point. */
     private const val PRIMARIO_DESCONOCIDO = 1_000_000
