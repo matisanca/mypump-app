@@ -31,7 +31,7 @@ final class AccesoUITests: XCTestCase {
         campo.tap()
         campo.typeText("hola")
         app.buttons["entrar"].tap()
-        XCTAssertTrue(app.staticTexts["Eso no parece un link de MyPump. Copiá el link entero que te pasó Mati."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["No reconocí ese link. Copialo entero de WhatsApp y pegalo de nuevo."].waitForExistence(timeout: 3))
     }
 
     func testEntrarPegandoElLinkDeLaCuentaDePrueba() throws {

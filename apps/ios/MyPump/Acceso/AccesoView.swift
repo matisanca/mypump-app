@@ -103,7 +103,7 @@ struct AccesoView: View {
     private func entrar(_ t: String) async {
         enfocado = false
         guard FormatoToken.extraer(de: t) != nil else {
-            error = "Eso no parece un link de MyPump. Copiá el link entero que te pasó Mati."
+            error = "No reconocí ese link. Copialo entero de WhatsApp y pegalo de nuevo."
             return
         }
         error = nil

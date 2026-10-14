@@ -30,13 +30,19 @@ struct AvisoGuardado: View {
     }
 
     private func mostrar(_ e: EstadoGuardado) {
+        // "Algo no se pudo guardar" se queda sus 9 segundos aunque la cola vuelva a quedar quieta.
+        if e == .quieto, visible == .perdido { return }
         ocultar?.cancel()
         switch e {
         case .quieto:
             // "Guardado" se deja ver un momento antes de irse.
-            if visible == .guardado { programarOcultar(1.6) } else if visible != .perdido { visible = nil }
-        case .guardando, .sinConexion:
+            if visible == .guardado { programarOcultar(1.6) } else { visible = nil }
+        case .guardando:
             visible = e
+        case .sinConexion:
+            // Como la web: avisa y se va (el banner de arriba queda si se está viendo la copia guardada).
+            visible = e
+            programarOcultar(3.2)
         case .guardado:
             visible = e
             programarOcultar(1.6)
