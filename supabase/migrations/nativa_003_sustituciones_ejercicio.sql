@@ -18,7 +18,10 @@
 -- (swap NULL) con su hora, para que un teléfono que todavía no sincronizó no
 -- reviva lo que el cliente sacó en otro. Así ningún orden de llegada pierde lo
 -- último que hizo el cliente, y que algo falte acá no significa que se borró
--- (si la tabla se vaciara, cada teléfono vuelve a subir lo suyo).
+-- (si la tabla se vaciara, cada teléfono vuelve a subir lo suyo). Una hora más
+-- de 5 minutos en el futuro (un teléfono con el reloj adelantado) se recorta a
+-- la del servidor más 5 minutos, también dentro de la entrada: si no, le
+-- ganaría a todo lo que se hiciera después.
 --
 -- La poda (las no fijadas valen solo por su día y su semana) la sigue haciendo
 -- cada teléfono y NO se manda: un teléfono viejo no puede borrar lo que el
@@ -27,7 +30,7 @@
 -- La web NO la usa (sigue con su localStorage, como hoy) y el Cerebro tampoco.
 -- Mientras no exista (PGRST202), la app sigue como hoy: solo en el teléfono.
 --
--- Solo agrega: una tabla y cinco funciones. No cambia nada existente.
+-- Solo agrega: una tabla y seis funciones. No cambia nada existente.
 --
 -- Ensayo: scripts/nativa/ensayar-migracion.py (BEGIN … ROLLBACK, con las
 -- cuentas test-nativa-ios y test-nativa-real). Se aplica SOLO con el OK de Mati.
@@ -77,6 +80,19 @@ $$;
 
 REVOKE ALL ON FUNCTION mypump_sustitucion_valida(TEXT, JSONB) FROM PUBLIC;
 REVOKE ALL ON FUNCTION mypump_sustitucion_valida(TEXT, JSONB) FROM anon, authenticated;
+
+-- El tope de una hora: la del servidor más 5 minutos (ms).
+CREATE OR REPLACE FUNCTION mypump_sustitucion_tope()
+RETURNS BIGINT
+LANGUAGE sql
+VOLATILE
+SET search_path = public
+AS $$
+  SELECT (floor(extract(epoch FROM clock_timestamp()) * 1000))::bigint + 300000;
+$$;
+
+REVOKE ALL ON FUNCTION mypump_sustitucion_tope() FROM PUBLIC;
+REVOKE ALL ON FUNCTION mypump_sustitucion_tope() FROM anon, authenticated;
 
 -- La hora de una entrada ya validada (0 si no tiene).
 CREATE OR REPLACE FUNCTION mypump_sustitucion_ts(p_swap JSONB)
@@ -136,12 +152,16 @@ SET search_path = public
 AS $$
 DECLARE
   v_cliente_id TEXT;
+  v_ts         BIGINT;
+  v_swap       JSONB;
 BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
   IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
   IF NOT mypump_sustitucion_valida(p_ex_id, p_swap) THEN
     RAISE EXCEPTION 'sustitución inválida' USING ERRCODE = '22023';
   END IF;
+  v_ts := LEAST(mypump_sustitucion_ts(p_swap), mypump_sustitucion_tope());
+  v_swap := CASE WHEN p_swap ? '_ts' THEN jsonb_set(p_swap, '{_ts}', to_jsonb(v_ts)) ELSE p_swap END;
   IF NOT EXISTS (SELECT 1 FROM mypump_rutinas WHERE id = p_rutina_id AND cliente_id = v_cliente_id) THEN
     RETURN FALSE;
   END IF;
@@ -153,7 +173,7 @@ BEGIN
   END IF;
 
   INSERT INTO mypump_exercise_swaps (cliente_id, rutina_id, ex_id, swap, cambiado_en)
-  VALUES (v_cliente_id, p_rutina_id, p_ex_id, p_swap, mypump_sustitucion_ts(p_swap))
+  VALUES (v_cliente_id, p_rutina_id, p_ex_id, v_swap, v_ts)
   ON CONFLICT (cliente_id, rutina_id, ex_id) DO UPDATE
     SET swap           = EXCLUDED.swap,
         cambiado_en    = EXCLUDED.cambiado_en,
@@ -167,8 +187,9 @@ $$;
 REVOKE ALL ON FUNCTION mypump_save_exercise_swap(TEXT, UUID, TEXT, JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION mypump_save_exercise_swap(TEXT, UUID, TEXT, JSONB) TO anon, authenticated, service_role;
 
--- La app (por la cola): "Volver a …". Deja la lápida con su hora, salvo que
--- acá haya algo más nuevo. TRUE = hecho; FALSE = la rutina ya no es del
+-- La app (por la cola): "Volver a …". Deja la lápida con la hora de lo que el
+-- cliente veía (así no borra algo más nuevo que no vio), salvo que acá haya
+-- algo más nuevo. TRUE = hecho; FALSE = la rutina ya no es del
 -- cliente; NULL = token caído. Con el tope lleno y sin fila, no hay nada que
 -- borrar: TRUE sin lápida.
 CREATE OR REPLACE FUNCTION mypump_delete_exercise_swap(
@@ -202,7 +223,7 @@ BEGIN
   END IF;
 
   INSERT INTO mypump_exercise_swaps (cliente_id, rutina_id, ex_id, swap, cambiado_en)
-  VALUES (v_cliente_id, p_rutina_id, p_ex_id, NULL, p_ts)
+  VALUES (v_cliente_id, p_rutina_id, p_ex_id, NULL, LEAST(p_ts, mypump_sustitucion_tope()))
   ON CONFLICT (cliente_id, rutina_id, ex_id) DO UPDATE
     SET swap           = NULL,
         cambiado_en    = EXCLUDED.cambiado_en,

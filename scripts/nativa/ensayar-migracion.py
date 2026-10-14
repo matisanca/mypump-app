@@ -246,6 +246,22 @@ def chequeos_003(cur, token, otro):
     da_22023("hora negativa", borrar, (token, rutina, "e1", -1))
     da_22023("ex_id vacío", borrar, (token, rutina, "", 1))
 
+    print("▸ Relojes adelantados: la hora se recorta a la del servidor + 5 min")
+    cur.execute("SELECT (floor(extract(epoch FROM clock_timestamp()) * 1000))::bigint")
+    ahora = cur.fetchone()[0]
+    dia = 86_400_000
+    chequear("una hora de mañana → TRUE", uno(guardar, (token, rutina, "f1", json.dumps(swap("Futura", ahora + dia)))) is True)
+    cur.execute("SELECT cambiado_en, (swap->>'_ts')::bigint FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid AND ex_id = 'f1'", (rutina,))
+    col, js = cur.fetchone()
+    chequear("se guarda recortada (≤ ahora + 5 min) y la entrada dice lo mismo",
+             ahora + 290_000 <= col <= ahora + 310_000 and js == col, f"{col - ahora} ms, entrada {js}")
+    chequear("algo hecho 6 minutos después le gana", uno(guardar, (token, rutina, "f1", json.dumps(swap("Después", ahora + 360_000)))) is True
+             and vivas().get("f1", {}).get("current", {}).get("nombre") == "Después")
+    chequear("una lápida de mañana también se recorta", uno(borrar, (token, rutina, "f2", ahora + dia)) is True
+             and ahora + 290_000 <= borradas().get("f2", 0) <= ahora + 310_000, str(borradas().get("f2")))
+    chequear("lo que no tiene hora sigue en 0", uno(guardar, (token, rutina, "f3", json.dumps(swap("Legado")))) is True
+             and "_ts" not in vivas()["f3"])
+
     print("▸ Tope de 300 claves por rutina")
     cur.execute("DELETE FROM mypump_exercise_swaps WHERE rutina_id = %s::uuid", (rutina,))
     cur.execute("""SELECT count(*) FILTER (WHERE r) FROM (
@@ -263,7 +279,7 @@ def chequeos_003(cur, token, otro):
               "mypump_delete_exercise_swap(text,uuid,text,bigint)"]:
         cur.execute("SELECT has_function_privilege('anon', %s, 'EXECUTE')", (f,))
         chequear(f"anon puede llamar {f.split('(')[0]}", cur.fetchone()[0] is True)
-    for f in ["mypump_sustitucion_valida(text,jsonb)", "mypump_sustitucion_ts(jsonb)"]:
+    for f in ["mypump_sustitucion_valida(text,jsonb)", "mypump_sustitucion_ts(jsonb)", "mypump_sustitucion_tope()"]:
         for rol in ["anon", "authenticated"]:
             cur.execute("SELECT has_function_privilege(%s, %s, 'EXECUTE')", (rol, f))
             chequear(f"{rol} NO puede llamar {f.split('(')[0]}", cur.fetchone()[0] is False)

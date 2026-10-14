@@ -32,13 +32,31 @@ class SustitucionesServidorReglasTest {
         val x = e("Dominadas", 10.0)
         val y = e("Remo en T", 20.0)
         val ops = SustitucionesServidor.operaciones(
-            mapOf("a" to x, "b" to x, "c" to x), mapOf("a" to x, "b" to y, "d" to y, "e" to ValorJson.Texto("rara")), "R", 777.9,
+            mapOf("a" to x, "b" to x, "c" to x), mapOf("a" to x, "b" to y, "d" to y, "e" to ValorJson.Texto("rara")), "R",
         )
         assertEquals(listOf("swap_ej", "swap_ej_del", "swap_ej"), ops.map { it.kind }, "b cambia, c se va, d entra; a igual y e no se sube")
         assertEquals(listOf("b", "c", "d"), ops.map { it.exId })
         assertEquals(listOf("swap_ej_R_b", "swap_ej_R_c", "swap_ej_R_d"), ops.map { it.clave })
         assertEquals(ValorJson.objeto("rutinaId" to ValorJson.Texto("R"), "exId" to ValorJson.Texto("b"), "swap" to y), ops[0].payload)
-        assertEquals(ValorJson.objeto("rutinaId" to ValorJson.Texto("R"), "exId" to ValorJson.Texto("c"), "ts" to ValorJson.Numero(777.0)), ops[1].payload)
+        assertEquals(
+            ValorJson.objeto("rutinaId" to ValorJson.Texto("R"), "exId" to ValorJson.Texto("c"), "ts" to ValorJson.Numero(10.0)), ops[1].payload,
+            "el borrado lleva la hora de lo que se borró: no saca algo más nuevo que no se vio",
+        )
+    }
+
+    /** Revisión 2, hallazgo 3: un cambio le gana a lo que reemplaza aunque eso tenga hora del futuro. */
+    @Test
+    fun laHoraDeUnCambioNuncaEsMenorQueLaDeLoQueReemplaza() {
+        assertEquals(1000.0, SustitucionesServidor.horaDeUnCambio(1000.4, e("X", 5.0)))
+        assertEquals(9_001.0, SustitucionesServidor.horaDeUnCambio(1000.0, e("X", 9_000.0)))
+        assertEquals(1000.0, SustitucionesServidor.horaDeUnCambio(1000.0, null))
+    }
+
+    /** La misma elección con otra hora (el servidor recortó una del futuro): queda la del servidor y no se vuelve a subir. */
+    @Test
+    fun laMismaEleccionConOtraHoraQuedaLaDelServidor() {
+        val r = SustitucionesServidor.combinar(mapOf("x" to e("X", 3000.0)), emptyMap(), mapOf("x" to e("X", 9_000_000.0)), emptyMap(), "R", emptySet())
+        assertEquals(mapOf("x" to e("X", 3000.0)), r)
     }
 
     /** Hallazgo 6: la base cuenta la clave en puntos de código (`length`), no en grafemas. */
@@ -112,6 +130,9 @@ class SustitucionesServidorReglasTest {
             mapOf("a" to e("A nativa", 50.0), "b" to e("B2", 1000.0), "n" to e("N", 1000.0), "x" to e("Solo en la nativa", 60.0)),
             SustitucionesServidor.volverDeLaAppVieja(nativa, legado, base, 1000.0),
         )
+        // Lo cambiado le gana a lo que reemplaza aunque tenga hora del futuro.
+        val futura = SustitucionesServidor.volverDeLaAppVieja(mapOf("b" to e("B", 5000.0)), legado, base, 1000.0)
+        assertEquals(e("B2", 5001.0), futura["b"])
         assertEquals(
             mapOf("a" to e("A", 1000.0), "b" to e("B2", 1000.0), "n" to e("N", 1000.0), "c" to e("C"), "x" to e("Solo en la nativa", 60.0)),
             SustitucionesServidor.volverDeLaAppVieja(nativa, legado, null, 1000.0),
@@ -304,7 +325,53 @@ class SustitucionesServidorModeloTest {
         m.encoladoSustituciones?.join()
         val ops = b.cola.operaciones()
         assertTrue(ops.size == 1 && ops.first().kind == "swap_ej_del", "volver al original reemplaza a la de guardar")
-        assertEquals(ValorJson.Numero(ahora + 5000), ops.first().payload["ts"])
+        assertEquals(ValorJson.Numero(ahora), ops.first().payload["ts"], "la hora de lo que se veía")
+    }
+
+    /** Revisión 2, hallazgo 3: con la del teléfono del futuro (otro reloj), el cambio nuevo igual le gana. */
+    @Test
+    fun unCambioLeGanaALoQueReemplazaAunqueVengaDelFuturo() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val manana = ahora + 86_400_000
+        local(b, mapOf("jal-d1-0" to swap("Dominadas", ts = manana)))
+        val m = b.modelo()
+        val sub = m.sustitutos("jal-d1-0").first { it.nombre != "Dominadas" }
+        m.sustituir("jal-d1-0", sub, fijar = true)
+        assertEquals(ValorJson.Numero(manana + 1), m.dia.value.sustituciones["jal-d1-0"]?.get("_ts"))
+    }
+
+    /** El servidor recortó una hora del futuro: la misma elección baja con la hora corregida y no se vuelve a subir. */
+    @Test
+    fun laHoraCorregidaPorElServidorSeAdoptaSinVolverASubir() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        local(b, mapOf("jal-d1-0" to swap("Dominadas", ts = ahora + 86_400_000)))
+        b.servidor.cuando("get_exercise_swaps", json(vivas = mapOf("jal-d1-0" to swap("Dominadas", ts = ahora + 300_000))))
+        val m = b.modelo()
+        m.cargar()
+        m.encoladoSustituciones?.join()
+        assertEquals(ValorJson.Numero(ahora + 300_000), m.dia.value.sustituciones["jal-d1-0"]?.get("_ts"))
+        assertTrue(claves(b).isEmpty(), "volvió a subir la del futuro: ${claves(b)}")
+    }
+
+    /**
+     * Revisión 2, hallazgo 2: lo que la app vieja sacó (por ejemplo, porque la podó) sale como borrado con la hora de lo
+     * que había, no con la de ahora: no saca lo que el cliente fijó después en otro teléfono.
+     */
+    @Test
+    fun loQueSacoLaAppViejaSeBorraConLaHoraDeLoQueHabia() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        b.disco.guardar(
+            SustitucionesServidor.archivoEncoladas("rut-prueba"),
+            ValorJson.objeto("jal-d1-0" to swap("Remo en T", ts = 100.0, fijado = false)),
+        )
+        local(b, emptyMap())
+        b.servidor.sinRed("get_exercise_swaps")
+        val m = b.modelo()
+        m.cargar()
+        m.encoladoSustituciones?.join()
+        val op = b.cola.operaciones().single()
+        assertEquals("swap_ej_del", op.kind)
+        assertEquals(ValorJson.Numero(100.0), op.payload["ts"])
     }
 
     @Test
@@ -346,7 +413,7 @@ class SustitucionesServidorModeloTest {
         assertEquals(listOf("jal-d1-0"), m.dia.value.sustituciones.keys.sorted(), "la nueva queda y la revertida no vuelve")
         val ops = b.cola.operaciones()
         assertEquals(listOf("swap_ej_rut-prueba_jal-d1-0", "swap_ej_rut-prueba_rem-d1-1"), ops.mapNotNull { it.dedupeKey }.sorted())
-        assertEquals(ValorJson.Numero(ahora), ops.first { it.kind == "swap_ej_del" }.payload["ts"], "no se reencoló con otra hora")
+        assertEquals(ValorJson.Numero(1.0), ops.first { it.kind == "swap_ej_del" }.payload["ts"], "no se reencoló con otra hora")
     }
 
     @Test
@@ -475,6 +542,26 @@ class SustitucionesSilenciosasTest {
         o.encolar("swap_ej_del", ValorJson.objeto(), "swap_ej_R_a")
         o.drenar()
         assertFalse(EstadoGuardado.GUARDANDO in estados, "$estados")
+    }
+
+    /** Revisión 2, hallazgo 1: una serie que tarda y se guarda, y una sustitución que falla sin red: no queda "Guardando…". */
+    @Test
+    fun unaSerieGuardadaYUnaSustitucionSinRedNoDejanGuardando() = enUnHilo { alcance ->
+        val estados = Collections.synchronizedList(mutableListOf<EstadoGuardado>())
+        val o = Outbox(archivo = null, reintentoAutomatico = false, alcance = alcance) { op ->
+            if (op.kind == "carga") {
+                delay(1100)
+                ResultadoOp.Respuesta(Resultado.Ok(ValorJson.Texto("row-id")))
+            } else {
+                sinRed
+            }
+        }
+        o.observar({ estados += it }, { })
+        o.encolar("carga", ValorJson.objeto(), "k1")
+        o.encolar("swap_ej", ValorJson.objeto(), "swap_ej_R_a")
+        o.drenar()
+        assertTrue(EstadoGuardado.GUARDANDO in estados, "$estados")
+        assertEquals(EstadoGuardado.QUIETO, estados.last(), "quedó colgado: $estados")
     }
 
     @Test

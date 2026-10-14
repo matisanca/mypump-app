@@ -8,7 +8,8 @@ import com.pumpteam.mypump.modelos.ValorJson
  * rutina sigue siendo la copia de trabajo, como antes; el servidor la respalda y la comparte.
  *
  * - Cada entrada lleva `_ts`: cuándo la eligió el cliente (lo de la app vieja no tiene y cuenta como 0, lo más viejo). En
- *   el servidor y al leerlo gana lo más nuevo; borrar deja una lápida con su hora, que no revive con algo más viejo.
+ *   el servidor y al leerlo gana lo más nuevo; borrar deja una lápida con la hora de lo que se borró, que no revive con
+ *   algo más viejo ni saca algo más nuevo. El servidor recorta las horas del futuro (relojes adelantados).
  * - Cada cambio del cliente sale por la cola (`swap_ej` / `swap_ej_del`, con la misma clave: gana el último). La cola no
  *   muestra avisos por estas: la sustitución ya quedó en el teléfono.
  * - Al leer el servidor, que algo falte allá NO es que se borró: lo del teléfono se vuelve a subir. Solo una lápida más
@@ -42,6 +43,15 @@ object SustitucionesServidor {
         return if (n.isFinite() && n >= 0) n else 0.0
     }
 
+    /** La entrada sin su hora: para ver si dos son la misma elección. */
+    fun sinHora(v: ValorJson?): ValorJson? = (v as? ValorJson.Objeto)?.let { ValorJson.Objeto(it.campos - "_ts") } ?: v
+
+    /**
+     * La hora de un cambio que reemplaza a `actual`: la de ahora, pero nunca menos que la de lo que reemplaza + 1 (si el
+     * reloj de este teléfono, o el del que la eligió, iba adelantado, el cambio nuevo igual tiene que ganar).
+     */
+    fun horaDeUnCambio(ahora: Double, actual: ValorJson?): Double = maxOf(Math.floor(ahora), ts(actual) + 1)
+
     /** La entrada con su hora. */
     fun conHora(v: ValorJson, ms: Double): ValorJson {
         val o = v as? ValorJson.Objeto ?: return v
@@ -62,8 +72,11 @@ object SustitucionesServidor {
 
     data class Op(val kind: String, val payload: ValorJson, val clave: String, val exId: String)
 
-    /** Las ops para pasar de `antes` a `ahora`, en un orden fijo (las claves ordenadas). Un borrado lleva la hora `ms`. */
-    fun operaciones(antes: Map<String, ValorJson>, ahora: Map<String, ValorJson>, rutinaId: String, ms: Double): List<Op> {
+    /**
+     * Las ops para pasar de `antes` a `ahora`, en un orden fijo (las claves ordenadas). Un borrado lleva la hora de lo que
+     * se borra (lo que el cliente veía): así nunca borra en el servidor algo más nuevo que no vio.
+     */
+    fun operaciones(antes: Map<String, ValorJson>, ahora: Map<String, ValorJson>, rutinaId: String): List<Op> {
         val ops = mutableListOf<Op>()
         for (exId in (antes.keys + ahora.keys).sorted()) {
             val a = antes[exId]
@@ -76,7 +89,7 @@ object SustitucionesServidor {
                     ops += Op(KIND_GUARDAR, ValorJson.Objeto(p), clave(rutinaId, exId), exId)
                 }
                 n == null && a != null -> {
-                    p["ts"] = ValorJson.Numero(Math.floor(ms))
+                    p["ts"] = ValorJson.Numero(Math.floor(ts(a)))
                     ops += Op(KIND_BORRAR, ValorJson.Objeto(p), clave(rutinaId, exId), exId)
                 }
             }
@@ -126,6 +139,8 @@ object SustitucionesServidor {
             val queda: ValorJson? = when {
                 exId in tocadas -> l
                 op != null -> if (op.kind == KIND_GUARDAR) op.payload["swap"] else null
+                // La misma elección con otra hora (el servidor recortó una del futuro): queda la del servidor.
+                v != null && l != null && sinHora(v) == sinHora(l) -> v
                 v != null && (l == null || ts(v) >= ts(l)) -> v
                 b != null && l != null && b >= ts(l) -> null
                 else -> l
@@ -149,7 +164,7 @@ object SustitucionesServidor {
         ms: Double,
     ): Map<String, ValorJson> {
         val r = LinkedHashMap(nativa)
-        for ((exId, v) in legado) if (base?.get(exId) != v) r[exId] = conHora(v, ms)
+        for ((exId, v) in legado) if (base?.get(exId) != v) r[exId] = conHora(v, horaDeUnCambio(ms, nativa[exId]))
         for (exId in base.orEmpty().keys) if (exId !in legado) r.remove(exId)
         return r
     }

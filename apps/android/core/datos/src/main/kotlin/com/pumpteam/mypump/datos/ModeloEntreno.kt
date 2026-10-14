@@ -948,11 +948,15 @@ class ModeloEntreno(
         val ef = efectivo(ex)
         invalidarHistorial(lugar)
         val ms = ahoraMs
+        val previa = _dia.value.sustituciones[lugar]
         ejecutar(
             mutarDia { d ->
                 val efectos = d.sustituir(lugar, sub, ef, fijar)
-                // SER-14: la hora del cambio (en el servidor gana lo más nuevo). Es solo de la nativa: la web no la lee.
-                d.sustituciones[lugar]?.let { d.sustituciones = d.sustituciones + (lugar to SustitucionesServidor.conHora(it, ms)) }
+                // SER-14: la hora del cambio (en el servidor gana lo más nuevo), nunca menos que la de lo que reemplaza. Es
+                // solo de la nativa: la web no la lee.
+                d.sustituciones[lugar]?.let {
+                    d.sustituciones = d.sustituciones + (lugar to SustitucionesServidor.conHora(it, SustitucionesServidor.horaDeUnCambio(ms, previa)))
+                }
                 efectos
             },
         )
@@ -1246,7 +1250,7 @@ class ModeloEntreno(
      */
     private fun encolarSustituciones() {
         val ahora = _dia.value.sustituciones
-        val ops = SustitucionesServidor.operaciones(sustitucionesGuardadas, ahora, _rutina.value.id, ahoraMs)
+        val ops = SustitucionesServidor.operaciones(sustitucionesGuardadas, ahora, _rutina.value.id)
         sustitucionesGuardadas = ahora
         val cola = outbox
         if (demo || token == null || cola == null || ops.isEmpty()) return

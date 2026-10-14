@@ -330,18 +330,19 @@ class Outbox(
             avisar(EstadoGuardado.PERDIDO)
         }
         ultimaFallo = algunaFallo
-        if (algunaFallo) {
-            if (ops.any { it.kind !in SILENCIOSAS }) {
-                huboProblema = true
-                if (abandonadasVisibles.isEmpty()) avisar(EstadoGuardado.SIN_CONEXION)
-            }
-            val base = maxOf(1, ops.firstOrNull()?.tries ?: 1, rachaSinRed)
-            programar(minOf(30_000L, 2_000L * base))
+        // Si lo que falló fue solo silencioso, para el cliente la pasada salió bien: se cierra el "Guardando…" que haya.
+        if (algunaFallo && ops.any { it.kind !in SILENCIOSAS }) {
+            huboProblema = true
+            if (abandonadasVisibles.isEmpty()) avisar(EstadoGuardado.SIN_CONEXION)
         } else if (huboProblema) {
             huboProblema = false
             avisar(EstadoGuardado.GUARDADO)
         } else if (abandonadasVisibles.isEmpty()) {
             avisar(EstadoGuardado.QUIETO)
+        }
+        if (algunaFallo) {
+            val base = maxOf(1, ops.firstOrNull()?.tries ?: 1, rachaSinRed)
+            programar(minOf(30_000L, 2_000L * base))
         }
         // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta.
         if (ops.isNotEmpty() && !algunaFallo) programar(0)
