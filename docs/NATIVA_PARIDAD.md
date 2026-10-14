@@ -244,3 +244,37 @@ Hasta que se decidan, rige lo de hoy.
 | APL-06 | iPhone + iPad (`TARGETED_DEVICE_FAMILY 1,2`), iPad digno en ancho compacto | pbxproj | 🟡 ver auditoría 14-oct | ➖ |
 | APL-07 | Health Connect: mismos 13 permisos de lectura + historial; chequeo del manifest mergeado; pantalla de justificación y URL de privacidad | `android/app/src/main/AndroidManifest.xml` | ➖ | ☐ |
 | APL-08 | Launcher `.MainActivity` (o alias) y `allowBackup` sin el token | plan | ➖ | ☐ |
+
+## Auditoría del 14-oct (columna iOS)
+
+Auditoría de solo lectura de los 103 ítems que no estaban en ✅. Quedaron 69 en ✅, 32 en 🟡 y 2 en ☐. El mismo día se
+cerraron después DIA-01, DIA-06, MIG-07, GEN-03 y GEN-06 (ver la columna iOS). La evidencia de cada ítem:
+
+- **Tests:** van por nombre. Están en `apps/ios/MyPumpKit/Tests/` (`EntrenoModeloTests.swift`, `MigracionLegadoTests.swift`,
+  etc.).
+- **XCUITest:** en `apps/ios/MyPumpUITests/`.
+- **Capturas:** relativas a `~/Developer/nativa-evidencia/`.
+
+**Lo que falta de verdad, por importancia para la tienda:**
+1. **Fotos (MIG-03, REV-02, REV-03).** No hay evidencia de que una foto, migrada o nueva, llegue al servidor. Tampoco de
+   que salga a 900 px, con calidad 0,7 y sin GPS. En el simulador, la migrada quedó pendiente porque el script no sube
+   fotos a propósito: el servicio deja 12 por día.
+2. **El link en un iPhone (ACC-01).** Lo prueba Mati en el TF-0, porque el simulador no valida el AASA (`FAKETEAMID`).
+3. **Sustituciones de ejercicio en el servidor (SER-14).** Hace falta una tabla nueva (G2).
+4. **Rutina de ejemplo para una cuenta sin plan (ACC-08).** La nativa muestra "Todavía no hay rutina". Hay que decidir si
+   D11 (la de ejemplo, solo en la demo) también vale para la rutina.
+5. **El tema oscuro guardado (GEN-02, D5).** La migración lo trae, pero ninguna vista lo aplica.
+6. **Salud (SAL-11).** Las secciones sin datos se ven vacías; la web las oculta.
+7. **Entreno (ENT-01).** Con el día cerrado no aparece el globo de comentarios. Con un solo día, la web oculta el
+   selector.
+8. **Desvíos de diseño sin registrar:**
+   - las burbujas del chat no dicen "Vos" ni "Mati": van a los costados, con el avatar (CHA-01);
+   - el siguiente ejercicio no se abre solo: aparece "Siguiente: … →" (ENT-17).
+9. **`?diag=health` (SAL-13, ACC-09).**
+10. **Hecho, falta la prueba o la captura:** APL-06 (iPad en ancho compacto, que App Review mira), ENT-15, SER-11,
+    SER-04, SES-04, SES-05, CHA-02, CHA-04, REV-04, REV-05, REV-08, GEN-05, GEN-08, DIE-01, ENT-10, ENT-11.
+
+**iOS 17 y 18:** la auditoría avisó que casi toda la evidencia de pantalla era de 26.5. Con la suite de interfaz en 17.5
+y 18.6 apareció un error real: comidas libres no abría nada en iOS 17. Se arregló en 424f5af. Desde entonces:
+- 17.5: 11/11;
+- 18.6 y 26.5: 10/10, antes de sumar la prueba de Mis datos.
