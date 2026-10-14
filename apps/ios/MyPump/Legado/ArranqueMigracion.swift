@@ -67,6 +67,8 @@ enum ArranqueMigracion {
     }
 
     private static func seguir(_ modelo: ModeloApp, faseLocalHecha: Bool) async {
+        // La copia cruda se borra 90 días después de que el servidor confirme el recibo (con el recibo solo en disco, nunca).
+        FaseRemotaLegado.podarCopias(entorno: entorno)
         if !faseLocalHecha {
             while !datosProtegidos { try? await Task.sleep(for: .seconds(2)) }
             // El modelo ya existe: si tiene cuenta, su cola está viva y la Fase L no le escribe el archivo.
@@ -83,7 +85,8 @@ enum ArranqueMigracion {
                                                   app: version)
             if r.corrio {
                 RegistroLegado.anotar("Fase R: cola \(r.aLaCola), para revisar \(r.paraRevisar), reasignadas \(r.reasignadas), reemplazadas "
-                    + "\(r.reemplazadas), no resuelven \(r.noResuelven), otro cliente \(r.otroCliente), recibo \(r.recibo?.rawValue ?? "-")"
+                    + "\(r.reemplazadas), no resuelven \(r.noResuelven), otro cliente \(r.otroCliente), swaps sin migrar \(r.swapsSinMigrar), "
+                    + "recibo \(r.recibo?.rawValue ?? "-")"
                     + (r.sinRed ? ", sin red: queda pendiente" : ""))
             }
             if r.sinRed {
