@@ -49,6 +49,7 @@ y números grandes van en Archivo.
 | `diseno` | `TemaMyPump` (claro/oscuro, `MyPump.colores`), `Iconos`, componentes (`Tarjeta`, `BotonMarca`, `Aviso`, `MarcoPantalla`, `Formato`) |
 | `raiz` | `RaizMyPump` (marca, bienvenida, sin conexión, "Actualizá MyPump" o la app), `AppConPestanas` (5 pestañas, badges, barra de la demo, banner sin conexión, aviso de guardado), `Navegacion` |
 | `acceso` | Bienvenida (`AccesoPantalla`), `Apariencia` (D5) y el permiso para la IA (`PermisoIA`, D7) |
+| `entreno` | Entreno (gemela de `apps/ios/MyPump/Entreno/`): la lista del día (`ListaEntreno`), el detalle de un ejercicio (`EjercicioPantalla`, `TablaSeries`), sustituir y cerrar el día (`Hojas`), el descanso (`Descanso`: la isla arriba de las pestañas, su reloj y el pitido), las preguntas del motor (`Preguntador`) y los textos de la app (`Bonito`, `CardAccesible`) |
 | `dieta`, `revision`, `misdatos`, `respaldo` | Dieta en modo lectura, Revisión (por ahora la entrada a Mis datos), Mis datos y las 14 fuentes |
 
 - **El tema (D5).** Sigue al teléfono, salvo `mypump-theme = "dark"` en las preferencias (lo escribe "Siempre en modo
@@ -59,6 +60,20 @@ y números grandes van en Archivo.
   una comida y el check, que todavía no existen en Android.
 - **Links (fuentes y legales).** `abrirEnNavegador` abre una Custom Tab (`androidx.browser`, OK de Mati del 14-oct),
   como el SFSafariViewController de iOS; sin un navegador que las soporte, va al navegador.
+- **Entreno.** Todo sale del motor (`ModeloEntreno`, sin cambios en `:core`). Las pantallas lo leen con `vistaDe(motor)`:
+  el motor publica una copia nueva del día en cada cambio, así que lo que recibe la vista se recompone solo cuando algo
+  cambió. El descanso va aparte (cambia cuatro veces por segundo): su isla y su reloj (`RelojDescanso`) viven arriba de las
+  pestañas, como en iOS, y terminan aunque se esté en otra. Abrir un ejercicio es estado de la pestaña (`rememberSaveable`),
+  no una ruta: Atrás vuelve a la lista y "Siguiente: … →" (D13) cambia de ejercicio. Las preguntas del motor (reabrir el
+  día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana, el bloque nuevo) viven en el ViewModel (una pregunta
+  abierta sobrevive a rotar) y lo que las espera corre en el alcance de la app.
+- **El pitido del descanso (SES-05).** Un `AudioTrack` con los dos tonos de iOS, como sonido del sistema
+  (`USAGE_ASSISTANCE_SONIFICATION`) y sin pedir el foco de audio: se mezcla con la música del cliente en vez de cortarla
+  o bajarla, y con el teléfono en silencio o vibración no suena. El aviso táctil es el del sistema
+  (`performHapticFeedback`), que no pide el permiso `VIBRATE`.
+- **Fotos de los ejercicios.** `ImagenesRemotas` (en `diseno`): `HttpURLConnection`, decodificadas al tamaño en que se
+  muestran y en memoria (sin librerías de imágenes). Las pruebas de interfaz las cambian por un "sin foto": no van a la
+  red.
 - **Recursos compartidos.** Gradle copia en la compilación (`app/build/generated/compartido/`) la fuente Archivo de la app
   de iOS, la demo y el catálogo de `apps/shared`: no hay copias en el repo que se puedan desfasar.
 - **Pruebas de interfaz (`androidTest/…/ui`).** Desde el 14-oct están `ui-test-junit4` y `ui-test-manifest` (OK de Mati):
@@ -66,7 +81,9 @@ y números grandes van en Archivo.
   propio, que no lo necesitaba: `Pantalla` lee el árbol de semántica de Compose con las mismas piezas públicas que usa esa
   librería (`ViewRootForTest.onViewCreatedCallback`, `SemanticsOwner`) y toca con las acciones de semántica: busca por
   `testTag` o por texto y espera a que aparezca. El backend es `ServidorDePrueba`, que contesta con las respuestas
-  grabadas de `test-nativa-real` (`apps/shared/fixtures`, en los assets del APK de pruebas), sin tokens ni red. La prueba
+  grabadas de `test-nativa-real` (`apps/shared/fixtures`, en los assets del APK de pruebas), sin tokens ni red. Las de Entreno
+  (`EntrenoUiTest`) usan además `tocarDeVerdad` (un toque con el dedo, que en un campo ubica el cursor: así se prueba que
+  tocar un campo lo selecciona entero, SER-04) y `teclear` (escribe donde está el cursor, como el teclado). La prueba
   del permiso de la IA arma la hoja en una `ComponentActivity` vacía que solo existe en debug (`src/debug/AndroidManifest.xml`).
   Si se agrega `ui-test-junit4` + `ui-test-manifest`, las pruebas pasan a `createAndroidComposeRule` casi sin cambios:
   las etiquetas son las mismas.
