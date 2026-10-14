@@ -272,33 +272,13 @@ struct EncabezadoSeccion: View {
     }
 }
 
-/// Renglón de respaldo científico (Apple 1.4.1): pegado a los números, gris y chico; "Ver fuentes" abre las 14
-/// fuentes. Con `estilo: .pie` es la fila del pie de Entreno, Mi Día y Dieta.
+/// Renglón de respaldo científico (Apple 1.4.1): pegado a los números, gris y chico, con "Ver fuentes" en el verde de
+/// la marca. Es solo la etiqueta: lo que abre las 14 fuentes es `RenglonFuentes` (y `PieRespaldo` para el pie de
+/// Dieta, Entreno y Mi Día), en `Respaldo/FuentesView.swift`.
 struct RespaldoCientifico: View {
-    enum Estilo { case renglon, pie }
-
-    var texto: String
-    var estilo: Estilo
-    @State private var mostrando = false
-
-    init(texto: String = "Objetivos calculados con Mifflin-St Jeor · macros según ISSN y NASEM", estilo: Estilo = .renglon) {
-        self.texto = texto
-        self.estilo = estilo
-    }
+    var texto = "Objetivos calculados con Mifflin-St Jeor · macros según ISSN y NASEM"
 
     var body: some View {
-        Button { mostrando = true } label: {
-            switch estilo {
-            case .renglon: renglon
-            case .pie: pie
-            }
-        }
-        .buttonStyle(.plain)
-        .sheet(isPresented: $mostrando) { FuentesView() }
-        .accessibilityHint("Abre las fuentes científicas del plan")
-    }
-
-    private var renglon: some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
             Image(systemName: "book.closed.fill").imageScale(.small)
             Text("\(texto) · \(Text("Ver fuentes").foregroundStyle(Color.marcaTexto).fontWeight(.semibold))")
@@ -306,29 +286,6 @@ struct RespaldoCientifico: View {
         .font(.caption2)
         .foregroundStyle(.secondary)
         .multilineTextAlignment(.leading)
-        .contentShape(.rect)
-    }
-
-    private var pie: some View {
-        HStack(spacing: Espacio.s) {
-            Image(systemName: "book.closed.fill")
-                .font(.subheadline)
-                .foregroundStyle(Color.marcaTexto)
-                .frame(width: 34, height: 34)
-                .background(Color.marcaSuave, in: .circle)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Respaldo científico del plan").font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                Text("\(texto) · \(Text("Ver fuentes").foregroundStyle(Color.marcaTexto).fontWeight(.semibold))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, Espacio.m)
-        .padding(.vertical, Espacio.s)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.tarjeta.opacity(0.6), in: .rect(cornerRadius: Radio.control + 4, style: .continuous))
         .contentShape(.rect)
     }
 }

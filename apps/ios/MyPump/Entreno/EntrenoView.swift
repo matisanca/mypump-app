@@ -77,7 +77,7 @@ struct EntrenoView: View {
                 } else {
                     diaVacio
                 }
-                RespaldoCientifico(texto: "ACSM · OMS · MedlinePlus (NIH)", estilo: .pie)
+                PieRespaldo(origen: .entreno)
                     .padding(.top, Espacio.xs)
             }
             .padding(.horizontal, Espacio.m)

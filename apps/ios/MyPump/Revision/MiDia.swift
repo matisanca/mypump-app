@@ -27,7 +27,7 @@ struct MiDia: View {
                 TarjetaRacha(racha: racha)
                 hoy
                 UltimosTreintaDias(dias: adherencia).id("dias")
-                RespaldoCientifico(texto: "NASEM · OMS · MedlinePlus (NIH)", estilo: .pie)
+                PieRespaldo(origen: .miDia)
             }
         }
         .onAppear {
