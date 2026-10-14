@@ -7,8 +7,7 @@ import MyPumpReglas
 /// `loadConexiones` y `window.MyPumpHealth`. Las cards leen de acá (SAL-09 a SAL-13, REV-08).
 ///
 /// - Apple Health: `conectar()` (onboarding y botones), `sincronizar()` (botón "Sincronizar"), `alAbrir()` y
-///   `alVolver()` (sincronizan 7 días y retoman el historial si está conectado; la vuelta a primer plano se escucha
-///   sola con la notificación del sistema).
+///   `alVolver()` (sincronizan 7 días y retoman el historial si está conectado; los llama ModeloApp).
 /// - Lecturas: `cargar()` trae 60 días de salud, 14 de recuperación y si el cliente quiere ver el score.
 /// - Mi reloj: `cargarRelojes()`, `urlConectar(_:)` (se abre en SFSafariViewController), `esperarConexion(_:)` (cada 3 s
 ///   durante 2 min) y `quitar(_:)`.
@@ -50,7 +49,6 @@ public final class ModeloSalud {
     @ObservationIgnored public let sincronizador: SincronizadorSalud?
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
-    @ObservationIgnored private var observador: (any NSObjectProtocol)?
     @ObservationIgnored private var sondeo: Task<Bool, Never>?
 
     /// La fuente del sistema. En el iPhone la pone la app (FuenteHealthKit); si nadie la puso, se busca por nombre una
@@ -81,7 +79,6 @@ public final class ModeloSalud {
 
     /// Al arrancar la app con la cuenta: las lecturas y, si Salud está conectada, los 7 días y el historial pendiente.
     public func alAbrir() async {
-        escucharPrimerPlano()
         if let s = sincronizador {
             disponible = await s.fuente.disponible()
             if s.conectado { s.retomarHistorialSiFalta(); vigilarHistorial() }
@@ -92,22 +89,14 @@ public final class ModeloSalud {
         _ = await (lecturas, relojes)
     }
 
-    /// Al volver a primer plano (`visibilitychange`): si está conectada, 7 días y retomar el historial.
+    /// Al volver a primer plano (`visibilitychange`; lo llama `ModeloApp.alVolverAPrimerPlano`): si está conectada,
+    /// 7 días y retomar el historial.
     public func alVolver() async {
         fecha = FechaLocal.hoy()
         guard let s = sincronizador, s.conectado else { return }
         s.retomarHistorialSiFalta()
         vigilarHistorial()
         await sincronizar()
-    }
-
-    /// La vuelta a primer plano se escucha con la notificación del sistema (sin importar UIKit en el kit).
-    private func escucharPrimerPlano() {
-        guard observador == nil else { return }
-        observador = NotificationCenter.default.addObserver(forName: Notification.Name("UIApplicationWillEnterForegroundNotification"),
-                                                            object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in await self?.alVolver() }
-        }
     }
 
     // MARK: - Apple Health
