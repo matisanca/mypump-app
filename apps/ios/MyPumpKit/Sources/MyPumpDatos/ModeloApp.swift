@@ -53,6 +53,9 @@ public final class ModeloApp {
     public private(set) var fotos: ModeloFotos?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
+    /// Salud, recuperación y Mi reloj (no existen en la demo ni sin cuenta). Gancho: se crea con la cuenta, arranca al
+    /// terminar `cargar()` y sincroniza en `alVolverAPrimerPlano()`; HealthKit lo pone la app (ver ModeloSalud.swift).
+    public private(set) var salud: ModeloSalud?
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet { UserDefaults.standard.set(tipoDia, forKey: "mypump_tipo_dia") }
@@ -105,7 +108,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil
         esDemo = false
         sinRedEn = []
         fase = .sinToken
@@ -149,7 +152,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil
     }
 
     private func prepararCuenta(_ t: String) {
@@ -164,6 +167,7 @@ public final class ModeloApp {
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola)
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
+        salud = ModeloSalud(cliente: cliente, token: t)
         Task { [weak self] in
             await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } },
                                 abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } })
@@ -265,6 +269,8 @@ public final class ModeloApp {
         _ = await (cargaChat, cargaMiDia, cargaRevision, cargaFotos)
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
+        // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
+        if let salud { Task { await salud.alAbrir() } }
     }
 
     /// Volvió la red (el monitor de la raíz): sale lo pendiente y, si se estaba mostrando la copia guardada, se trae todo.
@@ -292,6 +298,7 @@ public final class ModeloApp {
         await outbox?.drenar()
         await chat?.sondear()
         await fotos?.drenar()
+        await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
     }
 
     /// Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas.

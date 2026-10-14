@@ -1,9 +1,15 @@
 import SwiftUI
+import MyPumpDatos
 
 @main
 struct MyPumpApp: App {
     @UIApplicationDelegateAdaptor(DelegadoApp.self) private var delegado
     @State private var datos = Muestras.cargar()
+
+    init() {
+        // Apple Health cableada explícita (si no, ModeloSalud la busca por nombre y un renombre la apagaría sin avisar).
+        ModeloSalud.fuenteDelSistema = FuenteHealthKit()
+    }
 
     var body: some Scene {
         WindowGroup {

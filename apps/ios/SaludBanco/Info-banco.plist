@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Banco de pruebas de salud: SOLO simulador, nunca se publica. A diferencia de MyPump, escribe en Salud (siembra
+	     muestras sintéticas para comparar la nativa con el bridge de la web sobre los mismos datos). -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>El banco lee Salud para comparar la app nativa con la web sobre los mismos datos.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>El banco siembra datos sintéticos en Salud del simulador para la comparación.</string>
+</dict>
+</plist>

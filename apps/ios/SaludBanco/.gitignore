@@ -1,0 +1,3 @@
+# El plugin (MPL-2.0, de node_modules) y el bridge (de origin/main) los copia scripts/nativa/salud-banco.sh en cada
+# corrida: el banco compara contra lo publicado, nunca contra una copia vieja, y el código del plugin no entra al repo.
+externo/
