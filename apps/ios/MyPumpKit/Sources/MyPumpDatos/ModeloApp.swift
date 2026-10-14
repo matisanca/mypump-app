@@ -358,6 +358,16 @@ public final class ModeloApp {
         _ = await entreno?.alVolverAPrimerPlano()
     }
 
+    /// GEN-05 (`avisarPlanIncompleto`): arriba de Revisión cuando al plan publicado le falta algo. No es para el
+    /// cliente: es para que la captura que le manda a Mati diga qué republicar, en vez de "no me carga".
+    public var avisoPlanIncompleto: (texto: String, detalle: String)? {
+        guard !esDemo else { return nil }
+        let p = problemasDieta + (entreno?.problemas ?? [])
+        guard !p.isEmpty else { return nil }
+        return ("A tu plan le falta información y algunas cosas pueden verse raras. Avisale a Mati y lo republica.",
+                p.prefix(3).joined(separator: " · "))
+    }
+
     /// Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas.
     public var pendientesDeLaSemana: (faltaCheck: Bool, faltanFotos: Bool, total: Int) {
         guard let revision, let fotos else { return (false, false, 0) }
