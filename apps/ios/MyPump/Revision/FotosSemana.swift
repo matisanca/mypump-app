@@ -140,39 +140,50 @@ private struct MarcoPose: View {
                 }
                 .padding(Espacio.s)
             } else {
-                ZStack {
-                    if let url = estado.miniatura {
-                        AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.25))) { f in
-                            if let img = f.image { img.resizable().scaledToFill() } else { Color.campo }
+                // El marco pone el tamaño (un tercio del ancho, 3:4); la foto va detrás y no lo empuja, y el nombre y
+                // el tilde se ubican contra el marco.
+                Color.clear
+                    .aspectRatio(3 / 4, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        if let url = estado.miniatura {
+                            AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.25))) { f in
+                                if let img = f.image { img.resizable().scaledToFill() } else { Color.campo }
+                            }
                         }
-                        .overlay(alignment: .bottom) {
+                    }
+                    .overlay {
+                        if estado.miniatura == nil {
+                            VStack(spacing: Espacio.xs) {
+                                icono
+                                Text(nombre).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                                    .lineLimit(1).minimumScaleFactor(0.75)
+                                Text(detalle).font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .overlay(alignment: .bottom) {
+                        if estado.miniatura != nil {
                             Text(nombre)
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.white)
-                                .padding(.vertical, 6)
+                                .padding(.top, 14)
+                                .padding(.bottom, 8)
                                 .frame(maxWidth: .infinity)
                                 .background(LinearGradient(colors: [.clear, .black.opacity(0.55)], startPoint: .top, endPoint: .bottom))
                         }
-                        .overlay(alignment: .topTrailing) {
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if estado.miniatura != nil {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 10, weight: .heavy))
                                 .foregroundStyle(Color.sobreMarca)
                                 .frame(width: 22, height: 22)
                                 .background(Color.marca, in: .circle)
-                                .padding(6)
-                        }
-                    } else {
-                        VStack(spacing: Espacio.xs) {
-                            icono
-                            Text(nombre).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
-                                .lineLimit(1).minimumScaleFactor(0.75)
-                            Text(detalle).font(.caption2).foregroundStyle(.secondary)
+                                .padding(8)
                         }
                     }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .aspectRatio(3 / 4, contentMode: .fit)
-                .clipShape(forma)
+                    .clipShape(forma)
             }
         }
         .background(Color.campo.opacity(0.5), in: forma)
