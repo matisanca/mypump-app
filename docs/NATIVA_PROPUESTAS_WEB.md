@@ -51,3 +51,24 @@ aviso en Dieta. Solo hay una línea en Revisión. El cliente la lee como su plan
 **Nativa:** dice "Todavía no hay plan de comidas. Cuando Mati publique tu dieta, la vas a ver acá."
 
 **Web** (opcional): hacer lo mismo, o al menos un cartel "Ejemplo, todavía no tenés dieta" arriba de la de ejemplo.
+
+## 4. La política de privacidad cuenta que se puede decir que no a la IA (D7)
+
+**Qué pasa.** La app nativa pide permiso antes de usar la IA. Si el cliente dice que no, ningún proveedor recibe sus
+datos (`nativa_002`, `chat_worker`, `centinela`). `privacidad.html` ya nombra a Anthropic y a OpenAI, pero no dice que
+existe esa opción.
+
+**Web** (`public/privacidad.html`, después del párrafo "Cualquier consulta, pedido de cambio o mención de un síntoma…",
+línea ~157 de `origin/main` 684b3e2):
+
+```diff
+   <p>Cualquier consulta, pedido de cambio o mención de un síntoma <strong>la
+   responde Mati en persona</strong>, siempre. Y todo lo que escribís en el chat lo
+   ve él.</p>
++  <h3>Podés decir que no</h3>
++  <p>En la app de iPhone y de Android te pedimos permiso antes de usar estos
++  proveedores de inteligencia artificial. Si no aceptás, <strong>ninguno recibe
++  tus datos</strong>: el chat lo responde Mati, las fotos de comida no se analizan y
++  tu revisión semanal se prepara sin IA. Lo podés cambiar cuando quieras en
++  <strong>Revisión → Mis datos → Asistente de IA</strong>.</p>
+```

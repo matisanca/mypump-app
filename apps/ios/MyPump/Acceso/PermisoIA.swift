@@ -26,7 +26,7 @@ struct PermisoIAView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: Espacio.m) {
                     fila("bubble.left.and.bubble.right.fill", "Chat",
-                         "Tus mensajes y el resumen de tu check (por ejemplo, tu peso), para preparar la respuesta. Lo que es sobre tu plan, tu salud o tus números lo contesta Mati.")
+                         "Tus mensajes, tu nombre de pila y el resumen de tu check (por ejemplo, tu peso), para preparar la respuesta. Lo que es sobre tu plan, tu salud o tus números lo contesta Mati.")
                     fila("camera.fill", "Fotos",
                          "La foto de un plato o de una etiqueta que mandes a analizar, para calcular los valores.")
                     fila("checklist", "Revisión semanal",

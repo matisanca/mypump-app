@@ -53,7 +53,7 @@ Mis datos), and at https://app.mypumpteam.com/privacidad.html.
 ```
 
 **Antes de enviar, revisar:**
-- **D7 decidido (14-oct): permiso con un "no" real que cubre TODO** (chat, fotos y la ronda del domingo). Está hecho en la app y en el servidor, y espera que se aplique `nativa_002` y se desplieguen `chat_worker`, `sugerir_pendientes` y `centinela` en la Mini. **Falta (G3, web):** que `privacidad.html` nombre a OpenAI y a Anthropic como proveedores de IA.
+- **D7 decidido (14-oct): permiso con un "no" real que cubre TODO** (chat, fotos y la ronda del domingo). Está hecho en la app y en el servidor, y espera que se aplique `nativa_002` y se desplieguen `chat_worker`, `sugerir_pendientes` y `centinela` en la Mini. **Falta (G3, web):** `privacidad.html` ya nombra a OpenAI y a Anthropic. Hay que sumarle el párrafo del permiso (propuesta 4 de `NATIVA_PROPUESTAS_WEB.md`).
 - **Antecedentes de D7 (IA de terceros, 5.1.2(i)):** Apple pide decir con quién se comparten los datos (también una IA de terceros) y
   pedir permiso explícito antes. Lo que hay hoy (verificado en `origin/main` el 14-oct):
   - **Chat:** `pump-centinela/chat_worker.py` corre Codex (OpenAI, con la cuenta de ChatGPT de la Mini). Ve el hilo y
