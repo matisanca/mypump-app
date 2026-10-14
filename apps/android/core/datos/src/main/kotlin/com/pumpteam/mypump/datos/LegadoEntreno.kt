@@ -83,6 +83,9 @@ data class LegadoEntreno(
          * `legado-entreno.json` del disco de la cuenta. Acepta las claves crudas (`{"mypump_sesion_…": "…", …}` o
          * `{"claves": {…}}`) o la forma por día: `{"dias": {"d1": {"sesionId", "_semana" | "semana", "_start" | "inicio",
          * "_finalizada" | "finalizada"}}, "descanso": {"endsAt", "target", "autoCloseAt"}, "diaVisualizado", "sustituciones"}`.
+         *
+         * También la que deja la migración ([EntrenoLegado], [EjecutorLegado]): `"sesiones"` en vez de `"dias"`, el arranque
+         * en `"start"` y `"diaVisualizado"` por rutina (`{rutinaId: diaId}`).
          */
         fun leer(disco: Disco, token: String, rutinaId: String): LegadoEntreno? {
             val o = (disco.leer(ModeloEntreno.Archivo.LEGADO) as? JsonObject)?.let { ValorJson.desde(it) as ValorJson.Objeto }?.campos ?: return null
@@ -99,7 +102,7 @@ data class LegadoEntreno(
             (o["claves"] as? ValorJson.Objeto)?.let { return desdeAlmacenamiento(textos(it.campos), token, rutinaId) }
             if (o.keys.any { it.startsWith("mypump_") }) return desdeAlmacenamiento(textos(o), token, rutinaId)
             val sesiones = mutableListOf<SesionDia>()
-            (o["dias"] as? ValorJson.Objeto)?.campos?.forEach { (dia, x) ->
+            ((o["dias"] ?: o["sesiones"]) as? ValorJson.Objeto)?.campos?.forEach { (dia, x) ->
                 val d = x as? ValorJson.Objeto ?: return@forEach
                 fun numero(k: String): Double? = when (val v = d[k]) {
                     is ValorJson.Numero -> v.valor
@@ -111,14 +114,17 @@ data class LegadoEntreno(
                     diaId = dia,
                     sesionId = (d["sesionId"] ?: d["_sesionId"])?.comoTexto,
                     semana = (numero("_semana") ?: numero("semana"))?.takeIf { it.isFinite() && Math.abs(it) < 1e15 }?.let(::enteroTruncado),
-                    inicio = (numero("_start") ?: numero("inicio"))?.takeIf { it > 0 },
+                    inicio = (numero("_start") ?: numero("inicio") ?: numero("start"))?.takeIf { it > 0 },
                     finalizada = fin == ValorJson.Booleano(true) || fin == ValorJson.Texto("1") || fin == ValorJson.Numero(1.0),
                 )
             }
             return LegadoEntreno(
                 sesiones = sesiones.sortedBy { it.diaId },
                 descanso = o["descanso"]?.let { Descanso.Guardado.desde(it) },
-                diaVisualizado = o["diaVisualizado"]?.comoTexto,
+                diaVisualizado = when (val d = o["diaVisualizado"]) {
+                    is ValorJson.Objeto -> d[rutinaId]?.comoTexto
+                    else -> d?.comoTexto
+                },
                 sustituciones = (o["sustituciones"] as? ValorJson.Objeto)?.campos,
             )
         }

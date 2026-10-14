@@ -123,7 +123,10 @@ internal object Lector {
 }
 
 /** `Double(String)` de Swift (strtod con locale C, entero o nada): decimal, hexadecimal, inf/infinity/nan. */
-internal object NumeroSwift {
+object NumeroSwift {
+    /** `trimmingCharacters(in: .whitespaces)`: categoría Zs de Unicode más el tabulador (los saltos de línea no). */
+    fun recortarEspacios(s: String): String = s.trim { c -> c == '\t' || Character.getType(c) == Character.SPACE_SEPARATOR.toInt() }
+
     private val DECIMAL = Regex("[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
     private val HEXA = Regex("([+-]?)0[xX]((?:[0-9a-fA-F]+(?:\\.[0-9a-fA-F]*)?|\\.[0-9a-fA-F]+))(?:[pP]([+-]?[0-9]+))?")
 
