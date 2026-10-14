@@ -32,13 +32,15 @@ struct EjercicioView: View {
                             VStack(alignment: .leading, spacing: Espacio.l) {
                                 encabezado(lector); metricas; nota; comoSeHace
                             }
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, alignment: .top)
                             .fixedSize(horizontal: false, vertical: true)
+                            .topeArriba()
                             VStack(alignment: .leading, spacing: Espacio.l) {
                                 series; aSuperar; acciones(lector); comentarios; cierre
                             }
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, alignment: .top)
                             .fixedSize(horizontal: false, vertical: true)
+                            .topeArriba()
                         }
                         .anchoLectura(Ancho.doble)
                     } else {

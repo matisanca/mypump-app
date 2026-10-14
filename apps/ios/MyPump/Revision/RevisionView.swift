@@ -25,11 +25,13 @@ struct RevisionView: View {
                             // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                             HStack(alignment: .top, spacing: Espacio.l) {
                                 VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso }
-                                    .frame(maxWidth: .infinity)
+                                    .frame(maxWidth: .infinity, alignment: .top)
                                     .fixedSize(horizontal: false, vertical: true)
+                                    .topeArriba()
                                 VStack(alignment: .leading, spacing: Espacio.xl) { miDia; reloj }
-                                    .frame(maxWidth: .infinity)
+                                    .frame(maxWidth: .infinity, alignment: .top)
                                     .fixedSize(horizontal: false, vertical: true)
+                                    .topeArriba()
                             }
                             .anchoLectura(Ancho.doble)
                         } else {

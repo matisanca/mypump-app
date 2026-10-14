@@ -279,6 +279,10 @@ extension View {
     func esqueleto() -> some View { modifier(Esqueleto()) }
     func margenesDeLectura(_ maximo: CGFloat = Ancho.lectura) -> some View { modifier(MargenesDeLectura(maximo: maximo)) }
 
+    /// Para las columnas de iPad (`HStack(alignment: .top)`): el tope de la columna es su borde de arriba. Sin esto,
+    /// un gráfico de Swift Charts adentro publica su propia guía `.top` y la columna entera baja unos puntos.
+    func topeArriba() -> some View { alignmentGuide(.top) { _ in 0 } }
+
     /// Columna de lectura: en iPad el contenido no pasa de `maximo` y queda centrado.
     func anchoLectura(_ maximo: CGFloat = Ancho.lectura) -> some View {
         frame(maxWidth: maximo).frame(maxWidth: .infinity)

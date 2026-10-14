@@ -94,18 +94,29 @@ struct ProgresoView: View {
     }
 
     private func lista(_ ss: [Seccion], ejercicios: Int) -> some View {
-        let columnas = claseAncho == .regular
-            ? [GridItem(.flexible(), spacing: Espacio.l, alignment: .top), GridItem(.flexible(), spacing: Espacio.l, alignment: .top)]
-            : [GridItem(.flexible(), alignment: .top)]
-        return ScrollView {
+        ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 // Con letra de accesibilidad los totales van uno debajo del otro (no se cortan las palabras).
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: Espacio.s) { totales(ejercicios, sesiones) }
                     VStack(spacing: Espacio.s) { totales(ejercicios, sesiones) }
                 }
-                LazyVGrid(columns: columnas, alignment: .leading, spacing: Espacio.l) {
-                    ForEach(ss) { s in seccion(s) }
+                if claseAncho == .regular {
+                    // iPad: dos columnas que se llenan parejas (cada sección va a la más corta), sin los huecos de
+                    // una grilla cuando una sección tiene 1 ejercicio y la de al lado 7.
+                    let (izquierda, derecha) = Self.repartir(ss)
+                    HStack(alignment: .top, spacing: Espacio.l) {
+                        VStack(alignment: .leading, spacing: Espacio.l) { ForEach(izquierda) { seccion($0) } }
+                            .frame(maxWidth: .infinity, alignment: .top)
+                            .topeArriba()
+                        VStack(alignment: .leading, spacing: Espacio.l) { ForEach(derecha) { seccion($0) } }
+                            .frame(maxWidth: .infinity, alignment: .top)
+                            .topeArriba()
+                    }
+                } else {
+                    LazyVStack(alignment: .leading, spacing: Espacio.l) {
+                        ForEach(ss) { s in seccion(s) }
+                    }
                 }
             }
             .padding(.horizontal, Espacio.m)
@@ -114,6 +125,17 @@ struct ProgresoView: View {
             .anchoLectura(claseAncho == .regular ? Ancho.doble : Ancho.lectura)
         }
         .refreshable { await progreso?.cargar(rutina: modelo.rutina) }
+    }
+
+    /// Reparte las secciones en dos columnas por altura estimada (encabezado + filas), en orden.
+    static func repartir(_ ss: [Seccion]) -> ([Seccion], [Seccion]) {
+        var a: [Seccion] = [], b: [Seccion] = []
+        var altoA = 0, altoB = 0
+        for s in ss {
+            let alto = 1 + s.lineas.count * 2
+            if altoA <= altoB { a.append(s); altoA += alto } else { b.append(s); altoB += alto }
+        }
+        return (a, b)
     }
 
     @ViewBuilder
