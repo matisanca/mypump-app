@@ -24,6 +24,9 @@ Hasta que se decidan, rige lo de hoy.
 | D7 | IA de terceros (5.1.2(i)) | sin aviso; la IA habla como Mati | consentimiento único al abrir el chat o la foto del plato |
 | D8 | Fin de descanso con la app en segundo plano | sin aviso | notificación local |
 | D9 | Borrado de cuenta | solo `eliminar-datos.html` (mail) | link desde Mis datos, más una RPC opcional que solo registra el pedido |
+| D11+ | Sin plan publicado | la web muestra la rutina de ejemplo con "Modo demo" | **decidido 14-oct:** como la dieta (D11), "Todavía no hay rutina"; la de ejemplo solo en la demo |
+| D12 | Burbujas del chat | "Vos" / "Mati" escrito en cada mensaje | **decidido 14-oct:** a los costados con el avatar de Mati (el autor queda para VoiceOver) |
+| D13 | Al terminar un ejercicio | la web abre sola la card siguiente | **decidido 14-oct:** botón "Siguiente: … →" (navegación nativa) |
 
 ## ACC · Acceso, errores y demo
 
@@ -36,7 +39,7 @@ Hasta que se decidan, rige lo de hoy.
 | ACC-05 | Servicio caído o sin red sin copia: "Sin conexión" o "Servicio fuera de línea", Reintentar, una sola recarga automática al volver la red | `C:3485-3504` | ✅ bienvenida/demo (XCUITest) | ☐ |
 | ACC-06 | Arranque sin red con copia offline: muestra plan y dieta guardados con el banner sin conexión | `C:8699-8711`, `8933` | ✅ copia offline (integración) + banner | ☐ |
 | ACC-07 | Demo: datos empaquetados, **sin red ni token**, sin chat, comentarios, comidas libres, relojes ni onboarding; Mi Día sembrado (racha 3) | `C:1240`, `1409-1550`, `8870` | ✅ bienvenida/demo (XCUITest) | ☐ |
-| ACC-08 | Sin rutina usable → rutina de ejemplo con banner "Modo demo — Mati todavía no publicó tu plan". Sin dieta → dieta de ejemplo con escrituras apagadas (`_dietaEjemplo`) | `C:8766-8800` | ☐ ver auditoría 14-oct | ☐ |
+| ACC-08 | Sin rutina usable → rutina de ejemplo con banner "Modo demo — Mati todavía no publicó tu plan". Sin dieta → dieta de ejemplo con escrituras apagadas (`_dietaEjemplo`) | `C:8766-8800` | ➖ D11+ (decisión de Mati, 14-oct): sin rutina, "Todavía no hay rutina"; con un motor de ejemplo, el aviso de la web (ListaEntreno deEjemplo) | ☐ |
 | ACC-09 | Parámetros `?scene=<destino>` (validado contra las escenas) y `?diag=health` | `C:8587-8594`, `8673` | 🟡 ?scene= contra las 7 escenas (AvisosTests.escenaDelLink) y ?diag=health (2b41011); falta probar el link en un iPhone | ☐ |
 | ACC-10 | Cambio de cuenta: llega un link con otro token válido → reemplaza (como la web) | `deeplink.js:15-43` | ✅ otro token válido reemplaza | ☐ |
 
@@ -74,7 +77,7 @@ Hasta que se decidan, rige lo de hoy.
 | ENT-14 | Avanzar de semana: visible si semana < total; la confirmación cambia si el día está incompleto; `avanzar_semana(actual+1)`, que nunca retrocede; borra los cachés de sesión y recarga; error "Sin conexión" o "No se pudo pasar de semana" | `C:3108-3139`, `3178-3194`, mig 077 | ✅ ver auditoría 14-oct | ☐ |
 | ENT-15 | Última semana con bloque en cola: "🎉 Empezar bloque nuevo" → `activar_siguiente` | `C:3141-3176`, `3740-3748` | ✅ empezarBloqueNuevo_activaBorraLasSesiones_yRecarga (761187e) y los caminos que fallan | ☐ |
 | ENT-16 | Vacío: "Este día no tiene ejercicios cargados…" | `C:3634` | ✅ ver auditoría 14-oct | ☐ |
-| ENT-17 | Al completar un ejercicio se abre el siguiente pendiente. Con todos hechos: "¡Día completado!" → siguiente día, o avanzar si es el último | `C:3196-3229` | 🟡 ver auditoría 14-oct | ☐ |
+| ENT-17 | Al completar un ejercicio se abre el siguiente pendiente. Con todos hechos: "¡Día completado!" → siguiente día, o avanzar si es el último | `C:3196-3229` | ✅ D13 (decisión de Mati, 14-oct): "Siguiente: … →" en vez de abrir solo; el motor deja abierto el siguiente y "¡Día completado!" sale una vez (diaCompleto_unaSolaVez) | ☐ |
 
 ## SER · Series, historial, sustitutos y variantes
 
@@ -171,7 +174,7 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| CHA-01 | Burbujas "Vos" / "Mati", separadores Hoy / Ayer / fecha; vacío "Escribile a Mati…"; "Ver mensajes anteriores" de a 30 | `C:2248-2538` | 🟡 modelo ✅ (páginas de 30, `HiloChat` = chatMerge), falta la pantalla · ver auditoría 14-oct | ☐ |
+| CHA-01 | Burbujas "Vos" / "Mati", separadores Hoy / Ayer / fecha; vacío "Escribile a Mati…"; "Ver mensajes anteriores" de a 30 | `C:2248-2538` | ✅ D12 (decisión de Mati, 14-oct): separadores Hoy/Ayer/fecha y burbujas a los costados con el avatar; vacío "Escribile a Mati" y "Ver mensajes anteriores" en captura; HiloChatTests | ☐ |
 | CHA-02 | Hasta 1000 caracteres; lo que estás escribiendo sobrevive cuando llega un mensaje | idem | ✅ nunca sale más de 1000: pasado el límite, contador en rojo y Enviar apagado (ChatUITests, 26.5 y 17.5). Desvío chico: la web corta con maxlength; acá recortar mientras se escribe dejaba un carácter de más a la vista que se perdía al mandar. El borrador vive en su propio estado: no lo pisa un mensaje que llega | ☐ |
 | CHA-03 | Envío por el outbox con "enviando…" al instante; se reemplaza con la fila real; "no salió" + Reintentar si se abandona | `C:2443-2470` | ✅ modelo ✅ (tests + backend real), falta la pantalla · ver auditoría 14-oct | ☐ |
 | CHA-04 | Poll de 15 s con el chat abierto, 45 s en otra pantalla, nada en segundo plano; al abrir marca leídos (`general`) | `C:2493`, `2483` | ✅ ChatLeidoAlLlegarTests (leídos al abrir, el reinicio del sondeo) y SondeoChatTests: 45 s cerrado, 15 s abierto y nada parado (la app en segundo plano lo para: ModeloApp.enPrimerPlano) | ☐ |
