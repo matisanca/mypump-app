@@ -11,18 +11,24 @@ struct RaizApp<Contenido: View>: View {
     @Environment(\.scenePhase) private var fase
     @State private var onboarding = false
 
+    private static var versionInstalada: String? { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String }
+
     var body: some View {
         Group {
             switch modelo.fase {
             case .listo:
-                contenido()
-                    .safeAreaInset(edge: .top, spacing: 0) {
-                        if modelo.esDemo { BarraDemo(modelo: modelo) } else if modelo.desdeCache { BannerSinConexion() }
-                    }
-                    .overlay(alignment: .bottom) {
-                        AvisoGuardado(estado: modelo.estadoGuardado)
-                            .padding(.bottom, 96)   // arriba de la barra de pestañas
-                    }
+                if PalancaRemota.debajo(Self.versionInstalada, de: modelo.palanca.versionMinimaIOS) {
+                    ActualizarApp()
+                } else {
+                    contenido()
+                        .safeAreaInset(edge: .top, spacing: 0) {
+                            if modelo.esDemo { BarraDemo(modelo: modelo) } else if modelo.desdeCache { BannerSinConexion() }
+                        }
+                        .overlay(alignment: .bottom) {
+                            AvisoGuardado(estado: modelo.estadoGuardado)
+                                .padding(.bottom, 96)   // arriba de la barra de pestañas
+                        }
+                }
             case .cargando:
                 Arranque()
             case .sinServicio:
@@ -126,6 +132,31 @@ final class VigiaDeRed {
 
 /// Sin copia guardada y sin poder traer el plan (ACC-05): "Sin conexión" o "Servicio fuera de línea" según lo que pasó,
 /// reintentar a mano y una sola recarga automática cuando vuelve la red.
+/// La palanca remota pide una versión más nueva (`version_minima_ios`): una versión con un problema grave deja de
+/// mostrarse hasta actualizar. La cola sigue subiendo sola lo que el cliente ya cargó.
+private struct ActualizarApp: View {
+    @Environment(\.openURL) private var abrir
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("Actualizá MyPump", systemImage: "arrow.down.app")
+        } description: {
+            Text("Hay una versión nueva que necesitás para seguir. Lo que ya cargaste está guardado.")
+        } actions: {
+            Button {
+                abrir(URL(string: "itms-apps://apps.apple.com/app/id6793259380")!)
+            } label: {
+                Text("Abrir el App Store").fontWeight(.semibold)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color.marca)
+            .foregroundStyle(Color.sobreMarca)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(FondoMarca())
+    }
+}
+
 private struct SinConexion: View {
     let modelo: ModeloApp
     @State private var reintentando = false

@@ -76,13 +76,20 @@ enum ArranqueMigracion {
                 await modelo.entrar(con: t)
             }
         }
-        guard FaseRemotaLegado.hayPendiente(entorno: entorno) else { return }
+        let recibos = entorno.carpeta.appendingPathComponent("recibos")
         while FaseRemotaLegado.hayPendiente(entorno: entorno) {
             await esperarCargaConRed(modelo)
             guard let token = modelo.token, let info = modelo.info, let cola = modelo.outbox else { await cambio(modelo); continue }
+            // La palanca remota (nativa_001). Sin poder leerla se espera, como sin red; sin la tabla vale la de fábrica.
+            guard let palanca = await PalancaRemota.leer(modelo.cliente) else { await esperarOtraCarga(modelo); continue }
+            if !palanca.opsLegadas, FaseRemotaLegado.faseRPendiente(entorno: entorno) {
+                RegistroLegado.anotar("Fase R en pausa por la palanca remota: se reintenta con la próxima carga")
+                await esperarOtraCarga(modelo)
+                continue
+            }
             let r = await FaseRemotaLegado.correr(entorno: entorno, token: token, clienteId: info.clienteId, cliente: modelo.cliente,
-                                                  outbox: cola, recibo: ReciboEnDisco(carpeta: entorno.carpeta.appendingPathComponent("recibos")),
-                                                  app: version)
+                                                  outbox: cola, recibo: ReciboEnServidor(cliente: modelo.cliente, carpeta: recibos),
+                                                  conteos: ConteosRPC(cliente: modelo.cliente), app: version)
             if r.corrio {
                 RegistroLegado.anotar("Fase R: cola \(r.aLaCola), para revisar \(r.paraRevisar), reasignadas \(r.reasignadas), reemplazadas "
                     + "\(r.reemplazadas), no resuelven \(r.noResuelven), otro cliente \(r.otroCliente), swaps sin migrar \(r.swapsSinMigrar), "
@@ -94,8 +101,20 @@ enum ArranqueMigracion {
                 await esperarOtraCarga(modelo)
                 continue
             }
-            await escribirDeVuelta()
+            if palanca.escrituraVuelta {
+                await escribirDeVuelta()
+            } else {
+                RegistroLegado.anotar("escritura de vuelta en pausa por la palanca remota: se reintenta en el arranque siguiente")
+            }
             break
+        }
+        // Los recibos que quedaron solo en el disco (antes de la nativa_001, o sin red), otra vez al servidor.
+        if ReciboEnServidor.hayPendientes(carpeta: recibos) {
+            await esperarCargaConRed(modelo)
+            if let token = modelo.token, let info = modelo.info {
+                let n = await FaseRemotaLegado.reenviarRecibos(entorno: entorno, token: token, clienteId: info.clienteId, cliente: modelo.cliente)
+                if n > 0 { RegistroLegado.anotar("recibos reenviados y confirmados: \(n)") }
+            }
         }
     }
 
