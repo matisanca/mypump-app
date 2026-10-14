@@ -4,7 +4,7 @@
 Capacitor dejó en el `localStorage` del WebView? Si no pudiera, haría falta una actualización puente de la Capacitor,
 y eso toca código compartido con la web.
 
-**Respuesta en iOS 26.5:** sí, por dos caminos independientes, byte a byte y en las dos direcciones.
+**Respuesta en iOS 17.5, 18.6 y 26.5:** sí, por dos caminos independientes, byte a byte y en las dos direcciones.
 
 ## Cómo se probó (simulador "Nativa 17 (26.5)", 14-oct-2026)
 
@@ -37,6 +37,18 @@ y eso toca código compartido con la web.
 | Escritura de vuelta (`callAsyncJavaScript`) | ✅ en el segundo arranque, la Ruta B la lee **desde el disco** |
 | Vuelta atrás: Capacitor reinstalada encima de la espía (camino del plan B) | ✅ ve la marca de la nativa y su outbox intacto, y sigue escribiendo en el mismo archivo |
 
+### iOS 17.5 y 18.6 (14-oct, `scripts/nativa/spike-legado.sh`, sin tocar la pantalla)
+
+El script instala la Capacitor de `main`, la abre para que escriba su `localStorage`, siembra la verdad con la app
+cerrada (20 claves), instala la espía encima sin app-bound domains y la arranca dos veces.
+
+| iOS | Ruta A | Ruta B | Marca de vuelta en el 2.º arranque |
+|---|---|---|---|
+| 17.5 (iPhone 15) | ✅ 20/20 | ✅ 20/20 | ✅ leída del disco por la Ruta B |
+| 18.6 (iPhone 16) | ✅ 20/20 | ✅ 20/20 | ✅ |
+
+La ruta del archivo es la misma que en 26.5 (`WebsiteData/Default/<hash>/<hash>/LocalStorage/`).
+
 ## Lo que se aprendió
 
 - **Ruta en iOS 17+:**
@@ -57,7 +69,7 @@ y eso toca código compartido con la web.
 
 ## Lo que falta
 
-- [ ] iOS 17.5 y 18.x (runtimes bajando). Es el piso que soporta la nativa y otro WebKit.
+- [x] iOS 17.5 y 18.6: idéntico (ver tabla).
 - [ ] Matar la app justo después de la escritura de vuelta, para medir si se pierde. El diseño ya la confirma en el
   arranque siguiente con la Ruta B.
 - [ ] Datos reales de una cuenta de prueba (`test-nativa-ios`, ya sembrada) escritos por la Capacitor con red, en el

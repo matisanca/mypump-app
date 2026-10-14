@@ -75,6 +75,12 @@ public struct JSRegex: @unchecked Sendable {
                 // `[]` y `[^]` de JS: el ']' inmediato cierra la clase (vacía); en ICU sería literal.
                 if i < p.endIndex, p[i] == "^" { out.append("^"); i = p.index(after: i) }
                 continue
+            } else if c == "$" {
+                // Sin flag `m`, el `$` de JS es el fin del texto. El de ICU también acepta un salto de línea final:
+                // /^ajo$/ matchearía "ajo\n" y el alimento cambiaría de categoría.
+                out += "\\z"
+                i = p.index(after: i)
+                continue
             }
             out.append(c)
             i = p.index(after: i)

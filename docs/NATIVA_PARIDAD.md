@@ -115,23 +115,23 @@ Hasta que se decidan, rige lo de hoy.
 |---|---|---|---|---|
 | DIE-01 | Formato A (`comidas`) y B (`tipos_dia[]`, con su `macros_target`); selector entreno/descanso guardado en `mypump_tipo_dia` (global) | `C:1931`, `5255`, `5774`, `docs/SCHEMA_DIETA.md` | ☐ | ☐ |
 | DIE-02 | `normalizarDieta`: sin `macros_target` → suma de la opción A; comidas sin opciones se descartan; `tipos_dia:[]` cuenta como ausente | `C:1842-1878` | ☐ | ☐ |
-| DIE-03 | Cabecera: anillo de kcal consumidas/objetivo, "DIETA · SEM", macros objetivo, "Consumido hoy n/m" y **renglón de respaldo dentro de la card de macros** (Mifflin-St Jeor, ISSN, NASEM) | `C:5272-5312`, memoria `project_app_store_connect_metadata` | ☐ | ☐ |
-| DIE-04 | Opciones A/B/C/D **por comida** (se combinan entre comidas); la elegida vive en memoria y vuelve a A al recargar | `C:5693`, memoria `feedback_opciones_intercambiables_por_comida` | ☐ | ☐ |
-| DIE-05 | "✓ Comí" / "✗ Salté"; tocar de nuevo desmarca; la marca guarda la opción vigente | `C:5114-5183` | ☐ | ☐ |
-| DIE-06 | Consumo parcial: "Comí" + destildar alimentos → `foods_excluidos` (índices de esa opción); solo se puede mirando esa opción | `C:5140-5183`, `5740` | ☐ | ☐ |
-| DIE-07 | Consumido = comidas marcadas − excluidos (con sustituciones) + comidas libres | `C:5185` | ☐ | ☐ |
-| DIE-08 | Porción casera ✋ por alimento | `C:5464-5656` | ☐ | ☐ |
-| DIE-09 | Sustituir ↔ salvo condimentos o `swappable:false` ("Este alimento no se puede sustituir") | `C:5658` | ☐ | ☐ |
-| DIE-10 | Modal de sustitutos: búsqueda; 🌍 universales arriba con nombre en inglés; ★ propios; diferencia de kcal (bien hasta 5 %); exclusiones del cliente (cerdo, mariscos, lácteos); misma categoría y macro dominante; desvío ≤35 %; top 30 | `A:19-394`, `C:8978-9150` | ☐ | ☐ |
-| DIE-11 | Swaps anclados (`food_data._orig`): valen si esa huella está en esa posición en **cualquier** tipo de día; sin ancla se anclan y se suben; si el ancla ya no existe en ningún tipo de día se **borran** del servidor | `C:1981-2024`, `5878-6034`, test `test-swaps-anclados` | ☐ | ☐ |
-| DIE-12 | Al hidratar, lo pendiente en el outbox gana; una reversión pendiente no resucita el swap | `C:5963-6018` | ☐ | ☐ |
-| DIE-13 | `food_data` lleva macros **totales** para su `qty`; un contable va en unidades | memoria `reference_food_swaps_sobreviven_publicar` | ☐ | ☐ |
-| DIE-14 | Alimento propio: unidad g/ml/unidad/rebanada/taza/porción/cucharada, gramos por unidad, "📷 Escanear etiqueta", kcal 4/4/9 si faltan, se guarda **por 100 g**, "Crear y usar" lo aplica | `C:9327-9636` | ☐ | ☐ |
-| DIE-15 | Comida libre por foto del plato (~30 s, gramos editables que re-escalan macros, "estimado") o a mano; borrar con ✕ (optimista con rollback) | `C:5221-5448` | ☐ | ☐ |
-| DIE-16 | Si la visión falla: aviso y carga a mano | `C:9474+` | ☐ | ☐ |
+| DIE-03 | Cabecera: anillo de kcal consumidas/objetivo, "DIETA · SEM", macros objetivo, "Consumido hoy n/m" y **renglón de respaldo dentro de la card de macros** (Mifflin-St Jeor, ISSN, NASEM) | `C:5272-5312`, memoria `project_app_store_connect_metadata` | ✅ D10: objetivo + "con las opciones elegidas" (capturas `dieta/v3`) | ☐ |
+| DIE-04 | Opciones A/B/C/D **por comida** (se combinan entre comidas); la elegida vive en memoria y vuelve a A al recargar | `C:5693`, memoria `feedback_opciones_intercambiables_por_comida` | ✅ | ☐ |
+| DIE-05 | "✓ Comí" / "✗ Salté"; tocar de nuevo desmarca; la marca guarda la opción vigente | `C:5114-5183` | ➖ D10 | ☐ |
+| DIE-06 | Consumo parcial: "Comí" + destildar alimentos → `foods_excluidos` (índices de esa opción); solo se puede mirando esa opción | `C:5140-5183`, `5740` | ➖ D10 | ☐ |
+| DIE-07 | Consumido = comidas marcadas − excluidos (con sustituciones) + comidas libres | `C:5185` | ➖ D10 | ☐ |
+| DIE-08 | Porción casera ✋ por alimento | `C:5464-5656` | ✅ vectores `porcion_casera` + XCUITest `testLaMano…` | ☐ |
+| DIE-09 | Sustituir ↔ salvo condimentos o `swappable:false` ("Este alimento no se puede sustituir") | `C:5658` | ✅ | ☐ |
+| DIE-10 | Modal de sustitutos: búsqueda; 🌍 universales arriba con nombre en inglés; ★ propios; diferencia de kcal (bien hasta 5 %); exclusiones del cliente (cerdo, mariscos, lácteos); misma categoría y macro dominante; desvío ≤35 %; top 30 | `A:19-394`, `C:8978-9150` | ✅ 2.510 vectores + XCUITest `testReemplazar…` (iOS 17.5 y 26.5) | ☐ |
+| DIE-11 | Swaps anclados (`food_data._orig`): valen si esa huella está en esa posición en **cualquier** tipo de día; sin ancla se anclan y se suben; si el ancla ya no existe en ningún tipo de día se **borran** del servidor | `C:1981-2024`, `5878-6034`, test `test-swaps-anclados` | ✅ vectores `anclaje_swaps` + integración | ☐ |
+| DIE-12 | Al hidratar, lo pendiente en el outbox gana; una reversión pendiente no resucita el swap | `C:5963-6018` | ✅ `SwapsDeComidaTests` | ☐ |
+| DIE-13 | `food_data` lleva macros **totales** para su `qty`; un contable va en unidades | memoria `reference_food_swaps_sobreviven_publicar` | ✅ vectores de sustitutos | ☐ |
+| DIE-14 | Alimento propio: unidad g/ml/unidad/rebanada/taza/porción/cucharada, gramos por unidad, "📷 Escanear etiqueta", kcal 4/4/9 si faltan, se guarda **por 100 g**, "Crear y usar" lo aplica | `C:9327-9636` | ✅ `AlimentoPropioNuevoTests` + integración; escaneo sin probar con la IA | ☐ |
+| DIE-15 | Comida libre por foto del plato (~30 s, gramos editables que re-escalan macros, "estimado") o a mano; borrar con ✕ (optimista con rollback) | `C:5221-5448` | ✅ a mano: XCUITest + integración; foto sin probar con la IA | ☐ |
+| DIE-16 | Si la visión falla: aviso y carga a mano | `C:9474+` | ✅ | ☐ |
 | DIE-17 | Sin dieta: dieta de ejemplo con aviso y escrituras apagadas | `C:8784-8800` | ☐ | ☐ |
 | DIE-18 | Si cambió el día con la app abierta, al volver recarga marcas y comidas libres | `C:5049` | ☐ | ☐ |
-| DIE-19 | Fecha local con la tolerancia del servidor (+1/−7): marcar no se "desmarca solo" en otra zona horaria | memoria `project_timezone_marcar_comida` | ☐ | ☐ |
+| DIE-19 | Fecha local con la tolerancia del servidor (+1/−7): marcar no se "desmarca solo" en otra zona horaria | memoria `project_timezone_marcar_comida` | ✅ `FechaLocal` | ☐ |
 
 ## DIA · Mi Día (dentro de Revisión)
 
@@ -224,11 +224,11 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| MIG-01 | Se lee el `localStorage` viejo completo (Ruta A, verificado con la B) y se guarda una copia cruda | `NATIVA_SPIKE_ALMACENAMIENTO.md` | ✅ spike 26.5 | ☐ |
+| MIG-01 | Se lee el `localStorage` viejo completo (Ruta A, verificado con la B) y se guarda una copia cruda | `NATIVA_SPIKE_ALMACENAMIENTO.md` | ✅ spike 17.5, 18.6 y 26.5 | ☐ |
 | MIG-02 | Fase L sin red, antes de la UI: token, preferencias, importar ops sin ejecutar, caché offline | plan | ☐ | ☐ |
 | MIG-03 | Fase R con red: ejecutar ops (validando rutina y día), subir fotos, sustituciones, swaps sin migrar, recibo con conteos | plan | ☐ | ☐ |
 | MIG-04 | `anon` y `*_demo` nunca se ejecutan ni se suben | plan | ☐ | ☐ |
-| MIG-05 | Escritura de vuelta: saca las ops ejecutadas y los cachés de sesión; se confirma en el arranque siguiente | spike | ✅ spike 26.5 | ☐ |
+| MIG-05 | Escritura de vuelta: saca las ops ejecutadas y los cachés de sesión; se confirma en el arranque siguiente | spike | ✅ spike 17.5, 18.6 y 26.5 | ☐ |
 | MIG-06 | Se repite si la Capacitor volvió a escribir (downgrade, TestFlight vencido, plan B) sin duplicar | plan | ☐ | ☐ |
 | MIG-07 | Cero pérdida: conteos antes y después que cierran con el recibo | plan | ☐ | ☐ |
 
@@ -239,7 +239,7 @@ Hasta que se decidan, rige lo de hoy.
 | APL-01 | Respaldo científico pegado a cada número + modal con 14 fuentes ("Abrir fuente" en navegador interno), disclaimer último | `C:4711-4837` | ☐ | ☐ |
 | APL-02 | Política de privacidad accesible dentro de la app | 5.1.1(i) | ☐ | ☐ |
 | APL-03 | Demo accesible desde la primera pantalla ("Ver demo") | rechazo 2.1 del 24-jul | ☐ | ☐ |
-| APL-04 | Textos de permisos idénticos a los aprobados (cámara, fotos, Salud) | `ios/App/App/Info.plist` | ☐ | ➖ |
+| APL-04 | Textos de permisos idénticos a los aprobados (cámara, fotos, Salud) | `ios/App/App/Info.plist` | ✅ (cámara ampliada a plato y etiqueta) | ➖ |
 | APL-05 | `PrivacyInfo.xcprivacy` coherente con la etiqueta publicada | plan | ☐ | ➖ |
 | APL-06 | iPhone + iPad (`TARGETED_DEVICE_FAMILY 1,2`), iPad digno en ancho compacto | pbxproj | ☐ | ➖ |
 | APL-07 | Health Connect: mismos 13 permisos de lectura + historial; chequeo del manifest mergeado; pantalla de justificación y URL de privacidad | `android/app/src/main/AndroidManifest.xml` | ➖ | ☐ |

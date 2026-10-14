@@ -8,7 +8,7 @@ struct MyPumpApp: App {
 
     var body: some Scene {
         WindowGroup {
-            Raiz(datos: datos)
+            RaizApp(modelo: Proveedor.modelo) { Raiz(datos: datos) }
                 .environment(descanso)
                 .environment(sesion)
                 .tint(Color.marcaTexto)

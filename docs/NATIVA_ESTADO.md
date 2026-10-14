@@ -33,13 +33,28 @@ commitea.
 | Paso | Estado |
 |---|---|
 | Clon, hooks y estado | ✅ |
-| Toolchain Android + runtimes de iOS 17 y 18 | 🟡 JDK 21 y cmdline-tools listos; SDK 36 y emulador bajando; iOS 17.5 bajando (lento) |
+| Toolchain Android + runtimes de iOS 17 y 18 | ✅ JDK 21, SDK 36 con emulador e imagen arm64; iOS 17.5 y 18.6 (simuladores "Nativa iOS 17/18" en `simuladores-viejos.txt`) |
 | Cuentas de prueba (`scripts/nativa/sembrar.mjs`) | ✅ `test-nativa-ios`. Falta la visible para el chat |
 | `docs/NATIVA_CONTRATO.md` + `apps/shared/contrato.json` | ✅ verificado contra `pg_proc` |
 | `docs/NATIVA_PARIDAD.md` | ✅ 145 ítems con ID y 9 decisiones para G1 |
-| Prueba del almacenamiento viejo en iOS: v1.0.11, v1.0.12-b18 y main × iOS 17, 18 y 26 | 🟢 iOS 26.5 OK por las dos rutas y en las dos direcciones. Faltan 17 y 18 |
+| Prueba del almacenamiento viejo en iOS: v1.0.11, v1.0.12-b18 y main × iOS 17, 18 y 26 | ✅ 17.5, 18.6 y 26.5 por las dos rutas y en las dos direcciones (`scripts/nativa/spike-legado.sh`) |
 | Prueba del almacenamiento viejo en Android | ⏳ |
 | Bocetos en el simulador → G1 | ⏳ |
+
+## Fase 1-2 (en paralelo, desde el 14-oct)
+
+| Pieza | Estado |
+|---|---|
+| Motor: modelos, cliente RPC, cola, ModeloApp, copia offline | ✅ con integración real (`test-nativa-real`) |
+| Reglas con vectores de la web | ✅ progresión, clave, porción casera, anclaje e hidratación de swaps, sustitución de alimentos (2.510 casos) y de ejercicios (323 + 3.232 privados), alimento propio, comida libre |
+| **Dieta (iPhone)** | ✅ datos reales, sin Comí/Salté (D10), mano, reemplazo, alimento propio con escaneo, comidas libres. XCUITest en 17.5 y 26.5. Falta: dieta de ejemplo (DIE-17), recarga al cambiar el día (DIE-18) |
+| Diseño "pro" de Entreno, Chat, Revisión, Progreso y Mis datos | 🟡 agente en curso (worktree) |
+| Migración del almacenamiento viejo (Fase L/R) | 🟡 agente en curso |
+| Motor de Entreno (sugeridos, topes, variantes, sesiones, historial) | 🟡 agente en curso |
+| Android: proyecto + reglas con los mismos vectores | 🟡 agente en curso |
+
+**Herramientas nuevas:** `scripts/nativa/lanzar-sim.sh` (abre la app con una cuenta de prueba sin que el token pase por
+la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-legado.sh`.
 
 ## Compuertas
 
@@ -51,6 +66,23 @@ commitea.
 | G6 · mensajes a clientes | pendiente |
 | G7 · revisión de tiendas | pendiente |
 
+## Decisiones tomadas en autónomo (13/14-oct, Mati: "seguí sin mi intervención")
+
+| # | Decisión | Por qué |
+|---|---|---|
+| D1 | Comodín: como hoy (un día más) | Paridad por defecto |
+| D2 | `mensajes_semana` y el título de la progresión: como hoy (no se muestran) | Paridad por defecto |
+| D3 | Entrada fija a **Mis datos** (recordatorios, Salud, diagnóstico, privacidad, "Eliminar mis datos") | La exige Apple 5.1.1(i) para el link de privacidad; sin score no se llegaba |
+| D4 | Textos corregidos (recordatorio de entreno inexistente; "11:00", no "mediodía") | Que la app no mienta |
+| D5 | Tema: sigue al sistema salvo que el cliente haya guardado `'dark'` | `theme.js` escribe `'light'` siempre, así que no es una elección |
+| D6 | Lima en la interfaz; el ícono no cambia | Identidad actual |
+| D7 | IA de terceros (5.1.2(i)): **queda como hoy, pero es un RIESGO de revisión** | Decisión de producto de Mati antes de enviar (G7) |
+| D8 | Aviso local de fin de descanso con la app en segundo plano | Mejora sin riesgo |
+| D9 | Borrado: link a `eliminar-datos.html` desde Mis datos, sin RPC | No hace falta tocar la base |
+| D10 | **Sin "Comí / Salté" en Dieta** (pedido de Mati, 14-oct). Se va también el consumo parcial; el anillo muestra el objetivo y cuánto suman las opciones elegidas | Le resultaba molesto al cliente. El coach deja de recibir esas marcas de los clientes con la nativa (la web las sigue teniendo) |
+| T1 | Cola, caché y swaps en **JSON con escritura atómica**, sin GRDB | Volumen chico; cero dependencias de terceros |
+| T2 | Cliente RPC propio (URLSession), sin supabase-swift | Hace falta el código HTTP para clasificar errores (aprobado 13-oct) |
+
 ## Lo que solo puede hacer Mati
 
 - Aceptar el contrato nuevo del Developer Program, que frena TestFlight y la 1.0.12.
@@ -59,4 +91,7 @@ commitea.
 ## Bitácora
 
 - **13-oct:** plan aprobado y clon creado.
+- **14-oct (madrugada):** MyPumpKit con modelos, reglas portadas con vectores (progresión, clave, porción casera, anclaje e hidratación de swaps), cliente RPC + cola offline + ModeloApp con integración real contra `test-nativa-real`. Agentes en paralelo: motor de sustitutos de alimentos, motor de sustitutos de ejercicios y pulido visual.
+- **14-oct (~2 h):** bienvenida nativa (pegar link con PasteButton, link vencido, sin conexión con reintento automático, universal links) y modo demo sin red; XCUITest de acceso pasan. **Corte por límite de uso:** los agentes de diseño, migración, motor de Entreno y Android quedaron en sus worktrees (`.claude/worktrees/agent-*`, ramas `worktree-agent-*`) con lo que hayan commiteado; retomar revisando cada rama y mergeando a `nativa`.
+- **14-oct (1-2 h):** Dieta nativa terminada salvo la dieta de ejemplo: el reemplazo da las mismas 55 opciones que la web para "Huevo entero" (lado a lado con la web local de `origin/main` y la misma cuenta). Spike del almacenamiento viejo OK en 17.5 y 18.6. Merge de los motores de sustitución (alimentos y ejercicios). Agentes nuevos: migración, motor de Entreno, Android.
 - **14-oct:** riesgo n.º 1 resuelto en iOS 26.5 (`NATIVA_SPIKE_ALMACENAMIENTO.md`). Contrato verificado contra la base: 50 RPC, ninguna duplicada; `push_pendientes` manda a cada dispositivo a propósito. Cuenta `test-nativa-ios` sembrada.
