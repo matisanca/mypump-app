@@ -48,7 +48,12 @@ commitea.
 | Motor: modelos, cliente RPC, cola, ModeloApp, copia offline | ✅ con integración real (`test-nativa-real`) |
 | Reglas con vectores de la web | ✅ progresión, clave, porción casera, anclaje e hidratación de swaps, sustitución de alimentos (2.510 casos) y de ejercicios (323 + 3.232 privados), alimento propio, comida libre |
 | **Dieta (iPhone)** | ✅ datos reales, sin Comí/Salté (D10), mano, reemplazo, alimento propio con escaneo, comidas libres. XCUITest en 17.5 y 26.5. Falta: dieta de ejemplo (DIE-17), recarga al cambiar el día (DIE-18) |
-| Diseño "pro" de Entreno, Chat, Revisión, Progreso y Mis datos | 🟡 agente en curso (worktree) |
+| Modelos de Chat, Revisión/Mi Día, fotos de progreso y Progreso | ✅ con tests y backend real (falta conectar las pantallas: lo hace el agente de diseño) |
+| Bienvenida, demo, sin conexión, aviso de guardado, volver a primer plano | ✅ (XCUITest de acceso) |
+| Notificaciones (local del domingo, push, destinos) | ✅ código; falta probar el push en un iPhone (TF-0) |
+| Respaldo científico (14 fuentes), entitlements, PrivacyInfo, workflow `ios-nativa` | ✅ (el workflow no se dispara hasta que Mati acepte el contrato de Apple) |
+| Diseño "pro" de Entreno, Chat, Revisión, Progreso y Mis datos | 🟡 agente en curso (worktree): pulido hecho, ahora conecta sus pantallas a los modelos |
+| Salud (HealthKit, recuperación, relojes) | 🟡 agente en curso |
 | Migración del almacenamiento viejo (Fase L/R) | 🟡 agente en curso |
 | Motor de Entreno (sugeridos, topes, variantes, sesiones, historial) | 🟡 agente en curso |
 | Android: proyecto + reglas con los mismos vectores | 🟡 agente en curso |
@@ -92,6 +97,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 - **13-oct:** plan aprobado y clon creado.
 - **14-oct (madrugada):** MyPumpKit con modelos, reglas portadas con vectores (progresión, clave, porción casera, anclaje e hidratación de swaps), cliente RPC + cola offline + ModeloApp con integración real contra `test-nativa-real`. Agentes en paralelo: motor de sustitutos de alimentos, motor de sustitutos de ejercicios y pulido visual.
+- **14-oct (4-5 h):** se reanudó tras el corte por límite: los 4 agentes retomaron con su contexto (el de diseño tenía 5 commits). Modelos nuevos con tests contra el backend: chat (con el arreglo n.º 4 que no duplica mensajes), Revisión/Mi Día, fotos de progreso (cola propia), Progreso, notificaciones; respaldo científico; entitlements y PrivacyInfo; workflow `ios-nativa`. Agente nuevo: Salud.
 - **14-oct (~2 h):** bienvenida nativa (pegar link con PasteButton, link vencido, sin conexión con reintento automático, universal links) y modo demo sin red; XCUITest de acceso pasan. **Corte por límite de uso:** los agentes de diseño, migración, motor de Entreno y Android quedaron en sus worktrees (`.claude/worktrees/agent-*`, ramas `worktree-agent-*`) con lo que hayan commiteado; retomar revisando cada rama y mergeando a `nativa`.
 - **14-oct (1-2 h):** Dieta nativa terminada salvo la dieta de ejemplo: el reemplazo da las mismas 55 opciones que la web para "Huevo entero" (lado a lado con la web local de `origin/main` y la misma cuenta). Spike del almacenamiento viejo OK en 17.5 y 18.6. Merge de los motores de sustitución (alimentos y ejercicios). Agentes nuevos: migración, motor de Entreno, Android.
 - **14-oct:** riesgo n.º 1 resuelto en iOS 26.5 (`NATIVA_SPIKE_ALMACENAMIENTO.md`). Contrato verificado contra la base: 50 RPC, ninguna duplicada; `push_pendientes` manda a cada dispositivo a propósito. Cuenta `test-nativa-ios` sembrada.
