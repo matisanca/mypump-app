@@ -65,6 +65,12 @@ public final class ModeloEntreno {
     @ObservationIgnored var syncSustituciones: UUID?
     /// SER-14: los encolados de sustituciones, en fila (si no, dos cambios seguidos podían llegar a la cola al revés).
     @ObservationIgnored var encoladoSustituciones: Task<Void, Never>?
+    /// SER-14: hora del servidor − hora del teléfono (ms), de la última lectura. Los cambios se estampan corregidos: un
+    /// teléfono con el reloj adelantado no estampa en el futuro.
+    @ObservationIgnored var desfaseReloj: Double = 0
+    /// SER-14: la hora más alta que tuvo cada clave en esta sesión (lo deshecho y las lápidas del servidor): una elección
+    /// nueva la supera aunque lo deshecho viniera de un reloj un poco adelantado.
+    @ObservationIgnored var pisoPorClave: [String: Double] = [:]
     @ObservationIgnored var restauracion = 0
     @ObservationIgnored var diaCompletadoMostrado = false
     /// Había un día guardado en este teléfono al arrancar (si no, el del almacenamiento viejo puede ganar).
@@ -100,6 +106,7 @@ public final class ModeloEntreno {
         dia.sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(rutina.id)) ?? [:])
         sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: rutina.id))
             ?? dia.sustituciones
+        desfaseReloj = disco?.leer(Double.self, Archivo.reloj) ?? 0
         descansoEnDisco = enDisco
         guardarDiaVisualizado()
     }
@@ -781,13 +788,15 @@ public final class ModeloEntreno {
         // SER-14: la hora del cambio (en el servidor gana lo más nuevo), nunca menos que la de lo que reemplaza. Es solo
         // de la nativa: la web no la lee.
         if let s = dia.sustituciones[lugar] {
-            dia.sustituciones[lugar] = SustitucionesServidor.conHora(s, SustitucionesServidor.horaDeUnCambio(ahoraMs, reemplaza: previa))
+            dia.sustituciones[lugar] = SustitucionesServidor.conHora(
+                s, SustitucionesServidor.horaDeUnCambio(ahoraMs + desfaseReloj, reemplaza: previa, piso: pisoPorClave[lugar] ?? 0))
         }
         await ejecutar(efectos)
     }
 
     /// "Volver a …"
     public func revertirSustitucion(_ lugar: String) async {
+        pisoPorClave[lugar] = max(pisoPorClave[lugar] ?? 0, SustitucionesServidor.ts(dia.sustituciones[lugar]))
         invalidarHistorial(lugar)
         await ejecutar(dia.revertir(lugar))
     }
@@ -839,13 +848,18 @@ public final class ModeloEntreno {
         let r = await cliente.llamar("mypump_get_exercise_swaps", ["p_token": .texto(token), "p_rutina_id": .texto(rutinaId)])
         guard syncSustituciones == mia, rutina.id == rutinaId, case .success(let j) = r, let servidor = SustitucionesServidor.leer(j)
         else { return }
+        if let ahora = servidor.ahora {
+            desfaseReloj = ahora - ahoraMs
+            disco?.guardar(desfaseReloj, Archivo.reloj)
+        }
+        for (k, b) in servidor.borradas { pisoPorClave[k] = max(pisoPorClave[k] ?? 0, b) }
         await encoladoSustituciones?.value
         let pendientes = await outbox?.pendientesPorClave() ?? [:]
         guard syncSustituciones == mia, rutina.id == rutinaId else { return }
         let tocadas = tocadasDuranteSync ?? []
         let combinado = SustitucionesEntreno.compat(SustitucionesServidor.combinar(
             vivas: servidor.vivas, borradas: servidor.borradas, local: dia.sustituciones, pendientes: pendientes, rutinaId: rutinaId,
-            tocadas: tocadas))
+            tocadas: tocadas, ahora: servidor.ahora))
         // La poda antes de comparar: lo vencido que vuelve del servidor ni se muestra ni pide su historial de nuevo.
         let poda = SustitucionesEntreno.podar(combinado, semanaActual: semana, diasCompletados: diasCompletados, diaActual: dia.dia.id,
                                               diaFinalizado: dia.diaFinalizado, conservarDiaActual: false)
@@ -988,6 +1002,8 @@ public final class ModeloEntreno {
         static let legado = "legado-entreno.json"
         static func dia(_ rutinaId: String) -> String { "entreno-dia_\(rutinaId).json" }
         static func sustituciones(_ rutinaId: String) -> String { "ejercicios-swaps_\(rutinaId).json" }
+        /// SER-14: el desfase del reloj con el servidor.
+        static let reloj = "reloj-servidor.json"
     }
 
     var ahoraMs: Double { reloj().timeIntervalSince1970 * 1000 }

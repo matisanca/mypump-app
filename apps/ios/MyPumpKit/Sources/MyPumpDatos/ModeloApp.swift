@@ -392,7 +392,10 @@ public final class ModeloApp {
     /// cliente: es para que la captura que le manda a Mati diga qué republicar, en vez de "no me carga".
     public var avisoPlanIncompleto: (texto: String, detalle: String)? {
         guard !esDemo else { return nil }
-        let p = problemasDieta + (entreno?.problemas ?? [])
+        // Como la web: primero lo de la rutina y después lo de la dieta (se muestran los tres primeros). A propósito no se
+        // suma el "Todavía no tenés dieta publicada." de la web: a quien solo tiene rutina le dejaba un aviso de error
+        // fijo, y la pestaña Dieta ya lo dice.
+        let p = (entreno?.problemas ?? []) + problemasDieta
         guard !p.isEmpty else { return nil }
         return ("A tu plan le falta información y algunas cosas pueden verse raras. Avisale a Mati y lo republica.",
                 p.prefix(3).joined(separator: " · "))
@@ -652,7 +655,8 @@ public final class ModeloApp {
     private func dietaNormalizada(_ j: JSONValue?) -> DietaActiva? {
         guard var d = j.flatMap({ decodificar(DietaActiva.self, $0) }) else { problemasDieta = []; return nil }
         let r = NormalizarDieta.normalizar(d.estructura)
-        problemasDieta = r.problemas
+        // Como la web: de una dieta que no sirve no se listan sus detalles, se dice que está incompleta.
+        problemasDieta = r.usable ? r.problemas : ["Tu dieta está publicada pero incompleta."]
         guard r.usable else { return nil }
         d.estructura = r.estructura
         return d

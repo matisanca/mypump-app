@@ -198,7 +198,12 @@ def chequeos_003(cur, token, otro):
         cur.execute("ROLLBACK TO SAVEPOINT s")
 
     print("▸ Lectura")
-    chequear("sin filas → vivas y borradas vacías", uno(leer, (token, rutina)) == {"vivas": {}, "borradas": {}})
+    primera = uno(leer, (token, rutina)) or {}
+    cur.execute("SELECT (floor(extract(epoch FROM clock_timestamp()) * 1000))::bigint")
+    reloj = cur.fetchone()[0]
+    chequear("sin filas → vivas y borradas vacías", primera.get("vivas") == {} and primera.get("borradas") == {}, json.dumps(primera))
+    chequear("trae la hora del servidor (ms)", isinstance(primera.get("ahora"), int) and abs(primera["ahora"] - reloj) < 60_000,
+             f"{primera.get('ahora')} vs {reloj}")
     chequear("token inexistente → NULL", uno(leer, (nadie, rutina)) is None)
     chequear("la rutina de otro cliente → NULL", uno(leer, (token, rutina_otro)) is None)
 

@@ -26,6 +26,9 @@ object SustitucionesServidor {
     private const val MAX_TEXTO = 12_000
     private const val MAX_TS = 9_000_000_000_000_000.0
 
+    /** Lo que el servidor deja pasar hacia el futuro (`mypump_sustitucion_tope`): 5 minutos. */
+    private const val MARGEN_FUTURO = 300_000.0
+
     fun clave(rutinaId: String, exId: String): String = "swap_ej_${rutinaId}_$exId"
 
     /**
@@ -48,9 +51,12 @@ object SustitucionesServidor {
 
     /**
      * La hora de un cambio que reemplaza a `actual`: la de ahora, pero nunca menos que la de lo que reemplaza + 1 (si el
-     * reloj de este teléfono, o el del que la eligió, iba adelantado, el cambio nuevo igual tiene que ganar).
+     * reloj de este teléfono, o el del que la eligió, iba adelantado, el cambio nuevo igual tiene que ganar). `piso`: la
+     * hora más alta que ya tuvo esa clave (por ejemplo, la de lo que se acaba de deshacer): si no, el servidor la ignora
+     * contra la lápida.
      */
-    fun horaDeUnCambio(ahora: Double, actual: ValorJson?): Double = maxOf(Math.floor(ahora), ts(actual) + 1)
+    fun horaDeUnCambio(ahora: Double, actual: ValorJson?, piso: Double = 0.0): Double =
+        maxOf(Math.floor(ahora), ts(actual) + 1, piso + 1)
 
     /** La entrada con su hora. */
     fun conHora(v: ValorJson, ms: Double): ValorJson {
@@ -97,13 +103,17 @@ object SustitucionesServidor {
         return ops
     }
 
-    /** Lo que contestó `mypump_get_exercise_swaps`: `{"vivas": {exId: entrada}, "borradas": {exId: ms}}`. null si no es eso. */
-    fun leer(r: ValorJson): Pair<Map<String, ValorJson>, Map<String, Double>>? {
+    /** Lo que contestó `mypump_get_exercise_swaps`. */
+    data class Lectura(val vivas: Map<String, ValorJson>, val borradas: Map<String, Double>, val ahora: Double?)
+
+    /** `{"vivas": {exId: entrada}, "borradas": {exId: ms}, "ahora": ms}`. null si no es eso. */
+    fun leer(r: ValorJson): Lectura? {
         val o = r as? ValorJson.Objeto ?: return null
         val vivas = (o.campos["vivas"] as? ValorJson.Objeto)?.campos ?: return null
         val borradas = (o.campos["borradas"] as? ValorJson.Objeto)?.campos.orEmpty()
             .mapNotNull { (k, v) -> (v as? ValorJson.Numero)?.let { k to it.valor } }.toMap()
-        return vivas.filterValues { it is ValorJson.Objeto } to borradas
+        val ahora = (o.campos["ahora"] as? ValorJson.Numero)?.valor?.takeIf { it.isFinite() && it > 0 }
+        return Lectura(vivas.filterValues { it is ValorJson.Objeto }, borradas, ahora)
     }
 
     /**
@@ -114,6 +124,10 @@ object SustitucionesServidor {
      * - si no: la del servidor si es tan nueva como la del teléfono; una lápida más nueva la saca; y lo que el servidor no
      *   tiene (o tiene más viejo) queda, para volver a subirlo.
      * Lo que el servidor no acepta (nunca se sube) queda siempre.
+     *
+     * Con `ahora` (la hora del servidor), lo del teléfono estampado más allá de lo que el servidor deja (un reloj
+     * adelantado) no le gana a lo que diga el servidor: si no, volvía a subirse y pisaba lo que el cliente hizo después en
+     * otro teléfono.
      */
     fun combinar(
         vivas: Map<String, ValorJson>,
@@ -122,7 +136,12 @@ object SustitucionesServidor {
         pendientes: Map<String, Operacion>,
         rutinaId: String,
         tocadas: Set<String>,
+        ahora: Double? = null,
     ): Map<String, ValorJson> {
+        fun tsLocal(l: ValorJson): Double {
+            val t = ts(l)
+            return if (ahora != null && t > ahora + MARGEN_FUTURO) -1.0 else t
+        }
         val r = LinkedHashMap<String, ValorJson>()
         val vivasObj = vivas.filterValues { it is ValorJson.Objeto }
         val prefijo = "swap_ej_${rutinaId}_"
@@ -141,8 +160,8 @@ object SustitucionesServidor {
                 op != null -> if (op.kind == KIND_GUARDAR) op.payload["swap"] else null
                 // La misma elección con otra hora (el servidor recortó una del futuro): queda la del servidor.
                 v != null && l != null && sinHora(v) == sinHora(l) -> v
-                v != null && (l == null || ts(v) >= ts(l)) -> v
-                b != null && l != null && b >= ts(l) -> null
+                v != null && (l == null || ts(v) >= tsLocal(l)) -> v
+                b != null && l != null && b >= tsLocal(l) -> null
                 else -> l
             }
             if (queda != null) r[exId] = queda else r.remove(exId)

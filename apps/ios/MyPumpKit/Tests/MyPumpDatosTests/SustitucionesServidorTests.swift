@@ -70,6 +70,18 @@ struct SustitucionesServidorReglasTests {
                       "rara": .texto("nunca subió")])
     }
 
+    /// Revisión 3, hallazgo 1: una copia propia estampada más allá de lo que deja el servidor (reloj adelantado) no le gana
+    /// a lo que diga el servidor; dentro del margen, sí cuenta.
+    @Test func unaCopiaPropiaDelFuturo_noLeGanaAlServidor() {
+        let ahora = 1_000_000_000.0
+        let r = SustitucionesServidor.combinar(
+            vivas: ["x": Self.e("De otro", ts: ahora - 600_000), "y": Self.e("De otro", ts: ahora - 600_000)],
+            borradas: ["z": ahora - 600_000],
+            local: ["x": Self.e("Mía", ts: ahora + 3 * 3_600_000), "y": Self.e("Mía", ts: ahora + 60_000), "z": Self.e("Mía", ts: ahora + 3 * 3_600_000)],
+            pendientes: [:], rutinaId: "R", tocadas: [], ahora: ahora)
+        #expect(r == ["x": Self.e("De otro", ts: ahora - 600_000), "y": Self.e("Mía", ts: ahora + 60_000)])
+    }
+
     @Test func laColaYLoTocadoGananAlServidor() {
         func op(_ id: String, _ kind: String, _ rutina: String, _ ex: String, _ swap: JSONValue?) -> Operacion {
             var p: [String: JSONValue] = ["rutinaId": .texto(rutina), "exId": .texto(ex)]
@@ -125,6 +137,8 @@ struct SustitucionesServidorModeloTests {
         if let ts { o["_ts"] = .numero(ts) }
         return .objeto(o)
     }
+
+    static func jsonDe(_ v: JSONValue) -> String { String(decoding: try! JSONEncoder().encode(v), as: UTF8.self) }
 
     static func json(vivas: [String: JSONValue] = [:], borradas: [String: Double] = [:]) -> String {
         let j: JSONValue = .objeto(["vivas": .objeto(vivas), "borradas": .objeto(borradas.mapValues { .numero($0) })])
@@ -282,6 +296,52 @@ struct SustitucionesServidorModeloTests {
         let sub = try #require(m.sustitutos("jal-d1-0").first { $0.nombre != "Dominadas" })
         await m.sustituir("jal-d1-0", por: sub, fijar: true)
         #expect(m.dia.sustituciones["jal-d1-0"]?["_ts"] == .numero(manana + 1))
+    }
+
+    /// Revisión 3: con la hora del servidor, los cambios se estampan con el reloj corregido (este teléfono va 3 h adelantado).
+    @Test func conLaHoraDelServidor_losCambiosSeEstampanCorregidos() async throws {
+        let b = Banco()
+        let tres = 3 * 3_600_000.0
+        b.servidor.cuando("get_exercise_swaps", #"{"vivas":{},"borradas":{},"ahora":\#(Int(AHORA - tres))}"#)
+        let m = b.modelo()
+        await m.sincronizarSustituciones()
+        let sub = try #require(m.sustitutos("jal-d1-0").first)
+        await m.sustituir("jal-d1-0", por: sub, fijar: true)
+        #expect(m.dia.sustituciones["jal-d1-0"]?["_ts"] == .numero(AHORA - tres))
+        // Otro arranque, todavía sin leer el servidor, recuerda el desfase.
+        let otro = b.modelo()
+        await otro.revertirSustitucion("jal-d1-0")
+        await otro.sustituir("jal-d1-0", por: sub, fijar: false)
+        // Con el reloj corregido, y un milisegundo arriba de la lápida que dejó deshacerla.
+        #expect(otro.dia.sustituciones["jal-d1-0"]?["_ts"] == .numero(AHORA - tres + 1))
+    }
+
+    /// Revisión 3, hallazgo 2: deshacer una que venía con la hora un poco adelantada (otro teléfono, dentro de los 5 minutos
+    /// que deja el servidor) y volver a elegir: la nueva supera a la lápida.
+    @Test func deshacerYVolverAElegir_laNuevaSuperaALaLapida() async throws {
+        let b = Banco()
+        local(b, ["jal-d1-0": Self.swap("Dominadas", ts: AHORA + 240_000)])
+        let m = b.modelo()
+        let sub = try #require(m.sustitutos("jal-d1-0").first { $0.nombre != "Dominadas" })
+        await m.revertirSustitucion("jal-d1-0")
+        await m.sustituir("jal-d1-0", por: sub, fijar: true)
+        await m.encoladoSustituciones?.value
+        let ts = SustitucionesServidor.ts(m.dia.sustituciones["jal-d1-0"])
+        #expect(ts > AHORA + 240_000, "quedó \(ts - AHORA) ms: el servidor la ignoraba contra la lápida")
+    }
+
+    /// Revisión 3, hallazgo 1, en el modelo: la copia propia del futuro (ya mandada) no vuelve a subirse sobre lo que el
+    /// cliente cambió después en otro teléfono.
+    @Test func unaCopiaPropiaDelFuturo_noPisaLoQueCambioOtroTelefono() async {
+        let b = Banco()
+        local(b, ["jal-d1-0": Self.swap("Dominadas", ts: AHORA + 3 * 3_600_000)])
+        b.disco.guardar(["jal-d1-0": Self.swap("Dominadas", ts: AHORA + 3 * 3_600_000)], SustitucionesServidor.archivoEncoladas(rutinaId: "rut-prueba"))
+        b.servidor.cuando("get_exercise_swaps", #"{"vivas":{"jal-d1-0":\#(Self.jsonDe(Self.swap("Remo en T", ts: AHORA - 600_000)))},"borradas":{},"ahora":\#(Int(AHORA))}"#)
+        let m = b.modelo()
+        await m.cargar()
+        await m.encoladoSustituciones?.value
+        #expect(m.dia.sustituciones["jal-d1-0"]?["current"]?["nombre"]?.comoTexto == "Remo en T")
+        #expect(await claves(b).isEmpty, "volvió a subir la del futuro")
     }
 
     /// El servidor recortó una hora del futuro: la misma elección baja con la hora corregida y no se vuelve a subir.
@@ -483,7 +543,7 @@ struct SustitucionesSilenciosasTests {
         await o.encolar("carga", .objeto([:]), dedupeKey: "k1")
         await o.encolar("swap_ej", .objeto([:]), dedupeKey: "swap_ej_R_a")
         await o.drenar()
-        #expect(estados.lista.contains(.guardando), "\(estados.lista)")
+        // Con la falla, la pasada no cerraba nada: quedaba el "Guardando…" (si llegó a salir) o ningún aviso.
         #expect(estados.lista.last == .quieto, "quedó colgado: \(estados.lista)")
     }
 

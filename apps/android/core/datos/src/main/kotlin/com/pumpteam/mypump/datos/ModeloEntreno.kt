@@ -149,6 +149,18 @@ class ModeloEntreno(
     /** SER-14: los encolados de sustituciones, en fila (si no, dos cambios seguidos podían llegar a la cola al revés). */
     internal var encoladoSustituciones: Job? = null
         private set
+
+    /**
+     * SER-14: hora del servidor − hora del teléfono (ms), de la última lectura. Los cambios se estampan corregidos: un
+     * teléfono con el reloj adelantado no estampa en el futuro.
+     */
+    private var desfaseReloj: Double = 0.0
+
+    /**
+     * SER-14: la hora más alta que tuvo cada clave en esta sesión (lo deshecho y las lápidas del servidor): una elección
+     * nueva la supera aunque lo deshecho viniera de un reloj un poco adelantado.
+     */
+    private val pisoPorClave = HashMap<String, Double>()
     private var restauracion = 0
     private var diaCompletadoMostrado = false
 
@@ -167,6 +179,7 @@ class ModeloEntreno(
         val d = DiaEnCurso(elegido, semana, demo, zona = zona)
         d.sustituciones = SustitucionesEntreno.compat(leerSustituciones(rutinaInicial.id))
         sustitucionesGuardadas = leerEncoladas(rutinaInicial.id) ?: d.sustituciones
+        desfaseReloj = (disco?.leer(Archivo.RELOJ) as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
         _dia = MutableStateFlow(d)
         dia = _dia.asStateFlow()
         guardarDiaVisualizado()
@@ -955,7 +968,8 @@ class ModeloEntreno(
                 // SER-14: la hora del cambio (en el servidor gana lo más nuevo), nunca menos que la de lo que reemplaza. Es
                 // solo de la nativa: la web no la lee.
                 d.sustituciones[lugar]?.let {
-                    d.sustituciones = d.sustituciones + (lugar to SustitucionesServidor.conHora(it, SustitucionesServidor.horaDeUnCambio(ms, previa)))
+                    val hora = SustitucionesServidor.horaDeUnCambio(ms + desfaseReloj, previa, pisoPorClave[lugar] ?: 0.0)
+                    d.sustituciones = d.sustituciones + (lugar to SustitucionesServidor.conHora(it, hora))
                 }
                 efectos
             },
@@ -964,6 +978,7 @@ class ModeloEntreno(
 
     /** "Volver a …" */
     suspend fun revertirSustitucion(lugar: String) {
+        pisoPorClave[lugar] = maxOf(pisoPorClave[lugar] ?: 0.0, SustitucionesServidor.ts(_dia.value.sustituciones[lugar]))
         invalidarHistorial(lugar)
         ejecutar(mutarDia { it.revertir(lugar) })
     }
@@ -1012,14 +1027,19 @@ class ModeloEntreno(
             if (syncSustituciones !== mia) return
             val r = cliente.llamar("mypump_get_exercise_swaps", mapOf("p_token" to texto(t), "p_rutina_id" to texto(rutinaId)))
             if (syncSustituciones !== mia || _rutina.value.id != rutinaId) return
-            val (vivas, borradasServidor) = (r as? Resultado.Ok)?.valor?.let { SustitucionesServidor.leer(it) } ?: return
+            val (vivas, borradasServidor, ahoraServidor) = (r as? Resultado.Ok)?.valor?.let { SustitucionesServidor.leer(it) } ?: return
+            if (ahoraServidor != null) {
+                desfaseReloj = ahoraServidor - ahoraMs
+                disco?.guardar(Archivo.RELOJ, ValorJson.Numero(desfaseReloj))
+            }
+            for ((k, b) in borradasServidor) pisoPorClave[k] = maxOf(pisoPorClave[k] ?: 0.0, b)
             encoladoSustituciones?.join()
             val pendientes = outbox?.pendientesPorClave() ?: emptyMap()
             if (syncSustituciones !== mia || _rutina.value.id != rutinaId) return
             val tocadas = tocadasDuranteSync?.toSet() ?: emptySet()
             val antes = _dia.value.sustituciones
             val combinado = SustitucionesEntreno.compat(
-                SustitucionesServidor.combinar(vivas, borradasServidor, antes, pendientes, rutinaId, tocadas),
+                SustitucionesServidor.combinar(vivas, borradasServidor, antes, pendientes, rutinaId, tocadas, ahoraServidor),
             )
             // La poda antes de comparar: lo vencido que vuelve del servidor ni se muestra ni pide su historial de nuevo.
             val d = _dia.value
@@ -1194,6 +1214,9 @@ class ModeloEntreno(
         const val LEGADO = "legado-entreno.json"
         fun dia(rutinaId: String): String = "entreno-dia_$rutinaId.json"
         fun sustituciones(rutinaId: String): String = "ejercicios-swaps_$rutinaId.json"
+
+        /** SER-14: el desfase del reloj con el servidor. */
+        const val RELOJ = "reloj-servidor.json"
     }
 
     internal val ahoraMs: Double get() = reloj().toEpochMilli().toDouble()

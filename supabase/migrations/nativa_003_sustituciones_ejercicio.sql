@@ -107,8 +107,9 @@ $$;
 REVOKE ALL ON FUNCTION mypump_sustitucion_ts(JSONB) FROM PUBLIC;
 REVOKE ALL ON FUNCTION mypump_sustitucion_ts(JSONB) FROM anon, authenticated;
 
--- La app: las de una rutina. {"vivas": {exId: entrada}, "borradas": {exId: ms}}.
--- NULL = token caído o rutina que no es del cliente.
+-- La app: las de una rutina. {"vivas": {exId: entrada}, "borradas": {exId: ms},
+-- "ahora": ms del servidor}. Con "ahora" el teléfono corrige su reloj al
+-- estampar sus cambios. NULL = token caído o rutina que no es del cliente.
 CREATE OR REPLACE FUNCTION mypump_get_exercise_swaps(p_token TEXT, p_rutina_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -128,7 +129,8 @@ BEGIN
     'vivas', COALESCE((SELECT jsonb_object_agg(ex_id, swap) FROM mypump_exercise_swaps
                        WHERE cliente_id = v_cliente_id AND rutina_id = p_rutina_id AND swap IS NOT NULL), '{}'::jsonb),
     'borradas', COALESCE((SELECT jsonb_object_agg(ex_id, cambiado_en) FROM mypump_exercise_swaps
-                          WHERE cliente_id = v_cliente_id AND rutina_id = p_rutina_id AND swap IS NULL), '{}'::jsonb));
+                          WHERE cliente_id = v_cliente_id AND rutina_id = p_rutina_id AND swap IS NULL), '{}'::jsonb),
+    'ahora', (floor(extract(epoch FROM clock_timestamp()) * 1000))::bigint);
 END;
 $$;
 

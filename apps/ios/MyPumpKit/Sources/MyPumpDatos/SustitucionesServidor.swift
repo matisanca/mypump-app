@@ -23,6 +23,8 @@ public enum SustitucionesServidor {
     static let maxClave = 120
     static let maxTexto = 12_000
     static let maxTs = 9_000_000_000_000_000.0
+    /// Lo que el servidor deja pasar hacia el futuro (`mypump_sustitucion_tope`): 5 minutos.
+    static let margenFuturo = 300_000.0
 
     public static func clave(rutinaId: String, exId: String) -> String { "swap_ej_\(rutinaId)_\(exId)" }
 
@@ -49,8 +51,10 @@ public enum SustitucionesServidor {
 
     /// La hora de un cambio que reemplaza a `actual`: la de ahora, pero nunca menos que la de lo que reemplaza + 1 (si el
     /// reloj de este teléfono, o el del que la eligió, iba adelantado, el cambio nuevo igual tiene que ganar).
-    public static func horaDeUnCambio(_ ahora: Double, reemplaza actual: JSONValue?) -> Double {
-        max(ahora.rounded(.down), ts(actual) + 1)
+    /// `piso`: la hora más alta que ya tuvo esa clave (por ejemplo, la de lo que se acaba de deshacer): la elección nueva
+    /// tiene que superarla, si no el servidor la ignora contra la lápida.
+    public static func horaDeUnCambio(_ ahora: Double, reemplaza actual: JSONValue?, piso: Double = 0) -> Double {
+        max(ahora.rounded(.down), ts(actual) + 1, piso + 1)
     }
 
     /// La entrada con su hora.
@@ -100,14 +104,17 @@ public enum SustitucionesServidor {
         return ops
     }
 
-    /// Lo que contestó `mypump_get_exercise_swaps`: `{"vivas": {exId: entrada}, "borradas": {exId: ms}}`. nil si no es eso.
-    public static func leer(_ r: JSONValue) -> (vivas: [String: JSONValue], borradas: [String: Double])? {
+    /// Lo que contestó `mypump_get_exercise_swaps`: `{"vivas": {exId: entrada}, "borradas": {exId: ms}, "ahora": ms}`.
+    /// nil si no es eso.
+    public static func leer(_ r: JSONValue) -> (vivas: [String: JSONValue], borradas: [String: Double], ahora: Double?)? {
         guard case .objeto(let o) = r, case .objeto(let v)? = o["vivas"] else { return nil }
         var b: [String: Double] = [:]
         if case .objeto(let bo)? = o["borradas"] {
             for (k, x) in bo { if case .numero(let n) = x { b[k] = n } }
         }
-        return (v.filter { if case .objeto = $0.value { return true } else { return false } }, b)
+        var ahora: Double?
+        if case .numero(let n)? = o["ahora"], n.isFinite, n > 0 { ahora = n }
+        return (v.filter { if case .objeto = $0.value { return true } else { return false } }, b, ahora)
     }
 
     /// El mapa del teléfono después de leer el servidor, clave por clave:
@@ -117,8 +124,18 @@ public enum SustitucionesServidor {
     /// - si no: la del servidor si es tan nueva como la del teléfono; una lápida más nueva la saca; y lo que el servidor
     ///   no tiene (o tiene más viejo) queda, para volver a subirlo.
     /// Lo que el servidor no acepta (nunca se sube) queda siempre.
+    ///
+    /// Con `ahora` (la hora del servidor), lo del teléfono estampado más allá de lo que el servidor deja (un reloj
+    /// adelantado) no le gana a lo que diga el servidor: si no, volvía a subirse y pisaba lo que el cliente hizo después en
+    /// otro teléfono.
     public static func combinar(vivas: [String: JSONValue], borradas: [String: Double], local: [String: JSONValue],
-                                pendientes: [String: Operacion], rutinaId: String, tocadas: Set<String>) -> [String: JSONValue] {
+                                pendientes: [String: Operacion], rutinaId: String, tocadas: Set<String>,
+                                ahora: Double? = nil) -> [String: JSONValue] {
+        func tsLocal(_ l: JSONValue) -> Double {
+            let t = ts(l)
+            if let ahora, t > ahora + margenFuturo { return -1 }
+            return t
+        }
         var r: [String: JSONValue] = [:]
         let vivas = vivas.filter { if case .objeto = $0.value { return true } else { return false } }
         let prefijo = "swap_ej_\(rutinaId)_"
@@ -135,9 +152,9 @@ public enum SustitucionesServidor {
             } else if let v = vivas[exId], let l, sinHora(v) == sinHora(l) {
                 // La misma elección con otra hora (el servidor recortó una del futuro): queda la del servidor.
                 r[exId] = v
-            } else if let v = vivas[exId], l == nil || ts(v) >= ts(l) {
+            } else if let v = vivas[exId], l == nil || ts(v) >= tsLocal(l!) {
                 r[exId] = v
-            } else if let b = borradas[exId], let l, b >= ts(l) {
+            } else if let b = borradas[exId], let l, b >= tsLocal(l) {
                 r[exId] = nil
             } else {
                 r[exId] = l

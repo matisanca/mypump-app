@@ -66,3 +66,50 @@ struct DietaTipoDeDiaTests {
         #expect(m.objetivo.kcal == 2500)
     }
 }
+
+/// GEN-05: el aviso "a tu plan le falta información", como la web (`avisarPlanIncompleto`): lo de la rutina primero y,
+/// de una dieta que no sirve, solo "está incompleta". A propósito, a quien tiene rutina y no dieta no se le avisa.
+@Suite("El aviso de plan incompleto (GEN-05)", .serialized)
+@MainActor
+struct AvisoPlanIncompletoTests {
+    let raiz = FileManager.default.temporaryDirectory.appendingPathComponent("aviso-plan-\(UUID().uuidString)")
+
+    static let rutinaSinSemanas = #"[{"id":"rut-1","version":1,"semana_actual":1,"estructura":{"dias":[{"id":"d1","nombre":"Día 1","bloques":[{"ejercicios":[{"id":"e1","nombre":"Sentadilla","progresion":[{"semana":1,"series":3,"reps":"8"}]}]}]},{"id":"d2","nombre":"Día 2","bloques":[]}]}}]"#
+    static let dietaSinObjetivo = #"[{"id":"33333333-3333-4333-8333-333333333333","version":1,"estructura":{"comidas":["#
+        + DietaTipoDeDiaTests.comida("c1", "Desayuno", 400) + "]}}]"
+    static let rutinaCompleta = #"[{"id":"rut-2","version":1,"semana_actual":1,"estructura":{"semanas_total":12,"dias":[{"id":"d1","nombre":"Día 1","bloques":[{"ejercicios":[{"id":"e1","nombre":"Sentadilla","progresion":[{"semana":1,"series":3,"reps":"8"}]}]}]}]}}]"#
+    static let dietaInservible = #"[{"id":"44444444-4444-4444-8444-444444444444","version":1,"estructura":{"comidas":[{"id":"c1","name":"Desayuno","options":[]}]}}]"#
+
+    func modelo(rutina: String, dieta: String) -> ModeloApp {
+        let t = TransporteProgramado { fn, _ in
+            switch fn {
+            case "mypump_get_cliente_info": return (200, #"[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"#)
+            case "mypump_get_rutina_activa": return (200, rutina)
+            case "mypump_get_dieta_activa": return (200, dieta)
+            default: return (200, "[]")
+            }
+        }
+        return ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria("AAAAAAAAAAAAAAAAAAAA"), raizDisco: raiz)
+    }
+
+    @Test func primeroLoDeLaRutina_yDespuesLoDeLaDieta() async throws {
+        let m = modelo(rutina: Self.rutinaSinSemanas, dieta: Self.dietaSinObjetivo)
+        await m.cargar()
+        let aviso = try #require(m.avisoPlanIncompleto)
+        #expect(aviso.texto == "A tu plan le falta información y algunas cosas pueden verse raras. Avisale a Mati y lo republica.")
+        #expect(aviso.detalle == "Día 2: sin ejercicios. · El plan no dice cuántas semanas dura; se asume 12. · El plan no traía el objetivo de calorías; se calculó con la opción A.",
+                "\(aviso.detalle)")
+    }
+
+    @Test func unaDietaQueNoSirve_diceQueEstaIncompleta() async throws {
+        let m = modelo(rutina: "[]", dieta: Self.dietaInservible)
+        await m.cargar()
+        #expect(m.avisoPlanIncompleto?.detalle == "Tu dieta está publicada pero incompleta.")
+    }
+
+    @Test func conRutinaYSinDieta_noHayAviso() async {
+        let m = modelo(rutina: Self.rutinaCompleta, dieta: "[]")
+        await m.cargar()
+        #expect(m.avisoPlanIncompleto == nil, "a quien solo tiene rutina no se le deja un aviso de error fijo")
+    }
+}

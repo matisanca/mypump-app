@@ -99,6 +99,19 @@ class SustitucionesServidorReglasTest {
         )
     }
 
+    /** Revisión 3, hallazgo 1: una copia propia del futuro (reloj adelantado) no le gana al servidor; dentro del margen, sí. */
+    @Test
+    fun unaCopiaPropiaDelFuturoNoLeGanaAlServidor() {
+        val ahora = 1_000_000_000.0
+        val r = SustitucionesServidor.combinar(
+            vivas = mapOf("x" to e("De otro", ahora - 600_000), "y" to e("De otro", ahora - 600_000)),
+            borradas = mapOf("z" to ahora - 600_000),
+            local = mapOf("x" to e("Mía", ahora + 3 * 3_600_000), "y" to e("Mía", ahora + 60_000), "z" to e("Mía", ahora + 3 * 3_600_000)),
+            pendientes = emptyMap(), rutinaId = "R", tocadas = emptySet(), ahora = ahora,
+        )
+        assertEquals(mapOf("x" to e("De otro", ahora - 600_000), "y" to e("Mía", ahora + 60_000)), r)
+    }
+
     @Test
     fun laColaYLoTocadoGananAlServidor() {
         fun op(id: String, kind: String, rutina: String, ex: String, swap: ValorJson?) = Operacion(
@@ -146,8 +159,9 @@ class SustitucionesServidorReglasTest {
             "vivas" to ValorJson.objeto("a" to e("A"), "malo" to ValorJson.Numero(3.0)), "borradas" to ValorJson.objeto("b" to ValorJson.Numero(9.0)),
         )
         val l = SustitucionesServidor.leer(j)!!
-        assertEquals(mapOf("a" to e("A")), l.first)
-        assertEquals(mapOf("b" to 9.0), l.second)
+        assertEquals(mapOf("a" to e("A")), l.vivas)
+        assertEquals(mapOf("b" to 9.0), l.borradas)
+        assertNull(l.ahora)
         assertNull(SustitucionesServidor.leer(ValorJson.Lista(emptyList())))
         assertNull(SustitucionesServidor.leer(ValorJson.Nulo))
     }
@@ -338,6 +352,53 @@ class SustitucionesServidorModeloTest {
         val sub = m.sustitutos("jal-d1-0").first { it.nombre != "Dominadas" }
         m.sustituir("jal-d1-0", sub, fijar = true)
         assertEquals(ValorJson.Numero(manana + 1), m.dia.value.sustituciones["jal-d1-0"]?.get("_ts"))
+    }
+
+    /** Revisión 3: con la hora del servidor, los cambios se estampan con el reloj corregido (este teléfono va 3 h adelantado). */
+    @Test
+    fun conLaHoraDelServidorLosCambiosSeEstampanCorregidos() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val tres = 3 * 3_600_000.0
+        b.servidor.cuando("get_exercise_swaps", """{"vivas":{},"borradas":{},"ahora":${(ahora - tres).toLong()}}""")
+        val m = b.modelo()
+        m.sincronizarSustituciones()
+        val sub = m.sustitutos("jal-d1-0").first()
+        m.sustituir("jal-d1-0", sub, fijar = true)
+        assertEquals(ValorJson.Numero(ahora - tres), m.dia.value.sustituciones["jal-d1-0"]?.get("_ts"))
+        // Otro arranque, todavía sin leer el servidor, recuerda el desfase (y queda un ms arriba de la lápida de deshacer).
+        val otro = b.modelo()
+        otro.revertirSustitucion("jal-d1-0")
+        otro.sustituir("jal-d1-0", sub, fijar = false)
+        assertEquals(ValorJson.Numero(ahora - tres + 1), otro.dia.value.sustituciones["jal-d1-0"]?.get("_ts"))
+    }
+
+    /** Revisión 3, hallazgo 2: deshacer una que venía un poco adelantada y volver a elegir: la nueva supera a la lápida. */
+    @Test
+    fun deshacerYVolverAElegirLaNuevaSuperaALaLapida() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        local(b, mapOf("jal-d1-0" to swap("Dominadas", ts = ahora + 240_000)))
+        val m = b.modelo()
+        val sub = m.sustitutos("jal-d1-0").first { it.nombre != "Dominadas" }
+        m.revertirSustitucion("jal-d1-0")
+        m.sustituir("jal-d1-0", sub, fijar = true)
+        val ts = SustitucionesServidor.ts(m.dia.value.sustituciones["jal-d1-0"])
+        assertTrue(ts > ahora + 240_000, "quedó ${ts - ahora} ms: el servidor la ignoraba contra la lápida")
+    }
+
+    /** Revisión 3, hallazgo 1, en el modelo: la copia propia del futuro no vuelve a subirse sobre lo que cambió otro teléfono. */
+    @Test
+    fun unaCopiaPropiaDelFuturoNoPisaLoQueCambioOtroTelefono() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val futura = swap("Dominadas", ts = ahora + 3 * 3_600_000)
+        local(b, mapOf("jal-d1-0" to futura))
+        b.disco.guardar(SustitucionesServidor.archivoEncoladas("rut-prueba"), ValorJson.objeto("jal-d1-0" to futura))
+        val delOtro = swap("Remo en T", ts = ahora - 600_000)
+        b.servidor.cuando("get_exercise_swaps", """{"vivas":{"jal-d1-0":${delOtro.serializar()}},"borradas":{},"ahora":${ahora.toLong()}}""")
+        val m = b.modelo()
+        m.cargar()
+        m.encoladoSustituciones?.join()
+        assertEquals("Remo en T", m.dia.value.sustituciones["jal-d1-0"]?.get("current")?.get("nombre")?.comoTexto)
+        assertTrue(claves(b).isEmpty(), "volvió a subir la del futuro: ${claves(b)}")
     }
 
     /** El servidor recortó una hora del futuro: la misma elección baja con la hora corregida y no se vuelve a subir. */
@@ -560,8 +621,8 @@ class SustitucionesSilenciosasTest {
         o.encolar("carga", ValorJson.objeto(), "k1")
         o.encolar("swap_ej", ValorJson.objeto(), "swap_ej_R_a")
         o.drenar()
-        assertTrue(EstadoGuardado.GUARDANDO in estados, "$estados")
-        assertEquals(EstadoGuardado.QUIETO, estados.last(), "quedó colgado: $estados")
+        // Con la falla, la pasada no cerraba nada: quedaba el "Guardando…" (si llegó a salir) o ningún aviso.
+        assertEquals(EstadoGuardado.QUIETO, estados.lastOrNull(), "quedó colgado: $estados")
     }
 
     @Test
