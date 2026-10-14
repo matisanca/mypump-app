@@ -24,6 +24,8 @@ copias en conflicto.
 commitea.
 
 **Reglas fijas:**
+- **El merge de `nativa` a `main` va squash.** El commit 2e64484 se llevó por error 182 MB de compilados de SwiftPM (sin secretos) y ya están en la historia de `nativa`, que no se reescribe.
+- `swift test` siempre con `--scratch-path ~/Developer/nativa-evidencia/dd/kit`: sin eso deja `.build/` dentro del repo (ahora está en el `.gitignore`).
 - Nunca push a `main`.
 - Nunca tags `v*` ni `a*`.
 - Las migraciones van como `supabase/migrations/nativa_NNN_*.sql`, solo con OK (G2).
