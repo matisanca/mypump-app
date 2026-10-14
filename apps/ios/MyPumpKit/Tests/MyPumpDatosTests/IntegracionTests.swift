@@ -146,8 +146,10 @@ struct IntegracionTests {
         #expect(otra.serieDePeso.last == PesoCorporal.Punto(fecha: FechaLocal.hoy(), kg: 82))
     }
 
-    /// Sube UNA foto chica (la de espalda de esta semana: es un upsert, repetir no suma) y pide las URLs firmadas.
-    @Test func fotoDeProgresoSubeYSeFirma() async throws {
+    /// Sube UNA foto chica (la de espalda de esta semana: es un upsert, repetir no suma) y pide las URLs firmadas. El
+    /// servicio deja 12 fotos por día por cliente: corre solo con `MYPUMP_PROBAR_FOTOS=1`.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["MYPUMP_PROBAR_FOTOS"] == "1"))
+    func fotoDeProgresoSubeYSeFirma() async throws {
         let t = try #require(tokenDePrueba())
         let m = ModeloFotos(cliente: ClienteRPC(), token: t, disco: Disco(raiz: raiz, token: t))
         // JPEG de 8×8 gris (válido: el servidor mira los bytes mágicos).
@@ -157,6 +159,24 @@ struct IntegracionTests {
         #expect(m.fotos.contains { $0.pose == "espalda" && $0.semanaLunes == m.semanaActual })
         #expect(await m.firmar())
         #expect(m.urls["\(m.semanaActual)|espalda"] != nil)
+    }
+
+    @Test func progresoConElHistorialReal() async throws {
+        let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await m.cargar()
+        let p = ModeloProgreso(cliente: m.cliente, token: try #require(tokenDePrueba()))
+        await p.cargar(rutina: m.rutina)
+        #expect(p.estado == .listo)
+        #expect(!p.tarjetas.isEmpty)
+        #expect(p.sesiones > 0)
+        // Una tarjeta por clave: nunca dos con la misma.
+        #expect(Set(p.tarjetas.map(\.clave)).count == p.tarjetas.count)
+        #expect(p.tarjetas.allSatisfy { $0.resumen.serie.count <= 8 && !$0.dias.isEmpty })
+        // Sin red avisa y no deja tarjetas viejas mezcladas.
+        struct SinRed: Transporte { func enviar(_ q: URLRequest) async throws -> (Data, URLResponse) { throw URLError(.notConnectedToInternet) } }
+        let offline = ModeloProgreso(cliente: ClienteRPC(transporte: SinRed()), token: "x")
+        await offline.cargar(rutina: m.rutina)
+        #expect(offline.estado == .sinRed)
     }
 
     @Test func sustituirLlegaAnclado_yRevertirLoBorra() async throws {
