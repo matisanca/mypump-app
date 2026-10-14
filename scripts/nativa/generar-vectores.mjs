@@ -204,7 +204,11 @@ const n5 = escribir(sal, 'porcion_casera', vectoresPorcion(corpusPorcion(dietasP
 const n6 = escribir(sal, 'anclaje_swaps', vectoresAnclaje(dietasPublicas));
 fs.mkdirSync(path.join(RAIZ, 'apps/shared/demo'), { recursive: true });
 fs.writeFileSync(path.join(RAIZ, 'apps/shared/demo/rutina.json'), JSON.stringify(demo.rutina, null, 1) + '\n');
-fs.writeFileSync(path.join(RAIZ, 'apps/shared/demo/dieta.json'), JSON.stringify(demo.dieta, null, 1) + '\n');
+// La demo de las nativas va sin `macros_target`: el de SAMPLE_DIET (3.200 kcal) no cierra con sus opciones A (2.454), y
+// la nativa lo marca ("con las opciones elegidas … −23 %") justo en lo que ve App Review. Sin él, `normalizarDieta` usa
+// la suma de la opción A, como con cualquier dieta que no lo trae. Los vectores siguen con la de la web tal cual.
+const { macros_target: _objetivoDeLaWeb, ...dietaDemo } = demo.dieta;
+fs.writeFileSync(path.join(RAIZ, 'apps/shared/demo/dieta.json'), JSON.stringify(dietaDemo, null, 1) + '\n');
 let n2 = 0, n4 = 0;
 if (rutinasPrivadas.length) {
   n2 = escribir(path.join(PRIVADO, 'vectores'), 'progresion', vectoresProgresion(rutinasPrivadas));

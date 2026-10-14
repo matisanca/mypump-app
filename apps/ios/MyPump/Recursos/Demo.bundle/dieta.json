@@ -1,10 +1,4 @@
 {
- "macros_target": {
-  "kcal": 3200,
-  "prot": 220,
-  "carb": 380,
-  "fat": 90
- },
  "comidas": [
   {
    "id": "c1",
