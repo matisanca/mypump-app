@@ -127,15 +127,16 @@ enum ArranqueMigracion {
     }
 
     private static func esperarOtraCarga(_ m: ModeloApp) async {
-        // Primero que salga de "listo" (empezó otra carga) y después que vuelva con red.
-        while m.fase == .listo { await cambio(m) }
-        await esperarCargaConRed(m)
+        // La PRÓXIMA carga con red: `cargar()` sobre una cuenta ya cargada no pasa por `.cargando`, así que esperar a que
+        // la fase saliera de "listo" dejaba el reintento para el arranque siguiente (lo encontró el gemelo de Android).
+        let antes = m.cargasConRed
+        while !(m.cargasConRed > antes && m.fase == .listo && !m.esDemo && m.info != nil) { await cambio(m) }
     }
 
     private static func cambio(_ m: ModeloApp) async {
         await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
             withObservationTracking {
-                _ = (m.fase, m.desdeCache, m.esDemo, m.info)
+                _ = (m.fase, m.desdeCache, m.esDemo, m.info, m.cargasConRed)
             } onChange: {
                 c.resume()
             }

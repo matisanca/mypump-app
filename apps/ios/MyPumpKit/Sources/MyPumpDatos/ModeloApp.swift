@@ -50,6 +50,9 @@ public final class ModeloApp {
 
     /// Qué decidió el cliente: true acepta, false "sin IA", nil nunca se le preguntó (o todavía no se sabe).
     public private(set) var consentimientoIA: Bool?
+    /// Cuántas cargas terminaron con todo traído del servidor. `cargar()` sobre una cuenta ya cargada no pasa por
+    /// `.cargando`: quien espera "la próxima carga con red" (la Fase R después de un corte) mira esto.
+    public private(set) var cargasConRed = 0
     /// El servidor puede guardar la decisión. Sin eso (PGRST202) no se pregunta: un "no" no se podría respetar del otro
     /// lado, y todo sigue como hoy.
     public private(set) var consentimientoIADisponible = false
@@ -125,6 +128,7 @@ public final class ModeloApp {
     public func salir() {
         almacen.guardar(nil)
         token = nil
+        consentimientoIA = nil
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
@@ -173,6 +177,7 @@ public final class ModeloApp {
 
     private func soltarCuentaEnMemoria() {
         token = nil
+        consentimientoIA = nil
         disco = nil
         outbox = nil
         info = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
@@ -182,6 +187,9 @@ public final class ModeloApp {
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
+        // El permiso para la IA es de cada cuenta: hasta que conteste la carga vale lo que ESTA cuenta decidió en el
+        // teléfono (o nada). Antes seguía valiendo el de la cuenta anterior (lo encontró el gemelo de Android).
+        consentimientoIA = disco.leer(ConsentimientoIA.Guardado.self, ConsentimientoIA.archivo)?.acepta
         let escrituras = Escrituras(cliente: cliente, token: t)
         let cola = Outbox(archivo: disco.url("outbox.json")) { op in await escrituras.ejecutar(op) }
         outbox = cola
@@ -287,6 +295,7 @@ public final class ModeloApp {
         if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] } else { swaps = [:] }
         sinRedEn = faltaron
         desdeCache = !faltaron.isEmpty
+        if !desdeCache { cargasConRed += 1 }
         prepararEntreno()
         fase = .listo
         if let e = entreno {

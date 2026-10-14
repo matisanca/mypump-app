@@ -18,7 +18,7 @@ struct ConsentimientoIATests {
         var visiones = 0
     }
 
-    func modelo(_ e: Estado, raiz: URL) -> ModeloApp {
+    func modelo(_ e: Estado, raiz: URL, token: String = "AAAAAAAAAAAAAAAAAAAA") -> ModeloApp {
         let t = TransporteProgramado { fn, cuerpo in
             guard e.conRed else { throw URLError(.notConnectedToInternet) }
             switch fn {
@@ -32,7 +32,7 @@ struct ConsentimientoIATests {
             default: return (200, "[]")
             }
         }
-        return ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria("AAAAAAAAAAAAAAAAAAAA"), raizDisco: raiz)
+        return ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria(token), raizDisco: raiz)
     }
 
     func raiz() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent("consentimiento-\(UUID().uuidString)") }
@@ -91,5 +91,39 @@ struct ConsentimientoIATests {
         await m.cargar()
         #expect(m.consentimientoIA == true)
         #expect(m.analisisDeFotoPermitido)
+    }
+    /// El permiso es de cada cuenta (lo encontró el gemelo de Android): al entrar con otro link, el "no" de la anterior
+    /// no vale para la nueva. Sin red, la nueva queda sin decidir hasta que conteste el servidor.
+    @Test func elPermisoEsDeCadaCuenta() async {
+        // Tokens propios: `ModeloApp` marca en UserDefaults.standard el token que el servidor da por inválido, y otros
+        // tests que corren en paralelo usan el de las "A" (con él, volver a esa cuenta se cortaba antes: ACC-02).
+        let a = "permisoA" + UUID().uuidString.prefix(12), b = "permisoB" + UUID().uuidString.prefix(12)
+        let e = Estado()
+        let r = raiz(); defer { try? FileManager.default.removeItem(at: r) }
+        let m = modelo(e, raiz: r, token: a)
+        await m.cargar()
+        await m.decidirConsentimientoIA(false)
+        #expect(m.consentimientoIA == false)
+        e.conRed = false
+        _ = await m.entrar(con: b)
+        #expect(m.consentimientoIA == nil, "quedó la decisión de la otra cuenta")
+        // Y al volver a la primera, otra vez la suya (estaba guardada en su carpeta).
+        _ = await m.entrar(con: a)
+        #expect(m.consentimientoIA == false)
+    }
+
+    /// `cargasConRed`: lo que espera la Fase R para reintentar después de un corte (`ArranqueMigracion`). Recargar una
+    /// cuenta ya cargada no pasa por `.cargando`, así que la fase sola no alcanzaba para darse cuenta.
+    @Test func cadaCargaConRedSeCuenta() async {
+        let e = Estado()
+        let r = raiz(); defer { try? FileManager.default.removeItem(at: r) }
+        let m = modelo(e, raiz: r)
+        await m.cargar()
+        #expect(m.cargasConRed == 1)
+        await m.cargar()
+        #expect(m.cargasConRed == 2)
+        e.conRed = false
+        await m.cargar()
+        #expect(m.cargasConRed == 2)
     }
 }
