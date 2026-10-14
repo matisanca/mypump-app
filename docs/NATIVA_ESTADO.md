@@ -102,6 +102,21 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **14-oct (~11 h, corte por límite de uso):**
+  - **Cierres arreglados** (522c871): un número absurdo de la base, la cola o el almacenamiento viejo ya no cierra la
+    app. Además, `food_data` falso no se aplica.
+  - **Regex** (fe2070d): `.` y `\s` iguales a los de JS, en un solo lugar, con vectores nuevos.
+  - **D7 documentado** (1805ad2): opciones en `NATIVA_TIENDAS_2.0.0.md`.
+  - Release compila sin advertencias (9,9 MB). 279 tests.
+  - **Para retomar:**
+    1. **Diseño:** el agente quedó frenado en `.claude/worktrees/agent-a7c9f396d6e2eff0b` con 5 archivos sin commitear
+       (Entreno y Mis datos). Hay 150 capturas en `nativa-evidencia/diseno/r4`. Hay que commitear, revisar el diff
+       (lo que escribe datos), mergear, correr los XCUITest y sacar `Muestras` del build si ya no se usa.
+    2. **Android:** el agente quedó en `.claude/worktrees/agent-a3be09f4e786973f9`, recién arrancado con Entreno,
+       Salud y la migración pura. Se retoma con SendMessage.
+    3. **Tildar en PARIDAD:** DIE-18 y GEN-07, que ya están cubiertos.
+  - **Nunca `git stash` pelado:** el stash se comparte con los worktrees de los agentes.
+
 - **13-oct:** plan aprobado y clon creado.
 - **14-oct (madrugada):** MyPumpKit con modelos, reglas portadas con vectores (progresión, clave, porción casera, anclaje e hidratación de swaps), cliente RPC + cola offline + ModeloApp con integración real contra `test-nativa-real`. Agentes en paralelo: motor de sustitutos de alimentos, motor de sustitutos de ejercicios y pulido visual.
 - **14-oct (mañana):** Salud mergeada; `ModeloApp.entreno` con el catálogo del servidor; onboarding de permisos; borradores para las tiendas (`NATIVA_TIENDAS_2.0.0.md`) y cambios propuestos para la web (`NATIVA_PROPUESTAS_WEB.md`). 266 tests + 8 de interfaz.
