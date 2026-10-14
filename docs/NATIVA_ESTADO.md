@@ -61,9 +61,9 @@ commitea.
 | Diseño "pro" + conectar Entreno, Chat, Revisión, Progreso y Mis datos a los modelos | ✅ mergeado (1ad2484); Dieta, Acceso y Salud con el mismo sistema (86f28e4); 8 XCUITest. Revisión adversarial de las escrituras en curso |
 | Salud (HealthKit, recuperación, relojes) | ✅ mergeada: 35 casos de la web + banco en simulador 1.091/1.091 registros; el historial ya no pisa la noche de hoy (desvío a propósito, ver `NATIVA_PROPUESTAS_WEB.md`) |
 | Hoja de permisos de la primera vez (GEN-06), aviso de fin de descanso (D8), aviso de plan incompleto (GEN-05) | ✅ (XCUITest del onboarding) |
-| Android: base + reglas (122 tests con los mismos vectores) | ✅ mergeado; la capa de datos está en curso (cuenta `test-nativa-android`) |
-| Migración del almacenamiento viejo (Fase L/R) | 🟡 agente en curso |
-| Motor de Entreno (sugeridos, topes, variantes, sesiones, historial) | 🟡 agente en curso |
+| Android: base, reglas y capa de datos (`:core`) | ✅ mergeado en `nativa` el 14-oct (81338b8): reglas con los vectores de la web, Entreno, Salud, cola, chat, Revisión, migración (parte pura), palanca, recibo y conteos (`nativa_001`, probada contra el backend con `test-nativa-android`) |
+| Android: lector del almacenamiento viejo con WebView y arranque de la migración en `:app`, prueba en el emulador, D7 | 🟡 agente en curso (14-oct, tarde) |
+| Android: pantallas en Compose, Health Connect, FCM | ☐ |
 
 
 **Herramientas nuevas:** `scripts/nativa/lanzar-sim.sh` (abre la app con una cuenta de prueba sin que el token pase por
@@ -110,6 +110,21 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **14-oct 14:50, sin el iPhone (Mati afuera una hora):**
+  - **Rama de Android mergeada** en `nativa` (81338b8). Solo toca `apps/android`.
+  - **Los hallazgos de iOS del gemelo de Android, arreglados** (04a62c0):
+    - FechaJS como V8 (25 casos de node);
+    - un motivo de Recuperación con valor null es "0h00";
+    - `miles` como `toLocaleString`;
+    - el porcentaje de calibración ya no pasa por `Int()`.
+  - **Las cinco pruebas de la migración que solo tenía Android**, portadas: pasan (1bfc859).
+  - **Simulador de punta a punta otra vez, 23/23** (`migracion/20261014-143532`). Destapó un error real (5eb8738): el
+    descanso que trae la migración se cortaba al pasar al día visto, porque se restauraba antes del cambio de día y
+    cambiar de día lo detiene. Ahora va como la web (primero el día, después `restoreRest`). En la captura:
+    "Descanso / 10:00 — 9:49". El script siembra siempre el arranque de la sesión en curso: el de la cuenta de prueba
+    podía tener más de 6 h.
+  - En curso: el agente de Android (lector con WebView, arranque de la migración, emulador, D7) y una auditoría de la
+    columna iOS de `NATIVA_PARIDAD.md` (103 ítems sin tilde, muchos ya hechos).
 - **14-oct 14:25, TF-0 OK con la 101** (iPhone de Mati, iOS 27.0, su cuenta; actualizada desde TestFlight encima de la 100):
   - **Entró sola, sin link**, con el mismo estado que la app de la tienda (Día 2, semana 5 de 12, la sesión vieja
     "Sin cerrar"). Salud sigue conectada ("Este iPhone ya está mandando pasos y actividad") y el recordatorio del
