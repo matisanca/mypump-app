@@ -244,7 +244,7 @@ Hasta que se decidan, rige lo de hoy.
 | APL-03 | Demo accesible desde la primera pantalla ("Ver demo") | rechazo 2.1 del 24-jul | ✅ "Ver demo" en la bienvenida (XCUITest) | ☐ |
 | APL-04 | Textos de permisos idénticos a los aprobados (cámara, fotos, Salud) | `ios/App/App/Info.plist` | ✅ (cámara ampliada a plato y etiqueta) | ➖ |
 | APL-05 | `PrivacyInfo.xcprivacy` coherente con la etiqueta publicada | plan | ✅ `PrivacyInfo.xcprivacy` | ➖ |
-| APL-06 | iPhone + iPad (`TARGETED_DEVICE_FAMILY 1,2`), iPad digno en ancho compacto | pbxproj | 🟡 ver auditoría 14-oct | ➖ |
+| APL-06 | iPhone + iPad (`TARGETED_DEVICE_FAMILY 1,2`), iPad digno en ancho compacto | pbxproj | ✅ iPad Pro 13" (M5) con 26.5, las cinco pestañas con la cuenta de prueba (`nativa-evidencia/ipad/20261014-203433`, 14-oct): Revisión y Progreso en dos columnas, y Entreno, Dieta y Chat en una columna de lectura centrada. En ancho compacto (Split View) usa el mismo diseño que el iPhone (size class compacta), que tiene probada toda la interfaz. Detalle menor: el título grande de Dieta queda al borde y no alineado con la columna | ➖ |
 | APL-07 | Health Connect: mismos 13 permisos de lectura + historial; chequeo del manifest mergeado; pantalla de justificación y URL de privacidad | `android/app/src/main/AndroidManifest.xml` | ➖ | ☐ |
 | APL-08 | Launcher `.MainActivity` (o alias) y `allowBackup` sin el token | plan | ➖ | ☐ |
 
