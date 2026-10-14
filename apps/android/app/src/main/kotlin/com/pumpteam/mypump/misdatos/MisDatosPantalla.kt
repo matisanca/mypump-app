@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import com.pumpteam.mypump.ModeloAppViewModel
 import com.pumpteam.mypump.acceso.URL_BORRADO
 import com.pumpteam.mypump.acceso.URL_PRIVACIDAD
@@ -53,16 +54,20 @@ import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.respaldo.HojaFuentes
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Mis datos (D3 de la paridad): un lugar fijo, colgado de Revisión, para la apariencia (D5), el respaldo científico, la
- * privacidad y el borrado (D9), con la forma de los ajustes del teléfono.
+ * Mis datos (D3 de la paridad): un lugar fijo, colgado de Revisión, para la IA (D7), la apariencia (D5), el respaldo
+ * científico, la privacidad y el borrado (D9), con la forma de los ajustes del teléfono.
  *
  * Todavía no están en Android: la recuperación y Salud (Health Connect) y el recordatorio del domingo (las notificaciones).
  */
 @Composable
 fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> Unit) {
+    val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    val iaDisponible by modelo.consentimientoIADisponible.collectAsStateWithLifecycle()
+    val consentimiento by modelo.consentimientoIA.collectAsStateWithLifecycle()
     val oscuro by vm.apariencia.oscuroGuardado.collectAsStateWithLifecycle()
     var fuentes by remember { mutableStateOf(false) }
     var informe by rememberSaveable { mutableStateOf(false) }
@@ -76,6 +81,28 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
     }
 
     PantallaConTitulo("Mis datos", alVolver = alVolver, desplazable = true, modifier = Modifier.testTag("mis-datos-pantalla")) {
+        // D7: la decisión sobre la IA, para cambiarla cuando quiera (solo si el servidor puede respetarla).
+        if (iaDisponible && !esDemo) {
+            val pie = when (consentimiento) {
+                true ->
+                    "Lee tus mensajes del chat, las fotos que mandes a analizar y tu check para ayudar a Mati (OpenAI y Anthropic; los datos de salud van sin tu nombre). Si lo apagás, ninguna IA lee tus datos."
+                false -> "Apagado: ninguna IA lee tus datos. Te contesta Mati y las fotos no se analizan."
+                null ->
+                    "Todavía no elegiste: te lo preguntamos antes de tu primer mensaje, foto o check. Si lo prendés, la IA ayuda con el chat, las fotos y tu revisión semanal."
+            }
+            Seccion("Inteligencia artificial", pie = pie, etiquetaPie = "pie-ia") {
+                FilaInterruptor(
+                    icono = Iconos.Chispas,
+                    color = c.marcaTexto,
+                    titulo = "Asistente de IA",
+                    prendido = consentimiento == true,
+                    // En el alcance del ViewModel: salir de Mis datos no corta el envío (igual queda en la cola).
+                    alCambiar = { v -> vm.viewModelScope.launch { modelo.decidirConsentimientoIA(v) } },
+                    etiqueta = "asistente-ia",
+                )
+            }
+        }
+
         Seccion(
             "Apariencia",
             pie = if (oscuro) "La app queda oscura aunque el teléfono esté en claro." else "La app sigue al teléfono: clara u oscura según cómo lo tengas.",
