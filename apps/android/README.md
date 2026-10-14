@@ -12,7 +12,7 @@ estado de todo, `docs/NATIVA_ESTADO.md`.
 | `:core:modelos` | Kotlin/JVM. Las filas de las RPC y lo que publica el Cerebro, con decodificación tolerante (`ValorJson`, `NumeroJs`) | `MyPumpModelos` |
 | `:core:reglas` | Kotlin/JVM. Las reglas portadas de la web: progresión, clave de ejercicio, porción casera, anclaje e hidratación de swaps, categoría y sustitución de alimentos, sustitución de ejercicios, alimento propio, comida libre, normalización de la dieta, progreso, peso, check y fotos de Revisión. `JsRegex` y `ColacionEspanol` dan la semántica de JS | `MyPumpReglas` |
 | `:core:datos` | Kotlin/JVM. El cliente de PostgREST y la visión (OkHttp), la cola de escrituras (`Outbox`, `Escrituras`), los archivos por cuenta (`Disco`) y los modelos de estado con `StateFlow` (`ModeloApp`, chat, Revisión y Mi Día, fotos, Progreso, avisos) | `MyPumpDatos` |
-| `:app` | Android, Compose + Material 3. La pantalla de marca, el `ModeloAppViewModel`, el token con el Keystore (`TokenEnKeystore`), las preferencias y las reglas de backup | `MyPump` |
+| `:app` | Android, Compose + Material 3. Las pantallas (ver "La interfaz"), el `ModeloAppViewModel`, el token con el Keystore (`TokenEnKeystore`), las preferencias, el tema guardado y las reglas de backup | `MyPump` |
 
 Los `:core` no dependen de Android: sus tests corren en la JVM, en segundos y sin emulador.
 
@@ -26,7 +26,41 @@ export ANDROID_HOME=~/Library/Android/sdk     # o sdk.dir en local.properties
 cd apps/android
 ./gradlew test                  # todos los tests de :core (JUnit 5, en la JVM)
 ./gradlew :app:assembleDebug    # app/build/outputs/apk/debug/app-debug.apk
+./gradlew connectedDebugAndroidTest   # las instrumentadas, en el emulador (AVD nativa36) o un teléfono
 ```
+
+`scripts/nativa/emu-ui.sh [serial] [clases]` corre las instrumentadas y baja las capturas de `CapturasUiTest` (cada
+pantalla en claro y en oscuro) y el reporte a `~/Developer/nativa-evidencia/android-ui/<fecha>/`.
+
+## La interfaz
+
+Gemela de `apps/ios/MyPump/`, adaptada a Material 3: barra de pestañas abajo, hojas (`ModalBottomSheet`), snackbar
+para el aviso de guardado, título grande que se achica al desplazar. Los colores son los de `Tema.swift`, y los títulos
+y números grandes van en Archivo.
+
+| Paquete | Qué hay |
+|---|---|
+| `diseno` | `TemaMyPump` (claro/oscuro, `MyPump.colores`), `Iconos`, componentes (`Tarjeta`, `BotonMarca`, `Aviso`, `MarcoPantalla`, `Formato`) |
+| `raiz` | `RaizMyPump` (marca, bienvenida, sin conexión, "Actualizá MyPump" o la app), `AppConPestanas` (5 pestañas, badges, barra de la demo, banner sin conexión, aviso de guardado), `Navegacion` |
+| `acceso` | Bienvenida (`AccesoPantalla`), `Apariencia` (D5) y el permiso para la IA (`PermisoIA`, D7) |
+| `dieta`, `revision`, `misdatos`, `respaldo` | Dieta en modo lectura, Revisión (por ahora la entrada a Mis datos), Mis datos y las 14 fuentes |
+
+- **El tema (D5).** Sigue al teléfono, salvo `mypump-theme = "dark"` en las preferencias (lo escribe "Siempre en modo
+  oscuro" de Mis datos o la migración de la web). Los íconos de la barra de estado van con el tema de la app, no con el
+  del teléfono.
+- **El permiso para la IA (D7).** Lo que manda algo a la IA llama a `LocalPermisoIA.current.antesDeUsarIA(modelo) { acepta -> … }`
+  antes del primer uso: si el cliente nunca decidió, aparece la hoja y después sigue. Lo van a usar el chat, la foto de
+  una comida y el check, que todavía no existen en Android.
+- **Recursos compartidos.** Gradle copia en la compilación (`app/build/generated/compartido/`) la fuente Archivo de la app
+  de iOS, la demo y el catálogo de `apps/shared`: no hay copias en el repo que se puedan desfasar.
+- **Pruebas de interfaz (`androidTest/…/ui`).** `ui-test-junit4` no está en el proyecto, así que no se usa
+  `createAndroidComposeRule`. `Pantalla` lee el árbol de semántica de Compose con las mismas piezas públicas que usa esa
+  librería (`ViewRootForTest.onViewCreatedCallback`, `SemanticsOwner`) y toca con las acciones de semántica: busca por
+  `testTag` o por texto y espera a que aparezca. El backend es `ServidorDePrueba`, que contesta con las respuestas
+  grabadas de `test-nativa-real` (`apps/shared/fixtures`, en los assets del APK de pruebas), sin tokens ni red. La prueba
+  del permiso de la IA arma la hoja en una `ComponentActivity` vacía que solo existe en debug (`src/debug/AndroidManifest.xml`).
+  Si se agrega `ui-test-junit4` + `ui-test-manifest`, las pruebas pasan a `createAndroidComposeRule` casi sin cambios:
+  las etiquetas son las mismas.
 
 ## La capa de datos
 
@@ -98,6 +132,16 @@ Después, `./gradlew test` acá y `swift test` en `apps/ios/MyPumpKit`.
 
 ## Lo que hay que saber
 
+- **Lo que se le pide al modelo corre en el alcance de la app**, `LocalAlcanceApp.current` (el `viewModelScope`), nunca
+  en el `rememberCoroutineScope()` de la pantalla. La bienvenida sale de la composición apenas la cuenta empieza a
+  cargar: con su propio alcance cancelaba `entrar()` a la mitad y, con la red lenta, la app quedaba en la marca para
+  siempre (`AccesoUiTest.entrarConLaRedLentaNoSeCortaCuandoLaBienvenidaSaleDePantalla`). El `Task {}` de iOS no depende
+  de la vista.
+- **Texto sin color.** `TemaMyPump` pone el `LocalContentColor`: Material solo lo pone adentro de un `Surface` o un
+  `Scaffold`, y afuera (la bienvenida, "Sin conexión") el texto salía negro también en oscuro.
+- **Dependencias que no están** (y no se agregan sin acordarlo): `ui-test-junit4`/`ui-test-manifest`,
+  `navigation-compose` (la navegación es estado propio: `Navegacion`, con `rememberSaveable`) y `material-icons` (los
+  íconos son vectores en `Iconos`).
 - **Regex.** En Android `java.util.regex` es ICU y en la JVM de los tests es el de OpenJDK. `JsRegex` traduce el
   patrón de JS a construcciones que significan lo mismo en los dos (sin `\b`, `\w`, `\s`, `.` ni `$` del motor), y un
   test lo exige: si una regla nueva usa `Regex` de Kotlin directo, que sea con un patrón que no dependa del motor.
