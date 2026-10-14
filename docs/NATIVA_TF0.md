@@ -40,8 +40,8 @@ solo el día que exista la RPC.
 
 ## Qué mirar si algo falla
 
-- El informe de la migración queda en el teléfono, en `legado/registro.log`, sin tokens ni contenido. Por ahora se lee
-  con Xcode (Devices → MyPump → descargar el contenedor). Está pendiente mostrarlo en Mis datos → diagnóstico.
+- El informe de la migración está en **Mis datos → Informe de la actualización**, al pie, junto a la versión. Aparece
+  solo en un teléfono que vino de la app vieja. No tiene tokens ni contenido, y se comparte con el botón de arriba.
 - Si la migración hace algo raro en muchos teléfonos, la palanca remota (`mypump_app_config`, G2) pausa las ops
   viejas y la escritura de vuelta sin publicar otra versión.
 - Se puede volver atrás: reinstalar la 1.0.12 desde la App Store. La migración se repite sola al volver a la 2.0.0, sin

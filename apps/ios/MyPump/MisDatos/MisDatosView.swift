@@ -91,7 +91,10 @@ struct MisDatosView: View {
             }
 
             Section {
-                LabeledContent("Versión", value: "2.0.0 (100)")
+                LabeledContent("Versión", value: ArranqueMigracion.version)
+                if InformeActualizacion.existe {
+                    NavigationLink("Informe de la actualización") { InformeActualizacion() }
+                }
             } footer: {
                 Text("MyPump no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.")
             }
@@ -192,5 +195,31 @@ private struct ResumenRecuperacion: View {
             return Estado(numero: "\(score)", fraccion: Double(score) / 100,
                           color: CardRecuperacionView.color(c.banda), texto: "\(score)/100 · \(c.bandaTexto)")
         }
+    }
+}
+
+/// Lo que hizo la migración desde la app vieja (`legado/registro.log`): conteos y estados, sin tokens ni contenido. Para
+/// el soporte sin Xcode (la primera prueba en un iPhone, TF-0): se lee acá y se puede compartir con Mati.
+struct InformeActualizacion: View {
+    static var url: URL { EntornoLegado().carpeta.appendingPathComponent("registro.log") }
+    static var existe: Bool { FileManager.default.fileExists(atPath: url.path) }
+
+    @State private var texto = ""
+
+    var body: some View {
+        ScrollView {
+            Text(texto.isEmpty ? "Todavía no hay nada registrado." : texto)
+                .font(.caption.monospaced())
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+        }
+        .background(Color.fondo)
+        .navigationTitle("Informe de la actualización")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !texto.isEmpty { ShareLink(item: texto) }
+        }
+        .task { texto = (try? String(contentsOf: Self.url, encoding: .utf8)) ?? "" }
     }
 }
