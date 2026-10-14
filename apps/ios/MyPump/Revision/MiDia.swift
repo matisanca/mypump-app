@@ -3,12 +3,14 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Mi Día: la racha, cómo fue hoy (entrenamiento, hábitos ✓/✗ y agua) y los últimos 30 días (DIA-01…06). Cierra con
-/// el respaldo científico (GEN-09). Con una cuenta sale de `ModeloRevision` (por la cola; lo pendiente gana sobre el
+/// Mi Día: la racha, cómo fue hoy (entrenamiento, hábitos ✓/✗ y agua), la recuperación y la salud (con una cuenta) y
+/// los últimos 30 días (DIA-01…06). Cierra con el respaldo científico (GEN-09). Con una cuenta sale de `ModeloRevision` (por la cola; lo pendiente gana sobre el
 /// servidor); en la demo y en los bocetos se toca igual pero no se guarda nada.
 struct MiDia: View {
     /// El modelo real, o nil con las muestras.
     let revision: ModeloRevision?
+    /// Recuperación y Salud (SAL-09/10): las cards de ModeloSalud, después del agua como en la web. Nil sin cuenta.
+    var salud: ModeloSalud? = nil
     let muestra: MuestrasExtra.MiDia
     @Environment(\.dynamicTypeSize) private var tamañoLetra
     /// Lo de hoy con las muestras (con una cuenta manda el modelo).
@@ -42,6 +44,10 @@ struct MiDia: View {
                 }
                 .redacted(reason: cargado ? [] : .placeholder)
                 .allowsHitTesting(cargado)
+                if let salud {
+                    CardRecuperacionView(modelo: salud)
+                    CardSaludView(modelo: salud)
+                }
                 UltimosTreintaDias(dias: revision == nil ? Optional(muestra.adherencia) : revision?.adherencia, abierto: $abierto30) {
                     await revision?.cargarAdherencia()
                 }

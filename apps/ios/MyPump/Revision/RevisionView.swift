@@ -3,9 +3,10 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Revisión: lo de la semana (fotos, check, peso), el reloj y, al final, Mi Día (lo de todos los días). Mismo orden
-/// que la web (REV-01). En iPad, en dos columnas: lo semanal a la izquierda, lo diario a la derecha. Con una cuenta
-/// sale de `ModeloRevision` y `ModeloFotos`; en la demo y en los bocetos, de las muestras.
+/// Revisión: lo de la semana (fotos, check, peso), Mi reloj y, al final, Mi Día (lo de todos los días, con la
+/// recuperación y la salud). Mismo orden que la web (REV-01). En iPad, en dos columnas: lo semanal a la izquierda, lo
+/// diario a la derecha. Con una cuenta sale de `ModeloRevision`, `ModeloFotos` y `ModeloSalud`; en la demo y en los
+/// bocetos, de las muestras (y sin salud: no existe sin cuenta).
 struct RevisionView: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
@@ -15,6 +16,7 @@ struct RevisionView: View {
 
     private var revision: ModeloRevision? { modelo.conMuestras ? nil : modelo.revision }
     private var modeloFotos: ModeloFotos? { modelo.conMuestras ? nil : modelo.fotos }
+    private var salud: ModeloSalud? { modelo.conMuestras ? nil : modelo.salud }
 
     var body: some View {
         NavigationStack {
@@ -24,11 +26,11 @@ struct RevisionView: View {
                         if claseAncho == .regular {
                             // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                             HStack(alignment: .top, spacing: Espacio.l) {
-                                VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso }
+                                VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso; reloj }
                                     .frame(maxWidth: .infinity, alignment: .top)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .topeArriba()
-                                VStack(alignment: .leading, spacing: Espacio.xl) { miDia; reloj }
+                                VStack(alignment: .leading, spacing: Espacio.xl) { miDia }
                                     .frame(maxWidth: .infinity, alignment: .top)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .topeArriba()
@@ -44,13 +46,14 @@ struct RevisionView: View {
                     .padding(.bottom, Espacio.xl)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                // Tirar para actualizar: el check, el peso, Mi Día y las fotos (sin cuenta no hay nada que traer).
+                // Tirar para actualizar: el check, el peso, Mi Día, las fotos y la salud (sin cuenta no hay nada que traer).
                 .refreshable {
                     guard let revision else { return }
                     async let r: Void = revision.cargarRevision()
                     async let d: Void = revision.cargarMiDia()
                     async let f: Void = modeloFotos?.cargar() ?? ()
-                    _ = await (r, d, f)
+                    async let s: Void = salud?.cargar() ?? ()
+                    _ = await (r, d, f, s)
                 }
                 .task {
                     // Bocetos: `-ir peso` (o check, reloj, midia, dias) abre desplazado hasta esa sección.
@@ -97,9 +100,12 @@ struct RevisionView: View {
         CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : datos.checkin).id("check")
     }
     private var peso: some View { PesoTarjeta(revision: revision, saludMuestra: datos.salud).id("peso") }
-    private var reloj: some View { MiReloj().id("reloj") }
+    /// Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar). Sin cuenta no hay.
+    @ViewBuilder private var reloj: some View {
+        if let salud { MiRelojView(modelo: salud).id("reloj") }
+    }
     private var miDia: some View {
-        MiDia(revision: revision, muestra: muestraMiDia).id("midia")
+        MiDia(revision: revision, salud: salud, muestra: muestraMiDia).id("midia")
     }
 
     /// La demo de la web viene sembrada (racha 3); los bocetos llenos, con 30 días de historia; si no, las muestras.
@@ -123,42 +129,5 @@ struct RevisionView: View {
             : lunes.formatted(.dateTime.day().month(.wide).locale(es))
         let hasta = domingo.formatted(.dateTime.day().month(.wide).locale(es))
         return "Semana del \(desde) al \(hasta)"
-    }
-}
-
-// MARK: - Mi reloj
-
-/// Oura y WHOOP (REV-08). La autorización se abre en el navegador del sistema; acá, el boceto de las filas.
-private struct MiReloj: View {
-    private let proveedores = [
-        ("Oura", "Anillo · trae sueño, pulso y variabilidad reales", "circle.circle", Color.sueno),
-        ("WHOOP", "Banda · trae sueño, pulso y variabilidad reales", "waveform.path.ecg", Color.corazon),
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Espacio.s) {
-            EncabezadoSeccion(titulo: "Mi reloj")
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Si usás Oura o WHOOP, conectalo y tus datos de sueño y recuperación entran solos. Apple Watch no se conecta acá: va por Salud de Apple.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.bottom, Espacio.s)
-                ForEach(Array(proveedores.enumerated()), id: \.offset) { i, p in
-                    HStack(spacing: Espacio.s) {
-                        IconoAzulejo(p.2, color: p.3)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(p.0).font(.body.weight(.semibold))
-                            Text(p.1).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: Espacio.xs)
-                        Button("Conectar") {}
-                            .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
-                    }
-                    .padding(.vertical, Espacio.xs)
-                    if i < proveedores.count - 1 { Divider().padding(.leading, 42) }
-                }
-            }
-            .tarjeta()
-        }
     }
 }

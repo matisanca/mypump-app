@@ -1,19 +1,20 @@
 import SwiftUI
 import UIKit
 import MyPumpModelos
+import MyPumpReglas
 import MyPumpDatos
 
 /// Mis datos (propuesta D3 de la paridad): un lugar fijo para recuperación, salud, recordatorios, privacidad y
 /// borrado. Hoy en la web solo se llega desde la card de Recuperación. Con la forma de Ajustes: filas con ícono en
-/// azulejo de color. El recordatorio del domingo es el de `CentroAvisos` (NOT-05/06); Salud y el diagnóstico quedan
-/// listos para `ModeloSalud`.
+/// azulejo de color. La recuperación abre los datos de salud de `ModeloSalud` (con "Mostrarme el score" y Salud de
+/// Apple, cuyo título abre el diagnóstico con 5 toques); sin cuenta no existe. El recordatorio del domingo es el de
+/// `CentroAvisos` (NOT-05/06).
 struct MisDatosView: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
     /// `mypump_notif_prefs`: se lee al entrar y cada cambio se guarda y reprograma.
     @State private var preferencias = CentroAvisos.shared.preferencias
     @State private var permisoNegado = false
-    @State private var mostrarScore = true
     @State private var fuentes = false
     @State private var pagina: Pagina?
 
@@ -26,38 +27,17 @@ struct MisDatosView: View {
 
     var body: some View {
         Form {
-            Section {
-                recuperacion
-                Toggle(isOn: $mostrarScore) {
-                    Label { Text("Mostrarme el score") } icon: { IconoAzulejo("eye.fill", color: .gray) }
-                }
-                .tint(Color.marcaVivo)
-            }
-
-            // El lugar de ModeloSalud (lo hace otro agente): la conexión con Salud de Apple, lo del día y el
-            // diagnóstico (SAL-09…13). Hoy son filas de boceto.
-            Section("Salud") {
-                LabeledContent {
-                    Button("Conectar") {}.buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
-                } label: {
-                    Label { Text("Salud de Apple") } icon: { IconoAzulejo("heart.fill", color: .corazon) }
-                }
-                LabeledContent {
-                    Text("—").foregroundStyle(.secondary)
-                } label: {
-                    Label { Text("Pasos hoy") } icon: { IconoAzulejo("figure.walk", color: .alerta) }
-                }
-                LabeledContent {
-                    Text("—").foregroundStyle(.secondary)
-                } label: {
-                    Label { Text("Sueño de anoche") } icon: { IconoAzulejo("bed.double.fill", color: .sueno) }
-                }
-                NavigationLink {
-                    ContentUnavailableView("Diagnóstico de Salud", systemImage: "stethoscope",
-                                           description: Text("Qué datos llegan de Salud de Apple y cuándo fue la última sincronización."))
-                        .navigationTitle("Diagnóstico")
-                } label: {
-                    Label { Text("Diagnóstico de Salud") } icon: { IconoAzulejo("stethoscope", color: .gray) }
+            // Recuperación y salud (SAL-09…13): el resumen de hoy y, al tocarlo, todos los datos de ModeloSalud.
+            if let salud = modelo.conMuestras ? nil : modelo.salud {
+                Section {
+                    NavigationLink {
+                        SaludDetalleView(modelo: salud)
+                    } label: {
+                        ResumenRecuperacion(salud: salud)
+                    }
+                    .accessibilityIdentifier("mis-datos-salud")
+                } footer: {
+                    Text("Sueño, pulso, variabilidad y actividad, si mostrar el score, y la conexión con Salud de Apple.")
                 }
             }
 
@@ -159,21 +139,21 @@ struct MisDatosView: View {
         }
         .contentShape(.rect)
     }
+}
 
-    // MARK: Recuperación
+/// La recuperación de hoy en una fila: el anillo con el score (o los días de calibración) y qué pasa, con lo mismo que
+/// muestra la card de Mi Día.
+private struct ResumenRecuperacion: View {
+    let salud: ModeloSalud
 
-    private var recuperacion: some View {
-        let ultima = datos.recuperacion.last
-        let dias = ultima?.diasDatos ?? 0
-        let score = ultima?.score
-        return HStack(spacing: Espacio.m) {
-            AnilloProgreso(fraccion: score.map { Double($0) / 100 } ?? Double(dias) / 14,
-                           grosor: 7,
-                           color: score == nil ? .sueno : .marcaVivo) {
-                if let score {
-                    Text("\(score)").font(.numeroMediano)
+    var body: some View {
+        let estado = Self.estado(salud.cardRecuperacion)
+        HStack(spacing: Espacio.m) {
+            AnilloProgreso(fraccion: estado.fraccion, grosor: 7, color: estado.color) {
+                if let numero = estado.numero {
+                    Text(numero).font(.numeroMediano).contentTransition(.numericText())
                 } else {
-                    Image(systemName: "waveform.path.ecg")
+                    Image(systemName: estado.icono)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
@@ -181,26 +161,36 @@ struct MisDatosView: View {
             .frame(width: 72, height: 72)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Recuperación").font(.headline)
-                Text(estadoRecuperacion).font(.subheadline).foregroundStyle(.secondary)
-                if score == nil {
-                    ProgressView(value: Double(dias), total: 14)
-                        .tint(Color.sueno)
-                        .frame(maxWidth: 160)
-                        .padding(.top, 4)
-                        .accessibilityLabel("\(dias) de 14 días de datos")
-                }
+                Text(estado.texto).font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.vertical, Espacio.xs)
         .accessibilityElement(children: .combine)
     }
 
-    private var estadoRecuperacion: String {
-        guard let ultima = datos.recuperacion.last else { return "Conectá tu reloj o Salud de Apple" }
-        if let s = ultima.score { return "\(s)/100 · \(ultima.banda ?? "")" }
-        switch ultima.estado {
-        case "calibrando": return "Calibrando: \(ultima.diasDatos ?? 0)/14 días"
-        default: return "Todavía no hay datos suficientes"
+    private struct Estado {
+        var numero: String?
+        var icono = "waveform.path.ecg"
+        var fraccion: Double = 0
+        var color: Color = .sueno
+        var texto: String
+    }
+
+    private static func estado(_ card: SaludVista.CardRecuperacion) -> Estado {
+        switch card {
+        case .sinConectar:
+            return Estado(texto: "Conectá tu reloj o Salud de Apple")
+        case .conectadoSinScore(let caso):
+            return Estado(icono: "hourglass", texto: caso.frase)
+        case .calibrando(let dias, let porcentaje, _):
+            return Estado(icono: "chart.bar.fill", fraccion: Double(porcentaje) / 100, texto: "Calibrando: \(dias) de 14 días")
+        case .oculto:
+            return Estado(icono: "eye.slash", texto: "Tenés el score apagado")
+        case .conScore(let c):
+            let score = c.fila.score ?? 0
+            return Estado(numero: "\(score)", fraccion: Double(score) / 100,
+                          color: CardRecuperacionView.color(c.banda), texto: "\(score)/100 · \(c.bandaTexto)")
         }
     }
 }
