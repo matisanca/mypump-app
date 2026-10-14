@@ -1,0 +1,3842 @@
+[
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-10-04T22:32:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-10-04T22:30:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-10-04T22:28:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-10-04T22:26:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-09-20T22:18:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-09-20T22:16:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-09-20T22:14:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-09-13T22:18:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-09-13T22:16:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "abductores en maquina",
+  "registrado_en": "2026-09-13T22:14:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Abductores en máquina (glúteo medio)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-10-02T22:00:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-10-02T21:58:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-10-02T21:56:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-10-02T21:54:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-09-25T21:54:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-09-25T21:52:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-09-25T21:50:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-09-18T21:54:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-09-18T21:52:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "aperturas en pec deck",
+  "registrado_en": "2026-09-18T21:50:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Aperturas en pec deck (aducción)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-10-05T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-10-05T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-10-05T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-10-02T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-10-02T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-10-02T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-28T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-28T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-28T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-25T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-25T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-25T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-21T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-21T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-21T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-18T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-18T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-18T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-14T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-14T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "crunch en maquina",
+  "registrado_en": "2026-09-14T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Crunch en máquina (core anterior)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-10-01T22:24:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-10-01T22:22:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-10-01T22:20:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-10-01T22:18:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-24T22:12:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-24T22:10:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-24T22:08:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-17T22:12:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-17T22:10:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-17T22:08:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-10T22:12:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-10T22:10:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl con barra z",
+  "registrado_en": "2026-09-10T22:08:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl con barra Z (bíceps)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-10-04T22:08:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-10-04T22:06:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-10-04T22:04:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-10-04T22:02:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-09-20T22:00:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-09-20T21:58:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-09-20T21:56:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-09-13T22:00:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-09-13T21:58:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl femoral sentado",
+  "registrado_en": "2026-09-13T21:56:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl femoral sentado (isquiotibiales)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-10-01T22:32:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-10-01T22:30:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-10-01T22:28:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-10-01T22:26:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-24T22:18:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-24T22:16:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-24T22:14:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-17T22:18:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-17T22:16:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-17T22:14:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-10T22:18:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-10T22:16:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl inclinado con mancuernas",
+  "registrado_en": "2026-09-10T22:14:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl inclinado con mancuernas (cabeza larga)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-10-05T22:24:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-10-05T22:22:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-10-05T22:20:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-10-05T22:18:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-28T22:12:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-28T22:10:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-28T22:08:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-21T22:12:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-21T22:10:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-21T22:08:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-14T22:12:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-14T22:10:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "curl predicador en maquina",
+  "registrado_en": "2026-09-14T22:08:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Curl predicador en máquina (cabeza corta)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-10-04T22:40:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-10-04T22:38:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-10-04T22:36:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-10-04T22:34:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-09-20T22:24:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-09-20T22:22:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-09-20T22:20:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-09-13T22:24:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-09-13T22:22:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevacion de talon en prensa",
+  "registrado_en": "2026-09-13T22:20:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevación de talón en prensa (gastrocnemio)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-10-02T22:16:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-10-02T22:14:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-10-02T22:12:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-10-02T22:10:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-09-25T22:06:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-09-25T22:04:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-09-25T22:02:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-09-18T22:06:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-09-18T22:04:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales con mancuernas",
+  "registrado_en": "2026-09-18T22:02:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales con mancuernas (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-10-05T22:16:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-10-05T22:14:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-10-05T22:12:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-10-05T22:10:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-28T22:06:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-28T22:04:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-28T22:02:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-21T22:06:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-21T22:04:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-21T22:02:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-14T22:06:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-14T22:04:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "elevaciones laterales en polea a una mano",
+  "registrado_en": "2026-09-14T22:02:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-10-05T22:32:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-10-05T22:30:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-10-05T22:28:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-10-05T22:26:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-28T22:18:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-28T22:16:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-28T22:14:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-21T22:18:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-21T22:16:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-21T22:14:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-14T22:18:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-14T22:16:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension con barra en polea alta",
+  "registrado_en": "2026-09-14T22:14:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión con barra en polea alta (cabeza lateral)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-10-04T21:44:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-10-04T21:42:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-10-04T21:40:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-10-04T21:38:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-09-20T21:42:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-09-20T21:40:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-09-20T21:38:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-09-13T21:42:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-09-13T21:40:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension de cuadriceps en maquina",
+  "registrado_en": "2026-09-13T21:38:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión de cuádriceps en máquina (prefatiga)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-10-02T22:24:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-10-02T22:22:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-10-02T22:20:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-10-02T22:18:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-09-25T22:12:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-09-25T22:10:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-09-25T22:08:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-09-18T22:12:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-09-18T22:10:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension en polea con cuerda agarre neutro",
+  "registrado_en": "2026-09-18T22:08:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-10-02T22:32:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-10-02T22:30:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-10-02T22:28:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-10-02T22:26:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-09-25T22:18:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-09-25T22:16:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-09-25T22:14:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-09-18T22:18:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-09-18T22:16:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "extension overhead con cuerda en polea",
+  "registrado_en": "2026-09-18T22:14:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Extensión overhead con cuerda en polea (cabeza larga)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-10-01T22:08:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-10-01T22:06:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-10-01T22:04:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-10-01T22:02:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-24T22:00:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-24T21:58:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-24T21:56:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-17T22:00:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-17T21:58:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-17T21:56:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-10T22:00:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-10T21:58:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "face pull con cuerda en polea",
+  "registrado_en": "2026-09-10T21:56:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Face pull con cuerda en polea (deltoides posterior)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-10-04T21:52:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-10-04T21:50:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-10-04T21:48:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-10-04T21:46:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-09-20T21:48:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-09-20T21:46:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-09-20T21:44:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-09-13T21:48:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-09-13T21:46:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hack squat",
+  "registrado_en": "2026-09-13T21:44:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Hack squat (cuádriceps)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-10-04T22:24:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-10-04T22:22:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-10-04T22:20:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-10-04T22:18:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-09-20T22:12:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-09-20T22:10:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-09-20T22:08:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-09-13T22:12:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-09-13T22:10:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "hip thrust con barra",
+  "registrado_en": "2026-09-13T22:08:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Hip thrust con barra (glúteo mayor)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-10-05T21:44:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-10-05T21:42:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-10-05T21:40:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-10-05T21:38:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-28T21:42:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-28T21:40:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-28T21:38:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-21T21:42:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-21T21:40:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-21T21:38:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-14T21:42:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-14T21:40:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho agarre neutro",
+  "registrado_en": "2026-09-14T21:38:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho agarre neutro (ancho dorsal)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-10-01T21:44:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-10-01T21:42:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-10-01T21:40:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-10-01T21:38:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-24T21:42:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-24T21:40:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-24T21:38:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-17T21:42:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-17T21:40:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-17T21:38:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-10T21:42:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-10T21:40:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "jalon al pecho prono",
+  "registrado_en": "2026-09-10T21:38:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Jalón al pecho prono (dorsal ancho)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-10-01T22:16:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-10-01T22:14:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-10-01T22:12:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-10-01T22:10:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-24T22:06:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-24T22:04:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-24T22:02:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-17T22:06:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-17T22:04:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-17T22:02:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-10T22:06:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-10T22:04:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "pajaros en maquina reverse pec deck",
+  "registrado_en": "2026-09-10T22:02:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-10-04T22:00:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-10-04T21:58:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-10-04T21:56:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-10-04T21:54:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-09-20T21:54:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-09-20T21:52:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-09-20T21:50:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-09-13T21:54:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-09-13T21:52:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "prensa de piernas",
+  "registrado_en": "2026-09-13T21:50:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Prensa de piernas (cuádriceps)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-10-02T21:44:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-10-02T21:42:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-10-02T21:40:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-10-02T21:38:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-09-25T21:42:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-09-25T21:40:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-09-25T21:38:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-09-18T21:42:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-09-18T21:40:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado con mancuernas",
+  "registrado_en": "2026-09-18T21:38:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado con mancuernas (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-10-05T22:08:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-10-05T22:06:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-10-05T22:04:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-10-05T22:02:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-28T22:00:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-28T21:58:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-28T21:56:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-21T22:00:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-21T21:58:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-21T21:56:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-14T22:00:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-14T21:58:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press inclinado en maquina",
+  "registrado_en": "2026-09-14T21:56:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press inclinado en máquina (pectoral superior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-10-02T22:08:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-10-02T22:06:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-10-02T22:04:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-10-02T22:02:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-09-25T22:00:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-09-25T21:58:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-09-25T21:56:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-09-18T22:00:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-09-18T21:58:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press militar en maquina",
+  "registrado_en": "2026-09-18T21:56:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press militar en máquina (deltoides anterior)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-10-05T22:00:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-10-05T21:58:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-10-05T21:56:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-10-05T21:54:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-28T21:54:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-28T21:52:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-28T21:50:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-21T21:54:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-21T21:52:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-21T21:50:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-14T21:54:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-14T21:52:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano con mancuernas",
+  "registrado_en": "2026-09-14T21:50:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press plano con mancuernas (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-10-02T21:52:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-10-02T21:50:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-10-02T21:48:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-10-02T21:46:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-09-25T21:48:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-09-25T21:46:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-09-25T21:44:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-09-18T21:48:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-09-18T21:46:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "press plano en maquina",
+  "registrado_en": "2026-09-18T21:44:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Press plano en máquina (pectoral medio)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-10-01T22:00:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-10-01T21:58:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-10-01T21:56:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-10-01T21:54:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-24T21:54:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-24T21:52:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-24T21:50:00+00:00",
+  "peso_kg": 17,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-17T21:54:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-17T21:52:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-17T21:50:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-10T21:54:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-10T21:52:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "pullover en polea",
+  "registrado_en": "2026-09-10T21:50:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Pullover en polea (dorsal bajo / serrato)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-10-04T22:16:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-10-04T22:14:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-10-04T22:12:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-10-04T22:10:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-09-20T22:06:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-09-20T22:04:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-09-20T22:02:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-09-13T22:06:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-09-13T22:04:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "rdl con barra",
+  "registrado_en": "2026-09-13T22:02:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "RDL con barra (isquios / glúteos)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-10-05T21:52:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-10-05T21:50:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-10-05T21:48:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-10-05T21:46:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-28T21:48:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-28T21:46:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-28T21:44:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-21T21:48:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-21T21:46:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-21T21:44:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-14T21:48:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-14T21:46:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en maquina palanca",
+  "registrado_en": "2026-09-14T21:44:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Remo en máquina palanca (grosor)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-10-01T21:52:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-10-01T21:50:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-10-01T21:48:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-10-01T21:46:00+00:00",
+  "peso_kg": 58,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-24T21:48:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-24T21:46:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 8,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-24T21:44:00+00:00",
+  "peso_kg": 56,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-17T21:48:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-17T21:46:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-17T21:44:00+00:00",
+  "peso_kg": 54,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-10T21:48:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-10T21:46:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "remo en polea sentado",
+  "registrado_en": "2026-09-10T21:44:00+00:00",
+  "peso_kg": 52,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Remo en polea sentado (grosor / dorsal bajo)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-10-04T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-10-04T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-10-04T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-10-01T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-10-01T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-10-01T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-24T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-24T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-24T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-20T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-20T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-20T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-17T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-17T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-17T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-13T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-13T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-13T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-10T21:36:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-10T21:34:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 12,
+  "rir_real": 1,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "rollout con ab wheel",
+  "registrado_en": "2026-09-10T21:32:00+00:00",
+  "peso_kg": 0,
+  "reps_realizadas": 13,
+  "rir_real": 1,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Rollout con ab wheel (core anterior)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-10-04T22:48:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 4,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-10-04T22:46:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-10-04T22:44:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 9,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-10-04T22:42:00+00:00",
+  "peso_kg": 17.5,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-09-20T22:30:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-09-20T22:28:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 10,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-09-20T22:26:00+00:00",
+  "peso_kg": 16,
+  "reps_realizadas": 11,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-09-13T22:30:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 3,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-09-13T22:28:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 12,
+  "rir_real": 0,
+  "serie_numero": 2,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ },
+ {
+  "clave": "soleo en maquina sentado",
+  "registrado_en": "2026-09-13T22:26:00+00:00",
+  "peso_kg": 15.5,
+  "reps_realizadas": 13,
+  "rir_real": 0,
+  "serie_numero": 1,
+  "notas": null,
+  "ejercicio_nombre": "Sóleo en máquina sentado (sóleo)"
+ }
+]

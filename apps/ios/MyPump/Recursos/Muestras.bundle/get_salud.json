@@ -1,0 +1,149 @@
+[
+ {
+  "fecha": "2026-10-13",
+  "tipo": "peso_kg",
+  "valor": 81.9,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-12",
+  "tipo": "peso_kg",
+  "valor": 82,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-11",
+  "tipo": "peso_kg",
+  "valor": 82,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-10",
+  "tipo": "peso_kg",
+  "valor": 82.1,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-09",
+  "tipo": "peso_kg",
+  "valor": 81.8,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-08",
+  "tipo": "peso_kg",
+  "valor": 81.7,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-07",
+  "tipo": "peso_kg",
+  "valor": 81.6,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-06",
+  "tipo": "peso_kg",
+  "valor": 81.8,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-05",
+  "tipo": "peso_kg",
+  "valor": 81.4,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-04",
+  "tipo": "peso_kg",
+  "valor": 81.3,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-03",
+  "tipo": "peso_kg",
+  "valor": 81.5,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-02",
+  "tipo": "peso_kg",
+  "valor": 81.4,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-10-01",
+  "tipo": "peso_kg",
+  "valor": 81.3,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-30",
+  "tipo": "peso_kg",
+  "valor": 81.2,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-29",
+  "tipo": "peso_kg",
+  "valor": 81.6,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-28",
+  "tipo": "peso_kg",
+  "valor": 81.6,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-27",
+  "tipo": "peso_kg",
+  "valor": 81.4,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-26",
+  "tipo": "peso_kg",
+  "valor": 81.6,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-25",
+  "tipo": "peso_kg",
+  "valor": 81.3,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-24",
+  "tipo": "peso_kg",
+  "valor": 81.3,
+  "fuente": "manual",
+  "detalle": null
+ },
+ {
+  "fecha": "2026-09-23",
+  "tipo": "peso_kg",
+  "valor": 81.2,
+  "fuente": "manual",
+  "detalle": null
+ }
+]

@@ -1,0 +1,451 @@
+[
+ {
+  "id": "15a9a59f-9b90-4e42-b6a4-07b1e4bb4a7f",
+  "version": 1,
+  "estructura": {
+   "comidas": [
+    {
+     "id": "c1",
+     "name": "Desayuno",
+     "options": [
+      {
+       "name": "A",
+       "foods": [
+        {
+         "fat": 11.4,
+         "qty": 2,
+         "carb": 0.8,
+         "kcal": 172,
+         "name": "Huevo entero",
+         "prot": 15.1,
+         "unit": "unidad"
+        },
+        {
+         "fat": 0.3,
+         "qty": 140,
+         "carb": 1,
+         "kcal": 73,
+         "name": "Clara de huevo",
+         "prot": 15.3,
+         "unit": "g"
+        },
+        {
+         "fat": 3.5,
+         "qty": 110,
+         "carb": 56.8,
+         "kcal": 299,
+         "name": "Pan francés / baguette",
+         "prot": 10.3,
+         "unit": "g"
+        }
+       ]
+      },
+      {
+       "name": "B",
+       "foods": [
+        {
+         "fat": 1.3,
+         "qty": 320,
+         "carb": 11.5,
+         "kcal": 189,
+         "name": "Yogur griego descremado",
+         "prot": 32,
+         "unit": "g"
+        },
+        {
+         "fat": 15.1,
+         "qty": 75,
+         "carb": 48,
+         "kcal": 353,
+         "name": "Granola",
+         "prot": 7.8,
+         "unit": "g"
+        }
+       ]
+      },
+      {
+       "name": "C",
+       "foods": [
+        {
+         "fat": 1.2,
+         "qty": 30,
+         "carb": 2.4,
+         "kcal": 114,
+         "name": "Proteína whey (polvo)",
+         "prot": 24,
+         "unit": "g"
+        },
+        {
+         "fat": 5.5,
+         "qty": 80,
+         "carb": 53,
+         "kcal": 311,
+         "name": "Avena (en seco)",
+         "prot": 13.5,
+         "unit": "g"
+        },
+        {
+         "fat": 10.3,
+         "qty": 20,
+         "carb": 4.3,
+         "kcal": 120,
+         "name": "Mantequilla de maní",
+         "prot": 4.4,
+         "unit": "g"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "c2",
+     "name": "Almuerzo",
+     "options": [
+      {
+       "name": "A",
+       "foods": [
+        {
+         "fat": 4.4,
+         "qty": 170,
+         "carb": 0,
+         "kcal": 204,
+         "name": "Pechuga de pollo (cruda)",
+         "prot": 38.3,
+         "unit": "g"
+        },
+        {
+         "fat": 0.7,
+         "qty": 100,
+         "carb": 80,
+         "kcal": 365,
+         "name": "Arroz blanco crudo",
+         "prot": 7.1,
+         "unit": "g"
+        },
+        {
+         "fat": 10,
+         "qty": 10,
+         "carb": 0,
+         "kcal": 88,
+         "name": "Aceite de oliva",
+         "prot": 0,
+         "unit": "ml"
+        },
+        {
+         "fat": 0.6,
+         "qty": 150,
+         "carb": 9.9,
+         "kcal": 51,
+         "name": "Brócoli",
+         "prot": 4.2,
+         "unit": "g"
+        }
+       ]
+      },
+      {
+       "name": "B",
+       "foods": [
+        {
+         "fat": 8.4,
+         "qty": 190,
+         "carb": 0,
+         "kcal": 249,
+         "name": "Nalga / Cuadrada (cruda)",
+         "prot": 41.8,
+         "unit": "g"
+        },
+        {
+         "fat": 0.4,
+         "qty": 350,
+         "carb": 61.3,
+         "kcal": 270,
+         "name": "Papa / Patata (cruda)",
+         "prot": 7,
+         "unit": "g"
+        },
+        {
+         "fat": 15,
+         "qty": 15,
+         "carb": 0,
+         "kcal": 133,
+         "name": "Aceite de oliva",
+         "prot": 0,
+         "unit": "ml"
+        },
+        {
+         "fat": 0.2,
+         "qty": 100,
+         "carb": 2.9,
+         "kcal": 15,
+         "name": "Lechuga",
+         "prot": 1.4,
+         "unit": "g"
+        },
+        {
+         "fat": 0.2,
+         "qty": 100,
+         "carb": 3.9,
+         "kcal": 18,
+         "name": "Tomate",
+         "prot": 0.9,
+         "unit": "g"
+        }
+       ]
+      },
+      {
+       "name": "C",
+       "foods": [
+        {
+         "fat": 18,
+         "qty": 180,
+         "carb": 0,
+         "kcal": 317,
+         "name": "Carne vacuna picada (magra 90/10, cruda)",
+         "prot": 36,
+         "unit": "g"
+        },
+        {
+         "fat": 1.7,
+         "qty": 95,
+         "carb": 71,
+         "kcal": 352,
+         "name": "Pasta / Fideos (crudos)",
+         "prot": 12.4,
+         "unit": "g"
+        },
+        {
+         "fat": 0.4,
+         "qty": 100,
+         "carb": 7.1,
+         "kcal": 32,
+         "name": "Salsa de tomate (enlatada)",
+         "prot": 1.6,
+         "unit": "g"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "c3",
+     "name": "Merienda",
+     "options": [
+      {
+       "name": "A",
+       "foods": [
+        {
+         "fat": 9.6,
+         "qty": 240,
+         "carb": 9.6,
+         "kcal": 252,
+         "name": "Ricota magra",
+         "prot": 28.8,
+         "unit": "g"
+        },
+        {
+         "fat": 2.5,
+         "qty": 50,
+         "carb": 37.5,
+         "kcal": 195,
+         "name": "Tostadas (biscuit)",
+         "prot": 5.5,
+         "unit": "g"
+        }
+       ]
+      },
+      {
+       "name": "B",
+       "foods": [
+        {
+         "fat": 1.2,
+         "qty": 30,
+         "carb": 2.4,
+         "kcal": 114,
+         "name": "Proteína whey (polvo)",
+         "prot": 24,
+         "unit": "g"
+        },
+        {
+         "fat": 1.7,
+         "qty": 55,
+         "carb": 46.5,
+         "kcal": 212,
+         "name": "Galletitas de arroz",
+         "prot": 4.3,
+         "unit": "g"
+        },
+        {
+         "fat": 10.3,
+         "qty": 20,
+         "carb": 4.3,
+         "kcal": 120,
+         "name": "Mantequilla de maní",
+         "prot": 4.4,
+         "unit": "g"
+        }
+       ]
+      },
+      {
+       "name": "C",
+       "foods": [
+        {
+         "fat": 0.8,
+         "qty": 200,
+         "carb": 7.2,
+         "kcal": 118,
+         "name": "Yogur griego descremado",
+         "prot": 20,
+         "unit": "g"
+        },
+        {
+         "fat": 5.9,
+         "qty": 85,
+         "carb": 56.4,
+         "kcal": 331,
+         "name": "Avena (en seco)",
+         "prot": 14.4,
+         "unit": "g"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "c4",
+     "name": "Cena",
+     "options": [
+      {
+       "name": "A",
+       "foods": [
+        {
+         "fat": 4.8,
+         "qty": 250,
+         "carb": 0,
+         "kcal": 225,
+         "name": "Merluza (cruda)",
+         "prot": 42.3,
+         "unit": "g"
+        },
+        {
+         "fat": 0.4,
+         "qty": 350,
+         "carb": 70.4,
+         "kcal": 301,
+         "name": "Batata / Camote (cruda)",
+         "prot": 5.6,
+         "unit": "g"
+        },
+        {
+         "fat": 15,
+         "qty": 15,
+         "carb": 0,
+         "kcal": 133,
+         "name": "Aceite de oliva",
+         "prot": 0,
+         "unit": "ml"
+        },
+        {
+         "fat": 0.5,
+         "qty": 150,
+         "carb": 4.7,
+         "kcal": 26,
+         "name": "Zapallito / Zucchini",
+         "prot": 1.8,
+         "unit": "g"
+        }
+       ]
+      },
+      {
+       "name": "B",
+       "foods": [
+        {
+         "fat": 11.2,
+         "qty": 190,
+         "carb": 0,
+         "kcal": 272,
+         "name": "Lomo de cerdo (crudo)",
+         "prot": 40.5,
+         "unit": "g"
+        },
+        {
+         "fat": 0.4,
+         "qty": 350,
+         "carb": 61.3,
+         "kcal": 270,
+         "name": "Papa / Patata (cruda)",
+         "prot": 7,
+         "unit": "g"
+        },
+        {
+         "fat": 10,
+         "qty": 10,
+         "carb": 0,
+         "kcal": 88,
+         "name": "Aceite de oliva",
+         "prot": 0,
+         "unit": "ml"
+        },
+        {
+         "fat": 0.2,
+         "qty": 150,
+         "carb": 10.5,
+         "kcal": 47,
+         "name": "Chauchas / Vainitas",
+         "prot": 2.7,
+         "unit": "g"
+        }
+       ]
+      },
+      {
+       "name": "C",
+       "foods": [
+        {
+         "fat": 0.8,
+         "qty": 160,
+         "carb": 0,
+         "kcal": 174,
+         "name": "Atún al natural (lata)",
+         "prot": 40.8,
+         "unit": "g"
+        },
+        {
+         "fat": 0.6,
+         "qty": 90,
+         "carb": 72,
+         "kcal": 329,
+         "name": "Arroz blanco crudo",
+         "prot": 6.4,
+         "unit": "g"
+        },
+        {
+         "fat": 14.7,
+         "qty": 100,
+         "carb": 8.5,
+         "kcal": 160,
+         "name": "Palta / Aguacate",
+         "prot": 2,
+         "unit": "g"
+        },
+        {
+         "fat": 0.3,
+         "qty": 150,
+         "carb": 5.9,
+         "kcal": 27,
+         "name": "Tomate",
+         "prot": 1.4,
+         "unit": "g"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "macros_target": {
+    "fat": 67,
+    "carb": 270,
+    "kcal": 2373,
+    "prot": 175
+   }
+  }
+ }
+]

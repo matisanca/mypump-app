@@ -12,7 +12,14 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 31,
+    "score": 78,
+    "cronico": 283
+   }
+  },
   "motivos": []
  },
  {
@@ -28,8 +35,23 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
-  "motivos": []
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 62,
+    "score": 11,
+    "cronico": 314
+   }
+  },
+  "motivos": [
+   {
+    "dir": 1,
+    "peso": 88.77767667576585,
+    "tipo": "carga",
+    "agudo": 62,
+    "cronico": 314
+   }
+  ]
  },
  {
   "fecha": "2026-10-03",
@@ -44,8 +66,23 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
-  "motivos": []
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 62,
+    "score": 11,
+    "cronico": 314
+   }
+  },
+  "motivos": [
+   {
+    "dir": 1,
+    "peso": 88.77767667576585,
+    "tipo": "carga",
+    "agudo": 62,
+    "cronico": 314
+   }
+  ]
  },
  {
   "fecha": "2026-10-04",
@@ -60,8 +97,23 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
-  "motivos": []
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 70,
+    "score": 11,
+    "cronico": 353
+   }
+  },
+  "motivos": [
+   {
+    "dir": 1,
+    "peso": 89.3430460002698,
+    "tipo": "carga",
+    "agudo": 70,
+    "cronico": 353
+   }
+  ]
  },
  {
   "fecha": "2026-10-05",
@@ -76,8 +128,23 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
-  "motivos": []
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 70,
+    "score": 21,
+    "cronico": 384
+   }
+  },
+  "motivos": [
+   {
+    "dir": 1,
+    "peso": 78.67063492063492,
+    "tipo": "carga",
+    "agudo": 70,
+    "cronico": 384
+   }
+  ]
  },
  {
   "fecha": "2026-10-06",
@@ -92,8 +159,23 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
-  "motivos": []
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 70,
+    "score": 21,
+    "cronico": 384
+   }
+  },
+  "motivos": [
+   {
+    "dir": 1,
+    "peso": 78.67063492063492,
+    "tipo": "carga",
+    "agudo": 70,
+    "cronico": 384
+   }
+  ]
  },
  {
   "fecha": "2026-10-07",
@@ -108,7 +190,14 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 31,
+    "score": 100,
+    "cronico": 384
+   }
+  },
   "motivos": []
  },
  {
@@ -124,7 +213,14 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 0,
+    "score": 100,
+    "cronico": 360
+   }
+  },
   "motivos": []
  },
  {
@@ -140,7 +236,14 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 0,
+    "score": 100,
+    "cronico": 360
+   }
+  },
   "motivos": []
  },
  {
@@ -156,7 +259,14 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 0,
+    "score": 100,
+    "cronico": 360
+   }
+  },
   "motivos": []
  },
  {
@@ -172,7 +282,14 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 0,
+    "score": 100,
+    "cronico": 330
+   }
+  },
   "motivos": []
  },
  {
@@ -188,7 +305,14 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 0,
+    "score": 100,
+    "cronico": 306
+   }
+  },
   "motivos": []
  },
  {
@@ -204,7 +328,14 @@
   "cobertura": {
    "cv_alto": false
   },
-  "componentes": {},
+  "componentes": {
+   "carga": {
+    "peso": 20,
+    "agudo": 0,
+    "score": 100,
+    "cronico": 306
+   }
+  },
   "motivos": []
  },
  {
@@ -223,19 +354,11 @@
   "componentes": {
    "carga": {
     "peso": 20,
-    "agudo": 384,
-    "score": 0,
-    "cronico": 384
+    "agudo": 0,
+    "score": 100,
+    "cronico": 306
    }
   },
-  "motivos": [
-   {
-    "dir": 1,
-    "peso": 100,
-    "tipo": "carga",
-    "agudo": 384,
-    "cronico": 384
-   }
-  ]
+  "motivos": []
  }
 ]

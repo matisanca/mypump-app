@@ -1,0 +1,183 @@
+{
+ "nombre_plan": "Mesociclo 1 — Hipertrofia",
+ "split": "PPL ×2 — 6 días",
+ "semanas_total": 12,
+ "dias": [
+  {
+   "id": "lun",
+   "n": 1,
+   "nombre": "Tirón A — Ancho",
+   "bloques": [
+    {
+     "titulo": "BLOQUE 0",
+     "subtitulo": "Calentamiento",
+     "ejercicios": [
+      {
+       "id": "ex_001",
+       "nombre": "Movilidad de hombros con banda",
+       "tipo": "calentamiento",
+       "series": 2,
+       "reps": "10",
+       "rir_objetivo": null,
+       "descanso_segundos": 30
+      },
+      {
+       "id": "ex_002",
+       "nombre": "Face-pull con banda",
+       "tipo": "calentamiento",
+       "series": 2,
+       "reps": "12",
+       "rir_objetivo": null,
+       "descanso_segundos": 30
+      }
+     ]
+    },
+    {
+     "titulo": "BLOQUE 1",
+     "subtitulo": "Espalda",
+     "ejercicios": [
+      {
+       "id": "ex_010",
+       "nombre": "Remo con barra",
+       "tipo": "compuesto",
+       "series": 4,
+       "reps": "8-10",
+       "rir_objetivo": "1-2",
+       "descanso_segundos": 150
+      },
+      {
+       "id": "ex_011",
+       "nombre": "Jalón al pecho prono",
+       "tipo": "compuesto",
+       "series": 4,
+       "reps": "8-10",
+       "rir_objetivo": "1-2",
+       "descanso_segundos": 150,
+       "video_url": "https://www.youtube.com/embed/dQ0jFBSMFHc",
+       "notas_tecnica": "Foco en bajada controlada, pausa 1seg en contracción. Pecho arriba todo el movimiento."
+      },
+      {
+       "id": "ex_012",
+       "nombre": "Pullover en polea",
+       "tipo": "aislamiento",
+       "series": 3,
+       "reps": "10-12",
+       "rir_objetivo": "0-1",
+       "descanso_segundos": 90
+      }
+     ]
+    },
+    {
+     "titulo": "BLOQUE 2",
+     "subtitulo": "Bíceps",
+     "ejercicios": [
+      {
+       "id": "ex_020",
+       "nombre": "Curl con barra Z",
+       "tipo": "aislamiento",
+       "series": 3,
+       "reps": "10-12",
+       "rir_objetivo": "0-1",
+       "descanso_segundos": 90
+      },
+      {
+       "id": "ex_021",
+       "nombre": "Curl martillo con mancuerna",
+       "tipo": "aislamiento",
+       "series": 3,
+       "reps": "10-12",
+       "rir_objetivo": "0-1",
+       "descanso_segundos": 75
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mar",
+   "n": 2,
+   "nombre": "Empuje A — Pecho / Hombro",
+   "bloques": [
+    {
+     "titulo": "BLOQUE 1",
+     "subtitulo": "Pecho",
+     "ejercicios": [
+      {
+       "id": "ex_100",
+       "nombre": "Press banca plano con barra",
+       "tipo": "compuesto",
+       "series": 4,
+       "reps": "6-8",
+       "rir_objetivo": "1-2",
+       "descanso_segundos": 180
+      },
+      {
+       "id": "ex_101",
+       "nombre": "Press inclinado con mancuernas",
+       "tipo": "compuesto",
+       "series": 3,
+       "reps": "10-12",
+       "rir_objetivo": "1-2",
+       "descanso_segundos": 150
+      }
+     ]
+    },
+    {
+     "titulo": "BLOQUE 2",
+     "subtitulo": "Hombro / Tríceps",
+     "ejercicios": [
+      {
+       "id": "ex_110",
+       "nombre": "Press militar con barra",
+       "tipo": "compuesto",
+       "series": 4,
+       "reps": "8-10",
+       "rir_objetivo": "1-2",
+       "descanso_segundos": 150
+      },
+      {
+       "id": "ex_111",
+       "nombre": "Extensión tríceps en polea",
+       "tipo": "aislamiento",
+       "series": 3,
+       "reps": "12-15",
+       "rir_objetivo": "0-1",
+       "descanso_segundos": 75
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mie",
+   "n": 3,
+   "nombre": "Pierna A — Quad / Glúteo",
+   "bloques": [
+    {
+     "titulo": "BLOQUE 1",
+     "subtitulo": "Cuádriceps",
+     "ejercicios": [
+      {
+       "id": "ex_200",
+       "nombre": "Sentadilla con barra",
+       "tipo": "compuesto",
+       "series": 4,
+       "reps": "6-8",
+       "rir_objetivo": "1-2",
+       "descanso_segundos": 240
+      },
+      {
+       "id": "ex_201",
+       "nombre": "Prensa 45°",
+       "tipo": "compuesto",
+       "series": 3,
+       "reps": "10-12",
+       "rir_objetivo": "1-2",
+       "descanso_segundos": 150
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

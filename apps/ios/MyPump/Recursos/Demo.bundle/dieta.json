@@ -1,0 +1,518 @@
+{
+ "macros_target": {
+  "kcal": 3200,
+  "prot": 220,
+  "carb": 380,
+  "fat": 90
+ },
+ "comidas": [
+  {
+   "id": "c1",
+   "name": "Desayuno",
+   "options": [
+    {
+     "name": "A",
+     "foods": [
+      {
+       "name": "Avena en copos",
+       "qty": 100,
+       "unit": "g",
+       "kcal": 380,
+       "prot": 13,
+       "carb": 67,
+       "fat": 7
+      },
+      {
+       "name": "Huevos enteros",
+       "qty": 3,
+       "unit": "u",
+       "kcal": 234,
+       "prot": 18,
+       "carb": 0,
+       "fat": 18
+      },
+      {
+       "name": "Banana",
+       "qty": 1,
+       "unit": "u",
+       "kcal": 105,
+       "prot": 1,
+       "carb": 27,
+       "fat": 0
+      }
+     ]
+    },
+    {
+     "name": "B",
+     "foods": [
+      {
+       "name": "Pan integral",
+       "qty": 80,
+       "unit": "g",
+       "kcal": 200,
+       "prot": 8,
+       "carb": 38,
+       "fat": 2
+      },
+      {
+       "name": "Claras de huevo",
+       "qty": 6,
+       "unit": "u",
+       "kcal": 108,
+       "prot": 24,
+       "carb": 0,
+       "fat": 0
+      },
+      {
+       "name": "Palta",
+       "qty": 0.5,
+       "unit": "u",
+       "kcal": 160,
+       "prot": 2,
+       "carb": 8,
+       "fat": 14
+      }
+     ]
+    },
+    {
+     "name": "C",
+     "foods": [
+      {
+       "name": "Yogur griego natural",
+       "qty": 300,
+       "unit": "g",
+       "kcal": 300,
+       "prot": 18,
+       "carb": 12,
+       "fat": 18
+      },
+      {
+       "name": "Granola sin azúcar",
+       "qty": 50,
+       "unit": "g",
+       "kcal": 220,
+       "prot": 6,
+       "carb": 30,
+       "fat": 8
+      }
+     ]
+    },
+    {
+     "name": "D",
+     "foods": [
+      {
+       "name": "Tostadas integrales",
+       "qty": 60,
+       "unit": "g",
+       "kcal": 160,
+       "prot": 6,
+       "carb": 30,
+       "fat": 2
+      },
+      {
+       "name": "Jamón crudo magro",
+       "qty": 60,
+       "unit": "g",
+       "kcal": 150,
+       "prot": 18,
+       "carb": 0,
+       "fat": 8
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "name": "Almuerzo",
+   "options": [
+    {
+     "name": "A",
+     "foods": [
+      {
+       "name": "Pechuga de pollo",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 330,
+       "prot": 62,
+       "carb": 0,
+       "fat": 7
+      },
+      {
+       "name": "Arroz blanco cocido",
+       "qty": 250,
+       "unit": "g",
+       "kcal": 325,
+       "prot": 6,
+       "carb": 72,
+       "fat": 1
+      },
+      {
+       "name": "Ensalada mixta",
+       "qty": 1,
+       "unit": "plato",
+       "kcal": 80,
+       "prot": 2,
+       "carb": 8,
+       "fat": 5
+      }
+     ]
+    },
+    {
+     "name": "B",
+     "foods": [
+      {
+       "name": "Carne magra a la plancha",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 380,
+       "prot": 60,
+       "carb": 0,
+       "fat": 14
+      },
+      {
+       "name": "Batata al horno",
+       "qty": 250,
+       "unit": "g",
+       "kcal": 215,
+       "prot": 5,
+       "carb": 50,
+       "fat": 0
+      }
+     ]
+    },
+    {
+     "name": "C",
+     "foods": [
+      {
+       "name": "Salmón a la plancha",
+       "qty": 180,
+       "unit": "g",
+       "kcal": 360,
+       "prot": 36,
+       "carb": 0,
+       "fat": 24
+      },
+      {
+       "name": "Quinoa cocida",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 240,
+       "prot": 8,
+       "carb": 42,
+       "fat": 4
+      }
+     ]
+    },
+    {
+     "name": "D",
+     "foods": [
+      {
+       "name": "Atún al natural",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 240,
+       "prot": 50,
+       "carb": 0,
+       "fat": 4
+      },
+      {
+       "name": "Pasta integral cocida",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 280,
+       "prot": 10,
+       "carb": 54,
+       "fat": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c3",
+   "name": "Merienda",
+   "options": [
+    {
+     "name": "A",
+     "foods": [
+      {
+       "name": "Whey protein",
+       "qty": 30,
+       "unit": "g",
+       "kcal": 120,
+       "prot": 24,
+       "carb": 2,
+       "fat": 1
+      },
+      {
+       "name": "Manzana",
+       "qty": 1,
+       "unit": "u",
+       "kcal": 90,
+       "prot": 0,
+       "carb": 24,
+       "fat": 0
+      },
+      {
+       "name": "Almendras",
+       "qty": 25,
+       "unit": "g",
+       "kcal": 145,
+       "prot": 5,
+       "carb": 5,
+       "fat": 13
+      }
+     ]
+    },
+    {
+     "name": "B",
+     "foods": [
+      {
+       "name": "Yogur griego",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 200,
+       "prot": 12,
+       "carb": 8,
+       "fat": 12
+      },
+      {
+       "name": "Frutos secos mix",
+       "qty": 30,
+       "unit": "g",
+       "kcal": 180,
+       "prot": 5,
+       "carb": 6,
+       "fat": 16
+      }
+     ]
+    },
+    {
+     "name": "C",
+     "foods": [
+      {
+       "name": "Cottage cheese light",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 160,
+       "prot": 24,
+       "carb": 8,
+       "fat": 4
+      },
+      {
+       "name": "Frutos rojos",
+       "qty": 100,
+       "unit": "g",
+       "kcal": 50,
+       "prot": 1,
+       "carb": 12,
+       "fat": 0
+      }
+     ]
+    },
+    {
+     "name": "D",
+     "foods": [
+      {
+       "name": "Tostadas de arroz",
+       "qty": 30,
+       "unit": "g",
+       "kcal": 120,
+       "prot": 3,
+       "carb": 25,
+       "fat": 1
+      },
+      {
+       "name": "Mantequilla de maní",
+       "qty": 20,
+       "unit": "g",
+       "kcal": 120,
+       "prot": 5,
+       "carb": 4,
+       "fat": 10
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c4",
+   "name": "Cena",
+   "options": [
+    {
+     "name": "A",
+     "foods": [
+      {
+       "name": "Merluza al horno",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 200,
+       "prot": 42,
+       "carb": 0,
+       "fat": 3
+      },
+      {
+       "name": "Puré de papas",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 170,
+       "prot": 4,
+       "carb": 34,
+       "fat": 2
+      }
+     ]
+    },
+    {
+     "name": "B",
+     "foods": [
+      {
+       "name": "Tortilla 4 huevos",
+       "qty": 1,
+       "unit": "u",
+       "kcal": 320,
+       "prot": 24,
+       "carb": 2,
+       "fat": 24
+      },
+      {
+       "name": "Verduras grilladas",
+       "qty": 200,
+       "unit": "g",
+       "kcal": 90,
+       "prot": 3,
+       "carb": 14,
+       "fat": 3
+      }
+     ]
+    },
+    {
+     "name": "C",
+     "foods": [
+      {
+       "name": "Lomo de cerdo",
+       "qty": 180,
+       "unit": "g",
+       "kcal": 280,
+       "prot": 48,
+       "carb": 0,
+       "fat": 10
+      },
+      {
+       "name": "Calabaza al horno",
+       "qty": 250,
+       "unit": "g",
+       "kcal": 120,
+       "prot": 3,
+       "carb": 28,
+       "fat": 0
+      }
+     ]
+    },
+    {
+     "name": "D",
+     "foods": [
+      {
+       "name": "Wok de pollo y verduras",
+       "qty": 1,
+       "unit": "plato",
+       "kcal": 380,
+       "prot": 42,
+       "carb": 18,
+       "fat": 14
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "c5",
+   "name": "Post-entreno",
+   "options": [
+    {
+     "name": "A",
+     "foods": [
+      {
+       "name": "Whey protein",
+       "qty": 40,
+       "unit": "g",
+       "kcal": 160,
+       "prot": 32,
+       "carb": 3,
+       "fat": 1
+      },
+      {
+       "name": "Dextrosa",
+       "qty": 30,
+       "unit": "g",
+       "kcal": 115,
+       "prot": 0,
+       "carb": 30,
+       "fat": 0
+      }
+     ]
+    },
+    {
+     "name": "B",
+     "foods": [
+      {
+       "name": "Whey protein",
+       "qty": 30,
+       "unit": "g",
+       "kcal": 120,
+       "prot": 24,
+       "carb": 2,
+       "fat": 1
+      },
+      {
+       "name": "Banana",
+       "qty": 1,
+       "unit": "u",
+       "kcal": 105,
+       "prot": 1,
+       "carb": 27,
+       "fat": 0
+      }
+     ]
+    },
+    {
+     "name": "C",
+     "foods": [
+      {
+       "name": "Caseína",
+       "qty": 30,
+       "unit": "g",
+       "kcal": 115,
+       "prot": 24,
+       "carb": 2,
+       "fat": 1
+      },
+      {
+       "name": "Avena",
+       "qty": 50,
+       "unit": "g",
+       "kcal": 190,
+       "prot": 7,
+       "carb": 34,
+       "fat": 4
+      }
+     ]
+    },
+    {
+     "name": "D",
+     "foods": [
+      {
+       "name": "Batido casero",
+       "qty": 1,
+       "unit": "vaso",
+       "kcal": 280,
+       "prot": 28,
+       "carb": 32,
+       "fat": 6
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

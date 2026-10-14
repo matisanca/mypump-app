@@ -1,0 +1,3955 @@
+[
+ {
+  "id": "757ed402-ed08-4c55-8bee-fc63df88c53f",
+  "version": 1,
+  "estructura": {
+   "dias": [
+    {
+     "n": 1,
+     "id": "d1",
+     "nombre": "TIRÓN",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 0 — CALENTAMIENTO",
+       "ejercicios": [
+        {
+         "id": "cinta-10-min-entrada-en-calor-d1-0",
+         "tipo": "cardio",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Walking_Treadmill/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Walking_Treadmill/1.jpg"
+         },
+         "nombre": "Cinta 10 min (entrada en calor)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 1,
+           "series": null,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 2,
+           "series": null,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 3,
+           "series": null,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 4,
+           "series": null,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 5,
+           "series": null,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 6,
+           "series": null,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 7,
+           "series": null,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 8,
+           "series": null,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 9,
+           "series": null,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 10,
+           "series": null,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 11,
+           "series": null,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 12,
+           "series": null,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Walking_Treadmill",
+         "notas_tecnica": "Caminata a ritmo suave para entrar en calor.",
+         "descanso_segundos": 0
+        },
+        {
+         "id": "rollout-con-ab-wheel-core-anterior-d1-1",
+         "tipo": "core",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Ab_Roller/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Ab_Roller/1.jpg"
+         },
+         "nombre": "Rollout con ab wheel (core anterior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 4,
+           "series": 3,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 5,
+           "series": 3,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 6,
+           "series": 3,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 7,
+           "series": 3,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 10,
+           "series": 3,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 11,
+           "series": 3,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Ab_Roller",
+         "notas_tecnica": "Cadera neutra, no dejes caer la lumbar. Llegá hasta donde controlás.",
+         "descanso_segundos": 60
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 1 — ESPALDA",
+       "ejercicios": [
+        {
+         "id": "jalon-al-pecho-prono-dorsal-ancho-d1-0",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Wide-Grip_Lat_Pulldown/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Wide-Grip_Lat_Pulldown/1.jpg"
+         },
+         "nombre": "Jalón al pecho prono (dorsal ancho)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Wide-Grip_Lat_Pulldown",
+         "notas_tecnica": "Llevá la barra al pecho bajando los codos hacia las costillas, sin balancear el torso.",
+         "descanso_segundos": 150
+        },
+        {
+         "id": "remo-en-polea-sentado-grosor-dorsal-bajo-d1-1",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Seated_Cable_Rows/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Seated_Cable_Rows/1.jpg"
+         },
+         "nombre": "Remo en polea sentado (grosor / dorsal bajo)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Seated_Cable_Rows",
+         "notas_tecnica": "Pecho alto y espalda neutra; tirá con los codos pegados y apretá al final.",
+         "descanso_segundos": 150
+        },
+        {
+         "id": "pullover-en-polea-dorsal-bajo-serrato-d1-2",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Straight-Arm_Pulldown/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Straight-Arm_Pulldown/1.jpg"
+         },
+         "nombre": "Pullover en polea (dorsal bajo / serrato)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Straight-Arm_Pulldown",
+         "notas_tecnica": "Brazos casi extendidos; el movimiento sale del hombro, no de los codos.",
+         "descanso_segundos": 90
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 2 — DELTOIDES POSTERIOR Y BÍCEPS",
+       "ejercicios": [
+        {
+         "id": "face-pull-con-cuerda-en-polea-deltoides-posterior-d1-0",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Face_Pull/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Face_Pull/1.jpg"
+         },
+         "nombre": "Face pull con cuerda en polea (deltoides posterior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Face_Pull",
+         "notas_tecnica": "Tirá hacia la cara abriendo las manos; codos altos.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "pajaros-en-maquina-reverse-pec-deck-deltoides-post-d1-1",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Reverse_Machine_Flyes/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Reverse_Machine_Flyes/1.jpg"
+         },
+         "nombre": "Pájaros en máquina reverse pec deck (deltoides posterior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Reverse_Machine_Flyes",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        },
+        {
+         "id": "curl-con-barra-z-biceps-d1-2",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/EZ-Bar_Curl/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/EZ-Bar_Curl/1.jpg"
+         },
+         "nombre": "Curl con barra Z (bíceps)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "EZ-Bar_Curl",
+         "notas_tecnica": "Codos quietos al costado del cuerpo; bajá controlando.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "curl-inclinado-con-mancuernas-cabeza-larga-d1-3",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Incline_Dumbbell_Curl/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Incline_Dumbbell_Curl/1.jpg"
+         },
+         "nombre": "Curl inclinado con mancuernas (cabeza larga)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Incline_Dumbbell_Curl",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      }
+     ],
+     "reemplaza": [],
+     "es_comodin": false
+    },
+    {
+     "n": 2,
+     "id": "d2",
+     "nombre": "EMPUJE",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 0 — CALENTAMIENTO",
+       "ejercicios": [
+        {
+         "id": "cinta-10-min-entrada-en-calor-d2-0",
+         "tipo": "cardio",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Walking_Treadmill/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Walking_Treadmill/1.jpg"
+         },
+         "nombre": "Cinta 10 min (entrada en calor)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 1,
+           "series": null,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 2,
+           "series": null,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 3,
+           "series": null,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 4,
+           "series": null,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 5,
+           "series": null,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 6,
+           "series": null,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 7,
+           "series": null,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 8,
+           "series": null,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 9,
+           "series": null,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 10,
+           "series": null,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 11,
+           "series": null,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 12,
+           "series": null,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Walking_Treadmill",
+         "notas_tecnica": "Caminata a ritmo suave para entrar en calor.",
+         "descanso_segundos": 0
+        },
+        {
+         "id": "crunch-en-maquina-core-anterior-d2-1",
+         "tipo": "core",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Ab_Crunch_Machine/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Ab_Crunch_Machine/1.jpg"
+         },
+         "nombre": "Crunch en máquina (core anterior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 4,
+           "series": 3,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 5,
+           "series": 3,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 6,
+           "series": 3,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 7,
+           "series": 3,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 10,
+           "series": 3,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 11,
+           "series": 3,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Ab_Crunch_Machine",
+         "notas_tecnica": "Enrollá la columna llevando el pecho hacia la cadera; no tires con los brazos.",
+         "descanso_segundos": 60
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 1 — PECTORAL",
+       "ejercicios": [
+        {
+         "id": "press-inclinado-con-mancuernas-pectoral-superior-d2-0",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Incline_Dumbbell_Press/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Incline_Dumbbell_Press/1.jpg"
+         },
+         "nombre": "Press inclinado con mancuernas (pectoral superior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Incline_Dumbbell_Press",
+         "notas_tecnica": "Banco a 30°; omóplatos juntos y bajá hasta estirar el pecho.",
+         "descanso_segundos": 150
+        },
+        {
+         "id": "press-plano-en-maquina-pectoral-medio-d2-1",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leverage_Chest_Press/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leverage_Chest_Press/1.jpg"
+         },
+         "nombre": "Press plano en máquina (pectoral medio)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Leverage_Chest_Press",
+         "notas_tecnica": null,
+         "descanso_segundos": 150
+        },
+        {
+         "id": "aperturas-en-pec-deck-aduccion-d2-2",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Butterfly/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Butterfly/1.jpg"
+         },
+         "nombre": "Aperturas en pec deck (aducción)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Butterfly",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 2 — DELTOIDES Y TRÍCEPS",
+       "ejercicios": [
+        {
+         "id": "press-militar-en-maquina-deltoides-anterior-d2-0",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leverage_Shoulder_Press/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leverage_Shoulder_Press/1.jpg"
+         },
+         "nombre": "Press militar en máquina (deltoides anterior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Leverage_Shoulder_Press",
+         "notas_tecnica": null,
+         "descanso_segundos": 150
+        },
+        {
+         "id": "elevaciones-laterales-con-mancuernas-deltoides-lat-d2-1",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Side_Lateral_Raise/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Side_Lateral_Raise/1.jpg"
+         },
+         "nombre": "Elevaciones laterales con mancuernas (deltoides lateral)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Side_Lateral_Raise",
+         "notas_tecnica": "Subí hasta la altura del hombro con los codos apenas flexionados; sin impulso.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "extension-en-polea-con-cuerda-agarre-neutro-cabeza-d2-2",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Triceps_Pushdown/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Triceps_Pushdown/1.jpg"
+         },
+         "nombre": "Extensión en polea con cuerda agarre neutro (cabeza medial)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Triceps_Pushdown",
+         "notas_tecnica": "Codos fijos al costado; abrí la cuerda al final.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "extension-overhead-con-cuerda-en-polea-cabeza-larg-d2-3",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Cable_Rope_Overhead_Triceps_Extension/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Cable_Rope_Overhead_Triceps_Extension/1.jpg"
+         },
+         "nombre": "Extensión overhead con cuerda en polea (cabeza larga)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Cable_Rope_Overhead_Triceps_Extension",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      }
+     ],
+     "reemplaza": [],
+     "es_comodin": false
+    },
+    {
+     "n": 3,
+     "id": "d3",
+     "nombre": "PIERNAS",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 0 — CALENTAMIENTO",
+       "ejercicios": [
+        {
+         "id": "cinta-10-min-entrada-en-calor-d3-0",
+         "tipo": "cardio",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Walking_Treadmill/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Walking_Treadmill/1.jpg"
+         },
+         "nombre": "Cinta 10 min (entrada en calor)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 1,
+           "series": null,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 2,
+           "series": null,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 3,
+           "series": null,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 4,
+           "series": null,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 5,
+           "series": null,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 6,
+           "series": null,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 7,
+           "series": null,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 8,
+           "series": null,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 9,
+           "series": null,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 10,
+           "series": null,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 11,
+           "series": null,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 12,
+           "series": null,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Walking_Treadmill",
+         "notas_tecnica": "Caminata a ritmo suave para entrar en calor.",
+         "descanso_segundos": 0
+        },
+        {
+         "id": "rollout-con-ab-wheel-core-anterior-d3-1",
+         "tipo": "core",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Ab_Roller/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Ab_Roller/1.jpg"
+         },
+         "nombre": "Rollout con ab wheel (core anterior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 4,
+           "series": 3,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 5,
+           "series": 3,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 6,
+           "series": 3,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 7,
+           "series": 3,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 10,
+           "series": 3,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 11,
+           "series": 3,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Ab_Roller",
+         "notas_tecnica": "Cadera neutra, no dejes caer la lumbar. Llegá hasta donde controlás.",
+         "descanso_segundos": 60
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 1 — CUÁDRICEPS",
+       "ejercicios": [
+        {
+         "id": "extension-de-cuadriceps-en-maquina-prefatiga-d3-0",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leg_Extensions/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leg_Extensions/1.jpg"
+         },
+         "nombre": "Extensión de cuádriceps en máquina (prefatiga)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Leg_Extensions",
+         "notas_tecnica": "Pausa de un segundo arriba; bajá lento.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "hack-squat-cuadriceps-d3-1",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Hack_Squat/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Hack_Squat/1.jpg"
+         },
+         "nombre": "Hack squat (cuádriceps)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Hack_Squat",
+         "notas_tecnica": "Bajá profundo con la espalda apoyada; las rodillas acompañan la punta de los pies.",
+         "descanso_segundos": 150
+        },
+        {
+         "id": "prensa-de-piernas-cuadriceps-d3-2",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leg_Press/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leg_Press/1.jpg"
+         },
+         "nombre": "Prensa de piernas (cuádriceps)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Leg_Press",
+         "notas_tecnica": "No despegues la cadera del respaldo; no bloquees las rodillas arriba.",
+         "descanso_segundos": 150
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 2 — ISQUIOTIBIALES Y GLÚTEOS",
+       "ejercicios": [
+        {
+         "id": "curl-femoral-sentado-isquiotibiales-d3-0",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Seated_Leg_Curl/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Seated_Leg_Curl/1.jpg"
+         },
+         "nombre": "Curl femoral sentado (isquiotibiales)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Seated_Leg_Curl",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        },
+        {
+         "id": "rdl-con-barra-isquios-gluteos-d3-1",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Stiff-Legged_Barbell_Deadlift/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Stiff-Legged_Barbell_Deadlift/1.jpg"
+         },
+         "nombre": "RDL con barra (isquios / glúteos)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Stiff-Legged_Barbell_Deadlift",
+         "notas_tecnica": "Llevá la cadera atrás con la espalda neutra; la barra pegada a las piernas.",
+         "descanso_segundos": 150
+        },
+        {
+         "id": "hip-thrust-con-barra-gluteo-mayor-d3-2",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Barbell_Hip_Thrust/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Barbell_Hip_Thrust/1.jpg"
+         },
+         "nombre": "Hip thrust con barra (glúteo mayor)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Barbell_Hip_Thrust",
+         "notas_tecnica": "Mentón al pecho y pausa arriba apretando glúteos.",
+         "descanso_segundos": 150
+        },
+        {
+         "id": "abductores-en-maquina-gluteo-medio-d3-3",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Thigh_Abductor/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Thigh_Abductor/1.jpg"
+         },
+         "nombre": "Abductores en máquina (glúteo medio)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Thigh_Abductor",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 3 — GEMELOS",
+       "ejercicios": [
+        {
+         "id": "elevacion-de-talon-en-prensa-gastrocnemio-d3-0",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Calf_Press_On_The_Leg_Press_Machine/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Calf_Press_On_The_Leg_Press_Machine/1.jpg"
+         },
+         "nombre": "Elevación de talón en prensa (gastrocnemio)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Calf_Press_On_The_Leg_Press_Machine",
+         "notas_tecnica": "Recorrido completo: estirá abajo y pausa arriba.",
+         "descanso_segundos": 90
+        },
+        {
+         "id": "soleo-en-maquina-sentado-soleo-d3-1",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Seated_Calf_Raise/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Seated_Calf_Raise/1.jpg"
+         },
+         "nombre": "Sóleo en máquina sentado (sóleo)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Seated_Calf_Raise",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      }
+     ],
+     "reemplaza": [],
+     "es_comodin": false
+    },
+    {
+     "n": 4,
+     "id": "d4",
+     "nombre": "TORSO",
+     "bloques": [
+      {
+       "titulo": "BLOQUE 0 — CALENTAMIENTO",
+       "ejercicios": [
+        {
+         "id": "cinta-10-min-entrada-en-calor-d4-0",
+         "tipo": "cardio",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Walking_Treadmill/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Walking_Treadmill/1.jpg"
+         },
+         "nombre": "Cinta 10 min (entrada en calor)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 1,
+           "series": null,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 2,
+           "series": null,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 3,
+           "series": null,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 4,
+           "series": null,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 5,
+           "series": null,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 6,
+           "series": null,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 7,
+           "series": null,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 8,
+           "series": null,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 9,
+           "series": null,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 10,
+           "series": null,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 11,
+           "series": null,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": null,
+           "reps": "10 min",
+           "semana": 12,
+           "series": null,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Walking_Treadmill",
+         "notas_tecnica": "Caminata a ritmo suave para entrar en calor.",
+         "descanso_segundos": 0
+        },
+        {
+         "id": "crunch-en-maquina-core-anterior-d4-1",
+         "tipo": "core",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Ab_Crunch_Machine/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Ab_Crunch_Machine/1.jpg"
+         },
+         "nombre": "Crunch en máquina (core anterior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 4,
+           "series": 3,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 5,
+           "series": 3,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 6,
+           "series": 3,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 7,
+           "series": 3,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 10,
+           "series": 3,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 11,
+           "series": 3,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": null,
+           "reps": "12-15",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Ab_Crunch_Machine",
+         "notas_tecnica": "Enrollá la columna llevando el pecho hacia la cadera; no tires con los brazos.",
+         "descanso_segundos": 60
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 1 — ESPALDA",
+       "ejercicios": [
+        {
+         "id": "jalon-al-pecho-agarre-neutro-ancho-dorsal-d4-0",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/V-Bar_Pulldown/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/V-Bar_Pulldown/1.jpg"
+         },
+         "nombre": "Jalón al pecho agarre neutro (ancho dorsal)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "V-Bar_Pulldown",
+         "notas_tecnica": null,
+         "descanso_segundos": 150
+        },
+        {
+         "id": "remo-en-maquina-palanca-grosor-d4-1",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leverage_Iso_Row/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leverage_Iso_Row/1.jpg"
+         },
+         "nombre": "Remo en máquina palanca (grosor)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Leverage_Iso_Row",
+         "notas_tecnica": null,
+         "descanso_segundos": 150
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 2 — PECTORAL",
+       "ejercicios": [
+        {
+         "id": "press-plano-con-mancuernas-pectoral-medio-d4-0",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Dumbbell_Bench_Press/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Dumbbell_Bench_Press/1.jpg"
+         },
+         "nombre": "Press plano con mancuernas (pectoral medio)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Dumbbell_Bench_Press",
+         "notas_tecnica": null,
+         "descanso_segundos": 150
+        },
+        {
+         "id": "press-inclinado-en-maquina-pectoral-superior-d4-1",
+         "tipo": "compuesto",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leverage_Incline_Chest_Press/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Leverage_Incline_Chest_Press/1.jpg"
+         },
+         "nombre": "Press inclinado en máquina (pectoral superior)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0 (al fallo)",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Leverage_Incline_Chest_Press",
+         "notas_tecnica": null,
+         "descanso_segundos": 150
+        }
+       ]
+      },
+      {
+       "titulo": "BLOQUE 3 — DELTOIDES Y BRAZOS",
+       "ejercicios": [
+        {
+         "id": "elevaciones-laterales-en-polea-a-una-mano-deltoide-d4-0",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Cable_Seated_Lateral_Raise/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Cable_Seated_Lateral_Raise/1.jpg"
+         },
+         "nombre": "Elevaciones laterales en polea a una mano (deltoides lateral)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Cable_Seated_Lateral_Raise",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        },
+        {
+         "id": "curl-predicador-en-maquina-cabeza-corta-d4-1",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Machine_Preacher_Curls/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Machine_Preacher_Curls/1.jpg"
+         },
+         "nombre": "Curl predicador en máquina (cabeza corta)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Machine_Preacher_Curls",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        },
+        {
+         "id": "extension-con-barra-en-polea-alta-cabeza-lateral-d4-2",
+         "tipo": "aislamiento",
+         "images": {
+          "eccentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Triceps_Pushdown/0.jpg",
+          "concentric": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/exercise-images/Triceps_Pushdown/1.jpg"
+         },
+         "nombre": "Extensión con barra en polea alta (cabeza lateral)",
+         "video_url": null,
+         "progresion": [
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 1,
+           "series": 3,
+           "titulo": "Semana 1 — Introducción"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 2,
+           "series": 3,
+           "titulo": "Semana 2"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 3,
+           "series": 3,
+           "titulo": "Semana 3"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 4,
+           "series": 4,
+           "titulo": "Semana 4"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 5,
+           "series": 4,
+           "titulo": "Semana 5"
+          },
+          {
+           "rir": "0-1",
+           "reps": "11",
+           "semana": 6,
+           "series": 4,
+           "titulo": "Semana 6"
+          },
+          {
+           "rir": "0-1",
+           "reps": "12",
+           "semana": 7,
+           "series": 4,
+           "titulo": "Semana 7 — Pico ★"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 8,
+           "series": 3,
+           "titulo": "Semana 8"
+          },
+          {
+           "rir": "0-1",
+           "reps": "8",
+           "semana": 9,
+           "series": 3,
+           "titulo": "Semana 9"
+          },
+          {
+           "rir": "0-1",
+           "reps": "9",
+           "semana": 10,
+           "series": 4,
+           "titulo": "Semana 10"
+          },
+          {
+           "rir": "0-1",
+           "reps": "10",
+           "semana": 11,
+           "series": 4,
+           "titulo": "Semana 11"
+          },
+          {
+           "rir": "0-1",
+           "reps": "AMRAP",
+           "semana": 12,
+           "series": 3,
+           "titulo": "Semana 12 — Test AMRAP ✓"
+          }
+         ],
+         "catalogo_slug": "Triceps_Pushdown",
+         "notas_tecnica": null,
+         "descanso_segundos": 90
+        }
+       ]
+      }
+     ],
+     "reemplaza": [],
+     "es_comodin": false
+    }
+   ],
+   "fase": 1,
+   "perfil": {
+    "nivel": "intermedio",
+    "split": "Tirón / Empuje / Piernas / Torso — 4 días",
+    "resumen": "Rutina de 4 días (tirón, empuje, piernas y torso) para probar la app. 12 semanas con progresión de cargas: todas las series al fallo en los compuestos y a 0-1 repeticiones del fallo en los aislamientos.",
+    "objetivo": "Hipertrofia",
+    "diasSemana": 4
+   },
+   "nombre_plan": "Plan de prueba — Tirón / Empuje / Piernas / Torso",
+   "semana_offset": 0,
+   "semanas_total": 12,
+   "mensajes_semana": [
+    {
+     "n": 1,
+     "msg": "Calibrar pesos base, al fallo desde la primera serie",
+     "titulo": "Semana 1 — Introducción"
+    },
+    {
+     "n": 2,
+     "msg": "+2,5 kg — sube carga, bajan reps",
+     "titulo": "Semana 2"
+    },
+    {
+     "n": 3,
+     "msg": "+2,5 kg — bajan reps, al fallo igual",
+     "titulo": "Semana 3"
+    },
+    {
+     "n": 4,
+     "msg": "+1 serie — mismo peso que la semana anterior",
+     "titulo": "Semana 4"
+    },
+    {
+     "n": 5,
+     "msg": "+1 rep con el mismo peso",
+     "titulo": "Semana 5"
+    },
+    {
+     "n": 6,
+     "msg": "+1 rep con el mismo peso",
+     "titulo": "Semana 6"
+    },
+    {
+     "n": 7,
+     "msg": "Al fallo en TODAS las series",
+     "titulo": "Semana 7 — Pico ★"
+    },
+    {
+     "n": 8,
+     "msg": "+2,5 kg — nueva oleada",
+     "titulo": "Semana 8"
+    },
+    {
+     "n": 9,
+     "msg": "+2,5 kg — bajan reps, al fallo igual",
+     "titulo": "Semana 9"
+    },
+    {
+     "n": 10,
+     "msg": "+1 serie — mismo peso que la semana anterior",
+     "titulo": "Semana 10"
+    },
+    {
+     "n": 11,
+     "msg": "+1 rep con el mismo peso",
+     "titulo": "Semana 11"
+    },
+    {
+     "n": 12,
+     "msg": "Máximas reps posibles — récord personal",
+     "titulo": "Semana 12 — Test AMRAP ✓"
+    }
+   ]
+  },
+  "semana_actual": 5,
+  "fecha_inicio": "2026-09-16",
+  "fecha_fin": null,
+  "tiene_siguiente": false
+ }
+]

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Se mezcla con el Info.plist generado (GENERATE_INFOPLIST_FILE). Va fuera de la carpeta sincronizada
+	     para que no lo copie como recurso. Región es-419 como la app actual: si no, la ficha dice "Inglés". -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>es-419</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>es-419</string>
+		<string>es</string>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Archivo.ttf</string>
+	</array>
+</dict>
+</plist>

@@ -1,7 +1,7 @@
 [
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:41.955318+00:00",
+  "registrado_en": "2026-10-04T22:32:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -11,7 +11,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:41.880396+00:00",
+  "registrado_en": "2026-10-04T22:30:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -21,7 +21,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:41.818536+00:00",
+  "registrado_en": "2026-10-04T22:28:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -31,7 +31,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:41.748546+00:00",
+  "registrado_en": "2026-10-04T22:26:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -41,7 +41,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:18.65871+00:00",
+  "registrado_en": "2026-09-20T22:18:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -51,7 +51,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:18.576526+00:00",
+  "registrado_en": "2026-09-20T22:16:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -61,7 +61,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:18.512276+00:00",
+  "registrado_en": "2026-09-20T22:14:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -71,7 +71,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:05.600456+00:00",
+  "registrado_en": "2026-09-13T22:18:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -81,7 +81,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:05.265887+00:00",
+  "registrado_en": "2026-09-13T22:16:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -91,7 +91,7 @@
  },
  {
   "clave": "abductores en maquina",
-  "registrado_en": "2026-10-14T03:27:05.190196+00:00",
+  "registrado_en": "2026-09-13T22:14:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -101,7 +101,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:36.696469+00:00",
+  "registrado_en": "2026-10-02T22:00:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -111,7 +111,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:36.607123+00:00",
+  "registrado_en": "2026-10-02T21:58:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -121,7 +121,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:36.510633+00:00",
+  "registrado_en": "2026-10-02T21:56:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -131,7 +131,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:36.4272+00:00",
+  "registrado_en": "2026-10-02T21:54:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -141,7 +141,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:27.275899+00:00",
+  "registrado_en": "2026-09-25T21:54:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -151,7 +151,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:27.180656+00:00",
+  "registrado_en": "2026-09-25T21:52:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -161,7 +161,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:27.09361+00:00",
+  "registrado_en": "2026-09-25T21:50:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -171,7 +171,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:14.0333+00:00",
+  "registrado_en": "2026-09-18T21:54:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -181,7 +181,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:13.605411+00:00",
+  "registrado_en": "2026-09-18T21:52:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -191,7 +191,7 @@
  },
  {
   "clave": "aperturas en pec deck",
-  "registrado_en": "2026-10-14T03:27:13.522401+00:00",
+  "registrado_en": "2026-09-18T21:50:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -201,7 +201,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:43.550371+00:00",
+  "registrado_en": "2026-10-05T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -211,7 +211,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:43.454152+00:00",
+  "registrado_en": "2026-10-05T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -221,7 +221,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:43.35674+00:00",
+  "registrado_en": "2026-10-05T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -231,7 +231,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:35.421907+00:00",
+  "registrado_en": "2026-10-02T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -241,7 +241,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:35.340367+00:00",
+  "registrado_en": "2026-10-02T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -251,7 +251,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:35.280827+00:00",
+  "registrado_en": "2026-10-02T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -261,7 +261,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:29.30266+00:00",
+  "registrado_en": "2026-09-28T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -271,7 +271,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:29.208865+00:00",
+  "registrado_en": "2026-09-28T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -281,7 +281,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:29.11556+00:00",
+  "registrado_en": "2026-09-28T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -291,7 +291,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:26.421539+00:00",
+  "registrado_en": "2026-09-25T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -301,7 +301,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:26.244859+00:00",
+  "registrado_en": "2026-09-25T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -311,7 +311,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:26.155534+00:00",
+  "registrado_en": "2026-09-25T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -321,7 +321,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:19.717023+00:00",
+  "registrado_en": "2026-09-21T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -331,7 +331,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:19.64474+00:00",
+  "registrado_en": "2026-09-21T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -341,7 +341,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:19.576014+00:00",
+  "registrado_en": "2026-09-21T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -351,7 +351,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:12.814186+00:00",
+  "registrado_en": "2026-09-18T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -361,7 +361,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:12.757229+00:00",
+  "registrado_en": "2026-09-18T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -371,7 +371,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:12.594935+00:00",
+  "registrado_en": "2026-09-18T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -381,7 +381,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:06.966862+00:00",
+  "registrado_en": "2026-09-14T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -391,7 +391,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:06.817047+00:00",
+  "registrado_en": "2026-09-14T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -401,7 +401,7 @@
  },
  {
   "clave": "crunch en maquina",
-  "registrado_en": "2026-10-14T03:27:06.725207+00:00",
+  "registrado_en": "2026-09-14T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -411,7 +411,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:34.434915+00:00",
+  "registrado_en": "2026-10-01T22:24:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -421,7 +421,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:34.33858+00:00",
+  "registrado_en": "2026-10-01T22:22:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -431,7 +431,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:34.260194+00:00",
+  "registrado_en": "2026-10-01T22:20:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -441,7 +441,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:34.075383+00:00",
+  "registrado_en": "2026-10-01T22:18:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -451,7 +451,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:25.499305+00:00",
+  "registrado_en": "2026-09-24T22:12:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -461,7 +461,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:25.40003+00:00",
+  "registrado_en": "2026-09-24T22:10:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -471,7 +471,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:25.320847+00:00",
+  "registrado_en": "2026-09-24T22:08:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -481,7 +481,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:11.796801+00:00",
+  "registrado_en": "2026-09-17T22:12:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -491,7 +491,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:11.722887+00:00",
+  "registrado_en": "2026-09-17T22:10:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -501,7 +501,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:11.664017+00:00",
+  "registrado_en": "2026-09-17T22:08:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -511,7 +511,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:02.344311+00:00",
+  "registrado_en": "2026-09-10T22:12:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -521,7 +521,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:02.279292+00:00",
+  "registrado_en": "2026-09-10T22:10:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -531,7 +531,7 @@
  },
  {
   "clave": "curl con barra z",
-  "registrado_en": "2026-10-14T03:27:02.136923+00:00",
+  "registrado_en": "2026-09-10T22:08:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -541,7 +541,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:40.923758+00:00",
+  "registrado_en": "2026-10-04T22:08:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -551,7 +551,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:40.834803+00:00",
+  "registrado_en": "2026-10-04T22:06:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -561,7 +561,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:40.761579+00:00",
+  "registrado_en": "2026-10-04T22:04:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -571,7 +571,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:40.367023+00:00",
+  "registrado_en": "2026-10-04T22:02:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -581,7 +581,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:17.754731+00:00",
+  "registrado_en": "2026-09-20T22:00:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -591,7 +591,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:17.659844+00:00",
+  "registrado_en": "2026-09-20T21:58:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -601,7 +601,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:17.570184+00:00",
+  "registrado_en": "2026-09-20T21:56:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -611,7 +611,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:04.689205+00:00",
+  "registrado_en": "2026-09-13T22:00:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -621,7 +621,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:04.630135+00:00",
+  "registrado_en": "2026-09-13T21:58:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -631,7 +631,7 @@
  },
  {
   "clave": "curl femoral sentado",
-  "registrado_en": "2026-10-14T03:27:04.566323+00:00",
+  "registrado_en": "2026-09-13T21:56:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -641,7 +641,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:34.892406+00:00",
+  "registrado_en": "2026-10-01T22:32:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -651,7 +651,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:34.817941+00:00",
+  "registrado_en": "2026-10-01T22:30:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -661,7 +661,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:34.634843+00:00",
+  "registrado_en": "2026-10-01T22:28:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -671,7 +671,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:34.535816+00:00",
+  "registrado_en": "2026-10-01T22:26:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -681,7 +681,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:25.881541+00:00",
+  "registrado_en": "2026-09-24T22:18:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -691,7 +691,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:25.692179+00:00",
+  "registrado_en": "2026-09-24T22:16:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -701,7 +701,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:25.593459+00:00",
+  "registrado_en": "2026-09-24T22:14:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -711,7 +711,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:12.029872+00:00",
+  "registrado_en": "2026-09-17T22:18:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -721,7 +721,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:11.949805+00:00",
+  "registrado_en": "2026-09-17T22:16:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -731,7 +731,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:11.873304+00:00",
+  "registrado_en": "2026-09-17T22:14:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -741,7 +741,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:02.55138+00:00",
+  "registrado_en": "2026-09-10T22:18:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -751,7 +751,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:02.480259+00:00",
+  "registrado_en": "2026-09-10T22:16:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -761,7 +761,7 @@
  },
  {
   "clave": "curl inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:02.414873+00:00",
+  "registrado_en": "2026-09-10T22:14:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -771,7 +771,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:46.797121+00:00",
+  "registrado_en": "2026-10-05T22:24:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -781,7 +781,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:46.618823+00:00",
+  "registrado_en": "2026-10-05T22:22:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -791,7 +791,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:46.533652+00:00",
+  "registrado_en": "2026-10-05T22:20:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -801,7 +801,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:46.124639+00:00",
+  "registrado_en": "2026-10-05T22:18:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -811,7 +811,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:31.190199+00:00",
+  "registrado_en": "2026-09-28T22:12:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -821,7 +821,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:31.126528+00:00",
+  "registrado_en": "2026-09-28T22:10:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -831,7 +831,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:30.967032+00:00",
+  "registrado_en": "2026-09-28T22:08:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -841,7 +841,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:21.467675+00:00",
+  "registrado_en": "2026-09-21T22:12:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -851,7 +851,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:21.382825+00:00",
+  "registrado_en": "2026-09-21T22:10:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -861,7 +861,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:21.289316+00:00",
+  "registrado_en": "2026-09-21T22:08:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -871,7 +871,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:08.940642+00:00",
+  "registrado_en": "2026-09-14T22:12:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -881,7 +881,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:08.847292+00:00",
+  "registrado_en": "2026-09-14T22:10:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -891,7 +891,7 @@
  },
  {
   "clave": "curl predicador en maquina",
-  "registrado_en": "2026-10-14T03:27:08.753972+00:00",
+  "registrado_en": "2026-09-14T22:08:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -901,7 +901,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:42.354905+00:00",
+  "registrado_en": "2026-10-04T22:40:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -911,7 +911,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:42.262396+00:00",
+  "registrado_en": "2026-10-04T22:38:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -921,7 +921,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:42.176308+00:00",
+  "registrado_en": "2026-10-04T22:36:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -931,7 +931,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:42.118508+00:00",
+  "registrado_en": "2026-10-04T22:34:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -941,7 +941,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:19.008554+00:00",
+  "registrado_en": "2026-09-20T22:24:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -951,7 +951,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:18.835684+00:00",
+  "registrado_en": "2026-09-20T22:22:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -961,7 +961,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:18.748882+00:00",
+  "registrado_en": "2026-09-20T22:20:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -971,7 +971,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:06.125948+00:00",
+  "registrado_en": "2026-09-13T22:24:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -981,7 +981,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:05.756638+00:00",
+  "registrado_en": "2026-09-13T22:22:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -991,7 +991,7 @@
  },
  {
   "clave": "elevacion de talon en prensa",
-  "registrado_en": "2026-10-14T03:27:05.675353+00:00",
+  "registrado_en": "2026-09-13T22:20:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -1001,7 +1001,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:37.77341+00:00",
+  "registrado_en": "2026-10-02T22:16:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1011,7 +1011,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:37.678738+00:00",
+  "registrado_en": "2026-10-02T22:14:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1021,7 +1021,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:37.592286+00:00",
+  "registrado_en": "2026-10-02T22:12:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1031,7 +1031,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:37.195625+00:00",
+  "registrado_en": "2026-10-02T22:10:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1041,7 +1041,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:28.143531+00:00",
+  "registrado_en": "2026-09-25T22:06:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1051,7 +1051,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:27.747692+00:00",
+  "registrado_en": "2026-09-25T22:04:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1061,7 +1061,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:27.654878+00:00",
+  "registrado_en": "2026-09-25T22:02:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1071,7 +1071,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:15.339253+00:00",
+  "registrado_en": "2026-09-18T22:06:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1081,7 +1081,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:15.167534+00:00",
+  "registrado_en": "2026-09-18T22:04:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1091,7 +1091,7 @@
  },
  {
   "clave": "elevaciones laterales con mancuernas",
-  "registrado_en": "2026-10-14T03:27:15.07629+00:00",
+  "registrado_en": "2026-09-18T22:02:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1101,7 +1101,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:46.045527+00:00",
+  "registrado_en": "2026-10-05T22:16:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1111,7 +1111,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:45.957374+00:00",
+  "registrado_en": "2026-10-05T22:14:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1121,7 +1121,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:45.884403+00:00",
+  "registrado_en": "2026-10-05T22:12:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1131,7 +1131,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:45.813627+00:00",
+  "registrado_en": "2026-10-05T22:10:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1141,7 +1141,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:30.877553+00:00",
+  "registrado_en": "2026-09-28T22:06:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1151,7 +1151,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:30.785543+00:00",
+  "registrado_en": "2026-09-28T22:04:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1161,7 +1161,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:30.686684+00:00",
+  "registrado_en": "2026-09-28T22:02:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1171,7 +1171,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:21.20802+00:00",
+  "registrado_en": "2026-09-21T22:06:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1181,7 +1181,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:21.151079+00:00",
+  "registrado_en": "2026-09-21T22:04:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1191,7 +1191,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:20.974789+00:00",
+  "registrado_en": "2026-09-21T22:02:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1201,7 +1201,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:08.680448+00:00",
+  "registrado_en": "2026-09-14T22:06:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1211,7 +1211,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:08.601606+00:00",
+  "registrado_en": "2026-09-14T22:04:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1221,7 +1221,7 @@
  },
  {
   "clave": "elevaciones laterales en polea a una mano",
-  "registrado_en": "2026-10-14T03:27:08.429413+00:00",
+  "registrado_en": "2026-09-14T22:02:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -1231,7 +1231,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:47.102519+00:00",
+  "registrado_en": "2026-10-05T22:32:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1241,7 +1241,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:47.014021+00:00",
+  "registrado_en": "2026-10-05T22:30:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1251,7 +1251,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:46.930666+00:00",
+  "registrado_en": "2026-10-05T22:28:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1261,7 +1261,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:46.861229+00:00",
+  "registrado_en": "2026-10-05T22:26:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1271,7 +1271,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:31.452356+00:00",
+  "registrado_en": "2026-09-28T22:18:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1281,7 +1281,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:31.366846+00:00",
+  "registrado_en": "2026-09-28T22:16:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1291,7 +1291,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:31.286547+00:00",
+  "registrado_en": "2026-09-28T22:14:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1301,7 +1301,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:22.008349+00:00",
+  "registrado_en": "2026-09-21T22:18:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1311,7 +1311,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:21.934281+00:00",
+  "registrado_en": "2026-09-21T22:16:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1321,7 +1321,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:21.864191+00:00",
+  "registrado_en": "2026-09-21T22:14:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1331,7 +1331,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:09.26825+00:00",
+  "registrado_en": "2026-09-14T22:18:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1341,7 +1341,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:09.17862+00:00",
+  "registrado_en": "2026-09-14T22:16:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1351,7 +1351,7 @@
  },
  {
   "clave": "extension con barra en polea alta",
-  "registrado_en": "2026-10-14T03:27:09.098414+00:00",
+  "registrado_en": "2026-09-14T22:14:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -1361,7 +1361,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:39.561765+00:00",
+  "registrado_en": "2026-10-04T21:44:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1371,7 +1371,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:39.501078+00:00",
+  "registrado_en": "2026-10-04T21:42:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1381,7 +1381,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:39.336261+00:00",
+  "registrado_en": "2026-10-04T21:40:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1391,7 +1391,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:39.2424+00:00",
+  "registrado_en": "2026-10-04T21:38:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1401,7 +1401,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:16.935839+00:00",
+  "registrado_en": "2026-09-20T21:42:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1411,7 +1411,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:16.781126+00:00",
+  "registrado_en": "2026-09-20T21:40:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1421,7 +1421,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:16.701433+00:00",
+  "registrado_en": "2026-09-20T21:38:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1431,7 +1431,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:04.013341+00:00",
+  "registrado_en": "2026-09-13T21:42:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1441,7 +1441,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:03.639758+00:00",
+  "registrado_en": "2026-09-13T21:40:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1451,7 +1451,7 @@
  },
  {
   "clave": "extension de cuadriceps en maquina",
-  "registrado_en": "2026-10-14T03:27:03.556631+00:00",
+  "registrado_en": "2026-09-13T21:38:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -1461,7 +1461,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:38.228954+00:00",
+  "registrado_en": "2026-10-02T22:24:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1471,7 +1471,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:38.13784+00:00",
+  "registrado_en": "2026-10-02T22:22:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1481,7 +1481,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:38.04669+00:00",
+  "registrado_en": "2026-10-02T22:20:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1491,7 +1491,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:37.95186+00:00",
+  "registrado_en": "2026-10-02T22:18:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1501,7 +1501,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:28.499817+00:00",
+  "registrado_en": "2026-09-25T22:12:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1511,7 +1511,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:28.317195+00:00",
+  "registrado_en": "2026-09-25T22:10:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1521,7 +1521,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:28.227368+00:00",
+  "registrado_en": "2026-09-25T22:08:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1531,7 +1531,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:15.532608+00:00",
+  "registrado_en": "2026-09-18T22:12:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1541,7 +1541,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:15.467304+00:00",
+  "registrado_en": "2026-09-18T22:10:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1551,7 +1551,7 @@
  },
  {
   "clave": "extension en polea con cuerda agarre neutro",
-  "registrado_en": "2026-10-14T03:27:15.404764+00:00",
+  "registrado_en": "2026-09-18T22:08:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1561,7 +1561,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:38.610836+00:00",
+  "registrado_en": "2026-10-02T22:32:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1571,7 +1571,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:38.534239+00:00",
+  "registrado_en": "2026-10-02T22:30:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1581,7 +1581,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:38.467123+00:00",
+  "registrado_en": "2026-10-02T22:28:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1591,7 +1591,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:38.409074+00:00",
+  "registrado_en": "2026-10-02T22:26:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1601,7 +1601,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:28.770183+00:00",
+  "registrado_en": "2026-09-25T22:18:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1611,7 +1611,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:28.673346+00:00",
+  "registrado_en": "2026-09-25T22:16:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1621,7 +1621,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:28.583913+00:00",
+  "registrado_en": "2026-09-25T22:14:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1631,7 +1631,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:15.712708+00:00",
+  "registrado_en": "2026-09-18T22:18:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1641,7 +1641,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:15.648623+00:00",
+  "registrado_en": "2026-09-18T22:16:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1651,7 +1651,7 @@
  },
  {
   "clave": "extension overhead con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:15.590324+00:00",
+  "registrado_en": "2026-09-18T22:14:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1661,7 +1661,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:33.556538+00:00",
+  "registrado_en": "2026-10-01T22:08:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1671,7 +1671,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:33.460716+00:00",
+  "registrado_en": "2026-10-01T22:06:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1681,7 +1681,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:33.364299+00:00",
+  "registrado_en": "2026-10-01T22:04:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1691,7 +1691,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:33.283272+00:00",
+  "registrado_en": "2026-10-01T22:02:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1701,7 +1701,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:24.522735+00:00",
+  "registrado_en": "2026-09-24T22:00:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1711,7 +1711,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:24.093817+00:00",
+  "registrado_en": "2026-09-24T21:58:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -1721,7 +1721,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:24.00395+00:00",
+  "registrado_en": "2026-09-24T21:56:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1731,7 +1731,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:11.238547+00:00",
+  "registrado_en": "2026-09-17T22:00:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1741,7 +1741,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:11.172126+00:00",
+  "registrado_en": "2026-09-17T21:58:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1751,7 +1751,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:11.015689+00:00",
+  "registrado_en": "2026-09-17T21:56:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1761,7 +1761,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:01.818696+00:00",
+  "registrado_en": "2026-09-10T22:00:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1771,7 +1771,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:01.745029+00:00",
+  "registrado_en": "2026-09-10T21:58:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1781,7 +1781,7 @@
  },
  {
   "clave": "face pull con cuerda en polea",
-  "registrado_en": "2026-10-14T03:27:01.60518+00:00",
+  "registrado_en": "2026-09-10T21:56:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -1791,7 +1791,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:39.890547+00:00",
+  "registrado_en": "2026-10-04T21:52:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1801,7 +1801,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:39.798158+00:00",
+  "registrado_en": "2026-10-04T21:50:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1811,7 +1811,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:39.719802+00:00",
+  "registrado_en": "2026-10-04T21:48:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1821,7 +1821,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:39.645323+00:00",
+  "registrado_en": "2026-10-04T21:46:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1831,7 +1831,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:17.157265+00:00",
+  "registrado_en": "2026-09-20T21:48:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1841,7 +1841,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:17.06765+00:00",
+  "registrado_en": "2026-09-20T21:46:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1851,7 +1851,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:16.998925+00:00",
+  "registrado_en": "2026-09-20T21:44:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1861,7 +1861,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:04.230124+00:00",
+  "registrado_en": "2026-09-13T21:48:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1871,7 +1871,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:04.15973+00:00",
+  "registrado_en": "2026-09-13T21:46:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1881,7 +1881,7 @@
  },
  {
   "clave": "hack squat",
-  "registrado_en": "2026-10-14T03:27:04.091623+00:00",
+  "registrado_en": "2026-09-13T21:44:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -1891,7 +1891,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:41.685247+00:00",
+  "registrado_en": "2026-10-04T22:24:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1901,7 +1901,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:41.62283+00:00",
+  "registrado_en": "2026-10-04T22:22:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1911,7 +1911,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:41.551801+00:00",
+  "registrado_en": "2026-10-04T22:20:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -1921,7 +1921,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:41.384701+00:00",
+  "registrado_en": "2026-10-04T22:18:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1931,7 +1931,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:18.353372+00:00",
+  "registrado_en": "2026-09-20T22:12:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1941,7 +1941,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:18.266197+00:00",
+  "registrado_en": "2026-09-20T22:10:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -1951,7 +1951,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:18.180268+00:00",
+  "registrado_en": "2026-09-20T22:08:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -1961,7 +1961,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:05.12632+00:00",
+  "registrado_en": "2026-09-13T22:12:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1971,7 +1971,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:05.059081+00:00",
+  "registrado_en": "2026-09-13T22:10:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -1981,7 +1981,7 @@
  },
  {
   "clave": "hip thrust con barra",
-  "registrado_en": "2026-10-14T03:27:05.001404+00:00",
+  "registrado_en": "2026-09-13T22:08:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -1991,7 +1991,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:43.932373+00:00",
+  "registrado_en": "2026-10-05T21:44:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2001,7 +2001,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:43.862129+00:00",
+  "registrado_en": "2026-10-05T21:42:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2011,7 +2011,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:43.78561+00:00",
+  "registrado_en": "2026-10-05T21:40:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2021,7 +2021,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:43.722233+00:00",
+  "registrado_en": "2026-10-05T21:38:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2031,7 +2031,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:29.646226+00:00",
+  "registrado_en": "2026-09-28T21:42:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2041,7 +2041,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:29.576811+00:00",
+  "registrado_en": "2026-09-28T21:40:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2051,7 +2051,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:29.399174+00:00",
+  "registrado_en": "2026-09-28T21:38:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2061,7 +2061,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:20.050582+00:00",
+  "registrado_en": "2026-09-21T21:42:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2071,7 +2071,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:19.884887+00:00",
+  "registrado_en": "2026-09-21T21:40:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2081,7 +2081,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:19.802651+00:00",
+  "registrado_en": "2026-09-21T21:38:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -2091,7 +2091,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:07.197202+00:00",
+  "registrado_en": "2026-09-14T21:42:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2101,7 +2101,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:07.113526+00:00",
+  "registrado_en": "2026-09-14T21:40:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2111,7 +2111,7 @@
  },
  {
   "clave": "jalon al pecho agarre neutro",
-  "registrado_en": "2026-10-14T03:27:07.043445+00:00",
+  "registrado_en": "2026-09-14T21:38:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -2121,7 +2121,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:32.336187+00:00",
+  "registrado_en": "2026-10-01T21:44:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2131,7 +2131,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:32.240697+00:00",
+  "registrado_en": "2026-10-01T21:42:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2141,7 +2141,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:32.162185+00:00",
+  "registrado_en": "2026-10-01T21:40:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2151,7 +2151,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:31.999051+00:00",
+  "registrado_en": "2026-10-01T21:38:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2161,7 +2161,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:23.028359+00:00",
+  "registrado_en": "2026-09-24T21:42:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2171,7 +2171,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:22.940626+00:00",
+  "registrado_en": "2026-09-24T21:40:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2181,7 +2181,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:22.85733+00:00",
+  "registrado_en": "2026-09-24T21:38:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2191,7 +2191,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:10.142288+00:00",
+  "registrado_en": "2026-09-17T21:42:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2201,7 +2201,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:09.973061+00:00",
+  "registrado_en": "2026-09-17T21:40:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2211,7 +2211,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:09.880431+00:00",
+  "registrado_en": "2026-09-17T21:38:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -2221,7 +2221,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:00.98068+00:00",
+  "registrado_en": "2026-09-10T21:42:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2231,7 +2231,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:00.876134+00:00",
+  "registrado_en": "2026-09-10T21:40:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2241,7 +2241,7 @@
  },
  {
   "clave": "jalon al pecho prono",
-  "registrado_en": "2026-10-14T03:27:00.797605+00:00",
+  "registrado_en": "2026-09-10T21:38:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -2251,7 +2251,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:33.98291+00:00",
+  "registrado_en": "2026-10-01T22:16:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2261,7 +2261,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:33.880962+00:00",
+  "registrado_en": "2026-10-01T22:14:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2271,7 +2271,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:33.789964+00:00",
+  "registrado_en": "2026-10-01T22:12:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2281,7 +2281,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:33.723452+00:00",
+  "registrado_en": "2026-10-01T22:10:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2291,7 +2291,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:25.141448+00:00",
+  "registrado_en": "2026-09-24T22:06:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2301,7 +2301,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:25.044346+00:00",
+  "registrado_en": "2026-09-24T22:04:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2311,7 +2311,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:24.614214+00:00",
+  "registrado_en": "2026-09-24T22:02:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2321,7 +2321,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:11.487716+00:00",
+  "registrado_en": "2026-09-17T22:06:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2331,7 +2331,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:11.404601+00:00",
+  "registrado_en": "2026-09-17T22:04:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2341,7 +2341,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:11.312784+00:00",
+  "registrado_en": "2026-09-17T22:02:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -2351,7 +2351,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:02.039588+00:00",
+  "registrado_en": "2026-09-10T22:06:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2361,7 +2361,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:01.958448+00:00",
+  "registrado_en": "2026-09-10T22:04:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2371,7 +2371,7 @@
  },
  {
   "clave": "pajaros en maquina reverse pec deck",
-  "registrado_en": "2026-10-14T03:27:01.888003+00:00",
+  "registrado_en": "2026-09-10T22:02:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -2381,7 +2381,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:40.280838+00:00",
+  "registrado_en": "2026-10-04T22:00:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2391,7 +2391,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:40.20738+00:00",
+  "registrado_en": "2026-10-04T21:58:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2401,7 +2401,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:40.125369+00:00",
+  "registrado_en": "2026-10-04T21:56:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2411,7 +2411,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:40.052069+00:00",
+  "registrado_en": "2026-10-04T21:54:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2421,7 +2421,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:17.480599+00:00",
+  "registrado_en": "2026-09-20T21:54:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2431,7 +2431,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:17.317709+00:00",
+  "registrado_en": "2026-09-20T21:52:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2441,7 +2441,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:17.236829+00:00",
+  "registrado_en": "2026-09-20T21:50:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -2451,7 +2451,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:04.510284+00:00",
+  "registrado_en": "2026-09-13T21:54:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2461,7 +2461,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:04.451173+00:00",
+  "registrado_en": "2026-09-13T21:52:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2471,7 +2471,7 @@
  },
  {
   "clave": "prensa de piernas",
-  "registrado_en": "2026-10-14T03:27:04.373932+00:00",
+  "registrado_en": "2026-09-13T21:50:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -2481,7 +2481,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:35.84767+00:00",
+  "registrado_en": "2026-10-02T21:44:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2491,7 +2491,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:35.783202+00:00",
+  "registrado_en": "2026-10-02T21:42:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2501,7 +2501,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:35.585154+00:00",
+  "registrado_en": "2026-10-02T21:40:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2511,7 +2511,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:35.49594+00:00",
+  "registrado_en": "2026-10-02T21:38:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2521,7 +2521,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:26.683842+00:00",
+  "registrado_en": "2026-09-25T21:42:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2531,7 +2531,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:26.589115+00:00",
+  "registrado_en": "2026-09-25T21:40:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2541,7 +2541,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:26.499057+00:00",
+  "registrado_en": "2026-09-25T21:38:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2551,7 +2551,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:13.067407+00:00",
+  "registrado_en": "2026-09-18T21:42:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2561,7 +2561,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:12.966173+00:00",
+  "registrado_en": "2026-09-18T21:40:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2571,7 +2571,7 @@
  },
  {
   "clave": "press inclinado con mancuernas",
-  "registrado_en": "2026-10-14T03:27:12.883882+00:00",
+  "registrado_en": "2026-09-18T21:38:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -2581,7 +2581,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:45.637024+00:00",
+  "registrado_en": "2026-10-05T22:08:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2591,7 +2591,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:45.543604+00:00",
+  "registrado_en": "2026-10-05T22:06:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2601,7 +2601,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:45.461171+00:00",
+  "registrado_en": "2026-10-05T22:04:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2611,7 +2611,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:45.05881+00:00",
+  "registrado_en": "2026-10-05T22:02:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2621,7 +2621,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:30.613081+00:00",
+  "registrado_en": "2026-09-28T22:00:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2631,7 +2631,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:30.441924+00:00",
+  "registrado_en": "2026-09-28T21:58:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2641,7 +2641,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:30.357203+00:00",
+  "registrado_en": "2026-09-28T21:56:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2651,7 +2651,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:20.88744+00:00",
+  "registrado_en": "2026-09-21T22:00:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2661,7 +2661,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:20.804896+00:00",
+  "registrado_en": "2026-09-21T21:58:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2671,7 +2671,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:20.721253+00:00",
+  "registrado_en": "2026-09-21T21:56:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -2681,7 +2681,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:08.325688+00:00",
+  "registrado_en": "2026-09-14T22:00:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2691,7 +2691,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:08.23082+00:00",
+  "registrado_en": "2026-09-14T21:58:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2701,7 +2701,7 @@
  },
  {
   "clave": "press inclinado en maquina",
-  "registrado_en": "2026-10-14T03:27:07.834854+00:00",
+  "registrado_en": "2026-09-14T21:56:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -2711,7 +2711,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:37.107437+00:00",
+  "registrado_en": "2026-10-02T22:08:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2721,7 +2721,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:37.012386+00:00",
+  "registrado_en": "2026-10-02T22:06:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2731,7 +2731,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:36.934829+00:00",
+  "registrado_en": "2026-10-02T22:04:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2741,7 +2741,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:36.859869+00:00",
+  "registrado_en": "2026-10-02T22:02:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2751,7 +2751,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:27.568452+00:00",
+  "registrado_en": "2026-09-25T22:00:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2761,7 +2761,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:27.495861+00:00",
+  "registrado_en": "2026-09-25T21:58:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2771,7 +2771,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:27.432364+00:00",
+  "registrado_en": "2026-09-25T21:56:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2781,7 +2781,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:14.646621+00:00",
+  "registrado_en": "2026-09-18T22:00:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2791,7 +2791,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:14.558869+00:00",
+  "registrado_en": "2026-09-18T21:58:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2801,7 +2801,7 @@
  },
  {
   "clave": "press militar en maquina",
-  "registrado_en": "2026-10-14T03:27:14.128897+00:00",
+  "registrado_en": "2026-09-18T21:56:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -2811,7 +2811,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:44.966762+00:00",
+  "registrado_en": "2026-10-05T22:00:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2821,7 +2821,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:44.546764+00:00",
+  "registrado_en": "2026-10-05T21:58:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2831,7 +2831,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:44.464073+00:00",
+  "registrado_en": "2026-10-05T21:56:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2841,7 +2841,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:44.380081+00:00",
+  "registrado_en": "2026-10-05T21:54:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2851,7 +2851,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:30.252188+00:00",
+  "registrado_en": "2026-09-28T21:54:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2861,7 +2861,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:30.168522+00:00",
+  "registrado_en": "2026-09-28T21:52:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2871,7 +2871,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:30.092466+00:00",
+  "registrado_en": "2026-09-28T21:50:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2881,7 +2881,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:20.642412+00:00",
+  "registrado_en": "2026-09-21T21:54:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2891,7 +2891,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:20.455968+00:00",
+  "registrado_en": "2026-09-21T21:52:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2901,7 +2901,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:20.374305+00:00",
+  "registrado_en": "2026-09-21T21:50:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -2911,7 +2911,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:07.72985+00:00",
+  "registrado_en": "2026-09-14T21:54:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2921,7 +2921,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:07.64291+00:00",
+  "registrado_en": "2026-09-14T21:52:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -2931,7 +2931,7 @@
  },
  {
   "clave": "press plano con mancuernas",
-  "registrado_en": "2026-10-14T03:27:07.574062+00:00",
+  "registrado_en": "2026-09-14T21:50:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -2941,7 +2941,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:36.212024+00:00",
+  "registrado_en": "2026-10-02T21:52:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2951,7 +2951,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:36.118337+00:00",
+  "registrado_en": "2026-10-02T21:50:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2961,7 +2961,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:36.01955+00:00",
+  "registrado_en": "2026-10-02T21:48:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -2971,7 +2971,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:35.924237+00:00",
+  "registrado_en": "2026-10-02T21:46:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -2981,7 +2981,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:27.013808+00:00",
+  "registrado_en": "2026-09-25T21:48:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -2991,7 +2991,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:26.947778+00:00",
+  "registrado_en": "2026-09-25T21:46:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -3001,7 +3001,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:26.772931+00:00",
+  "registrado_en": "2026-09-25T21:44:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3011,7 +3011,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:13.436647+00:00",
+  "registrado_en": "2026-09-18T21:48:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3021,7 +3021,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:13.362695+00:00",
+  "registrado_en": "2026-09-18T21:46:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3031,7 +3031,7 @@
  },
  {
   "clave": "press plano en maquina",
-  "registrado_en": "2026-10-14T03:27:13.260097+00:00",
+  "registrado_en": "2026-09-18T21:44:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -3041,7 +3041,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:33.210096+00:00",
+  "registrado_en": "2026-10-01T22:00:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3051,7 +3051,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:33.048953+00:00",
+  "registrado_en": "2026-10-01T21:58:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3061,7 +3061,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:32.949617+00:00",
+  "registrado_en": "2026-10-01T21:56:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3071,7 +3071,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:32.855295+00:00",
+  "registrado_en": "2026-10-01T21:54:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3081,7 +3081,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:23.593448+00:00",
+  "registrado_en": "2026-09-24T21:54:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -3091,7 +3091,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:23.502411+00:00",
+  "registrado_en": "2026-09-24T21:52:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -3101,7 +3101,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:23.407895+00:00",
+  "registrado_en": "2026-09-24T21:50:00+00:00",
   "peso_kg": 17,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3111,7 +3111,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:10.943247+00:00",
+  "registrado_en": "2026-09-17T21:54:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3121,7 +3121,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:10.864465+00:00",
+  "registrado_en": "2026-09-17T21:52:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3131,7 +3131,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:10.46566+00:00",
+  "registrado_en": "2026-09-17T21:50:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -3141,7 +3141,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:01.536119+00:00",
+  "registrado_en": "2026-09-10T21:54:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3151,7 +3151,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:01.460978+00:00",
+  "registrado_en": "2026-09-10T21:52:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3161,7 +3161,7 @@
  },
  {
   "clave": "pullover en polea",
-  "registrado_en": "2026-10-14T03:27:01.387803+00:00",
+  "registrado_en": "2026-09-10T21:50:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -3171,7 +3171,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:41.310293+00:00",
+  "registrado_en": "2026-10-04T22:16:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3181,7 +3181,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:41.223307+00:00",
+  "registrado_en": "2026-10-04T22:14:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3191,7 +3191,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:41.148898+00:00",
+  "registrado_en": "2026-10-04T22:12:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3201,7 +3201,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:41.078371+00:00",
+  "registrado_en": "2026-10-04T22:10:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3211,7 +3211,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:18.098597+00:00",
+  "registrado_en": "2026-09-20T22:06:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3221,7 +3221,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:18.036928+00:00",
+  "registrado_en": "2026-09-20T22:04:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3231,7 +3231,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:17.851428+00:00",
+  "registrado_en": "2026-09-20T22:02:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -3241,7 +3241,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:04.940738+00:00",
+  "registrado_en": "2026-09-13T22:06:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3251,7 +3251,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:04.877831+00:00",
+  "registrado_en": "2026-09-13T22:04:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3261,7 +3261,7 @@
  },
  {
   "clave": "rdl con barra",
-  "registrado_en": "2026-10-14T03:27:04.745119+00:00",
+  "registrado_en": "2026-09-13T22:02:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -3271,7 +3271,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:44.308327+00:00",
+  "registrado_en": "2026-10-05T21:52:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3281,7 +3281,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:44.243219+00:00",
+  "registrado_en": "2026-10-05T21:50:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3291,7 +3291,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:44.173625+00:00",
+  "registrado_en": "2026-10-05T21:48:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3301,7 +3301,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:44.009405+00:00",
+  "registrado_en": "2026-10-05T21:46:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3311,7 +3311,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:29.916816+00:00",
+  "registrado_en": "2026-09-28T21:48:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -3321,7 +3321,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:29.823787+00:00",
+  "registrado_en": "2026-09-28T21:46:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -3331,7 +3331,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:29.723675+00:00",
+  "registrado_en": "2026-09-28T21:44:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3341,7 +3341,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:20.280455+00:00",
+  "registrado_en": "2026-09-21T21:48:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3351,7 +3351,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:20.197674+00:00",
+  "registrado_en": "2026-09-21T21:46:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3361,7 +3361,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:20.126595+00:00",
+  "registrado_en": "2026-09-21T21:44:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -3371,7 +3371,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:07.512929+00:00",
+  "registrado_en": "2026-09-14T21:48:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3381,7 +3381,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:07.350582+00:00",
+  "registrado_en": "2026-09-14T21:46:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3391,7 +3391,7 @@
  },
  {
   "clave": "remo en maquina palanca",
-  "registrado_en": "2026-10-14T03:27:07.273464+00:00",
+  "registrado_en": "2026-09-14T21:44:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -3401,7 +3401,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:32.769547+00:00",
+  "registrado_en": "2026-10-01T21:52:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3411,7 +3411,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:32.695108+00:00",
+  "registrado_en": "2026-10-01T21:50:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3421,7 +3421,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:32.527736+00:00",
+  "registrado_en": "2026-10-01T21:48:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3431,7 +3431,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:32.432409+00:00",
+  "registrado_en": "2026-10-01T21:46:00+00:00",
   "peso_kg": 58,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3441,7 +3441,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:23.343874+00:00",
+  "registrado_en": "2026-09-24T21:48:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -3451,7 +3451,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:23.280829+00:00",
+  "registrado_en": "2026-09-24T21:46:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 8,
   "rir_real": 0,
@@ -3461,7 +3461,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:23.202908+00:00",
+  "registrado_en": "2026-09-24T21:44:00+00:00",
   "peso_kg": 56,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3471,7 +3471,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:10.373549+00:00",
+  "registrado_en": "2026-09-17T21:48:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3481,7 +3481,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:10.295936+00:00",
+  "registrado_en": "2026-09-17T21:46:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3491,7 +3491,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:10.218334+00:00",
+  "registrado_en": "2026-09-17T21:44:00+00:00",
   "peso_kg": 54,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -3501,7 +3501,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:01.312572+00:00",
+  "registrado_en": "2026-09-10T21:48:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3511,7 +3511,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:01.238358+00:00",
+  "registrado_en": "2026-09-10T21:46:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3521,7 +3521,7 @@
  },
  {
   "clave": "remo en polea sentado",
-  "registrado_en": "2026-10-14T03:27:01.072685+00:00",
+  "registrado_en": "2026-09-10T21:44:00+00:00",
   "peso_kg": 52,
   "reps_realizadas": 13,
   "rir_real": 0,
@@ -3531,7 +3531,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:39.147652+00:00",
+  "registrado_en": "2026-10-04T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3541,7 +3541,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:39.072507+00:00",
+  "registrado_en": "2026-10-04T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3551,7 +3551,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:38.99614+00:00",
+  "registrado_en": "2026-10-04T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -3561,7 +3561,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:31.91914+00:00",
+  "registrado_en": "2026-10-01T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3571,7 +3571,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:31.843366+00:00",
+  "registrado_en": "2026-10-01T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3581,7 +3581,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:31.748519+00:00",
+  "registrado_en": "2026-10-01T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -3591,7 +3591,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:22.784754+00:00",
+  "registrado_en": "2026-09-24T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3601,7 +3601,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:22.725089+00:00",
+  "registrado_en": "2026-09-24T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3611,7 +3611,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:22.558831+00:00",
+  "registrado_en": "2026-09-24T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -3621,7 +3621,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:16.608106+00:00",
+  "registrado_en": "2026-09-20T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3631,7 +3631,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:16.533034+00:00",
+  "registrado_en": "2026-09-20T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3641,7 +3641,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:16.28838+00:00",
+  "registrado_en": "2026-09-20T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -3651,7 +3651,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:09.793661+00:00",
+  "registrado_en": "2026-09-17T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3661,7 +3661,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:09.704772+00:00",
+  "registrado_en": "2026-09-17T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3671,7 +3671,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:09.627168+00:00",
+  "registrado_en": "2026-09-17T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -3681,7 +3681,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:03.485075+00:00",
+  "registrado_en": "2026-09-13T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3691,7 +3691,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:03.133105+00:00",
+  "registrado_en": "2026-09-13T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3701,7 +3701,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:03.05374+00:00",
+  "registrado_en": "2026-09-13T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -3711,7 +3711,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:00.711087+00:00",
+  "registrado_en": "2026-09-10T21:36:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3721,7 +3721,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:00.566762+00:00",
+  "registrado_en": "2026-09-10T21:34:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 12,
   "rir_real": 1,
@@ -3731,7 +3731,7 @@
  },
  {
   "clave": "rollout con ab wheel",
-  "registrado_en": "2026-10-14T03:27:00.475986+00:00",
+  "registrado_en": "2026-09-10T21:32:00+00:00",
   "peso_kg": 0,
   "reps_realizadas": 13,
   "rir_real": 1,
@@ -3741,7 +3741,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:43.123214+00:00",
+  "registrado_en": "2026-10-04T22:48:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3751,7 +3751,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:42.936874+00:00",
+  "registrado_en": "2026-10-04T22:46:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3761,7 +3761,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:42.843376+00:00",
+  "registrado_en": "2026-10-04T22:44:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 9,
   "rir_real": 0,
@@ -3771,7 +3771,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:42.452618+00:00",
+  "registrado_en": "2026-10-04T22:42:00+00:00",
   "peso_kg": 17.5,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3781,7 +3781,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:19.231811+00:00",
+  "registrado_en": "2026-09-20T22:30:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3791,7 +3791,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:19.143138+00:00",
+  "registrado_en": "2026-09-20T22:28:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 10,
   "rir_real": 0,
@@ -3801,7 +3801,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:19.069057+00:00",
+  "registrado_en": "2026-09-20T22:26:00+00:00",
   "peso_kg": 16,
   "reps_realizadas": 11,
   "rir_real": 0,
@@ -3811,7 +3811,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:06.467207+00:00",
+  "registrado_en": "2026-09-13T22:30:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3821,7 +3821,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:06.32525+00:00",
+  "registrado_en": "2026-09-13T22:28:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 12,
   "rir_real": 0,
@@ -3831,7 +3831,7 @@
  },
  {
   "clave": "soleo en maquina sentado",
-  "registrado_en": "2026-10-14T03:27:06.212926+00:00",
+  "registrado_en": "2026-09-13T22:26:00+00:00",
   "peso_kg": 15.5,
   "reps_realizadas": 13,
   "rir_real": 0,
