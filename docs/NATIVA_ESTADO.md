@@ -54,7 +54,7 @@ commitea.
 | Bienvenida, demo, sin conexión, aviso de guardado, volver a primer plano | ✅ (XCUITest de acceso) |
 | Notificaciones (local del domingo, push, destinos) | ✅ código; falta probar el push en un iPhone (TF-0) |
 | Respaldo científico (14 fuentes), entitlements, PrivacyInfo, workflow `ios-nativa` | ✅ (el workflow no se dispara hasta que Mati acepte el contrato de Apple) |
-| Migración del almacenamiento viejo (Fase L/R + write-back) | ✅ mergeada; simulador 26.5 23/23 y 17.5 22/22 (`scripts/nativa/sim-migracion.sh`). Pendiente G2: recibo, conteos, swaps de ejercicio en el servidor |
+| Migración del almacenamiento viejo (Fase L/R + write-back) | ✅ simulador 26.5 23/23 y 17.5 22/22 (`scripts/nativa/sim-migracion.sh`). **TF-0 con la 100 falló en el iPhone** (no encontraba los archivos, ver bitácora 14-oct 14:15); arreglado en la 101 y probado contra la copia real |
 | Motor de Entreno (`ModeloEntreno` + reglas) | ✅ mergeado: 4.546 vectores públicos y 80.461 privados, integración real |
 | Revisión adversarial del código iOS (19 hallazgos) | ✅ 18 arreglados con regresiones (`RegresionesRevisionTests`); el 19 (entitlement de HealthKit sin código, badges fijos) lo cierran Salud y diseño |
 | `normalizarDieta` | ✅ igual a la web en 11 casos públicos y las 90 dietas reales |
@@ -110,6 +110,25 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **14-oct 14:15, TF-0 con la 100: falló la migración, arreglado en la 101.**
+  - En el iPhone de Mati (iPhone 17 Pro Max, **iOS 27.0**, su propia cuenta) acepté los términos de TestFlight (OK de
+    Mati) y canjeé la invitación con el código de la página de Apple, sin tocar el link del mail. La 2.0.0 (100) se
+    instaló encima de la de la tienda: **no entró sola, pidió el link.**
+  - **Causa:** en el iPhone WebKit guarda en `Library/WebKit/WebsiteData/…`. El lector buscaba solo
+    `Library/WebKit/<bundle>/WebsiteData/…`, que es la ruta del simulador (la única probada). La Fase L no encontró
+    nada y arrancó como recién instalada. No escribió ni borró nada: el `localStorage` viejo quedó intacto (1,1 MB,
+    última escritura 13:51, antes de instalar).
+  - **Cómo se vio:** `xcrun devicectl device info files --domain-type appDataContainer` deja listar el contenedor de
+    una app de TestFlight (no había `Application Support/legado`) y `device copy from` copia archivos. `log collect`
+    de un iPhone pide root.
+  - **Arreglo (bb5bcfc):** `LectorLegado.ubicar` recorre todo `Library/WebKit` y reconoce el origen por su archivo
+    `origin`. Los tests usan por defecto la ruta del iPhone, más una prueba con la del simulador y otra con las dos.
+    `LegadoRealTests` corre la Fase L contra la copia real (`MYPUMP_LEGADO_REAL=…/privado/tf0-iphone`): adopta el
+    token; 31 claves, 0 ops pendientes, 1 sustitución, 1 swap de comida, 8 preferencias, 3 sesiones vencidas.
+  - De paso, el hallazgo 2 de la revisión de Android: Entreno no leía lo que deja la migración (`sesiones`/`start`
+    y el día visualizado por rutina). Prueba de punta a punta. 307 tests.
+  - **Build 101** disparado (`nios-2.0.0-101` sobre bb5bcfc). Falta: instalarlo en el iPhone de Mati y verificar
+    entrada sola, plan, recibo y conteos.
 - **14-oct 13:35:**
   - **Contrato aceptado.** Acepté el Apple Developer Program License Agreement nuevo desde el Chrome de Mati, a pedido suyo ("aceptalo vos por mí"); el login lo hizo él. En App Store Connect el acuerdo de apps gratuitas quedó activo desde hoy. El de apps de pago (nuevo, para cobrar dentro de la app) no se tocó.
   - **Primer TestFlight interno disparado:** tag `nios-2.0.0-100` sobre f14f108. Workflow `ios-nativa` de Codemagic; el estado se ve en el check de GitHub del commit.

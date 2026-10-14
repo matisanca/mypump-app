@@ -6,6 +6,12 @@ y eso toca código compartido con la web.
 
 **Respuesta en iOS 17.5, 18.6 y 26.5:** sí, por dos caminos independientes, byte a byte y en las dos direcciones.
 
+> **Ojo, en un iPhone de verdad la ruta es otra (TF-0, 14-oct, iOS 27.0).** El simulador guarda en
+> `Library/WebKit/<bundle>/WebsiteData/…`; el iPhone, en `Library/WebKit/WebsiteData/…`, sin el bundle. Todo lo de
+> abajo se probó en el simulador, y la Ruta B de la 2.0.0 (100) armaba la ruta del simulador: en el iPhone no encontró
+> nada. Desde bb5bcfc el lector recorre todo `Library/WebKit` y reconoce el origen por su archivo `origin` (el formato
+> del archivo y de la base es el mismo). La Ruta A, el WebView, no depende de la ruta.
+
 ## Cómo se probó (simulador "Nativa 17 (26.5)", 14-oct-2026)
 
 1. Se compiló la Capacitor de `main` (su configuración de WebView, Info.plist, entitlements y SPM es idéntica a la de
