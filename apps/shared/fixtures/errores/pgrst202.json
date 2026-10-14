@@ -1,0 +1,7 @@
+{
+ "status": 404,
+ "headers": {
+  "content-type": "application/json; charset=utf-8"
+ },
+ "cuerpo": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.mypump_funcion_que_no_existe with parameter p_token or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.\",\"hint\":\"Perhaps you meant to call the function public.mypump_ingest_entrenos\",\"message\":\"Could not find the function public.mypump_funcion_que_no_existe(p_token) in the schema cache\"}"
+}

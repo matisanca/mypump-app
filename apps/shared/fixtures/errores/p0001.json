@@ -1,0 +1,7 @@
+{
+ "status": 400,
+ "headers": {
+  "content-type": "application/json; charset=utf-8"
+ },
+ "cuerpo": "{\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"token invalido\"}"
+}
