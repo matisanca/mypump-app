@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-/** La raíz del repo: la demo y el catálogo viven en `apps/shared/`, la fuente en la app de iOS. */
+/** La raíz del repo: la demo, el catálogo y las respuestas grabadas viven en `apps/shared/`, la fuente en la app de iOS. */
 val raizRepo: File = rootDir.resolve("../..").canonicalFile
 
 /**
@@ -96,6 +96,12 @@ android {
         compose = true
     }
 
+    sourceSets {
+        // Las pruebas de interfaz contestan con las respuestas REALES grabadas de las cuentas de prueba (las mismas de los
+        // tests de :core y de iOS). Van solo en el APK de pruebas.
+        getByName("androidTest").assets.srcDir(raizRepo.resolve("apps/shared/fixtures"))
+    }
+
     packaging {
         // Los .so van sin comprimir y alineados a 16 KB (Play lo exige para Android 15+ con páginas de 16 KB). Es el
         // default de AGP 8.5.1+ con minSdk ≥ 23; queda escrito para que nadie lo cambie sin saber.
@@ -130,7 +136,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     debugImplementation(libs.compose.ui.tooling)
 
-    // El token con el Keystore de verdad: corre en un emulador o un teléfono (`connectedDebugAndroidTest`).
+    // El token con el Keystore de verdad y las pruebas de interfaz: corren en un emulador o un teléfono
+    // (`connectedDebugAndroidTest`). Las de interfaz no usan `ui-test-junit4` (no está en el proyecto): leen el árbol de
+    // semántica de Compose con `ViewRootForTest`, ver androidTest/…/ui/Pantalla.kt.
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.junit)
 }
