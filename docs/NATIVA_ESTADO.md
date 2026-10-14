@@ -38,7 +38,7 @@ commitea.
 | `docs/NATIVA_CONTRATO.md` + `apps/shared/contrato.json` | ✅ verificado contra `pg_proc` |
 | `docs/NATIVA_PARIDAD.md` | ✅ 145 ítems con ID y 9 decisiones para G1 |
 | Prueba del almacenamiento viejo en iOS: v1.0.11, v1.0.12-b18 y main × iOS 17, 18 y 26 | ✅ 17.5, 18.6 y 26.5 por las dos rutas y en las dos direcciones (`scripts/nativa/spike-legado.sh`) |
-| Prueba del almacenamiento viejo en Android | ⏳ |
+| Prueba del almacenamiento viejo en Android | ✅ emulador Android 16 / WebView 133: la espía lee 23/23 claves y la marca sobrevive a un cierre forzado (`spike-legado-android.sh`) |
 | Bocetos en el simulador → G1 | ⏳ |
 
 ## Fase 1-2 (en paralelo, desde el 14-oct)
@@ -56,7 +56,7 @@ commitea.
 | Motor de Entreno (`ModeloEntreno` + reglas) | ✅ mergeado: 4.546 vectores públicos y 80.461 privados, integración real |
 | Revisión adversarial del código iOS (19 hallazgos) | ✅ 18 arreglados con regresiones (`RegresionesRevisionTests`); el 19 (entitlement de HealthKit sin código, badges fijos) lo cierran Salud y diseño |
 | `normalizarDieta` | ✅ igual a la web en 11 casos públicos y las 90 dietas reales |
-| Diseño "pro" + conectar Entreno, Chat, Revisión, Progreso y Mis datos a los modelos | 🟡 agente en curso |
+| Diseño "pro" + conectar Entreno, Chat, Revisión, Progreso y Mis datos a los modelos | ✅ mergeado (1ad2484); Dieta, Acceso y Salud con el mismo sistema (86f28e4); 8 XCUITest. Revisión adversarial de las escrituras en curso |
 | Salud (HealthKit, recuperación, relojes) | ✅ mergeada: 35 casos de la web + banco en simulador 1.091/1.091 registros; el historial ya no pisa la noche de hoy (desvío a propósito, ver `NATIVA_PROPUESTAS_WEB.md`) |
 | Hoja de permisos de la primera vez (GEN-06), aviso de fin de descanso (D8), aviso de plan incompleto (GEN-05) | ✅ (XCUITest del onboarding) |
 | Android: base + reglas (122 tests con los mismos vectores) | ✅ mergeado; la capa de datos está en curso (cuenta `test-nativa-android`) |
@@ -101,6 +101,16 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 - Publicar la 1.0.12 de iOS **antes** que la 2.0.0.
 
 ## Bitácora
+
+- **14-oct (tarde):**
+  - **iOS:**
+    - El diseño "pro" quedó mergeado, con todas las pantallas conectadas a los modelos.
+    - La demo de Release ya no lleva datos de la cuenta de prueba (`Muestras.bundle` fuera de Release).
+    - Salud sin títulos repetidos y con coma decimal.
+    - Dieta, Acceso y Salud con el sistema de diseño.
+  - **G2, tanda 1:** preparada sin aplicar (recibo, conteos y palanca remota). La app ya funciona con y sin la migración.
+  - **Android:** la prueba del almacenamiento viejo dio OK. El agente de datos sigue con Entreno, Salud y la migración
+    pura.
 
 - **14-oct (~11 h, corte por límite de uso):**
   - **Cierres arreglados** (522c871): un número absurdo de la base, la cola o el almacenamiento viejo ya no cierra la
