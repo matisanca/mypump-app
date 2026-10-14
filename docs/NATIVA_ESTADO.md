@@ -57,7 +57,8 @@ commitea.
 | Revisión adversarial del código iOS (19 hallazgos) | ✅ 18 arreglados con regresiones (`RegresionesRevisionTests`); el 19 (entitlement de HealthKit sin código, badges fijos) lo cierran Salud y diseño |
 | `normalizarDieta` | ✅ igual a la web en 11 casos públicos y las 90 dietas reales |
 | Diseño "pro" + conectar Entreno, Chat, Revisión, Progreso y Mis datos a los modelos | 🟡 agente en curso |
-| Salud (HealthKit, recuperación, relojes) | 🟡 agente en curso |
+| Salud (HealthKit, recuperación, relojes) | ✅ mergeada: 35 casos de la web + banco en simulador 1.091/1.091 registros; el historial ya no pisa la noche de hoy (desvío a propósito, ver `NATIVA_PROPUESTAS_WEB.md`) |
+| Hoja de permisos de la primera vez (GEN-06), aviso de fin de descanso (D8), aviso de plan incompleto (GEN-05) | ✅ (XCUITest del onboarding) |
 | Android: base + reglas (122 tests con los mismos vectores) | ✅ mergeado; la capa de datos está en curso (cuenta `test-nativa-android`) |
 | Migración del almacenamiento viejo (Fase L/R) | 🟡 agente en curso |
 | Motor de Entreno (sugeridos, topes, variantes, sesiones, historial) | 🟡 agente en curso |
@@ -103,6 +104,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 - **13-oct:** plan aprobado y clon creado.
 - **14-oct (madrugada):** MyPumpKit con modelos, reglas portadas con vectores (progresión, clave, porción casera, anclaje e hidratación de swaps), cliente RPC + cola offline + ModeloApp con integración real contra `test-nativa-real`. Agentes en paralelo: motor de sustitutos de alimentos, motor de sustitutos de ejercicios y pulido visual.
+- **14-oct (mañana):** Salud mergeada; `ModeloApp.entreno` con el catálogo del servidor; onboarding de permisos; borradores para las tiendas (`NATIVA_TIENDAS_2.0.0.md`) y cambios propuestos para la web (`NATIVA_PROPUESTAS_WEB.md`). 266 tests + 8 de interfaz.
 - **14-oct (5-6 h):** merges de migración y motor de Entreno (214 → 228 tests). Revisión adversarial: 4 altos (carrera del link que borraba la sesión, cola trabada, plan que desaparecía con poca señal, cola congelada sin sesión), 9 medios y 6 bajos, todos arreglados con regresiones salvo los de Salud/diseño. Android: base mergeada, sigue con datos.
 - **14-oct (4-5 h):** se reanudó tras el corte por límite: los 4 agentes retomaron con su contexto (el de diseño tenía 5 commits). Modelos nuevos con tests contra el backend: chat (con el arreglo n.º 4 que no duplica mensajes), Revisión/Mi Día, fotos de progreso (cola propia), Progreso, notificaciones; respaldo científico; entitlements y PrivacyInfo; workflow `ios-nativa`. Agente nuevo: Salud.
 - **14-oct (~2 h):** bienvenida nativa (pegar link con PasteButton, link vencido, sin conexión con reintento automático, universal links) y modo demo sin red; XCUITest de acceso pasan. **Corte por límite de uso:** los agentes de diseño, migración, motor de Entreno y Android quedaron en sus worktrees (`.claude/worktrees/agent-*`, ramas `worktree-agent-*`) con lo que hayan commiteado; retomar revisando cada rama y mergeando a `nativa`.
