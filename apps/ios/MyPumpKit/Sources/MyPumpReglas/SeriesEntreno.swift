@@ -501,30 +501,32 @@ public enum FechaJS {
         if toma(0x3A) {
             guard let s = numero(2) else { return nil }
             c.second = s
-            if toma(0x2E) || toma(0x2C) {
+            if toma(0x2E) {   // con punto: V8 no lee "10:00:00,123Z" (Invalid Date)
                 var fraccion = ""
                 while i < u.count, u[i] >= 0x30 && u[i] <= 0x39 { fraccion.append(Character(UnicodeScalar(u[i]))); i += 1 }
                 guard !fraccion.isEmpty else { return nil }
                 ms = Double(String((fraccion + "00").prefix(3)))!   // JS se queda con los milisegundos
             }
         }
-        guard h <= 24, mi <= 59, (c.second ?? 0) <= 59 else { return nil }
-        var zona: TimeZone? = nil
+        // Las 24 valen solo en punto (es el cero del día siguiente): V8 no lee "24:30".
+        guard h < 24 || (h == 24 && mi == 0 && (c.second ?? 0) == 0 && ms == 0), mi <= 59, (c.second ?? 0) <= 59 else { return nil }
+        // Segundos al este de UTC. V8 acepta de -23:59 a +23:59 con los minutos obligatorios ("+05" es Invalid Date), y
+        // `TimeZone(secondsFromGMT:)` da nil pasadas las 18 h: el desfasaje se resta a mano.
+        var desfasaje: Int? = nil
         if toma(0x5A) {
-            zona = TimeZone(identifier: "UTC")
+            desfasaje = 0
         } else if i < u.count, u[i] == 0x2B || u[i] == 0x2D {
             let signo = u[i] == 0x2B ? 1 : -1
             i += 1
             guard let zh = numero(2) else { return nil }
-            var zm = 0
-            if toma(0x3A) { guard let m = numero(2) else { return nil }; zm = m }
-            else if i < u.count { guard let m = numero(2) else { return nil }; zm = m }
-            zona = TimeZone(secondsFromGMT: signo * (zh * 3600 + zm * 60))
+            _ = toma(0x3A)
+            guard let zm = numero(2), zh <= 23, zm <= 59 else { return nil }
+            desfasaje = signo * (zh * 3600 + zm * 60)
         }
         guard i == u.count else { return nil }
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = zona ?? .current
-        return cal.date(from: c).map { $0.addingTimeInterval(ms / 1000) }
+        cal.timeZone = desfasaje == nil ? .current : TimeZone(identifier: "UTC")!
+        return cal.date(from: c).map { $0.addingTimeInterval(ms / 1000 - Double(desfasaje ?? 0)) }
     }
 
     /// YYYY-MM-DD local (`toLocaleDateString('en-CA')` y el `dayStr` de `prevSessionStr`).

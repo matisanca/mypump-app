@@ -94,6 +94,39 @@ struct SaludVistaTests {
         #expect(fallas.isEmpty, "\(fallas.prefix(3))")
     }
 
+    /// Valores raros en los motivos, con lo que da `_recDrivers` en node (hallazgo del gemelo de Android, 3091e8e):
+    /// `Number(null)` es 0, un ausente es NaN y `m.baseline ?` usa la verdad de JS (un "0" de texto cuenta).
+    @Test func motivosConValoresRaros() {
+        func texto(_ m: [String: JSONValue]) -> String? {
+            SaludVista.motivos(RecuperacionDia(fecha: "2026-10-14", motivos: .lista([.objeto(m)]))).first?.texto
+        }
+        #expect(texto(["tipo": .texto("sueno"), "valor": .null]) == "Dormiste 0h00")
+        #expect(texto(["tipo": .texto("sueno")]) == "Dormiste NaNhNaN")
+        #expect(texto(["tipo": .texto("sueno"), "valor": .texto("450"), "baseline": .texto("0")]) == "Dormiste 7h30 · venís de 0h00")
+        #expect(texto(["tipo": .texto("sueno"), "valor": .numero(450), "baseline": .numero(0)]) == "Dormiste 7h30")
+        #expect(texto(["tipo": .texto("fc_reposo"), "valor": .numero(50), "baseline": .texto("0")]) == "Pulso en reposo 50 · 50 más que tu normal")
+        #expect(texto(["tipo": .texto("hrv"), "valor": .null, "baseline": .null]) == "Variabilidad 0 ms")
+    }
+
+    /// Hallazgo 1 del gemelo de Android: `Int()` sobre `dias_datos / 14 * 100` cerraba la app con un número absurdo.
+    @Test func calibrandoConDiasAbsurdos() {
+        let hoy = "2026-10-14"
+        for n in [Int.max, Int.min, 7] {
+            let card = SaludVista.cardRecuperacion(serie: [RecuperacionDia(fecha: hoy, estado: "calibrando", diasDatos: n)], conectado: true,
+                                                   mostrar: true, salud: [], historial: nil, sinDatos: false, hoy: hoy)
+            if case .calibrando(let dias, let pct, _) = card { #expect(dias == n && pct <= 100) } else { Issue.record("\(card)") }
+        }
+    }
+
+    @Test func milesComoToLocaleString() {
+        #expect(SaludVista.miles(.infinity) == "∞" && SaludVista.miles(-.infinity) == "-∞" && SaludVista.miles(.nan) == "NaN")
+        #expect(SaludVista.miles(-0.4) == "-0" && SaludVista.miles(-0.5) == "-0" && SaludVista.miles(0.5) == "1")
+        #expect(SaludVista.miles(1e23) == "100.000.000.000.000.000.000.000")
+        #expect(SaludVista.miles(1e21) == "1.000.000.000.000.000.000.000")
+        #expect(SaludVista.miles(123456789012345680000) == "123.456.789.012.345.680.000")
+        #expect(SaludVista.miles(-1234.5) == "-1.234" && SaludVista.miles(8548.4) == "8.548")
+    }
+
     @Test func regularidadComoLaWeb() throws {
         let v = try vectores()
         for c in v.circular {

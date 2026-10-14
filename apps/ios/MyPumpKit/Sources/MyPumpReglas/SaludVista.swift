@@ -177,7 +177,7 @@ public enum SaludVista {
         }
         if fila.estado == "calibrando" || fila.score == nil {
             let n = fila.diasDatos ?? 0
-            let pct = min(100, Int(jsRound(Double(n) / 14 * 100)))
+            let pct = min(100, (Double(n) / 14 * 100).jsEntero)   // con `Int()`, un dias_datos absurdo cerraba la app
             var ya = ""
             if let s = numero(fila.cobertura?["sueno_min"]), s != 0 { ya = "Ya sé que dormís cerca de \(horasSinEspacio(s))." }
             else if let f = numero(fila.cobertura?["fc_reposo"]), f != 0 { ya = "Ya sé que tu pulso en reposo ronda los \(enteroJS(f))." }
@@ -220,19 +220,21 @@ public enum SaludVista {
     public static func motivos(_ fila: RecuperacionDia) -> [Motivo] {
         guard case .lista(let ms) = fila.motivos else { return [] }
         return ms.prefix(3).compactMap { m in
-            let sube = (numero(m["dir"]) ?? 0) > 0
-            let v = numero(m["valor"]) ?? .nan
-            let base = numero(m["baseline"])
-            let conBase = base.map { $0 != 0 && !$0.isNaN } ?? false
+            // Como `_recDrivers`: `Number(m.valor)` (null es 0 y da "0h00"; ausente, NaN) y `m.baseline ?` por la verdad
+            // de JS (un "0" de texto cuenta, un 0 no).
+            let sube = (AnclajeSwaps.numero(m["dir"]) ?? .nan) > 0
+            let v = AnclajeSwaps.numero(m["valor"]) ?? .nan
+            let conBase = m["baseline"].map(AnclajeSwaps.esVerdadero) ?? false
+            let base = AnclajeSwaps.numero(m["baseline"]) ?? .nan
             switch m["tipo"]?.comoTexto {
             case "sueno":
-                return Motivo(sube: sube, antes: "Dormiste ", negrita: horasSinEspacio(v), despues: conBase ? " · venís de \(horasSinEspacio(base!))" : "")
+                return Motivo(sube: sube, antes: "Dormiste ", negrita: horasSinEspacio(v), despues: conBase ? " · venís de \(horasSinEspacio(base))" : "")
             case "fc_reposo":
-                let d = conBase ? jsRound(abs(v - base!)) : 0
+                let d = conBase ? jsRound(abs(v - base)) : 0
                 let conD = d != 0 && !d.isNaN
                 return Motivo(sube: sube, antes: "Pulso en reposo ", negrita: enteroJS(v), despues: conD ? " · \(enteroJS(d)) más que tu normal" : "")
             case "hrv":
-                return Motivo(sube: sube, antes: "Variabilidad ", negrita: "\(enteroJS(v)) ms", despues: conBase ? " · tu normal es \(enteroJS(base!))" : "")
+                return Motivo(sube: sube, antes: "Variabilidad ", negrita: "\(enteroJS(v)) ms", despues: conBase ? " · tu normal es \(enteroJS(base))" : "")
             case "carga":
                 return Motivo(sube: sube, antes: "Entrenaste fuerte: ", negrita: textoJS(m["agudo"]), despues: " series duras en 3 días")
             case "regularidad":
@@ -355,18 +357,31 @@ public enum SaludVista {
         return JS.texto(jsRound(x))   // 1e21 sale "1e+21", como en JS (`Int()` cerraba la app)
     }
 
-    /// `Math.round(v).toLocaleString('es-AR')`: "8.548".
+    /// `Math.round(v).toLocaleString('es-AR')`: "8.548". Con los bordes de ICU: "∞", "-0" (de un -0,4) y los dígitos
+    /// más cortos completados con ceros (1e23 es "100.000.000.000.000.000.000.000", no los del binario).
     public static func miles(_ v: Double) -> String {
-        guard v.isFinite else { return "NaN" }
+        if v.isNaN { return "NaN" }
+        if v.isInfinite { return v > 0 ? "∞" : "-∞" }
         let r = jsRound(v)
-        // Los dígitos del entero, también de uno que no entra en Int (`Int()` cerraba la app).
-        let s = String(format: "%.0f", abs(r))
+        let s = digitosDeEntero(abs(r))
         var out = ""
         for (i, c) in s.reversed().enumerated() {
             if i > 0 && i % 3 == 0 { out.append(".") }
             out.append(c)
         }
-        return (r < 0 ? "-" : "") + String(out.reversed())
+        // `Math.round` de un negativo hasta −0,5 es −0, y ICU lo escribe "-0" (`jsRound` devuelve el 0 sin signo).
+        return (r < 0 || (r == 0 && v.sign == .minus) ? "-" : "") + String(out.reversed())
+    }
+
+    /// Los dígitos de un entero no negativo como los da `toLocaleString`: los de `String(x)` de JS, y si viene con
+    /// exponente ("1e+23"), la mantisa completada con ceros. Nunca pasa por `Int` (con uno que no entra, cerraba la app).
+    private static func digitosDeEntero(_ x: Double) -> String {
+        let t = JS.texto(x)
+        guard let e = t.range(of: "e+") else { return t }
+        let mantisa = t[..<e.lowerBound]
+        let decimales = mantisa.split(separator: ".", omittingEmptySubsequences: false).dropFirst().first?.count ?? 0
+        let ceros = max(0, (Int(t[e.upperBound...]) ?? 0) - decimales)
+        return mantisa.replacingOccurrences(of: ".", with: "") + String(repeating: "0", count: ceros)
     }
 
     public static let entero: @Sendable (Double) -> String = { enteroJS($0) }
