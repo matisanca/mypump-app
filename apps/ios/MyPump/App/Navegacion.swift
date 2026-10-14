@@ -32,8 +32,9 @@ final class Navegacion {
     }
 }
 
-/// "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno y Dieta. Tocarlo lleva
-/// a Revisión. Con todo hecho, en la demo o sin cuenta no se ve.
+/// "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno, Dieta, Chat y Progreso
+/// (la web lo pone en todas las escenas menos Revisión). Tocarlo lleva a Revisión. Con todo hecho, en la demo o sin
+/// cuenta no se ve.
 struct BannerRevision: View {
     @State private var modelo = Proveedor.modelo
     @Environment(Navegacion.self) private var navegacion: Navegacion?

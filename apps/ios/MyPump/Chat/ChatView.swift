@@ -79,6 +79,8 @@ struct ChatView: View {
         ScrollViewReader { lector in
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    // Como la web, arriba de todas las escenas menos Revisión (GEN-03). Sin pendientes no ocupa lugar.
+                    BannerRevision().padding(.top, Espacio.s)
                     encabezado(vacio: mensajes.isEmpty)
                     if let chat, chat.hilo.hayMas, !mensajes.isEmpty {
                         Button {

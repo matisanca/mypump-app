@@ -68,6 +68,8 @@ final class DietaUITests: XCTestCase {
         let aMano = app.buttons["A mano"].firstMatch
         for _ in 0..<12 where !aMano.isHittable { app.swipeUp(velocity: .fast) }
         XCTAssertTrue(aMano.isHittable, "No apareció la sección de comidas libres")
+        // Después de los swipes rápidos la lista sigue frenando, y un toque ahí solo la detiene (en iOS 17.5 pasaba).
+        esperarQuieto(aMano)
         aMano.tap()
         let descripcion = app.textFields["Ej: Milanesa con puré"]
         XCTAssertTrue(descripcion.waitForExistence(timeout: 5))
@@ -98,6 +100,19 @@ final class DietaUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(abrir.count, 3)
         app.buttons["Listo"].tap()
         XCTAssertTrue(app.navigationBars["Respaldo científico"].waitForNonExistence(timeout: 5))
+    }
+
+    /// Hasta que el elemento deja de moverse (dos lecturas iguales seguidas), como mucho 3 s.
+    private func esperarQuieto(_ e: XCUIElement) {
+        var antes = e.frame
+        var iguales = 0
+        let fin = Date().addingTimeInterval(3)
+        while iguales < 2 && Date() < fin {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+            let ahora = e.frame
+            iguales = ahora == antes ? iguales + 1 : 0
+            antes = ahora
+        }
     }
 
     private func adjuntarCaptura(_ nombre: String) {

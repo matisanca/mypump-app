@@ -85,10 +85,15 @@ struct DietaView: View {
 
     private var contenido: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                Cabecera(objetivo: modelo.objetivo, elegidas: totalElegido)
-                BannerRevision()
-                ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in tarjeta(c, numero: n + 1) }
+            VStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    Cabecera(objetivo: modelo.objetivo, elegidas: totalElegido)
+                    BannerRevision()
+                    ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in tarjeta(c, numero: n + 1) }
+                }
+                // Afuera de la lista perezosa: en iOS 17 una `.sheet` o un `.alert` de una vista que vive adentro de un
+                // `LazyVStack` no se presenta, y "A mano", "Con foto" y el permiso de la IA no hacían nada (lo agarró
+                // DietaUITests en 17.5; en 18 y 26 andaba).
                 if modelo.token != nil {
                     ComidasLibresSeccion(modelo: modelo, analizando: $analizandoFoto)
                 }
