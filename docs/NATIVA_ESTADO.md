@@ -75,7 +75,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | Compuerta | Estado |
 |---|---|
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
-| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14): lista y ensayada en rollback (56/56, también como `anon`); falta que Mati la aplique** (comando en la bitácora del 14-oct 17:30). Pendiente para otra tanda: `mypump_borrar_serie` |
+| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14): lista y ensayada en rollback (53/53, también como `anon`); falta que Mati la aplique** (comando en la bitácora del 14-oct 17:30). Pendiente para otra tanda: `mypump_borrar_serie` |
 | G5 · TestFlight externo | pendiente. Los internos ya están autorizados |
 | G6 · mensajes a clientes | pendiente |
 | G7 · revisión de tiendas | pendiente |
@@ -114,23 +114,42 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 ## Bitácora
 
 - **14-oct 17:30, sustituciones de ejercicio en el servidor (SER-14, decisión de Mati de las 16:24):**
-  - **Base:** `supabase/migrations/nativa_003_sustituciones_ejercicio.sql` (da54355). Una tabla
-    (`mypump_exercise_swaps`) y cuatro funciones (leer, guardar, borrar, importar); no cambia nada existente y la web no
-    la usa. Ensayo en producción dentro de una transacción, deshecho al final: **56/56**, también llamando como `anon`.
-  - **App (iOS 17196b4, Android 4b838dd, arreglo fd3e278):**
-    - cada cambio sale por la cola (`swap_ej` / `swap_ej_del`);
-    - la primera vez que un teléfono sincroniza una rutina sube lo que tenía; después lee el servidor, con lo que sigue en
-      la cola y lo que se tocó mientras tanto por encima;
-    - si la migración del almacenamiento viejo se repite, lo de la app vieja reemplaza lo del servidor;
-    - lo que no llegó a la cola antes de cerrarse la app se encola al volver a abrir.
-  - **Igual que antes mientras la 003 no esté aplicada:** la función no existe (PGRST202) y todo queda solo en el teléfono,
-    sin avisos nuevos. Lo prueban las pruebas de las dos apps y la migración en el simulador: **25/25** (la fila nueva
-    dice "sin tabla").
-  - **Pruebas:** iOS 346 y Android 415, en verde. Cada protección se probó rompiéndola a propósito (mutantes): en las dos
-    apps, todos los mutantes caen.
-  - **Para aplicarla (G2, la corre Mati; el archivo ya está en la Mini, md5 `286d3c3b…` igual al del repo):**
+  - **Base:** `supabase/migrations/nativa_003_sustituciones_ejercicio.sql`. Una tabla (`mypump_exercise_swaps`) y cinco
+    funciones; no cambia nada existente y la web no la usa. Ensayo en producción dentro de una transacción, deshecho al
+    final: **53/53**, también llamando como `anon`.
+  - **Cómo funciona (iOS 9cd1f65, Android 1d151d9):**
+    - cada entrada lleva la hora en que el cliente la eligió y **gana lo más nuevo**, en el servidor y al leerlo;
+    - borrar deja una **lápida** con su hora: otro teléfono no la revive con algo más viejo;
+    - que algo falte en el servidor **no es un borrado**: el teléfono lo vuelve a subir (nada se pierde aunque la tabla
+      se vaciara);
+    - la **poda es solo del teléfono** y no se manda;
+    - la cola **no muestra avisos** por estas operaciones, como antes, cuando no tocaban la red;
+    - lo que no llegó a la cola porque la app se cerró se encola al volver a abrir;
+    - si el cliente vuelve a la app vieja, solo se aplica lo que cambió ahí.
+  - **Revisión independiente** (subagente, solo lectura) sobre la primera versión: 7 hallazgos reales. El más grave era
+    que la poda de un teléfono viejo podía borrar en el servidor lo que el cliente fijó después en otro. Todos quedaron
+    cubiertos en la versión de arriba, cada uno con su prueba; la segunda pasada de la revisión está en curso.
+  - **Igual que antes mientras la 003 no esté aplicada** (PGRST202): todo queda en el teléfono y sin avisos nuevos. La
+    migración en el simulador dio **25/25** (la fila nueva dice "sin tabla").
+  - **Pruebas:** iOS 358 y Android 426, en verde. Mutantes: 11 en iOS y 10 en Android, uno por protección, y caen todos.
+  - **Para aplicarla (G2, la corre Mati; el archivo ya está en la Mini, md5 `bfd16e8b…`, igual al del repo):**
     `ssh mini 'cd ~/agentkit-coach && venv/bin/python ~/_aplicar.py /tmp/nativa_003_sustituciones_ejercicio.sql'`
     Después: regenerar el esquema, correr `auditar_seguridad_db.py` y ver una sustitución pasar entre dos simuladores.
+- **14-oct 17:30, lo demás de la tarde:**
+  - **Fotos contra el servidor real** (4a1acd8): una foto como las de la cámara (4032×3024, con GPS) queda guardada como
+    JPEG de 675×900, derecha y **sin ubicación**; la de la cola de la web sube sola. Cierra MIG-03, REV-02 y REV-03.
+  - **Números como la web en iOS** (dd270a7): con el iPhone en otra región se veía "2,454 kcal" junto a "15,1 g". Ahora
+    es siempre `es_AR`. Lo encontró la revisión de Android, igual que el "según tu iPhone" que aparecía en iPad.
+  - **Interfaz de Android en Compose** (merge 375f970): acceso, demo, sin conexión, permiso de la IA, Dieta en lectura y
+    Mis datos, con 42 pruebas instrumentadas. Encontró y arregló tres errores propios: se colgaba con la red lenta al
+    pegar el link, la demo dejaba su pestaña a la cuenta y había texto negro sobre negro en oscuro. Queda en
+    `apps/android/README.md` lo que sigue: Entreno, Chat, Revisión, Dieta con escritura, Progreso, notificaciones y
+    Health Connect.
+  - **Para decidir (Android):**
+    - agregar `ui-test-junit4`/`ui-test-manifest` (pruebas de interfaz estándar) y `androidx.browser` (fuentes y legales
+      dentro de la app, como iOS): son descargas nuevas (G4);
+    - Android 16 anota el link entero (con el token) en sus registros de transición. Le pasa a cualquier app, también a
+      la Capacitor de hoy: un `adb bugreport` del teléfono de un cliente lleva su link.
 
 - **14-oct 16:24, decisiones de Mati y la 1.0.12:**
   - **Decisiones:**
