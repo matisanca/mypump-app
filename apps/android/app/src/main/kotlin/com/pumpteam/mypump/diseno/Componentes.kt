@@ -50,6 +50,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlin.math.abs
 import kotlin.math.floor
 
@@ -380,14 +382,15 @@ object Formato {
         return (if (n < 0) "-" else "") + out.reverse().toString()
     }
 
-    /** "52,5" / "55": hasta un decimal, con coma y sin ",0" (el `kg` de iOS). */
+    /**
+     * "52,5" / "55": hasta un decimal, con coma y sin ",0" (el `kg` de iOS). Redondea como el `FormatStyle` de iOS (ICU):
+     * sobre el decimal más corto que representa al número y al par (0,25 → "0,2", 15,15 → "15,2"), no sobre el binario.
+     */
     fun decimal(x: Double?): String {
         val v = x ?: return "0"
         if (!v.isFinite()) return "0"
-        val decimas = entero(v * 10)
-        val entera = decimas / 10
-        val resto = abs(decimas % 10)
-        val signo = if (decimas < 0 && entera == 0L) "-" else ""
-        return if (resto == 0L) "$signo$entera" else "$signo$entera,$resto"
+        val r = BigDecimal(v.coerceIn(-1e15, 1e15).toString()).setScale(1, RoundingMode.HALF_EVEN).stripTrailingZeros()
+        val texto = (if (r.signum() == 0) BigDecimal.ZERO else r).toPlainString().replace('.', ',')
+        return texto
     }
 }
