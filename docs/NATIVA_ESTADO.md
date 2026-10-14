@@ -135,7 +135,13 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   - **Simulador de punta a punta: 24/24**, con el chequeo nuevo del recibo. MyPumpKit: 328 tests.
   - **Capturas de la tienda** listas (`nativa-evidencia/tienda/20261014-145803`), sin el cartel de la demo y con
     Progreso con datos. La dieta de la demo ya no muestra "−23 %" (f7aa713).
-  - **Build 102** disparado (`nios-2.0.0-102` sobre b9db8a0).
+  - **Build 102 OK** en Codemagic (`nios-2.0.0-102` sobre b9db8a0, 16:01). Va a TestFlight interno y le llega solo
+    a Mati.
+  - Después del 102:
+    - prueba de interfaz de SER-04, que muerde;
+    - tests de Android tras el merge en verde;
+    - las pantallas principales en iOS 17.5 se ven bien, con la barra de pestañas clásica y la del descanso
+      anterior a 26.1 (`nativa-evidencia/ios17/20261014-160125`).
   - **Decisiones pendientes de Mati:**
     1. ACC-08: ¿D11 también para la rutina? La nativa dice "Todavía no hay rutina" en vez de la de ejemplo.
     2. CHA-01 y ENT-17: ¿quedan como desvíos de diseño? (el chat sin "Vos"/"Mati", y "Siguiente →" en vez de abrir solo

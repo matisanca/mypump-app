@@ -72,7 +72,7 @@ Hasta que se decidan, rige lo de hoy.
 | ENT-12 | Fotos de ejercicios: `images._matched_slug` (no `catalogo_slug` de primer nivel) | memoria `reference_sustitutos_ejercicio_app` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-13 | Sin columna de kg: calentamiento, o peso corporal por regex, salvo que el nombre mencione carga | `C:4004-4021` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-14 | Avanzar de semana: visible si semana < total; la confirmación cambia si el día está incompleto; `avanzar_semana(actual+1)`, que nunca retrocede; borra los cachés de sesión y recarga; error "Sin conexión" o "No se pudo pasar de semana" | `C:3108-3139`, `3178-3194`, mig 077 | ✅ ver auditoría 14-oct | ☐ |
-| ENT-15 | Última semana con bloque en cola: "🎉 Empezar bloque nuevo" → `activar_siguiente` | `C:3141-3176`, `3740-3748` | 🟡 ver auditoría 14-oct | ☐ |
+| ENT-15 | Última semana con bloque en cola: "🎉 Empezar bloque nuevo" → `activar_siguiente` | `C:3141-3176`, `3740-3748` | ✅ empezarBloqueNuevo_activaBorraLasSesiones_yRecarga (761187e) y los caminos que fallan | ☐ |
 | ENT-16 | Vacío: "Este día no tiene ejercicios cargados…" | `C:3634` | ✅ ver auditoría 14-oct | ☐ |
 | ENT-17 | Al completar un ejercicio se abre el siguiente pendiente. Con todos hechos: "¡Día completado!" → siguiente día, o avanzar si es el último | `C:3196-3229` | 🟡 ver auditoría 14-oct | ☐ |
 
@@ -83,7 +83,7 @@ Hasta que se decidan, rige lo de hoy.
 | SER-01 | Un toque registra las reps de la última vez (misma serie y variante) o el tope del rango, y el kg de la última vez. Con AMRAP/∞/máx no hay registro de un toque | `C:4066-4072`, `4144-4230` | ✅ ver auditoría 14-oct | ☐ |
 | SER-02 | El RIR **nunca** se autocompleta; selector 0-5 que reenvía si la serie ya estaba confirmada. RIR 0 ≠ null | `C:4595-4623`, memoria `project_motor_recuperacion` | ✅ ver auditoría 14-oct | ☐ |
 | SER-03 | El kg se hereda de la serie anterior confirmada. Pista de calibración la primera vez | `C:1618-1627`, `4049` | ✅ ver auditoría 14-oct | ☐ |
-| SER-04 | Al tocar un campo se selecciona todo; en kg la coma pasa a punto; en reps solo dígitos | `C:4275-4304`, `4089-4099` | 🟡 ver auditoría 14-oct | ☐ |
+| SER-04 | Al tocar un campo se selecciona todo; en kg la coma pasa a punto; en reps solo dígitos | `C:4275-4304`, `4089-4099` | ✅ coma → punto y solo dígitos en camposYRIR; seleccionar todo al enfocar en EntrenoUITests.testTocarUnCampoLoSeleccionaEntero (iOS 26.5 y 17.5; muerde: sin él queda "780") | ☐ |
 | SER-05 | Topes: reps 1-300 y kg ≤2000 se rechazan. Pregunta si kg > 600, si kg > 2,5× el récord (con récord ≥10) o si reps > max(30, 3× la referencia) | `C:4085`, `4118-4142`, test `test-series-verosimiles` | ✅ ver auditoría 14-oct | ☐ |
 | SER-06 | El lápiz desconfirma la serie | `C:4323` | ✅ ver auditoría 14-oct | ☐ |
 | SER-07 | Variantes por regex (rueda → Nivel sin peso; tríceps en polea, jalón, remo en polea y curl en polea → Agarre). Viajan en `registros_carga.notas` y se restauran de ahí; las filas viejas sin nota cuentan solo para la opción por defecto | `C:3983-4003`, `1577-1599`, `3259-3266` | ✅ ver auditoría 14-oct | ☐ |
@@ -149,8 +149,8 @@ Hasta que se decidan, rige lo de hoy.
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
 | REV-01 | Orden: Fotos → Check → Peso → Mi reloj → Mi Día | `C:8052-8086` | ✅ ver auditoría 14-oct | ☐ |
-| REV-02 | Fotos frente/perfil/espalda desde cámara o galería (HEIC incluido); JPEG de 900 px a 0,7, sin ubicación; orientación correcta | `C:7476-7962`, memoria `project_mypump_ios_estado` | 🟡 ver auditoría 14-oct | ☐ |
-| REV-03 | Cola de fotos: máximo 3, rechaza más de 2,4 MB, 8 intentos por errores del servidor (los de red no cuentan), 4xx distinto de 429 = definitivo; "Hay fotos esperando subir" | `C:7487-7602` | 🟡 cola ✅ (tests con transporte programado + subida real), falta la pantalla · ver auditoría 14-oct | ☐ |
+| REV-02 | Fotos frente/perfil/espalda desde cámara o galería (HEIC incluido); JPEG de 900 px a 0,7, sin ubicación; orientación correcta | `C:7476-7962`, memoria `project_mypump_ios_estado` | ✅ ReduccionFotoTests: 4032×3024 con orientación 6 y GPS → 675×900 derecha y sin ubicación, HEIC, sin agrandar, 0,7 < 0,95 (f7f3a58); la galería pasa por ReduccionFoto | ☐ |
+| REV-03 | Cola de fotos: máximo 3, rechaza más de 2,4 MB, 8 intentos por errores del servidor (los de red no cuentan), 4xx distinto de 429 = definitivo; "Hay fotos esperando subir" | `C:7487-7602` | ✅ FotosTests: la red no gasta intentos, 8 intentos, 4xx definitivo, >2,4 MB, y conTresEnLaColaUnaCuartaNoEntra | ☐ |
 | REV-04 | "🔥 N semanas seguidas"; galería por semana; comparador antes/después desde 4 semanas, con Δkg | `C:7600-7660` | 🟡 reglas ✅ (racha, semanas, comparador), falta la pantalla · ver auditoría 14-oct | ☐ |
 | REV-05 | URLs firmadas (`/progreso/urls`), cacheadas 50 min | `C:7617-7641` | 🟡 modelo ✅ (caché de 50 min), falta la pantalla · ver auditoría 14-oct | ☐ |
 | REV-06 | Check semanal: 4 escalas 1-5 + nota; "Faltan: X"; va por el outbox y muestra "✓ enviado" | `C:7964-8034` | ✅ modelo ✅ ("Faltan: …", cola), falta la pantalla · ver auditoría 14-oct | ☐ |
