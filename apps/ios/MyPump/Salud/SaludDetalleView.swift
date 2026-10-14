@@ -20,23 +20,24 @@ struct SaludDetalleView: View {
                 } else {
                     recuperacion
                     sueno
-                    seccion("❤️", "Corazón") {
+                    seccion("❤️", "Corazón", tipos: ["fc_reposo", "hrv_ms"]) {
                         FilaMetricaView(modelo: modelo, tipo: "fc_reposo", nombre: "Pulso en reposo", unidad: " lpm", mejorSube: false, color: .corazon)
                         FilaMetricaView(modelo: modelo, tipo: "hrv_ms", nombre: "Variabilidad (HRV)", unidad: " ms", color: .corazon, nota: notaHRV)
                     }
-                    seccion("👟", "Actividad") {
+                    seccion("👟", "Actividad", tipos: ["pasos", "actividad_min", "kcal_activas"]) {
                         FilaMetricaView(modelo: modelo, tipo: "pasos", nombre: "Pasos", formato: SaludVista.miles)
                         FilaMetricaView(modelo: modelo, tipo: "actividad_min", nombre: "Minutos activos", unidad: " min")
                         FilaMetricaView(modelo: modelo, tipo: "kcal_activas", nombre: "Calorías activas", unidad: " kcal")
                     }
-                    seccion("🌡", "Otras señales", sub: "Solo importan comparadas con lo normal tuyo, no con una tabla general.") {
+                    seccion("🌡", "Otras señales", sub: "Solo importan comparadas con lo normal tuyo, no con una tabla general.",
+                            tipos: ["respiracion_rpm", "spo2_pct", "temp_muneca_c"]) {
                         FilaMetricaView(modelo: modelo, tipo: "respiracion_rpm", nombre: "Respiración", unidad: " /min", color: .teal,
                                         nota: "Sube cuando estás incubando algo, con alcohol encima o durmiendo mal.")
                         FilaMetricaView(modelo: modelo, tipo: "spo2_pct", nombre: "Oxígeno en sangre", unidad: "%", color: .teal)
                         FilaMetricaView(modelo: modelo, tipo: "temp_muneca_c", nombre: "Temperatura de muñeca", unidad: "°", color: .orange,
                                         formato: unDecimal)
                     }
-                    seccion("⚖️", "Cuerpo") {
+                    seccion("⚖️", "Cuerpo", tipos: ["peso_kg", "grasa_pct"]) {
                         FilaMetricaView(modelo: modelo, tipo: "peso_kg", nombre: "Peso", unidad: " kg", formato: unDecimal)
                         FilaMetricaView(modelo: modelo, tipo: "grasa_pct", nombre: "Grasa corporal", unidad: "%", formato: unDecimal)
                     }
@@ -167,13 +168,19 @@ struct SaludDetalleView: View {
         }
     }
 
-    private func seccion(_ icono: String, _ titulo: String, sub: String? = nil, @ViewBuilder _ cuerpo: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            EncabezadoSalud(icono: icono, titulo: titulo)
-            if let sub { Text(sub).font(.footnote).foregroundStyle(.secondary) }
-            cuerpo()
+    /// `_seccionSalud`: con `tipos`, si ninguna de esas filas tiene datos la sección no se muestra (la web devuelve '' y la
+    /// saca). Sin `tipos` (recuperación, sueño, preferencias), va siempre: esas deciden solas qué mostrar.
+    @ViewBuilder
+    private func seccion(_ icono: String, _ titulo: String, sub: String? = nil, tipos: [String]? = nil,
+                         @ViewBuilder _ cuerpo: () -> some View) -> some View {
+        if tipos.map({ $0.contains { SaludVista.fila(modelo.salud, tipo: $0, mejorSube: true, formato: SaludVista.entero) != nil } }) ?? true {
+            VStack(alignment: .leading, spacing: 12) {
+                EncabezadoSalud(icono: icono, titulo: titulo)
+                if let sub { Text(sub).font(.footnote).foregroundStyle(.secondary) }
+                cuerpo()
+            }
+            .tarjeta()
         }
-        .tarjeta()
     }
 }
 
