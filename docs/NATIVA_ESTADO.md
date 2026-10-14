@@ -140,11 +140,13 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
     - guía en `references/chat-app.md` y tres líneas en `SKILL.md`. Avisada la sesión de Mensajes.
   - **`CHAT_IA_AUTO=0`** en `~/pump-centinela/.env` (OK de Mati, 19:20; backup `.env.bak-auto-20261014`): el worker de
     Codex ya no manda nada solo. Sigue dejando borradores en el Cerebro y avisando.
-  - **Pendiente:**
-    1. que el worker de Codex también tape el nombre antes de Codex (primer pedido de Mati), en `chat_worker.py` y
-       `sugerir_pendientes.py`, con OK para desplegar;
-    2. la política de privacidad publicada dice que la 2.0 pide permiso, que el chat lo redacta OpenAI con el nombre de
-       pila y que hay acuses automáticos: cambiarla cuando quede el diseño final (G3, toca `public/`, la sube Mati).
+  - **El worker de Codex tampoco recibe el nombre** (e00095f, desplegado con OK de Mati a las 19:33; backups
+    `*.bak-sinnombre-20261014`): `deid_chat.py` compartido con la bandeja de la sesión. `scripts/test_chat_sin_nombre.py`
+    da 16/16 en el Mini con Qwen real y con los archivos ya instalados. Si no se puede tapar, el mensaje no va a la IA y
+    queda para Mati.
+  - **Política de privacidad** (OK de Mati al texto, G3): commit e171038 en la rama `privacidad-sin-permiso-ia`, sobre
+    `main` (c682643). La sube Mati con
+    `git -C ~/Developer/mypump-nativa push origin privacidad-sin-permiso-ia:main`.
 
 - **14-oct 18:45, "hacelo todo vos" (Mati):**
   - **`nativa_003` aplicada** por Mati a las 18:16 (captura de su terminal: COMMIT). Verificado:
