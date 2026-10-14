@@ -189,7 +189,7 @@ fun TablaSeries(
                     FilaDeSerie(motor, lugar, i, f, s, series, sinKg, alTocarCheck = { tocarCheck(i, f) })
                 }
             }
-            Pista(activa?.let { filas[it] }, Modifier.padding(top = 2.dp))
+            Pista(activa, activa?.let { filas[it] }, alRegistrar = ::tocarCheck, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }
@@ -436,17 +436,32 @@ private fun BotonCheck(i: Int, f: FilaSerie, alTocar: () -> Unit) {
     }
 }
 
-/** La pista de la fila activa: lo de la última vez a un toque, o la calibración la primera vez. */
+/**
+ * La pista de la fila activa: lo de la última vez a un toque, o la calibración la primera vez. Como en la web
+ * (`data-sugconfirm`, cliente.html:4044 y :4307), la pista de la última vez ES un botón: tocarla registra la serie igual
+ * que el ✓, con las mismas preguntas (reabrir el día, "¿Está bien cargado?"). En la 101 de iOS era solo texto y
+ * "Tocá para registrar" no hacía nada (lo encontró Mati el 14-oct).
+ */
 @Composable
-private fun Pista(f: FilaSerie?, modifier: Modifier = Modifier) {
+private fun Pista(i: Int?, f: FilaSerie?, alRegistrar: (Int, FilaSerie) -> Unit, modifier: Modifier = Modifier) {
     val c = MyPump.colores
     val p = f?.pista
     val calibracion = f?.calibracion
-    if (p != null) {
+    if (p != null && i != null) {
         // "Tocá para registrar lo de la última vez: **80 kg × 10**. O editá si hiciste otra cosa.", con la puntuación de una frase.
         val antes = p.antes.replace("✓ ", "").replace(" · ", "")
         val despues = p.despues.replace(" — ", "").trim()
-        Row(modifier, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(c.marcaSuave)
+                .clickable(enabled = f.puedeConfirmar, role = Role.Button) { alRegistrar(i, f) }
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+                .semantics(mergeDescendants = true) { contentDescription = "Registrar lo de la última vez: ${Bonito.carga(p.negrita)}" }
+                .testTag("registrar-ultima-vez"),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
             Icon(Iconos.Toque, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.padding(top = 1.dp).size(14.dp))
             Text(
                 buildAnnotatedString {
