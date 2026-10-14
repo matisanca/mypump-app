@@ -18,6 +18,96 @@ class CapturasUiTest : PruebaUi() {
     @Test
     fun enOscuro() = recorrer(oscuro = true)
 
+    @Test
+    fun entrenoEnClaro() = recorrerEntreno(oscuro = false)
+
+    @Test
+    fun entrenoEnOscuro() = recorrerEntreno(oscuro = true)
+
+    /**
+     * Entreno con la cuenta grabada y una sesión en curso (23 minutos): dos ejercicios hechos (uno a mano, "Manual"), el
+     * jalón con 2 de 4 series, un comentario de Mati sin leer en el remo y el día 2 cerrado esta semana. Después el
+     * detalle, una serie con su descanso, sustituir, la card sustituida, los comentarios, cerrar el día antes de tiempo y
+     * "Todavía no hay rutina".
+     */
+    private fun recorrerEntreno(oscuro: Boolean) {
+        val tema = if (oscuro) "oscuro" else "claro"
+        fun foto(nombre: String) = Telefono.captura("$nombre-$tema")
+        Telefono.modoNoche(oscuro)
+        val inicio = java.time.Instant.now().minusSeconds(23 * 60).toString()
+        servidor.respuestas["mypump_get_sesion_dia"] =
+            """[{"id":"ses-captura","dia_id":"d1","semana":5,"iniciada_en":"$inicio","finalizada_en":null}]"""
+        servidor.respuestas["mypump_get_sesiones_semana"] =
+            """[{"dia_id":"d2","semana":5,"iniciada_en":"2026-10-12T21:00:00Z","finalizada_en":"2026-10-12T22:05:00Z"}]"""
+        servidor.respuestas["mypump_get_ejercicios_estado"] = """[
+            {"ejercicio_id":"cinta-10-min-entrada-en-calor-d1-0","status":"completo_sin_datos","series_completadas":0,"marcado_manualmente":true},
+            {"ejercicio_id":"rollout-con-ab-wheel-core-anterior-d1-1","status":"completo","series_completadas":3,"marcado_manualmente":false}]"""
+        fun serie(ej: String, nombre: String, n: Int, kg: Number, reps: Int, rir: Int) =
+            """{"ejercicio_id":"$ej","ejercicio_nombre":"$nombre","serie_numero":$n,"peso_kg":$kg,"reps_realizadas":$reps,"rir_real":$rir,"notas":null}"""
+        servidor.respuestas["mypump_get_registros_sesion"] = "[" + listOf(
+            serie("rollout-con-ab-wheel-core-anterior-d1-1", "Rollout con ab wheel (core anterior)", 1, 0, 13, 1),
+            serie("rollout-con-ab-wheel-core-anterior-d1-1", "Rollout con ab wheel (core anterior)", 2, 0, 12, 1),
+            serie("rollout-con-ab-wheel-core-anterior-d1-1", "Rollout con ab wheel (core anterior)", 3, 0, 12, 1),
+            serie("jalon-al-pecho-prono-dorsal-ancho-d1-0", "Jalón al pecho prono (dorsal ancho)", 1, 60, 10, 0),
+            serie("jalon-al-pecho-prono-dorsal-ancho-d1-0", "Jalón al pecho prono (dorsal ancho)", 2, 60, 9, 0),
+        ).joinToString(",") + "]"
+        servidor.respuestas["mypump_get_comentarios"] =
+            """[{"id":"c1","ambito":"ejercicio","referencia_id":"remo-en-polea-sentado-grosor-dorsal-bajo-d1-1","referencia_nombre":"Remo en polea sentado","autor":"coach","contenido":"Bajá un poco el peso y apretá arriba un segundo.","leido_por_cliente":false,"created_at":"2026-10-13T21:10:00Z"}]"""
+        servidor.respuestas["mypump_iniciar_sesion"] = "\"ses-captura\""
+        guardarCuenta()
+        abrir().also {
+            p.nodo(texto("2 de 9 ejercicios hechos"))
+            p.nodo(etiqueta("cronometro"))
+            p.esperar("el badge de Entreno") { "1" in p.textosBajo(etiqueta("pestana-entreno")) }
+            foto("13-entreno-dia")
+            p.desplazar(etiqueta("entreno-lista"), 1_450f)
+            p.esperar("el historial") { p.estado(etiqueta("ejercicio-jalon-al-pecho-prono-dorsal-ancho-d1-0"))?.contains("récord") == true }
+            foto("14-entreno-cards")
+
+            p.tocar(etiqueta("ejercicio-jalon-al-pecho-prono-dorsal-ancho-d1-0"))
+            p.nodo(etiqueta("pista-serie"))
+            foto("15-entreno-ejercicio")
+            p.tocar(etiqueta("confirmar-serie-3"))
+            p.nodo(etiqueta("descanso"))
+            foto("16-entreno-serie-y-descanso")
+
+            p.desplazar(etiqueta("ejercicio-pantalla"), 900f)
+            p.tocar(etiqueta("sustituir"))
+            p.nodo(etiqueta("hoja-sustituir"))
+            p.tocar(etiqueta("variante"))
+            p.tocar(etiqueta("fijar"))
+            foto("17-entreno-sustituir")
+            p.tocar(etiqueta("confirmar-sustitucion"))
+            p.esperarQueNoEste(etiqueta("hoja-sustituir"))
+            p.tocar(etiqueta("descanso-saltar"))
+            p.esperarQueNoEste(etiqueta("descanso"))
+            p.desplazar(etiqueta("ejercicio-pantalla"), -3_000f)
+            p.nodo(etiqueta("en-lugar-de"))
+            foto("18-entreno-sustituido")
+
+            p.tocar(etiqueta("volver"))
+            p.tocar(etiqueta("ejercicio-remo-en-polea-sentado-grosor-dorsal-bajo-d1-1"))
+            p.nodo(texto("Bajá un poco el peso y apretá arriba un segundo."))
+            p.desplazar(etiqueta("ejercicio-pantalla"), 3_000f)
+            foto("19-entreno-comentarios")
+
+            p.tocar(etiqueta("volver"))
+            p.desplazar(etiqueta("entreno-lista"), -3_000f)
+            p.tocar(texto("Cerrar"))
+            p.nodo(etiqueta("hoja-cerrar-dia"))
+            p.nodo(etiqueta("pendientes-cierre"))
+            foto("20-entreno-cerrar-dia")
+        }.close()
+
+        // D11+: sin rutina.
+        servidor.respuestas["mypump_get_rutina_activa"] = "[]"
+        abrir().also {
+            p.nodo(etiqueta("entreno-vacio"))
+            foto("21-entreno-sin-rutina")
+        }.close()
+        servidor.respuestas.remove("mypump_get_rutina_activa")
+    }
+
     private fun recorrer(oscuro: Boolean) {
         val tema = if (oscuro) "oscuro" else "claro"
         fun foto(nombre: String) = Telefono.captura("$nombre-$tema")

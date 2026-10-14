@@ -4,7 +4,10 @@ import android.graphics.Bitmap
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
+import android.view.InputDevice
 import android.view.KeyEvent
+import android.view.MotionEvent
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -12,6 +15,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.toSize
 import androidx.test.platform.app.InstrumentationRegistry
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -177,6 +181,113 @@ class Pantalla(private val esperaMs: Long = 15_000) {
     fun seleccionado(s: Selector): Boolean = enPrincipal {
         val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
         n.config.getOrNull(SemanticsProperties.Selected) == true
+    }
+
+    /** El estado que lee TalkBack después de la etiqueta (`stateDescription`, el `accessibilityValue` de iOS). */
+    fun estado(s: Selector): String? = enPrincipal {
+        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
+        n.config.getOrNull(SemanticsProperties.StateDescription)
+    }
+
+    fun enfocado(s: Selector): Boolean = enPrincipal {
+        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
+        n.config.getOrNull(SemanticsProperties.Focused) == true
+    }
+
+    /** Desplaza una lista (la acción de desplazar de la semántica, como un lector de pantalla). */
+    fun desplazar(s: Selector, dy: Float) {
+        esperar("se puede desplazar $s") {
+            val n = nodos().firstOrNull(s::coincide) ?: return@esperar null
+            n.config.getOrNull(SemanticsActions.ScrollBy)?.action?.invoke(0f, dy) ?: return@esperar null
+            true
+        }
+        quieto(300)
+    }
+
+    /** Lo que tiene escrito un campo. */
+    fun textoDe(s: Selector): String = enPrincipal {
+        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
+        n.config.getOrNull(SemanticsProperties.EditableText)?.text ?: throw AssertionError("$s no es un campo")
+    }
+
+    /** Lo seleccionado en un campo (inicio y fin). */
+    fun seleccion(s: Selector): Pair<Int, Int> = enPrincipal {
+        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
+        val r = n.config.getOrNull(SemanticsProperties.TextSelectionRange) ?: throw AssertionError("$s no es un campo")
+        r.start to r.end
+    }
+
+    /**
+     * Escribe en el campo enfocado como el teclado: lo nuevo va donde está el cursor y REEMPLAZA lo seleccionado (a
+     * diferencia de [escribir], que pisa el campo entero).
+     */
+    fun teclear(s: Selector, texto: String) {
+        esperar("se puede teclear en $s") {
+            val n = nodos().firstOrNull(s::coincide) ?: return@esperar null
+            n.config.getOrNull(SemanticsActions.InsertTextAtCursor)?.action?.invoke(AnnotatedString(texto)) ?: return@esperar null
+            true
+        }
+    }
+
+    /**
+     * Toca de verdad: un dedo en el centro del nodo (bajar y subir), lo mismo que el cliente. A diferencia de [tocar] (la
+     * acción de semántica), pasa por los gestos: en un campo de texto el toque además ubica el cursor.
+     */
+    fun tocarDeVerdad(s: Selector) {
+        // Donde está el nodo en la pantalla, cuando ya está quieto (sin animación de entrada) y entero a la vista: un
+        // nodo recién compuesto o recortado da un rectángulo vacío, y el toque caía en la barra de estado.
+        var anterior: Pair<Float, Float>? = null
+        val (x, y) = esperar("está quieto y a la vista $s") {
+            for (r in Raices.activas()) {
+                try {
+                    r.measureAndLayoutForTest()
+                } catch (_: IllegalStateException) {
+                    continue
+                }
+                var hallado: SemanticsNode? = null
+                fun buscar(n: SemanticsNode) {
+                    if (hallado != null) return
+                    if (s.coincide(n)) {
+                        hallado = n
+                        return
+                    }
+                    for (h in n.children) buscar(h)
+                }
+                buscar(r.semanticsOwner.unmergedRootSemanticsNode)
+                val n = hallado ?: continue
+                // Si una lista lo tapa (está abajo o arriba de lo que se ve), se la desplaza hasta que quede al medio.
+                val entero = Rect(n.positionInRoot, n.size.toSize())
+                var lista = n.parent
+                while (lista != null && lista.config.getOrNull(SemanticsActions.ScrollBy) == null) lista = lista.parent
+                if (lista != null) {
+                    val ventana = lista.boundsInRoot
+                    if (entero.top < ventana.top || entero.bottom > ventana.bottom) {
+                        lista.config[SemanticsActions.ScrollBy].action?.invoke(0f, entero.center.y - ventana.center.y)
+                        anterior = null
+                        return@esperar null
+                    }
+                }
+                val b = n.boundsInRoot
+                if (b.width < 1f || b.height < 1f) return@esperar null
+                if (b.left < 0f || b.top < 0f || b.right > r.view.width || b.bottom > r.view.height) return@esperar null
+                val donde = IntArray(2)
+                r.view.getLocationOnScreen(donde)
+                val punto = (donde[0] + b.center.x) to (donde[1] + b.center.y)
+                if (punto != anterior) {
+                    anterior = punto
+                    return@esperar null
+                }
+                return@esperar punto
+            }
+            null
+        }
+        val t = SystemClock.uptimeMillis()
+        val abajo = MotionEvent.obtain(t, t, MotionEvent.ACTION_DOWN, x, y, 0).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
+        val arriba = MotionEvent.obtain(t, t + 60, MotionEvent.ACTION_UP, x, y, 0).apply { source = InputDevice.SOURCE_TOUCHSCREEN }
+        instr.sendPointerSync(abajo)
+        instr.sendPointerSync(arriba)
+        abajo.recycle()
+        arriba.recycle()
     }
 
     /** Los textos que hay debajo de un nodo (el resumen de una tarjeta, el contenido de un badge). */
