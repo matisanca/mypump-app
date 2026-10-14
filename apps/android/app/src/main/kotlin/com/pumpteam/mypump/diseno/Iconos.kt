@@ -12,8 +12,11 @@ import androidx.compose.ui.unit.dp
  * Se pintan con el color que les ponga `Icon(tint = …)`.
  */
 object Iconos {
-    private fun icono(nombre: String, vararg trazados: String): ImageVector =
-        ImageVector.Builder(name = nombre, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+    private fun icono(nombre: String, vararg trazados: String): ImageVector = iconoEn(24f, nombre, *trazados)
+
+    /** Los de Material Symbols vienen en una grilla de 960. */
+    private fun iconoEn(grilla: Float, nombre: String, vararg trazados: String): ImageVector =
+        ImageVector.Builder(name = nombre, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = grilla, viewportHeight = grilla)
             .apply { for (t in trazados) addPath(pathData = addPathNodes(t), fill = SolidColor(Color.Black)) }
             .build()
 
@@ -237,6 +240,180 @@ object Iconos {
         icono(
             "Actualizar",
             "M17,1.01L7,1c-1.1,0 -1.99,0.9 -1.99,2v18c0,1.1 0.89,2 1.99,2h10c1.1,0 2,-0.9 2,-2V3c0,-1.1 -0.9,-1.99 -2,-1.99zM17,19H7V5h10v14zM16,13h-3V8h-2v5H8l4,4 4,-4z",
+        )
+    }
+
+    // ── Entreno ──
+
+    /** check: una serie hecha, el ejercicio completo, el día cerrado. */
+    val Tilde: ImageVector by lazy { icono("Tilde", "M9,16.17L4.83,12l-1.42,1.41L9,19 21,7l-1.41,-1.41z") }
+
+    /** check_circle (la variante elegida al sustituir). */
+    val TildeEnCirculo: ImageVector by lazy {
+        icono("TildeEnCirculo", "M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM10,17l-5,-5 1.41,-1.41L10,14.17l7.59,-7.59L19,8l-9,9z")
+    }
+
+    /** radio_button_unchecked (una variante sin elegir). */
+    val Circulo: ImageVector by lazy {
+        icono("Circulo", "M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,20c-4.42,0 -8,-3.58 -8,-8s3.58,-8 8,-8 8,3.58 8,8 -3.58,8 -8,8z")
+    }
+
+    /** timer: el descanso. */
+    val Temporizador: ImageVector by lazy {
+        icono(
+            "Temporizador",
+            "M15,1H9v2h6V1zM11,14h2V8h-2v6zM19.03,7.39l1.42,-1.42c-0.43,-0.51 -0.9,-0.99 -1.41,-1.41l-1.42,1.42C16.07,4.74 14.12,4 12,4c-4.97,0 -9,4.03 -9,9s4.02,9 9,9 9,-4.03 9,-9c0,-2.12 -0.74,-4.07 -1.97,-5.61zM12,20c-3.87,0 -7,-3.13 -7,-7s3.13,-7 7,-7 7,3.13 7,7 -3.13,7 -7,7z",
+        )
+    }
+
+    /** schedule: una sesión que quedó sin cerrar. */
+    val Reloj: ImageVector by lazy {
+        icono(
+            "Reloj",
+            "M11.99,2C6.47,2 2,6.48 2,12s4.47,10 9.99,10C17.52,22 22,17.52 22,12S17.52,2 11.99,2zM12,20c-4.42,0 -8,-3.58 -8,-8s3.58,-8 8,-8 8,3.58 8,8 -3.58,8 -8,8z",
+            "M12.5,7H11v6l5.25,3.15 0.75,-1.23 -4.5,-2.67z",
+        )
+    }
+
+    /** whatshot: calentamiento y cardio. */
+    val Fuego: ImageVector by lazy {
+        icono(
+            "Fuego",
+            "M13.5,0.67s0.74,2.65 0.74,4.8c0,2.06 -1.35,3.73 -3.41,3.73 -2.07,0 -3.63,-1.67 -3.63,-3.73l0.03,-0.36C5.21,7.51 4,10.62 4,14c0,4.42 3.58,8 8,8s8,-3.58 8,-8C20,8.61 17.41,3.8 13.5,0.67zM11.71,19c-1.78,0 -3.22,-1.4 -3.22,-3.14 0,-1.62 1.05,-2.76 2.81,-3.12 1.77,-0.36 3.6,-1.21 4.62,-2.58 0.39,1.29 0.59,2.65 0.59,4.04 0,2.65 -2.15,4.8 -4.8,4.8z",
+        )
+    }
+
+    /** emoji_events: el récord. */
+    val Trofeo: ImageVector by lazy {
+        icono(
+            "Trofeo",
+            "M19,5h-2V3H7v2H5C3.9,5 3,5.9 3,7v1c0,2.55 1.92,4.63 4.39,4.94c0.63,1.5 1.98,2.63 3.61,2.96V19H7v2h10v-2h-4v-3.1c1.63,-0.33 2.98,-1.46 3.61,-2.96C19.08,12.63 21,10.55 21,8V7C21,5.9 20.1,5 19,5zM5,8V7h2v3.82C5.84,10.4 5,9.3 5,8zM19,8c0,1.3 -0.84,2.4 -2,2.82V7h2V8z",
+        )
+    }
+
+    /** lock: una sustitución fijada. */
+    val Candado: ImageVector by lazy {
+        icono(
+            "Candado",
+            "M18,8h-1V6c0,-2.76 -2.24,-5 -5,-5S7,3.24 7,6v2H6c-1.1,0 -2,0.9 -2,2v10c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V10c0,-1.1 -0.9,-2 -2,-2zM12,17c-1.1,0 -2,-0.9 -2,-2s0.9,-2 2,-2 2,0.9 2,2 -0.9,2 -2,2zM15.1,8H8.9V6c0,-1.71 1.39,-3.1 3.1,-3.1 1.71,0 3.1,1.39 3.1,3.1v2z",
+        )
+    }
+
+    /** pan_tool: "Manual" (terminado a mano). */
+    val Mano: ImageVector by lazy {
+        icono(
+            "Mano",
+            "M23,5.5V20c0,2.2 -1.8,4 -4,4h-7.3c-1.08,0 -2.1,-0.43 -2.85,-1.19L1,14.83c0,0 1.26,-1.23 1.3,-1.25c0.22,-0.19 0.49,-0.29 0.79,-0.29c0.22,0 0.42,0.06 0.6,0.16C3.73,13.46 8,15.91 8,15.91V4c0,-0.83 0.67,-1.5 1.5,-1.5S11,3.17 11,4v7h1V1.5C12,0.67 12.67,0 13.5,0S15,0.67 15,1.5V11h1V2.5C16,1.67 16.67,1 17.5,1S19,1.67 19,2.5V11h1V5.5C20,4.67 20.67,4 21.5,4S23,4.67 23,5.5z",
+        )
+    }
+
+    /** chat_bubble: comentarios de Mati. */
+    val Burbuja: ImageVector by lazy { icono("Burbuja", "M20,2H4c-1.1,0 -2,0.9 -2,2v18l4,-4h14c1.1,0 2,-0.9 2,-2V4c0,-1.1 -0.9,-2 -2,-2z") }
+
+    /** play_arrow: "Empezar entrenamiento". */
+    val Play: ImageVector by lazy { icono("Play", "M8,5v14l11,-7z") }
+
+    /** flag: cerrar la sesión. */
+    val Bandera: ImageVector by lazy { icono("Bandera", "M14.4,6L14,4H5v17h2v-7h5.6l0.4,2h7V6z") }
+
+    /** edit: reabrir un ejercicio. */
+    val Lapiz: ImageVector by lazy {
+        icono(
+            "Lapiz",
+            "M3,17.25V21h3.75L17.81,9.94l-3.75,-3.75L3,17.25zM20.71,7.04c0.39,-0.39 0.39,-1.02 0,-1.41l-2.34,-2.34c-0.39,-0.39 -1.02,-0.39 -1.41,0l-1.83,1.83 3.75,3.75 1.83,-1.83z",
+        )
+    }
+
+    /** skip_next: saltar el descanso. */
+    val Saltar: ImageVector by lazy { icono("Saltar", "M6,18l8.5,-6L6,6v12zM16,6v12h2V6h-2z") }
+
+    /** undo: volver al ejercicio del plan. */
+    val Deshacer: ImageVector by lazy {
+        icono(
+            "Deshacer",
+            "M12.5,8c-2.65,0 -5.05,0.99 -6.9,2.6L2,7v9h9l-3.62,-3.62c1.39,-1.16 3.16,-1.88 5.12,-1.88 3.54,0 6.55,2.31 7.6,5.5l2.37,-0.78C21.08,11.03 17.15,8 12.5,8z",
+        )
+    }
+
+    /** search */
+    val Buscar: ImageVector by lazy {
+        icono(
+            "Buscar",
+            "M15.5,14h-0.79l-0.28,-0.27C15.41,12.59 16,11.11 16,9.5 16,5.91 13.09,3 9.5,3S3,5.91 3,9.5 5.91,16 9.5,16c1.61,0 3.09,-0.59 4.23,-1.57l0.27,0.28v0.79l5,4.99L20.49,19l-4.99,-5zM9.5,14C7.01,14 5,11.99 5,9.5S7.01,5 9.5,5 14,7.01 14,9.5 11.99,14 9.5,14z",
+        )
+    }
+
+    /** remove: el "saltado" de la card. */
+    val Menos: ImageVector by lazy { icono("Menos", "M19,13H5v-2h14v2z") }
+
+    /** format_list_bulleted: cuántos ejercicios tiene el día. */
+    val Lista: ImageVector by lazy {
+        icono(
+            "Lista",
+            "M4,10.5c-0.83,0 -1.5,0.67 -1.5,1.5s0.67,1.5 1.5,1.5 1.5,-0.67 1.5,-1.5 -0.67,-1.5 -1.5,-1.5zM4,4.5c-0.83,0 -1.5,0.67 -1.5,1.5S3.17,7.5 4,7.5 5.5,6.83 5.5,6 4.83,4.5 4,4.5zM4,16.5c-0.83,0 -1.5,0.68 -1.5,1.5s0.68,1.5 1.5,1.5 1.5,-0.68 1.5,-1.5 -0.67,-1.5 -1.5,-1.5zM7,19h14v-2H7v2zM7,13h14v-2H7v2zM7,5v2h14V5H7z",
+        )
+    }
+
+    /** trending_up: la semana cambia carga o volumen. */
+    val Tendencia: ImageVector by lazy { icono("Tendencia", "M16,6l2.29,2.29 -4.88,4.88 -4,-4L2,16.59 3.41,18l6,-6 4,4 6.3,-6.29L22,12V6z") }
+
+    /** gps_fixed: la calibración. */
+    val Mira: ImageVector by lazy {
+        icono(
+            "Mira",
+            "M12,8c-2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4 -1.79,-4 -4,-4zM20.94,11c-0.46,-4.17 -3.77,-7.48 -7.94,-7.94V1h-2v2.06C6.83,3.52 3.52,6.83 3.06,11H1v2h2.06c0.46,4.17 3.77,7.48 7.94,7.94V23h2v-2.06c4.17,-0.46 7.48,-3.77 7.94,-7.94H23v-2h-2.06zM12,19c-3.87,0 -7,-3.13 -7,-7s3.13,-7 7,-7 7,3.13 7,7 -3.13,7 -7,7z",
+        )
+    }
+
+    /** touch_app: lo de la última vez a un toque. */
+    val Toque: ImageVector by lazy {
+        icono(
+            "Toque",
+            "M9,11.24V7.5C9,6.12 10.12,5 11.5,5S14,6.12 14,7.5v3.74c1.21,-0.81 2,-2.18 2,-3.74C16,5.01 13.99,3 11.5,3S7,5.01 7,7.5c0,1.56 0.79,2.93 2,3.74zM18.84,15.87l-4.54,-2.26c-0.17,-0.07 -0.35,-0.11 -0.54,-0.11H13v-6c0,-0.83 -0.67,-1.5 -1.5,-1.5S10,6.67 10,7.5v10.74l-3.43,-0.72c-0.08,-0.01 -0.15,-0.03 -0.24,-0.03 -0.31,0 -0.59,0.13 -0.79,0.33l-0.79,0.8 4.94,4.94c0.27,0.27 0.65,0.44 1.06,0.44h6.79c0.75,0 1.33,-0.55 1.44,-1.28l0.75,-5.27c0.01,-0.07 0.02,-0.14 0.02,-0.2 0,-0.62 -0.38,-1.16 -0.91,-1.38z",
+        )
+    }
+
+    /** ondemand_video */
+    val Video: ImageVector by lazy {
+        icono(
+            "Video",
+            "M21,3H3c-1.11,0 -2,0.89 -2,2v12c0,1.1 0.89,2 2,2h5v2h8v-2h5c1.1,0 1.99,-0.9 1.99,-2L23,5c0,-1.11 -0.9,-2 -2,-2zM21,17H3V5h18v12zM16,11l-7,4V7z",
+        )
+    }
+
+    /** arrow_forward ("Siguiente: Remo →", "Pasar a Semana 6 →"). */
+    val FlechaDerecha: ImageVector by lazy { icono("FlechaDerecha", "M12,4l-1.41,1.41L16.17,11H4v2h12.17l-5.58,5.59L12,20l8,-8z") }
+
+    /** arrow_upward: mandar un comentario. */
+    val FlechaArriba: ImageVector by lazy { icono("FlechaArriba", "M4,12l1.41,1.41L11,7.83V20h2V7.83l5.58,5.59L20,12l-8,-8 -8,8z") }
+
+    /** format_quote: la nota técnica de Mati. */
+    val Cita: ImageVector by lazy { icono("Cita", "M6,17h3l2,-4V7H5v6h3zM14,17h3l2,-4V7h-6v6h3z") }
+
+    /** image: la foto que no cargó. */
+    val Foto: ImageVector by lazy {
+        icono("Foto", "M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z")
+    }
+
+    /** unfold_more: el selector de RIR. */
+    val ArribaAbajo: ImageVector by lazy {
+        icono("ArribaAbajo", "M12,5.83L15.17,9l1.41,-1.41L12,3 7.41,7.59 8.83,9 12,5.83zM12,18.17L8.83,15l-1.41,1.41L12,21l4.59,-4.59L15.17,15 12,18.17z")
+    }
+
+    /** cloud_done: la sesión del día quedó guardada. */
+    val NubeGuardada: ImageVector by lazy {
+        icono(
+            "NubeGuardada",
+            "M19.35,10.04C18.67,6.59 15.64,4 12,4 9.11,4 6.6,5.64 5.35,8.04 2.34,8.36 0,10.91 0,14c0,3.31 2.69,6 6,6h13c2.76,0 5,-2.24 5,-5 0,-2.64 -2.05,-4.78 -4.65,-4.96zM10,17l-3.5,-3.5 1.41,-1.41L10,14.17 15.18,9l1.41,1.41L10,17z",
+        )
+    }
+
+    /** directions_run (Material Symbols, el de Android): la miniatura del cardio sin foto. */
+    val Correr: ImageVector by lazy {
+        iconoEn(
+            960f,
+            "Correr",
+            "M520,920L520,680L436,600L396,776L120,720L136,640L328,680L392,356L320,384L320,520L240,520L240,332L398,264Q433,249 449.5,244.5Q466,240 480,240Q501,240 519,251Q537,262 548,280L588,344Q614,386 658.5,413Q703,440 760,440L760,520Q694,520 636.5,492.5Q579,465 540,420L516,540L600,620L600,920L520,920ZM540,220Q507,220 483.5,196.5Q460,173 460,140Q460,107 483.5,83.5Q507,60 540,60Q573,60 596.5,83.5Q620,107 620,140Q620,173 596.5,196.5Q573,220 540,220Z",
         )
     }
 }
