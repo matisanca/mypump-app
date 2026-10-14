@@ -6,6 +6,13 @@ import MyPumpModelos
 public enum DestinoAviso: String, Sendable, Equatable {
     case entreno, dieta, chat, revision, progreso, miDia, misDatos
 
+    /// `?scene=<escena>` del link (ACC-09): solo una escena que existe; cualquier otra cosa no hace nada (en la web,
+    /// una escena inexistente dejaba la app en blanco).
+    public init?(escena: String?) {
+        guard let escena, ["train", "diet", "chat", "revision", "progress", "salud", "myday"].contains(escena) else { return nil }
+        self.init(destino: escena)
+    }
+
     public init(destino: String?) {
         switch destino {
         case "train": self = .entreno

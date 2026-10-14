@@ -31,7 +31,14 @@ struct RaizApp<Contenido: View>: View {
             }
         }
         .animation(.snappy, value: modelo.fase)
-        .onOpenURL { url in Task { await modelo.entrar(con: url.absoluteString) } }
+        .onOpenURL { url in
+            Task {
+                await modelo.entrar(con: url.absoluteString)
+                // `?scene=diet` abre esa pestaña (ACC-09).
+                let escena = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "scene" }?.value
+                if let d = DestinoAviso(escena: escena) { CentroAvisos.shared.destino = d }
+            }
+        }
         .task { if modelo.fase == .cargando { await modelo.cargar() } }
         .onChange(of: fase) { _, nueva in
             switch nueva {
