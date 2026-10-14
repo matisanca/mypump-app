@@ -122,6 +122,27 @@ public actor Outbox {
         guardar()
     }
 
+    /// `importar` para la migración del almacenamiento viejo, con una regla más: lo pendiente MÁS NUEVO gana. Una op
+    /// vieja no pisa a una nativa posterior con la misma `dedupeKey` (pasa si el cliente usó la nativa, volvió a la
+    /// Capacitor y vuelve). Devuelve las que entraron, en orden.
+    @discardableResult
+    public func importarSinPisar(_ ops: [Operacion]) -> [Operacion] {
+        let entraron = estado.importarSinPisar(ops)
+        guardar()
+        return entraron
+    }
+
+    /// Ops que no se mandan pero tampoco se pueden perder: quedan en fallidos con su motivo, como una abandonada. La
+    /// migración manda acá las ops viejas sin sesión que no pasan la validación contra la rutina activa ("para revisar").
+    public func archivarEnFallidos(_ ops: [Operacion], motivo: String) {
+        let ahora = Date().timeIntervalSince1970 * 1000
+        for op in ops where !estado.fallidos.contains(where: { $0.op.id == op.id }) {
+            estado.ops.removeAll { $0.id == op.id }
+            estado.fallidos.append(Fallido(op: op, motivo: motivo, cuando: ahora))
+        }
+        guardar()
+    }
+
     /// Una pasada. Si ya hay una en curso, espera a ESA.
     public func drenar() async {
         if let t = enVuelo { await t.value; return }
