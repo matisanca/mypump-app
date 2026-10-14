@@ -8,6 +8,7 @@ import MyPumpDatos
 struct RaizApp<Contenido: View>: View {
     let modelo: ModeloApp
     @ViewBuilder let contenido: () -> Contenido
+    @Environment(\.scenePhase) private var fase
 
     var body: some View {
         Group {
@@ -15,7 +16,11 @@ struct RaizApp<Contenido: View>: View {
             case .listo:
                 contenido()
                     .safeAreaInset(edge: .top, spacing: 0) {
-                        if modelo.esDemo { BarraDemo(modelo: modelo) }
+                        if modelo.esDemo { BarraDemo(modelo: modelo) } else if modelo.desdeCache { BannerSinConexion() }
+                    }
+                    .overlay(alignment: .bottom) {
+                        AvisoGuardado(estado: modelo.estadoGuardado)
+                            .padding(.bottom, 96)   // arriba de la barra de pestañas
                     }
             case .cargando:
                 Arranque()
@@ -28,6 +33,17 @@ struct RaizApp<Contenido: View>: View {
         .animation(.snappy, value: modelo.fase)
         .onOpenURL { url in Task { await modelo.entrar(con: url.absoluteString) } }
         .task { if modelo.fase == .cargando { await modelo.cargar() } }
+        .onChange(of: fase) { _, nueva in
+            switch nueva {
+            case .active:
+                modelo.chat?.empezarSondeo()
+                Task { await modelo.alVolverAPrimerPlano() }
+            case .background:
+                // Nada de sondeos con la app en segundo plano (CHA-04).
+                modelo.chat?.pararSondeo()
+            default: break
+            }
+        }
         .task(id: modelo.fase == .listo && !modelo.esDemo) {
             // Con una cuenta: la local del domingo al día y el token de push refrescado (si ya hay permiso).
             if modelo.fase == .listo && !modelo.esDemo { await CentroAvisos.shared.alEntrar() }

@@ -29,16 +29,16 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| ACC-01 | Token por universal link o app link `app.mypumpteam.com/?t=`, `/cliente?t=` o `/cliente.html?t=`, con regex `^[a-zA-Z0-9_-]{16,64}$` | `deeplink.js`, AASA | ☐ | ☐ |
-| ACC-02 | Orden de resolución: `?t=`, path, guardado. Un `?t=` igual a `mypump_token_invalido` no pisa a uno guardado válido | `C:1257-1299` | ☐ | ☐ |
-| ACC-03 | Sin token: "Bienvenido a MyPump", campo "pegá tu link" que acepta URL entera, a medias o el token solo, y "Ver demo" | `index.html:376-423`, `C:3415+` | ☐ | ☐ |
-| ACC-04 | Token inválido (`[]` sin error): "Este link ya no sirve", borra el token, guarda `token_invalido` y deja pegar uno nuevo | `C:3415-3484` | ☐ | ☐ |
-| ACC-05 | Servicio caído o sin red sin copia: "Sin conexión" o "Servicio fuera de línea", Reintentar, una sola recarga automática al volver la red | `C:3485-3504` | ☐ | ☐ |
-| ACC-06 | Arranque sin red con copia offline: muestra plan y dieta guardados con el banner sin conexión | `C:8699-8711`, `8933` | ☐ | ☐ |
-| ACC-07 | Demo: datos empaquetados, **sin red ni token**, sin chat, comentarios, comidas libres, relojes ni onboarding; Mi Día sembrado (racha 3) | `C:1240`, `1409-1550`, `8870` | ☐ | ☐ |
+| ACC-01 | Token por universal link o app link `app.mypumpteam.com/?t=`, `/cliente?t=` o `/cliente.html?t=`, con regex `^[a-zA-Z0-9_-]{16,64}$` | `deeplink.js`, AASA | 🟡 `onOpenURL` + `FormatoToken` + entitlement applinks; falta probar en un iPhone | ☐ |
+| ACC-02 | Orden de resolución: `?t=`, path, guardado. Un `?t=` igual a `mypump_token_invalido` no pisa a uno guardado válido | `C:1257-1299` | ✅ el link inválido no pisa una cuenta que anda | ☐ |
+| ACC-03 | Sin token: "Bienvenido a MyPump", campo "pegá tu link" que acepta URL entera, a medias o el token solo, y "Ver demo" | `index.html:376-423`, `C:3415+` | ✅ bienvenida/demo (XCUITest) | ☐ |
+| ACC-04 | Token inválido (`[]` sin error): "Este link ya no sirve", borra el token, guarda `token_invalido` y deja pegar uno nuevo | `C:3415-3484` | ✅ bienvenida/demo (XCUITest) | ☐ |
+| ACC-05 | Servicio caído o sin red sin copia: "Sin conexión" o "Servicio fuera de línea", Reintentar, una sola recarga automática al volver la red | `C:3485-3504` | ✅ bienvenida/demo (XCUITest) | ☐ |
+| ACC-06 | Arranque sin red con copia offline: muestra plan y dieta guardados con el banner sin conexión | `C:8699-8711`, `8933` | ✅ copia offline (integración) + banner | ☐ |
+| ACC-07 | Demo: datos empaquetados, **sin red ni token**, sin chat, comentarios, comidas libres, relojes ni onboarding; Mi Día sembrado (racha 3) | `C:1240`, `1409-1550`, `8870` | ✅ bienvenida/demo (XCUITest) | ☐ |
 | ACC-08 | Sin rutina usable → rutina de ejemplo con banner "Modo demo — Mati todavía no publicó tu plan". Sin dieta → dieta de ejemplo con escrituras apagadas (`_dietaEjemplo`) | `C:8766-8800` | ☐ | ☐ |
 | ACC-09 | Parámetros `?scene=<destino>` (validado contra las escenas) y `?diag=health` | `C:8587-8594`, `8673` | ☐ | ☐ |
-| ACC-10 | Cambio de cuenta: llega un link con otro token válido → reemplaza (como la web) | `deeplink.js:15-43` | ☐ | ☐ |
+| ACC-10 | Cambio de cuenta: llega un link con otro token válido → reemplaza (como la web) | `deeplink.js:15-43` | ✅ otro token válido reemplaza | ☐ |
 
 ## GEN · Estructura, avisos y ciclo de vida
 
@@ -47,12 +47,12 @@ Hasta que se decidan, rige lo de hoy.
 | GEN-01 | 5 tabs: Entreno · Dieta · Chat · Revisión · Progreso. Mis datos es una escena aparte que marca Revisión | `C:1109-1143`, `8498-8559` | ☐ | ☐ |
 | GEN-02 | Header: "DÍA n • SEM x/y" (con `semana_offset`), título y tema | `C:1058-1075` | ☐ | ☐ |
 | GEN-03 | Badges: Entreno = comentarios de ejercicio sin leer; Chat = mensajes sin leer; Revisión = cosas que faltan de la semana (check + fotos), con banner que lleva a Revisión desde las otras escenas | `C:2184-2202`, `2318-2325`, `7647-7684` | ☐ | ☐ |
-| GEN-04 | Toast de guardado con 4 estados: "Guardando…" (si tarda más de 900 ms), "✓ Guardado" (después de un problema), "Sin conexión — se reintenta solo" y "⚠ Algo no se pudo guardar…" (9 s, se cierra tocándolo) | `C:2649-2685` | ☐ | ☐ |
+| GEN-04 | Toast de guardado con 4 estados: "Guardando…" (si tarda más de 900 ms), "✓ Guardado" (después de un problema), "Sin conexión — se reintenta solo" y "⚠ Algo no se pudo guardar…" (9 s, se cierra tocándolo) | `C:2649-2685` | ✅ `AvisoGuardado` con los estados de la cola | ☐ |
 | GEN-05 | Aviso único "a tu plan le falta información" arriba de Revisión | `C:1882-1896` | ☐ | ☐ |
 | GEN-06 | Onboarding de permisos (primera apertura, 1,2 s después de pintar): Salud → Notificaciones. "Ahora no" nunca dispara la hoja del sistema; Salud corta a los 20 s; si deniega, muestra la ruta en Ajustes. Clave `mypump_onboarding_v1` | `C:4447-4593` | ☐ | ☐ |
-| GEN-07 | Al volver a primer plano: recalcula el descanso, drena el outbox y la cola de fotos, actualiza el chat; si cambió el día, recarga comidas, comidas libres y Mi Día | `C:5031-5058` | ☐ | ☐ |
+| GEN-07 | Al volver a primer plano: recalcula el descanso, drena el outbox y la cola de fotos, actualiza el chat; si cambió el día, recarga comidas, comidas libres y Mi Día | `C:5031-5058` | 🟡 colas, chat y cambio de día ✅; falta el descanso (motor de Entreno) | ☐ |
 | GEN-08 | Movimiento reducido respetado | `C:1000-1003` | ☐ | ☐ |
-| GEN-09 | Respaldo científico: fila al pie de Dieta, Entreno y Mi Día | `C:4712-4714` | ☐ | ☐ |
+| GEN-09 | Respaldo científico: fila al pie de Dieta, Entreno y Mi Día | `C:4712-4714` | ✅ `PieRespaldo` en Dieta; Entreno y Mi Día al conectar | ☐ |
 
 ## ENT · Entreno (vista)
 
@@ -137,12 +137,12 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| DIA-01 | Racha: 🔥 desde 7, ⚡ desde 3, ✨ desde 1, 💤 en 0 | `C:8245+` | ☐ | ☐ |
-| DIA-02 | Entrené / Descansé / Falté | `C:8373-8398` | ☐ | ☐ |
-| DIA-03 | Hábitos ✓/✗ (tocar de nuevo los borra): comí según el plan, dormí bien, **hice cardio** | `C:8314-8319`, mig 022 | ☐ | ☐ |
-| DIA-04 | Agua 0-12 vasos, guardada 600 ms después del último toque | `C:8460` | ☐ | ☐ |
-| DIA-05 | "Mis últimos 30 días": grilla cumplido/parcial/vacío con "X/30", que se carga al abrirla | `C:8412-8424` | ☐ | ☐ |
-| DIA-06 | Lo pendiente en el outbox gana sobre lo del servidor | `C:6270-6276` | ☐ | ☐ |
+| DIA-01 | Racha: 🔥 desde 7, ⚡ desde 3, ✨ desde 1, 💤 en 0 | `C:8245+` | 🟡 `RachaTexto` ✅, falta la pantalla | ☐ |
+| DIA-02 | Entrené / Descansé / Falté | `C:8373-8398` | 🟡 modelo ✅ (tests + backend real), falta la pantalla | ☐ |
+| DIA-03 | Hábitos ✓/✗ (tocar de nuevo los borra): comí según el plan, dormí bien, **hice cardio** | `C:8314-8319`, mig 022 | 🟡 modelo ✅ (tests + backend real), falta la pantalla | ☐ |
+| DIA-04 | Agua 0-12 vasos, guardada 600 ms después del último toque | `C:8460` | 🟡 modelo ✅ (tests + backend real), falta la pantalla | ☐ |
+| DIA-05 | "Mis últimos 30 días": grilla cumplido/parcial/vacío con "X/30", que se carga al abrirla | `C:8412-8424` | 🟡 modelo ✅, falta la pantalla | ☐ |
+| DIA-06 | Lo pendiente en el outbox gana sobre lo del servidor | `C:6270-6276` | 🟡 modelo ✅ (tests + backend real), falta la pantalla | ☐ |
 
 ## REV · Revisión
 
@@ -150,33 +150,33 @@ Hasta que se decidan, rige lo de hoy.
 |---|---|---|---|---|
 | REV-01 | Orden: Fotos → Check → Peso → Mi reloj → Mi Día | `C:8052-8086` | ☐ | ☐ |
 | REV-02 | Fotos frente/perfil/espalda desde cámara o galería (HEIC incluido); JPEG de 900 px a 0,7, sin ubicación; orientación correcta | `C:7476-7962`, memoria `project_mypump_ios_estado` | ☐ | ☐ |
-| REV-03 | Cola de fotos: máximo 3, rechaza más de 2,4 MB, 8 intentos por errores del servidor (los de red no cuentan), 4xx distinto de 429 = definitivo; "Hay fotos esperando subir" | `C:7487-7602` | ☐ | ☐ |
-| REV-04 | "🔥 N semanas seguidas"; galería por semana; comparador antes/después desde 4 semanas, con Δkg | `C:7600-7660` | ☐ | ☐ |
-| REV-05 | URLs firmadas (`/progreso/urls`), cacheadas 50 min | `C:7617-7641` | ☐ | ☐ |
-| REV-06 | Check semanal: 4 escalas 1-5 + nota; "Faltan: X"; va por el outbox y muestra "✓ enviado" | `C:7964-8034` | ☐ | ☐ |
-| REV-07 | Peso 30-300 kg por el outbox (fuente manual); gráfico de 60 días con media de 7; "Esta semana ±g vs la pasada" | `C:7330-7464` | ☐ | ☐ |
+| REV-03 | Cola de fotos: máximo 3, rechaza más de 2,4 MB, 8 intentos por errores del servidor (los de red no cuentan), 4xx distinto de 429 = definitivo; "Hay fotos esperando subir" | `C:7487-7602` | 🟡 cola ✅ (tests con transporte programado + subida real), falta la pantalla | ☐ |
+| REV-04 | "🔥 N semanas seguidas"; galería por semana; comparador antes/después desde 4 semanas, con Δkg | `C:7600-7660` | 🟡 reglas ✅ (racha, semanas, comparador), falta la pantalla | ☐ |
+| REV-05 | URLs firmadas (`/progreso/urls`), cacheadas 50 min | `C:7617-7641` | 🟡 modelo ✅ (caché de 50 min), falta la pantalla | ☐ |
+| REV-06 | Check semanal: 4 escalas 1-5 + nota; "Faltan: X"; va por el outbox y muestra "✓ enviado" | `C:7964-8034` | 🟡 modelo ✅ ("Faltan: …", cola), falta la pantalla | ☐ |
+| REV-07 | Peso 30-300 kg por el outbox (fuente manual); gráfico de 60 días con media de 7; "Esta semana ±g vs la pasada" | `C:7330-7464` | 🟡 modelo ✅ (`PesoCorporal`: serie, media 7 d, delta), falta la pantalla | ☐ |
 | REV-08 | Mi reloj: Oura/WHOOP según `/api/wearables/disponibles` o si ya estaba conectado; autorización en el navegador del sistema (SFSafariViewController); poll de `get_conexiones` cada 3 s durante 2 min; "Quitar" con confirmación | `C:8088-8239` | ☐ | ☐ |
 
 ## PRO · Progreso
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| PRO-01 | Esqueleto de carga; totales Ejercicios / Sesiones | `C:6036-6249` | ☐ | ☐ |
-| PRO-02 | Secciones por día, con un mismo ejercicio agrupado entre días (por clave) | idem, mig 072 | ☐ | ☐ |
-| PRO-03 | Fila: 🏆 PR (la última sesión superó a todas), Top, gráfico del máximo por sesión (últimas 8) y Δ% (no invertido) | idem, memoria `project_mypump_plan_maestro` | ☐ | ☐ |
+| PRO-01 | Esqueleto de carga; totales Ejercicios / Sesiones | `C:6036-6249` | 🟡 modelo ✅ (historial real de la cuenta de prueba), falta la pantalla | ☐ |
+| PRO-02 | Secciones por día, con un mismo ejercicio agrupado entre días (por clave) | idem, mig 072 | 🟡 modelo ✅ (historial real de la cuenta de prueba), falta la pantalla | ☐ |
+| PRO-03 | Fila: 🏆 PR (la última sesión superó a todas), Top, gráfico del máximo por sesión (últimas 8) y Δ% (no invertido) | idem, memoria `project_mypump_plan_maestro` | 🟡 modelo ✅ (historial real de la cuenta de prueba), falta la pantalla | ☐ |
 | PRO-04 | Detalle: gráfico + tabla de 8 filas (fecha, peso, reps, RIR) | idem | ☐ | ☐ |
-| PRO-05 | Vacío "Aún no hay historial…"; sin red "No pudimos traer tu historial" + Reintentar | idem | ☐ | ☐ |
+| PRO-05 | Vacío "Aún no hay historial…"; sin red "No pudimos traer tu historial" + Reintentar | idem | 🟡 modelo ✅ (historial real de la cuenta de prueba), falta la pantalla | ☐ |
 
 ## CHA · Chat
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| CHA-01 | Burbujas "Vos" / "Mati", separadores Hoy / Ayer / fecha; vacío "Escribile a Mati…"; "Ver mensajes anteriores" de a 30 | `C:2248-2538` | ☐ | ☐ |
+| CHA-01 | Burbujas "Vos" / "Mati", separadores Hoy / Ayer / fecha; vacío "Escribile a Mati…"; "Ver mensajes anteriores" de a 30 | `C:2248-2538` | 🟡 modelo ✅ (páginas de 30, `HiloChat` = chatMerge), falta la pantalla | ☐ |
 | CHA-02 | Hasta 1000 caracteres; lo que estás escribiendo sobrevive cuando llega un mensaje | idem | ☐ | ☐ |
-| CHA-03 | Envío por el outbox con "enviando…" al instante; se reemplaza con la fila real; "no salió" + Reintentar si se abandona | `C:2443-2470` | ☐ | ☐ |
-| CHA-04 | Poll de 15 s con el chat abierto, 45 s en otra pantalla, nada en segundo plano; al abrir marca leídos (`general`) | `C:2493`, `2483` | ☐ | ☐ |
+| CHA-03 | Envío por el outbox con "enviando…" al instante; se reemplaza con la fila real; "no salió" + Reintentar si se abandona | `C:2443-2470` | 🟡 modelo ✅ (tests + backend real), falta la pantalla | ☐ |
+| CHA-04 | Poll de 15 s con el chat abierto, 45 s en otra pantalla, nada en segundo plano; al abrir marca leídos (`general`) | `C:2493`, `2483` | 🟡 modelo ✅ (tests + backend real), falta la pantalla | ☐ |
 | CHA-05 | La IA llega como `autor='coach'` y se ve como Mati (salvo D7) | migs 060, 062 | ☐ | ☐ |
-| CHA-06 | Polling, no Realtime (la anon key es compartida) | memoria `project_chat_mypump` | ☐ | ☐ |
+| CHA-06 | Polling, no Realtime (la anon key es compartida) | memoria `project_chat_mypump` | 🟡 modelo ✅ (tests + backend real), falta la pantalla | ☐ |
 
 ## SAL · Salud, recuperación y Mis datos
 
@@ -200,14 +200,14 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| NOT-01 | Registro de push desde el primer arranque con permiso: iOS = APNs hex MAYÚSCULAS `'ios'`; Android = FCM `'android'`; con `app_version` | `NT:278-323`, `push.py` | ☐ | ☐ |
+| NOT-01 | Registro de push desde el primer arranque con permiso: iOS = APNs hex MAYÚSCULAS `'ios'`; Android = FCM `'android'`; con `app_version` | `NT:278-323`, `push.py` | 🟡 registro ✅ (hex MAYÚSCULAS, solo si cambió, sin debug); falta probar en un iPhone (TF-0) | ☐ |
 | NOT-02 | Un solo transporte por teléfono | test `test-un-solo-transporte` | ☐ | ☐ |
-| NOT-03 | Tocar el aviso abre el `destino` (train, diet, progress, myday, revision, salud, chat); uno desconocido cae a Chat | `NT:326-336`, `057:342` | ☐ | ☐ |
-| NOT-04 | Con la app abierta se muestra banner y sonido (`willPresent` / canal propio en Android) | `capacitor.config.json` | ☐ | ☐ |
-| NOT-05 | Local "Tu revisión de la semana": id 1002, domingos a las 11:00, semanal, abre Revisión; se cancelan 1001/1003/1004; apagado = nada agendado | `NT:46-147`, test `test-notificaciones` | ☐ | ☐ |
+| NOT-03 | Tocar el aviso abre el `destino` (train, diet, progress, myday, revision, salud, chat); uno desconocido cae a Chat | `NT:326-336`, `057:342` | ✅ `DestinoAviso` (tests); falta que la raíz cambie de pestaña | ☐ |
+| NOT-04 | Con la app abierta se muestra banner y sonido (`willPresent` / canal propio en Android) | `capacitor.config.json` | ✅ willPresent banner+lista+sonido | ☐ |
+| NOT-05 | Local "Tu revisión de la semana": id 1002, domingos a las 11:00, semanal, abre Revisión; se cancelan 1001/1003/1004; apagado = nada agendado | `NT:46-147`, test `test-notificaciones` | ✅ id 1002 dom 11:00, cancela 1001/1003/1004 | ☐ |
 | NOT-06 | Recordatorios configurables en Mis datos (`mypump_notif_prefs`) | `C:7172-7231` | ☐ | ☐ |
 | NOT-07 | Android: canal propio como `default_notification_channel_id`, ícono `ic_stat_mypump`, `POST_NOTIFICATIONS` | memoria `project_push_android_web` | ➖ | ☐ |
-| NOT-08 | Al actualizar, las locales que dejó la Capacitor no se duplican (iOS: ids "1001"-"1004"; Android: PendingIntents de `TimedNotificationPublisher`) | plan | ☐ | ☐ |
+| NOT-08 | Al actualizar, las locales que dejó la Capacitor no se duplican (iOS: ids "1001"-"1004"; Android: PendingIntents de `TimedNotificationPublisher`) | plan | ✅ mismos ids que la Capacitor: reprogramar pisa | ☐ |
 
 ## OFF · Sin conexión y cola
 
@@ -218,7 +218,7 @@ Hasta que se decidan, rige lo de hoy.
 | OFF-03 | `seGuardo`: `null`, `0` y `[]` = no guardado | `C:2851-2858` | ☐ | ☐ |
 | OFF-04 | Un bug propio no congela la cola (las de atrás siguen) | memoria `project_auditoria_mypump_19sep` | ☐ | ☐ |
 | OFF-05 | Token revocado: las ops se estacionan sin gastar intentos | plan | ☐ | ☐ |
-| OFF-06 | Banner sin conexión y toast "se reintenta solo" | `C:8933-8949` | ☐ | ☐ |
+| OFF-06 | Banner sin conexión y toast "se reintenta solo" | `C:8933-8949` | ✅ banner + aviso | ☐ |
 
 ## MIG · Migración del almacenamiento viejo
 
@@ -236,11 +236,11 @@ Hasta que se decidan, rige lo de hoy.
 
 | ID | Comportamiento | Fuente | iOS | And |
 |---|---|---|---|---|
-| APL-01 | Respaldo científico pegado a cada número + modal con 14 fuentes ("Abrir fuente" en navegador interno), disclaimer último | `C:4711-4837` | ☐ | ☐ |
+| APL-01 | Respaldo científico pegado a cada número + modal con 14 fuentes ("Abrir fuente" en navegador interno), disclaimer último | `C:4711-4837` | ✅ 14 fuentes + aviso legal, renglón y pie (XCUITest) | ☐ |
 | APL-02 | Política de privacidad accesible dentro de la app | 5.1.1(i) | ☐ | ☐ |
-| APL-03 | Demo accesible desde la primera pantalla ("Ver demo") | rechazo 2.1 del 24-jul | ☐ | ☐ |
+| APL-03 | Demo accesible desde la primera pantalla ("Ver demo") | rechazo 2.1 del 24-jul | ✅ "Ver demo" en la bienvenida (XCUITest) | ☐ |
 | APL-04 | Textos de permisos idénticos a los aprobados (cámara, fotos, Salud) | `ios/App/App/Info.plist` | ✅ (cámara ampliada a plato y etiqueta) | ➖ |
-| APL-05 | `PrivacyInfo.xcprivacy` coherente con la etiqueta publicada | plan | ☐ | ➖ |
+| APL-05 | `PrivacyInfo.xcprivacy` coherente con la etiqueta publicada | plan | ✅ `PrivacyInfo.xcprivacy` | ➖ |
 | APL-06 | iPhone + iPad (`TARGETED_DEVICE_FAMILY 1,2`), iPad digno en ancho compacto | pbxproj | ☐ | ➖ |
 | APL-07 | Health Connect: mismos 13 permisos de lectura + historial; chequeo del manifest mergeado; pantalla de justificación y URL de privacidad | `android/app/src/main/AndroidManifest.xml` | ➖ | ☐ |
 | APL-08 | Launcher `.MainActivity` (o alias) y `allowBackup` sin el token | plan | ➖ | ☐ |
