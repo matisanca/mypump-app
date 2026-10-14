@@ -177,14 +177,26 @@ struct AccionTarjeta: ButtonStyle {
     var tono: Color = .marcaTexto
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .labelStyle(AccionApilada(tono: tono))
-            .frame(maxWidth: .infinity, minHeight: 64)
-            .padding(.vertical, 6)
-            .superficieTarjeta(radio: Radio.control + 4)
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .opacity(configuration.isPressed ? 0.85 : 1)
-            .animation(.snappy(duration: 0.18), value: configuration.isPressed)
+        Cuerpo(configuration: configuration, tono: tono)
+    }
+
+    /// Deshabilitada se ve apagada (un estilo propio no lo hace solo).
+    private struct Cuerpo: View {
+        let configuration: ButtonStyleConfiguration
+        let tono: Color
+        @Environment(\.isEnabled) private var habilitado
+
+        var body: some View {
+            configuration.label
+                .labelStyle(AccionApilada(tono: habilitado ? tono : .secondary))
+                .opacity(habilitado ? 1 : 0.45)
+                .frame(maxWidth: .infinity, minHeight: 64)
+                .padding(.vertical, 6)
+                .superficieTarjeta(radio: Radio.control + 4)
+                .scaleEffect(configuration.isPressed ? 0.96 : 1)
+                .opacity(configuration.isPressed ? 0.85 : 1)
+                .animation(.snappy(duration: 0.18), value: configuration.isPressed)
+        }
     }
 
     private struct AccionApilada: LabelStyle {
