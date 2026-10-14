@@ -27,7 +27,8 @@ commitea.
 - **El merge de `nativa` a `main` va squash.** El commit 2e64484 se llevó por error 182 MB de compilados de SwiftPM (sin secretos) y ya están en la historia de `nativa`, que no se reescribe.
 - `swift test` siempre con `--scratch-path ~/Developer/nativa-evidencia/dd/kit`: sin eso deja `.build/` dentro del repo (ahora está en el `.gitignore`).
 - Nunca push a `main`.
-- Nunca tags `v*` ni `a*`.
+- Nunca tags `v*` ni `a*`. **Mientras la 1.0.12 esté en revisión (desde el 14-oct 16:24), con más razón:** el
+  flujo `v*` de Codemagic tiene `cancel_previous_submissions` y cancelaría el envío.
 - Las migraciones van como `supabase/migrations/nativa_NNN_*.sql`, solo con OK (G2).
 
 ## Fase actual: 0, lo que pide el §9
@@ -106,10 +107,25 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 ## Lo que solo puede hacer Mati
 
 - ~~Aceptar el contrato nuevo del Developer Program~~ (aceptado el 14-oct).
-- Publicar la 1.0.12 de iOS **antes** que la 2.0.0.
+- ~~Publicar la 1.0.12 de iOS antes que la 2.0.0~~. **Enviada a revisión el 14-oct a las 16:24**, con OK de Mati:
+  build 18 (el de `v1.0.12-b18`, que es `main` salvo el texto de privacidad), publicación automática al aprobarse y
+  progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
 
 ## Bitácora
 
+- **14-oct 16:24, decisiones de Mati y la 1.0.12:**
+  - **Decisiones:**
+    - ACC-08: D11 también vale para la rutina; queda "Todavía no hay rutina".
+    - CHA-01 y ENT-17: aceptados como desvíos de diseño.
+    - SER-14: preparar la tabla de sustituciones en el servidor (G2).
+    - Pidió "que se mantenga todo funcionando igual o mejor que antes".
+  - **1.0.12 enviada a revisión de Apple:**
+    - la versión que estaba publicada era la **1.0.6**, porque la 1.0.11 nunca salió;
+    - el build 18 lleva la web del 22-sep, que es `main` salvo el texto de privacidad: no hacía falta recompilar;
+    - sin permisos nuevos respecto de la 1.0.6;
+    - las Novedades en castellano y las notas para el revisor nuevas ("WHAT IS NEW IN 1.0.12"), con el resto de las
+      notas de la 1.0.6 igual;
+    - publicación automática al aprobarse y **progresiva en 7 días**, que se puede pausar.
 - **14-oct 15:55, la tarde sin el iPhone (Mati afuera):**
   - **Auditoría de la paridad de iOS** (subagente, solo lectura): 103 ítems con evidencia; 69 ya estaban hechos.
     Resumen y lo que falta al pie de `NATIVA_PARIDAD.md`.
