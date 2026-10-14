@@ -108,6 +108,24 @@ struct SustitucionesServidorModeloTests {
                 "sale solo lo que hizo el cliente, no lo que bajó: \(ops.map(\.dedupeKey))")
     }
 
+    /// La app escribió la sustitución en el archivo y se cerró antes de pasarla a la cola: al volver a abrir se encola, y
+    /// la lectura del servidor (que no la tiene) no la borra.
+    @Test func loQueNoLlegoALaColaAntesDeCerrarse_seEncolaAlVolverAAbrir() async {
+        let b = Banco()
+        yaSubidas(b)
+        b.disco.guardar(["rem-d1-1": Self.swap("Remo en T")], SustitucionesServidor.archivoEncoladas(rutinaId: "rut-prueba"))
+        local(b, ["rem-d1-1": Self.swap("Remo en T"), "jal-d1-0": Self.swap("Dominadas")])
+        b.servidor.cuando("get_exercise_swaps", Self.json(["rem-d1-1": Self.swap("Remo en T")]))
+        let m = b.modelo()
+        await m.cargar()
+        let ops = await b.cola.operaciones
+        #expect(ops.map(\.dedupeKey) == ["swap_ej_rut-prueba_jal-d1-0"] && ops.first?.kind == "swap_ej")
+        #expect(m.dia.sustituciones.keys.sorted() == ["jal-d1-0", "rem-d1-1"], "la lectura del servidor la borraba")
+        await m.encoladoSustituciones?.value
+        let anotadas = b.disco.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: "rut-prueba"))
+        #expect(anotadas?.keys.sorted() == ["jal-d1-0", "rem-d1-1"], "queda anotado que ya está en la cola")
+    }
+
     @Test func sinLaTablaEnLaBase_quedaComoHoy() async throws {
         let b = Banco(ejecutar: true)
         local(b, ["jal-d1-0": Self.swap("Dominadas")])

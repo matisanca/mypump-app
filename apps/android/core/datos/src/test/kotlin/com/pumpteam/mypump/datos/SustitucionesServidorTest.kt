@@ -140,6 +140,28 @@ class SustitucionesServidorModeloTest {
         assertEquals(ValorJson.Texto("jal-d1-0"), ops.first().payload["exId"])
     }
 
+    /**
+     * La app escribió la sustitución en el archivo y se cerró antes de pasarla a la cola: al volver a abrir se encola, y la
+     * lectura del servidor (que no la tiene) no la borra.
+     */
+    @Test
+    fun loQueNoLlegoALaColaAntesDeCerrarseSeEncolaAlVolverAAbrir() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        yaSubidas(b)
+        b.disco.guardar(SustitucionesServidor.archivoEncoladas("rut-prueba"), ValorJson.objeto("rem-d1-1" to swap("Remo en T")))
+        local(b, mapOf("rem-d1-1" to swap("Remo en T"), "jal-d1-0" to swap("Dominadas")))
+        b.servidor.cuando("get_exercise_swaps", json(mapOf("rem-d1-1" to swap("Remo en T"))))
+        val m = b.modelo()
+        m.cargar()
+        val ops = b.cola.operaciones()
+        assertEquals(listOf("swap_ej_rut-prueba_jal-d1-0"), ops.map { it.dedupeKey })
+        assertEquals("swap_ej", ops.first().kind)
+        assertEquals(listOf("jal-d1-0", "rem-d1-1"), m.dia.value.sustituciones.keys.sorted(), "la lectura del servidor la borraba")
+        m.encoladoSustituciones?.join()
+        val anotadas = (b.disco.leer(SustitucionesServidor.archivoEncoladas("rut-prueba")) as? JsonObject)?.keys?.sorted()
+        assertEquals(listOf("jal-d1-0", "rem-d1-1"), anotadas, "queda anotado que ya está en la cola")
+    }
+
     @Test
     fun sinLaTablaEnLaBaseQuedaComoHoy() = enUnHilo { alcance ->
         val b = Banco(alcance, ejecutar = true)

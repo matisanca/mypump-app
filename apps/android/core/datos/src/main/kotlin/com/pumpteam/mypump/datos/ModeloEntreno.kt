@@ -166,7 +166,7 @@ class ModeloEntreno(
         val elegido = TextosEntreno.diaSugerido(normalizacionInicial.estructura.dias, guardado) ?: Dia(id = "d1")
         val d = DiaEnCurso(elegido, semana, demo, zona = zona)
         d.sustituciones = SustitucionesEntreno.compat(leerSustituciones(rutinaInicial.id))
-        sustitucionesGuardadas = d.sustituciones
+        sustitucionesGuardadas = leerEncoladas(rutinaInicial.id) ?: d.sustituciones
         _dia = MutableStateFlow(d)
         dia = _dia.asStateFlow()
         guardarDiaVisualizado()
@@ -178,6 +178,8 @@ class ModeloEntreno(
      * días completados de la semana y los comentarios.
      */
     suspend fun cargar() {
+        // Lo que se cambió y no llegó a la cola (la app se cerró en el medio), antes de leer el servidor.
+        encolarSustituciones()
         podarSustituciones()
         // Solo si no hay uno corriendo: restaurar borra lo guardado (como la web), y un segundo `cargar()` (tirar para
         // actualizar) dejaría el descanso en curso sin copia en disco.
@@ -768,7 +770,7 @@ class ModeloEntreno(
         val elegido = TextosEntreno.diaSugerido(n.estructura.dias, disco?.let { leerTexto(it, Archivo.dia(nueva.id)) }) ?: Dia(id = "d1")
         val sustituciones = SustitucionesEntreno.compat(leerSustituciones(nueva.id))
         _dia.value = DiaEnCurso(elegido, semana, demo, zona = zona).also { it.sustituciones = sustituciones }
-        sustitucionesGuardadas = sustituciones
+        sustitucionesGuardadas = leerEncoladas(nueva.id) ?: sustituciones
         syncSustituciones = null
         tocadasDuranteSync = null
         _diasCompletados.value = emptySet()
@@ -1009,6 +1011,7 @@ class ModeloEntreno(
             mutarDia { it.sustituciones = nuevo }
             sustitucionesGuardadas = nuevo
             disco?.guardar(Archivo.sustituciones(rutinaId), ValorJson.Objeto(nuevo))
+            anotarEncoladas(nuevo, rutinaId)
             for (id in cambiadas) invalidarHistorial(id)
             podarSustituciones(sinPrecarga = true)
             precargarHistorial()
@@ -1228,11 +1231,25 @@ class ModeloEntreno(
         if (demo || token == null || cola == null || ops.isEmpty()) return
         tocadasDuranteSync?.addAll(ops.map { it.exId })
         val anterior = encoladoSustituciones
+        val rutinaId = _rutina.value.id
         encoladoSustituciones = alcance.launch {
             anterior?.join()
             for (op in ops) cola.encolar(op.kind, op.payload, op.clave)
+            disco?.guardar(SustitucionesServidor.archivoEncoladas(rutinaId), ValorJson.Objeto(ahora))
         }
     }
+
+    /** Anota en disco que `m` ya está en la cola (o en el servidor), detrás de los encolados en curso. */
+    private fun anotarEncoladas(m: Map<String, ValorJson>, rutinaId: String) {
+        val anterior = encoladoSustituciones
+        encoladoSustituciones = alcance.launch {
+            anterior?.join()
+            disco?.guardar(SustitucionesServidor.archivoEncoladas(rutinaId), ValorJson.Objeto(m))
+        }
+    }
+
+    private fun leerEncoladas(rutinaId: String): Map<String, ValorJson>? =
+        (disco?.leer(SustitucionesServidor.archivoEncoladas(rutinaId)) as? JsonObject)?.mapValues { ValorJson.desde(it.value) }
 
     internal fun guardarSesiones() {
         disco?.guardar(Archivo.SESIONES, ValorJson.Objeto(sesionesLocales.mapValues { it.value.aValor() }))

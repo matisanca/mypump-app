@@ -29,6 +29,7 @@ import re
 import shutil
 import sqlite3
 import sys
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -288,6 +289,17 @@ def borrar_claves(db, claves):
     con.close()
 
 
+def sustituciones_en_la_base(t, rutina):
+    """SER-14 (nativa_003): las sustituciones de ejercicio de la rutina, o "sin tabla" si la migración no está aplicada."""
+    try:
+        m = rpc("mypump_get_exercise_swaps", {"p_token": t, "p_rutina_id": rutina})
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return "sin tabla"
+        raise
+    return sorted(f"{k}:{(v.get('current') or {}).get('nombre')}" for k, v in (m or {}).items())
+
+
 def backend(salida, etiqueta):
     """Lo que dice la base de lo que se sembró. Solo RPC de lectura (ninguna anota aperturas: get_cliente_info no se usa)."""
     t = _token()
@@ -317,6 +329,7 @@ def backend(salida, etiqueta):
         "chat_prueba": sum(1 for m in chat if m.get("contenido") == plan.get("chat")),
         "chat_rotado": sum(1 for m in chat if m.get("contenido") == plan.get("chat_rotado")),
         "sesion_fantasma": len(fantasma),
+        "sustituciones": sustituciones_en_la_base(t, plan["rutina"]),
     }
     guardar(salida, f"backend-{etiqueta}.json", b)
     print(f"backend {etiqueta}: {len(b['registros'])} series, agua {b['vasos_agua']}, swaps {len(b['swaps'])}, chat {b['chat_prueba']}")
@@ -417,6 +430,9 @@ def verificar(salida):
     nombres = sorted((v.get("current") or {}).get("name", "") for v in mapa.values())
     chequeo("primer arranque: Dieta ya tiene los dos swaps (mapa local)", nombres == ["Atún al natural", "Ricota descremada"], f"{nombres}")
     chequeo("chat", nat.get("chat_prueba") == 1, f"{nat.get('chat_prueba')}")
+    sust = nat.get("sustituciones")
+    chequeo("sustitución de ejercicio en la base (SER-14; sin la migración 003 queda solo en el teléfono, como antes)",
+            sust == "sin tabla" or any(x.startswith(f"{plan['ex_swap']}:Remo sentado en polea") for x in sust or []), f"{sust}")
     chequeo("cola anon: nunca se ejecutó (cardio igual)", nat.get("cardio") == plan["cardio_antes"])
     chequeo("cola de un token rotado que ya no resuelve: no se ejecutó", nat.get("chat_rotado") == 0)
     chequeo("write-back: sin la cola de la cuenta ni cachés de sesión, con la marca",
@@ -497,6 +513,13 @@ def limpiar(salida):
             rpc("mypump_delete_food_swap", {"p_token": t, "p_dieta_id": plan["dieta"], "p_comida_id": comida, "p_opt_idx": int(opt),
                                             "p_food_idx": int(food)})
     print("swaps de prueba borrados")
+    if plan.get("rutina"):
+        try:
+            rpc("mypump_import_exercise_swaps", {"p_token": t, "p_rutina_id": plan["rutina"], "p_swaps": {}, "p_reemplazar": True})
+            print("sustituciones de ejercicio de prueba borradas")
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
 
 
 def main(argv):

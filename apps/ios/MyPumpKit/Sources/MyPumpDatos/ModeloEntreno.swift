@@ -98,7 +98,8 @@ public final class ModeloEntreno {
         let elegido = TextosEntreno.diaSugerido(n.estructura.dias, ultimo: guardado) ?? Dia(id: "d1")
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: self.demo, zona: zona)
         dia.sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(rutina.id)) ?? [:])
-        sustitucionesGuardadas = dia.sustituciones
+        sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: rutina.id))
+            ?? dia.sustituciones
         descansoEnDisco = enDisco
         guardarDiaVisualizado()
     }
@@ -107,6 +108,8 @@ public final class ModeloEntreno {
     /// que estaba corriendo, trae el historial del día, restaura la sesión del día (confirmándola con el servidor), los
     /// días completados de la semana y los comentarios.
     public func cargar() async {
+        // Lo que se cambió y no llegó a la cola (la app se cerró en el medio), antes de leer el servidor.
+        encolarSustituciones()
         podarSustituciones()
         // Solo si no hay uno corriendo: restaurar borra lo guardado (como la web), y un segundo `cargar()` (tirar para
         // actualizar) dejaría el descanso en curso sin copia en disco.
@@ -620,7 +623,7 @@ public final class ModeloEntreno {
         let sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(nueva.id)) ?? [:])
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
-        sustitucionesGuardadas = sustituciones
+        sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: nueva.id)) ?? sustituciones
         syncSustituciones = nil
         tocadasDuranteSync = nil
         diasCompletados = []
@@ -835,6 +838,7 @@ public final class ModeloEntreno {
         dia.sustituciones = nuevo
         sustitucionesGuardadas = nuevo
         disco?.guardar(nuevo, Archivo.sustituciones(rutinaId))
+        anotarEncoladas(nuevo, rutinaId: rutinaId)
         for id in cambiadas { invalidarHistorial(id) }
         podarSustituciones(sinPrecarga: true)
         await precargarHistorial()
@@ -979,14 +983,25 @@ public final class ModeloEntreno {
     /// SER-14: lo que cambió desde la última escritura sale por la cola, en orden (sin la tabla en la base, la cola lo da
     /// por hecho y queda solo en el teléfono, como antes).
     func encolarSustituciones() {
-        let ops = SustitucionesServidor.operaciones(antes: sustitucionesGuardadas, ahora: dia.sustituciones, rutinaId: rutina.id)
-        sustitucionesGuardadas = dia.sustituciones
+        let ahora = dia.sustituciones
+        let ops = SustitucionesServidor.operaciones(antes: sustitucionesGuardadas, ahora: ahora, rutinaId: rutina.id)
+        sustitucionesGuardadas = ahora
         guard !demo, token != nil, let outbox, !ops.isEmpty else { return }
         tocadasDuranteSync?.formUnion(ops.map(\.exId))
-        let anterior = encoladoSustituciones
+        let anterior = encoladoSustituciones, disco = disco, rutinaId = rutina.id
         encoladoSustituciones = Task {
             await anterior?.value
             for op in ops { await outbox.encolar(op.kind, op.payload, dedupeKey: op.clave) }
+            disco?.guardar(ahora, SustitucionesServidor.archivoEncoladas(rutinaId: rutinaId))
+        }
+    }
+
+    /// Anota en disco que `m` ya está en la cola (o en el servidor), detrás de los encolados en curso.
+    func anotarEncoladas(_ m: [String: JSONValue], rutinaId: String) {
+        let anterior = encoladoSustituciones, disco = disco
+        encoladoSustituciones = Task {
+            await anterior?.value
+            disco?.guardar(m, SustitucionesServidor.archivoEncoladas(rutinaId: rutinaId))
         }
     }
 

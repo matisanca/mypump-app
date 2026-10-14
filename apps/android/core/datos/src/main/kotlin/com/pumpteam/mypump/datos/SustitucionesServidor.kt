@@ -29,6 +29,12 @@ object SustitucionesServidor {
 
     fun clave(rutinaId: String, exId: String): String = "swap_ej_${rutinaId}_$exId"
 
+    /**
+     * Lo último que ya está en la cola. Si la app se cierra entre escribir el archivo de la rutina y encolar, al volver a
+     * abrir se encola la diferencia (si no, la primera lectura del servidor borraría lo que nunca le llegó).
+     */
+    fun archivoEncoladas(rutinaId: String): String = "ejercicios-swaps-encoladas_$rutinaId.json"
+
     /** Lo que se recuerda en el teléfono sobre la sincronización de una rutina (mismo archivo y campos que en iOS). */
     data class Estado(
         /** Lo de este teléfono ya se subió una vez: de ahí en más se lee el servidor. */
