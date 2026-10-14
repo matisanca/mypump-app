@@ -72,6 +72,12 @@ public struct Escrituras: Sendable {
                 "p_hambre": d["hambre"] ?? .null, "p_adherencia": d["adherencia"] ?? .null, "p_nota": nota,
             ]))
         case "chat":
+            // Arreglo nativo n.º 4: si el mensaje ya llegó (se mandó, se cortó la señal antes de la respuesta y la cola lo
+            // reintenta), no se manda de nuevo. El servidor deduplica el mismo texto dentro de 2 minutos (mig 075), pero
+            // un reintento puede llegar mucho después.
+            if await yaLlego(p["contenido"]?.comoTexto, desde: op.ts) {
+                return .respuesta(.success(.texto("ya estaba")))
+            }
             return .respuesta(await cliente.llamar("mypump_agregar_comentario", [
                 "p_token": t, "p_ambito": .texto("general"), "p_referencia_id": .null, "p_referencia_nombre": .null,
                 "p_contenido": p["contenido"] ?? .null,
@@ -80,6 +86,16 @@ public struct Escrituras: Sendable {
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo #2).
             return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 0, codigo: "KIND_DESCONOCIDO", mensaje: op.kind)))
         }
+    }
+
+    /// ¿Hay en el hilo un mensaje del cliente con ese texto, escrito desde que se encoló? (con un minuto de margen por
+    /// la diferencia de reloj entre el teléfono y el servidor). Sin red, se manda igual y decide la cola.
+    func yaLlego(_ contenido: String?, desde ts: Double) async -> Bool {
+        guard let contenido, !contenido.isEmpty,
+              case .success(let filas) = await cliente.filas("mypump_get_chat", ["p_token": .texto(token), "p_antes": .null, "p_limite": .numero(10)],
+                                                             como: MensajeChat.self)
+        else { return false }
+        return filas.contains { $0.autor == "cliente" && $0.contenido == contenido && FechaISO.ms($0.createdAt) >= ts - 60_000 }
     }
 
     /// `resolveSesion` (cliente.html:2698): la sesión capturada al encolar, o la de ESE día y semana, o se crea. Si no se

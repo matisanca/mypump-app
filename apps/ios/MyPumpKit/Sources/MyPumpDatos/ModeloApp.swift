@@ -32,6 +32,8 @@ public final class ModeloApp {
     public private(set) var swaps: [String: SwapLocal] = [:]
     /// Comidas libres (fuera del plan) del día local.
     public private(set) var comidasLibres: [ComidaLibre] = []
+    /// El chat con Mati (no existe en la demo ni sin cuenta).
+    public private(set) var chat: ModeloChat?
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet { UserDefaults.standard.set(tipoDia, forKey: "mypump_tipo_dia") }
@@ -81,6 +83,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        chat?.pararSondeo(); chat = nil
         esDemo = false
         fase = .sinToken
     }
@@ -114,8 +117,19 @@ public final class ModeloApp {
         let escrituras = Escrituras(cliente: cliente, token: t)
         let cola = Outbox(archivo: disco.url("outbox.json")) { op in await escrituras.ejecutar(op) }
         outbox = cola
+        chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
+        chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
         Task { [weak self] in
-            await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } }, abandonadas: { _ in })
+            await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } },
+                                abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } })
+        }
+    }
+
+    /// Lo que la cola abandonó (va a fallidos, no se borra). Un mensaje del chat se marca en su burbuja para
+    /// reintentarlo ("no salió → Reintentar"), como `marcarChatFallido` de la web.
+    private func alAbandonar(_ ops: [Operacion]) {
+        for op in ops where op.kind == "chat" {
+            if let texto = op.payload["contenido"]?.comoTexto { chat?.marcarFallido(contenido: texto) }
         }
     }
 
@@ -173,6 +187,7 @@ public final class ModeloApp {
         await hidratarDieta()
         await cargarComidasLibres()
         await outbox?.drenar()
+        await chat?.cargar()
     }
 
     private func aplicar(_ c: CopiaOffline) {

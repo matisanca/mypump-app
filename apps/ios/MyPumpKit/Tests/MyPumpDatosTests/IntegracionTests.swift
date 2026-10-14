@@ -77,6 +77,30 @@ struct IntegracionTests {
         #expect(e.clase == .permanente)
     }
 
+    @Test func chatEnviaPorLaColaYNoDuplicaUnReintento() async throws {
+        let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await m.cargar()
+        let t = try #require(tokenDePrueba())
+        let chat = ModeloChat(cliente: m.cliente, token: t, outbox: m.outbox)
+        await chat.cargar()
+        let texto = "Prueba nativa \(UUID().uuidString.prefix(8))"
+        await chat.enviar(texto)
+        #expect(chat.hilo.mensajes.last?.pendiente == true)
+        await m.outbox?.drenar()
+        #expect(await m.outbox?.pendientes == 0)
+        await chat.sondear()
+        #expect(chat.hilo.mensajes.contains { $0.contenido == texto && !$0.pendiente })
+        #expect(!chat.hilo.mensajes.contains { $0.pendiente })
+        // La respuesta se perdió y la cola lo reintenta: no se manda de nuevo.
+        let e = Escrituras(cliente: m.cliente, token: t)
+        let op = Operacion(id: "x", kind: "chat", payload: .objeto(["contenido": .texto(texto)]), dedupeKey: nil, tries: 0,
+                           ts: Date().timeIntervalSince1970 * 1000 - 5_000)
+        _ = await e.ejecutar(op)
+        let filas = try await m.cliente.filas("mypump_get_chat", ["p_token": .texto(t), "p_antes": .null, "p_limite": .numero(10)],
+                                              como: MensajeChat.self).get()
+        #expect(filas.filter { $0.contenido == texto }.count == 1)
+    }
+
     @Test func sustituirLlegaAnclado_yRevertirLoBorra() async throws {
         let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
         await m.cargar()
