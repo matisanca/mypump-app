@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -254,9 +255,11 @@ private fun Cabecera(objetivo: Macros, elegidas: Macros, modifier: Modifier = Mo
         Triple("Grasas", objetivo.fat, kcalG / total) to c.grasa,
     )
     Tarjeta(modifier.testTag("dieta-cabecera"), espaciado = Espacio.m) {
-        // Anillo y macros lado a lado si entran; si no (pantallas angostas, letra grande), uno arriba del otro.
+        // Anillo y macros lado a lado si entran; si no (pantallas angostas, letra grande), uno arriba del otro con los
+        // macros en tres columnas. El ancho que hace falta crece con la escala de la letra (el `ViewThatFits` de iOS).
+        val escala = LocalDensity.current.fontScale
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            if (maxWidth >= 320.dp) {
+            if (maxWidth >= 320.dp * max(1f, escala)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
                     AnilloMacros(objetivo, macros.map { it.first.third to it.second })
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -284,7 +287,8 @@ private fun Cabecera(objetivo: Macros, elegidas: Macros, modifier: Modifier = Mo
                 buildAnnotatedString {
                     append("Con las opciones elegidas: ")
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("${Formato.miles(elegidas.kcal)} kcal") }
-                    if (abs(delta) >= 0.5) append(" (${if (delta > 0) "+" else ""}${Formato.entero(delta)} %)")
+                    // Con espacio duro: el "%)" no queda solo en el renglón de abajo.
+                    if (abs(delta) >= 0.5) append(" (${if (delta > 0) "+" else ""}${Formato.entero(delta)} %)")
                 },
                 style = MaterialTheme.typography.bodySmall,
             )
