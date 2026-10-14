@@ -18,6 +18,7 @@ struct DemoTests {
                        dieta: try Data(contentsOf: base.appendingPathComponent("dieta.json")))
         #expect(m.fase == .listo && m.esDemo)
         #expect(!(m.rutina?.estructura.dias.isEmpty ?? true))
+        #expect(m.entreno?.demo == true)
         #expect(!m.comidasDelDia.isEmpty)
         await m.cargar()   // "tirar para actualizar" en la demo: no la cierra
         #expect(m.fase == .listo && m.esDemo)

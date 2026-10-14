@@ -43,7 +43,18 @@ struct RaizApp<Contenido: View>: View {
         .onChange(of: fase, initial: true) { _, nueva in
             // Nada de sondeos con la app en segundo plano (CHA-04).
             modelo.enPrimerPlano = nueva == .active
-            if nueva == .active { Task { await modelo.alVolverAPrimerPlano() } }
+            switch nueva {
+            case .active:
+                CentroAvisos.shared.cancelarFinDescanso()
+                Task { await modelo.alVolverAPrimerPlano() }
+            case .background:
+                // Un descanso corriendo avisa cuando termina aunque la app no esté a la vista (D8).
+                if let d = modelo.entreno?.descanso.descanso, !d.terminado {
+                    let fin = Date(timeIntervalSince1970: d.fin / 1000)
+                    Task { await CentroAvisos.shared.programarFinDescanso(fin) }
+                }
+            default: break
+            }
         }
         .background { MonitorDeRed { Task { await modelo.alVolverLaRed() } } }
         .task(id: modelo.fase == .listo && !modelo.esDemo) {

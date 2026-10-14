@@ -179,6 +179,17 @@ struct IntegracionTests {
         #expect(offline.estado == .sinRed)
     }
 
+    @Test func elEntrenoQuedaArmadoConLaRutinaYElCatalogo() async throws {
+        let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
+        await m.cargar()
+        let e = try #require(m.entreno)
+        #expect(e.rutina.id == m.rutina?.id)
+        #expect(!e.dias.isEmpty)
+        #expect(!e.demo)
+        await m.cargarCatalogo()
+        #expect(e.catalogo.entradas.count > 500)   // el del servidor (~873)
+    }
+
     @Test func sustituirLlegaAnclado_yRevertirLoBorra() async throws {
         let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
         await m.cargar()

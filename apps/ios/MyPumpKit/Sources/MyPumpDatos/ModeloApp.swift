@@ -53,6 +53,11 @@ public final class ModeloApp {
     public private(set) var fotos: ModeloFotos?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
+    /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
+    public private(set) var entreno: ModeloEntreno?
+    /// El catálogo de ejercicios que trae la app (Bases.bundle): lo pone la app al arrancar. Se usa hasta que llega el
+    /// del servidor, y para arrancar sin red si nunca llegó.
+    public static var catalogoEmpaquetado = CatalogoEjercicios([])
     /// Salud, recuperación y Mi reloj (no existen en la demo ni sin cuenta). Gancho: se crea con la cuenta, arranca al
     /// terminar `cargar()` y sincroniza en `alVolverAPrimerPlano()`; HealthKit lo pone la app (ver ModeloSalud.swift).
     public private(set) var salud: ModeloSalud?
@@ -69,6 +74,7 @@ public final class ModeloApp {
     @ObservationIgnored let raizDisco: URL?
     /// El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy".
     @ObservationIgnored private var diaCargado: String?
+    @ObservationIgnored private var catalogo: CatalogoEjercicios?
 
     public init(cliente: ClienteRPC = ClienteRPC(), almacen: AlmacenToken = TokenEnKeychain(), raizDisco: URL? = nil) {
         self.cliente = cliente
@@ -108,7 +114,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
         esDemo = false
         sinRedEn = []
         fase = .sinToken
@@ -130,13 +136,17 @@ public final class ModeloApp {
         desdeCache = false
         sinRedEn = []
         esDemo = true
+        if let r = self.rutina {
+            entreno = ModeloEntreno(cliente: cliente, token: nil, outbox: nil, disco: nil, rutina: r, catalogo: catalogoVigente)
+        }
         fase = .listo
+        if let e = entreno { Task { await e.cargar() } }
     }
 
     /// Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada).
     public func salirDeDemo() async {
         esDemo = false
-        rutina = nil; dieta = nil; swaps = [:]
+        rutina = nil; dieta = nil; swaps = [:]; entreno = nil
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)
@@ -152,7 +162,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
     }
 
     private func prepararCuenta(_ t: String) {
@@ -256,7 +266,15 @@ public final class ModeloApp {
         if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] } else { swaps = [:] }
         sinRedEn = faltaron
         desdeCache = !faltaron.isEmpty
+        prepararEntreno()
         fase = .listo
+        if let e = entreno {
+            Task {
+                await self.cargarCatalogo()
+                await e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
+                await e.cargar()
+            }
+        }
 
         await hidratarDieta()
         guard vigente() else { return }
@@ -271,6 +289,44 @@ public final class ModeloApp {
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
         if let salud { Task { await salud.alAbrir() } }
+    }
+
+    // MARK: - Entreno
+
+    private var catalogoVigente: CatalogoEjercicios { catalogo ?? Self.catalogoEmpaquetado }
+
+    /// El motor de la rutina activa: se crea una vez por rutina; una versión nueva de la misma rutina (Mati la editó, se
+    /// avanzó de semana) lo actualiza sin perder lo que está en curso.
+    private func prepararEntreno() {
+        guard let rutina else { entreno = nil; return }
+        if let e = entreno, e.rutina.id == rutina.id {
+            if e.rutina != rutina { e.reemplazarRutina(rutina) }
+            return
+        }
+        let e = ModeloEntreno(cliente: cliente, token: token, outbox: outbox, disco: disco, rutina: rutina, info: info,
+                              catalogo: catalogoVigente)
+        e.alCambiarRutina = { [weak self] nueva in self?.rutina = nueva }
+        entreno = e
+    }
+
+    private var archivoCatalogo: URL {
+        let base = raizDisco ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("MyPump/catalogo-ejercicios.json")
+    }
+
+    /// `getCatalogoEjercicios`: el catálogo en el orden en que lo da el servidor (como la web: el orden decide empates
+    /// en los sustitutos), guardado para arrancar sin red. Si no llega, el guardado o el empaquetado.
+    func cargarCatalogo() async {
+        let columnas = "slug_en,name_en,name_normalized,aliases_es,primary_muscle,equipment,patron_movimiento,image_eccentric,image_concentric"
+        if case .success(let j) = await cliente.tabla("mypump_ejercicios_catalogo", columnas: columnas),
+           let datos = try? JSONEncoder().encode(j), let c = try? CatalogoEjercicios(json: datos), !c.entradas.isEmpty {
+            catalogo = c
+            try? FileManager.default.createDirectory(at: archivoCatalogo.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? datos.write(to: archivoCatalogo, options: .atomic)
+        } else if catalogo == nil, let d = try? Data(contentsOf: archivoCatalogo), let c = try? CatalogoEjercicios(json: d), !c.entradas.isEmpty {
+            catalogo = c
+        }
+        if let c = catalogo { entreno?.catalogo = c }
     }
 
     /// Volvió la red (el monitor de la raíz): sale lo pendiente y, si se estaba mostrando la copia guardada, se trae todo.
@@ -299,6 +355,7 @@ public final class ModeloApp {
         await chat?.sondear()
         await fotos?.drenar()
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
+        _ = await entreno?.alVolverAPrimerPlano()
     }
 
     /// Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas.
@@ -308,6 +365,7 @@ public final class ModeloApp {
     }
 
     private func aplicar(_ c: CopiaOffline) {
+        defer { prepararEntreno(); if let e = entreno { Task { await e.cargar() } } }
         info = decodificar(ClienteInfo.self, c.info)
         rutina = c.rutina.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(c.dieta)
