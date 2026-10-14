@@ -1,27 +1,22 @@
 package com.pumpteam.mypump
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.diseno.TemaMyPump
+import com.pumpteam.mypump.diseno.temaOscuro
+import com.pumpteam.mypump.raiz.RaizMyPump
 
 /**
  * La entrada de la app. Se llama `.MainActivity` como en la Capacitor a propósito: el launcher guarda el ícono del
@@ -48,8 +43,16 @@ class MainActivity : ComponentActivity() {
             },
         )
         setContent {
-            TemaMyPump {
-                Bienvenida()
+            val oscuroGuardado by vm.apariencia.oscuroGuardado.collectAsStateWithLifecycle()
+            val oscuro = temaOscuro(isSystemInDarkTheme(), oscuroGuardado)
+            // Los íconos de la barra de estado van con el tema de la APP: con "Siempre en modo oscuro" y el teléfono en
+            // claro, quedarían negros sobre negro.
+            LaunchedEffect(oscuro) {
+                val estilo = if (oscuro) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = estilo, navigationBarStyle = estilo)
+            }
+            TemaMyPump(oscuro = oscuro) {
+                RaizMyPump(vm)
             }
         }
     }
@@ -64,34 +67,4 @@ class MainActivity : ComponentActivity() {
         if (intent?.action != Intent.ACTION_VIEW) return
         intent.dataString?.let(vm::abrirLink)
     }
-}
-
-/** Por ahora solo la marca: las pantallas llegan con las etapas de la Fase 5. */
-@Composable
-fun Bienvenida() {
-    Scaffold { relleno ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(relleno).padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "MyPump",
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = "Pump Team",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun BienvenidaPrevia() {
-    TemaMyPump { Bienvenida() }
 }

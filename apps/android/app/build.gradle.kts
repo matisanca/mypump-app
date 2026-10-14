@@ -7,6 +7,60 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+/** La raíz del repo: la demo, el catálogo y las respuestas grabadas viven en `apps/shared/`, la fuente en la app de iOS. */
+val raizRepo: File = rootDir.resolve("../..").canonicalFile
+
+/**
+ * Copia a una carpeta generada lo que es canónico fuera de `apps/android`, sin duplicarlo en el repo: así la demo y el
+ * catálogo no se desfasan de los que usan iOS y los tests, y la fuente de la marca es la misma de iOS. `mapa` es
+ * destino (dentro de la carpeta generada) → archivo de origen.
+ */
+abstract class CopiarCompartido : DefaultTask() {
+    @get:Input
+    abstract val mapa: MapProperty<String, String>
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val origenes: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val salida: DirectoryProperty
+
+    @TaskAction
+    fun copiar() {
+        val dir = salida.get().asFile
+        dir.deleteRecursively()
+        for ((destino, origen) in mapa.get()) {
+            val desde = File(origen)
+            check(desde.isFile) { "falta $origen (lo copia ${this.name})" }
+            desde.copyTo(File(dir, destino), overwrite = true)
+        }
+    }
+}
+
+fun CopiarCompartido.desde(vararg pares: Pair<String, String>) {
+    val m = pares.associate { (destino, relativo) -> destino to raizRepo.resolve(relativo).path }
+    mapa.set(m)
+    origenes.from(m.values)
+}
+
+/** Archivo, la letra de la marca (OFL): la misma de iOS, para los títulos y los números grandes. */
+val fuentesCompartidas = tasks.register<CopiarCompartido>("fuentesCompartidas") {
+    desde("font/archivo.ttf" to "apps/ios/MyPump/Recursos/Fuentes/Archivo.ttf")
+    salida.set(layout.buildDirectory.dir("generated/compartido/res"))
+}
+
+/** La demo de la web ("Ver demo", sin red ni cuenta), el catálogo de ejercicios para arrancar sin red y la licencia de la fuente. */
+val assetsCompartidos = tasks.register<CopiarCompartido>("assetsCompartidos") {
+    desde(
+        "demo/rutina.json" to "apps/shared/demo/rutina.json",
+        "demo/dieta.json" to "apps/shared/demo/dieta.json",
+        "bases/catalogo-ejercicios.json" to "apps/shared/catalogo-ejercicios.json",
+        "licencias/Archivo-OFL.txt" to "apps/ios/MyPump/Recursos/Fuentes/Archivo-OFL.txt",
+    )
+    salida.set(layout.buildDirectory.dir("generated/compartido/assets"))
+}
+
 android {
     // Los mismos que la app Capacitor (android/app/build.gradle): es una actualización de la misma app en Play, no
     // una app nueva. Cambiar el applicationId sería publicar otra app y perder a todos los clientes.
@@ -42,10 +96,23 @@ android {
         compose = true
     }
 
+    sourceSets {
+        // Las pruebas de interfaz contestan con las respuestas REALES grabadas de las cuentas de prueba (las mismas de los
+        // tests de :core y de iOS). Van solo en el APK de pruebas.
+        getByName("androidTest").assets.srcDir(raizRepo.resolve("apps/shared/fixtures"))
+    }
+
     packaging {
         // Los .so van sin comprimir y alineados a 16 KB (Play lo exige para Android 15+ con páginas de 16 KB). Es el
         // default de AGP 8.5.1+ con minSdk ≥ 23; queda escrito para que nadie lo cambie sin saber.
         jniLibs.useLegacyPackaging = false
+    }
+}
+
+androidComponents {
+    onVariants { variante ->
+        variante.sources.res?.addGeneratedSourceDirectory(fuentesCompartidas, CopiarCompartido::salida)
+        variante.sources.assets?.addGeneratedSourceDirectory(assetsCompartidos, CopiarCompartido::salida)
     }
 }
 
@@ -69,7 +136,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     debugImplementation(libs.compose.ui.tooling)
 
-    // El token con el Keystore de verdad: corre en un emulador o un teléfono (`connectedDebugAndroidTest`).
+    // El token con el Keystore de verdad y las pruebas de interfaz: corren en un emulador o un teléfono
+    // (`connectedDebugAndroidTest`). Las de interfaz no usan `ui-test-junit4` (no está en el proyecto): leen el árbol de
+    // semántica de Compose con `ViewRootForTest`, ver androidTest/…/ui/Pantalla.kt.
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.junit)
 }

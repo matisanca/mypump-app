@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Solo en debug (nunca en lo que va a Play): una actividad vacía donde las pruebas de interfaz arman un componente suelto
+  (la hoja del permiso de la IA con un disparador de prueba). Es lo mismo que agrega `ui-test-manifest`, que no está en el
+  proyecto.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name="androidx.activity.ComponentActivity"
+            android:exported="false"
+            android:theme="@style/Tema.MyPump" />
+    </application>
+</manifest>

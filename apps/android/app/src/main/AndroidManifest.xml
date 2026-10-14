@@ -11,6 +11,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Saber cuándo VUELVE la red (MonitorDeRed): manda la cola y reintenta solo una vez desde "Sin conexión" (ACC-05).
+         Permiso normal: no se le pide nada al cliente. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Avisos del coach y del fin del descanso (Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
