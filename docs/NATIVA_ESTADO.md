@@ -126,6 +126,24 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **14-oct 22:30, auditoría de la columna Android y lo que salió de ella:**
+  - **Auditoría de solo lectura** de 83 filas (ACC, GEN, DIE, DIA, REV, PRO, CHA, OFF, MIG y APL): 28 ✅, 46 🟡,
+    2 ☐ y 7 ➖. Quedó en `NATIVA_PARIDAD.md` (4ed3e9c y 530367a), junto con las celdas viejas de iOS ("falta la
+    pantalla" cuando ya existía) y D10, D11, D14 y D15 en la tabla de decisiones.
+  - **iOS, PRO-02** (6324c09): Progreso agrupaba por el nombre del plan; un ejercicio sustituido salía con el nombre y el
+    historial del original. Ahora `ModeloApp.cargarProgreso()` pasa el ejercicio efectivo, como la web. Kit 374/374.
+    Va en el próximo TestFlight.
+  - **Android `:core`** (53ae738): GEN-05 como la web e iOS, `ultimoDiaValido` y `FechaJs.diaLargo`, Progreso por el
+    ejercicio efectivo, la demo con Mi Día sembrado y el chat vacío, y las pruebas gemelas de iOS que faltaban. JVM
+    434 → 449.
+  - **Riesgo encontrado (Android, alto):** el App Link toma todo el dominio, igual que la Capacitor, pero
+    `abrirEnNavegador` no fijaba el navegador. En un build de Play, con el dominio verificado, la política de
+    privacidad, «Eliminar mis datos» y el link de Mi reloj volverían a MyPump. Lo arregla el agente de Salud, que abre la
+    política desde Health Connect, con una prueba que verifica el dominio en el emulador.
+  - **Siguiente tanda de Android** (encargos listos en `~/Developer/nativa-evidencia/encargos/`): Chat + Progreso,
+    Revisión con Mi Día y Dieta con escritura. Salen cuando terminen los agentes de notificaciones y de Salud, para no
+    pisarse en `Pestanas.kt` y por la memoria de la Mac.
+
 - **14-oct 21:30, Android:**
   - **Sin permiso para la IA y el aviso del domingo como mensaje de Mati**, gemelos de iOS. Mergeado en f6977e9: sale
     `ConsentimientoIA`, `PermisoIA` y la sección de Mis datos; `AvisoDomingo` en `:core:datos`. Tests: JVM 434 (1
