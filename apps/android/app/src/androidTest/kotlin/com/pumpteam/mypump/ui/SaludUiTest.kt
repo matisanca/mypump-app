@@ -212,6 +212,33 @@ class SaludUiTest : PruebaUi() {
         assertFalse(p.existe(etiqueta("conectar-health-connect")))
     }
 
+    /**
+     * "No está llegando ningún dato": la ruta de Android (no la de Ajustes del iPhone), Reintentar, y "Abrir Health
+     * Connect", que lleva a los permisos de MyPump en Health Connect (los permisos de Android se cambian ahí).
+     */
+    @Test
+    fun siNoLlegaNadaLlevaALosPermisosDeHealthConnect() {
+        guardarPreferencia(ClaveSalud.CONECTADO, "1")
+        guardarPreferencia(ClaveSalud.HISTORIAL_HECHO, "1")
+        guardarPreferencia(ClaveSalud.DENEGADO, "1")
+        // Sin una muestra en la semana: la sospecha no se borra al abrir.
+        ModeloSalud.fuenteDelSistema = object : FuenteSalud by fuente {
+            override suspend fun muestras(dataType: String, desde: Double, hasta: Double, limite: Int): List<MuestraSalud> = emptyList()
+        }
+        irAMisDatos()
+        p.tocar(etiqueta("mis-datos-salud"))
+        p.nodo(texto("No está llegando ningún dato. Revisá que esté todo activado en Ajustes → Salud y bienestar → Health Connect → MyPump."))
+        p.nodo(texto("Reintentar"))
+        sinApple()
+        p.tocar(etiqueta("abrir-health-connect"))
+        val arriba = p.esperar("se abre Health Connect", ms = 20_000, enElPrincipal = false) {
+            Telefono.shell("dumpsys activity activities").lineSequence().firstOrNull { "topResumedActivity=" in it }
+                ?.let { Regex("""u\d+ ([A-Za-z0-9_.]+)/""").find(it)?.groupValues?.get(1) }?.takeIf { it != app.packageName }
+        }
+        assertTrue("arriba quedó $arriba", "healthconnect" in arriba)
+        Telefono.shell("input keyevent KEYCODE_BACK")
+    }
+
     /** `?diag=health` en el link abre el diagnóstico directo (SAL-13, ACC-09). */
     @Test
     fun elLinkConDiagHealthAbreElDiagnostico() {
