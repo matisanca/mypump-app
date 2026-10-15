@@ -274,8 +274,14 @@ private struct GaleriaFotos: View {
                 .aspectRatio(3 / 4, contentMode: .fit)
                 .overlay {
                     if let url {
+                        // La ruedita, solo mientras baja: si la foto no se pudo traer (sin señal, la URL firmada vencida, una
+                        // foto rota) queda el ícono. Antes giraba para siempre (lo encontró el gemelo de Android, 15-oct).
                         AsyncImage(url: url) { f in
-                            if let img = f.image { img.resizable().scaledToFill() } else { ProgressView() }
+                            switch f {
+                            case .success(let img): img.resizable().scaledToFill()
+                            case .failure: Image(systemName: "photo").foregroundStyle(.tertiary)
+                            default: ProgressView()
+                            }
                         }
                     } else {
                         Image(systemName: hay ? "photo" : "camera").foregroundStyle(.tertiary)
