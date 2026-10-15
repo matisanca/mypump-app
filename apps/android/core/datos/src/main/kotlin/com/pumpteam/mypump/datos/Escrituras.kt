@@ -22,7 +22,8 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
     /**
      * Ejecuta la op y, si no se guardó, mira una vez si el token cayó (arreglo nativo n.º 3): un token revocado hace que la
      * base devuelva vacío a TODO, y sin esto la cola abandonaría todo lo del cliente en ~1 minuto. Con el token caído las
-     * ops quedan estacionadas sin gastar intentos hasta que entre con un link nuevo.
+     * ops quedan estacionadas sin gastar intentos hasta que entre con un link nuevo: si es de la misma persona, su cuenta
+     * las adopta ([CuentasDelTelefono], hallazgo 4).
      */
     suspend fun ejecutar(op: Operacion): ResultadoOp {
         val r = ejecutarSinVerificar(op)

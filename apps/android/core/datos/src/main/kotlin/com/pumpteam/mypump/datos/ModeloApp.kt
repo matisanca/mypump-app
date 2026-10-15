@@ -398,6 +398,16 @@ class ModeloApp(
             return
         }
         _info.value = decodificar(primera.aJson(), ClienteInfo::desde)
+        // La misma persona con otro link (Mati lo regeneró): lo que quedó en la cola de la carpeta vieja sale con este, con el
+        // `drenar()` de más abajo (hallazgo 4).
+        val discoCuenta = disco
+        val colaCuenta = outbox
+        val clienteId = _info.value?.clienteId
+        if (discoCuenta != null && colaCuenta != null && !clienteId.isNullOrEmpty()) {
+            CuentasDelTelefono.anotar(clienteId, discoCuenta)
+            CuentasDelTelefono.adoptar(clienteId, discoCuenta, colaCuenta)
+            if (!vigente()) return
+        }
 
         val rr: Resultado<ValorJson>
         val dd: Resultado<ValorJson>
@@ -507,8 +517,9 @@ class ModeloApp(
     private val catalogoVigente: CatalogoEjercicios get() = catalogo ?: catalogoEmpaquetado
 
     /**
-     * El motor de la rutina activa: se crea una vez por rutina; una versión nueva de la misma rutina (Mati la editó, se
-     * avanzó de semana) lo actualiza sin perder lo que está en curso.
+     * El motor de la rutina activa: se crea una vez por rutina y por cuenta; una versión nueva de la misma rutina (Mati la
+     * editó, se avanzó de semana) lo actualiza sin perder lo que está en curso. Con otro link de la misma persona la rutina
+     * es la misma, pero el motor de antes escribía en la cola y la carpeta del link viejo (hallazgo 4).
      */
     private fun prepararEntreno() {
         val rutina = _rutina.value ?: run {
@@ -516,7 +527,7 @@ class ModeloApp(
             return
         }
         val e = _entreno.value
-        if (e != null && e.rutina.value.id == rutina.id) {
+        if (e != null && e.rutina.value.id == rutina.id && e.token == token) {
             if (e.rutina.value != rutina) e.reemplazarRutina(rutina)
             return
         }

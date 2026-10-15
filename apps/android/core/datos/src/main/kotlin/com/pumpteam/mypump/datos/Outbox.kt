@@ -159,14 +159,9 @@ class Outbox(
     @Volatile private var cerrada = false
 
     init {
-        archivo?.let(::leerJson)?.let { j ->
-            val o = j as? JsonObject
-            (o?.get("ops") as? JsonArray)?.mapNotNullTo(ops) { Operacion.desde(it) }
-            (o?.get("fallidos") as? JsonArray)?.mapNotNullTo(fallidosLista) { f ->
-                val fo = f as? JsonObject ?: return@mapNotNullTo null
-                val op = fo["op"]?.let { Operacion.desde(it) } ?: return@mapNotNullTo null
-                Fallido(op, (fo["motivo"] as? JsonPrimitive)?.content ?: "", (fo["cuando"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0)
-            }
+        archivo?.let(::leerArchivo)?.let { (o, f) ->
+            ops += o
+            fallidosLista += f
         }
     }
 
@@ -232,6 +227,20 @@ class Outbox(
         val quedaron = sinPisar(ops, nuevas)
         guardar()
         quedaron
+    }
+
+    /**
+     * Lo que quedó en la cola de otra carpeta de la MISMA persona (un link que Mati regeneró; revisión del 15-oct, hallazgo
+     * 4). Las pendientes entran con la regla de [importarSinPisar] (sin repetir ids; lo pendiente más nuevo gana) y conservan
+     * su marca: no son de la migración. Los fallidos siguen siendo fallidos: no se mandan (algunos están "para revisar"),
+     * pero tampoco se pierden. No dispara una pasada: salen con el `drenar()` de la carga, después de que quien adopta anota
+     * lo que se llevó. Devuelve las pendientes que quedaron en la cola.
+     */
+    suspend fun adoptar(viejas: List<Operacion>, fallidos: List<Fallido>): List<Operacion> = withContext(confinado) {
+        val entraron = sinPisar(ops, viejas, deLaMigracion = false)
+        for (f in fallidos) if (fallidosLista.none { it.op.id == f.op.id }) fallidosLista += f
+        guardar()
+        entraron
     }
 
     /**
@@ -415,11 +424,27 @@ class Outbox(
 
     companion object {
         /**
+         * El archivo de una cola: sus pendientes y sus fallidos (null si no está o no es una cola). Lo lee la cola al iniciar,
+         * y [CuentasDelTelefono] el de otra carpeta de la misma persona.
+         */
+        internal fun leerArchivo(archivo: File): Pair<List<Operacion>, List<Fallido>>? {
+            val o = leerJson(archivo) as? JsonObject ?: return null
+            val ops = (o["ops"] as? JsonArray)?.mapNotNull { Operacion.desde(it) } ?: emptyList()
+            val fallidos = (o["fallidos"] as? JsonArray)?.mapNotNull { f ->
+                val fo = f as? JsonObject ?: return@mapNotNull null
+                val op = fo["op"]?.let { Operacion.desde(it) } ?: return@mapNotNull null
+                Fallido(op, (fo["motivo"] as? JsonPrimitive)?.content ?: "", (fo["cuando"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0)
+            } ?: emptyList()
+            return ops to fallidos
+        }
+
+        /**
          * La regla de [importarSinPisar] sobre una lista de ops. Devuelve las que quedaron (también las que ya estaban). Las
          * que entran van marcadas como de la Capacitor ([Operacion.legado]): la palanca remota las puede frenar aunque ya
-         * estén en la cola (revisión del 15-oct, hallazgo 2).
+         * estén en la cola (revisión del 15-oct, hallazgo 2). `deLaMigracion = false` es lo que se adopta de otra carpeta de
+         * la misma persona (hallazgo 4): conserva su marca.
          */
-        private fun sinPisar(ops: MutableList<Operacion>, nuevas: List<Operacion>): List<Operacion> {
+        private fun sinPisar(ops: MutableList<Operacion>, nuevas: List<Operacion>, deLaMigracion: Boolean = true): List<Operacion> {
             val quedaron = mutableListOf<Operacion>()
             for (op in nuevas) {
                 if (ops.any { it.id == op.id }) {
@@ -429,7 +454,7 @@ class Outbox(
                 val k = op.dedupeKey
                 if (k != null && (ops.lastOrNull { it.dedupeKey == k }?.ts ?: Double.NEGATIVE_INFINITY) > op.ts) continue
                 if (k != null) ops.removeAll { it.dedupeKey == k }
-                val marcada = op.copy(legado = true)
+                val marcada = if (deLaMigracion) op.copy(legado = true) else op
                 ops += marcada
                 quedaron += marcada
             }
