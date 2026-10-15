@@ -233,6 +233,17 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   Además, la migración de punta a punta en iOS 26.5 con todo lo de hoy dio 27/27, y en Android 9 pasaron Revisión,
   Progreso y Chat (37/37).
 
+  **Validación final de los builds 111 (iOS) y 103 (Android), 15-oct 14:30:**
+  - iOS:
+    - kit 445/445;
+    - interfaz en iPhone 17 Pro 26.5: 20/20;
+    - interfaz en iOS 17.5: 20/20;
+    - interfaz en iPad Pro 13": 21/21 (las 15 salteadas son el barrido y la auditoría);
+    - migración 27/27.
+  - Android:
+    - JVM 622/622;
+    - la suite instrumentada completa en nativa36: 193, con 0 fallas y las 5 salteadas de siempre.
+
 - **15-oct 11:40, rendimiento, el chat y lo último de paridad de Android:**
   - **Progreso tardaba 1,5 s en el hilo principal** con el historial más largo que deja el servidor (48 filas por
     ejercicio, 2.880 en total). La causa: dos `ISO8601DateFormatter` por fila, un `Calendar` por fecha y una expresión
