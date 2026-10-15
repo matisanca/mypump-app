@@ -24,7 +24,7 @@ final class AvisosUITests: XCTestCase {
         if permitir.waitForExistence(timeout: 8) { permitir.tap() }
         // Con permiso la hoja se cierra sola (sin permiso diría "Quedó sin permiso").
         XCTAssertTrue(activar.waitForNonExistence(timeout: 10), "La hoja sigue abierta: ¿se negó el permiso?")
-        XCTAssertTrue(app.tabBars.buttons["Revisión"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.pestana("Revisión").waitForExistence(timeout: 5))
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "despues-de-activar"; a.lifetime = .keepAlways; add(a)
     }
 }

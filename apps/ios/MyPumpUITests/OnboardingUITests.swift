@@ -15,12 +15,12 @@ final class OnboardingUITests: XCTestCase {
         XCTAssertTrue(ahoraNo.waitForExistence(timeout: 20), "No apareció la hoja de permisos")
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "onboarding"; a.lifetime = .keepAlways; add(a)
         while ahoraNo.exists { ahoraNo.tap(); _ = ahoraNo.waitForNonExistence(timeout: 1) || true }
-        XCTAssertTrue(app.tabBars.buttons["Dieta"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.pestana("Dieta").waitForExistence(timeout: 5))
         // Ya se vio: al volver a abrir no aparece.
         app.terminate()
         app.launchArguments = ["-token", token, "-pestana", "dieta"]
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Dieta"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.pestana("Dieta").waitForExistence(timeout: 20))
         XCTAssertFalse(app.buttons["Ahora no"].waitForExistence(timeout: 4), "La hoja de permisos volvió a aparecer")
     }
 
@@ -40,12 +40,12 @@ final class OnboardingUITests: XCTestCase {
         arriba.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
         XCTAssertTrue(ahoraNo.waitForNonExistence(timeout: 5), "La hoja no se cerró deslizando")
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "onboarding-cerrada"; a.lifetime = .keepAlways; add(a)
-        XCTAssertTrue(app.tabBars.buttons["Dieta"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.pestana("Dieta").waitForExistence(timeout: 5))
         // Ya se vio: al volver a abrir no aparece.
         app.terminate()
         app.launchArguments = ["-token", token, "-pestana", "dieta"]
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Dieta"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.pestana("Dieta").waitForExistence(timeout: 20))
         XCTAssertFalse(app.buttons["Ahora no"].waitForExistence(timeout: 4), "Cerrada deslizando, la hoja volvió a aparecer")
     }
 }
