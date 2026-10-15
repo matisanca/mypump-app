@@ -180,7 +180,14 @@ class ModeloChat(
 
     /** El hilo se trajo alguna vez: sin cursor, es que está vacío (y no que no se sabe). */
     @Volatile private var cargado = false
-    val traido: Boolean get() = cargado
+
+    /**
+     * Cuántas veces llegó la última página (las de "Ver mensajes anteriores" no cuentan). La carga de la cuenta lo mira para
+     * no pedirla otra vez si mientras tanto la trajo otro: el Chat abierto antes de que termine la carga ([alAbrir]) o el
+     * sondeo.
+     */
+    @Volatile var ultimasTraidas = 0
+        private set
 
     /**
      * El hilo no se pudo traer nunca (sin red o el servicio caído). La pantalla lo dice en vez de mostrar el chat vacío,
@@ -229,6 +236,7 @@ class ModeloChat(
                 return
             }
             cargado = true
+            if (!masViejos) ultimasTraidas += 1
             _sinTraer.value = false
             _hilo.update { h -> h.mezclar(filas).hilo.let { if (filas.size < PAGINA) it.copy(hayMas = false) else it } }
             recontar()
@@ -236,6 +244,16 @@ class ModeloChat(
         } finally {
             _cargando.value = false
         }
+    }
+
+    /**
+     * Se abrió la pantalla del chat. Si el hilo no se trajo nunca (sin red al arrancar, o la carga de la cuenta todavía no
+     * llegó al chat), se trae ya: el sondeo recién consulta a los 15 s y mientras tanto se veía vacío. La carga de la cuenta
+     * ve que ya llegó y no lo vuelve a pedir. Después, lo de Mati queda leído.
+     */
+    suspend fun alAbrir() {
+        if (!cargado) cargar()
+        marcarLeido()
     }
 
     /** `chatPollTick`: lo nuevo desde el cursor. Lo que llega del coach por acá todavía no lo leyó (la RPC no trae el campo). */

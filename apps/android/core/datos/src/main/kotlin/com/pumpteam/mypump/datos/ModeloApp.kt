@@ -441,6 +441,10 @@ class ModeloApp(
         // descarta sin tocar nada (ni el almacén ni la pantalla).
         fun vigente(): Boolean = token == t && !_esDemo.value
         val p = mapOf("p_token" to texto(t))
+        // El chat y cuántas veces había traído su última página al empezar: si mientras se carga lo demás la trae otro (el
+        // Chat abierto antes de que termine la carga, o su sondeo), al llegar al chat no se pide de nuevo.
+        val chatAlEmpezar = _chat.value
+        val traidasAlEmpezar = chatAlEmpezar?.ultimasTraidas
 
         val respuestaInfo = when (val r = cliente.llamar("mypump_get_cliente_info", p)) {
             is Resultado.Falla -> {
@@ -555,7 +559,7 @@ class ModeloApp(
         cargarComidasLibres()
         outbox?.drenar()
         coroutineScope {
-            launch { _chat.value?.cargar() }
+            launch { _chat.value?.let { c -> if (c !== chatAlEmpezar || c.ultimasTraidas == traidasAlEmpezar) c.cargar() } }
             launch { _revision.value?.cargarMiDia() }
             launch { _revision.value?.cargarRevision() }
             launch { _fotos.value?.cargar() }
