@@ -65,7 +65,7 @@ commitea.
 | Android: base, reglas y capa de datos (`:core`) | ✅ mergeado en `nativa` el 14-oct (81338b8): reglas con los vectores de la web, Entreno, Salud, cola, chat, Revisión, migración (parte pura), palanca, recibo y conteos (`nativa_001`, probada contra el backend con `test-nativa-android`) |
 | Android: lector del almacenamiento viejo con WebView y arranque de la migración en `:app`, prueba en el emulador, D7 | ✅ mergeado el 14-oct (4e48457): leveldb encontrado sin rutas fijas, **24/24 de punta a punta en el emulador** (`scripts/nativa/emu-migracion.sh`), D7 en el modelo y la cola (D7 se sacó el 14-oct, f6977e9); 400 tests JVM + 9 instrumentados. Backup decidido (D14). Falta: un teléfono real con la 1.0.12 de Play |
 | Android: pantallas en Compose | 🟡 acceso, demo, sin conexión, Dieta en lectura y Mis datos (375f970); fuentes y legales en una Custom Tab (0c745f7); Entreno (a17929a); sin permiso de IA y el aviso del domingo como mensaje de Mati, gemelo de iOS (f6977e9). JVM 434 (1 salteada) y 59 instrumentadas. Faltan Chat, Revisión, Dieta con escritura y Progreso |
-| Android: Health Connect, FCM | 🟡 en curso desde el 14-oct 21:30: dos agentes en paralelo (notificaciones con FCM, el aviso del domingo y D8; Salud con Health Connect). Librerías con OK de G4 |
+| Android: notificaciones (FCM), hoja de la primera vez, D8 y Salud (Health Connect) | ✅ mergeados el 14-oct (b40b3fe y fd974ba): push de Mati por FCM con el proyecto de la Capacitor, el domingo con `setWindow`, la limpieza de las alarmas de la Capacitor (probada con una actualización real desde la 1.0.12), D8 inexacto; Health Connect con los permisos de solo lectura y el banco contra el bridge con 0 diferencias. JVM 466 + 24 de `:app`; 103 instrumentadas (2 a mano). Falta un teléfono real: push de punta a punta, marcas, Android 9-13 con Health Connect aparte, relojes |
 
 
 **Control de la beta (G5):** `python3 scripts/nativa/beta_diario.py [--dias 7] [--con-pruebas]` da, por cliente con la
@@ -125,6 +125,30 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
 
 ## Bitácora
+
+- **14-oct 23:30, Android: notificaciones y Salud mergeados** (b40b3fe y fd974ba):
+  - **Notificaciones** (NOT-01 a 08, GEN-06, D8). FCM `mypump-663be` con `firebase-messaging` 25.0.1 y
+    `google-services` 4.4.4 (G4). Se registra solo con cuenta y permiso, si cambió el token o la cuenta. Dos canales:
+    «Mensajes de Mati» y «Fin del descanso». El domingo, con `setWindow` de 10 min: `setInexactRepeating` semanal deja
+    una ventana de ~5 días. La actualización real desde la Capacitor 1.0.12 en el emulador borró su alarma y su canal.
+    **D8 en Android es inexacto:** con la pantalla apagada puede llegar hasta ~1 min tarde, y lo exacto pediría alarmas
+    exactas o un servicio en primer plano. Queda así.
+  - **El mismo hallazgo en iOS** (5b11bfd): con el link de otra cuenta en el mismo teléfono, el push no se volvía a
+    registrar y los avisos seguían yendo a la cuenta anterior. Ahora recuerda la cuenta (`mypump_push_cuenta`, una huella).
+  - **Salud** (SAL-01 a 13, APL-07). `FuenteHealthConnect`, gemela del plugin 8.9.3, con el banco contra el bridge de
+    main: 183 consultas y 718 registros idénticos. Lo que se sumó:
+    - el historial de 30 o 60 días según el permiso, que faltaba en `:core`;
+    - la hoja de permisos como llamada suspend;
+    - Mis datos con la recuperación y el detalle, y las tarjetas de Revisión listas;
+    - el diagnóstico.
+    
+    La base real con `test-nativa-android` recibió 93 datos sintéticos de `health_connect`, que quedan en esa cuenta.
+  - **`abrirEnNavegador` fija el navegador**, con la prueba del dominio verificado (falla con el código viejo).
+  - **Al juntarlos**, la hoja de la primera vez arranca con Salud si hay Health Connect. Cuatro pruebas esperaban solo
+    Notificaciones: se arreglaron (22f80fe) y se sumó una con la fuente de verdad.
+  - **Para Play (G7):** la declaración de apps de salud, con los 13 permisos y el historial.
+  - **Limitación:** si el cliente se va de la app en medio del historial, Health Connect niega leer en segundo plano y
+    ese tramo queda con huecos. Igual que la Capacitor hoy.
 
 - **14-oct 22:30, auditoría de la columna Android y lo que salió de ella:**
   - **Auditoría de solo lectura** de 83 filas (ACC, GEN, DIE, DIA, REV, PRO, CHA, OFF, MIG y APL): 28 ✅, 46 🟡,
