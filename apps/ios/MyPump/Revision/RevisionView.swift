@@ -3,9 +3,9 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Revisión: lo de la semana (fotos, check, peso), Mi reloj y, al final, Mi Día (lo de todos los días, con la
-/// recuperación y la salud). Mismo orden que la web (REV-01). En iPad, en dos columnas: lo semanal a la izquierda, lo
-/// diario a la derecha. Con una cuenta sale de `ModeloRevision`, `ModeloFotos` y `ModeloSalud`; en la demo y en los
+/// Revisión: lo de la semana (fotos, check con el peso, peso), Mi reloj y, al final, la recuperación y la salud. Mi Día
+/// (la racha, el entrenamiento del día, los hábitos, el agua y los últimos 30 días) se sacó el 15-oct: nadie lo usaba
+/// (Mati). En iPad, en dos columnas: lo semanal a la izquierda, la salud a la derecha. Con una cuenta sale de `ModeloRevision`, `ModeloFotos` y `ModeloSalud`; en la demo y en los
 /// bocetos, de las muestras (y sin salud: no existe sin cuenta).
 struct RevisionView: View {
     let datos: Muestras
@@ -34,7 +34,7 @@ struct RevisionView: View {
                                         .frame(maxWidth: .infinity, alignment: .top)
                                         .fixedSize(horizontal: false, vertical: true)
                                         .topeArriba()
-                                    VStack(alignment: .leading, spacing: Espacio.xl) { miDia }
+                                    VStack(alignment: .leading, spacing: Espacio.xl) { saludDeHoy }
                                         .frame(maxWidth: .infinity, alignment: .top)
                                         .fixedSize(horizontal: false, vertical: true)
                                         .topeArriba()
@@ -42,7 +42,7 @@ struct RevisionView: View {
                             }
                             .anchoLectura(Ancho.doble)
                         } else {
-                            VStack(alignment: .leading, spacing: Espacio.xl) { avisoPlan; fotos; check; peso; reloj; miDia }
+                            VStack(alignment: .leading, spacing: Espacio.xl) { avisoPlan; fotos; check; peso; reloj; saludDeHoy }
                                 .anchoLectura()
                         }
                     }
@@ -51,14 +51,13 @@ struct RevisionView: View {
                     .padding(.bottom, Espacio.xl)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                // Tirar para actualizar: el check, el peso, Mi Día, las fotos y la salud (sin cuenta no hay nada que traer).
+                // Tirar para actualizar: el check, el peso, las fotos y la salud (sin cuenta no hay nada que traer).
                 .refreshable {
                     guard let revision else { return }
                     async let r: Void = revision.cargarRevision()
-                    async let d: Void = revision.cargarMiDia()
                     async let f: Void = modeloFotos?.cargar() ?? ()
                     async let s: Void = salud?.cargar() ?? ()
-                    _ = await (r, d, f, s)
+                    _ = await (r, f, s)
                 }
                 .task {
                     // Bocetos: `-ir peso` (o check, reloj, midia, dias) abre desplazado hasta esa sección.
@@ -131,15 +130,16 @@ struct RevisionView: View {
     @ViewBuilder private var reloj: some View {
         if let salud { MiRelojView(modelo: salud).id("reloj") }
     }
-    private var miDia: some View {
-        MiDia(revision: revision, salud: salud, muestra: muestraMiDia).id("midia")
-    }
-
-    /// La demo de la web viene sembrada (racha 3); los bocetos llenos, con 30 días de historia; si no, las muestras.
-    private var muestraMiDia: MuestrasExtra.MiDia {
-        if modelo.esDemo { return MuestrasExtra.demo }
-        if DemoUI.lleno { return MuestrasExtra.lleno }
-        return MuestrasExtra.MiDia(racha: muestras.racha, habitos: muestras.habitos, adherencia: muestras.adherencia)
+    /// La recuperación y la salud (SAL-09/10), las cards de `ModeloSalud`. Conserva el ancla "midia": los avisos y links
+    /// que llevaban a Mi Día caen acá. Sin cuenta no hay salud.
+    @ViewBuilder private var saludDeHoy: some View {
+        if let salud {
+            VStack(alignment: .leading, spacing: Espacio.l) {
+                CardRecuperacionView(modelo: salud)
+                CardSaludView(modelo: salud)
+            }
+            .id("midia")
+        }
     }
 
     /// "Semana del 12 al 18 de octubre" (de lunes a domingo).

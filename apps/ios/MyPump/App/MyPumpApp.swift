@@ -112,7 +112,8 @@ struct Raiz: View {
         }
         .environment(navegacion)
         .accesorioDeDescanso()
-        .barraQueSeAchica()
+        // La barra de pestañas queda siempre entera: achicarla al bajar, como Música, empeoraba mucho el uso (Mati,
+        // 15-oct). No volver a ponerle `tabBarMinimizeBehavior`.
         .sensoryFeedback(.selection, trigger: navegacion.pestaña)
         // Tocar un aviso (también en un arranque en frío): a su pestaña, y el destino se consume.
         .onChange(of: CentroAvisos.shared.destino, initial: true) { _, destino in

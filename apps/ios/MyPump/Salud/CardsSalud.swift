@@ -137,18 +137,31 @@ struct CardRecuperacionView: View {
         verTodo
     }
 
+    /// La entrada al detalle, como un botón a la vista y con un texto que invita (Mati, 15-oct: antes era un renglón
+    /// verde, "Ver todos mis datos", que nadie tocaba).
     private var verTodo: some View {
         NavigationLink {
             SaludDetalleView(modelo: modelo)
         } label: {
-            HStack {
-                Text("Ver todos mis datos")
-                Spacer()
-                Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+            HStack(spacing: Espacio.s) {
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.sobreMarca)
+                    .frame(width: 36, height: 36)
+                    .background(Color.marca, in: .circle)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ver cómo está mi cuerpo").font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    Text("Sueño, pulso y recuperación, día por día").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
             }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color.marcaTexto)
+            .padding(Espacio.s)
+            .frame(minHeight: 56)
+            .background(Color.marcaSuave, in: .rect(cornerRadius: Radio.control + 4, style: .continuous))
+            .contentShape(.rect)
         }
+        .buttonStyle(.plain)
         .accessibilityIdentifier("ver-todos-mis-datos")
     }
 

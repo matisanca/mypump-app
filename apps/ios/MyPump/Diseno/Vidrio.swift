@@ -48,14 +48,4 @@ extension View {
             self
         }
     }
-
-    /// iOS 26: la barra de pestañas se achica al bajar, como en Música, y deja más pantalla al entrenamiento.
-    @ViewBuilder
-    func barraQueSeAchica() -> some View {
-        if #available(iOS 26.0, *) {
-            tabBarMinimizeBehavior(.onScrollDown)
-        } else {
-            self
-        }
-    }
 }

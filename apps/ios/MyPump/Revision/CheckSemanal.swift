@@ -3,7 +3,8 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Check de la semana (REV-06): cuatro escalas de 1 a 5 y una nota. Cada escala es una fila de botones redondos con
+/// Check de la semana (REV-06): cuatro escalas de 1 a 5, una nota y el peso de hoy (desde el 15-oct, a pedido de Mati:
+/// el peso es parte de mandar la revisión; los demás días se carga en la tarjeta de peso). Cada escala es una fila de botones redondos con
 /// sus extremos rotulados ("muy baja → excelente"); el botón dice qué falta en vez de quedar gris sin explicación.
 /// Sale por la cola (`ModeloRevision.enviarCheckin`); en la demo y en los bocetos queda en la pantalla.
 struct CheckSemanal: View {
@@ -12,6 +13,7 @@ struct CheckSemanal: View {
     let muestra: CheckinSemana?
     @State private var valores: [String: Int] = [:]
     @State private var nota = ""
+    @State private var peso = ""
     /// El cliente tocó algo: lo que llegue del servidor ya no pisa el borrador.
     @State private var editado = false
     @State private var enviadoMuestra = false
@@ -63,6 +65,26 @@ struct CheckSemanal: View {
                     .padding(.vertical, 12)
                     .background(Color.campo, in: .rect(cornerRadius: Radio.control, style: .continuous))
 
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Tu peso de hoy", systemImage: "scalemass.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .labelStyle(IconoTeñido(color: .marcaTexto))
+                    HStack(spacing: Espacio.xs) {
+                        TextField("Ej: 78,4", text: Binding(get: { peso }, set: { peso = $0; editado = true; aviso = nil }))
+                            .keyboardType(.decimalPad)
+                            .focused($escribiendo)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(Color.campo, in: .rect(cornerRadius: Radio.control, style: .continuous))
+                            .accessibilityLabel("Tu peso de hoy, en kilos")
+                            .accessibilityIdentifier("peso-check")
+                        Text("kg").font(.body.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    Text("En ayunas, al despertar. Si hoy no te pesaste, dejalo vacío: lo cargás otro día en Peso corporal.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 VStack(spacing: Espacio.xs) {
                     Button(action: enviar) {
                         Text(enviado ? "Actualizar mi check" : "Enviar mi check")
@@ -112,11 +134,19 @@ struct CheckSemanal: View {
             envios += 1
             return
         }
+        let kilos = peso.trimmingCharacters(in: .whitespaces)
+        if !kilos.isEmpty, PesoCorporal.leer(kilos) == nil {
+            aviso = "Revisá el peso: tiene que estar entre 30 y 300 kg."
+            return
+        }
         let check = Checkin(valores: valores, nota: nota)
         Task {
             if let falta = await revision.enviarCheckin(check) {
                 aviso = falta
             } else {
+                // El peso sale con el check, por la misma cola que el de la tarjeta de peso.
+                if !kilos.isEmpty { await revision.guardarPeso(kilos) }
+                peso = ""
                 editado = false
                 envios += 1
             }
