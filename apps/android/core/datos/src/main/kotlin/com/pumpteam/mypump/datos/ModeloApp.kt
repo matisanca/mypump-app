@@ -243,7 +243,9 @@ class ModeloApp(
             val r = cliente.llamar("mypump_get_cliente_info", mapOf("p_token" to ValorJson.Texto(t)))
             // Mientras se preguntaba se tocó otro link: gana el último.
             if (entrada != entradas || token != actual || _esDemo.value) return false
-            when (r) {
+            // Si mientras tanto la cuenta guardada resultó vencida, ya no hay una que anda: sigue como sin cuenta. Si no,
+            // volvía a guardar la vencida y avisaba "Seguís con tu cuenta." encima de "Este link ya no sirve".
+            if (_fase.value != Fase.TOKEN_INVALIDO) when (r) {
                 is Resultado.Falla -> {
                     if (avisar) _avisoLink.value = AvisoLink.SIN_CONEXION
                     return false

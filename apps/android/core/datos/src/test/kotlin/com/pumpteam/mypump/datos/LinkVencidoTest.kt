@@ -2,6 +2,8 @@ package com.pumpteam.mypump.datos
 
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -88,6 +90,27 @@ class LinkVencidoTest {
         assertTrue(m.entrar("https://app.mypumpteam.com/?t=$NUEVO"))
         assertTrue(m.fase.value == ModeloApp.Fase.LISTO && m.token == NUEVO && tel.almacen.leer() == NUEVO)
         assertNull(m.avisoLink.value)
+    }
+
+    /**
+     * Si mientras se revisaba el link la cuenta guardada resultó vencida (Mati la regeneró), ya no hay una que anda: sigue
+     * como sin cuenta. Si no, volvía a guardar la vencida y decía "Seguís con tu cuenta." encima de "Este link ya no sirve".
+     */
+    @Test
+    fun siLaCuentaGuardadaTambienEstaVencidaNoLaVuelveAGuardar() = enUnHilo { alcance ->
+        val t = TransporteProgramado { fn, cuerpo ->
+            if (fn == "mypump_get_cliente_info" && cuerpo["p_token"]?.comoTexto == VIEJO) delay(150)   // el link tarda más
+            200 to "[]"   // las dos vencidas
+        }
+        val almacen = TokenEnMemoria(TOK_A)
+        val m = ModeloApp(ClienteRpc(transporte = t), almacen, raiz, PreferenciasEnMemoria(), alcance)
+        val carga = async { m.cargar() }   // al abrir la app tocando el link
+        val link = async { m.entrar("https://app.mypumpteam.com/?t=$VIEJO") }
+        carga.await()
+        assertFalse(link.await())
+        assertEquals(ModeloApp.Fase.TOKEN_INVALIDO, m.fase.value)
+        assertNull(almacen.leer(), "volvió a guardar la cuenta vencida")
+        assertNull(m.avisoLink.value, "\"Seguís con tu cuenta.\" con la cuenta vencida")
     }
 
     @Test
