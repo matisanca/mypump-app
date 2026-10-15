@@ -10,21 +10,29 @@ import MyPumpModelos
 @Suite("Sin permiso para la IA", .serialized)
 @MainActor
 struct SinPermisoIATests {
+    /// Lo usa la regla del transporte, que corre en paralelo (`cargar` pide rutina, dieta y palanca a la vez): sin el
+    /// candado, dos `append` juntos rompían el proceso de las pruebas (SIGSEGV, 1 de 7 corridas el 15-oct).
     final class Estado: @unchecked Sendable {
-        var conRed = true
-        var llamadas: [String] = []
-        var visiones = 0
+        private let lock = NSLock()
+        private var _conRed = true
+        private var _llamadas: [String] = []
+        private var _visiones = 0
+        var conRed: Bool { get { lock.withLock { _conRed } } set { lock.withLock { _conRed = newValue } } }
+        var llamadas: [String] { get { lock.withLock { _llamadas } } set { lock.withLock { _llamadas = newValue } } }
+        var visiones: Int { get { lock.withLock { _visiones } } set { lock.withLock { _visiones = newValue } } }
+        func anotar(_ fn: String) { lock.withLock { _llamadas.append(fn) } }
+        func contarVision() { lock.withLock { _visiones += 1 } }
     }
 
     func modelo(_ e: Estado, raiz: URL) -> ModeloApp {
         let t = TransporteProgramado { fn, _ in
             guard e.conRed else { throw URLError(.notConnectedToInternet) }
-            e.llamadas.append(fn)
+            e.anotar(fn)
             switch fn {
             case "mypump_get_cliente_info": return (200, #"[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"#)
             case "mypump_get_rutina_activa": return (200, #"[{"id":"r1","semana_actual":1,"estructura":{"dias":[]}}]"#)
             case "mypump_guardar_consentimiento_ia": return (200, "true")
-            case "vision": e.visiones += 1; return (200, "{}")
+            case "vision": e.contarVision(); return (200, "{}")
             default: return (200, "[]")
             }
         }

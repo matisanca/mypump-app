@@ -451,7 +451,7 @@ struct EntrenoAccionesTests {
         b.servidor.cuando("get_rutina_activa", "[\(filaRutina(semana: 6))]")
         let m = b.modelo()
         var avisada: RutinaActiva?
-        m.alCambiarRutina = { avisada = $0 }
+        m.alCambiarRutina = { if case .nueva(let r, _) = $0 { avisada = r } }
         #expect(m.puedeAvanzar && m.botonAvanzar == "Pasar a Semana 6 →")
         #expect(await m.avanzarSemana() == .listo)
         #expect(b.servidor.llamadas("avanzar_semana").first?["p_semana_destino"] == .numero(6))
@@ -468,7 +468,7 @@ struct EntrenoAccionesTests {
         b.servidor.cuando("get_rutina_activa", "[\(filaRutina(semana: 1))]")
         let m = b.modelo(rutinaDePrueba(semana: 12, tieneSiguiente: true))
         var avisada: RutinaActiva?
-        m.alCambiarRutina = { avisada = $0 }
+        m.alCambiarRutina = { if case .nueva(let r, _) = $0 { avisada = r } }
         #expect(m.puedeEmpezarBloque && !m.puedeAvanzar)
         #expect(await m.empezarBloqueNuevo() == .listo)
         #expect(b.servidor.llamadas("activar_siguiente").count == 1)

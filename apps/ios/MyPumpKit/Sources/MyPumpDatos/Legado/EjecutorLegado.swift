@@ -125,10 +125,12 @@ extension Outbox.Persistido {
     /// Devuelve las que quedaron en la cola (también las que ya estaban por id).
     mutating func importarSinPisar(_ nuevas: [Operacion]) -> [Operacion] {
         var quedaron: [Operacion] = []
-        for op in nuevas {
+        for var op in nuevas {
             if ops.contains(where: { $0.id == op.id }) { quedaron.append(op); continue }
             if let k = op.dedupeKey, let otra = ops.last(where: { $0.dedupeKey == k }), otra.ts > op.ts { continue }
             if let k = op.dedupeKey { ops.removeAll { $0.dedupeKey == k } }
+            // Son de la Capacitor: la palanca remota las puede frenar aunque ya estén en la cola (hallazgo 2).
+            op.legado = true
             ops.append(op)
             quedaron.append(op)
         }

@@ -5,7 +5,7 @@ public struct RutinaActiva: Decodable, Sendable, Equatable {
     public let id: String
     public let version: Int
     public let estructura: EstructuraRutina
-    public let semanaActual: Int
+    public private(set) var semanaActual: Int
     public let fechaInicio: String?
     public let fechaFin: String?
     public let tieneSiguiente: Bool
@@ -24,6 +24,14 @@ public struct RutinaActiva: Decodable, Sendable, Equatable {
         fechaInicio = c.texto(.fechaInicio)
         fechaFin = c.texto(.fechaFin)
         tieneSiguiente = c.booleano(.tieneSiguiente) ?? false
+    }
+
+    /// La misma rutina en otra semana: al pasar de semana no cambia nada más. Para cuando el servidor ya avanzó y la
+    /// rutina nueva no llegó (`ModeloEntreno.avanzarSemana`).
+    public func conSemana(_ s: Int) -> RutinaActiva {
+        var r = self
+        r.semanaActual = s
+        return r
     }
 }
 

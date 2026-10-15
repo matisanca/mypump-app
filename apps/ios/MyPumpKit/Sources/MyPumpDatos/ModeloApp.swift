@@ -175,7 +175,7 @@ public final class ModeloApp {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
         let escrituras = Escrituras(cliente: cliente, token: t)
-        let cola = Outbox(archivo: disco.url("outbox.json")) { op in await escrituras.ejecutar(op) }
+        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true) { op in await escrituras.ejecutar(op) }
         outbox = cola
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
@@ -252,7 +252,10 @@ public final class ModeloApp {
         async let cfg = PalancaRemota.leer(cliente)
         let (rr, dd, palancaLeida) = await (r, d, cfg)
         guard vigente() else { return }
-        if let palancaLeida { palanca = palancaLeida }
+        if let palancaLeida {
+            palanca = palancaLeida
+            await outbox?.usarPalanca(opsLegadas: palancaLeida.opsLegadas)
+        }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         let copia = disco?.leer(CopiaOffline.self, "offline.json")
@@ -317,8 +320,35 @@ public final class ModeloApp {
         }
         let e = ModeloEntreno(cliente: cliente, token: token, outbox: outbox, disco: disco, rutina: rutina, info: info,
                               catalogo: catalogoVigente)
-        e.alCambiarRutina = { [weak self] nueva in self?.rutina = nueva }
+        let d = disco
+        e.alCambiarRutina = { [weak self, weak e] cambio in
+            guard let self, let e, self.entreno === e else { return }
+            self.cambioLaRutina(cambio, disco: d)
+        }
         entreno = e
+    }
+
+    /// Lo que el motor de Entreno cambió de la rutina (avanzar de semana, bloque nuevo), con la copia offline al día. Si
+    /// no, un arranque sin señal volvía a la semana anterior y lo que se cargaba pisaba sus series (revisión del 15-oct,
+    /// hallazgo 1). La web lo resuelve recargando la página, que vuelve a guardar el snapshot.
+    private func cambioLaRutina(_ cambio: ModeloEntreno.CambioRutina, disco d: Disco?) {
+        var copia = d?.leer(CopiaOffline.self, "offline.json")
+        switch cambio {
+        case .nueva(let r, let fila):
+            rutina = r
+            copia?.rutina = fila
+        case .semana(let r):
+            rutina = r
+            if case .objeto(var o)? = copia?.rutina, o["id"]?.comoTexto == r.id {
+                o["semana_actual"] = .numero(Double(r.semanaActual))
+                copia?.rutina = .objeto(o)
+            }
+        case .bloqueSinTraer:
+            copia?.rutina = nil
+        }
+        guard var c = copia else { return }
+        c.ts = Date().timeIntervalSince1970 * 1000
+        d?.guardar(c, "offline.json")
     }
 
     private var archivoCatalogo: URL {

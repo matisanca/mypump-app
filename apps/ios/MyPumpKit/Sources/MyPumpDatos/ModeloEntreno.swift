@@ -47,9 +47,19 @@ public final class ModeloEntreno {
     @ObservationIgnored public let demo: Bool
     @ObservationIgnored let zona: TimeZone
     @ObservationIgnored let reloj: @Sendable () -> Date
-    /// Se llama cuando el modelo trae una rutina nueva (avanzar de semana, bloque nuevo, recargar), para que
-    /// `ModeloApp` la tenga también.
-    @ObservationIgnored public var alCambiarRutina: ((RutinaActiva) -> Void)?
+    /// Lo que cambió de la rutina sin pasar por `ModeloApp` (avanzar de semana, bloque nuevo, recargar), para que lo tenga
+    /// también y deje la copia offline al día.
+    public enum CambioRutina: Sendable {
+        /// La trajo del servidor: con la fila tal cual llegó, para la copia offline.
+        case nueva(RutinaActiva, JSONValue)
+        /// El servidor ya pasó de semana y la rutina no llegó: la misma, en la semana nueva.
+        case semana(RutinaActiva)
+        /// El servidor activó el bloque nuevo y no llegó: el viejo quedó archivado y no se puede seguir cargando en él.
+        case bloqueSinTraer
+    }
+
+    /// Se llama cuando el modelo cambia la rutina (avanzar de semana, bloque nuevo, recargar).
+    @ObservationIgnored public var alCambiarRutina: ((CambioRutina) -> Void)?
 
     @ObservationIgnored var sesionesLocales: [String: SesionLocal] = [:]
     @ObservationIgnored var sinHistorialPorClave = false
@@ -579,10 +589,19 @@ public final class ModeloEntreno {
     /// borra los cachés de sesión y recarga.
     public func avanzarSemana() async -> ResultadoAvance {
         guard let token, !demo else { return .error(SemanaEntreno.errorAvanzar(sinRed: false)) }
-        let r = await cliente.llamar("mypump_avanzar_semana", ["p_token": .texto(token), "p_semana_destino": .numero(Double(semana + 1))])
+        let destino = semana + 1
+        let r = await cliente.llamar("mypump_avanzar_semana", ["p_token": .texto(token), "p_semana_destino": .numero(Double(destino))])
         if case .success(let v) = r, v != .null {
             borrarCachesDeSesion()
-            await recargar()
+            if !(await recargar()) {
+                // El servidor ya está en la semana nueva y la rutina no llegó (se cortó la señal en el medio): la misma
+                // rutina en esa semana. Si no, lo que se cargara iba a la semana pasada y pisaba sus series (revisión
+                // del 15-oct, hallazgo 1).
+                let nueva = rutina.conSemana(destino)
+                reemplazarRutina(nueva)
+                alCambiarRutina?(.semana(nueva))
+                await cargar()
+            }
             return .listo
         }
         return .error(SemanaEntreno.errorAvanzar(sinRed: Self.sinRed(r)))
@@ -594,7 +613,12 @@ public final class ModeloEntreno {
         let r = await cliente.llamar("mypump_activar_siguiente", ["p_token": .texto(token)])
         if case .success(let v) = r, AnclajeSwaps.esVerdadero(v) {
             borrarCachesDeSesion()
-            await recargar()
+            if !(await recargar()) {
+                // El bloque nuevo quedó activo y no llegó: el viejo está archivado y lo que se cargara en él armaba
+                // sesiones fantasma en el nuevo. Sin rutina hasta que vuelva la señal (la próxima carga trae el nuevo).
+                usable = false
+                alCambiarRutina?(.bloqueSinTraer)
+            }
             return .listo
         }
         return .error(SemanaEntreno.errorBloqueNuevo(sinRed: Self.sinRed(r)))
@@ -608,7 +632,7 @@ public final class ModeloEntreno {
               case .lista(let filas) = j, let fila = filas.first,
               let nueva = try? JSONDecoder().decode(RutinaActiva.self, from: JSONEncoder().encode(fila)) else { return false }
         reemplazarRutina(nueva)
-        alCambiarRutina?(nueva)
+        alCambiarRutina?(.nueva(nueva, fila))
         await cargar()
         return true
     }

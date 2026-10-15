@@ -10,12 +10,16 @@ public struct Operacion: Codable, Sendable, Equatable {
     public let dedupeKey: String?
     public var tries: Int
     public let ts: Double   // ms desde 1970, como Date.now()
+    /// Vino de la cola de la Capacitor (la migración). Con la palanca remota `migracion_ops_legadas` apagada no se manda:
+    /// queda en la cola hasta que se vuelva a prender (revisión del 15-oct, hallazgo 2). nil en las nativas.
+    public var legado: Bool?
 
-    public init(id: String, kind: String, payload: JSONValue, dedupeKey: String?, tries: Int = 0, ts: Double) {
+    public init(id: String, kind: String, payload: JSONValue, dedupeKey: String?, tries: Int = 0, ts: Double, legado: Bool? = nil) {
         self.id = id; self.kind = kind; self.payload = payload; self.dedupeKey = dedupeKey; self.tries = tries; self.ts = ts
+        self.legado = legado
     }
 
-    enum CodingKeys: String, CodingKey { case id = "_id", kind, payload, dedupeKey, tries, ts }
+    enum CodingKeys: String, CodingKey { case id = "_id", kind, payload, dedupeKey, tries, ts, legado }
 }
 
 /// El aviso de guardado que ve el cliente (el toast de la web, `showSaveState`).
@@ -74,12 +78,19 @@ public actor Outbox {
     private var alAbandonar: (@Sendable ([Operacion]) -> Void)?
     /// En los tests se apaga el reintento automático para forzar las pasadas a mano, como `await Outbox.flush()`.
     private let reintentoAutomatico: Bool
+    /// Las ops de la migración (`legado`) no salen: la palanca remota está apagada o todavía no se leyó. Las nativas
+    /// salen igual.
+    private var retenerLegadas: Bool
 
-    public init(archivo: URL?, maxIntentos: Int = 8, reintentoAutomatico: Bool = true, ejecutor: @escaping Ejecutor) {
+    /// `retenerLegadas`: la app arranca reteniendo las ops de la migración hasta leer la palanca (`usarPalanca`), así un
+    /// toque antes de la primera carga no las manda con la palanca apagada.
+    public init(archivo: URL?, maxIntentos: Int = 8, reintentoAutomatico: Bool = true, retenerLegadas: Bool = false,
+                ejecutor: @escaping Ejecutor) {
         self.archivo = archivo
         self.maxIntentos = maxIntentos
         self.ejecutor = ejecutor
         self.reintentoAutomatico = reintentoAutomatico
+        self.retenerLegadas = retenerLegadas
         if let archivo, let d = try? Data(contentsOf: archivo), let p = try? JSONDecoder().decode(Persistido.self, from: d) {
             estado = p
         }
@@ -91,6 +102,16 @@ public actor Outbox {
     }
 
     public func cambiarEjecutor(_ e: @escaping Ejecutor) { ejecutor = e }
+
+    /// Lo que dijo la palanca remota (`migracion_ops_legadas`): con false, las ops de la migración quedan en la cola sin
+    /// mandarse; al volver a true salen en la próxima pasada.
+    public func usarPalanca(opsLegadas: Bool) {
+        let antes = retenerLegadas
+        retenerLegadas = !opsLegadas
+        if antes, opsLegadas, estado.ops.contains(where: { $0.legado == true }) { programar(en: .zero) }
+    }
+
+    private func mandable(_ op: Operacion) -> Bool { !(retenerLegadas && op.legado == true) }
 
     public var pendientes: Int { estado.ops.count }
     public var operaciones: [Operacion] { estado.ops }
@@ -160,7 +181,7 @@ public actor Outbox {
                 enVuelo = t
                 await t.value
             }
-            if estado.ops.isEmpty || ultimaFallo { return }
+            if !estado.ops.contains(where: mandable) || ultimaFallo { return }
         }
     }
 
@@ -181,8 +202,8 @@ public actor Outbox {
 
     private func pasada() async {
         ultimaFallo = false
-        guard !estado.ops.isEmpty else { return }
-        let tanda = estado.ops
+        let tanda = estado.ops.filter(mandable)
+        guard !tanda.isEmpty else { return }
         let hayVisibles = tanda.contains { !Self.silenciosas.contains($0.kind) }
         var resueltas = Set<String>()
         var abandonadas: [Operacion] = []
