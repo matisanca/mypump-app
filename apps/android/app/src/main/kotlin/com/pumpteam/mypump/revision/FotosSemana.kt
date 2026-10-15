@@ -424,9 +424,20 @@ private fun FotoDeLaGaleria(semana: String, pose: String, rotulo: String, fotos:
             contentAlignment = Alignment.Center,
         ) {
             if (url != null) {
-                ImagenRemota(url, lado = 320.dp, modifier = Modifier.fillMaxSize()) {
+                // La ruedita, solo mientras se baja: si la foto no se pudo traer queda el ícono (una ruedita para siempre era
+                // una espera sin fin).
+                ImagenRemota(
+                    url,
+                    lado = 320.dp,
+                    modifier = Modifier.fillMaxSize(),
+                    mientrasCarga = {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(Modifier.size(20.dp), color = c.textoSecundario, strokeWidth = 2.dp)
+                        }
+                    },
+                ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(Modifier.size(20.dp), color = c.textoSecundario, strokeWidth = 2.dp)
+                        Icon(Iconos.Foto, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(24.dp))
                     }
                 }
             } else {

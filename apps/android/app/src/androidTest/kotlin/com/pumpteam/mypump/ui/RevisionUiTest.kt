@@ -476,6 +476,27 @@ class RevisionUiTest : PruebaUi() {
         assertFalse(p.existe(etiqueta("comparador")))
     }
 
+    /**
+     * Una foto de la galería que no se puede traer (sin señal, la URL firmada vencida, una foto rota) no deja la ruedita
+     * girando para siempre: gira mientras se baja y, al darse por perdida, queda el ícono de la foto. Era una espera sin fin
+     * (en Android 9, además, la Activity nunca quedaba quieta y la prueba de arriba colgó la corrida). Las pruebas no bajan
+     * fotos (`FotosDePrueba.sinRed`): la del frente se da por perdida enseguida.
+     */
+    @Test
+    fun unaFotoQueNoSePuedeTraerNoQuedaGirandoParaSiempre() {
+        servidor.ponerFotos(mapOf(lunes to listOf("frente")))
+        guardarCuenta()
+        abrir()
+        irARevision()
+        p.tocar(etiqueta("ver-mis-fotos"))
+        p.nodo(etiqueta("galeria-fotos"))
+        // Firmada (si no, ni siquiera se intenta bajar: se ve el ícono de entrada).
+        p.esperar("la foto del frente firmada") { servidor.firmas > 0 }
+        // Quieta de las dos formas: ni se dibuja (lo que se ve en las versiones nuevas) ni deja trabado el hilo principal (lo
+        // que pasaba en Android 9, donde con la ruedita girando no se llegaba a dibujar nada y el hilo nunca quedaba quieto).
+        p.esperar("la galería queda quieta", ms = 10_000, enElPrincipal = false) { Telefono.quietoConTope(2_000) && p.dibujosEn(600) == 0 }
+    }
+
     // ── Las anclas: el banner y ?scene=myday ──
 
     @Test

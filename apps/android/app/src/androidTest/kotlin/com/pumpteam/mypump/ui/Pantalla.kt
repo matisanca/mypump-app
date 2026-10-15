@@ -7,6 +7,7 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.ViewTreeObserver
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.semantics.SemanticsActions
@@ -19,6 +20,9 @@ import androidx.compose.ui.unit.toSize
 import androidx.test.platform.app.InstrumentationRegistry
 import com.pumpteam.mypump.diseno.ImagenesRemotas
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Las ventanas de Compose de la app (la Activity, las hojas, los menús). `ui-test-junit4` no está en el proyecto, así que
@@ -139,7 +143,24 @@ class Pantalla(private val esperaMs: Long = 15_000) {
     /** Lo deja quieto un rato (para afirmar que algo NO pasa). */
     fun quieto(ms: Long) {
         Thread.sleep(ms)
-        instr.waitForIdleSync()
+        Telefono.quietoConTope()
+    }
+
+    /**
+     * Cuántas veces se dibujó alguna ventana de la app en [ms]. Una pantalla quieta no se dibuja; una animación sin fin (una
+     * ruedita que no para) se dibuja decenas de veces por segundo. Sirve en todas las versiones: que el hilo principal no
+     * quede quieto con una animación andando solo se nota en las viejas (ver [Telefono.quietoConTope]).
+     */
+    fun dibujosEn(ms: Long): Int {
+        val dibujos = AtomicInteger()
+        val escucha = ViewTreeObserver.OnDrawListener { dibujos.incrementAndGet() }
+        val vistas = enPrincipal { Raices.activas().map { it.view }.onEach { it.viewTreeObserver.addOnDrawListener(escucha) } }
+        try {
+            Thread.sleep(ms)
+        } finally {
+            enPrincipal { for (v in vistas) if (v.viewTreeObserver.isAlive) v.viewTreeObserver.removeOnDrawListener(escucha) }
+        }
+        return dibujos.get()
     }
 
     /** Toca: la acción de clic del nodo o, si es un texto adentro de un botón, la del primer ancestro que la tenga. */
@@ -341,9 +362,26 @@ object Telefono {
 
     fun captura(nombre: String) {
         Thread.sleep(400)   // que terminen las animaciones de entrada
-        instr.waitForIdleSync()
+        quietoConTope()
         shell("mkdir -p $CARPETA_CAPTURAS")
         shell("screencap -p $CARPETA_CAPTURAS/$nombre.png")
+    }
+
+    /**
+     * Espera a que el hilo principal quede quieto, como `Instrumentation.waitForIdleSync`, pero con tope. Con una animación
+     * sin fin en pantalla, en Android 9 el hilo principal nunca queda quieto y `waitForIdleSync` no vuelve nunca: el 15-oct
+     * la galería de fotos colgó la corrida 13 minutos, adentro de `ActivityScenario.close()`. Devuelve si quedó quieto antes
+     * del tope.
+     */
+    fun quietoConTope(ms: Long = 20_000): Boolean {
+        val quieto = CountDownLatch(1)
+        instr.runOnMainSync {
+            Looper.myQueue().addIdleHandler {
+                quieto.countDown()
+                false
+            }
+        }
+        return quieto.await(ms, TimeUnit.MILLISECONDS)
     }
 
     fun pantallazo(): Bitmap = instr.uiAutomation.takeScreenshot()
