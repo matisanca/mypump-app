@@ -49,8 +49,9 @@ struct EncabezadoSalud: View {
     let titulo: String
     var body: some View {
         HStack(spacing: 8) {
-            Text(icono)
-            Text(titulo).font(.headline)
+            // Decorativo: el título ya lo dice (VoiceOver leía «batería, Recuperación»).
+            Text(icono).accessibilityHidden(true)
+            Text(titulo).font(.headline).accessibilityAddTraits(.isHeader)
         }
     }
 }
