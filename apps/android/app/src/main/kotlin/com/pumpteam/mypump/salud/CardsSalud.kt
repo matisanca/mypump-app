@@ -276,7 +276,7 @@ fun CardSalud(salud: ModeloSalud, modifier: Modifier = Modifier) {
     val conectado by salud.conectado.collectAsStateWithLifecycle()
     val filas by salud.salud.collectAsStateWithLifecycle()
     val fecha by salud.fecha.collectAsStateWithLifecycle()
-    val progreso by salud.progresoHistorial.collectAsStateWithLifecycle()
+    val progreso = salud.progresoHistorial.collectAsStateWithLifecycle().value
     val resumen = remember(filas, fecha) { salud.resumenSalud }
     val c = MyPump.colores
     if (salud.sincronizador != null && !conectado) {
@@ -315,7 +315,7 @@ fun CardSalud(salud: ModeloSalud, modifier: Modifier = Modifier) {
         Tarjeta(modifier) {
             EncabezadoSalud("👟", "Salud")
             Text(
-                "Trayendo tu historial… ${progreso!!.hecho}/${progreso!!.total} días",
+                "Trayendo tu historial… ${progreso.hecho}/${progreso.total} días",
                 style = MaterialTheme.typography.bodyMedium.merge(Letras.cifras), fontWeight = FontWeight.Medium,
             )
         }

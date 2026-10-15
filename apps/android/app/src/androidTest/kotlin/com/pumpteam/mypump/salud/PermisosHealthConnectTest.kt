@@ -34,6 +34,8 @@ class PermisosHealthConnectTest : PruebaUi() {
         e.moveToState(Lifecycle.State.CREATED)
         val r = runCatching { runBlocking { PermisosHealthConnect.pedir(setOf("android.permission.health.READ_STEPS")) } }
         assertTrue("${r.exceptionOrNull()}", r.exceptionOrNull() is IllegalStateException)
+        // Cerrar un escenario parado espera su tope (45 s): se lo vuelve a la vista antes.
+        e.moveToState(Lifecycle.State.RESUMED)
     }
 
     /**

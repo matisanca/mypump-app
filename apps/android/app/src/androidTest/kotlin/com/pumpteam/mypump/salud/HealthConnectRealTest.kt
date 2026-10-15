@@ -27,6 +27,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -97,6 +98,37 @@ class HealthConnectRealTest : PruebaUi() {
     /** El paquete de la actividad de arriba (`topResumedActivity`). */
     private fun arriba(): String? = Telefono.shell("dumpsys activity activities").lineSequence()
         .firstOrNull { "topResumedActivity=" in it }?.let { Regex("""u\d+ ([A-Za-z0-9_.]+)/""").find(it)?.groupValues?.get(1) }
+
+    /**
+     * El corte de la hoja de la primera vez (`conectar(limiteMs)`, GEN-06) con la hoja de VERDAD: pasado el límite la
+     * pantalla sigue (null), la hoja de Health Connect queda abierta y la conexión sigue de fondo; cuando el cliente cierra
+     * las dos tandas (acá, con Atrás), termina sola.
+     */
+    @Test
+    fun a0_elCorteDeLaPrimeraVezNoCancelaLaHoja() = runBlocking {
+        assumeTrue("ya estaba dado (la corrida no empezó con la app recién instalada)", "android.permission.health.READ_STEPS" !in dados())
+        abrir()
+        p.nodo(etiqueta("campo-link"))
+        val alcance = CoroutineScope(Dispatchers.Main + SupervisorJob())
+        try {
+            val salud = com.pumpteam.mypump.datos.ModeloSalud(
+                ClienteRpc(transporte = Base()), "tok-de-prueba-nativa-0001", fuente, PreferenciasEnMemoria(), alcance,
+            )
+            val r = withContext(Dispatchers.Main) { salud.conectar(limiteMs = 1_500) }
+            assertNull("no cortó: la primera vez no puede quedar esperando la hoja", r)
+            assertTrue(salud.conectando.value)
+            p.esperar("la hoja sigue abierta", ms = 10_000, enElPrincipal = false) { arriba()?.takeIf { it != paquete } }
+            // El cliente cierra las dos tandas (el núcleo y el resto) y la conexión termina de fondo.
+            p.esperar("la conexión terminó de fondo", ms = 40_000, enElPrincipal = false) {
+                if (arriba() != paquete) Telefono.shell("input keyevent KEYCODE_BACK")
+                Thread.sleep(700)
+                salud.conectado.value.takeIf { it }
+            }
+            assertFalse(salud.conectando.value)
+        } finally {
+            alcance.cancel()
+        }
+    }
 
     /**
      * La hoja de verdad, con el contrato registrado en la MainActivity: se abre la de Health Connect (Android 14+ no la
