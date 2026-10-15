@@ -316,11 +316,11 @@ private fun BotonHabito(campo: String, si: Boolean, valor: Boolean?, titulo: Str
             .size(44.dp)
             .clip(CircleShape)
             .clickable(enabled = habilitado, role = Role.Button) { alTocar(campo, if (si) "true" else "false") }
-            // TalkBack dice "Dormí bien: sí, marcado" (el `accessibilityValue` de iOS, que leen también las pruebas).
+            // TalkBack dice "Dormí bien: sí, marcado, botón" (el `accessibilityValue` de iOS, que leen también las pruebas).
+            // Sin `selected`: con eso Android lo anunciaba además como casilla ("no marcado") encima del estado propio.
             .semantics {
                 contentDescription = "$titulo: ${if (si) "sí" else "no"}"
-                stateDescription = if (activo) "marcado" else ""
-                selected = activo
+                if (activo) stateDescription = "marcado"
             }
             .testTag("habito-$campo-${if (si) "si" else "no"}"),
         contentAlignment = Alignment.Center,
