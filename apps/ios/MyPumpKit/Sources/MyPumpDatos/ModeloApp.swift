@@ -77,6 +77,8 @@ public final class ModeloApp {
     @ObservationIgnored public private(set) var token: String?
     @ObservationIgnored var disco: Disco?
     @ObservationIgnored public private(set) var outbox: Outbox?
+    /// La sesión del día de la cuenta: la comparten la cola y el motor de Entreno (hallazgo 5).
+    @ObservationIgnored private var sesionesDelDia = SesionesDelDia()
     @ObservationIgnored let raizDisco: URL?
     /// El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy".
     @ObservationIgnored private var diaCargado: String?
@@ -174,7 +176,9 @@ public final class ModeloApp {
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
-        let escrituras = Escrituras(cliente: cliente, token: t)
+        let sesiones = SesionesDelDia()
+        sesionesDelDia = sesiones
+        let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)
         let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true) { op in await escrituras.ejecutar(op) }
         outbox = cola
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
@@ -320,7 +324,7 @@ public final class ModeloApp {
             return
         }
         let e = ModeloEntreno(cliente: cliente, token: token, outbox: outbox, disco: disco, rutina: rutina, info: info,
-                              catalogo: catalogoVigente)
+                              catalogo: catalogoVigente, sesiones: sesionesDelDia)
         let d = disco
         e.alCambiarRutina = { [weak self, weak e] cambio in
             guard let self, let e, self.entreno === e else { return }

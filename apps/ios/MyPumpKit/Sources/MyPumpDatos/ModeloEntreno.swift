@@ -65,8 +65,9 @@ public final class ModeloEntreno {
     @ObservationIgnored var sinHistorialPorClave = false
     @ObservationIgnored var generacionHistorial: [String: Int] = [:]
     @ObservationIgnored var historialEnVuelo: [String: Task<Void, Never>] = [:]
-    /// La creación de la sesión en vuelo, por día y semana (la de otro día no sirve).
-    @ObservationIgnored var sesionEnVuelo: (clave: String, tarea: Task<String?, Never>)?
+    /// La creación de la sesión en vuelo, por día y semana (la de otro día no sirve). Es la de la cuenta: la cola la usa
+    /// también, así la primera serie del día no crea la sesión dos veces (hallazgo 5).
+    @ObservationIgnored let sesiones: SesionesDelDia
     /// SER-14: lo último que se escribió en el archivo de la rutina. Lo que cambie desde acá sale por la cola.
     @ObservationIgnored var sustitucionesGuardadas: [String: JSONValue] = [:]
     /// SER-14: mientras se espera al servidor, lo que se tocó en el medio (ahí gana lo del teléfono). nil = no se espera.
@@ -90,11 +91,12 @@ public final class ModeloEntreno {
 
     public init(cliente: ClienteRPC, token: String?, outbox: Outbox?, disco: Disco?, rutina: RutinaActiva, info: ClienteInfo? = nil,
                 catalogo: CatalogoEjercicios = CatalogoEjercicios([]), demo: Bool? = nil, zona: TimeZone = .current,
-                reloj: @escaping @Sendable () -> Date = { Date() }) {
+                reloj: @escaping @Sendable () -> Date = { Date() }, sesiones: SesionesDelDia = SesionesDelDia()) {
         self.cliente = cliente
         self.token = token
         self.outbox = outbox
         self.disco = disco
+        self.sesiones = sesiones
         self.info = info
         self.catalogo = catalogo
         self.demo = demo ?? (token == nil || outbox == nil)
@@ -371,18 +373,11 @@ public final class ModeloEntreno {
         if demo { sesionIniciada = true; return nil }
         guard let diaId = dia.dia.id, let token else { return nil }
         let semana = self.semana
-        let clave = "\(diaId)|\(semana)"
-        if let enVuelo = sesionEnVuelo, enVuelo.clave == clave { return await enVuelo.tarea.value }
-        let t = Task { [cliente] () -> String? in
-            if case .success(let v) = await cliente.llamar("mypump_iniciar_sesion",
-                                                           ["p_token": .texto(token), "p_dia_id": .texto(diaId), "p_semana": .numero(Double(semana))]) {
-                return JS.verdadero(v.comoTexto)
-            }
-            return nil
+        let cliente = cliente
+        let r = await sesiones.iniciar(SesionesDelDia.clave(dia: diaId, semana: Double(semana)), usarResueltas: false) {
+            await cliente.llamar("mypump_iniciar_sesion", ["p_token": .texto(token), "p_dia_id": .texto(diaId), "p_semana": .numero(Double(semana))])
         }
-        sesionEnVuelo = (clave, t)
-        let id = await t.value
-        if sesionEnVuelo?.clave == clave { sesionEnVuelo = nil }
+        let id: String? = if case .success(let v) = r { JS.verdadero(v.comoTexto) } else { nil }
         // Si se cambió de día mientras viajaba, no es la sesión del día que se mira.
         if let id, dia.dia.id == diaId, dia.semana == semana {
             dia.sesionId = id
