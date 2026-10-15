@@ -127,7 +127,10 @@ public enum FaseRemotaLegado {
         // Los swaps de comida que el teléfono tenía y el servidor nunca vio: se deciden ANTES de drenar nada.
         switch await subirSwapsSinMigrar(entorno: entorno, token: token, cliente: cliente, outbox: outbox) {
         case .none: r.sinRed = true
-        case .some(let n): r.swapsSinMigrar = n
+        case .some(let n):
+            r.swapsSinMigrar = n
+            // Decidido: los reemplazos de la cola vieja ya pueden salir (hasta acá los retenía la cola).
+            await outbox.soltarSwapsLegados()
         }
 
         var resueltas: Set<Int> = []

@@ -113,16 +113,21 @@ public actor Outbox {
     /// Las ops de la migración (`legado`) no salen: la palanca remota está apagada o todavía no se leyó. Las nativas
     /// salen igual.
     private var retenerLegadas: Bool
+    /// Los `swap` y `swap_del` de la migración esperan, además, a que se decida qué reemplazos de comida del teléfono nunca
+    /// llegaron al servidor (`soltarSwapsLegados`). Si salían antes, el servidor «ya tenía algo», ganaba la mezcla y se
+    /// perdían los que estaban solo en el teléfono (lo encontró sim-migracion.sh, 15-oct).
+    private var retenerSwapsLegados: Bool
 
     /// `retenerLegadas`: la app arranca reteniendo las ops de la migración hasta leer la palanca (`usarPalanca`), así un
     /// toque antes de la primera carga no las manda con la palanca apagada.
     public init(archivo: URL?, maxIntentos: Int = 8, reintentoAutomatico: Bool = true, retenerLegadas: Bool = false,
-                ejecutor: @escaping Ejecutor) {
+                retenerSwapsLegados: Bool = false, ejecutor: @escaping Ejecutor) {
         self.archivo = archivo
         self.maxIntentos = maxIntentos
         self.ejecutor = ejecutor
         self.reintentoAutomatico = reintentoAutomatico
         self.retenerLegadas = retenerLegadas
+        self.retenerSwapsLegados = retenerSwapsLegados
         if let archivo, let d = try? Data(contentsOf: archivo), let p = try? JSONDecoder().decode(Persistido.self, from: d) {
             estado = p
         }
@@ -147,7 +152,20 @@ public actor Outbox {
         if antes, opsLegadas, estado.ops.contains(where: { $0.legado == true }) { programar(en: .zero) }
     }
 
-    private func mandable(_ op: Operacion) -> Bool { !(retenerLegadas && op.legado == true) }
+    /// Ya se decidió qué reemplazos de comida del teléfono hay que subir (`hidratarDieta` o la Fase R): los `swap` y
+    /// `swap_del` de la migración pueden salir.
+    public func soltarSwapsLegados() {
+        guard retenerSwapsLegados else { return }
+        retenerSwapsLegados = false
+        if !retenerLegadas, estado.ops.contains(where: { $0.legado == true && Self.esSwap($0.kind) }) { programar(en: .zero) }
+    }
+
+    private static func esSwap(_ kind: String) -> Bool { kind == "swap" || kind == "swap_del" }
+
+    private func mandable(_ op: Operacion) -> Bool {
+        guard op.legado == true else { return true }
+        return !retenerLegadas && !(retenerSwapsLegados && Self.esSwap(op.kind))
+    }
 
     public var pendientes: Int { estado.ops.count }
     public var operaciones: [Operacion] { estado.ops }

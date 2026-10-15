@@ -227,7 +227,7 @@ public final class ModeloApp {
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)
-        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true) { op in await escrituras.ejecutar(op) }
+        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true, retenerSwapsLegados: true) { op in await escrituras.ejecutar(op) }
         outbox = cola
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
@@ -345,6 +345,9 @@ public final class ModeloApp {
         }
         rutina = rutinaJSON.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(dietaJSON)
+        // El servidor dijo que no hay dieta: no hay reemplazos del teléfono que decidir y los de la cola vieja pueden salir.
+        // Si la dieta no llegó (red), siguen esperando.
+        if case .success = dd, dieta == nil { await outbox?.soltarSwapsLegados() }
         if rutinaJSON != nil || dietaJSON != nil || copia != nil {
             disco?.guardar(CopiaOffline(info: primera, rutina: rutinaJSON, dieta: dietaJSON, ts: Date().timeIntervalSince1970 * 1000), "offline.json")
         }
@@ -705,6 +708,8 @@ public final class ModeloApp {
             if case .objeto(var o) = payload { o["dietaId"] = .texto(dieta.id); payload = .objeto(o) }
             await outbox.encolar(op.kind, payload, dedupeKey: op.clave)
         }
+        // Decidido con lo que tenía el servidor ANTES de los reemplazos de la cola vieja: ahora pueden salir.
+        await outbox.soltarSwapsLegados()
         if h.migrando {
             await outbox.drenar()
             let quedan = (await outbox.pendientesPorClave()).keys.contains { $0.hasPrefix("swap_\(dieta.id)_") }
