@@ -173,6 +173,16 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 03:00, Android: Dieta con escritura mergeada (f4bf5ce) y una falla de producción:**
+  - **Dieta** (DIE-08 a 18): la mano, reemplazar, el alimento propio con la etiqueta, las comidas libres con la foto del
+    plato y `food-db.json` en el APK. Ya no queda ninguna pantalla «en construcción» en Android. Instrumentadas: 170.
+  - **Producción: las fotos de comida con IA fallan desde el 14-oct a las 13:03**, en la app de hoy y en la nativa.
+    `~/mini-vision` corre `codex exec` sin `-m` y el modelo por defecto de la Mini (`gpt-5.5`) ya no lo acepta la cuenta
+    de ChatGPT. El bot y el chat pasan `-m gpt-5.6-sol` y siguen andando.
+    - **El arreglo**: una línea en `~/.codex/config.toml` de la Mini. Está probado a mano sin tocar nada.
+    - **Espera el OK de Mati**; le llegó un aviso al teléfono a las 02:58.
+    - Detalle en la memoria `codex-modelo-default-minivision`.
+
 - **15-oct 02:30, iOS TestFlight 104 y la matriz de Android:**
   - **iOS:**
     - Los hallazgos menores de la revisión están arreglados (dd88596): 4, 5, 6, 7, 9 a 14, la firma de fotos, `Outbox` con
