@@ -578,6 +578,7 @@ private struct BloqueEjercicios: View {
                         FilaEjercicio(motor: motor, ejercicio: e, numero: primerNumero + j)
                     }
                     .buttonStyle(FilaPresionable())
+                    .accessibilityIdentifier("fila-ejercicio-\(primerNumero + j)")
                     if j < total - 1 {
                         Divider().padding(.leading, 90)
                     }
