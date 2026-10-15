@@ -100,7 +100,44 @@ La interfaz cambió entera, así que van capturas nuevas de 6,9" y 13", nunca de
 Igual que hoy (salud y fitness, fotos, contenido del usuario e identificador, ligados al cliente, sin tracking). Se
 suma **"Other Diagnostic Data"** cuando exista el recibo de la migración, que es la compuerta G2.
 
-## Google Play (cuando esté Android)
+## Google Play
 
-Lo mismo en castellano, más la declaración de Health Connect con los 13 permisos de lectura y el historial. Rollout por
-porcentaje.
+La 2.0.0 nativa sube como update de `com.pumpteam.mypump`.
+- **El AAB.** Lo arma el workflow `android-nativa` de Codemagic (tag `nand-2.0.0-<versionCode>`, desde 101; la
+  Capacitor publicada es el 18). Va firmado con `mypump-upload`, la misma clave de subida, y Play lo vuelve a firmar con
+  la de la app.
+- **La subida es manual:** no hay cuenta de servicio de Google Cloud.
+
+### "Novedades de esta versión" (es-419, hasta 500 caracteres)
+
+```
+MyPump ahora es una app nativa de Android: más rápida, más fluida y con el modo oscuro de tu teléfono.
+
+• Entreno: cargá tus series con un toque, con descanso integrado y aviso al terminar.
+• Dieta: reemplazá alimentos con equivalentes reales y mirá la porción con la mano.
+• Revisión: check, fotos, peso y hábitos en un solo lugar.
+• Funciona sin señal: lo que cargás se guarda y se sube solo.
+
+Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
+```
+
+### Lo que hay que tocar en la consola (Mati, o yo con su sesión y su OK)
+
+1. **Data safety** (`docs/PLAYSTORE_METADATA.md` tiene lo de hoy). Hay que sumar lo que la tabla no lista:
+   - **Información y rendimiento de la app → Diagnóstico.** Es el recibo de la migración: cuántas filas hay por tabla
+     y un UUID, sin contenido.
+   - **ID de dispositivo u otros.** Es el token de FCM de los avisos; la 1.0.12 ya lo mandaba.
+   - **Mensajes → Otros mensajes en la app.** Es el chat con el coach.
+
+   Los tres son de funcionalidad de la app y no se comparten: la IA del chat procesa por cuenta de MyPump, sin el nombre.
+   Si alguno ya figuraba, se deja como está.
+2. **Health apps declaration.** Pide los mismos 14 permisos que la 1.0.12 (13 de lectura y el historial), sin escritura
+   ni segundo plano, así que no cambia. Pero su texto todavía menciona «saturación de oxígeno», que se sacó el 28-ago:
+   hay que corregir ese renglón. Queda «Frecuencia respiratoria: se compara contra la línea de base del propio usuario
+   para detectar desvíos».
+3. **Capturas.** Van como mínimo 2 de teléfono, de nativa36 (1080×2400), y las de tablet de 10" de nativa35. Nunca
+   de un cliente: se sacan con la demo y las respuestas grabadas, como en iOS.
+4. **Producción por porcentaje.** Primero 10 %, después 50 % y 100 %, mirando cada día los recibos de la migración y los
+   fallidos (`scripts/nativa/beta_diario.py`). El porcentaje se puede frenar, pero no volver atrás.
+5. **Permisos que la app NO pide**, por si Play pregunta: alarmas exactas, servicios en primer plano, leer salud en
+   segundo plano y escritura de salud. Las notificaciones (Android 13+) se piden en la hoja de la primera vez.
