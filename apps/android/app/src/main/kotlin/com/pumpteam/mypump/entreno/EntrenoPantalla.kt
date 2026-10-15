@@ -104,6 +104,7 @@ fun EntrenoPantalla(modelo: ModeloApp, preguntador: Preguntador) {
                         preguntador = preguntador,
                         desplazamiento = desplazamiento,
                         alAbrir = { abierto = it },
+                        alCompletarDia = alCompletarDia,
                     )
                 } else {
                     EjercicioPantalla(

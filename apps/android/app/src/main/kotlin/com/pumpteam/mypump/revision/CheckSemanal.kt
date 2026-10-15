@@ -1,5 +1,7 @@
 package com.pumpteam.mypump.revision
 
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -62,11 +64,13 @@ import com.pumpteam.mypump.diseno.Tarjeta
 import com.pumpteam.mypump.entreno.Letras
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.CheckinSemanal
+import com.pumpteam.mypump.reglas.PesoCorporal
 import com.pumpteam.mypump.reglas.FotosProgreso
 import kotlinx.coroutines.launch
 
 /**
- * Check de la semana (REV-06, gemelo de `CheckSemanal.swift`): cuatro escalas de 1 a 5 y una nota. Cada escala es una
+ * Check de la semana (REV-06, gemelo de `CheckSemanal.swift`): cuatro escalas de 1 a 5, una nota y el peso de hoy (desde
+ * el 15-oct, a pedido de Mati: el peso es parte de mandar la revisión; los demás días se carga en la tarjeta de peso). Cada escala es una
  * fila de botones redondos con sus extremos rotulados ("muy baja → excelente"); el botón dice qué falta ("Faltan: …") en
  * vez de quedar gris sin explicación. Sale por la cola (`ModeloRevision.enviarCheckin`); en la demo queda en la pantalla.
  *
@@ -82,6 +86,7 @@ fun CheckSemanal(revision: ModeloRevision?, modifier: Modifier = Modifier) {
     val semana = revision?.fecha?.collectAsStateWithLifecycle()?.value?.let(FotosProgreso::lunes)
     var valores by rememberSaveable(stateSaver = GuardadorValores) { mutableStateOf(emptyMap<String, Int>()) }
     var nota by rememberSaveable { mutableStateOf("") }
+    var peso by rememberSaveable { mutableStateOf("") }
     // El cliente tocó algo: lo que llegue del servidor ya no pisa el borrador.
     var editado by rememberSaveable { mutableStateOf(false) }
     var semanaDelBorrador by rememberSaveable { mutableStateOf(semana) }
@@ -111,12 +116,21 @@ fun CheckSemanal(revision: ModeloRevision?, modifier: Modifier = Modifier) {
     fun enviar() {
         foco.clearFocus()
         val r = revision ?: return
+        val kilos = peso.trim()
+        if (kilos.isNotEmpty() && PesoCorporal.leer(kilos) == null) {
+            aviso = "Revisá el peso: tiene que estar entre 30 y 300 kg."
+            tactil.performHapticFeedback(HapticFeedbackType.Reject)
+            return
+        }
         alcance.launch {
             val falta = r.enviarCheckin(Checkin(valores, nota))
             if (falta != null) {
                 aviso = falta
                 tactil.performHapticFeedback(HapticFeedbackType.Reject)
             } else {
+                // El peso sale con el check, por la misma cola que el de la tarjeta de peso.
+                if (kilos.isNotEmpty()) r.guardarPeso(kilos)
+                peso = ""
                 editado = false
                 tactil.performHapticFeedback(HapticFeedbackType.Confirm)
             }
@@ -188,6 +202,11 @@ fun CheckSemanal(revision: ModeloRevision?, modifier: Modifier = Modifier) {
                     }
                 },
             )
+            CampoPesoDeHoy(peso) {
+                peso = it
+                editado = true
+                aviso = null
+            }
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
                 BotonMarca(
                     if (enviado) "Actualizar mi check" else "Enviar mi check",
@@ -270,3 +289,50 @@ private val GuardadorValores: Saver<Map<String, Int>, Any> = Saver(
         lista.chunked(2).mapNotNull { (k, v) -> (k as? String)?.let { clave -> (v as? Int)?.let { clave to it } } }.toMap()
     },
 )
+
+/** "Tu peso de hoy" adentro del check: opcional, con teclado numérico (el de `CheckSemanal.swift`). */
+@Composable
+private fun CampoPesoDeHoy(peso: String, alCambiar: (String) -> Unit) {
+    val c = MyPump.colores
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(IconosRevision.Balanza, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(16.dp))
+            Text("Tu peso de hoy", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+            BasicTextField(
+                value = peso,
+                onValueChange = alCambiar,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = c.texto),
+                cursorBrush = SolidColor(c.marcaTexto),
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { contentDescription = "Tu peso de hoy, en kilos" }
+                    .testTag("peso-check"),
+                decorationBox = { campo ->
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 44.dp)
+                            .clip(RoundedCornerShape(Radio.control))
+                            .background(c.campo)
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                    ) {
+                        if (peso.isEmpty()) {
+                            Text("Ej: 78,4", style = MaterialTheme.typography.bodyLarge, color = c.textoTerciario, modifier = Modifier.clearAndSetSemantics {})
+                        }
+                        campo()
+                    }
+                },
+            )
+            Text("kg", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = c.textoSecundario)
+        }
+        Text(
+            "En ayunas, al despertar. Si hoy no te pesaste, dejalo vacío: lo cargás otro día en Peso corporal.",
+            style = Letras.caption,
+            color = c.textoSecundario,
+        )
+    }
+}

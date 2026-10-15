@@ -10,6 +10,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -124,6 +129,7 @@ fun ListaEntreno(
     preguntador: Preguntador,
     desplazamiento: ScrollState,
     alAbrir: (String) -> Unit,
+    alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
 ) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
@@ -184,7 +190,7 @@ fun ListaEntreno(
                     if (motor.vacio) {
                         DiaVacio()
                     } else {
-                        CuerpoDia(motor, v, preguntador, alAbrir, alCerrarDia = { cerrando = true })
+                        CuerpoDia(motor, v, preguntador, alAbrir, alCompletarDia, alCerrarDia = { cerrando = true })
                     }
                     PieRespaldo(OrigenRespaldo.ENTRENO, Modifier.padding(top = Espacio.xs))
                 }
@@ -402,6 +408,7 @@ private fun CuerpoDia(
     v: VistaEntreno,
     preguntador: Preguntador,
     alAbrir: (String) -> Unit,
+    alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
     alCerrarDia: () -> Unit,
 ) {
     val c = MyPump.colores
@@ -433,7 +440,7 @@ private fun CuerpoDia(
 
     var primero = 1
     for (b in motor.bloques) {
-        BloqueEjercicios(motor, v, b, primero, alAbrir)
+        BloqueEjercicios(motor, v, b, primero, preguntador, alAbrir, alCompletarDia)
         primero += b.ejercicios.size
     }
 
@@ -581,7 +588,15 @@ private fun CronometroSesion(texto: String, detalle: String?, alCerrar: () -> Un
 
 /** Un bloque: "BLOQUE 1 · Espalda · 0/3" y sus ejercicios en una sola tarjeta, separados por líneas como una lista. */
 @Composable
-private fun BloqueEjercicios(motor: ModeloEntreno, v: VistaEntreno, b: ModeloEntreno.BloqueDelDia, primerNumero: Int, alAbrir: (String) -> Unit) {
+private fun BloqueEjercicios(
+    motor: ModeloEntreno,
+    v: VistaEntreno,
+    b: ModeloEntreno.BloqueDelDia,
+    primerNumero: Int,
+    preguntador: Preguntador,
+    alAbrir: (String) -> Unit,
+    alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
+) {
     val c = MyPump.colores
     val total = b.ejercicios.size
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.s), modifier = Modifier.testTag("bloque-${b.indice}")) {
@@ -602,7 +617,12 @@ private fun BloqueEjercicios(motor: ModeloEntreno, v: VistaEntreno, b: ModeloEnt
         }
         Column(Modifier.fillMaxWidth().superficieTarjeta()) {
             b.ejercicios.forEachIndexed { j, e ->
-                FilaEjercicio(motor, v, e, primerNumero + j, alAbrir)
+                // Tocar un ejercicio lo abre ahí mismo, como la card de la web (Mati, 15-oct); la página del ejercicio
+                // queda para la técnica y los comentarios ("Técnica y notas").
+                FilaEjercicio(motor, v, e, primerNumero + j)
+                AnimatedVisibility(visible = v.dia.expandido == e.id, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                    EjercicioEnLista(motor, v, e.id, preguntador, alAbrir, alCompletarDia)
+                }
                 if (j < total - 1) Separador(sangria = 90.dp)
             }
         }
@@ -616,8 +636,9 @@ private fun BloqueEjercicios(motor: ModeloEntreno, v: VistaEntreno, b: ModeloEnt
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejercicio, numero: Int, alAbrir: (String) -> Unit) {
+private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejercicio, numero: Int) {
     val c = MyPump.colores
+    val alcance = LocalAlcanceApp.current
     val lugar = ejercicio.id
     val ef = motor.efectivo(ejercicio)
     val pauta = Progresiones.pauta(ef.ejercicio, motor.semana)
@@ -640,7 +661,7 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = "Abrir") { alAbrir(lugar) }
+            .clickable(onClickLabel = if (v.dia.expandido == lugar) "Cerrar" else "Abrir acá") { alcance.launch { motor.tocarCard(lugar) } }
             .padding(horizontal = Espacio.m, vertical = 14.dp)
             .semantics {
                 contentDescription = "Ejercicio $numero: ${ef.ejercicio.nombre}"

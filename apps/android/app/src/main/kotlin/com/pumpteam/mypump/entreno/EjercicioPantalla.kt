@@ -124,7 +124,8 @@ fun EjercicioPantalla(
 ) {
     val alcance = LocalAlcanceApp.current
     // Al entrar, la card queda abierta: pide el historial y marca leídos los comentarios (SES-08). Si el motor ya la abrió
-    // (la siguiente pendiente, D13), igual se piden y se marcan: el cliente la está mirando. Al salir se cierra.
+    // (la siguiente pendiente, D13), igual se piden y se marcan: el cliente la está mirando. Al volver queda abierta en la
+    // lista de Entreno, donde se carga (15-oct).
     DisposableEffect(lugar) {
         if (motor.dia.value.expandido != lugar) {
             alcance.launch { motor.tocarCard(lugar) }
@@ -132,9 +133,7 @@ fun EjercicioPantalla(
             alcance.launch { motor.marcarLeidos(lugar) }
             alcance.launch { motor.pedirHistorial(lugar) }
         }
-        onDispose {
-            if (motor.dia.value.expandido == lugar) alcance.launch { motor.tocarCard(lugar) }
-        }
+        onDispose {}
     }
     val t = remember(v, lugar) { motor.tarjeta(lugar) }
     if (t == null) {
@@ -718,4 +717,45 @@ private fun Cierre(
             }
         }
     }
+}
+
+/**
+ * El ejercicio abierto adentro de la lista de Entreno, como la card de la web (Mati, 15-oct: ir a otra página por cada
+ * ejercicio empeoraba el uso): la tabla de series, sustituir, la página del ejercicio para la técnica, el video y los
+ * comentarios, y el cierre. Al completarlo, el motor abre el siguiente pendiente. El de `EntrenoView.swift`.
+ */
+@Composable
+internal fun EjercicioEnLista(
+    motor: ModeloEntreno,
+    v: VistaEntreno,
+    lugar: String,
+    preguntador: Preguntador,
+    alAbrir: (String) -> Unit,
+    alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
+) {
+    val t = remember(v, lugar) { motor.tarjeta(lugar) } ?: return
+    val c = MyPump.colores
+    var sustituyendo by rememberSaveable(lugar) { mutableStateOf(false) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(c.campo.copy(alpha = c.campo.alpha * 0.35f))
+            .padding(bottom = Espacio.s)
+            .testTag("ejercicio-abierto-$lugar"),
+        verticalArrangement = Arrangement.spacedBy(Espacio.s),
+    ) {
+        TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia, enLista = true)
+        Row(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            AccionTarjeta(
+                if (t.efectivo.sustituido) "Cambiar" else "Sustituir",
+                Iconos.Intercambio,
+                habilitada = t.puedeSustituir || t.efectivo.sustituido,
+                alTocar = { sustituyendo = true },
+                modifier = Modifier.weight(1f).testTag("sustituir"),
+            )
+            AccionTarjeta("Técnica y notas", Iconos.Libro, alTocar = { alAbrir(lugar) }, modifier = Modifier.weight(1f).testTag("tecnica-y-notas"))
+        }
+        Box(Modifier.padding(horizontal = Espacio.m)) { Cierre(motor, v, lugar, t, preguntador, alAbrir, alCompletarDia) }
+    }
+    if (sustituyendo) HojaSustituir(motor, v, lugar, alCerrar = { sustituyendo = false })
 }

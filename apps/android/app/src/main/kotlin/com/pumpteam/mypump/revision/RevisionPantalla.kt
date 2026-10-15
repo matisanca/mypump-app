@@ -47,6 +47,10 @@ import com.pumpteam.mypump.diseno.MarcoPantalla
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.raiz.AnclaRevision
+import com.pumpteam.mypump.respaldo.OrigenRespaldo
+import com.pumpteam.mypump.respaldo.PieRespaldo
+import com.pumpteam.mypump.salud.CardSalud
+import com.pumpteam.mypump.salud.CardRecuperacion
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.PesoCorporal
@@ -116,7 +120,6 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
                     try {
                         coroutineScope {
                             launch { revision?.cargarRevision() }
-                            launch { revision?.cargarMiDia() }
                             launch { fotos?.cargar() }
                             launch { salud?.cargar() }
                         }
@@ -155,9 +158,16 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
                     PesoTarjeta(revision, Modifier.seccion(AnclaRevision.PESO, secciones))
                     // Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar). Sin cuenta no hay.
                     salud?.let { MiReloj(it, Modifier.seccion(AnclaRevision.RELOJ, secciones)) }
-                    revision?.let { r ->
-                        MiDia(r, salud, alVerTodaLaSalud = { detalleSalud = true }, modifier = Modifier.seccion(AnclaRevision.MI_DIA, secciones))
+                    // La recuperación y la salud. Mi día (la racha, el entrenamiento del día, los hábitos, el agua y los
+                    // últimos 30 días) se sacó el 15-oct: nadie lo usaba (Mati). Conserva el ancla: los avisos y links que
+                    // llevaban a Mi día caen acá.
+                    salud?.let { s ->
+                        Column(Modifier.seccion(AnclaRevision.MI_DIA, secciones), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                            CardRecuperacion(s, alVerTodo = { detalleSalud = true })
+                            CardSalud(s)
+                        }
                     }
+                    PieRespaldo(OrigenRespaldo.MI_DIA)
                 }
             }
         }

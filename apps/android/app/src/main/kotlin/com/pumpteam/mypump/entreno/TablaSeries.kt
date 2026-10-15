@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -89,6 +90,8 @@ fun TablaSeries(
     t: ModeloEntreno.Tarjeta,
     preguntador: Preguntador,
     alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
+    /** Adentro de la lista de Entreno (el ejercicio abierto ahí mismo): sin tarjeta propia, va en la del bloque. */
+    enLista: Boolean = false,
 ) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
@@ -119,7 +122,19 @@ fun TablaSeries(
         }
     }
 
-    Tarjeta(Modifier.testTag("tabla-series")) {
+    // En la página del ejercicio va en su tarjeta; en la lista, suelta y con su margen, adentro de la del bloque.
+    val contenedor: @Composable (@Composable ColumnScope.() -> Unit) -> Unit = { contenido ->
+        if (enLista) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = Espacio.m, vertical = Espacio.s).testTag("tabla-series"),
+                verticalArrangement = Arrangement.spacedBy(Espacio.s),
+                content = contenido,
+            )
+        } else {
+            Tarjeta(Modifier.testTag("tabla-series"), contenido = contenido)
+        }
+    }
+    contenedor {
         Row(verticalAlignment = Alignment.Bottom) {
             Text("Series", style = Letras.titulo3, modifier = Modifier.weight(1f).semantics { heading() })
             Text(

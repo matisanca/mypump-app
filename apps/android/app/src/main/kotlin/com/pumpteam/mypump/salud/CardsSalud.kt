@@ -2,6 +2,13 @@ package com.pumpteam.mypump.salud
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import com.pumpteam.mypump.diseno.Radio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -252,16 +259,33 @@ private fun ConScore(s: SaludVista.ConScore) {
     if (s.provisoria) NotaSalud("Todavía estoy afinando tu rango normal — puede moverse un poco estos días.")
 }
 
-/** "Ver todos mis datos" (abre el detalle de salud). */
+/**
+ * La entrada al detalle de salud, como un botón a la vista y con un texto que invita (Mati, 15-oct: antes era un renglón
+ * verde, "Ver todos mis datos", que nadie tocaba). El de `CardsSalud.swift`.
+ */
 @Composable
 private fun VerTodo(alTocar: () -> Unit) {
     val c = MyPump.colores
     Row(
-        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = alTocar).padding(vertical = Espacio.xxs).testTag("ver-todos-mis-datos"),
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(Radio.control + 4.dp))
+            .background(c.marcaSuave)
+            .clickable(role = Role.Button, onClick = alTocar)
+            .padding(Espacio.s)
+            .testTag("ver-todos-mis-datos"),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
-        Text("Ver todos mis datos", style = MaterialTheme.typography.labelLarge, color = c.marcaTexto, modifier = Modifier.weight(1f))
-        Icon(Iconos.Chevron, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
+        Box(Modifier.size(36.dp).clip(CircleShape).background(c.marca), contentAlignment = Alignment.Center) {
+            Icon(IconosSalud.Pulso, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text("Ver cómo está mi cuerpo", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text("Sueño, pulso y recuperación, día por día", style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
+        }
+        Icon(Iconos.Chevron, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(20.dp))
     }
 }
 

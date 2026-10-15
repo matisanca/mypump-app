@@ -19,6 +19,11 @@ internal object IconosRevision {
     /** add: un vaso más. */
     val Mas: ImageVector by lazy { icono("Mas", "M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z") }
 
+    /** Una balanza (el cuerpo y el dial): "Tu peso de hoy" en el check. */
+    val Balanza: ImageVector by lazy {
+        icono("Balanza", "M18,3H6C4.34,3 3,4.34 3,6v12c0,1.66 1.34,3 3,3h12c1.66,0 3,-1.34 3,-3V6C21,4.34 19.66,3 18,3zM12,12c-2.21,0 -4,-1.79 -4,-4h2.2l1.3,-2.4l1.1,0.6L11.6,8H16C16,10.21 14.21,12 12,12z")
+    }
+
     /** water_drop: un vaso tomado. */
     val Gota: ImageVector by lazy {
         icono("Gota", "M12,2c-5.33,4.55 -8,8.48 -8,11.8c0,4.98 3.8,8.2 8,8.2s8,-3.22 8,-8.2C20,10.48 17.33,6.55 12,2z")
