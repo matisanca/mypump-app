@@ -52,12 +52,12 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    - push simulado y la notificación local del domingo;
    - revisión adversarial del código;
    - el iPhone de Mati con el TestFlight nuevo, en el uso de todos los días.
-3. ☐ TestFlight 104 con lo de después del 103:
+3. ✅ TestFlight 104 (15-oct 02:10) con lo de después del 103:
    - PRO-02 (6324c09);
    - el push con otra cuenta (5b11bfd);
    - los hallazgos 1, 2, 3 y 8 de la revisión, y los menores cuando los cierre el agente;
    - los arreglos de Entreno.
-4. ☐ Capturas nuevas (`capturas-tienda-ios.sh`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
+4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
 5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
 
 **Android 2.0.0**

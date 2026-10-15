@@ -90,9 +90,11 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 
 La interfaz cambió entera, así que van capturas nuevas de 6,9" y 13", nunca de un cliente. Las sube Mati.
 
-- **Listas desde el 14-oct:** `scripts/nativa/capturas-tienda-ios.sh` saca 20 capturas en los simuladores "Tienda 6,9"
-  (iPhone 17 Pro Max, 1320×2868) y "Tienda 13" (iPad Pro 13" M5, 2064×2752), en claro y oscuro, con la barra a las
-  9:41. Están en `nativa-evidencia/tienda/20261014-145803`.
+- **Las vigentes son del 15-oct a las 02:36**, con la app del TestFlight 104 (Mis datos sin IA ni recordatorios, la pista
+  de la última vez como botón): `nativa-evidencia/tienda/20261015-023657`. Las del 14-oct quedaron viejas.
+- `scripts/nativa/capturas-tienda-ios.sh` saca 20 capturas en los simuladores "Tienda 6,9" (iPhone 17 Pro Max, 1320×2868)
+  y "Tienda 13" (iPad Pro 13" M5, 2064×2752), en claro y oscuro, con la barra a las 9:41 (con
+  `APP=…/dd/mypump/Build/Products/Debug-iphonesimulator/MyPump.app`, la del último XCUITest).
   - Pantallas: Entreno, un ejercicio con 2 series, Dieta, Revisión con el check y Progreso con historial.
   - Datos: los bocetos, o sea la demo más las respuestas grabadas de la cuenta de prueba `test-nativa-real`. Nunca de
     un cliente.
