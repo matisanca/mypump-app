@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
+import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -19,9 +20,11 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.toSize
 import androidx.test.platform.app.InstrumentationRegistry
 import com.pumpteam.mypump.diseno.ImagenesRemotas
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -398,9 +401,25 @@ object Telefono {
     /** Las capturas quedan acá y las baja `scripts/nativa/emu-ui.sh` (la carpeta de la app se borra al desinstalar). */
     const val CARPETA_CAPTURAS = "/data/local/tmp/mypump-capturas"
 
-    fun shell(comando: String): String {
-        val pfd = instr.uiAutomation.executeShellCommand(comando)
-        return ParcelFileDescriptor.AutoCloseInputStream(pfd).use { it.readBytes().toString(Charsets.UTF_8) }
+    /**
+     * Un comando de shell, con tope: `executeShellCommand` no tiene, y el 15-oct en Android 11 `svc power stayon true` quedó
+     * vivo sin terminar nunca, y con él la corrida entera (13 minutos hasta matarlo a mano). Si no termina en [topeMs], se
+     * cierra la salida y falla diciendo qué comando fue.
+     */
+    fun shell(comando: String, topeMs: Long = 30_000): String {
+        val entrada = ParcelFileDescriptor.AutoCloseInputStream(instr.uiAutomation.executeShellCommand(comando))
+        val leido = CompletableFuture<ByteArray>()
+        Thread({ leido.complete(runCatching { entrada.readBytes() }.getOrElse { ByteArray(0) }) }, "shell-de-prueba").apply {
+            isDaemon = true
+            start()
+        }
+        try {
+            return leido.get(topeMs, TimeUnit.MILLISECONDS).toString(Charsets.UTF_8)
+        } catch (_: TimeoutException) {
+            throw AssertionError("el comando de shell no terminó en ${topeMs / 1000} s: $comando")
+        } finally {
+            runCatching { entrada.close() }
+        }
     }
 
     fun captura(nombre: String) {
@@ -436,15 +455,25 @@ object Telefono {
 
     /** Pantalla prendida y sin bloqueo, y la barra de estado quieta (9:41, batería llena) para que las capturas sean parejas. */
     fun prepararPantalla() {
-        shell("svc power stayon true")
-        shell("input keyevent KEYCODE_WAKEUP")
-        shell("wm dismiss-keyguard")
-        shell("settings put global sysui_demo_allowed 1")
-        shell("am broadcast -a com.android.systemui.demo -e command enter")
-        shell("am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941")
-        shell("am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false")
-        shell("am broadcast -a com.android.systemui.demo -e command network -e wifi show -e level 4 -e mobile show -e datatype none -e level 4")
-        shell("am broadcast -a com.android.systemui.demo -e command notifications -e visible false")
+        val comandos = listOf(
+            "svc power stayon true",
+            "input keyevent KEYCODE_WAKEUP",
+            "wm dismiss-keyguard",
+            "settings put global sysui_demo_allowed 1",
+            "am broadcast -a com.android.systemui.demo -e command enter",
+            "am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941",
+            "am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false",
+            "am broadcast -a com.android.systemui.demo -e command network -e wifi show -e level 4 -e mobile show -e datatype none -e level 4",
+            "am broadcast -a com.android.systemui.demo -e command notifications -e visible false",
+        )
+        // Son comodidades (la pantalla ya está prendida en el emulador): uno que se cuelga no frena la clase entera.
+        for (c in comandos) {
+            try {
+                shell(c)
+            } catch (e: AssertionError) {
+                Log.w("MyPumpPruebas", e.message ?: c)
+            }
+        }
     }
 
     /**
