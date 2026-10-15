@@ -197,6 +197,16 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 **Los OK que estaban esperando, hechos el 15-oct:** mini-vision con `gpt-5.6-sol` (DIE-14/15 ✅ con la IA real), el
 push real de Android de punta a punta y las fotos de la web con la Mini caída (0620012, en `main`).
 
+**Android 2.0.1 (104), después de la 2.0.0.** Mati (15-oct): la 2.0.0 sale igual al 10 %, y Android pasa al diseño del
+iPhone. La 2.0.1 trae:
+- el diseño del iPhone (ver la bitácora del 15-oct 17:00): la barra de pestañas flotante, la letra de la marca con su
+  peso, el segmentado, el interruptor y el volver de iOS, y los cuadros de las fotos;
+- el arreglo de la foto que se perdía si el sistema cerraba la app con la cámara abierta (ca212de).
+
+Se manda con las mismas novedades que la 2.0.0 (quien venga de la 1.0.12 va directo a la 2.0.1) y con capturas nuevas.
+La versión corta nueva deja que la palanca remota pida la 2.0.1 a quien tenga la 2.0.0 (`versionMinimaAndroid`). Es otro
+envío a revisión de Google: se le pide el OK a Mati en el momento.
+
 ## Plan B: volver a la Capacitor si la 2.0.0 sale mal
 
 No se sube nada de antemano. Una Capacitor 2.0.1 en TestFlight le ganaría a la nativa en la actualización automática

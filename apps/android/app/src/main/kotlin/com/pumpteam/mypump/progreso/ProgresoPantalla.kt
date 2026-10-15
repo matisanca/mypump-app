@@ -58,6 +58,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloProgreso
 import com.pumpteam.mypump.datos.TarjetaProgreso
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
+import com.pumpteam.mypump.diseno.sinAbajo
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.EncabezadoSeccion
@@ -154,7 +156,7 @@ private fun ListaProgreso(
         }
     }
     MarcoPantalla("Progreso", modifier = Modifier.testTag("progreso-pantalla")) { relleno ->
-        Box(Modifier.padding(relleno).fillMaxSize()) {
+        Box(Modifier.padding(relleno.sinAbajo()).fillMaxSize()) {
             when {
                 // Trayendo el historial por primera vez.
                 p != null && estado == ModeloProgreso.Estado.CARGANDO && tarjetas.isEmpty() -> EsqueletoProgreso()
@@ -178,7 +180,8 @@ private fun Lista(modelo: ModeloApp, tarjetas: List<TarjetaProgreso>, sesiones: 
     LazyColumn(
         state = estadoLista,
         modifier = Modifier.fillMaxSize().testTag("progreso-lista"),
-        contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xxs, bottom = Espacio.xl),
+        // Al final, lo que tapa la barra de pestañas flotante: lo último queda arriba de ella.
+        contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xxs, bottom = Espacio.xl + LocalRellenoInferior.current),
         verticalArrangement = Arrangement.spacedBy(Espacio.l),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

@@ -15,6 +15,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.sp
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
+import com.pumpteam.mypump.diseno.vidrio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,10 +39,6 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -117,19 +124,13 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
 
     CompositionLocalProvider(LocalNavegacion provides navegacion) {
-        Scaffold(
-            containerColor = MyPump.colores.fondo,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            bottomBar = {
-                Column {
-                    // El descanso arriba de la barra de pestañas, a mano desde cualquier pestaña (SES-04).
-                    entreno?.let { BarraDescansoEntreno(it) }
-                    BarraPestanas(navegacion, badges)
-                }
-            },
-        ) { relleno ->
-            Box(Modifier.fillMaxSize().padding(relleno).consumeWindowInsets(relleno)) {
-                Column(Modifier.fillMaxSize()) {
+        val densidad = LocalDensity.current
+        // Lo que tapa lo que flota abajo (la barra y el descanso, con el borde del sistema), medido: las pantallas lo
+        // suman al final de su desplazamiento, y lo demás pasa por debajo de la barra, como en iOS.
+        var abajo by remember { mutableStateOf(0.dp) }
+        Box(Modifier.fillMaxSize().background(MyPump.colores.fondo)) {
+            CompositionLocalProvider(LocalRellenoInferior provides abajo + Espacio.xs) {
+                Column(Modifier.fillMaxSize().consumeWindowInsets(WindowInsets.navigationBars)) {
                     val conBanner = esDemo || desdeCache
                     if (esDemo) {
                         BarraDemo(alSalir = { vm.salirDeDemo() })
@@ -153,51 +154,77 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                         }
                     }
                 }
-                AvisoGuardado(estadoGuardado, Modifier.align(Alignment.BottomCenter).padding(bottom = Espacio.s))
-                // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
-                DialogoPreguntas(vm.preguntasEntreno)
-                // Salud: el diagnóstico que pidió un link con `?diag=health` (SAL-13), arriba de todo.
-                DiagnosticoSaludDesdeLink(modelo)
             }
+            // Lo que flota abajo, sobre el contenido: el descanso, a mano desde cualquier pestaña (SES-04), y la barra.
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .onSizeChanged { abajo = with(densidad) { it.height.toDp() } }
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(bottom = Espacio.xs),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                entreno?.let { BarraDescansoEntreno(it) }
+                BarraPestanas(navegacion, badges)
+            }
+            AvisoGuardado(estadoGuardado, Modifier.align(Alignment.BottomCenter).padding(bottom = abajo + Espacio.xs))
+            // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
+            DialogoPreguntas(vm.preguntasEntreno)
+            // Salud: el diagnóstico que pidió un link con `?diag=health` (SAL-13), arriba de todo.
+            DiagnosticoSaludDesdeLink(modelo)
         }
     }
 }
 
+/**
+ * La barra de pestañas flotante de iOS 26: una cápsula de vidrio separada de los bordes, la pestaña elegida en una píldora
+ * con el ícono y el nombre en el verde de texto, y las demás en el color del texto, como en el iPhone.
+ */
 @Composable
 private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>) {
     val c = MyPump.colores
-    NavigationBar(containerColor = c.tarjeta, tonalElevation = 0.dp) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 20.dp)
+            .widthIn(max = 560.dp)
+            .fillMaxWidth()
+            .height(62.dp)
+            .vidrio()
+            .padding(4.dp)
+            .selectableGroup()
+            .testTag("barra-pestanas"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         for (p in Pestana.entries) {
+            val elegida = navegacion.pestana == p
             val n = badges[p] ?: 0
-            NavigationBarItem(
-                selected = navegacion.pestana == p,
-                onClick = { navegacion.elegir(p) },
-                icon = {
-                    BadgedBox(
-                        badge = {
-                            if (n > 0) {
-                                Badge(modifier = Modifier.semantics { contentDescription = "$n sin ver" }) { Text(if (n > 99) "99+" else "$n") }
-                            }
-                        },
-                    ) { Icon(p.icono, contentDescription = null) }
-                },
-                label = {
-                    // Con la letra más grande del sistema el nombre se cortaba ("Entre", "Revisi"): crece hasta un tope,
-                    // como la barra de iOS, que no agranda sus rótulos.
-                    val d = LocalDensity.current
-                    CompositionLocalProvider(LocalDensity provides Density(d.density, minOf(d.fontScale, 1.2f))) {
-                        Text(p.titulo, maxLines = 1, softWrap = false)
-                    }
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = c.marcaTexto,
-                    selectedTextColor = c.marcaTexto,
-                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                    unselectedIconColor = c.textoSecundario,
-                    unselectedTextColor = c.textoSecundario,
-                ),
-                modifier = Modifier.testTag(p.etiqueta),
-            )
+            val tono = if (elegida) c.marcaTexto else c.texto
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .background(if (elegida) c.campo else Color.Transparent)
+                    .selectable(selected = elegida, role = Role.Tab, onClick = { navegacion.elegir(p) })
+                    .testTag(p.etiqueta),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                BadgedBox(
+                    badge = {
+                        if (n > 0) {
+                            Badge(modifier = Modifier.semantics { contentDescription = "$n sin ver" }) { Text(if (n > 99) "99+" else "$n") }
+                        }
+                    },
+                ) { Icon(p.icono, contentDescription = null, tint = tono, modifier = Modifier.size(24.dp)) }
+                // Con la letra más grande del sistema el nombre se cortaba ("Entre", "Revisi"): crece hasta un tope, como
+                // la barra de iOS, que no agranda sus rótulos.
+                val d = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides Density(d.density, minOf(d.fontScale, 1.2f))) {
+                    Text(p.titulo, color = tono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                }
+            }
         }
     }
 }

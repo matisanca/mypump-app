@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.ModeloEntreno
+import com.pumpteam.mypump.diseno.rellenoInferior
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.EstadoVacio
@@ -179,7 +180,8 @@ fun EjercicioPantalla(
                     .widthIn(max = AnchoLectura)
                     .fillMaxWidth()
                     .padding(horizontal = Espacio.m)
-                    .padding(top = Espacio.xxs, bottom = Espacio.xl),
+                    // Al final, lo que tapa la barra de pestañas flotante (con el teclado abierto, nada: la tapa él).
+                    .padding(top = Espacio.xxs, bottom = Espacio.xl + rellenoInferior()),
                 verticalArrangement = Arrangement.spacedBy(Espacio.l),
             ) {
                 Encabezado(t, Modifier.onSizeChanged { altoEncabezado = it.height }) {

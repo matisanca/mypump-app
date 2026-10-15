@@ -21,8 +21,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -54,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.datos.ModeloEntreno
+import com.pumpteam.mypump.diseno.Interruptor
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
@@ -242,10 +241,10 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
             ) {
                 Icon(Iconos.Candado, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(20.dp))
                 Text("Fijar para las próximas semanas", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = fijar,
-                    onCheckedChange = { fijar = it },
-                    colors = SwitchDefaults.colors(checkedTrackColor = c.marcaVivo, checkedThumbColor = c.tarjeta, checkedBorderColor = c.marcaVivo),
+                Interruptor(
+                    fijar,
+                    alCambiar = { fijar = it },
+                    color = c.marcaVivo,
                     modifier = Modifier.semantics { contentDescription = "Fijar para las próximas semanas" }.testTag("fijar"),
                 )
             }

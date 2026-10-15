@@ -27,7 +27,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -53,6 +52,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloSalud
+import com.pumpteam.mypump.diseno.sinAbajo
+import com.pumpteam.mypump.diseno.Interruptor
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.BotonSecundario
@@ -104,11 +105,11 @@ fun SaludDetallePantalla(salud: ModeloSalud, alVolver: () -> Unit) {
                     }
                 }
             },
-            modifier = Modifier.padding(relleno).fillMaxSize(),
+            modifier = Modifier.padding(relleno.sinAbajo()).fillMaxSize(),
         ) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
                 Column(
-                    Modifier.widthIn(max = AnchoLectura).fillMaxWidth().padding(horizontal = Espacio.m).padding(bottom = Espacio.xl),
+                    Modifier.widthIn(max = AnchoLectura).fillMaxWidth().padding(horizontal = Espacio.m).padding(bottom = Espacio.xl + relleno.calculateBottomPadding()),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
                     if (filas.isEmpty()) {
@@ -365,11 +366,7 @@ private fun Preferencias(salud: ModeloSalud) {
                     style = Letras.caption, color = c.textoSecundario,
                 )
             }
-            Switch(
-                checked = mostrar,
-                onCheckedChange = null,
-                colors = SwitchDefaults.colors(checkedTrackColor = c.exito, checkedThumbColor = Color.White, checkedBorderColor = c.exito),
-            )
+            Interruptor(mostrar, alCambiar = null, color = c.exito)
         }
     }
 }

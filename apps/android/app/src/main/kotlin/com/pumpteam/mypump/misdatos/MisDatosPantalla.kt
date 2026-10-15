@@ -17,7 +17,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +40,7 @@ import com.pumpteam.mypump.acceso.URL_BORRADO
 import com.pumpteam.mypump.acceso.URL_PRIVACIDAD
 import com.pumpteam.mypump.avisos.SeccionNotificaciones
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.diseno.Interruptor
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.IconoAzulejo
 import com.pumpteam.mypump.diseno.Iconos
@@ -145,15 +145,7 @@ private fun FilaInterruptor(icono: ImageVector, color: Color, titulo: String, pr
     ) {
         IconoAzulejo(icono, color)
         Text(titulo, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(
-            checked = prendido,
-            onCheckedChange = null,
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = c.marcaVivo,
-                checkedThumbColor = Color.White,
-                checkedBorderColor = c.marcaVivo,
-            ),
-        )
+        Interruptor(prendido, alCambiar = null, color = c.marcaVivo)
     }
 }
 

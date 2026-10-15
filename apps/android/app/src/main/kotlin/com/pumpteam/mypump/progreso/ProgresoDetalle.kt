@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.TarjetaProgreso
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
@@ -109,7 +110,7 @@ fun ProgresoDetalle(t: TarjetaProgreso, alVolver: () -> Unit) {
                     .widthIn(max = AnchoLectura)
                     .fillMaxWidth()
                     .padding(horizontal = Espacio.m)
-                    .padding(top = Espacio.xs, bottom = Espacio.xl),
+                    .padding(top = Espacio.xs, bottom = Espacio.xl + LocalRellenoInferior.current),
                 verticalArrangement = Arrangement.spacedBy(Espacio.l),
             ) {
                 Encabezado(t, nombre)

@@ -12,13 +12,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import com.pumpteam.mypump.diseno.vidrio
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -30,7 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -105,15 +105,15 @@ private fun ContenidoDescanso(motor: ModeloEntreno, b: BarraDescanso) {
     // La barra tiene alto fijo, como la de pestañas: la letra se topea (el `.dynamicTypeSize(...xLarge)` de iOS).
     val escala = LocalDensity.current.fontScale
     val tope = min(escala, 1.3f) / escala
-    val fondo = if (listo) c.exito.copy(alpha = 0.16f).compositeOver(c.tarjeta) else c.tarjeta
+    // La isla flota arriba de la barra de pestañas, con su mismo vidrio y sus mismos márgenes (la isla de iOS).
     Row(
         modifier = Modifier
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 20.dp)
             .padding(bottom = 8.dp)
+            .widthIn(max = 560.dp)
             .fillMaxWidth()
-            .clip(CircleShape)
-            .background(fondo)
-            .border(1.dp, c.borde, CircleShape)
+            .vidrio(elevacion = 12.dp)
+            .then(if (listo) Modifier.background(c.exito.copy(alpha = 0.16f)) else Modifier)
             .padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)
             .testTag("descanso"),
         verticalAlignment = Alignment.CenterVertically,

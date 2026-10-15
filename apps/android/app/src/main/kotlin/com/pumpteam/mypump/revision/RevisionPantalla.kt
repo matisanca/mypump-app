@@ -38,6 +38,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.diseno.rellenoInferior
+import com.pumpteam.mypump.diseno.sinAbajo
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
@@ -123,7 +125,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
                     }
                 }
             },
-            modifier = Modifier.padding(relleno).fillMaxSize(),
+            modifier = Modifier.padding(relleno.sinAbajo()).fillMaxSize(),
         ) {
             Column(
                 // Con el teclado abierto (la nota del check, el peso) lo que se desplaza se achica y el campo queda a la vista.
@@ -135,7 +137,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
                         .widthIn(max = AnchoLectura)
                         .fillMaxWidth()
                         .padding(horizontal = Espacio.m)
-                        .padding(bottom = Espacio.xl),
+                        // Al final, lo que tapa la barra de pestañas flotante (con el teclado abierto, nada: la tapa él).
+                        .padding(bottom = Espacio.xl + rellenoInferior()),
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {

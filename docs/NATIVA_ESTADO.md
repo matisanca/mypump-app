@@ -215,6 +215,25 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 17:00, Android con el diseño del iPhone** (Mati: «porque es tanto peor el diseño en android que en ios? no me
+  gusta nada», y eligió «Igual que el iPhone»). Puesto lado a lado y a la misma escala (1 pt = 1 dp), lo que lo hacía
+  ver peor era:
+  1. **La letra de la marca sin peso.** Archivo es variable (100-900, 600 por defecto) y `Font(resId, peso)` la arma con
+     los ajustes de variación vacíos: todos los títulos y números salían en 600. Ahora el eje va explícito
+     (`ArchivoPesoTest`, que dibuja el texto en 500 y 900 y cuenta la tinta: con el código de antes daba igual).
+  2. **La barra de pestañas de Google**, opaca, alta y de punta a punta. Ahora es la cápsula flotante de iOS 26
+     (`BarraPestanas` + `Modifier.vidrio`), con la pestaña elegida en una píldora y el contenido pasando por debajo:
+     `LocalRellenoInferior` lleva lo que tapa la barra al final del desplazamiento de cada pantalla (`MarcoPantalla`).
+     El compositor del chat queda arriba de la barra, y con el teclado abierto, arriba del teclado.
+  3. **Los controles de Material:** el segmentado (`Segmentado`, como el de iOS: riel gris y píldora blanca), el
+     interruptor (`Interruptor`, el de iOS) y la flecha de volver (`BotonVolver`, el círculo de vidrio de iOS 26).
+  4. **Los títulos grandes** en la letra del sistema en negrita, 34, como el título grande de iOS.
+  5. **Los cuadros de las fotos**, macizos y grises: `campo.copy(alpha = 0.5f)` reemplazaba el 12 % del color por un
+     50 %, cuando `opacity(0.5)` de iOS lo multiplica.
+
+  La pantalla de Ejercicio ya tenía la estructura del iPhone: la captura de la tienda mostraba otro momento. La isla del
+  descanso usa el mismo vidrio y los mismos márgenes que la barra.
+
 - **15-oct 16:00, Android: una foto que se perdía si el sistema cerraba la app con la cámara abierta.** Las pruebas
   instrumentadas usan una cámara de mentira que contesta al instante, así que no lo veían. Con la cámara de verdad del
   emulador y `am kill` (lo que hace Android con poca memoria), MyPump volvía en un proceso nuevo pero en Entreno, y la

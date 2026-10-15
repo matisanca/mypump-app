@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.entreno
 
+import com.pumpteam.mypump.diseno.Segmentado
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,9 +25,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -137,26 +135,14 @@ fun TablaSeries(
             val actual = t.varianteActual ?: va.opciones.firstOrNull() ?: ""
             Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 2.dp)) {
                 Text(va.etiqueta, style = Letras.caption.copy(fontWeight = FontWeight.SemiBold), color = c.textoSecundario)
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("variantes")) {
-                    va.opciones.forEachIndexed { i, op ->
-                        SegmentedButton(
-                            selected = op == actual,
-                            onClick = { motor.elegirVariante(lugar, op) },
-                            shape = SegmentedButtonDefaults.itemShape(i, va.opciones.size),
-                            enabled = !v.dia.diaFinalizado,
-                            icon = {},
-                            colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                activeContentColor = c.texto,
-                                inactiveContainerColor = Color.Transparent,
-                                inactiveContentColor = c.texto,
-                                activeBorderColor = c.borde,
-                                inactiveBorderColor = c.borde,
-                            ),
-                            modifier = Modifier.testTag("variante-$op"),
-                        ) { Text(op, maxLines = 1, fontWeight = if (op == actual) FontWeight.SemiBold else FontWeight.Normal) }
-                    }
-                }
+                Segmentado(
+                    opciones = va.opciones,
+                    elegida = va.opciones.indexOf(actual),
+                    alElegir = { motor.elegirVariante(lugar, va.opciones[it]) },
+                    habilitado = !v.dia.diaFinalizado,
+                    etiquetaPrueba = { "variante-${va.opciones[it]}" },
+                    modifier = Modifier.testTag("variantes"),
+                )
             }
         }
 

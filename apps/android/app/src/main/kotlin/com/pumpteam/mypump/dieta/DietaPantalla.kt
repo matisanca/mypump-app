@@ -1,5 +1,7 @@
 package com.pumpteam.mypump.dieta
 
+import com.pumpteam.mypump.diseno.sinAbajo
+import com.pumpteam.mypump.diseno.Segmentado
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -36,9 +38,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -147,14 +146,14 @@ fun DietaPantalla(modelo: ModeloApp) {
             if (tipos.size > 1) SelectorTipoDia(tipos, elegido = tipoDia ?: tipos[0].id, alElegir = { modelo.tipoDia = it })
         },
     ) { relleno ->
-        Box(Modifier.padding(relleno).fillMaxSize()) {
+        Box(Modifier.padding(relleno.sinAbajo()).fillMaxSize()) {
             when {
                 fase == ModeloApp.Fase.LISTO && comidas.isNotEmpty() -> {
                     val elegidas = totalElegido(modelo, comidas, opciones, swaps)
                     Recargable(recargando, ::recargar) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().testTag("dieta-lista"),
-                            contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xxs, bottom = Espacio.xl),
+                            contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xxs, bottom = Espacio.xl + relleno.calculateBottomPadding()),
                             verticalArrangement = Arrangement.spacedBy(Espacio.m),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -523,25 +522,13 @@ private fun TarjetaComida(
         if (comida.opciones.size > 1) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Opción", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = c.textoSecundario)
-                SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
-                    comida.opciones.forEachIndexed { i, op ->
-                        SegmentedButton(
-                            selected = i == opcion,
-                            onClick = { alElegir(i) },
-                            shape = SegmentedButtonDefaults.itemShape(i, comida.opciones.size),
-                            icon = {},
-                            colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                activeContentColor = c.texto,
-                                inactiveContainerColor = Color.Transparent,
-                                inactiveContentColor = c.texto,
-                                activeBorderColor = c.borde,
-                                inactiveBorderColor = c.borde,
-                            ),
-                            modifier = Modifier.testTag("opcion-${comida.id}-$i"),
-                        ) { Text(op.nombre ?: letra(i), fontWeight = if (i == opcion) FontWeight.SemiBold else FontWeight.Normal) }
-                    }
-                }
+                Segmentado(
+                    opciones = comida.opciones.mapIndexed { i, op -> op.nombre ?: letra(i) },
+                    elegida = opcion,
+                    alElegir = alElegir,
+                    etiquetaPrueba = { "opcion-${comida.id}-$it" },
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
         Column {

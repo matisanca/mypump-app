@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -158,7 +160,10 @@ fun ChatPantalla(modelo: ModeloApp) {
         containerColor = MyPump.colores.fondo,
         topBar = { BarraChat(tapado) },
     ) { relleno ->
-        Column(Modifier.padding(relleno).fillMaxSize().imePadding()) {
+        // El compositor va arriba de la barra de pestañas flotante; con el teclado abierto, arriba del teclado (la barra
+        // queda tapada por él): lo que ya ocupa la barra se descuenta del teclado y no se suma dos veces.
+        val abajo = PaddingValues(bottom = LocalRellenoInferior.current)
+        Column(Modifier.padding(relleno).padding(abajo).consumeWindowInsets(abajo).fillMaxSize().imePadding()) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 if (cargando && hilo.mensajes.isEmpty()) {
                     EsqueletoChat()

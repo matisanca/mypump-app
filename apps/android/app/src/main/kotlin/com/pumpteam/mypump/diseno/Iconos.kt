@@ -146,6 +146,9 @@ object Iconos {
     /** arrow_back */
     val Atras: ImageVector by lazy { icono("Atras", "M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z") }
 
+    /** chevron_left (Material Icons, Apache 2.0): el "volver" de iOS, adentro del botón redondo. */
+    val ChevronAtras: ImageVector by lazy { icono("ChevronAtras", "M15.41,7.41L14,6l-6,6 6,6 1.41,-1.41L10.83,12z") }
+
     /** close */
     val Cerrar: ImageVector by lazy {
         icono("Cerrar", "M19,6.41L17.59,5 12,10.59 6.41,5 5,6.41 10.59,12 5,17.59 6.41,19 12,13.41 17.59,19 19,17.59 13.41,12z")

@@ -12,9 +12,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -198,16 +200,14 @@ private val esquemaOscuro = darkColorScheme(
 )
 
 /**
- * Archivo es variable: cada peso es la misma fuente con su eje `wght` (Compose lo arma solo a partir del peso pedido,
- * desde Android 8, que es el mínimo de la app).
+ * Archivo es variable (`wght` de 100 a 900, 600 por defecto): cada peso es la misma fuente con su eje. El eje se pasa a
+ * mano: `Font(resId, peso)` arma la fuente con los ajustes de variación VACÍOS y todo salía en el 600 de fábrica, con los
+ * títulos y los números flojos al lado del iPhone (15-oct, ArchivoPesoTest). Desde Android 8, el mínimo de la app.
  */
-val Archivo = FontFamily(
-    Font(R.font.archivo, FontWeight.W500),
-    Font(R.font.archivo, FontWeight.W600),
-    Font(R.font.archivo, FontWeight.W700),
-    Font(R.font.archivo, FontWeight.W800),
-    Font(R.font.archivo, FontWeight.W900),
-)
+@OptIn(ExperimentalTextApi::class)
+private fun archivo(peso: Int) = Font(R.font.archivo, FontWeight(peso), variationSettings = FontVariation.Settings(FontVariation.weight(peso)))
+
+val Archivo = FontFamily(archivo(500), archivo(600), archivo(700), archivo(800), archivo(900))
 
 private val base = Typography()
 

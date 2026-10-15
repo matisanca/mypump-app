@@ -15,7 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.datos.ErrorRpc
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.Resultado
+import com.pumpteam.mypump.diseno.BotonVolver
 import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Formato
@@ -174,9 +174,13 @@ fun CrearAlimento(modelo: ModeloApp, categoria: String, alVolver: () -> Unit, al
     Box(Modifier.semantics { testTagsAsResourceId = true }.testTag("crear-alimento-formulario")) {
         Column {
             Row(Modifier.fillMaxWidth().padding(start = Espacio.xxs, end = Espacio.m), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = alVolver, enabled = !guardando, modifier = Modifier.testTag("volver-a-reemplazos")) {
-                    Icon(Iconos.Atras, contentDescription = "Volver a Reemplazar", tint = c.marcaTexto)
-                }
+                BotonVolver(
+                    alVolver,
+                    Modifier.padding(start = Espacio.xxs, end = Espacio.xs),
+                    descripcion = "Volver a Reemplazar",
+                    etiqueta = "volver-a-reemplazos",
+                    habilitado = !guardando,
+                )
                 Text("Alimento propio", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f).semantics { heading() })
             }
             Column(

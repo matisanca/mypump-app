@@ -1,5 +1,7 @@
 package com.pumpteam.mypump.revision
 
+import com.pumpteam.mypump.diseno.sinAbajo
+import com.pumpteam.mypump.diseno.Segmentado
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,9 +23,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -259,7 +258,7 @@ private fun MarcoPose(pose: String, nombre: String, estado: EstadoPose, enFila: 
     }
     if (enFila) {
         Row(
-            semantica.fillMaxWidth().clip(forma).background(c.campo.copy(alpha = 0.5f)).then(contorno).padding(Espacio.s),
+            semantica.fillMaxWidth().clip(forma).background(c.campo.copy(alpha = c.campo.alpha * 0.5f)).then(contorno).padding(Espacio.s),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Espacio.s),
         ) {
@@ -272,7 +271,7 @@ private fun MarcoPose(pose: String, nombre: String, estado: EstadoPose, enFila: 
         return
     }
     // El marco pone el tamaño (un tercio del ancho, 3:4); la foto va detrás y no lo empuja.
-    Box(semantica.fillMaxWidth().aspectRatio(3f / 4f).clip(forma).background(c.campo.copy(alpha = 0.5f))) {
+    Box(semantica.fillMaxWidth().aspectRatio(3f / 4f).clip(forma).background(c.campo.copy(alpha = c.campo.alpha * 0.5f))) {
         val url = estado.miniatura
         if (url != null) {
             ImagenRemota(url, lado = 200.dp, modifier = Modifier.fillMaxSize()) { Box(Modifier.fillMaxSize().background(c.campo)) }
@@ -352,11 +351,11 @@ private fun GaleriaFotos(
             },
         ) { relleno ->
             Column(
-                Modifier.padding(relleno).fillMaxSize().verticalScroll(rememberScrollState()).testTag("galeria-fotos"),
+                Modifier.padding(relleno.sinAbajo()).fillMaxSize().verticalScroll(rememberScrollState()).testTag("galeria-fotos"),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Column(
-                    Modifier.widthIn(max = AnchoLectura).fillMaxWidth().padding(Espacio.m),
+                    Modifier.widthIn(max = AnchoLectura).fillMaxWidth().padding(Espacio.m).padding(bottom = relleno.calculateBottomPadding()),
                     verticalArrangement = Arrangement.spacedBy(Espacio.l),
                 ) {
                     val primera = semanas.firstOrNull()
@@ -383,25 +382,11 @@ private fun Comparador(primera: String, ultima: String, fotos: List<FotoProgreso
     val c = MyPump.colores
     Tarjeta(Modifier.testTag("comparador")) {
         EncabezadoSeccion("Antes y ahora", detalle = FotosProgreso.resumenComparador(primera, ultima, peso))
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            FotosProgreso.poses.forEachIndexed { i, (clave, etiqueta) ->
-                SegmentedButton(
-                    selected = pose == clave,
-                    onClick = { pose = clave },
-                    shape = SegmentedButtonDefaults.itemShape(i, FotosProgreso.poses.size),
-                    colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = c.marca,
-                        activeContentColor = c.sobreMarca,
-                        inactiveContainerColor = c.campo,
-                        inactiveContentColor = c.texto,
-                        activeBorderColor = c.borde,
-                        inactiveBorderColor = c.borde,
-                    ),
-                    icon = {},
-                    label = { Text(etiqueta) },
-                )
-            }
-        }
+        Segmentado(
+            opciones = FotosProgreso.poses.map { it.second },
+            elegida = FotosProgreso.poses.indexOfFirst { it.first == pose },
+            alElegir = { pose = FotosProgreso.poses[it].first },
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             FotoDeLaGaleria(primera, pose, fechaLarga(primera), fotos, urls, Modifier.weight(1f))
             FotoDeLaGaleria(ultima, pose, fechaLarga(ultima), fotos, urls, Modifier.weight(1f))

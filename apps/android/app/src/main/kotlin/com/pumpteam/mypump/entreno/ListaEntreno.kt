@@ -34,7 +34,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -83,6 +82,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloEntreno
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
+import com.pumpteam.mypump.diseno.BotonVolver
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
@@ -163,7 +164,8 @@ fun ListaEntreno(
                         .widthIn(max = AnchoLectura)
                         .fillMaxWidth()
                         .padding(horizontal = Espacio.m)
-                        .padding(top = Espacio.xxs, bottom = Espacio.xl),
+                        // Al final, lo que tapa la barra de pestañas flotante: lo último queda arriba de ella.
+                        .padding(top = Espacio.xxs, bottom = Espacio.xl + LocalRellenoInferior.current),
                     verticalArrangement = Arrangement.spacedBy(Espacio.l),
                 ) {
                     Cabecera(motor, v, titulo, Modifier.onSizeChanged { altoCabecera = it.height })
@@ -217,13 +219,7 @@ fun BarraEntreno(
                 if (subtitulo != null) Text(subtitulo, style = Letras.caption2.copy(fontWeight = FontWeight.Medium), color = c.textoSecundario)
             }
         },
-        navigationIcon = {
-            if (alVolver != null) {
-                IconButton(onClick = alVolver, modifier = Modifier.testTag("volver")) {
-                    Icon(Iconos.Atras, contentDescription = "Volver")
-                }
-            }
-        },
+        navigationIcon = { if (alVolver != null) BotonVolver(alVolver, Modifier.padding(start = Espacio.xs)) },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = c.fondo,
             scrolledContainerColor = c.tarjeta,
