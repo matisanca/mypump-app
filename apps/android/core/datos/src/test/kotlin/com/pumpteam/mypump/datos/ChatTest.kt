@@ -183,3 +183,40 @@ class ChatLeidoAlLlegarTest {
         assertTrue(chat.sondeoEnCurso == null)   // sin sondeo, cerrar no lo arranca
     }
 }
+
+/**
+ * Sin red en el arranque el chat aparecía vacío, como si no hubiera mensajes (la web hace lo mismo). Ahora el modelo
+ * distingue «no se pudo traer» de «está vacío» y la pantalla lo dice (gemelo de ChatSinTraerTests.swift, 15-oct).
+ */
+class ChatSinTraerTest {
+    @Test
+    fun sinRedQuedaSinTraerHastaQueLlega() = enUnHilo { alcance ->
+        var caida = true
+        val t = TransporteProgramado { fn, _ ->
+            if (caida) throw java.io.IOException("sin conexión a internet")
+            if (fn == "mypump_get_chat") {
+                200 to """[{"id":"1","autor":"coach","contenido":"hola","leido_por_cliente":true,"created_at":"2026-10-14T10:00:00+00:00"}]"""
+            } else {
+                200 to "[]"
+            }
+        }
+        val chat = ModeloChat(ClienteRpc(transporte = t), "tok", null, alcance)
+        chat.cargar()
+        assertTrue(chat.sinTraer.value && chat.hilo.value.mensajes.isEmpty())
+        // El sondeo, sin cursor, vuelve a intentar la carga: con señal llega y deja de decirlo.
+        caida = false
+        chat.sondear()
+        assertTrue(!chat.sinTraer.value && chat.hilo.value.mensajes.size == 1)
+        // Un corte después de haberlo traído no lo vuelve a decir: lo que hay sigue a la vista.
+        caida = true
+        chat.cargar()
+        assertTrue(!chat.sinTraer.value && chat.hilo.value.mensajes.size == 1)
+    }
+
+    @Test
+    fun unHiloVacioDeVerdadNoEsSinTraer() = enUnHilo { alcance ->
+        val chat = ModeloChat(ClienteRpc(transporte = TransporteProgramado { _, _ -> 200 to "[]" }), "tok", null, alcance)
+        chat.cargar()
+        assertTrue(!chat.sinTraer.value && chat.hilo.value.mensajes.isEmpty())
+    }
+}

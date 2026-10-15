@@ -89,6 +89,7 @@ import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Archivo
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.superficieTarjeta
@@ -121,12 +122,18 @@ fun ChatPantalla(modelo: ModeloApp) {
     DisposableEffect(ch) {
         if (ch != null) {
             ch.abierto = true
-            alcance.launch { ch.marcarLeido() }
+            alcance.launch {
+                // Si el hilo no se trajo nunca (sin red al arrancar), se intenta ya: el sondeo recién consulta a los 15 s y
+                // mientras tanto se veía el chat vacío.
+                if (!ch.traido) ch.cargar()
+                ch.marcarLeido()
+            }
         }
         onDispose { ch?.abierto = false }
     }
     val hilo = ch?.hilo?.collectAsStateWithLifecycle()?.value ?: HiloChat(hayMas = false)
     val cargando = ch?.cargando?.collectAsStateWithLifecycle()?.value ?: false
+    val sinTraer = ch?.sinTraer?.collectAsStateWithLifecycle()?.value ?: false
     // CHA-02: lo que se está escribiendo vive acá, no en el modelo: un mensaje que llega no lo pisa. Sobrevive a cambiar
     // de pestaña y a rotar.
     var texto by rememberSaveable { mutableStateOf("") }
@@ -158,7 +165,7 @@ fun ChatPantalla(modelo: ModeloApp) {
                 if (cargando && hilo.mensajes.isEmpty()) {
                     EsqueletoChat()
                 } else {
-                    Conversacion(modelo, ch, hilo, cargando, estadoLista)
+                    Conversacion(modelo, ch, hilo, cargando, sinTraer, estadoLista)
                 }
             }
             Compositor(
@@ -210,7 +217,7 @@ private fun BarraChat(tapado: Boolean) {
  * lista cierra el teclado.
  */
 @Composable
-private fun Conversacion(modelo: ModeloApp, ch: ModeloChat?, hilo: HiloChat, cargando: Boolean, estadoLista: LazyListState) {
+private fun Conversacion(modelo: ModeloApp, ch: ModeloChat?, hilo: HiloChat, cargando: Boolean, sinTraer: Boolean, estadoLista: LazyListState) {
     val alcance = LocalAlcanceApp.current
     val reducir = reducirMovimiento()
     val filas = remember(hilo.mensajes) { TextosChat.filas(hilo.mensajes).asReversed() }
@@ -258,7 +265,15 @@ private fun Conversacion(modelo: ModeloApp, ch: ModeloChat?, hilo: HiloChat, car
                 }
             }
         }
-        item(key = "encabezado") { Encabezado(vacio = hilo.mensajes.isEmpty(), Modifier.widthIn(max = AnchoLectura).fillMaxWidth()) }
+        item(key = "encabezado") {
+            Encabezado(
+                vacio = hilo.mensajes.isEmpty(),
+                sinTraer = sinTraer,
+                cargando = cargando,
+                alReintentar = { alcance.launch { ch?.cargar() } },
+                modifier = Modifier.widthIn(max = AnchoLectura).fillMaxWidth(),
+            )
+        }
         // Como la web, arriba de todas las escenas menos Revisión (GEN-03). Sin pendientes no ocupa lugar.
         item(key = "banner") { BannerRevision(modelo, Modifier.widthIn(max = AnchoLectura).padding(top = Espacio.s)) }
     }
@@ -277,9 +292,37 @@ private class CerrarTecladoAlArrastrar(private val foco: FocusManager) : NestedS
  * mensajes, el avatar grande y para qué sirve el chat.
  */
 @Composable
-private fun Encabezado(vacio: Boolean, modifier: Modifier = Modifier) {
+private fun Encabezado(vacio: Boolean, sinTraer: Boolean, cargando: Boolean, alReintentar: () -> Unit, modifier: Modifier = Modifier) {
     val c = MyPump.colores
-    if (vacio) {
+    if (vacio && sinTraer) {
+        // Sin red y sin haber traído nunca el hilo: no es que no haya mensajes.
+        Column(
+            modifier.padding(top = Espacio.xxl, bottom = Espacio.l).testTag("chat-sin-traer"),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+        ) {
+            Icon(Iconos.SinWifi, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(28.dp))
+            Text(
+                "No pudimos traer los mensajes",
+                style = MaterialTheme.typography.titleMedium,
+                color = c.texto,
+                modifier = Modifier.padding(top = 4.dp).semantics { heading() },
+            )
+            Text(
+                "Sin conexión. Lo que escribas se manda solo cuando vuelva la señal.",
+                style = Letras.subtitulo,
+                color = c.textoSecundario,
+                textAlign = TextAlign.Center,
+            )
+            BotonMarca(
+                "Reintentar",
+                alTocar = alReintentar,
+                compacto = true,
+                habilitado = !cargando,
+                modifier = Modifier.padding(top = Espacio.xs).testTag("chat-reintentar"),
+            )
+        }
+    } else if (vacio) {
         Column(
             modifier.padding(top = Espacio.xxl, bottom = Espacio.l).testTag("chat-vacio"),
             horizontalAlignment = Alignment.CenterHorizontally,
