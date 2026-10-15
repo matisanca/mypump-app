@@ -191,6 +191,29 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 05:30, iOS: tocar un aviso cerraba la app (arreglado en el TestFlight 107) y el port a Android:**
+  - **Tocar una notificación con la app en el fondo la cerraba** (9c9e8b0). Le iba a pasar a cada cliente que tocara un
+    mensaje de Mati.
+    - Causa: con la versión `async` del delegado, Swift llamaba al cierre de UIKit desde un hilo de fondo, y UIKit
+      aborta con una aserción en `_updateSnapshotAndStateRestoration`.
+    - Lo encontró una prueba nueva de punta a punta (NOT-03): con `-avisoDePrueba chat` (solo Debug) la app agenda un
+      aviso local que entra por el mismo `didReceive`. La prueba la manda al fondo, lo toca y llega al Chat; en frío,
+      arranca sin caerse.
+    - **TestFlight 107** (`nios-2.0.0-107`, 05:20) lo lleva. **Del 104 al 106 tienen el cierre:** en el iPhone de Mati,
+      actualizar al 107 antes de probar avisos.
+  - **Sin señal, revisado con `-sinRed`:**
+    - El chat parecía vacío, como en la web. Ahora dice «No pudimos traer los mensajes», con Reintentar (a064dc0, y en
+      Android f0f6ab1).
+    - Entreno, Dieta, Revisión y Progreso quedan como la web: muestran el plan guardado, con el aviso.
+  - **Mis fotos:** una foto que no se podía traer dejaba la ruedita girando para siempre (226bd9e). Es el gemelo del
+    arreglo de Android e16f231, que el agente de la matriz encontró en Android 9.
+  - **Android, port de los arreglos de iOS:**
+    - los swaps viejos esperan la decisión (4bf705a; la prueba reproduce la pérdida también en Android);
+    - la cola de fotos de la Capacitor sale en la escritura de vuelta (473d5dd);
+    - el chat sin red (f0f6ab1).
+
+    JVM 553, sin fallas.
+
 - **15-oct 05:00, iOS: la migración otra vez de punta a punta, la letra de accesibilidad y lo del agente de Play:**
   - **Migración** (`sim-migracion.sh`, con el código de hoy). Aparecieron dos errores reales y uno de la prueba:
     - **Pérdida de datos** (6fd391b). Los reemplazos de comida que estaban solo en el teléfono (una v1.0.11, sin la
