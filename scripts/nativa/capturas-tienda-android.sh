@@ -45,6 +45,9 @@ restaurar() {
   adb shell wm size reset >/dev/null 2>&1 || true
   adb shell cmd uimode night no >/dev/null 2>&1 || true
   if [ $PRENDIDO_ACA = 1 ]; then
+    # Los ajustes (el tamaño, sysui_demo_allowed) se guardan en el disco hasta 2 s después: `emu kill` corta en seco y,
+    # sin esperar, el emulador vuelve a arrancar con la pantalla achicada.
+    sleep 4
     adb emu kill >/dev/null 2>&1 || true
     sleep 5
   fi
