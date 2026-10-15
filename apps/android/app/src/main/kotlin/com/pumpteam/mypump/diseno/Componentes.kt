@@ -226,7 +226,7 @@ fun MarcaMyPump(modifier: Modifier = Modifier, conLema: Boolean = true) {
         if (conLema) {
             Spacer(Modifier.height(10.dp))
             Text(
-                "Tu entrenamiento y tu nutrición, con tu coach.",
+                "Tu entrenamiento y tu nutrición, con Mati.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = c.textoSecundario,
                 textAlign = TextAlign.Center,

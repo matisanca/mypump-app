@@ -140,7 +140,7 @@ struct Marca: View {
                 .accessibilityHidden(true)
             (Text("My").foregroundStyle(.primary) + Text("Pump").foregroundStyle(Color.marcaTexto))
                 .font(Archivo.fuente(44, peso: 900, relativoA: .largeTitle))
-            Text("Tu entrenamiento y tu nutrición, con tu coach.")
+            Text("Tu entrenamiento y tu nutrición, con Mati.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

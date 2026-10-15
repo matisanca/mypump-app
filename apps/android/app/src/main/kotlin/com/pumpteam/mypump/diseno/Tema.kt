@@ -75,9 +75,11 @@ data class ColoresMyPump(
 private val coloresClaros = ColoresMyPump(
     marca = Marca,
     sobreMarca = SobreMarca,
-    marcaTexto = Color(0xFF3F6212),
+    // Negro como el activo de la web: el verde oliva de antes no es de la marca (Mati, 15-oct).
+    marcaTexto = Color(0xFF0A0A0A),
     marcaSuave = Color(0x42B8F060),
-    marcaVivo = Color(0xFF65A30D),
+    // El lima de la marca para gráficos e interruptores; en claro, el «hover» de la web, para que se vea sobre blanco.
+    marcaVivo = Color(0xFFA8E050),
     exito = Color(0xFF16A34A),
     alerta = Color(0xFFC2410C),
     peligro = Color(0xFFDC2626),

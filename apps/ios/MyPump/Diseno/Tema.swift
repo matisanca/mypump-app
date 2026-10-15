@@ -7,8 +7,9 @@ import UIKit
 // Reglas del sistema visual (valen para todas las pestañas):
 // · Grilla de 8 pt (con medios pasos de 4): `Espacio`.
 // · Esquinas continuas: tarjetas 24, controles 14, miniaturas 12, chips y botones principales en cápsula: `Radio`.
-// · El lima es un RELLENO con texto negro (botones, selección, logros). Para texto e íconos va `marcaTexto` y para
-//   gráficos (anillos, líneas, barras) `marcaVivo`: el lima puro sobre blanco no tiene contraste.
+// · Los colores de la marca son los de la web: negro, blanco y el lima. El lima es un RELLENO con texto negro (botones,
+//   selección, logros) y el color de los gráficos (`marcaVivo`); el texto y los íconos de acento van en negro en claro y
+//   en lima en oscuro (`marcaTexto`). Mati, 15-oct: el verde oliva que había para el texto no es de la marca.
 // · Vidrio solo en lo que flota sobre el contenido (barras, isla de descanso, compositor del chat): `Vidrio.swift`.
 // · Archivo (la letra de la marca) para números grandes y títulos de día; el resto, SF Pro.
 
@@ -16,12 +17,14 @@ extension Color {
     /// Relleno de marca (botones principales, día hecho). Siempre con texto negro encima.
     static let marca = Color(red: 0xB8 / 255, green: 0xF0 / 255, blue: 0x60 / 255)
     static let sobreMarca = Color(red: 0x0A / 255, green: 0x0A / 255, blue: 0x0A / 255)
-    /// Verde para TEXTO e íconos: el lima sobre blanco no tiene contraste, así que en claro va uno oscuro (7:1).
-    static let marcaTexto = Color(claro: UIColor(hex: 0x3F6212), oscuro: UIColor(hex: 0xB8F060))
+    /// Acento para TEXTO e íconos (links, la pestaña elegida, tildes): negro en claro, como el activo de la web, y lima en
+    /// oscuro. El lima sobre blanco no se lee como texto.
+    static let marcaTexto = Color(claro: UIColor(hex: 0x0A0A0A), oscuro: UIColor(hex: 0xB8F060))
     /// Fondo teñido de marca (fila confirmada, aviso de progresión).
     static let marcaSuave = Color(claro: UIColor(hex: 0xB8F060, alfa: 0.26), oscuro: UIColor(hex: 0xB8F060, alfa: 0.14))
-    /// Verde para GRÁFICOS (anillos, líneas, barras): en claro un lima más hondo que pasa 3:1 contra blanco.
-    static let marcaVivo = Color(claro: UIColor(hex: 0x65A30D), oscuro: UIColor(hex: 0xB8F060))
+    /// Lima para GRÁFICOS (anillos, líneas, barras, interruptores): el de la marca; en claro, el «hover» de la web
+    /// (#A8E050), apenas más hondo para que una línea fina se vea sobre blanco.
+    static let marcaVivo = Color(claro: UIColor(hex: 0xA8E050), oscuro: UIColor(hex: 0xB8F060))
 
     static let exito = Color(claro: UIColor(hex: 0x16A34A), oscuro: UIColor(hex: 0x30D158))
     static let alerta = Color(claro: UIColor(hex: 0xC2410C), oscuro: UIColor(hex: 0xFF9F0A))

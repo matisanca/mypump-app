@@ -205,7 +205,7 @@ private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>) {
                     .weight(1f)
                     .fillMaxHeight()
                     .clip(CircleShape)
-                    .background(if (elegida) c.campo else Color.Transparent)
+                    .background(if (elegida) c.marcaSuave else Color.Transparent)
                     .selectable(selected = elegida, role = Role.Tab, onClick = { navegacion.elegir(p) })
                     .testTag(p.etiqueta),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -214,7 +214,12 @@ private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>) {
                 BadgedBox(
                     badge = {
                         if (n > 0) {
-                            Badge(modifier = Modifier.semantics { contentDescription = "$n sin ver" }) { Text(if (n > 99) "99+" else "$n") }
+                            // Lima con el número en negro, como los avisos de las pestañas de la web.
+                            Badge(
+                                containerColor = c.marca,
+                                contentColor = c.sobreMarca,
+                                modifier = Modifier.semantics { contentDescription = "$n sin ver" },
+                            ) { Text(if (n > 99) "99+" else "$n", fontWeight = FontWeight.Bold) }
                         }
                     },
                 ) { Icon(p.icono, contentDescription = null, tint = tono, modifier = Modifier.size(28.dp)) }

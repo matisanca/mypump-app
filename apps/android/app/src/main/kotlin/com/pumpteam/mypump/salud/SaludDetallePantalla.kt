@@ -366,7 +366,7 @@ private fun Preferencias(salud: ModeloSalud) {
                     style = Letras.caption, color = c.textoSecundario,
                 )
             }
-            Interruptor(mostrar, alCambiar = null, color = c.exito)
+            Interruptor(mostrar, alCambiar = null, color = c.marcaVivo)
         }
     }
 }

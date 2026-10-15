@@ -183,7 +183,7 @@ fun ChatPantalla(modelo: ModeloApp) {
 }
 
 /**
- * La barra de arriba: el avatar de Mati, "Mati" y "Tu coach", al medio, como el título de iOS. Con mensajes tapados abajo
+ * La barra de arriba: el avatar y "Mati", al medio, como el título de iOS. Con mensajes tapados abajo
  * de ella ([tapado]) toma el color de la tarjeta.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -199,10 +199,8 @@ private fun BarraChat(tapado: Boolean) {
                 horizontalArrangement = Arrangement.spacedBy(Espacio.xs),
             ) {
                 AvatarMati(30.dp)
-                Column {
-                    Text("Mati", style = MaterialTheme.typography.titleMedium)
-                    Text("Tu coach", style = Letras.caption2, color = c.textoSecundario)
-                }
+                // Solo «Mati», sin «Tu coach» (pedido de Mati, 15-oct).
+                Text("Mati", style = MaterialTheme.typography.titleMedium)
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(

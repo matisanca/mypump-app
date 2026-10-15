@@ -31,7 +31,7 @@ fun Interruptor(
     prendido: Boolean,
     alCambiar: ((Boolean) -> Unit)?,
     modifier: Modifier = Modifier,
-    color: Color = MyPump.colores.exito,
+    color: Color = MyPump.colores.marcaVivo,
     habilitado: Boolean = true,
 ) {
     val c = MyPump.colores

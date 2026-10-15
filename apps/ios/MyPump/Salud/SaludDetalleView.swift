@@ -163,7 +163,7 @@ struct SaludDetalleView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .tint(Color.exito)
+            .tint(Color.marcaVivo)   // el lima de la marca, como los otros interruptores
             .accessibilityIdentifier("mostrar-score")
         }
     }

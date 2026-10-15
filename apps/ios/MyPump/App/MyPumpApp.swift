@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import MyPumpDatos
 import MyPumpReglas
 
@@ -13,6 +14,9 @@ struct MyPumpApp: App {
     init() {
         // Apple Health cableada explícita (si no, ModeloSalud la busca por nombre y un renombre la apagaría sin avisar).
         ModeloSalud.fuenteDelSistema = FuenteHealthKit()
+        // Los avisos de las pestañas con los colores de la marca, como en la web: lima con el número en negro.
+        UITabBarItem.appearance().badgeColor = UIColor(hex: 0xB8F060)
+        UITabBarItem.appearance().setBadgeTextAttributes([.foregroundColor: UIColor(hex: 0x0A0A0A)], for: .normal)
         // El catálogo de ejercicios empaquetado: hasta que llega el del servidor, y para arrancar sin red.
         if let url = Bundle.main.url(forResource: "catalogo-ejercicios", withExtension: "json", subdirectory: "Bases.bundle"),
            let datos = try? Data(contentsOf: url), let c = try? CatalogoEjercicios(json: datos) {

@@ -39,10 +39,8 @@ struct ChatView: View {
                     ToolbarItem(placement: .principal) {
                         HStack(spacing: Espacio.xs) {
                             AvatarMati(lado: 30)
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text("Mati").font(.headline)
-                                Text("Tu coach").font(.caption2).foregroundStyle(.secondary)
-                            }
+                            // Solo «Mati», sin «Tu coach» (pedido de Mati, 15-oct).
+                            Text("Mati").font(.headline)
                         }
                         .accessibilityElement(children: .combine)
                     }
