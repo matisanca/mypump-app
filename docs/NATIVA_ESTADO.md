@@ -83,7 +83,9 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
 3. ✅ Matriz de emuladores con Google Play (15-oct, 8733a3c): las 186 instrumentadas con 0 fallas en Android 9, 11, 13,
    14 y 16. La migración da 31/31 en 13 y 28/31 en 9: los 3 que fallan son de la Capacitor, que no arranca con WebView 66.
    Pendientes de la lista original:
-   - la migración desde la Capacitor 1.0.12;
+   - ~~la migración desde la Capacitor 1.0.12~~ ✅ ya cubierta: `emu-migracion.sh` compila la Capacitor desde `main`, y
+     entre `a1.0.12-b18` (la de Play, 22-sep) y `main` no cambió `android/` ni el almacenamiento. Solo cambiaron el
+     texto de `privacidad.html` y, el 15-oct, el arreglo de las fotos de la web (0620012), posterior a esas corridas;
    - ~~un push real de punta a punta con `push.py` y la cuenta de prueba~~ ✅ 15-oct, con OK de Mati
      (`scripts/nativa/push-android.py`): llegó en 263 s por el canal `mypump_mensajes`, y tocarlo abre el Chat;
    - Health Connect, que viene integrado desde Android 14 y es una app aparte de 9 a 13;
