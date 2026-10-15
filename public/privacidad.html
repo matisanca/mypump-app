@@ -118,23 +118,36 @@
   <ul>
     <li><strong>Supabase</strong> — base de datos y backend.</li>
     <li><strong>Cloudflare</strong> — alojamiento y entrega de la aplicación.</li>
-    <li><strong>Anthropic</strong> — redacción del informe semanal que tu
-      entrenador usa para ajustarte el plan. Lo que se envía va
-      <strong>seudonimizado</strong>: tu nombre se reemplaza por una etiqueta
-      sin significado (c1, c2…) que solo vale dentro de esa consulta. Nunca se
-      envían tus fotos.</li>
+    <li><strong>Anthropic</strong> — se usa para dos cosas:
+      <ul>
+        <li><strong>Redactar el informe semanal</strong> que tu entrenador usa
+          para ajustarte el plan. Lo que se envía va
+          <strong>seudonimizado</strong>: tu nombre se reemplaza por una etiqueta
+          sin significado (c1, c2…) que solo vale dentro de esa consulta. Nunca
+          se envían tus fotos.</li>
+        <li><strong>Preparar las respuestas del chat que Mati aprueba.</strong>
+          Se envían tu mensaje, la conversación y, si hace falta para
+          contestarte, el resumen de tu plan, tus registros y tus estudios,
+          <strong>siempre sin tu nombre ni tus datos de contacto</strong>: los
+          saca antes una inteligencia artificial que corre en nuestro propio
+          servidor.</li>
+      </ul></li>
     <li><strong>OpenAI</strong> — se usa para dos cosas, y solo para esas dos:
       <ul>
-        <li><strong>Redactar respuestas del chat.</strong> Cuando escribís por el
-          chat, se envían tu mensaje, los últimos mensajes de esa conversación,
-          tu nombre de pila y <strong>el resumen de tu revisión de esa
+        <li><strong>Preparar borradores de respuesta del chat</strong>, que Mati
+          revisa antes de que te lleguen. Se envían tu mensaje, los últimos
+          mensajes de esa conversación y <strong>el resumen de tu revisión de esa
           semana</strong>: los cuatro valores del check (energía, descanso,
           hambre y adherencia, del 1 al 5), la nota que hayas escrito, tu peso
           de la semana y cuántas de las tres fotos subiste.
           <br><br>
-          Va eso porque si no, la respuesta te pediría cosas que ya mandaste. No
-          se envían <strong>las fotos</strong> (solo se cuentan), ni tu rutina,
-          ni tu dieta, ni nada de lo que trae tu reloj.</li>
+          <strong>Antes de salir, una inteligencia artificial que corre en
+          nuestro propio servidor le saca a todo eso tu nombre y tus datos de
+          contacto</strong>; tu nombre se vuelve a poner en nuestro servidor,
+          cuando vuelve la respuesta. Va el resumen porque si no, la respuesta te
+          pediría cosas que ya mandaste. No se envían <strong>las fotos</strong>
+          (solo se cuentan), ni tu rutina, ni tu dieta, ni nada de lo que trae tu
+          reloj.</li>
         <li><strong>Leer las fotos que sacás para cargar comida.</strong> Si
           fotografiás un plato o la tabla nutricional de un producto,
           <strong>esa foto se envía</strong> para reconocer qué es y estimar sus
@@ -148,27 +161,17 @@
   </ul>
 
   <h3>Sobre las respuestas automáticas del chat</h3>
-  <p>Algunas respuestas del chat se <strong>redactan de forma automática</strong>
-  y se limitan a confirmar que tu mensaje llegó, agradecerte o avisarte que Mati
-  te contesta. <strong>Nunca</strong> incluyen indicaciones de entrenamiento,
-  nutrición, suplementación ni salud: un filtro las bloquea antes de enviarlas y,
-  si algo no pasa ese filtro, tu mensaje va directo a Mati.</p>
-  <p>Cualquier consulta, pedido de cambio o mención de un síntoma <strong>la
-  responde Mati en persona</strong>, siempre. Y todo lo que escribís en el chat lo
-  ve él.</p>
+  <p>Algunas respuestas del chat, las que solo confirman que tu mensaje llegó o te
+  agradecen, se mandan sin que Mati las revise una por una. <strong>Nunca</strong>
+  incluyen indicaciones de entrenamiento, nutrición, suplementación ni salud.</p>
+  <p>Cualquier consulta, pedido de cambio o mención de un síntoma <strong>la revisa y
+  la aprueba Mati</strong>, siempre. Y todo lo que escribís en el chat lo ve él.</p>
   <p>Todos actúan como <strong>encargados del tratamiento</strong>: procesan los
   datos por cuenta de Pump Team y para prestar el servicio, no por cuenta
   propia. Ninguno los usa para publicidad ni para entrenar modelos.</p>
   <p>Algunos de estos proveedores pueden procesar datos fuera del Espacio Económico
   Europeo; en esos casos las transferencias se amparan en las Cláusulas
   Contractuales Tipo (SCCs) de la Comisión Europea. No hay otros destinatarios.</p>
-
-  <h3>Podés decir que no</h3>
-  <p>Desde la versión 2.0 de la app (iPhone y Android) te pedimos permiso antes de
-  usar estos proveedores de inteligencia artificial. Si no aceptás, <strong>ninguno recibe
-  tus datos</strong>: el chat lo responde Mati, las fotos de comida no se analizan y
-  tu revisión semanal se prepara sin IA. Lo podés cambiar cuando quieras en
-  <strong>Revisión → Mis datos → Asistente de IA</strong>.</p>
 
   <h2>5. Cuánto tiempo los conservamos</h2>
   <p>Conservamos tus datos mientras seas cliente de Pump Team. Al finalizar la
