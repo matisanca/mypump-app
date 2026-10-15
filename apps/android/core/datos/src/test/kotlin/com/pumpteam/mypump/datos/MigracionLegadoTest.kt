@@ -192,6 +192,30 @@ class Telefono {
 }
 
 class MigracionLegadoTest {
+    /**
+     * D14: el respaldo de Google restaura el almacenamiento de la app vieja y `files/legado/`, pero no el token de la nativa.
+     * Con la misma huella, la Fase L cortaba y el teléfono nuevo pedía el link (hoy la huella cambia por las fechas que
+     * Android restaura en 1970). Ahora, sin token guardado, vuelve a adoptar el de la app vieja; si está marcado inválido, no.
+     */
+    @Test
+    fun despuesDeRestaurarUnRespaldoSinTokenVuelveAAdoptarElDeLaAppVieja() {
+        val tel = Telefono()
+        tel.lector.escribir(mapOf("mypump_token" to tokenA, "mypump_outbox_$tokenA" to json(ValorJson.Lista(colaWeb(2)))))
+        assertTrue(tel.faseL().adoptoToken)
+        val cola = tel.cola().map { it.id }
+        // El respaldo: lo mismo de antes (misma huella), sin el token de la nativa.
+        tel.almacen.guardar(null)
+        val r = tel.faseL()
+        assertEquals(tokenA, tel.almacen.leer(), "con la misma huella cortaba y el teléfono pedía el link")
+        assertTrue(r.adoptoToken)
+        assertEquals(cola, tel.cola().map { it.id }, "no duplica la cola")
+        // Con el token marcado inválido no se vuelve a adoptar (ni se repite la corrida cada vez).
+        tel.almacen.guardar(null)
+        tel.ajustes.guardar("mypump_token_invalido", tokenA)
+        assertFalse(tel.faseL().corrio)
+        assertNull(tel.almacen.leer())
+    }
+
     @Test
     fun quinientasOpsDeLosNueveKinds() {
         val tel = Telefono()

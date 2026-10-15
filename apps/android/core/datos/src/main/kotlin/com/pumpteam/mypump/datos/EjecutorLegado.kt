@@ -282,6 +282,20 @@ object EjecutorLegado {
      * @param cuentaViva el token que ya tiene una `Outbox` viva en este proceso (el modelo ya existe). Sus ops no se
      *   escriben al archivo (la cola viva lo pisaría al guardar): van todas a la Fase R, que las importa por la cola viva.
      */
+    /**
+     * D14, el respaldo de Google: trae el almacenamiento de la app vieja y `files/legado/`, pero no el token de la nativa
+     * (`no_backup/` y el Keystore). Con la misma huella del leveldb, la Fase L cortaba arriba y el teléfono nuevo pedía el
+     * link. Hoy anda de casualidad: Android restaura las fechas de los archivos en 1970 y la huella cambia (lo encontró el
+     * agente de APL-08, 15-oct). Sin token guardado, si la corrida anterior vio un token de la app vieja que no quedó
+     * marcado inválido, se vuelve a correr y se adopta. No hay un «salir» a la vista del cliente que esto deshaga.
+     */
+    private fun hayQueVolverAAdoptar(previo: EstadoMigracion, almacen: AlmacenToken, ajustes: Preferencias): Boolean {
+        val legado = previo.anterior.tokenLegado ?: return false
+        if (almacen.leer() != null) return false
+        val invalido = ajustes.leer("mypump_token_invalido")
+        return invalido == null || JsonLegado.sha256(invalido) != legado
+    }
+
     suspend fun faseLocal(
         entorno: EntornoLegado,
         almacen: AlmacenToken,
@@ -297,7 +311,7 @@ object EjecutorLegado {
         val a = ArchivosLegado(entorno.carpeta)
         val previo = a.estado
         val huella = lector.huella()
-        if (previo != null && previo.huella == huella) {
+        if (previo != null && previo.huella == huella && !hayQueVolverAAdoptar(previo, almacen, ajustes)) {
             // Se escribió de vuelta pero el almacenamiento no cambió: no llegó al disco (el proceso murió antes de que el
             // WebView la bajara). Se repite. Si llegó, la huella cambió y esta misma función la confirma leyendo la marca.
             val hecha = previo.escrituraHecha

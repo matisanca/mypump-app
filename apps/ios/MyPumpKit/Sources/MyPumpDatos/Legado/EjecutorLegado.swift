@@ -178,6 +178,16 @@ public enum EjecutorLegado {
         public var plan: PlanMigracion?
     }
 
+    /// Una restauración que trae el almacenamiento de la app vieja y `legado/` pero no el Keychain (un respaldo local de
+    /// Finder sin cifrar): con la misma huella, la Fase L cortaba y pedía el link. Sin token guardado, si la corrida
+    /// anterior vio un token de la app vieja que no quedó marcado inválido, se vuelve a correr y se adopta (gemelo del D14
+    /// de Android, 15-oct). No hay un «salir» a la vista del cliente que esto deshaga.
+    static func hayQueVolverAAdoptar(_ previo: EstadoMigracion, almacen: AlmacenToken, ajustes: UserDefaults) -> Bool {
+        guard let legado = previo.anterior.tokenLegado, almacen.leer() == nil else { return false }
+        guard let invalido = ajustes.string(forKey: "mypump_token_invalido") else { return true }
+        return JSONLegado.sha256(invalido) != legado
+    }
+
     /// - Parameters:
     ///   - cuentaViva: el token que ya tiene una `Outbox` viva en este proceso (el modelo ya existe). Sus ops no se
     ///     escriben al archivo (la cola viva lo pisaría al guardar): van todas a la Fase R, que las importa con `await`.
@@ -190,7 +200,7 @@ public enum EjecutorLegado {
         let a = ArchivosLegado(carpeta: entorno.carpeta)
         let previo = a.estado
         let huella = LectorLegado.huella(library: entorno.library, archivos: archivos)
-        if var previo, previo.huella == huella {
+        if var previo, previo.huella == huella, !hayQueVolverAAdoptar(previo, almacen: almacen, ajustes: ajustes) {
             // Se escribió de vuelta pero los archivos no cambiaron: no llegó al disco (el proceso murió antes de que WebKit
             // la bajara). Se repite. Si llegó, la huella cambió y esta misma función la confirma leyendo la marca.
             if let hecha = previo.escrituraHecha, hecha > (previo.escrituraConfirmada ?? 0), previo.escritura == nil,

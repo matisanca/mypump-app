@@ -629,6 +629,25 @@ struct MigracionLegadoTests {
         #expect(tel.ajustes.string(forKey: "mypump_health_diag") == nil)
     }
 
+    /// Una restauración que trae el almacenamiento de la app vieja y `legado/` pero no el Keychain (un respaldo local sin
+    /// cifrar): con la misma huella la Fase L cortaba y pedía el link. Ahora, sin token guardado, vuelve a adoptar el de la
+    /// app vieja; marcado inválido, no (gemelo del D14 de Android).
+    @Test func despuesDeRestaurarSinTokenVuelveAAdoptarElDeLaAppVieja() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(2)))])
+        #expect(try tel.faseL().adoptoToken)
+        let cola = tel.cola().ops.map(\.id)
+        tel.almacen.guardar(nil)
+        let r = try tel.faseL()
+        #expect(tel.almacen.leer() == tokenA, "con la misma huella cortaba y pedía el link")
+        #expect(r.adoptoToken && tel.cola().ops.map(\.id) == cola)
+        // Con el token marcado inválido no se vuelve a adoptar (ni se repite la corrida cada vez).
+        tel.almacen.guardar(nil)
+        tel.ajustes.set(tokenA, forKey: "mypump_token_invalido")
+        #expect(try !tel.faseL().corrio)
+        #expect(tel.almacen.leer() == nil)
+    }
+
     @Test func dosCorridasDanLoMismo() throws {
         let tel = Telefono(); defer { tel.limpiar() }
         try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(120))),
