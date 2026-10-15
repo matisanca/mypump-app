@@ -6,9 +6,11 @@ import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.ClaveEjercicio
 import com.pumpteam.mypump.reglas.ProgresoEjercicio
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 
 /** Una tarjeta de Progreso: un ejercicio (agrupado por clave entre los días donde aparece) con su resumen y las filas. */
 data class TarjetaProgreso(
@@ -102,12 +104,17 @@ class ModeloProgreso(private val cliente: ClienteRpc, private val token: String)
             }
         }
         _historialPorClave.value = filasPor
-        _tarjetas.value = entradas.mapNotNull { e ->
-            val filas = filasPor[e.clave] ?: return@mapNotNull null
-            val resumen = ProgresoEjercicio.resumen(filas) ?: return@mapNotNull null
-            TarjetaProgreso(e.id, e.nombre, e.clave, e.dias.joinToString(" · "), resumen, filas)
+        // Las cuentas (la fecha local de cada fila) fuera del hilo principal: con el historial más largo que deja el
+        // servidor (48 filas por ejercicio, 2.880 en total) son decenas a cientos de ms en un teléfono (15-oct, como iOS).
+        val (tarjetas, sesiones) = withContext(Dispatchers.Default) {
+            entradas.mapNotNull { e ->
+                val filas = filasPor[e.clave] ?: return@mapNotNull null
+                val resumen = ProgresoEjercicio.resumen(filas) ?: return@mapNotNull null
+                TarjetaProgreso(e.id, e.nombre, e.clave, e.dias.joinToString(" · "), resumen, filas)
+            } to ProgresoEjercicio.sesiones(filasPor.values.flatten()).size
         }
-        _sesiones.value = ProgresoEjercicio.sesiones(filasPor.values.flatten()).size
+        _tarjetas.value = tarjetas
+        _sesiones.value = sesiones
         _estado.value = Estado.LISTO
     }
 }
