@@ -77,17 +77,18 @@ class DietaEscrituraUiTest : PruebaUi() {
         assertTrue(p.existe(etiqueta("hoja-reemplazar")))
     }
 
-    /** "Crear alimento personalizado", al pie de la lista de la hoja (después de las opciones). */
+    /**
+     * "Crear alimento personalizado", al pie de la lista de la hoja (después de las opciones). Espera a que termine la
+     * transición: mientras la lista sale todavía está en el árbol, y un Atrás justo ahí la daba por vista.
+     */
     private fun crearAlimento() {
-        repeat(40) {
-            if (p.existe(etiqueta("crear-alimento"))) {
-                p.tocar(etiqueta("crear-alimento"))
-                p.nodo(etiqueta("crear-alimento-formulario"))
-                return
-            }
+        for (i in 0 until 40) {
+            if (p.existe(etiqueta("crear-alimento"))) break
             p.desplazar(etiqueta("lista-sustitutos"), 1_500f)
         }
-        p.tocar(etiqueta("crear-alimento"), ms = 2_000)
+        p.tocar(etiqueta("crear-alimento"))
+        p.nodo(etiqueta("crear-alimento-formulario"))
+        p.esperarQueNoEste(etiqueta("lista-sustitutos"))
     }
 
     /** La foto que llegó a la visión: tipo, medidas y si trae ubicación. */
