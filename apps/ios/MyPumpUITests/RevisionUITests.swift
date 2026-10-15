@@ -89,6 +89,22 @@ final class RevisionUITests: XCTestCase {
         XCTAssertEqual(vasos(), antes, "El agua no volvió a como estaba")
     }
 
+    /// REV-04: con 4 semanas o más de fotos, «Ver mis fotos» abre la galería por semana con el comparador «Antes y ahora»
+    /// arriba. Las fotos son de prueba (`-fotosDePrueba`, solo Debug): la ventana del servidor no deja sembrar semanas viejas.
+    func testLaGaleriaConCincoSemanasTraeElComparador() throws {
+        app.terminate()
+        app.launchArguments += ["-fotosDePrueba", "YES"]
+        app.launch()
+        let ver = app.buttons["Ver mis fotos · 5 semanas"].firstMatch
+        XCTAssertTrue(ver.waitForExistence(timeout: 20), "No apareció «Ver mis fotos» con las 5 semanas")
+        let alto = app.windows.firstMatch.frame.maxY
+        for _ in 0..<10 where !(ver.isHittable && ver.frame.maxY < alto - 180) { app.swipeUp() }
+        ver.tap()
+        XCTAssertTrue(app.staticTexts["Antes y ahora"].waitForExistence(timeout: 10), "El comparador no está arriba de la galería")
+        sleep(2)   // que bajen las imágenes
+        adjuntarCaptura("comparador-5-semanas")
+    }
+
     /// El botón dice "marcado" en su valor de accesibilidad (`isSelected` no llega desde un botón de SwiftUI).
     private func marcado(_ e: XCUIElement) -> Bool { (e.value as? String) == "marcado" }
 

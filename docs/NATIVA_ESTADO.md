@@ -74,8 +74,8 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
 
 **Android 2.0.0**
 1. ✅ Todas las pantallas (f4bf5ce, 15-oct 03:00): no queda ninguna «en construcción».
-2. ⏳ Paridad de Android: quedan 6 en 🟡. ACC-01 espera la firma de Play; GEN-05, GEN-07 y GEN-08 no tienen prueba;
-   DIE-14/15 esperan a mini-vision.
+2. ⏳ Paridad de Android: quedan 3 en 🟡. ACC-01 espera la firma de Play, y DIE-14/15 esperan a mini-vision. GEN-05,
+   GEN-07 y GEN-08 ya tienen su prueba, que muerde (agente, 15-oct, mergeado en `nativa`).
 3. ✅ Matriz de emuladores con Google Play (15-oct, 8733a3c): las 186 instrumentadas con 0 fallas en Android 9, 11, 13,
    14 y 16. La migración da 31/31 en 13 y 28/31 en 9: los 3 que fallan son de la Capacitor, que no arranca con WebView 66.
    Pendientes de la lista original:
@@ -199,6 +199,33 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   Console la subida manual del AAB, Data safety, la declaración de Health Connect y las capturas.
 
 ## Bitácora
+
+- **15-oct 11:40, rendimiento, el chat y lo último de paridad de Android:**
+  - **Progreso tardaba 1,5 s en el hilo principal** con el historial más largo que deja el servidor (48 filas por
+    ejercicio, 2.880 en total). La causa: dos `ISO8601DateFormatter` por fila, un `Calendar` por fecha y una expresión
+    regular compilada por fila.
+    - Arreglado en e56af0a: los formateadores se arman una vez (`Formateadores`) y los usan Progreso, el chat, la última
+      vez de Entreno y Salud. Las cuentas de Progreso corren fuera del hilo principal. Queda en 0,25 s.
+    - `FormateadoresTests` tiene un umbral que falla si vuelve un formateador por fila.
+    - Android ya usaba formateadores inmutables (50 a 180 ms en la JVM), pero también calculaba en el hilo principal:
+      ahora va en `Dispatchers.Default` (8fe0ba7).
+  - **El chat se pedía dos veces** al abrirlo mientras cargaba la cuenta (por ejemplo, al tocar un aviso de Mati). Lo
+    encontró el agente en Android y lo arregló ahí; iOS tenía lo mismo.
+    - `ultimasTraidas` y `alAbrir()`: la carga de la cuenta no pide la última página si ya la trajo otro.
+    - `ChatAlAbrirTests` falla con 2 pedidos en vez de 1 sin el arreglo.
+  - **Android, la accesibilidad gemela de iOS** (c98584f):
+    - el texto con información pasa de terciario a secundario;
+    - el agua es un control con rango para TalkBack;
+    - el emoji de salud es decorativo.
+  - **El agente de Android** (mergeado):
+    - GEN-05, GEN-07 y GEN-08 tienen prueba de interfaz. GEN-08 ahora sigue el ajuste aunque cambie con la app abierta.
+    - `emu-ui.sh` desinstala antes de la suite.
+    - `emu_migracion.py` ya no necesita el adb especial de Android 9.
+    - La suite completa en nativa36 dio 193/193.
+  - **Paridad pendiente:**
+    - iOS: ACC-01/09 y SAL-13, que se cierran en el iPhone de Mati, y REV-04, al que le falta la captura del
+      comparador con 4 semanas de fotos.
+    - Android: ACC-01 (la firma de Play) y DIE-14/15 (mini-vision).
 
 - **15-oct 10:50, la auditoría de accesibilidad de Xcode en iOS** (`performAccessibilityAudit` en cada pantalla, con
   `test-nativa-real`; `AuditoriaAccesibilidadUITests`, solo con `TEST_RUNNER_MYPUMP_AUDITORIA=1`). Arreglado en d2b6cf0:
