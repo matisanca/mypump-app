@@ -53,18 +53,5 @@ extension FechaLocal {
 
 /// Lectura de instantes ISO del servidor (microsegundos y zona) para las reglas, sin depender de MyPumpDatos.
 enum FechaISOReglas {
-    static func fecha(_ iso: String) -> Date? {
-        var s = iso.replacingOccurrences(of: " ", with: "T")
-        if let punto = s.firstIndex(of: "."), let fin = s[punto...].firstIndex(where: { !$0.isNumber && $0 != "." }) {
-            let dec = s[s.index(after: punto)..<fin]
-            s.replaceSubrange(s.index(after: punto)..<fin, with: String(dec.prefix(3)).padding(toLength: 3, withPad: "0", startingAt: 0))
-        }
-        if s.range(of: #"[+-]\d\d$"#, options: .regularExpression) != nil { s += ":00" }
-        for opciones in [[ISO8601DateFormatter.Options.withInternetDateTime, .withFractionalSeconds], [.withInternetDateTime]] {
-            let f = ISO8601DateFormatter()
-            f.formatOptions = ISO8601DateFormatter.Options(opciones)
-            if let d = f.date(from: s) { return d }
-        }
-        return nil
-    }
+    static func fecha(_ iso: String) -> Date? { Formateadores.instante(iso) }
 }

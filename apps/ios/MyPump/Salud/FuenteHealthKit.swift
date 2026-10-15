@@ -121,11 +121,7 @@ final class FuenteHealthKit: NSObject, FuenteSalud, @unchecked Sendable {
         formateador().date(from: RelojLocal.iso(ms)) ?? RelojLocal.fecha(ms)
     }
 
-    private static func formateador() -> ISO8601DateFormatter {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }
+    private static func formateador() -> ISO8601DateFormatter { Formateadores.isoConDecimales }
 
     // MARK: - Consultas
 

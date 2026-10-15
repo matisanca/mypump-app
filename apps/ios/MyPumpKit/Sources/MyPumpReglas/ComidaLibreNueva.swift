@@ -83,9 +83,7 @@ public enum ComidaLibreNueva {
 
     /// "HH:MM" de un `Date` en la zona dada (el valor por defecto del campo hora).
     public static func hora(_ d: Date, zona: TimeZone = .current) -> String {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = zona
-        let c = cal.dateComponents([.hour, .minute], from: d)
+        let c = Formateadores.gregoriano(zona).dateComponents([.hour, .minute], from: d)
         return String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
     }
 
@@ -98,9 +96,7 @@ public enum ComidaLibreNueva {
 /// que marcar o registrar no se "corre de día" en otra zona horaria.
 public enum FechaLocal {
     public static func hoy(_ ahora: Date = Date(), zona: TimeZone = .current) -> String {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = zona
-        let c = cal.dateComponents([.year, .month, .day], from: ahora)
+        let c = Formateadores.gregoriano(zona).dateComponents([.year, .month, .day], from: ahora)
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 }

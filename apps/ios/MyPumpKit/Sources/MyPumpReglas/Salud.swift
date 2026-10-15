@@ -190,9 +190,7 @@ public struct RelojLocal: Sendable {
     public let calendario: Calendar
 
     public init(zona: TimeZone = .current) {
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = zona
-        calendario = c
+        calendario = Formateadores.gregoriano(zona)
     }
 
     public static func fecha(_ ms: Double) -> Date { Date(timeIntervalSince1970: ms / 1000) }
@@ -234,10 +232,8 @@ public struct RelojLocal: Sendable {
 
     /// `new Date(ms).toISOString()`.
     public static func iso(_ ms: Double) -> String {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: "UTC")!
         let segundos = (ms / 1000).rounded(.down)
-        let c = cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date(timeIntervalSince1970: segundos))
+        let c = Formateadores.utc.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date(timeIntervalSince1970: segundos))
         let resto = (ms - segundos * 1000).enteroTruncado
         return String(format: "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", c.year ?? 0, c.month ?? 0, c.day ?? 0,
                       c.hour ?? 0, c.minute ?? 0, c.second ?? 0, resto)
@@ -252,10 +248,7 @@ public struct RelojLocal: Sendable {
             let fraccion = s[s.index(after: punto)..<fin]
             s.replaceSubrange(punto..<fin, with: "." + String((fraccion + "000").prefix(3)))
         }
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = f.date(from: s) { return ms(d) }
-        f.formatOptions = [.withInternetDateTime]
-        return f.date(from: s).map(ms)
+        if let d = Formateadores.isoConDecimales.date(from: s) { return ms(d) }
+        return Formateadores.isoSinDecimales.date(from: s).map(ms)
     }
 }

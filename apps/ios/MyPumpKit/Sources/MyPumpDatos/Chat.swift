@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import MyPumpModelos
+import MyPumpReglas
 
 /// Una burbuja del hilo con Mati: la fila del servidor o una optimista que todavía no salió ("enviando…").
 public struct BurbujaChat: Identifiable, Equatable, Sendable {
@@ -119,28 +120,10 @@ public enum FechaISO {
         fecha(iso).map { $0.timeIntervalSince1970 * 1000 } ?? 0
     }
 
-    public static func fecha(_ iso: String) -> Date? {
-        guard !iso.isEmpty else { return nil }
-        // ISO8601DateFormatter no lee más de 3 decimales: se recortan los microsegundos.
-        var s = iso.replacingOccurrences(of: " ", with: "T")
-        if let punto = s.firstIndex(of: "."), let fin = s[punto...].firstIndex(where: { !$0.isNumber && $0 != "." }) {
-            let decimales = s[s.index(after: punto)..<fin]
-            s.replaceSubrange(s.index(after: punto)..<fin, with: String(decimales.prefix(3)).padding(toLength: 3, withPad: "0", startingAt: 0))
-        }
-        if s.hasSuffix("+00") || s.range(of: #"[+-]\d\d$"#, options: .regularExpression) != nil { s += ":00" }
-        let conDecimales = ISO8601DateFormatter()
-        conDecimales.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = conDecimales.date(from: s) { return d }
-        let sinDecimales = ISO8601DateFormatter()
-        sinDecimales.formatOptions = [.withInternetDateTime]
-        return sinDecimales.date(from: s)
-    }
+    /// ISO con microsegundos y zona `+00` incluidos (`Formateadores.instante`, con los formateadores ya armados).
+    public static func fecha(_ iso: String) -> Date? { Formateadores.instante(iso) }
 
-    public static func texto(_ d: Date) -> String {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f.string(from: d)
-    }
+    public static func texto(_ d: Date) -> String { Formateadores.isoConDecimales.string(from: d) }
 }
 
 /// El chat con Mati (`ambito='general'`): páginas de 30 hacia atrás, sondeo con un cursor, envío por la cola con la

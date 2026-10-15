@@ -492,8 +492,7 @@ public enum FechaJS {
         var c = DateComponents(year: y, month: mo, day: d)
         guard (1...12).contains(mo), (1...31).contains(d) else { return nil }
         if i == u.count {
-            var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!
-            return cal.date(from: c)
+            return Formateadores.utc.date(from: c)
         }
         guard toma(0x54) || toma(0x20), let h = numero(2), toma(0x3A), let mi = numero(2) else { return nil }
         c.hour = h; c.minute = mi; c.second = 0
@@ -524,8 +523,7 @@ public enum FechaJS {
             desfasaje = signo * (zh * 3600 + zm * 60)
         }
         guard i == u.count else { return nil }
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = desfasaje == nil ? .current : TimeZone(identifier: "UTC")!
+        let cal = desfasaje == nil ? Formateadores.gregoriano(.current) : Formateadores.utc
         return cal.date(from: c).map { $0.addingTimeInterval(ms / 1000 - Double(desfasaje ?? 0)) }
     }
 
@@ -538,8 +536,7 @@ public enum FechaJS {
     static func diaUTC(_ ymd: String) -> Int? {
         let p = ymd.split(separator: "-").compactMap { Int($0) }
         guard p.count == 3 else { return nil }
-        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!
-        guard let d = cal.date(from: DateComponents(year: p[0], month: p[1], day: p[2])) else { return nil }
+        guard let d = Formateadores.utc.date(from: DateComponents(year: p[0], month: p[1], day: p[2])) else { return nil }
         return Int((d.timeIntervalSince1970 / 86400).rounded())
     }
 
@@ -548,8 +545,7 @@ public enum FechaJS {
     public static func diaLargo(_ ymd: String) -> String? {
         let p = ymd.split(separator: "-").compactMap { Int($0) }
         guard p.count == 3 else { return nil }
-        var cal = Calendar(identifier: .gregorian); cal.timeZone = .current
-        guard let d = cal.date(from: DateComponents(year: p[0], month: p[1], day: p[2])) else { return nil }
+        guard let d = Formateadores.gregoriano(.current).date(from: DateComponents(year: p[0], month: p[1], day: p[2])) else { return nil }
         return formato("EEEE, d 'de' MMMM", .current).string(from: d)
     }
 
@@ -565,11 +561,6 @@ public enum FechaJS {
     }
 
     private static func formato(_ patron: String, _ zona: TimeZone) -> DateFormatter {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_AR")
-        f.calendar = Calendar(identifier: .gregorian)
-        f.timeZone = zona
-        f.dateFormat = patron
-        return f
+        Formateadores.fecha(patron, zona: zona, locale: "es_AR")
     }
 }

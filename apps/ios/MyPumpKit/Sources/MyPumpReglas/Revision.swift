@@ -108,14 +108,12 @@ public enum DiaCalendario {
         let p = f.prefix(10).split(separator: "-").compactMap { Int($0) }
         guard p.count == 3 else { return nil }
         var c = DateComponents(); c.year = p[0]; c.month = p[1]; c.day = p[2]
-        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!
-        guard let d = cal.date(from: c) else { return nil }
+        guard let d = Formateadores.utc.date(from: c) else { return nil }
         return Int((d.timeIntervalSince1970 / 86_400).rounded(.down))
     }
 
     public static func texto(_ n: Int) -> String {
-        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!
-        let c = cal.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: Double(n) * 86_400))
+        let c = Formateadores.utc.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: Double(n) * 86_400))
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 }

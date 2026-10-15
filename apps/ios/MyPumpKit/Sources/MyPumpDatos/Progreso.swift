@@ -81,11 +81,19 @@ public final class ModeloProgreso {
             return
         }
         historialPorClave = filasPor
-        tarjetas = entradas.compactMap { e in
-            guard let filas = filasPor[e.clave], let r = ProgresoEjercicio.resumen(filas) else { return nil }
-            return TarjetaProgreso(id: e.id, nombre: e.nombre, clave: e.clave, dias: e.dias.joined(separator: " · "), resumen: r, filas: filas)
-        }
-        sesiones = ProgresoEjercicio.sesiones(filasPor.values.flatMap { $0 }).count
+        // Las cuentas (la fecha local de cada fila) fuera del hilo principal: con el historial más largo que deja el
+        // servidor (48 filas por ejercicio) son unos 0,25 s, y la pestaña se trababa al abrirla (15-oct).
+        let pedidas = entradas.map { ($0.id, $0.nombre, $0.clave, $0.dias.joined(separator: " · ")) }
+        let traidas = filasPor
+        let (nuevas, cuantas) = await Task.detached(priority: .userInitiated) {
+            let t = pedidas.compactMap { id, nombre, clave, dias -> TarjetaProgreso? in
+                guard let filas = traidas[clave], let r = ProgresoEjercicio.resumen(filas) else { return nil }
+                return TarjetaProgreso(id: id, nombre: nombre, clave: clave, dias: dias, resumen: r, filas: filas)
+            }
+            return (t, ProgresoEjercicio.sesiones(traidas.values.flatMap { $0 }).count)
+        }.value
+        tarjetas = nuevas
+        sesiones = cuantas
         estado = .listo
     }
 }

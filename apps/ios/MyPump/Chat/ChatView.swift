@@ -290,10 +290,7 @@ struct ChatView: View {
     /// "18:52" en la hora del teléfono, en 24 h como la web (`es-AR`).
     private func hora(_ iso: String) -> String? {
         guard let fecha = FechaISO.fecha(iso) else { return nil }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "HH:mm"
-        return f.string(from: fecha)
+        return Formateadores.fecha("HH:mm", zona: .current, locale: "en_US_POSIX").string(from: fecha)
     }
 }
 
