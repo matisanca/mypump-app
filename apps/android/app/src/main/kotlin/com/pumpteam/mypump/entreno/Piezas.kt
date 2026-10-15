@@ -1,5 +1,9 @@
 package com.pumpteam.mypump.entreno
 
+import android.content.Context
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,7 +35,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -251,13 +257,34 @@ fun SeparadorVertical(alto: Dp = 36.dp) {
 
 /**
  * "Quitar animaciones" de Accesibilidad (el Reducir movimiento de iOS, GEN-08): con la escala de animaciones en 0, lo que
- * se mueve solo (el pulso de "En curso", las fotos que se alternan) queda quieto.
+ * se mueve solo (el pulso de "En curso", el brillo del esqueleto, las fotos que se alternan) queda quieto. Se entera si el
+ * cliente lo cambia con la app abierta: antes se leía una vez y quedaba así mientras la pantalla siguiera compuesta.
  */
 @Composable
 fun reducirMovimiento(): Boolean {
-    val contexto = LocalContext.current
-    return remember(contexto) {
-        Settings.Global.getFloat(contexto.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    val app = LocalContext.current.applicationContext
+    return remember(app) { EscalaAnimaciones.enCero(app) }.value
+}
+
+/**
+ * La escala de animaciones del sistema, al día: un solo `ContentObserver` para toda la app (como el que usa Compose para
+ * su propia escala), que vive lo que el proceso. Solo desde el hilo principal.
+ */
+private object EscalaAnimaciones {
+    private var estado: State<Boolean>? = null
+
+    fun enCero(app: Context): State<Boolean> = estado ?: run {
+        val resolver = app.contentResolver
+        fun leer() = Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        val nuevo = mutableStateOf(leer())
+        val observador = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                nuevo.value = leer()
+            }
+        }
+        resolver.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observador)
+        estado = nuevo
+        nuevo
     }
 }
 
