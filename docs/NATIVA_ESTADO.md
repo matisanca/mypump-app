@@ -194,11 +194,42 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
      `~/.codex/config.toml`, con backup. Detalle en la bitácora del 15-oct 03:00.
   2. **Push real de Android:** dejar un mensaje de Mati en el chat de `test-nativa-android` (escritura en producción,
      en la cuenta de prueba) para ver la entrega por FCM en el emulador y que tocarlo abra el chat.
+  3. **El servicio de fotos** (`mini-vision/server.mjs`, `handleFotoUpload`): hoy `overLimit` suma el intento antes de
+     subir al bucket, así que con el storage caído cada intento fallido gasta uno de los 12 del día. Habría que sumarlo
+     recién cuando la subida sale bien. Es producción en la Mini.
+  4. **La web pierde fotos con la Mini caída** (`flushFotos`, `public/cliente.html`): cuenta el 502/530 de Cloudflare
+     como error del servidor y la borra al octavo. Es de `public/`.
 - **En su iPhone, con el TestFlight 108:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
 - **Para el envío (G7):** la etiqueta de privacidad con «Other Diagnostic Data» en App Store Connect, y en Play
   Console la subida manual del AAB, Data safety, la declaración de Health Connect y las capturas.
 
 ## Bitácora
+
+- **15-oct 13:10, la segunda revisión adversarial** (lo que cambió desde el TestFlight 108). Encontró 4 problemas, cada
+  uno con una prueba que falla sin el arreglo (verificado con mutaciones en las dos plataformas):
+  1. **Fotos, pérdida de datos (ya pasaba antes):** si el cliente volvía a sacar la foto de una pose mientras la cola
+     subía la vieja, la pasada se llevaba la nueva, o la vieja terminaba después y quedaba en el bucket. En Android es
+     fácil, porque la cámara es otra app y al volver se drena. Ahora la cola solo saca la foto que mandó, y `subir`
+     espera a la subida vieja de la misma pose (`FotosMismaPose`).
+  2. **Android, `ImagenRemota` no recargaba al cambiar la URL** (ya pasaba antes): `produceState` conservaba la imagen
+     anterior. Quedaban viejas la miniatura de una foto reemplazada, las de Entreno al cambiar de día y la de un
+     ejercicio sustituido. `estadoImagenRemota` arranca desde la URL nueva (`EstadoImagenRemotaTest`, y la instrumentada
+     de reemplazar la foto ahora baja una imagen de verdad: con `null` pasaba igual).
+  3. **Progreso, dos cargas que se pisaban** (regresión de hoy): las tarjetas de una con el historial de la otra.
+     Contador de cargas (`ProgresoDosCargas`).
+  4. **El tope del día con el storage caído:** probar todas las fotos en cada pasada gastaba los 12 en 6 aperturas.
+     El 5xx vuelve a cortar, y la que falló queda para el final (`FotosTope`). La causa de fondo está en el servidor:
+     queda como OK pendiente 3.
+
+  Lo que la revisión dio por bien:
+  - los formateadores, iguales en 3.028 cadenas y con 16 hilos;
+  - el chat sin pedido doble, que no deja el chat sin traer;
+  - el agua, que queda siempre entre 0 y 12;
+  - `FilaFluida` y los colores;
+  - el `ContentObserver` de movimiento reducido.
+
+  Además, la migración de punta a punta en iOS 26.5 con todo lo de hoy dio 27/27, y en Android 9 pasaron Revisión,
+  Progreso y Chat (37/37).
 
 - **15-oct 11:40, rendimiento, el chat y lo último de paridad de Android:**
   - **Progreso tardaba 1,5 s en el hilo principal** con el historial más largo que deja el servidor (48 filas por
