@@ -141,7 +141,8 @@ private struct ListaEntreno: View {
             .anchoLectura()
         }
         .scrollDismissesKeyboard(.interactively)
-        .refreshable { await motor.cargar() }
+        // Como Dieta, la carga entera: trae la rutina si Mati la republicó (hallazgo 6).
+        .refreshable { await Proveedor.modelo.refrescarEntreno() }
         .navigationTitle(titulo)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

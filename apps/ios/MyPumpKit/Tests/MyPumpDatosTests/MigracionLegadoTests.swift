@@ -756,6 +756,29 @@ struct MigracionLegadoTests {
         #expect(!FileManager.default.fileExists(atPath: tel.disco().url("outbox.json").path))
         #expect(tel.archivos.pendientes.first?.ops.count == 18)
     }
+
+    /// Sospecha de la revisión del 15-oct, confirmada: si el Keychain no guarda el token (`SecItemAdd` falla), la Fase L
+    /// quedaba hecha igual (con la huella anotada no vuelve a correr) y la app abría en "pegá tu link" para siempre, con
+    /// la cola esperando en una carpeta que nadie abre.
+    @Test func siElKeychainNoGuardaElTokenLaFaseLNoQuedaHecha() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(9))),
+                                 "mypump_offline_\(tokenA)": fotoOffline(rutina: rutinaR1)])
+        let roto = KeychainQueNoGuarda()
+        #expect(throws: ErrorLegado.self, "la Fase L terminó como si el token hubiera quedado guardado") {
+            try EjecutorLegado.faseLocal(entorno: tel.entorno, almacen: roto, ajustes: tel.ajustes, ahora: ahora, zona: baires)
+        }
+        // El arranque siguiente, con el Keychain andando, corre de nuevo y adopta el token.
+        let r = try tel.faseL()
+        #expect(r.corrio && r.adoptoToken && tel.almacen.leer() == tokenA)
+        #expect(r.aLaCola + r.porValidar == 9 && r.yaEnElLibro == 0)
+    }
+}
+
+/// Un Keychain en el que `SecItemAdd` falla: no guarda nada.
+private final class KeychainQueNoGuarda: AlmacenToken, @unchecked Sendable {
+    func leer() -> String? { nil }
+    func guardar(_ token: String?) {}
 }
 
 @Suite("Migración: la Fase R")

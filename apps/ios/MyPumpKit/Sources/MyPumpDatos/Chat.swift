@@ -67,6 +67,17 @@ public struct HiloChat: Equatable, Sendable {
         ordenar()
     }
 
+    /// El servidor guardó un mensaje del cliente como la fila `id` (lo que devuelve `agregar_comentario`). Si esa fila ya
+    /// está en el hilo, una burbuja "enviando…" con ese texto ES esa fila: el servidor deduplica el mismo texto dentro de 2
+    /// minutos (mig 075) y devuelve la que ya tenía, así que nunca llega una fila nueva que la saque y quedaba "enviando…"
+    /// hasta reiniciar (revisión del 15-oct, hallazgo 7). Si la fila todavía no llegó, la saca `mezclar` cuando llegue.
+    public mutating func confirmar(contenido: String, id: String) {
+        guard mensajes.contains(where: { $0.id == id && !$0.pendiente }),
+              let i = mensajes.firstIndex(where: { $0.pendiente && !$0.fallo && $0.autor == "cliente" && $0.contenido == contenido })
+        else { return }
+        mensajes.remove(at: i)
+    }
+
     public mutating func marcarFallido(contenido: String) {
         if let i = mensajes.firstIndex(where: { $0.pendiente && !$0.fallo && $0.contenido == contenido }) { mensajes[i].fallo = true }
     }
@@ -143,6 +154,8 @@ public final class ModeloChat {
     /// Badge del tab: lo del coach que llegó con el chat cerrado.
     public private(set) var noLeidos = 0
     public private(set) var cargando = false
+    /// El hilo se trajo alguna vez: sin cursor, es que está vacío (y no que no se sabe).
+    @ObservationIgnored private var cargado = false
     /// Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge. Al
     /// abrirlo el sondeo vuelve a arrancar: si no, la espera de 45 s que estaba corriendo seguía (como la web, que
     /// cambia el intervalo apenas se abre; revisión del 14-oct, hallazgo 11).
@@ -168,6 +181,7 @@ public final class ModeloChat {
         guard case .success(let filas) = await cliente.filas("mypump_get_chat", ["p_token": .texto(token), "p_antes": antes,
                                                                                  "p_limite": .numero(Double(Self.pagina))], como: MensajeChat.self)
         else { return }
+        cargado = true
         if filas.count < Self.pagina { hilo.hayMas = false }
         hilo.mezclar(filas)
         recontar()
@@ -228,6 +242,11 @@ public final class ModeloChat {
         hilo.marcarFallido(contenido: contenido)
     }
 
+    /// La cola guardó un mensaje del chat como la fila `id` (también uno que el servidor deduplicó).
+    public func confirmar(contenido: String, id: String) {
+        hilo.confirmar(contenido: contenido, id: id)
+    }
+
     /// `marcarChatLeido`: se decide por los mensajes (con el chat abierto el contador puede dar 0 y Mati los seguiría
     /// viendo "sin leer").
     public func marcarLeido(forzar: Bool = false) async {
@@ -262,6 +281,10 @@ public final class ModeloChat {
     private func encolar(_ contenido: String) async {
         // La clave lleva el texto: dos mensajes distintos son dos ops; el mismo reencolado por un doble toque, una.
         let ms = Int(Date().timeIntervalSince1970 * 1000)
-        _ = await outbox?.encolar("chat", .objeto(["contenido": .texto(contenido)]), dedupeKey: "chat_\(ms)_\(String(contenido.prefix(40)))")
+        var payload: [String: JSONValue] = ["contenido": .texto(contenido)]
+        // El último mensaje que el teléfono conoce, con la hora del servidor ("" con el hilo vacío): un reintento mira si
+        // ya llegó contra eso y no contra el reloj del teléfono (`Escrituras.yaLlego`; hallazgo 7).
+        if let desde = hilo.cursor ?? (cargado ? "" : nil) { payload["desde"] = .texto(desde) }
+        _ = await outbox?.encolar("chat", .objeto(payload), dedupeKey: "chat_\(ms)_\(String(contenido.prefix(40)))")
     }
 }

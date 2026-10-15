@@ -40,6 +40,17 @@ struct RaizApp<Contenido: View>: View {
             }
         }
         .animation(.snappy, value: modelo.fase)
+        // Un link tocado con la cuenta andando que no se usó: se avisa y se sigue en la cuenta (hallazgo 11).
+        .alert("Este link ya no sirve", isPresented: avisoLink(.vencido)) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text("Seguís con tu cuenta.")
+        }
+        .alert("Sin conexión", isPresented: avisoLink(.sinConexion)) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text("No pudimos abrir ese link. Probá de nuevo cuando tengas señal.")
+        }
         .onOpenURL { url in
             Task {
                 await modelo.entrar(con: url.absoluteString)
@@ -57,10 +68,10 @@ struct RaizApp<Contenido: View>: View {
             switch nueva {
             case .active:
                 CentroAvisos.shared.cancelarFinDescanso()
+                // Con la cuenta, también los avisos (`ModeloApp.conAvisos`): el del domingo es de una vez y se vuelve a
+                // armar cada vez que se usa la app (iOS la deja viva días sin un arranque nuevo), y un permiso dado desde
+                // Ajustes registra el push al volver (hallazgo 9).
                 Task { await modelo.alVolverAPrimerPlano() }
-                // El aviso del domingo es de una vez: se vuelve a armar cada vez que se usa la app (iOS la deja viva días
-                // sin un arranque nuevo).
-                if modelo.fase == .listo && !modelo.esDemo { Task { await CentroAvisos.shared.reprogramar() } }
             case .background:
                 // Un descanso corriendo avisa cuando termina aunque la app no esté a la vista (D8).
                 if let d = modelo.entreno?.descanso.descanso, !d.terminado {
@@ -71,7 +82,8 @@ struct RaizApp<Contenido: View>: View {
             }
         }
         .background { MonitorDeRed { Task { await modelo.alVolverLaRed() } } }
-        .sheet(isPresented: $onboarding) {
+        // Cerrada como sea (también deslizando), queda vista (hallazgo 12).
+        .sheet(isPresented: $onboarding, onDismiss: { OnboardingPermisos.marcarVista() }) {
             OnboardingPermisos(modelo: modelo) { onboarding = false }
         }
         .task(id: modelo.fase == .listo && !modelo.esDemo && modelo.token != nil) {
@@ -89,6 +101,10 @@ struct RaizApp<Contenido: View>: View {
                 CentroAvisos.shared.cancelarDomingo()
             }
         }
+    }
+
+    private func avisoLink(_ aviso: ModeloApp.AvisoLink) -> Binding<Bool> {
+        Binding(get: { modelo.avisoLink == aviso }, set: { if !$0 { modelo.avisoLink = nil } })
     }
 }
 

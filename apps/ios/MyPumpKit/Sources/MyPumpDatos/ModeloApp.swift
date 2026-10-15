@@ -28,6 +28,10 @@ public final class ModeloApp {
     public private(set) var sinRedEn: Set<Parte> = []
     /// Por qué no se pudo cargar (para decir "Sin conexión" o "Servicio fuera de línea").
     public private(set) var ultimaFalla: ErrorRPC.Clase?
+    /// Lo pone la app: con permiso de notificaciones, el aviso del domingo al día y el token de APNs pedido de nuevo
+    /// (`CentroAvisos.alEntrar`). Corre también cada vez que la app vuelve al frente con la cuenta: un permiso dado desde
+    /// Ajustes se registraba recién en el próximo arranque (revisión del 15-oct, hallazgo 9).
+    @ObservationIgnored public var conAvisos: (@MainActor () async -> Void)?
     /// Lo pone la raíz con el `scenePhase`: los sondeos solo corren con la app a la vista.
     public var enPrimerPlano = true {
         didSet { if enPrimerPlano && fase != .tokenInvalido && !esDemo { chat?.empezarSondeo() } else { chat?.pararSondeo() } }
@@ -77,10 +81,14 @@ public final class ModeloApp {
     @ObservationIgnored public private(set) var token: String?
     @ObservationIgnored var disco: Disco?
     @ObservationIgnored public private(set) var outbox: Outbox?
+    /// La sesión del día de la cuenta: la comparten la cola y el motor de Entreno (hallazgo 5).
+    @ObservationIgnored private var sesionesDelDia = SesionesDelDia()
     @ObservationIgnored let raizDisco: URL?
     /// El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy".
     @ObservationIgnored private var diaCargado: String?
     @ObservationIgnored private var catalogo: CatalogoEjercicios?
+    /// Lo que el motor de Entreno carga aparte después de cada carga (sesión, historial, comentarios).
+    @ObservationIgnored private var cargaDelMotor: Task<Void, Never>?
 
     public init(cliente: ClienteRPC = ClienteRPC(), almacen: AlmacenToken = TokenEnKeychain(), raizDisco: URL? = nil) {
         self.cliente = cliente
@@ -94,17 +102,54 @@ public final class ModeloApp {
 
     // MARK: - Acceso
 
-    /// Lo que pegó o abrió el cliente (link entero, a medias o el token solo).
+    /// Un link tocado con una cuenta andando que no se usó: el aviso que ve el cliente, que sigue en su cuenta.
+    public enum AvisoLink: Equatable, Sendable {
+        /// "Este link ya no sirve"
+        case vencido
+        /// No se pudo revisar el link (sin red): no se cambia de cuenta sin saber si anda.
+        case sinConexion
+    }
+
+    /// Lo muestra la raíz y lo borra al cerrarlo.
+    public var avisoLink: AvisoLink?
+    @ObservationIgnored private var entradas = 0
+
+    /// Lo que pegó o abrió el cliente (link entero, a medias o el token solo). `avisar: false` para lo que no tocó el
+    /// cliente (el token que adoptó la migración): ahí no se le muestra nada.
     @discardableResult
-    public func entrar(con texto: String) async -> Bool {
+    public func entrar(con texto: String, avisar: Bool = true) async -> Bool {
         guard let t = FormatoToken.extraer(de: texto) else { return false }
+        entradas += 1
+        let entrada = entradas
         // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de
         // WhatsApp de hace meses.
         // No depende de la fase: al abrir la app tocando el link, la cuenta guardada todavía está cargando.
         if t != token, t == UserDefaults.standard.string(forKey: "mypump_token_invalido"), token != nil, !esDemo {
+            if avisar { avisoLink = .vencido }
             return false
         }
         if t == token, fase == .listo { return true }
+        // Con una cuenta que anda, el link nuevo se revisa ANTES de reemplazarla. Antes se guardaba primero y se borraba
+        // al ver `[]`: un link viejo nunca usado en este teléfono dejaba al cliente en "pegá tu link" y sin la cuenta que
+        // tenía (revisión del 15-oct, hallazgo 11). Sin cuenta (o con la suya vencida), como siempre.
+        if let actual = token, t != actual, !esDemo, fase != .tokenInvalido {
+            let r = await cliente.llamar("mypump_get_cliente_info", ["p_token": .texto(t)])
+            // Mientras se preguntaba se tocó otro link: gana el último.
+            guard entrada == entradas, token == actual, !esDemo else { return false }
+            switch r {
+            case .failure:
+                if avisar { avisoLink = .sinConexion }
+                return false
+            case .success(let j):
+                guard case .lista(let filas) = j, !filas.isEmpty else {
+                    UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
+                    // La cuenta que anda es la que queda guardada (la migración pudo haber dejado el otro en el Keychain).
+                    if almacen.leer() != actual { almacen.guardar(actual) }
+                    if avisar { avisoLink = .vencido }
+                    return false
+                }
+            }
+        }
         esDemo = false
         almacen.guardar(t)
         token = t
@@ -174,7 +219,9 @@ public final class ModeloApp {
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
-        let escrituras = Escrituras(cliente: cliente, token: t)
+        let sesiones = SesionesDelDia()
+        sesionesDelDia = sesiones
+        let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)
         let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true) { op in await escrituras.ejecutar(op) }
         outbox = cola
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
@@ -187,7 +234,15 @@ public final class ModeloApp {
         salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
             await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } },
-                                abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } })
+                                abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } },
+                                guardadas: { ops in Task { @MainActor in self?.alGuardar(ops) } })
+        }
+    }
+
+    /// Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…".
+    private func alGuardar(_ ops: [OpGuardada]) {
+        for g in ops where g.op.kind == "chat" {
+            if let texto = g.op.payload["contenido"]?.comoTexto, let id = g.respuesta.comoTexto { chat?.confirmar(contenido: texto, id: id) }
         }
     }
 
@@ -247,6 +302,13 @@ public final class ModeloApp {
             return
         }
         info = decodificar(ClienteInfo.self, primera)
+        // La misma persona con otro link (Mati lo regeneró): lo que quedó en la cola de la carpeta vieja sale con este,
+        // con el `drenar()` de más abajo (hallazgo 4).
+        if let d = disco, let cola = outbox, let id = info?.clienteId, !id.isEmpty {
+            CuentasDelTelefono.anotar(clienteId: id, en: d)
+            await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
+            guard vigente() else { return }
+        }
 
         async let r = cliente.llamar("mypump_get_rutina_activa", p)
         async let d = cliente.llamar("mypump_get_dieta_activa", p)
@@ -285,7 +347,7 @@ public final class ModeloApp {
         prepararEntreno()
         fase = .listo
         if let e = entreno {
-            Task {
+            cargaDelMotor = Task {
                 await self.cargarCatalogo()
                 await e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
                 await e.cargar()
@@ -311,16 +373,17 @@ public final class ModeloApp {
 
     private var catalogoVigente: CatalogoEjercicios { catalogo ?? Self.catalogoEmpaquetado }
 
-    /// El motor de la rutina activa: se crea una vez por rutina; una versión nueva de la misma rutina (Mati la editó, se
-    /// avanzó de semana) lo actualiza sin perder lo que está en curso.
+    /// El motor de la rutina activa: se crea una vez por rutina y por cuenta; una versión nueva de la misma rutina (Mati
+    /// la editó, se avanzó de semana) lo actualiza sin perder lo que está en curso. Con otro link de la misma persona la
+    /// rutina es la misma, pero el motor de antes escribía en la cola y la carpeta del link viejo (hallazgo 4).
     private func prepararEntreno() {
         guard let rutina else { entreno = nil; return }
-        if let e = entreno, e.rutina.id == rutina.id {
+        if let e = entreno, e.rutina.id == rutina.id, e.token == token {
             if e.rutina != rutina { e.reemplazarRutina(rutina) }
             return
         }
         let e = ModeloEntreno(cliente: cliente, token: token, outbox: outbox, disco: disco, rutina: rutina, info: info,
-                              catalogo: catalogoVigente)
+                              catalogo: catalogoVigente, sesiones: sesionesDelDia)
         let d = disco
         e.alCambiarRutina = { [weak self, weak e] cambio in
             guard let self, let e, self.entreno === e else { return }
@@ -372,6 +435,15 @@ public final class ModeloApp {
         if let c = catalogo { entreno?.catalogo = c }
     }
 
+    /// "Tirar para actualizar" en Entreno: como en Dieta, la carga entera, que trae la rutina (si Mati la republicó, se
+    /// ve). Antes la pantalla recargaba solo lo del motor (la sesión, el historial, los comentarios) y la rutina nueva no
+    /// aparecía hasta reabrir la app (revisión del 15-oct, hallazgo 6). Espera también lo del motor, como antes.
+    public func refrescarEntreno() async {
+        if esDemo { await entreno?.cargar(); return }
+        await cargar()
+        await cargaDelMotor?.value
+    }
+
     /// Progreso por el ejercicio que se hace de verdad: el sustituto si hay (PRO-02, `getEffectiveEx` en el
     /// `loadProgressAndRender` de la web). Sin el motor de Entreno, por el nombre del plan.
     public func cargarProgreso() async {
@@ -392,6 +464,7 @@ public final class ModeloApp {
     /// todo de nuevo.
     public func alVolverAPrimerPlano() async {
         guard fase == .listo, !esDemo, token != nil else { return }
+        await conAvisos?()
         if desdeCache { await cargar(); return }
         // Primero lo "de hoy" si cambió el día (lo que se toque ahora tiene que caer en el día nuevo), después las colas.
         let hoy = FechaLocal.hoy()
@@ -428,7 +501,7 @@ public final class ModeloApp {
     }
 
     private func aplicar(_ c: CopiaOffline) {
-        defer { prepararEntreno(); if let e = entreno { Task { await e.cargar() } } }
+        defer { prepararEntreno(); if let e = entreno { cargaDelMotor = Task { await e.cargar() } } }
         info = decodificar(ClienteInfo.self, c.info)
         rutina = c.rutina.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(c.dieta)
@@ -472,7 +545,8 @@ public final class ModeloApp {
     public func sustituir(_ original: Alimento, por sustituto: JSONValue, comidaId: String, opt: Int, idx: Int) async {
         guard let dietaId = dieta?.id else { return }
         let k = clave(comidaId, opt, idx)
-        let anclado = SwapsDeComida.conAncla(sustituto, original: original)
+        // Sin NaN ni infinito: con uno, ni el archivo de reemplazos ni la cola se podían volver a guardar.
+        let anclado = SwapsDeComida.conAncla(sustituto, original: original).sinNoFinitos
         swaps[k] = SwapLocal(original: try? JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(AlimentoJSON(original))), current: anclado)
         guardarSwaps()
         await outbox?.encolar("swap", .objeto(["dietaId": .texto(dietaId), "comidaId": .texto(comidaId), "optIdx": .numero(Double(opt)),
@@ -581,43 +655,49 @@ public final class ModeloApp {
         disco?.guardar(swaps, "swaps_\(id).json")
     }
 
-    /// Preferencias, alimentos propios y swaps del servidor (hydrateSwapsAndCustomFoodsFromBackend).
+    /// Preferencias, alimentos propios y swaps del servidor (hydrateSwapsAndCustomFoodsFromBackend). Todo es de ESTA cuenta
+    /// y de ESTA dieta: si mientras se espera al servidor entra otro link (o llega otra dieta), lo que vuelve se descarta.
+    /// Antes se aplicaba igual y lo de A quedaba en B: sus preferencias, sus alimentos propios y sus reemplazos, en memoria,
+    /// en la carpeta de B y en su cola (revisión del 15-oct, hallazgo 10). La cola y la carpeta son las de la cuenta del
+    /// principio, aunque cambie en el medio.
     func hidratarDieta() async {
-        guard let t = token, let dieta else { return }
+        guard let t = token, let dieta, let disco = self.disco, let outbox = self.outbox else { return }
+        func vigente() -> Bool { token == t && !esDemo && self.dieta?.id == dieta.id }
         let p: [String: JSONValue] = ["p_token": .texto(t)]
-        if case .success(let prefs) = await cliente.filas("mypump_get_cliente_prefs", p, como: PreferenciasCliente.self) {
-            excluir = prefs.first?.excluir ?? []
-        }
-        if case .success(let propios) = await cliente.filas("mypump_get_custom_foods", p, como: AlimentoPropio.self) {
-            alimentosPropios = propios
-        }
+        let prefs = await cliente.filas("mypump_get_cliente_prefs", p, como: PreferenciasCliente.self)
+        guard vigente() else { return }
+        if case .success(let prefs) = prefs { excluir = prefs.first?.excluir ?? [] }
+        let propios = await cliente.filas("mypump_get_custom_foods", p, como: AlimentoPropio.self)
+        guard vigente() else { return }
+        if case .success(let propios) = propios { alimentosPropios = propios }
 
         let remotos: [FoodSwap]?
         switch await cliente.filas("mypump_get_food_swaps", ["p_token": .texto(t), "p_dieta_id": .texto(dieta.id)], como: FoodSwap.self) {
         case .success(let f): remotos = f
         case .failure: remotos = nil
         }
-        let pendientes = (await outbox?.pendientesPorClave() ?? [:]).mapValues(\.kind)
+        let pendientes = (await outbox.pendientesPorClave()).mapValues(\.kind)
+        guard vigente() else { return }
         let marca = "swaps_migrados_\(dieta.id)"
-        let yaMigrado = disco?.leer(Bool.self, marca) ?? false
+        let yaMigrado = disco.leer(Bool.self, marca) ?? false
         let e = dieta.estructura
         let tipo = tipoDia
         guard let h = SwapsDeComida.hidratar(remotos: remotos, locales: swaps, dietaId: dieta.id, pendientes: pendientes, yaMigrado: yaMigrado,
                                              borrarAnclados: palanca.anclajeBorraSwaps, enPosicion: { SwapsDeComida.enPosicion(e, tipoActivo: tipo, comidaId: $0, optIdx: $1, foodIdx: $2) })
         else { return }
         swaps = h.swaps
-        guardarSwaps()
+        disco.guardar(swaps, "swaps_\(dieta.id).json")
         for op in h.operaciones {
             var payload = op.payload
             if case .objeto(var o) = payload { o["dietaId"] = .texto(dieta.id); payload = .objeto(o) }
-            await outbox?.encolar(op.kind, payload, dedupeKey: op.clave)
+            await outbox.encolar(op.kind, payload, dedupeKey: op.clave)
         }
         if h.migrando {
-            await outbox?.drenar()
-            let quedan = (await outbox?.pendientesPorClave() ?? [:]).keys.contains { $0.hasPrefix("swap_\(dieta.id)_") }
-            if !quedan { disco?.guardar(true, marca) }
+            await outbox.drenar()
+            let quedan = (await outbox.pendientesPorClave()).keys.contains { $0.hasPrefix("swap_\(dieta.id)_") }
+            if !quedan { disco.guardar(true, marca) }
         } else if h.marcarMigrado {
-            disco?.guardar(true, marca)
+            disco.guardar(true, marca)
         }
     }
 

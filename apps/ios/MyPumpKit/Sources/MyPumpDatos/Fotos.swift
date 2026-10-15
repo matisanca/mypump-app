@@ -93,8 +93,7 @@ public final class ModeloFotos {
         case .ok:
             pendientes[clave] = nil
             _ = guardarCola()
-            await cargar()
-            urlsVencen = nil          // que se refirme y aparezca la miniatura
+            await alSubir()
             return .guardada
         case .fatal(let motivo):
             pendientes[clave] = nil
@@ -135,10 +134,18 @@ public final class ModeloFotos {
             if case .red = r { break }
             if pendientes[clave] != nil { break }   // el servidor está mal: se reintenta después
         }
-        if subioAlgo {
-            await cargar()
-            urlsVencen = nil
-        }
+        if subioAlgo { await alSubir() }
+    }
+
+    /// Con una foto guardada: la lista de lo subido y las URLs firmadas de nuevo. Al REEMPLAZAR la foto de una pose de la
+    /// semana no cambia cuántas hay y la pantalla no volvía a firmar: la miniatura seguía con la vieja (lo encontró el
+    /// agente de Revisión de Android contra la base real, 15-oct). Cada firma es otra URL, así que tampoco sale la vieja
+    /// del caché de imágenes.
+    private func alSubir() async {
+        urlsVencen = nil   // si esta firma no sale, la próxima de la pantalla no se saltea
+        async let lista: Void = cargar()
+        async let firmas = firmar(forzar: true)
+        _ = await (lista, firmas)
     }
 
     /// `cargarFotosFirmadas`: las URLs (duran 1 h) se piden una vez y se guardan 50 minutos.

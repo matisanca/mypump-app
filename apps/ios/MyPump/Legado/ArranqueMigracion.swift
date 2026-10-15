@@ -73,7 +73,8 @@ enum ArranqueMigracion {
             while !datosProtegidos { try? await Task.sleep(for: .seconds(2)) }
             // El modelo ya existe: si tiene cuenta, su cola está viva y la Fase L no le escribe el archivo.
             if let r = faseLocal(cuentaViva: modelo.token), r.adoptoToken, let t = r.tokenVigente, modelo.token != t {
-                await modelo.entrar(con: t)
+                // No lo tocó el cliente: si con una cuenta andando el link no sirve (o no se puede revisar), no se le avisa.
+                await modelo.entrar(con: t, avisar: false)
             }
         }
         let recibos = entorno.carpeta.appendingPathComponent("recibos")

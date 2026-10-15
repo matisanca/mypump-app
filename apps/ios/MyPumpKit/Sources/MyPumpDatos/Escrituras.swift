@@ -9,17 +9,19 @@ import MyPumpReglas
 public struct Escrituras: Sendable {
     let cliente: ClienteRPC
     let token: String
-    let sesiones: CacheSesiones
+    /// La de la cuenta: la comparte con la pantalla de Entreno (`ModeloEntreno.asegurarSesion`).
+    let sesiones: SesionesDelDia
 
     let verificacion: VerificacionToken
 
-    public init(cliente: ClienteRPC, token: String) {
-        self.cliente = cliente; self.token = token; self.sesiones = CacheSesiones(); self.verificacion = VerificacionToken()
+    public init(cliente: ClienteRPC, token: String, sesiones: SesionesDelDia = SesionesDelDia()) {
+        self.cliente = cliente; self.token = token; self.sesiones = sesiones; self.verificacion = VerificacionToken()
     }
 
     /// Ejecuta la op y, si no se guardó, mira una vez si el token cayó (arreglo nativo n.º 3): un token revocado hace que
     /// la base devuelva vacío a TODO, y sin esto la cola abandonaría todo lo del cliente en ~1 minuto. Con el token caído
-    /// las ops quedan estacionadas sin gastar intentos hasta que entre con un link nuevo.
+    /// las ops quedan estacionadas sin gastar intentos hasta que entre con un link nuevo: si es de la misma persona, su
+    /// cuenta las adopta (`CuentasDelTelefono`, hallazgo 4).
     public func ejecutar(_ op: Operacion) async -> ResultadoOp {
         let r = await ejecutarSinVerificar(op)
         guard case .respuesta(let res) = r else { return r }
@@ -99,9 +101,11 @@ public struct Escrituras: Sendable {
         case "chat":
             // Arreglo nativo n.º 4: si el mensaje ya llegó (se mandó, se cortó la señal antes de la respuesta y la cola lo
             // reintenta), no se manda de nuevo. El servidor deduplica el mismo texto dentro de 2 minutos (mig 075), pero
-            // un reintento puede llegar mucho después.
-            if await yaLlego(p["contenido"]?.comoTexto, desde: op.ts) {
-                return .respuesta(.success(.texto("ya estaba")))
+            // un reintento puede llegar mucho después. Solo un reintento (o lo que vino de la app vieja, que pudo haberlo
+            // mandado): la primera vez no pudo haber llegado, y mirar igual descartaba un "dale" repetido (hallazgo 7).
+            if op.intentada == true || op.legado == true,
+               let id = await yaLlego(p["contenido"]?.comoTexto, desde: op.ts, despuesDe: p["desde"]?.comoTexto) {
+                return .respuesta(.success(.texto(id)))
             }
             return .respuesta(await cliente.llamar("mypump_agregar_comentario", [
                 "p_token": t, "p_ambito": .texto("general"), "p_referencia_id": .null, "p_referencia_nombre": .null,
@@ -138,14 +142,23 @@ public struct Escrituras: Sendable {
         return r
     }
 
-    /// ¿Hay en el hilo un mensaje del cliente con ese texto, escrito desde que se encoló? (con un minuto de margen por
-    /// la diferencia de reloj entre el teléfono y el servidor). Sin red, se manda igual y decide la cola.
-    func yaLlego(_ contenido: String?, desde ts: Double) async -> Bool {
+    /// ¿Hay en el hilo un mensaje del cliente con ese texto, escrito después de encolar este? Devuelve su id. Con
+    /// `despuesDe` (el último mensaje que el teléfono conocía al encolar, hora del servidor; "" si el hilo estaba vacío) se
+    /// compara reloj del servidor contra reloj del servidor: con el del teléfono atrasado, un mensaje igual de hasta una
+    /// hora antes contaba como este y el nuevo no salía nunca (revisión del 15-oct, hallazgo 7). Sin él (lo que vino de
+    /// la app vieja, o un hilo que nunca cargó), desde que se encoló con un minuto de margen. Sin red, se manda igual y
+    /// decide la cola.
+    func yaLlego(_ contenido: String?, desde ts: Double, despuesDe: String?) async -> String? {
         guard let contenido, !contenido.isEmpty,
               case .success(let filas) = await cliente.filas("mypump_get_chat", ["p_token": .texto(token), "p_antes": .null, "p_limite": .numero(10)],
                                                              como: MensajeChat.self)
-        else { return false }
-        return filas.contains { $0.autor == "cliente" && $0.contenido == contenido && FechaISO.ms($0.createdAt) >= ts - 60_000 }
+        else { return nil }
+        let limite = despuesDe.map(FechaISO.ms)
+        return filas.first { f in
+            guard f.autor == "cliente", f.contenido == contenido else { return false }
+            if let limite { return FechaISO.ms(f.createdAt) > limite }
+            return FechaISO.ms(f.createdAt) >= ts - 60_000
+        }?.id
     }
 
     /// `resolveSesion` (cliente.html:2698): la sesión capturada al encolar, o la de ESE día y semana, o se crea. "No pude
@@ -158,25 +171,29 @@ public struct Escrituras: Sendable {
             return .failure(ErrorRPC(clase: .permanente, status: 0, codigo: "SIN_DIA", mensaje: "op sin diaId"))
         }
         let semana = p["semana"] ?? .null
-        let clave = "\(dia)|\(AnclajeSwaps.numeroJS(semana.comoNumero))"
+        let clave = SesionesDelDia.clave(dia: dia, semana: semana.comoNumero)
         if let s = await sesiones.leer(clave) { return .success(s) }
-        switch await cliente.llamar("mypump_get_sesion_dia", ["p_token": .texto(token), "p_dia_id": .texto(dia), "p_semana": semana]) {
-        case .failure(let e):
-            return .failure(e)
-        case .success(let r):
-            if case .lista(let filas) = r, let id = filas.first?["id"]?.comoTexto {
-                await sesiones.guardar(clave, id)
-                return .success(id)
+        // Si la pantalla ya la está creando (la primera serie del día), no se pregunta: se espera esa misma llamada.
+        if await !sesiones.enVuelo(clave) {
+            switch await cliente.llamar("mypump_get_sesion_dia", ["p_token": .texto(token), "p_dia_id": .texto(dia), "p_semana": semana]) {
+            case .failure(let e):
+                return .failure(e)
+            case .success(let r):
+                if case .lista(let filas) = r, let id = filas.first?["id"]?.comoTexto {
+                    await sesiones.guardar(clave, id)
+                    return .success(id)
+                }
             }
         }
-        switch await cliente.llamar("mypump_iniciar_sesion", ["p_token": .texto(token), "p_dia_id": .texto(dia), "p_semana": semana]) {
+        let (cliente, token) = (cliente, token)
+        let r = await sesiones.iniciar(clave, usarResueltas: true) {
+            await cliente.llamar("mypump_iniciar_sesion", ["p_token": .texto(token), "p_dia_id": .texto(dia), "p_semana": semana])
+        }
+        switch r {
         case .failure(let e):
             return .failure(e)
         case .success(let id):
-            if let s = id.comoTexto {
-                await sesiones.guardar(clave, s)
-                return .success(s)
-            }
+            if let s = JS.verdadero(id.comoTexto) { return .success(s) }
             return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_SESION", mensaje: "mypump_iniciar_sesion: vacío"))
         }
     }
@@ -207,10 +224,37 @@ actor VerificacionToken {
     }
 }
 
-actor CacheSesiones {
-    private var mapa: [String: String] = [:]
-    func leer(_ k: String) -> String? { mapa[k] }
-    func guardar(_ k: String, _ v: String) { mapa[k] = v }
+/// La sesión del día por día y semana, de una cuenta: las que ya se resolvieron y la creación en vuelo. La comparten la
+/// cola (`Escrituras.resolverSesion`) y la pantalla de Entreno (`ModeloEntreno.asegurarSesion`): al confirmar la primera
+/// serie salen las dos a la vez y cada una mandaba su `iniciar_sesion`. La web comparte la promesa en vuelo
+/// (`_sesionInflight`); acá también (revisión del 15-oct, hallazgo 5).
+public actor SesionesDelDia {
+    private var resueltas: [String: String] = [:]
+    private var vuelos: [String: Task<Result<JSONValue, ErrorRPC>, Never>] = [:]
+
+    public init() {}
+
+    /// `"<día>|<semana>"`, con la semana como la escribe JS (la clave de `_sesionPorDia` de la web).
+    static func clave(dia: String, semana: Double?) -> String { "\(dia)|\(AnclajeSwaps.numeroJS(semana))" }
+
+    func leer(_ k: String) -> String? { resueltas[k] }
+    func guardar(_ k: String, _ id: String) { resueltas[k] = id }
+    func enVuelo(_ k: String) -> Bool { vuelos[k] != nil }
+
+    /// `iniciar_sesion` una sola vez por clave: si ya hay una creación en vuelo, se espera esa; si no, sale `crear`. Lo
+    /// que devuelve queda resuelto para la cola. La pantalla no lee lo resuelto (`usarResueltas: false`): confirma su
+    /// sesión con el servidor al restaurar, y una que el servidor archivó en el medio no tiene que volver por acá.
+    func iniciar(_ k: String, usarResueltas: Bool,
+                 _ crear: @escaping @Sendable () async -> Result<JSONValue, ErrorRPC>) async -> Result<JSONValue, ErrorRPC> {
+        if usarResueltas, let id = resueltas[k] { return .success(.texto(id)) }
+        if let vuelo = vuelos[k] { return await vuelo.value }
+        let vuelo = Task { await crear() }
+        vuelos[k] = vuelo
+        let r = await vuelo.value
+        vuelos[k] = nil
+        if case .success(let v) = r, let id = JS.verdadero(v.comoTexto) { resueltas[k] = id }
+        return r
+    }
 }
 
 extension AnclajeSwaps {

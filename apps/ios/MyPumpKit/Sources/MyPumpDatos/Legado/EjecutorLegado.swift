@@ -122,15 +122,16 @@ struct ArchivosLegado {
 
 extension Outbox.Persistido {
     /// La regla de `importar` (sin repetir ids, gana la última por dedupeKey) más "lo pendiente más nuevo gana".
-    /// Devuelve las que quedaron en la cola (también las que ya estaban por id).
-    mutating func importarSinPisar(_ nuevas: [Operacion]) -> [Operacion] {
+    /// Devuelve las que quedaron en la cola (también las que ya estaban por id). `deLaMigracion: false` es lo que se
+    /// adopta de otra carpeta de la misma persona (hallazgo 4): conserva su marca.
+    mutating func importarSinPisar(_ nuevas: [Operacion], deLaMigracion: Bool = true) -> [Operacion] {
         var quedaron: [Operacion] = []
         for var op in nuevas {
             if ops.contains(where: { $0.id == op.id }) { quedaron.append(op); continue }
             if let k = op.dedupeKey, let otra = ops.last(where: { $0.dedupeKey == k }), otra.ts > op.ts { continue }
             if let k = op.dedupeKey { ops.removeAll { $0.dedupeKey == k } }
             // Son de la Capacitor: la palanca remota las puede frenar aunque ya estén en la cola (hallazgo 2).
-            op.legado = true
+            if deLaMigracion { op.legado = true }
             ops.append(op)
             quedaron.append(op)
         }
@@ -229,9 +230,13 @@ public enum EjecutorLegado {
         r.plan = plan
         r.tokenVigente = plan.tokenVigente
 
-        // 3. Token. Accesible después del primer desbloqueo (TokenEnKeychain).
+        // 3. Token. Accesible después del primer desbloqueo (TokenEnKeychain). Se lee de vuelta: si `SecItemAdd` falló, la
+        //    Fase L quedaba hecha igual (con la huella anotada no vuelve a correr) y la app abría en "pegá tu link" para
+        //    siempre (sospecha de la revisión del 15-oct, confirmada). Así no queda hecha: todavía no se escribió nada más
+        //    (la copia cruda ya está y no se repite) y se reintenta enseguida o en el arranque siguiente.
         if plan.adoptarToken, let t = plan.tokenVigente {
             almacen.guardar(t)
+            guard almacen.leer() == t else { throw ErrorLegado.keychain }
             r.adoptoToken = true
         }
 

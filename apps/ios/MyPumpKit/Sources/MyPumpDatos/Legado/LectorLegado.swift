@@ -52,11 +52,14 @@ public struct LecturaLegado: Sendable {
 public enum ErrorLegado: Error, Equatable, CustomStringConvertible {
     case sqlite(String)
     case archivo(String)
+    /// El Keychain no guardó el token que adoptó la Fase L.
+    case keychain
 
     public var description: String {
         switch self {
         case .sqlite(let s): return "sqlite: \(s)"
         case .archivo(let s): return "archivo: \(s)"
+        case .keychain: return "keychain: el token no quedó guardado"
         }
     }
 }

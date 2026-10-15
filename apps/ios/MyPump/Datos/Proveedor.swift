@@ -6,6 +6,14 @@ import MyPumpDatos
 @MainActor
 enum Proveedor {
     static let modelo: ModeloApp = {
+        let m = crear()
+        // Al volver al frente con la cuenta: el domingo al día y el token de push (un permiso dado desde Ajustes se
+        // registra ahí, no en el próximo arranque; hallazgo 9).
+        m.conAvisos = { await CentroAvisos.shared.alEntrar() }
+        return m
+    }()
+
+    private static func crear() -> ModeloApp {
         #if DEBUG
         let d = UserDefaults.standard
         // `-sinOnboarding YES`: las capturas y las pruebas de interfaz no esperan la hoja de permisos;
@@ -24,5 +32,5 @@ enum Proveedor {
         #endif
         // La migración del almacenamiento viejo corre ANTES de crear el modelo (que lee token y cola al iniciar).
         return ArranqueMigracion.arrancar { ModeloApp() }
-    }()
+    }
 }
