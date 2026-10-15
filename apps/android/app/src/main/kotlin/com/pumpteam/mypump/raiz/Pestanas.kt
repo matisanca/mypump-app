@@ -48,12 +48,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.ModeloAppViewModel
@@ -64,10 +66,10 @@ import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.dieta.DietaPantalla
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.EstadoVacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.PantallaConTitulo
-import com.pumpteam.mypump.diseno.EstadoVacio
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.entreno.BarraDescansoEntreno
@@ -179,7 +181,14 @@ private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>) {
                         },
                     ) { Icon(p.icono, contentDescription = null) }
                 },
-                label = { Text(p.titulo, maxLines = 1) },
+                label = {
+                    // Con la letra más grande del sistema el nombre se cortaba ("Entre", "Revisi"): crece hasta un tope,
+                    // como la barra de iOS, que no agranda sus rótulos.
+                    val d = LocalDensity.current
+                    CompositionLocalProvider(LocalDensity provides Density(d.density, minOf(d.fontScale, 1.2f))) {
+                        Text(p.titulo, maxLines = 1, softWrap = false)
+                    }
+                },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = c.marcaTexto,
                     selectedTextColor = c.marcaTexto,
