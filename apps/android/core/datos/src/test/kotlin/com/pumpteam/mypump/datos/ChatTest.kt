@@ -47,6 +47,37 @@ class ChatTest {
         assertEquals("2026-10-13T12:00:02+00:00", h.cursor)
     }
 
+    /**
+     * Hallazgo 7 (15-oct): el mismo texto dentro de 2 minutos el servidor lo deduplica (075) y devuelve la fila que ya estaba;
+     * ninguna fila nueva saca la burbuja. La saca `confirmar` con el id que devolvió la cola.
+     */
+    @Test
+    fun unRepetidoDeduplicadoNoQuedaEnviando() {
+        val h = HiloChat()
+            .mezclar(listOf(fila("5", "cliente", "dale", "2026-10-13T12:00:00+00:00"))).hilo
+            .agregarPendiente(optimista("tmp_1", "dale", "2026-10-13T12:01:00.000Z"))
+            .mezclar(emptyList()).hilo   // el sondeo no trae nada nuevo
+        assertEquals(listOf("5", "tmp_1"), h.mensajes.map { it.id })
+        assertEquals(listOf("5"), h.confirmar("dale", "5").mensajes.map { it.id })
+    }
+
+    @Test
+    fun confirmarUnaFilaQueTodaviaNoLlegoEsperaAlSondeo() {
+        val h = HiloChat().agregarPendiente(optimista("tmp_1", "dale", "2026-10-13T12:01:00.000Z")).confirmar("dale", "9")
+        assertEquals(listOf("tmp_1"), h.mensajes.map { it.id }, "sin la fila en el hilo la burbuja queda hasta que llegue")
+        assertEquals(listOf("9"), h.mezclar(listOf(fila("9", "cliente", "dale", "2026-10-13T12:01:01+00:00"))).hilo.mensajes.map { it.id })
+    }
+
+    @Test
+    fun confirmarNoSeLlevaUnaQueNoSalio() {
+        val h = HiloChat()
+            .mezclar(listOf(fila("5", "cliente", "dale", "2026-10-13T12:00:00+00:00"))).hilo
+            .agregarPendiente(optimista("tmp_1", "dale", "2026-10-13T12:01:00.000Z"))
+            .marcarFallido("dale")
+            .confirmar("dale", "5")
+        assertEquals(listOf("5", "tmp_1"), h.mensajes.map { it.id }, "la de \"no salió → Reintentar\" se queda")
+    }
+
     @Test
     fun elCursorIgnoraLasPendientes() {
         val h = HiloChat()

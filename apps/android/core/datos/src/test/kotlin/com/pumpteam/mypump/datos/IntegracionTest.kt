@@ -128,9 +128,10 @@ class IntegracionTest {
         chat.sondear()
         assertTrue(chat.hilo.value.mensajes.any { it.contenido == texto && !it.pendiente })
         assertFalse(chat.hilo.value.mensajes.any { it.pendiente })
-        // La respuesta se perdió y la cola lo reintenta: no se manda de nuevo.
+        // La respuesta se perdió y la cola lo reintenta: no se manda de nuevo. Un reintento es una op que ya salió una vez
+        // (`intentada`): la primera vez sale directo (hallazgo 7 del 15-oct).
         val e = Escrituras(m.cliente, token)
-        val op = Operacion("x", "chat", ValorJson.objeto("contenido" to texto(texto)), null, 0, System.currentTimeMillis() - 5_000.0)
+        val op = Operacion("x", "chat", ValorJson.objeto("contenido" to texto(texto)), null, 0, System.currentTimeMillis() - 5_000.0, intentada = true)
         e.ejecutar(op)
         val filas = m.cliente.filas(
             "mypump_get_chat", mapOf("p_token" to texto(token), "p_antes" to ValorJson.Nulo, "p_limite" to numero(10)), MensajeChat::desde,

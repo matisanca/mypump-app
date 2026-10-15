@@ -154,8 +154,14 @@ class Escrituras(
             "chat" -> {
                 // Arreglo nativo n.º 4 (el chat "en vuelo"): si el mensaje ya llegó (se mandó, se cortó la señal antes de
                 // la respuesta y la cola lo reintenta), no se manda de nuevo. El servidor deduplica el mismo texto dentro
-                // de 2 minutos (mig 075), pero un reintento puede llegar mucho después.
-                if (yaLlego(p["contenido"]?.comoTexto, op.ts)) return ResultadoOp.Respuesta(Resultado.Ok(texto("ya estaba")))
+                // de 2 minutos (mig 075), pero un reintento puede llegar mucho después. Solo un reintento (o lo que vino de
+                // la app vieja, que pudo haberlo mandado): la primera vez no pudo haber llegado, y mirar igual descartaba un
+                // "dale" repetido (hallazgo 7 del 15-oct).
+                if (op.intentada == true || op.legado == true) {
+                    yaLlego(p["contenido"]?.comoTexto, op.ts, p["desde"]?.comoTexto)?.let { id ->
+                        return ResultadoOp.Respuesta(Resultado.Ok(texto(id)))
+                    }
+                }
                 ResultadoOp.Respuesta(
                     cliente.llamar(
                         "mypump_agregar_comentario",
@@ -208,18 +214,25 @@ class Escrituras(
         if (r is Resultado.Falla && r.error.funcionInexistente) Resultado.Ok(texto("sin tabla")) else r
 
     /**
-     * ¿Hay en el hilo un mensaje del cliente con ese texto, escrito desde que se encoló? (con un minuto de margen por la
-     * diferencia de reloj entre el teléfono y el servidor). Sin red, se manda igual y decide la cola.
+     * ¿Hay en el hilo un mensaje del cliente con ese texto, escrito después de encolar este? Devuelve su id. Con [despuesDe]
+     * (el último mensaje que el teléfono conocía al encolar, hora del servidor; "" si el hilo estaba vacío) se compara reloj
+     * del servidor contra reloj del servidor: con el del teléfono atrasado, un mensaje igual de hasta una hora antes contaba
+     * como este y el nuevo no salía nunca (revisión del 15-oct, hallazgo 7). Sin él (lo que vino de la app vieja, o un hilo
+     * que nunca cargó), desde que se encoló con un minuto de margen. Sin red, se manda igual y decide la cola.
      */
-    internal suspend fun yaLlego(contenido: String?, desde: Double): Boolean {
-        if (contenido.isNullOrEmpty()) return false
+    internal suspend fun yaLlego(contenido: String?, desde: Double, despuesDe: String?): String? {
+        if (contenido.isNullOrEmpty()) return null
         val r = cliente.filas(
             "mypump_get_chat",
             mapOf("p_token" to texto(token), "p_antes" to ValorJson.Nulo, "p_limite" to numero(10)),
             MensajeChat::desde,
         )
-        val filas = r.valorONull() ?: return false
-        return filas.any { it.autor == "cliente" && it.contenido == contenido && FechaIso.ms(it.createdAt) >= desde - 60_000 }
+        val filas = r.valorONull() ?: return null
+        val limite = despuesDe?.let(FechaIso::ms)
+        return filas.firstOrNull { f ->
+            f.autor == "cliente" && f.contenido == contenido &&
+                if (limite != null) FechaIso.ms(f.createdAt) > limite else FechaIso.ms(f.createdAt) >= desde - 60_000
+        }?.id
     }
 
     /**

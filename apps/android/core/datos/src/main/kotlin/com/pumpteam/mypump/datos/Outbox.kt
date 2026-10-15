@@ -36,6 +36,8 @@ data class Operacion(
      * queda en la cola hasta que se vuelva a prender (revisión del 15-oct, hallazgo 2). null en las nativas.
      */
     val legado: Boolean? = null,
+    /** Ya salió una vez ([Outbox.ANOTAN_INTENTO]): pudo haber llegado aunque no volvió la respuesta. null si nunca salió. */
+    val intentada: Boolean? = null,
 ) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         buildMap {
@@ -46,6 +48,7 @@ data class Operacion(
             put("tries", ValorJson.Numero(tries.toDouble()))
             put("ts", ValorJson.Numero(ts))
             legado?.let { put("legado", ValorJson.Booleano(it)) }
+            intentada?.let { put("intentada", ValorJson.Booleano(it)) }
         },
     )
 
@@ -66,10 +69,14 @@ data class Operacion(
                 tries = o["tries"]?.comoNumero?.toInt() ?: 0,
                 ts = ts,
                 legado = (o["legado"] as? ValorJson.Booleano)?.valor,
+                intentada = (o["intentada"] as? ValorJson.Booleano)?.valor,
             )
         }
     }
 }
+
+/** Una op que el servidor guardó, con lo que contestó (para el chat, el id de la fila: `agregar_comentario`). */
+data class OpGuardada(val op: Operacion, val respuesta: ValorJson)
 
 /** El aviso de guardado que ve el cliente (el toast de la web, `showSaveState`). */
 enum class EstadoGuardado {
@@ -145,6 +152,7 @@ class Outbox(
     private var secuencia = 0
     private var alCambiar: ((EstadoGuardado) -> Unit)? = null
     private var alAbandonar: ((List<Operacion>) -> Unit)? = null
+    private var alGuardar: ((List<OpGuardada>) -> Unit)? = null
 
     /**
      * Las ops de la migración ([Operacion.legado]) no salen: la palanca remota está apagada o todavía no se leyó (revisión
@@ -165,9 +173,18 @@ class Outbox(
         }
     }
 
-    suspend fun observar(estado: (EstadoGuardado) -> Unit, abandonadas: (List<Operacion>) -> Unit) = withContext(confinado) {
+    /**
+     * [guardadas]: lo que el servidor guardó en cada pasada, con su respuesta (el chat saca con eso la burbuja "enviando…"
+     * de un mensaje que el servidor deduplicó; hallazgo 7 del 15-oct).
+     */
+    suspend fun observar(
+        estado: (EstadoGuardado) -> Unit,
+        abandonadas: (List<Operacion>) -> Unit,
+        guardadas: ((List<OpGuardada>) -> Unit)? = null,
+    ) = withContext(confinado) {
         alCambiar = estado
         alAbandonar = abandonadas
+        alGuardar = guardadas
     }
 
     suspend fun cambiarEjecutor(e: suspend (Operacion) -> ResultadoOp) = withContext(confinado) { ejecutor = e }
@@ -306,6 +323,7 @@ class Outbox(
         val hayVisibles = tanda.any { it.kind !in SILENCIOSAS }
         val resueltas = HashSet<String>()
         val abandonadas = mutableListOf<Operacion>()
+        val guardadas = mutableListOf<OpGuardada>()
         var algunaFallo = false
         // "Guardando…" solo si tarda (y nunca después de terminar: cancelado, el delay corta).
         val lenta = alcance.launch(confinado) {
@@ -314,6 +332,16 @@ class Outbox(
         }
 
         for (op in tanda) {
+            // Un mensaje del chat que sale puede llegar aunque la respuesta se pierda: se anota ANTES de mandarlo (también vale
+            // si la app se cierra con el pedido en vuelo). La op que se ejecuta es la copia de antes: la primera vez sale
+            // directo y solo un reintento mira si ya había llegado (`Escrituras.yaLlego`; hallazgo 7 del 15-oct).
+            if (op.kind in ANOTAN_INTENTO && op.intentada != true) {
+                val i = ops.indexOfFirst { it.id == op.id }
+                if (i >= 0) {
+                    ops[i] = ops[i].copy(intentada = true)
+                    guardar()
+                }
+            }
             val resultado = try {
                 ejecutor(op)
             } catch (e: CancellationException) {
@@ -336,6 +364,7 @@ class Outbox(
             val r = (resultado as ResultadoOp.Respuesta).resultado
             if (r is Resultado.Ok && seGuardo(r.valor)) {
                 resueltas += op.id
+                guardadas += OpGuardada(op, r.valor)
                 continue
             }
             val error = r.errorONull()
@@ -364,6 +393,7 @@ class Outbox(
         }
         guardar()
 
+        if (guardadas.isNotEmpty()) alGuardar?.invoke(guardadas.toList())
         // Las silenciosas (SER-14) no avisan: lo que el cliente hizo ya quedó en el teléfono.
         val abandonadasVisibles = abandonadas.filter { it.kind !in SILENCIOSAS }
         if (abandonadas.isNotEmpty()) alAbandonar?.invoke(abandonadas.toList())
@@ -480,6 +510,9 @@ class Outbox(
          * (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
          */
         val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR)
+
+        /** Kinds que se anotan como [Operacion.intentada] antes de salir: el chat, que antes de reintentar mira si ya había llegado. */
+        val ANOTAN_INTENTO: Set<String> = setOf("chat")
 
         /** `seGuardo` de la web: null, 0 y [] son "no se guardó". `false` SÍ cuenta (desmarcar algo que no estaba). */
         fun seGuardo(v: ValorJson): Boolean = when (v) {

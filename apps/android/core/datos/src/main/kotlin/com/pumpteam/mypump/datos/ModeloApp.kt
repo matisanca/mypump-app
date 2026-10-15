@@ -321,7 +321,16 @@ class ModeloApp(
         // Los avisos llegan desde el hilo de la cola: los StateFlow se pueden tocar desde cualquier hilo y así el orden se
         // conserva (en iOS se pasa al principal con un Task por aviso).
         alcance.launch {
-            cola.observar(estado = { e -> _estadoGuardado.value = e }, abandonadas = ::alAbandonar)
+            cola.observar(estado = { e -> _estadoGuardado.value = e }, abandonadas = ::alAbandonar, guardadas = ::alGuardar)
+        }
+    }
+
+    /** Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…". */
+    private fun alGuardar(ops: List<OpGuardada>) {
+        for (g in ops) {
+            if (g.op.kind != "chat") continue
+            val contenido = g.op.payload["contenido"]?.comoTexto ?: continue
+            g.respuesta.comoTexto?.let { id -> _chat.value?.confirmar(contenido, id) }
         }
     }
 
