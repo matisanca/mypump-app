@@ -145,6 +145,8 @@ val assetsCompartidos = tasks.register<CopiarCompartido>("assetsCompartidos") {
         "demo/dieta.json" to "apps/shared/demo/dieta.json",
         "bases/catalogo-ejercicios.json" to "apps/shared/catalogo-ejercicios.json",
         "licencias/Archivo-OFL.txt" to "apps/ios/MyPump/Recursos/Fuentes/Archivo-OFL.txt",
+        // Dieta: la base de alimentos de la web (MYPUMP_FOOD_DB) contra la que se buscan los reemplazos.
+        "bases/food-db.json" to "apps/shared/food-db.json",
     )
     salida.set(layout.buildDirectory.dir("generated/compartido/assets"))
 }
