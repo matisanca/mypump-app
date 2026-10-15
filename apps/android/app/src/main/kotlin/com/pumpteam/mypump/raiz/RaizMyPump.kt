@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.pumpteam.mypump.ModeloAppViewModel
 import com.pumpteam.mypump.acceso.AccesoPantalla
+import com.pumpteam.mypump.avisos.AvisosDeLaApp
 import com.pumpteam.mypump.datos.ErrorRpc
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.PalancaRemota
@@ -104,6 +105,8 @@ private fun RaizConModelo(vm: ModeloAppViewModel, m: ModeloApp) {
         ModeloApp.Fase.SIN_TOKEN, ModeloApp.Fase.TOKEN_INVALIDO -> Destino.ACCESO
     }
     val escena = Escena(destino, if (destino != Destino.APP) null else if (esDemo) "demo" else m.token)
+    // Avisos: el del domingo y el push con una cuenta, la hoja de permisos de la primera vez y el fin del descanso.
+    AvisosDeLaApp(vm, m, enLaApp = destino == Destino.APP)
     Crossfade(targetState = escena, label = "raiz") { e ->
         when (e.destino) {
             Destino.ARRANQUE -> PantallaArranque()

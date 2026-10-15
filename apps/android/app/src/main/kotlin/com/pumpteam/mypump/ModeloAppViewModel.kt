@@ -128,6 +128,16 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ── Avisos (NOT-03) ──
+
+    /**
+     * Se tocó un aviso (un push de Mati, el del domingo, el fin del descanso): a su pestaña. Si la app recién arranca, la
+     * navegación lo consume cuando aparecen las pestañas.
+     */
+    fun abrirAviso(destino: DestinoAviso) {
+        _destino.value = destino
+    }
+
     /** "Ver demo": la rutina y la dieta de ejemplo de la web, empaquetadas. Sin red ni cuenta. */
     fun entrarEnDemo() {
         viewModelScope.launch {

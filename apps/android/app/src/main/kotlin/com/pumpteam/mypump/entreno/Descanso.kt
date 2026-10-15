@@ -41,6 +41,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloEntreno
 import com.pumpteam.mypump.diseno.Archivo
@@ -58,15 +60,19 @@ import kotlinx.coroutines.delay
 /**
  * El reloj del descanso (lo corre la raíz, arriba de las pestañas): mientras se ve la barra, un tick cada 250 ms. La vez
  * que termina, el háptico y el pitido. A los 2 s del fin el motor la cierra solo.
+ *
+ * Con la app en segundo plano el reloj sigue mientras el proceso vive, pero el que avisa es la notificación del fin del
+ * descanso (D8, `avisos/AvisosEnLaApp`): el pitido no suena encima.
  */
 @Composable
 fun RelojDescanso(motor: ModeloEntreno) {
     val b by motor.descanso.collectAsStateWithLifecycle()
     val vista = LocalView.current
+    val ciclo = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(motor, b.visible) {
         if (!b.visible) return@LaunchedEffect
         while (motor.descanso.value.visible) {
-            if (motor.tickDescanso()) {
+            if (motor.tickDescanso() && ciclo.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 // El háptico del sistema (el "éxito" de iOS): no pide permisos.
                 vista.performHapticFeedback(if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.LONG_PRESS)
                 SonidoDescanso.reproducir()
