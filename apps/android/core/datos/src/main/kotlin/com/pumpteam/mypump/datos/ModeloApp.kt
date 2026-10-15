@@ -76,6 +76,9 @@ class ModeloApp(
     var outbox: Outbox? = null
         private set
 
+    /** La sesión del día de la cuenta: la comparten la cola y el motor de Entreno (hallazgo 5). */
+    private var sesionesDelDia = SesionesDelDia(alcance)
+
     /** El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy". */
     private var diaCargado: String? = null
 
@@ -294,7 +297,9 @@ class ModeloApp(
     private fun prepararCuenta(t: String) {
         val d = Disco(raizDisco, t)
         disco = d
-        val escrituras = Escrituras(cliente, t)
+        val sesiones = SesionesDelDia(alcance)
+        sesionesDelDia = sesiones
+        val escrituras = Escrituras(cliente, t, sesiones)
         outbox?.cerrar()
         // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
         val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true) { op -> escrituras.ejecutar(op) }
@@ -533,7 +538,7 @@ class ModeloApp(
         }
         val nuevo = ModeloEntreno(
             cliente, token = token, outbox = outbox, disco = disco, rutinaInicial = rutina, info = _info.value,
-            catalogoInicial = catalogoVigente, alcance = alcance,
+            catalogoInicial = catalogoVigente, alcance = alcance, sesiones = sesionesDelDia,
         )
         // Con el disco de ESTA cuenta, y solo si sigue siendo el motor vigente (como el `[weak e]` de iOS): lo que termine
         // de un motor que ya se soltó no le toca la copia a nadie.
