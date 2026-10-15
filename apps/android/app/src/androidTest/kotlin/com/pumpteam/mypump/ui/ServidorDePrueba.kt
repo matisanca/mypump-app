@@ -47,6 +47,8 @@ class ServidorDePrueba : Transporte {
         if (demoraMs > 0) delay(demoraMs)
         if (sinRed) throw IOException("sin conexión (prueba)")
         if (caido) return Respuesta(503, """{"message":"servicio caído (prueba)"}""".toByteArray())
+        // Revisión: las fotos de progreso y los relojes no son RPC (ver el bloque de Revisión, abajo).
+        rutaDeRevision(pedido.ruta, cuerpo)?.let { return it }
         val token = Regex("\"p_token\":\"([^\"]*)\"").find(cuerpo)?.groupValues?.get(1)
         val propia = respuestas[funcion]
         val (status, texto) = when {
@@ -64,6 +66,66 @@ class ServidorDePrueba : Transporte {
 
     /** Las llamadas a una función, con su cuerpo (para ver qué se mandó). */
     fun a(funcion: String): List<String> = llamadas.filter { it.funcion == funcion }.map { it.cuerpo }
+
+    // ── Revisión: las rutas que no son RPC ─────────────────────────────────────────────────────────────────────────
+    // Las fotos de progreso van al servicio de la Mini (`/progreso/upload` y `/progreso/urls`) y los relojes se preguntan
+    // al sitio (`/api/wearables/disponibles`). Antes todo lo que no era `mypump_*` contestaba `[]`. En `llamadas` quedan
+    // con el último tramo de la ruta: `upload`, `urls` y `disponibles`.
+
+    /** Lo que llegó a `/progreso/upload`. */
+    data class FotoSubida(val pose: String, val fecha: String, val dataUrl: String)
+
+    val fotosSubidas = CopyOnWriteArrayList<FotoSubida>()
+
+    /** Las fotos de la cuenta (lunes de la semana → poses): las contestan `get_fotos_progreso` y `/progreso/urls`. */
+    private val fotosDeLaCuenta = ConcurrentHashMap<String, MutableSet<String>>()
+
+    /** Subir una foto se queda sin red (lo demás contesta): la cola de fotos la guarda y reintenta sin gastar intentos. */
+    @Volatile var fotosSinRed = false
+
+    /** Los relojes que el servidor tiene habilitados (`/api/wearables/disponibles`): ninguno, como sin credenciales. */
+    @Volatile var relojes: List<String> = emptyList()
+
+    /** La cuenta ya tiene estas fotos (lunes → poses), como si se hubieran subido antes. */
+    fun ponerFotos(porSemana: Map<String, List<String>>) {
+        for ((lunes, poses) in porSemana) fotosDeLaCuenta.getOrPut(lunes) { java.util.Collections.synchronizedSet(LinkedHashSet()) } += poses
+        actualizarFotos()
+    }
+
+    /** La URL firmada de prueba de una foto (https, para que `ImagenRemota` la pida). */
+    fun urlDeFoto(lunes: String, pose: String): String = "https://fotos.prueba.invalid/$lunes/$pose.jpg?firma=prueba"
+
+    private fun actualizarFotos() {
+        val filas = fotosDeLaCuenta.entries.sortedBy { it.key }.flatMap { (lunes, poses) ->
+            poses.toList().map { """{"semana_lunes":"$lunes","pose":"$it","tomada_el":"$lunes","created_at":"${lunes}T12:00:00+00:00"}""" }
+        }
+        respuestas["mypump_get_fotos_progreso"] = filas.joinToString(",", "[", "]")
+    }
+
+    // Con los nombres enteros (sin tocar los imports de arriba, que comparten otras pantallas).
+    private fun rutaDeRevision(ruta: String, cuerpo: String): Respuesta? = when (ruta) {
+        "/progreso/upload" -> {
+            if (fotosSinRed) throw IOException("sin conexión para las fotos (prueba)")
+            val o = kotlinx.serialization.json.Json.parseToJsonElement(cuerpo) as kotlinx.serialization.json.JsonObject
+            fun campo(k: String) = (o[k] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: ""
+            if (campo("token") != TOKEN) {
+                Respuesta(401, """{"ok":false,"error":"token inválido"}""".toByteArray())
+            } else {
+                fotosSubidas += FotoSubida(campo("pose"), campo("fecha"), campo("imagen_base64"))
+                ponerFotos(mapOf(com.pumpteam.mypump.reglas.FotosProgreso.lunes(campo("fecha")) to listOf(campo("pose"))))
+                Respuesta(200, """{"ok":true}""".toByteArray())
+            }
+        }
+        "/progreso/urls" -> {
+            val fotos = fotosDeLaCuenta.entries.flatMap { (lunes, poses) ->
+                poses.toList().map { """{"semana_lunes":"$lunes","pose":"$it","url":"${urlDeFoto(lunes, it)}"}""" }
+            }
+            Respuesta(200, """{"ok":true,"fotos":${fotos.joinToString(",", "[", "]")}}""".toByteArray())
+        }
+        "/api/wearables/disponibles" ->
+            Respuesta(200, """{"proveedores":${relojes.joinToString(",", "[", "]") { """{"id":"$it","nombre":"$it"}""" }}}""".toByteArray())
+        else -> null
+    }
 
     companion object {
         /** El token de la cuenta de prueba de este servidor (inventado: no es de nadie). */
