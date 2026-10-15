@@ -208,7 +208,11 @@ object FaseRemotaLegado {
         // Los swaps de comida que el teléfono tenía y el servidor nunca vio: se deciden ANTES de drenar nada.
         when (val n = subirSwapsSinMigrar(entorno, token, cliente, outbox)) {
             null -> r.sinRed = true
-            else -> r.swapsSinMigrar = n
+            else -> {
+                r.swapsSinMigrar = n
+                // Decidido: los reemplazos de la cola vieja ya pueden salir (hasta acá los retenía la cola).
+                outbox.soltarSwapsLegados()
+            }
         }
 
         val resueltas = HashSet<Int>()
