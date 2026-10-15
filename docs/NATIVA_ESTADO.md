@@ -44,27 +44,24 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
 **iPhone 2.0.0**
 1. ☐ La 1.0.12 publicada por Apple. El 14-oct a las 23:50 la App Store seguía con la 1.0.6. Se mira con
    `curl -s "https://itunes.apple.com/lookup?bundleId=com.pumpteam.mypump&country=ar"`.
-2. ☐ Prueba exhaustiva propia:
-   - simuladores de iOS 17.5, 18.6 y 26.5, en tamaños chico, Pro Max y iPad, claro y oscuro, con Dynamic Type XL;
-   - la migración desde la Capacitor (`sim-migracion.sh`), con el recibo de cero pérdida;
-   - cada pestaña con `test-nativa-real`, lado a lado con la web;
-   - sin red, red intermitente y token revocado;
-   - push simulado y la notificación local del domingo;
-   - revisión adversarial del código;
-   - el iPhone de Mati con el TestFlight nuevo, en el uso de todos los días.
-3. ✅ TestFlight 104 (15-oct 02:10) con lo de después del 103:
-   - PRO-02 (6324c09);
-   - el push con otra cuenta (5b11bfd);
-   - los hallazgos 1, 2, 3 y 8 de la revisión, y los menores cuando los cierre el agente;
-   - los arreglos de Entreno.
+2. ⏳ Prueba exhaustiva propia. Estado al 15-oct 05:45:
+   - ✅ XCUITest en 26.5 (iPhone 17 Pro), 17.5, 18.6 y el iPad Pro 13". Barrido en el iPhone SE en claro, oscuro y con
+     la letra más grande de accesibilidad: encontró y arregló Dieta, Ejercicio y Revisión (b9e3cb3).
+   - ✅ Migración de punta a punta en 26.5 y 17.5: 27/27. Encontró una pérdida de swaps de comida (6fd391b) y la cola de
+     fotos que quedaba (549fdba).
+   - ✅ Sin red con `-sinRed`: el chat ya no parece vacío (a064dc0). Token revocado: LinkVencidoTests, «este link ya no
+     sirve».
+   - ✅ Avisos de punta a punta: tocar el aviso abre el Chat, en caliente y en frío. **Encontró que tocar un aviso cerraba
+     la app** (9c9e8b0).
+   - ✅ Revisión adversarial del código (14 y 15-oct, hallazgos 1-14).
+   - ☐ Lado a lado con la web en cada pestaña, con `test-nativa-real`: lo de los bocetos y la paridad; falta una pasada
+     final.
+   - ☐ El iPhone de Mati con el **TestFlight 107**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
+     (SAL-13) y tocar un push real.
+3. ✅ TestFlight 104, 105, 106 y **107** (15-oct 05:20). Del 104 al 106 tienen el cierre al tocar un aviso.
 4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
+   Los arreglos de después no cambian lo que se ve en el tamaño de las capturas.
 5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
-6. ⏳ TestFlight 105 (`nios-2.0.0-105` sobre 10ffeee, 15-oct 04:00):
-   - las fotos y la Dieta de una cuenta no se aplican a otra si entra un link en el medio (69d6b5c, 3d59f6f);
-   - el compositor del chat toma el toque en todo el vidrio (10ffeee).
-
-   Antes, la suite de XCUITest pasó en el iPad Pro 13" (17/17). La de «la última vez» se salteó porque a la cuenta de
-   prueba no le quedaban series del día.
 
 **Android 2.0.0**
 1. ✅ Todas las pantallas (f4bf5ce, 15-oct 03:00): no queda ninguna «en construcción».
