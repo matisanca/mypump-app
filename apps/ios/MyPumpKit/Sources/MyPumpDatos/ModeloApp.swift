@@ -227,7 +227,7 @@ public final class ModeloApp {
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)
-        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true) { op in await escrituras.ejecutar(op) }
+        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true, retenerSwapsLegados: true) { op in await escrituras.ejecutar(op) }
         outbox = cola
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
@@ -345,6 +345,9 @@ public final class ModeloApp {
         }
         rutina = rutinaJSON.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(dietaJSON)
+        // El servidor dijo que no hay dieta: no hay reemplazos del teléfono que decidir y los de la cola vieja pueden salir.
+        // Si la dieta no llegó (red), siguen esperando.
+        if case .success = dd, dieta == nil { await outbox?.soltarSwapsLegados() }
         if rutinaJSON != nil || dietaJSON != nil || copia != nil {
             disco?.guardar(CopiaOffline(info: primera, rutina: rutinaJSON, dieta: dietaJSON, ts: Date().timeIntervalSince1970 * 1000), "offline.json")
         }
@@ -596,7 +599,9 @@ public final class ModeloApp {
             guard let a = creados.first else {
                 return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_FILA", mensaje: "mypump_create_custom_food: vacío"))
             }
-            sumarPropio(a)
+            // Si mientras tanto entró otra cuenta, el alimento es de la anterior: no se suma a la de ahora (como el
+            // hallazgo 10; lo encontró el agente de Android, 15-oct).
+            if token == t { sumarPropio(a) }
             return .success(a)
         }
     }
@@ -607,7 +612,7 @@ public final class ModeloApp {
     public func cargarComidasLibres() async {
         guard let t = token else { comidasLibres = []; return }
         if case .success(let filas) = await cliente.filas("mypump_get_comidas_libres", ["p_token": .texto(t), "p_fecha": .texto(FechaLocal.hoy())],
-                                                          como: ComidaLibre.self) {
+                                                          como: ComidaLibre.self), token == t {
             comidasLibres = filas
         }
     }
@@ -627,7 +632,7 @@ public final class ModeloApp {
             guard let c = filas.first else {
                 return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_FILA", mensaje: "mypump_crear_comida_libre: vacío"))
             }
-            comidasLibres.append(c)
+            if token == t { comidasLibres.append(c) }
             return .success(c)
         }
     }
@@ -639,7 +644,8 @@ public final class ModeloApp {
         comidasLibres.removeAll { $0.id == id }
         guard let t = token else { return true }
         if case .failure = await cliente.llamar("mypump_borrar_comida_libre", ["p_token": .texto(t), "p_id": .texto(id)]) {
-            comidasLibres = previas
+            // Volver atrás solo en la misma cuenta: con otra en el medio, `previas` es de la anterior.
+            if token == t { comidasLibres = previas }
             return false
         }
         return true
@@ -702,6 +708,8 @@ public final class ModeloApp {
             if case .objeto(var o) = payload { o["dietaId"] = .texto(dieta.id); payload = .objeto(o) }
             await outbox.encolar(op.kind, payload, dedupeKey: op.clave)
         }
+        // Decidido con lo que tenía el servidor ANTES de los reemplazos de la cola vieja: ahora pueden salir.
+        await outbox.soltarSwapsLegados()
         if h.migrando {
             await outbox.drenar()
             let quedan = (await outbox.pendientesPorClave()).keys.contains { $0.hasPrefix("swap_\(dieta.id)_") }

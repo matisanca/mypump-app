@@ -15,6 +15,7 @@ struct DietaView: View {
     /// En iPad la dieta va en una columna centrada: el título grande del sistema quedaba pegado al borde, lejos de la
     /// columna. Ahí el título va adentro de la columna (como el encabezado de Entreno) y arriba queda chico.
     @Environment(\.horizontalSizeClass) private var claseAncho
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     /// La raíz todavía pasa las muestras de los bocetos; Dieta ya usa el modelo real y las ignora.
     init(datos: Muestras? = nil) {}
@@ -163,31 +164,47 @@ struct DietaView: View {
         }
         let total = ModeloApp.sumar(alimentos.map(\.efectivo.alimento))
         let nombreOpcion = c.opciones[safe: o]?.nombre ?? Self.letra(o)
+        // Con letra de accesibilidad lo de cada renglón va uno debajo del otro: lado a lado se cortaban las palabras
+        // ("Op-ción A · 3 ali-men-tos") y el total quedaba ilegible ("T / OT / AL").
+        let apilada = tamañoLetra.isAccessibilitySize
+        let titulo = VStack(alignment: .leading, spacing: 1) {
+            Text(c.nombre ?? "Comida \(numero)").font(.title3.weight(.semibold))
+            Text("Opción \(nombreOpcion) · \(alimentos.count) \(alimentos.count == 1 ? "alimento" : "alimentos")")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        let kcal = Text((total.kcal ?? 0).enteroSeguro, format: .number).font(.numeroMediano).contentTransition(.numericText())
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
-                Image(systemName: Self.iconoComida(c.nombre))
-                    .font(.system(size: 17, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(Color.marcaTexto)
-                    .frame(width: 38, height: 38)
-                    .background(Color.marcaSuave, in: .rect(cornerRadius: 11, style: .continuous))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(c.nombre ?? "Comida \(numero)").font(.title3.weight(.semibold))
-                    Text("Opción \(nombreOpcion) · \(alimentos.count) \(alimentos.count == 1 ? "alimento" : "alimentos")")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text((total.kcal ?? 0).enteroSeguro, format: .number)
-                        .font(.numeroMediano)
-                        .contentTransition(.numericText())
-                    Text("kcal").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+            Group {
+                if apilada {
+                    VStack(alignment: .leading, spacing: 4) {
+                        titulo
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            kcal
+                            Text("kcal").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    HStack(spacing: 12) {
+                        Image(systemName: Self.iconoComida(c.nombre))
+                            .font(.system(size: 17, weight: .semibold))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(Color.marcaTexto)
+                            .frame(width: 38, height: 38)
+                            .background(Color.marcaSuave, in: .rect(cornerRadius: 11, style: .continuous))
+                            .accessibilityHidden(true)
+                        titulo
+                        Spacer(minLength: 8)
+                        VStack(alignment: .trailing, spacing: 0) {
+                            kcal
+                            Text("kcal").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
             .accessibilityElement(children: .combine)
             if c.opciones.count > 1 {
-                HStack(spacing: 12) {
+                let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
+                disposicion {
                     Text("Opción").font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
                     Picker("Opción", selection: Binding(get: { o }, set: { nuevo in withAnimation(.snappy) { opcion[c.id] = nuevo } })) {
                         ForEach(Array(c.opciones.enumerated()), id: \.offset) { i, op in Text(op.nombre ?? Self.letra(i)).tag(i) }
@@ -212,12 +229,25 @@ struct DietaView: View {
                     if item.i < alimentos.count - 1 { Divider() }
                 }
             }
-            HStack(spacing: 16) {
-                Text("Total").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).tracking(0.5)
-                Spacer(minLength: 4)
-                MacroMini(letra: "P", valor: total.prot, color: .proteina)
-                MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
-                MacroMini(letra: "G", valor: total.fat, color: .grasa)
+            Group {
+                let rotulo = Text("Total").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).tracking(0.5)
+                if apilada {
+                    VStack(alignment: .leading, spacing: 6) {
+                        rotulo
+                        MacroMini(letra: "P", valor: total.prot, color: .proteina)
+                        MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
+                        MacroMini(letra: "G", valor: total.fat, color: .grasa)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    HStack(spacing: 16) {
+                        rotulo
+                        Spacer(minLength: 4)
+                        MacroMini(letra: "P", valor: total.prot, color: .proteina)
+                        MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
+                        MacroMini(letra: "G", valor: total.fat, color: .grasa)
+                    }
+                }
             }
             .padding(.horizontal, 12).padding(.vertical, 9)
             .background(Color(uiColor: .tertiarySystemFill).opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
@@ -363,21 +393,25 @@ enum FormatoDieta {
 private struct Cabecera: View {
     let objetivo: Macros
     let elegidas: Macros
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     var body: some View {
         let kcalP = (objetivo.prot ?? 0) * 4, kcalC = (objetivo.carb ?? 0) * 4, kcalG = (objetivo.fat ?? 0) * 9
         let total = max(kcalP + kcalC + kcalG, 1)
         let delta = (objetivo.kcal ?? 0) > 0 ? ((elegidas.kcal ?? 0) - (objetivo.kcal ?? 0)) / (objetivo.kcal ?? 1) * 100 : 0
+        // Con letra de accesibilidad el anillo crece: en 132 las kcal quedaban en "2...." y "kcal...".
+        let lado: CGFloat = tamañoLetra.isAccessibilitySize ? 200 : 132
         let anillo = ZStack {
             AnilloMacros(partes: [(kcalP / total, .proteina), (kcalC / total, .carbohidrato), (kcalG / total, .grasa)])
             VStack(spacing: 0) {
                 Text((objetivo.kcal ?? 0).enteroSeguro, format: .number).font(.numeroGrande).contentTransition(.numericText())
-                    .minimumScaleFactor(0.6).lineLimit(1)
+                    .minimumScaleFactor(0.5).lineLimit(1)
                 Text("kcal por día").font(.caption).foregroundStyle(.secondary)
+                    .minimumScaleFactor(0.5).lineLimit(1)
             }
             .padding(.horizontal, 14)
         }
-        .frame(width: 132, height: 132)
+        .frame(width: lado, height: lado)
         .accessibilityElement(children: .combine)
         let macros = [("Proteínas", objetivo.prot, kcalP / total, Color.proteina), ("Carbos", objetivo.carb, kcalC / total, Color.carbohidrato),
                       ("Grasas", objetivo.fat, kcalG / total, Color.grasa)]
@@ -394,6 +428,14 @@ private struct Cabecera: View {
                 VStack(spacing: 18) {
                     anillo
                     HStack(alignment: .top, spacing: 10) {
+                        ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                // Letra muy grande: ni las tres columnas entran (quedaban en "P…", "1…"). Van una debajo de la otra.
+                VStack(spacing: 18) {
+                    anillo
+                    VStack(spacing: 10) {
                         ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
                     }
                 }

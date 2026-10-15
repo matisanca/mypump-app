@@ -17,6 +17,7 @@ struct PesoTarjeta: View {
     @State private var invalido = false
     @State private var precargado = false
     @FocusState private var escribiendo: Bool
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     struct Punto: Identifiable {
         let fecha: Date
@@ -122,7 +123,8 @@ struct PesoTarjeta: View {
         }
         .chartYScale(domain: minimo...maximo)
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 7)) { _ in
+            // Con letra de accesibilidad, una fecha cada dos semanas: cada semana se encimaban ("23 se30tsep7t").
+            AxisMarks(values: .stride(by: .day, count: tamañoLetra.isAccessibilitySize ? 14 : 7)) { _ in
                 AxisValueLabel(format: .dateTime.day().month(.abbreviated).locale(Locale(identifier: "es_AR")))
                     .font(.caption2)
                     .foregroundStyle(Color.secondary)
@@ -142,8 +144,11 @@ struct PesoTarjeta: View {
     // MARK: Carga de hoy
 
     private func cargaDeHoy(hoyYa: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Espacio.xs) {
-            HStack(spacing: Espacio.xs) {
+        // Con letra de accesibilidad, el botón abajo del campo: al lado, el peso quedaba en "8… kg".
+        let disposicion = tamañoLetra.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.xs))
+                                                          : AnyLayout(HStackLayout(spacing: Espacio.xs))
+        return VStack(alignment: .leading, spacing: Espacio.xs) {
+            disposicion {
                 HStack(spacing: 4) {
                     TextField("kg de hoy", text: $entrada)
                         .keyboardType(.decimalPad)

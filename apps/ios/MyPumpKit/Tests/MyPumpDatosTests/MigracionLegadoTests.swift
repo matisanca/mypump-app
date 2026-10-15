@@ -629,6 +629,25 @@ struct MigracionLegadoTests {
         #expect(tel.ajustes.string(forKey: "mypump_health_diag") == nil)
     }
 
+    /// Una restauración que trae el almacenamiento de la app vieja y `legado/` pero no el Keychain (un respaldo local sin
+    /// cifrar): con la misma huella la Fase L cortaba y pedía el link. Ahora, sin token guardado, vuelve a adoptar el de la
+    /// app vieja; marcado inválido, no (gemelo del D14 de Android).
+    @Test func despuesDeRestaurarSinTokenVuelveAAdoptarElDeLaAppVieja() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(2)))])
+        #expect(try tel.faseL().adoptoToken)
+        let cola = tel.cola().ops.map(\.id)
+        tel.almacen.guardar(nil)
+        let r = try tel.faseL()
+        #expect(tel.almacen.leer() == tokenA, "con la misma huella cortaba y pedía el link")
+        #expect(r.adoptoToken && tel.cola().ops.map(\.id) == cola)
+        // Con el token marcado inválido no se vuelve a adoptar (ni se repite la corrida cada vez).
+        tel.almacen.guardar(nil)
+        tel.ajustes.set(tokenA, forKey: "mypump_token_invalido")
+        #expect(try !tel.faseL().corrio)
+        #expect(tel.almacen.leer() == nil)
+    }
+
     @Test func dosCorridasDanLoMismo() throws {
         let tel = Telefono(); defer { tel.limpiar() }
         try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(120))),
@@ -731,6 +750,19 @@ struct MigracionLegadoTests {
         #expect(swaps["swap_\(dietaD)_desayuno_0_1"]?.current["name"]?.comoTexto == "Ricota")
         #expect(tel.disco().leer(Bool.self, "swaps_migrados_\(dietaD)") == nil)
         #expect(tel.disco().leer(Bool.self, "swaps_migrados_otra-dieta") == true)
+        // La escritura de vuelta saca la cola de fotos de la Capacitor: si el cliente volviera a ella, no las subiría de
+        // nuevo encima de una más nueva de la misma semana y pose (agente de Android, 15-oct).
+        #expect(tel.archivos.estado?.escritura?.borrar["mypump_fotoq_\(tokenA)"] != nil)
+    }
+
+    @Test func unaColaDeFotosQueNoSeLeeNoSeBorra() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_fotoq_\(tokenA)": "{no es json",
+                                 "mypump_outbox_\(tokenA)": json(.lista(colaWeb(1, t0: 10)))])
+        _ = try tel.faseL()
+        let borrar = tel.archivos.estado?.escritura?.borrar ?? [:]
+        #expect(borrar["mypump_fotoq_\(tokenA)"] == nil, "se borraba una cola de fotos que no se pudo importar")
+        #expect(borrar["mypump_outbox_\(tokenA)"] != nil)
     }
 
     @Test func sustitucionSinFijadoCuentaComoFijada() throws {
@@ -871,8 +903,9 @@ struct FaseRemotaLegadoTests {
                 #expect(cargas.count == 1 && chats.count == 1)
                 #expect(fotos.count == 1)
                 #expect(tel.archivos.pendientes.isEmpty)
-                // Ya es de esta cuenta: la escritura de vuelta saca su cola de la Capacitor.
+                // Ya es de esta cuenta: la escritura de vuelta saca su cola y su cola de fotos de la Capacitor.
                 #expect(tel.archivos.estado?.escritura?.borrar["mypump_outbox_\(tokenB)"] != nil)
+                #expect(tel.archivos.estado?.escritura?.borrar["mypump_fotoq_\(tokenB)"] != nil)
             default:
                 #expect(r.reasignadas == 0 && destinos == [esperado], "\(caso)")
                 let cargas = await llamadas.de("mypump_registrar_carga"), quedan = await o.pendientes
@@ -880,6 +913,7 @@ struct FaseRemotaLegadoTests {
                 #expect(fotos.isEmpty, "\(caso)")
                 #expect(tel.archivos.pendientes.first?.estado.rawValue == esperado, "\(caso)")
                 #expect(tel.archivos.estado?.escritura?.borrar["mypump_outbox_\(tokenB)"] == nil, "\(caso)")
+                #expect(tel.archivos.estado?.escritura?.borrar["mypump_fotoq_\(tokenB)"] == nil, "\(caso)")
             }
             // Nunca se preguntó con el token de otra persona más que para saber de quién era.
             #expect(await llamadas.de("mypump_get_cliente_info").allSatisfy { $0["p_token"]?.comoTexto == tokenB })

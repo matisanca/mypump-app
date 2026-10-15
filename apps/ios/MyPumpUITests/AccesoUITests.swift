@@ -17,7 +17,7 @@ final class AccesoUITests: XCTestCase {
         adjuntarCaptura("bienvenida")
         demo.tap()
         XCTAssertTrue(app.staticTexts["Estás viendo la demo"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Dieta"].tap()
+        app.pestana("Dieta").tap()
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reemplazar ")).firstMatch.waitForExistence(timeout: 5),
                       "La dieta de ejemplo no se ve en la demo")
         adjuntarCaptura("demo-dieta")
@@ -43,12 +43,12 @@ final class AccesoUITests: XCTestCase {
         campo.tap()
         campo.typeText("https://app.mypumpteam.com/?t=\(token)")
         app.buttons["entrar"].tap()
-        XCTAssertTrue(app.tabBars.buttons["Dieta"].waitForExistence(timeout: 20), "No entró a la cuenta")
+        XCTAssertTrue(app.pestana("Dieta").waitForExistence(timeout: 20), "No entró a la cuenta")
         // Quedó guardado: al reabrir (sin reiniciar) entra solo.
         app.terminate()
         app.launchArguments = ["-sinOnboarding", "YES"]
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Dieta"].waitForExistence(timeout: 20), "El token no quedó guardado")
+        XCTAssertTrue(app.pestana("Dieta").waitForExistence(timeout: 20), "El token no quedó guardado")
         // Limpieza: la próxima corrida arranca sin cuenta.
         app.terminate()
         app.launchArguments = ["-reiniciar", "YES"]

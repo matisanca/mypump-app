@@ -31,17 +31,15 @@ struct CheckSemanal: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.s) {
             EncabezadoSeccion(titulo: "Check de la semana",
-                              detalle: enviado ? nil : "\(CheckinSemanal.metricas.count - CheckinSemanal.metricas.filter { (valores[$0.clave] ?? 0) == 0 }.count)/4")
-                .overlay(alignment: .trailing) {
-                    if enviado {
-                        Label("Enviado", systemImage: "checkmark.circle.fill")
-                            .labelStyle(EtiquetaCompacta())
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.marcaTexto)
-                            .padding(.trailing, 4)
-                            .transition(.scale.combined(with: .opacity))
-                    }
+                              detalle: enviado ? nil : "\(CheckinSemanal.metricas.count - CheckinSemanal.metricas.filter { (valores[$0.clave] ?? 0) == 0 }.count)/4") {
+                if enviado {
+                    Label("Enviado", systemImage: "checkmark.circle.fill")
+                        .labelStyle(EtiquetaCompacta())
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.marcaTexto)
+                        .transition(.scale.combined(with: .opacity))
                 }
+            }
             VStack(alignment: .leading, spacing: Espacio.l) {
                 Text("Contame en 10 segundos cómo venís. Mati lo ve antes de tu devolución.")
                     .font(.subheadline)

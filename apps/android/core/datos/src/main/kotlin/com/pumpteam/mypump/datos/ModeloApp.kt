@@ -357,7 +357,9 @@ class ModeloApp(
         val escrituras = Escrituras(cliente, t, sesiones)
         outbox?.cerrar()
         // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
-        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true) { op -> escrituras.ejecutar(op) }
+        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true, retenerSwapsLegados = true) { op ->
+            escrituras.ejecutar(op)
+        }
         outbox = cola
         _chat.value?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         val chat = ModeloChat(cliente, t, cola, alcance)
@@ -513,6 +515,9 @@ class ModeloApp(
         }
         _rutina.value = rutinaJson?.let { decodificar(it.aJson(), RutinaActiva::desde) }
         _dieta.value = dietaNormalizada(dietaJson)
+        // El servidor dijo que no hay dieta: no hay reemplazos del teléfono que decidir y los de la cola vieja pueden salir.
+        // Si la dieta no llegó (red), siguen esperando.
+        if (dd is Resultado.Ok && _dieta.value == null) outbox?.soltarSwapsLegados()
         if (rutinaJson != null || dietaJson != null || copia != null) {
             disco?.guardar(ARCHIVO_COPIA, CopiaOffline(primera, rutinaJson, dietaJson, System.currentTimeMillis().toDouble()).aValor())
         }
@@ -945,6 +950,8 @@ class ModeloApp(
             val payload = (op.payload as? ValorJson.Objeto)?.let { ValorJson.Objeto(it.campos + ("dietaId" to texto(dieta.id))) } ?: op.payload
             cola.encolar(op.kind, payload, op.clave)
         }
+        // Decidido con lo que tenía el servidor ANTES de los reemplazos de la cola vieja: ahora pueden salir.
+        cola.soltarSwapsLegados()
         if (h.migrando) {
             cola.drenar()
             val quedan = cola.pendientesPorClave().keys.any { it.startsWith("swap_${dieta.id}_") }

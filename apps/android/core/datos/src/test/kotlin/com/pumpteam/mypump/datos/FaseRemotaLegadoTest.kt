@@ -223,14 +223,16 @@ class FaseRemotaLegadoTest {
                     assertTrue(servidor.de("mypump_registrar_carga").size == 1 && servidor.de("mypump_agregar_comentario").size == 1, caso)
                     assertEquals(1, fotos.size, caso)
                     assertTrue(tel.archivos.pendientes.isEmpty(), caso)
-                    // Ya es de esta cuenta: la escritura de vuelta saca su cola de la Capacitor.
+                    // Ya es de esta cuenta: la escritura de vuelta saca su cola y su cola de fotos de la Capacitor.
                     assertNotNull(tel.archivos.estado?.escritura?.borrar?.get("mypump_outbox_$tokenB"), caso)
+                    assertNotNull(tel.archivos.estado?.escritura?.borrar?.get("mypump_fotoq_$tokenB"), caso)
                 } else {
                     assertTrue(r.reasignadas == 0 && destinos == setOf(esperado), caso)
                     assertTrue(servidor.de("mypump_registrar_carga").isEmpty() && o.pendientes() == 0, caso)
                     assertTrue(fotos.isEmpty(), caso)
                     assertEquals(esperado.crudo, tel.archivos.pendientes.firstOrNull()?.estado?.crudo, caso)
                     assertNull(tel.archivos.estado?.escritura?.borrar?.get("mypump_outbox_$tokenB"), caso)
+                    assertNull(tel.archivos.estado?.escritura?.borrar?.get("mypump_fotoq_$tokenB"), caso)
                 }
                 // Nunca se preguntó con el token de otra persona más que para saber de quién era.
                 assertTrue(servidor.de("mypump_get_cliente_info").all { it["p_token"]?.comoTexto == tokenB }, caso)

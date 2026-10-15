@@ -22,7 +22,9 @@ enum Proveedor {
         if d.bool(forKey: "reiniciarOnboarding") { d.removeObject(forKey: "mypump_onboarding_v1") }
         // Desarrollo: `simctl launch … -token <TOKEN>` entra con una cuenta de prueba sin pasar por el link.
         if let t = d.string(forKey: "token"), FormatoToken.valido(t) {
-            return ModeloApp(almacen: TokenEnMemoria(t))
+            // `-sinRed YES`: como sin señal (el gimnasio). La app arranca de su copia guardada y lo que se carga queda
+            // en la cola hasta el próximo arranque sin el argumento.
+            return ModeloApp(cliente: d.bool(forKey: "sinRed") ? ClienteRPC(transporte: SinRed()) : ClienteRPC(), almacen: TokenEnMemoria(t))
         }
         // `-reiniciar YES`: arranca como recién instalada (sin token guardado), para probar la bienvenida.
         if d.bool(forKey: "reiniciar") {
@@ -34,3 +36,10 @@ enum Proveedor {
         return ArranqueMigracion.arrancar { ModeloApp() }
     }
 }
+
+#if DEBUG
+/// Todo pedido falla como sin señal (`-sinRed YES`).
+private struct SinRed: Transporte {
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) { throw URLError(.notConnectedToInternet) }
+}
+#endif

@@ -69,6 +69,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -357,6 +358,15 @@ private fun Cabecera(objetivo: Macros, elegidas: Macros, modifier: Modifier = Mo
                         for ((m, color) in macros) FilaMacro(m.first, m.second, m.third, color)
                     }
                 }
+            } else if (escala >= ESCALA_APILADA) {
+                // Letra muy grande: ni las tres columnas entran (quedaban en "Proteí", "Carbo"). Van una debajo de la otra,
+                // como en iOS con la letra de accesibilidad.
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    AnilloMacros(objetivo, macros.map { it.first.third to it.second }, lado = 200.dp)
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        for ((m, color) in macros) ColumnaMacro(m.first, m.second, m.third, color, Modifier.fillMaxWidth())
+                    }
+                }
             } else {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     AnilloMacros(objetivo, macros.map { it.first.third to it.second })
@@ -388,11 +398,14 @@ private fun Cabecera(objetivo: Macros, elegidas: Macros, modifier: Modifier = Mo
     }
 }
 
+/** Desde esta escala de letra la cabecera y el total de Dieta van apilados (lado a lado se cortaban). */
+private const val ESCALA_APILADA = 1.5f
+
 @Composable
-private fun AnilloMacros(objetivo: Macros, partes: List<Pair<Double, Color>>) {
+private fun AnilloMacros(objetivo: Macros, partes: List<Pair<Double, Color>>, lado: Dp = 132.dp) {
     val c = MyPump.colores
     Box(
-        modifier = Modifier.size(132.dp).semantics(mergeDescendants = true) {
+        modifier = Modifier.size(lado).semantics(mergeDescendants = true) {
             contentDescription = "${Formato.miles(objetivo.kcal)} kilocalorías por día"
         },
         contentAlignment = Alignment.Center,
@@ -427,7 +440,7 @@ private fun AnilloMacros(objetivo: Macros, partes: List<Pair<Double, Color>>) {
                 maxLines = 1,
                 autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp),
             )
-            Text("kcal por día", style = MaterialTheme.typography.labelSmall, color = c.textoSecundario)
+            Text("kcal por día", style = MaterialTheme.typography.labelSmall, color = c.textoSecundario, maxLines = 1)
         }
     }
 }
@@ -548,19 +561,29 @@ private fun TarjetaComida(
                 if (i < alimentos.size - 1) Separador()
             }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(c.campo.copy(alpha = c.campo.alpha * 0.6f))
-                .padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Text("TOTAL", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp), fontWeight = FontWeight.SemiBold, color = c.textoSecundario, modifier = Modifier.weight(1f))
-            MacroMini("P", total.prot, c.proteina)
-            MacroMini("C", total.carb, c.carbohidrato)
-            MacroMini("G", total.fat, c.grasa)
+        val fondoTotal = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(c.campo.copy(alpha = c.campo.alpha * 0.6f))
+            .padding(horizontal = 12.dp, vertical = 9.dp)
+        val rotulo = @Composable { m: Modifier ->
+            Text("TOTAL", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp), fontWeight = FontWeight.SemiBold, color = c.textoSecundario, modifier = m)
+        }
+        if (LocalDensity.current.fontScale >= ESCALA_APILADA) {
+            // Letra muy grande: el rótulo y los macros, uno por renglón (al lado, "TOTAL" quedaba letra por letra).
+            Column(fondoTotal, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                rotulo(Modifier)
+                MacroMini("P", total.prot, c.proteina)
+                MacroMini("C", total.carb, c.carbohidrato)
+                MacroMini("G", total.fat, c.grasa)
+            }
+        } else {
+            Row(fondoTotal, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                rotulo(Modifier.weight(1f))
+                MacroMini("P", total.prot, c.proteina)
+                MacroMini("C", total.carb, c.carbohidrato)
+                MacroMini("G", total.fat, c.grasa)
+            }
         }
     }
 }

@@ -44,28 +44,36 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
 **iPhone 2.0.0**
 1. ☐ La 1.0.12 publicada por Apple. El 14-oct a las 23:50 la App Store seguía con la 1.0.6. Se mira con
    `curl -s "https://itunes.apple.com/lookup?bundleId=com.pumpteam.mypump&country=ar"`.
-2. ☐ Prueba exhaustiva propia:
-   - simuladores de iOS 17.5, 18.6 y 26.5, en tamaños chico, Pro Max y iPad, claro y oscuro, con Dynamic Type XL;
-   - la migración desde la Capacitor (`sim-migracion.sh`), con el recibo de cero pérdida;
-   - cada pestaña con `test-nativa-real`, lado a lado con la web;
-   - sin red, red intermitente y token revocado;
-   - push simulado y la notificación local del domingo;
-   - revisión adversarial del código;
-   - el iPhone de Mati con el TestFlight nuevo, en el uso de todos los días.
-3. ✅ TestFlight 104 (15-oct 02:10) con lo de después del 103:
-   - PRO-02 (6324c09);
-   - el push con otra cuenta (5b11bfd);
-   - los hallazgos 1, 2, 3 y 8 de la revisión, y los menores cuando los cierre el agente;
-   - los arreglos de Entreno.
+2. ⏳ Prueba exhaustiva propia. Estado al 15-oct 05:45:
+   - ✅ XCUITest en 26.5 (iPhone 17 Pro), 17.5, 18.6 y el iPad Pro 13". Barrido en el iPhone SE en claro, oscuro y con
+     la letra más grande de accesibilidad: encontró y arregló Dieta, Ejercicio y Revisión (b9e3cb3).
+   - ✅ Migración de punta a punta en 26.5 y 17.5: 27/27. Encontró una pérdida de swaps de comida (6fd391b) y la cola de
+     fotos que quedaba (549fdba).
+   - ✅ Sin red con `-sinRed`: el chat ya no parece vacío (a064dc0). Token revocado: LinkVencidoTests, «este link ya no
+     sirve».
+   - ✅ Avisos de punta a punta: tocar el aviso abre el Chat, en caliente y en frío. **Encontró que tocar un aviso cerraba
+     la app** (9c9e8b0).
+   - ✅ Revisión adversarial del código (14 y 15-oct, hallazgos 1-14).
+   - ☐ Lado a lado con la web en cada pestaña, con `test-nativa-real`: lo de los bocetos y la paridad; falta una pasada
+     final.
+   - ☐ El iPhone de Mati con el **TestFlight 107**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
+     (SAL-13) y tocar un push real.
+3. ✅ TestFlight 104, 105, 106 y **107** (15-oct 05:20). Del 104 al 106 tienen el cierre al tocar un aviso.
 4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
+   Los arreglos de después no cambian lo que se ve en el tamaño de las capturas.
 5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
+6. ✅ Plan B escrito en `NATIVA_TIENDAS_2.0.0.md`: la Capacitor 2.0.1 por los workflows de siempre, sin subirla de
+   antemano. La vuelta de la nativa a la Capacitor está probada en el simulador.
 
 **Android 2.0.0**
-1. ☐ Pantallas que faltan: Chat y Progreso (en curso), Revisión y Mi Día (en curso), Dieta con escritura.
+1. ✅ Todas las pantallas (f4bf5ce, 15-oct 03:00): no queda ninguna «en construcción».
 2. ☐ Paridad de Android al 100 %.
 3. ☐ Matriz de emuladores con Google Play, en Android 9, 11, 13, 14 y 16:
    - la migración desde la Capacitor 1.0.12;
-   - un push real de punta a punta con `push.py` y la cuenta de prueba;
+   - un push real de punta a punta con `push.py` y la cuenta de prueba. El registro ya anda: hay tokens de FCM de
+     `test-nativa-android` con `plataforma android` en `mypump_push_devices`. **Falta la entrega**, y espera el OK
+     de Mati: hay que dejar un mensaje de Mati en el chat de la cuenta de prueba (una escritura en producción) para
+     que el trigger lo encole y `push.py` lo mande por FCM;
    - Health Connect, que viene integrado desde Android 14 y es una app aparte de 9 a 13;
    - tamaños de pantalla, modo oscuro y fuente grande.
 4. ☐ Workflow `android-nativa` (tag `nand-*`):
@@ -169,9 +177,110 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 - ~~Aceptar el contrato nuevo del Developer Program~~ (aceptado el 14-oct).
 - ~~Publicar la 1.0.12 de iOS antes que la 2.0.0~~. **Enviada a revisión el 14-oct a las 16:24**, con OK de Mati:
   build 18 (el de `v1.0.12-b18`, que es `main` salvo el texto de privacidad), publicación automática al aprobarse y
-  progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
+  progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió. El 15-oct
+  a las 04:00 seguía la 1.0.6.
+- **OK pendientes (15-oct):**
+  1. **mini-vision** (producción, caído desde el 14-oct 13:03): en la Mini, `model = "gpt-5.6-sol"` en
+     `~/.codex/config.toml`, con backup. Detalle en la bitácora del 15-oct 03:00.
+  2. **Push real de Android:** dejar un mensaje de Mati en el chat de `test-nativa-android` (escritura en producción,
+     en la cuenta de prueba) para ver la entrega por FCM en el emulador y que tocarlo abra el chat.
+- **En su iPhone, con el TestFlight 105:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
+- **Para el envío (G7):** la etiqueta de privacidad con «Other Diagnostic Data» en App Store Connect, y en Play
+  Console la subida manual del AAB, Data safety, la declaración de Health Connect y las capturas.
 
 ## Bitácora
+
+- **15-oct 05:40, la restauración de un respaldo y la letra grande en Android:**
+  - **Restaurar un respaldo sin token** (b050d2d, en las dos plataformas): ya no depende de que cambie la huella. Ver
+    D14 en la entrada de las 05:00; en iOS es el caso de un respaldo local de Finder sin cifrar, que no trae el Keychain.
+  - **Android con la letra más grande del sistema** (`font_scale` 2.0, d77ce19). Tenía los mismos problemas que iOS:
+    - Dieta ilegible: las kcal fuera del anillo, «Proteí», «T O T A L»;
+    - la barra de pestañas cortaba los nombres.
+
+    Ahora va apilado desde 1,5×, y los nombres de las pestañas crecen hasta 1,2×. Revisión, Progreso, Chat y Entreno ya
+    se leían bien. Capturas en `nativa-evidencia/barrido/20261015-0513-android-fuente2` (antes) y `…-0518-…` (después).
+
+- **15-oct 05:30, iOS: tocar un aviso cerraba la app (arreglado en el TestFlight 107) y el port a Android:**
+  - **Tocar una notificación con la app en el fondo la cerraba** (9c9e8b0). Le iba a pasar a cada cliente que tocara un
+    mensaje de Mati.
+    - Causa: con la versión `async` del delegado, Swift llamaba al cierre de UIKit desde un hilo de fondo, y UIKit
+      aborta con una aserción en `_updateSnapshotAndStateRestoration`.
+    - Lo encontró una prueba nueva de punta a punta (NOT-03): con `-avisoDePrueba chat` (solo Debug) la app agenda un
+      aviso local que entra por el mismo `didReceive`. La prueba la manda al fondo, lo toca y llega al Chat; en frío,
+      arranca sin caerse.
+    - **TestFlight 107** (`nios-2.0.0-107`, 05:20) lo lleva. **Del 104 al 106 tienen el cierre:** en el iPhone de Mati,
+      actualizar al 107 antes de probar avisos.
+  - **Sin señal, revisado con `-sinRed`:**
+    - El chat parecía vacío, como en la web. Ahora dice «No pudimos traer los mensajes», con Reintentar (a064dc0, y en
+      Android f0f6ab1).
+    - Entreno, Dieta, Revisión y Progreso quedan como la web: muestran el plan guardado, con el aviso.
+  - **Mis fotos:** una foto que no se podía traer dejaba la ruedita girando para siempre (226bd9e). Es el gemelo del
+    arreglo de Android e16f231, que el agente de la matriz encontró en Android 9.
+  - **Android, port de los arreglos de iOS:**
+    - los swaps viejos esperan la decisión (4bf705a; la prueba reproduce la pérdida también en Android);
+    - la cola de fotos de la Capacitor sale en la escritura de vuelta (473d5dd);
+    - el chat sin red (f0f6ab1).
+
+    JVM 553, sin fallas.
+
+- **15-oct 05:00, iOS: la migración otra vez de punta a punta, la letra de accesibilidad y lo del agente de Play:**
+  - **Migración** (`sim-migracion.sh`, con el código de hoy). Aparecieron dos errores reales y uno de la prueba:
+    - **Pérdida de datos** (6fd391b). Los reemplazos de comida que estaban solo en el teléfono (una v1.0.11, sin la
+      marca de migrados) se perdían. Era una regresión del hallazgo 2: la palanca suelta las ops viejas con un drenado
+      inmediato, y el `swap` de la cola vieja llegaba al servidor antes de que se decidiera qué reemplazos del teléfono
+      faltaban subir. El servidor «ya tenía algo», ganaba la mezcla y el resto se descartaba. Ahora la cola retiene los
+      `swap`/`swap_del` viejos hasta esa decisión. Lo cubre `SwapsViejosPalancaTests`, que falla sin el arreglo.
+    - **La cola de fotos de la Capacitor quedaba** (549fdba). Si el cliente volvía a la app vieja (el plan B o un
+      TestFlight vencido), ella subía otra vez esas fotos y podía pisar una más nueva de la misma semana y pose. Lo
+      encontró el agente de Android. Ahora la escritura de vuelta la saca, solo si no cambió.
+    - **De la prueba** (45f4ed7). La limpieza de cada corrida deja una lápida de la sustitución de ejercicio, y en la
+      corrida siguiente SER-14 fallaba sin que la app hiciera nada mal.
+    - Resultado: 26/26 en 26.5 y en 17.5, y 27/27 con el chequeo nuevo de las fotos.
+  - **Letra de accesibilidad (AX5) en el iPhone SE** (b9e3cb3). Un barrido que desplaza cada pantalla encontró:
+    - Dieta ilegible: las kcal, los macros y el total de cada comida («T / OT / AL»).
+    - «Enviado» dibujado encima de «Check de la semana».
+    - El peso en «8… kg» y la última vez en «60 k…».
+    - Las fechas del gráfico encimadas.
+
+    Ahora va todo apilado, y en los tamaños de siempre no cambia nada (UI 17/17 en el iPhone 17 Pro).
+    `BarridoLetraGrandeUITests` queda como herramienta: corre solo con `TEST_RUNNER_MYPUMP_BARRIDO=1`.
+  - **`-sinRed YES`** (a88f527, solo en Debug) para ver la app sin señal en el simulador.
+  - **Agente de Play, respaldo y MIG-03** (cda4efd):
+    - **Capturas de Play:** 20 en `nativa-evidencia/tienda-android/20261015-034014`. El teléfono va en 1080×1920
+      porque Play no acepta un lado mayor que el doble del otro; la tablet de 10" va en 1440×2560. Las claras mostraban
+      «3G»: cambiar el modo noche rearmaba la barra. Rehechas sin eso en `tienda-android/20261015-053511`.
+    - **Respaldo de Google (APL-08):** 19/19 con `bmgr`, en la nube y en el pase a otro teléfono.
+      - El token de la nativa (Keystore y `acceso.bin`) nunca viaja.
+      - Con la app vieja respaldada, al restaurar la nativa vuelve a adoptar el token del WebView (D14).
+      - **D14 anda de casualidad.** Android restaura las fechas de los archivos en 1970, eso cambia la huella del
+        leveldb y la migración corre de nuevo. Con las fechas iguales cortaría antes y pediría el link. Hay que
+        endurecerlo en Android.
+      - `files/legado/estado.json` lleva el token en los nombres de las claves a borrar y viaja en el respaldo. El
+        mismo token ya viaja en `app_webview`, así que no hay exposición nueva y queda como la app vieja. En iOS es
+        igual: el Keychain con `AfterFirstUnlock` viaja a propósito en el respaldo cifrado, y la copia cruda está
+        excluida.
+      - La identidad de Firebase viaja en el respaldo. Que el push siga llegando después de restaurar solo se puede ver
+        con un teléfono real.
+    - **MIG-03 en Android:** 31/31 con fotos y sustitución.
+  - **Pendiente en Android,** cuando termine el agente de la matriz (toca los mismos archivos):
+    - los dos arreglos de la migración (los swaps viejos y la cola de fotos);
+    - D14 robusto;
+    - `limpiar` al final de `emu-migracion.sh`.
+
+- **15-oct 03:50, iOS en el iPad: el chat no tomaba el toque.** La suite de XCUITest en el iPad Pro 13" (iPadOS 26.5)
+  encontró dos cosas:
+  - **Pruebas:** en iPadOS 26 las pestañas son una barra flotante arriba y XCUITest no las ve como `tabBars`. Ahora se
+    buscan como botones por su nombre (`MyPumpUITests/Pestanas.swift`).
+  - **Un bug real del compositor del chat, no solo del iPad.** El campo de varias líneas (`axis: .vertical`) toma el
+    toque solo cerca del texto.
+    - En el iPad, tocar el medio del campo vacío no hacía nada.
+    - En cualquier equipo, tampoco respondía el borde de la cápsula, que es la mitad de su alto.
+    - Se aisló con variantes: el vidrio interactivo no era la causa; con el campo de una línea, andaba.
+    - **El arreglo:** todo el vidrio lleva al campo, con un toque simultáneo que no le quita al campo sus propios toques
+      (mover el cursor sigue andando).
+    - Lo cubre `testTodoElVidrioLlevaAlCampo`: falla sin el arreglo en el iPhone 17 Pro y pasa con él en el iPad, en
+      26.5 y en 17.5.
+  - **Android no lo tiene:** el `decorationBox` del `BasicTextField` es parte del campo.
 
 - **15-oct 03:00, Android: Dieta con escritura mergeada (f4bf5ce) y una falla de producción:**
   - **Dieta** (DIE-08 a 18): la mano, reemplazar, el alimento propio con la etiqueta, las comidas libres con la foto del

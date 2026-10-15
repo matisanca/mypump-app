@@ -180,6 +180,15 @@ class ModeloChat(
 
     /** El hilo se trajo alguna vez: sin cursor, es que está vacío (y no que no se sabe). */
     @Volatile private var cargado = false
+    val traido: Boolean get() = cargado
+
+    /**
+     * El hilo no se pudo traer nunca (sin red o el servicio caído). La pantalla lo dice en vez de mostrar el chat vacío,
+     * que parecía que no había mensajes; la web muestra el vacío. Lo que se escribe igual sale por la cola (gemelo de iOS
+     * a064dc0).
+     */
+    private val _sinTraer = MutableStateFlow(false)
+    val sinTraer: StateFlow<Boolean> = _sinTraer.asStateFlow()
 
     /**
      * Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge. Al abrirlo
@@ -206,8 +215,13 @@ class ModeloChat(
                 "mypump_get_chat",
                 mapOf("p_token" to t, "p_antes" to antes, "p_limite" to numero(PAGINA)),
                 MensajeChat::desde,
-            ).valorONull() ?: return
+            ).valorONull()
+            if (filas == null) {
+                if (!cargado) _sinTraer.value = true
+                return
+            }
             cargado = true
+            _sinTraer.value = false
             _hilo.update { h -> h.mezclar(filas).hilo.let { if (filas.size < PAGINA) it.copy(hayMas = false) else it } }
             recontar()
             if (abierto && !masViejos && _noLeidos.value > 0) marcarLeido()

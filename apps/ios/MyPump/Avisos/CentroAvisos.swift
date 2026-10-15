@@ -98,22 +98,50 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: - UNUserNotificationCenterDelegate
 
+    // Las versiones con cierre, no las `async`: con la `async` de `didReceive`, Swift llamaba al cierre de UIKit desde un
+    // hilo de fondo y, con la app en segundo plano, tocar un aviso la cerraba (una aserción de UIKit en
+    // `_updateSnapshotAndStateRestoration`). Lo encontró la prueba de interfaz que toca el aviso (15-oct).
+
     /// Con la app abierta también se ve el aviso (como `presentationOptions` de la Capacitor).
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async
-        -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
     }
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+    /// Tocar un aviso: se anota su destino (la raíz cambia de pestaña) y se avisa a iOS en el hilo principal.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
         let destino = response.notification.request.content.userInfo["destino"] as? String
-        await MainActor.run { self.destino = DestinoAviso(destino: destino) }
+        nonisolated(unsafe) let terminar = completionHandler
+        Task { @MainActor in
+            self.destino = DestinoAviso(destino: destino)
+            terminar()
+        }
     }
+
+    #if DEBUG
+    /// `-avisoDePrueba <destino>` (solo Debug): pide el permiso y agenda, a los 8 s, un aviso como el push de Mati con ese
+    /// `destino`. La prueba de interfaz manda la app al fondo, lo toca y mira a dónde llega (NOT-03).
+    func agendarAvisoDePrueba(_ destino: String) async {
+        let centro = UNUserNotificationCenter.current()
+        _ = try? await centro.requestAuthorization(options: [.alert, .sound, .badge])
+        let c = UNMutableNotificationContent()
+        c.title = "Mati te dejó un mensaje"
+        c.body = "Aviso de prueba"
+        c.userInfo = ["destino": destino]
+        try? await centro.add(UNNotificationRequest(identifier: "aviso-de-prueba", content: c,
+                                                    trigger: UNTimeIntervalNotificationTrigger(timeInterval: 8, repeats: false)))
+    }
+    #endif
 }
 
 /// El delegado de la app: solo lo que SwiftUI no da (el token de APNs).
 final class DelegadoApp: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         MainActor.assumeIsolated { CentroAvisos.shared.configurar() }
+        #if DEBUG
+        if let d = UserDefaults.standard.string(forKey: "avisoDePrueba") { Task { await CentroAvisos.shared.agendarAvisoDePrueba(d) } }
+        #endif
         return true
     }
 

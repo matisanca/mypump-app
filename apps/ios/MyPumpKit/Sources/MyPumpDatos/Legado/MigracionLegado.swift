@@ -131,6 +131,11 @@ public struct ColaLegada: Equatable, Sendable {
     public var fotos: [String: FotoPendiente]
     /// `rutina.id` de la foto offline de ESE token: contra qué rutina se cargaron las ops sin sesión.
     public var rutinaFoto: String?
+    /// `mypump_fotoq_<T>` y su firma: la escritura de vuelta la borra (si no cambió) cuando sus fotos ya pasaron a la
+    /// nativa. Si quedaba, la Capacitor (el plan B o un TestFlight vencido) volvía a subir esas fotos y podía pisar una
+    /// más nueva de la misma semana y pose (lo encontró el agente de Android, 15-oct).
+    public var claveFotos: String? = nil
+    public var firmaFotos: FirmaValor? = nil
 }
 
 // MARK: - Contexto y plan
@@ -324,6 +329,8 @@ public enum MigracionLegado {
                 guard !token.isEmpty else { c.demo += 1; continue }
                 var q = cola(token, clave: k)
                 q.fotos = leerFotos(v)
+                // Solo si la web la puede leer (un objeto): un valor roto no se importa y la clave no se toca.
+                if case .objeto? = JSONLegado.parsear(v) { q.claveFotos = k; q.firmaFotos = firmas[k] }
                 colas[token] = q
             } else if let t = sufijo(k, "mypump_offline_") {
                 let token = tokenDe(t)
