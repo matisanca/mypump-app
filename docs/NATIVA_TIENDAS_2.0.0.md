@@ -39,15 +39,18 @@ Argentine dietary guidelines) with links, plus a medical disclaimer.
 
 THIRD-PARTY AI (Guideline 5.1.2(i))
 
-No personal data reaches a third-party AI. Chat replies are prepared by the
-coach with AI tools (OpenAI and Anthropic); anything beyond a simple
-acknowledgment is approved by him before it is sent. Before a conversation leaves our own server, a model that runs on that
-server removes the client's name, phone, email and ID numbers; the name is put
-back on our server, never by the provider. A meal or label photo is sent alone,
-without the user's name or any other data, to estimate its nutrition values,
-and it is deleted right after. The weekly report sent to Anthropic is
-pseudonymized. All of this is described in the privacy policy, available inside
-the app (Revisión → Mis datos).
+Clients never talk to an AI: every message in Chat comes from the coach. The
+coach uses AI tools from OpenAI and Anthropic, through their APIs, to draft
+chat replies and his weekly review of each plan; anything beyond a simple
+acknowledgment is approved by him before it is sent. What these tools receive
+is de-identified: before any text leaves our server, a model that runs on our
+own server removes the client's name, phone, email and ID numbers (the weekly
+review uses a meaningless label such as "c1"), and the name is put back on our
+server, never by the provider. Depending on the message, that text can include
+the client's plan summary and logs. Progress photos are never sent. A meal or
+nutrition-label photo is sent alone, with no other data, to estimate its
+nutrition values, and it is deleted right after. All of this is described in
+the privacy policy, available inside the app (Revisión → Mis datos).
 
 PRIVACY
 
@@ -56,8 +59,10 @@ Mis datos), and at https://app.mypumpteam.com/privacidad.html.
 ```
 
 **Antes de enviar, revisar:**
-- **D7 se sacó el 14-oct (Mati): la IA no es algo que el cliente acepte.** En su lugar, nada identificable llega a una IA
-  de terceros:
+- **D7 se sacó el 14-oct (Mati): la IA no es algo que el cliente acepte.** En su lugar, a una IA de terceros llega todo
+  desidentificado, sin nombre ni datos de contacto. Las notas de arriba lo dicen así desde el 15-oct: antes decían «No
+  personal data reaches a third-party AI», que no era exacto (va contenido del plan y de los registros) y contradecía el
+  renglón del informe semanal seudonimizado.
   - el chat va sin nombre ni datos de contacto, los tapa la IA local de la Mini (`pump-centinela/deid_chat.py`), tanto
     a Codex (borradores, `CHAT_IA_AUTO=0`) como a la sesión de Mensajes (`app_chat.py`, aprobación de Mati);
   - la foto del plato o de la etiqueta va sola, sin datos de la persona;
