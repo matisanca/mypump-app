@@ -126,7 +126,6 @@ public enum DiaCalendario {
 public enum FotosProgreso {
     public static let poses: [(clave: String, etiqueta: String)] = [("frente", "Frente"), ("perfil", "Perfil"), ("espalda", "Espalda")]
     public static let maxPendientes = 3
-    public static let maxIntentos = 8
     /// El servidor corta el body de más de 3 MB; el data URL se filtra antes de encolar.
     public static let maxCaracteres = 2_400_000
 

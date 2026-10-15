@@ -83,14 +83,47 @@ struct FotosTests {
         #expect(otra.pendientes.count == 1)
     }
 
-    @Test func elServidorCaidoGastaIntentosYAlOctavoSeDeja() async {
-        let g = Guion(); g.respuestas = Array(repeating: (503, #"{"ok":false}"#), count: 9)
+    /// Desvío a propósito (15-oct): la web borraba la foto al octavo error del servidor. Con la Mini caída Cloudflare
+    /// contesta 502/530, y abriendo la app unas cuantas veces la foto se perdía. Ahora espera a que el servidor vuelva.
+    @Test func conElServidorCaidoLaFotoNoSePierde() async {
+        let caida = Array(repeating: (502, #"{"ok":false,"error":"no se pudo guardar la foto"}"#), count: 10)
+            + Array(repeating: (530, "<html>error code: 1033</html>"), count: 11)
+        let g = Guion(); g.respuestas = caida + [(200, #"{"ok":true,"semana_lunes":"2026-10-12","pose":"perfil"}"#)]
         let m = modelo(g)
-        _ = await m.subir(pose: "perfil", jpeg: jpeg)
-        for _ in 0..<7 { await m.drenar() }
-        #expect(m.pendientes.values.first?.intentos == 7)
+        #expect(await m.subir(pose: "perfil", jpeg: jpeg) == .sinConexion)
+        for _ in 0..<20 { await m.drenar() }
+        #expect(m.pendientes.count == 1, "con el servidor caído la foto se borraba al octavo intento")
+        #expect(modelo(g).pendientes.count == 1, "y tiene que seguir en el disco")
+        await m.drenar()
+        #expect(m.pendientes.isEmpty, "cuando el servidor vuelve, sube")
+    }
+
+    /// El servicio deja 12 fotos por día y por link (429, «probá mañana»). La foto queda para mañana sin gastarse, y la
+    /// pasada se corta: con el tope no entra ninguna.
+    @Test func conElTopeDelDiaQuedaParaMañana() async {
+        let tope = (429, #"{"ok":false,"error":"muchas fotos por hoy, probá mañana"}"#)
+        let g = Guion(); g.respuestas = Array(repeating: tope, count: 2 + 12)
+        let m = modelo(g)
+        #expect(await m.subir(pose: "frente", jpeg: jpeg) == .topeDelDia)
+        #expect(await m.subir(pose: "perfil", jpeg: jpeg) == .topeDelDia)
+        let subidas = { g.lock.withLock { g.pedidos.filter { $0.hasSuffix("upload") }.count } }
+        await m.drenar()
+        #expect(subidas() == 3, "con el tope del día la pasada siguió probando las demás")
+        for _ in 0..<11 { await m.drenar() }
+        #expect(m.pendientes.count == 2, "con el tope del día las fotos se borraban")
+        g.lock.withLock { g.respuestas = [(200, #"{"ok":true}"#), (200, #"{"ok":true}"#)] }
         await m.drenar()
         #expect(m.pendientes.isEmpty)
+    }
+
+    /// Una foto que el servidor no puede guardar (un 5xx cada vez) no traba a las que vienen atrás.
+    @Test func unaFotoQueNoEntraNoTrabaALasDemas() async {
+        let g = Guion(); g.respuestas = [nil, nil, (502, #"{"ok":false,"error":"no se pudo guardar la foto"}"#), (200, #"{"ok":true}"#)]
+        let m = modelo(g)
+        _ = await m.subir(pose: "espalda", jpeg: jpeg)
+        _ = await m.subir(pose: "frente", jpeg: jpeg)
+        await m.drenar()   // espalda va primero (por la clave): 502, sigue; frente: ok
+        #expect(m.pendientes.keys.map { $0.hasSuffix("|espalda") } == [true])
     }
 
     @Test func unRechazoNoTrabaLaCola() async {

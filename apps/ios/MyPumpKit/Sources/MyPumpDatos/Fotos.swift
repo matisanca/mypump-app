@@ -10,7 +10,8 @@ public struct FotoPendiente: Codable, Equatable, Sendable {
     public var fecha: String
     /// `data:image/jpeg;base64,…` (900 px, calidad 0,7, sin EXIF).
     public var dataUrl: String
-    /// Solo cuentan los errores del servidor; con 8 se descarta.
+    /// Los errores del servidor que contó la web (llega con la migración). La nativa no lo usa: un error del servidor no
+    /// gasta la foto (`ModeloFotos.drenar`).
     public var intentos: Int
 
     public static let archivo = "fotos-pendientes.json"
@@ -32,11 +33,13 @@ public final class ModeloFotos {
         case muyPesada                // "Esa foto es demasiado pesada. Probá sacarla con la cámara."
         case noSeGuardo               // no se pudo ni guardar en el teléfono
         case tokenCaido               // el link ya no sirve: queda guardada para cuando entre con el nuevo
+        case topeDelDia               // el servicio deja 12 por día y por link: queda guardada para mañana
 
         public var texto: String {
             switch self {
             case .guardada: "Listo, guardada ✓"
             case .sinConexion: "Sin conexión: queda guardada y se sube sola."
+            case .topeDelDia: "Hoy ya subiste muchas fotos: queda guardada y se sube sola mañana."
             case .rechazada(let m): "No se pudo guardar: \(m)"
             case .colaLlena: "Hay fotos esperando subir. Probá cuando tengas señal."
             case .muyPesada: "Esa foto es demasiado pesada. Probá sacarla con la cámara."
@@ -110,20 +113,27 @@ public final class ModeloFotos {
             return .rechazada(motivo)
         case .reintentar, .red:
             return guardo ? .sinConexion : .noSeGuardo
+        case .tope:
+            return guardo ? .topeDelDia : .noSeGuardo
         case .tokenCaido:
             return guardo ? .tokenCaido : .noSeGuardo
         }
     }
 
-    /// `flushFotos`: una pasada a la vez. Un rechazo (4xx salvo 429) se descarta para no trabar la cola; la red no
-    /// gasta intentos; 8 errores del servidor y se deja.
+    /// `flushFotos`: una pasada a la vez. Un rechazo (4xx salvo 429) se descarta para no trabar la cola.
+    /// Desvío a propósito (15-oct): un error del servidor (5xx o 429) no gasta la foto. La web la borraba al octavo, y su
+    /// propio comentario dice que con el servidor caído la foto tiene que sobrevivir. Pero con la Mini caída Cloudflare
+    /// contesta 502/530, que contaba como error del servidor, y abriendo la app unas cuantas veces la foto se perdía. Con el
+    /// tope de 12 por día («probá mañana») pasaba lo mismo. Ahora espera. Si nunca entra, la corta la ventana de fechas del
+    /// servidor (+1/−7), que después la rechaza con un 400. Un 5xx sigue con la próxima, así una foto que el servidor no
+    /// puede guardar no traba a las demás. El tope del día, la red y el token caído cortan la pasada.
     public func drenar() async {
         guard !drenando, !pendientes.isEmpty else { return }
         drenando = true
         defer { drenando = false }
         var subioAlgo = false
-        for clave in pendientes.keys.sorted() {
-            guard var item = pendientes[clave] else { continue }
+        pasada: for clave in pendientes.keys.sorted() {
+            guard let item = pendientes[clave] else { continue }
             subiendo.insert(clave)
             let r = await enviar(item)
             subiendo.remove(clave)
@@ -132,19 +142,14 @@ public final class ModeloFotos {
                 pendientes[clave] = nil
                 _ = guardarCola()
                 subioAlgo = true
-                continue
             case .fatal:
                 pendientes[clave] = nil
-            case .red, .tokenCaido:
-                break
+                _ = guardarCola()
             case .reintentar:
-                item.intentos += 1
-                pendientes[clave] = item.intentos >= FotosProgreso.maxIntentos ? nil : item
+                continue pasada
+            case .tope, .red, .tokenCaido:
+                break pasada     // no entra ninguna: con el tope del día, sin señal, o con este link (la adopta el nuevo)
             }
-            _ = guardarCola()
-            if case .red = r { break }
-            if case .tokenCaido = r { break }        // con este token no entra ninguna: las adopta la cuenta del link nuevo
-            if pendientes[clave] != nil { break }   // el servidor está mal: se reintenta después
         }
         if subioAlgo { await alSubir() }
     }
@@ -186,9 +191,10 @@ public final class ModeloFotos {
 
     // MARK: - Envío
 
-    enum Envio { case ok, fatal(String), reintentar, red, tokenCaido }
+    enum Envio { case ok, fatal(String), reintentar, tope, red, tokenCaido }
 
-    /// `_subirFoto`: 4xx salvo 429 = no va a entrar nunca; 5xx/429 = el servidor, se reintenta; sin respuesta = red.
+    /// `_subirFoto`: 4xx salvo 429 = no va a entrar nunca; 5xx = el servidor, se reintenta; 429 = el tope del día (12 por
+    /// link), se reintenta mañana; sin respuesta = red.
     /// Desvío a propósito: un 401/403 por el token NO borra la foto (la web la perdía). Queda guardada, sin gastar intento,
     /// y la adopta la cuenta del link nuevo de la misma persona (`CuentasDelTelefono.adoptarFotos`; revisión del 15-oct).
     func enviar(_ f: FotoPendiente) async -> Envio {
@@ -203,7 +209,8 @@ public final class ModeloFotos {
         let j = try? JSONDecoder().decode(JSONValue.self, from: datos)
         if (200..<300).contains(status), j?["ok"] == .bool(true) { return .ok }
         if status == 401 || status == 403, (j?["error"]?.comoTexto ?? "").lowercased().contains("token") { return .tokenCaido }
-        if status >= 400 && status < 500 && status != 429 { return .fatal(j?["error"]?.comoTexto ?? "HTTP \(status)") }
+        if status == 429 { return .tope }
+        if status >= 400 && status < 500 { return .fatal(j?["error"]?.comoTexto ?? "HTTP \(status)") }
         return .reintentar
     }
 
