@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import MyPumpModelos
 
@@ -86,14 +87,25 @@ public enum TokenPush {
 
 extension ModeloApp {
     /// `registrarPush`: directo; solo si cambió desde el último que se mandó (`mypump_push_token`, la misma clave que la
-    /// web). Devuelve si quedó registrado.
+    /// web) o si es otra cuenta (`mypump_push_cuenta`, una huella, nunca el token): con el link de otra cuenta en el mismo
+    /// teléfono, los avisos seguían yendo a la anterior (lo encontró el agente de Android, 14-oct). Devuelve si quedó
+    /// registrado.
     public func registrarPush(dispositivo: String, version: String?, defaults: UserDefaults = .standard) async -> Bool {
         guard let t = token, !esDemo else { return false }
-        if defaults.string(forKey: "mypump_push_token") == dispositivo { return true }
+        let cuenta = Self.huellaPush(t)
+        if defaults.string(forKey: "mypump_push_token") == dispositivo, defaults.string(forKey: "mypump_push_cuenta") == cuenta {
+            return true
+        }
         let r = await cliente.llamar("mypump_registrar_push", ["p_token": .texto(t), "p_device": .texto(dispositivo),
                                                               "p_plataforma": .texto("ios"), "p_app_version": version.map(JSONValue.texto) ?? .null])
         guard case .success(let v) = r, v == .bool(true) else { return false }
         defaults.set(dispositivo, forKey: "mypump_push_token")
+        defaults.set(cuenta, forKey: "mypump_push_cuenta")
         return true
+    }
+
+    /// La de la carpeta de la cuenta (`Disco`), igual que `RegistroPush.huella` de Android.
+    static func huellaPush(_ token: String) -> String {
+        String(SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined().prefix(16))
     }
 }
