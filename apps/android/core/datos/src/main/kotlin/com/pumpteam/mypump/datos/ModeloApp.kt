@@ -585,7 +585,10 @@ class ModeloApp(
     val avisoPlanIncompleto: Pair<String, String>?
         get() {
             if (_esDemo.value) return null
-            val p = _problemasDieta.value + (_entreno.value?.problemas?.value ?: emptyList())
+            // Como la web: primero lo de la rutina y después lo de la dieta (se muestran los tres primeros). A propósito no se
+            // suma el "Todavía no tenés dieta publicada." de la web: a quien solo tiene rutina le dejaba un aviso de error
+            // fijo, y la pestaña Dieta ya lo dice.
+            val p = (_entreno.value?.problemas?.value ?: emptyList()) + _problemasDieta.value
             if (p.isEmpty()) return null
             return "A tu plan le falta información y algunas cosas pueden verse raras. Avisale a Mati y lo republica." to
                 p.take(3).joinToString(" · ")
@@ -791,7 +794,8 @@ class ModeloApp(
             return null
         }
         val r = NormalizarDieta.normalizar(d.estructura)
-        _problemasDieta.value = r.problemas
+        // Como la web: de una dieta que no sirve no se listan sus detalles, se dice que está incompleta.
+        _problemasDieta.value = if (r.usable) r.problemas else listOf("Tu dieta está publicada pero incompleta.")
         if (!r.usable) return null
         return d.copy(estructura = r.estructura)
     }
