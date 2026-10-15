@@ -51,7 +51,12 @@ struct ChatView: View {
         // Con el chat a la vista el sondeo va cada 15 s y lo nuevo queda leído (CHA-04).
         .onAppear {
             chat?.abierto = true
-            Task { await chat?.marcarLeido() }
+            Task {
+                // Si el hilo no se trajo nunca (sin red al arrancar), se intenta ya: el sondeo recién consulta a los 15 s
+                // y mientras tanto se veía el chat vacío.
+                if chat?.cargado == false { await chat?.cargar() }
+                await chat?.marcarLeido()
+            }
         }
         .onDisappear { chat?.abierto = false }
     }
@@ -132,7 +137,25 @@ struct ChatView: View {
     /// Mensajes); sin mensajes, el avatar grande y para qué sirve el chat.
     @ViewBuilder
     private func encabezado(vacio: Bool) -> some View {
-        if vacio {
+        if vacio, chat?.sinTraer == true {
+            // Sin red y sin haber traído nunca el hilo: no es que no haya mensajes.
+            VStack(spacing: Espacio.xs) {
+                Image(systemName: "wifi.slash").font(.title2).foregroundStyle(.secondary).accessibilityHidden(true)
+                Text("No pudimos traer los mensajes").font(.headline).padding(.top, 4)
+                Text("Sin conexión. Lo que escribas se manda solo cuando vuelva la señal.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Reintentar") { Task { await chat?.cargar() } }
+                    .buttonStyle(BotonMarca(compacto: true))
+                    .disabled(chat?.cargando == true)
+                    .padding(.top, Espacio.xs)
+                    .accessibilityIdentifier("chat-reintentar")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, Espacio.xxl)
+            .padding(.bottom, Espacio.l)
+        } else if vacio {
             VStack(spacing: Espacio.xs) {
                 AvatarMati(lado: 72)
                 Text("Escribile a Mati").font(.title2.weight(.bold)).padding(.top, 4)

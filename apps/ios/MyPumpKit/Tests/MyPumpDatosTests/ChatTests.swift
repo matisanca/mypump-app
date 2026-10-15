@@ -151,6 +151,46 @@ struct ChatLeidoAlLlegarTests {
     }
 }
 
+/// Sin red en el arranque el chat aparecía vacío, como si no hubiera mensajes (la web hace lo mismo). Ahora el modelo
+/// distingue «no se pudo traer» de «está vacío» y la pantalla lo dice (15-oct, barrido sin señal).
+@Suite("Chat: sin red no parece vacío", .serialized)
+@MainActor
+struct ChatSinTraerTests {
+    @Test func sinRedQuedaSinTraerHastaQueLlega() async {
+        let red = BanderaRed()
+        let t = TransporteProgramado { fn, _ in
+            if await red.caida { throw URLError(.notConnectedToInternet) }
+            return fn == "mypump_get_chat"
+                ? (200, #"[{"id":"1","autor":"coach","contenido":"hola","leido_por_cliente":true,"created_at":"2026-10-14T10:00:00+00:00"}]"#)
+                : (200, "[]")
+        }
+        let chat = ModeloChat(cliente: ClienteRPC(config: .produccion, transporte: t), token: "tok", outbox: nil)
+        await red.poner(true)
+        await chat.cargar()
+        #expect(chat.sinTraer && chat.hilo.mensajes.isEmpty)
+        // El sondeo, sin cursor, vuelve a intentar la carga: con señal llega y deja de decirlo.
+        await red.poner(false)
+        await chat.sondear()
+        #expect(!chat.sinTraer && chat.hilo.mensajes.count == 1)
+        // Un corte después de haberlo traído no lo vuelve a decir: lo que hay sigue a la vista.
+        await red.poner(true)
+        await chat.cargar()
+        #expect(!chat.sinTraer && chat.hilo.mensajes.count == 1)
+    }
+
+    @Test func unHiloVacioDeVerdadNoEsSinTraer() async {
+        let t = TransporteProgramado { _, _ in (200, "[]") }
+        let chat = ModeloChat(cliente: ClienteRPC(config: .produccion, transporte: t), token: "tok", outbox: nil)
+        await chat.cargar()
+        #expect(!chat.sinTraer && chat.hilo.mensajes.isEmpty)
+    }
+}
+
+actor BanderaRed {
+    var caida = false
+    func poner(_ v: Bool) { caida = v }
+}
+
 /// CHA-04: el sondeo va cada 45 s con el chat cerrado y cada 15 s abierto (al abrirlo arranca de nuevo), y parado no
 /// consulta más (la app en segundo plano lo para). Las esperas se registran en vez de dormirlas.
 @Suite("Chat: los intervalos del sondeo")
