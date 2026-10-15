@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.ModeloAppViewModel
 import com.pumpteam.mypump.acceso.URL_BORRADO
 import com.pumpteam.mypump.acceso.URL_PRIVACIDAD
+import com.pumpteam.mypump.avisos.SeccionNotificaciones
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.IconoAzulejo
@@ -79,6 +80,7 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
     }
 
     PantallaConTitulo("Mis datos", alVolver = alVolver, desplazable = true, modifier = Modifier.testTag("mis-datos-pantalla")) {
+        SeccionNotificaciones(vm, modelo)
         Seccion(
             "Apariencia",
             pie = if (oscuro) "La app queda oscura aunque el teléfono esté en claro." else "La app sigue al teléfono: clara u oscura según cómo lo tengas.",

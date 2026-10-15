@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pumpteam.mypump.avisos.CentroAvisos
 import com.pumpteam.mypump.diseno.TemaMyPump
 import com.pumpteam.mypump.diseno.temaOscuro
 import com.pumpteam.mypump.raiz.RaizMyPump
@@ -33,6 +34,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         // Solo la primera vez: al rotar la pantalla el intent es el mismo y la cuenta ya entró.
         if (savedInstanceState == null) abrirLink(intent)
+        // Avisos: tocar uno con la app cerrada la abre en su pestaña (NOT-03, arranque en frío).
+        if (savedInstanceState == null) abrirAviso(intent)
         lifecycle.addObserver(
             LifecycleEventObserver { _, evento ->
                 when (evento) {
@@ -61,10 +64,20 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         abrirLink(intent)
+        abrirAviso(intent)
     }
 
     private fun abrirLink(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         intent.dataString?.let(vm::abrirLink)
+    }
+
+    /**
+     * Avisos: un aviso propio (`ACCION_AVISO`) o un push que mostró FCM con la app en segundo plano trae su `destino` en los
+     * extras. Desde Recientes el intent es el de la primera vez: no vuelve a cambiar de pestaña.
+     */
+    private fun abrirAviso(intent: Intent?) {
+        if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        CentroAvisos.destinoDe(intent)?.let(vm::abrirAviso)
     }
 }

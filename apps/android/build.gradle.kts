@@ -8,6 +8,8 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.serialization) apply false
+    // Avisos: Firebase (FCM) para el push de los mensajes de Mati; lo aplica solo :app.
+    alias(libs.plugins.google.services) apply false
 }
 
 /** La raíz del repo: los tests leen de ahí los vectores y fixtures compartidos con iOS (`apps/shared/`). */

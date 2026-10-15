@@ -49,6 +49,7 @@ y números grandes van en Archivo.
 | `diseno` | `TemaMyPump` (claro/oscuro, `MyPump.colores`), `Iconos`, componentes (`Tarjeta`, `BotonMarca`, `Aviso`, `MarcoPantalla`, `Formato`) |
 | `raiz` | `RaizMyPump` (marca, bienvenida, sin conexión, "Actualizá MyPump" o la app), `AppConPestanas` (5 pestañas, badges, barra de la demo, banner sin conexión, aviso de guardado), `Navegacion` |
 | `acceso` | Bienvenida (`AccesoPantalla`) y `Apariencia` (D5) |
+| `avisos` | Las notificaciones (ver "Los avisos"); la hoja de permisos de la primera vez está en `acceso/OnboardingPermisos` |
 | `entreno` | Entreno (gemela de `apps/ios/MyPump/Entreno/`): la lista del día (`ListaEntreno`), el detalle de un ejercicio (`EjercicioPantalla`, `TablaSeries`), sustituir y cerrar el día (`Hojas`), el descanso (`Descanso`: la isla arriba de las pestañas, su reloj y el pitido), las preguntas del motor (`Preguntador`) y los textos de la app (`Bonito`, `CardAccesible`) |
 | `dieta`, `revision`, `misdatos`, `respaldo` | Dieta en modo lectura, Revisión (por ahora la entrada a Mis datos), Mis datos y las 14 fuentes |
 
@@ -60,7 +61,7 @@ y números grandes van en Archivo.
   `mypump_get_consentimiento_ia`. La cola sigue sabiendo ejecutar `consentimiento_ia`, solo para vaciar lo que haya
   quedado de antes; un `consentimiento-ia.json` viejo queda en la carpeta de la cuenta y nadie lo lee.
 - **El aviso del domingo** no se configura y llega como un mensaje de Mati: `AvisoDomingo` (título "Mati", id 1002 de la
-  Capacitor, domingo a las 11:00, abre Revisión), gemelo del de iOS. Las notificaciones todavía no están en Android;
+  Capacitor, domingo a las 11:00, abre Revisión), gemelo del de iOS. Lo agenda `avisos/CentroAvisos` (ver "Los avisos");
   `PreferenciasAvisos` queda por la migración, no para agendar.
 - **Links (fuentes y legales).** `abrirEnNavegador` abre una Custom Tab (`androidx.browser`, OK de Mati del 14-oct),
   como el SFSafariViewController de iOS; sin un navegador que las soporte, va al navegador.
@@ -91,6 +92,55 @@ y números grandes van en Archivo.
   prueba suelto (`CustomTabsTest`) va en una `ComponentActivity` vacía que solo existe en debug (`src/debug/AndroidManifest.xml`).
   Si se agrega `ui-test-junit4` + `ui-test-manifest`, las pruebas pasan a `createAndroidComposeRule` casi sin cambios:
   las etiquetas son las mismas.
+
+## Los avisos
+
+Gemelos de `apps/ios/MyPump/Avisos/CentroAvisos.swift` y `Acceso/OnboardingPermisos.swift`, en el paquete `avisos` (la hoja
+de la primera vez, en `acceso/OnboardingPermisos.kt`). Lo puro (el próximo domingo, cuándo se registra el push, a dónde
+lleva tocar un aviso) está en `:core:datos` (`Avisos.kt`), con sus tests en la JVM (`AgendaAvisosTest`).
+
+- **Push (FCM).** El mismo proyecto de Firebase que la Capacitor (`mypump-663be`, `app/google-services.json`, que es
+  público), con `firebase-messaging` 25.0.1 y el plugin `google-services` 4.4.4 (G4). Sin token hasta que haga falta
+  (`firebase_messaging_auto_init_enabled = false`): con una cuenta, fuera de la demo y con permiso, la app lo pide y lo
+  manda a `mypump_registrar_push` con `'android'` y la versión ("2.0.0 (100)"), solo si cambió el token o la cuenta
+  (`RegistroPush`). Un token nuevo (`onNewToken`) se registra aunque la app esté cerrada, con la cuenta guardada. La
+  instalación de Firebase sobrevive a la actualización: el token es el que registraba la Capacitor y el upsert deja una
+  sola fila (NOT-02). La nativa nunca registra Web Push.
+- **Mostrar.** push.py manda `notification` + `data{destino}`. Con la app en segundo plano lo muestra FCM con el canal, el
+  ícono y el color del manifest; con la app abierta FCM no lo muestra y lo publica `ServicioPush` (NOT-04). Dos canales:
+  "Mensajes de Mati" (el push y el domingo; es el `default_notification_channel_id`) y "Fin del descanso", aparte, para
+  que apagar uno no apague a Mati. El ícono chico `ic_stat_mypump` es el torso de `public/icons/logo.svg` (el dibujo del
+  ícono de la app) en un vector blanco, con el esmeralda del ícono como tinte.
+- **Tocar un aviso** abre `MainActivity` con el `destino` en los extras: los propios llevan `mypump_aviso` y los que mostró
+  FCM traen `google.message_id`. La raíz cambia de pestaña con el mismo `destino` de los links con `?scene=`; en un
+  arranque en frío, cuando aparecen las pestañas.
+- **El aviso del domingo** (`AvisoDomingo`): una alarma inexacta (`setWindow`: entre las 11:00 y las 11:10; con el teléfono
+  en reposo profundo, cuando despierta) que al sonar publica y agenda la de la semana siguiente. La hora sale del reloj
+  de ese domingo (cambio de hora, viajes). Se reagenda al abrir con una cuenta y con permiso, y con `BOOT_COMPLETED`,
+  `MY_PACKAGE_REPLACED`, `TIMEZONE_CHANGED` y `TIME_SET` (`ReceptorAvisos`). Sin cuenta o en la demo no queda nada; al
+  quedarse sin cuenta se cancela.
+- **Lo de la Capacitor** (NOT-08). Sus alarmas 1001-1004 siguen en el sistema después de actualizar: se encuentran con el
+  mismo PendingIntent que armaba su plugin (`TimedNotificationPublisher` explícito, el id como código, `FLAG_MUTABLE`
+  desde Android 12) y se cancelan. Lo que publicó se saca por id sin etiqueta (los nuestros llevan la etiqueta `mypump`,
+  también el 1002) y se borra su canal "Default". Corre al actualizar y en cada arranque con una cuenta.
+- **El permiso** (Android 13+): la hoja de la primera vez (GEN-06) o Mis datos ("Activar notificaciones" o, si se negó dos
+  veces, "Activar en Ajustes"). Android no dice si su hoja va a volver a salir: sale de
+  `shouldShowRequestPermissionRationale` y de `mypump_notif_pedido` (la clave de la web, que trae la migración). En 12 o
+  menos no hay hoja: apagadas, a Ajustes.
+- **El fin del descanso (D8).** Al pasar a segundo plano con un descanso corriendo, una alarma `setAndAllowWhileIdle`
+  (inexacta) para el fin; al volver se cancela y se saca el aviso. Mientras el proceso corre, el aviso sale desde el reloj
+  del descanso, en el segundo, y el pitido de la app no suena encima (desde Android 14 el sistema congela la app a los
+  pocos segundos de quedar atrás, y ahí avisa la alarma). **El desfase:** en el emulador (pantalla prendida, también con
+  el reposo forzado) la alarma llegó entre 10 y 50 ms después del fin. Pero el sistema le da a una alarma inexacta una
+  ventana del 75 % de lo que faltaba (en `dumpsys alarm`, un descanso de 2:28 tiene +1:51), y con la pantalla apagada
+  Android 12+ puede despertar el teléfono recién al final de esa ventana: si nada lo despierta antes (la música, otra
+  alarma), un descanso de 90 s puede avisar hasta un minuto tarde. Sin alarmas exactas no se puede asegurar más; las
+  alternativas (encadenar alarmas de menos de 10 s, que salen exactas pero despiertan el teléfono seguido, o un servicio
+  en primer plano con el reloj en una notificación fija) son una decisión de producto.
+- **Pruebas.** Instrumentadas: `OnboardingUiTest` y `AvisosUiTest`. El permiso no se puede sacar desde una prueba
+  (`pm revoke` mata el proceso, también el de la prueba): las que necesitan "sin permiso" lo fijan en `PermisoDePrueba`, y
+  las que miran lo publicado lo dan de verdad con `pm grant`. El token de FCM es inventado (`AvisosDePrueba`): las pruebas
+  nunca hablan con Firebase. El envío real de un push necesita un teléfono con Google Play y una cuenta.
 
 ## La capa de datos
 
@@ -181,5 +231,5 @@ Después, `./gradlew test` acá y `swift test` en `apps/ios/MyPumpKit`.
 - **Versiones.** AGP en la línea 8.13 como la Capacitor. El BOM de Compose queda en 2026.06.01: desde Compose 1.12 piden
   compileSdk 37 y AGP 9.1. Por lo mismo lifecycle queda en 2.10.0 y OkHttp en 5.4.0 (la 5.5.0 de Android pide
   compileSdk 37). Kotlin avisa que Gradle 8.14.3 va a dejar de alcanzar en Kotlin 2.5 (pide 8.14.4).
-- **16 KB.** El único `.so` del APK (`androidx.graphics.path`, de Compose) sale alineado a 16 KB:
-  `zipalign -c -P 16 -v 4 app-debug.apk`.
+- **16 KB.** Los `.so` del APK (`androidx.graphics.path`, de Compose, y `datastore_shared_counter`, que trae Firebase)
+  salen alineados a 16 KB: `zipalign -c -P 16 -v 4 app-debug.apk`.
