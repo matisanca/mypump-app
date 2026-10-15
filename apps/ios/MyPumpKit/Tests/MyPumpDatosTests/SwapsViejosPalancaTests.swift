@@ -38,17 +38,18 @@ struct SwapsViejosPalancaTests {
         ], "swaps_\(Self.dietaId).json")
     }
 
-    func modelo(_ s: ServidorDeSwaps) -> ModeloApp {
+    func modelo(_ s: ServidorDeSwaps, dieta: @escaping @Sendable () -> String = { Self.dieta }, demoraSwaps: Int = 0) -> ModeloApp {
         let t = TransporteProgramado { fn, cuerpo in
             switch fn {
             case "mypump_get_cliente_info": return (200, #"[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"#)
-            case "mypump_get_dieta_activa": return (200, Self.dieta)
+            case "mypump_get_dieta_activa": return (200, dieta())
             case "mypump_get_app_config": return (200, #"{"migracion_ops_legadas":true}"#)
             case "mypump_get_cliente_prefs", "mypump_get_custom_foods":
                 // Lo de antes de preguntar por los reemplazos tarda, como en un teléfono de verdad: la cola ya está mandando.
                 try await Task.sleep(for: .milliseconds(150))
                 return (200, "[]")
             case "mypump_get_food_swaps":
+                if demoraSwaps > 0 { try await Task.sleep(for: .milliseconds(demoraSwaps)) }
                 if s.lecturaFalla { throw URLError(.notConnectedToInternet) }
                 return (200, s.filas())
             case "mypump_save_food_swap":
@@ -94,6 +95,78 @@ struct SwapsViejosPalancaTests {
         #expect(s.comidas == ["c1", "c3"])
         #expect(Set(m.swaps.keys) == [Self.c1, Self.c3])
     }
+}
+
+/// La revisión adversarial del 15-oct (hallazgos 1 y 4): retener solo los reemplazos VIEJOS no alcanzaba. Uno nativo (el cliente
+/// reemplaza un alimento) llegaba al servidor antes de la decisión, y uno viejo salía con una dieta que no se podía usar. En
+/// los dos casos el servidor «ya tenía algo» y se perdía c3, que estaba solo en el teléfono.
+extension SwapsViejosPalancaTests {
+    @Test func unReemplazoNativoSinPoderDecidirEsperaYNoSePierdeC3() async throws {
+        try sembrar()
+        let s = ServidorDeSwaps()
+        s.lecturaFalla = true
+        let m = modelo(s)
+        await m.cargar()
+        await m.outbox?.drenar()
+        let pollo = try #require(m.dieta?.estructura.comidas.first { $0.id == "c1" }?.opciones.first?.alimentos.first)
+        await m.sustituir(pollo, por: .objeto(["name": .texto("Pavita"), "qty": .numero(200), "unit": .texto("g")]), comidaId: "c1", opt: 0, idx: 0)
+        await m.outbox?.drenar()
+        #expect(s.comidas.isEmpty, "el reemplazo nativo salió antes de decidir")
+        s.lecturaFalla = false
+        await m.cargar()
+        await m.outbox?.drenar()
+        #expect(s.comidas == ["c1", "c3"], "c3 nunca llegó al servidor")
+        #expect(m.swaps.keys.contains(Self.c3), "c3 se borró del teléfono")
+    }
+
+    @Test func unReemplazoNativoEnLaVentanaDeLaPrimeraCargaNoPierdeC3() async throws {
+        try sembrar()
+        let s = ServidorDeSwaps()
+        let m = modelo(s, demoraSwaps: 300)
+        async let carga: Void = m.cargar()
+        while m.fase != .listo || m.dieta == nil { try await Task.sleep(for: .milliseconds(10)) }
+        let pollo = try #require(m.dieta?.estructura.comidas.first { $0.id == "c1" }?.opciones.first?.alimentos.first)
+        await m.sustituir(pollo, por: .objeto(["name": .texto("Pavita"), "qty": .numero(200), "unit": .texto("g")]), comidaId: "c1", opt: 0, idx: 0)
+        await carga
+        await m.outbox?.drenar()
+        #expect(s.comidas.contains("c3"), "c3 nunca llegó al servidor")
+        #expect(m.swaps.keys.contains(Self.c3), "c3 se borró del teléfono")
+    }
+
+    @Test func unaDietaQueTodaviaNoSePuedeUsarNoSueltaLosReemplazos() async throws {
+        try sembrar()
+        let s = ServidorDeSwaps()
+        let rota = #"[{"id":"dieta-d","version":2,"estructura":{"comidas":[{"id":"c1","name":"Desayuno","options":[{"name":"A","foods":[]}]}]}}]"#
+        let usable = Interruptor()
+        let m = modelo(s, dieta: { usable.prendido ? Self.dieta : rota })
+        await m.cargar()
+        await m.outbox?.drenar()
+        #expect(m.dieta == nil && s.comidas.isEmpty, "con la dieta en armado salió un reemplazo viejo")
+        usable.prendido = true
+        await m.cargar()
+        await m.outbox?.drenar()
+        #expect(s.comidas == ["c1", "c3"])
+        #expect(m.swaps.keys.contains(Self.c3))
+    }
+
+    /// Quien ya migró (con la marca) no espera nada: el reemplazo sale enseguida.
+    @Test func conLaMarcaDeMigradosLosReemplazosNoEsperan() async throws {
+        try sembrar()
+        Disco(raiz: raiz, token: Self.token).guardar(true, "swaps_migrados_\(Self.dietaId)")
+        #expect(!ModeloApp.faltaDecidirSwaps(en: Disco(raiz: raiz, token: Self.token)))
+        let s = ServidorDeSwaps()
+        s.lecturaFalla = true
+        let m = modelo(s)
+        await m.cargar()
+        await m.outbox?.drenar()
+        #expect(s.comidas == ["c1"], "el reemplazo de quien ya migró quedó esperando")
+    }
+}
+
+final class Interruptor: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _v = false
+    var prendido: Bool { get { lock.withLock { _v } } set { lock.withLock { _v = newValue } } }
 }
 
 /// Los reemplazos guardados en el servidor de la prueba (la regla del transporte corre fuera del actor principal).

@@ -159,6 +159,8 @@ public final class ModeloChat {
     /// El hilo no se pudo traer nunca (sin red o el servicio caído). La pantalla lo dice en vez de mostrar el chat vacío,
     /// que parecía que no había mensajes; la web muestra el vacío. Lo que se escribe igual sale por la cola.
     public private(set) var sinTraer = false
+    /// Por qué no se pudo traer: sin red, o el servicio que no responde (el texto de la pantalla cambia).
+    public private(set) var sinTraerPorRed = true
     /// Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge. Al
     /// abrirlo el sondeo vuelve a arrancar: si no, la espera de 45 s que estaba corriendo seguía (como la web, que
     /// cambia el intervalo apenas se abre; revisión del 14-oct, hallazgo 11).
@@ -181,10 +183,13 @@ public final class ModeloChat {
         cargando = true
         defer { cargando = false }
         let antes: JSONValue = masViejos ? (hilo.primeroReal.map { .texto($0.createdAt) } ?? .null) : .null
-        guard case .success(let filas) = await cliente.filas("mypump_get_chat", ["p_token": .texto(token), "p_antes": antes,
-                                                                                 "p_limite": .numero(Double(Self.pagina))], como: MensajeChat.self)
-        else {
-            if !cargado { sinTraer = true }
+        let r = await cliente.filas("mypump_get_chat", ["p_token": .texto(token), "p_antes": antes, "p_limite": .numero(Double(Self.pagina))],
+                                    como: MensajeChat.self)
+        guard case .success(let filas) = r else {
+            if !cargado {
+                sinTraer = true
+                if case .failure(let e) = r { sinTraerPorRed = e.clase == .red }
+            }
             return
         }
         cargado = true

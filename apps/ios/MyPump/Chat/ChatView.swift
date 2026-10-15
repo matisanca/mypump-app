@@ -133,6 +133,11 @@ struct ChatView: View {
         }
     }
 
+    private var motivoSinTraer: String {
+        chat?.sinTraerPorRed == false ? "El servicio no responde. Lo que escribas se manda solo cuando vuelva."
+                                      : "Sin conexión. Lo que escribas se manda solo cuando vuelva la señal."
+    }
+
     /// El comienzo de la conversación. Con mensajes, una línea discreta (el avatar ya está en la barra, como en
     /// Mensajes); sin mensajes, el avatar grande y para qué sirve el chat.
     @ViewBuilder
@@ -140,9 +145,10 @@ struct ChatView: View {
         if vacio, chat?.sinTraer == true {
             // Sin red y sin haber traído nunca el hilo: no es que no haya mensajes.
             VStack(spacing: Espacio.xs) {
-                Image(systemName: "wifi.slash").font(.title2).foregroundStyle(.secondary).accessibilityHidden(true)
+                Image(systemName: chat?.sinTraerPorRed == false ? "icloud.slash" : "wifi.slash")
+                    .font(.title2).foregroundStyle(.secondary).accessibilityHidden(true)
                 Text("No pudimos traer los mensajes").font(.headline).padding(.top, 4)
-                Text("Sin conexión. Lo que escribas se manda solo cuando vuelva la señal.")
+                Text(motivoSinTraer)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -155,6 +161,21 @@ struct ChatView: View {
             .frame(maxWidth: .infinity)
             .padding(.top, Espacio.xxl)
             .padding(.bottom, Espacio.l)
+        } else if chat?.sinTraer == true {
+            // Hay burbujas (lo que se escribió sin señal) pero el hilo de antes nunca llegó: se sigue diciendo, más chico.
+            HStack(spacing: Espacio.xs) {
+                Label("No pudimos traer los mensajes anteriores", systemImage: chat?.sinTraerPorRed == false ? "icloud.slash" : "wifi.slash")
+                    .labelStyle(EtiquetaCompacta())
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Reintentar") { Task { await chat?.cargar() } }
+                    .font(.footnote.weight(.semibold))
+                    .disabled(chat?.cargando == true)
+                    .accessibilityIdentifier("chat-reintentar")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, Espacio.m)
+            .padding(.bottom, Espacio.xs)
         } else if vacio {
             VStack(spacing: Espacio.xs) {
                 AvatarMati(lado: 72)

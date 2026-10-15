@@ -98,7 +98,10 @@ public enum FaseRemotaLegado {
     /// - Parameters:
     ///   - token, clienteId: la cuenta abierta (la del modelo, ya cargada con red).
     ///   - outbox: la cola VIVA de esa cuenta (la del modelo): importar con `await` no pisa lo que encoló la app.
+    /// - Parameter fotos: el modelo de fotos vivo de la cuenta. Las fotos estacionadas van a su cola en memoria: escritas al
+    ///   archivo por detrás, la cola lo pisaba al guardar y se perdían (revisión adversarial del 15-oct, hallazgo 2).
     public static func correr(entorno: EntornoLegado, token: String, clienteId: String, cliente: ClienteRPC, outbox: Outbox,
+                              fotos: ModeloFotos? = nil,
                               recibo: ReciboMigracion, conteos: ConteosServidor = SinConteosServidor(), app: String? = nil,
                               ahora: Date = Date(), zona: TimeZone = .current) async -> Resultado {
         var r = Resultado()
@@ -130,7 +133,7 @@ public enum FaseRemotaLegado {
         case .some(let n):
             r.swapsSinMigrar = n
             // Decidido: los reemplazos de la cola vieja ya pueden salir (hasta acá los retenía la cola).
-            await outbox.soltarSwapsLegados()
+            await outbox.soltarSwaps()
         }
 
         var resueltas: Set<Int> = []
@@ -185,19 +188,26 @@ public enum FaseRemotaLegado {
                 }
                 r.paraRevisar += ops.count
             }
-            if !p.fotos.isEmpty { EjecutorLegado.sumarFotos(p.fotos, en: entorno.disco(token)) }
-            // Lo de un token rotado ya es de esta cuenta: la escritura de vuelta saca su cola (y la de fotos) de la Capacitor.
-            if !p.propia {
-                var borrar: [String: FirmaValor] = [:]
-                if let f = p.firma { borrar[p.clave] = f }
-                if let k = p.claveFotos, let f = p.firmaFotos { borrar[k] = f }
-                if !borrar.isEmpty {
-                    var e = estado.escritura ?? EscrituraPendiente(corrida: corrida, borrar: [:])
-                    e.borrar.merge(borrar) { _, nueva in nueva }
-                    estado.escritura = e
-                }
+            var fotosQuedaron = true
+            if !p.fotos.isEmpty {
+                fotosQuedaron = fotos.map { $0.adoptar(p.fotos) } ?? EjecutorLegado.sumarFotos(p.fotos, en: entorno.disco(token))
             }
-            resueltas.insert(i)
+            var borrar: [String: FirmaValor] = [:]
+            // Lo de un token rotado ya es de esta cuenta: la escritura de vuelta saca su cola de la Capacitor.
+            if !p.propia, let f = p.firma { borrar[p.clave] = f }
+            // Y su cola de fotos, solo si las fotos quedaron acá.
+            if fotosQuedaron, let k = p.claveFotos, let f = p.firmaFotos { borrar[k] = f }
+            if !borrar.isEmpty {
+                var e = estado.escritura ?? EscrituraPendiente(corrida: corrida, borrar: [:])
+                e.borrar.merge(borrar) { _, nueva in nueva }
+                estado.escritura = e
+            }
+            if fotosQuedaron {
+                resueltas.insert(i)
+            } else {
+                // Las ops ya pasaron; las fotos quedan estacionadas para el próximo intento.
+                pendientes[i].ops = []
+            }
         }
         pendientes = pendientes.enumerated().filter { !resueltas.contains($0.offset) }.map(\.element)
         try? a.guardar(libro, "libro.json")

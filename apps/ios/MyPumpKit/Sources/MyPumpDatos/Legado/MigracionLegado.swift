@@ -147,9 +147,12 @@ public struct ContextoMigracion: Equatable, Sendable {
     public var tokenInvalidoNativo: String?
     /// nil = primera corrida.
     public var anterior: CorridaAnterior?
+    /// `UltimaCuenta`: el sha256 del token con el que anduvo la nativa por última vez (nil = nunca tuvo uno).
+    public var ultimaCuenta: String?
 
-    public init(tokenNativo: String? = nil, tokenInvalidoNativo: String? = nil, anterior: CorridaAnterior? = nil) {
+    public init(tokenNativo: String? = nil, tokenInvalidoNativo: String? = nil, anterior: CorridaAnterior? = nil, ultimaCuenta: String? = nil) {
         self.tokenNativo = tokenNativo; self.tokenInvalidoNativo = tokenInvalidoNativo; self.anterior = anterior
+        self.ultimaCuenta = ultimaCuenta
     }
 }
 
@@ -278,6 +281,11 @@ public enum MigracionLegado {
         }
         plan.tokenLegadoHash = plan.tokenLegado.map(JSONLegado.sha256)
         switch (contexto.tokenNativo, plan.tokenLegado) {
+        case (nil, .some) where contexto.ultimaCuenta != nil && contexto.ultimaCuenta != plan.tokenLegadoHash:
+            // La nativa anduvo con OTRA cuenta y se quedó sin token (el link se venció): no se entra a la de la app vieja,
+            // que puede ser de otra persona. Su cola queda estacionada y la Fase R la toma solo si resuelve al mismo
+            // cliente (revisión adversarial del 15-oct, hallazgo 3).
+            plan.tokenVigente = nil
         case (nil, let l):
             plan.tokenVigente = l
             plan.adoptarToken = l != nil
