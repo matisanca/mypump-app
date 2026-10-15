@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.ModeloAppViewModel
+import com.pumpteam.mypump.chat.ChatPantalla
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.datos.EstadoGuardado
 import com.pumpteam.mypump.datos.ModeloApp
@@ -138,7 +139,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                             when (navegacion.pestana) {
                                 Pestana.ENTRENO -> EntrenoPantalla(modelo, vm.preguntasEntreno)
                                 Pestana.DIETA -> DietaPantalla(modelo)
-                                Pestana.CHAT -> PantallaEnConstruccion(Pestana.CHAT, modelo)
+                                Pestana.CHAT -> ChatPantalla(modelo)
                                 Pestana.REVISION ->
                                     if (navegacion.misDatos) {
                                         MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
