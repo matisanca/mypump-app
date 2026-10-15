@@ -186,11 +186,16 @@ public enum FaseRemotaLegado {
                 r.paraRevisar += ops.count
             }
             if !p.fotos.isEmpty { EjecutorLegado.sumarFotos(p.fotos, en: entorno.disco(token)) }
-            // Lo de un token rotado ya es de esta cuenta: la escritura de vuelta saca su cola de la Capacitor.
-            if !p.propia, let f = p.firma {
-                var e = estado.escritura ?? EscrituraPendiente(corrida: corrida, borrar: [:])
-                e.borrar[p.clave] = f
-                estado.escritura = e
+            // Lo de un token rotado ya es de esta cuenta: la escritura de vuelta saca su cola (y la de fotos) de la Capacitor.
+            if !p.propia {
+                var borrar: [String: FirmaValor] = [:]
+                if let f = p.firma { borrar[p.clave] = f }
+                if let k = p.claveFotos, let f = p.firmaFotos { borrar[k] = f }
+                if !borrar.isEmpty {
+                    var e = estado.escritura ?? EscrituraPendiente(corrida: corrida, borrar: [:])
+                    e.borrar.merge(borrar) { _, nueva in nueva }
+                    estado.escritura = e
+                }
             }
             resueltas.insert(i)
         }

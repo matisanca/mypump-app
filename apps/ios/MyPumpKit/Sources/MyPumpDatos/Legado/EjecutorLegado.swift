@@ -97,6 +97,9 @@ public struct ColaPendiente: Codable, Equatable, Sendable {
     public var rutinaFoto: String?
     public var estado: Estado
     public var corrida: Int
+    /// La cola de fotos de ese token en la Capacitor (`ColaLegada.claveFotos`).
+    public var claveFotos: String? = nil
+    public var firmaFotos: FirmaValor? = nil
 }
 
 /// Archivos de `legado/`, con escritura atómica.
@@ -319,6 +322,7 @@ public enum EjecutorLegado {
                 }
                 if !q.fotos.isEmpty { Self.sumarFotos(q.fotos, en: disco) }
                 if !q.valorIlegible, let f = q.firma { borrar[q.clave] = f }
+                if let k = q.claveFotos, let f = q.firmaFotos { borrar[k] = f }
             case .otroToken:
                 guard let t = q.token, !nuevas.isEmpty || !q.fotos.isEmpty else { continue }
                 Self.encolarPendiente(&pendientes, token: t, cola: q, ops: nuevas, fotos: q.fotos, propia: false, corrida: corrida)
@@ -371,9 +375,11 @@ public enum EjecutorLegado {
             pendientes[i].rutinaFoto = q.rutinaFoto ?? pendientes[i].rutinaFoto
             pendientes[i].estado = .esperando
             pendientes[i].corrida = corrida
+            if let k = q.claveFotos, let f = q.firmaFotos { pendientes[i].claveFotos = k; pendientes[i].firmaFotos = f }
         } else {
             pendientes.append(ColaPendiente(token: token, clave: q.clave, firma: q.firma, propia: propia, ops: ops, fotos: fotos,
-                                            rutinaFoto: q.rutinaFoto, estado: .esperando, corrida: corrida))
+                                            rutinaFoto: q.rutinaFoto, estado: .esperando, corrida: corrida,
+                                            claveFotos: q.claveFotos, firmaFotos: q.firmaFotos))
         }
     }
 

@@ -461,6 +461,8 @@ def verificar(salida):
     chequeo("write-back: sin la cola de la cuenta ni cachés de sesión, con la marca",
             "mypump_outbox_<TOKEN>" not in alm_n and not any(k.startswith("mypump_sesion_<TOKEN>") for k in alm_n)
             and "mypump_nativa_marca" in alm_n, f"marca {alm_n.get('mypump_nativa_marca', {}).get('valor')}")
+    chequeo("write-back: sin la cola de fotos de la cuenta (si vuelve a la Capacitor, no las sube otra vez)",
+            "mypump_fotoq_<TOKEN>" not in alm_n, f"{alm_n.get('mypump_fotoq_<TOKEN>')}")
     chequeo("write-back: la cola anon y la del token rotado quedan (no se tomaron)",
             alm_n.get("mypump_outbox_anon", {}).get("ops") == 1 and sum(1 for k in alm_n if k.startswith("mypump_outbox_") and k != "mypump_outbox_anon") == 1)
     corridas = re.findall(r"Fase L corrida (\d+)[^\n]*cola (\d+), por validar (\d+)", reg)
