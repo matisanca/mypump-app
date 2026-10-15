@@ -77,6 +77,28 @@ struct LinkVencidoTests {
         #expect(m.fase == .listo && m.token == Self.nuevo && almacen.leer() == Self.nuevo)
     }
 
+    /// Si mientras se revisaba el link la cuenta guardada resultó vencida (Mati la regeneró), ya no hay una que anda: sigue
+    /// como sin cuenta. Si no, volvía a guardar la vencida y decía "Seguís con tu cuenta." encima de "Este link ya no sirve".
+    @Test func siLaCuentaGuardadaTambienEstaVencidaNoLaVuelveAGuardar() async {
+        UserDefaults.standard.removeObject(forKey: "mypump_token_invalido")
+        defer { UserDefaults.standard.removeObject(forKey: "mypump_token_invalido") }
+        let t = TransporteProgramado { fn, cuerpo in
+            if fn == "mypump_get_cliente_info", cuerpo["p_token"]?.comoTexto == Self.viejo {
+                try await Task.sleep(for: .milliseconds(150))   // el link tarda más
+            }
+            return (200, "[]")   // las dos vencidas
+        }
+        let almacen = TokenEnMemoria(Self.tokA)
+        let m = ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: almacen, raizDisco: raiz)
+        async let carga: Void = m.cargar()   // al abrir la app tocando el link
+        async let link = m.entrar(con: "https://app.mypumpteam.com/?t=\(Self.viejo)")
+        _ = await carga
+        #expect(await link == false)
+        #expect(m.fase == .tokenInvalido)
+        #expect(almacen.leer() == nil, "volvió a guardar la cuenta vencida")
+        #expect(m.avisoLink == nil, "\"Seguís con tu cuenta.\" con la cuenta vencida")
+    }
+
     @Test func sinCuentaUnLinkVencidoAvisaComoHoy() async {
         UserDefaults.standard.removeObject(forKey: "mypump_token_invalido")
         defer { UserDefaults.standard.removeObject(forKey: "mypump_token_invalido") }

@@ -136,6 +136,10 @@ public final class ModeloApp {
             let r = await cliente.llamar("mypump_get_cliente_info", ["p_token": .texto(t)])
             // Mientras se preguntaba se tocó otro link: gana el último.
             guard entrada == entradas, token == actual, !esDemo else { return false }
+            // Si mientras tanto la cuenta guardada resultó vencida, ya no hay una que anda: sigue como sin cuenta. Si no,
+            // volvía a guardar la vencida y decía "Seguís con tu cuenta." encima de "Este link ya no sirve" (lo encontró
+            // el agente de Android, 15-oct).
+            if fase != .tokenInvalido {
             switch r {
             case .failure:
                 if avisar { avisoLink = .sinConexion }
@@ -148,6 +152,7 @@ public final class ModeloApp {
                     if avisar { avisoLink = .vencido }
                     return false
                 }
+            }
             }
         }
         esDemo = false
@@ -305,9 +310,13 @@ public final class ModeloApp {
         // La misma persona con otro link (Mati lo regeneró): lo que quedó en la cola de la carpeta vieja sale con este,
         // con el `drenar()` de más abajo (hallazgo 4).
         if let d = disco, let cola = outbox, let id = info?.clienteId, !id.isEmpty {
+            // La carpeta, la cola y las fotos de ESTA cuenta, tomadas juntas antes de esperar: si en el medio entra el link
+            // de otra persona, las fotos de una no van a la cola de la otra (lo encontró el agente de Android, 15-oct).
+            let f = fotos
             CuentasDelTelefono.anotar(clienteId: id, en: d)
             await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
-            if let f = fotos { await CuentasDelTelefono.adoptarFotos(clienteId: id, en: d, fotos: f) }
+            guard vigente() else { return }
+            if let f { await CuentasDelTelefono.adoptarFotos(clienteId: id, en: d, fotos: f) }
             guard vigente() else { return }
         }
 
