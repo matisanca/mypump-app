@@ -56,9 +56,10 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    - ✅ Revisión adversarial del código (14 y 15-oct, hallazgos 1-14).
    - ☐ Lado a lado con la web en cada pestaña, con `test-nativa-real`: lo de los bocetos y la paridad; falta una pasada
      final.
-   - ☐ El iPhone de Mati con el **TestFlight 107**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
+   - ☐ El iPhone de Mati con el **TestFlight 108**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
      (SAL-13) y tocar un push real.
-3. ✅ TestFlight 104, 105, 106 y **107** (15-oct 05:20). Del 104 al 106 tienen el cierre al tocar un aviso.
+3. ✅ TestFlight 104 a 107 y **108** (15-oct 06:50, con los arreglos de la revisión adversarial). Del 104 al 106 tienen
+   el cierre al tocar un aviso.
 4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
    Los arreglos de después no cambian lo que se ve en el tamaño de las capturas.
 5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
