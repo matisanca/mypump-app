@@ -10,7 +10,8 @@ las claves y archivos que lo llevan adentro se copian con el token tapado.
 Uso (siempre con `python3 -I`):
   explorar                                  rutina y dieta de la cuenta (sin datos sensibles)
   semilla-capacitor <puerto> <salida>       token y una cola chica que la Capacitor manda ELLA al abrirse con red
-  semilla-nativa <puerto> <salida>          lo que va a levantar la nativa: cola (con y sin sesión), sesión en curso, …
+  semilla-nativa <puerto> <salida>          lo que va a levantar la nativa: cola (con y sin sesión), sesión en curso, la
+                                            cola de fotos y una sustitución de ejercicio (MIG-03), …
   almacen <puerto> <salida> <etiqueta>      el localStorage de la Capacitor viva, con el token tapado
   esperar-semilla <serial> <que> <salida> <segundos>
                                             espera que lo sembrado esté EN el leveldb (token | nota): Chromium baja el
@@ -21,7 +22,9 @@ Uso (siempre con `python3 -I`):
   nativa <serial> <salida> <etiqueta>       copia los archivos de la nativa (files/legado, la cuenta) con el token tapado
   tiempo <salida> <clave> <valor>           anota un tiempo en tiempos.json
   verificar <salida>                        junta todo y escribe informe.md; sale con 1 si algo no da
+  limpiar <salida>                          deshace la sustitución de ejercicio de prueba en la cuenta (deja la lápida)
 """
+import base64
 import json
 import os
 import random
@@ -29,6 +32,7 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -43,10 +47,11 @@ CDP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cdp-localstorage
 
 def _config():
     cfg = open(os.path.join(RAIZ, "public", "js", "config.js"), encoding="utf-8").read()
-    return (re.search(r"SUPABASE_URL:\s*'([^']+)'", cfg).group(1), re.search(r"SUPABASE_ANON_KEY:\s*'([^']+)'", cfg).group(1))
+    return (re.search(r"SUPABASE_URL:\s*'([^']+)'", cfg).group(1), re.search(r"SUPABASE_ANON_KEY:\s*'([^']+)'", cfg).group(1),
+            re.search(r"VISION_URL:\s*'([^']+)'", cfg).group(1))
 
 
-URL, KEY = _config()
+URL, KEY, VISION = _config()
 
 
 def _token():
@@ -142,6 +147,12 @@ def _almacen(items, t):
                 d["ops"] = len(json.loads(v))
             except Exception:
                 d["ops"] = "ilegible"
+        # La cola de fotos ("<lunes>|<pose>" → foto) y las sustituciones de ejercicio (exId → sustitución): cuántas.
+        if k.startswith("mypump_fotoq_") or k.startswith("mypump_exercise_swaps_"):
+            try:
+                d["entradas"] = len(json.loads(v))
+            except Exception:
+                d["entradas"] = "ilegible"
         if k == "mypump_nativa_marca":
             d["valor"] = json.loads(v)
         if k in ("mypump-theme", "mypump_tipo_dia"):
@@ -186,6 +197,56 @@ def semilla_capacitor(puerto, salida):
     print(f"cola para la Capacitor: {len(ops)} ops (agua {agua}, una serie de {ejs[0]['id']} con {peso} kg, sin sesión)")
 
 
+# MIG-03: la foto de la cola de la web. Un JPEG chico y válido (30×40, gris) al que cada corrida le agrega su marca en un
+# comentario (segmento COM): el servicio de fotos guarda los bytes tal cual, así se ve que lo que quedó en el servidor es
+# la foto de ESTA corrida y no la de una anterior.
+JPEG_BASE = base64.b64decode(
+    "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//"
+    "2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCAAoAB4DASIAAhEBAxEB/8QAFwAB"
+    "AQEBAAAAAAAAAAAAAAAAAwQABf/EABYQAQEBAAAAAAAAAAAAAAAAAAACA//EABYBAQEBAAAAAAAAAAAAAAAAAAABAv/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAM"
+    "AwEAAhEDEQA/AOhWYqzX1mKs20QVmOs11ZjrMHYrMVZr6zFWYIKzFWa+sxVmDs1mKs2YBVmKs2YH/9k=")
+POSE_FOTO = "frente"
+# SER-14: la sustitución que trae la app vieja (la misma de sim_migracion.py, la de iOS).
+SUSTITUTO = {"slug": "Seated_Cable_Rows", "nombre": "Remo sentado en polea", "equipment": "cable", "images": None}
+
+
+def _jpeg_con_marca(marca):
+    """El JPEG base con `marca` en un comentario, después del APP0 (JFIF lo quiere pegado al SOI)."""
+    fin_app0 = 4 + int.from_bytes(JPEG_BASE[4:6], "big")
+    com = marca.encode("ascii")
+    return JPEG_BASE[:fin_app0] + b"\xff\xfe" + (len(com) + 2).to_bytes(2, "big") + com + JPEG_BASE[fin_app0:]
+
+
+def _lunes(fecha):
+    """`_lunesISO` de la web: el lunes de la semana de `fecha` (la clave de la cola de fotos y la semana del servidor)."""
+    return (fecha - timedelta(days=fecha.weekday())).isoformat()
+
+
+def _sustituciones(t, rutina_id):
+    """`mypump_get_exercise_swaps` (nativa_003): (vivas, borradas), o None sin la migración en la base (PGRST202)."""
+    try:
+        m = rpc("mypump_get_exercise_swaps", {"p_token": t, "p_rutina_id": rutina_id}) or {}
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise
+    return (m.get("vivas") or {}), (m.get("borradas") or {})
+
+
+def _lugar_sin_historial(t, rutina, preferido, evitar):
+    """El ejercicio para la sustitución de prueba: uno sin historia en el servidor (ni vivo ni borrado). Lo de la app vieja
+    no trae hora y cuenta como lo más viejo: contra una fila anterior pierde (y con una lápida se saca del teléfono), así que
+    sobre un ejercicio con historia el chequeo no probaría nada. Devuelve (día, ejercicio, sin_historial)."""
+    lugares = [(d, x) for d, _, ejs in _dias(rutina) for x in ejs if x["id"] not in evitar]
+    s = _sustituciones(t, rutina["id"])
+    usados = set() if s is None else set(s[0]) | set(s[1])
+    for d, x in sorted(lugares, key=lambda p: p[1]["id"] != preferido):   # el preferido primero
+        if x["id"] not in usados:
+            return d, x, True
+    d, x = next((p for p in lugares if p[1]["id"] == preferido), lugares[0])
+    return d, x, False
+
+
 def semilla_nativa(puerto, salida):
     t = _token()
     plan = leer(salida, "plan.json", {})
@@ -205,8 +266,20 @@ def semilla_nativa(puerto, salida):
     nota = f"Prueba de migración Android {run}-{random.randint(0, 16**8):08x}: semana tranquila"
     ts = ahora_ms()
     ex2, ex3 = ejs[1], ejs[2]
-    p2 = 40 + int(run) % 40 + 0.5    # propios de la corrida (la sesión del día es la misma en cada corrida de la semana)
-    p3 = 20 + int(run) % 20 + 0.5
+    # Propios de la corrida: la sesión del día es la misma en cada corrida de la semana y cada serie se pisa (una fila por
+    # ejercicio y serie). Si el peso coincidiera con el que dejó una corrida anterior, el chequeo de "todavía no estaba"
+    # fallaría sin que nada ande mal (le pasó a 4465 contra 1205: 1205 % 20 == 4465 % 20), así que se corre hasta uno libre.
+    ya = {(r["ejercicio_id"], r["serie_numero"]): r.get("peso_kg")
+          for r in (rpc("mypump_get_registros_sesion", {"p_token": t, "p_sesion_id": sesion}) or [])}
+
+    def libre(base, rango, ex, series):
+        p = base + int(run) % rango + 0.5
+        while any(ya.get((ex["id"], s)) is not None and float(ya[(ex["id"], s)]) == p for s in series):
+            p += 1
+        return p
+
+    p2 = libre(40, 40, ex2, (1, 2))
+    p3 = libre(20, 20, ex3, (1,))
     ops = [
         # v1.0.11/main: con `_id` y la sesión capturada al encolar.
         _op("carga", {"sesionId": sesion, "diaId": dia, "semana": semana, "datos": {"diaId": dia, "ejercicioId": ex2["id"],
@@ -231,6 +304,12 @@ def semilla_nativa(puerto, salida):
     rotado = "".join(random.choice("ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789") for _ in range(32))
     p = f"mypump_sesion_{t}_"
     actuales = json.loads(cdp(puerto, "leer"))
+    # MIG-03: la cola de fotos como la deja `_tomarFoto` de la web ("<lunes>|<pose>" → {pose, fecha, dataUrl, intentos}), y
+    # una sustitución de ejercicio fijada (sin `fijado`: cuenta como fijada), en un ejercicio sin historia en el servidor.
+    lunes = _lunes(hoy())
+    marca_foto = f"mypump-migracion-android {run}-{random.randint(0, 16**8):08x}"
+    foto = "data:image/jpeg;base64," + base64.b64encode(_jpeg_con_marca(marca_foto)).decode("ascii")
+    dia_swap, ex_swap, swap_libre = _lugar_sin_historial(t, rutina, preferido=ejs[3]["id"], evitar={ex2["id"], ex3["id"]})
     items = {
         f"mypump_outbox_{t}": json.dumps(ops, ensure_ascii=False),
         # Sin token (la demo): nunca se ejecuta. Cambiaría `cardio` de hoy si se mandara.
@@ -240,6 +319,12 @@ def semilla_nativa(puerto, salida):
         f"mypump_outbox_{rotado}": json.dumps([_op("peso", {"fecha": hoy_s, "valor": 55.55}, f"peso_{hoy_s}", ts + 21)]),
         # El descanso vence a la media hora: la nativa arranca recién cuando lo sembrado llegó al disco (puede tardar).
         f"mypump_rest_{t}": json.dumps({"endsAt": ts + 1_800_000, "target": 1800, "autoCloseAt": ts + 1_802_000}),
+        f"mypump_fotoq_{t}": json.dumps({f"{lunes}|{POSE_FOTO}": {"pose": POSE_FOTO, "fecha": hoy_s, "dataUrl": foto, "intentos": 0}}),
+        f"mypump_exercise_swaps_{rutina['id']}": json.dumps({ex_swap["id"]: {
+            "original": {"slug": None, "nombre": ex_swap["nombre"], "images": None}, "current": SUSTITUTO,
+            "semana": semana, "diaId": dia_swap}}, ensure_ascii=False),
+        # La de la demo: nunca se toma.
+        "mypump_exercise_swaps_demo": json.dumps({"x-d1-0": {"original": {"nombre": "A"}, "current": {"nombre": "B"}, "fijado": True}}),
         "mypump-theme": "dark",
         "mypump_tipo_dia": "entreno",
         "mypump_onboarding_v1": "1",
@@ -247,19 +332,26 @@ def semilla_nativa(puerto, salida):
         "mypump_unicode_∂ñ😀": "valor con \u0000 nulo, emoji 😀 y acento á",
         "mypump_surrogate_suelto": "a\ud83db",
     }
-    # La sesión en curso: la que dejó la Capacitor; si no la dejó, una igual.
+    # La sesión en curso: la que dejó la Capacitor; si no la dejó, una igual. El arranque se pisa SIEMPRE con uno de hace 5
+    # minutos (como sim_migracion.py): la Capacitor guarda el `iniciada_en` del servidor, y la sesión de la cuenta de prueba
+    # es la misma toda la semana, así que puede venir de una corrida de horas antes (más de 6 h es vencida, como en la web,
+    # y la migración la deja al servidor). El caso vencido lo cubren los tests de :core.
     if p + dia not in actuales:
-        items.update({p + dia: sesion, p + dia + "_semana": str(semana), p + dia + "_start": str(ts - 5 * 60_000)})
+        items.update({p + dia: sesion, p + dia + "_semana": str(semana)})
+    items[p + dia + "_start"] = str(ts - 5 * 60_000)
     todo = json.loads(cdp(puerto, "sembrar", json.dumps(items)))
     guardar(salida, "almacen-sembrado.json", _almacen(todo, t))
     plan.update({"run": run, "hoy": hoy_s, "rutina": rutina["id"], "semana": semana, "dia": dia, "sesion": sesion,
                  "ex2": ex2["id"], "ex3": ex3["id"], "p2": p2, "p3": p3, "agua": agua, "peso": peso, "nota": nota, "cardio_antes": cardio_antes,
                  "ops_vigente": len(ops), "ops_sin_sesion": 2, "claves_sembradas": len(todo),
-                 "sesion_de_la_capacitor": p + dia in actuales})
+                 "sesion_de_la_capacitor": p + dia in actuales,
+                 "foto_lunes": lunes, "foto_pose": POSE_FOTO, "foto_marca": marca_foto,
+                 "ex_swap": ex_swap["id"], "ex_swap_dia": dia_swap, "swap_libre": swap_libre})
     guardar(salida, "plan.json", plan)
     print(f"sembrado: cola de {len(ops)} ops (5 kinds, 2 sin sesión, 2 sin _id), anon 1, token rotado 1, descanso, "
-          f"sesión en curso ({'la de la Capacitor' if p + dia in actuales else 'sembrada'}), ajustes, 1 MB, unicode, nulo y "
-          f"un surrogate suelto; {len(todo)} claves en total")
+          f"sesión en curso ({'la de la Capacitor' if p + dia in actuales else 'sembrada'}), la cola de fotos ({POSE_FOTO} de la "
+          f"semana del {lunes}), una sustitución de {ex_swap['id']} ({'sin' if swap_libre else 'CON'} historia en el servidor), "
+          f"ajustes, 1 MB, unicode, nulo y un surrogate suelto; {len(todo)} claves en total")
 
 
 def _adb(serial, *args, binario=False):
@@ -344,10 +436,43 @@ def backend(salida, etiqueta):
         "peso_manual": [s["valor"] for s in salud if s.get("tipo") == "peso_kg" and s.get("fuente") == "manual"],
         "checkin_nota": checkin.get("nota"),
         "sesion_fantasma": len(fantasma),
+        "sustituciones": _sustituciones_texto(t, plan["rutina"]),
+        "foto": _foto_de_la_corrida(t, plan) if plan.get("foto_marca") else None,
     }
     guardar(salida, f"backend-{etiqueta}.json", b)
     print(f"backend {etiqueta}: {len(b['registros'])} series, agua {b['vasos_agua']}, peso {b['peso_manual']}, "
-          f"check {'sí' if b['checkin_nota'] else 'no'}")
+          f"check {'sí' if b['checkin_nota'] else 'no'}, sustituciones {b['sustituciones']}, foto {b['foto']}")
+
+
+def _sustituciones_texto(t, rutina_id):
+    """SER-14: las sustituciones vivas de la rutina ("exId:nombre"), o "sin tabla" si la migración no está aplicada."""
+    s = _sustituciones(t, rutina_id)
+    if s is None:
+        return "sin tabla"
+    return sorted(f"{k}:{(v.get('current') or {}).get('nombre')}" for k, v in s[0].items())
+
+
+def _foto_de_la_corrida(t, plan):
+    """MIG-03: la foto de la semana y la pose sembradas, según el servidor: si está registrada y si lo guardado es la de
+    ESTA corrida (la marca del JPEG). Lo guardado se baja con la URL firmada del servicio de fotos, como lo ve la app; ni la
+    URL ni la foto se escriben en ningún lado."""
+    filas = rpc("mypump_get_fotos_progreso", {"p_token": t, "p_desde": None}) or []
+    fila = next((f for f in filas if f.get("semana_lunes") == plan["foto_lunes"] and f.get("pose") == plan["foto_pose"]), None)
+    r = {"registrada": fila is not None, "tomada_el": (fila or {}).get("tomada_el"), "es_la_de_esta_corrida": False}
+    if fila is None:
+        return r
+    # Con un User-Agent propio: el de urllib lo frena Cloudflare antes de llegar al servicio (403, "error code: 1010").
+    cabeceras = {"Content-Type": "application/json", "User-Agent": "MyPump-pruebas/1.0 (emu_migracion.py)"}
+    req = urllib.request.Request(f"{VISION}/progreso/urls", data=json.dumps({"token": t, "desde": plan["foto_lunes"]}).encode(),
+                                 method="POST", headers=cabeceras)
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        urls = json.loads(resp.read() or b"{}")
+    url = next((f.get("url") for f in urls.get("fotos") or []
+                if f.get("semana_lunes") == plan["foto_lunes"] and f.get("pose") == plan["foto_pose"]), None)
+    if url:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": cabeceras["User-Agent"]}), timeout=30) as resp:
+            r["es_la_de_esta_corrida"] = plan["foto_marca"].encode("ascii") in resp.read()
+    return r
 
 
 def nativa(serial, salida, etiqueta):
@@ -447,6 +572,37 @@ def verificar(salida):
     # (entreno-descanso.json) y vive en memoria hasta el próximo tick de la pantalla. Lo cubre
     # EntrenoLegadoTest.loQueDejaLaMigracionSeLeeEntero (el orden día → descanso, iOS 5eb8738).
     del descanso_entreno
+
+    # MIG-03: la cola de fotos y la sustitución de ejercicio de la app vieja.
+    if plan.get("foto_marca"):
+        foto_antes, foto_nat = antes.get("foto") or {}, nat.get("foto") or {}
+        chequeo("Fase L: la foto y la sustitución de la app vieja leídas, sin las de la demo (recibo)",
+                antes_r.get("fotos") == 1 and antes_r.get("fotosFueraDeVentana") == 0 and antes_r.get("sustituciones") == 1,
+                f"fotos {antes_r.get('fotos')} (fuera de ventana {antes_r.get('fotosFueraDeVentana')}), sustituciones {antes_r.get('sustituciones')}")
+        chequeo("MIG-03: la foto de la cola vieja todavía no estaba en el servidor antes de la nativa",
+                foto_antes.get("es_la_de_esta_corrida") is False, f"{foto_antes}")
+        chequeo("MIG-03: la foto de la cola vieja subió: la del servidor es la de esta corrida (su marca), con su fecha",
+                foto_nat.get("es_la_de_esta_corrida") is True and foto_nat.get("tomada_el") == plan["hoy"],
+                f"{plan['foto_lunes']}|{plan['foto_pose']}: {foto_nat}")
+        en_cola = [os.path.relpath(os.path.join(dp, f), salida) for dp, _, fs in os.walk(os.path.join(salida, "nativa-nativa", "MyPump"))
+                   for f in fs if f == "fotos-pendientes.json"]
+        chequeo("MIG-03: la cola de fotos de la nativa quedó vacía (subió, no quedó esperando)", not en_cola, f"{en_cola}")
+        esperada = f"{plan['ex_swap']}:{SUSTITUTO['nombre']}"
+        sust_antes, sust_nat = antes.get("sustituciones"), nat.get("sustituciones")
+        chequeo("SER-14: la sustitución vieja es de un ejercicio sin historia en el servidor (con historia no probaría nada)",
+                plan.get("swap_libre") is True and isinstance(sust_antes, list) and esperada not in sust_antes,
+                f"{plan['ex_swap']}, antes {sust_antes}")
+        chequeo("SER-14: la sustitución de la app vieja quedó en el servidor (mypump_get_exercise_swaps)",
+                isinstance(sust_nat, list) and esperada in sust_nat, f"{sust_nat}")
+        mapa = {}
+        for dp, _, fs in os.walk(os.path.join(salida, "nativa-nativa", "MyPump")):
+            if f"ejercicios-swaps_{plan['rutina']}.json" in fs:
+                mapa = json.load(open(os.path.join(dp, f"ejercicios-swaps_{plan['rutina']}.json"), encoding="utf-8"))
+        local = mapa.get(plan["ex_swap"]) or {}
+        chequeo("SER-14: y en el teléfono, fijada, en el archivo de la rutina",
+                (local.get("current") or {}).get("nombre") == SUSTITUTO["nombre"] and local.get("fijado") is True,
+                f"{sorted(mapa)}: {(local.get('current') or {}).get('nombre')}, fijado {local.get('fijado')}")
+
     if alm_v:
         chequeo("Capacitor reinstalada encima: sin la cola de la cuenta ni los cachés de sesión, con la marca",
                 alm_v.get("mypump_outbox_<TOKEN>", {}).get("ops", 0) == 0 and not any(k.startswith("mypump_sesion_<TOKEN>") for k in alm_v)
@@ -459,7 +615,8 @@ def verificar(salida):
     if vuelta:
         chequeo("Capacitor reinstalada encima, con red: no resucita nada en la base",
                 vuelta.get("registros") == nat.get("registros") and vuelta.get("vasos_agua") == nat.get("vasos_agua")
-                and vuelta.get("peso_manual") == nat.get("peso_manual"), "")
+                and vuelta.get("peso_manual") == nat.get("peso_manual") and vuelta.get("sustituciones") == nat.get("sustituciones")
+                and (vuelta.get("foto") or {}).get("es_la_de_esta_corrida") == (nat.get("foto") or {}).get("es_la_de_esta_corrida"), "")
 
     estado = leer(os.path.join(salida, "nativa-segundo", "legado"), "estado.json", {})
     lineas = [f"# Migración en el emulador de Android, corrida {plan.get('run')}", "",
@@ -472,6 +629,10 @@ def verificar(salida):
               f"- Estado: {estado.get('corridas')} corridas, escritura hecha {estado.get('escrituraHecha')}, confirmada "
               f"{estado.get('escrituraConfirmada')}, recibo confirmado {'sí' if estado.get('reciboConfirmadoEn') else 'no'}",
               f"- Tiempos: {json.dumps(tiempos, ensure_ascii=False)}",
+              # Para saber, no es un chequeo: la escritura de vuelta no saca la cola de fotos (tampoco en iOS). Si el cliente
+              # vuelve a la app vieja, ella la vuelve a subir (la misma foto, en el mismo lugar del servidor).
+              f"- La cola de fotos vieja, con la Capacitor de vuelta: "
+              f"{'sigue' if 'mypump_fotoq_<TOKEN>' in alm_v else 'no está'}" if alm_v else "- (sin la vuelta a la Capacitor)",
               "", "| Chequeo | | Detalle |", "|---|---|---|"]
     for n, ok, d in filas:
         lineas.append(f"| {n} | {'✅' if ok else '❌'} | {d[:160]} |")
@@ -483,6 +644,24 @@ def verificar(salida):
     for n in malos:
         print("  ✗", n)
     return 1 if malos else 0
+
+
+def limpiar(salida):
+    """Deshace la sustitución de prueba en la cuenta: el borrado deja la lápida con la hora de ahora (no hay cómo sacar la
+    fila). Ese ejercicio queda con historia y la próxima corrida elige otro. La foto queda: es la de la semana de la cuenta
+    de prueba y la próxima la pisa."""
+    t = _token()
+    plan = leer(salida, "plan.json", {})
+    if not plan.get("ex_swap"):
+        print("nada que limpiar")
+        return
+    s = _sustituciones(t, plan["rutina"])
+    viva = (s[0] if s else {}).get(plan["ex_swap"]) or {}
+    if (viva.get("current") or {}).get("nombre") != SUSTITUTO["nombre"]:
+        print(f"la sustitución de prueba no está en el servidor ({plan['ex_swap']}): no se toca")
+        return
+    rpc("mypump_delete_exercise_swap", {"p_token": t, "p_rutina_id": plan["rutina"], "p_ex_id": plan["ex_swap"], "p_ts": ahora_ms()})
+    print(f"sustitución de prueba borrada: {plan['ex_swap']} (queda la lápida)")
 
 
 def main(argv):
@@ -508,6 +687,8 @@ def main(argv):
         nativa(*a)
     elif cmd == "verificar" and len(a) == 1:
         return verificar(*a)
+    elif cmd == "limpiar" and len(a) == 1:
+        limpiar(*a)
     else:
         print(__doc__, file=sys.stderr)
         return 2
