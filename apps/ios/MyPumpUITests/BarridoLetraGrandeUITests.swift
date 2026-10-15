@@ -40,6 +40,17 @@ final class BarridoLetraGrandeUITests: XCTestCase {
 
     func testEntreno() { abrir(["-pestana", "entreno"]); recorrer("entreno", pasos: 10) }
     func testEjercicio() { abrir(["-pestana", "entreno", "-abrir", "ejercicio"]); recorrer("ejercicio", pasos: 8) }
+
+    /// El ejercicio abierto en la lista (15-oct): la tabla, «Sustituir» y «Técnica y notas» (uno debajo del otro con esta
+    /// letra) y «Terminé este ejercicio».
+    func testEjercicioEnLaLista() {
+        abrir(["-pestana", "entreno"])
+        sleep(5)
+        let fila = app.buttons["fila-ejercicio-3"]
+        for _ in 0..<15 where !(fila.exists && fila.isHittable) { app.swipeUp(velocity: .slow) }
+        fila.tap()
+        recorrer("ejercicio-en-lista", pasos: 8)
+    }
     func testDieta() { abrir(["-pestana", "dieta"]); recorrer("dieta", pasos: 12) }
     func testRevision() { abrir(["-pestana", "revision"]); recorrer("revision", pasos: 12) }
     func testMisDatos() { abrir(["-pestana", "revision", "-abrir", "misdatos"]); recorrer("misdatos", pasos: 8) }

@@ -65,6 +65,9 @@ struct TablaSeries: View {
                 .textCase(.uppercase)
                 .tracking(0.6)
                 .foregroundStyle(.secondary)
+                // En un renglón aunque se achique: con la letra de accesibilidad partía «REP-S».
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .accessibilityHidden(true)
 
                 VStack(spacing: Espacio.xs) {

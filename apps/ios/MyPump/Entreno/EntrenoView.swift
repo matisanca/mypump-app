@@ -352,7 +352,8 @@ private struct ListaEntreno: View {
 
     private func celda(_ titulo: String, _ valor: String) -> some View {
         VStack(spacing: 2) {
-            Text(titulo).textoCeja()
+            // En un renglón aunque se achique: con la letra de accesibilidad partía la palabra («HE-CHOS»).
+            Text(titulo).textoCeja().lineLimit(1).minimumScaleFactor(0.5)
             Text(valor).font(.numeroChico).monospacedDigit().contentTransition(.numericText())
                 .lineLimit(1).minimumScaleFactor(0.7)
         }
@@ -614,15 +615,19 @@ private struct EjercicioEnLista: View {
     let lugar: String
     let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
     @Environment(Preguntador.self) private var preguntador
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
     @State private var sustituyendo = false
 
     var body: some View {
         if let t = motor.tarjeta(lugar) {
             let terminal = EstadosEjercicio.terminales.contains(t.estado)
             let todas = !t.filas.isEmpty && t.confirmadas == t.filas.count
+            // Con letra de accesibilidad, uno debajo del otro: en un renglón partían las palabras («Sus-tituir»).
+            let acciones = tamañoLetra.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Espacio.s))
+                                                          : AnyLayout(HStackLayout(spacing: Espacio.s))
             VStack(alignment: .leading, spacing: Espacio.s) {
                 TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
-                HStack(spacing: Espacio.s) {
+                acciones {
                     Button { sustituyendo = true } label: {
                         Label(t.efectivo.sustituido ? "Cambiar" : "Sustituir", systemImage: "arrow.triangle.2.circlepath")
                     }
