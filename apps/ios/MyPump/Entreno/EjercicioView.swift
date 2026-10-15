@@ -295,7 +295,7 @@ struct EjercicioView: View {
                                 .textSelection(.enabled)
                             Text("\(deMati ? "Mati" : "Vos") · \(IndiceComentarios.fecha(c.createdAt, zona: .current))")
                                 .font(.caption2)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: deMati ? .leading : .trailing)
                         .accessibilityElement(children: .combine)

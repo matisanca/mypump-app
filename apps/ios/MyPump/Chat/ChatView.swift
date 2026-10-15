@@ -364,10 +364,10 @@ struct Burbuja: View {
             Label("enviando…", systemImage: "clock")
                 .labelStyle(EtiquetaCompacta())
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
         } else if let hora {
-            Text(hora).font(.caption2.monospacedDigit()).foregroundStyle(.tertiary).padding(.horizontal, 6)
+            Text(hora).font(.caption2.monospacedDigit()).foregroundStyle(.secondary).padding(.horizontal, 6)
         }
     }
 }

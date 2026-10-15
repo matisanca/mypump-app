@@ -163,7 +163,7 @@ private struct EscalaCinco: View {
                 Text(metrica.alto)
             }
             .font(.caption2)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 2)
             .accessibilityHidden(true)
         }

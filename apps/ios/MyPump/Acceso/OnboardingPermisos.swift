@@ -83,7 +83,7 @@ struct OnboardingPermisos: View {
                     .frame(maxWidth: .infinity, minHeight: 44)
                 Text("\(pasos.count > 1 ? "paso \(i + 1) de \(pasos.count) · " : "")esto lo podés cambiar después en Mis datos")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(24)

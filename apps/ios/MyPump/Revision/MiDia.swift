@@ -197,21 +197,38 @@ struct MiDia: View {
                     }
                 }
                 .animation(.snappy(duration: 0.2), value: agua)
+                // Con VoiceOver las gotas son un control ajustable: deslizar para arriba o para abajo suma o resta un vaso.
+                // Mide lo mismo que los botones (44): la auditoría de accesibilidad lo daba como zona tocable chica.
+                .frame(minHeight: 44)
+                .contentShape(.rect)
                 .accessibilityElement()
-                .accessibilityLabel("\(agua) de 12 vasos de agua")
+                .accessibilityLabel("Agua")
+                .accessibilityValue("\(agua) de 12 vasos")
+                .accessibilityIdentifier("control-agua")
+                .accessibilityAdjustableAction { direccion in
+                    switch direccion {
+                    case .increment: cambiarAgua(1)
+                    case .decrement: cambiarAgua(-1)
+                    @unknown default: break
+                    }
+                }
                 botonAgua("plus", 1).disabled(agua == 12).accessibilityLabel("Un vaso más")
             }
         }
         .sensoryFeedback(trigger: agua) { viejo, nuevo in nuevo > viejo ? .increase : .decrease }
     }
 
+    private func cambiarAgua(_ delta: Int) {
+        if let revision {
+            revision.cambiarAgua(delta)
+        } else {
+            local.vasosAgua = min(12, max(0, local.vasosAgua + delta))
+        }
+    }
+
     private func botonAgua(_ icono: String, _ delta: Int) -> some View {
         Button {
-            if let revision {
-                revision.cambiarAgua(delta)
-            } else {
-                local.vasosAgua = min(12, max(0, local.vasosAgua + delta))
-            }
+            cambiarAgua(delta)
         } label: {
             Image(systemName: icono)
                 .font(.system(size: 15, weight: .bold))
@@ -381,7 +398,7 @@ private struct UltimosTreintaDias: View {
         return VStack(alignment: .leading, spacing: Espacio.s) {
             LazyVGrid(columns: columnas, spacing: 6) {
                 ForEach(["L", "M", "X", "J", "V", "S", "D"], id: \.self) { d in
-                    Text(d).font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+                    Text(d).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                 }
                 ForEach(0..<huecos, id: \.self) { _ in Color.clear.frame(height: 1) }
                 ForEach(celdas) { c in

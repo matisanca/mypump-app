@@ -711,8 +711,10 @@ struct FilaEjercicio: View {
         if ultima != nil || record != nil {
             FilaFluida(espaciado: 8, interlineado: 2) {
                 if let u = ultima {
-                    Text("Última: \(Text(Bonito.partir(u.valor).principal).foregroundStyle(.secondary)) · \(u.cuando)")
-                        .foregroundStyle(.tertiary)
+                    // En gris secundario y el valor en negro: en terciario no se leía en el gimnasio (la auditoría de
+                    // accesibilidad lo daba en 1,7:1 de contraste).
+                    Text("Última: \(Text(Bonito.partir(u.valor).principal).foregroundStyle(.primary)) · \(u.cuando)")
+                        .foregroundStyle(.secondary)
                 }
                 if let r = record {
                     Label(Bonito.partir(r).principal, systemImage: "trophy.fill")
@@ -726,7 +728,7 @@ struct FilaEjercicio: View {
         } else if porTiempo {
             EmptyView()
         } else if motor.historialCargando.contains(lugar) {
-            Text("Buscando tu última vez…").font(.caption).foregroundStyle(.tertiary)
+            Text("Buscando tu última vez…").font(.caption).foregroundStyle(.secondary)
         } else {
             Label("Primera vez con este ejercicio", systemImage: "sparkles")
                 .labelStyle(EtiquetaCompacta())

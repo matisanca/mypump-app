@@ -69,6 +69,26 @@ final class RevisionUITests: XCTestCase {
         XCTAssertTrue(esperar(si, seleccionado: antes), "Tocarlo otra vez no lo devolvió a como estaba")
     }
 
+    /// Con VoiceOver las gotas del agua son un solo control ajustable (auditoría de accesibilidad, 15-oct): «Agua», con
+    /// cuántos vasos en el valor y del alto de un dedo. XCUITest no puede ajustarlo en iOS (`increment()` es de macOS):
+    /// el valor se sigue con los botones, que llaman a lo mismo. La cuenta queda como estaba.
+    func testElAguaEsUnControlConSuValor() throws {
+        let agua = app.descendants(matching: .any)["control-agua"].firstMatch
+        XCTAssertTrue(agua.waitForExistence(timeout: 20), "No apareció el agua como un control")
+        let alto = app.windows.firstMatch.frame.maxY
+        for _ in 0..<10 where !(agua.isHittable && agua.frame.maxY < alto - 180) { app.swipeUp() }
+        let vasos = { Int(((agua.value as? String) ?? "").split(separator: " ").first ?? "") ?? -1 }
+        let antes = vasos()
+        XCTAssertEqual(agua.label, "Agua")
+        XCTAssertTrue((0...12).contains(antes), "El valor no dice cuántos vasos: \(agua.value ?? "nada")")
+        XCTAssertGreaterThanOrEqual(agua.frame.height, 44, "La zona del agua quedó más chica que un dedo")
+        let (ida, vuelta) = antes < 12 ? ("Un vaso más", "Un vaso menos") : ("Un vaso menos", "Un vaso más")
+        app.buttons[ida].firstMatch.tap()
+        XCTAssertEqual(vasos(), antes < 12 ? antes + 1 : antes - 1, "El valor del control no siguió al botón")
+        app.buttons[vuelta].firstMatch.tap()
+        XCTAssertEqual(vasos(), antes, "El agua no volvió a como estaba")
+    }
+
     /// El botón dice "marcado" en su valor de accesibilidad (`isSelected` no llega desde un botón de SwiftUI).
     private func marcado(_ e: XCUIElement) -> Bool { (e.value as? String) == "marcado" }
 

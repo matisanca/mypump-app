@@ -217,11 +217,19 @@ struct FilaFluida: Layout {
     var espaciado: CGFloat = 6
     var interlineado: CGFloat = 6
 
+    /// El tamaño ideal en un renglón. Si no entra en la fila (letra grande, teléfono angosto), todo el ancho y el alto que
+    /// necesite para partirse en renglones: antes se le daba el alto de uno solo y el texto quedaba cortado.
+    private func medida(_ s: LayoutSubview, ancho: CGFloat) -> CGSize {
+        let t = s.sizeThatFits(.unspecified)
+        guard t.width > ancho else { return t }
+        return s.sizeThatFits(ProposedViewSize(width: ancho, height: nil))
+    }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let ancho = proposal.width ?? .infinity
         var x: CGFloat = 0, y: CGFloat = 0, alto: CGFloat = 0, maxX: CGFloat = 0
         for s in subviews {
-            let t = s.sizeThatFits(.unspecified)
+            let t = medida(s, ancho: ancho)
             let w = min(t.width, ancho)
             if x > 0, x + w > ancho { x = 0; y += alto + interlineado; alto = 0 }
             x += w + espaciado
@@ -234,7 +242,7 @@ struct FilaFluida: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var x = bounds.minX, y = bounds.minY, alto: CGFloat = 0
         for s in subviews {
-            let t = s.sizeThatFits(.unspecified)
+            let t = medida(s, ancho: bounds.width)
             let w = min(t.width, bounds.width)
             if x > bounds.minX, x + w > bounds.maxX { x = bounds.minX; y += alto + interlineado; alto = 0 }
             s.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: w, height: t.height))
