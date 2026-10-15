@@ -38,10 +38,11 @@ final class EntrenoUITests: XCTestCase {
         let variante = app.buttons.matching(identifier: "variante").firstMatch
         XCTAssertTrue(variante.waitForExistence(timeout: 5), "No hay variantes")
         variante.tap()
-        // El interruptor está al pie de la lista (hasta 30 variantes): la lista no lo dibuja hasta que se baja.
+        // El interruptor está al pie de la lista (hasta 30 variantes). Se baja hasta poder tocarlo, no hasta que exista: en
+        // iOS 18 la lista crea las filas antes de mostrarlas y el toque caía fuera de la pantalla.
         let fijar = app.switches.firstMatch
-        for _ in 0..<8 where !fijar.exists { app.swipeUp() }
-        XCTAssertTrue(fijar.waitForExistence(timeout: 3), "No aparece Fijar")
+        for _ in 0..<10 where !(fijar.exists && fijar.isHittable) { app.swipeUp() }
+        XCTAssertTrue(fijar.waitForExistence(timeout: 3) && fijar.isHittable, "No se llega a Fijar")
         if (fijar.value as? String) != "1" { fijar.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap() }
         XCTAssertEqual(fijar.value as? String, "1", "no se fijó")
         hoja.buttons["Sustituir"].tap()
