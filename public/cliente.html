@@ -7586,14 +7586,15 @@ async function _flushFotosPasada(q, keys) {
     if (!item || !item.dataUrl) { delete q[k]; continue; }
     const res = await _subirFoto(item.pose, item.dataUrl, item.fecha);
     if (res.ok) { delete q[k]; _fotoqGuardar(q); continue; }
-    // Un item RECHAZADO (4xx) se descarta: si no queda adelante en la cola y
-    // bloquea para siempre a las que vienen atras.
-    // Un fallo de RED no gasta intentos: si el server esta caido o el cliente
-    // sin señal, la foto tiene que sobrevivir hasta que vuelva, no perderse.
-    if (!res.red) item.intentos = (item.intentos || 0) + 1;
-    if (res.fatal || item.intentos >= FOTOS_MAX_INTENTOS) { delete q[k]; _fotoqGuardar(q); continue; }
+    // Un item RECHAZADO (4xx salvo 429) se descarta: si no queda adelante en la
+    // cola y bloquea para siempre a las que vienen atras.
+    // Un error del servidor (5xx, 429) o de RED no gasta la foto: con la Mini
+    // caída Cloudflare contesta 502/530, que contaba como error del server, y al
+    // octavo intento la foto se borraba. Ahora espera; si nunca entra, la corta
+    // la ventana de fechas del servidor (+1/−7), que la rechaza con un 400.
+    if (res.fatal) { delete q[k]; _fotoqGuardar(q); continue; }
     _fotoqGuardar(q);
-    break;   // sin conexión / server caido: se reintenta después
+    break;   // sin conexión / server caido / tope del día: se reintenta después
   }
   _fotoqGuardar(q);
   await loadFotos();

@@ -136,14 +136,24 @@ Números sin unidades. El JSON debe ser lo ÚLTIMO de tu respuesta.`,
 // ── Rate limit en memoria, SEPARADO por feature (por token, por día) ──
 // Antes era un contador único: subir 3 fotos se comía la cuota de visión.
 const usage = new Map();   // token → {day, vision, fotos}
-function overLimit(token, feature = 'vision') {
+function usoDelDia(token) {
   const day = new Date().toISOString().slice(0, 10);
-  const tope = feature === 'fotos' ? RATE_FOTOS : RATE_LIMIT;
   let u = usage.get(token);
   if (!u || u.day !== day) { u = { day, vision: 0, fotos: 0 }; usage.set(token, u); }
+  return u;
+}
+// `contar: false` solo mira el tope. Las fotos cuentan recién cuando quedaron guardadas: antes un 502 del storage
+// gastaba uno de los 12 del día, y con el storage caído el cliente se quedaba sin subidas (15-oct).
+function overLimit(token, feature = 'vision', { contar = true } = {}) {
+  const tope = feature === 'fotos' ? RATE_FOTOS : RATE_LIMIT;
+  const u = usoDelDia(token);
   if ((u[feature] || 0) >= tope) return true;
-  u[feature] = (u[feature] || 0) + 1;
+  if (contar) u[feature] = (u[feature] || 0) + 1;
   return false;
+}
+function sumarUso(token, feature) {
+  const u = usoDelDia(token);
+  u[feature] = (u[feature] || 0) + 1;
 }
 
 // ── Resolver el cliente a partir del token (antes solo validaba) ──
@@ -331,7 +341,7 @@ async function handleFotoUpload(req, res, origin) {
   const clienteId = await clienteOResponder(token, res, origin);
   if (clienteId === undefined) return;
   if (!clienteId) return send(res, 403, { ok: false, error: 'token inválido' }, origin);
-  if (overLimit(token, 'fotos')) return send(res, 429, { ok: false, error: 'muchas fotos por hoy, probá mañana' }, origin);
+  if (overLimit(token, 'fotos', { contar: false })) return send(res, 429, { ok: false, error: 'muchas fotos por hoy, probá mañana' }, origin);
 
   const buf = Buffer.from(imagen_base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
   if (!buf.length || buf.length > MAX_FOTO_B) return send(res, 400, { ok: false, error: 'imagen vacía o muy grande' }, origin);
@@ -365,6 +375,7 @@ async function handleFotoUpload(req, res, origin) {
       console.error('[fotos] registro fail', reg.status, t.slice(0, 200));
       return send(res, 502, { ok: false, error: 'foto guardada pero no registrada' }, origin);
     }
+    sumarUso(token, 'fotos');
     console.log(`[fotos] ok ${clienteId} ${semanaLunes} ${pose} (${Math.round(buf.length / 1024)}kb)`);
     send(res, 200, { ok: true, semana_lunes: semanaLunes, pose }, origin);
   } catch (e) {
