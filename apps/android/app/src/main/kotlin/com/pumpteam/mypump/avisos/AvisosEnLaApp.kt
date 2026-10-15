@@ -39,6 +39,7 @@ import com.pumpteam.mypump.ModeloAppViewModel
 import com.pumpteam.mypump.acceso.Onboarding
 import com.pumpteam.mypump.acceso.OnboardingPermisos
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.ModeloSalud
 import com.pumpteam.mypump.datos.ModeloEntreno
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.IconoAzulejo
@@ -100,7 +101,15 @@ fun AvisosDeLaApp(vm: ModeloAppViewModel, m: ModeloApp, enLaApp: Boolean) {
     LaunchedEffect(pedirOnboarding) {
         if (!pedirOnboarding || !Onboarding.pendiente(m.preferencias)) return@LaunchedEffect
         delay(1_200)
-        if (m.fase.value == ModeloApp.Fase.LISTO && !m.esDemo.value && m.token != null) onboarding = true
+        if (m.fase.value == ModeloApp.Fase.LISTO && !m.esDemo.value && m.token != null) {
+            // Sin nada que pedir (las notificaciones ya llegan y no hay Health Connect) la hoja no aparece: queda vista.
+            val salud = try {
+                m.salud.value != null && ModeloSalud.fuenteDelSistema?.disponible() == true
+            } catch (_: Exception) {
+                false
+            }
+            if (salud || !CentroAvisos.concedido(contexto)) onboarding = true else m.preferencias.guardar(Onboarding.CLAVE, "1")
+        }
     }
     if (onboarding) OnboardingPermisos(m, vm.version, alTerminar = { onboarding = false })
 

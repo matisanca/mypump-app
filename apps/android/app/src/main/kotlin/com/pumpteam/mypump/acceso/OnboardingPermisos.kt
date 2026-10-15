@@ -107,7 +107,18 @@ fun OnboardingPermisos(modelo: ModeloApp, version: String, alTerminar: () -> Uni
         } catch (_: Exception) {
             false
         }
-        pasos = if (disponible) listOf(Paso.SALUD, Paso.AVISOS) else listOf(Paso.AVISOS)
+        // Notificaciones solo si todavía no llegan: hasta Android 12 vienen prendidas y el paso sobraba (lo vio el emulador
+        // de Android 9). Sin ningún paso, queda vista sin mostrarse.
+        val lista = buildList {
+            if (disponible) add(Paso.SALUD)
+            if (!CentroAvisos.concedido(contexto)) add(Paso.AVISOS)
+        }
+        if (lista.isEmpty()) {
+            modelo.preferencias.guardar(Onboarding.CLAVE, "1")
+            alTerminar()
+        } else {
+            pasos = lista
+        }
     }
 
     fun terminar() {

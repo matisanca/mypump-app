@@ -1,5 +1,7 @@
 package com.pumpteam.mypump.ui
 
+import org.junit.Assume.assumeTrue
+import androidx.health.connect.client.HealthConnectClient
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pumpteam.mypump.acceso.Onboarding
@@ -39,11 +41,45 @@ class OnboardingUiTest : PruebaUi() {
         // El emulador trae Health Connect, y si no hay ninguna fuente el ViewModel instala la de verdad: el paso de Salud
         // saldría adelante de Notificaciones. Cada prueba que lo quiere pone la suya.
         ModeloSalud.fuenteDelSistema = SinHealthConnect
+        // Como un teléfono recién instalado con Android 13+: sin el permiso todavía. Si no, dependía de si otra prueba lo
+        // había dado (y hasta Android 12 viene dado), y el paso de Notificaciones no aparece con el permiso ya dado.
+        PermisoDePrueba.estado = PermisoAvisos.SIN_PEDIR
     }
 
     @After
     fun devolverFuente() {
         ModeloSalud.fuenteDelSistema = fuenteAntes
+        PermisoDePrueba.estado = null
+        PermisoDePrueba.respuesta = null
+    }
+
+    /** Con las notificaciones ya prendidas (Android 12 o menos, o dadas antes) y sin Health Connect no hay nada que pedir. */
+    @Test
+    fun conLasNotificacionesYaPrendidasYSinSaludNoSale() {
+        PermisoDePrueba.estado = PermisoAvisos.CONCEDIDO
+        pendiente()
+        guardarCuenta()
+        abrir()
+        p.nodo(etiqueta("pestana-entreno"))
+        p.quieto(3_000)
+        assertFalse("la hoja salió sin nada que pedir", p.existe(etiqueta("onboarding-permisos")))
+        assertEquals("1", preferencia(Onboarding.CLAVE))
+    }
+
+    /** Con las notificaciones ya prendidas, Salud es el único paso. */
+    @Test
+    fun conLasNotificacionesYaPrendidasSoloPideSalud() {
+        PermisoDePrueba.estado = PermisoAvisos.CONCEDIDO
+        ModeloSalud.fuenteDelSistema = FuenteQueNoVuelve
+        pendiente()
+        guardarCuenta()
+        abrir()
+        p.nodo(texto("Conectá tu salud"))
+        p.tocar(etiqueta("onboarding-ahora-no"))
+        p.esperarQueNoEste(etiqueta("onboarding-permisos"))
+        assertFalse(p.existe(texto("Que no se te pase nada")))
+        assertEquals("1", preferencia(Onboarding.CLAVE))
+        assertEquals(0, CentroAvisos.pedidos)
     }
 
     /** Como una cuenta que nunca la vio (en el resto de las pruebas ya está vista). */
@@ -167,6 +203,11 @@ class OnboardingUiTest : PruebaUi() {
     /** Con el Health Connect del emulador (la fuente que instala el ViewModel), Salud va primero y "Ahora no" pasa a Notificaciones. */
     @Test
     fun conHealthConnectDeVerdadElPrimerPasoEsSalud() {
+        // Health Connect viene con Android 14+; en 9 a 13 es una app aparte que un emulador sin cuenta de Google no tiene.
+        assumeTrue(
+            "este teléfono no tiene Health Connect",
+            HealthConnectClient.getSdkStatus(app) == HealthConnectClient.SDK_AVAILABLE,
+        )
         ModeloSalud.fuenteDelSistema = null
         pendiente()
         guardarCuenta()
