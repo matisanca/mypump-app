@@ -191,6 +191,16 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 05:40, la restauración de un respaldo y la letra grande en Android:**
+  - **Restaurar un respaldo sin token** (b050d2d, en las dos plataformas): ya no depende de que cambie la huella. Ver
+    D14 en la entrada de las 05:00; en iOS es el caso de un respaldo local de Finder sin cifrar, que no trae el Keychain.
+  - **Android con la letra más grande del sistema** (`font_scale` 2.0, d77ce19). Tenía los mismos problemas que iOS:
+    - Dieta ilegible: las kcal fuera del anillo, «Proteí», «T O T A L»;
+    - la barra de pestañas cortaba los nombres.
+
+    Ahora va apilado desde 1,5×, y los nombres de las pestañas crecen hasta 1,2×. Revisión, Progreso, Chat y Entreno ya
+    se leían bien. Capturas en `nativa-evidencia/barrido/20261015-0513-android-fuente2` (antes) y `…-0518-…` (después).
+
 - **15-oct 05:30, iOS: tocar un aviso cerraba la app (arreglado en el TestFlight 107) y el port a Android:**
   - **Tocar una notificación con la app en el fondo la cerraba** (9c9e8b0). Le iba a pasar a cada cliente que tocara un
     mensaje de Mati.
