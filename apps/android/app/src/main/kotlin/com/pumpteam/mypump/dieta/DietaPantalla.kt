@@ -1,7 +1,13 @@
 package com.pumpteam.mypump.dieta
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -36,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +60,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -81,6 +91,7 @@ import com.pumpteam.mypump.modelos.Macros
 import com.pumpteam.mypump.modelos.TipoDia
 import com.pumpteam.mypump.raiz.BannerRevision
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
+import com.pumpteam.mypump.reglas.PorcionCasera
 import com.pumpteam.mypump.reglas.SwapLocal
 import com.pumpteam.mypump.respaldo.OrigenRespaldo
 import com.pumpteam.mypump.respaldo.PieRespaldo
@@ -91,10 +102,11 @@ import kotlin.math.min
 import kotlinx.coroutines.launch
 
 /**
- * Dieta en modo lectura (DIE-01..04, DietaView.swift): el objetivo del día con sus macros y el respaldo científico, y cada
- * comida con sus opciones A/B/C/D (se combinan entre comidas) y los alimentos de la opción elegida. Sin "Comí / Salté"
- * (D10). Los reemplazos, la porción casera y las comidas libres son la etapa que sigue: un reemplazo hecho en otro lado
- * igual se ve (con su marca).
+ * Dieta (DIE-01..04, DietaView.swift): el objetivo del día con sus macros y el respaldo científico, y cada comida con sus
+ * opciones A/B/C/D (se combinan entre comidas) y los alimentos de la opción elegida. Sin "Comí / Salté" (D10).
+ *
+ * Con escritura (DIE-08..18): la mano con la porción casera, el reemplazo de un alimento ([HojaReemplazar], con el
+ * alimento propio adentro) y la vuelta al del plan, y las comidas libres al pie ([ComidasLibresSeccion], solo con cuenta).
  */
 @Composable
 fun DietaPantalla(modelo: ModeloApp) {
@@ -109,6 +121,13 @@ fun DietaPantalla(modelo: ModeloApp) {
     val objetivo = remember(dieta, tipoDia) { modelo.objetivo }
     val tipos = dieta?.estructura?.tiposDia.orEmpty()
     val alcance = LocalAlcanceApp.current
+    // ── Dieta con escritura (DIE-08..18) ──
+    val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    // Las manos abiertas ("comida|opción|alimento") y la posición que se reemplaza o se vuelve al plan.
+    var porciones by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var reemplazando by rememberSaveable { mutableStateOf<String?>(null) }
+    var revirtiendo by rememberSaveable { mutableStateOf<String?>(null) }
+    val libres = rememberEstadoComidasLibres(modelo)
     var recargando by remember { mutableStateOf(false) }
     fun recargar() {
         alcance.launch {
@@ -150,11 +169,20 @@ fun DietaPantalla(modelo: ModeloApp) {
                                     swaps = swaps,
                                     alElegir = { opciones = opciones + (c.id to it) },
                                     modifier = Modifier.widthIn(max = AnchoLectura),
+                                    porciones = porciones,
+                                    alTocarMano = { k -> porciones = if (k in porciones) porciones - k else porciones + k },
+                                    alReemplazar = { reemplazando = it },
+                                    alRevertir = { revirtiendo = it },
                                 )
+                            }
+                            // Las comidas libres, solo con cuenta: en la demo no están (como en la web).
+                            if (!esDemo && modelo.token != null) {
+                                item(key = "comidas-libres") { ComidasLibresSeccion(modelo, libres, Modifier.widthIn(max = AnchoLectura)) }
                             }
                             item(key = "pie") { PieRespaldo(OrigenRespaldo.DIETA, Modifier.widthIn(max = AnchoLectura).padding(top = Espacio.xxs)) }
                         }
                     }
+                    if (libres.analizando) AnalizandoFoto("Analizando el plato…")
                 }
                 fase == ModeloApp.Fase.LISTO && ModeloApp.Parte.DIETA in sinRedEn ->
                     EstadoVacio(
@@ -189,6 +217,69 @@ fun DietaPantalla(modelo: ModeloApp) {
             }
         }
     }
+
+    // ── Dieta con escritura: las hojas y los avisos, afuera de la lista perezosa ──
+    val aReemplazar = reemplazando?.let { posicion(comidas, it) }
+    val aRevertir = revirtiendo?.let { posicion(comidas, it) }
+    // El plan cambió mientras estaba abierta (tirar para actualizar, otro tipo de día): esa posición ya no existe.
+    LaunchedEffect(reemplazando != null && aReemplazar == null) { if (reemplazando != null && aReemplazar == null) reemplazando = null }
+    LaunchedEffect(revirtiendo != null && aRevertir == null) { if (revirtiendo != null && aRevertir == null) revirtiendo = null }
+    aReemplazar?.let { p ->
+        HojaReemplazar(
+            modelo,
+            original = p.original,
+            alElegir = { food -> alcance.launch { modelo.sustituir(p.original, food, p.comidaId, p.opt, p.idx) } },
+            alCerrar = { reemplazando = null },
+        )
+    }
+    aRevertir?.let { p ->
+        ConfirmarVolverAlPlan(
+            original = p.original,
+            mostrado = modelo.efectivo(p.original, p.comidaId, p.opt, p.idx).alimento,
+            alVolver = {
+                revirtiendo = null
+                alcance.launch { modelo.revertir(p.comidaId, p.opt, p.idx) }
+            },
+            alCancelar = { revirtiendo = null },
+        )
+    }
+    HojasComidasLibres(modelo, libres)
+}
+
+/** Una posición del plan ("comida|opción|alimento") con el alimento del plan que hay ahí. */
+private class Posicion(val comidaId: String, val opt: Int, val idx: Int, val original: Alimento)
+
+private fun clavePosicion(comidaId: String, opt: Int, idx: Int) = "$comidaId|$opt|$idx"
+
+private fun posicion(comidas: List<Comida>, clave: String): Posicion? {
+    val partes = clave.split('|')
+    if (partes.size < 3) return null
+    val idx = partes[partes.size - 1].toIntOrNull() ?: return null
+    val opt = partes[partes.size - 2].toIntOrNull() ?: return null
+    val comidaId = partes.dropLast(2).joinToString("|")
+    val a = comidas.firstOrNull { it.id == comidaId }?.opciones?.getOrNull(opt)?.alimentos?.getOrNull(idx) ?: return null
+    return Posicion(comidaId, opt, idx, a)
+}
+
+/** "¿Volver al alimento del plan?" (el `confirmationDialog` de iOS): al tocar la marca de un reemplazo. */
+@Composable
+private fun ConfirmarVolverAlPlan(original: Alimento, mostrado: Alimento, alVolver: () -> Unit, alCancelar: () -> Unit) {
+    val c = MyPump.colores
+    AlertDialog(
+        onDismissRequest = alCancelar,
+        title = { Text("¿Volver al alimento del plan?") },
+        text = { Text("Hoy estás comiendo ${mostrado.nombre}.", style = MaterialTheme.typography.bodyMedium) },
+        confirmButton = {
+            TextButton(onClick = alVolver, modifier = Modifier.testTag("volver-al-plan")) {
+                Text("Volver a ${original.nombre}", color = c.marcaTexto, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = alCancelar, modifier = Modifier.testTag("cancelar-volver")) { Text("Cancelar", color = c.marcaTexto) }
+        },
+        containerColor = c.tarjeta,
+        modifier = Modifier.testTag("confirmar-volver"),
+    )
 }
 
 /** Tirar para actualizar (en la demo no hace nada: no hay red). */
@@ -381,12 +472,20 @@ private fun TarjetaComida(
     comida: Comida,
     numero: Int,
     opcion: Int,
-    @Suppress("UNUSED_PARAMETER") swaps: Map<String, SwapLocal>,
+    swaps: Map<String, SwapLocal>,
     alElegir: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    porciones: Set<String> = emptySet(),
+    alTocarMano: (String) -> Unit = {},
+    alReemplazar: (String) -> Unit = {},
+    alRevertir: (String) -> Unit = {},
 ) {
     val c = MyPump.colores
-    val alimentos = (comida.opciones.getOrNull(opcion)?.alimentos ?: emptyList()).mapIndexed { i, a -> a to modelo.efectivo(a, comida.id, opcion, i) }
+    // Con los reemplazos como clave: un parámetro que no se usa no cuenta para recomponer, y la tarjeta seguía mostrando
+    // el alimento del plan después de reemplazarlo (`efectivo` lee el modelo, no un estado de Compose).
+    val alimentos = remember(comida, opcion, swaps) {
+        (comida.opciones.getOrNull(opcion)?.alimentos ?: emptyList()).mapIndexed { i, a -> a to modelo.efectivo(a, comida.id, opcion, i) }
+    }
     val total = ModeloApp.sumar(alimentos.map { it.second.alimento })
     val nombreOpcion = comida.opciones.getOrNull(opcion)?.nombre ?: letra(opcion)
     Tarjeta(modifier.testTag("comida-${comida.id}"), espaciado = 14.dp) {
@@ -434,7 +533,18 @@ private fun TarjetaComida(
         }
         Column {
             alimentos.forEachIndexed { i, (original, efectivo) ->
-                FilaAlimento(original, efectivo.alimento, efectivo.sustituido, Modifier.testTag("alimento-${comida.id}-$i"))
+                val k = clavePosicion(comida.id, opcion, i)
+                FilaAlimento(
+                    original,
+                    efectivo.alimento,
+                    efectivo.sustituido,
+                    Modifier.testTag("alimento-${comida.id}-$i"),
+                    sufijo = "${comida.id}-$i",
+                    porcionAbierta = k in porciones,
+                    alTocarMano = { alTocarMano(k) },
+                    alReemplazar = { alReemplazar(k) },
+                    alRevertir = { alRevertir(k) },
+                )
                 if (i < alimentos.size - 1) Separador()
             }
         }
@@ -455,32 +565,92 @@ private fun TarjetaComida(
     }
 }
 
-/** Un alimento de la opción elegida: nombre (con la marca si está reemplazado), cantidad, kcal y macros (`renderFood`). */
+/**
+ * Un alimento de la opción elegida (`renderFood`, la `FilaAlimento` de iOS): nombre (con la marca si está reemplazado, que
+ * al tocarla ofrece volver al del plan), cantidad, kcal y macros, la mano con la porción casera (DIE-08) y el reemplazo
+ * (DIE-09, salvo condimentos y lo que Mati marcó `swappable: false`).
+ *
+ * [modifier] (con la etiqueta de las pruebas) va en el bloque de los textos; los botones quedan aparte, como en TalkBack.
+ */
 @Composable
-private fun FilaAlimento(original: Alimento, mostrado: Alimento, sustituido: Boolean, modifier: Modifier = Modifier) {
+private fun FilaAlimento(
+    original: Alimento,
+    mostrado: Alimento,
+    sustituido: Boolean,
+    modifier: Modifier = Modifier,
+    sufijo: String = "",
+    porcionAbierta: Boolean = false,
+    alTocarMano: () -> Unit = {},
+    alReemplazar: () -> Unit = {},
+    alRevertir: () -> Unit = {},
+) {
     val c = MyPump.colores
-    Column(modifier.fillMaxWidth().padding(vertical = 10.dp).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(mostrado.nombre, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f, fill = false))
-            if (sustituido) {
-                Box(
-                    Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(c.marca)
-                        .semantics { contentDescription = "Reemplazado; el del plan es ${original.nombre}" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Iconos.Intercambio, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(13.dp))
+    val porcion = PorcionCasera.referencia(mostrado.nombre, mostrado.qty, mostrado.unidad, mostrado.gramosPorUnidad)
+    val sustituible = CategoriaComida.sustituible(original)
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xxs)) {
+            Column(modifier.weight(1f).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(mostrado.nombre, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f, fill = false))
+                    if (sustituido) {
+                        // La marca del reemplazo: tocarla ofrece volver al del plan (28 dp de toque sin agrandar el renglón).
+                        Box(
+                            Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .clickable(role = Role.Button, onClick = alRevertir)
+                                .semantics { contentDescription = "Reemplazado. Tocá para volver a ${original.nombre}" }
+                                .testTag("reemplazado-$sufijo"),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Box(Modifier.size(20.dp).clip(CircleShape).background(c.marca), contentAlignment = Alignment.Center) {
+                                Icon(Iconos.Intercambio, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(13.dp))
+                            }
+                        }
+                    }
                 }
+                Text(
+                    "${FormatoDieta.cantidad(mostrado.qty, mostrado.unidad)} · ${Formato.miles(mostrado.kcal)} kcal",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = c.textoSecundario,
+                )
+                Text(FormatoDieta.macros(mostrado, c.proteina, c.carbohidrato, c.grasa), style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
+            }
+            if (porcion != null) {
+                BotonCircular(
+                    Iconos.Mano,
+                    descripcion = if (porcionAbierta) "Ocultar porción casera" else "Ver porción casera",
+                    activo = porcionAbierta,
+                    alTocar = alTocarMano,
+                    modifier = Modifier.testTag("mano-$sufijo"),
+                )
+            }
+            if (sustituible) {
+                BotonCircular(
+                    Iconos.Intercambio,
+                    descripcion = "Reemplazar ${mostrado.nombre}",
+                    activo = false,
+                    alTocar = alReemplazar,
+                    modifier = Modifier.testTag("reemplazar-$sufijo"),
+                )
             }
         }
-        Text(
-            "${FormatoDieta.cantidad(mostrado.qty, mostrado.unidad)} · ${Formato.miles(mostrado.kcal)} kcal",
-            style = MaterialTheme.typography.bodyMedium,
-            color = c.textoSecundario,
-        )
-        Text(FormatoDieta.macros(mostrado, c.proteina, c.carbohidrato, c.grasa), style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
+        AnimatedVisibility(visible = porcionAbierta && porcion != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+            val p = porcion ?: ""
+            Row(
+                Modifier
+                    .clip(CircleShape)
+                    .background(c.marcaSuave)
+                    .padding(horizontal = 12.dp, vertical = 7.dp)
+                    .clearAndSetSemantics { contentDescription = "Porción casera: $p" }
+                    .testTag("porcion-$sufijo"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(Iconos.Mano, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(15.dp))
+                Text(if (p.startsWith("libre")) p else "≈ $p", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
+            }
+        }
     }
 }
 
@@ -533,15 +703,19 @@ object FormatoDieta {
     }
 
     /** "P 15,1 · C 0,8 · G 11,4", con la letra en el color del macro (como el anillo de arriba). */
-    fun macros(a: Alimento, proteina: Color, carbohidrato: Color, grasa: Color): AnnotatedString = buildAnnotatedString {
+    fun macros(a: Alimento, proteina: Color, carbohidrato: Color, grasa: Color): AnnotatedString =
+        macros(a.prot, a.carb, a.fat, proteina, carbohidrato, grasa)
+
+    /** Lo mismo con las macros sueltas (un sustituto, una comida libre). */
+    fun macros(prot: Double?, carb: Double?, fat: Double?, proteina: Color, carbohidrato: Color, grasa: Color): AnnotatedString = buildAnnotatedString {
         fun parte(letra: String, v: Double?, color: Color) {
             withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) { append(letra) }
             append(" ${Formato.decimal(v ?: 0.0)}")
         }
-        parte("P", a.prot, proteina)
+        parte("P", prot, proteina)
         append("  ·  ")
-        parte("C", a.carb, carbohidrato)
+        parte("C", carb, carbohidrato)
         append("  ·  ")
-        parte("G", a.fat, grasa)
+        parte("G", fat, grasa)
     }
 }

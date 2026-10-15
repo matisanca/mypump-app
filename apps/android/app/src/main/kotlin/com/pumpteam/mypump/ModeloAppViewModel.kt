@@ -112,6 +112,21 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
         null
     }
 
+    // Dieta: la base de alimentos de la web (food-db.json, 42 KB) para la hoja "Reemplazar", leída una vez al arrancar
+    // como el catálogo de ejercicios. La hoja la espera si se abre antes (`MotorSustitutos.base` es un flujo). Con los
+    // nombres enteros, sin tocar los imports de arriba.
+    init {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { leerBaseAlimentos() }?.let(com.pumpteam.mypump.dieta.MotorSustitutos::instalar)
+        }
+    }
+
+    private fun leerBaseAlimentos(): com.pumpteam.mypump.reglas.BaseAlimentos? = try {
+        app.assets.open("bases/food-db.json").use { com.pumpteam.mypump.dieta.MotorSustitutos.leer(it.readBytes().toString(Charsets.UTF_8)) }
+    } catch (_: Exception) {
+        null
+    }
+
     /** A dónde pidió ir un link (`?scene=diet`, ACC-09): lo consume la navegación al llegar. */
     private val _destino = MutableStateFlow<DestinoAviso?>(null)
     val destino: StateFlow<DestinoAviso?> = _destino.asStateFlow()
