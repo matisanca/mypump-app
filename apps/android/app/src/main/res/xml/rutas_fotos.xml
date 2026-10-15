@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lo único que comparte ProveedorFotos: la carpeta de la caché donde la cámara del teléfono deja la foto (se borra
+     apenas se lee). -->
+<paths>
+    <cache-path name="camara" path="camara/" />
+</paths>

@@ -54,6 +54,11 @@
     <uses-permission android:name="android.permission.health.READ_VO2_MAX" tools:node="remove" />
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" tools:node="remove" />
 
+    <!-- ── Revisión: las fotos de progreso (REV-02). La foto la saca la app de cámara del teléfono (TakePicture, con el
+         ProveedorFotos de abajo) o sale del selector de fotos del sistema: MyPump no pide CAMERA. Va con remove porque,
+         si una librería lo metiera en el merge, Android exigiría el permiso concedido hasta para abrir la cámara de otro. -->
+    <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
+
     <!-- Android 13 y anteriores: Health Connect es una app aparte y hay que poder consultarla. -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
@@ -164,5 +169,17 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
+
+        <!-- ── Revisión: la cámara del teléfono deja la foto de progreso en cache/camara/ por este provider (solo esa
+             carpeta, sin exportar: el permiso se presta para esa foto y nada más). Ver fotos/ProveedorFotos. ── -->
+        <provider
+            android:name=".fotos.ProveedorFotos"
+            android:authorities="${applicationId}.fotos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/rutas_fotos" />
+        </provider>
     </application>
 </manifest>

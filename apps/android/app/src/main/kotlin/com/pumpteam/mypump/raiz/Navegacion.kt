@@ -32,14 +32,29 @@ enum class Pestana(val titulo: String) {
     val etiqueta: String get() = "pestana-${name.lowercase()}"
 }
 
+/** Las secciones de Revisión a las que se puede llevar al cliente (los `.id` de `RevisionView.swift`). */
+object AnclaRevision {
+    const val FOTOS = "fotos"
+    const val CHECK = "check"
+    const val PESO = "peso"
+    const val RELOJ = "reloj"
+    const val MI_DIA = "midia"
+}
+
 /**
- * A dónde se va dentro de la app: la pestaña y, en Revisión, Mis datos (que cuelga de Revisión, como en iOS). Sobrevive a
- * rotar la pantalla. La usan la barra de pestañas, el banner de "te falta tu check" de las otras pestañas y un link con
- * `?scene=` (ACC-09).
+ * A dónde se va dentro de la app: la pestaña y, en Revisión, una sección o Mis datos (que cuelga de Revisión, como en
+ * iOS). Sobrevive a rotar la pantalla. La usan la barra de pestañas, el banner de "te falta tu check" de las otras
+ * pestañas, tocar un aviso y un link con `?scene=` (ACC-09).
  */
-class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false) {
+class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, anclaRevision: String? = null) {
     var pestana by mutableStateOf(pestana)
     var misDatos by mutableStateOf(misDatos)
+
+    /**
+     * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check, peso, midia), como `anclaRevision` de
+     * `Navegacion.swift`. Revisión la consume al llegar.
+     */
+    var anclaRevision by mutableStateOf(anclaRevision)
 
     /** Tocar una pestaña. Tocar Revisión estando en Mis datos vuelve a Revisión (como volver al principio de la pila). */
     fun elegir(p: Pestana) {
@@ -54,10 +69,9 @@ class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false) 
             DestinoAviso.DIETA -> pestana = Pestana.DIETA
             DestinoAviso.CHAT -> pestana = Pestana.CHAT
             DestinoAviso.PROGRESO -> pestana = Pestana.PROGRESO
-            DestinoAviso.REVISION, DestinoAviso.MI_DIA -> {
-                pestana = Pestana.REVISION
-                misDatos = false
-            }
+            DestinoAviso.REVISION -> irARevision(null)
+            // `?scene=myday` y el aviso de Mi Día: Revisión, ya desplazada hasta Mi Día.
+            DestinoAviso.MI_DIA -> irARevision(AnclaRevision.MI_DIA)
             DestinoAviso.MIS_DATOS -> {
                 pestana = Pestana.REVISION
                 misDatos = true
@@ -65,10 +79,17 @@ class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false) 
         }
     }
 
+    /** A Revisión (fuera de Mis datos) y, si hay [ancla], a esa sección. */
+    fun irARevision(ancla: String?) {
+        pestana = Pestana.REVISION
+        misDatos = false
+        anclaRevision = ancla
+    }
+
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos) },
-            restore = { Navegacion(Pestana.valueOf(it[0] as String), it[1] as Boolean) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "") },
+            restore = { Navegacion(Pestana.valueOf(it[0] as String), it[1] as Boolean, (it.getOrNull(2) as? String)?.ifEmpty { null }) },
         )
     }
 }

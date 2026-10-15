@@ -264,7 +264,8 @@ private fun BannerSinConexion() {
 
 /**
  * "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno, Dieta, Chat y Progreso.
- * Tocarlo lleva a Revisión. Con todo hecho o en la demo no se ve.
+ * Tocarlo lleva a Revisión, a lo que falta: al check si es lo único, si no a las fotos (como iOS). Con todo hecho o en la
+ * demo no se ve.
  */
 @Composable
 fun BannerRevision(modelo: ModeloApp, modifier: Modifier = Modifier) {
@@ -278,7 +279,7 @@ fun BannerRevision(modelo: ModeloApp, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .superficieTarjeta(radio = Radio.control + 6.dp)
-            .clickable { navegacion?.ir(DestinoAviso.REVISION) }
+            .clickable { navegacion?.irARevision(if (p.faltaCheck && !p.faltanFotos) AnclaRevision.CHECK else AnclaRevision.FOTOS) }
             .padding(Espacio.s)
             .testTag("banner-revision"),
         verticalAlignment = Alignment.CenterVertically,
