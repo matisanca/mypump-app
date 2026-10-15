@@ -83,6 +83,8 @@ public final class ModeloApp {
     /// El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy".
     @ObservationIgnored private var diaCargado: String?
     @ObservationIgnored private var catalogo: CatalogoEjercicios?
+    /// Lo que el motor de Entreno carga aparte después de cada carga (sesión, historial, comentarios).
+    @ObservationIgnored private var cargaDelMotor: Task<Void, Never>?
 
     public init(cliente: ClienteRPC = ClienteRPC(), almacen: AlmacenToken = TokenEnKeychain(), raizDisco: URL? = nil) {
         self.cliente = cliente
@@ -296,7 +298,7 @@ public final class ModeloApp {
         prepararEntreno()
         fase = .listo
         if let e = entreno {
-            Task {
+            cargaDelMotor = Task {
                 await self.cargarCatalogo()
                 await e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
                 await e.cargar()
@@ -384,6 +386,15 @@ public final class ModeloApp {
         if let c = catalogo { entreno?.catalogo = c }
     }
 
+    /// "Tirar para actualizar" en Entreno: como en Dieta, la carga entera, que trae la rutina (si Mati la republicó, se
+    /// ve). Antes la pantalla recargaba solo lo del motor (la sesión, el historial, los comentarios) y la rutina nueva no
+    /// aparecía hasta reabrir la app (revisión del 15-oct, hallazgo 6). Espera también lo del motor, como antes.
+    public func refrescarEntreno() async {
+        if esDemo { await entreno?.cargar(); return }
+        await cargar()
+        await cargaDelMotor?.value
+    }
+
     /// Progreso por el ejercicio que se hace de verdad: el sustituto si hay (PRO-02, `getEffectiveEx` en el
     /// `loadProgressAndRender` de la web). Sin el motor de Entreno, por el nombre del plan.
     public func cargarProgreso() async {
@@ -440,7 +451,7 @@ public final class ModeloApp {
     }
 
     private func aplicar(_ c: CopiaOffline) {
-        defer { prepararEntreno(); if let e = entreno { Task { await e.cargar() } } }
+        defer { prepararEntreno(); if let e = entreno { cargaDelMotor = Task { await e.cargar() } } }
         info = decodificar(ClienteInfo.self, c.info)
         rutina = c.rutina.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(c.dieta)
