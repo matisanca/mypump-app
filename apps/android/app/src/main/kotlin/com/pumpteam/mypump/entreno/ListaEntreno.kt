@@ -123,7 +123,6 @@ fun ListaEntreno(
     preguntador: Preguntador,
     desplazamiento: ScrollState,
     alAbrir: (String) -> Unit,
-    alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
 ) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current

@@ -91,8 +91,8 @@ class CapturasUiTest : PruebaUi() {
             p.desplazar(etiqueta("ejercicio-pantalla"), 3_000f)
             foto("19-entreno-comentarios")
 
+            // Sin volver arriba: desplazar de más con la acción de accesibilidad deja a medio tirar el "tirar para actualizar".
             p.tocar(etiqueta("volver"))
-            p.desplazar(etiqueta("entreno-lista"), -3_000f)
             p.tocar(texto("Cerrar"))
             p.nodo(etiqueta("hoja-cerrar-dia"))
             p.nodo(etiqueta("pendientes-cierre"))

@@ -17,6 +17,7 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.toSize
 import androidx.test.platform.app.InstrumentationRegistry
+import com.pumpteam.mypump.diseno.ImagenesRemotas
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -388,5 +389,17 @@ object Telefono {
         } finally {
             b.recycle()
         }
+    }
+}
+
+/** Las fotos del catálogo de ejercicios en las pruebas: sin red (se ve el marcador), y al terminar, como en la app. */
+object FotosDePrueba {
+    fun sinRed() {
+        ImagenesRemotas.bajar = { null }
+        ImagenesRemotas.vaciar()
+    }
+
+    fun porRed() {
+        ImagenesRemotas.bajar = ImagenesRemotas.porRed
     }
 }
