@@ -29,8 +29,10 @@ cd apps/android
 ./gradlew connectedDebugAndroidTest   # las instrumentadas, en el emulador (AVD nativa36) o un teléfono
 ```
 
-`scripts/nativa/emu-ui.sh [serial] [clases]` corre las instrumentadas y baja las capturas de `CapturasUiTest` (cada
-pantalla en claro y en oscuro) y el reporte a `~/Developer/nativa-evidencia/android-ui/<fecha>/`.
+`scripts/nativa/emu-ui.sh [serial] [clases]` desinstala MyPump (si quedó la Capacitor de `emu-migracion.sh` con una
+cuenta, la nativa la adoptaría), corre las instrumentadas y baja las capturas de `CapturasUiTest` (cada pantalla en claro
+y en oscuro) y el reporte a `~/Developer/nativa-evidencia/android-ui/<fecha>/`. No prende el emulador: tiene que estar
+andando (`$ANDROID_HOME/emulator/emulator -avd nativa36 -no-window -no-audio`).
 
 `python3 -I scripts/nativa/lanzar-emu.py <serial> [escena]` instala el APK de debug y abre la app con el link de
 `test-nativa-android` (gemelo de `lanzar-sim.sh`): el token se lee adentro del script y va por la entrada de `adb shell`,
@@ -84,6 +86,9 @@ y números grandes van en Archivo.
 - **Fotos de los ejercicios.** `ImagenesRemotas` (en `diseno`): `HttpURLConnection`, decodificadas al tamaño en que se
   muestran y en memoria (sin librerías de imágenes). Las pruebas de interfaz las cambian por un "sin foto": no van a la
   red.
+- **Volver a primer plano (GEN-07).** `MainActivity` avisa al ViewModel con ON_START y ON_STOP (`primerPlano`), y el
+  modelo, al volver, manda la cola de escrituras y la de fotos, mira el chat y, si cambió el día, recarga las comidas
+  libres, Mi Día y el check. `ui/PrimerPlanoUiTest` lo recorre entero con `ActivityScenario.moveToState`.
 - **Recursos compartidos.** Gradle copia en la compilación (`app/build/generated/compartido/`) la fuente Archivo de la app
   de iOS, la demo y el catálogo de `apps/shared`: no hay copias en el repo que se puedan desfasar.
 - **Pruebas de interfaz (`androidTest/…/ui`).** Desde el 14-oct están `ui-test-junit4` y `ui-test-manifest` (OK de Mati):
@@ -141,7 +146,8 @@ reducción, el botón de cámara o galería y el FileProvider) está en `fotos`.
   la HEIC es `androidTest/assets/fotos/con-gps.heic`, porque Android no codifica HEIC sin librerías), `ui/RevisionUiTest`
   y `ui/RevisionCapturasTest` (cada sección en claro y en oscuro, la galería con 7 semanas de fotos y la demo). La cámara
   y el selector de fotos se reemplazan con un `Instrumentation.ActivityMonitor` que contesta una foto armada en la
-  prueba (`FotoDePrueba`), sin abrir nada. `ServidorDePrueba` contesta `/progreso/upload`, `/progreso/urls` y
+  prueba (`FotoDePrueba`), sin abrir nada. El aviso de plan incompleto, con los tres casos de iOS, está en
+  `ui/AvisoPlanIncompletoUiTest`. `ServidorDePrueba` contesta `/progreso/upload`, `/progreso/urls` y
   `/api/wearables/disponibles` (antes, todo lo que no era RPC daba `[]`). Mi reloj no abre el navegador de verdad (el
   link lleva el token y va al sitio real): con el dominio elegido para MyPump (`pm set-app-links-user-selection`) se
   mira que el pedido va al navegador fijo y que el mismo link sin fijar lo abriría MyPump.
@@ -250,10 +256,11 @@ sesiones del gráfico y los números y las fechas en es-AR) es puro y se prueba 
 - **Chat** (`ChatPantalla`). La lista va con `reverseLayout` (lo nuevo abajo, como Mensajes) y arriba de todo el banner de
   Revisión, el encabezado (otro con el hilo vacío) y "Ver mensajes anteriores". Las burbujas van a los costados (D12),
   con la colita y la hora en la última del grupo, "enviando…" y "no salió → Reintentar". Mientras se ve, el chat está
-  abierto (un `DisposableEffect`: sondeo cada 15 s y lo de Mati queda leído) y al entrar `marcarLeido()` baja el badge. El
-  borrador vive en la pantalla (`rememberSaveable`): no lo pisa un mensaje que llega. CHA-02 cuenta los caracteres como
-  iOS (`String.count`: los que se ven, un emoji es uno): el contador aparece pasados los 900, en rojo desde los 1000, y por
-  encima Enviar se apaga. En la demo, Enviar apagado y el aviso.
+  abierto (un `DisposableEffect`: sondeo cada 15 s y lo de Mati queda leído) y al entrar `alAbrir()` trae el hilo si
+  nunca se trajo y baja el badge; la carga de la cuenta no vuelve a pedir lo que ya trajo la pantalla
+  (`ChatAlAbrirTest`). El borrador vive en la pantalla (`rememberSaveable`): no lo pisa un mensaje que llega. CHA-02
+  cuenta los caracteres como iOS (`String.count`: los que se ven, un emoji es uno): el contador aparece pasados los 900,
+  en rojo desde los 1000, y por encima Enviar se apaga. En la demo, Enviar apagado y el aviso.
 - **Progreso** (`ProgresoPantalla`). Carga al abrir la pestaña solo si no hay tarjetas o faltó la red, y siempre con
   `ModeloApp.cargarProgreso` (el sustituto, PRO-02); tirar hacia abajo recarga. El detalle (`ProgresoDetalle`) es estado
   de la pestaña, como un ejercicio en Entreno: Atrás vuelve a la lista. Los gráficos son `Canvas`, sin librerías: la curva
@@ -261,6 +268,10 @@ sesiones del gráfico y los números y las fechas en es-AR) es puro y se prueba 
   dedo.
 - **El esqueleto** (`progreso/Esqueleto.kt`, lo usan los dos) respeta "Quitar animaciones". Limpia la semántica de lo que
   le sigue en la cadena de modificadores: la `testTag` va antes.
+- **"Quitar animaciones" (GEN-08).** `reducirMovimiento()` (en `entreno/Piezas.kt`) apaga el pulso de "En curso", el
+  brillo del esqueleto y las fotos de Inicio y Pico que se alternan. Se entera si el cliente cambia el ajuste con la app
+  abierta (un solo `ContentObserver` de `ANIMATOR_DURATION_SCALE` para toda la app). `ui/MovimientoReducidoUiTest` cambia
+  el ajuste del teléfono y lo deja como estaba.
 - **Pruebas** (`ui/ChatUiTest`, `ui/ProgresoUiTest` y las capturas de `ui/CapturasChatProgresoUiTest`). El chat corre con
   `ChatDePrueba` (`ui/ChatYProgresoDePrueba.kt`), puesto encima del `ServidorDePrueba` sin cambiarlo: un hilo con memoria
   que pagina, sondea y devuelve como fila real lo que manda la cola, salvo que el servidor lo rechace. "No salió" se
