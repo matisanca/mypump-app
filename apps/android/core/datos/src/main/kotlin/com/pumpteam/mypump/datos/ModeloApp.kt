@@ -23,6 +23,7 @@ import com.pumpteam.mypump.reglas.SwapLocal
 import com.pumpteam.mypump.reglas.SwapsDeComida
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -173,6 +174,9 @@ class ModeloApp(
 
     /** El catálogo de ejercicios que llegó del servidor (o el guardado de la última vez). */
     private var catalogo: CatalogoEjercicios? = null
+
+    /** Lo que el motor de Entreno carga aparte después de cada carga (sesión, historial, comentarios). */
+    private var cargaDelMotor: Job? = null
 
     /** El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`). */
     private val _tipoDia = MutableStateFlow(preferencias.leer(CLAVE_TIPO_DIA))
@@ -457,7 +461,7 @@ class ModeloApp(
         _fase.value = Fase.LISTO
         if (faltaron.isEmpty()) _cargasConRed.update { it + 1 }
         _entreno.value?.let { e ->
-            alcance.launch {
+            cargaDelMotor = alcance.launch {
                 cargarCatalogo()
                 e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
                 e.cargar()
@@ -599,6 +603,20 @@ class ModeloApp(
     }
 
     /**
+     * "Tirar para actualizar" en Entreno: como en Dieta, la carga entera, que trae la rutina (si Mati la republicó, se ve).
+     * Antes la pantalla recargaba solo lo del motor (la sesión, el historial, los comentarios) y la rutina nueva no aparecía
+     * hasta reabrir la app (revisión del 15-oct, hallazgo 6). Espera también lo del motor, como antes.
+     */
+    suspend fun refrescarEntreno() {
+        if (_esDemo.value) {
+            _entreno.value?.cargar()
+            return
+        }
+        cargar()
+        cargaDelMotor?.join()
+    }
+
+    /**
      * Progreso por el ejercicio que se hace de verdad: el sustituto si hay (PRO-02, `getEffectiveEx` en el
      * `loadProgressAndRender` de la web). Sin el motor de Entreno, por el nombre del plan.
      */
@@ -622,7 +640,7 @@ class ModeloApp(
         _dieta.value = dietaNormalizada(c.dieta)
         _dieta.value?.id?.let { id -> _swaps.value = leerSwaps(id) }
         prepararEntreno()
-        _entreno.value?.let { e -> alcance.launch { e.cargar() } }
+        _entreno.value?.let { e -> cargaDelMotor = alcance.launch { e.cargar() } }
     }
 
     // ── Dieta ──

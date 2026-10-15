@@ -145,7 +145,8 @@ fun ListaEntreno(
                 recargando = true
                 alcance.launch {
                     try {
-                        motor.cargar()
+                        // Como Dieta, la carga entera: trae la rutina si Mati la republicó (hallazgo 6 del 15-oct).
+                        modelo.refrescarEntreno()
                     } finally {
                         recargando = false
                     }
