@@ -255,21 +255,38 @@ struct BotonSecundario: ButtonStyle {
 
 /// Encabezado de sección como los de Salud y Fitness: título en negrita, en minúscula de oración, con un detalle a
 /// la derecha ("Fotos de la semana        0/3").
-struct EncabezadoSeccion: View {
+struct EncabezadoSeccion<Accesorio: View>: View {
     let titulo: String
     var detalle: String?
+    /// Lo de la derecha que no es texto (el "Enviado" del check). Va adentro y no encima: como `.overlay` no ocupaba
+    /// lugar y, con el título en varios renglones, se dibujaba sobre él.
+    let accesorio: Accesorio
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
+
+    init(titulo: String, detalle: String? = nil, @ViewBuilder accesorio: () -> Accesorio) {
+        self.titulo = titulo; self.detalle = detalle; self.accesorio = accesorio()
+    }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Espacio.xs) {
+        // Con letra de accesibilidad, lo de la derecha va abajo del título: al lado lo dejaba en una columna angosta.
+        let apilado = tamañoLetra.isAccessibilitySize
+        let disposicion = apilado ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                                  : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Espacio.xs))
+        disposicion {
             Text(titulo).font(.title3.weight(.bold)).foregroundStyle(.primary)
                 .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: Espacio.xs)
+            if !apilado { Spacer(minLength: Espacio.xs) }
             if let detalle {
                 Text(detalle).font(.subheadline.weight(.medium).monospacedDigit()).foregroundStyle(.secondary)
             }
+            accesorio
         }
         .padding(.horizontal, 4)
     }
+}
+
+extension EncabezadoSeccion where Accesorio == EmptyView {
+    init(titulo: String, detalle: String? = nil) { self.init(titulo: titulo, detalle: detalle) { EmptyView() } }
 }
 
 /// Renglón de respaldo científico (Apple 1.4.1): pegado a los números, gris y chico, con "Ver fuentes" en el verde de

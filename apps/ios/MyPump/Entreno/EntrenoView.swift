@@ -166,7 +166,12 @@ private struct ListaEntreno: View {
         let d = motor.dia.dia
         let total = motor.totalEjercicios, hechos = motor.hechos
         let cerrado = motor.dia.diaFinalizado || motor.hecho(d)
-        return HStack(alignment: .center, spacing: Espacio.m) {
+        // Con letra de accesibilidad el anillo va abajo: al costado le dejaba al texto un tercio del ancho y cortaba las
+        // palabras ("cerra-do").
+        let apilada = tamañoLetra.isAccessibilitySize
+        let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.m))
+                                  : AnyLayout(HStackLayout(alignment: .center, spacing: Espacio.m))
+        return disposicion {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Día \(motor.numero(d)) · Semana \(motor.semanaMostrada) de \(motor.totalMostrado)").textoCeja()
                 Text(titulo)
@@ -181,7 +186,7 @@ private struct ListaEntreno: View {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(cerrado ? Color.marcaTexto : Color.secondary)
             }
-            Spacer(minLength: 0)
+            if !apilada { Spacer(minLength: 0) }
             AnilloProgreso(fraccion: Double(hechos) / Double(max(total, 1)), grosor: 7) {
                 VStack(spacing: -2) {
                     Text("\(hechos)").font(.numeroChico).contentTransition(.numericText())

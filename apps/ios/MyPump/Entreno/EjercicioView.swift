@@ -15,6 +15,7 @@ struct EjercicioView: View {
     /// Abrir otro ejercicio del día en lugar de este (el siguiente pendiente).
     let abrir: (String) -> Void
     @Environment(\.horizontalSizeClass) private var claseAncho
+    @Environment(\.dynamicTypeSize) private var letraDeLaVista
     @State private var tituloEnBarra = false
     @State private var comentario = ""
     @State private var enviando = false
@@ -195,7 +196,10 @@ struct EjercicioView: View {
     @ViewBuilder
     private func aSuperar(_ t: ModeloEntreno.Tarjeta) -> some View {
         if t.ultimaVez != nil || t.record != nil {
-            HStack(alignment: .top, spacing: Espacio.s) {
+            // Con letra de accesibilidad, una debajo de la otra: lado a lado el peso quedaba en "60 k…".
+            let disposicion = letraDeLaVista.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.s))
+                                                                 : AnyLayout(HStackLayout(alignment: .top, spacing: Espacio.s))
+            disposicion {
                 if let u = t.ultimaVez {
                     let p = Bonito.partir(u.valor)
                     Dato(titulo: "Última vez", valor: p.principal,
@@ -219,8 +223,9 @@ struct EjercicioView: View {
 
     private func acciones(_ t: ModeloEntreno.Tarjeta, _ lector: ScrollViewProxy) -> some View {
         let puede = t.puedeSustituir || t.efectivo.sustituido
+        let disposicion = letraDeLaVista.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Espacio.s)) : AnyLayout(HStackLayout(spacing: Espacio.s))
         return VStack(alignment: .leading, spacing: Espacio.xs) {
-            HStack(spacing: Espacio.s) {
+            disposicion {
                 Button { sustituyendo = true } label: {
                     Label(t.efectivo.sustituido ? "Cambiar" : "Sustituir", systemImage: "arrow.triangle.2.circlepath")
                 }

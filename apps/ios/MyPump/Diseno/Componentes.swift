@@ -11,6 +11,7 @@ struct Dato: View {
     var detalle: String?
     var icono: String
     var tono: Color = .secondary
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -21,7 +22,8 @@ struct Dato: View {
             Text(valor)
                 .font(.numeroMediano)
                 .monospacedDigit()
-                .lineLimit(1)
+                // Con letra de accesibilidad baja de renglón antes que quedar en "60 k…".
+                .lineLimit(tamañoLetra.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(0.7)
                 .contentTransition(.numericText())
             if let detalle {
