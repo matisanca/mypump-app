@@ -23,9 +23,9 @@ import java.util.Locale
  * `mypump_salud_diaria.fuente` es la que desempata el motor de recuperación, y la métrica de HRV decide cuánto pesa
  * (HealthKit solo tiene SDNN; Health Connect solo rMSSD, que el motor pesa más).
  *
- * Los vectores son de iPhone ([IOS]). Lo de [ANDROID] sale de las tablas del bridge y todavía no tiene vectores: falta el
- * permiso de historial de Health Connect (el alcance de 30 días sin `READ_HEALTH_DATA_HISTORY`, healthkit-bridge.js:
- * 266-330 y 999-1060), que va con la fuente de Health Connect en `:app`.
+ * Los vectores son de iPhone ([IOS]). Lo de [ANDROID] sale de las tablas del bridge, con sus pruebas propias: el permiso
+ * de historial de Health Connect (el alcance de 30 días sin `READ_HEALTH_DATA_HISTORY`, healthkit-bridge.js:266-330 y
+ * 999-1060) en `SincronizadorSalud`, y la fuente de Health Connect en `:app` (`FuenteHealthConnect`).
  */
 enum class PlataformaSalud(val fuente: String, val metricaHRV: String) {
     IOS("apple_health", "sdnn"),
