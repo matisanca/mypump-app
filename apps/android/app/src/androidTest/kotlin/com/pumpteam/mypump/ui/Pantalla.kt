@@ -88,6 +88,9 @@ class Pantalla(private val esperaMs: Long = 15_000) {
     private companion object {
         /** Cuánto se espera a que algo aparezca solo antes de desplazar las listas perezosas para buscarlo ([Recorrido]). */
         const val GRACIA_MS = 1_000L
+
+        /** Cuánto tiene que estar quieto un nodo en la pantalla para tocarlo con el dedo ([tocarDeVerdad]). */
+        const val QUIETO_PARA_TOCAR_MS = 300L
     }
 
     /** Corre en el hilo principal (si ya se está en él, directo: `runOnMainSync` desde el principal se traba). */
@@ -303,6 +306,7 @@ class Pantalla(private val esperaMs: Long = 15_000) {
         // Donde está el nodo en la pantalla, cuando ya está quieto (sin animación de entrada) y entero a la vista: un
         // nodo recién compuesto o recortado da un rectángulo vacío, y el toque caía en la barra de estado.
         var anterior: Pair<Float, Float>? = null
+        var quietoDesde = 0L
         val recorrido = Recorrido(desplazar = true)
         val (x, y) = esperar("está quieto y a la vista $s") {
             // Que esté compuesto (en una lista perezosa, desplazando hasta él); después se lo ubica entero en pantalla.
@@ -344,8 +348,12 @@ class Pantalla(private val esperaMs: Long = 15_000) {
                 val punto = (donde[0] + b.center.x) to (donde[1] + b.center.y)
                 if (punto != anterior) {
                     anterior = punto
+                    quietoDesde = SystemClock.uptimeMillis()
                     return@esperar null
                 }
+                // Quieto un rato y no solo dos lecturas seguidas: con el emulador cargado una transición puede tardar en
+                // arrancar, y el toque caía donde estaba el campo antes de moverse (Android 11, 15-oct).
+                if (SystemClock.uptimeMillis() - quietoDesde < QUIETO_PARA_TOCAR_MS) return@esperar null
                 return@esperar punto
             }
             null
