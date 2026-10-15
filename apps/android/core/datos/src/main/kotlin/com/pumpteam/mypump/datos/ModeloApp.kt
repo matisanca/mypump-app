@@ -840,38 +840,50 @@ class ModeloApp(
         )
     }
 
-    /** Preferencias, alimentos propios y swaps del servidor (hydrateSwapsAndCustomFoodsFromBackend). */
+    /**
+     * Preferencias, alimentos propios y swaps del servidor (hydrateSwapsAndCustomFoodsFromBackend). Todo es de ESTA cuenta y
+     * de ESTA dieta: si mientras se espera al servidor entra otro link (o llega otra dieta), lo que vuelve se descarta. Antes
+     * se aplicaba igual y lo de A quedaba en B: sus preferencias, sus alimentos propios y sus reemplazos, en memoria, en la
+     * carpeta de B y en su cola (revisión del 15-oct, hallazgo 10). La cola y la carpeta son las de la cuenta del principio,
+     * aunque cambie en el medio.
+     */
     internal suspend fun hidratarDieta() {
         val t = token ?: return
         val dieta = _dieta.value ?: return
+        val d = disco ?: return
+        val cola = outbox ?: return
+        fun vigente(): Boolean = token == t && !_esDemo.value && _dieta.value?.id == dieta.id
         val p = mapOf("p_token" to texto(t))
-        cliente.filas("mypump_get_cliente_prefs", p, PreferenciasCliente::desde).valorONull()?.let {
-            _excluir.value = it.firstOrNull()?.excluir ?: emptyList()
-        }
-        cliente.filas("mypump_get_custom_foods", p, AlimentoPropio::desde).valorONull()?.let { _alimentosPropios.value = it }
+        val prefs = cliente.filas("mypump_get_cliente_prefs", p, PreferenciasCliente::desde)
+        if (!vigente()) return
+        prefs.valorONull()?.let { _excluir.value = it.firstOrNull()?.excluir ?: emptyList() }
+        val propios = cliente.filas("mypump_get_custom_foods", p, AlimentoPropio::desde)
+        if (!vigente()) return
+        propios.valorONull()?.let { _alimentosPropios.value = it }
 
         val remotos = cliente.filas("mypump_get_food_swaps", mapOf("p_token" to texto(t), "p_dieta_id" to texto(dieta.id)), FoodSwap::desde)
             .valorONull()
-        val pendientes = (outbox?.pendientesPorClave() ?: emptyMap()).mapValues { it.value.kind }
+        val pendientes = cola.pendientesPorClave().mapValues { it.value.kind }
+        if (!vigente()) return
         val marca = "swaps_migrados_${dieta.id}"
-        val yaMigrado = (disco?.leer(marca) as? JsonPrimitive)?.booleanOrNull ?: false
+        val yaMigrado = (d.leer(marca) as? JsonPrimitive)?.booleanOrNull ?: false
         val e = dieta.estructura
         val tipo = tipoDia
         val h = SwapsDeComida.hidratar(remotos, _swaps.value, dieta.id, pendientes, yaMigrado, _palanca.value.anclajeBorraSwaps) { c, o, f ->
             SwapsDeComida.enPosicion(e, tipo, c, o, f)
         } ?: return
         _swaps.value = h.swaps
-        guardarSwaps()
+        guardarSwaps()   // sin esperas desde `vigente()`: la carpeta y la dieta siguen siendo las del principio
         for (op in h.operaciones) {
             val payload = (op.payload as? ValorJson.Objeto)?.let { ValorJson.Objeto(it.campos + ("dietaId" to texto(dieta.id))) } ?: op.payload
-            outbox?.encolar(op.kind, payload, op.clave)
+            cola.encolar(op.kind, payload, op.clave)
         }
         if (h.migrando) {
-            outbox?.drenar()
-            val quedan = (outbox?.pendientesPorClave() ?: emptyMap()).keys.any { it.startsWith("swap_${dieta.id}_") }
-            if (!quedan) disco?.guardar(marca, ValorJson.Booleano(true))
+            cola.drenar()
+            val quedan = cola.pendientesPorClave().keys.any { it.startsWith("swap_${dieta.id}_") }
+            if (!quedan) d.guardar(marca, ValorJson.Booleano(true))
         } else if (h.marcarMigrado) {
-            disco?.guardar(marca, ValorJson.Booleano(true))
+            d.guardar(marca, ValorJson.Booleano(true))
         }
     }
 
