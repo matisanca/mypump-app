@@ -1,14 +1,13 @@
 package com.pumpteam.mypump.ui
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
  * Las capturas de evidencia, en claro y en oscuro: recorre la bienvenida, el link vencido, la demo, las fuentes, una
- * cuenta (con badges y el banner de Revisión), Mis datos, sin red y el permiso de la IA. Quedan en
- * [Telefono.CARPETA_CAPTURAS] y las baja `scripts/nativa/emu-ui.sh` a `~/Developer/nativa-evidencia/android-ui/<fecha>/`.
+ * cuenta (con badges y el banner de Revisión), Mis datos y sin red. Quedan en [Telefono.CARPETA_CAPTURAS] y las baja
+ * `scripts/nativa/emu-ui.sh` a `~/Developer/nativa-evidencia/android-ui/<fecha>/`.
  */
 @RunWith(AndroidJUnit4::class)
 class CapturasUiTest : PruebaUi() {
@@ -146,7 +145,7 @@ class CapturasUiTest : PruebaUi() {
             p.nodo(textoQueContiene("Semana del"))
             foto("08-cuenta-revision")
             p.tocar(etiqueta("mis-datos"))
-            p.nodo(etiqueta("asistente-ia"))
+            p.nodo(etiqueta("tema-oscuro"))
             foto("09-cuenta-mis-datos")
         }.close()
 
@@ -166,13 +165,5 @@ class CapturasUiTest : PruebaUi() {
             p.nodo(etiqueta("sin-conexion"))
             foto("11-sin-conexion")
         }.close()
-
-        // El permiso de la IA antes del primer mensaje (D7).
-        servidor.sinRed = false
-        val (m, alcance) = modeloConCuenta()
-        armarPermisoIA(m, alcance, CopyOnWriteArrayList())
-        p.tocar(etiqueta("mandar"))
-        p.nodo(etiqueta("ia-acepto"))
-        foto("12-permiso-ia")
     }
 }

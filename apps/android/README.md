@@ -48,16 +48,20 @@ y números grandes van en Archivo.
 |---|---|
 | `diseno` | `TemaMyPump` (claro/oscuro, `MyPump.colores`), `Iconos`, componentes (`Tarjeta`, `BotonMarca`, `Aviso`, `MarcoPantalla`, `Formato`) |
 | `raiz` | `RaizMyPump` (marca, bienvenida, sin conexión, "Actualizá MyPump" o la app), `AppConPestanas` (5 pestañas, badges, barra de la demo, banner sin conexión, aviso de guardado), `Navegacion` |
-| `acceso` | Bienvenida (`AccesoPantalla`), `Apariencia` (D5) y el permiso para la IA (`PermisoIA`, D7) |
+| `acceso` | Bienvenida (`AccesoPantalla`) y `Apariencia` (D5) |
 | `entreno` | Entreno (gemela de `apps/ios/MyPump/Entreno/`): la lista del día (`ListaEntreno`), el detalle de un ejercicio (`EjercicioPantalla`, `TablaSeries`), sustituir y cerrar el día (`Hojas`), el descanso (`Descanso`: la isla arriba de las pestañas, su reloj y el pitido), las preguntas del motor (`Preguntador`) y los textos de la app (`Bonito`, `CardAccesible`) |
 | `dieta`, `revision`, `misdatos`, `respaldo` | Dieta en modo lectura, Revisión (por ahora la entrada a Mis datos), Mis datos y las 14 fuentes |
 
 - **El tema (D5).** Sigue al teléfono, salvo `mypump-theme = "dark"` en las preferencias (lo escribe "Siempre en modo
   oscuro" de Mis datos o la migración de la web). Los íconos de la barra de estado van con el tema de la app, no con el
   del teléfono.
-- **El permiso para la IA (D7).** Lo que manda algo a la IA llama a `LocalPermisoIA.current.antesDeUsarIA(modelo) { acepta -> … }`
-  antes del primer uso: si el cliente nunca decidió, aparece la hoja y después sigue. Lo van a usar el chat, la foto de
-  una comida y el check, que todavía no existen en Android.
+- **Sin permiso para la IA.** D7 se sacó el 14-oct (Mati: la IA trabaja bajo su aprobación y no es algo que el cliente
+  acepte): no hay hoja antes del primer mensaje, foto o check, ni interruptor en Mis datos, y la app no lee
+  `mypump_get_consentimiento_ia`. La cola sigue sabiendo ejecutar `consentimiento_ia`, solo para vaciar lo que haya
+  quedado de antes; un `consentimiento-ia.json` viejo queda en la carpeta de la cuenta y nadie lo lee.
+- **El aviso del domingo** no se configura y llega como un mensaje de Mati: `AvisoDomingo` (título "Mati", id 1002 de la
+  Capacitor, domingo a las 11:00, abre Revisión), gemelo del de iOS. Las notificaciones todavía no están en Android;
+  `PreferenciasAvisos` queda por la migración, no para agendar.
 - **Links (fuentes y legales).** `abrirEnNavegador` abre una Custom Tab (`androidx.browser`, OK de Mati del 14-oct),
   como el SFSafariViewController de iOS; sin un navegador que las soporte, va al navegador.
 - **Entreno.** Todo sale del motor (`ModeloEntreno`, sin cambios en `:core`). Las pantallas lo leen con `vistaDe(motor)`:
@@ -83,8 +87,8 @@ y números grandes van en Archivo.
   `testTag` o por texto y espera a que aparezca. El backend es `ServidorDePrueba`, que contesta con las respuestas
   grabadas de `test-nativa-real` (`apps/shared/fixtures`, en los assets del APK de pruebas), sin tokens ni red. Las de Entreno
   (`EntrenoUiTest`) usan además `tocarDeVerdad` (un toque con el dedo, que en un campo ubica el cursor: así se prueba que
-  tocar un campo lo selecciona entero, SER-04) y `teclear` (escribe donde está el cursor, como el teclado). La prueba
-  del permiso de la IA arma la hoja en una `ComponentActivity` vacía que solo existe en debug (`src/debug/AndroidManifest.xml`).
+  tocar un campo lo selecciona entero, SER-04) y `teclear` (escribe donde está el cursor, como el teclado). Lo que se
+  prueba suelto (`CustomTabsTest`) va en una `ComponentActivity` vacía que solo existe en debug (`src/debug/AndroidManifest.xml`).
   Si se agrega `ui-test-junit4` + `ui-test-manifest`, las pruebas pasan a `createAndroidComposeRule` casi sin cambios:
   las etiquetas son las mismas.
 

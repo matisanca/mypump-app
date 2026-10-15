@@ -36,8 +36,6 @@ class ServidorDePrueba : Transporte {
     val respuestas = ConcurrentHashMap<String, String>()
 
     init {
-        // D7 con la `nativa_002` aplicada y el cliente sin decidir: la app tiene que preguntar antes del primer uso.
-        respuestas["mypump_get_consentimiento_ia"] = """{"acepta":null}"""
         // Sin la tabla de la palanca remota: vale la de fábrica.
         respuestas["mypump_get_app_config"] = SIN_FUNCION
     }

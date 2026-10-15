@@ -56,10 +56,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.pumpteam.mypump.ModeloAppViewModel
-import com.pumpteam.mypump.acceso.HojaPermisoIA
-import com.pumpteam.mypump.acceso.LocalPermisoIA
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.datos.EstadoGuardado
 import com.pumpteam.mypump.datos.ModeloApp
@@ -85,8 +82,7 @@ import kotlinx.coroutines.launch
 
 /**
  * La app con una cuenta (o la demo): las 5 pestañas (GEN-01) con sus badges (GEN-03), Mis datos colgando de Revisión, la
- * barra de la demo o el banner de "sin conexión" arriba (OFF-06), el aviso de guardado abajo (GEN-04) y la hoja del
- * permiso de la IA (D7) para lo que la pida.
+ * barra de la demo o el banner de "sin conexión" arriba (OFF-06) y el aviso de guardado abajo (GEN-04).
  *
  * Cada pestaña guarda su estado al cambiar de pestaña (el desplazamiento, la opción elegida de cada comida), como el
  * `TabView` de iOS. Atrás vuelve de Mis datos a Revisión y de cualquier pestaña a Entreno, y desde Entreno sale.
@@ -98,8 +94,6 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val desdeCache by modelo.desdeCache.collectAsStateWithLifecycle()
     val estadoGuardado by modelo.estadoGuardado.collectAsStateWithLifecycle()
     val destino by vm.destino.collectAsStateWithLifecycle()
-    // En el ViewModel: un pedido de permiso sobrevive a rotar la pantalla.
-    val permisoIA = vm.permisoIA
     val estadosPestanas = rememberSaveableStateHolder()
     val badges = badges(modelo, esDemo)
     val entreno by modelo.entreno.collectAsStateWithLifecycle()
@@ -117,7 +111,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     BackHandler(enabled = enMisDatos) { navegacion.misDatos = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
 
-    CompositionLocalProvider(LocalNavegacion provides navegacion, LocalPermisoIA provides permisoIA) {
+    CompositionLocalProvider(LocalNavegacion provides navegacion) {
         Scaffold(
             containerColor = MyPump.colores.fondo,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -159,7 +153,6 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                 DialogoPreguntas(vm.preguntasEntreno)
             }
         }
-        HojaPermisoIA(modelo, permisoIA, vm.viewModelScope)
     }
 }
 

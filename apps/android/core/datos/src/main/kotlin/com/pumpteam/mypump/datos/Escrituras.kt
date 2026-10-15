@@ -154,8 +154,10 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
                     ),
                 )
             }
-            // D7 (`nativa_002`): TRUE = guardado; NULL = token caído (la cola lo estaciona).
-            ConsentimientoIA.KIND -> ResultadoOp.Respuesta(
+            // D7 se sacó el 14-oct (Mati: la IA no es algo que el cliente acepte). La app ya no lo encola; esto vacía lo que
+            // haya quedado en una cola. Solo registra lo que se eligió (`nativa_002`): nada del servidor lo lee. TRUE =
+            // guardado; NULL = token caído (la cola lo estaciona).
+            "consentimiento_ia" -> ResultadoOp.Respuesta(
                 cliente.llamar(
                     "mypump_guardar_consentimiento_ia",
                     mapOf("p_token" to t, "p_acepta" to de(p, "acepta"), "p_plataforma" to de(p, "plataforma"), "p_app" to de(p, "app")),
