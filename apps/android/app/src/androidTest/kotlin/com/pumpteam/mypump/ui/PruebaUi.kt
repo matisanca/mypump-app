@@ -8,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.pumpteam.mypump.Entorno
 import com.pumpteam.mypump.MainActivity
 import com.pumpteam.mypump.acceso.Apariencia
+import com.pumpteam.mypump.acceso.Onboarding
 import com.pumpteam.mypump.acceso.PreferenciasCompartidas
 import com.pumpteam.mypump.acceso.TokenEnKeystore
 import java.io.File
@@ -36,6 +37,8 @@ abstract class PruebaUi {
         // Las fotos del catálogo tampoco van a la red: se ve el marcador.
         FotosDePrueba.sinRed()
         Raices.instalar()
+        // Avisos: sin Firebase de verdad y con el permiso que dé el teléfono (las de avisos lo fijan).
+        AvisosDePrueba.preparar()
     }
 
     @After
@@ -47,6 +50,7 @@ abstract class PruebaUi {
         Raices.desinstalar()
         Telefono.modoNoche(false)
         reiniciarEstado()
+        AvisosDePrueba.soltar(app)
     }
 
     /** Sin cuenta, sin preferencias y sin los archivos de ninguna cuenta. Lo de la migración (`files/legado`) no se toca. */
@@ -54,6 +58,8 @@ abstract class PruebaUi {
         File(app.noBackupFilesDir, TokenEnKeystore.ARCHIVO).delete()
         app.getSharedPreferences(PreferenciasCompartidas.ARCHIVO, Context.MODE_PRIVATE).edit().clear().commit()
         File(app.filesDir, "MyPump").deleteRecursively()
+        // La hoja de permisos de la primera vez ya se vio (el `-sinOnboarding` de iOS): las que la prueban la vuelven a pedir.
+        guardarPreferencia(Onboarding.CLAVE, "1")
     }
 
     protected fun <A : android.app.Activity> registrar(e: ActivityScenario<A>): ActivityScenario<A> = e.also { escenarios += it }
