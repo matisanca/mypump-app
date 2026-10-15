@@ -307,7 +307,8 @@ class ModeloApp(
         _fotos.value = ModeloFotos(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
         _salud.value?.cancelarEspera()
-        _salud.value = ModeloSalud(cliente, t, almacen = preferencias, alcance = alcance)
+        // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3 del 15-oct).
+        _salud.value = ModeloSalud(cliente, t, almacen = AlmacenSaludPorCuenta(preferencias, Disco.huella(t)), alcance = alcance)
         // Los avisos llegan desde el hilo de la cola: los StateFlow se pueden tocar desde cualquier hilo y así el orden se
         // conserva (en iOS se pasa al principal con un Task por aviso).
         alcance.launch {

@@ -161,8 +161,8 @@ object RegistroPush {
         else -> Decision.REGISTRAR
     }
 
-    /** La de la carpeta de la cuenta (`Disco`): identifica la cuenta sin guardar el token en las preferencias. */
-    fun huella(cuenta: String): String = Disco.sha256(cuenta).take(16)
+    /** La de la carpeta de la cuenta ([Disco.huella]): identifica la cuenta sin guardar el token en las preferencias. */
+    fun huella(cuenta: String): String = Disco.huella(cuenta)
 
     /**
      * El registro en sí, sin el modelo: lo usa [ModeloApp.registrarPush] y el servicio de push con la app cerrada (un token
