@@ -750,7 +750,8 @@ class ModeloApp(
     suspend fun sustituir(original: Alimento, sustituto: ValorJson, comidaId: String, opt: Int, idx: Int) {
         val dietaId = _dieta.value?.id ?: return
         val k = clave(comidaId, opt, idx)
-        val anclado = SwapsDeComida.conAncla(sustituto, original)
+        // Sin NaN ni infinito: en memoria como queda en el archivo y en la cola (null, como `JSON.stringify`).
+        val anclado = SwapsDeComida.conAncla(sustituto, original).sinNoFinitos
         _swaps.update { it + (k to SwapLocal(alimentoJson(original), anclado)) }
         guardarSwaps()
         outbox?.encolar(

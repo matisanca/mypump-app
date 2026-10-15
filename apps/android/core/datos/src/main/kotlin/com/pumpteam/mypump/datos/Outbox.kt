@@ -78,6 +78,19 @@ data class Operacion(
 /** Una op que el servidor guardó, con lo que contestó (para el chat, el id de la fila: `agregar_comentario`). */
 data class OpGuardada(val op: Operacion, val respuesta: ValorJson)
 
+/**
+ * Lo que no tiene JSON (NaN, infinito) como null, como hace `JSON.stringify` de la web. [ValorJson.aJson] ya lo escribe así
+ * en el disco y en la RPC; esto lo deja igual en memoria (en iOS, sin esto, ni la cola se podía guardar: revisión del
+ * 15-oct, sospecha de `Outbox.guardar`).
+ */
+internal val ValorJson.sinNoFinitos: ValorJson
+    get() = when (this) {
+        is ValorJson.Numero -> if (valor.isFinite()) this else ValorJson.Nulo
+        is ValorJson.Lista -> ValorJson.Lista(elementos.map { it.sinNoFinitos })
+        is ValorJson.Objeto -> ValorJson.Objeto(campos.mapValues { it.value.sinNoFinitos })
+        else -> this
+    }
+
 /** El aviso de guardado que ve el cliente (el toast de la web, `showSaveState`). */
 enum class EstadoGuardado {
     QUIETO,
@@ -218,7 +231,7 @@ class Outbox(
         if (dedupeKey != null) ops.removeAll { it.dedupeKey == dedupeKey }
         secuencia += 1
         val ahora = System.currentTimeMillis().toDouble()
-        val op = Operacion(id = "${ahora.toLong()}_$secuencia", kind = kind, payload = payload, dedupeKey = dedupeKey, ts = ahora)
+        val op = Operacion(id = "${ahora.toLong()}_$secuencia", kind = kind, payload = payload.sinNoFinitos, dedupeKey = dedupeKey, ts = ahora)
         ops += op
         guardar()
         programar(0)
