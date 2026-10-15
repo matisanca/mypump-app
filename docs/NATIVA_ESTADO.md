@@ -31,6 +31,50 @@ commitea.
   flujo `v*` de Codemagic tiene `cancel_previous_submissions` y cancelaría el envío.
 - Las migraciones van como `supabase/migrations/nativa_NNN_*.sql`, solo con OK (G2).
 
+## Camino a las tiendas (Mati, 14-oct 23:50)
+
+Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en ambas tiendas».
+- **Sin beta con clientes:** «si crees que no está para lanzamiento, seguí testeando vos muchísimo hasta asegurarte que
+  esté para lanzamiento real». La prueba exhaustiva propia reemplaza a G5 y G6.
+- **Sin teléfono Android físico:** «prefiero que busques la forma de simularlo desde la mac». Se prueba con una matriz
+  de emuladores con los servicios de Google.
+- **El envío a revisión** de Apple y de Google se le confirma igual, con un resumen concreto, en el momento de mandarlo
+  (G7). Los permisos de las acciones irreversibles van uno por uno.
+
+**iPhone 2.0.0**
+1. ☐ La 1.0.12 publicada por Apple. El 14-oct a las 23:50 la App Store seguía con la 1.0.6. Se mira con
+   `curl -s "https://itunes.apple.com/lookup?bundleId=com.pumpteam.mypump&country=ar"`.
+2. ☐ Prueba exhaustiva propia:
+   - simuladores de iOS 17.5, 18.6 y 26.5, en tamaños chico, Pro Max y iPad, claro y oscuro, con Dynamic Type XL;
+   - la migración desde la Capacitor (`sim-migracion.sh`), con el recibo de cero pérdida;
+   - cada pestaña con `test-nativa-real`, lado a lado con la web;
+   - sin red, red intermitente y token revocado;
+   - push simulado y la notificación local del domingo;
+   - revisión adversarial del código;
+   - el iPhone de Mati con el TestFlight nuevo, en el uso de todos los días.
+3. ☐ TestFlight 104 con lo de después del 103: PRO-02 (6324c09), el push con otra cuenta (5b11bfd) y los arreglos de
+   Entreno.
+4. ☐ Capturas nuevas (`capturas-tienda-ios.sh`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
+5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
+
+**Android 2.0.0**
+1. ☐ Pantallas que faltan: Chat y Progreso (en curso), Revisión y Mi Día (en curso), Dieta con escritura.
+2. ☐ Paridad de Android al 100 %.
+3. ☐ Matriz de emuladores con Google Play, en Android 9, 11, 13, 14 y 16:
+   - la migración desde la Capacitor 1.0.12;
+   - un push real de punta a punta con `push.py` y la cuenta de prueba;
+   - Health Connect, que viene integrado desde Android 14 y es una app aparte de 9 a 13;
+   - tamaños de pantalla, modo oscuro y fuente grande.
+4. ☐ Workflow `android-nativa` (tag `nand-*`):
+   - el AAB firmado con `mypump-upload`, con `versionCode` ≥ 100;
+   - los permisos del AAB revisados;
+   - las librerías nativas alineadas a 16 KB.
+5. ☐ Play:
+   - la subida del AAB, que es manual porque no hay cuenta de servicio;
+   - la declaración de Health Connect y Data safety;
+   - las capturas.
+6. ☐ G7: con el OK concreto de Mati, producción con rollout por porcentaje.
+
 ## Fase actual: 0, lo que pide el §9
 
 | Paso | Estado |
@@ -87,9 +131,9 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
 | G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14) aplicada por Mati el 14-oct a las 18:16**: API pública, esquema (solo agregados) y auditoría sin agujeros, y una sustitución pasa entre dos teléfonos contra producción. Pendiente para otra tanda: `mypump_borrar_serie` |
 | G4 · descargas | Android: `androidx.browser`, `ui-test-junit4`/`ui-test-manifest` (14-oct) y **Firebase Messaging 25.0.1 + plugin google-services 4.4.4 + Health Connect `connect-client` 1.1.0** («dale», 14-oct 21:10). Son las versiones que ya compila la Capacitor y están en la caché de Gradle. El `google-services.json` es el de `android/app` (ya público, proyecto mypump-663be) |
-| G5 · TestFlight externo | pendiente. Los internos ya están autorizados |
-| G6 · mensajes a clientes | pendiente |
-| G7 · revisión de tiendas | pendiente |
+| G5 · TestFlight externo | **no va** (Mati, 14-oct 23:50): sin beta con clientes, la reemplaza la prueba exhaustiva propia. Los internos están autorizados |
+| G6 · mensajes a clientes | no hace falta para el lanzamiento (sin beta) |
+| G7 · revisión de tiendas | pendiente: el OK concreto se pide al mandar (ver «Camino a las tiendas») |
 
 ## Decisiones tomadas en autónomo (13/14-oct, Mati: "seguí sin mi intervención")
 
