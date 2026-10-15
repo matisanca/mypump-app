@@ -330,10 +330,15 @@ object EjecutorLegado {
         r.plan = plan
         r.tokenVigente = plan.tokenVigente
 
-        // 3. Token.
+        // 3. Token. Se lee de vuelta: si el almacén no lo guardó (con el Keystore fallando, `TokenEnKeystore` borra el archivo y
+        //    no tira), la Fase L quedaba hecha igual (con la huella anotada no vuelve a correr) y la app abría en "pegá tu
+        //    link" para siempre (sospecha de la revisión del 15-oct, confirmada en iOS). Así no queda hecha: todavía no se
+        //    escribió nada más (la copia cruda ya está y no se repite) y se reintenta con la app abierta o en el arranque
+        //    siguiente (`ArranqueMigracion`).
         val vigente = plan.tokenVigente
         if (plan.adoptarToken && vigente != null) {
             almacen.guardar(vigente)
+            if (almacen.leer() != vigente) throw IOException("el almacén no guardó el token adoptado")
             r.adoptoToken = true
         }
 
