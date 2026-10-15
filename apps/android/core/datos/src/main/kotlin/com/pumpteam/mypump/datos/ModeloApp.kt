@@ -140,11 +140,11 @@ class ModeloApp(
     private val _comidasLibres = MutableStateFlow<List<ComidaLibre>>(emptyList())
     val comidasLibres: StateFlow<List<ComidaLibre>> = _comidasLibres.asStateFlow()
 
-    /** El chat con Mati (no existe en la demo ni sin cuenta). */
+    /** El chat con Mati (no existe sin cuenta; en la demo es el hilo vacío, sin red). */
     private val _chat = MutableStateFlow<ModeloChat?>(null)
     val chat: StateFlow<ModeloChat?> = _chat.asStateFlow()
 
-    /** Revisión y Mi Día (no existen en la demo ni sin cuenta). */
+    /** Revisión y Mi Día (no existen sin cuenta; en la demo, Mi Día sembrado como la web y sin red). */
     private val _revision = MutableStateFlow<ModeloRevision?>(null)
     val revision: StateFlow<ModeloRevision?> = _revision.asStateFlow()
 
@@ -241,6 +241,9 @@ class ModeloApp(
         _desdeCache.value = false
         _sinRedEn.value = emptySet()
         _esDemo.value = true
+        // ACC-07: Mi Día sembrado como la web (racha 3, hoy "entrené" y 2 vasos) y el chat con el hilo vacío, sin red ni cola.
+        _revision.value = ModeloRevision.demo(cliente, alcance)
+        _chat.value = ModeloChat(cliente, token = null, outbox = null, alcance = alcance)
         _entreno.value = _rutina.value?.let { r ->
             ModeloEntreno(cliente, token = null, outbox = null, disco = null, rutinaInicial = r, catalogoInicial = catalogoVigente, alcance = alcance)
         }
@@ -255,6 +258,8 @@ class ModeloApp(
         _dieta.value = null
         _swaps.value = emptyMap()
         _entreno.value = null
+        _revision.value = null   // los de la demo
+        _chat.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {
@@ -542,6 +547,15 @@ class ModeloApp(
         null
     }
 
+    /**
+     * Progreso por el ejercicio que se hace de verdad: el sustituto si hay (PRO-02, `getEffectiveEx` en el
+     * `loadProgressAndRender` de la web). Sin el motor de Entreno, por el nombre del plan.
+     */
+    suspend fun cargarProgreso() {
+        val entreno = _entreno.value
+        _progreso.value?.cargar(_rutina.value) { entreno?.efectivo(it)?.ejercicio?.nombre ?: it.nombre }
+    }
+
     /** Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas. */
     val pendientesDeLaSemana: FotosProgreso.Pendientes
         get() {
@@ -585,7 +599,10 @@ class ModeloApp(
     val avisoPlanIncompleto: Pair<String, String>?
         get() {
             if (_esDemo.value) return null
-            val p = _problemasDieta.value + (_entreno.value?.problemas?.value ?: emptyList())
+            // Como la web: primero lo de la rutina y después lo de la dieta (se muestran los tres primeros). A propósito no se
+            // suma el "Todavía no tenés dieta publicada." de la web: a quien solo tiene rutina le dejaba un aviso de error
+            // fijo, y la pestaña Dieta ya lo dice.
+            val p = (_entreno.value?.problemas?.value ?: emptyList()) + _problemasDieta.value
             if (p.isEmpty()) return null
             return "A tu plan le falta información y algunas cosas pueden verse raras. Avisale a Mati y lo republica." to
                 p.take(3).joinToString(" · ")
@@ -791,7 +808,8 @@ class ModeloApp(
             return null
         }
         val r = NormalizarDieta.normalizar(d.estructura)
-        _problemasDieta.value = r.problemas
+        // Como la web: de una dieta que no sirve no se listan sus detalles, se dice que está incompleta.
+        _problemasDieta.value = if (r.usable) r.problemas else listOf("Tu dieta está publicada pero incompleta.")
         if (!r.usable) return null
         return d.copy(estructura = r.estructura)
     }

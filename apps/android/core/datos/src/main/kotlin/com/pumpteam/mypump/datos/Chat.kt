@@ -139,15 +139,23 @@ object FechaIso {
 /**
  * El chat con Mati (`ambito='general'`): páginas de 30 hacia atrás, sondeo con un cursor, envío por la cola con la burbuja
  * al instante, "no salió → Reintentar" si la cola se rinde, y marcar leído al abrir. Es sondeo y no Realtime a propósito:
- * la anon key es la misma para todos los clientes (CHA-06).
+ * la anon key es la misma para todos los clientes (CHA-06). Sin token es la demo ([demo]).
  */
 class ModeloChat(
     private val cliente: ClienteRpc,
-    private val token: String,
+    /** null es la demo. */
+    private val token: String?,
     private val outbox: Outbox?,
     private val alcance: CoroutineScope,
 ) {
-    private val _hilo = MutableStateFlow(HiloChat())
+    /**
+     * La demo (`chatEsDemo` de la web, ACC-07): el hilo vacío para escribirle a Mati, y nada se carga, se manda, se sondea
+     * ni se marca leído. La pantalla avisa que en la demo los mensajes no se envían.
+     */
+    val demo: Boolean = token == null
+
+    // En la demo no hay nada más para traer (sin "Ver mensajes anteriores").
+    private val _hilo = MutableStateFlow(HiloChat(hayMas = !demo))
     val hilo: StateFlow<HiloChat> = _hilo.asStateFlow()
 
     /** Badge del tab: lo del coach que llegó con el chat cerrado. */
@@ -171,11 +179,11 @@ class ModeloChat(
 
     private var sondeo: Job? = null
     internal val sondeoEnCurso: Job? get() = sondeo
-    private val t get() = texto(token)
+    private val t get() = texto(token ?: "")   // la demo no llega acá: no toca la red
 
     /** `loadChat`: la última página, o una más hacia atrás. Sin red no toca nada. */
     suspend fun cargar(masViejos: Boolean = false) {
-        if (!_cargando.compareAndSet(expect = false, update = true)) return
+        if (demo || !_cargando.compareAndSet(expect = false, update = true)) return
         try {
             val antes = if (masViejos) _hilo.value.primeroReal?.let { texto(it.createdAt) } ?: ValorJson.Nulo else ValorJson.Nulo
             val filas = cliente.filas(
@@ -193,6 +201,7 @@ class ModeloChat(
 
     /** `chatPollTick`: lo nuevo desde el cursor. Lo que llega del coach por acá todavía no lo leyó (la RPC no trae el campo). */
     suspend fun sondear() {
+        if (demo) return
         val desde = _hilo.value.cursor ?: return cargar()
         val filas = cliente.filas("mypump_chat_nuevos", mapOf("p_token" to t, "p_desde" to texto(desde)), MensajeChat::desde)
             .valorONull()
@@ -217,7 +226,7 @@ class ModeloChat(
     /** `enviarChatMsg`: la burbuja aparece ya y el mensaje sale por la cola (sobrevive a cerrar la app sin señal). */
     suspend fun enviar(texto: String) {
         val contenido = TextoJs.recortar(texto)
-        if (contenido.isEmpty()) return
+        if (contenido.isEmpty() || demo) return
         val ahora = Instant.now()
         val b = BurbujaChat(
             id = "tmp_${ahora.toEpochMilli()}_${UUID.randomUUID().toString().take(5)}",
@@ -258,6 +267,7 @@ class ModeloChat(
      * "sin leer").
      */
     suspend fun marcarLeido(forzar: Boolean = false) {
+        if (demo) return
         var habia = false
         _hilo.update { h -> h.marcarLeidos().also { habia = it.second }.first }
         if (!habia && _noLeidos.value == 0 && !forzar) return
@@ -265,12 +275,16 @@ class ModeloChat(
         cliente.llamar("mypump_marcar_leidos_cliente", mapOf("p_token" to t, "p_ambito" to texto("general"), "p_referencia_id" to ValorJson.Nulo))
     }
 
+    /** La espera entre consultas, en milisegundos. Los tests la cambian para ver los intervalos sin esperarlos. */
+    internal var dormir: suspend (Long) -> Unit = { ms -> delay(ms) }
+
     /** Sondeo en cadena (nunca dos a la vez): 15 s abierto, 45 s cerrado. Se corta con la app en segundo plano. */
     fun empezarSondeo() {
+        if (demo) return
         sondeo?.cancel()
         sondeo = alcance.launch {
             while (isActive) {
-                delay(if (abierto) 15_000L else 45_000L)
+                dormir(if (abierto) 15_000L else 45_000L)
                 sondear()
             }
         }
