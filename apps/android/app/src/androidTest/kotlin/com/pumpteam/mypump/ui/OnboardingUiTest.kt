@@ -36,6 +36,9 @@ class OnboardingUiTest : PruebaUi() {
     @Before
     fun guardarFuente() {
         fuenteAntes = ModeloSalud.fuenteDelSistema
+        // El emulador trae Health Connect, y si no hay ninguna fuente el ViewModel instala la de verdad: el paso de Salud
+        // saldría adelante de Notificaciones. Cada prueba que lo quiere pone la suya.
+        ModeloSalud.fuenteDelSistema = SinHealthConnect
     }
 
     @After
@@ -161,6 +164,24 @@ class OnboardingUiTest : PruebaUi() {
         assertEquals(0, CentroAvisos.pedidos)
     }
 
+    /** Con el Health Connect del emulador (la fuente que instala el ViewModel), Salud va primero y "Ahora no" pasa a Notificaciones. */
+    @Test
+    fun conHealthConnectDeVerdadElPrimerPasoEsSalud() {
+        ModeloSalud.fuenteDelSistema = null
+        pendiente()
+        guardarCuenta()
+        abrir()
+        p.nodo(texto("Conectá tu salud"))
+        p.nodo(texto("paso 1 de 2 · esto lo podés cambiar después en Mis datos"))
+        p.tocar(etiqueta("onboarding-ahora-no"))
+        p.nodo(texto("Que no se te pase nada"))
+        p.nodo(texto("paso 2 de 2 · esto lo podés cambiar después en Mis datos"))
+        p.tocar(etiqueta("onboarding-ahora-no"))
+        p.esperarQueNoEste(etiqueta("onboarding-permisos"))
+        assertEquals("1", preferencia(Onboarding.CLAVE))
+        assertEquals(0, CentroAvisos.pedidos)
+    }
+
     /** Nunca en la demo (la que mira la revisión de las tiendas). */
     @Test
     fun enLaDemoNoSale() {
@@ -185,6 +206,23 @@ class OnboardingUiTest : PruebaUi() {
         p.nodo(etiqueta("pestana-entreno"))
         assertEquals("1", preferencia(Onboarding.CLAVE))
         assertEquals(0, CentroAvisos.pedidos)
+    }
+
+    /** Un teléfono sin Health Connect: la hoja es solo Notificaciones. */
+    private object SinHealthConnect : FuenteSalud {
+        override val plataforma = PlataformaSalud.ANDROID
+
+        override suspend fun disponible() = false
+
+        override suspend fun pedirLectura(tipos: List<String>) = Unit
+
+        override suspend fun permisos(tipos: List<String>) = PermisosSalud(emptyList(), tipos)
+
+        override suspend fun agregado(dataType: String, agregacion: String, desde: Double, hasta: Double): List<BaldeDiario> = emptyList()
+
+        override suspend fun muestras(dataType: String, desde: Double, hasta: Double, limite: Int): List<MuestraSalud> = emptyList()
+
+        override suspend fun entrenos(desde: Double, hasta: Double): List<EntrenoCrudo> = emptyList()
     }
 
     /** Health Connect que está pero cuya hoja de permisos nunca vuelve. */
