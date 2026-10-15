@@ -191,6 +191,50 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 05:00, iOS: la migración otra vez de punta a punta, la letra de accesibilidad y lo del agente de Play:**
+  - **Migración** (`sim-migracion.sh`, con el código de hoy). Aparecieron dos errores reales y uno de la prueba:
+    - **Pérdida de datos** (6fd391b). Los reemplazos de comida que estaban solo en el teléfono (una v1.0.11, sin la
+      marca de migrados) se perdían. Era una regresión del hallazgo 2: la palanca suelta las ops viejas con un drenado
+      inmediato, y el `swap` de la cola vieja llegaba al servidor antes de que se decidiera qué reemplazos del teléfono
+      faltaban subir. El servidor «ya tenía algo», ganaba la mezcla y el resto se descartaba. Ahora la cola retiene los
+      `swap`/`swap_del` viejos hasta esa decisión. Lo cubre `SwapsViejosPalancaTests`, que falla sin el arreglo.
+    - **La cola de fotos de la Capacitor quedaba** (549fdba). Si el cliente volvía a la app vieja (el plan B o un
+      TestFlight vencido), ella subía otra vez esas fotos y podía pisar una más nueva de la misma semana y pose. Lo
+      encontró el agente de Android. Ahora la escritura de vuelta la saca, solo si no cambió.
+    - **De la prueba** (45f4ed7). La limpieza de cada corrida deja una lápida de la sustitución de ejercicio, y en la
+      corrida siguiente SER-14 fallaba sin que la app hiciera nada mal.
+    - Resultado: 26/26 en 26.5 y en 17.5, y 27/27 con el chequeo nuevo de las fotos.
+  - **Letra de accesibilidad (AX5) en el iPhone SE** (b9e3cb3). Un barrido que desplaza cada pantalla encontró:
+    - Dieta ilegible: las kcal, los macros y el total de cada comida («T / OT / AL»).
+    - «Enviado» dibujado encima de «Check de la semana».
+    - El peso en «8… kg» y la última vez en «60 k…».
+    - Las fechas del gráfico encimadas.
+
+    Ahora va todo apilado, y en los tamaños de siempre no cambia nada (UI 17/17 en el iPhone 17 Pro).
+    `BarridoLetraGrandeUITests` queda como herramienta: corre solo con `TEST_RUNNER_MYPUMP_BARRIDO=1`.
+  - **`-sinRed YES`** (a88f527, solo en Debug) para ver la app sin señal en el simulador.
+  - **Agente de Play, respaldo y MIG-03** (cda4efd):
+    - **Capturas de Play:** 20 en `nativa-evidencia/tienda-android/20261015-034014`. El teléfono va en 1080×1920
+      porque Play no acepta un lado mayor que el doble del otro; la tablet de 10" va en 1440×2560. Detalle menor: las
+      claras muestran «3G» en la barra de estado y las oscuras no.
+    - **Respaldo de Google (APL-08):** 19/19 con `bmgr`, en la nube y en el pase a otro teléfono.
+      - El token de la nativa (Keystore y `acceso.bin`) nunca viaja.
+      - Con la app vieja respaldada, al restaurar la nativa vuelve a adoptar el token del WebView (D14).
+      - **D14 anda de casualidad.** Android restaura las fechas de los archivos en 1970, eso cambia la huella del
+        leveldb y la migración corre de nuevo. Con las fechas iguales cortaría antes y pediría el link. Hay que
+        endurecerlo en Android.
+      - `files/legado/estado.json` lleva el token en los nombres de las claves a borrar y viaja en el respaldo. El
+        mismo token ya viaja en `app_webview`, así que no hay exposición nueva y queda como la app vieja. En iOS es
+        igual: el Keychain con `AfterFirstUnlock` viaja a propósito en el respaldo cifrado, y la copia cruda está
+        excluida.
+      - La identidad de Firebase viaja en el respaldo. Que el push siga llegando después de restaurar solo se puede ver
+        con un teléfono real.
+    - **MIG-03 en Android:** 31/31 con fotos y sustitución.
+  - **Pendiente en Android,** cuando termine el agente de la matriz (toca los mismos archivos):
+    - los dos arreglos de la migración (los swaps viejos y la cola de fotos);
+    - D14 robusto;
+    - `limpiar` al final de `emu-migracion.sh`.
+
 - **15-oct 03:50, iOS en el iPad: el chat no tomaba el toque.** La suite de XCUITest en el iPad Pro 13" (iPadOS 26.5)
   encontró dos cosas:
   - **Pruebas:** en iPadOS 26 las pestañas son una barra flotante arriba y XCUITest no las ve como `tabBars`. Ahora se
