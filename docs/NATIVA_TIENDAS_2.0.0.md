@@ -157,7 +157,7 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 
 ## Orden del lanzamiento (quién hace qué)
 
-**Antes de enviar, en el iPhone de Mati con el TestFlight 110** (unos 15 minutos):
+**Antes de enviar, en el iPhone de Mati con el TestFlight 111** (unos 15 minutos):
 1. Tocar su link de MyPump desde WhatsApp: abre la app y entra solo (ACC-01/09).
 2. Conectar Salud de Apple desde Revisión → Mis datos y ver que lleguen sus datos (SAL-13).
 3. Que le llegue un mensaje real de chat y que tocar el aviso abra el Chat.
@@ -174,8 +174,10 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
    `cancel_previous_submissions`.
 
 **Google Play (Android):**
-1. El AAB `nand-2.0.0-102` (versionCode 102, 15-oct 12:20), del artefacto de Codemagic, se sube a mano a la prueba
-   interna. El 101 no existe: falló el chequeo de APIs en Codemagic por el entorno, y se saltea el número.
+1. El AAB `nand-2.0.0-103` (versionCode 103, 15-oct 13:34), del artefacto de Codemagic, se sube a mano a la prueba
+   interna.
+   - El 102 queda viejo: el 103 trae el arreglo de una pérdida de fotos.
+   - El 101 no existe: falló el chequeo de APIs en Codemagic por el entorno.
    - Así se verifica la firma de Play.
    - Con eso se cierra ACC-01 de Android: `pm get-app-links` con la app de Play.
 2. En Play Console:

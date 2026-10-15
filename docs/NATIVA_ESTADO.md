@@ -63,8 +63,9 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
        (`restoreSesionDelDia`).
    - ☐ El iPhone de Mati con el **TestFlight 108**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
      (SAL-13) y tocar un push real.
-3. ✅ TestFlight 104 a 109 y **110** (15-oct 12:03): el rendimiento de Progreso y el chat sin pedido doble. El 109 (11:00)
-   trajo la cola de fotos que ya no las pierde y la accesibilidad de la auditoría. Antes, la suite completa de interfaz en 26.5 dio 20 de 20, con las 15 salteadas a propósito (barrido y
+3. ✅ TestFlight 104 a 110 y **111** (15-oct 13:27): los arreglos de la segunda revisión adversarial, entre ellos una
+   pérdida de fotos. El 110 trajo el rendimiento de Progreso y el chat sin pedido doble; el 109, la cola de fotos que ya
+   no las pierde y la accesibilidad de la auditoría. Antes, la suite completa de interfaz en 26.5 dio 20 de 20, con las 15 salteadas a propósito (barrido y
    auditoría), y el kit 436/436. Del 104 al 106 tienen el cierre al tocar un aviso.
 4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
    Los arreglos de después no cambian lo que se ve en el tamaño de las capturas.
@@ -86,7 +87,8 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
      que el trigger lo encole y `push.py` lo mande por FCM;
    - Health Connect, que viene integrado desde Android 14 y es una app aparte de 9 a 13;
    - tamaños de pantalla, modo oscuro y fuente grande.
-4. ✅ Workflow `android-nativa`: **`nand-2.0.0-102`** (15-oct 12:20, b6dabe1) salió entero en Codemagic. Pasan las pruebas en
+4. ✅ Workflow `android-nativa`: **`nand-2.0.0-103`** (15-oct 13:34, 0bec33b, con los arreglos de la segunda revisión
+   adversarial) y antes el 102 salieron enteros en Codemagic. Pasan las pruebas en
    la JVM, el AAB y el APK firmados con `mypump-upload`, las APIs de `:core` contra el minSdk, la versión, la firma, los
    permisos y los 16 KB. El 101 falló en el chequeo de APIs, que corría por primera vez allá: el script dependía del
    Java de Homebrew y de versiones enteras del SDK.
