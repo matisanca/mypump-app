@@ -118,7 +118,6 @@ object DiaCalendario {
 object FotosProgreso {
     val poses: List<Pair<String, String>> = listOf("frente" to "Frente", "perfil" to "Perfil", "espalda" to "Espalda")
     const val MAX_PENDIENTES = 3
-    const val MAX_INTENTOS = 8
 
     /** El servidor corta el body de más de 3 MB; el data URL se filtra antes de encolar. */
     const val MAX_CARACTERES = 2_400_000

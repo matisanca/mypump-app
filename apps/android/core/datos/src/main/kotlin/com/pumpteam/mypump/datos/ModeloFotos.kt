@@ -23,7 +23,10 @@ data class FotoPendiente(
     val fecha: String,
     /** `data:image/jpeg;base64,…` (900 px, calidad 0,7, sin EXIF). */
     val dataUrl: String,
-    /** Solo cuentan los errores del servidor; con 8 se descarta. */
+    /**
+     * Los errores del servidor que contó la web (llega con la migración). La nativa no lo usa: un error del servidor no
+     * gasta la foto ([ModeloFotos.drenar]).
+     */
     val intentos: Int = 0,
 ) {
     fun aValor(): ValorJson = ValorJson.objeto(
@@ -69,10 +72,14 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         /** El link ya no sirve: queda guardada para cuando entre con el nuevo. */
         data object TokenCaido : Resultado
 
+        /** El servicio deja 12 por día y por link: queda guardada para mañana. */
+        data object TopeDelDia : Resultado
+
         val texto: String
             get() = when (this) {
                 Guardada -> "Listo, guardada ✓"
                 SinConexion -> "Sin conexión: queda guardada y se sube sola."
+                TopeDelDia -> "Hoy ya subiste muchas fotos: queda guardada y se sube sola mañana."
                 is Rechazada -> "No se pudo guardar: $motivo"
                 ColaLlena -> "Hay fotos esperando subir. Probá cuando tengas señal."
                 MuyPesada -> "Esa foto es demasiado pesada. Probá sacarla con la cámara."
@@ -144,6 +151,7 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
                     Resultado.Rechazada(r.motivo)
                 }
                 Envio.Reintentar, Envio.Red -> if (guardo) Resultado.SinConexion else Resultado.NoSeGuardo
+                Envio.Tope -> if (guardo) Resultado.TopeDelDia else Resultado.NoSeGuardo
                 Envio.TokenCaido -> if (guardo) Resultado.TokenCaido else Resultado.NoSeGuardo
             }
         } finally {
@@ -152,14 +160,20 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
     }
 
     /**
-     * `flushFotos`: una pasada a la vez. Un rechazo (4xx salvo 429) se descarta para no trabar la cola; la red no gasta
-     * intentos; 8 errores del servidor y se deja.
+     * `flushFotos`: una pasada a la vez. Un rechazo (4xx salvo 429) se descarta para no trabar la cola.
+     *
+     * Desvío a propósito (15-oct, como iOS): un error del servidor (5xx o 429) no gasta la foto. La web la borraba al
+     * octavo, y su propio comentario dice que con el servidor caído la foto tiene que sobrevivir. Pero con la Mini caída
+     * Cloudflare contesta 502/530, que contaba como error del servidor, y abriendo la app unas cuantas veces la foto se
+     * perdía. Con el tope de 12 por día («probá mañana») pasaba lo mismo. Ahora espera. Si nunca entra, la corta la ventana
+     * de fechas del servidor (+1/−7), que después la rechaza con un 400. Un 5xx sigue con la próxima, así una foto que el
+     * servidor no puede guardar no traba a las demás. El tope del día, la red y el token caído cortan la pasada.
      */
     suspend fun drenar() {
         if (_pendientes.value.isEmpty() || !drenando.tryLock()) return
         try {
             var subioAlgo = false
-            for (clave in _pendientes.value.keys.sorted()) {
+            pasada@ for (clave in _pendientes.value.keys.sorted()) {
                 val item = _pendientes.value[clave] ?: continue
                 _subiendo.update { it + clave }
                 val r = enviar(item)
@@ -169,19 +183,15 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
                         _pendientes.update { it - clave }
                         guardarCola()
                         subioAlgo = true
-                        continue
                     }
-                    is Envio.Fatal -> _pendientes.update { it - clave }
-                    Envio.Red, Envio.TokenCaido -> {}
-                    Envio.Reintentar -> {
-                        val otra = item.copy(intentos = item.intentos + 1)
-                        _pendientes.update { if (otra.intentos >= FotosProgreso.MAX_INTENTOS) it - clave else it + (clave to otra) }
+                    is Envio.Fatal -> {
+                        _pendientes.update { it - clave }
+                        guardarCola()
                     }
+                    Envio.Reintentar -> continue@pasada
+                    // No entra ninguna: con el tope del día, sin señal, o con este link (las adopta el link nuevo).
+                    Envio.Tope, Envio.Red, Envio.TokenCaido -> break@pasada
                 }
-                guardarCola()
-                if (r == Envio.Red) break
-                if (r == Envio.TokenCaido) break        // con este token no entra ninguna: las adopta la cuenta del link nuevo
-                if (clave in _pendientes.value) break   // el servidor está mal: se reintenta después
             }
             if (subioAlgo) {
                 cargar()
@@ -232,13 +242,16 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
 
         data object Reintentar : Envio
 
+        data object Tope : Envio
+
         data object Red : Envio
 
         data object TokenCaido : Envio
     }
 
     /**
-     * `_subirFoto`: 4xx salvo 429 = no va a entrar nunca; 5xx/429 = el servidor, se reintenta; sin respuesta = red. Desvío a
+     * `_subirFoto`: 4xx salvo 429 = no va a entrar nunca; 5xx = el servidor, se reintenta; 429 = el tope del día (12 por
+     * link), se reintenta mañana; sin respuesta = red. Desvío a
      * propósito: un 401/403 por el token NO borra la foto (la web la perdía). Queda guardada, sin gastar intento, y la adopta
      * la cuenta del link nuevo de la misma persona ([CuentasDelTelefono.adoptarFotos]; revisión del 15-oct, como iOS).
      */
@@ -260,7 +273,8 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         val j = parsear(r.cuerpo)
         if (r.status in 200..299 && j?.get("ok") == ValorJson.Booleano(true)) return Envio.Ok
         if ((r.status == 401 || r.status == 403) && "token" in (j?.get("error")?.comoTexto ?: "").lowercase()) return Envio.TokenCaido
-        if (r.status in 400..499 && r.status != 429) return Envio.Fatal(j?.get("error")?.comoTexto ?: "HTTP ${r.status}")
+        if (r.status == 429) return Envio.Tope
+        if (r.status in 400..499) return Envio.Fatal(j?.get("error")?.comoTexto ?: "HTTP ${r.status}")
         return Envio.Reintentar
     }
 
