@@ -160,6 +160,19 @@ public final class ModeloChat {
         self.cliente = cliente; self.token = token; self.outbox = outbox
     }
 
+    /// Cuántas veces llegó la última página (las de «Ver mensajes anteriores» no cuentan). La carga de la cuenta lo mira
+    /// para no pedirla otra vez si mientras tanto la trajo otro: el Chat abierto antes de que termine la carga (`alAbrir`)
+    /// o el sondeo (como Android, 15-oct).
+    @ObservationIgnored public private(set) var ultimasTraidas = 0
+
+    /// Se abrió la pantalla del chat. Si el hilo no se trajo nunca (sin red al arrancar, o la carga de la cuenta todavía
+    /// no llegó al chat), se trae ya: el sondeo recién consulta a los 15 s y mientras tanto se veía vacío. La carga de la
+    /// cuenta ve que ya llegó y no lo vuelve a pedir. Después, lo de Mati queda leído.
+    public func alAbrir() async {
+        if !cargado { await cargar() }
+        await marcarLeido()
+    }
+
     /// `loadChat`: la última página, o una más hacia atrás. Sin red no toca nada.
     public func cargar(masViejos: Bool = false) async {
         guard !cargando else { return }
@@ -176,6 +189,7 @@ public final class ModeloChat {
             return
         }
         cargado = true
+        if !masViejos { ultimasTraidas += 1 }
         sinTraer = false
         if filas.count < Self.pagina { hilo.hayMas = false }
         hilo.mezclar(filas)

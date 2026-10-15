@@ -290,6 +290,10 @@ public final class ModeloApp {
         // se descarta sin tocar nada (ni el Keychain ni la pantalla).
         func vigente() -> Bool { token == t && !esDemo }
         let p: [String: JSONValue] = ["p_token": .texto(t)]
+        // El chat y cuántas veces había traído su última página al empezar: si mientras se carga lo demás la trae otro (el
+        // Chat abierto antes de que termine la carga, o su sondeo), al llegar al chat no se pide de nuevo (como Android).
+        let chatAlEmpezar = chat
+        let traidasAlEmpezar = chat?.ultimasTraidas
 
         let respuestaInfo: JSONValue
         switch await cliente.llamar("mypump_get_cliente_info", p) {
@@ -390,7 +394,8 @@ public final class ModeloApp {
         guard vigente() else { return }
         await cargarComidasLibres()
         await outbox?.drenar()
-        async let cargaChat: Void = chat?.cargar() ?? ()
+        let chatPorTraer = chat.flatMap { c in c !== chatAlEmpezar || c.ultimasTraidas == traidasAlEmpezar ? c : nil }
+        async let cargaChat: Void = chatPorTraer?.cargar() ?? ()
         async let cargaMiDia: Void = revision?.cargarMiDia() ?? ()
         async let cargaRevision: Void = revision?.cargarRevision() ?? ()
         async let cargaFotos: Void = fotos?.cargar() ?? ()

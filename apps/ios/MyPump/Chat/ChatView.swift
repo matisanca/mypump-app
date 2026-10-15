@@ -51,12 +51,9 @@ struct ChatView: View {
         // Con el chat a la vista el sondeo va cada 15 s y lo nuevo queda leído (CHA-04).
         .onAppear {
             chat?.abierto = true
-            Task {
-                // Si el hilo no se trajo nunca (sin red al arrancar), se intenta ya: el sondeo recién consulta a los 15 s
-                // y mientras tanto se veía el chat vacío.
-                if chat?.cargado == false { await chat?.cargar() }
-                await chat?.marcarLeido()
-            }
+            // Si el hilo no se trajo nunca (sin red al arrancar, o la cuenta todavía cargando), se trae ya; y lo de Mati
+            // queda leído.
+            Task { await chat?.alAbrir() }
         }
         .onDisappear { chat?.abierto = false }
     }
