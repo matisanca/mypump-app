@@ -138,6 +138,18 @@ class ModeloApp(
     val palanca: StateFlow<PalancaRemota> = _palanca.asStateFlow()
 
     private val _swaps = MutableStateFlow<Map<String, SwapLocal>>(emptyMap())
+
+    /**
+     * Los reemplazos que el cliente tocó en este teléfono (sustituir o volver al del plan), con su número de orden. Si una
+     * hidratación estaba esperando los swaps del servidor cuando el cliente tocó uno, lo de acá gana: si no, y el cambio
+     * ya había salido por la cola, la respuesta vieja lo resucitaba hasta la próxima carga (15-oct).
+     */
+    private val tocadosSwaps = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val ordenSwaps = java.util.concurrent.atomic.AtomicLong()
+
+    private fun anotarSwapTocado(k: String) {
+        tocadosSwaps[k] = ordenSwaps.incrementAndGet()
+    }
     val swaps: StateFlow<Map<String, SwapLocal>> = _swaps.asStateFlow()
 
     /** Comidas libres (fuera del plan) del día local. */
@@ -780,6 +792,7 @@ class ModeloApp(
         val k = clave(comidaId, opt, idx)
         // Sin NaN ni infinito: en memoria como queda en el archivo y en la cola (null, como `JSON.stringify`).
         val anclado = SwapsDeComida.conAncla(sustituto, original).sinNoFinitos
+        anotarSwapTocado(k)
         _swaps.update { it + (k to SwapLocal(alimentoJson(original), anclado)) }
         guardarSwaps()
         outbox?.encolar(
@@ -795,6 +808,7 @@ class ModeloApp(
     suspend fun revertir(comidaId: String, opt: Int, idx: Int) {
         val dietaId = _dieta.value?.id ?: return
         val k = clave(comidaId, opt, idx)
+        anotarSwapTocado(k)
         _swaps.update { it - k }
         guardarSwaps()
         outbox?.encolar(
@@ -950,6 +964,8 @@ class ModeloApp(
         if (!vigente()) return
         propios.valorONull()?.let { _alimentosPropios.value = it }
 
+        // Lo que el cliente toque desde acá (mientras se espera la respuesta) le gana a lo que traiga el servidor.
+        val desde = ordenSwaps.get()
         val remotos = cliente.filas("mypump_get_food_swaps", mapOf("p_token" to texto(t), "p_dieta_id" to texto(dieta.id)), FoodSwap::desde)
             .valorONull()
         val pendientes = cola.pendientesPorClave().mapValues { it.value.kind }
@@ -961,9 +977,11 @@ class ModeloApp(
         val h = SwapsDeComida.hidratar(remotos, _swaps.value, dieta.id, pendientes, yaMigrado, _palanca.value.anclajeBorraSwaps) { c, o, f ->
             SwapsDeComida.enPosicion(e, tipo, c, o, f)
         } ?: return
-        _swaps.value = h.swaps
+        val tocados = tocadosSwaps.filterValues { it > desde }.keys
+        _swaps.value = if (tocados.isEmpty()) h.swaps else h.swaps.filterKeys { it !in tocados } + _swaps.value.filterKeys { it in tocados }
         guardarSwaps()   // sin esperas desde `vigente()`: la carpeta y la dieta siguen siendo las del principio
         for (op in h.operaciones) {
+            if (op.clave in tocados) continue
             val payload = (op.payload as? ValorJson.Objeto)?.let { ValorJson.Objeto(it.campos + ("dietaId" to texto(dieta.id))) } ?: op.payload
             cola.encolar(op.kind, payload, op.clave)
         }

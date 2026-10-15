@@ -4,6 +4,8 @@ import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -289,6 +291,65 @@ class RegresionesRevisionTest {
         val enDisco = disco.leer("swaps_$dietaId.json") as JsonObject
         assertEquals(3, enDisco.size)
         assertEquals(3, m.swaps.value.size)
+    }
+
+    // 9b. Volver al plan mientras una recarga esperaba los swaps del servidor: si el borrado salía antes de que la respuesta
+    // llegara, la respuesta vieja resucitaba el reemplazo hasta la próxima carga (15-oct: DietaEscrituraUiTest
+    // .reemplazarUnAlimentoYVolverAlDelPlan fallaba de a ratos).
+    @Test
+    fun volverAlPlanMientrasHidrataNoLoResucita() = enUnHilo { alcance ->
+        val enServidor = HashMap<String, ValorJson>()
+        var pedidosDeSwaps = 0
+        val pidio = CompletableDeferred<Unit>()
+        val puerta = CompletableDeferred<Unit>()
+        fun clave(p: ValorJson) =
+            "${p["p_comida_id"]?.comoTexto}/${(p["p_opt_idx"]?.comoNumero ?: 0.0).toInt()}/${(p["p_food_idx"]?.comoNumero ?: 0.0).toInt()}"
+        val t = TransporteProgramado { fn, cuerpo ->
+            when (fn) {
+                "mypump_get_cliente_info" -> 200 to INFO
+                "mypump_get_rutina_activa" -> 200 to Compartido.muestra("get_rutina_activa")
+                "mypump_get_dieta_activa" -> 200 to Compartido.muestra("get_dieta_activa")
+                "mypump_get_food_swaps" -> {
+                    // La foto se saca antes de esperar: es la respuesta vieja.
+                    val foto = ValorJson.Lista(
+                        enServidor.map { (k, v) ->
+                            val q = k.split("/")
+                            ValorJson.objeto("comida_id" to texto(q[0]), "opt_idx" to numero(q[1].toDouble()), "food_idx" to numero(q[2].toDouble()), "food_data" to v)
+                        },
+                    ).serializar()
+                    pedidosDeSwaps += 1
+                    if (pedidosDeSwaps == 2) {
+                        pidio.complete(Unit)
+                        puerta.await()
+                    }
+                    200 to foto
+                }
+                "mypump_save_food_swap" -> {
+                    enServidor[clave(cuerpo)] = cuerpo["p_food_data"] ?: ValorJson.Nulo
+                    200 to """[{"ok":true}]"""
+                }
+                "mypump_delete_food_swap" -> 200 to (if (enServidor.remove(clave(cuerpo)) == null) "false" else "true")
+                else -> 200 to "[]"
+            }
+        }
+        val m = modelo(t, TokenEnMemoria(TOK_A), alcance)
+        m.cargar()
+        val c = m.comidasDelDia.first()
+        val a = c.opciones.first().alimentos.first()
+        m.sustituir(a, ValorJson.objeto("name" to texto("Tofu"), "qty" to numero(100), "unit" to texto("g")), c.id, 0, 0)
+        m.outbox?.drenar()
+        val k = m.clave(c.id, 0, 0)
+        assertTrue(k in m.swaps.value)
+        assertEquals(1, enServidor.size)
+
+        val recarga = async { m.hidratarDieta() }
+        withTimeout(5_000) { pidio.await() }
+        m.revertir(c.id, 0, 0)
+        m.outbox?.drenar()
+        assertTrue(enServidor.isEmpty())
+        puerta.complete(Unit)
+        recarga.await()
+        assertFalse(k in m.swaps.value, "la respuesta vieja resucitó el reemplazo")
     }
 
     // 10. El badge del chat: lo que llegó por el sondeo (sin campo de leído) se perdía al recargar.

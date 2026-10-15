@@ -31,6 +31,16 @@ abstract class PruebaUi {
     protected lateinit var servidor: ServidorDePrueba
     private val escenarios = ArrayList<ActivityScenario<*>>()
 
+    /**
+     * La página del ejercicio (las fotos, la técnica, el video y los comentarios). Desde el 15-oct, tocar la fila abre el
+     * ejercicio en la lista de Entreno, y la página queda detrás de «Técnica y notas»: abre la fila si no está abierta.
+     */
+    protected fun abrirPaginaDelEjercicio(lugar: String) {
+        if (!p.existe(etiqueta("ejercicio-abierto-$lugar"))) p.tocar(etiqueta("ejercicio-$lugar"))
+        p.tocar(etiqueta("tecnica-y-notas"))
+        p.nodo(etiqueta("ejercicio-pantalla"))
+    }
+
     @Before
     fun prepararPrueba() {
         Telefono.modoNoche(false)

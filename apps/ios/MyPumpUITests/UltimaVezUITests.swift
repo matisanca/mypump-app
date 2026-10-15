@@ -21,7 +21,7 @@ final class UltimaVezUITests: XCTestCase {
             for _ in 0..<8 where !fila.isHittable { app.swipeUp() }
             fila.tap()
             if pista.waitForExistence(timeout: 6) { encontrada = true; break }
-            app.navigationBars.buttons.element(boundBy: 0).tap()
+            fila.tap()   // la cierra: desde el 15-oct el ejercicio se abre en la lista, no en otra página
         }
         guard encontrada else {
             throw XCTSkip("A ningún ejercicio del día le quedan series por registrar con historial esta semana")
@@ -36,5 +36,28 @@ final class UltimaVezUITests: XCTestCase {
         let registrada = expectation(for: NSPredicate(format: "count > %d", antes), evaluatedWith: hechas)
         wait(for: [registrada], timeout: 10)
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "ultima-vez-registrada"; a.lifetime = .keepAlways; add(a)
+    }
+
+    /// Pedido de Mati (15-oct): tocar un ejercicio lo abre ahí mismo, en la lista de Entreno (la tabla de series a la
+    /// vista), sin ir a otra página; la página queda para «Técnica y notas». Tocarlo de nuevo lo cierra.
+    func testElEjercicioSeAbreEnLaLista() throws {
+        guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Falta MYPUMP_TOKEN: usa una cuenta de prueba, nunca un cliente.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-token", token, "-pestana", "entreno", "-sinOnboarding", "YES"]
+        app.launch()
+        let fila = app.buttons["fila-ejercicio-1"]
+        XCTAssertTrue(fila.waitForExistence(timeout: 25), "No apareció el primer ejercicio")
+        for _ in 0..<8 where !fila.isHittable { app.swipeUp() }
+        fila.tap()
+        let tecnica = app.buttons["tecnica-y-notas"]
+        XCTAssertTrue(tecnica.waitForExistence(timeout: 6), "El ejercicio no se abrió en la lista")
+        XCTAssertTrue(fila.exists, "La lista desapareció: se fue a otra página")
+        let a = XCTAttachment(screenshot: app.screenshot()); a.name = "ejercicio-en-la-lista"; a.lifetime = .keepAlways; add(a)
+        for _ in 0..<4 where !fila.isHittable { app.swipeDown() }
+        fila.tap()
+        let cerrado = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: tecnica)
+        wait(for: [cerrado], timeout: 6)
     }
 }

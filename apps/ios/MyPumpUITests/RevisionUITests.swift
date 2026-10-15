@@ -31,6 +31,20 @@ final class RevisionUITests: XCTestCase {
         adjuntarCaptura("mis-datos-sin-interruptores")
     }
 
+    /// Pedidos de Mati (15-oct): Revisión sin Mi día (sin el agua, los hábitos ni los últimos 30 días) y el peso como
+    /// parte del check («Tu peso de hoy»), con la tarjeta de peso para los demás días.
+    func testRevisionSinMiDiaYConElPesoEnElCheck() throws {
+        let enviar = app.buttons["enviar-check"].firstMatch
+        XCTAssertTrue(enviar.waitForExistence(timeout: 20), "No apareció el check")
+        for _ in 0..<6 where !app.textFields["peso-check"].isHittable { app.swipeUp() }
+        XCTAssertTrue(app.textFields["peso-check"].exists, "El check no trae el peso")
+        for _ in 0..<8 { app.swipeUp() }
+        XCTAssertFalse(app.otherElements["control-agua"].exists, "Volvió el agua de Mi día")
+        XCTAssertFalse(app.staticTexts["Mi día"].exists, "Volvió Mi día")
+        XCTAssertFalse(app.staticTexts["Mis últimos 30 días"].exists, "Volvieron los últimos 30 días")
+        adjuntarCaptura("revision-sin-mi-dia")
+    }
+
     /// 5.1.1(i) y 1.4.1: desde Mis datos se abren el respaldo científico y la política de privacidad. Las dos hojas
     /// cuelgan de la misma vista, así que vale correrlo también en iOS 17.
     func testMisDatosAbreElRespaldoYLaPolitica() throws {
@@ -52,41 +66,6 @@ final class RevisionUITests: XCTestCase {
         XCTAssertTrue(cerrar.waitForExistence(timeout: 10), "La política de privacidad no se abrió")
         adjuntarCaptura("politica-de-privacidad")
         cerrar.tap()
-    }
-
-    /// Un hábito se marca y, tocado otra vez, se borra (DIA-03). La cuenta queda como estaba.
-    func testUnHabitoSeMarcaYSeBorra() throws {
-        let si = app.buttons["Dormí bien: sí"].firstMatch
-        XCTAssertTrue(si.waitForExistence(timeout: 20), "No apareció el hábito \"Dormí bien\"")
-        // Bien arriba de la barra de pestañas, que en iOS 26 flota encima del contenido: si no, el toque cae en ella.
-        let alto = app.windows.firstMatch.frame.maxY
-        for _ in 0..<10 where !(si.isHittable && si.frame.maxY < alto - 180) { app.swipeUp() }
-        let antes = marcado(si)
-        si.tap()
-        XCTAssertTrue(esperar(si, seleccionado: !antes), "Tocar \"sí\" no cambió el hábito")
-        adjuntarCaptura("habito-tocado")
-        si.tap()
-        XCTAssertTrue(esperar(si, seleccionado: antes), "Tocarlo otra vez no lo devolvió a como estaba")
-    }
-
-    /// Con VoiceOver las gotas del agua son un solo control ajustable (auditoría de accesibilidad, 15-oct): «Agua», con
-    /// cuántos vasos en el valor y del alto de un dedo. XCUITest no puede ajustarlo en iOS (`increment()` es de macOS):
-    /// el valor se sigue con los botones, que llaman a lo mismo. La cuenta queda como estaba.
-    func testElAguaEsUnControlConSuValor() throws {
-        let agua = app.descendants(matching: .any)["control-agua"].firstMatch
-        XCTAssertTrue(agua.waitForExistence(timeout: 20), "No apareció el agua como un control")
-        let alto = app.windows.firstMatch.frame.maxY
-        for _ in 0..<10 where !(agua.isHittable && agua.frame.maxY < alto - 180) { app.swipeUp() }
-        let vasos = { Int(((agua.value as? String) ?? "").split(separator: " ").first ?? "") ?? -1 }
-        let antes = vasos()
-        XCTAssertEqual(agua.label, "Agua")
-        XCTAssertTrue((0...12).contains(antes), "El valor no dice cuántos vasos: \(agua.value ?? "nada")")
-        XCTAssertGreaterThanOrEqual(agua.frame.height, 44, "La zona del agua quedó más chica que un dedo")
-        let (ida, vuelta) = antes < 12 ? ("Un vaso más", "Un vaso menos") : ("Un vaso menos", "Un vaso más")
-        app.buttons[ida].firstMatch.tap()
-        XCTAssertEqual(vasos(), antes < 12 ? antes + 1 : antes - 1, "El valor del control no siguió al botón")
-        app.buttons[vuelta].firstMatch.tap()
-        XCTAssertEqual(vasos(), antes, "El agua no volvió a como estaba")
     }
 
     /// REV-04: con 4 semanas o más de fotos, «Ver mis fotos» abre la galería por semana con el comparador «Antes y ahora»
