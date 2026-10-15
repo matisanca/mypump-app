@@ -978,6 +978,12 @@ class ModeloEntreno(
         return SustitucionesEntreno.filtrar(_catalogo.value.sustitutos(efectivo(ex)), busqueda)
     }
 
+    /**
+     * El sustituto elegido en la hoja, buscado por su clave en la lista de AHORA (con el catálogo que haya llegado mientras
+     * tanto). null si ya no está entre los sustitutos (revisión del 15-oct, hallazgo 13).
+     */
+    fun sustituto(lugar: String, clave: String): SustitutoEjercicio? = sustitutos(lugar).firstOrNull { it.clave == clave }
+
     /** El "🔒 Fijar" arranca como estaba la sustitución previa (al cambiar de sustituto no se pierde). */
     fun fijadaAntes(lugar: String): Boolean = SustitucionesEntreno.aplicada(_dia.value.sustituciones[lugar])?.fijado ?: false
 
