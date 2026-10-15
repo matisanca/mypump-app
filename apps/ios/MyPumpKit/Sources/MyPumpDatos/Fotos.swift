@@ -31,6 +31,7 @@ public final class ModeloFotos {
         case colaLlena                // "Hay fotos esperando subir. Probá cuando tengas señal."
         case muyPesada                // "Esa foto es demasiado pesada. Probá sacarla con la cámara."
         case noSeGuardo               // no se pudo ni guardar en el teléfono
+        case tokenCaido               // el link ya no sirve: queda guardada para cuando entre con el nuevo
 
         public var texto: String {
             switch self {
@@ -40,6 +41,7 @@ public final class ModeloFotos {
             case .colaLlena: "Hay fotos esperando subir. Probá cuando tengas señal."
             case .muyPesada: "Esa foto es demasiado pesada. Probá sacarla con la cámara."
             case .noSeGuardo: "No se pudo guardar. Probá de nuevo con señal."
+            case .tokenCaido: "Quedó guardada en el teléfono. Se sube cuando vuelvas a entrar con tu link."
             }
         }
     }
@@ -62,6 +64,13 @@ public final class ModeloFotos {
     public init(cliente: ClienteRPC, token: String, disco: Disco?) {
         self.cliente = cliente; self.token = token; self.disco = disco
         pendientes = disco?.leer([String: FotoPendiente].self, Self.archivo) ?? [:]
+    }
+
+    /// Las fotos que quedaron en la carpeta de otro link de la misma persona. Una de esta cuenta para la misma pose y
+    /// semana es más nueva y queda. Devuelve si quedaron guardadas en el disco de esta cuenta.
+    func adoptar(_ otras: [String: FotoPendiente]) -> Bool {
+        for (clave, f) in otras where pendientes[clave] == nil { pendientes[clave] = f }
+        return guardarCola()
     }
 
     public var semanaActual: String { FotosProgreso.lunes(FechaLocal.hoy()) }
@@ -101,6 +110,8 @@ public final class ModeloFotos {
             return .rechazada(motivo)
         case .reintentar, .red:
             return guardo ? .sinConexion : .noSeGuardo
+        case .tokenCaido:
+            return guardo ? .tokenCaido : .noSeGuardo
         }
     }
 
@@ -124,7 +135,7 @@ public final class ModeloFotos {
                 continue
             case .fatal:
                 pendientes[clave] = nil
-            case .red:
+            case .red, .tokenCaido:
                 break
             case .reintentar:
                 item.intentos += 1
@@ -132,6 +143,7 @@ public final class ModeloFotos {
             }
             _ = guardarCola()
             if case .red = r { break }
+            if case .tokenCaido = r { break }        // con este token no entra ninguna: las adopta la cuenta del link nuevo
             if pendientes[clave] != nil { break }   // el servidor está mal: se reintenta después
         }
         if subioAlgo { await alSubir() }
@@ -174,9 +186,11 @@ public final class ModeloFotos {
 
     // MARK: - Envío
 
-    enum Envio { case ok, fatal(String), reintentar, red }
+    enum Envio { case ok, fatal(String), reintentar, red, tokenCaido }
 
     /// `_subirFoto`: 4xx salvo 429 = no va a entrar nunca; 5xx/429 = el servidor, se reintenta; sin respuesta = red.
+    /// Desvío a propósito: un 401/403 por el token NO borra la foto (la web la perdía). Queda guardada, sin gastar intento,
+    /// y la adopta la cuenta del link nuevo de la misma persona (`CuentasDelTelefono.adoptarFotos`; revisión del 15-oct).
     func enviar(_ f: FotoPendiente) async -> Envio {
         var pedido = URLRequest(url: cliente.config.vision.appendingPathComponent("progreso/upload"), timeoutInterval: 90)
         pedido.httpMethod = "POST"
@@ -188,6 +202,7 @@ public final class ModeloFotos {
         let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
         let j = try? JSONDecoder().decode(JSONValue.self, from: datos)
         if (200..<300).contains(status), j?["ok"] == .bool(true) { return .ok }
+        if status == 401 || status == 403, (j?["error"]?.comoTexto ?? "").lowercased().contains("token") { return .tokenCaido }
         if status >= 400 && status < 500 && status != 429 { return .fatal(j?["error"]?.comoTexto ?? "HTTP \(status)") }
         return .reintentar
     }

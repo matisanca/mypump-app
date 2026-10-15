@@ -55,4 +55,27 @@ enum CuentasDelTelefono {
         }
         return total
     }
+
+    /// Lo mismo con las fotos de progreso que no llegaron a subirse (con el token caído quedan guardadas): pasan a la cola
+    /// de fotos de esta cuenta y se borran de la vieja recién cuando quedaron en el disco de esta. Devuelve cuántas pasaron.
+    @discardableResult
+    static func adoptarFotos(clienteId: String, en disco: Disco, fotos: ModeloFotos) async -> Int {
+        guard !clienteId.isEmpty else { return 0 }
+        let base = disco.carpeta.deletingLastPathComponent()
+        let propia = disco.carpeta.lastPathComponent
+        let nombres = ((try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? [])
+            .filter { $0.hasPrefix("cuenta-") && $0 != propia }
+            .sorted()
+        var total = 0
+        for nombre in nombres {
+            let otra = Disco(carpeta: base.appendingPathComponent(nombre, isDirectory: true))
+            guard let viejas = otra.leer([String: FotoPendiente].self, FotoPendiente.archivo), !viejas.isEmpty,
+                  Self.clienteId(de: otra) == clienteId else { continue }
+            if await fotos.adoptar(viejas) {
+                otra.borrar(FotoPendiente.archivo)
+                total += viejas.count
+            }
+        }
+        return total
+    }
 }

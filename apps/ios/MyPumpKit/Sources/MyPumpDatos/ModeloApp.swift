@@ -307,6 +307,7 @@ public final class ModeloApp {
         if let d = disco, let cola = outbox, let id = info?.clienteId, !id.isEmpty {
             CuentasDelTelefono.anotar(clienteId: id, en: d)
             await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
+            if let f = fotos { await CuentasDelTelefono.adoptarFotos(clienteId: id, en: d, fotos: f) }
             guard vigente() else { return }
         }
 

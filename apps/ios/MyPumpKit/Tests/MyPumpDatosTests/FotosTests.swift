@@ -104,9 +104,10 @@ struct FotosTests {
     }
 
     @Test func rechazadaAlSubirYLimites() async {
-        let g = Guion(); g.respuestas = [(403, #"{"ok":false,"error":"token inválido"}"#), nil, nil, nil]
+        // Un rechazo que no es del token se descarta (como la web). El del token queda guardado: FotosTokenCaidoTests.
+        let g = Guion(); g.respuestas = [(400, #"{"ok":false,"error":"imagen inválida"}"#), nil, nil, nil]
         let m = modelo(g)
-        #expect(await m.subir(pose: "frente", jpeg: jpeg) == .rechazada("token inválido"))
+        #expect(await m.subir(pose: "frente", jpeg: jpeg) == .rechazada("imagen inválida"))
         #expect(m.pendientes.isEmpty)
         for p in ["frente", "perfil", "espalda"] { _ = await m.subir(pose: p, jpeg: jpeg) }
         #expect(m.pendientes.count == 3)
