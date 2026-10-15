@@ -43,7 +43,11 @@ def main():
     for a in desarchivar(pendientes):
         c = a.get("TriggerDateComponents") or {}
         if a.get("UNNotificationTriggerType") == "Calendar":
-            cuando = f"{dias.get(c.get('NS.weekday'), '?')} {c.get('NS.hour', 0):02d}:{c.get('NS.minute', 0):02d}"
+            if c.get('NS.year') and c.get('NS.month') and c.get('NS.day'):
+                # Un aviso de una vez (el domingo desde el 15-oct): con la fecha.
+                cuando = f"{c['NS.year']}-{c['NS.month']:02d}-{c['NS.day']:02d} {c.get('NS.hour', 0):02d}:{c.get('NS.minute', 0):02d}"
+            else:
+                cuando = f"{dias.get(c.get('NS.weekday'), '?')} {c.get('NS.hour', 0):02d}:{c.get('NS.minute', 0):02d}"
         else:
             cuando = f"en {a.get('TriggerTimeInterval')} s"
         print(f"{a.get('AppNotificationIdentifier')} · {cuando}{' · se repite' if a.get('TriggerRepeats') else ''}"

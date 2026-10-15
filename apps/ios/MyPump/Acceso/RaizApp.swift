@@ -58,6 +58,9 @@ struct RaizApp<Contenido: View>: View {
             case .active:
                 CentroAvisos.shared.cancelarFinDescanso()
                 Task { await modelo.alVolverAPrimerPlano() }
+                // El aviso del domingo es de una vez: se vuelve a armar cada vez que se usa la app (iOS la deja viva días
+                // sin un arranque nuevo).
+                if modelo.fase == .listo && !modelo.esDemo { Task { await CentroAvisos.shared.reprogramar() } }
             case .background:
                 // Un descanso corriendo avisa cuando termina aunque la app no esté a la vista (D8).
                 if let d = modelo.entreno?.descanso.descanso, !d.terminado {
@@ -78,8 +81,13 @@ struct RaizApp<Contenido: View>: View {
             if !Task.isCancelled, modelo.fase == .listo, !modelo.esDemo { onboarding = true }
         }
         .task(id: modelo.fase == .listo && !modelo.esDemo) {
-            // Con una cuenta: la local del domingo al día y el token de push refrescado (si ya hay permiso).
-            if modelo.fase == .listo && !modelo.esDemo { await CentroAvisos.shared.alEntrar() }
+            // Con una cuenta: la local del domingo al día y el token de push refrescado (si ya hay permiso). Sin cuenta o
+            // con el link vencido, el domingo se cancela (hallazgo 8 de la revisión del 15-oct).
+            if modelo.fase == .listo && !modelo.esDemo {
+                await CentroAvisos.shared.alEntrar()
+            } else if modelo.fase == .tokenInvalido || modelo.fase == .sinToken {
+                CentroAvisos.shared.cancelarDomingo()
+            }
         }
     }
 }

@@ -38,6 +38,19 @@ public enum AvisoDomingo {
     public static let diaDeLaSemana = 1
     public static let hora = 11
     public static let minuto = 0
+
+    /// El domingo que viene a las 11:00 (hoy, si es domingo antes de las 11), con año, mes y día: el aviso es de UNA vez
+    /// y la app lo vuelve a armar cada vez que abre con la cuenta. Repetido cada semana le seguía llegando para siempre
+    /// a quien dejó la app o tiene el link vencido (un ex cliente recibiendo "mensajes de Mati"; revisión del 15-oct,
+    /// hallazgo 8). Quien usa la app no lo nota: lo arma cada vez que la abre.
+    public static func proximo(desde ahora: Date, calendario: Calendar = .current) -> DateComponents? {
+        var patron = DateComponents()
+        patron.weekday = diaDeLaSemana
+        patron.hour = hora
+        patron.minute = minuto
+        guard let fecha = calendario.nextDate(after: ahora, matching: patron, matchingPolicy: .nextTime) else { return nil }
+        return calendario.dateComponents([.year, .month, .day, .hour, .minute], from: fecha)
+    }
 }
 
 /// `mypump_notif_prefs` (notificaciones.js): un solo recordatorio, la revisión del domingo, apagable y con hora. La

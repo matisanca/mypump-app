@@ -42,24 +42,27 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         return true
     }
 
-    /// Al abrir (y al dar el permiso): se borra lo nuestro y se vuelve a agendar el aviso del domingo. Sale siempre que
-    /// haya permiso: no es algo que el cliente configure (pedido de Mati, 14-oct).
+    /// Al abrir con la cuenta (y al dar el permiso): se borra lo nuestro y se agenda el aviso del domingo que viene, una
+    /// sola vez (`AvisoDomingo.proximo`). Sale siempre que haya permiso: no es algo que el cliente configure (pedido de
+    /// Mati, 14-oct).
     func reprogramar() async {
         let centro = UNUserNotificationCenter.current()
         guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { return }
         centro.removePendingNotificationRequests(withIdentifiers: [AvisoDomingo.id] + PreferenciasAvisos.idsViejos)
+        guard let cuando = AvisoDomingo.proximo(desde: Date()) else { return }
         let c = UNMutableNotificationContent()
         c.title = AvisoDomingo.titulo
         c.body = AvisoDomingo.cuerpo
         c.sound = .default
         c.userInfo = ["destino": AvisoDomingo.destino]
-        var cuando = DateComponents()
-        cuando.weekday = AvisoDomingo.diaDeLaSemana
-        cuando.hour = AvisoDomingo.hora
-        cuando.minute = AvisoDomingo.minuto
         let pedido = UNNotificationRequest(identifier: AvisoDomingo.id, content: c,
-                                           trigger: UNCalendarNotificationTrigger(dateMatching: cuando, repeats: true))
+                                           trigger: UNCalendarNotificationTrigger(dateMatching: cuando, repeats: false))
         try? await centro.add(pedido)
+    }
+
+    /// Sin cuenta (salió) o con el link vencido: el aviso del domingo ya no es para este teléfono.
+    func cancelarDomingo() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [AvisoDomingo.id] + PreferenciasAvisos.idsViejos)
     }
 
     // MARK: - Fin del descanso (D8)

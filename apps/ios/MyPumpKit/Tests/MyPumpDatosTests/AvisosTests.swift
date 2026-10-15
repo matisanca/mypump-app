@@ -61,3 +61,36 @@ struct LinkPegadoTests {
         #expect(FormatoToken.extraer(de: "hola") == nil)
     }
 }
+
+/// Hallazgo 8 de la revisión del 15-oct: el aviso del domingo es de una sola vez (la app lo arma al abrir y al volver al
+/// frente); repetido cada semana le seguía llegando para siempre a quien dejó la app.
+@Suite("El próximo domingo a las 11")
+struct ProximoDomingoTests {
+    func fecha(_ s: String, _ zona: String) -> (Date, Calendar) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: zona)!
+        let f = DateFormatter(); f.calendar = cal; f.timeZone = cal.timeZone; f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        return (f.date(from: s)!, cal)
+    }
+
+    @Test func unMiercolesVaAlDomingoQueViene() {
+        let (d, cal) = fecha("2026-10-14 20:00", "America/Argentina/Buenos_Aires")
+        let c = AvisoDomingo.proximo(desde: d, calendario: cal)
+        #expect(c?.year == 2026 && c?.month == 10 && c?.day == 18 && c?.hour == 11 && c?.minute == 0)
+    }
+
+    @Test func unDomingoAntesDeLas11EsHoyYDespuesLaSemanaQueViene() {
+        let (antes, cal) = fecha("2026-10-18 10:59", "America/Argentina/Buenos_Aires")
+        #expect(AvisoDomingo.proximo(desde: antes, calendario: cal)?.day == 18)
+        let (justo, _) = fecha("2026-10-18 11:00", "America/Argentina/Buenos_Aires")
+        #expect(AvisoDomingo.proximo(desde: justo, calendario: cal)?.day == 25)
+    }
+
+    @Test func conCambioDeHoraSigueSiendoALas11() {
+        // Nueva York pasa al horario de verano el domingo 8-mar-2026 a las 2: el aviso de ese día sigue a las 11.
+        let (d, cal) = fecha("2026-03-07 12:00", "America/New_York")
+        let c = AvisoDomingo.proximo(desde: d, calendario: cal)
+        #expect(c?.month == 3 && c?.day == 8 && c?.hour == 11)
+    }
+}
