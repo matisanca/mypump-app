@@ -265,12 +265,15 @@ class ModeloChat(
         cliente.llamar("mypump_marcar_leidos_cliente", mapOf("p_token" to t, "p_ambito" to texto("general"), "p_referencia_id" to ValorJson.Nulo))
     }
 
+    /** La espera entre consultas, en milisegundos. Los tests la cambian para ver los intervalos sin esperarlos. */
+    internal var dormir: suspend (Long) -> Unit = { ms -> delay(ms) }
+
     /** Sondeo en cadena (nunca dos a la vez): 15 s abierto, 45 s cerrado. Se corta con la app en segundo plano. */
     fun empezarSondeo() {
         sondeo?.cancel()
         sondeo = alcance.launch {
             while (isActive) {
-                delay(if (abierto) 15_000L else 45_000L)
+                dormir(if (abierto) 15_000L else 45_000L)
                 sondear()
             }
         }
