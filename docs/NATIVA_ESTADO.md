@@ -133,7 +133,9 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
       `pedidos.mjs`, `mcp.mjs`, `mini.mjs`, `vigia.mjs` y `aprobacion.mjs`, con 28 pruebas.
     - Hook de AskUserQuestion en `~/.claude/settings.json`: los nombres van solo en las descripciones de las opciones,
       que no vuelven a la IA. Verificado en el registro de la sesión.
-    - La sesión de Mensajes lo adopta cuando Mati le dé el OK. Detalle en la memoria `whatsapp-tapado-alias`.
+    - **Mati decidió no usarlo (21:15):** «acá en whatsapp considero que no hace falta alias». Se revirtieron el MCP
+      (versión de las 19:07), el hook y la skill. Las herramientas quedan guardadas sin uso. Detalle en la memoria
+      `whatsapp-tapado-alias`.
   - **Fuga corregida:** con Qwen caído, `app_chat.py contexto` mostraba los otros clientes de CANDIDATOS. Ahora la
     pasada fija tapa los nombres de todas las fichas. 1f30b5f, desplegado; se borró el caché con la fuga.
   - **Gerardo Damyan Tejeda:** la fila 403 de `clientes_memoria` se llamaba como su teléfono y el brief no la
