@@ -190,6 +190,21 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 06:40, la revisión adversarial de los cambios del día (8cf7369 en iOS y 01b6ae5 en Android):** un agente
+  independiente revisó todo lo que cambió desde el TestFlight 104. Encontró tres problemas importantes, cada uno
+  reproducido con una prueba que falla sin el arreglo:
+  1. **Un reemplazo de comida nativo** llegaba al servidor antes de la decisión y se perdía el que estaba solo en el
+     teléfono. Ahora se retienen todos los reemplazos, y solo si hay un mapa sin decidir.
+  2. **Fotos de un token rotado:** se perdían porque el modelo de fotos vivo pisaba el archivo, y además se borraba la
+     copia de la Capacitor. Ahora van por el modelo vivo y la copia se borra solo si quedaron.
+  3. **Privacidad:** sin token, la migración podía entrar a la cuenta de la app vieja aunque la nativa anduviera con la
+     de otra persona. Se arregló con `UltimaCuenta`.
+
+  Además, los menores: la dieta en armado, el libro de fotos importadas, los reemplazos del link viejo y el chat sin traer.
+
+  Resultados: kit 434/434, JVM 563/563, sim-migracion 27/27 en 26.5. Lo que dijo bien sin cambios: el delegado de
+  avisos con Swift 6, `-avisoDePrueba` solo en Debug y la letra grande en el tamaño normal.
+
 - **15-oct 05:40, la restauración de un respaldo y la letra grande en Android:**
   - **Restaurar un respaldo sin token** (b050d2d, en las dos plataformas): ya no depende de que cambie la huella. Ver
     D14 en la entrada de las 05:00; en iOS es el caso de un respaldo local de Finder sin cifrar, que no trae el Keychain.
