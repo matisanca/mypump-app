@@ -21,7 +21,7 @@ Hasta que se decidan, rige lo de hoy.
 | D4 | Textos que mienten | el onboarding promete un recordatorio de entreno que no existe, y "Domingos al mediodía" es a las 11:00 | corregirlos |
 | D5 | Tema | arranca en claro e ignora el sistema | seguir al sistema salvo que `'dark'` esté guardado |
 | D6 | Verde | interfaz lima `#b8f060`, ícono esmeralda `#10b981` | lima en la interfaz e ícono sin cambios |
-| D7 | IA de terceros (5.1.2(i)) | sin aviso; la IA habla como Mati | ~~consentimiento único~~ **sacado el 14-oct (Mati): la IA trabaja bajo su aprobación y no es algo que el cliente acepte.** En su lugar, el nombre se tapa con la IA local de la Mini antes de Codex (en diseño) |
+| D7 | IA de terceros (5.1.2(i)) | sin aviso; la IA habla como Mati | ~~consentimiento único~~ **sacado el 14-oct (Mati): la IA trabaja bajo su aprobación y no es algo que el cliente acepte.** En su lugar, el nombre se tapa con la IA local de la Mini antes de Codex y de la sesión de Mensajes (`deid_chat.py`, desplegado el 14-oct). Android, igual que iOS desde f6977e9 |
 | D8 | Fin de descanso con la app en segundo plano | sin aviso | notificación local |
 | D9 | Borrado de cuenta | solo `eliminar-datos.html` (mail) | link desde Mis datos, más una RPC opcional que solo registra el pedido |
 | D11+ | Sin plan publicado | la web muestra la rutina de ejemplo con "Modo demo" | **decidido 14-oct:** como la dieta (D11), "Todavía no hay rutina"; la de ejemplo solo en la demo |
@@ -178,7 +178,7 @@ Hasta que se decidan, rige lo de hoy.
 | CHA-02 | Hasta 1000 caracteres; lo que estás escribiendo sobrevive cuando llega un mensaje | idem | ✅ nunca sale más de 1000: pasado el límite, contador en rojo y Enviar apagado (ChatUITests, 26.5 y 17.5). Desvío chico: la web corta con maxlength; acá recortar mientras se escribe dejaba un carácter de más a la vista que se perdía al mandar. El borrador vive en su propio estado: no lo pisa un mensaje que llega | ☐ |
 | CHA-03 | Envío por el outbox con "enviando…" al instante; se reemplaza con la fila real; "no salió" + Reintentar si se abandona | `C:2443-2470` | ✅ modelo ✅ (tests + backend real), falta la pantalla · ver auditoría 14-oct | ☐ |
 | CHA-04 | Poll de 15 s con el chat abierto, 45 s en otra pantalla, nada en segundo plano; al abrir marca leídos (`general`) | `C:2493`, `2483` | ✅ ChatLeidoAlLlegarTests (leídos al abrir, el reinicio del sondeo) y SondeoChatTests: 45 s cerrado, 15 s abierto y nada parado (la app en segundo plano lo para: ModeloApp.enPrimerPlano) | ☐ |
-| CHA-05 | La IA llega como `autor='coach'` y se ve como Mati (salvo D7) | migs 060, 062 | ✅ ver auditoría 14-oct | ☐ |
+| CHA-05 | La IA llega como `autor='coach'` y se ve como Mati | migs 060, 062 | ✅ ver auditoría 14-oct | ☐ |
 | CHA-06 | Polling, no Realtime (la anon key es compartida) | memoria `project_chat_mypump` | ✅ modelo ✅ (tests + backend real), falta la pantalla · ver auditoría 14-oct | ☐ |
 
 ## SAL · Salud, recuperación y Mis datos

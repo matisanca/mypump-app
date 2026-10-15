@@ -63,9 +63,9 @@ commitea.
 | Salud (HealthKit, recuperación, relojes) | ✅ mergeada: 35 casos de la web + banco en simulador 1.091/1.091 registros; el historial ya no pisa la noche de hoy (desvío a propósito, ver `NATIVA_PROPUESTAS_WEB.md`) |
 | Hoja de permisos de la primera vez (GEN-06), aviso de fin de descanso (D8), aviso de plan incompleto (GEN-05) | ✅ (XCUITest del onboarding) |
 | Android: base, reglas y capa de datos (`:core`) | ✅ mergeado en `nativa` el 14-oct (81338b8): reglas con los vectores de la web, Entreno, Salud, cola, chat, Revisión, migración (parte pura), palanca, recibo y conteos (`nativa_001`, probada contra el backend con `test-nativa-android`) |
-| Android: lector del almacenamiento viejo con WebView y arranque de la migración en `:app`, prueba en el emulador, D7 | ✅ mergeado el 14-oct (4e48457): leveldb encontrado sin rutas fijas, **24/24 de punta a punta en el emulador** (`scripts/nativa/emu-migracion.sh`), D7 en el modelo y la cola; 400 tests JVM + 9 instrumentados. Backup decidido (D14). Falta: un teléfono real con la 1.0.12 de Play |
-| Android: pantallas en Compose | 🟡 acceso, demo, sin conexión, permiso de la IA, Dieta en lectura y Mis datos (375f970); fuentes y legales en una Custom Tab (0c745f7); 43 pruebas instrumentadas. Entreno en curso (subagente, en un worktree). Faltan Chat, Revisión, Dieta con escritura y Progreso |
-| Android: Health Connect, FCM | ☐ |
+| Android: lector del almacenamiento viejo con WebView y arranque de la migración en `:app`, prueba en el emulador, D7 | ✅ mergeado el 14-oct (4e48457): leveldb encontrado sin rutas fijas, **24/24 de punta a punta en el emulador** (`scripts/nativa/emu-migracion.sh`), D7 en el modelo y la cola (D7 se sacó el 14-oct, f6977e9); 400 tests JVM + 9 instrumentados. Backup decidido (D14). Falta: un teléfono real con la 1.0.12 de Play |
+| Android: pantallas en Compose | 🟡 acceso, demo, sin conexión, Dieta en lectura y Mis datos (375f970); fuentes y legales en una Custom Tab (0c745f7); Entreno (a17929a); sin permiso de IA y el aviso del domingo como mensaje de Mati, gemelo de iOS (f6977e9). JVM 434 (1 salteada) y 59 instrumentadas. Faltan Chat, Revisión, Dieta con escritura y Progreso |
+| Android: Health Connect, FCM | 🟡 en curso desde el 14-oct 21:30: dos agentes en paralelo (notificaciones con FCM, el aviso del domingo y D8; Salud con Health Connect). Librerías con OK de G4 |
 
 
 **Control de la beta (G5):** `python3 scripts/nativa/beta_diario.py [--dias 7] [--con-pruebas]` da, por cliente con la
@@ -125,6 +125,15 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
 
 ## Bitácora
+
+- **14-oct 21:30, Android:**
+  - **Sin permiso para la IA y el aviso del domingo como mensaje de Mati**, gemelos de iOS. Mergeado en f6977e9: sale
+    `ConsentimientoIA`, `PermisoIA` y la sección de Mis datos; `AvisoDomingo` en `:core:datos`. Tests: JVM 434 (1
+    salteada) y 59/59 instrumentadas en nativa36 con Entreno.
+  - `main` (e171038, la política de privacidad sin el permiso de IA) mergeado en `nativa`.
+  - La Mac tenía 10 simuladores prendidos y el swap lleno (42 de 43 GB): quedaron apagados los del proyecto.
+  - Lanzados en paralelo dos agentes: notificaciones (FCM, la hoja de permisos de la primera vez, el aviso del domingo
+    y D8) y Salud (Health Connect).
 
 - **14-oct 21:00, fuera de las apps pero ligado a ellas (Mati: «hacelo todo vos», «seguí en autónomo»):**
   - **WhatsApp sin nombres** (elección de Mati: «tapar el texto»). Cada cliente es un alias fijo (`CL-7F3A`), unido a
