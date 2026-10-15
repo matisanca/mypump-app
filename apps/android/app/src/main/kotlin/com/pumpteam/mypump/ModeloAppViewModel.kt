@@ -17,6 +17,7 @@ import com.pumpteam.mypump.entreno.Preguntador
 import com.pumpteam.mypump.legado.ArranqueMigracion
 import com.pumpteam.mypump.legado.RegistroLegado
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
+import com.pumpteam.mypump.salud.DiagnosticoSaludPedido
 import com.pumpteam.mypump.salud.FuenteHealthConnect
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -132,6 +133,8 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
                 null
             }
             DestinoAviso.deEscena(escena)?.let { _destino.value = it }
+            // Salud: `?diag=health` (SAL-13) abre el diagnóstico de Salud directo, sin los cinco toques.
+            DiagnosticoSaludPedido.desdeLink(link)
         }
     }
 

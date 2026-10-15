@@ -76,6 +76,7 @@ import com.pumpteam.mypump.entreno.RelojDescanso
 import com.pumpteam.mypump.misdatos.MisDatosPantalla
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.revision.RevisionPantalla
+import com.pumpteam.mypump.salud.DiagnosticoSaludDesdeLink
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -151,6 +152,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                 AvisoGuardado(estadoGuardado, Modifier.align(Alignment.BottomCenter).padding(bottom = Espacio.s))
                 // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
                 DialogoPreguntas(vm.preguntasEntreno)
+                // Salud: el diagnóstico que pidió un link con `?diag=health` (SAL-13), arriba de todo.
+                DiagnosticoSaludDesdeLink(modelo)
             }
         }
     }

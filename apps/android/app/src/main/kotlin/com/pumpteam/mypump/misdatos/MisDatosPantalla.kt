@@ -51,6 +51,7 @@ import com.pumpteam.mypump.diseno.Separador
 import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.respaldo.HojaFuentes
+import com.pumpteam.mypump.salud.SeccionSaludMisDatos
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -79,6 +80,8 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
     }
 
     PantallaConTitulo("Mis datos", alVolver = alVolver, desplazable = true, modifier = Modifier.testTag("mis-datos-pantalla")) {
+        // Salud (SAL-09…13): la recuperación, que abre el detalle, y conectar Health Connect (salud/MisDatosSalud.kt).
+        SeccionSaludMisDatos(modelo)
         Seccion(
             "Apariencia",
             pie = if (oscuro) "La app queda oscura aunque el teléfono esté en claro." else "La app sigue al teléfono: clara u oscura según cómo lo tengas.",
