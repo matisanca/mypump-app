@@ -184,6 +184,11 @@ struct ChatView: View {
                 .padding(.horizontal, Espacio.m)
                 .padding(.vertical, 11)
                 .frame(minHeight: 44)
+                // Todo el vidrio lleva al campo. El de varias líneas toma el toque solo cerca del texto: en el iPad, tocar
+                // el medio del campo vacío no hacía nada, y en cualquier equipo tampoco el borde de la cápsula (la mitad
+                // de su alto). Simultáneo para no quitarle al campo sus toques (mover el cursor, seleccionar).
+                .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .simultaneousGesture(TapGesture().onEnded { escribiendo = true })
                 .vidrio(RoundedRectangle(cornerRadius: 22, style: .continuous), interactivo: true)
 
                 Button(action: enviar) {

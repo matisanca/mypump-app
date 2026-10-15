@@ -173,6 +173,21 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 03:50, iOS en el iPad: el chat no tomaba el toque.** La suite de XCUITest en el iPad Pro 13" (iPadOS 26.5)
+  encontró dos cosas:
+  - **Pruebas:** en iPadOS 26 las pestañas son una barra flotante arriba y XCUITest no las ve como `tabBars`. Ahora se
+    buscan como botones por su nombre (`MyPumpUITests/Pestanas.swift`).
+  - **Un bug real del compositor del chat, no solo del iPad.** El campo de varias líneas (`axis: .vertical`) toma el
+    toque solo cerca del texto.
+    - En el iPad, tocar el medio del campo vacío no hacía nada.
+    - En cualquier equipo, tampoco respondía el borde de la cápsula, que es la mitad de su alto.
+    - Se aisló con variantes: el vidrio interactivo no era la causa; con el campo de una línea, andaba.
+    - **El arreglo:** todo el vidrio lleva al campo, con un toque simultáneo que no le quita al campo sus propios toques
+      (mover el cursor sigue andando).
+    - Lo cubre `testTodoElVidrioLlevaAlCampo`: falla sin el arreglo en el iPhone 17 Pro y pasa con él en el iPad, en
+      26.5 y en 17.5.
+  - **Android no lo tiene:** el `decorationBox` del `BasicTextField` es parte del campo.
+
 - **15-oct 03:00, Android: Dieta con escritura mergeada (f4bf5ce) y una falla de producción:**
   - **Dieta** (DIE-08 a 18): la mano, reemplazar, el alimento propio con la etiqueta, las comidas libres con la foto del
     plato y `food-db.json` en el APK. Ya no queda ninguna pantalla «en construcción» en Android. Instrumentadas: 170.

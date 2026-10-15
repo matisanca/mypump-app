@@ -22,14 +22,10 @@ final class ChatUITests: XCTestCase {
         // (todavía no existía ninguno y quedaba esperando el que no era).
         let campo = app.descendants(matching: .any).matching(identifier: "chat-campo").firstMatch
         XCTAssertTrue(campo.waitForExistence(timeout: 20), "No apareció el campo del chat")
-        // Que el primer toque le dé el foco: si hiciera falta un segundo, un cliente tocaría y no pasaría nada.
-        var toques = 0
-        repeat {
-            toques += 1
-            campo.tap()
-        } while toques < 3 && !(campo.value(forKey: "hasKeyboardFocus") as? Bool ?? false)
-        let a = XCTAttachment(string: "toques hasta el foco: \(toques)"); a.lifetime = .keepAlways; add(a)
-        XCTAssertEqual(toques, 1, "el primer toque no le dio el foco al campo")
+        // Un solo toque y a escribir: si el toque no le diera el foco, typeText falla ("no keyboard focus"), que es lo que le
+        // pasaría al cliente.
+        campo.tap()
+        esperarFoco(campo)
         campo.typeText(String(repeating: "a", count: 1001))
         let enviar = app.buttons["chat-enviar"]
         let contador = app.staticTexts["chat-contador"]
@@ -39,5 +35,31 @@ final class ChatUITests: XCTestCase {
         campo.typeText(XCUIKeyboardKey.delete.rawValue)
         XCTAssertTrue(enviar.isEnabled, "con 1000 no se podía mandar")
         XCTAssertEqual(contador.label, "1.000 de 1.000 caracteres")
+    }
+
+    /// El campo de varias líneas toma el toque solo cerca del texto. En el iPad, tocar el medio del campo vacío no hacía
+    /// nada, y en cualquier equipo tampoco el borde de la cápsula, que es la mitad de su alto (15-oct). Ahora todo el
+    /// vidrio lleva al campo, sin quitarle sus propios toques: mover el cursor sigue andando.
+    func testTodoElVidrioLlevaAlCampo() throws {
+        let campo = app.descendants(matching: .any).matching(identifier: "chat-campo").firstMatch
+        XCTAssertTrue(campo.waitForExistence(timeout: 20), "No apareció el campo del chat")
+        // El borde de arriba de la cápsula, fuera del campo.
+        campo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: -0.4)).tap()
+        esperarFoco(campo)
+        campo.typeText("hola mundo")
+        // Un toque al principio del texto deja el cursor ahí.
+        campo.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 2, dy: 0)).tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        campo.typeText("X")
+        XCTAssertEqual(campo.value as? String, "Xhola mundo")
+    }
+
+    /// Antes de escribir, hasta 3 s para que el foco se asiente (en 17.5 escribía antes y fallaba). En el iPad
+    /// `hasKeyboardFocus` puede no informarse aunque el campo tenga el foco: la prueba de verdad es que typeText escriba.
+    private func esperarFoco(_ campo: XCUIElement) {
+        let limite = Date().addingTimeInterval(3)
+        while !(campo.value(forKey: "hasKeyboardFocus") as? Bool ?? false) && Date() < limite {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        }
     }
 }
