@@ -53,8 +53,9 @@ import kotlinx.coroutines.launch
 /**
  * Los avisos con la app abierta (lo que en iOS hace `RaizApp`). Va en la raíz, con el modelo:
  *
- * - con una cuenta (fuera de la demo): lo de la Capacitor afuera, el aviso del domingo al día y el token de push registrado,
- *   si hay permiso; sin cuenta o en la demo, nada agendado;
+ * - con una cuenta (fuera de la demo), al entrar y cada vez que la app vuelve a primer plano: lo de la Capacitor afuera, el
+ *   aviso del domingo que viene armado (es de una vez) y el token de push registrado, si hay permiso; sin cuenta, con el
+ *   link vencido o en la demo, nada agendado;
  * - la hoja de permisos de la primera vez (GEN-06), 1,2 s después de pintar las pestañas [enLaApp];
  * - el fin del descanso con la app en segundo plano (D8).
  */
@@ -76,19 +77,20 @@ fun AvisosDeLaApp(vm: ModeloAppViewModel, m: ModeloApp, enLaApp: Boolean) {
     LaunchedEffect(fase, esDemo) {
         when {
             conCuenta -> alcance.launch { CentroAvisos.alEntrar(contexto, m, vm.version) }
+            // Sin cuenta (salió), con el link vencido o en la demo: el domingo se cancela (hallazgo 8 del 15-oct).
             fase == ModeloApp.Fase.SIN_TOKEN || fase == ModeloApp.Fase.TOKEN_INVALIDO || esDemo -> CentroAvisos.alQuedarSinCuenta(contexto)
             else -> {}   // cargando o sin servicio: queda lo que estaba
         }
     }
 
-    // Volvió de Ajustes con las notificaciones prendidas: lo que no se pudo agendar al arrancar, ahora (si no, un comentario
-    // de Mati hasta el próximo arranque no llegaba). La primera vez ya lo hace lo de arriba.
+    // Cada vez que vuelve a primer plano con la cuenta: el aviso del domingo es de una vez y se vuelve a armar (Android deja
+    // la app viva días sin un arranque nuevo; hallazgo 8 del 15-oct). De paso, si volvió de Ajustes con las notificaciones
+    // prendidas queda el push (si no, un comentario de Mati no llegaba hasta el próximo arranque), y si las apagó, nada
+    // agendado. La primera vez ya lo hace lo de arriba.
     val conCuentaActual by rememberUpdatedState(conCuenta)
     val vueltas = remember { intArrayOf(0) }
     LifecycleResumeEffect(Unit) {
-        if (vueltas[0]++ > 0 && conCuentaActual && CentroAvisos.concedido(contexto) && !CentroAvisos.domingoAgendado(contexto)) {
-            alcance.launch { CentroAvisos.alEntrar(contexto, m, vm.version) }
-        }
+        if (vueltas[0]++ > 0 && conCuentaActual) alcance.launch { CentroAvisos.alEntrar(contexto, m, vm.version) }
         onPauseOrDispose {}
     }
 

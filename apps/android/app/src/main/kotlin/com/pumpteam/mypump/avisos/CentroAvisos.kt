@@ -76,10 +76,12 @@ object PermisoDePrueba {
  *   una cuenta y con permiso, y cuando FCM da uno nuevo ([ServicioPush]); solo si cambió (ver `RegistroPush`). Nunca en la
  *   demo ni sin cuenta. Con la app en segundo plano el aviso lo muestra el sistema con el canal, el ícono y el color del
  *   manifest; con la app abierta lo publica la app (NOT-04).
- * - **El aviso del domingo** (NOT-05, D15): `AvisoDomingo`, domingo a las 11:00 de la hora del teléfono, sin configuración.
- *   Sin alarmas exactas (`setWindow`, hasta 10 minutos tarde, y en reposo profundo cuando el teléfono despierte): cada
- *   aviso agenda el siguiente, y se reagenda al abrir con una cuenta, al prender el teléfono, al actualizar la app y al
- *   cambiar la zona o la hora ([ReceptorAvisos]). Sin cuenta o en la demo no hay nada agendado.
+ * - **El aviso del domingo** (NOT-05, D15): `AvisoDomingo`, el domingo que viene a las 11:00 de la hora del teléfono, sin
+ *   configuración y de UNA vez (revisión del 15-oct, hallazgo 8): se arma al entrar con una cuenta y cada vez que la app
+ *   vuelve a primer plano, y al sonar no agenda otro. Sin alarmas exactas (`setWindow`, hasta 10 minutos tarde, y en
+ *   reposo profundo cuando el teléfono despierte). Al prender el teléfono, al actualizar la app y al cambiar la zona o la
+ *   hora ([ReceptorAvisos]) se vuelve a armar SOLO el que estaba pendiente ([CLAVE_DOMINGO]). Sin cuenta, con el link
+ *   vencido o en la demo no hay nada agendado.
  * - **Lo que dejó la Capacitor** (NOT-08): sus alarmas 1001-1004, lo que llegó a publicar y su canal.
  * - **El fin del descanso** (D8): con la app en segundo plano.
  * - **Tocar un aviso** (NOT-03): abre la Activity con su `destino` ([intentDeAviso], [destinoDe]).
@@ -113,6 +115,12 @@ object CentroAvisos {
 
     /** Ya se le mostró la hoja del sistema (la clave de la web: la trae la migración). */
     const val CLAVE_PEDIDO = "mypump_notif_pedido"
+
+    /**
+     * El aviso del domingo que está agendado y todavía no sonó: su domingo ("2026-10-18", `AvisoDomingo.anotar`). Con esto
+     * el reinicio, la actualización y el cambio de zona o de hora vuelven a armar ESE, sin inventar uno nuevo.
+     */
+    const val CLAVE_DOMINGO = "mypump_aviso_domingo"
 
     /** La ventana más chica que respeta Android 12+ sin alarma exacta: el aviso del domingo llega entre las 11:00 y las 11:10. */
     const val VENTANA_DOMINGO_MS = 10 * 60_000L
@@ -211,9 +219,10 @@ object CentroAvisos {
     // ── Con una cuenta ──
 
     /**
-     * Al arrancar con una cuenta (fuera de la demo): se borra lo que dejó la Capacitor y, si hay permiso, se agenda el aviso
-     * del domingo y se registra el token de push; sin permiso no queda nada agendado. Corre en el hilo principal, como el
-     * modelo.
+     * Al arrancar con una cuenta (fuera de la demo) y cada vez que la app vuelve a primer plano: se borra lo que dejó la
+     * Capacitor y, si hay permiso, se agenda el aviso del domingo que viene (es de una vez: así le sigue llegando a quien
+     * usa la app) y se registra el token de push (solo si cambió); sin permiso no queda nada agendado. Corre en el hilo
+     * principal, como el modelo.
      */
     suspend fun alEntrar(c: Context, m: ModeloApp, version: String) {
         crearCanales(c)
@@ -234,7 +243,7 @@ object CentroAvisos {
         alcance.launch { registrarPush(c, m, version) }
     }
 
-    /** Sin cuenta (link vencido, salir) o en la demo: no queda nada agendado. */
+    /** Sin cuenta (salió), con el link vencido o en la demo: el aviso del domingo ya no es para este teléfono. */
     fun alQuedarSinCuenta(c: Context) {
         cancelarDomingo(c)
     }
@@ -363,16 +372,27 @@ object CentroAvisos {
         PendingIntent.FLAG_IMMUTABLE or (if (crear) PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_NO_CREATE),
     )
 
-    /** Agenda el próximo domingo a las 11:00 de la zona del teléfono (pisa el que hubiera). Devuelve cuándo. */
+    /**
+     * Agenda el domingo que viene a las 11:00 de la zona del teléfono, una sola vez (pisa el que hubiera), y lo anota en
+     * [CLAVE_DOMINGO]. Devuelve cuándo.
+     */
     fun programarDomingo(c: Context, ahora: Instant = Instant.now(), zona: ZoneId = ZoneId.systemDefault()): Instant? {
-        val am = c.getSystemService(AlarmManager::class.java) ?: return null
-        val pi = alarmaDomingo(c, crear = true) ?: return null
         val cuando = AvisoDomingo.proximo(ahora, zona)
-        am.setWindow(AlarmManager.RTC_WAKEUP, cuando.toEpochMilli(), VENTANA_DOMINGO_MS, pi)
+        if (!armarDomingo(c, cuando)) return null
+        PreferenciasCompartidas(c).guardar(CLAVE_DOMINGO, AvisoDomingo.anotar(cuando, zona))
         return cuando
     }
 
+    private fun armarDomingo(c: Context, cuando: Instant): Boolean {
+        val am = c.getSystemService(AlarmManager::class.java) ?: return false
+        val pi = alarmaDomingo(c, crear = true) ?: return false
+        am.setWindow(AlarmManager.RTC_WAKEUP, cuando.toEpochMilli(), VENTANA_DOMINGO_MS, pi)
+        return true
+    }
+
+    /** Ni la alarma ni lo anotado: no queda ningún aviso del domingo pendiente. */
     fun cancelarDomingo(c: Context) {
+        PreferenciasCompartidas(c).guardar(CLAVE_DOMINGO, null)
         val pi = alarmaDomingo(c, crear = false) ?: return
         c.getSystemService(AlarmManager::class.java)?.cancel(pi)
         pi.cancel()
@@ -381,21 +401,31 @@ object CentroAvisos {
     /** Hay un aviso del domingo agendado. */
     fun domingoAgendado(c: Context): Boolean = alarmaDomingo(c, crear = false) != null
 
-    /** Sonó la alarma del domingo: se publica (con cuenta y permiso) y se agenda el de la semana que viene. */
+    /** El domingo del aviso pendiente, como quedó anotado ("2026-10-18"), o null si no hay ninguno. */
+    fun domingoPendiente(c: Context): String? = PreferenciasCompartidas(c).leer(CLAVE_DOMINGO)
+
+    /**
+     * Sonó la alarma del domingo: se publica (con cuenta y permiso) y NO se agenda el de la semana que viene. Lo vuelve a
+     * armar la app cuando se usa: a quien la dejó o tiene el link vencido le llega como mucho este (hallazgo 8). Se suelta
+     * el PendingIntent y lo anotado: no queda ninguno pendiente.
+     */
     fun alSonarDomingo(c: Context) {
-        if (!hayCuentaGuardada(c) || !concedido(c)) {
-            cancelarDomingo(c)
-            return
-        }
-        mostrarDomingo(c)
-        programarDomingo(c)
+        val publicar = hayCuentaGuardada(c) && concedido(c)
+        cancelarDomingo(c)
+        if (publicar) mostrarDomingo(c)
     }
 
-    /** Al prender el teléfono, al actualizar la app o al cambiar la zona o la hora: el aviso del domingo con la hora local. */
-    fun reagendar(c: Context) {
+    /**
+     * Al prender el teléfono (las alarmas no sobreviven a un reinicio), al actualizar la app o al cambiar la zona o la hora:
+     * SOLO el aviso que estaba pendiente, a las 11:00 de su domingo en la zona de ahora (`AvisoDomingo.pendiente`). Si no
+     * había uno, no se inventa: la app no se abrió desde que sonó el último (hallazgo 8). Sin cuenta o sin permiso, nada.
+     */
+    fun reagendar(c: Context, zona: ZoneId = ZoneId.systemDefault()) {
         crearCanales(c)
         limpiarCapacitor(c)
-        if (hayCuentaGuardada(c) && concedido(c)) programarDomingo(c) else cancelarDomingo(c)
+        val cuando = AvisoDomingo.pendiente(domingoPendiente(c), zona)
+        if (cuando != null && hayCuentaGuardada(c) && concedido(c) && armarDomingo(c, cuando)) return
+        cancelarDomingo(c)
     }
 
     // ── Lo que dejó la Capacitor (NOT-08) ──

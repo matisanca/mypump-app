@@ -120,10 +120,12 @@ lleva tocar un aviso) está en `:core:datos` (`Avisos.kt`), con sus tests en la 
   FCM traen `google.message_id`. La raíz cambia de pestaña con el mismo `destino` de los links con `?scene=`; en un
   arranque en frío, cuando aparecen las pestañas.
 - **El aviso del domingo** (`AvisoDomingo`): una alarma inexacta (`setWindow`: entre las 11:00 y las 11:10; con el teléfono
-  en reposo profundo, cuando despierta) que al sonar publica y agenda la de la semana siguiente. La hora sale del reloj
-  de ese domingo (cambio de hora, viajes). Se reagenda al abrir con una cuenta y con permiso, y con `BOOT_COMPLETED`,
-  `MY_PACKAGE_REPLACED`, `TIMEZONE_CHANGED` y `TIME_SET` (`ReceptorAvisos`). Sin cuenta o en la demo no queda nada; al
-  quedarse sin cuenta se cancela.
+  en reposo profundo, cuando despierta) de UNA vez: al sonar publica y no agenda otra (revisión del 15-oct, hallazgo 8:
+  repetido, le llegaba para siempre a quien dejó la app). Se arma el domingo que viene al entrar con una cuenta y con
+  permiso y cada vez que la app vuelve a primer plano, y queda anotado (`mypump_aviso_domingo`). La hora sale del reloj
+  de ese domingo (cambio de hora, viajes). Con `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `TIMEZONE_CHANGED` y `TIME_SET`
+  (`ReceptorAvisos`) se vuelve a armar solo el anotado, sin inventar uno nuevo. Sin cuenta, con el link vencido o en la
+  demo no queda nada.
 - **Lo de la Capacitor** (NOT-08). Sus alarmas 1001-1004 siguen en el sistema después de actualizar: se encuentran con el
   mismo PendingIntent que armaba su plugin (`TimedNotificationPublisher` explícito, el id como código, `FLAG_MUTABLE`
   desde Android 12) y se cancelan. Lo que publicó se saca por id sin etiqueta (los nuestros llevan la etiqueta `mypump`,

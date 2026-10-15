@@ -5,14 +5,16 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Las alarmas de los avisos locales y lo que obliga a reagendar el del domingo:
+ * Las alarmas de los avisos locales y lo que obliga a volver a armar el del domingo:
  *
- * - el aviso del domingo (publica y agenda el siguiente) y el fin del descanso (si la app no está a la vista);
+ * - el aviso del domingo (publica y NO agenda el siguiente: es de una vez, lo arma la app cuando se usa) y el fin del
+ *   descanso (si la app no está a la vista);
  * - al prender el teléfono (las alarmas no sobreviven a un reinicio) y al actualizar la app (`MY_PACKAGE_REPLACED`, que
  *   además se lleva lo que dejó la Capacitor aunque el cliente todavía no haya abierto la app nueva);
- * - al cambiar la zona o la hora: el próximo domingo a las 11:00 es otro instante.
+ * - al cambiar la zona o la hora: las 11:00 de ese domingo son otro instante.
  *
- * No se exporta: las del sistema llegan igual y nadie más puede dispararlas.
+ * En esos tres casos se vuelve a armar SOLO el aviso que estaba pendiente; si no había, no se inventa uno (revisión del
+ * 15-oct, hallazgo 8). No se exporta: las del sistema llegan igual y nadie más puede dispararlas.
  */
 class ReceptorAvisos : BroadcastReceiver() {
     override fun onReceive(contexto: Context, intent: Intent) {

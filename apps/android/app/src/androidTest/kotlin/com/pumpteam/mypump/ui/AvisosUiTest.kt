@@ -26,6 +26,8 @@ import com.pumpteam.mypump.avisos.ReceptorAvisos
 import com.pumpteam.mypump.avisos.ServicioPush
 import com.pumpteam.mypump.datos.AvisoDomingo
 import com.pumpteam.mypump.entreno.SonidoDescanso
+import java.time.Instant
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -37,7 +39,8 @@ import org.junit.runner.RunWith
 /**
  * Las notificaciones (NOT-01 a NOT-08 y D8) en el emulador, con el backend de prueba: tocar un aviso abre su pestaña (en
  * frío y en caliente), el push con la app abierta se muestra, el aviso del domingo se agenda solo con una cuenta y con
- * permiso, lo de la Capacitor se borra, el manifest trae el canal y el ícono, y el fin del descanso avisa en segundo plano.
+ * permiso y es de una vez (se vuelve a armar al usar la app; el sistema solo vuelve a armar el pendiente), lo de la
+ * Capacitor se borra, el manifest trae el canal y el ícono, y el fin del descanso avisa en segundo plano.
  *
  * El envío real de un push (FCM → teléfono) no se puede probar acá: necesita un teléfono con Google Play y una cuenta.
  * La recepción sí, con un `RemoteMessage` armado a mano contra el servicio.
@@ -192,6 +195,9 @@ class AvisosUiTest : PruebaUi() {
             assertEquals(domingo.toString(), 1, domingo.size)
             assertTrue(domingo.single(), "RTC_WAKEUP" in domingo.single() && "window=+10m" in domingo.single())
             println("Avisos: ${domingo.single()}")
+            // Es el domingo que viene, de una vez, y queda anotado para volver a armarlo si el teléfono se reinicia.
+            val zona = ZoneId.systemDefault()
+            assertEquals(AvisoDomingo.anotar(AvisoDomingo.proximo(Instant.now(), zona), zona), CentroAvisos.domingoPendiente(app))
         }.close()
         // Al reabrir no se vuelve a registrar (el token no cambió).
         abrir()
@@ -228,38 +234,131 @@ class AvisosUiTest : PruebaUi() {
         assertTrue(servidor.a("mypump_registrar_push").isEmpty())
     }
 
-    /** Al quedarse sin cuenta (el link venció) no queda nada agendado. */
+    /** Al quedarse sin cuenta (el link venció) o al salir de la cuenta no queda nada agendado (hallazgo 8 del 15-oct). */
     @Test
     fun alQuedarseSinCuentaSeCancelaElDomingo() {
         PermisoDePrueba.estado = PermisoAvisos.CONCEDIDO
         CentroAvisos.programarDomingo(app)
         assertTrue(CentroAvisos.domingoAgendado(app))
         guardarCuenta("linkVencidoDePrueba_00000000")
+        abrir().also {
+            p.nodo(etiqueta("link-vencido"))
+            p.esperar("cancelado") { !CentroAvisos.domingoAgendado(app) }
+            assertNull(CentroAvisos.domingoPendiente(app))
+        }.close()
+        // Con una cuenta que anda: al salir de la cuenta.
+        reiniciarEstado()
+        guardarCuenta()
         abrir()
-        p.nodo(etiqueta("link-vencido"))
-        p.esperar("cancelado") { !CentroAvisos.domingoAgendado(app) }
+        p.nodo(etiqueta("pestana-entreno"))
+        p.esperar("agendado con la cuenta") { CentroAvisos.domingoAgendado(app) }
+        instr.runOnMainSync { CentroAvisos.modeloVivo?.salir() }
+        p.esperar("cancelado al salir") { !CentroAvisos.domingoAgendado(app) }
+        assertNull(CentroAvisos.domingoPendiente(app))
     }
 
-    /** La alarma del domingo: publica un mensaje de Mati y agenda el de la semana que viene; sin cuenta, nada. */
+    /**
+     * La alarma del domingo publica un mensaje de Mati y NO agenda el de la semana que viene (hallazgo 8 del 15-oct: a quien
+     * dejó la app o tiene el link vencido le llegaba para siempre); sin cuenta, nada.
+     */
     @Test
-    fun alSonarElDomingoPublicaYAgendaElSiguiente() {
+    fun alSonarElDomingoPublicaYNoAgendaOtro() {
         AvisosDePrueba.concederDeVerdad(app)
         guardarCuenta()
+        CentroAvisos.programarDomingo(app)
+        assertNotNull(CentroAvisos.domingoPendiente(app))
         ReceptorAvisos().onReceive(app, Intent(app, ReceptorAvisos::class.java).setAction(CentroAvisos.ACCION_DOMINGO))
         val n = publicado(CentroAvisos.ETIQUETA, CentroAvisos.ID_DOMINGO).notification
         assertEquals("Mati", n.extras.getString(Notification.EXTRA_TITLE))
-        assertTrue(CentroAvisos.domingoAgendado(app))
-        // Cambió la zona: se reagenda (el próximo domingo a las 11:00 es otro instante; lo prueban los de la JVM).
-        CentroAvisos.cancelarDomingo(app)
-        ReceptorAvisos().onReceive(app, Intent(Intent.ACTION_TIMEZONE_CHANGED))
-        assertTrue(CentroAvisos.domingoAgendado(app))
+        // De una vez: ni alarma ni pendiente, y un reinicio no inventa otro.
+        assertFalse(CentroAvisos.domingoAgendado(app))
+        assertNull(CentroAvisos.domingoPendiente(app))
+        assertTrue(alarmasPendientes().none { "AVISO_DOMINGO" in it })
+        ReceptorAvisos().onReceive(app, Intent(Intent.ACTION_BOOT_COMPLETED))
+        assertFalse(CentroAvisos.domingoAgendado(app))
         // Sin cuenta: ni se publica ni queda agendado.
         nm.cancelAll()
         reiniciarEstado()
+        CentroAvisos.programarDomingo(app)
         ReceptorAvisos().onReceive(app, Intent(app, ReceptorAvisos::class.java).setAction(CentroAvisos.ACCION_DOMINGO))
         p.quieto(500)
         assertTrue(AvisosDePrueba.publicadas(app).isEmpty())
         assertFalse(CentroAvisos.domingoAgendado(app))
+    }
+
+    /**
+     * Al prender el teléfono, al actualizar la app y al cambiar la zona o la hora se vuelve a armar SOLO el que estaba
+     * pendiente (hallazgo 8 del 15-oct): sin uno anotado no se inventa otro, y sin cuenta o sin permiso no queda nada. Que
+     * con otra zona son las 11:00 de allá lo prueban los de la JVM (`AgendaAvisosTest`).
+     */
+    @Test
+    fun elSistemaVuelveAArmarSoloElPendiente() {
+        PermisoDePrueba.estado = PermisoAvisos.CONCEDIDO
+        guardarCuenta()
+        val delSistema = listOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_TIME_CHANGED)
+        // Sin uno pendiente (sonó y la app no se volvió a abrir): nada.
+        for (accion in delSistema) {
+            ReceptorAvisos().onReceive(app, Intent(accion))
+            assertFalse(accion, CentroAvisos.domingoAgendado(app))
+        }
+        // Con uno pendiente que se llevó el reinicio: el mismo domingo, otra vez (y uno solo).
+        CentroAvisos.programarDomingo(app)
+        val anotado = CentroAvisos.domingoPendiente(app)
+        assertNotNull(anotado)
+        for (accion in delSistema) {
+            perderLaAlarma()
+            assertFalse(CentroAvisos.domingoAgendado(app))
+            ReceptorAvisos().onReceive(app, Intent(accion))
+            assertTrue(accion, CentroAvisos.domingoAgendado(app))
+            assertEquals(accion, anotado, CentroAvisos.domingoPendiente(app))
+        }
+        assertEquals(1, alarmasPendientes().count { "AVISO_DOMINGO" in it })
+        // Sin permiso: nada.
+        PermisoDePrueba.estado = PermisoAvisos.NEGADO
+        ReceptorAvisos().onReceive(app, Intent(Intent.ACTION_BOOT_COMPLETED))
+        assertFalse(CentroAvisos.domingoAgendado(app))
+        assertNull(CentroAvisos.domingoPendiente(app))
+        // Sin cuenta: nada.
+        PermisoDePrueba.estado = PermisoAvisos.CONCEDIDO
+        CentroAvisos.programarDomingo(app)
+        reiniciarEstado()
+        guardarPreferencia(CentroAvisos.CLAVE_DOMINGO, anotado!!)
+        ReceptorAvisos().onReceive(app, Intent(Intent.ACTION_BOOT_COMPLETED))
+        assertFalse(CentroAvisos.domingoAgendado(app))
+        assertNull(CentroAvisos.domingoPendiente(app))
+    }
+
+    /** Es de una vez y se vuelve a armar cada vez que la app vuelve a primer plano con la cuenta (hallazgo 8 del 15-oct). */
+    @Test
+    fun alVolverAPrimerPlanoSeVuelveAArmar() {
+        PermisoDePrueba.estado = PermisoAvisos.CONCEDIDO
+        guardarCuenta()
+        val escenario = abrir()
+        p.nodo(etiqueta("pestana-entreno"))
+        p.esperar("el aviso del domingo agendado") { CentroAvisos.domingoAgendado(app) }
+        // Sonó con la app en segundo plano: no queda ninguno.
+        escenario.moveToState(Lifecycle.State.CREATED)
+        ReceptorAvisos().onReceive(app, Intent(app, ReceptorAvisos::class.java).setAction(CentroAvisos.ACCION_DOMINGO))
+        assertFalse(CentroAvisos.domingoAgendado(app))
+        // Vuelve a la app (sin un arranque nuevo): el domingo que viene, otra vez.
+        escenario.moveToState(Lifecycle.State.RESUMED)
+        p.esperar("armado de nuevo al volver") { CentroAvisos.domingoAgendado(app) }
+        assertNotNull(CentroAvisos.domingoPendiente(app))
+        // Si sacó el permiso en Ajustes, al volver no queda nada.
+        escenario.moveToState(Lifecycle.State.CREATED)
+        PermisoDePrueba.estado = PermisoAvisos.NEGADO
+        escenario.moveToState(Lifecycle.State.RESUMED)
+        p.esperar("cancelado sin permiso") { !CentroAvisos.domingoAgendado(app) }
+    }
+
+    /** Lo que hace un reinicio: el sistema se lleva la alarma, y lo anotado queda. */
+    private fun perderLaAlarma() {
+        val pi = PendingIntent.getBroadcast(
+            app, CentroAvisos.ID_DOMINGO, Intent(app, ReceptorAvisos::class.java).setAction(CentroAvisos.ACCION_DOMINGO),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE,
+        ) ?: return
+        app.getSystemService(AlarmManager::class.java).cancel(pi)
+        pi.cancel()
     }
 
     /** Un token nuevo de FCM se registra aunque la app esté cerrada (con la cuenta guardada); en la demo, no. */
