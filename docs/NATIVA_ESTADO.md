@@ -63,8 +63,9 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
        (`restoreSesionDelDia`).
    - ☐ El iPhone de Mati con el **TestFlight 108**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
      (SAL-13) y tocar un push real.
-3. ✅ TestFlight 104 a 107 y **108** (15-oct 06:50, con los arreglos de la revisión adversarial). Del 104 al 106 tienen
-   el cierre al tocar un aviso.
+3. ✅ TestFlight 104 a 108 y **109** (15-oct 11:00): la cola de fotos que ya no las pierde y la accesibilidad de la
+   auditoría. Antes, la suite completa de interfaz en 26.5 dio 20 de 20, con las 15 salteadas a propósito (barrido y
+   auditoría), y el kit 436/436. Del 104 al 106 tienen el cierre al tocar un aviso.
 4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
    Los arreglos de después no cambian lo que se ve en el tamaño de las capturas.
 5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
@@ -198,6 +199,22 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   Console la subida manual del AAB, Data safety, la declaración de Health Connect y las capturas.
 
 ## Bitácora
+
+- **15-oct 10:50, la auditoría de accesibilidad de Xcode en iOS** (`performAccessibilityAudit` en cada pantalla, con
+  `test-nativa-real`; `AuditoriaAccesibilidadUITests`, solo con `TEST_RUNNER_MYPUMP_AUDITORIA=1`). Arreglado en d2b6cf0:
+  - **Contraste:** el texto con información que estaba en gris terciario (1,7:1) pasa a secundario. Son «Última: …» de
+    Entreno, con el valor en negro, la hora y el «enviando…» del chat, quién comentó, la escala del check, los días del
+    calendario y la pista del onboarding.
+  - **El agua:** ahora es un solo control ajustable para VoiceOver, del alto de un dedo. Las zonas tocables chicas
+    pasan de 5 a 0, con prueba (`testElAguaEsUnControlConSuValor`).
+  - **`FilaFluida`:** lo que no entra se parte en renglones. Con la letra más grande en el SE, «Última: 60 kg × 9 ·
+    ayer» terminaba en «…».
+
+  Lo que la auditoría sigue marcando, revisado contra las capturas:
+  - El contraste de textos negros o del verde de marca (7,1:1) cuando pasan por debajo de la barra de vidrio en un
+    paso del desplazamiento.
+  - Dynamic Type «parcialmente» en texto del sistema, que el barrido con la letra más grande muestra creciendo.
+  - Texto cortado en etiquetas que se ven enteras (mayúsculas con espaciado y `minimumScaleFactor`).
 
 - **15-oct 10:20, la matriz de Android y la cola de fotos:**
   - **La matriz de emuladores con Google Play** la armó un agente y está mergeada en 8733a3c. Las 186 instrumentadas
