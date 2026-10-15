@@ -18,7 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -36,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -116,6 +121,31 @@ private fun RaizConModelo(vm: ModeloAppViewModel, m: ModeloApp) {
             Destino.APP -> AppConPestanas(vm, m)
         }
     }
+    // Un link tocado con la cuenta andando que no se usó: se avisa y se sigue en la cuenta (hallazgo 11 del 15-oct).
+    val avisoLink by m.avisoLink.collectAsStateWithLifecycle()
+    avisoLink?.let { AvisoDeLink(it, alCerrar = m::cerrarAvisoLink) }
+}
+
+/** Los textos de iOS (las alertas de RaizApp.swift). Cerrarlo como sea lo borra. */
+@Composable
+private fun AvisoDeLink(aviso: ModeloApp.AvisoLink, alCerrar: () -> Unit) {
+    val c = MyPump.colores
+    val (titulo, texto) = when (aviso) {
+        ModeloApp.AvisoLink.VENCIDO -> "Este link ya no sirve" to "Seguís con tu cuenta."
+        ModeloApp.AvisoLink.SIN_CONEXION -> "Sin conexión" to "No pudimos abrir ese link. Probá de nuevo cuando tengas señal."
+    }
+    AlertDialog(
+        onDismissRequest = alCerrar,
+        title = { Text(titulo) },
+        text = { Text(texto, style = MaterialTheme.typography.bodyMedium) },
+        confirmButton = {
+            TextButton(onClick = alCerrar, modifier = Modifier.testTag("aviso-link-entendido")) {
+                Text("Entendido", color = c.marcaTexto, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        containerColor = c.tarjeta,
+        modifier = Modifier.testTag("aviso-link"),
+    )
 }
 
 /** La marca mientras se trae la cuenta por primera vez (con copia offline la app abre directo) o corre la Fase L. */

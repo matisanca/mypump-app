@@ -201,13 +201,62 @@ class ModeloApp(
 
     // ── Acceso ──
 
-    /** Lo que pegó o abrió el cliente (link entero, a medias o el token solo). */
-    suspend fun entrar(texto: String): Boolean {
+    /** Un link tocado con una cuenta andando que no se usó: el aviso que ve el cliente, que sigue en su cuenta. */
+    enum class AvisoLink {
+        /** "Este link ya no sirve" */
+        VENCIDO,
+
+        /** No se pudo revisar el link (sin red): no se cambia de cuenta sin saber si anda. */
+        SIN_CONEXION,
+    }
+
+    /** Lo muestra la raíz y lo borra al cerrarlo ([cerrarAvisoLink]). */
+    private val _avisoLink = MutableStateFlow<AvisoLink?>(null)
+    val avisoLink: StateFlow<AvisoLink?> = _avisoLink.asStateFlow()
+
+    fun cerrarAvisoLink() {
+        _avisoLink.value = null
+    }
+
+    private var entradas = 0
+
+    /**
+     * Lo que pegó o abrió el cliente (link entero, a medias o el token solo). `avisar = false` para lo que no tocó el cliente
+     * (el token que adoptó la migración): ahí no se le muestra nada.
+     */
+    suspend fun entrar(texto: String, avisar: Boolean = true): Boolean {
         val t = FormatoToken.extraer(texto) ?: return false
+        entradas += 1
+        val entrada = entradas
         // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de WhatsApp de
         // hace meses. No depende de la fase: al abrir la app tocando el link, la cuenta guardada todavía está cargando.
-        if (t != token && t == preferencias.leer(CLAVE_TOKEN_INVALIDO) && token != null && !_esDemo.value) return false
+        if (t != token && t == preferencias.leer(CLAVE_TOKEN_INVALIDO) && token != null && !_esDemo.value) {
+            if (avisar) _avisoLink.value = AvisoLink.VENCIDO
+            return false
+        }
         if (t == token && _fase.value == Fase.LISTO) return true
+        // Con una cuenta que anda, el link nuevo se revisa ANTES de reemplazarla. Antes se guardaba primero y se borraba al ver
+        // `[]`: un link viejo nunca usado en este teléfono dejaba al cliente en "pegá tu link" y sin la cuenta que tenía
+        // (revisión del 15-oct, hallazgo 11). Sin cuenta (o con la suya vencida), como siempre.
+        val actual = token
+        if (actual != null && t != actual && !_esDemo.value && _fase.value != Fase.TOKEN_INVALIDO) {
+            val r = cliente.llamar("mypump_get_cliente_info", mapOf("p_token" to ValorJson.Texto(t)))
+            // Mientras se preguntaba se tocó otro link: gana el último.
+            if (entrada != entradas || token != actual || _esDemo.value) return false
+            when (r) {
+                is Resultado.Falla -> {
+                    if (avisar) _avisoLink.value = AvisoLink.SIN_CONEXION
+                    return false
+                }
+                is Resultado.Ok -> if ((r.valor as? ValorJson.Lista)?.elementos.isNullOrEmpty()) {
+                    preferencias.guardar(CLAVE_TOKEN_INVALIDO, t)
+                    // La cuenta que anda es la que queda guardada (la migración pudo haber dejado el otro en el almacén).
+                    if (almacen.leer() != actual) almacen.guardar(actual)
+                    if (avisar) _avisoLink.value = AvisoLink.VENCIDO
+                    return false
+                }
+            }
+        }
         _esDemo.value = false
         almacen.guardar(t)
         token = t
