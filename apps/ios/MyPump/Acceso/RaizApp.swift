@@ -40,6 +40,17 @@ struct RaizApp<Contenido: View>: View {
             }
         }
         .animation(.snappy, value: modelo.fase)
+        // Un link tocado con la cuenta andando que no se usó: se avisa y se sigue en la cuenta (hallazgo 11).
+        .alert("Este link ya no sirve", isPresented: avisoLink(.vencido)) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text("Seguís con tu cuenta.")
+        }
+        .alert("Sin conexión", isPresented: avisoLink(.sinConexion)) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text("No pudimos abrir ese link. Probá de nuevo cuando tengas señal.")
+        }
         .onOpenURL { url in
             Task {
                 await modelo.entrar(con: url.absoluteString)
@@ -89,6 +100,10 @@ struct RaizApp<Contenido: View>: View {
                 CentroAvisos.shared.cancelarDomingo()
             }
         }
+    }
+
+    private func avisoLink(_ aviso: ModeloApp.AvisoLink) -> Binding<Bool> {
+        Binding(get: { modelo.avisoLink == aviso }, set: { if !$0 { modelo.avisoLink = nil } })
     }
 }
 

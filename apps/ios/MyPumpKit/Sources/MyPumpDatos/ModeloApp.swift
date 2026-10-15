@@ -102,17 +102,54 @@ public final class ModeloApp {
 
     // MARK: - Acceso
 
-    /// Lo que pegó o abrió el cliente (link entero, a medias o el token solo).
+    /// Un link tocado con una cuenta andando que no se usó: el aviso que ve el cliente, que sigue en su cuenta.
+    public enum AvisoLink: Equatable, Sendable {
+        /// "Este link ya no sirve"
+        case vencido
+        /// No se pudo revisar el link (sin red): no se cambia de cuenta sin saber si anda.
+        case sinConexion
+    }
+
+    /// Lo muestra la raíz y lo borra al cerrarlo.
+    public var avisoLink: AvisoLink?
+    @ObservationIgnored private var entradas = 0
+
+    /// Lo que pegó o abrió el cliente (link entero, a medias o el token solo). `avisar: false` para lo que no tocó el
+    /// cliente (el token que adoptó la migración): ahí no se le muestra nada.
     @discardableResult
-    public func entrar(con texto: String) async -> Bool {
+    public func entrar(con texto: String, avisar: Bool = true) async -> Bool {
         guard let t = FormatoToken.extraer(de: texto) else { return false }
+        entradas += 1
+        let entrada = entradas
         // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de
         // WhatsApp de hace meses.
         // No depende de la fase: al abrir la app tocando el link, la cuenta guardada todavía está cargando.
         if t != token, t == UserDefaults.standard.string(forKey: "mypump_token_invalido"), token != nil, !esDemo {
+            if avisar { avisoLink = .vencido }
             return false
         }
         if t == token, fase == .listo { return true }
+        // Con una cuenta que anda, el link nuevo se revisa ANTES de reemplazarla. Antes se guardaba primero y se borraba
+        // al ver `[]`: un link viejo nunca usado en este teléfono dejaba al cliente en "pegá tu link" y sin la cuenta que
+        // tenía (revisión del 15-oct, hallazgo 11). Sin cuenta (o con la suya vencida), como siempre.
+        if let actual = token, t != actual, !esDemo, fase != .tokenInvalido {
+            let r = await cliente.llamar("mypump_get_cliente_info", ["p_token": .texto(t)])
+            // Mientras se preguntaba se tocó otro link: gana el último.
+            guard entrada == entradas, token == actual, !esDemo else { return false }
+            switch r {
+            case .failure:
+                if avisar { avisoLink = .sinConexion }
+                return false
+            case .success(let j):
+                guard case .lista(let filas) = j, !filas.isEmpty else {
+                    UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
+                    // La cuenta que anda es la que queda guardada (la migración pudo haber dejado el otro en el Keychain).
+                    if almacen.leer() != actual { almacen.guardar(actual) }
+                    if avisar { avisoLink = .vencido }
+                    return false
+                }
+            }
+        }
         esDemo = false
         almacen.guardar(t)
         token = t
