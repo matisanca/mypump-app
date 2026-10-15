@@ -77,13 +77,6 @@ struct DietaView: View {
                 Task { await modelo.sustituir(r.original, por: elegido, comidaId: r.comidaId, opt: r.opt, idx: r.idx) }
             }
         }
-        .confirmationDialog("¿Volver al alimento del plan?", isPresented: Binding(get: { revertir != nil }, set: { if !$0 { revertir = nil } }),
-                            titleVisibility: .visible, presenting: revertir) { r in
-            Button("Volver a \(r.original.nombre)") { Task { await modelo.revertir(comidaId: r.comidaId, opt: r.opt, idx: r.idx) } }
-            Button("Cancelar", role: .cancel) {}
-        } message: { r in
-            Text("Hoy estás comiendo \(r.mostrado.nombre).")
-        }
     }
 
     // MARK: - Contenido
@@ -225,6 +218,16 @@ struct DietaView: View {
                         reemplazo = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
                     } alRevertir: {
                         revertir = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
+                    }
+                    // Colgada de la fila: en iOS 26 la confirmación es un globo que apunta a lo que se tocó. Colgada de toda
+                    // la pantalla salía arriba, tapando el aviso de la demo y apuntando al gráfico de calorías.
+                    .confirmationDialog("¿Volver al alimento del plan?",
+                                        isPresented: Binding(get: { revertir?.id == clave }, set: { if !$0 { revertir = nil } }),
+                                        titleVisibility: .visible, presenting: revertir) { r in
+                        Button("Volver a \(r.original.nombre)") { Task { await modelo.revertir(comidaId: r.comidaId, opt: r.opt, idx: r.idx) } }
+                        Button("Cancelar", role: .cancel) {}
+                    } message: { r in
+                        Text("Hoy estás comiendo \(r.mostrado.nombre).")
                     }
                     if item.i < alimentos.count - 1 { Divider() }
                 }

@@ -32,13 +32,6 @@ struct MiRelojView: View {
         }
         .task { if modelo.relojesDisponibles == nil { await modelo.cargarRelojes() } }
         .sheet(item: $abierto) { a in SafariSalud(url: a.url).ignoresSafeArea() }
-        .confirmationDialog("¿Quitar \(aQuitar?.id ?? "")?", isPresented: Binding(get: { aQuitar != nil }, set: { if !$0 { aQuitar = nil } }),
-                            titleVisibility: .visible, presenting: aQuitar) { r in
-            Button("Quitar", role: .destructive) { Task { await modelo.quitar(r.id) } }
-            Button("Cancelar", role: .cancel) {}
-        } message: { _ in
-            Text("Dejamos de traer tus datos. Los que ya están se quedan.")
-        }
     }
 
     private func fila(_ r: ModeloSalud.Reloj) -> some View {
@@ -56,6 +49,14 @@ struct MiRelojView: View {
             if r.conectado {
                 Button("Quitar") { aQuitar = r }.buttonStyle(BotonSecundario(compacto: true))
                     .accessibilityIdentifier("reloj-quitar-\(r.id)")
+                    // Colgada del botón: en iOS 26 la confirmación es un globo que apunta a lo que se tocó.
+                    .confirmationDialog("¿Quitar \(r.id)?", isPresented: Binding(get: { aQuitar?.id == r.id }, set: { if !$0 { aQuitar = nil } }),
+                                        titleVisibility: .visible) {
+                        Button("Quitar", role: .destructive) { Task { await modelo.quitar(r.id) } }
+                        Button("Cancelar", role: .cancel) {}
+                    } message: {
+                        Text("Dejamos de traer tus datos. Los que ya están se quedan.")
+                    }
             } else {
                 Button(modelo.esperandoReloj == r.id ? "Abriendo…" : "Conectar") { conectar(r) }
                     .buttonStyle(BotonSecundario(compacto: true))

@@ -29,7 +29,8 @@ struct TablaSeries: View {
         let activa = filas.firstIndex { $0.activa && !$0.confirmada }
         VStack(alignment: .leading, spacing: Espacio.s) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Series").font(.title3.weight(.bold)).accessibilityAddTraits(.isHeader)
+                // Abierta en la lista va más chica: arriba ya está el nombre del ejercicio, que es lo que manda.
+                Text("Series").font(enLista ? .headline : .title3.weight(.bold)).accessibilityAddTraits(.isHeader)
                 Spacer()
                 Text("\(tarjeta.confirmadas) de \(filas.count)")
                     .font(.subheadline.weight(.medium).monospacedDigit())

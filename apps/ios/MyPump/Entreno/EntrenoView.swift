@@ -632,7 +632,7 @@ private struct EjercicioEnLista: View {
                     }
                     .accessibilityIdentifier("tecnica-y-notas")
                 }
-                .buttonStyle(AccionTarjeta())
+                .buttonStyle(AccionEnFila())
                 .padding(.horizontal, Espacio.m)
                 Group {
                     if terminal {
@@ -660,6 +660,41 @@ private struct EjercicioEnLista: View {
             .padding(.bottom, Espacio.s)
             .background(Color.campo.opacity(0.35))
             .sheet(isPresented: $sustituyendo) { SustituirEjercicioView(motor: motor, lugar: lugar) }
+        }
+    }
+}
+
+/// Los botones del ejercicio abierto en la lista: el ícono y el texto en un renglón, de 44 de alto. Los apilados de la
+/// página (`AccionTarjeta`) ocupaban casi el doble, y abierto en la lista cada renglón cuenta.
+private struct AccionEnFila: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { Cuerpo(configuration: configuration) }
+
+    private struct Cuerpo: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var habilitado
+
+        var body: some View {
+            configuration.label
+                .labelStyle(EnRenglon(tono: habilitado ? .marcaTexto : .secondary))
+                .opacity(habilitado ? 1 : 0.45)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .superficieTarjeta(radio: Radio.control + 4)
+                .scaleEffect(configuration.isPressed ? 0.97 : 1)
+                .opacity(configuration.isPressed ? 0.85 : 1)
+                .animation(.snappy(duration: 0.18), value: configuration.isPressed)
+        }
+    }
+
+    private struct EnRenglon: LabelStyle {
+        let tono: Color
+        func makeBody(configuration: Configuration) -> some View {
+            HStack(spacing: 6) {
+                configuration.icon.font(.subheadline.weight(.semibold)).foregroundStyle(tono)
+                configuration.title.font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    .lineLimit(2).multilineTextAlignment(.center)
+            }
         }
     }
 }
@@ -732,9 +767,12 @@ struct FilaEjercicio: View {
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .trailing) {
+            // Apunta abajo con el ejercicio abierto en la lista: tocar la fila lo abre y lo cierra ahí mismo.
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.tertiary)
+                .rotationEffect(.degrees(motor.dia.expandido == lugar ? 90 : 0))
+                .animation(.snappy, value: motor.dia.expandido == lugar)
                 .padding(.trailing, Espacio.m)
         }
         .contentShape(.rect)
