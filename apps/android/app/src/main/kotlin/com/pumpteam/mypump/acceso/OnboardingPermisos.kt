@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.acceso
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -168,6 +169,13 @@ fun OnboardingPermisos(modelo: ModeloApp, version: String, alTerminar: () -> Uni
                 }
             }
         }
+    }
+
+    // Un Atrás mientras la hoja todavía está apareciendo (antes de que su ventana tenga el foco) lo recibía la actividad y
+    // mandaba la app al fondo: cuenta como "Ahora no", igual que cerrarla (lo encontró la suite completa el 15-oct).
+    BackHandler {
+        generacion++
+        terminar()
     }
 
     ModalBottomSheet(
