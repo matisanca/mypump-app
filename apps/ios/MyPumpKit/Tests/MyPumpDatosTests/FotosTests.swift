@@ -116,13 +116,17 @@ struct FotosTests {
         #expect(m.pendientes.isEmpty)
     }
 
-    /// Una foto que el servidor no puede guardar (un 5xx cada vez) no traba a las que vienen atrás.
+    /// Una foto que el servidor no puede guardar (un 5xx cada vez) no traba a las que vienen atrás: el 5xx corta la pasada
+    /// (un intento por apertura) y esa foto queda para el final de la próxima.
     @Test func unaFotoQueNoEntraNoTrabaALasDemas() async {
-        let g = Guion(); g.respuestas = [nil, nil, (502, #"{"ok":false,"error":"no se pudo guardar la foto"}"#), (200, #"{"ok":true}"#)]
+        let no = (502, #"{"ok":false,"error":"no se pudo guardar la foto"}"#)
+        let g = Guion(); g.respuestas = [nil, nil, no, (200, #"{"ok":true}"#), no]
         let m = modelo(g)
         _ = await m.subir(pose: "espalda", jpeg: jpeg)
         _ = await m.subir(pose: "frente", jpeg: jpeg)
-        await m.drenar()   // espalda va primero (por la clave): 502, sigue; frente: ok
+        await m.drenar()   // espalda va primero (por la clave): 502 y corta, sin probar frente
+        #expect(m.pendientes.count == 2)
+        await m.drenar()   // ahora frente primero: ok; espalda al final: 502 de nuevo
         #expect(m.pendientes.keys.map { $0.hasSuffix("|espalda") } == [true])
     }
 

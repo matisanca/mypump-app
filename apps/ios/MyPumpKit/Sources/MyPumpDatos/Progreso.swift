@@ -30,6 +30,11 @@ public final class ModeloProgreso {
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
+    /// La carga en curso: si mientras tanto empezó otra, lo que vuelve de esta se descarta. Dos cargas que se pisaban
+    /// dejaban las tarjetas de una con el historial de la otra (revisión adversarial del 15-oct).
+    @ObservationIgnored private var carga = 0
+    /// Solo para las pruebas: corre justo antes de las cuentas, que es donde se cuela otra carga.
+    @ObservationIgnored var antesDeLasCuentas: (() async -> Void)?
 
     public init(cliente: ClienteRPC, token: String) {
         self.cliente = cliente; self.token = token
@@ -37,6 +42,8 @@ public final class ModeloProgreso {
 
     /// `nombreEfectivo` da el nombre que se está haciendo (el del sustituto si el ejercicio está sustituido).
     public func cargar(rutina: RutinaActiva?, nombreEfectivo: (Ejercicio) -> String = { $0.nombre }) async {
+        carga += 1
+        let mia = carga
         estado = .cargando
         guard let dias = rutina?.estructura.dias else { tarjetas = []; sesiones = 0; estado = .listo; return }
         // Una entrada por clave del ejercicio efectivo, con los días donde aparece.
@@ -77,10 +84,11 @@ public final class ModeloProgreso {
             }
         case .failure:
             // Sin red: NO se cae al camino por lugar (mezclaría original y sustituto) y se reintenta al volver.
-            estado = .sinRed
+            if mia == carga { estado = .sinRed }
             return
         }
-        historialPorClave = filasPor
+        guard mia == carga else { return }
+        await antesDeLasCuentas?()
         // Las cuentas (la fecha local de cada fila) fuera del hilo principal: con el historial más largo que deja el
         // servidor (48 filas por ejercicio) son unos 0,25 s, y la pestaña se trababa al abrirla (15-oct).
         let pedidas = entradas.map { ($0.id, $0.nombre, $0.clave, $0.dias.joined(separator: " · ")) }
@@ -92,6 +100,8 @@ public final class ModeloProgreso {
             }
             return (t, ProgresoEjercicio.sesiones(traidas.values.flatMap { $0 }).count)
         }.value
+        guard mia == carga else { return }
+        historialPorClave = filasPor
         tarjetas = nuevas
         sesiones = cuantas
         estado = .listo

@@ -61,6 +61,8 @@ public final class ModeloFotos {
     @ObservationIgnored let disco: Disco?
     @ObservationIgnored private var drenando = false
     @ObservationIgnored private var urlsVencen: Date?
+    /// Las que el servidor no pudo guardar (5xx) en esta sesión: la próxima pasada las deja para el final.
+    @ObservationIgnored private var conErrorDelServidor: Set<String> = []
 
     static let archivo = FotoPendiente.archivo
 
@@ -97,19 +99,22 @@ public final class ModeloFotos {
         let clave = "\(FotosProgreso.lunes(fecha))|\(pose)"
         if pendientes.count >= FotosProgreso.maxPendientes && pendientes[clave] == nil { return .colaLlena }
         if dataUrl.count > FotosProgreso.maxCaracteres { return .muyPesada }
-        pendientes[clave] = FotoPendiente(pose: pose, fecha: fecha, dataUrl: dataUrl)
+        let item = FotoPendiente(pose: pose, fecha: fecha, dataUrl: dataUrl)
+        pendientes[clave] = item
         let guardo = guardarCola()
+        // Si la cola está subiendo una foto vieja de esta misma pose y semana (el cliente la volvió a sacar), se espera a
+        // que termine. Si no, la vieja podía terminar después, y el upsert del servidor la dejaba en lugar de la nueva
+        // (revisión adversarial del 15-oct).
+        while subiendo.contains(clave) { try? await Task.sleep(for: .milliseconds(100)) }
         subiendo.insert(clave)
         defer { subiendo.remove(clave) }
-        switch await enviar(pendientes[clave]!) {
+        switch await enviar(item) {
         case .ok:
-            pendientes[clave] = nil
-            _ = guardarCola()
+            sacar(clave, si: item)
             await alSubir()
             return .guardada
         case .fatal(let motivo):
-            pendientes[clave] = nil
-            _ = guardarCola()
+            sacar(clave, si: item)
             return .rechazada(motivo)
         case .reintentar, .red:
             return guardo ? .sinConexion : .noSeGuardo
@@ -125,33 +130,47 @@ public final class ModeloFotos {
     /// propio comentario dice que con el servidor caído la foto tiene que sobrevivir. Pero con la Mini caída Cloudflare
     /// contesta 502/530, que contaba como error del servidor, y abriendo la app unas cuantas veces la foto se perdía. Con el
     /// tope de 12 por día («probá mañana») pasaba lo mismo. Ahora espera. Si nunca entra, la corta la ventana de fechas del
-    /// servidor (+1/−7), que después la rechaza con un 400. Un 5xx sigue con la próxima, así una foto que el servidor no
-    /// puede guardar no traba a las demás. El tope del día, la red y el token caído cortan la pasada.
+    /// servidor (+1/−7), que después la rechaza con un 400.
+    /// Un 5xx corta la pasada (un intento por apertura: cada intento gasta uno de los 12 del día, aunque el storage esté
+    /// caído) y esa foto queda para el final de la próxima, así una que el servidor no puede guardar no traba a las demás.
+    /// El tope del día, la red y el token caído también cortan. No toca una pose que `subir` está mandando ahora, y solo
+    /// saca de la cola la foto que mandó: si mientras tanto el cliente sacó otra de la misma pose, la nueva queda
+    /// (revisión adversarial del 15-oct).
     public func drenar() async {
         guard !drenando, !pendientes.isEmpty else { return }
         drenando = true
         defer { drenando = false }
         var subioAlgo = false
-        pasada: for clave in pendientes.keys.sorted() {
-            guard let item = pendientes[clave] else { continue }
+        let orden = pendientes.keys.sorted { (conErrorDelServidor.contains($0) ? 1 : 0, $0) < (conErrorDelServidor.contains($1) ? 1 : 0, $1) }
+        pasada: for clave in orden {
+            guard let item = pendientes[clave], !subiendo.contains(clave) else { continue }
             subiendo.insert(clave)
             let r = await enviar(item)
             subiendo.remove(clave)
             switch r {
             case .ok:
-                pendientes[clave] = nil
-                _ = guardarCola()
+                sacar(clave, si: item)
+                conErrorDelServidor.remove(clave)
                 subioAlgo = true
             case .fatal:
-                pendientes[clave] = nil
-                _ = guardarCola()
+                sacar(clave, si: item)
+                conErrorDelServidor.remove(clave)
             case .reintentar:
-                continue pasada
+                conErrorDelServidor.insert(clave)
+                break pasada
             case .tope, .red, .tokenCaido:
                 break pasada     // no entra ninguna: con el tope del día, sin señal, o con este link (la adopta el nuevo)
             }
         }
         if subioAlgo { await alSubir() }
+    }
+
+    /// Saca de la cola la foto que se mandó, solo si sigue siendo esa: si mientras subía el cliente sacó otra de la misma
+    /// pose y semana, la nueva queda para subir.
+    private func sacar(_ clave: String, si item: FotoPendiente) {
+        guard pendientes[clave] == item else { return }
+        pendientes[clave] = nil
+        _ = guardarCola()
     }
 
     /// Con una foto guardada: la lista de lo subido y las URLs firmadas de nuevo. Al REEMPLAZAR la foto de una pose de la
