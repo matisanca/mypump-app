@@ -98,6 +98,51 @@ y números grandes van en Archivo.
   Si se agrega `ui-test-junit4` + `ui-test-manifest`, las pruebas pasan a `createAndroidComposeRule` casi sin cambios:
   las etiquetas son las mismas.
 
+<!-- Revisión con Mi Día (REV-01…08, DIA-01…06, SAL-09/10): bloque propio de esa pantalla. -->
+## Revisión con Mi Día
+
+Gemela de `apps/ios/MyPump/Revision/` en el paquete `revision`; lo de las fotos que va a usar también Dieta (la
+reducción, el botón de cámara o galería y el FileProvider) está en `fotos`. Todo sale de los modelos de `:core:datos`
+(`ModeloRevision`, `ModeloFotos`, `ModeloSalud`): la pantalla no tiene reglas propias.
+
+- **La pantalla** (`RevisionPantalla`): el aviso de plan incompleto arriba (GEN-05) y, en el orden de la web (REV-01),
+  Fotos, Check, Peso, Mi reloj y Mi Día. Tirar para actualizar trae el check, el peso, Mi Día, las fotos y la salud.
+  Un pedido de sección (`Navegacion.anclaRevision`, las claves de `AnclaRevision`) la desplaza hasta ella y se consume:
+  el banner de las otras pestañas lleva al check si es lo único que falta y, si no, a las fotos (como iOS);
+  `?scene=myday` y el aviso de Mi Día, a Mi Día. Si lo de arriba termina de cargar y la sección se movió, se corrige una
+  vez (salvo que el cliente ya se haya desplazado solo).
+- **Fotos** (REV-02…05, `FotosSemana`): la cámara del teléfono (`TakePicture`) o el selector de fotos del sistema
+  (`PickVisualMedia`), sin pedir CAMERA ni permisos de la galería. La cámara escribe en `cache/camara/` por un
+  FileProvider propio (`fotos/ProveedorFotos`, sin exportar, solo esa carpeta) y la foto se borra apenas se lee. El
+  manifest saca CAMERA con `tools:node="remove"`: si una librería lo trajera, Android exigiría el permiso concedido hasta
+  para abrir la cámara de otro. `fotos/ReduccionFoto` es la de iOS con lo del sistema: medidas sin decodificar,
+  `BitmapFactory` de a potencias de 2, la orientación de `android.media.ExifInterface` aplicada a mano (`BitmapFactory`
+  la ignora siempre, también en HEIC, así que no se gira dos veces) y `Bitmap.compress` a 900 px y 0,7, que no escribe
+  metadatos. HEIC desde Android 9. Las miniaturas van con la URL firmada por `ImagenRemota` (en memoria, nunca en
+  disco). La galería por semana y el comparador desde la 4.ª semana, con el cambio de peso; con 3 fotos esperando en la
+  cola no entra otra ("Hay fotos esperando subir").
+- **Check** (REV-06): el borrador sobrevive a cambiar de pestaña y a rotar, lo guardado no lo pisa mientras el cliente
+  toca, y se vacía al cambiar de semana. El botón dice qué falta ("Faltan: …").
+- **Peso** (REV-07): el gráfico es un `Canvas` (sin librerías): la media de 7 días con la curva monótona de Salud
+  (`curvaMonotona`), los pesos del día como puntos, 3 valores a la derecha y fechas por semana (cada dos, tres… si no
+  entran sin pisarse, como Charts). Un peso fuera de 30-300 kg no sale y el campo se sacude (en la composición: en el
+  alcance de la app la animación no tiene reloj de cuadros y se cae).
+- **Mi reloj** (REV-08, `MiReloj`): "Conectar" abre `…/api/wearables/iniciar?t=` con `abrirEnNavegador`, que fija el
+  navegador (el link es de `app.mypumpteam.com`, el App Link de MyPump); "Quitar" pide confirmación.
+- **Mi Día** (DIA-01…06, `MiDia`): la racha con `RachaTexto.icono` y el último día válido desde 2 días, los hábitos ✓/✗
+  (tocar de nuevo borra; TalkBack dice "Dormí bien: sí, marcado"), el agua, Recuperación y Salud (`salud/CardsSalud`,
+  SAL-09/10; "Ver todos mis datos" abre el detalle encima), los 30 días (se traen al abrirlos) y el respaldo científico.
+  En la demo todo se toca y nada sale: `ModeloRevision.demo()` no tiene token ni cola, las fotos dicen que no se guardan
+  y sin cuenta no hay reloj ni salud.
+- **Pruebas.** `fotos/ReduccionFotoTest` (instrumentada, gemela de `ReduccionFotoTests` más las 8 orientaciones de EXIF;
+  la HEIC es `androidTest/assets/fotos/con-gps.heic`, porque Android no codifica HEIC sin librerías), `ui/RevisionUiTest`
+  y `ui/RevisionCapturasTest` (cada sección en claro y en oscuro, la galería con 7 semanas de fotos y la demo). La cámara
+  y el selector de fotos se reemplazan con un `Instrumentation.ActivityMonitor` que contesta una foto armada en la
+  prueba (`FotoDePrueba`), sin abrir nada. `ServidorDePrueba` contesta `/progreso/upload`, `/progreso/urls` y
+  `/api/wearables/disponibles` (antes, todo lo que no era RPC daba `[]`). Mi reloj no abre el navegador de verdad (el
+  link lleva el token y va al sitio real): con el dominio elegido para MyPump (`pm set-app-links-user-selection`) se
+  mira que el pedido va al navegador fijo y que el mismo link sin fijar lo abriría MyPump.
+
 ## Los avisos
 
 Gemelos de `apps/ios/MyPump/Avisos/CentroAvisos.swift` y `Acceso/OnboardingPermisos.swift`, en el paquete `avisos` (la hoja
