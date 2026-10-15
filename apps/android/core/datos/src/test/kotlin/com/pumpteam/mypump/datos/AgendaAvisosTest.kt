@@ -4,8 +4,10 @@ import com.pumpteam.mypump.modelos.ValorJson
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -94,7 +96,8 @@ class AgendaAvisosTest {
         assertEquals(RegistroPush.Decision.REGISTRAR, RegistroPush.decidir("cuentaA_00000000000", false, true, "fcm-1", p))
         p.guardar(RegistroPush.CLAVE_TOKEN, "fcm-1")
         p.guardar(RegistroPush.CLAVE_CUENTA, RegistroPush.huella("cuentaA_00000000000"))
-        // El mismo token con la misma cuenta: ya está, no se repite la RPC en cada arranque.
+        p.guardar(RegistroPush.CLAVE_FECHA, System.currentTimeMillis().toString())
+        // El mismo token con la misma cuenta en la semana: ya está, no se repite la RPC en cada arranque.
         assertEquals(RegistroPush.Decision.YA_REGISTRADO, RegistroPush.decidir("cuentaA_00000000000", false, true, "fcm-1", p))
         // FCM lo cambió (onNewToken): de nuevo.
         assertEquals(RegistroPush.Decision.REGISTRAR, RegistroPush.decidir("cuentaA_00000000000", false, true, "fcm-2", p))
@@ -161,6 +164,61 @@ class AgendaAvisosTest {
         assertTrue(b.registrarPush("fcm-1", "2.0.0 (100)"))
         assertTrue(b.registrarPush("fcm-1", "2.0.0 (100)"))
         assertEquals(listOf<String?>("cuentaA_00000000000", "cuentaB_00000000000"), cuentas)
+    }
+
+    /**
+     * Hallazgo 9 (15-oct), gemelo de RegistroPushTests.swift: si `push.py` da de baja la fila (FCM dijo que el token no
+     * sirve, o un envío falló), el teléfono no volvía a registrarse mientras no cambiara su token. Ahora se registra de
+     * nuevo aunque no haya cambiado, como mucho una vez cada 7 días.
+     */
+    @Test
+    fun seVuelveARegistrarAunqueNoCambieUnaVezPorSemana() = enUnHilo { alcance ->
+        val registros = AtomicInteger()
+        val t = TransporteProgramado { fn, _ ->
+            if (fn == "mypump_registrar_push") {
+                registros.incrementAndGet()
+                200 to "true"
+            } else {
+                200 to "[]"
+            }
+        }
+        val m = ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria("cuentaA_00000000000"), carpetaTemporal("push"), PreferenciasEnMemoria(), alcance)
+        val dia0 = 1_792_000_000_000L
+        fun dia(n: Double) = dia0 + (n * 86_400_000).toLong()
+
+        assertTrue(m.registrarPush("fcm-1", "2.0.0 (100)", ahora = dia0))
+        assertTrue(m.registrarPush("fcm-1", "2.0.0 (100)", ahora = dia(1.0)))
+        assertTrue(m.registrarPush("fcm-1", "2.0.0 (100)", ahora = dia(6.9)))
+        assertEquals(1, registros.get(), "dentro de la semana, una sola vez")
+        assertTrue(m.registrarPush("fcm-1", "2.0.0 (100)", ahora = dia(7.0)))
+        assertEquals(2, registros.get(), "a los 7 días se registra de nuevo aunque el token sea el mismo")
+        assertTrue(m.registrarPush("fcm-1", "2.0.0 (100)", ahora = dia(8.0)))
+        assertEquals(2, registros.get())
+        // Un reloj que vuelve para atrás (el cliente cambió la fecha) tampoco lo deja sin registrar.
+        assertTrue(m.registrarPush("fcm-1", "2.0.0 (100)", ahora = dia(-30.0)))
+        assertEquals(3, registros.get())
+    }
+
+    /** Lo que dejó una versión anterior (token y cuenta, sin fecha): se registra una vez más y queda con fecha. */
+    @Test
+    fun sinFechaAnotadaSeRegistra() = enUnHilo { alcance ->
+        val registros = AtomicInteger()
+        val t = TransporteProgramado { fn, _ ->
+            if (fn == "mypump_registrar_push") {
+                registros.incrementAndGet()
+                200 to "true"
+            } else {
+                200 to "[]"
+            }
+        }
+        val prefs = PreferenciasEnMemoria(
+            mapOf(RegistroPush.CLAVE_TOKEN to "fcm-1", RegistroPush.CLAVE_CUENTA to RegistroPush.huella("cuentaA_00000000000")),
+        )
+        val m = ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria("cuentaA_00000000000"), carpetaTemporal("push"), prefs, alcance)
+        assertTrue(m.registrarPush("fcm-1", "2.0.0 (100)"))
+        assertTrue(m.registrarPush("fcm-1", "2.0.0 (100)"))
+        assertEquals(1, registros.get())
+        assertNotNull(prefs.leer(RegistroPush.CLAVE_FECHA))
     }
 
     /** Si el servidor no lo tomó (false, un error, sin red) no queda anotado: se reintenta en el próximo arranque. */
