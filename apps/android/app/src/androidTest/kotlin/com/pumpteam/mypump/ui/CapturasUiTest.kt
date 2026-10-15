@@ -70,7 +70,6 @@ class CapturasUiTest : PruebaUi() {
             p.nodo(etiqueta("descanso"))
             foto("16-entreno-serie-y-descanso")
 
-            p.desplazar(etiqueta("ejercicio-pantalla"), 900f)
             p.tocar(etiqueta("sustituir"))
             p.nodo(etiqueta("hoja-sustituir"))
             p.tocar(etiqueta("variante"))
@@ -80,12 +79,13 @@ class CapturasUiTest : PruebaUi() {
             p.esperarQueNoEste(etiqueta("hoja-sustituir"))
             p.tocar(etiqueta("descanso-saltar"))
             p.esperarQueNoEste(etiqueta("descanso"))
-            p.desplazar(etiqueta("ejercicio-pantalla"), -3_000f)
+            // El ejercicio se abre en la lista (15-oct): lo sustituido y los comentarios, en su página («Técnica y notas»).
+            abrirPaginaDelEjercicio("jalon-al-pecho-prono-dorsal-ancho-d1-0")
             p.nodo(etiqueta("en-lugar-de"))
             foto("18-entreno-sustituido")
 
             p.tocar(etiqueta("volver"))
-            p.tocar(etiqueta("ejercicio-remo-en-polea-sentado-grosor-dorsal-bajo-d1-1"))
+            abrirPaginaDelEjercicio("remo-en-polea-sentado-grosor-dorsal-bajo-d1-1")
             p.nodo(texto("Bajá un poco el peso y apretá arriba un segundo."))
             p.desplazar(etiqueta("ejercicio-pantalla"), 3_000f)
             foto("19-entreno-comentarios")

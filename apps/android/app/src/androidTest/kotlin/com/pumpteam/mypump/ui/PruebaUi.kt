@@ -36,9 +36,22 @@ abstract class PruebaUi {
      * ejercicio en la lista de Entreno, y la página queda detrás de «Técnica y notas»: abre la fila si no está abierta.
      */
     protected fun abrirPaginaDelEjercicio(lugar: String) {
-        if (!p.existe(etiqueta("ejercicio-abierto-$lugar"))) p.tocar(etiqueta("ejercicio-$lugar"))
+        abrirEnLaLista(lugar)
         p.tocar(etiqueta("tecnica-y-notas"))
         p.nodo(etiqueta("ejercicio-pantalla"))
+        // Mientras entra la página sigue compuesta la lista, con su propio Sustituir y su tabla: tocar «sustituir» en ese
+        // momento abría la hoja de la lista, que se iba con ella. Se espera a que la lista salga.
+        p.esperarQueNoEste(etiqueta("ejercicio-abierto-$lugar"))
+    }
+
+    /** El ejercicio abierto en la lista de Entreno. Tocar la fila de uno abierto lo cierra: solo se toca si está cerrado. */
+    protected fun abrirEnLaLista(lugar: String) {
+        p.nodo(etiqueta("ejercicio-$lugar"))
+        if (!p.existe(etiqueta("ejercicio-abierto-$lugar"))) p.tocar(etiqueta("ejercicio-$lugar"))
+        p.nodo(etiqueta("ejercicio-abierto-$lugar"))
+        // Abrir uno cierra el que estaba abierto con una animación, y mientras tanto hay dos de cada botón: «Técnica y notas»
+        // abría la página del otro.
+        p.esperar("un solo ejercicio abierto") { p.cuantos(etiqueta("tecnica-y-notas")) == 1 }
     }
 
     @Before

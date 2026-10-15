@@ -38,15 +38,18 @@ class RedYGuardadoUiTest : PruebaUi() {
 
     private fun cargas() = servidor.a("mypump_get_cliente_info").size
 
-    private fun habitos() = servidor.a("mypump_set_habito").size
+    /** Los pesos que intentaron salir (el peso va por `ingest_salud`, con el tipo `peso_kg`). */
+    private fun pesos() = servidor.a("mypump_ingest_salud").count { "peso_kg" in it }
 
-    /** Revisión, con Mi Día cargado: "Dormí bien: sí" es un hábito que sale por la cola (y tocarlo de nuevo lo borra). */
-    private fun irAlHabito(): Selector {
+    /** Revisión, en Peso corporal: el peso de hoy sale por la cola (con la misma clave en el día: el último gana). */
+    private fun irAlPeso() {
         p.tocar(etiqueta("pestana-revision"))
-        p.nodo(etiqueta("seccion-midia"))
-        val si = texto("Dormí bien: sí")
-        p.esperar("Mi Día cargado") { p.habilitado(si) }
-        return si
+        p.nodo(etiqueta("guardar-peso"))
+    }
+
+    private fun guardarPeso(kilos: String) {
+        p.escribir(etiqueta("peso-hoy"), kilos)
+        p.tocar(etiqueta("guardar-peso"))
     }
 
     private fun aviso(t: String): Boolean = p.existe(texto(t))
@@ -93,16 +96,16 @@ class RedYGuardadoUiTest : PruebaUi() {
     fun elAvisoDeGuardadoSaleSoloSiTardaYGuardadoDespuesDeUnProblema() {
         guardarCuenta()
         abrir()
-        val si = irAlHabito()
+        irAlPeso()
         // Rápido: sale sin aviso.
-        val n0 = habitos()
-        p.tocar(si)
-        p.esperar("salió por la cola") { habitos() > n0 }
+        val n0 = pesos()
+        guardarPeso("80")
+        p.esperar("salió por la cola") { pesos() > n0 }
         p.quieto(1_500)
         assertFalse("un guardado rápido no avisa nada: ${p.resumen()}", p.existe(etiqueta("aviso-guardado")))
         // Lento (2,5 s): «Guardando…» pasados los 900 ms, mientras manda, y se va al terminar.
         servidor.demoraMs = 2_500
-        p.tocar(si)
+        guardarPeso("80,5")
         Thread.sleep(400)
         assertFalse("«Guardando…» antes de los 900 ms", aviso("Guardando…"))
         p.esperar("«Guardando…» mientras tarda", ms = 2_000) { aviso("Guardando…") }
@@ -111,7 +114,7 @@ class RedYGuardadoUiTest : PruebaUi() {
         servidor.demoraMs = 0
         // Con un problema (sin red) y después sale: «Guardado».
         servidor.sinRed = true
-        p.tocar(si)
+        guardarPeso("81")
         p.esperar("el problema") { aviso("Sin conexión, se reintenta solo") }
         servidor.sinRed = false
         p.esperar("«Guardado» cuando por fin sale", ms = 20_000) { aviso("Guardado") }
@@ -126,20 +129,20 @@ class RedYGuardadoUiTest : PruebaUi() {
     fun siLaColaNoPuedeMandarAvisaQueSeReintentaSolo() {
         guardarCuenta()
         abrir()
-        val si = irAlHabito()
+        irAlPeso()
         servidor.sinRed = true
-        val n0 = habitos()
-        p.tocar(si)
+        val n0 = pesos()
+        guardarPeso("80")
         p.esperar("«Sin conexión, se reintenta solo»") { aviso("Sin conexión, se reintenta solo") }
-        assertTrue("el hábito no intentó salir", habitos() > n0)
+        assertTrue("el peso no intentó salir", pesos() > n0)
         p.esperar("el aviso se va solo", ms = 8_000) { !p.existe(etiqueta("aviso-guardado")) }
         // Sin tocar nada, la cola lo vuelve a intentar.
-        val intentos = habitos()
-        p.esperar("la cola reintenta sola", ms = 20_000, enElPrincipal = false) { habitos() > intentos }
+        val intentos = pesos()
+        p.esperar("la cola reintenta sola", ms = 20_000, enElPrincipal = false) { pesos() > intentos }
         // Vuelve el servicio: sale solo.
         servidor.sinRed = false
-        val alVolver = habitos()
-        p.esperar("salió al volver el servicio", ms = 40_000, enElPrincipal = false) { habitos() > alVolver }
+        val alVolver = pesos()
+        p.esperar("salió al volver el servicio", ms = 40_000, enElPrincipal = false) { pesos() > alVolver }
         p.esperar("«Guardado»", ms = 10_000) { aviso("Guardado") }
     }
 }

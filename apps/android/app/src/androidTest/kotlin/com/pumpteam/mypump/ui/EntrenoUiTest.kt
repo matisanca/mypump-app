@@ -96,7 +96,7 @@ class EntrenoUiTest : PruebaUi() {
     @Test
     fun abrirUnEjercicioYConfirmarUnaSerie() {
         cuentaSinSesion()
-        p.tocar(jalon)
+        abrirPaginaDelEjercicio("jalon-al-pecho-prono-dorsal-ancho-d1-0")
         p.nodo(etiqueta("tabla-series"))
         assertEquals(listOf("Jalón al pecho prono"), p.textosBajo(etiqueta("ejercicio-nombre")))
         assertEquals(listOf("SERIES × REPS", "Series × reps", "4 × 10", "RIR", "RIR", "0", "al fallo", "DESCANSO", "Descanso", "2:30"), p.textosBajo(etiqueta("metricas")))
@@ -187,7 +187,9 @@ class EntrenoUiTest : PruebaUi() {
     /** ENT-10 y TalkBack: después de sustituir y fijar, la card de la lista lo dice, con la pauta y el descanso. */
     @Test
     fun sustituirYFijarLoDiceLaCard() {
-        demoEnUnEjercicio()
+        abrir()
+        p.tocar(etiqueta("ver-demo"))
+        abrirPaginaDelEjercicio("ex_010")
         p.tocar(etiqueta("sustituir"))
         p.nodo(etiqueta("hoja-sustituir"))
         p.nodo(texto("Mismo gesto · otra variante"))
@@ -214,8 +216,8 @@ class EntrenoUiTest : PruebaUi() {
         assertTrue(valor, valor.startsWith("Pendiente, sustitución fijada, 4 series de 8-10, RIR 1-2, descanso 2:30"))
         assertTrue(p.textosBajo(card).containsAll(listOf(elegida, "Fijado")))
         p.nodo(textoQueContiene("Ejercicio 3: $elegida"))
-        // "Volver a Remo con barra" la deshace.
-        p.tocar(card)
+        // "Volver a Remo con barra" la deshace (la fila quedó abierta en la lista: a la página por «Técnica y notas»).
+        abrirPaginaDelEjercicio("ex_010")
         p.tocar(etiqueta("sustituir"))
         p.tocar(etiqueta("volver-al-original"))
         p.esperarQueNoEste(etiqueta("hoja-sustituir"))
@@ -321,7 +323,7 @@ class EntrenoUiTest : PruebaUi() {
         p.nodo(etiqueta("reabrir-ejercicio"))
         assertFalse(p.existe(etiqueta("siguiente-ejercicio")))
         p.tocar(etiqueta("descanso-saltar"))
-        p.tocar(etiqueta("volver"))
+        // El ejercicio se abrió en la lista (15-oct): no hay página de la que volver.
         p.nodo(etiqueta("tarjeta-cierre"))
         p.nodo(texto("SESIÓN COMPLETA"))
         p.nodo(texto("1/1 ejercicios listos"))
@@ -343,7 +345,7 @@ class EntrenoUiTest : PruebaUi() {
         p.nodo(texto("Día 1, Empuje, cerrado esta semana"))
 
         // SES-07: corregir una serie en el día cerrado pregunta si se reabre, y usa la misma sesión.
-        p.tocar(etiqueta("ejercicio-press-d1-0"))
+        abrirEnLaLista("press-d1-0")
         p.tocar(etiqueta("confirmar-serie-1"))   // el lápiz (SER-06): la desconfirma
         p.nodo(texto("Registrar lo que hiciste"))
         p.escribir(etiqueta("campo-reps-1"), "9")
@@ -356,7 +358,6 @@ class EntrenoUiTest : PruebaUi() {
         // "¡Día completado!" sale una sola vez por día.
         p.quieto(1_000)
         assertFalse(p.existe(etiqueta("pregunta")))
-        p.tocar(etiqueta("volver"))
         p.nodo(texto("SESIÓN COMPLETA"))
         p.nodo(etiqueta("cerrar-sesion"))
     }

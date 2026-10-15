@@ -118,11 +118,9 @@ class CapturasTiendaTest : PruebaUi() {
             p.desplazar(etiqueta("entreno-lista"), 1_450f)
             p.tocar(etiqueta("ejercicio-jalon-al-pecho-prono-dorsal-ancho-d1-0"))
             p.nodo(etiqueta("pista-serie"))
-            mostrarTablaEntera()
+            mostrarElEjercicioAbierto("jalon-al-pecho-prono-dorsal-ancho-d1-0")
             esperarFotos()
             captura("$modo-2-ejercicio")
-            p.tocar(etiqueta("volver"))
-            p.nodo(etiqueta("entreno-lista"))
 
             p.tocar(etiqueta("pestana-dieta"))
             p.nodo(texto("2.373"))
@@ -142,27 +140,30 @@ class CapturasTiendaTest : PruebaUi() {
     }
 
     /**
-     * Si la tarjeta de series no entra entera (en un teléfono 9:16 no entra con la foto, la pauta y el cambio de la semana),
-     * desplaza el ejercicio hasta que quede arriba, debajo de la barra (el nombre pasa a la barra). En la tablet entra sin
-     * desplazar.
+     * El ejercicio abierto en la lista (15-oct). Si la fila y su tabla de series no entran enteras arriba de la barra de
+     * pestañas (en un teléfono 9:16 no entran con la pauta y el cambio de la semana), desplaza la lista hasta que la fila
+     * quede arriba. En la tablet entra sin desplazar.
      */
-    private fun mostrarTablaEntera() {
+    private fun mostrarElEjercicioAbierto(lugar: String) {
         val margen = 16 * app.resources.displayMetrics.density
-        // Cuando la pantalla ya entró (mientras se desliza desde la derecha está afuera y sin tamaño) y quedó quieta.
+        // Cuando terminó de abrirse (la fila crece de a poco) y quedó quieta.
         var anterior: Float? = null
-        val desplazar = p.esperar("se ubica la tabla de series") {
-            val visible = p.nodo(etiqueta("ejercicio-pantalla"), ms = 0).boundsInRoot
+        val desplazar = p.esperar("se ubica el ejercicio abierto") {
+            val visible = p.nodo(etiqueta("entreno-lista"), ms = 0).boundsInRoot
+            if (visible.height < 1f) return@esperar null
+            // La barra de pestañas flota sobre la lista: lo que queda debajo no se ve.
+            val piso = minOf(visible.bottom, p.nodo(etiqueta("barra-pestanas"), ms = 0).boundsInRoot.top)
+            val arriba = p.nodo(etiqueta("ejercicio-$lugar"), ms = 0).positionInRoot.y
             val tabla = p.nodo(etiqueta("tabla-series"), ms = 0)
-            if (visible.height < 1f || tabla.positionInRoot.x < 0f || tabla.positionInRoot.x >= visible.right) return@esperar null
-            val arriba = tabla.positionInRoot.y
-            val d = if (arriba + tabla.size.height + margen <= visible.bottom) 0f else arriba - visible.top - margen
+            val entra = arriba >= visible.top && tabla.positionInRoot.y + tabla.size.height + margen <= piso
+            val d = if (entra) 0f else arriba - visible.top - margen
             if (d != anterior) {
                 anterior = d
                 return@esperar null
             }
             d
         }
-        if (desplazar > 0f) p.desplazar(etiqueta("ejercicio-pantalla"), desplazar)
+        if (desplazar != 0f) p.desplazar(etiqueta("entreno-lista"), desplazar)
     }
 
     // ── Los datos (sobre las respuestas grabadas de test-nativa-real) ──

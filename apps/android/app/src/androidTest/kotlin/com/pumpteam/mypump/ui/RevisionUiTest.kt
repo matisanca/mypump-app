@@ -9,13 +9,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Base64
-import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.pumpteam.mypump.datos.ClaveSalud
 import com.pumpteam.mypump.datos.Disco
 import com.pumpteam.mypump.datos.FotoPendiente
@@ -40,7 +34,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Revisión con Mi Día (REV-01…08, DIA-01…06, SAL-09/10), gemela de `RevisionUITests` de iOS y más: con la cuenta del
+ * Revisión (REV-01…08, SAL-09/10; Mi Día salió el 15-oct y quedan su recuperación y su salud al pie), gemela de `RevisionUITests` de iOS y más: con la cuenta del
  * [ServidorDePrueba] (las respuestas grabadas de `test-nativa-real`, sin red) y en la demo, que no escribe nada. La cámara
  * y el selector de fotos del teléfono se reemplazan con un monitor que contesta una foto armada acá (sin abrir nada),
  * como el navegador de `CustomTabsTest`.
@@ -61,7 +55,7 @@ class RevisionUiTest : PruebaUi() {
 
     private fun irARevision() {
         p.tocar(etiqueta("pestana-revision"))
-        p.nodo(etiqueta("seccion-midia"))
+        p.nodo(etiqueta("seccion-peso"))
     }
 
     /** Dónde empieza una sección, medido en pantallas de lo que se ve de Revisión (0 = arriba de todo, 1 = abajo). */
@@ -134,26 +128,6 @@ class RevisionUiTest : PruebaUi() {
         Telefono.captura("revision-orden-claro")
     }
 
-    // ── DIA-03: gemela de testUnHabitoSeMarcaYSeBorra ──
-
-    /** Un hábito se marca y, tocado otra vez, se borra (DIA-03). La cuenta queda como estaba. */
-    @Test
-    fun unHabitoSeMarcaYSeBorra() {
-        guardarCuenta()
-        abrir()
-        irARevision()
-        val si = texto("Dormí bien: sí")
-        p.esperar("Mi Día cargado") { p.habilitado(si) }
-        val antes = p.estado(si) == "marcado"
-        p.tocar(si)
-        p.esperar("tocar \"sí\" cambió el hábito") { (p.estado(si) == "marcado") != antes }
-        p.esperar("salió por la cola") { servidor.a("mypump_set_habito").firstOrNull { "\"p_campo\":\"durmio_bien\"" in it && "\"p_valor\":\"true\"" in it } }
-        Telefono.captura("revision-habito-tocado-claro")
-        p.tocar(si)
-        p.esperar("tocarlo otra vez lo devolvió a como estaba") { (p.estado(si) == "marcado") == antes }
-        p.esperar("se borró en el servidor") { servidor.a("mypump_set_habito").firstOrNull { "\"p_campo\":\"durmio_bien\"" in it && "\"p_valor\":\"null\"" in it } }
-    }
-
     /**
      * Gemela de testMisDatosAbreElRespaldoYLaPolitica (la de los interruptores es `SinPermisoIAUiTest`): desde Mis datos
      * se abren el respaldo científico y la política de privacidad (en la Custom Tab, que acá no se abre de verdad: el
@@ -191,59 +165,6 @@ class RevisionUiTest : PruebaUi() {
         assertEquals(com.pumpteam.mypump.acceso.URL_PRIVACIDAD, i.dataString)
         // En la Custom Tab con el navegador fijo o, sin un navegador con Custom Tabs, con el selector de navegadores.
         comprobarQueVaAlNavegador(i, app)
-    }
-
-    // ── DIA-01, DIA-02 y DIA-04 ──
-
-    @Test
-    fun laRachaEntreneYElAgua() {
-        servidor.respuestas["mypump_get_streak"] = """[{"streak":5,"ultimo_dia_valido":"2026-10-13"}]"""
-        guardarCuenta()
-        abrir()
-        irARevision()
-        // ⚡ desde 3 días, con el último día válido como la web.
-        p.nodo(texto("Último día válido: martes, 13 de octubre"))
-        p.nodo(texto("⚡"))
-        p.nodo(texto("Buen ritmo"))
-        // Entrené: se marca, sale por la cola y se vuelve a pedir la racha.
-        val rachasAntes = servidor.a("mypump_get_streak").size
-        p.tocar(etiqueta("entrenamiento-entrene"))
-        p.esperar("Entrené elegido") { p.seleccionado(etiqueta("entrenamiento-entrene")) }
-        p.esperar("salió") { servidor.a("mypump_set_habito").firstOrNull { "\"p_campo\":\"entrenamiento\"" in it && "\"p_valor\":\"entrene\"" in it } }
-        p.esperar("se volvió a pedir la racha") { servidor.a("mypump_get_streak").size > rachasAntes }
-        // Agua: se ve al instante y se guarda UNA vez, 600 ms después del último toque.
-        p.tocar(texto("Un vaso más"))
-        p.tocar(texto("Un vaso más"))
-        p.tocar(texto("Un vaso más"))
-        p.tocar(texto("Un vaso menos"))
-        p.esperar("2 vasos en el control") { p.estado(etiqueta("control-agua")) == "2 de 12 vasos" }
-        p.esperar("el agua salió") { servidor.a("mypump_set_habito").firstOrNull { "\"p_campo\":\"vasos_agua\"" in it && "\"p_valor\":\"2\"" in it } }
-        p.quieto(1_000)
-        assertEquals("el agua se guarda una sola vez", 1, servidor.a("mypump_set_habito").count { "vasos_agua" in it })
-    }
-
-    // ── DIA-05: los 30 días se traen al abrirlos ──
-
-    @Test
-    fun losUltimos30DiasSeTraenAlAbrirlos() {
-        guardarCuenta()
-        abrir()
-        irARevision()
-        p.nodo(texto("Ver mi historial de adherencia"))
-        p.quieto(500)
-        assertTrue("se pidió el historial antes de abrirlo", servidor.a("mypump_get_adherencia_30d").isEmpty())
-        p.tocar(etiqueta("ultimos-30"))
-        p.nodo(etiqueta("grilla-30"))
-        assertEquals(1, servidor.a("mypump_get_adherencia_30d").size)
-        // La cuenta grabada no cumplió ningún día de los 30.
-        p.nodo(texto("0/30"))
-        p.nodo(textoQueContiene(": sin datos"))
-        for (leyenda in listOf("Cumplido", "Parcial", "Sin datos")) p.nodo(texto(leyenda))
-        // Cerrarla y abrirla de nuevo no la vuelve a pedir.
-        p.tocar(etiqueta("ultimos-30"))
-        p.tocar(etiqueta("ultimos-30"))
-        p.nodo(etiqueta("grilla-30"))
-        assertEquals(1, servidor.a("mypump_get_adherencia_30d").size)
     }
 
     // ── REV-06: el check dice lo que falta ──
@@ -530,37 +451,43 @@ class RevisionUiTest : PruebaUi() {
         guardarCuenta()
         abrir()
         irARevision()
-        // Desplazada hasta abajo; el banner la lleva de nuevo a las fotos.
+        // Desplazada hasta abajo; el banner la lleva de nuevo a las fotos. Sin Mi Día (15-oct) Revisión es más corta: abajo de
+        // todo, las fotos quedan media pantalla o más arriba de la vista.
         p.desplazar(etiqueta("revision-lista"), 5_000f)
-        p.esperar("bien abajo") { alturaYa("fotos") < -1f }
+        p.esperar("bien abajo") { alturaYa("fotos") < -0.4f }
         p.tocar(etiqueta("pestana-dieta"))
         p.tocar(etiqueta("banner-revision"))
         p.esperar("las fotos arriba de todo") { alturaYa("fotos").let { it in -0.05f..0.2f } }
     }
 
+    /**
+     * `scene=myday` (el link de la web a Mi Día): sin Mi Día (15-oct), lleva a lo que quedó de él, la recuperación y la
+     * salud del reloj, al pie de Revisión. Va lo más abajo que se puede: la sección entra en la pantalla.
+     */
     @Test
-    fun unLinkConSceneMyDayAbreMiDia() {
+    fun unLinkConSceneMyDayLlevaALaSalud() {
         abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=myday")
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
-        p.esperar("Mi día arriba de todo") { alturaYa("midia").let { it in -0.05f..0.2f } }
-        Telefono.captura("revision-ancla-midia-claro")
+        p.esperar("la salud a la vista") { alturaYa("fotos") < -0.05f && alturaYa("midia") in 0f..0.9f }
+        Telefono.captura("revision-ancla-salud-claro")
         // Tocar la pestaña después vuelve donde quedó (el ancla se consumió: no salta de nuevo).
         p.tocar(etiqueta("pestana-entreno"))
         p.tocar(etiqueta("pestana-revision"))
         p.quieto(800)
-        assertTrue(altura("midia") in -0.05f..0.2f)
+        assertTrue(altura("midia") in 0f..0.9f)
     }
 
+    /** El aviso con destino `myday` (lo manda el servidor) también: a Revisión, con la salud a la vista. */
     @Test
-    fun unAvisoDeRevisionAbreArriba() {
+    fun unAvisoDeMiDiaLlevaALaSalud() {
         guardarCuenta()
         abrir()
         irARevision()
-        p.desplazar(etiqueta("revision-lista"), 5_000f)
+        p.esperar("arriba de todo") { alturaYa("fotos") in -0.05f..0.2f }
         p.tocar(etiqueta("pestana-entreno"))
         app.startActivity(com.pumpteam.mypump.avisos.CentroAvisos.intentDeAviso(app, "myday"))
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
-        p.esperar("Mi día arriba de todo") { alturaYa("midia").let { it in -0.05f..0.2f } }
+        p.esperar("la salud a la vista") { alturaYa("fotos") < -0.05f && alturaYa("midia") in 0f..0.9f }
     }
 
     // ── REV-08: Mi reloj ──
@@ -631,10 +558,10 @@ class RevisionUiTest : PruebaUi() {
         }
     }
 
-    // ── SAL-09 y SAL-10: Recuperación y Salud dentro de Mi Día ──
+    // ── SAL-09 y SAL-10: Recuperación y Salud, al pie de Revisión (sin Mi Día desde el 15-oct) ──
 
     @Test
-    fun recuperacionYSaludVanEnMiDia() {
+    fun recuperacionYSaludVanAlPie() {
         ModeloSalud.fuenteDelSistema = FuenteDeMentira()
         EstadoHealthConnect.forzado = EstadoHealthConnect.DISPONIBLE
         for (f in listOf("get_salud", "get_recuperacion", "get_mostrar_recuperacion")) {
@@ -647,11 +574,14 @@ class RevisionUiTest : PruebaUi() {
         irARevision()
         p.nodo(etiqueta("card-recuperacion"))
         p.nodo(etiqueta("card-salud"))
-        // Después del agua y antes de los 30 días, como la web.
-        val agua = p.nodo(etiqueta("agua")).positionInRoot.y
+        // Después del peso, la recuperación y abajo la salud. Los hábitos, la racha y los 30 días ya no están.
+        val peso = p.nodo(etiqueta("seccion-peso")).positionInRoot.y
         val recuperacion = p.nodo(etiqueta("card-recuperacion")).positionInRoot.y
-        val treinta = p.nodo(etiqueta("ultimos-30")).positionInRoot.y
-        assertTrue("Recuperación fuera de lugar ($agua, $recuperacion, $treinta)", agua < recuperacion && recuperacion < treinta)
+        val salud = p.nodo(etiqueta("card-salud")).positionInRoot.y
+        assertTrue("Recuperación fuera de lugar ($peso, $recuperacion, $salud)", peso < recuperacion && recuperacion < salud)
+        for (fuera in listOf("agua", "ultimos-30", "entrenamiento-entrene")) assertFalse("sigue $fuera", p.existe(etiqueta(fuera)))
+        // La entrada al detalle es un botón que invita: «Ver cómo está mi cuerpo».
+        p.nodo(texto("Ver cómo está mi cuerpo"))
         p.tocar(etiqueta("ver-todos-mis-datos"))
         p.nodo(etiqueta("salud-detalle"))
         p.atras()
@@ -665,44 +595,26 @@ class RevisionUiTest : PruebaUi() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("pestana-revision"))
-        p.nodo(etiqueta("seccion-midia"))
+        p.nodo(etiqueta("seccion-check"))
         servidor.llamadas.clear()
-        // Mi Día sembrado como la web: racha de 3 hasta hoy, "entrené", dieta y sueño cumplidos y 2 vasos.
-        p.nodo(texto("⚡"))
-        assertTrue(p.seleccionado(etiqueta("entrenamiento-entrene")))
-        p.esperar("2 vasos en el control") { p.estado(etiqueta("control-agua")) == "2 de 12 vasos" }
-        p.tocar(texto("Hice cardio: sí"))
-        p.esperar("cardio marcado") { p.estado(texto("Hice cardio: sí")) == "marcado" }
-        p.tocar(texto("Un vaso más"))
-        p.esperar("3 vasos en el control") { p.estado(etiqueta("control-agua")) == "3 de 12 vasos" }
-        // Para TalkBack las gotas son un control con rango (auditoría de accesibilidad del 15-oct): «Agua», del alto de un
-        // dedo, y deslizar lo ajusta con la misma acción que usa el lector de pantalla.
-        val control = p.nodo(etiqueta("control-agua"))
-        assertTrue("el control no se llama «Agua»", control.config.getOrNull(SemanticsProperties.ContentDescription) == listOf("Agua"))
-        assertTrue("el control no tiene rango", control.config.getOrNull(SemanticsProperties.ProgressBarRangeInfo)?.range == 0f..12f)
-        assertTrue("el control mide menos que un dedo", control.size.height >= with(Density(InstrumentationRegistry.getInstrumentation().targetContext)) { 44.dp.roundToPx() })
-        p.enPrincipal { control.config[SemanticsActions.SetProgress].action?.invoke(5f) }
-        p.esperar("5 vasos al ajustar") { p.estado(etiqueta("control-agua")) == "5 de 12 vasos" }
-        p.enPrincipal { p.nodo(etiqueta("control-agua")).config[SemanticsActions.SetProgress].action?.invoke(3f) }
-        p.esperar("de vuelta a 3") { p.estado(etiqueta("control-agua")) == "3 de 12 vasos" }
-        // El check y el peso se llenan igual.
+        // El check se llena igual, con el peso de hoy (15-oct): el peso queda en Peso corporal, que pasa a «Corregir».
         for (t in listOf("Energía: 4 de 5", "Descanso: 4 de 5", "Hambre: 3 de 5", "Adherencia: 5 de 5")) p.tocar(texto(t))
+        p.escribir(etiqueta("peso-check"), "80")
         p.tocar(etiqueta("enviar-check"))
         p.nodo(etiqueta("check-enviado"))
-        p.escribir(etiqueta("peso-hoy"), "80")
+        p.esperar("el peso del check en Peso corporal") { p.textosBajo(etiqueta("guardar-peso")) == listOf("Corregir") }
+        // Y el de otro día, fuera del check.
+        p.escribir(etiqueta("peso-hoy"), "79,5")
         p.tocar(etiqueta("guardar-peso"))
         p.nodo(texto("Corregir"))
         // Las fotos no se guardan (ni se abre la cámara).
         p.tocar(etiqueta("foto-frente"))
         p.nodo(texto("En la demo las fotos no se guardan."))
         assertFalse(p.existe(etiqueta("sacar-foto")))
-        // Los 30 días de la demo, sin pedirlos.
-        p.tocar(etiqueta("ultimos-30"))
-        p.nodo(etiqueta("grilla-30"))
-        p.nodo(texto("18/30"))
-        // Sin cuenta no hay reloj ni salud.
+        // Sin cuenta no hay reloj ni salud (y Mi Día ya no está).
         assertFalse(p.existe(etiqueta("card-reloj")))
         assertFalse(p.existe(etiqueta("card-recuperacion")))
+        assertFalse(p.existe(etiqueta("seccion-midia")))
         p.quieto(1_500)
         assertTrue("la demo tocó la red: ${servidor.llamadas.map { it.funcion }}", servidor.llamadas.isEmpty())
     }

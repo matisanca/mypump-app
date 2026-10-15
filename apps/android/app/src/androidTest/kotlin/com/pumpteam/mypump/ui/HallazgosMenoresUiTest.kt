@@ -104,7 +104,7 @@ class HallazgosMenoresUiTest : PruebaUi() {
         servidor.respuestas["mypump_get_sesion_dia"] = "[]"
         guardarCuenta()
         abrir()
-        p.tocar(etiqueta("ejercicio-jal-d1-0"))
+        abrirPaginaDelEjercicio("jal-d1-0")
         p.tocar(etiqueta("sustituir"))
         p.nodo(etiqueta("hoja-sustituir"))
         // Se elige el primero de la lista (con el catálogo empaquetado)…

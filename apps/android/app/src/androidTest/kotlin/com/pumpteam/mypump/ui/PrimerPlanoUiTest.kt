@@ -46,6 +46,9 @@ class PrimerPlanoUiTest : PruebaUi() {
         zonaAntes = null
     }
 
+    /** Los pesos que intentaron salir (el peso va por `ingest_salud`, con el tipo `peso_kg`). */
+    private fun pesos(): List<String> = servidor.a("mypump_ingest_salud").filter { "peso_kg" in it }
+
     /** Lo que espera en la cola de escrituras (fuera del hilo principal: la cola es un actor). */
     private fun enLaCola(m: ModeloApp): Int = runBlocking { m.outbox?.pendientes() ?: -1 }
 
@@ -84,18 +87,18 @@ class PrimerPlanoUiTest : PruebaUi() {
         servidorQuieto()
         assertTrue(servidor.fotosSubidas.isEmpty())
 
-        // Sin red, un hábito de Mi Día queda en la cola…
+        // Sin red, el peso de hoy queda en la cola…
         p.tocar(etiqueta("pestana-revision"))
-        val si = texto("Dormí bien: sí")
-        p.esperar("Mi Día cargado") { p.habilitado(si) }
+        p.nodo(etiqueta("guardar-peso"))
         servidor.sinRed = true
-        p.tocar(si)
-        p.esperar("el hábito quedó en la cola", enElPrincipal = false) { enLaCola(m) == 1 && servidor.a("mypump_set_habito").isNotEmpty() }
+        p.escribir(etiqueta("peso-hoy"), "80")
+        p.tocar(etiqueta("guardar-peso"))
+        p.esperar("el peso quedó en la cola", enElPrincipal = false) { enLaCola(m) == 1 && pesos().isNotEmpty() }
         // … y falla varias veces: el próximo reintento solo queda a 30 s.
         runBlocking { repeat(15) { m.outbox!!.drenar() } }
         var intentos = -1
         p.esperar("la cola sin reintentar por un rato", ms = 30_000, enElPrincipal = false) {
-            val ahora = servidor.a("mypump_set_habito").size
+            val ahora = pesos().size
             if (ahora == intentos) {
                 true
             } else {
@@ -114,7 +117,7 @@ class PrimerPlanoUiTest : PruebaUi() {
         val nuevos = servidor.a("mypump_chat_nuevos").size
         val deHoy = DE_HOY.map { servidor.a(it).size }
         Thread.sleep(1_500)
-        assertEquals("en segundo plano la cola no tiene que haber salido", intentos, servidor.a("mypump_set_habito").size)
+        assertEquals("en segundo plano la cola no tiene que haber salido", intentos, pesos().size)
         assertTrue("en segundo plano la foto no tiene que haber subido", servidor.fotosSubidas.isEmpty())
         assertEquals("en segundo plano no se mira el chat", nuevos, servidor.a("mypump_chat_nuevos").size)
 
@@ -135,7 +138,7 @@ class PrimerPlanoUiTest : PruebaUi() {
             listOf("cola" to true, "foto" to true, "chat" to true),
             listOf("cola" to salioLaCola, "foto" to subioLaFoto, "chat" to seMiroElChat),
         )
-        assertTrue(servidor.a("mypump_set_habito").last().contains("\"p_campo\":\"durmio_bien\""))
+        assertTrue(pesos().last().contains("\"fuente\":\"manual\""))
         assertEquals("frente", servidor.fotosSubidas.single().pose)
         // Lo que llegó de Mati se ve en el badge del Chat.
         p.esperar("el mensaje nuevo en el badge del Chat") { "1" in p.textosBajo(etiqueta("pestana-chat")) }

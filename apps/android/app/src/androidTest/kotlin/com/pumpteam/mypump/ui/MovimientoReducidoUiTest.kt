@@ -62,7 +62,7 @@ class MovimientoReducidoUiTest : PruebaUi() {
     }
 
     private fun abrirElEjercicio() {
-        p.tocar(etiqueta("ejercicio-press-d1-0"))
+        abrirPaginaDelEjercicio("press-d1-0")
         p.nodo(etiqueta("como-se-hace"))
         p.nodo(etiqueta("foto-Pico"))
     }
