@@ -27,4 +27,50 @@ final class AvisosUITests: XCTestCase {
         XCTAssertTrue(app.pestana("Revisión").waitForExistence(timeout: 5))
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "despues-de-activar"; a.lifetime = .keepAlways; add(a)
     }
+
+    /// NOT-03: con la app en el fondo, tocar el aviso de un mensaje de Mati la abre en el Chat. El aviso es local
+    /// (`-avisoDePrueba chat`, solo Debug) pero entra por el mismo `didReceive` que el push, con el mismo `destino`.
+    func testTocarElAvisoAbreElChat() throws {
+        guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Falta MYPUMP_TOKEN: usa una cuenta de prueba, nunca un cliente.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-token", token, "-pestana", "entreno", "-sinOnboarding", "YES", "-avisoDePrueba", "chat"]
+        app.launch()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let permitir = springboard.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "Permitir"])).firstMatch
+        if permitir.waitForExistence(timeout: 5) { permitir.tap() }
+        XCTAssertTrue(app.pestana("Entreno").waitForExistence(timeout: 20))
+        XCUIDevice.shared.press(.home)
+        let aviso = springboard.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "Mati te dejó un mensaje")).firstMatch
+        XCTAssertTrue(aviso.waitForExistence(timeout: 20), "No llegó el aviso")
+        aviso.tap()
+        let campo = app.descendants(matching: .any).matching(identifier: "chat-campo").firstMatch
+        XCTAssertTrue(campo.waitForExistence(timeout: 15), "Tocar el aviso no abrió el Chat")
+    }
+
+    /// Lo mismo con la app cerrada del todo: el aviso la arranca y no se cae (el cierre de UIKit en otro hilo también
+    /// pasaba en frío). Sin `-token` arranca con la cuenta que haya en el Keychain del simulador, o en la bienvenida.
+    func testTocarElAvisoConLaAppCerradaLaArranca() throws {
+        guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Falta MYPUMP_TOKEN: usa una cuenta de prueba, nunca un cliente.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-token", token, "-pestana", "entreno", "-sinOnboarding", "YES", "-avisoDePrueba", "chat"]
+        app.launch()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let permitir = springboard.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "Permitir"])).firstMatch
+        if permitir.waitForExistence(timeout: 5) { permitir.tap() }
+        XCTAssertTrue(app.pestana("Entreno").waitForExistence(timeout: 20))
+        app.terminate()
+        let aviso = springboard.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@", "Mati te dejó un mensaje")).firstMatch
+        XCTAssertTrue(aviso.waitForExistence(timeout: 20), "No llegó el aviso")
+        aviso.tap()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15), "El aviso no arrancó la app")
+        RunLoop.current.run(until: Date().addingTimeInterval(4))
+        XCTAssertEqual(app.state, .runningForeground, "La app se cayó al arrancar desde el aviso")
+        let a = XCTAttachment(screenshot: app.screenshot()); a.name = "arranque-desde-el-aviso"; a.lifetime = .keepAlways; add(a)
+    }
 }
