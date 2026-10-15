@@ -146,6 +146,33 @@ lleva tocar un aviso) está en `:core:datos` (`Avisos.kt`), con sus tests en la 
   (`pm revoke` mata el proceso, también el de la prueba): las que necesitan "sin permiso" lo fijan en `PermisoDePrueba`, y
   las que miran lo publicado lo dan de verdad con `pm grant`. El token de FCM es inventado (`AvisosDePrueba`): las pruebas
   nunca hablan con Firebase. El envío real de un push necesita un teléfono con Google Play y una cuenta.
+## Chat y Progreso
+
+Gemelas de `apps/ios/MyPump/Chat/ChatView.swift` y de `Progreso/` (CHA-01…06 y PRO-01…05), en los paquetes `chat` y
+`progreso`. Lo que arman con los modelos de `:core` (los grupos y separadores del hilo, el contador, las secciones, las
+sesiones del gráfico y los números y las fechas en es-AR) es puro y se prueba en la JVM (`TextosChatTest`, y
+`VistaProgresoTest` con el historial grabado).
+
+- **Chat** (`ChatPantalla`). La lista va con `reverseLayout` (lo nuevo abajo, como Mensajes) y arriba de todo el banner de
+  Revisión, el encabezado (otro con el hilo vacío) y "Ver mensajes anteriores". Las burbujas van a los costados (D12),
+  con la colita y la hora en la última del grupo, "enviando…" y "no salió → Reintentar". Mientras se ve, el chat está
+  abierto (un `DisposableEffect`: sondeo cada 15 s y lo de Mati queda leído) y al entrar `marcarLeido()` baja el badge. El
+  borrador vive en la pantalla (`rememberSaveable`): no lo pisa un mensaje que llega. CHA-02 cuenta los caracteres como
+  iOS (`String.count`: los que se ven, un emoji es uno): el contador aparece pasados los 900, en rojo desde los 1000, y por
+  encima Enviar se apaga. En la demo, Enviar apagado y el aviso.
+- **Progreso** (`ProgresoPantalla`). Carga al abrir la pestaña solo si no hay tarjetas o faltó la red, y siempre con
+  `ModeloApp.cargarProgreso` (el sustituto, PRO-02); tirar hacia abajo recarga. El detalle (`ProgresoDetalle`) es estado
+  de la pestaña, como un ejercicio en Entreno: Atrás vuelve a la lista. Los gráficos son `Canvas`, sin librerías: la curva
+  monótona de Salud (`curvaMonotona`), las marcas redondas de los ejes y, en el detalle, el valor de la sesión bajo el
+  dedo.
+- **El esqueleto** (`progreso/Esqueleto.kt`, lo usan los dos) respeta "Quitar animaciones". Limpia la semántica de lo que
+  le sigue en la cadena de modificadores: la `testTag` va antes.
+- **Pruebas** (`ui/ChatUiTest`, `ui/ProgresoUiTest` y las capturas de `ui/CapturasChatProgresoUiTest`). El chat corre con
+  `ChatDePrueba` (`ui/ChatYProgresoDePrueba.kt`), puesto encima del `ServidorDePrueba` sin cambiarlo: un hilo con memoria
+  que pagina, sondea y devuelve como fila real lo que manda la cola, salvo que el servidor lo rechace. "No salió" se
+  prueba con la cola de verdad, pasándola a mano (`drenar`) en vez de esperar sus pausas. Progreso corre con el teléfono
+  en Buenos Aires: las sesiones son días locales.
+
 ## Salud (Health Connect)
 
 Gemela de la Salud de iOS (HealthKit), con Health Connect `connect-client` 1.1.0, la misma versión que compila la

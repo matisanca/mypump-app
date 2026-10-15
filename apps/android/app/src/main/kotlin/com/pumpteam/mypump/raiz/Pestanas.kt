@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.ModeloAppViewModel
+import com.pumpteam.mypump.chat.ChatPantalla
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.datos.EstadoGuardado
 import com.pumpteam.mypump.datos.ModeloApp
@@ -74,6 +75,7 @@ import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
 import com.pumpteam.mypump.misdatos.MisDatosPantalla
+import com.pumpteam.mypump.progreso.ProgresoPantalla
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.revision.RevisionPantalla
 import com.pumpteam.mypump.salud.DiagnosticoSaludDesdeLink
@@ -137,14 +139,14 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                             when (navegacion.pestana) {
                                 Pestana.ENTRENO -> EntrenoPantalla(modelo, vm.preguntasEntreno)
                                 Pestana.DIETA -> DietaPantalla(modelo)
-                                Pestana.CHAT -> PantallaEnConstruccion(Pestana.CHAT, modelo)
+                                Pestana.CHAT -> ChatPantalla(modelo)
                                 Pestana.REVISION ->
                                     if (navegacion.misDatos) {
                                         MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                     } else {
                                         RevisionPantalla(modelo, alAbrirMisDatos = { navegacion.misDatos = true })
                                     }
-                                Pestana.PROGRESO -> PantallaEnConstruccion(Pestana.PROGRESO, modelo)
+                                Pestana.PROGRESO -> ProgresoPantalla(modelo)
                             }
                         }
                     }
