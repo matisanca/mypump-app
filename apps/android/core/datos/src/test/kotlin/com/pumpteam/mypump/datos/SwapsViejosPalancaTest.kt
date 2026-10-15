@@ -1,12 +1,14 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import java.io.IOException
 
 /**
  * sim-migracion.sh (15-oct; gemelo de SwapsViejosPalancaTests.swift): un teléfono de la v1.0.11, sin la marca de migrados,
@@ -60,18 +62,21 @@ class SwapsViejosPalancaTest {
         )
     }
 
-    private fun modelo(s: Servidor, alcance: CoroutineScope): ModeloApp {
+    private fun modelo(s: Servidor, alcance: CoroutineScope, dieta: () -> String = { DIETA_JSON }, demoraSwaps: Long = 0): ModeloApp {
         val t = TransporteProgramado { fn, cuerpo ->
             when (fn) {
                 "mypump_get_cliente_info" -> 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
-                "mypump_get_dieta_activa" -> 200 to DIETA_JSON
+                "mypump_get_dieta_activa" -> 200 to dieta()
                 "mypump_get_app_config" -> 200 to """{"migracion_ops_legadas":true}"""
                 // Lo de antes de preguntar por los reemplazos tarda, como en un teléfono de verdad: la cola ya está mandando.
                 "mypump_get_cliente_prefs", "mypump_get_custom_foods" -> {
                     delay(150)
                     200 to "[]"
                 }
-                "mypump_get_food_swaps" -> if (s.lecturaFalla) throw IOException("sin conexión a internet") else 200 to s.json()
+                "mypump_get_food_swaps" -> {
+                    if (demoraSwaps > 0) delay(demoraSwaps)
+                    if (s.lecturaFalla) throw IOException("sin conexión a internet") else 200 to s.json()
+                }
                 "mypump_save_food_swap" -> {
                     s.guardar(cuerpo["p_comida_id"]?.comoTexto ?: "?", cuerpo["p_food_data"] ?: ValorJson.Nulo)
                     200 to """[{"id":"1"}]"""
@@ -118,6 +123,75 @@ class SwapsViejosPalancaTest {
         m.outbox?.drenar()
         assertEquals(listOf("c1", "c3"), s.comidas)
         assertEquals(setOf(C1, C3), m.swaps.value.keys)
+    }
+
+    /**
+     * La revisión adversarial del 15-oct (hallazgos 1 y 4): retener solo los reemplazos VIEJOS no alcanzaba. Uno nativo llegaba
+     * al servidor antes de la decisión, y uno viejo salía con una dieta que no se podía usar: c3 se perdía igual.
+     */
+    @Test
+    fun unReemplazoNativoSinPoderDecidirEsperaYNoSePierdeC3() = enUnHilo { alcance ->
+        sembrar()
+        val s = Servidor()
+        s.lecturaFalla = true
+        val m = modelo(s, alcance)
+        m.cargar()
+        m.outbox?.drenar()
+        val pollo = m.dieta.value!!.estructura.comidas.first { it.id == "c1" }.opciones.first().alimentos.first()
+        m.sustituir(pollo, ValorJson.objeto("name" to texto("Pavita"), "qty" to numero(200), "unit" to texto("g")), "c1", 0, 0)
+        m.outbox?.drenar()
+        assertTrue(s.comidas.isEmpty(), "el reemplazo nativo salió antes de decidir")
+        s.lecturaFalla = false
+        m.cargar()
+        m.outbox?.drenar()
+        assertEquals(listOf("c1", "c3"), s.comidas, "c3 nunca llegó al servidor")
+        assertTrue(C3 in m.swaps.value.keys, "c3 se borró del teléfono")
+    }
+
+    @Test
+    fun unReemplazoNativoEnLaVentanaDeLaPrimeraCargaNoPierdeC3() = enUnHilo { alcance ->
+        sembrar()
+        val s = Servidor()
+        val m = modelo(s, alcance, demoraSwaps = 300)
+        val carga = alcance.async { m.cargar() }
+        while (m.fase.value != ModeloApp.Fase.LISTO || m.dieta.value == null) delay(10)
+        val pollo = m.dieta.value!!.estructura.comidas.first { it.id == "c1" }.opciones.first().alimentos.first()
+        m.sustituir(pollo, ValorJson.objeto("name" to texto("Pavita"), "qty" to numero(200), "unit" to texto("g")), "c1", 0, 0)
+        carga.await()
+        m.outbox?.drenar()
+        assertTrue("c3" in s.comidas, "c3 nunca llegó al servidor")
+        assertTrue(C3 in m.swaps.value.keys, "c3 se borró del teléfono")
+    }
+
+    @Test
+    fun unaDietaQueTodaviaNoSePuedeUsarNoSueltaLosReemplazos() = enUnHilo { alcance ->
+        sembrar()
+        val s = Servidor()
+        val rota = """[{"id":"dieta-d","version":2,"estructura":{"comidas":[{"id":"c1","name":"Desayuno","options":[{"name":"A","foods":[]}]}]}}]"""
+        var usable = false
+        val m = modelo(s, alcance, dieta = { if (usable) DIETA_JSON else rota })
+        m.cargar()
+        m.outbox?.drenar()
+        assertTrue(m.dieta.value == null && s.comidas.isEmpty(), "con la dieta en armado salió un reemplazo viejo")
+        usable = true
+        m.cargar()
+        m.outbox?.drenar()
+        assertEquals(listOf("c1", "c3"), s.comidas)
+        assertTrue(C3 in m.swaps.value.keys)
+    }
+
+    /** Quien ya migró (con la marca) no espera nada: el reemplazo sale enseguida. */
+    @Test
+    fun conLaMarcaDeMigradosLosReemplazosNoEsperan() = enUnHilo { alcance ->
+        sembrar()
+        Disco(raiz, TOKEN).guardar("swaps_migrados_$DIETA", ValorJson.Booleano(true))
+        val s = Servidor()
+        s.lecturaFalla = true
+        val m = modelo(s, alcance)
+        assertFalse(m.faltaDecidirSwaps(Disco(raiz, TOKEN)))
+        m.cargar()
+        m.outbox?.drenar()
+        assertEquals(listOf("c1"), s.comidas, "el reemplazo de quien ya migró quedó esperando")
     }
 
     private companion object {

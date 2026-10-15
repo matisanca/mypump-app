@@ -292,9 +292,20 @@ object EjecutorLegado {
     private fun hayQueVolverAAdoptar(previo: EstadoMigracion, almacen: AlmacenToken, ajustes: Preferencias): Boolean {
         val legado = previo.anterior.tokenLegado ?: return false
         if (almacen.leer() != null) return false
+        // Solo si la nativa anduvo con ESA cuenta (o con ninguna): si anduvo con otra, no se vuelve a la de la app vieja.
+        UltimaCuenta.hash(ajustes)?.let { if (it != legado) return false }
         val invalido = ajustes.leer("mypump_token_invalido")
         return invalido == null || JsonLegado.sha256(invalido) != legado
     }
+
+    /**
+     * El libro de las fotos que ya pasaron a la nativa: una repetición de la Fase L no las vuelve a poner en la cola (una ya
+     * subida podía pisar en el servidor otra más nueva de la misma semana y pose; revisión adversarial, hallazgo 5).
+     */
+    internal const val ARCHIVO_FOTOS_IMPORTADAS = "fotos-importadas.json"
+
+    internal fun idFoto(clave: String, k: String, f: FotoPendiente): String =
+        JsonLegado.sha256("$clave|$k|${f.fecha}|${JsonLegado.sha256(f.dataUrl)}")
 
     suspend fun faseLocal(
         entorno: EntornoLegado,
@@ -346,7 +357,7 @@ object EjecutorLegado {
 
         // 2. Leer y planificar.
         val lectura = lector.leer() ?: return r
-        val contexto = ContextoMigracion(almacen.leer(), ajustes.leer("mypump_token_invalido"), previo?.anterior)
+        val contexto = ContextoMigracion(almacen.leer(), ajustes.leer("mypump_token_invalido"), previo?.anterior, UltimaCuenta.hash(ajustes))
         val plan = MigracionLegado.planificar(lectura.items, lectura.firmas, ahora, zona, contexto)
         r.plan = plan
         r.tokenVigente = plan.tokenVigente
@@ -360,6 +371,7 @@ object EjecutorLegado {
         if (plan.adoptarToken && vigente != null) {
             almacen.guardar(vigente)
             if (almacen.leer() != vigente) throw IOException("el almacén no guardó el token adoptado")
+            UltimaCuenta.anotar(vigente, ajustes)
             r.adoptoToken = true
         }
 
@@ -370,6 +382,8 @@ object EjecutorLegado {
         // 5. Lo de la cuenta vigente.
         val libro = LinkedHashMap(a.libro)
         val pendientes = a.pendientes.toMutableList()
+        val fotosImportadas = (a.leer(ARCHIVO_FOTOS_IMPORTADAS) as? ValorJson.Lista)?.elementos?.mapNotNull { it.comoTexto }?.toMutableSet()
+            ?: mutableSetOf()
         val borrar = LinkedHashMap(estado.escritura?.borrar ?: emptyMap())
         if (vigente != null) {
             val disco = entorno.disco(vigente)
@@ -436,14 +450,29 @@ object EjecutorLegado {
                         }
                         r.porValidar += aLaFaseR.size
                     }
-                    if (q.fotos.isNotEmpty()) sumarFotos(q.fotos, disco)
                     if (!q.valorIlegible) q.firma?.let { borrar[q.clave] = it }
-                    if (q.claveFotos != null && q.firmaFotos != null) borrar[q.claveFotos] = q.firmaFotos
+                    val fotos = q.fotos.filter { (k, f) -> idFoto(q.clave, k, f) !in fotosImportadas }
+                    when {
+                        // La cola de fotos de la Capacitor se borra solo si las fotos quedaron en la nativa.
+                        alArchivo -> if (fotos.isEmpty() || sumarFotos(fotos, disco)) {
+                            for ((k, f) in fotos) fotosImportadas += idFoto(q.clave, k, f)
+                            if (q.claveFotos != null && q.firmaFotos != null) borrar[q.claveFotos] = q.firmaFotos
+                        }
+                        // Con el modelo vivo, las fotos van por la Fase R, que las suma a su cola en memoria: escribir el
+                        // archivo por detrás las perdía (la cola lo pisa al guardar; revisión adversarial, hallazgo 2).
+                        fotos.isNotEmpty() -> {
+                            encolarPendiente(pendientes, t, q, emptyList(), fotos, propia = true, corrida = corrida)
+                            for ((k, f) in fotos) fotosImportadas += idFoto(q.clave, k, f)
+                        }
+                        q.claveFotos != null && q.firmaFotos != null -> borrar[q.claveFotos] = q.firmaFotos
+                    }
                 }
                 ColaLegada.Tipo.OTRO_TOKEN -> {
                     val t = q.token ?: continue
-                    if (nuevas.isEmpty() && q.fotos.isEmpty()) continue
-                    encolarPendiente(pendientes, t, q, nuevas, q.fotos, propia = false, corrida = corrida)
+                    val fotos = q.fotos.filter { (k, f) -> idFoto(q.clave, k, f) !in fotosImportadas }
+                    if (nuevas.isEmpty() && fotos.isEmpty()) continue
+                    encolarPendiente(pendientes, t, q, nuevas, fotos, propia = false, corrida = corrida)
+                    for ((k, f) in fotos) fotosImportadas += idFoto(q.clave, k, f)
                     for (op in nuevas) libro[op.idLibro] = EntradaLibro(EntradaLibro.Destino.ESTACIONADA, op.operacion.kind, corrida)
                     r.estacionadas += nuevas.size
                 }
@@ -464,6 +493,7 @@ object EjecutorLegado {
         //    medio, la corrida se repite y la cola no duplica (mismo id).
         a.guardarLibro(libro)
         a.guardarPendientes(pendientes)
+        a.guardar(ValorJson.Lista(fotosImportadas.sorted().map { texto(it) }), ARCHIVO_FOTOS_IMPORTADAS)
         estado = estado.copy(
             corridas = corrida,
             ultima = ms,
@@ -519,10 +549,11 @@ object EjecutorLegado {
     }
 
     /** Junta con lo que la cuenta ya tenía: por `"<lunes>|<pose>"`, gana la foto más nueva. */
-    internal fun sumarFotos(fotos: Map<String, FotoPendiente>, disco: Disco) {
+    /** Devuelve si quedaron en el disco. */
+    internal fun sumarFotos(fotos: Map<String, FotoPendiente>, disco: Disco): Boolean {
         val actuales = (disco.leer(FotoPendiente.ARCHIVO)?.let(ValorJson::desde) as? ValorJson.Objeto)?.campos
             ?.mapNotNull { (k, f) -> FotoPendiente.desde(f)?.let { k to it } }?.toMap() ?: emptyMap()
-        disco.guardar(FotoPendiente.ARCHIVO, ValorJson.Objeto(mezclarFotos(actuales, fotos).mapValues { it.value.aValor() }))
+        return disco.guardar(FotoPendiente.ARCHIVO, ValorJson.Objeto(mezclarFotos(actuales, fotos).mapValues { it.value.aValor() }))
     }
 
     /** Por día gana lo leído ahora; el descanso, si hay uno nuevo. */

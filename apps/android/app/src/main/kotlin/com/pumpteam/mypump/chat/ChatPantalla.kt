@@ -31,14 +31,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -87,9 +88,9 @@ import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloChat
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Archivo
+import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
-import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.superficieTarjeta
@@ -269,6 +270,7 @@ private fun Conversacion(modelo: ModeloApp, ch: ModeloChat?, hilo: HiloChat, car
             Encabezado(
                 vacio = hilo.mensajes.isEmpty(),
                 sinTraer = sinTraer,
+                porRed = ch?.sinTraerPorRed ?: true,
                 cargando = cargando,
                 alReintentar = { alcance.launch { ch?.cargar() } },
                 modifier = Modifier.widthIn(max = AnchoLectura).fillMaxWidth(),
@@ -292,8 +294,17 @@ private class CerrarTecladoAlArrastrar(private val foco: FocusManager) : NestedS
  * mensajes, el avatar grande y para qué sirve el chat.
  */
 @Composable
-private fun Encabezado(vacio: Boolean, sinTraer: Boolean, cargando: Boolean, alReintentar: () -> Unit, modifier: Modifier = Modifier) {
+private fun Encabezado(
+    vacio: Boolean,
+    sinTraer: Boolean,
+    porRed: Boolean,
+    cargando: Boolean,
+    alReintentar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val c = MyPump.colores
+    val motivo = if (porRed) "Sin conexión. Lo que escribas se manda solo cuando vuelva la señal."
+    else "El servicio no responde. Lo que escribas se manda solo cuando vuelva."
     if (vacio && sinTraer) {
         // Sin red y sin haber traído nunca el hilo: no es que no haya mensajes.
         Column(
@@ -309,7 +320,7 @@ private fun Encabezado(vacio: Boolean, sinTraer: Boolean, cargando: Boolean, alR
                 modifier = Modifier.padding(top = 4.dp).semantics { heading() },
             )
             Text(
-                "Sin conexión. Lo que escribas se manda solo cuando vuelva la señal.",
+                motivo,
                 style = Letras.subtitulo,
                 color = c.textoSecundario,
                 textAlign = TextAlign.Center,
@@ -321,6 +332,17 @@ private fun Encabezado(vacio: Boolean, sinTraer: Boolean, cargando: Boolean, alR
                 habilitado = !cargando,
                 modifier = Modifier.padding(top = Espacio.xs).testTag("chat-reintentar"),
             )
+        }
+    } else if (sinTraer) {
+        // Hay burbujas (lo que se escribió sin señal) pero el hilo de antes nunca llegó: se sigue diciendo, más chico.
+        Row(
+            modifier.padding(top = Espacio.m, bottom = Espacio.xs).testTag("chat-sin-traer"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Espacio.xs, Alignment.CenterHorizontally),
+        ) {
+            Icon(Iconos.SinWifi, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(16.dp))
+            Text("No pudimos traer los mensajes anteriores", style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
+            TextButton(onClick = alReintentar, enabled = !cargando, modifier = Modifier.testTag("chat-reintentar")) { Text("Reintentar") }
         }
     } else if (vacio) {
         Column(

@@ -224,6 +224,8 @@ data class ContextoMigracion(
     val tokenInvalidoNativo: String? = null,
     /** null = primera corrida. */
     val anterior: CorridaAnterior? = null,
+    /** [UltimaCuenta]: el sha256 del token con el que anduvo la nativa por última vez (null = nunca tuvo uno). */
+    val ultimaCuenta: String? = null,
 )
 
 /** Lo mínimo de la corrida anterior para saber qué cambió desde entonces. Sin tokens ni valores: solo hashes. */
@@ -383,6 +385,11 @@ object MigracionLegado {
         val nativo = contexto.tokenNativo
         val legado = plan.tokenLegado
         when {
+            // La nativa anduvo con OTRA cuenta y se quedó sin token (el link se venció): no se entra a la de la app vieja, que
+            // puede ser de otra persona. Su cola queda estacionada y la Fase R la toma solo si resuelve al mismo cliente
+            // (revisión adversarial del 15-oct, hallazgo 3).
+            nativo == null && legado != null && contexto.ultimaCuenta != null && contexto.ultimaCuenta != plan.tokenLegadoHash ->
+                plan.tokenVigente = null
             nativo == null -> {
                 plan.tokenVigente = legado
                 plan.adoptarToken = legado != null

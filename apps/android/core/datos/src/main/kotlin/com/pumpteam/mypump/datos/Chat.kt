@@ -190,6 +190,10 @@ class ModeloChat(
     private val _sinTraer = MutableStateFlow(false)
     val sinTraer: StateFlow<Boolean> = _sinTraer.asStateFlow()
 
+    /** Por qué no se pudo traer: sin red, o el servicio que no responde (el texto de la pantalla cambia). */
+    @Volatile var sinTraerPorRed = true
+        private set
+
     /**
      * Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge. Al abrirlo
      * el sondeo vuelve a arrancar: si no, la espera de 45 s que estaba corriendo seguía (como la web, que cambia el
@@ -211,13 +215,17 @@ class ModeloChat(
         if (demo || !_cargando.compareAndSet(expect = false, update = true)) return
         try {
             val antes = if (masViejos) _hilo.value.primeroReal?.let { texto(it.createdAt) } ?: ValorJson.Nulo else ValorJson.Nulo
-            val filas = cliente.filas(
+            val r = cliente.filas(
                 "mypump_get_chat",
                 mapOf("p_token" to t, "p_antes" to antes, "p_limite" to numero(PAGINA)),
                 MensajeChat::desde,
-            ).valorONull()
+            )
+            val filas = r.valorONull()
             if (filas == null) {
-                if (!cargado) _sinTraer.value = true
+                if (!cargado) {
+                    sinTraerPorRed = (r as? Resultado.Falla)?.error?.clase == ErrorRpc.Clase.RED
+                    _sinTraer.value = true
+                }
                 return
             }
             cargado = true
