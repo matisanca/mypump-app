@@ -125,6 +125,23 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **14-oct 21:00, fuera de las apps pero ligado a ellas (Mati: «hacelo todo vos», «seguí en autónomo»):**
+  - **WhatsApp sin nombres** (elección de Mati: «tapar el texto»). Cada cliente es un alias fijo (`CL-7F3A`), unido a
+    su ficha por el teléfono.
+    - Código en `~/Desktop/Pump-Respuestas/wa-mcp/src` (no está en git; lo respalda iCloud): `alias.mjs`,
+      `pedidos.mjs`, `mcp.mjs`, `mini.mjs`, `vigia.mjs` y `aprobacion.mjs`, con 28 pruebas.
+    - Hook de AskUserQuestion en `~/.claude/settings.json`: los nombres van solo en las descripciones de las opciones,
+      que no vuelven a la IA. Verificado en el registro de la sesión.
+    - La sesión de Mensajes lo adopta cuando Mati le dé el OK. Detalle en la memoria `whatsapp-tapado-alias`.
+  - **Fuga corregida:** con Qwen caído, `app_chat.py contexto` mostraba los otros clientes de CANDIDATOS. Ahora la
+    pasada fija tapa los nombres de todas las fichas. 1f30b5f, desplegado; se borró el caché con la fuga.
+  - **Gerardo Damyan Tejeda:** la fila 403 de `clientes_memoria` se llamaba como su teléfono y el brief no la
+    encontraba. Se renombró (backup en la Mini, `~/pump-backups/clientes_memoria/`).
+  - **El aviso «💡 guion de Reel»** salía en cada mensaje de todas las sesiones, porque UserPromptSubmit no usa
+    matcher. Ahora `~/.claude/hooks/guion_reel.py` mira el texto y solo avisa con un guion de verdad.
+  - **Beta y tienda:** `NATIVA_BETA.md` y `NATIVA_TIENDAS_2.0.0.md` al día, sin D7. `scripts/nativa/beta_diario.py`
+    para el control diario.
+
 - **14-oct 19:00, Mati probando la 101 en su iPhone:**
   - **"El toca para registrar lo de la última vez no funciona":** la pista era texto; en la web es un botón
     (`cliente.html:4044`, `data-sugconfirm`). Ahora confirma la serie igual que el ✓ (TablaSeries `pista`), con
