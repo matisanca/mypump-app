@@ -794,6 +794,12 @@ public final class ModeloEntreno {
         return SustitucionesEntreno.filtrar(catalogo.sustitutos(de: efectivo(ex)), busqueda)
     }
 
+    /// El sustituto elegido en la hoja, buscado por su clave en la lista de AHORA (con el catálogo que haya llegado
+    /// mientras tanto). nil si ya no está entre los sustitutos.
+    public func sustituto(_ lugar: String, clave: String) -> SustitutoEjercicio? {
+        sustitutos(lugar).first { $0.clave == clave }
+    }
+
     /// El "🔒 Fijar" arranca como estaba la sustitución previa (al cambiar de sustituto no se pierde).
     public func fijadaAntes(_ lugar: String) -> Bool { SustitucionesEntreno.aplicada(dia.sustituciones[lugar])?.fijado ?? false }
 

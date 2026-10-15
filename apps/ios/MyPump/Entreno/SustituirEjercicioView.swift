@@ -10,7 +10,9 @@ struct SustituirEjercicioView: View {
     let lugar: String
     @Environment(\.dismiss) private var cerrar
     @State private var busqueda = ""
-    @State private var elegido: Int?
+    /// El elegido, no su posición: si con la hoja abierta llega el catálogo del servidor la lista cambia de orden, y la
+    /// misma posición era otro ejercicio (revisión del 15-oct, hallazgo 13).
+    @State private var elegido: SustitutoEjercicio?
     @State private var fijar = false
     @State private var listo = false
 
@@ -48,14 +50,14 @@ struct SustituirEjercicioView: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(Array(opciones.enumerated()), id: \.offset) { _, s in
-                        let i = total.firstIndex(of: s)
+                        let marcada = elegido?.clave == s.clave
                         Button {
-                            withAnimation(.snappy(duration: 0.2)) { elegido = i }
+                            withAnimation(.snappy(duration: 0.2)) { elegido = s }
                         } label: {
-                            fila(s, elegida: i != nil && i == elegido)
+                            fila(s, elegida: marcada)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityAddTraits(i == elegido ? .isSelected : [])
+                        .accessibilityAddTraits(marcada ? .isSelected : [])
                         .accessibilityIdentifier("variante")
                     }
                 } header: {
@@ -115,8 +117,9 @@ struct SustituirEjercicioView: View {
     /// La hoja se cierra ya: el cambio se aplica en el acto y el historial del sustituto llega después. Esperarlo la
     /// dejaba abierta hasta 20 s con mala señal, sin indicador, y "Cancelar" ahí no deshacía nada (revisión, hallazgo 14).
     private func sustituir() {
-        guard let i = elegido, i < todos.count else { return }
-        let s = todos[i]
+        guard let e = elegido else { return }
+        // El mismo, con lo que tenga el catálogo de ahora; si ya no está entre los sustitutos, el que se tocó.
+        let s = motor.sustituto(lugar, clave: e.clave) ?? e
         cerrar()
         Task { await motor.sustituir(lugar, por: s, fijar: fijar) }
     }

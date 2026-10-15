@@ -317,6 +317,14 @@ public struct SustitutoEjercicio: Sendable, Equatable {
 }
 
 extension SustitutoEjercicio {
+    /// Lo que lo identifica aunque la lista cambie: el slug del catálogo; sin slug, el nombre con el equipo. La hoja de
+    /// "Sustituir" elige por esto y no por la posición: si mientras está abierta llega el catálogo del servidor, la lista
+    /// cambia de orden y la misma posición es otro ejercicio (revisión del 15-oct, hallazgo 13).
+    public var clave: String {
+        if let slug, !slug.isEmpty { return slug }
+        return "\(nombre)|\(equipoCrudo ?? equipo)"
+    }
+
     init(_ e: EntradaCatalogoEjercicio, mismoEquipo: Bool) {
         self.init(slug: e.slugEn, nombre: SustitucionEjercicios.castellano(e), nombreIngles: e.nameEn,
                   equipo: SustitucionEjercicios.etiquetaEquipo(e), equipoCrudo: e.equipment, musculo: e.primaryMuscle,
