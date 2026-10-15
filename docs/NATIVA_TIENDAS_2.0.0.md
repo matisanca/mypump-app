@@ -133,6 +133,15 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 
 ### Lo que hay que tocar en la consola (Mati, o yo con su sesión y su OK)
 
+**Hecho el 15-oct y enviado a revisión a las 15:31**, con OK de Mati. Lo que se encontró en la consola:
+- Data safety ya tenía «Otros mensajes desde la app» y «Dispositivo u otros IDs»: solo se sumó Diagnóstico (recopilado,
+  no efímero, obligatorio, para funciones de la app, no compartido).
+- La declaración de Health Connect ya tenía un texto por permiso, y el de frecuencia respiratoria estaba bien. El que
+  mencionaba la saturación de oxígeno era un renglón propio de `READ_OXYGEN_SATURATION`. El formulario lo conserva
+  aunque la app ya no pide el permiso, y no se puede borrar: su texto ahora dice que la app no lo usa desde la 1.0.7.
+- Capturas: 8 por tipo de pantalla, que es el máximo. Van las 5 en claro y después Entreno, Dieta y Progreso en oscuro.
+  Las de tablet de 10" también van en las de 7", que estaban vacías.
+
 1. **Data safety** (`docs/PLAYSTORE_METADATA.md` tiene lo de hoy). Hay que sumar lo que la tabla no lista:
    - **Información y rendimiento de la app → Diagnóstico.** Es el recibo de la migración: cuántas filas hay por tabla
      y un UUID, sin contenido.
@@ -173,23 +182,20 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 3. G7: con el OK concreto de Mati, se envía con lanzamiento escalonado de 7 días. Nunca con
    `cancel_previous_submissions`.
 
-**Google Play (Android):**
-1. El AAB `nand-2.0.0-103` (versionCode 103, 15-oct 13:34), del artefacto de Codemagic, se sube a mano a la prueba
-   interna.
+**Google Play (Android): enviado a revisión el 15-oct a las 15:31.**
+1. ✅ El AAB `nand-2.0.0-103` (versionCode 103, 15-oct 13:34), del artefacto de Codemagic, subido a mano a la versión
+   de producción.
    - El 102 queda viejo: el 103 trae el arreglo de una pérdida de fotos.
    - El 101 no existe: falló el chequeo de APIs en Codemagic por el entorno.
-   - Así se verifica la firma de Play.
-   - Con eso se cierra ACC-01 de Android: `pm get-app-links` con la app de Play.
-2. En Play Console:
-   - Data safety;
-   - la declaración de Health Connect corregida;
-   - las capturas de `tienda-android/20261015-053511`.
-3. G7: producción por porcentaje, 10 % → 50 % → 100 %, mirando cada día los recibos de la migración.
+   - Play aceptó la firma de subida. ACC-01 de Android (`pm get-app-links` con la app instalada desde Play) queda para
+     cuando salga: hace falta un Android con la app de Play, el de Mati o un emulador donde él inicie sesión.
+2. ✅ En Play Console: Data safety, la declaración de Health Connect corregida y las capturas de
+   `tienda-android/20261015-053511`.
+3. ⏳ G7: producción por porcentaje, 10 % → 50 % → 100 %, mirando cada día los recibos de la migración. La publicación
+   administrada está apagada: el 10 % arranca solo cuando Google aprueba.
 
-**Lo que queda esperando un OK de Mati**, que no frena el envío:
-- mini-vision: `gpt-5.6-sol` en `~/.codex/config.toml` de la Mini. Con eso se prueban DIE-14/15 con la IA real.
-- El push real de Android de punta a punta: un mensaje de Mati en el chat de `test-nativa-android`.
-- La web también pierde fotos con la Mini caída (`flushFotos`). Es de `public/`.
+**Los OK que estaban esperando, hechos el 15-oct:** mini-vision con `gpt-5.6-sol` (DIE-14/15 ✅ con la IA real), el
+push real de Android de punta a punta y las fotos de la web con la Mini caída (0620012, en `main`).
 
 ## Plan B: volver a la Capacitor si la 2.0.0 sale mal
 

@@ -224,7 +224,7 @@ USO DE CADA CATEGORÍA
 • Pasos, distancia, pisos, calorías activas y basales, ejercicio: volumen de actividad diaria y gasto energético real, que determinan el objetivo calórico del plan.
 • Frecuencia cardíaca, frecuencia cardíaca en reposo y variabilidad (HRV): son el componente autonómico del puntaje de recuperación, el de mayor peso.
 • Sueño: duración, etapas y regularidad; segundo componente del puntaje.
-• Frecuencia respiratoria y saturación de oxígeno: se comparan contra la línea de base del propio usuario para detectar desvíos.
+• Frecuencia respiratoria: se compara contra la línea de base del propio usuario para detectar desvíos.
 • Peso, porcentaje de grasa: seguimiento de composición corporal contra el rango objetivo del plan.
 
 COMPROMISOS

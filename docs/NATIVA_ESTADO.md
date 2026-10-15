@@ -42,7 +42,7 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
   (G7). Los permisos de las acciones irreversibles van uno por uno.
 
 **iPhone 2.0.0**
-1. ☐ La 1.0.12 publicada por Apple. El 14-oct a las 23:50 la App Store seguía con la 1.0.6. Se mira con
+1. ☐ La 1.0.12 publicada por Apple. El 15-oct a las 15:33 la App Store seguía con la 1.0.6. Se mira con
    `curl -s "https://itunes.apple.com/lookup?bundleId=com.pumpteam.mypump&country=ar"`.
 2. ⏳ Prueba exhaustiva propia. Estado al 15-oct 05:45:
    - ✅ XCUITest en 26.5 (iPhone 17 Pro), 17.5, 18.6 y el iPad Pro 13". Barrido en el iPhone SE en claro, oscuro y con
@@ -67,24 +67,25 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    pérdida de fotos. El 110 trajo el rendimiento de Progreso y el chat sin pedido doble; el 109, la cola de fotos que ya
    no las pierde y la accesibilidad de la auditoría. Antes, la suite completa de interfaz en 26.5 dio 20 de 20, con las 15 salteadas a propósito (barrido y
    auditoría), y el kit 436/436. Del 104 al 106 tienen el cierre al tocar un aviso.
-4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
-   Los arreglos de después no cambian lo que se ve en el tamaño de las capturas.
-5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
+4. ✅ Capturas nuevas (15-oct 11:45, `nativa-evidencia/tienda/20261015-114457`, con la app del TestFlight 110) y los
+   textos de `NATIVA_TIENDAS_2.0.0.md`.
+5. ⏳ G7: **OK de Mati el 15-oct** («Sí, apenas salga la 1.0.12»): la 2.0.0 con el build 111, escalonado de 7 días y
+   publicación manual. App Store Connect pide iniciar sesión en Chrome (15-oct 15:35) y eso lo hace Mati: la sesión
+   no pone contraseñas ni códigos.
 6. ✅ Plan B escrito en `NATIVA_TIENDAS_2.0.0.md`: la Capacitor 2.0.1 por los workflows de siempre, sin subirla de
    antemano. La vuelta de la nativa a la Capacitor está probada en el simulador.
 
 **Android 2.0.0**
 1. ✅ Todas las pantallas (f4bf5ce, 15-oct 03:00): no queda ninguna «en construcción».
-2. ⏳ Paridad de Android: quedan 3 en 🟡. ACC-01 espera la firma de Play, y DIE-14/15 esperan a mini-vision. GEN-05,
-   GEN-07 y GEN-08 ya tienen su prueba, que muerde (agente, 15-oct, mergeado en `nativa`).
+2. ⏳ Paridad de Android: queda 1 en 🟡, ACC-01, que espera una instalación firmada por Play. DIE-14/15 se cerraron
+   con la visión real (106a793). GEN-05, GEN-07 y GEN-08 ya tienen su prueba, que muerde (agente, 15-oct, mergeado en
+   `nativa`).
 3. ✅ Matriz de emuladores con Google Play (15-oct, 8733a3c): las 186 instrumentadas con 0 fallas en Android 9, 11, 13,
    14 y 16. La migración da 31/31 en 13 y 28/31 en 9: los 3 que fallan son de la Capacitor, que no arranca con WebView 66.
    Pendientes de la lista original:
    - la migración desde la Capacitor 1.0.12;
-   - un push real de punta a punta con `push.py` y la cuenta de prueba. El registro ya anda: hay tokens de FCM de
-     `test-nativa-android` con `plataforma android` en `mypump_push_devices`. **Falta la entrega**, y espera el OK
-     de Mati: hay que dejar un mensaje de Mati en el chat de la cuenta de prueba (una escritura en producción) para
-     que el trigger lo encole y `push.py` lo mande por FCM;
+   - ~~un push real de punta a punta con `push.py` y la cuenta de prueba~~ ✅ 15-oct, con OK de Mati
+     (`scripts/nativa/push-android.py`): llegó en 263 s por el canal `mypump_mensajes`, y tocarlo abre el Chat;
    - Health Connect, que viene integrado desde Android 14 y es una app aparte de 9 a 13;
    - tamaños de pantalla, modo oscuro y fuente grande.
 4. ✅ Workflow `android-nativa`: **`nand-2.0.0-103`** (15-oct 13:34, 0bec33b, con los arreglos de la segunda revisión
@@ -92,11 +93,16 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    la JVM, el AAB y el APK firmados con `mypump-upload`, las APIs de `:core` contra el minSdk, la versión, la firma, los
    permisos y los 16 KB. El 101 falló en el chequeo de APIs, que corría por primera vez allá: el script dependía del
    Java de Homebrew y de versiones enteras del SDK.
-5. ☐ Play:
-   - la subida del AAB, que es manual porque no hay cuenta de servicio;
-   - la declaración de Health Connect y Data safety;
-   - las capturas.
-6. ☐ G7: con el OK concreto de Mati, producción con rollout por porcentaje.
+5. ✅ Play (15-oct, con la sesión de Mati en Chrome):
+   - el AAB 103 en la versión de producción, con las novedades;
+   - Data safety con «Información de la app y rendimiento → Diagnóstico» (el recibo de la migración). Mensajes y el ID
+     del dispositivo ya estaban;
+   - la declaración de Health Connect: el renglón viejo de saturación de oxígeno ahora dice que la app ya no usa el
+     permiso. Google la había rechazado por él el 26-ago y se sacó en la 1.0.7;
+   - las capturas: 8 de teléfono y 8 de tablet de 7" y de 10", 5 en claro y 3 en oscuro.
+6. ⏳ G7: **enviado a revisión el 15-oct a las 15:31** con OK de Mati («Play: AAB 103 al 10%»), en 6 cambios. La
+   publicación administrada está apagada, así que sale sola al aprobarse, al 10 %. Después, 50 % y 100 % mirando los
+   recibos de la migración (`scripts/nativa/beta_diario.py`).
 
 ## Fase actual: 0, lo que pide el §9
 
@@ -156,7 +162,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | G4 · descargas | Android: `androidx.browser`, `ui-test-junit4`/`ui-test-manifest` (14-oct) y **Firebase Messaging 25.0.1 + plugin google-services 4.4.4 + Health Connect `connect-client` 1.1.0** («dale», 14-oct 21:10). Son las versiones que ya compila la Capacitor y están en la caché de Gradle. El `google-services.json` es el de `android/app` (ya público, proyecto mypump-663be) |
 | G5 · TestFlight externo | **no va** (Mati, 14-oct 23:50): sin beta con clientes, la reemplaza la prueba exhaustiva propia. Los internos están autorizados |
 | G6 · mensajes a clientes | no hace falta para el lanzamiento (sin beta) |
-| G7 · revisión de tiendas | pendiente: el OK concreto se pide al mandar (ver «Camino a las tiendas») |
+| G7 · revisión de tiendas | **Play: enviado el 15-oct a las 15:31** (OK de Mati, AAB 103 al 10 %). **App Store: OK de Mati** para mandar la 2.0.0 apenas salga la 1.0.12; falta que él inicie sesión en App Store Connect |
 
 ## Decisiones tomadas en autónomo (13/14-oct, Mati: "seguí sin mi intervención")
 
@@ -191,21 +197,42 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   build 18 (el de `v1.0.12-b18`, que es `main` salvo el texto de privacidad), publicación automática al aprobarse y
   progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió. El 15-oct
   a las 04:00 seguía la 1.0.6.
-- **OK pendientes (15-oct):**
-  1. **mini-vision** (producción, caído desde el 14-oct 13:03): en la Mini, `model = "gpt-5.6-sol"` en
-     `~/.codex/config.toml`, con backup. Detalle en la bitácora del 15-oct 03:00.
-  2. **Push real de Android:** dejar un mensaje de Mati en el chat de `test-nativa-android` (escritura en producción,
-     en la cuenta de prueba) para ver la entrega por FCM en el emulador y que tocarlo abra el chat.
-  3. **El servicio de fotos** (`mini-vision/server.mjs`, `handleFotoUpload`): hoy `overLimit` suma el intento antes de
-     subir al bucket, así que con el storage caído cada intento fallido gasta uno de los 12 del día. Habría que sumarlo
-     recién cuando la subida sale bien. Es producción en la Mini.
-  4. **La web pierde fotos con la Mini caída** (`flushFotos`, `public/cliente.html`): cuenta el 502/530 de Cloudflare
-     como error del servidor y la borra al octavo. Es de `public/`.
+- **Los OK del 15-oct, todos hechos** (Mati: «todo eso podés hacerlo vos», y uno por uno en la pregunta):
+  1. ✅ **mini-vision:** `model = "gpt-5.6-sol"` en `~/.codex/config.toml` de la Mini (backup
+     `config.toml.bak-20261015-nativa`). Volvió a andar.
+  2. ✅ **Push real de Android:** ver «Android 2.0.0», punto 3.
+  3. ✅ **El servicio de fotos** (`mini-vision/server.mjs`): el tope del día suma la foto recién cuando se guardó bien.
+     En `main` (0620012) y en la Mini (backup `server.mjs.bak_20261015_topeFotos`).
+  4. ✅ **La web ya no pierde fotos con la Mini caída** (`_flushFotosPasada`, `public/cliente.html`): un 5xx no gasta
+     intentos y corta la pasada. En `main` (0620012), publicado por Cloudflare Pages.
+  - Queda en la web, sin arreglar: la misma carrera de la foto de una pose que se vuelve a sacar mientras sube la vieja,
+    que en la nativa arregla `FotosMismaPose`.
 - **En su iPhone, con el TestFlight 111:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
-- **Para el envío (G7):** la etiqueta de privacidad con «Other Diagnostic Data» en App Store Connect, y en Play
-  Console la subida manual del AAB, Data safety, la declaración de Health Connect y las capturas.
+- **Para el envío a Apple (G7):** iniciar sesión en App Store Connect en Chrome. Con eso, la sesión arma la 2.0.0 (build
+  111, capturas, notas y «Other Diagnostic Data») y la manda con el escalonado de 7 días.
 
 ## Bitácora
+
+- **15-oct 15:31, Android enviado a revisión de Google.** Con los OK de Mati del 15-oct («Play: AAB 103 al 10%,
+  Mini: vision y tope fotos, Base: push real Android, Web: fotos a main»):
+  - **Play Console:** el AAB 103 (2.0.0) en producción al 10 % con sus novedades, Data safety con Diagnóstico, la
+    declaración de Health Connect y 24 capturas nuevas (`tienda-android/20261015-053511`). Fueron 6 cambios, enviados
+    juntos. La publicación administrada está apagada: al aprobarse sale sola al 10 %.
+    - El AAB pesa más de los 10 MB que acepta la extensión de Chrome por archivo. Se subió en trozos, se rearmó en la
+      página y se verificó con SHA-256 antes de dárselo a Play. Un servidor local no sirve: Chrome bloquea que una
+      página pública le pida algo a la red local.
+    - En la declaración de Health Connect quedaba un renglón de `READ_OXYGEN_SATURATION`, el permiso por el que Google
+      rechazó la app el 26-ago. Ya no está en el paso 1 (la app pide 14), pero el formulario conserva el renglón y no se
+      puede borrar. Su texto ahora dice que la app ya no lo usa.
+    - Avisos de Play para más adelante: optimizar el código DEX antes de febrero de 2027 (prender R8), y faltan el
+      archivo de desofuscación y los símbolos nativos.
+  - **mini-vision** volvió con `gpt-5.6-sol`. Las respuestas reales a un plato y a una tabla nutricional quedaron en
+    `VisionRealTests`/`VisionRealTest` (DIE-14/15 ✅).
+  - **El tope de fotos del servidor** cuenta solo lo que se guardó, y **la web** ya no borra fotos por un 5xx (0620012,
+    en `main` con OK de Mati; mergeado en `nativa` en e7617a9).
+  - **El push real de Android** llegó en 263 s por `mypump_mensajes`, y tocarlo abre el Chat (NOT-01/03 ✅).
+  - **App Store:** la 1.0.12 sigue en revisión (la tienda muestra la 1.0.6 a las 15:33). App Store Connect pide iniciar
+    sesión: Mati.
 
 - **15-oct 13:10, la segunda revisión adversarial** (lo que cambió desde el TestFlight 108). Encontró 4 problemas, cada
   uno con una prueba que falla sin el arreglo (verificado con mutaciones en las dos plataformas):
