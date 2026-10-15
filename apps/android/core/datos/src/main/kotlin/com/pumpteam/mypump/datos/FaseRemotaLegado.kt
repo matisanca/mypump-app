@@ -277,10 +277,16 @@ object FaseRemotaLegado {
                 r.paraRevisar += ops.size
             }
             if (p.fotos.isNotEmpty()) EjecutorLegado.sumarFotos(p.fotos, entorno.disco(token))
-            // Lo de un token rotado ya es de esta cuenta: la escritura de vuelta saca su cola de la Capacitor.
-            if (!p.propia && p.firma != null) {
-                val e = estado.escritura ?: EscrituraPendiente(corrida, emptyMap())
-                estado = estado.copy(escritura = e.copy(borrar = e.borrar + (p.clave to p.firma)))
+            // Lo de un token rotado ya es de esta cuenta: la escritura de vuelta saca su cola (y la de fotos) de la Capacitor.
+            if (!p.propia) {
+                val borrar = buildMap {
+                    p.firma?.let { put(p.clave, it) }
+                    if (p.claveFotos != null && p.firmaFotos != null) put(p.claveFotos, p.firmaFotos)
+                }
+                if (borrar.isNotEmpty()) {
+                    val e = estado.escritura ?: EscrituraPendiente(corrida, emptyMap())
+                    estado = estado.copy(escritura = e.copy(borrar = e.borrar + borrar))
+                }
             }
             resueltas += i
         }

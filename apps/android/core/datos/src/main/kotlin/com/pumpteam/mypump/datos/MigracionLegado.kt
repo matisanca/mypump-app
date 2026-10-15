@@ -195,6 +195,13 @@ data class ColaLegada(
     val fotos: Map<String, FotoPendiente> = emptyMap(),
     /** `rutina.id` de la foto offline de ESE token: contra qué rutina se cargaron las ops sin sesión. */
     val rutinaFoto: String? = null,
+    /**
+     * `mypump_fotoq_<T>` y su firma: la escritura de vuelta la borra (si no cambió) cuando sus fotos ya pasaron a la
+     * nativa. Si quedaba, la Capacitor (el plan B) volvía a subir esas fotos y podía pisar una más nueva de la misma semana
+     * y pose (lo encontró el agente de MIG-03, 15-oct; gemelo de iOS 549fdba).
+     */
+    val claveFotos: String? = null,
+    val firmaFotos: FirmaValor? = null,
 ) {
     enum class Tipo(val crudo: String) {
         /** La cuenta que queda guardada. */
@@ -440,7 +447,13 @@ object MigracionLegado {
                         c.demo++
                         continue
                     }
-                    colas[token] = cola(token, k).copy(fotos = leerFotos(v))
+                    // Solo si la web la puede leer (un objeto): un valor roto no se importa y la clave no se toca.
+                    val legible = JsonLegado.parsear(v) is ValorJson.Objeto
+                    colas[token] = cola(token, k).copy(
+                        fotos = leerFotos(v),
+                        claveFotos = if (legible) k else null,
+                        firmaFotos = if (legible) firmas[k] else null,
+                    )
                 }
                 offline != null -> {
                     val token = tokenDe(offline)

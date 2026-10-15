@@ -553,6 +553,21 @@ class MigracionLegadoTest {
         assertEquals("Ricota", swaps?.get("swap_${dietaD}_desayuno_0_1")?.get("current")?.get("name")?.comoTexto)
         assertNull(tel.disco().leer("swaps_migrados_$dietaD"))
         assertEquals("true", tel.disco().leer("swaps_migrados_otra-dieta").toString())
+        // La escritura de vuelta saca la cola de fotos de la Capacitor: si el cliente volviera a ella, no las subiría de
+        // nuevo encima de una más nueva de la misma semana y pose (agente de MIG-03, 15-oct).
+        assertNotNull(tel.archivos.estado?.escritura?.borrar?.get("mypump_fotoq_$tokenA"))
+    }
+
+    @Test
+    fun unaColaDeFotosQueNoSeLeeNoSeBorra() {
+        val tel = Telefono()
+        tel.lector.escribir(
+            mapOf("mypump_token" to tokenA, "mypump_fotoq_$tokenA" to "{no es json", "mypump_outbox_$tokenA" to json(ValorJson.Lista(colaWeb(1, t0 = 10.0)))),
+        )
+        tel.faseL()
+        val borrar = tel.archivos.estado?.escritura?.borrar ?: emptyMap()
+        assertNull(borrar["mypump_fotoq_$tokenA"], "se borraba una cola de fotos que no se pudo importar")
+        assertNotNull(borrar["mypump_outbox_$tokenA"])
     }
 
     @Test

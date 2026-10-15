@@ -183,6 +183,9 @@ data class ColaPendiente(
     val rutinaFoto: String?,
     val estado: Estado,
     val corrida: Int,
+    /** La cola de fotos de ese token en la Capacitor ([ColaLegada.claveFotos]). */
+    val claveFotos: String? = null,
+    val firmaFotos: FirmaValor? = null,
 ) {
     enum class Estado(val crudo: String) {
         ESPERANDO("esperando"),
@@ -201,6 +204,8 @@ data class ColaPendiente(
             rutinaFoto?.let { put("rutinaFoto", texto(it)) }
             put("estado", texto(estado.crudo))
             put("corrida", numero(corrida))
+            claveFotos?.let { put("claveFotos", texto(it)) }
+            firmaFotos?.let { put("firmaFotos", it.aValor()) }
         },
     )
 
@@ -217,6 +222,8 @@ data class ColaPendiente(
                 rutinaFoto = o["rutinaFoto"]?.comoTexto,
                 estado = Estado.entries.firstOrNull { it.crudo == o["estado"]?.comoTexto } ?: Estado.ESPERANDO,
                 corrida = o["corrida"]?.comoNumero?.let(::enteroTruncado) ?: 0,
+                claveFotos = o["claveFotos"]?.comoTexto,
+                firmaFotos = FirmaValor.desde(o["firmaFotos"]),
             )
         }
     }
@@ -417,6 +424,7 @@ object EjecutorLegado {
                     }
                     if (q.fotos.isNotEmpty()) sumarFotos(q.fotos, disco)
                     if (!q.valorIlegible) q.firma?.let { borrar[q.clave] = it }
+                    if (q.claveFotos != null && q.firmaFotos != null) borrar[q.claveFotos] = q.firmaFotos
                 }
                 ColaLegada.Tipo.OTRO_TOKEN -> {
                     val t = q.token ?: continue
@@ -477,9 +485,12 @@ object EjecutorLegado {
                 rutinaFoto = q.rutinaFoto ?: p.rutinaFoto,
                 estado = ColaPendiente.Estado.ESPERANDO,
                 corrida = corrida,
+                claveFotos = if (q.firmaFotos != null) q.claveFotos else p.claveFotos,
+                firmaFotos = q.firmaFotos ?: p.firmaFotos,
             )
         } else {
-            pendientes += ColaPendiente(token, q.clave, q.firma, propia, ops, fotos, q.rutinaFoto, ColaPendiente.Estado.ESPERANDO, corrida)
+            pendientes += ColaPendiente(token, q.clave, q.firma, propia, ops, fotos, q.rutinaFoto, ColaPendiente.Estado.ESPERANDO, corrida,
+                q.claveFotos, q.firmaFotos)
         }
     }
 
