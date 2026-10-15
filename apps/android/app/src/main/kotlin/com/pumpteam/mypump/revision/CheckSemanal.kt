@@ -256,8 +256,8 @@ private fun EscalaCinco(metrica: CheckinSemanal.Metrica, icono: ImageVector, col
             }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp).clearAndSetSemantics {}) {
-            Text(metrica.bajo, style = Letras.caption2, color = c.textoTerciario, modifier = Modifier.weight(1f))
-            Text(metrica.alto, style = Letras.caption2, color = c.textoTerciario)
+            Text(metrica.bajo, style = Letras.caption2, color = c.textoSecundario, modifier = Modifier.weight(1f))
+            Text(metrica.alto, style = Letras.caption2, color = c.textoSecundario)
         }
     }
 }

@@ -448,10 +448,10 @@ private fun Burbuja(m: BurbujaChat, conCola: Boolean, hora: String?, alReintenta
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(Iconos.Reloj, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(11.dp))
-                Text("enviando…", style = Letras.caption2, color = c.textoTerciario)
+                Icon(Iconos.Reloj, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(11.dp))
+                Text("enviando…", style = Letras.caption2, color = c.textoSecundario)
             }
-            hora != null -> Text(hora, style = Letras.caption2.merge(Letras.cifras), color = c.textoTerciario, modifier = Modifier.padding(horizontal = 6.dp))
+            hora != null -> Text(hora, style = Letras.caption2.merge(Letras.cifras), color = c.textoSecundario, modifier = Modifier.padding(horizontal = 6.dp))
         }
     }
 }

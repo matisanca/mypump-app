@@ -575,7 +575,7 @@ private fun Comentarios(motor: ModeloEntreno, lugar: String, t: ModeloEntreno.Ta
                         Text(
                             "${if (deMati) "Mati" else "Vos"} · ${IndiceComentarios.fecha(cm.createdAt, ZoneId.systemDefault())}",
                             style = Letras.caption2,
-                            color = c.textoTerciario,
+                            color = c.textoSecundario,
                         )
                     }
                 }

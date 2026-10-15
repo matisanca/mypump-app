@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -124,7 +125,8 @@ fun textoSinHealthConnect(estado: EstadoHealthConnect, salud: ModeloSalud): Stri
 @Composable
 fun EncabezadoSalud(icono: String, titulo: String, modifier: Modifier = Modifier) {
     Row(modifier.semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-        Text(icono, style = MaterialTheme.typography.titleMedium)
+        // Decorativo: el título ya lo dice (TalkBack leía «batería, Recuperación»).
+        Text(icono, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clearAndSetSemantics {})
         Text(titulo, style = MaterialTheme.typography.titleMedium)
     }
 }

@@ -281,7 +281,7 @@ fun OnboardingPermisos(modelo: ModeloApp, version: String, alTerminar: () -> Uni
                         Text(
                             "${if (lista.size > 1) "paso ${i + 1} de ${lista.size} · " else ""}esto lo podés cambiar después en Mis datos",
                             style = MaterialTheme.typography.labelSmall,
-                            color = c.textoTerciario,
+                            color = c.textoSecundario,
                             textAlign = TextAlign.Center,
                         )
                     }

@@ -8,7 +8,13 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Base64
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.pumpteam.mypump.datos.ClaveSalud
 import com.pumpteam.mypump.datos.Disco
 import com.pumpteam.mypump.datos.FotoPendiente
@@ -208,7 +214,7 @@ class RevisionUiTest : PruebaUi() {
         p.tocar(texto("Un vaso más"))
         p.tocar(texto("Un vaso más"))
         p.tocar(texto("Un vaso menos"))
-        p.nodo(texto("2 de 12 vasos de agua"))
+        p.esperar("2 vasos en el control") { p.estado(etiqueta("control-agua")) == "2 de 12 vasos" }
         p.esperar("el agua salió") { servidor.a("mypump_set_habito").firstOrNull { "\"p_campo\":\"vasos_agua\"" in it && "\"p_valor\":\"2\"" in it } }
         p.quieto(1_000)
         assertEquals("el agua se guarda una sola vez", 1, servidor.a("mypump_set_habito").count { "vasos_agua" in it })
@@ -659,11 +665,21 @@ class RevisionUiTest : PruebaUi() {
         // Mi Día sembrado como la web: racha de 3 hasta hoy, "entrené", dieta y sueño cumplidos y 2 vasos.
         p.nodo(texto("⚡"))
         assertTrue(p.seleccionado(etiqueta("entrenamiento-entrene")))
-        p.nodo(texto("2 de 12 vasos de agua"))
+        p.esperar("2 vasos en el control") { p.estado(etiqueta("control-agua")) == "2 de 12 vasos" }
         p.tocar(texto("Hice cardio: sí"))
         p.esperar("cardio marcado") { p.estado(texto("Hice cardio: sí")) == "marcado" }
         p.tocar(texto("Un vaso más"))
-        p.nodo(texto("3 de 12 vasos de agua"))
+        p.esperar("3 vasos en el control") { p.estado(etiqueta("control-agua")) == "3 de 12 vasos" }
+        // Para TalkBack las gotas son un control con rango (auditoría de accesibilidad del 15-oct): «Agua», del alto de un
+        // dedo, y deslizar lo ajusta con la misma acción que usa el lector de pantalla.
+        val control = p.nodo(etiqueta("control-agua"))
+        assertTrue("el control no se llama «Agua»", control.config.getOrNull(SemanticsProperties.ContentDescription) == listOf("Agua"))
+        assertTrue("el control no tiene rango", control.config.getOrNull(SemanticsProperties.ProgressBarRangeInfo)?.range == 0f..12f)
+        assertTrue("el control mide menos que un dedo", control.size.height >= with(Density(InstrumentationRegistry.getInstrumentation().targetContext)) { 44.dp.roundToPx() })
+        p.enPrincipal { control.config[SemanticsActions.SetProgress].action?.invoke(5f) }
+        p.esperar("5 vasos al ajustar") { p.estado(etiqueta("control-agua")) == "5 de 12 vasos" }
+        p.enPrincipal { p.nodo(etiqueta("control-agua")).config[SemanticsActions.SetProgress].action?.invoke(3f) }
+        p.esperar("de vuelta a 3") { p.estado(etiqueta("control-agua")) == "3 de 12 vasos" }
         // El check y el peso se llenan igual.
         for (t in listOf("Energía: 4 de 5", "Descanso: 4 de 5", "Hambre: 3 de 5", "Adherencia: 5 de 5")) p.tocar(texto(t))
         p.tocar(etiqueta("enviar-check"))

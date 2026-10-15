@@ -689,14 +689,16 @@ private fun Historial(ultima: Pair<String, String>?, record: String?, porTiempo:
     when {
         ultima != null || record != null -> FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(Espacio.xs), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (ultima != null) {
+                // En gris secundario y el valor en el color del texto: en terciario no se leía en el gimnasio (como iOS,
+                // auditoría de accesibilidad del 15-oct).
                 Text(
                     buildAnnotatedString {
                         append("Última: ")
-                        withStyle(SpanStyle(color = c.textoSecundario)) { append(Bonito.partir(ultima.first).first) }
+                        withStyle(SpanStyle(color = c.texto)) { append(Bonito.partir(ultima.first).first) }
                         append(" · ${ultima.second}")
                     },
                     style = Letras.caption,
-                    color = c.textoTerciario,
+                    color = c.textoSecundario,
                 )
             }
             if (record != null) {
@@ -707,7 +709,7 @@ private fun Historial(ultima: Pair<String, String>?, record: String?, porTiempo:
             }
         }
         porTiempo -> {}
-        buscando -> Text("Buscando tu última vez…", style = Letras.caption, color = c.textoTerciario, modifier = modifier)
+        buscando -> Text("Buscando tu última vez…", style = Letras.caption, color = c.textoSecundario, modifier = modifier)
         else -> Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(Iconos.Chispas, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(12.dp))
             Text("Primera vez con este ejercicio", style = Letras.caption, color = c.textoSecundario)

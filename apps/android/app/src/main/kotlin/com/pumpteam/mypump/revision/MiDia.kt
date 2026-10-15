@@ -45,10 +45,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -87,6 +90,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Mi Día (DIA-01…06, gemelo de `MiDia.swift`): la racha, cómo fue hoy (entrené/descansé/falté, los hábitos ✓/✗ y el
@@ -361,9 +365,27 @@ private fun Vasos(agua: Int, habilitado: Boolean, alCambiar: (Int) -> Unit) {
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             BotonAgua(Iconos.Menos, "Un vaso menos", habilitado && agua > 0, "agua-menos") { alCambiar(-1) }
+            // Para TalkBack las gotas son un control con rango, como un selector: deslizar para arriba o para abajo suma o
+            // resta un vaso. Mide lo mismo que los botones (auditoría de accesibilidad del 15-oct, como iOS).
             Row(
-                Modifier.weight(1f).clearAndSetSemantics { contentDescription = "$agua de 12 vasos de agua" },
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 44.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = "Agua"
+                        stateDescription = "$agua de 12 vasos"
+                        progressBarRangeInfo = ProgressBarRangeInfo(agua.toFloat(), 0f..12f, steps = 11)
+                        if (habilitado) {
+                            setProgress { valor ->
+                                val nuevo = valor.roundToInt().coerceIn(0, 12)
+                                if (nuevo != agua) alCambiar(nuevo - agua)
+                                true
+                            }
+                        }
+                    }
+                    .testTag("control-agua"),
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 for (i in 0 until 12) {
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -496,7 +518,7 @@ private fun Grilla(dias: List<DiaAdherencia>) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.clearAndSetSemantics {}, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (d in listOf("L", "M", "X", "J", "V", "S", "D")) {
-                    Text(d, style = Letras.caption2, fontWeight = FontWeight.SemiBold, color = c.textoTerciario, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                    Text(d, style = Letras.caption2, fontWeight = FontWeight.SemiBold, color = c.textoSecundario, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
                 }
             }
             for (semana in lugares.chunked(7)) {
