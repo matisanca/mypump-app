@@ -75,6 +75,8 @@ class ProgresoUiTest : PruebaUi() {
         abrirProgreso()
         p.tocar(etiqueta("progreso-fila-$JALON"))
         p.nodo(etiqueta("progreso-detalle"))
+        // Que termine de entrar (la lista ya no está): con el detalle todavía deslizándose, el dedo de abajo caía en otro lado.
+        p.esperarQueNoEste(etiqueta("progreso-lista"))
         val encabezado = p.textosBajo(etiqueta("progreso-encabezado"))
         assertEquals(
             "Dorsal ancho · Top: 58 kilos, récord personal, +11,5 % de progresión en las últimas 4 sesiones",
@@ -107,7 +109,10 @@ class ProgresoUiTest : PruebaUi() {
         p.tocar(etiqueta("volver"))
         p.nodo(etiqueta("progreso-lista"))
         p.tocar(etiqueta("progreso-fila-$JALON"))
+        // El detalle que se estaba yendo todavía está en el árbol: hasta que la lista no se va, el detalle nuevo no es el de
+        // la pantalla y Atrás (en Android 9, apenas tocada la fila) le llegaba a las pestañas, que van a Entreno.
         p.nodo(etiqueta("progreso-detalle"))
+        p.esperarQueNoEste(etiqueta("progreso-lista"))
         p.atras()
         p.nodo(etiqueta("progreso-lista"))
         p.esperarQueNoEste(etiqueta("progreso-detalle"))
