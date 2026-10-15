@@ -3,39 +3,14 @@ package com.pumpteam.mypump.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import com.pumpteam.mypump.Entorno
 import com.pumpteam.mypump.MainActivity
 import com.pumpteam.mypump.acceso.Apariencia
-import com.pumpteam.mypump.acceso.HojaPermisoIA
-import com.pumpteam.mypump.acceso.PermisoIAEstado
 import com.pumpteam.mypump.acceso.PreferenciasCompartidas
 import com.pumpteam.mypump.acceso.TokenEnKeystore
-import com.pumpteam.mypump.datos.ClienteRpc
-import com.pumpteam.mypump.datos.ModeloApp
-import com.pumpteam.mypump.datos.PreferenciasEnMemoria
-import com.pumpteam.mypump.datos.TokenEnMemoria
-import com.pumpteam.mypump.diseno.BotonMarca
-import com.pumpteam.mypump.diseno.MyPump
-import com.pumpteam.mypump.diseno.TemaMyPump
 import java.io.File
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
@@ -113,61 +88,6 @@ abstract class PruebaUi {
 
     /** El tema oscuro que eligió el cliente ("Siempre en modo oscuro"). */
     protected fun guardarTemaOscuro() = guardarPreferencia(Apariencia.CLAVE, Apariencia.OSCURO)
-
-    private val alcances = ArrayList<CoroutineScope>()
-
-    @After
-    fun cancelarAlcances() {
-        alcances.forEach { it.cancel() }
-        alcances.clear()
-    }
-
-    /** Un modelo con la cuenta de prueba ya cargada (fuera de la Activity), como lo tiene la app. */
-    protected fun modeloConCuenta(esperarPermiso: Boolean = true): Pair<ModeloApp, CoroutineScope> {
-        val alcance = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).also { alcances += it }
-        val raiz = File(app.cacheDir, "prueba-ia-${System.nanoTime()}").apply { mkdirs() }
-        val m = p.enPrincipal {
-            ModeloApp(
-                cliente = ClienteRpc(transporte = servidor), almacen = TokenEnMemoria(ServidorDePrueba.TOKEN), raizDisco = raiz,
-                preferencias = PreferenciasEnMemoria(), alcance = alcance, versionApp = "2.0.0",
-            )
-        }
-        p.enPrincipal { alcance.launch { m.cargar() } }
-        p.esperar("la cuenta cargó") {
-            m.fase.value == ModeloApp.Fase.LISTO && (!esperarPermiso || m.consentimientoIADisponible.value)
-        }
-        return m to alcance
-    }
-
-    /**
-     * La hoja del permiso de la IA con un disparador: en Android todavía no están las pantallas que la piden (el chat, la
-     * foto de una comida, el check), así que "Mandar a Mati" hace lo que va a hacer el chat: `antesDeUsarIA` y, al seguir,
-     * mandar el mensaje. Anota cada decisión con la que siguió.
-     */
-    protected fun armarPermisoIA(m: ModeloApp, alcance: CoroutineScope, decisiones: MutableList<Boolean>) {
-        val e = registrar(ActivityScenario.launch(ComponentActivity::class.java))
-        e.onActivity { a ->
-            a.setContent {
-                TemaMyPump(oscuro = isSystemInDarkTheme()) {
-                    val estado = remember { PermisoIAEstado() }
-                    Box(Modifier.fillMaxSize().background(MyPump.colores.fondo).systemBarsPadding(), contentAlignment = Alignment.Center) {
-                        BotonMarca(
-                            "Mandar a Mati",
-                            alTocar = {
-                                estado.antesDeUsarIA(m) { acepta ->
-                                    decisiones += acepta
-                                    alcance.launch { m.chat.value?.enviar("Hola Mati, ¿cambio el jalón?") }
-                                }
-                            },
-                            compacto = true,
-                            modifier = Modifier.testTag("mandar"),
-                        )
-                    }
-                    HojaPermisoIA(m, estado, alcance)
-                }
-            }
-        }
-    }
 
     companion object {
         @JvmStatic

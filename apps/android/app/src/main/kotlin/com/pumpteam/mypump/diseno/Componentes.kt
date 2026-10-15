@@ -278,7 +278,7 @@ fun EncabezadoSeccion(titulo: String, modifier: Modifier = Modifier, detalle: St
     }
 }
 
-/** Rótulo chico de una sección de ajustes ("Inteligencia artificial"). */
+/** Rótulo chico de una sección de ajustes ("Apariencia"). */
 @Composable
 fun RotuloSeccion(texto: String, modifier: Modifier = Modifier) {
     Text(
