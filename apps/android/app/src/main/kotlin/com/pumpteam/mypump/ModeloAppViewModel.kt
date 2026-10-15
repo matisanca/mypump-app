@@ -17,6 +17,7 @@ import com.pumpteam.mypump.entreno.Preguntador
 import com.pumpteam.mypump.legado.ArranqueMigracion
 import com.pumpteam.mypump.legado.RegistroLegado
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
+import com.pumpteam.mypump.salud.FuenteHealthConnect
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -76,6 +77,12 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Lo que dijo la Activity antes de que el modelo existiera. */
     private var aLaVista = true
+
+    // Salud: Health Connect como la fuente del sistema, ANTES de crear el ModeloApp (el ModeloSalud de la cuenta la lee
+    // al crearse). Una prueba que ya puso un doble lo conserva.
+    init {
+        FuenteHealthConnect.instalar(app)
+    }
 
     init {
         viewModelScope.launch {

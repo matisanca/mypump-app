@@ -1,3 +1,4 @@
+import com.android.build.api.artifact.SingleArtifact
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -35,6 +36,42 @@ abstract class CopiarCompartido : DefaultTask() {
             check(desde.isFile) { "falta $origen (lo copia ${this.name})" }
             desde.copyTo(File(dir, destino), overwrite = true)
         }
+    }
+}
+
+/**
+ * Salud (APL-07): mira el manifest MERGEADO de release, el que va adentro del binario y el único que mira Google (el fuente
+ * no alcanza: una librería puede meter un permiso aunque nuestro manifest no lo tenga, y así se coló la saturación en la
+ * Capacitor). Falla si hay un permiso de salud de ESCRITURA, uno de lectura que no está en [permitidos] (o falta uno de
+ * ellos: pedirlo tiraría SecurityException), o si falta la política de privacidad que exige Health Connect.
+ */
+abstract class VerificarPermisosSalud : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val manifest: RegularFileProperty
+
+    @get:Input
+    abstract val permitidos: ListProperty<String>
+
+    @get:OutputFile
+    abstract val informe: RegularFileProperty
+
+    @TaskAction
+    fun verificar() {
+        val texto = manifest.get().asFile.readText()
+        val salud = Regex("""<uses-permission[^>]*android:name="android\.permission\.health\.([A-Z_]+)"""")
+            .findAll(texto).map { it.groupValues[1] }.toSortedSet()
+        val problemas = buildList {
+            salud.filter { it.startsWith("WRITE_") }.forEach { add("pide ESCRITURA de salud: $it (MyPump solo lee)") }
+            (salud - permitidos.get().toSet()).filter { !it.startsWith("WRITE_") }.forEach { add("pide un permiso de salud de más: $it") }
+            (permitidos.get().toSet() - salud).forEach { add("falta el permiso $it (pedirlo tiraría SecurityException)") }
+            if (!texto.contains("androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE")) add("falta la justificación de los permisos (ACTION_SHOW_PERMISSIONS_RATIONALE)")
+            if (!texto.contains("android.intent.category.HEALTH_PERMISSIONS") || !texto.contains("android.permission.START_VIEW_PERMISSION_USAGE")) {
+                add("falta el activity-alias de VIEW_PERMISSION_USAGE (Android 14+)")
+            }
+        }
+        informe.get().asFile.writeText(salud.joinToString("\n", postfix = "\n"))
+        check(problemas.isEmpty()) { "Permisos de salud del manifest mergeado (${manifest.get().asFile}):\n  " + problemas.joinToString("\n  ") }
     }
 }
 
@@ -107,6 +144,14 @@ android {
         // default de AGP 8.5.1+ con minSdk ≥ 23; queda escrito para que nadie lo cambie sin saber.
         jniLibs.useLegacyPackaging = false
     }
+
+    // Salud: las pruebas de la traducción de Health Connect corren en la JVM con JUnit 5, como las de :core.
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+            it.testLogging { events("passed", "skipped", "failed") }
+        }
+    }
 }
 
 androidComponents {
@@ -114,6 +159,28 @@ androidComponents {
         variante.sources.res?.addGeneratedSourceDirectory(fuentesCompartidas, CopiarCompartido::salida)
         variante.sources.assets?.addGeneratedSourceDirectory(assetsCompartidos, CopiarCompartido::salida)
     }
+}
+
+// Salud: los 13 permisos de lectura de Health Connect que deja la Capacitor, más el historial (ver el manifest). El de
+// release se verifica en cada assembleRelease/bundleRelease y en `check`; el informe queda en
+// build/reports/permisos-salud/release.txt.
+val permisosSalud = listOf(
+    "READ_STEPS", "READ_DISTANCE", "READ_ACTIVE_CALORIES_BURNED", "READ_BASAL_METABOLIC_RATE", "READ_FLOORS_CLIMBED",
+    "READ_HEART_RATE", "READ_RESTING_HEART_RATE", "READ_HEART_RATE_VARIABILITY", "READ_SLEEP", "READ_RESPIRATORY_RATE",
+    "READ_WEIGHT", "READ_BODY_FAT", "READ_EXERCISE", "READ_HEALTH_DATA_HISTORY",
+)
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variante ->
+        val sufijo = variante.name.replaceFirstChar { it.uppercase() }
+        tasks.register<VerificarPermisosSalud>("verificarPermisosSalud$sufijo") {
+            manifest.set(variante.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+            permitidos.set(permisosSalud)
+            informe.set(layout.buildDirectory.file("reports/permisos-salud/${variante.name}.txt"))
+        }
+    }
+}
+tasks.matching { it.name in listOf("assembleRelease", "bundleRelease", "check") }.configureEach {
+    dependsOn("verificarPermisosSaludRelease")
 }
 
 kotlin {
@@ -136,6 +203,13 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.browser)
     debugImplementation(libs.compose.ui.tooling)
+
+    // Salud: Health Connect (solo lectura; ver el manifest). La traducción de sus registros se prueba en la JVM
+    // (`src/test`, JUnit 5 como los de :core) con dobles del cliente.
+    implementation(libs.health.connect.client)
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     // El token con el Keystore de verdad y las pruebas de interfaz: corren en un emulador o un teléfono
     // (`connectedDebugAndroidTest`). Las de interfaz usan el arnés propio (androidTest/…/ui/Pantalla.kt); desde el 14-oct

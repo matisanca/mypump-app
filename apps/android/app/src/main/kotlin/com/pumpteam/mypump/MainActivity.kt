@@ -17,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.diseno.TemaMyPump
 import com.pumpteam.mypump.diseno.temaOscuro
 import com.pumpteam.mypump.raiz.RaizMyPump
+import com.pumpteam.mypump.salud.PermisosHealthConnect
 
 /**
  * La entrada de la app. Se llama `.MainActivity` como en la Capacitor a propósito: el launcher guarda el ícono del
@@ -30,6 +31,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Salud: el contrato de la hoja de permisos de Health Connect se registra acá (Android no deja hacerlo después de
+        // crear la Activity); `FuenteHealthConnect.pedirLectura` lo usa desde cualquier pantalla.
+        PermisosHealthConnect.registrar(this)
         enableEdgeToEdge()
         // Solo la primera vez: al rotar la pantalla el intent es el mismo y la cuenta ya entró.
         if (savedInstanceState == null) abrirLink(intent)
