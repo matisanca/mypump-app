@@ -129,12 +129,14 @@ lleva tocar un aviso) está en `:core:datos` (`Avisos.kt`), con sus tests en la 
   menos no hay hoja: apagadas, a Ajustes.
 - **El fin del descanso (D8).** Al pasar a segundo plano con un descanso corriendo, una alarma `setAndAllowWhileIdle`
   (inexacta) para el fin; al volver se cancela y se saca el aviso. Mientras el proceso corre, el aviso sale desde el reloj
-  del descanso, en el segundo, y el pitido de la app no suena encima. **El desfase:** en el emulador (pantalla prendida,
-  también con el reposo forzado) la alarma llegó entre 10 y 50 ms después del fin. Con la pantalla apagada, Android 12+
-  puede despertar el teléfono recién al final de la ventana de una alarma inexacta, que es el 75 % de lo que faltaba: un
-  descanso de 90 s puede avisar hasta un minuto tarde si nada lo despierta antes (Google Play lo despierta seguido, así que
-  en la práctica suele ser mucho menos). Sin alarmas exactas no se puede asegurar más; la alternativa sería un servicio en
-  primer plano con el reloj en una notificación fija, y eso es una decisión de producto.
+  del descanso, en el segundo, y el pitido de la app no suena encima (desde Android 14 el sistema congela la app a los
+  pocos segundos de quedar atrás, y ahí avisa la alarma). **El desfase:** en el emulador (pantalla prendida, también con
+  el reposo forzado) la alarma llegó entre 10 y 50 ms después del fin. Pero el sistema le da a una alarma inexacta una
+  ventana del 75 % de lo que faltaba (en `dumpsys alarm`, un descanso de 2:28 tiene +1:51), y con la pantalla apagada
+  Android 12+ puede despertar el teléfono recién al final de esa ventana: si nada lo despierta antes (la música, otra
+  alarma), un descanso de 90 s puede avisar hasta un minuto tarde. Sin alarmas exactas no se puede asegurar más; las
+  alternativas (encadenar alarmas de menos de 10 s, que salen exactas pero despiertan el teléfono seguido, o un servicio
+  en primer plano con el reloj en una notificación fija) son una decisión de producto.
 - **Pruebas.** Instrumentadas: `OnboardingUiTest` y `AvisosUiTest`. El permiso no se puede sacar desde una prueba
   (`pm revoke` mata el proceso, también el de la prueba): las que necesitan "sin permiso" lo fijan en `PermisoDePrueba`, y
   las que miran lo publicado lo dan de verdad con `pm grant`. El token de FCM es inventado (`AvisosDePrueba`): las pruebas

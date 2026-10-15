@@ -159,6 +159,11 @@ class AvisosUiTest : PruebaUi() {
         assertEquals("Bajá un poco el peso y apretá arriba un segundo.", n.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
         assertEquals(CentroAvisos.CANAL_MENSAJES, n.channelId)
         assertEquals(R.drawable.ic_stat_mypump, n.smallIcon.resId)
+        // Para la evidencia: el aviso en la cortina, con el ícono chico, el título y el texto (la cortina tarda en bajar).
+        Telefono.shell("cmd statusbar expand-notifications")
+        p.quieto(1_500)
+        Telefono.captura("26-aviso-push-claro")
+        Telefono.shell("cmd statusbar collapse")
         n.contentIntent.send()
         p.esperar("Entreno elegido") { p.seleccionado(etiqueta("pestana-entreno")) }
         // Un mensaje sin texto no se muestra.
