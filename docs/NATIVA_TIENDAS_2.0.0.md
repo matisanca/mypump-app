@@ -144,13 +144,11 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
    ni segundo plano, así que no cambia. Pero su texto todavía menciona «saturación de oxígeno», que se sacó el 28-ago:
    hay que corregir ese renglón. Queda «Frecuencia respiratoria: se compara contra la línea de base del propio usuario
    para detectar desvíos».
-3. **Capturas: listas** en `nativa-evidencia/tienda-android/20261015-034014`, 5 pantallas en claro y en oscuro:
+3. **Capturas: listas** en `nativa-evidencia/tienda-android/20261015-053511`, 5 pantallas en claro y en oscuro:
    - teléfono en 1080×1920 y tablet de 10" en 1440×2560;
    - Play no acepta un lado mayor que el doble del otro, y la pantalla entera del teléfono (1080×2400) lo es;
    - salen con `scripts/nativa/capturas-tienda-android.sh` (`CapturasTiendaTest`, solo con `-e tienda 1`), con las
      respuestas grabadas de `test-nativa-real`, nunca de un cliente.
-
-   Detalle menor: las claras muestran «3G» en la barra de estado y las oscuras no.
 4. **Producción por porcentaje.** Primero 10 %, después 50 % y 100 %, mirando cada día los recibos de la migración y los
    fallidos (`scripts/nativa/beta_diario.py`). El porcentaje se puede frenar, pero no volver atrás.
 5. **Permisos que la app NO pide**, por si Play pregunta: alarmas exactas, servicios en primer plano, leer salud en

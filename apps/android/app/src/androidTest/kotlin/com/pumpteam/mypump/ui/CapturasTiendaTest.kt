@@ -86,6 +86,10 @@ class CapturasTiendaTest : PruebaUi() {
     private fun recorrer(oscuro: Boolean) {
         val modo = if (oscuro) "dark" else "light"
         Telefono.modoNoche(oscuro)
+        // Cambiar el modo noche rearma la barra de SystemUI y vuelve a mostrar el celular («3G» en las claras del 15-oct):
+        // la barra limpia va de nuevo después.
+        Thread.sleep(1_500)
+        barraLimpia()
 
         // Revisión primero, con el check de la semana enviado y las fotos por sacar (como la de iOS): las tres poses
         // vacías con "Agregar". El badge de Revisión dice 1 (las fotos), y es la pestaña que se ve.

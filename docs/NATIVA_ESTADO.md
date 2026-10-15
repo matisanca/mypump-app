@@ -245,8 +245,8 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   - **`-sinRed YES`** (a88f527, solo en Debug) para ver la app sin señal en el simulador.
   - **Agente de Play, respaldo y MIG-03** (cda4efd):
     - **Capturas de Play:** 20 en `nativa-evidencia/tienda-android/20261015-034014`. El teléfono va en 1080×1920
-      porque Play no acepta un lado mayor que el doble del otro; la tablet de 10" va en 1440×2560. Detalle menor: las
-      claras muestran «3G» en la barra de estado y las oscuras no.
+      porque Play no acepta un lado mayor que el doble del otro; la tablet de 10" va en 1440×2560. Las claras mostraban
+      «3G»: cambiar el modo noche rearmaba la barra. Rehechas sin eso en `tienda-android/20261015-053511`.
     - **Respaldo de Google (APL-08):** 19/19 con `bmgr`, en la nube y en el pase a otro teléfono.
       - El token de la nativa (Keystore y `acceso.bin`) nunca viaja.
       - Con la app vieja respaldada, al restaurar la nativa vuelve a adoptar el token del WebView (D14).
