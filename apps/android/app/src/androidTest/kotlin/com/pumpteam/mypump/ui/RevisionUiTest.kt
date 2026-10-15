@@ -60,10 +60,16 @@ class RevisionUiTest : PruebaUi() {
     }
 
     /** Dónde empieza una sección, medido en pantallas de lo que se ve de Revisión (0 = arriba de todo, 1 = abajo). */
-    private fun altura(seccion: String): Float = p.esperar("se ubica $seccion") {
+    private fun altura(seccion: String): Float = p.esperar("se ubica $seccion") { alturaYa(seccion) }
+
+    /**
+     * [altura] sin esperar, para usar ADENTRO de un `p.esperar` (que corre en el hilo principal): una espera anidada
+     * dormía el hilo principal hasta 15 s, y con la pantalla recién cambiada Revisión no llegaba a armarse.
+     */
+    private fun alturaYa(seccion: String): Float {
         val visible = p.nodo(etiqueta("revision-lista"), ms = 0).boundsInRoot
         val s = p.nodo(etiqueta("seccion-$seccion"), ms = 0)
-        (s.positionInRoot.y - visible.top) / visible.height
+        return (s.positionInRoot.y - visible.top) / visible.height
     }
 
     /**
@@ -460,7 +466,7 @@ class RevisionUiTest : PruebaUi() {
         p.nodo(texto("Te falta tu check de la semana"))
         p.tocar(etiqueta("banner-revision"))
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
-        p.esperar("el check arriba de todo") { altura("check").let { it in -0.05f..0.2f } }
+        p.esperar("el check arriba de todo") { alturaYa("check").let { it in -0.05f..0.2f } }
         assertTrue("las fotos tendrían que quedar arriba, fuera de la vista", altura("fotos") < 0f)
         Telefono.captura("revision-ancla-check-claro")
     }
@@ -472,17 +478,17 @@ class RevisionUiTest : PruebaUi() {
         irARevision()
         // Desplazada hasta abajo; el banner la lleva de nuevo a las fotos.
         p.desplazar(etiqueta("revision-lista"), 5_000f)
-        p.esperar("bien abajo") { altura("fotos") < -1f }
+        p.esperar("bien abajo") { alturaYa("fotos") < -1f }
         p.tocar(etiqueta("pestana-dieta"))
         p.tocar(etiqueta("banner-revision"))
-        p.esperar("las fotos arriba de todo") { altura("fotos").let { it in -0.05f..0.2f } }
+        p.esperar("las fotos arriba de todo") { alturaYa("fotos").let { it in -0.05f..0.2f } }
     }
 
     @Test
     fun unLinkConSceneMyDayAbreMiDia() {
         abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=myday")
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
-        p.esperar("Mi día arriba de todo") { altura("midia").let { it in -0.05f..0.2f } }
+        p.esperar("Mi día arriba de todo") { alturaYa("midia").let { it in -0.05f..0.2f } }
         Telefono.captura("revision-ancla-midia-claro")
         // Tocar la pestaña después vuelve donde quedó (el ancla se consumió: no salta de nuevo).
         p.tocar(etiqueta("pestana-entreno"))
@@ -500,7 +506,7 @@ class RevisionUiTest : PruebaUi() {
         p.tocar(etiqueta("pestana-entreno"))
         app.startActivity(com.pumpteam.mypump.avisos.CentroAvisos.intentDeAviso(app, "myday"))
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
-        p.esperar("Mi día arriba de todo") { altura("midia").let { it in -0.05f..0.2f } }
+        p.esperar("Mi día arriba de todo") { alturaYa("midia").let { it in -0.05f..0.2f } }
     }
 
     // ── REV-08: Mi reloj ──
