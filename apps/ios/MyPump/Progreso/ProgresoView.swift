@@ -60,7 +60,7 @@ struct ProgresoView: View {
         .task {
             // Al abrir la pestaña (como la web); si ya está, se actualiza tirando para abajo.
             guard let progreso, progreso.tarjetas.isEmpty || progreso.estado == .sinRed else { return }
-            await progreso.cargar(rutina: modelo.rutina)
+            await modelo.cargarProgreso()
         }
         // Capturas: `-abrir detalle` entra al primer ejercicio apenas hay datos (una sola vez).
         .onChange(of: lineas.count, initial: true) { _, n in
@@ -80,7 +80,7 @@ struct ProgresoView: View {
             } description: {
                 Text("Sin conexión. Revisá la señal y probá de nuevo.")
             } actions: {
-                Button("Reintentar") { Task { await progreso?.cargar(rutina: modelo.rutina) } }
+                Button("Reintentar") { Task { await modelo.cargarProgreso() } }
                     .buttonStyle(BotonMarca(compacto: true))
             }
         } else if DemoUI.estado == .vacio || ls.isEmpty {
@@ -127,7 +127,7 @@ struct ProgresoView: View {
             .padding(.bottom, Espacio.xl)
             .anchoLectura(claseAncho == .regular ? Ancho.doble : Ancho.lectura)
         }
-        .refreshable { await progreso?.cargar(rutina: modelo.rutina) }
+        .refreshable { await modelo.cargarProgreso() }
     }
 
     /// Reparte las secciones en dos columnas por altura estimada (encabezado + filas), en orden.

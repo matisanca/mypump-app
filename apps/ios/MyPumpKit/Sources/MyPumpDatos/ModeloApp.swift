@@ -341,6 +341,13 @@ public final class ModeloApp {
         if let c = catalogo { entreno?.catalogo = c }
     }
 
+    /// Progreso por el ejercicio que se hace de verdad: el sustituto si hay (PRO-02, `getEffectiveEx` en el
+    /// `loadProgressAndRender` de la web). Sin el motor de Entreno, por el nombre del plan.
+    public func cargarProgreso() async {
+        let entreno = entreno
+        await progreso?.cargar(rutina: rutina, nombreEfectivo: { entreno?.efectivo($0).ejercicio.nombre ?? $0.nombre })
+    }
+
     /// Volvió la red (el monitor de la raíz): sale lo pendiente y, si se estaba mostrando la copia guardada, se trae todo.
     public func alVolverLaRed() async {
         guard fase == .listo, !esDemo, token != nil else { return }
