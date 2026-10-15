@@ -119,8 +119,11 @@ reducción, el botón de cámara o galería y el FileProvider) está en `fotos`.
   `BitmapFactory` de a potencias de 2, la orientación de `android.media.ExifInterface` aplicada a mano (`BitmapFactory`
   la ignora siempre, también en HEIC, así que no se gira dos veces) y `Bitmap.compress` a 900 px y 0,7, que no escribe
   metadatos. HEIC desde Android 9. Las miniaturas van con la URL firmada por `ImagenRemota` (en memoria, nunca en
-  disco). La galería por semana y el comparador desde la 4.ª semana, con el cambio de peso; con 3 fotos esperando en la
-  cola no entra otra ("Hay fotos esperando subir").
+  disco); con una foto guardada se firma de nuevo, porque reemplazar una de la semana no cambia cuántas hay y quedaba
+  la miniatura vieja (cada firma es otra URL). La galería por semana y el comparador desde la 4.ª semana, con el cambio
+  de peso; con 3 fotos esperando en la cola no entra otra ("Hay fotos esperando subir"). Contra la base real
+  (`test-nativa-android`, 15-oct): una foto de la cámara del emulador quedó en el servidor como JPEG de 675×900, derecha
+  y sin EXIF ni GPS.
 - **Check** (REV-06): el borrador sobrevive a cambiar de pestaña y a rotar, lo guardado no lo pisa mientras el cliente
   toca, y se vacía al cambiar de semana. El botón dice qué falta ("Faltan: …").
 - **Peso** (REV-07): el gráfico es un `Canvas` (sin librerías): la media de 7 días con la curva monótona de Salud
