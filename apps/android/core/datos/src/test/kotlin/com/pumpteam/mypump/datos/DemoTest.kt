@@ -1,6 +1,8 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.FechaLocal
+import kotlinx.coroutines.delay
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -58,5 +60,58 @@ class DemoTest {
         m.salirDeDemo()
         assertEquals(ModeloApp.Fase.LISTO, m.fase.value)
         assertEquals("c1", m.info.value?.clienteId)
+    }
+
+    /**
+     * ACC-07: Mi Día de la demo viene sembrado como la web (cliente.html:8870-8876) y `MuestrasExtra.demo` de iOS: racha 3
+     * hasta hoy, hoy "entrené" y 2 vasos. El chat, con el hilo vacío. Se toca igual, pero nada sale: ni red, ni cola, ni disco.
+     */
+    @Test
+    fun miDiaSembradoYElChatVacio() = enUnHilo { alcance ->
+        val t = TransporteProgramado { _, _ -> 200 to "[]" }
+        val raiz = carpetaTemporal("mypump-demo")
+        val m = ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria(null), raiz, PreferenciasEnMemoria(), alcance)
+        m.entrarEnDemo(Compartido.texto("demo/rutina.json"), Compartido.texto("demo/dieta.json"))
+        val r = m.revision.value!!
+        assertEquals(3, r.racha.value)
+        assertEquals(FechaLocal.hoy(), r.ultimoDiaValido.value)
+        assertEquals(HabitosHoy("entrene", comioSegunPlan = true, durmioBien = true, cardio = false, vasosAgua = 2), r.habitos.value)
+        assertTrue(r.miDiaCargado.value)
+        // Los 30 días de muestra de iOS, de hoy para atrás: los tres primeros cumplidos, como la racha.
+        val dias = r.adherencia.value!!
+        assertEquals(30, dias.size)
+        assertEquals(FechaLocal.hoy(), dias.first().fecha)
+        assertEquals(listOf(true, true, true, false), dias.take(4).map { it.esValido })
+        val chat = m.chat.value!!
+        assertTrue(chat.demo)
+        assertTrue(chat.hilo.value.mensajes.isEmpty() && !chat.hilo.value.hayMas)
+
+        // Se toca igual (tocar lo elegido lo borra) y nada sale.
+        r.tocar("entrenamiento", "entrene")
+        assertNull(r.habitos.value.entrenamiento)
+        r.cambiarAgua(1)
+        assertEquals(3, r.habitos.value.vasosAgua)
+        r.cargarMiDia()
+        r.cargarAdherencia()
+        r.cargarRevision()
+        assertEquals(3, r.racha.value)
+        assertEquals(3, r.habitos.value.vasosAgua)
+        assertEquals(30, r.adherencia.value?.size)
+        chat.enviar("Hola Mati")
+        chat.cargar()
+        chat.sondear()
+        chat.marcarLeido(forzar = true)
+        m.enPrimerPlano = true
+        chat.empezarSondeo()
+        assertTrue(chat.hilo.value.mensajes.isEmpty())
+        assertNull(chat.sondeoEnCurso)
+        delay(100)   // lo que la demo lanzó (la carga del Entreno de ejemplo) tampoco sale
+        assertEquals(emptyList<String>(), t.llamadas)
+        assertFalse(raiz.resolve("MyPump").exists())
+
+        // Salir de la demo no deja su Mi Día ni su chat.
+        m.salirDeDemo()
+        assertNull(m.revision.value)
+        assertNull(m.chat.value)
     }
 }

@@ -140,11 +140,11 @@ class ModeloApp(
     private val _comidasLibres = MutableStateFlow<List<ComidaLibre>>(emptyList())
     val comidasLibres: StateFlow<List<ComidaLibre>> = _comidasLibres.asStateFlow()
 
-    /** El chat con Mati (no existe en la demo ni sin cuenta). */
+    /** El chat con Mati (no existe sin cuenta; en la demo es el hilo vacío, sin red). */
     private val _chat = MutableStateFlow<ModeloChat?>(null)
     val chat: StateFlow<ModeloChat?> = _chat.asStateFlow()
 
-    /** Revisión y Mi Día (no existen en la demo ni sin cuenta). */
+    /** Revisión y Mi Día (no existen sin cuenta; en la demo, Mi Día sembrado como la web y sin red). */
     private val _revision = MutableStateFlow<ModeloRevision?>(null)
     val revision: StateFlow<ModeloRevision?> = _revision.asStateFlow()
 
@@ -241,6 +241,9 @@ class ModeloApp(
         _desdeCache.value = false
         _sinRedEn.value = emptySet()
         _esDemo.value = true
+        // ACC-07: Mi Día sembrado como la web (racha 3, hoy "entrené" y 2 vasos) y el chat con el hilo vacío, sin red ni cola.
+        _revision.value = ModeloRevision.demo(cliente, alcance)
+        _chat.value = ModeloChat(cliente, token = null, outbox = null, alcance = alcance)
         _entreno.value = _rutina.value?.let { r ->
             ModeloEntreno(cliente, token = null, outbox = null, disco = null, rutinaInicial = r, catalogoInicial = catalogoVigente, alcance = alcance)
         }
@@ -255,6 +258,8 @@ class ModeloApp(
         _dieta.value = null
         _swaps.value = emptyMap()
         _entreno.value = null
+        _revision.value = null   // los de la demo
+        _chat.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {

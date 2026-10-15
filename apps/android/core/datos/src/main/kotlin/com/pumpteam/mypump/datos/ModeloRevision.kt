@@ -61,11 +61,12 @@ data class Checkin(val valores: Map<String, Int> = emptyMap(), val nota: String 
 /**
  * Revisión (lo semanal: check, peso, fotos) y Mi Día (lo diario: entrené/descansé/falté, hábitos, agua, racha, adherencia
  * de 30 días). Todo lo que escribe el cliente sale por la cola con la clave de la web, y lo pendiente gana sobre lo que
- * trae el servidor (DIA-06).
+ * trae el servidor (DIA-06). Sin token es la demo ([demo]): Mi Día sembrado, se toca igual y no sale nada.
  */
 class ModeloRevision(
     private val cliente: ClienteRpc,
-    private val token: String,
+    /** null es la demo: no toca la red (y sin cola no guarda nada). */
+    private val token: String?,
     private val outbox: Outbox?,
     private val alcance: CoroutineScope,
 ) {
@@ -110,7 +111,7 @@ class ModeloRevision(
     internal var diaDeHoy: () -> String = { FechaLocal.hoy() }
 
     private var esperaAgua: Job? = null
-    private val t get() = texto(token)
+    private val t get() = texto(token ?: "")   // la demo no llega acá: no toca la red
 
     // ── Mi Día ──
 
@@ -119,6 +120,7 @@ class ModeloRevision(
      * `MYDAY`): se puede marcar igual y sale por la cola. Lo pendiente de hoy se pinta encima.
      */
     suspend fun cargarMiDia() {
+        if (token == null) return   // la demo viene sembrada ([demo]), como `loadMyday` sin TOKEN
         val hoy = diaDeHoy()
         _fecha.value = hoy
         if (diaDeLosHabitos != hoy) _habitos.value = HabitosHoy()
@@ -156,6 +158,7 @@ class ModeloRevision(
         // La fecha es la de AHORA (la app pudo quedar abierta de un día para otro), como `hoyLocal()` en la web.
         val dia = diaDeHoy()
         _habitos.update { it.aplicar(campo, v) }
+        if (token == null) return   // en la demo se toca igual, pero no se guarda nada (como Mi Día de iOS)
         outbox?.encolar("habito", ValorJson.objeto("fecha" to texto(dia), "campo" to texto(campo), "valor" to v), "habito|$dia|$campo")
         if (campo in listOf("entrenamiento", "comio_segun_plan", "durmio_bien")) {
             outbox?.drenar()
@@ -185,6 +188,7 @@ class ModeloRevision(
 
     /** "Mis últimos 30 días". */
     suspend fun cargarAdherencia() {
+        if (token == null) return   // la demo ya trae sus 30 días
         cliente.filas("mypump_get_adherencia_30d", mapOf("p_token" to t), DiaAdherencia::desde).valorONull()?.let { _adherencia.value = it }
     }
 
@@ -200,6 +204,7 @@ class ModeloRevision(
 
     /** `loadRevision` + `loadSalud`: el check de la semana y 60 días de salud (para el peso). */
     suspend fun cargarRevision() {
+        if (token == null) return   // la demo, como la web: sin check, peso ni fotos
         val hoy = diaDeHoy()
         _fecha.value = hoy
         // Semana nueva: el check de la anterior no es el de esta, haya red o no (la web lo vacía).
@@ -279,5 +284,45 @@ class ModeloRevision(
         val hoy = diaDeHoy()
         val fila = FilaSalud(hoy, "peso_kg", valor, "manual", null)
         _salud.update { lista -> lista.filterNot { it.tipo == "peso_kg" && it.fecha == hoy && it.fuente == "manual" } + fila }
+    }
+
+    companion object {
+        /**
+         * "Ver demo" (ACC-07): Mi Día sembrado como la web (cliente.html:8870-8876) y `MuestrasExtra.demo` de iOS, para que no
+         * quede en "Cargando…": racha de 3 hasta hoy, hoy "entrené" con la dieta y el sueño cumplidos, sin cardio y 2 vasos,
+         * y los 30 días de muestra. Se toca igual, pero no sale nada: ni red ni cola.
+         */
+        fun demo(cliente: ClienteRpc, alcance: CoroutineScope, hoy: String = FechaLocal.hoy()): ModeloRevision =
+            ModeloRevision(cliente, token = null, outbox = null, alcance = alcance).also { m ->
+                m._fecha.value = hoy
+                m.diaDeLosHabitos = hoy
+                m._habitos.value = HabitosHoy(entrenamiento = "entrene", comioSegunPlan = true, durmioBien = true, cardio = false, vasosAgua = 2)
+                m._racha.value = 3
+                m._ultimoDiaValido.value = hoy
+                m._adherencia.value = adherenciaDemo(hoy)
+                m._miDiaCargado.value = true
+            }
+
+        /** Los 30 días de la demo, de hoy para atrás (el patrón de `MuestrasExtra.demo`). */
+        private val PATRON_DEMO = listOf(
+            true, true, true, false, true, false, false, true, true, false, true, true, false, false, true,
+            true, false, true, true, true, false, true, false, false, true, true, true, false, true, false,
+        )
+
+        /** Como `MuestrasExtra.dias` de iOS: los días no cumplidos alternan parcial y vacío. */
+        private fun adherenciaDemo(hoy: String): List<DiaAdherencia> {
+            val n = DiaCalendario.numero(hoy) ?: 0
+            return PATRON_DEMO.mapIndexed { i, valido ->
+                val parcial = !valido && i % 3 == 0
+                DiaAdherencia(
+                    fecha = DiaCalendario.texto(n - i),
+                    entrenamiento = if (valido) (if (i % 2 == 0) "entrene" else "descanso") else if (parcial) "entrene" else null,
+                    comioSegunPlan = if (valido || parcial) true else null,
+                    durmioBien = if (valido) true else null,
+                    vasosAgua = if (valido) 8 else 2,
+                    esValido = valido,
+                )
+            }
+        }
     }
 }
