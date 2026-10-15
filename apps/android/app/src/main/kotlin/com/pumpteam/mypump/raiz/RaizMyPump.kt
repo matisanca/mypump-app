@@ -85,13 +85,20 @@ fun RaizMyPump(vm: ModeloAppViewModel) {
  */
 val LocalAlcanceApp = staticCompositionLocalOf<CoroutineScope> { error("sin el alcance de la app") }
 
-private enum class Destino { ARRANQUE, ACCESO, SIN_CONEXION, ACTUALIZAR, APP }
+internal enum class Destino { ARRANQUE, ACCESO, SIN_CONEXION, ACTUALIZAR, APP }
 
 /**
  * Lo que se ve y de quién: la app de la demo y la de una cuenta son escenas distintas. Si no, salir de la demo y entrar
  * con el link enseguida (durante el fundido) reusaba la composición de la demo, con su pestaña y su estado.
+ *
+ * Es la clave del `Crossfade` de la raíz, y Compose arma con su `hashCode` la clave de TODO el estado guardado de la app
+ * (`rememberSaveable`: la pestaña, lo abierto, la clave del lanzador de la cámara). El `hashCode` de un enum es el de
+ * identidad y cambia en cada proceso: si Android cerraba MyPump mientras la cámara estaba abierta, la app volvía en
+ * Entreno y la foto que el cliente acababa de sacar no le llegaba a nadie (15-oct). Por eso va con el nombre.
  */
-private data class Escena(val destino: Destino, val de: String?)
+internal data class Escena(val destino: Destino, val de: String?) {
+    override fun hashCode(): Int = 31 * destino.name.hashCode() + (de?.hashCode() ?: 0)
+}
 
 @Composable
 private fun RaizConModelo(vm: ModeloAppViewModel, m: ModeloApp) {

@@ -215,6 +215,21 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 16:00, Android: una foto que se perdía si el sistema cerraba la app con la cámara abierta.** Las pruebas
+  instrumentadas usan una cámara de mentira que contesta al instante, así que no lo veían. Con la cámara de verdad del
+  emulador y `am kill` (lo que hace Android con poca memoria), MyPump volvía en un proceso nuevo pero en Entreno, y la
+  foto quedaba huérfana en `cache/camara`.
+  - **Causa:** la clave del `Crossfade` de la raíz es `Escena(destino, de)`, un data class con un enum. Compose arma con
+    su `hashCode` la clave de todo el estado guardado (la pestaña, lo abierto, la clave del lanzador de la cámara), y el
+    `hashCode` de un enum es el de identidad: cambia en cada proceso. Se perdía todo lo guardado, también el resultado de
+    la galería y de la hoja de Health Connect.
+  - **Arreglo:** `Escena.hashCode` con el nombre del destino (`EscenaTest`, que falla con el de antes).
+    `scripts/nativa/camara-muerte-android.py` lo prueba de punta a punta: con el arreglo vuelve en Revisión con «Listo,
+    guardada ✓». Las demás claves animadas ya eran estables.
+  - No es una regresión: la Capacitor también pierde la foto (el selector de archivos del WebView no sobrevive al
+    proceso). La 103 que está en revisión lo tiene; el arreglo va en la **2.0.1 (104)**, con la versión corta nueva para
+    que la palanca remota pueda pedirla.
+
 - **15-oct 15:31, Android enviado a revisión de Google.** Con los OK de Mati del 15-oct («Play: AAB 103 al 10%,
   Mini: vision y tope fotos, Base: push real Android, Web: fotos a main»):
   - **Play Console:** el AAB 103 (2.0.0) en producción al 10 % con sus novedades, Data safety con Diagnóstico, la
