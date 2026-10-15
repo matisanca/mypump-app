@@ -98,14 +98,20 @@ public enum TokenPush {
 }
 
 extension ModeloApp {
+    /// Cada cuánto se vuelve a registrar el mismo token de APNs con la misma cuenta.
+    static let pushVigencia: TimeInterval = 7 * 86_400
+
     /// `registrarPush`: directo; solo si cambió desde el último que se mandó (`mypump_push_token`, la misma clave que la
-    /// web) o si es otra cuenta (`mypump_push_cuenta`, una huella, nunca el token): con el link de otra cuenta en el mismo
-    /// teléfono, los avisos seguían yendo a la anterior (lo encontró el agente de Android, 14-oct). Devuelve si quedó
-    /// registrado.
-    public func registrarPush(dispositivo: String, version: String?, defaults: UserDefaults = .standard) async -> Bool {
+    /// web), si es otra cuenta (`mypump_push_cuenta`, una huella, nunca el token: con el link de otra cuenta en el mismo
+    /// teléfono, los avisos seguían yendo a la anterior; lo encontró el agente de Android, 14-oct), o si pasaron 7 días
+    /// (`mypump_push_fecha`): si `push.py` dio de baja la fila, el teléfono no volvía a registrarse mientras su token no
+    /// cambiara (revisión del 15-oct, hallazgo 9). Devuelve si quedó registrado.
+    public func registrarPush(dispositivo: String, version: String?, defaults: UserDefaults = .standard, ahora: Date = Date()) async -> Bool {
         guard let t = token, !esDemo else { return false }
         let cuenta = Self.huellaPush(t)
-        if defaults.string(forKey: "mypump_push_token") == dispositivo, defaults.string(forKey: "mypump_push_cuenta") == cuenta {
+        let ms = ahora.timeIntervalSince1970 * 1000
+        if defaults.string(forKey: "mypump_push_token") == dispositivo, defaults.string(forKey: "mypump_push_cuenta") == cuenta,
+           let fecha = defaults.object(forKey: "mypump_push_fecha") as? Double, ms >= fecha, ms - fecha < Self.pushVigencia * 1000 {
             return true
         }
         let r = await cliente.llamar("mypump_registrar_push", ["p_token": .texto(t), "p_device": .texto(dispositivo),
@@ -113,6 +119,7 @@ extension ModeloApp {
         guard case .success(let v) = r, v == .bool(true) else { return false }
         defaults.set(dispositivo, forKey: "mypump_push_token")
         defaults.set(cuenta, forKey: "mypump_push_cuenta")
+        defaults.set(ms, forKey: "mypump_push_fecha")
         return true
     }
 

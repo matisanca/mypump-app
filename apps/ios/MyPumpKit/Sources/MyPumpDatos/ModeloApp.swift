@@ -28,6 +28,10 @@ public final class ModeloApp {
     public private(set) var sinRedEn: Set<Parte> = []
     /// Por qué no se pudo cargar (para decir "Sin conexión" o "Servicio fuera de línea").
     public private(set) var ultimaFalla: ErrorRPC.Clase?
+    /// Lo pone la app: con permiso de notificaciones, el aviso del domingo al día y el token de APNs pedido de nuevo
+    /// (`CentroAvisos.alEntrar`). Corre también cada vez que la app vuelve al frente con la cuenta: un permiso dado desde
+    /// Ajustes se registraba recién en el próximo arranque (revisión del 15-oct, hallazgo 9).
+    @ObservationIgnored public var conAvisos: (@MainActor () async -> Void)?
     /// Lo pone la raíz con el `scenePhase`: los sondeos solo corren con la app a la vista.
     public var enPrimerPlano = true {
         didSet { if enPrimerPlano && fase != .tokenInvalido && !esDemo { chat?.empezarSondeo() } else { chat?.pararSondeo() } }
@@ -423,6 +427,7 @@ public final class ModeloApp {
     /// todo de nuevo.
     public func alVolverAPrimerPlano() async {
         guard fase == .listo, !esDemo, token != nil else { return }
+        await conAvisos?()
         if desdeCache { await cargar(); return }
         // Primero lo "de hoy" si cambió el día (lo que se toque ahora tiene que caer en el día nuevo), después las colas.
         let hoy = FechaLocal.hoy()

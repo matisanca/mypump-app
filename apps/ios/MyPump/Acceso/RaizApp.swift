@@ -57,10 +57,10 @@ struct RaizApp<Contenido: View>: View {
             switch nueva {
             case .active:
                 CentroAvisos.shared.cancelarFinDescanso()
+                // Con la cuenta, también los avisos (`ModeloApp.conAvisos`): el del domingo es de una vez y se vuelve a
+                // armar cada vez que se usa la app (iOS la deja viva días sin un arranque nuevo), y un permiso dado desde
+                // Ajustes registra el push al volver (hallazgo 9).
                 Task { await modelo.alVolverAPrimerPlano() }
-                // El aviso del domingo es de una vez: se vuelve a armar cada vez que se usa la app (iOS la deja viva días
-                // sin un arranque nuevo).
-                if modelo.fase == .listo && !modelo.esDemo { Task { await CentroAvisos.shared.reprogramar() } }
             case .background:
                 // Un descanso corriendo avisa cuando termina aunque la app no esté a la vista (D8).
                 if let d = modelo.entreno?.descanso.descanso, !d.terminado {
