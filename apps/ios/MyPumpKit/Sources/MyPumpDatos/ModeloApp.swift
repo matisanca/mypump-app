@@ -251,6 +251,13 @@ public final class ModeloApp {
             return
         }
         info = decodificar(ClienteInfo.self, primera)
+        // La misma persona con otro link (Mati lo regeneró): lo que quedó en la cola de la carpeta vieja sale con este,
+        // con el `drenar()` de más abajo (hallazgo 4).
+        if let d = disco, let cola = outbox, let id = info?.clienteId, !id.isEmpty {
+            CuentasDelTelefono.anotar(clienteId: id, en: d)
+            await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
+            guard vigente() else { return }
+        }
 
         async let r = cliente.llamar("mypump_get_rutina_activa", p)
         async let d = cliente.llamar("mypump_get_dieta_activa", p)
@@ -315,11 +322,12 @@ public final class ModeloApp {
 
     private var catalogoVigente: CatalogoEjercicios { catalogo ?? Self.catalogoEmpaquetado }
 
-    /// El motor de la rutina activa: se crea una vez por rutina; una versión nueva de la misma rutina (Mati la editó, se
-    /// avanzó de semana) lo actualiza sin perder lo que está en curso.
+    /// El motor de la rutina activa: se crea una vez por rutina y por cuenta; una versión nueva de la misma rutina (Mati
+    /// la editó, se avanzó de semana) lo actualiza sin perder lo que está en curso. Con otro link de la misma persona la
+    /// rutina es la misma, pero el motor de antes escribía en la cola y la carpeta del link viejo (hallazgo 4).
     private func prepararEntreno() {
         guard let rutina else { entreno = nil; return }
-        if let e = entreno, e.rutina.id == rutina.id {
+        if let e = entreno, e.rutina.id == rutina.id, e.token == token {
             if e.rutina != rutina { e.reemplazarRutina(rutina) }
             return
         }

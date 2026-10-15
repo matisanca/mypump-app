@@ -11,6 +11,9 @@ public struct Disco: Sendable {
         carpeta = base.appendingPathComponent("MyPump/cuenta-\(Self.huella(token))", isDirectory: true)
     }
 
+    /// Otra carpeta de cuenta del teléfono, de la que no se tiene el token (`CuentasDelTelefono`).
+    init(carpeta: URL) { self.carpeta = carpeta }
+
     /// Identifica la cuenta sin guardar el token: la carpeta, el push (`mypump_push_cuenta`) y Salud la usan.
     public static func huella(_ token: String) -> String {
         String(SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined().prefix(16))

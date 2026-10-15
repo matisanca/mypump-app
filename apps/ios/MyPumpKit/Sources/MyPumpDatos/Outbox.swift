@@ -155,6 +155,19 @@ public actor Outbox {
         return entraron
     }
 
+    /// Lo que quedó en la cola de otra carpeta de la MISMA persona (un link que Mati regeneró; revisión del 15-oct,
+    /// hallazgo 4). Las pendientes entran con la regla de `importarSinPisar` (sin repetir ids; lo pendiente más nuevo
+    /// gana) y conservan su marca: no son de la migración. Los fallidos siguen siendo fallidos: no se mandan (algunos
+    /// están "para revisar"), pero tampoco se pierden. No dispara una pasada: salen con el `drenar()` de la carga, después
+    /// de que quien adopta anota lo que se llevó. Devuelve las pendientes que quedaron en la cola.
+    @discardableResult
+    public func adoptar(_ ops: [Operacion], fallidos: [Fallido]) -> [Operacion] {
+        let entraron = estado.importarSinPisar(ops, deLaMigracion: false)
+        for f in fallidos where !estado.fallidos.contains(where: { $0.op.id == f.op.id }) { estado.fallidos.append(f) }
+        guardar()
+        return entraron
+    }
+
     /// Ops que no se mandan pero tampoco se pueden perder: quedan en fallidos con su motivo, como una abandonada. La
     /// migración manda acá las ops viejas sin sesión que no pasan la validación contra la rutina activa ("para revisar").
     public func archivarEnFallidos(_ ops: [Operacion], motivo: String) {
