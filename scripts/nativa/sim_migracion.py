@@ -198,6 +198,23 @@ def preparar(db, salida):
     ts = ahora_ms()
     ex2, ex3 = ejs[1], ejs[2]
     D = dieta["id"]
+    # SER-14: lo de la app vieja no trae `_ts` y cuenta como lo más viejo. Sube a la base, salvo que la base tenga una
+    # lápida de ese ejercicio: lo que se borró después le gana y no revive. La limpieza de cada corrida deja una lápida,
+    # así que la que tiene que subir es de un ejercicio sin lápida (de cualquier día, fuera de los de la cola). Si hay
+    # alguno con lápida, se siembra también y no tiene que revivir.
+    try:
+        base_sust = rpc("mypump_get_exercise_swaps", {"p_token": t, "p_rutina_id": rutina["id"]}) or {}
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            raise
+        base_sust = {}   # sin la nativa_003
+    lapidas = set((base_sust.get("borradas") or {}).keys())
+    candidatos = [(d, e) for d, _, es in dias for e in es if e["id"] not in {ejs[0]["id"], ex2["id"], ex3["id"]}]
+    libres = [(d, e) for d, e in candidatos if e["id"] not in lapidas]
+    if not libres:
+        sys.exit("✗ todos los ejercicios de la rutina tienen lápida: hace falta otra rutina para la cuenta de prueba")
+    sust_libre = libres[0]
+    sust_lapida = next(((d, e) for d, e in candidatos if e["id"] in lapidas), None)
     ops = [
         # v1.0.11/main: con `_id` y la sesión capturada al encolar.
         _op("carga", {"sesionId": sesion, "diaId": dia, "semana": semana, "datos": {"diaId": dia, "ejercicioId": ex2["id"],
@@ -239,10 +256,11 @@ def preparar(db, salida):
         f"mypump_rest_{t}": json.dumps({"endsAt": ts + 600_000, "target": 600, "autoCloseAt": ts + 602_000}),
         f"mypump_fotoq_{t}": json.dumps({f"{hoy_s}|frente": {"pose": "frente", "fecha": hoy_s, "dataUrl": "data:image/jpeg;base64," + JPEG,
                                                              "intentos": 0}}),
-        f"mypump_exercise_swaps_{rutina['id']}": json.dumps({ejs[3]["id"]: {
-            "original": {"slug": None, "nombre": ejs[3]["nombre"], "images": None},
+        f"mypump_exercise_swaps_{rutina['id']}": json.dumps({e["id"]: {
+            "original": {"slug": None, "nombre": e["nombre"], "images": None},
             "current": {"slug": "Seated_Cable_Rows", "nombre": "Remo sentado en polea", "equipment": "cable", "images": None},
-            "semana": semana, "diaId": dia}}, ensure_ascii=False),   # sin `fijado`: cuenta como fijada
+            "semana": semana, "diaId": d} for d, e in [sust_libre] + ([sust_lapida] if sust_lapida else [])},
+            ensure_ascii=False),   # sin `fijado`: cuenta como fijada
         "mypump_exercise_swaps_demo": json.dumps({"x-d1-0": {"original": {"nombre": "A"}, "current": {"nombre": "B"}, "fijado": True}}),
         # Como `confirmSwap` de la web: el swap de la cola está también en el mapa local. El de c3, solo en el mapa (nunca
         # llegó a la base): es el que hay que migrar.
@@ -274,7 +292,8 @@ def preparar(db, salida):
     # nunca vio y la nativa lo tiene que subir. Con la marca, la nativa (igual que la web) lo descarta.
     borrar_claves(db, [f"mypump_swaps_migrados_{D}"])
     plan.update({"run": run, "hoy": hoy_s, "rutina": rutina["id"], "dieta": D, "semana": semana, "dia": dia, "sesion": sesion, "inicio": inicio,
-                 "ex2": ex2["id"], "ex3": ex3["id"], "ex_swap": ejs[3]["id"], "agua": agua, "peso": peso, "nota": nota, "chat": chat,
+                 "ex2": ex2["id"], "ex3": ex3["id"], "ex_swap": sust_libre[1]["id"],
+                 "ex_lapida": sust_lapida[1]["id"] if sust_lapida else None, "agua": agua, "peso": peso, "nota": nota, "chat": chat,
                  "chat_rotado": chat_rotado, "cardio_antes": cardio_antes, "comida": c1["id"], "swap1": f"{c1['id']}/0/0",
                  "swap3": f"{c3['id']}/0/0", "otro_dia": otro_dia, "ops_vigente": len(ops), "ops_sin_sesion": 2})
     guardar(salida, "plan.json", plan)
@@ -434,6 +453,9 @@ def verificar(salida):
     sust = nat.get("sustituciones")
     chequeo("sustitución de ejercicio en la base (SER-14; sin la migración 003 queda solo en el teléfono, como antes)",
             sust == "sin tabla" or any(x.startswith(f"{plan['ex_swap']}:Remo sentado en polea") for x in sust or []), f"{sust}")
+    if plan.get("ex_lapida") and sust != "sin tabla":
+        chequeo("la de un ejercicio con lápida en la base no revive (se borró después)",
+                not any(x.startswith(f"{plan['ex_lapida']}:") for x in sust or []), f"{sust}")
     chequeo("cola anon: nunca se ejecutó (cardio igual)", nat.get("cardio") == plan["cardio_antes"])
     chequeo("cola de un token rotado que ya no resuelve: no se ejecutó", nat.get("chat_rotado") == 0)
     chequeo("write-back: sin la cola de la cuenta ni cachés de sesión, con la marca",
