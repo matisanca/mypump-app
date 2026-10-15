@@ -596,7 +596,9 @@ public final class ModeloApp {
             guard let a = creados.first else {
                 return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_FILA", mensaje: "mypump_create_custom_food: vacío"))
             }
-            sumarPropio(a)
+            // Si mientras tanto entró otra cuenta, el alimento es de la anterior: no se suma a la de ahora (como el
+            // hallazgo 10; lo encontró el agente de Android, 15-oct).
+            if token == t { sumarPropio(a) }
             return .success(a)
         }
     }
@@ -607,7 +609,7 @@ public final class ModeloApp {
     public func cargarComidasLibres() async {
         guard let t = token else { comidasLibres = []; return }
         if case .success(let filas) = await cliente.filas("mypump_get_comidas_libres", ["p_token": .texto(t), "p_fecha": .texto(FechaLocal.hoy())],
-                                                          como: ComidaLibre.self) {
+                                                          como: ComidaLibre.self), token == t {
             comidasLibres = filas
         }
     }
@@ -627,7 +629,7 @@ public final class ModeloApp {
             guard let c = filas.first else {
                 return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_FILA", mensaje: "mypump_crear_comida_libre: vacío"))
             }
-            comidasLibres.append(c)
+            if token == t { comidasLibres.append(c) }
             return .success(c)
         }
     }
@@ -639,7 +641,8 @@ public final class ModeloApp {
         comidasLibres.removeAll { $0.id == id }
         guard let t = token else { return true }
         if case .failure = await cliente.llamar("mypump_borrar_comida_libre", ["p_token": .texto(t), "p_id": .texto(id)]) {
-            comidasLibres = previas
+            // Volver atrás solo en la misma cuenta: con otra en el medio, `previas` es de la anterior.
+            if token == t { comidasLibres = previas }
             return false
         }
         return true
