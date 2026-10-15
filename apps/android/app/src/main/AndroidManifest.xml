@@ -56,6 +56,14 @@
         <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
+    <!-- Los navegadores con Custom Tabs (Android 11+ no los deja ver sin esto): abrirEnNavegador fija uno, porque el App
+         Link de abajo toma todo app.mypumpteam.com y un link a privacidad.html volvería a la app en vez de abrirse. -->
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
     <!-- Backup: el token nunca viaja (noBackupFilesDir + clave del Keystore) y la carpeta de cada cuenta tampoco; ver
          res/xml/reglas_backup.xml (hasta Android 11) y reglas_extraccion.xml (12+). -->
     <application

@@ -5,7 +5,9 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.browser.customtabs.CustomTabsClient
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.browser.customtabs.CustomTabsService
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -355,21 +357,48 @@ fun bordeFino(): BorderStroke = BorderStroke(1.dp, MyPump.colores.borde)
 
 /**
  * Abre un link dentro de la app con una Custom Tab (las páginas legales y las fuentes), como el SFSafariViewController de
- * iOS: el cliente vuelve con Atrás sin salir de MyPump. Sin un navegador que las soporte, se abre en el navegador.
+ * iOS: el cliente vuelve con Atrás sin salir de MyPump.
+ *
+ * El navegador va FIJO. El App Link de la MainActivity toma todo `app.mypumpteam.com` (con `autoVerify`): en un build de
+ * Play, con el dominio verificado, un VIEW implícito a `privacidad.html` o `eliminar-datos.html` volvía a MyPump (que no
+ * hacía nada con él) en vez de abrirse. La Capacitor no lo sufría porque su plugin Browser abre con una sesión, que fija
+ * el navegador. Sin un navegador con Custom Tabs, va a uno cualquiera elegido entre los navegadores (nunca a MyPump).
  */
 fun abrirEnNavegador(contexto: Context, url: String) {
     val uri = Uri.parse(url)
-    try {
-        val pestana = CustomTabsIntent.Builder().setShowTitle(true).build()
-        if (contexto !is Activity) pestana.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        pestana.launchUrl(contexto, uri)
-    } catch (_: ActivityNotFoundException) {
+    val desdeAfuera = contexto !is Activity
+    navegadorConPestanas(contexto)?.let { navegador ->
         try {
-            contexto.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            val pestana = CustomTabsIntent.Builder().setShowTitle(true).build()
+            pestana.intent.setPackage(navegador)
+            if (desdeAfuera) pestana.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            pestana.launchUrl(contexto, uri)
+            return
         } catch (_: ActivityNotFoundException) {
-            // Sin navegador no hay a dónde ir: no se hace nada (no pasa en un teléfono real).
         }
     }
+    try {
+        // El selector resuelve entre las apps que son navegadores (CATEGORY_APP_BROWSER) y a esa le llega el VIEW.
+        val ver = Intent(Intent.ACTION_VIEW, uri)
+        ver.selector = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_BROWSER)
+        if (desdeAfuera) ver.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        contexto.startActivity(ver)
+    } catch (_: ActivityNotFoundException) {
+        // Sin navegador no hay a dónde ir: no se hace nada (no pasa en un teléfono real).
+    }
+}
+
+/**
+ * El navegador con Custom Tabs: el predeterminado si las tiene; si no, el primero que las tenga. Nunca MyPump. Verlos
+ * necesita el `<queries>` de `CustomTabsService` del manifest (Android 11+).
+ */
+fun navegadorConPestanas(contexto: Context): String? {
+    val propio = contexto.packageName
+    val conPestanas = contexto.packageManager.queryIntentServices(Intent(CustomTabsService.ACTION_CUSTOM_TABS_CONNECTION), 0)
+        .mapNotNull { it.serviceInfo?.packageName }
+        .filter { it != propio }
+        .distinct()
+    return CustomTabsClient.getPackageName(contexto, conPestanas)?.takeIf { it != propio }
 }
 
 /** Cómo se escriben los números en la app, como los escribe un argentino. */
