@@ -12,6 +12,9 @@ struct DietaView: View {
     @State private var reemplazo: Reemplazo?
     @State private var revertir: Reemplazo?
     @State private var analizandoFoto = false
+    /// En iPad la dieta va en una columna centrada: el título grande del sistema quedaba pegado al borde, lejos de la
+    /// columna. Ahí el título va adentro de la columna (como el encabezado de Entreno) y arriba queda chico.
+    @Environment(\.horizontalSizeClass) private var claseAncho
 
     /// La raíz todavía pasa las muestras de los bocetos; Dieta ya usa el modelo real y las ignora.
     init(datos: Muestras? = nil) {}
@@ -64,6 +67,7 @@ struct DietaView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.fondo)
             .navigationTitle("Dieta")
+            .navigationBarTitleDisplayMode(claseAncho == .regular ? .inline : .automatic)
             .toolbar { selectorTipoDia }
         }
         .task { if modelo.fase == .cargando || modelo.fase == .sinServicio { await modelo.cargar() } }
@@ -87,6 +91,12 @@ struct DietaView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 LazyVStack(alignment: .leading, spacing: 16) {
+                    if claseAncho == .regular {
+                        Text("Dieta")
+                            .font(Archivo.fuente(34, peso: 800, relativoA: .largeTitle))
+                            .accessibilityAddTraits(.isHeader)
+                            .padding(.top, Espacio.s)
+                    }
                     Cabecera(objetivo: modelo.objetivo, elegidas: totalElegido)
                     BannerRevision()
                     ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in tarjeta(c, numero: n + 1) }
