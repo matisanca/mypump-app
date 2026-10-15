@@ -230,9 +230,13 @@ public enum EjecutorLegado {
         r.plan = plan
         r.tokenVigente = plan.tokenVigente
 
-        // 3. Token. Accesible después del primer desbloqueo (TokenEnKeychain).
+        // 3. Token. Accesible después del primer desbloqueo (TokenEnKeychain). Se lee de vuelta: si `SecItemAdd` falló, la
+        //    Fase L quedaba hecha igual (con la huella anotada no vuelve a correr) y la app abría en "pegá tu link" para
+        //    siempre (sospecha de la revisión del 15-oct, confirmada). Así no queda hecha: todavía no se escribió nada más
+        //    (la copia cruda ya está y no se repite) y se reintenta enseguida o en el arranque siguiente.
         if plan.adoptarToken, let t = plan.tokenVigente {
             almacen.guardar(t)
+            guard almacen.leer() == t else { throw ErrorLegado.keychain }
             r.adoptoToken = true
         }
 
