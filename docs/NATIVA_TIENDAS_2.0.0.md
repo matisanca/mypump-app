@@ -153,3 +153,28 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
    fallidos (`scripts/nativa/beta_diario.py`). El porcentaje se puede frenar, pero no volver atrás.
 5. **Permisos que la app NO pide**, por si Play pregunta: alarmas exactas, servicios en primer plano, leer salud en
    segundo plano y escritura de salud. Las notificaciones (Android 13+) se piden en la hoja de la primera vez.
+
+## Plan B: volver a la Capacitor si la 2.0.0 sale mal
+
+No se sube nada de antemano. Una Capacitor 2.0.1 en TestFlight le ganaría a la nativa en la actualización automática
+de TestFlight y le cambiaría la app a Mati en plena prueba. Lo que sí está probado: la Capacitor arriba de la nativa
+funciona y no resucita nada (`sim-migracion.sh`, paso 5, 27/27 el 15-oct). Lo que se cargó en la nativa está en la
+base. Lo que la web no lee, como las sustituciones de ejercicio de la `nativa_003`, queda guardado pero no se ve.
+
+**iOS** (necesita el OK de Mati, como cualquier envío):
+1. Pausar el lanzamiento escalonado de la 2.0.0 en App Store Connect.
+2. En una rama desde `main` (la Capacitor vive en `ios/` y `public/`, que la nativa no toca), subir la versión en
+   `ios/App/App.xcodeproj/project.pbxproj`, en las dos configuraciones:
+   - `MARKETING_VERSION = 2.0.1`, que tiene que ser mayor que la 2.0.0;
+   - `CURRENT_PROJECT_VERSION = 19` (del 19 al 99 son de la Capacitor, de 100 en adelante de la nativa).
+3. Merge a `main` y tag `v2.0.1`. El workflow `ios-testflight` compila, sube y manda a revisión. Su
+   `cancel_previous_submissions` es justo lo que hace falta acá. Si es urgente, pedir revisión acelerada.
+
+**Android:**
+1. Frenar el rollout de la nativa en Play Console. No se puede volver atrás, solo frenar.
+2. En `android/app/build.gradle`: `versionCode` mayor que el último AAB nativo que se subió (si el último fue el 101,
+   el 102 o más) y `versionName "2.0.1"`.
+3. Tag `a2.0.1`: el workflow `android-play` arma el AAB, y se sube a mano a producción con rollout.
+
+En los dos casos la app vieja arranca con lo suyo y lo que trae el servidor. Si después se vuelve a la nativa, la
+migración se repite sola y el libro mayor evita duplicados (MIG-06).

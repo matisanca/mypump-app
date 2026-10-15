@@ -62,6 +62,8 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
 4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
    Los arreglos de después no cambian lo que se ve en el tamaño de las capturas.
 5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
+6. ✅ Plan B escrito en `NATIVA_TIENDAS_2.0.0.md`: la Capacitor 2.0.1 por los workflows de siempre, sin subirla de
+   antemano. La vuelta de la nativa a la Capacitor está probada en el simulador.
 
 **Android 2.0.0**
 1. ✅ Todas las pantallas (f4bf5ce, 15-oct 03:00): no queda ninguna «en construcción».
