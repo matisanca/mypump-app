@@ -59,13 +59,22 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    - los arreglos de Entreno.
 4. ✅ Capturas nuevas (15-oct 02:36, `nativa-evidencia/tienda/20261015-023657`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
 5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
+6. ⏳ TestFlight 105 (`nios-2.0.0-105` sobre 10ffeee, 15-oct 04:00):
+   - las fotos y la Dieta de una cuenta no se aplican a otra si entra un link en el medio (69d6b5c, 3d59f6f);
+   - el compositor del chat toma el toque en todo el vidrio (10ffeee).
+
+   Antes, la suite de XCUITest pasó en el iPad Pro 13" (17/17). La de «la última vez» se salteó porque a la cuenta de
+   prueba no le quedaban series del día.
 
 **Android 2.0.0**
-1. ☐ Pantallas que faltan: Chat y Progreso (en curso), Revisión y Mi Día (en curso), Dieta con escritura.
+1. ✅ Todas las pantallas (f4bf5ce, 15-oct 03:00): no queda ninguna «en construcción».
 2. ☐ Paridad de Android al 100 %.
 3. ☐ Matriz de emuladores con Google Play, en Android 9, 11, 13, 14 y 16:
    - la migración desde la Capacitor 1.0.12;
-   - un push real de punta a punta con `push.py` y la cuenta de prueba;
+   - un push real de punta a punta con `push.py` y la cuenta de prueba. El registro ya anda: hay tokens de FCM de
+     `test-nativa-android` con `plataforma android` en `mypump_push_devices`. **Falta la entrega**, y espera el OK
+     de Mati: hay que dejar un mensaje de Mati en el chat de la cuenta de prueba (una escritura en producción) para
+     que el trigger lo encole y `push.py` lo mande por FCM;
    - Health Connect, que viene integrado desde Android 14 y es una app aparte de 9 a 13;
    - tamaños de pantalla, modo oscuro y fuente grande.
 4. ☐ Workflow `android-nativa` (tag `nand-*`):
@@ -169,7 +178,16 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 - ~~Aceptar el contrato nuevo del Developer Program~~ (aceptado el 14-oct).
 - ~~Publicar la 1.0.12 de iOS antes que la 2.0.0~~. **Enviada a revisión el 14-oct a las 16:24**, con OK de Mati:
   build 18 (el de `v1.0.12-b18`, que es `main` salvo el texto de privacidad), publicación automática al aprobarse y
-  progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
+  progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió. El 15-oct
+  a las 04:00 seguía la 1.0.6.
+- **OK pendientes (15-oct):**
+  1. **mini-vision** (producción, caído desde el 14-oct 13:03): en la Mini, `model = "gpt-5.6-sol"` en
+     `~/.codex/config.toml`, con backup. Detalle en la bitácora del 15-oct 03:00.
+  2. **Push real de Android:** dejar un mensaje de Mati en el chat de `test-nativa-android` (escritura en producción,
+     en la cuenta de prueba) para ver la entrega por FCM en el emulador y que tocarlo abra el chat.
+- **En su iPhone, con el TestFlight 105:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
+- **Para el envío (G7):** la etiqueta de privacidad con «Other Diagnostic Data» en App Store Connect, y en Play
+  Console la subida manual del AAB, Data safety, la declaración de Health Connect y las capturas.
 
 ## Bitácora
 
