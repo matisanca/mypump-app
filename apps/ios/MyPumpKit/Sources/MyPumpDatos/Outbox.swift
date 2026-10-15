@@ -34,6 +34,28 @@ public enum EstadoGuardado: Sendable, Equatable {
     case perdido            // algo se abandonó: "revisá y cargalo de nuevo" (9 s)
 }
 
+extension Operacion {
+    /// La misma op con los números no finitos de su payload como null (ver `JSONValue.sinNoFinitos`).
+    var sinNoFinitos: Operacion {
+        var o = self
+        o.payload = payload.sinNoFinitos
+        return o
+    }
+}
+
+extension JSONValue {
+    /// Lo que no tiene JSON (NaN, infinito) como null, como hace `JSON.stringify` de la web. `JSONEncoder` tira con eso:
+    /// ni la cola se podía guardar ni la RPC armar su pedido.
+    var sinNoFinitos: JSONValue {
+        switch self {
+        case .numero(let d) where !d.isFinite: return .null
+        case .lista(let a): return .lista(a.map(\.sinNoFinitos))
+        case .objeto(let o): return .objeto(o.mapValues(\.sinNoFinitos))
+        default: return self
+        }
+    }
+}
+
 /// Una op que el servidor guardó, con lo que contestó (para el chat, el id de la fila: `agregar_comentario`).
 public struct OpGuardada: Sendable {
     public let op: Operacion
@@ -143,7 +165,7 @@ public actor Outbox {
         if let k = dedupeKey { estado.ops.removeAll { $0.dedupeKey == k } }
         secuencia += 1
         let ahora = Date().timeIntervalSince1970 * 1000
-        let op = Operacion(id: "\(Int64(ahora))_\(secuencia)", kind: kind, payload: payload, dedupeKey: dedupeKey, ts: ahora)
+        let op = Operacion(id: "\(Int64(ahora))_\(secuencia)", kind: kind, payload: payload.sinNoFinitos, dedupeKey: dedupeKey, ts: ahora)
         estado.ops.append(op)
         guardar()
         programar(en: .zero)
@@ -342,7 +364,18 @@ public actor Outbox {
         guard let archivo else { return }
         do {
             try FileManager.default.createDirectory(at: archivo.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try JSONEncoder().encode(estado).write(to: archivo, options: [.atomic])
+            let datos: Data
+            if let d = try? JSONEncoder().encode(estado) {
+                datos = d
+            } else {
+                // Un número no finito (NaN, infinito) no tiene JSON y `JSONEncoder` tira: con uno solo, la cola dejaba de
+                // guardarse para siempre, en silencio, también desde fallidos (sospecha de la revisión del 15-oct,
+                // confirmada). Como JSON.stringify de la web: null. `encolar` ya lo hace; esto ataja cualquier otro camino.
+                estado.ops = estado.ops.map(\.sinNoFinitos)
+                estado.fallidos = estado.fallidos.map { Fallido(op: $0.op.sinNoFinitos, motivo: $0.motivo, cuando: $0.cuando.isFinite ? $0.cuando : 0) }
+                datos = try JSONEncoder().encode(estado)
+            }
+            try datos.write(to: archivo, options: [.atomic])
         } catch {
             // Sin disco no hay mucho que hacer; la op sigue en memoria y se reintenta.
         }

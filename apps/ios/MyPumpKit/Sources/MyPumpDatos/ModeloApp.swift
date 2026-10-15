@@ -545,7 +545,8 @@ public final class ModeloApp {
     public func sustituir(_ original: Alimento, por sustituto: JSONValue, comidaId: String, opt: Int, idx: Int) async {
         guard let dietaId = dieta?.id else { return }
         let k = clave(comidaId, opt, idx)
-        let anclado = SwapsDeComida.conAncla(sustituto, original: original)
+        // Sin NaN ni infinito: con uno, ni el archivo de reemplazos ni la cola se podían volver a guardar.
+        let anclado = SwapsDeComida.conAncla(sustituto, original: original).sinNoFinitos
         swaps[k] = SwapLocal(original: try? JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(AlimentoJSON(original))), current: anclado)
         guardarSwaps()
         await outbox?.encolar("swap", .objeto(["dietaId": .texto(dietaId), "comidaId": .texto(comidaId), "optIdx": .numero(Double(opt)),
