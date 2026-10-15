@@ -467,12 +467,16 @@ class ModeloApp(
         _info.value = decodificar(primera.aJson(), ClienteInfo::desde)
         // La misma persona con otro link (Mati lo regeneró): lo que quedó en la cola de la carpeta vieja sale con este, con el
         // `drenar()` de más abajo (hallazgo 4).
+        // La carpeta, la cola y las fotos se toman juntas antes de esperar: si mientras tanto entra el link de otra persona,
+        // lo de esta no puede terminar en la cuenta de esa.
         val discoCuenta = disco
         val colaCuenta = outbox
+        val fotosCuenta = _fotos.value
         val clienteId = _info.value?.clienteId
         if (discoCuenta != null && colaCuenta != null && !clienteId.isNullOrEmpty()) {
             CuentasDelTelefono.anotar(clienteId, discoCuenta)
             CuentasDelTelefono.adoptar(clienteId, discoCuenta, colaCuenta)
+            fotosCuenta?.let { f -> CuentasDelTelefono.adoptarFotos(clienteId, discoCuenta, f) }
             if (!vigente()) return
         }
 

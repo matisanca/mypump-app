@@ -66,4 +66,23 @@ internal object CuentasDelTelefono {
         }
         return total
     }
+
+    /**
+     * Lo mismo con las fotos de progreso que no llegaron a subirse (con el token caído quedan guardadas): pasan a la cola de
+     * fotos de esta cuenta y se borran de la vieja recién cuando quedaron en el disco de esta. Devuelve cuántas pasaron.
+     */
+    fun adoptarFotos(clienteId: String, disco: Disco, fotos: ModeloFotos): Int {
+        if (clienteId.isEmpty()) return 0
+        var total = 0
+        for (otra in otras(disco)) {
+            val viejas = (otra.leer(FotoPendiente.ARCHIVO) as? JsonObject)
+                ?.mapNotNull { (k, v) -> FotoPendiente.desde(ValorJson.desde(v))?.let { k to it } }?.toMap() ?: continue
+            if (viejas.isEmpty() || clienteId(otra) != clienteId) continue
+            if (fotos.adoptar(viejas)) {
+                otra.borrar(FotoPendiente.ARCHIVO)
+                total += viejas.size
+            }
+        }
+        return total
+    }
 }

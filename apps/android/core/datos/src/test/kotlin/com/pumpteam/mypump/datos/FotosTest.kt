@@ -67,9 +67,10 @@ class FotosTest {
 
     @Test
     fun rechazadaAlSubirYLimites() = enUnHilo {
-        val g = Guion(403 to "{\"ok\":false,\"error\":\"token inválido\"}", null, null, null)
+        // Un rechazo que no es del token se descarta (como la web). El del token queda guardado: FotosTokenCaidoTest.
+        val g = Guion(400 to "{\"ok\":false,\"error\":\"imagen inválida\"}", null, null, null)
         val m = modelo(g)
-        assertEquals(ModeloFotos.Resultado.Rechazada("token inválido"), m.subir("frente", jpeg))
+        assertEquals(ModeloFotos.Resultado.Rechazada("imagen inválida"), m.subir("frente", jpeg))
         assertTrue(m.pendientes.value.isEmpty())
         for (p in listOf("frente", "perfil", "espalda")) m.subir(p, jpeg)
         assertEquals(3, m.pendientes.value.size)
