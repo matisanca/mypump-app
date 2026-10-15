@@ -13,9 +13,14 @@
 #   5. segundo arranque: confirma la escritura y no trae nada; tercer arranque: ni siquiera lee;
 #   6. la Capacitor otra vez encima (plan B): lo que quedó en su localStorage, y con red no resucita nada.
 # El token nunca pasa por acá: lo lee emu_migracion.py. Informe en ~/Developer/nativa-evidencia/migracion-android/.
-# Uso: scripts/nativa/emu-migracion.sh <serial>   (desinstala MyPump de ese emulador; usa el modo avión)
+# Uso: scripts/nativa/emu-migracion.sh <serial> [puerto]   (desinstala MyPump de ese emulador; usa el modo avión)
+# Anda desde Android 9 (WebView 66). El puerto local de DevTools va uno por emulador (emulator-5554 usa el de siempre,
+# 9334; emulator-5570, 9350): dos corridas en emuladores distintos no se pisan el `adb forward`.
 set -e
 SERIAL=${1:?serial, ej. emulator-5554}
+consola=${SERIAL##*-}
+[[ $consola == <-> ]] || consola=5554
+PUERTO=${2:-$(( 9334 + consola - 5554 ))}
 export ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk}
 export JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk@21}
 adb() { "$ANDROID_HOME/platform-tools/adb" -s $SERIAL "$@" }
@@ -27,8 +32,25 @@ PY=${0:A:h}/emu_migracion.py
 CDP=${0:A:h}/cdp-localstorage.mjs
 OUT=$EV/migracion-android/$(date +%Y%m%d-%H%M%S)
 PKG=com.pumpteam.mypump
-PUERTO=9334
 mkdir -p $OUT
+echo "emulador $SERIAL (Android $(adb shell getprop ro.build.version.release | tr -d '\r')), DevTools por el puerto $PUERTO, informe en $OUT"
+# Android 9 trae toybox 0.7.6, cuyo `find -path` no encuentra nada: emu_migracion.py (que no se toca desde acá) busca así
+# el leveldb del WebView y esperaba en vano que llegara lo sembrado (15-oct). En esos teléfonos, las esperas del .py usan
+# un adb que cambia SOLO esa búsqueda por el `find` de la carpeta y un grep; todo lo demás pasa igual.
+SDK_ESPERAS=$ANDROID_HOME
+if [ -z "$(adb shell "find /system/bin -path '*/sh' 2>/dev/null" | tr -d '\r')" ]; then
+  SDK_ESPERAS=$OUT/sdk-toybox-viejo
+  mkdir -p $SDK_ESPERAS/platform-tools
+  {
+    print -r -- '#!/bin/zsh'
+    print -r -- '# adb para las esperas de emu_migracion.py con el toybox de Android 9 (ver emu-migracion.sh).'
+    print -r -- "viejo=\"find . -path './app_webview*' -path '*Local Storage/leveldb/*' -type f\""
+    print -r -- "nuevo=\"find ./app_webview -type f | grep '/Local Storage/leveldb/'\""
+    print -r -- 'exec "'"$ANDROID_HOME/platform-tools/adb"'" "${@//$viejo/$nuevo}"'
+  } > $SDK_ESPERAS/platform-tools/adb
+  chmod +x $SDK_ESPERAS/platform-tools/adb
+  echo "toybox viejo (find -path no encuentra nada): las esperas del leveldb van por $SDK_ESPERAS"
+fi
 [ -f $CAP ] || ${0:A:h}/compilar-capacitor-android.sh
 ( cd $RAIZ/apps/android && ./gradlew -q :app:assembleDebug )
 
@@ -65,7 +87,7 @@ abrir
 devtools
 sleep 3
 python3 -I $PY semilla-capacitor $PUERTO $OUT
-python3 -I $PY esperar-semilla $SERIAL token $OUT 300
+ANDROID_HOME=$SDK_ESPERAS python3 -I $PY esperar-semilla $SERIAL token $OUT 300
 cerrar
 
 echo "── 2. La Capacitor con red manda ella su cola"
@@ -86,7 +108,7 @@ node $CDP $PUERTO navegar https://localhost/manifest.json > $OUT/pagina-semilla.
 cat $OUT/pagina-semilla.json; echo
 grep -q '"origin":"https://localhost"' $OUT/pagina-semilla.json || { echo "✗ la página para sembrar no quedó en https://localhost"; exit 1 }
 python3 -I $PY semilla-nativa $PUERTO $OUT
-python3 -I $PY esperar-semilla $SERIAL nota $OUT 420
+ANDROID_HOME=$SDK_ESPERAS python3 -I $PY esperar-semilla $SERIAL nota $OUT 420
 cerrar
 avion disable
 python3 -I $PY backend $OUT sembrado
@@ -97,7 +119,7 @@ T0=$(date +%s)
 abrir
 esperar_registro "escritura de vuelta, corrida" 240 || true
 python3 -I $PY tiempo $OUT nativa_hasta_escritura_s $(( $(date +%s) - T0 ))
-python3 -I $PY esperar-marca $SERIAL $OUT 180 || true
+ANDROID_HOME=$SDK_ESPERAS python3 -I $PY esperar-marca $SERIAL $OUT 180 || true
 cerrar
 python3 -I $PY nativa $SERIAL $OUT nativa
 python3 -I $PY backend $OUT nativa

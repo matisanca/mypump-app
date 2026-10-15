@@ -378,9 +378,12 @@ fun abrirEnNavegador(contexto: Context, url: String) {
         }
     }
     try {
-        // El selector resuelve entre las apps que son navegadores (CATEGORY_APP_BROWSER) y a esa le llega el VIEW.
+        // El selector resuelve entre las apps que son navegadores (CATEGORY_APP_BROWSER) y a esa le llega el VIEW. Va armado a
+        // mano: `makeMainSelectorActivity` devuelve un MAIN + LAUNCHER que lleva el de navegadores como SU selector, y el
+        // sistema no mira el selector del selector. Con eso el link resolvía a cualquier app con ícono (en el emulador de
+        // Android 9, que no trae navegador: la cámara, los contactos, Gmail, YouTube…; lo encontró CustomTabsTest, 15-oct).
         val ver = Intent(Intent.ACTION_VIEW, uri)
-        ver.selector = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_BROWSER)
+        ver.selector = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER)
         if (desdeAfuera) ver.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         contexto.startActivity(ver)
     } catch (_: ActivityNotFoundException) {

@@ -8,10 +8,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pumpteam.mypump.acceso.URL_PRIVACIDAD
 import com.pumpteam.mypump.ui.PruebaUi
+import com.pumpteam.mypump.ui.comprobarQueVaAlNavegador
 import com.pumpteam.mypump.ui.etiqueta
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -82,8 +82,7 @@ class PermisosHealthConnectTest : PruebaUi() {
         val i = capturado
         assertNotNull(i)
         assertEquals(URL_PRIVACIDAD, i!!.dataString)
-        assertTrue("no es una Custom Tab", i.hasExtra("android.support.customtabs.extra.SESSION"))
-        assertNotNull(i.`package`)
-        assertNotEquals(paquete, i.`package`)
+        // En la Custom Tab con el navegador fijo o, sin un navegador con Custom Tabs, con el selector de navegadores.
+        comprobarQueVaAlNavegador(i, app)
     }
 }

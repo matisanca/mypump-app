@@ -3,8 +3,11 @@ package com.pumpteam.mypump.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import com.pumpteam.mypump.Entorno
 import com.pumpteam.mypump.MainActivity
 import com.pumpteam.mypump.acceso.Apariencia
@@ -43,6 +46,18 @@ abstract class PruebaUi {
 
     @After
     fun terminarPrueba() {
+        // `ActivityScenario.close()` espera a que el hilo principal quede quieto, sin tope: con una animación sin fin en
+        // pantalla, en Android 9 eso no pasa nunca y la corrida entera quedó colgada 13 minutos (15-oct, la galería de fotos).
+        // Si no queda quieto en 20 s, se terminan las Activity a mano (sin ventanas no hay animación) y se sigue: no falla,
+        // porque hay animaciones largas que no son errores (el descanso que corre después de confirmar una serie). Las que
+        // no deberían estar (una ruedita sin fin) las miran sus pruebas con `dibujosEn` y `quietoConTope`.
+        val trabada = if (escenarios.isNotEmpty() && !Telefono.quietoConTope()) p.resumen() else null
+        if (trabada != null) {
+            instr.runOnMainSync {
+                val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+                for (etapa in Stage.values()) for (a in monitor.getActivitiesInStage(etapa)) a.finish()
+            }
+        }
         for (e in escenarios.asReversed()) runCatching { e.close() }
         escenarios.clear()
         Entorno.transporte = null
@@ -51,6 +66,7 @@ abstract class PruebaUi {
         Telefono.modoNoche(false)
         reiniciarEstado()
         AvisosDePrueba.soltar(app)
+        if (trabada != null) Log.w("MyPumpPruebas", "la pantalla no quedó quieta en 20 s al terminar; se cerró igual. En pantalla: $trabada")
     }
 
     /** Sin cuenta, sin preferencias y sin los archivos de ninguna cuenta. Lo de la migración (`files/legado`) no se toca. */

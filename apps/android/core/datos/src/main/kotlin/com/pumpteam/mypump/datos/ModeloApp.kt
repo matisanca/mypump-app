@@ -822,11 +822,19 @@ class ModeloApp(
             is Resultado.Ok -> {
                 val a = r.valor.firstOrNull()
                     ?: return Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 200, "SIN_FILA", "mypump_create_custom_food: vacío"))
-                sumarPropio(a)
+                // Se creó en la cuenta de `t`. Si mientras tanto entró otra (o la demo), no se suma a la de ahora.
+                if (deLaCuenta(t)) sumarPropio(a)
                 Resultado.Ok(a)
             }
         }
     }
+
+    /**
+     * Lo que vuelve del servidor es de la cuenta de [t]: como el `vigente()` de [hidratarDieta] (hallazgo 10), si mientras se
+     * esperaba entró el link de otra persona o la demo, no se aplica. Antes las comidas libres y el alimento propio de A
+     * terminaban en B (y un borrado que fallaba le volvía a poner a B las comidas de A).
+     */
+    private fun deLaCuenta(t: String): Boolean = token == t && !_esDemo.value
 
     // ── Comidas libres ──
 
@@ -836,8 +844,9 @@ class ModeloApp(
             _comidasLibres.value = emptyList()
             return
         }
-        cliente.filas("mypump_get_comidas_libres", mapOf("p_token" to texto(t), "p_fecha" to texto(FechaLocal.hoy())), ComidaLibre::desde)
-            .valorONull()?.let { _comidasLibres.value = it }
+        val filas = cliente.filas("mypump_get_comidas_libres", mapOf("p_token" to texto(t), "p_fecha" to texto(FechaLocal.hoy())), ComidaLibre::desde)
+        if (!deLaCuenta(t)) return
+        filas.valorONull()?.let { _comidasLibres.value = it }
     }
 
     /** `guardarComidaLibre`: directo, no por la cola (como la web), con la fecha local. */
@@ -853,7 +862,8 @@ class ModeloApp(
             is Resultado.Ok -> {
                 val c = r.valor.firstOrNull()
                     ?: return Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 200, "SIN_FILA", "mypump_crear_comida_libre: vacío"))
-                _comidasLibres.update { it + c }
+                // Quedó guardada en la cuenta de `t`: en la lista de otra no va.
+                if (deLaCuenta(t)) _comidasLibres.update { it + c }
                 Resultado.Ok(c)
             }
         }
@@ -865,7 +875,8 @@ class ModeloApp(
         _comidasLibres.update { lista -> lista.filterNot { it.id == id } }
         val t = token ?: return true
         if (cliente.llamar("mypump_borrar_comida_libre", mapOf("p_token" to texto(t), "p_id" to texto(id))) is Resultado.Falla) {
-            _comidasLibres.value = previas
+            // Volver atrás solo en la misma cuenta: con otra en el medio, `previas` son las comidas de la anterior.
+            if (deLaCuenta(t)) _comidasLibres.value = previas
             return false
         }
         return true

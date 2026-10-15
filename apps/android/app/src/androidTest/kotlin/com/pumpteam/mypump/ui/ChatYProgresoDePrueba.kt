@@ -116,7 +116,8 @@ fun Pantalla.enLaApp(vm: ModeloAppViewModel, f: suspend () -> Unit) {
 
 /**
  * Apoya un dedo en [fraccion] del ancho de [s] (a media altura) y lo deja apoyado; devuelve cómo levantarlo. Es lo que hace
- * el cliente con el gráfico del detalle de Progreso para ver el valor de una sesión.
+ * el cliente con el gráfico del detalle de Progreso para ver el valor de una sesión. Como `tocarDeVerdad`, espera que el
+ * nodo esté quieto 300 ms: con el detalle todavía deslizándose, en Android 9 el dedo caía fuera del gráfico.
  */
 fun Pantalla.apoyar(s: Selector, fraccion: Float): () -> Unit {
     fun buscar(n: SemanticsNode): SemanticsNode? {
@@ -124,14 +125,22 @@ fun Pantalla.apoyar(s: Selector, fraccion: Float): () -> Unit {
         for (h in n.children) buscar(h)?.let { return it }
         return null
     }
-    val (x, y) = esperar("está a la vista $s") {
+    var anterior: Pair<Float, Float>? = null
+    var quietoDesde = 0L
+    val (x, y) = esperar("está quieto y a la vista $s") {
         for (r in Raices.activas()) {
             val n = buscar(r.semanticsOwner.unmergedRootSemanticsNode) ?: continue
             val b = n.boundsInRoot
             if (b.width < 1f || b.height < 1f) return@esperar null
             val donde = IntArray(2)
             r.view.getLocationOnScreen(donde)
-            return@esperar (donde[0] + b.left + b.width * fraccion) to (donde[1] + b.center.y)
+            val punto = (donde[0] + b.left + b.width * fraccion) to (donde[1] + b.center.y)
+            if (punto != anterior) {
+                anterior = punto
+                quietoDesde = SystemClock.uptimeMillis()
+                return@esperar null
+            }
+            return@esperar punto.takeIf { SystemClock.uptimeMillis() - quietoDesde >= 300 }
         }
         null
     }

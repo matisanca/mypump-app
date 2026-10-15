@@ -44,7 +44,8 @@ async function evaluar(expresion) {
   }
   throw new Error(ultimo);
 }
-const todo = () => evaluar(`JSON.stringify(Object.fromEntries(Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).map((k) => [k, localStorage.getItem(k)])))`);
+// En JavaScript de antes de Chrome 73 (Object.fromEntries no existe): el WebView de Android 9 sin actualizar es el 66.
+const todo = () => evaluar(`(function () { var o = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } return JSON.stringify(o); })()`);
 
 if (accion === 'navegar') {
   await enviar('Page.enable', {});

@@ -14,21 +14,28 @@ import java.io.File
  * comentario), escrito con el `ExifInterface` del sistema.
  */
 object FotoDePrueba {
+    /**
+     * La foto se pinta de a un renglón, directo en el Bitmap: los píxeles de un Bitmap van en memoria nativa desde Android 8,
+     * pero un `IntArray` con la foto entera va en el heap de Java, y el de 4032×3024 (48 MB) no entraba en el de un teléfono
+     * chico (el emulador de Android 9 tiene 48 MB): se quedaba sin memoria la prueba, no la app. Los píxeles son los mismos.
+     */
     fun imagen(ancho: Int, alto: Int): Bitmap {
-        val pixeles = IntArray(ancho * alto)
+        val b = Bitmap.createBitmap(ancho, alto, Bitmap.Config.ARGB_8888)
+        val renglon = IntArray(ancho)
         var semilla = 12345
-        for (i in pixeles.indices) {
-            semilla = semilla * 1_103_515_245 + 12345
-            val x = i % ancho
-            val y = i / ancho
-            pixeles[i] = if (x < ancho / 8 && y < alto / 8) {
-                Color.rgb(230, 20, 20)
-            } else {
-                val v = ((semilla ushr 16) and 0xFF) / 2 + x * 128 / ancho
-                Color.rgb(v / 3, v.coerceAtMost(255), (255 - v).coerceIn(0, 255))
+        for (y in 0 until alto) {
+            for (x in 0 until ancho) {
+                semilla = semilla * 1_103_515_245 + 12345
+                renglon[x] = if (x < ancho / 8 && y < alto / 8) {
+                    Color.rgb(230, 20, 20)
+                } else {
+                    val v = ((semilla ushr 16) and 0xFF) / 2 + x * 128 / ancho
+                    Color.rgb(v / 3, v.coerceAtMost(255), (255 - v).coerceIn(0, 255))
+                }
             }
+            b.setPixels(renglon, 0, ancho, 0, y, ancho, 1)
         }
-        return Bitmap.createBitmap(pixeles, ancho, alto, Bitmap.Config.ARGB_8888)
+        return b
     }
 
     /** Un JPEG como los de la cámara de un teléfono: orientación, GPS y un comentario en el EXIF. */

@@ -26,7 +26,11 @@ class DietaUiTest : PruebaUi() {
         // DIE-03: el objetivo (sin `macros_target`, la suma de las opciones A) repartido en macros.
         p.nodo(texto("2.454"))
         p.nodo(texto("kcal por día"))
-        for (t in listOf("Proteínas", "209 g", "34 % de las kcal", "Carbos", "272 g", "44 % de las kcal", "Grasas", "58 g", "21 % de las kcal")) {
+        // Supuesto de pantalla: en una cabecera angosta (720×1280, o con letra grande) los macros van en tres columnas debajo
+        // del anillo y el porcentaje dice «34 % kcal» (`ColumnaMacro`); con lugar, en filas al lado y «34 % de las kcal». Los
+        // tres van en la misma forma.
+        val porcentaje = if (p.existe(textoQueContiene("% de las kcal"))) "% de las kcal" else "% kcal"
+        for (t in listOf("Proteínas", "209 g", "34 $porcentaje", "Carbos", "272 g", "44 $porcentaje", "Grasas", "58 g", "21 $porcentaje")) {
             p.nodo(texto(t))
         }
         p.nodo(texto("Con las opciones elegidas: 2.454 kcal"))
@@ -46,6 +50,8 @@ class DietaUiTest : PruebaUi() {
         p.tocar(etiqueta("pestana-entreno"))
         p.esperarQueNoEste(etiqueta("dieta-cabecera"))
         p.tocar(etiqueta("pestana-dieta"))
+        // En una pantalla chica la lista puede volver arriba de todo, con el desayuno fuera de la vista: primero se llega a él.
+        p.nodo(etiqueta("resumen-c1"))
         p.esperar("sigue la B") { p.textosBajo(etiqueta("resumen-c1")) == listOf("Opción B · 3 alimentos") }
     }
 

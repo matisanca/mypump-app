@@ -14,7 +14,6 @@ import com.pumpteam.mypump.datos.Disco
 import com.pumpteam.mypump.datos.FotoPendiente
 import com.pumpteam.mypump.datos.ModeloSalud
 import com.pumpteam.mypump.diseno.ImagenesRemotas
-import com.pumpteam.mypump.diseno.navegadorConPestanas
 import com.pumpteam.mypump.fotos.FotoDePrueba
 import com.pumpteam.mypump.fotos.ProveedorFotos
 import com.pumpteam.mypump.modelos.ValorJson
@@ -27,8 +26,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -184,9 +181,8 @@ class RevisionUiTest : PruebaUi() {
         p.tocar(texto("Política de privacidad"))
         val i = p.esperar("se abrió la política") { vistos.firstOrNull() }
         assertEquals(com.pumpteam.mypump.acceso.URL_PRIVACIDAD, i.dataString)
-        assertTrue("no es una Custom Tab", i.hasExtra("android.support.customtabs.extra.SESSION"))
-        assertNotNull("la Custom Tab no fija el navegador", i.`package`)
-        assertNotEquals(app.packageName, i.`package`)
+        // En la Custom Tab con el navegador fijo o, sin un navegador con Custom Tabs, con el selector de navegadores.
+        comprobarQueVaAlNavegador(i, app)
     }
 
     // ── DIA-01, DIA-02 y DIA-04 ──
@@ -480,6 +476,27 @@ class RevisionUiTest : PruebaUi() {
         assertFalse(p.existe(etiqueta("comparador")))
     }
 
+    /**
+     * Una foto de la galería que no se puede traer (sin señal, la URL firmada vencida, una foto rota) no deja la ruedita
+     * girando para siempre: gira mientras se baja y, al darse por perdida, queda el ícono de la foto. Era una espera sin fin
+     * (en Android 9, además, la Activity nunca quedaba quieta y la prueba de arriba colgó la corrida). Las pruebas no bajan
+     * fotos (`FotosDePrueba.sinRed`): la del frente se da por perdida enseguida.
+     */
+    @Test
+    fun unaFotoQueNoSePuedeTraerNoQuedaGirandoParaSiempre() {
+        servidor.ponerFotos(mapOf(lunes to listOf("frente")))
+        guardarCuenta()
+        abrir()
+        irARevision()
+        p.tocar(etiqueta("ver-mis-fotos"))
+        p.nodo(etiqueta("galeria-fotos"))
+        // Firmada (si no, ni siquiera se intenta bajar: se ve el ícono de entrada).
+        p.esperar("la foto del frente firmada") { servidor.firmas > 0 }
+        // Quieta de las dos formas: ni se dibuja (lo que se ve en las versiones nuevas) ni deja trabado el hilo principal (lo
+        // que pasaba en Android 9, donde con la ruedita girando no se llegaba a dibujar nada y el hilo nunca quedaba quieto).
+        p.esperar("la galería queda quieta", ms = 10_000, enElPrincipal = false) { Telefono.quietoConTope(2_000) && p.dibujosEn(600) == 0 }
+    }
+
     // ── Las anclas: el banner y ?scene=myday ──
 
     @Test
@@ -547,9 +564,7 @@ class RevisionUiTest : PruebaUi() {
     fun miRelojConectaPorElNavegadorYQuitarPregunta() {
         val paquete = app.packageName
         val dominio = "app.mypumpteam.com"
-        val antes = Telefono.shell("pm get-app-links --user cur $paquete")
-        val elegidoAntes = Regex("""Enabled:\s*\n\s*${Regex.escape(dominio)}""").containsMatchIn(antes)
-        Telefono.shell("pm set-app-links-user-selection --user cur --package $paquete true $dominio")
+        val dejarComoEstaba = elegirElDominioParaLaApp(app, dominio)
         val navegador = CopyOnWriteArrayList<Intent>()
         val m = object : Instrumentation.ActivityMonitor() {
             override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
@@ -587,11 +602,9 @@ class RevisionUiTest : PruebaUi() {
             p.tocar(etiqueta("reloj-conectar-oura"))
             val i = p.esperar("se abrió el navegador") { navegador.firstOrNull() }
             assertEquals("https://$dominio/api/wearables/iniciar?t=${ServidorDePrueba.TOKEN}&proveedor=oura", i.dataString)
-            val fijo = navegadorConPestanas(app)
-            assertNotNull("el emulador no tiene un navegador con Custom Tabs", fijo)
-            assertEquals("el link no va al navegador fijo", fijo, i.`package`)
-            assertNotEquals(paquete, i.`package`)
-            assertTrue("no es una Custom Tab", i.hasExtra("android.support.customtabs.extra.SESSION"))
+            // Una Custom Tab con el navegador fijo o, sin un navegador con Custom Tabs (Android 9 del emulador), el selector de
+            // navegadores: nunca MyPump.
+            comprobarQueVaAlNavegador(i, app)
             // Sin fijarlo, el mismo link lo abriría MyPump (por eso va fijo).
             val implicito = Intent(Intent.ACTION_VIEW, Uri.parse(i.dataString)).addCategory(Intent.CATEGORY_BROWSABLE)
             assertEquals(paquete, app.packageManager.resolveActivity(implicito, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName)
@@ -603,7 +616,7 @@ class RevisionUiTest : PruebaUi() {
             p.nodo(texto("✅ Listo. Tus datos van a aparecer en un rato."), ms = 15_000)
             p.esperar("Oura quedó conectado") { p.existe(etiqueta("reloj-quitar-oura")) }
         } finally {
-            Telefono.shell("pm set-app-links-user-selection --user cur --package $paquete $elegidoAntes $dominio")
+            dejarComoEstaba()
         }
     }
 

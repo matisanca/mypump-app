@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -42,6 +45,9 @@ object ImagenesRemotas {
     /** La de siempre: por la red (para que las pruebas la vuelvan a poner). */
     @VisibleForTesting
     val porRed: suspend (String) -> ByteArray? = { descargar(it) }
+
+    /** Lo más que se espera una foto entera (ver [descargar]). */
+    private const val TOPE_DESCARGA_NS = 30_000_000_000L
 
     /** Hasta ~24 MB de fotos decodificadas. */
     private val memoria = object : LruCache<String, ImageBitmap>(24 * 1024 * 1024) {
@@ -86,6 +92,7 @@ object ImagenesRemotas {
 
     private suspend fun descargar(url: String): ByteArray? = withContext(Dispatchers.IO) {
         val conexion = URL(url).openConnection() as HttpURLConnection
+        val desde = System.nanoTime()
         try {
             conexion.connectTimeout = 15_000
             conexion.readTimeout = 20_000
@@ -100,6 +107,8 @@ object ImagenesRemotas {
                     total += n
                     // Una foto del catálogo pesa decenas de KB: lo que pase de 8 MB no es una foto que sirva acá.
                     if (total > 8 * 1024 * 1024) return@withContext null
+                    // Cada lectura tiene su tope, pero una que llega de a gotas no terminaba nunca: con todo, 30 s.
+                    if (System.nanoTime() - desde > TOPE_DESCARGA_NS) return@withContext null
                     salida.write(buffer, 0, n)
                 }
                 salida.toByteArray()
@@ -124,16 +133,33 @@ object ImagenesRemotas {
 /**
  * Una foto de internet que llena su lugar (recortada al centro), con [marcador] mientras carga o si no se pudo.
  * [lado] es el lado mayor con el que se va a ver (para no decodificar una foto más grande que su lugar).
+ *
+ * Con [mientrasCarga] (una ruedita), eso se ve SOLO mientras se baja, y si no se pudo queda el [marcador]. La galería de
+ * fotos de Revisión usaba la ruedita como marcador: con una foto que no se podía traer (sin señal, la URL firmada vencida,
+ * una foto rota) quedaba girando para siempre, una espera sin fin (en Android 9 hasta colgaba las pruebas; 15-oct).
  */
 @Composable
-fun ImagenRemota(url: String?, lado: Dp, modifier: Modifier = Modifier, marcador: @Composable () -> Unit) {
+fun ImagenRemota(
+    url: String?,
+    lado: Dp,
+    modifier: Modifier = Modifier,
+    mientrasCarga: (@Composable () -> Unit)? = null,
+    marcador: @Composable () -> Unit,
+) {
     val px = with(LocalDensity.current) { lado.roundToPx() }
+    // Si ya terminó de cargar ESTA foto, con o sin ella.
+    var termino by remember(url, px) { mutableStateOf(false) }
     val imagen by produceState(initialValue = url?.let { ImagenesRemotas.enMemoria(it, px) }, url, px) {
         if (value == null && url != null) value = ImagenesRemotas.cargar(url, px)
+        termino = true
     }
     Crossfade(targetState = imagen, animationSpec = tween(250), modifier = modifier, label = "foto") { i ->
         Box(Modifier.fillMaxSize()) {
-            if (i != null) Image(i, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else marcador()
+            when {
+                i != null -> Image(i, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                url != null && !termino && mientrasCarga != null -> mientrasCarga()
+                else -> marcador()
+            }
         }
     }
 }
