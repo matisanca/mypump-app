@@ -4,7 +4,8 @@ import XCTest
 /// (adjuntas al resultado). No afirma nada: es para mirar. Encontró el 15-oct el total de Dieta ilegible, «Check de la
 /// semana» pisado por «Enviado» y el peso en «8… kg». Corre solo con `TEST_RUNNER_MYPUMP_BARRIDO=1`:
 /// `TEST_RUNNER_MYPUMP_BARRIDO=1 scripts/nativa/probar-ui.sh <udid> real -only-testing:MyPumpUITests/BarridoLetraGrandeUITests`
-/// y después `xcrun xcresulttool export attachments`.
+/// y después `xcrun xcresulttool export attachments`. Con `TEST_RUNNER_MYPUMP_BARRIDO_LETRA=normal` va con la letra de
+/// siempre, para ponerlo al lado de la web.
 @MainActor
 final class BarridoLetraGrandeUITests: XCTestCase {
     private var app = XCUIApplication()
@@ -15,8 +16,10 @@ final class BarridoLetraGrandeUITests: XCTestCase {
         guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else {
             throw XCTSkip("Falta MYPUMP_TOKEN: usa una cuenta de prueba, nunca un cliente.")
         }
-        app.launchArguments = ["-token", token, "-sinOnboarding", "YES",
-                               "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launchArguments = ["-token", token, "-sinOnboarding", "YES"]
+        if ProcessInfo.processInfo.environment["MYPUMP_BARRIDO_LETRA"] != "normal" {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
     }
 
     private func captura(_ nombre: String) {
