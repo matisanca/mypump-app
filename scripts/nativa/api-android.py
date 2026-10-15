@@ -14,6 +14,7 @@ Uso: scripts/nativa/api-android.py [minSdk]   (compila antes con Gradle, sin red
 """
 import os
 import re
+import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -22,24 +23,62 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
 ANDROID = RAIZ / "apps" / "android"
-SDK = Path(os.environ.get("ANDROID_HOME", Path.home() / "Library/Android/sdk"))
-JAVA_HOME = os.environ.get("JAVA_HOME", "/opt/homebrew/opt/openjdk@21")
+
+
+def buscar_sdk():
+    """El SDK de Android: ANDROID_HOME, ANDROID_SDK_ROOT (Codemagic) o el de la Mac."""
+    candidatos = [os.environ.get("ANDROID_HOME"), os.environ.get("ANDROID_SDK_ROOT"), str(Path.home() / "Library/Android/sdk")]
+    for c in candidatos:
+        if c and list(Path(c).glob("platforms/android-*/data/api-versions.xml")):
+            return Path(c)
+    sys.exit("✗ no encontré api-versions.xml en ningún SDK: " + ", ".join(str(c) for c in candidatos if c))
+
+
+def buscar_java():
+    """Un JDK con javap: JAVA_HOME si existe, el que da java_home (macOS), el de Homebrew o el del PATH. En Codemagic
+    JAVA_HOME puede no estar y el de Homebrew no existe: con eso el primer intento falló en 5 segundos (15-oct)."""
+    candidatos = [os.environ.get("JAVA_HOME")]
+    for args in (["/usr/libexec/java_home", "-v", "21"], ["/usr/libexec/java_home"]):
+        try:
+            candidatos.append(subprocess.run(args, capture_output=True, text=True).stdout.strip())
+        except OSError:
+            pass
+    candidatos.append("/opt/homebrew/opt/openjdk@21")
+    for c in candidatos:
+        if c and (Path(c) / "bin" / "javap").exists():
+            return c
+    javap = shutil.which("javap")
+    if javap:
+        return str(Path(javap).resolve().parent.parent)
+    sys.exit("✗ no encontré javap (probé " + ", ".join(c for c in candidatos if c) + " y el PATH)")
+
+
+SDK = buscar_sdk()
+JAVA_HOME = buscar_java()
 PREFIJOS = ("java/", "javax/", "android/", "org/json/")
 REF = re.compile(r"// (Method|InterfaceMethod|Field|class) ([\w/$]+)(?:\.(\"?[\w$<>]+\"?):(\S+))?")
+
+
+def version(texto, defecto=0.0):
+    """«36», «36.1» (las versiones menores desde Android 16) o «36:1» como número: 36.0, 36.1. Un SDK con una plataforma
+    menor trae «since="36.1"» y un int() ahí rompía el chequeo."""
+    m = re.match(r"(\d+)(?:[.:](\d+))?", str(texto or ""))
+    return float(f"{m.group(1)}.{m.group(2) or 0}") if m else defecto
 
 
 def cargar_apis():
     """{clase: (since, padres, {metodo: since}, {campo: since})} del api-versions.xml más nuevo del SDK."""
     plataformas = sorted(SDK.glob("platforms/android-*/data/api-versions.xml"),
-                         key=lambda p: int(re.sub(r"\D", "", p.parts[-3]) or 0))
+                         key=lambda p: version(p.parts[-3].removeprefix("android-")))
     if not plataformas:
         sys.exit("✗ no encontré api-versions.xml en el SDK")
+    print(f"api-versions de {plataformas[-1].parts[-3]}")
     apis = {}
     for c in ET.parse(plataformas[-1]).getroot().iter("class"):
-        since = int(c.get("since", "1"))
+        since = version(c.get("since"), 1.0)
         padres = [e.get("name") for e in c if e.tag in ("extends", "implements")]
-        metodos = {m.get("name"): int(m.get("since", since)) for m in c.iter("method")}
-        campos = {f.get("name"): int(f.get("since", since)) for f in c.iter("field")}
+        metodos = {m.get("name"): version(m.get("since"), since) for m in c.iter("method")}
+        campos = {f.get("name"): version(f.get("since"), since) for f in c.iter("field")}
         apis[c.get("name")] = (since, padres, metodos, campos)
     return apis
 
@@ -98,13 +137,16 @@ def referencias(classpath, nombres):
 
 def main():
     min_sdk = int(sys.argv[1]) if len(sys.argv) > 1 else 26
+    print(f"SDK {SDK} · JDK {JAVA_HOME}")
     env = dict(os.environ, JAVA_HOME=JAVA_HOME, ANDROID_HOME=str(SDK))
-    r = subprocess.run(["./gradlew", "--offline", "-q", ":core:modelos:jar", ":core:reglas:jar", ":core:datos:jar"],
+    r = subprocess.run(["./gradlew", "-q", ":core:modelos:jar", ":core:reglas:jar", ":core:datos:jar"],
                        cwd=ANDROID, env=env, capture_output=True, text=True)
     if r.returncode != 0:
-        print(r.stdout[-2000:], r.stderr[-2000:])
+        print(r.stdout[-3000:], r.stderr[-3000:])
         sys.exit("✗ no compiló")
     origenes = sorted(ANDROID.glob("core/*/build/libs/*.jar"))
+    if len(origenes) < 3:
+        sys.exit(f"✗ faltan los jars de :core: {[str(o) for o in origenes]}")
     apis = cargar_apis()
     malos = {}
     total = 0
@@ -123,7 +165,7 @@ def main():
         print("✓ nada más nuevo que el minSdk")
         return 0
     for (clase, miembro, s), usos in sorted(malos.items(), key=lambda x: -x[0][2]):
-        print(f"✗ API {s}: {clase}{'.' + miembro if miembro else ''}")
+        print(f"✗ API {s:g}: {clase}{'.' + miembro if miembro else ''}")
         for u in sorted(usos)[:5]:
             print(f"     usado en {u}")
     return 1
