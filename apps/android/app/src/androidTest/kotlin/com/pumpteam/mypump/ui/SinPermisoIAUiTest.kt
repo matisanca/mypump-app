@@ -1,13 +1,6 @@
 package com.pumpteam.mypump.ui
 
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.pumpteam.mypump.MainActivity
-import com.pumpteam.mypump.ModeloAppViewModel
-import com.pumpteam.mypump.datos.ModeloApp
-import kotlinx.coroutines.launch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -44,32 +37,25 @@ class SinPermisoIAUiTest : PruebaUi() {
     }
 
     /**
-     * Android todavía no tiene la pantalla del chat: con Chat a la vista, el mensaje sale como lo va a mandar ella
-     * (`ModeloChat.enviar` en el alcance de la app). Cuando esté, esto pasa a escribir y tocar Enviar. Una hoja o un
-     * diálogo es otra ventana de Compose: no tiene que aparecer ninguna.
+     * El primer mensaje del chat, como lo manda el cliente: escribirlo y tocar Enviar. Sale por la cola sin preguntar nada.
+     * Una hoja o un diálogo es otra ventana de Compose: no tiene que aparecer ninguna.
      */
     @Test
     fun mandarUnMensajeDelChatNoAbreNingunaHoja() {
         guardarCuenta()
-        val e = abrir()
+        abrir()
         p.tocar(etiqueta("pestana-chat"))
         p.esperar("Chat a la vista") { p.seleccionado(etiqueta("pestana-chat")) }
-        val (vm, m) = modeloDe(e)
+        p.nodo(etiqueta("chat-campo"))
         val ventanas = p.enPrincipal { Raices.activas().size }
-        p.enPrincipal { vm.viewModelScope.launch { m.chat.value!!.enviar(MENSAJE) } }
+        p.escribir(etiqueta("chat-campo"), MENSAJE)
+        p.tocar(etiqueta("chat-enviar"))
         p.esperar("el mensaje salió") { servidor.a("mypump_agregar_comentario").any { MENSAJE in it } }
+        p.nodo(texto("Vos: $MENSAJE"))
         p.quieto(600)
         assertEquals("se abrió otra ventana (una hoja o un diálogo)", ventanas, p.enPrincipal { Raices.activas().size })
         assertFalse(p.existe(textoQueContiene("asistente de IA")))
         assertTrue("${servidor.llamadas.map { it.funcion }}", servidor.llamadas.none { "consentimiento" in it.funcion })
-    }
-
-    /** El ViewModel de la app abierta y su modelo, con la cuenta ya cargada. */
-    private fun modeloDe(e: ActivityScenario<MainActivity>): Pair<ModeloAppViewModel, ModeloApp> {
-        var vm: ModeloAppViewModel? = null
-        e.onActivity { a -> vm = ViewModelProvider(a)[ModeloAppViewModel::class.java] }
-        val v = vm!!
-        return v to p.esperar("la cuenta cargó") { v.modelo.value?.takeIf { it.fase.value == ModeloApp.Fase.LISTO } }
     }
 
     private companion object {
