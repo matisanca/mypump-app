@@ -90,8 +90,9 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 
 La interfaz cambió entera, así que van capturas nuevas de 6,9" y 13", nunca de un cliente. Las sube Mati.
 
-- **Las vigentes son del 15-oct a las 02:36**, con la app del TestFlight 104 (Mis datos sin IA ni recordatorios, la pista
-  de la última vez como botón): `nativa-evidencia/tienda/20261015-023657`. Las del 14-oct quedaron viejas.
+- **Las vigentes son del 15-oct a las 11:45**, con la app del TestFlight 110: el contraste de la auditoría de
+  accesibilidad, Mis datos sin IA ni recordatorios y la pista de la última vez como botón. Están en
+  `nativa-evidencia/tienda/20261015-114457`. Las de las 02:36 y las del 14-oct quedaron viejas.
 - `scripts/nativa/capturas-tienda-ios.sh` saca 20 capturas en los simuladores "Tienda 6,9" (iPhone 17 Pro Max, 1320×2868)
   y "Tienda 13" (iPad Pro 13" M5, 2064×2752), en claro y oscuro, con la barra a las 9:41 (con
   `APP=…/dd/mypump/Build/Products/Debug-iphonesimulator/MyPump.app`, la del último XCUITest).
@@ -153,6 +154,39 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
    fallidos (`scripts/nativa/beta_diario.py`). El porcentaje se puede frenar, pero no volver atrás.
 5. **Permisos que la app NO pide**, por si Play pregunta: alarmas exactas, servicios en primer plano, leer salud en
    segundo plano y escritura de salud. Las notificaciones (Android 13+) se piden en la hoja de la primera vez.
+
+## Orden del lanzamiento (quién hace qué)
+
+**Antes de enviar, en el iPhone de Mati con el TestFlight 110** (unos 15 minutos):
+1. Tocar su link de MyPump desde WhatsApp: abre la app y entra solo (ACC-01/09).
+2. Conectar Salud de Apple desde Revisión → Mis datos y ver que lleguen sus datos (SAL-13).
+3. Que le llegue un mensaje real de chat y que tocar el aviso abra el Chat.
+
+**App Store (iPhone):**
+1. Esperar que Apple publique la 1.0.12: es la última para iOS 15 y 16. Se mira con
+   `curl -s "https://itunes.apple.com/lookup?bundleId=com.pumpteam.mypump&country=ar"`.
+2. Mati, en App Store Connect:
+   - la versión 2.0.0 con el build del TestFlight;
+   - las capturas nuevas;
+   - las notas de arriba;
+   - «Other Diagnostic Data» en la etiqueta de privacidad.
+3. G7: con el OK concreto de Mati, se envía con lanzamiento escalonado de 7 días. Nunca con
+   `cancel_previous_submissions`.
+
+**Google Play (Android):**
+1. El AAB `nand-2.0.0-101`, del artefacto de Codemagic, se sube a mano a la prueba interna.
+   - Así se verifica la firma de Play.
+   - Con eso se cierra ACC-01 de Android: `pm get-app-links` con la app de Play.
+2. En Play Console:
+   - Data safety;
+   - la declaración de Health Connect corregida;
+   - las capturas de `tienda-android/20261015-053511`.
+3. G7: producción por porcentaje, 10 % → 50 % → 100 %, mirando cada día los recibos de la migración.
+
+**Lo que queda esperando un OK de Mati**, que no frena el envío:
+- mini-vision: `gpt-5.6-sol` en `~/.codex/config.toml` de la Mini. Con eso se prueban DIE-14/15 con la IA real.
+- El push real de Android de punta a punta: un mensaje de Mati en el chat de `test-nativa-android`.
+- La web también pierde fotos con la Mini caída (`flushFotos`). Es de `public/`.
 
 ## Plan B: volver a la Capacitor si la 2.0.0 sale mal
 
