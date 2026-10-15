@@ -163,14 +163,30 @@ android {
         targetSdk = 36
         // La Capacitor publicada es 18 / 1.0.12. La nativa arranca en 100 / 2.0.0: un versionCode no se puede reusar
         // en Play, y el salto deja lugar a arreglos de la 1.0.x mientras la 2.0.0 está en prueba.
-        versionCode = 100
-        versionName = "2.0.0"
+        // El flujo android-nativa de Codemagic los pasa desde el tag (nand-<versión>-<versionCode>); local quedan estos.
+        versionCode = (findProperty("mypump.versionCode") as String?)?.toInt() ?: 100
+        versionName = (findProperty("mypump.versionName") as String?) ?: "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // La firma de subida a Play (`mypump-upload`, la misma de la Capacitor): Codemagic deja el keystore y sus claves en
+    // las variables CM_*. Sin ellas (local) el release sale sin firmar, que alcanza para compilarlo y revisarlo.
+    val keystoreCodemagic = System.getenv("CM_KEYSTORE_PATH")
+    signingConfigs {
+        create("release") {
+            if (keystoreCodemagic != null) {
+                storeFile = file(keystoreCodemagic)
+                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CM_KEY_ALIAS")
+                keyPassword = System.getenv("CM_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (keystoreCodemagic != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
         }
     }
@@ -263,6 +279,11 @@ kotlin {
 }
 
 dependencies {
+    // La versión de androidx.fragment que trae Firebase es la 1.1.0, vieja para las APIs de resultados que usa la app
+    // (permisos de notificaciones y de Health Connect): se sube sin sumarla como dependencia.
+    constraints {
+        implementation(libs.androidx.fragment) { because("play-services-basement trae la 1.1.0 y lint frena el release") }
+    }
     implementation(project(":core:datos"))
 
     implementation(platform(libs.compose.bom))

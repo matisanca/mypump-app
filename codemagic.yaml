@@ -542,3 +542,96 @@ workflows:
     #     # Cuando esté probado se promueve a producción desde la consola.
     #     track: internal
     #     submit_as_draft: true
+
+  # ── La app NATIVA de Android (apps/android, Kotlin + Compose) ──
+  # Tag nand-<versión>-<versionCode> (ej. nand-2.0.0-101) sobre un commit de la rama nativa. Arma el AAB firmado con
+  # la misma clave de subida que la Capacitor (mypump-upload), así Play lo toma como update de com.pumpteam.mypump.
+  # No publica: no hay cuenta de servicio de Google Cloud, el AAB queda como artefacto y se sube a mano (igual que
+  # android-play). Los versionCode nativos van de 100 en adelante (la Capacitor publicada es el 18).
+  android-nativa:
+    name: MyPump Android nativa → AAB para Play (se sube a mano)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'nand-*'
+          include: true
+    environment:
+      java: 21
+      android_signing:
+        - mypump-upload
+      vars:
+        PACKAGE_NAME: "com.pumpteam.mypump"
+    scripts:
+      - name: Versión y versionCode desde el tag
+        script: |
+          set -e
+          TAG="${CM_TAG:?este workflow corre solo por tag}"
+          RESTO="${TAG#nand-}"
+          VERSION="${RESTO%-*}"
+          CODIGO="${RESTO##*-}"
+          case "$CODIGO" in (*[!0-9]*|'') echo "✗ el tag tiene que ser nand-<versión>-<versionCode> (ej. nand-2.0.0-101)"; exit 1;; esac
+          if [ "$CODIGO" -lt 100 ]; then echo "✗ los versionCode nativos van de 100 en adelante (la Capacitor publicada es el 18)"; exit 1; fi
+          echo "VERSION=$VERSION" >> "$CM_ENV"
+          echo "CODIGO=$CODIGO" >> "$CM_ENV"
+          echo "→ $VERSION ($CODIGO)"
+
+      - name: Pruebas en la JVM
+        # Las de :core y las de la traducción de Health Connect. Las integraciones contra el backend real se saltean
+        # solas sin el registro privado de las cuentas de prueba (no está en la nube).
+        script: |
+          set -e
+          cd apps/android
+          ./gradlew test
+
+      - name: Compilar AAB y APK firmados
+        # bundleRelease corre además verificarPermisosSaludRelease: frena el build si el manifest MERGEADO trae un
+        # permiso de escritura de salud o pide leer en segundo plano.
+        script: |
+          set -e
+          cd apps/android
+          ./gradlew :app:bundleRelease :app:assembleRelease -Pmypump.versionCode="$CODIGO" -Pmypump.versionName="$VERSION"
+
+      - name: Verificar lo que se sube (versión, firma, permisos, 16 KB)
+        script: |
+          set -e
+          BT="$ANDROID_SDK_ROOT/build-tools/$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)"
+          APK=$(find apps/android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          AAB=$(find apps/android/app/build/outputs/bundle/release -name "*.aab" | head -1)
+          [ -n "$APK" ] && [ -n "$AAB" ] || { echo "✗ falta el APK o el AAB"; exit 1; }
+          "$BT/aapt2" dump badging "$APK" | grep -E "^package"
+          "$BT/aapt2" dump badging "$APK" | grep -q "versionCode='$CODIGO'" || { echo "✗ el versionCode no es $CODIGO"; exit 1; }
+          echo "→ la firma (tiene que ser la de subida de la Capacitor):"
+          "$BT/apksigner" verify --print-certs "$APK" | grep -E "SHA-256|DN"
+          jarsigner -verify "$AAB" >/dev/null && echo "✓ el AAB está firmado"
+          echo "→ permisos:"
+          "$BT/aapt2" dump permissions "$APK"
+          if "$BT/aapt2" dump permissions "$APK" | grep -q "health.WRITE_\|READ_HEALTH_DATA_IN_BACKGROUND\|SCHEDULE_EXACT_ALARM\|USE_EXACT_ALARM"; then
+            echo "✗ un permiso que la app no tiene que pedir"; exit 1
+          fi
+          # Play exige librerías nativas alineadas a 16 KB (Android 15+): en el zip y en los segmentos del ELF.
+          "$BT/zipalign" -c -P 16 -v 4 "$APK" | grep "\.so" || true
+          "$BT/zipalign" -c -P 16 4 "$APK" && echo "✓ zip alineado a 16 KB"
+          mkdir -p /tmp/so && unzip -o -q "$APK" 'lib/*' -d /tmp/so
+          python3 - <<'PY'
+          import struct, glob, sys
+          malos = []
+          for f in glob.glob('/tmp/so/lib/*/*.so'):
+              d = open(f, 'rb').read()
+              e = '<' if d[5] == 1 else '>'
+              if d[4] == 2:
+                  off, = struct.unpack_from(e + 'Q', d, 0x20); tam, n = struct.unpack_from(e + 'HH', d, 0x36); pos, fmt = 0x30, 'Q'
+              else:
+                  off, = struct.unpack_from(e + 'I', d, 0x1c); tam, n = struct.unpack_from(e + 'HH', d, 0x2a); pos, fmt = 0x1c, 'I'
+              for i in range(n):
+                  if struct.unpack_from(e + 'I', d, off + i * tam)[0] == 1 and struct.unpack_from(e + fmt, d, off + i * tam + pos)[0] < 16384:
+                      malos.append(f)
+          print('✗ sin 16 KB: ' + ', '.join(sorted(set(malos))) if malos else '✓ las librerías nativas van alineadas a 16 KB')
+          sys.exit(1 if malos else 0)
+          PY
+
+    artifacts:
+      - apps/android/app/build/outputs/**/*.aab
+      - apps/android/app/build/outputs/**/*.apk
