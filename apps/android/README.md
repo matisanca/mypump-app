@@ -184,6 +184,11 @@ la pantalla no tiene reglas propias, salvo el puente con el motor (`MotorSustitu
   prueba y guarda comidas libres, alimentos propios y reemplazos mientras dura (así reabrir la app los vuelve a traer);
   `CamaraDePrueba` es el monitor de la cámara y la galería de Revisión. Lo de abajo de la lista se alcanza con
   `ScrollToIndex` de la semántica: la lista precompone lo que sigue sin ubicarlo, y medir posiciones engaña.
+- **Contra la base real** (`test-nativa-android`, 15-oct, a mano por adb): la mano, reemplazar (56 opciones para la
+  pechuga) y volver al del plan, y una comida libre a mano registrada y borrada; al reabrir no quedó nada. La lectura de
+  una etiqueta con la IA de verdad (una sola vez, por el cupo) volvió con error a los 18 s ("servicio no disponible": la
+  respuesta no traía `error`, así que no la armó mini-vision) y la pantalla lo dijo como corresponde. Falta verla andar
+  con la IA, y la foto del plato.
 
 ## Los avisos
 
