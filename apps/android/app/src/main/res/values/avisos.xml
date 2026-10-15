@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El tinte del ícono chico de los avisos: el esmeralda del ícono de la app (D6). El lima de la interfaz casi no se
+         lee sobre la bandeja blanca (por eso la Capacitor no declaraba color); el esmeralda sí, en claro y en oscuro. -->
+    <color name="aviso_acento">#10B981</color>
+</resources>

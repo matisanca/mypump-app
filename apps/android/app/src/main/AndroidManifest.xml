@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Avisos del coach y del fin del descanso (Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Avisos: volver a agendar el aviso del domingo después de un reinicio (las alarmas no lo sobreviven). Sin
+         SCHEDULE_EXACT_ALARM ni USE_EXACT_ALARM: las alarmas son inexactas a propósito (ver avisos/CentroAvisos). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Health Connect: lectura. -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
@@ -75,5 +78,47 @@
                 <data android:scheme="https" android:host="app.mypumpteam.com" />
             </intent-filter>
         </activity>
+
+        <!-- ── Avisos (NOT-01…08, D8): ver avisos/CentroAvisos. ── -->
+
+        <!-- El push de los mensajes de Mati (FCM): el token nuevo se registra y, con la app abierta, el aviso se publica. -->
+        <service
+            android:name=".avisos.ServicioPush"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Las alarmas del domingo y del fin del descanso, y lo que obliga a reagendar el domingo (reinicio, actualización,
+             zona y hora). MY_PACKAGE_REPLACED además se lleva lo que dejó la Capacitor. -->
+        <receiver
+            android:name=".avisos.ReceptorAvisos"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Con la app en segundo plano FCM muestra el aviso él solo: en el canal de los mensajes (CentroAvisos.CANAL_MENSAJES),
+             con el torso en blanco (sin esto usa el ícono de la app, que la barra de estado aplasta a un cuadrado blanco) y
+             el esmeralda del ícono. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="mypump_mensajes" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_mypump" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/aviso_acento" />
+        <!-- Sin token de FCM hasta que haga falta: la app lo pide con una cuenta y con permiso (nunca en la demo ni sin
+             cuenta), y ahí recién se habla con Firebase. -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
     </application>
 </manifest>

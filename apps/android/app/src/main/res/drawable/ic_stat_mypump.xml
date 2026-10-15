@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  El ícono chico de los avisos (NOT-07): el torso del ícono de la app (el dibujo de public/icons/logo.svg, que es el frente
+  del ícono adaptativo) en trazo blanco sobre transparente. La barra de estado usa solo la transparencia: un ícono a color
+  y opaco sale como un cuadrado blanco. Va recortado a la figura (sin el margen de la zona segura del ícono adaptativo, que
+  lo dejaba diminuto) y con el trazo un poco más grueso que en el ícono, para que se lea a 24 dp.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="340"
+    android:viewportHeight="340">
+
+    <group
+        android:translateX="-86"
+        android:translateY="-125">
+
+        <!-- El contorno: hombros, brazos, cintura y la V de abajo. -->
+        <path
+            android:pathData="M110,195 C130,165 175,145 210,150 L256,178 L302,150 C337,145 382,165 402,195 L402,250 C395,270 380,280 365,282 L350,282 L340,320 L350,360 L332,405 L296,432 L256,442 L216,432 L180,405 L162,360 L172,320 L162,282 L147,282 C132,280 117,270 110,250 Z"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:strokeWidth="20" />
+
+        <!-- Los pectorales. -->
+        <path
+            android:pathData="M210,195 C195,215 195,245 220,265 L250,275 M302,195 C317,215 317,245 292,265 L262,275"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:strokeWidth="20" />
+
+        <!-- La línea del medio y los abdominales. -->
+        <path
+            android:pathData="M256,282 L256,405 M200,312 L312,312 M195,348 L317,348 M190,385 L322,385"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:strokeWidth="20" />
+    </group>
+</vector>
