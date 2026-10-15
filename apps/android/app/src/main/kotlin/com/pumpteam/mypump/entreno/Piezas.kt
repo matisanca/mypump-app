@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.ImagenRemota
+import com.pumpteam.mypump.diseno.Inter
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Radio
@@ -82,9 +83,9 @@ object Letras {
     val subtitulo: TextStyle
         @Composable @ReadOnlyComposable get() = MaterialTheme.typography.bodyMedium
     val titulo3: TextStyle
-        @Composable @ReadOnlyComposable get() = MaterialTheme.typography.titleLarge.copy(fontFamily = null, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 25.sp)
+        @Composable @ReadOnlyComposable get() = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 25.sp)
     val titulo2: TextStyle
-        @Composable @ReadOnlyComposable get() = MaterialTheme.typography.titleLarge.copy(fontFamily = null, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp)
+        @Composable @ReadOnlyComposable get() = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp)
     val cifras: TextStyle get() = TextStyle(fontFeatureSettings = CIFRAS)
 
     /** El título del día ("Tirón"), en Archivo como `Font.tituloDia`. */
@@ -210,7 +211,11 @@ fun Miniatura(url: String?, tipo: String?, lado: Dp, modifier: Modifier = Modifi
         ImagenRemota(url, lado, Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().background(c.campo), contentAlignment = Alignment.Center) {
                 Icon(
-                    if (tipo == "cardio") Iconos.Correr else Iconos.Pesa,
+                    when (tipo) {
+                        "cardio" -> Iconos.Correr
+                        "calentamiento" -> Iconos.Estirar
+                        else -> Iconos.Pesa
+                    },
                     contentDescription = null,
                     tint = c.textoTerciario,
                     modifier = Modifier.size(lado * 0.4f),

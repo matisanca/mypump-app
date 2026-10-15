@@ -65,6 +65,7 @@ import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.EncabezadoSeccion
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Formato
+import com.pumpteam.mypump.diseno.Inter
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Separador
@@ -169,7 +170,7 @@ fun PesoTarjeta(revision: ModeloRevision?, modifier: Modifier = Modifier) {
                     Text(media7?.let(PesoCorporal::kg) ?: "—", style = Numeros.grande, modifier = Modifier.testTag("media-7"))
                     Text(
                         "kg",
-                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = null),
+                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter),
                         fontWeight = FontWeight.SemiBold,
                         color = c.textoSecundario,
                         modifier = Modifier.padding(bottom = 3.dp),

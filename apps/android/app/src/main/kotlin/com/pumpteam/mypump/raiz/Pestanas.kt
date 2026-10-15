@@ -217,12 +217,12 @@ private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>) {
                             Badge(modifier = Modifier.semantics { contentDescription = "$n sin ver" }) { Text(if (n > 99) "99+" else "$n") }
                         }
                     },
-                ) { Icon(p.icono, contentDescription = null, tint = tono, modifier = Modifier.size(24.dp)) }
+                ) { Icon(p.icono, contentDescription = null, tint = tono, modifier = Modifier.size(28.dp)) }
                 // Con la letra más grande del sistema el nombre se cortaba ("Entre", "Revisi"): crece hasta un tope, como
                 // la barra de iOS, que no agranda sus rótulos.
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, minOf(d.fontScale, 1.2f))) {
-                    Text(p.titulo, color = tono, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                    Text(p.titulo, color = tono, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
                 }
             }
         }

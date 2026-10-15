@@ -66,10 +66,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.TarjetaProgreso
-import com.pumpteam.mypump.diseno.LocalRellenoInferior
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.Inter
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Tarjeta
@@ -156,12 +157,12 @@ private fun Encabezado(t: TarjetaProgreso, nombre: NombreEjercicio) {
                     Spacer(Modifier.width(6.dp))
                     Text(
                         "kg",
-                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = null, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
+                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
                         color = c.textoSecundario,
                         modifier = Modifier.alignByBaseline(),
                     )
                 } else {
-                    Text("Peso corporal", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = null, fontWeight = FontWeight.Bold, fontSize = 28.sp), color = c.texto)
+                    Text("Peso corporal", style = MaterialTheme.typography.headlineSmall.copy(fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 28.sp), color = c.texto)
                 }
             }
             if (r.esPR) InsigniaPR(accesible = false)

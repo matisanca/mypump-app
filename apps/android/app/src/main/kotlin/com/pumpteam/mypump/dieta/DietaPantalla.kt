@@ -342,11 +342,12 @@ private fun Cabecera(objetivo: Macros, elegidas: Macros, modifier: Modifier = Mo
         Triple("Grasas", objetivo.fat, kcalG / total) to c.grasa,
     )
     Tarjeta(modifier.testTag("dieta-cabecera"), espaciado = Espacio.m) {
-        // Anillo y macros lado a lado si entran; si no (pantallas angostas, letra grande), uno arriba del otro con los
-        // macros en tres columnas. El ancho que hace falta crece con la escala de la letra (el `ViewThatFits` de iOS).
+        // En el teléfono, el anillo arriba y los macros en tres cajas de color debajo, como en el iPhone: lado a lado salía
+        // en los teléfonos anchos y la cabecera no se parecía a la de iOS (15-oct). En la tablet, lado a lado si entra (el
+        // ancho que hace falta crece con la escala de la letra).
         val escala = LocalDensity.current.fontScale
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            if (maxWidth >= 320.dp * max(1f, escala)) {
+            if (maxWidth >= 520.dp * max(1f, escala)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
                     AnilloMacros(objetivo, macros.map { it.first.third to it.second })
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {

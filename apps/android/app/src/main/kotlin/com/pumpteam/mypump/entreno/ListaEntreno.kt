@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.entreno
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -7,14 +8,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -83,16 +86,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloEntreno
-import com.pumpteam.mypump.diseno.LocalRellenoInferior
-import com.pumpteam.mypump.diseno.BotonVolver
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.BotonSecundario
+import com.pumpteam.mypump.diseno.BotonVolver
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Separador
@@ -619,9 +623,24 @@ private fun BloqueEjercicios(
             b.ejercicios.forEachIndexed { j, e ->
                 // Tocar un ejercicio lo abre ahí mismo, como la card de la web (Mati, 15-oct); la página del ejercicio
                 // queda para la técnica y los comentarios ("Técnica y notas").
-                FilaEjercicio(motor, v, e, primerNumero + j)
-                AnimatedVisibility(visible = v.dia.expandido == e.id, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                    EjercicioEnLista(motor, v, e.id, preguntador, alAbrir, alCompletarDia)
+                val abierto = v.dia.expandido == e.id
+                val aLaVista = remember(e.id) { BringIntoViewRequester() }
+                var tamano by remember(e.id) { mutableStateOf(IntSize.Zero) }
+                val barra = with(LocalDensity.current) { LocalRellenoInferior.current.toPx() }
+                // Al abrirse (tocado, o el siguiente cuando se completa uno) la lista baja hasta él: abierto abajo de todo
+                // quedaba fuera de la pantalla. Si entra entero no se mueve; si no, queda arriba la fila con su nombre. Lo
+                // de abajo cuenta la barra de pestañas, que flota encima: si no, «Terminé este ejercicio» quedaba tapado.
+                LaunchedEffect(abierto) {
+                    if (abierto) {
+                        delay(320)   // lo que tarda en abrirse
+                        aLaVista.bringIntoView(Rect(0f, 0f, tamano.width.toFloat(), tamano.height + barra))
+                    }
+                }
+                Column(Modifier.onSizeChanged { tamano = it }.bringIntoViewRequester(aLaVista)) {
+                    FilaEjercicio(motor, v, e, primerNumero + j)
+                    AnimatedVisibility(visible = abierto, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                        EjercicioEnLista(motor, v, e.id, preguntador, alAbrir, alCompletarDia)
+                    }
                 }
                 if (j < total - 1) Separador(sangria = 90.dp)
             }

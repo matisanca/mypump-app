@@ -209,11 +209,23 @@ private fun archivo(peso: Int) = Font(R.font.archivo, FontWeight(peso), variatio
 
 val Archivo = FontFamily(archivo(500), archivo(600), archivo(700), archivo(800), archivo(900))
 
+/**
+ * Inter (OFL) para todo el texto que no es de la marca: la letra más parecida a SF Pro, la del iPhone, que Apple no deja
+ * usar fuera de sus equipos. Con Roboto, Android se veía de otra familia al lado del iPhone (Mati, 15-oct).
+ */
+val Inter = FontFamily(
+    Font(R.font.inter_400, FontWeight.W400),
+    Font(R.font.inter_500, FontWeight.W500),
+    Font(R.font.inter_600, FontWeight.W600),
+    Font(R.font.inter_700, FontWeight.W700),
+    Font(R.font.inter_800, FontWeight.W800),
+)
+
 private val base = Typography()
 
 /**
- * Los títulos grandes (la barra de cada pestaña, la marca) en Archivo; el texto corrido, los rótulos y los botones en la
- * letra del sistema, como iOS con SF Pro.
+ * Los títulos grandes (la barra de cada pestaña, la marca) en Archivo; el texto corrido, los rótulos y los botones en
+ * Inter, como iOS con SF Pro.
  */
 private val tipografia = Typography(
     displayLarge = base.displayLarge.copy(fontFamily = Archivo, fontWeight = FontWeight.W900, letterSpacing = (-0.02).em),
@@ -223,14 +235,14 @@ private val tipografia = Typography(
     headlineMedium = base.headlineMedium.copy(fontFamily = Archivo, fontWeight = FontWeight.W800, fontSize = 32.sp, lineHeight = 38.sp),
     headlineSmall = base.headlineSmall.copy(fontFamily = Archivo, fontWeight = FontWeight.W800),
     titleLarge = base.titleLarge.copy(fontFamily = Archivo, fontWeight = FontWeight.W700),
-    titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp),
-    titleSmall = base.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-    bodyLarge = base.bodyLarge.copy(fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
-    bodyMedium = base.bodyMedium.copy(fontSize = 15.sp, lineHeight = 20.sp, letterSpacing = 0.sp),
-    bodySmall = base.bodySmall.copy(fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.sp),
-    labelLarge = base.labelLarge.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
-    labelMedium = base.labelMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
-    labelSmall = base.labelSmall.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+    titleMedium = base.titleMedium.copy(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp),
+    titleSmall = base.titleSmall.copy(fontFamily = Inter, fontWeight = FontWeight.SemiBold),
+    bodyLarge = base.bodyLarge.copy(fontFamily = Inter, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+    bodyMedium = base.bodyMedium.copy(fontFamily = Inter, fontSize = 15.sp, lineHeight = 20.sp, letterSpacing = 0.sp),
+    bodySmall = base.bodySmall.copy(fontFamily = Inter, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.sp),
+    labelLarge = base.labelLarge.copy(fontFamily = Inter, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
+    labelMedium = base.labelMedium.copy(fontFamily = Inter, fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+    labelSmall = base.labelSmall.copy(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.Medium),
 )
 
 /** Los números en Archivo, como `Font.numero*` de iOS. */

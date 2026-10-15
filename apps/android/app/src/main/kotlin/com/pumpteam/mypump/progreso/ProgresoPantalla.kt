@@ -27,9 +27,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -58,18 +56,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloProgreso
 import com.pumpteam.mypump.datos.TarjetaProgreso
-import com.pumpteam.mypump.diseno.LocalRellenoInferior
-import com.pumpteam.mypump.diseno.sinAbajo
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.EncabezadoSeccion
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.EstadoVacio
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.Inter
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
 import com.pumpteam.mypump.diseno.MarcoPantalla
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Separador
+import com.pumpteam.mypump.diseno.sinAbajo
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.entreno.Dato
 import com.pumpteam.mypump.entreno.Letras
@@ -258,7 +257,7 @@ private fun FilaProgreso(t: TarjetaProgreso, alTocar: () -> Unit) {
                     if (conPeso) {
                         Text(
                             buildAnnotatedString {
-                                withStyle(SpanStyle(fontFamily = null, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = c.textoSecundario)) { append("Top") }
+                                withStyle(SpanStyle(fontFamily = Inter, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = c.textoSecundario)) { append("Top") }
                                 append(" ${VistaProgreso.kg(t.resumen.tope)} kg")
                             },
                             style = Numeros.chico.merge(Letras.cifras),
@@ -298,13 +297,14 @@ private fun FilaProgreso(t: TarjetaProgreso, alTocar: () -> Unit) {
 /** PRO-05: todavía no hay nada registrado (o es la demo, que como la web no tiene historial). */
 @Composable
 private fun SinHistorial(modelo: ModeloApp) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    // Centrado en lo que queda de la pantalla, con el gráfico de ejes (el `ContentUnavailableView` de iOS).
+    Column(Modifier.fillMaxSize()) {
         BannerRevision(modelo, Modifier.padding(horizontal = Espacio.m))
         EstadoVacio(
-            icono = Iconos.Tendencia,
+            icono = Iconos.Progreso,
             titulo = "Aún no hay historial",
             texto = "Aún no hay historial registrado. Empezá tu primera sesión para ver el progreso acá.",
-            modifier = Modifier.padding(top = 80.dp).testTag("progreso-vacio"),
+            modifier = Modifier.weight(1f).testTag("progreso-vacio"),
         )
     }
 }

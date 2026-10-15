@@ -44,8 +44,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -68,6 +68,7 @@ import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.EncabezadoSeccion
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.Inter
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Radio
@@ -89,8 +90,8 @@ import com.pumpteam.mypump.salud.CardSalud
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 /**
  * Mi Día (DIA-01…06, gemelo de `MiDia.swift`): la racha, cómo fue hoy (entrené/descansé/falté, los hábitos ✓/✗ y el
@@ -197,7 +198,7 @@ private fun TarjetaRacha(n: Int, ultimoDiaValido: String?) {
                 }
                 Text(
                     if (n == 1) "día" else "días",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = null),
+                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter),
                     fontWeight = FontWeight.SemiBold,
                     color = c.textoSecundario,
                     modifier = Modifier.padding(bottom = 8.dp),

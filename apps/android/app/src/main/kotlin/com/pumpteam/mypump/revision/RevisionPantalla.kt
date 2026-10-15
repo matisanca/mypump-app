@@ -2,7 +2,9 @@ package com.pumpteam.mypump.revision
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,11 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -34,26 +36,29 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
-import com.pumpteam.mypump.diseno.rellenoInferior
-import com.pumpteam.mypump.diseno.sinAbajo
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MarcoPantalla
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Radio
+import com.pumpteam.mypump.diseno.rellenoInferior
+import com.pumpteam.mypump.diseno.sinAbajo
+import com.pumpteam.mypump.diseno.vidrio
 import com.pumpteam.mypump.raiz.AnclaRevision
-import com.pumpteam.mypump.respaldo.OrigenRespaldo
-import com.pumpteam.mypump.respaldo.PieRespaldo
-import com.pumpteam.mypump.salud.CardSalud
-import com.pumpteam.mypump.salud.CardRecuperacion
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.PesoCorporal
+import com.pumpteam.mypump.respaldo.OrigenRespaldo
+import com.pumpteam.mypump.respaldo.PieRespaldo
+import com.pumpteam.mypump.salud.CardRecuperacion
+import com.pumpteam.mypump.salud.CardSalud
 import com.pumpteam.mypump.salud.PantallaSuperpuesta
 import com.pumpteam.mypump.salud.SaludDetallePantalla
 import java.time.DayOfWeek
@@ -104,9 +109,20 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
 
     MarcoPantalla(
         "Revisión",
+        subtitulo = semanaActual(),
         acciones = {
-            IconButton(onClick = alAbrirMisDatos, modifier = Modifier.testTag("mis-datos")) {
-                Icon(Iconos.Persona, contentDescription = "Mis datos", modifier = Modifier.size(28.dp))
+            // El círculo de vidrio de iOS 26 (el mismo de volver), no un ícono suelto.
+            Box(
+                Modifier
+                    .padding(end = Espacio.s)
+                    .size(44.dp)
+                    .vidrio(CircleShape, elevacion = 6.dp)
+                    .clickable(role = Role.Button, onClick = alAbrirMisDatos)
+                    .semantics { contentDescription = "Mis datos" }
+                    .testTag("mis-datos"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Iconos.Persona, contentDescription = null, tint = MyPump.colores.marcaTexto, modifier = Modifier.size(26.dp))
             }
         },
     ) { relleno ->
@@ -145,12 +161,6 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                        Text(
-                            semanaActual(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MyPump.colores.textoSecundario,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        )
                         AvisoPlanIncompleto(modelo)
                     }
                     FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))

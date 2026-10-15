@@ -273,7 +273,7 @@ fun EncabezadoSeccion(titulo: String, modifier: Modifier = Modifier, detalle: St
     Row(modifier = modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.Bottom) {
         Text(
             titulo,
-            style = MaterialTheme.typography.titleLarge.copy(fontFamily = null, fontWeight = FontWeight.Bold, fontSize = 20.sp),
+            style = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 20.sp),
             modifier = Modifier.weight(1f).semantics { heading() },
         )
         if (detalle != null) Text(detalle, style = MaterialTheme.typography.bodyMedium, color = MyPump.colores.textoSecundario)

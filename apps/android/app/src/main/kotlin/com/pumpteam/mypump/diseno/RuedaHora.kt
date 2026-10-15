@@ -72,7 +72,7 @@ fun RuedaHora(hora: Int, minuto: Int, alCambiar: (hora: Int, minuto: Int) -> Uni
     }
 }
 
-private val estiloNumero = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium)
+private val estiloNumero = TextStyle(fontFamily = Inter, fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Medium, fontFeatureSettings = "tnum")
 
 @Composable
 private fun Rueda(n: Int, valor: Int, alCambiar: (Int) -> Unit, descripcion: String, modifier: Modifier) {

@@ -65,6 +65,7 @@ import com.pumpteam.mypump.datos.ModeloEntreno
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.FormaMenu
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.Inter
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Segmentado
 import com.pumpteam.mypump.diseno.Tarjeta
@@ -313,7 +314,7 @@ private fun CampoSerie(
         enabled = !confirmada,
         singleLine = true,
         textStyle = MaterialTheme.typography.titleLarge.copy(
-            fontFamily = null,
+            fontFamily = Inter,
             fontWeight = FontWeight.SemiBold,
             fontSize = 20.sp,
             textAlign = TextAlign.Center,
@@ -343,7 +344,7 @@ private fun CampoSerie(
                 if (local.text.isEmpty()) {
                     Text(
                         sugerencia,
-                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = null, fontWeight = FontWeight.SemiBold, fontSize = 20.sp).merge(Letras.cifras),
+                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 20.sp).merge(Letras.cifras),
                         color = c.textoTerciario,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
@@ -382,7 +383,7 @@ private fun SelectorRir(rir: String, confirmada: Boolean, i: Int, modifier: Modi
         ) {
             Text(
                 rir.ifEmpty { "–" },
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = null, fontWeight = FontWeight.SemiBold, fontSize = 20.sp).merge(Letras.cifras),
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 20.sp).merge(Letras.cifras),
                 color = if (rir.isEmpty()) c.textoSecundario else c.texto,
             )
             Icon(Iconos.ArribaAbajo, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(12.dp))

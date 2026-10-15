@@ -1,17 +1,8 @@
 package com.pumpteam.mypump.diseno
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.Role
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,12 +12,16 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -37,8 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * El marco de cada pantalla: el título grande en Archivo que se achica al desplazar (el título grande de iOS, en su
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 fun MarcoPantalla(
     titulo: String,
     modifier: Modifier = Modifier,
+    subtitulo: String? = null,
     alVolver: (() -> Unit)? = null,
     acciones: @Composable RowScope.() -> Unit = {},
     contenido: @Composable (relleno: PaddingValues) -> Unit,
@@ -63,7 +65,26 @@ fun MarcoPantalla(
             // El título grande de iOS: la letra del sistema en negrita, 34; plegado, 17 como el título de la barra.
             MaterialTheme(typography = MaterialTheme.typography.copy(headlineMedium = TituloGrande, titleLarge = TituloBarra)) {
             LargeTopAppBar(
-                title = { Text(titulo, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = {
+                    // Expandido, el subtítulo va pegado abajo del título grande (el `navigationSubtitle` de iOS); plegado, solo
+                    // el título. Material pinta este mismo contenido en los dos lugares, cada uno con su estilo.
+                    val expandido = LocalTextStyle.current.fontSize == TituloGrande.fontSize
+                    if (subtitulo != null && expandido) {
+                        Column {
+                            Text(titulo, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                subtitulo,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = c.textoSecundario,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.testTag("subtitulo"),
+                            )
+                        }
+                    } else {
+                        Text(titulo, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                },
                 navigationIcon = { if (alVolver != null) BotonVolver(alVolver, Modifier.padding(start = Espacio.xs)) },
                 actions = acciones,
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -75,7 +96,7 @@ fun MarcoPantalla(
                 ),
                 // La de Material mide 152: con 136 el título sigue entrando y la fila de arriba (vacía si no hay acciones)
                 // no deja tanto hueco.
-                expandedHeight = 136.dp,
+                expandedHeight = if (subtitulo != null) 156.dp else 136.dp,
                 scrollBehavior = comportamiento,
             )
             }
@@ -108,7 +129,7 @@ fun PantallaConTitulo(
     desplazable: Boolean = false,
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
-    MarcoPantalla(titulo, modifier, alVolver, acciones) { relleno ->
+    MarcoPantalla(titulo, modifier, alVolver = alVolver, acciones = acciones) { relleno ->
         val dir = LocalLayoutDirection.current
         Column(
             modifier = Modifier
@@ -130,9 +151,9 @@ fun PantallaConTitulo(
     }
 }
 
-/** El título grande de iOS (34, negrita, la letra del sistema como SF Pro) y el de la barra plegada (17, semibold). */
-private val TituloGrande = TextStyle(fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 41.sp, letterSpacing = 0.sp)
-private val TituloBarra = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = 0.sp)
+/** El título grande de iOS (34, negrita, en Inter como SF Pro) y el de la barra plegada (17, semibold). */
+private val TituloGrande = TextStyle(fontFamily = Inter, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 41.sp, letterSpacing = (-0.4).sp)
+private val TituloBarra = TextStyle(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = 0.sp)
 
 /**
  * Volver, como en iOS 26: un círculo de vidrio de 44 con la flecha. Lo encuentran las pruebas y TalkBack ("Volver").

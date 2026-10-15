@@ -68,6 +68,7 @@ import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.diseno.Aviso
 import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.Inter
 import com.pumpteam.mypump.diseno.MarcaMyPump
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Tarjeta
@@ -174,7 +175,7 @@ fun AccesoPantalla(modelo: ModeloApp, alVerDemo: () -> Unit) {
                     )
                 }
                 Tarjeta(relleno = 20.dp, espaciado = 14.dp) {
-                    Text("Entrá con tu link", style = TextStyle(fontSize = 20.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold), color = c.texto)
+                    Text("Entrá con tu link", style = TextStyle(fontFamily = Inter, fontSize = 20.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold), color = c.texto)
                     Text(
                         "Abrí el link que te pasó Mati por WhatsApp. Si no se abre solo, copialo y pegalo acá.",
                         style = MaterialTheme.typography.bodyMedium,
