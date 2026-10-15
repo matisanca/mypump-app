@@ -397,6 +397,7 @@ private struct Cabecera: View {
     let objetivo: Macros
     let elegidas: Macros
     @Environment(\.dynamicTypeSize) private var tamañoLetra
+    @Environment(\.horizontalSizeClass) private var claseAncho
 
     var body: some View {
         let kcalP = (objetivo.prot ?? 0) * 4, kcalC = (objetivo.carb ?? 0) * 4, kcalG = (objetivo.fat ?? 0) * 9
@@ -419,30 +420,40 @@ private struct Cabecera: View {
         let macros = [("Proteínas", objetivo.prot, kcalP / total, Color.proteina), ("Carbos", objetivo.carb, kcalC / total, Color.carbohidrato),
                       ("Grasas", objetivo.fat, kcalG / total, Color.grasa)]
         VStack(alignment: .leading, spacing: 16) {
-            // Anillo y macros lado a lado si entran sin cortar; si no (pantallas angostas, letra grande), uno arriba
-            // del otro con los macros en tres columnas.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 20) {
-                    anillo
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(macros, id: \.0) { FilaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
-                    }
+            // En el teléfono, el anillo arriba y los macros en tres cajas de color debajo, en todos los tamaños: lado a lado
+            // salía solo en los anchos (el Pro Max, Android) y la cabecera cambiaba de un teléfono a otro (15-oct). En el
+            // iPad, lado a lado si entra.
+            let tresColumnas = VStack(spacing: 18) {
+                anillo
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
                 }
-                VStack(spacing: 18) {
-                    anillo
-                    HStack(alignment: .top, spacing: 10) {
-                        ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
-                    }
+            }
+            .frame(maxWidth: .infinity)
+            // Letra muy grande: ni las tres columnas entran (quedaban en "P…", "1…"). Van una debajo de la otra.
+            let unaDebajoDeOtra = VStack(spacing: 18) {
+                anillo
+                VStack(spacing: 10) {
+                    ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
                 }
-                .frame(maxWidth: .infinity)
-                // Letra muy grande: ni las tres columnas entran (quedaban en "P…", "1…"). Van una debajo de la otra.
-                VStack(spacing: 18) {
-                    anillo
-                    VStack(spacing: 10) {
-                        ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
+            }
+            .frame(maxWidth: .infinity)
+            if claseAncho == .regular {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 20) {
+                        anillo
+                        VStack(alignment: .leading, spacing: 12) {
+                            ForEach(macros, id: \.0) { FilaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
+                        }
                     }
+                    tresColumnas
+                    unaDebajoDeOtra
                 }
-                .frame(maxWidth: .infinity)
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    tresColumnas
+                    unaDebajoDeOtra
+                }
             }
             HStack(spacing: 8) {
                 Image(systemName: abs(delta) <= 5 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")

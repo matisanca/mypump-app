@@ -28,6 +28,8 @@ final class UltimaVezUITests: XCTestCase {
         }
         let hechas = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Serie' AND label CONTAINS 'hecha'"))
         let antes = hechas.count
+        // Al abrirse, la lista baja sola hasta el ejercicio: un toque mientras se mueve solo la frena.
+        RunLoop.current.run(until: Date().addingTimeInterval(1.2))
         for _ in 0..<4 where !pista.isHittable { app.swipeUp() }
         pista.tap()
         // Si el día estaba cerrado de una corrida anterior, pregunta si se reabre (SES-07).
@@ -50,13 +52,20 @@ final class UltimaVezUITests: XCTestCase {
         let fila = app.buttons["fila-ejercicio-1"]
         XCTAssertTrue(fila.waitForExistence(timeout: 25), "No apareció el primer ejercicio")
         for _ in 0..<8 where !fila.isHittable { app.swipeUp() }
-        fila.tap()
+        // Arriba de la fila: con un descanso corriendo (de la otra prueba), la isla de abajo tapa la parte de abajo.
+        let arriba = fila.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.2))
+        arriba.tap()
         let tecnica = app.buttons["tecnica-y-notas"]
+        // Si una corrida anterior lo dejó abierto (lo abierto se recuerda), el toque lo cerró: otro toque lo abre.
+        if !tecnica.waitForExistence(timeout: 3) {
+            for _ in 0..<4 where !fila.isHittable { app.swipeDown() }
+            fila.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.2)).tap()
+        }
         XCTAssertTrue(tecnica.waitForExistence(timeout: 6), "El ejercicio no se abrió en la lista")
         XCTAssertTrue(fila.exists, "La lista desapareció: se fue a otra página")
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "ejercicio-en-la-lista"; a.lifetime = .keepAlways; add(a)
         for _ in 0..<4 where !fila.isHittable { app.swipeDown() }
-        fila.tap()
+        fila.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.2)).tap()
         let cerrado = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: tecnica)
         wait(for: [cerrado], timeout: 6)
     }

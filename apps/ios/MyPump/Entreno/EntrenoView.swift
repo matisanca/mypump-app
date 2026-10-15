@@ -116,6 +116,7 @@ private struct ListaEntreno: View {
     }
 
     var body: some View {
+        ScrollViewReader { lector in
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
                 cabecera
@@ -139,6 +140,18 @@ private struct ListaEntreno: View {
             .padding(.top, Espacio.xs)
             .padding(.bottom, Espacio.xl)
             .anchoLectura()
+        }
+        // Al abrirse un ejercicio (tocado, o el siguiente cuando se completa uno) la lista lo trae a la vista: abierto abajo
+        // de todo quedaba fuera de la pantalla. Si entra entero no se mueve.
+        .onChange(of: motor.dia.expandido) { _, abierto in
+            guard let abierto else { return }
+            Task { @MainActor in
+                // Lo justo para que exista lo abierto: el desplazamiento usa el tamaño final aunque siga animando. Un toque en
+                // la lista mientras se mueve solo la frena; cuanto antes termine, menos toques se pierden.
+                try? await Task.sleep(for: .milliseconds(150))
+                withAnimation(.snappy) { lector.scrollTo("abierto-\(abierto)", anchor: nil) }
+            }
+        }
         }
         .scrollDismissesKeyboard(.interactively)
         // Como Dieta, la carga entera: trae la rutina si Mati la republicó (hallazgo 6).
@@ -595,6 +608,7 @@ private struct BloqueEjercicios: View {
                     if motor.dia.expandido == e.id {
                         EjercicioEnLista(motor: motor, lugar: e.id, alCompletarDia: alCompletarDia)
                             .transition(.opacity.combined(with: .move(edge: .top)))
+                            .id("abierto-\(e.id)")
                     }
                     if j < total - 1 {
                         Divider().padding(.leading, 90)
