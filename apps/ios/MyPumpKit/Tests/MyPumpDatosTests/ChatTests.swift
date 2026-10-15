@@ -178,6 +178,18 @@ struct ChatSinTraerTests {
         #expect(!chat.sinTraer && chat.hilo.mensajes.count == 1)
     }
 
+    /// Con el servicio caído (un 5xx) también se dice, pero no es «sin conexión».
+    @Test func elServicioCaidoNoEsSinRed() async {
+        let t = TransporteProgramado { _, _ in (503, #"{"message":"caído"}"#) }
+        let chat = ModeloChat(cliente: ClienteRPC(config: .produccion, transporte: t), token: "tok", outbox: nil)
+        await chat.cargar()
+        #expect(chat.sinTraer && !chat.sinTraerPorRed)
+        let sinRed = ModeloChat(cliente: ClienteRPC(config: .produccion, transporte: TransporteProgramado { _, _ in throw URLError(.notConnectedToInternet) }),
+                                token: "tok", outbox: nil)
+        await sinRed.cargar()
+        #expect(sinRed.sinTraer && sinRed.sinTraerPorRed)
+    }
+
     @Test func unHiloVacioDeVerdadNoEsSinTraer() async {
         let t = TransporteProgramado { _, _ in (200, "[]") }
         let chat = ModeloChat(cliente: ClienteRPC(config: .produccion, transporte: t), token: "tok", outbox: nil)

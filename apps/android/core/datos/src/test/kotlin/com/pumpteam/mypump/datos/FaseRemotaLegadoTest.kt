@@ -240,6 +240,35 @@ class FaseRemotaLegadoTest {
         }
     }
 
+    /**
+     * Revisión adversarial del 15-oct, hallazgo 2: la Fase R dejaba las fotos del token rotado en el ARCHIVO, por detrás del
+     * modelo de fotos vivo, que tiene su cola en memoria y lo pisa al guardar: se perdían.
+     */
+    @Test
+    fun lasFotosDelTokenRotadoVanAlModeloDeFotosVivo() = enUnHilo { alcance ->
+        val tel = Telefono()
+        val foto = "data:image/jpeg;base64,/9j/AAAA"
+        tel.lector.escribir(
+            mapOf(
+                "mypump_token" to tokenA, "mypump_outbox_$tokenB" to json(ValorJson.Lista(colaWeb(2, t0 = 50.0))),
+                "mypump_offline_$tokenB" to fotoOffline(rutinaR1),
+                "mypump_fotoq_$tokenB" to """{"2026-10-12|perfil":{"pose":"perfil","fecha":"2026-10-13","dataUrl":"$foto","intentos":0}}""",
+            ),
+        )
+        tel.faseL()
+        val cliente = ClienteRpc(transporte = servidorLegado(clientes = mapOf(tokenA to "c1", tokenB to "c1")))
+        tel.disco().guardar(
+            FotoPendiente.ARCHIVO,
+            ValorJson.objeto("2026-10-12|frente" to FotoPendiente("frente", "2026-10-14", foto, 0).aValor()),
+        )
+        val fotos = ModeloFotos(cliente, tokenA, tel.disco())
+        val r = FaseRemotaLegado.correr(tel.entorno, tokenA, "c1", cliente, cola(tel, cliente, alcance), recibos(tel), ahora = ahoraMig, zona = baires,
+                                        fotos = fotos)
+        assertEquals(2, r.reasignadas)
+        assertEquals(setOf("2026-10-12|frente", "2026-10-12|perfil"), fotos.pendientes.value.keys, "la foto del token rotado no llegó a la cola viva")
+        assertNotNull(tel.archivos.estado?.escritura?.borrar?.get("mypump_fotoq_$tokenB"))
+    }
+
     @Test
     fun sinRedQuedaPendienteYNoSeEscribeDeVuelta() = enUnHilo { alcance ->
         val tel = Telefono()

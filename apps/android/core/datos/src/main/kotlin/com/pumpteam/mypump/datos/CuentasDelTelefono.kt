@@ -5,6 +5,7 @@ import java.io.File
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 
 /**
  * Las carpetas de cuenta del teléfono ([Disco], una por token). Un link que Mati regeneró (`mypump_regenerar_token`) es
@@ -66,6 +67,37 @@ internal object CuentasDelTelefono {
         }
         return total
     }
+
+    /**
+     * Los mapas de reemplazos de comida sin decidir (sin la marca de migrados) de otras carpetas de la misma persona: pasan a
+     * esta sin pisar lo que ya tiene, y la vieja queda marcada para no volver a pasarlos. Devuelve si pasó alguno: la cola
+     * tiene que retener los reemplazos hasta decidir. Sin esto, un reemplazo que estaba solo en la carpeta del link viejo se
+     * perdía al cambiar de link antes de la primera carga con red (revisión adversarial del 15-oct, hallazgo 9; como iOS).
+     */
+    fun adoptarSwaps(clienteId: String, disco: Disco): Boolean {
+        if (clienteId.isEmpty()) return false
+        var paso = false
+        for (otra in otras(disco)) {
+            if (clienteId(otra) != clienteId) continue
+            for (n in otra.carpeta.list().orEmpty().filter { it.startsWith("swaps_") && it.endsWith(".json") }.sorted()) {
+                val dieta = n.removePrefix("swaps_").removeSuffix(".json")
+                // Si esta cuenta ya decidió esa dieta, lo de la vieja llega tarde: manda el servidor.
+                if (marcada(otra, dieta) || marcada(disco, dieta)) continue
+                val viejos = otra.leer(n) as? JsonObject ?: continue
+                val propios = disco.leer(n) as? JsonObject ?: JsonObject(emptyMap())
+                val faltan = viejos.filterKeys { it !in propios }
+                if (faltan.isEmpty()) continue
+                // Primero quedan en esta; recién después la vieja se marca.
+                if (disco.guardar(n, JsonObject(propios + faltan))) {
+                    paso = true
+                    otra.guardar("swaps_migrados_$dieta", JsonPrimitive(true))
+                }
+            }
+        }
+        return paso
+    }
+
+    private fun marcada(d: Disco, dieta: String): Boolean = (d.leer("swaps_migrados_$dieta") as? JsonPrimitive)?.booleanOrNull ?: false
 
     /**
      * Lo mismo con las fotos de progreso que no llegaron a subirse (con el token caído quedan guardadas): pasan a la cola de

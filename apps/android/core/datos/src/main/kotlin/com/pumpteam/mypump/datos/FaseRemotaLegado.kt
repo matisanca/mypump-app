@@ -176,6 +176,11 @@ object FaseRemotaLegado {
         app: String? = null,
         ahora: Instant = Instant.now(),
         zona: ZoneId = ZoneId.systemDefault(),
+        /**
+         * El modelo de fotos vivo de la cuenta. Las fotos estacionadas van a su cola en memoria: escritas al archivo por
+         * detrás, la cola lo pisaba al guardar y se perdían (revisión adversarial del 15-oct, hallazgo 2).
+         */
+        fotos: ModeloFotos? = null,
     ): Resultado {
         val r = Resultado()
         val a = ArchivosLegado(entorno.carpeta)
@@ -211,7 +216,7 @@ object FaseRemotaLegado {
             else -> {
                 r.swapsSinMigrar = n
                 // Decidido: los reemplazos de la cola vieja ya pueden salir (hasta acá los retenía la cola).
-                outbox.soltarSwapsLegados()
+                outbox.soltarSwaps()
             }
         }
 
@@ -276,19 +281,20 @@ object FaseRemotaLegado {
                 }
                 r.paraRevisar += ops.size
             }
-            if (p.fotos.isNotEmpty()) EjecutorLegado.sumarFotos(p.fotos, entorno.disco(token))
-            // Lo de un token rotado ya es de esta cuenta: la escritura de vuelta saca su cola (y la de fotos) de la Capacitor.
-            if (!p.propia) {
-                val borrar = buildMap {
-                    p.firma?.let { put(p.clave, it) }
-                    if (p.claveFotos != null && p.firmaFotos != null) put(p.claveFotos, p.firmaFotos)
-                }
-                if (borrar.isNotEmpty()) {
-                    val e = estado.escritura ?: EscrituraPendiente(corrida, emptyMap())
-                    estado = estado.copy(escritura = e.copy(borrar = e.borrar + borrar))
-                }
+            val fotosQuedaron = p.fotos.isEmpty() ||
+                (fotos?.adoptar(p.fotos) ?: EjecutorLegado.sumarFotos(p.fotos, entorno.disco(token)))
+            val borrar = buildMap {
+                // Lo de un token rotado ya es de esta cuenta: la escritura de vuelta saca su cola de la Capacitor.
+                if (!p.propia) p.firma?.let { put(p.clave, it) }
+                // Y su cola de fotos, solo si las fotos quedaron acá.
+                if (fotosQuedaron && p.claveFotos != null && p.firmaFotos != null) put(p.claveFotos, p.firmaFotos)
             }
-            resueltas += i
+            if (borrar.isNotEmpty()) {
+                val e = estado.escritura ?: EscrituraPendiente(corrida, emptyMap())
+                estado = estado.copy(escritura = e.copy(borrar = e.borrar + borrar))
+            }
+            // Las ops ya pasaron; si las fotos no quedaron, siguen estacionadas para el próximo intento.
+            if (fotosQuedaron) resueltas += i else pendientes[i] = p.copy(ops = emptyList())
         }
         val quedan = pendientes.filterIndexed { i, _ -> i !in resueltas }
         runCatching { a.guardarLibro(libro) }

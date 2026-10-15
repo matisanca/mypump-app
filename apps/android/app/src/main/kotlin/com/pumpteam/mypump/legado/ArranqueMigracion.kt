@@ -150,6 +150,7 @@ internal object ArranqueMigracion {
                 FaseRemotaLegado.correr(
                     entorno, token, info.clienteId, modelo.cliente, cola, ReciboEnServidor(modelo.cliente, recibos), ConteosRpc(modelo.cliente),
                     app = version(app),
+                    fotos = modelo.fotos.value,
                 )
             }
             if (r.corrio) {

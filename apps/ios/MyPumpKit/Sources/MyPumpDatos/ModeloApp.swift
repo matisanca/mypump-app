@@ -221,13 +221,28 @@ public final class ModeloApp {
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
     }
 
+    /// Hay un mapa de reemplazos de comida sin la marca de migrados: el servidor quizás nunca los vio y, hasta decidirlo, la
+    /// cola retiene los `swap` y `swap_del` (también los nativos).
+    static func faltaDecidirSwaps(en disco: Disco) -> Bool {
+        let nombres = (try? FileManager.default.contentsOfDirectory(atPath: disco.carpeta.path)) ?? []
+        return nombres.contains { n in
+            guard n.hasPrefix("swaps_"), n.hasSuffix(".json") else { return false }
+            let dieta = String(n.dropFirst("swaps_".count).dropLast(".json".count))
+            guard disco.leer(Bool.self, "swaps_migrados_\(dieta)") != true else { return false }
+            return !(disco.leer([String: SwapLocal].self, n) ?? [:]).isEmpty
+        }
+    }
+
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)
-        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true, retenerSwapsLegados: true) { op in await escrituras.ejecutar(op) }
+        let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true, retenerSwaps: Self.faltaDecidirSwaps(en: disco)) { op in
+            await escrituras.ejecutar(op)
+        }
+        UltimaCuenta.anotar(t)
         outbox = cola
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
@@ -315,6 +330,9 @@ public final class ModeloApp {
             let f = fotos
             CuentasDelTelefono.anotar(clienteId: id, en: d)
             await CuentasDelTelefono.adoptar(clienteId: id, en: d, cola: cola)
+            // Los reemplazos de comida que esa carpeta tenía sin decidir vienen con ellas: hasta decidir, la cola los retiene
+            // (sin esto, un reemplazo que estaba solo en la carpeta del link viejo se perdía; hallazgo 9).
+            if CuentasDelTelefono.adoptarSwaps(clienteId: id, en: d) { await cola.retenerSwapsHastaDecidir() }
             guard vigente() else { return }
             if let f { await CuentasDelTelefono.adoptarFotos(clienteId: id, en: d, fotos: f) }
             guard vigente() else { return }
@@ -345,9 +363,10 @@ public final class ModeloApp {
         }
         rutina = rutinaJSON.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(dietaJSON)
-        // El servidor dijo que no hay dieta: no hay reemplazos del teléfono que decidir y los de la cola vieja pueden salir.
-        // Si la dieta no llegó (red), siguen esperando.
-        if case .success = dd, dieta == nil { await outbox?.soltarSwapsLegados() }
+        // El servidor dijo que no hay dieta (ninguna fila): no hay reemplazos que decidir y pueden salir. Si no llegó (red) o
+        // llegó una que todavía no se puede usar (Mati la está armando), siguen esperando: soltarlos ahí perdía los que
+        // estaban solo en el teléfono cuando la dieta volvía a servir (revisión adversarial del 15-oct, hallazgo 4).
+        if case .success = dd, dietaJSON == nil { await outbox?.soltarSwaps() }
         if rutinaJSON != nil || dietaJSON != nil || copia != nil {
             disco?.guardar(CopiaOffline(info: primera, rutina: rutinaJSON, dieta: dietaJSON, ts: Date().timeIntervalSince1970 * 1000), "offline.json")
         }
@@ -708,8 +727,8 @@ public final class ModeloApp {
             if case .objeto(var o) = payload { o["dietaId"] = .texto(dieta.id); payload = .objeto(o) }
             await outbox.encolar(op.kind, payload, dedupeKey: op.clave)
         }
-        // Decidido con lo que tenía el servidor ANTES de los reemplazos de la cola vieja: ahora pueden salir.
-        await outbox.soltarSwapsLegados()
+        // Decidido con lo que tenía el servidor ANTES de los reemplazos retenidos: ahora pueden salir.
+        await outbox.soltarSwaps()
         if h.migrando {
             await outbox.drenar()
             let quedan = (await outbox.pendientesPorClave()).keys.contains { $0.hasPrefix("swap_\(dieta.id)_") }

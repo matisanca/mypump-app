@@ -349,6 +349,12 @@ class ModeloApp(
         _entreno.value = null
     }
 
+    /**
+     * Hay un mapa de reemplazos de comida sin la marca de migrados: el servidor quizás nunca los vio y, hasta decidirlo, la
+     * cola retiene los `swap` y `swap_del` (también los nativos).
+     */
+    internal fun faltaDecidirSwaps(d: Disco): Boolean = faltaDecidirSwapsEn(d)
+
     private fun prepararCuenta(t: String) {
         val d = Disco(raizDisco, t)
         disco = d
@@ -357,7 +363,8 @@ class ModeloApp(
         val escrituras = Escrituras(cliente, t, sesiones)
         outbox?.cerrar()
         // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
-        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true, retenerSwapsLegados = true) { op ->
+        UltimaCuenta.anotar(t, preferencias)
+        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true, retenerSwaps = faltaDecidirSwaps(d)) { op ->
             escrituras.ejecutar(op)
         }
         outbox = cola
@@ -480,6 +487,9 @@ class ModeloApp(
         if (discoCuenta != null && colaCuenta != null && !clienteId.isNullOrEmpty()) {
             CuentasDelTelefono.anotar(clienteId, discoCuenta)
             CuentasDelTelefono.adoptar(clienteId, discoCuenta, colaCuenta)
+            // Los reemplazos de comida que esa carpeta tenía sin decidir vienen con ellas: hasta decidir, la cola los retiene
+            // (sin esto, un reemplazo que estaba solo en la carpeta del link viejo se perdía; hallazgo 9).
+            if (CuentasDelTelefono.adoptarSwaps(clienteId, discoCuenta)) colaCuenta.retenerSwapsHastaDecidir()
             fotosCuenta?.let { f -> CuentasDelTelefono.adoptarFotos(clienteId, discoCuenta, f) }
             if (!vigente()) return
         }
@@ -517,7 +527,10 @@ class ModeloApp(
         _dieta.value = dietaNormalizada(dietaJson)
         // El servidor dijo que no hay dieta: no hay reemplazos del teléfono que decidir y los de la cola vieja pueden salir.
         // Si la dieta no llegó (red), siguen esperando.
-        if (dd is Resultado.Ok && _dieta.value == null) outbox?.soltarSwapsLegados()
+        // El servidor dijo que no hay dieta (ninguna fila): no hay reemplazos que decidir y pueden salir. Si no llegó (red) o llegó
+        // una que todavía no se puede usar (Mati la está armando), siguen esperando: soltarlos ahí perdía los que estaban solo
+        // en el teléfono cuando la dieta volvía a servir (revisión adversarial del 15-oct, hallazgo 4).
+        if (dd is Resultado.Ok && dietaJson == null) outbox?.soltarSwaps()
         if (rutinaJson != null || dietaJson != null || copia != null) {
             disco?.guardar(ARCHIVO_COPIA, CopiaOffline(primera, rutinaJson, dietaJson, System.currentTimeMillis().toDouble()).aValor())
         }
@@ -951,7 +964,7 @@ class ModeloApp(
             cola.encolar(op.kind, payload, op.clave)
         }
         // Decidido con lo que tenía el servidor ANTES de los reemplazos de la cola vieja: ahora pueden salir.
-        cola.soltarSwapsLegados()
+        cola.soltarSwaps()
         if (h.migrando) {
             cola.drenar()
             val quedan = cola.pendientesPorClave().keys.any { it.startsWith("swap_${dieta.id}_") }
@@ -979,6 +992,14 @@ class ModeloApp(
     }
 
     companion object {
+        /** Ver [faltaDecidirSwaps]. */
+        internal fun faltaDecidirSwapsEn(d: Disco): Boolean = d.carpeta.list().orEmpty().any { n ->
+            if (!n.startsWith("swaps_") || !n.endsWith(".json")) return@any false
+            val dieta = n.removePrefix("swaps_").removeSuffix(".json")
+            val marca = (d.leer("swaps_migrados_$dieta") as? JsonPrimitive)?.booleanOrNull ?: false
+            !marca && ((d.leer(n) as? JsonObject)?.isNotEmpty() ?: false)
+        }
+
         /**
          * El catálogo de ejercicios que trae la app (el de `apps/shared/catalogo-ejercicios.json`): lo pone la app al
          * arrancar. Se usa hasta que llega el del servidor, y para arrancar sin red si nunca llegó.

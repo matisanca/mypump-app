@@ -184,8 +184,18 @@ public enum EjecutorLegado {
     /// de Android, 15-oct). No hay un «salir» a la vista del cliente que esto deshaga.
     static func hayQueVolverAAdoptar(_ previo: EstadoMigracion, almacen: AlmacenToken, ajustes: UserDefaults) -> Bool {
         guard let legado = previo.anterior.tokenLegado, almacen.leer() == nil else { return false }
+        // Solo si la nativa anduvo con ESA cuenta (o con ninguna): si anduvo con otra, no se vuelve a la de la app vieja.
+        if let ultima = UltimaCuenta.hash(en: ajustes), ultima != legado { return false }
         guard let invalido = ajustes.string(forKey: "mypump_token_invalido") else { return true }
         return JSONLegado.sha256(invalido) != legado
+    }
+
+    /// El libro de las fotos que ya pasaron a la nativa: una repetición de la Fase L no las vuelve a poner en la cola (una
+    /// ya subida podía pisar en el servidor otra más nueva de la misma semana y pose; revisión adversarial, hallazgo 5).
+    static let archivoFotosImportadas = "fotos-importadas.json"
+
+    static func idFoto(_ clave: String, _ k: String, _ f: FotoPendiente) -> String {
+        JSONLegado.sha256("\(clave)|\(k)|\(f.fecha)|\(JSONLegado.sha256(f.dataUrl))")
     }
 
     /// - Parameters:
@@ -238,7 +248,7 @@ public enum EjecutorLegado {
         // 2. Leer (de una copia aparte: la cruda no se abre nunca) y planificar.
         guard let lectura = try LectorLegado.leer(library: entorno.library) else { return r }
         let contexto = ContextoMigracion(tokenNativo: almacen.leer(), tokenInvalidoNativo: ajustes.string(forKey: "mypump_token_invalido"),
-                                         anterior: previo?.anterior)
+                                         anterior: previo?.anterior, ultimaCuenta: UltimaCuenta.hash(en: ajustes))
         let plan = MigracionLegado.planificar(lectura.items, firmas: lectura.firmas, ahora: ahora, zona: zona, contexto: contexto)
         r.plan = plan
         r.tokenVigente = plan.tokenVigente
@@ -250,6 +260,7 @@ public enum EjecutorLegado {
         if plan.adoptarToken, let t = plan.tokenVigente {
             almacen.guardar(t)
             guard almacen.leer() == t else { throw ErrorLegado.keychain }
+            UltimaCuenta.anotar(t, en: ajustes)
             r.adoptoToken = true
         }
 
@@ -262,6 +273,7 @@ public enum EjecutorLegado {
         // 5. Lo de la cuenta vigente.
         var libro = a.libro
         var pendientes = a.pendientes
+        var fotosImportadas = Set(a.leer([String].self, Self.archivoFotosImportadas) ?? [])
         var borrar = estado.escritura?.borrar ?? [:]
         if let t = plan.tokenVigente {
             let disco = entorno.disco(t)
@@ -330,12 +342,27 @@ public enum EjecutorLegado {
                     }
                     r.porValidar += aLaFaseR.count
                 }
-                if !q.fotos.isEmpty { Self.sumarFotos(q.fotos, en: disco) }
                 if !q.valorIlegible, let f = q.firma { borrar[q.clave] = f }
-                if let k = q.claveFotos, let f = q.firmaFotos { borrar[k] = f }
+                let fotos = q.fotos.filter { !fotosImportadas.contains(Self.idFoto(q.clave, $0.key, $0.value)) }
+                if alArchivo {
+                    // La cola de fotos de la Capacitor se borra solo si las fotos quedaron en la nativa.
+                    if fotos.isEmpty || Self.sumarFotos(fotos, en: disco) {
+                        for (k, f) in fotos { fotosImportadas.insert(Self.idFoto(q.clave, k, f)) }
+                        if let k = q.claveFotos, let f = q.firmaFotos { borrar[k] = f }
+                    }
+                } else if !fotos.isEmpty {
+                    // Con el modelo vivo, las fotos van por la Fase R, que las suma a su cola en memoria: escribir el archivo
+                    // por detrás las perdía (la cola lo pisa al guardar; revisión adversarial del 15-oct, hallazgo 2).
+                    Self.encolarPendiente(&pendientes, token: t, cola: q, ops: [], fotos: fotos, propia: true, corrida: corrida)
+                    for (k, f) in fotos { fotosImportadas.insert(Self.idFoto(q.clave, k, f)) }
+                } else if let k = q.claveFotos, let f = q.firmaFotos {
+                    borrar[k] = f
+                }
             case .otroToken:
-                guard let t = q.token, !nuevas.isEmpty || !q.fotos.isEmpty else { continue }
-                Self.encolarPendiente(&pendientes, token: t, cola: q, ops: nuevas, fotos: q.fotos, propia: false, corrida: corrida)
+                let fotos = q.fotos.filter { !fotosImportadas.contains(Self.idFoto(q.clave, $0.key, $0.value)) }
+                guard let t = q.token, !nuevas.isEmpty || !fotos.isEmpty else { continue }
+                Self.encolarPendiente(&pendientes, token: t, cola: q, ops: nuevas, fotos: fotos, propia: false, corrida: corrida)
+                for (k, f) in fotos { fotosImportadas.insert(Self.idFoto(q.clave, k, f)) }
                 for op in nuevas { libro[op.idLibro] = EntradaLibro(destino: .estacionada, kind: op.operacion.kind, corrida: corrida) }
                 r.estacionadas += nuevas.count
             }
@@ -354,6 +381,7 @@ public enum EjecutorLegado {
         //    el medio, la corrida se repite y la cola no duplica (mismo id).
         try a.guardar(libro, "libro.json")
         try a.guardar(pendientes, "pendientes.json")
+        try a.guardar(fotosImportadas.sorted(), Self.archivoFotosImportadas)
         estado.corridas = corrida
         estado.ultima = ms
         estado.huella = lectura.huella
@@ -394,10 +422,12 @@ public enum EjecutorLegado {
     }
 
     /// Junta con lo que la cuenta ya tenía: por `"<lunes>|<pose>"`, gana la foto más nueva.
-    static func sumarFotos(_ fotos: [String: FotoPendiente], en disco: Disco) {
+    /// Devuelve si quedaron en el disco.
+    @discardableResult
+    static func sumarFotos(_ fotos: [String: FotoPendiente], en disco: Disco) -> Bool {
         var actuales = disco.leer([String: FotoPendiente].self, FotoPendiente.archivo) ?? [:]
         actuales.merge(fotos) { actual, nueva in nueva.fecha >= actual.fecha ? nueva : actual }
-        disco.guardar(actuales, FotoPendiente.archivo)
+        return disco.guardar(actuales, FotoPendiente.archivo)
     }
 
     /// Por día gana lo leído ahora; el descanso, si hay uno nuevo.

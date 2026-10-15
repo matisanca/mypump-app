@@ -26,11 +26,16 @@ public struct Disco: Sendable {
         return try? JSONDecoder().decode(T.self, from: d)
     }
 
-    public func guardar<T: Encodable>(_ valor: T, _ nombre: String) {
+    /// Devuelve si quedó en el disco (lo usa quien después borra la copia de otro lado, como la cola de fotos de la app vieja).
+    @discardableResult
+    public func guardar<T: Encodable>(_ valor: T, _ nombre: String) -> Bool {
         do {
             try FileManager.default.createDirectory(at: carpeta, withIntermediateDirectories: true)
             try JSONEncoder().encode(valor).write(to: url(nombre), options: [.atomic])
-        } catch {}
+            return true
+        } catch {
+            return false
+        }
     }
 
     public func borrar(_ nombre: String) { try? FileManager.default.removeItem(at: url(nombre)) }

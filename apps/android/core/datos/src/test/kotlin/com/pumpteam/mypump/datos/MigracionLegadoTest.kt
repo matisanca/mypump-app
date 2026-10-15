@@ -216,6 +216,47 @@ class MigracionLegadoTest {
         assertNull(tel.almacen.leer())
     }
 
+    /**
+     * Revisión adversarial del 15-oct, hallazgo 3: la nativa anduvo con OTRA cuenta (B, pegada después de migrar) y B se venció.
+     * Con la misma huella volvía a adoptar A (la de la app vieja, que puede ser de otra persona) en silencio.
+     */
+    @Test
+    fun sinTokenYConOtraCuentaDeLaNativaNoVuelveALaDeLaAppVieja() {
+        val tel = Telefono()
+        tel.lector.escribir(mapOf("mypump_token" to tokenA, "mypump_outbox_$tokenA" to json(ValorJson.Lista(colaWeb(2)))))
+        assertTrue(tel.faseL().adoptoToken)
+        assertEquals(JsonLegado.sha256(tokenA), UltimaCuenta.hash(tel.ajustes))
+        // El cliente pegó otro link en la nativa (ModeloApp anota la cuenta), y ese link se venció.
+        UltimaCuenta.anotar(tokenB, tel.ajustes)
+        tel.almacen.guardar(null)
+        tel.ajustes.guardar("mypump_token_invalido", tokenB)
+        val r = tel.faseL()
+        assertTrue(!r.adoptoToken && tel.almacen.leer() == null, "volvió a entrar a la cuenta de la app vieja")
+        // Lo mismo si la Capacitor cambió (otra huella): la rama de la primera adopción tampoco entra.
+        tel.lector.escribir(mapOf("mypump_tipo_dia" to "descanso"))
+        val r2 = tel.faseL()
+        assertTrue(r2.corrio && !r2.adoptoToken && tel.almacen.leer() == null)
+    }
+
+    /** Hallazgo 5: una repetición de la Fase L no vuelve a poner en la cola una foto que ya pasó (y quizás se subió). */
+    @Test
+    fun unaRepeticionNoVuelveAEncolarFotosYaImportadas() {
+        val tel = Telefono()
+        tel.lector.escribir(
+            mapOf(
+                "mypump_token" to tokenA,
+                "mypump_fotoq_$tokenA" to """{"2026-10-12|frente":{"pose":"frente","fecha":"2026-10-13","dataUrl":"data:image/jpeg;base64,AAAA","intentos":0}}""",
+            ),
+        )
+        assertTrue(tel.faseL().adoptoToken)
+        assertNotNull(tel.disco().leer(FotoPendiente.ARCHIVO))
+        tel.disco().archivo(FotoPendiente.ARCHIVO).delete()   // la nativa la subió
+        tel.almacen.guardar(null)                               // restauración sin el token
+        assertTrue(tel.faseL().adoptoToken)
+        assertNull(tel.disco().leer(FotoPendiente.ARCHIVO), "la foto ya subida volvió a la cola")
+        assertNotNull(tel.archivos.estado?.escritura?.borrar?.get("mypump_fotoq_$tokenA"), "la cola de fotos de la Capacitor tiene que salir igual")
+    }
+
     @Test
     fun quinientasOpsDeLosNueveKinds() {
         val tel = Telefono()

@@ -3,6 +3,7 @@ package com.pumpteam.mypump.datos
 import com.pumpteam.mypump.modelos.ValorJson
 import kotlinx.coroutines.CoroutineScope
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -50,6 +51,34 @@ class TokenRotadoTest {
 
     private fun cargasCon(s: Servidor, token: String): List<ValorJson> =
         s.llamadas("registrar_carga").filter { it["p_token"]?.comoTexto == token }
+
+    /**
+     * Revisión adversarial del 15-oct, hallazgo 9: un reemplazo de comida que la migración dejó solo en la carpeta del link viejo
+     * (sin la marca de migrados) se perdía al cambiar de link antes de la primera carga con red. Ahora pasa a la carpeta nueva,
+     * sin pisar lo que ya tiene, y la cola lo retiene hasta decidir; de otra persona, nunca (gemelo de iOS).
+     */
+    @Test
+    fun losReemplazosSinDecidirDelLinkViejoPasanAlNuevo() {
+        val vieja = Disco(raiz, TOK_A)
+        val nueva = Disco(raiz, TOK_B)
+        CuentasDelTelefono.anotar("c1", vieja)
+        val atun = ValorJson.objeto("original" to ValorJson.objeto("name" to texto("Merluza")), "current" to ValorJson.objeto("name" to texto("Atún")))
+        val viejo = ValorJson.objeto("current" to ValorJson.objeto("name" to texto("Viejo")))
+        vieja.guardar("swaps_d.json", ValorJson.objeto("swap_d_c3_0_0" to atun, "swap_d_c1_0_0" to viejo))
+        nueva.guardar("swaps_d.json", ValorJson.objeto("swap_d_c1_0_0" to ValorJson.objeto("current" to ValorJson.objeto("name" to texto("Ricota")))))
+        assertTrue(CuentasDelTelefono.adoptarSwaps("c1", nueva))
+        val mapa = ValorJson.desde(nueva.leer("swaps_d.json")!!) as ValorJson.Objeto
+        assertEquals(setOf("swap_d_c1_0_0", "swap_d_c3_0_0"), mapa.campos.keys)
+        assertEquals("Ricota", mapa["swap_d_c1_0_0"]?.get("current")?.get("name")?.comoTexto, "pisó lo que la cuenta nueva ya tenía")
+        assertTrue(ModeloApp.faltaDecidirSwapsEn(nueva), "la cola tiene que retener hasta decidir")
+        assertEquals("true", vieja.leer("swaps_migrados_d").toString(), "la carpeta vieja tiene que quedar marcada")
+        assertFalse(CuentasDelTelefono.adoptarSwaps("c1", nueva), "se volvió a pasar")
+        // De otra persona, nunca.
+        val ajena = Disco(raiz, TOK_C)
+        CuentasDelTelefono.anotar("otra", ajena)
+        ajena.guardar("swaps_d.json", ValorJson.objeto("swap_d_c2_0_0" to atun))
+        assertFalse(CuentasDelTelefono.adoptarSwaps("c1", nueva))
+    }
 
     @Test
     fun laSerieQueQuedoConElLinkViejoSaleConElNuevo() = enUnHilo { alcance ->

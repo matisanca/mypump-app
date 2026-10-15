@@ -64,3 +64,16 @@ public enum FormatoToken {
         return nil
     }
 }
+
+/// La última cuenta con la que anduvo la nativa: el sha256 de su token, nunca el token. La migración vuelve a adoptar el
+/// token de la app vieja solo si es el de esa cuenta. Si no, alguien que entró con su link y se le venció quedaba adentro de
+/// la cuenta de la app vieja, que podía ser de otra persona (revisión adversarial del 15-oct, hallazgo 3).
+public enum UltimaCuenta {
+    public static let clave = "mypump_ultima_cuenta"
+
+    public static func anotar(_ token: String, en ajustes: UserDefaults = .standard) {
+        ajustes.set(JSONLegado.sha256(token), forKey: clave)
+    }
+
+    public static func hash(en ajustes: UserDefaults = .standard) -> String? { ajustes.string(forKey: clave) }
+}

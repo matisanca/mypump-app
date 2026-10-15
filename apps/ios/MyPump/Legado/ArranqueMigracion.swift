@@ -89,7 +89,8 @@ enum ArranqueMigracion {
                 continue
             }
             let r = await FaseRemotaLegado.correr(entorno: entorno, token: token, clienteId: info.clienteId, cliente: modelo.cliente,
-                                                  outbox: cola, recibo: ReciboEnServidor(cliente: modelo.cliente, carpeta: recibos),
+                                                  outbox: cola, fotos: modelo.fotos,
+                                                  recibo: ReciboEnServidor(cliente: modelo.cliente, carpeta: recibos),
                                                   conteos: ConteosRPC(cliente: modelo.cliente), app: version)
             if r.corrio {
                 RegistroLegado.anotar("Fase R: cola \(r.aLaCola), para revisar \(r.paraRevisar), reasignadas \(r.reasignadas), reemplazadas "

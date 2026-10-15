@@ -1,5 +1,6 @@
 import Foundation
 import MyPumpModelos
+import MyPumpReglas
 
 /// Las carpetas de cuenta del teléfono (`Disco`, una por token). Un link que Mati regeneró (`mypump_regenerar_token`) es
 /// OTRO token de la MISMA persona: la carpeta nueva arrancaba con la cola vacía y lo que quedó en la vieja (series
@@ -54,6 +55,42 @@ enum CuentasDelTelefono {
             otra.guardar(anotadas.sorted(), archivoAdoptadas)
         }
         return total
+    }
+
+    /// Los mapas de reemplazos de comida sin decidir (sin la marca de migrados) de otras carpetas de la misma persona: pasan
+    /// a esta sin pisar lo que ya tiene, y la vieja queda marcada para no volver a pasarlos. Devuelve si pasó alguno: la cola
+    /// tiene que retener los reemplazos hasta decidir. Sin esto, un reemplazo que estaba solo en la carpeta del link viejo se
+    /// perdía al cambiar de link antes de la primera carga con red (revisión adversarial del 15-oct, hallazgo 9).
+    static func adoptarSwaps(clienteId: String, en disco: Disco) -> Bool {
+        guard !clienteId.isEmpty else { return false }
+        let base = disco.carpeta.deletingLastPathComponent()
+        let propia = disco.carpeta.lastPathComponent
+        let otras = ((try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? [])
+            .filter { $0.hasPrefix("cuenta-") && $0 != propia }
+            .sorted()
+        var paso = false
+        for nombre in otras {
+            let otra = Disco(carpeta: base.appendingPathComponent(nombre, isDirectory: true))
+            guard Self.clienteId(de: otra) == clienteId else { continue }
+            let mapas = ((try? FileManager.default.contentsOfDirectory(atPath: otra.carpeta.path)) ?? [])
+                .filter { $0.hasPrefix("swaps_") && $0.hasSuffix(".json") }
+            for n in mapas {
+                let dieta = String(n.dropFirst("swaps_".count).dropLast(".json".count))
+                // Si esta cuenta ya decidió esa dieta, lo de la vieja llega tarde: manda el servidor.
+                guard otra.leer(Bool.self, "swaps_migrados_\(dieta)") != true, disco.leer(Bool.self, "swaps_migrados_\(dieta)") != true,
+                      let viejos = otra.leer([String: SwapLocal].self, n), !viejos.isEmpty else { continue }
+                var propios = disco.leer([String: SwapLocal].self, n) ?? [:]
+                let faltan = viejos.filter { propios[$0.key] == nil }
+                guard !faltan.isEmpty else { continue }
+                propios.merge(faltan) { actual, _ in actual }
+                // Primero quedan en esta; recién después la vieja se marca.
+                if disco.guardar(propios, n) {
+                    paso = true
+                    otra.guardar(true, "swaps_migrados_\(dieta)")
+                }
+            }
+        }
+        return paso
     }
 
     /// Lo mismo con las fotos de progreso que no llegaron a subirse (con el token caído quedan guardadas): pasan a la cola

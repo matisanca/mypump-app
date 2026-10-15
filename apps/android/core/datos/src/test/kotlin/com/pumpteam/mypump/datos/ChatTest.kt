@@ -213,6 +213,17 @@ class ChatSinTraerTest {
         assertTrue(!chat.sinTraer.value && chat.hilo.value.mensajes.size == 1)
     }
 
+    /** Con el servicio caído (un 5xx) también se dice, pero no es «sin conexión». */
+    @Test
+    fun elServicioCaidoNoEsSinRed() = enUnHilo { alcance ->
+        val caido = ModeloChat(ClienteRpc(transporte = TransporteProgramado { _, _ -> 503 to """{"message":"caído"}""" }), "tok", null, alcance)
+        caido.cargar()
+        assertTrue(caido.sinTraer.value && !caido.sinTraerPorRed)
+        val sinRed = ModeloChat(ClienteRpc(transporte = TransporteProgramado { _, _ -> throw java.io.IOException("sin conexión") }), "tok", null, alcance)
+        sinRed.cargar()
+        assertTrue(sinRed.sinTraer.value && sinRed.sinTraerPorRed)
+    }
+
     @Test
     fun unHiloVacioDeVerdadNoEsSinTraer() = enUnHilo { alcance ->
         val chat = ModeloChat(ClienteRpc(transporte = TransporteProgramado { _, _ -> 200 to "[]" }), "tok", null, alcance)

@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import MyPumpModelos
+import MyPumpReglas
 @testable import MyPumpDatos
 
 /// Revisión del 15-oct, hallazgo 4: la carpeta de cada cuenta va por la huella del token. Si Mati regenera el link
@@ -40,6 +41,30 @@ struct TokenRotadoTests {
 
     func cargasCon(_ s: Servidor, _ token: String) -> [JSONValue] {
         s.llamadas("registrar_carga").filter { $0["p_token"]?.comoTexto == token }
+    }
+
+    /// Revisión adversarial del 15-oct, hallazgo 9: un reemplazo de comida que la migración dejó solo en la carpeta del link
+    /// viejo (sin la marca de migrados) se perdía al cambiar de link antes de la primera carga con red. Ahora pasa a la carpeta
+    /// nueva, sin pisar lo que ya tiene, y la cola lo retiene hasta decidir; de otra persona, nunca.
+    @Test func losReemplazosSinDecidirDelLinkViejoPasanAlNuevo() throws {
+        let vieja = Disco(raiz: raiz, token: Self.tokA), nueva = Disco(raiz: raiz, token: Self.tokB)
+        CuentasDelTelefono.anotar(clienteId: "c1", en: vieja)
+        let atun = SwapLocal(original: .objeto(["name": .texto("Merluza")]), current: .objeto(["name": .texto("Atún")]))
+        vieja.guardar(["swap_d_c3_0_0": atun, "swap_d_c1_0_0": SwapLocal(current: .objeto(["name": .texto("Viejo")]))], "swaps_d.json")
+        nueva.guardar(["swap_d_c1_0_0": SwapLocal(current: .objeto(["name": .texto("Ricota")]))], "swaps_d.json")
+        #expect(CuentasDelTelefono.adoptarSwaps(clienteId: "c1", en: nueva))
+        let mapa = nueva.leer([String: SwapLocal].self, "swaps_d.json") ?? [:]
+        #expect(Set(mapa.keys) == ["swap_d_c1_0_0", "swap_d_c3_0_0"])
+        #expect(mapa["swap_d_c1_0_0"]?.current["name"]?.comoTexto == "Ricota", "pisó lo que la cuenta nueva ya tenía")
+        #expect(ModeloApp.faltaDecidirSwaps(en: nueva), "la cola tiene que retener hasta decidir")
+        #expect(vieja.leer(Bool.self, "swaps_migrados_d") == true, "la carpeta vieja tiene que quedar marcada")
+        #expect(!CuentasDelTelefono.adoptarSwaps(clienteId: "c1", en: nueva), "se volvió a pasar")
+        // De otra persona, nunca.
+        let ajena = Disco(raiz: raiz, token: Self.tokC)
+        CuentasDelTelefono.anotar(clienteId: "otra", en: ajena)
+        ajena.guardar(["swap_d_c2_0_0": atun], "swaps_d.json")
+        #expect(!CuentasDelTelefono.adoptarSwaps(clienteId: "c1", en: nueva))
+        #expect(nueva.leer([String: SwapLocal].self, "swaps_d.json")?["swap_d_c2_0_0"] == nil)
     }
 
     @Test func laSerieQueQuedoConElLinkViejoSaleConElNuevo() async throws {

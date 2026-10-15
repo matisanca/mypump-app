@@ -648,6 +648,41 @@ struct MigracionLegadoTests {
         #expect(tel.almacen.leer() == nil)
     }
 
+    /// Revisión adversarial del 15-oct, hallazgo 3: la nativa anduvo con OTRA cuenta (B, pegada después de migrar) y B se
+    /// venció. Con la misma huella, volvía a adoptar A (la de la app vieja, que puede ser de otra persona) en silencio.
+    @Test func sinTokenYConOtraCuentaDeLaNativaNoVuelveALaDeLaAppVieja() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(2)))])
+        #expect(try tel.faseL().adoptoToken)
+        #expect(UltimaCuenta.hash(en: tel.ajustes) == JSONLegado.sha256(tokenA))
+        // El cliente pegó otro link en la nativa (ModeloApp anota la cuenta), y ese link se venció.
+        UltimaCuenta.anotar(tokenB, en: tel.ajustes)
+        tel.almacen.guardar(nil)
+        tel.ajustes.set(tokenB, forKey: "mypump_token_invalido")
+        let r = try tel.faseL()
+        #expect(!r.adoptoToken && tel.almacen.leer() == nil, "volvió a entrar a la cuenta de la app vieja")
+        // Lo mismo si la Capacitor cambió (otra huella): la rama de la primera adopción tampoco entra.
+        try tel.webkit.escribir(["mypump_tipo_dia": "descanso"])
+        let r2 = try tel.faseL()
+        #expect(r2.corrio && !r2.adoptoToken && tel.almacen.leer() == nil)
+    }
+
+    /// Hallazgo 5: una repetición de la Fase L (la misma huella, después de restaurar sin token) volvía a poner en la cola una
+    /// foto que ya se había subido; en el servidor podía pisar otra más nueva de la misma semana y pose.
+    @Test func unaRepeticionNoVuelveAEncolarFotosYaImportadas() throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        let fotoq = json(.objeto(["2026-10-12|frente": .objeto(["pose": .texto("frente"), "fecha": .texto("2026-10-13"),
+                                                                 "dataUrl": .texto("data:image/jpeg;base64,AAAA"), "intentos": .numero(0)])]))
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_fotoq_\(tokenA)": fotoq])
+        #expect(try tel.faseL().adoptoToken)
+        #expect(tel.disco().leer([String: FotoPendiente].self, FotoPendiente.archivo)?.count == 1)
+        tel.disco().borrar(FotoPendiente.archivo)   // la nativa la subió
+        tel.almacen.guardar(nil)                     // restauración sin Keychain
+        #expect(try tel.faseL().adoptoToken)
+        #expect(tel.disco().leer([String: FotoPendiente].self, FotoPendiente.archivo) == nil, "la foto ya subida volvió a la cola")
+        #expect(tel.archivos.estado?.escritura?.borrar["mypump_fotoq_\(tokenA)"] != nil, "la cola de fotos de la Capacitor tiene que salir igual")
+    }
+
     @Test func dosCorridasDanLoMismo() throws {
         let tel = Telefono(); defer { tel.limpiar() }
         try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenA)": json(.lista(colaWeb(120))),
@@ -918,6 +953,30 @@ struct FaseRemotaLegadoTests {
             // Nunca se preguntó con el token de otra persona más que para saber de quién era.
             #expect(await llamadas.de("mypump_get_cliente_info").allSatisfy { $0["p_token"]?.comoTexto == tokenB })
         }
+    }
+
+    /// Hallazgo 2: la Fase R dejaba las fotos del token rotado en el ARCHIVO, por detrás del modelo de fotos vivo, que tiene su
+    /// cola en memoria y lo pisa al guardar: se perdían, y la escritura de vuelta además borraba la copia de la Capacitor.
+    @Test func lasFotosDelTokenRotadoVanAlModeloDeFotosVivo() async throws {
+        let tel = Telefono(); defer { tel.limpiar() }
+        let foto = "data:image/jpeg;base64,/9j/AAAA"
+        try tel.webkit.escribir(["mypump_token": tokenA, "mypump_outbox_\(tokenB)": json(.lista(colaWeb(2, t0: 50))),
+                                 "mypump_offline_\(tokenB)": fotoOffline(rutina: rutinaR1),
+                                 "mypump_fotoq_\(tokenB)": #"{"2026-10-12|perfil":{"pose":"perfil","fecha":"2026-10-13","dataUrl":"\#(foto)","intentos":0}}"#])
+        _ = try tel.faseL()
+        let llamadas = Llamadas()
+        let cliente = servidor(llamadas, clientes: [tokenA: "c1", tokenB: "c1"])
+        // El modelo de fotos de la cuenta, vivo, con una foto propia en su cola.
+        tel.disco().guardar(["2026-10-12|frente": FotoPendiente(pose: "frente", fecha: "2026-10-14", dataUrl: foto)], FotoPendiente.archivo)
+        let fotos = ModeloFotos(cliente: cliente, token: tokenA, disco: tel.disco())
+        let r = await FaseRemotaLegado.correr(entorno: tel.entorno, token: tokenA, clienteId: "c1", cliente: cliente, outbox: cola(tel, cliente),
+                                              fotos: fotos, recibo: ReciboEnDisco(carpeta: tel.entorno.carpeta.appendingPathComponent("recibos")),
+                                              ahora: ahora, zona: baires)
+        #expect(r.reasignadas == 2)
+        #expect(Set(fotos.pendientes.keys) == ["2026-10-12|frente", "2026-10-12|perfil"], "la foto del token rotado no llegó a la cola viva")
+        let enDisco = tel.disco().leer([String: FotoPendiente].self, FotoPendiente.archivo) ?? [:]
+        #expect(Set(enDisco.keys) == ["2026-10-12|frente", "2026-10-12|perfil"])
+        #expect(tel.archivos.estado?.escritura?.borrar["mypump_fotoq_\(tokenB)"] != nil)
     }
 
     @Test func sinRedQuedaPendienteYNoSeEscribeDeVuelta() async throws {

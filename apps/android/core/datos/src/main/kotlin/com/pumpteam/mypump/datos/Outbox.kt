@@ -146,8 +146,8 @@ class Outbox(
      * primera carga no las manda con la palanca apagada.
      */
     retenerLegadas: Boolean = false,
-    /** Ver [soltarSwapsLegados]. */
-    retenerSwapsLegados: Boolean = false,
+    /** Ver [soltarSwaps]. */
+    retenerSwaps: Boolean = false,
     private var ejecutor: suspend (Operacion) -> ResultadoOp,
 ) {
     data class Fallido(val op: Operacion, val motivo: String, val cuando: Double)
@@ -176,11 +176,12 @@ class Outbox(
     private var retenerLegadas: Boolean = retenerLegadas
 
     /**
-     * Los `swap` y `swap_del` de la migración esperan, además, a que se decida qué reemplazos de comida del teléfono nunca
-     * llegaron al servidor ([soltarSwapsLegados]). Si salían antes, el servidor «ya tenía algo», ganaba la mezcla y se
-     * perdían los que estaban solo en el teléfono (gemelo de iOS 6fd391b; lo encontró sim-migracion.sh, 15-oct).
+     * Los `swap` y `swap_del` esperan a que se decida qué reemplazos de comida del teléfono nunca llegaron al servidor
+     * ([soltarSwaps]). Si salía uno antes, viejo o nativo, el servidor «ya tenía algo», ganaba la mezcla y se perdían los
+     * que estaban solo en el teléfono (sim-migracion.sh y la revisión adversarial del 15-oct). Se arma solo si hay un mapa
+     * de reemplazos sin la marca de migrados: a quien ya migró no lo demora.
      */
-    private var retenerSwapsLegados: Boolean = retenerSwapsLegados
+    private var retenerSwaps: Boolean = retenerSwaps
 
     /**
      * La soltó el modelo (salir, otra cuenta, la demo). En Swift el temporizador tiene una referencia débil y muere con
@@ -225,17 +226,20 @@ class Outbox(
      * Ya se decidió qué reemplazos de comida del teléfono hay que subir (`hidratarDieta` o la Fase R): los `swap` y
      * `swap_del` de la migración pueden salir.
      */
-    suspend fun soltarSwapsLegados() = withContext(confinado) {
-        if (!retenerSwapsLegados) return@withContext
-        retenerSwapsLegados = false
-        if (!retenerLegadas && ops.any { it.legado == true && esSwap(it.kind) }) programar(0)
+    suspend fun soltarSwaps() = withContext(confinado) {
+        if (!retenerSwaps) return@withContext
+        retenerSwaps = false
+        if (ops.any { esSwap(it.kind) && mandable(it) }) programar(0)
     }
+
+    /** Llegó un mapa de reemplazos sin decidir después de crear la cola (los de otra carpeta de la misma persona). */
+    suspend fun retenerSwapsHastaDecidir() = withContext(confinado) { retenerSwaps = true }
 
     private fun esSwap(kind: String): Boolean = kind == "swap" || kind == "swap_del"
 
     private fun mandable(op: Operacion): Boolean {
-        if (op.legado != true) return true
-        return !retenerLegadas && !(retenerSwapsLegados && esSwap(op.kind))
+        if (retenerSwaps && esSwap(op.kind)) return false
+        return !(retenerLegadas && op.legado == true)
     }
 
     suspend fun pendientes(): Int = withContext(confinado) { ops.size }
