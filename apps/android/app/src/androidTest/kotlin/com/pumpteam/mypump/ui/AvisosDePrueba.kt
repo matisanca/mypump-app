@@ -2,6 +2,7 @@ package com.pumpteam.mypump.ui
 
 import android.app.NotificationManager
 import android.content.Context
+import android.os.Build
 import android.service.notification.StatusBarNotification
 import com.pumpteam.mypump.avisos.CentroAvisos
 import com.pumpteam.mypump.avisos.PermisoDePrueba
@@ -34,8 +35,15 @@ object AvisosDePrueba {
         CentroAvisos.tokenDePrueba = null
     }
 
+    /**
+     * Supuesto de versión: `POST_NOTIFICATIONS` es de Android 13. Antes no existe (`pm grant` lo rechaza) y los avisos se
+     * muestran salvo que el cliente los haya apagado en los ajustes, como en un emulador recién creado: se mira eso.
+     */
     fun concederDeVerdad(app: Context) {
-        Telefono.shell("pm grant ${app.packageName} android.permission.POST_NOTIFICATIONS")
+        if (Build.VERSION.SDK_INT >= 33) Telefono.shell("pm grant ${app.packageName} android.permission.POST_NOTIFICATIONS")
+        check(app.getSystemService(NotificationManager::class.java).areNotificationsEnabled()) {
+            "los avisos de MyPump están apagados en los ajustes del teléfono: las pruebas que miran lo publicado no pueden andar"
+        }
     }
 
     /** Lo que la app tiene publicado ahora. */

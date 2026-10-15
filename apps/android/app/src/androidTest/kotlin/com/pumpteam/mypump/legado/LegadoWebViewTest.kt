@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.legado
 
+import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.pumpteam.mypump.datos.FaseRemotaLegado
@@ -16,6 +17,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -126,6 +128,7 @@ class LegadoWebViewTest {
     /** Si el sistema mata el renderer en medio, se arma un WebView nuevo y se reintenta. */
     @Test
     fun siMuereElRendererSeReintenta() = runBlocking {
+        renderSeMataDesdeLaPrueba()
         var intentos = 0
         val fallas = mutableListOf<String>()
         val r = conPagina(contexto, 3, 20_000, { fallas += it }) { pg ->
@@ -144,6 +147,7 @@ class LegadoWebViewTest {
     /** Sin intentos que alcancen, TIRA: nunca devuelve "no había nada". */
     @Test
     fun sinIntentosTira() = runBlocking {
+        renderSeMataDesdeLaPrueba()
         val e = runCatching {
             conPagina(contexto, 2, 20_000, {}) { pg ->
                 pg.matarRenderer()
@@ -152,6 +156,15 @@ class LegadoWebViewTest {
             }
         }.exceptionOrNull()
         assertTrue("$e", e is FallaPagina.ProcesoMuerto)
+    }
+
+    /**
+     * Supuesto de versión: estas pruebas matan el renderer con `WebViewRenderProcess.terminate()`, que es de Android 10 (API
+     * 29). En 8 y 9 el sistema también lo puede matar y el aviso (`onRenderProcessGone`) es el mismo, pero desde la prueba no
+     * hay cómo provocarlo (`matarRenderer` devuelve false).
+     */
+    private fun renderSeMataDesdeLaPrueba() {
+        assumeTrue("matar el renderer desde la prueba necesita Android 10 (API 29)", Build.VERSION.SDK_INT >= 29)
     }
 
     /** La página está en el origen de la Capacitor, y nada de lo que pida sale a la red ni trae la app vieja. */

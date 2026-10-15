@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
@@ -64,16 +65,20 @@ class AvisosUiTest : PruebaUi() {
         p.esperar("publicado $etiqueta/$id") { AvisosDePrueba.publicadas(app).firstOrNull { it.tag == etiqueta && it.id == id } }
 
     /**
-     * Las alarmas que el sistema tiene pendientes ahora (la parte de `dumpsys alarm` entre "N pending alarms:" y "Pending
-     * alarms per uid"; lo demás es historia, con las que ya se cancelaron), en bloques de cinco líneas por alarma.
+     * Las alarmas que el sistema tiene pendientes ahora, una por bloque (su renglón y los de abajo, unidos con " | "). Es la
+     * parte de `dumpsys alarm` que sigue a "N pending alarms:" (Android 12 en adelante) o a "Pending alarm batches: N" (hasta
+     * Android 11, con las alarmas agrupadas en renglones `Batch{…}`), hasta el renglón siguiente de la sección ("Pending
+     * alarms per uid", o cualquiera con dos espacios o menos); lo demás es historia, con las que ya se cancelaron. El formato
+     * cambia entre versiones (el 15-oct en Android 9 no se encontraba ninguna): así se lee en todas.
      */
     private fun alarmasPendientes(): List<String> {
         val lineas = Telefono.shell("dumpsys alarm").lines()
-        val desde = lineas.indexOfFirst { it.trim().endsWith("pending alarms:") }
-        val hasta = lineas.indexOfFirst { it.trim().startsWith("Pending alarms per uid") }
-        if (desde < 0 || hasta <= desde) return emptyList()
+        val desde = lineas.indexOfFirst { it.trim().endsWith("pending alarms:") || it.trim().startsWith("Pending alarm batches:") }
+        if (desde < 0) return emptyList()
         val bloques = ArrayList<String>()
-        for (l in lineas.subList(desde + 1, hasta)) {
+        for (l in lineas.drop(desde + 1)) {
+            if (l.startsWith("Batch{")) continue
+            if (l.trim().startsWith("Pending alarms per uid") || Regex("^\\s{0,2}\\S").containsMatchIn(l)) break
             if (Regex("^\\s{4}\\S").containsMatchIn(l)) bloques += l.trim() else if (bloques.isNotEmpty()) bloques[bloques.size - 1] += " | " + l.trim()
         }
         return bloques
@@ -391,12 +396,14 @@ class AvisosUiTest : PruebaUi() {
         AvisosDePrueba.concederDeVerdad(app)
         val am = app.getSystemService(AlarmManager::class.java)
         // Como la Capacitor: su canal "default", sus alarmas (Intent explícito a TimedNotificationPublisher, el id como
-        // código, CANCEL_CURRENT | MUTABLE y sus extras) y lo que llegó a publicar, sin etiqueta.
+        // código, CANCEL_CURRENT y sus extras, con MUTABLE solo desde Android 12 como su plugin: la bandera es parte del
+        // PendingIntent, y con ella en Android 9 la alarma ya no era la de la Capacitor) y lo que llegó a publicar, sin etiqueta.
+        val mutable = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
         nm.createNotificationChannel(NotificationChannel(CentroAvisos.CANAL_CAPACITOR, "Default", NotificationManager.IMPORTANCE_DEFAULT))
         val publicador = ComponentName(app.packageName, CentroAvisos.PUBLICADOR_CAPACITOR)
         for (id in 1001..1004) {
             val intent = Intent().setComponent(publicador).putExtra("LocalNotificationId", id).putExtra("NotificationPublisher.cron", "1 11 * * *")
-            val pi = PendingIntent.getBroadcast(app, id, intent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_MUTABLE)
+            val pi = PendingIntent.getBroadcast(app, id, intent, PendingIntent.FLAG_CANCEL_CURRENT or mutable)
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 3 * 86_400_000L, pi)
             nm.notify(id, Notification.Builder(app, CentroAvisos.CANAL_CAPACITOR).setSmallIcon(R.drawable.ic_stat_mypump).setContentTitle("Tu revisión de la semana").build())
         }
@@ -407,7 +414,7 @@ class AvisosUiTest : PruebaUi() {
         // Lo que manda el sistema después de actualizar la app.
         ReceptorAvisos().onReceive(app, Intent(Intent.ACTION_MY_PACKAGE_REPLACED))
         for (id in 1001..1004) {
-            assertNull("quedó la alarma $id", PendingIntent.getBroadcast(app, id, Intent().setComponent(publicador), PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_MUTABLE))
+            assertNull("quedó la alarma $id", PendingIntent.getBroadcast(app, id, Intent().setComponent(publicador), PendingIntent.FLAG_NO_CREATE or mutable))
         }
         assertTrue(alarmasPendientes().none { "TimedNotificationPublisher" in it })
         p.esperar("solo el nuestro") { AvisosDePrueba.publicadas(app).map { it.tag to it.id } == listOf(CentroAvisos.ETIQUETA to CentroAvisos.ID_DOMINGO) }
