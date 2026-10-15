@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -30,6 +31,8 @@ import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
@@ -51,6 +54,7 @@ import kotlinx.coroutines.withContext
  * [clave] distingue los botones de una misma pantalla (la pose): cada uno tiene su archivo para la cámara, así la foto
  * se encuentra aunque Android haya cerrado MyPump mientras el cliente sacaba la foto.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun BotonFoto(
     clave: String,
@@ -106,7 +110,8 @@ fun BotonFoto(
         Box(Modifier.clickable(enabled = habilitado, role = Role.Button, onClickLabel = "sacar la foto o elegirla de la galería") { menu = true }) {
             contenido()
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+        // El menú es otra ventana: las etiquetas como resource-id (UI Automator) se piden de nuevo, como en las hojas.
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.semantics { testTagsAsResourceId = true }) {
             if (hayCamara) {
                 DropdownMenuItem(
                     text = { Text("Sacar foto") },

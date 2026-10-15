@@ -330,7 +330,7 @@ class RevisionUiTest : PruebaUi() {
         p.nodo(texto("1/3"))
         // La miniatura va con la URL firmada (`/progreso/urls`).
         p.esperar("se firmaron las URLs") { servidor.a("urls").firstOrNull() }
-        p.esperar("se pidió la miniatura firmada") { miniaturas.firstOrNull { it == servidor.urlDeFoto(lunes, "frente") } }
+        p.esperar("se pidió la miniatura firmada") { miniaturas.firstOrNull { it.startsWith("https://fotos.prueba.invalid/$lunes/frente.jpg") } }
         // La foto de la cámara no queda en el teléfono.
         assertFalse("la foto quedó en la caché", ProveedorFotos.archivo(app, "frente").exists())
         // Sin pedir CAMERA: la saca la app de cámara.
@@ -338,6 +338,32 @@ class RevisionUiTest : PruebaUi() {
             PackageManager.PERMISSION_DENIED,
             app.packageManager.checkPermission(android.Manifest.permission.CAMERA, app.packageName),
         )
+    }
+
+    /**
+     * Sacar de nuevo una foto que ya estaba (un upsert: siguen siendo las mismas fotos) firma otra vez y muestra la
+     * miniatura nueva. Antes quedaba la vieja hasta que vencían las URLs (visto contra la base real el 15-oct).
+     */
+    @Test
+    fun reemplazarUnaFotoMuestraLaMiniaturaNueva() {
+        val miniaturas = CopyOnWriteArrayList<String>()
+        ImagenesRemotas.bajar = { url ->
+            miniaturas += url
+            null
+        }
+        servidor.ponerFotos(mapOf(lunes to listOf("frente")))
+        fotosDePrueba(::fotoDeCamara)
+        guardarCuenta()
+        abrir()
+        irARevision()
+        p.esperar("la miniatura de antes") { miniaturas.firstOrNull { "/$lunes/frente.jpg" in it } }
+        val firmasAntes = servidor.firmas
+        p.tocar(etiqueta("foto-frente"))
+        p.tocar(etiqueta("sacar-foto"))
+        p.nodo(texto("Listo, guardada ✓"))
+        p.nodo(texto("1/3"))
+        p.esperar("se firmó de nuevo") { servidor.firmas > firmasAntes }
+        p.esperar("se pidió la miniatura nueva") { miniaturas.firstOrNull { it == servidor.urlDeFoto(lunes, "frente", servidor.firmas) } }
     }
 
     /** Una HEIC de la galería (el selector de fotos del sistema) también entra, reducida a JPEG. */

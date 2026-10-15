@@ -152,6 +152,10 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
                                     tactil.performHapticFeedback(
                                         if (r == ModeloFotos.Resultado.Guardada) HapticFeedbackType.Confirm else HapticFeedbackType.Reject,
                                     )
+                                    // Reemplazar una foto de la semana no cambia cuántas hay: sin firmar de nuevo quedaba la
+                                    // miniatura vieja (visto contra la base real). Cada firma es otra URL, así que tampoco
+                                    // sale la vieja de la memoria.
+                                    if (r == ModeloFotos.Resultado.Guardada) modelo.firmar()
                                 }
                             },
                             modifier = m,

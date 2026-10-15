@@ -92,8 +92,11 @@ class ServidorDePrueba : Transporte {
         actualizarFotos()
     }
 
-    /** La URL firmada de prueba de una foto (https, para que `ImagenRemota` la pida). */
-    fun urlDeFoto(lunes: String, pose: String): String = "https://fotos.prueba.invalid/$lunes/$pose.jpg?firma=prueba"
+    /** Cuántas veces se pidieron las URLs firmadas. Cada firma da URLs distintas, como el servicio real. */
+    @Volatile var firmas = 0
+
+    /** La URL firmada de prueba de una foto (https, para que `ImagenRemota` la pida), la de la firma [firma]. */
+    fun urlDeFoto(lunes: String, pose: String, firma: Int = firmas): String = "https://fotos.prueba.invalid/$lunes/$pose.jpg?firma=$firma"
 
     private fun actualizarFotos() {
         val filas = fotosDeLaCuenta.entries.sortedBy { it.key }.flatMap { (lunes, poses) ->
@@ -117,6 +120,7 @@ class ServidorDePrueba : Transporte {
             }
         }
         "/progreso/urls" -> {
+            firmas += 1
             val fotos = fotosDeLaCuenta.entries.flatMap { (lunes, poses) ->
                 poses.toList().map { """{"semana_lunes":"$lunes","pose":"$it","url":"${urlDeFoto(lunes, it)}"}""" }
             }
