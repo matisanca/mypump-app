@@ -123,12 +123,9 @@ fun ChatPantalla(modelo: ModeloApp) {
     DisposableEffect(ch) {
         if (ch != null) {
             ch.abierto = true
-            alcance.launch {
-                // Si el hilo no se trajo nunca (sin red al arrancar), se intenta ya: el sondeo recién consulta a los 15 s y
-                // mientras tanto se veía el chat vacío.
-                if (!ch.traido) ch.cargar()
-                ch.marcarLeido()
-            }
+            // Si el hilo no se trajo nunca (sin red al arrancar, o la cuenta todavía cargando), se trae ya; y lo de Mati
+            // queda leído.
+            alcance.launch { ch.alAbrir() }
         }
         onDispose { ch?.abierto = false }
     }
