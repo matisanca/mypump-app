@@ -23,6 +23,7 @@ import com.pumpteam.mypump.reglas.SwapLocal
 import com.pumpteam.mypump.reglas.SwapsDeComida
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,6 +76,9 @@ class ModeloApp(
     private var disco: Disco? = null
     var outbox: Outbox? = null
         private set
+
+    /** La sesión del día de la cuenta: la comparten la cola y el motor de Entreno (hallazgo 5). */
+    private var sesionesDelDia = SesionesDelDia(alcance)
 
     /** El día local de la última carga completa: si al volver a la app cambió, se recarga lo que es "de hoy". */
     private var diaCargado: String? = null
@@ -171,6 +175,9 @@ class ModeloApp(
     /** El catálogo de ejercicios que llegó del servidor (o el guardado de la última vez). */
     private var catalogo: CatalogoEjercicios? = null
 
+    /** Lo que el motor de Entreno carga aparte después de cada carga (sesión, historial, comentarios). */
+    private var cargaDelMotor: Job? = null
+
     /** El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`). */
     private val _tipoDia = MutableStateFlow(preferencias.leer(CLAVE_TIPO_DIA))
     val tipoDiaFlow: StateFlow<String?> = _tipoDia.asStateFlow()
@@ -194,13 +201,64 @@ class ModeloApp(
 
     // ── Acceso ──
 
-    /** Lo que pegó o abrió el cliente (link entero, a medias o el token solo). */
-    suspend fun entrar(texto: String): Boolean {
+    /** Un link tocado con una cuenta andando que no se usó: el aviso que ve el cliente, que sigue en su cuenta. */
+    enum class AvisoLink {
+        /** "Este link ya no sirve" */
+        VENCIDO,
+
+        /** No se pudo revisar el link (sin red): no se cambia de cuenta sin saber si anda. */
+        SIN_CONEXION,
+    }
+
+    /** Lo muestra la raíz y lo borra al cerrarlo ([cerrarAvisoLink]). */
+    private val _avisoLink = MutableStateFlow<AvisoLink?>(null)
+    val avisoLink: StateFlow<AvisoLink?> = _avisoLink.asStateFlow()
+
+    fun cerrarAvisoLink() {
+        _avisoLink.value = null
+    }
+
+    private var entradas = 0
+
+    /**
+     * Lo que pegó o abrió el cliente (link entero, a medias o el token solo). `avisar = false` para lo que no tocó el cliente
+     * (el token que adoptó la migración): ahí no se le muestra nada.
+     */
+    suspend fun entrar(texto: String, avisar: Boolean = true): Boolean {
         val t = FormatoToken.extraer(texto) ?: return false
+        entradas += 1
+        val entrada = entradas
         // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de WhatsApp de
         // hace meses. No depende de la fase: al abrir la app tocando el link, la cuenta guardada todavía está cargando.
-        if (t != token && t == preferencias.leer(CLAVE_TOKEN_INVALIDO) && token != null && !_esDemo.value) return false
+        if (t != token && t == preferencias.leer(CLAVE_TOKEN_INVALIDO) && token != null && !_esDemo.value) {
+            if (avisar) _avisoLink.value = AvisoLink.VENCIDO
+            return false
+        }
         if (t == token && _fase.value == Fase.LISTO) return true
+        // Con una cuenta que anda, el link nuevo se revisa ANTES de reemplazarla. Antes se guardaba primero y se borraba al ver
+        // `[]`: un link viejo nunca usado en este teléfono dejaba al cliente en "pegá tu link" y sin la cuenta que tenía
+        // (revisión del 15-oct, hallazgo 11). Sin cuenta (o con la suya vencida), como siempre.
+        val actual = token
+        if (actual != null && t != actual && !_esDemo.value && _fase.value != Fase.TOKEN_INVALIDO) {
+            val r = cliente.llamar("mypump_get_cliente_info", mapOf("p_token" to ValorJson.Texto(t)))
+            // Mientras se preguntaba se tocó otro link: gana el último.
+            if (entrada != entradas || token != actual || _esDemo.value) return false
+            // Si mientras tanto la cuenta guardada resultó vencida, ya no hay una que anda: sigue como sin cuenta. Si no,
+            // volvía a guardar la vencida y avisaba "Seguís con tu cuenta." encima de "Este link ya no sirve".
+            if (_fase.value != Fase.TOKEN_INVALIDO) when (r) {
+                is Resultado.Falla -> {
+                    if (avisar) _avisoLink.value = AvisoLink.SIN_CONEXION
+                    return false
+                }
+                is Resultado.Ok -> if ((r.valor as? ValorJson.Lista)?.elementos.isNullOrEmpty()) {
+                    preferencias.guardar(CLAVE_TOKEN_INVALIDO, t)
+                    // La cuenta que anda es la que queda guardada (la migración pudo haber dejado el otro en el almacén).
+                    if (almacen.leer() != actual) almacen.guardar(actual)
+                    if (avisar) _avisoLink.value = AvisoLink.VENCIDO
+                    return false
+                }
+            }
+        }
         _esDemo.value = false
         almacen.guardar(t)
         token = t
@@ -294,7 +352,9 @@ class ModeloApp(
     private fun prepararCuenta(t: String) {
         val d = Disco(raizDisco, t)
         disco = d
-        val escrituras = Escrituras(cliente, t)
+        val sesiones = SesionesDelDia(alcance)
+        sesionesDelDia = sesiones
+        val escrituras = Escrituras(cliente, t, sesiones)
         outbox?.cerrar()
         // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
         val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true) { op -> escrituras.ejecutar(op) }
@@ -312,7 +372,16 @@ class ModeloApp(
         // Los avisos llegan desde el hilo de la cola: los StateFlow se pueden tocar desde cualquier hilo y así el orden se
         // conserva (en iOS se pasa al principal con un Task por aviso).
         alcance.launch {
-            cola.observar(estado = { e -> _estadoGuardado.value = e }, abandonadas = ::alAbandonar)
+            cola.observar(estado = { e -> _estadoGuardado.value = e }, abandonadas = ::alAbandonar, guardadas = ::alGuardar)
+        }
+    }
+
+    /** Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…". */
+    private fun alGuardar(ops: List<OpGuardada>) {
+        for (g in ops) {
+            if (g.op.kind != "chat") continue
+            val contenido = g.op.payload["contenido"]?.comoTexto ?: continue
+            g.respuesta.comoTexto?.let { id -> _chat.value?.confirmar(contenido, id) }
         }
     }
 
@@ -398,6 +467,20 @@ class ModeloApp(
             return
         }
         _info.value = decodificar(primera.aJson(), ClienteInfo::desde)
+        // La misma persona con otro link (Mati lo regeneró): lo que quedó en la cola de la carpeta vieja sale con este, con el
+        // `drenar()` de más abajo (hallazgo 4).
+        // La carpeta, la cola y las fotos se toman juntas antes de esperar: si mientras tanto entra el link de otra persona,
+        // lo de esta no puede terminar en la cuenta de esa.
+        val discoCuenta = disco
+        val colaCuenta = outbox
+        val fotosCuenta = _fotos.value
+        val clienteId = _info.value?.clienteId
+        if (discoCuenta != null && colaCuenta != null && !clienteId.isNullOrEmpty()) {
+            CuentasDelTelefono.anotar(clienteId, discoCuenta)
+            CuentasDelTelefono.adoptar(clienteId, discoCuenta, colaCuenta)
+            fotosCuenta?.let { f -> CuentasDelTelefono.adoptarFotos(clienteId, discoCuenta, f) }
+            if (!vigente()) return
+        }
 
         val rr: Resultado<ValorJson>
         val dd: Resultado<ValorJson>
@@ -442,7 +525,7 @@ class ModeloApp(
         _fase.value = Fase.LISTO
         if (faltaron.isEmpty()) _cargasConRed.update { it + 1 }
         _entreno.value?.let { e ->
-            alcance.launch {
+            cargaDelMotor = alcance.launch {
                 cargarCatalogo()
                 e.aplicarLegadoDelDisco()   // la sesión en curso que trajo la migración, una vez
                 e.cargar()
@@ -507,8 +590,9 @@ class ModeloApp(
     private val catalogoVigente: CatalogoEjercicios get() = catalogo ?: catalogoEmpaquetado
 
     /**
-     * El motor de la rutina activa: se crea una vez por rutina; una versión nueva de la misma rutina (Mati la editó, se
-     * avanzó de semana) lo actualiza sin perder lo que está en curso.
+     * El motor de la rutina activa: se crea una vez por rutina y por cuenta; una versión nueva de la misma rutina (Mati la
+     * editó, se avanzó de semana) lo actualiza sin perder lo que está en curso. Con otro link de la misma persona la rutina
+     * es la misma, pero el motor de antes escribía en la cola y la carpeta del link viejo (hallazgo 4).
      */
     private fun prepararEntreno() {
         val rutina = _rutina.value ?: run {
@@ -516,13 +600,13 @@ class ModeloApp(
             return
         }
         val e = _entreno.value
-        if (e != null && e.rutina.value.id == rutina.id) {
+        if (e != null && e.rutina.value.id == rutina.id && e.token == token) {
             if (e.rutina.value != rutina) e.reemplazarRutina(rutina)
             return
         }
         val nuevo = ModeloEntreno(
             cliente, token = token, outbox = outbox, disco = disco, rutinaInicial = rutina, info = _info.value,
-            catalogoInicial = catalogoVigente, alcance = alcance,
+            catalogoInicial = catalogoVigente, alcance = alcance, sesiones = sesionesDelDia,
         )
         // Con el disco de ESTA cuenta, y solo si sigue siendo el motor vigente (como el `[weak e]` de iOS): lo que termine
         // de un motor que ya se soltó no le toca la copia a nadie.
@@ -583,6 +667,20 @@ class ModeloApp(
     }
 
     /**
+     * "Tirar para actualizar" en Entreno: como en Dieta, la carga entera, que trae la rutina (si Mati la republicó, se ve).
+     * Antes la pantalla recargaba solo lo del motor (la sesión, el historial, los comentarios) y la rutina nueva no aparecía
+     * hasta reabrir la app (revisión del 15-oct, hallazgo 6). Espera también lo del motor, como antes.
+     */
+    suspend fun refrescarEntreno() {
+        if (_esDemo.value) {
+            _entreno.value?.cargar()
+            return
+        }
+        cargar()
+        cargaDelMotor?.join()
+    }
+
+    /**
      * Progreso por el ejercicio que se hace de verdad: el sustituto si hay (PRO-02, `getEffectiveEx` en el
      * `loadProgressAndRender` de la web). Sin el motor de Entreno, por el nombre del plan.
      */
@@ -606,7 +704,7 @@ class ModeloApp(
         _dieta.value = dietaNormalizada(c.dieta)
         _dieta.value?.id?.let { id -> _swaps.value = leerSwaps(id) }
         prepararEntreno()
-        _entreno.value?.let { e -> alcance.launch { e.cargar() } }
+        _entreno.value?.let { e -> cargaDelMotor = alcance.launch { e.cargar() } }
     }
 
     // ── Dieta ──
@@ -658,7 +756,8 @@ class ModeloApp(
     suspend fun sustituir(original: Alimento, sustituto: ValorJson, comidaId: String, opt: Int, idx: Int) {
         val dietaId = _dieta.value?.id ?: return
         val k = clave(comidaId, opt, idx)
-        val anclado = SwapsDeComida.conAncla(sustituto, original)
+        // Sin NaN ni infinito: en memoria como queda en el archivo y en la cola (null, como `JSON.stringify`).
+        val anclado = SwapsDeComida.conAncla(sustituto, original).sinNoFinitos
         _swaps.update { it + (k to SwapLocal(alimentoJson(original), anclado)) }
         guardarSwaps()
         outbox?.encolar(
@@ -797,38 +896,50 @@ class ModeloApp(
         )
     }
 
-    /** Preferencias, alimentos propios y swaps del servidor (hydrateSwapsAndCustomFoodsFromBackend). */
+    /**
+     * Preferencias, alimentos propios y swaps del servidor (hydrateSwapsAndCustomFoodsFromBackend). Todo es de ESTA cuenta y
+     * de ESTA dieta: si mientras se espera al servidor entra otro link (o llega otra dieta), lo que vuelve se descarta. Antes
+     * se aplicaba igual y lo de A quedaba en B: sus preferencias, sus alimentos propios y sus reemplazos, en memoria, en la
+     * carpeta de B y en su cola (revisión del 15-oct, hallazgo 10). La cola y la carpeta son las de la cuenta del principio,
+     * aunque cambie en el medio.
+     */
     internal suspend fun hidratarDieta() {
         val t = token ?: return
         val dieta = _dieta.value ?: return
+        val d = disco ?: return
+        val cola = outbox ?: return
+        fun vigente(): Boolean = token == t && !_esDemo.value && _dieta.value?.id == dieta.id
         val p = mapOf("p_token" to texto(t))
-        cliente.filas("mypump_get_cliente_prefs", p, PreferenciasCliente::desde).valorONull()?.let {
-            _excluir.value = it.firstOrNull()?.excluir ?: emptyList()
-        }
-        cliente.filas("mypump_get_custom_foods", p, AlimentoPropio::desde).valorONull()?.let { _alimentosPropios.value = it }
+        val prefs = cliente.filas("mypump_get_cliente_prefs", p, PreferenciasCliente::desde)
+        if (!vigente()) return
+        prefs.valorONull()?.let { _excluir.value = it.firstOrNull()?.excluir ?: emptyList() }
+        val propios = cliente.filas("mypump_get_custom_foods", p, AlimentoPropio::desde)
+        if (!vigente()) return
+        propios.valorONull()?.let { _alimentosPropios.value = it }
 
         val remotos = cliente.filas("mypump_get_food_swaps", mapOf("p_token" to texto(t), "p_dieta_id" to texto(dieta.id)), FoodSwap::desde)
             .valorONull()
-        val pendientes = (outbox?.pendientesPorClave() ?: emptyMap()).mapValues { it.value.kind }
+        val pendientes = cola.pendientesPorClave().mapValues { it.value.kind }
+        if (!vigente()) return
         val marca = "swaps_migrados_${dieta.id}"
-        val yaMigrado = (disco?.leer(marca) as? JsonPrimitive)?.booleanOrNull ?: false
+        val yaMigrado = (d.leer(marca) as? JsonPrimitive)?.booleanOrNull ?: false
         val e = dieta.estructura
         val tipo = tipoDia
         val h = SwapsDeComida.hidratar(remotos, _swaps.value, dieta.id, pendientes, yaMigrado, _palanca.value.anclajeBorraSwaps) { c, o, f ->
             SwapsDeComida.enPosicion(e, tipo, c, o, f)
         } ?: return
         _swaps.value = h.swaps
-        guardarSwaps()
+        guardarSwaps()   // sin esperas desde `vigente()`: la carpeta y la dieta siguen siendo las del principio
         for (op in h.operaciones) {
             val payload = (op.payload as? ValorJson.Objeto)?.let { ValorJson.Objeto(it.campos + ("dietaId" to texto(dieta.id))) } ?: op.payload
-            outbox?.encolar(op.kind, payload, op.clave)
+            cola.encolar(op.kind, payload, op.clave)
         }
         if (h.migrando) {
-            outbox?.drenar()
-            val quedan = (outbox?.pendientesPorClave() ?: emptyMap()).keys.any { it.startsWith("swap_${dieta.id}_") }
-            if (!quedan) disco?.guardar(marca, ValorJson.Booleano(true))
+            cola.drenar()
+            val quedan = cola.pendientesPorClave().keys.any { it.startsWith("swap_${dieta.id}_") }
+            if (!quedan) d.guardar(marca, ValorJson.Booleano(true))
         } else if (h.marcarMigrado) {
-            disco?.guardar(marca, ValorJson.Booleano(true))
+            d.guardar(marca, ValorJson.Booleano(true))
         }
     }
 

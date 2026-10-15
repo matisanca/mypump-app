@@ -41,7 +41,6 @@ import com.pumpteam.mypump.reglas.VariantesEjercicio
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -74,6 +73,11 @@ class ModeloEntreno(
     private val zona: ZoneId = ZoneId.systemDefault(),
     private val reloj: () -> Instant = Instant::now,
     private val alcance: CoroutineScope,
+    /**
+     * La creación de la sesión en vuelo, por día y semana (la de otro día no sirve). Es la de la cuenta: la cola la usa
+     * también, así la primera serie del día no crea la sesión dos veces (hallazgo 5).
+     */
+    private val sesiones: SesionesDelDia = SesionesDelDia(alcance),
 ) {
     val demo: Boolean = esDemo ?: (token == null || outbox == null)
 
@@ -148,9 +152,6 @@ class ModeloEntreno(
     private var sinHistorialPorClave = false
     private val generacionHistorial = HashMap<String, Int>()
     private val historialEnVuelo = HashMap<String, Job>()
-
-    /** La creación de la sesión en vuelo, por día y semana (la de otro día no sirve). */
-    private var sesionEnVuelo: Pair<String, Deferred<String?>>? = null
 
     /** SER-14: lo último que se escribió en el archivo de la rutina. Lo que cambie desde acá sale por la cola. */
     private var sustitucionesGuardadas: Map<String, ValorJson> = emptyMap()
@@ -479,17 +480,13 @@ class ModeloEntreno(
         val diaId = _dia.value.dia.id ?: return null
         val t = token ?: return null
         val semana = this.semana
-        val clave = "$diaId|$semana"
-        sesionEnVuelo?.let { (c, tarea) -> if (c == clave) return tarea.await() }
-        val tarea = alcance.async {
+        val r = sesiones.iniciar(SesionesDelDia.clave(diaId, semana.toDouble()), usarResueltas = false) {
             cliente.llamar(
                 "mypump_iniciar_sesion",
                 mapOf("p_token" to texto(t), "p_dia_id" to texto(diaId), "p_semana" to numero(semana)),
-            ).valorONull()?.comoTexto?.let(Js::verdadero)
+            )
         }
-        sesionEnVuelo = clave to tarea
-        val id = tarea.await()
-        if (sesionEnVuelo?.first == clave) sesionEnVuelo = null
+        val id = r.valorONull()?.comoTexto?.let(Js::verdadero)
         // Si se cambió de día mientras viajaba, no es la sesión del día que se mira.
         if (id != null && _dia.value.dia.id == diaId && _dia.value.semana == semana) {
             mutarDia { it.sesionId = id }
@@ -980,6 +977,12 @@ class ModeloEntreno(
         val ex = _dia.value.ejercicio(lugar) ?: return emptyList()
         return SustitucionesEntreno.filtrar(_catalogo.value.sustitutos(efectivo(ex)), busqueda)
     }
+
+    /**
+     * El sustituto elegido en la hoja, buscado por su clave en la lista de AHORA (con el catálogo que haya llegado mientras
+     * tanto). null si ya no está entre los sustitutos (revisión del 15-oct, hallazgo 13).
+     */
+    fun sustituto(lugar: String, clave: String): SustitutoEjercicio? = sustitutos(lugar).firstOrNull { it.clave == clave }
 
     /** El "🔒 Fijar" arranca como estaba la sustitución previa (al cambiar de sustituto no se pierde). */
     fun fijadaAntes(lugar: String): Boolean = SustitucionesEntreno.aplicada(_dia.value.sustituciones[lugar])?.fijado ?: false

@@ -36,6 +36,8 @@ data class Operacion(
      * queda en la cola hasta que se vuelva a prender (revisión del 15-oct, hallazgo 2). null en las nativas.
      */
     val legado: Boolean? = null,
+    /** Ya salió una vez ([Outbox.ANOTAN_INTENTO]): pudo haber llegado aunque no volvió la respuesta. null si nunca salió. */
+    val intentada: Boolean? = null,
 ) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         buildMap {
@@ -46,6 +48,7 @@ data class Operacion(
             put("tries", ValorJson.Numero(tries.toDouble()))
             put("ts", ValorJson.Numero(ts))
             legado?.let { put("legado", ValorJson.Booleano(it)) }
+            intentada?.let { put("intentada", ValorJson.Booleano(it)) }
         },
     )
 
@@ -66,10 +69,27 @@ data class Operacion(
                 tries = o["tries"]?.comoNumero?.toInt() ?: 0,
                 ts = ts,
                 legado = (o["legado"] as? ValorJson.Booleano)?.valor,
+                intentada = (o["intentada"] as? ValorJson.Booleano)?.valor,
             )
         }
     }
 }
+
+/** Una op que el servidor guardó, con lo que contestó (para el chat, el id de la fila: `agregar_comentario`). */
+data class OpGuardada(val op: Operacion, val respuesta: ValorJson)
+
+/**
+ * Lo que no tiene JSON (NaN, infinito) como null, como hace `JSON.stringify` de la web. [ValorJson.aJson] ya lo escribe así
+ * en el disco y en la RPC; esto lo deja igual en memoria (en iOS, sin esto, ni la cola se podía guardar: revisión del
+ * 15-oct, sospecha de `Outbox.guardar`).
+ */
+internal val ValorJson.sinNoFinitos: ValorJson
+    get() = when (this) {
+        is ValorJson.Numero -> if (valor.isFinite()) this else ValorJson.Nulo
+        is ValorJson.Lista -> ValorJson.Lista(elementos.map { it.sinNoFinitos })
+        is ValorJson.Objeto -> ValorJson.Objeto(campos.mapValues { it.value.sinNoFinitos })
+        else -> this
+    }
 
 /** El aviso de guardado que ve el cliente (el toast de la web, `showSaveState`). */
 enum class EstadoGuardado {
@@ -145,6 +165,7 @@ class Outbox(
     private var secuencia = 0
     private var alCambiar: ((EstadoGuardado) -> Unit)? = null
     private var alAbandonar: ((List<Operacion>) -> Unit)? = null
+    private var alGuardar: ((List<OpGuardada>) -> Unit)? = null
 
     /**
      * Las ops de la migración ([Operacion.legado]) no salen: la palanca remota está apagada o todavía no se leyó (revisión
@@ -159,20 +180,24 @@ class Outbox(
     @Volatile private var cerrada = false
 
     init {
-        archivo?.let(::leerJson)?.let { j ->
-            val o = j as? JsonObject
-            (o?.get("ops") as? JsonArray)?.mapNotNullTo(ops) { Operacion.desde(it) }
-            (o?.get("fallidos") as? JsonArray)?.mapNotNullTo(fallidosLista) { f ->
-                val fo = f as? JsonObject ?: return@mapNotNullTo null
-                val op = fo["op"]?.let { Operacion.desde(it) } ?: return@mapNotNullTo null
-                Fallido(op, (fo["motivo"] as? JsonPrimitive)?.content ?: "", (fo["cuando"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0)
-            }
+        archivo?.let(::leerArchivo)?.let { (o, f) ->
+            ops += o
+            fallidosLista += f
         }
     }
 
-    suspend fun observar(estado: (EstadoGuardado) -> Unit, abandonadas: (List<Operacion>) -> Unit) = withContext(confinado) {
+    /**
+     * [guardadas]: lo que el servidor guardó en cada pasada, con su respuesta (el chat saca con eso la burbuja "enviando…"
+     * de un mensaje que el servidor deduplicó; hallazgo 7 del 15-oct).
+     */
+    suspend fun observar(
+        estado: (EstadoGuardado) -> Unit,
+        abandonadas: (List<Operacion>) -> Unit,
+        guardadas: ((List<OpGuardada>) -> Unit)? = null,
+    ) = withContext(confinado) {
         alCambiar = estado
         alAbandonar = abandonadas
+        alGuardar = guardadas
     }
 
     suspend fun cambiarEjecutor(e: suspend (Operacion) -> ResultadoOp) = withContext(confinado) { ejecutor = e }
@@ -206,7 +231,7 @@ class Outbox(
         if (dedupeKey != null) ops.removeAll { it.dedupeKey == dedupeKey }
         secuencia += 1
         val ahora = System.currentTimeMillis().toDouble()
-        val op = Operacion(id = "${ahora.toLong()}_$secuencia", kind = kind, payload = payload, dedupeKey = dedupeKey, ts = ahora)
+        val op = Operacion(id = "${ahora.toLong()}_$secuencia", kind = kind, payload = payload.sinNoFinitos, dedupeKey = dedupeKey, ts = ahora)
         ops += op
         guardar()
         programar(0)
@@ -232,6 +257,20 @@ class Outbox(
         val quedaron = sinPisar(ops, nuevas)
         guardar()
         quedaron
+    }
+
+    /**
+     * Lo que quedó en la cola de otra carpeta de la MISMA persona (un link que Mati regeneró; revisión del 15-oct, hallazgo
+     * 4). Las pendientes entran con la regla de [importarSinPisar] (sin repetir ids; lo pendiente más nuevo gana) y conservan
+     * su marca: no son de la migración. Los fallidos siguen siendo fallidos: no se mandan (algunos están "para revisar"),
+     * pero tampoco se pierden. No dispara una pasada: salen con el `drenar()` de la carga, después de que quien adopta anota
+     * lo que se llevó. Devuelve las pendientes que quedaron en la cola.
+     */
+    suspend fun adoptar(viejas: List<Operacion>, fallidos: List<Fallido>): List<Operacion> = withContext(confinado) {
+        val entraron = sinPisar(ops, viejas, deLaMigracion = false)
+        for (f in fallidos) if (fallidosLista.none { it.op.id == f.op.id }) fallidosLista += f
+        guardar()
+        entraron
     }
 
     /**
@@ -297,6 +336,7 @@ class Outbox(
         val hayVisibles = tanda.any { it.kind !in SILENCIOSAS }
         val resueltas = HashSet<String>()
         val abandonadas = mutableListOf<Operacion>()
+        val guardadas = mutableListOf<OpGuardada>()
         var algunaFallo = false
         // "Guardando…" solo si tarda (y nunca después de terminar: cancelado, el delay corta).
         val lenta = alcance.launch(confinado) {
@@ -305,6 +345,16 @@ class Outbox(
         }
 
         for (op in tanda) {
+            // Un mensaje del chat que sale puede llegar aunque la respuesta se pierda: se anota ANTES de mandarlo (también vale
+            // si la app se cierra con el pedido en vuelo). La op que se ejecuta es la copia de antes: la primera vez sale
+            // directo y solo un reintento mira si ya había llegado (`Escrituras.yaLlego`; hallazgo 7 del 15-oct).
+            if (op.kind in ANOTAN_INTENTO && op.intentada != true) {
+                val i = ops.indexOfFirst { it.id == op.id }
+                if (i >= 0) {
+                    ops[i] = ops[i].copy(intentada = true)
+                    guardar()
+                }
+            }
             val resultado = try {
                 ejecutor(op)
             } catch (e: CancellationException) {
@@ -327,6 +377,7 @@ class Outbox(
             val r = (resultado as ResultadoOp.Respuesta).resultado
             if (r is Resultado.Ok && seGuardo(r.valor)) {
                 resueltas += op.id
+                guardadas += OpGuardada(op, r.valor)
                 continue
             }
             val error = r.errorONull()
@@ -355,6 +406,7 @@ class Outbox(
         }
         guardar()
 
+        if (guardadas.isNotEmpty()) alGuardar?.invoke(guardadas.toList())
         // Las silenciosas (SER-14) no avisan: lo que el cliente hizo ya quedó en el teléfono.
         val abandonadasVisibles = abandonadas.filter { it.kind !in SILENCIOSAS }
         if (abandonadas.isNotEmpty()) alAbandonar?.invoke(abandonadas.toList())
@@ -415,11 +467,27 @@ class Outbox(
 
     companion object {
         /**
+         * El archivo de una cola: sus pendientes y sus fallidos (null si no está o no es una cola). Lo lee la cola al iniciar,
+         * y [CuentasDelTelefono] el de otra carpeta de la misma persona.
+         */
+        internal fun leerArchivo(archivo: File): Pair<List<Operacion>, List<Fallido>>? {
+            val o = leerJson(archivo) as? JsonObject ?: return null
+            val ops = (o["ops"] as? JsonArray)?.mapNotNull { Operacion.desde(it) } ?: emptyList()
+            val fallidos = (o["fallidos"] as? JsonArray)?.mapNotNull { f ->
+                val fo = f as? JsonObject ?: return@mapNotNull null
+                val op = fo["op"]?.let { Operacion.desde(it) } ?: return@mapNotNull null
+                Fallido(op, (fo["motivo"] as? JsonPrimitive)?.content ?: "", (fo["cuando"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0)
+            } ?: emptyList()
+            return ops to fallidos
+        }
+
+        /**
          * La regla de [importarSinPisar] sobre una lista de ops. Devuelve las que quedaron (también las que ya estaban). Las
          * que entran van marcadas como de la Capacitor ([Operacion.legado]): la palanca remota las puede frenar aunque ya
-         * estén en la cola (revisión del 15-oct, hallazgo 2).
+         * estén en la cola (revisión del 15-oct, hallazgo 2). `deLaMigracion = false` es lo que se adopta de otra carpeta de
+         * la misma persona (hallazgo 4): conserva su marca.
          */
-        private fun sinPisar(ops: MutableList<Operacion>, nuevas: List<Operacion>): List<Operacion> {
+        private fun sinPisar(ops: MutableList<Operacion>, nuevas: List<Operacion>, deLaMigracion: Boolean = true): List<Operacion> {
             val quedaron = mutableListOf<Operacion>()
             for (op in nuevas) {
                 if (ops.any { it.id == op.id }) {
@@ -429,7 +497,7 @@ class Outbox(
                 val k = op.dedupeKey
                 if (k != null && (ops.lastOrNull { it.dedupeKey == k }?.ts ?: Double.NEGATIVE_INFINITY) > op.ts) continue
                 if (k != null) ops.removeAll { it.dedupeKey == k }
-                val marcada = op.copy(legado = true)
+                val marcada = if (deLaMigracion) op.copy(legado = true) else op
                 ops += marcada
                 quedaron += marcada
             }
@@ -455,6 +523,9 @@ class Outbox(
          * (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
          */
         val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR)
+
+        /** Kinds que se anotan como [Operacion.intentada] antes de salir: el chat, que antes de reintentar mira si ya había llegado. */
+        val ANOTAN_INTENTO: Set<String> = setOf("chat")
 
         /** `seGuardo` de la web: null, 0 y [] son "no se guardó". `false` SÍ cuenta (desmarcar algo que no estaba). */
         fun seGuardo(v: ValorJson): Boolean = when (v) {

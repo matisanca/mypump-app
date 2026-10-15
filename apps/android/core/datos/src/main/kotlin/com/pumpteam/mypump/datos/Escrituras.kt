@@ -4,10 +4,17 @@ import com.pumpteam.mypump.modelos.MensajeChat
 import com.pumpteam.mypump.modelos.NumeroJs
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.AnclajeSwaps
+import com.pumpteam.mypump.reglas.Js
 import com.pumpteam.mypump.reglas.SemanticaJs
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * Cómo se ejecuta cada `kind` de la cola: las MISMAS RPC y parámetros que el EXEC de la web (cliente.html:2722-2790,
@@ -15,14 +22,19 @@ import kotlinx.coroutines.sync.withLock
  * del cliente, así que todos los kinds se ejecutan aunque la nativa ya no genere algunos (por ejemplo `comida`, desde que
  * se sacó "Comí / Salté").
  */
-class Escrituras(private val cliente: ClienteRpc, private val token: String) {
-    private val sesiones = ConcurrentHashMap<String, String>()
+class Escrituras(
+    private val cliente: ClienteRpc,
+    private val token: String,
+    /** La de la cuenta: la comparte con la pantalla de Entreno ([ModeloEntreno.asegurarSesion]). */
+    private val sesiones: SesionesDelDia = SesionesDelDia(),
+) {
     private val verificacion = VerificacionToken()
 
     /**
      * Ejecuta la op y, si no se guardó, mira una vez si el token cayó (arreglo nativo n.º 3): un token revocado hace que la
      * base devuelva vacío a TODO, y sin esto la cola abandonaría todo lo del cliente en ~1 minuto. Con el token caído las
-     * ops quedan estacionadas sin gastar intentos hasta que entre con un link nuevo.
+     * ops quedan estacionadas sin gastar intentos hasta que entre con un link nuevo: si es de la misma persona, su cuenta
+     * las adopta ([CuentasDelTelefono], hallazgo 4).
      */
     suspend fun ejecutar(op: Operacion): ResultadoOp {
         val r = ejecutarSinVerificar(op)
@@ -142,8 +154,14 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
             "chat" -> {
                 // Arreglo nativo n.º 4 (el chat "en vuelo"): si el mensaje ya llegó (se mandó, se cortó la señal antes de
                 // la respuesta y la cola lo reintenta), no se manda de nuevo. El servidor deduplica el mismo texto dentro
-                // de 2 minutos (mig 075), pero un reintento puede llegar mucho después.
-                if (yaLlego(p["contenido"]?.comoTexto, op.ts)) return ResultadoOp.Respuesta(Resultado.Ok(texto("ya estaba")))
+                // de 2 minutos (mig 075), pero un reintento puede llegar mucho después. Solo un reintento (o lo que vino de
+                // la app vieja, que pudo haberlo mandado): la primera vez no pudo haber llegado, y mirar igual descartaba un
+                // "dale" repetido (hallazgo 7 del 15-oct).
+                if (op.intentada == true || op.legado == true) {
+                    yaLlego(p["contenido"]?.comoTexto, op.ts, p["desde"]?.comoTexto)?.let { id ->
+                        return ResultadoOp.Respuesta(Resultado.Ok(texto(id)))
+                    }
+                }
                 ResultadoOp.Respuesta(
                     cliente.llamar(
                         "mypump_agregar_comentario",
@@ -196,18 +214,25 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
         if (r is Resultado.Falla && r.error.funcionInexistente) Resultado.Ok(texto("sin tabla")) else r
 
     /**
-     * ¿Hay en el hilo un mensaje del cliente con ese texto, escrito desde que se encoló? (con un minuto de margen por la
-     * diferencia de reloj entre el teléfono y el servidor). Sin red, se manda igual y decide la cola.
+     * ¿Hay en el hilo un mensaje del cliente con ese texto, escrito después de encolar este? Devuelve su id. Con [despuesDe]
+     * (el último mensaje que el teléfono conocía al encolar, hora del servidor; "" si el hilo estaba vacío) se compara reloj
+     * del servidor contra reloj del servidor: con el del teléfono atrasado, un mensaje igual de hasta una hora antes contaba
+     * como este y el nuevo no salía nunca (revisión del 15-oct, hallazgo 7). Sin él (lo que vino de la app vieja, o un hilo
+     * que nunca cargó), desde que se encoló con un minuto de margen. Sin red, se manda igual y decide la cola.
      */
-    internal suspend fun yaLlego(contenido: String?, desde: Double): Boolean {
-        if (contenido.isNullOrEmpty()) return false
+    internal suspend fun yaLlego(contenido: String?, desde: Double, despuesDe: String?): String? {
+        if (contenido.isNullOrEmpty()) return null
         val r = cliente.filas(
             "mypump_get_chat",
             mapOf("p_token" to texto(token), "p_antes" to ValorJson.Nulo, "p_limite" to numero(10)),
             MensajeChat::desde,
         )
-        val filas = r.valorONull() ?: return false
-        return filas.any { it.autor == "cliente" && it.contenido == contenido && FechaIso.ms(it.createdAt) >= desde - 60_000 }
+        val filas = r.valorONull() ?: return null
+        val limite = despuesDe?.let(FechaIso::ms)
+        return filas.firstOrNull { f ->
+            f.autor == "cliente" && f.contenido == contenido &&
+                if (limite != null) FechaIso.ms(f.createdAt) > limite else FechaIso.ms(f.createdAt) >= desde - 60_000
+        }?.id
     }
 
     /**
@@ -221,25 +246,26 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
         val dia = p["diaId"]?.comoTexto
             ?: return Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "SIN_DIA", "op sin diaId"))
         val semana = p["semana"] ?: ValorJson.Nulo
-        val clave = "$dia|${AnclajeSwaps.numeroJs(semana.comoNumero)}"
-        sesiones[clave]?.let { return Resultado.Ok(it) }
+        val clave = SesionesDelDia.clave(dia, semana.comoNumero)
+        sesiones.leer(clave)?.let { return Resultado.Ok(it) }
         val parametros = mapOf("p_token" to texto(token), "p_dia_id" to texto(dia), "p_semana" to semana)
-        when (val r = cliente.llamar("mypump_get_sesion_dia", parametros)) {
-            is Resultado.Falla -> return r
-            is Resultado.Ok -> {
-                val id = (r.valor as? ValorJson.Lista)?.elementos?.firstOrNull()?.get("id")?.comoTexto
-                if (id != null) {
-                    sesiones[clave] = id
-                    return Resultado.Ok(id)
+        // Si la pantalla ya la está creando (la primera serie del día), no se pregunta: se espera esa misma llamada.
+        if (!sesiones.enVuelo(clave)) {
+            when (val r = cliente.llamar("mypump_get_sesion_dia", parametros)) {
+                is Resultado.Falla -> return r
+                is Resultado.Ok -> {
+                    val id = (r.valor as? ValorJson.Lista)?.elementos?.firstOrNull()?.get("id")?.comoTexto
+                    if (id != null) {
+                        sesiones.guardar(clave, id)
+                        return Resultado.Ok(id)
+                    }
                 }
             }
         }
-        return when (val r = cliente.llamar("mypump_iniciar_sesion", parametros)) {
+        return when (val r = sesiones.iniciar(clave, usarResueltas = true) { cliente.llamar("mypump_iniciar_sesion", parametros) }) {
             is Resultado.Falla -> r
-            is Resultado.Ok -> r.valor.comoTexto?.let { id ->
-                sesiones[clave] = id
-                Resultado.Ok(id)
-            } ?: Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 200, "SIN_SESION", "mypump_iniciar_sesion: vacío"))
+            is Resultado.Ok -> Js.verdadero(r.valor.comoTexto)?.let { Resultado.Ok(it) }
+                ?: Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 200, "SIN_SESION", "mypump_iniciar_sesion: vacío"))
         }
     }
 
@@ -256,6 +282,59 @@ class Escrituras(private val cliente: ClienteRpc, private val token: String) {
             is ValorJson.Lista -> v.elementos.joinToString(",") { if (it == ValorJson.Nulo) "" else stringJs(it) }
             is ValorJson.Objeto -> "[object Object]"
         }
+    }
+}
+
+/**
+ * La sesión del día por día y semana, de una cuenta: las que ya se resolvieron y la creación en vuelo. La comparten la cola
+ * ([Escrituras.resolverSesion]) y la pantalla de Entreno ([ModeloEntreno.asegurarSesion]): al confirmar la primera serie
+ * salen las dos a la vez y cada una mandaba su `iniciar_sesion`. La web comparte la promesa en vuelo (`_sesionInflight`);
+ * acá también (revisión del 15-oct, hallazgo 5). Gemelo de `SesionesDelDia` de iOS. La cola la usa desde su hilo y la
+ * pantalla desde el principal: lo de adentro va con candado.
+ */
+class SesionesDelDia(
+    /** Donde corre la creación compartida (en la app, la de la cuenta): no depende de quién la espera, como el `Task` de iOS. */
+    private val alcance: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+) {
+    private val candado = Mutex()
+    private val resueltas = HashMap<String, String>()
+    private val vuelos = HashMap<String, Deferred<Resultado<ValorJson>>>()
+
+    internal suspend fun leer(k: String): String? = candado.withLock { resueltas[k] }
+
+    internal suspend fun guardar(k: String, id: String) = candado.withLock { resueltas[k] = id }
+
+    internal suspend fun enVuelo(k: String): Boolean = candado.withLock { k in vuelos }
+
+    /**
+     * `iniciar_sesion` una sola vez por clave: si ya hay una creación en vuelo, se espera esa; si no, sale [crear]. Lo que
+     * devuelve queda resuelto para la cola. La pantalla no lee lo resuelto (`usarResueltas = false`): confirma su sesión con
+     * el servidor al restaurar, y una que el servidor archivó en el medio no tiene que volver por acá.
+     */
+    internal suspend fun iniciar(k: String, usarResueltas: Boolean, crear: suspend () -> Resultado<ValorJson>): Resultado<ValorJson> {
+        val vuelo = candado.withLock {
+            if (usarResueltas) resueltas[k]?.let { return Resultado.Ok(texto(it)) }
+            vuelos[k] ?: alcance.async {
+                var r: Resultado<ValorJson>? = null
+                try {
+                    crear().also { r = it }
+                } finally {
+                    // El vuelo se suelta pase lo que pase (si no, el próximo esperaría uno muerto), y lo creado queda resuelto.
+                    withContext(NonCancellable) {
+                        candado.withLock {
+                            vuelos.remove(k)
+                            Js.verdadero((r as? Resultado.Ok)?.valor?.comoTexto)?.let { resueltas[k] = it }
+                        }
+                    }
+                }
+            }.also { vuelos[k] = it }
+        }
+        return vuelo.await()
+    }
+
+    companion object {
+        /** `"<día>|<semana>"`, con la semana como la escribe JS (la clave de `_sesionPorDia` de la web). */
+        fun clave(dia: String, semana: Double?): String = "$dia|${AnclajeSwaps.numeroJs(semana)}"
     }
 }
 

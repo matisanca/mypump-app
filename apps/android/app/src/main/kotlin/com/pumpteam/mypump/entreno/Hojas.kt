@@ -62,6 +62,7 @@ import com.pumpteam.mypump.diseno.Separador
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.Js
+import com.pumpteam.mypump.reglas.SustitutoEjercicio
 import kotlinx.coroutines.launch
 
 /**
@@ -79,7 +80,11 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
     val alcance = LocalAlcanceApp.current
     val foco = LocalFocusManager.current
     var busqueda by rememberSaveable(lugar) { mutableStateOf("") }
-    var elegido by rememberSaveable(lugar) { mutableStateOf<Int?>(null) }
+    // El elegido por su clave, no por su posición: si con la hoja abierta llega el catálogo del servidor, la lista cambia de
+    // orden y la misma posición era otro ejercicio (revisión del 15-oct, hallazgo 13). La clave sobrevive a rotar; el que se
+    // tocó queda por si ya no está en la lista de ahora.
+    var elegido by rememberSaveable(lugar) { mutableStateOf<String?>(null) }
+    var tocado by remember(lugar) { mutableStateOf<SustitutoEjercicio?>(null) }
     // Arranca como estaba la sustitución previa: al cambiar de sustituto no se pierde que estaba fijada.
     var fijar by rememberSaveable(lugar) { mutableStateOf(motor.fijadaAntes(lugar)) }
     val plan = v.dia.ejercicio(lugar)
@@ -94,7 +99,9 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
     }
 
     fun sustituir() {
-        val s = elegido?.let { todos.getOrNull(it) } ?: return
+        val clave = elegido ?: return
+        // El mismo, con lo que tenga el catálogo de ahora; si ya no está entre los sustitutos, el que se tocó.
+        val s = motor.sustituto(lugar, clave) ?: tocado?.takeIf { it.clave == clave } ?: return
         val fijada = fijar
         cerrar()
         alcance.launch { motor.sustituir(lugar, s, fijada) }
@@ -194,13 +201,15 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
                 }
             }
             itemsIndexed(opciones, key = { _, s -> "${s.slug}|${s.nombre}|${s.equipo}" }) { _, s ->
-                val i = todos.indexOf(s)
-                val elegida = i >= 0 && i == elegido
+                val elegida = s.clave == elegido
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .superficieTarjeta(radio = Radio.control + 4.dp)
-                        .clickable { elegido = i }
+                        .clickable {
+                            elegido = s.clave
+                            tocado = s
+                        }
                         .padding(horizontal = Espacio.s, vertical = 10.dp)
                         .semantics { selected = elegida }
                         .testTag("variante"),

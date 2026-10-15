@@ -119,7 +119,8 @@ internal object ArranqueMigracion {
                 // El modelo ya existe: si tiene cuenta, su cola está viva y la Fase L no le escribe el archivo.
                 val r = candado.withLock { faseLocal(app, entorno, almacen, ajustes, cuentaViva = modelo.token) } ?: continue
                 val t = r.tokenVigente
-                if (r.adoptoToken && t != null && modelo.token != t) modelo.entrar(t)
+                // No lo tocó el cliente: si con una cuenta andando el link no sirve (o no se puede revisar), no se le avisa.
+                if (r.adoptoToken && t != null && modelo.token != t) modelo.entrar(t, avisar = false)
                 break
             }
         }

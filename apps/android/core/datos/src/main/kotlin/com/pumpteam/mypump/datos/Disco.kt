@@ -17,8 +17,11 @@ import kotlinx.serialization.json.JsonElement
  * En la app la raíz es `filesDir`, y `MyPump/` está fuera del backup (ver `reglas_backup.xml`): restaurar en otro
  * teléfono la cola de escrituras de hace semanas mandaría de nuevo acciones viejas.
  */
-class Disco(raiz: File, token: String) {
-    val carpeta: File = File(raiz, "MyPump/cuenta-" + huella(token))
+class Disco internal constructor(
+    /** La carpeta de la cuenta. Pasarla directo abre otra cuenta del teléfono de la que no se tiene el token (`CuentasDelTelefono`). */
+    val carpeta: File,
+) {
+    constructor(raiz: File, token: String) : this(File(raiz, "MyPump/cuenta-" + huella(token)))
 
     fun archivo(nombre: String): File = File(carpeta, nombre)
 

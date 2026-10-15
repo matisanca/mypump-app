@@ -7,6 +7,7 @@ import java.security.KeyStore
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -64,6 +65,38 @@ class TokenEnKeystoreTest {
         // Y se puede volver a entrar con el link.
         t.guardar("ZYXWVUTSRQ0123456789zyxwvutsrq__")
         assertEquals("ZYXWVUTSRQ0123456789zyxwvutsrq__", t.leer())
+    }
+
+    /**
+     * Lo que mira la Fase L de la migración al adoptar el token (`EjecutorLegado.faseLocal`, revisión del 15-oct): `guardar`
+     * no tira, así que lo que no se pudo escribir se tiene que ver al leer de vuelta. Ni un archivo nuevo que no se pudo
+     * escribir ni uno que no se pudo reemplazar devuelven el token que se quiso guardar.
+     */
+    @Test
+    fun loQueNoSePudoGuardarNoSeLeeDeVuelta() {
+        // Donde tendría que ir la carpeta hay un archivo: no se puede escribir adentro.
+        val bloqueo = File(contexto.noBackupFilesDir, "acceso-prueba-bloqueo")
+        val carpeta = File(contexto.noBackupFilesDir, "acceso-prueba-carpeta")
+        bloqueo.deleteRecursively()
+        carpeta.deleteRecursively()
+        try {
+            bloqueo.writeText("x")
+            val nuevo = TokenEnKeystore(File(bloqueo, "acceso.bin"), alias)
+            nuevo.guardar("abcdefghij0123456789ABCDEFGHIJ_-")
+            assertNull(nuevo.leer())
+            // Reemplazar el que había en una carpeta donde ya no se puede escribir: el nuevo no queda.
+            carpeta.mkdirs()
+            val t = TokenEnKeystore(File(carpeta, "acceso.bin"), alias)
+            t.guardar("abcdefghij0123456789ABCDEFGHIJ_-")
+            assertEquals("abcdefghij0123456789ABCDEFGHIJ_-", t.leer())
+            assertTrue(carpeta.setWritable(false))
+            t.guardar("ZYXWVUTSRQ0123456789zyxwvutsrq__")
+            assertNotEquals("ZYXWVUTSRQ0123456789zyxwvutsrq__", t.leer())
+        } finally {
+            carpeta.setWritable(true)
+            carpeta.deleteRecursively()
+            bloqueo.delete()
+        }
     }
 
     @Test

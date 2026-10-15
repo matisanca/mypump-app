@@ -168,9 +168,14 @@ object TokenPush {
  * el permiso de notificaciones y solo si cambió desde el último que se mandó (`mypump_push_token`, la misma clave que la
  * web).
  *
- * A diferencia de la web y de iOS, se recuerda también DE QUÉ CUENTA fue ese registro ([CLAVE_CUENTA], una huella del token
- * de acceso, nunca el token). Con otra cuenta en el mismo teléfono (el link de otro, ACC-10) el token de push es el mismo:
+ * A diferencia de la web, se recuerda también DE QUÉ CUENTA fue ese registro ([CLAVE_CUENTA], una huella del token de
+ * acceso, nunca el token). Con otra cuenta en el mismo teléfono (el link de otro, ACC-10) el token de push es el mismo:
  * antes no se volvía a mandar y los avisos de la cuenta anterior seguían llegando acá.
+ *
+ * Y CUÁNDO ([CLAVE_FECHA]): el mismo token con la misma cuenta se vuelve a registrar como mucho una vez cada 7 días. Si
+ * `push.py` daba de baja la fila (FCM dijo que el token no sirve, o un envío falló), el teléfono no volvía a registrarse
+ * mientras su token no cambiara (revisión del 15-oct, hallazgo 9). Sin fecha (versiones anteriores) o con el reloj para
+ * atrás, se registra. Como en iOS.
  *
  * Un solo transporte por teléfono: la nativa registra solo este token (en Android, el de FCM tal cual) y nunca Web Push.
  * Es el mismo que registraba la Capacitor (la instalación de Firebase sobrevive a la actualización), así que el upsert por
@@ -180,12 +185,32 @@ object RegistroPush {
     const val CLAVE_TOKEN = "mypump_push_token"
     const val CLAVE_CUENTA = "mypump_push_cuenta"
 
+    /** Cuándo se registró (ms desde 1970, como texto). */
+    const val CLAVE_FECHA = "mypump_push_fecha"
+
+    /** Cada cuánto se vuelve a registrar el mismo token con la misma cuenta. */
+    const val VIGENCIA_MS = 7 * 86_400_000L
+
     enum class Decision { REGISTRAR, YA_REGISTRADO, NO_CORRESPONDE }
 
-    fun decidir(cuenta: String?, esDemo: Boolean, conPermiso: Boolean, dispositivo: String, preferencias: Preferencias): Decision = when {
+    fun decidir(
+        cuenta: String?,
+        esDemo: Boolean,
+        conPermiso: Boolean,
+        dispositivo: String,
+        preferencias: Preferencias,
+        ahora: Long = System.currentTimeMillis(),
+    ): Decision = when {
         cuenta == null || esDemo || !conPermiso || dispositivo.isBlank() -> Decision.NO_CORRESPONDE
-        preferencias.leer(CLAVE_TOKEN) == dispositivo && preferencias.leer(CLAVE_CUENTA) == huella(cuenta) -> Decision.YA_REGISTRADO
+        preferencias.leer(CLAVE_TOKEN) == dispositivo && preferencias.leer(CLAVE_CUENTA) == huella(cuenta) &&
+            vigente(preferencias.leer(CLAVE_FECHA), ahora) -> Decision.YA_REGISTRADO
         else -> Decision.REGISTRAR
+    }
+
+    /** El registro anotado tiene menos de 7 días (y no es del futuro: el cliente pudo haber atrasado el reloj). */
+    private fun vigente(fecha: String?, ahora: Long): Boolean {
+        val f = fecha?.toLongOrNull() ?: return false
+        return ahora >= f && ahora - f < VIGENCIA_MS
     }
 
     /** La de la carpeta de la cuenta ([Disco.huella]): identifica la cuenta sin guardar el token en las preferencias. */
@@ -204,8 +229,9 @@ object RegistroPush {
         version: String?,
         preferencias: Preferencias,
         plataforma: String = "android",
+        ahora: Long = System.currentTimeMillis(),
     ): Boolean {
-        when (decidir(cuenta, esDemo, conPermiso, dispositivo, preferencias)) {
+        when (decidir(cuenta, esDemo, conPermiso, dispositivo, preferencias, ahora)) {
             Decision.NO_CORRESPONDE -> return false
             Decision.YA_REGISTRADO -> return true
             Decision.REGISTRAR -> {}
@@ -221,10 +247,16 @@ object RegistroPush {
         if (r.valorONull() != ValorJson.Booleano(true)) return false
         preferencias.guardar(CLAVE_TOKEN, dispositivo)
         preferencias.guardar(CLAVE_CUENTA, huella(t))
+        preferencias.guardar(CLAVE_FECHA, ahora.toString())
         return true
     }
 }
 
 /** `registrarPush` con la cuenta del modelo: directo, ver [RegistroPush]. Devuelve si quedó registrado. */
-suspend fun ModeloApp.registrarPush(dispositivo: String, version: String?, plataforma: String = "android", conPermiso: Boolean = true): Boolean =
-    RegistroPush.registrar(cliente, token, esDemo.value, conPermiso, dispositivo, version, preferencias, plataforma)
+suspend fun ModeloApp.registrarPush(
+    dispositivo: String,
+    version: String?,
+    plataforma: String = "android",
+    conPermiso: Boolean = true,
+    ahora: Long = System.currentTimeMillis(),
+): Boolean = RegistroPush.registrar(cliente, token, esDemo.value, conPermiso, dispositivo, version, preferencias, plataforma, ahora)

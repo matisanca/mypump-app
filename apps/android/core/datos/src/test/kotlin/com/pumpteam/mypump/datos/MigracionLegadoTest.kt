@@ -2,6 +2,7 @@ package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
 import java.io.File
+import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.runBlocking
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -611,6 +613,28 @@ class MigracionLegadoTest {
         assertNull(tel.archivos.estado?.escritura?.borrar?.get("mypump_outbox_$tokenA"))
     }
 
+    /**
+     * Sospecha de la revisión del 15-oct, confirmada en iOS (gemelo de `siElKeychainNoGuardaElTokenLaFaseLNoQuedaHecha`): si
+     * el almacén no guarda el token (en Android, el Keystore falla y `TokenEnKeystore` borra el archivo sin tirar), la Fase L
+     * quedaba hecha igual (con la huella anotada no vuelve a correr) y la app abría en "pegá tu link" para siempre, con la
+     * cola esperando en una carpeta que nadie abre.
+     */
+    @Test
+    fun siElAlmacenNoGuardaElTokenLaFaseLNoQuedaHecha() {
+        val tel = Telefono()
+        tel.lector.escribir(
+            mapOf("mypump_token" to tokenA, "mypump_outbox_$tokenA" to json(ValorJson.Lista(colaWeb(9))), "mypump_offline_$tokenA" to fotoOffline(rutinaR1)),
+        )
+        val roto = AlmacenQueNoGuarda()
+        assertThrows(IOException::class.java, { runBlocking { EjecutorLegado.faseLocal(tel.entorno, roto, tel.ajustes, ahoraMig, baires) } }) {
+            "la Fase L terminó como si el token hubiera quedado guardado"
+        }
+        // El arranque siguiente, con el almacén andando, corre de nuevo y adopta el token.
+        val r = tel.faseL()
+        assertTrue(r.corrio && r.adoptoToken && tel.almacen.leer() == tokenA)
+        assertTrue(r.aLaCola + r.porValidar == 9 && r.yaEnElLibro == 0)
+    }
+
     /** Sin almacenamiento viejo no hace nada (ni copia ni estado). */
     @Test
     fun sinLegadoNoHaceNada() {
@@ -649,4 +673,11 @@ class MigracionLegadoTest {
         assertEquals("s-1", l.sesiones.first().sesionId)
         assertNull(l.sesiones.first().semana)
     }
+}
+
+/** Un almacén en el que guardar falla sin tirar, como `TokenEnKeystore` con el Keystore roto: no queda nada. */
+private class AlmacenQueNoGuarda : AlmacenToken {
+    override fun leer(): String? = null
+
+    override fun guardar(token: String?) {}
 }

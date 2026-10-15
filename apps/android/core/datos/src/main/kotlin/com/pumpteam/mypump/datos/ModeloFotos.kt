@@ -66,6 +66,9 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         /** No se pudo ni guardar en el teléfono. */
         data object NoSeGuardo : Resultado
 
+        /** El link ya no sirve: queda guardada para cuando entre con el nuevo. */
+        data object TokenCaido : Resultado
+
         val texto: String
             get() = when (this) {
                 Guardada -> "Listo, guardada ✓"
@@ -74,6 +77,7 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
                 ColaLlena -> "Hay fotos esperando subir. Probá cuando tengas señal."
                 MuyPesada -> "Esa foto es demasiado pesada. Probá sacarla con la cámara."
                 NoSeGuardo -> "No se pudo guardar. Probá de nuevo con señal."
+                TokenCaido -> "Quedó guardada en el teléfono. Se sube cuando vuelvas a entrar con tu link."
             }
     }
 
@@ -98,6 +102,15 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
 
     val posesDeLaSemana: Set<String>
         get() = FotosProgreso.posesDeLaSemana(_fotos.value, _pendientes.value.values.map { it.pose to it.fecha }, semanaActual)
+
+    /**
+     * Las fotos que quedaron en la carpeta de otro link de la misma persona ([CuentasDelTelefono.adoptarFotos]). Una de esta
+     * cuenta para la misma pose y semana es más nueva y queda. Devuelve si quedaron guardadas en el disco de esta cuenta.
+     */
+    internal fun adoptar(otras: Map<String, FotoPendiente>): Boolean {
+        _pendientes.update { actuales -> actuales + otras.filterKeys { it !in actuales } }
+        return guardarCola()
+    }
 
     /** `loadFotos`: lo que ya está subido. Sin red queda lo de antes. */
     suspend fun cargar() {
@@ -131,6 +144,7 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
                     Resultado.Rechazada(r.motivo)
                 }
                 Envio.Reintentar, Envio.Red -> if (guardo) Resultado.SinConexion else Resultado.NoSeGuardo
+                Envio.TokenCaido -> if (guardo) Resultado.TokenCaido else Resultado.NoSeGuardo
             }
         } finally {
             _subiendo.update { it - clave }
@@ -158,7 +172,7 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
                         continue
                     }
                     is Envio.Fatal -> _pendientes.update { it - clave }
-                    Envio.Red -> {}
+                    Envio.Red, Envio.TokenCaido -> {}
                     Envio.Reintentar -> {
                         val otra = item.copy(intentos = item.intentos + 1)
                         _pendientes.update { if (otra.intentos >= FotosProgreso.MAX_INTENTOS) it - clave else it + (clave to otra) }
@@ -166,6 +180,7 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
                 }
                 guardarCola()
                 if (r == Envio.Red) break
+                if (r == Envio.TokenCaido) break        // con este token no entra ninguna: las adopta la cuenta del link nuevo
                 if (clave in _pendientes.value) break   // el servidor está mal: se reintenta después
             }
             if (subioAlgo) {
@@ -218,9 +233,15 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         data object Reintentar : Envio
 
         data object Red : Envio
+
+        data object TokenCaido : Envio
     }
 
-    /** `_subirFoto`: 4xx salvo 429 = no va a entrar nunca; 5xx/429 = el servidor, se reintenta; sin respuesta = red. */
+    /**
+     * `_subirFoto`: 4xx salvo 429 = no va a entrar nunca; 5xx/429 = el servidor, se reintenta; sin respuesta = red. Desvío a
+     * propósito: un 401/403 por el token NO borra la foto (la web la perdía). Queda guardada, sin gastar intento, y la adopta
+     * la cuenta del link nuevo de la misma persona ([CuentasDelTelefono.adoptarFotos]; revisión del 15-oct, como iOS).
+     */
     internal suspend fun enviar(f: FotoPendiente): Envio {
         val pedido = Pedido(
             url = "${cliente.config.vision}/progreso/upload", metodo = "POST", cabeceras = mapOf("Content-Type" to "application/json"),
@@ -238,6 +259,7 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         }
         val j = parsear(r.cuerpo)
         if (r.status in 200..299 && j?.get("ok") == ValorJson.Booleano(true)) return Envio.Ok
+        if ((r.status == 401 || r.status == 403) && "token" in (j?.get("error")?.comoTexto ?: "").lowercase()) return Envio.TokenCaido
         if (r.status in 400..499 && r.status != 429) return Envio.Fatal(j?.get("error")?.comoTexto ?: "HTTP ${r.status}")
         return Envio.Reintentar
     }

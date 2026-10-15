@@ -79,6 +79,19 @@ data class HiloChat(
 
     fun agregarPendiente(b: BurbujaChat): HiloChat = copy(mensajes = ordenar(mensajes + b))
 
+    /**
+     * El servidor guardó un mensaje del cliente como la fila [id] (lo que devuelve `agregar_comentario`). Si esa fila ya está
+     * en el hilo, una burbuja "enviando…" con ese texto ES esa fila: el servidor deduplica el mismo texto dentro de 2 minutos
+     * (mig 075) y devuelve la que ya tenía, así que nunca llega una fila nueva que la saque y quedaba "enviando…" hasta
+     * reiniciar (revisión del 15-oct, hallazgo 7). Si la fila todavía no llegó, la saca [mezclar] cuando llegue.
+     */
+    fun confirmar(contenido: String, id: String): HiloChat {
+        if (mensajes.none { it.id == id && !it.pendiente }) return this
+        val i = mensajes.indexOfFirst { it.pendiente && !it.fallo && it.autor == "cliente" && it.contenido == contenido }
+        if (i < 0) return this
+        return copy(mensajes = mensajes.toMutableList().also { it.removeAt(i) })
+    }
+
     fun marcarFallido(contenido: String): HiloChat {
         val i = mensajes.indexOfFirst { it.pendiente && !it.fallo && it.contenido == contenido }
         if (i < 0) return this
@@ -165,6 +178,9 @@ class ModeloChat(
     private val _cargando = MutableStateFlow(false)
     val cargando: StateFlow<Boolean> = _cargando.asStateFlow()
 
+    /** El hilo se trajo alguna vez: sin cursor, es que está vacío (y no que no se sabe). */
+    @Volatile private var cargado = false
+
     /**
      * Con el chat a la vista el sondeo va cada 15 s y marca leído lo nuevo; si no, cada 45 s y suma al badge. Al abrirlo
      * el sondeo vuelve a arrancar: si no, la espera de 45 s que estaba corriendo seguía (como la web, que cambia el
@@ -191,6 +207,7 @@ class ModeloChat(
                 mapOf("p_token" to t, "p_antes" to antes, "p_limite" to numero(PAGINA)),
                 MensajeChat::desde,
             ).valorONull() ?: return
+            cargado = true
             _hilo.update { h -> h.mezclar(filas).hilo.let { if (filas.size < PAGINA) it.copy(hayMas = false) else it } }
             recontar()
             if (abierto && !masViejos && _noLeidos.value > 0) marcarLeido()
@@ -262,6 +279,11 @@ class ModeloChat(
         _hilo.update { it.marcarFallido(contenido) }
     }
 
+    /** La cola guardó un mensaje del chat como la fila [id] (también uno que el servidor deduplicó). */
+    fun confirmar(contenido: String, id: String) {
+        _hilo.update { it.confirmar(contenido, id) }
+    }
+
     /**
      * `marcarChatLeido`: se decide por los mensajes (con el chat abierto el contador puede dar 0 y Mati los seguiría viendo
      * "sin leer").
@@ -298,7 +320,11 @@ class ModeloChat(
     private suspend fun encolar(contenido: String) {
         // La clave lleva el texto: dos mensajes distintos son dos ops; el mismo reencolado por un doble toque, una.
         val ms = System.currentTimeMillis()
-        outbox?.encolar("chat", ValorJson.objeto("contenido" to texto(contenido)), "chat_${ms}_${contenido.take(40)}")
+        val payload = linkedMapOf<String, ValorJson>("contenido" to texto(contenido))
+        // El último mensaje que el teléfono conoce, con la hora del servidor ("" con el hilo vacío): un reintento mira si ya
+        // llegó contra eso y no contra el reloj del teléfono (`Escrituras.yaLlego`; hallazgo 7 del 15-oct).
+        (_hilo.value.cursor ?: if (cargado) "" else null)?.let { payload["desde"] = texto(it) }
+        outbox?.encolar("chat", ValorJson.Objeto(payload), "chat_${ms}_${contenido.take(40)}")
     }
 
     companion object {
