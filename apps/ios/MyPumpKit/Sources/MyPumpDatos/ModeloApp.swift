@@ -617,43 +617,49 @@ public final class ModeloApp {
         disco?.guardar(swaps, "swaps_\(id).json")
     }
 
-    /// Preferencias, alimentos propios y swaps del servidor (hydrateSwapsAndCustomFoodsFromBackend).
+    /// Preferencias, alimentos propios y swaps del servidor (hydrateSwapsAndCustomFoodsFromBackend). Todo es de ESTA cuenta
+    /// y de ESTA dieta: si mientras se espera al servidor entra otro link (o llega otra dieta), lo que vuelve se descarta.
+    /// Antes se aplicaba igual y lo de A quedaba en B: sus preferencias, sus alimentos propios y sus reemplazos, en memoria,
+    /// en la carpeta de B y en su cola (revisión del 15-oct, hallazgo 10). La cola y la carpeta son las de la cuenta del
+    /// principio, aunque cambie en el medio.
     func hidratarDieta() async {
-        guard let t = token, let dieta else { return }
+        guard let t = token, let dieta, let disco = self.disco, let outbox = self.outbox else { return }
+        func vigente() -> Bool { token == t && !esDemo && self.dieta?.id == dieta.id }
         let p: [String: JSONValue] = ["p_token": .texto(t)]
-        if case .success(let prefs) = await cliente.filas("mypump_get_cliente_prefs", p, como: PreferenciasCliente.self) {
-            excluir = prefs.first?.excluir ?? []
-        }
-        if case .success(let propios) = await cliente.filas("mypump_get_custom_foods", p, como: AlimentoPropio.self) {
-            alimentosPropios = propios
-        }
+        let prefs = await cliente.filas("mypump_get_cliente_prefs", p, como: PreferenciasCliente.self)
+        guard vigente() else { return }
+        if case .success(let prefs) = prefs { excluir = prefs.first?.excluir ?? [] }
+        let propios = await cliente.filas("mypump_get_custom_foods", p, como: AlimentoPropio.self)
+        guard vigente() else { return }
+        if case .success(let propios) = propios { alimentosPropios = propios }
 
         let remotos: [FoodSwap]?
         switch await cliente.filas("mypump_get_food_swaps", ["p_token": .texto(t), "p_dieta_id": .texto(dieta.id)], como: FoodSwap.self) {
         case .success(let f): remotos = f
         case .failure: remotos = nil
         }
-        let pendientes = (await outbox?.pendientesPorClave() ?? [:]).mapValues(\.kind)
+        let pendientes = (await outbox.pendientesPorClave()).mapValues(\.kind)
+        guard vigente() else { return }
         let marca = "swaps_migrados_\(dieta.id)"
-        let yaMigrado = disco?.leer(Bool.self, marca) ?? false
+        let yaMigrado = disco.leer(Bool.self, marca) ?? false
         let e = dieta.estructura
         let tipo = tipoDia
         guard let h = SwapsDeComida.hidratar(remotos: remotos, locales: swaps, dietaId: dieta.id, pendientes: pendientes, yaMigrado: yaMigrado,
                                              borrarAnclados: palanca.anclajeBorraSwaps, enPosicion: { SwapsDeComida.enPosicion(e, tipoActivo: tipo, comidaId: $0, optIdx: $1, foodIdx: $2) })
         else { return }
         swaps = h.swaps
-        guardarSwaps()
+        disco.guardar(swaps, "swaps_\(dieta.id).json")
         for op in h.operaciones {
             var payload = op.payload
             if case .objeto(var o) = payload { o["dietaId"] = .texto(dieta.id); payload = .objeto(o) }
-            await outbox?.encolar(op.kind, payload, dedupeKey: op.clave)
+            await outbox.encolar(op.kind, payload, dedupeKey: op.clave)
         }
         if h.migrando {
-            await outbox?.drenar()
-            let quedan = (await outbox?.pendientesPorClave() ?? [:]).keys.contains { $0.hasPrefix("swap_\(dieta.id)_") }
-            if !quedan { disco?.guardar(true, marca) }
+            await outbox.drenar()
+            let quedan = (await outbox.pendientesPorClave()).keys.contains { $0.hasPrefix("swap_\(dieta.id)_") }
+            if !quedan { disco.guardar(true, marca) }
         } else if h.marcarMigrado {
-            disco?.guardar(true, marca)
+            disco.guardar(true, marca)
         }
     }
 
