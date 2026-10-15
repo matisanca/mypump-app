@@ -296,7 +296,8 @@ class ModeloApp(
         disco = d
         val escrituras = Escrituras(cliente, t)
         outbox?.cerrar()
-        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance) { op -> escrituras.ejecutar(op) }
+        // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
+        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true) { op -> escrituras.ejecutar(op) }
         outbox = cola
         _chat.value?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         val chat = ModeloChat(cliente, t, cola, alcance)
@@ -409,7 +410,11 @@ class ModeloApp(
             palancaLeida = c.await()
         }
         if (!vigente()) return
-        palancaLeida?.let { _palanca.value = it }
+        palancaLeida?.let {
+            _palanca.value = it
+            // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
+            outbox?.usarPalanca(it.opsLegadas)
+        }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         val copia = leerCopia()
