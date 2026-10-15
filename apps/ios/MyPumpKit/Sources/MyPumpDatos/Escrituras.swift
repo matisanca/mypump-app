@@ -101,9 +101,11 @@ public struct Escrituras: Sendable {
         case "chat":
             // Arreglo nativo n.º 4: si el mensaje ya llegó (se mandó, se cortó la señal antes de la respuesta y la cola lo
             // reintenta), no se manda de nuevo. El servidor deduplica el mismo texto dentro de 2 minutos (mig 075), pero
-            // un reintento puede llegar mucho después.
-            if await yaLlego(p["contenido"]?.comoTexto, desde: op.ts) {
-                return .respuesta(.success(.texto("ya estaba")))
+            // un reintento puede llegar mucho después. Solo un reintento (o lo que vino de la app vieja, que pudo haberlo
+            // mandado): la primera vez no pudo haber llegado, y mirar igual descartaba un "dale" repetido (hallazgo 7).
+            if op.intentada == true || op.legado == true,
+               let id = await yaLlego(p["contenido"]?.comoTexto, desde: op.ts, despuesDe: p["desde"]?.comoTexto) {
+                return .respuesta(.success(.texto(id)))
             }
             return .respuesta(await cliente.llamar("mypump_agregar_comentario", [
                 "p_token": t, "p_ambito": .texto("general"), "p_referencia_id": .null, "p_referencia_nombre": .null,
@@ -140,14 +142,23 @@ public struct Escrituras: Sendable {
         return r
     }
 
-    /// ¿Hay en el hilo un mensaje del cliente con ese texto, escrito desde que se encoló? (con un minuto de margen por
-    /// la diferencia de reloj entre el teléfono y el servidor). Sin red, se manda igual y decide la cola.
-    func yaLlego(_ contenido: String?, desde ts: Double) async -> Bool {
+    /// ¿Hay en el hilo un mensaje del cliente con ese texto, escrito después de encolar este? Devuelve su id. Con
+    /// `despuesDe` (el último mensaje que el teléfono conocía al encolar, hora del servidor; "" si el hilo estaba vacío) se
+    /// compara reloj del servidor contra reloj del servidor: con el del teléfono atrasado, un mensaje igual de hasta una
+    /// hora antes contaba como este y el nuevo no salía nunca (revisión del 15-oct, hallazgo 7). Sin él (lo que vino de
+    /// la app vieja, o un hilo que nunca cargó), desde que se encoló con un minuto de margen. Sin red, se manda igual y
+    /// decide la cola.
+    func yaLlego(_ contenido: String?, desde ts: Double, despuesDe: String?) async -> String? {
         guard let contenido, !contenido.isEmpty,
               case .success(let filas) = await cliente.filas("mypump_get_chat", ["p_token": .texto(token), "p_antes": .null, "p_limite": .numero(10)],
                                                              como: MensajeChat.self)
-        else { return false }
-        return filas.contains { $0.autor == "cliente" && $0.contenido == contenido && FechaISO.ms($0.createdAt) >= ts - 60_000 }
+        else { return nil }
+        let limite = despuesDe.map(FechaISO.ms)
+        return filas.first { f in
+            guard f.autor == "cliente", f.contenido == contenido else { return false }
+            if let limite { return FechaISO.ms(f.createdAt) > limite }
+            return FechaISO.ms(f.createdAt) >= ts - 60_000
+        }?.id
     }
 
     /// `resolveSesion` (cliente.html:2698): la sesión capturada al encolar, o la de ESE día y semana, o se crea. "No pude

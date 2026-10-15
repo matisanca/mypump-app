@@ -193,7 +193,15 @@ public final class ModeloApp {
         salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
             await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } },
-                                abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } })
+                                abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } },
+                                guardadas: { ops in Task { @MainActor in self?.alGuardar(ops) } })
+        }
+    }
+
+    /// Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…".
+    private func alGuardar(_ ops: [OpGuardada]) {
+        for g in ops where g.op.kind == "chat" {
+            if let texto = g.op.payload["contenido"]?.comoTexto, let id = g.respuesta.comoTexto { chat?.confirmar(contenido: texto, id: id) }
         }
     }
 

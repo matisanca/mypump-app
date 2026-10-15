@@ -37,6 +37,39 @@ struct HiloChatTests {
         #expect(h.cursor == "2026-10-13T12:00:02+00:00")
     }
 
+    /// Hallazgo 7 (15-oct): el mismo texto dentro de 2 minutos el servidor lo deduplica (075) y devuelve la fila que ya
+    /// estaba; ninguna fila nueva saca la burbuja. La saca `confirmar` con el id que devolvió la cola.
+    @Test func unRepetidoDeduplicadoNoQuedaEnviando() {
+        var h = HiloChat()
+        h.mezclar([fila("5", "cliente", "dale", "2026-10-13T12:00:00+00:00")])
+        h.agregarPendiente(BurbujaChat(id: "tmp_1", autor: "cliente", contenido: "dale", leidoPorCliente: nil,
+                                       createdAt: "2026-10-13T12:01:00.000Z", pendiente: true))
+        h.mezclar([])   // el sondeo no trae nada nuevo
+        #expect(h.mensajes.map(\.id) == ["5", "tmp_1"])
+        h.confirmar(contenido: "dale", id: "5")
+        #expect(h.mensajes.map(\.id) == ["5"])
+    }
+
+    @Test func confirmarUnaFilaQueTodaviaNoLlegoEsperaAlSondeo() {
+        var h = HiloChat()
+        h.agregarPendiente(BurbujaChat(id: "tmp_1", autor: "cliente", contenido: "dale", leidoPorCliente: nil,
+                                       createdAt: "2026-10-13T12:01:00.000Z", pendiente: true))
+        h.confirmar(contenido: "dale", id: "9")
+        #expect(h.mensajes.map(\.id) == ["tmp_1"], "sin la fila en el hilo la burbuja queda hasta que llegue")
+        h.mezclar([fila("9", "cliente", "dale", "2026-10-13T12:01:01+00:00")])
+        #expect(h.mensajes.map(\.id) == ["9"])
+    }
+
+    @Test func confirmarNoSeLlevaUnaQueNoSalio() {
+        var h = HiloChat()
+        h.mezclar([fila("5", "cliente", "dale", "2026-10-13T12:00:00+00:00")])
+        h.agregarPendiente(BurbujaChat(id: "tmp_1", autor: "cliente", contenido: "dale", leidoPorCliente: nil,
+                                       createdAt: "2026-10-13T12:01:00.000Z", pendiente: true))
+        h.marcarFallido(contenido: "dale")
+        h.confirmar(contenido: "dale", id: "5")
+        #expect(h.mensajes.map(\.id) == ["5", "tmp_1"], "la de \"no salió → Reintentar\" se queda")
+    }
+
     @Test func elCursorIgnoraLasPendientes() {
         var h = HiloChat()
         h.mezclar([fila("1", "coach", "hola", "2026-10-13T10:00:00+00:00")])
