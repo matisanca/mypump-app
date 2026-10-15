@@ -74,6 +74,7 @@ import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
 import com.pumpteam.mypump.misdatos.MisDatosPantalla
+import com.pumpteam.mypump.progreso.ProgresoPantalla
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.revision.RevisionPantalla
 import com.pumpteam.mypump.salud.DiagnosticoSaludDesdeLink
@@ -144,7 +145,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                     } else {
                                         RevisionPantalla(modelo, alAbrirMisDatos = { navegacion.misDatos = true })
                                     }
-                                Pestana.PROGRESO -> PantallaEnConstruccion(Pestana.PROGRESO, modelo)
+                                Pestana.PROGRESO -> ProgresoPantalla(modelo)
                             }
                         }
                     }
