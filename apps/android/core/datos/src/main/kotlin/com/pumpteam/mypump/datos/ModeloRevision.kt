@@ -75,6 +75,10 @@ class ModeloRevision(
     private val _racha = MutableStateFlow(0)
     val racha: StateFlow<Int> = _racha.asStateFlow()
 
+    /** `ultimo_dia_valido` de `get_streak` (YYYY-MM-DD): "Último día válido: martes, 21 de julio" con 2 días o más. */
+    private val _ultimoDiaValido = MutableStateFlow<String?>(null)
+    val ultimoDiaValido: StateFlow<String?> = _ultimoDiaValido.asStateFlow()
+
     private val _miDiaCargado = MutableStateFlow(false)
     val miDiaCargado: StateFlow<Boolean> = _miDiaCargado.asStateFlow()
 
@@ -125,7 +129,10 @@ class ModeloRevision(
             h.await() to r.await()
         }
         rh.valorONull()?.let { filas -> if (diaDeHoy() == hoy) _habitos.value = HabitosHoy.de(filas.firstOrNull()) }
-        rr.valorONull()?.let { filas -> _racha.value = filas.firstOrNull()?.streak ?: 0 }
+        rr.valorONull()?.let { filas ->
+            _racha.value = filas.firstOrNull()?.streak ?: 0
+            _ultimoDiaValido.value = filas.firstOrNull()?.ultimoDiaValido
+        }
         aplicarPendientes()
         _miDiaCargado.value = true
     }
@@ -154,6 +161,7 @@ class ModeloRevision(
             outbox?.drenar()
             cliente.filas("mypump_get_streak", mapOf("p_token" to t), Racha::desde).valorONull()?.let { filas ->
                 _racha.value = filas.firstOrNull()?.streak ?: _racha.value
+                filas.firstOrNull()?.let { _ultimoDiaValido.value = it.ultimoDiaValido }
             }
         }
     }

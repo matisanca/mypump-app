@@ -620,6 +620,22 @@ object FechaJs {
         }
     }
 
+    /**
+     * `formatFechaLocal`: `toLocaleDateString('es-AR', {weekday:'long', day:'numeric', month:'long'})` de una fecha
+     * YYYY-MM-DD tomada como local: "martes, 21 de julio". null si no es una fecha. Como `new Date(y, m - 1, d)`, el día
+     * se desborda al mes siguiente.
+     */
+    fun diaLargo(ymd: String): String? {
+        val p = ymd.split("-").mapNotNull { it.toIntOrNull() }
+        if (p.size != 3) return null
+        val d = try {
+            LocalDate.of(p[0], 1, 1).plusMonths((p[1] - 1).toLong()).plusDays((p[2] - 1).toLong())
+        } catch (_: Exception) {
+            return null
+        }
+        return formato("EEEE, d 'de' MMMM", ZoneId.systemDefault()).format(d)
+    }
+
     /** `toLocaleDateString('es-AR', {day:'2-digit', month:'short'})`: "04-oct", "05-sept". */
     fun diaMes(d: Instant, zona: ZoneId): String = formato("dd-MMM", zona).format(d)
 
