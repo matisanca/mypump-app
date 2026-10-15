@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import MyPumpModelos
 
@@ -105,7 +104,5 @@ extension ModeloApp {
     }
 
     /// La de la carpeta de la cuenta (`Disco`), igual que `RegistroPush.huella` de Android.
-    static func huellaPush(_ token: String) -> String {
-        String(SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined().prefix(16))
-    }
+    static func huellaPush(_ token: String) -> String { Disco.huella(token) }
 }

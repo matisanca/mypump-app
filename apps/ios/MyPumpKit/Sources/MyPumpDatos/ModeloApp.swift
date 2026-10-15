@@ -183,7 +183,8 @@ public final class ModeloApp {
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola)
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
-        salud = ModeloSalud(cliente: cliente, token: t)
+        // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3).
+        salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
             await cola.observar(estado: { e in Task { @MainActor in self?.estadoGuardado = e } },
                                 abandonadas: { ops in Task { @MainActor in self?.alAbandonar(ops) } })

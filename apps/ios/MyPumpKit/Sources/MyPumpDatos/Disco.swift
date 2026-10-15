@@ -8,8 +8,12 @@ public struct Disco: Sendable {
 
     public init(raiz: URL? = nil, token: String) {
         let base = raiz ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let hash = SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined().prefix(16)
-        carpeta = base.appendingPathComponent("MyPump/cuenta-\(hash)", isDirectory: true)
+        carpeta = base.appendingPathComponent("MyPump/cuenta-\(Self.huella(token))", isDirectory: true)
+    }
+
+    /// Identifica la cuenta sin guardar el token: la carpeta, el push (`mypump_push_cuenta`) y Salud la usan.
+    public static func huella(_ token: String) -> String {
+        String(SHA256.hash(data: Data(token.utf8)).map { String(format: "%02x", $0) }.joined().prefix(16))
     }
 
     public func url(_ nombre: String) -> URL { carpeta.appendingPathComponent(nombre) }

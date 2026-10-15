@@ -71,6 +71,33 @@ public final class AlmacenSaludDefaults: AlmacenSalud, @unchecked Sendable {
     }
 }
 
+/// El estado de Salud de UNA cuenta (revisión del 15-oct, hallazgo 3). Era del teléfono, como el localStorage de la web:
+/// con el link de otra cuenta en el mismo teléfono (Mati mirando la de un cliente), "conectado" seguía en pie y los
+/// pasos, el sueño y los entrenos de una persona subían a la ficha de otra. Ahora cada cuenta tiene sus claves
+/// (`<clave>_<huella>`). La primera que usa Salud en el teléfono se queda con lo que ya estaba (lo que trajo la migración
+/// de la app vieja o guardó una versión anterior); las demás arrancan sin conectar y se conectan solo si alguien lo pide
+/// desde esa cuenta.
+public final class AlmacenSaludPorCuenta: AlmacenSalud, @unchecked Sendable {
+    /// La huella de la cuenta que se quedó con el estado que había sin cuenta.
+    public static let duenia = "mypump_health_cuenta"
+    let base: any AlmacenSalud
+    let sufijo: String
+
+    public init(base: any AlmacenSalud, cuenta: String) {
+        self.base = base
+        sufijo = "_" + cuenta
+        if base.leer(Self.duenia) == nil {
+            base.escribir(Self.duenia, cuenta)
+            for c in ClaveSalud.todas + ["mypump_health_historial_ok"] where base.leer(c + sufijo) == nil {
+                if let v = base.leer(c) { base.escribir(c + sufijo, v) }
+            }
+        }
+    }
+
+    public func leer(_ clave: String) -> String? { base.leer(clave + sufijo) }
+    public func escribir(_ clave: String, _ valor: String?) { base.escribir(clave + sufijo, valor) }
+}
+
 /// Para los tests y las vistas previas.
 public final class AlmacenSaludEnMemoria: AlmacenSalud, @unchecked Sendable {
     private var datos: [String: String]
