@@ -184,6 +184,12 @@ android {
         }
     }
 
+    // Una API más nueva que el minSdk sin su `if (Build.VERSION.SDK_INT >= …)` cierra la app en los teléfonos viejos: el
+    // release no sale. Lo de :core (JVM, sin lint) lo vigila scripts/nativa/api-android.py.
+    lint {
+        fatal += "NewApi"
+    }
+
     buildTypes {
         release {
             if (keystoreCodemagic != null) signingConfig = signingConfigs.getByName("release")

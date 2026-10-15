@@ -594,6 +594,14 @@ workflows:
           cd apps/android
           ./gradlew :app:bundleRelease :app:assembleRelease -Pmypump.versionCode="$CODIGO" -Pmypump.versionName="$VERSION"
 
+      - name: APIs de :core contra el minSdk
+        # Las pruebas de :core corren con Java 21 y no ven una API de Android 13 que cierra la app en Android 9
+        # (URLDecoder.decode(String, Charset), 15-oct). Lo de :app lo vigila lint (NewApi es fatal en el release).
+        script: |
+          set -e
+          export ANDROID_HOME="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          python3 scripts/nativa/api-android.py 26
+
       - name: Verificar lo que se sube (versión, firma, permisos, 16 KB)
         script: |
           set -e

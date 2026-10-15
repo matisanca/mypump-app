@@ -315,6 +315,7 @@ suspend fun ClienteRpc.relojesDisponibles(): List<String>? = withContext(Dispatc
  * token viaja en la query (nunca en un WebView propio).
  */
 fun ClienteRpc.urlConectarReloj(token: String, proveedor: String): String {
-    fun q(s: String) = URLEncoder.encode(s, Charsets.UTF_8).replace("+", "%20")
+    // `encode(String, Charset)` es de Android 13: con el nombre del charset anda en todas (api-android.py lo vigila).
+    fun q(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
     return "${config.app}/api/wearables/iniciar?t=${q(token)}&proveedor=${q(proveedor)}"
 }

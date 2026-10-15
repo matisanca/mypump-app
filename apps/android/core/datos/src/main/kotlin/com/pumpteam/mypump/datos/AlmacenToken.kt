@@ -72,8 +72,10 @@ object FormatoToken {
 
     private val EN_EL_MENSAJE = Regex("[?&]t=([a-zA-Z0-9_-]{16,64})")
 
+    // `decode(String, Charset)` es de Android 13 (API 33): en 9 a 12 cerraba la app al abrir el link del coach
+    // (NoSuchMethodError, lo encontró el emulador de Android 9 el 15-oct). La del nombre del charset existe desde siempre.
     private fun decodificar(s: String): String? = try {
-        URLDecoder.decode(s, Charsets.UTF_8)
+        URLDecoder.decode(s, "UTF-8")
     } catch (_: Exception) {
         null
     }

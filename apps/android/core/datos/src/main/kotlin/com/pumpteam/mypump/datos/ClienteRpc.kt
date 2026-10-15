@@ -64,7 +64,7 @@ class ClienteRpc(
     /** Lectura directa de una tabla pública (el catálogo de ejercicios). */
     suspend fun tabla(nombre: String, columnas: String): Resultado<ValorJson> = withContext(Dispatchers.Default) {
         val pedido = Pedido(
-            url = "${config.supabase}/rest/v1/$nombre?select=${java.net.URLEncoder.encode(columnas, Charsets.UTF_8).replace("+", "%20")}",
+            url = "${config.supabase}/rest/v1/$nombre?select=${java.net.URLEncoder.encode(columnas, "UTF-8").replace("+", "%20")}",
             metodo = "GET",
             cabeceras = mapOf("apikey" to config.anonKey, "Authorization" to "Bearer ${config.anonKey}"),
             cuerpo = null,
