@@ -378,8 +378,15 @@ class Pantalla(private val esperaMs: Long = 15_000) {
         out
     }
 
-    /** El botón Atrás del sistema (a la ventana que tenga el foco: la hoja, si hay una). */
+    /**
+     * El botón Atrás del sistema (a la ventana que tenga el foco: la hoja, si hay una). Antes deja asentar la pantalla: lo
+     * recién abierto (una hoja, el detalle de Salud o de Progreso) aparece en el árbol un momento antes de registrar su
+     * Atrás o de que su ventana tome el foco, y el Atrás apurado le llegaba a lo de abajo (15-oct: el detalle de Progreso en
+     * Android 9 y el de Salud en Android 13 quedaban abiertos y las pestañas volvían a Entreno). Una persona no es tan rápida.
+     */
     fun atras() {
+        Thread.sleep(300)
+        Telefono.quietoConTope(3_000)
         instr.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
     }
 
