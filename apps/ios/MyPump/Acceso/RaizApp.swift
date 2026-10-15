@@ -82,7 +82,8 @@ struct RaizApp<Contenido: View>: View {
             }
         }
         .background { MonitorDeRed { Task { await modelo.alVolverLaRed() } } }
-        .sheet(isPresented: $onboarding) {
+        // Cerrada como sea (también deslizando), queda vista (hallazgo 12).
+        .sheet(isPresented: $onboarding, onDismiss: { OnboardingPermisos.marcarVista() }) {
             OnboardingPermisos(modelo: modelo) { onboarding = false }
         }
         .task(id: modelo.fase == .listo && !modelo.esDemo && modelo.token != nil) {

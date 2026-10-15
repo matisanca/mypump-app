@@ -22,6 +22,10 @@ struct OnboardingPermisos: View {
     static let clave = "mypump_onboarding_v1"
     static var pendiente: Bool { UserDefaults.standard.string(forKey: clave) != "1" }
 
+    /// Queda vista y no vuelve. También al cerrarla deslizando: cuenta como "Ahora no" y no pide nada, como en Android.
+    /// Antes solo se marcaba al terminar los pasos y volvía en cada arranque (revisión del 15-oct, hallazgo 12).
+    static func marcarVista() { UserDefaults.standard.set("1", forKey: clave) }
+
     var body: some View {
         VStack(spacing: 18) {
             if i < pasos.count {
@@ -124,7 +128,7 @@ struct OnboardingPermisos: View {
         resultado = nil
         if !conservarAviso { aviso = nil }
         if i + 1 >= pasos.count {
-            UserDefaults.standard.set("1", forKey: Self.clave)
+            Self.marcarVista()
             alTerminar()
         } else {
             i += 1
