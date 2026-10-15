@@ -82,6 +82,11 @@ private fun textosDe(n: SemanticsNode): List<String> =
 class Pantalla(private val esperaMs: Long = 15_000) {
     private val instr = InstrumentationRegistry.getInstrumentation()
 
+    private companion object {
+        /** Cuánto se espera a que algo aparezca solo antes de desplazar las listas perezosas para buscarlo ([Recorrido]). */
+        const val GRACIA_MS = 1_000L
+    }
+
     /** Corre en el hilo principal (si ya se está en él, directo: `runOnMainSync` desde el principal se traba). */
     fun <T> enPrincipal(f: () -> T): T {
         if (Looper.myLooper() == Looper.getMainLooper()) return f()
@@ -129,8 +134,58 @@ class Pantalla(private val esperaMs: Long = 15_000) {
         }
     }
 
-    /** El primer nodo que coincide (espera a que aparezca). */
-    fun nodo(s: Selector, ms: Long = esperaMs): SemanticsNode = esperar("aparece $s", ms) { nodos().firstOrNull(s::coincide) }
+    /**
+     * Busca un nodo y, si no está, desplaza las listas perezosas hasta encontrarlo: lo que hace `performScrollToNode` de
+     * ui-test sobre lo desplazable. Una `LazyColumn` no compone lo que queda fuera de la vista, así que en una pantalla chica
+     * (720×1280, el emulador de Android 9) «Desayuno» de Dieta no existe en el árbol hasta llegar a él; en una `Column` con
+     * `verticalScroll` (Entreno, Revisión) todo está compuesto y no hace falta. Primero se espera [GRACIA_MS], porque lo
+     * normal es que lo buscado esté o esté cargando; después, cada vuelta lleva cada lista perezosa a la vista al elemento
+     * siguiente (`ScrollToIndex`, desde el primero) y al pasarse del último vuelve a empezar: lo buscado pudo llegar de la
+     * red mientras tanto. Sin [desplazar] solo busca. Todo en el hilo principal.
+     */
+    private inner class Recorrido(private val desplazar: Boolean) {
+        private val desde = SystemClock.uptimeMillis()
+        private val siguiente = HashMap<Int, Int>()
+
+        fun buscar(s: Selector): SemanticsNode? {
+            val todos = nodos()
+            todos.firstOrNull(s::coincide)?.let { return it }
+            if (!desplazar || SystemClock.uptimeMillis() - desde < GRACIA_MS) return null
+            for (lista in todos) {
+                val ir = lista.config.getOrNull(SemanticsActions.ScrollToIndex)?.action ?: continue
+                val i = siguiente[lista.id] ?: 0
+                // Pasarse del último tira IllegalArgumentException ("out of bounds"): ahí se vuelve al primero.
+                val fue = try {
+                    ir(i)
+                } catch (_: IllegalArgumentException) {
+                    false
+                }
+                siguiente[lista.id] = if (fue) i + 1 else 0
+            }
+            return null
+        }
+    }
+
+    /**
+     * El primer nodo que coincide: espera a que aparezca y, si está en una lista perezosa fuera de la vista, desplaza hasta
+     * él ([Recorrido]). Con `ms = 0` (para mirar adentro de otra espera) solo busca: no desplaza nada.
+     */
+    fun nodo(s: Selector, ms: Long = esperaMs): SemanticsNode {
+        val r = Recorrido(desplazar = ms > 0)
+        return esperar("aparece $s", ms) { r.buscar(s) }
+    }
+
+    /**
+     * El nodo para leerle algo. Llamado desde la prueba, primero lo espera como [nodo] (y desplaza hasta él); adentro de un
+     * [esperar] (en el hilo principal) solo lo busca: una espera anidada dormiría el hilo principal.
+     */
+    private fun <T> leer(s: Selector, f: (SemanticsNode) -> T): T {
+        if (Looper.myLooper() != Looper.getMainLooper()) nodo(s)
+        return enPrincipal {
+            val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
+            f(n)
+        }
+    }
 
     fun existe(s: Selector): Boolean = enPrincipal { nodos().any(s::coincide) }
 
@@ -165,8 +220,9 @@ class Pantalla(private val esperaMs: Long = 15_000) {
 
     /** Toca: la acción de clic del nodo o, si es un texto adentro de un botón, la del primer ancestro que la tenga. */
     fun tocar(s: Selector, ms: Long = esperaMs) {
+        val r = Recorrido(desplazar = ms > 0)
         esperar("se puede tocar $s", ms) {
-            val n = nodos().firstOrNull(s::coincide) ?: return@esperar null
+            val n = r.buscar(s) ?: return@esperar null
             var actual: SemanticsNode? = n
             while (actual != null) {
                 val accion = actual.config.getOrNull(SemanticsActions.OnClick)?.action
@@ -182,39 +238,25 @@ class Pantalla(private val esperaMs: Long = 15_000) {
 
     /** Escribe en un campo (reemplaza lo que tenía), como pegar el texto entero. */
     fun escribir(s: Selector, texto: String) {
+        val r = Recorrido(desplazar = true)
         esperar("se puede escribir en $s") {
-            val n = nodos().firstOrNull(s::coincide) ?: return@esperar null
+            val n = r.buscar(s) ?: return@esperar null
             n.config.getOrNull(SemanticsActions.SetText)?.action?.invoke(AnnotatedString(texto)) ?: return@esperar null
             true
         }
         esperar("$s dice «$texto»") { nodos().firstOrNull(s::coincide)?.config?.getOrNull(SemanticsProperties.EditableText)?.text == texto }
     }
 
-    fun habilitado(s: Selector): Boolean = enPrincipal {
-        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
-        n.config.getOrNull(SemanticsProperties.Disabled) == null
-    }
+    fun habilitado(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.Disabled) == null }
 
-    fun prendido(s: Selector): Boolean = enPrincipal {
-        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
-        n.config.getOrNull(SemanticsProperties.ToggleableState) == ToggleableState.On
-    }
+    fun prendido(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.ToggleableState) == ToggleableState.On }
 
-    fun seleccionado(s: Selector): Boolean = enPrincipal {
-        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
-        n.config.getOrNull(SemanticsProperties.Selected) == true
-    }
+    fun seleccionado(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.Selected) == true }
 
     /** El estado que lee TalkBack después de la etiqueta (`stateDescription`, el `accessibilityValue` de iOS). */
-    fun estado(s: Selector): String? = enPrincipal {
-        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
-        n.config.getOrNull(SemanticsProperties.StateDescription)
-    }
+    fun estado(s: Selector): String? = leer(s) { n -> n.config.getOrNull(SemanticsProperties.StateDescription) }
 
-    fun enfocado(s: Selector): Boolean = enPrincipal {
-        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
-        n.config.getOrNull(SemanticsProperties.Focused) == true
-    }
+    fun enfocado(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.Focused) == true }
 
     /** Desplaza una lista (la acción de desplazar de la semántica, como un lector de pantalla). */
     fun desplazar(s: Selector, dy: Float) {
@@ -227,14 +269,12 @@ class Pantalla(private val esperaMs: Long = 15_000) {
     }
 
     /** Lo que tiene escrito un campo. */
-    fun textoDe(s: Selector): String = enPrincipal {
-        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
+    fun textoDe(s: Selector): String = leer(s) { n ->
         n.config.getOrNull(SemanticsProperties.EditableText)?.text ?: throw AssertionError("$s no es un campo")
     }
 
     /** Lo seleccionado en un campo (inicio y fin). */
-    fun seleccion(s: Selector): Pair<Int, Int> = enPrincipal {
-        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
+    fun seleccion(s: Selector): Pair<Int, Int> = leer(s) { n ->
         val r = n.config.getOrNull(SemanticsProperties.TextSelectionRange) ?: throw AssertionError("$s no es un campo")
         r.start to r.end
     }
@@ -244,8 +284,9 @@ class Pantalla(private val esperaMs: Long = 15_000) {
      * diferencia de [escribir], que pisa el campo entero).
      */
     fun teclear(s: Selector, texto: String) {
+        val r = Recorrido(desplazar = true)
         esperar("se puede teclear en $s") {
-            val n = nodos().firstOrNull(s::coincide) ?: return@esperar null
+            val n = r.buscar(s) ?: return@esperar null
             n.config.getOrNull(SemanticsActions.InsertTextAtCursor)?.action?.invoke(AnnotatedString(texto)) ?: return@esperar null
             true
         }
@@ -259,7 +300,10 @@ class Pantalla(private val esperaMs: Long = 15_000) {
         // Donde está el nodo en la pantalla, cuando ya está quieto (sin animación de entrada) y entero a la vista: un
         // nodo recién compuesto o recortado da un rectángulo vacío, y el toque caía en la barra de estado.
         var anterior: Pair<Float, Float>? = null
+        val recorrido = Recorrido(desplazar = true)
         val (x, y) = esperar("está quieto y a la vista $s") {
+            // Que esté compuesto (en una lista perezosa, desplazando hasta él); después se lo ubica entero en pantalla.
+            recorrido.buscar(s) ?: return@esperar null
             for (r in Raices.activas()) {
                 try {
                     r.measureAndLayoutForTest()
@@ -313,8 +357,7 @@ class Pantalla(private val esperaMs: Long = 15_000) {
     }
 
     /** Los textos que hay debajo de un nodo (el resumen de una tarjeta, el contenido de un badge). */
-    fun textosBajo(s: Selector): List<String> = enPrincipal {
-        val n = nodos().firstOrNull(s::coincide) ?: throw AssertionError("no está $s")
+    fun textosBajo(s: Selector): List<String> = leer(s) { n ->
         val out = ArrayList<String>()
         fun recorrer(x: SemanticsNode) {
             out += textosDe(x)
