@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    // Avisos: google-services.json (el mismo proyecto de la Capacitor, mypump-663be) → la configuración de Firebase.
+    alias(libs.plugins.google.services)
 }
 
 /** La raíz del repo: la demo, el catálogo y las respuestas grabadas viven en `apps/shared/`, la fuente en la app de iOS. */
@@ -136,6 +138,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.browser)
     debugImplementation(libs.compose.ui.tooling)
+
+    // Avisos: el push de los comentarios de Mati por FCM (G4, OK de Mati del 14-oct). Los avisos locales (el domingo y el
+    // fin del descanso) son del sistema: AlarmManager y NotificationManager, sin librerías.
+    implementation(libs.firebase.messaging)
 
     // El token con el Keystore de verdad y las pruebas de interfaz: corren en un emulador o un teléfono
     // (`connectedDebugAndroidTest`). Las de interfaz usan el arnés propio (androidTest/…/ui/Pantalla.kt); desde el 14-oct
