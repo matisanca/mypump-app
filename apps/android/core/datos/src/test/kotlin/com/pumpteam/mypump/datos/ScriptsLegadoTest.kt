@@ -46,6 +46,7 @@ class ScriptsLegadoTest {
         val ls = casos.joinToString(",\n") { (k, expr, _) -> "[${js(k)}, $expr]" }
         val programa = """
             const datos = new Map([$ls]);
+            globalThis.window = globalThis;   // en el WebView los scripts usan window (no globalThis, que es de Chrome 71)
             globalThis.location = { origin: 'https://localhost' };
             globalThis.localStorage = {
               get length() { return datos.size; },
@@ -58,7 +59,7 @@ class ScriptsLegadoTest {
             const prep = JSON.stringify(eval(${js(LecturaJs.SCRIPT_PREPARAR)}));
             const largo = JSON.parse(prep).largo;
             const tramos = [];
-            for (let i = 0; i < largo; i += $tramo) tramos.push(JSON.stringify(eval('globalThis.__mypumpLectura.slice(' + i + ', ' + (i + $tramo) + ')')));
+            for (let i = 0; i < largo; i += $tramo) tramos.push(JSON.stringify(eval('window.__mypumpLectura.slice(' + i + ', ' + (i + $tramo) + ')')));
             eval(${js(LecturaJs.SCRIPT_LIMPIAR)});
             if (globalThis.__mypumpLectura !== undefined) throw new Error('quedó la global');
             process.stdout.write(JSON.stringify({ prep, tramos }));

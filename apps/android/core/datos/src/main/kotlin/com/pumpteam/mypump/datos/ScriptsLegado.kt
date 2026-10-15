@@ -31,6 +31,9 @@ object LecturaJs {
      * FNV-1a de 32 bits con `charCodeAt`, la de [FirmaValor]), calculada ACÁ, sobre el valor tal como está. Lo deja en una
      * global como JSON en ASCII y devuelve `{origen, n, largo}`; los tramos se piden con [scriptTramo].
      */
+    // Con `window` y no `globalThis` (que es de Chrome 71): la Capacitor anda con WebViews desde el 60, y con uno viejo la
+    // lectura tiraba y la migración no leía nada (lo encontró el emulador de Android 9, con el WebView 66, el 15-oct).
+    // Nada más nuevo que ES2017 (ni `?.` ni `??`).
     val SCRIPT_PREPARAR: String = """
         (function () {
           function firma(s) {
@@ -49,14 +52,14 @@ object LecturaJs {
             filas.push([k, v, f[0], f[1]]);
           }
           const texto = ${JsAscii.FUNCION}(JSON.stringify({ origen: location.origin, filas: filas }));
-          globalThis.__mypumpLectura = texto;
+          window.__mypumpLectura = texto;
           return { origen: location.origin, n: filas.length, largo: texto.length };
         })()
     """.trimIndent()
 
-    fun scriptTramo(desde: Int, tramo: Int = TRAMO): String = "globalThis.__mypumpLectura.slice($desde, ${desde.toLong() + tramo})"
+    fun scriptTramo(desde: Int, tramo: Int = TRAMO): String = "window.__mypumpLectura.slice($desde, ${desde.toLong() + tramo})"
 
-    const val SCRIPT_LIMPIAR = "delete globalThis.__mypumpLectura; true"
+    const val SCRIPT_LIMPIAR = "delete window.__mypumpLectura; true"
 
     /** Lo que devolvió [SCRIPT_PREPARAR]. */
     data class Preparada(val origen: String, val n: Int, val largo: Int)
