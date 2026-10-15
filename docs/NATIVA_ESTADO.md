@@ -52,8 +52,11 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    - push simulado y la notificación local del domingo;
    - revisión adversarial del código;
    - el iPhone de Mati con el TestFlight nuevo, en el uso de todos los días.
-3. ☐ TestFlight 104 con lo de después del 103: PRO-02 (6324c09), el push con otra cuenta (5b11bfd) y los arreglos de
-   Entreno.
+3. ☐ TestFlight 104 con lo de después del 103:
+   - PRO-02 (6324c09);
+   - el push con otra cuenta (5b11bfd);
+   - los hallazgos 1, 2, 3 y 8 de la revisión, y los menores cuando los cierre el agente;
+   - los arreglos de Entreno.
 4. ☐ Capturas nuevas (`capturas-tienda-ios.sh`) y los textos de `NATIVA_TIENDAS_2.0.0.md`.
 5. ☐ G7: con el OK concreto de Mati, envío con lanzamiento escalonado de 7 días.
 
@@ -169,6 +172,34 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   progresiva en 7 días. Ojo: la versión que estaba en la App Store era la **1.0.6**; la 1.0.11 nunca salió.
 
 ## Bitácora
+
+- **15-oct 01:30, prueba exhaustiva de iOS (reemplaza la beta, pedido de Mati):**
+  - **XCUITest completas en 26.5 (16/16) y 17.5 (16/16).**
+    - La de «la última vez» se salteaba sola cuando la cuenta de prueba gastaba las series del primer ejercicio. Ahora
+      recorre el día (c5919b3).
+    - La del chat fallaba en 17.5 por la prueba, no por la app: elegía el tipo de campo antes de que cargara la
+      pantalla. Ahora verifica también que alcance un toque (2f5edff).
+  - **Revisión adversarial del código de iOS** (solo lectura): 14 hallazgos. Arreglados, cada uno con pruebas que
+    fallan sin el arreglo:
+    - **1, bloqueaba el lanzamiento** (800afb2). Después de pasar de semana o de bloque, la copia offline quedaba con la
+      rutina vieja. Un arranque sin señal volvía a la semana anterior y las series pisaban las de esa semana.
+    - **2** (800afb2). La palanca `migracion_ops_legadas` no frenaba lo que la Fase L deja directo en la cola. Ahora esas
+      ops van marcadas y la cola las retiene.
+    - **3** (cd5e47e). Salud era del teléfono: con el link de un cliente abierto en otro teléfono, se subía la salud del
+      dueño. Ahora es por cuenta.
+    - **8** (c636397). El aviso del domingo, repetido, le llegaba para siempre a quien dejó la app. **Ahora es de una
+      vez y la app lo vuelve a armar cada vez que se usa:** a quien usa la app le llega igual y a quien la dejó, como
+      mucho uno más.
+    - **Los menores** (4, 5, 6, 7, 9 a 14 y las sospechas), en un agente.
+    - **En Android están los mismos 1, 2, 3 y 8**, porque es un gemelo. Los está portando otro agente.
+  - **Prueba que rompía el proceso** (SIGSEGV en 1 de 7 corridas): era `SinPermisoIATests`, que anotaba sin candado
+    desde un transporte que corre en paralelo. No es de la app. Kit: 386/386.
+  - **Notas para el revisor de Apple** (5075a03). Decían «No personal data reaches a third-party AI», que no era exacto.
+    Ahora dicen lo mismo que la política: a la IA le llega todo desidentificado.
+  - **Android, en paralelo:**
+    - Chat y Progreso mergeados (5275563), con 121 instrumentadas.
+    - Release firmado por Codemagic (`android-nativa`, dbbf266).
+    - Matriz de emuladores con Google Play en Android 9, 11, 13, 14 y 15 (c3a9fe9).
 
 - **14-oct 23:30, Android: notificaciones y Salud mergeados** (b40b3fe y fd974ba):
   - **Notificaciones** (NOT-01 a 08, GEN-06, D8). FCM `mypump-663be` con `firebase-messaging` 25.0.1 y
