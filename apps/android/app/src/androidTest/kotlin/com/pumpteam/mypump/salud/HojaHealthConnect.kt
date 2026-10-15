@@ -51,21 +51,28 @@ object HojaHealthConnect {
     fun permitirTodo(esperaMs: Long = 30_000) {
         val fin = SystemClock.uptimeMillis() + esperaMs
         var vioLaHoja = false
+        var ultima = emptyList<AccessibilityNodeInfo>()
         while (SystemClock.uptimeMillis() < fin) {
             val p = try {
                 nodos()
             } catch (_: Exception) {
                 emptyList()
             }
-            if (p.none { it.id().startsWith("com.android.healthconnect.controller:") }) {
+            ultima = p
+            if (p.none { esDeHealthConnect(it.id()) }) {
                 if (vioLaHoja) return
                 Thread.sleep(400)
                 continue
             }
             vioLaHoja = true
-            val empezar = p.firstOrNull { it.id().endsWith(":id/primary_button_full") }
+            // "Empezar" de la presentación: `primary_button_full` en el Health Connect de Android 16, `get_started_button` en el
+            // de Android 14.
+            val empezar = p.firstOrNull { it.id().endsWith(":id/primary_button_full") || it.id().endsWith(":id/get_started_button") }
             val todo = p.firstOrNull { it.id() == "android:id/switch_widget" && it.isCheckable }
-            val permitir = p.firstOrNull { it.id().endsWith(":id/primary_button_outline") || it.id().endsWith(":id/primary_button") }
+            // "Permitir": `primary_button_outline` o `primary_button` en el de Android 16, `allow` en el de Android 14.
+            val permitir = p.firstOrNull {
+                it.id().endsWith(":id/primary_button_outline") || it.id().endsWith(":id/primary_button") || it.id().endsWith(":id/allow")
+            }
             when {
                 empezar != null -> tocar(empezar)
                 todo != null && !todo.isChecked -> tocar(todo)
@@ -73,6 +80,14 @@ object HojaHealthConnect {
             }
             Thread.sleep(800)
         }
-        error("la hoja de Health Connect no se cerró en $esperaMs ms")
+        val visto = ultima.mapNotNull { n -> "${n.id()}|${n.text ?: ""}|${n.contentDescription ?: ""}".takeIf { it != "||" } }
+        error("la hoja de Health Connect no se cerró en $esperaMs ms. En pantalla: ${visto.joinToString(" · ").take(2_500)}")
     }
+
+    /**
+     * Los recursos de la pantalla de Health Connect. Su paquete cambia: `com.android.healthconnect.controller` en Android 16 y
+     * `com.google.android.healthconnect.controller` en el Android 14 de Google Play.
+     */
+    private fun esDeHealthConnect(id: String) = id.startsWith("com.android.healthconnect.controller:") ||
+        id.startsWith("com.google.android.healthconnect.controller:")
 }

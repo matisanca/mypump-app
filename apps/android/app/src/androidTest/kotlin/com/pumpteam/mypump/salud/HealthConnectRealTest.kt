@@ -95,6 +95,13 @@ class HealthConnectRealTest : PruebaUi() {
 
     private suspend fun dados(): Set<String> = cliente.permissionController.getGrantedPermissions()
 
+    /**
+     * Si el Health Connect de este teléfono tiene el permiso de historial (más de 30 días). Es una función de Health
+     * Connect que llegó después: el de Android 16 la tiene; el del Android 14 de la matriz, no. Sin ella la app ni lo pide
+     * y trae 30 días (`historial()` dice `disponible = false`), que es lo que corresponde.
+     */
+    private fun historialDisponible(): Boolean = ClienteHealthConnectReal(cliente).historialDisponible()
+
     /** El paquete de la actividad de arriba (`topResumedActivity`). */
     private fun arriba(): String? = Telefono.shell("dumpsys activity activities").lineSequence()
         .firstOrNull { "topResumedActivity=" in it }?.let { Regex("""u\d+ ([A-Za-z0-9_.]+)/""").find(it)?.groupValues?.get(1) }
@@ -161,7 +168,7 @@ class HealthConnectRealTest : PruebaUi() {
     fun a2_sinElPermisoDeHistorialLaCorridaEsDeTreintaDias() = runBlocking {
         assumeTrue("ya estaba dado el historial", SembradoSalud.HISTORIAL !in dados())
         sembrar(SembradoSalud.lectura)
-        assertEquals(HistorialSalud(autorizado = false, disponible = true), fuente.historial())
+        assertEquals(HistorialSalud(autorizado = false, disponible = historialDisponible()), fuente.historial())
         val base = Base()
         val alcance = CoroutineScope(coroutineContext + SupervisorJob())
         val almacen = PreferenciasEnMemoria(mapOf(ClaveSalud.CONECTADO to "1"))
@@ -195,9 +202,14 @@ class HealthConnectRealTest : PruebaUi() {
         val permisos = fuente.permisos(tipos)
         assertEquals(tipos, permisos.preguntados)
         assertTrue(permisos.pendientes.isEmpty())
-        assertEquals(HistorialSalud(autorizado = true, disponible = true), fuente.historial())
+        // Supuesto del teléfono: el historial existe en el Health Connect de Android 16, no en el de Android 14.
+        val conHistorial = historialDisponible()
+        assertEquals(HistorialSalud(autorizado = conHistorial, disponible = conHistorial), fuente.historial())
         // Con todo dado no se abre ninguna hoja: vuelve enseguida.
-        assertEquals(HistorialSalud(autorizado = true, disponible = true), withTimeout(5_000) { fuente.pedirLecturaConHistorial(PuenteSalud.nucleo) })
+        assertEquals(
+            HistorialSalud(autorizado = conHistorial, disponible = conHistorial),
+            withTimeout(5_000) { fuente.pedirLecturaConHistorial(PuenteSalud.nucleo) },
+        )
 
         // Pasos: un balde de 24 h por día desde la medianoche de hace 7 días; hoy no tiene (no se sembró).
         val ahora = ms(Instant.now())
@@ -389,6 +401,7 @@ class HealthConnectRealTest : PruebaUi() {
     /** Con el historial (dado desde Health Connect, sin la hoja) la corrida trae los 60 días y queda hecha. */
     @Test
     fun d_conElHistorialSonSesentaDiasYQuedaHecho() = runBlocking {
+        assumeTrue("el Health Connect de este teléfono no tiene el permiso de historial (el de Android 14)", historialDisponible())
         sembrar(SembradoSalud.lectura + SembradoSalud.HISTORIAL)
         val base = Base()
         val alcance = CoroutineScope(coroutineContext + SupervisorJob())
