@@ -38,6 +38,30 @@ final class Firmas: Transporte, @unchecked Sendable {
     }
 }
 
+/// Como el servicio real: cada pedido de `progreso/urls` firma de nuevo y da URLs distintas. Las subidas, OK (o sin red).
+final class FirmasQueCambian: Transporte, @unchecked Sendable {
+    let lock = NSLock()
+    let semana: String
+    private var firmas = 0
+    private var _sinRed = false
+    var sinRed: Bool { get { lock.withLock { _sinRed } } set { lock.withLock { _sinRed = newValue } } }
+    init(semana: String) { self.semana = semana }
+    func enviar(_ p: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = p.url?.path ?? ""
+        var cuerpo = "[]"
+        if ruta.hasSuffix("progreso/urls") {
+            let n = lock.withLock { firmas += 1; return firmas }
+            cuerpo = #"{"ok":true,"fotos":[{"semana_lunes":"\#(semana)","pose":"frente","url":"https://fotos.test/\#(semana)/frente.jpg?token=firma\#(n)"}]}"#
+        } else if ruta.hasSuffix("upload") {
+            if sinRed { throw URLError(.notConnectedToInternet) }
+            cuerpo = #"{"ok":true}"#
+        } else if ruta.hasSuffix("mypump_get_fotos_progreso") {
+            cuerpo = #"[{"semana_lunes":"\#(semana)","pose":"frente","fecha":"\#(semana)"}]"#
+        }
+        return (Data(cuerpo.utf8), HTTPURLResponse(url: p.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
 @Suite("Fotos de progreso: la cola como la web")
 @MainActor
 struct FotosTests {
@@ -108,6 +132,31 @@ struct FotosTests {
         #expect(await m.subir(pose: "perfil", jpeg: jpeg) == .guardada)
         #expect(await m.firmar())
         #expect(t.pedidosDeURLs == 3)
+    }
+
+    /// Al REEMPLAZAR la foto de una pose que ya estaba subida esa semana, la miniatura seguía mostrando la vieja: la
+    /// pantalla firmaba de nuevo solo cuando cambiaba cuántas fotos hay (lo encontró el agente de Revisión de Android
+    /// contra la base real). Ahora, con la foto guardada, se firma de nuevo; cada firma es otra URL (como el servicio),
+    /// así que tampoco sale la vieja del caché de imágenes.
+    @Test func reemplazarUnaFotoDeLaSemanaFirmaDeNuevo() async throws {
+        let semana = FotosProgreso.lunes(FechaLocal.hoy())
+        let t = FirmasQueCambian(semana: semana)
+        let m = ModeloFotos(cliente: ClienteRPC(transporte: t), token: "tokenDePrueba_0000000000",
+                            disco: Disco(raiz: raiz, token: "tokenDePrueba_0000000000"))
+        // Ya había una de frente esta semana, con su miniatura.
+        #expect(await m.firmar())
+        let vieja = try #require(m.urls["\(semana)|frente"])
+        #expect(await m.subir(pose: "frente", jpeg: jpeg) == .guardada)
+        let nueva = try #require(m.urls["\(semana)|frente"])
+        #expect(nueva != vieja, "la miniatura seguía con la URL de la foto de antes")
+
+        // Lo mismo si la foto quedó en la cola sin señal y sale después.
+        t.sinRed = true
+        #expect(await m.subir(pose: "frente", jpeg: jpeg) == .sinConexion)
+        t.sinRed = false
+        await m.drenar()
+        let otra = try #require(m.urls["\(semana)|frente"])
+        #expect(otra != nueva, "al subir lo que estaba en la cola no se firmó de nuevo")
     }
 
     /// REV-03: el tope es de 3 en la cola, de cualquier semana. Con 3 de la semana pasada que no salieron (por ejemplo,
