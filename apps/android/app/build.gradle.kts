@@ -75,6 +75,55 @@ abstract class VerificarPermisosSalud : DefaultTask() {
     }
 }
 
+/**
+ * Salud: arma el banco contra la app de hoy (androidTest/…/salud/BancoSalud.kt), gemelo de scripts/nativa/salud-banco.sh
+ * de iOS, con lo que NO se commitea: el plugin de Health Connect de la Capacitor (@capgo/capacitor-health 8.9.3, de
+ * node_modules, MPL: solo `HealthManager`, `HealthDataType` y `WorkoutType`) y el healthkit-bridge.js de origin/main (si no
+ * se puede leer, el del repo), más el adaptador que los une (src/bancoSalud). Sin el plugin (otra Mac, sin node_modules)
+ * queda vacío y el banco se saltea.
+ */
+abstract class BancoSalud : DefaultTask() {
+    /** La carpeta del plugin, o "" si no está. */
+    @get:Input
+    abstract val plugin: Property<String>
+
+    @get:Input
+    abstract val raiz: Property<String>
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val adaptador: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val fuentes: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val assets: DirectoryProperty
+
+    @TaskAction
+    fun armar() {
+        val f = fuentes.get().asFile.apply { deleteRecursively(); mkdirs() }
+        val a = assets.get().asFile.apply { deleteRecursively(); mkdirs() }
+        val p = plugin.get().takeIf { it.isNotEmpty() }?.let(::File) ?: return
+        val version = Regex(""""version"\s*:\s*"([^"]+)"""").find(p.resolve("package.json").readText())?.groupValues?.get(1)
+        if (version != "8.9.3") {
+            logger.warn("banco de salud: el plugin instalado es $version y la app de hoy usa 8.9.3; no se arma")
+            return
+        }
+        val java = p.resolve("android/src/main/java/app/capgo/plugin/health")
+        for (n in listOf("HealthManager.kt", "HealthDataType.kt", "WorkoutType.kt")) java.resolve(n).copyTo(f.resolve("app/capgo/plugin/health/$n"))
+        adaptador.asFileTree.visit { if (!isDirectory) file.copyTo(f.resolve(relativePath.pathString), overwrite = true) }
+        val puente = try {
+            val pr = ProcessBuilder("git", "show", "origin/main:public/js/healthkit-bridge.js").directory(File(raiz.get())).start()
+            pr.inputStream.readBytes().also { check(pr.waitFor() == 0) }
+        } catch (_: Exception) {
+            File(raiz.get(), "public/js/healthkit-bridge.js").readBytes()
+        }
+        a.resolve("banco-salud").mkdirs()
+        a.resolve("banco-salud/healthkit-bridge.js").writeBytes(puente)
+    }
+}
+
 fun CopiarCompartido.desde(vararg pares: Pair<String, String>) {
     val m = pares.associate { (destino, relativo) -> destino to raizRepo.resolve(relativo).path }
     mapa.set(m)
@@ -181,6 +230,28 @@ androidComponents {
 }
 tasks.matching { it.name in listOf("assembleRelease", "bundleRelease", "check") }.configureEach {
     dependsOn("verificarPermisosSaludRelease")
+}
+
+// Salud: el banco contra el plugin (ver BancoSalud). node_modules está en la raíz del repo, o en la del checkout principal
+// si esto es un worktree (.claude/worktrees/…).
+val pluginSalud: String = generateSequence(raizRepo) { it.parentFile }.take(6)
+    .map { it.resolve("node_modules/@capgo/capacitor-health") }
+    .firstOrNull { it.resolve("package.json").isFile }?.path ?: ""
+val bancoSalud = tasks.register<BancoSalud>("bancoSalud") {
+    plugin.set(pluginSalud)
+    raiz.set(raizRepo.path)
+    adaptador.from(fileTree("src/bancoSalud/kotlin"))
+    fuentes.set(layout.buildDirectory.dir("generated/banco-salud/kotlin"))
+    assets.set(layout.buildDirectory.dir("generated/banco-salud/assets"))
+    // El bridge sale de origin/main: puede cambiar sin que cambie nada de acá.
+    outputs.upToDateWhen { false }
+}
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variante ->
+        // Por `java` (Kotlin compila también los .kt de ahí): `sources.kotlin` no le llega al compilador de las pruebas.
+        variante.androidTest?.sources?.java?.addGeneratedSourceDirectory(bancoSalud, BancoSalud::fuentes)
+        variante.androidTest?.sources?.assets?.addGeneratedSourceDirectory(bancoSalud, BancoSalud::assets)
+    }
 }
 
 kotlin {

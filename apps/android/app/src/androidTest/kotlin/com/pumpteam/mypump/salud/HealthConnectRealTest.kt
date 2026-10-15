@@ -258,6 +258,102 @@ class HealthConnectRealTest : PruebaUi() {
         }
     }
 
+    /**
+     * El banco (gemelo de scripts/nativa/salud-banco.sh de iOS): sobre los MISMOS datos de Health Connect y con el mismo
+     * "ahora", la app de hoy (healthkit-bridge.js de origin/main en un WebView, con el plugin de la Capacitor de verdad) y
+     * la nativa conectan (permisos, 7 días y el historial de 60) y tienen que dar lo mismo: las mismas consultas, los
+     * mismos lotes a `ingest_salud` e `ingest_entrenos` y el mismo estado guardado. La nativa corre sin su desvío a
+     * propósito (no pisar la noche de hoy en el historial), como en los vectores. Sin el plugin de node_modules se saltea.
+     */
+    @Test
+    fun e_elBancoDaLoMismoQueLaAppDeHoy() = runBlocking {
+        val plugin = try {
+            Class.forName("com.pumpteam.mypump.salud.banco.PluginCapgo").getConstructor(android.content.Context::class.java).newInstance(app) as PluginDeLaCapacitor
+        } catch (_: ClassNotFoundException) {
+            null
+        }
+        assumeTrue("sin el plugin de node_modules: el banco no se armó", plugin != null)
+        val puente = instr.context.assets.open("banco-salud/healthkit-bridge.js").use { it.readBytes().toString(Charsets.UTF_8) }
+        sembrar(SembradoSalud.lectura + SembradoSalud.HISTORIAL)
+        val ahora = Instant.now().toEpochMilli()
+
+        val web = BridgeEnWebView(app, plugin!!, ahora).conectar(puente)
+        assertEquals("el bridge falló: ${web.crudo["error"]?.comoTexto}", true, web.crudo["ok"]?.let { it == ValorJson.Booleano(true) })
+
+        val base = Lotes()
+        val almacen = PreferenciasEnMemoria()
+        val anota = FuenteQueAnota(fuente)
+        val alcance = CoroutineScope(coroutineContext + SupervisorJob())
+        val r = try {
+            SincronizadorSalud(
+                anota, ClienteRpc(transporte = base), "tok-banco-salud", almacen, alcance, { Instant.ofEpochMilli(ahora) },
+                java.time.ZoneId.systemDefault(), descartarNochesPartidas = false,
+            ).conectar(esperarHistorial = true)
+        } finally {
+            alcance.cancel()
+        }
+
+        val diferencias = ArrayList<String>()
+        fun comparar(que: String, a: List<Any?>, b: List<Any?>) {
+            if (a.size != b.size) diferencias += "$que: ${a.size} en la app de hoy, ${b.size} en la nativa"
+            for (i in 0 until minOf(a.size, b.size)) if (a[i] != b[i]) diferencias += "$que #$i:\n  hoy:    ${a[i]}\n  nativa: ${b[i]}"
+        }
+        comparar("consultas", web.consultas.map { it.toString() }, anota.consultas.map { it.toString() })
+        val lotesWeb = (web.crudo["lotes"] as ValorJson.Lista).elementos
+        comparar("lotes de ingest_salud", lotesWeb.map { it }, base.salud.map { it })
+        val entrenosWeb = (web.crudo["entrenos"] as ValorJson.Lista).elementos
+        comparar("lotes de ingest_entrenos", entrenosWeb.map { it }, base.entrenos.map { it })
+        val estadoWeb = (web.crudo["estado"] as ValorJson.Objeto).let { o -> o.campos.mapValues { it.value.comoTexto } }
+        val estadoNativa = almacen.todo.filterKeys { it.startsWith("mypump_health_") }
+        val claves = (estadoWeb.keys + estadoNativa.keys).sorted()
+        for (k in claves) {
+            val a = estadoWeb[k]
+            val b = estadoNativa[k]
+            val iguales = if (k == ClaveSalud.DIAG && a != null && b != null) ValorJson.parsear(a) == ValorJson.parsear(b) else a == b
+            if (!iguales) diferencias += "estado $k:\n  hoy:    $a\n  nativa: $b"
+        }
+        val resultadoWeb = web.crudo["resultado"]
+        if (resultadoWeb?.get("ok") != ValorJson.Booleano(r.ok) || resultadoWeb["preguntados"]?.comoNumero != r.preguntados?.toDouble() ||
+            resultadoWeb["total"]?.comoNumero != r.total.toDouble()
+        ) {
+            diferencias += "connect(): hoy $resultadoWeb, nativa ok=${r.ok} preguntados=${r.preguntados} total=${r.total}"
+        }
+
+        val registros = base.salud.sumOf { (it as ValorJson.Lista).elementos.size }
+        val resumen = "banco de salud: ${web.consultas.size} consultas, ${base.salud.size} lotes con $registros registros, " +
+            "${base.entrenos.size} lotes de entrenos, ${estadoNativa.size} claves guardadas · ${diferencias.size} diferencias"
+        android.util.Log.i("BancoSalud", resumen)
+        guardarEnTmp(
+            "mypump-banco-salud.json",
+            ValorJson.objeto(
+                "ahora" to ValorJson.Texto(com.pumpteam.mypump.reglas.RelojLocal.iso(ahora.toDouble())),
+                "zona" to ValorJson.Texto(java.time.ZoneId.systemDefault().id),
+                "resumen" to ValorJson.Texto(resumen),
+                "diferencias" to ValorJson.Lista(diferencias.map { ValorJson.Texto(it) }),
+                "consultas" to ValorJson.Lista(anota.consultas.map { ValorJson.Texto(it.toString()) }),
+                "lotes" to ValorJson.Lista(base.salud),
+                "entrenos" to ValorJson.Lista(base.entrenos),
+            ).serializar(),
+        )
+        assertTrue("$resumen\n" + diferencias.take(8).joinToString("\n"), diferencias.isEmpty())
+        assertTrue("sin registros: el banco no prueba nada", registros > 100)
+    }
+
+    /** La base del banco: cada lote de `ingest_salud` y de `ingest_entrenos`, en el orden en que llegó. */
+    private class Lotes : Transporte {
+        val salud = ArrayList<ValorJson>()
+        val entrenos = ArrayList<ValorJson>()
+        override suspend fun enviar(pedido: Pedido): Respuesta {
+            val cuerpo = pedido.cuerpo?.let { ValorJson.parsear(it.toString(Charsets.UTF_8)) }
+            var n = 0
+            synchronized(this) {
+                cuerpo?.get("p_registros")?.let { salud += it; n = (it as ValorJson.Lista).elementos.size }
+                cuerpo?.get("p_entrenos")?.let { entrenos += it; n = (it as ValorJson.Lista).elementos.size }
+            }
+            return Respuesta(200, n.toString().toByteArray())
+        }
+    }
+
     /** Con el historial (dado desde Health Connect, sin la hoja) la corrida trae los 60 días y queda hecha. */
     @Test
     fun d_conElHistorialSonSesentaDiasYQuedaHecho() = runBlocking {
