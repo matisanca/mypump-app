@@ -18,9 +18,18 @@ final class ChatUITests: XCTestCase {
     /// se escribe, porque SwiftUI dejaba un carácter de más a la vista que se perdía al mandar: se ve el contador en rojo
     /// y Enviar se apaga hasta que vuelva a entrar.
     func testUnMensajeDeMasDeMilNoSale() throws {
-        let campo = app.textViews["chat-campo"].exists ? app.textViews["chat-campo"] : app.textFields["chat-campo"]
+        // Por el identificador, sea campo o vista de texto: elegir el tipo antes de que cargue la pantalla fallaba en iOS 17
+        // (todavía no existía ninguno y quedaba esperando el que no era).
+        let campo = app.descendants(matching: .any).matching(identifier: "chat-campo").firstMatch
         XCTAssertTrue(campo.waitForExistence(timeout: 20), "No apareció el campo del chat")
-        campo.tap()
+        // Que el primer toque le dé el foco: si hiciera falta un segundo, un cliente tocaría y no pasaría nada.
+        var toques = 0
+        repeat {
+            toques += 1
+            campo.tap()
+        } while toques < 3 && !(campo.value(forKey: "hasKeyboardFocus") as? Bool ?? false)
+        let a = XCTAttachment(string: "toques hasta el foco: \(toques)"); a.lifetime = .keepAlways; add(a)
+        XCTAssertEqual(toques, 1, "el primer toque no le dio el foco al campo")
         campo.typeText(String(repeating: "a", count: 1001))
         let enviar = app.buttons["chat-enviar"]
         let contador = app.staticTexts["chat-contador"]
