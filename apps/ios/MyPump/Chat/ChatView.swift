@@ -14,7 +14,6 @@ struct ChatView: View {
     @State private var texto = ""
     @FocusState private var escribiendo: Bool
     @State private var enviados = 0
-    /// D7: el primer mensaje espera la respuesta del permiso para la IA (con un "no" sale igual: lo contesta Mati).
 
     private let limite = 1000
 

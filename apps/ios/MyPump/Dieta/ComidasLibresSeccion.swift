@@ -11,7 +11,6 @@ struct ComidasLibresSeccion: View {
 
     @State private var formulario: Formulario?
     @State private var errorFoto: String?
-    /// D7: la foto espera el permiso; sin IA no se analiza.
 
     enum Formulario: Identifiable {
         case manual

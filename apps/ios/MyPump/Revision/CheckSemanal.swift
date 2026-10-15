@@ -18,7 +18,6 @@ struct CheckSemanal: View {
     @State private var envios = 0
     @State private var aviso: String?
     @FocusState private var escribiendo: Bool
-    /// D7: el primer check espera el permiso para la IA (la ronda del domingo lo lee; con un "no", sin IA).
 
     /// Ícono y color de cada escala (las claves y los textos salen de `CheckinSemanal.metricas`, como en la web).
     private static let estilo: [String: (icono: String, color: Color)] = [

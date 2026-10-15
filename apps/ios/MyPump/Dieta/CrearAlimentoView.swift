@@ -22,7 +22,6 @@ struct CrearAlimentoView: View {
     @State private var guardando = false
     @State private var escaneando = false
     @State private var estadoEscaneo: String?
-    /// D7: la etiqueta espera el permiso; sin IA no se escanea.
     @FocusState private var foco: Campo?
 
     enum Campo: Hashable { case nombre, kcal, prot, carb, fat, gramos }
