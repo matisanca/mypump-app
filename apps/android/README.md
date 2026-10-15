@@ -146,6 +146,45 @@ reducción, el botón de cámara o galería y el FileProvider) está en `fotos`.
   link lleva el token y va al sitio real): con el dominio elegido para MyPump (`pm set-app-links-user-selection`) se
   mira que el pedido va al navegador fijo y que el mismo link sin fijar lo abriría MyPump.
 
+<!-- Dieta con escritura (DIE-08…18): bloque propio de esa pantalla. -->
+## Dieta con escritura
+
+Gemela de `apps/ios/MyPump/Dieta/` (DIE-08…18) en el paquete `dieta`, sin Comí ni Salté (D10). Lo que decide sale de
+`:core` (`PorcionCasera`, `SustitucionAlimentos`, `BaseAlimentos`, `AlimentoPropioNuevo`, `ComidaLibreNueva`,
+`SwapsDeComida`) y de `ModeloApp` (`sustituir`, `revertir`, `crearAlimentoPropio`, las comidas libres y `analizarFoto`):
+la pantalla no tiene reglas propias, salvo el puente con el motor (`MotorSustitutos`, gemelo del de iOS).
+
+- **La fila** (`FilaAlimento`): la mano (DIE-08) muestra la porción casera de lo que se está comiendo ("≈ 2 huevos"),
+  una por alimento y por opción; el reemplazo (DIE-09) está salvo en los condimentos y en lo que Mati marcó
+  `swappable: false`. Tocar la marca de un reemplazo ofrece volver al del plan ("¿Volver al alimento del plan?"). La
+  tarjeta de cada comida recompone con los reemplazos: el parámetro que antes no se usaba no contaba para recomponer, y
+  la fila seguía mostrando el alimento del plan.
+- **Reemplazar** (`HojaReemplazar`, DIE-10/11/13): los candidatos del alimento DEL PLAN en esa posición, contra la base
+  de la web (`food-db.json`, que Gradle copia de `apps/shared` a los assets y el ViewModel lee al arrancar) con los
+  propios y las exclusiones del cliente. Los 🌍 van arriba con su nombre en inglés, los propios con "★ Tuyo", la
+  diferencia de kcal en verde hasta 5 % (redondeada como `Math.round` de JS), los avisos del motor y la búsqueda. Lo
+  elegido sale con `sustituir` (anclado, por la cola) y vuelve con `revertir`.
+- **Alimento propio** (`CrearAlimento`, DIE-14), adentro de la misma hoja (Atrás vuelve a la lista): las unidades de la
+  web, los gramos por unidad, el renglón de la base y "Crear y usar", que va directo al servidor y lo aplica si el motor
+  lo ofrece. "Escanear etiqueta" (solo con cuenta) usa `BotonFoto` (1600 px, JPEG 0,85, sin EXIF ni GPS) y la visión
+  `ETIQUETA`, y prellena todo editable.
+- **Comidas libres** (`ComidasLibres`, DIE-15/16), al pie y solo con cuenta (en la demo no están): a mano o con la foto
+  del plato (1280 px). La estimación trae "Lo que vio en el plato" con los gramos que re-escalan macros y totales, y la
+  escala; si la visión falla, el aviso con el motivo y "Cargar a mano". Borrar es optimista y la comida vuelve si el
+  servidor falla. Al volver a la app con otro día, `alVolverAPrimerPlano` las recarga (DIE-18).
+- **Lo que espera a la IA** (~30 s, y gasta cupo) vive afuera de la composición (`EsperasDieta`, uno por modelo y
+  cuenta): cambiar de pestaña o girar el teléfono no pierde la respuesta, y salir del formulario o cerrar la hoja olvida
+  una etiqueta que llega tarde.
+- **Pruebas.** En la JVM, `dieta/MotorSustitutosTest` con la base empaquetada y la dieta grabada (las 55 opciones de la
+  web para el huevo, las exclusiones, los avisos, el redondeo de JS). Instrumentadas, `ui/DietaEscrituraUiTest`: las tres
+  de `DietaUITests` de iOS, la foto del plato, la visión que falla, el alimento propio a mano y con la etiqueta, las
+  restricciones del cliente, lo que no se reemplaza, borrar que falla, el cambio de día (con la zona horaria del
+  proceso), la demo, y la respuesta de la IA que sobrevive a cambiar de pestaña y a girar, y que se olvida al salir. Y
+  `ui/DietaCapturasTest`, once escenas en claro y en oscuro. `ServidorDePrueba` contesta `/vision` con lo que pide cada
+  prueba y guarda comidas libres, alimentos propios y reemplazos mientras dura (así reabrir la app los vuelve a traer);
+  `CamaraDePrueba` es el monitor de la cámara y la galería de Revisión. Lo de abajo de la lista se alcanza con
+  `ScrollToIndex` de la semántica: la lista precompone lo que sigue sin ubicarlo, y medir posiciones engaña.
+
 ## Los avisos
 
 Gemelos de `apps/ios/MyPump/Avisos/CentroAvisos.swift` y `Acceso/OnboardingPermisos.swift`, en el paquete `avisos` (la hoja
