@@ -54,8 +54,13 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    - ✅ Avisos de punta a punta: tocar el aviso abre el Chat, en caliente y en frío. **Encontró que tocar un aviso cerraba
      la app** (9c9e8b0).
    - ✅ Revisión adversarial del código (14 y 15-oct, hallazgos 1-14).
-   - ☐ Lado a lado con la web en cada pestaña, con `test-nativa-real`: lo de los bocetos y la paridad; falta una pasada
-     final.
+   - ✅ Lado a lado con la web en las cinco pestañas, con `test-nativa-real` (`nativa-evidencia/lado-a-lado`):
+     - 05:39: Dieta, Progreso, Revisión y Chat.
+     - 10:21, Entreno: el OCR de las capturas da lo mismo que la web. Coinciden el 9/9, las 31 series, los 7387 kg, los
+       bloques 2/2, 3/3 y 4/4, cada récord, «7 ejercicios cambian carga» y «Pasar a Semana 6».
+     - La única diferencia es «Sesión completa» con «Cerrar sesión de hoy» en lugar de «Día cerrado». Es del estado de
+       la cuenta: `UltimaVezUITests` reabre el día, y reabrir solo borra la marca del teléfono, como en la web
+       (`restoreSesionDelDia`).
    - ☐ El iPhone de Mati con el **TestFlight 108**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
      (SAL-13) y tocar un push real.
 3. ✅ TestFlight 104 a 107 y **108** (15-oct 06:50, con los arreglos de la revisión adversarial). Del 104 al 106 tienen
