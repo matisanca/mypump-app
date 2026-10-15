@@ -201,7 +201,12 @@ push real de Android de punta a punta y las fotos de la web con la Mini caída (
 iPhone. La 2.0.1 trae:
 - el diseño del iPhone (ver la bitácora del 15-oct 17:00): la barra de pestañas flotante, la letra de la marca con su
   peso, el segmentado, el interruptor y el volver de iOS, y los cuadros de las fotos;
-- el arreglo de la foto que se perdía si el sistema cerraba la app con la cámara abierta (ca212de).
+- los controles de iOS 26 (bitácora del 15-oct 17:15-19:45): las alertas, las hojas, la rueda de la hora, la pastilla de
+  guardado y los menús;
+- lo que Mati pidió el 15-oct para el iPhone (D16-D20): la barra siempre entera, sin Mi día, el peso en el check, el
+  ejercicio abierto en la lista y «Ver cómo está mi cuerpo»;
+- el arreglo de la foto que se perdía si el sistema cerraba la app con la cámara abierta (ca212de);
+- el arreglo de la dieta que resucitaba un reemplazo al volver al plan mientras se traía la dieta (2d7adb9).
 
 Se manda con las mismas novedades que la 2.0.0 (quien venga de la 1.0.12 va directo a la 2.0.1) y con capturas nuevas.
 La versión corta nueva deja que la palanca remota pida la 2.0.1 a quien tenga la 2.0.0 (`versionMinimaAndroid`). Es otro

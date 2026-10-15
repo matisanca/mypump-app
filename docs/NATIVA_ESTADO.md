@@ -61,7 +61,7 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
      - La única diferencia es «Sesión completa» con «Cerrar sesión de hoy» en lugar de «Día cerrado». Es del estado de
        la cuenta: `UltimaVezUITests` reabre el día, y reabrir solo borra la marca del teléfono, como en la web
        (`restoreSesionDelDia`).
-   - ☐ El iPhone de Mati con el **TestFlight 111**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
+   - ☐ El iPhone de Mati con el **último TestFlight** (113 desde el 15-oct 17:49): el universal link desde WhatsApp (ACC-01/09), Salud de verdad
      (SAL-13) y tocar un push real.
 3. ✅ TestFlight 104 a 110 y **111** (15-oct 13:27): los arreglos de la segunda revisión adversarial, entre ellos una
    pérdida de fotos. El 110 trajo el rendimiento de Progreso y el chat sin pedido doble; el 109, la cola de fotos que ya
@@ -69,7 +69,7 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    auditoría), y el kit 436/436. Del 104 al 106 tienen el cierre al tocar un aviso.
 4. ✅ Capturas nuevas (15-oct 11:45, `nativa-evidencia/tienda/20261015-114457`, con la app del TestFlight 110) y los
    textos de `NATIVA_TIENDAS_2.0.0.md`.
-5. ⏳ G7: **OK de Mati el 15-oct** («Sí, apenas salga la 1.0.12»): la 2.0.0 con el build 111, escalonado de 7 días y
+5. ⏳ G7: **OK de Mati el 15-oct** («Sí, apenas salga la 1.0.12»): la 2.0.0 con el último build (el 111 cuando dio el OK; ahora el que lleve lo que pidió esa tarde), escalonado de 7 días y
    publicación manual. App Store Connect pide iniciar sesión en Chrome (15-oct 15:35) y eso lo hace Mati: la sesión
    no pone contraseñas ni códigos.
 6. ✅ Plan B escrito en `NATIVA_TIENDAS_2.0.0.md`: la Capacitor 2.0.1 por los workflows de siempre, sin subirla de
@@ -214,11 +214,44 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
      intentos y corta la pasada. En `main` (0620012), publicado por Cloudflare Pages.
   - Queda en la web, sin arreglar: la misma carrera de la foto de una pose que se vuelve a sacar mientras sube la vieja,
     que en la nativa arregla `FotosMismaPose`.
-- **En su iPhone, con el TestFlight 111:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
-- **Para el envío a Apple (G7):** iniciar sesión en App Store Connect en Chrome. Con eso, la sesión arma la 2.0.0 (build
-  111, capturas, notas y «Other Diagnostic Data») y la manda con el escalonado de 7 días.
+- **En su iPhone, con el último TestFlight (113 desde el 15-oct 17:49):** ACC-01/09 (el link de WhatsApp y el universal
+  link) y SAL-13 (Salud real).
+- **Para el envío a Apple (G7):** iniciar sesión en App Store Connect en Chrome. Con eso, la sesión arma la 2.0.0 (el último
+  build, capturas, notas y «Other Diagnostic Data») y la manda con el escalonado de 7 días.
 
 ## Bitácora
+
+- **15-oct 17:15-19:45, lo que pidió Mati para su video, y Android al nivel del iPhone.**
+  - **iPhone, TF 112 y 113 (17:49):** la barra de pestañas fija (D16), sin Mi día (D17), el peso en el check (D18), el
+    ejercicio abierto en la lista (D19) y «Ver cómo está mi cuerpo» (D20). Lo mismo en Android, para la 2.0.1 (104).
+  - **Android con los controles de iOS 26**, copiados del simulador:
+    - los diálogos (`Alerta`): tarjeta muy redondeada, título y mensaje a la izquierda, botones en cápsulas grises;
+    - las hojas (`FormaHoja`, `AsaHoja`, `EncabezadoHoja`): «Cancelar» a la izquierda, el título al centro y la acción
+      a la derecha;
+    - la hora de la comida libre con la rueda de iOS (`RuedaHora`), no el reloj de agujas;
+    - el aviso de guardado como la pastilla de iOS, y los menús con las puntas redondeadas.
+  - **En las dos apps:** la flecha de la fila gira al abrir el ejercicio, «Series» va más chico en la lista, y
+    «Sustituir» y «Técnica y notas» van en un renglón (los apilados ocupaban casi el doble).
+  - **iPhone, un arreglo:** «¿Volver al alimento del plan?» salía como un globo arriba de todo, tapando el aviso de la
+    demo y apuntando al gráfico de calorías. Pasaba porque estaba colgada de toda la pantalla; ahora cuelga de la fila.
+    Lo mismo con «¿Quitar Oura?».
+  - **Con la letra más grande de accesibilidad** (barrido nuevo, `testEjercicioEnLaLista`): «Sustituir» y «Técnica y
+    notas» partían las palabras en un renglón y ahora van uno debajo del otro (las dos apps). En iPhone, el resumen de la
+    sesión partía «HE-CHOS» y la tabla «REP-S».
+  - **TestFlight 114** (caa40ba) con todo lo del iPhone de esta tarde.
+  - **Android, suite entera:** 198 pruebas; las 3 que fallaron esperaban a Mi día y pasan arregladas (24/24 en la corrida
+    final). Commit del diseño nuevo de Android para la 2.0.1.
+  - **19:10, Mati:** «ya gastamos una fortuna de tokens y todavía no está listo?». La 2.0.0 de iPhone está lista (114);
+    la frena la 1.0.12, todavía en revisión, y el login de App Store Connect, que es suyo. Eligió **esperar la 1.0.12**
+    (no retirarla). **Se terminó el pulido:** no se agregan cambios salvo que él los pida. Se borraron los cron de cada
+    hora y de cada 3 h (gastaban tokens en cada vuelta); queda un `until` de shell que mira la App Store cada 5 min sin
+    gastar nada y avisa cuando sale la 1.0.12. Ahí: avisarle a Mati que entre a App Store Connect y mandar la 2.0.0 con
+    el 114 (o el último).
+  - **Android, una carrera en la dieta:** volver al alimento del plan mientras se traía la dieta lo resucitaba. Era el
+    `DietaEscrituraUiTest` que fallaba 2 de cada 3; lo reproduce `volverAlPlanMientrasHidrataNoLoResucita` (2d7adb9).
+  - **Pruebas:** las 16 de Android que dependían de Mi día o de la página del ejercicio, adaptadas (9b2a296).
+  - **Datos falsos de reloj** en la cuenta de Mati (17:35), a pedido suyo, para ver la recuperación en su iPhone. Se
+    borran cuando avise (memoria `salud-falsa-cuenta-mati`).
 
 - **15-oct 17:00, Android con el diseño del iPhone** (Mati: «porque es tanto peor el diseño en android que en ios? no me
   gusta nada», y eligió «Igual que el iPhone»). Puesto lado a lado y a la misma escala (1 pt = 1 dp), lo que lo hacía
