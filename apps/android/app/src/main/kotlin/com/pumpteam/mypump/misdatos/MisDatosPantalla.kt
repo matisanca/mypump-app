@@ -61,9 +61,8 @@ import kotlinx.coroutines.withContext
  * privacidad y el borrado (D9), con la forma de los ajustes del teléfono. Ni la IA ni el aviso del domingo se configuran
  * acá (pedido de Mati, 14-oct): la IA trabaja bajo su aprobación y el aviso llega como un mensaje suyo (`AvisoDomingo`).
  *
- * Todavía no están en Android: la recuperación y Salud (Health Connect) y las notificaciones. De las notificaciones acá
- * va a ir solo "Activar notificaciones", si falta el permiso del sistema y no es la demo, como en iOS (para eso ya llega
- * el [modelo]).
+ * De las notificaciones va solo "Activar notificaciones" (o "Activar en Ajustes"), si falta el permiso del sistema y no
+ * es la demo, como en iOS (`SeccionNotificaciones`). Todavía no está en Android: la recuperación y Salud (Health Connect).
  */
 @Composable
 fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> Unit) {

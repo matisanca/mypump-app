@@ -107,7 +107,7 @@ class OnboardingUiTest : PruebaUi() {
         guardarCuenta()
         abrir()
         p.tocar(etiqueta("onboarding-aceptar"))
-        p.nodo(texto("Quedó sin permiso. Si cambiás de idea: Ajustes → Notificaciones → MyPump."))
+        p.nodo(texto("Quedó sin permiso. Si cambiás de idea, lo activás desde Mis datos."))
         assertFalse("sin el botón de activar", p.existe(etiqueta("onboarding-aceptar")))
         assertEquals(listOf("Entendido"), p.textosBajo(etiqueta("onboarding-ahora-no")))
         p.tocar(etiqueta("onboarding-ahora-no"))
@@ -125,7 +125,7 @@ class OnboardingUiTest : PruebaUi() {
         guardarCuenta()
         abrir()
         p.tocar(etiqueta("onboarding-aceptar"))
-        p.nodo(texto("Quedó sin permiso. Si cambiás de idea: Ajustes → Notificaciones → MyPump."))
+        p.nodo(texto("Quedó sin permiso. Si cambiás de idea, lo activás desde Mis datos."))
         assertEquals(0, CentroAvisos.pedidos)
     }
 

@@ -272,7 +272,8 @@ fun OnboardingPermisos(modelo: ModeloApp, version: String, alTerminar: () -> Uni
     }
 }
 
-private const val SIN_PERMISO = "Quedó sin permiso. Si cambiás de idea: Ajustes → Notificaciones → MyPump."
+// iOS dice la ruta de sus Ajustes; en Android cambia según la marca, así que se manda a Mis datos, que abre la pantalla justa.
+private const val SIN_PERMISO = "Quedó sin permiso. Si cambiás de idea, lo activás desde Mis datos."
 
 /** El ícono del paso: el corazón en rojo o la campana en el lima de la marca, en un azulejo grande con sombra de su color. */
 @Composable
