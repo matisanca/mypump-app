@@ -173,6 +173,35 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 02:30, iOS TestFlight 104 y la matriz de Android:**
+  - **iOS:**
+    - Los hallazgos menores de la revisión están arreglados (dd88596): 4, 5, 6, 7, 9 a 14, la firma de fotos, `Outbox` con
+      números no finitos y el token de la Fase L.
+    - Una foto de progreso con el token caído ya no se pierde (b3ee106).
+    - Kit 416/416, XCUITest 17/17.
+    - **TestFlight 104** (`nios-2.0.0-104`, 23 cambios de iOS desde el 103): salió de Codemagic a las 02:10.
+  - **Android:**
+    - Mergeados los arreglos importantes (be23b05): copia offline, palanca, Salud por cuenta y el domingo de una vez.
+      Están también Revisión con Mi Día (0afe4ae) y Chat y Progreso.
+    - Instrumentadas: 153 en Android 16.
+  - **El emulador de Android 9 encontró que la app se cerraba al abrir el link del coach** (6319465):
+    - `URLDecoder.decode(String, Charset)` es de la API 33 y `:core` se prueba con Java 21. Lo mismo pasaba con
+      `URLEncoder.encode` en el catálogo de ejercicios y en Salud.
+    - Ahora `scripts/nativa/api-android.py` revisa el bytecode de `:core` contra el minSdk (también en `android-nativa`).
+    - En `:app`, NewApi es fatal en el release.
+  - **La migración no leía nada con un WebView anterior a Chrome 71** (`globalThis`; e1b4533). La Capacitor anda desde
+    el 60. Ahora usa `window`.
+  - **La hoja de la primera vez** no pide las notificaciones si ya llegan, como pasa hasta Android 12 (1649ae6).
+  - **El resto de lo que falló en Android 9 es de las pruebas, no de la app.** Las pruebas suponen:
+    - una pantalla grande (Dieta fuera de la vista en 720×1280);
+    - Android 12 o 13 (`pm set-app-links-user-selection`, `POST_NOTIFICATIONS`);
+    - Health Connect integrado;
+    - Chrome con Custom Tabs;
+    - un heap grande (una foto de prueba de 48 MB).
+    
+    En el emulador quedó comprobado que la alarma del domingo se agenda bien. Las pruebas se van a ajustar en la pasada
+    de la matriz.
+
 - **15-oct 01:30, prueba exhaustiva de iOS (reemplaza la beta, pedido de Mati):**
   - **XCUITest completas en 26.5 (16/16) y 17.5 (16/16).**
     - La de «la última vez» se salteaba sola cuando la cuenta de prueba gastaba las series del primer ejercicio. Ahora
