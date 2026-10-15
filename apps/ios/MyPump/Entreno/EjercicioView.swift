@@ -35,11 +35,8 @@ struct EjercicioView: View {
             }
         }
         .background(Color.fondo)
+        // Al volver, el ejercicio queda abierto en la lista de Entreno, donde se carga (15-oct).
         .task { await abrirCard() }
-        .onDisappear {
-            // La card se cierra al salir (si el motor no abrió ya la siguiente).
-            if motor.dia.expandido == lugar { Task { await motor.tocarCard(lugar) } }
-        }
         .sheet(isPresented: $sustituyendo) { SustituirEjercicioView(motor: motor, lugar: lugar) }
         .sheet(item: Binding(get: { video.map(URLVideo.init) }, set: { video = $0?.url })) { v in
             NavegadorInterno(url: v.url).ignoresSafeArea()

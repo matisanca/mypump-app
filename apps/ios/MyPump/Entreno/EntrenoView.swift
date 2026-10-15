@@ -226,7 +226,7 @@ private struct ListaEntreno: View {
         }
 
         ForEach(motor.bloques, id: \.indice) { b in
-            BloqueEjercicios(motor: motor, bloque: b, primerNumero: primerNumero(b.indice))
+            BloqueEjercicios(motor: motor, bloque: b, primerNumero: primerNumero(b.indice), alCompletarDia: alCompletarDia)
         }
 
         if motor.todoHecho {
@@ -558,6 +558,7 @@ private struct BloqueEjercicios: View {
     let motor: ModeloEntreno
     let bloque: ModeloEntreno.BloqueDelDia
     let primerNumero: Int
+    let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
 
     var body: some View {
         let total = bloque.ejercicios.count
@@ -580,11 +581,20 @@ private struct BloqueEjercicios: View {
 
             VStack(spacing: 0) {
                 ForEach(Array(bloque.ejercicios.enumerated()), id: \.element.id) { j, e in
-                    NavigationLink(value: e.id) {
+                    // Tocar un ejercicio lo abre ahí mismo, como la card de la web (Mati, 15-oct: ir a otra página por
+                    // cada ejercicio empeoraba el uso). La página del ejercicio queda para la técnica y los comentarios.
+                    Button {
+                        Task { await motor.tocarCard(e.id) }   // la animación la pone el bloque (`expandido`)
+                    } label: {
                         FilaEjercicio(motor: motor, ejercicio: e, numero: primerNumero + j)
                     }
                     .buttonStyle(FilaPresionable())
                     .accessibilityIdentifier("fila-ejercicio-\(primerNumero + j)")
+                    .accessibilityHint(motor.dia.expandido == e.id ? "Cierra el ejercicio" : "Abre el ejercicio acá")
+                    if motor.dia.expandido == e.id {
+                        EjercicioEnLista(motor: motor, lugar: e.id, alCompletarDia: alCompletarDia)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                     if j < total - 1 {
                         Divider().padding(.leading, 90)
                     }
@@ -592,6 +602,64 @@ private struct BloqueEjercicios: View {
             }
             .clipShape(.rect(cornerRadius: Radio.tarjeta, style: .continuous))
             .superficieTarjeta()
+            .animation(.snappy, value: motor.dia.expandido)
+        }
+    }
+}
+
+/// El ejercicio abierto adentro de la lista, como la card de la web: la tabla de series, sustituir, la página del
+/// ejercicio (técnica, video y comentarios) y el cierre. Al completarlo, el motor abre el siguiente pendiente.
+private struct EjercicioEnLista: View {
+    let motor: ModeloEntreno
+    let lugar: String
+    let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
+    @Environment(Preguntador.self) private var preguntador
+    @State private var sustituyendo = false
+
+    var body: some View {
+        if let t = motor.tarjeta(lugar) {
+            let terminal = EstadosEjercicio.terminales.contains(t.estado)
+            let todas = !t.filas.isEmpty && t.confirmadas == t.filas.count
+            VStack(alignment: .leading, spacing: Espacio.s) {
+                TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
+                HStack(spacing: Espacio.s) {
+                    Button { sustituyendo = true } label: {
+                        Label(t.efectivo.sustituido ? "Cambiar" : "Sustituir", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .disabled(!(t.puedeSustituir || t.efectivo.sustituido))
+                    NavigationLink(value: lugar) {
+                        Label("Técnica y notas", systemImage: "text.book.closed.fill")
+                    }
+                    .accessibilityIdentifier("tecnica-y-notas")
+                }
+                .buttonStyle(AccionTarjeta())
+                .padding(.horizontal, Espacio.m)
+                Group {
+                    if terminal {
+                        Button { Task { await motor.reabrir(lugar) } } label: { Label("Reabrir ejercicio", systemImage: "pencil") }
+                            .buttonStyle(BotonSecundario(compacto: true))
+                    } else if t.filas.isEmpty || !todas {
+                        // Sin series (cardio, por tiempo) o con series sin confirmar: se puede dar por hecho igual.
+                        Button("Terminé este ejercicio") {
+                            Task { if let c = await motor.terminar(lugar, preguntar: { await preguntador.preguntar($0) }) { alCompletarDia(c) } }
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.marcaTexto)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("termine-ejercicio")
+                    } else {
+                        Button { Task { if let c = await motor.marcarCompleto(lugar) { alCompletarDia(c) } } } label: {
+                            Label("Marcar ejercicio completo", systemImage: "checkmark")
+                        }
+                        .buttonStyle(BotonMarca(compacto: true))
+                        .accessibilityIdentifier("marcar-completo")
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.bottom, Espacio.s)
+            .background(Color.campo.opacity(0.35))
+            .sheet(isPresented: $sustituyendo) { SustituirEjercicioView(motor: motor, lugar: lugar) }
         }
     }
 }

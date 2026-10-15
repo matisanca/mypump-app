@@ -12,6 +12,8 @@ struct TablaSeries: View {
     let lugar: String
     let tarjeta: ModeloEntreno.Tarjeta
     let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
+    /// Adentro de la lista de Entreno (el ejercicio abierto ahí mismo): sin tarjeta propia, va dentro de la del bloque.
+    var enLista = false
     @Environment(Preguntador.self) private var preguntador
     @Environment(\.dynamicTypeSize) private var tamañoLetra
     @FocusState private var foco: Campo?
@@ -74,7 +76,7 @@ struct TablaSeries: View {
                 }
             }
         }
-        .tarjeta()
+        .modifier(SuperficieTabla(enLista: enLista))
         .sensoryFeedback(.success, trigger: confirmadas)
         .onChange(of: tarjeta.confirmadas) { viejo, nuevo in if nuevo > viejo { confirmadas += 1 } }
         .toolbar {
@@ -294,5 +296,17 @@ private struct SelectorRIR: View {
         }
         .menuIndicator(.hidden)
         .sensoryFeedback(.selection, trigger: rir)
+    }
+}
+
+/// La tabla en su tarjeta (la página del ejercicio) o suelta, con su margen, adentro de la tarjeta del bloque.
+private struct SuperficieTabla: ViewModifier {
+    let enLista: Bool
+    func body(content: Content) -> some View {
+        if enLista {
+            content.padding(.horizontal, Espacio.m).padding(.vertical, Espacio.s)
+        } else {
+            content.tarjeta()
+        }
     }
 }
