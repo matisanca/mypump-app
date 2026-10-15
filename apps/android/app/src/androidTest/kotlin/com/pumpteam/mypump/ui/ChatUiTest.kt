@@ -221,7 +221,11 @@ class ChatUiTest : PruebaUi() {
         p.nodo(texto(TextosChat.separador(hace10.toString(), hoy)))
         assertTrue(p.existe(texto("Mati: Mensaje 16")))
         assertFalse(p.existe(texto("Vos: Mensaje 15")))
-        assertEquals(1, servidor.a("mypump_get_chat").count { "\"p_antes\":null" in it })
+        // Hasta acá solo la última página. Cuántas veces no es fijo: si el chat se abre antes de que termine la carga de la
+        // cuenta (un teléfono lento, Android 9), la pantalla la pide en el momento (f0f6ab1) y la carga la vuelve a pedir.
+        val pedidos = servidor.a("mypump_get_chat")
+        assertTrue("no se pidió la última página", pedidos.any { "\"p_antes\":null" in it })
+        assertTrue("se pidió la página anterior sin tocar el botón: $pedidos", pedidos.none { "\"p_antes\":\"" in it })
         p.tocar(anteriores)
         p.esperar("la página anterior") { servidor.a("mypump_get_chat").any { "\"p_antes\":\"" in it } }
         p.esperarQueNoEste(anteriores)
