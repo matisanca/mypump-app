@@ -541,7 +541,7 @@ class DietaEscrituraUiTest : PruebaUi() {
     @Test
     fun unaEtiquetaQueLlegaDespuesDeSalirNoSeUsa() {
         servidor.vision = {
-            Thread.sleep(3_000)
+            Thread.sleep(6_000)
             200 to """{"ok":true,"data":{"nombre":"Tofu firme","porcion_g":100,"kcal":144,"prot":15.8,"carb":2.8,"fat":8.7,"confianza":"alta"}}"""
         }
         camara()
@@ -554,10 +554,9 @@ class DietaEscrituraUiTest : PruebaUi() {
         p.tocar(etiqueta("elegir-de-la-galeria"))
         p.nodo(texto("Leyendo la etiqueta…"))
         // Atrás: a la lista (la lectura sigue en camino y llega mientras tanto).
-        p.atras()
-        p.nodo(etiqueta("lista-sustitutos"))
-        p.esperar("la visión contestó") { servidor.fotosVision.isNotEmpty() }
-        p.quieto(4_000)
+        atrasALaLista()
+        p.esperar("la visión recibió la foto") { servidor.fotosVision.isNotEmpty() }
+        p.quieto(7_000)
         crearAlimento()
         assertEquals("", p.textoDe(etiqueta("nombre-alimento")))
         assertFalse(p.existe(etiqueta("estado-escaneo")))
