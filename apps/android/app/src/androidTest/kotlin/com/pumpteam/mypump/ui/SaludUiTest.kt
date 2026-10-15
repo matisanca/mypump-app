@@ -4,6 +4,7 @@ import android.app.Instrumentation
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.pumpteam.mypump.datos.ClaveSalud
+import com.pumpteam.mypump.datos.Disco
 import com.pumpteam.mypump.datos.FuenteSalud
 import com.pumpteam.mypump.datos.HistorialSalud
 import com.pumpteam.mypump.datos.ModeloSalud
@@ -157,8 +158,10 @@ class SaludUiTest : PruebaUi() {
         // Los 7 días se suben como Health Connect, y el botón se va.
         p.esperar("se subió la salud") { servidor.a("mypump_ingest_salud").any { "\"fuente\":\"health_connect\"" in it } }
         p.esperarQueNoEste(etiqueta("conectar-salud"))
-        assertEquals("1", preferencia(ClaveSalud.CONECTADO))
-        assertEquals("1", preferencia(ClaveSalud.HISTORIAL_OK))
+        // Lo guardado es de la cuenta (hallazgo 3 del 15-oct): las claves llevan su huella.
+        val deLaCuenta = "_" + Disco.huella(ServidorDePrueba.TOKEN)
+        assertEquals("1", preferencia(ClaveSalud.CONECTADO + deLaCuenta))
+        assertEquals("1", preferencia(ClaveSalud.HISTORIAL_OK + deLaCuenta))
     }
 
     /** Sin Health Connect: si se consigue, se ofrece desde Play (con su presentación); si el teléfono no lo soporta, nada. */

@@ -11,8 +11,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * Lo puro de las notificaciones de Android: cuándo suena el aviso del domingo (con zona y cambio de hora), cuándo se
- * registra el push y a dónde lleva tocar un aviso. Lo que agenda y publica está en `:app` (`avisos/`).
+ * Lo puro de las notificaciones de Android: cuándo suena el aviso del domingo (con zona y cambio de hora) y qué se vuelve
+ * a armar sin la app, cuándo se registra el push y a dónde lleva tocar un aviso. Lo que agenda y publica está en `:app`
+ * (`avisos/`, con sus pruebas en el emulador: `AvisosUiTest`).
  */
 class AgendaAvisosTest {
     private val buenosAires = ZoneId.of("America/Argentina/Buenos_Aires")
@@ -57,6 +58,28 @@ class AgendaAvisosTest {
         assertEquals(Instant.parse("2026-10-18T09:00:00Z"), AvisoDomingo.proximo(ahora, ZoneId.of("Europe/Madrid")))
         // En Tokio ya es jueves a la madrugada: el mismo domingo, 11:00 de allá.
         assertEquals(Instant.parse("2026-10-18T02:00:00Z"), AvisoDomingo.proximo(ahora, ZoneId.of("Asia/Tokyo")))
+    }
+
+    /**
+     * Hallazgo 8 del 15-oct: el aviso es de una vez. Lo que vuelve a armar el sistema (reinicio, actualización, zona, hora)
+     * es SOLO el pendiente: su domingo anotado, a las 11:00 de la zona de ahora. Sin uno anotado, ninguno.
+     */
+    @Test
+    fun loPendienteSeVuelveAArmarALas11DeLaZonaDeAhora() {
+        // Lo que se anota al agendar: el domingo en la zona de ese momento.
+        val cuando = AvisoDomingo.proximo(en(buenosAires, "2026-10-14T15:00"), buenosAires)
+        assertEquals("2026-10-18", AvisoDomingo.anotar(cuando, buenosAires))
+        // Al prender el teléfono en la misma zona: el mismo instante.
+        assertEquals(cuando, AvisoDomingo.pendiente("2026-10-18", buenosAires))
+        // Si cambió la zona (un viaje): las 11:00 de ese domingo allá, no las de Buenos Aires.
+        assertEquals(Instant.parse("2026-10-18T09:00:00Z"), AvisoDomingo.pendiente("2026-10-18", ZoneId.of("Europe/Madrid")))
+        // Las 11:00 de Tokio de ese domingo son las 23:00 del sábado en Buenos Aires: se anota el domingo de allá.
+        val tokio = ZoneId.of("Asia/Tokyo")
+        assertEquals("2026-10-18", AvisoDomingo.anotar(AvisoDomingo.proximo(Instant.parse("2026-10-14T18:00:00Z"), tokio), tokio))
+        // Sin uno anotado (sonó y la app no se volvió a abrir) o con algo que no es una fecha: no se inventa otro.
+        assertNull(AvisoDomingo.pendiente(null, buenosAires))
+        assertNull(AvisoDomingo.pendiente("", buenosAires))
+        assertNull(AvisoDomingo.pendiente("domingo", buenosAires))
     }
 
     @Test

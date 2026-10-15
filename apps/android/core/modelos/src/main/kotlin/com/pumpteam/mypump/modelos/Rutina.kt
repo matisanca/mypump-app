@@ -12,6 +12,12 @@ data class RutinaActiva(
     val fechaFin: String?,
     val tieneSiguiente: Boolean,
 ) {
+    /**
+     * La misma rutina en otra semana: al pasar de semana no cambia nada más. Para cuando el servidor ya avanzó y la rutina
+     * nueva no llegó (`ModeloEntreno.avanzarSemana`, revisión del 15-oct, hallazgo 1).
+     */
+    fun conSemana(s: Int): RutinaActiva = copy(semanaActual = s)
+
     companion object {
         fun desde(e: JsonElement): RutinaActiva {
             val o = e.comoObjeto("RutinaActiva")

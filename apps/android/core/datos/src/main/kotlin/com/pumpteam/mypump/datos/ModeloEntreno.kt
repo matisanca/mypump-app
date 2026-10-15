@@ -126,8 +126,23 @@ class ModeloEntreno(
     private val _catalogo = MutableStateFlow(catalogoInicial)
     val catalogo: StateFlow<CatalogoEjercicios> = _catalogo.asStateFlow()
 
-    /** Se llama cuando el modelo trae una rutina nueva (avanzar de semana, bloque nuevo, recargar), para que [ModeloApp] la tenga también. */
-    var alCambiarRutina: ((RutinaActiva) -> Unit)? = null
+    /**
+     * Lo que cambió de la rutina sin pasar por [ModeloApp] (avanzar de semana, bloque nuevo, recargar), para que lo tenga
+     * también y deje la copia offline al día (revisión del 15-oct, hallazgo 1). Gemelo de `CambioRutina` de iOS.
+     */
+    sealed interface CambioRutina {
+        /** La trajo del servidor: con la fila tal cual llegó, para la copia offline. */
+        data class Nueva(val rutina: RutinaActiva, val fila: ValorJson) : CambioRutina
+
+        /** El servidor ya pasó de semana y la rutina no llegó: la misma, en la semana nueva. */
+        data class Semana(val rutina: RutinaActiva) : CambioRutina
+
+        /** El servidor activó el bloque nuevo y no llegó: el viejo quedó archivado y no se puede seguir cargando en él. */
+        data object BloqueSinTraer : CambioRutina
+    }
+
+    /** Se llama cuando el modelo cambia la rutina (avanzar de semana, bloque nuevo, recargar). */
+    var alCambiarRutina: ((CambioRutina) -> Unit)? = null
 
     private var sesionesLocales: Map<String, SesionLocal> = disco?.let { leerSesiones(it) } ?: emptyMap()
     private var sinHistorialPorClave = false
@@ -730,10 +745,19 @@ class ModeloEntreno(
     suspend fun avanzarSemana(): ResultadoAvance {
         val t = token
         if (t == null || demo) return ResultadoAvance.Error(SemanaEntreno.errorAvanzar(false))
-        val r = cliente.llamar("mypump_avanzar_semana", mapOf("p_token" to texto(t), "p_semana_destino" to numero(semana + 1)))
+        val destino = semana + 1
+        val r = cliente.llamar("mypump_avanzar_semana", mapOf("p_token" to texto(t), "p_semana_destino" to numero(destino)))
         if (r is Resultado.Ok && r.valor != ValorJson.Nulo) {
             borrarCachesDeSesion()
-            recargar()
+            if (!recargar()) {
+                // El servidor ya está en la semana nueva y la rutina no llegó (se cortó la señal en el medio): la misma
+                // rutina en esa semana. Si no, lo que se cargara iba a la semana pasada y pisaba sus series (revisión del
+                // 15-oct, hallazgo 1).
+                val nueva = _rutina.value.conSemana(destino)
+                reemplazarRutina(nueva)
+                alCambiarRutina?.invoke(CambioRutina.Semana(nueva))
+                cargar()
+            }
             return ResultadoAvance.Listo
         }
         return ResultadoAvance.Error(SemanaEntreno.errorAvanzar(sinRed(r)))
@@ -746,7 +770,12 @@ class ModeloEntreno(
         val r = cliente.llamar("mypump_activar_siguiente", mapOf("p_token" to texto(t)))
         if (r is Resultado.Ok && SemanticaJs.esVerdadero(r.valor)) {
             borrarCachesDeSesion()
-            recargar()
+            if (!recargar()) {
+                // El bloque nuevo quedó activo y no llegó: el viejo está archivado y lo que se cargara en él armaba
+                // sesiones fantasma en el nuevo. Sin rutina hasta que vuelva la señal (la próxima carga trae el nuevo).
+                _usable.value = false
+                alCambiarRutina?.invoke(CambioRutina.BloqueSinTraer)
+            }
             return ResultadoAvance.Listo
         }
         return ResultadoAvance.Error(SemanaEntreno.errorBloqueNuevo(sinRed(r)))
@@ -762,7 +791,7 @@ class ModeloEntreno(
             return false
         }
         reemplazarRutina(nueva)
-        alCambiarRutina?.invoke(nueva)
+        alCambiarRutina?.invoke(CambioRutina.Nueva(nueva, fila))
         cargar()
         return true
     }

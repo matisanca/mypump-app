@@ -296,7 +296,8 @@ class ModeloApp(
         disco = d
         val escrituras = Escrituras(cliente, t)
         outbox?.cerrar()
-        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance) { op -> escrituras.ejecutar(op) }
+        // Las ops de la migración esperan a la palanca remota (`cargar` la lee y se la pasa): hallazgo 2 del 15-oct.
+        val cola = Outbox(archivo = d.archivo("outbox.json"), alcance = alcance, retenerLegadas = true) { op -> escrituras.ejecutar(op) }
         outbox = cola
         _chat.value?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         val chat = ModeloChat(cliente, t, cola, alcance)
@@ -306,7 +307,8 @@ class ModeloApp(
         _fotos.value = ModeloFotos(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
         _salud.value?.cancelarEspera()
-        _salud.value = ModeloSalud(cliente, t, almacen = preferencias, alcance = alcance)
+        // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3 del 15-oct).
+        _salud.value = ModeloSalud(cliente, t, almacen = AlmacenSaludPorCuenta(preferencias, Disco.huella(t)), alcance = alcance)
         // Los avisos llegan desde el hilo de la cola: los StateFlow se pueden tocar desde cualquier hilo y así el orden se
         // conserva (en iOS se pasa al principal con un Task por aviso).
         alcance.launch {
@@ -409,7 +411,11 @@ class ModeloApp(
             palancaLeida = c.await()
         }
         if (!vigente()) return
-        palancaLeida?.let { _palanca.value = it }
+        palancaLeida?.let {
+            _palanca.value = it
+            // Con la palanca apagada, lo que la migración dejó directo en la cola tampoco sale (no solo la Fase R).
+            outbox?.usarPalanca(it.opsLegadas)
+        }
         // Un corte NO es "no tiene plan": lo que no llegó sale de la copia guardada (y la copia no se pisa con un hueco).
         // `null` o `[]` sin error sí es "no tiene" (Mati la desactivó).
         val copia = leerCopia()
@@ -518,8 +524,37 @@ class ModeloApp(
             cliente, token = token, outbox = outbox, disco = disco, rutinaInicial = rutina, info = _info.value,
             catalogoInicial = catalogoVigente, alcance = alcance,
         )
-        nuevo.alCambiarRutina = { _rutina.value = it }
+        // Con el disco de ESTA cuenta, y solo si sigue siendo el motor vigente (como el `[weak e]` de iOS): lo que termine
+        // de un motor que ya se soltó no le toca la copia a nadie.
+        val d = disco
+        nuevo.alCambiarRutina = { cambio -> if (_entreno.value === nuevo) cambioLaRutina(cambio, d) }
         _entreno.value = nuevo
+    }
+
+    /**
+     * Lo que el motor de Entreno cambió de la rutina (avanzar de semana, bloque nuevo), con la copia offline al día. Si no,
+     * un arranque sin señal volvía a la semana anterior y lo que se cargaba pisaba sus series (revisión del 15-oct, hallazgo
+     * 1). La web lo resuelve recargando la página, que vuelve a guardar el snapshot.
+     */
+    private fun cambioLaRutina(cambio: ModeloEntreno.CambioRutina, d: Disco?) {
+        var copia = d?.let { CopiaOffline.desde(it.leer(ARCHIVO_COPIA)) }
+        when (cambio) {
+            is ModeloEntreno.CambioRutina.Nueva -> {
+                _rutina.value = cambio.rutina
+                copia = copia?.copy(rutina = cambio.fila)
+            }
+            is ModeloEntreno.CambioRutina.Semana -> {
+                _rutina.value = cambio.rutina
+                val c = copia
+                val o = c?.rutina as? ValorJson.Objeto
+                if (c != null && o != null && o["id"]?.comoTexto == cambio.rutina.id) {
+                    copia = c.copy(rutina = ValorJson.Objeto(o.campos + ("semana_actual" to numero(cambio.rutina.semanaActual))))
+                }
+            }
+            ModeloEntreno.CambioRutina.BloqueSinTraer -> copia = copia?.copy(rutina = null)
+        }
+        val c = copia ?: return
+        d?.guardar(ARCHIVO_COPIA, c.copy(ts = System.currentTimeMillis().toDouble()).aValor())
     }
 
     private val archivoCatalogo: File get() = File(raizDisco, "MyPump/catalogo-ejercicios.json")

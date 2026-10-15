@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonElement
  * teléfono la cola de escrituras de hace semanas mandaría de nuevo acciones viejas.
  */
 class Disco(raiz: File, token: String) {
-    val carpeta: File = File(raiz, "MyPump/cuenta-" + sha256(token).take(16))
+    val carpeta: File = File(raiz, "MyPump/cuenta-" + huella(token))
 
     fun archivo(nombre: String): File = File(carpeta, nombre)
 
@@ -37,6 +37,9 @@ class Disco(raiz: File, token: String) {
     companion object {
         fun sha256(texto: String): String =
             MessageDigest.getInstance("SHA-256").digest(texto.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+
+        /** Identifica la cuenta sin guardar el token: la carpeta, el push (`mypump_push_cuenta`) y Salud la usan. */
+        fun huella(token: String): String = sha256(token).take(16)
     }
 }
 

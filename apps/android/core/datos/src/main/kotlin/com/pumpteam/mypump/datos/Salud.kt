@@ -94,9 +94,9 @@ internal fun textoError(e: Throwable): String = (e as? ErrorFuenteSalud)?.mensaj
 // MARK: Estado local (las claves `mypump_health_*` de la web)
 
 /**
- * Dónde vive el estado del sincronizador: las [Preferencias] de la app (como `UserDefaults` en iOS, fuera de la cuenta),
- * con las mismas claves y el mismo formato que el localStorage de la web, así la migración del almacenamiento viejo lo
- * copia tal cual (NATIVA_CONTRATO §9).
+ * Dónde vive el estado del sincronizador: las [Preferencias] de la app (como `UserDefaults` en iOS), con las mismas claves
+ * y el mismo formato que el localStorage de la web, así la migración del almacenamiento viejo lo copia tal cual
+ * (NATIVA_CONTRATO §9). En la app cada cuenta tiene las suyas, con su huella al final ([AlmacenSaludPorCuenta]).
  */
 object ClaveSalud {
     const val CONECTADO = "mypump_health_connected"        // "1"
@@ -109,6 +109,36 @@ object ClaveSalud {
     const val DIAG = "mypump_health_diag"                  // último intento de conectar (JSON)
     const val HISTORIAL_OK = "mypump_health_historial_ok"  // "1" | "0": el permiso de historial de Health Connect
     val todas: List<String> = listOf(CONECTADO, ULTIMA_SYNC, DENEGADO, RACHA_VACIA, HISTORIAL_HECHO, CURSOR, INTENTO, DIAG, HISTORIAL_OK)
+}
+
+/**
+ * El estado de Salud de UNA cuenta (revisión del 15-oct, hallazgo 3; gemelo de `AlmacenSaludPorCuenta` de iOS). Era del
+ * teléfono, como el localStorage de la web: con el link de otra cuenta en el mismo teléfono (Mati mirando la de un
+ * cliente), "conectado" seguía en pie y los pasos, el sueño y los entrenos de una persona subían a la ficha de otra. Ahora
+ * cada cuenta tiene sus claves (`<clave>_<huella>`, con [Disco.huella]). La primera que usa Salud en el teléfono se queda
+ * con lo que ya estaba (lo que trajo la migración de la app vieja o guardó una versión anterior); las demás arrancan sin
+ * conectar y se conectan solo si alguien lo pide desde esa cuenta.
+ */
+class AlmacenSaludPorCuenta(private val base: Preferencias, cuenta: String) : Preferencias {
+    private val sufijo = "_$cuenta"
+
+    init {
+        if (base.leer(DUENIA) == null) {
+            base.guardar(DUENIA, cuenta)
+            for (c in ClaveSalud.todas) {
+                if (base.leer(c + sufijo) == null) base.leer(c)?.let { base.guardar(c + sufijo, it) }
+            }
+        }
+    }
+
+    override fun leer(clave: String): String? = base.leer(clave + sufijo)
+
+    override fun guardar(clave: String, valor: String?) = base.guardar(clave + sufijo, valor)
+
+    companion object {
+        /** La huella de la cuenta que se quedó con el estado que había sin cuenta. */
+        const val DUENIA = "mypump_health_cuenta"
+    }
 }
 
 // MARK: Resultados

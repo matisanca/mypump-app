@@ -3,6 +3,7 @@ package com.pumpteam.mypump.datos
 import com.pumpteam.mypump.modelos.ValorJson
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -57,6 +58,10 @@ enum class DestinoAviso {
  * mensajes del chat ("Mati", mig 057) y su forma de escribirles a los clientes (sin dos puntos, guiones ni emojis).
  * Reusa el id 1002 de la Capacitor: reprogramar pisa el que dejó la app vieja. Gemelo de `AvisoDomingo` de iOS; en
  * Android lo agenda `avisos/CentroAvisos` de `:app` con [proximo].
+ *
+ * Es de UNA vez (revisión del 15-oct, hallazgo 8): repetido cada semana, a quien dejó la app o tiene el link vencido le
+ * seguía llegando para siempre un "mensaje de Mati" pidiéndole la revisión. La app lo arma al entrar con la cuenta y cada
+ * vez que vuelve a primer plano: a quien la usa le llega igual; a quien la dejó, como mucho uno más.
  */
 object AvisoDomingo {
     const val ID = PreferenciasAvisos.ID_REVISION
@@ -70,18 +75,40 @@ object AvisoDomingo {
     const val MINUTO = 0
 
     /**
-     * Cuándo suena el próximo: el primer domingo a las 11:00 de [zona] estrictamente después de [ahora]. La hora sale del
-     * reloj de ESE domingo: si en el medio cambia el horario de verano sigue siendo a las 11:00 del teléfono, y con otra
-     * zona (un viaje) da otro instante. En Android no se repite solo: cada aviso agenda el siguiente, y la app lo
-     * recalcula al abrir y cuando cambian la zona o la hora (el `UNCalendarNotificationTrigger` de iOS lo hace el sistema).
+     * Cuándo suena: el primer domingo a las 11:00 de [zona] estrictamente después de [ahora] (hoy, si es domingo antes de
+     * las 11). La hora sale del reloj de ESE domingo: si en el medio cambia el horario de verano sigue siendo a las 11:00
+     * del teléfono, y con otra zona (un viaje) da otro instante. Lo mismo que `AvisoDomingo.proximo` de iOS (el
+     * `nextDate(after:)` con domingo, 11 y 0); allá el sistema lo sigue en la zona de ese momento, acá lo vuelve a armar
+     * [pendiente] cuando cambian la zona o la hora.
      */
     fun proximo(ahora: Instant, zona: ZoneId): Instant {
         var dia = ahora.atZone(zona).toLocalDate().with(TemporalAdjusters.nextOrSame(diaDeLaSemana))
         while (true) {
-            val t = ZonedDateTime.of(dia, LocalTime.of(HORA, MINUTO), zona).toInstant()
+            val t = en(dia, zona)
             if (t.isAfter(ahora)) return t
             dia = dia.plusWeeks(1)
         }
+    }
+
+    /** Las 11:00 de [dia] en [zona]. */
+    fun en(dia: LocalDate, zona: ZoneId): Instant = ZonedDateTime.of(dia, LocalTime.of(HORA, MINUTO), zona).toInstant()
+
+    /** Lo que se anota del aviso agendado: su domingo en la zona de ese momento ("2026-10-18"). Es lo que lee [pendiente]. */
+    fun anotar(cuando: Instant, zona: ZoneId): String = cuando.atZone(zona).toLocalDate().toString()
+
+    /**
+     * Lo que vuelve a armar el sistema (al prender el teléfono, al actualizar la app, al cambiar la zona o la hora): SOLO el
+     * aviso que estaba pendiente ([anotado], lo que dejó [anotar] al agendarlo), a las 11:00 de su domingo en la zona de
+     * ahora. Sin uno anotado no hay otro: si la app no se abrió, no se inventa (hallazgo 8). Si ya pasó (el teléfono estuvo
+     * apagado a esa hora), suena apenas se arma: es el que faltaba, no uno más.
+     */
+    fun pendiente(anotado: String?, zona: ZoneId): Instant? {
+        val dia = try {
+            anotado?.let(LocalDate::parse)
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        return en(dia, zona)
     }
 }
 
@@ -161,8 +188,8 @@ object RegistroPush {
         else -> Decision.REGISTRAR
     }
 
-    /** La de la carpeta de la cuenta (`Disco`): identifica la cuenta sin guardar el token en las preferencias. */
-    fun huella(cuenta: String): String = Disco.sha256(cuenta).take(16)
+    /** La de la carpeta de la cuenta ([Disco.huella]): identifica la cuenta sin guardar el token en las preferencias. */
+    fun huella(cuenta: String): String = Disco.huella(cuenta)
 
     /**
      * El registro en sí, sin el modelo: lo usa [ModeloApp.registrarPush] y el servicio de push con la app cerrada (un token

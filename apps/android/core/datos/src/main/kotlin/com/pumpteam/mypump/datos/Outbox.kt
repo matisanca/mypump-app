@@ -31,6 +31,11 @@ data class Operacion(
     val tries: Int = 0,
     /** ms desde 1970, como `Date.now()`. */
     val ts: Double,
+    /**
+     * Vino de la cola de la Capacitor (la migración). Con la palanca remota `migracion_ops_legadas` apagada no se manda:
+     * queda en la cola hasta que se vuelva a prender (revisión del 15-oct, hallazgo 2). null en las nativas.
+     */
+    val legado: Boolean? = null,
 ) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         buildMap {
@@ -40,6 +45,7 @@ data class Operacion(
             dedupeKey?.let { put("dedupeKey", ValorJson.Texto(it)) }
             put("tries", ValorJson.Numero(tries.toDouble()))
             put("ts", ValorJson.Numero(ts))
+            legado?.let { put("legado", ValorJson.Booleano(it)) }
         },
     )
 
@@ -59,6 +65,7 @@ data class Operacion(
                 dedupeKey = o["dedupeKey"]?.comoTexto,
                 tries = o["tries"]?.comoNumero?.toInt() ?: 0,
                 ts = ts,
+                legado = (o["legado"] as? ValorJson.Booleano)?.valor,
             )
         }
     }
@@ -102,6 +109,9 @@ sealed interface ResultadoOp {
  * - Backoff `min(30 s, 2 s × max(1, intentos de la primera, racha sin red))`.
  * - [drenar] comparte la pasada en curso: esperarla es esperar el envío de verdad (cerrar el día depende de eso).
  *
+ * Y uno de la nativa: las ops de la migración ([Operacion.legado]) quedan en la cola sin mandarse mientras la palanca
+ * remota `migracion_ops_legadas` está apagada o todavía no se leyó ([usarPalanca]).
+ *
  * Como el actor de Swift: todo el estado se toca en un despachador de a un hilo por vez, y mientras una op espera la
  * red pueden entrar otras llamadas (encolar, por ejemplo).
  */
@@ -111,6 +121,11 @@ class Outbox(
     /** En los tests se apaga el reintento automático para forzar las pasadas a mano, como `await Outbox.flush()`. */
     private val reintentoAutomatico: Boolean = true,
     private val alcance: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    /**
+     * La app arranca reteniendo las ops de la migración hasta leer la palanca ([usarPalanca]): así un toque antes de la
+     * primera carga no las manda con la palanca apagada.
+     */
+    retenerLegadas: Boolean = false,
     private var ejecutor: suspend (Operacion) -> ResultadoOp,
 ) {
     data class Fallido(val op: Operacion, val motivo: String, val cuando: Double)
@@ -130,6 +145,12 @@ class Outbox(
     private var secuencia = 0
     private var alCambiar: ((EstadoGuardado) -> Unit)? = null
     private var alAbandonar: ((List<Operacion>) -> Unit)? = null
+
+    /**
+     * Las ops de la migración ([Operacion.legado]) no salen: la palanca remota está apagada o todavía no se leyó (revisión
+     * del 15-oct, hallazgo 2). Las nativas salen igual.
+     */
+    private var retenerLegadas: Boolean = retenerLegadas
 
     /**
      * La soltó el modelo (salir, otra cuenta, la demo). En Swift el temporizador tiene una referencia débil y muere con
@@ -155,6 +176,18 @@ class Outbox(
     }
 
     suspend fun cambiarEjecutor(e: suspend (Operacion) -> ResultadoOp) = withContext(confinado) { ejecutor = e }
+
+    /**
+     * Lo que dijo la palanca remota (`migracion_ops_legadas`): con false, las ops de la migración quedan en la cola sin
+     * mandarse; al volver a true salen en la próxima pasada.
+     */
+    suspend fun usarPalanca(opsLegadas: Boolean) = withContext(confinado) {
+        val antes = retenerLegadas
+        retenerLegadas = !opsLegadas
+        if (antes && opsLegadas && ops.any { it.legado == true }) programar(0)
+    }
+
+    private fun mandable(op: Operacion): Boolean = !(retenerLegadas && op.legado == true)
 
     suspend fun pendientes(): Int = withContext(confinado) { ops.size }
 
@@ -235,7 +268,7 @@ class Outbox(
                 }.also { enVuelo = it }
             }
             pasada.await()
-            if (withContext(confinado) { ops.isEmpty() || ultimaFallo }) return
+            if (withContext(confinado) { ops.none(::mandable) || ultimaFallo }) return
         }
     }
 
@@ -259,8 +292,8 @@ class Outbox(
 
     private suspend fun pasada() {
         ultimaFallo = false
-        if (ops.isEmpty()) return
-        val tanda = ops.toList()
+        val tanda = ops.filter(::mandable)
+        if (tanda.isEmpty()) return
         val hayVisibles = tanda.any { it.kind !in SILENCIOSAS }
         val resueltas = HashSet<String>()
         val abandonadas = mutableListOf<Operacion>()
@@ -344,8 +377,8 @@ class Outbox(
             val base = maxOf(1, ops.firstOrNull()?.tries ?: 1, rachaSinRed)
             programar(minOf(30_000L, 2_000L * base))
         }
-        // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta.
-        if (ops.isNotEmpty() && !algunaFallo) programar(0)
+        // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta (las de la migración retenidas no cuentan).
+        if (ops.any(::mandable) && !algunaFallo) programar(0)
     }
 
     /** Suma un intento a la op (en la cola real, no en la copia). Devuelve true si sigue pendiente. */
@@ -381,7 +414,11 @@ class Outbox(
     }
 
     companion object {
-        /** La regla de [importarSinPisar] sobre una lista de ops. Devuelve las que quedaron (también las que ya estaban). */
+        /**
+         * La regla de [importarSinPisar] sobre una lista de ops. Devuelve las que quedaron (también las que ya estaban). Las
+         * que entran van marcadas como de la Capacitor ([Operacion.legado]): la palanca remota las puede frenar aunque ya
+         * estén en la cola (revisión del 15-oct, hallazgo 2).
+         */
         private fun sinPisar(ops: MutableList<Operacion>, nuevas: List<Operacion>): List<Operacion> {
             val quedaron = mutableListOf<Operacion>()
             for (op in nuevas) {
@@ -392,8 +429,9 @@ class Outbox(
                 val k = op.dedupeKey
                 if (k != null && (ops.lastOrNull { it.dedupeKey == k }?.ts ?: Double.NEGATIVE_INFINITY) > op.ts) continue
                 if (k != null) ops.removeAll { it.dedupeKey == k }
-                ops += op
-                quedaron += op
+                val marcada = op.copy(legado = true)
+                ops += marcada
+                quedaron += marcada
             }
             return quedaron
         }

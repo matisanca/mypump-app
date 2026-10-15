@@ -525,7 +525,7 @@ class EntrenoAccionesTest {
         b.servidor.cuando("get_rutina_activa", "[${filaRutina(semana = 6)}]")
         val m = b.modelo()
         var avisada: RutinaActiva? = null
-        m.alCambiarRutina = { avisada = it }
+        m.alCambiarRutina = { (it as? ModeloEntreno.CambioRutina.Nueva)?.let { n -> avisada = n.rutina } }
         assertTrue(m.puedeAvanzar && m.botonAvanzar == "Pasar a Semana 6 →")
         assertEquals(ModeloEntreno.ResultadoAvance.Listo, m.avanzarSemana())
         assertEquals(ValorJson.Numero(6.0), b.servidor.llamadas("avanzar_semana").first()["p_semana_destino"])
