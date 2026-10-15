@@ -61,7 +61,7 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
      - La única diferencia es «Sesión completa» con «Cerrar sesión de hoy» en lugar de «Día cerrado». Es del estado de
        la cuenta: `UltimaVezUITests` reabre el día, y reabrir solo borra la marca del teléfono, como en la web
        (`restoreSesionDelDia`).
-   - ☐ El iPhone de Mati con el **TestFlight 108**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
+   - ☐ El iPhone de Mati con el **TestFlight 111**: el universal link desde WhatsApp (ACC-01/09), Salud de verdad
      (SAL-13) y tocar un push real.
 3. ✅ TestFlight 104 a 110 y **111** (15-oct 13:27): los arreglos de la segunda revisión adversarial, entre ellos una
    pérdida de fotos. El 110 trajo el rendimiento de Progreso y el chat sin pedido doble; el 109, la cola de fotos que ya
@@ -201,7 +201,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
      recién cuando la subida sale bien. Es producción en la Mini.
   4. **La web pierde fotos con la Mini caída** (`flushFotos`, `public/cliente.html`): cuenta el 502/530 de Cloudflare
      como error del servidor y la borra al octavo. Es de `public/`.
-- **En su iPhone, con el TestFlight 108:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
+- **En su iPhone, con el TestFlight 111:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
 - **Para el envío (G7):** la etiqueta de privacidad con «Other Diagnostic Data» en App Store Connect, y en Play
   Console la subida manual del AAB, Data safety, la declaración de Health Connect y las capturas.
 
