@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,25 +17,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.sp
-import com.pumpteam.mypump.diseno.LocalRellenoInferior
-import com.pumpteam.mypump.diseno.vidrio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -55,15 +50,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.ModeloAppViewModel
 import com.pumpteam.mypump.chat.ChatPantalla
@@ -75,10 +73,12 @@ import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.EstadoVacio
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.PantallaConTitulo
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.superficieTarjeta
+import com.pumpteam.mypump.diseno.vidrio
 import com.pumpteam.mypump.entreno.BarraDescansoEntreno
 import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
@@ -374,7 +374,7 @@ private fun AvisoGuardado(estado: EstadoGuardado, modifier: Modifier = Modifier)
             }
         }
     }
-    val oscuro = MyPump.colores.oscuro
+    val c = MyPump.colores
     AnimatedVisibility(
         visible = visible != null,
         modifier = modifier,
@@ -382,25 +382,29 @@ private fun AvisoGuardado(estado: EstadoGuardado, modifier: Modifier = Modifier)
         exit = slideOutVertically { it } + fadeOut(),
     ) {
         val v = visible ?: EstadoGuardado.QUIETO
-        // Sobre el fondo invertido del snackbar los colores son los del tema contrario.
         val (texto, icono, tono) = when (v) {
-            EstadoGuardado.GUARDANDO -> Triple("Guardando…", Iconos.Pegar, Color.Unspecified)
-            EstadoGuardado.GUARDADO -> Triple("Guardado", Iconos.Verificado, if (oscuro) Color(0xFF16A34A) else Color(0xFF30D158))
-            EstadoGuardado.SIN_CONEXION -> Triple("Sin conexión, se reintenta solo", Iconos.SinWifi, if (oscuro) Color(0xFFC2410C) else Color(0xFFFF9F0A))
-            EstadoGuardado.PERDIDO -> Triple("Algo no se pudo guardar. Revisalo y cargalo de nuevo", Iconos.Alerta, if (oscuro) Color(0xFFDC2626) else Color(0xFFFF453A))
-            EstadoGuardado.QUIETO -> Triple("", Iconos.Pegar, Color.Unspecified)
+            EstadoGuardado.GUARDANDO -> Triple("Guardando…", Iconos.Intercambio, c.textoSecundario)
+            EstadoGuardado.GUARDADO -> Triple("Guardado", Iconos.Verificado, c.exito)
+            EstadoGuardado.SIN_CONEXION -> Triple("Sin conexión, se reintenta solo", Iconos.SinWifi, c.alerta)
+            EstadoGuardado.PERDIDO -> Triple("Algo no se pudo guardar. Revisalo y cargalo de nuevo", Iconos.Alerta, c.peligro)
+            EstadoGuardado.QUIETO -> Triple("", Iconos.Pegar, c.textoSecundario)
         }
-        Snackbar(
-            modifier = Modifier
-                .padding(horizontal = Espacio.m)
-                .clickable { visible = null }
-                .semantics { liveRegion = LiveRegionMode.Polite }
-                .testTag("aviso-guardado"),
-            shape = RoundedCornerShape(Radio.control),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (v != EstadoGuardado.GUARDANDO) Icon(icono, contentDescription = null, tint = tono, modifier = Modifier.size(20.dp))
-                Text(texto, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        // La pastilla de iOS (AvisoGuardado.swift): de vidrio, al centro, con el texto y el borde del color del estado. El
+        // Snackbar de Material era una barra oscura de punta a punta.
+        Box(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), contentAlignment = Alignment.Center) {
+            Row(
+                Modifier
+                    .vidrio(CircleShape, elevacion = 12.dp)
+                    .border(1.dp, tono.copy(alpha = 0.25f), CircleShape)
+                    .clickable { visible = null }
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+                    .testTag("aviso-guardado")
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(icono, contentDescription = null, tint = tono, modifier = Modifier.size(18.dp))
+                Text(texto, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = tono)
             }
         }
     }

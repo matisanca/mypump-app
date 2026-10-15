@@ -1,7 +1,5 @@
 package com.pumpteam.mypump.dieta
 
-import com.pumpteam.mypump.diseno.sinAbajo
-import com.pumpteam.mypump.diseno.Segmentado
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -31,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -73,18 +70,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.diseno.Alerta
 import com.pumpteam.mypump.diseno.AnchoLectura
+import com.pumpteam.mypump.diseno.BotonAlerta
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.EstadoVacio
+import com.pumpteam.mypump.diseno.FormaMenu
 import com.pumpteam.mypump.diseno.Formato
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MarcoPantalla
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Punto
+import com.pumpteam.mypump.diseno.Segmentado
 import com.pumpteam.mypump.diseno.Separador
 import com.pumpteam.mypump.diseno.Tarjeta
+import com.pumpteam.mypump.diseno.sinAbajo
 import com.pumpteam.mypump.modelos.Alimento
 import com.pumpteam.mypump.modelos.Comida
 import com.pumpteam.mypump.modelos.Macros
@@ -264,20 +266,14 @@ private fun posicion(comidas: List<Comida>, clave: String): Posicion? {
 /** "¿Volver al alimento del plan?" (el `confirmationDialog` de iOS): al tocar la marca de un reemplazo. */
 @Composable
 private fun ConfirmarVolverAlPlan(original: Alimento, mostrado: Alimento, alVolver: () -> Unit, alCancelar: () -> Unit) {
-    val c = MyPump.colores
-    AlertDialog(
-        onDismissRequest = alCancelar,
-        title = { Text("¿Volver al alimento del plan?") },
-        text = { Text("Hoy estás comiendo ${mostrado.nombre}.", style = MaterialTheme.typography.bodyMedium) },
-        confirmButton = {
-            TextButton(onClick = alVolver, modifier = Modifier.testTag("volver-al-plan")) {
-                Text("Volver a ${original.nombre}", color = c.marcaTexto, fontWeight = FontWeight.SemiBold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = alCancelar, modifier = Modifier.testTag("cancelar-volver")) { Text("Cancelar", color = c.marcaTexto) }
-        },
-        containerColor = c.tarjeta,
+    Alerta(
+        titulo = "¿Volver al alimento del plan?",
+        mensaje = "Hoy estás comiendo ${mostrado.nombre}.",
+        botones = listOf(
+            BotonAlerta("Cancelar", etiqueta = "cancelar-volver", cancelar = true, alTocar = alCancelar),
+            BotonAlerta("Volver a ${original.nombre}", etiqueta = "volver-al-plan", alTocar = alVolver),
+        ),
+        alDescartar = alCancelar,
         modifier = Modifier.testTag("confirmar-volver"),
     )
 }
@@ -309,7 +305,7 @@ private fun SelectorTipoDia(tipos: List<TipoDia>, elegido: String, alElegir: (St
             Spacer(Modifier.width(6.dp))
             Text(actual.nombre ?: actual.id, fontWeight = FontWeight.SemiBold)
         }
-        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }, shape = FormaMenu, containerColor = MyPump.colores.tarjeta, shadowElevation = 12.dp) {
             for (t in tipos) {
                 DropdownMenuItem(
                     text = { Text(t.nombre ?: t.id, fontWeight = if (t.id == actual.id) FontWeight.SemiBold else FontWeight.Normal) },

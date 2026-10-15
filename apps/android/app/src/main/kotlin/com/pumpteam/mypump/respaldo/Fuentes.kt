@@ -39,7 +39,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.pumpteam.mypump.diseno.AccionHoja
+import com.pumpteam.mypump.diseno.AsaHoja
+import com.pumpteam.mypump.diseno.EncabezadoHoja
 import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.FormaHoja
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Radio
@@ -140,16 +144,13 @@ fun HojaFuentes(alCerrar: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = alCerrar,
         sheetState = hoja,
+        shape = FormaHoja,
         containerColor = c.fondo,
         tonalElevation = 0.dp,
+        dragHandle = { AsaHoja() },
         modifier = Modifier.testTag("hoja-fuentes"),
     ) {
-        Row(Modifier.fillMaxWidth().padding(start = Espacio.l, end = Espacio.xs), verticalAlignment = Alignment.CenterVertically) {
-            Text("Respaldo científico", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f).semantics { heading() })
-            TextButton(onClick = ::cerrar, modifier = Modifier.testTag("fuentes-listo")) {
-                Text("Listo", color = c.marcaTexto, fontWeight = FontWeight.SemiBold)
-            }
-        }
+        EncabezadoHoja("Respaldo científico", confirmar = AccionHoja("Listo", "fuentes-listo", alTocar = ::cerrar))
         LazyColumn(
             contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xs, bottom = Espacio.xl),
             verticalArrangement = Arrangement.spacedBy(Espacio.s),

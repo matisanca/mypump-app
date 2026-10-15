@@ -56,7 +56,9 @@ import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloSalud
 import com.pumpteam.mypump.datos.Preferencias
 import com.pumpteam.mypump.diseno.Archivo
+import com.pumpteam.mypump.diseno.AsaHoja
 import com.pumpteam.mypump.diseno.BotonMarca
+import com.pumpteam.mypump.diseno.FormaHoja
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import kotlinx.coroutines.CancellationException
@@ -195,8 +197,10 @@ fun OnboardingPermisos(modelo: ModeloApp, version: String, alTerminar: () -> Uni
             terminar()
         },
         sheetState = hoja,
+        shape = FormaHoja,
         containerColor = c.fondo,
         tonalElevation = 0.dp,
+        dragHandle = { AsaHoja() },
         modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("onboarding-permisos"),
     ) {
         val lista = pasos

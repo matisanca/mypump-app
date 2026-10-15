@@ -658,6 +658,8 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
     val valor = CardAccesible.valor(
         estado, hechas, series.size, ef.sustituido, ef.fijado, manual, mensajes, tipo, pauta, descanso, ultima, record, buscando,
     )
+    // La flecha apunta abajo con el ejercicio abierto en la lista: tocar la fila lo abre y lo cierra ahí mismo.
+    val giro by animateFloatAsState(if (v.dia.expandido == lugar) 90f else 0f, label = "flecha-$lugar")
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -677,7 +679,7 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
             }
             if (series.size > 1 && tipo != "cardio") PuntosSeries(series.size, hechas)
         }
-        Column(Modifier.weight(1f).padding(end = Espacio.m), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(nombre.principal, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), color = c.texto)
             nombre.detalle?.let { Text(it, style = Letras.subtitulo, color = c.textoSecundario) }
             FlowRow(
@@ -696,6 +698,12 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
             // El cardio y lo que va por tiempo no tienen "última vez" que buscar.
             Historial(ultima?.let { it.valor to it.cuando }, record, porTiempo, buscando, Modifier.padding(top = 4.dp))
         }
+        Icon(
+            Iconos.Chevron,
+            contentDescription = null,
+            tint = c.textoTerciario,
+            modifier = Modifier.align(Alignment.CenterVertically).size(20.dp).graphicsLayer { rotationZ = giro },
+        )
     }
 }
 

@@ -92,20 +92,16 @@ class RevisionCapturasTest : PruebaUi() {
             foto("revision-01-fotos")
             llevarArriba("seccion-check")
             for (t in listOf("Energía: 4 de 5", "Descanso: 3 de 5", "Hambre: 2 de 5")) p.tocar(texto(t))
+            p.escribir(etiqueta("peso-check"), "80,4")
             p.nodo(texto("Faltan: Adherencia"))
             foto("revision-02-check")
             llevarArriba("seccion-peso")
             foto("revision-03-peso")
             llevarArriba("seccion-reloj")
             foto("revision-04-mi-reloj")
-            llevarArriba("seccion-midia")
-            foto("revision-05-mi-dia")
+            // Sin Mi Día (15-oct): al pie quedan la recuperación y la salud.
             llevarArriba("card-recuperacion")
             foto("revision-06-recuperacion-y-salud")
-            p.tocar(etiqueta("ultimos-30"))
-            p.nodo(etiqueta("grilla-30"))
-            llevarArriba("ultimos-30")
-            foto("revision-07-ultimos-30-dias")
             llevarArriba("seccion-fotos")
             p.tocar(etiqueta("ver-mis-fotos"))
             p.nodo(etiqueta("comparador"))
@@ -115,17 +111,15 @@ class RevisionCapturasTest : PruebaUi() {
             p.esperarQueNoEste(etiqueta("galeria-fotos"))
         }.close()
 
-        // La demo: Mi Día sembrado, sin fotos, reloj ni salud.
+        // La demo: sin fotos, reloj ni salud.
         reiniciarEstado()
         abrir().also {
             p.tocar(etiqueta("ver-demo"))
             p.tocar(etiqueta("pestana-revision"))
-            p.nodo(etiqueta("seccion-midia"))
+            p.nodo(etiqueta("seccion-check"))
             p.tocar(etiqueta("foto-frente"))
             p.nodo(texto("En la demo las fotos no se guardan."))
             foto("revision-09-demo")
-            llevarArriba("seccion-midia")
-            foto("revision-10-demo-mi-dia")
         }.close()
     }
 }

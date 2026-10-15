@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -82,8 +81,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.ModeloEntreno
-import com.pumpteam.mypump.diseno.rellenoInferior
+import com.pumpteam.mypump.diseno.Alerta
 import com.pumpteam.mypump.diseno.AnchoLectura
+import com.pumpteam.mypump.diseno.BotonAlerta
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.EstadoVacio
 import com.pumpteam.mypump.diseno.Iconos
@@ -93,6 +93,7 @@ import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Numeros
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.abrirEnNavegador
+import com.pumpteam.mypump.diseno.rellenoInferior
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.EstadosEjercicio
@@ -424,6 +425,28 @@ private fun AccionTarjeta(texto: String, icono: ImageVector, alTocar: () -> Unit
     }
 }
 
+/**
+ * Los botones del ejercicio abierto en la lista: el ícono y el texto en un renglón, de 44 de alto. Los apilados de la
+ * página ([AccionTarjeta]) ocupaban casi el doble, y abierto en la lista cada renglón cuenta.
+ */
+@Composable
+private fun AccionEnFila(texto: String, icono: ImageVector, alTocar: () -> Unit, modifier: Modifier = Modifier, habilitada: Boolean = true) {
+    val c = MyPump.colores
+    Row(
+        modifier = modifier
+            .defaultMinSize(minHeight = 44.dp)
+            .superficieTarjeta(radio = Radio.control + 4.dp)
+            .clickable(enabled = habilitada, role = Role.Button, onClick = alTocar)
+            .graphicsLayer { alpha = if (habilitada) 1f else 0.45f }
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icono, contentDescription = null, tint = if (habilitada) c.marcaTexto else c.textoSecundario, modifier = Modifier.size(18.dp))
+        Text(texto, style = MaterialTheme.typography.labelLarge, color = c.texto, textAlign = TextAlign.Center)
+    }
+}
+
 /** Las fotos grandes del movimiento y la nota técnica de Mati, juntas. */
 @Composable
 private fun ComoSeHace(t: ModeloEntreno.Tarjeta, modifier: Modifier = Modifier) {
@@ -636,12 +659,11 @@ private fun Comentarios(motor: ModeloEntreno, lugar: String, t: ModeloEntreno.Ta
         }
     }
     if (fallo) {
-        AlertDialog(
-            onDismissRequest = { fallo = false },
-            title = { Text("No se pudo enviar") },
-            text = { Text(TextosEntreno.COMENTARIO_FALLO) },
-            confirmButton = { TextButton(onClick = { fallo = false }) { Text("OK", color = c.marcaTexto, fontWeight = FontWeight.SemiBold) } },
-            containerColor = c.tarjeta,
+        Alerta(
+            titulo = "No se pudo enviar",
+            mensaje = TextosEntreno.COMENTARIO_FALLO,
+            botones = listOf(BotonAlerta("OK") { fallo = false }),
+            alDescartar = { fallo = false },
         )
     }
 }
@@ -659,6 +681,7 @@ private fun Cierre(
     preguntador: Preguntador,
     alAbrir: (String) -> Unit,
     alCompletarDia: (ModeloEntreno.DiaCompletado) -> Unit,
+    enLista: Boolean = false,
 ) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
@@ -673,13 +696,25 @@ private fun Cierre(
     fun terminar() {
         alcance.launch { motor.terminar(lugar) { preguntador.preguntar(it) }?.let(alCompletarDia) }
     }
+
+    @Composable
+    fun TermineTexto() {
+        TextButton(onClick = ::terminar, modifier = Modifier.heightIn(min = 44.dp).testTag("termine-ejercicio")) {
+            Text(
+                buildAnnotatedString { withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append("Terminé este ejercicio") } },
+                style = Letras.subtitulo,
+                color = c.marcaTexto,
+            )
+        }
+    }
     Column(
         Modifier.fillMaxWidth().padding(top = Espacio.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
         if (terminal) {
-            val sig = v.dia.expandido?.takeIf { it != lugar }
+            // En la lista no hace falta «Siguiente»: el motor ya abre el que sigue, ahí abajo.
+            val sig = v.dia.expandido?.takeIf { it != lugar && !enLista }
             val e = sig?.let { v.dia.ejercicio(it) }
             if (sig != null && e != null) {
                 BotonConIcono(
@@ -697,6 +732,10 @@ private fun Cierre(
                 alTocar = { alcance.launch { motor.reabrir(lugar) } },
                 modifier = Modifier.testTag("reabrir-ejercicio"),
             )
+        } else if (enLista && !todas) {
+            // Abierto en la lista, como en iOS: solo «Terminé este ejercicio». El botón apagado de «Confirmá las series
+            // para completar» ocupaba un renglón sin hacer nada.
+            TermineTexto()
         } else if (t.filas.isEmpty()) {
             // Sin series (cardio, por tiempo): se marca hecho directamente.
             BotonConIcono("Terminé este ejercicio", Iconos.Tilde, alTocar = ::terminar, modifier = Modifier.testTag("termine-ejercicio"))
@@ -708,13 +747,7 @@ private fun Cierre(
                 alTocar = { alcance.launch { motor.marcarCompleto(lugar)?.let(alCompletarDia) } },
                 modifier = Modifier.testTag("marcar-completo"),
             )
-            TextButton(onClick = ::terminar, modifier = Modifier.heightIn(min = 44.dp).testTag("termine-ejercicio")) {
-                Text(
-                    buildAnnotatedString { withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append("Terminé este ejercicio") } },
-                    style = Letras.subtitulo,
-                    color = c.marcaTexto,
-                )
-            }
+            if (!enLista) TermineTexto()
         }
     }
 }
@@ -745,17 +778,32 @@ internal fun EjercicioEnLista(
         verticalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
         TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia, enLista = true)
-        Row(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
-            AccionTarjeta(
+        // Con la letra muy grande, uno debajo del otro: en un renglón partían las palabras («Sus-tituir»).
+        val apilados = LocalDensity.current.fontScale > 1.35f
+        val sustituir: @Composable (Modifier) -> Unit = { m ->
+            AccionEnFila(
                 if (t.efectivo.sustituido) "Cambiar" else "Sustituir",
                 Iconos.Intercambio,
                 habilitada = t.puedeSustituir || t.efectivo.sustituido,
                 alTocar = { sustituyendo = true },
-                modifier = Modifier.weight(1f).testTag("sustituir"),
+                modifier = m.testTag("sustituir"),
             )
-            AccionTarjeta("Técnica y notas", Iconos.Libro, alTocar = { alAbrir(lugar) }, modifier = Modifier.weight(1f).testTag("tecnica-y-notas"))
         }
-        Box(Modifier.padding(horizontal = Espacio.m)) { Cierre(motor, v, lugar, t, preguntador, alAbrir, alCompletarDia) }
+        val tecnica: @Composable (Modifier) -> Unit = { m ->
+            AccionEnFila("Técnica y notas", Iconos.Libro, alTocar = { alAbrir(lugar) }, modifier = m.testTag("tecnica-y-notas"))
+        }
+        if (apilados) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                sustituir(Modifier.fillMaxWidth())
+                tecnica(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+                sustituir(Modifier.weight(1f))
+                tecnica(Modifier.weight(1f))
+            }
+        }
+        Box(Modifier.padding(horizontal = Espacio.m)) { Cierre(motor, v, lugar, t, preguntador, alAbrir, alCompletarDia, enLista = true) }
     }
     if (sustituyendo) HojaSustituir(motor, v, lugar, alCerrar = { sustituyendo = false })
 }

@@ -1,6 +1,5 @@
 package com.pumpteam.mypump.entreno
 
-import com.pumpteam.mypump.diseno.Segmentado
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,8 +63,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.ModeloEntreno
 import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.FormaMenu
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.Segmentado
 import com.pumpteam.mypump.diseno.Tarjeta
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.CamposSerie
@@ -136,7 +137,12 @@ fun TablaSeries(
     }
     contenedor {
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("Series", style = Letras.titulo3, modifier = Modifier.weight(1f).semantics { heading() })
+            // Abierta en la lista va más chica: arriba ya está el nombre del ejercicio, que es lo que manda.
+            Text(
+                "Series",
+                style = if (enLista) MaterialTheme.typography.titleMedium else Letras.titulo3,
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
             Text(
                 "${t.confirmadas} de ${filas.size}",
                 style = Letras.subtitulo.copy(fontWeight = FontWeight.Medium).merge(Letras.cifras),
@@ -381,7 +387,7 @@ private fun SelectorRir(rir: String, confirmada: Boolean, i: Int, modifier: Modi
             )
             Icon(Iconos.ArribaAbajo, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(12.dp))
         }
-        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }, containerColor = c.tarjeta) {
+        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }, shape = FormaMenu, containerColor = MyPump.colores.tarjeta, shadowElevation = 12.dp) {
             for (n in 0..5) {
                 DropdownMenuItem(
                     text = { Text("$n · ${CamposSerie.leyendaRir(n.toString())}") },

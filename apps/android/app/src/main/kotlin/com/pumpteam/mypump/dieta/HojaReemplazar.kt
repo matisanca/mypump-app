@@ -28,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -59,8 +58,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.diseno.AccionHoja
+import com.pumpteam.mypump.diseno.AsaHoja
 import com.pumpteam.mypump.diseno.BotonMarca
+import com.pumpteam.mypump.diseno.EncabezadoHoja
 import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.FormaHoja
 import com.pumpteam.mypump.diseno.Formato
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
@@ -146,8 +149,10 @@ fun HojaReemplazar(modelo: ModeloApp, original: Alimento, alElegir: (ValorJson) 
     ModalBottomSheet(
         onDismissRequest = ::terminar,
         sheetState = hoja,
+        shape = FormaHoja,
         containerColor = c.fondo,
         tonalElevation = 0.dp,
+        dragHandle = { AsaHoja() },
         modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("hoja-reemplazar"),
     ) {
         // Atrás desde "Alimento propio" vuelve a la lista (como el botón de volver de iOS), no cierra la hoja. Va adentro:
@@ -168,20 +173,12 @@ fun HojaReemplazar(modelo: ModeloApp, original: Alimento, alElegir: (ValorJson) 
                 CrearAlimento(modelo, categoria = resultado.categoria, alVolver = ::volverALaLista, alCrear = ::creado)
             } else {
                 Column {
-                    Row(Modifier.fillMaxWidth().padding(start = Espacio.l, end = Espacio.xs), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Reemplazar", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-                            Text(
-                                "${filtradas.size} de ${resultado.opciones.size} · ${MotorSustitutos.nombreCategoria(resultado.categoria)}",
-                                style = Letras.caption.merge(Letras.cifras),
-                                color = c.textoSecundario,
-                                modifier = Modifier.testTag("conteo-sustitutos"),
-                            )
-                        }
-                        TextButton(onClick = ::cerrar, modifier = Modifier.testTag("cancelar-reemplazo")) {
-                            Text("Cancelar", color = c.marcaTexto)
-                        }
-                    }
+                    EncabezadoHoja(
+                        "Reemplazar",
+                        subtitulo = "${filtradas.size} de ${resultado.opciones.size} · ${MotorSustitutos.nombreCategoria(resultado.categoria)}",
+                        etiquetaSubtitulo = "conteo-sustitutos",
+                        cancelar = AccionHoja("Cancelar", "cancelar-reemplazo", alTocar = ::cerrar),
+                    )
                     CampoBusqueda(busqueda, alCambiar = { busqueda = it })
                     LazyColumn(
                         modifier = Modifier.weight(1f, fill = false).testTag("lista-sustitutos"),

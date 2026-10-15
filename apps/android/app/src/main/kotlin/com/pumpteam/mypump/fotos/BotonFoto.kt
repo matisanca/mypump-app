@@ -6,14 +6,13 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,6 +32,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
+import com.pumpteam.mypump.diseno.Alerta
+import com.pumpteam.mypump.diseno.BotonAlerta
+import com.pumpteam.mypump.diseno.FormaMenu
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
@@ -111,7 +112,7 @@ fun BotonFoto(
             contenido()
         }
         // El menú es otra ventana: las etiquetas como resource-id (UI Automator) se piden de nuevo, como en las hojas.
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, modifier = Modifier.semantics { testTagsAsResourceId = true }) {
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = FormaMenu, containerColor = MyPump.colores.tarjeta, shadowElevation = 12.dp, modifier = Modifier.semantics { testTagsAsResourceId = true }) {
             if (hayCamara) {
                 DropdownMenuItem(
                     text = { Text("Sacar foto") },
@@ -136,16 +137,11 @@ fun BotonFoto(
     }
 
     if (ilegible) {
-        AlertDialog(
-            onDismissRequest = { ilegible = false },
-            title = { Text("No se pudo leer esa foto") },
-            text = { Text("Probá con otra, o sacala con la cámara.") },
-            confirmButton = {
-                TextButton(onClick = { ilegible = false }, modifier = Modifier.testTag("foto-ilegible-ok")) {
-                    Text("OK", color = MyPump.colores.marcaTexto)
-                }
-            },
-            containerColor = MyPump.colores.tarjeta,
+        Alerta(
+            titulo = "No se pudo leer esa foto",
+            mensaje = "Probá con otra, o sacala con la cámara.",
+            botones = listOf(BotonAlerta("OK", etiqueta = "foto-ilegible-ok") { ilegible = false }),
+            alDescartar = { ilegible = false },
         )
     }
 }

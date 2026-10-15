@@ -34,7 +34,7 @@ class AvisoPlanIncompletoUiTest : PruebaUi() {
 
     private fun irARevision() {
         p.tocar(etiqueta("pestana-revision"))
-        p.nodo(etiqueta("seccion-midia"))
+        p.nodo(etiqueta("seccion-peso"))
     }
 
     @Test
@@ -75,8 +75,9 @@ class AvisoPlanIncompletoUiTest : PruebaUi() {
     fun conRutinaYSinDietaNoHayAviso() {
         abrirConElPlan(RUTINA_COMPLETA, "[]")
         irARevision()
-        // Que la carga haya terminado (Mi Día ya se puede tocar) antes de afirmar que no está.
-        p.esperar("Mi Día cargado") { p.habilitado(texto("Dormí bien: sí")) }
+        // Que la carga haya terminado (llegó la salud: el peso de la semana) antes de afirmar que no está. Antes se esperaba
+        // a Mi Día, que salió el 15-oct.
+        p.esperar("Revisión cargada") { p.existe(etiqueta("delta-peso")) }
         p.quieto(1_000)
         assertFalse("a quien solo tiene rutina no se le deja un aviso de error fijo: ${p.resumen()}", p.existe(aviso))
     }

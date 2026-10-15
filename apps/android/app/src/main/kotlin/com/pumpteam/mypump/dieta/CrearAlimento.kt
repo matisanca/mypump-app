@@ -34,7 +34,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -43,9 +42,11 @@ import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.datos.ErrorRpc
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.Resultado
-import com.pumpteam.mypump.diseno.BotonVolver
 import com.pumpteam.mypump.diseno.BotonMarca
+import com.pumpteam.mypump.diseno.BotonVolver
+import com.pumpteam.mypump.diseno.EncabezadoHoja
 import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.FormaMenu
 import com.pumpteam.mypump.diseno.Formato
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
@@ -173,16 +174,12 @@ fun CrearAlimento(modelo: ModeloApp, categoria: String, alVolver: () -> Unit, al
 
     Box(Modifier.semantics { testTagsAsResourceId = true }.testTag("crear-alimento-formulario")) {
         Column {
-            Row(Modifier.fillMaxWidth().padding(start = Espacio.xxs, end = Espacio.m), verticalAlignment = Alignment.CenterVertically) {
-                BotonVolver(
-                    alVolver,
-                    Modifier.padding(start = Espacio.xxs, end = Espacio.xs),
-                    descripcion = "Volver a Reemplazar",
-                    etiqueta = "volver-a-reemplazos",
-                    habilitado = !guardando,
-                )
-                Text("Alimento propio", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f).semantics { heading() })
-            }
+            EncabezadoHoja(
+                "Alimento propio",
+                izquierda = {
+                    BotonVolver(alVolver, descripcion = "Volver a Reemplazar", etiqueta = "volver-a-reemplazos", habilitado = !guardando)
+                },
+            )
             Column(
                 Modifier
                     .weight(1f, fill = false)
@@ -308,7 +305,7 @@ private fun SelectorUnidad(unidad: String, alElegir: (String) -> Unit) {
             Text(texto, style = MaterialTheme.typography.bodyLarge, color = c.marcaTexto)
             Icon(Iconos.ArribaAbajo, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.padding(start = 4.dp).size(16.dp))
         }
-        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }, modifier = Modifier.semantics { testTagsAsResourceId = true }) {
+        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }, shape = FormaMenu, containerColor = MyPump.colores.tarjeta, shadowElevation = 12.dp, modifier = Modifier.semantics { testTagsAsResourceId = true }) {
             for ((valor, nombre) in AlimentoPropioNuevo.unidades) {
                 DropdownMenuItem(
                     text = { Text(nombre, fontWeight = if (valor == unidad) FontWeight.SemiBold else FontWeight.Normal) },

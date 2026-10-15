@@ -22,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,7 +41,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -52,9 +50,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.datos.ModeloEntreno
-import com.pumpteam.mypump.diseno.Interruptor
+import com.pumpteam.mypump.diseno.AccionHoja
+import com.pumpteam.mypump.diseno.AsaHoja
+import com.pumpteam.mypump.diseno.EncabezadoHoja
 import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.FormaHoja
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.Interruptor
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.Separador
@@ -109,16 +111,13 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
     ModalBottomSheet(
         onDismissRequest = alCerrar,
         sheetState = hoja,
+        shape = FormaHoja,
         containerColor = c.fondo,
         tonalElevation = 0.dp,
+        dragHandle = { AsaHoja() },
         modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("hoja-sustituir"),
     ) {
-        Row(Modifier.fillMaxWidth().padding(start = Espacio.l, end = Espacio.xs), verticalAlignment = Alignment.CenterVertically) {
-            Text("Sustituir ejercicio", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f).semantics { heading() })
-            TextButton(onClick = ::cerrar, modifier = Modifier.testTag("cancelar-sustitucion")) {
-                Text("Cancelar", color = c.marcaTexto)
-            }
-        }
+        EncabezadoHoja("Sustituir ejercicio", cancelar = AccionHoja("Cancelar", "cancelar-sustitucion", alTocar = ::cerrar))
         // La búsqueda (el `.searchable` de iOS).
         BasicTextField(
             value = busqueda,
@@ -309,16 +308,13 @@ fun HojaCerrarDia(motor: ModeloEntreno, v: VistaEntreno, alCerrar: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = { if (!enviando) alCerrar() },
         sheetState = hoja,
+        shape = FormaHoja,
         containerColor = c.fondo,
         tonalElevation = 0.dp,
+        dragHandle = { AsaHoja() },
         modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("hoja-cerrar-dia"),
     ) {
-        Row(Modifier.fillMaxWidth().padding(start = Espacio.l, end = Espacio.xs), verticalAlignment = Alignment.CenterVertically) {
-            Text("Cerrar sesión de hoy", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f).semantics { heading() })
-            TextButton(onClick = ::cerrar, enabled = !enviando, modifier = Modifier.testTag("cancelar-cierre")) {
-                Text("Cancelar", color = c.marcaTexto)
-            }
-        }
+        EncabezadoHoja("Cerrar sesión de hoy", cancelar = AccionHoja("Cancelar", "cancelar-cierre", habilitada = !enviando, alTocar = ::cerrar))
         Column(
             Modifier.verticalScroll(rememberScrollState()).padding(Espacio.m),
             verticalArrangement = Arrangement.spacedBy(Espacio.l),

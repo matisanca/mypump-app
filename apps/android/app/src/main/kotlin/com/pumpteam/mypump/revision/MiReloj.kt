@@ -4,10 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloSalud
+import com.pumpteam.mypump.diseno.Alerta
+import com.pumpteam.mypump.diseno.BotonAlerta
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Chip
 import com.pumpteam.mypump.diseno.MyPump
@@ -105,25 +105,17 @@ fun MiReloj(salud: ModeloSalud, modifier: Modifier = Modifier) {
     }
 
     aQuitar?.let { r ->
-        AlertDialog(
-            onDismissRequest = { aQuitar = null },
-            title = { Text("¿Quitar ${r.id}?") },
-            text = { Text("Dejamos de traer tus datos. Los que ya están se quedan.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        aQuitar = null
-                        alcance.launch { salud.quitar(r.id) }
-                    },
-                    modifier = Modifier.testTag("confirmar-quitar-reloj"),
-                ) { Text("Quitar", color = c.peligro, fontWeight = FontWeight.SemiBold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { aQuitar = null }, modifier = Modifier.testTag("cancelar-quitar-reloj")) {
-                    Text("Cancelar", color = c.marcaTexto)
-                }
-            },
-            containerColor = c.tarjeta,
+        Alerta(
+            titulo = "¿Quitar ${r.id}?",
+            mensaje = "Dejamos de traer tus datos. Los que ya están se quedan.",
+            botones = listOf(
+                BotonAlerta("Cancelar", etiqueta = "cancelar-quitar-reloj", cancelar = true) { aQuitar = null },
+                BotonAlerta("Quitar", etiqueta = "confirmar-quitar-reloj", destructivo = true) {
+                    aQuitar = null
+                    alcance.launch { salud.quitar(r.id) }
+                },
+            ),
+            alDescartar = { aQuitar = null },
         )
     }
 }

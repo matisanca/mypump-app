@@ -15,19 +15,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,7 +39,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -55,11 +51,18 @@ import com.pumpteam.mypump.datos.ClienteRpc
 import com.pumpteam.mypump.datos.ErrorRpc
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.Resultado
+import com.pumpteam.mypump.diseno.AccionHoja
+import com.pumpteam.mypump.diseno.Alerta
+import com.pumpteam.mypump.diseno.AsaHoja
+import com.pumpteam.mypump.diseno.BotonAlerta
 import com.pumpteam.mypump.diseno.BotonMarca
+import com.pumpteam.mypump.diseno.EncabezadoHoja
 import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.FormaHoja
 import com.pumpteam.mypump.diseno.Formato
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.RuedaHora
 import com.pumpteam.mypump.diseno.Separador
 import com.pumpteam.mypump.diseno.Tarjeta
 import com.pumpteam.mypump.entreno.Letras
@@ -271,23 +274,18 @@ fun HojasComidasLibres(modelo: ModeloApp, estado: EstadoComidasLibres) {
         HojaComidaLibre(modelo, (f as? FormularioComidaLibre.Estimada)?.estimacion, alCerrar = { estado.formulario = null })
     }
     estado.errorFoto?.let { motivo ->
-        AlertDialog(
-            onDismissRequest = { estado.errorFoto = null },
-            title = { Text("No pudimos leer la foto") },
-            text = { Text("$motivo. Podés cargarla a mano.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("motivo-foto")) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        estado.errorFoto = null
-                        estado.formulario = FormularioComidaLibre.AMano
-                    },
-                    modifier = Modifier.testTag("cargar-a-mano"),
-                ) { Text("Cargar a mano", color = c.marcaTexto, fontWeight = FontWeight.SemiBold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { estado.errorFoto = null }, modifier = Modifier.testTag("cancelar-foto")) { Text("Cancelar", color = c.marcaTexto) }
-            },
-            containerColor = c.tarjeta,
+        Alerta(
+            titulo = "No pudimos leer la foto",
+            mensaje = "$motivo. Podés cargarla a mano.",
+            etiquetaMensaje = "motivo-foto",
+            botones = listOf(
+                BotonAlerta("Cancelar", etiqueta = "cancelar-foto", cancelar = true) { estado.errorFoto = null },
+                BotonAlerta("Cargar a mano", etiqueta = "cargar-a-mano") {
+                    estado.errorFoto = null
+                    estado.formulario = FormularioComidaLibre.AMano
+                },
+            ),
+            alDescartar = { estado.errorFoto = null },
             modifier = Modifier.testTag("foto-no-leida"),
         )
     }
@@ -369,20 +367,16 @@ fun HojaComidaLibre(modelo: ModeloApp, estimacion: EstimacionPlato?, alCerrar: (
     ModalBottomSheet(
         onDismissRequest = { if (!guardando) alCerrar() },
         sheetState = hoja,
+        shape = FormaHoja,
         containerColor = c.fondo,
         tonalElevation = 0.dp,
+        dragHandle = { AsaHoja() },
         modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("hoja-comida-libre"),
     ) {
-        Row(Modifier.fillMaxWidth().padding(start = Espacio.l, end = Espacio.xs), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (estimacion == null) "Comida libre" else "Revisá la estimación",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f).semantics { heading() },
-            )
-            TextButton(onClick = ::cerrar, enabled = !guardando, modifier = Modifier.testTag("cancelar-comida-libre")) {
-                Text("Cancelar", color = c.marcaTexto)
-            }
-        }
+        EncabezadoHoja(
+            if (estimacion == null) "Comida libre" else "Revisá la estimación",
+            cancelar = AccionHoja("Cancelar", "cancelar-comida-libre", habilitada = !guardando, alTocar = ::cerrar),
+        )
         Column(
             Modifier
                 .weight(1f, fill = false)
@@ -485,28 +479,24 @@ fun HojaComidaLibre(modelo: ModeloApp, estimacion: EstimacionPlato?, alCerrar: (
     }
 }
 
-/** La hora de la comida (el `DatePicker` de horas y minutos de iOS), en 24 h. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** La hora de la comida: la rueda del `DatePicker` de horas y minutos de iOS ([RuedaHora]), en 24 h. */
 @Composable
 private fun DialogoHora(hora: String, alElegir: (String) -> Unit, alCancelar: () -> Unit) {
-    val c = MyPump.colores
     val partes = hora.split(":")
-    val estado = rememberTimePickerState(
-        initialHour = partes.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 0,
-        initialMinute = partes.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0,
-        is24Hour = true,
-    )
-    AlertDialog(
-        onDismissRequest = alCancelar,
-        title = { Text("Hora", modifier = Modifier.clearAndSetSemantics { heading(); contentDescription = "Hora" }) },
-        text = { TimePicker(estado) },
-        confirmButton = {
-            TextButton(
-                onClick = { alElegir(String.format(Locale.ROOT, "%02d:%02d", estado.hour, estado.minute)) },
-                modifier = Modifier.testTag("hora-listo"),
-            ) { Text("Listo", color = c.marcaTexto, fontWeight = FontWeight.SemiBold) }
+    var h by remember { mutableIntStateOf(partes.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 0) }
+    var m by remember { mutableIntStateOf(partes.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0) }
+    Alerta(
+        titulo = "Hora",
+        botones = listOf(
+            BotonAlerta("Cancelar", cancelar = true, alTocar = alCancelar),
+            BotonAlerta("Listo", etiqueta = "hora-listo") { alElegir(String.format(Locale.ROOT, "%02d:%02d", h, m)) },
+        ),
+        alDescartar = alCancelar,
+        contenido = {
+            RuedaHora(h, m, alCambiar = { nh, nm ->
+                h = nh
+                m = nm
+            }, modifier = Modifier.fillMaxWidth())
         },
-        dismissButton = { TextButton(onClick = alCancelar) { Text("Cancelar", color = c.marcaTexto) } },
-        containerColor = c.tarjeta,
     )
 }
