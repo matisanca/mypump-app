@@ -174,7 +174,8 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
    `cancel_previous_submissions`.
 
 **Google Play (Android):**
-1. El AAB `nand-2.0.0-101`, del artefacto de Codemagic, se sube a mano a la prueba interna.
+1. El AAB `nand-2.0.0-102` (versionCode 102, 15-oct 12:20), del artefacto de Codemagic, se sube a mano a la prueba
+   interna. El 101 no existe: falló el chequeo de APIs en Codemagic por el entorno, y se saltea el número.
    - Así se verifica la firma de Play.
    - Con eso se cierra ACC-01 de Android: `pm get-app-links` con la app de Play.
 2. En Play Console:
