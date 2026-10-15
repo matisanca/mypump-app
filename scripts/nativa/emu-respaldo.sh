@@ -68,7 +68,12 @@ AUTORESTORE=$(adb shell dumpsys backup | tr -d '\r' | grep -c "Auto-restore is e
 PARAMETROS=$(adb shell settings get secure backup_local_transport_parameters | tr -d '\r')
 # Lo que el transporte local guardó de MyPump (con el token de la cuenta de prueba adentro, en app_webview/) se borra al
 # empezar cada escenario y al terminar. Al empezar, además, porque si no el instalar de cero restaura el respaldo anterior.
-borrar_respaldo() { adb shell bmgr wipe $LOCAL $PKG >/dev/null 2>&1 || true }
+# `bmgr init` vacía el transporte local entero y espera a terminar (`bmgr wipe` es asincrónico y no sirve con la app
+# desinstalada); ese transporte es de pruebas: en un emulador no lo usa nadie más.
+borrar_respaldo() {
+  adb shell bmgr enable true >/dev/null 2>&1
+  adb shell bmgr init $LOCAL >/dev/null 2>&1 || true
+}
 dejar_como_estaba() {
   borrar_respaldo
   if [ "$AUTORESTORE" = "0" ]; then adb shell bmgr autorestore false >/dev/null 2>&1; else adb shell bmgr autorestore true >/dev/null 2>&1; fi
@@ -138,7 +143,7 @@ respaldar_y_restaurar() {
 
 if [ -z "$SOLO" ] || [ "$SOLO" = "A" ]; then
   echo "── A. Con la app vieja: Capacitor con el token, la nativa encima (D14)"
-  borrar_respaldo   # con la app instalada: desinstalada, bmgr no la reconoce y no borra nada
+  borrar_respaldo
   adb uninstall $PKG >/dev/null 2>&1 || true
   adb install $CAP >/dev/null
   abrir
@@ -163,8 +168,8 @@ fi
 
 if [ -z "$SOLO" ] || [ "$SOLO" = "B" ]; then
   echo "── B. Solo la nativa: instalada de cero y abierta con el link"
-  # Sin restaurar al instalar: si no, vuelve el respaldo de A y ya no es "solo la nativa" (bmgr wipe no alcanza: la
-  # app queda anotada como respaldada y el instalar igual restaura).
+  # Sin el respaldo de A y sin restaurar al instalar (las dos cosas, por las dudas): si no, vuelve lo de A y ya no es
+  # "solo la nativa".
   borrar_respaldo
   adb uninstall $PKG >/dev/null 2>&1 || true
   adb shell bmgr autorestore false >/dev/null
