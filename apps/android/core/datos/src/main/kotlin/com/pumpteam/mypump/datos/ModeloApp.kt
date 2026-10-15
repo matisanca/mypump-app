@@ -542,6 +542,15 @@ class ModeloApp(
         null
     }
 
+    /**
+     * Progreso por el ejercicio que se hace de verdad: el sustituto si hay (PRO-02, `getEffectiveEx` en el
+     * `loadProgressAndRender` de la web). Sin el motor de Entreno, por el nombre del plan.
+     */
+    suspend fun cargarProgreso() {
+        val entreno = _entreno.value
+        _progreso.value?.cargar(_rutina.value) { entreno?.efectivo(it)?.ejercicio?.nombre ?: it.nombre }
+    }
+
     /** Lo que falta de la semana para el badge de Revisión y el banner de las otras pestañas. */
     val pendientesDeLaSemana: FotosProgreso.Pendientes
         get() {
