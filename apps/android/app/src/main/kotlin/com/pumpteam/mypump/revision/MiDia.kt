@@ -371,6 +371,8 @@ private fun Vasos(agua: Int, habilitado: Boolean, alCambiar: (Int) -> Unit) {
                 Modifier
                     .weight(1f)
                     .heightIn(min = 44.dp)
+                    // La etiqueta va antes: lo que viene después de clearAndSetSemantics se borra con el resto.
+                    .testTag("control-agua")
                     .clearAndSetSemantics {
                         contentDescription = "Agua"
                         stateDescription = "$agua de 12 vasos"
@@ -382,8 +384,7 @@ private fun Vasos(agua: Int, habilitado: Boolean, alCambiar: (Int) -> Unit) {
                                 true
                             }
                         }
-                    }
-                    .testTag("control-agua"),
+                    },
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
