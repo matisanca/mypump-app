@@ -71,7 +71,9 @@ struct EntrenoView: View {
         case .vacio: return .sinRutina
         case nil: break
         }
-        if let m = entrenamiento.motor { return .dia(m) }
+        // Una rutina publicada sin ningún ejercicio tampoco se puede usar: "Todavía no hay rutina", como sin rutina
+        // (D11+; Android ya lo hacía así, lo encontró su agente de Entreno).
+        if let m = entrenamiento.motor { return m.usable ? .dia(m) : .sinRutina }
         guard modelo.fase == .listo else { return .cargando }
         return modelo.sinRedEn.contains(.rutina) ? .sinRed : .sinRutina
     }
@@ -172,7 +174,7 @@ private struct ListaEntreno: View {
                     .lineLimit(tamañoLetra.isAccessibilitySize ? 3 : 1)
                     .minimumScaleFactor(tamañoLetra.isAccessibilitySize ? 1 : 0.6)
                     .accessibilityAddTraits(.isHeader)
-                Label(cerrado ? "Día cerrado esta semana" : "\(total) ejercicios",
+                Label(cerrado ? "Día cerrado esta semana" : (total == 1 ? "1 ejercicio" : "\(total) ejercicios"),
                       systemImage: cerrado ? "checkmark.seal.fill" : "list.bullet")
                     .labelStyle(EtiquetaCompacta())
                     .font(.subheadline.weight(.medium))

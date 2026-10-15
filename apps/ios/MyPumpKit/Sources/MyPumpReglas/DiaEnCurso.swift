@@ -231,9 +231,11 @@ public struct DiaEnCurso: Sendable, Equatable {
             ejercicios[id]!.completo = true
             if let sig = siguientePendiente(id) {
                 expandido = sig
-                // Antes de pintar: el sugerido, el récord y la última vez tienen que estar al abrirse sola.
+                // El historial se pide ya, para que "Siguiente" abra con el sugerido, el récord y la última vez. Los
+                // comentarios NO se marcan leídos: con D13 la card no se abre sola, y el 💬 se iba sin que el cliente
+                // lo viera (la web sí los marca porque la abre; lo encontró el agente de Entreno de Android). Se
+                // marcan al abrirla (`tocarCard`).
                 if historial[sig] == nil { efectos.append(.pedirHistorial(sig)) }
-                efectos.append(.marcarLeidos(sig))
             }
         }
         if !demo && diaCompleto { efectos.append(.diaCompleto) }

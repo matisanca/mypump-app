@@ -394,7 +394,14 @@ struct EjercicioView: View {
     /// Al entrar: la card queda abierta (pide el historial y marca leídos los comentarios). En la demo de las capturas
     /// (`-series N`) se cargan N series, que la demo no escribe en ningún lado.
     private func abrirCard() async {
-        if motor.dia.expandido != lugar { await motor.tocarCard(lugar) }
+        if motor.dia.expandido != lugar {
+            await motor.tocarCard(lugar)
+        } else {
+            // "Siguiente" abre la card que el motor dejó abierta al completar la anterior: `tocarCard` la cerraría, así
+            // que se hace lo mismo que al abrirla, comentarios leídos e historial (lo encontró el agente de Android).
+            await motor.marcarLeidos(lugar)
+            await motor.pedirHistorial(lugar)
+        }
         guard motor.demo, !demoHecha, DemoUI.seriesHechas > 0 else { return }
         demoHecha = true
         let n = min(DemoUI.seriesHechas, motor.dia.ejercicios[lugar]?.series.count ?? 0)

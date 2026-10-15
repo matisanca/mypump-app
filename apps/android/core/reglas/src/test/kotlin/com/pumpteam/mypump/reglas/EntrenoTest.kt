@@ -436,7 +436,9 @@ class EntrenoVectoresTest {
             val avisoWeb = if (dudosas.isEmpty()) null else dudosas.last().s() ?: ""
             if (aviso != avisoWeb) malos += "aviso $aviso vs $dudosas"
             if (p.descanso != caso["descanso"].d()) malos += "descanso ${p.descanso}"
-            if (p.historial != caso["historialPedido"].textos() || p.leidos != caso["leidos"].textos()) malos += "historial ${p.historial} leídos ${p.leidos}"
+            // Desvío a propósito (D13): la web marca leídos los comentarios del siguiente porque abre su card sola; acá
+            // "Siguiente" es un botón y se marcan al abrirla. Confirmar nunca marca leídos.
+            if (p.historial != caso["historialPedido"].textos() || p.leidos.isNotEmpty()) malos += "historial ${p.historial} leídos ${p.leidos}"
             if (p.asegurar != caso["sesionAsegurada"].b() || p.completo != caso["diaCompleto"].b()) malos += "sesión ${p.asegurar} día completo ${p.completo}"
             if (d.diaFinalizado != despues["diaFinalizado"].b() || d.expandido != despues["expandido"].s()) malos += "día ${d.diaFinalizado} expandido ${d.expandido}"
             val finalizadaLocal = if (diaFinalizadoAntes && !p.reabrio) "1" else null

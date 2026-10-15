@@ -575,7 +575,9 @@ struct EntrenoVectoresTests {
             let avisoWeb: String?? = caso.dudosas.last.map { $0 ?? "" }
             if aviso != avisoWeb ?? nil { malos.append("aviso \(String(describing: aviso)) vs \(caso.dudosas)") }
             if p.descanso != caso.descanso { malos.append("descanso \(String(describing: p.descanso))") }
-            if p.historial != caso.historialPedido || p.leidos != caso.leidos { malos.append("historial \(p.historial) leídos \(p.leidos)") }
+            // Desvío a propósito (D13): la web marca leídos los comentarios del siguiente porque abre su card sola; acá
+            // "Siguiente" es un botón y se marcan al abrirla. Confirmar nunca marca leídos.
+            if p.historial != caso.historialPedido || !p.leidos.isEmpty { malos.append("historial \(p.historial) leídos \(p.leidos)") }
             if p.asegurar != caso.sesionAsegurada || p.completo != caso.diaCompleto { malos.append("sesión \(p.asegurar) día completo \(p.completo)") }
             if d.diaFinalizado != caso.despues.diaFinalizado || d.expandido != caso.despues.expandido { malos.append("día \(d.diaFinalizado) expandido \(String(describing: d.expandido))") }
             let finalizadaLocal: String? = caso.diaFinalizado && !p.reabrio ? "1" : nil
