@@ -221,6 +221,18 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **15-oct 19:50-20:45, Android con la letra y los íconos del iPhone** (Mati: «la de android se sigue viendo horrible y
+  la de iphone es mejorable», y el OK para bajar la letra y los íconos):
+  - Lado a lado a la misma escala (3 px por pt/dp), los textos medían igual: lo que lo hacía ver de otra familia eran
+    **la letra** (Roboto contra SF Pro) y **los íconos** (los de Material, rellenos y gruesos). Ahora van **Inter** (OFL)
+    y **Material Symbols Rounded** (Apache 2.0, peso 500); Revisión y Progreso dibujados como los de iOS. Ver
+    `nativa-evidencia/android-vs-iphone-15oct.png`.
+  - La cabecera de Dieta, igual en todos los teléfonos: el anillo arriba y tres cajas (lado a lado salía en los anchos:
+    el Pro Max y el Android de prueba, de 448 dp). La semana de Revisión, pegada al título grande; «Mis datos» en el
+    círculo de vidrio; Progreso vacío centrado; la figura estirando en el calentamiento.
+  - **En las dos apps:** al abrir un ejercicio en la lista (o el siguiente al completar uno), la lista lo trae a la
+    vista, contando la barra de pestañas de Android (f1eb980, 6f17cf1). TestFlight 115.
+
 - **15-oct 17:15-19:45, lo que pidió Mati para su video, y Android al nivel del iPhone.**
   - **iPhone, TF 112 y 113 (17:49):** la barra de pestañas fija (D16), sin Mi día (D17), el peso en el check (D18), el
     ejercicio abierto en la lista (D19) y «Ver cómo está mi cuerpo» (D20). Lo mismo en Android, para la 2.0.1 (104).
