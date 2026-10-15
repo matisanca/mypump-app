@@ -14,7 +14,6 @@ import com.pumpteam.mypump.datos.Disco
 import com.pumpteam.mypump.datos.FotoPendiente
 import com.pumpteam.mypump.datos.ModeloSalud
 import com.pumpteam.mypump.diseno.ImagenesRemotas
-import com.pumpteam.mypump.diseno.navegadorConPestanas
 import com.pumpteam.mypump.fotos.FotoDePrueba
 import com.pumpteam.mypump.fotos.ProveedorFotos
 import com.pumpteam.mypump.modelos.ValorJson
@@ -27,8 +26,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -184,9 +181,8 @@ class RevisionUiTest : PruebaUi() {
         p.tocar(texto("Política de privacidad"))
         val i = p.esperar("se abrió la política") { vistos.firstOrNull() }
         assertEquals(com.pumpteam.mypump.acceso.URL_PRIVACIDAD, i.dataString)
-        assertTrue("no es una Custom Tab", i.hasExtra("android.support.customtabs.extra.SESSION"))
-        assertNotNull("la Custom Tab no fija el navegador", i.`package`)
-        assertNotEquals(app.packageName, i.`package`)
+        // En la Custom Tab con el navegador fijo o, sin un navegador con Custom Tabs, con el selector de navegadores.
+        comprobarQueVaAlNavegador(i, app)
     }
 
     // ── DIA-01, DIA-02 y DIA-04 ──
@@ -547,9 +543,7 @@ class RevisionUiTest : PruebaUi() {
     fun miRelojConectaPorElNavegadorYQuitarPregunta() {
         val paquete = app.packageName
         val dominio = "app.mypumpteam.com"
-        val antes = Telefono.shell("pm get-app-links --user cur $paquete")
-        val elegidoAntes = Regex("""Enabled:\s*\n\s*${Regex.escape(dominio)}""").containsMatchIn(antes)
-        Telefono.shell("pm set-app-links-user-selection --user cur --package $paquete true $dominio")
+        val dejarComoEstaba = elegirElDominioParaLaApp(app, dominio)
         val navegador = CopyOnWriteArrayList<Intent>()
         val m = object : Instrumentation.ActivityMonitor() {
             override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
@@ -587,11 +581,9 @@ class RevisionUiTest : PruebaUi() {
             p.tocar(etiqueta("reloj-conectar-oura"))
             val i = p.esperar("se abrió el navegador") { navegador.firstOrNull() }
             assertEquals("https://$dominio/api/wearables/iniciar?t=${ServidorDePrueba.TOKEN}&proveedor=oura", i.dataString)
-            val fijo = navegadorConPestanas(app)
-            assertNotNull("el emulador no tiene un navegador con Custom Tabs", fijo)
-            assertEquals("el link no va al navegador fijo", fijo, i.`package`)
-            assertNotEquals(paquete, i.`package`)
-            assertTrue("no es una Custom Tab", i.hasExtra("android.support.customtabs.extra.SESSION"))
+            // Una Custom Tab con el navegador fijo o, sin un navegador con Custom Tabs (Android 9 del emulador), el selector de
+            // navegadores: nunca MyPump.
+            comprobarQueVaAlNavegador(i, app)
             // Sin fijarlo, el mismo link lo abriría MyPump (por eso va fijo).
             val implicito = Intent(Intent.ACTION_VIEW, Uri.parse(i.dataString)).addCategory(Intent.CATEGORY_BROWSABLE)
             assertEquals(paquete, app.packageManager.resolveActivity(implicito, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName)
@@ -603,7 +595,7 @@ class RevisionUiTest : PruebaUi() {
             p.nodo(texto("✅ Listo. Tus datos van a aparecer en un rato."), ms = 15_000)
             p.esperar("Oura quedó conectado") { p.existe(etiqueta("reloj-quitar-oura")) }
         } finally {
-            Telefono.shell("pm set-app-links-user-selection --user cur --package $paquete $elegidoAntes $dominio")
+            dejarComoEstaba()
         }
     }
 
