@@ -147,12 +147,7 @@ fun ImagenRemota(
     marcador: @Composable () -> Unit,
 ) {
     val px = with(LocalDensity.current) { lado.roundToPx() }
-    // Si ya terminó de cargar ESTA foto, con o sin ella.
-    var termino by remember(url, px) { mutableStateOf(false) }
-    val imagen by produceState(initialValue = url?.let { ImagenesRemotas.enMemoria(it, px) }, url, px) {
-        if (value == null && url != null) value = ImagenesRemotas.cargar(url, px)
-        termino = true
-    }
+    val (imagen, termino) = estadoImagenRemota(url, px, ImagenesRemotas::enMemoria, ImagenesRemotas::cargar)
     Crossfade(targetState = imagen, animationSpec = tween(250), modifier = modifier, label = "foto") { i ->
         Box(Modifier.fillMaxSize()) {
             when {
@@ -162,4 +157,26 @@ fun ImagenRemota(
             }
         }
     }
+}
+
+/**
+ * La imagen de ESTA url (de la memoria o bajada) y si ya terminó de cargarla, con o sin ella. `produceState` guarda su valor
+ * una sola vez: al cambiar la url el productor arrancaba con la imagen de la anterior y no pedía la nueva. Reemplazar la
+ * foto de una pose, cambiar de día en Entreno o sustituir un ejercicio dejaba la miniatura vieja (revisión adversarial del
+ * 15-oct). Ahora el productor arranca desde la de la url nueva.
+ */
+@Composable
+internal fun <T : Any> estadoImagenRemota(
+    url: String?,
+    px: Int,
+    enMemoria: (String, Int) -> T?,
+    cargar: suspend (String, Int) -> T?,
+): Pair<T?, Boolean> {
+    var termino by remember(url, px) { mutableStateOf(false) }
+    val imagen by produceState(initialValue = url?.let { enMemoria(it, px) }, url, px) {
+        value = url?.let { enMemoria(it, px) }
+        if (value == null && url != null) value = cargar(url, px)
+        termino = true
+    }
+    return imagen to termino
 }

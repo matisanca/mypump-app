@@ -80,11 +80,14 @@ class FotosTest {
     /** Una foto que el servidor no puede guardar (un 5xx cada vez) no traba a las que vienen atrás. */
     @Test
     fun unaFotoQueNoEntraNoTrabaALasDemas() = enUnHilo {
-        val g = Guion(null, null, 502 to "{\"ok\":false,\"error\":\"no se pudo guardar la foto\"}", 200 to "{\"ok\":true}")
+        val no = 502 to "{\"ok\":false,\"error\":\"no se pudo guardar la foto\"}"
+        val g = Guion(null, null, no, 200 to "{\"ok\":true}", no)
         val m = modelo(g)
         m.subir("espalda", jpeg)
         m.subir("frente", jpeg)
-        m.drenar()   // espalda va primero (por la clave): 502, sigue; frente: ok
+        m.drenar()   // espalda va primero (por la clave): 502 y corta, sin probar frente (un intento por apertura)
+        assertEquals(2, m.pendientes.value.size)
+        m.drenar()   // ahora frente primero: ok; espalda al final: 502 de nuevo
         assertEquals(listOf(true), m.pendientes.value.keys.map { it.endsWith("|espalda") })
     }
 

@@ -222,6 +222,9 @@ android {
 
     // Salud: las pruebas de la traducción de Health Connect corren en la JVM con JUnit 5, como las de :core.
     testOptions {
+        // El runtime de Compose en la JVM (EstadoImagenRemotaTest) toca clases de Android que el android.jar de las
+        // pruebas no implementa: con esto devuelven el valor por defecto en vez de tirar «not mocked».
+        unitTests.isReturnDefaultValues = true
         unitTests.all {
             it.useJUnitPlatform()
             it.testLogging { events("passed", "skipped", "failed") }

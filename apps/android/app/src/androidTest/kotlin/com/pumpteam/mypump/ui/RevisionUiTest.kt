@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.media.ExifInterface
 import android.net.Uri
 import android.provider.MediaStore
@@ -27,6 +28,7 @@ import com.pumpteam.mypump.reglas.DiaCalendario
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.salud.EstadoHealthConnect
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
@@ -345,13 +347,16 @@ class RevisionUiTest : PruebaUi() {
     /**
      * Sacar de nuevo una foto que ya estaba (un upsert: siguen siendo las mismas fotos) firma otra vez y muestra la
      * miniatura nueva. Antes quedaba la vieja hasta que vencían las URLs (visto contra la base real el 15-oct).
+     * La descarga devuelve una imagen de verdad: con `null` la prueba pasaba aunque `ImagenRemota` no pidiera la URL nueva
+     * (revisión adversarial del 15-oct).
      */
     @Test
     fun reemplazarUnaFotoMuestraLaMiniaturaNueva() {
         val miniaturas = CopyOnWriteArrayList<String>()
+        val imagen = ByteArrayOutputStream().also { Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
         ImagenesRemotas.bajar = { url ->
             miniaturas += url
-            null
+            imagen
         }
         servidor.ponerFotos(mapOf(lunes to listOf("frente")))
         fotosDePrueba(::fotoDeCamara)

@@ -6,6 +6,7 @@ import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.ClaveEjercicio
 import com.pumpteam.mypump.reglas.ProgresoEjercicio
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,10 +45,20 @@ class ModeloProgreso(private val cliente: ClienteRpc, private val token: String)
     private val _historialPorClave = MutableStateFlow<Map<String, List<RegistroHistorico>>>(emptyMap())
     val historialPorClave: StateFlow<Map<String, List<RegistroHistorico>>> = _historialPorClave.asStateFlow()
 
+    /**
+     * La carga en curso: si mientras tanto empezó otra, lo que vuelve de esta se descarta. Dos cargas que se pisaban dejaban
+     * las tarjetas de una con el historial de la otra (revisión adversarial del 15-oct, como iOS).
+     */
+    private val carga = AtomicInteger(0)
+
+    /** Solo para las pruebas: corre justo antes de las cuentas, que es donde se cuela otra carga. */
+    internal var antesDeLasCuentas: (suspend () -> Unit)? = null
+
     private class Entrada(val id: String, val ids: MutableList<String>, val clave: String, val nombre: String, val dias: MutableList<String>)
 
     /** [nombreEfectivo] da el nombre que se está haciendo (el del sustituto si el ejercicio está sustituido). */
     suspend fun cargar(rutina: RutinaActiva?, nombreEfectivo: (Ejercicio) -> String = { it.nombre }) {
+        val mia = carga.incrementAndGet()
         _estado.value = Estado.CARGANDO
         val dias = rutina?.estructura?.dias
         if (dias == null) {
@@ -99,11 +110,12 @@ class ModeloProgreso(private val cliente: ClienteRpc, private val token: String)
             }
             else -> {
                 // Sin red: NO se cae al camino por lugar (mezclaría original y sustituto) y se reintenta al volver.
-                _estado.value = Estado.SIN_RED
+                if (mia == carga.get()) _estado.value = Estado.SIN_RED
                 return
             }
         }
-        _historialPorClave.value = filasPor
+        if (mia != carga.get()) return
+        antesDeLasCuentas?.invoke()
         // Las cuentas (la fecha local de cada fila) fuera del hilo principal: con el historial más largo que deja el
         // servidor (48 filas por ejercicio, 2.880 en total) son decenas a cientos de ms en un teléfono (15-oct, como iOS).
         val (tarjetas, sesiones) = withContext(Dispatchers.Default) {
@@ -113,6 +125,8 @@ class ModeloProgreso(private val cliente: ClienteRpc, private val token: String)
                 TarjetaProgreso(e.id, e.nombre, e.clave, e.dias.joinToString(" · "), resumen, filas)
             } to ProgresoEjercicio.sesiones(filasPor.values.flatten()).size
         }
+        if (mia != carga.get()) return
+        _historialPorClave.value = filasPor
         _tarjetas.value = tarjetas
         _sesiones.value = sesiones
         _estado.value = Estado.LISTO

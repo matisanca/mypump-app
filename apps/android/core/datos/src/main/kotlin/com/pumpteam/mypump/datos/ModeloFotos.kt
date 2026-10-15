@@ -6,6 +6,7 @@ import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
 import java.util.Base64
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -103,6 +104,9 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
     val subiendo: StateFlow<Set<String>> = _subiendo.asStateFlow()
 
     private val drenando = Mutex()
+
+    /** Las que el servidor no pudo guardar (5xx) en esta sesión: la próxima pasada las deja para el final. */
+    private val conErrorDelServidor = mutableSetOf<String>()
     @Volatile private var urlsVencen: Long? = null
 
     val semanaActual: String get() = FotosProgreso.lunes(FechaLocal.hoy())
@@ -135,19 +139,21 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         val item = FotoPendiente(pose, fecha, dataUrl)
         _pendientes.update { it + (clave to item) }
         val guardo = guardarCola()
+        // Si la cola está subiendo una foto vieja de esta misma pose y semana (el cliente la volvió a sacar; la cámara es
+        // otra app y al volver se drena), se espera a que termine. Si no, la vieja podía terminar después, y el upsert del
+        // servidor la dejaba en lugar de la nueva (revisión adversarial del 15-oct, como iOS).
+        while (clave in _subiendo.value) delay(100)
         _subiendo.update { it + clave }
         try {
             return when (val r = enviar(item)) {
                 Envio.Ok -> {
-                    _pendientes.update { it - clave }
-                    guardarCola()
+                    sacar(clave, item)
                     cargar()
                     urlsVencen = null          // que se refirme y aparezca la miniatura
                     Resultado.Guardada
                 }
                 is Envio.Fatal -> {
-                    _pendientes.update { it - clave }
-                    guardarCola()
+                    sacar(clave, item)
                     Resultado.Rechazada(r.motivo)
                 }
                 Envio.Reintentar, Envio.Red -> if (guardo) Resultado.SinConexion else Resultado.NoSeGuardo
@@ -166,29 +172,39 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
      * octavo, y su propio comentario dice que con el servidor caído la foto tiene que sobrevivir. Pero con la Mini caída
      * Cloudflare contesta 502/530, que contaba como error del servidor, y abriendo la app unas cuantas veces la foto se
      * perdía. Con el tope de 12 por día («probá mañana») pasaba lo mismo. Ahora espera. Si nunca entra, la corta la ventana
-     * de fechas del servidor (+1/−7), que después la rechaza con un 400. Un 5xx sigue con la próxima, así una foto que el
-     * servidor no puede guardar no traba a las demás. El tope del día, la red y el token caído cortan la pasada.
+     * de fechas del servidor (+1/−7), que después la rechaza con un 400.
+     *
+     * Un 5xx corta la pasada (un intento por apertura: cada intento gasta uno de los 12 del día, aunque el storage esté
+     * caído) y esa foto queda para el final de la próxima, así una que el servidor no puede guardar no traba a las demás.
+     * El tope del día, la red y el token caído también cortan. No toca una pose que [subir] está mandando ahora, y solo saca
+     * de la cola la foto que mandó: si mientras tanto el cliente sacó otra de la misma pose, la nueva queda (revisión
+     * adversarial del 15-oct, como iOS).
      */
     suspend fun drenar() {
         if (_pendientes.value.isEmpty() || !drenando.tryLock()) return
         try {
             var subioAlgo = false
-            pasada@ for (clave in _pendientes.value.keys.sorted()) {
+            val orden = _pendientes.value.keys.sortedWith(compareBy({ if (it in conErrorDelServidor) 1 else 0 }, { it }))
+            pasada@ for (clave in orden) {
                 val item = _pendientes.value[clave] ?: continue
+                if (clave in _subiendo.value) continue
                 _subiendo.update { it + clave }
                 val r = enviar(item)
                 _subiendo.update { it - clave }
                 when (r) {
                     Envio.Ok -> {
-                        _pendientes.update { it - clave }
-                        guardarCola()
+                        sacar(clave, item)
+                        conErrorDelServidor.remove(clave)
                         subioAlgo = true
                     }
                     is Envio.Fatal -> {
-                        _pendientes.update { it - clave }
-                        guardarCola()
+                        sacar(clave, item)
+                        conErrorDelServidor.remove(clave)
                     }
-                    Envio.Reintentar -> continue@pasada
+                    Envio.Reintentar -> {
+                        conErrorDelServidor.add(clave)
+                        break@pasada
+                    }
                     // No entra ninguna: con el tope del día, sin señal, o con este link (las adopta el link nuevo).
                     Envio.Tope, Envio.Red, Envio.TokenCaido -> break@pasada
                 }
@@ -200,6 +216,19 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
         } finally {
             drenando.unlock()
         }
+    }
+
+    /**
+     * Saca de la cola la foto que se mandó, solo si sigue siendo esa: si mientras subía el cliente sacó otra de la misma
+     * pose y semana, la nueva queda para subir.
+     */
+    private fun sacar(clave: String, item: FotoPendiente) {
+        var saco = false
+        _pendientes.update { actuales ->
+            saco = actuales[clave] == item
+            if (saco) actuales - clave else actuales
+        }
+        if (saco) guardarCola()
     }
 
     /** `cargarFotosFirmadas`: las URLs (duran 1 h) se piden una vez y se guardan 50 minutos. */
