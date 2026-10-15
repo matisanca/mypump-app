@@ -52,6 +52,7 @@ y números grandes van en Archivo.
 | `avisos` | Las notificaciones (ver "Los avisos"); la hoja de permisos de la primera vez está en `acceso/OnboardingPermisos` |
 | `entreno` | Entreno (gemela de `apps/ios/MyPump/Entreno/`): la lista del día (`ListaEntreno`), el detalle de un ejercicio (`EjercicioPantalla`, `TablaSeries`), sustituir y cerrar el día (`Hojas`), el descanso (`Descanso`: la isla arriba de las pestañas, su reloj y el pitido), las preguntas del motor (`Preguntador`) y los textos de la app (`Bonito`, `CardAccesible`) |
 | `dieta`, `revision`, `misdatos`, `respaldo` | Dieta en modo lectura, Revisión (por ahora la entrada a Mis datos), Mis datos y las 14 fuentes |
+| `salud` | Health Connect (`FuenteHealthConnect`, la hoja de permisos, la política de privacidad) y sus pantallas: Salud en Mis datos, el detalle, las tarjetas de Revisión y el diagnóstico (ver "Salud (Health Connect)") |
 
 - **El tema (D5).** Sigue al teléfono, salvo `mypump-theme = "dark"` en las preferencias (lo escribe "Siempre en modo
   oscuro" de Mis datos o la migración de la web). Los íconos de la barra de estado van con el tema de la app, no con el
@@ -64,7 +65,11 @@ y números grandes van en Archivo.
   Capacitor, domingo a las 11:00, abre Revisión), gemelo del de iOS. Lo agenda `avisos/CentroAvisos` (ver "Los avisos");
   `PreferenciasAvisos` queda por la migración, no para agendar.
 - **Links (fuentes y legales).** `abrirEnNavegador` abre una Custom Tab (`androidx.browser`, OK de Mati del 14-oct),
-  como el SFSafariViewController de iOS; sin un navegador que las soporte, va al navegador.
+  como el SFSafariViewController de iOS, con el navegador FIJO (`navegadorConPestanas`; el `<queries>` de
+  `CustomTabsService` deja verlos): el App Link de la MainActivity toma todo `app.mypumpteam.com`, y en un build de Play,
+  con el dominio verificado, un VIEW implícito a `privacidad.html` volvía a MyPump. Sin un navegador con Custom Tabs, un
+  VIEW con el selector de `CATEGORY_APP_BROWSER` (nunca MyPump). `NavegadorFueraDeLaAppTest` lo prueba eligiendo el dominio
+  para la app en el emulador (y lo deja como estaba).
 - **Entreno.** Todo sale del motor (`ModeloEntreno`, sin cambios en `:core`). Las pantallas lo leen con `vistaDe(motor)`:
   el motor publica una copia nueva del día en cada cambio, así que lo que recibe la vista se recompone solo cuando algo
   cambió. El descanso va aparte (cambia cuatro veces por segundo): su isla y su reloj (`RelojDescanso`) viven arriba de las
@@ -141,6 +146,85 @@ lleva tocar un aviso) está en `:core:datos` (`Avisos.kt`), con sus tests en la 
   (`pm revoke` mata el proceso, también el de la prueba): las que necesitan "sin permiso" lo fijan en `PermisoDePrueba`, y
   las que miran lo publicado lo dan de verdad con `pm grant`. El token de FCM es inventado (`AvisosDePrueba`): las pruebas
   nunca hablan con Firebase. El envío real de un push necesita un teléfono con Google Play y una cuenta.
+## Salud (Health Connect)
+
+Gemela de la Salud de iOS (HealthKit), con Health Connect `connect-client` 1.1.0, la misma versión que compila la
+Capacitor (OK de Mati, G4). SAL-01 a SAL-13 y APL-07.
+
+- **La fuente** (`salud/FuenteHealthConnect`, la `FuenteSalud` de `:core:datos`): consulta Health Connect EXACTAMENTE como
+  el plugin de la app de hoy (@capgo/capacitor-health 8.9.3, `HealthManager.kt` + `HealthPlugin.kt`): los mismos 22
+  tipos, páginas de `min(límite, 500)` hasta juntar el límite (en registros; el recorte por muestras va al final), los
+  baldes de 24 h desde la medianoche que manda el bridge, el sueño como UNA sesión con sus etapas, las basales como la
+  tasa del día, los entrenos (100, del más nuevo al más viejo) con la distancia y las calorías de su rango, y los mismos
+  textos de error (van al diagnóstico). Lo puro está en `PluginHealthConnect` y se prueba en la JVM
+  (`src/test/…/salud`, con un doble de `ClienteHealthConnect`). La fuente que se graba es `health_connect` y la HRV va
+  como rMSSD (`PlataformaSalud.ANDROID`).
+- **El historial.** Sin `READ_HEALTH_DATA_HISTORY` Health Connect no da nada de más de 30 días, y no avisa. Como el
+  bridge: se pide junto con el núcleo, el veredicto se guarda (`mypump_health_historial_ok`), se re-pregunta sin la hoja
+  al empezar cada historial, y sin él la corrida es de 30 días y no queda hecha (`SincronizadorSalud`, `:core`).
+- **La hoja de permisos** como llamada `suspend` desde cualquier lado (la hoja de la primera vez, Mis datos, la tarjeta):
+  el contrato de Health Connect se registra en la `MainActivity` (`PermisosHealthConnect.registrar`) y el pedido en vuelo
+  sobrevive a rotar. Sin una pantalla a la vista no abre nada y tira. El corte de `conectar(limiteMs)` no la cancela.
+- **La fuente del sistema** se instala en el `init` del `ModeloAppViewModel`, ANTES de crear el `ModeloApp`
+  (`ModeloSalud` la lee al crearse con la cuenta). Una prueba que puso un doble en `ModeloSalud.fuenteDelSistema` lo
+  conserva.
+- **Sin Health Connect** (`EstadoHealthConnect`, con `getSdkStatus`): si hay que instalarlo o actualizarlo (Android 9 a
+  13), se ofrece desde Play con `healthconnect://onboarding`; si el teléfono no lo soporta, no se ofrece nada. Se vuelve a
+  mirar cada vez que la app vuelve a la vista.
+- **Pantallas.** Mis datos: la recuperación en una fila (el anillo), que abre el detalle, y "Conectar Health Connect" si
+  no está conectada. El detalle (`SaludDetallePantalla`, tirar hacia abajo recarga): cómo se arma el score, sueño,
+  corazón, actividad, otras señales y cuerpo (sin datos, la sección no se muestra), "Mostrarme el score" y Health
+  Connect (Sincronizar, Reintentar, "Abrir Health Connect" si no llega nada). Las tarjetas de Recuperación y Salud de
+  Revisión (`CardsSalud`) están listas y probadas sueltas (`CardsSaludTest`): Revisión todavía no existe. El detalle y
+  el diagnóstico se abren en una ventana propia (`PantallaSuperpuesta`): Mis datos es una sola columna.
+- **El diagnóstico (SAL-13):** 5 toques en el título "Health Connect" del detalle, o `?diag=health` en el link
+  (`DiagnosticoSaludPedido`, lo abre la raíz). Muestra los permisos dados (Health Connect sí los informa), el historial,
+  el último intento, el último rechazo de la base, cada tipo de 14 días y el sueño por noche y por fuente.
+- **Textos sin "Apple"** (SAL-08): todos de `TextosSalud.ANDROID`; las pruebas de interfaz lo verifican.
+
+**Permisos (APL-07).** Los del manifest de la Capacitor: 13 de lectura más el historial; nada en segundo plano ni de
+escritura. Lo que la Capacitor saca va con `tools:node="remove"`. La justificación de Health Connect
+(`androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE`) y el `activity-alias` ViewPermissionUsageActivity (con
+`START_VIEW_PERMISSION_USAGE`) abren `privacidad.html` en una Custom Tab (`PoliticaSaludActivity`). El manifest MERGEADO
+de release se verifica solo (`./gradlew :app:verificarPermisosSaludRelease`, colgado de `assembleRelease`,
+`bundleRelease` y `check`; el informe queda en `app/build/reports/permisos-salud/release.txt`). Quedan:
+
+- **release:** `READ_STEPS`, `READ_DISTANCE`, `READ_ACTIVE_CALORIES_BURNED`, `READ_BASAL_METABOLIC_RATE`,
+  `READ_FLOORS_CLIMBED`, `READ_HEART_RATE`, `READ_RESTING_HEART_RATE`, `READ_HEART_RATE_VARIABILITY`, `READ_SLEEP`,
+  `READ_RESPIRATORY_RATE`, `READ_WEIGHT`, `READ_BODY_FAT`, `READ_EXERCISE` y `READ_HEALTH_DATA_HISTORY` (más
+  `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` y el `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` de androidx).
+  Ningún `WRITE_`.
+- **debug:** lo mismo más los 13 `WRITE_` de esos tipos (`src/debug/AndroidManifest.xml`), solo para sembrar el emulador.
+
+**Pruebas.**
+
+- JVM (`./gradlew :app:testDebugUnitTest`): la traducción y las consultas contra un doble de Health Connect, y la
+  sincronización de `:core` con esta fuente (`SincronizacionHealthConnectTest`).
+- Instrumentadas (`androidTest/…/salud` y `ui/SaludUiTest`): la hoja de verdad, la justificación, 40 días sembrados en el
+  Health Connect del emulador (`SembradoSalud`) leídos por la fuente, la semana sincronizada, el historial de 30 y de 60,
+  y las pantallas con un Health Connect de mentira.
+- **El banco** (`HealthConnectRealTest.e_…`, gemelo de `scripts/nativa/salud-banco.sh`): sobre los mismos datos y el
+  mismo "ahora", el `healthkit-bridge.js` de origin/main en un WebView con el plugin de VERDAD (su `HealthManager.kt`,
+  copiado de `node_modules` al compilar las pruebas por la tarea `bancoSalud`; nunca se commitea) contra la nativa:
+  mismas consultas, mismos lotes a `ingest_salud` e `ingest_entrenos`, mismo estado guardado. Sin `node_modules` se
+  saltea. El informe queda en `/data/local/tmp/mypump-banco-salud.json` del emulador.
+- **Contra la base real**, a mano y solo con `test-nativa-android`: sembrar el emulador sin borrar
+  (`adb install` de los dos APK y `adb shell am instrument -w -e sembrarSalud 1 -e class
+  com.pumpteam.mypump.salud.SembrarParaLaBaseTest#sembrar com.pumpteam.mypump.test/androidx.test.runner.AndroidJUnitRunner`),
+  abrir la app con `python3 -I scripts/nativa/lanzar-emu.py <serial> revision`, Mis datos → "Conectar Health Connect"
+  (no abre la hoja: los permisos ya están). Después, `-e sembrarSalud borrar` con `#borrar`.
+
+**Lo que hay que saber.**
+
+- Sacar un permiso dado (`pm revoke`) MATA el proceso de la app, que es el de las pruebas: en una corrida solo se dan, y
+  `HealthConnectRealTest` va en orden (primero lo que necesita los permisos sin dar).
+- Health Connect deja AFUERA de los agregados (pasos, calorías, distancia) lo que escribió una app que no está en su
+  lista de prioridad, y a la lista se entra recibiendo la escritura POR LA HOJA (con `pm grant`, no). Por eso la siembra
+  da la escritura tocando la hoja (`HojaHealthConnect`, con el `UiAutomation` de la instrumentación). A los clientes no
+  les pasa: lo que lee la app lo escribió su reloj, que está en la lista.
+- La primera vez Health Connect muestra su presentación ("Get started") antes de la hoja.
+- La justificación no tiene la categoría `DEFAULT` (como la del plugin y el ejemplo de Google): Health Connect la abre
+  por componente.
 
 ## La capa de datos
 

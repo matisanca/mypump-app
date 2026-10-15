@@ -52,6 +52,7 @@ import com.pumpteam.mypump.diseno.Separador
 import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.respaldo.HojaFuentes
+import com.pumpteam.mypump.salud.SeccionSaludMisDatos
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -61,8 +62,9 @@ import kotlinx.coroutines.withContext
  * privacidad y el borrado (D9), con la forma de los ajustes del teléfono. Ni la IA ni el aviso del domingo se configuran
  * acá (pedido de Mati, 14-oct): la IA trabaja bajo su aprobación y el aviso llega como un mensaje suyo (`AvisoDomingo`).
  *
- * De las notificaciones va solo "Activar notificaciones" (o "Activar en Ajustes"), si falta el permiso del sistema y no
- * es la demo, como en iOS (`SeccionNotificaciones`). Todavía no está en Android: la recuperación y Salud (Health Connect).
+ * Arriba, Salud (la recuperación, que abre el detalle, y conectar Health Connect: `SeccionSaludMisDatos`). De las
+ * notificaciones va solo "Activar notificaciones" (o "Activar en Ajustes"), si falta el permiso del sistema y no es la
+ * demo, como en iOS (`SeccionNotificaciones`).
  */
 @Composable
 fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> Unit) {
@@ -79,6 +81,8 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
     }
 
     PantallaConTitulo("Mis datos", alVolver = alVolver, desplazable = true, modifier = Modifier.testTag("mis-datos-pantalla")) {
+        // Salud (SAL-09…13): la recuperación, que abre el detalle, y conectar Health Connect (salud/MisDatosSalud.kt).
+        SeccionSaludMisDatos(modelo)
         SeccionNotificaciones(vm, modelo)
         Seccion(
             "Apariencia",

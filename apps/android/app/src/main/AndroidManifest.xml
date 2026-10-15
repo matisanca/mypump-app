@@ -4,8 +4,9 @@
   applicationId, misma actividad de entrada y mismo link del coach.
 
   Permisos: los de la Capacitor. Los de Health Connect son SOLO de lectura y solo los 13 tipos que se leen más el
-  historial (ver el manifest de android/ para el porqué de cada uno). Antes de pedirlos en runtime falta declarar
-  PermissionsRationaleActivity, ViewPermissionUsageActivity y la URL de privacidad (etapa de Salud).
+  historial (ver el manifest de android/ para el porqué de cada uno). La política de privacidad que exige Health Connect
+  para pedirlos la abre PoliticaSaludActivity (abajo). El build de release verifica el manifest MERGEADO
+  (verificarPermisosSaludRelease en app/build.gradle.kts): ni un WRITE_, ni un READ_ de más.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
@@ -40,9 +41,30 @@
          solo ausente) por si alguna librería la vuelve a meter en el merge. -->
     <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION" tools:node="remove" />
 
+    <!-- Salud: lo que la Capacitor saca y la nativa tampoco pide, con remove por el mismo motivo. Los tres primeros se
+         leen en iOS pero no en Android (Google hace justificar cada permiso de salud); los otros, ninguna lo lee. Y
+         nada en segundo plano: la salud se sincroniza solo con la app a la vista. -->
+    <uses-permission android:name="android.permission.health.READ_BODY_TEMPERATURE" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_BLOOD_GLUCOSE" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_MINDFULNESS" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_BASAL_BODY_TEMPERATURE" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_BLOOD_PRESSURE" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_HEIGHT" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_VO2_MAX" tools:node="remove" />
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" tools:node="remove" />
+
     <!-- Android 13 y anteriores: Health Connect es una app aparte y hay que poder consultarla. -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
+    <!-- Los navegadores con Custom Tabs (Android 11+ no los deja ver sin esto): abrirEnNavegador fija uno, porque el App
+         Link de abajo toma todo app.mypumpteam.com y un link a privacidad.html volvería a la app en vez de abrirse. -->
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
     </queries>
 
     <!-- Backup: el token nunca viaja (noBackupFilesDir + clave del Keystore) y la carpeta de cada cuenta tampoco; ver
@@ -120,5 +142,27 @@
         <meta-data
             android:name="firebase_messaging_auto_init_enabled"
             android:value="false" />
+        <!-- Salud: la política de privacidad que abre Health Connect. Sin las dos entradas Health Connect no deja pedir
+             los permisos (y Play no publica la app): la justificación de la hoja de permisos (hasta Android 13) y el
+             uso de los permisos desde los ajustes (Android 14+, solo lo puede abrir el sistema). Las dos muestran
+             privacidad.html en una Custom Tab y se cierran (sin pantalla propia). -->
+        <activity
+            android:name=".salud.PoliticaSaludActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+        <activity-alias
+            android:name=".ViewPermissionUsageActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+            android:targetActivity=".salud.PoliticaSaludActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
     </application>
 </manifest>

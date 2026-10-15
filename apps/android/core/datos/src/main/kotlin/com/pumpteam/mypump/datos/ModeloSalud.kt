@@ -206,6 +206,12 @@ class ModeloSalud(
     val ultimoIntento: ValorJson? get() = sincronizador?.ultimoIntento
     val ultimoErrorIngesta: String? get() = sincronizador?.ultimoErrorIngesta
 
+    /** Android: el veredicto del permiso de historial en esta sesión (null si todavía no se pidió, y en iOS). */
+    val historialAndroid: HistorialSalud? get() = sincronizador?.historialAndroid
+
+    /** Android: Health Connect no dio el historial (en esta sesión o en una anterior): solo llegan los últimos 30 días. */
+    val sinHistorialAndroid: Boolean get() = sincronizador?.sinHistorialAndroid ?: false
+
     private suspend fun disponibleSeguro(s: SincronizadorSalud): Boolean = try {
         s.fuente.disponible()
     } catch (e: CancellationException) {

@@ -21,6 +21,9 @@ androidx-browser = "1.10.0"
 # Capacitor en esta Mac y están en la caché de Gradle (G4, OK de Mati del 14-oct). Nada más de Firebase.
 google-services = "4.4.4"
 firebase-messaging = "25.0.1"
+# Salud: Health Connect, la MISMA versión que compila hoy la Capacitor por el plugin @capgo/capacitor-health 8.9.3 (OK de
+# Mati, G4 del 14-oct). Una más nueva podría contestar distinto que lo que ve la app de hoy.
+health-connect = "1.1.0"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
@@ -45,6 +48,8 @@ androidx-test-runner = { module = "androidx.test:runner", version.ref = "android
 androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-junit" }
 # Avisos: el push de los mensajes de Mati (ver la versión arriba).
 firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebase-messaging" }
+# Salud: Health Connect (solo lectura).
+health-connect-client = { module = "androidx.health.connect:connect-client", version.ref = "health-connect" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

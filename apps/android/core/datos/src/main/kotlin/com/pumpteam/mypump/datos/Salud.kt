@@ -40,8 +40,24 @@ interface FuenteSalud {
     /** `requestAuthorization({read, write: []})`. Nunca escritura. Tira si un tipo no existe en este sistema. */
     suspend fun pedirLectura(tipos: List<String>)
 
+    /**
+     * `requestAuthorization({read, write: [], requestHistoryAccess: true})`, la tanda del núcleo en Android: como
+     * [pedirLectura] y además el permiso de historial (READ_HEALTH_DATA_HISTORY) si este Health Connect lo tiene. Devuelve
+     * su veredicto; null donde no existe (HealthKit da todo el historial con el permiso normal).
+     */
+    suspend fun pedirLecturaConHistorial(tipos: List<String>): HistorialSalud? {
+        pedirLectura(tipos)
+        return null
+    }
+
     /** `checkAuthorization`: qué tipos ya se preguntaron. HealthKit NUNCA dice si hay permiso de lectura. */
     suspend fun permisos(tipos: List<String>): PermisosSalud
+
+    /**
+     * `checkAuthorization({read: NUCLEO, requestHistoryAccess: true})`: el veredicto del historial SIN abrir la hoja (el
+     * cliente lo pudo habilitar después desde Health Connect). null donde no existe; tira si no se puede preguntar.
+     */
+    suspend fun historial(): HistorialSalud? = null
 
     /** `queryAggregated(bucket: 'day')`: baldes anclados a la medianoche local, solo los que tienen valor. */
     suspend fun agregado(dataType: String, agregacion: String, desde: Double, hasta: Double): List<BaldeDiario>
@@ -59,6 +75,13 @@ data class PermisosSalud(
     /** Los que falta preguntar (o que este sistema no tiene). */
     val pendientes: List<String>,
 )
+
+/**
+ * El permiso de historial de Health Connect (`historyAccessAuthorized` / `historyAccessAvailable` del plugin). Sin él,
+ * Health Connect no da nada anterior a 30 días, y no avisa: devuelve vacío. [disponible] separa "el cliente lo negó" de
+ * "este Health Connect es viejo y no lo conoce" (en ese caso [autorizado] es false sí o sí).
+ */
+data class HistorialSalud(val autorizado: Boolean, val disponible: Boolean)
 
 /** Un error de la fuente con el texto que da el plugin (va al diagnóstico). */
 class ErrorFuenteSalud(val mensaje: String) : Exception(mensaje) {
@@ -84,7 +107,8 @@ object ClaveSalud {
     const val CURSOR = "mypump_health_backfill_off"        // {"off":20,"alcance":60} o "20" (formato viejo)
     const val INTENTO = "mypump_health_backfill_intento"   // ms del último reintento sin avance
     const val DIAG = "mypump_health_diag"                  // último intento de conectar (JSON)
-    val todas: List<String> = listOf(CONECTADO, ULTIMA_SYNC, DENEGADO, RACHA_VACIA, HISTORIAL_HECHO, CURSOR, INTENTO, DIAG)
+    const val HISTORIAL_OK = "mypump_health_historial_ok"  // "1" | "0": el permiso de historial de Health Connect
+    val todas: List<String> = listOf(CONECTADO, ULTIMA_SYNC, DENEGADO, RACHA_VACIA, HISTORIAL_HECHO, CURSOR, INTENTO, DIAG, HISTORIAL_OK)
 }
 
 // MARK: Resultados

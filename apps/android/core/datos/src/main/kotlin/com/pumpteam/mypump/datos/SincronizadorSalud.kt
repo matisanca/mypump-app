@@ -3,6 +3,7 @@ package com.pumpteam.mypump.datos
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.EntrenoSalud
 import com.pumpteam.mypump.reglas.Js
+import com.pumpteam.mypump.reglas.PlataformaSalud
 import com.pumpteam.mypump.reglas.PuenteSalud
 import com.pumpteam.mypump.reglas.RegistroSalud
 import com.pumpteam.mypump.reglas.RelojLocal
@@ -24,7 +25,8 @@ import kotlinx.coroutines.async
  *   7 días y el historial de 60 de fondo.
  * - [sincronizar]: los últimos 7 días (al abrir, al volver y con el botón), en lotes de 300 a `ingest_salud` y de 200 a
  *   `ingest_entrenos`.
- * - [historial]: 60 días en ventanas de 5 con cursor; se retoma si se cortó, con un reintento cada 6 h si no avanza.
+ * - [historial]: 60 días en ventanas de 5 con cursor; se retoma si se cortó, con un reintento cada 6 h si no avanza. En
+ *   Android sin el permiso de historial de Health Connect, 30 (lo anterior vuelve vacío) y sin darlo por hecho.
  * - "No llega nada" se deduce de los datos: 3 sincronizaciones vacías seguidas, o 60 días sin una muestra.
  *
  * Todo el estado vive en [Preferencias] con las claves de la web. Como el `@MainActor` de iOS, se usa desde UN hilo
@@ -78,6 +80,13 @@ class SincronizadorSalud(
     /** Quién tiene el historial en curso (para no pisar el slot de otro al terminar). */
     private var slot: Any? = null
 
+    /**
+     * El veredicto del permiso de historial de Health Connect (`_historial`, `historialAndroid()`): null hasta que se pide
+     * en esta sesión, y siempre en iOS. Lo que vale entre sesiones es lo guardado ([sinHistorialAndroid]).
+     */
+    var historialAndroid: HistorialSalud? = null
+        private set
+
     // MARK: Estado
 
     val conectado: Boolean get() = almacen.leer(ClaveSalud.CONECTADO) == "1"
@@ -86,6 +95,42 @@ class SincronizadorSalud(
     val sinDatos: Boolean get() = almacen.leer(ClaveSalud.DENEGADO) == "1"
     val ultimaSync: String? get() = almacen.leer(ClaveSalud.ULTIMA_SYNC)
     val historialHecho: Boolean get() = almacen.leer(ClaveSalud.HISTORIAL_HECHO) == "1"
+
+    /**
+     * `_sinHistorialAndroid()`: true si se sabe que Health Connect NO dio el historial (en esta sesión o en una anterior).
+     * Sin veredicto se asume que sí: es iOS, o un Android que todavía no pasó por la hoja.
+     */
+    val sinHistorialAndroid: Boolean
+        get() {
+            if (fuente.plataforma != PlataformaSalud.ANDROID) return false
+            historialAndroid?.let { return !it.autorizado }
+            return almacen.leer(ClaveSalud.HISTORIAL_OK) == "0"
+        }
+
+    /**
+     * Anota el veredicto del historial. PERSISTIDO: el de memoria se pierde al cerrar la app, y sin esto el historial del
+     * arranque siguiente creía tener los 60 días, Health Connect devolvía vacío lo anterior a 30 y quedaba como COMPLETO.
+     */
+    private fun anotarHistorial(h: HistorialSalud) {
+        historialAndroid = h
+        almacen.guardar(ClaveSalud.HISTORIAL_OK, if (h.autorizado) "1" else "0")
+    }
+
+    /**
+     * `_refrescarHistorial()`: re-pregunta por el historial SIN abrir la hoja. El veredicto se guardaba solo al pasar por
+     * los permisos, a los que se llega con "Conectar" (que no se ofrece si ya está conectada): quien negó el historial y
+     * después lo habilitó desde Health Connect se quedaba con 30 días para siempre. Si no se puede preguntar, queda el
+     * veredicto anterior.
+     */
+    private suspend fun refrescarHistorial() {
+        if (fuente.plataforma != PlataformaSalud.ANDROID) return
+        try {
+            fuente.historial()?.let(::anotarHistorial)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
+    }
 
     private val ms: Double get() = RelojLocal.ms(ahora())
 
@@ -197,7 +242,11 @@ class SincronizadorSalud(
             var cosechados = 0
             var ventanas = 0
             var fallaron = 0
-            val alcance = ALCANCE
+            // Android sin el permiso de historial: Health Connect devuelve CERO para todo lo anterior a 30 días, sin error.
+            // Se piden 30, se dice 30, y NO se marca como hecho: el próximo arranque con el permiso completa el resto.
+            refrescarHistorial()   // ¿lo habilitó desde Health Connect?
+            val sinHistorial = sinHistorialAndroid
+            val alcance = if (sinHistorial) ALCANCE_SIN_HISTORIAL else ALCANCE
             val cur = cursorGuardado()
             val desdeOff = if (cur?.alcance != null && cur.alcance >= alcance) minOf(cur.off, alcance) else alcance
             progresoHistorial = (alcance - desdeOff) to alcance
@@ -228,12 +277,13 @@ class SincronizadorSalud(
             val todoFallo = fallaron == ventanas
             val nadaEntro = cosechados > 0 && total == 0
             if (cosechados == 0 && !todoFallo) almacen.guardar(ClaveSalud.DENEGADO, "1")
-            // Se marca hecho solo si al menos una ventana anduvo y entró algo. El orden de las ramas es el de la web: si
+            // Se marca hecho solo si al menos una ventana anduvo, entró algo y se pudo mirar todo el alcance. El orden de
+            // las ramas es el de la web: sin historial el cursor se borra siempre (la corrida de 60 empieza de cero); si
             // se leyó y no entró nada, el cursor queda (en 0) aunque hayan fallado todas.
-            if (!todoFallo && !nadaEntro) {
+            if (!todoFallo && !nadaEntro && !sinHistorial) {
                 almacen.guardar(ClaveSalud.HISTORIAL_HECHO, "1")
                 almacen.guardar(ClaveSalud.CURSOR, null)
-            } else if (!nadaEntro) {
+            } else if (sinHistorial || !nadaEntro) {
                 almacen.guardar(ClaveSalud.CURSOR, null)
             }
             refrescar()
@@ -366,7 +416,13 @@ class SincronizadorSalud(
      */
     internal suspend fun pedirPermisos(): Permisos {
         try {
-            fuente.pedirLectura(PuenteSalud.nucleo)
+            // En Android el historial (más de 30 días) se pide acá, junto con el núcleo; se guarda el veredicto para
+            // distinguir "el cliente lo negó" de "este Health Connect es viejo y no lo conoce".
+            if (fuente.plataforma == PlataformaSalud.ANDROID) {
+                fuente.pedirLecturaConHistorial(PuenteSalud.nucleo)?.let(::anotarHistorial)
+            } else {
+                fuente.pedirLectura(PuenteSalud.nucleo)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -514,6 +570,9 @@ class SincronizadorSalud(
 
     companion object {
         const val ALCANCE = 60
+
+        /** Lo que da Health Connect sin el permiso de historial. */
+        const val ALCANCE_SIN_HISTORIAL = 30
         internal const val ESPERA_REINTENTO = 6.0 * 60 * 60 * 1000
 
         /** `Number(r.data) || 0` como entero (truncado y acotado, sin riesgo con un número raro). */

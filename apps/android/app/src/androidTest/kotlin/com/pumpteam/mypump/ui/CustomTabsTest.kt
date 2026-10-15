@@ -14,6 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.pumpteam.mypump.diseno.TemaMyPump
 import com.pumpteam.mypump.diseno.abrirEnNavegador
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,5 +59,9 @@ class CustomTabsTest {
         val i = capturado!!
         assertEquals("https://pubmed.ncbi.nlm.nih.gov/", i.dataString)
         assertTrue("no es una Custom Tab: ${i.extras?.keySet()}", i.hasExtra("android.support.customtabs.extra.SESSION"))
+        // El navegador va fijo (un link de app.mypumpteam.com no puede volver a la app: NavegadorFueraDeLaAppTest).
+        val propio = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+        assertNotNull("la Custom Tab no fija el navegador", i.`package`)
+        assertNotEquals(propio, i.`package`)
     }
 }
