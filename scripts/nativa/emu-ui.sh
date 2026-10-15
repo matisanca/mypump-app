@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Las pruebas instrumentadas de Android en el emulador (AVD nativa36) y las capturas de evidencia, en claro y en oscuro:
-#   1. borra las capturas viejas del emulador (/data/local/tmp/mypump-capturas);
+#   1. borra las capturas viejas del emulador (/data/local/tmp/mypump-capturas) y desinstala MyPump (y sus pruebas);
 #   2. corre `connectedDebugAndroidTest`: todas (interfaz, Keystore y el WebView del legado) o solo las clases pedidas;
 #   3. baja las capturas y el reporte a ~/Developer/nativa-evidencia/android-ui/<fecha>/.
 # Sin tokens: las de interfaz contestan con el ServidorDePrueba (las respuestas grabadas de test-nativa-real), nunca la red.
@@ -17,6 +17,10 @@ RAIZ=${0:A:h}/../..
 OUT=~/Developer/nativa-evidencia/android-ui/$(date +%Y%m%d-%H%M%S)
 
 adb shell rm -rf /data/local/tmp/mypump-capturas
+# MyPump se instala de cero: después de emu-migracion.sh queda la Capacitor con una cuenta en el localStorage de su
+# WebView, y la nativa, que se instala encima con la misma clave de debug, la adopta al arrancar y las pruebas fallan.
+adb uninstall com.pumpteam.mypump >/dev/null 2>&1 || true
+adb uninstall com.pumpteam.mypump.test >/dev/null 2>&1 || true
 ARGS=()
 [ -n "$CLASES" ] && ARGS=(-Pandroid.testInstrumentationRunnerArguments.class=$CLASES)
 FALLO=0

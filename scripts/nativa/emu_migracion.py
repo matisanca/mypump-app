@@ -359,10 +359,18 @@ def _adb(serial, *args, binario=False):
     return r.stdout if binario else r.stdout.decode("utf-8", "replace")
 
 
+# Un archivo del leveldb del WebView: con WebView 133 es `./app_webview/Default/Local Storage/leveldb/…`, con los viejos
+# `./app_webview/Local Storage/leveldb/…` (lo que buscaba `find -path './app_webview*' -path '*Local Storage/leveldb/*'`).
+_EN_EL_LEVELDB = re.compile(r"^\./app_webview[^/]*/(.*/)?Local Storage/leveldb/.+")
+
+
 def _leveldb(serial):
-    """Los archivos de datos del leveldb del WebView (sin LOCK ni LOG), buscados como los busca la app: sin ruta fija."""
-    salida = _adb(serial, "shell", f"run-as {PKG} find . -path './app_webview*' -path '*Local Storage/leveldb/*' -type f")
-    return sorted(l.strip() for l in salida.splitlines() if l.strip() and not re.search(r"/(LOCK|LOG|LOG\.old)$", l.strip()))
+    """Los archivos de datos del leveldb del WebView (sin LOCK ni LOG), buscados como los busca la app: sin ruta fija.
+    Se listan los archivos de la carpeta de la app y se filtra acá: el `find -path` del toybox de Android 9 (0.7.6) no
+    encuentra nada, y `find -type f` anda en todos."""
+    salida = _adb(serial, "shell", f"run-as {PKG} find . -type f")
+    archivos = (l.strip() for l in salida.splitlines())
+    return sorted(f for f in archivos if _EN_EL_LEVELDB.match(f) and not re.search(r"/(LOCK|LOG|LOG\.old)$", f))
 
 
 def _contiene(serial, texto):
