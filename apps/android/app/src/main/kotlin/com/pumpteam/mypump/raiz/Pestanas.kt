@@ -72,6 +72,10 @@ import com.pumpteam.mypump.diseno.PantallaConTitulo
 import com.pumpteam.mypump.diseno.EstadoVacio
 import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.superficieTarjeta
+import com.pumpteam.mypump.entreno.BarraDescansoEntreno
+import com.pumpteam.mypump.entreno.DialogoPreguntas
+import com.pumpteam.mypump.entreno.EntrenoPantalla
+import com.pumpteam.mypump.entreno.RelojDescanso
 import com.pumpteam.mypump.misdatos.MisDatosPantalla
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.revision.RevisionPantalla
@@ -98,6 +102,9 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val permisoIA = vm.permisoIA
     val estadosPestanas = rememberSaveableStateHolder()
     val badges = badges(modelo, esDemo)
+    val entreno by modelo.entreno.collectAsStateWithLifecycle()
+    // El reloj del descanso corre arriba de las pestañas: termina (y suena) aunque se esté en otra.
+    entreno?.let { RelojDescanso(it) }
 
     // `?scene=` de un link: a su pestaña, y el destino se consume.
     LaunchedEffect(destino) {
@@ -114,7 +121,13 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
         Scaffold(
             containerColor = MyPump.colores.fondo,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            bottomBar = { BarraPestanas(navegacion, badges) },
+            bottomBar = {
+                Column {
+                    // El descanso arriba de la barra de pestañas, a mano desde cualquier pestaña (SES-04).
+                    entreno?.let { BarraDescansoEntreno(it) }
+                    BarraPestanas(navegacion, badges)
+                }
+            },
         ) { relleno ->
             Box(Modifier.fillMaxSize().padding(relleno).consumeWindowInsets(relleno)) {
                 Column(Modifier.fillMaxSize()) {
@@ -127,7 +140,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                     Box(Modifier.weight(1f).then(if (conBanner) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
                         estadosPestanas.SaveableStateProvider(navegacion.pestana.name) {
                             when (navegacion.pestana) {
-                                Pestana.ENTRENO -> PantallaEnConstruccion(Pestana.ENTRENO, modelo)
+                                Pestana.ENTRENO -> EntrenoPantalla(modelo, vm.preguntasEntreno)
                                 Pestana.DIETA -> DietaPantalla(modelo)
                                 Pestana.CHAT -> PantallaEnConstruccion(Pestana.CHAT, modelo)
                                 Pestana.REVISION ->
@@ -142,6 +155,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                     }
                 }
                 AvisoGuardado(estadoGuardado, Modifier.align(Alignment.BottomCenter).padding(bottom = Espacio.s))
+                // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
+                DialogoPreguntas(vm.preguntasEntreno)
             }
         }
         HojaPermisoIA(modelo, permisoIA, vm.viewModelScope)

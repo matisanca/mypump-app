@@ -58,6 +58,8 @@ abstract class PruebaUi {
         reiniciarEstado()
         servidor = ServidorDePrueba()
         Entorno.transporte = servidor
+        // Las fotos del catálogo tampoco van a la red: se ve el marcador.
+        FotosDePrueba.sinRed()
         Raices.instalar()
     }
 
@@ -66,6 +68,7 @@ abstract class PruebaUi {
         for (e in escenarios.asReversed()) runCatching { e.close() }
         escenarios.clear()
         Entorno.transporte = null
+        FotosDePrueba.porRed()
         Raices.desinstalar()
         Telefono.modoNoche(false)
         reiniciarEstado()
