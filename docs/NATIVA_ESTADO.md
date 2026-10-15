@@ -68,8 +68,11 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
 
 **Android 2.0.0**
 1. ✅ Todas las pantallas (f4bf5ce, 15-oct 03:00): no queda ninguna «en construcción».
-2. ☐ Paridad de Android al 100 %.
-3. ☐ Matriz de emuladores con Google Play, en Android 9, 11, 13, 14 y 16:
+2. ⏳ Paridad de Android: quedan 6 en 🟡. ACC-01 espera la firma de Play; GEN-05, GEN-07 y GEN-08 no tienen prueba;
+   DIE-14/15 esperan a mini-vision.
+3. ✅ Matriz de emuladores con Google Play (15-oct, 8733a3c): las 186 instrumentadas con 0 fallas en Android 9, 11, 13,
+   14 y 16. La migración da 31/31 en 13 y 28/31 en 9: los 3 que fallan son de la Capacitor, que no arranca con WebView 66.
+   Pendientes de la lista original:
    - la migración desde la Capacitor 1.0.12;
    - un push real de punta a punta con `push.py` y la cuenta de prueba. El registro ya anda: hay tokens de FCM de
      `test-nativa-android` con `plataforma android` en `mypump_push_devices`. **Falta la entrega**, y espera el OK
@@ -185,11 +188,45 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
      `~/.codex/config.toml`, con backup. Detalle en la bitácora del 15-oct 03:00.
   2. **Push real de Android:** dejar un mensaje de Mati en el chat de `test-nativa-android` (escritura en producción,
      en la cuenta de prueba) para ver la entrega por FCM en el emulador y que tocarlo abra el chat.
-- **En su iPhone, con el TestFlight 105:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
+- **En su iPhone, con el TestFlight 108:** ACC-01/09 (el link de WhatsApp y el universal link) y SAL-13 (Salud real).
 - **Para el envío (G7):** la etiqueta de privacidad con «Other Diagnostic Data» en App Store Connect, y en Play
   Console la subida manual del AAB, Data safety, la declaración de Health Connect y las capturas.
 
 ## Bitácora
+
+- **15-oct 10:20, la matriz de Android y la cola de fotos:**
+  - **La matriz de emuladores con Google Play** la armó un agente y está mergeada en 8733a3c. Las 186 instrumentadas
+    pasan con 0 fallas en Android 9, 11, 13, 14 y 16. Cada salteada tiene su motivo: por ejemplo, Health Connect no
+    viene en 9 a 13. El agente arregló tres errores de la app, cada uno con su prueba:
+    1. **Dieta:** una respuesta tardía de la cuenta A se aplicaba en la cuenta B (comidas libres, alimento propio).
+    2. **Links sin un navegador con Custom Tabs:** la política, las fuentes y Mi reloj abrían cualquier app con ícono,
+       como la cámara o los contactos. Ahora el selector solo ofrece navegadores.
+    3. **Mis fotos:** una foto que no se podía traer dejaba la ruedita girando para siempre, y en Android 9 colgaba la
+       prueba. Ahora queda un ícono, y la descarga tiene un tope de 30 s.
+
+    Además sumó las pruebas de ACC-05, GEN-04 y OFF-06. La JVM da 612/612 después del merge.
+  - **La migración en Android 9 (WebView 66) da 28 de 31.** Los 3 que no dan son de la Capacitor 1.0.12: su web no
+    arranca en un WebView anterior a Chrome 80, por `?.`, `??` y los campos de clase. Todo lo de la nativa pasa. Como
+    es de `public/`, queda para Mati.
+  - **El servicio de fotos no estaba caído.** Desde las 09:35, `/progreso/upload` contesta **429, «muchas fotos por
+    hoy, probá mañana»**. Es el tope de 12 por día y por link, que `test-nativa-android` agotó con las corridas de
+    MIG-03. `/health` y `/progreso/urls` dan 200, así que los clientes no estaban afectados. Ojo con Cloudflare: sin
+    un User-Agent de app contesta 403 con el error 1010.
+  - **Pero eso destapó una pérdida de fotos real.** La cola de fotos, igual que la de la web, borraba la foto al
+    octavo error del servidor. Con la Mini caída Cloudflare contesta 502/530, y con el tope del día el servicio
+    contesta 429: en los dos casos, abriendo la app unas cuantas veces la foto se perdía.
+    - **El arreglo** (eee99a9 en iOS, e17654f en Android): un 5xx o un 429 ya no gastan la foto. Si nunca entra, la
+      corta la ventana +1/−7 del servidor. Un 5xx sigue con la próxima foto, y el 429 corta la pasada y avisa «Hoy ya
+      subiste muchas fotos».
+    - **Evidencia:** REV-03 anota el desvío. Hay tres pruebas por plataforma, y cada una falla con la regla vieja. Kit
+      436/436, JVM 614/614.
+  - **La web tiene el mismo problema** (`flushFotos`, `cliente.html:7583-7602`). Su comentario dice que con el servidor
+    caído la foto tiene que sobrevivir, pero cuenta el 502/530 de Cloudflare como error del servidor. Como es de
+    `public/`, va para Mati.
+  - **La paridad de Android:**
+    - Pasan a ✅ ENT, SER y SES (39 ítems), con la matriz en lugar del teléfono (Mati: «simularlo desde la mac»).
+      También pasan ACC-05, GEN-04 y OFF-06.
+    - Quedan 6 en 🟡.
 
 - **15-oct 06:40, la revisión adversarial de los cambios del día (8cf7369 en iOS y 01b6ae5 en Android):** un agente
   independiente revisó todo lo que cambió desde el TestFlight 104. Encontró tres problemas importantes, cada uno
