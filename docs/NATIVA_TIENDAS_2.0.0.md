@@ -29,14 +29,23 @@ HEALTH DATA (HealthKit)
 Pump Team only READS Health data (steps, sleep, resting heart rate, heart rate
 variability, workouts and related types) to show the client and their coach
 how they are recovering. It never writes to Health. The permission is asked
-after a screen that explains why, and "Not now" skips it.
+after a screen that explains why, and "Not now" skips it. Health data is shown
+only to the client and their coach, and is never sold or used for advertising
+or tracking.
+
+NOT A MEDICAL DEVICE
+
+Pump Team is not a regulated medical device: it does not diagnose, measure or
+treat. It displays a training and nutrition plan authored by the client's
+coach, who is a licensed physician, plus data the client enters.
 
 SCIENTIFIC SOURCES (Guideline 1.4.1)
 
 Every number in Dieta (calorie and macro targets) has a "Ver fuentes" link
 right next to it, and Entreno, Dieta and the health section of Revisión end
-with "Respaldo científico del plan". Both open the full list of sources (ISSN, NASEM, ACSM, WHO, NIH,
-Argentine dietary guidelines) with links, plus a medical disclaimer.
+with "Respaldo científico del plan". Both open the full list of sources
+(ISSN, NASEM, ACSM, WHO, NIH, Argentine dietary guidelines) with links, plus a
+medical disclaimer.
 
 THIRD-PARTY AI (Guideline 5.1.2(i))
 
@@ -57,6 +66,8 @@ PRIVACY
 
 Privacy policy and data deletion are available inside the app (Revisión →
 Mis datos), and at https://app.mypumpteam.com/privacidad.html.
+
+Contact: Salomon Matias Sancari - info@mypumpteam.com
 ```
 
 **Antes de enviar, revisar:**
@@ -97,7 +108,7 @@ comés» (se fue con D10) y «Mi Día» (se fue con D17): describía cosas que l
   ```
   mypump,gimnasio,rutina,fuerza,dieta,macros,fitness,nutricion,progreso,pesas,coach,musculacion
   ```
-- **Descripción:**
+- **Descripción** (el bloque «Respaldo y aviso» del final viene de la 1.0.x, que lo pidió Apple por la 1.4.1):
   ```
   Pump Team es la app con la que seguís tu plan de entrenamiento y nutrición, hecho a medida por Mati, tu coach.
 
@@ -108,6 +119,11 @@ comés» (se fue con D10) y «Mi Día» (se fue con D17): describía cosas que l
   • Progreso: la evolución de tu fuerza y tus cargas en el tiempo.
 
   Pump Team es para clientes activos: Mati te da el acceso. ¿Querés verla por dentro? Tocá "Ver demo" en la pantalla de inicio.
+
+  RESPALDO Y AVISO
+  Las recomendaciones de nutrición y entrenamiento de Pump Team se apoyan en fuentes públicas y revisadas por pares (Mifflin-St Jeor, NASEM/Institute of Medicine, International Society of Sports Nutrition, American College of Sports Medicine, OMS, MedlinePlus/NIH y las Guías Alimentarias para la Población Argentina). Las referencias completas, con sus enlaces, están dentro de la app: Dieta, "Respaldo científico del plan".
+
+  Pump Team es una herramienta de seguimiento, pensada para personas sanas. No es un dispositivo médico y no reemplaza la consulta con un profesional de la salud: consultá a tu médico antes de empezar o de cambiar tu plan.
   ```
 
 ## Capturas
