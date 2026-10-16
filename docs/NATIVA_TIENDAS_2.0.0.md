@@ -87,6 +87,29 @@ MyPump ahora se llama Pump Team y es una app nativa de iPhone: más rápida, má
 Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 ```
 
+## App Store: la ficha con el nombre nuevo (con la 2.0.0, D21)
+
+Lo de `APP_STORE_SUBMISSION.md` §1 y §4 que cambia. La descripción vieja decía «MyPump», «tu coach», «Marcá lo que
+comés» (se fue con D10) y «Mi Día» (se fue con D17): describía cosas que la 2.0.0 ya no tiene.
+- **Nombre:** `Pump Team`. El subtítulo («Entrenamiento y nutrición») y el texto promocional quedan igual.
+- **Palabras clave** (93 de 100): «entrenamiento» ya está en el subtítulo y Apple lo indexa; en su lugar va «mypump»,
+  para que el nombre viejo siga encontrando la app.
+  ```
+  mypump,gimnasio,rutina,fuerza,dieta,macros,fitness,nutricion,progreso,pesas,coach,musculacion
+  ```
+- **Descripción:**
+  ```
+  Pump Team es la app con la que seguís tu plan de entrenamiento y nutrición, hecho a medida por Mati, tu coach.
+
+  • Entrenamiento guiado: tu rutina de la semana con series, repeticiones y descanso. Registrá cada carga a medida que entrenás, con cronómetro de descanso y tu "última vez" en cada ejercicio.
+  • Nutrición: tu plan de comidas con macros y calorías. Elegí entre las opciones de cada comida, cambiá alimentos por equivalentes y sumá comidas libres con una foto o a mano.
+  • Revisión semanal: contá cómo venís en 4 toques, cargá tu peso y subí tus fotos de progreso, que solo ve Mati.
+  • Salud: si querés, tus datos de Apple Salud (pasos, sueño, pulso en reposo y variabilidad) para que Mati vea cómo venís recuperando.
+  • Progreso: la evolución de tu fuerza y tus cargas en el tiempo.
+
+  Pump Team es para clientes activos: Mati te da el acceso. ¿Querés verla por dentro? Tocá "Ver demo" en la pantalla de inicio.
+  ```
+
 ## Capturas
 
 La interfaz cambió entera, así que van capturas nuevas de 6,9" y 13", nunca de un cliente. Las sube Mati.
