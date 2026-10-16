@@ -42,7 +42,8 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
   (G7). Los permisos de las acciones irreversibles van uno por uno.
 
 **iPhone 2.0.0**
-1. ☐ La 1.0.12 publicada por Apple. El 15-oct a las 15:33 la App Store seguía con la 1.0.6. Se mira con
+1. ✅ La 1.0.12 publicada por Apple (15-oct 14:48). La 2.0.0 (build 116) se envió a revisión el 15-oct a las 21:56.
+   Antes: El 15-oct a las 15:33 la App Store seguía con la 1.0.6. Se mira con
    `curl -s "https://itunes.apple.com/lookup?bundleId=com.pumpteam.mypump&country=ar"`.
 2. ⏳ Prueba exhaustiva propia. Estado al 15-oct 05:45:
    - ✅ XCUITest en 26.5 (iPhone 17 Pro), 17.5, 18.6 y el iPad Pro 13". Barrido en el iPhone SE en claro, oscuro y con
@@ -221,6 +222,18 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   build, capturas, notas y «Other Diagnostic Data») y la manda con el escalonado de 7 días.
 
 ## Bitácora
+
+- **15-oct 21:35-21:57, la 2.0.0 enviada a revisión de Apple** (Mati: «Sí, mandala» y, con la pantalla a la vista,
+  «Sí, enviala»). Apple publicó la 1.0.12 a las 14:48 (la tienda de Argentina la mostró a las 21:34; sigue su
+  escalonado). En App Store Connect, con la sesión que abrió Mati:
+  - versión 2.0.0 con el **build 116**, nombre **Pump Team**, la descripción y las palabras clave de
+    `NATIVA_TIENDAS_2.0.0.md` (con el bloque «Respaldo y aviso» de la 1.0.x, que no estaba en el borrador), las
+    novedades y las notas para el revisor (con «not a medical device» y el contacto de la 1.0.12);
+  - capturas nuevas, 8 por tamaño: iPhone 6,3" (el obligatorio de 2026, del iPhone 17 Pro, `6-3-*`), 6,9" y iPad
+    13"; se sacaron de esta versión las 4 viejas de 6,5" y las 4 del iPad (las de la Capacitor, con Mi día);
+  - privacidad publicada con «Otros datos de diagnóstico» (funcionalidad, vinculados, sin seguimiento);
+  - sale sola al aprobarse, escalonada en 7 días, y mantiene las valoraciones.
+  - **Mientras la 2.0.0 esté en revisión, nadie tagea `v*`:** el flujo de la Capacitor cancelaría el envío.
 
 - **15-oct 20:50-21:45, la marca de Pump Team** (Mati: «ya no se respetan los colores de la marca», «donde dice tu
   coach tiene que ser Mati», el nombre Pump Team y el logo en el chat; con las capturas a la vista, «dejá todo así por

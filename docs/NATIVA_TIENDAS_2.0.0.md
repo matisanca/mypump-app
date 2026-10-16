@@ -34,8 +34,8 @@ after a screen that explains why, and "Not now" skips it.
 SCIENTIFIC SOURCES (Guideline 1.4.1)
 
 Every number in Dieta (calorie and macro targets) has a "Ver fuentes" link
-right next to it, and Entreno, Dieta and Mi Día end with "Respaldo científico
-del plan". Both open the full list of sources (ISSN, NASEM, ACSM, WHO, NIH,
+right next to it, and Entreno, Dieta and the health section of Revisión end
+with "Respaldo científico del plan". Both open the full list of sources (ISSN, NASEM, ACSM, WHO, NIH,
 Argentine dietary guidelines) with links, plus a medical disclaimer.
 
 THIRD-PARTY AI (Guideline 5.1.2(i))
@@ -198,7 +198,7 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 2. Conectar Salud de Apple desde Revisión → Mis datos y ver que lleguen sus datos (SAL-13).
 3. Que le llegue un mensaje real de chat y que tocar el aviso abra el Chat.
 
-**App Store (iPhone):**
+**App Store (iPhone): enviada a revisión el 15-oct a las 21:56** (build 116, ver la bitácora de `NATIVA_ESTADO.md`).
 1. Esperar que Apple publique la 1.0.12: es la última para iOS 15 y 16. Se mira con
    `curl -s "https://itunes.apple.com/lookup?bundleId=com.pumpteam.mypump&country=ar"`.
 2. Mati, en App Store Connect:
