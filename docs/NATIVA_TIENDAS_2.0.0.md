@@ -7,25 +7,26 @@ Borrador para cuando toque enviar. Nada de esto se manda sin el OK de Mati (comp
 ```
 WHAT IS NEW IN 2.0.0
 
-MyPump was rebuilt as a fully native iOS app (SwiftUI). Same features, same
-account system and same data: existing users update and keep everything,
-without logging in again.
+MyPump was rebuilt as a fully native iOS app (SwiftUI) and is now called
+Pump Team, the name of the coaching business (the seller, PUMP TEAM LLC).
+Same features, same account system and same data: existing users update and
+keep everything, without logging in again.
 
 HOW TO TEST WITHOUT AN ACCOUNT
 
-MyPump has no signup: clients enter through a personal link their coach sends
+Pump Team has no signup: clients enter through a personal link their coach sends
 them. For review, the app has a built-in demo.
 
 1. Launch the app. On the welcome screen tap "Ver demo" ("See demo"). The app
    loads with sample data. No token, login or account is needed.
 2. The five tabs are Entreno (training), Dieta (nutrition), Chat, Revisión
-   (weekly check-in, progress photos, weight, daily habits) and Progreso.
+   (weekly check-in, progress photos and weight) and Progreso.
 3. In the demo, Chat and the photo-based features are disabled because they
    need a real client account.
 
 HEALTH DATA (HealthKit)
 
-MyPump only READS Health data (steps, sleep, resting heart rate, heart rate
+Pump Team only READS Health data (steps, sleep, resting heart rate, heart rate
 variability, workouts and related types) to show the client and their coach
 how they are recovering. It never writes to Health. The permission is asked
 after a screen that explains why, and "Not now" skips it.
@@ -76,11 +77,11 @@ Mis datos), and at https://app.mypumpteam.com/privacidad.html.
 ## App Store: "Novedades de esta versión" (es-419)
 
 ```
-MyPump ahora es una app nativa de iPhone: más rápida, más fluida y con el modo oscuro de tu teléfono.
+MyPump ahora se llama Pump Team y es una app nativa de iPhone: más rápida, más fluida y con el modo oscuro de tu teléfono.
 
 • Entreno: cargá tus series con un toque, con descanso integrado y avisos aunque salgas de la app.
 • Dieta: reemplazá alimentos con equivalentes reales y mirá la porción con la mano.
-• Revisión: check, fotos, peso y hábitos en un solo lugar.
+• Revisión: check, fotos y peso en un solo lugar.
 • Funciona sin señal: lo que cargás se guarda y se sube solo.
 
 Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
@@ -120,12 +121,15 @@ La 2.0.0 nativa sube como update de `com.pumpteam.mypump`.
 
 ### "Novedades de esta versión" (es-419, hasta 500 caracteres)
 
+Las de la 2.0.1, con el nombre nuevo. Las de la 2.0.0, ya enviadas, empezaban «MyPump ahora es una app nativa de
+Android» y decían «check, fotos, peso y hábitos» (los hábitos se fueron con D17).
+
 ```
-MyPump ahora es una app nativa de Android: más rápida, más fluida y con el modo oscuro de tu teléfono.
+MyPump ahora se llama Pump Team y es una app nativa de Android: más rápida, más fluida y con el modo oscuro de tu teléfono.
 
 • Entreno: cargá tus series con un toque, con descanso integrado y aviso al terminar.
 • Dieta: reemplazá alimentos con equivalentes reales y mirá la porción con la mano.
-• Revisión: check, fotos, peso y hábitos en un solo lugar.
+• Revisión: check, fotos y peso en un solo lugar.
 • Funciona sin señal: lo que cargás se guarda y se sube solo.
 
 Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
@@ -166,7 +170,7 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 
 ## Orden del lanzamiento (quién hace qué)
 
-**Antes de enviar, en el iPhone de Mati con el TestFlight 111** (unos 15 minutos):
+**Antes de enviar, en el iPhone de Mati con el último TestFlight** (unos 15 minutos):
 1. Tocar su link de MyPump desde WhatsApp: abre la app y entra solo (ACC-01/09).
 2. Conectar Salud de Apple desde Revisión → Mis datos y ver que lleguen sus datos (SAL-13).
 3. Que le llegue un mensaje real de chat y que tocar el aviso abra el Chat.
@@ -175,7 +179,9 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 1. Esperar que Apple publique la 1.0.12: es la última para iOS 15 y 16. Se mira con
    `curl -s "https://itunes.apple.com/lookup?bundleId=com.pumpteam.mypump&country=ar"`.
 2. Mati, en App Store Connect:
-   - la versión 2.0.0 con el build del TestFlight;
+   - la versión 2.0.0 con el último build del TestFlight (116 o posterior: el 116 trae la marca, D21);
+   - el nombre **Pump Team** (Información de la app → Nombre). El 15-oct no había otra app con ese nombre en la
+     tienda; el nombre solo se cambia con una versión nueva, así que va con la 2.0.0;
    - las capturas nuevas;
    - las notas de arriba;
    - «Other Diagnostic Data» en la etiqueta de privacidad.
@@ -206,7 +212,9 @@ iPhone. La 2.0.1 trae:
 - lo que Mati pidió el 15-oct para el iPhone (D16-D20): la barra siempre entera, sin Mi día, el peso en el check, el
   ejercicio abierto en la lista y «Ver cómo está mi cuerpo»;
 - el arreglo de la foto que se perdía si el sistema cerraba la app con la cámara abierta (ca212de);
-- el arreglo de la dieta que resucitaba un reemplazo al volver al plan mientras se traía la dieta (2d7adb9).
+- el arreglo de la dieta que resucitaba un reemplazo al volver al plan mientras se traía la dieta (2d7adb9);
+- la marca (D21): el verde del logo, el dorado en los récords, el nombre **Pump Team** debajo del ícono y el logo en el
+  chat. En Play Console hay que cambiar también el título de la ficha a «Pump Team» y el ícono de 512 px, con el envío.
 
 Se manda con las mismas novedades que la 2.0.0 (quien venga de la 1.0.12 va directo a la 2.0.1) y con capturas nuevas.
 La versión corta nueva deja que la palanca remota pida la 2.0.1 a quien tenga la 2.0.0 (`versionMinimaAndroid`). Es otro

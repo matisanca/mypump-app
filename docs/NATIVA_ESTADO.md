@@ -188,6 +188,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | D18 | **El peso va en el check** («Tu peso de hoy», opcional, sale con «Enviar mi check») y la tarjeta de peso sigue para cualquier otro día (Mati, 15-oct) | Misma cola (`peso`) que la tarjeta |
 | D19 | **El ejercicio se abre en la lista de Entreno**, como la card de la web (Mati, 15-oct: «antes era más práctico»). La página del ejercicio queda para la técnica, el video y los comentarios | El motor ya tenía `expandido`; al completar, abre el siguiente |
 | D20 | **«Ver cómo está mi cuerpo»**: la entrada al detalle de salud es un botón a la vista, no un renglón verde (Mati, 15-oct) | Nadie tocaba «Ver todos mis datos» |
+| D21 | **La marca de Pump Team** (Mati, 15-oct: «estos son los colores de mi logo»): el verde del logo (#1D9330; #5BBE62 en oscuro) con blanco encima, el dorado claro (#FACB39) solo en los récords, el nombre **Pump Team** debajo del ícono y en los textos, el torso del ícono como logo en la bienvenida y en el chat (en lugar de la «M»), y «Mati» arriba del chat en vez de «tu coach». El ícono pasa del esmeralda al verde del logo | El paquete, el bundle id, las cuentas y los datos no cambian. En las tiendas el nombre cambia con el envío de cada versión (G7). La web sigue con MyPump y la lima hasta que Mati diga |
 | T1 | Cola, caché y swaps en **JSON con escritura atómica**, sin GRDB | Volumen chico; cero dependencias de terceros |
 | T2 | Cliente RPC propio (URLSession), sin supabase-swift | Hace falta el código HTTP para clasificar errores (aprobado 13-oct) |
 
@@ -220,6 +221,20 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   build, capturas, notas y «Other Diagnostic Data») y la manda con el escalonado de 7 días.
 
 ## Bitácora
+
+- **15-oct 20:50-21:45, la marca de Pump Team** (Mati: «ya no se respetan los colores de la marca», «donde dice tu
+  coach tiene que ser Mati», el nombre Pump Team y el logo en el chat; con las capturas a la vista, «dejá todo así por
+  ahora, con el del torso está bien»):
+  - D21 en las dos apps (fdd3126): el verde del logo, el dorado en los récords, Pump Team debajo del ícono y en los
+    textos, el torso en la bienvenida y en el chat, «Mati» arriba del chat y el ícono en el verde del logo. Ver
+    `nativa-evidencia/pump-team-capturas-15oct.png`.
+  - Pruebas: XCUITest 10/10 (Acceso, Chat, Onboarding y Avisos, 26.5) y 60/60 instrumentadas (Acceso, Chat,
+    Onboarding, Avisos, Tema, Progreso y sus capturas).
+  - Las tiendas (`NATIVA_TIENDAS_2.0.0.md`): las novedades y las notas del revisor con el nombre nuevo y sin «hábitos»
+    (se fueron con D17); el nombre Pump Team va con la 2.0.0 en App Store Connect y con la 2.0.1 en Play, con el ícono
+    de 512 px (`nativa-evidencia/tienda-android/icono-512-pump-team.png`). Las capturas de las tiendas hay que
+    sacarlas de nuevo: las vigentes tienen los colores viejos.
+  - TestFlight 116. La web sigue con MyPump y la lima: no se toca sin Mati.
 
 - **15-oct 19:50-20:45, Android con la letra y los íconos del iPhone** (Mati: «la de android se sigue viendo horrible y
   la de iphone es mejorable», y el OK para bajar la letra y los íconos):
