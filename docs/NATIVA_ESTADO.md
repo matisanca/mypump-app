@@ -232,8 +232,8 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
     Onboarding, Avisos, Tema, Progreso y sus capturas).
   - Las tiendas (`NATIVA_TIENDAS_2.0.0.md`): las novedades y las notas del revisor con el nombre nuevo y sin «hábitos»
     (se fueron con D17); el nombre Pump Team va con la 2.0.0 en App Store Connect y con la 2.0.1 en Play, con el ícono
-    de 512 px (`nativa-evidencia/tienda-android/icono-512-pump-team.png`). Las capturas de las tiendas hay que
-    sacarlas de nuevo: las vigentes tienen los colores viejos.
+    de 512 px (`nativa-evidencia/tienda-android/icono-512-pump-team.png`). Las capturas del App Store, de nuevo con
+    la marca (`nativa-evidencia/tienda/20261015-pump-team`); las de Play, con la 2.0.1.
   - TestFlight 116. La web sigue con MyPump y la lima: no se toca sin Mati.
 
 - **15-oct 19:50-20:45, Android con la letra y los íconos del iPhone** (Mati: «la de android se sigue viendo horrible y

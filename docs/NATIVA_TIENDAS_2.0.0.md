@@ -91,9 +91,9 @@ Tu cuenta y tu historial siguen intactos: actualizá y seguí entrenando.
 
 La interfaz cambió entera, así que van capturas nuevas de 6,9" y 13", nunca de un cliente. Las sube Mati.
 
-- **Las vigentes son del 15-oct a las 11:45**, con la app del TestFlight 110: el contraste de la auditoría de
-  accesibilidad, Mis datos sin IA ni recordatorios y la pista de la última vez como botón. Están en
-  `nativa-evidencia/tienda/20261015-114457`. Las de las 02:36 y las del 14-oct quedaron viejas.
+- **Las vigentes son del 15-oct a las 21:55**, con la marca de Pump Team (D21, el código del TestFlight 116): el verde
+  del logo y el dorado en los récords. Están en `nativa-evidencia/tienda/20261015-pump-team`. Las de las 11:45
+  (`20261015-114457`) y las anteriores quedaron viejas: tienen los colores de antes.
 - `scripts/nativa/capturas-tienda-ios.sh` saca 20 capturas en los simuladores "Tienda 6,9" (iPhone 17 Pro Max, 1320×2868)
   y "Tienda 13" (iPad Pro 13" M5, 2064×2752), en claro y oscuro, con la barra a las 9:41 (con
   `APP=…/dd/mypump/Build/Products/Debug-iphonesimulator/MyPump.app`, la del último XCUITest).
