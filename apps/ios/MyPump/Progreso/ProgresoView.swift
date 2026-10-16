@@ -322,7 +322,8 @@ struct PildoraVariacion: View {
     }
 }
 
-/// Insignia de récord personal: trofeo en lima con texto negro. `compacta`: solo el trofeo (en las filas).
+/// Insignia de récord personal: el trofeo en el oro claro de la marca, con texto negro (el oro es para lo importante,
+/// Mati 15-oct). `compacta`: solo el trofeo (en las filas).
 struct InsigniaPR: View {
     var compacta = false
     @ScaledMetric(relativeTo: .caption2) private var lado: CGFloat = 22
@@ -333,17 +334,17 @@ struct InsigniaPR: View {
                 Image(systemName: "trophy.fill")
                     .font(.caption2.weight(.bold))
                     .frame(width: lado, height: lado)
-                    .background(Color.marca, in: .circle)
+                    .background(Color.oro, in: .circle)
             } else {
                 Label("PR", systemImage: "trophy.fill")
                     .labelStyle(EtiquetaCompacta())
                     .font(.caption2.weight(.heavy))
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
-                    .background(Color.marca, in: .capsule)
+                    .background(Color.oro, in: .capsule)
             }
         }
-        .foregroundStyle(Color.sobreMarca)
+        .foregroundStyle(Color(red: 0x0A / 255, green: 0x0A / 255, blue: 0x0A / 255))
         .accessibilityLabel("Récord personal")
     }
 }

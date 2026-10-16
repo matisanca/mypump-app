@@ -289,18 +289,14 @@ struct ChatView: View {
     }
 }
 
-/// El avatar de Mati: la inicial sobre el lima de la marca.
+/// El avatar de Mati: el logo de Pump Team, el torso blanco sobre el verde de la marca.
 struct AvatarMati: View {
     var lado: CGFloat
 
     var body: some View {
-        Text("M")
-            .font(Archivo.fuente(lado * 0.46, peso: 800, relativoA: .body))
-            .foregroundStyle(Color.sobreMarca)
-            .frame(width: lado, height: lado)
-            .background(Color.marca.gradient, in: .circle)
+        // El logo de Pump Team en lugar de la «M» (pedido de Mati, 15-oct).
+        LogoPumpTeam(lado: lado, circular: true)
             .overlay { Circle().strokeBorder(Color.borde, lineWidth: 1) }
-            .accessibilityHidden(true)
     }
 }
 

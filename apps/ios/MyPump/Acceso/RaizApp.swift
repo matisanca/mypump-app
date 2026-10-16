@@ -167,7 +167,7 @@ private struct ActualizarApp: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("Actualizá MyPump", systemImage: "arrow.down.app")
+            Label("Actualizá Pump Team", systemImage: "arrow.down.app")
         } description: {
             Text("Hay una versión nueva que necesitás para seguir. Lo que ya cargaste está guardado.")
         } actions: {

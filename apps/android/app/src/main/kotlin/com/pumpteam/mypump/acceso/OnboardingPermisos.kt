@@ -229,7 +229,7 @@ fun OnboardingPermisos(modelo: ModeloApp, version: String, alTerminar: () -> Uni
                     )
                     Text(
                         if (esSalud) {
-                            "MyPump puede leer lo que ya mide ${salud?.textos?.telefono ?: "tu teléfono"} o tu reloj: pasos, sueño, pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando de verdad y te ajusta el plan con datos, no a ojo."
+                            "Pump Team puede leer lo que ya mide ${salud?.textos?.telefono ?: "tu teléfono"} o tu reloj: pasos, sueño, pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando de verdad y te ajusta el plan con datos, no a ojo."
                         } else {
                             "Para que te lleguen los mensajes de Mati y su aviso de los domingos para la revisión. Nada más: no te vamos a llenar el teléfono de notificaciones."
                         },
@@ -298,7 +298,7 @@ fun OnboardingPermisos(modelo: ModeloApp, version: String, alTerminar: () -> Uni
 // iOS dice la ruta de sus Ajustes; en Android cambia según la marca, así que se manda a Mis datos, que abre la pantalla justa.
 private const val SIN_PERMISO = "Quedó sin permiso. Si cambiás de idea, lo activás desde Mis datos."
 
-/** El ícono del paso: el corazón en rojo o la campana en el lima de la marca, en un azulejo grande con sombra de su color. */
+/** El ícono del paso: el corazón en rojo o la campana en el verde de la marca, en un azulejo grande con sombra de su color. */
 @Composable
 private fun Azulejo(esSalud: Boolean) {
     val c = MyPump.colores

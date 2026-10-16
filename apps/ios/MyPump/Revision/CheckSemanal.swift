@@ -154,7 +154,7 @@ struct CheckSemanal: View {
     }
 }
 
-/// Una escala de 1 a 5: cinco círculos de 44 pt; el elegido, en lima. Tocar el elegido lo borra.
+/// Una escala de 1 a 5: cinco círculos de 44 pt; el elegido, en verde. Tocar el elegido lo borra.
 private struct EscalaCinco: View {
     let metrica: CheckinSemanal.Metrica
     let icono: String

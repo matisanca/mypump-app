@@ -127,19 +127,16 @@ struct AccesoView: View {
     }
 }
 
-/// El nombre de la app con la marca: Archivo pesada, el lima en "Pump".
+/// La marca: el logo de Pump Team (el del ícono) y el nombre en mayúsculas pesadas, negro, como el logo de Mati.
 struct Marca: View {
     var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "dumbbell.fill")
-                .font(.system(size: 30, weight: .bold))
-                .foregroundStyle(Color.sobreMarca)
-                .frame(width: 72, height: 72)
-                .background(Color.marca, in: .rect(cornerRadius: 20, style: .continuous))
-                .shadow(color: Color.marca.opacity(0.45), radius: 16, y: 6)
-                .accessibilityHidden(true)
-            (Text("My").foregroundStyle(.primary) + Text("Pump").foregroundStyle(Color.marcaTexto))
-                .font(Archivo.fuente(44, peso: 900, relativoA: .largeTitle))
+        VStack(spacing: 12) {
+            LogoPumpTeam(lado: 84)
+                .shadow(color: Color.marca.opacity(0.4), radius: 16, y: 6)
+            Text("PUMP TEAM")
+                .font(Archivo.fuente(40, peso: 900, relativoA: .largeTitle))
+                .tracking(0.5)
+                .foregroundStyle(.primary)
             Text("Tu entrenamiento y tu nutrición, con Mati.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -149,7 +146,7 @@ struct Marca: View {
     }
 }
 
-/// Fondo de las pantallas de acceso: el del sistema con un resplandor lima arriba.
+/// Fondo de las pantallas de acceso: el del sistema con un resplandor verde arriba.
 struct FondoMarca: View {
     var body: some View {
         ZStack(alignment: .top) {

@@ -262,7 +262,7 @@
 				CURRENT_PROJECT_VERSION = 100;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "MyPump-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = MyPump;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -290,7 +290,7 @@
 				EXCLUDED_SOURCE_FILE_NAMES = Muestras.bundle;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "MyPump-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = MyPump;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

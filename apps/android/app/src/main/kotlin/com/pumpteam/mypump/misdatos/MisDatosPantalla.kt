@@ -108,7 +108,7 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
 
         var hayInforme by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { hayInforme = withContext(Dispatchers.IO) { vm.registroMigracion.isFile } }
-        Seccion(null, pie = "MyPump no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.") {
+        Seccion(null, pie = "Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.") {
             FilaValor("Versión", vm.version)
             if (hayInforme) {
                 Separador(sangria = Espacio.m)

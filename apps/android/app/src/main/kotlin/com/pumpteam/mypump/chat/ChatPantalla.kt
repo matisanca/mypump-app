@@ -9,13 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.consumeWindowInsets
-import com.pumpteam.mypump.diseno.LocalRellenoInferior
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -54,14 +53,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -89,11 +86,12 @@ import com.pumpteam.mypump.datos.HiloChat
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloChat
 import com.pumpteam.mypump.diseno.AnchoLectura
-import com.pumpteam.mypump.diseno.Archivo
 import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
+import com.pumpteam.mypump.diseno.LogoPumpTeam
 import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.entreno.Letras
@@ -388,7 +386,7 @@ private fun SeparadorDia(texto: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * Una burbuja: las del cliente a la derecha en lima y las de Mati a la izquierda en la tarjeta (la IA llega como
+ * Una burbuja: las del cliente a la derecha en verde y las de Mati a la izquierda en la tarjeta (la IA llega como
  * `autor='coach'` y se ve igual, CHA-05). Las que todavía no salieron se ven más tenues con "enviando…"; las que la cola
  * abandonó, con "no salió" y Reintentar (el texto nunca se pierde). TalkBack lee "Vos: …" o "Mati: …" y el estado.
  */
@@ -482,23 +480,10 @@ private class FormaBurbuja(private val mia: Boolean, private val conCola: Boolea
     }
 }
 
-/** El avatar de Mati: la "M" en Archivo sobre el lima de la marca. TalkBack no lo lee (el nombre está al lado). */
+/** El avatar de Mati: el logo de Pump Team en lugar de la «M» (pedido de Mati, 15-oct). TalkBack no lo lee. */
 @Composable
 fun AvatarMati(lado: Dp, modifier: Modifier = Modifier) {
-    val c = MyPump.colores
-    // La letra mide lo mismo con cualquier tamaño de letra del teléfono: el círculo no crece con ella.
-    val tamLetra = with(LocalDensity.current) { (lado * 0.46f).toSp() }
-    Box(
-        modifier
-            .size(lado)
-            .clip(CircleShape)
-            .background(Brush.verticalGradient(listOf(lerp(c.marca, Color.White, 0.18f), c.marca)))
-            .border(1.dp, c.borde, CircleShape)
-            .clearAndSetSemantics {},
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("M", style = TextStyle(fontFamily = Archivo, fontWeight = FontWeight.W800, fontSize = tamLetra), color = c.sobreMarca)
-    }
+    LogoPumpTeam(lado, modifier.border(1.dp, MyPump.colores.borde, CircleShape), circular = true)
 }
 
 /**
@@ -575,7 +560,7 @@ private fun Compositor(texto: String, alCambiar: (String) -> Unit, demo: Boolean
     }
 }
 
-/** Enviar: el círculo lima con la flecha cuando hay algo para mandar; apagado, gris sobre la tarjeta. */
+/** Enviar: el círculo verde con la flecha cuando hay algo para mandar; apagado, gris sobre la tarjeta. */
 @Composable
 private fun BotonEnviar(habilitado: Boolean, alEnviar: () -> Unit) {
     val c = MyPump.colores

@@ -211,7 +211,7 @@ private fun ActualizarApp() {
     Box(Modifier.fillMaxSize().fondoMarca().systemBarsPadding().padding(horizontal = 8.dp)) {
         EstadoVacio(
             icono = Iconos.Actualizar,
-            titulo = "Actualizá MyPump",
+            titulo = "Actualizá Pump Team",
             texto = "Hay una versión nueva que necesitás para seguir. Lo que ya cargaste está guardado.",
             accion = { BotonMarca("Abrir Google Play", alTocar = { abrirPlay(contexto) }, compacto = true) },
         )

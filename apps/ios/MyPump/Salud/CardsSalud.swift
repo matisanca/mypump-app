@@ -38,7 +38,7 @@ struct BotonConectarSalud: View {
             return
         }
         if let h = r.historial, await h.value.sinDatos {
-            aviso = "Quedó conectado pero no llegó ningún dato. Fijate que esté todo activado en Ajustes → Privacidad y seguridad → Salud → MyPump."
+            aviso = "Quedó conectado pero no llegó ningún dato. Fijate que esté todo activado en Ajustes → Privacidad y seguridad → Salud → Pump Team."
         }
     }
 }

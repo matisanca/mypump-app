@@ -46,11 +46,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -108,7 +105,7 @@ fun Tarjeta(
 }
 
 /**
- * Botón principal de la marca: lima con texto negro, en cápsula. Deshabilitado no se desvanece (un lima lavado parece un
+ * Botón principal de la marca: verde con texto blanco, en cápsula. Deshabilitado no se desvanece (un verde lavado parece un
  * error): pasa a gris con el texto secundario. Con [cargando] muestra la ruedita.
  */
 @Composable
@@ -199,28 +196,16 @@ fun Aviso(icono: ImageVector, titulo: String, texto: String, modifier: Modifier 
     }
 }
 
-/** La marca: el azulejo lima con la pesa y "MyPump" en Archivo pesada, con "Pump" en verde. */
+/** La marca: el logo de Pump Team (el del ícono) y el nombre en mayúsculas pesadas, negro, como el logo de Mati. */
 @Composable
 fun MarcaMyPump(modifier: Modifier = Modifier, conLema: Boolean = true) {
     val c = MyPump.colores
     Column(modifier = modifier.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .shadow(16.dp, RoundedCornerShape(20.dp), ambientColor = c.marca, spotColor = c.marca)
-                .clip(RoundedCornerShape(20.dp))
-                .background(c.marca),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Iconos.Pesa, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(38.dp))
-        }
-        Spacer(Modifier.height(10.dp))
+        LogoPumpTeam(84.dp, Modifier.shadow(16.dp, RoundedCornerShape(20.dp), ambientColor = c.marca, spotColor = c.marca))
+        Spacer(Modifier.height(12.dp))
         Text(
-            buildAnnotatedString {
-                append("My")
-                withStyle(SpanStyle(color = c.marcaTexto)) { append("Pump") }
-            },
-            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.W900, fontSize = 44.sp, lineHeight = 50.sp),
+            "PUMP TEAM",
+            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.W900, fontSize = 40.sp, lineHeight = 46.sp, letterSpacing = 0.5.sp),
             color = c.texto,
         )
         if (conLema) {
@@ -235,7 +220,7 @@ fun MarcaMyPump(modifier: Modifier = Modifier, conLema: Boolean = true) {
     }
 }
 
-/** Fondo de las pantallas de acceso: el de la app con un resplandor lima arriba. */
+/** Fondo de las pantallas de acceso: el de la app con un resplandor verde arriba. */
 @Composable
 fun Modifier.fondoMarca(): Modifier {
     val c = MyPump.colores

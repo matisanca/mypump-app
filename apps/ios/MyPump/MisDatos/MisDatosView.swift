@@ -61,7 +61,7 @@ struct MisDatosView: View {
                     Text("Notificaciones")
                 } footer: {
                     Text(permiso == .denied
-                         ? "Las notificaciones de MyPump están apagadas en el \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"): los mensajes de Mati no te van a llegar hasta que las prendas."
+                         ? "Las notificaciones de Pump Team están apagadas en el \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"): los mensajes de Mati no te van a llegar hasta que las prendas."
                          : "Para que te lleguen los mensajes de Mati.")
                 }
             }
@@ -102,7 +102,7 @@ struct MisDatosView: View {
                     NavigationLink("Informe de la actualización") { InformeActualizacion() }
                 }
             } footer: {
-                Text("MyPump no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.")
+                Text("Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.")
             }
         }
         .margenesDeLectura()

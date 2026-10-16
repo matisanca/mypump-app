@@ -488,7 +488,7 @@ class AvisosUiTest : PruebaUi() {
         p.tocar(etiqueta("pestana-revision"))
         p.tocar(etiqueta("mis-datos"))
         p.nodo(texto("Activar en Ajustes"))
-        p.nodo(texto("Las notificaciones de MyPump están apagadas en el teléfono: los mensajes de Mati no te van a llegar hasta que las prendas."))
+        p.nodo(texto("Las notificaciones de Pump Team están apagadas en el teléfono: los mensajes de Mati no te van a llegar hasta que las prendas."))
         Telefono.captura("25-mis-datos-ajustes-claro")
         p.tocar(etiqueta("activar-notificaciones"))
         // Abre los ajustes del teléfono, no la hoja.

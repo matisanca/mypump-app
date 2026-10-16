@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.diseno.Iconos
 import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.Oro
+import com.pumpteam.mypump.diseno.SobreOro
 import com.pumpteam.mypump.entreno.Letras
 import com.pumpteam.mypump.salud.curvaMonotona
 import kotlin.math.max
@@ -55,7 +57,8 @@ internal object IconosProgreso {
 }
 
 /**
- * Insignia de récord personal: el trofeo sobre el lima, en negro. [compacta]: solo el trofeo en un círculo (las filas);
+ * Insignia de récord personal: el trofeo sobre el oro claro de la marca, en negro (el oro es para lo importante, Mati
+ * 15-oct). [compacta]: solo el trofeo en un círculo (las filas);
  * si no, la cápsula con "PR" (el detalle). TalkBack lee "Récord personal", salvo con [accesible] en false: adentro de una
  * fila o un encabezado que ya lo dice en su descripción (si no, se leería dos veces).
  */
@@ -66,17 +69,17 @@ fun InsigniaPR(modifier: Modifier = Modifier, compacta: Boolean = false, accesib
     if (compacta) {
         // El lado sigue a la letra, como el `@ScaledMetric` de iOS.
         val lado = with(LocalDensity.current) { (22.dp * fontScale).coerceAtMost(34.dp) }
-        Box(modifier.size(lado).clip(CircleShape).background(c.marca).then(semantica), contentAlignment = Alignment.Center) {
-            Icon(Iconos.Trofeo, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(lado * 0.55f))
+        Box(modifier.size(lado).clip(CircleShape).background(Oro).then(semantica), contentAlignment = Alignment.Center) {
+            Icon(Iconos.Trofeo, contentDescription = null, tint = SobreOro, modifier = Modifier.size(lado * 0.55f))
         }
     } else {
         Row(
-            modifier.clip(CircleShape).background(c.marca).padding(horizontal = 9.dp, vertical = 4.dp).then(semantica),
+            modifier.clip(CircleShape).background(Oro).padding(horizontal = 9.dp, vertical = 4.dp).then(semantica),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(Iconos.Trofeo, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(14.dp))
-            Text("PR", style = Letras.caption.copy(fontWeight = FontWeight.Black), color = c.sobreMarca)
+            Icon(Iconos.Trofeo, contentDescription = null, tint = SobreOro, modifier = Modifier.size(14.dp))
+            Text("PR", style = Letras.caption.copy(fontWeight = FontWeight.Black), color = SobreOro)
         }
     }
 }

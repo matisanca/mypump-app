@@ -1,30 +1,33 @@
 import SwiftUI
 import UIKit
 
-// Identidad de MyPump llevada a lo nativo: el verde lima de la marca como único acento, todo lo demás del sistema
+// Identidad de Pump Team llevada a lo nativo: el verde del logo como único acento, todo lo demás del sistema
 // (fondos agrupados, SF Pro, SF Symbols, materiales) para que se sienta una app de iPhone y no una web.
 //
 // Reglas del sistema visual (valen para todas las pestañas):
 // · Grilla de 8 pt (con medios pasos de 4): `Espacio`.
 // · Esquinas continuas: tarjetas 24, controles 14, miniaturas 12, chips y botones principales en cápsula: `Radio`.
-// · Los colores de la marca son los de la web: negro, blanco y el lima. El lima es un RELLENO con texto negro (botones,
-//   selección, logros) y el color de los gráficos (`marcaVivo`); el texto y los íconos de acento van en negro en claro y
-//   en lima en oscuro (`marcaTexto`). Mati, 15-oct: el verde oliva que había para el texto no es de la marca.
+// · Los colores de la marca son los del logo de Pump Team (y de mypumpteam.com): el verde del torso, negro y blanco, y
+//   un oro claro solo para lo importante (los récords). El verde es el RELLENO de los botones, la selección y los logros,
+//   con texto blanco encima (casi negro en oscuro, como en la web), y el color de los gráficos; para texto e íconos va
+//   uno un poco más hondo que se lee sobre blanco (`marcaTexto`). Mati, 15-oct: «estos son los colores de mi logo».
 // · Vidrio solo en lo que flota sobre el contenido (barras, isla de descanso, compositor del chat): `Vidrio.swift`.
 // · Archivo (la letra de la marca) para números grandes y títulos de día; el resto, SF Pro.
 
 extension Color {
-    /// Relleno de marca (botones principales, día hecho). Siempre con texto negro encima.
-    static let marca = Color(red: 0xB8 / 255, green: 0xF0 / 255, blue: 0x60 / 255)
-    static let sobreMarca = Color(red: 0x0A / 255, green: 0x0A / 255, blue: 0x0A / 255)
-    /// Acento para TEXTO e íconos (links, la pestaña elegida, tildes): negro en claro, como el activo de la web, y lima en
-    /// oscuro. El lima sobre blanco no se lee como texto.
-    static let marcaTexto = Color(claro: UIColor(hex: 0x0A0A0A), oscuro: UIColor(hex: 0xB8F060))
+    /// Relleno de marca (botones principales, día hecho): el verde del logo (#1D9330; en oscuro, el de la web, #5BBE62).
+    static let marca = Color(claro: UIColor(hex: 0x1D9330), oscuro: UIColor(hex: 0x5BBE62))
+    /// Lo que va encima del verde: blanco en claro, casi negro en oscuro (el `--accent-ink` de mypumpteam.com).
+    static let sobreMarca = Color(claro: UIColor(hex: 0xFFFFFF), oscuro: UIColor(hex: 0x040E04))
+    /// Acento para TEXTO e íconos (links, la pestaña elegida, tildes): el verde del logo un poco más hondo en claro, que se
+    /// lee sobre blanco (5,5:1), y el de la web en oscuro.
+    static let marcaTexto = Color(claro: UIColor(hex: 0x157A28), oscuro: UIColor(hex: 0x5BBE62))
     /// Fondo teñido de marca (fila confirmada, aviso de progresión).
-    static let marcaSuave = Color(claro: UIColor(hex: 0xB8F060, alfa: 0.26), oscuro: UIColor(hex: 0xB8F060, alfa: 0.14))
-    /// Lima para GRÁFICOS (anillos, líneas, barras, interruptores): el de la marca; en claro, el «hover» de la web
-    /// (#A8E050), apenas más hondo para que una línea fina se vea sobre blanco.
-    static let marcaVivo = Color(claro: UIColor(hex: 0xA8E050), oscuro: UIColor(hex: 0xB8F060))
+    static let marcaSuave = Color(claro: UIColor(hex: 0x1D9330, alfa: 0.13), oscuro: UIColor(hex: 0x5BBE62, alfa: 0.16))
+    /// Verde para GRÁFICOS (anillos, líneas, barras, interruptores): el del logo.
+    static let marcaVivo = Color(claro: UIColor(hex: 0x1D9330), oscuro: UIColor(hex: 0x5BBE62))
+    /// El oro claro de los highlights importantes (récords): un RELLENO con texto negro, nunca texto sobre blanco.
+    static let oro = Color(red: 0xFA / 255, green: 0xCB / 255, blue: 0x39 / 255)
 
     static let exito = Color(claro: UIColor(hex: 0x16A34A), oscuro: UIColor(hex: 0x30D158))
     static let alerta = Color(claro: UIColor(hex: 0xC2410C), oscuro: UIColor(hex: 0xFF9F0A))
@@ -206,8 +209,8 @@ struct Chip: View {
     }
 }
 
-/// Botón principal de la marca: lima con texto negro, en cápsula como los del sistema. Deshabilitado no se desvanece
-/// (un lima lavado parece un error): pasa a gris con el texto secundario.
+/// Botón principal de la marca: verde con texto blanco, en cápsula como los del sistema. Deshabilitado no se desvanece
+/// (un verde lavado parece un error): pasa a gris con el texto secundario.
 struct BotonMarca: ButtonStyle {
     var compacto: Bool
 

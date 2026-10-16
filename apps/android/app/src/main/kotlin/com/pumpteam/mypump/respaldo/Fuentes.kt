@@ -127,7 +127,7 @@ object Fuentes {
         "Tu plan lo arma Mati, que es médico. Estas son las guías y los trabajos publicados en los que se apoyan los números y las recomendaciones que ves acá."
 
     const val AVISO_LEGAL =
-        "MyPump es una herramienta para seguir tu plan de entrenamiento y nutrición, pensada para personas sanas. No es un dispositivo médico y no reemplaza la consulta con un profesional de la salud. Si tenés alguna condición médica, estás embarazada o tomás medicación, consultá con tu médico antes de empezar o de cambiar tu plan, y avisale a Mati para adaptarlo. Si algo te hace sentir mal, pará y consultá."
+        "Pump Team es una herramienta para seguir tu plan de entrenamiento y nutrición, pensada para personas sanas. No es un dispositivo médico y no reemplaza la consulta con un profesional de la salud. Si tenés alguna condición médica, estás embarazada o tomás medicación, consultá con tu médico antes de empezar o de cambiar tu plan, y avisale a Mati para adaptarlo. Si algo te hace sentir mal, pará y consultá."
 }
 
 /** La hoja con las 14 fuentes. "Abrir fuente" va al navegador del teléfono. */

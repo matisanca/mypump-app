@@ -163,7 +163,7 @@ struct SaludDetalleView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .tint(Color.marcaVivo)   // el lima de la marca, como los otros interruptores
+            .tint(Color.marcaVivo)   // el verde de la marca, como los otros interruptores
             .accessibilityIdentifier("mostrar-score")
         }
     }
@@ -283,7 +283,7 @@ struct SeccionAppleHealth: View {
     private var descripcion: String {
         if estado?.disponible == false { return "Este iPhone no tiene Salud de Apple." }
         if modelo.sinDatos {
-            return "No está llegando ningún dato. Revisá que esté todo activado en Ajustes → Privacidad y seguridad → Salud → MyPump."
+            return "No está llegando ningún dato. Revisá que esté todo activado en Ajustes → Privacidad y seguridad → Salud → Pump Team."
         }
         if modelo.conectado {
             guard let u = modelo.ultimaSync else { return "Conectado" }

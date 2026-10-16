@@ -305,7 +305,7 @@ private struct TarjetaRacha: View {
 
 // MARK: - Últimos 30 días
 
-/// Los últimos 30 días como calendario (DIA-05): lunes a domingo, cumplido en lima, parcial en lima suave, vacío en
+/// Los últimos 30 días como calendario (DIA-05): lunes a domingo, cumplido en verde, parcial en verde suave, vacío en
 /// gris, y hoy con aro. Se trae al abrirla (como la web: un pedido menos al entrar a Revisión).
 private struct UltimosTreintaDias: View {
     /// nil = todavía no se trajo.

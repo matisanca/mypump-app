@@ -22,18 +22,27 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.R
 
-// La identidad de MyPump en Material 3, con los mismos colores que el Tema.swift de iOS:
-// · El lima de la marca es un RELLENO con texto negro encima (botones principales, selección, logros).
-// · Para texto e íconos va `marcaTexto` (en claro un verde oscuro: el lima sobre blanco no tiene contraste) y para gráficos
-//   `marcaVivo`.
+// La identidad de Pump Team en Material 3, con los mismos colores que el Tema.swift de iOS (los del logo y de
+// mypumpteam.com, Mati 15-oct):
+// · El verde del logo es un RELLENO con texto blanco encima (casi negro en oscuro): botones, selección, logros.
+// · Para texto e íconos va `marcaTexto` (en claro un verde un poco más hondo, que se lee sobre blanco) y para gráficos
+//   `marcaVivo`. El oro claro, solo para los highlights importantes (récords).
 // · Archivo (la letra de la marca, OFL) para títulos grandes y números; el resto, la del sistema.
 // · Fondos agrupados: el fondo gris claro (negro en oscuro) y las tarjetas blancas (gris oscuro), como iOS.
 
-/** Relleno de marca (botones principales, día hecho). Siempre con [SobreMarca] encima. */
-val Marca = Color(0xFFB8F060)
+/** Relleno de marca (botones principales, día hecho): el verde del logo. Siempre con [SobreMarca] encima. */
+val Marca = Color(0xFF1D9330)
 
-/** Lo que va encima del lima. */
-val SobreMarca = Color(0xFF0A0A0A)
+/** Lo que va encima del verde: blanco. */
+val SobreMarca = Color(0xFFFFFFFF)
+
+/** En oscuro, el verde de mypumpteam.com y el casi negro encima (`--accent-ink`). */
+val MarcaOscura = Color(0xFF5BBE62)
+val SobreMarcaOscura = Color(0xFF040E04)
+
+/** El oro claro de los highlights importantes (récords): relleno con texto negro, nunca texto sobre blanco. */
+val Oro = Color(0xFFFACB39)
+val SobreOro = Color(0xFF0A0A0A)
 
 /** Los colores propios de MyPump que Material no tiene (macros, señales, superficies agrupadas). */
 @Immutable
@@ -75,11 +84,11 @@ data class ColoresMyPump(
 private val coloresClaros = ColoresMyPump(
     marca = Marca,
     sobreMarca = SobreMarca,
-    // Negro como el activo de la web: el verde oliva de antes no es de la marca (Mati, 15-oct).
-    marcaTexto = Color(0xFF0A0A0A),
-    marcaSuave = Color(0x42B8F060),
-    // El lima de la marca para gráficos e interruptores; en claro, el «hover» de la web, para que se vea sobre blanco.
-    marcaVivo = Color(0xFFA8E050),
+    // El verde del logo un poco más hondo, que se lee sobre blanco (5,5:1).
+    marcaTexto = Color(0xFF157A28),
+    marcaSuave = Color(0x211D9330),
+    // El verde del logo para gráficos e interruptores.
+    marcaVivo = Color(0xFF1D9330),
     exito = Color(0xFF16A34A),
     alerta = Color(0xFFC2410C),
     peligro = Color(0xFFDC2626),
@@ -103,11 +112,11 @@ private val coloresClaros = ColoresMyPump(
 )
 
 private val coloresOscuros = ColoresMyPump(
-    marca = Marca,
-    sobreMarca = SobreMarca,
-    marcaTexto = Color(0xFFB8F060),
-    marcaSuave = Color(0x24B8F060),
-    marcaVivo = Color(0xFFB8F060),
+    marca = MarcaOscura,
+    sobreMarca = SobreMarcaOscura,
+    marcaTexto = MarcaOscura,
+    marcaSuave = Color(0x295BBE62),
+    marcaVivo = MarcaOscura,
     exito = Color(0xFF30D158),
     alerta = Color(0xFFFF9F0A),
     peligro = Color(0xFFFF453A),
@@ -129,7 +138,7 @@ private val coloresOscuros = ColoresMyPump(
     oscuro = true,
 )
 
-// Material: el primario es el verde de texto (botones de texto, interruptores, foco) y el contenedor primario es el lima.
+// Material: el primario es el verde de texto (botones de texto, interruptores, foco) y el contenedor primario es el verde.
 // Las superficies son las agrupadas de iOS: el fondo gris y la barra de pestañas y las tarjetas en blanco.
 private val esquemaClaro = lightColorScheme(
     primary = coloresClaros.marcaTexto,
@@ -139,8 +148,8 @@ private val esquemaClaro = lightColorScheme(
     inversePrimary = Marca,
     secondary = coloresClaros.marcaTexto,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE3F9BF),
-    onSecondaryContainer = Color(0xFF233A06),
+    secondaryContainer = Color(0xFFD6EFD9),
+    onSecondaryContainer = Color(0xFF0B3D14),
     tertiary = coloresClaros.agua,
     onTertiary = Color.White,
     background = coloresClaros.fondo,
@@ -167,15 +176,15 @@ private val esquemaClaro = lightColorScheme(
 )
 
 private val esquemaOscuro = darkColorScheme(
-    primary = Marca,
-    onPrimary = SobreMarca,
-    primaryContainer = Marca,
-    onPrimaryContainer = SobreMarca,
+    primary = MarcaOscura,
+    onPrimary = SobreMarcaOscura,
+    primaryContainer = MarcaOscura,
+    onPrimaryContainer = SobreMarcaOscura,
     inversePrimary = coloresClaros.marcaTexto,
-    secondary = Marca,
-    onSecondary = SobreMarca,
-    secondaryContainer = Color(0xFF3B4A28),
-    onSecondaryContainer = Color(0xFFE1F8BC),
+    secondary = MarcaOscura,
+    onSecondary = SobreMarcaOscura,
+    secondaryContainer = Color(0xFF1E3B22),
+    onSecondaryContainer = Color(0xFFCDEFD1),
     tertiary = coloresOscuros.agua,
     onTertiary = Color.Black,
     background = coloresOscuros.fondo,

@@ -181,7 +181,7 @@ class OnboardingUiTest : PruebaUi() {
         p.nodo(texto("Conectá tu salud"))
         p.nodo(
             texto(
-                "MyPump puede leer lo que ya mide tu teléfono o tu reloj: pasos, sueño, pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando de verdad y te ajusta el plan con datos, no a ojo.",
+                "Pump Team puede leer lo que ya mide tu teléfono o tu reloj: pasos, sueño, pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando de verdad y te ajusta el plan con datos, no a ojo.",
             ),
         )
         p.nodo(texto("Se lee solo. Nunca escribimos nada en tu app de Salud."))

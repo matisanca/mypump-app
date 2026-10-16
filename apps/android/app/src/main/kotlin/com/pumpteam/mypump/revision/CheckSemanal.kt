@@ -235,7 +235,7 @@ private fun estilo(clave: String): Pair<ImageVector, Color> {
     }
 }
 
-/** Una escala de 1 a 5: cinco círculos de 44 dp; el elegido, en lima. Tocar el elegido lo borra. */
+/** Una escala de 1 a 5: cinco círculos de 44 dp; el elegido, en verde. Tocar el elegido lo borra. */
 @Composable
 private fun EscalaCinco(metrica: CheckinSemanal.Metrica, icono: ImageVector, color: Color, valor: Int?, alCambiar: (Int?) -> Unit) {
     val c = MyPump.colores

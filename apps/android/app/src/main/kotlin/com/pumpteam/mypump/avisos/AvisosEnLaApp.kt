@@ -217,7 +217,7 @@ fun SeccionNotificaciones(vm: ModeloAppViewModel, modelo: ModeloApp) {
         }
         PieSeccion(
             if (negado) {
-                "Las notificaciones de MyPump están apagadas en el teléfono: los mensajes de Mati no te van a llegar hasta que las prendas."
+                "Las notificaciones de Pump Team están apagadas en el teléfono: los mensajes de Mati no te van a llegar hasta que las prendas."
             } else {
                 "Para que te lleguen los mensajes de Mati."
             },

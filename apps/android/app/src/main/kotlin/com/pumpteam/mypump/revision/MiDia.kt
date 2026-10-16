@@ -255,7 +255,7 @@ private fun Hoy(h: HabitosHoy, habilitado: Boolean, alTocar: (String, String) ->
     }
 }
 
-/** Entrené / Descansé / Falté (DIA-02): el elegido, en lima. */
+/** Entrené / Descansé / Falté (DIA-02): el elegido, en verde. */
 @Composable
 private fun OpcionEntreno(
     clave: String,
@@ -425,7 +425,7 @@ private fun BotonAgua(icono: ImageVector, descripcion: String, habilitado: Boole
 // MARK: Últimos 30 días
 
 /**
- * Los últimos 30 días como calendario (DIA-05): lunes a domingo, cumplido en lima, parcial en lima suave, vacío en gris,
+ * Los últimos 30 días como calendario (DIA-05): lunes a domingo, cumplido en verde, parcial en verde suave, vacío en gris,
  * y hoy con aro. Se trae al abrirla (como la web: un pedido menos al entrar a Revisión). Sin red, el error y Reintentar
  * en vez de "Cargando…" para siempre.
  */

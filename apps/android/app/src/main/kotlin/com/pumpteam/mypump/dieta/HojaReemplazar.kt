@@ -387,7 +387,7 @@ private fun FilaSustituto(original: Alimento, s: Sustituto, marcado: Boolean, al
     Row(
         Modifier
             .fillMaxWidth()
-            // Opaco: el lima suave es translúcido y dejaba ver la sombra de la tarjeta adentro.
+            // Opaco: el verde suave es translúcido y dejaba ver la sombra de la tarjeta adentro.
             .superficieTarjeta(radio = Radio.control + 4.dp, color = if (marcado) c.marcaSuave.compositeOver(c.tarjeta) else c.tarjeta)
             .clickable(role = Role.RadioButton, onClick = alTocar)
             .padding(horizontal = Espacio.s, vertical = 10.dp)

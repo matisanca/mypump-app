@@ -294,7 +294,7 @@ private object EscalaAnimaciones {
 }
 
 /**
- * Botón con ícono, en las dos formas de la app: el principal (lima con texto negro) y el secundario (gris). El ícono va
+ * Botón con ícono, en las dos formas de la app: el principal (verde con texto blanco) y el secundario (gris). El ícono va
  * adelante ("▶ Empezar entrenamiento") o al final ("Siguiente: Remo →").
  */
 @Composable

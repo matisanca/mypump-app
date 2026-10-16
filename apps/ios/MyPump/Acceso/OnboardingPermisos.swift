@@ -44,7 +44,7 @@ struct OnboardingPermisos: View {
                     .font(Archivo.fuente(28, peso: 800, relativoA: .title1))
                     .multilineTextAlignment(.center)
                 Text(paso == .salud
-                     ? "MyPump puede leer lo que ya mide tu iPhone o tu reloj: pasos, sueño, pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando de verdad y te ajusta el plan con datos, no a ojo."
+                     ? "Pump Team puede leer lo que ya mide tu iPhone o tu reloj: pasos, sueño, pulso en reposo y variabilidad. Con eso Mati ve cómo venís recuperando de verdad y te ajusta el plan con datos, no a ojo."
                      : "Para que te lleguen los mensajes de Mati y su aviso de los domingos para la revisión. Nada más: no te vamos a llenar el teléfono de notificaciones.")
                     .font(.body)
                     .multilineTextAlignment(.center)
@@ -117,7 +117,7 @@ struct OnboardingPermisos: View {
             if ok {
                 siguiente()
             } else {
-                resultado = "Quedó sin permiso. Si cambiás de idea: Ajustes → Notificaciones → MyPump."
+                resultado = "Quedó sin permiso. Si cambiás de idea: Ajustes → Notificaciones → Pump Team."
             }
         }
     }

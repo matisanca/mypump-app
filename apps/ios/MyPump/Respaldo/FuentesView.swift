@@ -76,7 +76,7 @@ struct FuentesView: View {
                     }
                 }
                 Section {
-                    Text("MyPump es una herramienta para seguir tu plan de entrenamiento y nutrición, pensada para personas sanas. No es un dispositivo médico y no reemplaza la consulta con un profesional de la salud. Si tenés alguna condición médica, estás embarazada o tomás medicación, consultá con tu médico antes de empezar o de cambiar tu plan, y avisale a Mati para adaptarlo. Si algo te hace sentir mal, pará y consultá.")
+                    Text("Pump Team es una herramienta para seguir tu plan de entrenamiento y nutrición, pensada para personas sanas. No es un dispositivo médico y no reemplaza la consulta con un profesional de la salud. Si tenés alguna condición médica, estás embarazada o tomás medicación, consultá con tu médico antes de empezar o de cambiar tu plan, y avisale a Mati para adaptarlo. Si algo te hace sentir mal, pará y consultá.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
