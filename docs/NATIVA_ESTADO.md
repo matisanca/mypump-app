@@ -223,6 +223,17 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **17-oct, la 2.0.0 publicada en el App Store y la 2.0.1 (117) por lo de Alan.** Apple la aprobó y salió sola a las
+  04:52, como **Pump Team**, escalonada en 7 días (la espera sin tokens la vio a las 16:58).
+  - Alan Fried, con la 2.0.0 de la tienda: en «Conectá tu salud» tocó «No permitir» y el botón quedó cargando. Se
+    reprodujo en el simulador (testSaludNoPermitirSigueEnseguida, nueva): los permisos iban en dos hojas seguidas
+    (el núcleo y el resto, como la web) y, después de «No permitir», la segunda no aparecía. El onboarding esperaba
+    el corte de 20 s (18 s medidos).
+  - Arreglo (8a1bd6c): una sola hoja con todo; las dos tandas quedan para cuando la hoja entera falla. Los vectores
+    de la web aceptan la hoja única como sus dos tandas (desvío a propósito). Y BotonMarca con `ocupado`: mientras
+    trabaja queda verde, porque en gris la ruedita no se veía (también en Entrar, Cerrar el día y Conectar Salud).
+  - Kit 448/448, XCUITest de Onboarding 3/3. TestFlight 117 (2.0.1). El envío a revisión, con el OK de Mati (G7).
+
 - **15-oct 21:35-21:57, la 2.0.0 enviada a revisión de Apple** (Mati: «Sí, mandala» y, con la pantalla a la vista,
   «Sí, enviala»). Apple publicó la 1.0.12 a las 14:48 (la tienda de Argentina la mostró a las 21:34; sigue su
   escalonado). En App Store Connect, con la sesión que abrió Mati:
