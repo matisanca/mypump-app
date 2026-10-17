@@ -86,7 +86,28 @@ final class FuenteGrabada: FuenteSalud, @unchecked Sendable {
     func disponible() async -> Bool { (try? siguiente("isAvailable") { _ in nil }) != nil }
 
     func pedirLectura(_ tipos: [String]) async throws {
+        // Desvío a propósito (Alan Fried, 17-oct): la nativa pide en una sola hoja el núcleo y el resto, que la web pide
+        // en dos tandas. Si la web hizo las dos sin error, la hoja única vale por las dos; si alguna falló, la hoja
+        // única falla sin consumir nada y la nativa repite las tandas de la web.
+        if let unida = hojaUnica(tipos) {
+            if unida { return }
+            throw ErrorFuenteSalud("la hoja entera falla, como una tanda de la web")
+        }
         _ = try siguiente("requestAuthorization") { e in self.textos(e["read"]) == tipos ? nil : "web \(self.textos(e["read"])), nativa \(tipos)" }
+    }
+
+    /// nil: no es la hoja única. true: vale por las dos tandas de la web. false: alguna tanda de la web falló.
+    private func hojaUnica(_ tipos: [String]) -> Bool? {
+        candado.withLock {
+            guard i < consultas.count, consultas[i]["m"]?.comoTexto == "requestAuthorization" else { return nil }
+            let primera = textos(consultas[i]["read"])
+            guard tipos.count > primera.count, Array(tipos.prefix(primera.count)) == primera else { return nil }
+            guard consultas[i]["error"]?.comoTexto == nil, i + 1 < consultas.count,
+                  consultas[i + 1]["m"]?.comoTexto == "requestAuthorization", consultas[i + 1]["error"]?.comoTexto == nil,
+                  primera + textos(consultas[i + 1]["read"]) == tipos else { return false }
+            i += 2
+            return true
+        }
     }
 
     func permisos(_ tipos: [String]) async throws -> PermisosSalud {

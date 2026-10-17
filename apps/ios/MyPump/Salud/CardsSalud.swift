@@ -22,7 +22,7 @@ struct BotonConectarSalud: View {
             } label: {
                 if modelo.conectando { ProgressView().tint(Color.sobreMarca) } else { Text(titulo) }
             }
-            .buttonStyle(BotonMarca())
+            .buttonStyle(BotonMarca(ocupado: modelo.conectando))
             .disabled(modelo.conectando)
             .accessibilityIdentifier("conectar-salud")
             if let aviso { Text(aviso).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }

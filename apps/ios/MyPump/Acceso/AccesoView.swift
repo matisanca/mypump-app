@@ -90,7 +90,7 @@ struct AccesoView: View {
             } label: {
                 if entrando { ProgressView().tint(Color.sobreMarca) } else { Text("Entrar") }
             }
-            .buttonStyle(BotonMarca())
+            .buttonStyle(BotonMarca(ocupado: entrando))
             .disabled(texto.trimmingCharacters(in: .whitespaces).isEmpty || entrando)
             .opacity(texto.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
             .accessibilityIdentifier("entrar")

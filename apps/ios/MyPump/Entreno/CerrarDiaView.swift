@@ -85,7 +85,7 @@ struct CerrarDiaView: View {
                         Label("Confirmar y cerrar", systemImage: "flag.checkered")
                     }
                 }
-                .buttonStyle(BotonMarca())
+                .buttonStyle(BotonMarca(ocupado: enviando))
                 .disabled(enviando)
                 .padding(.horizontal, Espacio.m)
                 .padding(.top, Espacio.m)

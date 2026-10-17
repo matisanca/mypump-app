@@ -210,29 +210,33 @@ struct Chip: View {
 }
 
 /// Botón principal de la marca: verde con texto blanco, en cápsula como los del sistema. Deshabilitado no se desvanece
-/// (un verde lavado parece un error): pasa a gris con el texto secundario.
+/// (un verde lavado parece un error): pasa a gris con el texto secundario. Con `ocupado` (deshabilitado mientras
+/// trabaja, con la ruedita) se queda verde: en gris la ruedita no se veía y parecía trabado (Alan Fried, 17-oct).
 struct BotonMarca: ButtonStyle {
     var compacto: Bool
+    var ocupado: Bool
 
-    init(compacto: Bool = false) { self.compacto = compacto }
+    init(compacto: Bool = false, ocupado: Bool = false) { self.compacto = compacto; self.ocupado = ocupado }
 
     func makeBody(configuration: Configuration) -> some View {
-        CuerpoBotonMarca(configuration: configuration, compacto: compacto)
+        CuerpoBotonMarca(configuration: configuration, compacto: compacto, ocupado: ocupado)
     }
 }
 
 private struct CuerpoBotonMarca: View {
     let configuration: ButtonStyleConfiguration
     let compacto: Bool
+    let ocupado: Bool
     @Environment(\.isEnabled) private var habilitado
 
     var body: some View {
+        let activo = habilitado || ocupado
         configuration.label
             .font(compacto ? .subheadline.weight(.semibold) : .headline)
-            .foregroundStyle(habilitado ? Color.sobreMarca : Color.secondary)
+            .foregroundStyle(activo ? Color.sobreMarca : Color.secondary)
             .padding(.horizontal, compacto ? 16 : 20)
             .frame(maxWidth: compacto ? nil : .infinity, minHeight: compacto ? 44 : 54)
-            .background(habilitado ? Color.marca : Color.campo, in: .capsule)
+            .background(activo ? Color.marca : Color.campo, in: .capsule)
             .contentShape(.capsule)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .brightness(configuration.isPressed ? -0.06 : 0)

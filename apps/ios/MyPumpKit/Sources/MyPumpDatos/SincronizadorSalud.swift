@@ -290,22 +290,29 @@ public final class SincronizadorSalud {
         var rechazados: [(tipo: String, error: String)] = []
     }
 
-    /// `requestPermission()`: primero el núcleo (existe desde iOS 8: la hoja aparece sí o sí); si falla, lo mínimo
-    /// (pasos y sueño). Después el resto en otra tanda que puede fallar sin arrastrar a la primera; si falla en bloque,
-    /// de a uno: que se pierda un tipo es aceptable, que se lleve puestos a los otros doce, no.
+    /// `requestPermission()`, en una sola hoja: el núcleo y el resto juntos. Con dos hojas seguidas, después de «No
+    /// permitir» la segunda no aparecía y la espera se colgaba hasta el corte de 20 s del onboarding (Alan Fried,
+    /// 17-oct). Si la hoja entera falla (un tipo que este iOS no tiene tira antes de mostrar nada), las tandas de la
+    /// web: primero el núcleo (existe desde iOS 8: la hoja aparece sí o sí); si falla, lo mínimo (pasos y sueño).
+    /// Después el resto en otra tanda que puede fallar sin arrastrar a la primera; si falla en bloque, de a uno: que se
+    /// pierda un tipo es aceptable, que se lleve puestos a los otros doce, no.
     func pedirPermisos() async -> Permisos {
-        do {
-            try await fuente.pedirLectura(PuenteSalud.nucleo)
-        } catch {
-            do { try await fuente.pedirLectura(["steps", "sleep"]) }
-            catch { return Permisos(ok: false, motivo: "error_nativo", detalle: "\(error)") }
-        }
         let resto = PuenteSalud.resto(iosMayor: fuente.iosMayor)
         var rechazados: [(tipo: String, error: String)] = []
-        if !resto.isEmpty {
-            do { try await fuente.pedirLectura(resto) } catch {
-                for t in resto {
-                    do { try await fuente.pedirLectura([t]) } catch { rechazados.append((t, "\(error)")) }
+        do {
+            try await fuente.pedirLectura(PuenteSalud.nucleo + resto)
+        } catch {
+            do {
+                try await fuente.pedirLectura(PuenteSalud.nucleo)
+            } catch {
+                do { try await fuente.pedirLectura(["steps", "sleep"]) }
+                catch { return Permisos(ok: false, motivo: "error_nativo", detalle: "\(error)") }
+            }
+            if !resto.isEmpty {
+                do { try await fuente.pedirLectura(resto) } catch {
+                    for t in resto {
+                        do { try await fuente.pedirLectura([t]) } catch { rechazados.append((t, "\(error)")) }
+                    }
                 }
             }
         }

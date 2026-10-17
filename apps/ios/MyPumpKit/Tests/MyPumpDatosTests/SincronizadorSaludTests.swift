@@ -15,11 +15,14 @@ final class FuenteSimple: FuenteSalud, @unchecked Sendable {
 
     /// La hoja de permisos tarda (para probar el corte del onboarding).
     var demora: Duration?
+    /// Tira si se piden más tipos juntos que estos (en HealthKit, un tipo que el iOS no tiene tira la hoja entera).
+    var tiraConMasDe: Int?
 
     func disponible() async -> Bool { hay }
     func pedirLectura(_ tipos: [String]) async throws {
         if let demora { try? await Task.sleep(for: demora) }
         candado.withLock { pedidos.append(tipos) }
+        if let n = tiraConMasDe, tipos.count > n { throw ErrorFuenteSalud("tipo desconocido") }
     }
     func permisos(_ tipos: [String]) async throws -> PermisosSalud { PermisosSalud(preguntados: tipos, pendientes: []) }
     func agregado(_ dataType: String, agregacion: String, desde: Double, hasta: Double) async throws -> [BaldeDiario] {
@@ -136,14 +139,26 @@ struct SincronizadorSaludTests {
         #expect(!e.disponible && e.total == 0 && e.preguntados == nil)
     }
 
-    @Test func nuncaPideEscrituraYLaSegundaTandaEsElResto() async {
+    /// Alan Fried, 17-oct: con dos hojas, después de «No permitir» la segunda no aparecía y el onboarding esperaba el
+    /// corte de 20 s. Va una sola hoja con todo, y nunca escritura.
+    @Test func nuncaPideEscrituraYPideTodoEnUnaSolaHoja() async {
         let f = FuenteSimple(), b = BaseSimple()
         let (s, _) = sinc(f, b, [ClaveSalud.historialHecho: "1"])
         _ = await s.conectar()
-        #expect(f.pedidos.first == PuenteSalud.nucleo)
-        #expect(f.pedidos.dropFirst().first == PuenteSalud.resto(iosMayor: 18))
+        #expect(f.pedidos == [PuenteSalud.nucleo + PuenteSalud.resto(iosMayor: 18)])
         #expect(Set(f.pedidos.joined()) == Set(PuenteSalud.tiposLectura(iosMayor: 18)))
         #expect(PuenteSalud.tiposLectura(iosMayor: 15).contains("appleSleepingWristTemperature") == false)
+    }
+
+    /// Si la hoja entera falla (antes de mostrar nada), vuelven las dos tandas de la web: el núcleo y después el resto.
+    @Test func siLaHojaEnteraFallaVuelvenLasDosTandas() async {
+        let f = FuenteSimple(), b = BaseSimple()
+        let resto = PuenteSalud.resto(iosMayor: 18)
+        f.tiraConMasDe = max(PuenteSalud.nucleo.count, resto.count)
+        let (s, _) = sinc(f, b, [ClaveSalud.historialHecho: "1"])
+        let r = await s.conectar()
+        #expect(r.ok)
+        #expect(f.pedidos == [PuenteSalud.nucleo + resto, PuenteSalud.nucleo, resto])
     }
 
     @Test func elOnboardingNoEsperaMasDelLimiteYLaConexionSigue() async {

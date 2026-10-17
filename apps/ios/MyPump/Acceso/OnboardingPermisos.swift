@@ -74,7 +74,7 @@ struct OnboardingPermisos: View {
                             Text(paso == .salud ? "Permitir acceso a Salud" : "Activar notificaciones")
                         }
                     }
-                    .buttonStyle(BotonMarca())
+                    .buttonStyle(BotonMarca(ocupado: trabajando))
                     .disabled(trabajando)
                 }
                 // La puerta de salida nunca se traba (la 1.0.4 dejaba "Un momento…" sin salida).

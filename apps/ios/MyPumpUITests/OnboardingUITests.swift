@@ -48,4 +48,53 @@ final class OnboardingUITests: XCTestCase {
         XCTAssertTrue(app.pestana("Dieta").waitForExistence(timeout: 20))
         XCTAssertFalse(app.buttons["Ahora no"].waitForExistence(timeout: 4), "Cerrada deslizando, la hoja volvió a aparecer")
     }
+
+    /// Alan Fried, 17-oct: tocó «Permitir acceso a Salud», en la hoja de Salud bajó hasta abajo, tocó «No permitir» y
+    /// el botón quedó cargando. Con todo rechazado, la hoja de permisos tiene que pasar enseguida a los avisos.
+    /// Con la app recién instalada (si Salud ya preguntó, no muestra la hoja): `simctl uninstall` antes.
+    func testSaludNoPermitirSigueEnseguida() throws {
+        guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Falta MYPUMP_TOKEN: usa una cuenta de prueba, nunca un cliente.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-token", token, "-pestana", "dieta", "-reiniciarOnboarding", "YES"]
+        app.launch()
+        let permitir = app.buttons["Permitir acceso a Salud"]
+        XCTAssertTrue(permitir.waitForExistence(timeout: 20), "No apareció el paso de Salud")
+        permitir.tap()
+        let avisos = app.staticTexts["Que no se te pase nada"]
+        var hojas = 0
+        var ultimoToque = Date()
+        let inicio = Date()
+        while Date().timeIntervalSince(inicio) < 45, !avisos.exists {
+            if let b = noPermitir(app) {
+                hojas += 1
+                let s = XCTAttachment(screenshot: app.screenshot()); s.name = "hoja-salud-\(hojas)"; s.lifetime = .keepAlways; add(s)
+                b.tap()
+                // iOS 26: «Puedes activar las categorías de datos de salud en otro momento desde la app Salud» y «OK».
+                let ok = app.buttons["OK"]
+                if ok.waitForExistence(timeout: 3) { ok.tap() }
+                ultimoToque = Date()
+                sleep(1)
+                let d = XCTAttachment(screenshot: app.screenshot()); d.name = "despues-de-no-permitir-\(hojas)"; d.lifetime = .keepAlways; add(d)
+            }
+            _ = avisos.waitForExistence(timeout: 1)
+        }
+        let espera = Date().timeIntervalSince(ultimoToque)
+        XCTAssertGreaterThan(hojas, 0, "No apareció la hoja de Salud")
+        XCTAssertTrue(avisos.exists, "Después de «No permitir» no pasó a los avisos (hojas: \(hojas))")
+        XCTAssertLessThan(espera, 5, "Después de «No permitir» quedó \(Int(espera)) s cargando (hojas: \(hojas))")
+    }
+
+    /// El «No permitir» de la hoja de Salud, en castellano o en inglés; si está más abajo, baja hasta verlo.
+    private func noPermitir(_ app: XCUIApplication) -> XCUIElement? {
+        for nombre in ["No permitir", "Don’t Allow", "Don't Allow"] {
+            let b = app.buttons[nombre]
+            guard b.exists else { continue }
+            var intentos = 0
+            while !b.isHittable, intentos < 4 { app.swipeUp(); intentos += 1 }
+            if b.isHittable { return b }
+        }
+        return nil
+    }
 }
