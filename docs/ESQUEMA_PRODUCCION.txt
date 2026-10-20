@@ -64,6 +64,7 @@ mypump_finalizar_sesion(p_token text, p_sesion_id uuid, p_notas text, p_duracion
 mypump_get_adherencia_30d(p_token text)
 mypump_get_adherencia_global()
 mypump_get_adherencia_macrociclo(p_cliente_id text)
+mypump_get_ajustes_dieta(p_token text, p_desde date, p_hasta date)
 mypump_get_analisis_cliente(p_cliente_id text, p_limite integer DEFAULT 8)
 mypump_get_analisis_pendientes(p_semana_lunes date DEFAULT NULL::date)
 mypump_get_app_config()
@@ -105,6 +106,7 @@ mypump_get_sesion_dia(p_token text, p_dia_id text, p_semana integer)
 mypump_get_sesiones_semana(p_token text, p_semana integer)
 mypump_get_streak(p_token text)
 mypump_get_suplementos(p_token text)
+mypump_guardar_ajustes_dieta(p_token text, p_fecha date, p_dieta_id uuid, p_tipo_dia text, p_ajustes jsonb, p_resumen jsonb DEFAULT NULL::jsonb, p_kcal_plan numeric DEFAULT NULL::numeric, p_kcal_dia numeric DEFAULT NULL::numeric)
 mypump_guardar_checkin(p_token text, p_fecha date, p_energia smallint, p_descanso smallint, p_hambre smallint, p_adherencia smallint, p_nota text DEFAULT NULL::text)
 mypump_guardar_consentimiento_ia(p_token text, p_acepta boolean, p_plataforma text DEFAULT NULL::text, p_app text DEFAULT NULL::text)
 mypump_ingest_entrenos(p_token text, p_entrenos jsonb)
@@ -231,6 +233,9 @@ lid_phone_map:
 
 message_cache:
   id uuid, cliente_id text, chat_whatsapp_id text, fecha_mensaje timestamp with time zone, autor text, contenido text, tipo text, transcripcion text, duracion_segundos integer, hash_dedup text, leido_por_extension_at timestamp with time zone, metadata jsonb
+
+mypump_ajustes_dieta:
+  cliente_id text, fecha date, dieta_id uuid, tipo_dia text, ajustes jsonb, resumen jsonb, kcal_plan numeric, kcal_dia numeric, creado_en timestamp with time zone, actualizado_en timestamp with time zone
 
 mypump_analisis_semanal:
   id uuid, cliente_id text, semana_lunes date, balde text, motivos jsonb, banderas jsonb, senales jsonb, mensaje_cliente text, sugerencia_coach text, corrida_el timestamp with time zone, resuelto_el timestamp with time zone, created_at timestamp with time zone, mensaje_ajuste text
@@ -417,6 +422,11 @@ CHECK CONSTRAINTS
 ======================================================================
 briefs_preentrega.briefs_preentrega_origen_check: CHECK ((origen = ANY (ARRAY['nocturno'::text, 'ondemand'::text, 'auto-lote'::text, 'reintento'::text, 'auto-form'::text])))
 datos_medicos.datos_medicos_tiene_dueno: CHECK (((client_id IS NOT NULL) OR (paciente_id IS NOT NULL)))
+mypump_ajustes_dieta.mypump_ajustes_dieta_ajustes_check: CHECK (((jsonb_typeof(ajustes) = 'object'::text) AND (pg_column_size(ajustes) <= 16000)))
+mypump_ajustes_dieta.mypump_ajustes_dieta_kcal_dia_check: CHECK (((kcal_dia IS NULL) OR ((kcal_dia >= (0)::numeric) AND (kcal_dia <= (30000)::numeric))))
+mypump_ajustes_dieta.mypump_ajustes_dieta_kcal_plan_check: CHECK (((kcal_plan IS NULL) OR ((kcal_plan >= (0)::numeric) AND (kcal_plan <= (30000)::numeric))))
+mypump_ajustes_dieta.mypump_ajustes_dieta_resumen_check: CHECK (((resumen IS NULL) OR ((jsonb_typeof(resumen) = 'array'::text) AND (pg_column_size(resumen) <= 16000))))
+mypump_ajustes_dieta.mypump_ajustes_dieta_tipo_dia_check: CHECK (((tipo_dia IS NULL) OR (length(tipo_dia) <= 120)))
 mypump_analisis_semanal.mypump_analisis_semanal_balde_check: CHECK ((balde = ANY (ARRAY['ajustar'::text, 'observar'::text, 'bien'::text, 'sin_check'::text])))
 mypump_app_config.mypump_app_config_clave_check: CHECK ((clave ~ '^[a-z0-9_]{1,64}$'::text))
 mypump_chat_borradores.mypump_chat_borradores_clase_check: CHECK ((clase = ANY (ARRAY['simple'::text, 'derivar'::text, 'urgente'::text])))
@@ -504,6 +514,7 @@ mypump_finalizar_sesion: =X/postgres | postgres=X/postgres | anon=X/postgres | a
 mypump_get_adherencia_30d: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_adherencia_global: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_adherencia_macrociclo: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_ajustes_dieta: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_analisis_cliente: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_analisis_pendientes: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_app_config: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -545,6 +556,7 @@ mypump_get_sesion_dia: =X/postgres | postgres=X/postgres | anon=X/postgres | aut
 mypump_get_sesiones_semana: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_streak: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_suplementos: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_guardar_ajustes_dieta: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_guardar_checkin: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_guardar_consentimiento_ia: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_ingest_entrenos: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -589,6 +601,11 @@ mypump_upsert_analisis: postgres=X/postgres | authenticated=X/postgres | service
 ======================================================================
 POLITICAS RLS (qual='true' = no filtra nada)
 ======================================================================
+
+mypump_ajustes_dieta  (RLS ON, 1 politica/s)
+  [ALL] admin all mypump_ajustes_dieta  roles={public}
+      USING (auth.role() = 'authenticated'::text)
+      CHECK (auth.role() = 'authenticated'::text)
 
 mypump_analisis_semanal  (RLS ON, 2 politica/s)
   [ALL] admin all mypump_analisis_semanal  roles={public}

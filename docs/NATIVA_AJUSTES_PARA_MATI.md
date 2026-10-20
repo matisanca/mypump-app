@@ -13,8 +13,8 @@ encargue de mostrarlo. Las apps no se tocan para eso.
 
 ## Dónde está
 
-La tabla `mypump_ajustes_dieta` (migración `supabase/migrations/nativa_004_ajustes_dieta.sql`, **sin aplicar hasta el
-OK de Mati**). Hay una fila por cliente y por día:
+La tabla `mypump_ajustes_dieta` (migración `supabase/migrations/nativa_004_ajustes_dieta.sql`, **aplicada el 20-oct**
+con el OK de Mati). Hay una fila por cliente y por día:
 
 | Columna | Qué es |
 |---|---|
@@ -57,5 +57,6 @@ que usa el teléfono del cliente.
 ## Lo que no hay que suponer
 
 - **No es «Comí / Salté».** Es el plan del día ajustado por el cliente, no lo que comió.
-- **Sin la migración no hay filas.** Los ajustes quedan en el teléfono y suben solos cuando la tabla exista.
+- **Solo desde la 2.0.1 de las apps.** Los que se hicieron antes de la migración (en un TestFlight) suben solos la
+  próxima vez que se abre la app.
 - **Las kcal del resumen ya vienen redondeadas** a porciones servibles. Pueden diferir en unas pocas kcal de lo pedido.

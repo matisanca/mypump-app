@@ -171,7 +171,10 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | Compuerta | Estado |
 |---|---|
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
-| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14) aplicada por Mati el 14-oct a las 18:16**: API pública, esquema (solo agregados) y auditoría sin agujeros, y una sustitución pasa entre dos teléfonos contra producción. **`nativa_004` (los ajustes de porciones, D22): ensayada en rollback contra producción el 20-oct (37 chequeos), espera el OK de Mati.** Sin ella las apps andan igual (los ajustes quedan en el teléfono y suben cuando exista). Pendiente para otra tanda: `mypump_borrar_serie` |
+| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14) aplicada por Mati el 14-oct a las 18:16**: API pública, esquema (solo agregados) y auditoría sin agujeros, y una sustitución pasa entre dos teléfonos contra producción. **`nativa_004` (los ajustes de porciones, D22) aplicada el 20-oct con el OK de Mati** («Sí, aplicala»), después del ensayo en rollback (37 chequeos). Verificado:
+- por la API pública con `test-nativa-real`: leer, guardar, volver al plan (la fila queda con `{}`) y un token inventado da null;
+- el esquema regenerado solo agrega (2 funciones, la tabla y su RLS);
+- `auditar_seguridad_db.py`: ningún agujero. Pendiente para otra tanda: `mypump_borrar_serie` |
 | G4 · descargas | Android: `androidx.browser`, `ui-test-junit4`/`ui-test-manifest` (14-oct) y **Firebase Messaging 25.0.1 + plugin google-services 4.4.4 + Health Connect `connect-client` 1.1.0** («dale», 14-oct 21:10). Son las versiones que ya compila la Capacitor y están en la caché de Gradle. El `google-services.json` es el de `android/app` (ya público, proyecto mypump-663be) |
 | G5 · TestFlight externo | **no va** (Mati, 14-oct 23:50): sin beta con clientes, la reemplaza la prueba exhaustiva propia. Los internos están autorizados |
 | G6 · mensajes a clientes | no hace falta para el lanzamiento (sin beta) |
@@ -233,12 +236,12 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 - **Para el envío a Apple (G7):** iniciar sesión en App Store Connect en Chrome. Con eso, la sesión arma la 2.0.0 (el último
   build, capturas, notas y «Other Diagnostic Data») y la manda con el escalonado de 7 días.
 - **Para la 2.0.1 (20-oct):**
-  1. El OK para aplicar `nativa_004` (G2).
+  1. ~~El OK para aplicar `nativa_004` (G2)~~: aplicada el 20-oct.
   2. En developer.apple.com, el App ID `com.pumpteam.mypump.descanso` y un perfil App Store con el certificado
      `mypump-dist-2026`; después, en Codemagic → Code signing identities, traerlo. O que la sesión lo haga en su Chrome
      con la sesión abierta.
-  3. Cómo quiere ver los ajustes de porciones de los clientes (el Cerebro o el brief los tienen que leer: es código de
-     otra sesión).
+  3. ~~Cómo quiere ver los ajustes~~: en el brief de revisión y en la ficha del Cerebro (20-oct). Se le pasó a la
+     sesión que lleva ese código, con `docs/NATIVA_AJUSTES_PARA_MATI.md`.
   4. El OK de los envíos del miércoles y del 50 % → 100 % de Play.
 
 ## Bitácora
