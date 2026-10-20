@@ -38,6 +38,10 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+
+# Mientras Codex no tenga créditos (hasta el 24-oct inclusive) contesta Claude: ver ia_suscripcion.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ia_suscripcion as IA  # noqa: E402
 from concurrent.futures import ThreadPoolExecutor
 import datetime as dt
 from datetime import datetime
@@ -359,6 +363,9 @@ Devolves JSON con:
 def llamar_codex(prompt):
     """Devuelve (dict, error). El prompt va por STDIN, nunca como argumento.
 
+    Mientras Codex no tenga créditos (hasta el 24-oct-2026 inclusive) contesta Claude CLI con el plan Max
+    (ia_suscripcion.py). El JSON que se pide y su control son los mismos.
+
     Un mensaje de cliente puede tener comillas, saltos de linea y emojis; como
     argumento de shell eso es una fuente de bugs raros y de inyeccion.
 
@@ -366,6 +373,12 @@ def llamar_codex(prompt):
     sesion con suscripcion. Si quedara, cada respuesta se cobraria por API sin
     que nadie lo note hasta la factura.
     """
+    if IA.proveedor() == "claude":
+        texto, err = IA.claude_texto(prompt, TIMEOUT_S)
+        if err:
+            return None, err
+        return _parsear_respuesta(texto)
+
     env = dict(os.environ)
     for k in ("OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_ORG_ID"):
         env.pop(k, None)
@@ -409,7 +422,11 @@ def llamar_codex(prompt):
             texto = it.get("text")
     if not texto:
         return None, "codex no devolvio ningun mensaje"
+    return _parsear_respuesta(texto)
 
+
+def _parsear_respuesta(texto):
+    """(dict, error) a partir del texto del modelo, sea Codex o Claude."""
     # El modelo a veces envuelve el JSON en ```json … ```.
     m = re.search(r"\{.*\}", texto, re.DOTALL)
     if not m:
@@ -484,7 +501,7 @@ def procesar(fila):
     # tendria que abrir el Cerebro solo para saber quien le escribio.
     base = {"cliente_id": fila["cliente_id"], "respuesta_a": fila["mensaje_id"],
             "nombre": fila.get("nombre"), "mensaje": fila.get("mensaje", ""),
-            "modelo": MODELO, "bloqueos": None}
+            "modelo": IA.modelo_actual(MODELO), "bloqueos": None}
 
     try:
         prompt, destapar = prompt_sin_nombre(fila)

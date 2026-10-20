@@ -31,6 +31,10 @@ import sys
 import urllib.request
 from datetime import datetime, timedelta
 
+# Mientras Codex no tenga créditos (hasta el 24-oct inclusive) contesta Claude: ver ia_suscripcion.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ia_suscripcion as IA  # noqa: E402
+
 BASE = pathlib.Path(__file__).resolve().parent
 
 
@@ -160,8 +164,24 @@ def codex_vivo():
     return False, "no devolvio ningun mensaje (¿sesion vencida?)"
 
 
+def claude_vivo():
+    """(ok, detalle) de Claude CLI con el plan Max: el mismo camino que usa el worker (ia_suscripcion)."""
+    texto, err = IA.claude_texto("responde exactamente: ok", 120)
+    if err:
+        return False, err
+    if "ok" in (texto or "").lower():
+        return True, "ok"
+    return False, f"contesto algo raro: {(texto or '')[:80]}"
+
+
+def ia_viva():
+    """(ok, detalle) de la IA que está contestando ahora: Claude hasta el 24-oct inclusive, después Codex."""
+    return claude_vivo() if IA.proveedor() == "claude" else codex_vivo()
+
+
 def main():
-    ok, detalle = codex_vivo()
+    ia = "Claude" if IA.proveedor() == "claude" else "Codex"
+    ok, detalle = ia_viva()
 
     # SEGUNDA OPINION antes de despertar a nadie. El 25-sep el chequeo fallo
     # una vez (a la hora siguiente ya andaba) y el aviso dijo que la IA no le
@@ -171,7 +191,7 @@ def main():
     if not ok and not FORZAR:
         _log(f"primer intento fallo: {detalle} — reintento en {ESPERA_REINTENTO_S}s")
         time.sleep(ESPERA_REINTENTO_S)
-        ok2, detalle2 = codex_vivo()
+        ok2, detalle2 = ia_viva()
         if ok2:
             _log("el reintento anduvo: era pasajero, no aviso")
             ok, detalle = True, "ok (fallo un intento y el siguiente anduvo)"
@@ -179,18 +199,18 @@ def main():
             detalle = f"{detalle} (y al reintentar: {detalle2})"
 
     if ok and not FORZAR:
-        _log("codex ok")
+        _log(f"{ia.lower()} ok")
         # Si venia caido y se recupero, avisar tambien: saber que volvio evita
         # que Mati siga contestando todo a mano por las dudas.
         if ESTADO.exists():
-            whatsapp("✅ El chat con IA volvio a andar. Codex responde de nuevo.")
+            whatsapp(f"✅ El chat con IA volvio a andar. {ia} responde de nuevo.")
             try:
                 ESTADO.unlink()
             except Exception:
                 pass
         return 0
 
-    _log(f"CODEX CAIDO: {detalle}")
+    _log(f"{ia.upper()} CAIDO: {detalle}")
 
     if aviso_reciente() and not FORZAR:
         _log(f"ya avise hace menos de {SILENCIO_H}h — no repito")
@@ -199,7 +219,10 @@ def main():
     # El remedio depende del sintoma: mandar siempre "corre codex login" hacia
     # que Mati tocara la sesion por un problema de red.
     d = (detalle or "").lower()
-    if "sesion" in d or "login" in d or "401" in d or "unauthorized" in d or "no devolvio ningun mensaje" in d:
+    if ia == "Claude" and ("oauth" in d or "token" in d or "401" in d or "unauthorized" in d):
+        remedio = ("Parece el token de Claude del plan Max (CLAUDE_CODE_OAUTH_TOKEN en "
+                   "~/pump-trazabilidad/.env de la Mac mini), el mismo que usa el centinela.")
+    elif "sesion" in d or "login" in d or "401" in d or "unauthorized" in d or "no devolvio ningun mensaje" in d:
         remedio = ("Parece la sesion de Codex. En la Mac mini:\n"
                    "```\n"
                    f"{CODEX} login\n"
@@ -207,12 +230,12 @@ def main():
     elif "no contesto en" in d or "timed out" in d or "timeout" in d:
         remedio = "Parece red o el modelo lento. Si en la proxima hora sigue igual, avisame y lo miro."
     elif "429" in d or "rate limit" in d or "usage limit" in d or "quota" in d:
-        remedio = "Es el limite de uso de la cuenta de Codex: se destraba solo cuando se libera la cuota."
+        remedio = f"Es el limite de uso de la cuenta de {ia}: se destraba solo cuando se libera la cuota."
     else:
         remedio = "No es la sesion (eso se dice aparte). Mandame este mensaje y lo miro."
     texto = (
         "🚨 *El chat con IA esta caido*\n\n"
-        f"Codex no responde: {detalle}\n\n"
+        f"{ia} no responde: {detalle}\n\n"
         "Los mensajes de los clientes NO se pierden: quedan escalados en 💬 Chats "
         "del Cerebro y los contestas vos. Pero hasta que esto se arregle, la IA no "
         "contesta a nadie.\n\n"

@@ -91,6 +91,7 @@ def _correr_main(resultados):
         llamadas["vivo"] += 1
         return resultados[i]
     mod.codex_vivo = vivo
+    mod.ia_viva = vivo   # main() pregunta por la IA que contesta hoy (Claude hasta el 24-oct, después Codex)
     mod.whatsapp = lambda t: (llamadas["wa"].append(t), True)[1]
     mod.time = type("T", (), {"sleep": staticmethod(lambda s: None)})
     mod._log = lambda *a, **k: None

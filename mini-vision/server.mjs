@@ -38,6 +38,15 @@ const PORT         = parseInt(process.env.PORT || '8791', 10);
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gydinputrtptqakdzyvc.supabase.co';
 const ANON_KEY     = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5ZGlucHV0cnRwdHFha2R6eXZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxODk4NDgsImV4cCI6MjA5MTc2NTg0OH0.22TnFVwkRt2817RhmA1Vze8pgZSX-6I42PPTAEwb3Hk';
 const CODEX_BIN    = process.env.CODEX_BIN || 'codex';
+// Mientras Codex no tenga créditos contesta Claude CLI con el plan Max de Mati (20-oct-2026): "hasta finalizar ese
+// día [el 24-oct, cuando se renueva] podés reemplazarlo por claude cli usando mis tokens del plan max y después volver
+// a codex cli como antes, nunca usar api". Desde el 25-oct 00:00 de Argentina vuelve solo a Codex. VISION_IA=claude|codex
+// fuerza uno. Misma regla que pump-centinela/ia_suscripcion.py: si cambia la fecha acá, cambia allá.
+const CLAUDE_BIN    = process.env.CLAUDE_BIN || join(homedir(), '.local', 'bin', 'claude');
+const CLAUDE_MODELO = process.env.PUMP_CLAUDE_MODEL || 'claude-opus-5';
+const CLAUDE_HASTA  = Date.parse('2026-10-25T03:00:00Z');
+const VARIABLES_DE_API = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL',
+                          'ANTHROPIC_API_KEY_FALLBACK', 'OPENAI_API_KEY', 'OPENAI_BASE_URL', 'OPENAI_ORG_ID'];
 // Service key: SOLO para subir/firmar fotos de progreso (bucket privado).
 // Vive en el .env del servicio (chmod 600), nunca en el front.
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY || '';
@@ -238,6 +247,71 @@ function runCodex(imgPath, prompt) {
     if (child.stdin) child.stdin.end();
   });
 }
+
+function proveedorIA(ahora = Date.now()) {
+  const forzado = String(process.env.VISION_IA || '').trim().toLowerCase();
+  if (forzado === 'claude' || forzado === 'codex') return forzado;
+  return ahora < CLAUDE_HASTA ? 'claude' : 'codex';
+}
+
+// El token OAuth del plan Max, el mismo que usa el centinela. Nunca se loguea.
+function tokenClaude() {
+  const t = String(process.env.CLAUDE_CODE_OAUTH_TOKEN || '').trim();
+  if (t) return t;
+  try {
+    for (const linea of readFileSync(join(homedir(), 'pump-trazabilidad', '.env'), 'utf8').split('\n')) {
+      if (linea.startsWith('CLAUDE_CODE_OAUTH_TOKEN=')) return linea.slice(linea.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '');
+    }
+  } catch { /* sin archivo: no hay token */ }
+  return '';
+}
+
+// ── Correr Claude CLI con la imagen ──
+// Claude la abre con su herramienta Read (la única que tiene) desde la carpeta temporal. Sin los MCP del Mini y con
+// el entorno SIN variables de API: así usa el plan Max y no puede cobrar por token. La salida `json` trae el texto en
+// `result`; el JSON del producto se saca después con extraerJSON, igual que con Codex.
+function runClaude(imgPath, prompt) {
+  return new Promise((resolve, reject) => {
+    const tok = tokenClaude();
+    if (!tok) return reject(new Error('sin CLAUDE_CODE_OAUTH_TOKEN (ni en el entorno ni en ~/pump-trazabilidad/.env)'));
+    const env = { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: tok };
+    for (const v of VARIABLES_DE_API) delete env[v];
+    const pedido = `${prompt}\n\nLa foto está en este archivo: ${imgPath}. Abrila con la herramienta Read antes de contestar.`;
+    const args = ['-p', pedido, '--model', CLAUDE_MODELO, '--tools', 'Read', '--allowedTools', 'Read',
+                  '--add-dir', tmpdir(), '--strict-mcp-config', '--output-format', 'json'];
+    const child = execFile(CLAUDE_BIN, args, { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024, cwd: tmpdir(), env },
+      (err, stdout, stderr) => {
+        let d = null;
+        try { d = JSON.parse(String(stdout)); } catch { /* sin JSON: va el stderr */ }
+        if (err || !d || d.is_error) {
+          const detalle = (d && d.result) || String(stderr).slice(-300) || (err && err.message) || 'sin detalle';
+          console.error('[vision] claude err:', String(detalle).slice(0, 300));
+          return reject(new Error(`claude: ${String(detalle).slice(0, 300)}`));
+        }
+        resolve(String(d.result || ''));
+      });
+    child.on('error', reject);
+    if (child.stdin) child.stdin.end();
+  });
+}
+
+// El prompt del plato le pide a Codex que "razone en voz alta ANTES del JSON". Claude bloquea ese pedido (20-oct: "appears
+// to violate our Usage Policy... reverse engineering or duplicating model outputs"), así que para Claude el método va
+// igual pero por dentro, y el JSON sale solo. Si alguna frase dejara de estar en el prompt, se ve en el arranque.
+const PARA_CLAUDE = [
+  ['Seguí este método y razoná brevemente en voz alta ANTES del JSON.', 'Seguí este método por dentro, sin escribirlo.'],
+  ['Decí qué referencia usaste y cuántos cm mide el plato.', 'La referencia y el tamaño del plato van en el campo "escala".'],
+  ['Después del razonamiento respondé SOLO con un objeto JSON válido', 'Respondé SOLO con un objeto JSON válido, sin texto antes ni después,'],
+];
+const PROMPTS_CLAUDE = Object.fromEntries(Object.entries(PROMPTS).map(([tipo, texto]) => [tipo,
+  PARA_CLAUDE.reduce((t, [de, a]) => {
+    if (tipo === 'plato' && !t.includes(de)) console.error(`[vision] el prompt del plato ya no dice: "${de.slice(0, 40)}…"`);
+    return t.replace(de, a);
+  }, texto)]));
+
+const runIA = (imgPath, tipo) => (proveedorIA() === 'claude'
+  ? runClaude(imgPath, PROMPTS_CLAUDE[tipo])
+  : runCodex(imgPath, PROMPTS[tipo]));
 
 // Extrae el ÚLTIMO objeto JSON balanceado del texto (codex agrega logs alrededor).
 function extraerJSON(texto) {
@@ -461,10 +535,10 @@ const server = createServer(async (req, res) => {
     const imgPath = join(tmpdir(), `mypump_vision_${Date.now()}_${Math.floor(Math.random() * 1e6)}.jpg`);
     try {
       await writeFile(imgPath, buf);
-      const out = await runCodex(imgPath, PROMPTS[tipo]);
+      const out = await runIA(imgPath, tipo);
       const json = extraerJSON(out);
       if (!json) {
-        console.error('[vision] sin JSON parseable. Output de codex (últimos 800):', String(out).slice(-800));
+        console.error(`[vision] sin JSON parseable. Output de ${proveedorIA()} (últimos 800):`, String(out).slice(-800));
         return send(res, 502, { ok: false, error: 'no se pudo interpretar la foto, probá con más luz' }, origin);
       }
       send(res, 200, { ok: true, data: tipo === 'plato' ? normalizarPlato(json) : json }, origin);
