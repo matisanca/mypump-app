@@ -107,6 +107,16 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
    publicación administrada está apagada, así que sale sola al aprobarse, al 10 %. Después, 50 % y 100 % mirando los
    recibos de la migración (`scripts/nativa/beta_diario.py`).
 
+**2.0.1 de las dos (para el miércoles 21-oct, Mati: «hacelo el miércoles cuando tengamos más tokens y seguro sea con
+más correcciones»)**
+- Lleva: la hoja única de Salud (lo de Alan Fried), el descanso a la vista (Live Activity en iOS, cuenta regresiva
+  fija en Android, ver D23), los ajustes de porciones (D22) y el botón de foto con cámara y galería en un toque (Alan
+  Ferraro).
+- iOS: el **TestFlight 117** tiene solo lo de Salud. Para el 118 hace falta el perfil de la extensión del descanso (ver
+  «Lo que solo puede hacer Mati»); Codemagic frena y lo dice si falta. Tag `nios-2.0.1-118`.
+- Android: AAB `nand-2.0.1-104`. Play está al 10 % con la 2.0.0; el 50 % y el 100 %, con el OK de Mati.
+- El envío a las dos revisiones, con el OK de Mati (G7).
+
 ## Fase actual: 0, lo que pide el §9
 
 | Paso | Estado |
@@ -161,7 +171,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | Compuerta | Estado |
 |---|---|
 | G1 · bocetos, estimación y decisiones de paridad | pendiente (no frena el motor) |
-| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14) aplicada por Mati el 14-oct a las 18:16**: API pública, esquema (solo agregados) y auditoría sin agujeros, y una sustitución pasa entre dos teléfonos contra producción. Pendiente para otra tanda: `mypump_borrar_serie` |
+| G2 · migraciones de esquema | ✅ **`nativa_001` y `nativa_002` aplicadas** (14-oct, OK de Mati; las corrió él). Verificado por la API pública. Auditoría de seguridad sin agujeros: `mypump_get_app_config` es pública a propósito. Esquema regenerado. **`nativa_003` (sustituciones de ejercicio, SER-14) aplicada por Mati el 14-oct a las 18:16**: API pública, esquema (solo agregados) y auditoría sin agujeros, y una sustitución pasa entre dos teléfonos contra producción. **`nativa_004` (los ajustes de porciones, D22): ensayada en rollback contra producción el 20-oct (37 chequeos), espera el OK de Mati.** Sin ella las apps andan igual (los ajustes quedan en el teléfono y suben cuando exista). Pendiente para otra tanda: `mypump_borrar_serie` |
 | G4 · descargas | Android: `androidx.browser`, `ui-test-junit4`/`ui-test-manifest` (14-oct) y **Firebase Messaging 25.0.1 + plugin google-services 4.4.4 + Health Connect `connect-client` 1.1.0** («dale», 14-oct 21:10). Son las versiones que ya compila la Capacitor y están en la caché de Gradle. El `google-services.json` es el de `android/app` (ya público, proyecto mypump-663be) |
 | G5 · TestFlight externo | **no va** (Mati, 14-oct 23:50): sin beta con clientes, la reemplaza la prueba exhaustiva propia. Los internos están autorizados |
 | G6 · mensajes a clientes | no hace falta para el lanzamiento (sin beta) |
@@ -190,6 +200,8 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | D19 | **El ejercicio se abre en la lista de Entreno**, como la card de la web (Mati, 15-oct: «antes era más práctico»). La página del ejercicio queda para la técnica, el video y los comentarios | El motor ya tenía `expandido`; al completar, abre el siguiente |
 | D20 | **«Ver cómo está mi cuerpo»**: la entrada al detalle de salud es un botón a la vista, no un renglón verde (Mati, 15-oct) | Nadie tocaba «Ver todos mis datos» |
 | D21 | **La marca de Pump Team** (Mati, 15-oct: «estos son los colores de mi logo»): el verde del logo (#1D9330; #5BBE62 en oscuro) con blanco encima, el dorado claro (#FACB39) solo en los récords, el nombre **Pump Team** debajo del ícono y en los textos, el torso del ícono como logo en la bienvenida y en el chat (en lugar de la «M»), y «Mati» arriba del chat en vez de «tu coach». El ícono pasa del esmeralda al verde del logo | El paquete, el bundle id, las cuentas y los datos no cambian. En las tiendas el nombre cambia con el envío de cada versión (G7). La web sigue con MyPump y la lima hasta que Mati diga |
+| D22 | **Ajustar una comida de hoy** (feedback del 20-oct que Mati pidió implementar: sumar o restar kcal y que se recalculen las porciones, compensar en la siguiente; Emilio García Álvarez: sacar el pre-entreno el día que no entrena y «jugar con los gramos»). De a 50 kcal sobre lo que se puede escalar, entre un cuarto y el triple, en porciones servibles; cantidades a mano por alimento, ancladas al alimento; «Hoy no la como»; compensar prendido de entrada; lo que una comida no absorbe sigue a la otra. Vale solo por hoy. Una fila por día en `mypump_ajustes_dieta` (nativa_004); volver al plan guarda `{}` y no borra | La regla es la misma en las dos apps (21 vectores compartidos). La web y el Cerebro no la usan: **para que Mati lo vea hace falta que el Cerebro o el brief lean la tabla**, que es de otra sesión; por eso la hoja no promete «Mati ve estos ajustes» |
+| D23 | **El descanso entre series a la vista** (Ian Actis, 20-oct): grande en el ejercicio y traído a la vista al confirmar la serie; con la app atrás, una Live Activity en iOS (pantalla bloqueada y Dynamic Island) y una cuenta regresiva fija sin sonido en Android (canal de prioridad normal: con la baja no se ve bloqueado en los Pixel). La última serie del día y cerrar el día lo cortan | La extensión `com.pumpteam.mypump.descanso` necesita su propio perfil App Store; la versión y el build van a nivel proyecto para que siempre coincidan con los de la app |
 | T1 | Cola, caché y swaps en **JSON con escritura atómica**, sin GRDB | Volumen chico; cero dependencias de terceros |
 | T2 | Cliente RPC propio (URLSession), sin supabase-swift | Hace falta el código HTTP para clasificar errores (aprobado 13-oct) |
 
@@ -220,8 +232,41 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   link) y SAL-13 (Salud real).
 - **Para el envío a Apple (G7):** iniciar sesión en App Store Connect en Chrome. Con eso, la sesión arma la 2.0.0 (el último
   build, capturas, notas y «Other Diagnostic Data») y la manda con el escalonado de 7 días.
+- **Para la 2.0.1 (20-oct):**
+  1. El OK para aplicar `nativa_004` (G2).
+  2. En developer.apple.com, el App ID `com.pumpteam.mypump.descanso` y un perfil App Store con el certificado
+     `mypump-dist-2026`; después, en Codemagic → Code signing identities, traerlo. O que la sesión lo haga en su Chrome
+     con la sesión abierta.
+  3. Cómo quiere ver los ajustes de porciones de los clientes (el Cerebro o el brief los tienen que leer: es código de
+     otra sesión).
+  4. El OK de los envíos del miércoles y del 50 % → 100 % de Play.
 
 ## Bitácora
+
+- **19/20-oct, lo que pidieron los clientes, con auditoría** (Mati: «arrancá hoy y dejalo todo listo… testeado y
+  funcionando»; después, en esfuerzo máximo: «revisá lo que se fue haciendo en forma de auditoría, mejoralo y seguí»).
+  - **IA:** Codex sin créditos hasta el 24-oct. La visión y el chat de la Mini usan Claude CLI con el plan Max hasta
+    el 25-oct a las 00:00 y después vuelven solos a Codex (940ddea). La auditoría encontró que la visión le dejaba a
+    Claude leer archivos (`--allowedTools Read`): ahora va sin ninguna herramienta, con la foto adentro del mensaje
+    (371fa11). Se revisó y nadie lo aprovechó. El mismo problema en el Pump Bot es código de otra sesión: quedó
+    anotado como tarea aparte.
+  - **Descanso (D23):** Live Activity, tarjeta grande y cuenta regresiva fija en Android (761be72, f3ecc6b, 31ea3de).
+    La auditoría agregó el canal de prioridad normal en Android, el corte al terminar el día y la cola de la Live
+    Activity. Tests: kit, JVM (los dos nuevos fallan sin el arreglo) y 18/18 instrumentadas de avisos.
+  - **Fotos (Alan Ferraro):** cámara y galería con un toque en iOS (a23c833, eddda3e). Android ya lo hacía.
+  - **Ajustes de porciones (D22):** iOS (7606a3e…6bf0bc6) y Android (d1a3614…68805c5). La auditoría cambió la regla
+    antes de portarla:
+    - lo que el tope no deja absorber se perdía: ahora sigue a la otra comida;
+    - las cantidades a mano iban por posición y la dieta se republica con el mismo id (013): ahora van ancladas al
+      alimento y a la unidad;
+    - volver al plan borraba la fila y otro teléfono la resucitaba: ahora guarda `{}`;
+    - si los reemplazos no llegaban, no se hidrataban los ajustes (da38ed9);
+    - la hoja suma las macros (lo que pidió Emilio), el total del día y qué le pasa a cada comida siguiente;
+    - el texto «Mati ve estos ajustes» todavía no era cierto y se cambió por «Vale solo por hoy»;
+    - «pasan a el» → «pasan al».
+  - **Pruebas:** kit 486/486, JVM de Android 607 (1 salteado), XCUITest de Dieta 6/6 y 23/23 instrumentadas de Dieta.
+    Capturas en `nativa-evidencia/dieta/ajustes-2010` y `nativa-evidencia/android-ui/ajustes-2010`.
+  - **Codemagic:** el workflow de iOS frena si falta el perfil de la extensión y revisa la extensión en el IPA.
 
 - **17-oct, la 2.0.0 publicada en el App Store y la 2.0.1 (117) por lo de Alan.** Apple la aprobó y salió sola a las
   04:52, como **Pump Team**, escalonada en 7 días (la espera sin tokens la vio a las 16:58).
