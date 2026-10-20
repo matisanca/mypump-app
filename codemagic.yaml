@@ -305,7 +305,15 @@ workflows:
           set -e
           xcode-project use-profiles
           security find-identity -v -p codesigning | grep -q "Apple Distribution" || { echo "✗ sin identidad Apple Distribution"; exit 1; }
-          echo "✓ Firma lista"
+          # Desde la 2.0.1 viaja la extensión del descanso (Live Activity): necesita su propio perfil App Store, y
+          # `use-profiles` deja sin firmar lo que no tiene perfil (el error recién salía al exportar, 10 minutos después).
+          /usr/libexec/PlistBuddy -c "Print :provisioningProfiles:com.pumpteam.mypump.descanso" "$HOME/export_options.plist" >/dev/null 2>&1 || {
+            echo "✗ falta el perfil App Store de com.pumpteam.mypump.descanso (la extensión del descanso)."
+            echo "  developer.apple.com → Identifiers: crear el App ID; Profiles: uno App Store con el certificado de distribución;"
+            echo "  Codemagic → Code signing identities → iOS provisioning profiles: traerlo."
+            exit 1
+          }
+          echo "✓ Firma lista (app y extensión)"
       - name: Compilar IPA
         script: |
           xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
@@ -323,7 +331,17 @@ workflows:
             grep -q "$k" /tmp/ent.plist || { echo "✗ falta el entitlement $k"; exit 1; }
           done
           ! ls "$APP/PlugIns" 2>/dev/null | grep -qi uitest || { echo "✗ el target de pruebas viaja en el IPA"; exit 1; }
-          echo "✓ IPA revisado"
+          # La Live Activity: la extensión adentro, firmada, con la misma versión y build que la app (Apple rechaza la
+          # subida si difieren) y la app declarando que tiene actividades.
+          EXT="$APP/PlugIns/DescansoWidget.appex"
+          test -d "$EXT" || { echo "✗ falta la extensión del descanso (DescansoWidget.appex)"; exit 1; }
+          codesign --verify --strict "$EXT" || { echo "✗ la extensión del descanso no está bien firmada"; exit 1; }
+          leer() { /usr/libexec/PlistBuddy -c "Print :$1" "$2"; }
+          [ "$(leer CFBundleShortVersionString "$APP/Info.plist")" = "$(leer CFBundleShortVersionString "$EXT/Info.plist")" ] \
+            && [ "$(leer CFBundleVersion "$APP/Info.plist")" = "$(leer CFBundleVersion "$EXT/Info.plist")" ] \
+            || { echo "✗ la extensión no tiene la misma versión y build que la app"; exit 1; }
+          [ "$(leer NSSupportsLiveActivities "$APP/Info.plist")" = "true" ] || { echo "✗ falta NSSupportsLiveActivities en la app"; exit 1; }
+          echo "✓ IPA revisado (con la extensión del descanso $(leer CFBundleShortVersionString "$EXT/Info.plist") ($(leer CFBundleVersion "$EXT/Info.plist")))"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
