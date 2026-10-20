@@ -128,7 +128,8 @@ fun DietaPantalla(modelo: ModeloApp) {
     val comidas = remember(dieta, tipoDia) { modelo.comidasDelDia }
     // La opción que se ve de cada comida: la que se eligió acá, si no la del ajuste de hoy, si no A.
     val vigentes = remember(comidas, opciones, ajustes) {
-        comidas.associate { c -> c.id to min(opciones[c.id] ?: modelo.ajustesDeHoy[c.id]?.opcion ?: 0, max(c.opciones.size - 1, 0)) }
+        // Dentro de las que hay (si Mati vuelve a publicar con menos opciones, la del ajuste puede no existir).
+        comidas.associate { c -> c.id to (opciones[c.id] ?: modelo.ajustesDeHoy[c.id]?.opcion ?: 0).coerceIn(0, max(c.opciones.size - 1, 0)) }
     }
     // El día con las opciones, los reemplazos y los ajustes de hoy: lo que dibujan las tarjetas y la cabecera.
     val dia = remember(comidas, vigentes, swaps, ajustes) { modelo.diaAjustado(vigentes) }
@@ -187,9 +188,15 @@ fun DietaPantalla(modelo: ModeloApp) {
                                         // Las cantidades a mano eran de la otra opción y se descartan (las kcal sumadas o
                                         // restadas, «no la como» y compensar siguen).
                                         val a = modelo.ajustesDeHoy[c.id]
-                                        if (a != null && a.opcion != nueva) {
-                                            val vistas = vigentes + (c.id to nueva)
-                                            alcance.launch { modelo.ajustar(c.id, a.copy(opcion = nueva, cantidades = emptyMap(), anclas = emptyMap()), vistas) }
+                                        if (a != null) {
+                                            if (a.opcion != nueva) {
+                                                val vistas = vigentes + (c.id to nueva)
+                                                alcance.launch { modelo.ajustar(c.id, a.copy(opcion = nueva, cantidades = emptyMap(), anclas = emptyMap()), vistas) }
+                                            }
+                                        } else {
+                                            // Sin ajuste en esta comida, igual cambian las kcal del día: el resumen de los
+                                            // ajustes se rehace.
+                                            alcance.launch { modelo.verOpcion(c.id, nueva) }
                                         }
                                     },
                                     modifier = Modifier.widthIn(max = AnchoLectura),

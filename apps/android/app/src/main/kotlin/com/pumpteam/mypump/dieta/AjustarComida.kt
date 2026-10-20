@@ -83,7 +83,6 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.AjusteComida
 import com.pumpteam.mypump.reglas.AjustePorciones
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.coroutineScope
@@ -108,9 +107,13 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
     val swaps by modelo.swaps.collectAsStateWithLifecycle()
     val teniaAjuste = remember { modelo.ajustesDeHoy[comidaId] != null }
     var borrador by rememberSaveable(stateSaver = SaverAjuste) {
-        val elegida = opciones[comidaId] ?: modelo.ajustesDeHoy[comidaId]?.opcion ?: 0
-        val a = modelo.ajustesDeHoy[comidaId] ?: AjusteComida(opcion = elegida)
-        mutableStateOf(if (a.opcion != elegida) a.copy(opcion = elegida, cantidades = emptyMap(), anclas = emptyMap()) else a)
+        // La opción como la ve la cuenta del día (acotada a las que hay) y el ajuste guardado sin lo que ya no vale (una
+        // cantidad de un alimento que Mati cambió, kcal que ya no entran): si no, los − / + no hacían nada.
+        val comida = modelo.comidasParaAjustar(opciones).firstOrNull { it.id == comidaId }
+        val elegida = comida?.opcion ?: 0
+        var a = modelo.ajustesDeHoy[comidaId] ?: AjusteComida(opcion = elegida)
+        if (a.opcion != elegida) a = a.copy(opcion = elegida, cantidades = emptyMap(), anclas = emptyMap())
+        mutableStateOf(comida?.let { AjustePorciones.anclar(a, it) } ?: a)
     }
     val comidas = remember(guardados, swaps, opciones) { modelo.comidasParaAjustar(opciones) }
     // Los ajustes del día con el borrador en lugar del guardado.
@@ -131,9 +134,13 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
         cerrar()
     }
 
-    /** Sobre el borrador de AHORA (dos toques antes de que se redibuje no pisan uno al otro). */
+    /**
+     * Sobre el borrador de AHORA (dos toques antes de que se redibuje no pisan uno al otro). Con un alimento puesto a mano
+     * entra menos: las kcal sumadas o restadas quedan dentro de lo que la comida absorbe.
+     */
     fun cambiar(f: (AjusteComida) -> AjusteComida) {
-        val nuevo = f(borrador)
+        var nuevo = f(borrador)
+        comida?.let { c -> nuevo = nuevo.copy(deltaKcal = nuevo.deltaKcal.coerceIn(AjustePorciones.limitesDelta(c, nuevo))) }
         if (nuevo == borrador) return
         borrador = nuevo
         tactil.performHapticFeedback(HapticFeedbackType.SegmentTick)
@@ -348,8 +355,9 @@ private fun ControlKcal(comida: AjustePorciones.ComidaDelDia, borrador: AjusteCo
     val c = MyPump.colores
     val paso = AjustePorciones.PASO
     val base = AjustePorciones.baseEscalable(comida, borrador)
-    val minimo = -floor(base * (1 - AjustePorciones.FACTOR_MINIMO) / paso).toInt() * paso
-    val maximo = floor(base * (AjustePorciones.FACTOR_MAXIMO - 1) / paso).toInt() * paso
+    val limites = AjustePorciones.limitesDelta(comida, borrador)
+    val minimo = limites.first
+    val maximo = limites.last
     val activo = !borrador.omitida && base > 0
     val menos = @Composable {
         BotonKcal("−$paso", "Restar $paso kcal", "ajuste-menos", habilitado = activo && borrador.deltaKcal > minimo) {

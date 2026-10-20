@@ -90,10 +90,14 @@ struct DietaView: View {
 
     // MARK: - Contenido
 
-    /// La opción que se ve de cada comida: la que se eligió acá, si no la del ajuste de hoy, si no A.
+    /// La opción que se ve de cada comida: la que se eligió acá, si no la del ajuste de hoy, si no A. Dentro de las que
+    /// hay (si Mati vuelve a publicar con menos opciones, la del ajuste puede no existir).
     private var opcionesVigentes: [String: Int] {
         var r: [String: Int] = [:]
-        for c in modelo.comidasDelDia { r[c.id] = opcion[c.id] ?? modelo.ajustesDeHoy[c.id]?.opcion ?? 0 }
+        for c in modelo.comidasDelDia {
+            let o = opcion[c.id] ?? modelo.ajustesDeHoy[c.id]?.opcion ?? 0
+            r[c.id] = c.opciones.isEmpty ? 0 : min(max(0, o), c.opciones.count - 1)
+        }
         return r
     }
 
@@ -300,11 +304,16 @@ struct DietaView: View {
     /// sumadas o restadas, «no la como» y compensar siguen).
     private func elegirOpcion(_ comidaId: String, _ nueva: Int) {
         withAnimation(.snappy) { opcion[comidaId] = nueva }
-        guard var a = modelo.ajustesDeHoy[comidaId], a.opcion != nueva else { return }
-        a.opcion = nueva
-        a.cantidades = [:]
         let opciones = opcionesVigentes
-        Task { await modelo.ajustar(comidaId, a, opciones: opciones) }
+        if var a = modelo.ajustesDeHoy[comidaId] {
+            guard a.opcion != nueva else { return }
+            a.opcion = nueva
+            a.cantidades = [:]
+            Task { await modelo.ajustar(comidaId, a, opciones: opciones) }
+        } else {
+            // Sin ajuste en esta comida, igual cambian las kcal del día: el resumen de los ajustes se rehace.
+            Task { await modelo.verOpcion(comidaId, nueva) }
+        }
     }
 
     static func letra(_ i: Int) -> String { String(UnicodeScalar(65 + i).map(Character.init) ?? "?") }

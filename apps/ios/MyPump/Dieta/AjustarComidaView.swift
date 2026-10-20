@@ -20,11 +20,23 @@ struct AjustarComidaView: View {
         self.modelo = modelo
         self.comidaId = comidaId
         self.opciones = opciones
-        let elegida = opciones[comidaId] ?? modelo.ajustesDeHoy[comidaId]?.opcion ?? 0
+        // La opción como la ve la cuenta del día (acotada a las que hay) y el ajuste guardado sin lo que ya no vale (una
+        // cantidad de un alimento que Mati cambió, kcal que ya no entran): si no, los − / + no hacían nada.
+        let comida = modelo.comidasParaAjustar(opciones: opciones).first { $0.id == comidaId }
+        let elegida = comida?.opcion ?? 0
         var a = modelo.ajustesDeHoy[comidaId] ?? AjusteComida(opcion: elegida)
         if a.opcion != elegida { a.opcion = elegida; a.cantidades = [:]; a.anclas = [:] }
+        if let comida { a = AjustePorciones.anclar(a, en: comida) }
         _borrador = State(initialValue: a)
         teniaAjuste = modelo.ajustesDeHoy[comidaId] != nil
+    }
+
+    /// Con un alimento puesto a mano entra menos: las kcal sumadas o restadas quedan dentro de lo que la comida absorbe
+    /// (si no, el control decía +500 con +210 de verdad y el −50 no hacía nada).
+    private func acotarBorrador() {
+        guard let c = modelo.comidasParaAjustar(opciones: opciones).first(where: { $0.id == comidaId }) else { return }
+        let d = AjustePorciones.acotarDelta(borrador.deltaKcal, AjustePorciones.limitesDelta(c, borrador))
+        if d != borrador.deltaKcal { borrador.deltaKcal = d }
     }
 
     /// Los ajustes del día con el borrador en lugar del guardado.
@@ -115,6 +127,7 @@ struct AjustarComidaView: View {
                 }
             }
             .sensoryFeedback(.selection, trigger: borrador)
+            .onChange(of: borrador.cantidades) { acotarBorrador() }
         }
         .presentationDetents([.large])
     }
@@ -180,8 +193,8 @@ struct AjustarComidaView: View {
     private func controlKcal(_ comida: AjustePorciones.ComidaDelDia) -> some View {
         let paso = AjustePorciones.paso
         let base = AjustePorciones.baseEscalable(comida, borrador)
-        let minimo = -Int((base * (1 - AjustePorciones.factorMinimo) / Double(paso)).rounded(.down)) * paso
-        let maximo = Int((base * (AjustePorciones.factorMaximo - 1) / Double(paso)).rounded(.down)) * paso
+        let limites = AjustePorciones.limitesDelta(comida, borrador)
+        let minimo = limites.lowerBound, maximo = limites.upperBound
         let activo = !borrador.omitida && base > 0
         let menos = botonKcal("−\(paso)", "Restar \(paso) kcal", "ajuste-menos", habilitado: activo && borrador.deltaKcal > minimo) {
             borrador.deltaKcal = max(minimo, borrador.deltaKcal - paso)
