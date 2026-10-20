@@ -21,13 +21,20 @@ struct BotonFoto<Etiqueta: View>: View {
     @State private var ilegible = false
 
     var body: some View {
-        Menu {
+        Group {
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                Button { camara = true } label: { Label("Sacar foto", systemImage: "camera") }
+                Menu {
+                    Button { camara = true } label: { Label("Sacar foto", systemImage: "camera") }
+                    Button { galeria = true } label: { Label("Elegir de la galería", systemImage: "photo.on.rectangle") }
+                } label: {
+                    etiqueta()
+                }
+            } else {
+                // Sin cámara (iPad sin cámara, cámara bloqueada por Tiempo de uso, simulador): directo a la galería, sin un
+                // menú de una sola opción.
+                Button { galeria = true } label: { etiqueta() }
+                    .buttonStyle(.plain)
             }
-            Button { galeria = true } label: { Label("Elegir de la galería", systemImage: "photo.on.rectangle") }
-        } label: {
-            etiqueta()
         }
         .photosPicker(isPresented: $galeria, selection: $item, matching: .images, photoLibrary: .shared())
         .fullScreenCover(isPresented: $camara) {
