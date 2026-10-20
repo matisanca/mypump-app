@@ -3,8 +3,10 @@ import PhotosUI
 import UIKit
 import MyPumpDatos
 
-/// Elegir una foto para la IA (plato o etiqueta): cámara si hay (en el simulador no) o galería. Devuelve la imagen ya
-/// reducida a JPEG como la web (`_fotoABase64Reducida`: lado mayor ≤ `maxPx`, calidad 0,85, sin metadatos).
+/// Elegir una foto (plato, etiqueta o progreso): un toque muestra «Sacar foto» (si hay cámara; en el simulador no) y
+/// «Elegir de la galería». Antes el toque abría la cámara y la galería salía manteniendo apretado: nadie la encontraba
+/// (Alan Ferraro, 20-oct). Devuelve la imagen ya reducida a JPEG como la web (`_fotoABase64Reducida`: lado mayor ≤
+/// `maxPx`, calidad 0,85, sin metadatos).
 struct BotonFoto<Etiqueta: View>: View {
     let maxPx: CGFloat
     /// Calidad del JPEG: 0,85 para la IA (plato, etiqueta); las fotos de progreso van a 0,7 como en la web.
@@ -26,8 +28,6 @@ struct BotonFoto<Etiqueta: View>: View {
             Button { galeria = true } label: { Label("Elegir de la galería", systemImage: "photo.on.rectangle") }
         } label: {
             etiqueta()
-        } primaryAction: {
-            if UIImagePickerController.isSourceTypeAvailable(.camera) { camara = true } else { galeria = true }
         }
         .photosPicker(isPresented: $galeria, selection: $item, matching: .images, photoLibrary: .shared())
         .fullScreenCover(isPresented: $camara) {
