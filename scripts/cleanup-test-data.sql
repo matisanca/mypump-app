@@ -42,6 +42,16 @@ DELETE FROM mypump_comidas_marcadas  WHERE cliente_id IN (SELECT cliente_id FROM
 DELETE FROM mypump_comidas_libres    WHERE cliente_id IN (SELECT cliente_id FROM _banco);
 DELETE FROM mypump_food_swaps        WHERE cliente_id IN (SELECT cliente_id FROM _banco);
 DELETE FROM mypump_custom_foods      WHERE cliente_id IN (SELECT cliente_id FROM _banco);
+-- Las de la app nativa (nativa_003 y nativa_004), si la migración ya está aplicada.
+DO $$
+BEGIN
+  IF to_regclass('public.mypump_exercise_swaps') IS NOT NULL THEN
+    DELETE FROM mypump_exercise_swaps WHERE cliente_id IN (SELECT cliente_id FROM _banco);
+  END IF;
+  IF to_regclass('public.mypump_ajustes_dieta') IS NOT NULL THEN
+    DELETE FROM mypump_ajustes_dieta WHERE cliente_id IN (SELECT cliente_id FROM _banco);
+  END IF;
+END $$;
 
 -- ── Revisión ──
 DELETE FROM mypump_checkin_semanal   WHERE cliente_id IN (SELECT cliente_id FROM _banco);

@@ -312,7 +312,103 @@ def chequeos_003(cur, token, otro):
         cur.execute("ROLLBACK TO SAVEPOINT s")
 
 
-CHEQUEOS = {"nativa_001": chequeos_001, "nativa_002": chequeos_002, "nativa_003": chequeos_003}
+def chequeos_004(cur, token, otro):
+    """nativa_004: los ajustes de porciones del día (feedback del 20-oct). Una fila por día que nunca se borra, ventana
+    +1/−7."""
+    nadie = "no-es-un-token-de-nadie-000000"
+    cur.execute("SELECT (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date")
+    hoy = cur.fetchone()[0]
+    guardar = "SELECT mypump_guardar_ajustes_dieta(%s, %s::date, %s::uuid, %s, %s::jsonb, %s::jsonb, %s, %s)"
+    leer = "SELECT mypump_get_ajustes_dieta(%s, %s::date, %s::date)"
+    dieta = str(uuid.uuid4())
+    ajustes = {"desayuno": {"deltaKcal": 200, "compensar": True, "omitida": False, "opcion": 0, "cantidades": {}},
+               "pre": {"deltaKcal": 0, "compensar": False, "omitida": True, "opcion": 0, "cantidades": {}}}
+    resumen = [{"comida_id": "desayuno", "nombre": "Desayuno", "kcal_plan": 719, "kcal_dia": 925, "omitida": False},
+               {"comida_id": "pre", "nombre": "Pre-entreno", "kcal_plan": 245, "kcal_dia": 0, "omitida": True}]
+
+    def uno(sql, args):
+        cur.execute(sql, args)
+        return cur.fetchone()[0]
+
+    def da_22023(nombre, sql, args):
+        cur.execute("SAVEPOINT s")
+        try:
+            cur.execute(sql, args)
+            chequear(f"{nombre} → error 22023", False, "no dio error")
+        except psycopg2.errors.InvalidParameterValue:
+            chequear(f"{nombre} → error 22023", True)
+        cur.execute("ROLLBACK TO SAVEPOINT s")
+
+    import datetime as _dt
+    print("▸ Lectura y escritura")
+    chequear("sin ajustes: lista vacía", uno(leer, (token, hoy, hoy)) == [])
+    chequear("guardar → TRUE", uno(guardar, (token, hoy, dieta, "entreno", json.dumps(ajustes), json.dumps(resumen), 1577, 1538)) is True)
+    filas = uno(leer, (token, hoy, hoy))
+    chequear("se lee lo guardado", len(filas) == 1 and filas[0]["ajustes"] == ajustes and filas[0]["tipo_dia"] == "entreno"
+             and filas[0]["dieta_id"] == dieta and filas[0]["fecha"] == hoy.isoformat(), str(filas))
+    cur.execute("SELECT resumen, kcal_plan, kcal_dia FROM mypump_ajustes_dieta d JOIN mypump_clientes c ON c.cliente_id = d.cliente_id"
+                " WHERE c.access_token = %s AND d.fecha = %s", (token, hoy))
+    r = cur.fetchone()
+    chequear("el resumen y los totales quedan para Mati", r[0] == resumen and float(r[1]) == 1577 and float(r[2]) == 1538, str(r))
+    otros = dict(ajustes)
+    otros["desayuno"] = {"deltaKcal": -100, "compensar": False, "omitida": False, "opcion": 1, "cantidades": {"0": 60}}
+    chequear("volver a guardar el mismo día → TRUE", uno(guardar, (token, hoy, dieta, None, json.dumps(otros), None, None, None)) is True)
+    filas = uno(leer, (token, hoy, hoy))
+    chequear("reemplaza la fila del día (no suma otra)", len(filas) == 1 and filas[0]["ajustes"] == otros and filas[0]["tipo_dia"] is None, str(filas))
+    chequear("kcal fuera de rango → se guarda NULL", uno(guardar, (token, hoy, dieta, None, json.dumps(otros), None, -5, 99999)) is True)
+    cur.execute("SELECT kcal_plan, kcal_dia FROM mypump_ajustes_dieta d JOIN mypump_clientes c ON c.cliente_id = d.cliente_id"
+                " WHERE c.access_token = %s AND d.fecha = %s", (token, hoy))
+    chequear("…los dos NULL", cur.fetchone() == (None, None))
+    chequear("volver al plan ({}) → TRUE", uno(guardar, (token, hoy, dieta, None, "{}", json.dumps(resumen), 1577, 1538)) is True)
+    filas = uno(leer, (token, hoy, hoy))
+    chequear("…la fila queda, con {} (no se borra nada)", len(filas) == 1 and filas[0]["ajustes"] == {}, str(filas))
+    cur.execute("SELECT resumen, kcal_plan, kcal_dia FROM mypump_ajustes_dieta d JOIN mypump_clientes c ON c.cliente_id = d.cliente_id"
+                " WHERE c.access_token = %s AND d.fecha = %s", (token, hoy))
+    chequear("…sin resumen ni totales aunque lleguen", cur.fetchone() == (None, None, None))
+    chequear("volver al plan otra vez → TRUE", uno(guardar, (token, hoy, dieta, None, "{}", None, None, None)) is True)
+    con_anclas = {"almuerzo": {"deltaKcal": 0, "compensar": True, "omitida": False, "opcion": 0, "cantidades": {"0": 250},
+                               "anclas": {"0": {"nombre": "Pollo", "unidad": "g"}}}}
+    chequear("con anclas → TRUE", uno(guardar, (token, hoy, dieta, None, json.dumps(con_anclas), None, None, None)) is True
+             and uno(leer, (token, hoy, hoy))[0]["ajustes"] == con_anclas)
+
+    print("▸ Cada cuenta, lo suyo")
+    ayer = hoy - _dt.timedelta(days=1)
+    uno(guardar, (otro, ayer, dieta, None, json.dumps(ajustes), None, None, None))
+    chequear("la otra cuenta no ve lo de esta", uno(leer, (token, ayer, ayer)) == [])
+    chequear("y ve lo suyo", len(uno(leer, (otro, ayer, ayer))) == 1)
+    chequear("token que no existe: guardar → NULL", uno(guardar, (nadie, hoy, dieta, None, json.dumps(ajustes), None, None, None)) is None)
+    chequear("token que no existe: leer → NULL", uno(leer, (nadie, hoy, hoy)) is None)
+
+    print("▸ Ventana de fechas y forma")
+    chequear("hace 7 días → TRUE", uno(guardar, (token, hoy - _dt.timedelta(days=7), dieta, None, json.dumps(ajustes), None, None, None)) is True)
+    chequear("mañana → TRUE", uno(guardar, (token, hoy + _dt.timedelta(days=1), dieta, None, json.dumps(ajustes), None, None, None)) is True)
+    filas = uno(leer, (token, hoy - _dt.timedelta(days=7), hoy + _dt.timedelta(days=1)))
+    chequear("el rango trae las tres (la de hoy quedó), de la más vieja a la más nueva",
+             [f["fecha"] for f in filas] == [(hoy - _dt.timedelta(days=7)).isoformat(), hoy.isoformat(),
+                                             (hoy + _dt.timedelta(days=1)).isoformat()], str(filas))
+    da_22023("hace 8 días", guardar, (token, hoy - _dt.timedelta(days=8), dieta, None, json.dumps(ajustes), None, None, None))
+    da_22023("pasado mañana", guardar, (token, hoy + _dt.timedelta(days=2), dieta, None, json.dumps(ajustes), None, None, None))
+    da_22023("sin fecha", guardar, (token, None, dieta, None, json.dumps(ajustes), None, None, None))
+    da_22023("ajustes que no son objeto", guardar, (token, hoy, dieta, None, "[]", None, None, None))
+    da_22023("resumen que no es lista", guardar, (token, hoy, dieta, None, json.dumps(ajustes), "{}", None, None))
+    da_22023("ajustes enormes", guardar, (token, hoy, dieta, None, json.dumps({f"c{i}": {"x": "y" * 200} for i in range(100)}), None, None, None))
+    da_22023("tipo de día enorme", guardar, (token, hoy, dieta, "x" * 200, json.dumps(ajustes), None, None, None))
+    chequear("rango de 31 días → se lee", isinstance(uno(leer, (token, hoy - _dt.timedelta(days=30), hoy)), list))
+    da_22023("rango de 32 días", leer, (token, hoy - _dt.timedelta(days=31), hoy))
+    da_22023("rango al revés", leer, (token, hoy, hoy - _dt.timedelta(days=1)))
+
+    print("▸ Permisos")
+    for f in ("mypump_guardar_ajustes_dieta(text, date, uuid, text, jsonb, jsonb, numeric, numeric)",
+              "mypump_get_ajustes_dieta(text, date, date)"):
+        cur.execute("SELECT has_function_privilege('anon', %s, 'EXECUTE')", (f,))
+        chequear(f"anon puede llamar {f.split('(')[0]}", cur.fetchone()[0] is True)
+    cur.execute("SELECT relrowsecurity FROM pg_class WHERE relname = 'mypump_ajustes_dieta'")
+    chequear("mypump_ajustes_dieta con RLS", cur.fetchone()[0] is True)
+    cur.execute("SELECT count(*) FROM pg_policies WHERE tablename = 'mypump_ajustes_dieta' AND 'anon' = ANY(roles)")
+    chequear("anon sin políticas directas sobre la tabla", cur.fetchone()[0] == 0)
+
+
+CHEQUEOS = {"nativa_001": chequeos_001, "nativa_002": chequeos_002, "nativa_003": chequeos_003, "nativa_004": chequeos_004}
 
 
 def main():
