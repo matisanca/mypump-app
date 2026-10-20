@@ -700,7 +700,14 @@ class ModeloEntreno(
      */
     suspend fun cerrarDia(notas: String): ResultadoCierre {
         val t = token
-        if (demo || t == null) return ResultadoCierre.DEMO
+        if (demo || t == null) {
+            // La demo no cierra nada en el servidor, pero el descanso termina igual.
+            if (demo) {
+                mutarDescanso { it.detener() }
+                guardarDescanso()
+            }
+            return ResultadoCierre.DEMO
+        }
         asegurarSesion()
         val sid = _dia.value.sesionId ?: return ResultadoCierre.SIN_SESION
         outbox?.drenar()
@@ -1215,6 +1222,12 @@ class ModeloEntreno(
                     }
                 }
             }
+        }
+        // En la demo la regla no avisa el día completo (no hay pregunta ni servidor), pero el descanso de la última serie
+        // tampoco tiene sentido: la demo es lo que mira la revisión de Google (revisión del 20-oct).
+        if (demo && _dia.value.diaCompleto && _descanso.value.descanso != null) {
+            mutarDescanso { it.detener() }
+            guardarDescanso()
         }
         return completo
     }

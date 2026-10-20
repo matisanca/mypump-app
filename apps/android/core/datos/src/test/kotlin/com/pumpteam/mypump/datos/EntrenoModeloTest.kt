@@ -616,6 +616,31 @@ class EntrenoAccionesTest {
         assertNull(b.descansoEnDisco, "y no queda guardado para restaurar")
     }
 
+    /** Lo mismo en la demo, que es lo que mira la revisión de Google: ahí la regla no avisa el día completo. */
+    @Test
+    fun enLaDemoLaUltimaSerieTampocoDejaDescanso() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modelo(token = null)
+        assertTrue(m.demo)
+        m.cambiarDia("d2")
+        m.escribir("pre-d2-0", 0, "reps", "8")
+        m.escribir("pre-d2-0", 0, "kg", "80")
+        m.confirmarSerie("pre-d2-0", 0) { true }
+        assertTrue(!m.descanso.value.visible && m.descanso.value.descanso == null)
+    }
+
+    @Test
+    fun enLaDemoCerrarElDiaCortaElDescanso() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modelo(token = null)
+        m.escribir("jal-d1-0", 0, "reps", "10")
+        m.escribir("jal-d1-0", 0, "kg", "60")
+        m.confirmarSerie("jal-d1-0", 0) { true }
+        assertTrue(m.descanso.value.visible, "una serie del medio sí deja descanso")
+        assertEquals(ModeloEntreno.ResultadoCierre.DEMO, m.cerrarDia(""))
+        assertTrue(!m.descanso.value.visible)
+    }
+
     @Test
     fun cerrarElDiaCortaElDescanso() = enUnHilo { alcance ->
         val b = Banco(alcance, ejecutar = true)

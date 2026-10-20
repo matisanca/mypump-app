@@ -548,6 +548,29 @@ struct EntrenoAccionesTests {
         #expect(b.disco.leer(Descanso.Guardado.self, ModeloEntreno.Archivo.descanso) == nil, "y no queda guardado para restaurar")
     }
 
+    /// Lo mismo en la demo, que es lo que mira la revisión de Apple: ahí la regla no avisa el día completo.
+    @Test func enLaDemoLaUltimaSerieTampocoDejaDescanso() async throws {
+        let b = Banco()
+        let m = b.modelo(token: nil)
+        #expect(m.demo)
+        await m.cambiarDia("d2")
+        m.escribir("pre-d2-0", 0, campo: "reps", valor: "8")
+        m.escribir("pre-d2-0", 0, campo: "kg", valor: "80")
+        _ = await m.confirmarSerie("pre-d2-0", 0) { _ in true }
+        #expect(!m.descanso.visible && m.descanso.descanso == nil)
+    }
+
+    @Test func enLaDemoCerrarElDiaCortaElDescanso() async throws {
+        let b = Banco()
+        let m = b.modelo(token: nil)
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "10")
+        m.escribir("jal-d1-0", 0, campo: "kg", valor: "60")
+        _ = await m.confirmarSerie("jal-d1-0", 0) { _ in true }
+        #expect(m.descanso.visible, "una serie del medio sí deja descanso")
+        #expect(await m.cerrarDia(notas: "") == .demo)
+        #expect(!m.descanso.visible)
+    }
+
     @Test func cerrarElDiaCortaElDescanso() async throws {
         let b = Banco(ejecutar: true)
         b.servidor.cuando("get_sesion_dia", sesionJSON("ses-1", iniciada: "2026-10-14T17:30:00Z"))

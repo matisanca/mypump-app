@@ -547,7 +547,14 @@ public final class ModeloEntreno {
     /// `writeFinish`: PRIMERO vacía la cola (las series tienen que estar en la base antes de cerrar), después
     /// `finalizar_sesion` con la duración (null si pasa de 6 h). Un `false` es que no se cerró.
     public func cerrarDia(notas: String) async -> ResultadoCierre {
-        guard !demo, let token else { return .demo }
+        guard !demo, let token else {
+            // La demo no cierra nada en el servidor, pero el descanso termina igual.
+            if demo {
+                descanso.detener()
+                guardarDescanso()
+            }
+            return .demo
+        }
         await asegurarSesion()
         guard let sid = dia.sesionId else { return .sinSesion }
         await outbox?.drenar()
@@ -1008,6 +1015,12 @@ public final class ModeloEntreno {
                     completo = DiaCompletado(pregunta: p, siguiente: sig)
                 }
             }
+        }
+        // En la demo la regla no avisa el día completo (no hay pregunta ni servidor), pero el descanso de la última serie
+        // tampoco tiene sentido: la demo es lo que mira la revisión de Apple (revisión del 20-oct).
+        if demo, dia.diaCompleto, descanso.descanso != nil {
+            descanso.detener()
+            guardarDescanso()
         }
         return completo
     }
