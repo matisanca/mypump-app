@@ -803,10 +803,16 @@ public final class ModeloEntreno {
         return SustitucionesEntreno.filtrar(catalogo.sustitutos(de: efectivo(ex)), busqueda)
     }
 
-    /// El sustituto elegido en la hoja, buscado por su clave en la lista de AHORA (con el catálogo que haya llegado
-    /// mientras tanto). nil si ya no está entre los sustitutos.
+    /// Los otros ejercicios del mismo músculo, con otro movimiento (la sección de abajo de «Sustituir»; Mati, 20-oct).
+    public func otrosDelMismoMusculo(_ lugar: String, busqueda: String = "") -> [SustitutoEjercicio] {
+        guard let ex = dia.ejercicio(lugar) else { return [] }
+        return SustitucionesEntreno.filtrar(catalogo.otrosDelMismoMusculo(de: efectivo(ex)), busqueda)
+    }
+
+    /// El sustituto elegido en la hoja, buscado por su clave en las listas de AHORA (con el catálogo que haya llegado
+    /// mientras tanto). nil si ya no está en ninguna.
     public func sustituto(_ lugar: String, clave: String) -> SustitutoEjercicio? {
-        sustitutos(lugar).first { $0.clave == clave }
+        sustitutos(lugar).first { $0.clave == clave } ?? otrosDelMismoMusculo(lugar).first { $0.clave == clave }
     }
 
     /// El "🔒 Fijar" arranca como estaba la sustitución previa (al cambiar de sustituto no se pierde).

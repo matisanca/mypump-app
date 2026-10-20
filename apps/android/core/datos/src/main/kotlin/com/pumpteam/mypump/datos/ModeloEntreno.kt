@@ -991,7 +991,14 @@ class ModeloEntreno(
      * El sustituto elegido en la hoja, buscado por su clave en la lista de AHORA (con el catálogo que haya llegado mientras
      * tanto). null si ya no está entre los sustitutos (revisión del 15-oct, hallazgo 13).
      */
-    fun sustituto(lugar: String, clave: String): SustitutoEjercicio? = sustitutos(lugar).firstOrNull { it.clave == clave }
+    fun sustituto(lugar: String, clave: String): SustitutoEjercicio? =
+        sustitutos(lugar).firstOrNull { it.clave == clave } ?: otrosDelMismoMusculo(lugar).firstOrNull { it.clave == clave }
+
+    /** Los otros ejercicios del mismo músculo, con otro movimiento (la sección de abajo de «Sustituir»; Mati, 20-oct). */
+    fun otrosDelMismoMusculo(lugar: String, busqueda: String = ""): List<SustitutoEjercicio> {
+        val ex = _dia.value.ejercicio(lugar) ?: return emptyList()
+        return SustitucionesEntreno.filtrar(_catalogo.value.otrosDelMismoMusculo(efectivo(ex)), busqueda)
+    }
 
     /** El "🔒 Fijar" arranca como estaba la sustitución previa (al cambiar de sustituto no se pierde). */
     fun fijadaAntes(lugar: String): Boolean = SustitucionesEntreno.aplicada(_dia.value.sustituciones[lugar])?.fijado ?: false
