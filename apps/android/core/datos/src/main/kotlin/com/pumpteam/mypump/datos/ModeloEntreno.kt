@@ -715,6 +715,8 @@ class ModeloEntreno(
         )
         if (r !is Resultado.Ok || r.valor == ValorJson.Booleano(false)) return ResultadoCierre.FALLO
         mutarDia { it.diaFinalizado = true }
+        mutarDescanso { it.detener() }
+        guardarDescanso()
         _dia.value.dia.id?.let { d ->
             sesionesLocales = sesionesLocales + (d to (sesionesLocales[d] ?: SesionLocal(semana = semana)).copy(finalizada = true))
             guardarSesiones()
@@ -1201,10 +1203,16 @@ class ModeloEntreno(
                         guardarSesiones()
                     }
                 }
-                DiaEnCurso.Efecto.DiaCompleto -> if (!diaCompletadoMostrado) {
-                    diaCompletadoMostrado = true
-                    val (p, sig) = SemanaEntreno.preguntaDiaCompletado(dias, _dia.value.dia.id)
-                    completo = DiaCompletado(p, sig)
+                DiaEnCurso.Efecto.DiaCompleto -> {
+                    // Con el día completo no hay próxima serie: el descanso de la última serie no tiene sentido y dejaba la
+                    // notificación en curso y el aviso de fin después del entreno (revisión del 20-oct).
+                    mutarDescanso { it.detener() }
+                    guardarDescanso()
+                    if (!diaCompletadoMostrado) {
+                        diaCompletadoMostrado = true
+                        val (p, sig) = SemanaEntreno.preguntaDiaCompletado(dias, _dia.value.dia.id)
+                        completo = DiaCompletado(p, sig)
+                    }
                 }
             }
         }

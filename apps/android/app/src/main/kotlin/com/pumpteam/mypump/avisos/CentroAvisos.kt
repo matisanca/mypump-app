@@ -100,10 +100,14 @@ object CentroAvisos {
 
     /**
      * El descanso en curso con la app atrás (Ian Actis, 20-oct: «verlo en tiempo real en notificaciones, que quedan 10
-     * segundos y ya ir preparándote»): la cuenta regresiva fija, también con el teléfono bloqueado. Sin sonido: el que
-     * suena es el fin del descanso.
+     * segundos y ya ir preparándote»): la cuenta regresiva fija, también con el teléfono bloqueado. Prioridad normal y SIN
+     * sonido ni vibración: con prioridad baja Android la cuenta como «silenciosa» y en los Pixel de fábrica no se ve con el
+     * teléfono bloqueado (revisión del 20-oct). El que suena es el fin del descanso.
      */
-    const val CANAL_DESCANSO_EN_CURSO = "mypump_descanso_en_curso"
+    const val CANAL_DESCANSO_EN_CURSO = "mypump_descanso_cuenta"
+
+    /** El primer canal de la cuenta regresiva (prioridad baja), de builds de prueba: la prioridad de un canal no se cambia. */
+    private const val CANAL_DESCANSO_EN_CURSO_VIEJO = "mypump_descanso_en_curso"
 
     /**
      * Los avisos de la app van con esta etiqueta. Los de la Capacitor van sin etiqueta y con los mismos números (1001-1004):
@@ -158,6 +162,7 @@ object CentroAvisos {
 
     fun crearCanales(c: Context) {
         val nm = c.getSystemService(NotificationManager::class.java) ?: return
+        nm.deleteNotificationChannel(CANAL_DESCANSO_EN_CURSO_VIEJO)
         nm.createNotificationChannels(
             listOf(
                 NotificationChannel(CANAL_MENSAJES, "Mensajes de Mati", NotificationManager.IMPORTANCE_HIGH).apply {
@@ -166,9 +171,10 @@ object CentroAvisos {
                 NotificationChannel(CANAL_DESCANSO, "Fin del descanso", NotificationManager.IMPORTANCE_HIGH).apply {
                     description = "Cuando termina el descanso entre series y la app no está a la vista."
                 },
-                NotificationChannel(CANAL_DESCANSO_EN_CURSO, "Descanso en curso", NotificationManager.IMPORTANCE_LOW).apply {
+                NotificationChannel(CANAL_DESCANSO_EN_CURSO, "Descanso en curso", NotificationManager.IMPORTANCE_DEFAULT).apply {
                     description = "La cuenta regresiva del descanso entre series, también con el teléfono bloqueado."
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    setSound(null, null)
+                    enableVibration(false)
                     setShowBadge(false)
                 },
             ),
@@ -503,13 +509,15 @@ object CentroAvisos {
         cancelarDescansoEnCurso(c)
     }
 
-    /** La cuenta regresiva fija hasta [finMs] (la dibuja el sistema: sigue con la app dormida y se va sola al terminar). */
-    fun mostrarDescansoEnCurso(c: Context, finMs: Long, objetivoSeg: Int) {
+    /**
+     * La cuenta regresiva fija hasta [finMs]. La anima el sistema: sigue con la app dormida y se va sola al terminar. Sin
+     * barra de progreso, que quedaría congelada (nadie la actualiza con la app atrás).
+     */
+    fun mostrarDescansoEnCurso(c: Context, finMs: Long) {
         val falta = finMs - System.currentTimeMillis()
         if (!concedido(c) || falta <= 1_000) return
         crearCanales(c)
         val toque = PendingIntent.getActivity(c, ID_DESCANSO_EN_CURSO, intentDeAviso(c, "train"), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val total = (objetivoSeg.coerceAtLeast(1) * 1000L)
         val n = Notification.Builder(c, CANAL_DESCANSO_EN_CURSO)
             .setSmallIcon(R.drawable.ic_stat_mypump)
             .setColor(c.getColor(R.color.aviso_acento))
@@ -519,7 +527,6 @@ object CentroAvisos {
             .setShowWhen(true)
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
-            .setProgress(total.toInt(), (total - falta).coerceIn(0, total).toInt(), false)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_STOPWATCH)

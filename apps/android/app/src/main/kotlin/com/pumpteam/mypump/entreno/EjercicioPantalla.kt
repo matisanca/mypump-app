@@ -189,8 +189,10 @@ fun EjercicioPantalla(
                 }
                 MetricasPauta(t.pauta, t.descanso, t.efectivo.ejercicio.tipo)
                 t.nota?.let { NotaSemana(it) }
-                if (t.filas.isNotEmpty()) TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia)
-                DescansoEnTarjeta(motor)
+                if (t.filas.isNotEmpty()) {
+                    TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia)
+                    DescansoEnTarjeta(motor, enLista = false)
+                }
                 ASuperar(t, buscando = lugar in v.cargandoHistorial)
                 Acciones(
                     t,
@@ -779,7 +781,8 @@ internal fun EjercicioEnLista(
         verticalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
         TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia, enLista = true)
-        DescansoEnTarjeta(motor)
+        // Solo en los ejercicios con series, como en iOS (el cardio se marca con «Terminé»).
+        if (t.filas.isNotEmpty()) DescansoEnTarjeta(motor)
         // Con la letra muy grande, uno debajo del otro: en un renglón partían las palabras («Sus-tituir»).
         val apilados = LocalDensity.current.fontScale > 1.35f
         val sustituir: @Composable (Modifier) -> Unit = { m ->

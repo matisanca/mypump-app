@@ -600,6 +600,38 @@ class EntrenoAccionesTest {
         assertNull(m.marcarCompleto("pre-d2-0"), "ya se mostró en este día")
     }
 
+    /**
+     * Revisión del 20-oct: la última serie del día arrancaba un descanso; con la app atrás quedaban la notificación en curso
+     * y el aviso de fin después del entreno. Con el día completo no hay descanso. Gemelo de iOS.
+     */
+    @Test
+    fun laUltimaSerieDelDiaNoDejaDescanso() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modelo()
+        m.cambiarDia("d2")
+        m.escribir("pre-d2-0", 0, "reps", "8")
+        m.escribir("pre-d2-0", 0, "kg", "80")
+        assertNotNull(m.confirmarSerie("pre-d2-0", 0) { true })
+        assertTrue(!m.descanso.value.visible && m.descanso.value.descanso == null)
+        assertNull(b.descansoEnDisco, "y no queda guardado para restaurar")
+    }
+
+    @Test
+    fun cerrarElDiaCortaElDescanso() = enUnHilo { alcance ->
+        val b = Banco(alcance, ejecutar = true)
+        b.servidor.cuando("get_sesion_dia", sesionJson("ses-1", iniciada = "2026-10-14T17:30:00Z"))
+        b.servidor.cuando("registrar_carga", "\"fila-1\"")
+        b.servidor.cuando("finalizar_sesion", "true")
+        val m = b.modelo()
+        m.restaurarSesion()
+        m.escribir("jal-d1-0", 0, "reps", "10")
+        m.escribir("jal-d1-0", 0, "kg", "60")
+        m.confirmarSerie("jal-d1-0", 0) { true }
+        assertTrue(m.descanso.value.visible, "una serie del medio sí deja descanso")
+        assertEquals(ModeloEntreno.ResultadoCierre.CERRADO, m.cerrarDia(""))
+        assertTrue(!m.descanso.value.visible)
+    }
+
     @Test
     fun laSesionEnVueloDeOtroDiaNoSeReusa() = enUnHilo { alcance ->
         val b = Banco(alcance)

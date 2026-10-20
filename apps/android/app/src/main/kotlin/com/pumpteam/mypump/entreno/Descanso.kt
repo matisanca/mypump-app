@@ -24,6 +24,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import com.pumpteam.mypump.diseno.LocalRellenoInferior
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.LinearProgressIndicator
@@ -173,19 +184,41 @@ private fun ContenidoDescanso(motor: ModeloEntreno, b: BarraDescanso) {
 
 /**
  * El descanso en grande dentro del ejercicio abierto, debajo de las series (Ian Actis, 20-oct: «que cuando marcás una serie
- * vuelva el temporizador… no tenía que estar fijándome cuánto iba descansando»). La isla de arriba de las pestañas sigue
- * para cuando se está en otra parte; con la app atrás, la notificación con la cuenta regresiva. Gemelo del de iOS.
+ * vuelva el temporizador… no tenía que estar fijándome cuánto iba descansando»). Al aparecer, la lista se mueve lo justo
+ * para que se vea entera, contando la barra de pestañas que flota encima (en un teléfono chico o con muchas series quedaba
+ * abajo); aparece y se va animada, así lo de abajo no salta. La isla de arriba de las pestañas sigue para cuando se está en
+ * otra parte; con la app atrás, la notificación con la cuenta regresiva. Gemelo del de iOS.
  */
 @Composable
-fun DescansoEnTarjeta(motor: ModeloEntreno, modifier: Modifier = Modifier) {
+fun DescansoEnTarjeta(motor: ModeloEntreno, modifier: Modifier = Modifier, enLista: Boolean = true) {
     val b by motor.descanso.collectAsStateWithLifecycle()
-    if (!b.visible) return
+    val aLaVista = remember { BringIntoViewRequester() }
+    var tamano by remember { mutableStateOf(IntSize.Zero) }
+    val barra = with(LocalDensity.current) { LocalRellenoInferior.current.toPx() }
+    LaunchedEffect(b.visible, b.descanso?.fin) {
+        if (b.visible) {
+            delay(320)   // lo que tarda en aparecer
+            aLaVista.bringIntoView(Rect(0f, 0f, tamano.width.toFloat(), tamano.height + barra))
+        }
+    }
+    AnimatedVisibility(
+        visible = b.visible,
+        modifier = modifier,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        ContenidoDescansoGrande(motor, b, Modifier.onSizeChanged { tamano = it }.bringIntoViewRequester(aLaVista), enLista)
+    }
+}
+
+@Composable
+private fun ContenidoDescansoGrande(motor: ModeloEntreno, b: BarraDescanso, modifier: Modifier, enLista: Boolean) {
     val c = MyPump.colores
     val listo = b.listo
     val falta = if (listo) 0f else (1 - (b.porcentaje ?: 0.0) / 100).coerceIn(0.0, 1.0).toFloat()
     Column(
         modifier
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = if (enLista) 16.dp else 0.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(c.marcaSuave)
@@ -197,15 +230,16 @@ fun DescansoEnTarjeta(motor: ModeloEntreno, modifier: Modifier = Modifier) {
         Text(
             if (listo) "¡A la próxima serie!" else "Descanso ${b.textoObjetivo.replace(" objetivo", "")}",
             style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold),
-            color = if (listo) c.exito else c.textoSecundario,
+            color = if (listo) c.marcaTexto else c.textoSecundario,
         )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             AjusteGrande("−15", "Restar 15 segundos", !listo) { motor.ajustarDescanso(-15) }
             Text(
                 b.texto,
                 style = Letras.cifras.copy(fontFamily = Archivo, fontWeight = FontWeight.W800, fontSize = 44.sp),
-                color = if (listo) c.exito else c.texto,
+                color = if (listo) c.marcaTexto else c.texto,
                 textAlign = TextAlign.Center,
+                maxLines = 1,
                 modifier = Modifier
                     .weight(1f)
                     .semantics { contentDescription = if (listo) "Descanso terminado" else "Descanso, quedan ${b.texto}" },
@@ -228,9 +262,10 @@ fun DescansoEnTarjeta(motor: ModeloEntreno, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Iconos.Saltar, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(16.dp))
+            val tono = if (listo) c.textoTerciario else c.marcaTexto
+            Icon(Iconos.Saltar, contentDescription = null, tint = tono, modifier = Modifier.size(16.dp))
             Spacer(Modifier.size(6.dp))
-            Text("Saltar descanso", style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = c.marcaTexto)
+            Text("Saltar descanso", style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = tono)
         }
     }
 }

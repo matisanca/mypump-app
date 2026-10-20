@@ -533,11 +533,27 @@ class AvisosUiTest : PruebaUi() {
         // A segundo plano con el descanso corriendo: queda la alarma del fin.
         escenario.moveToState(Lifecycle.State.CREATED)
         p.esperar("la alarma del fin") { CentroAvisos.finDescansoAgendado(app) }
+        // Y la cuenta regresiva fija (Ian Actis, 20-oct), en un canal que se ve con el teléfono bloqueado y no suena.
+        val curso = p.esperar("la cuenta regresiva") {
+            AvisosDePrueba.publicadas(app).firstOrNull { it.tag == CentroAvisos.ETIQUETA && it.id == CentroAvisos.ID_DESCANSO_EN_CURSO }
+        }.notification
+        assertEquals(CentroAvisos.CANAL_DESCANSO_EN_CURSO, curso.channelId)
+        assertTrue("fija", curso.flags and Notification.FLAG_ONGOING_EVENT != 0)
+        assertTrue("con el reloj", curso.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER))
+        assertTrue("para atrás", curso.extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN))
+        assertTrue("hasta el fin", curso.`when` > System.currentTimeMillis())
+        assertEquals(Notification.VISIBILITY_PUBLIC, curso.visibility)
+        val canal = nm.getNotificationChannel(CentroAvisos.CANAL_DESCANSO_EN_CURSO)
+        assertEquals("con prioridad baja no se ve bloqueado", NotificationManager.IMPORTANCE_DEFAULT, canal.importance)
+        assertNull("sin sonido", canal.sound)
+        assertFalse("sin vibración", canal.shouldVibrate())
+        assertNull("el canal viejo (prioridad baja) se borra", nm.getNotificationChannel("mypump_descanso_en_curso"))
         // Para la evidencia: la ventana que le da el sistema a una alarma inexacta (lo que puede tardar con la pantalla apagada).
         println("Avisos: ${alarmasPendientes().filter { "FIN_DESCANSO" in it }}")
         // De vuelta a la app: ni alarma ni aviso.
         escenario.moveToState(Lifecycle.State.RESUMED)
         p.esperar("sin la alarma") { !CentroAvisos.finDescansoAgendado(app) }
+        p.esperar("sin la cuenta regresiva") { AvisosDePrueba.publicadas(app).none { it.id == CentroAvisos.ID_DESCANSO_EN_CURSO } }
         // Que termine en segundo plano (quedan entre 6 y 20 s: cada toque resta 15): el aviso sale, sin el pitido encima.
         // Se espera a ver cada toque: recién vuelta a primer plano, la barra puede tardar en pintar el anterior.
         while (true) {
@@ -561,6 +577,7 @@ class AvisosUiTest : PruebaUi() {
         assertEquals("Seguí con la próxima serie.", n.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
         assertEquals(CentroAvisos.CANAL_DESCANSO, n.channelId)
         assertEquals("sin pitido en segundo plano", sonidos, SonidoDescanso.reproducciones)
+        assertTrue("la cuenta regresiva se va con el aviso del fin", AvisosDePrueba.publicadas(app).none { it.id == CentroAvisos.ID_DESCANSO_EN_CURSO })
         // Al volver se saca.
         escenario.moveToState(Lifecycle.State.RESUMED)
         p.esperar("sin el aviso") { AvisosDePrueba.publicadas(app).none { it.id == CentroAvisos.ID_DESCANSO } }

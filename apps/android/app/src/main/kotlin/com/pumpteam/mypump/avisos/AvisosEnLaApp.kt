@@ -128,6 +128,7 @@ fun AvisosDeLaApp(vm: ModeloAppViewModel, m: ModeloApp, enLaApp: Boolean) {
 @Composable
 private fun FinDelDescanso(motor: ModeloEntreno?) {
     val contexto = LocalContext.current.applicationContext
+    val actividad = LocalContext.current.actividad()
     val ciclo = LocalLifecycleOwner.current.lifecycle
     val motorActual by rememberUpdatedState(motor)
     DisposableEffect(ciclo) {
@@ -142,7 +143,8 @@ private fun FinDelDescanso(motor: ModeloEntreno?) {
                     val d = motorActual?.descanso?.value?.descanso
                     if (d != null && !d.terminado) {
                         CentroAvisos.programarFinDescanso(contexto, d.fin.toLong())
-                        CentroAvisos.mostrarDescansoEnCurso(contexto, d.fin.toLong(), d.objetivo.toInt())
+                        // Rotar la pantalla para y vuelve a arrancar la actividad: la notificación aparecía y se iba enseguida.
+                        if (actividad?.isChangingConfigurations != true) CentroAvisos.mostrarDescansoEnCurso(contexto, d.fin.toLong())
                     }
                 }
                 else -> {}
