@@ -24,6 +24,8 @@ struct AjustesDietaTests {
         private var _guardados: [JSONValue] = []
         var guardados: [JSONValue] { lock.withLock { _guardados } }
         var sinTabla = false
+        /// `mypump_get_food_swaps` falla (un 500).
+        var sinSwaps = false
         var filas = "[]"
         /// Otra estructura con el mismo id: Mati volvió a publicar (013 actualiza en el lugar).
         var dieta: String?
@@ -40,6 +42,7 @@ struct AjustesDietaTests {
                 if s.sinTabla { return (404, #"{"code":"PGRST202","message":"Could not find the function"}"#) }
                 s.guardar(cuerpo)
                 return (200, "true")
+            case "mypump_get_food_swaps" where s.sinSwaps: return (500, #"{"message":"caído"}"#)
             case "mypump_get_ajustes_dieta":
                 if s.sinTabla { return (404, #"{"code":"PGRST202","message":"Could not find the function"}"#) }
                 return (200, s.filas)
@@ -137,6 +140,16 @@ struct AjustesDietaTests {
         s.filas = "[]"
         await m.hidratarDieta()
         #expect(m.ajustesDeHoy["desayuno"]?.deltaKcal == 50 && m.ajustesDeHoy["almuerzo"]?.deltaKcal == -100)
+    }
+
+    /// Sin los reemplazos del servidor (falló esa lectura), los ajustes se hidratan igual.
+    @Test func sinLosReemplazosLosAjustesSeHidratanIgual() async {
+        let s = Servidor()
+        s.sinSwaps = true
+        s.filas = #"[{"fecha":"\#(FechaLocal.hoy())","dieta_id":"\#(Self.dietaId)","ajustes":{"almuerzo":{"deltaKcal":-100}}}]"#
+        let m = modelo(s)
+        await m.cargar()
+        #expect(m.ajustesDeHoy["almuerzo"]?.deltaKcal == -100)
     }
 
     @Test func otraDietaEnElServidorNoSeMezcla() async {

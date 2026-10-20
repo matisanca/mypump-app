@@ -62,7 +62,7 @@ struct AjustarComidaView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Hoy no la como")
                                 Text(borrador.omitida && borrador.compensar && destino != nil
-                                     ? "Sus \(r.kcalPlan.enteroSeguro) kcal pasan a \(Self.conArticulo(destino?.nombre ?? ""))."
+                                     ? "Sus \(r.kcalPlan.enteroSeguro) kcal pasan \(Self.aLa(destino?.nombre ?? ""))."
                                      : "Las porciones de esta comida quedan en cero por hoy.")
                                     .font(.footnote).foregroundStyle(.secondary)
                             }
@@ -248,11 +248,12 @@ struct AjustarComidaView: View {
             Spacer(minLength: 4)
             if plan.qty != nil, (plan.kcal ?? 0) > 0 {
                 HStack(spacing: 6) {
+                    // Desde la cantidad a mano de ahora si ya la tiene (dos toques seguidos), si no la de hoy.
                     BotonPaso(icono: "minus", etiqueta: "Menos \(plan.nombre)", habilitado: q - paso >= paso / 2) {
-                        borrador.cantidades[clave] = max(paso, AjustePorciones.redondear(q - paso, unidad: plan.unidad))
+                        borrador.cantidades[clave] = max(paso, AjustePorciones.redondear((borrador.cantidades[clave] ?? q) - paso, unidad: plan.unidad))
                     }
                     BotonPaso(icono: "plus", etiqueta: "Más \(plan.nombre)", habilitado: q + paso <= maximo) {
-                        borrador.cantidades[clave] = min(maximo, AjustePorciones.redondear(q + paso, unidad: plan.unidad))
+                        borrador.cantidades[clave] = min(maximo, AjustePorciones.redondear((borrador.cantidades[clave] ?? q) + paso, unidad: plan.unidad))
                     }
                 }
             }
@@ -300,6 +301,12 @@ struct AjustarComidaView: View {
     static func unir(_ partes: [String]) -> String {
         guard partes.count > 1 else { return partes.first ?? "" }
         return partes.dropLast().joined(separator: ", ") + " y " + partes.last!
+    }
+
+    /// «al Almuerzo», «a la Merienda» (a + el = al).
+    static func aLa(_ nombre: String) -> String {
+        let c = conArticulo(nombre)
+        return c.hasPrefix("el ") ? "al " + c.dropFirst(3) : "a " + c
     }
 
     /// «el Almuerzo», «la Merienda», «la Colación»: femenino si la primera palabra termina en «a» o en «ón».

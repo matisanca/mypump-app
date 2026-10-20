@@ -738,7 +738,11 @@ public final class ModeloApp {
         let tipo = tipoDia
         guard let h = SwapsDeComida.hidratar(remotos: remotos, locales: swaps, dietaId: dieta.id, pendientes: pendientes, yaMigrado: yaMigrado,
                                              borrarAnclados: palanca.anclajeBorraSwaps, enPosicion: { SwapsDeComida.enPosicion(e, tipoActivo: tipo, comidaId: $0, optIdx: $1, foodIdx: $2) })
-        else { return }
+        else {
+            // Los reemplazos no llegaron (red): los ajustes del día no dependen de eso.
+            await hidratarAjustes(token: t, dieta: dieta, vigente: vigente)
+            return
+        }
         swaps = h.swaps
         disco.guardar(swaps, "swaps_\(dieta.id).json")
         for op in h.operaciones {

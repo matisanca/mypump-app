@@ -205,6 +205,8 @@ final class DietaUITests: XCTestCase {
         abrirAjuste(comidaId)
         prender("ajuste-omitir")
         XCTAssertFalse(app.buttons["ajuste-mas"].isEnabled, "Sin comerla no se suman kcal")
+        let omitir = app.switches["ajuste-omitir"].label
+        XCTAssertTrue(omitir.contains(" kcal pasan al ") || omitir.contains(" kcal pasan a la "), omitir)
         adjuntarCaptura("ajuste-omitir")
         app.buttons["ajuste-listo"].tap()
         XCTAssertTrue(aviso(comidaId).waitForExistence(timeout: 5))

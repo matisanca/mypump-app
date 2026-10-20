@@ -59,7 +59,13 @@ struct OutboxTests {
         await o.encolar("carga", carga(1), dedupeKey: "k1")
         try? await Task.sleep(for: .milliseconds(10))
         await o.encolar("carga", carga(2), dedupeKey: "k2")
-        try? await Task.sleep(for: .milliseconds(400))
+        // Hasta 5 s y no una pausa fija: con la máquina cargada (la suite en paralelo, un emulador) la pasada tarda más.
+        for _ in 0..<100 {
+            let enviado = await r.enviados.contains("k2")
+            let pendientes = await o.pendientes
+            if enviado && pendientes == 0 { break }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
         #expect(await r.enviados.contains("k2"))
         #expect(await o.pendientes == 0)
     }
