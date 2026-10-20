@@ -143,6 +143,7 @@ private struct ListaEntreno: View {
         }
         // Al abrirse un ejercicio (tocado, o el siguiente cuando se completa uno) la lista lo trae a la vista: abierto abajo
         // de todo quedaba fuera de la pantalla. Si entra entero no se mueve.
+        .environment(\.traerDescansoALaVista, { withAnimation(.snappy) { lector.scrollTo("descanso-en-tarjeta", anchor: nil) } })
         .onChange(of: motor.dia.expandido) { _, abierto in
             guard let abierto else { return }
             Task { @MainActor in
@@ -641,7 +642,8 @@ private struct EjercicioEnLista: View {
                                                           : AnyLayout(HStackLayout(spacing: Espacio.s))
             VStack(alignment: .leading, spacing: Espacio.s) {
                 TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
-                DescansoEnTarjeta()
+                // Solo en los ejercicios con series (el cardio se marca con «Terminé»), igual que en la página.
+                if !t.filas.isEmpty { DescansoEnTarjeta() }
                 acciones {
                     Button { sustituyendo = true } label: {
                         Label(t.efectivo.sustituido ? "Cambiar" : "Sustituir", systemImage: "arrow.triangle.2.circlepath")

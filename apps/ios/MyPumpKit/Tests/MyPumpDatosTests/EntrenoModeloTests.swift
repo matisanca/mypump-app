@@ -535,6 +535,34 @@ struct EntrenoAccionesTests {
         #expect(await m.marcarCompleto("pre-d2-0") == nil, "ya se mostró en este día")
     }
 
+    /// Revisión del 20-oct: la última serie del día arrancaba un descanso; con el teléfono bloqueado quedaban la Live
+    /// Activity («¡A la próxima serie!») y el aviso de fin después del entreno. Con el día completo no hay descanso.
+    @Test func laUltimaSerieDelDiaNoDejaDescanso() async throws {
+        let b = Banco()
+        let m = b.modelo()
+        await m.cambiarDia("d2")
+        m.escribir("pre-d2-0", 0, campo: "reps", valor: "8")
+        m.escribir("pre-d2-0", 0, campo: "kg", valor: "80")
+        _ = try #require(await m.confirmarSerie("pre-d2-0", 0) { _ in true })
+        #expect(!m.descanso.visible && m.descanso.descanso == nil)
+        #expect(b.disco.leer(Descanso.Guardado.self, ModeloEntreno.Archivo.descanso) == nil, "y no queda guardado para restaurar")
+    }
+
+    @Test func cerrarElDiaCortaElDescanso() async throws {
+        let b = Banco(ejecutar: true)
+        b.servidor.cuando("get_sesion_dia", sesionJSON("ses-1", iniciada: "2026-10-14T17:30:00Z"))
+        b.servidor.cuando("registrar_carga", #""fila-1""#)
+        b.servidor.cuando("finalizar_sesion", "true")
+        let m = b.modelo()
+        await m.restaurarSesion()
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "10")
+        m.escribir("jal-d1-0", 0, campo: "kg", valor: "60")
+        await m.confirmarSerie("jal-d1-0", 0) { _ in true }
+        #expect(m.descanso.visible, "una serie del medio sí deja descanso")
+        #expect(await m.cerrarDia(notas: "") == .cerrado)
+        #expect(!m.descanso.visible)
+    }
+
     @Test func laSesionEnVueloDeOtroDiaNoSeReusa() async {
         let b = Banco()
         b.servidor.regla("iniciar_sesion") { p in

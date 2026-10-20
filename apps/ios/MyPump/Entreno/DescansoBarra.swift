@@ -124,6 +124,7 @@ extension View {
 /// vuelve a dibujar esto y no toda la raíz con sus cinco pestañas.
 private struct DescansoEnPestanas: ViewModifier {
     @Environment(Entrenamiento.self) private var entrenamiento
+    @Environment(\.scenePhase) private var fase
 
     func body(content: Content) -> some View {
         let visible = entrenamiento.motor?.descanso.visible == true
@@ -135,6 +136,9 @@ private struct DescansoEnPestanas: ViewModifier {
             }
         }
         .task(id: visible) { await entrenamiento.correrDescanso() }
+        .onAppear { entrenamiento.revisarActividad() }
+        .onDisappear { entrenamiento.cerrarActividad() }
+        .onChange(of: fase) { _, nueva in if nueva == .active { entrenamiento.revisarActividad() } }
     }
 }
 
@@ -155,61 +159,111 @@ private struct IslaDeDescanso: ViewModifier {
     }
 }
 
+/// Cómo traer la cuenta grande a la vista: lo pone quien tiene el `ScrollViewReader` (la lista de Entreno, la página del
+/// ejercicio). Va por el entorno para que el que se redibuja 4 veces por segundo sea solo la tarjeta, no la lista.
+private struct TraerDescansoALaVista: EnvironmentKey {
+    static let defaultValue: (@MainActor () -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    var traerDescansoALaVista: (@MainActor () -> Void)? {
+        get { self[TraerDescansoALaVista.self] }
+        set { self[TraerDescansoALaVista.self] = newValue }
+    }
+}
+
 /// El descanso en grande dentro del ejercicio abierto, debajo de las series (Ian Actis, 20-oct: «que cuando marcás una
-/// serie vuelva el temporizador… no tenía que estar fijándome cuánto iba descansando»). La barra de arriba de las
-/// pestañas sigue para cuando se está en otra parte; con la app atrás, la Live Activity.
+/// serie vuelva el temporizador… no tenía que estar fijándome cuánto iba descansando»). Al aparecer, la pantalla se mueve
+/// lo justo para que se vea entera (en un teléfono chico o con muchas series quedaba abajo de la barra); aparece y se va
+/// animada, así lo de abajo no salta. La barra de arriba de las pestañas sigue para cuando se está en otra parte; con la
+/// app atrás, la Live Activity.
 struct DescansoEnTarjeta: View {
+    /// En la lista lleva su propio margen (la tabla también); en la página del ejercicio ya lo pone la página.
+    var enLista = true
     @Environment(Entrenamiento.self) private var entrenamiento
+    @Environment(\.traerDescansoALaVista) private var traer
+    @State private var mostrado = false
     private static let fuente = Archivo.fija(44, peso: 800)
 
     var body: some View {
-        if let m = entrenamiento.motor, m.descanso.visible {
-            let b = m.descanso
-            let listo = b.listo
-            let falta = listo ? 0 : max(0, 1 - (b.porcentaje ?? 0) / 100)
-            VStack(spacing: Espacio.s) {
-                Text(listo ? "¡A la próxima serie!" : "Descanso \(b.textoObjetivo.replacingOccurrences(of: " objetivo", with: ""))")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(listo ? Color.exito : Color.secondary)
-                HStack {
-                    ajuste("−15", -15, m, "Restar 15 segundos")
-                    Spacer(minLength: 8)
-                    Text(b.texto)
-                        .font(Self.fuente)
-                        .monospacedDigit()
-                        .contentTransition(.numericText(countsDown: true))
-                        .animation(.snappy, value: b.texto)
-                        .foregroundStyle(listo ? Color.exito : Color.primary)
-                        .accessibilityLabel(listo ? "Descanso terminado" : "Descanso, quedan \(b.texto)")
-                    Spacer(minLength: 8)
-                    ajuste("+15", 15, m, "Sumar 15 segundos")
-                }
-                ProgressView(value: falta)
-                    .tint(listo ? Color.exito : Color.marcaVivo)
-                    .animation(.linear(duration: 0.25), value: falta)
-                    .accessibilityHidden(true)
-                Button { withAnimation(.smooth) { m.saltarDescanso() } } label: {
-                    Label("Saltar descanso", systemImage: "forward.end.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .foregroundStyle(Color.marcaTexto)
-                .disabled(listo)
+        let visible = entrenamiento.motor?.descanso.visible == true
+        Group {
+            if mostrado, let m = entrenamiento.motor, m.descanso.visible {
+                tarjeta(m)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
             }
-            .padding(Espacio.m)
-            .background(Color.marcaSuave, in: .rect(cornerRadius: 18, style: .continuous))
-            .padding(.horizontal, Espacio.m)
-            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
-            .transition(.opacity.combined(with: .scale(scale: 0.96)))
-            .accessibilityIdentifier("descanso-en-tarjeta")
         }
+        .onChange(of: visible, initial: true) { _, nuevo in
+            withAnimation(.snappy) { mostrado = nuevo }
+            if nuevo { traerDespues() }
+        }
+        .onChange(of: entrenamiento.motor?.descanso.descanso?.fin) { _, fin in
+            // Otra serie confirmada con el descanso todavía en pantalla: el descanso nuevo también se trae a la vista.
+            if fin != nil, mostrado { traerDespues() }
+        }
+    }
+
+    private func traerDespues() {
+        guard let traer else { return }
+        Task { @MainActor in
+            // Lo justo para que la tarjeta ya tenga su tamaño (la animación de entrada sigue).
+            try? await Task.sleep(for: .milliseconds(320))
+            traer()
+        }
+    }
+
+    private func tarjeta(_ m: ModeloEntreno) -> some View {
+        let b = m.descanso
+        let listo = b.listo
+        let falta = listo ? 0 : max(0, 1 - (b.porcentaje ?? 0) / 100)
+        return VStack(spacing: Espacio.s) {
+            Text(listo ? "¡A la próxima serie!" : "Descanso \(b.textoObjetivo.replacingOccurrences(of: " objetivo", with: ""))")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(listo ? Color.marcaTexto : Color.secondary)
+            HStack {
+                ajuste("−15", -15, m, "Restar 15 segundos")
+                Spacer(minLength: 8)
+                Text(b.texto)
+                    .font(Self.fuente)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(.snappy, value: b.texto)
+                    .foregroundStyle(listo ? Color.marcaTexto : Color.primary)
+                    .accessibilityLabel(listo ? "Descanso terminado" : "Descanso, quedan \(b.texto)")
+                    .accessibilityAddTraits(.updatesFrequently)
+                Spacer(minLength: 8)
+                ajuste("+15", 15, m, "Sumar 15 segundos")
+            }
+            ProgressView(value: falta)
+                .tint(listo ? Color.exito : Color.marcaVivo)
+                .animation(.linear(duration: 0.25), value: falta)
+                .accessibilityHidden(true)
+            Button { withAnimation(.smooth) { m.saltarDescanso() } } label: {
+                Label("Saltar descanso", systemImage: "forward.end.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .foregroundStyle(listo ? Color.secondary : Color.marcaTexto)
+            .disabled(listo)
+        }
+        .padding(Espacio.m)
+        .background(Color.marcaSuave, in: .rect(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal, enLista ? Espacio.m : 0)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        .sensoryFeedback(.impact(weight: .light), trigger: b.textoObjetivo)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("descanso-en-tarjeta")
+        .id("descanso-en-tarjeta")
     }
 
     private func ajuste(_ texto: String, _ segundos: Int, _ m: ModeloEntreno, _ etiqueta: String) -> some View {
         Button { m.ajustarDescanso(segundos) } label: {
             Text(texto)
                 .font(.headline.monospacedDigit())
-                .frame(width: 56, height: 44)
+                .padding(.horizontal, 12)
+                .frame(minWidth: 56, minHeight: 44)
                 .background(Color.tarjeta, in: .capsule)
         }
         .buttonStyle(.plain)

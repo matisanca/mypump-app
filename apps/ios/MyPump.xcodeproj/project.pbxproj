@@ -67,6 +67,11 @@
 			path = DescansoWidget;
 			sourceTree = "<group>";
 		};
+		6B200000000000000000005E /* Compartido */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Compartido;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,6 +109,7 @@
 				6B2000000000000000000041 /* MyPumpUITests */,
 				6B200000000000000000005D /* DescansoWidget-Info.plist */,
 				6B2000000000000000000051 /* DescansoWidget */,
+				6B200000000000000000005E /* Compartido */,
 				6B2000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -137,6 +143,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				6B2000000000000000000002 /* MyPump */,
+				6B200000000000000000005E /* Compartido */,
 			);
 			name = MyPump;
 			packageProductDependencies = (
@@ -183,6 +190,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				6B2000000000000000000051 /* DescansoWidget */,
+				6B200000000000000000005E /* Compartido */,
 			);
 			name = DescansoWidget;
 			packageProductDependencies = (
@@ -308,12 +316,14 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 100;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 2.0.1;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
@@ -329,10 +339,12 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 100;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 2.0.1;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
@@ -345,7 +357,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MyPump.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 100;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "MyPump-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
@@ -356,7 +367,6 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = NO;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -373,7 +383,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MyPump.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 100;
 				EXCLUDED_SOURCE_FILE_NAMES = Muestras.bundle;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "MyPump-Info.plist";
@@ -385,7 +394,6 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = NO;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -436,7 +444,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 100;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "DescansoWidget-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
@@ -446,7 +453,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump.descanso;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -462,7 +468,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 100;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "DescansoWidget-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
@@ -472,7 +477,6 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump.descanso;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

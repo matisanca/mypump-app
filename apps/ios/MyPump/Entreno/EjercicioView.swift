@@ -85,6 +85,7 @@ struct EjercicioView: View {
                 .padding(.bottom, Espacio.xl)
             }
             .scrollDismissesKeyboard(.interactively)
+            .environment(\.traerDescansoALaVista, { withAnimation(.snappy) { lector.scrollTo("descanso-en-tarjeta", anchor: nil) } })
             .task {
                 // Capturas: `-ir series` (o movimiento, comentarios) abre desplazado hasta esa sección.
                 guard let ancla = DemoUI.ir else { return }
@@ -186,7 +187,7 @@ struct EjercicioView: View {
     private func series(_ t: ModeloEntreno.Tarjeta) -> some View {
         if !t.filas.isEmpty {
             TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia).id("series")
-            DescansoEnTarjeta()
+            DescansoEnTarjeta(enLista: false)
         }
     }
 

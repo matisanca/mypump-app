@@ -63,10 +63,13 @@ private struct Cuenta: View {
     let terminado: Bool
 
     var body: some View {
-        if terminado || estado.fin <= .now {
+        // Una sola lectura de la hora: dos podían caer a cada lado del fin y armar un rango al revés (y eso cierra la
+        // extensión).
+        let ahora = Date.now
+        if terminado || estado.fin <= ahora {
             Text("0:00").monospacedDigit()
         } else {
-            Text(timerInterval: Date.now...estado.fin, countsDown: true, showsHours: false)
+            Text(timerInterval: ahora...estado.fin, countsDown: true, showsHours: false)
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)
         }
@@ -80,8 +83,9 @@ private struct Barra: View {
 
     var body: some View {
         let inicio = estado.fin.addingTimeInterval(-Double(max(estado.objetivo, 1)))
-        if terminado || estado.fin <= .now {
-            ProgressView(value: 1).tint(verdeVivo)
+        if terminado || estado.fin <= Date.now {
+            // Vacía, como la de la app: lo que falta es nada.
+            ProgressView(value: 0).tint(verdeVivo)
         } else {
             ProgressView(timerInterval: inicio...estado.fin, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
                 .tint(verdeVivo)

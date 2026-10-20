@@ -30,8 +30,17 @@ final class Entrenamiento {
             if m.tickDescanso() { terminoDescanso() }
             try? await Task.sleep(for: .milliseconds(250))
         }
-        if motor?.descanso.visible != true { actividad.terminar() }
+        if motor?.descanso.visible != true { actividad.limpiar() }
     }
+
+    /// Al mostrarse las pestañas y al volver a la app: sin descanso a la vista no queda ninguna Live Activity (la de una
+    /// sesión que se cerró a la fuerza, o la que venció con la app atrás).
+    func revisarActividad() {
+        if motor?.descanso.visible != true { actividad.limpiar() }
+    }
+
+    /// Las pestañas dejan de verse (otra cuenta, «Actualizá Pump Team», salir): la cuenta regresiva no puede quedar sola.
+    func cerrarActividad() { actividad.limpiar() }
 
     private func terminoDescanso() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)

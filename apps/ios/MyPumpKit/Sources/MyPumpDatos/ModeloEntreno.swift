@@ -559,6 +559,8 @@ public final class ModeloEntreno {
         ])
         guard case .success(let v) = r, v != .bool(false) else { return .fallo }
         dia.diaFinalizado = true
+        descanso.detener()
+        guardarDescanso()
         if let d = dia.dia.id {
             var l = sesionesLocales[d] ?? SesionLocal(semana: semana)
             l.finalizada = true
@@ -996,6 +998,10 @@ public final class ModeloEntreno {
                     guardarSesiones()
                 }
             case .diaCompleto:
+                // Con el día completo no hay próxima serie: el descanso de la última serie no tiene sentido y dejaba la
+                // Live Activity («¡A la próxima serie!») y el aviso de fin después del entreno (revisión del 20-oct).
+                descanso.detener()
+                guardarDescanso()
                 if !diaCompletadoMostrado {
                     diaCompletadoMostrado = true
                     let (p, sig) = SemanaEntreno.preguntaDiaCompletado(dias: dias, actual: dia.dia.id)
