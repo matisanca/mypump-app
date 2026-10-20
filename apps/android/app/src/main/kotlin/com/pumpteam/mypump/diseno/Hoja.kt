@@ -57,7 +57,8 @@ class AccionHoja(val texto: String, val etiqueta: String? = null, val habilitada
 /**
  * La barra de arriba de una hoja: el título (y un subtítulo) al centro, [cancelar] a la izquierda y [confirmar] a la
  * derecha, en cápsulas de vidrio. El título queda centrado en la hoja y, si no entra entre las cápsulas, pasa a dos
- * renglones. [izquierda] reemplaza a «Cancelar» (la flecha de volver de una hoja con dos pasos).
+ * renglones; si ni una palabra entra (la letra muy grande), va debajo de las cápsulas, a todo el ancho. [izquierda]
+ * reemplaza a «Cancelar» (la flecha de volver de una hoja con dos pasos).
  */
 @Composable
 fun EncabezadoHoja(
@@ -111,8 +112,21 @@ fun EncabezadoHoja(
         val hueco = 8.dp.roundToPx()
         val lado = maxOf(izq?.width ?: 0, der?.width ?: 0).let { if (it > 0) it + hueco else 0 }
         val ancho = restricciones.maxWidth
-        val medio = centro.firstOrNull()?.measure(Constraints(maxWidth = (ancho - 2 * lado).coerceAtLeast(0)))
-        val alto = maxOf(izq?.height ?: 0, der?.height ?: 0, medio?.height ?: 0, 44.dp.roundToPx())
+        val disponible = (ancho - 2 * lado).coerceAtLeast(0)
+        val fila = maxOf(izq?.height ?: 0, der?.height ?: 0, 44.dp.roundToPx())
+        // Con la letra muy grande ni una palabra del título entra entre las cápsulas («Aju s…»): va en su renglón, abajo.
+        val cabe = (centro.firstOrNull()?.minIntrinsicWidth(Constraints.Infinity) ?: 0) <= disponible
+        if (!cabe) {
+            val medio = centro.firstOrNull()?.measure(Constraints(maxWidth = ancho))
+            val arriba = fila + 4.dp.roundToPx()
+            return@Layout layout(ancho, arriba + (medio?.height ?: 0)) {
+                izq?.placeRelative(0, (fila - izq.height) / 2)
+                der?.placeRelative(ancho - der.width, (fila - der.height) / 2)
+                medio?.placeRelative((ancho - medio.width) / 2, arriba)
+            }
+        }
+        val medio = centro.firstOrNull()?.measure(Constraints(maxWidth = disponible))
+        val alto = maxOf(fila, medio?.height ?: 0)
         layout(ancho, alto) {
             izq?.placeRelative(0, (alto - izq.height) / 2)
             der?.placeRelative(ancho - der.width, (alto - der.height) / 2)

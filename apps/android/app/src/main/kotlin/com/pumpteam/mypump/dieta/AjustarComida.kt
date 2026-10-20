@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -350,22 +351,41 @@ private fun ControlKcal(comida: AjustePorciones.ComidaDelDia, borrador: AjusteCo
     val minimo = -floor(base * (1 - AjustePorciones.FACTOR_MINIMO) / paso).toInt() * paso
     val maximo = floor(base * (AjustePorciones.FACTOR_MAXIMO - 1) / paso).toInt() * paso
     val activo = !borrador.omitida && base > 0
+    val menos = @Composable {
+        BotonKcal("−$paso", "Restar $paso kcal", "ajuste-menos", habilitado = activo && borrador.deltaKcal > minimo) {
+            cambiar { it.copy(deltaKcal = max(minimo, it.deltaKcal - paso)) }
+        }
+    }
+    val mas = @Composable {
+        BotonKcal("+$paso", "Sumar $paso kcal", "ajuste-mas", habilitado = activo && borrador.deltaKcal < maximo) {
+            cambiar { it.copy(deltaKcal = min(maximo, it.deltaKcal + paso)) }
+        }
+    }
+    val cuanto = @Composable { m: Modifier ->
+        Column(m.semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                if (borrador.deltaKcal == 0) "Como el plan" else "${TextosAjuste.signo(borrador.deltaKcal.toDouble())} kcal",
+                style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+                color = if (borrador.omitida) c.textoTerciario else c.texto,
+                modifier = Modifier.testTag("ajuste-delta"),
+            )
+            Text("a esta comida", style = Letras.caption, color = c.textoSecundario)
+        }
+    }
     Column(Modifier.fillMaxWidth().padding(Espacio.m), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            BotonKcal("−$paso", "Restar $paso kcal", "ajuste-menos", habilitado = activo && borrador.deltaKcal > minimo) {
-                cambiar { it.copy(deltaKcal = max(minimo, it.deltaKcal - paso)) }
+        if (LocalDensity.current.fontScale >= ESCALA_APILADA_AJUSTE) {
+            // Con la letra muy grande, como en iOS: lo sumado arriba y −50/+50 abajo.
+            cuanto(Modifier.fillMaxWidth())
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                menos()
+                Box(Modifier.weight(1f))
+                mas()
             }
-            Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    if (borrador.deltaKcal == 0) "Como el plan" else "${TextosAjuste.signo(borrador.deltaKcal.toDouble())} kcal",
-                    style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-                    color = if (borrador.omitida) c.textoTerciario else c.texto,
-                    modifier = Modifier.testTag("ajuste-delta"),
-                )
-                Text("a esta comida", style = Letras.caption, color = c.textoSecundario)
-            }
-            BotonKcal("+$paso", "Sumar $paso kcal", "ajuste-mas", habilitado = activo && borrador.deltaKcal < maximo) {
-                cambiar { it.copy(deltaKcal = min(maximo, it.deltaKcal + paso)) }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                menos()
+                cuanto(Modifier.weight(1f))
+                mas()
             }
         }
         if (!borrador.omitida && base == 0.0) {
@@ -378,6 +398,9 @@ private fun ControlKcal(comida: AjustePorciones.ComidaDelDia, borrador: AjusteCo
         }
     }
 }
+
+/** Desde esta escala de letra lo sumado va arriba de los botones (la misma de la cabecera de Dieta). */
+private const val ESCALA_APILADA_AJUSTE = 1.5f
 
 @Composable
 private fun BotonKcal(texto: String, descripcion: String, etiqueta: String, habilitado: Boolean, accion: () -> Unit) {
