@@ -16,12 +16,19 @@ struct AjustePorcionesTests {
     static let tostadas = Alimento(nombre: "Tostadas", qty: 2, unidad: "rebanada", kcal: 140, prot: 5, carb: 26, fat: 2)
     static let cafe = Alimento(nombre: "Café", qty: nil, unidad: nil, kcal: 0, prot: 0, carb: 0, fat: 0)
     static let aceite = Alimento(nombre: "Aceite de oliva", qty: 10, unidad: "g", kcal: 88, prot: 0, carb: 0, fat: 10)
+    /// Fuera de la grilla de 5 g (revisión del 20-oct): el redondeo lo achicaba al sumar.
+    static let queso = Alimento(nombre: "Queso", qty: 36, unidad: "g", kcal: 130, prot: 9, carb: 1, fat: 10)
+    static let pasta = Alimento(nombre: "Pasta", qty: 200, unidad: "g", kcal: 1870, prot: 60, carb: 300, fat: 20)
+    static let pollito = Alimento(nombre: "Pollo", qty: 38, unidad: "g", kcal: 63, prot: 12, carb: 0, fat: 1.5)
+    static let arrozMucho = Alimento(nombre: "Arroz", qty: 300, unidad: "g", kcal: 1937, prot: 20, carb: 420, fat: 3)
 
     typealias C = AjustePorciones.ComidaDelDia
     static let desayuno = C(id: "desayuno", nombre: "Desayuno", opcion: 0, alimentos: [avena, huevos, banana])
     static let pre = C(id: "pre", nombre: "Pre-entreno", opcion: 0, alimentos: [banana, tostadas])
     static let almuerzo = C(id: "almuerzo", nombre: "Almuerzo", opcion: 0, alimentos: [pollo, arroz, aceite])
     static let merienda = C(id: "merienda", nombre: "Merienda", opcion: 0, alimentos: [cafe])
+    static let cena = C(id: "cena", nombre: "Cena", opcion: 0, alimentos: [queso, pasta])
+    static let cenaLiviana = C(id: "cena", nombre: "Cena", opcion: 0, alimentos: [pollito, arrozMucho])
 
     /// Los casos de los vectores: nombre, comidas del día y ajustes.
     static let casos: [(String, [C], [String: AjusteComida])] = [
@@ -53,6 +60,8 @@ struct AjustePorcionesTests {
          ["almuerzo": AjusteComida(cantidades: ["0": 250], anclas: ["0": AnclaAlimento(nombre: " pollo ", unidad: "gr")])]),
         ("gramos a mano en otra unidad no valen", [desayuno],
          ["desayuno": AjusteComida(cantidades: ["1": 5], anclas: ["1": AnclaAlimento(nombre: "Huevos", unidad: "g")])]),
+        ("sumar no achica lo que está fuera de la grilla", [cena], ["cena": AjusteComida(deltaKcal: 50)]),
+        ("restar no agranda lo que está fuera de la grilla", [cenaLiviana], ["cena": AjusteComida(deltaKcal: -50)]),
     ]
 
     @Test func redondeaAPorcionesServibles() {
@@ -223,6 +232,25 @@ struct AjustePorcionesTests {
         #expect(ultima.cambios.map(\.id) == ["pre"] && ultima.sinCompensar < -300)
     }
 
+    @Test func elRedondeoNoCruzaElPlanAlReves() {
+        let mas = AjustePorciones.escalar([Self.queso, Self.pasta], deltaKcal: 50)
+        #expect((mas[0].qty ?? 0) >= 36 && (mas[1].qty ?? 0) >= 200, "\(mas.map(\.qty))")
+        let menos = AjustePorciones.escalar([Self.pollito, Self.arrozMucho], deltaKcal: -50)
+        #expect((menos[0].qty ?? 0) <= 38 && (menos[1].qty ?? 0) <= 300, "\(menos.map(\.qty))")
+    }
+
+    @Test func lasKcalSeAcotanALoQueLaComidaAbsorbe() {
+        let c = C(id: "d", nombre: "Desayuno", opcion: 0, alimentos: [Self.avena, Self.banana])
+        #expect(AjustePorciones.limitesDelta(c, nil) == -350...950)
+        // Con la avena a mano solo escala la banana (105 kcal): hasta +200.
+        let aMano = AjusteComida(deltaKcal: 500, cantidades: ["0": 100])
+        #expect(AjustePorciones.limitesDelta(c, aMano) == -50...200)
+        #expect(AjustePorciones.anclar(aMano, en: c).deltaKcal == 200)
+        // Sin nada que escalar, nada que sumar: el ajuste queda en lo que tenga a mano.
+        #expect(AjustePorciones.limitesDelta(Self.merienda, nil) == 0...0)
+        #expect(AjustePorciones.anclar(AjusteComida(deltaKcal: 100), en: Self.merienda).neutro)
+    }
+
     @Test func neutroYLecturaTolerante() throws {
         #expect(AjusteComida().neutro)
         #expect(!AjusteComida(deltaKcal: 50).neutro && !AjusteComida(omitida: true).neutro && !AjusteComida(cantidades: ["0": 10]).neutro)
@@ -230,6 +258,11 @@ struct AjustePorcionesTests {
         #expect(viejo.deltaKcal == 100 && viejo.compensar && !viejo.omitida && viejo.cantidades == ["1": 30] && viejo.anclas.isEmpty)
         let conAnclas = try JSONDecoder().decode(AjusteComida.self, from: Data(#"{"cantidades":{"1":30},"anclas":{"1":{"nombre":"Huevos","unidad":"u"}}}"#.utf8))
         #expect(conAnclas.anclas == ["1": AnclaAlimento(nombre: "Huevos", unidad: "u")])
+        // Topes: lo que no entra vale por defecto (igual en Android).
+        let rota = try JSONDecoder().decode(AjusteComida.self, from: Data(#"{"deltaKcal":5000000000,"opcion":-2}"#.utf8))
+        #expect(rota.deltaKcal == 0 && rota.opcion == 0)
+        let otra = try JSONDecoder().decode(AjusteComida.self, from: Data(#"{"deltaKcal":-30000,"opcion":99}"#.utf8))
+        #expect(otra.deltaKcal == -30000 && otra.opcion == 99)
     }
 
     // MARK: - Vectores compartidos con Android

@@ -58,7 +58,7 @@ class AjustePorcionesTest {
     fun losVectoresDeIosSalenIgual() {
         val todo = Vectores.json(Vectores.publico("ajuste_porciones"))
         val casos = todo["casos"]!!.jsonArray
-        assertEquals(21, casos.size, "cambió la cantidad de casos: regenerar en iOS y revisar acá")
+        assertEquals(23, casos.size, "cambió la cantidad de casos: regenerar en iOS y revisar acá")
         for (caso in casos) {
             val c = caso.jsonObject
             val nombre = c["nombre"]!!.jsonPrimitive.content
@@ -190,6 +190,29 @@ class AjustePorcionesTest {
     }
 
     @Test
+    fun elRedondeoNoCruzaElPlanAlReves() {
+        val queso = Alimento("Queso", qty = 36.0, unidad = "g", kcal = 130.0, prot = 9.0, carb = 1.0, fat = 10.0)
+        val pasta = Alimento("Pasta", qty = 200.0, unidad = "g", kcal = 1870.0, prot = 60.0, carb = 300.0, fat = 20.0)
+        val mas = AjustePorciones.escalar(listOf(queso, pasta), 50.0)
+        assertTrue((mas[0].qty ?: 0.0) >= 36 && (mas[1].qty ?: 0.0) >= 200, mas.map { it.qty }.toString())
+        val pollo = Alimento("Pollo", qty = 38.0, unidad = "g", kcal = 63.0, prot = 12.0, carb = 0.0, fat = 1.5)
+        val arroz = Alimento("Arroz", qty = 300.0, unidad = "g", kcal = 1937.0, prot = 20.0, carb = 420.0, fat = 3.0)
+        val menos = AjustePorciones.escalar(listOf(pollo, arroz), -50.0)
+        assertTrue((menos[0].qty ?: 0.0) <= 38 && (menos[1].qty ?: 0.0) <= 300, menos.map { it.qty }.toString())
+    }
+
+    @Test
+    fun lasKcalSeAcotanALoQueLaComidaAbsorbe() {
+        val c = AjustePorciones.ComidaDelDia("d", "Desayuno", 0, listOf(avena, banana))
+        assertEquals(-350..950, AjustePorciones.limitesDelta(c, null))
+        val aMano = AjusteComida(deltaKcal = 500, cantidades = mapOf("0" to 100.0))
+        assertEquals(-50..200, AjustePorciones.limitesDelta(c, aMano))
+        assertEquals(200, AjustePorciones.anclar(aMano, c).deltaKcal)
+        assertEquals(0..0, AjustePorciones.limitesDelta(merienda, null))
+        assertTrue(AjustePorciones.anclar(AjusteComida(deltaKcal = 100), merienda).neutro)
+    }
+
+    @Test
     fun neutroYLecturaTolerante() {
         assertTrue(AjusteComida().neutro)
         assertFalse(AjusteComida(deltaKcal = 50).neutro || AjusteComida(omitida = true).neutro || AjusteComida(cantidades = mapOf("0" to 10.0)).neutro)
@@ -197,6 +220,11 @@ class AjustePorcionesTest {
         assertEquals(AjusteComida(deltaKcal = 100, cantidades = mapOf("1" to 30.0)), viejo)
         val conAnclas = AjusteComida.desde(ValorJson.parsear("""{"cantidades":{"1":30},"anclas":{"1":{"nombre":"Huevos","unidad":"u"}}}"""))!!
         assertEquals(mapOf("1" to AnclaAlimento("Huevos", "u")), conAnclas.anclas)
+        // Topes: lo que no entra vale por defecto (igual en iOS).
+        val rota = AjusteComida.desde(ValorJson.parsear("""{"deltaKcal":5000000000,"opcion":-2}"""))!!
+        assertTrue(rota.deltaKcal == 0 && rota.opcion == 0)
+        val otra = AjusteComida.desde(ValorJson.parsear("""{"deltaKcal":-30000,"opcion":99}"""))!!
+        assertTrue(otra.deltaKcal == -30000 && otra.opcion == 99)
         // Ida y vuelta por JSON (lo que va al disco y al servidor).
         val a = AjusteComida(deltaKcal = -150, compensar = false, opcion = 2, cantidades = mapOf("0" to 60.0), anclas = mapOf("0" to AnclaAlimento("Avena", null)))
         assertEquals(a, AjusteComida.desde(ValorJson.parsear(a.aValor().serializar())))

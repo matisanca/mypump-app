@@ -51,10 +51,12 @@ public struct AjusteComida: Codable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        deltaKcal = (try? c.decode(Int.self, forKey: .deltaKcal)) ?? 0
+        // Con topes (una fila rota no puede dar una comida de un millón de kcal ni una opción que no existe): lo que no
+        // entra vale por defecto, igual en Android.
+        deltaKcal = (try? c.decode(Int.self, forKey: .deltaKcal)).flatMap { abs($0) <= 30000 ? $0 : nil } ?? 0
         compensar = (try? c.decode(Bool.self, forKey: .compensar)) ?? true
         omitida = (try? c.decode(Bool.self, forKey: .omitida)) ?? false
-        opcion = (try? c.decode(Int.self, forKey: .opcion)) ?? 0
+        opcion = (try? c.decode(Int.self, forKey: .opcion)).flatMap { (0...99).contains($0) ? $0 : nil } ?? 0
         cantidades = ((try? c.decode([String: Double].self, forKey: .cantidades)) ?? [:]).filter { $0.value.isFinite && $0.value >= 0 }
         anclas = (try? c.decode([String: AnclaAlimento].self, forKey: .anclas)) ?? [:]
     }
@@ -163,11 +165,15 @@ public enum AjustePorciones {
         let base = libres.reduce(0.0) { $0 + (alimentos[$1].kcal ?? 0) }
         guard base > 0 else { return r }
         let f = factor(base, deltaKcal)
+        let sube = deltaKcal > 0
         for i in libres {
-            let a = alimentos[i]
-            r[i] = conCantidad(a, redondear((a.qty ?? 0) * f, unidad: a.unidad))
+            let a = alimentos[i], q0 = a.qty ?? 0
+            // El redondeo a porciones servibles no cruza el plan al revés de lo pedido: con un plan fuera de la grilla
+            // (36 g de queso, +50 kcal) daba 35 g, menos de lo del plan, y el afinado no lo podía arreglar.
+            let q = redondear(q0 * f, unidad: a.unidad)
+            r[i] = conCantidad(a, sube ? max(q, q0) : min(q, q0))
         }
-        afinar(&r, alimentos, libres: libres, objetivo: base * f, sube: deltaKcal > 0)
+        afinar(&r, alimentos, libres: libres, objetivo: base * f, sube: sube)
         return r
     }
 
@@ -214,14 +220,27 @@ public enum AjustePorciones {
         return r
     }
 
-    /// Al guardar: cada cantidad a mano con el alimento al que va, y afuera las que ya no valen.
+    /// Al guardar (y al abrir la hoja): cada cantidad a mano con el alimento al que va, afuera las que ya no valen y las
+    /// kcal sumadas o restadas dentro de lo que la comida puede absorber (con alimentos a mano entra menos).
     public static func anclar(_ a: AjusteComida, en c: ComidaDelDia) -> AjusteComida {
         var r = a
         let validas = cantidadesValidas(c, a)
         r.cantidades = Dictionary(uniqueKeysWithValues: validas.map { (String($0.key), $0.value) })
         r.anclas = Dictionary(uniqueKeysWithValues: validas.keys.map { (String($0), AnclaAlimento(c.alimentos[$0])) })
+        r.deltaKcal = acotarDelta(r.deltaKcal, limitesDelta(c, r))
         return r
     }
+
+    /// Cuánto se puede sumar o restar a una comida, de a `paso`: hasta un cuarto y hasta el triple de lo que se puede
+    /// escalar (lo puesto a mano no cuenta). Sin nada que escalar, nada.
+    public static func limitesDelta(_ c: ComidaDelDia, _ aj: AjusteComida?) -> ClosedRange<Int> {
+        let base = baseEscalable(c, aj)
+        let minimo = -Int((base * (1 - factorMinimo) / Double(paso)).rounded(.down)) * paso
+        let maximo = Int((base * (factorMaximo - 1) / Double(paso)).rounded(.down)) * paso
+        return minimo...maximo
+    }
+
+    public static func acotarDelta(_ d: Int, _ l: ClosedRange<Int>) -> Int { min(max(d, l.lowerBound), l.upperBound) }
 
     /// Las kcal de lo que se agranda o se achica parejo (sin lo puesto a mano): sobre eso se miden los topes.
     public static func baseEscalable(_ c: ComidaDelDia, _ aj: AjusteComida?) -> Double {

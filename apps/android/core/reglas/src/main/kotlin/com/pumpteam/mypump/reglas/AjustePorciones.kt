@@ -78,8 +78,10 @@ data class AjusteComida(
          */
         fun desde(v: ValorJson?): AjusteComida? {
             val o = v as? ValorJson.Objeto ?: return null
-            fun entero(k: String, def: Int): Int =
-                o[k]?.comoNumero?.takeIf { it.isFinite() && it == Math.floor(it) && abs(it) <= Int.MAX_VALUE }?.toInt() ?: def
+            // Con topes (una fila rota no puede dar una comida de un millón de kcal ni una opción que no existe): lo que no
+            // entra vale por defecto, igual en iOS.
+            fun entero(k: String, def: Int, rango: IntRange): Int =
+                o[k]?.comoNumero?.takeIf { it.isFinite() && it == Math.floor(it) && it >= rango.first && it <= rango.last }?.toInt() ?: def
             fun booleano(k: String, def: Boolean): Boolean = (o[k] as? ValorJson.Booleano)?.valor ?: def
             val cantidades = (o["cantidades"] as? ValorJson.Objeto)?.campos?.let { m ->
                 if (m.values.all { it is ValorJson.Numero }) m.mapValues { (it.value as ValorJson.Numero).valor } else null
@@ -88,7 +90,10 @@ data class AjusteComida(
                 val r = m.mapValues { AnclaAlimento.desde(it.value) }
                 if (r.values.all { it != null }) r.mapValues { it.value!! } else null
             }.orEmpty()
-            return AjusteComida(entero("deltaKcal", 0), booleano("compensar", true), booleano("omitida", false), entero("opcion", 0), cantidades, anclas)
+            return AjusteComida(
+                entero("deltaKcal", 0, -30000..30000), booleano("compensar", true), booleano("omitida", false), entero("opcion", 0, 0..99),
+                cantidades, anclas,
+            )
         }
     }
 }
@@ -196,11 +201,16 @@ object AjustePorciones {
         val base = libres.fold(0.0) { s, i -> s + (alimentos[i].kcal ?: 0.0) }
         if (base <= 0) return r
         val f = factor(base, deltaKcal)
+        val sube = deltaKcal > 0
         for (i in libres) {
             val a = alimentos[i]
-            r[i] = conCantidad(a, redondear((a.qty ?: 0.0) * f, a.unidad))
+            val q0 = a.qty ?: 0.0
+            // El redondeo a porciones servibles no cruza el plan al revés de lo pedido: con un plan fuera de la grilla
+            // (36 g de queso, +50 kcal) daba 35 g, menos de lo del plan, y el afinado no lo podía arreglar.
+            val q = redondear(q0 * f, a.unidad)
+            r[i] = conCantidad(a, if (sube) maxOf(q, q0) else minOf(q, q0))
         }
-        afinar(r, alimentos, libres, objetivo = base * f, sube = deltaKcal > 0)
+        afinar(r, alimentos, libres, objetivo = base * f, sube = sube)
         return r
     }
 
@@ -259,13 +269,28 @@ object AjustePorciones {
         return r
     }
 
-    /** Al guardar: cada cantidad a mano con el alimento al que va, y afuera las que ya no valen. */
+    /**
+     * Al guardar (y al abrir la hoja): cada cantidad a mano con el alimento al que va, afuera las que ya no valen y las kcal
+     * sumadas o restadas dentro de lo que la comida puede absorber (con alimentos a mano entra menos).
+     */
     fun anclar(a: AjusteComida, en: ComidaDelDia): AjusteComida {
         val validas = cantidadesValidas(en, a)
-        return a.copy(
+        val r = a.copy(
             cantidades = validas.entries.associate { it.key.toString() to it.value },
             anclas = validas.keys.associate { it.toString() to AnclaAlimento(en.alimentos[it]) },
         )
+        return r.copy(deltaKcal = r.deltaKcal.coerceIn(limitesDelta(en, r)))
+    }
+
+    /**
+     * Cuánto se puede sumar o restar a una comida, de a [PASO]: hasta un cuarto y hasta el triple de lo que se puede
+     * escalar (lo puesto a mano no cuenta). Sin nada que escalar, nada.
+     */
+    fun limitesDelta(c: ComidaDelDia, aj: AjusteComida?): IntRange {
+        val base = baseEscalable(c, aj)
+        val minimo = -Math.floor(base * (1 - FACTOR_MINIMO) / PASO).toInt() * PASO
+        val maximo = Math.floor(base * (FACTOR_MAXIMO - 1) / PASO).toInt() * PASO
+        return minimo..maximo
     }
 
     /** Las kcal de lo que se agranda o se achica parejo (sin lo puesto a mano): sobre eso se miden los topes. */

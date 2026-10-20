@@ -3550,6 +3550,171 @@
         }
       },
       "nombre" : "gramos a mano en otra unidad no valen"
+    },
+    {
+      "ajustes" : {
+        "cena" : {
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 50,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 1,
+              "fat" : 10,
+              "kcal" : 130,
+              "name" : "Queso",
+              "prot" : 9,
+              "qty" : 36,
+              "unit" : "g"
+            },
+            {
+              "carb" : 300,
+              "fat" : 20,
+              "kcal" : 1870,
+              "name" : "Pasta",
+              "prot" : 60,
+              "qty" : 200,
+              "unit" : "g"
+            }
+          ],
+          "id" : "cena",
+          "nombre" : "Cena",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "cena" : {
+          "cambiados" : [
+            1
+          ],
+          "carb" : [
+            1,
+            307.5
+          ],
+          "compensacion" : 0,
+          "compensaDe" : [
+
+          ],
+          "deltaPropio" : 50,
+          "fat" : [
+            10,
+            20.5
+          ],
+          "kcal" : [
+            130,
+            1917
+          ],
+          "kcalDia" : 2047,
+          "kcalPlan" : 2000,
+          "noAbsorbido" : 0,
+          "omitida" : false,
+          "propio" : 47,
+          "prot" : [
+            9,
+            61.5
+          ],
+          "qty" : [
+            36,
+            205
+          ]
+        }
+      },
+      "nombre" : "sumar no achica lo que está fuera de la grilla"
+    },
+    {
+      "ajustes" : {
+        "cena" : {
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : -50,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 1.5,
+              "kcal" : 63,
+              "name" : "Pollo",
+              "prot" : 12,
+              "qty" : 38,
+              "unit" : "g"
+            },
+            {
+              "carb" : 420,
+              "fat" : 3,
+              "kcal" : 1937,
+              "name" : "Arroz",
+              "prot" : 20,
+              "qty" : 300,
+              "unit" : "g"
+            }
+          ],
+          "id" : "cena",
+          "nombre" : "Cena",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "cena" : {
+          "cambiados" : [
+            0,
+            1
+          ],
+          "carb" : [
+            0,
+            413
+          ],
+          "compensacion" : 0,
+          "compensaDe" : [
+
+          ],
+          "deltaPropio" : -50,
+          "fat" : [
+            1,
+            2.8999999999999999
+          ],
+          "kcal" : [
+            41,
+            1905
+          ],
+          "kcalDia" : 1946,
+          "kcalPlan" : 2000,
+          "noAbsorbido" : 0,
+          "omitida" : false,
+          "propio" : -54,
+          "prot" : [
+            7.9000000000000004,
+            19.699999999999999
+          ],
+          "qty" : [
+            25,
+            295
+          ]
+        }
+      },
+      "nombre" : "restar no agranda lo que está fuera de la grilla"
     }
   ],
   "generado" : "MyPumpKit AjustePorcionesTests (iOS). Android: AjustePorcionesTest.kt lo tiene que dar igual."
