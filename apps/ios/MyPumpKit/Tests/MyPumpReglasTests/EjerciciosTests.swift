@@ -188,12 +188,23 @@ func fallasNombres(_ v: ArchivoSustitutos, _ cat: CatalogoEjercicios) -> [String
 
 @Suite("Sustitución de ejercicios: misma salida que la web")
 struct SustitucionVectoresTests {
+    /// Nombres que la app cambia a propósito (20-oct): la patada de tríceps, que la web llama «Patada de glúteo». Allá no
+    /// se ve; en la app aparece entre los otros ejercicios de tríceps y es el nombre que se registra al sustituir.
+    static let desvios: [String: (web: String, app: String)] = [
+        "Tricep_Dumbbell_Kickback": ("Patada de glúteo con mancuernas", "Patada de tríceps con mancuernas"),
+    ]
+
     @Test func traduccionesDelCatalogo() throws {
         let (v, cat) = try cargarSustitutos(vectoresSustitutos)
         #expect(cat.entradas.count == v.catalogo.filas)
         var fallas: [String] = []
         for (i, e) in cat.entradas.enumerated() {
             let es = SustitucionEjercicios.castellano(e), eq = SustitucionEjercicios.etiquetaEquipo(e)
+            // Los desvíos a propósito: la web sigue con su nombre (si lo arregla allá, esto avisa).
+            if let d = Self.desvios[e.slugEn ?? ""] {
+                if !exacto(v.traducciones[i][0], d.web) || !exacto(es, d.app) { fallas.append("\(e.slugEn ?? ""): desvío \(d), web \(v.traducciones[i][0]), swift \(es)") }
+                continue
+            }
             if !exacto(es, v.traducciones[i][0]) || !exacto(eq, v.traducciones[i][1]) {
                 fallas.append("\(e.slugEn ?? "nil"): web \(v.traducciones[i]), swift [\(es), \(eq)]")
             }
@@ -330,5 +341,92 @@ struct BusquedaSustitutosTests {
         #expect(nombres("  REMO ") == ["Remo con barra", "Remo en polea baja"])
         #expect(nombres("jalon").isEmpty)                 // la web no pliega acentos
         #expect(nombres("polea baja") == ["Remo en polea baja"])
+    }
+}
+
+
+/// Los otros ejercicios del mismo músculo (Mati, 20-oct: Eric, con la polea ocupada, no tenía con qué cambiar la extensión
+/// en polea; quería fondos). Es de la app: la web solo ofrece el mismo movimiento.
+@Suite("Sustitución de ejercicios: otros del mismo músculo")
+struct OtrosDelMismoMusculoTests {
+    @Test func aLaExtensionEnPoleaLeQuedanFondosYExtensiones() throws {
+        let (_, cat) = try cargarSustitutos(vectoresSustitutos)
+        let r = ReferenciaEjercicio(nombre: "Extensión en polea alta con barra", imagenes: nil, catalogoSlug: "Triceps_Pushdown")
+        let arriba = cat.sustitutos(r)
+        let otros = cat.otrosDelMismoMusculo(r)
+        let nombres = otros.map { "\($0.nombre) · \($0.equipo)" }
+        #expect(arriba.map(\.nombre) == ["Extensión de tríceps en polea"], "las variantes de siempre, igual que la web")
+        #expect(nombres.contains("Fondos · Peso corporal"), "\(nombres)")
+        #expect(nombres.contains("Patada de tríceps con mancuernas · Mancuernas"))
+        #expect(nombres.contains("Press francés con barra Z · Barra Z"))
+        #expect(!otros.contains { $0.nombre == "Press" || $0.nombre == $0.nombreIngles }, "sin nombres sueltos ni sin traducir")
+        #expect(!otros.contains { s in arriba.contains { $0.nombre == s.nombre && $0.equipo == s.equipo } }, "sin repetir lo de arriba")
+        #expect(otros.allSatisfy { $0.musculo == "triceps" && $0.patron != nil && $0.patron != "extension_triceps_pushdown" })
+        // Otro equipo primero: la polea es la que está ocupada.
+        let desde = otros.firstIndex(where: \.mismoEquipo) ?? otros.count
+        #expect(otros[desde...].allSatisfy(\.mismoEquipo) && desde > 0)
+        #expect((15...30).contains(otros.count), "\(otros.count)")
+    }
+
+    /// Las filas mal clasificadas no se cuelan: «Encogimientos» figura como espalda media en el catálogo, pero su patrón
+    /// es de trapecio, así que al remo con barra no le aparece (lo vio la prueba de la demo, 20-oct).
+    @Test func unaFilaMalClasificadaNoSeOfrece() throws {
+        let (_, cat) = try cargarSustitutos(vectoresSustitutos)
+        #expect(cat.musculo(dePatron: "encogimiento_trapecio") == "traps")
+        #expect(cat.musculo(dePatron: "fondos_paralelas") == "triceps")
+        let remo = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: "Remo con barra", imagenes: nil, catalogoSlug: "Bent_Over_Barbell_Row"))
+        #expect(!remo.contains { $0.nombre.hasPrefix("Encogimientos") }, "\(remo.map(\.nombre))")
+        // A una sentadilla le quedan zancadas y extensión de cuádriceps.
+        let sentadilla = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: "Sentadilla con barra", imagenes: nil, catalogoSlug: "Barbell_Squat"))
+        #expect(sentadilla.contains { $0.patron == "zancada_unilateral" } && sentadilla.contains { $0.patron == "extension_rodilla" })
+        #expect(sentadilla.allSatisfy { $0.musculo == "quadriceps" })
+    }
+
+    /// Las listas de 8 ejercicios (empuje, tirón, piernas, brazos) quedan grabadas para que Android dé exactamente lo mismo.
+    /// Para regenerarlas: `GENERAR_VECTORES_OTROS=1 swift test --filter OtrosDelMismoMusculoTests/generarVectores`.
+    static let slugsVector = ["Triceps_Pushdown", "Barbell_Squat", "Bent_Over_Barbell_Row", "Barbell_Bench_Press_-_Medium_Grip",
+                              "Barbell_Curl", "Romanian_Deadlift", "Side_Lateral_Raise", "Wide-Grip_Lat_Pulldown"]
+    static var archivoVector: URL { raizRepo.appendingPathComponent("apps/shared/vectores/otros_mismo_musculo.json") }
+
+    static func listas(_ cat: CatalogoEjercicios) -> [String: [String]] {
+        Dictionary(uniqueKeysWithValues: slugsVector.map { slug in
+            (slug, cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: nil, imagenes: nil, catalogoSlug: slug)).map { "\($0.nombre) · \($0.equipo)" })
+        })
+    }
+
+    /// Y la huella de la lista de CADA ejercicio del catálogo que tenga alguno (los 16 primeros hex del SHA-256 de las
+    /// líneas «nombre · equipo» unidas con \n): con eso Android se compara ejercicio por ejercicio sin un archivo enorme.
+    static func huellas(_ cat: CatalogoEjercicios) -> [String: String] {
+        var out: [String: String] = [:]
+        for slug in cat.entradas.compactMap(\.slugEn) where out[slug] == nil {
+            let lista = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: nil, imagenes: nil, catalogoSlug: slug)).map { "\($0.nombre) · \($0.equipo)" }
+            if lista.isEmpty { continue }
+            out[slug] = SHA256.hash(data: Data(lista.joined(separator: "\n").utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        }
+        return out
+    }
+
+    @Test func generarVectores() throws {
+        guard ProcessInfo.processInfo.environment["GENERAR_VECTORES_OTROS"] == "1" else { return }
+        let (_, cat) = try cargarSustitutos(vectoresSustitutos)
+        let todo: [String: Any] = ["generado": "MyPumpKit OtrosDelMismoMusculoTests (iOS). Android: OtrosDelMismoMusculoTest lo tiene que dar igual.",
+                                   "listas": Self.listas(cat), "huellas": Self.huellas(cat)]
+        try JSONSerialization.data(withJSONObject: todo, options: [.prettyPrinted, .sortedKeys]).write(to: Self.archivoVector)
+    }
+
+    @Test func losVectoresSiguenIguales() throws {
+        let (_, cat) = try cargarSustitutos(vectoresSustitutos)
+        let todo = try JSONSerialization.jsonObject(with: Data(contentsOf: Self.archivoVector)) as! [String: Any]
+        #expect((todo["listas"] as? [String: [String]]) == Self.listas(cat))
+        let huellas = try #require(todo["huellas"] as? [String: String])
+        #expect(huellas == Self.huellas(cat))
+        #expect(huellas.count > 300, "casi todo el catálogo con patrón tiene otros del mismo músculo: \(huellas.count)")
+    }
+
+    @Test func sinPatronNoSeOfreceNada() throws {
+        let (_, cat) = try cargarSustitutos(vectoresSustitutos)
+        // Sin clasificar en el catálogo (como en la web, sin patrón no hay sustitutos): ni variantes ni otros.
+        let r = ReferenciaEjercicio(nombre: "Bench Press - Powerlifting", imagenes: nil, catalogoSlug: "Bench_Press_-_Powerlifting")
+        #expect(cat.sustitutos(r).isEmpty && cat.otrosDelMismoMusculo(r).isEmpty)
     }
 }

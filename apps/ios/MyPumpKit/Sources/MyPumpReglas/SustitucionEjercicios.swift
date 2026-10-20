@@ -53,6 +53,30 @@ public enum SustitucionEjercicios {
         return out
     }
 
+    /// El músculo del catálogo en castellano, para el título de «Otros ejercicios de …». nil si no se conoce.
+    public static func musculo(_ m: String?) -> String? {
+        switch (m ?? "").lowercased() {
+        case "quadriceps": "cuádriceps"
+        case "shoulders": "hombros"
+        case "abdominals": "abdominales"
+        case "chest": "pecho"
+        case "hamstrings": "isquiotibiales"
+        case "triceps": "tríceps"
+        case "biceps": "bíceps"
+        case "lats": "dorsales"
+        case "middle back": "espalda media"
+        case "calves": "pantorrillas"
+        case "lower back": "zona lumbar"
+        case "forearms": "antebrazos"
+        case "glutes": "glúteos"
+        case "traps": "trapecios"
+        case "adductors": "aductores"
+        case "neck": "cuello"
+        case "abductors": "abductores"
+        default: nil
+        }
+    }
+
     /// `_equipLabel`: "Smith" en el nombre es Multipower (free-exercise-db lo etiqueta 'machine' o 'barbell').
     public static func etiquetaEquipo(_ e: EntradaCatalogoEjercicio) -> String {
         if smith.prueba(e.nameEn ?? "") { return "Multipower" }
@@ -170,6 +194,9 @@ public enum SustitucionEjercicios {
         (#"leg curl|glute ham|nordic"#, "Curl femoral"),
         (#"hip thrust"#, "Hip thrust"),
         (#"glute bridge"#, "Puente de glúteos"),
+        // Desvío a propósito de la web (20-oct): ahí la patada de tríceps también sale «Patada de glúteo». Allá no se ve
+        // (no tiene variantes); en la app sí, entre los otros ejercicios de tríceps, y es el nombre que se registra.
+        (#"tricep.*kickback|kickback.*tricep"#, "Patada de tríceps"),
         (#"(glute|cable) kickback|kickback"#, "Patada de glúteo"),
         (#"thigh abductor|hip abduction|abductor"#, "Abductores"),
         (#"thigh adductor|hip adduction|adductor"#, "Aductores"),
@@ -391,13 +418,30 @@ public struct CatalogoEjercicios: Sendable {
     public let entradas: [EntradaCatalogoEjercicio]
     /// `byId`: si un slug se repite, gana la última fila.
     private let indice: [ClaveJS: Int]
+    /// El músculo de cada patrón de movimiento: el de la mayoría de sus filas (en un empate, el que aparece primero).
+    /// Para «otros del mismo músculo»: una fila mal clasificada (encogimientos como espalda media) no se ofrece, porque
+    /// su patrón es de otro músculo.
+    private let musculoDelPatron: [ClaveJS: String]
 
     public init(_ entradas: [EntradaCatalogoEjercicio]) {
         self.entradas = entradas
         var indice: [ClaveJS: Int] = [:]
         for (i, e) in entradas.enumerated() { if let slug = e.slugEn { indice[ClaveJS(slug)] = i } }
         self.indice = indice
+        var cuentas: [ClaveJS: [(musculo: String, filas: Int)]] = [:]
+        for e in entradas {
+            guard let p = verdadero(e.patronMovimiento), let m = verdadero(e.primaryMuscle) else { continue }
+            var lista = cuentas[ClaveJS(p)] ?? []
+            if let i = lista.firstIndex(where: { igualJS($0.musculo, m) }) { lista[i].filas += 1 } else { lista.append((m, 1)) }
+            cuentas[ClaveJS(p)] = lista
+        }
+        musculoDelPatron = cuentas.mapValues { lista in
+            lista.reduce(lista[0]) { mejor, x in x.filas > mejor.filas ? x : mejor }.musculo
+        }
     }
+
+    /// El músculo de un patrón (el de la mayoría de sus filas).
+    public func musculo(dePatron p: String?) -> String? { verdadero(p).flatMap { musculoDelPatron[ClaveJS($0)] } }
 
     /// El JSON del GET (o del archivo empaquetado), en el orden en que viene.
     public init(json: Data) throws {
@@ -450,6 +494,47 @@ public struct CatalogoEjercicios: Sendable {
         }.map(\.element)
         var vistos = Set<[ClaveJS]>()
         return Array(ordenados.filter { vistos.insert([ClaveJS($0.nombre), ClaveJS($0.equipo)]).inserted }.prefix(30))
+    }
+
+    /// Los otros ejercicios del mismo músculo, con otro movimiento (Mati, 20-oct: con la polea ocupada, a una extensión en
+    /// polea no le quedaba nada; Eric quería fondos). Es de la app, no de la web: van en su propia sección, debajo de las
+    /// variantes del mismo movimiento y sin repetirlas. Solo filas con su patrón (las sin clasificar no se ofrecen) y con
+    /// un patrón de ESE músculo (el de la mayoría de sus filas: así los encogimientos mal cargados como espalda media no
+    /// aparecen para un remo), sin nombres que no se tradujeron ni el «Press» suelto, otro equipo primero, alfabético, sin
+    /// repetir nombre+equipo, 30.
+    public func otrosDelMismoMusculo(_ r: ReferenciaEjercicio) -> [SustitutoEjercicio] {
+        guard let original = resolver(r), let patron = verdadero(original.patronMovimiento),
+              verdadero(original.primaryMuscle) != nil else { return [] }
+        let deArriba = Set(sustitutos(r).map { [ClaveJS($0.nombre), ClaveJS($0.equipo)] })
+        let propio = [ClaveJS(SustitucionEjercicios.castellano(original)), ClaveJS(SustitucionEjercicios.etiquetaEquipo(original))]
+        let candidatos = entradas
+            .filter {
+                igualJS($0.primaryMuscle, original.primaryMuscle) && verdadero($0.patronMovimiento) != nil
+                    && !igualJS($0.patronMovimiento, patron) && !igualJS($0.slugEn, original.slugEn)
+                    && igualJS(musculo(dePatron: $0.patronMovimiento), original.primaryMuscle)
+            }
+            .map { SustitutoEjercicio($0, mismoEquipo: igualJS($0.equipment, original.equipment)) }
+            .filter { s in
+                let n = s.nombre
+                return !n.isEmpty && n != "Press" && !igualJS(n, s.nombreIngles)
+            }
+        let ordenados = candidatos.enumerated().sorted { a, b in
+            if a.element.mismoEquipo != b.element.mismoEquipo { return !a.element.mismoEquipo }
+            switch SustitucionEjercicios.compararNombres(a.element.nombre, b.element.nombre) {
+            case .orderedAscending: return true
+            case .orderedDescending: return false
+            case .orderedSame: return a.offset < b.offset
+            }
+        }.map(\.element)
+        var vistos = deArriba
+        vistos.insert(propio)
+        return Array(ordenados.filter { vistos.insert([ClaveJS($0.nombre), ClaveJS($0.equipo)]).inserted }.prefix(30))
+    }
+
+    /// Los otros del mismo músculo para la tarjeta, resueltos sobre el original (como `sustitutos(de:)`).
+    public func otrosDelMismoMusculo(de ef: EjercicioEfectivo) -> [SustitutoEjercicio] {
+        if ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio" { return [] }
+        return otrosDelMismoMusculo(Self.referencia(de: ef))
     }
 
     /// `getEffectiveEx(ex)` con `STATE.exerciseSwaps[ex.id]` = `sustitucion`.

@@ -60,6 +60,28 @@ object SustitucionEjercicios {
         return out
     }
 
+    /** El músculo del catálogo en castellano, para el título de «Otros ejercicios de …». null si no se conoce. */
+    fun musculo(m: String?): String? = when ((m ?: "").lowercase()) {
+        "quadriceps" -> "cuádriceps"
+        "shoulders" -> "hombros"
+        "abdominals" -> "abdominales"
+        "chest" -> "pecho"
+        "hamstrings" -> "isquiotibiales"
+        "triceps" -> "tríceps"
+        "biceps" -> "bíceps"
+        "lats" -> "dorsales"
+        "middle back" -> "espalda media"
+        "calves" -> "pantorrillas"
+        "lower back" -> "zona lumbar"
+        "forearms" -> "antebrazos"
+        "glutes" -> "glúteos"
+        "traps" -> "trapecios"
+        "adductors" -> "aductores"
+        "neck" -> "cuello"
+        "abductors" -> "abductores"
+        else -> null
+    }
+
     /** `_equipLabel`: "Smith" en el nombre es Multipower (free-exercise-db lo etiqueta 'machine' o 'barbell'). */
     fun etiquetaEquipo(e: EntradaCatalogoEjercicio): String {
         if (smith.prueba(e.nameEn ?: "")) return "Multipower"
@@ -178,6 +200,9 @@ object SustitucionEjercicios {
         "leg curl|glute ham|nordic" to "Curl femoral",
         "hip thrust" to "Hip thrust",
         "glute bridge" to "Puente de glúteos",
+        // Desvío a propósito de la web (20-oct): ahí la patada de tríceps también sale «Patada de glúteo». Allá no se ve
+        // (no tiene variantes); en la app sí, entre los otros ejercicios de tríceps, y es el nombre que se registra.
+        "tricep.*kickback|kickback.*tricep" to "Patada de tríceps",
         "(glute|cable) kickback|kickback" to "Patada de glúteo",
         "thigh abductor|hip abduction|abductor" to "Abductores",
         "thigh adductor|hip adduction|adductor" to "Aductores",
@@ -387,6 +412,26 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
 
     fun entrada(slug: String): EntradaCatalogoEjercicio? = indice[slug]?.let { entradas[it] }
 
+    /**
+     * El músculo de cada patrón de movimiento: el de la mayoría de sus filas (en un empate, el que aparece primero). Para
+     * «otros del mismo músculo»: una fila mal clasificada (encogimientos como espalda media) no se ofrece, porque su patrón
+     * es de otro músculo.
+     */
+    private val musculoDelPatron: Map<String, String> = run {
+        val cuentas = LinkedHashMap<String, MutableList<Pair<String, Int>>>()
+        for (e in entradas) {
+            val p = verdadero(e.patronMovimiento) ?: continue
+            val m = verdadero(e.primaryMuscle) ?: continue
+            val lista = cuentas.getOrPut(p) { mutableListOf() }
+            val i = lista.indexOfFirst { it.first == m }
+            if (i >= 0) lista[i] = lista[i].first to lista[i].second + 1 else lista += m to 1
+        }
+        cuentas.mapValues { (_, l) -> l.reduce { mejor, x -> if (x.second > mejor.second) x else mejor }.first }
+    }
+
+    /** El músculo de un patrón (el de la mayoría de sus filas). */
+    fun musculoDePatron(p: String?): String? = verdadero(p)?.let { musculoDelPatron[it] }
+
     /** `_resolve`: slug explícito → slug de la URL de la imagen → reglas por nombre → nombre normalizado o alias exactos. */
     fun resolver(r: ReferenciaEjercicio): EntradaCatalogoEjercicio? {
         if (entradas.isEmpty()) return null
@@ -424,6 +469,43 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
         }.map { candidatos[it] }
         val vistos = HashSet<Pair<String, String>>()
         return ordenados.filter { vistos.add(it.nombre to it.equipo) }.take(30)
+    }
+
+    /**
+     * Los otros ejercicios del mismo músculo, con otro movimiento (Mati, 20-oct: con la polea ocupada, a una extensión en
+     * polea no le quedaba nada; Eric quería fondos). Es de la app, no de la web: van en su propia sección, debajo de las
+     * variantes del mismo movimiento y sin repetirlas. Solo filas con su patrón (las sin clasificar no se ofrecen) y con un
+     * patrón de ESE músculo (el de la mayoría de sus filas: así los encogimientos mal cargados como espalda media no
+     * aparecen para un remo), sin nombres que no se tradujeron ni el «Press» suelto, otro equipo primero, alfabético, sin
+     * repetir nombre+equipo, 30. Igual que en iOS.
+     */
+    fun otrosDelMismoMusculo(r: ReferenciaEjercicio): List<SustitutoEjercicio> {
+        val original = resolver(r) ?: return emptyList()
+        val patron = verdadero(original.patronMovimiento) ?: return emptyList()
+        val musculo = verdadero(original.primaryMuscle) ?: return emptyList()
+        val deArriba = sustitutos(r).map { it.nombre to it.equipo }
+        val propio = SustitucionEjercicios.castellano(original) to SustitucionEjercicios.etiquetaEquipo(original)
+        val candidatos = entradas
+            .filter {
+                it.primaryMuscle == musculo && verdadero(it.patronMovimiento) != null && it.patronMovimiento != patron &&
+                    it.slugEn != original.slugEn && musculoDePatron(it.patronMovimiento) == musculo
+            }
+            .map { SustitutoEjercicio(it, mismoEquipo = it.equipment == original.equipment) }
+            .filter { it.nombre.isNotEmpty() && it.nombre != "Press" && it.nombre != it.nombreIngles }
+        val claves = candidatos.map { ColacionEspanol.clave(it.nombre) }
+        val ordenados = SemanticaJs.ordenarEstable(candidatos.indices.toList()) { i, j ->
+            val a = candidatos[i]
+            val b = candidatos[j]
+            if (a.mismoEquipo != b.mismoEquipo) (if (a.mismoEquipo) 1 else -1) else claves[i].compareTo(claves[j])
+        }.map { candidatos[it] }
+        val vistos = HashSet(deArriba).apply { add(propio) }
+        return ordenados.filter { vistos.add(it.nombre to it.equipo) }.take(30)
+    }
+
+    /** Los otros del mismo músculo para la tarjeta, resueltos sobre el original (como [sustitutos]). */
+    fun otrosDelMismoMusculo(ef: EjercicioEfectivo): List<SustitutoEjercicio> {
+        if (ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio") return emptyList()
+        return otrosDelMismoMusculo(referencia(ef))
     }
 
     /** `getEffectiveEx(ex)` con `STATE.exerciseSwaps[ex.id]` = [sustitucion]. */

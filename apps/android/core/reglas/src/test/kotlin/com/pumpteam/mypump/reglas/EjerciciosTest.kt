@@ -172,6 +172,12 @@ private fun fallasNombres(v: ArchivoSustitutos, cat: CatalogoEjercicios): List<S
 class SustitucionEjerciciosTest {
     private val publicos = Vectores.publico("sustitutos_ejercicio")
 
+    /**
+     * Nombres que la app cambia a propósito (20-oct, igual que iOS): la patada de tríceps, que la web llama «Patada de
+     * glúteo». Allá no se ve; en la app aparece entre los otros ejercicios de tríceps y es el nombre que se registra.
+     */
+    private val desvios = mapOf("Tricep_Dumbbell_Kickback" to ("Patada de glúteo con mancuernas" to "Patada de tríceps con mancuernas"))
+
     @Test
     fun traduccionesDelCatalogo() {
         val (v, cat) = cargar(publicos)
@@ -180,6 +186,12 @@ class SustitucionEjerciciosTest {
         for ((i, e) in cat.entradas.withIndex()) {
             val es = SustitucionEjercicios.castellano(e)
             val eq = SustitucionEjercicios.etiquetaEquipo(e)
+            // Los desvíos a propósito: la web sigue con su nombre (si lo arregla allá, esto avisa).
+            val d = desvios[e.slugEn]
+            if (d != null) {
+                if (v.traducciones[i][0] != d.first || es != d.second) fallas += "${e.slugEn}: desvío $d, web ${v.traducciones[i][0]}, kotlin $es"
+                continue
+            }
             if (es != v.traducciones[i][0] || eq != v.traducciones[i][1]) fallas += "${e.slugEn}: web ${v.traducciones[i]}, kotlin [$es, $eq]"
         }
         for (s in v.sinteticas) {
@@ -301,5 +313,78 @@ class SustitucionEjerciciosTest {
         // `exec`: la primera aparición, aunque no esté en el catálogo.
         assertEquals("No_Existe", SustitucionEjercicios.slugDeUrl("a/exercise-images/No_Existe/exercise-images/Leg_Press/0.jpg"))
         assertNull(SustitucionEjercicios.slugDeUrl("exercise-images//0.jpg"))
+    }
+}
+
+
+/**
+ * Los otros ejercicios del mismo músculo (Mati, 20-oct: Eric, con la polea ocupada, no tenía con qué cambiar la extensión
+ * en polea; quería fondos). Es de la app: la web solo ofrece el mismo movimiento. Gemelo de OtrosDelMismoMusculoTests.
+ */
+class OtrosDelMismoMusculoTest {
+    private val cat = CatalogoEjercicios.desde(Vectores.texto(Vectores.compartido("catalogo-ejercicios.json")))
+
+    @Test
+    fun aLaExtensionEnPoleaLeQuedanFondosYExtensiones() {
+        val r = ReferenciaEjercicio(nombre = "Extensión en polea alta con barra", catalogoSlug = "Triceps_Pushdown")
+        val arriba = cat.sustitutos(r)
+        val otros = cat.otrosDelMismoMusculo(r)
+        val nombres = otros.map { "${it.nombre} · ${it.equipo}" }
+        assertEquals(listOf("Extensión de tríceps en polea"), arriba.map { it.nombre }, "las variantes de siempre, igual que la web")
+        assertTrue("Fondos · Peso corporal" in nombres, nombres.toString())
+        assertTrue("Patada de tríceps con mancuernas · Mancuernas" in nombres)
+        assertTrue("Press francés con barra Z · Barra Z" in nombres)
+        assertTrue(otros.none { it.nombre == "Press" || it.nombre == it.nombreIngles }, "sin nombres sueltos ni sin traducir")
+        assertTrue(otros.none { s -> arriba.any { it.nombre == s.nombre && it.equipo == s.equipo } }, "sin repetir lo de arriba")
+        assertTrue(otros.all { it.musculo == "triceps" && it.patron != null && it.patron != "extension_triceps_pushdown" })
+        val desde = otros.indexOfFirst { it.mismoEquipo }.let { if (it < 0) otros.size else it }
+        assertTrue(desde > 0 && otros.drop(desde).all { it.mismoEquipo }, "otro equipo primero")
+        assertTrue(otros.size in 15..30, "${otros.size}")
+    }
+
+    @Test
+    fun unaFilaMalClasificadaNoSeOfrece() {
+        assertEquals("traps", cat.musculoDePatron("encogimiento_trapecio"))
+        assertEquals("triceps", cat.musculoDePatron("fondos_paralelas"))
+        val remo = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre = "Remo con barra", catalogoSlug = "Bent_Over_Barbell_Row"))
+        assertTrue(remo.none { it.nombre.startsWith("Encogimientos") }, remo.map { it.nombre }.toString())
+        val sentadilla = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre = "Sentadilla con barra", catalogoSlug = "Barbell_Squat"))
+        assertTrue(sentadilla.any { it.patron == "zancada_unilateral" } && sentadilla.any { it.patron == "extension_rodilla" })
+        assertTrue(sentadilla.all { it.musculo == "quadriceps" })
+    }
+
+    @Test
+    fun sinPatronNoSeOfreceNada() {
+        val r = ReferenciaEjercicio(nombre = "Bench Press - Powerlifting", catalogoSlug = "Bench_Press_-_Powerlifting")
+        assertTrue(cat.sustitutos(r).isEmpty() && cat.otrosDelMismoMusculo(r).isEmpty())
+    }
+
+    /** Las mismas listas que grabó iOS (apps/shared/vectores/otros_mismo_musculo.json), elemento por elemento. */
+    @Test
+    fun lasMismasListasQueIos() {
+        val listas = Vectores.json(Vectores.publico("otros_mismo_musculo"))["listas"]!!.jsonObject
+        assertEquals(8, listas.size)
+        for ((slug, esperada) in listas) {
+            val ios = esperada.jsonArray.map { it.jsonPrimitive.content }
+            val android = cat.otrosDelMismoMusculo(ReferenciaEjercicio(catalogoSlug = slug)).map { "${it.nombre} · ${it.equipo}" }
+            assertEquals(ios, android, slug)
+        }
+    }
+
+    /** Y todo el catálogo: la huella de la lista de cada ejercicio (los 16 primeros hex del SHA-256), igual a la de iOS. */
+    @Test
+    fun lasMismasHuellasQueIos() {
+        val ios = Vectores.json(Vectores.publico("otros_mismo_musculo"))["huellas"]!!.jsonObject.mapValues { it.value.jsonPrimitive.content }
+        val android = LinkedHashMap<String, String>()
+        for (slug in cat.entradas.mapNotNull { it.slugEn }) {
+            if (slug in android) continue
+            val lista = cat.otrosDelMismoMusculo(ReferenciaEjercicio(catalogoSlug = slug)).map { "${it.nombre} · ${it.equipo}" }
+            if (lista.isEmpty()) continue
+            val sha = MessageDigest.getInstance("SHA-256").digest(lista.joinToString("\n").toByteArray(Charsets.UTF_8))
+            android[slug] = sha.take(8).joinToString("") { "%02x".format(it) }
+        }
+        assertTrue(ios.size > 300, "${ios.size}")
+        assertEquals(ios.keys.sorted(), android.keys.sorted(), "los mismos ejercicios con otros del mismo músculo")
+        for ((slug, h) in ios) assertEquals(h, android[slug], slug)
     }
 }
