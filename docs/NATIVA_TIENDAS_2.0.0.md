@@ -253,11 +253,38 @@ iPhone. La 2.0.1 trae:
 - el arreglo de la foto que se perdía si el sistema cerraba la app con la cámara abierta (ca212de);
 - el arreglo de la dieta que resucitaba un reemplazo al volver al plan mientras se traía la dieta (2d7adb9);
 - la marca (D21): el verde del logo, el dorado en los récords, el nombre **Pump Team** debajo del ícono y el logo en el
-  chat. En Play Console hay que cambiar también el título de la ficha a «Pump Team» y el ícono de 512 px, con el envío.
+  chat. En Play Console hay que cambiar también el título de la ficha a «Pump Team» y el ícono de 512 px, con el envío;
+- lo que pidieron los clientes el 20-oct: los ajustes de porciones (D22) y el descanso a la vista, con la cuenta
+  regresiva fija con el teléfono bloqueado (D23).
 
-Se manda con las mismas novedades que la 2.0.0 (quien venga de la 1.0.12 va directo a la 2.0.1) y con capturas nuevas.
+Se manda con capturas nuevas y con estas novedades (borrador, 369 caracteres; quien venga de la 1.0.12 va directo a la
+2.0.1):
+
+```
+Pump Team ahora se ve y se usa como en el iPhone.
+
+• Dieta: ajustá una comida de hoy (más o menos calorías, gramos a mano o «Hoy no la como») y compensalo en la siguiente.
+• Entreno: el descanso se ve grande al confirmar la serie y sigue con el teléfono bloqueado.
+• Funciona sin señal: lo que cargás se guarda y se sube solo.
+
+Tu cuenta y tu historial siguen intactos.
+```
 La versión corta nueva deja que la palanca remota pida la 2.0.1 a quien tenga la 2.0.0 (`versionMinimaAndroid`). Es otro
 envío a revisión de Google: se le pide el OK a Mati en el momento.
+
+**iPhone 2.0.1, para el miércoles 21-oct** (Mati, 17-oct: «hacelo el miércoles… seguro sea con más correcciones»).
+El TestFlight 117 trae solo la hoja única de Salud. El que se manda lleva además los ajustes de porciones (D22), el
+descanso con Live Activity (D23) y la foto con cámara y galería en un toque. Para compilarlo hace falta el perfil App
+Store de `com.pumpteam.mypump.descanso` (ver `NATIVA_ESTADO.md`). Tag `nios-2.0.1-118`.
+
+Novedades (borrador):
+
+```
+• Dieta: ajustá una comida de hoy. Sumale o restale calorías y las porciones se recalculan solas; si te pasaste, lo compensás en la comida siguiente. También podés cambiar los gramos de cada alimento o marcar «Hoy no la como».
+• Entreno: el descanso entre series se ve grande al confirmar la serie y, con el teléfono bloqueado, la cuenta regresiva sigue en la pantalla y en la Dynamic Island.
+• Revisión: sacá la foto o elegila de la galería con un toque.
+• Salud: arreglamos la conexión con Apple Salud cuando no das todos los permisos.
+```
 
 ## Plan B: volver a la Capacitor si la 2.0.0 sale mal
 
