@@ -240,8 +240,11 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   2. En developer.apple.com, el App ID `com.pumpteam.mypump.descanso` y un perfil App Store con el certificado
      `mypump-dist-2026`; después, en Codemagic → Code signing identities, traerlo. O que la sesión lo haga en su Chrome
      con la sesión abierta.
-  3. ~~Cómo quiere ver los ajustes~~: en el brief de revisión y en la ficha del Cerebro (20-oct). Se le pasó a la
-     sesión que lleva ese código, con `docs/NATIVA_AJUSTES_PARA_MATI.md`.
+  3. ~~Cómo quiere ver los ajustes~~: en el brief de revisión y en la ficha del Cerebro (20-oct). Los parches los armó
+     la sesión Pump Cerebro (mini) y los aplicó esta sesión con el OK de Mati («hacé ambos vos»):
+     - la ficha, en el Cerebro (4f312b0, publicado);
+     - el brief, en la Mini (`agent/brief_v3.py` y `prompt_revision_v3.md`). Quedan sin commitear como estaban, con
+       backups `.bak-ajustes-20261020`. El brief nocturno ya lo toma; el a pedido, en el próximo reinicio del bot.
   4. El OK de los envíos del miércoles y del 50 % → 100 % de Play.
 
 ## Bitácora
