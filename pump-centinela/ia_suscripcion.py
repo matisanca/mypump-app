@@ -70,13 +70,15 @@ def entorno_claude() -> dict | None:
 
 
 def claude_texto(prompt: str, timeout: int) -> tuple[str | None, str | None]:
-    """(texto, error). Sin herramientas, sin los MCP del Mini y con el prompt por STDIN (nunca como argumento:
-    un mensaje de cliente trae comillas, saltos de línea y emojis)."""
+    """(texto, error). Sin herramientas, sin los MCP ni la configuración de la Mini y con el prompt por STDIN (nunca
+    como argumento: un mensaje de cliente trae comillas, saltos de línea y emojis)."""
     env = entorno_claude()
     if env is None:
         return None, "sin CLAUDE_CODE_OAUTH_TOKEN (ni en el entorno ni en ~/pump-trazabilidad/.env)"
-    cmd = [CLAUDE_BIN, "-p", "--model", CLAUDE_MODELO, "--tools", "", "--strict-mcp-config",
-           "--output-format", "json"]
+    # --safe-mode: sin los hooks, el CLAUDE.md ni los MCP de la Mini (el login del plan Max sigue); --no-session-persistence:
+    # la conversación (el mensaje del cliente, aunque vaya sin el nombre) no queda en disco (revisión del 20-oct).
+    cmd = [CLAUDE_BIN, "-p", "--model", CLAUDE_MODELO, "--tools", "", "--strict-mcp-config", "--safe-mode",
+           "--no-session-persistence", "--output-format", "json"]
     try:
         p = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
                            timeout=timeout, env=env, cwd="/tmp")

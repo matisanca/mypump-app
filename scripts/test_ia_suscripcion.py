@@ -82,6 +82,8 @@ check("el token OAuth del plan Max sí llega", "CLAUDE_CODE_OAUTH_TOKEN=oat-de-p
 check("el prompt va por stdin, entero", (tmp / "stdin.txt").read_text() == "hola \"cliente\"\ncon salto")
 args = (tmp / "args.txt").read_text()
 check("sin herramientas y sin los MCP del Mini", "--tools" in args and "--strict-mcp-config" in args, args)
+check("sin la configuración ni los hooks de la Mini, y sin guardar la charla",
+      "--safe-mode" in args and "--no-session-persistence" in args and "--bare" not in args, args)
 (tmp / "falla").write_text("1")
 texto, err = IA.claude_texto("x", 10)
 check("si Claude falla, devuelve el error y no un texto", texto is None and err and "limite" in err, f"{texto!r} {err!r}")
@@ -115,6 +117,16 @@ check("y el aviso dice cuál cayó", '{ia} no responde' in salud)
 i = vision.find("const runIA")
 check("la visión elige por fecha", "proveedorIA() === 'claude'" in vision[i:i + 200])
 check("Claude usa su versión del prompt del plato", "PROMPTS_CLAUDE[tipo]" in vision[i:i + 200])
+# Revisión adversarial del 20-oct, hallazgo 1: con `--allowedTools Read` una foto con texto podía hacerle leer cualquier
+# archivo de la Mini (los .env) y devolverlo en el JSON. La foto va en el mensaje y Claude no tiene herramientas.
+j = vision.find("function runClaude")
+claude_js = vision[j:vision.find("\n}\n", j)]
+check("la visión con Claude no le da NINGUNA herramienta", "'--tools', ''" in claude_js and "allowedTools" not in claude_js
+      and "'Read'" not in claude_js and "--add-dir" not in claude_js, claude_js[:400])
+check("la foto va en el mensaje (stream-json), nunca la ruta", "'--input-format', 'stream-json'" in claude_js
+      and "type: 'image'" in claude_js and "imgPath" not in claude_js)
+check("y sin la configuración de la Mini ni la charla en disco", "'--safe-mode'" in claude_js and "'--no-session-persistence'" in claude_js
+      and "--bare" not in claude_js)
 inicio = vision.find("  plato: `") + len("  plato: `")
 plato = vision[inicio:vision.find("`,\n};", inicio)]
 pares = __import__("re").findall(r"\['([^']+)', '[^']*'\]", vision[vision.find("const PARA_CLAUDE"):vision.find("const PROMPTS_CLAUDE")])

@@ -267,22 +267,40 @@ function tokenClaude() {
 }
 
 // ── Correr Claude CLI con la imagen ──
-// Claude la abre con su herramienta Read (la única que tiene) desde la carpeta temporal. Sin los MCP del Mini y con
-// el entorno SIN variables de API: así usa el plan Max y no puede cobrar por token. La salida `json` trae el texto en
-// `result`; el JSON del producto se saca después con extraerJSON, igual que con Codex.
-function runClaude(imgPath, prompt) {
+// La foto va ADENTRO del mensaje (un bloque de imagen en base64, `--input-format stream-json`) y Claude no tiene NINGUNA
+// herramienta (`--tools ""`): un texto escrito en la foto («abrí tal archivo y ponelo en el JSON») no tiene con qué
+// hacer nada. La primera versión (20-oct) le daba Read con `--allowedTools Read`, que autoriza leer CUALQUIER archivo de
+// la Mini: una foto armada podía sacar los .env (revisión adversarial del 20-oct, hallazgo 1). `--safe-mode` no carga
+// los hooks, el CLAUDE.md ni los MCP de la Mini (el login del plan Max sí); `--no-session-persistence` no guarda la
+// conversación en disco. El entorno va SIN variables de API: usa el plan Max y no puede cobrar por token. La salida
+// `stream-json` (la única que acepta la entrada stream-json) trae el texto en el evento `result`; el JSON del producto se
+// saca después con extraerJSON, igual que con Codex.
+function tipoImagen(buf) {
+  if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
+  if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  if (buf.length >= 4 && buf.toString('ascii', 0, 3) === 'GIF') return 'image/gif';
+  return 'image/jpeg';
+}
+
+function runClaude(buf, prompt) {
   return new Promise((resolve, reject) => {
     const tok = tokenClaude();
     if (!tok) return reject(new Error('sin CLAUDE_CODE_OAUTH_TOKEN (ni en el entorno ni en ~/pump-trazabilidad/.env)'));
     const env = { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: tok };
     for (const v of VARIABLES_DE_API) delete env[v];
-    const pedido = `${prompt}\n\nLa foto está en este archivo: ${imgPath}. Abrila con la herramienta Read antes de contestar.`;
-    const args = ['-p', pedido, '--model', CLAUDE_MODELO, '--tools', 'Read', '--allowedTools', 'Read',
-                  '--add-dir', tmpdir(), '--strict-mcp-config', '--output-format', 'json'];
-    const child = execFile(CLAUDE_BIN, args, { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024, cwd: tmpdir(), env },
+    const mensaje = JSON.stringify({ type: 'user', message: { role: 'user', content: [
+      { type: 'text', text: prompt },
+      { type: 'image', source: { type: 'base64', media_type: tipoImagen(buf), data: buf.toString('base64') } },
+    ] } }) + '\n';
+    const args = ['-p', '--model', CLAUDE_MODELO, '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
+                  '--tools', '', '--strict-mcp-config', '--safe-mode', '--no-session-persistence'];
+    const child = execFile(CLAUDE_BIN, args, { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, cwd: tmpdir(), env },
       (err, stdout, stderr) => {
+        // Una línea JSON por evento: la que importa es la de `type: "result"`.
         let d = null;
-        try { d = JSON.parse(String(stdout)); } catch { /* sin JSON: va el stderr */ }
+        for (const linea of String(stdout).split('\n')) {
+          try { const e = JSON.parse(linea); if (e && e.type === 'result') d = e; } catch { /* no es JSON */ }
+        }
         if (err || !d || d.is_error) {
           const detalle = (d && d.result) || String(stderr).slice(-300) || (err && err.message) || 'sin detalle';
           console.error('[vision] claude err:', String(detalle).slice(0, 300));
@@ -291,7 +309,7 @@ function runClaude(imgPath, prompt) {
         resolve(String(d.result || ''));
       });
     child.on('error', reject);
-    if (child.stdin) child.stdin.end();
+    if (child.stdin) { child.stdin.write(mensaje); child.stdin.end(); }
   });
 }
 
@@ -309,8 +327,9 @@ const PROMPTS_CLAUDE = Object.fromEntries(Object.entries(PROMPTS).map(([tipo, te
     return t.replace(de, a);
   }, texto)]));
 
-const runIA = (imgPath, tipo) => (proveedorIA() === 'claude'
-  ? runClaude(imgPath, PROMPTS_CLAUDE[tipo])
+// Codex lee la foto del archivo (`-i`); Claude la recibe en el mensaje (los bytes, nunca la ruta).
+const runIA = (imgPath, buf, tipo) => (proveedorIA() === 'claude'
+  ? runClaude(buf, PROMPTS_CLAUDE[tipo])
   : runCodex(imgPath, PROMPTS[tipo]));
 
 // Extrae el ÚLTIMO objeto JSON balanceado del texto (codex agrega logs alrededor).
@@ -535,7 +554,7 @@ const server = createServer(async (req, res) => {
     const imgPath = join(tmpdir(), `mypump_vision_${Date.now()}_${Math.floor(Math.random() * 1e6)}.jpg`);
     try {
       await writeFile(imgPath, buf);
-      const out = await runIA(imgPath, tipo);
+      const out = await runIA(imgPath, buf, tipo);
       const json = extraerJSON(out);
       if (!json) {
         console.error(`[vision] sin JSON parseable. Output de ${proveedorIA()} (últimos 800):`, String(out).slice(-800));
