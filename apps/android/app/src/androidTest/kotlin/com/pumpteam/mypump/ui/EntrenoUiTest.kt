@@ -192,7 +192,7 @@ class EntrenoUiTest : PruebaUi() {
         abrirPaginaDelEjercicio("ex_010")
         p.tocar(etiqueta("sustituir"))
         p.nodo(etiqueta("hoja-sustituir"))
-        p.nodo(texto("Mismo gesto · otra variante"))
+        p.nodo(texto("Mismo gesto · otra variante"))   // al remo no le queda otro ejercicio de espalda media que ofrecer
         val elegida = NombreEjercicio(p.textosBajo(etiqueta("variante")).first()).principal
         // SER-11: la búsqueda filtra (y "Sin resultados" si no hay).
         p.escribir(etiqueta("buscar-variante"), "zzz")
@@ -223,6 +223,31 @@ class EntrenoUiTest : PruebaUi() {
         p.esperarQueNoEste(etiqueta("hoja-sustituir"))
         p.esperar("el original") { p.textosBajo(etiqueta("ejercicio-nombre")) == listOf("Remo con barra") }
         assertFalse(p.existe(etiqueta("insignia-sustitucion")))
+    }
+
+    /**
+     * Mati, 20-oct (Eric, con la polea ocupada): a la extensión de tríceps en polea, debajo de las variantes del mismo
+     * movimiento, le aparecen los otros ejercicios de tríceps (fondos incluidos), y uno de ellos sustituye igual. Gemela de
+     * testLosOtrosDelMismoMusculoTambienSustituyen de iOS.
+     */
+    @Test
+    fun losOtrosDelMismoMusculoTambienSustituyen() {
+        abrir()
+        p.tocar(etiqueta("ver-demo"))
+        p.tocar(etiqueta("dia-mar"))
+        abrirPaginaDelEjercicio("ex_111")
+        p.tocar(etiqueta("sustituir"))
+        p.nodo(etiqueta("hoja-sustituir"))
+        p.nodo(texto("Otra variante u otro ejercicio de tríceps"))
+        // La ceja se ve en mayúsculas y TalkBack la lee como se escribe.
+        assertEquals(listOf("OTROS EJERCICIOS DE TRÍCEPS", "Otros ejercicios de tríceps"), p.textosBajo(etiqueta("titulo-otros")))
+        Telefono.captura("35-otros-del-mismo-musculo-claro")
+        p.tocar(texto("Fondos"))
+        Telefono.captura("36-otros-fondos-elegido-claro")
+        p.tocar(etiqueta("confirmar-sustitucion"))
+        p.esperarQueNoEste(etiqueta("hoja-sustituir"))
+        p.esperar("el sustituto") { p.textosBajo(etiqueta("ejercicio-nombre")) == listOf("Fondos") }
+        assertEquals(listOf("En lugar de Extensión tríceps en polea"), p.textosBajo(etiqueta("en-lugar-de")))
     }
 
     /** SES-04: el descanso con −15 / +15 y saltar; al terminar suena y, a los 2 s, se cierra solo. */

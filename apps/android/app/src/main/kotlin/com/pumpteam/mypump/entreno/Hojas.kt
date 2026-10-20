@@ -63,6 +63,8 @@ import com.pumpteam.mypump.diseno.Separador
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.Js
+import com.pumpteam.mypump.reglas.SustitucionEjercicios
+import com.pumpteam.mypump.reglas.SustitucionesEntreno
 import com.pumpteam.mypump.reglas.SustitutoEjercicio
 import kotlinx.coroutines.launch
 
@@ -93,6 +95,10 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
     val original = NombreEjercicio(ef?.nombreOriginal ?: plan?.nombre ?: "").principal
     val todos = remember(v, lugar) { motor.sustitutos(lugar) }
     val opciones = remember(v, lugar, busqueda) { motor.sustitutos(lugar, busqueda) }
+    // Debajo, los otros ejercicios del mismo músculo (Mati, 20-oct: con la polea ocupada no quedaba nada).
+    val todosOtros = remember(v, lugar) { motor.otrosDelMismoMusculo(lugar) }
+    val otros = remember(v, lugar, busqueda) { SustitucionesEntreno.filtrar(todosOtros, busqueda) }
+    val musculo = SustitucionEjercicios.musculo(todosOtros.firstOrNull()?.musculo)
 
     fun cerrar() {
         foco.clearFocus()
@@ -128,7 +134,7 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Espacio.m, vertical = Espacio.xs)
-                .semantics { contentDescription = "Buscar variante" }
+                .semantics { contentDescription = "Buscar ejercicio" }
                 .testTag("buscar-variante"),
             decorationBox = { campo ->
                 Row(
@@ -144,7 +150,7 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
                     Icon(Iconos.Buscar, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(20.dp))
                     Box(Modifier.weight(1f)) {
                         if (busqueda.isEmpty()) {
-                            Text("Buscar variante", style = MaterialTheme.typography.bodyLarge, color = c.textoTerciario, modifier = Modifier.clearAndSetSemantics {})
+                            Text("Buscar ejercicio", style = MaterialTheme.typography.bodyLarge, color = c.textoTerciario, modifier = Modifier.clearAndSetSemantics {})
                         }
                         campo()
                     }
@@ -160,7 +166,12 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
                 Column(Modifier.fillMaxWidth().superficieTarjeta(radio = Radio.control + 4.dp)) {
                     Column(Modifier.padding(Espacio.m).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(original, style = MaterialTheme.typography.titleMedium)
-                        Text("Mismo gesto · otra variante", style = Letras.subtitulo, color = c.textoSecundario)
+                        Text(
+                            if (todosOtros.isEmpty()) "Mismo gesto · otra variante"
+                            else "Otra variante u otro ejercicio ${musculo?.let { "de $it" } ?: "del mismo músculo"}",
+                            style = Letras.subtitulo,
+                            color = c.textoSecundario,
+                        )
                     }
                     if (ef?.sustituido == true) {
                         Separador(sangria = Espacio.m)
@@ -199,31 +210,30 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
                 }
             }
             itemsIndexed(opciones, key = { _, s -> "${s.slug}|${s.nombre}|${s.equipo}" }) { _, s ->
-                val elegida = s.clave == elegido
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .superficieTarjeta(radio = Radio.control + 4.dp)
-                        .clickable {
-                            elegido = s.clave
-                            tocado = s
-                        }
-                        .padding(horizontal = Espacio.s, vertical = 10.dp)
-                        .semantics { selected = elegida }
-                        .testTag("variante"),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Espacio.s),
-                ) {
-                    Miniatura(s.imagenes.concentric ?: s.imagenes.eccentric, null, 48.dp)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(s.nombre, style = MaterialTheme.typography.bodyLarge, color = c.texto)
-                        Text(s.equipo, style = Letras.caption, color = c.textoSecundario)
+                FilaSustituto(s, elegida = s.clave == elegido, etiqueta = "variante") {
+                    elegido = s.clave
+                    tocado = s
+                }
+            }
+            if (otros.isNotEmpty()) {
+                item(key = "encabezado-otros") {
+                    Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = Espacio.s), verticalAlignment = Alignment.CenterVertically) {
+                        Ceja(musculo?.let { "Otros ejercicios de $it" } ?: "Otros ejercicios del mismo músculo", Modifier.weight(1f).testTag("titulo-otros"))
+                        Text("${otros.size}/${todosOtros.size}", style = Letras.caption.merge(Letras.cifras), color = c.textoSecundario)
                     }
-                    Icon(
-                        if (elegida) Iconos.TildeEnCirculo else Iconos.Circulo,
-                        contentDescription = null,
-                        tint = if (elegida) c.marcaVivo else c.textoTerciario,
-                        modifier = Modifier.size(24.dp),
+                }
+                itemsIndexed(otros, key = { _, s -> "otro|${s.slug}|${s.nombre}|${s.equipo}" }) { _, s ->
+                    FilaSustituto(s, elegida = s.clave == elegido, etiqueta = "otro-ejercicio") {
+                        elegido = s.clave
+                        tocado = s
+                    }
+                }
+                item(key = "pie-otros") {
+                    Text(
+                        "Otro movimiento para el mismo músculo, por si lo del plan está ocupado.",
+                        style = Letras.caption,
+                        color = c.textoSecundario,
+                        modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
             }
@@ -261,6 +271,35 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
                 modifier = Modifier.testTag("confirmar-sustitucion"),
             )
         }
+    }
+}
+
+/** Un ejercicio para elegir en «Sustituir»: la foto, el nombre, el equipo y la marca de elegido. */
+@Composable
+private fun FilaSustituto(s: SustitutoEjercicio, elegida: Boolean, etiqueta: String, alTocar: () -> Unit) {
+    val c = MyPump.colores
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .superficieTarjeta(radio = Radio.control + 4.dp)
+            .clickable(onClick = alTocar)
+            .padding(horizontal = Espacio.s, vertical = 10.dp)
+            .semantics { selected = elegida }
+            .testTag(etiqueta),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+    ) {
+        Miniatura(s.imagenes.concentric ?: s.imagenes.eccentric, null, 48.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(s.nombre, style = MaterialTheme.typography.bodyLarge, color = c.texto)
+            Text(s.equipo, style = Letras.caption, color = c.textoSecundario)
+        }
+        Icon(
+            if (elegida) Iconos.TildeEnCirculo else Iconos.Circulo,
+            contentDescription = null,
+            tint = if (elegida) c.marcaVivo else c.textoTerciario,
+            modifier = Modifier.size(24.dp),
+        )
     }
 }
 

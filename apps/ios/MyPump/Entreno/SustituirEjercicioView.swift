@@ -3,8 +3,9 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Sustituir un ejercicio (SER-11/13): variantes del mismo gesto y músculo (otro equipo primero, hasta 30), búsqueda,
-/// y "Fijar para las próximas semanas" (sin fijar vale solo por hoy). Si ya estaba sustituido, "Volver a …".
+/// Sustituir un ejercicio (SER-11/13): variantes del mismo gesto y músculo (otro equipo primero, hasta 30), debajo los
+/// otros ejercicios del mismo músculo (Mati, 20-oct: con la polea ocupada no quedaba nada), búsqueda, y "Fijar para las
+/// próximas semanas" (sin fijar vale solo por hoy). Si ya estaba sustituido, "Volver a …".
 struct SustituirEjercicioView: View {
     let motor: ModeloEntreno
     let lugar: String
@@ -23,13 +24,18 @@ struct SustituirEjercicioView: View {
         let ef = plan.map(motor.efectivo)
         let original = ef?.nombreOriginal ?? plan?.nombre ?? ""
         let opciones = motor.sustitutos(lugar, busqueda: busqueda)
+        let todosOtros = motor.otrosDelMismoMusculo(lugar)
+        let otros = SustitucionesEntreno.filtrar(todosOtros, busqueda)
+        let totalOtros = todosOtros.count
+        let musculo = SustitucionEjercicios.musculo(todosOtros.first?.musculo)
         let total = todos
         NavigationStack {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(NombreEjercicio(original).principal).font(.headline)
-                        Text("Mismo gesto · otra variante").font(.subheadline).foregroundStyle(.secondary)
+                        Text(todosOtros.isEmpty ? "Mismo gesto · otra variante" : "Otra variante u otro ejercicio \(musculo.map { "de \($0)" } ?? "del mismo músculo")")
+                            .font(.subheadline).foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 2)
                     if ef?.sustituido == true {
@@ -49,22 +55,26 @@ struct SustituirEjercicioView: View {
                         Text(busqueda.isEmpty ? "No hay variantes equivalentes." : "Sin resultados para “\(busqueda)”.")
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(Array(opciones.enumerated()), id: \.offset) { _, s in
-                        let marcada = elegido?.clave == s.clave
-                        Button {
-                            withAnimation(.snappy(duration: 0.2)) { elegido = s }
-                        } label: {
-                            fila(s, elegida: marcada)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(marcada ? .isSelected : [])
-                        .accessibilityIdentifier("variante")
-                    }
+                    ForEach(Array(opciones.enumerated()), id: \.offset) { _, s in boton(s, identificador: "variante") }
                 } header: {
                     HStack {
                         Text("Variantes del mismo movimiento")
                         Spacer()
                         Text("\(opciones.count)/\(total.count)").monospacedDigit()
+                    }
+                }
+
+                if !otros.isEmpty {
+                    Section {
+                        ForEach(Array(otros.enumerated()), id: \.offset) { _, s in boton(s, identificador: "otro-ejercicio") }
+                    } header: {
+                        HStack {
+                            Text(musculo.map { "Otros ejercicios de \($0)" } ?? "Otros ejercicios del mismo músculo")
+                            Spacer()
+                            Text("\(otros.count)/\(totalOtros)").monospacedDigit()
+                        }
+                    } footer: {
+                        Text("Otro movimiento para el mismo músculo, por si lo del plan está ocupado.")
                     }
                 }
 
@@ -78,7 +88,7 @@ struct SustituirEjercicioView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .searchable(text: $busqueda, placement: .navigationBarDrawer(displayMode: .always), prompt: "Buscar variante")
+            .searchable(text: $busqueda, placement: .navigationBarDrawer(displayMode: .always), prompt: "Buscar ejercicio")
             .navigationTitle("Sustituir ejercicio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -96,6 +106,18 @@ struct SustituirEjercicioView: View {
             listo = true
             fijar = motor.fijadaAntes(lugar)
         }
+    }
+
+    private func boton(_ s: SustitutoEjercicio, identificador: String) -> some View {
+        let marcada = elegido?.clave == s.clave
+        return Button {
+            withAnimation(.snappy(duration: 0.2)) { elegido = s }
+        } label: {
+            fila(s, elegida: marcada)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(marcada ? .isSelected : [])
+        .accessibilityIdentifier(identificador)
     }
 
     private func fila(_ s: SustitutoEjercicio, elegida: Bool) -> some View {

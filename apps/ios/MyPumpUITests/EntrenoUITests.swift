@@ -65,6 +65,41 @@ final class EntrenoUITests: XCTestCase {
         return partes.count == 2 ? partes[0] * 60 + partes[1] : -1
     }
 
+    /// Mati, 20-oct (Eric, con la polea ocupada): a la extensión de tríceps en polea, debajo de las variantes del mismo
+    /// movimiento, le aparecen los otros ejercicios de tríceps (fondos incluidos), y uno de ellos sustituye igual.
+    func testLosOtrosDelMismoMusculoTambienSustituyen() throws {
+        app.terminate()
+        app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "entreno"]
+        app.launch()
+        let dia2 = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Día 2'")).firstMatch
+        XCTAssertTrue(dia2.waitForExistence(timeout: 15), "No está el día 2 de la demo")
+        dia2.tap()
+        let fila = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fila-ejercicio' AND label CONTAINS[c] 'tríceps'")).firstMatch
+        for _ in 0..<8 where !(fila.exists && fila.isHittable) { app.swipeUp() }
+        XCTAssertTrue(fila.exists, "No está la extensión de tríceps del día 2")
+        fila.tap()
+        let sustituir = app.buttons["Sustituir"].firstMatch
+        for _ in 0..<6 where !(sustituir.exists && sustituir.isHittable) { app.swipeUp() }
+        sustituir.tap()
+        let hoja = app.navigationBars["Sustituir ejercicio"]
+        XCTAssertTrue(hoja.waitForExistence(timeout: 5), "No abrió la hoja de sustituir")
+        XCTAssertTrue(app.staticTexts["Otra variante u otro ejercicio de tríceps"].waitForExistence(timeout: 5), "El subtítulo no avisa de los otros ejercicios")
+        // Primero el título (la lista es perezosa: al bajar hasta los fondos, el encabezado ya salió de la pantalla).
+        let titulo = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Otros ejercicios de tríceps'")).firstMatch
+        for _ in 0..<10 where !titulo.exists { app.swipeUp() }
+        XCTAssertTrue(titulo.exists, "Sin el título de la sección")
+        let t = XCTAttachment(screenshot: app.screenshot()); t.name = "otros-del-mismo-musculo-titulo"; t.lifetime = .keepAlways; add(t)
+        let fondos = app.buttons.matching(NSPredicate(format: "identifier == 'otro-ejercicio' AND label BEGINSWITH 'Fondos'")).firstMatch
+        for _ in 0..<10 where !(fondos.exists && fondos.isHittable) { app.swipeUp() }
+        XCTAssertTrue(fondos.exists && fondos.isHittable, "Sin fondos entre los otros ejercicios de tríceps")
+        fondos.tap()
+        let a = XCTAttachment(screenshot: app.screenshot()); a.name = "otros-del-mismo-musculo"; a.lifetime = .keepAlways; add(a)
+        hoja.buttons["Sustituir"].tap()
+        XCTAssertTrue(hoja.waitForNonExistence(timeout: 5), "La hoja no se cerró")
+        let sustituida = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fila-ejercicio' AND label CONTAINS 'Fondos'")).firstMatch
+        XCTAssertTrue(sustituida.waitForExistence(timeout: 5), "El ejercicio no quedó sustituido por los fondos")
+    }
+
     /// ENT-10 y VoiceOver: después de sustituir y fijar, la card de la lista lo dice (antes la etiqueta fija tapaba la
     /// sustitución, los mensajes, la pauta y el récord), con la pauta y el descanso.
     func testLaCardDiceQueEstaSustituidaYFijada() throws {
