@@ -183,21 +183,30 @@ struct AjustarComidaView: View {
         let minimo = -Int((base * (1 - AjustePorciones.factorMinimo) / Double(paso)).rounded(.down)) * paso
         let maximo = Int((base * (AjustePorciones.factorMaximo - 1) / Double(paso)).rounded(.down)) * paso
         let activo = !borrador.omitida && base > 0
+        let menos = botonKcal("−\(paso)", "Restar \(paso) kcal", "ajuste-menos", habilitado: activo && borrador.deltaKcal > minimo) {
+            borrador.deltaKcal = max(minimo, borrador.deltaKcal - paso)
+        }
+        let mas = botonKcal("+\(paso)", "Sumar \(paso) kcal", "ajuste-mas", habilitado: activo && borrador.deltaKcal < maximo) {
+            borrador.deltaKcal = min(maximo, borrador.deltaKcal + paso)
+        }
+        let cuanto = VStack(spacing: 0) {
+            Text(borrador.deltaKcal == 0 ? "Como el plan" : "\(Self.signo(Double(borrador.deltaKcal))) kcal")
+                .font(.headline.monospacedDigit())
+                .contentTransition(.numericText())
+            Text("a esta comida").font(.caption).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
         return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 12) {
-                botonKcal("−\(paso)", "Restar \(paso) kcal", "ajuste-menos", habilitado: activo && borrador.deltaKcal > minimo) {
-                    borrador.deltaKcal = max(minimo, borrador.deltaKcal - paso)
+            // Con la letra de accesibilidad no entra en un renglón: lo sumado arriba y los botones abajo.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    menos
+                    cuanto.fixedSize().frame(maxWidth: .infinity)
+                    mas
                 }
-                VStack(spacing: 0) {
-                    Text(borrador.deltaKcal == 0 ? "Como el plan" : "\(Self.signo(Double(borrador.deltaKcal))) kcal")
-                        .font(.headline.monospacedDigit())
-                        .contentTransition(.numericText())
-                    Text("a esta comida").font(.caption).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .accessibilityElement(children: .combine)
-                botonKcal("+\(paso)", "Sumar \(paso) kcal", "ajuste-mas", habilitado: activo && borrador.deltaKcal < maximo) {
-                    borrador.deltaKcal = min(maximo, borrador.deltaKcal + paso)
+                VStack(spacing: 10) {
+                    cuanto.frame(maxWidth: .infinity)
+                    HStack { menos; Spacer(); mas }
                 }
             }
             if !borrador.omitida && base == 0 {

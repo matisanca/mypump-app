@@ -107,23 +107,45 @@ final class DietaUITests: XCTestCase {
 
     private var botonesAjustar: XCUIElementQuery { app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "ajustar-")) }
 
+    /// El id de la primera comida. La lista es perezosa: con la letra grande el botón queda abajo y no existe hasta llegar.
+    private func primeraComida() -> String {
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Ver fuentes")).firstMatch.waitForExistence(timeout: 20),
+                      "No cargó Dieta")
+        for _ in 0..<15 where !botonesAjustar.firstMatch.exists { app.swipeUp() }
+        XCTAssertTrue(botonesAjustar.firstMatch.waitForExistence(timeout: 3), "No está el botón de ajustar en las comidas")
+        return String(botonesAjustar.firstMatch.identifier.dropFirst("ajustar-".count))
+    }
+
     private func aviso(_ comidaId: String) -> XCUIElement { app.descendants(matching: .any)["ajuste-aviso-\(comidaId)"] }
 
     /// Abre la hoja de una comida (la primera, si no se dice) y devuelve su id.
     @discardableResult private func abrirAjuste(_ id: String? = nil) -> String {
         let boton = id.map { app.buttons["ajustar-\($0)"] } ?? botonesAjustar.firstMatch
+        for _ in 0..<15 where !boton.exists { app.swipeUp() }
         XCTAssertTrue(boton.waitForExistence(timeout: 20), "No está el botón de ajustar en las comidas")
-        for _ in 0..<10 where !boton.isHittable { app.swipeUp() }
-        esperarQuieto(boton)
+        aLaVista(boton)
         let comidaId = String(boton.identifier.dropFirst("ajustar-".count))
         boton.tap()
         XCTAssertTrue(kcalDeLaHoja.waitForExistence(timeout: 5), "No se abrió la hoja de ajuste")
         return comidaId
     }
 
+    /// A la vista y lejos de la barra de pestañas, que flota encima de la lista (con la letra grande tapa más).
+    private func aLaVista(_ e: XCUIElement) {
+        let barra = app.tabBars.firstMatch
+        for _ in 0..<12 {
+            let tope = barra.exists ? barra.frame.minY - 8 : app.frame.maxY
+            if e.exists, e.isHittable, e.frame.maxY < tope { break }
+            if e.exists, e.frame.minY > tope || e.frame.maxY > tope { app.swipeUp(velocity: .slow) } else { app.swipeDown(velocity: .slow) }
+        }
+        esperarQuieto(e)
+    }
+
     /// Lo que haya dejado otra corrida en la cuenta de prueba, afuera.
     private func sinAjusteEn(_ comidaId: String) {
-        guard aviso(comidaId).waitForExistence(timeout: 2), app.buttons["ajustar-\(comidaId)"].label == "Cambiar el ajuste" else { return }
+        let boton = app.buttons["ajustar-\(comidaId)"]
+        for _ in 0..<15 where !boton.exists { app.swipeUp() }
+        guard boton.waitForExistence(timeout: 2), boton.label == "Cambiar el ajuste" else { return }
         abrirAjuste(comidaId)
         volverAlPlanEnLaHoja()
         XCTAssertTrue(aviso(comidaId).waitForNonExistence(timeout: 5))
@@ -139,6 +161,8 @@ final class DietaUITests: XCTestCase {
 
     private func prender(_ id: String) {
         let t = app.switches[id]
+        // La hoja es una lista: con la letra grande el interruptor queda más abajo.
+        for _ in 0..<6 where !t.exists || !t.isHittable { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(t.waitForExistence(timeout: 3), "No está \(id)")
         (t.switches.firstMatch.exists ? t.switches.firstMatch : t).tap()
     }
@@ -150,8 +174,7 @@ final class DietaUITests: XCTestCase {
 
     /// +100 kcal a una comida: las porciones suben, la siguiente compensa, sobrevive a reabrir y «Volver al plan» lo saca.
     func testAjustarUnaComidaCompensaEnLaSiguienteYVuelveAlPlan() throws {
-        XCTAssertTrue(botonesAjustar.firstMatch.waitForExistence(timeout: 20))
-        let comidaId = String(botonesAjustar.firstMatch.identifier.dropFirst("ajustar-".count))
+        let comidaId = primeraComida()
         sinAjusteEn(comidaId)
         abrirAjuste(comidaId)
         let antes = kcalHoy
@@ -177,13 +200,19 @@ final class DietaUITests: XCTestCase {
         XCTAssertEqual(app.buttons["ajustar-\(comidaId)"].label, "Cambiar el ajuste")
         let compensada = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
                                                                              "ajuste-aviso-", "kcal por"))
-        if compensa { XCTAssertTrue(compensada.firstMatch.exists, "La siguiente no muestra la compensación") }
+        if compensa {
+            // La siguiente tarjeta puede estar más abajo (la lista es perezosa).
+            for _ in 0..<8 where !compensada.firstMatch.exists { app.swipeUp() }
+            XCTAssertTrue(compensada.firstMatch.exists, "La siguiente no muestra la compensación")
+        }
         adjuntarCaptura("ajuste-tarjetas")
 
         // Sobrevive a cerrar y abrir la app.
         app.terminate()
         app.launch()
-        XCTAssertTrue(aviso(comidaId).waitForExistence(timeout: 20), "El ajuste no sobrevivió a reabrir la app")
+        _ = primeraComida()
+        for _ in 0..<15 where !aviso(comidaId).exists { app.swipeDown() }
+        XCTAssertTrue(aviso(comidaId).waitForExistence(timeout: 5), "El ajuste no sobrevivió a reabrir la app")
 
         abrirAjuste(comidaId)
         volverAlPlanEnLaHoja()
@@ -194,8 +223,7 @@ final class DietaUITests: XCTestCase {
     /// «Hoy no la como» (Emilio, el pre-entreno en un día sin entreno): la tarjeta lo dice, sin los alimentos, y sus kcal
     /// van a la siguiente. «Cancelar» no guarda nada.
     func testHoyNoLaComoPasaSusKcalALaSiguiente() throws {
-        XCTAssertTrue(botonesAjustar.firstMatch.waitForExistence(timeout: 20))
-        let comidaId = String(botonesAjustar.firstMatch.identifier.dropFirst("ajustar-".count))
+        let comidaId = primeraComida()
         sinAjusteEn(comidaId)
         abrirAjuste(comidaId)
         app.buttons["ajuste-mas"].tap()
@@ -214,6 +242,7 @@ final class DietaUITests: XCTestCase {
         if botonesAjustar.count > 1 {
             let recibe = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
                                                                                "ajuste-aviso-", "kcal por"))
+            for _ in 0..<8 where !recibe.firstMatch.exists { app.swipeUp() }
             XCTAssertTrue(recibe.firstMatch.waitForExistence(timeout: 3), "La siguiente no recibió sus kcal")
             XCTAssertTrue(recibe.firstMatch.label.hasPrefix("+"), recibe.firstMatch.label)
         }
