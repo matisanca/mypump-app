@@ -16,6 +16,7 @@ import MyPumpDatos
 @MainActor @Observable
 final class Entrenamiento {
     @ObservationIgnored private let sonido = SonidoDescanso()
+    @ObservationIgnored private let actividad = ActividadDescanso()
 
     /// El motor de la rutina activa, o nil sin rutina (o antes de tener cuenta).
     var motor: ModeloEntreno? { Proveedor.modelo.entreno }
@@ -24,9 +25,12 @@ final class Entrenamiento {
     /// tick solo la mira (la barra se pinta con lo que deja).
     func correrDescanso() async {
         while !Task.isCancelled, let m = motor, m.descanso.visible {
+            // La cuenta regresiva en la pantalla bloqueada y en la Dynamic Island sigue al mismo fin (±15 la mueve).
+            actividad.sincronizar(m.descanso.descanso)
             if m.tickDescanso() { terminoDescanso() }
             try? await Task.sleep(for: .milliseconds(250))
         }
+        if motor?.descanso.visible != true { actividad.terminar() }
     }
 
     private func terminoDescanso() {

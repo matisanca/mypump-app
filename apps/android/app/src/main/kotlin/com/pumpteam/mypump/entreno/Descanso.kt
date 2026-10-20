@@ -24,6 +24,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -163,6 +168,86 @@ private fun ContenidoDescanso(motor: ModeloEntreno, b: BarraDescanso) {
                 Icon(Iconos.Saltar, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(18.dp))
             }
         }
+    }
+}
+
+/**
+ * El descanso en grande dentro del ejercicio abierto, debajo de las series (Ian Actis, 20-oct: «que cuando marcás una serie
+ * vuelva el temporizador… no tenía que estar fijándome cuánto iba descansando»). La isla de arriba de las pestañas sigue
+ * para cuando se está en otra parte; con la app atrás, la notificación con la cuenta regresiva. Gemelo del de iOS.
+ */
+@Composable
+fun DescansoEnTarjeta(motor: ModeloEntreno, modifier: Modifier = Modifier) {
+    val b by motor.descanso.collectAsStateWithLifecycle()
+    if (!b.visible) return
+    val c = MyPump.colores
+    val listo = b.listo
+    val falta = if (listo) 0f else (1 - (b.porcentaje ?: 0.0) / 100).coerceIn(0.0, 1.0).toFloat()
+    Column(
+        modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(c.marcaSuave)
+            .padding(16.dp)
+            .testTag("descanso-en-tarjeta"),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            if (listo) "¡A la próxima serie!" else "Descanso ${b.textoObjetivo.replace(" objetivo", "")}",
+            style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold),
+            color = if (listo) c.exito else c.textoSecundario,
+        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            AjusteGrande("−15", "Restar 15 segundos", !listo) { motor.ajustarDescanso(-15) }
+            Text(
+                b.texto,
+                style = Letras.cifras.copy(fontFamily = Archivo, fontWeight = FontWeight.W800, fontSize = 44.sp),
+                color = if (listo) c.exito else c.texto,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { contentDescription = if (listo) "Descanso terminado" else "Descanso, quedan ${b.texto}" },
+            )
+            AjusteGrande("+15", "Sumar 15 segundos", !listo) { motor.ajustarDescanso(15) }
+        }
+        LinearProgressIndicator(
+            progress = { falta },
+            color = if (listo) c.exito else c.marcaVivo,
+            trackColor = c.campo,
+            modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
+        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(44.dp)
+                .clip(CircleShape)
+                .clickable(enabled = !listo, role = Role.Button) { motor.saltarDescanso() }
+                .testTag("descanso-en-tarjeta-saltar"),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Iconos.Saltar, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.size(6.dp))
+            Text("Saltar descanso", style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = c.marcaTexto)
+        }
+    }
+}
+
+@Composable
+private fun AjusteGrande(texto: String, descripcion: String, habilitado: Boolean, alTocar: () -> Unit) {
+    val c = MyPump.colores
+    Box(
+        Modifier
+            .size(width = 56.dp, height = 44.dp)
+            .clip(CircleShape)
+            .background(c.tarjeta)
+            .clickable(enabled = habilitado, role = Role.Button, onClick = alTocar)
+            .clearAndSetSemantics { contentDescription = descripcion },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(texto, style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold).merge(Letras.cifras), color = if (habilitado) c.texto else c.textoTerciario)
     }
 }
 

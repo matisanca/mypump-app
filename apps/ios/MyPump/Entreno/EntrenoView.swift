@@ -641,6 +641,7 @@ private struct EjercicioEnLista: View {
                                                           : AnyLayout(HStackLayout(spacing: Espacio.s))
             VStack(alignment: .leading, spacing: Espacio.s) {
                 TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
+                DescansoEnTarjeta()
                 acciones {
                     Button { sustituyendo = true } label: {
                         Label(t.efectivo.sustituido ? "Cambiar" : "Sustituir", systemImage: "arrow.triangle.2.circlepath")

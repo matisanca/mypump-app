@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		6B2000000000000000000020 /* MyPumpKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6B2000000000000000000021 /* MyPumpKit */; };
+		6B2000000000000000000059 /* DescansoWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6B2000000000000000000050 /* DescansoWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -15,6 +16,8 @@
 		6B2000000000000000000030 /* MyPump-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "MyPump-Info.plist"; sourceTree = "<group>"; };
 		6B2000000000000000000031 /* MyPump.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyPump.entitlements; sourceTree = "<group>"; };
 		6B2000000000000000000040 /* MyPumpUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyPumpUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6B2000000000000000000050 /* DescansoWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DescansoWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6B200000000000000000005D /* DescansoWidget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "DescansoWidget-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,7 +28,28 @@
 			remoteGlobalIDString = 6B2000000000000000000006;
 			remoteInfo = MyPump;
 		};
+		6B200000000000000000005B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6B2000000000000000000010 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6B2000000000000000000052;
+			remoteInfo = DescansoWidget;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6B200000000000000000005A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6B2000000000000000000059 /* DescansoWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6B2000000000000000000002 /* MyPump */ = {
@@ -36,6 +60,11 @@
 		6B2000000000000000000041 /* MyPumpUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = MyPumpUITests;
+			sourceTree = "<group>";
+		};
+		6B2000000000000000000051 /* DescansoWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = DescansoWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -56,6 +85,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6B2000000000000000000057 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -66,6 +102,8 @@
 				6B2000000000000000000031 /* MyPump.entitlements */,
 				6B2000000000000000000002 /* MyPump */,
 				6B2000000000000000000041 /* MyPumpUITests */,
+				6B200000000000000000005D /* DescansoWidget-Info.plist */,
+				6B2000000000000000000051 /* DescansoWidget */,
 				6B2000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -75,6 +113,7 @@
 			children = (
 				6B2000000000000000000001 /* MyPump.app */,
 				6B2000000000000000000040 /* MyPumpUITests.xctest */,
+				6B2000000000000000000050 /* DescansoWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -89,10 +128,12 @@
 				6B2000000000000000000008 /* Sources */,
 				6B2000000000000000000003 /* Frameworks */,
 				6B2000000000000000000009 /* Resources */,
+				6B200000000000000000005A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				6B200000000000000000005C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				6B2000000000000000000002 /* MyPump */,
@@ -128,6 +169,28 @@
 			productReference = 6B2000000000000000000040 /* MyPumpUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		6B2000000000000000000052 /* DescansoWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6B2000000000000000000053 /* Build configuration list for PBXNativeTarget "DescansoWidget" */;
+			buildPhases = (
+				6B2000000000000000000056 /* Sources */,
+				6B2000000000000000000057 /* Frameworks */,
+				6B2000000000000000000058 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6B2000000000000000000051 /* DescansoWidget */,
+			);
+			name = DescansoWidget;
+			packageProductDependencies = (
+			);
+			productName = DescansoWidget;
+			productReference = 6B2000000000000000000050 /* DescansoWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -144,6 +207,9 @@
 					6B2000000000000000000042 = {
 						CreatedOnToolsVersion = 26.0;
 						TestTargetID = 6B2000000000000000000006;
+					};
+					6B2000000000000000000052 = {
+						CreatedOnToolsVersion = 26.0;
 					};
 				};
 			};
@@ -167,6 +233,7 @@
 			targets = (
 				6B2000000000000000000006 /* MyPump */,
 				6B2000000000000000000042 /* MyPumpUITests */,
+				6B2000000000000000000052 /* DescansoWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -180,6 +247,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		6B2000000000000000000045 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6B2000000000000000000058 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -203,6 +277,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6B2000000000000000000056 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -210,6 +291,11 @@
 			isa = PBXTargetDependency;
 			target = 6B2000000000000000000006 /* MyPump */;
 			targetProxy = 6B200000000000000000004A /* PBXContainerItemProxy */;
+		};
+		6B200000000000000000005C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6B2000000000000000000052 /* DescansoWidget */;
+			targetProxy = 6B200000000000000000005B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -264,6 +350,7 @@
 				INFOPLIST_FILE = "MyPump-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = NO;
@@ -292,6 +379,7 @@
 				INFOPLIST_FILE = "MyPump-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = NO;
@@ -344,6 +432,58 @@
 			};
 			name = Release;
 		};
+		6B2000000000000000000054 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 100;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "DescansoWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump.descanso;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6B2000000000000000000055 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 100;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "DescansoWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump.descanso;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -370,6 +510,15 @@
 			buildConfigurations = (
 				6B2000000000000000000047 /* Debug */,
 				6B2000000000000000000048 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6B2000000000000000000053 /* Build configuration list for PBXNativeTarget "DescansoWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6B2000000000000000000054 /* Debug */,
+				6B2000000000000000000055 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

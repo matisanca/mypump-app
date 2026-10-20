@@ -186,6 +186,7 @@ struct EjercicioView: View {
     private func series(_ t: ModeloEntreno.Tarjeta) -> some View {
         if !t.filas.isEmpty {
             TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia).id("series")
+            DescansoEnTarjeta()
         }
     }
 

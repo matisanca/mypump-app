@@ -99,6 +99,13 @@ object CentroAvisos {
     const val CANAL_DESCANSO = "mypump_descanso"
 
     /**
+     * El descanso en curso con la app atrás (Ian Actis, 20-oct: «verlo en tiempo real en notificaciones, que quedan 10
+     * segundos y ya ir preparándote»): la cuenta regresiva fija, también con el teléfono bloqueado. Sin sonido: el que
+     * suena es el fin del descanso.
+     */
+    const val CANAL_DESCANSO_EN_CURSO = "mypump_descanso_en_curso"
+
+    /**
      * Los avisos de la app van con esta etiqueta. Los de la Capacitor van sin etiqueta y con los mismos números (1001-1004):
      * así se borran esos sin tocar el nuestro, que también es el 1002.
      */
@@ -108,6 +115,7 @@ object CentroAvisos {
     /** El 1002 de la Capacitor, como iOS: el aviso del domingo pisa el que haya dejado la app vieja. */
     val ID_DOMINGO: Int = AvisoDomingo.ID.toInt()
     const val ID_DESCANSO = 7_001
+    const val ID_DESCANSO_EN_CURSO = 7_002
 
     const val ACCION_AVISO = "com.pumpteam.mypump.AVISO"
     const val ACCION_DOMINGO = "com.pumpteam.mypump.AVISO_DOMINGO"
@@ -157,6 +165,11 @@ object CentroAvisos {
                 },
                 NotificationChannel(CANAL_DESCANSO, "Fin del descanso", NotificationManager.IMPORTANCE_HIGH).apply {
                     description = "Cuando termina el descanso entre series y la app no está a la vista."
+                },
+                NotificationChannel(CANAL_DESCANSO_EN_CURSO, "Descanso en curso", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "La cuenta regresiva del descanso entre series, también con el teléfono bloqueado."
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    setShowBadge(false)
                 },
             ),
         )
@@ -487,6 +500,41 @@ object CentroAvisos {
     fun cancelarFinDescanso(c: Context) {
         cancelarAlarmaDescanso(c)
         c.getSystemService(NotificationManager::class.java)?.cancel(ETIQUETA, ID_DESCANSO)
+        cancelarDescansoEnCurso(c)
+    }
+
+    /** La cuenta regresiva fija hasta [finMs] (la dibuja el sistema: sigue con la app dormida y se va sola al terminar). */
+    fun mostrarDescansoEnCurso(c: Context, finMs: Long, objetivoSeg: Int) {
+        val falta = finMs - System.currentTimeMillis()
+        if (!concedido(c) || falta <= 1_000) return
+        crearCanales(c)
+        val toque = PendingIntent.getActivity(c, ID_DESCANSO_EN_CURSO, intentDeAviso(c, "train"), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val total = (objetivoSeg.coerceAtLeast(1) * 1000L)
+        val n = Notification.Builder(c, CANAL_DESCANSO_EN_CURSO)
+            .setSmallIcon(R.drawable.ic_stat_mypump)
+            .setColor(c.getColor(R.color.aviso_acento))
+            .setContentTitle("Descanso")
+            .setContentText("Preparate para la próxima serie")
+            .setWhen(finMs)
+            .setShowWhen(true)
+            .setUsesChronometer(true)
+            .setChronometerCountDown(true)
+            .setProgress(total.toInt(), (total - falta).coerceIn(0, total).toInt(), false)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(Notification.CATEGORY_STOPWATCH)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setTimeoutAfter(falta + 1_000)
+            .setContentIntent(toque)
+            .build()
+        try {
+            c.getSystemService(NotificationManager::class.java)?.notify(ETIQUETA, ID_DESCANSO_EN_CURSO, n)
+        } catch (_: SecurityException) {
+        }
+    }
+
+    fun cancelarDescansoEnCurso(c: Context) {
+        c.getSystemService(NotificationManager::class.java)?.cancel(ETIQUETA, ID_DESCANSO_EN_CURSO)
     }
 
     fun finDescansoAgendado(c: Context): Boolean = alarmaDescanso(c, crear = false) != null
@@ -500,6 +548,7 @@ object CentroAvisos {
     /** "Terminó el descanso" (el texto de iOS): lleva a Entreno. Si llegan la alarma y el reloj, suena una sola vez. */
     fun mostrarFinDescanso(c: Context) {
         cancelarAlarmaDescanso(c)
+        cancelarDescansoEnCurso(c)
         publicar(c, ETIQUETA, ID_DESCANSO, CANAL_DESCANSO, "Terminó el descanso", "Seguí con la próxima serie.", "train", Notification.CATEGORY_REMINDER, soloUnaVez = true)
     }
 }

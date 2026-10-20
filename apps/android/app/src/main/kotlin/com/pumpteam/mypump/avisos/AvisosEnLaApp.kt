@@ -140,7 +140,10 @@ private fun FinDelDescanso(motor: ModeloEntreno?) {
                 Lifecycle.Event.ON_STOP -> {
                     CentroAvisos.enPrimerPlano = false
                     val d = motorActual?.descanso?.value?.descanso
-                    if (d != null && !d.terminado) CentroAvisos.programarFinDescanso(contexto, d.fin.toLong())
+                    if (d != null && !d.terminado) {
+                        CentroAvisos.programarFinDescanso(contexto, d.fin.toLong())
+                        CentroAvisos.mostrarDescansoEnCurso(contexto, d.fin.toLong(), d.objetivo.toInt())
+                    }
                 }
                 else -> {}
             }
