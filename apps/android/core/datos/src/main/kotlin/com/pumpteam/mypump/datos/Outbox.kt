@@ -550,7 +550,7 @@ class Outbox(
          * Kinds que no muestran avisos ("guardando", "sin conexión", "no se guardó"): las sustituciones de ejercicio
          * (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
          */
-        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR)
+        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND)
 
         /** Kinds que se anotan como [Operacion.intentada] antes de salir: el chat, que antes de reintentar mira si ya había llegado. */
         val ANOTAN_INTENTO: Set<String> = setOf("chat")

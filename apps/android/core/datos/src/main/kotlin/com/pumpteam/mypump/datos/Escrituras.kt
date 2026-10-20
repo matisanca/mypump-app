@@ -200,6 +200,19 @@ class Escrituras(
                     ),
                 ),
             )
+            // Los ajustes de porciones del día (nativa_004). TRUE = guardado; NULL = el token no sirve.
+            AjustesDieta.KIND -> ResultadoOp.Respuesta(
+                sinTablaEsHecho(
+                    cliente.llamar(
+                        "mypump_guardar_ajustes_dieta",
+                        mapOf(
+                            "p_token" to t, "p_fecha" to de(p, "fecha"), "p_dieta_id" to de(p, "dietaId"), "p_tipo_dia" to de(p, "tipoDia"),
+                            "p_ajustes" to (p["ajustes"] ?: ValorJson.Objeto(emptyMap())), "p_resumen" to de(p, "resumen"),
+                            "p_kcal_plan" to de(p, "kcalPlan"), "p_kcal_dia" to de(p, "kcalDia"),
+                        ),
+                    ),
+                ),
+            )
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
         }
