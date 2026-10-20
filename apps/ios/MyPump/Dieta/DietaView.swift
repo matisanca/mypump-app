@@ -3,8 +3,9 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Dieta: el plan del día con sus opciones por comida, los reemplazos y la porción casera. Sin "Comí / Salté"
-/// (decisión de Mati, 14-oct: marcar cada comida le resultaba molesto al cliente).
+/// Dieta: el plan del día con sus opciones por comida, los reemplazos, la porción casera y los ajustes de porciones del
+/// día (sumar o restar kcal, gramos a mano, «Hoy no la como»; feedback del 20-oct). Sin "Comí / Salté" (decisión de Mati,
+/// 14-oct: marcar cada comida le resultaba molesto al cliente).
 struct DietaView: View {
     @State private var modelo = Proveedor.modelo
     @State private var opcion: [String: Int] = [:]
@@ -12,6 +13,7 @@ struct DietaView: View {
     @State private var reemplazo: Reemplazo?
     @State private var revertir: Reemplazo?
     @State private var analizandoFoto = false
+    @State private var ajustando: ComidaAAjustar?
     /// En iPad la dieta va en una columna centrada: el título grande del sistema quedaba pegado al borde, lejos de la
     /// columna. Ahí el título va adentro de la columna (como el encabezado de Entreno) y arriba queda chico.
     @Environment(\.horizontalSizeClass) private var claseAncho
@@ -19,6 +21,10 @@ struct DietaView: View {
 
     /// La raíz todavía pasa las muestras de los bocetos; Dieta ya usa el modelo real y las ignora.
     init(datos: Muestras? = nil) {}
+
+    struct ComidaAAjustar: Identifiable {
+        let id: String
+    }
 
     struct Reemplazo: Identifiable {
         let comidaId: String
@@ -77,12 +83,23 @@ struct DietaView: View {
                 Task { await modelo.sustituir(r.original, por: elegido, comidaId: r.comidaId, opt: r.opt, idx: r.idx) }
             }
         }
+        .sheet(item: $ajustando) { a in
+            AjustarComidaView(modelo: modelo, comidaId: a.id, opciones: opcionesVigentes)
+        }
     }
 
     // MARK: - Contenido
 
+    /// La opción que se ve de cada comida: la que se eligió acá, si no la del ajuste de hoy, si no A.
+    private var opcionesVigentes: [String: Int] {
+        var r: [String: Int] = [:]
+        for c in modelo.comidasDelDia { r[c.id] = opcion[c.id] ?? modelo.ajustesDeHoy[c.id]?.opcion ?? 0 }
+        return r
+    }
+
     private var contenido: some View {
-        ScrollView {
+        let dia = modelo.diaAjustado(opciones: opcionesVigentes)
+        return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     if claseAncho == .regular {
@@ -91,9 +108,11 @@ struct DietaView: View {
                             .accessibilityAddTraits(.isHeader)
                             .padding(.top, Espacio.s)
                     }
-                    Cabecera(objetivo: modelo.objetivo, elegidas: totalElegido)
+                    Cabecera(objetivo: modelo.objetivo, elegidas: Self.total(dia), conAjustes: !modelo.ajustesDeHoy.isEmpty)
                     BannerRevision()
-                    ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in tarjeta(c, numero: n + 1) }
+                    ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in
+                        tarjeta(c, numero: n + 1, ajustada: dia[c.id])
+                    }
                 }
                 // Afuera de la lista perezosa: en iOS 17 una `.sheet` o un `.alert` de una vista que vive adentro de un
                 // `LazyVStack` no se presenta, y "A mano" y "Con foto" no hacían nada (lo agarró DietaUITests en 17.5; en
@@ -139,23 +158,24 @@ struct DietaView: View {
         }
     }
 
-    private var totalElegido: Macros {
-        ModeloApp.sumar(modelo.comidasDelDia.flatMap { c -> [Alimento] in
-            let o = opcion[c.id] ?? 0
-            return (c.opciones[safe: o]?.alimentos ?? []).enumerated().map { i, a in
-                modelo.efectivo(a, comidaId: c.id, opt: o, idx: i).alimento
-            }
-        })
+    /// Lo del día con las opciones elegidas, los reemplazos y los ajustes de hoy.
+    static func total(_ dia: [String: AjustePorciones.ComidaAjustada]) -> Macros {
+        ModeloApp.sumar(dia.values.flatMap(\.alimentos))
     }
 
     // MARK: - Comida
 
-    private func tarjeta(_ c: Comida, numero: Int) -> some View {
-        let o = min(opcion[c.id] ?? 0, max(c.opciones.count - 1, 0))
+    private func tarjeta(_ c: Comida, numero: Int, ajustada: AjustePorciones.ComidaAjustada?) -> some View {
+        let o = min(opcionesVigentes[c.id] ?? 0, max(c.opciones.count - 1, 0))
         let alimentos = (c.opciones[safe: o]?.alimentos ?? []).enumerated().map { i, a in
-            (i: i, original: a, efectivo: modelo.efectivo(a, comidaId: c.id, opt: o, idx: i))
+            let e = modelo.efectivo(a, comidaId: c.id, opt: o, idx: i)
+            // Lo que se muestra: el reemplazo (si hay) con la cantidad del ajuste de hoy (si hay).
+            return (i: i, original: a, efectivo: e, hoy: ajustada?.alimentos[safe: i] ?? e.alimento)
         }
-        let total = ModeloApp.sumar(alimentos.map(\.efectivo.alimento))
+        let omitida = ajustada?.omitida == true
+        // La ajustó el cliente (no solo le llega lo de otra).
+        let propia = modelo.ajustesDeHoy[c.id] != nil
+        let total = ModeloApp.sumar(alimentos.map(\.hoy))
         let nombreOpcion = c.opciones[safe: o]?.nombre ?? Self.letra(o)
         // Con letra de accesibilidad lo de cada renglón va uno debajo del otro: lado a lado se cortaban las palabras
         // ("Op-ción A · 3 ali-men-tos") y el total quedaba ilegible ("T / OT / AL").
@@ -199,64 +219,92 @@ struct DietaView: View {
                 let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
                 disposicion {
                     Text("Opción").font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
-                    Picker("Opción", selection: Binding(get: { o }, set: { nuevo in withAnimation(.snappy) { opcion[c.id] = nuevo } })) {
+                    Picker("Opción", selection: Binding(get: { o }, set: { nuevo in elegirOpcion(c.id, nuevo) })) {
                         ForEach(Array(c.opciones.enumerated()), id: \.offset) { i, op in Text(op.nombre ?? Self.letra(i)).tag(i) }
                     }
                     .pickerStyle(.segmented)
                     .sensoryFeedback(.selection, trigger: o)
                 }
             }
-            VStack(spacing: 0) {
-                ForEach(alimentos, id: \.i) { item in
-                    let clave = "\(c.id)|\(o)|\(item.i)"
-                    FilaAlimento(original: item.original, mostrado: item.efectivo.alimento, sustituido: item.efectivo.sustituido,
-                                 porcionAbierta: porcionesAbiertas.contains(clave)) {
-                        withAnimation(.snappy) {
-                            if porcionesAbiertas.contains(clave) { porcionesAbiertas.remove(clave) } else { porcionesAbiertas.insert(clave) }
+            if let ajustada, AvisoAjuste.hayQueMostrar(ajustada, propia: propia) {
+                AvisoAjuste(ajustada: ajustada, propia: propia)
+                    .accessibilityIdentifier("ajuste-aviso-\(c.id)")
+            }
+            if !omitida {
+                VStack(spacing: 0) {
+                    ForEach(alimentos, id: \.i) { item in
+                        let clave = "\(c.id)|\(o)|\(item.i)"
+                        FilaAlimento(original: item.original, mostrado: item.hoy, sustituido: item.efectivo.sustituido,
+                                     enElPlan: item.hoy.qty != item.efectivo.alimento.qty ? item.efectivo.alimento : nil,
+                                     porcionAbierta: porcionesAbiertas.contains(clave)) {
+                            withAnimation(.snappy) {
+                                if porcionesAbiertas.contains(clave) { porcionesAbiertas.remove(clave) } else { porcionesAbiertas.insert(clave) }
+                            }
+                        } alReemplazar: {
+                            reemplazo = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
+                        } alRevertir: {
+                            revertir = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
                         }
-                    } alReemplazar: {
-                        reemplazo = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
-                    } alRevertir: {
-                        revertir = Reemplazo(comidaId: c.id, opt: o, idx: item.i, original: item.original, mostrado: item.efectivo.alimento)
-                    }
-                    // Colgada de la fila: en iOS 26 la confirmación es un globo que apunta a lo que se tocó. Colgada de toda
-                    // la pantalla salía arriba, tapando el aviso de la demo y apuntando al gráfico de calorías.
-                    .confirmationDialog("¿Volver al alimento del plan?",
-                                        isPresented: Binding(get: { revertir?.id == clave }, set: { if !$0 { revertir = nil } }),
-                                        titleVisibility: .visible, presenting: revertir) { r in
-                        Button("Volver a \(r.original.nombre)") { Task { await modelo.revertir(comidaId: r.comidaId, opt: r.opt, idx: r.idx) } }
-                        Button("Cancelar", role: .cancel) {}
-                    } message: { r in
-                        Text("Hoy estás comiendo \(r.mostrado.nombre).")
-                    }
-                    if item.i < alimentos.count - 1 { Divider() }
-                }
-            }
-            Group {
-                let rotulo = Text("Total").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).tracking(0.5)
-                if apilada {
-                    VStack(alignment: .leading, spacing: 6) {
-                        rotulo
-                        MacroMini(letra: "P", valor: total.prot, color: .proteina)
-                        MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
-                        MacroMini(letra: "G", valor: total.fat, color: .grasa)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    HStack(spacing: 16) {
-                        rotulo
-                        Spacer(minLength: 4)
-                        MacroMini(letra: "P", valor: total.prot, color: .proteina)
-                        MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
-                        MacroMini(letra: "G", valor: total.fat, color: .grasa)
+                        // Colgada de la fila: en iOS 26 la confirmación es un globo que apunta a lo que se tocó. Colgada de toda
+                        // la pantalla salía arriba, tapando el aviso de la demo y apuntando al gráfico de calorías.
+                        .confirmationDialog("¿Volver al alimento del plan?",
+                                            isPresented: Binding(get: { revertir?.id == clave }, set: { if !$0 { revertir = nil } }),
+                                            titleVisibility: .visible, presenting: revertir) { r in
+                            Button("Volver a \(r.original.nombre)") { Task { await modelo.revertir(comidaId: r.comidaId, opt: r.opt, idx: r.idx) } }
+                            Button("Cancelar", role: .cancel) {}
+                        } message: { r in
+                            Text("Hoy estás comiendo \(r.mostrado.nombre).")
+                        }
+                        if item.i < alimentos.count - 1 { Divider() }
                     }
                 }
+                Group {
+                    let rotulo = Text("Total").font(.caption.weight(.semibold)).foregroundStyle(.secondary).textCase(.uppercase).tracking(0.5)
+                    if apilada {
+                        VStack(alignment: .leading, spacing: 6) {
+                            rotulo
+                            MacroMini(letra: "P", valor: total.prot, color: .proteina)
+                            MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
+                            MacroMini(letra: "G", valor: total.fat, color: .grasa)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        HStack(spacing: 16) {
+                            rotulo
+                            Spacer(minLength: 4)
+                            MacroMini(letra: "P", valor: total.prot, color: .proteina)
+                            MacroMini(letra: "C", valor: total.carb, color: .carbohidrato)
+                            MacroMini(letra: "G", valor: total.fat, color: .grasa)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12).padding(.vertical, 9)
+                .background(Color(uiColor: .tertiarySystemFill).opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
             }
-            .padding(.horizontal, 12).padding(.vertical, 9)
-            .background(Color(uiColor: .tertiarySystemFill).opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+            Button { ajustando = ComidaAAjustar(id: c.id) } label: {
+                Label(propia ? "Cambiar el ajuste" : "Ajustar esta comida", systemImage: "slider.horizontal.3")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.marcaTexto)
+            .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+            .accessibilityIdentifier("ajustar-\(c.id)")
         }
         .tarjeta()
         .animation(.snappy, value: o)
+        .animation(.snappy, value: ajustada?.kcal)
+    }
+
+    /// Cambiar la opción de una comida ajustada: las cantidades a mano eran de la otra opción y se descartan (las kcal
+    /// sumadas o restadas, «no la como» y compensar siguen).
+    private func elegirOpcion(_ comidaId: String, _ nueva: Int) {
+        withAnimation(.snappy) { opcion[comidaId] = nueva }
+        guard var a = modelo.ajustesDeHoy[comidaId], a.opcion != nueva else { return }
+        a.opcion = nueva
+        a.cantidades = [:]
+        let opciones = opcionesVigentes
+        Task { await modelo.ajustar(comidaId, a, opciones: opciones) }
     }
 
     static func letra(_ i: Int) -> String { String(UnicodeScalar(65 + i).map(Character.init) ?? "?") }
@@ -279,6 +327,8 @@ private struct FilaAlimento: View {
     let original: Alimento
     let mostrado: Alimento
     let sustituido: Bool
+    /// Si el ajuste de hoy cambió la cantidad: lo del plan, para mostrarlo al lado.
+    var enElPlan: Alimento? = nil
     let porcionAbierta: Bool
     let alTocarMano: () -> Void
     let alReemplazar: () -> Void
@@ -308,7 +358,12 @@ private struct FilaAlimento: View {
                         }
                     }
                     Text("\(FormatoDieta.cantidad(mostrado.qty, mostrado.unidad)) · \((mostrado.kcal ?? 0).enteroSeguro) kcal")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                        .font(.subheadline).foregroundStyle(enElPlan != nil ? Color.marcaTexto : .secondary)
+                        .contentTransition(.numericText())
+                    if let enElPlan {
+                        Text("En el plan: \(FormatoDieta.cantidad(enElPlan.qty, enElPlan.unidad))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     FormatoDieta.macros(mostrado)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -396,6 +451,7 @@ enum FormatoDieta {
 private struct Cabecera: View {
     let objetivo: Macros
     let elegidas: Macros
+    var conAjustes = false
     @Environment(\.dynamicTypeSize) private var tamañoLetra
     @Environment(\.horizontalSizeClass) private var claseAncho
 
@@ -458,7 +514,7 @@ private struct Cabecera: View {
             HStack(spacing: 8) {
                 Image(systemName: abs(delta) <= 5 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(abs(delta) <= 5 ? Color.exito : Color.alerta)
-                Text("Con las opciones elegidas: ") + Text("\((elegidas.kcal ?? 0).enteroSeguro) kcal").bold()
+                Text(conAjustes ? "Con tus ajustes de hoy: " : "Con las opciones elegidas: ") + Text("\((elegidas.kcal ?? 0).enteroSeguro) kcal").bold()
                     + Text(abs(delta) < 0.5 ? "" : " (\(delta > 0 ? "+" : "")\(delta.enteroSeguro) %)")
             }
             .font(.footnote)
@@ -556,4 +612,44 @@ private struct MacroMini: View {
 
 extension Array {
     subscript(safe i: Int) -> Element? { indices.contains(i) ? self[i] : nil }
+}
+
+/// Lo que cambió de una comida hoy: lo que hizo el cliente y lo que tomó de las anteriores (lo que solo pasa de largo,
+/// porque no la come o no tiene qué escalar, no se cuenta acá: se ve en la que lo recibe).
+private struct AvisoAjuste: View {
+    let ajustada: AjustePorciones.ComidaAjustada
+    /// La ajustó el cliente.
+    let propia: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if ajustada.omitida {
+                Label("Hoy no la comés", systemImage: "moon.zzz.fill")
+            } else if propia {
+                Label(abs(ajustada.propio) >= 1 ? "Ajustada: \(AjustarComidaView.signo(ajustada.propio)) kcal" : "Ajustada a mano",
+                      systemImage: "slider.horizontal.3")
+            }
+            let llega = Self.llega(ajustada, propia: propia)
+            if !ajustada.omitida, abs(ajustada.absorbido) >= 1, abs(llega) >= 1 {
+                let de = ajustada.compensaDe.map(AjustarComidaView.conArticulo)
+                Label("\(AjustarComidaView.signo(llega)) kcal por \(de.isEmpty ? "la comida anterior" : AjustarComidaView.unir(de))",
+                      systemImage: llega < 0 ? "arrow.down.right" : "arrow.up.right")
+            }
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(Color.marcaTexto)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12).padding(.vertical, 9)
+        .background(Color.marcaSuave, in: .rect(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Lo que cambió por las anteriores. Si solo recibe, todo lo que cambió es por ellas: la diferencia real (con el redondeo
+    /// de las porciones), la misma que anticipó la hoja de la que la mandó. Con un ajuste propio, lo que tomó (lo propio va
+    /// en el renglón de arriba).
+    static func llega(_ a: AjustePorciones.ComidaAjustada, propia: Bool) -> Double { propia ? a.absorbido : a.kcal - a.kcalPlan }
+
+    static func hayQueMostrar(_ a: AjustePorciones.ComidaAjustada, propia: Bool) -> Bool {
+        a.omitida || propia || (abs(a.absorbido) >= 1 && abs(llega(a, propia: false)) >= 1)
+    }
 }
