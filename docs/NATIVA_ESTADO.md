@@ -267,6 +267,22 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   - **Pruebas:** kit 486/486, JVM de Android 607 (1 salteado), XCUITest de Dieta 6/6 y 23/23 instrumentadas de Dieta.
     Capturas en `nativa-evidencia/dieta/ajustes-2010` y `nativa-evidencia/android-ui/ajustes-2010`.
   - **Codemagic:** el workflow de iOS frena si falta el perfil de la extensión y revisa la extensión en el IPA.
+  - **Revisión independiente** (un agente sobre todo el diff del día): 7 hallazgos, todos arreglados con su test en las
+    dos apps (1600123…c2cef0b):
+    - un ajuste hecho mientras se leían los del servidor se perdía y el siguiente lo borraba también del servidor (lo
+      reprodujo en las dos);
+    - en la demo, que es la que miran las revisiones de Apple y Google, la última serie y cerrar el día no cortaban el
+      descanso;
+    - las kcal sumadas no se acotaban a lo que la comida absorbe;
+    - la hoja arrancaba con cantidades que ya no valían;
+    - el redondeo achicaba un alimento al sumar;
+    - las opciones vistas pasaban de una cuenta a la demo;
+    - faltaban topes al leer.
+    Queda como nota: si el descanso termina con la app atrás y no se vuelve a abrir, la Live Activity puede quedar
+    hasta que la saca el sistema (8 h). Sacarla sola necesitaría pushes de ActivityKit.
+  - **Al final:** kit 493/493; JVM de Android completa. En interfaz: la suite entera de iOS (con la app reinstalada,
+    Onboarding 3/3), 35/35 instrumentadas de Dieta y Entreno, y las de ajustes también en oscuro y con la letra más
+    grande.
 
 - **17-oct, la 2.0.0 publicada en el App Store y la 2.0.1 (117) por lo de Alan.** Apple la aprobó y salió sola a las
   04:52, como **Pump Team**, escalonada en 7 días (la espera sin tokens la vio a las 16:58).
