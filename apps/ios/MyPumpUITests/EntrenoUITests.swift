@@ -27,6 +27,44 @@ final class EntrenoUITests: XCTestCase {
         XCTAssertEqual(kg.value as? String, "7", "lo nuevo no reemplazó a lo anterior")
     }
 
+    /// D23 (Ian Actis, 20-oct): al confirmar una serie el descanso aparece grande, pegado a la tabla y traído a la vista
+    /// sin tocar nada; −15 y +15 lo mueven y «Saltar descanso» lo saca.
+    func testElDescansoApareceALaVistaYSeAjusta() throws {
+        let campos = app.textFields
+        XCTAssertTrue(campos.firstMatch.waitForExistence(timeout: 15), "No abrió el ejercicio")
+        let reps = campos.element(boundBy: 0), kg = campos.element(boundBy: 1)
+        reps.tap()
+        reps.typeText("10")
+        kg.tap()
+        kg.typeText("60")
+        let confirmar = app.buttons["confirmar-serie-1"]
+        XCTAssertTrue(confirmar.waitForExistence(timeout: 3))
+        confirmar.tap()
+        let tarjeta = app.otherElements["descanso-en-tarjeta"]
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "No apareció el descanso en la tarjeta")
+        let saltar = tarjeta.buttons["Saltar descanso"]
+        let aLaVista = expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: saltar)
+        wait(for: [aLaVista], timeout: 4)
+        let tiempo = tarjeta.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Descanso, quedan'")).firstMatch
+        XCTAssertTrue(tiempo.exists, "Sin la cuenta regresiva")
+        let antes = Self.segundos(tiempo.label)
+        XCTAssertGreaterThan(antes, 0, tiempo.label)
+        tarjeta.buttons["Sumar 15 segundos"].tap()
+        XCTAssertGreaterThanOrEqual(Self.segundos(tiempo.label), antes + 13, tiempo.label)
+        tarjeta.buttons["Restar 15 segundos"].tap()
+        tarjeta.buttons["Restar 15 segundos"].tap()
+        XCTAssertLessThanOrEqual(Self.segundos(tiempo.label), antes - 14, tiempo.label)
+        let a = XCTAttachment(screenshot: app.screenshot()); a.name = "descanso-en-tarjeta"; a.lifetime = .keepAlways; add(a)
+        saltar.tap()
+        XCTAssertTrue(tarjeta.waitForNonExistence(timeout: 4), "«Saltar descanso» no lo sacó")
+    }
+
+    /// «Descanso, quedan 1:30» → 90.
+    private static func segundos(_ etiqueta: String) -> Int {
+        let partes = etiqueta.components(separatedBy: " ").last?.split(separator: ":").compactMap { Int($0) } ?? []
+        return partes.count == 2 ? partes[0] * 60 + partes[1] : -1
+    }
+
     /// ENT-10 y VoiceOver: después de sustituir y fijar, la card de la lista lo dice (antes la etiqueta fija tapaba la
     /// sustitución, los mensajes, la pauta y el récord), con la pauta y el descanso.
     func testLaCardDiceQueEstaSustituidaYFijada() throws {

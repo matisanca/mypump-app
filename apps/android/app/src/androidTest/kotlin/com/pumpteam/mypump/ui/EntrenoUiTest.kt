@@ -322,7 +322,9 @@ class EntrenoUiTest : PruebaUi() {
         // Hecho el último, no hay "Siguiente" (D13): queda reabrir.
         p.nodo(etiqueta("reabrir-ejercicio"))
         assertFalse(p.existe(etiqueta("siguiente-ejercicio")))
-        p.tocar(etiqueta("descanso-saltar"))
+        // Con el día completo no queda descanso (D23, 20-oct): no hay próxima serie que esperar.
+        assertFalse("la última serie del día no deja descanso", p.existe(etiqueta("descanso-saltar")))
+        assertFalse(p.existe(etiqueta("descanso-en-tarjeta")))
         // El ejercicio se abrió en la lista (15-oct): no hay página de la que volver.
         p.nodo(etiqueta("tarjeta-cierre"))
         p.nodo(texto("SESIÓN COMPLETA"))
