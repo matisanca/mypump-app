@@ -72,6 +72,13 @@ public struct Escrituras: Sendable {
                 "p_token": t, "p_dieta_id": p["dietaId"] ?? .null, "p_comida_id": p["comidaId"] ?? .null,
                 "p_opt_idx": p["optIdx"] ?? .null, "p_food_idx": p["foodIdx"] ?? .null,
             ]).map { _ in .texto("ok") })
+        case ModeloApp.kindAjustes:
+            // Los ajustes de porciones del día (nativa_004). TRUE = guardado o borrado; NULL = el token no sirve.
+            return .respuesta(Self.sinTablaEsHecho(await cliente.llamar("mypump_guardar_ajustes_dieta", [
+                "p_token": t, "p_fecha": p["fecha"] ?? .null, "p_dieta_id": p["dietaId"] ?? .null, "p_tipo_dia": p["tipoDia"] ?? .null,
+                "p_ajustes": p["ajustes"] ?? .objeto([:]), "p_resumen": p["resumen"] ?? .null,
+                "p_kcal_plan": p["kcalPlan"] ?? .null, "p_kcal_dia": p["kcalDia"] ?? .null,
+            ])))
         case "habito":
             return .respuesta(await cliente.llamar("mypump_set_habito", [
                 "p_token": t, "p_fecha": p["fecha"] ?? .null, "p_campo": p["campo"] ?? .null, "p_valor": .texto(Self.stringJS(p["valor"])),

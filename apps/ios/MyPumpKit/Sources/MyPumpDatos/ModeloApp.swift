@@ -47,6 +47,13 @@ public final class ModeloApp {
     public private(set) var excluir: [String] = []
     public private(set) var alimentosPropios: [AlimentoPropio] = []
     public private(set) var swaps: [String: SwapLocal] = [:]
+    /// Los ajustes de porciones del día, por comida (feedback del 20-oct): ver AjustesDieta.swift. Solo valen el día de
+    /// `fechaAjustes` (`ajustesDeHoy`).
+    public internal(set) var ajustes: [String: AjusteComida] = [:]
+    @ObservationIgnored var fechaAjustes = ""
+    /// Las opciones que se vieron por última vez en Dieta: el resumen que va al servidor las usa aunque el cambio venga de
+    /// otro lado (un reemplazo, la hidratación).
+    @ObservationIgnored var opcionesVistas: [String: Int] = [:]
     /// La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido).
     public private(set) var palanca = PalancaRemota.deFabrica
 
@@ -169,7 +176,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         outbox = nil
-        info = nil; rutina = nil; dieta = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
         esDemo = false
         sinRedEn = []
@@ -189,6 +196,8 @@ public final class ModeloApp {
         soltarCuentaEnMemoria()
         self.rutina = envolver(rutina, id: "demo").flatMap { try? JSONDecoder().decode(RutinaActiva.self, from: $0) }
         self.dieta = dietaNormalizada(envolver(dieta, id: "demo").flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) })
+        ajustes = [:]
+        fechaAjustes = FechaLocal.hoy()
         desdeCache = false
         sinRedEn = []
         esDemo = true
@@ -202,7 +211,7 @@ public final class ModeloApp {
     /// Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada).
     public func salirDeDemo() async {
         esDemo = false
-        rutina = nil; dieta = nil; swaps = [:]; entreno = nil
+        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; entreno = nil
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)
@@ -217,7 +226,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         outbox = nil
-        info = nil; swaps = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        info = nil; swaps = [:]; ajustes = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
     }
 
@@ -377,6 +386,7 @@ public final class ModeloApp {
         // Los reemplazos guardados en el teléfono, ANTES de mostrar Dieta (si no, se ven tarde y un reemplazo hecho en
         // ese hueco pisaba el archivo).
         if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] } else { swaps = [:] }
+        cargarAjustes()
         sinRedEn = faltaron
         desdeCache = !faltaron.isEmpty
         if !desdeCache { cargasConRed += 1 }
@@ -506,6 +516,7 @@ public final class ModeloApp {
         // Primero lo "de hoy" si cambió el día (lo que se toque ahora tiene que caer en el día nuevo), después las colas.
         let hoy = FechaLocal.hoy()
         if diaCargado != hoy {
+            cargarAjustes()
             await cargarComidasLibres()
             await revision?.cargarMiDia()
             await revision?.cargarRevision()
@@ -543,6 +554,7 @@ public final class ModeloApp {
         rutina = c.rutina.flatMap { decodificar(RutinaActiva.self, $0) }
         dieta = dietaNormalizada(c.dieta)
         if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] }
+        cargarAjustes()
     }
 
     // MARK: - Dieta
@@ -588,6 +600,7 @@ public final class ModeloApp {
         guardarSwaps()
         await outbox?.encolar("swap", .objeto(["dietaId": .texto(dietaId), "comidaId": .texto(comidaId), "optIdx": .numero(Double(opt)),
                                                 "foodIdx": .numero(Double(idx)), "food": anclado]), dedupeKey: k)
+        await soltarCantidad(comidaId: comidaId, opt: opt, idx: idx)
     }
 
     /// Volver al alimento del plan. Comparte clave con el swap: si todavía no había salido, lo reemplaza en la cola.
@@ -598,6 +611,7 @@ public final class ModeloApp {
         guardarSwaps()
         await outbox?.encolar("swap_del", .objeto(["dietaId": .texto(dietaId), "comidaId": .texto(comidaId), "optIdx": .numero(Double(opt)),
                                                     "foodIdx": .numero(Double(idx))]), dedupeKey: k)
+        await soltarCantidad(comidaId: comidaId, opt: opt, idx: idx)
     }
 
     /// "Crear y usar" (`saveCustomFood`): va directo, no por la cola, como en la web. Lo creado entra a la base de
@@ -741,6 +755,7 @@ public final class ModeloApp {
         } else if h.marcarMigrado {
             disco.guardar(true, marca)
         }
+        await hidratarAjustes(token: t, dieta: dieta, vigente: vigente)
     }
 
     /// La dieta como la usa la web: normalizada (`normalizarDieta`). Sin ninguna comida usable no hay dieta (la web

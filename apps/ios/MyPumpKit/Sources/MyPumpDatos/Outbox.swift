@@ -405,7 +405,8 @@ public actor Outbox {
 
     /// Kinds que no muestran avisos ("guardando", "sin conexión", "no se guardó"): las sustituciones de ejercicio
     /// (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
-    public static let silenciosas: Set<String> = [SustitucionesServidor.kindGuardar, SustitucionesServidor.kindBorrar]
+    /// Los ajustes de porciones tampoco: valen en el teléfono aunque no hayan subido (son para que Mati los vea).
+    public static let silenciosas: Set<String> = [SustitucionesServidor.kindGuardar, SustitucionesServidor.kindBorrar, ModeloApp.kindAjustes]
 
     /// Kinds que se anotan como `intentada` antes de salir: el chat, que antes de reintentar mira si ya había llegado.
     public static let anotanIntento: Set<String> = ["chat"]
