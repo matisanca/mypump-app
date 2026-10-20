@@ -110,8 +110,8 @@ Mati: «seguí en autónomo hasta dejar ambas andando perfecto y publicadas en a
 **2.0.1 de las dos (para el miércoles 21-oct, Mati: «hacelo el miércoles cuando tengamos más tokens y seguro sea con
 más correcciones»)**
 - Lleva: la hoja única de Salud (lo de Alan Fried), el descanso a la vista (Live Activity en iOS, cuenta regresiva
-  fija en Android, ver D23), los ajustes de porciones (D22) y el botón de foto con cámara y galería en un toque (Alan
-  Ferraro).
+  fija en Android, ver D23), los ajustes de porciones (D22), el botón de foto con cámara y galería en un toque (Alan
+  Ferraro) y los otros ejercicios del mismo músculo al sustituir (D24, Eric Walo).
 - iOS: el **TestFlight 117** tiene solo lo de Salud. Para el 118 hace falta el perfil de la extensión del descanso (ver
   «Lo que solo puede hacer Mati»); Codemagic frena y lo dice si falta. Tag `nios-2.0.1-118`.
 - Android: AAB `nand-2.0.1-104`. Play está al 10 % con la 2.0.0; el 50 % y el 100 %, con el OK de Mati.
@@ -205,6 +205,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 | D21 | **La marca de Pump Team** (Mati, 15-oct: «estos son los colores de mi logo»): el verde del logo (#1D9330; #5BBE62 en oscuro) con blanco encima, el dorado claro (#FACB39) solo en los récords, el nombre **Pump Team** debajo del ícono y en los textos, el torso del ícono como logo en la bienvenida y en el chat (en lugar de la «M»), y «Mati» arriba del chat en vez de «tu coach». El ícono pasa del esmeralda al verde del logo | El paquete, el bundle id, las cuentas y los datos no cambian. En las tiendas el nombre cambia con el envío de cada versión (G7). La web sigue con MyPump y la lima hasta que Mati diga |
 | D22 | **Ajustar una comida de hoy** (feedback del 20-oct que Mati pidió implementar: sumar o restar kcal y que se recalculen las porciones, compensar en la siguiente; Emilio García Álvarez: sacar el pre-entreno el día que no entrena y «jugar con los gramos»). De a 50 kcal sobre lo que se puede escalar, entre un cuarto y el triple, en porciones servibles; cantidades a mano por alimento, ancladas al alimento; «Hoy no la como»; compensar prendido de entrada; lo que una comida no absorbe sigue a la otra. Vale solo por hoy. Una fila por día en `mypump_ajustes_dieta` (nativa_004); volver al plan guarda `{}` y no borra | La regla es la misma en las dos apps (21 vectores compartidos). La web y el Cerebro no la usan: **para que Mati lo vea hace falta que el Cerebro o el brief lean la tabla**, que es de otra sesión; por eso la hoja no promete «Mati ve estos ajustes» |
 | D23 | **El descanso entre series a la vista** (Ian Actis, 20-oct): grande en el ejercicio y traído a la vista al confirmar la serie; con la app atrás, una Live Activity en iOS (pantalla bloqueada y Dynamic Island) y una cuenta regresiva fija sin sonido en Android (canal de prioridad normal: con la baja no se ve bloqueado en los Pixel). La última serie del día y cerrar el día lo cortan | La extensión `com.pumpteam.mypump.descanso` necesita su propio perfil App Store; la versión y el build van a nivel proyecto para que siempre coincidan con los de la app |
+| D24 | **Al sustituir, también otros ejercicios del mismo músculo** (Eric Walo, 20-oct: con la polea ocupada, a «Extensión en polea alta con barra» le salía una sola variante y quería fondos; Mati eligió «Siempre»). Debajo de las variantes del mismo movimiento (las de la web, sin cambios), la sección «Otros ejercicios de [músculo]»: mismo `primary_muscle`, otro patrón cuyo músculo dominante (el de la mayoría de sus filas) es ese, otro equipo primero, alfabético, 30, sin repetir lo de arriba ni nombres sin traducir. Nada en calentamiento, cardio ni sin patrón. El subtítulo dice «Otra variante u otro ejercicio de tríceps» cuando hay | Es de la app: la web sigue con el mismo movimiento. El sustituto se guarda como cualquier otro (la misma tabla y el historial por clave). El filtro del músculo dominante saca las filas mal cargadas (los encogimientos figuran como espalda media). La patada de tríceps se llama «Patada de tríceps»: la web la llama «Patada de glúteo» y es un desvío documentado en los vectores |
 | T1 | Cola, caché y swaps en **JSON con escritura atómica**, sin GRDB | Volumen chico; cero dependencias de terceros |
 | T2 | Cliente RPC propio (URLSession), sin supabase-swift | Hace falta el código HTTP para clasificar errores (aprobado 13-oct) |
 
@@ -289,6 +290,17 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   - **Al final:** kit 493/493; JVM de Android completa. En interfaz: la suite entera de iOS (con la app reinstalada,
     Onboarding 3/3), 35/35 instrumentadas de Dieta y Entreno, y las de ajustes también en oscuro y con la letra más
     grande.
+  - **Otros del mismo músculo (D24, Eric Walo por Mati: «te doy feedback»).** La regla en las dos apps, con la misma
+    salida. Los vectores (`otros_mismo_musculo.json`) tienen 8 listas a la vista y la huella de las 406 listas del
+    catálogo, que Android compara una por una. Al cortar el tope en 29 solo falla la de las huellas.
+    - La primera prueba en la demo mostró «Encogimientos» para el remo, porque el catálogo los carga como espalda media:
+      ahora el patrón tiene que ser de ese músculo.
+    - También mostró «Patada de glúteo con mancuernas» entre los de tríceps: la regla de la web confunde las dos
+      patadas.
+    - Pruebas: kit 498/498, JVM de Android 666 (1 salteado), EntrenoUITests 5/5 y EntrenoUiTest 12/12, con capturas en
+      `nativa-evidencia/entreno/otros-musculo-2010b` y `android-ui/otros-2010`.
+    - Si el kit se cae con la señal 11 en `ModeloEntreno.init`, son objetos de prueba viejos (SwiftPM no los recompiló
+      cuando cambió `CatalogoEjercicios`): `touch` a los tests y otra vez.
 
 - **17-oct, la 2.0.0 publicada en el App Store y la 2.0.1 (117) por lo de Alan.** Apple la aprobó y salió sola a las
   04:52, como **Pump Team**, escalonada en 7 días (la espera sin tokens la vio a las 16:58).
