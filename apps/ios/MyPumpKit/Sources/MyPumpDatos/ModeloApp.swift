@@ -54,6 +54,8 @@ public final class ModeloApp {
     /// Las opciones que se vieron por última vez en Dieta: el resumen que va al servidor las usa aunque el cambio venga de
     /// otro lado (un reemplazo, la hidratación).
     @ObservationIgnored var opcionesVistas: [String: Int] = [:]
+    /// Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor).
+    @ObservationIgnored var ordenAjustes = 0
     /// La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido).
     public private(set) var palanca = PalancaRemota.deFabrica
 
@@ -80,7 +82,11 @@ public final class ModeloApp {
     public private(set) var salud: ModeloSalud?
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
-        didSet { UserDefaults.standard.set(tipoDia, forKey: "mypump_tipo_dia") }
+        didSet {
+            UserDefaults.standard.set(tipoDia, forKey: "mypump_tipo_dia")
+            // Otro tipo de día es otro plan: el resumen de los ajustes que ve Mati se rehace.
+            if oldValue != tipoDia, !ajustesDeHoy.isEmpty { Task { await encolarAjustes(opciones: [:]) } }
+        }
     }
 
     @ObservationIgnored public let cliente: ClienteRPC
@@ -176,7 +182,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         outbox = nil
-        info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
         esDemo = false
         sinRedEn = []
@@ -197,6 +203,7 @@ public final class ModeloApp {
         self.rutina = envolver(rutina, id: "demo").flatMap { try? JSONDecoder().decode(RutinaActiva.self, from: $0) }
         self.dieta = dietaNormalizada(envolver(dieta, id: "demo").flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) })
         ajustes = [:]
+        opcionesVistas = [:]
         fechaAjustes = FechaLocal.hoy()
         desdeCache = false
         sinRedEn = []
@@ -211,7 +218,7 @@ public final class ModeloApp {
     /// Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada).
     public func salirDeDemo() async {
         esDemo = false
-        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; entreno = nil
+        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; entreno = nil
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)
@@ -226,7 +233,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         outbox = nil
-        info = nil; swaps = [:]; ajustes = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
     }
 
@@ -600,7 +607,7 @@ public final class ModeloApp {
         guardarSwaps()
         await outbox?.encolar("swap", .objeto(["dietaId": .texto(dietaId), "comidaId": .texto(comidaId), "optIdx": .numero(Double(opt)),
                                                 "foodIdx": .numero(Double(idx)), "food": anclado]), dedupeKey: k)
-        await soltarCantidad(comidaId: comidaId, opt: opt, idx: idx)
+        await planCambio(comidaId: comidaId, opt: opt, idx: idx)
     }
 
     /// Volver al alimento del plan. Comparte clave con el swap: si todavía no había salido, lo reemplaza en la cola.
@@ -611,7 +618,7 @@ public final class ModeloApp {
         guardarSwaps()
         await outbox?.encolar("swap_del", .objeto(["dietaId": .texto(dietaId), "comidaId": .texto(comidaId), "optIdx": .numero(Double(opt)),
                                                     "foodIdx": .numero(Double(idx))]), dedupeKey: k)
-        await soltarCantidad(comidaId: comidaId, opt: opt, idx: idx)
+        await planCambio(comidaId: comidaId, opt: opt, idx: idx)
     }
 
     /// "Crear y usar" (`saveCustomFood`): va directo, no por la cola, como en la web. Lo creado entra a la base de

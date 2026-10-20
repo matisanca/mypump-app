@@ -29,6 +29,11 @@ struct AjustesDietaTests {
         var filas = "[]"
         /// Otra estructura con el mismo id: Mati volvió a publicar (013 actualiza en el lugar).
         var dieta: String?
+        /// La lectura de los ajustes contesta tarde: la escritura que sale después llega antes (revisión del 20-oct).
+        var getLento = false
+        private var _getEmpezo = false
+        var getEmpezo: Bool { lock.withLock { _getEmpezo } }
+        func marcarGet() { lock.withLock { _getEmpezo = true } }
         func guardar(_ c: JSONValue) { lock.withLock { _guardados.append(c) } }
     }
 
@@ -45,7 +50,14 @@ struct AjustesDietaTests {
             case "mypump_get_food_swaps" where s.sinSwaps: return (500, #"{"message":"caído"}"#)
             case "mypump_get_ajustes_dieta":
                 if s.sinTabla { return (404, #"{"code":"PGRST202","message":"Could not find the function"}"#) }
-                return (200, s.filas)
+                let foto = s.filas   // lo que tiene el servidor cuando lee
+                s.marcarGet()
+                if s.getLento {
+                    for _ in 0..<300 where s.guardados.isEmpty { try await Task.sleep(for: .milliseconds(10)) }
+                    try await Task.sleep(for: .milliseconds(50))
+                }
+                return (200, foto)
+            case "mypump_save_food_swap", "mypump_delete_food_swap": return (200, "true")
             default: return (200, "[]")
             }
         }
@@ -152,6 +164,59 @@ struct AjustesDietaTests {
         #expect(m.ajustesDeHoy["almuerzo"]?.deltaKcal == -100)
     }
 
+    /// Revisión del 20-oct: un cambio hecho mientras la hidratación espera al servidor llegaba antes que la respuesta (la
+    /// cola manda al toque) y la foto vieja del servidor lo pisaba; el cambio siguiente borraba también lo del servidor.
+    @Test func unCambioDuranteLaHidratacionNoSePierde() async throws {
+        let s = Servidor()
+        s.filas = #"[{"fecha":"\#(FechaLocal.hoy())","dieta_id":"\#(Self.dietaId)","ajustes":{}}]"#
+        s.getLento = true
+        let m = modelo(s)
+        let carga = Task { await m.cargar() }
+        for _ in 0..<500 where !s.getEmpezo { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(s.getEmpezo)
+        await m.ajustar("desayuno", AjusteComida(deltaKcal: 100), opciones: [:])
+        await carga.value
+        #expect(m.ajustesDeHoy["desayuno"]?.deltaKcal == 100, "el cambio sobrevive a la hidratación")
+        await m.ajustar("almuerzo", AjusteComida(deltaKcal: -50), opciones: [:])
+        await m.outbox?.drenar()
+        #expect(s.guardados.last?["p_ajustes"]?["desayuno"]?["deltaKcal"]?.comoNumero == 100, "y el siguiente no lo borra del servidor")
+    }
+
+    /// El resumen que ve Mati son las kcal del plan de hoy: otra opción a la vista o un reemplazo, aun en una comida sin
+    /// ajuste, lo cambian (revisión del 20-oct).
+    @Test func otraOpcionOUnReemplazoRehacenElResumen() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        await m.ajustar("almuerzo", AjusteComida(deltaKcal: -50, compensar: false), opciones: [:])
+        await m.outbox?.drenar()
+        func planDelDesayuno() -> Double? {
+            guard case .lista(let r)? = s.guardados.last?["p_resumen"] else { return nil }
+            return r.first { $0["comida_id"]?.comoTexto == "desayuno" }?["kcal_plan"]?.comoNumero
+        }
+        #expect(planDelDesayuno() == 614)
+        await m.verOpcion("desayuno", 1)
+        await m.outbox?.drenar()
+        #expect(planDelDesayuno() == 120, "el yogur de la B")
+        await m.verOpcion("desayuno", 0)
+        let avena = m.comidasDelDia[0].opciones[0].alimentos[0]
+        await m.sustituir(avena, por: .objeto(["name": .texto("Pan integral"), "qty": .numero(2), "unit": .texto("rebanada"),
+                                                "kcal": .numero(140), "prot": .numero(6), "carb": .numero(24), "fat": .numero(2)]),
+                          comidaId: "desayuno", opt: 0, idx: 0)
+        await m.outbox?.drenar()
+        #expect(planDelDesayuno() == 374, "el pan (140) y los huevos (234)")
+    }
+
+    @Test func lasOpcionesVistasNoPasanALaDemo() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        await m.verOpcion("desayuno", 1)
+        #expect(m.opcionesVistas["desayuno"] == 1)
+        m.entrarEnDemo(rutina: Data(#"{"dias":[]}"#.utf8), dieta: Data(#"{"comidas":[]}"#.utf8))
+        #expect(m.opcionesVistas.isEmpty)
+    }
+
     @Test func otraDietaEnElServidorNoSeMezcla() async {
         let s = Servidor()
         s.filas = #"[{"fecha":"\#(FechaLocal.hoy())","dieta_id":"55555555-5555-4555-8555-555555555555","ajustes":{"desayuno":{"deltaKcal":300}}}]"#
@@ -223,15 +288,15 @@ struct AjustesDietaTests {
         let s = Servidor()
         let m = modelo(s)
         await m.cargar()
-        await m.ajustar("desayuno", AjusteComida(deltaKcal: 100, opcion: 0, cantidades: ["0": 60, "1": 4]), opciones: ["desayuno": 0])
+        // Sin kcal sumadas: con los dos alimentos a mano no queda nada que escalar y se acotarían a cero.
+        await m.ajustar("desayuno", AjusteComida(opcion: 0, cantidades: ["0": 60, "1": 4]), opciones: ["desayuno": 0])
         let avena = m.comidasDelDia[0].opciones[0].alimentos[0]
         await m.sustituir(avena, por: .objeto(["name": .texto("Pan integral"), "qty": .numero(2), "unit": .texto("rebanada"),
                                                 "kcal": .numero(140), "prot": .numero(6), "carb": .numero(24), "fat": .numero(2)]),
                           comidaId: "desayuno", opt: 0, idx: 0)
         #expect(m.ajustesDeHoy["desayuno"]?.cantidades == ["1": 4], "la de la avena se va, la de los huevos queda")
-        #expect(m.ajustesDeHoy["desayuno"]?.deltaKcal == 100)
         await m.revertir(comidaId: "desayuno", opt: 0, idx: 1)
-        #expect(m.ajustesDeHoy["desayuno"]?.cantidades == [:])
+        #expect(m.ajustesDeHoy["desayuno"] == nil, "sin nada a mano ni kcal, el ajuste se va")
     }
 
     @Test func enLaDemoNoSeEscribeNada() async {

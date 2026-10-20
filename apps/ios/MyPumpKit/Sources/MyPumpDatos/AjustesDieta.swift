@@ -65,6 +65,7 @@ extension ModeloApp {
         }
         if let a, !a.neutro { nuevos[comidaId] = a } else { nuevos[comidaId] = nil }
         guard nuevos != ajustes else { return }
+        ordenAjustes += 1
         ajustes = nuevos
         guard !esDemo, let id = dieta?.id else { return }
         _ = disco?.guardar(AjustesGuardados(fecha: fechaAjustes, comidas: nuevos), Self.archivoAjustes(id))
@@ -72,11 +73,21 @@ extension ModeloApp {
     }
 
     /// Un reemplazo (o volver al alimento del plan) cambia el alimento de esa posición: la cantidad puesta a mano era del
-    /// anterior y en otra unidad (60 g de avena no son 60 rebanadas de pan), así que se descarta.
-    func soltarCantidad(comidaId: String, opt: Int, idx: Int) async {
-        guard var a = ajustesDeHoy[comidaId], a.opcion == opt, a.cantidades[String(idx)] != nil else { return }
-        a.cantidades[String(idx)] = nil
-        await ajustar(comidaId, a, opciones: [comidaId: opt])
+    /// anterior y en otra unidad (60 g de avena no son 60 rebanadas de pan), así que se descarta. Con otros ajustes en el
+    /// día, el resumen que ve Mati se rehace igual (cambiaron las kcal del plan).
+    func planCambio(comidaId: String, opt: Int, idx: Int) async {
+        if var a = ajustesDeHoy[comidaId], a.opcion == opt, a.cantidades[String(idx)] != nil {
+            a.cantidades[String(idx)] = nil
+            await ajustar(comidaId, a, opciones: [comidaId: opt])
+        } else if !ajustesDeHoy.isEmpty, !esDemo {
+            await encolarAjustes(opciones: [:])
+        }
+    }
+
+    /// Otra opción a la vista en una comida sin ajuste: el resumen del día (si hay ajustes) se rehace con ella.
+    public func verOpcion(_ comidaId: String, _ opcion: Int) async {
+        opcionesVistas[comidaId] = opcion
+        if !ajustesDeHoy.isEmpty, !esDemo { await encolarAjustes(opciones: [:]) }
     }
 
     /// El día entero a la cola (una op por día: la última gana). Con el resumen por comida para que Mati lo lea sin la app.
@@ -107,10 +118,16 @@ extension ModeloApp {
     /// tabla), se sube. Otra dieta en el servidor (Mati la volvió a publicar) no se mezcla.
     func hidratarAjustes(token t: String, dieta: DietaActiva, vigente: () -> Bool) async {
         let hoy = FechaLocal.hoy()
+        guard let outbox else { return }
+        // Lo que estaba en la cola y lo que el cliente toque mientras se espera al servidor ganan: la cola manda al toque y
+        // el cambio puede llegar antes que la respuesta, que entonces es una foto vieja (revisión del 20-oct: se perdía el
+        // cambio y el siguiente borraba también lo del servidor).
+        let antes = ordenAjustes
+        let pendienteAntes = (await outbox.pendientesPorClave())[Self.claveAjustes(hoy)] != nil
         let r = await cliente.llamar("mypump_get_ajustes_dieta", ["p_token": .texto(t), "p_desde": .texto(hoy), "p_hasta": .texto(hoy)])
-        guard vigente(), case .success(let v) = r, case .lista(let filas) = v, let outbox else { return }
+        guard vigente(), case .success(let v) = r, case .lista(let filas) = v else { return }
         let pendiente = (await outbox.pendientesPorClave())[Self.claveAjustes(hoy)] != nil
-        guard vigente(), !pendiente else { return }
+        guard vigente(), !pendienteAntes, !pendiente, ordenAjustes == antes else { return }
         if fechaAjustes != hoy { cargarAjustes() }
         let remota = filas.first { $0["fecha"]?.comoTexto == hoy }
         if let remota {

@@ -6,6 +6,8 @@ import com.pumpteam.mypump.reglas.AnclaAlimento
 import com.pumpteam.mypump.reglas.FechaLocal
 import java.util.Collections
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -35,6 +37,10 @@ class AjustesDietaTest {
         /** Otra estructura con el mismo id: Mati volvió a publicar (013 actualiza en el lugar). */
         @Volatile var dieta: String? = null
 
+        /** La lectura de los ajustes contesta tarde: la escritura que sale después llega antes (revisión del 20-oct). */
+        @Volatile var getLento = false
+        @Volatile var getEmpezo = false
+
         val transporte = TransporteProgramado { fn, cuerpo ->
             when (fn) {
                 "mypump_get_cliente_info" -> 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
@@ -48,7 +54,18 @@ class AjustesDietaTest {
                         200 to "true"
                     }
                 "mypump_get_ajustes_dieta" ->
-                    if (sinTabla) 404 to """{"code":"PGRST202","message":"Could not find the function"}""" else 200 to filas
+                    if (sinTabla) {
+                        404 to """{"code":"PGRST202","message":"Could not find the function"}"""
+                    } else {
+                        val foto = filas   // lo que tiene el servidor cuando lee
+                        getEmpezo = true
+                        if (getLento) {
+                            repeat(300) { if (guardados.isEmpty()) delay(10) }
+                            delay(50)
+                        }
+                        200 to foto
+                    }
+                "mypump_save_food_swap", "mypump_delete_food_swap" -> 200 to "true"
                 else -> 200 to "[]"
             }
         }
@@ -178,6 +195,65 @@ class AjustesDietaTest {
         assertEquals(antes, s.guardados.size, "no lo vuelve a subir")
     }
 
+    /**
+     * Revisión del 20-oct: un cambio hecho mientras la hidratación espera al servidor llegaba antes que la respuesta (la
+     * cola manda al toque) y la foto vieja del servidor lo pisaba; el cambio siguiente borraba también lo del servidor.
+     */
+    @Test
+    fun unCambioDuranteLaHidratacionNoSePierde() = enUnHilo { alcance ->
+        val s = Servidor()
+        s.filas = """[{"fecha":"$hoy","dieta_id":"$DIETA_ID","ajustes":{}}]"""
+        s.getLento = true
+        val m = modelo(s, alcance)
+        val carga = async { m.cargar() }
+        repeat(500) { if (!s.getEmpezo) delay(10) }
+        assertTrue(s.getEmpezo)
+        m.ajustar("desayuno", AjusteComida(deltaKcal = 100), emptyMap())
+        carga.await()
+        assertEquals(100, m.ajustesDeHoy["desayuno"]?.deltaKcal, "el cambio sobrevive a la hidratación")
+        m.ajustar("almuerzo", AjusteComida(deltaKcal = -50), emptyMap())
+        m.outbox?.drenar()
+        assertEquals(100.0, s.guardados.last()["p_ajustes"]?.get("desayuno")?.get("deltaKcal")?.comoNumero, "y el siguiente no lo borra del servidor")
+    }
+
+    /** El resumen que ve Mati son las kcal del plan de hoy: otra opción a la vista o un reemplazo lo cambian. */
+    @Test
+    fun otraOpcionOUnReemplazoRehacenElResumen() = enUnHilo { alcance ->
+        val s = Servidor()
+        val m = modelo(s, alcance)
+        m.cargar()
+        m.ajustar("almuerzo", AjusteComida(deltaKcal = -50, compensar = false), emptyMap())
+        m.outbox?.drenar()
+        fun planDelDesayuno(): Double? = (s.guardados.last()["p_resumen"] as? ValorJson.Lista)?.elementos
+            ?.firstOrNull { it["comida_id"]?.comoTexto == "desayuno" }?.get("kcal_plan")?.comoNumero
+        assertEquals(614.0, planDelDesayuno())
+        m.verOpcion("desayuno", 1)
+        m.outbox?.drenar()
+        assertEquals(120.0, planDelDesayuno(), "el yogur de la B")
+        m.verOpcion("desayuno", 0)
+        val avena = m.comidasDelDia[0].opciones[0].alimentos[0]
+        m.sustituir(
+            avena,
+            ValorJson.parsear("""{"name":"Pan integral","qty":2,"unit":"rebanada","kcal":140,"prot":6,"carb":24,"fat":2}"""),
+            "desayuno", 0, 0,
+        )
+        m.outbox?.drenar()
+        assertEquals(374.0, planDelDesayuno(), "el pan (140) y los huevos (234)")
+    }
+
+    @Test
+    fun lasOpcionesVistasNoPasanALaDemo() = enUnHilo { alcance ->
+        val s = Servidor()
+        val m = modelo(s, alcance)
+        m.cargar()
+        m.verOpcion("desayuno", 1)
+        assertEquals(1, m.opcionesVistas["desayuno"])
+        m.entrarEnDemo("""{"dias":[]}""", """{"comidas":[]}""")
+        assertTrue(m.opcionesVistas.isEmpty())
+        m.salirDeDemo()
+        assertTrue(m.opcionesVistas.isEmpty())
+    }
+
     @Test
     fun sinLosReemplazosLosAjustesSeHidratanIgual() = enUnHilo { alcance ->
         val s = Servidor().apply { sinSwaps = true }
@@ -260,7 +336,8 @@ class AjustesDietaTest {
         val s = Servidor()
         val m = modelo(s, alcance)
         m.cargar()
-        m.ajustar("desayuno", AjusteComida(deltaKcal = 100, opcion = 0, cantidades = mapOf("0" to 60.0, "1" to 4.0)), mapOf("desayuno" to 0))
+        // Sin kcal sumadas: con los dos alimentos a mano no queda nada que escalar y se acotarían a cero.
+        m.ajustar("desayuno", AjusteComida(opcion = 0, cantidades = mapOf("0" to 60.0, "1" to 4.0)), mapOf("desayuno" to 0))
         val avena = m.comidasDelDia[0].opciones[0].alimentos[0]
         m.sustituir(
             avena,
@@ -268,9 +345,8 @@ class AjustesDietaTest {
             "desayuno", 0, 0,
         )
         assertEquals(mapOf("1" to 4.0), m.ajustesDeHoy["desayuno"]?.cantidades, "la de la avena se va, la de los huevos queda")
-        assertEquals(100, m.ajustesDeHoy["desayuno"]?.deltaKcal)
         m.revertir("desayuno", 0, 1)
-        assertEquals(emptyMap<String, Double>(), m.ajustesDeHoy["desayuno"]?.cantidades)
+        assertNull(m.ajustesDeHoy["desayuno"], "sin nada a mano ni kcal, el ajuste se va")
     }
 
     @Test

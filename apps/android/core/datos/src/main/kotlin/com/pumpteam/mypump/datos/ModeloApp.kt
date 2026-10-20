@@ -163,7 +163,11 @@ class ModeloApp(
     @Volatile private var fechaAjustes = ""
 
     /** Las opciones que se vieron por última vez en Dieta: el resumen que va al servidor las usa aunque el cambio venga de otro lado. */
-    @Volatile private var opcionesVistas: Map<String, Int> = emptyMap()
+    @Volatile internal var opcionesVistas: Map<String, Int> = emptyMap()
+        private set
+
+    /** Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor). */
+    private val ordenAjustes = java.util.concurrent.atomic.AtomicLong()
 
     /** Comidas libres (fuera del plan) del día local. */
     private val _comidasLibres = MutableStateFlow<List<ComidaLibre>>(emptyList())
@@ -209,8 +213,11 @@ class ModeloApp(
     var tipoDia: String?
         get() = _tipoDia.value
         set(v) {
+            val antes = _tipoDia.value
             _tipoDia.value = v
             preferencias.guardar(CLAVE_TIPO_DIA, v)
+            // Otro tipo de día es otro plan: el resumen de los ajustes que ve Mati se rehace.
+            if (antes != v && ajustesDeHoy.isNotEmpty() && !_esDemo.value) alcance.launch { encolarAjustes(emptyMap()) }
         }
 
     /** Lo pone la Activity con su ciclo de vida: los sondeos solo corren con la app a la vista. */
@@ -342,6 +349,7 @@ class ModeloApp(
         _dieta.value = null
         _swaps.value = emptyMap()
         _ajustes.value = emptyMap()
+        opcionesVistas = emptyMap()
         _entreno.value = null
         _revision.value = null   // los de la demo
         _chat.value = null
@@ -822,7 +830,7 @@ class ModeloApp(
             ),
             k,
         )
-        soltarCantidad(comidaId, opt, idx)
+        planCambio(comidaId, opt, idx)
     }
 
     /** Volver al alimento del plan. Comparte clave con el swap: si todavía no había salido, lo reemplaza en la cola. */
@@ -837,7 +845,7 @@ class ModeloApp(
             ValorJson.objeto("dietaId" to texto(dietaId), "comidaId" to texto(comidaId), "optIdx" to numero(opt), "foodIdx" to numero(idx)),
             k,
         )
-        soltarCantidad(comidaId, opt, idx)
+        planCambio(comidaId, opt, idx)
     }
 
     // ── Ajustes de porciones del día (feedback del 20-oct) ──
@@ -885,6 +893,7 @@ class ModeloApp(
         val actuales = _ajustes.value
         val nuevos = if (anclado != null && !anclado.neutro) actuales + (comidaId to anclado) else actuales - comidaId
         if (nuevos == actuales) return
+        ordenAjustes.incrementAndGet()
         _ajustes.value = nuevos
         if (_esDemo.value) return
         val id = _dieta.value?.id ?: return
@@ -894,13 +903,23 @@ class ModeloApp(
 
     /**
      * Un reemplazo (o volver al alimento del plan) cambia el alimento de esa posición: la cantidad puesta a mano era del
-     * anterior y en otra unidad (60 g de avena no son 60 rebanadas de pan), así que se descarta.
+     * anterior y en otra unidad (60 g de avena no son 60 rebanadas de pan), así que se descarta. Con otros ajustes en el
+     * día, el resumen que ve Mati se rehace igual (cambiaron las kcal del plan).
      */
-    private suspend fun soltarCantidad(comidaId: String, opt: Int, idx: Int) {
-        val a = ajustesDeHoy[comidaId] ?: return
+    private suspend fun planCambio(comidaId: String, opt: Int, idx: Int) {
+        val a = ajustesDeHoy[comidaId]
         val k = idx.toString()
-        if (a.opcion != opt || a.cantidades[k] == null) return
-        ajustar(comidaId, a.copy(cantidades = a.cantidades - k, anclas = a.anclas - k), mapOf(comidaId to opt))
+        if (a != null && a.opcion == opt && a.cantidades[k] != null) {
+            ajustar(comidaId, a.copy(cantidades = a.cantidades - k, anclas = a.anclas - k), mapOf(comidaId to opt))
+        } else if (ajustesDeHoy.isNotEmpty() && !_esDemo.value) {
+            encolarAjustes(emptyMap())
+        }
+    }
+
+    /** Otra opción a la vista en una comida sin ajuste: el resumen del día (si hay ajustes) se rehace con ella. */
+    suspend fun verOpcion(comidaId: String, opcion: Int) {
+        opcionesVistas = opcionesVistas + (comidaId to opcion)
+        if (ajustesDeHoy.isNotEmpty() && !_esDemo.value) encolarAjustes(emptyMap())
     }
 
     /** El día entero a la cola (una op por día: la última gana). Con el resumen por comida para que Mati lo lea sin la app. */
@@ -937,12 +956,17 @@ class ModeloApp(
      */
     private suspend fun hidratarAjustes(t: String, dieta: DietaActiva, vigente: () -> Boolean) {
         val hoy = FechaLocal.hoy()
+        val cola = outbox ?: return
+        // Lo que estaba en la cola y lo que el cliente toque mientras se espera al servidor ganan: la cola manda al toque y
+        // el cambio puede llegar antes que la respuesta, que entonces es una foto vieja (revisión del 20-oct: se perdía el
+        // cambio y el siguiente borraba también lo del servidor).
+        val antes = ordenAjustes.get()
+        val pendienteAntes = cola.pendientesPorClave()[AjustesDieta.clave(hoy)] != null
         val r = cliente.llamar("mypump_get_ajustes_dieta", mapOf("p_token" to texto(t), "p_desde" to texto(hoy), "p_hasta" to texto(hoy)))
         if (!vigente()) return
         val filas = ((r as? Resultado.Ok)?.valor as? ValorJson.Lista)?.elementos ?: return
-        val cola = outbox ?: return
         val pendiente = cola.pendientesPorClave()[AjustesDieta.clave(hoy)] != null
-        if (!vigente() || pendiente) return
+        if (!vigente() || pendienteAntes || pendiente || ordenAjustes.get() != antes) return
         if (fechaAjustes != hoy) cargarAjustes()
         val remota = filas.firstOrNull { it["fecha"]?.comoTexto == hoy }
         if (remota != null) {
