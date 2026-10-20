@@ -79,6 +79,26 @@ class AjustesDietaUiTest : PruebaUi() {
         p.esperar("volvió al plan en el servidor") { ultimoGuardado().getJSONObject("p_ajustes").length() == 0 }
     }
 
+    /** Las capturas en oscuro (la evidencia de que la hoja y los avisos se leen con el tema del sistema). */
+    @Test
+    fun capturasEnOscuro() {
+        Telefono.modoNoche(true)
+        guardarCuenta()
+        abrir()
+        irADieta()
+        p.tocar(etiqueta("ajustar-c1"))
+        p.nodo(etiqueta("hoja-ajuste"))
+        p.tocar(etiqueta("ajuste-mas"))
+        p.tocar(etiqueta("ajuste-mas"))
+        p.esperar("+100 kcal") { p.textosBajo(etiqueta("ajuste-delta")) == listOf("+100 kcal") }
+        Telefono.captura("33-ajuste-hoja-oscuro")
+        p.tocar(etiqueta("ajuste-listo"))
+        p.esperarQueNoEste(etiqueta("hoja-ajuste"))
+        p.nodo(etiqueta("ajuste-aviso-c1"))
+        Telefono.captura("34-ajuste-tarjetas-oscuro")
+        Telefono.modoNoche(false)
+    }
+
     @Test
     fun hoyNoLaComoPasaSusKcalYCancelarNoGuarda() {
         guardarCuenta()
