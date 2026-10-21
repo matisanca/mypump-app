@@ -261,6 +261,15 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **21-oct 16:00, 2.0.1 enviada a las dos tiendas** (OK de Mati: «la primera pero android ya para todos»; el crunch va
+  en la 2.0.2).
+  - **App Store:** 2.0.1 (119) en revisión, publicación automática al aprobarse y escalonada en 7 días. Notas para el
+    revisor actualizadas (Live Activity). Revisión rápida pedida y aceptada («We'll expedite review for Pump Team»).
+  - **Play:** la 2.0.0 (103) pasó del 10 % al 100 % (Play no deja crear otra versión con una en etapas). La 2.0.1 (104)
+    va al 100 % con sus novedades, junto con la ficha: nombre «Pump Team», descripción sin «MyPump» y sin los hábitos,
+    ícono nuevo, banner nuevo (`store/play/featured-graphic-1024x500.png`, verde #1D9330) y 24 capturas nuevas
+    (`tienda-android/20261021-pump-team`). 8 cambios enviados juntos; la publicación administrada sigue apagada.
+  - El AAB (14 MB) se subió en 3 trozos rearmados en la página, verificado con SHA-256.
 - **21-oct, revisión de D24 antes de la 2.0.1** (Mati: «hacelo y revisalo»). Una revisión con Opus encontró 7 problemas
   en los otros del mismo músculo; se arreglaron 6 en las dos plataformas, cada uno con su prueba, y una segunda revisión
   revisó los arreglos (e97d0d4…00da18b):
