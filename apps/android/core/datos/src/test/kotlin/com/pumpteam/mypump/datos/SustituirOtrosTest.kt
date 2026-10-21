@@ -61,4 +61,51 @@ class SustituirOtrosTest {
         assertTrue(m.sustitutos("inv-d1-3").isEmpty() && m.otrosDelMismoMusculo("inv-d1-3").isEmpty())
         assertFalse(m.tarjeta("inv-d1-3")!!.puedeSustituir)
     }
+
+    /**
+     * Hallazgo 2: al cambiar de movimiento a mitad del ejercicio, el kg y el agarre del plan pasaban al sustituto. La
+     * extensión en polea con Soga, 2 series de 30 kg × 12, y después «Fondos · Peso corporal»: la serie 3 sugería 30 kg y se
+     * grababa {ejercicioNombre: "Fondos", peso: 30, notas: "Soga"} (récord e historial de fondos sucios).
+     */
+    @Test
+    fun alCambiarDeMovimientoNoSeHeredanElKgNiElAgarre() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modeloOtros(alcance)
+        val lugar = "ext-d1-0"
+        suspend fun carga(i: Int): ValorJson? = b.cola.operaciones().firstOrNull { it.dedupeKey == "carga_d1_${lugar}_${i}_s1" }?.payload?.get("datos")
+        m.elegirVariante(lugar, "Soga")
+        for (i in 0 until 2) {
+            m.escribir(lugar, i, "reps", "12")
+            m.escribir(lugar, i, "kg", "30")
+            m.confirmarSerie(lugar, i) { true }
+        }
+        assertEquals("Soga", carga(1)?.get("notas")?.comoTexto, "con el selector a la vista, el agarre viaja")
+        assertEquals("Extensión tríceps en polea", m.dia.value.ejercicios[lugar]?.series?.get(1)?.nombreRegistrado)
+
+        val fondos = m.otrosDelMismoMusculo(lugar).first { it.nombre == "Fondos" && it.equipo == "Peso corporal" }
+        m.sustituir(lugar, fondos, fijar = false)
+        val t = m.tarjeta(lugar)!!
+        assertEquals(null, t.variantes, "los fondos no muestran el selector de agarre")
+        assertEquals("", t.filas[2].placeholderKg, "la serie 3 no sugiere los 30 kg de la polea")
+        // Con las reps y sin kg no hay de dónde heredarlo: no se registra.
+        m.escribir(lugar, 2, "reps", "10")
+        m.confirmarSerie(lugar, 2) { true }
+        assertFalse(m.dia.value.ejercicios[lugar]!!.series[2].confirmada)
+        assertEquals(null, carga(2))
+        // Con el lastre cargado va con el nombre de los fondos y sin el agarre de la polea.
+        m.escribir(lugar, 2, "kg", "10")
+        m.confirmarSerie(lugar, 2) { true }
+        val s3 = carga(2)!!
+        assertTrue(s3["ejercicioNombre"]?.comoTexto == "Fondos" && s3["peso"] == ValorJson.Numero(10.0) && s3["notas"] == ValorJson.Nulo, "$s3")
+
+        // De vuelta a la polea: la serie 4 hereda de las de la polea (30), no de los fondos, y el agarre vuelve.
+        m.revertirSustitucion(lugar)
+        m.escribir(lugar, 3, "reps", "11")
+        m.confirmarSerie(lugar, 3) { true }
+        val s4 = carga(3)!!
+        assertTrue(
+            s4["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s4["peso"] == ValorJson.Numero(30.0) && s4["notas"]?.comoTexto == "Soga",
+            "$s4",
+        )
+    }
 }

@@ -428,7 +428,21 @@ class EntrenoVectoresTest {
                 respuestas.removeFirstOrNull() ?: false
             }
             val despues = caso["despues"].o()!!
-            val malos = (diferenciaSesion(d, despues["sesion"].o()) + diferenciaCola(efectos, caso["cola"].a(), semana)).toMutableList()
+            // Desvío a propósito (revisión del 21-oct): al confirmar, la serie anota con qué ejercicio se registró (el
+            // `ejercicioNombre` de la carga), para heredar el kg solo de las del mismo ejercicio. La web lo sabe solo de las
+            // que restaura: se comprueba aparte y el resto se compara como siempre.
+            val malos = mutableListOf<String>()
+            val comparable = d.copia()
+            val yaEstaba = antes["sets"].o()?.get(ex)?.a()?.getOrNull(idx)?.let { serie(it).confirmada } ?: false
+            val s = d.ejercicios[ex]?.series?.getOrNull(idx)
+            val webSerie = despues["sesion"].o()?.get(ex).o()?.get("sets")?.a()?.getOrNull(idx)?.let(::serie)
+            if (!yaEstaba && s != null && s.confirmada && webSerie?.nombreRegistrado == null) {
+                val carga = caso["cola"].a().lastOrNull { it.jsonObject["kind"].s() == "carga" }.o()
+                val registrado = carga?.get("payload").o()?.get("datos").o()?.get("ejercicioNombre").s()
+                if (registrado == null || s.nombreRegistrado != registrado) malos += "nombre registrado ${s.nombreRegistrado} vs la carga $registrado"
+                comparable.ponerSeries(ex, comparable.ejercicios.getValue(ex).series.toMutableList().also { it[idx] = it[idx].copy(nombreRegistrado = null) })
+            }
+            malos += diferenciaSesion(comparable, despues["sesion"].o()) + diferenciaCola(efectos, caso["cola"].a(), semana)
             val p = pedidos(efectos)
             if (preguntas.map(::modal) != caso["modales"].a().map(::modalWeb)) malos += "modales ${preguntas.map(::modal)}"
             val aviso = d.ejercicios[ex]?.series?.getOrNull(idx)?.aviso

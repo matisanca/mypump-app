@@ -88,10 +88,22 @@ public struct DiaEnCurso: Sendable, Equatable {
         JS.verdadero(ejercicios[id]?.estado) ?? JS.verdadero(estados[id]) ?? "pendiente"
     }
 
-    /// `_varianteActiva`: la elegida y si es la default (las filas viejas sin nota cuentan solo para esa).
+    /// El ejercicio que se hace en el lugar: el sustituto, si hay; si no, el del plan. Es el nombre que se registra.
+    public func nombreEfectivo(_ id: String) -> String? {
+        SustitucionesEntreno.aplicada(sustituciones[id])?.nombre ?? ejercicio(id)?.nombre
+    }
+
+    /// El selector de agarre o nivel que muestra la tarjeta: el del ejercicio que se hace, no el del plan. Desvío a
+    /// propósito de la web (revisión del 21-oct): ahí el agarre del plan se grababa en las notas y filtraba el historial
+    /// también con un sustituto sin ese selector (la extensión en polea con Soga → fondos: «Fondos» con notas «Soga»).
+    public func variantesVisibles(_ id: String) -> VariantesEjercicio? { ReglasEjercicio.variantes(nombreEfectivo(id)) }
+
+    /// `_varianteActiva`: la elegida y si es la default (las filas viejas sin nota cuentan solo para esa). Con el lugar
+    /// sustituido por un ejercicio sin ese selector, el agarre del plan no filtra su historial (ver `variantesVisibles`).
     public func varianteActiva(_ id: String) -> (variante: String?, esDefault: Bool) {
         guard let v = JS.verdadero(ejercicios[id]?.variante) else { return (nil, false) }
-        let ops = ejercicio(id).flatMap { ReglasEjercicio.variantes($0.nombre)?.opciones }
+        let ops = variantesVisibles(id)?.opciones
+        if ops == nil, SustitucionesEntreno.aplicada(sustituciones[id]) != nil { return (nil, false) }
         return (v, ops != nil && JS.iguales(ops?.first, v))
     }
 
@@ -111,9 +123,17 @@ public struct DiaEnCurso: Sendable, Equatable {
         return HistorialEntreno.repsSugeridas(historial[id] ?? [], indice: idx, variante: v, esDefault: d, zona: zona)
     }
 
-    /// `kgHeredable`
+    /// `kgHeredable`, pero solo de las series registradas con el ejercicio que se hace ahora. Desvío a propósito de la
+    /// web (revisión del 21-oct): al cambiar de movimiento a mitad del ejercicio (2 series de extensión en polea a 30 kg y
+    /// después fondos), la serie 3 heredaba los 30 kg de la polea y se grababa como fondos. Sin nombre registrado (una
+    /// serie de antes de esto) cuenta como del mismo.
     public func kgHeredable(_ id: String, _ idx: Int) -> String {
-        HistorialEntreno.kgHeredable(ejercicios[id]?.series ?? [], indice: idx)
+        let actual = ClaveEjercicio.de(nombreEfectivo(id))
+        let series = (ejercicios[id]?.series ?? []).map { s in
+            let mismo = JS.verdadero(s.nombreRegistrado).map { ClaveEjercicio.de($0) == actual } ?? true
+            return mismo ? s : SerieLocal()
+        }
+        return HistorialEntreno.kgHeredable(series, indice: idx)
     }
 
     /// "🏆 Récord a superar" (`lastSessionStr`); nil es "Primera vez con este ejercicio".
@@ -220,7 +240,12 @@ public struct DiaEnCurso: Sendable, Equatable {
         }
         ejercicios[id]!.series[idx].aviso = nil
         ejercicios[id]!.series[idx].confirmada = true
-        ejercicios[id]!.series[idx].varianteRegistrada = JS.verdadero(ejercicios[id]!.variante)
+        // La variante va solo si el ejercicio que se hace muestra ese selector, y la serie anota con qué ejercicio se
+        // registró (el `ejercicioNombre` de la carga) para que el kg heredado no cruce de un ejercicio a otro. Desvíos a
+        // propósito de la web (revisión del 21-oct; ver `variantesVisibles` y `kgHeredable`).
+        ejercicios[id]!.series[idx].varianteRegistrada = variantesVisibles(id) == nil ? nil : JS.verdadero(ejercicios[id]!.variante)
+        ejercicios[id]!.series[idx].nombreRegistrado = EscriturasEntreno.nombre(
+            sustituto: SustitucionesEntreno.aplicada(sustituciones[id])?.nombre, serie: ejercicios[id]!.series[idx], plan: ex.nombre)
         efectos.append(.asegurarSesion)
         efectos += escribirSerie(id, idx)
         if ex.tipo != "calentamiento" {
@@ -392,7 +417,7 @@ public struct DiaEnCurso: Sendable, Equatable {
         let d = dia.id ?? ""
         return [.encolar(kind: "carga",
                          payload: EscriturasEntreno.carga(sesionId: sesionId, dia: d, semana: semana, ejercicio: id, indice: idx, serie: s,
-                                                          nombre: nombre, varianteEjercicio: e.variante),
+                                                          nombre: nombre, varianteEjercicio: variantesVisibles(id) == nil ? nil : e.variante),
                          clave: EscriturasEntreno.claveCarga(dia: d, ejercicio: id, indice: idx, semana: semana))]
     }
 

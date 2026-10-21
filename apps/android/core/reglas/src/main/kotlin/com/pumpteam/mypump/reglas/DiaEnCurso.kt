@@ -100,10 +100,24 @@ class DiaEnCurso(
     /** `getExStatus` */
     fun estado(id: String): String = Js.verdadero(ejercicios[id]?.estado) ?: Js.verdadero(estados[id]) ?: "pendiente"
 
-    /** `_varianteActiva`: la elegida y si es la default (las filas viejas sin nota cuentan solo para esa). */
+    /** El ejercicio que se hace en el lugar: el sustituto, si hay; si no, el del plan. Es el nombre que se registra. */
+    fun nombreEfectivo(id: String): String? = SustitucionesEntreno.aplicada(sustituciones[id])?.nombre ?: ejercicio(id)?.nombre
+
+    /**
+     * El selector de agarre o nivel que muestra la tarjeta: el del ejercicio que se hace, no el del plan. Desvío a propósito
+     * de la web (revisión del 21-oct): ahí el agarre del plan se grababa en las notas y filtraba el historial también con un
+     * sustituto sin ese selector (la extensión en polea con Soga → fondos: «Fondos» con notas «Soga»).
+     */
+    fun variantesVisibles(id: String): VariantesEjercicio? = ReglasEjercicio.variantes(nombreEfectivo(id))
+
+    /**
+     * `_varianteActiva`: la elegida y si es la default (las filas viejas sin nota cuentan solo para esa). Con el lugar
+     * sustituido por un ejercicio sin ese selector, el agarre del plan no filtra su historial (ver [variantesVisibles]).
+     */
     fun varianteActiva(id: String): Pair<String?, Boolean> {
         val v = Js.verdadero(ejercicios[id]?.variante) ?: return null to false
-        val ops = ejercicio(id)?.let { ReglasEjercicio.variantes(it.nombre)?.opciones }
+        val ops = variantesVisibles(id)?.opciones
+        if (ops == null && SustitucionesEntreno.aplicada(sustituciones[id]) != null) return null to false
         return v to (ops != null && ops.firstOrNull() == v)
     }
 
@@ -123,8 +137,20 @@ class DiaEnCurso(
         return HistorialEntreno.repsSugeridas(historial[id] ?: emptyList(), idx, v, d, zona)
     }
 
-    /** `kgHeredable` */
-    fun kgHeredable(id: String, idx: Int): String = HistorialEntreno.kgHeredable(ejercicios[id]?.series ?: emptyList(), idx)
+    /**
+     * `kgHeredable`, pero solo de las series registradas con el ejercicio que se hace ahora. Desvío a propósito de la web
+     * (revisión del 21-oct): al cambiar de movimiento a mitad del ejercicio (2 series de extensión en polea a 30 kg y después
+     * fondos), la serie 3 heredaba los 30 kg de la polea y se grababa como fondos. Sin nombre registrado (una serie de antes
+     * de esto) cuenta como del mismo.
+     */
+    fun kgHeredable(id: String, idx: Int): String {
+        val actual = ClaveEjercicio.de(nombreEfectivo(id))
+        val series = (ejercicios[id]?.series ?: emptyList()).map { s ->
+            val mismo = Js.verdadero(s.nombreRegistrado)?.let { ClaveEjercicio.de(it) == actual } ?: true
+            if (mismo) s else SerieLocal()
+        }
+        return HistorialEntreno.kgHeredable(series, idx)
+    }
 
     /** "🏆 Récord a superar" (`lastSessionStr`); null es "Primera vez con este ejercicio". */
     fun record(id: String): String? = HistorialEntreno.record(historial[id] ?: emptyList())
@@ -242,8 +268,14 @@ class DiaEnCurso(
                 }
             }
         }
-        val variante = Js.verdadero(ejercicios.getValue(id).variante)
-        cambiarSerie(id, idx) { it.copy(aviso = null, confirmada = true, varianteRegistrada = variante) }
+        // La variante va solo si el ejercicio que se hace muestra ese selector, y la serie anota con qué ejercicio se registró
+        // (el `ejercicioNombre` de la carga) para que el kg heredado no cruce de un ejercicio a otro. Desvíos a propósito de
+        // la web (revisión del 21-oct; ver [variantesVisibles] y [kgHeredable]).
+        val variante = if (variantesVisibles(id) == null) null else Js.verdadero(ejercicios.getValue(id).variante)
+        val sustituto = SustitucionesEntreno.aplicada(sustituciones[id])?.nombre
+        cambiarSerie(id, idx) {
+            it.copy(aviso = null, confirmada = true, varianteRegistrada = variante, nombreRegistrado = EscriturasEntreno.nombre(sustituto, it, ex.nombre))
+        }
         efectos += Efecto.AsegurarSesion
         efectos += escribirSerie(id, idx)
         if (ex.tipo != "calentamiento") {
@@ -436,7 +468,7 @@ class DiaEnCurso(
         return listOf(
             Efecto.Encolar(
                 "carga",
-                EscriturasEntreno.carga(sesionId, d, semana, id, idx, s, nombre, e.variante),
+                EscriturasEntreno.carga(sesionId, d, semana, id, idx, s, nombre, if (variantesVisibles(id) == null) null else e.variante),
                 EscriturasEntreno.claveCarga(d, id, idx, semana),
             ),
         )

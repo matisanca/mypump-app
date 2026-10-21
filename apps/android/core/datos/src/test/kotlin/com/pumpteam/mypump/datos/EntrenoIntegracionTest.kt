@@ -114,7 +114,10 @@ class EntrenoIntegracionTest {
         val fila = registros.first { it.ejercicioId == lugar && it.serie == 1 }
         assertTrue(fila.ejercicioNombre == sub.nombre && fila.pesoKg == 40.0 && fila.reps == 10)
         assertEquals(0, fila.rir, "RIR 0 es 'fue al fallo', no 'no lo cargó'")
-        assertEquals(ReglasEjercicio.variantes(nombrePlan)?.opciones?.firstOrNull(), fila.notas, "la variante viaja en notas")
+        // La variante viaja en notas solo si el sustituto muestra el selector (revisión del 21-oct: un sustituto sin agarre
+        // no se graba con el del plan).
+        val conSelector = ReglasEjercicio.variantes(sub.nombre) != null
+        assertEquals(if (conSelector) ReglasEjercicio.variantes(nombrePlan)?.opciones?.firstOrNull() else null, fila.notas, "la variante viaja en notas")
 
         // "Terminé este ejercicio" con una serie: completo, marcado a mano (SER-15).
         m.terminar(lugar) { true }

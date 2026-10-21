@@ -358,7 +358,8 @@ class ModeloEntreno(
         val plan = d.ejercicio(lugar) ?: return null
         val ef = efectivo(plan)
         val e = d.ejercicios[lugar]
-        val variantes = ReglasEjercicio.variantes(ef.ejercicio.nombre)
+        // El selector del ejercicio que se hace (el sustituto, si hay): la misma condición con la que se graba la variante.
+        val variantes = d.variantesVisibles(lugar)
         return Tarjeta(
             lugar = lugar, efectivo = ef, estado = d.estado(lugar),
             manual = d.estado(lugar) == "completo_sin_datos" && d.meta[lugar]?.manual == true,

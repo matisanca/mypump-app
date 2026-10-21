@@ -263,7 +263,8 @@ public final class ModeloEntreno {
         guard let plan = dia.ejercicio(lugar) else { return nil }
         let ef = efectivo(plan)
         let e = dia.ejercicios[lugar]
-        let variantes = ReglasEjercicio.variantes(ef.ejercicio.nombre)
+        // El selector del ejercicio que se hace (el sustituto, si hay): la misma condición con la que se graba la variante.
+        let variantes = dia.variantesVisibles(lugar)
         return Tarjeta(
             lugar: lugar, efectivo: ef, estado: dia.estado(lugar),
             manual: dia.estado(lugar) == "completo_sin_datos" && dia.meta[lugar]?.manual == true,

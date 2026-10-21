@@ -106,7 +106,10 @@ struct EntrenoIntegracionTests {
         let fila = try #require(registros.first { $0.ejercicioId == lugar && $0.serie == 1 })
         #expect(fila.ejercicioNombre == sub.nombre && fila.pesoKg == 40 && fila.reps == 10)
         #expect(fila.rir == 0, "RIR 0 es 'fue al fallo', no 'no lo cargó'")
-        #expect(fila.notas == ReglasEjercicio.variantes(nombrePlan)?.opciones.first, "la variante viaja en notas")
+        // La variante viaja en notas solo si el sustituto muestra el selector (revisión del 21-oct: un sustituto sin
+        // agarre no se graba con el del plan).
+        let conSelector = ReglasEjercicio.variantes(sub.nombre) != nil
+        #expect(fila.notas == (conSelector ? ReglasEjercicio.variantes(nombrePlan)?.opciones.first : nil), "la variante viaja en notas")
 
         // "Terminé este ejercicio" con una serie: completo, marcado a mano (SER-15).
         await m.terminar(lugar) { _ in true }

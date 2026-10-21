@@ -56,4 +56,45 @@ struct SustituirOtrosTests {
         #expect(m.sustitutos("inv-d1-3").isEmpty && m.otrosDelMismoMusculo("inv-d1-3").isEmpty)
         #expect(m.tarjeta("inv-d1-3")?.puedeSustituir == false)
     }
+
+    /// Hallazgo 2: al cambiar de movimiento a mitad del ejercicio, el kg y el agarre del plan pasaban al sustituto. La
+    /// extensión en polea con Soga, 2 series de 30 kg × 12, y después «Fondos · Peso corporal»: la serie 3 sugería 30 kg y
+    /// se grababa {ejercicioNombre: "Fondos", peso: 30, notas: "Soga"} (récord e historial de fondos sucios).
+    @Test func alCambiarDeMovimientoNoSeHeredanElKgNiElAgarre() async throws {
+        let b = Banco()
+        let m = modeloOtros(b)
+        let lugar = "ext-d1-0"
+        func carga(_ i: Int) async -> JSONValue? { await b.cola.operaciones.first { $0.dedupeKey == "carga_d1_\(lugar)_\(i)_s1" }?.payload["datos"] }
+        m.elegirVariante(lugar, "Soga")
+        for i in 0..<2 {
+            m.escribir(lugar, i, campo: "reps", valor: "12")
+            m.escribir(lugar, i, campo: "kg", valor: "30")
+            await m.confirmarSerie(lugar, i) { _ in true }
+        }
+        #expect(await carga(1)?["notas"]?.comoTexto == "Soga", "con el selector a la vista, el agarre viaja")
+        #expect(m.dia.ejercicios[lugar]?.series[1].nombreRegistrado == "Extensión tríceps en polea")
+
+        let fondos = try #require(m.otrosDelMismoMusculo(lugar).first { $0.nombre == "Fondos" && $0.equipo == "Peso corporal" })
+        await m.sustituir(lugar, por: fondos, fijar: false)
+        let t = try #require(m.tarjeta(lugar))
+        #expect(t.variantes == nil, "los fondos no muestran el selector de agarre")
+        #expect(t.filas[2].placeholderKg.isEmpty, "la serie 3 no sugiere los 30 kg de la polea: \(t.filas[2].placeholderKg)")
+        // Con las reps y sin kg no hay de dónde heredarlo: no se registra.
+        m.escribir(lugar, 2, campo: "reps", valor: "10")
+        await m.confirmarSerie(lugar, 2) { _ in true }
+        #expect(m.dia.ejercicios[lugar]?.series[2].confirmada == false)
+        #expect(await carga(2) == nil)
+        // Con el lastre cargado va con el nombre de los fondos y sin el agarre de la polea.
+        m.escribir(lugar, 2, campo: "kg", valor: "10")
+        await m.confirmarSerie(lugar, 2) { _ in true }
+        let s3 = try #require(await carga(2))
+        #expect(s3["ejercicioNombre"]?.comoTexto == "Fondos" && s3["peso"] == .numero(10) && s3["notas"] == .null, "\(s3)")
+
+        // De vuelta a la polea: la serie 4 hereda de las de la polea (30), no de los fondos, y el agarre vuelve.
+        await m.revertirSustitucion(lugar)
+        m.escribir(lugar, 3, campo: "reps", valor: "11")
+        await m.confirmarSerie(lugar, 3) { _ in true }
+        let s4 = try #require(await carga(3))
+        #expect(s4["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s4["peso"] == .numero(30) && s4["notas"]?.comoTexto == "Soga", "\(s4)")
+    }
 }

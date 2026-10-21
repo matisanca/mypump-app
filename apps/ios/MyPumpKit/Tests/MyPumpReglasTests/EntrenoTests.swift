@@ -568,7 +568,18 @@ struct EntrenoVectoresTests {
                 preguntas.append(p)
                 return respuestas.isEmpty ? false : respuestas.removeFirst()
             }
-            var malos = diferenciaSesion(d, caso.despues.sesion) + diferenciaCola(efectos, caso.cola, semana: caso.semana)
+            // Desvío a propósito (revisión del 21-oct): al confirmar, la serie anota con qué ejercicio se registró (el
+            // `ejercicioNombre` de la carga), para heredar el kg solo de las del mismo ejercicio. La web lo sabe solo de
+            // las que restaura: se comprueba aparte y el resto se compara como siempre.
+            var malos: [String] = []
+            var comparable = d
+            if !(caso.antes.sets[caso.ex]?[caso.idx].confirmed ?? false), let s = d.ejercicios[caso.ex]?.series[caso.idx], s.confirmada,
+               caso.despues.sesion[caso.ex]?.sets[caso.idx].nombreRegistrado == nil {
+                let registrado = caso.cola.last { $0.kind == "carga" }?.payload["datos"]?["ejercicioNombre"]?.comoTexto
+                if registrado == nil || s.nombreRegistrado != registrado { malos.append("nombre registrado \(String(describing: s.nombreRegistrado)) vs la carga \(String(describing: registrado))") }
+                comparable.ejercicios[caso.ex]?.series[caso.idx].nombreRegistrado = nil
+            }
+            malos += diferenciaSesion(comparable, caso.despues.sesion) + diferenciaCola(efectos, caso.cola, semana: caso.semana)
             let p = pedidos(efectos)
             if preguntas.map(modal) != caso.modales.map(modal) { malos.append("modales \(preguntas.map(modal))") }
             let aviso = d.ejercicios[caso.ex]?.series[caso.idx].aviso
