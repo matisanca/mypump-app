@@ -98,6 +98,25 @@ struct SustituirOtrosTests {
         #expect(s4["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s4["peso"] == .numero(30) && s4["notas"]?.comoTexto == "Soga", "\(s4)")
     }
 
+    /// La sugerencia de kg de la tabla es la de la confirmación (revisión del 21-oct: la tabla la calculaba con todas las
+    /// series). Con la polea, las reps de la serie 3 sugieren los 30; ya en fondos, nada, y sin kg no se registra.
+    @Test func laSugerenciaDeKgEsLaQueSeHereda() async throws {
+        let b = Banco()
+        let m = modeloOtros(b)
+        let lugar = "ext-d1-0"
+        for i in 0..<2 {
+            m.escribir(lugar, i, campo: "reps", valor: "12")
+            m.escribir(lugar, i, campo: "kg", valor: "30")
+            await m.confirmarSerie(lugar, i) { _ in true }
+        }
+        m.escribir(lugar, 2, campo: "reps", valor: "10")
+        #expect(m.tarjeta(lugar)?.filas[2].sugerenciaKg == "30", "con la polea se heredan los 30")
+        let fondos = try #require(m.otrosDelMismoMusculo(lugar).first { $0.nombre == "Fondos" && $0.equipo == "Peso corporal" })
+        await m.sustituir(lugar, por: fondos, fijar: false)
+        let f = try #require(m.tarjeta(lugar)?.filas[2])
+        #expect(f.sugerenciaKg.isEmpty && !f.puedeConfirmar, "ya en fondos no sugiere los kg de la polea: \(f)")
+    }
+
     /// Una serie ya registrada se vuelve a mandar con el ejercicio con el que se registró, aunque el lugar ahora esté
     /// sustituido (o se haya vuelto al original): el RIR, o el lápiz y confirmar de nuevo, corrigen lo que se hizo. Antes
     /// el sustituto ganaba y la serie de la polea se volvía a mandar como fondos, con sus 30 kg.

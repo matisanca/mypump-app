@@ -110,6 +110,28 @@ class SustituirOtrosTest {
     }
 
     /**
+     * La sugerencia de kg de la tabla es la de la confirmación (revisión del 21-oct: la tabla la calculaba con todas las
+     * series). Con la polea, las reps de la serie 3 sugieren los 30; ya en fondos, nada, y sin kg no se registra.
+     */
+    @Test
+    fun laSugerenciaDeKgEsLaQueSeHereda() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modeloOtros(alcance)
+        val lugar = "ext-d1-0"
+        for (i in 0 until 2) {
+            m.escribir(lugar, i, "reps", "12")
+            m.escribir(lugar, i, "kg", "30")
+            m.confirmarSerie(lugar, i) { true }
+        }
+        m.escribir(lugar, 2, "reps", "10")
+        assertEquals("30", m.tarjeta(lugar)!!.filas[2].sugerenciaKg, "con la polea se heredan los 30")
+        val fondos = m.otrosDelMismoMusculo(lugar).first { it.nombre == "Fondos" && it.equipo == "Peso corporal" }
+        m.sustituir(lugar, fondos, fijar = false)
+        val f = m.tarjeta(lugar)!!.filas[2]
+        assertTrue(f.sugerenciaKg.isEmpty() && !f.puedeConfirmar, "ya en fondos no sugiere los kg de la polea: $f")
+    }
+
+    /**
      * Una serie ya registrada se vuelve a mandar con el ejercicio con el que se registró, aunque el lugar ahora esté
      * sustituido (o se haya vuelto al original): el RIR, o el lápiz y confirmar de nuevo, corrigen lo que se hizo. Antes el
      * sustituto ganaba y la serie de la polea se volvía a mandar como fondos, con sus 30 kg.

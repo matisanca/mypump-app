@@ -65,8 +65,8 @@ final class EntrenoUITests: XCTestCase {
         return partes.count == 2 ? partes[0] * 60 + partes[1] : -1
     }
 
-    /// La hoja «Sustituir» de la extensión de tríceps en polea del día 2 de la demo (la barra de la hoja).
-    private func abrirSustituirDeLaExtension() -> XCUIElement {
+    /// La página de la extensión de tríceps en polea del día 2 de la demo.
+    private func abrirLaExtension() {
         app.terminate()
         app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "entreno"]
         app.launch()
@@ -77,6 +77,16 @@ final class EntrenoUITests: XCTestCase {
         for _ in 0..<8 where !(fila.exists && fila.isHittable) { app.swipeUp() }
         XCTAssertTrue(fila.exists, "No está la extensión de tríceps del día 2")
         fila.tap()
+    }
+
+    /// La hoja «Sustituir» de la extensión de tríceps en polea del día 2 de la demo (la barra de la hoja).
+    private func abrirSustituirDeLaExtension() -> XCUIElement {
+        abrirLaExtension()
+        return abrirSustituir()
+    }
+
+    /// Desde la página de un ejercicio, la hoja «Sustituir» (la barra de la hoja).
+    private func abrirSustituir() -> XCUIElement {
         let sustituir = app.buttons["Sustituir"].firstMatch
         for _ in 0..<6 where !(sustituir.exists && sustituir.isHittable) { app.swipeUp() }
         sustituir.tap()
@@ -104,6 +114,39 @@ final class EntrenoUITests: XCTestCase {
         XCTAssertTrue(hoja.waitForNonExistence(timeout: 5), "La hoja no se cerró")
         let sustituida = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fila-ejercicio' AND label CONTAINS 'Fondos'")).firstMatch
         XCTAssertTrue(sustituida.waitForExistence(timeout: 5), "El ejercicio no quedó sustituido por los fondos")
+    }
+
+    /// Revisión del 21-oct: la sugerencia de kg de la tabla se calculaba con todas las series. Polea 2×30, cambio a fondos
+    /// y las reps de la serie 3: el campo sugería «30» (y el cliente lo cargaba) aunque al confirmar ya no se heredaba.
+    /// Ahora la tabla sugiere lo mismo que se graba. Gemela de alCambiarDeMovimientoElKgNoSugiereElDeLaPolea de Android.
+    func testAlCambiarDeMovimientoElKgNoSugiereElDeLaPolea() throws {
+        abrirLaExtension()
+        for n in 1...2 {
+            let reps = app.textFields["Repeticiones de la serie \(n)"], kg = app.textFields["Kilos de la serie \(n)"]
+            XCTAssertTrue(reps.waitForExistence(timeout: 10), "Sin la serie \(n)")
+            reps.tap()
+            reps.typeText("12")
+            kg.tap()
+            kg.typeText("30")
+            app.buttons["confirmar-serie-\(n)"].tap()
+            let hecha = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Serie \(n) hecha'")).firstMatch
+            XCTAssertTrue(hecha.waitForExistence(timeout: 5), "La serie \(n) no quedó registrada")
+        }
+        // Con la polea, las reps de la serie 3 heredan los 30.
+        let reps3 = app.textFields["Repeticiones de la serie 3"], kg3 = app.textFields["Kilos de la serie 3"]
+        reps3.tap()
+        reps3.typeText("10")
+        XCTAssertEqual(kg3.placeholderValue, "30", "con la polea la serie 3 hereda los 30")
+        let hoja = abrirSustituir()
+        let fondos = app.buttons.matching(NSPredicate(format: "identifier == 'otro-ejercicio' AND label BEGINSWITH 'Fondos'")).firstMatch
+        for _ in 0..<10 where !(fondos.exists && fondos.isHittable) { app.swipeUp() }
+        fondos.tap()
+        hoja.buttons["Sustituir"].tap()
+        XCTAssertTrue(hoja.waitForNonExistence(timeout: 5), "La hoja no se cerró")
+        // Ya en fondos, la serie 3 no sugiere los kg de la polea.
+        XCTAssertTrue(kg3.waitForExistence(timeout: 5))
+        XCTAssertEqual(kg3.placeholderValue, "–", "ya en fondos sugiere los kg de la polea")
+        let a = XCTAttachment(screenshot: app.screenshot()); a.name = "fondos-sin-los-kg-de-la-polea"; a.lifetime = .keepAlways; add(a)
     }
 
     /// Revisión del 21-oct (D24, hallazgo 5): buscar «fondos» en la extensión en polea decía «Sin resultados para

@@ -264,6 +264,9 @@ public struct FilaSerie: Equatable, Sendable {
     public let activa: Bool
     public let placeholderReps: String
     public let placeholderKg: String
+    /// Lo que sugiere el campo de kg: con las reps escritas y el kg vacío, el que se hereda al confirmar (SER-03, el mismo
+    /// `kgHeredable` que usa la confirmación: la tabla y lo que se graba no difieren nunca); si no, `placeholderKg`.
+    public let sugerenciaKg: String
     /// Lo que muestra el campo de kg ("" sin columna de kg).
     public let kg: String
     /// Sin columna de kg: el campo es de solo lectura y dice "—".
@@ -297,10 +300,12 @@ public struct FilaSerie: Equatable, Sendable {
         let calibracion = (!s.confirmada && activa && !haySugerido && !tipeo && !sinKg && repsSug != nil)
             ? "🎯 Primera vez con este ejercicio: elegí un peso con el que llegues a \(repsPlan ?? "null") reps dejando 1–2 en reserva. Queda de referencia para la próxima."
             : nil
+        let placeholderKg = sinKg ? "—" : (kgSug.isEmpty ? her : kgSug)
         return FilaSerie(
             confirmada: s.confirmada, activa: activa,
             placeholderReps: !repsUltimaVez.isEmpty ? repsUltimaVez : (repsPlan ?? ""),
-            placeholderKg: sinKg ? "—" : (kgSug.isEmpty ? her : kgSug),
+            placeholderKg: placeholderKg,
+            sugerenciaKg: !s.confirmada && !s.reps.isEmpty && s.kg.isEmpty && !her.isEmpty ? her : placeholderKg,
             kg: sinKg ? "" : s.kg, sinKg: sinKg,
             rir: "RIR" + (s.rir.isEmpty ? "·" : s.rir),
             puedeConfirmar: s.confirmada ? true : puede,

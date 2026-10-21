@@ -110,10 +110,10 @@ struct TablaSeries: View {
                            teclado: .numberPad, confirmada: f.confirmada, marcada: marcada, foco: $foco, campo: .reps(i))
                     .accessibilityLabel("Repeticiones de la serie \(i + 1)")
                 if !sinKg {
-                    // Con las reps escritas y el kg vacío se guarda el kg de la serie anterior (SER-03): que la
-                    // sugerencia muestre ese, no el de la última vez.
-                    let heredado = !f.confirmada && !s.reps.isEmpty && s.kg.isEmpty ? HistorialEntreno.kgHeredable(series, indice: i) : ""
-                    let sugerido = heredado.isEmpty ? f.placeholderKg : heredado
+                    // Con las reps escritas y el kg vacío se guarda el kg heredado (SER-03): la sugerencia es la del
+                    // modelo, con el mismo `kgHeredable` que la confirmación (revisión del 21-oct: acá se calculaba con
+                    // todas las series y, ya en fondos, sugería los 30 kg de la polea).
+                    let sugerido = f.sugerenciaKg
                     CampoSerie(texto: enlace(i, "kg", valor: s.kg), sugerencia: Self.coma(sugerido.isEmpty ? "–" : sugerido),
                                teclado: .decimalPad, confirmada: f.confirmada, marcada: marcada, foco: $foco, campo: .kg(i))
                         .accessibilityLabel("Kilos de la serie \(i + 1)")

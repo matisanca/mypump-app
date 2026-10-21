@@ -273,6 +273,11 @@ data class FilaSerie(
     val activa: Boolean,
     val placeholderReps: String,
     val placeholderKg: String,
+    /**
+     * Lo que sugiere el campo de kg: con las reps escritas y el kg vacío, el que se hereda al confirmar (SER-03, el mismo
+     * `kgHeredable` que usa la confirmación: la tabla y lo que se graba no difieren nunca); si no, [placeholderKg].
+     */
+    val sugerenciaKg: String,
     /** Lo que muestra el campo de kg ("" sin columna de kg). */
     val kg: String,
     /** Sin columna de kg: el campo es de solo lectura y dice "—". */
@@ -323,10 +328,12 @@ data class FilaSerie(
             } else {
                 null
             }
+            val placeholderKg = if (sinKg) "—" else kgSug.ifEmpty { her }
             return FilaSerie(
                 confirmada = s.confirmada, activa = activa,
                 placeholderReps = repsUltimaVez.ifEmpty { repsPlan ?: "" },
-                placeholderKg = if (sinKg) "—" else kgSug.ifEmpty { her },
+                placeholderKg = placeholderKg,
+                sugerenciaKg = if (!s.confirmada && s.reps.isNotEmpty() && s.kg.isEmpty() && her.isNotEmpty()) her else placeholderKg,
                 kg = if (sinKg) "" else s.kg, sinKg = sinKg,
                 rir = "RIR" + s.rir.ifEmpty { "·" },
                 puedeConfirmar = if (s.confirmada) true else puede,

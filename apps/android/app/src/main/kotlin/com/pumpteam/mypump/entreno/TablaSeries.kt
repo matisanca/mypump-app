@@ -72,7 +72,6 @@ import com.pumpteam.mypump.diseno.Tarjeta
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.CamposSerie
 import com.pumpteam.mypump.reglas.FilaSerie
-import com.pumpteam.mypump.reglas.HistorialEntreno
 import com.pumpteam.mypump.reglas.SerieLocal
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -194,7 +193,7 @@ fun TablaSeries(
             Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
                 filas.forEachIndexed { i, f ->
                     val s = series.getOrNull(i) ?: SerieLocal()
-                    FilaDeSerie(motor, lugar, i, f, s, series, sinKg, alTocarCheck = { tocarCheck(i, f) })
+                    FilaDeSerie(motor, lugar, i, f, s, sinKg, alTocarCheck = { tocarCheck(i, f) })
                 }
             }
             Pista(activa, activa?.let { filas[it] }, alRegistrar = ::tocarCheck, modifier = Modifier.padding(top = 2.dp))
@@ -209,7 +208,6 @@ private fun FilaDeSerie(
     i: Int,
     f: FilaSerie,
     s: SerieLocal,
-    series: List<SerieLocal>,
     sinKg: Boolean,
     alTocarCheck: () -> Unit,
 ) {
@@ -244,9 +242,10 @@ private fun FilaDeSerie(
                 modifier = Modifier.weight(1f).testTag("campo-reps-${i + 1}"),
             )
             if (!sinKg) {
-                // Con las reps escritas y el kg vacío se guarda el kg de la serie anterior (SER-03): la sugerencia muestra ese.
-                val heredado = if (!f.confirmada && s.reps.isNotEmpty() && s.kg.isEmpty()) HistorialEntreno.kgHeredable(series, i) else ""
-                val sugerido = heredado.ifEmpty { f.placeholderKg }
+                // Con las reps escritas y el kg vacío se guarda el kg heredado (SER-03): la sugerencia es la del modelo, con el
+                // mismo `kgHeredable` que la confirmación (revisión del 21-oct: acá se calculaba con todas las series y, ya en
+                // fondos, sugería los 30 kg de la polea).
+                val sugerido = f.sugerenciaKg
                 CampoSerie(
                     valor = Bonito.coma(s.kg),
                     sugerencia = Bonito.coma(sugerido.ifEmpty { "–" }),

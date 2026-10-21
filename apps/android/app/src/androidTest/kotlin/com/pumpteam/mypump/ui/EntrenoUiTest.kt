@@ -254,6 +254,39 @@ class EntrenoUiTest : PruebaUi() {
     }
 
     /**
+     * Revisión del 21-oct: la sugerencia de kg de la tabla se calculaba con todas las series. Polea 2×30, cambio a fondos y
+     * las reps de la serie 3: el campo sugería «30» (y el cliente lo cargaba) aunque al confirmar ya no se heredaba. Ahora la
+     * tabla sugiere lo mismo que se graba. Gemela de testAlCambiarDeMovimientoElKgNoSugiereElDeLaPolea de iOS.
+     */
+    @Test
+    fun alCambiarDeMovimientoElKgNoSugiereElDeLaPolea() {
+        abrir()
+        p.tocar(etiqueta("ver-demo"))
+        p.tocar(etiqueta("dia-mar"))
+        abrirPaginaDelEjercicio("ex_111")
+        for (n in 1..2) {
+            p.escribir(etiqueta("campo-reps-$n"), "12")
+            p.escribir(etiqueta("campo-kg-$n"), "30")
+            p.tocar(etiqueta("confirmar-serie-$n"))
+            p.esperar("$n de 3") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("$n de 3") }
+        }
+        // Con la polea, las reps de la serie 3 heredan los 30.
+        p.escribir(etiqueta("campo-reps-3"), "10")
+        p.esperar("sugiere los 30 de la polea") { p.estado(etiqueta("campo-kg-3")) == "sugerido 30" }
+        p.tocar(etiqueta("sustituir"))
+        p.nodo(etiqueta("hoja-sustituir"))
+        p.tocar(texto("Fondos"))
+        p.tocar(etiqueta("confirmar-sustitucion"))
+        p.esperarQueNoEste(etiqueta("hoja-sustituir"))
+        p.esperar("el sustituto") { p.textosBajo(etiqueta("ejercicio-nombre")) == listOf("Fondos") }
+        // Ya en fondos, la serie 3 no sugiere los kg de la polea (y no se puede registrar sin cargar el kg).
+        p.quieto(300)
+        assertEquals("ya en fondos sugiere los kg de la polea", null, p.estado(etiqueta("campo-kg-3")))
+        assertFalse(p.habilitado(etiqueta("confirmar-serie-3")))
+        Telefono.captura("38-fondos-sin-los-kg-de-la-polea-claro")
+    }
+
+    /**
      * Revisión del 21-oct (D24, hallazgo 5): buscar «fondos» en la extensión en polea decía «Sin resultados para “fondos”»
      * arriba de los fondos que sí había entre los otros ejercicios. Solo se dice si no hay en ninguna lista. Gemela de
      * testBuscarUnOtroEjercicioNoDiceSinResultados de iOS.
