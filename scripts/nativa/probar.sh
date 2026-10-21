@@ -6,7 +6,7 @@
 #   scripts/nativa/probar.sh kit [filtro]                  MyPumpKit (swift test). Si los tests mueren con una señal
 #                                                          (objetos viejos que SwiftPM no recompiló), recompila y reintenta.
 #   scripts/nativa/probar.sh jvm [tarea…]                  Android JVM; por defecto `test` (o :core:reglas:test, …).
-#   scripts/nativa/probar.sh android-ui <Clase[#metodo]>   Instrumentadas en el emulador (Clase sola = …mypump.ui.Clase);
+#   scripts/nativa/probar.sh android-ui <Clase[#metodo]|todo>  Instrumentadas en el emulador (Clase sola = …mypump.ui.Clase);
 #                                                          baja las capturas que cambiaron.
 #   scripts/nativa/probar.sh ios-ui [-only-testing:…]      XCUITest con probar-ui.sh (UDID y CUENTA por variable de
 #                                                          entorno; por defecto el simulador de siempre y `real`), y
@@ -50,7 +50,8 @@ for f in archivos:
                 e = tc.find(tipo)
                 if e is not None:
                     renglones = (e.get("message") or e.text or "").strip().splitlines()
-                    fallas.append(f"{s.get('name', '').split('.')[-1]}.{tc.get('name')}: {' / '.join(renglones[:2])[:300]}")
+                    clase = (tc.get("classname") or s.get("name", "")).split(".")[-1]
+                    fallas.append(f"{clase}.{tc.get('name')}: {' / '.join(renglones[:2])[:300]}")
 print(f"{tot['tests']} pruebas · {tot['failures'] + tot['errors']} fallas · {tot['skipped']} salteadas")
 for x in fallas[:30]:
     print("  ✗", x)
@@ -100,12 +101,14 @@ capturas_emu() {
 }
 
 android_ui() {
-  local clase=${1:?falta la clase (EntrenoUiTest o EntrenoUiTest#metodo)}
-  [[ $clase != *.* ]] && clase=com.pumpteam.mypump.ui.$clase
+  local clase=${1:?falta la clase (EntrenoUiTest, EntrenoUiTest#metodo o todo)}
+  local -a filtro=(-Pandroid.testInstrumentationRunnerArguments.class=$clase)
+  [[ $clase != *.* ]] && filtro=(-Pandroid.testInstrumentationRunnerArguments.class=com.pumpteam.mypump.ui.$clase)
+  [[ $clase == todo ]] && filtro=()
   local log=$LOGS/android-ui-$SELLO.log antes despues
   antes=$(capturas_emu)
   cd $RAIZ/apps/android || return 2
-  ./gradlew -q :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=$clase >$log 2>&1
+  ./gradlew -q :app:connectedDebugAndroidTest $filtro >$log 2>&1
   local salida=$?
   junit "$RAIZ/apps/android" "app/build/outputs/androidTest-results/connected/debug/*.xml"
   local r=$?
