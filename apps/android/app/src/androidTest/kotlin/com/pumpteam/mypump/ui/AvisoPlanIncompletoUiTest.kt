@@ -75,9 +75,11 @@ class AvisoPlanIncompletoUiTest : PruebaUi() {
     fun conRutinaYSinDietaNoHayAviso() {
         abrirConElPlan(RUTINA_COMPLETA, "[]")
         irARevision()
-        // Que la carga haya terminado (llegó la salud: el peso de la semana) antes de afirmar que no está. Antes se esperaba
-        // a Mi Día, que salió el 15-oct.
-        p.esperar("Revisión cargada") { p.existe(etiqueta("delta-peso")) }
+        // Que la carga haya terminado (llegó la salud: el gráfico del peso) antes de afirmar que no está. Antes se esperaba
+        // a Mi Día, que salió el 15-oct, y después a la tendencia de la semana («delta-peso»), que depende de la fecha del
+        // teléfono: los pesos grabados terminan el 13-oct y desde el 20 no hay semana con qué compararla (la app no la
+        // muestra, y está bien). El gráfico sale con los pesos que haya, sea el día que sea.
+        p.esperar("Revisión cargada") { p.existe(etiqueta("grafico-peso")) }
         p.quieto(1_000)
         assertFalse("a quien solo tiene rutina no se le deja un aviso de error fijo: ${p.resumen()}", p.existe(aviso))
     }
