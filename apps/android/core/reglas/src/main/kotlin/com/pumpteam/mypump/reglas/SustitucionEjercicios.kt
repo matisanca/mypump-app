@@ -433,26 +433,28 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
     fun musculoDePatron(p: String?): String? = verdadero(p)?.let { musculoDelPatron[it] }
 
     /**
-     * El músculo y el patrón de cada fila, por su nombre en castellano (el que se muestra y el que se registra: la clave del
-     * historial). Para no ofrecer entre «otros del mismo músculo» un nombre que el catálogo usa también para OTRO músculo
-     * (ver [compartidoConOtroMusculo]). Se arma una vez, la primera vez que hace falta: traducir las 873 filas lleva su
-     * tiempo, y el catálogo empaquetado se arma al abrir la app.
+     * El músculo y el patrón de cada fila, por la clave del historial ([ClaveEjercicio]) de su nombre en castellano, que es lo
+     * que de verdad comparten dos ejercicios con nombres parecidos. Para no ofrecer entre «otros del mismo músculo» un nombre
+     * que el catálogo usa también para OTRO músculo (ver [compartidoConOtroMusculo]). Se arma una vez, la primera vez que
+     * hace falta: traducir las 873 filas lleva su tiempo, y el catálogo empaquetado se arma al abrir la app.
      */
     private val usosDelNombre: Map<String, List<Pair<String?, String?>>> by lazy {
         HashMap<String, MutableList<Pair<String?, String?>>>().apply {
-            for (e in entradas) getOrPut(SustitucionEjercicios.castellano(e)) { mutableListOf() } += verdadero(e.primaryMuscle) to verdadero(e.patronMovimiento)
+            for (e in entradas) {
+                getOrPut(ClaveEjercicio.de(SustitucionEjercicios.castellano(e))) { mutableListOf() } += verdadero(e.primaryMuscle) to verdadero(e.patronMovimiento)
+            }
         }
     }
 
     /**
-     * El nombre del candidato lo usan en el catálogo filas de OTRO músculo, y entonces compartiría el historial (que va por
-     * el nombre) con un ejercicio de otro músculo (revisión del 21-oct: entre los otros de hombros salían «Remo con barra» y
+     * El nombre del candidato (su clave del historial) lo usan en el catálogo filas de OTRO músculo, y entonces compartiría el
+     * historial con un ejercicio de otro músculo (revisión del 21-oct: entre los otros de hombros salían «Remo con barra» y
      * «Remo en polea», los remos del deltoide posterior, con el nombre de los remos de espalda). Las filas de otro músculo
      * con el MISMO patrón son el mismo movimiento y no cuentan: los fondos de pecho (Dips_-_Chest_Version) y los de tríceps
      * son los mismos fondos. Igual que en iOS.
      */
     internal fun compartidoConOtroMusculo(s: SustitutoEjercicio): Boolean =
-        usosDelNombre[s.nombre].orEmpty().any { (m, p) -> m != verdadero(s.musculo) && p != verdadero(s.patron) }
+        usosDelNombre[ClaveEjercicio.de(s.nombre)].orEmpty().any { (m, p) -> m != verdadero(s.musculo) && p != verdadero(s.patron) }
 
     /** `_resolve`: slug explícito → slug de la URL de la imagen → reglas por nombre → nombre normalizado o alias exactos. */
     fun resolver(r: ReferenciaEjercicio): EntradaCatalogoEjercicio? {

@@ -388,15 +388,36 @@ class OtrosDelMismoMusculoTest {
         assertTrue(biceps.none { it.nombre == "Curl de bíceps" }, biceps.map { it.nombre }.toString())
         val triceps = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre = "Extensión en polea alta con barra", catalogoSlug = "Triceps_Pushdown"))
         assertTrue(triceps.any { it.nombre == "Fondos" && it.equipo == "Peso corporal" }, "los fondos de tríceps siguen")
-        // En ninguna de las listas grabadas un otro comparte nombre con una fila de otro músculo y otro movimiento.
-        val usos = cat.entradas.groupBy({ SustitucionEjercicios.castellano(it) }, { it.primaryMuscle to it.patronMovimiento })
+        // En ninguna de las listas grabadas un otro comparte la clave del historial con una fila de otro músculo y otro
+        // movimiento.
+        val usos = cat.entradas.groupBy({ ClaveEjercicio.de(SustitucionEjercicios.castellano(it)) }, { it.primaryMuscle to it.patronMovimiento })
         val slugs = Vectores.json(Vectores.publico("otros_mismo_musculo"))["listas"]!!.jsonObject.keys
         for (slug in slugs) {
             for (o in cat.otrosDelMismoMusculo(ReferenciaEjercicio(catalogoSlug = slug))) {
-                val ajenas = usos[o.nombre].orEmpty().filter { (m, p) -> m != o.musculo && p != o.patron }
+                val ajenas = usos[ClaveEjercicio.de(o.nombre)].orEmpty().filter { (m, p) -> m != o.musculo && p != o.patron }
                 assertTrue(ajenas.isEmpty(), "$slug: «${o.nombre}» también es de $ajenas")
             }
         }
+    }
+
+    /**
+     * Los nombres se juntan por la clave del historial ([ClaveEjercicio]), que es lo que de verdad comparten, y no por el
+     * texto exacto (revisión del 21-oct): un catálogo del servidor puede traer «Remo con barra.» para un remo de espalda.
+     */
+    @Test
+    fun losNombresSeJuntanPorLaClaveDelHistorial() {
+        val cat = CatalogoEjercicios.desde(
+            """
+            [{"slug_en":"Side_Lateral_Raise","name_en":"Side Lateral Raise","primary_muscle":"shoulders","equipment":"dumbbell","patron_movimiento":"elevacion_lateral"},
+             {"slug_en":"Barbell_Rear_Delt_Row","name_en":"Barbell Rear Delt Row","primary_muscle":"shoulders","equipment":"barbell","patron_movimiento":"deltoide_posterior"},
+             {"slug_en":"Zz_Remo","name_en":"Remo con barra.","primary_muscle":"middle back","equipment":"barbell","patron_movimiento":"remo_horizontal"}]
+            """,
+        )
+        assertEquals("Remo con barra", SustitucionEjercicios.castellano(cat.entradas[1]))
+        assertEquals("Remo con barra.", SustitucionEjercicios.castellano(cat.entradas[2]))
+        assertEquals(ClaveEjercicio.de("Remo con barra"), ClaveEjercicio.de("Remo con barra."))
+        val otros = cat.otrosDelMismoMusculo(ReferenciaEjercicio(catalogoSlug = "Side_Lateral_Raise"))
+        assertTrue(otros.none { it.slug == "Barbell_Rear_Delt_Row" }, otros.map { it.nombre }.toString())
     }
 
     @Test

@@ -422,11 +422,11 @@ public struct CatalogoEjercicios: Sendable {
     /// Para «otros del mismo músculo»: una fila mal clasificada (encogimientos como espalda media) no se ofrece, porque
     /// su patrón es de otro músculo.
     private let musculoDelPatron: [ClaveJS: String]
-    /// El músculo y el patrón de cada fila, por su nombre en castellano (el que se muestra y el que se registra: la clave
-    /// del historial). Para no ofrecer entre «otros del mismo músculo» un nombre que el catálogo usa también para OTRO
-    /// músculo (ver `compartidoConOtroMusculo`). Se arma una vez, la primera vez que hace falta: traducir las 873 filas son
-    /// unos 20 ms, y el catálogo empaquetado se arma al abrir la app.
-    private let usosDelNombre: UnaVez<[ClaveJS: [(musculo: String?, patron: String?)]]>
+    /// El músculo y el patrón de cada fila, por la clave del historial (`ClaveEjercicio`) de su nombre en castellano, que
+    /// es lo que de verdad comparten dos ejercicios con nombres parecidos. Para no ofrecer entre «otros del mismo músculo»
+    /// un nombre que el catálogo usa también para OTRO músculo (ver `compartidoConOtroMusculo`). Se arma una vez, la
+    /// primera vez que hace falta: traducir las 873 filas son unos 20 ms, y el catálogo empaquetado se arma al abrir la app.
+    private let usosDelNombre: UnaVez<[String: [(musculo: String?, patron: String?)]]>
 
     public init(_ entradas: [EntradaCatalogoEjercicio]) {
         self.entradas = entradas
@@ -444,21 +444,21 @@ public struct CatalogoEjercicios: Sendable {
             lista.reduce(lista[0]) { mejor, x in x.filas > mejor.filas ? x : mejor }.musculo
         }
         usosDelNombre = UnaVez {
-            var usos: [ClaveJS: [(musculo: String?, patron: String?)]] = [:]
+            var usos: [String: [(musculo: String?, patron: String?)]] = [:]
             for e in entradas {
-                usos[ClaveJS(SustitucionEjercicios.castellano(e)), default: []].append((verdadero(e.primaryMuscle), verdadero(e.patronMovimiento)))
+                usos[ClaveEjercicio.de(SustitucionEjercicios.castellano(e)), default: []].append((verdadero(e.primaryMuscle), verdadero(e.patronMovimiento)))
             }
             return usos
         }
     }
 
-    /// El nombre del candidato lo usan en el catálogo filas de OTRO músculo, y entonces compartiría el historial (que va
-    /// por el nombre) con un ejercicio de otro músculo (revisión del 21-oct: entre los otros de hombros salían «Remo con
+    /// El nombre del candidato (su clave del historial) lo usan en el catálogo filas de OTRO músculo, y entonces compartiría
+    /// el historial con un ejercicio de otro músculo (revisión del 21-oct: entre los otros de hombros salían «Remo con
     /// barra» y «Remo en polea», los remos del deltoide posterior, con el nombre de los remos de espalda). Las filas de otro
     /// músculo con el MISMO patrón son el mismo movimiento y no cuentan: los fondos de pecho (Dips_-_Chest_Version) y los
     /// de tríceps son los mismos fondos.
     func compartidoConOtroMusculo(_ s: SustitutoEjercicio) -> Bool {
-        (usosDelNombre.valor[ClaveJS(s.nombre)] ?? []).contains { !igualJS($0.musculo, verdadero(s.musculo)) && !igualJS($0.patron, verdadero(s.patron)) }
+        (usosDelNombre.valor[ClaveEjercicio.de(s.nombre)] ?? []).contains { !igualJS($0.musculo, verdadero(s.musculo)) && !igualJS($0.patron, verdadero(s.patron)) }
     }
 
     /// El músculo de un patrón (el de la mayoría de sus filas).

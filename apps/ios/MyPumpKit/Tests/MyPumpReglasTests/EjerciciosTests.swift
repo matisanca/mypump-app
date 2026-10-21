@@ -451,15 +451,30 @@ struct OtrosDelMismoMusculoTests {
         #expect(!biceps.contains { $0.nombre == "Curl de bíceps" }, "\(biceps.map(\.nombre))")
         let triceps = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: "Extensión en polea alta con barra", imagenes: nil, catalogoSlug: "Triceps_Pushdown"))
         #expect(triceps.contains { $0.nombre == "Fondos" && $0.equipo == "Peso corporal" }, "los fondos de tríceps siguen")
-        // En ninguna de las listas grabadas un otro comparte nombre con una fila de otro músculo y otro movimiento.
+        // En ninguna de las listas grabadas un otro comparte la clave del historial con una fila de otro músculo y otro
+        // movimiento.
         var usos: [String: [(musculo: String?, patron: String?)]] = [:]
-        for e in cat.entradas { usos[SustitucionEjercicios.castellano(e), default: []].append((e.primaryMuscle, e.patronMovimiento)) }
+        for e in cat.entradas { usos[ClaveEjercicio.de(SustitucionEjercicios.castellano(e)), default: []].append((e.primaryMuscle, e.patronMovimiento)) }
         for slug in Self.slugsVector {
             for o in cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: nil, imagenes: nil, catalogoSlug: slug)) {
-                let ajenas = (usos[o.nombre] ?? []).filter { $0.musculo != o.musculo && $0.patron != o.patron }
+                let ajenas = (usos[ClaveEjercicio.de(o.nombre)] ?? []).filter { $0.musculo != o.musculo && $0.patron != o.patron }
                 #expect(ajenas.isEmpty, "\(slug): «\(o.nombre)» también es de \(ajenas)")
             }
         }
+    }
+
+    /// Los nombres se juntan por la clave del historial (`ClaveEjercicio`), que es lo que de verdad comparten, y no por el
+    /// texto exacto (revisión del 21-oct): un catálogo del servidor puede traer «Remo con barra.» para un remo de espalda.
+    @Test func losNombresSeJuntanPorLaClaveDelHistorial() throws {
+        let cat = try CatalogoEjercicios(json: Data("""
+        [{"slug_en":"Side_Lateral_Raise","name_en":"Side Lateral Raise","primary_muscle":"shoulders","equipment":"dumbbell","patron_movimiento":"elevacion_lateral"},
+         {"slug_en":"Barbell_Rear_Delt_Row","name_en":"Barbell Rear Delt Row","primary_muscle":"shoulders","equipment":"barbell","patron_movimiento":"deltoide_posterior"},
+         {"slug_en":"Zz_Remo","name_en":"Remo con barra.","primary_muscle":"middle back","equipment":"barbell","patron_movimiento":"remo_horizontal"}]
+        """.utf8))
+        #expect(SustitucionEjercicios.castellano(cat.entradas[1]) == "Remo con barra" && SustitucionEjercicios.castellano(cat.entradas[2]) == "Remo con barra.")
+        #expect(ClaveEjercicio.de("Remo con barra") == ClaveEjercicio.de("Remo con barra."))
+        let otros = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: nil, imagenes: nil, catalogoSlug: "Side_Lateral_Raise"))
+        #expect(!otros.contains { $0.slug == "Barbell_Rear_Delt_Row" }, "\(otros.map(\.nombre))")
     }
 
     @Test func sinPatronNoSeOfreceNada() throws {
