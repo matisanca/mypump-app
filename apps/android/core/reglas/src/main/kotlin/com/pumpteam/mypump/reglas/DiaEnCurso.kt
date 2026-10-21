@@ -138,19 +138,23 @@ class DiaEnCurso(
     }
 
     /**
-     * `kgHeredable`, pero solo de las series registradas con el ejercicio que se hace ahora. Desvío a propósito de la web
-     * (revisión del 21-oct): al cambiar de movimiento a mitad del ejercicio (2 series de extensión en polea a 30 kg y después
-     * fondos), la serie 3 heredaba los 30 kg de la polea y se grababa como fondos. Sin nombre registrado (una serie de antes
-     * de esto) cuenta como del mismo.
+     * `kgHeredable`, pero solo de las series registradas con el mismo ejercicio que esta: el que se hace ahora o, si se
+     * corrige con el lápiz una serie registrada con otro, ese. Desvío a propósito de la web (revisión del 21-oct): al cambiar
+     * de movimiento a mitad del ejercicio (2 series de extensión en polea a 30 kg y después fondos), la serie 3 heredaba los
+     * 30 kg de la polea y se grababa como fondos. Sin nombre registrado (una serie de antes de esto) cuenta como del que se
+     * hace ahora.
      */
     fun kgHeredable(id: String, idx: Int): String {
-        val actual = ClaveEjercicio.de(nombreEfectivo(id))
-        val series = (ejercicios[id]?.series ?: emptyList()).map { s ->
-            val mismo = Js.verdadero(s.nombreRegistrado)?.let { ClaveEjercicio.de(it) == actual } ?: true
-            if (mismo) s else SerieLocal()
-        }
-        return HistorialEntreno.kgHeredable(series, idx)
+        val series = ejercicios[id]?.series ?: emptyList()
+        val actual = nombreEfectivo(id)
+        fun clave(s: SerieLocal) = ClaveEjercicio.de(Js.verdadero(s.nombreRegistrado) ?: actual)
+        val esta = series.getOrNull(idx)?.let(::clave) ?: ClaveEjercicio.de(actual)
+        return HistorialEntreno.kgHeredable(series.map { if (clave(it) == esta) it else SerieLocal() }, idx)
     }
+
+    /** La serie es del ejercicio que se hace ahora: sin nombre registrado (no se sabe con cuál se hizo) o con el mismo. */
+    internal fun esDelEjercicioActual(id: String, s: SerieLocal): Boolean =
+        Js.verdadero(s.nombreRegistrado)?.let { ClaveEjercicio.de(it) == ClaveEjercicio.de(nombreEfectivo(id)) } ?: true
 
     /** "🏆 Récord a superar" (`lastSessionStr`); null es "Primera vez con este ejercicio". */
     fun record(id: String): String? = HistorialEntreno.record(historial[id] ?: emptyList())
@@ -269,12 +273,19 @@ class DiaEnCurso(
             }
         }
         // La variante va solo si el ejercicio que se hace muestra ese selector, y la serie anota con qué ejercicio se registró
-        // (el `ejercicioNombre` de la carga) para que el kg heredado no cruce de un ejercicio a otro. Desvíos a propósito de
-        // la web (revisión del 21-oct; ver [variantesVisibles] y [kgHeredable]).
+        // (el `ejercicioNombre` de la carga) para que el kg heredado no cruce de un ejercicio a otro. Una serie ya registrada
+        // con OTRO ejercicio (el lápiz después de sustituir) conserva el suyo y su variante: se corrige lo que se hizo.
+        // Desvíos a propósito de la web (revisión del 21-oct; ver [variantesVisibles], [kgHeredable] y
+        // [EscriturasEntreno.nombre]).
         val variante = if (variantesVisibles(id) == null) null else Js.verdadero(ejercicios.getValue(id).variante)
         val sustituto = SustitucionesEntreno.aplicada(sustituciones[id])?.nombre
         cambiarSerie(id, idx) {
-            it.copy(aviso = null, confirmada = true, varianteRegistrada = variante, nombreRegistrado = EscriturasEntreno.nombre(sustituto, it, ex.nombre))
+            it.copy(
+                aviso = null,
+                confirmada = true,
+                varianteRegistrada = if (esDelEjercicioActual(id, it)) variante else it.varianteRegistrada,
+                nombreRegistrado = EscriturasEntreno.nombre(sustituto, it, ex.nombre),
+            )
         }
         efectos += Efecto.AsegurarSesion
         efectos += escribirSerie(id, idx)
@@ -464,11 +475,14 @@ class DiaEnCurso(
         if (idx >= e.series.size) return emptyList()
         val s = e.series[idx]
         val nombre = EscriturasEntreno.nombre(SustitucionesEntreno.aplicada(sustituciones[id])?.nombre, s, ex.nombre)
+        // La variante del ejercicio solo completa una serie de ESTE ejercicio y con el selector a la vista: una de otro
+        // (registrada antes de sustituir o de volver) va con la suya o sin ninguna.
+        val variante = if (esDelEjercicioActual(id, s) && variantesVisibles(id) != null) e.variante else null
         val d = dia.id ?: ""
         return listOf(
             Efecto.Encolar(
                 "carga",
-                EscriturasEntreno.carga(sesionId, d, semana, id, idx, s, nombre, if (variantesVisibles(id) == null) null else e.variante),
+                EscriturasEntreno.carga(sesionId, d, semana, id, idx, s, nombre, variante),
                 EscriturasEntreno.claveCarga(d, id, idx, semana),
             ),
         )

@@ -123,17 +123,22 @@ public struct DiaEnCurso: Sendable, Equatable {
         return HistorialEntreno.repsSugeridas(historial[id] ?? [], indice: idx, variante: v, esDefault: d, zona: zona)
     }
 
-    /// `kgHeredable`, pero solo de las series registradas con el ejercicio que se hace ahora. Desvío a propósito de la
-    /// web (revisión del 21-oct): al cambiar de movimiento a mitad del ejercicio (2 series de extensión en polea a 30 kg y
-    /// después fondos), la serie 3 heredaba los 30 kg de la polea y se grababa como fondos. Sin nombre registrado (una
-    /// serie de antes de esto) cuenta como del mismo.
+    /// `kgHeredable`, pero solo de las series registradas con el mismo ejercicio que esta: el que se hace ahora o, si se
+    /// corrige con el lápiz una serie registrada con otro, ese. Desvío a propósito de la web (revisión del 21-oct): al
+    /// cambiar de movimiento a mitad del ejercicio (2 series de extensión en polea a 30 kg y después fondos), la serie 3
+    /// heredaba los 30 kg de la polea y se grababa como fondos. Sin nombre registrado (una serie de antes de esto) cuenta
+    /// como del que se hace ahora.
     public func kgHeredable(_ id: String, _ idx: Int) -> String {
-        let actual = ClaveEjercicio.de(nombreEfectivo(id))
-        let series = (ejercicios[id]?.series ?? []).map { s in
-            let mismo = JS.verdadero(s.nombreRegistrado).map { ClaveEjercicio.de($0) == actual } ?? true
-            return mismo ? s : SerieLocal()
-        }
-        return HistorialEntreno.kgHeredable(series, indice: idx)
+        let series = ejercicios[id]?.series ?? []
+        let actual = nombreEfectivo(id)
+        func clave(_ s: SerieLocal) -> String { ClaveEjercicio.de(JS.verdadero(s.nombreRegistrado) ?? actual) }
+        let esta = idx >= 0 && idx < series.count ? clave(series[idx]) : ClaveEjercicio.de(actual)
+        return HistorialEntreno.kgHeredable(series.map { clave($0) == esta ? $0 : SerieLocal() }, indice: idx)
+    }
+
+    /// La serie es del ejercicio que se hace ahora: sin nombre registrado (no se sabe con cuál se hizo) o con el mismo.
+    func esDelEjercicioActual(_ id: String, _ s: SerieLocal) -> Bool {
+        JS.verdadero(s.nombreRegistrado).map { ClaveEjercicio.de($0) == ClaveEjercicio.de(nombreEfectivo(id)) } ?? true
     }
 
     /// "🏆 Récord a superar" (`lastSessionStr`); nil es "Primera vez con este ejercicio".
@@ -241,9 +246,13 @@ public struct DiaEnCurso: Sendable, Equatable {
         ejercicios[id]!.series[idx].aviso = nil
         ejercicios[id]!.series[idx].confirmada = true
         // La variante va solo si el ejercicio que se hace muestra ese selector, y la serie anota con qué ejercicio se
-        // registró (el `ejercicioNombre` de la carga) para que el kg heredado no cruce de un ejercicio a otro. Desvíos a
-        // propósito de la web (revisión del 21-oct; ver `variantesVisibles` y `kgHeredable`).
-        ejercicios[id]!.series[idx].varianteRegistrada = variantesVisibles(id) == nil ? nil : JS.verdadero(ejercicios[id]!.variante)
+        // registró (el `ejercicioNombre` de la carga) para que el kg heredado no cruce de un ejercicio a otro. Una serie ya
+        // registrada con OTRO ejercicio (el lápiz después de sustituir) conserva el suyo y su variante: se corrige lo que
+        // se hizo. Desvíos a propósito de la web (revisión del 21-oct; ver `variantesVisibles`, `kgHeredable` y
+        // `EscriturasEntreno.nombre`).
+        if esDelEjercicioActual(id, ejercicios[id]!.series[idx]) {
+            ejercicios[id]!.series[idx].varianteRegistrada = variantesVisibles(id) == nil ? nil : JS.verdadero(ejercicios[id]!.variante)
+        }
         ejercicios[id]!.series[idx].nombreRegistrado = EscriturasEntreno.nombre(
             sustituto: SustitucionesEntreno.aplicada(sustituciones[id])?.nombre, serie: ejercicios[id]!.series[idx], plan: ex.nombre)
         efectos.append(.asegurarSesion)
@@ -414,10 +423,13 @@ public struct DiaEnCurso: Sendable, Equatable {
         guard !demo, let ex = ejercicio(id), let e = ejercicios[id], idx < e.series.count else { return [] }
         let s = e.series[idx]
         let nombre = EscriturasEntreno.nombre(sustituto: SustitucionesEntreno.aplicada(sustituciones[id])?.nombre, serie: s, plan: ex.nombre)
+        // La variante del ejercicio solo completa una serie de ESTE ejercicio y con el selector a la vista: una de otro
+        // (registrada antes de sustituir o de volver) va con la suya o sin ninguna.
+        let variante = esDelEjercicioActual(id, s) && variantesVisibles(id) != nil ? e.variante : nil
         let d = dia.id ?? ""
         return [.encolar(kind: "carga",
                          payload: EscriturasEntreno.carga(sesionId: sesionId, dia: d, semana: semana, ejercicio: id, indice: idx, serie: s,
-                                                          nombre: nombre, varianteEjercicio: variantesVisibles(id) == nil ? nil : e.variante),
+                                                          nombre: nombre, varianteEjercicio: variante),
                          clave: EscriturasEntreno.claveCarga(dia: d, ejercicio: id, indice: idx, semana: semana))]
     }
 

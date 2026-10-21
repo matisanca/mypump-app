@@ -98,6 +98,45 @@ struct SustituirOtrosTests {
         #expect(s4["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s4["peso"] == .numero(30) && s4["notas"]?.comoTexto == "Soga", "\(s4)")
     }
 
+    /// Una serie ya registrada se vuelve a mandar con el ejercicio con el que se registró, aunque el lugar ahora esté
+    /// sustituido (o se haya vuelto al original): el RIR, o el lápiz y confirmar de nuevo, corrigen lo que se hizo. Antes
+    /// el sustituto ganaba y la serie de la polea se volvía a mandar como fondos, con sus 30 kg.
+    @Test func unaSerieYaRegistradaSeVuelveAMandarConSuEjercicio() async throws {
+        let b = Banco()
+        let m = modeloOtros(b)
+        let lugar = "ext-d1-0"
+        func carga(_ i: Int) async -> JSONValue? { await b.cola.operaciones.first { $0.dedupeKey == "carga_d1_\(lugar)_\(i)_s1" }?.payload["datos"] }
+        m.elegirVariante(lugar, "Soga")
+        for i in 0..<2 {
+            m.escribir(lugar, i, campo: "reps", valor: "12")
+            m.escribir(lugar, i, campo: "kg", valor: "30")
+            await m.confirmarSerie(lugar, i) { _ in true }
+        }
+        let fondos = try #require(m.otrosDelMismoMusculo(lugar).first { $0.nombre == "Fondos" && $0.equipo == "Peso corporal" })
+        await m.sustituir(lugar, por: fondos, fijar: false)
+
+        // El RIR de la serie 2, ya con los fondos puestos: va como la extensión, con su agarre.
+        await m.elegirRIR(lugar, 1, 2)
+        let s2 = try #require(await carga(1))
+        #expect(s2["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s2["peso"] == .numero(30)
+                    && s2["notas"]?.comoTexto == "Soga" && s2["rir"] == .numero(2), "\(s2)")
+        // El lápiz sobre la serie 1: se corrige el kg y sigue siendo de la extensión.
+        await m.editarSerie(lugar, 0)
+        m.escribir(lugar, 0, campo: "kg", valor: "32")
+        await m.confirmarSerie(lugar, 0) { _ in true }
+        let s1 = try #require(await carga(0))
+        #expect(s1["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s1["peso"] == .numero(32) && s1["notas"]?.comoTexto == "Soga", "\(s1)")
+
+        // La serie 3 con los fondos y después de vuelta a la polea: su RIR va como fondos, sin el agarre de la polea.
+        m.escribir(lugar, 2, campo: "reps", valor: "10")
+        m.escribir(lugar, 2, campo: "kg", valor: "10")
+        await m.confirmarSerie(lugar, 2) { _ in true }
+        await m.revertirSustitucion(lugar)
+        await m.elegirRIR(lugar, 2, 1)
+        let s3 = try #require(await carga(2))
+        #expect(s3["ejercicioNombre"]?.comoTexto == "Fondos" && s3["peso"] == .numero(10) && s3["notas"] == .null && s3["rir"] == .numero(1), "\(s3)")
+    }
+
     /// Hallazgo 4: con un plan sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios), al reabrir
     /// «Cambiar» después de pasar la extensión en polea a fondos, las listas se armaban sobre los fondos: sin foto del
     /// original, `referencia(de:)` caía en la del sustituto.

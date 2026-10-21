@@ -425,10 +425,12 @@ object EscriturasEntreno {
     fun claveEstado(dia: String, ejercicio: String, semana: Int): String = "estado_${dia}_${ejercicio}_s$semana"
 
     /**
-     * El nombre que se registra (SER-13): el del sustituto si hay; si no, el que ya tenía la serie (si el "solo hoy"
-     * expiró y se reabre el día, la RPC es upsert y pisaría el nombre); si no, el del plan.
+     * El nombre que se registra (SER-13): el que ya tenía la serie, con el que se registró (la RPC es upsert y pisaría el
+     * nombre); si no, el del sustituto; si no, el del plan. Desvío a propósito de la web (revisión del 21-oct): ahí el
+     * sustituto gana, y corregir el RIR (o con el lápiz) una serie de la polea después de pasar a fondos la volvía a mandar
+     * como fondos, con los kg de la polea. Sin nombre registrado (no se sabe con cuál se hizo), como la web.
      */
-    fun nombre(sustituto: String?, serie: SerieLocal, plan: String): String = sustituto ?: Js.verdadero(serie.nombreRegistrado) ?: plan
+    fun nombre(sustituto: String?, serie: SerieLocal, plan: String): String = Js.verdadero(serie.nombreRegistrado) ?: sustituto ?: plan
 
     /**
      * El payload de `carga`: `{sesionId, diaId, semana, datos{…}}`. Peso con coma → punto y `|| 0`; reps `|| 0`; RIR

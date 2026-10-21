@@ -442,7 +442,28 @@ class EntrenoVectoresTest {
                 if (registrado == null || s.nombreRegistrado != registrado) malos += "nombre registrado ${s.nombreRegistrado} vs la carga $registrado"
                 comparable.ponerSeries(ex, comparable.ejercicios.getValue(ex).series.toMutableList().also { it[idx] = it[idx].copy(nombreRegistrado = null) })
             }
-            malos += diferenciaSesion(comparable, despues["sesion"].o()) + diferenciaCola(efectos, caso["cola"].a(), semana)
+            // Desvío a propósito (revisión del 21-oct): una serie ya registrada con OTRO ejercicio que el que se hace (la
+            // restaurada con otro nombre) conserva su variante al confirmarla de nuevo; la web la pisa con la del selector, que
+            // es de otro ejercicio. Se comprueba aparte (en la serie y en las notas) y el resto se compara igual.
+            var cola = efectos
+            val previa = antes["sets"].o()?.get(ex)?.a()?.getOrNull(idx)?.let(::serie)
+            val otroEjercicio = previa?.nombreRegistrado?.takeIf { it.isNotEmpty() }?.let { ClaveEjercicio.de(it) != ClaveEjercicio.de(d.nombreEfectivo(ex)) } == true
+            if (previa != null && otroEjercicio && s != null && s.confirmada) {
+                if (s.varianteRegistrada != previa.varianteRegistrada) malos += "variante ${s.varianteRegistrada}, y la serie tenía ${previa.varianteRegistrada}"
+                val web = webSerie?.varianteRegistrada
+                comparable.ponerSeries(ex, comparable.ejercicios.getValue(ex).series.toMutableList().also { it[idx] = it[idx].copy(varianteRegistrada = web) })
+                val carga = caso["cola"].a().lastOrNull { it.jsonObject["kind"].s() == "carga" }.o()
+                val notasWeb = carga?.get("payload").o()?.get("datos")?.let { ValorJson.desde(it) }?.get("notas") ?: ValorJson.Nulo
+                cola = efectos.map { e ->
+                    if (e !is DiaEnCurso.Efecto.Encolar || e.kind != "carga") return@map e
+                    val p = e.payload as ValorJson.Objeto
+                    val datos = p.campos["datos"] as ValorJson.Objeto
+                    val esperadas = previa.varianteRegistrada?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo
+                    if (datos.campos["notas"] != esperadas) malos += "notas ${datos.campos["notas"]}"
+                    e.copy(payload = ValorJson.Objeto(p.campos + ("datos" to ValorJson.Objeto(datos.campos + ("notas" to notasWeb)))))
+                }
+            }
+            malos += diferenciaSesion(comparable, despues["sesion"].o()) + diferenciaCola(cola, caso["cola"].a(), semana)
             val p = pedidos(efectos)
             if (preguntas.map(::modal) != caso["modales"].a().map(::modalWeb)) malos += "modales ${preguntas.map(::modal)}"
             val aviso = d.ejercicios[ex]?.series?.getOrNull(idx)?.aviso

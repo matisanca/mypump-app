@@ -579,7 +579,26 @@ struct EntrenoVectoresTests {
                 if registrado == nil || s.nombreRegistrado != registrado { malos.append("nombre registrado \(String(describing: s.nombreRegistrado)) vs la carga \(String(describing: registrado))") }
                 comparable.ejercicios[caso.ex]?.series[caso.idx].nombreRegistrado = nil
             }
-            malos += diferenciaSesion(comparable, caso.despues.sesion) + diferenciaCola(efectos, caso.cola, semana: caso.semana)
+            // Desvío a propósito (revisión del 21-oct): una serie ya registrada con OTRO ejercicio que el que se hace (la
+            // restaurada con otro nombre) conserva su variante al confirmarla de nuevo; la web la pisa con la del selector,
+            // que es de otro ejercicio. Se comprueba aparte (en la serie y en las notas) y el resto se compara igual.
+            var cola = efectos
+            if let a = caso.antes.sets[caso.ex].flatMap({ caso.idx < $0.count ? $0[caso.idx] : nil }), let n = JS.verdadero(a.nombreRegistrado),
+               ClaveEjercicio.de(n) != ClaveEjercicio.de(d.nombreEfectivo(caso.ex)), let s = d.ejercicios[caso.ex]?.series[caso.idx], s.confirmada {
+                if !JS.iguales(s.varianteRegistrada, a.varianteRegistrada) {
+                    malos.append("variante \(String(describing: s.varianteRegistrada)), y la serie tenía \(String(describing: a.varianteRegistrada))")
+                }
+                comparable.ejercicios[caso.ex]?.series[caso.idx].varianteRegistrada = caso.despues.sesion[caso.ex]?.sets[caso.idx].varianteRegistrada
+                let notasWeb = caso.cola.last { $0.kind == "carga" }?.payload["datos"]?["notas"] ?? .null
+                cola = efectos.map { e in
+                    guard case .encolar("carga", .objeto(var p), let clave) = e, case .objeto(var datos)? = p["datos"] else { return e }
+                    if datos["notas"] != (a.varianteRegistrada.map(JSONValue.texto) ?? .null) { malos.append("notas \(String(describing: datos["notas"]))") }
+                    datos["notas"] = notasWeb
+                    p["datos"] = .objeto(datos)
+                    return .encolar(kind: "carga", payload: .objeto(p), clave: clave)
+                }
+            }
+            malos += diferenciaSesion(comparable, caso.despues.sesion) + diferenciaCola(cola, caso.cola, semana: caso.semana)
             let p = pedidos(efectos)
             if preguntas.map(modal) != caso.modales.map(modal) { malos.append("modales \(preguntas.map(modal))") }
             let aviso = d.ejercicios[caso.ex]?.series[caso.idx].aviso

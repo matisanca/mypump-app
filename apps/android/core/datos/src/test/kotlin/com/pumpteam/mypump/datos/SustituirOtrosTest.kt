@@ -110,6 +110,58 @@ class SustituirOtrosTest {
     }
 
     /**
+     * Una serie ya registrada se vuelve a mandar con el ejercicio con el que se registró, aunque el lugar ahora esté
+     * sustituido (o se haya vuelto al original): el RIR, o el lápiz y confirmar de nuevo, corrigen lo que se hizo. Antes el
+     * sustituto ganaba y la serie de la polea se volvía a mandar como fondos, con sus 30 kg.
+     */
+    @Test
+    fun unaSerieYaRegistradaSeVuelveAMandarConSuEjercicio() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modeloOtros(alcance)
+        val lugar = "ext-d1-0"
+        suspend fun carga(i: Int): ValorJson? = b.cola.operaciones().firstOrNull { it.dedupeKey == "carga_d1_${lugar}_${i}_s1" }?.payload?.get("datos")
+        m.elegirVariante(lugar, "Soga")
+        for (i in 0 until 2) {
+            m.escribir(lugar, i, "reps", "12")
+            m.escribir(lugar, i, "kg", "30")
+            m.confirmarSerie(lugar, i) { true }
+        }
+        val fondos = m.otrosDelMismoMusculo(lugar).first { it.nombre == "Fondos" && it.equipo == "Peso corporal" }
+        m.sustituir(lugar, fondos, fijar = false)
+
+        // El RIR de la serie 2, ya con los fondos puestos: va como la extensión, con su agarre.
+        m.elegirRir(lugar, 1, 2)
+        val s2 = carga(1)!!
+        assertTrue(
+            s2["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s2["peso"] == ValorJson.Numero(30.0) &&
+                s2["notas"]?.comoTexto == "Soga" && s2["rir"] == ValorJson.Numero(2.0),
+            "$s2",
+        )
+        // El lápiz sobre la serie 1: se corrige el kg y sigue siendo de la extensión.
+        m.editarSerie(lugar, 0)
+        m.escribir(lugar, 0, "kg", "32")
+        m.confirmarSerie(lugar, 0) { true }
+        val s1 = carga(0)!!
+        assertTrue(
+            s1["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s1["peso"] == ValorJson.Numero(32.0) && s1["notas"]?.comoTexto == "Soga",
+            "$s1",
+        )
+
+        // La serie 3 con los fondos y después de vuelta a la polea: su RIR va como fondos, sin el agarre de la polea.
+        m.escribir(lugar, 2, "reps", "10")
+        m.escribir(lugar, 2, "kg", "10")
+        m.confirmarSerie(lugar, 2) { true }
+        m.revertirSustitucion(lugar)
+        m.elegirRir(lugar, 2, 1)
+        val s3 = carga(2)!!
+        assertTrue(
+            s3["ejercicioNombre"]?.comoTexto == "Fondos" && s3["peso"] == ValorJson.Numero(10.0) && s3["notas"] == ValorJson.Nulo &&
+                s3["rir"] == ValorJson.Numero(1.0),
+            "$s3",
+        )
+    }
+
+    /**
      * Hallazgo 4: con un plan sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios), al reabrir
      * «Cambiar» después de pasar la extensión en polea a fondos, las listas se armaban sobre los fondos: sin foto del
      * original, `referencia` caía en la del sustituto.
