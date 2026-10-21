@@ -156,6 +156,22 @@ struct SustituirOtrosTests {
         #expect(s3["ejercicioNombre"]?.comoTexto == "Fondos" && s3["peso"] == .numero(10) && s3["notas"] == .null && s3["rir"] == .numero(1), "\(s3)")
     }
 
+    /// El agarre del plan no filtra el historial del sustituto (revisión del 21-oct): con la polea en «Soga» y los fondos
+    /// puestos, lo de la última vez sale de las series de fondos (sin notas). Con el filtro de «Soga», que no es el agarre
+    /// por defecto, quedaban afuera y no había sugerencia.
+    @Test func elAgarreDelPlanNoFiltraElHistorialDelSustituto() async throws {
+        let b = Banco()
+        b.servidor.cuando("get_historico_por_clave", #"[{"clave":"fondos","registrado_en":"2026-10-07T21:04:00+00:00","peso_kg":10,"reps_realizadas":8,"rir_real":1,"serie_numero":3,"notas":null,"ejercicio_nombre":"Fondos"},{"clave":"fondos","registrado_en":"2026-10-07T21:02:00+00:00","peso_kg":10,"reps_realizadas":9,"rir_real":1,"serie_numero":2,"notas":null,"ejercicio_nombre":"Fondos"},{"clave":"fondos","registrado_en":"2026-10-07T21:00:00+00:00","peso_kg":10,"reps_realizadas":10,"rir_real":2,"serie_numero":1,"notas":null,"ejercicio_nombre":"Fondos"}]"#)
+        let m = modeloOtros(b)
+        let lugar = "ext-d1-0"
+        m.elegirVariante(lugar, "Soga")
+        let fondos = try #require(m.otrosDelMismoMusculo(lugar).first { $0.nombre == "Fondos" && $0.equipo == "Peso corporal" })
+        await m.sustituir(lugar, por: fondos, fijar: false)
+        #expect(m.dia.historial[lugar]?.count == 3, "llegó el historial de los fondos")
+        let f = try #require(m.tarjeta(lugar)?.filas[0])
+        #expect(f.placeholderKg == "10" && f.pista?.negrita == "10kg × 10", "lo de la última vez con los fondos: \(f)")
+    }
+
     /// Hallazgo 4: con un plan sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios), al reabrir
     /// «Cambiar» después de pasar la extensión en polea a fondos, las listas se armaban sobre los fondos: sin foto del
     /// original, `referencia(de:)` caía en la del sustituto.
