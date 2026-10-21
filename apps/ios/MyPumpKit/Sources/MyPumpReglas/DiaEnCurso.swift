@@ -127,7 +127,9 @@ public struct DiaEnCurso: Sendable, Equatable {
     /// corrige con el lápiz una serie registrada con otro, ese. Desvío a propósito de la web (revisión del 21-oct): al
     /// cambiar de movimiento a mitad del ejercicio (2 series de extensión en polea a 30 kg y después fondos), la serie 3
     /// heredaba los 30 kg de la polea y se grababa como fondos. Sin nombre registrado (una serie de antes de esto) cuenta
-    /// como del que se hace ahora.
+    /// como del que se hace ahora. Compara por el nombre (la clave del historial) y no por el movimiento, a propósito:
+    /// dentro del mismo gesto el kg también cambia (a una mano o a dos, otro equipo), y con el ✓ de un toque un kg heredado
+    /// de otro ejercicio termina grabado.
     public func kgHeredable(_ id: String, _ idx: Int) -> String {
         let series = ejercicios[id]?.series ?? []
         let actual = nombreEfectivo(id)
