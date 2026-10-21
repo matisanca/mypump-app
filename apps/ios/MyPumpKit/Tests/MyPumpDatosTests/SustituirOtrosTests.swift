@@ -18,7 +18,8 @@ private let estructuraOtros = """
   {"id":"ext-d1-0","nombre":"Extensión tríceps en polea","tipo":"aislamiento","descanso_segundos":90,"progresion":[{"semana":1,"series":4,"reps":"12","rir":"1"}]},
   {"id":"fon-d1-1","nombre":"Fondos","tipo":"compuesto","descanso_segundos":120,"progresion":[{"semana":1,"series":3,"reps":"10","rir":"1"}]},
   {"id":"pat-d1-2","nombre":"Patada de tríceps con mancuerna","tipo":"aislamiento","descanso_segundos":60,"progresion":[{"semana":1,"series":3,"reps":"12","rir":"1"}]},
-  {"id":"inv-d1-3","nombre":"Saludo inventado","tipo":"aislamiento","descanso_segundos":60,"progresion":[{"semana":1,"series":3,"reps":"12","rir":"1"}]}]}]}]}
+  {"id":"inv-d1-3","nombre":"Saludo inventado","tipo":"aislamiento","descanso_segundos":60,"progresion":[{"semana":1,"series":3,"reps":"12","rir":"1"}]},
+  {"id":"cru-d1-4","nombre":"Crunch en máquina","tipo":"core","descanso_segundos":60,"progresion":[{"semana":1,"series":3,"reps":"15","rir":"1"}]}]}]}]}
 """
 
 private func rutinaOtros() -> RutinaActiva {
@@ -177,6 +178,30 @@ struct SustituirOtrosTests {
         #expect(m.dia.historial[lugar]?.count == 3, "llegó el historial de los fondos")
         let f = try #require(m.tarjeta(lugar)?.filas[0])
         #expect(f.placeholderKg == "10" && f.pista?.negrita == "10kg × 10", "lo de la última vez con los fondos: \(f)")
+    }
+
+    /// Reconfirmar una serie vieja con el lugar ya sustituido se evalúa contra el ejercicio de la serie (revisión del
+    /// 21-oct): de crunch en máquina a plancha (sin kg), el lápiz y el ✓ sobre la serie del crunch le borraban el kg y la
+    /// grababan con peso 0 bajo el nombre del crunch.
+    @Test func reconfirmarUnaSerieViejaConservaSuKg() async throws {
+        let b = Banco()
+        let m = modeloOtros(b)
+        let lugar = "cru-d1-4"
+        func carga(_ i: Int) async -> JSONValue? { await b.cola.operaciones.first { $0.dedupeKey == "carga_d1_\(lugar)_\(i)_s1" }?.payload["datos"] }
+        m.escribir(lugar, 0, campo: "reps", valor: "15")
+        m.escribir(lugar, 0, campo: "kg", valor: "40")
+        await m.confirmarSerie(lugar, 0) { _ in true }
+        #expect(await carga(0)?["peso"] == .numero(40))
+        let plancha = SustitutoEjercicio(slug: "Plank", nombre: "Plancha", nombreIngles: "Plank", equipo: "Peso corporal", equipoCrudo: "body only",
+                                         musculo: "abdominals", patron: "core_anti_extension", imagenes: .init(eccentric: nil, concentric: nil), mismoEquipo: false)
+        await m.sustituir(lugar, por: plancha, fijar: false)
+        #expect(m.tarjeta(lugar)?.filas[1].sinKg == true, "la plancha no lleva kg")
+        await m.editarSerie(lugar, 0)
+        m.escribir(lugar, 0, campo: "reps", valor: "14")
+        await m.confirmarSerie(lugar, 0) { _ in true }
+        let s1 = try #require(await carga(0))
+        #expect(s1["ejercicioNombre"]?.comoTexto == "Crunch en máquina" && s1["peso"] == .numero(40) && s1["reps"] == .numero(14), "\(s1)")
+        #expect(m.dia.ejercicios[lugar]?.series[0].kg == "40")
     }
 
     /// Hallazgo 4: con un plan sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios), al reabrir

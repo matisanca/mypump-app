@@ -1,8 +1,10 @@
 package com.pumpteam.mypump.datos
 
+import com.pumpteam.mypump.modelos.Imagenes
 import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
+import com.pumpteam.mypump.reglas.SustitutoEjercicio
 import java.time.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -23,7 +25,8 @@ private const val ESTRUCTURA_OTROS = """
   {"id":"ext-d1-0","nombre":"Extensión tríceps en polea","tipo":"aislamiento","descanso_segundos":90,"progresion":[{"semana":1,"series":4,"reps":"12","rir":"1"}]},
   {"id":"fon-d1-1","nombre":"Fondos","tipo":"compuesto","descanso_segundos":120,"progresion":[{"semana":1,"series":3,"reps":"10","rir":"1"}]},
   {"id":"pat-d1-2","nombre":"Patada de tríceps con mancuerna","tipo":"aislamiento","descanso_segundos":60,"progresion":[{"semana":1,"series":3,"reps":"12","rir":"1"}]},
-  {"id":"inv-d1-3","nombre":"Saludo inventado","tipo":"aislamiento","descanso_segundos":60,"progresion":[{"semana":1,"series":3,"reps":"12","rir":"1"}]}]}]}]}
+  {"id":"inv-d1-3","nombre":"Saludo inventado","tipo":"aislamiento","descanso_segundos":60,"progresion":[{"semana":1,"series":3,"reps":"12","rir":"1"}]},
+  {"id":"cru-d1-4","nombre":"Crunch en máquina","tipo":"core","descanso_segundos":60,"progresion":[{"semana":1,"series":3,"reps":"15","rir":"1"}]}]}]}]}
 """
 
 private fun rutinaOtros(): RutinaActiva = RutinaActiva.desde(
@@ -210,6 +213,38 @@ class SustituirOtrosTest {
         assertEquals(3, m.dia.value.historial[lugar]?.size, "llegó el historial de los fondos")
         val f = m.tarjeta(lugar)!!.filas[0]
         assertTrue(f.placeholderKg == "10" && f.pista?.negrita == "10kg × 10", "lo de la última vez con los fondos: $f")
+    }
+
+    /**
+     * Reconfirmar una serie vieja con el lugar ya sustituido se evalúa contra el ejercicio de la serie (revisión del 21-oct):
+     * de crunch en máquina a plancha (sin kg), el lápiz y el ✓ sobre la serie del crunch le borraban el kg y la grababan con
+     * peso 0 bajo el nombre del crunch.
+     */
+    @Test
+    fun reconfirmarUnaSerieViejaConservaSuKg() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modeloOtros(alcance)
+        val lugar = "cru-d1-4"
+        suspend fun carga(i: Int): ValorJson? = b.cola.operaciones().firstOrNull { it.dedupeKey == "carga_d1_${lugar}_${i}_s1" }?.payload?.get("datos")
+        m.escribir(lugar, 0, "reps", "15")
+        m.escribir(lugar, 0, "kg", "40")
+        m.confirmarSerie(lugar, 0) { true }
+        assertEquals(ValorJson.Numero(40.0), carga(0)?.get("peso"))
+        val plancha = SustitutoEjercicio(
+            slug = "Plank", nombre = "Plancha", nombreIngles = "Plank", equipo = "Peso corporal", equipoCrudo = "body only",
+            musculo = "abdominals", patron = "core_anti_extension", imagenes = Imagenes(eccentric = null, concentric = null), mismoEquipo = false,
+        )
+        m.sustituir(lugar, plancha, fijar = false)
+        assertTrue(m.tarjeta(lugar)!!.filas[1].sinKg, "la plancha no lleva kg")
+        m.editarSerie(lugar, 0)
+        m.escribir(lugar, 0, "reps", "14")
+        m.confirmarSerie(lugar, 0) { true }
+        val s1 = carga(0)!!
+        assertTrue(
+            s1["ejercicioNombre"]?.comoTexto == "Crunch en máquina" && s1["peso"] == ValorJson.Numero(40.0) && s1["reps"] == ValorJson.Numero(14.0),
+            "$s1",
+        )
+        assertEquals("40", m.dia.value.ejercicios[lugar]!!.series[0].kg)
     }
 
     /**

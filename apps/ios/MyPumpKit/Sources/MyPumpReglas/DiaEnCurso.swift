@@ -224,14 +224,20 @@ public struct DiaEnCurso: Sendable, Equatable {
             diaFinalizado = false
             efectos.append(.reabrioDia)
         }
-        let sinKg = ReglasEjercicio.sinKg(efectivo ?? ex)
-        let prog = Progresiones.pauta(efectivo ?? ex, semana: semana)
-        let repsUlt = repsUltimaVez(id, idx)
-        let (serie, lista) = ConfirmacionSerie.completar(e.series[idx], sinKg: sinKg, repsPlan: prog.reps, kgUltimaVez: kgUltimaVez(id, idx),
+        // Una serie registrada con OTRO ejercicio (el lápiz después de sustituir) se evalúa contra el suyo: si lleva kg, los
+        // topes y la pauta. El historial que hay es el del que se hace ahora: ni lo de la última vez ni su récord le sirven.
+        // Revisión del 21-oct: de crunch en máquina a plancha, reconfirmar una serie del crunch le borraba el kg.
+        let propia = esDelEjercicioActual(id, e.series[idx])
+        var deLaSerie = efectivo ?? ex
+        if !propia, let n = JS.verdadero(e.series[idx].nombreRegistrado) { deLaSerie = ex; deLaSerie.nombre = n }
+        let sinKg = ReglasEjercicio.sinKg(deLaSerie)
+        let prog = Progresiones.pauta(deLaSerie, semana: semana)
+        let repsUlt = propia ? repsUltimaVez(id, idx) : ""
+        let (serie, lista) = ConfirmacionSerie.completar(e.series[idx], sinKg: sinKg, repsPlan: prog.reps, kgUltimaVez: propia ? kgUltimaVez(id, idx) : "",
                                                          repsUltimaVez: repsUlt, kgHeredable: kgHeredable(id, idx))
         ejercicios[id]!.series[idx] = serie
         guard lista else { return Paso(efectos: efectos) }
-        switch Verosimilitud.evaluar(reps: serie.reps, kg: serie.kg, sinKg: sinKg, recordKg: HistorialEntreno.recordKg(historial[id] ?? []),
+        switch Verosimilitud.evaluar(reps: serie.reps, kg: serie.kg, sinKg: sinKg, recordKg: propia ? HistorialEntreno.recordKg(historial[id] ?? []) : 0,
                                      repsUltimaVez: repsUlt, repsPlan: prog.reps) {
         case .ok:
             break

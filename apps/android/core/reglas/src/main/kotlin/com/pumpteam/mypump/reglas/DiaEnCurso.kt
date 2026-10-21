@@ -248,16 +248,22 @@ class DiaEnCurso(
         // `efectivo` es lo que se muestra (el sustituto, si hay): de ahí sale si la serie lleva kg, como en la fila. La web
         // usa el del plan y con un sustituto de otra clase (Crunch → Crunch en polea) borraba el kg o no dejaba registrar
         // (revisión del 14-oct, hallazgo 1).
-        val sinKg = ReglasEjercicio.sinKg(efectivo ?: ex)
-        val prog = Progresiones.pauta(efectivo ?: ex, semana)
-        val repsUlt = repsUltimaVez(id, idx)
+        // Una serie registrada con OTRO ejercicio (el lápiz después de sustituir) se evalúa contra el suyo: si lleva kg, los
+        // topes y la pauta. El historial que hay es el del que se hace ahora: ni lo de la última vez ni su récord le sirven.
+        // Revisión del 21-oct: de crunch en máquina a plancha, reconfirmar una serie del crunch le borraba el kg.
+        val propia = esDelEjercicioActual(id, e.series[idx])
+        val registrado = Js.verdadero(e.series[idx].nombreRegistrado)
+        val deLaSerie = if (!propia && registrado != null) ex.copy(nombre = registrado) else efectivo ?: ex
+        val sinKg = ReglasEjercicio.sinKg(deLaSerie)
+        val prog = Progresiones.pauta(deLaSerie, semana)
+        val repsUlt = if (propia) repsUltimaVez(id, idx) else ""
         val (serie, completa) = ConfirmacionSerie.completar(
-            e.series[idx], sinKg, prog.reps, kgUltimaVez(id, idx), repsUlt, kgHeredable(id, idx),
+            e.series[idx], sinKg, prog.reps, if (propia) kgUltimaVez(id, idx) else "", repsUlt, kgHeredable(id, idx),
         )
         cambiarSerie(id, idx) { serie }
         if (!completa) return Paso(efectos)
         val evaluacion = Verosimilitud.evaluar(
-            serie.reps, serie.kg, sinKg, HistorialEntreno.recordKg(historial[id] ?: emptyList()), repsUlt, prog.reps,
+            serie.reps, serie.kg, sinKg, if (propia) HistorialEntreno.recordKg(historial[id] ?: emptyList()) else 0.0, repsUlt, prog.reps,
         )
         when (evaluacion) {
             Verosimilitud.Resultado.Ok -> {}
