@@ -265,7 +265,7 @@ mypump_clientes:
   id uuid, cliente_id text, nombre text, perfil text, access_token text, access_token_active boolean, created_at timestamp with time zone, updated_at timestamp with time zone, last_accessed_at timestamp with time zone
 
 mypump_comentarios:
-  id uuid, cliente_id text, ambito text, referencia_id text, referencia_nombre text, autor text, contenido text, leido_por_cliente boolean, leido_por_coach boolean, created_at timestamp with time zone, updated_at timestamp with time zone, origen text, meta jsonb
+  id uuid, cliente_id text, ambito text, referencia_id text, referencia_nombre text, autor text, contenido text, leido_por_cliente boolean, leido_por_coach boolean, created_at timestamp with time zone, updated_at timestamp with time zone, origen text, meta jsonb, oculto boolean
 
 mypump_comidas_libres:
   id uuid, cliente_id text, fecha date, hora time without time zone, descripcion text, kcal numeric, prot numeric, carb numeric, fat numeric, detalle jsonb, created_at timestamp with time zone
@@ -414,6 +414,9 @@ sugerencias_audio_log:
 training_chats:
   id uuid, cliente_id text, nombre_archivo text, fecha_export date, fecha_inicio_chat timestamp with time zone, fecha_fin_chat timestamp with time zone, cantidad_mensajes_total integer, cantidad_mensajes_mati integer, cantidad_mensajes_cliente integer, cantidad_audios integer, idioma text, mensajes jsonb, metadata jsonb, created_at timestamp with time zone
 
+videos_guiones:
+  id bigint, tanda date, persona text, orden integer, nombre text, mes text, se_graba boolean, motivo text, minutos integer, palabras integer, antes jsonb, guion jsonb, whatsapp jsonb, vigente boolean, contenido_en timestamp with time zone, estado text, grabado_en timestamp with time zone, mandado_en timestamp with time zone, mandado_origen text, loom_url text, creado_en timestamp with time zone, novedades jsonb, cambios_no jsonb, respuestas jsonb, final_estado text, final_pedido_en timestamp with time zone, final_error text
+
 voice_examples:
   id uuid, tipo_consulta text, perfil_cliente text, input_cliente text, output_mati_mensajes jsonb, contexto jsonb, tags ARRAY, calidad_score integer, aprobado_por_mati boolean, notas text, created_at timestamp with time zone, updated_at timestamp with time zone
 
@@ -470,6 +473,9 @@ mypump_salud_diaria.mypump_salud_diaria_tipo_check: CHECK ((tipo = ANY (ARRAY['p
 mypump_suplementos.mypump_suplementos_confianza_check: CHECK ((confianza = ANY (ARRAY['alta'::text, 'media'::text, 'baja'::text])))
 mypump_wearable_conexiones.mypump_wearable_conexiones_estado_check: CHECK ((estado = ANY (ARRAY['pendiente'::text, 'conectada'::text, 'expirada'::text, 'revocada'::text, 'error'::text])))
 mypump_wearable_conexiones.mypump_wearable_conexiones_proveedor_check: CHECK ((proveedor = ANY (ARRAY['oura'::text, 'whoop'::text, 'withings'::text, 'polar'::text])))
+videos_guiones.videos_guiones_estado_check: CHECK ((estado = ANY (ARRAY['pendiente'::text, 'grabado'::text, 'mandado'::text])))
+videos_guiones.videos_guiones_final_estado_check: CHECK ((final_estado = ANY (ARRAY['pedido'::text, 'armando'::text, 'listo'::text, 'error'::text])))
+videos_guiones.videos_guiones_mandado_origen_check: CHECK ((mandado_origen = ANY (ARRAY['cerebro'::text, 'ficha'::text])))
 
 ======================================================================
 PERMISOS DE EJECUCION (proacl NULL = ABIERTO A PUBLIC)
