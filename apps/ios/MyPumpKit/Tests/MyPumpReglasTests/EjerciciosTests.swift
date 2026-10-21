@@ -437,10 +437,9 @@ struct OtrosDelMismoMusculoTests {
 
     /// Revisión del 21-oct, hallazgo 3: entre los otros de hombros salían «Remo con barra · Barra» (Barbell_Rear_Delt_Row)
     /// y «Remo en polea · Polea» (Cable_Rope_Rear-Delt_Rows), con el nombre (y entonces el historial, que va por el nombre)
-    /// de los remos de espalda; entre los de bíceps, «Curl de bíceps · Otro» (Reverse_Plate_Curls), un nombre que el
-    /// catálogo usa también para filas de antebrazo y de abdominales. Los fondos de tríceps se quedan: la fila de pecho con
-    /// ese nombre (Dips_-_Chest_Version) es el mismo movimiento.
-    @Test func unNombreQueElCatalogoUsaParaOtroMusculoNoSeOfrece() throws {
+    /// de los remos de espalda; entre los de bíceps, «Curl de bíceps · Otro» (Reverse_Plate_Curls), un curl invertido con
+    /// disco que se llama como el curl de bíceps. Son el nombre de otro ejercicio y no se ofrecen.
+    @Test func unNombreDeOtroEjercicioNoSeOfrece() throws {
         let (_, cat) = try cargarSustitutos(vectoresSustitutos)
         let hombros = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: "Elevaciones laterales", imagenes: nil, catalogoSlug: "Side_Lateral_Raise"))
         let nombres = hombros.map { "\($0.nombre) · \($0.equipo)" }
@@ -452,15 +451,38 @@ struct OtrosDelMismoMusculoTests {
         let triceps = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: "Extensión en polea alta con barra", imagenes: nil, catalogoSlug: "Triceps_Pushdown"))
         #expect(triceps.contains { $0.nombre == "Fondos" && $0.equipo == "Peso corporal" }, "los fondos de tríceps siguen")
         // En ninguna de las listas grabadas un otro comparte la clave del historial con una fila de otro músculo y otro
-        // movimiento.
+        // movimiento, salvo que sea del movimiento que el nombre nombra (el patrón de la mayoría de sus filas).
         var usos: [String: [(musculo: String?, patron: String?)]] = [:]
         for e in cat.entradas { usos[ClaveEjercicio.de(SustitucionEjercicios.castellano(e)), default: []].append((e.primaryMuscle, e.patronMovimiento)) }
+        func dominante(_ filas: [(musculo: String?, patron: String?)]) -> String? {
+            var cuentas: [String: Int] = [:]
+            for f in filas { if let p = f.patron, !p.isEmpty { cuentas[p, default: 0] += 1 } }
+            let maximo = cuentas.values.max()
+            let primeros = cuentas.filter { $0.value == maximo }
+            return primeros.count == 1 ? primeros.first?.key : nil
+        }
         for slug in Self.slugsVector {
             for o in cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: nil, imagenes: nil, catalogoSlug: slug)) {
-                let ajenas = (usos[ClaveEjercicio.de(o.nombre)] ?? []).filter { $0.musculo != o.musculo && $0.patron != o.patron }
-                #expect(ajenas.isEmpty, "\(slug): «\(o.nombre)» también es de \(ajenas)")
+                let filas = usos[ClaveEjercicio.de(o.nombre)] ?? []
+                let ajenas = filas.filter { $0.musculo != o.musculo && $0.patron != o.patron }
+                #expect(ajenas.isEmpty || dominante(filas) == o.patron, "\(slug): «\(o.nombre)» es el nombre de otro ejercicio: \(ajenas)")
             }
         }
+    }
+
+    /// Y se quedan los que son el mismo ejercicio cargado también en otro músculo, o que chocan con la traducción
+    /// equivocada de otro que la app no ofrece (revisión del 21-oct: la regla de f61c466 sacaba el cruce de poleas y el
+    /// pullover de pecho, y la sentadilla búlgara y las zancadas de cuádriceps).
+    @Test func elMismoEjercicioCargadoEnOtroMusculoSiSeOfrece() throws {
+        let (_, cat) = try cargarSustitutos(vectoresSustitutos)
+        func nombres(_ slug: String) -> [String] {
+            cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: nil, imagenes: nil, catalogoSlug: slug)).map { "\($0.nombre) · \($0.equipo)" }
+        }
+        let pecho = nombres("Barbell_Bench_Press_-_Medium_Grip")
+        #expect(pecho.contains("Cruce de poleas · Polea") && pecho.contains("Pullover con mancuernas · Mancuernas"), "\(pecho)")
+        let piernas = nombres("Barbell_Squat")
+        #expect(piernas.contains("Sentadilla búlgara · Otro") && piernas.contains("Zancadas · Barra") && piernas.contains("Zancadas · Máquina"), "\(piernas)")
+        #expect(nombres("Triceps_Pushdown").contains("Fondos · Peso corporal"))
     }
 
     /// Los nombres se juntan por la clave del historial (`ClaveEjercicio`), que es lo que de verdad comparten, y no por el

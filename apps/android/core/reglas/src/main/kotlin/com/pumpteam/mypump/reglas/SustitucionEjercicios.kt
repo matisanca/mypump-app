@@ -433,28 +433,33 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
     fun musculoDePatron(p: String?): String? = verdadero(p)?.let { musculoDelPatron[it] }
 
     /**
-     * El músculo y el patrón de cada fila, por la clave del historial ([ClaveEjercicio]) de su nombre en castellano, que es lo
-     * que de verdad comparten dos ejercicios con nombres parecidos. Para no ofrecer entre «otros del mismo músculo» un nombre
-     * que el catálogo usa también para OTRO músculo (ver [compartidoConOtroMusculo]). Se arma una vez, la primera vez que
-     * hace falta: traducir las 873 filas lleva su tiempo, y el catálogo empaquetado se arma al abrir la app.
+     * El músculo y el patrón de cada fila, y el patrón que nombra, por la clave del historial ([ClaveEjercicio]) de su nombre
+     * en castellano, que es lo que de verdad comparten dos ejercicios con nombres parecidos. Para no ofrecer entre «otros del
+     * mismo músculo» el nombre de otro ejercicio (ver [nombreDeOtroEjercicio]). Se arma una vez, la primera vez que hace
+     * falta: traducir las 873 filas lleva su tiempo, y el catálogo empaquetado se arma al abrir la app.
      */
-    private val usosDelNombre: Map<String, List<Pair<String?, String?>>> by lazy {
-        HashMap<String, MutableList<Pair<String?, String?>>>().apply {
-            for (e in entradas) {
-                getOrPut(ClaveEjercicio.de(SustitucionEjercicios.castellano(e))) { mutableListOf() } += verdadero(e.primaryMuscle) to verdadero(e.patronMovimiento)
-            }
+    private val usosDelNombre: Map<String, UsosDeUnNombre> by lazy {
+        val filas = HashMap<String, MutableList<Pair<String?, String?>>>()
+        for (e in entradas) {
+            filas.getOrPut(ClaveEjercicio.de(SustitucionEjercicios.castellano(e))) { mutableListOf() } += verdadero(e.primaryMuscle) to verdadero(e.patronMovimiento)
         }
+        filas.mapValues { UsosDeUnNombre(it.value) }
     }
 
     /**
-     * El nombre del candidato (su clave del historial) lo usan en el catálogo filas de OTRO músculo, y entonces compartiría el
-     * historial con un ejercicio de otro músculo (revisión del 21-oct: entre los otros de hombros salían «Remo con barra» y
-     * «Remo en polea», los remos del deltoide posterior, con el nombre de los remos de espalda). Las filas de otro músculo
-     * con el MISMO patrón son el mismo movimiento y no cuentan: los fondos de pecho (Dips_-_Chest_Version) y los de tríceps
-     * son los mismos fondos. Igual que en iOS.
+     * El nombre del candidato es, en el catálogo, el de OTRO ejercicio de otro músculo, y compartiría con él el historial (que
+     * va por la clave del nombre). Cuenta si hay filas con ese nombre de otro músculo y otro patrón, y el candidato no es del
+     * patrón que tiene la mayoría de las filas con ese nombre: el movimiento que el nombre nombra (con un empate, no nombra a
+     * ninguno). Revisión del 21-oct: salen los remos del deltoide posterior de los otros de hombros («Remo con barra», «Remo
+     * en polea»: los nombres son de los remos de espalda) y «Curl de bíceps · Otro» (un curl invertido con disco). Se quedan
+     * los que son el mismo ejercicio cargado también en otro músculo (los fondos, la sentadilla búlgara, las zancadas) o que
+     * chocan con la traducción equivocada de otro que la app no ofrece (el cruce de poleas). Igual que en iOS.
      */
-    internal fun compartidoConOtroMusculo(s: SustitutoEjercicio): Boolean =
-        usosDelNombre[ClaveEjercicio.de(s.nombre)].orEmpty().any { (m, p) -> m != verdadero(s.musculo) && p != verdadero(s.patron) }
+    internal fun nombreDeOtroEjercicio(s: SustitutoEjercicio): Boolean {
+        val usos = usosDelNombre[ClaveEjercicio.de(s.nombre)] ?: return false
+        val deOtroMusculo = usos.filas.any { (m, p) -> m != verdadero(s.musculo) && p != verdadero(s.patron) }
+        return deOtroMusculo && usos.dominante != verdadero(s.patron)
+    }
 
     /** `_resolve`: slug explícito → slug de la URL de la imagen → reglas por nombre → nombre normalizado o alias exactos. */
     fun resolver(r: ReferenciaEjercicio): EntradaCatalogoEjercicio? {
@@ -500,9 +505,8 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
      * polea no le quedaba nada; Eric quería fondos). Es de la app, no de la web: van en su propia sección, debajo de las
      * variantes del mismo movimiento y sin repetirlas. Solo filas con su patrón (las sin clasificar no se ofrecen) y con un
      * patrón de ESE músculo (el de la mayoría de sus filas: así los encogimientos mal cargados como espalda media no
-     * aparecen para un remo), sin nombres que no se tradujeron ni el «Press» suelto, ni los que el catálogo usa también para
-     * otro músculo ([compartidoConOtroMusculo]), otro equipo primero, alfabético, sin repetir nombre+equipo, 30. Igual que en
-     * iOS.
+     * aparecen para un remo), sin nombres que no se tradujeron ni el «Press» suelto, ni el nombre de otro ejercicio
+     * ([nombreDeOtroEjercicio]), otro equipo primero, alfabético, sin repetir nombre+equipo, 30. Igual que en iOS.
      */
     fun otrosDelMismoMusculo(r: ReferenciaEjercicio): List<SustitutoEjercicio> {
         val original = resolver(r) ?: return emptyList()
@@ -516,7 +520,7 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
                     it.slugEn != original.slugEn && musculoDePatron(it.patronMovimiento) == musculo
             }
             .map { SustitutoEjercicio(it, mismoEquipo = it.equipment == original.equipment) }
-            .filter { it.nombre.isNotEmpty() && it.nombre != "Press" && it.nombre != it.nombreIngles && !compartidoConOtroMusculo(it) }
+            .filter { it.nombre.isNotEmpty() && it.nombre != "Press" && it.nombre != it.nombreIngles && !nombreDeOtroEjercicio(it) }
         val claves = candidatos.map { ColacionEspanol.clave(it.nombre) }
         val ordenados = SemanticaJs.ordenarEstable(candidatos.indices.toList()) { i, j ->
             val a = candidatos[i]
@@ -589,6 +593,18 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
             imagenes = ef.imagenesOriginales ?: ef.ejercicio.imagenes,
             catalogoSlug = verdadero(ef.slugOriginal) ?: verdadero(ef.ejercicio.imagenes?.matchedSlug),
         )
+    }
+}
+
+/**
+ * Las filas del catálogo con un mismo nombre (su clave del historial): el músculo y el patrón de cada una, y el patrón de la
+ * mayoría de las que tienen patrón, que es el movimiento que el nombre nombra (null sin patrones o con un empate).
+ */
+private class UsosDeUnNombre(val filas: List<Pair<String?, String?>>) {
+    val dominante: String? = run {
+        val cuentas = filas.mapNotNull { it.second }.groupingBy { it }.eachCount()
+        val maximo = cuentas.values.maxOrNull()
+        cuentas.filterValues { it == maximo }.keys.singleOrNull()
     }
 }
 

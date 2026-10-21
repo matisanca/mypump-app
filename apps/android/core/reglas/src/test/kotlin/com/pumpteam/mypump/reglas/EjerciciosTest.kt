@@ -373,12 +373,11 @@ class OtrosDelMismoMusculoTest {
     /**
      * Revisión del 21-oct, hallazgo 3: entre los otros de hombros salían «Remo con barra · Barra» (Barbell_Rear_Delt_Row) y
      * «Remo en polea · Polea» (Cable_Rope_Rear-Delt_Rows), con el nombre (y entonces el historial, que va por el nombre) de
-     * los remos de espalda; entre los de bíceps, «Curl de bíceps · Otro» (Reverse_Plate_Curls), un nombre que el catálogo
-     * usa también para filas de antebrazo y de abdominales. Los fondos de tríceps se quedan: la fila de pecho con ese nombre
-     * (Dips_-_Chest_Version) es el mismo movimiento. Gemela de la de iOS.
+     * los remos de espalda; entre los de bíceps, «Curl de bíceps · Otro» (Reverse_Plate_Curls), un curl invertido con disco
+     * que se llama como el curl de bíceps. Son el nombre de otro ejercicio y no se ofrecen. Gemela de la de iOS.
      */
     @Test
-    fun unNombreQueElCatalogoUsaParaOtroMusculoNoSeOfrece() {
+    fun unNombreDeOtroEjercicioNoSeOfrece() {
         val hombros = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre = "Elevaciones laterales", catalogoSlug = "Side_Lateral_Raise"))
         val nombres = hombros.map { "${it.nombre} · ${it.equipo}" }
         assertTrue("Remo con barra · Barra" !in nombres && "Remo en polea · Polea" !in nombres, nombres.toString())
@@ -389,15 +388,36 @@ class OtrosDelMismoMusculoTest {
         val triceps = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre = "Extensión en polea alta con barra", catalogoSlug = "Triceps_Pushdown"))
         assertTrue(triceps.any { it.nombre == "Fondos" && it.equipo == "Peso corporal" }, "los fondos de tríceps siguen")
         // En ninguna de las listas grabadas un otro comparte la clave del historial con una fila de otro músculo y otro
-        // movimiento.
+        // movimiento, salvo que sea del movimiento que el nombre nombra (el patrón de la mayoría de sus filas).
         val usos = cat.entradas.groupBy({ ClaveEjercicio.de(SustitucionEjercicios.castellano(it)) }, { it.primaryMuscle to it.patronMovimiento })
+        fun dominante(filas: List<Pair<String?, String?>>): String? {
+            val cuentas = filas.mapNotNull { it.second?.takeIf(String::isNotEmpty) }.groupingBy { it }.eachCount()
+            val maximo = cuentas.values.maxOrNull()
+            return cuentas.filterValues { it == maximo }.keys.singleOrNull()
+        }
         val slugs = Vectores.json(Vectores.publico("otros_mismo_musculo"))["listas"]!!.jsonObject.keys
         for (slug in slugs) {
             for (o in cat.otrosDelMismoMusculo(ReferenciaEjercicio(catalogoSlug = slug))) {
-                val ajenas = usos[ClaveEjercicio.de(o.nombre)].orEmpty().filter { (m, p) -> m != o.musculo && p != o.patron }
-                assertTrue(ajenas.isEmpty(), "$slug: «${o.nombre}» también es de $ajenas")
+                val filas = usos[ClaveEjercicio.de(o.nombre)].orEmpty()
+                val ajenas = filas.filter { (m, p) -> m != o.musculo && p != o.patron }
+                assertTrue(ajenas.isEmpty() || dominante(filas) == o.patron, "$slug: «${o.nombre}» es el nombre de otro ejercicio: $ajenas")
             }
         }
+    }
+
+    /**
+     * Y se quedan los que son el mismo ejercicio cargado también en otro músculo, o que chocan con la traducción equivocada de
+     * otro que la app no ofrece (revisión del 21-oct: la regla de f61c466 sacaba el cruce de poleas y el pullover de pecho, y
+     * la sentadilla búlgara y las zancadas de cuádriceps). Gemela de la de iOS.
+     */
+    @Test
+    fun elMismoEjercicioCargadoEnOtroMusculoSiSeOfrece() {
+        fun nombres(slug: String) = cat.otrosDelMismoMusculo(ReferenciaEjercicio(catalogoSlug = slug)).map { "${it.nombre} · ${it.equipo}" }
+        val pecho = nombres("Barbell_Bench_Press_-_Medium_Grip")
+        assertTrue("Cruce de poleas · Polea" in pecho && "Pullover con mancuernas · Mancuernas" in pecho, pecho.toString())
+        val piernas = nombres("Barbell_Squat")
+        assertTrue("Sentadilla búlgara · Otro" in piernas && "Zancadas · Barra" in piernas && "Zancadas · Máquina" in piernas, piernas.toString())
+        assertTrue("Fondos · Peso corporal" in nombres("Triceps_Pushdown"))
     }
 
     /**
