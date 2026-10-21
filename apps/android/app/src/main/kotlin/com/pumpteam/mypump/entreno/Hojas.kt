@@ -199,7 +199,9 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
                     Text("${opciones.size}/${todos.size}", style = Letras.caption.merge(Letras.cifras), color = c.textoSecundario)
                 }
             }
-            if (opciones.isEmpty()) {
+            // «Sin resultados» solo si tampoco hay entre los otros de abajo (revisión del 21-oct: buscar «fondos» en la
+            // extensión en polea lo decía arriba de los fondos).
+            if (opciones.isEmpty() && (busqueda.isEmpty() || otros.isEmpty())) {
                 item(key = "vacio") {
                     Text(
                         if (busqueda.isEmpty()) "No hay variantes equivalentes." else "Sin resultados para “$busqueda”.",

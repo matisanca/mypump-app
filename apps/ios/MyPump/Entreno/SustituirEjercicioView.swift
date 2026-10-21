@@ -51,7 +51,9 @@ struct SustituirEjercicioView: View {
                 }
 
                 Section {
-                    if opciones.isEmpty {
+                    // «Sin resultados» solo si tampoco hay entre los otros de abajo (revisión del 21-oct: buscar «fondos»
+                    // en la extensión en polea lo decía arriba de los fondos).
+                    if opciones.isEmpty && (busqueda.isEmpty || otros.isEmpty) {
                         Text(busqueda.isEmpty ? "No hay variantes equivalentes." : "Sin resultados para “\(busqueda)”.")
                             .foregroundStyle(.secondary)
                     }

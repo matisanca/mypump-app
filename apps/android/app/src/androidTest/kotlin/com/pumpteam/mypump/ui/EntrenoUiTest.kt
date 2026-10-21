@@ -250,6 +250,29 @@ class EntrenoUiTest : PruebaUi() {
         assertEquals(listOf("En lugar de Extensión tríceps en polea"), p.textosBajo(etiqueta("en-lugar-de")))
     }
 
+    /**
+     * Revisión del 21-oct (D24, hallazgo 5): buscar «fondos» en la extensión en polea decía «Sin resultados para “fondos”»
+     * arriba de los fondos que sí había entre los otros ejercicios. Solo se dice si no hay en ninguna lista. Gemela de
+     * testBuscarUnOtroEjercicioNoDiceSinResultados de iOS.
+     */
+    @Test
+    fun buscarUnOtroEjercicioNoDiceSinResultados() {
+        abrir()
+        p.tocar(etiqueta("ver-demo"))
+        p.tocar(etiqueta("dia-mar"))
+        abrirPaginaDelEjercicio("ex_111")
+        p.tocar(etiqueta("sustituir"))
+        p.nodo(etiqueta("hoja-sustituir"))
+        p.escribir(etiqueta("buscar-variante"), "fondos")
+        p.esperar("los fondos entre los otros") { p.textosBajo(etiqueta("otro-ejercicio")).firstOrNull() == "Fondos" }
+        assertFalse("dice «Sin resultados» con los fondos abajo", p.existe(etiqueta("sin-variantes")))
+        Telefono.captura("37-buscar-fondos-claro")
+        // Sin nada en ninguna de las dos, sí.
+        p.escribir(etiqueta("buscar-variante"), "fondoszzz")
+        p.nodo(texto("Sin resultados para “fondoszzz”."))
+        assertFalse(p.existe(etiqueta("otro-ejercicio")))
+    }
+
     /** SES-04: el descanso con −15 / +15 y saltar; al terminar suena y, a los 2 s, se cierra solo. */
     @Test
     fun elDescansoConMasMenosYSaltar() {

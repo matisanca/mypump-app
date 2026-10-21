@@ -65,9 +65,8 @@ final class EntrenoUITests: XCTestCase {
         return partes.count == 2 ? partes[0] * 60 + partes[1] : -1
     }
 
-    /// Mati, 20-oct (Eric, con la polea ocupada): a la extensión de tríceps en polea, debajo de las variantes del mismo
-    /// movimiento, le aparecen los otros ejercicios de tríceps (fondos incluidos), y uno de ellos sustituye igual.
-    func testLosOtrosDelMismoMusculoTambienSustituyen() throws {
+    /// La hoja «Sustituir» de la extensión de tríceps en polea del día 2 de la demo (la barra de la hoja).
+    private func abrirSustituirDeLaExtension() -> XCUIElement {
         app.terminate()
         app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "entreno"]
         app.launch()
@@ -83,6 +82,13 @@ final class EntrenoUITests: XCTestCase {
         sustituir.tap()
         let hoja = app.navigationBars["Sustituir ejercicio"]
         XCTAssertTrue(hoja.waitForExistence(timeout: 5), "No abrió la hoja de sustituir")
+        return hoja
+    }
+
+    /// Mati, 20-oct (Eric, con la polea ocupada): a la extensión de tríceps en polea, debajo de las variantes del mismo
+    /// movimiento, le aparecen los otros ejercicios de tríceps (fondos incluidos), y uno de ellos sustituye igual.
+    func testLosOtrosDelMismoMusculoTambienSustituyen() throws {
+        let hoja = abrirSustituirDeLaExtension()
         XCTAssertTrue(app.staticTexts["Otra variante u otro ejercicio de tríceps"].waitForExistence(timeout: 5), "El subtítulo no avisa de los otros ejercicios")
         // Primero el título (la lista es perezosa: al bajar hasta los fondos, el encabezado ya salió de la pantalla).
         let titulo = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Otros ejercicios de tríceps'")).firstMatch
@@ -98,6 +104,25 @@ final class EntrenoUITests: XCTestCase {
         XCTAssertTrue(hoja.waitForNonExistence(timeout: 5), "La hoja no se cerró")
         let sustituida = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fila-ejercicio' AND label CONTAINS 'Fondos'")).firstMatch
         XCTAssertTrue(sustituida.waitForExistence(timeout: 5), "El ejercicio no quedó sustituido por los fondos")
+    }
+
+    /// Revisión del 21-oct (D24, hallazgo 5): buscar «fondos» en la extensión en polea decía «Sin resultados para
+    /// “fondos”» arriba de los fondos que sí había entre los otros ejercicios. Solo se dice si no hay en ninguna lista.
+    func testBuscarUnOtroEjercicioNoDiceSinResultados() throws {
+        _ = abrirSustituirDeLaExtension()
+        let buscar = app.searchFields.firstMatch
+        XCTAssertTrue(buscar.waitForExistence(timeout: 5), "Sin la búsqueda")
+        buscar.tap()
+        buscar.typeText("fondos")
+        let fondos = app.buttons.matching(NSPredicate(format: "identifier == 'otro-ejercicio' AND label BEGINSWITH 'Fondos'")).firstMatch
+        XCTAssertTrue(fondos.waitForExistence(timeout: 5), "La búsqueda no encontró los fondos")
+        let sinResultados = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Sin resultados'")).firstMatch
+        XCTAssertFalse(sinResultados.exists, "Dice «Sin resultados» con los fondos abajo")
+        let a = XCTAttachment(screenshot: app.screenshot()); a.name = "buscar-fondos"; a.lifetime = .keepAlways; add(a)
+        // Sin nada en ninguna de las dos, sí.
+        buscar.typeText("zzz")
+        XCTAssertTrue(app.staticTexts["Sin resultados para “fondoszzz”."].waitForExistence(timeout: 5), "Sin resultados en las dos y no lo dice")
+        XCTAssertFalse(fondos.exists)
     }
 
     /// ENT-10 y VoiceOver: después de sustituir y fijar, la card de la lista lo dice (antes la etiqueta fija tapaba la
