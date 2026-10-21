@@ -277,7 +277,7 @@ envío a revisión de Google: se le pide el OK a Mati en el momento.
 El TestFlight 117 trae solo la hoja única de Salud. El que se manda lleva además los ajustes de porciones (D22), el
 descanso con Live Activity (D23), la foto con cámara y galería en un toque y los otros ejercicios del mismo músculo al
 sustituir (D24). El perfil App Store de `com.pumpteam.mypump.descanso` ya está en Codemagic (20-oct, ver
-`NATIVA_ESTADO.md`). Tag `nios-2.0.1-118`.
+`NATIVA_ESTADO.md`). Se manda el 119 (tag `nios-2.0.1-119`): el 118 más los arreglos de la revisión del 21-oct.
 
 Novedades (borrador):
 

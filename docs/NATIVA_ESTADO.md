@@ -261,6 +261,26 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **21-oct, revisión de D24 antes de la 2.0.1** (Mati: «hacelo y revisalo»). Una revisión con Opus encontró 7 problemas
+  en los otros del mismo músculo; se arreglaron 6 en las dos plataformas, cada uno con su prueba, y una segunda revisión
+  revisó los arreglos (e97d0d4…00da18b):
+  - «Sustituir» se habilita también con solo otros del mismo músculo (Fondos y Patada de tríceps no tenían variantes).
+  - Cada serie sabe con qué ejercicio se registró (`nombreRegistrado`): no hereda kg ni agarre de otro ejercicio, la tabla
+    sugiere el mismo kg que hereda la confirmación, y corregirla (RIR, lápiz y ✓, reconfirmar) la vuelve a mandar con su
+    ejercicio, evaluada contra ese ejercicio (de crunch en máquina a plancha ya no le borra el kg). `kgHeredable`
+    compara por nombre a propósito: dentro del mismo gesto el kg también cambia.
+  - Fuera de los otros, solo los 3 nombres que son otro ejercicio con la misma traducción (los remos de deltoide
+    posterior y Reverse_Plate_Curls): un nombre corresponde al patrón de la mayoría de sus filas, agrupadas por
+    `ClaveEjercicio`. Cruce de poleas, Pullover, Sentadilla búlgara y Zancadas siguen. 211 de 406 huellas cambiaron.
+  - Al reabrir «Cambiar», las listas son las del original; «Sin resultados» solo si las dos listas quedan vacías; en
+    Android los títulos de sección son encabezados.
+  - Las dos pruebas de Android que fallaban habían quedado viejas por la fecha (0b8a022, 72caaef).
+  - Pruebas finales: kit 508, JVM sin fallas, XCUITest 37 y Android instrumentadas 198 (0 fallas). La de Salud del
+    onboarding necesita la app desinstalada del simulador si ya se respondió el permiso.
+  - **Pendiente:** `esSinPeso` mira solo el nombre. Los crunch de máquina y de polea del catálogo se traducen «Crunch» y
+    quedan sin kg al sustituir (caso Sofía Ceppi, 21-oct, en la Capacitor). Tiene que mirar también el equipo del
+    catálogo.
+
 - **19/20-oct, lo que pidieron los clientes, con auditoría** (Mati: «arrancá hoy y dejalo todo listo… testeado y
   funcionando»; después, en esfuerzo máximo: «revisá lo que se fue haciendo en forma de auditoría, mejoralo y seguí»).
   - **IA:** Codex sin créditos hasta el 24-oct. La visión y el chat de la Mini usan Claude CLI con el plan Max hasta
