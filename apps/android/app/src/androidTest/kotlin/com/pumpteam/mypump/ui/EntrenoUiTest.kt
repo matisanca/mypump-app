@@ -241,6 +241,9 @@ class EntrenoUiTest : PruebaUi() {
         p.nodo(texto("Otra variante u otro ejercicio de tríceps"))
         // La ceja se ve en mayúsculas y TalkBack la lee como se escribe.
         assertEquals(listOf("OTROS EJERCICIOS DE TRÍCEPS", "Otros ejercicios de tríceps"), p.textosBajo(etiqueta("titulo-otros")))
+        // Y los títulos de las dos secciones son encabezados (revisión del 21-oct): TalkBack salta de uno a otro.
+        assertTrue("las variantes sin encabezado", p.encabezado(etiqueta("titulo-variantes")))
+        assertTrue("los otros sin encabezado", p.encabezado(etiqueta("titulo-otros")))
         Telefono.captura("35-otros-del-mismo-musculo-claro")
         p.tocar(texto("Fondos"))
         Telefono.captura("36-otros-fondos-elegido-claro")

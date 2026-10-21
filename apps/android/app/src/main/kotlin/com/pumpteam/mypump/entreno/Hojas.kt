@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -195,7 +196,8 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
             }
             item(key = "encabezado") {
                 Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = Espacio.xs), verticalAlignment = Alignment.CenterVertically) {
-                    Ceja("Variantes del mismo movimiento", Modifier.weight(1f))
+                    // Los títulos de las dos secciones son encabezados: TalkBack salta de uno a otro (revisión del 21-oct).
+                    Ceja("Variantes del mismo movimiento", Modifier.weight(1f).semantics { heading() }.testTag("titulo-variantes"))
                     Text("${opciones.size}/${todos.size}", style = Letras.caption.merge(Letras.cifras), color = c.textoSecundario)
                 }
             }
@@ -220,7 +222,10 @@ fun HojaSustituir(motor: ModeloEntreno, v: VistaEntreno, lugar: String, alCerrar
             if (otros.isNotEmpty()) {
                 item(key = "encabezado-otros") {
                     Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = Espacio.s), verticalAlignment = Alignment.CenterVertically) {
-                        Ceja(musculo?.let { "Otros ejercicios de $it" } ?: "Otros ejercicios del mismo músculo", Modifier.weight(1f).testTag("titulo-otros"))
+                        Ceja(
+                            musculo?.let { "Otros ejercicios de $it" } ?: "Otros ejercicios del mismo músculo",
+                            Modifier.weight(1f).semantics { heading() }.testTag("titulo-otros"),
+                        )
                         Text("${otros.size}/${todosOtros.size}", style = Letras.caption.merge(Letras.cifras), color = c.textoSecundario)
                     }
                 }

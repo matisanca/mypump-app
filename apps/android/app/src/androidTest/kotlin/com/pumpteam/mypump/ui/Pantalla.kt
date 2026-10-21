@@ -259,6 +259,9 @@ class Pantalla(private val esperaMs: Long = 15_000) {
 
     fun seleccionado(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.Selected) == true }
 
+    /** Es un encabezado para TalkBack (`heading()`, el `.isHeader` de iOS): se salta de uno a otro. */
+    fun encabezado(s: Selector): Boolean = leer(s) { n -> n.config.getOrNull(SemanticsProperties.Heading) != null }
+
     /** El estado que lee TalkBack después de la etiqueta (`stateDescription`, el `accessibilityValue` de iOS). */
     fun estado(s: Selector): String? = leer(s) { n -> n.config.getOrNull(SemanticsProperties.StateDescription) }
 
