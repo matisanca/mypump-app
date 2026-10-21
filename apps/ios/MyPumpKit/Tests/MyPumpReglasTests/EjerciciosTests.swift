@@ -423,6 +423,33 @@ struct OtrosDelMismoMusculoTests {
         #expect(huellas.count > 300, "casi todo el catálogo con patrón tiene otros del mismo músculo: \(huellas.count)")
     }
 
+    /// Revisión del 21-oct, hallazgo 3: entre los otros de hombros salían «Remo con barra · Barra» (Barbell_Rear_Delt_Row)
+    /// y «Remo en polea · Polea» (Cable_Rope_Rear-Delt_Rows), con el nombre (y entonces el historial, que va por el nombre)
+    /// de los remos de espalda; entre los de bíceps, «Curl de bíceps · Otro» (Reverse_Plate_Curls), un nombre que el
+    /// catálogo usa también para filas de antebrazo y de abdominales. Los fondos de tríceps se quedan: la fila de pecho con
+    /// ese nombre (Dips_-_Chest_Version) es el mismo movimiento.
+    @Test func unNombreQueElCatalogoUsaParaOtroMusculoNoSeOfrece() throws {
+        let (_, cat) = try cargarSustitutos(vectoresSustitutos)
+        let hombros = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: "Elevaciones laterales", imagenes: nil, catalogoSlug: "Side_Lateral_Raise"))
+        let nombres = hombros.map { "\($0.nombre) · \($0.equipo)" }
+        #expect(!nombres.contains("Remo con barra · Barra") && !nombres.contains("Remo en polea · Polea"), "\(nombres)")
+        #expect(!hombros.contains { $0.nombre.hasPrefix("Remo") }, "ningún remo del deltoide posterior con nombre de remo de espalda")
+        #expect(hombros.count >= 15, "a los hombros les quedan otros: \(hombros.count)")
+        let biceps = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: "Curl con barra", imagenes: nil, catalogoSlug: "Barbell_Curl"))
+        #expect(!biceps.contains { $0.nombre == "Curl de bíceps" }, "\(biceps.map(\.nombre))")
+        let triceps = cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: "Extensión en polea alta con barra", imagenes: nil, catalogoSlug: "Triceps_Pushdown"))
+        #expect(triceps.contains { $0.nombre == "Fondos" && $0.equipo == "Peso corporal" }, "los fondos de tríceps siguen")
+        // En ninguna de las listas grabadas un otro comparte nombre con una fila de otro músculo y otro movimiento.
+        var usos: [String: [(musculo: String?, patron: String?)]] = [:]
+        for e in cat.entradas { usos[SustitucionEjercicios.castellano(e), default: []].append((e.primaryMuscle, e.patronMovimiento)) }
+        for slug in Self.slugsVector {
+            for o in cat.otrosDelMismoMusculo(ReferenciaEjercicio(nombre: nil, imagenes: nil, catalogoSlug: slug)) {
+                let ajenas = (usos[o.nombre] ?? []).filter { $0.musculo != o.musculo && $0.patron != o.patron }
+                #expect(ajenas.isEmpty, "\(slug): «\(o.nombre)» también es de \(ajenas)")
+            }
+        }
+    }
+
     @Test func sinPatronNoSeOfreceNada() throws {
         let (_, cat) = try cargarSustitutos(vectoresSustitutos)
         // Sin clasificar en el catálogo (como en la web, sin patrón no hay sustitutos): ni variantes ni otros.

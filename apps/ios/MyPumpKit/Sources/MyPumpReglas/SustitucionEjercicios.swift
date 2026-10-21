@@ -422,6 +422,11 @@ public struct CatalogoEjercicios: Sendable {
     /// Para «otros del mismo músculo»: una fila mal clasificada (encogimientos como espalda media) no se ofrece, porque
     /// su patrón es de otro músculo.
     private let musculoDelPatron: [ClaveJS: String]
+    /// El músculo y el patrón de cada fila, por su nombre en castellano (el que se muestra y el que se registra: la clave
+    /// del historial). Para no ofrecer entre «otros del mismo músculo» un nombre que el catálogo usa también para OTRO
+    /// músculo (ver `compartidoConOtroMusculo`). Se arma una vez, la primera vez que hace falta: traducir las 873 filas son
+    /// unos 20 ms, y el catálogo empaquetado se arma al abrir la app.
+    private let usosDelNombre: UnaVez<[ClaveJS: [(musculo: String?, patron: String?)]]>
 
     public init(_ entradas: [EntradaCatalogoEjercicio]) {
         self.entradas = entradas
@@ -438,6 +443,22 @@ public struct CatalogoEjercicios: Sendable {
         musculoDelPatron = cuentas.mapValues { lista in
             lista.reduce(lista[0]) { mejor, x in x.filas > mejor.filas ? x : mejor }.musculo
         }
+        usosDelNombre = UnaVez {
+            var usos: [ClaveJS: [(musculo: String?, patron: String?)]] = [:]
+            for e in entradas {
+                usos[ClaveJS(SustitucionEjercicios.castellano(e)), default: []].append((verdadero(e.primaryMuscle), verdadero(e.patronMovimiento)))
+            }
+            return usos
+        }
+    }
+
+    /// El nombre del candidato lo usan en el catálogo filas de OTRO músculo, y entonces compartiría el historial (que va
+    /// por el nombre) con un ejercicio de otro músculo (revisión del 21-oct: entre los otros de hombros salían «Remo con
+    /// barra» y «Remo en polea», los remos del deltoide posterior, con el nombre de los remos de espalda). Las filas de otro
+    /// músculo con el MISMO patrón son el mismo movimiento y no cuentan: los fondos de pecho (Dips_-_Chest_Version) y los
+    /// de tríceps son los mismos fondos.
+    func compartidoConOtroMusculo(_ s: SustitutoEjercicio) -> Bool {
+        (usosDelNombre.valor[ClaveJS(s.nombre)] ?? []).contains { !igualJS($0.musculo, verdadero(s.musculo)) && !igualJS($0.patron, verdadero(s.patron)) }
     }
 
     /// El músculo de un patrón (el de la mayoría de sus filas).
@@ -500,8 +521,8 @@ public struct CatalogoEjercicios: Sendable {
     /// polea no le quedaba nada; Eric quería fondos). Es de la app, no de la web: van en su propia sección, debajo de las
     /// variantes del mismo movimiento y sin repetirlas. Solo filas con su patrón (las sin clasificar no se ofrecen) y con
     /// un patrón de ESE músculo (el de la mayoría de sus filas: así los encogimientos mal cargados como espalda media no
-    /// aparecen para un remo), sin nombres que no se tradujeron ni el «Press» suelto, otro equipo primero, alfabético, sin
-    /// repetir nombre+equipo, 30.
+    /// aparecen para un remo), sin nombres que no se tradujeron ni el «Press» suelto, ni los que el catálogo usa también
+    /// para otro músculo (`compartidoConOtroMusculo`), otro equipo primero, alfabético, sin repetir nombre+equipo, 30.
     public func otrosDelMismoMusculo(_ r: ReferenciaEjercicio) -> [SustitutoEjercicio] {
         guard let original = resolver(r), let patron = verdadero(original.patronMovimiento),
               verdadero(original.primaryMuscle) != nil else { return [] }
@@ -516,7 +537,7 @@ public struct CatalogoEjercicios: Sendable {
             .map { SustitutoEjercicio($0, mismoEquipo: igualJS($0.equipment, original.equipment)) }
             .filter { s in
                 let n = s.nombre
-                return !n.isEmpty && n != "Press" && !igualJS(n, s.nombreIngles)
+                return !n.isEmpty && n != "Press" && !igualJS(n, s.nombreIngles) && !compartidoConOtroMusculo(s)
             }
         let ordenados = candidatos.enumerated().sorted { a, b in
             if a.element.mismoEquipo != b.element.mismoEquipo { return !a.element.mismoEquipo }
@@ -591,6 +612,24 @@ private func incluyeJS(_ texto: String, _ buscado: String) -> Bool {
     guard !b.isEmpty else { return true }
     guard b.count <= t.count else { return false }
     return (0...(t.count - b.count)).contains { t[$0..<($0 + b.count)].elementsEqual(b) }
+}
+
+/// Un valor que se calcula una sola vez, la primera vez que se pide (y se comparte entre las copias del catálogo).
+private final class UnaVez<Valor: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var calculado: Valor?
+    private let calcular: @Sendable () -> Valor
+
+    init(_ calcular: @escaping @Sendable () -> Valor) { self.calcular = calcular }
+
+    var valor: Valor {
+        lock.withLock {
+            if let v = calculado { return v }
+            let v = calcular()
+            calculado = v
+            return v
+        }
+    }
 }
 
 /// Clave de diccionario con la igualdad de JS: `byId[slug]` y el dedup de nombre+equipo.

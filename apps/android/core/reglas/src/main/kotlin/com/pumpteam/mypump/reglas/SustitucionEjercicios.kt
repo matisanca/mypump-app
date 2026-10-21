@@ -432,6 +432,28 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
     /** El músculo de un patrón (el de la mayoría de sus filas). */
     fun musculoDePatron(p: String?): String? = verdadero(p)?.let { musculoDelPatron[it] }
 
+    /**
+     * El músculo y el patrón de cada fila, por su nombre en castellano (el que se muestra y el que se registra: la clave del
+     * historial). Para no ofrecer entre «otros del mismo músculo» un nombre que el catálogo usa también para OTRO músculo
+     * (ver [compartidoConOtroMusculo]). Se arma una vez, la primera vez que hace falta: traducir las 873 filas lleva su
+     * tiempo, y el catálogo empaquetado se arma al abrir la app.
+     */
+    private val usosDelNombre: Map<String, List<Pair<String?, String?>>> by lazy {
+        HashMap<String, MutableList<Pair<String?, String?>>>().apply {
+            for (e in entradas) getOrPut(SustitucionEjercicios.castellano(e)) { mutableListOf() } += verdadero(e.primaryMuscle) to verdadero(e.patronMovimiento)
+        }
+    }
+
+    /**
+     * El nombre del candidato lo usan en el catálogo filas de OTRO músculo, y entonces compartiría el historial (que va por
+     * el nombre) con un ejercicio de otro músculo (revisión del 21-oct: entre los otros de hombros salían «Remo con barra» y
+     * «Remo en polea», los remos del deltoide posterior, con el nombre de los remos de espalda). Las filas de otro músculo
+     * con el MISMO patrón son el mismo movimiento y no cuentan: los fondos de pecho (Dips_-_Chest_Version) y los de tríceps
+     * son los mismos fondos. Igual que en iOS.
+     */
+    internal fun compartidoConOtroMusculo(s: SustitutoEjercicio): Boolean =
+        usosDelNombre[s.nombre].orEmpty().any { (m, p) -> m != verdadero(s.musculo) && p != verdadero(s.patron) }
+
     /** `_resolve`: slug explícito → slug de la URL de la imagen → reglas por nombre → nombre normalizado o alias exactos. */
     fun resolver(r: ReferenciaEjercicio): EntradaCatalogoEjercicio? {
         if (entradas.isEmpty()) return null
@@ -476,8 +498,9 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
      * polea no le quedaba nada; Eric quería fondos). Es de la app, no de la web: van en su propia sección, debajo de las
      * variantes del mismo movimiento y sin repetirlas. Solo filas con su patrón (las sin clasificar no se ofrecen) y con un
      * patrón de ESE músculo (el de la mayoría de sus filas: así los encogimientos mal cargados como espalda media no
-     * aparecen para un remo), sin nombres que no se tradujeron ni el «Press» suelto, otro equipo primero, alfabético, sin
-     * repetir nombre+equipo, 30. Igual que en iOS.
+     * aparecen para un remo), sin nombres que no se tradujeron ni el «Press» suelto, ni los que el catálogo usa también para
+     * otro músculo ([compartidoConOtroMusculo]), otro equipo primero, alfabético, sin repetir nombre+equipo, 30. Igual que en
+     * iOS.
      */
     fun otrosDelMismoMusculo(r: ReferenciaEjercicio): List<SustitutoEjercicio> {
         val original = resolver(r) ?: return emptyList()
@@ -491,7 +514,7 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
                     it.slugEn != original.slugEn && musculoDePatron(it.patronMovimiento) == musculo
             }
             .map { SustitutoEjercicio(it, mismoEquipo = it.equipment == original.equipment) }
-            .filter { it.nombre.isNotEmpty() && it.nombre != "Press" && it.nombre != it.nombreIngles }
+            .filter { it.nombre.isNotEmpty() && it.nombre != "Press" && it.nombre != it.nombreIngles && !compartidoConOtroMusculo(it) }
         val claves = candidatos.map { ColacionEspanol.clave(it.nombre) }
         val ordenados = SemanticaJs.ordenarEstable(candidatos.indices.toList()) { i, j ->
             val a = candidatos[i]
