@@ -97,4 +97,24 @@ struct SustituirOtrosTests {
         let s4 = try #require(await carga(3))
         #expect(s4["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s4["peso"] == .numero(30) && s4["notas"]?.comoTexto == "Soga", "\(s4)")
     }
+
+    /// Hallazgo 4: con un plan sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios), al reabrir
+    /// «Cambiar» después de pasar la extensión en polea a fondos, las listas se armaban sobre los fondos: sin foto del
+    /// original, `referencia(de:)` caía en la del sustituto.
+    @Test func alReabrirCambiarLasListasSonLasDelOriginal() async throws {
+        let b = Banco()
+        let m = modeloOtros(b)
+        let lugar = "ext-d1-0"
+        let plan = try #require(m.dia.ejercicio(lugar))
+        #expect(plan.imagenes == nil && plan.catalogoSlug == nil, "el plan no trae fotos ni slug")
+        let variantes = m.sustitutos(lugar), otros = m.otrosDelMismoMusculo(lugar)
+        #expect(!variantes.isEmpty && !otros.isEmpty)
+        let fondos = try #require(otros.first { $0.nombre == "Fondos" && $0.equipo == "Peso corporal" })
+        await m.sustituir(lugar, por: fondos, fijar: true)
+        let ef = m.efectivo(plan)
+        #expect(ef.sustituido && ef.ejercicio.imagenes?.eccentric != nil, "el sustituto sí trae foto")
+        #expect(m.sustitutos(lugar) == variantes, "las variantes son las de la extensión: \(m.sustitutos(lugar).map(\.nombre))")
+        #expect(m.otrosDelMismoMusculo(lugar) == otros, "los otros son los de la extensión")
+        #expect(m.tarjeta(lugar)?.puedeSustituir == true)
+    }
 }

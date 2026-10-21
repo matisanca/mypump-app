@@ -125,11 +125,19 @@ private fun diferenciaEfectivo(js: JsonObject?, ef: EjercicioEfectivo): String? 
 private fun fallasCasos(v: ArchivoSustitutos, cat: CatalogoEjercicios): List<String> {
     val fallas = mutableListOf<String>()
     fun lista(slug: String?) = slug?.let { v.listas[it] } ?: emptyList()
+    // Sobre qué armó la web las listas de cada ejercicio sin sustituir: con el lugar sustituido, la app arma las mismas.
+    val antesDeSustituir = HashMap<Int, String?>()
+    for (c in v.casos) {
+        if (c["sw"] !is JsonObject && c["directo"] != JsonPrimitive(true) && c["excluido"] != JsonPrimitive(true)) {
+            antesDeSustituir[c["e"]!!.jsonPrimitive.int] = texto(c["resueltoUI"])
+        }
+    }
     for (c in v.casos) {
         val crudo = v.ejercicios[c["e"]!!.jsonPrimitive.int]
         val ex = Ejercicio.desde(crudo)
         val quien = "#${c["e"]} ${ex.nombre.debug()}"
         val ef: EjercicioEfectivo
+        var sw: SustitucionAplicada? = null
         if (c["directo"] == JsonPrimitive(true)) {
             ef = EjercicioEfectivo(ejercicio = ex, nombreOriginal = texto(crudo["_origNombre"]),
                 imagenesOriginales = imagenes(crudo["_origImages"]), slugOriginal = texto(crudo["_origSlug"]))
@@ -138,7 +146,7 @@ private fun fallasCasos(v: ArchivoSustitutos, cat: CatalogoEjercicios): List<Str
             val r = cat.resolver(ex)
             if (r?.slugEn != resuelto) fallas += "$quien: _resolve web $resuelto, kotlin ${r?.slugEn}"
             diferencia(cat.sustitutos(ReferenciaEjercicio(ex)), lista(resuelto), cat, v.traducciones)?.let { fallas += "$quien: findSubstitutes $it" }
-            val sw = (c["sw"] as? JsonObject)?.let {
+            sw = (c["sw"] as? JsonObject)?.let {
                 SustitucionAplicada(slug = texto(it["slug"]), nombre = texto(it["nombre"]) ?: "", equipo = texto(it["equipment"]),
                     imagenes = imagenes(it["images"]), fijado = it["fijado"] == JsonPrimitive(true))
             }
@@ -146,15 +154,22 @@ private fun fallasCasos(v: ArchivoSustitutos, cat: CatalogoEjercicios): List<Str
             diferenciaEfectivo(c["efectivo"] as? JsonObject, ef)?.let { fallas += "$quien${if (sw == null) "" else " sustituido"}: getEffectiveEx $it" }
         }
         val subs = cat.sustitutos(ef)
+        // Desvío a propósito (revisión del 21-oct): con el lugar sustituido, las listas son las de antes de sustituir
+        // ([CatalogoEjercicios.referenciaDeLasListas]). La web, con un plan sin fotos, las arma sobre la foto del sustituto
+        // (`_origImages || images`) y al reabrir «Cambiar» ofrece las del sustituto. El `orig` de la web sigue igual.
+        val resueltoUi = texto(c["resueltoUI"])
+        val e = c["e"]!!.jsonPrimitive.int
+        val esperado = if (sw == null || e !in antesDeSustituir) resueltoUi else antesDeSustituir[e]
         if (c["excluido"] == JsonPrimitive(true)) {
             if (subs.isNotEmpty()) fallas += "$quien: calentamiento o cardio con ${subs.size} sustitutos"
         } else {
-            val resueltoUi = texto(c["resueltoUI"])
             val r = cat.resolver(CatalogoEjercicios.referencia(ef))
             if (r?.slugEn != resueltoUi) fallas += "$quien: exGetSubs resolvió web $resueltoUi, kotlin ${r?.slugEn}"
-            diferencia(subs, lista(resueltoUi), cat, v.traducciones)?.let { fallas += "$quien: exGetSubs $it" }
+            val rl = cat.resolver(cat.referenciaDeLasListas(ef))
+            if (rl?.slugEn != esperado) fallas += "$quien: las listas van sobre ${rl?.slugEn} y no $esperado"
+            diferencia(subs, lista(esperado), cat, v.traducciones)?.let { fallas += "$quien: exGetSubs $it" }
         }
-        if (subs.size != c["subs"]!!.jsonPrimitive.int) fallas += "$quien: exGetSubs da ${subs.size}, la web ${c["subs"]}"
+        if (subs.size != (if (sw == null) c["subs"]!!.jsonPrimitive.int else lista(esperado).size)) fallas += "$quien: exGetSubs da ${subs.size}, la web ${c["subs"]}"
     }
     return fallas
 }
@@ -284,6 +299,8 @@ class SustitucionEjerciciosTest {
         assertTrue(v.casos.any { it["sw"] is JsonObject } && v.casos.any { it["directo"] == JsonPrimitive(true) } &&
             v.casos.any { it["excluido"] == JsonPrimitive(true) })
         assertEquals(emptyList<String>(), fallas.take(5), "${fallas.size} de ${v.casos.size}")
+        // El desvío de `referencia`: la web sigue armando sobre el sustituto los de un plan sin fotos.
+        assertTrue(v.casos.count { it["sw"] is JsonObject && texto(it["resueltoUI"]) != texto(it["resuelto"]) } > 50, "la web ya arma las listas sobre el original: sacar el desvío")
     }
 
     @Test

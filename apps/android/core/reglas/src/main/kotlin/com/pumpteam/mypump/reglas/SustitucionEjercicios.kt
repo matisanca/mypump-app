@@ -528,7 +528,7 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
     /** Los otros del mismo músculo para la tarjeta, resueltos sobre el original (como [sustitutos]). */
     fun otrosDelMismoMusculo(ef: EjercicioEfectivo): List<SustitutoEjercicio> {
         if (ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio") return emptyList()
-        return otrosDelMismoMusculo(referencia(ef))
+        return otrosDelMismoMusculo(referenciaDeLasListas(ef))
     }
 
     /** `getEffectiveEx(ex)` con `STATE.exerciseSwaps[ex.id]` = [sustitucion]. */
@@ -557,7 +557,21 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
     /** `exGetSubs`: los sustitutos que ofrece la tarjeta, resueltos sobre el original. Ni calentamiento ni cardio. */
     fun sustitutos(ef: EjercicioEfectivo): List<SustitutoEjercicio> {
         if (ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio") return emptyList()
-        return sustitutos(referencia(ef))
+        return sustitutos(referenciaDeLasListas(ef))
+    }
+
+    /**
+     * Sobre qué se arman las dos listas de «Sustituir»: el `orig` de `exGetSubs` ([referencia]) y, con el lugar sustituido,
+     * el del original tal como estaba antes de sustituir (su nombre, su slug y sus fotos o las del catálogo), así al reabrir
+     * «Cambiar» las listas son las mismas. Desvío a propósito de la web (revisión del 21-oct): con un plan sin fotos (la demo,
+     * que es la que mira Apple, o la cuenta test-nativa-ios) `_origImages || images` caía en la foto del sustituto, y después
+     * de pasar la extensión en polea a fondos las listas eran las de los fondos. Igual que en iOS.
+     */
+    fun referenciaDeLasListas(ef: EjercicioEfectivo): ReferenciaEjercicio {
+        if (!ef.sustituido) return referencia(ef)
+        // El del plan con el nombre y las fotos del sustituto: se le devuelven los suyos.
+        val plan = ef.ejercicio.copy(nombre = ef.nombreOriginal ?: "", imagenes = ef.imagenesOriginales)
+        return referencia(efectivo(plan, null))
     }
 
     companion object {

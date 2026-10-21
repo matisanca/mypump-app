@@ -108,4 +108,27 @@ class SustituirOtrosTest {
             "$s4",
         )
     }
+
+    /**
+     * Hallazgo 4: con un plan sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios), al reabrir
+     * «Cambiar» después de pasar la extensión en polea a fondos, las listas se armaban sobre los fondos: sin foto del
+     * original, `referencia` caía en la del sustituto.
+     */
+    @Test
+    fun alReabrirCambiarLasListasSonLasDelOriginal() = enUnHilo { alcance ->
+        val m = Banco(alcance).modeloOtros(alcance)
+        val lugar = "ext-d1-0"
+        val plan = m.dia.value.ejercicio(lugar)!!
+        assertTrue(plan.imagenes == null && plan.catalogoSlug == null, "el plan no trae fotos ni slug")
+        val variantes = m.sustitutos(lugar)
+        val otros = m.otrosDelMismoMusculo(lugar)
+        assertTrue(variantes.isNotEmpty() && otros.isNotEmpty())
+        val fondos = otros.first { it.nombre == "Fondos" && it.equipo == "Peso corporal" }
+        m.sustituir(lugar, fondos, fijar = true)
+        val ef = m.efectivo(plan)
+        assertTrue(ef.sustituido && ef.ejercicio.imagenes?.eccentric != null, "el sustituto sí trae foto")
+        assertEquals(variantes, m.sustitutos(lugar), "las variantes son las de la extensión")
+        assertEquals(otros, m.otrosDelMismoMusculo(lugar), "los otros son los de la extensión")
+        assertTrue(m.tarjeta(lugar)!!.puedeSustituir)
+    }
 }

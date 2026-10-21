@@ -555,7 +555,7 @@ public struct CatalogoEjercicios: Sendable {
     /// Los otros del mismo músculo para la tarjeta, resueltos sobre el original (como `sustitutos(de:)`).
     public func otrosDelMismoMusculo(de ef: EjercicioEfectivo) -> [SustitutoEjercicio] {
         if ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio" { return [] }
-        return otrosDelMismoMusculo(Self.referencia(de: ef))
+        return otrosDelMismoMusculo(referenciaDeLasListas(ef))
     }
 
     /// `getEffectiveEx(ex)` con `STATE.exerciseSwaps[ex.id]` = `sustitucion`.
@@ -577,7 +577,20 @@ public struct CatalogoEjercicios: Sendable {
     /// `exGetSubs`: los sustitutos que ofrece la tarjeta, resueltos sobre el original. Ni calentamiento ni cardio.
     public func sustitutos(de ef: EjercicioEfectivo) -> [SustitutoEjercicio] {
         if ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio" { return [] }
-        return sustitutos(Self.referencia(de: ef))
+        return sustitutos(referenciaDeLasListas(ef))
+    }
+
+    /// Sobre qué se arman las dos listas de «Sustituir»: el `orig` de `exGetSubs` (`referencia(de:)`) y, con el lugar
+    /// sustituido, el del original tal como estaba antes de sustituir (su nombre, su slug y sus fotos o las del catálogo),
+    /// así al reabrir «Cambiar» las listas son las mismas. Desvío a propósito de la web (revisión del 21-oct): con un plan
+    /// sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios) `_origImages || images` caía en la foto
+    /// del sustituto, y después de pasar la extensión en polea a fondos las listas eran las de los fondos.
+    public func referenciaDeLasListas(_ ef: EjercicioEfectivo) -> ReferenciaEjercicio {
+        guard ef.sustituido else { return Self.referencia(de: ef) }
+        var plan = ef.ejercicio   // el del plan con el nombre y las fotos del sustituto: se le devuelven los suyos
+        plan.nombre = ef.nombreOriginal ?? ""
+        plan.imagenes = ef.imagenesOriginales
+        return Self.referencia(de: efectivo(plan, sustitucion: nil))
     }
 
     /// El `orig` de `exGetSubs`: `{nombre: _origNombre || nombre, images: _origImages || images,

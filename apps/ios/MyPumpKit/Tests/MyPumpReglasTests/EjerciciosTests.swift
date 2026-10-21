@@ -140,11 +140,15 @@ func diferenciaEfectivo(_ js: JSONValue?, _ ef: EjercicioEfectivo) -> String? {
 func fallasCasos(_ v: ArchivoSustitutos, _ cat: CatalogoEjercicios) throws -> [String] {
     var fallas: [String] = []
     func lista(_ slug: String?) -> [[Int]] { slug.flatMap { v.listas[$0] } ?? [] }
+    // Sobre qué armó la web las listas de cada ejercicio sin sustituir: con el lugar sustituido, la app arma las mismas.
+    var antesDeSustituir: [Int: String?] = [:]
+    for c in v.casos where c.sw == nil && c.directo != true && c.excluido != true { antesDeSustituir[c.e] = c.resueltoUI }
     for c in v.casos {
         let crudo = v.ejercicios[c.e]
         let ex = try JSONDecoder().decode(Ejercicio.self, from: JSONEncoder().encode(crudo))
         let quien = "#\(c.e) \(ex.nombre.debugDescription)"
         let ef: EjercicioEfectivo
+        var sw: SustitucionAplicada?
         if c.directo == true {
             ef = EjercicioEfectivo(ejercicio: ex, nombreOriginal: crudo["_origNombre"]?.comoTexto,
                                    imagenesOriginales: try imagenes(crudo["_origImages"]), slugOriginal: crudo["_origSlug"]?.comoTexto)
@@ -154,7 +158,7 @@ func fallasCasos(_ v: ArchivoSustitutos, _ cat: CatalogoEjercicios) throws -> [S
             if let d = diferencia(cat.sustitutos(ReferenciaEjercicio(ex)), lista(c.resuelto), cat, v.traducciones) {
                 fallas.append("\(quien): findSubstitutes \(d)")
             }
-            let sw = try c.sw.map {
+            sw = try c.sw.map {
                 SustitucionAplicada(slug: $0["slug"]?.comoTexto, nombre: $0["nombre"]?.comoTexto ?? "", equipo: $0["equipment"]?.comoTexto,
                                     imagenes: try imagenes($0["images"]), fijado: $0["fijado"] == .bool(true))
             }
@@ -162,14 +166,20 @@ func fallasCasos(_ v: ArchivoSustitutos, _ cat: CatalogoEjercicios) throws -> [S
             if let d = diferenciaEfectivo(c.efectivo, ef) { fallas.append("\(quien)\(sw == nil ? "" : " sustituido"): getEffectiveEx \(d)") }
         }
         let subs = cat.sustitutos(de: ef)
+        // Desvío a propósito (revisión del 21-oct): con el lugar sustituido, las listas son las de antes de sustituir
+        // (`referenciaDeLasListas`). La web, con un plan sin fotos, las arma sobre la foto del sustituto
+        // (`_origImages || images`) y al reabrir «Cambiar» ofrece las del sustituto. El `orig` de la web sigue igual.
+        let esperado: String? = sw == nil ? c.resueltoUI : (antesDeSustituir[c.e] ?? c.resueltoUI)
         if c.excluido == true {
             if !subs.isEmpty { fallas.append("\(quien): calentamiento o cardio con \(subs.count) sustitutos") }
         } else {
             let r = cat.resolver(CatalogoEjercicios.referencia(de: ef))
             if !exacto(r?.slugEn, c.resueltoUI) { fallas.append("\(quien): exGetSubs resolvió web \(c.resueltoUI ?? "null"), swift \(r?.slugEn ?? "null")") }
-            if let d = diferencia(subs, lista(c.resueltoUI), cat, v.traducciones) { fallas.append("\(quien): exGetSubs \(d)") }
+            let rl = cat.resolver(cat.referenciaDeLasListas(ef))
+            if !exacto(rl?.slugEn, esperado) { fallas.append("\(quien): las listas van sobre \(rl?.slugEn ?? "null") y no \(esperado ?? "null")") }
+            if let d = diferencia(subs, lista(esperado), cat, v.traducciones) { fallas.append("\(quien): exGetSubs \(d)") }
         }
-        if subs.count != c.subs { fallas.append("\(quien): exGetSubs da \(subs.count), la web \(c.subs)") }
+        if subs.count != (sw == nil ? c.subs : lista(esperado).count) { fallas.append("\(quien): exGetSubs da \(subs.count), la web \(c.subs)") }
     }
     return fallas
 }
@@ -292,6 +302,8 @@ struct SustitucionVectoresTests {
         #expect(v.casos.count > 250)
         #expect(v.casos.contains { $0.sw != nil } && v.casos.contains { $0.directo == true } && v.casos.contains { $0.excluido == true })
         #expect(fallas.isEmpty, "\(fallas.count) de \(v.casos.count): \(fallas.prefix(5))")
+        // El desvío de `referencia(de:)`: la web sigue armando sobre el sustituto los de un plan sin fotos.
+        #expect(v.casos.filter { $0.sw != nil && !exacto($0.resueltoUI, $0.resuelto) }.count > 50, "la web ya arma las listas sobre el original: sacar el desvío")
     }
 
     @Test(.enabled(if: FileManager.default.fileExists(atPath: carpetaPrivada.appendingPathComponent("sustitutos_ejercicio.json").path)))
