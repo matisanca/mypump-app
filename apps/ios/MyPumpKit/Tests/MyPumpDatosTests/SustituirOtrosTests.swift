@@ -145,6 +145,13 @@ struct SustituirOtrosTests {
         await m.confirmarSerie(lugar, 0) { _ in true }
         let s1 = try #require(await carga(0))
         #expect(s1["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s1["peso"] == .numero(32) && s1["notas"]?.comoTexto == "Soga", "\(s1)")
+        // Y otra vez el lápiz y el ✓, sin tocar nada: sigue siendo de la extensión, con su agarre.
+        await m.editarSerie(lugar, 0)
+        await m.confirmarSerie(lugar, 0) { _ in true }
+        let otraVez = try #require(await carga(0))
+        #expect(otraVez["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && otraVez["peso"] == .numero(32)
+                    && otraVez["notas"]?.comoTexto == "Soga", "\(otraVez)")
+        #expect(m.dia.ejercicios[lugar]?.series[0].nombreRegistrado == "Extensión tríceps en polea")
 
         // La serie 3 con los fondos y después de vuelta a la polea: su RIR va como fondos, sin el agarre de la polea.
         m.escribir(lugar, 2, campo: "reps", valor: "10")

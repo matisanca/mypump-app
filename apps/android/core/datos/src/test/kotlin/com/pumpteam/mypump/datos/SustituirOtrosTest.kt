@@ -168,6 +168,16 @@ class SustituirOtrosTest {
             s1["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s1["peso"] == ValorJson.Numero(32.0) && s1["notas"]?.comoTexto == "Soga",
             "$s1",
         )
+        // Y otra vez el lápiz y el ✓, sin tocar nada: sigue siendo de la extensión, con su agarre.
+        m.editarSerie(lugar, 0)
+        m.confirmarSerie(lugar, 0) { true }
+        val otraVez = carga(0)!!
+        assertTrue(
+            otraVez["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && otraVez["peso"] == ValorJson.Numero(32.0) &&
+                otraVez["notas"]?.comoTexto == "Soga",
+            "$otraVez",
+        )
+        assertEquals("Extensión tríceps en polea", m.dia.value.ejercicios[lugar]!!.series[0].nombreRegistrado)
 
         // La serie 3 con los fondos y después de vuelta a la polea: su RIR va como fondos, sin el agarre de la polea.
         m.escribir(lugar, 2, "reps", "10")
