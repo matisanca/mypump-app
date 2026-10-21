@@ -52,6 +52,22 @@ def foto(cur):
     return tablas, dict(cur.fetchall())
 
 
+def columnas(cur):
+    """Las columnas de las tablas mypump_* (nativa_005 agrega una a una tabla que ya existe)."""
+    cur.execute("""SELECT table_name || '.' || column_name || ' ' || data_type FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name LIKE 'mypump%' ORDER BY 1""")
+    return [r[0] for r in cur.fetchall()]
+
+
+def filas(cur, tablas):
+    """Cuántas filas tiene cada tabla: ninguna puede perder (no se borra nada)."""
+    out = {}
+    for t in tablas:
+        cur.execute(f'SELECT count(*) FROM public."{t}"')
+        out[t] = cur.fetchone()[0]
+    return out
+
+
 def chequeos_001(cur, token, otro):
     """nativa_001: recibo, conteos y palanca remota."""
     print("▸ Conteos")
@@ -408,7 +424,69 @@ def chequeos_004(cur, token, otro):
     chequear("anon sin políticas directas sobre la tabla", cur.fetchone()[0] == 0)
 
 
-CHEQUEOS = {"nativa_001": chequeos_001, "nativa_002": chequeos_002, "nativa_003": chequeos_003, "nativa_004": chequeos_004}
+def chequeos_005(cur, token, otro):
+    """nativa_005: los recordatorios apilados se ocultan y el chat no los muestra."""
+    print("▸ La columna")
+    cur.execute("""SELECT data_type, is_nullable, column_default FROM information_schema.columns
+                   WHERE table_schema = 'public' AND table_name = 'mypump_comentarios' AND column_name = 'oculto'""")
+    col = cur.fetchone()
+    chequear("oculto: boolean, NOT NULL, false de entrada", col == ("boolean", "NO", "false"), str(col))
+
+    print("▸ Qué se ocultó")
+    cur.execute("""SELECT count(*), count(DISTINCT cliente_id),
+                          count(*) FILTER (WHERE autor <> 'coach' OR origen <> 'sistema' OR ambito <> 'general'),
+                          count(*) FILTER (WHERE meta->'oculto'->>'por' IS DISTINCT FROM 'nativa_005')
+                   FROM mypump_comentarios WHERE oculto""")
+    n, chats, ajenos, sin_marca = cur.fetchone()
+    print(f"  {n} recordatorios ocultos en {chats} chats")
+    chequear("se oculta algo", n > 0)
+    chequear("solo recordatorios automáticos del chat general (nada del cliente, de Mati ni de la IA)", ajenos == 0, str(ajenos))
+    chequear("todos con la marca de nativa_005 en meta", sin_marca == 0, str(sin_marca))
+    tramos = """WITH m AS (SELECT id, cliente_id, autor, origen, oculto, created_at,
+                    count(*) FILTER (WHERE autor = 'cliente') OVER (PARTITION BY cliente_id ORDER BY created_at, id) AS tramo
+                  FROM mypump_comentarios WHERE ambito = 'general')"""
+    cur.execute(tramos + """ SELECT count(*) FROM (SELECT cliente_id, tramo FROM m
+                   WHERE autor = 'coach' AND origen = 'sistema' AND NOT oculto GROUP BY 1, 2 HAVING count(*) > 1) x""")
+    chequear("ningún tramo queda con más de un recordatorio a la vista", cur.fetchone()[0] == 0)
+    cur.execute(tramos + """, u AS (SELECT DISTINCT ON (cliente_id, tramo) oculto FROM m
+                   WHERE autor = 'coach' AND origen = 'sistema' ORDER BY cliente_id, tramo, created_at DESC, id DESC)
+                   SELECT count(*) FILTER (WHERE oculto), count(*) FROM u""")
+    ultimos_ocultos, con_recordatorio = cur.fetchone()
+    chequear("el más nuevo de cada tramo sigue a la vista", ultimos_ocultos == 0, f"{ultimos_ocultos} de {con_recordatorio}")
+    cur.execute(tramos + """ SELECT count(*) FROM (SELECT cliente_id, tramo FROM m WHERE autor = 'coach' GROUP BY 1, 2
+                   HAVING count(*) FILTER (WHERE NOT oculto) >= 3) x""")
+    print(f"  tramos que siguen con 3 o más nuestros a la vista (IA o Mati de por medio): {cur.fetchone()[0]}")
+
+    print("▸ Lo que ve el cliente (cuenta de prueba)")
+    cur.execute("SAVEPOINT s")
+    try:
+        cur.execute("""INSERT INTO mypump_comentarios (cliente_id, ambito, autor, contenido, leido_por_cliente,
+                                                       leido_por_coach, origen, oculto)
+                       VALUES (%s, 'general', 'coach', 'ensayo 005 visible', false, true, 'sistema', false),
+                              (%s, 'general', 'coach', 'ensayo 005 oculto', false, true, 'sistema', true)""", (CUENTA, CUENTA))
+        consultas = {
+            "mypump_get_chat": ("SELECT contenido FROM mypump_get_chat(%s, NULL, 100)", token),
+            "mypump_chat_nuevos": ("SELECT contenido FROM mypump_chat_nuevos(%s, now() - interval '1 minute')", token),
+            "mypump_get_comentarios": ("SELECT contenido FROM mypump_get_comentarios(%s, 'general', NULL)", token),
+            "mypump_chat_semana": ("SELECT contenido FROM mypump_chat_semana(%s, NULL)", CUENTA),
+        }
+        for nombre, (q, arg) in consultas.items():
+            cur.execute(q, (arg,))
+            vistos = {r[0] for r in cur.fetchall()}
+            chequear(f"{nombre}: el visible sí, el oculto no",
+                     "ensayo 005 visible" in vistos and "ensayo 005 oculto" not in vistos)
+        cur.execute("SELECT contenido FROM mypump_get_chat(%s, NULL, 100)", (otro,))
+        chequear("la otra cuenta no ve nada de la de prueba",
+                 not {r[0] for r in cur.fetchall()} & {"ensayo 005 visible", "ensayo 005 oculto"})
+    finally:
+        cur.execute("ROLLBACK TO SAVEPOINT s")
+
+
+CHEQUEOS = {"nativa_001": chequeos_001, "nativa_002": chequeos_002, "nativa_003": chequeos_003, "nativa_004": chequeos_004,
+            "nativa_005": chequeos_005}
+
+# Las funciones que una migración cambia A PROPÓSITO (por nombre). Cualquier otra que cambie es una falla.
+CAMBIAN = {"nativa_005": {"mypump_get_chat", "mypump_chat_nuevos", "mypump_get_comentarios", "mypump_chat_semana"}}
 
 
 def main():
@@ -425,6 +503,7 @@ def main():
     try:
         cur = c.cursor()
         tablas0, funciones0 = foto(cur)
+        columnas0, filas0 = columnas(cur), filas(cur, tablas0)
         cur.execute("SELECT access_token FROM mypump_clientes WHERE cliente_id = %s AND access_token_active", (CUENTA,))
         token = cur.fetchone()[0]
         cur.execute("SELECT access_token FROM mypump_clientes WHERE cliente_id = %s AND access_token_active", (OTRA,))
@@ -433,6 +512,7 @@ def main():
         print(f"▸ {os.path.basename(sys.argv[1])}: aplicando dentro de la transacción…")
         cur.execute(cuerpo)
         tablas1, funciones1 = foto(cur)
+        columnas1, filas1 = columnas(cur), filas(cur, tablas0)
 
         print("▸ Qué cambia")
         nuevas_t = sorted(set(tablas1) - set(tablas0))
@@ -440,16 +520,24 @@ def main():
         cambiadas = sorted(f for f in funciones0 if f in funciones1 and funciones0[f] != funciones1[f])
         borradas = sorted((set(tablas0) - set(tablas1)) | (set(funciones0) - set(funciones1)))
         print(f"  tablas nuevas: {nuevas_t}")
+        print(f"  columnas nuevas: {sorted(set(columnas1) - set(columnas0))}")
         print(f"  funciones nuevas: {nuevas_f}")
-        chequear("ninguna función existente cambia", not cambiadas, str(cambiadas))
-        chequear("no se borra nada", not borradas, str(borradas))
+        previstas = CAMBIAN.get(nombre_migracion, set())
+        print(f"  funciones que cambian: {cambiadas}")
+        chequear("solo cambian las funciones previstas", all(f.split("(")[0] in previstas for f in cambiadas), str(cambiadas))
+        chequear("cambian todas las previstas", previstas <= {f.split("(")[0] for f in cambiadas}, str(previstas))
+        chequear("no se borra nada", not borradas and not (set(columnas0) - set(columnas1)), str(borradas))
+        perdieron = {t: (filas0[t], filas1[t]) for t in filas0 if filas1[t] < filas0[t]}
+        chequear("ninguna tabla pierde filas", not perdieron, str(perdieron))
 
         CHEQUEOS[nombre_migracion](cur, token, otro)
 
         c.rollback()
         tablas2, funciones2 = foto(cur)
+        columnas2 = columnas(cur)
         c.rollback()
-        chequear("después del ROLLBACK la base quedó igual", (tablas2, funciones2) == (tablas0, funciones0))
+        chequear("después del ROLLBACK la base quedó igual",
+                 (tablas2, funciones2, columnas2) == (tablas0, funciones0, columnas0))
     finally:
         c.rollback()
         c.close()
