@@ -482,8 +482,57 @@ def chequeos_005(cur, token, otro):
         cur.execute("ROLLBACK TO SAVEPOINT s")
 
 
+def chequeos_006(cur, token, otro):
+    """nativa_006: la vista de pasos de Salud da lo mismo que una cuenta hecha aparte, y anon no la lee."""
+    print("▸ La vista")
+    cur.execute("SELECT reloptions FROM pg_class WHERE oid = 'public.mypump_pasos_salud'::regclass")
+    chequear("security_invoker", "security_invoker=true" in (cur.fetchone()[0] or []))
+    cur.execute("""SELECT has_table_privilege('anon', 'public.mypump_pasos_salud', 'SELECT'),
+                          has_table_privilege('authenticated', 'public.mypump_pasos_salud', 'SELECT'),
+                          has_table_privilege('service_role', 'public.mypump_pasos_salud', 'SELECT')""")
+    anon, aut, serv = cur.fetchone()
+    chequear("anon no la lee; el Cerebro y el bot sí", not anon and aut and serv, f"anon={anon} authenticated={aut} service={serv}")
+    cur.execute("SAVEPOINT s")
+    try:
+        cur.execute("SET LOCAL ROLE anon")
+        cur.execute("SELECT count(*) FROM public.mypump_pasos_salud")
+        chequear("con el rol anon da error de permiso", False, "anon la pudo leer")
+    except psycopg2.errors.InsufficientPrivilege:
+        chequear("con el rol anon da error de permiso", True)
+    finally:
+        cur.execute("ROLLBACK TO SAVEPOINT s")
+
+    print("▸ Los números")
+    cur.execute("""WITH hoy AS (SELECT (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date AS d),
+                   aparte AS (
+                     SELECT cliente_id,
+                            round(avg(v) FILTER (WHERE fecha >= (SELECT d FROM hoy) - 7))::int AS prom,
+                            count(*) FILTER (WHERE fecha >= (SELECT d FROM hoy) - 7)::int AS n,
+                            max(fecha) AS ult
+                     FROM (SELECT cliente_id, fecha, max(valor) AS v FROM mypump_salud_diaria
+                           WHERE tipo = 'pasos' AND fuente <> 'manual'
+                             AND fecha >= (SELECT d FROM hoy) - 30 AND fecha < (SELECT d FROM hoy)
+                           GROUP BY 1, 2) x
+                     GROUP BY cliente_id)
+                   SELECT count(*), count(*) FILTER (WHERE v.cliente_id IS NULL OR a.cliente_id IS NULL
+                                                        OR v.promedio_7d IS DISTINCT FROM a.prom
+                                                        OR v.dias_7d <> a.n OR v.ultima_fecha <> a.ult)
+                   FROM public.mypump_pasos_salud v FULL JOIN aparte a ON a.cliente_id = v.cliente_id""")
+    total, distintos = cur.fetchone()
+    print(f"  {total} clientes con pasos de Salud en 30 días")
+    chequear("la vista da lo mismo que la cuenta hecha aparte", total > 0 and distintos == 0, f"{distintos} distintos")
+    cur.execute("""SELECT count(*) FROM public.mypump_pasos_salud
+                   WHERE ultima_fecha >= (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
+                      OR dias_7d > 7 OR (dias_7d = 0) <> (promedio_7d IS NULL)""")
+    chequear("hoy no entra, nunca más de 7 días, y sin días no hay promedio", cur.fetchone()[0] == 0)
+    cur.execute("""SELECT count(*) FILTER (WHERE dias_7d = 7), count(*) FILTER (WHERE dias_7d BETWEEN 1 AND 6),
+                          count(*) FILTER (WHERE dias_7d = 0)
+                   FROM public.mypump_pasos_salud WHERE cliente_id NOT LIKE 'test%'""")
+    print("  clientes reales con 7 días / 1 a 6 / ninguno esta semana: %s / %s / %s" % cur.fetchone())
+
+
 CHEQUEOS = {"nativa_001": chequeos_001, "nativa_002": chequeos_002, "nativa_003": chequeos_003, "nativa_004": chequeos_004,
-            "nativa_005": chequeos_005}
+            "nativa_005": chequeos_005, "nativa_006": chequeos_006}
 
 # Las funciones que una migración cambia A PROPÓSITO (por nombre). Cualquier otra que cambie es una falla.
 CAMBIAN = {"nativa_005": {"mypump_get_chat", "mypump_chat_nuevos", "mypump_get_comentarios", "mypump_chat_semana"}}
