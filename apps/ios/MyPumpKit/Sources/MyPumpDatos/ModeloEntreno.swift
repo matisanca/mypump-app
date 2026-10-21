@@ -251,6 +251,8 @@ public final class ModeloEntreno {
         /// "🏆 Récord" / "Primera vez con este ejercicio" (nil).
         public let record: String?
         public let ultimaVez: UltimaVez?
+        /// Hay con qué sustituirlo: una variante del mismo movimiento U otro ejercicio del mismo músculo (revisión del
+        /// 21-oct: a «Fondos» o a la patada de tríceps, sin variantes, se les apagaba «Sustituir» aunque tenían 26 a 30).
         public let puedeSustituir: Bool
         /// El chip del descanso ("2:30").
         public let descanso: String
@@ -272,7 +274,7 @@ public final class ModeloEntreno {
             filas: (e?.series.indices).map { $0.compactMap { dia.fila(lugar, $0, efectivo: ef.ejercicio) } } ?? [],
             confirmadas: e?.series.filter(\.confirmada).count ?? 0,
             record: dia.record(lugar), ultimaVez: dia.ultimaVez(lugar, ahora: reloj()),
-            puedeSustituir: !catalogo.sustitutos(de: ef).isEmpty,
+            puedeSustituir: !catalogo.sustitutos(de: ef).isEmpty || !catalogo.otrosDelMismoMusculo(de: ef).isEmpty,
             descanso: TiempoEntreno.fmtTiempo(Double(plan.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)),
             comentarios: comentarios.comentarios(ejercicio: lugar))
     }

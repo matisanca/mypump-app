@@ -343,6 +343,10 @@ class ModeloEntreno(
         /** "🏆 Récord" / "Primera vez con este ejercicio" (null). */
         val record: String?,
         val ultimaVez: UltimaVez?,
+        /**
+         * Hay con qué sustituirlo: una variante del mismo movimiento U otro ejercicio del mismo músculo (revisión del 21-oct:
+         * a «Fondos» o a la patada de tríceps, sin variantes, se les apagaba «Sustituir» aunque tenían 26 a 30).
+         */
         val puedeSustituir: Boolean,
         /** El chip del descanso ("2:30"). */
         val descanso: String,
@@ -365,7 +369,7 @@ class ModeloEntreno(
             filas = e?.series?.indices?.mapNotNull { d.fila(lugar, it, ef.ejercicio) } ?: emptyList(),
             confirmadas = e?.series?.count { it.confirmada } ?: 0,
             record = d.record(lugar), ultimaVez = d.ultimaVez(lugar, reloj()),
-            puedeSustituir = _catalogo.value.sustitutos(ef).isNotEmpty(),
+            puedeSustituir = _catalogo.value.sustitutos(ef).isNotEmpty() || _catalogo.value.otrosDelMismoMusculo(ef).isNotEmpty(),
             descanso = TiempoEntreno.fmtTiempo((plan.descansoSegundos ?: NormalizacionRutina.DESCANSO_POR_DEFECTO).toDouble()),
             comentarios = _comentarios.value.comentarios(lugar),
         )
