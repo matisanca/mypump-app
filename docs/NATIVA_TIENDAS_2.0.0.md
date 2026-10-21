@@ -276,8 +276,8 @@ envío a revisión de Google: se le pide el OK a Mati en el momento.
 **iPhone 2.0.1, para el miércoles 21-oct** (Mati, 17-oct: «hacelo el miércoles… seguro sea con más correcciones»).
 El TestFlight 117 trae solo la hoja única de Salud. El que se manda lleva además los ajustes de porciones (D22), el
 descanso con Live Activity (D23), la foto con cámara y galería en un toque y los otros ejercicios del mismo músculo al
-sustituir (D24). Para compilarlo hace falta el perfil App
-Store de `com.pumpteam.mypump.descanso` (ver `NATIVA_ESTADO.md`). Tag `nios-2.0.1-118`.
+sustituir (D24). El perfil App Store de `com.pumpteam.mypump.descanso` ya está en Codemagic (20-oct, ver
+`NATIVA_ESTADO.md`). Tag `nios-2.0.1-118`.
 
 Novedades (borrador):
 

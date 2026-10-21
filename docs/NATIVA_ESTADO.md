@@ -112,8 +112,9 @@ más correcciones»)**
 - Lleva: la hoja única de Salud (lo de Alan Fried), el descanso a la vista (Live Activity en iOS, cuenta regresiva
   fija en Android, ver D23), los ajustes de porciones (D22), el botón de foto con cámara y galería en un toque (Alan
   Ferraro) y los otros ejercicios del mismo músculo al sustituir (D24, Eric Walo).
-- iOS: el **TestFlight 117** tiene solo lo de Salud. Para el 118 hace falta el perfil de la extensión del descanso (ver
-  «Lo que solo puede hacer Mati»); Codemagic frena y lo dice si falta. Tag `nios-2.0.1-118`.
+- iOS: el **TestFlight 117** tiene solo lo de Salud. El perfil de la extensión del descanso ya está (20-oct, ver «Lo
+  que solo puede hacer Mati»), así que el 118 se puede compilar. Tag `nios-2.0.1-118`: el clasificador frena el push
+  del tag, así que se lanza con el OK de Mati.
 - Android: AAB `nand-2.0.1-104`. Play está al 10 % con la 2.0.0; el 50 % y el 100 %, con el OK de Mati.
 - El envío a las dos revisiones, con el OK de Mati (G7).
 
@@ -238,9 +239,14 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
   build, capturas, notas y «Other Diagnostic Data») y la manda con el escalonado de 7 días.
 - **Para la 2.0.1 (20-oct):**
   1. ~~El OK para aplicar `nativa_004` (G2)~~: aplicada el 20-oct.
-  2. En developer.apple.com, el App ID `com.pumpteam.mypump.descanso` y un perfil App Store con el certificado
-     `mypump-dist-2026`; después, en Codemagic → Code signing identities, traerlo. O que la sesión lo haga en su Chrome
-     con la sesión abierta.
+  2. ~~El perfil de la extensión del descanso~~: hecho el 20-oct en el Chrome de Mati, con su sesión («Vos en mi
+     Chrome»):
+     - el App ID «MyPump Descanso» (`com.pumpteam.mypump.descanso`), sin capacidades;
+     - el perfil «MyPump Descanso App Store», con el único certificado de distribución (PUMP TEAM LLC), que vence el
+       2027-08-05 como el de la app;
+     - en Codemagic, `mypump-descanso-appstore-profile`.
+     El `ios_signing` por `bundle_identifier` toma también `com.pumpteam.mypump.*` (docs de Codemagic), así que el
+     YAML no cambia.
   3. ~~Cómo quiere ver los ajustes~~: en el brief de revisión y en la ficha del Cerebro (20-oct). Los parches los armó
      la sesión Pump Cerebro (mini) y los aplicó esta sesión con el OK de Mati («hacé ambos vos»):
      - la ficha, en el Cerebro (4f312b0, publicado);
