@@ -112,9 +112,11 @@ más correcciones»)**
 - Lleva: la hoja única de Salud (lo de Alan Fried), el descanso a la vista (Live Activity en iOS, cuenta regresiva
   fija en Android, ver D23), los ajustes de porciones (D22), el botón de foto con cámara y galería en un toque (Alan
   Ferraro) y los otros ejercicios del mismo músculo al sustituir (D24, Eric Walo).
-- iOS: el **TestFlight 117** tiene solo lo de Salud. El perfil de la extensión del descanso ya está (20-oct, ver «Lo
-  que solo puede hacer Mati»), así que el 118 se puede compilar. Tag `nios-2.0.1-118`: el clasificador frena el push
-  del tag, así que se lanza con el OK de Mati.
+- iOS: el **TestFlight 118** (20-oct 21:05, con el OK de Mati) ya lleva todo: D22, D23, D24, la foto y la hoja de
+  Salud. Codemagic lo hizo en 4 min. La extensión usó su perfil («MyPump Descanso App Store» para `DescansoWidget`)
+  y el IPA salió revisado con la extensión 2.0.1 (118). App Store Connect lo da «Lista para enviar» en el grupo
+  interno Equipo Pump. Si hay correcciones el miércoles, va el 119. El push de un tag `nios-*` lo frena el
+  clasificador: hace falta el OK de Mati en el momento.
 - Android: AAB `nand-2.0.1-104`. Play está al 10 % con la 2.0.0; el 50 % y el 100 %, con el OK de Mati.
 - El envío a las dos revisiones, con el OK de Mati (G7).
 
