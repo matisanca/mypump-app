@@ -312,6 +312,9 @@ mypump_migracion_nativa:
 mypump_oauth_estados:
   state text, cliente_id text, proveedor text, code_verifier text, expira_en timestamp with time zone, usado_en timestamp with time zone, created_at timestamp with time zone
 
+mypump_pasos_salud:
+  cliente_id text, promedio_7d integer, dias_7d integer, ultima_fecha date, ultimo_dia integer, fuente text, ultima_sync timestamp with time zone
+
 mypump_push_cola:
   id bigint, cliente_id text, titulo text, cuerpo text, destino text, dedupe_key text, estado text, intentos integer, error text, creado_en timestamp with time zone, enviado_en timestamp with time zone
 
