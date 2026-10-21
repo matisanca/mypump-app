@@ -22,6 +22,9 @@ import com.pumpteam.mypump.diseno.TemaMyPump
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.ui.FuenteDeMentira
 import com.pumpteam.mypump.ui.ServidorDePrueba
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,6 +47,13 @@ class CardsSaludTest {
 
     private val alcance = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+    /**
+     * El «hoy» de estas pruebas: el día siguiente a la grabación de las respuestas de la cuenta de iOS (terminan el 14-oct).
+     * La card de Salud muestra el HRV de hoy o de anoche, y con el reloj del teléfono, desde el 16-oct no había HRV que
+     * mostrar: la prueba fallaba con la app bien.
+     */
+    private val diaSiguienteALaGrabacion: Instant = LocalDate.of(2026, 10, 15).atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant()
+
     @After
     fun cerrar() {
         alcance.cancel()
@@ -62,7 +72,9 @@ class CardsSaludTest {
             servidor.respuestas["mypump_get_recuperacion"] = "[]"
         }
         val almacen = PreferenciasEnMemoria(if (conectada) mapOf(ClaveSalud.CONECTADO to "1") else emptyMap())
-        val s = ModeloSalud(ClienteRpc(transporte = servidor), ServidorDePrueba.TOKEN, FuenteDeMentira(), almacen, alcance)
+        val s = ModeloSalud(
+            ClienteRpc(transporte = servidor), ServidorDePrueba.TOKEN, FuenteDeMentira(), almacen, alcance, ahora = { diaSiguienteALaGrabacion },
+        )
         runBlocking { s.cargar() }
         return s
     }
