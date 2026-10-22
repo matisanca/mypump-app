@@ -261,6 +261,9 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **22-oct, 2.0.2 en pendiente para el miércoles 28-oct** (Mati, corto de tokens): «Comí / Salté» (D25), el consumo del
+  día en la tarjeta de Dieta, revisar la carga manual (Justo Baez Sosa, 22-oct, falta su captura) y `esSinPeso` con el
+  equipo del catálogo (crunch de máquina, Sofía Ceppi). Nada de esto está programado.
 - **21-oct 16:00, 2.0.1 enviada a las dos tiendas** (OK de Mati: «la primera pero android ya para todos»; el crunch va
   en la 2.0.2).
   - **App Store:** 2.0.1 (119) en revisión, publicación automática al aprobarse y escalonada en 7 días. Notas para el
