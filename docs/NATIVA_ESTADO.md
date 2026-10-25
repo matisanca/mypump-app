@@ -263,7 +263,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 - **22-oct, 2.0.2 en pendiente para el miércoles 28-oct** (Mati, corto de tokens): «Comí / Salté» (D25), el consumo del
   día en la tarjeta de Dieta, revisar la carga manual (Justo Baez Sosa, 22-oct, falta su captura) y `esSinPeso` con el
-  equipo del catálogo (crunch de máquina, Sofía Ceppi). Nada de esto está programado. También: `macros_target` desalineado con la suma de las comidas (Maxi Papili `mtx94l6zgrtg`, dieta v4 del 21-oct: target C30/G63, comidas C123/G26); ver dónde se arma (Cerebro o app) y cuántas dietas activas lo tienen.
+  equipo del catálogo (crunch de máquina, Sofía Ceppi). Nada de esto está programado. También: `macros_target` desalineado con la suma de las comidas (Maxi Papili `mtx94l6zgrtg`, dieta v4 del 21-oct: target C30/G63, comidas C123/G26); ver dónde se arma (Cerebro o app) y cuántas dietas activas lo tienen. Y de Sofía Ceppi (25-oct): en «Ajustar esta comida» el − de un alimento no baja a 0 g (queda en 5 g), tiene que poder sacarlo; y el recordatorio de la ronda («tu chequeo no está») tiene que dejar claro que es semanal (fotos y peso una vez por semana).
 - **21-oct 16:00, 2.0.1 enviada a las dos tiendas** (OK de Mati: «la primera pero android ya para todos»; el crunch va
   en la 2.0.2).
   - **App Store:** 2.0.1 (119) en revisión, publicación automática al aprobarse y escalonada en 7 días. Notas para el
