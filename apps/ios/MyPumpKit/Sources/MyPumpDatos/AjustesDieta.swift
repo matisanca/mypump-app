@@ -67,11 +67,13 @@ extension ModeloApp {
         guard nuevos != ajustes else { return }
         ordenAjustes += 1
         ajustes = nuevos
-        // «Hoy no la como» sobre una comida marcada: la marca se va (D25: no se come, no se marca ni cuenta).
-        if nuevos[comidaId]?.omitida == true, marcasDeHoy[comidaId] != nil { await marcar(comidaId, nil, opcion: 0) }
-        guard !esDemo, let id = dieta?.id else { return }
-        _ = disco?.guardar(AjustesGuardados(fecha: fechaAjustes, comidas: nuevos), Self.archivoAjustes(id))
-        await encolarAjustes(opciones: opciones)
+        if !esDemo, let id = dieta?.id {
+            _ = disco?.guardar(AjustesGuardados(fecha: fechaAjustes, comidas: nuevos), Self.archivoAjustes(id))
+            await encolarAjustes(opciones: opciones)
+        }
+        // «Hoy no la como» sobre una comida marcada: la marca se va (D25: no se come, no se marca ni cuenta). Al final: la
+        // espera de la cola, entre el ajuste en memoria y el del disco, dejaba que una carga leyera el ajuste viejo.
+        if ajustesDeHoy[comidaId]?.omitida == true, marcasDeHoy[comidaId] != nil { await marcar(comidaId, nil, opcion: 0) }
     }
 
     /// Un reemplazo (o volver al alimento del plan) cambia el alimento de esa posición: la cantidad puesta a mano era del

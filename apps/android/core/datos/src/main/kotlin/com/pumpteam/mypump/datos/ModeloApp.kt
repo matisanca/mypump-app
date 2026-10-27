@@ -925,12 +925,14 @@ class ModeloApp(
         if (nuevos == actuales) return
         ordenAjustes.incrementAndGet()
         _ajustes.value = nuevos
-        // «Hoy no la como» sobre una comida marcada: la marca se va (D25: no se come, no se marca ni cuenta).
-        if (nuevos[comidaId]?.omitida == true && marcasDeHoy[comidaId] != null) marcar(comidaId, null, 0)
-        if (_esDemo.value) return
-        val id = _dieta.value?.id ?: return
-        disco?.guardar(AjustesDieta.archivo(id), AjustesDieta.guardados(fechaAjustes, nuevos))
-        encolarAjustes(opciones)
+        val id = _dieta.value?.id
+        if (!_esDemo.value && id != null) {
+            disco?.guardar(AjustesDieta.archivo(id), AjustesDieta.guardados(fechaAjustes, nuevos))
+            encolarAjustes(opciones)
+        }
+        // «Hoy no la como» sobre una comida marcada: la marca se va (D25: no se come, no se marca ni cuenta). Al final: la
+        // espera de la cola, entre el ajuste en memoria y el del disco, dejaba que una carga leyera el ajuste viejo.
+        if (ajustesDeHoy[comidaId]?.omitida == true && marcasDeHoy[comidaId] != null) marcar(comidaId, null, 0)
     }
 
     /**
