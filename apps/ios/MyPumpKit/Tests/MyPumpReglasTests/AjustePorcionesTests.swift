@@ -62,6 +62,10 @@ struct AjustePorcionesTests {
          ["desayuno": AjusteComida(cantidades: ["1": 5], anclas: ["1": AnclaAlimento(nombre: "Huevos", unidad: "g")])]),
         ("sumar no achica lo que está fuera de la grilla", [cena], ["cena": AjusteComida(deltaKcal: 50)]),
         ("restar no agranda lo que está fuera de la grilla", [cenaLiviana], ["cena": AjusteComida(deltaKcal: -50)]),
+        // 25-oct: el − de un alimento llega a 0 (sale de la comida por hoy).
+        ("un alimento en cero", [desayuno, almuerzo], ["desayuno": AjusteComida(cantidades: ["0": 0])]),
+        ("un alimento en cero y kcal", [desayuno, almuerzo], ["desayuno": AjusteComida(deltaKcal: -100, cantidades: ["1": 0])]),
+        ("todos los alimentos en cero", [pre, almuerzo], ["pre": AjusteComida(cantidades: ["0": 0, "1": 0])]),
     ]
 
     @Test func redondeaAPorcionesServibles() {
@@ -77,6 +81,48 @@ struct AjustePorcionesTests {
         #expect(AjustePorciones.pasoCantidad(Self.avena) == 10)
         #expect(AjustePorciones.pasoCantidad(Self.aceite) == 5)
         #expect(AjustePorciones.pasoCantidad(Self.huevos) == 0.5)
+    }
+
+    /// 25-oct: el − de un alimento paraba en 5 g (o media unidad) y no se podía sacar. Ahora llega a 0 y el + vuelve.
+    @Test func elMenosLlegaACeroYElMasVuelve() {
+        // De lo del plan para abajo, tocando −: 10 g de aceite → 5 → 0, y ahí se apaga.
+        var q = Self.aceite.qty!, pasos: [Double] = []
+        while AjustePorciones.puedeBajar(q) { q = AjustePorciones.bajar(Self.aceite, desde: q); pasos.append(q) }
+        #expect(pasos == [5, 0])
+        #expect(AjustePorciones.bajar(Self.avena, desde: 20) == 10 && AjustePorciones.bajar(Self.avena, desde: 10) == 0)
+        #expect(AjustePorciones.bajar(Self.aceite, desde: 7) == 2 && AjustePorciones.bajar(Self.aceite, desde: 2) == 0)
+        #expect(AjustePorciones.bajar(Self.huevos, desde: 1) == 0.5 && AjustePorciones.bajar(Self.huevos, desde: 0.5) == 0)
+        #expect(AjustePorciones.bajar(Self.huevos, desde: 0) == 0 && !AjustePorciones.puedeBajar(0) && !AjustePorciones.puedeBajar(.nan))
+        // Desde 0, el + vuelve a un paso; arriba, el tope sigue siendo el triple del plan.
+        #expect(AjustePorciones.subir(Self.aceite, desde: 0) == 5 && AjustePorciones.subir(Self.huevos, desde: 0) == 0.5)
+        #expect(AjustePorciones.subir(Self.avena, desde: 0) == 10 && AjustePorciones.puedeSubir(Self.avena, desde: 0))
+        #expect(AjustePorciones.maximoCantidad(Self.aceite) == 30 && !AjustePorciones.puedeSubir(Self.aceite, desde: 30))
+        #expect(AjustePorciones.subir(Self.aceite, desde: 28) == 30)
+    }
+
+    /// Un alimento en 0: sus kcal y macros en cero, la comida baja eso, se compensa en la siguiente, se ancla y se lee
+    /// igual (es una cantidad a mano más; el tope de un cuarto es de lo que se reparte parejo y no la cuenta).
+    @Test func unAlimentoEnCeroSaleDeLaComida() throws {
+        let aj = AjusteComida(cantidades: ["0": 0])
+        let d = AjustePorciones.dia([Self.desayuno, Self.almuerzo], ajustes: ["desayuno": aj])
+        let des = try #require(d["desayuno"]), alm = try #require(d["almuerzo"])
+        #expect(des.alimentos[0].qty == 0 && des.alimentos[0].kcal == 0 && des.alimentos[0].prot == 0 && des.alimentos[0].carb == 0 && des.alimentos[0].fat == 0)
+        #expect(des.alimentos[1] == Self.huevos && des.alimentos[2] == Self.banana)
+        #expect(des.kcal == des.kcalPlan - 380 && des.propio == -380 && des.cambiados == [0] && des.ajustada)
+        #expect(alm.compensacion == 380 && alm.kcal > alm.kcalPlan, "lo que no comió pasa al almuerzo")
+        #expect(!aj.neutro)
+        // Se ancla al alimento (vale después de volver a publicar) y se lee igual del servidor.
+        let anclado = AjustePorciones.anclar(aj, en: Self.desayuno)
+        #expect(anclado.cantidades == ["0": 0] && anclado.anclas["0"] == AnclaAlimento(Self.avena))
+        let leido = try JSONDecoder().decode(AjusteComida.self, from: JSONEncoder().encode(anclado))
+        #expect(leido == anclado)
+        // Las kcal que se suman o restan se reparten entre los otros: el tope de un cuarto se mide sin el que está en 0.
+        #expect(AjustePorciones.baseEscalable(Self.desayuno, aj) == 339)
+        #expect(AjustePorciones.limitesDelta(Self.desayuno, aj) == -250...650)
+        // Volver a la del plan (deslizar o «Como el plan»): sin la cantidad, la comida es la del plan.
+        var deVuelta = aj
+        deVuelta.cantidades["0"] = nil
+        #expect(deVuelta.neutro && AjustePorciones.dia([Self.desayuno], ajustes: ["desayuno": deVuelta])["desayuno"]?.alimentos == Self.desayuno.alimentos)
     }
 
     @Test func conCantidadEscalaLasMacros() {

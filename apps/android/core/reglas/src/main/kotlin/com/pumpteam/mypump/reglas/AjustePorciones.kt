@@ -165,6 +165,26 @@ object AjustePorciones {
         return if ((a.qty ?: 0.0) >= 100) 10.0 else 5.0
     }
 
+    /** Lo más que se puede poner a mano de un alimento: el triple de lo del plan, en porciones servibles. */
+    fun maximoCantidad(plan: Alimento): Double = redondear((plan.qty ?: 0.0) * FACTOR_MAXIMO, plan.unidad)
+
+    /**
+     * El − de un alimento, desde la cantidad de ahora: un paso menos y, cuando ya no queda un paso, cero (ese alimento sale
+     * de la comida por hoy). Antes paraba en un paso (5 g o media unidad) y no se podía sacar (25-oct). Lo puesto a mano no
+     * cuenta para el tope de un cuarto, que es de las kcal que se reparten parejo.
+     */
+    fun bajar(plan: Alimento, desde: Double): Double {
+        val nueva = desde - pasoCantidad(plan)
+        return if (nueva.isFinite() && nueva > 0) redondear(nueva, plan.unidad) else 0.0
+    }
+
+    fun puedeBajar(q: Double): Boolean = q.isFinite() && q > 0
+
+    /** El + de un alimento, desde la cantidad de ahora (también desde cero): un paso más, hasta el triple de lo del plan. */
+    fun subir(plan: Alimento, desde: Double): Double = minOf(maximoCantidad(plan), redondear(desde + pasoCantidad(plan), plan.unidad))
+
+    fun puedeSubir(plan: Alimento, desde: Double): Boolean = desde + pasoCantidad(plan) <= maximoCantidad(plan)
+
     /** El mismo alimento con otra cantidad: las macros, proporcionales (son el TOTAL de la qty del plan). */
     fun conCantidad(a: Alimento, qty: Double): Alimento {
         val q0 = a.qty

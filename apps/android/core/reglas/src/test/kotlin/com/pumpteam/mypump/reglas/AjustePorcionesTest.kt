@@ -58,7 +58,7 @@ class AjustePorcionesTest {
     fun losVectoresDeIosSalenIgual() {
         val todo = Vectores.json(Vectores.publico("ajuste_porciones"))
         val casos = todo["casos"]!!.jsonArray
-        assertEquals(23, casos.size, "cambió la cantidad de casos: regenerar en iOS y revisar acá")
+        assertEquals(26, casos.size, "cambió la cantidad de casos: regenerar en iOS y revisar acá")
         for (caso in casos) {
             val c = caso.jsonObject
             val nombre = c["nombre"]!!.jsonPrimitive.content
@@ -159,6 +159,50 @@ class AjustePorcionesTest {
         assertTrue(AjustePorciones.anclar(AjusteComida(opcion = 1, cantidades = mapOf("0" to 60.0)), desayuno).neutro)
         assertTrue(AnclaAlimento("Avena", "gramos").coincide(avena))
         assertFalse(AnclaAlimento("Avena", "taza").coincide(avena))
+    }
+
+    /** 25-oct: el − de un alimento paraba en 5 g (o media unidad) y no se podía sacar. Ahora llega a 0 y el + vuelve. */
+    @Test
+    fun elMenosLlegaACeroYElMasVuelve() {
+        var q = aceite.qty!!
+        val pasos = mutableListOf<Double>()
+        while (AjustePorciones.puedeBajar(q)) { q = AjustePorciones.bajar(aceite, q); pasos += q }
+        assertEquals(listOf(5.0, 0.0), pasos)
+        assertTrue(AjustePorciones.bajar(avena, 20.0) == 10.0 && AjustePorciones.bajar(avena, 10.0) == 0.0)
+        assertTrue(AjustePorciones.bajar(aceite, 7.0) == 2.0 && AjustePorciones.bajar(aceite, 2.0) == 0.0)
+        assertTrue(AjustePorciones.bajar(huevos, 1.0) == 0.5 && AjustePorciones.bajar(huevos, 0.5) == 0.0)
+        assertTrue(AjustePorciones.bajar(huevos, 0.0) == 0.0 && !AjustePorciones.puedeBajar(0.0) && !AjustePorciones.puedeBajar(Double.NaN))
+        assertTrue(AjustePorciones.subir(aceite, 0.0) == 5.0 && AjustePorciones.subir(huevos, 0.0) == 0.5)
+        assertTrue(AjustePorciones.subir(avena, 0.0) == 10.0 && AjustePorciones.puedeSubir(avena, 0.0))
+        assertTrue(AjustePorciones.maximoCantidad(aceite) == 30.0 && !AjustePorciones.puedeSubir(aceite, 30.0))
+        assertEquals(30.0, AjustePorciones.subir(aceite, 28.0))
+    }
+
+    /**
+     * Un alimento en 0: sus kcal y macros en cero, la comida baja eso, se compensa en la siguiente, se ancla y se lee igual
+     * (es una cantidad a mano más; el tope de un cuarto es de lo que se reparte parejo y no la cuenta).
+     */
+    @Test
+    fun unAlimentoEnCeroSaleDeLaComida() {
+        val aj = AjusteComida(cantidades = mapOf("0" to 0.0))
+        val d = AjustePorciones.dia(listOf(desayuno, almuerzo), mapOf("desayuno" to aj))
+        val des = d.getValue("desayuno")
+        val alm = d.getValue("almuerzo")
+        val cero = des.alimentos[0]
+        assertTrue(cero.qty == 0.0 && cero.kcal == 0.0 && cero.prot == 0.0 && cero.carb == 0.0 && cero.fat == 0.0, "$cero")
+        assertTrue(des.alimentos[1] == huevos && des.alimentos[2] == banana)
+        assertTrue(des.kcal == des.kcalPlan - 380 && des.propio == -380.0 && des.cambiados == setOf(0) && des.ajustada, "$des")
+        assertTrue(alm.compensacion == 380.0 && alm.kcal > alm.kcalPlan, "lo que no comió pasa al almuerzo")
+        assertFalse(aj.neutro)
+        val anclado = AjustePorciones.anclar(aj, desayuno)
+        assertEquals(mapOf("0" to 0.0), anclado.cantidades)
+        assertEquals(AnclaAlimento("Avena", "g"), anclado.anclas["0"])
+        assertEquals(anclado, AjusteComida.desde(anclado.aValor()))
+        assertEquals(339.0, AjustePorciones.baseEscalable(desayuno, aj))
+        assertEquals(-250..650, AjustePorciones.limitesDelta(desayuno, aj))
+        val deVuelta = aj.copy(cantidades = aj.cantidades - "0")
+        assertTrue(deVuelta.neutro)
+        assertEquals(desayuno.alimentos, AjustePorciones.dia(listOf(desayuno), mapOf("desayuno" to deVuelta)).getValue("desayuno").alimentos)
     }
 
     @Test

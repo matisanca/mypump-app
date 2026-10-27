@@ -129,6 +129,28 @@ public enum AjustePorciones {
         return (a.qty ?? 0) >= 100 ? 10 : 5
     }
 
+    /// Lo más que se puede poner a mano de un alimento: el triple de lo del plan, en porciones servibles.
+    public static func maximoCantidad(_ plan: Alimento) -> Double {
+        redondear((plan.qty ?? 0) * factorMaximo, unidad: plan.unidad)
+    }
+
+    /// El − de un alimento, desde la cantidad de ahora: un paso menos y, cuando ya no queda un paso, cero (ese alimento
+    /// sale de la comida por hoy). Antes paraba en un paso (5 g o media unidad) y no se podía sacar (25-oct). Lo puesto a
+    /// mano no cuenta para el tope de un cuarto, que es de las kcal que se reparten parejo.
+    public static func bajar(_ plan: Alimento, desde q: Double) -> Double {
+        let nueva = q - pasoCantidad(plan)
+        return nueva.isFinite && nueva > 0 ? redondear(nueva, unidad: plan.unidad) : 0
+    }
+
+    public static func puedeBajar(_ q: Double) -> Bool { q.isFinite && q > 0 }
+
+    /// El + de un alimento, desde la cantidad de ahora (también desde cero): un paso más, hasta el triple de lo del plan.
+    public static func subir(_ plan: Alimento, desde q: Double) -> Double {
+        min(maximoCantidad(plan), redondear(q + pasoCantidad(plan), unidad: plan.unidad))
+    }
+
+    public static func puedeSubir(_ plan: Alimento, desde q: Double) -> Bool { q + pasoCantidad(plan) <= maximoCantidad(plan) }
+
     /// El mismo alimento con otra cantidad: las macros, proporcionales (son el TOTAL de la qty del plan).
     public static func conCantidad(_ a: Alimento, _ qty: Double) -> Alimento {
         guard let q0 = a.qty, q0 > 0, qty.isFinite, qty >= 0 else { return a }
