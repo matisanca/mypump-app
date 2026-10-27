@@ -5,6 +5,7 @@ import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.modelos.ClienteInfo
 import com.pumpteam.mypump.modelos.Comida
 import com.pumpteam.mypump.modelos.ComidaLibre
+import com.pumpteam.mypump.modelos.ComidaMarcada
 import com.pumpteam.mypump.modelos.DietaActiva
 import com.pumpteam.mypump.modelos.EstructuraDieta
 import com.pumpteam.mypump.modelos.FoodSwap
@@ -18,8 +19,10 @@ import com.pumpteam.mypump.reglas.AlimentoEfectivo
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
 import com.pumpteam.mypump.reglas.ComidaLibreNueva
+import com.pumpteam.mypump.reglas.ConsumoDelDia
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
+import com.pumpteam.mypump.reglas.MarcaComida
 import com.pumpteam.mypump.reglas.NormalizarDieta
 import com.pumpteam.mypump.reglas.SwapLocal
 import com.pumpteam.mypump.reglas.SwapsDeComida
@@ -168,6 +171,18 @@ class ModeloApp(
 
     /** Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor). */
     private val ordenAjustes = java.util.concurrent.atomic.AtomicLong()
+
+    /**
+     * «Comí» / «Salté» de hoy, por comida (D25; ver MarcasComidas.kt). Solo valen el día de [fechaMarcas]: lo que se
+     * muestra es [marcasDeHoy].
+     */
+    private val _marcas = MutableStateFlow<Map<String, MarcaComida>>(emptyMap())
+    val marcas: StateFlow<Map<String, MarcaComida>> = _marcas.asStateFlow()
+    @Volatile private var fechaMarcas = ""
+
+    /** Cuándo tocó el cliente cada marca por última vez (la lectura del servidor no pisa lo que se tocó mientras viajaba). */
+    private val ordenMarcas = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val contadorMarcas = java.util.concurrent.atomic.AtomicLong()
 
     /** Comidas libres (fuera del plan) del día local. */
     private val _comidasLibres = MutableStateFlow<List<ComidaLibre>>(emptyList())
@@ -329,6 +344,7 @@ class ModeloApp(
         _rutina.value = envolver(rutina)?.let { decodificar(it, RutinaActiva::desde) }
         _dieta.value = dietaNormalizada(envolver(dieta)?.let(ValorJson::desde))
         fechaAjustes = FechaLocal.hoy()
+        fechaMarcas = FechaLocal.hoy()
         _desdeCache.value = false
         _sinRedEn.value = emptySet()
         _esDemo.value = true
@@ -350,6 +366,8 @@ class ModeloApp(
         _swaps.value = emptyMap()
         _ajustes.value = emptyMap()
         opcionesVistas = emptyMap()
+        _marcas.value = emptyMap()
+        ordenMarcas.clear()
         _entreno.value = null
         _revision.value = null   // los de la demo
         _chat.value = null
@@ -373,6 +391,8 @@ class ModeloApp(
         _swaps.value = emptyMap()
         _ajustes.value = emptyMap()
         opcionesVistas = emptyMap()
+        _marcas.value = emptyMap()
+        ordenMarcas.clear()
         _comidasLibres.value = emptyList()
         _alimentosPropios.value = emptyList()
         _excluir.value = emptyList()
@@ -579,6 +599,7 @@ class ModeloApp(
         // hueco pisaba el archivo).
         _swaps.value = _dieta.value?.id?.let(::leerSwaps) ?: emptyMap()
         cargarAjustes()
+        cargarMarcas()
         _sinRedEn.value = faltaron
         _desdeCache.value = faltaron.isNotEmpty()
         prepararEntreno()
@@ -594,7 +615,12 @@ class ModeloApp(
 
         hidratarDieta()
         if (!vigente()) return
-        cargarComidasLibres()
+        // Las dos son de hoy y hacen falta para lo consumido de Dieta.
+        coroutineScope {
+            launch { cargarComidasLibres() }
+            launch { hidratarMarcas() }
+        }
+        if (!vigente()) return
         outbox?.drenar()
         coroutineScope {
             launch { _chat.value?.let { c -> if (c !== chatAlEmpezar || c.ultimasTraidas == traidasAlEmpezar) c.cargar() } }
@@ -634,12 +660,15 @@ class ModeloApp(
         val hoy = FechaLocal.hoy()
         if (diaCargado != hoy) {
             cargarAjustes()
+            cargarMarcas()
             cargarComidasLibres()
             _revision.value?.cargarMiDia()
             _revision.value?.cargarRevision()
             diaCargado = hoy
         }
         outbox?.drenar()
+        // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
+        hidratarMarcas()
         _chat.value?.sondear()
         _fotos.value?.drenar()
         _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)
@@ -765,6 +794,7 @@ class ModeloApp(
         _dieta.value = dietaNormalizada(c.dieta)
         _dieta.value?.id?.let { id -> _swaps.value = leerSwaps(id) }
         cargarAjustes()
+        cargarMarcas()
         prepararEntreno()
         _entreno.value?.let { e -> cargaDelMotor = alcance.launch { e.cargar() } }
     }
@@ -895,6 +925,8 @@ class ModeloApp(
         if (nuevos == actuales) return
         ordenAjustes.incrementAndGet()
         _ajustes.value = nuevos
+        // «Hoy no la como» sobre una comida marcada: la marca se va (D25: no se come, no se marca ni cuenta).
+        if (nuevos[comidaId]?.omitida == true && marcasDeHoy[comidaId] != null) marcar(comidaId, null, 0)
         if (_esDemo.value) return
         val id = _dieta.value?.id ?: return
         disco?.guardar(AjustesDieta.archivo(id), AjustesDieta.guardados(fechaAjustes, nuevos))
@@ -978,6 +1010,103 @@ class ModeloApp(
         } else if (_ajustes.value.isNotEmpty()) {
             encolarAjustes(emptyMap())
         }
+    }
+
+    // ── «Comí» / «Salté» y lo consumido (D25) ──
+
+    /** Las de hoy: si cambió el día con la app abierta, ninguna. */
+    val marcasDeHoy: Map<String, MarcaComida>
+        get() = if (fechaMarcas == FechaLocal.hoy()) _marcas.value else emptyMap()
+
+    /** Al cargar (y al cambiar de día): las del teléfono, si son de hoy. La demo no tiene carpeta: empieza sin marcas. */
+    private fun cargarMarcas() {
+        val hoy = FechaLocal.hoy()
+        fechaMarcas = hoy
+        val g = disco?.leer(MarcasComidas.ARCHIVO)?.let(ValorJson::desde)
+        _marcas.value = if (g == null || g["fecha"]?.comoTexto != hoy) emptyMap() else MarcasComidas.desde(g["marcas"])
+    }
+
+    /**
+     * Lo comido hoy con las opciones que se ven (las comidas marcadas «Comí» se cuentan con la de la marca), los
+     * reemplazos, los ajustes de hoy y las comidas libres.
+     */
+    fun consumo(opciones: Map<String, Int>): ConsumoDelDia.Consumo =
+        ConsumoDelDia.calcular(comidasDelDia, marcasDeHoy, _comidasLibres.value, ajustesDeHoy, opciones) { cid, o, i, a ->
+            efectivo(a, cid, o, i).alimento
+        }
+
+    /**
+     * «Comí» o «Salté» con la opción [opcion] (la que se ve), o null para desmarcar. «Comí» arranca con todo tildado.
+     * Optimista: se ve al toque, queda en el teléfono y sale por la cola (sin red, cuando vuelva). En la demo, en memoria.
+     */
+    suspend fun marcar(comidaId: String, estado: MarcaComida.Estado?, opcion: Int) {
+        if (fechaMarcas != FechaLocal.hoy()) cargarMarcas()
+        val c = comidasDelDia.firstOrNull { it.id == comidaId } ?: return
+        val o = if (c.opciones.isEmpty()) 0 else opcion.coerceIn(0, c.opciones.size - 1)
+        val nombre = ConsumoDelDia.nombreOpcion(c, o)
+        cambiarMarca(comidaId, estado?.let { MarcaComida(nombre, it) }, nombre)
+    }
+
+    /**
+     * Consumo parcial (DIE-06): destilda (o vuelve a tildar) un alimento de una comida marcada «Comí». El índice es de la
+     * opción de la marca: Dieta solo muestra los tildes mirando esa opción.
+     */
+    suspend fun alternarAlimento(comidaId: String, idx: Int) {
+        if (fechaMarcas != FechaLocal.hoy()) cargarMarcas()
+        val m = _marcas.value[comidaId] ?: return
+        if (idx < 0 || m.estado != MarcaComida.Estado.COMIDO) return
+        val excluidos = if (idx in m.excluidos) m.excluidos - idx else m.excluidos + idx
+        cambiarMarca(comidaId, MarcaComida(m.opcion, MarcaComida.Estado.COMIDO, excluidos), m.opcion)
+    }
+
+    private suspend fun cambiarMarca(comidaId: String, nueva: MarcaComida?, opcionAlDesmarcar: String?) {
+        val actuales = _marcas.value
+        if (nueva == actuales[comidaId]) return
+        ordenMarcas[comidaId] = contadorMarcas.incrementAndGet()
+        val todas = if (nueva != null) actuales + (comidaId to nueva) else actuales - comidaId
+        _marcas.value = todas
+        if (_esDemo.value) return
+        val cola = outbox ?: return
+        val fecha = fechaMarcas
+        disco?.guardar(MarcasComidas.ARCHIVO, MarcasComidas.guardadas(fecha, todas))
+        cola.encolar(MarcasComidas.KIND, MarcasComidas.payload(fecha, comidaId, nueva, opcionAlDesmarcar), MarcasComidas.clave(fecha, comidaId))
+    }
+
+    /**
+     * Lo que dice el servidor de hoy, con dos excepciones por comida: lo que está en la cola sin salir gana (se lee del
+     * payload, como la web: es lo último que decidió el cliente) y lo que se tocó o estaba en la cola mientras viajaba la
+     * lectura queda como está en el teléfono (la respuesta puede ser una foto de antes de ese cambio). Sin red, nada cambia.
+     */
+    internal suspend fun hidratarMarcas() {
+        val t = token ?: return
+        if (_esDemo.value || _dieta.value == null) return
+        val cola = outbox ?: return
+        val hoy = FechaLocal.hoy()
+        if (fechaMarcas != hoy) cargarMarcas()
+        val prefijo = MarcasComidas.clave(hoy, "")
+        suspend fun enCola(): Map<String, Operacion> =
+            cola.pendientesPorClave().filterKeys { it.startsWith(prefijo) }.mapKeys { it.key.removePrefix(prefijo) }
+        val antes = HashMap(ordenMarcas)
+        val enColaAntes = enCola()
+        val r = cliente.filas("mypump_get_comidas_marcadas", mapOf("p_token" to texto(t), "p_fecha" to texto(hoy)), ComidaMarcada::desde)
+        if (!deLaCuenta(t) || fechaMarcas != hoy) return
+        val filas = r.valorONull() ?: return
+        val enColaAhora = enCola()
+        if (!deLaCuenta(t) || fechaMarcas != hoy) return
+        val locales = _marcas.value
+        val nuevas = ConsumoDelDia.marcas(filas).toMutableMap()
+        val tocadas = ordenMarcas.filter { (id, n) -> antes[id] != n }.keys
+        for (id in enColaAntes.keys + tocadas) {
+            val m = locales[id]
+            if (m != null) nuevas[id] = m else nuevas.remove(id)
+        }
+        for ((id, op) in enColaAhora) {
+            val m = MarcasComidas.desdePayload(op.payload)
+            if (m != null) nuevas[id] = m else nuevas.remove(id)
+        }
+        if (nuevas == locales) return
+        _marcas.value = nuevas
+        disco?.guardar(MarcasComidas.ARCHIVO, MarcasComidas.guardadas(hoy, nuevas))
     }
 
     /**
