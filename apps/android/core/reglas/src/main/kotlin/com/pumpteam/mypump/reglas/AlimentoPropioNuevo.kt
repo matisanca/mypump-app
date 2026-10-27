@@ -72,10 +72,30 @@ object AlimentoPropioNuevo {
         val porcionG = if (porUnidad(unidad)) (ug ?: 0.0) else 100.0
         val aCien = if (porcionG > 0) 100 / porcionG else 1.0
         fun r1(x: Double) = jsRound(x * aCien * 10) / 10
-        return Formulario.Valido(
-            Datos(n, jsRound(k * aCien), r1(p), r1(c), r1(f), unidad, if ((ug ?: 0.0) > 0) ug else null, categoria),
-        )
+        val d = Datos(n, jsRound(k * aCien), r1(p), r1(c), r1(f), unidad, if ((ug ?: 0.0) > 0) ug else null, categoria)
+        if (imposible(d)) {
+            return Formulario.Invalido(
+                if (porUnidad(unidad)) {
+                    "Esos valores no entran en 1 ${texto(unidad)} de ${NumeroJs.texto(ug ?: 0.0)} g: revisá cuánto pesa o los valores."
+                } else {
+                    "Esos valores no pueden ser de 100 $unidad: si son de una porción, elegí «porción» y poné cuánto pesa."
+                },
+            )
+        }
+        return Formulario.Valido(d)
     }
+
+    /**
+     * Lo que 100 g no pueden tener: más de 100 g de macros (110 con el margen del redondeo de la etiqueta) o más calorías
+     * que el aceite (900). Con ml no se miran los macros, que en un líquido denso pasan de 100 por 100 ml. Desvío a
+     * propósito de la web, que lo guarda igual (27-oct): «1 rebanada de 15 g» con los valores del paquete quedó en 833 kcal
+     * y 133 g de proteína por 100 g, y con eso el motor de reemplazos calcula las porciones.
+     */
+    const val MAXIMO_MACROS_POR_100 = 110.0
+    const val MAXIMO_KCAL_POR_100 = 950.0
+
+    internal fun imposible(d: Datos): Boolean =
+        d.kcal > MAXIMO_KCAL_POR_100 || (d.unidad != "ml" && d.prot + d.carb + d.fat > MAXIMO_MACROS_POR_100)
 
     /** Lo que escribe el cliente en un campo numérico (ver [leerNumeroEscrito]). */
     fun leerNumero(texto: String): Double? = leerNumeroEscrito(texto)

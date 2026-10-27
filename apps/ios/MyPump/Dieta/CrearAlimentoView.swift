@@ -174,6 +174,7 @@ struct CrearAlimentoView: View {
     }
 
     private func crear() async {
+        foco = nil   // que el aviso de abajo no quede tapado por el teclado (Android ya lo hace)
         let leer = AlimentoPropioNuevo.leerNumero
         switch AlimentoPropioNuevo.preparar(nombre: nombre, kcal: leer(kcal), prot: leer(prot), carb: leer(carb), fat: leer(fat),
                                             unidad: unidad, gramosPorUnidad: leer(gramos), categoria: categoria) {

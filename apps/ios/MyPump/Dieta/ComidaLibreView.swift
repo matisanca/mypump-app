@@ -19,7 +19,10 @@ struct ComidaLibreView: View {
     @State private var gramos: [String]
     @State private var error: String?
     @State private var guardando = false
+    @FocusState private var foco: Campo?
     private let bases: [ComidaLibreNueva.Base]
+
+    enum Campo: Hashable { case descripcion, kcal, prot, carb, fat, gramos(Int) }
 
     init(modelo: ModeloApp, estimacion: EstimacionPlato?) {
         self.modelo = modelo
@@ -60,6 +63,7 @@ struct ComidaLibreView: View {
                                 TextField("0", text: $gramos[i])
                                     .accessibilityLabel("Gramos de \(b.nombre)")
                                     .keyboardType(.numberPad)
+                                    .focused($foco, equals: .gramos(i))
                                     .multilineTextAlignment(.trailing)
                                     .monospacedDigit()
                                     .frame(maxWidth: 80)
@@ -75,13 +79,14 @@ struct ComidaLibreView: View {
                 Section("Qué comiste") {
                     TextField("Ej: Milanesa con puré", text: $descripcion)
                         .textInputAutocapitalization(.sentences)
+                        .focused($foco, equals: .descripcion)
                     DatePicker("Hora", selection: $hora, displayedComponents: .hourAndMinute)
                 }
                 Section {
-                    campo("Calorías", texto: $kcal, unidad: "kcal").accessibilityIdentifier("kcal-comida-libre")
-                    campo("Proteínas", texto: $prot, unidad: "g")
-                    campo("Carbohidratos", texto: $carb, unidad: "g")
-                    campo("Grasas", texto: $fat, unidad: "g")
+                    campo("Calorías", texto: $kcal, unidad: "kcal", campo: .kcal).accessibilityIdentifier("kcal-comida-libre")
+                    campo("Proteínas", texto: $prot, unidad: "g", campo: .prot)
+                    campo("Carbohidratos", texto: $carb, unidad: "g", campo: .carb)
+                    campo("Grasas", texto: $fat, unidad: "g", campo: .fat)
                 } header: {
                     Text("Valores")
                 }
@@ -101,13 +106,26 @@ struct ComidaLibreView: View {
                         Button("Registrar") { Task { await guardar() } }.fontWeight(.semibold)
                     }
                 }
+                // Los teclados numéricos no tienen tecla para cerrarse (como en el alimento propio).
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Listo") { foco = nil }
+                }
             }
             .onChange(of: gramos) { _, nuevos in recalcular(nuevos) }
             .sensoryFeedback(.error, trigger: error) { _, nuevo in nuevo != nil }
         }
+        // Con algo cargado, deslizar no cierra la hoja: se sale con «Cancelar». Sin la tecla «Listo», bajar el teclado
+        // deslizando, con el formulario arriba de todo, podía cerrar la hoja y perder lo cargado (revisión del 27-oct).
+        .interactiveDismissDisabled(hayAlgoCargado)
     }
 
-    private func campo(_ titulo: String, texto: Binding<String>, unidad: String) -> some View {
+    private var hayAlgoCargado: Bool {
+        guardando || estimacion != nil || !descripcion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || [kcal, prot, carb, fat].contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    private func campo(_ titulo: String, texto: Binding<String>, unidad: String, campo: Campo) -> some View {
         HStack {
             Text(titulo)
             Spacer(minLength: 12)
@@ -116,6 +134,7 @@ struct ComidaLibreView: View {
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .monospacedDigit()
+                .focused($foco, equals: campo)
                 .frame(maxWidth: 110)
             Text(unidad).foregroundStyle(.secondary).frame(minWidth: 30, alignment: .leading)
         }
@@ -131,6 +150,7 @@ struct ComidaLibreView: View {
     }
 
     private func guardar() async {
+        foco = nil   // que el aviso de abajo no quede tapado por el teclado (Android ya lo hace)
         let leer = AlimentoPropioNuevo.leerNumero
         let detalle = ComidaLibreNueva.detalle(bases, gramos: gramosVigentes, confianza: estimacion?.confianza, escala: estimacion?.escala)
         switch ComidaLibreNueva.preparar(descripcion: descripcion, hora: ComidaLibreNueva.hora(hora), kcal: leer(kcal), prot: leer(prot),

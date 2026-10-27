@@ -62,6 +62,28 @@ class AlimentoPropioNuevoTest {
         assertEquals(Formulario.Invalido("Para \"porción\" indicá cuánto pesa 1 porción en gramos."), preparar(kcal = 90.0, unidad = "porcion"))
     }
 
+    /** Desvío a propósito de la web (27-oct): lo que 100 g no pueden tener no se guarda (el motor de reemplazos calcula con eso). */
+    @Test
+    fun loQue100gNoPuedenTenerNoSeGuarda() {
+        // El caso real: «1 rebanada de 15 g» con los valores del paquete = 833 kcal y 133 g de proteína por 100 g.
+        assertEquals(Formulario.Invalido("Esos valores no entran en 1 rebanada de 15 g: revisá cuánto pesa o los valores."),
+            preparar("Jamón de pavo", kcal = 125.0, prot = 20.0, carb = 5.0, fat = 3.0, unidad = "rebanada", gramos = 15.0))
+        val deUnPlato = Formulario.Invalido("Esos valores no pueden ser de 100 g: si son de una porción, elegí «porción» y poné cuánto pesa.")
+        assertEquals(deUnPlato, preparar(kcal = 700.0, prot = 50.0, carb = 80.0, fat = 20.0))   // 150 g de macros
+        assertEquals(deUnPlato, preparar(kcal = 1200.0, prot = 10.0))                          // más que el aceite
+        assertEquals(deUnPlato, preparar(fat = 110.0))                                         // las kcal derivadas también cuentan
+        assertEquals(Formulario.Invalido("Esos valores no pueden ser de 100 ml: si son de una porción, elegí «porción» y poné cuánto pesa."),
+            preparar(kcal = 1000.0, unidad = "ml"))
+        assertEquals(Formulario.Invalido("Esos valores no entran en 1 unidad de 12.5 g: revisá cuánto pesa o los valores."),
+            preparar(kcal = 300.0, prot = 120.0, unidad = "unidad", gramos = 12.5))
+
+        // Lo que sí puede ser: el aceite, un proteico con el redondeo de la etiqueta y un líquido denso por 100 ml.
+        assertEquals(884.0, datos(preparar(kcal = 884.0, fat = 100.0)).kcal)
+        val proteico = datos(preparar(kcal = 128.0, prot = 24.0, carb = 3.3, fat = 2.9, unidad = "porcion", gramos = 30.0))
+        assertEquals(listOf(80.0, 11.0, 9.7), listOf(proteico.prot, proteico.carb, proteico.fat))   // 100,7 g: entra por el margen
+        assertEquals(117.0, datos(preparar(kcal = 430.0, carb = 117.0, unidad = "ml")).carb)
+    }
+
     @Test
     fun gramosPorUnidadSeIgnoraEnGramosYMl() {
         val d = datos(preparar(kcal = 50.0, unidad = "ml", gramos = 30.0))
