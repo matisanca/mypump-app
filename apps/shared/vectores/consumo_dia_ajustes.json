@@ -1,0 +1,2164 @@
+{
+  "casos" : [
+    {
+      "ajustes" : {
+        "c2" : {
+          "compensar" : true,
+          "omitida" : true
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 84.799999999999997,
+        "comidas" : 3,
+        "fat" : 29.699999999999999,
+        "hechas" : 2,
+        "kcal" : 812,
+        "prot" : 54.100000000000001,
+        "salteadas" : 0
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c2",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c3",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "una que hoy no come no suma ni cuenta, aunque tenga marca; la siguiente se come con lo que le pasa",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "compensar" : false,
+          "deltaKcal" : 150
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 58.899999999999999,
+        "comidas" : 4,
+        "fat" : 27.300000000000001,
+        "hechas" : 1,
+        "kcal" : 602,
+        "prot" : 31.299999999999997,
+        "salteadas" : 0
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "«Comí» en una comida con +150 kcal: cuentan las porciones de hoy",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "cantidades" : {
+            "1" : 120
+          },
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 57.799999999999997,
+        "comidas" : 4,
+        "fat" : 14.4,
+        "hechas" : 1,
+        "kcal" : 472,
+        "prot" : 27.100000000000001,
+        "salteadas" : 0
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : [
+            2
+          ],
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "gramos a mano y un alimento destildado",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "cantidades" : {
+            "0" : 3
+          },
+          "compensar" : true,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 52,
+        "comidas" : 4,
+        "fat" : 5,
+        "hechas" : 1,
+        "kcal" : 320,
+        "prot" : 18,
+        "salteadas" : 0
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "B"
+        }
+      ],
+      "nombre" : "marcada con la B y ajustada a mano en la A: cuenta la B (los gramos eran de la A)",
+      "vistas" : {
+        "c1" : 0
+      }
+    },
+    {
+      "ajustes" : {
+        "c2" : {
+          "compensar" : true,
+          "deltaKcal" : 200
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 62.299999999999997,
+        "comidas" : 4,
+        "fat" : 11.1,
+        "hechas" : 2,
+        "kcal" : 757,
+        "prot" : 93.399999999999991,
+        "salteadas" : 1
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c2",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c3",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c4",
+          "estado" : "saltado",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "el almuerzo +200 se compensa en la merienda; las dos comidas y la cena salteada",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "deltaKcal" : -100
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 0,
+        "comidas" : 4,
+        "fat" : 0,
+        "hechas" : 0,
+        "kcal" : 0,
+        "prot" : 0,
+        "salteadas" : 1
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "saltado",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "salteada con ajuste: no suma",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "omitida" : true
+        },
+        "c4" : {
+          "compensar" : false,
+          "omitida" : true
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 0,
+        "comidas" : 2,
+        "fat" : 0,
+        "hechas" : 0,
+        "kcal" : 0,
+        "prot" : 0,
+        "salteadas" : 0
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+
+      ],
+      "nombre" : "sin marcas: cero, y las que no come no cuentan entre las comidas",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "compensar" : true,
+          "deltaKcal" : 100,
+          "opcion" : 1
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 35,
+        "comidas" : 4,
+        "fat" : 6,
+        "hechas" : 1,
+        "kcal" : 427,
+        "prot" : 52.899999999999999,
+        "salteadas" : 0
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c2",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "la opción a la vista de una no marcada cambia lo que le llega a la siguiente",
+      "vistas" : {
+        "c1" : 1
+      }
+    },
+    {
+      "ajustes" : {
+        "c3" : {
+          "compensar" : true,
+          "omitida" : true
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 131.5,
+        "comidas" : 3,
+        "fat" : 36.75,
+        "hechas" : 3,
+        "kcal" : 1426,
+        "prot" : 108.40000000000001,
+        "salteadas" : 0
+      },
+      "libres" : [
+        {
+          "carb" : 40.5,
+          "fat" : 10,
+          "id" : "l1",
+          "kcal" : 350,
+          "prot" : 20
+        },
+        {
+          "carb" : 3,
+          "fat" : 1.25,
+          "id" : "l2",
+          "kcal" : "125",
+          "prot" : null
+        }
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : [
+            0
+          ],
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c2",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "B"
+        },
+        {
+          "comida_id" : "c4",
+          "estado" : "comido",
+          "foods_excluidos" : [
+            1,
+            2
+          ],
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "con comidas libres y un día ajustado",
+      "vistas" : {
+        "c2" : 0
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "cantidades" : {
+
+          },
+          "opcion" : 1
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0.80000000000000004,
+                  "fat" : 11.4,
+                  "kcal" : 172,
+                  "name" : "Huevo entero",
+                  "prot" : 15.1,
+                  "qty" : 2,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 38,
+                  "fat" : 2,
+                  "kcal" : 200,
+                  "name" : "Pan integral",
+                  "prot" : 8,
+                  "qty" : 80,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c3",
+          "name" : "Merienda",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "name" : "Café"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        },
+        {
+          "id" : "c4",
+          "name" : "Cena",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pechuga de pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 4,
+                  "fat" : 7.2999999999999998,
+                  "kcal" : 80,
+                  "name" : "Palta",
+                  "prot" : 1,
+                  "qty" : 50,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 154,
+        "comidas" : 4,
+        "fat" : 30.300000000000001,
+        "hechas" : 4,
+        "kcal" : 1570,
+        "prot" : 161,
+        "salteadas" : 0
+      },
+      "libres" : [
+
+      ],
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "B"
+        },
+        {
+          "comida_id" : "c2",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c3",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c4",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "todas comidas sin ajustes que muevan nada: igual que la web",
+      "vistas" : {
+
+      }
+    }
+  ],
+  "generado" : "MyPumpKit ConsumoDelDiaTests (iOS). Android: ConsumoDelDiaTest.kt lo tiene que dar igual."
+}
