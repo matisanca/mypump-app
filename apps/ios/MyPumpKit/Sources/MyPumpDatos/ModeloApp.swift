@@ -56,6 +56,11 @@ public final class ModeloApp {
     @ObservationIgnored var opcionesVistas: [String: Int] = [:]
     /// Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor).
     @ObservationIgnored var ordenAjustes = 0
+    /// «Comí» / «Salté» de hoy, por comida (D25): ver MarcasComidas.swift. Solo valen el día de `fechaMarcas`.
+    public internal(set) var marcas: [String: MarcaComida] = [:]
+    @ObservationIgnored var fechaMarcas = ""
+    /// Cuántas veces tocó el cliente cada marca (la lectura del servidor no pisa lo que se tocó mientras viajaba).
+    @ObservationIgnored var ordenMarcas: [String: Int] = [:]
     /// La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido).
     public private(set) var palanca = PalancaRemota.deFabrica
 
@@ -182,7 +187,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         outbox = nil
-        info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
         esDemo = false
         sinRedEn = []
@@ -205,6 +210,8 @@ public final class ModeloApp {
         ajustes = [:]
         opcionesVistas = [:]
         fechaAjustes = FechaLocal.hoy()
+        marcas = [:]
+        fechaMarcas = FechaLocal.hoy()
         desdeCache = false
         sinRedEn = []
         esDemo = true
@@ -218,7 +225,7 @@ public final class ModeloApp {
     /// Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada).
     public func salirDeDemo() async {
         esDemo = false
-        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; entreno = nil
+        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; entreno = nil
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)
@@ -233,7 +240,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         outbox = nil
-        info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
     }
 
@@ -394,6 +401,7 @@ public final class ModeloApp {
         // ese hueco pisaba el archivo).
         if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] } else { swaps = [:] }
         cargarAjustes()
+        cargarMarcas()
         sinRedEn = faltaron
         desdeCache = !faltaron.isEmpty
         if !desdeCache { cargasConRed += 1 }
@@ -409,7 +417,10 @@ public final class ModeloApp {
 
         await hidratarDieta()
         guard vigente() else { return }
-        await cargarComidasLibres()
+        async let libres: Void = cargarComidasLibres()
+        async let marcasDelServidor: Void = hidratarMarcas()
+        _ = await (libres, marcasDelServidor)
+        guard vigente() else { return }
         await outbox?.drenar()
         let chatPorTraer = chat.flatMap { c in c !== chatAlEmpezar || c.ultimasTraidas == traidasAlEmpezar ? c : nil }
         async let cargaChat: Void = chatPorTraer?.cargar() ?? ()
@@ -524,12 +535,15 @@ public final class ModeloApp {
         let hoy = FechaLocal.hoy()
         if diaCargado != hoy {
             cargarAjustes()
+            cargarMarcas()
             await cargarComidasLibres()
             await revision?.cargarMiDia()
             await revision?.cargarRevision()
             diaCargado = hoy
         }
         await outbox?.drenar()
+        // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
+        await hidratarMarcas()
         await chat?.sondear()
         await fotos?.drenar()
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
@@ -562,6 +576,7 @@ public final class ModeloApp {
         dieta = dietaNormalizada(c.dieta)
         if let id = dieta?.id { swaps = disco?.leer([String: SwapLocal].self, "swaps_\(id).json") ?? [:] }
         cargarAjustes()
+        cargarMarcas()
     }
 
     // MARK: - Dieta
