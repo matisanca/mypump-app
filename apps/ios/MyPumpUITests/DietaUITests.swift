@@ -239,6 +239,8 @@ final class DietaUITests: XCTestCase {
         app.buttons["ajuste-listo"].tap()
         XCTAssertTrue(aviso(comidaId).waitForExistence(timeout: 5))
         XCTAssertTrue(aviso(comidaId).label.contains("Hoy no la comés"), aviso(comidaId).label)
+        // La que no come no se marca (D25).
+        XCTAssertFalse(app.buttons["comi-\(comidaId)"].exists, "Una comida que hoy no come muestra «Comí»")
         if botonesAjustar.count > 1 {
             let recibe = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
                                                                                "ajuste-aviso-", "kcal por"))
@@ -250,6 +252,129 @@ final class DietaUITests: XCTestCase {
         abrirAjuste(comidaId)
         volverAlPlanEnLaHoja()
         XCTAssertTrue(aviso(comidaId).waitForNonExistence(timeout: 5))
+    }
+
+    // MARK: - Comí / Salté y lo consumido (D25)
+
+    /// Lo consumido del anillo de arriba: el valor empieza con el número («1234 de 2373 kcal»). La lista es perezosa: se
+    /// sube hasta verlo.
+    private func consumidoAhora() -> Int {
+        let anillo = app.descendants(matching: .any)["consumido-kcal"].firstMatch
+        for _ in 0..<15 where !anillo.exists || !anillo.isHittable { app.swipeDown(velocity: .fast) }
+        XCTAssertTrue(anillo.waitForExistence(timeout: 5), "No está lo consumido en la cabecera")
+        esperarQuieto(anillo)
+        return Int(((anillo.value as? String) ?? "").prefix { $0 != " " }.filter(\.isNumber)) ?? -1
+    }
+
+    private func esperar(_ e: XCUIElement, seleccionado: Bool, _ mensaje: String) {
+        let p = NSPredicate(format: "isSelected == %@", NSNumber(value: seleccionado))
+        let r = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: p, object: e)], timeout: 5)
+        XCTAssertEqual(r, .completed, mensaje)
+    }
+
+    private func esperar(_ e: XCUIElement, valor: String) {
+        let p = NSPredicate(format: "value == %@", valor)
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: p, object: e)], timeout: 5), .completed,
+                       "\(e.identifier): \(String(describing: e.value)) en vez de \(valor)")
+    }
+
+    /// Lo que haya dejado otra corrida en la cuenta de prueba: sin marca en esa comida.
+    private func sinMarcaEn(_ comidaId: String) {
+        for id in ["comi-\(comidaId)", "salte-\(comidaId)"] {
+            let b = app.buttons[id]
+            for _ in 0..<15 where !b.exists { app.swipeUp() }
+            XCTAssertTrue(b.waitForExistence(timeout: 5), "No está \(id)")
+            if b.isSelected {
+                aLaVista(b)
+                b.tap()
+                esperar(b, seleccionado: false, "No se desmarcó \(id)")
+            }
+        }
+    }
+
+    /// Los tildes por alimento son interruptores para VoiceOver (`isToggle`); el resto, botones.
+    private func tocar(_ id: String) -> XCUIElement {
+        let b = id.hasPrefix("comido-") ? app.switches[id] : app.buttons[id]
+        for _ in 0..<15 where !b.exists { app.swipeUp() }
+        aLaVista(b)
+        b.tap()
+        return b
+    }
+
+    /// «Comí» suma la comida a lo consumido de arriba (capturas en claro y oscuro), sobrevive a reabrir la app, «Salté»
+    /// la saca y tocar el marcado lo desmarca.
+    func testComiYSalteSumanAlConsumidoYTocarDeNuevoDesmarca() throws {
+        let comidaId = primeraComida()
+        sinAjusteEn(comidaId)
+        sinMarcaEn(comidaId)
+        let antes = consumidoAhora()
+        XCTAssertGreaterThanOrEqual(antes, 0)
+        esperar(tocar("comi-\(comidaId)"), seleccionado: true, "«Comí» no quedó marcado")
+        let conLaComida = consumidoAhora()
+        XCTAssertGreaterThan(conLaComida, antes, "«Comí» no sumó a lo consumido")
+        adjuntarCaptura("consumido-claro")
+
+        // Quedó en el teléfono y en el servidor. Se reabre con el tema oscuro de la app (el de Mis datos): cambiar el
+        // del sistema es una animación que la captura agarra a mitad de camino.
+        app.terminate()
+        app.launchArguments += ["-mypump-theme", "dark"]
+        app.launch()
+        _ = primeraComida()
+        let comi = app.buttons["comi-\(comidaId)"]
+        for _ in 0..<15 where !comi.exists { app.swipeUp() }
+        esperar(comi, seleccionado: true, "«Comí» no sobrevivió a reabrir la app")
+        XCTAssertEqual(consumidoAhora(), conLaComida)
+        adjuntarCaptura("consumido-oscuro")
+
+        let salte = tocar("salte-\(comidaId)")
+        esperar(salte, seleccionado: true, "«Salté» no quedó marcado")
+        esperar(comi, seleccionado: false, "«Salté» no sacó «Comí»")
+        XCTAssertEqual(consumidoAhora(), antes, "«Salté» no sacó la comida de lo consumido")
+        adjuntarCaptura("salteada")
+        esperar(tocar("salte-\(comidaId)"), seleccionado: false, "Tocar «Salté» marcado no lo desmarcó")
+        XCTAssertEqual(consumidoAhora(), antes)
+    }
+
+    /// Consumo parcial: con «Comí», destildar un alimento descuenta sus kcal de lo consumido y tildarlo las vuelve a sumar.
+    func testDestildarUnAlimentoDescuentaSusKcal() throws {
+        let comidaId = primeraComida()
+        sinAjusteEn(comidaId)
+        sinMarcaEn(comidaId)
+        let tilde = app.switches["comido-\(comidaId)-0"]
+        XCTAssertFalse(tilde.exists, "Sin «Comí» no hay tildes")
+        esperar(tocar("comi-\(comidaId)"), seleccionado: true, "«Comí» no quedó marcado")
+        XCTAssertTrue(tilde.waitForExistence(timeout: 5), "Con «Comí» no aparecieron los tildes")
+        esperar(tilde, valor: "Lo comiste")
+        let todo = consumidoAhora()
+        _ = tocar("comido-\(comidaId)-0")
+        esperar(tilde, valor: "No lo comiste")
+        let sinEse = consumidoAhora()
+        XCTAssertLessThan(sinEse, todo, "Destildar no descontó")
+        let pista = app.descendants(matching: .any)["tildes-\(comidaId)"].firstMatch
+        for _ in 0..<15 where !pista.exists { app.swipeUp() }
+        XCTAssertTrue(pista.label.hasPrefix("Cuenta lo tildado:"), pista.label)
+        aLaVista(tilde)
+        adjuntarCaptura("comi-parcial")
+
+        // Mirar otra opción no cambia lo comido: se sigue contando la de la marca, sin tildes, y se puede volver a ella.
+        let opciones = app.segmentedControls["opciones-\(comidaId)"]
+        if opciones.exists, opciones.buttons.count > 1 {
+            let marcada = opciones.buttons.element(boundBy: 0).label
+            aLaVista(opciones)
+            opciones.buttons.element(boundBy: 1).tap()
+            XCTAssertTrue(tilde.waitForNonExistence(timeout: 3), "Mirando otra opción quedaron los tildes")
+            XCTAssertTrue(pista.label.hasPrefix("Comiste la opción \(marcada)"), pista.label)
+            XCTAssertEqual(consumidoAhora(), sinEse, "Mirar otra opción cambió lo consumido")
+            esperar(app.buttons["comi-\(comidaId)"], seleccionado: true, "Mirar otra opción sacó «Comí»")
+            _ = tocar("ver-opcion-\(comidaId)")
+            XCTAssertTrue(tilde.waitForExistence(timeout: 3), "«Ver la opción» no volvió a la que comió")
+            esperar(tilde, valor: "No lo comiste")
+        }
+        _ = tocar("comido-\(comidaId)-0")
+        esperar(tilde, valor: "Lo comiste")
+        XCTAssertEqual(consumidoAhora(), todo)
+        esperar(tocar("comi-\(comidaId)"), seleccionado: false, "No se desmarcó")
+        XCTAssertFalse(tilde.waitForExistence(timeout: 2), "Sin «Comí» quedaron los tildes")
     }
 
     private func esperarQuieto(_ e: XCUIElement) {

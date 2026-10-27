@@ -3,9 +3,9 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Dieta: el plan del día con sus opciones por comida, los reemplazos, la porción casera y los ajustes de porciones del
-/// día (sumar o restar kcal, gramos a mano, «Hoy no la como»; feedback del 20-oct). Sin "Comí / Salté" (decisión de Mati,
-/// 14-oct: marcar cada comida le resultaba molesto al cliente).
+/// Dieta: el plan del día con sus opciones por comida, los reemplazos, la porción casera, los ajustes de porciones del
+/// día (sumar o restar kcal, gramos a mano, «Hoy no la como»; feedback del 20-oct) y «✓ Comí» / «✗ Salté» con lo
+/// consumido arriba (D25, 27-oct: los clientes de 2.0.x no podían seguir lo que comían; en D10 se había sacado).
 struct DietaView: View {
     @State private var modelo = Proveedor.modelo
     @State private var opcion: [String: Int] = [:]
@@ -90,19 +90,22 @@ struct DietaView: View {
 
     // MARK: - Contenido
 
-    /// La opción que se ve de cada comida: la que se eligió acá, si no la del ajuste de hoy, si no A. Dentro de las que
-    /// hay (si Mati vuelve a publicar con menos opciones, la del ajuste puede no existir).
+    /// La opción que se ve de cada comida: la que se eligió acá, si no la que comió («Comí»), si no la del ajuste de hoy,
+    /// si no A. Dentro de las que hay (si Mati vuelve a publicar con menos opciones, la del ajuste puede no existir).
     private var opcionesVigentes: [String: Int] {
         var r: [String: Int] = [:]
+        let marcas = modelo.marcasDeHoy
         for c in modelo.comidasDelDia {
-            let o = opcion[c.id] ?? modelo.ajustesDeHoy[c.id]?.opcion ?? 0
+            let o = opcion[c.id] ?? ConsumoDelDia.opcionDeLaMarca(c, marcas[c.id]) ?? modelo.ajustesDeHoy[c.id]?.opcion ?? 0
             r[c.id] = c.opciones.isEmpty ? 0 : min(max(0, o), c.opciones.count - 1)
         }
         return r
     }
 
     private var contenido: some View {
-        let dia = modelo.diaAjustado(opciones: opcionesVigentes)
+        let opciones = opcionesVigentes
+        let dia = modelo.diaAjustado(opciones: opciones)
+        let consumo = modelo.consumo(opciones: opciones)
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 LazyVStack(alignment: .leading, spacing: 16) {
@@ -112,7 +115,7 @@ struct DietaView: View {
                             .accessibilityAddTraits(.isHeader)
                             .padding(.top, Espacio.s)
                     }
-                    Cabecera(objetivo: modelo.objetivo, elegidas: Self.total(dia), conAjustes: !modelo.ajustesDeHoy.isEmpty)
+                    Cabecera(objetivo: modelo.objetivo, consumo: consumo, elegidas: Self.total(dia), conAjustes: !modelo.ajustesDeHoy.isEmpty)
                     BannerRevision()
                     ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in
                         tarjeta(c, numero: n + 1, ajustada: dia[c.id])
@@ -181,6 +184,12 @@ struct DietaView: View {
         let propia = modelo.ajustesDeHoy[c.id] != nil
         let total = ModeloApp.sumar(alimentos.map(\.hoy))
         let nombreOpcion = c.opciones[safe: o]?.nombre ?? Self.letra(o)
+        // «Comí» / «Salté» (D25). La que hoy no come no se marca.
+        let marca = omitida ? nil : modelo.marcasDeHoy[c.id]
+        // Los tildes por alimento son índices de la opción con que marcó «Comí»: solo se ven mirando esa opción (la web
+        // guardaba el índice de la que se miraba contra la marcada y descontaba otro alimento).
+        let oMarcada = ConsumoDelDia.opcionDeLaMarca(c, marca)
+        let excluidos: Set<Int>? = oMarcada == o ? Set(marca?.excluidos ?? []) : nil
         // Con letra de accesibilidad lo de cada renglón va uno debajo del otro: lado a lado se cortaban las palabras
         // ("Op-ción A · 3 ali-men-tos") y el total quedaba ilegible ("T / OT / AL").
         let apilada = tamañoLetra.isAccessibilitySize
@@ -202,12 +211,14 @@ struct DietaView: View {
                     }
                 } else {
                     HStack(spacing: 12) {
-                        Image(systemName: Self.iconoComida(c.nombre))
+                        Image(systemName: marca?.estado == .comido ? "checkmark" : marca?.estado == .saltado ? "xmark" : Self.iconoComida(c.nombre))
                             .font(.system(size: 17, weight: .semibold))
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(Color.marcaTexto)
+                            .foregroundStyle(marca?.estado == .comido ? Color.sobreMarca : marca?.estado == .saltado ? Color.secondary : Color.marcaTexto)
                             .frame(width: 38, height: 38)
-                            .background(Color.marcaSuave, in: .rect(cornerRadius: 11, style: .continuous))
+                            .background(marca?.estado == .comido ? Color.marca : marca?.estado == .saltado ? Color.campo : Color.marcaSuave,
+                                        in: .rect(cornerRadius: 11, style: .continuous))
+                            .contentTransition(.symbolEffect(.replace))
                             .accessibilityHidden(true)
                         titulo
                         Spacer(minLength: 8)
@@ -219,6 +230,7 @@ struct DietaView: View {
                 }
             }
             .accessibilityElement(children: .combine)
+            .accessibilityValue(marca?.estado == .comido ? "La comiste" : marca?.estado == .saltado ? "La salteaste" : "")
             if c.opciones.count > 1 {
                 let disposicion = apilada ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
                 disposicion {
@@ -228,6 +240,41 @@ struct DietaView: View {
                     }
                     .pickerStyle(.segmented)
                     .sensoryFeedback(.selection, trigger: o)
+                    .accessibilityIdentifier("opciones-\(c.id)")
+                }
+            }
+            if !omitida {
+                BotonesMarca(estado: marca?.estado, comidaId: c.id) { nuevo in
+                    Task { await modelo.marcar(c.id, nuevo, opcion: o) }
+                }
+            }
+            if let oMarcada {
+                if let excluidos {
+                    let contado = alimentos.filter { !excluidos.contains($0.i) }.reduce(0.0) { $0 + ($1.hoy.kcal ?? 0) }
+                    let texto = excluidos.isEmpty ? "Destildá lo que no comiste: solo cuenta lo tildado."
+                                                  : "Cuenta lo tildado: \(contado.enteroSeguro) de \((total.kcal ?? 0).enteroSeguro) kcal."
+                    // Un solo elemento con el texto: si no, VoiceOver (y las pruebas) agarraban el ícono ("checklist").
+                    Label(texto, systemImage: "checklist")
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(texto)
+                        .accessibilityIdentifier("tildes-\(c.id)")
+                } else {
+                    let comida = c.opciones[safe: oMarcada]?.nombre ?? Self.letra(oMarcada)
+                    let texto = "Comiste la opción \(comida). Para marcar qué dejaste, volvé a esa."
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label(texto, systemImage: "eye")
+                            .font(.footnote).foregroundStyle(.secondary)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(texto)
+                            .accessibilityIdentifier("tildes-\(c.id)")
+                        Button("Ver la opción \(comida)") { elegirOpcion(c.id, oMarcada) }
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.marcaTexto)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("ver-opcion-\(c.id)")
+                    }
                 }
             }
             if let ajustada, AvisoAjuste.hayQueMostrar(ajustada, propia: propia) {
@@ -240,6 +287,8 @@ struct DietaView: View {
                         let clave = "\(c.id)|\(o)|\(item.i)"
                         FilaAlimento(original: item.original, mostrado: item.hoy, sustituido: item.efectivo.sustituido,
                                      enElPlan: item.hoy.qty != item.efectivo.alimento.qty ? item.efectivo.alimento : nil,
+                                     tildado: excluidos.map { !$0.contains(item.i) }, idTilde: "comido-\(c.id)-\(item.i)",
+                                     alTildar: { Task { await modelo.alternarAlimento(c.id, item.i) } },
                                      porcionAbierta: porcionesAbiertas.contains(clave)) {
                             withAnimation(.snappy) {
                                 if porcionesAbiertas.contains(clave) { porcionesAbiertas.remove(clave) } else { porcionesAbiertas.insert(clave) }
@@ -298,6 +347,7 @@ struct DietaView: View {
         .tarjeta()
         .animation(.snappy, value: o)
         .animation(.snappy, value: ajustada?.kcal)
+        .animation(.snappy, value: marca)
     }
 
     /// Cambiar la opción de una comida ajustada: las cantidades a mano eran de la otra opción y se descartan (las kcal
@@ -338,6 +388,10 @@ private struct FilaAlimento: View {
     let sustituido: Bool
     /// Si el ajuste de hoy cambió la cantidad: lo del plan, para mostrarlo al lado.
     var enElPlan: Alimento? = nil
+    /// Con «Comí», mirando la opción que comió: si lo comió (tildado) o lo dejó (DIE-06). nil, sin tilde.
+    var tildado: Bool? = nil
+    var idTilde: String = ""
+    var alTildar: () -> Void = {}
     let porcionAbierta: Bool
     let alTocarMano: () -> Void
     let alReemplazar: () -> Void
@@ -350,9 +404,28 @@ private struct FilaAlimento: View {
         let sustituible = original.sustituible != false && categoria != "condimento"
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 8) {
+                if let tildado {
+                    Button(action: alTildar) {
+                        Image(systemName: tildado ? "checkmark.circle.fill" : "circle")
+                            .font(.title2)
+                            .foregroundStyle(tildado ? Color.marca : Color.secondary)
+                            .contentTransition(.symbolEffect(.replace))
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(mostrado.nombre)
+                    .accessibilityValue(tildado ? "Lo comiste" : "No lo comiste")
+                    .accessibilityHint(tildado ? "Tocá si no lo comiste" : "Tocá si lo comiste")
+                    .accessibilityAddTraits(.isToggle)
+                    .accessibilityIdentifier(idTilde)
+                    .sensoryFeedback(.selection, trigger: tildado)
+                }
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(mostrado.nombre).font(.body.weight(.medium))
+                            .strikethrough(tildado == false)
+                            .foregroundStyle(tildado == false ? Color.secondary : Color.primary)
                         if sustituido {
                             Button(action: alRevertir) {
                                 Image(systemName: "arrow.left.arrow.right")
@@ -423,6 +496,47 @@ private struct BotonCircular: View {
     }
 }
 
+/// «✓ Comí» / «✗ Salté» de una comida (DIE-05). Tocar el que está marcado lo desmarca, como en la web.
+private struct BotonesMarca: View {
+    let estado: MarcaComida.Estado?
+    let comidaId: String
+    let alElegir: (MarcaComida.Estado?) -> Void
+    @Environment(\.dynamicTypeSize) private var tamañoLetra
+
+    var body: some View {
+        let disposicion = tamañoLetra.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
+        disposicion {
+            boton(.comido, "Comí", icono: "checkmark", id: "comi")
+            boton(.saltado, "Salté", icono: "xmark", id: "salte")
+        }
+        .sensoryFeedback(trigger: estado) { _, nuevo in
+            switch nuevo {
+            case .comido: .success
+            case .saltado: .selection
+            case nil: .impact(weight: .light)
+            }
+        }
+    }
+
+    private func boton(_ e: MarcaComida.Estado, _ texto: String, icono: String, id: String) -> some View {
+        let activo = estado == e
+        let tinta: Color = e == .comido ? .marca : .alerta
+        return Button { alElegir(activo ? nil : e) } label: {
+            Label(texto, systemImage: activo ? "\(icono).circle.fill" : icono)
+                .font(.subheadline.weight(.semibold))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(activo ? (e == .comido ? Color.sobreMarca : Color.alerta) : Color.primary.opacity(0.8))
+        .background(activo ? (e == .comido ? tinta : tinta.opacity(0.16)) : Color.campo, in: .rect(cornerRadius: 12, style: .continuous))
+        .accessibilityIdentifier("\(id)-\(comidaId)")
+        .accessibilityAddTraits(activo ? .isSelected : [])
+        .accessibilityHint(activo ? "Tocá para desmarcar" : "")
+    }
+}
+
 /// Cómo se escriben cantidades y macros en Dieta.
 enum FormatoDieta {
     /// "2 unidades", "110 g", "1 rebanada": la web imprime `qty unit` crudo ("2 unidad"); acá se pluraliza solo lo que
@@ -455,35 +569,39 @@ enum FormatoDieta {
     }
 }
 
-/// El objetivo del día (no lo consumido: desde D10 no se marcan comidas). El anillo reparte las kcal objetivo entre
-/// proteínas, carbos y grasas; abajo, cuánto suman las opciones elegidas.
+/// Lo consumido hoy contra el objetivo del día (DIE-07, D25): el anillo se llena con las kcal de las comidas marcadas
+/// «Comí» (con lo que destildó, las porciones de hoy y las comidas libres) y cada macro con su barra. Abajo, cuántas
+/// comidas van y cuánto suman las opciones elegidas contra el objetivo.
 private struct Cabecera: View {
     let objetivo: Macros
+    let consumo: ConsumoDelDia.Consumo
     let elegidas: Macros
     var conAjustes = false
     @Environment(\.dynamicTypeSize) private var tamañoLetra
     @Environment(\.horizontalSizeClass) private var claseAncho
 
     var body: some View {
-        let kcalP = (objetivo.prot ?? 0) * 4, kcalC = (objetivo.carb ?? 0) * 4, kcalG = (objetivo.fat ?? 0) * 9
-        let total = max(kcalP + kcalC + kcalG, 1)
-        let delta = (objetivo.kcal ?? 0) > 0 ? ((elegidas.kcal ?? 0) - (objetivo.kcal ?? 0)) / (objetivo.kcal ?? 1) * 100 : 0
+        let meta = objetivo.kcal ?? 0
+        let delta = meta > 0 ? ((elegidas.kcal ?? 0) - meta) / meta * 100 : 0
         // Con letra de accesibilidad el anillo crece: en 132 las kcal quedaban en "2...." y "kcal...".
         let lado: CGFloat = tamañoLetra.isAccessibilitySize ? 200 : 132
-        let anillo = ZStack {
-            AnilloMacros(partes: [(kcalP / total, .proteina), (kcalC / total, .carbohidrato), (kcalG / total, .grasa)])
+        // Se llena hasta el objetivo; pasado, queda lleno.
+        let anillo = AnilloProgreso(fraccion: meta > 0 ? consumo.kcal / meta : 0, grosor: 14, color: .marca) {
             VStack(spacing: 0) {
-                Text((objetivo.kcal ?? 0).enteroSeguro, format: .number).font(.numeroGrande).contentTransition(.numericText())
+                Text(consumo.kcal.enteroSeguro, format: .number).font(.numeroGrande).contentTransition(.numericText())
                     .minimumScaleFactor(0.5).lineLimit(1)
-                Text("kcal por día").font(.caption).foregroundStyle(.secondary)
+                Text(meta > 0 ? "de \(meta.enteroSeguro.formatted()) kcal" : "kcal hoy").font(.caption).foregroundStyle(.secondary)
                     .minimumScaleFactor(0.5).lineLimit(1)
             }
             .padding(.horizontal, 14)
         }
         .frame(width: lado, height: lado)
-        .accessibilityElement(children: .combine)
-        let macros = [("Proteínas", objetivo.prot, kcalP / total, Color.proteina), ("Carbos", objetivo.carb, kcalC / total, Color.carbohidrato),
-                      ("Grasas", objetivo.fat, kcalG / total, Color.grasa)]
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Consumido hoy")
+        .accessibilityValue(meta > 0 ? "\(consumo.kcal.enteroSeguro) de \(meta.enteroSeguro) kcal" : "\(consumo.kcal.enteroSeguro) kcal")
+        .accessibilityIdentifier("consumido-kcal")
+        let macros = [("Proteínas", consumo.prot, objetivo.prot, Color.proteina), ("Carbos", consumo.carb, objetivo.carb, Color.carbohidrato),
+                      ("Grasas", consumo.fat, objetivo.fat, Color.grasa)]
         VStack(alignment: .leading, spacing: 16) {
             // En el teléfono, el anillo arriba y los macros en tres cajas de color debajo, en todos los tamaños: lado a lado
             // salía solo en los anchos (el Pro Max, Android) y la cabecera cambiaba de un teléfono a otro (15-oct). En el
@@ -491,7 +609,7 @@ private struct Cabecera: View {
             let tresColumnas = VStack(spacing: 18) {
                 anillo
                 HStack(alignment: .top, spacing: 10) {
-                    ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
+                    ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, consumido: $0.1, objetivo: $0.2, color: $0.3) }
                 }
             }
             .frame(maxWidth: .infinity)
@@ -499,7 +617,7 @@ private struct Cabecera: View {
             let unaDebajoDeOtra = VStack(spacing: 18) {
                 anillo
                 VStack(spacing: 10) {
-                    ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
+                    ForEach(macros, id: \.0) { ColumnaMacro(nombre: $0.0, consumido: $0.1, objetivo: $0.2, color: $0.3) }
                 }
             }
             .frame(maxWidth: .infinity)
@@ -508,7 +626,7 @@ private struct Cabecera: View {
                     HStack(spacing: 20) {
                         anillo
                         VStack(alignment: .leading, spacing: 12) {
-                            ForEach(macros, id: \.0) { FilaMacro(nombre: $0.0, gramos: $0.1, porcentaje: $0.2, color: $0.3) }
+                            ForEach(macros, id: \.0) { FilaMacro(nombre: $0.0, consumido: $0.1, objetivo: $0.2, color: $0.3) }
                         }
                     }
                     tresColumnas
@@ -520,6 +638,23 @@ private struct Cabecera: View {
                     unaDebajoDeOtra
                 }
             }
+            Group {
+                if consumo.hechas + consumo.salteadas == 0 {
+                    Label("Tocá «Comí» en cada comida y acá se va sumando lo que comés.", systemImage: "hand.tap")
+                } else {
+                    Label {
+                        Text("Comiste ") + Text("\(consumo.hechas) de \(consumo.comidas)").bold()
+                            + Text(consumo.comidas == 1 ? " comida" : " comidas")
+                            + Text(consumo.salteadas > 0 ? " · salteaste \(consumo.salteadas)" : "")
+                    } icon: {
+                        Image(systemName: "fork.knife")
+                    }
+                }
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("consumido-comidas")
             HStack(spacing: 8) {
                 Image(systemName: abs(delta) <= 5 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(abs(delta) <= 5 ? Color.exito : Color.alerta)
@@ -532,75 +667,78 @@ private struct Cabecera: View {
         }
         .tarjeta()
         .animation(.snappy, value: elegidas.kcal)
+        .animation(.snappy, value: consumo)
     }
 }
 
-private struct AnilloMacros: View {
-    let partes: [(Double, Color)]
+/// Lo consumido de un macro contra el objetivo, con una barra en su color.
+private struct BarraMacro: View {
+    let consumido: Double
+    let objetivo: Double?
+    let color: Color
 
     var body: some View {
-        ZStack {
-            Circle().stroke(Color(uiColor: .tertiarySystemFill), lineWidth: 14)
-            ForEach(Array(segmentos.enumerated()), id: \.offset) { _, s in
-                Circle()
-                    .trim(from: s.desde, to: s.hasta)
-                    .stroke(s.color, style: StrokeStyle(lineWidth: 14, lineCap: .butt))
-                    .rotationEffect(.degrees(-90))
+        let o = objetivo ?? 0
+        GeometryReader { g in
+            ZStack(alignment: .leading) {
+                Capsule().fill(color.opacity(0.18))
+                Capsule().fill(color).frame(width: o > 0 ? g.size.width * min(1, max(0, consumido / o)) : 0)
             }
         }
-    }
-
-    private var segmentos: [(desde: Double, hasta: Double, color: Color)] {
-        var acumulado = 0.0
-        let hueco = 0.012
-        return partes.map { p in
-            let s = (desde: acumulado + hueco / 2, hasta: acumulado + max(p.0 - hueco / 2, hueco / 2), color: p.1)
-            acumulado += p.0
-            return s
-        }
+        .frame(height: 6)
+        .accessibilityHidden(true)
     }
 }
 
 private struct FilaMacro: View {
     let nombre: String
-    let gramos: Double?
-    let porcentaje: Double
+    let consumido: Double
+    let objetivo: Double?
     let color: Color
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle().fill(color).frame(width: 9, height: 9)
-            VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Circle().fill(color).frame(width: 9, height: 9)
                 Text(nombre).font(.subheadline.weight(.medium))
-                Text("\((porcentaje * 100).enteroSeguro) % de las kcal").font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                (Text("\(consumido.enteroSeguro)").font(.numeroMediano).monospacedDigit()
+                    + Text(" / \((objetivo ?? 0).enteroSeguro) g").font(.subheadline).foregroundColor(.secondary))
+                    .contentTransition(.numericText())
             }
-            Spacer(minLength: 4)
-            Text("\((gramos ?? 0).enteroSeguro) g").font(.numeroMediano).monospacedDigit()
+            BarraMacro(consumido: consumido, objetivo: objetivo, color: color)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(nombre)
+        .accessibilityValue("\(consumido.enteroSeguro) de \((objetivo ?? 0).enteroSeguro) g")
     }
 }
 
-/// Un macro en columna (cabecera angosta): nombre, gramos grandes y el porcentaje de las kcal.
+/// Un macro en columna (cabecera angosta): nombre, lo consumido grande, el objetivo y la barra.
 private struct ColumnaMacro: View {
     let nombre: String
-    let gramos: Double?
-    let porcentaje: Double
+    let consumido: Double
+    let objetivo: Double?
     let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 5) {
                 Circle().fill(color).frame(width: 8, height: 8)
                 Text(nombre).font(.caption.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
             }
-            Text("\((gramos ?? 0).enteroSeguro) g").font(.numeroMediano).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
-            Text("\((porcentaje * 100).enteroSeguro) % kcal").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            Text("\(consumido.enteroSeguro) g").font(.numeroMediano).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
+            Text("de \((objetivo ?? 0).enteroSeguro) g").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            BarraMacro(consumido: consumido, objetivo: objetivo, color: color)
+                .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(color.opacity(0.08), in: .rect(cornerRadius: 12, style: .continuous))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(nombre)
+        .accessibilityValue("\(consumido.enteroSeguro) de \((objetivo ?? 0).enteroSeguro) g")
     }
 }
 
