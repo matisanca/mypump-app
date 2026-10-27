@@ -239,12 +239,16 @@ struct DietaView: View {
                         ForEach(Array(c.opciones.enumerated()), id: \.offset) { i, op in Text(op.nombre ?? Self.letra(i)).tag(i) }
                     }
                     .pickerStyle(.segmented)
-                    .sensoryFeedback(.selection, trigger: o)
+                    // Solo cuando la elige el cliente: la opción también cambia sola con una marca que llega de la web.
+                    .sensoryFeedback(.selection, trigger: o) { _, nueva in opcion[c.id] == nueva }
                     .accessibilityIdentifier("opciones-\(c.id)")
                 }
             }
             if !omitida {
                 BotonesMarca(estado: marca?.estado, comidaId: c.id) { nuevo in
+                    // La opción que se ve queda fija: si venía de la marca, desmarcar o «Salté» no la cambian (en la web
+                    // tampoco salta) y un «Comí» después es con la que se está mirando.
+                    if opcion[c.id] == nil { opcion[c.id] = o }
                     Task { await modelo.marcar(c.id, nuevo, opcion: o) }
                 }
             }
@@ -351,9 +355,11 @@ struct DietaView: View {
     }
 
     /// Cambiar la opción de una comida ajustada: las cantidades a mano eran de la otra opción y se descartan (las kcal
-    /// sumadas o restadas, «no la como» y compensar siguen).
+    /// sumadas o restadas, «no la como» y compensar siguen). Si la marcó «Comí» (D25), mirar otra no toca el ajuste: lo
+    /// comido es la opción de la marca, con sus porciones de hoy.
     private func elegirOpcion(_ comidaId: String, _ nueva: Int) {
         withAnimation(.snappy) { opcion[comidaId] = nueva }
+        if modelo.marcasDeHoy[comidaId]?.estado == .comido { return }
         let opciones = opcionesVigentes
         if var a = modelo.ajustesDeHoy[comidaId] {
             guard a.opcion != nueva else { return }
@@ -396,6 +402,8 @@ private struct FilaAlimento: View {
     let alTocarMano: () -> Void
     let alReemplazar: () -> Void
     let alRevertir: () -> Void
+    /// Los toques al tilde: la háptica va con ellos y no con `tildado`, que también cambia con lo que llega de la web.
+    @State private var toques = 0
 
     var body: some View {
         let porcion = PorcionCasera.referencia(nombre: mostrado.nombre, qty: mostrado.qty, unidad: mostrado.unidad,
@@ -405,7 +413,10 @@ private struct FilaAlimento: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 8) {
                 if let tildado {
-                    Button(action: alTildar) {
+                    Button {
+                        toques += 1
+                        alTildar()
+                    } label: {
                         Image(systemName: tildado ? "checkmark.circle.fill" : "circle")
                             .font(.title2)
                             .foregroundStyle(tildado ? Color.marca : Color.secondary)
@@ -419,7 +430,7 @@ private struct FilaAlimento: View {
                     .accessibilityHint(tildado ? "Tocá si no lo comiste" : "Tocá si lo comiste")
                     .accessibilityAddTraits(.isToggle)
                     .accessibilityIdentifier(idTilde)
-                    .sensoryFeedback(.selection, trigger: tildado)
+                    .sensoryFeedback(.selection, trigger: toques)
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -502,6 +513,13 @@ private struct BotonesMarca: View {
     let comidaId: String
     let alElegir: (MarcaComida.Estado?) -> Void
     @Environment(\.dynamicTypeSize) private var tamañoLetra
+    /// El último toque: la háptica va con él y no con `estado`, que también cambia con lo que llega de la web.
+    @State private var toque = Toque()
+
+    private struct Toque: Equatable {
+        var n = 0
+        var nuevo: MarcaComida.Estado?
+    }
 
     var body: some View {
         let disposicion = tamañoLetra.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
@@ -509,8 +527,8 @@ private struct BotonesMarca: View {
             boton(.comido, "Comí", icono: "checkmark", id: "comi")
             boton(.saltado, "Salté", icono: "xmark", id: "salte")
         }
-        .sensoryFeedback(trigger: estado) { _, nuevo in
-            switch nuevo {
+        .sensoryFeedback(trigger: toque) { _, t in
+            switch t.nuevo {
             case .comido: .success
             case .saltado: .selection
             case nil: .impact(weight: .light)
@@ -521,7 +539,11 @@ private struct BotonesMarca: View {
     private func boton(_ e: MarcaComida.Estado, _ texto: String, icono: String, id: String) -> some View {
         let activo = estado == e
         let tinta: Color = e == .comido ? .marca : .alerta
-        return Button { alElegir(activo ? nil : e) } label: {
+        return Button {
+            let nuevo: MarcaComida.Estado? = activo ? nil : e
+            toque = Toque(n: toque.n + 1, nuevo: nuevo)
+            alElegir(nuevo)
+        } label: {
             Label(texto, systemImage: activo ? "\(icono).circle.fill" : icono)
                 .font(.subheadline.weight(.semibold))
                 .contentTransition(.symbolEffect(.replace))
