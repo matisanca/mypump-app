@@ -248,6 +248,44 @@ class SustituirOtrosTest {
     }
 
     /**
+     * El crunch con soga del catálogo (Rope_Crunch o Standing_Rope_Crunch, de polea) se traduce «Crunch» y quedaba sin kg al
+     * sustituir (21-oct): ahora lo decide su equipo (27-oct). Se registra con kg y, de vuelta al original, el lápiz y el ✓
+     * sobre esa serie no se lo borran aunque «Crunch» por el nombre no lleve. Gemelo del de iOS.
+     */
+    @Test
+    fun elCrunchConSogaLlevaKgPorSuEquipo() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modeloOtros(alcance)
+        val lugar = "cru-d1-4"
+        suspend fun carga(i: Int): ValorJson? = b.cola.operaciones().firstOrNull { it.dedupeKey == "carga_d1_${lugar}_${i}_s1" }?.payload?.get("datos")
+        val soga = m.sustitutos(lugar).first { it.nombre == "Crunch" && it.equipoCrudo == "cable" }
+        m.sustituir(lugar, soga, fijar = false)
+        val t = m.tarjeta(lugar)!!
+        assertTrue(t.efectivo.ejercicio.nombre == "Crunch" && !t.sinKg && t.filas.none { it.sinKg }, "el crunch con soga lleva kg")
+        m.escribir(lugar, 0, "reps", "15")
+        m.escribir(lugar, 0, "kg", "25")
+        m.confirmarSerie(lugar, 0) { true }
+        val s1 = carga(0)!!
+        assertTrue(s1["ejercicioNombre"]?.comoTexto == "Crunch" && s1["peso"] == ValorJson.Numero(25.0), "$s1")
+
+        m.revertirSustitucion(lugar)
+        m.editarSerie(lugar, 0)
+        m.escribir(lugar, 0, "reps", "14")
+        m.confirmarSerie(lugar, 0) { true }
+        val otraVez = carga(0)!!
+        assertTrue(
+            otraVez["ejercicioNombre"]?.comoTexto == "Crunch" && otraVez["peso"] == ValorJson.Numero(25.0) && otraVez["reps"] == ValorJson.Numero(14.0),
+            "$otraVez",
+        )
+        assertEquals("25", m.dia.value.ejercicios[lugar]!!.series[0].kg)
+
+        // El crunch de peso corporal del catálogo sigue sin kg.
+        val corporal = m.sustitutos(lugar).first { it.nombre == "Crunch" && it.equipoCrudo == "body only" }
+        m.sustituir(lugar, corporal, fijar = false)
+        assertTrue(m.tarjeta(lugar)!!.sinKg, "el crunch de peso corporal no lleva kg")
+    }
+
+    /**
      * Hallazgo 4: con un plan sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios), al reabrir
      * «Cambiar» después de pasar la extensión en polea a fondos, las listas se armaban sobre los fondos: sin foto del
      * original, `referencia` caía en la del sustituto.

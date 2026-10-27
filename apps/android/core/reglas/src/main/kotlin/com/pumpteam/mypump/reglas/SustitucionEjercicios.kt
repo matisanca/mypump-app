@@ -541,7 +541,9 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
     fun efectivo(ex: Ejercicio, sustitucion: SustitucionAplicada?): EjercicioEfectivo {
         var ef = ex
         if (sustitucion != null) {
-            ef = ef.copy(nombre = sustitucion.nombre, imagenes = sustitucion.imagenes)
+            // Desvío a propósito de la web (27-oct): el equipo del sustituto decide el kg cuando el nombre traducido lo
+            // pierde («Rope Crunch» sale «Crunch»). Ver `ReglasEjercicio.esSinPeso`.
+            ef = ef.copy(nombre = sustitucion.nombre, imagenes = sustitucion.imagenes, equipo = sustitucion.equipo)
         } else if (verdadero(ex.imagenes?.eccentric) == null) {
             // El plan no trae foto (ejercicio creado en NutriPlan sin match): sale del catálogo, sin republicar.
             val e = resolver(ex)

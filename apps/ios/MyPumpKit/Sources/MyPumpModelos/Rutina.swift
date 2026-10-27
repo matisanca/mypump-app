@@ -169,6 +169,9 @@ public struct Ejercicio: Decodable, Sendable, Equatable {
     public var rirObjetivo: String?
     /// `rir` suelto: último respaldo de `getProgresionActual` (`ej.rir_objetivo ?? ej.rir`).
     public var rirSuelto: String?
+    /// El `equipment` del catálogo cuando el lugar está sustituido (lo pone `CatalogoEjercicios.efectivo`). El plan no lo
+    /// trae: en los del plan decide el nombre, que escribe Mati con el equipo («Crunch en polea»).
+    public var equipo: String?
 
     enum CodingKeys: String, CodingKey {
         case id, nombre, tipo, descansoSegundos = "descanso_segundos", notasTecnica = "notas_tecnica"
@@ -178,11 +181,12 @@ public struct Ejercicio: Decodable, Sendable, Equatable {
 
     public init(id: String, nombre: String, tipo: String? = nil, descansoSegundos: Int? = nil, notasTecnica: String? = nil,
                 videoURL: String? = nil, imagenes: Imagenes? = nil, catalogoSlug: String? = nil, matchedSlug: String? = nil,
-                progresion: [Progresion] = [], series: Int? = nil, reps: String? = nil, rirObjetivo: String? = nil) {
+                progresion: [Progresion] = [], series: Int? = nil, reps: String? = nil, rirObjetivo: String? = nil,
+                equipo: String? = nil) {
         self.id = id; self.nombre = nombre; self.tipo = tipo; self.descansoSegundos = descansoSegundos
         self.notasTecnica = notasTecnica; self.videoURL = videoURL; self.imagenes = imagenes; self.catalogoSlug = catalogoSlug
         self.matchedSlug = matchedSlug; self.progresion = progresion; self.series = series; self.reps = reps
-        self.rirObjetivo = rirObjetivo
+        self.rirObjetivo = rirObjetivo; self.equipo = equipo
     }
 
     public init(from decoder: Decoder) throws {
@@ -201,6 +205,7 @@ public struct Ejercicio: Decodable, Sendable, Equatable {
         reps = c.texto(.reps)
         rirObjetivo = c.texto(.rirObjetivo)
         rirSuelto = c.texto(.rirSuelto)
+        equipo = nil
     }
 }
 

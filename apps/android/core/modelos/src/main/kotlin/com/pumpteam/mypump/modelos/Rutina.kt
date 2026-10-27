@@ -144,6 +144,11 @@ data class Ejercicio(
     val rirObjetivo: String? = null,
     /** `rir` suelto: último respaldo de `getProgresionActual` (`ej.rir_objetivo ?? ej.rir`). */
     val rirSuelto: String? = null,
+    /**
+     * El `equipment` del catálogo cuando el lugar está sustituido (lo pone `CatalogoEjercicios.efectivo`). El plan no lo
+     * trae: en los del plan decide el nombre, que escribe Mati con el equipo («Crunch en polea»).
+     */
+    val equipo: String? = null,
 ) {
     companion object {
         fun desde(e: JsonElement): Ejercicio {

@@ -79,20 +79,36 @@ public enum ReglasEjercicio {
         return tabla.first { $0.0.prueba(n) }?.1
     }
 
+    /// El `equipment` del catálogo (free-exercise-db) que es carga externa: el sustituto lleva kg aunque su nombre
+    /// traducido no nombre el equipo («Rope Crunch» y «Standing Rope Crunch» son de polea y salen «Crunch»; «Weighted
+    /// Crunches», con balón medicinal, también). Lo demás («body only», «other», «bands», «exercise ball», «foam roll» o
+    /// sin dato) no alcanza para decidir y decide el nombre, como en la web: en peso corporal el catálogo mezcla (los fondos
+    /// de tríceps son «body only» y los de pecho «other») y los fondos y las dominadas se registran con lastre.
+    public static let equiposConCarga: Set<String> = ["barbell", "dumbbell", "cable", "machine", "kettlebells", "e-z curl bar", "medicine ball"]
+
+    /// El equipo del catálogo es carga externa (sin distinguir mayúsculas ni espacios de más).
+    public static func esEquipoConCarga(_ equipo: String?) -> Bool {
+        guard let e = equipo?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !e.isEmpty else { return false }
+        return equiposConCarga.contains(e)
+    }
+
     /// `esSinPeso`: la carga externa gana; si no, la rueda o un gesto de peso corporal. El calentamiento va aparte.
-    public static func esSinPeso(nombre: String?, tipo: String?) -> Bool {
+    /// `equipo` es el del catálogo, si el ejercicio sale de ahí (un sustituto): si es carga externa, lleva kg aunque el
+    /// nombre diga crunch (desvío a propósito de la web, 27-oct: el crunch con soga que pedía kg, 21-oct).
+    public static func esSinPeso(nombre: String?, tipo: String?, equipo: String? = nil) -> Bool {
         if tipo == "calentamiento" { return false }
+        if esEquipoConCarga(equipo) { return false }
         let n = nombre ?? ""
         if conCargaRE.prueba(n) { return false }
         return (variantes(n)?.sinPeso ?? false) || sinPesoRE.prueba(n)
     }
 
     /// `exNoKg` (ENT-13): sin columna de kg (calentamiento o peso corporal).
-    public static func sinKg(nombre: String?, tipo: String?) -> Bool {
-        tipo == "calentamiento" || esSinPeso(nombre: nombre, tipo: tipo)
+    public static func sinKg(nombre: String?, tipo: String?, equipo: String? = nil) -> Bool {
+        tipo == "calentamiento" || esSinPeso(nombre: nombre, tipo: tipo, equipo: equipo)
     }
 
-    public static func sinKg(_ ex: Ejercicio) -> Bool { sinKg(nombre: ex.nombre, tipo: ex.tipo) }
+    public static func sinKg(_ ex: Ejercicio) -> Bool { sinKg(nombre: ex.nombre, tipo: ex.tipo, equipo: ex.equipo) }
 
     /// `_repsSug` (SER-01): el ÚLTIMO número de las reps del plan ("8-10" → 10). nil con AMRAP, ∞ o máx: ahí no hay
     /// registro de un toque.

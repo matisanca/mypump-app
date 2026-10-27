@@ -1,0 +1,35 @@
+{
+  "fuente": "A mano (27-oct): la regla de la nativa con el equipo del catálogo, que la web no tiene (esSinPeso solo mira el nombre). La leen SinPesoConEquipoTests (iOS) y SinPesoConEquipoTest (Android) y tienen que dar esto.",
+  "regla": "Si el equipo del catálogo es carga externa (barbell, dumbbell, cable, machine, kettlebells, e-z curl bar, medicine ball), lleva kg aunque el nombre diga crunch. Cualquier otro equipo (body only, other, bands, exercise ball, foam roll) o sin dato: decide el nombre, como en la web. El calentamiento va aparte.",
+  "casos": [
+    {"nombre": "Crunch", "tipo": "core", "equipo": "cable", "sinPeso": false, "sinKg": false, "por": "Rope_Crunch y Standing_Rope_Crunch: de polea, traducidos «Crunch»"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "medicine ball", "sinPeso": false, "sinKg": false, "por": "Weighted_Crunches: con balón medicinal"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "machine", "sinPeso": false, "sinKg": false, "por": "máquina"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "barbell", "sinPeso": false, "sinKg": false, "por": "barra"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "dumbbell", "sinPeso": false, "sinKg": false, "por": "mancuerna"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "kettlebells", "sinPeso": false, "sinKg": false, "por": "kettlebell"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "e-z curl bar", "sinPeso": false, "sinKg": false, "por": "barra Z"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": " Cable ", "sinPeso": false, "sinKg": false, "por": "sin distinguir mayúsculas ni espacios"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "body only", "sinPeso": true, "sinKg": true, "por": "peso corporal: decide el nombre"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "other", "sinPeso": true, "sinKg": true, "por": "otro: decide el nombre"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "foam roll", "sinPeso": true, "sinKg": true, "por": "rodillo: decide el nombre"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": "", "sinPeso": true, "sinKg": true, "por": "vacío: decide el nombre"},
+    {"nombre": "Crunch", "tipo": "core", "equipo": null, "sinPeso": true, "sinKg": true, "por": "sin dato (un ejercicio del plan): decide el nombre"},
+    {"nombre": "Crunch con banda", "tipo": "core", "equipo": "bands", "sinPeso": true, "sinKg": true, "por": "la banda no es carga: decide el nombre"},
+    {"nombre": "Crunch con pelota", "tipo": "core", "equipo": "exercise ball", "sinPeso": true, "sinKg": true, "por": "la pelota no es carga: decide el nombre"},
+    {"nombre": "Crunch en polea", "tipo": "core", "equipo": null, "sinPeso": false, "sinKg": false, "por": "el nombre ya dice la polea"},
+    {"nombre": "Plancha", "tipo": "core", "equipo": "body only", "sinPeso": true, "sinKg": true, "por": "peso corporal y el nombre lo dice"},
+    {"nombre": "Elevación de piernas", "tipo": "core", "equipo": "body only", "sinPeso": true, "sinKg": true, "por": "peso corporal y el nombre lo dice"},
+    {"nombre": "Rollout", "tipo": "core", "equipo": "other", "sinPeso": true, "sinKg": true, "por": "Ab_Roller: la rueda"},
+    {"nombre": "Rollout con barra", "tipo": "core", "equipo": "barbell", "sinPeso": false, "sinKg": false, "por": "Barbell_Ab_Rollout"},
+    {"nombre": "Fondos", "tipo": "compuesto", "equipo": "body only", "sinPeso": false, "sinKg": false, "por": "peso corporal con lastre: decide el nombre, como hoy"},
+    {"nombre": "Dominadas", "tipo": "compuesto", "equipo": "body only", "sinPeso": false, "sinKg": false, "por": "peso corporal con lastre: decide el nombre, como hoy"},
+    {"nombre": "Flexiones", "tipo": "compuesto", "equipo": "body only", "sinPeso": false, "sinKg": false, "por": "decide el nombre, como hoy"},
+    {"nombre": "Elevaciones laterales con banda", "tipo": "aislamiento", "equipo": "bands", "sinPeso": false, "sinKg": false, "por": "decide el nombre, como hoy"},
+    {"nombre": "Crunch", "tipo": "calentamiento", "equipo": "cable", "sinPeso": false, "sinKg": true, "por": "el calentamiento va aparte: sin kg"}
+  ],
+  "catalogo": {
+    "por": "Con apps/shared/catalogo-ejercicios.json y su traducción (castellano), el equipo cambia lo que dice el nombre solo en estos, y los tres pasan a llevar kg. Ab_Crunch_Machine ya salía «Crunch en máquina», con kg.",
+    "cambian": ["Rope_Crunch", "Standing_Rope_Crunch", "Weighted_Crunches"]
+  }
+}

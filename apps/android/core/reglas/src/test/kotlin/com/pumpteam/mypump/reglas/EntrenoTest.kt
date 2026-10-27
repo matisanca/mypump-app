@@ -828,3 +828,115 @@ class SustitutoConOtraCargaTest {
         assertEquals(true, d.ejercicios["e1"]?.series?.get(0)?.confirmada)   // antes: el ✓ no hacía nada (faltaba el kg)
     }
 }
+
+/**
+ * «Sin kg» con el equipo del catálogo (27-oct; gemelo de SinPesoConEquipoTests de iOS): el crunch con soga del catálogo
+ * (Rope_Crunch, de polea) se traduce «Crunch» y quedaba sin kg al sustituir (caso del 21-oct). Los casos están en
+ * `apps/shared/vectores/sin_peso_equipo.json`, a mano porque la web no tiene esta regla.
+ */
+class SinPesoConEquipoTest {
+    private val v = cargar(Vectores.publico("sin_peso_equipo"))
+    private val cat = CatalogoEjercicios.desde(Vectores.texto(Vectores.compartido("catalogo-ejercicios.json")))
+
+    @Test
+    fun losCasosCompartidos() {
+        val casos = v["casos"].a()
+        assertTrue(casos.size >= 20)
+        for (cj in casos) {
+            val c = cj.jsonObject
+            val nombre = c["nombre"].s()!!
+            val tipo = c["tipo"].s()
+            val equipo = c["equipo"].s()
+            val por = "$nombre [${equipo ?: "-"}]: ${c["por"].s()}"
+            assertEquals(c["sinPeso"].b(), ReglasEjercicio.esSinPeso(nombre, tipo, equipo), por)
+            assertEquals(c["sinKg"].b(), ReglasEjercicio.sinKg(nombre, tipo, equipo), por)
+            assertEquals(c["sinKg"].b(), ReglasEjercicio.sinKg(Ejercicio(id = "e1", nombre = nombre, tipo = tipo, equipo = equipo)), "$por (como ejercicio)")
+        }
+    }
+
+    /** Sin equipo es la regla de la web: los nombres de los vectores de la web dan lo mismo con equipo null. */
+    @Test
+    fun sinEquipoEsLaReglaDeLaWeb() {
+        val web = cargar(Vectores.publico("entreno"))["ejercicios"].a()
+        assertTrue(web.isNotEmpty())
+        for (cj in web) {
+            val c = cj.jsonObject
+            assertEquals(c["sinPeso"].b(), ReglasEjercicio.esSinPeso(c["nombre"].s(), c["tipo"].s(), null), c["nombre"].s())
+        }
+    }
+
+    /** Con el catálogo de hoy el equipo cambia solo 3 ejercicios (los tres pasan a llevar kg), y todo lo que tiene carga externa lleva kg. */
+    @Test
+    fun conElCatalogoCambianSoloLosCrunchConCarga() {
+        val cambian = mutableListOf<String>()
+        for (e in cat.entradas) {
+            val nombre = SustitucionEjercicios.castellano(e)
+            val porNombre = ReglasEjercicio.sinKg(nombre, null)
+            val conEquipo = ReglasEjercicio.sinKg(nombre, null, e.equipment)
+            if (porNombre != conEquipo) {
+                cambian += e.slugEn ?: ""
+                assertTrue(!conEquipo, "${e.slugEn}: el equipo solo agrega el kg")
+            }
+            if (ReglasEjercicio.esEquipoConCarga(e.equipment)) assertTrue(!conEquipo, "${e.slugEn} (${e.equipment}) lleva kg")
+        }
+        assertEquals(v["catalogo"].o()!!["cambian"].textos().sorted(), cambian.sorted())
+        val maquina = cat.entradas.first { it.slugEn == "Ab_Crunch_Machine" }
+        assertEquals("Crunch en máquina", SustitucionEjercicios.castellano(maquina))
+        assertTrue(!ReglasEjercicio.sinKg("Crunch en máquina", null))
+    }
+
+    /** El sustituto trae su equipo al ejercicio que se muestra (también guardado y leído como lo guarda la web); sin sustituto, el del plan no tiene. */
+    @Test
+    fun elEfectivoLlevaElEquipoDelSustituto() {
+        val plan = Ejercicio(id = "e1", nombre = "Crunch abdominal", tipo = "core", series = 3, reps = "15")
+        val sub = SustitutoEjercicio(cat.entradas.first { it.slugEn == "Rope_Crunch" }, mismoEquipo = false)
+        assertTrue(sub.nombre == "Crunch" && sub.equipoCrudo == "cable", "$sub")
+        val sinSustituir = cat.efectivo(plan, null)
+        assertTrue(sinSustituir.ejercicio.equipo == null && ReglasEjercicio.sinKg(sinSustituir.ejercicio))
+        val leida = SustitucionesEntreno.aplicada(SustitucionesEntreno.nueva(sub, sinSustituir, fijado = false, semana = 1, diaId = "d1"))!!
+        val ef = cat.efectivo(plan, leida)
+        assertTrue(ef.ejercicio.nombre == "Crunch" && ef.ejercicio.equipo == "cable", "${ef.ejercicio}")
+        assertTrue(!ReglasEjercicio.sinKg(ef.ejercicio), "el crunch con soga lleva kg")
+        val corporal = cat.efectivo(plan, SustitucionAplicada(slug = "Crunches", nombre = "Crunch", equipo = "body only", fijado = false))
+        assertTrue(corporal.ejercicio.equipo == "body only" && ReglasEjercicio.sinKg(corporal.ejercicio))
+    }
+
+    /**
+     * Una serie registrada con el crunch con soga (lleva kg por su equipo, que no queda en la base) y corregida ya de vuelta
+     * al original: el ✓ no le borra el kg aunque «Crunch» por el nombre no lleve.
+     */
+    @Test
+    fun laSerieDeOtroEjercicioConKgLoConserva() {
+        val plan = Dia.desde(
+            Json.parseToJsonElement("""{"id":"d1","nombre":"Día 1","bloques":[{"nombre":"B","ejercicios":[{"id":"e1","nombre":"Plancha","tipo":"core","series":3,"reps":"15"}]}]}"""),
+        )
+        val d = DiaEnCurso(plan, 1, sesionId = "s1")
+        fun registradaCon(idx: Int, nombre: String) {
+            val e = d.ejercicios.getValue("e1")
+            d.ejercicios = d.ejercicios + ("e1" to e.copy(series = e.series.mapIndexed { i, s -> if (i == idx) s.copy(nombreRegistrado = nombre) else s }))
+        }
+        val soga = plan.bloques[0].ejercicios[0].copy(nombre = "Crunch", equipo = "cable")
+        d.escribir("e1", 0, "reps", "15")
+        d.escribir("e1", 0, "kg", "25")
+        d.confirmarSerie("e1", 0, efectivo = soga)
+        registradaCon(0, "Crunch")   // lo que pone confirmarSerie con la sustitución aplicada
+        assertEquals("25", d.ejercicios["e1"]?.series?.get(0)?.kg)
+        // De vuelta a la plancha (sin kg): el lápiz y el ✓ sobre la serie del crunch.
+        d.editarSerie("e1", 0)
+        d.escribir("e1", 0, "reps", "14")
+        val paso = d.confirmarSerie("e1", 0)
+        assertEquals(true, d.ejercicios["e1"]?.series?.get(0)?.confirmada)
+        assertEquals("25", d.ejercicios["e1"]?.series?.get(0)?.kg)
+        val carga = paso.efectos.filterIsInstance<DiaEnCurso.Efecto.Encolar>().firstOrNull { it.kind == "carga" }?.payload
+        assertEquals(25.0, carga?.get("datos")?.get("peso")?.comoNumero)
+        assertEquals("Crunch", carga?.get("datos")?.get("ejercicioNombre")?.comoTexto)
+        // Una serie de otro ejercicio sin kg sigue sin kg.
+        d.escribir("e1", 1, "reps", "30")
+        d.confirmarSerie("e1", 1)
+        registradaCon(1, "Elevación de piernas")
+        d.editarSerie("e1", 1)
+        d.confirmarSerie("e1", 1)
+        assertEquals(true, d.ejercicios["e1"]?.series?.get(1)?.confirmada)
+        assertEquals("", d.ejercicios["e1"]?.series?.get(1)?.kg)
+    }
+}

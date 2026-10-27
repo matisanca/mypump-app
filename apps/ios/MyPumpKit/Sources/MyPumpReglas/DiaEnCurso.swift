@@ -230,7 +230,11 @@ public struct DiaEnCurso: Sendable, Equatable {
         let propia = esDelEjercicioActual(id, e.series[idx])
         var deLaSerie = efectivo ?? ex
         if !propia, let n = JS.verdadero(e.series[idx].nombreRegistrado) { deLaSerie = ex; deLaSerie.nombre = n }
-        let sinKg = ReglasEjercicio.sinKg(deLaSerie)
+        // Y si esa serie de otro ejercicio ya tiene kg, lo conserva: solo se registra kg en los que lo llevan (`completar`
+        // lo pide o lo vacía), y el equipo del sustituto no queda en la base. Sin esto, el lápiz y el ✓ sobre una serie
+        // del crunch con soga del catálogo (sale «Crunch», lleva kg por su equipo), ya de vuelta al original, le borraban
+        // el kg (27-oct).
+        let sinKg = ReglasEjercicio.sinKg(deLaSerie) && (propia || e.series[idx].kg.isEmpty)
         let prog = Progresiones.pauta(deLaSerie, semana: semana)
         let repsUlt = propia ? repsUltimaVez(id, idx) : ""
         let (serie, lista) = ConfirmacionSerie.completar(e.series[idx], sinKg: sinKg, repsPlan: prog.reps, kgUltimaVez: propia ? kgUltimaVez(id, idx) : "",

@@ -254,7 +254,11 @@ class DiaEnCurso(
         val propia = esDelEjercicioActual(id, e.series[idx])
         val registrado = Js.verdadero(e.series[idx].nombreRegistrado)
         val deLaSerie = if (!propia && registrado != null) ex.copy(nombre = registrado) else efectivo ?: ex
-        val sinKg = ReglasEjercicio.sinKg(deLaSerie)
+        // Y si esa serie de otro ejercicio ya tiene kg, lo conserva: solo se registra kg en los que lo llevan (`completar`
+        // lo pide o lo vacía), y el equipo del sustituto no queda en la base. Sin esto, el lápiz y el ✓ sobre una serie del
+        // crunch con soga del catálogo (sale «Crunch», lleva kg por su equipo), ya de vuelta al original, le borraban el kg
+        // (27-oct).
+        val sinKg = ReglasEjercicio.sinKg(deLaSerie) && (propia || e.series[idx].kg.isEmpty())
         val prog = Progresiones.pauta(deLaSerie, semana)
         val repsUlt = if (propia) repsUltimaVez(id, idx) else ""
         val (serie, completa) = ConfirmacionSerie.completar(

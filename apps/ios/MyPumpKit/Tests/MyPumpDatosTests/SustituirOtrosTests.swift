@@ -204,6 +204,38 @@ struct SustituirOtrosTests {
         #expect(m.dia.ejercicios[lugar]?.series[0].kg == "40")
     }
 
+    /// El crunch con soga del catálogo (Rope_Crunch o Standing_Rope_Crunch, de polea) se traduce «Crunch» y quedaba sin kg
+    /// al sustituir (21-oct): ahora lo decide su equipo (27-oct). Se registra con kg y, de vuelta al original, el lápiz y el
+    /// ✓ sobre esa serie no se lo borran aunque «Crunch» por el nombre no lleve.
+    @Test func elCrunchConSogaLlevaKgPorSuEquipo() async throws {
+        let b = Banco()
+        let m = modeloOtros(b)
+        let lugar = "cru-d1-4"
+        func carga(_ i: Int) async -> JSONValue? { await b.cola.operaciones.first { $0.dedupeKey == "carga_d1_\(lugar)_\(i)_s1" }?.payload["datos"] }
+        let soga = try #require(m.sustitutos(lugar).first { $0.nombre == "Crunch" && $0.equipoCrudo == "cable" })
+        await m.sustituir(lugar, por: soga, fijar: false)
+        let t = try #require(m.tarjeta(lugar))
+        #expect(t.efectivo.ejercicio.nombre == "Crunch" && !t.sinKg && t.filas.allSatisfy { !$0.sinKg }, "el crunch con soga lleva kg")
+        m.escribir(lugar, 0, campo: "reps", valor: "15")
+        m.escribir(lugar, 0, campo: "kg", valor: "25")
+        await m.confirmarSerie(lugar, 0) { _ in true }
+        let s1 = try #require(await carga(0))
+        #expect(s1["ejercicioNombre"]?.comoTexto == "Crunch" && s1["peso"] == .numero(25), "\(s1)")
+
+        await m.revertirSustitucion(lugar)
+        await m.editarSerie(lugar, 0)
+        m.escribir(lugar, 0, campo: "reps", valor: "14")
+        await m.confirmarSerie(lugar, 0) { _ in true }
+        let otraVez = try #require(await carga(0))
+        #expect(otraVez["ejercicioNombre"]?.comoTexto == "Crunch" && otraVez["peso"] == .numero(25) && otraVez["reps"] == .numero(14), "\(otraVez)")
+        #expect(m.dia.ejercicios[lugar]?.series[0].kg == "25")
+
+        // El crunch de peso corporal del catálogo sigue sin kg.
+        let corporal = try #require(m.sustitutos(lugar).first { $0.nombre == "Crunch" && $0.equipoCrudo == "body only" })
+        await m.sustituir(lugar, por: corporal, fijar: false)
+        #expect(m.tarjeta(lugar)?.sinKg == true, "el crunch de peso corporal no lleva kg")
+    }
+
     /// Hallazgo 4: con un plan sin fotos (la demo, que es la que mira Apple, o la cuenta test-nativa-ios), al reabrir
     /// «Cambiar» después de pasar la extensión en polea a fondos, las listas se armaban sobre los fondos: sin foto del
     /// original, `referencia(de:)` caía en la del sustituto.

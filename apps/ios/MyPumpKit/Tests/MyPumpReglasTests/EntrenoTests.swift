@@ -873,3 +873,114 @@ struct SustitutoConOtraCargaTests {
         #expect(d.ejercicios["e1"]?.series[0].confirmada == true)   // antes: el ✓ no hacía nada (faltaba el kg)
     }
 }
+
+/// «Sin kg» con el equipo del catálogo (27-oct): el crunch con soga del catálogo (Rope_Crunch, de polea) se traduce
+/// «Crunch» y quedaba sin kg al sustituir (caso del 21-oct). Los casos están en `apps/shared/vectores/sin_peso_equipo.json`,
+/// a mano porque la web no tiene esta regla; Android (SinPesoConEquipoTest) lee el mismo archivo.
+@Suite("Sin kg con el equipo del catálogo")
+struct SinPesoConEquipoTests {
+    struct Vectores: Decodable {
+        struct Caso: Decodable { let nombre: String; let tipo: String?; let equipo: String?; let sinPeso: Bool; let sinKg: Bool; let por: String }
+        struct Catalogo: Decodable { let cambian: [String] }
+        let casos: [Caso]
+        let catalogo: Catalogo
+    }
+
+    static func vectores() throws -> Vectores {
+        try JSONDecoder().decode(Vectores.self, from: Data(contentsOf: raizRepo.appendingPathComponent("apps/shared/vectores/sin_peso_equipo.json")))
+    }
+
+    static func catalogo() throws -> CatalogoEjercicios {
+        try CatalogoEjercicios(json: Data(contentsOf: raizRepo.appendingPathComponent("apps/shared/catalogo-ejercicios.json")))
+    }
+
+    @Test func losCasosCompartidos() throws {
+        let v = try Self.vectores()
+        #expect(v.casos.count >= 20)
+        for c in v.casos {
+            #expect(ReglasEjercicio.esSinPeso(nombre: c.nombre, tipo: c.tipo, equipo: c.equipo) == c.sinPeso, "\(c.nombre) [\(c.equipo ?? "-")]: \(c.por)")
+            #expect(ReglasEjercicio.sinKg(nombre: c.nombre, tipo: c.tipo, equipo: c.equipo) == c.sinKg, "\(c.nombre) [\(c.equipo ?? "-")]: \(c.por)")
+            var ex = Ejercicio(id: "e1", nombre: c.nombre, tipo: c.tipo)
+            ex.equipo = c.equipo
+            #expect(ReglasEjercicio.sinKg(ex) == c.sinKg, "\(c.nombre) [\(c.equipo ?? "-")] como ejercicio")
+        }
+    }
+
+    /// Sin equipo es la regla de la web: los nombres de los vectores de la web dan lo mismo con equipo nil.
+    @Test func sinEquipoEsLaReglaDeLaWeb() throws {
+        let v = try JSONDecoder().decode(VectoresEntreno.self, from: Data(contentsOf: vectoresEntreno))
+        #expect(!v.ejercicios.isEmpty)
+        for c in v.ejercicios {
+            #expect(ReglasEjercicio.esSinPeso(nombre: c.nombre, tipo: c.tipo, equipo: nil) == c.sinPeso, "\(c.nombre)")
+        }
+    }
+
+    /// Con el catálogo de hoy el equipo cambia solo 3 ejercicios (los tres pasan a llevar kg), y todo lo que tiene carga
+    /// externa lleva kg.
+    @Test func conElCatalogoCambianSoloLosCrunchConCarga() throws {
+        let v = try Self.vectores(), cat = try Self.catalogo()
+        var cambian: [String] = []
+        for e in cat.entradas {
+            let nombre = SustitucionEjercicios.castellano(e)
+            let porNombre = ReglasEjercicio.sinKg(nombre: nombre, tipo: nil)
+            let conEquipo = ReglasEjercicio.sinKg(nombre: nombre, tipo: nil, equipo: e.equipment)
+            if porNombre != conEquipo {
+                cambian.append(e.slugEn ?? "")
+                #expect(!conEquipo, "\(e.slugEn ?? ""): el equipo solo agrega el kg")
+            }
+            if ReglasEjercicio.esEquipoConCarga(e.equipment) { #expect(!conEquipo, "\(e.slugEn ?? "") (\(e.equipment ?? "")) lleva kg") }
+        }
+        #expect(cambian.sorted() == v.catalogo.cambian.sorted(), "\(cambian)")
+        let maquina = try #require(cat.entradas.first { $0.slugEn == "Ab_Crunch_Machine" })
+        #expect(SustitucionEjercicios.castellano(maquina) == "Crunch en máquina" && !ReglasEjercicio.sinKg(nombre: "Crunch en máquina", tipo: nil))
+    }
+
+    /// El sustituto trae su equipo al ejercicio que se muestra (también guardado y leído como lo guarda la web,
+    /// `current.equipment`); sin sustituto, el del plan no tiene.
+    @Test func elEfectivoLlevaElEquipoDelSustituto() throws {
+        let cat = try Self.catalogo()
+        let plan = Ejercicio(id: "e1", nombre: "Crunch abdominal", tipo: "core", series: 3, reps: "15")
+        let soga = try #require(cat.entradas.first { $0.slugEn == "Rope_Crunch" })
+        let sub = SustitutoEjercicio(soga, mismoEquipo: false)
+        #expect(sub.nombre == "Crunch" && sub.equipoCrudo == "cable")
+        let sinSustituir = cat.efectivo(plan, sustitucion: nil)
+        #expect(sinSustituir.ejercicio.equipo == nil && ReglasEjercicio.sinKg(sinSustituir.ejercicio))
+        let guardada = SustitucionesEntreno.nueva(sub, original: sinSustituir, fijado: false, semana: 1, diaId: "d1")
+        let leida = try #require(SustitucionesEntreno.aplicada(guardada))
+        let ef = cat.efectivo(plan, sustitucion: leida)
+        #expect(ef.ejercicio.nombre == "Crunch" && ef.ejercicio.equipo == "cable")
+        #expect(!ReglasEjercicio.sinKg(ef.ejercicio), "el crunch con soga lleva kg")
+        let corporal = cat.efectivo(plan, sustitucion: SustitucionAplicada(slug: "Crunches", nombre: "Crunch", equipo: "body only", fijado: false))
+        #expect(corporal.ejercicio.equipo == "body only" && ReglasEjercicio.sinKg(corporal.ejercicio))
+    }
+
+    /// Una serie registrada con el crunch con soga (lleva kg por su equipo, que no queda en la base) y corregida ya de
+    /// vuelta al original: el ✓ no le borra el kg aunque «Crunch» por el nombre no lleve.
+    @Test func laSerieDeOtroEjercicioConKgLoConserva() throws {
+        let j = #"{"id":"d1","nombre":"Día 1","bloques":[{"nombre":"B","ejercicios":[{"id":"e1","nombre":"Plancha","tipo":"core","series":3,"reps":"15"}]}]}"#
+        let plan = try JSONDecoder().decode(Dia.self, from: Data(j.utf8))
+        var d = DiaEnCurso(dia: plan, semana: 1, sesionId: "s1")
+        var soga = plan.bloques[0].ejercicios[0]
+        soga.nombre = "Crunch"
+        soga.equipo = "cable"
+        d.escribir("e1", 0, campo: "reps", valor: "15")
+        d.escribir("e1", 0, campo: "kg", valor: "25")
+        _ = d.confirmarSerie("e1", 0, efectivo: soga)
+        d.ejercicios["e1"]!.series[0].nombreRegistrado = "Crunch"   // lo que pone confirmarSerie con la sustitución aplicada
+        #expect(d.ejercicios["e1"]?.series[0].kg == "25")
+        // De vuelta a la plancha (sin kg): el lápiz y el ✓ sobre la serie del crunch.
+        _ = d.editarSerie("e1", 0)
+        d.escribir("e1", 0, campo: "reps", valor: "14")
+        let paso = d.confirmarSerie("e1", 0, efectivo: nil)
+        #expect(d.ejercicios["e1"]?.series[0].confirmada == true && d.ejercicios["e1"]?.series[0].kg == "25")
+        let carga = paso.efectos.compactMap { if case .encolar(let k, let p, _) = $0, k == "carga" { return p }; return nil }.first
+        #expect(carga?["datos"]?["peso"]?.comoNumero == 25 && carga?["datos"]?["ejercicioNombre"]?.comoTexto == "Crunch")
+        // Una serie de otro ejercicio sin kg sigue sin kg.
+        d.escribir("e1", 1, campo: "reps", valor: "30")
+        _ = d.confirmarSerie("e1", 1, efectivo: nil)
+        d.ejercicios["e1"]!.series[1].nombreRegistrado = "Elevación de piernas"
+        _ = d.editarSerie("e1", 1)
+        _ = d.confirmarSerie("e1", 1, efectivo: nil)
+        #expect(d.ejercicios["e1"]?.series[1].confirmada == true && d.ejercicios["e1"]?.series[1].kg == "")
+    }
+}
