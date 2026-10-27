@@ -614,6 +614,144 @@ class DietaEscrituraUiTest : PruebaUi() {
         }
     }
 
+    // ── DIE-05/07 (D25): gemela de testComiYSalteSumanAlConsumidoYTocarDeNuevoDesmarca ──
+
+    /** Lo consumido de la cabecera, como lo lee TalkBack: «544 de 2.373 kcal». */
+    private fun consumido(): String? = p.estado(etiqueta("consumido-kcal"))
+
+    private fun marcaGuardada(comidaId: String): JSONObject? = servidor.marcasGuardadas()["${FechaLocal.hoy()}|$comidaId"]
+
+    @Test
+    fun comiYSalteSumanAlConsumidoYTocarDeNuevoDesmarca() {
+        guardarCuenta()
+        abrir().also {
+            irADieta()
+            assertEquals("0 de 2.373 kcal", consumido())
+            p.nodo(texto("Tocá «Comí» en cada comida y acá se va sumando lo que comés."))
+            p.tocar(etiqueta("comi-c1"))
+            p.esperar("«Comí» marcado") { p.seleccionado(etiqueta("comi-c1")) }
+            p.esperar("suma el desayuno") { consumido() == "544 de 2.373 kcal" }
+            p.nodo(texto("Comiste 1 de 4 comidas"))
+            // Sale por la cola con el payload de la web: la opción por su nombre y sin alimentos destildados.
+            val marcada = rpc("mypump_marcar_comida")
+            assertEquals(FechaLocal.hoy(), marcada.getString("p_fecha"))
+            assertEquals(listOf("c1", "A", "comido"), listOf(marcada.getString("p_comida_id"), marcada.getString("p_opcion"), marcada.getString("p_estado")))
+            assertTrue(marcada.isNull("p_foods_excluidos"))
+            irA("cabecera")
+            Telefono.captura("dieta-consumido-claro")
+        }.close()
+
+        // Quedó en el teléfono y en el servidor: al reabrir (en oscuro) se ve igual.
+        Telefono.modoNoche(true)
+        abrir()
+        irADieta()
+        p.esperar("«Comí» sigue") { p.seleccionado(etiqueta("comi-c1")) }
+        assertEquals("544 de 2.373 kcal", consumido())
+        irA("cabecera")
+        Telefono.captura("dieta-consumido-oscuro")
+
+        // «Salté» la saca de lo consumido; tocarla de nuevo desmarca (y se borra en el servidor).
+        p.tocar(etiqueta("salte-c1"))
+        p.esperar("«Salté» marcado") { p.seleccionado(etiqueta("salte-c1")) && !p.seleccionado(etiqueta("comi-c1")) }
+        p.esperar("sin el desayuno") { consumido() == "0 de 2.373 kcal" }
+        p.nodo(texto("Comiste 0 de 4 comidas · salteaste 1"))
+        p.esperar("salteada en el servidor") { marcaGuardada("c1")?.getString("estado") == "saltado" }
+        p.tocar(etiqueta("salte-c1"))
+        p.esperar("desmarcada") { !p.seleccionado(etiqueta("salte-c1")) }
+        p.esperar("borrada en el servidor") { marcaGuardada("c1") == null && servidor.a("mypump_desmarcar_comida").isNotEmpty() }
+        p.nodo(texto("Tocá «Comí» en cada comida y acá se va sumando lo que comés."))
+    }
+
+    // ── DIE-06 (D25): gemela de testDestildarUnAlimentoDescuentaSusKcal ──
+
+    @Test
+    fun destildarUnAlimentoDescuentaSusKcalYMirarOtraOpcionNoCambiaLoComido() {
+        guardarCuenta()
+        abrir()
+        irADieta()
+        assertFalse("sin «Comí» no hay tildes", p.existe(etiqueta("comido-c1-0")))
+        p.tocar(etiqueta("comi-c1"))
+        p.esperar("los tildes") { p.existe(etiqueta("comido-c1-0")) }
+        assertTrue(p.prendido(etiqueta("comido-c1-0")))
+        assertEquals("Lo comiste", p.estado(etiqueta("comido-c1-0")))
+        p.nodo(texto("Destildá lo que no comiste: solo cuenta lo tildado."))
+        // El huevo (172 de las 544 kcal) no lo comió.
+        p.tocar(etiqueta("comido-c1-0"))
+        p.esperar("destildado") { !p.prendido(etiqueta("comido-c1-0")) }
+        assertEquals("No lo comiste", p.estado(etiqueta("comido-c1-0")))
+        p.nodo(texto("Cuenta lo tildado: 372 de 544 kcal."))
+        p.esperar("descuenta el huevo") { consumido() == "372 de 2.373 kcal" }
+        p.esperar("el huevo afuera en el servidor") { marcaGuardada("c1")?.optJSONArray("foods_excluidos")?.toString() == "[0]" }
+        Telefono.captura("dieta-comi-parcial")
+        // Mirar la B no cambia lo comido (la A sin el huevo): sin tildes, con el camino de vuelta.
+        p.tocar(etiqueta("opcion-c1-1"))
+        p.esperarQueNoEste(etiqueta("comido-c1-0"))
+        p.nodo(texto("Comiste la opción A. Para marcar qué dejaste, volvé a esa."))
+        assertEquals("372 de 2.373 kcal", consumido())
+        assertTrue("mirar otra opción no saca «Comí»", p.seleccionado(etiqueta("comi-c1")))
+        p.tocar(etiqueta("ver-opcion-c1"))
+        p.esperar("de vuelta en la A") { p.seleccionado(etiqueta("opcion-c1-0")) }
+        assertFalse(p.prendido(etiqueta("comido-c1-0")))
+        // Volver a tildarlo lo suma; «Comí» otra vez desmarca y se van los tildes.
+        p.tocar(etiqueta("comido-c1-0"))
+        p.esperar("suma de nuevo") { consumido() == "544 de 2.373 kcal" }
+        p.tocar(etiqueta("comi-c1"))
+        p.esperarQueNoEste(etiqueta("comido-c1-0"))
+        p.esperar("vuelve a cero") { consumido() == "0 de 2.373 kcal" }
+    }
+
+    /** Lo marcado en la web (o en el otro teléfono) se ve al abrir: la comida muestra la opción que comió y suma. */
+    @Test
+    fun loMarcadoEnLaWebSeVeConLaOpcionQueComio() {
+        servidor.ponerMarca(FechaLocal.hoy(), "c2", "B", "comido", excluidos = listOf(0))
+        servidor.ponerMarca(FechaLocal.hoy(), "c3", "A", "saltado")
+        // Una de ayer no cuenta.
+        servidor.ponerMarca("2000-01-01", "c4", "A", "comido")
+        guardarCuenta()
+        abrir()
+        irADieta()
+        // La cabecera, arriba de todo. La B del almuerzo son 685 kcal; sin la nalga (249), 436.
+        p.esperar("las marcas de la web") { p.existe(texto("Comiste 1 de 4 comidas · salteaste 1")) }
+        assertEquals("436 de 2.373 kcal", consumido())
+        // Las tarjetas, de a una (la lista es perezosa: lo de abajo no existe hasta llegar).
+        irA("1-c2")
+        assertTrue(p.seleccionado(etiqueta("comi-c2")))
+        assertTrue("la B del almuerzo", p.seleccionado(etiqueta("opcion-c2-1")))
+        assertFalse(p.prendido(etiqueta("comido-c2-0")))
+        assertTrue(p.prendido(etiqueta("comido-c2-1")))
+        // Desmarcar no la hace saltar a la A: sigue a la vista la que comió (como en la web).
+        p.tocar(etiqueta("comi-c2"))
+        p.esperar("desmarcada") { !p.seleccionado(etiqueta("comi-c2")) }
+        assertTrue("sigue la B", p.seleccionado(etiqueta("opcion-c2-1")))
+        irA("2-c3")
+        assertTrue(p.seleccionado(etiqueta("salte-c3")))
+        assertFalse(p.seleccionado(etiqueta("comi-c3")))
+        irA("3-c4")
+        assertFalse("la de ayer no vale", p.seleccionado(etiqueta("comi-c4")))
+    }
+
+    /** Sin red la marca se ve al toque y queda en la cola: sale sola cuando vuelve la señal. */
+    @Test
+    fun sinRedLaMarcaSeVeYSaleCuandoVuelveLaSenal() {
+        guardarCuenta()
+        val e = abrir()
+        irADieta()
+        p.esperar("la carga terminó") { servidor.a("mypump_get_fotos_progreso").isNotEmpty() }
+        servidorQuieto()
+        servidor.sinRed = true
+        p.tocar(etiqueta("comi-c1"))
+        p.esperar("«Comí» marcado") { p.seleccionado(etiqueta("comi-c1")) }
+        assertEquals("544 de 2.373 kcal", consumido())
+        p.quieto(1_000)
+        assertNull("sin red no llegó", marcaGuardada("c1"))
+        servidor.sinRed = false
+        e.moveToState(Lifecycle.State.CREATED)
+        e.moveToState(Lifecycle.State.RESUMED)
+        p.esperar("salió al volver la señal") { marcaGuardada("c1")?.getString("estado") == "comido" }
+        assertTrue(p.seleccionado(etiqueta("comi-c1")))
+        assertEquals("544 de 2.373 kcal", consumido())
+    }
+
     // ── La demo: se reemplaza en memoria, sin comidas libres ni IA ──
 
     @Test

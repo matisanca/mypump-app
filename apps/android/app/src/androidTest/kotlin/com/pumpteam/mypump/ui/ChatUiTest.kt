@@ -183,7 +183,7 @@ class ChatUiTest : PruebaUi() {
         p.quieto(300)
         assertEquals(borrador, p.textoDe(etiqueta("chat-campo")))
         p.tocar(etiqueta("pestana-dieta"))
-        p.nodo(texto("2.373"))
+        p.nodo(texto("de 2.373 kcal"))
         p.tocar(etiqueta("pestana-chat"))
         p.esperar("el borrador sigue") { p.textoDe(etiqueta("chat-campo")) == borrador }
         assertTrue(servidor.a("mypump_agregar_comentario").isEmpty())

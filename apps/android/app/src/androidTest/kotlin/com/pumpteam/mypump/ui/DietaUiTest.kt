@@ -23,16 +23,18 @@ class DietaUiTest : PruebaUi() {
     @Test
     fun laDemoMuestraElObjetivoLasOpcionesYLosAlimentos() {
         demoEnDieta()
-        // DIE-03: el objetivo (sin `macros_target`, la suma de las opciones A) repartido en macros.
-        p.nodo(texto("2.454"))
-        p.nodo(texto("kcal por día"))
+        // DIE-03/07 (D25): lo consumido contra el objetivo (sin `macros_target`, la suma de las opciones A), por macro.
+        assertEquals("0 de 2.454 kcal", p.estado(etiqueta("consumido-kcal")))
+        p.nodo(texto("de 2.454 kcal"))
         // Supuesto de pantalla: en una cabecera angosta (720×1280, o con letra grande) los macros van en tres columnas debajo
-        // del anillo y el porcentaje dice «34 % kcal» (`ColumnaMacro`); con lugar, en filas al lado y «34 % de las kcal». Los
-        // tres van en la misma forma.
-        val porcentaje = if (p.existe(textoQueContiene("% de las kcal"))) "% de las kcal" else "% kcal"
-        for (t in listOf("Proteínas", "209 g", "34 $porcentaje", "Carbos", "272 g", "44 $porcentaje", "Grasas", "58 g", "21 $porcentaje")) {
-            p.nodo(texto(t))
+        // del anillo («0 g» y «de 209 g», `ColumnaMacro`); con lugar, en filas al lado («0 / 209 g»). Los tres van en la
+        // misma forma.
+        val enFilas = p.existe(texto("0 / 209 g"))
+        for ((nombre, objetivo) in listOf("Proteínas" to 209, "Carbos" to 272, "Grasas" to 58)) {
+            p.nodo(texto(nombre))
+            p.nodo(texto(if (enFilas) "0 / $objetivo g" else "de $objetivo g"))
         }
+        p.nodo(texto("Tocá «Comí» en cada comida y acá se va sumando lo que comés."))
         p.nodo(texto("Con las opciones elegidas: 2.454 kcal"))
         p.nodo(textoQueContiene("Objetivos calculados con Mifflin-St Jeor"))
         // DIE-04: opción A por defecto, con sus alimentos.
@@ -53,6 +55,23 @@ class DietaUiTest : PruebaUi() {
         // En una pantalla chica la lista puede volver arriba de todo, con el desayuno fuera de la vista: primero se llega a él.
         p.nodo(etiqueta("resumen-c1"))
         p.esperar("sigue la B") { p.textosBajo(etiqueta("resumen-c1")) == listOf("Opción B · 3 alimentos") }
+    }
+
+    /** DIE-05/07 (D25) en la demo: «Comí» suma la opción que se ve, en memoria y sin red; tocarlo de nuevo desmarca. */
+    @Test
+    fun enLaDemoComiSumaLaOpcionQueSeVeYTocarDeNuevoDesmarca() {
+        demoEnDieta()
+        p.tocar(etiqueta("opcion-c1-1"))
+        p.tocar(etiqueta("comi-c1"))
+        p.esperar("«Comí» marcado") { p.seleccionado(etiqueta("comi-c1")) }
+        assertTrue(!p.seleccionado(etiqueta("salte-c1")))
+        p.esperar("suma la B del desayuno") { p.estado(etiqueta("consumido-kcal")) == "468 de 2.454 kcal" }
+        p.nodo(texto("Comiste 1 de 5 comidas"))
+        p.tocar(etiqueta("comi-c1"))
+        p.esperar("desmarcado") { !p.seleccionado(etiqueta("comi-c1")) }
+        p.esperar("vuelve a cero") { p.estado(etiqueta("consumido-kcal")) == "0 de 2.454 kcal" }
+        p.nodo(texto("Tocá «Comí» en cada comida y acá se va sumando lo que comés."))
+        assertTrue("la demo no escribe", servidor.llamadas.isEmpty())
     }
 
     @Test
@@ -81,12 +100,12 @@ class DietaUiTest : PruebaUi() {
         guardarCuenta()
         abrir().also {
             p.tocar(etiqueta("pestana-dieta"))
-            p.nodo(texto("2.600"))
+            p.nodo(texto("de 2.600 kcal"))
             p.nodo(texto("Día de entreno"))
             p.nodo(texto("Avena en copos"))
             p.tocar(etiqueta("tipo-dia"))
             p.tocar(etiqueta("tipo-dia-descanso"))
-            p.nodo(texto("2.100"))
+            p.nodo(texto("de 2.100 kcal"))
             p.nodo(texto("Huevos enteros"))
             p.nodo(texto("Día de descanso"))
         }.close()
@@ -94,7 +113,7 @@ class DietaUiTest : PruebaUi() {
         assertEquals("descanso", preferencia(ModeloApp.CLAVE_TIPO_DIA))
         abrir()
         p.tocar(etiqueta("pestana-dieta"))
-        p.nodo(texto("2.100"))
+        p.nodo(texto("de 2.100 kcal"))
     }
 
     @Test

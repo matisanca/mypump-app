@@ -61,7 +61,7 @@ class ProgresoUiTest : PruebaUi() {
         assertTrue(jalon.contains("Jalón al pecho prono (dorsal ancho): tope 58 kilos, +11,5 % de progresión, récord"))
         // Volver a la pestaña no lo vuelve a pedir: ya hay tarjetas (se actualiza tirando).
         p.tocar(etiqueta("pestana-dieta"))
-        p.nodo(texto("2.373"))
+        p.nodo(texto("de 2.373 kcal"))
         p.tocar(etiqueta("pestana-progreso"))
         p.nodo(etiqueta("progreso-totales"))
         p.quieto(500)
@@ -161,7 +161,7 @@ class ProgresoUiTest : PruebaUi() {
         p.nodo(etiqueta("progreso-sin-red"))
         servidor.sinRed = false
         p.tocar(etiqueta("pestana-dieta"))
-        p.nodo(texto("2.373"))
+        p.nodo(texto("de 2.373 kcal"))
         p.tocar(etiqueta("pestana-progreso"))
         p.esperar("la lista") { p.textosBajo(etiqueta("progreso-totales")).contains("32") }
     }

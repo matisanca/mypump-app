@@ -182,6 +182,25 @@ class ServidorDePrueba : Transporte {
 
     private fun lista(filas: List<org.json.JSONObject>): Respuesta = Respuesta(200, org.json.JSONArray(filas).toString().toByteArray())
 
+    // «Comí» / «Salté» (D25): una fila por (fecha, comida), como `mypump_comidas_marcadas`.
+    private val marcas = ConcurrentHashMap<String, org.json.JSONObject>()
+
+    /** Una marca que la cuenta ya tiene (la de la web o la del otro teléfono). */
+    fun ponerMarca(fecha: String, comidaId: String, opcion: String, estado: String, excluidos: List<Int>? = null) {
+        marcas["$fecha|$comidaId"] = filaMarca(fecha, comidaId, opcion, estado, excluidos?.let { org.json.JSONArray(it) } ?: org.json.JSONObject.NULL)
+    }
+
+    /** Las marcas guardadas: "fecha|comida" → la fila. */
+    fun marcasGuardadas(): Map<String, org.json.JSONObject> = HashMap(marcas)
+
+    private fun filaMarca(fecha: String, comidaId: String, opcion: Any, estado: String, excluidos: Any): org.json.JSONObject =
+        org.json.JSONObject()
+            .put("comida_id", comidaId)
+            .put("fecha", fecha)
+            .put("opcion_elegida", opcion)
+            .put("estado", estado)
+            .put("foods_excluidos", excluidos)
+
     private fun rutaDeDieta(ruta: String, funcion: String, cuerpo: String): Respuesta? {
         if (ruta == "/vision") {
             val o = org.json.JSONObject(cuerpo)
@@ -244,6 +263,16 @@ class ServidorDePrueba : Transporte {
                 Respuesta(200, "${reemplazos.remove(k) != null}".toByteArray())
             }
             "mypump_get_food_swaps" -> lista(reemplazos.values.filter { it.getString("dieta_id") == p.optString("p_dieta_id") })
+            "mypump_get_comidas_marcadas" -> lista(marcas.values.filter { it.getString("fecha") == p.optString("p_fecha") })
+            "mypump_marcar_comida" -> {
+                val fila = filaMarca(
+                    p.getString("p_fecha"), p.getString("p_comida_id"), p.opt("p_opcion") ?: org.json.JSONObject.NULL, p.getString("p_estado"),
+                    p.opt("p_foods_excluidos") ?: org.json.JSONObject.NULL,
+                )
+                marcas["${fila.getString("fecha")}|${fila.getString("comida_id")}"] = fila
+                lista(listOf(fila))
+            }
+            "mypump_desmarcar_comida" -> Respuesta(200, "${marcas.remove("${p.getString("p_fecha")}|${p.getString("p_comida_id")}") != null}".toByteArray())
             else -> null
         }
     }

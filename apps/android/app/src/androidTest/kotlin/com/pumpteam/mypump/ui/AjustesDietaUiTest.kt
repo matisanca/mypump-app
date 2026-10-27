@@ -2,6 +2,7 @@ package com.pumpteam.mypump.ui
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.math.abs
+import com.pumpteam.mypump.reglas.FechaLocal
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -112,6 +113,9 @@ class AjustesDietaUiTest : PruebaUi() {
         p.esperarQueNoEste(etiqueta("hoja-ajuste"))
         assertFalse(p.existe(etiqueta("ajuste-aviso-c1")))
 
+        // D25: la había marcado «Comí»; al decir que hoy no la come, la marca se va.
+        p.tocar(etiqueta("comi-c1"))
+        p.esperar("marcada en el servidor") { servidor.marcasGuardadas()["${FechaLocal.hoy()}|c1"] != null }
         p.tocar(etiqueta("ajustar-c1"))
         p.nodo(etiqueta("hoja-ajuste"))
         p.tocar(etiqueta("ajuste-omitir"))
@@ -124,8 +128,47 @@ class AjustesDietaUiTest : PruebaUi() {
         p.esperarQueNoEste(etiqueta("hoja-ajuste"))
         p.esperar("el aviso") { p.textosBajo(etiqueta("ajuste-aviso-c1")).contains("Hoy no la comés") }
         assertFalse("sin los alimentos", p.existe(etiqueta("alimento-c1-0")))
+        // Ni «Comí» ni «Salté»: no suma ni cuenta entre las comidas del día.
+        assertFalse(p.existe(etiqueta("comi-c1")))
+        assertFalse(p.existe(etiqueta("salte-c1")))
+        p.esperar("la marca se borró") { servidor.marcasGuardadas().isEmpty() && servidor.a("mypump_desmarcar_comida").isNotEmpty() }
+        assertEquals("0 de 2.373 kcal", p.estado(etiqueta("consumido-kcal")))
         val almuerzo = p.textosBajo(etiqueta("ajuste-aviso-c2"))
         assertTrue(almuerzo.toString(), almuerzo.any { it.startsWith("+") && it.endsWith("kcal por el Desayuno") })
         assertTrue(ultimoGuardado().getJSONObject("p_ajustes").getJSONObject("c1").getBoolean("omitida"))
+    }
+
+    /** El ajuste del desayuno que salió por la cola (sin esperar: se lee adentro de `p.esperar`). */
+    private fun ajusteDelDesayuno(): JSONObject? =
+        servidor.a("mypump_guardar_ajustes_dieta").lastOrNull()?.let { JSONObject(it).getJSONObject("p_ajustes").optJSONObject("c1") }
+
+    /**
+     * D25: con «Comí», mirar otra opción no toca el ajuste ni lo comido. Antes el ajuste se pasaba a la opción que se miraba
+     * y se descartaban las cantidades a mano (revisión del 27-oct).
+     */
+    @Test
+    fun conComiMirarOtraOpcionNoTocaElAjusteNiLoComido() {
+        guardarCuenta()
+        abrir()
+        irADieta()
+        p.tocar(etiqueta("ajustar-c1"))
+        p.nodo(etiqueta("hoja-ajuste"))
+        p.tocar(etiqueta("ajuste-mas"))
+        p.tocar(etiqueta("ajuste-mas"))
+        p.tocar(etiqueta("ajuste-listo"))
+        p.esperarQueNoEste(etiqueta("hoja-ajuste"))
+        p.esperar("el ajuste en el servidor") { ajusteDelDesayuno()?.optInt("deltaKcal") == 100 }
+        p.tocar(etiqueta("comi-c1"))
+        p.esperar("marcada en el servidor") { servidor.marcasGuardadas()["${FechaLocal.hoy()}|c1"] != null }
+        val comido = p.estado(etiqueta("consumido-kcal"))
+        assertTrue(comido, comido != "0 de 2.373 kcal")
+        val guardados = servidor.a("mypump_guardar_ajustes_dieta").size
+        p.tocar(etiqueta("opcion-c1-1"))
+        p.esperar("mira la B") { p.seleccionado(etiqueta("opcion-c1-1")) }
+        p.quieto(1_000)
+        assertEquals("mirar no guarda otro ajuste", guardados, servidor.a("mypump_guardar_ajustes_dieta").size)
+        assertEquals("el ajuste sigue en la A", 0, ajusteDelDesayuno()!!.optInt("opcion", 0))
+        assertEquals(comido, p.estado(etiqueta("consumido-kcal")))
+        assertTrue(p.seleccionado(etiqueta("comi-c1")))
     }
 }

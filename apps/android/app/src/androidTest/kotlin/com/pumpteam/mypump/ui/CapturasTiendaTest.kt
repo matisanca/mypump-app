@@ -123,7 +123,7 @@ class CapturasTiendaTest : PruebaUi() {
             captura("$modo-2-ejercicio")
 
             p.tocar(etiqueta("pestana-dieta"))
-            p.nodo(texto("2.373"))
+            p.nodo(texto("de 2.373 kcal"))
             p.nodo(etiqueta("dieta-cabecera"))
             captura("$modo-3-dieta")
 

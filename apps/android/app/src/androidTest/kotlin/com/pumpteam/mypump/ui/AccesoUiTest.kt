@@ -40,7 +40,7 @@ class AccesoUiTest : PruebaUi() {
         p.tocar(etiqueta("pestana-dieta"))
         // La dieta de ejemplo de la web: el objetivo es la suma de las opciones A.
         p.nodo(texto("Desayuno"))
-        p.nodo(texto("2.454"))
+        p.nodo(texto("de 2.454 kcal"))
         p.tocar(etiqueta("salir-demo"))
         p.nodo(etiqueta("ver-demo"))
         p.esperarQueNoEste(texto("Estás viendo la demo"))
@@ -140,7 +140,7 @@ class AccesoUiTest : PruebaUi() {
         p.esperar("Dieta elegida") { p.seleccionado(etiqueta("pestana-dieta")) }
         // La dieta de la cuenta de prueba (grabada de test-nativa-real).
         p.nodo(texto("Desayuno"))
-        p.nodo(texto("2.373"))
+        p.nodo(texto("de 2.373 kcal"))
         assertEquals(ServidorDePrueba.TOKEN, tokenGuardado())
     }
 

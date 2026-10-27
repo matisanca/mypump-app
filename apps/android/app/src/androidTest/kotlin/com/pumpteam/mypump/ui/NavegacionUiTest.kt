@@ -35,7 +35,7 @@ class NavegacionUiTest : PruebaUi() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("pestana-dieta"))
-        p.nodo(texto("2.454"))
+        p.nodo(texto("de 2.454 kcal"))
         p.tocar(etiqueta("salir-demo"))
         entrarConLaCuenta()
         p.esperar("Entreno elegido") { p.seleccionado(etiqueta("pestana-entreno")) }

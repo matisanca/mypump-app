@@ -91,7 +91,7 @@ class AvisosUiTest : PruebaUi() {
         guardarCuenta()
         registrar(ActivityScenario.launch<MainActivity>(CentroAvisos.intentDeAviso(app, "diet"))).also {
             p.esperar("Dieta elegida") { p.seleccionado(etiqueta("pestana-dieta")) }
-            p.nodo(texto("2.373"))
+            p.nodo(texto("de 2.373 kcal"))
         }.close()
         // Un push que mostró el sistema: "salud" es Mis datos.
         registrar(ActivityScenario.launch<MainActivity>(intentDePush("salud"))).also {

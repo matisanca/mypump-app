@@ -125,7 +125,7 @@ class CapturasUiTest : PruebaUi() {
             p.nodo(texto("Estás viendo la demo"))
             foto("03-demo-entreno")
             p.tocar(etiqueta("pestana-dieta"))
-            p.nodo(texto("2.454"))
+            p.nodo(texto("de 2.454 kcal"))
             foto("04-demo-dieta")
             p.tocar(etiqueta("ver-fuentes"))
             p.nodo(texto("Cómo se calcula tu objetivo de calorías"))
@@ -138,7 +138,7 @@ class CapturasUiTest : PruebaUi() {
             p.esperar("los badges") { "1" in p.textosBajo(etiqueta("pestana-chat")) && "2" in p.textosBajo(etiqueta("pestana-revision")) }
             foto("06-cuenta-entreno")
             p.tocar(etiqueta("pestana-dieta"))
-            p.nodo(texto("2.373"))
+            p.nodo(texto("de 2.373 kcal"))
             p.nodo(etiqueta("banner-revision"))
             foto("07-cuenta-dieta")
             p.tocar(etiqueta("pestana-revision"))
@@ -154,7 +154,7 @@ class CapturasUiTest : PruebaUi() {
         abrir().also {
             p.nodo(etiqueta("banner-sin-conexion"))
             p.tocar(etiqueta("pestana-dieta"))
-            p.nodo(texto("2.373"))
+            p.nodo(texto("de 2.373 kcal"))
             foto("10-sin-red-con-copia")
         }.close()
 
