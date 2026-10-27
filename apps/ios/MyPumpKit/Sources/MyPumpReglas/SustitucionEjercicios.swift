@@ -568,6 +568,9 @@ public struct CatalogoEjercicios: Sendable {
         if let sw {
             ef.nombre = sw.nombre
             ef.imagenes = sw.imagenes
+            // Desvío a propósito de la web (27-oct): el equipo del sustituto decide el kg cuando el nombre traducido lo
+            // pierde («Rope Crunch» sale «Crunch»). Ver `ReglasEjercicio.esSinPeso`.
+            ef.equipo = sw.equipo
         } else if verdadero(ex.imagenes?.eccentric) == nil, let e = resolver(ex), verdadero(e.imageEccentric) != nil {
             // El plan no trae foto (ejercicio creado en NutriPlan sin match): sale del catálogo, sin republicar.
             ef.imagenes = Imagenes(eccentric: e.imageEccentric, concentric: e.imageConcentric, matchedSlug: e.slugEn)

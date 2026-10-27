@@ -58,8 +58,25 @@ public enum AlimentoPropioNuevo {
         let porcionG = porUnidad(unidad) ? (ug ?? 0) : 100
         let aCien = porcionG > 0 ? 100 / porcionG : 1
         func r1(_ x: Double) -> Double { jsRound(x * aCien * 10) / 10 }
-        return .success(Datos(nombre: n, kcal: jsRound(k * aCien), prot: r1(p), carb: r1(c), fat: r1(f), unidad: unidad,
-                              gramosPorUnidad: (ug ?? 0) > 0 ? ug : nil, categoria: categoria))
+        let d = Datos(nombre: n, kcal: jsRound(k * aCien), prot: r1(p), carb: r1(c), fat: r1(f), unidad: unidad,
+                      gramosPorUnidad: (ug ?? 0) > 0 ? ug : nil, categoria: categoria)
+        if imposible(d) {
+            return .failure(ErrorFormulario(porUnidad(unidad)
+                ? "Esos valores no entran en 1 \(texto(unidad)) de \(numeroJS(ug ?? 0)) g: revisá cuánto pesa o los valores."
+                : "Esos valores no pueden ser de 100 \(unidad): si son de una porción, elegí «porción» y poné cuánto pesa."))
+        }
+        return .success(d)
+    }
+
+    /// Lo que 100 g no pueden tener: más de 100 g de macros (110 con el margen del redondeo de la etiqueta) o más calorías
+    /// que el aceite (900). Con ml no se miran los macros, que en un líquido denso pasan de 100 por 100 ml. Desvío a
+    /// propósito de la web, que lo guarda igual (27-oct): «1 rebanada de 15 g» con los valores del paquete quedó en 833 kcal
+    /// y 133 g de proteína por 100 g, y con eso el motor de reemplazos calcula las porciones.
+    public static let maximoMacrosPor100 = 110.0
+    public static let maximoKcalPor100 = 950.0
+
+    static func imposible(_ d: Datos) -> Bool {
+        d.kcal > maximoKcalPor100 || (d.unidad != "ml" && d.prot + d.carb + d.fat > maximoMacrosPor100)
     }
 
     /// Lo que escribe el cliente en un campo numérico: acepta coma o punto decimal ("1,5" y "1.5"). Vacío o

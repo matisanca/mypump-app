@@ -3715,6 +3715,511 @@
         }
       },
       "nombre" : "restar no agranda lo que está fuera de la grilla"
+    },
+    {
+      "ajustes" : {
+        "desayuno" : {
+          "anclas" : {
+
+          },
+          "cantidades" : {
+            "0" : 0
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 67,
+              "fat" : 7,
+              "kcal" : 380,
+              "name" : "Avena",
+              "prot" : 13,
+              "qty" : 100,
+              "unit" : "g"
+            },
+            {
+              "carb" : 0,
+              "fat" : 18,
+              "kcal" : 234,
+              "name" : "Huevos",
+              "prot" : 18,
+              "qty" : 3,
+              "unit" : "u"
+            },
+            {
+              "carb" : 27,
+              "fat" : 0,
+              "kcal" : 105,
+              "name" : "Banana",
+              "prot" : 1,
+              "qty" : 1,
+              "unit" : "u"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            },
+            {
+              "carb" : 0,
+              "fat" : 10,
+              "kcal" : 88,
+              "name" : "Aceite de oliva",
+              "prot" : 0,
+              "qty" : 10,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "almuerzo" : {
+          "cambiados" : [
+            0,
+            1,
+            2
+          ],
+          "carb" : [
+            0,
+            68.599999999999994,
+            0
+          ],
+          "compensacion" : 380,
+          "compensaDe" : [
+            "Desayuno"
+          ],
+          "deltaPropio" : 0,
+          "fat" : [
+            11.4,
+            0.80000000000000004,
+            16
+          ],
+          "kcal" : [
+            536,
+            319,
+            141
+          ],
+          "kcalDia" : 996,
+          "kcalPlan" : 613,
+          "noAbsorbido" : 0,
+          "omitida" : false,
+          "propio" : 0,
+          "prot" : [
+            100.8,
+            6.5,
+            0
+          ],
+          "qty" : [
+            325,
+            245,
+            16
+          ]
+        },
+        "desayuno" : {
+          "cambiados" : [
+            0
+          ],
+          "carb" : [
+            0,
+            0,
+            27
+          ],
+          "compensacion" : 0,
+          "compensaDe" : [
+
+          ],
+          "deltaPropio" : 0,
+          "fat" : [
+            0,
+            18,
+            0
+          ],
+          "kcal" : [
+            0,
+            234,
+            105
+          ],
+          "kcalDia" : 339,
+          "kcalPlan" : 719,
+          "noAbsorbido" : 0,
+          "omitida" : false,
+          "propio" : -380,
+          "prot" : [
+            0,
+            18,
+            1
+          ],
+          "qty" : [
+            0,
+            3,
+            1
+          ]
+        }
+      },
+      "nombre" : "un alimento en cero"
+    },
+    {
+      "ajustes" : {
+        "desayuno" : {
+          "anclas" : {
+
+          },
+          "cantidades" : {
+            "1" : 0
+          },
+          "compensar" : true,
+          "deltaKcal" : -100,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 67,
+              "fat" : 7,
+              "kcal" : 380,
+              "name" : "Avena",
+              "prot" : 13,
+              "qty" : 100,
+              "unit" : "g"
+            },
+            {
+              "carb" : 0,
+              "fat" : 18,
+              "kcal" : 234,
+              "name" : "Huevos",
+              "prot" : 18,
+              "qty" : 3,
+              "unit" : "u"
+            },
+            {
+              "carb" : 27,
+              "fat" : 0,
+              "kcal" : 105,
+              "name" : "Banana",
+              "prot" : 1,
+              "qty" : 1,
+              "unit" : "u"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            },
+            {
+              "carb" : 0,
+              "fat" : 10,
+              "kcal" : 88,
+              "name" : "Aceite de oliva",
+              "prot" : 0,
+              "qty" : 10,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "almuerzo" : {
+          "cambiados" : [
+            0,
+            1,
+            2
+          ],
+          "carb" : [
+            0,
+            64.400000000000006,
+            0
+          ],
+          "compensacion" : 329,
+          "compensaDe" : [
+            "Desayuno"
+          ],
+          "deltaPropio" : 0,
+          "fat" : [
+            10.9,
+            0.80000000000000004,
+            15
+          ],
+          "kcal" : [
+            512,
+            299,
+            132
+          ],
+          "kcalDia" : 943,
+          "kcalPlan" : 613,
+          "noAbsorbido" : 0,
+          "omitida" : false,
+          "propio" : 0,
+          "prot" : [
+            96.099999999999994,
+            6.0999999999999996,
+            0
+          ],
+          "qty" : [
+            310,
+            230,
+            15
+          ]
+        },
+        "desayuno" : {
+          "cambiados" : [
+            0,
+            1
+          ],
+          "carb" : [
+            50.299999999999997,
+            0,
+            27
+          ],
+          "compensacion" : 0,
+          "compensaDe" : [
+
+          ],
+          "deltaPropio" : -100,
+          "fat" : [
+            5.2999999999999998,
+            0,
+            0
+          ],
+          "kcal" : [
+            285,
+            0,
+            105
+          ],
+          "kcalDia" : 390,
+          "kcalPlan" : 719,
+          "noAbsorbido" : 0,
+          "omitida" : false,
+          "propio" : -329,
+          "prot" : [
+            9.8000000000000007,
+            0,
+            1
+          ],
+          "qty" : [
+            75,
+            0,
+            1
+          ]
+        }
+      },
+      "nombre" : "un alimento en cero y kcal"
+    },
+    {
+      "ajustes" : {
+        "pre" : {
+          "anclas" : {
+
+          },
+          "cantidades" : {
+            "0" : 0,
+            "1" : 0
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 27,
+              "fat" : 0,
+              "kcal" : 105,
+              "name" : "Banana",
+              "prot" : 1,
+              "qty" : 1,
+              "unit" : "u"
+            },
+            {
+              "carb" : 26,
+              "fat" : 2,
+              "kcal" : 140,
+              "name" : "Tostadas",
+              "prot" : 5,
+              "qty" : 2,
+              "unit" : "rebanada"
+            }
+          ],
+          "id" : "pre",
+          "nombre" : "Pre-entreno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            },
+            {
+              "carb" : 0,
+              "fat" : 10,
+              "kcal" : 88,
+              "name" : "Aceite de oliva",
+              "prot" : 0,
+              "qty" : 10,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "almuerzo" : {
+          "cambiados" : [
+            0,
+            1,
+            2
+          ],
+          "carb" : [
+            0,
+            58.799999999999997,
+            0
+          ],
+          "compensacion" : 245,
+          "compensaDe" : [
+            "Pre-entreno"
+          ],
+          "deltaPropio" : 0,
+          "fat" : [
+            9.8000000000000007,
+            0.69999999999999996,
+            14
+          ],
+          "kcal" : [
+            462,
+            273,
+            123
+          ],
+          "kcalDia" : 858,
+          "kcalPlan" : 613,
+          "noAbsorbido" : 0,
+          "omitida" : false,
+          "propio" : 0,
+          "prot" : [
+            86.799999999999997,
+            5.5999999999999996,
+            0
+          ],
+          "qty" : [
+            280,
+            210,
+            14
+          ]
+        },
+        "pre" : {
+          "cambiados" : [
+            0,
+            1
+          ],
+          "carb" : [
+            0,
+            0
+          ],
+          "compensacion" : 0,
+          "compensaDe" : [
+
+          ],
+          "deltaPropio" : 0,
+          "fat" : [
+            0,
+            0
+          ],
+          "kcal" : [
+            0,
+            0
+          ],
+          "kcalDia" : 0,
+          "kcalPlan" : 245,
+          "noAbsorbido" : 0,
+          "omitida" : false,
+          "propio" : -245,
+          "prot" : [
+            0,
+            0
+          ],
+          "qty" : [
+            0,
+            0
+          ]
+        }
+      },
+      "nombre" : "todos los alimentos en cero"
     }
   ],
   "generado" : "MyPumpKit AjustePorcionesTests (iOS). Android: AjustePorcionesTest.kt lo tiene que dar igual."

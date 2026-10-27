@@ -88,18 +88,39 @@ object ReglasEjercicio {
         return tabla.firstOrNull { it.first.prueba(n) }?.second
     }
 
-    /** `esSinPeso`: la carga externa gana; si no, la rueda o un gesto de peso corporal. El calentamiento va aparte. */
-    fun esSinPeso(nombre: String?, tipo: String?): Boolean {
+    /**
+     * El `equipment` del catálogo (free-exercise-db) que es carga externa: el sustituto lleva kg aunque su nombre traducido
+     * no nombre el equipo («Rope Crunch» y «Standing Rope Crunch» son de polea y salen «Crunch»; «Weighted Crunches», con
+     * balón medicinal, también). Lo demás («body only», «other», «bands», «exercise ball», «foam roll» o sin dato) no
+     * alcanza para decidir y decide el nombre, como en la web: en peso corporal el catálogo mezcla (los fondos de tríceps
+     * son «body only» y los de pecho «other») y los fondos y las dominadas se registran con lastre.
+     */
+    val equiposConCarga: Set<String> = setOf("barbell", "dumbbell", "cable", "machine", "kettlebells", "e-z curl bar", "medicine ball")
+
+    /** El equipo del catálogo es carga externa (sin distinguir mayúsculas ni espacios de más). */
+    fun esEquipoConCarga(equipo: String?): Boolean {
+        val e = equipo?.trim()?.lowercase()
+        return !e.isNullOrEmpty() && e in equiposConCarga
+    }
+
+    /**
+     * `esSinPeso`: la carga externa gana; si no, la rueda o un gesto de peso corporal. El calentamiento va aparte.
+     * `equipo` es el del catálogo, si el ejercicio sale de ahí (un sustituto): si es carga externa, lleva kg aunque el
+     * nombre diga crunch (desvío a propósito de la web, 27-oct: el crunch con soga que pedía kg, 21-oct).
+     */
+    fun esSinPeso(nombre: String?, tipo: String?, equipo: String? = null): Boolean {
         if (tipo == "calentamiento") return false
+        if (esEquipoConCarga(equipo)) return false
         val n = nombre ?: ""
         if (conCargaRE.prueba(n)) return false
         return (variantes(n)?.sinPeso ?: false) || sinPesoRE.prueba(n)
     }
 
     /** `exNoKg` (ENT-13): sin columna de kg (calentamiento o peso corporal). */
-    fun sinKg(nombre: String?, tipo: String?): Boolean = tipo == "calentamiento" || esSinPeso(nombre, tipo)
+    fun sinKg(nombre: String?, tipo: String?, equipo: String? = null): Boolean =
+        tipo == "calentamiento" || esSinPeso(nombre, tipo, equipo)
 
-    fun sinKg(ex: Ejercicio): Boolean = sinKg(ex.nombre, ex.tipo)
+    fun sinKg(ex: Ejercicio): Boolean = sinKg(ex.nombre, ex.tipo, ex.equipo)
 
     /**
      * `_repsSug` (SER-01): el ÚLTIMO número de las reps del plan ("8-10" → 10). null con AMRAP, ∞ o máx: ahí no hay

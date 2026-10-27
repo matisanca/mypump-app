@@ -222,7 +222,7 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
                             }
                         }
                         Text(
-                            "Tocá − o + para cambiar la cantidad de un alimento; «Como el plan» la vuelve a la del plan.",
+                            "Tocá − o + para cambiar la cantidad de un alimento; en 0 no lo comés hoy. «Como el plan» la vuelve a la del plan.",
                             style = Letras.caption, color = c.textoSecundario, modifier = Modifier.padding(horizontal = Espacio.m),
                         )
                     }
@@ -439,9 +439,8 @@ private fun FilaAlimentoAjuste(i: Int, plan: Alimento, hoy: Alimento, borrador: 
     val clave = i.toString()
     val aMano = borrador.cantidades[clave] != null
     val q = hoy.qty ?: 0.0
-    val paso = AjustePorciones.pasoCantidad(plan)
-    val maximo = AjustePorciones.redondear((plan.qty ?: 0.0) * AjustePorciones.FACTOR_MAXIMO, plan.unidad)
-    // Desde la cantidad a mano de AHORA si ya la tiene (dos toques seguidos), si no la de hoy.
+    // Desde la cantidad a mano de AHORA si ya la tiene (dos toques seguidos), si no la de hoy. El − llega a 0: ese alimento
+    // sale de la comida por hoy.
     fun mover(f: (Double) -> Double) = cambiar { a -> a.copy(cantidades = a.cantidades + (clave to f(a.cantidades[clave] ?: q))) }
     Row(
         Modifier.fillMaxWidth().padding(start = Espacio.m, end = 6.dp, top = 8.dp, bottom = 8.dp).testTag("ajuste-alimento-$i"),
@@ -476,11 +475,11 @@ private fun FilaAlimentoAjuste(i: Int, plan: Alimento, hoy: Alimento, borrador: 
             }
         }
         if (plan.qty != null && (plan.kcal ?: 0.0) > 0) {
-            BotonPaso(Iconos.Menos, "Menos ${plan.nombre}", "ajuste-menos-$i", habilitado = q - paso >= paso / 2) {
-                mover { actual -> max(paso, AjustePorciones.redondear(actual - paso, plan.unidad)) }
+            BotonPaso(Iconos.Menos, "Menos ${plan.nombre}", "ajuste-menos-$i", habilitado = AjustePorciones.puedeBajar(q)) {
+                mover { actual -> AjustePorciones.bajar(plan, actual) }
             }
-            BotonPaso(IconosAjuste.Mas, "Más ${plan.nombre}", "ajuste-mas-$i", habilitado = q + paso <= maximo) {
-                mover { actual -> min(maximo, AjustePorciones.redondear(actual + paso, plan.unidad)) }
+            BotonPaso(IconosAjuste.Mas, "Más ${plan.nombre}", "ajuste-mas-$i", habilitado = AjustePorciones.puedeSubir(plan, q)) {
+                mover { actual -> AjustePorciones.subir(plan, actual) }
             }
         }
     }

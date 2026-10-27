@@ -94,7 +94,7 @@ struct AjustarComidaView: View {
                         } header: {
                             Text("Alimentos")
                         } footer: {
-                            Text("Tocá − o + para cambiar la cantidad de un alimento. Para volver a la del plan, deslizalo.")
+                            Text("Tocá − o + para cambiar la cantidad de un alimento; en 0 no lo comés hoy. Para volver a la del plan, deslizalo.")
                         }
                     }
                     Section {
@@ -253,8 +253,6 @@ struct AjustarComidaView: View {
         let clave = String(i)
         let aMano = borrador.cantidades[clave] != nil
         let q = hoy.qty ?? 0
-        let paso = AjustePorciones.pasoCantidad(plan)
-        let maximo = AjustePorciones.redondear((plan.qty ?? 0) * AjustePorciones.factorMaximo, unidad: plan.unidad)
         return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(hoy.nombre).font(.body.weight(.medium))
@@ -270,12 +268,13 @@ struct AjustarComidaView: View {
             Spacer(minLength: 4)
             if plan.qty != nil, (plan.kcal ?? 0) > 0 {
                 HStack(spacing: 6) {
-                    // Desde la cantidad a mano de ahora si ya la tiene (dos toques seguidos), si no la de hoy.
-                    BotonPaso(icono: "minus", etiqueta: "Menos \(plan.nombre)", habilitado: q - paso >= paso / 2) {
-                        borrador.cantidades[clave] = max(paso, AjustePorciones.redondear((borrador.cantidades[clave] ?? q) - paso, unidad: plan.unidad))
+                    // Desde la cantidad a mano de ahora si ya la tiene (dos toques seguidos), si no la de hoy. El − llega a 0:
+                    // ese alimento sale de la comida por hoy.
+                    BotonPaso(icono: "minus", etiqueta: "Menos \(plan.nombre)", habilitado: AjustePorciones.puedeBajar(q)) {
+                        borrador.cantidades[clave] = AjustePorciones.bajar(plan, desde: borrador.cantidades[clave] ?? q)
                     }
-                    BotonPaso(icono: "plus", etiqueta: "Más \(plan.nombre)", habilitado: q + paso <= maximo) {
-                        borrador.cantidades[clave] = min(maximo, AjustePorciones.redondear((borrador.cantidades[clave] ?? q) + paso, unidad: plan.unidad))
+                    BotonPaso(icono: "plus", etiqueta: "Más \(plan.nombre)", habilitado: AjustePorciones.puedeSubir(plan, desde: q)) {
+                        borrador.cantidades[clave] = AjustePorciones.subir(plan, desde: borrador.cantidades[clave] ?? q)
                     }
                 }
             }
