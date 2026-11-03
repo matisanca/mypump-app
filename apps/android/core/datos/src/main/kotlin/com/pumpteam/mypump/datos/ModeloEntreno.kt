@@ -14,6 +14,7 @@ import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.BannerSemana
 import com.pumpteam.mypump.reglas.BarraDescanso
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
+import com.pumpteam.mypump.reglas.VolumenMusculo
 import com.pumpteam.mypump.reglas.ClaveEjercicio
 import com.pumpteam.mypump.reglas.Descanso
 import com.pumpteam.mypump.reglas.DescansoPropio
@@ -530,14 +531,46 @@ class ModeloEntreno(
         cacheEntradas?.let { (f, e, h) -> if (f == firma) return e to h }
         val entradas = lista.map { ex ->
             val ef = efectivo(ex)
-            val musculo = ef.slugSustituto?.let { cat.entrada(it)?.primaryMuscle } ?: cat.resolver(ex)?.primaryMuscle
-            Preparacion.Entrada(ef.ejercicio.tipo, musculo, ef.ejercicio.nombre, ReglasEjercicio.esSinPeso(ef.ejercicio.nombre, ef.ejercicio.tipo, ef.ejercicio.equipo))
+            Preparacion.Entrada(ef.ejercicio.tipo, musculo(ex), ef.ejercicio.nombre, ReglasEjercicio.esSinPeso(ef.ejercicio.nombre, ef.ejercicio.tipo, ef.ejercicio.equipo))
         }
         val hechos = lista.map { hecho(it) }
         cacheEntradas = Triple(firma, entradas, hechos)
         cachePreparacion.clear()
         return entradas to hechos
     }
+
+    /**
+     * El músculo principal del ejercicio que se hace: el del sustituto si el catálogo lo tiene; si no, el del original
+     * (`CatalogoEjercicios.resolver`: catalogo_slug → matched → reglas y nombre). null = el catálogo no lo tiene (el
+     * respaldo conservador). La misma cadena para la preparación (E1) y el volumen por músculo (S2).
+     */
+    fun musculo(ex: Ejercicio): String? {
+        val cat = _catalogo.value
+        return efectivo(ex).slugSustituto?.let { cat.entrada(it)?.primaryMuscle } ?: cat.resolver(ex)?.primaryMuscle
+    }
+
+    /**
+     * Volumen por músculo (2.1, S2): las series confirmadas hoy en el teléfono, para el cierre del día y Salud → Fuerza.
+     * Las de preparación no están: nunca se registran.
+     */
+    val registrosVolumenHoy: List<VolumenMusculo.Registro>
+        get() {
+            val d = _dia.value
+            val hoy = FechaLocal.hoy(reloj(), zona)
+            val vistos = HashSet<String>()
+            val out = ArrayList<VolumenMusculo.Registro>()
+            for (ex in d.lista) {
+                if (!vistos.add(ex.id)) continue
+                val e = d.ejercicios[ex.id] ?: continue
+                if (e.series.none { it.confirmada }) continue
+                val m = musculo(ex)
+                val tipo = efectivo(ex).ejercicio.tipo
+                e.series.forEachIndexed { i, s ->
+                    if (s.confirmada) out += VolumenMusculo.Registro(m, tipo, hoy, ex.id, i + 1)
+                }
+            }
+            return out
+        }
 
     /** E1: la preparación ya calculada (ver [preparacion]). Es un caché, no estado de la pantalla. */
     private var cacheEntradas: Triple<String, List<Preparacion.Entrada>, List<Ejercicio>>? = null
