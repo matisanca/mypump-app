@@ -309,4 +309,92 @@ struct AjustesDietaTests {
         #expect(m.ajustesDeHoy["d"]?.deltaKcal == 100, "en la demo se puede probar")
         #expect(m.outbox == nil)
     }
+
+    // MARK: - Alimentos agregados (2.0.3, D1)
+
+    static func huevo(_ ts: Int64) -> AlimentoAgregado {
+        AgregadosComida.agregado(AgregadosComida.Candidato(nombre: "Huevo entero", por100: MacrosPor100(kcal: 143, p: 12.6, c: 0.7, g: 9.5),
+                                                           unidad: "unidad", gramosPorUnidad: 60, origen: .base),
+                                 cantidad: 1, medida: AgregadosComida.Medida(nombre: "unidad", gramos: 60), ts: ts)
+    }
+
+    /// Un agregado solo (sin otro cambio) ya es un ajuste: se guarda, sale con el día y va en el resumen de esa comida.
+    @Test func unAgregadoSaleConElDiaYVaEnElResumen() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        await m.outbox?.drenar()
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1)]), opciones: [:])
+        #expect(m.ajustesDeHoy["desayuno"]?.agregados.count == 1)
+        #expect(m.diaAjustado(opciones: [:])["desayuno"]!.kcal == 614 + 86)
+        await m.outbox?.drenar()
+        let g = s.guardados.last
+        #expect(g?["p_ajustes"]?["desayuno"]?["agregados"]?[0]?["nombre"]?.comoTexto == "Huevo entero")
+        let kcalDia = g?["p_kcal_dia"]?.comoNumero ?? 0
+        #expect(abs(kcalDia - (614 + 525 + 86)) < 1e-9)
+        guard case .lista(let resumen)? = g?["p_resumen"] else { Issue.record("sin resumen"); return }
+        #expect(resumen[0]["agregados"]?[0]?["kcal"]?.comoNumero == 86 && resumen[0]["agregados"]?[0]?["gramos"]?.comoNumero == 60)
+        // El almuerzo, sin agregados, queda como antes (sin la clave).
+        #expect(resumen[1]["agregados"] == nil)
+        // Al volver a abrir (otro arranque) lo lee del disco.
+        let otra = modelo(Servidor())
+        await otra.cargar()
+        #expect(otra.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [1])
+    }
+
+    /// Borrar un agregado de una comida marcada «Comí»: el tilde del borrado se va y los de los siguientes bajan uno.
+    @Test func borrarUnAgregadoCorreLosTildes() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2), Self.huevo(3)]), opciones: [:])
+        await m.marcar("desayuno", .comido, opcion: 0)
+        // Plan de 2 (avena, huevos): los agregados son 2, 3 y 4. Destilda el segundo y el tercero.
+        await m.alternarAlimento("desayuno", 3)
+        await m.alternarAlimento("desayuno", 4)
+        await m.borrarAgregado("desayuno", ts: 2, opciones: [:])
+        #expect(m.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [1, 3])
+        #expect(m.marcasDeHoy["desayuno"]?.excluidos == [3])
+        // Lo consumido: el plan entero y el primer huevo.
+        #expect(m.consumo(opciones: [:]).kcal == 614 + 86)
+        // Sin agregados ni otro cambio, el ajuste se va.
+        await m.borrarAgregado("desayuno", ts: 1, opciones: [:])
+        await m.borrarAgregado("desayuno", ts: 3, opciones: [:])
+        #expect(m.ajustesDeHoy["desayuno"] == nil && m.marcasDeHoy["desayuno"]?.excluidos == [])
+    }
+
+    /// Cambiar de opción saca las cantidades a mano (eran de la otra) pero deja los agregados.
+    @Test func losAgregadosSobrevivenAlCambioDeOpcion() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(cantidades: ["0": 50], agregados: [Self.huevo(1)]), opciones: ["desayuno": 0])
+        var a = m.ajustesDeHoy["desayuno"]!
+        a.opcion = 1
+        a.cantidades = [:]
+        await m.ajustar("desayuno", a, opciones: ["desayuno": 1])
+        #expect(m.ajustesDeHoy["desayuno"]?.agregados.count == 1 && m.ajustesDeHoy["desayuno"]?.cantidades.isEmpty == true)
+        #expect(m.diaAjustado(opciones: ["desayuno": 1])["desayuno"]!.kcal == 120 + 86)
+    }
+
+    @Test func losRecientesQuedanEnElTelefono() async {
+        let m = modelo(Servidor())
+        await m.cargar()
+        m.recordarReciente(Self.huevo(1))
+        var otro = Self.huevo(2)
+        otro.nombre = "Clara de huevo"
+        m.recordarReciente(otro)
+        m.recordarReciente(Self.huevo(3))
+        #expect(m.agregadosRecientes.map(\.ts) == [3, 2])
+        let otra = modelo(Servidor())
+        await otra.cargar()
+        #expect(otra.agregadosRecientes.map(\.nombre) == ["Huevo entero", "Clara de huevo"])
+    }
+}
+
+private extension JSONValue {
+    subscript(i: Int) -> JSONValue? {
+        guard case .lista(let a) = self, a.indices.contains(i) else { return nil }
+        return a[i]
+    }
 }

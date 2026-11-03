@@ -56,6 +56,9 @@ public final class ModeloApp {
     @ObservationIgnored var opcionesVistas: [String: Int] = [:]
     /// Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor).
     @ObservationIgnored var ordenAjustes = 0
+    /// Los últimos alimentos agregados a una comida (2.0.3, D1), con su cantidad: «Recientes» de la hoja de agregar. Solo
+    /// en el teléfono (AgregadosDieta.swift).
+    public internal(set) var agregadosRecientes: [AlimentoAgregado] = []
     /// «Comí» / «Salté» de hoy, por comida (D25): ver MarcasComidas.swift. Solo valen el día de `fechaMarcas`.
     public internal(set) var marcas: [String: MarcaComida] = [:]
     @ObservationIgnored var fechaMarcas = ""

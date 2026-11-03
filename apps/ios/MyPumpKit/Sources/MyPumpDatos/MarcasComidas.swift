@@ -62,7 +62,7 @@ extension ModeloApp {
         await cambiarMarca(comidaId, MarcaComida(opcion: m.opcion, estado: .comido, excluidos: excluidos), opcionAlDesmarcar: m.opcion)
     }
 
-    private func cambiarMarca(_ comidaId: String, _ nueva: MarcaComida?, opcionAlDesmarcar: String?) async {
+    func cambiarMarca(_ comidaId: String, _ nueva: MarcaComida?, opcionAlDesmarcar: String?) async {
         guard nueva != marcas[comidaId] else { return }
         ordenMarcas[comidaId, default: 0] += 1
         marcas[comidaId] = nueva

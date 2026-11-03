@@ -42,11 +42,16 @@ public struct AjusteComida: Codable, Equatable, Sendable {
     public var cantidades: [String: Double]
     /// A qué alimento corresponde cada cantidad (las pone `AjustePorciones.anclar` al guardar). Sin ancla, vale.
     public var anclas: [String: AnclaAlimento]
+    /// Alimentos que el cliente sumó a la comida (2.0.3, D1), con sus macros por la cantidad. No dependen de la opción
+    /// (no van por posición): cambiar de opción los deja. Con «Hoy no la como» quedan guardados pero no cuentan.
+    public var agregados: [AlimentoAgregado]
+
+    enum CodingKeys: String, CodingKey { case deltaKcal, compensar, omitida, opcion, cantidades, anclas, agregados }
 
     public init(deltaKcal: Int = 0, compensar: Bool = true, omitida: Bool = false, opcion: Int = 0,
-                cantidades: [String: Double] = [:], anclas: [String: AnclaAlimento] = [:]) {
+                cantidades: [String: Double] = [:], anclas: [String: AnclaAlimento] = [:], agregados: [AlimentoAgregado] = []) {
         self.deltaKcal = deltaKcal; self.compensar = compensar; self.omitida = omitida; self.opcion = opcion
-        self.cantidades = cantidades; self.anclas = anclas
+        self.cantidades = cantidades; self.anclas = anclas; self.agregados = agregados
     }
 
     public init(from decoder: Decoder) throws {
@@ -59,10 +64,31 @@ public struct AjusteComida: Codable, Equatable, Sendable {
         opcion = (try? c.decode(Int.self, forKey: .opcion)).flatMap { (0...99).contains($0) ? $0 : nil } ?? 0
         cantidades = ((try? c.decode([String: Double].self, forKey: .cantidades)) ?? [:]).filter { $0.value.isFinite && $0.value >= 0 }
         anclas = (try? c.decode([String: AnclaAlimento].self, forKey: .anclas)) ?? [:]
+        // De a uno: un agregado roto se descarta solo (no se lleva los otros ni el ajuste).
+        agregados = ((try? c.decode([Opcional<AlimentoAgregado>].self, forKey: .agregados)) ?? [])
+            .compactMap(\.valor).prefix(AgregadosComida.maximoAlLeer).map { $0 }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(deltaKcal, forKey: .deltaKcal)
+        try c.encode(compensar, forKey: .compensar)
+        try c.encode(omitida, forKey: .omitida)
+        try c.encode(opcion, forKey: .opcion)
+        try c.encode(cantidades, forKey: .cantidades)
+        try c.encode(anclas, forKey: .anclas)
+        // Sin agregados, la clave no va: el JSON queda igual que antes de la 2.0.3.
+        if !agregados.isEmpty { try c.encode(agregados, forKey: .agregados) }
     }
 
     /// Sin nada que cambie la comida: se borra.
-    public var neutro: Bool { deltaKcal == 0 && cantidades.isEmpty && !omitida }
+    public var neutro: Bool { deltaKcal == 0 && cantidades.isEmpty && !omitida && agregados.isEmpty }
+}
+
+/// Un elemento de una lista que se lee de a uno: si no se entiende, queda nil en vez de tirar la lista entera.
+struct Opcional<T: Decodable>: Decodable {
+    let valor: T?
+    init(from decoder: Decoder) throws { valor = try? T(from: decoder) }
 }
 
 /// Las porciones de una comida (y del día) con los ajustes del cliente. Puro: lo usan las vistas y los tests, igual en
@@ -105,8 +131,12 @@ public enum AjustePorciones {
         /// Lo que la comida se apartó del plan por el cliente (kcal, ya redondeadas las porciones): es lo que se compensa
         /// en la siguiente. Cero si solo recibe; sin comerla, menos todo el plan.
         public let propio: Double
+        /// Los alimentos agregados que cuentan hoy (D1): fijos, no se escalan con lo que llega. Sin comerla, ninguno.
+        public let agregados: [Alimento]
+        /// Lo del plan de hoy y los agregados: lo que suma la comida.
+        public var todos: [Alimento] { alimentos + agregados }
         /// Hay que mostrarla como ajustada (por el cliente o por lo que le llega).
-        public var ajustada: Bool { omitida || !cambiados.isEmpty }
+        public var ajustada: Bool { omitida || !cambiados.isEmpty || !agregados.isEmpty }
         /// Lo que tomó de las anteriores.
         public var absorbido: Double { compensacion - noAbsorbido }
     }
@@ -301,14 +331,16 @@ public enum AjustePorciones {
                     noAbsorbido = llega
                 }
             }
-            let hoy = kcal(als)
+            let extra = AgregadosComida.alimentos(aj)
+            // Los agregados suman a la comida y, como lo que se cambió a mano, cuentan en lo propio que se compensa.
+            let hoy = kcal(als) + kcal(extra)
             let cambiados = Set(c.alimentos.indices.filter { als[$0].qty != c.alimentos[$0].qty })
             // Lo que se apartó del plan por el cliente: lo de hoy menos el plan y lo que sí absorbió de las anteriores. Sin
             // nada propio (solo recibe), es cero: el redondeo de lo que absorbió no se le pasa a la siguiente.
             let propio = (aj?.neutro ?? true) ? 0 : jsRound(hoy - plan - (llega - noAbsorbido))
             r[c.id] = ComidaAjustada(alimentos: als, kcalPlan: plan, kcal: hoy, deltaPropio: Int(delta), omitida: omitida,
                                      compensacion: llega, compensaDe: llega != 0 ? deQuien : [], noAbsorbido: noAbsorbido,
-                                     cambiados: cambiados, propio: propio)
+                                     cambiados: cambiados, propio: propio, agregados: extra)
             var siguiente = noAbsorbido
             var nuevosOrigenes = noAbsorbido != 0 ? deQuien : []
             if let aj, aj.compensar, propio != 0 {

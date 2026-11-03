@@ -27,6 +27,7 @@ extension ModeloApp {
     func cargarAjustes() {
         let hoy = FechaLocal.hoy()
         fechaAjustes = hoy
+        cargarRecientes()
         guard let id = dieta?.id, let g = disco?.leer(AjustesGuardados.self, Self.archivoAjustes(id)), g.fecha == hoy else {
             ajustes = [:]
             return
@@ -105,8 +106,12 @@ extension ModeloApp {
             guard let d = dia[c.id] else { continue }
             plan += d.kcalPlan
             hoy += d.kcal
-            resumen.append(.objeto(["comida_id": .texto(c.id), "nombre": .texto(c.nombre), "kcal_plan": .numero(d.kcalPlan),
-                                    "kcal_dia": .numero(d.kcal), "omitida": .bool(d.omitida)]))
+            var renglon: [String: JSONValue] = ["comida_id": .texto(c.id), "nombre": .texto(c.nombre), "kcal_plan": .numero(d.kcalPlan),
+                                                "kcal_dia": .numero(d.kcal), "omitida": .bool(d.omitida)]
+            // 2.0.3 (D1): lo que sumó a la comida, si sumó algo y la come (`kcal_dia` ya lo incluye).
+            let agregados = d.omitida ? [] : AgregadosComida.resumen(ajustes[c.id])
+            if !agregados.isEmpty { renglon["agregados"] = .lista(agregados) }
+            resumen.append(.objeto(renglon))
         }
         let ajustesJSON = (try? JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(ajustes))) ?? .objeto([:])
         let payload: JSONValue = .objeto([
