@@ -1203,6 +1203,7 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 <script src="/js/healthkit-bridge.js"></script>
 <script src="/js/notificaciones.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/preentrega.js"></script>
 <script>
 /* ====================================================================
    MyPump — Cliente
@@ -8775,6 +8776,12 @@ async function init() {
       _dias: SAMPLE_RUTINA.dias,
       _isDemo: true,
     };
+    // Pre-entrega (preentrega.js): cuenta sin plan antes de la videollamada de
+    // comienzo. Si la base dice que está activa, monta su portada encima; si
+    // no, o si algo falla, sigue el modo demo de siempre.
+    if (window.MyPumpPreentrega && !_fromCache) {
+      try { DATA._preentrega = await window.MyPumpPreentrega.consultar(TOKEN); } catch (e) { DATA._preentrega = null; }
+    }
   }
 
   const _nd = normalizarDieta(dieta && dieta.estructura);

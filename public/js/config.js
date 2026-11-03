@@ -33,4 +33,7 @@ window.MYPUMP_CONFIG = {
   // La primera línea va acá. La segunda va al .env de la mini como
   // VAPID_PRIVATE_KEY y NO se commitea nunca.
   VAPID_PUBLIC_KEY:  'BNvglUfWzZHzfotOBnoa7mxfB-GrtWFZACAxHec7BhKaJfLINFs64jxAdV6XWFtcElQdFz6OhsSmyfBHcWz3SXs',
+  // Pre-entrega (obra pump-entregas): portada para clientes con cuenta y sin plan.
+  // Apagado. En localhost se prueba con ?preentrega=1.
+  PREENTREGA_ENABLED: false,
 };
