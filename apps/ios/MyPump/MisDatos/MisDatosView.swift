@@ -143,7 +143,7 @@ struct MisDatosView: View {
 }
 
 /// La recuperación de hoy en una fila: el anillo con el score (o los días de calibración) y qué pasa, con lo mismo que
-/// muestra la card de Mi Día.
+/// muestra la card de Salud → Recuperación.
 private struct ResumenRecuperacion: View {
     let salud: ModeloSalud
 

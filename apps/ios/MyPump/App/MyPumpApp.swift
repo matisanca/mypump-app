@@ -79,9 +79,14 @@ struct Raiz: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
     // `simctl launch … -pestana dieta` abre directo en esa pestaña (capturas y pruebas de interfaz).
-    @State private var navegacion = Navegacion(pestaña: Pestaña(rawValue: UserDefaults.standard.string(forKey: "pestana") ?? "") ?? .entreno)
+    @State private var navegacion = Navegacion(pestaña: Pestaña(argumento: UserDefaults.standard.string(forKey: "pestana") ?? "") ?? .entreno)
 
-    enum Pestaña: String, Hashable { case entreno, dieta, chat, revision, progreso }
+    enum Pestaña: String, Hashable {
+        case entreno, dieta, chat, revision, salud
+
+        /// `-pestana progreso` (scripts y pruebas viejas) es Salud desde la 2.1.
+        init?(argumento: String) { self.init(rawValue: argumento == "progreso" ? "salud" : argumento) }
+    }
 
     /// Entreno: comentarios de Mati sin leer en los ejercicios. Chat: lo de Mati que llegó con el chat cerrado.
     /// Revisión: lo que falta de la semana (check y fotos). Siempre los reales: en la demo y en los bocetos, ninguno.
@@ -101,7 +106,7 @@ struct Raiz: View {
                         .badge(badgeChat)
                     Tab("Revisión", systemImage: "checklist", value: Pestaña.revision) { revision }
                         .badge(badgeRevision)
-                    Tab("Progreso", systemImage: "chart.line.uptrend.xyaxis", value: Pestaña.progreso) { progreso }
+                    Tab("Salud", systemImage: "heart.text.square.fill", value: Pestaña.salud) { salud }
                 }
                 .tabViewStyle(.sidebarAdaptable)
             } else {
@@ -113,7 +118,7 @@ struct Raiz: View {
                         .badge(badgeChat)
                     revision.tabItem { Label("Revisión", systemImage: "checklist") }.tag(Pestaña.revision)
                         .badge(badgeRevision)
-                    progreso.tabItem { Label("Progreso", systemImage: "chart.line.uptrend.xyaxis") }.tag(Pestaña.progreso)
+                    salud.tabItem { Label("Salud", systemImage: "heart.text.square.fill") }.tag(Pestaña.salud)
                 }
             }
         }
@@ -146,7 +151,7 @@ struct Raiz: View {
     private var dieta: some View { DietaView(datos: datos).islaDeDescanso() }
     private var chat: some View { ChatView(datos: datos).islaDeDescanso() }
     private var revision: some View { RevisionView(datos: datos).islaDeDescanso() }
-    private var progreso: some View { ProgresoView(datos: datos).islaDeDescanso() }
+    private var salud: some View { SaludView(datos: datos).islaDeDescanso() }
 }
 
 #if DEBUG

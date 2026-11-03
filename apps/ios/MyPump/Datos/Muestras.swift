@@ -14,9 +14,6 @@ struct Muestras: Sendable {
     let salud: [FilaSalud]
     let recuperacion: [Recuperacion]
     let chat: [MensajeChat]
-    let habitos: HabitosDia?
-    let racha: Racha?
-    let adherencia: [DiaAdherencia]
     let checkin: CheckinSemana?
     let fotos: [FotoProgreso]
     let comidasMarcadas: [ComidaMarcada]
@@ -37,9 +34,6 @@ struct Muestras: Sendable {
             salud: leer("get_salud", [FilaSalud].self) ?? [],
             recuperacion: leer("get_recuperacion", [Recuperacion].self) ?? [],
             chat: Self.chatDeEjemplo,
-            habitos: leer("get_habitos_dia", [HabitosDia].self)?.first,
-            racha: leer("get_streak", [Racha].self)?.first,
-            adherencia: leer("get_adherencia_30d", [DiaAdherencia].self) ?? [],
             checkin: leer("get_checkin_semana", [CheckinSemana].self)?.first,
             fotos: leer("get_fotos_progreso", [FotoProgreso].self) ?? [],
             comidasMarcadas: leer("get_comidas_marcadas", [ComidaMarcada].self) ?? []

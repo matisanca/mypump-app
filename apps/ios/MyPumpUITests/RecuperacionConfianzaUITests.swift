@@ -20,7 +20,7 @@ final class RecuperacionConfianzaUITests: XCTestCase {
     private var verTodo: XCUIElement { app.descendants(matching: .any)["ver-todos-mis-datos"].firstMatch }
 
     private func abrir(_ caso: String, oscuro: Bool = false) {
-        app.launchArguments = ["-token", token, "-pestana", "revision", "-sinOnboarding", "YES", "-recuperacionDePrueba", caso]
+        app.launchArguments = ["-token", token, "-pestana", "salud", "-sinOnboarding", "YES", "-recuperacionDePrueba", caso]
         if oscuro { app.launchArguments += ["-mypump-theme", "dark"] }
         app.launch()
     }
