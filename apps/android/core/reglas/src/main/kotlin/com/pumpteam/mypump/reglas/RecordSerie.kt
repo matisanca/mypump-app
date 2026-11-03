@@ -12,7 +12,9 @@ import kotlin.math.roundToLong
  * verifican los vectores de `apps/shared/vectores/entreno_203.json`.
  *
  * - Lo mejor anterior es la serie más pesada del historial de días anteriores (misma clave) y, entre las de ese kg, la de
- *   más reps. Las series de hoy ya confirmadas también son piso: el récord que ya se avisó no se repite.
+ *   más reps. Las series de hoy ya confirmadas del mismo ejercicio (misma clave, en todo el día: también el mismo
+ *   ejercicio en otro lugar) son piso, y también lo ya avisado en el lugar y la serie (el lápiz no repite el récord).
+ * - Con el historial cortado por el tope y más corto que [DIAS_SUFICIENTES], no se avisa ([historiaSuficiente]).
  * - Más kg con al menos 1 rep: «+N kg». El mismo kg que lo mejor con más reps: «+N rep(s)». Menos kg, nada.
  * - Sin historia de días anteriores no hay aviso. Los ejercicios sin kg y las series no verosímiles (las que hubo que
  *   preguntar) no avisan. Las filas con 0 kg no cuentan.
@@ -25,6 +27,29 @@ object RecordSerie {
     }
 
     private const val TOLERANCIA = 1e-6
+
+    /**
+     * El historial por clave llega con un tope de filas por ejercicio (`p_limit_por_ej` de `get_historico_por_clave`) y no
+     * hay RPC que traiga el máximo histórico. Con el tope lleno, la mejor marca puede ser más vieja que lo cargado y saldría
+     * «Récord» sin serlo: entonces solo se avisa si lo cargado abarca al menos [DIAS_SUFICIENTES] (medio año: el récord
+     * es, como mínimo, el de los últimos seis meses). Decisión del 3-nov (revisión de e203).
+     */
+    const val TOPE_HISTORIAL = 48
+    const val DIAS_SUFICIENTES = 180
+
+    /** ¿Alcanza lo cargado para hablar de récord? Completo (menos filas que el tope) o abarca [DIAS_SUFICIENTES] hasta [hoy]. */
+    fun historiaSuficiente(h: List<RegistroHistorico>, hoy: String?, zona: ZoneId): Boolean {
+        if (h.size < TOPE_HISTORIAL) return true
+        val nHoy = hoy?.let { numeroDeDia(it) } ?: return false
+        val mas = h.mapNotNull { numeroDeDia(HistorialEntreno.fechaLocal(it.registradoEn, zona)) }.minOrNull() ?: return false
+        return nHoy - mas >= DIAS_SUFICIENTES
+    }
+
+    private fun numeroDeDia(ymd: String): Long? = try {
+        java.time.LocalDate.parse(ymd).toEpochDay()
+    } catch (_: Exception) {
+        null
+    }
 
     fun evaluar(serie: Marca, sinKg: Boolean, verosimil: Boolean, anteriores: List<Marca>, hoy: List<Marca>): Aviso? {
         if (sinKg || !verosimil || serie.reps < 1 || !(serie.kg > 0) || !serie.kg.isFinite()) return null

@@ -77,7 +77,8 @@ fun HojaDescanso(motor: ModeloEntreno, t: ModeloEntreno.Tarjeta, alCerrar: () ->
     val c = MyPump.colores
     val hoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val alcanceHoja = rememberCoroutineScope()
-    var elegido by remember { mutableIntStateOf(DescansoPropio.valido(t.descansoSegundos) ?: DescansoPropio.opciones.minBy { kotlin.math.abs(it - t.descansoSegundos) }) }
+    val inicial = remember { DescansoPropio.valido(t.descansoSegundos) ?: DescansoPropio.opciones.minBy { kotlin.math.abs(it - t.descansoSegundos) } }
+    var elegido by remember { mutableIntStateOf(inicial) }
 
     fun cerrar() {
         alcanceHoja.launch { hoja.hide() }.invokeOnCompletion { alCerrar() }
@@ -97,7 +98,9 @@ fun HojaDescanso(motor: ModeloEntreno, t: ModeloEntreno.Tarjeta, alCerrar: () ->
             subtitulo = "Para este ejercicio",
             cancelar = AccionHoja("Cancelar", "cancelar-descanso", alTocar = ::cerrar),
             confirmar = AccionHoja("Guardar", "guardar-descanso") {
-                motor.elegirDescanso(t.lugar, elegido)
+                // Lo elegido queda (aunque sea el del plan); solo «Volver al del plan» lo borra. Sin mover la rueda y con un
+                // del plan que no es opción, nada.
+                DescansoPropio.alUsar(elegido, inicial, t.descansoPlan, t.descansoPropio)?.let { motor.elegirDescanso(t.lugar, it) }
                 cerrar()
             },
         )

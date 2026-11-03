@@ -141,8 +141,11 @@ object Preparacion {
         if (indice < 0 || indice >= dia.size) return emptyList()
         val ref = if (sinKg) null else kgEfectivo?.takeIf { it > 0 && it.isFinite() }
         val eq = equipo(nombre, equipo)
+        // Con barra y una efectiva más liviana que la barra sola, la barra ya pesa más que la efectiva: sin kg (solo reps).
+        val barraPesada = eq == Equipo.BARRA && (ref ?: 0.0) < KG_BARRA
         fun kg(pct: Double): Pair<Double?, Boolean> {
-            val k = ref?.let { redondear(it * pct / 100, eq) } ?: return null to false
+            if (ref == null || barraPesada) return null to false
+            val k = redondear(ref * pct / 100, eq)?.takeIf { it <= ref } ?: return null to false
             return k to (eq == Equipo.BARRA && k <= KG_BARRA)
         }
         if (plan != null) {
@@ -183,12 +186,12 @@ object Preparacion {
             return listOf(Serie(Tipo.APROXIMACION, reps = REPS_APROXIMACION, kg = k, barraSola = sola))
         }
         val (kc, solac) = kg(PCT_CALENTAMIENTO)
-        val kp = ref?.let {
+        val kp = ref?.takeIf { !barraPesada }?.let {
             val suma = minOf(POTENCIACION_TOPE, if (it < POTENCIACION_LIMITE_LIVIANO) POTENCIACION_KG_LIVIANO else POTENCIACION_KG)
             redondear(it + suma, eq)
         }
         return listOf(Serie(Tipo.CALENTAMIENTO, reps = REPS_CALENTAMIENTO, kg = kc, barraSola = solac)) + aproximaciones +
-            Serie(Tipo.POTENCIACION, reps = REPS_POTENCIACION, kg = kp, opcional = true)
+            Serie(Tipo.POTENCIACION, reps = REPS_POTENCIACION, kg = kp, barraSola = eq == Equipo.BARRA && kp == KG_BARRA, opcional = true)
     }
 
     /** El kg de referencia: el escrito en la primera efectiva o, si no hay, el sugerido. */

@@ -54,6 +54,12 @@ class DiaEnCurso(
      */
     var descansosPropios: Map<String, Int> = emptyMap()
 
+    /**
+     * E3 (2.0.3): el récord ya avisado hoy por lugar y serie («lugar|índice»). Es piso para el siguiente: el lápiz sobre
+     * una serie que ya dio récord no lo vuelve a avisar. Solo en memoria.
+     */
+    var recordsAvisados: Map<String, RecordSerie.Marca> = emptyMap()
+
     data class MetaEstado(val seriesCompletadas: Int, val manual: Boolean)
 
     /** Lo que la app tiene que hacer después de una acción. */
@@ -94,6 +100,7 @@ class DiaEnCurso(
         it.historial = historial
         it.sustituciones = sustituciones
         it.descansosPropios = descansosPropios
+        it.recordsAvisados = recordsAvisados
     }
 
     // ── Lecturas ──
@@ -334,12 +341,10 @@ class DiaEnCurso(
         // El récord: solo una serie de ESTE ejercicio, contra su historial de antes y las otras series suyas de hoy.
         var record: RecordSerie.Aviso? = null
         val series = ejercicios.getValue(id).series
-        if (propia) {
+        if (propia && RecordSerie.historiaSuficiente(historial[id] ?: emptyList(), hoy, zona)) {
             RecordSerie.marca(series[idx])?.let { m ->
-                val hoyConfirmadas = series.withIndex()
-                    .filter { it.index != idx && it.value.confirmada && esDelEjercicioActual(id, it.value) }
-                    .mapNotNull { RecordSerie.marca(it.value) }
-                record = RecordSerie.evaluar(m, sinKg, verosimil, RecordSerie.anteriores(historial[id] ?: emptyList(), hoy, zona), hoyConfirmadas)
+                record = RecordSerie.evaluar(m, sinKg, verosimil, RecordSerie.anteriores(historial[id] ?: emptyList(), hoy, zona), marcasDeHoy(id, idx))
+                if (record != null) recordsAvisados = recordsAvisados + ("$id|$idx" to m)
             }
         }
         if (ejercicios.getValue(id).series.all { it.confirmada } && estado(id) == "pendiente") {
@@ -363,16 +368,41 @@ class DiaEnCurso(
      * servidor o de la cola) conservan lo que tenían, y el calentamiento y el cardio no llevan RIR (no son series duras).
      * Va aparte de [confirmarSerie], que sigue igual a la web (sus vectores esperan el RIR que se eligió).
      */
-    fun fijarRirDelPlan(id: String, idx: Int) {
-        val ex = ejercicio(id) ?: return
+    fun fijarRirDelPlan(id: String, idx: Int, efectivo: Ejercicio? = null) {
+        val plan = ejercicio(id) ?: return
         val e = ejercicios[id] ?: return
         val s = e.series.getOrNull(idx) ?: return
-        if (s.confirmada || s.rir.isNotEmpty() || s.nombreRegistrado != null || ex.tipo == "calentamiento" || ex.tipo == "cardio") return
+        val ex = efectivo ?: plan
+        // [efectivo] es el que se hace (el sustituto, con el tipo y el equipo del catálogo); el calentamiento, el cardio, el
+        // core y lo que va sin peso quedan sin RIR (null).
+        if (s.confirmada || s.rir.isNotEmpty() || s.nombreRegistrado != null || !RirDelPlan.lleva(ex)) return
         cambiarSerie(id, idx) { it.copy(rir = RirDelPlan.guardar(Progresiones.pauta(ex, semana).rir)) }
     }
 
-    /** La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva». */
-    fun leyendaRir(id: String): String = RirDelPlan.leyenda(ejercicio(id)?.let { Progresiones.pauta(it, semana).rir })
+    /** La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva»; null si no lleva RIR. */
+    fun leyendaRir(id: String, efectivo: Ejercicio? = null): String? {
+        val ex = efectivo ?: ejercicio(id) ?: return null
+        if (!RirDelPlan.lleva(ex)) return null
+        return RirDelPlan.leyenda(Progresiones.pauta(ex, semana).rir)
+    }
+
+    /**
+     * E3: el piso de hoy para el récord de la serie [idx] del lugar: las series confirmadas del mismo ejercicio (misma
+     * clave) en todo el día, menos ella, y lo ya avisado en esos lugares (también en ella misma: el lápiz).
+     */
+    internal fun marcasDeHoy(id: String, idx: Int): List<RecordSerie.Marca> {
+        val clave = ClaveEjercicio.de(nombreEfectivo(id))
+        val lugares = lista.map { it.id }.filter { it == id || (clave.isNotEmpty() && ClaveEjercicio.de(nombreEfectivo(it)) == clave) }
+        val marcas = mutableListOf<RecordSerie.Marca>()
+        for (l in lugares) {
+            ejercicios[l]?.series?.forEachIndexed { i, s ->
+                if (!(l == id && i == idx) && s.confirmada && esDelEjercicioActual(l, s)) RecordSerie.marca(s)?.let { marcas += it }
+            }
+        }
+        val prefijos = lugares.map { "$it|" }
+        marcas += recordsAvisados.filterKeys { k -> prefijos.any { k.startsWith(it) } }.values
+        return marcas
+    }
 
     /** "Marcar ejercicio completo": solo con todas las series confirmadas. */
     fun marcarCompleto(id: String): List<Efecto> {

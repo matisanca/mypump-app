@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.reglas
 
+import com.pumpteam.mypump.modelos.Ejercicio
 import kotlin.math.ceil
 
 /**
@@ -20,6 +21,16 @@ object DescansoPropio {
     fun valido(s: Int?): Int? = s?.takeIf { it in opciones }
 
     /** El descanso que se usa: el propio si hay, si no el del plan (que `normalizarRutina` ya completó con 90). */
+    /**
+     * «Usar» del selector: lo que se guarda, o null para no tocar nada. Lo elegido se guarda aunque sea igual al del plan:
+     * el propio solo se borra con «Volver al del plan». Si no había propio, la rueda no se movió y el del plan no es una
+     * de las opciones (la rueda arrancó en la más cercana), no se guarda nada.
+     */
+    fun alUsar(seleccion: Int, inicial: Int, plan: Int, propio: Boolean): Int? {
+        if (!propio && seleccion == inicial && valido(plan) == null) return null
+        return valido(seleccion)
+    }
+
     fun segundos(propio: Int?, plan: Int?): Int = valido(propio) ?: plan ?: NormalizacionRutina.DESCANSO_POR_DEFECTO
 }
 
@@ -34,13 +45,29 @@ object RirDelPlan {
     private val numero = Regex("""\d+([.,]\d+)?""")
     private val rango = Regex("""\d+([.,]\d+)?(\s*[-–]\s*\d+([.,]\d+)?)?""")
 
+    /** Un objetivo en RPE no es RIR: se toma como al fallo. */
+    private val rpe = Regex("rpe", RegexOption.IGNORE_CASE)
+
+    /** ¿La serie lleva RIR? No el calentamiento, el cardio, el core ni lo que va sin peso (plancha, abdominales): null. */
+    fun lleva(ex: Ejercicio): Boolean =
+        ex.tipo !in setOf("calentamiento", "cardio", "core") && !ReglasEjercicio.esSinPeso(ex.nombre, ex.tipo, ex.equipo)
+
+    /** El aviso de primera vez con la leyenda en lugar de «dejando 1–2 en reserva». */
+    fun calibracion(texto: String, leyenda: String?): String {
+        val l = leyenda ?: return texto
+        val frase = if (l == "Al fallo") "al fallo" else l.replaceFirstChar { it.lowercase() }
+        return texto.replace("dejando 1–2 en reserva", frase)
+    }
+
     fun guardar(objetivo: String?): String {
+        if (objetivo != null && rpe.containsMatchIn(objetivo)) return "0"
         val primero = objetivo?.let { numero.find(it)?.value } ?: return "0"
         val n = primero.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: return "0"
         return ceil(n).toInt().coerceIn(0, 5).toString()
     }
 
     fun leyenda(objetivo: String?): String {
+        if (objetivo != null && rpe.containsMatchIn(objetivo)) return "Al fallo"
         val r = objetivo?.let { rango.find(it)?.value } ?: return "Al fallo"
         val numeros = numero.findAll(r).mapNotNull { it.value.replace(',', '.').toDoubleOrNull() }.toList()
         if (numeros.all { it == 0.0 }) return "Al fallo"

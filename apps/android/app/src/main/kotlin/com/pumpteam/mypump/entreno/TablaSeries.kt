@@ -163,10 +163,11 @@ fun TablaSeries(
             )
         }
         // 2.0.3: en lugar de la columna de RIR, cómo se hacen: «Al fallo» o «Dejando 1–2 en reserva».
-        val tipo = t.efectivo.ejercicio.tipo
-        if (filas.isNotEmpty() && tipo != "calentamiento" && tipo != "cardio") {
+        // Sin leyenda en lo que no lleva RIR (calentamiento, cardio, core, peso corporal).
+        val leyenda = if (filas.isEmpty()) null else motor.leyendaRir(lugar)
+        if (leyenda != null) {
             Text(
-                v.dia.leyendaRir(lugar),
+                leyenda,
                 style = Letras.caption,
                 color = c.textoSecundario,
                 modifier = Modifier.offset(y = (-6).dp).testTag("leyenda-rir"),
