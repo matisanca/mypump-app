@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.SemanaRevision
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -80,9 +81,16 @@ object AvisoDomingo {
      * del teléfono, y con otra zona (un viaje) da otro instante. Lo mismo que `AvisoDomingo.proximo` de iOS (el
      * `nextDate(after:)` con domingo, 11 y 0); allá el sistema lo sigue en la zona de ese momento, acá lo vuelve a armar
      * [pendiente] cuando cambian la zona o la hora.
+     *
+     * Con [semanaCompleta] (el check y las tres fotos de la semana de revisión ya están), el de esta semana se saltea y
+     * queda el de la que viene (R2 de la 2.0.3, `SemanaRevision.fechaAviso`): quien subió todo el sábado no recibe nada el
+     * domingo. Incompleta, lo de siempre.
      */
-    fun proximo(ahora: Instant, zona: ZoneId): Instant {
-        var dia = ahora.atZone(zona).toLocalDate().with(TemporalAdjusters.nextOrSame(diaDeLaSemana))
+    fun proximo(ahora: Instant, zona: ZoneId, semanaCompleta: Boolean = false): Instant {
+        val local = ahora.atZone(zona)
+        var dia = SemanaRevision.fechaAviso(local.toLocalDate().toString(), local.hour * 60 + local.minute, semanaCompleta)
+            ?.let(LocalDate::parse)
+            ?: local.toLocalDate().with(TemporalAdjusters.nextOrSame(diaDeLaSemana))
         while (true) {
             val t = en(dia, zona)
             if (t.isAfter(ahora)) return t

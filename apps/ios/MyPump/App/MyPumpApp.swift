@@ -125,6 +125,13 @@ struct Raiz: View {
             withAnimation(.snappy) { navegacion.ir(a: destino) }
             CentroAvisos.shared.destino = nil
         }
+        // R2 de la 2.0.3: completar la semana de revisión (o terminar de cargarla al abrir) vuelve a armar el aviso del
+        // domingo, que se saltea si ya está todo.
+        .onChange(of: modelo.semanaDeRevisionCompleta) { Task { await CentroAvisos.shared.alCambiarLaSemana() } }
+        #if DEBUG
+        // `-verAvisoDomingo YES`: lo agendado del domingo, para que la prueba de interfaz lo lea.
+        .overlay(alignment: .top) { if UserDefaults.standard.bool(forKey: "verAvisoDomingo") { AvisoDomingoDePrueba() } }
+        #endif
         // `?diag=health` (SAL-13): el diagnóstico de Salud directo, sin los cinco toques. Sin cuenta no hay qué diagnosticar.
         .sheet(isPresented: Binding(get: { CentroAvisos.shared.diagnosticoSalud && modelo.salud != nil },
                                     set: { if !$0 { CentroAvisos.shared.diagnosticoSalud = false } })) {
@@ -138,3 +145,24 @@ struct Raiz: View {
     private var revision: some View { RevisionView(datos: datos).islaDeDescanso() }
     private var progreso: some View { ProgresoView(datos: datos).islaDeDescanso() }
 }
+
+#if DEBUG
+/// `-verAvisoDomingo YES`: cuándo está agendado el aviso del domingo ("2026-11-08 11:00", o "sin aviso"), releído cada
+/// segundo. Solo para la prueba de interfaz del R2 de la 2.0.3: lo agendado no se ve desde XCUITest.
+private struct AvisoDomingoDePrueba: View {
+    @State private var texto = ""
+    var body: some View {
+        Text(texto.isEmpty ? "sin aviso" : texto)
+            .font(.caption2.monospaced())
+            .padding(4)
+            .background(.yellow)
+            .accessibilityIdentifier("aviso-domingo")
+            .task {
+                while !Task.isCancelled {
+                    texto = await CentroAvisos.shared.avisoDomingoAgendado()
+                    try? await Task.sleep(for: .seconds(1))
+                }
+            }
+    }
+}
+#endif

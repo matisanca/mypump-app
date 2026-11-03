@@ -577,6 +577,13 @@ public final class ModeloApp {
         return FotosProgreso.pendientes(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: fotos.posesDeLaSemana)
     }
 
+    /// La semana de revisión ya está completa (el check y las tres fotos): el aviso del domingo se saltea esta semana.
+    /// Sin cuenta, en la demo o sin el check y las fotos cargados, false: el aviso sale como siempre.
+    public var semanaDeRevisionCompleta: Bool {
+        guard !esDemo, let revision, let fotos else { return false }
+        return SemanaRevision.completa(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: fotos.posesDeLaSemana)
+    }
+
     private func aplicar(_ c: CopiaOffline) {
         defer { prepararEntreno(); if let e = entreno { cargaDelMotor = Task { await e.cargar() } } }
         info = decodificar(ClienteInfo.self, c.info)

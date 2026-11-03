@@ -32,6 +32,8 @@ enum Proveedor {
             if d.bool(forKey: "sinRed") { transporte = SinRed() }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
             else if let caso = d.string(forKey: "recuperacionDePrueba") { transporte = RecuperacionDePrueba(caso: caso) }
+            // `-semanaDePrueba completa|incompleta`: el check y las fotos de esta semana inventados (ver `SemanaDePrueba`).
+            else if let caso = d.string(forKey: "semanaDePrueba") { transporte = SemanaDePrueba(completa: caso == "completa") }
             else { transporte = URLSession.shared }
             return ModeloApp(cliente: ClienteRPC(transporte: transporte), almacen: TokenEnMemoria(t))
         }
@@ -50,6 +52,31 @@ enum Proveedor {
 /// Todo pedido falla como sin señal (`-sinRed YES`).
 private struct SinRed: Transporte {
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) { throw URLError(.notConnectedToInternet) }
+}
+
+/// `-semanaDePrueba completa|incompleta`: todo va al servidor de verdad salvo el check y las fotos de la semana: completa
+/// (el check enviado y las tres poses de esta semana) o vacía. Para ver que el aviso del domingo se saltea con la semana
+/// completa (R2 de la 2.0.3) sin tocar lo que tiene guardado la cuenta de prueba.
+private struct SemanaDePrueba: Transporte {
+    let completa: Bool
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = pedido.url?.path ?? ""
+        let lunes = FotosProgreso.lunes(FechaLocal.hoy())
+        if ruta.hasSuffix("mypump_get_checkin_semana") {
+            return Self.respuesta(pedido, completa ? #"[{"energia":4,"descanso":3,"hambre":2,"adherencia":4,"nota":null}]"# : "[]")
+        }
+        if ruta.hasSuffix("mypump_get_fotos_progreso") {
+            let f = completa ? FotosProgreso.poses.map { #"{"semana_lunes":"\#(lunes)","pose":"\#($0.clave)","tomada_el":"\#(lunes)","created_at":"\#(lunes)T12:00:00+00:00"}"# } : []
+            return Self.respuesta(pedido, "[" + f.joined(separator: ",") + "]")
+        }
+        if ruta.hasSuffix("progreso/urls") { return Self.respuesta(pedido, #"{"ok":true,"fotos":[]}"#) }
+        return try await URLSession.shared.data(for: pedido)
+    }
+
+    private static func respuesta(_ pedido: URLRequest, _ cuerpo: String) -> (Data, URLResponse) {
+        (Data(cuerpo.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
 }
 
 /// `-recuperacionDePrueba <caso>`: todo va al servidor de verdad salvo la recuperación, que es una serie inventada de 14
