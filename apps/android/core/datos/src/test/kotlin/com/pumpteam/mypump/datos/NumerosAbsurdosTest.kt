@@ -23,19 +23,6 @@ class NumerosAbsurdosTest {
         assertEquals(3, RutinaActiva.desde(Json.parseToJsonElement("""{"id":"r","semana_actual":3.0}""")).semanaActual)
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = ["nan", "NaN", "inf", "-Infinity", "1e20", "-1e300", "abc", ""])
-    fun aguaConUnValorRaro(valor: String) {
-        val h = HabitosHoy().aplicar("vasos_agua", ValorJson.Texto(valor))
-        assertTrue(Math.abs(h.vasosAgua.toLong()) <= 1_000_000_000_000_000L)
-    }
-
-    @Test
-    fun aguaNormal() {
-        assertEquals(7, HabitosHoy().aplicar("vasos_agua", ValorJson.Texto("7")).vasosAgua)
-        assertEquals(4, HabitosHoy().aplicar("vasos_agua", ValorJson.Numero(4.0)).vasosAgua)
-    }
-
     @Test
     fun recordatorioConHoraImposible() {
         val porDefecto = PreferenciasAvisos.Recordatorio(on = true, hora = 11, min = 0)

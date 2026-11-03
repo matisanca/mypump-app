@@ -140,33 +140,12 @@ class IntegracionTest {
     }
 
     @Test
-    fun miDiaYRevisionPorLaCola() = enUnHilo { alcance ->
+    fun revisionPorLaCola() = enUnHilo { alcance ->
         val m = modelo(alcance)
         m.cargar()
         val cola = m.outbox!!
         val r = ModeloRevision(m.cliente, token, cola, alcance)
-        r.cargarMiDia()
-        assertTrue(r.miDiaCargado.value)
-        val previoCardio = r.habitos.value.cardio
-        // Tocar "hice cardio ✓" y que llegue.
-        r.setHabito("cardio", "true")
-        assertEquals(true, r.habitos.value.cardio)
-        cola.drenar()
         val otra = ModeloRevision(m.cliente, token, cola, alcance)
-        otra.cargarMiDia()
-        assertEquals(true, otra.habitos.value.cardio)
-        // Agua con la espera de 600 ms.
-        val vasos = r.habitos.value.vasosAgua
-        r.cambiarAgua(if (vasos >= 12) -1 else 1)
-        delay(900)
-        cola.drenar()
-        otra.cargarMiDia()
-        assertEquals(r.habitos.value.vasosAgua, otra.habitos.value.vasosAgua)
-        // Dejar la cuenta como estaba.
-        r.setHabito("cardio", previoCardio?.toString())
-        r.cambiarAgua(vasos - r.habitos.value.vasosAgua)
-        delay(900)
-        cola.drenar()
 
         // Check: faltan escalas → no sale; completo → sale.
         assertEquals("Faltan: Descanso, Hambre, Adherencia", r.enviarCheckin(Checkin(mapOf("energia" to 4), "")))

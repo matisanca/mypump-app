@@ -50,7 +50,11 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloEntreno
+import com.pumpteam.mypump.progreso.SeccionVolumenHoy
+import com.pumpteam.mypump.progreso.rememberVolumenMusculo
+import androidx.compose.runtime.LaunchedEffect
 import com.pumpteam.mypump.diseno.AccionHoja
 import com.pumpteam.mypump.diseno.AsaHoja
 import com.pumpteam.mypump.diseno.EncabezadoHoja
@@ -311,12 +315,14 @@ private fun FilaSustituto(s: SustitutoEjercicio, elegida: Boolean, etiqueta: Str
 }
 
 /**
- * "Cerrar sesión de hoy" (SES-06, CerrarDiaView.swift): el resumen (series, reps, volumen y minutos), lo que queda sin
- * completar si se cierra antes, y las notas para Mati. El motor vacía la cola antes de cerrar; si no se pudo, lo dice.
+ * "Cerrar sesión de hoy" (SES-06, CerrarDiaView.swift): el resumen (series, reps, volumen y minutos), las series por
+ * músculo de hoy con lo de la semana (2.1, S2), lo que queda sin completar si se cierra antes, y las notas para Mati. El
+ * motor vacía la cola antes de cerrar; si no se pudo, lo dice. Al abrirla, si el historial de Progreso no está, se pide
+ * (para que la semana sume los días anteriores).
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun HojaCerrarDia(motor: ModeloEntreno, v: VistaEntreno, alCerrar: () -> Unit) {
+fun HojaCerrarDia(modelo: ModeloApp, motor: ModeloEntreno, v: VistaEntreno, alCerrar: () -> Unit) {
     val c = MyPump.colores
     val hoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val alcanceHoja = rememberCoroutineScope()
@@ -328,6 +334,11 @@ fun HojaCerrarDia(motor: ModeloEntreno, v: VistaEntreno, alCerrar: () -> Unit) {
     var aviso by remember { mutableStateOf<String?>(null) }
     val r = remember(v) { motor.resumen }
     val anticipado = !motor.todoHecho
+    val volumen = rememberVolumenMusculo(modelo)
+    LaunchedEffect(Unit) {
+        val p = modelo.progreso.value ?: return@LaunchedEffect
+        if (p.historialPorClave.value.isEmpty() && p.tarjetas.value.isEmpty()) alcance.launch { modelo.cargarProgreso() }
+    }
 
     fun cerrar() {
         foco.clearFocus()
@@ -374,6 +385,7 @@ fun HojaCerrarDia(motor: ModeloEntreno, v: VistaEntreno, alCerrar: () -> Unit) {
                 SeparadorVertical()
                 CeldaResumen("Tiempo", motor.minutos?.let { "$it min" } ?: "—", Modifier.weight(1f))
             }
+            SeccionVolumenHoy(volumen)
             v.dia.avisoPendientes?.let { titulo ->
                 Column(
                     Modifier

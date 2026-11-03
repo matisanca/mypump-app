@@ -13,8 +13,8 @@ class AvisosTest {
     fun destinos() {
         assertEquals(DestinoAviso.ENTRENO, DestinoAviso.deDestino("train"))
         assertEquals(DestinoAviso.DIETA, DestinoAviso.deDestino("diet"))
-        assertEquals(DestinoAviso.PROGRESO, DestinoAviso.deDestino("progress"))
-        assertEquals(DestinoAviso.MI_DIA, DestinoAviso.deDestino("myday"))
+        assertEquals(DestinoAviso.FUERZA, DestinoAviso.deDestino("progress"))
+        assertEquals(DestinoAviso.RECUPERACION, DestinoAviso.deDestino("myday"))
         assertEquals(DestinoAviso.REVISION, DestinoAviso.deDestino("revision"))
         assertEquals(DestinoAviso.MIS_DATOS, DestinoAviso.deDestino("salud"))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.deDestino("chat"))

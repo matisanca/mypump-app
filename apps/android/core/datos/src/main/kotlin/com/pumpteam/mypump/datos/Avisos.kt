@@ -13,17 +13,18 @@ import kotlinx.serialization.json.Json
 
 /**
  * A dónde lleva tocar un aviso: el `destino` que mandan `push.py` (comentarios del coach) y la notificación local del
- * domingo. Uno desconocido, como el histórico `comentarios`, cae a Chat (NOT-03).
+ * domingo. Uno desconocido, como el histórico `comentarios`, cae a Chat (NOT-03). Desde la 2.1, `progress` abre Salud →
+ * Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación.
  */
 enum class DestinoAviso {
-    ENTRENO, DIETA, CHAT, REVISION, PROGRESO, MI_DIA, MIS_DATOS;
+    ENTRENO, DIETA, CHAT, REVISION, FUERZA, RECUPERACION, MIS_DATOS;
 
     companion object {
         fun deDestino(destino: String?): DestinoAviso = when (destino) {
             "train" -> ENTRENO
             "diet" -> DIETA
-            "progress" -> PROGRESO
-            "myday" -> MI_DIA
+            "progress" -> FUERZA
+            "myday" -> RECUPERACION
             "revision" -> REVISION
             "salud" -> MIS_DATOS
             else -> CHAT

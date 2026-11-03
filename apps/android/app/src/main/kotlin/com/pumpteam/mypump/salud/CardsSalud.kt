@@ -54,7 +54,7 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.SaludVista
 import kotlinx.coroutines.launch
 
-// Las dos tarjetas de salud de Mi Día (cliente.html:6680-6788 y 7233-7328) con los datos de ModeloSalud: gemelas de
+// Las dos tarjetas de salud (en Salud → Recuperación desde la 2.1; antes en Mi Día, cliente.html:6680-6788 y 7233-7328) con los datos de ModeloSalud: gemelas de
 // CardsSalud.swift, con los textos de Health Connect (`TextosSalud.ANDROID`, SAL-08). Son piezas sueltas: las ubica quien
 // arme Revisión (en Android todavía no existe); Mis datos usa el resumen, el botón y el detalle.
 

@@ -271,7 +271,7 @@ class AgendaAvisosTest {
         // El que mostró el sistema con la app en segundo plano: FCM agrega sus claves a los datos de push.py.
         val fcm = setOf(DestinoAviso.EXTRA_FCM, "from", "google.sent_time", DestinoAviso.EXTRA_DESTINO)
         assertEquals(DestinoAviso.DIETA, DestinoAviso.alTocar(fcm, "diet"))
-        assertEquals(DestinoAviso.MI_DIA, DestinoAviso.alTocar(fcm, "myday"))
+        assertEquals(DestinoAviso.RECUPERACION, DestinoAviso.alTocar(fcm, "myday"))
         // Sin destino o con el histórico "comentarios": Chat.
         assertEquals(DestinoAviso.CHAT, DestinoAviso.alTocar(setOf(DestinoAviso.EXTRA_FCM, "from"), null))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.alTocar(fcm, "comentarios"))

@@ -201,7 +201,7 @@ fun ListaEntreno(
             }
         }
     }
-    if (cerrando) HojaCerrarDia(motor, v, alCerrar = { cerrando = false })
+    if (cerrando) HojaCerrarDia(modelo, motor, v, alCerrar = { cerrando = false })
 }
 
 /** La barra de arriba: vacía mientras se ve la cabecera; al bajar, el título (y la semana) en chico. Con [alVolver], la flecha. */

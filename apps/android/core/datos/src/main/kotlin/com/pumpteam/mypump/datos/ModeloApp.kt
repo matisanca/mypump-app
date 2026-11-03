@@ -209,7 +209,7 @@ class ModeloApp(
     private val _chat = MutableStateFlow<ModeloChat?>(null)
     val chat: StateFlow<ModeloChat?> = _chat.asStateFlow()
 
-    /** Revisión y Mi Día (no existen sin cuenta; en la demo, Mi Día sembrado como la web y sin red). */
+    /** Revisión: el check y el peso de la semana (en la demo, sin red ni cola). */
     private val _revision = MutableStateFlow<ModeloRevision?>(null)
     val revision: StateFlow<ModeloRevision?> = _revision.asStateFlow()
 
@@ -365,7 +365,7 @@ class ModeloApp(
         _desdeCache.value = false
         _sinRedEn.value = emptySet()
         _esDemo.value = true
-        // ACC-07: Mi Día sembrado como la web (racha 3, hoy "entrené" y 2 vasos) y el chat con el hilo vacío, sin red ni cola.
+        // ACC-07: Revisión y el chat con el hilo vacío, sin red ni cola.
         _revision.value = ModeloRevision.demo(cliente, alcance)
         _chat.value = ModeloChat(cliente, token = null, outbox = null, alcance = alcance)
         _entreno.value = _rutina.value?.let { r ->
@@ -540,9 +540,6 @@ class ModeloApp(
                     aplicar(copia)
                     _desdeCache.value = true
                     _fase.value = Fase.LISTO
-                    // Sin red igual se puede marcar el día (sale por la cola), como la web con `MYDAY` vacío. Sin esto Mi
-                    // Día quedaba tapado hasta que volviera la señal (revisión del 14-oct, hallazgo 10).
-                    _revision.value?.let { r -> alcance.launch { r.cargarMiDia() } }
                 } else {
                     _fase.value = Fase.SIN_SERVICIO
                 }
@@ -651,7 +648,6 @@ class ModeloApp(
         outbox?.drenar()
         coroutineScope {
             launch { _chat.value?.let { c -> if (c !== chatAlEmpezar || c.ultimasTraidas == traidasAlEmpezar) c.cargar() } }
-            launch { _revision.value?.cargarMiDia() }
             launch { _revision.value?.cargarRevision() }
             launch { _fotos.value?.cargar() }
         }
@@ -674,7 +670,7 @@ class ModeloApp(
 
     /**
      * Al volver a primer plano (GEN-07): salen las colas, se mira el chat, y si cambió el día se recarga lo que es "de
-     * hoy" (comidas libres, Mi Día, el check de la semana). Si se estaba mostrando la copia offline, se intenta traer todo
+     * hoy" (comidas libres, el check de la semana). Si se estaba mostrando la copia offline, se intenta traer todo
      * de nuevo.
      */
     suspend fun alVolverAPrimerPlano() {
@@ -689,7 +685,6 @@ class ModeloApp(
             cargarAjustes()
             cargarMarcas()
             cargarComidasLibres()
-            _revision.value?.cargarMiDia()
             _revision.value?.cargarRevision()
             diaCargado = hoy
         }

@@ -84,7 +84,7 @@ import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
 import com.pumpteam.mypump.misdatos.MisDatosPantalla
-import com.pumpteam.mypump.progreso.ProgresoPantalla
+import com.pumpteam.mypump.salud.SaludPantalla
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.revision.RevisionPantalla
 import com.pumpteam.mypump.salud.DiagnosticoSaludDesdeLink
@@ -149,7 +149,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                     } else {
                                         RevisionPantalla(modelo, alAbrirMisDatos = { navegacion.misDatos = true })
                                     }
-                                Pestana.PROGRESO -> ProgresoPantalla(modelo)
+                                Pestana.SALUD -> SaludPantalla(modelo)
                             }
                         }
                     }
@@ -316,7 +316,7 @@ private fun BannerSinConexion() {
 }
 
 /**
- * "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno, Dieta, Chat y Progreso.
+ * "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno, Dieta, Chat y Salud.
  * Tocarlo lleva a Revisión, a lo que falta: al check si es lo único, si no a las fotos (como iOS). Con todo hecho o en la
  * demo no se ve.
  */

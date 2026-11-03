@@ -78,29 +78,28 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import kotlinx.coroutines.launch
 
 /**
- * Progreso (PRO-01…05, ProgresoView.swift): los totales arriba y, por día, cada ejercicio una sola vez (por clave, no por
- * lugar) con el tope de sus últimas 8 sesiones, la variación, el 🏆 PR y una curva chica. Tocar una fila abre el detalle
- * (`ProgresoDetalle`) dentro de la pestaña; Atrás vuelve a la lista.
+ * Salud → Fuerza (2.1; lo que era la pestaña Progreso, PRO-01…05, ProgresoView.swift): arriba «Series por músculo» y
+ * debajo los totales y, por día, cada ejercicio una sola vez (por clave, no por lugar) con el tope de sus últimas 8
+ * sesiones, la variación, el 🏆 PR y una curva chica. Tocar una fila abre el detalle (`ProgresoDetalle`, lo arma Salud).
  *
- * Se carga al abrir la pestaña (como la web), solo si no hay nada o la vez anterior faltó la red, y siempre con
- * `ModeloApp.cargarProgreso`: agrupa por el ejercicio que se hace de verdad, el sustituto si hay (PRO-02). Tirar hacia
- * abajo la vuelve a traer. En la demo no hay historial (como la web).
+ * El historial se carga al abrir Fuerza (como la web al abrir Progreso), solo si no hay nada o la vez anterior faltó la
+ * red, y siempre con `ModeloApp.cargarProgreso`: agrupa por el ejercicio que se hace de verdad, el sustituto si hay
+ * (PRO-02). Tirar hacia abajo lo vuelve a traer. En la demo no hay historial (como la web).
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProgresoPantalla(modelo: ModeloApp) {
+fun FuerzaSegmento(modelo: ModeloApp, estadoLista: LazyListState, alAbrir: (String) -> Unit) {
     val progreso by modelo.progreso.collectAsStateWithLifecycle()
     val p = progreso
     val tarjetas = p?.tarjetas?.collectAsStateWithLifecycle()?.value.orEmpty()
     val estado = p?.estado?.collectAsStateWithLifecycle()?.value
     val sesiones = p?.sesiones?.collectAsStateWithLifecycle()?.value ?: 0
+    val volumen = rememberVolumenMusculo(modelo)
     val alcance = LocalAlcanceApp.current
-    // El ejercicio abierto (su id). Sobrevive a cambiar de pestaña y a rotar, como la pila de iOS.
-    var abierto by rememberSaveable { mutableStateOf<String?>(null) }
-    // Afuera de la lista: al volver del detalle queda donde estaba.
-    val estadoLista = rememberLazyListState()
+    var recargando by remember { mutableStateOf(false) }
 
-    // El `.task` de iOS: al abrir la pestaña, solo si no hay tarjetas o faltó la red (lo demás se actualiza tirando). En
-    // el alcance de la app: cambiar de pestaña no corta la carga a la mitad.
+    // El `.task` de iOS: al abrir Fuerza, solo si no hay tarjetas o faltó la red (lo demás se actualiza tirando). En el
+    // alcance de la app: cambiar de pestaña no corta la carga a la mitad.
     LaunchedEffect(p) {
         val m = p ?: return@LaunchedEffect
         if (m.tarjetas.value.isEmpty() || m.estado.value == ModeloProgreso.Estado.SIN_RED) {
@@ -108,42 +107,6 @@ fun ProgresoPantalla(modelo: ModeloApp) {
         }
     }
 
-    val elegida = abierto?.let { id -> tarjetas.firstOrNull { it.id == id } }
-    BackHandler(enabled = elegida != null) { abierto = null }
-
-    AnimatedContent(
-        targetState = elegida,
-        contentKey = { it?.id },
-        transitionSpec = {
-            if (targetState != null) {
-                (slideInHorizontally { it } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 } + fadeOut())
-            } else {
-                (slideInHorizontally { -it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { it } + fadeOut())
-            }
-        },
-        label = "progreso",
-    ) { t ->
-        if (t == null) {
-            ListaProgreso(modelo, p, tarjetas, estado, sesiones, estadoLista, alAbrir = { abierto = it })
-        } else {
-            ProgresoDetalle(t, alVolver = { abierto = null })
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ListaProgreso(
-    modelo: ModeloApp,
-    p: ModeloProgreso?,
-    tarjetas: List<TarjetaProgreso>,
-    estado: ModeloProgreso.Estado?,
-    sesiones: Int,
-    estadoLista: LazyListState,
-    alAbrir: (String) -> Unit,
-) {
-    val alcance = LocalAlcanceApp.current
-    var recargando by remember { mutableStateOf(false) }
     fun recargar() {
         recargando = true
         alcance.launch {
@@ -154,41 +117,33 @@ private fun ListaProgreso(
             }
         }
     }
-    MarcoPantalla("Progreso", modifier = Modifier.testTag("progreso-pantalla")) { relleno ->
-        Box(Modifier.padding(relleno.sinAbajo()).fillMaxSize()) {
+
+    val secciones = remember(tarjetas) { VistaProgreso.secciones(tarjetas) }
+    PullToRefreshBox(isRefreshing = recargando, onRefresh = ::recargar, modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = estadoLista,
+            modifier = Modifier.fillMaxSize().testTag(if (tarjetas.isEmpty()) "fuerza-lista" else "progreso-lista"),
+            // Al final, lo que tapa la barra de pestañas flotante: lo último queda arriba de ella.
+            contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xs, bottom = Espacio.xl + LocalRellenoInferior.current),
+            verticalArrangement = Arrangement.spacedBy(Espacio.l),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            item(key = "volumen") { CardVolumenMusculo(volumen, Modifier.widthIn(max = AnchoLectura)) }
             when {
                 // Trayendo el historial por primera vez.
-                p != null && estado == ModeloProgreso.Estado.CARGANDO && tarjetas.isEmpty() -> EsqueletoProgreso()
+                p != null && estado == ModeloProgreso.Estado.CARGANDO && tarjetas.isEmpty() ->
+                    item(key = "cargando") { EsqueletoProgreso() }
                 // PRO-05: se cortó la red y no hay nada que mostrar.
-                p != null && estado == ModeloProgreso.Estado.SIN_RED && tarjetas.isEmpty() -> SinRed(modelo, cargando = recargando, alReintentar = ::recargar)
-                else -> PullToRefreshBox(isRefreshing = recargando, onRefresh = ::recargar, modifier = Modifier.fillMaxSize()) {
-                    if (tarjetas.isEmpty()) {
-                        SinHistorial(modelo)
-                    } else {
-                        Lista(modelo, tarjetas, sesiones, estadoLista, alAbrir)
+                p != null && estado == ModeloProgreso.Estado.SIN_RED && tarjetas.isEmpty() ->
+                    item(key = "sin-red") { SinRed(cargando = recargando, alReintentar = ::recargar, Modifier.fillParentMaxHeight(0.5f)) }
+                tarjetas.isEmpty() -> item(key = "vacio") { SinHistorial(Modifier.fillParentMaxHeight(0.5f)) }
+                else -> {
+                    item(key = "totales") { Totales(tarjetas.size, sesiones, Modifier.widthIn(max = AnchoLectura)) }
+                    items(secciones, key = { "seccion-${it.id}" }) { s ->
+                        SeccionProgreso(s, alAbrir, Modifier.widthIn(max = AnchoLectura))
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun Lista(modelo: ModeloApp, tarjetas: List<TarjetaProgreso>, sesiones: Int, estadoLista: LazyListState, alAbrir: (String) -> Unit) {
-    val secciones = remember(tarjetas) { VistaProgreso.secciones(tarjetas) }
-    LazyColumn(
-        state = estadoLista,
-        modifier = Modifier.fillMaxSize().testTag("progreso-lista"),
-        // Al final, lo que tapa la barra de pestañas flotante: lo último queda arriba de ella.
-        contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xxs, bottom = Espacio.xl + LocalRellenoInferior.current),
-        verticalArrangement = Arrangement.spacedBy(Espacio.l),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // Como la web, arriba de todas las escenas menos Revisión (GEN-03). Sin pendientes no ocupa lugar.
-        item(key = "banner") { BannerRevision(modelo, Modifier.widthIn(max = AnchoLectura)) }
-        item(key = "totales") { Totales(tarjetas.size, sesiones, Modifier.widthIn(max = AnchoLectura)) }
-        items(secciones, key = { "seccion-${it.id}" }) { s ->
-            SeccionProgreso(s, alAbrir, Modifier.widthIn(max = AnchoLectura))
         }
     }
 }
@@ -296,44 +251,35 @@ private fun FilaProgreso(t: TarjetaProgreso, alTocar: () -> Unit) {
 
 /** PRO-05: todavía no hay nada registrado (o es la demo, que como la web no tiene historial). */
 @Composable
-private fun SinHistorial(modelo: ModeloApp) {
-    // Centrado en lo que queda de la pantalla, con el gráfico de ejes (el `ContentUnavailableView` de iOS).
-    Column(Modifier.fillMaxSize()) {
-        BannerRevision(modelo, Modifier.padding(horizontal = Espacio.m))
-        EstadoVacio(
-            icono = Iconos.Progreso,
-            titulo = "Aún no hay historial",
-            texto = "Aún no hay historial registrado. Empezá tu primera sesión para ver el progreso acá.",
-            modifier = Modifier.weight(1f).testTag("progreso-vacio"),
-        )
-    }
+private fun SinHistorial(modifier: Modifier = Modifier) {
+    EstadoVacio(
+        icono = Iconos.Progreso,
+        titulo = "Aún no hay historial",
+        texto = "Aún no hay historial registrado. Empezá tu primera sesión para ver el progreso acá.",
+        modifier = modifier.testTag("progreso-vacio"),
+    )
 }
 
 /** PRO-05: se cortó la red trayendo el historial. Reintentar lo vuelve a pedir (con el sustituto, como al abrir). */
 @Composable
-private fun SinRed(modelo: ModeloApp, cargando: Boolean, alReintentar: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
-        BannerRevision(modelo, Modifier.padding(horizontal = Espacio.m))
-        EstadoVacio(
-            icono = Iconos.SinWifi,
-            titulo = "No pudimos traer tu historial",
-            texto = "Sin conexión. Revisá la señal y probá de nuevo.",
-            modifier = Modifier.weight(1f).testTag("progreso-sin-red"),
-            accion = {
-                BotonMarca("Reintentar", alTocar = alReintentar, compacto = true, cargando = cargando, modifier = Modifier.testTag("progreso-reintentar"))
-            },
-        )
-    }
+private fun SinRed(cargando: Boolean, alReintentar: () -> Unit, modifier: Modifier = Modifier) {
+    EstadoVacio(
+        icono = Iconos.SinWifi,
+        titulo = "No pudimos traer tu historial",
+        texto = "Sin conexión. Revisá la señal y probá de nuevo.",
+        modifier = modifier.testTag("progreso-sin-red"),
+        accion = {
+            BotonMarca("Reintentar", alTocar = alReintentar, compacto = true, cargando = cargando, modifier = Modifier.testTag("progreso-reintentar"))
+        },
+    )
 }
 
-/** PRO-01: el esqueleto mientras llega el historial (los totales y dos secciones), con el brillo de `esqueleto`. */
+/** PRO-01: el esqueleto mientras llega el historial (los totales y dos secciones), con el brillo de `esqueleto`, debajo del volumen. */
 @Composable
 private fun EsqueletoProgreso() {
     Column(
         Modifier
-            .fillMaxSize()
-            .padding(horizontal = Espacio.m)
-            .padding(top = Espacio.xs)
+            .fillMaxWidth()
             // La etiqueta antes: `esqueleto` limpia la semántica de lo que viene después.
             .testTag("progreso-cargando")
             .esqueleto(),

@@ -442,7 +442,10 @@ class RegresionesRevisionTest {
             }
         }
         val m = modelo(t, TokenEnMemoria(TOK_A), alcance)
-        m.revision.value!!.setHabito("cardio", "true")
+        // Una operación `habito` vieja (Mi Día ya no existe, pero la cola tiene que poder vaciarla).
+        val cola = m.outbox!!
+        cola.encolar("habito", ValorJson.objeto("fecha" to texto("2026-10-13"), "campo" to texto("cardio"), "valor" to texto("true")), "habito|2026-10-13|cardio")
+        cola.drenar()
         delay(100)
         assertEquals(1, t.llamadas.count { it == "mypump_set_habito" })
         m.salir()
