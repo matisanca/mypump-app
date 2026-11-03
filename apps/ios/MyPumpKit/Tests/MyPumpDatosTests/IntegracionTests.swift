@@ -102,34 +102,12 @@ struct IntegracionTests {
         #expect(filas.filter { $0.contenido == texto }.count == 1)
     }
 
-    @Test func miDiaYRevisionPorLaCola() async throws {
+    @Test func revisionPorLaCola() async throws {
         let m = ModeloApp(almacen: TokenEnMemoria(tokenDePrueba()), raizDisco: raiz)
         await m.cargar()
         let t = try #require(tokenDePrueba())
         let r = ModeloRevision(cliente: m.cliente, token: t, outbox: m.outbox)
-        await r.cargarMiDia()
-        #expect(r.miDiaCargado)
-        let previoCardio = r.habitos.cardio
-        // Tocar "hice cardio ✓" y que llegue.
-        await r.setHabito(campo: "cardio", valor: "true")
-        #expect(r.habitos.cardio == true)
-        await m.outbox?.drenar()
         let otra = ModeloRevision(cliente: m.cliente, token: t, outbox: m.outbox)
-        await otra.cargarMiDia()
-        #expect(otra.habitos.cardio == true)
-        // Agua con la espera de 600 ms.
-        let vasos = r.habitos.vasosAgua
-        r.cambiarAgua(vasos >= 12 ? -1 : 1)
-        try await Task.sleep(for: .milliseconds(900))
-        await m.outbox?.drenar()
-        await otra.cargarMiDia()
-        #expect(otra.habitos.vasosAgua == r.habitos.vasosAgua)
-        // Dejar la cuenta como estaba.
-        await r.setHabito(campo: "cardio", valor: previoCardio.map { $0 ? "true" : "false" })
-        r.cambiarAgua(vasos - r.habitos.vasosAgua)
-        try await Task.sleep(for: .milliseconds(900))
-        await m.outbox?.drenar()
-
         // Check: faltan escalas → no sale; completo → sale.
         #expect(await r.enviarCheckin(Checkin(valores: ["energia": 4], nota: "")) == "Faltan: Descanso, Hambre, Adherencia")
         #expect(await r.enviarCheckin(Checkin(valores: ["energia": 4, "descanso": 3, "hambre": 2, "adherencia": 5], nota: " prueba nativa ")) == nil)

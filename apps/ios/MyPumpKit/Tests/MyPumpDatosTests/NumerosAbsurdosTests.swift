@@ -19,21 +19,6 @@ struct NumerosAbsurdosTests {
         #expect(normal.semanaActual == 3)
     }
 
-    @Test(arguments: ["nan", "NaN", "inf", "-Infinity", "1e20", "-1e300", "abc", ""])
-    func aguaConUnValorRaro(valor: String) {
-        var h = HabitosHoy()
-        h.aplicar(campo: "vasos_agua", valor: .texto(valor))
-        #expect(abs(h.vasosAgua) <= 1_000_000_000_000_000)
-    }
-
-    @Test func aguaNormal() {
-        var h = HabitosHoy()
-        h.aplicar(campo: "vasos_agua", valor: .texto("7"))
-        #expect(h.vasosAgua == 7)
-        h.aplicar(campo: "vasos_agua", valor: .numero(4))
-        #expect(h.vasosAgua == 4)
-    }
-
     @Test func recordatorioConHoraImposible() {
         let porDefecto = PreferenciasAvisos.Recordatorio(on: true, hora: 11, min: 0)
         #expect(PreferenciasAvisos.leer(#"{"check":{"on":true,"hora":1e20,"min":0}}"#).check == porDefecto)

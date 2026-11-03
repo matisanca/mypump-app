@@ -336,9 +336,6 @@ public final class ModeloApp {
                 aplicar(copia)
                 desdeCache = true
                 fase = .listo
-                // Sin red igual se puede marcar el día (sale por la cola), como la web con `MYDAY` vacío. Sin esto
-                // Mi Día quedaba tapado hasta que volviera la señal (revisión del 14-oct, hallazgo 10).
-                if let revision { Task { await revision.cargarMiDia() } }
             } else {
                 fase = .sinServicio
             }
@@ -432,10 +429,9 @@ public final class ModeloApp {
         await outbox?.drenar()
         let chatPorTraer = chat.flatMap { c in c !== chatAlEmpezar || c.ultimasTraidas == traidasAlEmpezar ? c : nil }
         async let cargaChat: Void = chatPorTraer?.cargar() ?? ()
-        async let cargaMiDia: Void = revision?.cargarMiDia() ?? ()
         async let cargaRevision: Void = revision?.cargarRevision() ?? ()
         async let cargaFotos: Void = fotos?.cargar() ?? ()
-        _ = await (cargaChat, cargaMiDia, cargaRevision, cargaFotos)
+        _ = await (cargaChat, cargaRevision, cargaFotos)
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -545,7 +541,6 @@ public final class ModeloApp {
             cargarAjustes()
             cargarMarcas()
             await cargarComidasLibres()
-            await revision?.cargarMiDia()
             await revision?.cargarRevision()
             diaCargado = hoy
         }

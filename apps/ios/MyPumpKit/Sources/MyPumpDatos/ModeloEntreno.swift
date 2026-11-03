@@ -426,15 +426,38 @@ public final class ModeloEntreno {
         var entradas: [Preparacion.Entrada] = [], ejercicios: [Ejercicio] = []
         for ex in lista {
             let ef = efectivo(ex)
-            let delSustituto = ef.slugSustituto.flatMap { catalogo.entrada(slug: $0)?.primaryMuscle }
-            let musculo = delSustituto ?? catalogo.resolver(ex)?.primaryMuscle
-            entradas.append(Preparacion.Entrada(tipo: ef.ejercicio.tipo, musculo: musculo, nombre: ef.ejercicio.nombre,
+            entradas.append(Preparacion.Entrada(tipo: ef.ejercicio.tipo, musculo: musculo(ex), nombre: ef.ejercicio.nombre,
                                                 sinPeso: ReglasEjercicio.esSinPeso(nombre: ef.ejercicio.nombre, tipo: ef.ejercicio.tipo, equipo: ef.ejercicio.equipo)))
             ejercicios.append(hecho(ex))
         }
         cacheEntradas = (firma, entradas, ejercicios)
         cachePreparacion = [:]
         return (entradas, ejercicios)
+    }
+
+    /// El músculo principal del ejercicio que se hace: el del sustituto si el catálogo lo tiene; si no, el del original
+    /// (`CatalogoEjercicios.resolver`: catalogo_slug → matched → reglas y nombre). nil = el catálogo no lo tiene (el
+    /// respaldo conservador). La misma cadena para la preparación (E1) y el volumen por músculo (S2).
+    public func musculo(_ ex: Ejercicio) -> String? {
+        efectivo(ex).slugSustituto.flatMap { catalogo.entrada(slug: $0)?.primaryMuscle } ?? catalogo.resolver(ex)?.primaryMuscle
+    }
+
+    // MARK: - Volumen por músculo (2.1, S2)
+
+    /// Las series confirmadas hoy en el teléfono, para el volumen por músculo (el cierre del día y Salud → Fuerza). Las
+    /// de preparación no están: nunca se registran.
+    public var registrosVolumenHoy: [VolumenMusculo.Registro] {
+        let hoy = FechaJS.ymd(reloj(), zona: zona)
+        var vistos = Set<String>()
+        var out: [VolumenMusculo.Registro] = []
+        for ex in dia.lista where vistos.insert(ex.id).inserted {
+            guard let e = dia.ejercicios[ex.id], e.series.contains(where: \.confirmada) else { continue }
+            let m = musculo(ex), tipo = efectivo(ex).ejercicio.tipo
+            for (i, s) in e.series.enumerated() where s.confirmada {
+                out.append(VolumenMusculo.Registro(musculo: m, tipo: tipo, fecha: hoy, lugar: ex.id, serie: i + 1))
+            }
+        }
+        return out
     }
 
     func clavePreparacion(_ lugar: String) -> String {

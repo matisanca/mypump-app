@@ -5,8 +5,8 @@ import MyPumpModelos
 @testable import MyPumpReglas
 
 /// Revisión adversarial del 14-oct, hallazgos 3 y 4: con la app abierta de un día para otro (o de una semana para la
-/// otra) y sin señal, lo de ayer no puede quedar como si fuera de hoy. Un toque sobre los 8 vasos de ayer encolaba 9
-/// para hoy, y el check de la semana pasada se veía "Enviado" (o quedaba listo para mandarse de nuevo).
+/// otra) y sin señal, lo de ayer no puede quedar como si fuera de hoy: el check de la semana pasada se veía "Enviado" (o
+/// quedaba listo para mandarse de nuevo). Lo de los hábitos se fue con Mi Día (2.1).
 @Suite("Revisión con el día o la semana cambiados", .serialized)
 @MainActor
 struct RevisionDiaNuevoTests {
@@ -17,7 +17,6 @@ struct RevisionDiaNuevoTests {
 
     final class Servidor: @unchecked Sendable {
         var conRed = true
-        var habitos = #"[{"fecha":"2026-10-13","entrenamiento":"entrene","vasos_agua":8}]"#
         var check = #"[{"semana_lunes":"2026-10-12","energia":4,"descanso":3,"hambre":2,"adherencia":5,"nota":"me molestó el hombro"}]"#
     }
 
@@ -25,9 +24,7 @@ struct RevisionDiaNuevoTests {
         let t = TransporteProgramado { fn, _ in
             guard s.conRed else { throw URLError(.notConnectedToInternet) }
             switch fn {
-            case "mypump_get_habitos_dia": return (200, s.habitos)
             case "mypump_get_checkin_semana": return (200, s.check)
-            case "mypump_get_streak": return (200, #"[{"streak":3}]"#)
             default: return (200, "[]")
             }
         }
@@ -36,53 +33,6 @@ struct RevisionDiaNuevoTests {
         let m = ModeloRevision(cliente: cliente, token: "tok", outbox: cola)
         m.diaDeHoy = { reloj.hoy }
         return (m, cola)
-    }
-
-    @Test func losHabitosDeAyerNoSonLosDeHoy() async {
-        let s = Servidor(), reloj = Reloj("2026-10-13")
-        let (m, cola) = modelo(s, reloj)
-        await m.cargarMiDia()
-        #expect(m.habitos.vasosAgua == 8 && m.habitos.entrenamiento == "entrene")
-        // Medianoche con la app abierta, y sin señal.
-        reloj.hoy = "2026-10-14"
-        s.conRed = false
-        await m.cargarMiDia()
-        #expect(m.habitos == HabitosHoy())
-        #expect(m.miDiaCargado)   // se puede marcar igual: sale por la cola
-        m.cambiarAgua(1)
-        // Se guarda 600 ms después del último toque: se espera a que aparezca (con la suite entera corriendo tarda más).
-        var op: Operacion?
-        for _ in 0..<50 where op == nil {
-            try? await Task.sleep(for: .milliseconds(100))
-            op = await cola.pendientesPorClave()["habito|2026-10-14|vasos_agua"]
-        }
-        #expect(op?.payload["valor"] == .texto("1"))   // antes: 9 (los 8 de ayer + 1)
-    }
-
-    @Test func mismoDiaSinRedConservaLoDeHoy() async {
-        let s = Servidor(), reloj = Reloj("2026-10-13")
-        let (m, _) = modelo(s, reloj)
-        await m.cargarMiDia()
-        s.conRed = false
-        await m.cargarMiDia()
-        #expect(m.habitos.vasosAgua == 8)
-    }
-
-    /// DIA-06: lo que todavía está en la cola para HOY le gana a lo que trae `get_habitos_dia` (la web pinta encima lo
-    /// pendiente). También un "desmarcado" (null). Lo de otro día en la cola no se mezcla.
-    @Test func unHabitoEnLaColaLeGanaAlServidor() async {
-        let s = Servidor(), reloj = Reloj("2026-10-13")   // el servidor dice 8 vasos y "entrené"
-        let (m, cola) = modelo(s, reloj)
-        func pendiente(_ fecha: String, _ campo: String, _ valor: JSONValue) async {
-            _ = await cola.encolar("habito", .objeto(["fecha": .texto(fecha), "campo": .texto(campo), "valor": valor]),
-                                   dedupeKey: "habito|\(fecha)|\(campo)")
-        }
-        await pendiente("2026-10-13", "vasos_agua", .texto("3"))
-        await pendiente("2026-10-13", "entrenamiento", .null)
-        await pendiente("2026-10-12", "vasos_agua", .texto("11"))
-        await m.cargarMiDia()
-        #expect(m.habitos.vasosAgua == 3)
-        #expect(m.habitos.entrenamiento == nil)
     }
 
     @Test func elCheckDeLaSemanaPasadaNoQuedaEnviado() async {
