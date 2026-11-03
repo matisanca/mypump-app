@@ -5,8 +5,8 @@ import MyPumpReloj
 /// La app del Apple Watch (tanda 3, 2.2): la rutina del día con la corona, el descanso con háptica, FC y calorías en vivo
 /// (sin guardar el entreno en Salud), y una cola propia que pasa al iPhone por WatchConnectivity.
 ///
-/// Para el simulador y las capturas: `-demo` (la rutina de muestra, sin iPhone) y `-pantalla lista|ejercicio|descanso|
-/// resumen|vacio` para abrir directo en una pantalla.
+/// Abre en la lista de días de la semana («Elegí el día»). Para el simulador y las capturas: `-demo` (la semana de
+/// muestra, sin iPhone) y `-pantalla lista|sin-iphone|ejercicio|descanso|resumen|vacio` para abrir directo en una pantalla.
 @main
 struct MyPumpWatchApp: App {
     @WKApplicationDelegateAdaptor(DelegadoReloj.self) private var delegado

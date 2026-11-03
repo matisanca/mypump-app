@@ -70,19 +70,27 @@ final class PuenteReloj: NSObject {
         }
     }
 
+    /// La rutina del día abierto para el reloj, con el modo calibración de la cuenta.
+    private func armarRutina(_ m: ModeloEntreno) -> RutinaReloj {
+        var r = m.rutinaReloj()
+        // Tanda 4: el modo calibración (local, por cuenta). Apagado no viaja el campo y el reloj no toca los sensores.
+        // El patrón (para la familia de movimiento) también viaja solo con el modo prendido.
+        if !r.demo, ModoCalibracion().prendido(cuenta: r.cuenta) {
+            r.calibracion = true
+        } else {
+            for i in r.ejercicios.indices { r.ejercicios[i].patron = nil }
+        }
+        return r
+    }
+
+    static let motivoSinCuenta = "Abrí Pump Team en el iPhone y entrá con tu link."
+
     func mandarRutina(forzar: Bool = false) {
         guard hayReloj, let s = sesion else { return }
         let ahora = Date().timeIntervalSince1970 * 1000
         let mensaje: MensajeReloj
         if let m = motor {
-            var r = m.rutinaReloj()
-            // Tanda 4: el modo calibración (local, por cuenta). Apagado no viaja el campo y el reloj no toca los sensores.
-            // El patrón (para la familia de movimiento) también viaja solo con el modo prendido.
-            if !r.demo, ModoCalibracion().prendido(cuenta: r.cuenta) {
-                r.calibracion = true
-            } else {
-                for i in r.ejercicios.indices { r.ejercicios[i].patron = nil }
-            }
+            let r = armarRutina(m)
             var comparable = r
             comparable.generada = ultima?.generada ?? 0
             if !forzar, comparable == ultima { return }
@@ -90,7 +98,7 @@ final class PuenteReloj: NSObject {
             mensaje = .rutina(r)
         } else {
             ultima = nil
-            mensaje = .sinRutina(motivo: "Abrí Pump Team en el iPhone y entrá con tu link.")
+            mensaje = .sinRutina(motivo: Self.motivoSinCuenta)
         }
         guard let d = try? ProtocoloReloj.diccionario(SobreReloj(mensaje, enviado: ahora)) else { return }
         try? s.updateApplicationContext(d)
@@ -98,6 +106,24 @@ final class PuenteReloj: NSObject {
     }
 
     // MARK: - Lo que llega del reloj
+
+    /// Lo que llega del reloj se atiende en fila, en el orden en que llegó: un `pedirDia` que llega detrás de un lote de
+    /// eventos de otro día espera a que esos eventos se apliquen en su día (si no, el día abierto podía ir y volver).
+    private var fila: Task<Void, Never>?
+
+    @MainActor private final class Respuesta { var d: [String: Any] = [:] }
+
+    private func enFila(_ d: [String: Any]) async -> [String: Any] {
+        let previa = fila
+        let respuesta = Respuesta()
+        let tarea = Task { @MainActor in
+            await previa?.value
+            respuesta.d = await self.recibir(d)
+        }
+        fila = tarea
+        await tarea.value
+        return respuesta.d
+    }
 
     private func recibir(_ d: [String: Any]) async -> [String: Any] {
         let ahora = Date().timeIntervalSince1970 * 1000
@@ -108,6 +134,19 @@ final class PuenteReloj: NSObject {
         case .pedirRutina:
             mandarRutina(forzar: true)
             return [:]
+        case .pedirDia(let id):
+            // El día elegido en el reloj se abre también en Entreno (el mismo `cambiarDia` del selector): así las series
+            // del reloj caen en ese día y el teléfono muestra lo mismo. La respuesta es la rutina del día que quedó abierto
+            // (con el motivo si no fue el pedido).
+            guard let m = motor else {
+                return (try? ProtocoloReloj.diccionario(SobreReloj(.sinRutina(motivo: Self.motivoSinCuenta), enviado: ahora))) ?? [:]
+            }
+            let aviso = await m.elegirDiaReloj(id)
+            // `ultima` no se toca: el cambio del motor la vuelve a mandar por `applicationContext` (por si esta
+            // respuesta se pierde y para que el reloj la tenga al reabrir).
+            var r = armarRutina(m)
+            r.avisoDia = aviso
+            return (try? ProtocoloReloj.diccionario(SobreReloj(.rutina(r), enviado: ahora))) ?? [:]
         case .eventos(let lote):
             // Sin cuenta abierta también se contesta (pendiente, con el motivo): el reloj lo guarda y le dice al alumno qué falta.
             let m = motor
@@ -170,12 +209,12 @@ extension PuenteReloj: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         nonisolated(unsafe) let d = message
         nonisolated(unsafe) let responder = replyHandler
-        Task { @MainActor in responder(await self.recibir(d)) }
+        Task { @MainActor in responder(await self.enFila(d)) }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         nonisolated(unsafe) let d = message
-        Task { @MainActor in self.mandar(await self.recibir(d)) }
+        Task { @MainActor in self.mandar(await self.enFila(d)) }
     }
 
     /// Tanda 4: una serie del modo calibración. Se guarda antes de volver (después el sistema borra el archivo).
@@ -185,6 +224,6 @@ extension PuenteReloj: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         nonisolated(unsafe) let d = userInfo
-        Task { @MainActor in self.mandar(await self.recibir(d)) }
+        Task { @MainActor in self.mandar(await self.enFila(d)) }
     }
 }

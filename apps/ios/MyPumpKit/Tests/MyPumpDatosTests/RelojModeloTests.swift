@@ -183,6 +183,52 @@ struct RelojModeloTests {
         #expect(m.dia.diaFinalizado)
     }
 
+    // MARK: - Elegir el día en el reloj
+
+    @Test func laRutinaDelRelojTraeLosDiasDelSelector() {
+        let m = Banco().modelo()
+        let r = m.rutinaReloj()
+        #expect(r.dias == [DiaReloj(id: "d1", nombre: "TIRÓN A — ANCHO", numero: 1, ejercicios: 2, hecho: false),
+                           DiaReloj(id: "d2", nombre: "EMPUJE", numero: 2, ejercicios: 1, hecho: false),
+                           DiaReloj(id: "d3", nombre: "PIERNA", numero: m.numero(m.dias[2]), ejercicios: 1, hecho: false)])
+        #expect(r.dias?.map(\.numero) == m.dias.map(m.numero))
+        #expect(r.diaSugerido == "d1")
+    }
+
+    @Test func elegirUnDiaEnElRelojLoAbreConElSelectorDelTelefono() async {
+        let b = Banco()
+        let m = b.modelo()
+        #expect(await m.elegirDiaReloj("d2") == nil)
+        #expect(m.dia.dia.id == "d2", "el mismo día queda abierto en Entreno")
+        let r = m.rutinaReloj()
+        #expect(r.diaId == "d2")
+        #expect(r.ejercicios.map(\.lugar) == ["pre-d2-0"])
+        // Y una serie del reloj de ese día cae en ese día, sin cambiar de pantalla.
+        let a = await ReceptorReloj(disco: b.disco).recibir([serie(dia: "d2", lugar: "pre-d2-0", reps: 8, kg: 80)], motor: m)
+        #expect(a.first?.resultado == .aplicado)
+        #expect(m.dia.ejercicios["pre-d2-0"]?.series[0].confirmada == true)
+        #expect(await m.elegirDiaReloj("d9") == "Ese día ya no está en tu rutina.")
+    }
+
+    @Test func conOtroDiaEnCursoEnElTelefonoNoSeCambiaYSeDiceElMotivo() async {
+        let m = Banco().modelo()
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "12")
+        #expect(await m.elegirDiaReloj("d2") == ModeloEntreno.motivoOtroDiaEnCurso)
+        #expect(m.dia.dia.id == "d1")
+        #expect(m.dia.ejercicios["jal-d1-0"]?.series[0].reps == "12", "lo tipeado sigue ahí")
+        // El mismo día no es un cambio.
+        #expect(await m.elegirDiaReloj("d1") == nil)
+    }
+
+    @Test func conElDiaCerradoSePuedeElegirOtroYElProximoQuedaMarcado() async {
+        let (_, m) = await diaCerrado()
+        let r = m.rutinaReloj()
+        #expect(r.dias?.first { $0.id == "d1" }?.hecho == true)
+        #expect(r.diaSugerido == "d2")
+        #expect(await m.elegirDiaReloj("d2") == nil)
+        #expect(m.dia.dia.id == "d2")
+    }
+
     // MARK: - 3. Otro día abierto
 
     @Test func otroDiaConAlgoEnCursoNoCambiaLaPantallaYQuedaPendiente() async {

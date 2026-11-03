@@ -38,9 +38,36 @@ extension ModeloEntreno {
             e.patron = patron(plan)
             return e
         }
-        return RutinaReloj(cuenta: cuentaReloj, rutinaId: rutina.id, diaId: dia.dia.id ?? "", semana: semana, nombreDia: dia.dia.nombre ?? "",
-                           fecha: hoy, generada: ahoraMs, ejercicios: ejercicios, inicioSesion: inicioSesion,
-                           diaFinalizado: dia.diaFinalizado, proximo: proximoEntreno(), descanso: descanso.descanso?.guardado, demo: demo)
+        var r = RutinaReloj(cuenta: cuentaReloj, rutinaId: rutina.id, diaId: dia.dia.id ?? "", semana: semana, nombreDia: dia.dia.nombre ?? "",
+                            fecha: hoy, generada: ahoraMs, ejercicios: ejercicios, inicioSesion: inicioSesion,
+                            diaFinalizado: dia.diaFinalizado, proximo: proximoEntreno(), descanso: descanso.descanso?.guardado, demo: demo)
+        r.dias = diasReloj()
+        return r
+    }
+
+    /// Los días de la semana como los pinta el selector de Entreno (`SelectorDias`): «Día n», el nombre, cuántos
+    /// ejercicios y el tilde de la sesión cerrada esta semana.
+    func diasReloj() -> [DiaReloj] {
+        dias.compactMap { d in
+            d.id.map { DiaReloj(id: $0, nombre: d.nombre ?? "", numero: numero(d), ejercicios: Self.cantidadEjercicios(d), hecho: hecho(d)) }
+        }
+    }
+
+    static func cantidadEjercicios(_ d: Dia) -> Int { d.bloques.reduce(0) { $0 + $1.ejercicios.count } }
+
+    static let motivoOtroDiaEnCurso = "En el iPhone hay otro día en curso. Terminalo ahí para cambiar."
+
+    /// El alumno eligió un día en el reloj (`MensajeReloj.pedirDia`): se abre con el mismo camino que el selector de
+    /// Entreno (`cambiarDia`), así el día del reloj y el del teléfono son el mismo y las series del reloj caen en ese día
+    /// del servidor. Igual que con un evento de otro día, no se le cambia la pantalla a un día con algo en curso (la
+    /// sesión empezada, una serie confirmada o algo tipeado): gana el teléfono. Devuelve por qué no se pudo (para el
+    /// reloj) o nil si quedó abierto.
+    public func elegirDiaReloj(_ id: String) async -> String? {
+        if id == dia.dia.id { return nil }
+        guard dias.contains(where: { $0.id == id }) else { return "Ese día ya no está en tu rutina." }
+        if diaConActividad { return Self.motivoOtroDiaEnCurso }
+        await cambiarDia(id)
+        return dia.dia.id == id ? nil : "No se pudo abrir el día en el iPhone."
     }
 
     /// El `patron_movimiento` del que se hace (el del sustituto, si hay; si no, el del catálogo): para la familia de
@@ -54,7 +81,7 @@ extension ModeloEntreno {
         guard let i = dias.firstIndex(where: { $0.id == dia.dia.id }), dias.count > 1 else { return nil }
         let orden = dias[(i + 1)...] + dias[..<i]
         guard let d = orden.first(where: { !hecho($0) }) ?? orden.first, let id = d.id else { return nil }
-        return ProximoEntreno(diaId: id, nombre: d.nombre ?? "", ejercicios: d.bloques.reduce(0) { $0 + $1.ejercicios.count })
+        return ProximoEntreno(diaId: id, nombre: d.nombre ?? "", ejercicios: Self.cantidadEjercicios(d))
     }
 
     static func entero(_ s: String?) -> Int? {

@@ -30,6 +30,12 @@ public struct RutinaReloj: Codable, Equatable, Sendable {
     /// Tanda 4: el modo calibración está prendido para esta cuenta en el iPhone (`ModoCalibracion`). nil o false = el
     /// reloj no toca los sensores. Opcional: no sube la versión del protocolo.
     public var calibracion: Bool?
+    /// Los días de la semana del plan, en el orden del selector del iPhone (para elegir el día en el reloj). Opcional:
+    /// un iPhone viejo no lo manda y el reloj muestra solo el día que tiene. Solo el día de `diaId` trae rutina.
+    public var dias: [DiaReloj]?
+    /// La respuesta a `pedirDia` cuando el iPhone no pudo abrir el día pedido (por qué). Viaja solo en esa respuesta;
+    /// el reloj lo muestra una vez y no lo guarda con la rutina.
+    public var avisoDia: String?
 
     public init(cuenta: String = "", rutinaId: String, diaId: String, semana: Int, nombreDia: String, fecha: String, generada: Double,
                 ejercicios: [EjercicioReloj], inicioSesion: Double? = nil, diaFinalizado: Bool = false,
@@ -41,6 +47,36 @@ public struct RutinaReloj: Codable, Equatable, Sendable {
 
     /// Las entradas del día para `Preparacion.series` (el orden del día, con los sustitutos).
     public var entradasPreparacion: [Preparacion.Entrada] { ejercicios.map(\.entrada) }
+
+    /// Los días para elegir: los que mandó el iPhone o, si no mandó (un iPhone viejo), solo el que trae la rutina.
+    public var diasParaElegir: [DiaReloj] {
+        if let dias, !dias.isEmpty { return dias }
+        return [DiaReloj(id: diaId, nombre: nombreDia, numero: 1, ejercicios: ejercicios.count, hecho: diaFinalizado)]
+    }
+
+    /// El día que el iPhone considera «de hoy»: el que tiene abierto si todavía no está hecho; si ya está hecho, el
+    /// próximo que falta (el de la complicación). Es el que aparece marcado en la lista de días.
+    public var diaSugerido: String {
+        let abiertoHecho = diaFinalizado || (dias?.first { $0.id == diaId }?.hecho ?? false)
+        guard abiertoHecho, let p = proximo, diasParaElegir.contains(where: { $0.id == p.diaId }) else { return diaId }
+        return p.diaId
+    }
+}
+
+/// Un día del plan en la lista del reloj: lo que muestra el selector del iPhone (sin la rutina).
+public struct DiaReloj: Codable, Equatable, Sendable, Identifiable {
+    public var id: String
+    /// «EMPUJE»
+    public var nombre: String
+    /// El «Día n» del selector.
+    public var numero: Int
+    /// Cuántos ejercicios tiene.
+    public var ejercicios: Int
+    /// Tiene la sesión de esta semana cerrada (el tilde del selector).
+    public var hecho: Bool
+    public init(id: String, nombre: String, numero: Int, ejercicios: Int, hecho: Bool) {
+        self.id = id; self.nombre = nombre; self.numero = numero; self.ejercicios = ejercicios; self.hecho = hecho
+    }
 }
 
 public struct ProximoEntreno: Codable, Equatable, Sendable {

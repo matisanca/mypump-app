@@ -346,4 +346,134 @@ func sesionDemo() -> SesionReloj {
         #expect(s.terminada)
         #expect(s.descanso == nil)
     }
+
+    // MARK: - Elegir el día
+
+    @Test func elDiaQueYaEstaSeAbreYOtroSePideAlIPhone() {
+        var s = sesionDemo()
+        let e1 = s.elegirDia("d1", conIPhone: false, ahora: T0)
+
+        #expect(e1 == .entrar)
+        let e2 = s.elegirDia("d2", conIPhone: true, ahora: T0)
+
+        #expect(e2 == .pedir)
+        #expect(s.diaPedido == "d2")
+        #expect(s.esperandoDia(ahora: T0 + 1_000))
+        // Llega la rutina del día pedido: se entra y se deja de esperar.
+        let e3 = s.recibir(.demo(fecha: HOY, generada: T0 + 1, dia: "d2"))
+
+        #expect(e3)
+        #expect(s.rutina?.diaId == "d2")
+        #expect(s.rutina?.nombreDia == "TIRÓN")
+        #expect(s.diaPedido == nil)
+        #expect(s.lugar == "dominadas-lastre-d2-0")
+        #expect(s.avisoDia == nil)
+    }
+
+    @Test func sinElIPhoneSeSigueConElDiaQueHay() {
+        var s = sesionDemo()
+        let e4 = s.elegirDia("d3", conIPhone: false, ahora: T0)
+
+        #expect(e4 == .no(SesionReloj.textoSinIPhone))
+        #expect(s.avisoDia == SesionReloj.textoSinIPhone)
+        #expect(s.diaPedido == nil)
+        // Nunca se inventa una rutina: sigue el día que mandó el iPhone, y se conocen los días para mostrarlos.
+        #expect(s.rutina?.diaId == "d1")
+        #expect(s.rutina?.diasParaElegir.count == 4)
+        s.leerAvisoDia()
+        #expect(s.avisoDia == nil)
+        let e5 = s.elegirDia("d9", conIPhone: true, ahora: T0)
+
+        #expect(e5 == .no("Ese día ya no está en tu rutina."))
+    }
+
+    @Test func conElEntrenoEmpezadoNoSeCambiaDeDia() throws {
+        var s = sesionDemo()
+        s.iniciar(ahora: T0)
+        #expect(!s.puedeCambiarDia)
+        let e6 = s.elegirDia("d2", conIPhone: true, ahora: T0)
+
+        #expect(e6 == .no(SesionReloj.textoEmpezado))
+        let e7 = s.elegirDia("d1", conIPhone: true, ahora: T0)
+
+        #expect(e7 == .entrar)
+        _ = s.terminar(ahora: T0 + 60_000)
+        // Terminado sí: es lo normal después de entrenar.
+        #expect(s.puedeCambiarDia)
+        let e8 = s.elegirDia("d2", conIPhone: true, ahora: T0)
+
+        #expect(e8 == .pedir)
+    }
+
+    @Test func sinRespuestaDelIPhoneSeDejaDeEsperarYSeAvisa() {
+        var s = sesionDemo()
+        _ = s.elegirDia("d2", conIPhone: true, ahora: T0)
+        let e9 = s.vencerPedido(ahora: T0 + SesionReloj.esperaDia - 1)
+
+        #expect(!e9)
+        let e10 = s.vencerPedido(ahora: T0 + SesionReloj.esperaDia)
+
+        #expect(e10)
+        #expect(s.diaPedido == nil)
+        #expect(s.avisoDia == SesionReloj.textoSinRespuesta)
+        #expect(s.rutina?.diaId == "d1")
+        // Una rutina de otro día que llega tarde (la empujó el iPhone) igual se muestra, pero no «entra» sola.
+        let e11 = s.recibir(.demo(fecha: HOY, generada: T0 + 1, dia: "d2"))
+
+        #expect(!e11)
+    }
+
+    @Test func siElIPhoneNoPuedeAbrirElDiaQuedaElSuyoConElMotivo() {
+        var s = sesionDemo()
+        _ = s.elegirDia("d3", conIPhone: true, ahora: T0)
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0 + 1)
+        r.avisoDia = "En el iPhone hay otro día en curso. Terminalo ahí para cambiar."
+        let e12 = s.recibir(r)
+
+        #expect(!e12)
+        #expect(s.rutina?.diaId == "d1")
+        #expect(s.avisoDia == r.avisoDia)
+        // El aviso no se guarda con la rutina.
+        #expect(s.rutina?.avisoDia == nil)
+        #expect(s.diaPedido == nil)
+    }
+
+    @Test func cambiarDeDiaNoMezclaNiPierdeLosEventosDeOtroDia() throws {
+        var s = sesionDemo()
+        s.confirmar(ahora: T0)                         // iniciar + serie 1 de press banca (d1)
+        s.confirmar(ahora: T0 + 1_000)                 // serie 2
+        _ = s.terminar(ahora: T0 + 2_000)
+        let deD1 = s.cola.pendientes
+        #expect(deD1.count == 4)
+        #expect(deD1.allSatisfy { $0.evento.diaId == "d1" })
+        // Sin acuse del iPhone, se pasa a TIRÓN.
+        let e13 = s.elegirDia("d2", conIPhone: true, ahora: T0 + 3_000)
+
+        #expect(e13 == .pedir)
+        s.recibir(.demo(fecha: HOY, generada: T0 + 3_001, dia: "d2"))
+        // La cola sigue entera y en orden, con su día; nada de d1 se pinta en d2.
+        #expect(s.cola.pendientes == deD1)
+        #expect(s.rutina?.ejercicios.allSatisfy { $0.confirmadas == 0 } == true)
+        #expect(!s.iniciada && !s.terminada)
+        // Lo de d2 va con d2.
+        s.confirmar(ahora: T0 + 4_000)
+        let ultimo = try #require(s.cola.pendientes.last)
+        #expect(ultimo.evento == .serie(diaId: "d2", semana: 1, lugar: "dominadas-lastre-d2-0", indice: 0, reps: 6, kg: 10))
+        #expect(s.cola.pendientes.filter { $0.evento.diaId == "d1" }.count == 4)
+        // Lo que el iPhone todavía no tiene vuelve a aparecer si llega d1 de nuevo (y lo de d2 no se le pega).
+        s.recibir(.demo(fecha: HOY, generada: T0 + 5_000))
+        #expect(s.rutina?.ejercicios.first?.confirmadas == 2)
+        #expect(s.rutina?.ejercicios.allSatisfy { !$0.lugar.contains("-d2-") } == true)
+        // Los acuses de d1 sacan solo lo de d1.
+        s.acusar(deD1.map { AcuseEvento(id: $0.id, resultado: .aplicado) }, ahora: T0 + 6_000)
+        #expect(s.cola.pendientes.map(\.evento.diaId) == ["d2", "d2"])
+    }
+
+    @Test func elPedidoSobreviveAlDisco() throws {
+        var s = sesionDemo()
+        _ = s.elegirDia("d2", conIPhone: true, ahora: T0)
+        let leida = try JSONDecoder().decode(SesionReloj.self, from: JSONEncoder().encode(s))
+        #expect(leida == s)
+        #expect(leida.diaPedido == "d2")
+    }
 }

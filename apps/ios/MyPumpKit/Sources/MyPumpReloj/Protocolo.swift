@@ -11,6 +11,10 @@ import Foundation
 ///   actualizó: el reloj muestra «Actualizá Pump Team en el iPhone» o al revés); algo más viejo, `versionVieja`.
 /// - Un mensaje de un tipo que no se conoce es `desconocido` y se descarta sin romper nada (no se acusa: el otro lado
 ///   lo vuelve a mandar cuando se actualice).
+/// - Por eso `pedirDia` y los días de la rutina (`dias`, `avisoDia`) no subieron la versión: un iPhone de la versión 1
+///   sin `pedirDia` lo lee como `desconocido` (no contesta `incompatible`: eso queda para las versiones) y el reloj, sin
+///   respuesta, deja de esperar y lo avisa; un reloj viejo ignora los campos nuevos. Subirla haría que un lado viejo
+///   marque «incompatible» y deje de pasar las series, que sí entiende.
 ///
 /// El iPhone es el único que habla con el servidor: el reloj le manda eventos (iniciar, confirmar serie, terminar) y el
 /// iPhone los pasa a su cola (Outbox) por el mismo camino que un toque en la pantalla. Cada evento lleva un id: el
@@ -113,6 +117,10 @@ public struct SobreReloj: Codable, Equatable, Sendable {
 public enum MensajeReloj: Equatable, Sendable {
     /// Reloj → iPhone: «mandame la rutina de hoy» (al abrir la app del reloj y al volver la conexión).
     case pedirRutina
+    /// Reloj → iPhone: «abrí este día del plan» (el alumno lo eligió en el reloj). El iPhone lo abre con su propio
+    /// selector (`cambiarDia`) y contesta con la `rutina` de ese día; si no puede, con la del día que tiene y `avisoDia`.
+    /// Un iPhone viejo no conoce el tipo y no contesta nada (el reloj deja de esperar y avisa).
+    case pedirDia(diaId: String)
     /// iPhone → reloj: la rutina del día tal como está en el teléfono (la última gana).
     case rutina(RutinaReloj)
     /// Reloj → iPhone: eventos de la cola del reloj, en orden.
@@ -124,11 +132,12 @@ public enum MensajeReloj: Equatable, Sendable {
     /// Cualquiera → el otro: no puedo leer tu versión; la mía es `version`.
     case incompatible(version: Int)
 
-    public enum Tipo: String, Codable, Sendable { case pedirRutina, rutina, eventos, acuse, sinRutina, incompatible }
+    public enum Tipo: String, Codable, Sendable { case pedirRutina, pedirDia, rutina, eventos, acuse, sinRutina, incompatible }
 
     public var tipo: Tipo {
         switch self {
         case .pedirRutina: .pedirRutina
+        case .pedirDia: .pedirDia
         case .rutina: .rutina
         case .eventos: .eventos
         case .acuse: .acuse
@@ -139,12 +148,13 @@ public enum MensajeReloj: Equatable, Sendable {
 }
 
 extension MensajeReloj: Codable {
-    private enum Claves: String, CodingKey { case tipo, rutina, eventos, acuse, motivo, version }
+    private enum Claves: String, CodingKey { case tipo, diaId, rutina, eventos, acuse, motivo, version }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Claves.self)
         switch try c.decode(Tipo.self, forKey: .tipo) {
         case .pedirRutina: self = .pedirRutina
+        case .pedirDia: self = .pedirDia(diaId: try c.decode(String.self, forKey: .diaId))
         case .rutina: self = .rutina(try c.decode(RutinaReloj.self, forKey: .rutina))
         case .eventos: self = .eventos(try c.decode([EventoEnCola].self, forKey: .eventos))
         case .acuse: self = .acuse(try c.decode([AcuseEvento].self, forKey: .acuse))
@@ -158,6 +168,7 @@ extension MensajeReloj: Codable {
         try c.encode(tipo, forKey: .tipo)
         switch self {
         case .pedirRutina: break
+        case .pedirDia(let d): try c.encode(d, forKey: .diaId)
         case .rutina(let r): try c.encode(r, forKey: .rutina)
         case .eventos(let e): try c.encode(e, forKey: .eventos)
         case .acuse(let a): try c.encode(a, forKey: .acuse)

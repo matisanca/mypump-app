@@ -2,18 +2,31 @@ import SwiftUI
 import MyPumpReglas
 import MyPumpReloj
 
+/// Adónde se navega: el día (la lista de ejercicios) y un ejercicio de ese día.
+enum PasoReloj: Hashable {
+    case dia
+    case ejercicio(String)
+}
+
 struct RaizReloj: View {
     @Environment(EstadoReloj.self) private var estado
-    @State private var camino: [String] = []
+    @State private var camino: [PasoReloj] = []
     @State private var preparado = false
 
     var body: some View {
         NavigationStack(path: $camino) {
             Group {
-                if estado.sesion.rutina == nil { SinRutina() } else { ListaDia() }
+                if estado.sesion.rutina == nil { SinRutina() } else { ListaDias() }
             }
-            .navigationDestination(for: String.self) { EjercicioVista(lugar: $0) }
+            .navigationDestination(for: PasoReloj.self) { paso in
+                switch paso {
+                case .dia: ListaDia()
+                case .ejercicio(let l): EjercicioVista(lugar: l)
+                }
+            }
         }
+        // Llegó el día elegido (o se tocó el que ya estaba): se entra.
+        .onChange(of: estado.abrirDia) { camino = [.dia] }
         .fullScreenCover(isPresented: Binding(get: { estado.sesion.descanso != nil && estado.resumen == nil },
                                               set: { if !$0 { estado.saltarDescanso() } })) {
             DescansoVista()
@@ -28,17 +41,25 @@ struct RaizReloj: View {
     private func pantallaDePrueba() {
         guard !preparado else { return }
         preparado = true
+        // Con el entreno empezado se abre directo en el día (no se puede cambiar).
+        if estado.sesion.rutina != nil, !estado.sesion.puedeCambiarDia { camino = [.dia] }
         let args = ProcessInfo.processInfo.arguments
         guard let i = args.firstIndex(of: "-pantalla"), i + 1 < args.count else { return }
         switch args[i + 1] {
+        case "lista":
+            camino = [.dia]
+        case "sin-iphone":
+            // La lista de días con el aviso de que para cambiar hace falta el iPhone.
+            estado.elegirDia("d2", demoSinIPhone: true)
         case "ejercicio", "preparacion":
-            if let l = estado.sesion.lugar { camino = [l] }
+            if let l = estado.sesion.lugar { camino = [.dia, .ejercicio(l)] }
         case "progreso":
             estado.empezar()
             estado.confirmar(); estado.saltarDescanso()
             estado.girarKg(1); estado.confirmar(); estado.saltarDescanso()
-            if let l = estado.sesion.lugar { camino = [l] }
+            if let l = estado.sesion.lugar { camino = [.dia, .ejercicio(l)] }
         case "descanso":
+            camino = [.dia]
             estado.empezar()
             estado.confirmar()
         case "resumen":
@@ -73,6 +94,97 @@ struct SinRutina: View {
             }
             .padding(.horizontal, 4)
         }
+    }
+}
+
+// MARK: - Los días de la semana
+
+/// La semana del plan, como el selector de días del iPhone: se elige el día con un toque. El «de hoy» (o el próximo,
+/// si el de hoy ya está hecho) va marcado. Solo el día que mandó el iPhone tiene rutina: otro se le pide al iPhone, que
+/// lo abre también en Entreno. Con el entreno empezado no se cambia de día.
+struct ListaDias: View {
+    @Environment(EstadoReloj.self) private var estado
+
+    var body: some View {
+        let s = estado.sesion
+        let r = s.rutina!
+        let sugerido = r.diaSugerido
+        ScrollViewReader { lector in
+            List {
+                if let t = estado.incompatible {
+                    Section { Label(t, systemImage: "arrow.down.app").font(.footnote).foregroundStyle(Marca.oro) }
+                }
+                if let a = s.avisoDia {
+                    Section {
+                        Label(a, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(Marca.oro)
+                        Button("Entendido") { estado.leerAvisoDia() }
+                    }
+                }
+                Section {
+                    ForEach(r.diasParaElegir) { d in
+                        let abierto = d.id == r.diaId
+                        Button { estado.elegirDia(d.id) } label: {
+                            FilaDia(d: d, marca: d.id == sugerido ? (abierto ? "Hoy" : "Próximo") : nil, pidiendo: s.diaPedido == d.id)
+                        }
+                        .disabled(!abierto && (!s.puedeCambiarDia || s.diaPedido != nil))
+                        .listRowBackground(d.id == sugerido ? RoundedRectangle(cornerRadius: 12).fill(Marca.verde.opacity(0.22)) : nil)
+                        .id(d.id)
+                    }
+                } footer: {
+                    if let pie = pie(s, r) { Text(pie).font(.footnote) }
+                }
+            }
+            .onAppear { lector.scrollTo(sugerido, anchor: .center) }
+        }
+        .navigationTitle("Elegí el día")
+    }
+
+    /// Lo que limita el cambio de día, si algo lo limita.
+    private func pie(_ s: SesionReloj, _ r: RutinaReloj) -> String? {
+        if !s.puedeCambiarDia { return SesionReloj.textoEmpezado }
+        if r.dias == nil { return "Actualizá Pump Team en el iPhone para elegir otro día." }
+        if !estado.conectado && !r.demo { return SesionReloj.textoSinIPhone }
+        return nil
+    }
+}
+
+struct FilaDia: View {
+    let d: DiaReloj
+    /// «Hoy» o «Próximo».
+    let marca: String?
+    let pidiendo: Bool
+    var body: some View {
+        HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text("Día \(d.numero)")
+                        .font(.caption2.weight(.bold))
+                        .textCase(.uppercase)
+                        .foregroundStyle(.secondary)
+                    if let marca {
+                        Text(marca)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 5)
+                            .background(Capsule().fill(Marca.verde))
+                    }
+                }
+                Text(TextoReloj.titulo(d.nombre)).font(.headline).lineLimit(2)
+                Text(d.ejercicios == 1 ? "1 ejercicio" : "\(d.ejercicios) ejercicios")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            if pidiendo {
+                ProgressView().frame(width: 20)
+            } else if d.hecho {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(Marca.verde)
+                    .accessibilityLabel("Hecho esta semana")
+            }
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -123,7 +235,7 @@ struct ListaDia: View {
             }
             Section {
                 ForEach(r.ejercicios, id: \.lugar) { e in
-                    NavigationLink(value: e.lugar) { FilaEjercicio(e: e, actual: e.lugar == s.lugar) }
+                    NavigationLink(value: PasoReloj.ejercicio(e.lugar)) { FilaEjercicio(e: e, actual: e.lugar == s.lugar) }
                 }
             }
             if s.iniciada && !s.terminada {

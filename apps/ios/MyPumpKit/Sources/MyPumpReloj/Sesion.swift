@@ -39,9 +39,25 @@ public struct SesionReloj: Codable, Equatable, Sendable {
 
     /// Llegó una rutina del iPhone. Si es de otro día o de otra semana, reemplaza todo menos la cola (lo que el teléfono
     /// todavía no acusó se sigue mandando); si es la misma, se le vuelven a poner encima las series que el teléfono
-    /// todavía no tiene. Una rutina más vieja que la que ya hay se ignora.
-    public mutating func recibir(_ nueva: RutinaReloj) {
-        if let r = rutina, r.diaId == nueva.diaId, r.semana == nueva.semana, r.fecha == nueva.fecha, nueva.generada < r.generada { return }
+    /// todavía no tiene. Una rutina más vieja que la que ya hay se ignora. true si es el día que el alumno pidió en el
+    /// reloj (la app entra a ese día).
+    @discardableResult
+    public mutating func recibir(_ nueva: RutinaReloj) -> Bool {
+        // La respuesta a un pedido de día: el aviso se muestra una vez y no se guarda con la rutina.
+        var nueva = nueva
+        var llegoPedido = false
+        if let aviso = nueva.avisoDia {
+            nueva.avisoDia = nil
+            if diaPedido != nil { avisoDia = aviso }
+            diaPedido = nil
+            pedidoEn = nil
+        } else if let p = diaPedido, p == nueva.diaId {
+            diaPedido = nil
+            pedidoEn = nil
+            avisoDia = nil
+            llegoPedido = true
+        }
+        if let r = rutina, r.diaId == nueva.diaId, r.semana == nueva.semana, r.fecha == nueva.fecha, nueva.generada < r.generada { return llegoPedido }
         let mismoDia = rutina.map { $0.diaId == nueva.diaId && $0.semana == nueva.semana && $0.fecha == nueva.fecha } ?? false
         var r = nueva
         aplicarPendientes(&r)
@@ -63,7 +79,75 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         if let d = r.descanso, (descanso?.endsAt ?? 0) < d.endsAt { descanso = d; descansoSono = false }
         if lugar.flatMap(ejercicio) == nil || !mismoDia { lugar = r.ejercicios.first { !$0.terminado }?.lugar ?? r.ejercicios.first?.lugar }
         cargarCorona()
+        return llegoPedido
     }
+
+    // MARK: - Elegir el día
+
+    /// El día que el alumno pidió en el reloj y todavía no llegó del iPhone.
+    public private(set) var diaPedido: String?
+    /// ms: cuándo se pidió (sin respuesta en `esperaDia`, se deja de esperar).
+    private var pedidoEn: Double?
+    /// Por qué no se pudo cambiar de día (lo dijo el iPhone, no contestó o no está cerca); nil si no hay nada que avisar.
+    public private(set) var avisoDia: String?
+    /// Lo que se espera la rutina del día pedido (un iPhone viejo no contesta `pedirDia`).
+    public static let esperaDia: Double = 10_000
+    public static let textoSinIPhone = "Para cambiar de día acercá el iPhone."
+    public static let textoEmpezado = "Con el entreno empezado no se cambia de día."
+    public static let textoSinRespuesta = "El iPhone no contestó. Actualizá Pump Team en el iPhone o probá de nuevo."
+
+    /// Se puede cambiar de día: no hay un entreno empezado y abierto en el reloj (como en el iPhone, que no le cambia la
+    /// pantalla a un día con la sesión en curso). Con el día terminado sí se puede: es lo normal después de entrenar.
+    public var puedeCambiarDia: Bool { !(iniciada && !terminada) }
+
+    public enum EleccionDia: Equatable, Sendable {
+        /// Es el día que ya está en el reloj: se entra.
+        case entrar
+        /// Hay que pedírselo al iPhone (`MensajeReloj.pedirDia`).
+        case pedir
+        /// No se puede ahora (el motivo, para el alumno).
+        case no(String)
+    }
+
+    /// El alumno tocó un día de la lista. Solo el día que ya está en el reloj tiene rutina: otro se le pide al iPhone,
+    /// que tiene que estar cerca (el reloj nunca arma la rutina de un día que no recibió).
+    public mutating func elegirDia(_ id: String, conIPhone: Bool, ahora: Double) -> EleccionDia {
+        guard let r = rutina else { return .no(Self.textoSinIPhone) }
+        if id == r.diaId {
+            diaPedido = nil
+            pedidoEn = nil
+            avisoDia = nil
+            return .entrar
+        }
+        guard r.diasParaElegir.contains(where: { $0.id == id }) else { return .no("Ese día ya no está en tu rutina.") }
+        guard puedeCambiarDia else { avisoDia = Self.textoEmpezado; return .no(Self.textoEmpezado) }
+        guard conIPhone else { avisoDia = Self.textoSinIPhone; return .no(Self.textoSinIPhone) }
+        diaPedido = id
+        pedidoEn = ahora
+        avisoDia = nil
+        return .pedir
+    }
+
+    /// Se está esperando el día pedido (dentro de `esperaDia`).
+    public func esperandoDia(ahora: Double) -> Bool { diaPedido != nil && ahora - (pedidoEn ?? ahora) < Self.esperaDia }
+
+    /// El pedido no salió o no tuvo respuesta: se deja de esperar y se avisa por qué. No hace nada si ya llegó.
+    public mutating func pedidoFallido(_ motivo: String) {
+        guard diaPedido != nil else { return }
+        diaPedido = nil
+        pedidoEn = nil
+        avisoDia = motivo
+    }
+
+    /// Pasó `esperaDia` sin respuesta: true si se dejó de esperar.
+    public mutating func vencerPedido(ahora: Double) -> Bool {
+        guard diaPedido != nil, !esperandoDia(ahora: ahora) else { return false }
+        pedidoFallido(Self.textoSinRespuesta)
+        return true
+    }
+
+    /// El alumno ya leyó el aviso.
+    public mutating func leerAvisoDia() { avisoDia = nil }
 
     /// Las series de la cola sobre la rutina (el teléfono todavía no las tiene).
     private func aplicarPendientes(_ r: inout RutinaReloj) {

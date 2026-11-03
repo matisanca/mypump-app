@@ -23,7 +23,7 @@ func ida(_ m: MensajeReloj) throws -> SobreReloj {
             EventoEnCola(.terminar(diaId: "d1", semana: 3), creado: T0 + 3),
         ]
         let mensajes: [MensajeReloj] = [
-            .pedirRutina, .rutina(rutina), .eventos(eventos),
+            .pedirRutina, .pedirDia(diaId: "d3"), .rutina(rutina), .eventos(eventos),
             .acuse([AcuseEvento(id: eventos[0].id, resultado: .aplicado), AcuseEvento(id: eventos[1].id, resultado: .rechazado, motivo: "otro día"), AcuseEvento(id: eventos[0].id, resultado: .pendiente)]),
             .incompatible(version: 3),
             .sinRutina(motivo: "Sin rutina activa"),
@@ -94,5 +94,60 @@ func ida(_ m: MensajeReloj) throws -> SobreReloj {
         enc.outputFormatting = .sortedKeys
         #expect(String(decoding: try enc.encode(e), as: UTF8.self)
                 == #"{"diaId":"d1","indice":1,"kg":60,"lugar":"l","reps":9,"semana":2,"tipo":"serie"}"#)
+    }
+
+    // MARK: - Elegir el día
+
+    @Test func pedirDiaTieneElFormatoDocumentado() throws {
+        let enc = JSONEncoder()
+        enc.outputFormatting = .sortedKeys
+        #expect(String(decoding: try enc.encode(MensajeReloj.pedirDia(diaId: "d2")), as: UTF8.self) == #"{"diaId":"d2","tipo":"pedirDia"}"#)
+        // Sin el día no se lee a medias.
+        let json = #"{"v":1,"id":"\#(UUID().uuidString)","enviado":0,"mensaje":{"tipo":"pedirDia"}}"#
+        #expect(throws: ProtocoloReloj.Fallo.ilegible) { try ProtocoloReloj.leer(Data(json.utf8)) }
+    }
+
+    @Test func laRutinaLlevaLosDiasYElAviso() throws {
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0)
+        r.avisoDia = "En el iPhone hay otro día en curso."
+        let s = try ida(.rutina(r))
+        guard case .rutina(let leida) = s.mensaje else { Issue.record("no es rutina"); return }
+        #expect(leida.dias == RutinaReloj.diasDemo)
+        #expect(leida.avisoDia == r.avisoDia)
+    }
+
+    @Test func unaRutinaSinLosCamposNuevosSeLeeYMuestraSoloSuDia() throws {
+        // Lo que manda un iPhone de antes de elegir el día: sin `dias` ni `avisoDia`.
+        var vieja = RutinaReloj.demo(fecha: HOY, generada: T0)
+        vieja.dias = nil
+        let datos = try ProtocoloReloj.datos(SobreReloj(.rutina(vieja), enviado: T0))
+        let json = String(decoding: datos, as: UTF8.self)
+        #expect(!json.contains("\"dias\"") && !json.contains("avisoDia"))
+        guard case .rutina(let r) = try ProtocoloReloj.leer(datos).mensaje else { Issue.record("no es rutina"); return }
+        #expect(r.dias == nil)
+        #expect(r.diasParaElegir.map(\.id) == ["d1"])
+        #expect(r.diasParaElegir.first?.ejercicios == r.ejercicios.count)
+        #expect(r.diaSugerido == "d1")
+    }
+
+    @Test func unIPhoneViejoNoEntiendePedirDiaPeroNoContestaIncompatible() throws {
+        // Un lado de la versión 1 sin `pedirDia` lo ve como un tipo desconocido: se descarta, sin marcar «incompatible»
+        // (eso cortaría el paso de las series). El reloj deja de esperar solo (`SesionReloj.esperaDia`).
+        let d = try ProtocoloReloj.diccionario(SobreReloj(.pedirDia(diaId: "d2"), enviado: T0))
+        #expect(d["v"] as? Int == ProtocoloReloj.version)
+        let json = #"{"v":1,"id":"\#(UUID().uuidString)","enviado":0,"mensaje":{"tipo":"pedirSemana","diaId":"d2"}}"#
+        let viejo: [String: Any] = ["v": 1, "mp": Data(json.utf8)]
+        #expect(throws: ProtocoloReloj.Fallo.desconocido("pedirSemana")) { try ProtocoloReloj.leer(viejo) }
+        #expect(ProtocoloReloj.respuestaIncompatible(viejo, ahora: T0) == nil)
+    }
+
+    @Test func elDiaSugeridoEsElAbiertoOElProximoSiYaEstaHecho() {
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0)
+        #expect(r.diaSugerido == "d1")
+        r.diaFinalizado = true
+        #expect(r.diaSugerido == "d2")
+        // Un próximo que no está en la lista no se marca.
+        r.proximo = ProximoEntreno(diaId: "d9", nombre: "X", ejercicios: 1)
+        #expect(r.diaSugerido == "d1")
     }
 }

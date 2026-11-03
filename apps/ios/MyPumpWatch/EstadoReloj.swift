@@ -32,6 +32,8 @@ final class EstadoReloj {
     /// Flujo final (apagado: `ConfirmacionReps.habilitadas` está vacía): las reps que el reloj propuso con la corona en
     /// esta serie («¿10 reps?»).
     private(set) var propuesta: Int?
+    /// Sube cada vez que hay que entrar al día (llegó el día elegido o se tocó el que ya estaba): la raíz navega.
+    private(set) var abrirDia = 0
 
     @ObservationIgnored private let conexion = ConexionReloj()
     @ObservationIgnored private let entreno = EntrenoSalud()
@@ -114,17 +116,57 @@ final class EstadoReloj {
         switch m {
         case .rutina(let r):
             sinRutina = nil
-            cambiar { $0.recibir(r) }
+            var llego = false
+            cambiar { llego = $0.recibir(r) }
+            if llego { abrirDia += 1 }
         case .acuse(let a):
             cambiar { $0.acusar(a, ahora: Self.ahoraMs) }
         case .incompatible(let v):
             cambiar(enviar: false) { $0.marcarIncompatible(version: v) }
         case .sinRutina(let motivo):
             sinRutina = motivo
-        case .pedirRutina, .eventos:
+        case .pedirRutina, .pedirDia, .eventos:
             break
         }
     }
+
+    // MARK: - Elegir el día
+
+    @ObservationIgnored private var esperaDia: Task<Void, Never>?
+
+    /// El alumno tocó un día de la lista. El que ya está en el reloj se abre; otro se le pide al iPhone (que lo abre
+    /// también en Entreno y contesta con su rutina). Sin el iPhone cerca, con el entreno empezado o sin respuesta, queda
+    /// el aviso en la lista y se sigue con el día que hay. En la demo (`-demo`) los días salen de la semana de muestra.
+    func elegirDia(_ id: String, demoSinIPhone: Bool = false) {
+        let ahora = Self.ahoraMs
+        let demo = ProcessInfo.processInfo.arguments.contains("-demo")
+        var eleccion = SesionReloj.EleccionDia.entrar
+        cambiar(enviar: false) { eleccion = $0.elegirDia(id, conIPhone: demo ? !demoSinIPhone : conectado, ahora: ahora) }
+        switch eleccion {
+        case .entrar:
+            abrirDia += 1
+        case .no:
+            WKInterfaceDevice.current().play(.failure)
+        case .pedir where demo:
+            let r = RutinaReloj.demo(fecha: FechaJS.ymd(Date(), zona: .current), generada: ahora, dia: id)
+            var llego = false
+            cambiar(enviar: false) { llego = $0.recibir(r) }
+            if llego { abrirDia += 1 }
+        case .pedir:
+            conexion.enviar(.pedirDia(diaId: id)) { [weak self] ok in
+                if !ok { self?.cambiar(enviar: false) { $0.pedidoFallido(SesionReloj.textoSinIPhone) } }
+            }
+            // Un iPhone que no conoce `pedirDia` no contesta: pasado `esperaDia` se deja de esperar y se avisa.
+            esperaDia?.cancel()
+            esperaDia = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(Int(SesionReloj.esperaDia) + 200))
+                guard !Task.isCancelled, let self else { return }
+                if self.sesion.diaPedido != nil { self.cambiar(enviar: false) { _ = $0.vencerPedido(ahora: Self.ahoraMs) } }
+            }
+        }
+    }
+
+    func leerAvisoDia() { cambiar(enviar: false) { $0.leerAvisoDia() } }
 
     // MARK: - Acciones
 
