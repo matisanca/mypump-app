@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import MyPumpModelos
 import MyPumpReglas
@@ -35,7 +36,7 @@ extension ModeloEntreno {
                 anteriores: RecordSerie.anteriores(historial, hoy: hoy, zona: zona).map(MarcaReloj.init),
                 historiaSuficiente: RecordSerie.historiaSuficiente(historial, hoy: hoy, zona: zona))
         }
-        return RutinaReloj(rutinaId: rutina.id, diaId: dia.dia.id ?? "", semana: semana, nombreDia: dia.dia.nombre ?? "",
+        return RutinaReloj(cuenta: cuentaReloj, rutinaId: rutina.id, diaId: dia.dia.id ?? "", semana: semana, nombreDia: dia.dia.nombre ?? "",
                            fecha: hoy, generada: ahoraMs, ejercicios: ejercicios, inicioSesion: inicioSesion,
                            diaFinalizado: dia.diaFinalizado, proximo: proximoEntreno(), descanso: descanso.descanso?.guardado, demo: demo)
     }
@@ -58,49 +59,86 @@ extension ModeloEntreno {
         return v
     }
 
-    /// Aplica un evento del reloj. nil = no se pudo ahora (sin red al cerrar): el reloj lo vuelve a mandar.
-    public func aplicarEventoReloj(_ e: EventoReloj) async -> (AcuseEvento.Resultado, String?)? {
-        guard e.semana == semana else { return (.descartado, "Es de otra semana") }
+    /// La cuenta para el reloj: un hash corto del token (nunca el token). En la demo, "demo".
+    public var cuentaReloj: String { Self.hashCuenta(token) }
+
+    nonisolated public static func hashCuenta(_ token: String?) -> String {
+        guard let token, !token.isEmpty else { return "demo" }
+        return SHA256.hash(data: Data(("mypump-reloj|" + token).utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// El día que se mira tiene algo en curso que cambiar de día haría perder o esconder: la sesión empezada y abierta,
+    /// una serie confirmada o algo tipeado sin confirmar.
+    var diaConActividad: Bool {
+        if inicioSesion != nil && !dia.diaFinalizado { return true }
+        return dia.ejercicios.values.contains { e in e.series.contains { $0.confirmada || !$0.reps.isEmpty || !$0.kg.isEmpty } }
+    }
+
+    /// Aplica un evento del reloj y dice qué contestarle. Nunca descarta en silencio: lo que no se puede aplicar ahora es
+    /// `pendiente` (queda en la cola del reloj y se reintenta) y lo que no se va a poder aplicar nunca, `rechazado` con
+    /// el motivo que el reloj le muestra al alumno. `creado` (ms) es cuándo pasó en el reloj: arranca el cronómetro,
+    /// fecha la serie (y el récord) y ancla el descanso.
+    public func aplicarEventoReloj(_ ec: EventoEnCola) async -> AcuseEvento {
+        func r(_ res: AcuseEvento.Resultado, _ motivo: String? = nil) -> AcuseEvento { AcuseEvento(id: ec.id, resultado: res, motivo: motivo) }
+        let e = ec.evento
+        if let c = ec.cuenta, c != cuentaReloj {
+            return r(.pendiente, demo ? "El iPhone está en la demo: entrá con tu link." : "El iPhone tiene otra cuenta abierta.")
+        }
+        // En la demo no se escribe nada: solo se aplica lo hecho con la rutina de la demo (no hay nada que perder).
+        if demo, ec.cuenta != "demo" { return r(.pendiente, "El iPhone está en la demo: entrá con tu link.") }
+        if let rid = ec.rutinaId, rid != rutina.id { return r(.rechazado, "tu rutina cambió desde que la hiciste.") }
+        if e.semana < semana { return r(.rechazado, "el iPhone ya pasó a la semana \(semanaMostrada).") }
+        if e.semana > semana { return r(.pendiente, "El iPhone todavía no pasó a esa semana.") }
         if e.diaId != dia.dia.id {
-            guard dias.contains(where: { $0.id == e.diaId }) else { return (.descartado, "El día ya no está en la rutina") }
+            guard dias.contains(where: { $0.id == e.diaId }) else { return r(.rechazado, "ese día ya no está en tu rutina.") }
+            // Otro día abierto con algo en curso: no se le cambia la pantalla ni se pierde lo tipeado. Queda pendiente.
+            if diaConActividad { return r(.pendiente, "En el iPhone hay otro día abierto. Cerralo para pasar esto.") }
             await cambiarDia(e.diaId)
-            guard dia.dia.id == e.diaId else { return nil }
+            guard dia.dia.id == e.diaId else { return r(.pendiente, "No se pudo abrir el día en el iPhone.") }
         }
         switch e {
         case .iniciar:
-            await empezar()
-            return (.aplicado, nil)
+            await empezar(desde: ec.creado)
+            return r(.aplicado)
         case .serie(_, _, let lugar, let i, let reps, let kg):
-            guard let ej = dia.ejercicios[lugar], i >= 0, i < ej.series.count else { return (.descartado, "La serie ya no está") }
+            guard let ej = dia.ejercicios[lugar], i >= 0, i < ej.series.count else { return r(.rechazado, "la serie ya no está en tu rutina.") }
             let s = ej.series[i]
-            let kgTexto = kg.map { JS.texto($0) } ?? ""
             if s.confirmada {
-                if Self.entero(s.reps) == reps && (kg == nil || Self.numero(s.kg) == kg) { return (.aplicado, nil) }
+                if Self.entero(s.reps) == reps && (kg == nil || Self.numero(s.kg) == kg) { return r(.aplicado) }
                 await editarSerie(lugar, i)
             }
+            // El cronómetro arranca cuando se hizo la primera serie en el reloj, no cuando llegó.
+            if inicioSesion == nil, ec.creado <= ahoraMs {
+                inicioSesion = ec.creado
+                guardarInicio()
+            }
             escribir(lugar, i, campo: "reps", valor: String(reps))
-            if kg != nil { escribir(lugar, i, campo: "kg", valor: kgTexto) }
+            if let kg { escribir(lugar, i, campo: "kg", valor: JS.texto(kg)) }
             // Lo confirmó en el reloj: «¿está bien cargado?» y «reabrir el día» se contestan que sí.
-            await confirmarSerie(lugar, i) { _ in true }
-            return dia.ejercicios[lugar]?.series[i].confirmada == true ? (.aplicado, nil) : (.descartado, "No se pudo registrar")
+            await confirmarSerie(lugar, i, fecha: min(ec.creado, ahoraMs)) { _ in true }
+            return dia.ejercicios[lugar]?.series[i].confirmada == true ? r(.aplicado) : r(.rechazado, "el iPhone no la pudo registrar.")
         case .terminar:
             // Sin nada hecho no hay qué cerrar; con algo hecho (aunque la sesión todavía no exista: sin red) se intenta.
-            guard cierreHabilitado || inicioSesion != nil, !dia.diaFinalizado else { return (.aplicado, nil) }
-            switch await cerrarDia(notas: "") {
-            case .cerrado, .demo: return (.aplicado, nil)
-            case .sinSesion, .fallo: return nil
+            guard cierreHabilitado || inicioSesion != nil, !dia.diaFinalizado else { return r(.aplicado) }
+            switch await cerrarDia(notas: "", fin: ec.creado) {
+            case .cerrado, .demo: return r(.aplicado)
+            case .sinSesion, .fallo: return r(.pendiente, "No se pudo cerrar la sesión en el iPhone (sin conexión).")
             }
         }
     }
 }
 
-/// Recibe los eventos del reloj en el iPhone: descarta los repetidos por id (guardados en el disco de la cuenta) y aplica
-/// el resto en orden sobre el motor de Entreno. Devuelve los acuses para el reloj.
+/// Recibe los eventos del reloj en el iPhone: contesta los repetidos por id (guardados en el disco de la cuenta) y aplica
+/// el resto en orden sobre el motor de Entreno. Cada evento se contesta solo: uno pendiente (un «terminar» sin red) no
+/// traba a los de atrás. El id se anota ANTES de aplicar, así un lote duplicado que llega en el medio (otra vía de
+/// WatchConnectivity) no lo aplica dos veces; si al final queda pendiente, se saca.
 @MainActor
 public final class ReceptorReloj {
     public static let archivo = "reloj-aplicados.json"
     private let disco: Disco?
     private var aplicados: AplicadosReloj
+    /// Los que se están aplicando ahora (un duplicado en el medio contesta `pendiente`, no `repetido`).
+    private var enCurso: Set<UUID> = []
 
     public init(disco: Disco?) {
         self.disco = disco
@@ -110,15 +148,25 @@ public final class ReceptorReloj {
     public func recibir(_ eventos: [EventoEnCola], motor: ModeloEntreno?) async -> [AcuseEvento] {
         var acuses: [AcuseEvento] = []
         for e in eventos.sorted(by: { $0.creado < $1.creado }) {
+            if enCurso.contains(e.id) {
+                acuses.append(AcuseEvento(id: e.id, resultado: .pendiente, motivo: "Se está guardando en el iPhone."))
+                continue
+            }
             if aplicados.contiene(e.id) {
                 acuses.append(AcuseEvento(id: e.id, resultado: .repetido))
                 continue
             }
-            guard let motor else { break }
-            guard let (resultado, motivo) = await motor.aplicarEventoReloj(e.evento) else { break }
+            guard let motor else {
+                acuses.append(AcuseEvento(id: e.id, resultado: .pendiente, motivo: "Abrí Pump Team en el iPhone."))
+                continue
+            }
             aplicados.anotar(e.id)
+            enCurso.insert(e.id)
+            let a = await motor.aplicarEventoReloj(e)
+            enCurso.remove(e.id)
+            if a.resultado == .pendiente { aplicados.quitar(e.id) }
             _ = disco?.guardar(aplicados, Self.archivo)
-            acuses.append(AcuseEvento(id: e.id, resultado: resultado, motivo: motivo))
+            acuses.append(a)
         }
         return acuses
     }

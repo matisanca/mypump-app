@@ -15,7 +15,12 @@ import Foundation
 /// El iPhone es el único que habla con el servidor: el reloj le manda eventos (iniciar, confirmar serie, terminar) y el
 /// iPhone los pasa a su cola (Outbox) por el mismo camino que un toque en la pantalla. Cada evento lleva un id: el
 /// iPhone recuerda los ya aplicados (`AplicadosReloj`), así un reenvío no duplica una serie, y le acusa recibo al reloj
-/// (`acuse`), que recién ahí lo saca de su cola (`ColaReloj`).
+/// (`acuse`). Nada se descarta en silencio: lo que el iPhone no puede aplicar AHORA vuelve como `pendiente` (sigue en la
+/// cola del reloj y se reintenta) y lo que no va a poder aplicar nunca, como `rechazado` con un motivo que el reloj le
+/// muestra al alumno. Cada evento lleva la cuenta (un hash, nunca el token) y la rutina en la que se hizo.
+///
+/// Si al iPhone le llega una versión más nueva que la suya, contesta `incompatible` con la suya: el reloj deja de
+/// reenviar y pide actualizar la app del iPhone (y al revés).
 public enum ProtocoloReloj {
     public static let version = 1
     public static let minimoCompatible = 1
@@ -63,6 +68,23 @@ public enum ProtocoloReloj {
         do { return try JSONDecoder().decode(SobreReloj.self, from: datos) } catch { throw .ilegible }
     }
 
+    /// Lo que se contesta a un sobre de una versión que no se entiende: `incompatible` con la versión propia, para que el
+    /// otro lado deje de reenviar y le diga al alumno qué actualizar. nil si el sobre se puede leer (o es otro fallo).
+    public static func respuestaIncompatible(_ d: [String: Any], ahora: Double) -> [String: Any]? {
+        do { _ = try leer(d); return nil } catch {
+            switch error {
+            case .versionNueva, .versionVieja: return try? diccionario(SobreReloj(.incompatible(version: version), enviado: ahora))
+            default: return nil
+            }
+        }
+    }
+
+    /// El texto para el alumno cuando el otro lado habla la versión `v`.
+    public static func textoIncompatible(_ v: Int, enElReloj: Bool) -> String {
+        let actualizarIPhone = enElReloj ? v < version : v > version
+        return actualizarIPhone ? "Actualizá Pump Team en el iPhone para usar el reloj." : "Actualizá Pump Team en el reloj."
+    }
+
     static func revisar(_ v: Int) throws(Fallo) {
         if v > version { throw .versionNueva(v) }
         if v < minimoCompatible { throw .versionVieja(v) }
@@ -99,8 +121,10 @@ public enum MensajeReloj: Equatable, Sendable {
     case acuse([AcuseEvento])
     /// iPhone → reloj: no hay rutina para mostrar (sin cuenta, sin rutina activa).
     case sinRutina(motivo: String)
+    /// Cualquiera → el otro: no puedo leer tu versión; la mía es `version`.
+    case incompatible(version: Int)
 
-    public enum Tipo: String, Codable, Sendable { case pedirRutina, rutina, eventos, acuse, sinRutina }
+    public enum Tipo: String, Codable, Sendable { case pedirRutina, rutina, eventos, acuse, sinRutina, incompatible }
 
     public var tipo: Tipo {
         switch self {
@@ -109,12 +133,13 @@ public enum MensajeReloj: Equatable, Sendable {
         case .eventos: .eventos
         case .acuse: .acuse
         case .sinRutina: .sinRutina
+        case .incompatible: .incompatible
         }
     }
 }
 
 extension MensajeReloj: Codable {
-    private enum Claves: String, CodingKey { case tipo, rutina, eventos, acuse, motivo }
+    private enum Claves: String, CodingKey { case tipo, rutina, eventos, acuse, motivo, version }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Claves.self)
@@ -124,6 +149,7 @@ extension MensajeReloj: Codable {
         case .eventos: self = .eventos(try c.decode([EventoEnCola].self, forKey: .eventos))
         case .acuse: self = .acuse(try c.decode([AcuseEvento].self, forKey: .acuse))
         case .sinRutina: self = .sinRutina(motivo: try c.decode(String.self, forKey: .motivo))
+        case .incompatible: self = .incompatible(version: try c.decode(Int.self, forKey: .version))
         }
     }
 
@@ -136,14 +162,19 @@ extension MensajeReloj: Codable {
         case .eventos(let e): try c.encode(e, forKey: .eventos)
         case .acuse(let a): try c.encode(a, forKey: .acuse)
         case .sinRutina(let m): try c.encode(m, forKey: .motivo)
+        case .incompatible(let v): try c.encode(v, forKey: .version)
         }
     }
 }
 
-/// El acuse de un evento: aplicado, o descartado con su motivo (otro día, una serie que ya no existe). En los dos
-/// casos el reloj lo saca de la cola: reintentar no lo arreglaría.
+/// El acuse de un evento.
+/// - `aplicado` / `repetido`: ya está en el iPhone; sale de la cola del reloj.
+/// - `pendiente`: el iPhone no lo puede aplicar ahora (otro día abierto, la demo, otra cuenta, sin red al cerrar): sigue
+///   en la cola del reloj y se reintenta; el motivo se muestra como «esperando».
+/// - `rechazado`: no se va a poder aplicar nunca (la rutina o la semana cambiaron, la serie ya no existe): sale de la cola
+///   y el reloj le muestra al alumno «Esta serie no se pudo guardar: <motivo>».
 public struct AcuseEvento: Codable, Equatable, Sendable {
-    public enum Resultado: String, Codable, Sendable { case aplicado, repetido, descartado }
+    public enum Resultado: String, Codable, Sendable { case aplicado, repetido, pendiente, rechazado }
     public var id: UUID
     public var resultado: Resultado
     public var motivo: String?

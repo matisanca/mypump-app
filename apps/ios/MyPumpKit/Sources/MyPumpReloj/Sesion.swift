@@ -24,6 +24,12 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     public private(set) var terminada = false
     /// Los récords de hoy, en orden («Press banca · Récord: +2,5 kg»).
     public private(set) var records: [String] = []
+    /// Lo que el iPhone rechazó, para mostrárselo al alumno («Esta serie no se pudo guardar: …»), del más viejo al más
+    /// nuevo (los últimos `topeRechazos`).
+    public private(set) var rechazos: [String] = []
+    /// Por qué el iPhone todavía no aplicó lo que hay en la cola (`pendiente`); nil si no se sabe o no hay nada.
+    public private(set) var esperando: String?
+    public static let topeRechazos = 5
     /// ms: la última vez que se tocó algo (para no perder lo hecho si llega una rutina vieja).
     public private(set) var actualizada: Double = 0
 
@@ -35,6 +41,7 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// todavía no acusó se sigue mandando); si es la misma, se le vuelven a poner encima las series que el teléfono
     /// todavía no tiene. Una rutina más vieja que la que ya hay se ignora.
     public mutating func recibir(_ nueva: RutinaReloj) {
+        incompatible = nil
         if let r = rutina, r.diaId == nueva.diaId, r.semana == nueva.semana, r.fecha == nueva.fecha, nueva.generada < r.generada { return }
         let mismoDia = rutina.map { $0.diaId == nueva.diaId && $0.semana == nueva.semana && $0.fecha == nueva.fecha } ?? false
         var r = nueva
@@ -46,7 +53,12 @@ public struct SesionReloj: Codable, Equatable, Sendable {
             inicio = r.inicioSesion
         } else {
             if inicio == nil { inicio = r.inicioSesion }
-            if r.diaFinalizado { terminada = true }
+            // Cerrado en el iPhone: se termina también acá (la app del reloj cierra su sesión de entreno).
+            if r.diaFinalizado && !terminada {
+                terminada = true
+                descanso = nil
+                descansoSono = false
+            }
         }
         // El descanso del teléfono, si es más nuevo que el del reloj (lo empezó allá).
         if let d = r.descanso, (descanso?.endsAt ?? 0) < d.endsAt { descanso = d; descansoSono = false }
@@ -57,7 +69,8 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// Las series de la cola sobre la rutina (el teléfono todavía no las tiene).
     private func aplicarPendientes(_ r: inout RutinaReloj) {
         for p in cola.pendientes {
-            guard p.evento.diaId == r.diaId, p.evento.semana == r.semana else { continue }
+            guard p.evento.diaId == r.diaId, p.evento.semana == r.semana, p.cuenta == nil || p.cuenta == r.cuenta,
+                  p.rutinaId == nil || p.rutinaId == r.rutinaId else { continue }
             if case .serie(_, _, let l, let i, let reps, let kg) = p.evento,
                let e = r.ejercicios.firstIndex(where: { $0.lugar == l }), i < r.ejercicios[e].series.count {
                 r.ejercicios[e].series[i].confirmada = true
@@ -189,7 +202,7 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         Self.actualizarEstado(&e)
         r.ejercicios[ei] = e
         rutina = r
-        cola.encolar(EventoEnCola(.serie(diaId: r.diaId, semana: r.semana, lugar: l, indice: si, reps: reps, kg: kgSerie), creado: ahora))
+        cola.encolar(EventoEnCola(.serie(diaId: r.diaId, semana: r.semana, lugar: l, indice: si, reps: reps, kg: kgSerie), creado: ahora, cuenta: r.cuenta, rutinaId: r.rutinaId))
         if let record { records.append("\(e.nombre) · \(record)") }
         actualizada = ahora
         let completo = todoHecho
@@ -216,14 +229,14 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         guard let r = rutina, !iniciada else { return }
         inicio = ahora
         terminada = false
-        cola.encolar(EventoEnCola(.iniciar(diaId: r.diaId, semana: r.semana), creado: ahora))
+        cola.encolar(EventoEnCola(.iniciar(diaId: r.diaId, semana: r.semana), creado: ahora, cuenta: r.cuenta, rutinaId: r.rutinaId))
         actualizada = ahora
     }
 
     /// «Terminar» en el reloj: cierra la sesión (en el teléfono, al llegar) y devuelve el resumen.
     public mutating func terminar(ahora: Double, salud: SaludEntreno = SaludEntreno()) -> ResumenReloj? {
         guard let r = rutina else { return nil }
-        if !terminada { cola.encolar(EventoEnCola(.terminar(diaId: r.diaId, semana: r.semana), creado: ahora)) }
+        if !terminada { cola.encolar(EventoEnCola(.terminar(diaId: r.diaId, semana: r.semana), creado: ahora, cuenta: r.cuenta, rutinaId: r.rutinaId)) }
         let resumen = self.resumen(ahora: ahora, salud: salud)
         terminada = true
         descanso = nil
@@ -267,9 +280,37 @@ public struct SesionReloj: Codable, Equatable, Sendable {
 
     // MARK: - La cola
 
-    public mutating func paraEnviar(ahora: Double, forzar: Bool = false) -> [EventoEnCola] { cola.paraEnviar(ahora: ahora, forzar: forzar) }
+    /// El iPhone habla otra versión del protocolo: no se le reenvía nada (los eventos quedan guardados en la cola) hasta
+    /// que una de las dos apps se actualice. El texto es para el alumno.
+    public private(set) var incompatible: String?
+    public mutating func marcarIncompatible(version v: Int) { incompatible = ProtocoloReloj.textoIncompatible(v, enElReloj: true) }
+
+    public mutating func paraEnviar(ahora: Double, forzar: Bool = false) -> [EventoEnCola] {
+        incompatible == nil ? cola.paraEnviar(ahora: ahora, forzar: forzar) : []
+    }
     public mutating func fallo(_ ids: [UUID]) { cola.fallo(ids) }
-    public mutating func acusar(_ a: [AcuseEvento]) { cola.acusar(a) }
+    /// Los acuses del iPhone: salen de la cola los aplicados y los rechazados (estos, con su motivo a la vista); los
+    /// pendientes se quedan con el motivo en `esperando`.
+    public mutating func acusar(_ a: [AcuseEvento], ahora: Double = 0) {
+        let salen = cola.acusar(a, ahora: ahora)
+        for e in salen {
+            guard let acuse = a.first(where: { $0.id == e.id }), acuse.resultado == .rechazado else { continue }
+            let motivo = acuse.motivo ?? "el iPhone no lo aceptó"
+            let texto: String
+            switch e.evento {
+            case .serie: texto = "Esta serie no se pudo guardar: \(motivo)"
+            case .iniciar: texto = "No se pudo empezar en el iPhone: \(motivo)"
+            case .terminar: texto = "No se pudo cerrar en el iPhone: \(motivo)"
+            }
+            rechazos.append(texto)
+        }
+        if rechazos.count > Self.topeRechazos { rechazos.removeFirst(rechazos.count - Self.topeRechazos) }
+        if let p = a.last(where: { $0.resultado == .pendiente }) { esperando = p.motivo ?? "Esperando al iPhone" }
+        if cola.vacia { esperando = nil }
+    }
+
+    /// El alumno ya leyó los rechazos.
+    public mutating func leerRechazos() { rechazos = [] }
 
     // MARK: - Resumen
 

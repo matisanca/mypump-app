@@ -7,6 +7,8 @@ import MyPumpReglas
 /// reglas que la pantalla del teléfono; el reloj vuelve a correr esas reglas del kit (`Preparacion`, `RecordSerie`,
 /// `Descanso`) cuando el alumno cambia el kg con la corona.
 public struct RutinaReloj: Codable, Equatable, Sendable {
+    /// La cuenta del iPhone (un hash del token, nunca el token): los eventos la llevan.
+    public var cuenta: String
     public var rutinaId: String
     public var diaId: String
     public var semana: Int
@@ -26,10 +28,10 @@ public struct RutinaReloj: Codable, Equatable, Sendable {
     public var descanso: Descanso.Guardado?
     public var demo: Bool
 
-    public init(rutinaId: String, diaId: String, semana: Int, nombreDia: String, fecha: String, generada: Double,
+    public init(cuenta: String = "", rutinaId: String, diaId: String, semana: Int, nombreDia: String, fecha: String, generada: Double,
                 ejercicios: [EjercicioReloj], inicioSesion: Double? = nil, diaFinalizado: Bool = false,
                 proximo: ProximoEntreno? = nil, descanso: Descanso.Guardado? = nil, demo: Bool = false) {
-        self.rutinaId = rutinaId; self.diaId = diaId; self.semana = semana; self.nombreDia = nombreDia; self.fecha = fecha
+        self.cuenta = cuenta; self.rutinaId = rutinaId; self.diaId = diaId; self.semana = semana; self.nombreDia = nombreDia; self.fecha = fecha
         self.generada = generada; self.ejercicios = ejercicios; self.inicioSesion = inicioSesion
         self.diaFinalizado = diaFinalizado; self.proximo = proximo; self.descanso = descanso; self.demo = demo
     }

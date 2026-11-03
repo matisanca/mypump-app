@@ -57,12 +57,17 @@ extension EventoReloj: Codable {
     }
 }
 
-/// Un evento en la cola del reloj: con su id (para no aplicarlo dos veces) y cuándo pasó (ms).
+/// Un evento en la cola del reloj: con su id (para no aplicarlo dos veces), cuándo pasó (ms: el iPhone lo usa para el
+/// cronómetro, la fecha de la serie y el descanso), la cuenta (hash, nunca el token) y la rutina en la que se hizo.
 public struct EventoEnCola: Codable, Equatable, Sendable, Identifiable {
     public var id: UUID
     public var creado: Double
     public var evento: EventoReloj
-    public init(_ evento: EventoReloj, id: UUID = UUID(), creado: Double) { self.id = id; self.creado = creado; self.evento = evento }
+    public var cuenta: String?
+    public var rutinaId: String?
+    public init(_ evento: EventoReloj, id: UUID = UUID(), creado: Double, cuenta: String? = nil, rutinaId: String? = nil) {
+        self.id = id; self.creado = creado; self.evento = evento; self.cuenta = cuenta; self.rutinaId = rutinaId
+    }
 }
 
 /// La cola propia del reloj: lo que se hizo sin el teléfono (o antes de que el teléfono acuse) queda acá, en disco, en
@@ -115,13 +120,15 @@ public struct ColaReloj: Codable, Equatable, Sendable {
     /// El envío falló (sin conexión): se vuelven a mandar en la próxima.
     public mutating func fallo(_ ids: [UUID]) { for id in ids { enviados[id] = nil } }
 
-    /// El iPhone acusó: salen de la cola (aplicados, repetidos o descartados). Devuelve los que salieron.
+    /// El iPhone acusó. Salen de la cola los aplicados, repetidos y rechazados (devuelve los que salieron); los
+    /// pendientes se quedan y se reintentan pasado el `reintento`.
     @discardableResult
-    public mutating func acusar(_ acuses: [AcuseEvento]) -> [EventoEnCola] {
-        let ids = Set(acuses.map(\.id))
-        let salen = pendientes.filter { ids.contains($0.id) }
-        pendientes.removeAll { ids.contains($0.id) }
-        for id in ids { enviados[id] = nil }
+    public mutating func acusar(_ acuses: [AcuseEvento], ahora: Double = 0) -> [EventoEnCola] {
+        let salenIds = Set(acuses.filter { $0.resultado != .pendiente }.map(\.id))
+        let salen = pendientes.filter { salenIds.contains($0.id) }
+        pendientes.removeAll { salenIds.contains($0.id) }
+        for id in salenIds { enviados[id] = nil }
+        for a in acuses where a.resultado == .pendiente && pendientes.contains(where: { $0.id == a.id }) { enviados[a.id] = ahora }
         return salen
     }
 
@@ -172,6 +179,12 @@ public struct AplicadosReloj: Codable, Equatable, Sendable {
     }
 
     public func contiene(_ id: UUID) -> Bool { conjunto.contains(id) }
+
+    /// Saca un id (un evento que se reservó y al final quedó pendiente).
+    public mutating func quitar(_ id: UUID) {
+        guard conjunto.remove(id) != nil else { return }
+        ids.removeAll { $0 == id }
+    }
 
     /// Anota un id. false si ya estaba (un repetido).
     @discardableResult

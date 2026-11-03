@@ -284,4 +284,66 @@ func sesionDemo() -> SesionReloj {
         #expect(c.detalle == "Próximo")
         #expect(EstadoComplicacion.de(SesionReloj(), ahora: 0).detalle == "Abrí Pump Team")
     }
+
+    // MARK: - Revisión del 3-nov: nada se pierde en silencio
+
+    @Test func losEventosLlevanLaCuentaYLaRutina() throws {
+        var s = sesionDemo()
+        s.confirmar(ahora: T0)
+        let e = try #require(s.cola.pendientes.last)
+        #expect(e.cuenta == "demo" && e.rutinaId == "demo")
+    }
+
+    @Test func pendienteQuedaEnLaColaConElMotivoYRechazadoSeMuestra() throws {
+        var s = sesionDemo()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 1)
+        s.confirmar(ahora: T0 + 2)
+        let p = s.cola.pendientes
+        try #require(p.count == 3)
+        s.acusar([AcuseEvento(id: p[0].id, resultado: .rechazado, motivo: "el iPhone ya pasó a la semana 2."),
+                  AcuseEvento(id: p[1].id, resultado: .rechazado, motivo: "tu rutina cambió desde que la hiciste."),
+                  AcuseEvento(id: p[2].id, resultado: .pendiente, motivo: "En el iPhone hay otro día abierto. Cerralo para pasar esto.")], ahora: T0 + 3)
+        #expect(s.rechazos == ["No se pudo empezar en el iPhone: el iPhone ya pasó a la semana 2.",
+                               "Esta serie no se pudo guardar: tu rutina cambió desde que la hiciste."])
+        #expect(s.esperando == "En el iPhone hay otro día abierto. Cerralo para pasar esto.")
+        #expect(s.cola.pendientes.map(\.id) == [p[2].id], "el pendiente se guarda para reintentar")
+        s.acusar([AcuseEvento(id: p[2].id, resultado: .aplicado)])
+        #expect(s.esperando == nil && s.cola.vacia)
+        s.leerRechazos()
+        #expect(s.rechazos.isEmpty)
+    }
+
+    @Test func losRechazosSonLosUltimosCinco() {
+        var s = sesionDemo()
+        for i in 0..<8 {
+            s.confirmar(ahora: T0 + Double(i))
+            let id = s.cola.pendientes.last!.id
+            s.acusar([AcuseEvento(id: id, resultado: .rechazado, motivo: "m\(i).")])
+        }
+        #expect(s.rechazos.count == SesionReloj.topeRechazos)
+        #expect(s.rechazos.last == "Esta serie no se pudo guardar: m7.")
+    }
+
+    @Test func unPendienteDeOtraRutinaNoSePintaEnLaNueva() {
+        var s = sesionDemo()
+        s.confirmar(ahora: T0)
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0 + 5_000)
+        r.rutinaId = "otra"
+        s.recibir(r)
+        #expect(s.ejercicio("press-banca-d1-0")?.series[0].confirmada == false)
+        #expect(s.cola.pendientes.count == 2, "pero sigue en la cola (iniciar y la serie)")
+    }
+
+    @Test func siElIPhoneCierraElDiaElRelojLoDaPorTerminado() {
+        var s = sesionDemo()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 1)
+        #expect(s.descanso != nil && !s.terminada)
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0 + 5_000)
+        r.diaFinalizado = true
+        s.recibir(r)
+        #expect(s.terminada)
+        #expect(s.descanso == nil)
+    }
 }

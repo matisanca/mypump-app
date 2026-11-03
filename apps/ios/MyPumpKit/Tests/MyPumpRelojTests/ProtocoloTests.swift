@@ -24,7 +24,8 @@ func ida(_ m: MensajeReloj) throws -> SobreReloj {
         ]
         let mensajes: [MensajeReloj] = [
             .pedirRutina, .rutina(rutina), .eventos(eventos),
-            .acuse([AcuseEvento(id: eventos[0].id, resultado: .aplicado), AcuseEvento(id: eventos[1].id, resultado: .descartado, motivo: "otro día")]),
+            .acuse([AcuseEvento(id: eventos[0].id, resultado: .aplicado), AcuseEvento(id: eventos[1].id, resultado: .rechazado, motivo: "otro día"), AcuseEvento(id: eventos[0].id, resultado: .pendiente)]),
+            .incompatible(version: 3),
             .sinRutina(motivo: "Sin rutina activa"),
         ]
         for m in mensajes {

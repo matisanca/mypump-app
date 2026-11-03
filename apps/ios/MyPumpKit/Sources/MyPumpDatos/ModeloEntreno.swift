@@ -114,6 +114,8 @@ public final class ModeloEntreno {
     @ObservationIgnored var habiaDiaGuardado = false
     /// Lo último que se escribió del descanso (el tick corre cada 250 ms: se escribe solo si cambió).
     @ObservationIgnored var descansoEnDisco: Descanso.Guardado?
+    /// ms: cuándo pasó la acción que se está aplicando, si no es ahora (un evento del reloj).
+    @ObservationIgnored var instanteEvento: Double?
 
     public init(cliente: ClienteRPC, token: String?, outbox: Outbox?, disco: Disco?, rutina: RutinaActiva, info: ClienteInfo? = nil,
                 catalogo: CatalogoEjercicios = CatalogoEjercicios([]), demo: Bool? = nil, zona: TimeZone = .current,
@@ -370,14 +372,19 @@ public final class ModeloEntreno {
     /// El check o el "✓ Tocá para registrar lo de la última vez" (SER-01/03/05). `preguntar` muestra la pregunta y
     /// devuelve lo que eligió el cliente (reabrir el día cerrado; "¿Está bien cargado?").
     @discardableResult
-    public func confirmarSerie(_ lugar: String, _ idx: Int, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
+    public func confirmarSerie(_ lugar: String, _ idx: Int, fecha: Double? = nil, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado?
+        // `fecha` (ms): cuándo se hizo de verdad (una serie del reloj que llega después). Fecha la serie, separa el
+        // historial de hoy para el récord y ancla el descanso; sin ella, ahora.
+        let cuando = fecha.map { Date(timeIntervalSince1970: $0 / 1000) } ?? reloj()
+        instanteEvento = fecha
+        defer { instanteEvento = nil }
         let ef = dia.ejercicio(lugar).map { efectivo($0).ejercicio }
         dia.fijarRIRDelPlan(lugar, idx, efectivo: dia.ejercicio(lugar).map(hecho))
         while true {
-            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(reloj(), zona: zona))
-            anotarFecha(lugar, idx + 1, FechaJS.ymd(reloj(), zona: zona), soloConfirmada: true)
+            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(cuando, zona: zona))
+            anotarFecha(lugar, idx + 1, FechaJS.ymd(cuando, zona: zona), soloConfirmada: true)
             if let r = paso.record { avisoRecord = AvisoRecord(id: UUID(), lugar: lugar, texto: r.texto) }
             if let c = await ejecutar(paso.efectos) { completo = c }
             guard let p = paso.pregunta, let motivo = paso.motivo else { return completo }
@@ -564,8 +571,13 @@ public final class ModeloEntreno {
     // MARK: - Sesión (SES-01/02/03)
 
     /// "▶ Empezar entrenamiento": arranca el cronómetro y crea la sesión.
-    public func empezar() async {
+    public func empezar(desde: Double? = nil) async {
         iniciadaConBoton = true
+        // Empezado en el reloj: el cronómetro arranca cuando se tocó allá, no cuando llegó.
+        if let desde, inicioSesion == nil, desde <= ahoraMs {
+            inicioSesion = desde
+            guardarInicio()
+        }
         await asegurarSesion()
     }
 
@@ -765,7 +777,7 @@ public final class ModeloEntreno {
 
     /// `writeFinish`: PRIMERO vacía la cola (las series tienen que estar en la base antes de cerrar), después
     /// `finalizar_sesion` con la duración (null si pasa de 6 h). Un `false` es que no se cerró.
-    public func cerrarDia(notas: String) async -> ResultadoCierre {
+    public func cerrarDia(notas: String, fin: Double? = nil) async -> ResultadoCierre {
         guard !demo, let token else {
             // La demo no cierra nada en el servidor, pero el descanso termina igual.
             if demo {
@@ -777,7 +789,8 @@ public final class ModeloEntreno {
         await asegurarSesion()
         guard let sid = dia.sesionId else { return .sinSesion }
         await outbox?.drenar()
-        let minutos = TiempoEntreno.minutosSesion(inicio: inicioSesion, ahora: ahoraMs)
+        // `fin`: cuándo se terminó de verdad (el «terminar» del reloj que llega después).
+        let minutos = TiempoEntreno.minutosSesion(inicio: inicioSesion, ahora: min(fin ?? ahoraMs, ahoraMs))
         let notas = JS.trim(notas)
         let r = await cliente.llamar("mypump_finalizar_sesion", [
             "p_token": .texto(token), "p_sesion_id": .texto(sid), "p_notas": notas.isEmpty ? .null : .texto(notas),
@@ -1212,8 +1225,12 @@ public final class ModeloEntreno {
             case .encolar(let kind, let payload, let clave):
                 await outbox?.encolar(kind, payload, dedupeKey: clave)
             case .iniciarDescanso(let s):
-                descanso.iniciar(segundos: s, ahora: ahoraMs)
-                guardarDescanso()
+                // Una serie que llega tarde (del reloj) ancla el descanso a cuando se hizo; si ya terminó, no arranca.
+                let desde = min(instanteEvento ?? ahoraMs, ahoraMs)
+                if desde + (s + 2) * 1000 > ahoraMs {
+                    descanso.iniciar(segundos: s, ahora: desde)
+                    guardarDescanso()
+                }
             case .detenerDescanso:
                 descanso.detener()
                 guardarDescanso()

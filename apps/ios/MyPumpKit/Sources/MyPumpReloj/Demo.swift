@@ -6,7 +6,7 @@ extension RutinaReloj {
     public static func demo(fecha: String, generada: Double) -> RutinaReloj {
         func series(_ n: Int, reps: Int?, kg: Double?) -> [SerieReloj] { (1...n).map { SerieReloj(numero: $0, repsSugeridas: reps, kgSugerido: kg) } }
         return RutinaReloj(
-            rutinaId: "demo", diaId: "d1", semana: 1, nombreDia: "EMPUJE", fecha: fecha, generada: generada,
+            cuenta: "demo", rutinaId: "demo", diaId: "d1", semana: 1, nombreDia: "EMPUJE", fecha: fecha, generada: generada,
             ejercicios: [
                 EjercicioReloj(lugar: "press-banca-d1-0", nombre: "Press banca", bloque: "Pecho", tipo: "compuesto", musculo: "chest",
                                equipo: "barbell", sinKg: false, descansoSegundos: 150, repsPlan: "6-8",
