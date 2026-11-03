@@ -205,7 +205,9 @@ final class CalibracionReloj {
                                       inicioConteo: v.inicioConteo, finDescanso: v.finDescanso, recortado: v.recortado,
                                       fuente: fuente, muneca: muneca, corona: corona)
             self.ultimaComparacion = "Conté \(conteo.reps) · cargaste \(e.reps)"
-            let nombre = "\(e.sesion)-\(String(format: "%03d", orden)).\(ArchivoCalibracion.extension_)"
+            // Con la hora en el nombre: si se reinstala la app del reloj y el número vuelve a 1, el iPhone no lo toma por
+            // un reenvío.
+            let nombre = "\(e.sesion)-\(String(format: "%03d", orden))-\(Int(enc.confirmada)).\(ArchivoCalibracion.extension_)"
             guard let d = try? ArchivoCalibracion.datos(.init(encabezado: enc, cuadros: v.cuadros)),
                   let url = try? almacen.guardar(d, nombre: nombre) else { return }
             self.transferir?(url, ["mpcal": e.sesion, "nombre": nombre, "cuenta": e.cuenta])
