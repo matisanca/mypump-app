@@ -257,23 +257,40 @@ import MyPumpRepsHerramientas
 
     @Test func unaPropuestaPorSerieYSiTocoAntesNoSePisa() {
         var p = PropuestaSerie()
-        #expect(p.corregida == nil && !p.aceptadaSinTocar)
+        #expect(p.corregida(confirmadas: 10) == nil && !p.enLaCorona(10))
         // Girar en el descanso (el contador no vio movimiento) no bloquea la propuesta.
         p.girar(contadas: nil); p.girar(contadas: 0)
         #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == 10)
-        #expect(p.aceptadaSinTocar && p.corregida == false)
+        #expect(p.enLaCorona(10) && p.corregida(confirmadas: 10) == false)
         #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == nil, "una sola vez por serie")
         p.girar(contadas: 10)
-        #expect(p.corregida == true && !p.aceptadaSinTocar && p.reps == 10)
+        #expect(p.corregida(confirmadas: 11) == true && !p.enLaCorona(11) && p.reps == 10)
         p.reiniciar()
         #expect(p == PropuestaSerie())
         // Ya giró con la serie en marcha: no hay propuesta (no se le pisa lo que puso) y no queda etiqueta de corrección.
         p.girar(contadas: 6)
         #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == nil)
-        #expect(p.reps == nil && p.corregida == nil)
+        #expect(p.reps == nil && p.corregida(confirmadas: 12) == nil)
         // Fuera de calibración, con la lista vacía, nunca.
         var fuera = PropuestaSerie()
         #expect(fuera.proponer(.curl, conteo: conteo, calibrando: false) == nil)
+    }
+
+    /// `corregida` sale de lo que se confirma, no de si se giró: girar y volver al número propuesto deja la etiqueta
+    /// igual a la del reloj (aceptada, del lado seguro); y si la corona cambió sin que el alumno girara (la rutina del
+    /// iPhone la recargó), lo confirmado ya no es la propuesta y el cartel «¿N reps?» no se muestra.
+    @Test func corregidaSaleDeLoQueSeConfirma() {
+        var p = PropuestaSerie()
+        #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == 10)
+        p.girar(contadas: 10); p.girar(contadas: 10)   // +1 y −1
+        #expect(p.corregida(confirmadas: 10) == false && p.enLaCorona(10))
+        var q = PropuestaSerie()
+        #expect(q.proponer(.curl, conteo: conteo, calibrando: true) == 10)
+        // Sin girar, la corona volvió a lo sugerido (12).
+        #expect(q.corregida(confirmadas: 12) == true && !q.enLaCorona(12))
+        #expect(EvaluacionReps.Origen.de(EncabezadoSerie(sesion: "s", orden: 1, confirmada: 0, ejercicio: "curl", nombre: "Curl",
+                                                         familia: .curl, serie: 1, reps: 12, propuesta: 10,
+                                                         corregida: q.corregida(confirmadas: 12), fuente: "t")) == .corregida)
     }
 
     @Test func elModoEsPorCuentaYNuncaEnLaDemo() throws {

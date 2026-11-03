@@ -111,6 +111,17 @@ final class EstadoReloj {
         AccessibilityNotification.Announcement(ConfirmacionReps.textoAccesible(n)).post()
     }
 
+    /// La serie que está en la corona (ejercicio y número).
+    private var serieEnCurso: String? { sesion.actual.map { "\($0.lugar)#\($0.proximaSerie ?? -1)" } }
+
+    /// La serie en la corona cambió sin confirmar ni elegir en el reloj (llegó la rutina con la serie hecha en el
+    /// iPhone, otro día u otro ejercicio): la propuesta y la ventana eran de la anterior y no pasan a esta.
+    private func serieCambiada(desde antes: String?) {
+        guard serieEnCurso != antes else { return }
+        propuestaSerie.reiniciar()
+        calibracion.abrirVentana()
+    }
+
     /// Los archivos de calibración que quedaron sin pasar al iPhone.
     private func reenviarCalibracion() {
         // Cada archivo con la cuenta con la que se grabó (va en el nombre); uno sin cuenta no se manda.
@@ -127,7 +138,9 @@ final class EstadoReloj {
         case .rutina(let r):
             sinRutina = nil
             var llego = false
+            let antes = serieEnCurso
             cambiar { llego = $0.recibir(r) }
+            serieCambiada(desde: antes)
             if llego { abrirDia += 1 }
         case .acuse(let a):
             cambiar { $0.acusar(a, ahora: Self.ahoraMs) }
@@ -160,7 +173,9 @@ final class EstadoReloj {
         case .pedir where demo:
             let r = RutinaReloj.demo(fecha: FechaJS.ymd(Date(), zona: .current), generada: ahora, dia: id)
             var llego = false
+            let antes = serieEnCurso
             cambiar(enviar: false) { llego = $0.recibir(r) }
+            serieCambiada(desde: antes)
             if llego { abrirDia += 1 }
         case .pedir:
             conexion.enviar(.pedirDia(diaId: id)) { [weak self] ok in
@@ -209,7 +224,7 @@ final class EstadoReloj {
             guard let r = sesion.rutina, let e = sesion.actual, let i = e.proximaSerie else { return nil }
             return .init(sesion: CalibracionReloj.sesion(r), ejercicio: e, serie: i + 1, reps: sesion.reps,
                          kg: e.sinKg ? nil : (sesion.kg ?? 0), cuenta: r.cuenta,
-                         propuesta: propuestaSerie.reps, corregida: propuestaSerie.corregida)
+                         propuesta: propuestaSerie.reps, corregida: propuestaSerie.corregida(confirmadas: sesion.reps))
         }()
         let estabaGrabando = calibracion.grabando
         var c: SesionReloj.Confirmacion?

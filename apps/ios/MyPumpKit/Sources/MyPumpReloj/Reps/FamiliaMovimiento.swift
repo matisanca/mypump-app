@@ -153,12 +153,13 @@ public enum ConfirmacionReps {
 /// - Una sola propuesta por serie.
 /// - Si el alumno ya giró las reps con la serie en marcha (el contador vio movimiento), no se le pisa lo que puso: no
 ///   hay propuesta. Lo que gire en el descanso, antes de arrancar, no cuenta.
-/// - Si gira después de la propuesta, la serie queda `corregida`; si confirma sin tocar, `corregida == false` y la
-///   etiqueta puede venir del reloj (la evaluación la separa).
+/// - `corregida` compara lo que se confirma con lo propuesto: si confirma lo mismo (sin tocar, o girando y volviendo),
+///   `corregida == false` y la etiqueta puede venir del reloj (la evaluación la separa, del lado seguro). Si las reps
+///   cambiaron (las giró el alumno, o la rutina que llegó del iPhone recargó la corona), `corregida == true`.
 public struct PropuestaSerie: Equatable, Sendable {
     /// Lo que propuso el reloj en esta serie (nil = no propuso).
     public private(set) var reps: Int?
-    /// El alumno giró las reps con la serie en marcha o después de la propuesta.
+    /// El alumno giró las reps con la serie en marcha o después de la propuesta (bloquea una propuesta posterior).
     public private(set) var tocada = false
 
     public init() {}
@@ -177,10 +178,10 @@ public struct PropuestaSerie: Equatable, Sendable {
         return n
     }
 
-    /// Para el encabezado: nil sin propuesta; si no, si el alumno la tocó antes de confirmar.
-    public var corregida: Bool? { reps == nil ? nil : tocada }
-    /// La propuesta sigue en la corona tal cual (para la pantalla).
-    public var aceptadaSinTocar: Bool { reps != nil && !tocada }
+    /// Para el encabezado, con las reps que se confirman: nil sin propuesta; si no, si difieren de lo propuesto.
+    public func corregida(confirmadas: Int) -> Bool? { reps.map { $0 != confirmadas } }
+    /// La corona sigue en lo que propuso el reloj (para la pantalla).
+    public func enLaCorona(_ enCorona: Int) -> Bool { reps == enCorona }
 
     public mutating func reiniciar() { self = PropuestaSerie() }
 }

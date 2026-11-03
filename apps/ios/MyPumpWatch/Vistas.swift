@@ -326,8 +326,8 @@ struct EjercicioVista: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         // El reloj puso en las reps lo que contó (en calibración; fuera, el flujo final apagado). Se
-                        // ve mientras siga tal cual; si el alumno gira, el número ya es suyo.
-                        if let n = estado.propuesta, estado.propuestaSerie.aceptadaSinTocar {
+                        // ve mientras la corona siga en ese número; si el alumno gira, el número ya es suyo.
+                        if let n = estado.propuesta, estado.propuestaSerie.enLaCorona(s.reps) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(ConfirmacionReps.texto(n)).font(.headline).foregroundStyle(Marca.verde)
                                 Text("Lo contó el reloj. Girá para corregir.").font(.caption2).foregroundStyle(.secondary)
@@ -338,7 +338,7 @@ struct EjercicioVista: View {
                         if estado.calibrando { LineaCalibracion() }
                         HStack(spacing: 6) {
                             CampoCorona(titulo: "Reps", valor: "\(s.reps)", activo: foco == .reps,
-                                        propuesto: estado.propuestaSerie.aceptadaSinTocar) { foco = .reps }
+                                        propuesto: estado.propuestaSerie.enLaCorona(s.reps)) { foco = .reps }
                             if !e.sinKg {
                                 CampoCorona(titulo: "Kg", valor: TextoReloj.kg(s.kg), activo: foco == .kg) { foco = .kg }
                             }

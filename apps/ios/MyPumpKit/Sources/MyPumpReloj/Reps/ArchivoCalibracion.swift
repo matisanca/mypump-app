@@ -142,7 +142,7 @@ public struct EncabezadoSerie: Codable, Equatable, Sendable {
     public var contadas: Int?
     public var conteo: ContadorReps.Resultado?
     /// Lo que propuso el reloj con la corona en esta serie (nil = no propuso; los archivos de antes del 3-nov no lo traen)
-    /// y si el alumno tocó las reps después (nil sin propuesta). Con `propuesta` y `corregida == false`, la etiqueta
+    /// y si lo confirmado difiere de lo propuesto (nil sin propuesta). Con `propuesta` y `corregida == false`, la etiqueta
     /// puede ser la del reloj: `evaluar-reps` la cuenta aparte.
     public var propuesta: Int?
     public var corregida: Bool?

@@ -20,7 +20,7 @@ public enum EvaluacionReps {
     public enum Origen: String, Sendable {
         /// El reloj no propuso (o el archivo es de antes): la etiqueta es del alumno.
         case sinPropuesta = "sin_propuesta"
-        /// El reloj propuso y el alumno tocó las reps antes de confirmar.
+        /// El reloj propuso y se confirmó otro número.
         case corregida
         /// El reloj propuso y se confirmó sin tocar: la etiqueta puede ser la del reloj.
         case aceptada
