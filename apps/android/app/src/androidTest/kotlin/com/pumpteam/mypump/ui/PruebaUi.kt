@@ -84,6 +84,7 @@ abstract class PruebaUi {
         for (e in escenarios.asReversed()) runCatching { e.close() }
         escenarios.clear()
         Entorno.transporte = null
+        Entorno.codigoDePrueba = null
         FotosDePrueba.porRed()
         Raices.desinstalar()
         Telefono.modoNoche(false)

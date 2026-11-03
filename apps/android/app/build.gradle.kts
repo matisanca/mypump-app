@@ -315,6 +315,8 @@ dependencies {
     // Salud: Health Connect (solo lectura; ver el manifest). La traducción de sus registros se prueba en la JVM
     // (`src/test`, JUnit 5 como los de :core) con dobles del cliente.
     implementation(libs.health.connect.client)
+    // Dieta: el código de barras con el escáner de Google (sin permiso de cámara; ver libs.versions.toml).
+    implementation(libs.play.services.code.scanner)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)

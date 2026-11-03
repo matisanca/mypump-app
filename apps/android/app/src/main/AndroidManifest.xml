@@ -84,6 +84,12 @@
         android:supportsRtl="true"
         android:theme="@style/Tema.MyPump">
 
+        <!-- Dieta, código de barras (2.1, S3): que Play Services baje el escáner de Google al instalar la app y no la
+             primera vez que se toca «Escanear código». El escáner abre su propia cámara: MyPump no pide CAMERA. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
+
         <!-- `.MainActivity` como en la Capacitor: el launcher guarda el ícono del cliente por nombre de componente,
              y si la actividad cambia de nombre el ícono desaparece de su pantalla al actualizar. -->
         <activity

@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,7 +54,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -95,6 +98,7 @@ import com.pumpteam.mypump.reglas.AjusteComida
 import com.pumpteam.mypump.reglas.AjustePorciones
 import com.pumpteam.mypump.reglas.AlimentoAgregado
 import com.pumpteam.mypump.reglas.AlimentoBase
+import com.pumpteam.mypump.reglas.CodigoBarras
 import com.pumpteam.mypump.reglas.PorcionCasera
 import kotlinx.coroutines.launch
 
@@ -154,6 +158,9 @@ internal object CuentasCantidad {
  * «Agregar alimento» a una comida del plan (2.0.3, D1; gemela de AgregarAlimentoView.swift): los recientes con «+» de un
  * toque, los alimentos propios, el buscador sobre la base de alimentos (la misma de los reemplazos) y crear uno nuevo.
  * Tocar uno abre la cantidad dentro de la misma hoja (con la flecha de volver).
+ *
+ * 2.1 (S3): «Escanear código de barras», como el «Barcode scan» de MyFitnessPal: el escáner de Google lee el código, se busca
+ * en Open Food Facts y abre la misma cantidad. Si no está (o le faltan datos), se carga a mano o con la foto de la etiqueta.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -172,6 +179,12 @@ fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<Strin
     // El elegido no sobrevive a rotar (vuelve a la lista): la búsqueda sí.
     var elegido by remember { mutableStateOf<PedidoCantidad?>(null) }
     var aviso by remember { mutableStateOf<String?>(null) }
+    // El código de barras: buscando, lo que no se encontró, sin red y lo que precarga «Alimento propio».
+    val contexto = LocalContext.current
+    var buscando by remember { mutableStateOf<String?>(null) }
+    var sinProducto by remember { mutableStateOf<SinProductoCodigo?>(null) }
+    var avisoCodigo by remember { mutableStateOf<String?>(null) }
+    var precarga by remember { mutableStateOf<PrecargaCodigo?>(null) }
     val base = remember(baseMotor, propios) { baseMotor?.conPropios(propios) }
     val nombreComida = modelo.comidasParaAjustar(opciones).firstOrNull { it.id == comidaId }?.nombre.orEmpty()
 
@@ -187,13 +200,64 @@ fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<Strin
 
     fun creado(a: AlimentoPropio) {
         creando = false
-        val c0 = AgregadosComida.Candidato(
+        var c0 = AgregadosComida.Candidato(
             AlimentoBase(
                 nombre = a.nombre, kcal = a.kcal ?: 0.0, prot = a.prot ?: 0.0, carb = a.carb ?: 0.0, fat = a.fat ?: 0.0,
                 categoria = a.categoria, unidad = a.unidad, gramosPorUnidad = a.gramosPorUnidad, esPropio = true,
             ),
         )
+        // Creado desde un código: el agregado lleva el código y el próximo escaneo encuentra este alimento.
+        precarga?.codigo?.let { codigo ->
+            c0 = c0.copy(origen = AlimentoAgregado.Origen.PROPIO, codigo = codigo)
+            modelo.recordarCodigoPropio(codigo, c0)
+            sinProducto = null
+        }
+        precarga = null
         abrir(PedidoCantidad(comidaId, QueCantidad.Nuevo(c0)))
+    }
+
+    fun buscar(codigo: String) {
+        sinProducto = null
+        avisoCodigo = null
+        buscando = codigo
+        alcanceHoja.launch {
+            val r = modelo.buscarCodigo(codigo)
+            buscando = null
+            when (r) {
+                is ModeloApp.BusquedaCodigo.Leido -> when (val l = r.lectura) {
+                    is CodigoBarras.Lectura.Encontrado -> {
+                        tactil.performHapticFeedback(HapticFeedbackType.Confirm)
+                        abrir(PedidoCantidad(comidaId, QueCantidad.Nuevo(l.producto.candidato)))
+                    }
+                    is CodigoBarras.Lectura.Incompleto -> sinProducto = SinProductoCodigo(codigo, l.parcial)
+                    CodigoBarras.Lectura.NoEncontrado -> sinProducto = SinProductoCodigo(codigo, null)
+                }
+                ModeloApp.BusquedaCodigo.SinRed -> avisoCodigo = "Sin conexión: no pudimos buscar el código. Probá de nuevo o buscalo por nombre."
+            }
+        }
+    }
+
+    fun escanear() {
+        foco.clearFocus()
+        avisoCodigo = null
+        EscanerCodigo.escanear(contexto) { r ->
+            when (r) {
+                is EscanerCodigo.Resultado.Leido -> buscar(r.codigo)
+                EscanerCodigo.Resultado.Cancelado -> Unit
+                EscanerCodigo.Resultado.Invalido -> avisoCodigo = "Ese código no es el de un producto (EAN o UPC). Probá de nuevo o buscalo por nombre."
+                is EscanerCodigo.Resultado.NoDisponible -> avisoCodigo = if (r.bajando) {
+                    "El escáner se está instalando: probá de nuevo en un minuto. Mientras, buscá el alimento por nombre."
+                } else {
+                    "Este teléfono no puede escanear códigos. Buscá el alimento por nombre, o creá el tuyo con la foto de la etiqueta."
+                }
+            }
+        }
+    }
+
+    fun crearDesdeCodigo(sp: SinProductoCodigo, etiqueta: Boolean) {
+        foco.clearFocus()
+        precarga = PrecargaCodigo(sp.codigo, sp.parcial, etiqueta)
+        creando = true
     }
 
     /** El «+» de un reciente: la misma cantidad de la última vez, a esta comida, sin pasar por la cantidad. */
@@ -248,7 +312,10 @@ fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<Strin
                         alTerminar = ::cerrar,
                     )
                 }
-                1 -> CrearAlimento(modelo, categoria = "", alVolver = { creando = false }, alCrear = ::creado)
+                1 -> CrearAlimento(
+                    modelo, categoria = "", alVolver = { creando = false }, alCrear = ::creado, precarga = precarga,
+                    volverDescripcion = "Volver a Agregar",
+                )
                 else -> Column {
                     EncabezadoHoja(
                         "Agregar ${TextosAjuste.aLa(nombreComida)}",
@@ -263,6 +330,22 @@ fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<Strin
                         verticalArrangement = Arrangement.spacedBy(Espacio.xs),
                     ) {
                         aviso?.let { t -> item(key = "aviso") { AvisoAgregar(t) } }
+                        item(key = "codigo") {
+                            val sp = sinProducto
+                            when {
+                                buscando != null -> BuscandoCodigo(buscando!!)
+                                sp != null -> SinProductoTarjeta(
+                                    sp, conIA = modelo.token != null,
+                                    alEtiqueta = { crearDesdeCodigo(sp, etiqueta = true) },
+                                    alAMano = { crearDesdeCodigo(sp, etiqueta = false) },
+                                    alOtro = ::escanear,
+                                )
+                                else -> Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                                    TarjetaEscanear(::escanear)
+                                    avisoCodigo?.let { AvisoAgregar(it) }
+                                }
+                            }
+                        }
                         if (consulta.isEmpty()) {
                             if (recientes.isNotEmpty()) {
                                 item(key = "t-recientes") { TituloAgregar("Recientes") }
@@ -309,6 +392,7 @@ fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<Strin
                                         .superficieTarjeta(radio = Radio.control + 4.dp)
                                         .clickable(role = Role.Button) {
                                             foco.clearFocus()
+                                            precarga = null
                                             creando = true
                                         }
                                         .heightIn(min = 52.dp)
@@ -529,7 +613,11 @@ private fun ContenidoCantidad(
             verticalArrangement = Arrangement.spacedBy(Espacio.m),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            item(key = "cabecera") { CabeceraCantidad(mostrado, propio = candidato?.origen == AlimentoAgregado.Origen.PROPIO, Modifier.widthIn(max = 640.dp)) }
+            item(key = "cabecera") { CabeceraCantidad(
+                    mostrado, propio = candidato?.origen == AlimentoAgregado.Origen.PROPIO,
+                    codigoBarras = candidato?.takeIf { it.origen == AlimentoAgregado.Origen.BARRAS }?.codigo,
+                    modifier = Modifier.widthIn(max = 640.dp),
+                ) }
             item(key = "cantidad") {
                 Column(Modifier.widthIn(max = 640.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("CANTIDAD", style = Letras.ceja, color = c.textoSecundario, modifier = Modifier.padding(horizontal = Espacio.m))
@@ -681,7 +769,7 @@ private fun ContenidoCantidad(
 
 /** El nombre, las kcal dentro del anillo de macros (el % de las kcal de cada una) y los gramos de cada macro. */
 @Composable
-private fun CabeceraCantidad(a: Alimento, propio: Boolean, modifier: Modifier) {
+private fun CabeceraCantidad(a: Alimento, propio: Boolean, codigoBarras: String?, modifier: Modifier) {
     val c = MyPump.colores
     val p = a.prot ?: 0.0
     val cb = a.carb ?: 0.0
@@ -702,6 +790,17 @@ private fun CabeceraCantidad(a: Alimento, propio: Boolean, modifier: Modifier) {
                     color = c.marcaTexto,
                     modifier = Modifier.clip(CircleShape).background(c.marcaSuave).padding(horizontal = 6.dp, vertical = 2.dp),
                 )
+            }
+        }
+        // Escaneado (2.1, S3): de dónde salen los valores (la licencia de Open Food Facts pide nombrarla).
+        codigoBarras?.let { codigo ->
+            Row(
+                Modifier.semantics(mergeDescendants = true) {}.testTag("cantidad-origen-barras"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(IconosDieta.CodigoBarras, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(14.dp))
+                Text("Valores de Open Food Facts · $codigo", style = Letras.caption, color = c.textoSecundario)
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -782,6 +881,118 @@ private fun SelectorComida(comidas: List<AjustePorciones.ComidaDelDia>, elegida:
                     modifier = Modifier.testTag("cantidad-comida-${x.id}"),
                 )
             }
+        }
+    }
+}
+
+/** Un código que Open Food Facts no tiene, o tiene incompleto. */
+data class SinProductoCodigo(val codigo: String, val parcial: CodigoBarras.Parcial?)
+
+/** El acceso al escáner, arriba de todo y bien visible (como en MyFitnessPal). */
+@Composable
+private fun TarjetaEscanear(alTocar: () -> Unit) {
+    val c = MyPump.colores
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .superficieTarjeta(radio = Radio.control + 4.dp)
+            .clickable(role = Role.Button, onClickLabel = "escanear el código de barras", onClick = alTocar)
+            .padding(horizontal = Espacio.s, vertical = Espacio.s)
+            .semantics(mergeDescendants = true) {}
+            .testTag("agregar-escanear"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+    ) {
+        Box(
+            Modifier.size(46.dp).clip(RoundedCornerShape(Radio.miniatura)).background(c.marca),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(IconosDieta.CodigoBarras, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(24.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Escanear código de barras", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text("Apuntá al código del envase y se carga solo", style = Letras.caption, color = c.textoSecundario)
+        }
+        Icon(Iconos.Chevron, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(16.dp))
+    }
+}
+
+@Composable
+private fun BuscandoCodigo(codigo: String) {
+    val c = MyPump.colores
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .superficieTarjeta(radio = Radio.control + 4.dp)
+            .padding(horizontal = Espacio.m, vertical = Espacio.m)
+            .semantics(mergeDescendants = true) {}
+            .testTag("codigo-buscando"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+    ) {
+        CircularProgressIndicator(Modifier.size(22.dp), color = c.marcaTexto, strokeWidth = 2.5.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Buscando el producto…", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text("Código $codigo", style = Letras.caption, color = c.textoSecundario)
+        }
+    }
+}
+
+/** No está, o le faltan datos: por qué y las dos salidas (la foto de la etiqueta con la IA, o a mano). */
+@Composable
+private fun SinProductoTarjeta(sp: SinProductoCodigo, conIA: Boolean, alEtiqueta: () -> Unit, alAMano: () -> Unit, alOtro: () -> Unit) {
+    val c = MyPump.colores
+    Column(Modifier.fillMaxWidth().superficieTarjeta(radio = Radio.control + 4.dp)) {
+        Column(
+            Modifier.fillMaxWidth().padding(Espacio.m).semantics(mergeDescendants = true) {}.testTag("codigo-sin-producto"),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                Icon(IconosDieta.CodigoBarras, contentDescription = null, tint = c.texto, modifier = Modifier.size(20.dp))
+                Text(
+                    if (sp.parcial == null) "No encontramos este producto" else "Le faltan datos a este producto",
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Text(
+                sp.parcial?.texto ?: "Todavía no está en Open Food Facts, la base de productos que usamos.",
+                style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario,
+            )
+            Text("Código ${sp.codigo}", style = Letras.caption, color = c.textoSecundario)
+        }
+        if (conIA) {
+            Separador()
+            FilaAccionCodigo(IconosDieta.Escanear, "Escanear la etiqueta", "Sacale una foto a la tabla nutricional y se completa solo", "codigo-etiqueta", alEtiqueta)
+        }
+        Separador()
+        FilaAccionCodigo(IconosDieta.AMano, "Cargarlo a mano", null, "codigo-a-mano", alAMano)
+        Separador()
+        FilaAccionCodigo(IconosDieta.CodigoBarras, "Escanear otro código", null, "codigo-otro", alOtro, secundaria = true)
+    }
+}
+
+@Composable
+private fun FilaAccionCodigo(icono: ImageVector, titulo: String, detalle: String?, etiqueta: String, alTocar: () -> Unit, secundaria: Boolean = false) {
+    val c = MyPump.colores
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = alTocar)
+            .heightIn(min = 52.dp)
+            .padding(horizontal = Espacio.m, vertical = 10.dp)
+            .semantics(mergeDescendants = true) {}
+            .testTag(etiqueta),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+    ) {
+        Icon(icono, contentDescription = null, tint = if (secundaria) c.textoSecundario else c.marcaTexto, modifier = Modifier.size(22.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                titulo, style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (secundaria) FontWeight.Normal else FontWeight.SemiBold,
+                color = if (secundaria) c.textoSecundario else c.marcaTexto,
+            )
+            detalle?.let { Text(it, style = Letras.caption, color = c.textoSecundario) }
         }
     }
 }

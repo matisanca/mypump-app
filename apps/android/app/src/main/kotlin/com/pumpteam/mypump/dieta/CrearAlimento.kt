@@ -56,6 +56,7 @@ import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.modelos.LecturaEtiqueta
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
+import com.pumpteam.mypump.reglas.CodigoBarras
 import com.pumpteam.mypump.reglas.Formulario
 import com.pumpteam.mypump.reglas.jsRound
 import kotlinx.coroutines.launch
@@ -68,18 +69,33 @@ import kotlinx.coroutines.launch
  * "Escanear etiqueta" (con cuenta: en la demo no hay IA) manda la foto a la visión (`tipo: etiqueta`) y prellena todo,
  * editable. "Crear y usar" va directo al servidor (no por la cola, como la web) y [alCrear] lo aplica como reemplazo.
  */
+/**
+ * Lo que llega de un código de barras que Open Food Facts no tenía o tenía incompleto (2.1, S3): el código (se muestra y queda
+ * asociado al alimento en el teléfono), lo que se pudo leer y si abre directo la foto de la etiqueta.
+ */
+data class PrecargaCodigo(val codigo: String, val parcial: CodigoBarras.Parcial?, val escanearEtiqueta: Boolean)
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun CrearAlimento(modelo: ModeloApp, categoria: String, alVolver: () -> Unit, alCrear: (AlimentoPropio) -> Unit) {
+fun CrearAlimento(
+    modelo: ModeloApp,
+    categoria: String,
+    alVolver: () -> Unit,
+    alCrear: (AlimentoPropio) -> Unit,
+    precarga: PrecargaCodigo? = null,
+    volverDescripcion: String = "Volver a Reemplazar",
+) {
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
     val foco = LocalFocusManager.current
     val tactil = LocalHapticFeedback.current
-    var nombre by rememberSaveable { mutableStateOf("") }
-    var kcal by rememberSaveable { mutableStateOf("") }
-    var prot by rememberSaveable { mutableStateOf("") }
-    var carb by rememberSaveable { mutableStateOf("") }
-    var fat by rememberSaveable { mutableStateOf("") }
+    // Con un código incompleto, arranca con lo que se pudo leer (por 100 g, todo editable).
+    val parcial = precarga?.parcial
+    var nombre by rememberSaveable { mutableStateOf(parcial?.nombre ?: "") }
+    var kcal by rememberSaveable { mutableStateOf(parcial?.kcal?.let { jsEntero(it).toString() } ?: "") }
+    var prot by rememberSaveable { mutableStateOf(parcial?.p?.let { Formato.decimal(it) } ?: "") }
+    var carb by rememberSaveable { mutableStateOf(parcial?.c?.let { Formato.decimal(it) } ?: "") }
+    var fat by rememberSaveable { mutableStateOf(parcial?.g?.let { Formato.decimal(it) } ?: "") }
     var unidad by rememberSaveable { mutableStateOf("g") }
     var gramos by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
@@ -91,8 +107,8 @@ fun CrearAlimento(modelo: ModeloApp, categoria: String, alVolver: () -> Unit, al
     val focoNombre = remember { FocusRequester() }
     val conCuenta = modelo.token != null
 
-    // Como iOS: el nombre con el teclado listo al abrir.
-    LaunchedEffect(Unit) { runCatching { focoNombre.requestFocus() } }
+    // Como iOS: el nombre con el teclado listo al abrir (no con la foto de la etiqueta abriéndose).
+    LaunchedEffect(Unit) { if (precarga?.escanearEtiqueta != true) runCatching { focoNombre.requestFocus() } }
 
     /** "Escanear etiqueta": la foto a la visión (`tipo: etiqueta`). */
     fun escanear(jpeg: ByteArray) {
@@ -177,7 +193,7 @@ fun CrearAlimento(modelo: ModeloApp, categoria: String, alVolver: () -> Unit, al
             EncabezadoHoja(
                 "Alimento propio",
                 izquierda = {
-                    BotonVolver(alVolver, descripcion = "Volver a Reemplazar", etiqueta = "volver-a-reemplazos", habilitado = !guardando)
+                    BotonVolver(alVolver, descripcion = volverDescripcion, etiqueta = "volver-a-reemplazos", habilitado = !guardando)
                 },
             )
             Column(
@@ -197,6 +213,7 @@ fun CrearAlimento(modelo: ModeloApp, categoria: String, alVolver: () -> Unit, al
                             calidad = 0.85,
                             alElegir = ::escanear,
                             habilitado = !escaneo.escaneando && !guardando,
+                            abrirAlAparecer = precarga?.escanearEtiqueta == true,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Row(
@@ -219,6 +236,24 @@ fun CrearAlimento(modelo: ModeloApp, categoria: String, alVolver: () -> Unit, al
                                 color = c.textoSecundario,
                                 modifier = Modifier.padding(horizontal = Espacio.m, vertical = 10.dp).testTag("estado-escaneo"),
                             )
+                        }
+                    }
+                }
+                precarga?.let { p ->
+                    SeccionFormulario(titulo = null, pie = "Queda guardado en este teléfono: la próxima vez que lo escanees, aparece tu alimento.") {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .padding(horizontal = Espacio.m)
+                                .semantics(mergeDescendants = true) {}
+                                .testTag("crear-codigo"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+                        ) {
+                            Icon(IconosDieta.CodigoBarras, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(20.dp))
+                            Text("Código de barras", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            Text(p.codigo, style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"), color = c.textoSecundario)
                         }
                     }
                 }
