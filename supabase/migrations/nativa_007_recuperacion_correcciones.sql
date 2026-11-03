@@ -43,6 +43,9 @@
 --       sueño (los pesos se renormalizan entre lo que exista). Solo queda
 --       "insuficiente" si no hay ninguno de los dos. Columna nueva `confianza`
 --       (alta/media/baja) y `motivo_falta` dice qué mejoraría el dato.
+--       Confianza baja: score achicado hacia 50 o, con el INTERRUPTOR del
+--       principio de la función prendido (por defecto), sin score.
+--       Pisos al desvío de 60 días (FC 2 lpm, ln VFC 0,05) contra extremos.
 --
 -- La respuesta de mypump_get_recuperacion conserva las 12 columnas con el mismo
 -- nombre, tipo y orden, y agrega `motivo_falta` al final. Cambia la firma de
@@ -73,6 +76,13 @@ STABLE SECURITY DEFINER
 SET search_path TO 'public'
 AS $function$
 WITH
+-- ── INTERRUPTOR ────────────────────────────────────────────────────────────
+-- baja_sin_score = TRUE: los días de confianza BAJA (una sola señal y sin VFC)
+-- salen SIN score, como 'insuficiente' y con motivo_falta, hasta que las apps
+-- lean `confianza`. Para apagarlo: cambiar TRUE por FALSE en la línea de abajo
+-- y volver a correr esta migración entera (es idempotente: DROP IF EXISTS +
+-- CREATE). Apagado, esos días muestran el score achicado hacia 50.
+opciones AS (SELECT TRUE AS baja_sin_score),
 -- ── 0. Registros que NO pueden representar la noche ─────────────────────────
 -- [P5] Un sueno_min < 180 es una siesta o una noche cortada. Se descarta ese
 -- registro (y, de la misma fecha y fuente, el punto medio y la eficiencia, que
@@ -208,11 +218,14 @@ z AS (
     CASE
       WHEN c.ln_hrv IS NULL OR c.hrv_mu7 IS NULL OR NOT (c.hrv_sd60 > 0) THEN NULL
       WHEN ABS(c.ln_hrv - c.hrv_mu7) >= COALESCE(0.005 * c.cv_ref, 0)
-        THEN (c.ln_hrv - c.hrv_mu7) / c.hrv_sd60
+        -- piso del desvío: 0,05 en ln (~5 %). Con una banda casi plana, un
+        -- cambio mínimo daba un z enorme y un score en los extremos.
+        THEN (c.ln_hrv - c.hrv_mu7) / GREATEST(c.hrv_sd60, 0.05)
       ELSE 0
     END AS z_hrv,
     CASE WHEN c.rhr_sd60 > 0 AND c.rhr IS NOT NULL AND c.rhr_mu7 IS NOT NULL
-         THEN (c.rhr - c.rhr_mu7) / c.rhr_sd60 END AS z_rhr,
+         -- piso del desvío: 2 lpm (misma razón que la VFC)
+         THEN (c.rhr - c.rhr_mu7) / GREATEST(c.rhr_sd60, 2) END AS z_rhr,
     (c.cv7 IS NOT NULL AND c.cv_ref IS NOT NULL AND c.cv7 > 1.3 * c.cv_ref) AS cv_alto
   FROM cvr c
 ),
@@ -327,8 +340,14 @@ fin AS (
       WHEN 'fatiga_acumulada'       THEN LEAST(sa.s_a_base, 35)
       WHEN 'parasimpatico_saturado' THEN LEAST(sa.s_a_base, 45)
       ELSE sa.s_a_base END AS s_a,
-    CASE WHEN sa.s_dur IS NULL THEN NULL ELSE
-      (sa.s_dur * 0.5 + COALESCE(sa.s_deuda, sa.s_dur) * 0.3 + COALESCE(sa.s_reg, sa.s_dur) * 0.2)
+    -- [P5] con una noche corta (< 180 min o duración en 0) la deuda y la
+    -- regularidad de las noches previas no pueden levantar el sueño: el tope
+    -- es la duración (0).
+    CASE WHEN sa.s_dur IS NULL THEN NULL
+         WHEN sa.sueno < 180 OR sa.s_dur = 0 THEN
+           LEAST(sa.s_dur, sa.s_dur * 0.5 + COALESCE(sa.s_deuda, sa.s_dur) * 0.3 + COALESCE(sa.s_reg, sa.s_dur) * 0.2)
+         ELSE
+           (sa.s_dur * 0.5 + COALESCE(sa.s_deuda, sa.s_dur) * 0.3 + COALESCE(sa.s_reg, sa.s_dur) * 0.2)
     END AS s_b,
     CASE WHEN sa.hay_e THEN GREATEST(0, LEAST(100, sa.s_e_raw)) ELSE NULL END AS s_e
   FROM sa
@@ -353,14 +372,14 @@ tot AS (
      + COALESCE(w.s_d,0)*w.w_d + COALESCE(w.s_e,0)*w.w_e) AS num
   FROM w
 ),
-tot2 AS (
+tot1 AS (
   SELECT t.*,
     -- [B] hay score con lo que haya, siempre que exista uno de los dos pilares
     -- objetivos (FC en reposo/VFC o sueño). Los pesos ya se renormalizan al
     -- dividir por w_tot, así que no hace falta un mínimo de peso.
     (t.w_a > 0 OR t.w_b > 0) AS hay_base,
     CASE WHEN t.dias_datos >= 14 AND (t.w_a > 0 OR t.w_b > 0)
-         THEN t.num / NULLIF(t.w_tot, 0) END AS score_raw,
+         THEN t.num / NULLIF(t.w_tot, 0) END AS score_bruto,
     -- [B] confianza: alta = VFC nocturna válida + sueño con fases;
     -- baja = un solo pilar y sin VFC; media = el resto.
     CASE WHEN t.dias_datos < 14 OR NOT (t.w_a > 0 OR t.w_b > 0) THEN NULL
@@ -368,6 +387,17 @@ tot2 AS (
          WHEN (t.w_a = 0 OR t.w_b = 0) AND t.hrv_metrica IS NULL THEN 'baja'
          ELSE 'media' END AS confianza
   FROM tot t
+),
+tot2 AS (
+  SELECT t.*,
+    (t.confianza = 'baja' AND o.baja_sin_score) AS baja_oculta,
+    -- con confianza baja el score se achica hacia 50: una sola señal no
+    -- alcanza para afirmar un extremo
+    CASE WHEN t.score_bruto IS NULL THEN NULL
+         WHEN t.confianza = 'baja' AND o.baja_sin_score THEN NULL
+         WHEN t.confianza = 'baja' THEN 50 + (t.score_bruto - 50) * 0.5
+         ELSE t.score_bruto END AS score_raw
+  FROM tot1 t CROSS JOIN opciones o
 ),
 -- [P8] media de 7 días del score (incluye el día): es lo comparable con un
 -- check que la persona contesta una vez por semana.
@@ -393,10 +423,11 @@ SELECT
   ROUND(t.score_raw)::INTEGER AS score,
   CASE WHEN NOT t.hay_base    THEN 'insuficiente'
        WHEN t.dias_datos < 14 THEN 'calibrando'
+       WHEN t.baja_oculta     THEN 'insuficiente'
        ELSE 'ok' END AS estado,
   CASE WHEN t.score_raw IS NOT NULL THEN
-    CASE WHEN t.num / NULLIF(t.w_tot,0) >= 67 THEN 'alta'
-         WHEN t.num / NULLIF(t.w_tot,0) >= 34 THEN 'media'
+    CASE WHEN t.score_raw >= 67 THEN 'alta'
+         WHEN t.score_raw >= 34 THEN 'media'
          ELSE 'baja' END END AS banda,
   t.dias_datos::INTEGER,
   (t.dias_datos < 30) AS banda_provisoria,
@@ -445,10 +476,13 @@ SELECT
   CASE
     WHEN NOT t.hay_base THEN
       'Faltan datos del reloj para calcular la recuperación de este día. Alcanza con '
-      || 'cualquiera de estos, usar el reloj para dormir o que registre la frecuencia cardíaca en reposo.'
+      || 'usar el reloj para dormir o con que registre la frecuencia cardíaca en reposo.'
     WHEN t.dias_datos < 14 THEN
       'Calibrando, hay ' || t.dias_datos || ' de 14 días con datos del reloj. Faltan '
       || (14 - t.dias_datos) || CASE WHEN 14 - t.dias_datos = 1 THEN ' día.' ELSE ' días.' END
+    WHEN t.baja_oculta THEN
+      'Con un solo dato del reloj el score todavía no es confiable. Para tenerlo, '
+      || COALESCE(t.mejoras[1], 'usá el reloj para dormir') || '.'
     WHEN t.confianza IN ('media', 'baja') AND COALESCE(array_length(t.mejoras, 1), 0) > 0 THEN
       'Confianza ' || t.confianza || '. Para mejorarla, ' || t.mejoras[1] || '.'
   END AS motivo_falta,

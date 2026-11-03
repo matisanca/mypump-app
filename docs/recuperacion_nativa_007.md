@@ -1,7 +1,7 @@
 # nativa_007: correcciones del motor de recuperación (prueba antes de aplicar)
 
 Estado: **sin aplicar**. Incluye la opción B (score con la información que
-haya, más `confianza`) y las correcciones de la revisión de d232c45.
+haya, más `confianza`) y las correcciones de las revisiones de d232c45 y 13c8505.
 
 Prueba (3-nov-2026), en producción dentro de una transacción con ROLLBACK:
 - 007 aplicada → comparación → `nativa_007_revert.sql` aplicado en la misma
@@ -17,48 +17,40 @@ Prueba (3-nov-2026), en producción dentro de una transacción con ROLLBACK:
 25 clientes activos con FC en reposo, HRV o sueño en los últimos 90 días;
 últimos 14 días = 350 días-cliente.
 
-## Antes / después (opción B)
+## Antes / después (tercera versión, 3-nov)
 
-| | hoy | con 007 |
+Cambios de esta versión: tope del sueño en 0 con noche corta, pisos al desvío
+(FC 2 lpm, ln VFC 0,05), confianza baja achicada hacia 50 y el INTERRUPTOR
+`baja_sin_score` al principio de calc (prendido por defecto: confianza baja =
+sin score). Los datos de hoy cambiaron un poco respecto de la corrida anterior
+(nueva sincronización), por eso «hoy» difiere levemente.
+
+| | hoy | 007 interruptor PRENDIDO | 007 interruptor APAGADO |
+|---|---|---|---|
+| días con score | 133 | 72 | 143 |
+| `calibrando` | 3 | 16 | 16 |
+| `insuficiente` | 214 | 262 | 191 |
+| confianza alta / media / baja | – | 36 / 36 / 71 (baja sin score) | 36 / 36 / 71 |
+| días que ya tenían score y siguen | – | 72 | 132 |
+| dif. media / mediana de la dif. absoluta / máx | – | −1,0 / 1 / 26 | −0,5 / 3 / 26 |
+| dif. absoluta ≥ 10 / ≥ 15 / ≥ 20 | – | 7 / 2 / 2 | 32 / 14 / 8 |
+| bandas iguales | – | 65 | 105 |
+| bandas que cambian | – | 7 (4 media→baja, 3 media→alta) | 27 (13 alta→media, 6 baja→media, 4 media→alta, 4 media→baja) |
+| pierden el score | – | 61 (todos de confianza baja) | 1 |
+| días con HRV usada | 126 | 46 | 46 |
+| discordancia: días / cambios día a día | 14 / 14 | 15 / 2 | 15 / 2 |
+
+Con el interruptor apagado, ningún día de confianza baja queda ≤ 20 ni ≥ 80
+(por construcción, el achique deja la confianza baja entre 25 y 75).
+
+Caso sintético (cliente inexistente, dentro de la transacción; 30 días de FC
+en reposo y hoy FC alta, componente autonómico = 10):
+
+| | apagado | prendido |
 |---|---|---|
-| días con score | 131 | 141 |
-| `calibrando` | 3 | 16 |
-| `insuficiente` (ni FC en reposo ni sueño) | 216 | 193 |
-| días con HRV usada | 124 | 44 |
-| días con componente de carga | 146 | 138 |
-| días con discordancia | 14 | 15 |
-| cambios de discordancia de un día al otro | 14 | 2 |
-
-Confianza de los 141 días con score: alta 34, media 36, baja 71. Los 11
-días que hoy no tienen score y pasan a tenerlo son todos de confianza baja.
-
-Días que ya tenían score (n = 130):
-- diferencia media +2,0; |dif| media 5,6; mediana 3; máxima 38.
-- |dif| ≥ 10: 26; **|dif| ≥ 15: 13**; |dif| ≥ 20: 10.
-- histograma (tramos de 5): −35:1, −15:4, −10:13, −5:21, 0:63, +5:9,
-  +10:7, +15:3, +20:3, +25:2, +30:3, +35:1.
-- bandas: 69 media→media, 32 alta→alta, 4 baja→baja; 14 media→alta,
-  4 baja→media, 3 alta→media, 4 media→baja; 1 media→sin score.
-
-Noche real de menos de 3 h sin otra fuente (caso de la revisión, 24-oct):
-ahora cuenta como sueño corto (componente sueño 0); el score queda en 65
-(hoy 55; la versión anterior de 007 daba 88). La diferencia restante viene de
-la HRV descartada.
-
-## Ejemplos (id = md5 del cliente, 6 caracteres; score de los 14 días)
-
-```
-20887d hoy  -  -  -  -  -  -  -  -  -  -  -  -  -  -
-       007  71 61 63 59 24 69 45 -  -  -  -  -  -  -    (solo FC + otros: confianza baja)
-c811ec hoy  27 -  47 46 36 41 41 30 50 26 40 55 74 -
-       007  40 -  77 72 74 71 54 57 53 43 70 63 90 -
-9eabfa hoy  -  -  -  -  -  -  -  -  -  -  -  -  49 -
-       007  -  -  -  -  -  -  -  -  -  -  71 66 46 -
-25bc56 hoy  57 47 53 -  45 52 56 69 69 64 57 48 69 68
-       007  72 50 50 5  35 74 53 68 78 69 48 48 61 36
-5fa3cd hoy  29 51 62 79 49 77 32 65 33 64 50 80 86 -
-       007  29 51 85 79 63 77 43 60 24 58 64 70 83 -
-```
+| solo FC | 30 (baja, achicado) | sin score (baja) |
+| FC + noche de 1 h | 5 (media, sueño 0) | 5 |
+| FC + 1 h con 3 noches previas de 8 h | 5 (sueño 0) | 5 |
 
 ## Antes de aplicar
 
