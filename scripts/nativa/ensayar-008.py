@@ -127,6 +127,9 @@ def main():
                        WHERE table_name = 'mypump_cliente_prefs' AND column_name = 'revision_dia'""")
         chequear("el revert saca la columna", cur.fetchone()[0] == 0)
         chequear("la ronda vuelve a dar lo mismo", ronda(cur) == antes_r)
+        cur.execute("SELECT mypump_get_revision_dia(access_token) FROM mypump_clientes WHERE cliente_id = %s", (CUENTA,))
+        chequear("tras el revert, get_revision_dia sigue y da 7", cur.fetchone()[0] == 7)
+        chequear("tras el revert, anon sigue ejecutando get_revision_dia", puede(cur, "anon", "mypump_get_revision_dia(text)"))
     finally:
         con.rollback()
         con.close()

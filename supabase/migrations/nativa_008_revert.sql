@@ -4,6 +4,7 @@
 -- Los check-in ya guardados con una semana corrida quedan como están (semana_lunes sigue siendo un lunes).
 -- ============================================================
 BEGIN;
+SET LOCAL lock_timeout = '5s';
 
 CREATE OR REPLACE FUNCTION public.mypump_guardar_checkin(p_token text, p_fecha date, p_energia smallint, p_descanso smallint, p_hambre smallint, p_adherencia smallint, p_nota text DEFAULT NULL::text)
  RETURNS SETOF mypump_checkin_semanal
@@ -103,7 +104,13 @@ REVOKE ALL ON FUNCTION public.mypump_chat_faltantes_semana() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.mypump_chat_faltantes_semana() TO authenticated, service_role;
 
 DROP FUNCTION IF EXISTS public.mypump_set_revision_dia(TEXT, SMALLINT);
-DROP FUNCTION IF EXISTS public.mypump_get_revision_dia(TEXT);
+-- La pública NO se borra: una 2.0.3 que ya guardó otro día tomaría el 404 como falla y se quedaría con ese día.
+-- Queda devolviendo 7 (la semana ISO), que es lo que vuelve a usar la base.
+CREATE OR REPLACE FUNCTION public.mypump_get_revision_dia(p_token TEXT)
+RETURNS SMALLINT
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$ SELECT 7::SMALLINT; $$;
+REVOKE ALL ON FUNCTION public.mypump_get_revision_dia(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.mypump_get_revision_dia(TEXT) TO anon, authenticated, service_role;
 DROP FUNCTION IF EXISTS public.mypump_semana_revision(TEXT, DATE);
 DROP FUNCTION IF EXISTS public.mypump_revision_dia(TEXT);
 ALTER TABLE mypump_cliente_prefs DROP COLUMN IF EXISTS revision_dia;

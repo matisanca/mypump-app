@@ -24,6 +24,7 @@
 -- ============================================================
 
 BEGIN;
+SET LOCAL lock_timeout = '5s';   -- tablas chicas: si algo las tiene tomadas, falla en vez de quedar esperando
 
 ALTER TABLE mypump_cliente_prefs
   ADD COLUMN IF NOT EXISTS revision_dia SMALLINT NOT NULL DEFAULT 7
