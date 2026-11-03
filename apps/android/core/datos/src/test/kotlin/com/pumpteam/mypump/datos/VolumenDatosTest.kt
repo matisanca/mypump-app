@@ -2,6 +2,7 @@ package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.RegistroHistorico
 import com.pumpteam.mypump.reglas.ClaveEjercicio
+import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.VolumenMusculo
 import java.time.Instant
 import java.time.ZoneId
@@ -31,9 +32,9 @@ class VolumenDatosTest {
             "remo" to VolumenDatos.Info("middle back", "compuesto"),
         )
         val r = VolumenDatos.registros(historial, ejercicios, zonaAR)
-        // Claves en orden alfabético; las dos filas iguales del jalón son dos series (van sin número).
+        // Claves en orden alfabético; van con su número y su clave (para no sumar de nuevo lo en vivo) y cada fila cuenta.
         assertEquals(listOf("jalon", "jalon", "remo", "viejo"), r.map { it.lugar })
-        assertTrue(r.all { it.serie == null })
+        assertTrue(r.all { it.serie == 1 && it.clave == it.lugar })
         assertEquals(listOf("2026-10-12", "2026-10-12", "2026-10-13", "2026-10-13"), r.map { it.fecha })
         assertEquals(listOf("lats", "lats", "middle back", null), r.map { it.musculo })
         assertEquals("compuesto", r.first().tipo)
@@ -47,24 +48,95 @@ class VolumenDatosTest {
     fun lasSeriesConfirmadasHoyConElMusculoDelCatalogo() = enUnHilo { alcance ->
         val b = Banco(alcance)
         val m = b.modelo()
-        assertTrue(m.registrosVolumenHoy.isEmpty())
+        assertTrue(m.registrosVolumenEnVivo.isEmpty())
         m.escribir("jal-d1-0", 0, "reps", "10")
         m.escribir("jal-d1-0", 0, "kg", "60")
         m.confirmarSerie("jal-d1-0", 0) { true }
         m.escribir("jal-d1-0", 1, "reps", "9")
         m.escribir("jal-d1-0", 1, "kg", "60")
         m.confirmarSerie("jal-d1-0", 1) { true }
-        val r = m.registrosVolumenHoy
+        val r = m.registrosVolumenEnVivo
         val jalon = m.dia.value.lista.first { it.id == "jal-d1-0" }
         assertEquals(2, r.size, "$r")
         assertEquals(listOf(1, 2), r.map { it.serie })
-        assertTrue(r.all { it.lugar == "jal-d1-0" && it.fecha == "2026-10-14" && it.tipo == "compuesto" })
+        assertTrue(r.all { it.lugar == "jal-d1-0" && it.fecha == "2026-10-14" && it.tipo == "compuesto" && it.clave == ClaveEjercicio.de("Jalón al pecho") })
         assertEquals("lats", m.musculo(jalon))
         assertTrue(r.all { it.musculo == "lats" })
         // Con la regla del kit: 2 de dorsales hoy y en la semana.
         val resumen = VolumenMusculo.calcular(emptyList(), r, "2026-10-14")
         assertEquals(2, resumen.totalHoy)
         assertEquals("Dorsales", resumen.filasDeHoy.single().nombre)
+    }
+
+    /** Revisión del 3-nov: la serie tocada queda con la fecha del toque, aunque el día del plan se mire mañana. */
+    @Test
+    fun laSerieTocadaQuedaConLaFechaDelToque() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modelo()
+        for (i in 0..1) {
+            m.escribir("jal-d1-0", i, "reps", "10")
+            m.escribir("jal-d1-0", i, "kg", "60")
+            m.confirmarSerie("jal-d1-0", i) { true }
+        }
+        b.reloj.ms += 86_400_000
+        val r = m.registrosVolumenEnVivo
+        assertTrue(r.size == 2 && r.all { it.fecha == "2026-10-14" }, "$r")
+        val v = VolumenMusculo.calcular(emptyList(), r, "2026-10-15")
+        assertEquals(2, v.total)
+        assertEquals(0, v.totalHoy)
+        // Corregirla (el lápiz) no le cambia la fecha: el servidor conserva el `registrado_en`.
+        m.editarSerie("jal-d1-0", 0)
+        m.confirmarSerie("jal-d1-0", 0) { true }
+        assertEquals("2026-10-14", m.registrosVolumenEnVivo.first().fecha)
+    }
+
+    /** La sesión del lunes mirada el miércoles: cada serie con su `registrado_en`, y no se cuenta dos veces. */
+    @Test
+    fun lasSeriesDelServidorTraenSuRegistradoEnYNoSeCuentanDosVeces() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        b.servidor.cuando("get_sesion_dia", sesionJson("ses-lunes"))
+        b.servidor.cuando(
+            "get_registros_sesion",
+            """[{"ejercicio_id":"jal-d1-0","serie_numero":1,"peso_kg":60,"reps_realizadas":10,"rir_real":1,"ejercicio_nombre":"Jalón al pecho","notas":null,"registrado_en":"2026-10-12T22:00:00+00:00"},
+               {"ejercicio_id":"jal-d1-0","serie_numero":2,"peso_kg":60,"reps_realizadas":9,"rir_real":1,"ejercicio_nombre":"Jalón al pecho","notas":null,"registrado_en":"2026-10-12T22:03:00+00:00"},
+               {"ejercicio_id":"rem-d1-1","serie_numero":1,"peso_kg":50,"reps_realizadas":8,"rir_real":1,"ejercicio_nombre":"Remo con barra","notas":null}]""",
+        )
+        val m = b.modelo()
+        m.restaurarSesion()
+        val r = m.registrosVolumenEnVivo
+        // La que no trae fecha no va en vivo (ya está en el historial).
+        assertEquals(listOf("jal-d1-0", "jal-d1-0"), r.map { it.lugar })
+        assertTrue(r.all { it.fecha == "2026-10-12" }, "$r")
+        val clave = ClaveEjercicio.de("Jalón al pecho")
+        val historial = listOf(1, 2).map { VolumenMusculo.Registro("lats", "compuesto", "2026-10-12", clave, it, clave) }
+        val v = VolumenMusculo.calcular(historial, r, "2026-10-14")
+        assertEquals(2, v.total, "las del lunes contaban dos veces")
+        assertEquals(0, v.totalHoy, "y como de hoy")
+    }
+
+    /** Otro arranque sin red: la serie vuelve de la cola con la fecha en que se encoló. */
+    @Test
+    fun loQueQuedoEnLaColaVaConLaFechaDeLaCola() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modelo()
+        m.escribir("jal-d1-0", 0, "reps", "10")
+        m.escribir("jal-d1-0", 0, "kg", "60")
+        m.confirmarSerie("jal-d1-0", 0) { true }
+        val op = b.cola.operaciones().first { it.kind == "carga" }
+        b.servidor.sinRed("get_sesion_dia")
+        val otro = b.modelo()
+        otro.restaurarSesion()
+        val esperada = FechaLocal.hoy(Instant.ofEpochMilli(op.ts.toLong()), zonaAR)
+        assertEquals(listOf(esperada), otro.registrosVolumenEnVivo.map { it.fecha })
+    }
+
+    @Test
+    fun unLugarDeTrabajoLeGanaAlCalentamientoConElMismoNombre() {
+        assertTrue(VolumenDatos.esDeTrabajoMejor("calentamiento", "compuesto"))
+        assertTrue(VolumenDatos.esDeTrabajoMejor("cardio", null))
+        assertTrue(!VolumenDatos.esDeTrabajoMejor("compuesto", "calentamiento"))
+        assertTrue(!VolumenDatos.esDeTrabajoMejor("compuesto", "aislamiento"))
+        assertTrue(!VolumenDatos.esDeTrabajoMejor("calentamiento", "cardio"))
     }
 
     @Test

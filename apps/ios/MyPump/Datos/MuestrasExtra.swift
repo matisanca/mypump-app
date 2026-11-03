@@ -6,7 +6,7 @@ import MyPumpDatos
 /// Argumentos de lanzamiento para capturas de diseño, sin tocar la pantalla (solo en DEBUG):
 ///
 ///     simctl launch … -bocetos YES                         (las pestañas con las muestras, sin cuenta ni bienvenida)
-///     simctl launch … -pestana revision -ir peso          (abre en Revisión, desplazado hasta Peso)
+///     simctl launch … -pestana revision -ir check         (abre en Revisión, desplazado hasta el check; o -ir fotos)
 ///     simctl launch … -pestana entreno -abrir ejercicio    (entra al primer ejercicio de trabajo)
 ///     simctl launch … -pestana revision -abrir misdatos    (Mis datos)
 ///     simctl launch … -pestana salud -segmento fuerza -abrir detalle  (detalle del primer ejercicio)

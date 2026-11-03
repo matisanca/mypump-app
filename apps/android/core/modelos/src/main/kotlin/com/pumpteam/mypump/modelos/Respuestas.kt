@@ -47,6 +47,8 @@ data class RegistroSesion(
     val rir: Int?,
     val ejercicioNombre: String?,
     val notas: String?,
+    /** Cuándo se registró (el servidor lo conserva al corregir la serie): la fecha real para el volumen por músculo. */
+    val registradoEn: String? = null,
 ) {
     companion object {
         fun desde(e: JsonElement): RegistroSesion {
@@ -54,7 +56,7 @@ data class RegistroSesion(
             return RegistroSesion(
                 ejercicioId = o.texto("ejercicio_id") ?: "", serie = o.entero("serie_numero") ?: 1, pesoKg = o.decimal("peso_kg"),
                 reps = o.entero("reps_realizadas"), rir = o.entero("rir_real"), ejercicioNombre = o.texto("ejercicio_nombre"),
-                notas = o.texto("notas"),
+                notas = o.texto("notas"), registradoEn = o.texto("registrado_en"),
             )
         }
     }

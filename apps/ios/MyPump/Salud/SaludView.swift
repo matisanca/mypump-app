@@ -96,13 +96,19 @@ struct SaludView: View {
 /// barra fina (la semana pasada, tenue, detrás). Liviana como la preparación de E1: sin cajas dentro de la tarjeta.
 struct VolumenMusculoTarjeta: View {
     let resumen: VolumenMusculo.Resumen
+    /// Lo que se dice sin filas: sin series, trayendo el historial o sin red.
+    var vacio: String = Self.sinSeries
+
+    static let sinSeries = "Todavía no registraste series esta semana."
+    static let cargando = "Trayendo tus series de la semana…"
+    static let sinRed = "Sin conexión: tus series de la semana se ven cuando vuelva la señal."
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.s) {
             EncabezadoSeccion(titulo: "Series por músculo", detalle: "esta semana")
             VStack(alignment: .leading, spacing: 12) {
                 if resumen.filas.isEmpty {
-                    Text("Todavía no registraste series esta semana.")
+                    Text(vacio)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {

@@ -95,6 +95,12 @@ fun FuerzaSegmento(modelo: ModeloApp, estadoLista: LazyListState, alAbrir: (Stri
     val estado = p?.estado?.collectAsStateWithLifecycle()?.value
     val sesiones = p?.sesiones?.collectAsStateWithLifecycle()?.value ?: 0
     val volumen = rememberVolumenMusculo(modelo)
+    // Sin series: el historial todavía no llegó o no hay red no es «no registraste» (revisión del 3-nov).
+    val vacioVolumen = when {
+        p != null && tarjetas.isEmpty() && estado == ModeloProgreso.Estado.CARGANDO -> VACIO_CARGANDO
+        p != null && tarjetas.isEmpty() && estado == ModeloProgreso.Estado.SIN_RED -> VACIO_SIN_RED
+        else -> VACIO_SIN_SERIES
+    }
     val alcance = LocalAlcanceApp.current
     var recargando by remember { mutableStateOf(false) }
 
@@ -128,7 +134,7 @@ fun FuerzaSegmento(modelo: ModeloApp, estadoLista: LazyListState, alAbrir: (Stri
             verticalArrangement = Arrangement.spacedBy(Espacio.l),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            item(key = "volumen") { CardVolumenMusculo(volumen, Modifier.widthIn(max = AnchoLectura)) }
+            item(key = "volumen") { CardVolumenMusculo(volumen, Modifier.widthIn(max = AnchoLectura), vacio = vacioVolumen) }
             when {
                 // Trayendo el historial por primera vez.
                 p != null && estado == ModeloProgreso.Estado.CARGANDO && tarjetas.isEmpty() ->

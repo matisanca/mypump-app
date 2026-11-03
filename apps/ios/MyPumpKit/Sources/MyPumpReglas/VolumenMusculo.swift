@@ -10,9 +10,14 @@ import Foundation
 ///   del sustituto si el catálogo lo tiene y si no `CatalogoEjercicios.resolver` (catalogo_slug → matched → reglas y
 ///   nombre). Sin músculo, o uno que no está en `orden`, va a «Sin músculo asignado» (el respaldo conservador: no se
 ///   inventa un músculo) y queda al final.
-/// - Una misma serie (lugar + fecha + número) cuenta una sola vez. Si se pasa lo de hoy en vivo (`hoyEnVivo`), lo del
-///   historial con fecha de hoy no se usa: lo de hoy sale de lo confirmado en el teléfono. Una fecha que no sea
-///   YYYY-MM-DD exacto no cuenta.
+/// - Cada fila del historial cuenta (el servidor guarda una por sesión, ejercicio y número: dos rutinas el mismo día con
+///   el mismo ejercicio son filas distintas). Lo confirmado en el teléfono (`enVivo`) va con la fecha REAL de cada
+///   serie (la del toque, o el `registrado_en` si vino del servidor), no con la de hoy: una sesión de otro día mirada
+///   hoy no cuenta como hoy. En vivo, una misma serie (lugar + fecha + número) cuenta una vez, y una que ya está en el
+///   historial (misma clave del ejercicio, fecha y número; cada fila del historial cubre a una sola) no se suma: el
+///   historial puede estar viejo (se trae al abrir Salud) y lo en vivo completa solo lo que le falta, por ejercicio
+///   (revisión del 3-nov: antes lo en vivo reemplazaba TODO el historial de hoy, y contaba dos veces o borraba otra
+///   rutina del mismo día). Una fecha que no sea YYYY-MM-DD exacto no cuenta.
 /// - Orden: más series esta semana, después más la semana pasada, después el orden del catálogo (`orden`).
 public enum VolumenMusculo {
     /// No son series efectivas de un músculo.
@@ -32,8 +37,10 @@ public enum VolumenMusculo {
         /// El lugar del plan (o la clave si no se sabe): con `serie`, identifica la serie.
         public var lugar: String
         public var serie: Int?
-        public init(musculo: String?, tipo: String?, fecha: String, lugar: String, serie: Int?) {
-            self.musculo = musculo; self.tipo = tipo; self.fecha = fecha; self.lugar = lugar; self.serie = serie
+        /// La clave del ejercicio (`ClaveEjercicio`) con la que se cruza lo en vivo con el historial; nil = `lugar`.
+        public var clave: String?
+        public init(musculo: String?, tipo: String?, fecha: String, lugar: String, serie: Int?, clave: String? = nil) {
+            self.musculo = musculo; self.tipo = tipo; self.fecha = fecha; self.lugar = lugar; self.serie = serie; self.clave = clave
         }
     }
 
@@ -88,19 +95,27 @@ public enum VolumenMusculo {
         return n.prefix(1).uppercased() + n.dropFirst()
     }
 
-    public static func calcular(historial: [Registro], hoyEnVivo: [Registro]? = nil, hoy: String) -> Resumen {
+    public static func calcular(historial: [Registro], enVivo: [Registro] = [], hoy: String) -> Resumen {
         let lunes = FotosProgreso.lunes(hoy)
         let anterior = DiaCalendario.numero(lunes).map { DiaCalendario.texto($0 - 7) } ?? ""
+        func valida(_ r: Registro) -> Bool { r.fecha.count == 10 && DiaCalendario.numero(r.fecha) != nil }
+        func cruce(_ r: Registro, _ s: Int) -> String { "\(r.clave ?? r.lugar)|\(r.fecha)|\(s)" }
+        // Lo que ya está en el historial, para no sumarlo de nuevo en vivo: cada fila cubre a una sola serie en vivo.
+        var cubiertas: [String: Int] = [:]
+        for r in historial where valida(r) { if let s = r.serie { cubiertas[cruce(r, s), default: 0] += 1 } }
         var regs = historial
-        if let vivo = hoyEnVivo {
-            regs = historial.filter { $0.fecha != hoy } + vivo.map { var r = $0; r.fecha = hoy; return r }
-        }
         var vistos = Set<String>()
+        for r in enVivo where valida(r) {
+            guard let s = r.serie else { regs.append(r); continue }
+            guard vistos.insert("\(r.lugar)|\(r.fecha)|\(s)").inserted else { continue }
+            let k = cruce(r, s)
+            if let n = cubiertas[k], n > 0 { cubiertas[k] = n - 1; continue }
+            regs.append(r)
+        }
         var cuenta: [String: (semana: Int, anterior: Int, hoy: Int)] = [:]
         for r in regs {
             if let t = r.tipo, tiposQueNoCuentan.contains(t) { continue }
-            guard r.fecha.count == 10, DiaCalendario.numero(r.fecha) != nil else { continue }
-            if let s = r.serie, !vistos.insert("\(r.lugar)|\(r.fecha)|\(s)").inserted { continue }
+            guard valida(r) else { continue }
             let semanaDe = FotosProgreso.lunes(r.fecha)
             let clave = normalizar(r.musculo) ?? ""
             var c = cuenta[clave] ?? (0, 0, 0)

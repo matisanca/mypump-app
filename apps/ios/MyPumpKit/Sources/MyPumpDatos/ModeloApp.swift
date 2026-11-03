@@ -18,7 +18,11 @@ public final class ModeloApp {
 
     public private(set) var fase: Fase
     public private(set) var info: ClienteInfo?
-    public private(set) var rutina: RutinaActiva?
+    public private(set) var rutina: RutinaActiva? { didSet { versionRutina &+= 1 } }
+    /// Cambia con cada rutina que llega (para el caché del volumen por músculo).
+    @ObservationIgnored private(set) var versionRutina = 0
+    /// El volumen por músculo ya calculado y lo que lo armó (`volumenPorMusculo`).
+    @ObservationIgnored var cacheVolumen: (firma: String, resumen: VolumenMusculo.Resumen)?
     public private(set) var dieta: DietaActiva?
     /// Lo cargado vino de la copia offline (banner "sin conexión").
     public private(set) var desdeCache = false

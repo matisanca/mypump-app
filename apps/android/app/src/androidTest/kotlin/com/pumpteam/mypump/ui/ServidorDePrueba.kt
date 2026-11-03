@@ -32,6 +32,9 @@ class ServidorDePrueba : Transporte {
     /** Cuánto tarda cada respuesta (una red lenta). */
     @Volatile var demoraMs = 0L
 
+    /** Funciones que contestan 503 (una sola RPC caída, el resto anda). */
+    val fallas: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     /** Respuestas propias por función (`mypump_get_chat` → `[…]`); ganan sobre las grabadas. */
     val respuestas = ConcurrentHashMap<String, String>()
 
@@ -46,7 +49,7 @@ class ServidorDePrueba : Transporte {
         llamadas += Llamada(funcion, cuerpo)
         if (demoraMs > 0) delay(demoraMs)
         if (sinRed) throw IOException("sin conexión (prueba)")
-        if (caido) return Respuesta(503, """{"message":"servicio caído (prueba)"}""".toByteArray())
+        if (caido || funcion in fallas) return Respuesta(503, """{"message":"servicio caído (prueba)"}""".toByteArray())
         // Revisión: las fotos de progreso y los relojes no son RPC (ver el bloque de Revisión, abajo).
         rutaDeRevision(pedido.ruta, cuerpo)?.let { return it }
         // Dieta: la visión y lo que la cuenta guarda de la dieta (ver el bloque de Dieta, abajo).

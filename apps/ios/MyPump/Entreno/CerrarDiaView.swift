@@ -123,7 +123,7 @@ struct CerrarDiaView: View {
     /// Con la cuenta, la semana entera; en la demo, solo lo de hoy.
     private var volumen: VolumenMusculo.Resumen {
         if !modelo.conMuestras, modelo.entreno === motor { return modelo.volumenPorMusculo() }
-        return VolumenMusculo.calcular(historial: [], hoyEnVivo: motor.registrosVolumenHoy, hoy: FechaLocal.hoy())
+        return VolumenMusculo.calcular(historial: [], enVivo: motor.registrosVolumenEnVivo, hoy: FechaLocal.hoy())
     }
 
     /// «Series por músculo hoy»: solo si hoy hay alguna.

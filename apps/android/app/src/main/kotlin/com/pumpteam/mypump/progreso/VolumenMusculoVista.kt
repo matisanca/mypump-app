@@ -41,7 +41,7 @@ import com.pumpteam.mypump.reglas.VolumenMusculo
 
 /**
  * El volumen por músculo (2.1, S2) de la app, recalculado cuando cambia lo que lo arma: el historial de Progreso, la
- * rutina, lo confirmado hoy en Entreno (el día, con sus sustituciones), el catálogo y la fecha.
+ * rutina, lo confirmado en Entreno (el día, con sus sustituciones, y la fecha real de cada serie), el catálogo y la fecha.
  */
 @Composable
 fun rememberVolumenMusculo(modelo: ModeloApp): VolumenMusculo.Resumen {
@@ -51,8 +51,9 @@ fun rememberVolumenMusculo(modelo: ModeloApp): VolumenMusculo.Resumen {
     val entreno by modelo.entreno.collectAsStateWithLifecycle()
     val dia = entreno?.dia?.collectAsStateWithLifecycle()?.value
     val catalogo = entreno?.catalogo?.collectAsStateWithLifecycle()?.value
+    val fechas = entreno?.fechasSeries?.collectAsStateWithLifecycle()?.value
     val hoy = FechaLocal.hoy()
-    return remember(historial, rutina, entreno, dia, catalogo, hoy) { modelo.volumenPorMusculo() }
+    return remember(historial, rutina, entreno, dia, catalogo, fechas, hoy) { modelo.volumenPorMusculo() }
 }
 
 /** La etiqueta de prueba de una fila: `volumen-chest`; sin músculo, `volumen-sin`. */
@@ -63,14 +64,19 @@ internal fun etiquetaVolumen(f: VolumenMusculo.Fila, prefijo: String = "volumen"
  * (la semana pasada como barra tenue de fondo), el número de esta semana y «N la pasada». Cada fila es una sola unidad
  * para TalkBack (`Fila.textoAccesible`). Liviana, como la preparación de Entreno: letra chica, sin cajas adentro.
  */
+/** Lo que dice la tarjeta sin filas: sin series, trayendo el historial o sin red. */
+const val VACIO_SIN_SERIES = "Todavía no registraste series esta semana."
+const val VACIO_CARGANDO = "Trayendo tus series de la semana…"
+const val VACIO_SIN_RED = "Sin conexión: tus series de la semana se ven cuando vuelva la señal."
+
 @Composable
-fun CardVolumenMusculo(resumen: VolumenMusculo.Resumen, modifier: Modifier = Modifier) {
+fun CardVolumenMusculo(resumen: VolumenMusculo.Resumen, modifier: Modifier = Modifier, vacio: String = VACIO_SIN_SERIES) {
     val c = MyPump.colores
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
         EncabezadoSeccion("Series por músculo", detalle = "esta semana")
         Tarjeta(Modifier.testTag("volumen-musculo"), espaciado = 14.dp) {
             if (resumen.filas.isEmpty()) {
-                Text("Todavía no registraste series esta semana.", style = Letras.subtitulo, color = c.textoSecundario)
+                Text(vacio, style = Letras.subtitulo, color = c.textoSecundario)
             } else {
                 val tope = resumen.tope.coerceAtLeast(1)
                 for (f in resumen.filas) FilaVolumen(f, tope)

@@ -20,7 +20,7 @@ private fun JsonElement?.num(): Double? = (this as? JsonPrimitive)?.takeIf { it 
 private fun JsonElement?.txt(): String? = (this as? JsonPrimitive)?.takeIf { it !is JsonNull && it.isString }?.content
 
 private fun registros(v: JsonElement?): List<VolumenMusculo.Registro> = v.lista().map { it.jsonObject }.map {
-    VolumenMusculo.Registro(it["musculo"].txt(), it["tipo"].txt(), it["fecha"].txt() ?: "", it["lugar"].txt() ?: "", it["serie"].num()?.toInt())
+    VolumenMusculo.Registro(it["musculo"].txt(), it["tipo"].txt(), it["fecha"].txt() ?: "", it["lugar"].txt() ?: "", it["serie"].num()?.toInt(), it["clave"].txt())
 }
 
 class VolumenMusculoTest {
@@ -28,11 +28,10 @@ class VolumenMusculoTest {
 
     @Test fun losCasosCompartidos() {
         val casos = v["casos"].lista().map { it.jsonObject }
-        assertTrue(casos.size >= 10)
+        assertTrue(casos.size >= 15)
         for (c in casos) {
             val nombre = c["nombre"].txt()!!
-            val vivo = c["hoyEnVivo"]?.let { registros(it) }
-            val r = VolumenMusculo.calcular(registros(c["historial"]), vivo, c["hoy"].txt()!!)
+            val r = VolumenMusculo.calcular(registros(c["historial"]), registros(c["enVivo"]), c["hoy"].txt()!!)
             val sale = c["sale"]!!.jsonObject
             assertEquals(sale["semana"].txt(), r.semana, nombre)
             assertEquals(sale["total"].num()!!.toInt(), r.total, nombre)

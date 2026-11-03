@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.ModeloProgreso
 import com.pumpteam.mypump.datos.ModeloEntreno
 import com.pumpteam.mypump.progreso.SeccionVolumenHoy
 import com.pumpteam.mypump.progreso.rememberVolumenMusculo
@@ -337,7 +338,8 @@ fun HojaCerrarDia(modelo: ModeloApp, motor: ModeloEntreno, v: VistaEntreno, alCe
     val volumen = rememberVolumenMusculo(modelo)
     LaunchedEffect(Unit) {
         val p = modelo.progreso.value ?: return@LaunchedEffect
-        if (p.historialPorClave.value.isEmpty() && p.tarjetas.value.isEmpty()) alcance.launch { modelo.cargarProgreso() }
+        // Como iOS (CerrarDiaView): si no hay historial o la vez anterior faltó la red, se vuelve a pedir.
+        if (p.tarjetas.value.isEmpty() || p.estado.value == ModeloProgreso.Estado.SIN_RED) alcance.launch { modelo.cargarProgreso() }
     }
 
     fun cerrar() {

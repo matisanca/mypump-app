@@ -17,7 +17,7 @@ private func registros(_ v: JSONValue?) -> [VolumenMusculo.Registro] {
     (v?.elementos ?? []).map { (o: JSONValue) -> VolumenMusculo.Registro in
         let serie: Int? = o["serie"]?.num.map { Int($0) }
         return VolumenMusculo.Registro(musculo: o["musculo"]?.txt, tipo: o["tipo"]?.txt, fecha: o["fecha"]?.txt ?? "",
-                                       lugar: o["lugar"]?.txt ?? "", serie: serie)
+                                       lugar: o["lugar"]?.txt ?? "", serie: serie, clave: o["clave"]?.txt)
     }
 }
 
@@ -27,11 +27,10 @@ struct VolumenMusculoTests {
         let url = raizRepo.appendingPathComponent("apps/shared/vectores/volumen.json")
         let v = try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url))
         let casos = v["casos"]!.elementos
-        #expect(casos.count >= 10)
+        #expect(casos.count >= 15)
         for c in casos {
             let nombre = c["nombre"]!.txt!
-            let vivo: [VolumenMusculo.Registro]? = c["hoyEnVivo"].map { registros($0) }
-            let r = VolumenMusculo.calcular(historial: registros(c["historial"]), hoyEnVivo: vivo, hoy: c["hoy"]!.txt!)
+            let r = VolumenMusculo.calcular(historial: registros(c["historial"]), enVivo: registros(c["enVivo"]), hoy: c["hoy"]!.txt!)
             let sale = c["sale"]!
             #expect(r.semana == sale["semana"]!.txt!, "\(nombre)")
             #expect(r.total == Int(sale["total"]!.num!), "\(nombre)")

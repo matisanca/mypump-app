@@ -1,5 +1,5 @@
 {
- "fuente": "A mano (3-nov, 2.1, S2): el volumen por músculo (series efectivas por semana). La leen VolumenMusculoTests (iOS) y VolumenMusculoTest (Android) y tienen que dar esto. Cada registro es una serie registrada (historial) o confirmada hoy (`hoyEnVivo`, sin la clave: no se pasó). `sale.filas` va en orden; `sale.deHoy` son los músculos de `filasDeHoy`, en orden.",
+ "fuente": "A mano (3-nov, 2.1, S2; revisado el 3-nov): el volumen por músculo (series efectivas por semana). La leen VolumenMusculoTests (iOS) y VolumenMusculoTest (Android) y tienen que dar esto. Cada registro es una serie registrada (historial: cada fila cuenta) o confirmada en el teléfono (`enVivo`, con la fecha real de la serie; solo suma lo que no está en el historial por clave, fecha y número). `clave` es la del ejercicio (sin ella, `lugar`). `sale.filas` va en orden; `sale.deHoy` son los músculos de `filasDeHoy`, en orden.",
  "casos": [
   {
    "nombre": "básico: esta semana, la pasada y lo viejo no cuenta",
@@ -212,7 +212,7 @@
    }
   },
   {
-   "nombre": "una serie repetida cuenta una vez; sin número cuentan todas",
+   "nombre": "en vivo una serie repetida cuenta una vez; el historial cuenta cada fila",
    "hoy": "2026-11-04",
    "historial": [
     {
@@ -260,16 +260,16 @@
    ],
    "sale": {
     "semana": "2026-11-02",
-    "total": 5,
+    "total": 7,
     "totalAnterior": 0,
-    "totalHoy": 1,
+    "totalHoy": 2,
     "filas": [
      {
       "musculo": "chest",
       "nombre": "Pecho",
-      "semana": 3,
+      "semana": 5,
       "anterior": 0,
-      "hoy": 1
+      "hoy": 2
      },
      {
       "musculo": "triceps",
@@ -282,7 +282,23 @@
     "deHoy": [
      "chest"
     ]
-   }
+   },
+   "enVivo": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 2
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 2
+    }
+   ]
   },
   {
    "nombre": "sin músculo, uno desconocido y mayúsculas",
@@ -356,73 +372,90 @@
    }
   },
   {
-   "nombre": "lo de hoy en vivo reemplaza al historial de hoy",
+   "nombre": "lo en vivo suma solo lo que no está en el historial (por clave, fecha y número)",
    "hoy": "2026-11-04",
    "historial": [
     {
      "musculo": "chest",
      "tipo": "compuesto",
      "fecha": "2026-11-04",
-     "lugar": "d1-0",
-     "serie": 1
+     "lugar": "press banca",
+     "serie": 1,
+     "clave": "press banca"
     },
     {
      "musculo": "chest",
      "tipo": "compuesto",
      "fecha": "2026-11-04",
-     "lugar": "d1-0",
-     "serie": 2
+     "lugar": "press banca",
+     "serie": 2,
+     "clave": "press banca"
     },
     {
      "musculo": "biceps",
      "tipo": "aislamiento",
      "fecha": "2026-11-04",
-     "lugar": "d1-6",
-     "serie": 1
+     "lugar": "curl",
+     "serie": 1,
+     "clave": "curl"
     },
     {
      "musculo": "chest",
      "tipo": "compuesto",
      "fecha": "2026-11-02",
-     "lugar": "d1-0",
-     "serie": 1
+     "lugar": "press banca",
+     "serie": 1,
+     "clave": "press banca"
     }
    ],
-   "hoyEnVivo": [
+   "enVivo": [
     {
      "musculo": "chest",
      "tipo": "compuesto",
-     "fecha": "",
+     "fecha": "2026-11-04",
      "lugar": "d1-0",
-     "serie": 1
+     "serie": 1,
+     "clave": "press banca"
     },
     {
      "musculo": "chest",
      "tipo": "compuesto",
-     "fecha": "",
+     "fecha": "2026-11-04",
      "lugar": "d1-0",
-     "serie": 2
+     "serie": 2,
+     "clave": "press banca"
     },
     {
      "musculo": "chest",
      "tipo": "compuesto",
-     "fecha": "",
+     "fecha": "2026-11-04",
      "lugar": "d1-0",
-     "serie": 3
+     "serie": 3,
+     "clave": "press banca"
     },
     {
      "musculo": "triceps",
      "tipo": "aislamiento",
      "fecha": "2026-01-01",
      "lugar": "d1-4",
-     "serie": 1
+     "serie": 1,
+     "clave": "fondos"
     },
     {
      "musculo": null,
      "tipo": "cardio",
-     "fecha": "",
+     "fecha": "2026-11-04",
      "lugar": "d1-9",
-     "serie": 1
+     "serie": 1,
+     "clave": "cinta"
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "",
+     "lugar": "d1-5",
+     "serie": 1,
+     "clave": "aperturas"
     }
    ],
    "sale": {
@@ -439,8 +472,8 @@
       "hoy": 3
      },
      {
-      "musculo": "triceps",
-      "nombre": "Tríceps",
+      "musculo": "biceps",
+      "nombre": "Bíceps",
       "semana": 1,
       "anterior": 0,
       "hoy": 1
@@ -448,12 +481,12 @@
     ],
     "deHoy": [
      "chest",
-     "triceps"
+     "biceps"
     ]
    }
   },
   {
-   "nombre": "hoy en vivo vacío: hoy no hay nada aunque el historial diga",
+   "nombre": "sin nada en vivo, el historial de hoy cuenta",
    "hoy": "2026-11-04",
    "historial": [
     {
@@ -471,22 +504,24 @@
      "serie": 1
     }
    ],
-   "hoyEnVivo": [],
+   "enVivo": [],
    "sale": {
     "semana": "2026-11-02",
-    "total": 1,
+    "total": 2,
     "totalAnterior": 0,
-    "totalHoy": 0,
+    "totalHoy": 1,
     "filas": [
      {
       "musculo": "chest",
       "nombre": "Pecho",
-      "semana": 1,
+      "semana": 2,
       "anterior": 0,
-      "hoy": 0
+      "hoy": 1
      }
     ],
-    "deHoy": []
+    "deHoy": [
+     "chest"
+    ]
    }
   },
   {
@@ -783,6 +818,202 @@
     "totalHoy": 0,
     "filas": [],
     "deHoy": []
+   }
+  },
+  {
+   "nombre": "una sesión de otro día mirada hoy: no cuenta dos veces ni como hoy",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "press banca",
+     "serie": 1,
+     "clave": "press banca"
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "press banca",
+     "serie": 2,
+     "clave": "press banca"
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "press banca",
+     "serie": 3,
+     "clave": "press banca"
+    }
+   ],
+   "enVivo": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-0",
+     "serie": 1,
+     "clave": "press banca"
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-0",
+     "serie": 2,
+     "clave": "press banca"
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-0",
+     "serie": 3,
+     "clave": "press banca"
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-0",
+     "serie": 4,
+     "clave": "press banca"
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 4,
+    "totalAnterior": 0,
+    "totalHoy": 0,
+    "filas": [
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 4,
+      "anterior": 0,
+      "hoy": 0
+     }
+    ],
+    "deHoy": []
+   }
+  },
+  {
+   "nombre": "dos rutinas el mismo día: lo en vivo de una no borra la otra",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "quadriceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "sentadilla",
+     "serie": 1,
+     "clave": "sentadilla"
+    },
+    {
+     "musculo": "quadriceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "sentadilla",
+     "serie": 2,
+     "clave": "sentadilla"
+    },
+    {
+     "musculo": "quadriceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "sentadilla",
+     "serie": 3,
+     "clave": "sentadilla"
+    }
+   ],
+   "enVivo": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d2-0",
+     "serie": 1,
+     "clave": "press banca"
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 4,
+    "totalAnterior": 0,
+    "totalHoy": 4,
+    "filas": [
+     {
+      "musculo": "quadriceps",
+      "nombre": "Cuádriceps",
+      "semana": 3,
+      "anterior": 0,
+      "hoy": 3
+     },
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 1,
+      "anterior": 0,
+      "hoy": 1
+     }
+    ],
+    "deHoy": [
+     "quadriceps",
+     "chest"
+    ]
+   }
+  },
+  {
+   "nombre": "el mismo ejercicio en dos lugares: cada fila del historial cubre una sola serie en vivo",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "press banca",
+     "serie": 1,
+     "clave": "press banca"
+    }
+   ],
+   "enVivo": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 1,
+     "clave": "press banca"
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-3",
+     "serie": 1,
+     "clave": "press banca"
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 2,
+    "totalAnterior": 0,
+    "totalHoy": 2,
+    "filas": [
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 2,
+      "anterior": 0,
+      "hoy": 2
+     }
+    ],
+    "deHoy": [
+     "chest"
+    ]
    }
   }
  ]

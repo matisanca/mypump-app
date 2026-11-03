@@ -41,6 +41,17 @@ struct FuerzaSeccion: View {
         return DemoUI.bocetos ? VolumenMuestra.resumen : nil
     }
 
+    /// Qué decir sin series: el historial todavía no llegó o no hay red no es «no registraste» (revisión del 3-nov).
+    private var vacioVolumen: String {
+        guard !modelo.conMuestras else { return VolumenMusculoTarjeta.sinSeries }
+        guard let p = modelo.progreso else { return VolumenMusculoTarjeta.cargando }
+        switch p.estado {
+        case .cargando where p.versionHistorial == 0: return VolumenMusculoTarjeta.cargando
+        case .sinRed where p.versionHistorial == 0: return VolumenMusculoTarjeta.sinRed
+        default: return VolumenMusculoTarjeta.sinSeries
+        }
+    }
+
     /// Agrupadas por los días donde aparece cada ejercicio ("Tirón", o "Tirón · Torso" si está en los dos), en el orden
     /// de la rutina, como la web.
     private func secciones(_ ls: [LineaProgreso]) -> [Seccion] {
@@ -59,7 +70,7 @@ struct FuerzaSeccion: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.l) {
-            if let volumen { VolumenMusculoTarjeta(resumen: volumen) }
+            if let volumen { VolumenMusculoTarjeta(resumen: volumen, vacio: vacioVolumen) }
             contenido
         }
         .task {

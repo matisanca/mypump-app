@@ -6,6 +6,8 @@ import com.pumpteam.mypump.datos.ClaveSalud
 import com.pumpteam.mypump.datos.ModeloSalud
 import com.pumpteam.mypump.diseno.ImagenesRemotas
 import com.pumpteam.mypump.fotos.FotoDePrueba
+import com.pumpteam.mypump.progreso.VACIO_SIN_RED
+import com.pumpteam.mypump.progreso.VACIO_SIN_SERIES
 import com.pumpteam.mypump.reglas.ClaveEjercicio
 import com.pumpteam.mypump.reglas.DiaCalendario
 import com.pumpteam.mypump.reglas.FechaLocal
@@ -125,6 +127,19 @@ class SaludPestanaUiTest : PruebaUi() {
         // Debajo, lo que era Progreso.
         p.esperar("los totales") { p.textosBajo(etiqueta("progreso-totales")).containsAll(listOf("Ejercicios", "2")) }
         assertTrue(p.nodo(etiqueta("volumen-musculo")).positionInRoot.y < p.nodo(etiqueta("progreso-totales")).positionInRoot.y)
+    }
+
+    /** Sin el historial (no llegó por la red), la card no dice «Todavía no registraste» (revisión del 3-nov). */
+    @Test
+    fun sinElHistorialLaCardNoDiceQueNoRegistraste() {
+        sembrarEntreno()
+        servidor.fallas += "mypump_get_historico_por_clave"
+        guardarCuenta()
+        abrir()
+        irA("fuerza")
+        p.nodo(texto(VACIO_SIN_RED))
+        assertFalse(p.existe(texto(VACIO_SIN_SERIES)))
+        assertFalse(p.existe(etiqueta("volumen-chest")))
     }
 
     /** Sin series esta semana, la card lo dice (sin filas). */

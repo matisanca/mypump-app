@@ -23,6 +23,7 @@ import com.pumpteam.mypump.reglas.EjercicioEfectivo
 import com.pumpteam.mypump.reglas.EstadosEjercicio
 import com.pumpteam.mypump.reglas.FechaJs
 import com.pumpteam.mypump.reglas.FechaLocal
+import com.pumpteam.mypump.reglas.de
 import com.pumpteam.mypump.reglas.FilaSerie
 import com.pumpteam.mypump.reglas.IndiceComentarios
 import com.pumpteam.mypump.reglas.Js
@@ -221,6 +222,13 @@ class ModeloEntreno(
 
     /** Había un día guardado en este teléfono al arrancar (si no, el del almacenamiento viejo puede ganar). */
     private var habiaDiaGuardado: Boolean
+
+    /**
+     * La fecha real (local, YYYY-MM-DD) de cada serie confirmada del día que se mira ([claveFecha]): la del toque, la del
+     * `registrado_en` o la de la cola. Para el volumen por músculo (revisión del 3-nov).
+     */
+    private val _fechasSeries = MutableStateFlow<Map<String, String>>(emptyMap())
+    val fechasSeries: StateFlow<Map<String, String>> = _fechasSeries.asStateFlow()
 
     /** El día que se mira, con su sesión, sus series, su historial y las sustituciones de la rutina. */
     private val _dia: MutableStateFlow<DiaEnCurso>
@@ -488,6 +496,7 @@ class ModeloEntreno(
         while (true) {
             val hoy = FechaLocal.hoy(reloj(), zona)
             val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas, ef, hoy) }
+            anotarFecha(lugar, idx + 1, hoy, soloConfirmada = true)
             paso.record?.let { _avisoRecord.value = AvisoRecord(++avisosDados, lugar, it.texto) }
             ejecutar(paso.efectos)?.let { completo = it }
             val p = paso.pregunta ?: return completo
@@ -549,14 +558,35 @@ class ModeloEntreno(
         return efectivo(ex).slugSustituto?.let { cat.entrada(it)?.primaryMuscle } ?: cat.resolver(ex)?.primaryMuscle
     }
 
+    /** La clave de [fechasSeries]: el día, la semana, el lugar y el número de la serie. */
+    internal fun claveFecha(lugar: String, n: Int): String = "${_dia.value.dia.id ?: ""}|$semana|$lugar|$n"
+
     /**
-     * Volumen por músculo (2.1, S2): las series confirmadas hoy en el teléfono, para el cierre del día y Salud → Fuerza.
-     * Las de preparación no están: nunca se registran.
+     * Anota la fecha real de una serie del día que se mira, si no tenía: la primera vale (el servidor conserva el
+     * `registrado_en` al corregirla). `soloConfirmada`: solo si la serie quedó confirmada (el toque).
      */
-    val registrosVolumenHoy: List<VolumenMusculo.Registro>
+    internal fun anotarFecha(lugar: String, n: Int, fecha: String, soloConfirmada: Boolean = false) {
+        if (fecha.length != 10) return
+        if (soloConfirmada) {
+            val e = _dia.value.ejercicios[lugar] ?: return
+            if (n < 1 || n > e.series.size || !e.series[n - 1].confirmada) return
+        }
+        val k = claveFecha(lugar, n)
+        if (k !in _fechasSeries.value) _fechasSeries.value = _fechasSeries.value + (k to fecha)
+    }
+
+    /**
+     * Volumen por músculo (2.1, S2): las series confirmadas en el teléfono del día que se mira, para el cierre del día y
+     * Salud → Fuerza, cada una con su fecha REAL: la del toque, la del `registrado_en` si vino del servidor o la de la
+     * cola si quedó sin mandar. Una sin fecha conocida no va (ya está en el historial). El día que se mira puede ser de
+     * otro día ([restaurarSesion] va por día y semana): antes todo salía con la fecha de hoy y se contaba dos veces
+     * (revisión del 3-nov). Van con la clave del ejercicio con que se registraron, para no sumar lo que el historial ya
+     * tiene. Las de preparación no están: nunca se registran.
+     */
+    val registrosVolumenEnVivo: List<VolumenMusculo.Registro>
         get() {
             val d = _dia.value
-            val hoy = FechaLocal.hoy(reloj(), zona)
+            val fechas = _fechasSeries.value
             val vistos = HashSet<String>()
             val out = ArrayList<VolumenMusculo.Registro>()
             for (ex in d.lista) {
@@ -564,9 +594,12 @@ class ModeloEntreno(
                 val e = d.ejercicios[ex.id] ?: continue
                 if (e.series.none { it.confirmada }) continue
                 val m = musculo(ex)
-                val tipo = efectivo(ex).ejercicio.tipo
+                val ef = efectivo(ex).ejercicio
                 e.series.forEachIndexed { i, s ->
-                    if (s.confirmada) out += VolumenMusculo.Registro(m, tipo, hoy, ex.id, i + 1)
+                    if (!s.confirmada) return@forEachIndexed
+                    val fecha = fechas[claveFecha(ex.id, i + 1)] ?: return@forEachIndexed
+                    val c = ClaveEjercicio.de(Js.verdadero(s.nombreRegistrado) ?: ef.nombre).ifEmpty { ex.id }
+                    out += VolumenMusculo.Registro(m, ef.tipo, fecha, ex.id, i + 1, c)
                 }
             }
             return out
@@ -831,7 +864,10 @@ class ModeloEntreno(
         }
         if (seq != restauracion || _dia.value.sesionId != sid) return
         estados.valorONull()?.let { f -> mutarDia { it.aplicarEstados(f) } }
-        registros.valorONull()?.let { f -> mutarDia { it.aplicarRegistros(f) } }
+        registros.valorONull()?.let { f ->
+            for (r in f) r.registradoEn?.let { anotarFecha(r.ejercicioId, r.serie, FechaLocal.de(it, zona)) }
+            mutarDia { it.aplicarRegistros(f) }
+        }
         aplicarPendientes()
     }
 
@@ -865,6 +901,7 @@ class ModeloEntreno(
                         nombreRegistrado = datos["ejercicioNombre"]?.comoTexto,
                         varianteRegistrada = datos["notas"]?.comoTexto,
                     )
+                    anotarFecha(ex, i + 1, FechaLocal.hoy(Instant.ofEpochMilli(op.ts.toLong()), zona))
                     d.ejercicios = d.ejercicios + (ex to e.copy(series = series))
                 } else if (op.kind == "estado" && exId != null && status != null) {
                     d.estados = d.estados + (exId to status)

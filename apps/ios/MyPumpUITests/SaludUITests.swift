@@ -70,7 +70,10 @@ final class SaludUITests: XCTestCase {
         XCTAssertTrue(volumen.waitForExistence(timeout: 20))
         let filas = volumen.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'volumen-' AND identifier != 'volumen-musculo'"))
         if filas.count == 0 {
-            XCTAssertTrue(app.staticTexts["Todavía no registraste series esta semana."].exists, "Sin filas tiene que decirlo")
+            // Sin filas lo dice: sin series, o trayendo el historial, o sin red (revisión del 3-nov).
+            let textos = ["Todavía no registraste series esta semana.", "Trayendo tus series de la semana…",
+                          "Sin conexión: tus series de la semana se ven cuando vuelva la señal."]
+            XCTAssertTrue(textos.contains { app.staticTexts[$0].exists }, "Sin filas tiene que decirlo")
         } else {
             let label = filas.element(boundBy: 0).label
             XCTAssertTrue(label.contains(" esta semana, ") && label.hasSuffix(" la semana pasada"), "Etiqueta: \(label)")

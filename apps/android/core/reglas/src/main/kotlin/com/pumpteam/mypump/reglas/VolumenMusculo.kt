@@ -11,8 +11,13 @@ package com.pumpteam.mypump.reglas
  *   del sustituto si el catálogo lo tiene y si no `CatalogoEjercicios.resolver` (catalogo_slug → matched → reglas y
  *   nombre). Sin músculo, o uno que no está en [orden], va a «Sin músculo asignado» (el respaldo conservador: no se
  *   inventa un músculo) y queda al final.
- * - Una misma serie (lugar + fecha + número) cuenta una sola vez. Si se pasa lo de hoy en vivo (`hoyEnVivo`), lo del
- *   historial con fecha de hoy no se usa: lo de hoy sale de lo confirmado en el teléfono. Una fecha que no sea
+ * - Cada fila del historial cuenta (el servidor guarda una por sesión, ejercicio y número: dos rutinas el mismo día con
+ *   el mismo ejercicio son filas distintas). Lo confirmado en el teléfono (`enVivo`) va con la fecha REAL de cada serie
+ *   (la del toque, o el `registrado_en` si vino del servidor), no con la de hoy: una sesión de otro día mirada hoy no
+ *   cuenta como hoy. En vivo, una misma serie (lugar + fecha + número) cuenta una vez, y una que ya está en el historial
+ *   (misma clave del ejercicio, fecha y número; cada fila del historial cubre a una sola) no se suma: el historial puede
+ *   estar viejo y lo en vivo completa solo lo que le falta, por ejercicio (revisión del 3-nov: antes lo en vivo
+ *   reemplazaba TODO el historial de hoy, y contaba dos veces o borraba otra rutina del mismo día). Una fecha que no sea
  *   YYYY-MM-DD exacto no cuenta.
  * - Orden: más series esta semana, después más la semana pasada, después el orden del catálogo ([orden]).
  */
@@ -25,7 +30,15 @@ object VolumenMusculo {
     const val SIN_MUSCULO = "Sin músculo asignado"
 
     /** Una serie registrada. `musculo` null = el catálogo no lo tiene; `fecha` local YYYY-MM-DD. */
-    data class Registro(val musculo: String?, val tipo: String?, val fecha: String, val lugar: String, val serie: Int?)
+    data class Registro(
+        val musculo: String?,
+        val tipo: String?,
+        val fecha: String,
+        val lugar: String,
+        val serie: Int?,
+        /** La clave del ejercicio ([ClaveEjercicio]) con la que se cruza lo en vivo con el historial; null = `lugar`. */
+        val clave: String? = null,
+    )
 
     data class Fila(val musculo: String?, val nombre: String, val semana: Int, val anterior: Int, val hoy: Int) {
         val id: String get() = musculo ?: "-"
@@ -54,17 +67,31 @@ object VolumenMusculo {
         return n.substring(0, 1).uppercase() + n.substring(1)
     }
 
-    fun calcular(historial: List<Registro>, hoyEnVivo: List<Registro>? = null, hoy: String): Resumen {
+    fun calcular(historial: List<Registro>, enVivo: List<Registro> = emptyList(), hoy: String): Resumen {
         val lunes = FotosProgreso.lunes(hoy)
         val anterior = DiaCalendario.numero(lunes)?.let { DiaCalendario.texto(it - 7) } ?: ""
-        val regs = if (hoyEnVivo != null) historial.filter { it.fecha != hoy } + hoyEnVivo.map { it.copy(fecha = hoy) } else historial
+        fun valida(r: Registro) = r.fecha.length == 10 && DiaCalendario.numero(r.fecha) != null
+        fun cruce(r: Registro, s: Int) = "${r.clave ?: r.lugar}|${r.fecha}|$s"
+        // Lo que ya está en el historial, para no sumarlo de nuevo en vivo: cada fila cubre a una sola serie en vivo.
+        val cubiertas = HashMap<String, Int>()
+        for (r in historial) if (valida(r) && r.serie != null) cubiertas.merge(cruce(r, r.serie), 1, Int::plus)
+        val regs = ArrayList(historial)
         val vistos = HashSet<String>()
+        for (r in enVivo) {
+            if (!valida(r)) continue
+            val s = r.serie
+            if (s == null) { regs += r; continue }
+            if (!vistos.add("${r.lugar}|${r.fecha}|$s")) continue
+            val k = cruce(r, s)
+            val n = cubiertas[k] ?: 0
+            if (n > 0) { cubiertas[k] = n - 1; continue }
+            regs += r
+        }
         // Por músculo ("" = sin músculo): semana, anterior, hoy. LinkedHashMap: el orden de llegada no importa (se ordena).
         val cuenta = LinkedHashMap<String, IntArray>()
         for (r in regs) {
             if (r.tipo != null && r.tipo in TIPOS_QUE_NO_CUENTAN) continue
-            if (r.fecha.length != 10 || DiaCalendario.numero(r.fecha) == null) continue
-            if (r.serie != null && !vistos.add("${r.lugar}|${r.fecha}|${r.serie}")) continue
+            if (!valida(r)) continue
             val semanaDe = FotosProgreso.lunes(r.fecha)
             val clave = normalizar(r.musculo) ?: ""
             val c = cuenta[clave] ?: IntArray(3)
