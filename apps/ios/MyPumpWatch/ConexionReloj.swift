@@ -53,6 +53,18 @@ final class ConexionReloj: NSObject {
         alTerminar?(false)
     }
 
+    /// Tanda 4: el iPhone recibió un archivo de calibración (se borra del reloj).
+    var alTransferirArchivo: ((URL) -> Void)?
+
+    /// Manda un archivo de calibración al iPhone (`transferFile`: el sistema lo entrega aunque el iPhone no esté a la
+    /// vista). Uno que ya está en vuelo no se vuelve a mandar.
+    func transferirArchivo(_ url: URL, metadatos: [String: Any]) {
+        guard let s = sesion, s.activationState == .activated else { return }
+        let enVuelo = Set(s.outstandingFileTransfers.map { $0.file.fileURL.standardizedFileURL })
+        guard !enVuelo.contains(url.standardizedFileURL) else { return }
+        s.transferFile(url, metadata: metadatos)
+    }
+
     private func leer(_ d: [String: Any]) {
         do {
             let sobre = try ProtocoloReloj.leer(d)
@@ -96,6 +108,12 @@ extension ConexionReloj: WCSessionDelegate {
         nonisolated(unsafe) let d = message
         replyHandler([:])
         Task { @MainActor in self.leer(d) }
+    }
+
+    nonisolated func session(_ session: WCSession, didFinish fileTransfer: WCSessionFileTransfer, error: Error?) {
+        guard error == nil else { return }   // queda en la carpeta y se reintenta al activarse
+        let url = fileTransfer.file.fileURL
+        Task { @MainActor in self.alTransferirArchivo?(url) }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {

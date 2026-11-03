@@ -27,6 +27,11 @@ final class EstadoReloj {
     private(set) var salud = SaludEntreno()
     /// Se ve el iPhone ahora (WatchConnectivity alcanzable).
     var conectado = false
+    /// Tanda 4: el modo calibración y el contador experimental.
+    let calibracion = CalibracionReloj()
+    /// Flujo final (apagado: `ConfirmacionReps.habilitadas` está vacía): las reps que el reloj propuso con la corona en
+    /// esta serie («¿10 reps?»).
+    private(set) var propuesta: Int?
 
     @ObservationIgnored private let conexion = ConexionReloj()
     @ObservationIgnored private let entreno = EntrenoSalud()
@@ -60,8 +65,44 @@ final class EstadoReloj {
         }
         conexion.alFallarVersion = { [weak self] v in self?.cambiar(enviar: false) { $0.marcarIncompatible(version: v) } }
         entreno.alMedir = { [weak self] s in self?.salud = s }
+        calibracion.transferir = { [weak self] url, metadatos in self?.conexion.transferirArchivo(url, metadatos: metadatos) }
+        calibracion.alContar = { [weak self] r in self?.proponer(r) }
+        conexion.alTransferirArchivo = { [weak self] url in self?.calibracion.recibido(url) }
         if !args.contains("-demo") { conexion.activar() }
         actualizarComplicacion()
+        ajustarSensores()
+    }
+
+    // MARK: - Modo calibración (tanda 4)
+
+    /// El iPhone mandó el modo prendido para esta cuenta (en la demo, solo con `-calibracion`, para las capturas).
+    var calibrando: Bool {
+        guard let r = sesion.rutina else { return false }
+        if r.demo { return ProcessInfo.processInfo.arguments.contains("-calibracion") }
+        return r.calibracion == true
+    }
+
+    /// Los sensores corren con la sesión empezada y abierta, en calibración o si algún ejercicio del día es de una
+    /// familia con el flujo final habilitado (ninguna por ahora). Si no, no se tocan.
+    private func ajustarSensores() {
+        let familias = sesion.rutina?.ejercicios.contains { ConfirmacionReps.cuenta($0.familia) } ?? false
+        calibracion.ajustar(prender: sesion.iniciada && !sesion.terminada && (calibrando || familias))
+    }
+
+    /// Flujo final: con la serie terminada y una familia habilitada, la corona va a lo que contó el reloj y se pregunta
+    /// «¿N reps?». Nunca en calibración (`ConfirmacionReps.propuesta` lo descarta) y una sola vez por serie.
+    private func proponer(_ r: ContadorReps.Resultado?) {
+        guard propuesta == nil, let r, let e = sesion.actual, e.proximaSerie != nil,
+              let n = ConfirmacionReps.propuesta(e.familia, conteo: r, calibrando: calibrando) else { return }
+        cambiar(enviar: false) { $0.girarReps(n - $0.reps) }
+        propuesta = n
+    }
+
+    /// Los archivos de calibración que quedaron sin pasar al iPhone.
+    private func reenviarCalibracion() {
+        for url in calibracion.pendientes() {
+            conexion.transferirArchivo(url, metadatos: ["mpcal": "", "nombre": url.lastPathComponent, "cuenta": sesion.rutina?.cuenta ?? ""])
+        }
     }
 
     // MARK: - Lo que llega del iPhone
@@ -85,20 +126,35 @@ final class EstadoReloj {
 
     // MARK: - Acciones
 
-    func elegir(_ lugar: String) { cambiar { $0.elegir(lugar) } }
+    func elegir(_ lugar: String) {
+        let otro = lugar != sesion.lugar
+        cambiar { $0.elegir(lugar) }
+        if otro { propuesta = nil; calibracion.abrirVentana() }
+    }
     func girarReps(_ n: Int) { cambiar(enviar: false) { $0.girarReps(n) } }
     func girarKg(_ n: Int) { cambiar(enviar: false) { $0.girarKg(n) } }
 
     func empezar() {
         cambiar { $0.iniciar(ahora: Self.ahoraMs) }
         if conSalud { entreno.empezar() }
+        calibracion.abrirVentana()
     }
 
     func confirmar() {
         let ahora = Self.ahoraMs
+        // Lo que se confirma, para la etiqueta de la grabación (antes de que la sesión pase a la serie siguiente).
+        let etiqueta: CalibracionReloj.Etiqueta? = {
+            guard let r = sesion.rutina, let e = sesion.actual, let i = e.proximaSerie else { return nil }
+            return .init(sesion: CalibracionReloj.sesion(r), ejercicio: e, serie: i + 1, reps: sesion.reps,
+                         kg: e.sinKg ? nil : (sesion.kg ?? 0), cuenta: r.cuenta)
+        }()
+        let estabaGrabando = calibracion.grabando
         var c: SesionReloj.Confirmacion?
         cambiar { c = $0.confirmar(ahora: ahora) }
         guard let c else { return }
+        propuesta = nil
+        // La primera serie confirmada sin «Empezar» arranca la sesión (y los sensores): esa serie no tiene ventana.
+        if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: calibrando) } else { calibracion.abrirVentana() }
         if conSalud { entreno.empezar() }
         WKInterfaceDevice.current().play(c.record != nil ? .success : .click)
         avisoRecord = c.record
@@ -124,7 +180,10 @@ final class EstadoReloj {
     }
 
     func ajustarDescanso(_ s: Double) { cambiar(enviar: false) { $0.ajustarDescanso(s, ahora: Self.ahoraMs) } }
-    func saltarDescanso() { cambiar(enviar: false) { $0.saltarDescanso() } }
+    func saltarDescanso() {
+        cambiar(enviar: false) { $0.saltarDescanso() }
+        calibracion.finDescanso()
+    }
 
     // MARK: - Descanso
 
@@ -136,6 +195,7 @@ final class EstadoReloj {
                 var termino = false
                 self.sesion = { var s = self.sesion; termino = s.tickDescanso(ahora: Self.ahoraMs); return s }()
                 if termino {
+                    self.calibracion.finDescanso()
                     WKInterfaceDevice.current().play(.notification)
                     self.guardar()
                     self.actualizarComplicacion()
@@ -151,6 +211,7 @@ final class EstadoReloj {
     func alActivarse() {
         if sesion.descanso != nil { correrDescanso() }
         sincronizar(forzar: true)
+        reenviarCalibracion()
     }
 
     // MARK: - Interno
@@ -161,6 +222,7 @@ final class EstadoReloj {
         sesion = s
         // El día se cerró (en el reloj o en el iPhone) o no hay nada empezado: el entreno de HealthKit no queda abierto.
         if s.terminada || !s.iniciada { entreno.terminar() }
+        ajustarSensores()
         guardar()
         actualizarComplicacion()
         if enviar { sincronizar() }

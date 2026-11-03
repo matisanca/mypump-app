@@ -211,6 +211,11 @@ struct EjercicioVista: View {
                         Text("Serie \(i + 1) de \(e.series.count)" + (e.repsPlan.map { " · objetivo \($0)" } ?? ""))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                        // Flujo final (apagado): el reloj propone lo que contó.
+                        if let n = estado.propuesta {
+                            Text(ConfirmacionReps.texto(n)).font(.headline).foregroundStyle(Marca.verde)
+                        }
+                        if estado.calibrando { LineaCalibracion() }
                         HStack(spacing: 6) {
                             CampoCorona(titulo: "Reps", valor: "\(s.reps)", activo: foco == .reps) { foco = .reps }
                             if !e.sinKg {
@@ -328,6 +333,27 @@ struct SeriesHechas: View {
                 }
             }
         }
+    }
+}
+
+/// Tanda 4, modo calibración: «● Conté 7» mientras va la serie (el contador experimental; no cambia lo que cargás) y
+/// la comparación de la última serie confirmada.
+struct LineaCalibracion: View {
+    @Environment(EstadoReloj.self) private var estado
+    var body: some View {
+        let c = estado.calibracion
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                Circle().fill(c.grabando ? Color.red : Color.secondary).frame(width: 6, height: 6)
+                Text(c.contadas.map { "Conté \($0)" } ?? (c.grabando ? "Contando…" : "Calibración"))
+                    .font(.footnote.weight(.semibold).monospacedDigit())
+            }
+            if let u = c.ultimaComparacion {
+                Text(u).font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(c.contadas.map { "Modo calibración. El reloj contó \($0) repeticiones" } ?? "Modo calibración")
     }
 }
 
