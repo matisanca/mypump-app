@@ -150,6 +150,7 @@ fun TablaSeries(
                 modifier = Modifier.testTag("series-confirmadas"),
             )
         }
+        AvisoRecordVista(motor, lugar)
 
         t.variantes?.let { va ->
             // SER-07: el agarre o el nivel (vale para las series que se confirmen después).

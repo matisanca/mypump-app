@@ -117,11 +117,12 @@ class EntrenoUiTest : PruebaUi() {
         val carga = p.esperar("la serie en el servidor") { servidor.a("mypump_registrar_carga").firstOrNull() }
         for (parte in listOf(
             "\"p_sesion_id\":\"ses-prueba-1\"", "\"p_ejercicio_id\":\"jalon-al-pecho-prono-dorsal-ancho-d1-0\"", "\"p_serie\":1",
-            "\"p_peso\":58", "\"p_reps\":10", "\"p_rir\":null", "\"p_notas\":\"Prono\"",
+            "\"p_peso\":58", "\"p_reps\":10", "\"p_rir\":0", "\"p_notas\":\"Prono\"",
         )) {
             assertTrue("falta $parte en $carga", carga.contains(parte))
         }
-        // SER-04: en kg la coma pasa a punto. SER-02: el RIR se elige (nunca se completa solo).
+        // SER-04: en kg la coma pasa a punto. El RIR arranca en el objetivo de la semana (E4, 2.0.3: acá «0 al fallo»,
+        // por eso la primera sale con 0) y se cambia con el selector.
         p.escribir(etiqueta("campo-reps-2"), "8")
         p.escribir(etiqueta("campo-kg-2"), "52,5")
         p.tocar(etiqueta("rir-serie-2"))
