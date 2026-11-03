@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.reglas
 
 import com.pumpteam.mypump.modelos.Alimento
+import com.pumpteam.mypump.modelos.NumeroJs
 import com.pumpteam.mypump.modelos.ValorJson
 import kotlin.math.abs
 
@@ -301,14 +302,33 @@ object AgregadosComida {
         }
     }
 
-    /** Un numeric: 3 de alineación + 4 de cabecera varlena + 2 de cabecera + 2 por grupo de 4 dígitos (entera y decimal). */
+    /**
+     * Un numeric: 3 de alineación + 4 de cabecera varlena + 2 de cabecera + 2 por dígito en base 10000 (los grupos de 4
+     * alineados al punto, del primero al último que no es cero, como los guarda la base). Los dígitos salen del mismo
+     * texto que viaja (el más corto que vuelve al mismo double, hasta 17 cifras: 99.89999999999999), no de un redondeo.
+     * Con más de 63 decimales o un peso fuera de −64…63 (5e-324, 1.7e308) la base usa la cabecera larga: 2 más.
+     */
     internal fun bytesNumeric(d: Double): Int {
         if (!d.isFinite()) return 9
-        val s = String.format(java.util.Locale.ROOT, "%.6f", abs(d)).trimEnd('0')
-        val partes = s.split('.')
-        val entera = partes[0].trimStart('0').length
-        val decimal = partes.getOrNull(1)?.length ?: 0
-        return 9 + 2 * ((entera + 3) / 4 + (decimal + 3) / 4)
+        val (grupos, largo) = gruposNumeric(NumeroJs.texto(abs(d)))
+        return 9 + (if (largo) 2 else 0) + 2 * grupos
+    }
+
+    /** Los dígitos en base 10000 de un número de JSON ("1.5", "1e-7", "1.25e+21") y si necesita la cabecera larga. */
+    internal fun gruposNumeric(texto: String): Pair<Int, Boolean> {
+        val pe = texto.lowercase().split('e')
+        val exponente = pe.getOrNull(1)?.toIntOrNull() ?: 0
+        val pm = pe[0].split('.')
+        var digitos = pm[0] + (pm.getOrNull(1) ?: "")
+        var n = pm[0].length + exponente          // el punto va después de n dígitos
+        while (digitos.startsWith('0')) { digitos = digitos.drop(1); n -= 1 }
+        digitos = digitos.trimEnd('0')
+        if (digitos.isEmpty()) return 0 to false
+        val alto = n - 1
+        val bajo = n - digitos.length              // potencias de 10 del primer y el último dígito
+        val peso = Math.floorDiv(alto, 4)
+        val decimales = maxOf(-bajo, 0)
+        return (peso - Math.floorDiv(bajo, 4) + 1) to (decimales > 63 || peso > 63 || peso < -64)
     }
 
     /** Los agregados de la comida como alimentos (los de una comida que hoy no se come no cuentan, pero quedan guardados). */

@@ -311,15 +311,31 @@ public enum AgregadosComida {
         }
     }
 
-    /// Un numeric: 3 de alineación + 4 de cabecera varlena + 2 de cabecera + 2 por grupo de 4 dígitos (entera y decimal).
+    /// Un numeric: 3 de alineación + 4 de cabecera varlena + 2 de cabecera + 2 por dígito en base 10000 (los grupos de 4
+    /// alineados al punto, del primero al último que no es cero, como los guarda la base). Los dígitos salen del mismo
+    /// texto que viaja (el más corto que vuelve al mismo double, hasta 17 cifras: 99.89999999999999), no de un redondeo.
+    /// Con más de 63 decimales o un peso fuera de −64…63 (5e-324, 1.7e308) la base usa la cabecera larga: 2 más.
     static func bytesNumeric(_ d: Double) -> Int {
         guard d.isFinite else { return 9 }
-        var s = String(format: "%.6f", abs(d))
-        while s.hasSuffix("0") { s.removeLast() }
-        let partes = s.split(separator: ".", omittingEmptySubsequences: false)
-        let entera = partes[0].drop { $0 == "0" }.count
-        let decimal = partes.count > 1 ? partes[1].count : 0
-        return 9 + 2 * ((entera + 3) / 4 + (decimal + 3) / 4)
+        let (grupos, largo) = gruposNumeric(JS.texto(abs(d)))
+        return 9 + (largo ? 2 : 0) + 2 * grupos
+    }
+
+    /// Los dígitos en base 10000 de un número de JSON ("1.5", "1e-7", "1.25e+21") y si necesita la cabecera larga.
+    static func gruposNumeric(_ texto: String) -> (grupos: Int, largo: Bool) {
+        let pe = texto.lowercased().split(separator: "e", omittingEmptySubsequences: false)
+        let exponente = pe.count > 1 ? Int(pe[1]) ?? 0 : 0
+        let pm = pe[0].split(separator: ".", omittingEmptySubsequences: false)
+        var digitos = Array(pm[0] + (pm.count > 1 ? pm[1] : ""))
+        var n = pm[0].count + exponente          // el punto va después de n dígitos
+        while digitos.first == "0" { digitos.removeFirst(); n -= 1 }
+        while digitos.last == "0" { digitos.removeLast() }
+        guard !digitos.isEmpty else { return (0, false) }
+        func grupo(_ p: Int) -> Int { p >= 0 ? p / 4 : -((-p + 3) / 4) }   // floor(p / 4)
+        let alto = n - 1, bajo = n - digitos.count  // potencias de 10 del primer y el último dígito
+        let peso = grupo(alto)
+        let decimales = max(-bajo, 0)
+        return (peso - grupo(bajo) + 1, decimales > 63 || peso > 63 || peso < -64)
     }
 
     /// Los agregados de la comida como alimentos (los de una comida que hoy no se come no cuentan, pero quedan guardados).

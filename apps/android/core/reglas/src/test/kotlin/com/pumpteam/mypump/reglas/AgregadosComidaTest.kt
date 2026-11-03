@@ -4,6 +4,7 @@ import com.pumpteam.mypump.modelos.Alimento
 import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.modelos.Comida
 import com.pumpteam.mypump.modelos.ComidaMarcada
+import com.pumpteam.mypump.modelos.NumeroJs
 import com.pumpteam.mypump.modelos.ValorJson
 import kotlin.math.abs
 import kotlinx.serialization.json.JsonArray
@@ -273,5 +274,27 @@ class AgregadosComidaTest {
             assertTrue(cota >= medido, "${texto(o["caso"])}: $cota < $medido")
             assertTrue(cota <= medido * 1.15, "${texto(o["caso"])}: $cota muy por encima de $medido")
         }
+    }
+
+    /**
+     * Cada número cuenta sus dígitos sobre el texto que viaja (hasta 17 cifras, menores a 1e-6, exponentes enormes): la
+     * cota de `[x]` nunca da menos que lo medido y a lo sumo 3 más (la alineación, que se toma siempre en el peor caso).
+     */
+    @Test
+    fun losNumerosCuentanLosDigitosQueViajan() {
+        val numeros = Vectores.json(Vectores.publico("agregados_jsonb_medido"))["numeros"]!!.jsonArray
+        assertTrue(numeros.size >= 10)
+        for (n in numeros) {
+            val o = n.jsonObject
+            val t = texto(o["texto"])
+            val medido = o["jsonb"]!!.jsonPrimitive.intOrNull!!
+            val cota = 4 + AgregadosComida.bytesJsonb(ValorJson.Lista(listOf(ValorJson.Numero(t.toDouble()))))
+            assertTrue(cota >= medido && cota <= medido + 3, "$t: $cota contra $medido")
+        }
+        // El de AjustePorciones.subir: 17 cifras, no las 8 de un %.6f.
+        assertEquals(5, AgregadosComida.gruposNumeric(NumeroJs.texto(99.89999999999999)).first)
+        assertEquals(1 to false, AgregadosComida.gruposNumeric("1e-7"))
+        assertTrue(AgregadosComida.gruposNumeric("5e-324").second)
+        assertEquals(0, AgregadosComida.gruposNumeric("0").first)
     }
 }

@@ -305,6 +305,25 @@ struct AgregadosComidaTests {
         }
     }
 
+    /// Cada número cuenta sus dígitos sobre el texto que viaja (hasta 17 cifras, menores a 1e-6, exponentes enormes): la
+    /// cota de `[x]` nunca da menos que lo medido y a lo sumo 3 más (la alineación, que se toma siempre en el peor caso).
+    @Test func losNumerosCuentanLosDigitosQueViajan() throws {
+        let raiz = try JSONSerialization.jsonObject(with: Data(contentsOf: raizRepo.appendingPathComponent("apps/shared/vectores/agregados_jsonb_medido.json"))) as! [String: Any]
+        let numeros = raiz["numeros"] as! [[String: Any]]
+        #expect(numeros.count >= 10)
+        for n in numeros {
+            let t = n["texto"] as! String, medido = n["jsonb"] as! Int
+            let d = try #require(Double(t))
+            let cota = 4 + AgregadosComida.bytesJsonb(.lista([.numero(d)]))
+            #expect(cota >= medido && cota <= medido + 3, "\(t): \(cota) contra \(medido)")
+        }
+        // El de AjustePorciones.subir: 17 cifras, no las 8 de un %.6f.
+        #expect(AgregadosComida.gruposNumeric(JS.texto(99.89999999999999)).grupos == 5)
+        #expect(AgregadosComida.gruposNumeric("1e-7") == (1, false))
+        #expect(AgregadosComida.gruposNumeric("5e-324").largo)
+        #expect(AgregadosComida.gruposNumeric("0").grupos == 0)
+    }
+
     // MARK: - Vectores compartidos con Android
 
     static var archivo: URL { raizRepo.appendingPathComponent("apps/shared/vectores/agregados_comida.json") }

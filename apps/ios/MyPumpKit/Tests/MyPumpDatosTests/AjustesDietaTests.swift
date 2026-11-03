@@ -37,9 +37,29 @@ struct AjustesDietaTests {
         var getEmpezo: Bool { lock.withLock { _getEmpezo } }
         func marcarGet() { lock.withLock { _getEmpezo = true } }
         func guardar(_ c: JSONValue) { lock.withLock { _guardados.append(c) } }
+        /// Dos teléfonos de la misma cuenta: lo que guarda uno es lo que lee el otro (el día de ajustes y las marcas).
+        var persistente = false
+        /// Las marcas no salen (sin red para esa escritura): quedan en la cola.
+        var marcasCaidas = false
+        private var _marcas: [String: JSONValue] = [:]
+        private var _marcasEscritas = 0
+        var marcasEscritas: Int { lock.withLock { _marcasEscritas } }
+        var marcasFilas: String {
+            lock.withLock { String(data: try! JSONEncoder().encode(JSONValue.lista(Array(_marcas.values))), encoding: .utf8)! }
+        }
+        func guardarMarca(_ c: JSONValue) {
+            lock.withLock {
+                _marcasEscritas += 1
+                guard let id = c["p_comida_id"]?.comoTexto else { return }
+                _marcas[id] = .objeto(["comida_id": .texto(id), "opcion_elegida": c["p_opcion"] ?? .null, "estado": c["p_estado"] ?? .null,
+                                       "foods_excluidos": c["p_foods_excluidos"] ?? .lista([])])
+            }
+        }
+        func desmarcar(_ c: JSONValue) { lock.withLock { _marcasEscritas += 1; if let id = c["p_comida_id"]?.comoTexto { _marcas[id] = nil } } }
+        func marcaDelServidor(_ id: String) -> JSONValue? { lock.withLock { _marcas[id] } }
     }
 
-    func modelo(_ s: Servidor) -> ModeloApp {
+    func modelo(_ s: Servidor, raiz otra: URL? = nil) -> ModeloApp {
         let dieta = Self.dieta
         let t = TransporteProgramado { fn, cuerpo in
             switch fn {
@@ -49,7 +69,20 @@ struct AjustesDietaTests {
                 if s.sinTabla { return (404, #"{"code":"PGRST202","message":"Could not find the function"}"#) }
                 if s.rechaza { return (400, #"{"code":"22023","message":"ajustes invalidos"}"#) }
                 s.guardar(cuerpo)
+                if s.persistente {
+                    let fila: JSONValue = .lista([.objeto(["fecha": cuerpo["p_fecha"] ?? .null, "dieta_id": cuerpo["p_dieta_id"] ?? .null,
+                                                           "tipo_dia": .null, "ajustes": cuerpo["p_ajustes"] ?? .objeto([:])])])
+                    s.filas = String(data: try JSONEncoder().encode(fila), encoding: .utf8)!
+                }
                 return (200, "true")
+            case "mypump_marcar_comida":
+                if s.marcasCaidas { return (503, #"{"message":"sin red"}"#) }
+                s.guardarMarca(cuerpo)
+                return (200, "true")
+            case "mypump_desmarcar_comida":
+                s.desmarcar(cuerpo)
+                return (200, "true")
+            case "mypump_get_comidas_marcadas" where s.persistente: return (200, s.marcasFilas)
             case "mypump_get_food_swaps" where s.sinSwaps: return (500, #"{"message":"caído"}"#)
             case "mypump_get_ajustes_dieta":
                 if s.sinTabla { return (404, #"{"code":"PGRST202","message":"Could not find the function"}"#) }
@@ -64,7 +97,7 @@ struct AjustesDietaTests {
             default: return (200, "[]")
             }
         }
-        return ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria(Self.token), raizDisco: raiz)
+        return ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria(Self.token), raizDisco: otra ?? raiz)
     }
 
     @Test func ajustarCambiaElDiaLoGuardaYLoMandaEntero() async {
@@ -180,6 +213,18 @@ struct AjustesDietaTests {
         #expect((await m.outbox?.fallidos ?? []).isEmpty)
         await m.hidratarDieta()
         #expect(m.ajustesDeHoy["almuerzo"]?.deltaKcal == -100, "con el día guardado, lo del servidor vuelve a valer")
+    }
+
+    /// El aviso que quedó de ayer (la app abierta pasada la medianoche) se apaga con la hidratación cuando hoy no hay
+    /// fallidos, aunque el servidor no conteste.
+    @Test func elAvisoDeAyerSeApagaAlHidratarSinFallidosDeHoy() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        m.ajustesSinGuardar = true   // lo que dejó el día anterior
+        s.sinTabla = true            // tampoco hace falta que el servidor conteste
+        await m.hidratarDieta()
+        #expect(!m.ajustesSinGuardar)
     }
 
     @Test func alHidratarGanaLoDelServidorSalvoQueHayaAlgoSinSalir() async {
@@ -435,6 +480,70 @@ struct AjustesDietaTests {
         _ = await (a, b, c)
         #expect(m.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [3])
         #expect(m.marcasDeHoy["desayuno"]?.excluidos == [2], "el tercero sigue destildado, ahora en el índice 2")
+    }
+
+    /// Segunda revisión del 3-nov: la hidratación de los ajustes corría los tildes ENCOLANDO una marca. Como en el arranque
+    /// los ajustes se hidratan antes que las marcas, la marca vieja de este teléfono quedaba en la cola y le ganaba a la
+    /// más nueva de otro: se perdían las exclusiones del otro teléfono. Ahora se remapea solo en memoria.
+    @Test func laHidratacionNoPisaLaMarcaDeOtroTelefono() async throws {
+        let s = Servidor()
+        s.persistente = true
+        let otraRaiz = FileManager.default.temporaryDirectory.appendingPathComponent("ajustes-b-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: otraRaiz) }
+        // Teléfono A: dos huevos agregados, «Comí» y destilda el segundo (índice 3: plan de 2 + agregado 1).
+        let a = modelo(s)
+        await a.cargar()
+        await a.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2)]), opciones: [:])
+        await a.marcar("desayuno", .comido, opcion: 0)
+        await a.alternarAlimento("desayuno", 3)
+        await a.outbox?.drenar()
+        #expect(await a.outbox?.pendientes == 0)
+
+        // Teléfono B: lo lee, saca el primer huevo (el segundo pasa al índice 2) y destilda la avena.
+        let b = modelo(s, raiz: otraRaiz)
+        await b.cargar()
+        #expect(b.marcasDeHoy["desayuno"]?.excluidos == [3])
+        await b.borrarAgregado("desayuno", ts: 1, opciones: [:])
+        await b.alternarAlimento("desayuno", 0)
+        await b.outbox?.drenar()
+        #expect(await b.outbox?.pendientes == 0)
+        #expect(Set(b.marcasDeHoy["desayuno"]?.excluidos ?? []) == [0, 2])
+        let escritas = s.marcasEscritas
+
+        // A vuelve a abrir: trae el día de B y su marca, sin mandar la suya vieja.
+        await a.cargar()
+        #expect(a.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [2])
+        #expect(Set(a.marcasDeHoy["desayuno"]?.excluidos ?? []) == [0, 2], "la marca de B, no la vieja de A remapeada")
+        #expect((await a.outbox?.pendientesPorClave() ?? [:]).keys.allSatisfy { !$0.hasPrefix("comida|") })
+        #expect(s.marcasEscritas == escritas, "A no escribió ninguna marca")
+        if case .lista(let excl)? = s.marcaDelServidor("desayuno")?["foods_excluidos"] {
+            #expect(Set(excl.compactMap { $0.comoNumero.map { Int($0) } }) == [0, 2])
+        } else { Issue.record("el servidor perdió la marca") }
+    }
+
+    /// Con una marca de esa comida todavía en la cola (lo último que hizo el cliente en este teléfono), la hidratación sí
+    /// corrige la cola: si no, saldría con los índices viejos.
+    @Test func conUnaMarcaEnLaColaLaHidratacionLaCorrigeEnLaCola() async throws {
+        let s = Servidor()
+        s.persistente = true
+        let a = modelo(s)
+        await a.cargar()
+        await a.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2)]), opciones: [:])
+        await a.outbox?.drenar()
+        s.marcasCaidas = true
+        await a.marcar("desayuno", .comido, opcion: 0)
+        await a.alternarAlimento("desayuno", 3)   // queda en la cola: esa escritura no sale
+        // Otro teléfono sacó el primer huevo.
+        let hoy = FechaLocal.hoy()
+        let dia = AjusteComida(compensar: false, agregados: [Self.huevo(2)])
+        let ajustes = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(["desayuno": dia]))
+        s.filas = String(data: try JSONEncoder().encode(JSONValue.lista([.objeto(["fecha": .texto(hoy), "dieta_id": .texto(Self.dietaId),
+                                                                                 "tipo_dia": .null, "ajustes": ajustes])])), encoding: .utf8)!
+        await a.hidratarDieta()
+        #expect(a.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [2])
+        #expect(a.marcasDeHoy["desayuno"]?.excluidos == [2])
+        let op = try #require((await a.outbox?.pendientesPorClave() ?? [:])["comida|\(hoy)|desayuno"])
+        #expect(ModeloApp.marcaDelPayload(op.payload)?.excluidos == [2], "la cola sale con el índice nuevo")
     }
 
     /// Cambiar de opción saca las cantidades a mano (eran de la otra) pero deja los agregados.

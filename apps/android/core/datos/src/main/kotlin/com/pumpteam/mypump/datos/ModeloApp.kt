@@ -182,7 +182,7 @@ class ModeloApp(
      * Los ajustes de hoy no se pudieron guardar en el servidor (la base los rechazó o se abandonaron): quedan en el
      * teléfono, la hidratación no los pisa y Dieta lo avisa. Se baja cuando sale el día de nuevo. Gemelo de iOS.
      */
-    private val _ajustesSinGuardar = MutableStateFlow(false)
+    internal val _ajustesSinGuardar = MutableStateFlow(false)
     val ajustesSinGuardar: StateFlow<Boolean> = _ajustesSinGuardar.asStateFlow()
 
     private val _agregadosRecientes = MutableStateFlow<List<AlimentoAgregado>>(emptyList())
@@ -1028,13 +1028,17 @@ class ModeloApp(
         // cambio y el siguiente borraba también lo del servidor).
         val antes = ordenAjustes.get()
         val pendienteAntes = cola.pendientesPorClave()[AjustesDieta.clave(hoy)] != null
+        // El aviso de «no se pudo guardar» sale de la cola, no del servidor: se corrige aunque no haya red (y se apaga el de
+        // ayer al pasar la medianoche con la app abierta).
+        val fallidoAntes = cola.fallidos().any { it.op.kind == AjustesDieta.KIND && it.op.dedupeKey == AjustesDieta.clave(hoy) }
+        if (vigente()) _ajustesSinGuardar.value = fallidoAntes
         val r = cliente.llamar("mypump_get_ajustes_dieta", mapOf("p_token" to texto(t), "p_desde" to texto(hoy), "p_hasta" to texto(hoy)))
         if (!vigente()) return
         val filas = ((r as? Resultado.Ok)?.valor as? ValorJson.Lista)?.elementos ?: return
         val pendiente = cola.pendientesPorClave()[AjustesDieta.clave(hoy)] != null
         // Un día que no se pudo guardar (la base lo rechazó): la fila del servidor es vieja y pisaría lo del teléfono.
         val fallido = cola.fallidos().any { it.op.kind == AjustesDieta.KIND && it.op.dedupeKey == AjustesDieta.clave(hoy) }
-        if (fallido && vigente()) _ajustesSinGuardar.value = true
+        if (vigente()) _ajustesSinGuardar.value = fallido
         if (!vigente() || pendienteAntes || pendiente || fallido || ordenAjustes.get() != antes) return
         if (fechaAjustes != hoy) cargarAjustes()
         val remota = filas.firstOrNull { it["fecha"]?.comoTexto == hoy }
@@ -1044,7 +1048,7 @@ class ModeloApp(
             if (validas == _ajustes.value) return
             val previos = _ajustes.value
             _ajustes.value = validas
-            for (id in previos.keys + validas.keys) seguirTildes(id, previos[id]?.agregados.orEmpty(), validas[id]?.agregados.orEmpty())
+            for (id in previos.keys + validas.keys) seguirTildes(id, previos[id]?.agregados.orEmpty(), validas[id]?.agregados.orEmpty(), delUsuario = false)
             disco?.guardar(AjustesDieta.archivo(dieta.id), AjustesDieta.guardados(hoy, validas))
         } else if (_ajustes.value.isNotEmpty()) {
             encolarAjustes(emptyMap())
@@ -1082,8 +1086,11 @@ class ModeloApp(
      * Cambiaron los agregados de una comida marcada «Comí» (se borró uno, «Volver al plan», llegó otro día del servidor):
      * sus tildes siguen a cada agregado por `_ts`. Va antes de cualquier espera (la marca cambia en memoria al toque), así dos
      * cambios seguidos no leen una marca vieja.
+     * [delUsuario] false (la hidratación): se remapea solo en memoria y en disco, sin encolar ni contar como un toque, así
+     * [hidratarMarcas] trae igual la marca del servidor (la de otro teléfono, más nueva, no se pisa con la vieja de este). Si
+     * ya hay una op de marca de esa comida en la cola, esa es lo último del cliente y se corrige en la cola.
      */
-    private suspend fun seguirTildes(comidaId: String, antes: List<AlimentoAgregado>, despues: List<AlimentoAgregado>) {
+    private suspend fun seguirTildes(comidaId: String, antes: List<AlimentoAgregado>, despues: List<AlimentoAgregado>, delUsuario: Boolean = true) {
         if (antes.map { it.ts } == despues.map { it.ts }) return
         val m = marcasDeHoy[comidaId] ?: return
         if (m.estado != MarcaComida.Estado.COMIDO) return
@@ -1091,7 +1098,21 @@ class ModeloApp(
         val o = ConsumoDelDia.opcionDeLaMarca(c, m) ?: 0
         val n = c.opciones.getOrNull(o)?.alimentos?.size ?: 0
         val excluidos = AgregadosComida.excluidosTrasCambio(m.excluidos, n, antes.map { it.ts }, despues.map { it.ts })
-        if (excluidos != m.excluidos) cambiarMarca(comidaId, MarcaComida(m.opcion, MarcaComida.Estado.COMIDO, excluidos), m.opcion)
+        if (excluidos == m.excluidos) return
+        val nueva = MarcaComida(m.opcion, MarcaComida.Estado.COMIDO, excluidos)
+        if (!delUsuario && !_esDemo.value) {
+            val fecha = fechaMarcas
+            val enCola = outbox?.pendientesPorClave()?.containsKey(MarcasComidas.clave(fecha, comidaId)) == true
+            // Mientras se miraba la cola la marca pudo cambiar (un toque): ese toque ya encoló lo suyo.
+            if (_marcas.value[comidaId] != m) return
+            if (!enCola) {
+                val todas = _marcas.value + (comidaId to nueva)
+                _marcas.value = todas
+                disco?.guardar(MarcasComidas.ARCHIVO, MarcasComidas.guardadas(fecha, todas))
+                return
+            }
+        }
+        cambiarMarca(comidaId, nueva, m.opcion)
     }
 
     // ── «Comí» / «Salté» y lo consumido (D25) ──

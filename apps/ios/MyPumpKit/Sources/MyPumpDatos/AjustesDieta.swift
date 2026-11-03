@@ -148,12 +148,16 @@ extension ModeloApp {
         // cambio y el siguiente borraba también lo del servidor).
         let antes = ordenAjustes
         let pendienteAntes = (await outbox.pendientesPorClave())[Self.claveAjustes(hoy)] != nil
+        // El aviso de «no se pudo guardar» sale de la cola, no del servidor: se corrige aunque no haya red (y se apaga el de
+        // ayer al pasar la medianoche con la app abierta).
+        let fallidoAntes = await outbox.fallidos.contains { $0.op.kind == Self.kindAjustes && $0.op.dedupeKey == Self.claveAjustes(hoy) }
+        if vigente() { ajustesSinGuardar = fallidoAntes }
         let r = await cliente.llamar("mypump_get_ajustes_dieta", ["p_token": .texto(t), "p_desde": .texto(hoy), "p_hasta": .texto(hoy)])
         guard vigente(), case .success(let v) = r, case .lista(let filas) = v else { return }
         let pendiente = (await outbox.pendientesPorClave())[Self.claveAjustes(hoy)] != nil
         // Un día que no se pudo guardar (la base lo rechazó): la fila del servidor es vieja y pisaría lo del teléfono.
         let fallido = await outbox.fallidos.contains { $0.op.kind == Self.kindAjustes && $0.op.dedupeKey == Self.claveAjustes(hoy) }
-        if fallido, vigente() { ajustesSinGuardar = true }
+        if vigente() { ajustesSinGuardar = fallido }
         guard vigente(), !pendienteAntes, !pendiente, !fallido, ordenAjustes == antes else { return }
         if fechaAjustes != hoy { cargarAjustes() }
         let remota = filas.first { $0["fecha"]?.comoTexto == hoy }
@@ -166,7 +170,7 @@ extension ModeloApp {
             let previos = ajustes
             ajustes = validas
             for id in Set(previos.keys).union(validas.keys) {
-                await seguirTildes(id, antes: previos[id]?.agregados ?? [], despues: validas[id]?.agregados ?? [])
+                await seguirTildes(id, antes: previos[id]?.agregados ?? [], despues: validas[id]?.agregados ?? [], delUsuario: false)
             }
             _ = disco?.guardar(AjustesGuardados(fecha: hoy, comidas: validas), Self.archivoAjustes(dieta.id))
         } else if !ajustes.isEmpty {

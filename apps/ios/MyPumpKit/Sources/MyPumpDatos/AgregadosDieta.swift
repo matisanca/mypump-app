@@ -35,14 +35,27 @@ extension ModeloApp {
 
     /// Cambiaron los agregados de una comida marcada «Comí»: sus tildes siguen a cada agregado (por `_ts`). Va antes de
     /// cualquier espera (la marca cambia en memoria al toque), así dos cambios seguidos no leen una marca vieja.
-    func seguirTildes(_ comidaId: String, antes: [AlimentoAgregado], despues: [AlimentoAgregado]) async {
+    /// `delUsuario` false (la hidratación): se remapea solo en memoria y en disco, sin encolar ni contar como un toque, así
+    /// `hidratarMarcas` trae igual la marca del servidor (la de otro teléfono, más nueva, no se pisa con la vieja de este).
+    /// Si ya hay una op de marca de esa comida en la cola, esa es lo último del cliente y se corrige en la cola.
+    func seguirTildes(_ comidaId: String, antes: [AlimentoAgregado], despues: [AlimentoAgregado], delUsuario: Bool = true) async {
         guard antes.map(\.ts) != despues.map(\.ts), let m = marcasDeHoy[comidaId], m.estado == .comido,
               let c = comidasDelDia.first(where: { $0.id == comidaId }) else { return }
         let o = ConsumoDelDia.opcionDeLaMarca(c, m) ?? 0
         let n = c.opciones.indices.contains(o) ? c.opciones[o].alimentos.count : 0
         let excluidos = AgregadosComida.excluidosTrasCambio(m.excluidos, alimentosPlan: n, antes: antes.map(\.ts), despues: despues.map(\.ts))
-        if excluidos != m.excluidos {
-            await cambiarMarca(comidaId, MarcaComida(opcion: m.opcion, estado: .comido, excluidos: excluidos), opcionAlDesmarcar: m.opcion)
+        guard excluidos != m.excluidos else { return }
+        let nueva = MarcaComida(opcion: m.opcion, estado: .comido, excluidos: excluidos)
+        if !delUsuario, !esDemo {
+            let enCola = (await outbox?.pendientesPorClave())?[Self.claveMarca(fechaMarcas, comidaId)] != nil
+            // Mientras se miraba la cola la marca pudo cambiar (un toque): ese toque ya encoló lo suyo.
+            guard marcas[comidaId] == m else { return }
+            if !enCola {
+                marcas[comidaId] = nueva
+                _ = disco?.guardar(MarcasGuardadas(fecha: fechaMarcas, marcas: marcas), Self.archivoMarcas)
+                return
+            }
         }
+        await cambiarMarca(comidaId, nueva, opcionAlDesmarcar: m.opcion)
     }
 }

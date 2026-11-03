@@ -2329,5 +2329,64 @@
     }
    }
   }
+ ],
+ "numeros_descripcion": "Números sueltos como [x]::jsonb, con su pg_column_size medido el 2026-11-03 (solo lectura). 4 + bytesJsonb([x]) tiene que dar >= jsonb. «texto» es el literal JSON.",
+ "numeros": [
+  {
+   "texto": "99.89999999999999",
+   "jsonb": 28
+  },
+  {
+   "texto": "0.30000000000000004",
+   "jsonb": 28
+  },
+  {
+   "texto": "1e-7",
+   "jsonb": 20
+  },
+  {
+   "texto": "1.234e-7",
+   "jsonb": 22
+  },
+  {
+   "texto": "5e-324",
+   "jsonb": 22
+  },
+  {
+   "texto": "2.2250738585072014e-308",
+   "jsonb": 30
+  },
+  {
+   "texto": "0.000001",
+   "jsonb": 20
+  },
+  {
+   "texto": "1234567.891",
+   "jsonb": 24
+  },
+  {
+   "texto": "1.7976931348623157e+308",
+   "jsonb": 30
+  },
+  {
+   "texto": "1e+21",
+   "jsonb": 20
+  },
+  {
+   "texto": "123456789012345680000",
+   "jsonb": 28
+  },
+  {
+   "texto": "0.1",
+   "jsonb": 20
+  },
+  {
+   "texto": "368.3",
+   "jsonb": 22
+  },
+  {
+   "texto": "1730000000100",
+   "jsonb": 26
+  }
  ]
 }
