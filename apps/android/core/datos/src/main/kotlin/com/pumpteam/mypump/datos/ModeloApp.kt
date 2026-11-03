@@ -15,6 +15,8 @@ import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.AjusteComida
 import com.pumpteam.mypump.reglas.AjustePorciones
+import com.pumpteam.mypump.reglas.AgregadosComida
+import com.pumpteam.mypump.reglas.AlimentoAgregado
 import com.pumpteam.mypump.reglas.AlimentoEfectivo
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
@@ -171,6 +173,13 @@ class ModeloApp(
 
     /** Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor). */
     private val ordenAjustes = java.util.concurrent.atomic.AtomicLong()
+
+    /**
+     * Los últimos alimentos agregados a una comida (2.0.3, D1), con su cantidad: «Recientes» de la hoja de agregar. Solo en
+     * el teléfono (`agregados_recientes.json`).
+     */
+    private val _agregadosRecientes = MutableStateFlow<List<AlimentoAgregado>>(emptyList())
+    val agregadosRecientes: StateFlow<List<AlimentoAgregado>> = _agregadosRecientes.asStateFlow()
 
     /**
      * «Comí» / «Salté» de hoy, por comida (D25; ver MarcasComidas.kt). Solo valen el día de [fechaMarcas]: lo que se
@@ -888,6 +897,7 @@ class ModeloApp(
     private fun cargarAjustes() {
         val hoy = FechaLocal.hoy()
         fechaAjustes = hoy
+        cargarRecientes()
         val g = _dieta.value?.id?.let { id -> disco?.leer(AjustesDieta.archivo(id)) }?.let(ValorJson::desde)
         _ajustes.value = if (g == null || g["fecha"]?.comoTexto != hoy) emptyMap()
         else AjustesDieta.comidasDesde(g["comidas"]).orEmpty().filterValues { !it.neutro }
@@ -969,10 +979,14 @@ class ModeloApp(
             val d = dia[c.id] ?: return@mapNotNull null
             plan += d.kcalPlan
             hoy += d.kcal
-            ValorJson.objeto(
+            val renglon = linkedMapOf(
                 "comida_id" to texto(c.id), "nombre" to texto(c.nombre), "kcal_plan" to numero(d.kcalPlan),
                 "kcal_dia" to numero(d.kcal), "omitida" to ValorJson.Booleano(d.omitida),
             )
+            // 2.0.3 (D1): lo que sumó a la comida, si sumó algo y la come (`kcal_dia` ya lo incluye).
+            val agregados = if (d.omitida) emptyList() else AgregadosComida.resumen(ajustes[c.id])
+            if (agregados.isNotEmpty()) renglon["agregados"] = ValorJson.Lista(agregados)
+            ValorJson.Objeto(renglon)
         }
         val vacio = ajustes.isEmpty()
         val payload = ValorJson.objeto(
@@ -1012,6 +1026,41 @@ class ModeloApp(
         } else if (_ajustes.value.isNotEmpty()) {
             encolarAjustes(emptyMap())
         }
+    }
+
+    // ── Alimentos agregados a una comida (2.0.3, D1) ──
+    // Van dentro del ajuste de esa comida y de ese día (AjusteComida.agregados), así que viajan con el resto del ajuste:
+    // en el teléfono, por la cola (`ajustes_dieta`, una op por día) y en `mypump_ajustes_dieta`. Gemelo de AgregadosDieta.swift.
+
+    /** Los recientes del teléfono (de cualquier día). La demo no tiene carpeta: los suyos duran hasta la próxima carga. */
+    private fun cargarRecientes() {
+        val v = disco?.leer(ARCHIVO_RECIENTES)?.let(ValorJson::desde) as? ValorJson.Lista
+        _agregadosRecientes.value = v?.elementos.orEmpty().mapNotNull { AlimentoAgregado.desde(it) }
+    }
+
+    /** Lo último agregado va primero (un mismo alimento una sola vez, con la última cantidad). */
+    fun recordarReciente(a: AlimentoAgregado) {
+        val r = listOf(a) + _agregadosRecientes.value.filter { it.nombre.lowercase() != a.nombre.lowercase() }
+        _agregadosRecientes.value = r.take(MAXIMO_RECIENTES)
+        if (!_esDemo.value) disco?.guardar(ARCHIVO_RECIENTES, ValorJson.Lista(_agregadosRecientes.value.map { it.aValor() }))
+    }
+
+    /**
+     * Saca un agregado de una comida de hoy. Si la comida está marcada «Comí», los tildes de los agregados que siguen bajan
+     * uno (son índices n + j) y el del borrado se va.
+     */
+    suspend fun borrarAgregado(comidaId: String, ts: Long, opciones: Map<String, Int>) {
+        val a = ajustesDeHoy[comidaId] ?: return
+        val j = a.agregados.indexOfFirst { it.ts == ts }
+        if (j < 0) return
+        ajustar(comidaId, a.copy(agregados = a.agregados.filterIndexed { i, _ -> i != j }), opciones)
+        val m = marcasDeHoy[comidaId] ?: return
+        if (m.estado != MarcaComida.Estado.COMIDO) return
+        val c = comidasDelDia.firstOrNull { it.id == comidaId } ?: return
+        val o = ConsumoDelDia.opcionDeLaMarca(c, m) ?: 0
+        val n = c.opciones.getOrNull(o)?.alimentos?.size ?: 0
+        val excluidos = AgregadosComida.excluidosTrasBorrar(m.excluidos, n, j)
+        if (excluidos != m.excluidos) cambiarMarca(comidaId, MarcaComida(m.opcion, MarcaComida.Estado.COMIDO, excluidos), m.opcion)
     }
 
     // ── «Comí» / «Salté» y lo consumido (D25) ──
@@ -1330,6 +1379,10 @@ class ModeloApp(
         const val CLAVE_TIPO_DIA = "mypump_tipo_dia"
         const val CLAVE_TOKEN_INVALIDO = "mypump_token_invalido"
         internal const val ARCHIVO_COPIA = "offline.json"
+        internal const val ARCHIVO_RECIENTES = "agregados_recientes.json"
+
+        /** Cuántos recientes se guardan. */
+        internal const val MAXIMO_RECIENTES = 12
 
         fun sumar(a: List<Alimento>): Macros = Macros(
             kcal = a.mapNotNull { it.kcal }.sum(), prot = a.mapNotNull { it.prot }.sum(),

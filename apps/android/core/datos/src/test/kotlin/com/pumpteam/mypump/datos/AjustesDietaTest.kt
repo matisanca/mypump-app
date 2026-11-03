@@ -1,7 +1,11 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.AgregadosComida
 import com.pumpteam.mypump.reglas.AjusteComida
+import com.pumpteam.mypump.reglas.AlimentoAgregado
+import com.pumpteam.mypump.reglas.MacrosPor100
+import com.pumpteam.mypump.reglas.MarcaComida
 import com.pumpteam.mypump.reglas.AnclaAlimento
 import com.pumpteam.mypump.reglas.FechaLocal
 import java.util.Collections
@@ -359,6 +363,85 @@ class AjustesDietaTest {
         m.ajustar("d", AjusteComida(deltaKcal = 100), emptyMap())
         assertEquals(100, m.ajustesDeHoy["d"]?.deltaKcal, "en la demo se puede probar")
         assertNull(m.outbox)
+    }
+
+    // ── Alimentos agregados (2.0.3, D1) ──
+
+    private fun huevo(ts: Long): AlimentoAgregado = AgregadosComida.agregado(
+        AgregadosComida.Candidato("Huevo entero", MacrosPor100(143.0, 12.6, 0.7, 9.5), "unidad", 60.0, AlimentoAgregado.Origen.BASE),
+        1.0, AgregadosComida.Medida("unidad", 60.0), ts,
+    )
+
+    /** Un agregado solo (sin otro cambio) ya es un ajuste: se guarda, sale con el día y va en el resumen de esa comida. */
+    @Test
+    fun unAgregadoSaleConElDiaYVaEnElResumen() = enUnHilo { alcance ->
+        val s = Servidor()
+        val m = modelo(s, alcance)
+        m.cargar()
+        m.outbox?.drenar()
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1))), emptyMap())
+        assertEquals(1, m.ajustesDeHoy["desayuno"]?.agregados?.size)
+        assertEquals(614.0 + 86, m.diaAjustado(emptyMap()).getValue("desayuno").kcal)
+        m.outbox?.drenar()
+        val g = s.guardados.last()
+        val ag = (g["p_ajustes"]?.get("desayuno")?.get("agregados") as ValorJson.Lista).elementos
+        assertEquals("Huevo entero", ag[0]["nombre"]?.comoTexto)
+        assertEquals(614.0 + 525 + 86, g["p_kcal_dia"]?.comoNumero)
+        val resumen = (g["p_resumen"] as ValorJson.Lista).elementos
+        val r0 = (resumen[0]["agregados"] as ValorJson.Lista).elementos
+        assertEquals(86.0, r0[0]["kcal"]?.comoNumero)
+        assertEquals(60.0, r0[0]["gramos"]?.comoNumero)
+        // El almuerzo, sin agregados, queda como antes (sin la clave).
+        assertNull(resumen[1]["agregados"])
+        val otro = modelo(Servidor(), alcance)
+        otro.cargar()
+        assertEquals(listOf(1L), otro.ajustesDeHoy["desayuno"]?.agregados?.map { it.ts })
+    }
+
+    /** Borrar un agregado de una comida marcada «Comí»: el tilde del borrado se va y los de los siguientes bajan uno. */
+    @Test
+    fun borrarUnAgregadoCorreLosTildes() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1), huevo(2), huevo(3))), emptyMap())
+        m.marcar("desayuno", MarcaComida.Estado.COMIDO, 0)
+        // Plan de 2 (avena, huevos): los agregados son 2, 3 y 4. Destilda el segundo y el tercero.
+        m.alternarAlimento("desayuno", 3)
+        m.alternarAlimento("desayuno", 4)
+        m.borrarAgregado("desayuno", 2, emptyMap())
+        assertEquals(listOf(1L, 3L), m.ajustesDeHoy["desayuno"]?.agregados?.map { it.ts })
+        assertEquals(listOf(3), m.marcasDeHoy["desayuno"]?.excluidos)
+        assertEquals(614.0 + 86, m.consumo(emptyMap()).kcal)
+        m.borrarAgregado("desayuno", 1, emptyMap())
+        m.borrarAgregado("desayuno", 3, emptyMap())
+        assertNull(m.ajustesDeHoy["desayuno"])
+        assertEquals(emptyList<Int>(), m.marcasDeHoy["desayuno"]?.excluidos)
+    }
+
+    /** Cambiar de opción saca las cantidades a mano (eran de la otra) pero deja los agregados. */
+    @Test
+    fun losAgregadosSobrevivenAlCambioDeOpcion() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(cantidades = mapOf("0" to 50.0), agregados = listOf(huevo(1))), mapOf("desayuno" to 0))
+        val a = m.ajustesDeHoy.getValue("desayuno")
+        m.ajustar("desayuno", a.copy(opcion = 1, cantidades = emptyMap()), mapOf("desayuno" to 1))
+        assertEquals(1, m.ajustesDeHoy["desayuno"]?.agregados?.size)
+        assertTrue(m.ajustesDeHoy["desayuno"]?.cantidades?.isEmpty() == true)
+        assertEquals(120.0 + 86, m.diaAjustado(mapOf("desayuno" to 1)).getValue("desayuno").kcal)
+    }
+
+    @Test
+    fun losRecientesQuedanEnElTelefono() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.recordarReciente(huevo(1))
+        m.recordarReciente(huevo(2).copy(nombre = "Clara de huevo"))
+        m.recordarReciente(huevo(3))
+        assertEquals(listOf(3L, 2L), m.agregadosRecientes.value.map { it.ts })
+        val otro = modelo(Servidor(), alcance)
+        otro.cargar()
+        assertEquals(listOf("Huevo entero", "Clara de huevo"), otro.agregadosRecientes.value.map { it.nombre })
     }
 
     private companion object {

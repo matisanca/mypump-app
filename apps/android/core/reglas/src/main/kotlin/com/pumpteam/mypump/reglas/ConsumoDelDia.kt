@@ -126,7 +126,8 @@ object ConsumoDelDia {
     /**
      * Lo comido hoy.
      * - Las marcadas «Comí» con la opción de la marca, con sus reemplazos (`efectivo`) y, si hoy hay ajustes, con las
-     *   porciones de hoy (lo que le pasan las anteriores incluido), menos los alimentos que destildó.
+     *   porciones de hoy (lo que le pasan las anteriores incluido) y los alimentos agregados (2.0.3), menos los que
+     *   destildó (los agregados se tildan como n + j, después de los n del plan).
      * - «Salté» no suma. Las que hoy no come no suman ni cuentan entre las comidas, aunque tengan marca (la web no conoce
      *   los ajustes: ahí cuentan).
      * - Más las comidas libres del día.
@@ -162,7 +163,9 @@ object ConsumoDelDia {
             if (m.estado != MarcaComida.Estado.COMIDO) { salteadas++; continue }
             hechas++
             val excluidos = m.excluidos.toSet()
-            (ajustadas[c.id]?.alimentos ?: c.alimentos).forEachIndexed { i, a ->
+            // Los agregados (D1) van después de los del plan: sus tildes son n + j.
+            val todos = (ajustadas[c.id]?.alimentos ?: c.alimentos) + ajustadas[c.id]?.agregados.orEmpty()
+            todos.forEachIndexed { i, a ->
                 if (i in excluidos) return@forEachIndexed
                 kcal += a.kcal ?: 0.0
                 prot += a.prot ?: 0.0
