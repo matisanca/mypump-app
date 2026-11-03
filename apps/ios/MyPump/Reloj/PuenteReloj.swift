@@ -134,7 +134,9 @@ final class PuenteReloj: NSObject {
     /// la vista, por la vía que el sistema entrega después.
     private func mandar(_ d: [String: Any]) {
         guard !d.isEmpty, let s = sesion, s.activationState == .activated else { return }
-        if s.isReachable { s.sendMessage(d, replyHandler: nil, errorHandler: { _ in s.transferUserInfo(d) }) } else { s.transferUserInfo(d) }
+        // El errorHandler corre en la cola de WatchConnectivity: `@Sendable` para no heredar el MainActor.
+        nonisolated(unsafe) let dd = d
+        if s.isReachable { s.sendMessage(d, replyHandler: nil, errorHandler: { @Sendable _ in s.transferUserInfo(dd) }) } else { s.transferUserInfo(d) }
     }
 }
 

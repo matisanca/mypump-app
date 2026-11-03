@@ -142,7 +142,8 @@ final class CalibracionReloj {
         tareas.append(Task.detached {
             for await l in lotes { await motor.agregar(acelerometro: l.0, giroscopio: l.1) }
         })
-        m.startDeviceMotionUpdates(to: cola) { d, _ in
+        // Corre en `cola`: `@Sendable` para que no herede el MainActor (Swift 6 cortaría la app).
+        m.startDeviceMotionUpdates(to: cola) { @Sendable d, _ in
             guard let d else { return }
             let a = MuestraEjes(t: d.timestamp, x: Float(d.gravity.x + d.userAcceleration.x), y: Float(d.gravity.y + d.userAcceleration.y),
                                 z: Float(d.gravity.z + d.userAcceleration.z))

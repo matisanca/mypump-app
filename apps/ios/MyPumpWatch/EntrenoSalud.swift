@@ -29,7 +29,9 @@ final class EntrenoSalud: NSObject {
         guard sesion == nil, HKHealthStore.isHealthDataAvailable() else { return }
         let aCompartir: Set<HKSampleType> = [HKObjectType.workoutType()]
         let aLeer: Set<HKObjectType> = [Self.fc, Self.energia]
-        tienda.requestAuthorization(toShare: aCompartir, read: aLeer) { [weak self] ok, _ in
+        // HealthKit llama a estas closures en su cola. El SDK ya las declara `@Sendable` (no heredan el MainActor); se
+        // escribe igual para que quede a la vista.
+        tienda.requestAuthorization(toShare: aCompartir, read: aLeer) { @Sendable [weak self] ok, _ in
             guard ok else { return }
             Task { @MainActor in self?.abrir() }
         }
@@ -50,7 +52,7 @@ final class EntrenoSalud: NSObject {
         sumaFC = 0; muestrasFC = 0
         let inicio = Date()
         s.startActivity(with: inicio)
-        b.beginCollection(withStart: inicio) { _, _ in }
+        b.beginCollection(withStart: inicio) { @Sendable _, _ in }
         alAbrir?()
     }
 
@@ -58,7 +60,7 @@ final class EntrenoSalud: NSObject {
     func terminar() {
         guard let s = sesion, let b = builder else { return }
         s.end()
-        b.endCollection(withEnd: Date()) { _, _ in
+        b.endCollection(withEnd: Date()) { @Sendable _, _ in
             b.discardWorkout()
         }
         sesion = nil
@@ -69,10 +71,9 @@ final class EntrenoSalud: NSObject {
     /// retoma la medición; si no, se cierra y se descarta (no queda un entreno abierto ni va nada a Salud).
     func recuperar(seguir: Bool) {
         guard HKHealthStore.isHealthDataAvailable() else { return }
-        tienda.recoverActiveWorkoutSession { [weak self] s, _ in
+        tienda.recoverActiveWorkoutSession { @Sendable [weak self] s, _ in
             guard let s else { return }
-            nonisolated(unsafe) let recuperada = s
-            Task { @MainActor in self?.adoptar(recuperada, seguir: seguir) }
+            Task { @MainActor in self?.adoptar(s, seguir: seguir) }
         }
     }
 
@@ -87,7 +88,7 @@ final class EntrenoSalud: NSObject {
         }
         guard s !== sesion else { return }
         s.end()
-        b.endCollection(withEnd: Date()) { _, _ in b.discardWorkout() }
+        b.endCollection(withEnd: Date()) { @Sendable _, _ in b.discardWorkout() }
     }
 
     fileprivate func actualizar(_ estadisticas: [HKQuantityType: HKStatistics]) {

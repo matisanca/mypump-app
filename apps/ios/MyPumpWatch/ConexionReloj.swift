@@ -32,10 +32,14 @@ final class ConexionReloj: NSObject {
             return
         }
         if s.isReachable {
-            s.sendMessage(d, replyHandler: { [weak self] respuesta in
-                Task { @MainActor in self?.leer(respuesta) }
-            }, errorHandler: { _ in
-                Task { @MainActor in alTerminar?(false) }
+            // WatchConnectivity llama a los dos en su propia cola: sin `@Sendable` heredan el MainActor de esta función y
+            // Swift 6 corta la app al verificar el aislamiento (la caída al abrir del build 123).
+            nonisolated(unsafe) let fin = alTerminar
+            s.sendMessage(d, replyHandler: { @Sendable [weak self] respuesta in
+                nonisolated(unsafe) let r = respuesta
+                Task { @MainActor in self?.leer(r) }
+            }, errorHandler: { @Sendable _ in
+                Task { @MainActor in fin?(false) }
             })
             alTerminar?(true)
             return
