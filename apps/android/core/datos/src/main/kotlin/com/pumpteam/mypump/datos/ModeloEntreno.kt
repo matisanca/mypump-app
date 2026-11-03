@@ -16,10 +16,12 @@ import com.pumpteam.mypump.reglas.BarraDescanso
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
 import com.pumpteam.mypump.reglas.ClaveEjercicio
 import com.pumpteam.mypump.reglas.Descanso
+import com.pumpteam.mypump.reglas.DescansoPropio
 import com.pumpteam.mypump.reglas.DiaEnCurso
 import com.pumpteam.mypump.reglas.EjercicioEfectivo
 import com.pumpteam.mypump.reglas.EstadosEjercicio
 import com.pumpteam.mypump.reglas.FechaJs
+import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FilaSerie
 import com.pumpteam.mypump.reglas.IndiceComentarios
 import com.pumpteam.mypump.reglas.Js
@@ -111,6 +113,19 @@ class ModeloEntreno(
     private val _descanso = MutableStateFlow(BarraDescanso(descansoEnDisco))
     val descanso: StateFlow<BarraDescanso> = _descanso.asStateFlow()
 
+    /** E3 (2.0.3): el aviso de récord de la última serie confirmada; la vista lo muestra unos segundos y lo descarta. */
+    data class AvisoRecord(val id: Long, val lugar: String, val texto: String)
+
+    private val _avisoRecord = MutableStateFlow<AvisoRecord?>(null)
+    val avisoRecord: StateFlow<AvisoRecord?> = _avisoRecord.asStateFlow()
+    private var avisosDados = 0L
+
+    /** E2 (2.0.3): los descansos elegidos a mano, por la clave del ejercicio. En el teléfono, para toda la cuenta. */
+    private fun leerDescansosPropios(): Map<String, Int> =
+        (disco?.leer(Archivo.DESCANSOS) as? JsonObject)?.mapNotNull { (k, v) ->
+            DescansoPropio.valido((v as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt())?.let { k to it }
+        }?.toMap() ?: emptyMap()
+
     /** Cuándo arrancó la sesión del día (ms desde 1970, `_sessionStart`). */
     private val _inicioSesion = MutableStateFlow<Double?>(null)
     val inicioSesion: StateFlow<Double?> = _inicioSesion.asStateFlow()
@@ -194,6 +209,8 @@ class ModeloEntreno(
         val elegido = TextosEntreno.diaSugerido(normalizacionInicial.estructura.dias, guardado) ?: Dia(id = "d1")
         val d = DiaEnCurso(elegido, semana, demo, zona = zona)
         d.sustituciones = SustitucionesEntreno.compat(leerSustituciones(rutinaInicial.id))
+        d.descansosPropios = leerDescansosPropios()
+        d.preseleccionarRir()
         sustitucionesGuardadas = leerEncoladas(rutinaInicial.id) ?: d.sustituciones
         desfaseReloj = (disco?.leer(Archivo.RELOJ) as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
         _dia = MutableStateFlow(d)
@@ -281,7 +298,12 @@ class ModeloEntreno(
         historialEnVuelo.clear()
         _historialCargando.value = emptySet()
         generacionHistorial.replaceAll { _, g -> g + 1 }
-        _dia.value = DiaEnCurso(nuevo, semana, demo, zona = zona).also { it.sustituciones = sustituciones }
+        val propios = _dia.value.descansosPropios
+        _dia.value = DiaEnCurso(nuevo, semana, demo, zona = zona).also {
+            it.sustituciones = sustituciones
+            it.descansosPropios = propios
+            it.preseleccionarRir()
+        }
         diaCompletadoMostrado = false
         guardarDiaVisualizado()
         coroutineScope {
@@ -348,9 +370,13 @@ class ModeloEntreno(
          * a «Fondos» o a la patada de tríceps, sin variantes, se les apagaba «Sustituir» aunque tenían 26 a 30).
          */
         val puedeSustituir: Boolean,
-        /** El chip del descanso ("2:30"). */
+        /** El chip del descanso ("2:30"): el elegido a mano (E2) si hay, si no el del plan. */
         val descanso: String,
         val comentarios: List<Comentario>,
+        /** E2: el descanso en segundos, el del plan y si es uno elegido a mano. */
+        val descansoSegundos: Int = NormalizacionRutina.DESCANSO_POR_DEFECTO,
+        val descansoPlan: Int = NormalizacionRutina.DESCANSO_POR_DEFECTO,
+        val descansoPropio: Boolean = false,
     )
 
     fun tarjeta(lugar: String): Tarjeta? {
@@ -371,8 +397,11 @@ class ModeloEntreno(
             confirmadas = e?.series?.count { it.confirmada } ?: 0,
             record = d.record(lugar), ultimaVez = d.ultimaVez(lugar, reloj()),
             puedeSustituir = _catalogo.value.sustitutos(ef).isNotEmpty() || _catalogo.value.otrosDelMismoMusculo(ef).isNotEmpty(),
-            descanso = TiempoEntreno.fmtTiempo((plan.descansoSegundos ?: NormalizacionRutina.DESCANSO_POR_DEFECTO).toDouble()),
+            descanso = TiempoEntreno.fmtTiempo(d.descanso(lugar).toDouble()),
             comentarios = _comentarios.value.comentarios(lugar),
+            descansoSegundos = d.descanso(lugar),
+            descansoPlan = plan.descansoSegundos ?: NormalizacionRutina.DESCANSO_POR_DEFECTO,
+            descansoPropio = d.tieneDescansoPropio(lugar),
         )
     }
 
@@ -412,7 +441,9 @@ class ModeloEntreno(
         // Lo que se muestra (el sustituto, si hay) decide si la serie lleva kg, como en la fila (revisión del 14-oct).
         val ef = _dia.value.ejercicio(lugar)?.let { efectivo(it).ejercicio }
         while (true) {
-            val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas, ef) }
+            val hoy = FechaLocal.hoy(reloj(), zona)
+            val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas, ef, hoy) }
+            paso.record?.let { _avisoRecord.value = AvisoRecord(++avisosDados, lugar, it.texto) }
             ejecutar(paso.efectos)?.let { completo = it }
             val p = paso.pregunta ?: return completo
             val motivo = paso.motivo ?: return completo
@@ -422,6 +453,25 @@ class ModeloEntreno(
                 DiaEnCurso.Paso.Motivo.REGISTRAR_IGUAL -> respuestas.copy(registrarIgual = si)
             }
         }
+    }
+
+    /** E3: la vista ya mostró (o el cliente tocó) el aviso de récord. */
+    fun descartarRecord(id: Long) {
+        if (_avisoRecord.value?.id == id) _avisoRecord.value = null
+    }
+
+    /**
+     * E2: el descanso elegido a mano para el ejercicio que se hace en ese lugar (null = «Volver al del plan»). Se guarda
+     * por su clave, en el teléfono; el descanso que ya corre no cambia.
+     */
+    fun elegirDescanso(lugar: String, segundos: Int?) {
+        val clave = ClaveEjercicio.de(_dia.value.nombreEfectivo(lugar))
+        val nuevos = mutarDia { d ->
+            val v = DescansoPropio.valido(segundos)
+            d.descansosPropios = if (v == null) d.descansosPropios - clave else d.descansosPropios + (clave to v)
+            d.descansosPropios
+        }
+        disco?.guardar(Archivo.DESCANSOS, ValorJson.Objeto(nuevos.mapValues { ValorJson.Numero(it.value.toDouble()) }))
     }
 
     /** El lápiz (SER-06). */
@@ -822,7 +872,12 @@ class ModeloEntreno(
         val semana = if (nueva.semanaActual == 0) 1 else nueva.semanaActual
         val elegido = TextosEntreno.diaSugerido(n.estructura.dias, disco?.let { leerTexto(it, Archivo.dia(nueva.id)) }) ?: Dia(id = "d1")
         val sustituciones = SustitucionesEntreno.compat(leerSustituciones(nueva.id))
-        _dia.value = DiaEnCurso(elegido, semana, demo, zona = zona).also { it.sustituciones = sustituciones }
+        val propios = _dia.value.descansosPropios
+        _dia.value = DiaEnCurso(elegido, semana, demo, zona = zona).also {
+            it.sustituciones = sustituciones
+            it.descansosPropios = propios
+            it.preseleccionarRir()
+        }
         sustitucionesGuardadas = leerEncoladas(nueva.id) ?: sustituciones
         syncSustituciones = null
         tocadasDuranteSync = null
@@ -1276,6 +1331,9 @@ class ModeloEntreno(
     object Archivo {
         const val SESIONES = "entreno-sesiones.json"
         const val DESCANSO = "entreno-descanso.json"
+
+        /** E2 (2.0.3): los descansos elegidos a mano, `{clave: segundos}`. */
+        const val DESCANSOS = "entreno-descansos.json"
         const val LEGADO = "legado-entreno.json"
         fun dia(rutinaId: String): String = "entreno-dia_$rutinaId.json"
         fun sustituciones(rutinaId: String): String = "ejercicios-swaps_$rutinaId.json"
