@@ -22,10 +22,13 @@ enum DatosCalibracion {
         let defaults = UserDefaults.standard
         var recibidos = defaults.stringArray(forKey: claveRecibidos) ?? []
         guard !recibidos.contains(nombre) else { return }
+        var escrito = true
         for (sesion, rs) in Dictionary(grouping: registros, by: \.encabezado.sesion) {
             let datos = rs.compactMap { try? ArchivoCalibracion.datos($0) }.reduce(Data(), +)
-            _ = try? almacen.anexar(datos, nombre: "calibracion-\(seguro(sesion)).\(ArchivoCalibracion.extension_)")
+            do { try almacen.anexar(datos, nombre: "calibracion-\(seguro(sesion)).\(ArchivoCalibracion.extension_)") } catch { escrito = false }
         }
+        // Solo si quedó escrito: si no, un reenvío del reloj lo vuelve a intentar.
+        guard escrito else { return }
         recibidos.append(nombre)
         defaults.set(Array(recibidos.suffix(2_000)), forKey: claveRecibidos)
     }

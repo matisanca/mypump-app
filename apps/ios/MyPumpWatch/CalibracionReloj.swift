@@ -33,6 +33,10 @@ final class CalibracionReloj {
     @ObservationIgnored private var movimiento: CMMotionManager?
     @ObservationIgnored private var tick: Task<Void, Never>?
     @ObservationIgnored private(set) var fuente = "batched"
+    /// Cada arranque de los sensores y cada ventana tienen su número: un error de una corrida vieja o un conteo de la
+    /// ventana anterior que llega tarde se descartan.
+    @ObservationIgnored private var corrida = 0
+    @ObservationIgnored private var ventana = 0
     /// Lo que se manda al iPhone: (url, nombre) → la conexión.
     @ObservationIgnored var transferir: ((URL, [String: Any]) -> Void)?
     /// Cada conteo en vivo (para el flujo final, `ConfirmacionReps`).
@@ -54,6 +58,7 @@ final class CalibracionReloj {
 
     private func arrancar() {
         grabando = true
+        corrida += 1
         contadas = nil
         if CMBatchedSensorManager.isAccelerometerSupported && CMBatchedSensorManager.isDeviceMotionSupported {
             arrancarBatched()
@@ -62,6 +67,7 @@ final class CalibracionReloj {
         }
         // Una ventana desde ya (si se prendió a mitad de una serie); empezar, elegir o confirmar la reemplazan.
         let t = Self.ahora
+        ventana += 1
         Task { await motor.abrirVentana(en: t) }
         tick?.cancel()
         tick = Task { [weak self] in
@@ -77,6 +83,7 @@ final class CalibracionReloj {
         let m = CMBatchedSensorManager()
         batched = m
         let motor = self.motor
+        let id = corrida
         // Si cualquiera de los dos se corta con un error (sin la sesión de entreno), se pasa a CMMotionManager.
         tareas.append(Task.detached { [weak self] in
             do {
@@ -84,7 +91,7 @@ final class CalibracionReloj {
                     await motor.agregar(acelerometro: lote.map { MuestraEjes(t: $0.timestamp, x: Float($0.acceleration.x), y: Float($0.acceleration.y), z: Float($0.acceleration.z)) })
                 }
             } catch {
-                await self?.pasarAMovimiento()
+                await self?.pasarAMovimiento(corrida: id)
             }
         })
         tareas.append(Task.detached { [weak self] in
@@ -93,17 +100,30 @@ final class CalibracionReloj {
                     await motor.agregar(giroscopio: lote.map { MuestraEjes(t: $0.timestamp, x: Float($0.rotationRate.x), y: Float($0.rotationRate.y), z: Float($0.rotationRate.z)) })
                 }
             } catch {
-                await self?.pasarAMovimiento()
+                await self?.pasarAMovimiento(corrida: id)
             }
         })
     }
 
-    private func pasarAMovimiento() {
-        guard grabando, movimiento == nil else { return }
+    private func pasarAMovimiento(corrida id: Int) {
+        guard grabando, id == corrida, batched != nil, movimiento == nil else { return }
         tareas.forEach { $0.cancel() }
         tareas = []
         batched = nil
         arrancarMovimiento()
+    }
+
+    /// La sesión de entreno de HealthKit ya corre: si se había caído a `CMMotionManager` (los sensores arrancaron antes
+    /// que la sesión), se vuelve a `CMBatchedSensorManager`, que da más frecuencia.
+    func sesionDeEntrenoAbierta() {
+        guard grabando, batched == nil, CMBatchedSensorManager.isAccelerometerSupported,
+              CMBatchedSensorManager.isDeviceMotionSupported else { return }
+        corrida += 1
+        tareas.forEach { $0.cancel() }
+        tareas = []
+        movimiento?.stopDeviceMotionUpdates()
+        movimiento = nil
+        arrancarBatched()
     }
 
     /// `CMMotionManager` a la frecuencia más alta que dé el reloj (100 Hz): aceleración total (gravedad + usuario) y giro.
@@ -150,6 +170,7 @@ final class CalibracionReloj {
 
     func abrirVentana() {
         guard grabando else { return }
+        ventana += 1
         contadas = nil
         conteo = nil
         let t = Self.ahora
@@ -164,7 +185,9 @@ final class CalibracionReloj {
 
     private func contarEnVivo() async {
         guard grabando else { return }
+        let v = ventana
         let r = await motor.contar(hasta: Self.ahora)
+        guard v == ventana, grabando else { return }   // se confirmó o se abrió otra ventana mientras contaba
         conteo = r
         contadas = r?.reps
         alContar?(r)
@@ -190,28 +213,44 @@ final class CalibracionReloj {
         let muneca = dispositivo.wristLocation == .left ? "izquierda" : "derecha"
         let corona = dispositivo.crownOrientation == .left ? "izquierda" : "derecha"
         let almacen = self.almacen
+        ventana += 1
         contadas = nil
         conteo = nil
+        let orden = Self.siguienteOrden(e.sesion)
+        let confirmada = Date().timeIntervalSince1970 * 1000
+        let motor = self.motor
         Task {
-            guard let v = await motor.cerrar(en: t) else { return }
-            await motor.abrirVentana(en: t)
-            guard guardar else { return }
-            let conteo = ContadorReps.contar(Array(v.cuadros[min(v.inicioConteo, v.cuadros.count)...]))
-            let orden = Self.siguienteOrden(e.sesion)
-            let enc = EncabezadoSerie(sesion: e.sesion, orden: orden, confirmada: Date().timeIntervalSince1970 * 1000,
-                                      ejercicio: ClaveEjercicio.de(e.ejercicio.nombre), nombre: e.ejercicio.nombre,
-                                      familia: e.ejercicio.familia, patron: e.ejercicio.patron, equipo: e.ejercicio.equipo,
-                                      serie: e.serie, reps: e.reps, kg: e.kg, contadas: conteo.reps, conteo: conteo,
-                                      inicioConteo: v.inicioConteo, finDescanso: v.finDescanso, recortado: v.recortado,
-                                      fuente: fuente, muneca: muneca, corona: corona)
-            self.ultimaComparacion = "Conté \(conteo.reps) · cargaste \(e.reps)"
-            // Con la hora en el nombre: si se reinstala la app del reloj y el número vuelve a 1, el iPhone no lo toma por
-            // un reenvío.
-            let nombre = "\(e.sesion)-\(String(format: "%03d", orden))-\(Int(enc.confirmada)).\(ArchivoCalibracion.extension_)"
-            guard let d = try? ArchivoCalibracion.datos(.init(encabezado: enc, cuadros: v.cuadros)),
-                  let url = try? almacen.guardar(d, nombre: nombre) else { return }
-            self.transferir?(url, ["mpcal": e.sesion, "nombre": nombre, "cuenta": e.cuenta])
+            // El conteo, la compresión y la escritura corren en el actor (fuera del hilo principal).
+            guard let (url, nombre, contadas) = await motor.cerrarYGuardar(
+                en: t, guardar: guardar, almacen: almacen,
+                encabezado: { v, conteo in
+                    EncabezadoSerie(sesion: e.sesion, orden: orden, confirmada: confirmada,
+                                    ejercicio: ClaveEjercicio.de(e.ejercicio.nombre), nombre: e.ejercicio.nombre,
+                                    familia: e.ejercicio.familia, patron: e.ejercicio.patron, equipo: e.ejercicio.equipo,
+                                    serie: e.serie, reps: e.reps, kg: e.kg, contadas: conteo.reps, conteo: conteo,
+                                    inicioConteo: v.inicioConteo, finDescanso: v.finDescanso, recortado: v.recortado,
+                                    fuente: fuente, muneca: muneca, corona: corona)
+                },
+                // La cuenta va en el nombre del archivo del reloj (para reenviarlo con la suya), nunca adentro. Con la
+                // hora: si se reinstala la app del reloj y el número vuelve a 1, el iPhone no lo toma por un reenvío.
+                nombre: "\(e.cuenta)_\(e.sesion)-\(String(format: "%03d", orden))-\(String(format: "%.0f", confirmada)).\(ArchivoCalibracion.extension_)")
+            else { return }
+            self.ultimaComparacion = "Conté \(contadas) · cargaste \(e.reps)"
+            self.transferir?(url, Self.metadatos(nombre))
         }
+    }
+
+    /// Los metadatos de un archivo para el iPhone: el nombre (para no duplicar) y la cuenta (sale del nombre). nil si el
+    /// nombre no trae cuenta (no se manda: el iPhone lo descartaría y el reloj lo borraría).
+    static func metadatos(_ nombre: String) -> [String: Any] {
+        let cuenta = nombre.split(separator: "_", maxSplits: 1).first.map(String.init) ?? ""
+        return ["nombre": nombre, "cuenta": cuenta]
+    }
+
+    static func cuenta(deArchivo url: URL) -> String? {
+        let partes = url.lastPathComponent.split(separator: "_", maxSplits: 1)
+        guard partes.count == 2, !partes[0].isEmpty else { return nil }
+        return String(partes[0])
     }
 
     /// Lo que quedó sin pasar al iPhone (se reintenta al activarse).
@@ -227,10 +266,16 @@ final class CalibracionReloj {
         return n
     }
 
-    /// La sesión de calibración: el día de entreno (fecha, semana y día de la rutina), sin nada de la cuenta.
+    /// La sesión de calibración: la fecha, la semana y un id al azar por día de entreno, guardado en el reloj (nada que
+    /// se pueda cruzar con la rutina del servidor ni con la cuenta).
     static func sesion(_ r: RutinaReloj) -> String {
-        let dia = r.diaId.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.prefix(12)
-        return "\(r.fecha)-s\(r.semana)-\(String(String.UnicodeScalarView(dia)))"
+        let clave = "mypump-calibracion-sesion-\(r.fecha)-\(r.semana)-\(r.diaId)"
+        let id = UserDefaults.standard.string(forKey: clave) ?? {
+            let nuevo = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(6)).lowercased()
+            UserDefaults.standard.set(nuevo, forKey: clave)
+            return nuevo
+        }()
+        return "\(r.fecha)-s\(r.semana)-\(id)"
     }
 }
 
@@ -243,6 +288,20 @@ actor MotorCalibracion {
     func abrirVentana(en t: Double) { g.abrirVentana(en: t) }
     func marcarFinDescanso(en t: Double) { g.marcarFinDescanso(en: t) }
     func cerrar(en t: Double) -> GrabadoraSerie.Ventana? { g.cerrar(en: t) }
+
+    /// Cierra la ventana, abre la siguiente y, si `guardar`, cuenta con la misma regla que la evaluación, arma el
+    /// registro y lo escribe. Devuelve el archivo, su nombre y lo contado.
+    func cerrarYGuardar(en t: Double, guardar: Bool, almacen: AlmacenCalibracion,
+                        encabezado: @Sendable (GrabadoraSerie.Ventana, ContadorReps.Resultado) -> EncabezadoSerie,
+                        nombre: String) -> (URL, String, Int)? {
+        let v = g.cerrar(en: t)
+        g.abrirVentana(en: t)
+        guard guardar, let v else { return nil }
+        let conteo = ContadorReps.contar(Array(v.cuadros[min(v.inicioConteo, v.cuadros.count)...]))
+        guard let d = try? ArchivoCalibracion.datos(.init(encabezado: encabezado(v, conteo), cuadros: v.cuadros)),
+              let url = try? almacen.guardar(d, nombre: nombre) else { return nil }
+        return (url, nombre, conteo.reps)
+    }
     func reiniciar() { g = GrabadoraSerie() }
     /// El contador sobre lo que va de la serie (nil sin ventana abierta).
     func contar(hasta t: Double) -> ContadorReps.Resultado? {

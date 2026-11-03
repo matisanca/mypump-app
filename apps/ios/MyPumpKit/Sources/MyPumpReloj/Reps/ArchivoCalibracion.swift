@@ -121,7 +121,7 @@ public enum ArchivoCalibracion {
 public struct EncabezadoSerie: Codable, Equatable, Sendable {
     /// Versión del formato.
     public var v: Int = 1
-    /// La sesión (un id corto al azar por día de entreno en el reloj).
+    /// La sesión: fecha, semana y un id corto al azar por día de entreno, guardado en el reloj.
     public var sesion: String
     /// El número de serie dentro de la sesión (1, 2, 3…).
     public var orden: Int

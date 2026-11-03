@@ -77,7 +77,12 @@ final class PuenteReloj: NSObject {
         if let m = motor {
             var r = m.rutinaReloj()
             // Tanda 4: el modo calibración (local, por cuenta). Apagado no viaja el campo y el reloj no toca los sensores.
-            if !r.demo, ModoCalibracion().prendido(cuenta: r.cuenta) { r.calibracion = true }
+            // El patrón (para la familia de movimiento) también viaja solo con el modo prendido.
+            if !r.demo, ModoCalibracion().prendido(cuenta: r.cuenta) {
+                r.calibracion = true
+            } else {
+                for i in r.ejercicios.indices { r.ejercicios[i].patron = nil }
+            }
             var comparable = r
             comparable.generada = ultima?.generada ?? 0
             if !forzar, comparable == ultima { return }

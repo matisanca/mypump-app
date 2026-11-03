@@ -12,6 +12,8 @@ import MyPumpReloj
 @MainActor
 final class EntrenoSalud: NSObject {
     var alMedir: ((SaludEntreno) -> Void)?
+    /// Tanda 4: la sesión de entreno ya corre (el modo calibración pasa a `CMBatchedSensorManager`, que la necesita).
+    var alAbrir: (() -> Void)?
 
     private let tienda = HKHealthStore()
     private var sesion: HKWorkoutSession?
@@ -49,6 +51,7 @@ final class EntrenoSalud: NSObject {
         let inicio = Date()
         s.startActivity(with: inicio)
         b.beginCollection(withStart: inicio) { _, _ in }
+        alAbrir?()
     }
 
     /// Termina la sesión y DESCARTA el entreno (no va a Salud).
@@ -79,6 +82,7 @@ final class EntrenoSalud: NSObject {
             b.delegate = self
             sesion = s
             builder = b
+            alAbrir?()
             return
         }
         guard s !== sesion else { return }

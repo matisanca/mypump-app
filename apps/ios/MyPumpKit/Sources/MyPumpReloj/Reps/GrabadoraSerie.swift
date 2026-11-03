@@ -162,6 +162,6 @@ public struct GrabadoraSerie: Sendable {
         let ic = indice(Self.inicioConteo(inicioVentana: iv, finDescanso: finDescanso, hasta: t)) ?? inicio
         let fd = finDescanso.flatMap(indice).map { $0 - inicio }
         return Ventana(cuadros: cs, inicioConteo: max(0, ic - inicio), finDescanso: fd.flatMap { $0 >= 0 && $0 <= cs.count ? $0 : nil },
-                       recortado: Double(max(0, inicio - i0)) / Self.hz)
+                       recortado: Double(max(0, inicio - max(i0, 0))) / Self.hz)
     }
 }

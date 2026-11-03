@@ -65,6 +65,7 @@ final class EstadoReloj {
         }
         conexion.alFallarVersion = { [weak self] v in self?.cambiar(enviar: false) { $0.marcarIncompatible(version: v) } }
         entreno.alMedir = { [weak self] s in self?.salud = s }
+        entreno.alAbrir = { [weak self] in self?.calibracion.sesionDeEntrenoAbierta() }
         calibracion.transferir = { [weak self] url, metadatos in self?.conexion.transferirArchivo(url, metadatos: metadatos) }
         calibracion.alContar = { [weak self] r in self?.proponer(r) }
         conexion.alTransferirArchivo = { [weak self] url in self?.calibracion.recibido(url) }
@@ -100,8 +101,9 @@ final class EstadoReloj {
 
     /// Los archivos de calibración que quedaron sin pasar al iPhone.
     private func reenviarCalibracion() {
-        for url in calibracion.pendientes() {
-            conexion.transferirArchivo(url, metadatos: ["mpcal": "", "nombre": url.lastPathComponent, "cuenta": sesion.rutina?.cuenta ?? ""])
+        // Cada archivo con la cuenta con la que se grabó (va en el nombre); uno sin cuenta no se manda.
+        for url in calibracion.pendientes() where CalibracionReloj.cuenta(deArchivo: url) != nil {
+            conexion.transferirArchivo(url, metadatos: CalibracionReloj.metadatos(url.lastPathComponent))
         }
     }
 
