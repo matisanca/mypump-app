@@ -23,6 +23,7 @@ struct EjercicioView: View {
     @State private var sustituyendo = false
     @State private var video: URL?
     @State private var demoHecha = false
+    @State private var eligiendoDescanso = false
     @FocusState private var escribiendo: Bool
 
     var body: some View {
@@ -38,6 +39,13 @@ struct EjercicioView: View {
         // Al volver, el ejercicio queda abierto en la lista de Entreno, donde se carga (15-oct).
         .task { await abrirCard() }
         .sheet(isPresented: $sustituyendo) { SustituirEjercicioView(motor: motor, lugar: lugar) }
+        .sheet(isPresented: $eligiendoDescanso) {
+            if let t = motor.tarjeta(lugar) {
+                SelectorDescanso(segundos: t.descansoSegundos, plan: t.descansoPlan, propio: t.descansoPropio) { nuevo in
+                    motor.elegirDescanso(lugar, segundos: nuevo)
+                }
+            }
+        }
         .sheet(item: Binding(get: { video.map(URLVideo.init) }, set: { video = $0?.url })) { v in
             NavegadorInterno(url: v.url).ignoresSafeArea()
         }
@@ -157,7 +165,9 @@ struct EjercicioView: View {
     }
 
     private func metricas(_ t: ModeloEntreno.Tarjeta) -> some View {
-        MetricasPauta(pauta: t.pauta, descanso: t.descanso, tipo: t.efectivo.ejercicio.tipo)
+        MetricasPauta(pauta: t.pauta, descanso: t.descanso, tipo: t.efectivo.ejercicio.tipo, descansoPropio: t.descansoPropio,
+                      // El calentamiento no arranca descanso: no hay qué elegir.
+                      alTocarDescanso: t.efectivo.ejercicio.tipo == "calentamiento" || t.filas.isEmpty ? nil : { eligiendoDescanso = true })
     }
 
     @ViewBuilder
@@ -186,6 +196,9 @@ struct EjercicioView: View {
     @ViewBuilder
     private func series(_ t: ModeloEntreno.Tarjeta) -> some View {
         if !t.filas.isEmpty {
+            // E1: la preparación, liviana y aparte, antes de las efectivas (solo indica; no se registra).
+            let prep = motor.preparacion(lugar)
+            if !prep.isEmpty { PreparacionBloque(motor: motor, lugar: lugar, series: prep, sinKg: t.sinKg) }
             TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia).id("series")
             DescansoEnTarjeta(enLista: false)
         }
@@ -414,7 +427,6 @@ struct EjercicioView: View {
         for i in 0..<n {
             motor.escribir(lugar, i, campo: "reps", valor: String(max(tope - i, 1)))
             motor.escribir(lugar, i, campo: "kg", valor: "57.5")
-            await motor.elegirRIR(lugar, i, i == 0 ? 1 : 0)
             _ = await motor.confirmarSerie(lugar, i) { _ in true }
         }
         if DemoUI.sinDescanso { motor.saltarDescanso() }
@@ -460,12 +472,17 @@ private struct MetricasPauta: View {
     /// "2:30", como lo arma el motor.
     let descanso: String?
     let tipo: String?
+    /// El descanso es el elegido a mano (E2): lo dice debajo del número.
+    var descansoPropio = false
+    /// Tocar el descanso abre el selector (E2). nil: no se toca.
+    var alTocarDescanso: (() -> Void)?
     @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     private struct Metrica: Identifiable {
         let titulo: String
         let valor: String
         var detalle: String?
+        var accion: (() -> Void)?
         var id: String { titulo }
     }
 
@@ -479,7 +496,9 @@ private struct MetricasPauta: View {
             let partes = Self.partir(rir)
             m.append(Metrica(titulo: "RIR", valor: partes.0, detalle: partes.1))
         }
-        if let d = descanso, !d.isEmpty, d != "0:00" { m.append(Metrica(titulo: "Descanso", valor: d)) }
+        if let d = descanso, !d.isEmpty, d != "0:00" {
+            m.append(Metrica(titulo: "Descanso", valor: d, detalle: descansoPropio ? "tuyo" : nil, accion: alTocarDescanso))
+        }
         return m
     }
 
@@ -490,22 +509,25 @@ private struct MetricasPauta: View {
                 // Con letra de accesibilidad, una métrica por renglón: rótulo a la izquierda, número a la derecha.
                 VStack(spacing: Espacio.s) {
                     ForEach(ms) { m in
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(m.titulo).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 0) {
-                                Text(m.valor).font(.numeroMediano).monospacedDigit()
-                                if let d = m.detalle { Text(d).font(.caption).foregroundStyle(.secondary) }
+                        tocable(m) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(m.titulo).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                                Spacer()
+                                VStack(alignment: .trailing, spacing: 0) {
+                                    Text(m.valor).font(.numeroMediano).monospacedDigit()
+                                        .foregroundStyle(m.accion != nil ? Color.marcaTexto : Color.primary)
+                                    if let d = m.detalle { Text(d).font(.caption).foregroundStyle(.secondary) }
+                                }
                             }
+                            .accessibilityElement(children: .combine)
                         }
-                        .accessibilityElement(children: .combine)
                     }
                 }
             } else {
                 HStack(alignment: .top, spacing: 0) {
                     ForEach(Array(ms.enumerated()), id: \.element.id) { i, m in
                         if i > 0 { separador }
-                        metrica(m.titulo, m.valor, detalle: m.detalle)
+                        tocable(m) { metrica(m.titulo, m.valor, detalle: m.detalle, tocable: m.accion != nil) }
                     }
                 }
                 // El alto lo ponen los números; los separadores se estiran hasta ahí y no más.
@@ -519,17 +541,36 @@ private struct MetricasPauta: View {
         Rectangle().fill(Color.borde).frame(width: 1).frame(maxHeight: .infinity).padding(.vertical, 2)
     }
 
-    private func metrica(_ titulo: String, _ valor: String, detalle: String? = nil) -> some View {
+    /// La métrica con acción (el descanso) es un botón, con el lápiz chico al lado del rótulo.
+    @ViewBuilder
+    private func tocable<C: View>(_ m: Metrica, @ViewBuilder _ contenido: () -> C) -> some View {
+        if let accion = m.accion {
+            Button(action: accion) { contenido().contentShape(.rect) }
+                .buttonStyle(.plain)
+                .accessibilityHint("Tocá para elegir otro descanso para este ejercicio")
+                .accessibilityIdentifier("descanso-ejercicio")
+        } else {
+            contenido()
+        }
+    }
+
+    private func metrica(_ titulo: String, _ valor: String, detalle: String? = nil, tocable: Bool = false) -> some View {
         VStack(spacing: 3) {
-            Text(titulo)
-                .font(.caption2.weight(.semibold))
-                .textCase(.uppercase)
-                .tracking(0.5)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            HStack(spacing: 3) {
+                Text(titulo)
+                    .font(.caption2.weight(.semibold))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if tocable {
+                    Image(systemName: "pencil").font(.system(size: 9, weight: .bold)).foregroundStyle(Color.marcaTexto)
+                }
+            }
             Text(valor)
                 .font(.numeroMediano)
+                .foregroundStyle(tocable ? Color.marcaTexto : Color.primary)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)

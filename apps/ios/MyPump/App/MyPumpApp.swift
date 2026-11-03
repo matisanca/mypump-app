@@ -14,6 +14,9 @@ struct MyPumpApp: App {
     init() {
         // Apple Health cableada explícita (si no, ModeloSalud la busca por nombre y un renombre la apagaría sin avisar).
         ModeloSalud.fuenteDelSistema = FuenteHealthKit()
+        #if DEBUG
+        if DemoUI.historialDeMuestra { ModeloEntreno.historialDeMuestra = { DemoUI.filasDeMuestra($0) } }
+        #endif
         // Los avisos de las pestañas con los colores de la marca: el verde del logo con el número en blanco.
         UITabBarItem.appearance().badgeColor = UIColor(hex: 0x1D9330)
         UITabBarItem.appearance().setBadgeTextAttributes([.foregroundColor: UIColor.white], for: .normal)

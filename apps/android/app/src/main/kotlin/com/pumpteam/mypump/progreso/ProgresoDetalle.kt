@@ -351,7 +351,7 @@ private fun Registros(t: TarjetaProgreso) {
     Column(verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
         Text("Últimos registros", style = Letras.titulo3, modifier = Modifier.padding(horizontal = 4.dp).semantics { heading() })
         Column(Modifier.fillMaxWidth().superficieTarjeta().testTag("progreso-tabla")) {
-            FilaRegistro(listOf("Fecha", "Peso", "Reps", "RIR"), encabezado = true)
+            FilaRegistro(listOf("Fecha", "Peso", "Reps"), encabezado = true)   // sin RIR desde 2.0.3: ya no se elige
             t.filas.take(8).forEachIndexed { i, r ->
                 val kg = r.pesoKg ?: 0.0
                 FilaRegistro(
@@ -359,7 +359,6 @@ private fun Registros(t: TarjetaProgreso) {
                         VistaProgreso.fechaCorta(r.registradoEn),
                         if (kg > 0) "${VistaProgreso.kg(kg)} kg" else "—",
                         r.reps?.toString() ?: "—",
-                        r.rir?.toString() ?: "—",
                     ),
                     encabezado = false,
                     destacada = kg > 0 && kg == t.resumen.tope,

@@ -669,7 +669,7 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
     val mensajes = v.comentarios.sinLeer(lugar)
     val tipo = ef.ejercicio.tipo
     val porTiempo = tipo == "cardio" || pauta.series == null
-    val descanso = ejercicio.descansoSegundos ?: NormalizacionRutina.DESCANSO_POR_DEFECTO
+    val descanso = v.dia.descanso(lugar)
     val ahora = remember(v) { java.time.Instant.now() }
     val ultima = v.dia.ultimaVez(lugar, ahora)
     val record = v.dia.record(lugar)

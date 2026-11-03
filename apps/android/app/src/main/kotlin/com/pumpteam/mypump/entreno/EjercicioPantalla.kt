@@ -156,6 +156,7 @@ fun EjercicioPantalla(
     var altoEncabezado by remember { mutableIntStateOf(Int.MAX_VALUE) }
     val tituloEnBarra by remember { derivedStateOf { desplazamiento.value > altoEncabezado } }
     var sustituyendo by rememberSaveable { mutableStateOf(false) }
+    var eligiendoDescanso by rememberSaveable { mutableStateOf(false) }
     val alcanceUi = rememberCoroutineScope()
     val pedirMovimiento = remember { BringIntoViewRequester() }
     val pedirComentarios = remember { BringIntoViewRequester() }
@@ -197,6 +198,7 @@ fun EjercicioPantalla(
                 Acciones(
                     t,
                     alSustituir = { sustituyendo = true },
+                    alDescanso = { eligiendoDescanso = true },
                     alComentar = {
                         alcanceUi.launch {
                             pedirComentarios.bringIntoView()
@@ -211,6 +213,7 @@ fun EjercicioPantalla(
         }
     }
     if (sustituyendo) HojaSustituir(motor, v, lugar, alCerrar = { sustituyendo = false })
+    if (eligiendoDescanso) motor.tarjeta(lugar)?.let { HojaDescanso(motor, it, alCerrar = { eligiendoDescanso = false }) }
 }
 
 // ── Secciones ──
@@ -384,7 +387,7 @@ private fun ASuperar(t: ModeloEntreno.Tarjeta, buscando: Boolean) {
 
 /** Sustituir (o cambiar el sustituto), comentar y el video. */
 @Composable
-private fun Acciones(t: ModeloEntreno.Tarjeta, alSustituir: () -> Unit, alComentar: () -> Unit) {
+private fun Acciones(t: ModeloEntreno.Tarjeta, alSustituir: () -> Unit, alDescanso: () -> Unit, alComentar: () -> Unit) {
     val c = MyPump.colores
     val contexto = LocalContext.current
     val puede = t.puedeSustituir || t.efectivo.sustituido
@@ -398,6 +401,12 @@ private fun Acciones(t: ModeloEntreno.Tarjeta, alSustituir: () -> Unit, alComent
                 alTocar = alSustituir,
                 modifier = Modifier.weight(1f).testTag("sustituir"),
             )
+            // E2: el descanso de este ejercicio, a mano (solo con series; el calentamiento no arranca descanso).
+            if (t.filas.isNotEmpty() && tipo != "calentamiento") {
+                AccionTarjeta(t.descanso, Iconos.Temporizador, alTocar = alDescanso, modifier = Modifier.weight(1f).semantics {
+                    contentDescription = "Descanso ${t.descanso}" + if (t.descansoPropio) ", elegido por vos" else ""
+                }.testTag("descanso-ejercicio"))
+            }
             AccionTarjeta("Comentar", Iconos.Burbuja, alTocar = alComentar, modifier = Modifier.weight(1f).testTag("comentar"))
             t.efectivo.ejercicio.videoUrl?.takeIf { it.startsWith("http") }?.let { url ->
                 AccionTarjeta("Video", Iconos.Video, alTocar = { abrirEnNavegador(contexto, url) }, modifier = Modifier.weight(1f).testTag("video"))
@@ -772,6 +781,7 @@ internal fun EjercicioEnLista(
     val t = remember(v, lugar) { motor.tarjeta(lugar) } ?: return
     val c = MyPump.colores
     var sustituyendo by rememberSaveable(lugar) { mutableStateOf(false) }
+    var eligiendoDescanso by rememberSaveable(lugar) { mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxWidth()
@@ -797,18 +807,28 @@ internal fun EjercicioEnLista(
         val tecnica: @Composable (Modifier) -> Unit = { m ->
             AccionEnFila("Técnica y notas", Iconos.Libro, alTocar = { alAbrir(lugar) }, modifier = m.testTag("tecnica-y-notas"))
         }
+        // E2: el descanso de este ejercicio, a mano (solo con series; el calentamiento no arranca descanso).
+        val conDescanso = t.filas.isNotEmpty() && t.efectivo.ejercicio.tipo != "calentamiento"
+        val descanso: @Composable (Modifier) -> Unit = { m ->
+            AccionEnFila(t.descanso, Iconos.Temporizador, alTocar = { eligiendoDescanso = true }, modifier = m.semantics {
+                contentDescription = "Descanso ${t.descanso}" + if (t.descansoPropio) ", elegido por vos" else ""
+            }.testTag("descanso-ejercicio"))
+        }
         if (apilados) {
             Column(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                 sustituir(Modifier.fillMaxWidth())
+                if (conDescanso) descanso(Modifier.fillMaxWidth())
                 tecnica(Modifier.fillMaxWidth())
             }
         } else {
             Row(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
                 sustituir(Modifier.weight(1f))
+                if (conDescanso) descanso(Modifier.weight(0.8f))
                 tecnica(Modifier.weight(1f))
             }
         }
         Box(Modifier.padding(horizontal = Espacio.m)) { Cierre(motor, v, lugar, t, preguntador, alAbrir, alCompletarDia, enLista = true) }
     }
     if (sustituyendo) HojaSustituir(motor, v, lugar, alCerrar = { sustituyendo = false })
+    if (eligiendoDescanso) HojaDescanso(motor, t, alCerrar = { eligiendoDescanso = false })
 }

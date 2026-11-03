@@ -296,7 +296,8 @@ public struct FilaSerie: Equatable, Sendable {
     /// "✓ Tocá para registrar lo de la última vez · **80kg × 10** — o editá si hiciste otra cosa"
     public let pista: TextoConNegrita?
     /// "🎯 Primera vez con este ejercicio…" (SER-03): sin historial no hay kg sugerido.
-    public let calibracion: String?
+    /// 2.0.3: el modelo lo ajusta a la leyenda del RIR (`RIRDelPlan.calibracion`); acá queda el de la web.
+    public var calibracion: String?
 
     /// `renderSetRow`. `kgUltimaVez` y `repsUltimaVez` salen del historial con el ejercicio DEL PLAN (variante y regla
     /// del 0); `sinKg` es la del ejercicio que se muestra (el sustituto, si hay).
