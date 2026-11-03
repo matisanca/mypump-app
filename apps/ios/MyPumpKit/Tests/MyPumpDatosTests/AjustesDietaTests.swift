@@ -24,6 +24,8 @@ struct AjustesDietaTests {
         private var _guardados: [JSONValue] = []
         var guardados: [JSONValue] { lock.withLock { _guardados } }
         var sinTabla = false
+        /// La base rechaza el día (el 22023 de nativa_004 con un `ajustes` de más de 16000 bytes en jsonb).
+        var rechaza = false
         /// `mypump_get_food_swaps` falla (un 500).
         var sinSwaps = false
         var filas = "[]"
@@ -45,6 +47,7 @@ struct AjustesDietaTests {
             case "mypump_get_dieta_activa": return (200, s.dieta ?? dieta)
             case "mypump_guardar_ajustes_dieta":
                 if s.sinTabla { return (404, #"{"code":"PGRST202","message":"Could not find the function"}"#) }
+                if s.rechaza { return (400, #"{"code":"22023","message":"ajustes invalidos"}"#) }
                 s.guardar(cuerpo)
                 return (200, "true")
             case "mypump_get_food_swaps" where s.sinSwaps: return (500, #"{"message":"caído"}"#)
@@ -137,6 +140,46 @@ struct AjustesDietaTests {
         #expect(await m.outbox?.pendientes == 0)
         #expect((await m.outbox?.fallidos ?? []).isEmpty)
         #expect(m.ajustesDeHoy["desayuno"]?.omitida == true)
+    }
+
+    /// Revisión adversarial del 3-nov: un día que la base rechaza termina en fallidos; la hidratación ya no lo veía
+    /// pendiente y la fila vieja del servidor pisaba el día del teléfono sin aviso. Ahora no lo pisa, Dieta avisa y el
+    /// próximo cambio que sale lo resuelve.
+    @Test func unDiaQueLaBaseRechazaNoLoPisaLaHidratacionYSeAvisa() async throws {
+        let s = Servidor()
+        s.rechaza = true
+        let m = modelo(s)
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(deltaKcal: 50), opciones: [:])
+        for _ in 0..<12 {
+            if (await m.outbox?.pendientes ?? 0) == 0 { break }
+            await m.outbox?.drenar()
+        }
+        #expect(await m.outbox?.pendientes == 0)
+        #expect((await m.outbox?.fallidos ?? []).count == 1)
+        for _ in 0..<100 where !m.ajustesSinGuardar { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(m.ajustesSinGuardar, "Dieta avisa que no se guardó")
+
+        // La fila vieja del servidor no pisa el día del teléfono.
+        let hoy = FechaLocal.hoy()
+        s.filas = #"[{"fecha":"\#(hoy)","dieta_id":"\#(Self.dietaId)","tipo_dia":null,"ajustes":{"almuerzo":{"deltaKcal":-100,"compensar":false,"omitida":false,"opcion":0,"cantidades":{}}}}]"#
+        await m.hidratarDieta()
+        #expect(m.ajustesDeHoy["desayuno"]?.deltaKcal == 50 && m.ajustesDeHoy["almuerzo"] == nil)
+        #expect(m.ajustesSinGuardar)
+
+        // El próximo cambio sale entero: el aviso se va y el fallido de ese día se olvida (la hidratación vuelve a valer).
+        s.rechaza = false
+        await m.ajustar("desayuno", AjusteComida(deltaKcal: 100), opciones: [:])
+        await m.outbox?.drenar()
+        for _ in 0..<100 {
+            let quedan = await m.outbox?.fallidos ?? []
+            if !m.ajustesSinGuardar && quedan.isEmpty { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(!m.ajustesSinGuardar)
+        #expect((await m.outbox?.fallidos ?? []).isEmpty)
+        await m.hidratarDieta()
+        #expect(m.ajustesDeHoy["almuerzo"]?.deltaKcal == -100, "con el día guardado, lo del servidor vuelve a valer")
     }
 
     @Test func alHidratarGanaLoDelServidorSalvoQueHayaAlgoSinSalir() async {
@@ -361,6 +404,37 @@ struct AjustesDietaTests {
         await m.borrarAgregado("desayuno", ts: 1, opciones: [:])
         await m.borrarAgregado("desayuno", ts: 3, opciones: [:])
         #expect(m.ajustesDeHoy["desayuno"] == nil && m.marcasDeHoy["desayuno"]?.excluidos == [])
+    }
+
+    /// Revisión del 3-nov: «Volver al plan» (o una hidratación con menos agregados) dejaba en la marca tildes de agregados
+    /// que ya no estaban, y el próximo agregado aparecía destildado. Los tildes siguen a cada agregado por su `_ts`.
+    @Test func volverAlPlanNoDejaTildesDeAgregadosViejos() async {
+        let m = modelo(Servidor())
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2)]), opciones: [:])
+        await m.marcar("desayuno", .comido, opcion: 0)
+        await m.alternarAlimento("desayuno", 0)   // la avena (del plan)
+        await m.alternarAlimento("desayuno", 3)   // el segundo huevo
+        #expect(m.marcasDeHoy["desayuno"]?.excluidos == [0, 3])
+        await m.ajustar("desayuno", nil, opciones: [:])
+        #expect(m.marcasDeHoy["desayuno"]?.excluidos == [0], "el del plan queda; el del agregado se va")
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(5), Self.huevo(6)]), opciones: [:])
+        #expect(m.consumo(opciones: [:]).kcal == 234 + 86 * 2, "los agregados nuevos llegan tildados")
+    }
+
+    /// Dos «Sacar» seguidos sin esperar (dos toques rápidos): cada uno saca el suyo y los tildes quedan bien.
+    @Test func dosBorradosSeguidosNoCorrenMalLosTildes() async {
+        let m = modelo(Servidor())
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2), Self.huevo(3)]), opciones: [:])
+        await m.marcar("desayuno", .comido, opcion: 0)
+        await m.alternarAlimento("desayuno", 4)   // el tercer huevo
+        async let a: Void = m.borrarAgregado("desayuno", ts: 1, opciones: [:])
+        async let b: Void = m.borrarAgregado("desayuno", ts: 2, opciones: [:])
+        async let c: Void = m.borrarAgregado("desayuno", ts: 2, opciones: [:])
+        _ = await (a, b, c)
+        #expect(m.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [3])
+        #expect(m.marcasDeHoy["desayuno"]?.excluidos == [2], "el tercero sigue destildado, ahora en el índice 2")
     }
 
     /// Cambiar de opción saca las cantidades a mano (eran de la otra) pero deja los agregados.

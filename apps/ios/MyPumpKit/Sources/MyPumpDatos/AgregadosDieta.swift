@@ -25,16 +25,22 @@ extension ModeloApp {
         if !esDemo { _ = disco?.guardar(agregadosRecientes, Self.archivoRecientes) }
     }
 
-    /// Saca un agregado de una comida de hoy. Si la comida está marcada «Comí», los tildes de los agregados que siguen
-    /// bajan uno (son índices n + j) y el del borrado se va.
+    /// Saca un agregado de una comida de hoy (los tildes de «Comí» los corre `ajustar`, por `_ts`). Se busca por `_ts` en
+    /// el ajuste de AHORA: dos toques seguidos en «Sacar» no borran otro.
     public func borrarAgregado(_ comidaId: String, ts: Int64, opciones: [String: Int]) async {
         guard var a = ajustesDeHoy[comidaId], let j = a.agregados.firstIndex(where: { $0.ts == ts }) else { return }
         a.agregados.remove(at: j)
         await ajustar(comidaId, a, opciones: opciones)
-        guard let m = marcasDeHoy[comidaId], m.estado == .comido, let c = comidasDelDia.first(where: { $0.id == comidaId }) else { return }
+    }
+
+    /// Cambiaron los agregados de una comida marcada «Comí»: sus tildes siguen a cada agregado (por `_ts`). Va antes de
+    /// cualquier espera (la marca cambia en memoria al toque), así dos cambios seguidos no leen una marca vieja.
+    func seguirTildes(_ comidaId: String, antes: [AlimentoAgregado], despues: [AlimentoAgregado]) async {
+        guard antes.map(\.ts) != despues.map(\.ts), let m = marcasDeHoy[comidaId], m.estado == .comido,
+              let c = comidasDelDia.first(where: { $0.id == comidaId }) else { return }
         let o = ConsumoDelDia.opcionDeLaMarca(c, m) ?? 0
         let n = c.opciones.indices.contains(o) ? c.opciones[o].alimentos.count : 0
-        let excluidos = AgregadosComida.excluidosTrasBorrar(m.excluidos, alimentosPlan: n, borrado: j)
+        let excluidos = AgregadosComida.excluidosTrasCambio(m.excluidos, alimentosPlan: n, antes: antes.map(\.ts), despues: despues.map(\.ts))
         if excluidos != m.excluidos {
             await cambiarMarca(comidaId, MarcaComida(opcion: m.opcion, estado: .comido, excluidos: excluidos), opcionAlDesmarcar: m.opcion)
         }

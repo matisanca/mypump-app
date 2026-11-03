@@ -217,6 +217,14 @@ class AgregadosComidaTest {
         assertEquals(listOf("Huevo entero"), AjusteComida.desde(ValorJson.parsear(doble.aValor().serializar()))!!.agregados.map { it.nombre })
     }
 
+    /** Por `_ts`: sin agregados se van los suyos; reordenados o con uno menos en el medio, cada tilde sigue al suyo. */
+    @Test
+    fun losTildesSiguenASuAgregado() {
+        assertEquals(listOf(1), AgregadosComida.excluidosTrasCambio(listOf(1, 3), 2, listOf(7L, 8L), emptyList()))
+        assertEquals(listOf(2, 3), AgregadosComida.excluidosTrasCambio(listOf(2, 4), 2, listOf(7L, 8L, 9L), listOf(9L, 7L)))
+        assertEquals(emptyList<Int>(), AgregadosComida.excluidosTrasCambio(listOf(5, 9), 2, listOf(7L), listOf(7L)))
+    }
+
     @Test
     fun losTopes() {
         val uno = AgregadosComida.agregado(zapallo, 80.0, AgregadosComida.Medida.GRAMO, 1)

@@ -131,6 +131,15 @@ struct DietaView: View {
                     }
                     Cabecera(objetivo: modelo.objetivo, consumo: consumo, elegidas: Self.total(dia), conAjustes: !modelo.ajustesDeHoy.isEmpty)
                     BannerRevision()
+                    if modelo.ajustesSinGuardar {
+                        // Revisión del 3-nov: un día que la base rechazó quedaba solo en el teléfono, sin que nadie lo supiera.
+                        Label("Tus ajustes de hoy no se pudieron guardar en tu cuenta. Quedan en este teléfono y se vuelven a mandar con el próximo cambio.",
+                              systemImage: "exclamationmark.icloud")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 4)
+                            .accessibilityIdentifier("ajustes-sin-guardar")
+                    }
                     ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in
                         tarjeta(c, numero: n + 1, ajustada: dia[c.id])
                     }
@@ -370,7 +379,8 @@ struct DietaView: View {
             // letra de accesibilidad, uno debajo del otro.
             let botones = apilada ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
             botones {
-                if !omitida {
+                // Ni en la que hoy no come ni en la que salteó (revisión del 3-nov).
+                if !omitida, marca?.estado != .saltado {
                     Button { agregandoA = ComidaAAjustar(id: c.id) } label: {
                         Label("Agregar alimento", systemImage: "plus.circle.fill")
                             .font(.subheadline.weight(.semibold))

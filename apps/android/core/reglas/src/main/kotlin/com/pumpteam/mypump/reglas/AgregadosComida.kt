@@ -324,6 +324,18 @@ object AgregadosComida {
     }
 
     /**
+     * Cambiaron los agregados de una comida marcada «Comí»: cada tilde de un agregado sigue a su agregado por el `_ts` y los
+     * de los que ya no están se van (si no, un índice viejo destildaba al próximo agregado). Los del plan (< n) quedan igual.
+     */
+    fun excluidosTrasCambio(excluidos: List<Int>, alimentosPlan: Int, antes: List<Long>, despues: List<Long>): List<Int> =
+        excluidos.mapNotNull { i ->
+            if (i < alimentosPlan) return@mapNotNull i
+            val ts = antes.getOrNull(i - alimentosPlan) ?: return@mapNotNull null
+            val j = despues.indexOf(ts)
+            if (j < 0) null else alimentosPlan + j
+        }.distinct().sorted()
+
+    /**
      * Los agregados de una comida en el `resumen` que lee la ficha (nativa_004): nombre, cantidad, gramos y macros. Vacío,
      * la clave no va (el renglón queda como antes).
      */

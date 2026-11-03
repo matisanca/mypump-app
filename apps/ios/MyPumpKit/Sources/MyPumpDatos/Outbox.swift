@@ -237,6 +237,13 @@ public actor Outbox {
         guardar()
     }
 
+    /// Olvida los fallidos con esa clave (una op posterior con la misma clave se guardó: ya no hay nada que se perdió).
+    public func olvidarFallidos(clave: String) {
+        let antes = estado.fallidos.count
+        estado.fallidos.removeAll { $0.op.dedupeKey == clave }
+        if estado.fallidos.count != antes { guardar() }
+    }
+
     /// Vacía la cola: pasadas hasta que no quede nada o hasta que una falle (sin red, el servidor mal, un rechazo).
     /// Si ya hay una pasada en curso, la espera y sigue con lo que se encoló mientras tanto: así "cerrar el día" espera
     /// el envío de TODO lo anterior.

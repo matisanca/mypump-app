@@ -505,6 +505,37 @@ final class DietaUITests: XCTestCase {
         XCTAssertEqual(pildora.label, antes)
     }
 
+    /// Las pantallas nuevas en oscuro (el tema de la app, como «consumido-oscuro») y «Salté» sin «Agregar alimento»
+    /// (revisión del 3-nov: en una comida salteada no tiene sentido sumarle algo).
+    func testAgregarEnOscuroYSalteOcultaAgregar() throws {
+        app.terminate()
+        app.launchArguments += ["-mypump-theme", "dark"]
+        app.launch()
+        let comidaId = primeraComida()
+        sinAjusteEn(comidaId)
+        sinMarcaEn(comidaId)
+        abrirAgregar(comidaId)
+        adjuntarCaptura("agregar-oscuro")
+        app.searchFields.firstMatch.tap()
+        app.searchFields.firstMatch.typeText("zapallo")
+        let resultado = app.buttons.matching(identifier: "agregar-alimento").firstMatch
+        XCTAssertTrue(resultado.waitForExistence(timeout: 5))
+        resultado.tap()
+        XCTAssertTrue(app.textFields["cantidad-campo"].waitForExistence(timeout: 5))
+        adjuntarCaptura("cantidad-oscuro")
+        app.buttons["cantidad-confirmar"].tap()
+        let fila = app.buttons["agregado-\(comidaId)-0"]
+        XCTAssertTrue(fila.waitForExistence(timeout: 5))
+        aLaVista(fila)
+        adjuntarCaptura("agregado-oscuro")
+
+        esperar(tocar("salte-\(comidaId)"), seleccionado: true, "«Salté» no quedó marcado")
+        XCTAssertTrue(app.buttons["agregar-\(comidaId)"].waitForNonExistence(timeout: 5), "«Agregar alimento» sigue en una comida salteada")
+        esperar(tocar("salte-\(comidaId)"), seleccionado: false, "No se desmarcó «Salté»")
+        XCTAssertTrue(app.buttons["agregar-\(comidaId)"].waitForExistence(timeout: 5))
+        sinAjusteEn(comidaId)
+    }
+
     private func esperarQuieto(_ e: XCUIElement) {
         var antes = e.frame
         var iguales = 0

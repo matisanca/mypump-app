@@ -137,6 +137,7 @@ fun DietaPantalla(modelo: ModeloApp) {
     val swaps by modelo.swaps.collectAsStateWithLifecycle()
     val ajustes by modelo.ajustes.collectAsStateWithLifecycle()
     val sinRedEn by modelo.sinRedEn.collectAsStateWithLifecycle()
+    val ajustesSinGuardar by modelo.ajustesSinGuardar.collectAsStateWithLifecycle()
     // DIE-04: la opción elegida vive en memoria (y sobrevive a cambiar de pestaña o rotar); al abrir la app vuelve a A.
     var opciones by rememberSaveable { mutableStateOf(mapOf<String, Int>()) }
     val comidas = remember(dieta, tipoDia) { modelo.comidasDelDia }
@@ -224,6 +225,10 @@ fun DietaPantalla(modelo: ModeloApp) {
                                 Cabecera(objetivo, consumo, elegidas, Modifier.widthIn(max = AnchoLectura), conAjustes = modelo.ajustesDeHoy.isNotEmpty())
                             }
                             item(key = "banner") { BannerRevision(modelo, Modifier.widthIn(max = AnchoLectura)) }
+                            if (ajustesSinGuardar) {
+                                // Revisión del 3-nov: un día que la base rechazó quedaba solo en el teléfono, sin que nadie lo supiera.
+                                item(key = "ajustes-sin-guardar") { AvisoSinGuardar(Modifier.widthIn(max = AnchoLectura)) }
+                            }
                             itemsIndexed(comidas, key = { i, c -> "$i-${c.id}" }) { n, c ->
                                 val o = vigentes[c.id] ?: 0
                                 TarjetaComida(
@@ -750,11 +755,30 @@ private fun TarjetaComida(
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-            if (!omitida) {
+            // Ni en la que hoy no come ni en la que salteó (revisión del 3-nov).
+            if (!omitida && estado != MarcaComida.Estado.SALTADO) {
                 BotonDeTarjeta(IconosAjuste.Mas, "Agregar alimento", Modifier.weight(1f).testTag("agregar-${comida.id}"), alAgregar)
             }
             BotonDeTarjeta(IconosAjuste.Ajustar, if (propia) "Cambiar el ajuste" else "Ajustar esta comida", Modifier.weight(1f).testTag("ajustar-${comida.id}"), alAjustar)
         }
+    }
+}
+
+/** Los ajustes de hoy no se pudieron guardar en la cuenta: quedan en el teléfono (discreto, sin botón). */
+@Composable
+private fun AvisoSinGuardar(modifier: Modifier = Modifier) {
+    val c = MyPump.colores
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 4.dp).semantics(mergeDescendants = true) {}.testTag("ajustes-sin-guardar"),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(Iconos.SinWifi, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(16.dp).padding(top = 2.dp))
+        Text(
+            "Tus ajustes de hoy no se pudieron guardar en tu cuenta. Quedan en este teléfono y se vuelven a mandar con el próximo cambio.",
+            style = MaterialTheme.typography.bodySmall,
+            color = c.textoSecundario,
+        )
     }
 }
 

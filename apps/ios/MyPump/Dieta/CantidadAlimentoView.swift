@@ -453,7 +453,8 @@ struct CantidadAlimentoView: View {
         }
         let id = comidaId
         Task { await modelo.ajustar(id, a.neutro ? nil : a, opciones: opciones) }
-        if let n = agregadoNuevo { modelo.recordarReciente(n) }
+        // A los recientes, solo lo que se agrega (editar uno no lo sube de nuevo; igual en Android).
+        if case .nuevo = pedido.que, let n = agregadoNuevo { modelo.recordarReciente(n) }
         alTerminar()
     }
 }

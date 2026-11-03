@@ -315,6 +315,11 @@ class Outbox(
         guardar()
     }
 
+    /** Olvida los fallidos con esa clave (una op posterior con la misma clave se guardó: ya no hay nada que se perdió). */
+    suspend fun olvidarFallidos(clave: String) = withContext(confinado) {
+        if (fallidosLista.removeAll { it.op.dedupeKey == clave }) guardar()
+    }
+
     /**
      * Vacía la cola: pasadas hasta que no quede nada o hasta que una falle (sin red, el servidor mal, un rechazo). Si ya
      * hay una pasada en curso, la espera y sigue con lo que se encoló mientras tanto: así "cerrar el día" espera el envío

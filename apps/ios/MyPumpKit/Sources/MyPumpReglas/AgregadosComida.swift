@@ -335,6 +335,18 @@ public enum AgregadosComida {
         return excluidos.compactMap { $0 == k ? nil : ($0 > k ? $0 - 1 : $0) }
     }
 
+    /// Cambiaron los agregados de una comida marcada «Comí» (se borró uno, «Volver al plan», llegó otro día del servidor):
+    /// cada tilde de un agregado sigue a su agregado por el `_ts` y los de los que ya no están se van (si no, un índice
+    /// viejo destildaba al próximo agregado). Los del plan (< n) quedan igual.
+    public static func excluidosTrasCambio(_ excluidos: [Int], alimentosPlan n: Int, antes: [Int64], despues: [Int64]) -> [Int] {
+        let r = excluidos.compactMap { i -> Int? in
+            if i < n { return i }
+            guard antes.indices.contains(i - n), let j = despues.firstIndex(of: antes[i - n]) else { return nil }
+            return n + j
+        }
+        return Array(Set(r)).sorted()
+    }
+
     /// Los agregados de una comida en el `resumen` que lee la ficha (nativa_004): nombre, cantidad, gramos y macros.
     /// Vacío, la clave no va (el renglón queda como antes).
     public static func resumen(_ aj: AjusteComida?) -> [JSONValue] {

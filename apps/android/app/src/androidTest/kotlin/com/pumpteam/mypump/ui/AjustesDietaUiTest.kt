@@ -304,4 +304,41 @@ class AjustesDietaUiTest : PruebaUi() {
         assertEquals(antes, p.textosBajo(etiqueta("cantidad-c1-0")).single())
         p.esperar("como el plan en el servidor") { ultimoGuardado().getJSONObject("p_ajustes").length() == 0 }
     }
+
+    /** Las pantallas nuevas en oscuro y «Salté» sin «Agregar alimento» (revisión del 3-nov). */
+    @Test
+    fun agregarEnOscuroYSalteOcultaAgregar() {
+        Telefono.modoNoche(true)
+        try {
+            guardarCuenta()
+            abrir()
+            irADieta()
+            p.tocar(etiqueta("agregar-c1"))
+            p.nodo(etiqueta("hoja-agregar"))
+            p.escribir(etiqueta("buscar-agregar"), "zapallo")
+            p.nodo(texto("Zapallo / Calabaza"))
+            Telefono.captura("64-agregar-busqueda-oscuro")
+            p.tocar(texto("Zapallo / Calabaza"))
+            p.nodo(etiqueta("cantidad-kcal"))
+            Telefono.captura("65-agregar-cantidad-oscuro")
+            p.tocar(etiqueta("cantidad-confirmar"))
+            p.esperarQueNoEste(etiqueta("hoja-agregar"))
+            p.nodo(etiqueta("agregado-c1-0"))
+            Telefono.captura("66-agregado-en-la-comida-oscuro")
+            p.tocar(etiqueta("agregado-c1-0"))
+            p.nodo(etiqueta("hoja-cantidad"))
+            Telefono.captura("67-agregado-cantidad-oscuro")
+            p.tocar(etiqueta("cantidad-cancelar"))
+            p.esperarQueNoEste(etiqueta("hoja-cantidad"))
+
+            p.tocar(etiqueta("salte-c1"))
+            p.esperar("salteada") { p.seleccionado(etiqueta("salte-c1")) }
+            p.esperarQueNoEste(etiqueta("agregar-c1"))
+            p.tocar(etiqueta("salte-c1"))
+            p.esperar("desmarcada") { !p.seleccionado(etiqueta("salte-c1")) }
+            p.nodo(etiqueta("agregar-c1"))
+        } finally {
+            Telefono.modoNoche(false)
+        }
+    }
 }

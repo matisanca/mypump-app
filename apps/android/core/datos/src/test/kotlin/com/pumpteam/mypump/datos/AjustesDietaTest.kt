@@ -12,7 +12,10 @@ import java.util.Collections
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -34,6 +37,9 @@ class AjustesDietaTest {
         /** `mypump_guardar_ajustes_dieta` falla (un 500: la op queda en la cola). */
         @Volatile var guardarFalla = false
 
+        /** La base rechaza el día (el 22023 de nativa_004 con un `ajustes` de más de 16000 bytes en jsonb). */
+        @Volatile var rechaza = false
+
         /** `mypump_get_food_swaps` falla (un 500). */
         @Volatile var sinSwaps = false
         @Volatile var filas = "[]"
@@ -53,6 +59,7 @@ class AjustesDietaTest {
                 "mypump_guardar_ajustes_dieta" ->
                     if (sinTabla) 404 to """{"code":"PGRST202","message":"Could not find the function"}"""
                     else if (guardarFalla) 500 to """{"message":"caído"}"""
+                    else if (rechaza) 400 to """{"code":"22023","message":"ajustes invalidos"}"""
                     else {
                         guardados += cuerpo
                         200 to "true"
@@ -416,6 +423,70 @@ class AjustesDietaTest {
         m.borrarAgregado("desayuno", 3, emptyMap())
         assertNull(m.ajustesDeHoy["desayuno"])
         assertEquals(emptyList<Int>(), m.marcasDeHoy["desayuno"]?.excluidos)
+    }
+
+    /**
+     * Revisión del 3-nov: un día que la base rechaza termina en fallidos; la hidratación ya no lo veía pendiente y la fila
+     * vieja del servidor pisaba el día del teléfono sin aviso. Ahora no lo pisa, Dieta avisa y el próximo cambio lo resuelve.
+     */
+    @Test
+    fun unDiaQueLaBaseRechazaNoLoPisaLaHidratacionYSeAvisa() = enUnHilo { alcance ->
+        val s = Servidor().apply { rechaza = true }
+        val m = modelo(s, alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(deltaKcal = 50), emptyMap())
+        repeat(12) { if ((m.outbox?.pendientes() ?: 0) > 0) m.outbox?.drenar() }
+        assertEquals(0, m.outbox?.pendientes())
+        assertEquals(1, m.outbox?.fallidos()?.size)
+        assertTrue(m.ajustesSinGuardar.value, "Dieta avisa que no se guardó")
+        // La fila vieja del servidor no pisa el día del teléfono.
+        s.filas = """[{"fecha":"$hoy","dieta_id":"$DIETA_ID","tipo_dia":null,"ajustes":{"almuerzo":{"deltaKcal":-100,"compensar":false,"omitida":false,"opcion":0,"cantidades":{}}}}]"""
+        m.hidratarDieta()
+        assertEquals(50, m.ajustesDeHoy["desayuno"]?.deltaKcal)
+        assertNull(m.ajustesDeHoy["almuerzo"])
+        assertTrue(m.ajustesSinGuardar.value)
+        // El próximo cambio sale entero: el aviso se va y el fallido de ese día se olvida (la hidratación vuelve a valer).
+        s.rechaza = false
+        m.ajustar("desayuno", AjusteComida(deltaKcal = 100), emptyMap())
+        m.outbox?.drenar()
+        repeat(100) { if (m.ajustesSinGuardar.value || m.outbox?.fallidos().orEmpty().isNotEmpty()) delay(10) }
+        assertFalse(m.ajustesSinGuardar.value)
+        assertTrue(m.outbox?.fallidos().orEmpty().isEmpty())
+        m.hidratarDieta()
+        assertEquals(-100, m.ajustesDeHoy["almuerzo"]?.deltaKcal, "con el día guardado, lo del servidor vuelve a valer")
+    }
+
+    /** «Volver al plan» no deja en la marca tildes de agregados que ya no están: siguen a cada agregado por `_ts`. */
+    @Test
+    fun volverAlPlanNoDejaTildesDeAgregadosViejos() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1), huevo(2))), emptyMap())
+        m.marcar("desayuno", MarcaComida.Estado.COMIDO, 0)
+        m.alternarAlimento("desayuno", 0)
+        m.alternarAlimento("desayuno", 3)
+        assertEquals(listOf(0, 3), m.marcasDeHoy["desayuno"]?.excluidos)
+        m.ajustar("desayuno", null, emptyMap())
+        assertEquals(listOf(0), m.marcasDeHoy["desayuno"]?.excluidos, "el del plan queda; el del agregado se va")
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(5), huevo(6))), emptyMap())
+        assertEquals(234.0 + 86 * 2, m.consumo(emptyMap()).kcal, "los agregados nuevos llegan tildados")
+    }
+
+    /** Dos «Sacar» seguidos sin esperar (dos toques rápidos): cada uno saca el suyo y los tildes quedan bien. */
+    @Test
+    fun dosBorradosSeguidosNoCorrenMalLosTildes() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1), huevo(2), huevo(3))), emptyMap())
+        m.marcar("desayuno", MarcaComida.Estado.COMIDO, 0)
+        m.alternarAlimento("desayuno", 4)
+        listOf(
+            alcance.launch { m.borrarAgregado("desayuno", 1, emptyMap()) },
+            alcance.launch { m.borrarAgregado("desayuno", 2, emptyMap()) },
+            alcance.launch { m.borrarAgregado("desayuno", 2, emptyMap()) },
+        ).joinAll()
+        assertEquals(listOf(3L), m.ajustesDeHoy["desayuno"]?.agregados?.map { it.ts })
+        assertEquals(listOf(2), m.marcasDeHoy["desayuno"]?.excluidos, "el tercero sigue destildado, ahora en el índice 2")
     }
 
     /** Cambiar de opción saca las cantidades a mano (eran de la otra) pero deja los agregados. */

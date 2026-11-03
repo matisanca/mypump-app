@@ -67,7 +67,9 @@ extension ModeloApp {
         if let a, !a.neutro { nuevos[comidaId] = a } else { nuevos[comidaId] = nil }
         guard nuevos != ajustes else { return }
         ordenAjustes += 1
+        let antes = ajustes[comidaId]?.agregados ?? []
         ajustes = nuevos
+        await seguirTildes(comidaId, antes: antes, despues: nuevos[comidaId]?.agregados ?? [])
         if !esDemo, let id = dieta?.id {
             _ = disco?.guardar(AjustesGuardados(fecha: fechaAjustes, comidas: nuevos), Self.archivoAjustes(id))
             await encolarAjustes(opciones: opciones)
@@ -122,6 +124,19 @@ extension ModeloApp {
         await outbox.encolar(Self.kindAjustes, payload, dedupeKey: Self.claveAjustes(fechaAjustes))
     }
 
+    /// Salió el día: si era el de hoy, ya no hay nada sin guardar y los fallidos viejos de ese día se olvidan (si no, la
+    /// hidratación no volvería a traer lo del servidor nunca más ese día).
+    func ajusteGuardado(_ op: Operacion) {
+        guard let clave = op.dedupeKey else { return }
+        if clave == Self.claveAjustes(FechaLocal.hoy()) { ajustesSinGuardar = false }
+        Task { await outbox?.olvidarFallidos(clave: clave) }
+    }
+
+    /// La cola abandonó el día (8 intentos o un rechazo de la base, como el 22023 de un día demasiado grande).
+    func ajusteAbandonado(_ op: Operacion) {
+        if op.dedupeKey == Self.claveAjustes(FechaLocal.hoy()) { ajustesSinGuardar = true }
+    }
+
     /// Al hidratar la dieta: lo que tiene el servidor para hoy, salvo que haya un cambio del teléfono que todavía no
     /// salió (ese gana). Si el servidor no tiene nada y el teléfono sí (la migración se aplicó después, o salió sin
     /// tabla), se sube. Otra dieta en el servidor (Mati la volvió a publicar) no se mezcla.
@@ -136,7 +151,10 @@ extension ModeloApp {
         let r = await cliente.llamar("mypump_get_ajustes_dieta", ["p_token": .texto(t), "p_desde": .texto(hoy), "p_hasta": .texto(hoy)])
         guard vigente(), case .success(let v) = r, case .lista(let filas) = v else { return }
         let pendiente = (await outbox.pendientesPorClave())[Self.claveAjustes(hoy)] != nil
-        guard vigente(), !pendienteAntes, !pendiente, ordenAjustes == antes else { return }
+        // Un día que no se pudo guardar (la base lo rechazó): la fila del servidor es vieja y pisaría lo del teléfono.
+        let fallido = await outbox.fallidos.contains { $0.op.kind == Self.kindAjustes && $0.op.dedupeKey == Self.claveAjustes(hoy) }
+        if fallido, vigente() { ajustesSinGuardar = true }
+        guard vigente(), !pendienteAntes, !pendiente, !fallido, ordenAjustes == antes else { return }
         if fechaAjustes != hoy { cargarAjustes() }
         let remota = filas.first { $0["fecha"]?.comoTexto == hoy }
         if let remota {
@@ -145,7 +163,11 @@ extension ModeloApp {
             else { return }
             let validas = comidas.filter { !$0.value.neutro }
             guard validas != ajustes else { return }
+            let previos = ajustes
             ajustes = validas
+            for id in Set(previos.keys).union(validas.keys) {
+                await seguirTildes(id, antes: previos[id]?.agregados ?? [], despues: validas[id]?.agregados ?? [])
+            }
             _ = disco?.guardar(AjustesGuardados(fecha: hoy, comidas: validas), Self.archivoAjustes(dieta.id))
         } else if !ajustes.isEmpty {
             await encolarAjustes(opciones: [:])

@@ -222,6 +222,10 @@ struct AgregadosComidaTests {
         #expect(AgregadosComida.excluidosTrasBorrar([1, 2, 4], alimentosPlan: 2, borrado: 0) == [1, 3])
         #expect(AgregadosComida.excluidosTrasBorrar([3], alimentosPlan: 2, borrado: 1) == [])
         #expect(AgregadosComida.excluidosTrasBorrar([0, 4], alimentosPlan: 2, borrado: 1) == [0, 3])
+        // Por `_ts`: sin agregados se van los suyos; reordenados o con uno menos en el medio, cada tilde sigue al suyo.
+        #expect(AgregadosComida.excluidosTrasCambio([1, 3], alimentosPlan: 2, antes: [7, 8], despues: []) == [1])
+        #expect(AgregadosComida.excluidosTrasCambio([2, 4], alimentosPlan: 2, antes: [7, 8, 9], despues: [9, 7]) == [2, 3])
+        #expect(AgregadosComida.excluidosTrasCambio([5, 9], alimentosPlan: 2, antes: [7], despues: [7]) == [])
     }
 
     // MARK: - Lectura, escritura y topes
