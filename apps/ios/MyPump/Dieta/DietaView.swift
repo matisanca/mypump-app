@@ -5,7 +5,9 @@ import MyPumpDatos
 
 /// Dieta: el plan del día con sus opciones por comida, los reemplazos, la porción casera, los ajustes de porciones del
 /// día (sumar o restar kcal, gramos a mano, «Hoy no la como»; feedback del 20-oct) y «✓ Comí» / «✗ Salté» con lo
-/// consumido arriba (D25, 27-oct: los clientes de 2.0.x no podían seguir lo que comían; en D10 se había sacado).
+/// consumido arriba (D25, 27-oct: los clientes de 2.0.x no podían seguir lo que comían; en D10 se había sacado). Desde la
+/// 2.0.3, cada comida suma alimentos que no están en el plan («Agregar alimento», D1) y la cantidad de cada alimento se
+/// toca en la misma fila (D2), al estilo de MyFitnessPal.
 struct DietaView: View {
     @State private var modelo = Proveedor.modelo
     @State private var opcion: [String: Int] = [:]
@@ -14,6 +16,9 @@ struct DietaView: View {
     @State private var revertir: Reemplazo?
     @State private var analizandoFoto = false
     @State private var ajustando: ComidaAAjustar?
+    /// La hoja de agregar alimento (D1) y la de cantidad de un alimento (D2, o uno agregado).
+    @State private var agregandoA: ComidaAAjustar?
+    @State private var cantidadAbierta: CantidadAlimento?
     /// En iPad la dieta va en una columna centrada: el título grande del sistema quedaba pegado al borde, lejos de la
     /// columna. Ahí el título va adentro de la columna (como el encabezado de Entreno) y arriba queda chico.
     @Environment(\.horizontalSizeClass) private var claseAncho
@@ -85,6 +90,15 @@ struct DietaView: View {
         }
         .sheet(item: $ajustando) { a in
             AjustarComidaView(modelo: modelo, comidaId: a.id, opciones: opcionesVigentes)
+        }
+        .sheet(item: $agregandoA) { a in
+            AgregarAlimentoView(modelo: modelo, comidaId: a.id, opciones: opcionesVigentes)
+        }
+        .sheet(item: $cantidadAbierta) { p in
+            NavigationStack {
+                CantidadAlimentoView(modelo: modelo, pedido: p, opciones: opcionesVigentes) { cantidadAbierta = nil }
+            }
+            .presentationDetents([.large])
         }
     }
 
@@ -167,7 +181,7 @@ struct DietaView: View {
 
     /// Lo del día con las opciones elegidas, los reemplazos y los ajustes de hoy.
     static func total(_ dia: [String: AjustePorciones.ComidaAjustada]) -> Macros {
-        ModeloApp.sumar(dia.values.flatMap(\.alimentos))
+        ModeloApp.sumar(dia.values.flatMap(\.todos))
     }
 
     // MARK: - Comida
@@ -182,7 +196,9 @@ struct DietaView: View {
         let omitida = ajustada?.omitida == true
         // La ajustó el cliente (no solo le llega lo de otra).
         let propia = modelo.ajustesDeHoy[c.id] != nil
-        let total = ModeloApp.sumar(alimentos.map(\.hoy))
+        // Los alimentos que sumó a la comida (D1): van después de los del plan y sus tildes son n + j.
+        let agregados = omitida ? [] : (modelo.ajustesDeHoy[c.id]?.agregados ?? [])
+        let total = ModeloApp.sumar(alimentos.map(\.hoy) + agregados.map(\.alimento))
         let nombreOpcion = c.opciones[safe: o]?.nombre ?? Self.letra(o)
         // «Comí» / «Salté» (D25). La que hoy no come no se marca.
         let marca = omitida ? nil : modelo.marcasDeHoy[c.id]
@@ -195,7 +211,8 @@ struct DietaView: View {
         let apilada = tamañoLetra.isAccessibilitySize
         let titulo = VStack(alignment: .leading, spacing: 1) {
             Text(c.nombre ?? "Comida \(numero)").font(.title3.weight(.semibold))
-            Text("Opción \(nombreOpcion) · \(alimentos.count) \(alimentos.count == 1 ? "alimento" : "alimentos")")
+            Text("Opción \(nombreOpcion) · \(alimentos.count) \(alimentos.count == 1 ? "alimento" : "alimentos")"
+                 + (agregados.isEmpty ? "" : " + \(agregados.count) \(agregados.count == 1 ? "agregado" : "agregados")"))
                 .font(.footnote).foregroundStyle(.secondary)
         }
         let kcal = Text((total.kcal ?? 0).enteroSeguro, format: .number).font(.numeroMediano).contentTransition(.numericText())
@@ -255,6 +272,7 @@ struct DietaView: View {
             if let oMarcada {
                 if let excluidos {
                     let contado = alimentos.filter { !excluidos.contains($0.i) }.reduce(0.0) { $0 + ($1.hoy.kcal ?? 0) }
+                        + agregados.enumerated().filter { !excluidos.contains(alimentos.count + $0.offset) }.reduce(0.0) { $0 + $1.element.kcal }
                     let texto = excluidos.isEmpty ? "Destildá lo que no comiste: solo cuenta lo tildado."
                                                   : "Cuenta lo tildado: \(contado.enteroSeguro) de \((total.kcal ?? 0).enteroSeguro) kcal."
                     // Un solo elemento con el texto: si no, VoiceOver (y las pruebas) agarraban el ícono ("checklist").
@@ -293,6 +311,8 @@ struct DietaView: View {
                                      enElPlan: item.hoy.qty != item.efectivo.alimento.qty ? item.efectivo.alimento : nil,
                                      tildado: excluidos.map { !$0.contains(item.i) }, idTilde: "comido-\(c.id)-\(item.i)",
                                      alTildar: { Task { await modelo.alternarAlimento(c.id, item.i) } },
+                                     idCantidad: "cantidad-\(c.id)-\(item.i)",
+                                     alTocarCantidad: { cantidadAbierta = CantidadAlimento(comidaId: c.id, que: .delPlan(item.i)) },
                                      porcionAbierta: porcionesAbiertas.contains(clave)) {
                             withAnimation(.snappy) {
                                 if porcionesAbiertas.contains(clave) { porcionesAbiertas.remove(clave) } else { porcionesAbiertas.insert(clave) }
@@ -312,7 +332,15 @@ struct DietaView: View {
                         } message: { r in
                             Text("Hoy estás comiendo \(r.mostrado.nombre).")
                         }
-                        if item.i < alimentos.count - 1 { Divider() }
+                        if item.i < alimentos.count - 1 || !agregados.isEmpty { Divider() }
+                    }
+                    ForEach(Array(agregados.enumerated()), id: \.element.ts) { j, a in
+                        let k = alimentos.count + j
+                        FilaAgregado(agregado: a, tildado: excluidos.map { !$0.contains(k) }, idTilde: "comido-\(c.id)-\(k)",
+                                     idCantidad: "agregado-\(c.id)-\(j)",
+                                     alTildar: { Task { await modelo.alternarAlimento(c.id, k) } },
+                                     alTocar: { cantidadAbierta = CantidadAlimento(comidaId: c.id, que: .agregado(a.ts)) })
+                        if j < agregados.count - 1 { Divider() }
                     }
                 }
                 Group {
@@ -338,15 +366,32 @@ struct DietaView: View {
                 .padding(.horizontal, 12).padding(.vertical, 9)
                 .background(Color(uiColor: .tertiarySystemFill).opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
             }
-            Button { ajustando = ComidaAAjustar(id: c.id) } label: {
-                Label(propia ? "Cambiar el ajuste" : "Ajustar esta comida", systemImage: "slider.horizontal.3")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity, minHeight: 44)
+            // «Agregar alimento» (D1) a la vista en cada comida, como en MyFitnessPal; al lado, el ajuste de siempre. Con la
+            // letra de accesibilidad, uno debajo del otro.
+            let botones = apilada ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
+            botones {
+                if !omitida {
+                    Button { agregandoA = ComidaAAjustar(id: c.id) } label: {
+                        Label("Agregar alimento", systemImage: "plus.circle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.marcaTexto)
+                    .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+                    .accessibilityIdentifier("agregar-\(c.id)")
+                }
+                Button { ajustando = ComidaAAjustar(id: c.id) } label: {
+                    Label(propia ? "Cambiar el ajuste" : (omitida ? "Ajustar esta comida" : "Ajustar"), systemImage: "slider.horizontal.3")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.marcaTexto)
+                .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+                .accessibilityLabel(propia ? "Cambiar el ajuste" : "Ajustar esta comida")
+                .accessibilityIdentifier("ajustar-\(c.id)")
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(Color.marcaTexto)
-            .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
-            .accessibilityIdentifier("ajustar-\(c.id)")
         }
         .tarjeta()
         .animation(.snappy, value: o)
@@ -398,6 +443,9 @@ private struct FilaAlimento: View {
     var tildado: Bool? = nil
     var idTilde: String = ""
     var alTildar: () -> Void = {}
+    /// D2: la cantidad se toca y abre la hoja de cantidad.
+    var idCantidad: String = ""
+    var alTocarCantidad: () -> Void = {}
     let porcionAbierta: Bool
     let alTocarMano: () -> Void
     let alReemplazar: () -> Void
@@ -450,9 +498,14 @@ private struct FilaAlimento: View {
                             .accessibilityLabel("Reemplazado. Tocá para volver a \(original.nombre)")
                         }
                     }
-                    Text("\(FormatoDieta.cantidad(mostrado.qty, mostrado.unidad)) · \((mostrado.kcal ?? 0).enteroSeguro) kcal")
-                        .font(.subheadline).foregroundStyle(enElPlan != nil ? Color.marcaTexto : .secondary)
-                        .contentTransition(.numericText())
+                    HStack(spacing: 8) {
+                        PildoraCantidad(texto: FormatoDieta.cantidad(mostrado.qty, mostrado.unidad), cambiada: enElPlan != nil,
+                                        nombre: mostrado.nombre, accion: alTocarCantidad)
+                            .accessibilityIdentifier(idCantidad)
+                        Text("\((mostrado.kcal ?? 0).enteroSeguro) kcal")
+                            .font(.subheadline).foregroundStyle(enElPlan != nil ? Color.marcaTexto : .secondary)
+                            .contentTransition(.numericText())
+                    }
                     if let enElPlan {
                         Text("En el plan: \(FormatoDieta.cantidad(enElPlan.qty, enElPlan.unidad))")
                             .font(.caption).foregroundStyle(.secondary)
@@ -484,6 +537,92 @@ private struct FilaAlimento: View {
         }
         .padding(.vertical, 10)
         .sensoryFeedback(.impact(weight: .light), trigger: porcionAbierta)
+    }
+}
+
+/// La cantidad de un alimento como botón (D2): «180 g ✎» en una píldora, a la vista en cada fila, como en MyFitnessPal.
+/// Toca y abre la hoja de cantidad. 44 pt de alto de toque sin agrandar la píldora.
+private struct PildoraCantidad: View {
+    let texto: String
+    var cambiada = false
+    let nombre: String
+    let accion: () -> Void
+
+    var body: some View {
+        Button(action: accion) {
+            HStack(spacing: 4) {
+                Text(texto).font(.subheadline.weight(.semibold).monospacedDigit()).contentTransition(.numericText())
+                Image(systemName: "pencil").font(.caption2.weight(.bold))
+            }
+            .foregroundStyle(Color.marcaTexto)
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(cambiada ? Color.marcaSuave : Color.marcaSuave.opacity(0.55), in: .capsule)
+            .overlay { if cambiada { Capsule().strokeBorder(Color.marcaTexto.opacity(0.35), lineWidth: 1) } }
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle().inset(by: -10))
+        .accessibilityLabel("Cantidad de \(nombre): \(texto)")
+        .accessibilityHint("Tocá para cambiarla")
+    }
+}
+
+/// Un alimento que el cliente sumó a la comida (D1): con su distintivo, la cantidad que se toca para cambiarla o sacarlo, y
+/// el tilde de «Comí» como los del plan.
+private struct FilaAgregado: View {
+    let agregado: AlimentoAgregado
+    var tildado: Bool?
+    var idTilde: String
+    var idCantidad: String
+    let alTildar: () -> Void
+    let alTocar: () -> Void
+    @State private var toques = 0
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            if let tildado {
+                Button {
+                    toques += 1
+                    alTildar()
+                } label: {
+                    Image(systemName: tildado ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                        .foregroundStyle(tildado ? Color.marca : Color.secondary)
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(agregado.nombre)
+                .accessibilityValue(tildado ? "Lo comiste" : "No lo comiste")
+                .accessibilityAddTraits(.isToggle)
+                .accessibilityIdentifier(idTilde)
+                .sensoryFeedback(.selection, trigger: toques)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(agregado.nombre).font(.body.weight(.medium))
+                        .strikethrough(tildado == false)
+                        .foregroundStyle(tildado == false ? Color.secondary : Color.primary)
+                    Label("Agregado", systemImage: "plus")
+                        .labelStyle(.titleAndIcon)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.marcaTexto)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.marcaSuave, in: .capsule)
+                        .accessibilityHidden(true)
+                }
+                HStack(spacing: 8) {
+                    PildoraCantidad(texto: FormatoDieta.cantidad(agregado.cantidad, agregado.unidad), nombre: agregado.nombre, accion: alTocar)
+                        .accessibilityIdentifier(idCantidad)
+                    Text("\(agregado.kcal.enteroSeguro) kcal").font(.subheadline).foregroundStyle(.secondary)
+                }
+                FormatoDieta.macros(prot: agregado.p, carb: agregado.c, fat: agregado.g)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+        }
+        .padding(.vertical, 10)
     }
 }
 

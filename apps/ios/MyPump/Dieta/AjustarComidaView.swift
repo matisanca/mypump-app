@@ -97,6 +97,23 @@ struct AjustarComidaView: View {
                             Text("Tocá − o + para cambiar la cantidad de un alimento; en 0 no lo comés hoy. Para volver a la del plan, deslizalo.")
                         }
                     }
+                    if !borrador.omitida, !r.agregados.isEmpty {
+                        Section {
+                            ForEach(Array(r.agregados.enumerated()), id: \.offset) { _, a in
+                                HStack {
+                                    Text(a.nombre).font(.body.weight(.medium))
+                                    Spacer(minLength: 4)
+                                    Text("\(FormatoDieta.cantidad(a.qty, a.unidad)) · \((a.kcal ?? 0).enteroSeguro) kcal")
+                                        .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                                }
+                                .accessibilityElement(children: .combine)
+                            }
+                        } header: {
+                            Text("Agregados")
+                        } footer: {
+                            Text("Se cambian o se sacan tocándolos en la comida. Cuentan en las kcal de esta comida y en lo que se compensa.")
+                        }
+                    }
                     Section {
                         Label("Vale solo por hoy: mañana vuelve tu plan.", systemImage: "calendar")
                             .font(.footnote).foregroundStyle(.secondary)
@@ -106,6 +123,10 @@ struct AjustarComidaView: View {
                                 cerrar()
                             }
                             .accessibilityIdentifier("ajuste-volver-plan")
+                        }
+                    } footer: {
+                        if !borrador.agregados.isEmpty {
+                            Text("«Volver al plan» también saca los alimentos que agregaste.")
                         }
                     }
                 } else {
@@ -139,7 +160,7 @@ struct AjustarComidaView: View {
     private func resumen(_ r: AjustePorciones.ComidaAjustada, comida: AjustePorciones.ComidaDelDia,
                          dia: [String: AjustePorciones.ComidaAjustada]) -> some View {
         let diferencia = r.kcal - r.kcalPlan
-        let hoy = ModeloApp.sumar(r.alimentos), plan = ModeloApp.sumar(comida.alimentos)
+        let hoy = ModeloApp.sumar(r.todos), plan = ModeloApp.sumar(comida.alimentos)
         let diaHoy = dia.values.reduce(0) { $0 + $1.kcal }, diaPlan = dia.values.reduce(0) { $0 + $1.kcalPlan }
         return VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
@@ -296,14 +317,20 @@ struct AjustarComidaView: View {
 
     /// Lo que este ajuste le hace al resto del día, comida por comida (y lo que no entra en ninguna).
     private func textoCompensacion(_ comidas: [AjustePorciones.ComidaDelDia], _ ajustes: [String: AjusteComida]) -> String {
-        let e = AjustePorciones.efecto(comidas, ajustes: ajustes, de: comidaId)
+        Self.textoEfecto(comidas, ajustes, de: comidaId, compensar: borrador.compensar)
+    }
+
+    /// Lo que el ajuste de `id` le hace al resto del día (lo usa también la hoja de cantidad, D3).
+    static func textoEfecto(_ comidas: [AjustePorciones.ComidaDelDia], _ ajustes: [String: AjusteComida], de id: String,
+                            compensar: Bool) -> String {
+        let e = AjustePorciones.efecto(comidas, ajustes: ajustes, de: id)
         guard !e.cambios.isEmpty else {
-            return borrador.compensar ? "Lo que cambies acá se compensa ahí." : "El total del día queda con la diferencia."
+            return compensar ? "Lo que cambies acá se compensa ahí." : "El total del día queda con la diferencia."
         }
         let partes = e.cambios.map { c in
-            "\(Self.conArticulo(c.nombre)) \(c.kcal < 0 ? "baja" : "sube") \(abs(c.kcal).enteroSeguro) kcal (queda en \(c.queda.enteroSeguro))"
+            "\(conArticulo(c.nombre)) \(c.kcal < 0 ? "baja" : "sube") \(abs(c.kcal).enteroSeguro) kcal (queda en \(c.queda.enteroSeguro))"
         }
-        var t = Self.mayuscula(Self.unir(partes)) + "."
+        var t = mayuscula(unir(partes)) + "."
         if abs(e.sinCompensar) >= 1 { t += " No alcanza: \(abs(e.sinCompensar).enteroSeguro) kcal quedan sin compensar." }
         return t
     }
