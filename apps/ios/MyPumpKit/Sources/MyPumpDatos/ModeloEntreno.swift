@@ -116,6 +116,11 @@ public final class ModeloEntreno {
     @ObservationIgnored var descansoEnDisco: Descanso.Guardado?
     /// ms: cuándo pasó la acción que se está aplicando, si no es ahora (un evento del reloj).
     @ObservationIgnored var instanteEvento: Double?
+    /// Las series confirmadas por un evento del reloj (clave de `claveFecha` → `creado` del evento). Solo en memoria: sin
+    /// la marca, gana lo que hay en el teléfono.
+    @ObservationIgnored var seriesDelReloj: [String: Double] = [:]
+    /// Hay eventos del Apple Watch que esperan hace horas sin poder pasar (el aviso de Entreno); nil si no.
+    public internal(set) var relojEsperando: String?
 
     public init(cliente: ClienteRPC, token: String?, outbox: Outbox?, disco: Disco?, rutina: RutinaActiva, info: ClienteInfo? = nil,
                 catalogo: CatalogoEjercicios = CatalogoEjercicios([]), demo: Bool? = nil, zona: TimeZone = .current,
@@ -372,14 +377,16 @@ public final class ModeloEntreno {
     /// El check o el "✓ Tocá para registrar lo de la última vez" (SER-01/03/05). `preguntar` muestra la pregunta y
     /// devuelve lo que eligió el cliente (reabrir el día cerrado; "¿Está bien cargado?").
     @discardableResult
-    public func confirmarSerie(_ lugar: String, _ idx: Int, fecha: Double? = nil, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
+    public func confirmarSerie(_ lugar: String, _ idx: Int, delReloj: Double? = nil, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado?
-        // `fecha` (ms): cuándo se hizo de verdad (una serie del reloj que llega después). Fecha la serie, separa el
-        // historial de hoy para el récord y ancla el descanso; sin ella, ahora.
-        let cuando = fecha.map { Date(timeIntervalSince1970: $0 / 1000) } ?? reloj()
-        instanteEvento = fecha
+        // La serie se fecha (y el récord y el volumen) con la hora de ahora en el iPhone, igual que el servidor
+        // (`registrado_en` = now()). `delReloj` (ms): cuándo se hizo en el reloj; solo ancla el descanso y deja anotado
+        // que la serie vino del reloj (una corrección posterior del reloj puede pisarla; un pendiente viejo, no).
+        let cuando = reloj()
+        instanteEvento = delReloj
         defer { instanteEvento = nil }
+        seriesDelReloj[claveFecha(lugar, idx + 1)] = delReloj
         let ef = dia.ejercicio(lugar).map { efectivo($0).ejercicio }
         dia.fijarRIRDelPlan(lugar, idx, efectivo: dia.ejercicio(lugar).map(hecho))
         while true {

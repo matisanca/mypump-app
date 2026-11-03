@@ -62,6 +62,8 @@ extension ModeloEntreno {
     /// La cuenta para el reloj: un hash corto del token (nunca el token). En la demo, "demo".
     public var cuentaReloj: String { Self.hashCuenta(token) }
 
+    static let motivoDiaCerrado = "ese día ya lo cerraste en el teléfono."
+
     nonisolated public static func hashCuenta(_ token: String?) -> String {
         guard let token, !token.isEmpty else { return "demo" }
         return SHA256.hash(data: Data(("mypump-reloj|" + token).utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
@@ -69,18 +71,21 @@ extension ModeloEntreno {
 
     /// El día que se mira tiene algo en curso que cambiar de día haría perder o esconder: la sesión empezada y abierta,
     /// una serie confirmada o algo tipeado sin confirmar.
+    /// Un día cerrado no bloquea (es lo normal después de entrenar): no hay nada que perder al cambiar.
     var diaConActividad: Bool {
-        if inicioSesion != nil && !dia.diaFinalizado { return true }
+        if dia.diaFinalizado { return false }
+        if inicioSesion != nil { return true }
         return dia.ejercicios.values.contains { e in e.series.contains { $0.confirmada || !$0.reps.isEmpty || !$0.kg.isEmpty } }
     }
 
     /// Aplica un evento del reloj y dice qué contestarle. Nunca descarta en silencio: lo que no se puede aplicar ahora es
     /// `pendiente` (queda en la cola del reloj y se reintenta) y lo que no se va a poder aplicar nunca, `rechazado` con
-    /// el motivo que el reloj le muestra al alumno. `creado` (ms) es cuándo pasó en el reloj: arranca el cronómetro,
-    /// fecha la serie (y el récord) y ancla el descanso.
+    /// el motivo que el reloj le muestra al alumno. `creado` (ms) es cuándo pasó en el reloj: solo arranca el cronómetro,
+    /// ancla el descanso y cierra la duración (la serie se fecha con la hora del iPhone, como el servidor).
     public func aplicarEventoReloj(_ ec: EventoEnCola) async -> AcuseEvento {
         func r(_ res: AcuseEvento.Resultado, _ motivo: String? = nil) -> AcuseEvento { AcuseEvento(id: ec.id, resultado: res, motivo: motivo) }
         let e = ec.evento
+        if ahoraMs - ec.creado > ReceptorReloj.vencimiento { return r(.rechazado, ReceptorReloj.motivoVencido) }
         if let c = ec.cuenta, c != cuentaReloj {
             return r(.pendiente, demo ? "El iPhone está en la demo: entrá con tu link." : "El iPhone tiene otra cuenta abierta.")
         }
@@ -90,7 +95,12 @@ extension ModeloEntreno {
         if e.semana < semana { return r(.rechazado, "el iPhone ya pasó a la semana \(semanaMostrada).") }
         if e.semana > semana { return r(.pendiente, "El iPhone todavía no pasó a esa semana.") }
         if e.diaId != dia.dia.id {
-            guard dias.contains(where: { $0.id == e.diaId }) else { return r(.rechazado, "ese día ya no está en tu rutina.") }
+            guard let otro = dias.first(where: { $0.id == e.diaId }) else { return r(.rechazado, "ese día ya no está en tu rutina.") }
+            // Un día ya cerrado en el teléfono no se reabre desde el reloj: gana el teléfono (ni se cambia de pantalla).
+            if hecho(otro) {
+                if case .serie = e { return r(.rechazado, Self.motivoDiaCerrado) }
+                return r(.aplicado)
+            }
             // Otro día abierto con algo en curso: no se le cambia la pantalla ni se pierde lo tipeado. Queda pendiente.
             if diaConActividad { return r(.pendiente, "En el iPhone hay otro día abierto. Cerralo para pasar esto.") }
             await cambiarDia(e.diaId)
@@ -98,13 +108,21 @@ extension ModeloEntreno {
         }
         switch e {
         case .iniciar:
+            guard !dia.diaFinalizado else { return r(.aplicado) }
             await empezar(desde: ec.creado)
             return r(.aplicado)
         case .serie(_, _, let lugar, let i, let reps, let kg):
             guard let ej = dia.ejercicios[lugar], i >= 0, i < ej.series.count else { return r(.rechazado, "la serie ya no está en tu rutina.") }
             let s = ej.series[i]
+            let igual = s.confirmada && Self.entero(s.reps) == reps && (kg == nil || Self.numero(s.kg) == kg)
+            if igual { return r(.aplicado) }
+            // Gana el teléfono: un día cerrado no se reabre, y una serie confirmada en el teléfono no se pisa. Solo una
+            // corrección del reloj sobre una serie que vino del reloj (y es más nueva) la reemplaza.
+            if dia.diaFinalizado { return r(.rechazado, Self.motivoDiaCerrado) }
             if s.confirmada {
-                if Self.entero(s.reps) == reps && (kg == nil || Self.numero(s.kg) == kg) { return r(.aplicado) }
+                guard let previa = seriesDelReloj[claveFecha(lugar, i + 1)], previa < ec.creado else {
+                    return r(.rechazado, "ya cargaste esta serie en el teléfono.")
+                }
                 await editarSerie(lugar, i)
             }
             // El cronómetro arranca cuando se hizo la primera serie en el reloj, no cuando llegó.
@@ -115,7 +133,7 @@ extension ModeloEntreno {
             escribir(lugar, i, campo: "reps", valor: String(reps))
             if let kg { escribir(lugar, i, campo: "kg", valor: JS.texto(kg)) }
             // Lo confirmó en el reloj: «¿está bien cargado?» y «reabrir el día» se contestan que sí.
-            await confirmarSerie(lugar, i, fecha: min(ec.creado, ahoraMs)) { _ in true }
+            await confirmarSerie(lugar, i, delReloj: min(ec.creado, ahoraMs)) { _ in true }
             return dia.ejercicios[lugar]?.series[i].confirmada == true ? r(.aplicado) : r(.rechazado, "el iPhone no la pudo registrar.")
         case .terminar:
             // Sin nada hecho no hay qué cerrar; con algo hecho (aunque la sesión todavía no exista: sin red) se intenta.
@@ -135,13 +153,22 @@ extension ModeloEntreno {
 @MainActor
 public final class ReceptorReloj {
     public static let archivo = "reloj-aplicados.json"
+    /// Un evento que no pudo pasar en 7 días ya no se aplica: vuelve rechazado (el reloj lo muestra).
+    public static let vencimiento: Double = 7 * 24 * 3_600_000
+    public static let motivoVencido = "pasaron más de 7 días sin que llegara al iPhone."
+    /// Desde cuándo un pendiente se avisa en Entreno.
+    public static let avisarDespues: Double = 3 * 3_600_000
     private let disco: Disco?
     private var aplicados: AplicadosReloj
     /// Los que se están aplicando ahora (un duplicado en el medio contesta `pendiente`, no `repetido`).
     private var enCurso: Set<UUID> = []
 
-    public init(disco: Disco?) {
+    /// ms de ahora cuando no hay motor (para el vencimiento); con motor manda el reloj del motor.
+    private let reloj: () -> Double
+
+    public init(disco: Disco?, ahora: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
         self.disco = disco
+        reloj = ahora
         aplicados = disco?.leer(AplicadosReloj.self, Self.archivo) ?? AplicadosReloj()
     }
 
@@ -157,7 +184,9 @@ public final class ReceptorReloj {
                 continue
             }
             guard let motor else {
-                acuses.append(AcuseEvento(id: e.id, resultado: .pendiente, motivo: "Abrí Pump Team en el iPhone."))
+                let vencido = reloj() - e.creado > Self.vencimiento
+                acuses.append(vencido ? AcuseEvento(id: e.id, resultado: .rechazado, motivo: Self.motivoVencido)
+                                      : AcuseEvento(id: e.id, resultado: .pendiente, motivo: "Abrí Pump Team en el iPhone."))
                 continue
             }
             aplicados.anotar(e.id)
@@ -168,11 +197,27 @@ public final class ReceptorReloj {
             _ = disco?.guardar(aplicados, Self.archivo)
             acuses.append(a)
         }
+        if let motor { avisar(motor, eventos, acuses) }
         return acuses
     }
 }
 
 extension ReceptorReloj {
+    /// El aviso de Entreno: el pendiente más viejo de este lote, si espera hace más de `avisarDespues`. Un lote sin
+    /// pendientes lo apaga.
+    func avisar(_ motor: ModeloEntreno, _ eventos: [EventoEnCola], _ acuses: [AcuseEvento]) {
+        let pendientes = Set(acuses.filter { $0.resultado == .pendiente }.map(\.id))
+        guard let viejo = eventos.filter({ pendientes.contains($0.id) }).min(by: { $0.creado < $1.creado }) else {
+            motor.relojEsperando = nil
+            return
+        }
+        let horas = Int((motor.ahoraMs - viejo.creado) / 3_600_000)
+        guard motor.ahoraMs - viejo.creado > Self.avisarDespues else { return }
+        let motivo = acuses.first { $0.id == viejo.id }?.motivo ?? ""
+        motor.relojEsperando = "Hay series del Apple Watch sin pasar desde hace \(horas) h. \(motivo)"
+            .trimmingCharacters(in: .whitespaces)
+    }
+
     /// Con el disco de la cuenta del motor: los aplicados son de la cuenta, como la cola.
     public convenience init(motor: ModeloEntreno) { self.init(disco: motor.disco) }
 }

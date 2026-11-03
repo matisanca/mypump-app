@@ -118,13 +118,13 @@ struct RelojModeloTests {
 
     @Test func loQueNoSePuedeAplicarAhoraQuedaPendiente() async {
         let b = Banco()
-        let receptor = ReceptorReloj(disco: b.disco)
+        let receptor = ReceptorReloj(disco: b.disco, ahora: { b.reloj.ms })
         let e = serie()
         #expect(await receptor.recibir([e], motor: nil).first?.resultado == .pendiente, "sin cuenta en el iPhone")
         let m = b.modelo()
         #expect(await receptor.recibir([serie(cuenta: "otra")], motor: m).first?.motivo == "El iPhone tiene otra cuenta abierta.")
         let demo = b.modelo(token: nil)
-        #expect(await ReceptorReloj(disco: nil).recibir([e], motor: demo).first?.resultado == .pendiente, "el iPhone en la demo")
+        #expect(await ReceptorReloj(disco: nil, ahora: { b.reloj.ms }).recibir([e], motor: demo).first?.resultado == .pendiente, "el iPhone en la demo")
         #expect(await receptor.recibir([serie(semana: 6)], motor: m).first?.resultado == .pendiente, "una semana a la que no llegó")
         #expect(await b.cola.operaciones.isEmpty)
         // Pendiente no queda anotado: cuando se puede, se aplica.
@@ -160,13 +160,13 @@ struct RelojModeloTests {
         #expect(d.endsAt == AHORA - 30_000 + 150_000)
     }
 
-    @Test func unaSerieDeAyerSeFechaAyerYArrancaElCronometro() async {
+    @Test func laSerieSeFechaConLaHoraDelIPhoneComoElServidor() async {
         let b = Banco()
         let m = b.modelo()
         let ayer = AHORA - 24 * 60 * MIN
         _ = await ReceptorReloj(disco: b.disco).recibir([serie(t: ayer)], motor: m)
-        #expect(m.fechasSeries[m.claveFecha("jal-d1-0", 1)] == "2026-10-13")
-        #expect(m.inicioSesion == ayer)
+        #expect(m.fechasSeries[m.claveFecha("jal-d1-0", 1)] == "2026-10-14", "el servidor la registra con now(): hoy")
+        #expect(m.inicioSesion == ayer, "creado solo para la duración y el descanso")
     }
 
     @Test func laDuracionDelCierreTerminaCuandoSeTerminoEnElReloj() async throws {
@@ -221,6 +221,90 @@ struct RelojModeloTests {
         #expect(await ReceptorReloj(disco: b.disco).recibir([e], motor: m) == [AcuseEvento(id: e.id, resultado: .aplicado)])
         #expect(m.inicioSesion == AHORA)
         #expect(m.iniciadaConBoton)
+    }
+
+    // MARK: - Gana el teléfono (verificación del 3-nov)
+
+    /// El día 1 cerrado en el teléfono, con la primera serie del jalón cargada ahí (10 × 60).
+    func diaCerrado() async -> (Banco, ModeloEntreno) {
+        let b = Banco(ejecutar: true)
+        b.servidor.cuando("get_sesion_dia", sesionJSON("ses-1", iniciada: "2026-10-14T17:30:00Z"))
+        b.servidor.cuando("registrar_carga", #""fila-1""#)
+        b.servidor.cuando("finalizar_sesion", "true")
+        b.servidor.cuando("iniciar_sesion", sesionJSON("ses-2", dia: "d2"))
+        let m = b.modelo()
+        await m.restaurarSesion()
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "10")
+        m.escribir("jal-d1-0", 0, campo: "kg", valor: "60")
+        await m.confirmarSerie("jal-d1-0", 0) { _ in true }
+        _ = await m.cerrarDia(notas: "")
+        return (b, m)
+    }
+
+    @Test func unDiaCerradoNoBloqueaLosEventosDeOtroDia() async {
+        let (b, m) = await diaCerrado()
+        #expect(m.dia.diaFinalizado && !m.diaConActividad)
+        let a = await ReceptorReloj(disco: b.disco).recibir([serie(dia: "d2", lugar: "pre-d2-0", reps: 8, kg: 80)], motor: m)
+        #expect(a.first?.resultado == .aplicado)
+        #expect(m.dia.dia.id == "d2")
+    }
+
+    @Test func unPendienteViejoNoReabreUnDiaCerrado() async {
+        let (b, m) = await diaCerrado()
+        let receptor = ReceptorReloj(disco: b.disco)
+        let a = await receptor.recibir([serie(0, reps: 10, kg: 60, t: AHORA - 3), serie(0, reps: 12, t: AHORA - 2), serie(1, t: AHORA - 1),
+                                        ev(.iniciar(diaId: "d1", semana: 5))], motor: m)
+        #expect(a.map(\.resultado) == [.aplicado, .rechazado, .rechazado, .aplicado], "la igual pasa; las otras no reabren")
+        #expect(a[2].motivo == "ese día ya lo cerraste en el teléfono.")
+        #expect(m.dia.diaFinalizado && m.dia.ejercicios["jal-d1-0"]?.series[0].reps == "10")
+        #expect(m.dia.ejercicios["jal-d1-0"]?.series[1].confirmada == false)
+        // Desde otro día tampoco: no se cambia de pantalla.
+        _ = await receptor.recibir([serie(dia: "d2", lugar: "pre-d2-0", t: AHORA)], motor: m)
+        #expect(m.dia.dia.id == "d2")
+        let c = await receptor.recibir([serie(1, t: AHORA + 1)], motor: m)
+        #expect(c.first?.motivo == "ese día ya lo cerraste en el teléfono." && m.dia.dia.id == "d2")
+    }
+
+    @Test func unaSerieConfirmadaEnElTelefonoNoSePisa() async {
+        let b = Banco()
+        let m = b.modelo()
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "10")
+        m.escribir("jal-d1-0", 0, campo: "kg", valor: "60")
+        await m.confirmarSerie("jal-d1-0", 0) { _ in true }
+        let receptor = ReceptorReloj(disco: b.disco)
+        let a = await receptor.recibir([serie(0, reps: 8, kg: 55, t: AHORA - MIN)], motor: m)
+        #expect(a.first?.resultado == .rechazado && a.first?.motivo == "ya cargaste esta serie en el teléfono.")
+        #expect(m.dia.ejercicios["jal-d1-0"]?.series[0].reps == "10" && m.dia.ejercicios["jal-d1-0"]?.series[0].kg == "60")
+        // La del reloj sí se corrige desde el reloj, pero no con un evento más viejo.
+        _ = await receptor.recibir([serie(1, reps: 9, t: AHORA - 10)], motor: m)
+        #expect(await receptor.recibir([serie(1, reps: 7, t: AHORA - 20)], motor: m).first?.resultado == .rechazado)
+        #expect(await receptor.recibir([serie(1, reps: 11, t: AHORA - 5)], motor: m).first?.resultado == .aplicado)
+        #expect(m.dia.ejercicios["jal-d1-0"]?.series[1].reps == "11")
+    }
+
+    @Test func unPendienteDeMasDeSieteDiasVuelveRechazado() async {
+        let b = Banco()
+        let m = b.modelo()
+        let viejo = serie(t: AHORA - 8 * 24 * 60 * MIN)
+        let a = await ReceptorReloj(disco: b.disco).recibir([viejo], motor: m)
+        #expect(a.first?.resultado == .rechazado && a.first?.motivo == ReceptorReloj.motivoVencido)
+        let sinMotor = await ReceptorReloj(disco: nil, ahora: { b.reloj.ms }).recibir([viejo], motor: nil)
+        #expect(sinMotor.first?.resultado == .rechazado)
+        #expect(m.dia.ejercicios["jal-d1-0"]?.series[0].confirmada == false)
+    }
+
+    @Test func elIPhoneAvisaSiHayEventosDelRelojEsperandoHaceHoras() async {
+        let b = Banco()
+        let m = b.modelo()
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "12")
+        let receptor = ReceptorReloj(disco: b.disco)
+        _ = await receptor.recibir([serie(dia: "d2", lugar: "pre-d2-0", t: AHORA - 60 * MIN)], motor: m)
+        #expect(m.relojEsperando == nil, "una hora todavía no")
+        _ = await receptor.recibir([serie(dia: "d2", lugar: "pre-d2-0", t: AHORA - 4 * 60 * MIN)], motor: m)
+        #expect(m.relojEsperando == "Hay series del Apple Watch sin pasar desde hace 4 h. En el iPhone hay otro día abierto. Cerralo para pasar esto.")
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "")
+        _ = await receptor.recibir([serie(dia: "d2", lugar: "pre-d2-0", t: AHORA - 4 * 60 * MIN)], motor: m)
+        #expect(m.relojEsperando == nil, "pasó: el aviso se va")
     }
 
     // MARK: - Reentrada

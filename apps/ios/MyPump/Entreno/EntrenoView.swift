@@ -126,6 +126,10 @@ private struct ListaEntreno: View {
                                     tono: .alerta)
                 }
                 BannerRevision()
+                // Eventos del Apple Watch que esperan hace horas sin poder pasar (otro día abierto, otra cuenta…).
+                if let t = motor.relojEsperando {
+                    AvisoProgresion(icono: "applewatch", texto: Text(t), tono: .alerta)
+                }
                 // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
                 if motor.dias.count > 1 { SelectorDias(motor: motor) }
                 if motor.vacio {
