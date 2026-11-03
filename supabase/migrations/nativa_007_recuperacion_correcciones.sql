@@ -82,7 +82,7 @@ WITH
 -- lean `confianza`. Para apagarlo: cambiar TRUE por FALSE en la línea de abajo
 -- y volver a correr esta migración entera (es idempotente: DROP IF EXISTS +
 -- CREATE). Apagado, esos días muestran el score achicado hacia 50.
-opciones AS (SELECT TRUE AS baja_sin_score),
+opciones AS (SELECT FALSE AS baja_sin_score),
 -- ── 0. Registros que NO pueden representar la noche ─────────────────────────
 -- [P5] Un sueno_min < 180 es una siesta o una noche cortada. Se descarta ese
 -- registro (y, de la misma fecha y fuente, el punto medio y la eficiencia, que
