@@ -26,6 +26,8 @@ public struct DiaEnCurso: Sendable, Equatable {
     public var historial: [String: [RegistroHistorico]] = [:]
     /// Las sustituciones, en el formato de la web (ver `SustitucionesEntreno`).
     public var sustituciones: [String: JSONValue] = [:]
+    /// El descanso elegido a mano por ejercicio (2.0.3, E2), por la clave del ejercicio que se hace: le gana al del plan.
+    public var descansosPropios: [String: Int] = [:]
     public var zona: TimeZone
 
     public struct MetaEstado: Equatable, Sendable {
@@ -143,6 +145,16 @@ public struct DiaEnCurso: Sendable, Equatable {
         JS.verdadero(s.nombreRegistrado).map { ClaveEjercicio.de($0) == ClaveEjercicio.de(nombreEfectivo(id)) } ?? true
     }
 
+    /// El descanso del lugar en segundos: el elegido a mano para el ejercicio que se hace (por su clave) o el del plan.
+    public func descanso(_ id: String) -> Int {
+        DescansoPropio.segundos(propio: descansosPropios[ClaveEjercicio.de(nombreEfectivo(id))], plan: ejercicio(id)?.descansoSegundos)
+    }
+
+    /// Hay un descanso elegido a mano para el ejercicio del lugar.
+    public func tieneDescansoPropio(_ id: String) -> Bool {
+        DescansoPropio.valido(descansosPropios[ClaveEjercicio.de(nombreEfectivo(id))]) != nil
+    }
+
     /// "🏆 Récord a superar" (`lastSessionStr`); nil es "Primera vez con este ejercicio".
     public func record(_ id: String) -> String? { HistorialEntreno.record(historial[id] ?? []) }
 
@@ -204,8 +216,10 @@ public struct DiaEnCurso: Sendable, Equatable {
         public var efectos: [Efecto] = []
         public var pregunta: Pregunta?
         public var motivo: Motivo?
-        public init(efectos: [Efecto] = [], pregunta: Pregunta? = nil, motivo: Motivo? = nil) {
-            self.efectos = efectos; self.pregunta = pregunta; self.motivo = motivo
+        /// La serie recién confirmada es un récord (2.0.3, E3): el aviso dorado.
+        public var record: RecordSerie.Aviso?
+        public init(efectos: [Efecto] = [], pregunta: Pregunta? = nil, motivo: Motivo? = nil, record: RecordSerie.Aviso? = nil) {
+            self.efectos = efectos; self.pregunta = pregunta; self.motivo = motivo; self.record = record
         }
     }
 
@@ -215,7 +229,10 @@ public struct DiaEnCurso: Sendable, Equatable {
     /// Si devuelve una pregunta, se vuelve a llamar con la respuesta en `respuestas`.
     /// `efectivo` es lo que se muestra (el sustituto, si hay): de ahí sale si la serie lleva kg, como en la fila. La web
     /// usa el del plan y con un sustituto de otra clase (Crunch → Crunch en polea) borraba el kg o no dejaba registrar.
-    public mutating func confirmarSerie(_ id: String, _ idx: Int, efectivo: Ejercicio? = nil, respuestas r: Respuestas = Respuestas()) -> Paso {
+    /// `hoy` (YYYY-MM-DD local) separa el historial de hoy del de antes para el aviso de récord; el descanso es el del
+    /// ejercicio (`descanso(_:)`, que puede ser el elegido a mano).
+    public mutating func confirmarSerie(_ id: String, _ idx: Int, efectivo: Ejercicio? = nil, respuestas r: Respuestas = Respuestas(),
+                                        hoy: String? = nil) -> Paso {
         guard let e = ejercicios[id], idx >= 0, idx < e.series.count, !e.series[idx].confirmada, let ex = ejercicio(id) else { return Paso() }
         var efectos: [Efecto] = []
         if diaFinalizado {
@@ -241,10 +258,11 @@ public struct DiaEnCurso: Sendable, Equatable {
                                                          repsUltimaVez: repsUlt, kgHeredable: kgHeredable(id, idx))
         ejercicios[id]!.series[idx] = serie
         guard lista else { return Paso(efectos: efectos) }
+        let verosimil: Bool
         switch Verosimilitud.evaluar(reps: serie.reps, kg: serie.kg, sinKg: sinKg, recordKg: propia ? HistorialEntreno.recordKg(historial[id] ?? []) : 0,
                                      repsUltimaVez: repsUlt, repsPlan: prog.reps) {
         case .ok:
-            break
+            verosimil = true
         case .rechazada(let aviso):
             ejercicios[id]!.series[idx].aviso = aviso
             return Paso(efectos: efectos)
@@ -254,6 +272,7 @@ public struct DiaEnCurso: Sendable, Equatable {
                 ejercicios[id]!.series[idx].aviso = ""   // la fila queda marcada, sin texto
                 return Paso(efectos: efectos)
             }
+            verosimil = false
         }
         ejercicios[id]!.series[idx].aviso = nil
         ejercicios[id]!.series[idx].confirmada = true
@@ -270,7 +289,16 @@ public struct DiaEnCurso: Sendable, Equatable {
         efectos.append(.asegurarSesion)
         efectos += escribirSerie(id, idx)
         if ex.tipo != "calentamiento" {
-            efectos.append(.iniciarDescanso(segundos: Double(ex.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)))
+            efectos.append(.iniciarDescanso(segundos: Double(descanso(id))))
+        }
+        // El récord: solo una serie de ESTE ejercicio, contra su historial de antes y las otras series suyas de hoy.
+        var record: RecordSerie.Aviso?
+        if propia, let m = RecordSerie.marca(ejercicios[id]!.series[idx]) {
+            let hoyConfirmadas = ejercicios[id]!.series.enumerated()
+                .filter { $0.offset != idx && $0.element.confirmada && esDelEjercicioActual(id, $0.element) }
+                .compactMap { RecordSerie.marca($0.element) }
+            record = RecordSerie.evaluar(m, sinKg: sinKg, verosimil: verosimil,
+                                         anteriores: RecordSerie.anteriores(historial[id] ?? [], hoy: hoy, zona: zona), hoy: hoyConfirmadas)
         }
         if ejercicios[id]!.series.allSatisfy(\.confirmada) && estado(id) == "pendiente" {
             efectos += cambiarEstado(id, "completo", manual: false)
@@ -285,7 +313,7 @@ public struct DiaEnCurso: Sendable, Equatable {
             }
         }
         if !demo && diaCompleto { efectos.append(.diaCompleto) }
-        return Paso(efectos: efectos)
+        return Paso(efectos: efectos, record: record)
     }
 
     /// "Marcar ejercicio completo": solo con todas las series confirmadas.
@@ -382,6 +410,18 @@ public struct DiaEnCurso: Sendable, Equatable {
         sustituciones[id] = nil
         historial[id] = nil
         return [.guardarSustituciones, .pedirHistorial(id)]
+    }
+
+    /// E4 (2.0.3): las series sin confirmar y sin RIR arrancan con el RIR objetivo de la semana (`RIRInicial`), no
+    /// vacías con el 0 como primera opción. Sin objetivo quedan vacías (se guarda null). Las confirmadas no se tocan.
+    public mutating func preseleccionarRIR() {
+        for ex in lista {
+            guard var e = ejercicios[ex.id] else { continue }
+            let inicial = RIRInicial.de(Progresiones.pauta(ex, semana: semana).rir)
+            guard !inicial.isEmpty else { continue }
+            for i in e.series.indices where !e.series[i].confirmada && e.series[i].rir.isEmpty { e.series[i].rir = inicial }
+            ejercicios[ex.id] = e
+        }
     }
 
     // MARK: - Restaurar (lo que trae el servidor)

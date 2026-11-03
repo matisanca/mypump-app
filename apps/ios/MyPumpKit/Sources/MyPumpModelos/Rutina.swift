@@ -172,11 +172,14 @@ public struct Ejercicio: Decodable, Sendable, Equatable {
     /// El `equipment` del catálogo cuando el lugar está sustituido (lo pone `CatalogoEjercicios.efectivo`). El plan no lo
     /// trae: en los del plan decide el nombre, que escribe Mati con el equipo («Crunch en polea»).
     public var equipo: String?
+    /// La preparación que escribió el plan (2.0.3, E1): si viene, reemplaza a la que arma la app (`Preparacion`). nil = el
+    /// plan no la trae (o vino rota): la arma la app.
+    public var aproximaciones: [Aproximacion]?
 
     enum CodingKeys: String, CodingKey {
         case id, nombre, tipo, descansoSegundos = "descanso_segundos", notasTecnica = "notas_tecnica"
         case videoURL = "video_url", imagenes = "images", catalogoSlug = "catalogo_slug", matchedSlug = "_matched_slug"
-        case progresion, series, reps, rirObjetivo = "rir_objetivo", rirSuelto = "rir"
+        case progresion, series, reps, rirObjetivo = "rir_objetivo", rirSuelto = "rir", aproximaciones
     }
 
     public init(id: String, nombre: String, tipo: String? = nil, descansoSegundos: Int? = nil, notasTecnica: String? = nil,
@@ -206,6 +209,54 @@ public struct Ejercicio: Decodable, Sendable, Equatable {
         rirObjetivo = c.texto(.rirObjetivo)
         rirSuelto = c.texto(.rirSuelto)
         equipo = nil
+        aproximaciones = Aproximacion.lista((try? c.decodeIfPresent(JSONValue.self, forKey: .aproximaciones)) ?? nil)
+    }
+}
+
+/// Una serie de preparación escrita en el plan: `{"reps": 10, "pct": 50}` (porcentaje del kg de la primera efectiva) o
+/// `{"kg": 20, "reps": 8, "nota": "…"}`. El formato lo acuerda EDITOR DE PLANES y puede cambiar: este es el ÚNICO lugar
+/// que lo lee, y nunca falla (lo que no entiende lo saltea; la rutina no se cae por esto).
+public struct Aproximacion: Equatable, Sendable {
+    public var reps: String?
+    public var pct: Double?
+    public var kg: Double?
+    public var nota: String?
+
+    public init(reps: String? = nil, pct: Double? = nil, kg: Double? = nil, nota: String? = nil) {
+        self.reps = reps; self.pct = pct; self.kg = kg; self.nota = nota
+    }
+
+    /// La lista del plan: nil si no viene, no es una lista o no tiene ninguna serie que se entienda (decide la app);
+    /// una lista vacía es «sin preparación».
+    public static func lista(_ v: JSONValue?) -> [Aproximacion]? {
+        guard case .lista(let l)? = v else { return nil }
+        let series = l.compactMap(una)
+        return l.isEmpty || !series.isEmpty ? series : nil
+    }
+
+    static func una(_ v: JSONValue) -> Aproximacion? {
+        guard case .objeto(let o) = v else { return nil }
+        var a = Aproximacion()
+        switch o["reps"] {
+        case .numero(let n)? where n.isFinite && n >= 1 && n <= 100: a.reps = String(Int(n.rounded()))
+        case .texto(let t)? where !t.trimmingCharacters(in: .whitespaces).isEmpty && t.count <= 12: a.reps = t.trimmingCharacters(in: .whitespaces)
+        default: break
+        }
+        if let p = numero(o["pct"]), p > 0, p <= 150 { a.pct = p }
+        if let k = numero(o["kg"]), k > 0, k <= 1000 { a.kg = k }
+        if case .texto(let t)? = o["nota"], !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { a.nota = t }
+        return a.reps != nil || a.kg != nil ? a : nil
+    }
+
+    /// 50, "50", "50%", "22,5".
+    static func numero(_ v: JSONValue?) -> Double? {
+        switch v {
+        case .numero(let n)?: return n.isFinite ? n : nil
+        case .texto(let t)?:
+            let limpio = t.replacingOccurrences(of: "%", with: "").replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)
+            return Double(limpio).flatMap { $0.isFinite ? $0 : nil }
+        default: return nil
+        }
     }
 }
 

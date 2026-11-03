@@ -36,6 +36,15 @@ public final class ModeloEntreno {
     /// Historial pedido y todavía sin respuesta.
     public internal(set) var historialCargando: Set<String> = []
     public internal(set) var catalogo: CatalogoEjercicios
+    /// El último récord (2.0.3, E3): lo muestra la tabla del lugar como aviso dorado y se va solo.
+    public internal(set) var avisoRecord: AvisoRecord?
+
+    /// «Récord: +2,5 kg» en el lugar; el id cambia en cada aviso (dos récords seguidos se ven los dos).
+    public struct AvisoRecord: Equatable, Sendable {
+        public let id: UUID
+        public let lugar: String
+        public let texto: String
+    }
 
     // MARK: - Dependencias
 
@@ -115,6 +124,8 @@ public final class ModeloEntreno {
         habiaDiaGuardado = guardado != nil
         let elegido = TextosEntreno.diaSugerido(n.estructura.dias, ultimo: guardado) ?? Dia(id: "d1")
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: self.demo, zona: zona)
+        dia.descansosPropios = disco?.leer([String: Int].self, Archivo.descansos) ?? [:]
+        dia.preseleccionarRIR()
         dia.sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(rutina.id)) ?? [:])
         sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: rutina.id))
             ?? dia.sustituciones
@@ -190,8 +201,11 @@ public final class ModeloEntreno {
         historialEnVuelo = [:]
         historialCargando = []
         generacionHistorial = generacionHistorial.mapValues { $0 + 1 }
+        let descansos = dia.descansosPropios
         dia = DiaEnCurso(dia: nuevo, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
+        dia.descansosPropios = descansos
+        dia.preseleccionarRIR()
         diaCompletadoMostrado = false
         guardarDiaVisualizado()
         async let historial: Void = precargarHistorial()
@@ -254,8 +268,13 @@ public final class ModeloEntreno {
         /// Hay con qué sustituirlo: una variante del mismo movimiento U otro ejercicio del mismo músculo (revisión del
         /// 21-oct: a «Fondos» o a la patada de tríceps, sin variantes, se les apagaba «Sustituir» aunque tenían 26 a 30).
         public let puedeSustituir: Bool
-        /// El chip del descanso ("2:30").
+        /// El chip del descanso ("2:30"): el elegido a mano para este ejercicio, si hay (E2), o el del plan.
         public let descanso: String
+        /// El mismo descanso en segundos, y el del plan (para «Volver al del plan»).
+        public let descansoSegundos: Int
+        public let descansoPlan: Int
+        /// El descanso es el elegido a mano, no el del plan.
+        public let descansoPropio: Bool
         public let comentarios: [Comentario]
     }
 
@@ -276,7 +295,9 @@ public final class ModeloEntreno {
             confirmadas: e?.series.filter(\.confirmada).count ?? 0,
             record: dia.record(lugar), ultimaVez: dia.ultimaVez(lugar, ahora: reloj()),
             puedeSustituir: !catalogo.sustitutos(de: ef).isEmpty || !catalogo.otrosDelMismoMusculo(de: ef).isEmpty,
-            descanso: TiempoEntreno.fmtTiempo(Double(plan.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)),
+            descanso: TiempoEntreno.fmtTiempo(Double(dia.descanso(lugar))),
+            descansoSegundos: dia.descanso(lugar), descansoPlan: plan.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto,
+            descansoPropio: dia.tieneDescansoPropio(lugar),
             comentarios: comentarios.comentarios(ejercicio: lugar))
     }
 
@@ -314,7 +335,8 @@ public final class ModeloEntreno {
         var completo: DiaCompletado?
         let ef = dia.ejercicio(lugar).map { efectivo($0).ejercicio }
         while true {
-            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas)
+            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(reloj(), zona: zona))
+            if let r = paso.record { avisoRecord = AvisoRecord(id: UUID(), lugar: lugar, texto: r.texto) }
             if let c = await ejecutar(paso.efectos) { completo = c }
             guard let p = paso.pregunta, let motivo = paso.motivo else { return completo }
             let si = await preguntar(p)
@@ -323,6 +345,20 @@ public final class ModeloEntreno {
             case .registrarIgual: respuestas.registrarIgual = si
             }
         }
+    }
+
+    /// El aviso de récord ya se mostró (o se tocó): se va.
+    public func descartarRecord(_ id: UUID) {
+        if avisoRecord?.id == id { avisoRecord = nil }
+    }
+
+    /// E2 (2.0.3): el descanso de este ejercicio elegido a mano (por su clave, vale en cualquier día y rutina); nil vuelve
+    /// al del plan. Queda en el teléfono; el descanso que ya corre no cambia, el próximo sale con este.
+    public func elegirDescanso(_ lugar: String, segundos: Int?) {
+        let clave = ClaveEjercicio.de(dia.nombreEfectivo(lugar))
+        guard !clave.isEmpty else { return }
+        dia.descansosPropios[clave] = DescansoPropio.valido(segundos)
+        disco?.guardar(dia.descansosPropios, Archivo.descansos)
     }
 
     /// El lápiz (SER-06).
@@ -659,8 +695,11 @@ public final class ModeloEntreno {
         let semana = nueva.semanaActual == 0 ? 1 : nueva.semanaActual
         let elegido = TextosEntreno.diaSugerido(n.estructura.dias, ultimo: disco?.leer(String.self, Archivo.dia(nueva.id))) ?? Dia(id: "d1")
         let sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(nueva.id)) ?? [:])
+        let descansos = dia.descansosPropios
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
+        dia.descansosPropios = descansos
+        dia.preseleccionarRIR()
         sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: nueva.id)) ?? sustituciones
         syncSustituciones = nil
         tocadasDuranteSync = nil
@@ -1053,6 +1092,8 @@ public final class ModeloEntreno {
         static let sesiones = "entreno-sesiones.json"
         static let descanso = "entreno-descanso.json"
         static let legado = "legado-entreno.json"
+        /// E2: el descanso elegido a mano por ejercicio (`[clave: segundos]`), de la cuenta y no de una rutina.
+        static let descansos = "entreno-descansos.json"
         static func dia(_ rutinaId: String) -> String { "entreno-dia_\(rutinaId).json" }
         static func sustituciones(_ rutinaId: String) -> String { "ejercicios-swaps_\(rutinaId).json" }
         /// SER-14: el desfase del reloj con el servidor.
