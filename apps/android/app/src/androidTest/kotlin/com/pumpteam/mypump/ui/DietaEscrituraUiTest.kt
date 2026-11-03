@@ -153,7 +153,8 @@ class DietaEscrituraUiTest : PruebaUi() {
             // La fila muestra el reemplazo con su marca, y sale por la cola anclado al del plan (DIE-11, DIE-13).
             p.nodo(texto("Reemplazado. Tocá para volver a Huevo entero"))
             assertEquals("Muslo de pollo con piel", p.textosBajo(etiqueta("alimento-c1-0")).first())
-            assertTrue("90 g · 173 kcal" in p.textosBajo(etiqueta("alimento-c1-0")))
+            assertTrue("173 kcal" in p.textosBajo(etiqueta("alimento-c1-0")))
+            assertTrue("Cantidad de Muslo de pollo con piel: 90 g" in p.textosBajo(etiqueta("alimento-c1-0")))
             val guardado = p.esperar("el reemplazo en el servidor") { servidor.reemplazosGuardados()["c1|0|0"] }
             assertEquals("Muslo de pollo con piel", guardado.getString("name"))
             assertEquals(173.0, guardado.getDouble("kcal"), 0.0)

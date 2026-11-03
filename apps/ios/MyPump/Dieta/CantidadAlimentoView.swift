@@ -289,7 +289,7 @@ struct CantidadAlimentoView: View {
     }
 
     private func textoGuardar(_ comida: String) -> String {
-        if case .nuevo = pedido.que { return "Agregar a \(AjustarComidaView.conArticulo(comida))" }
+        if case .nuevo = pedido.que { return "Agregar \(AjustarComidaView.aLa(comida))" }
         return "Listo"
     }
 

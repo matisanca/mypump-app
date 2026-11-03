@@ -46,6 +46,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -69,6 +70,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -101,6 +103,7 @@ import com.pumpteam.mypump.modelos.TipoDia
 import com.pumpteam.mypump.raiz.BannerRevision
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.AjustePorciones
+import com.pumpteam.mypump.reglas.AlimentoAgregado
 import com.pumpteam.mypump.reglas.ConsumoDelDia
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.MarcaComida
@@ -154,6 +157,9 @@ fun DietaPantalla(modelo: ModeloApp) {
     // Lo comido hoy (DIE-07): las marcadas «Comí» con la opción de la marca, menos lo destildado, más las comidas libres.
     val consumo = remember(comidas, vigentes, swaps, ajustes, marcas, libresDeHoy) { modelo.consumo(vigentes) }
     var ajustando by rememberSaveable { mutableStateOf<String?>(null) }
+    // 2.0.3 (D1 y D2): la comida a la que se agrega un alimento y la cantidad que se toca («comida|plan|i», «comida|agregado|ts»).
+    var agregandoA by rememberSaveable { mutableStateOf<String?>(null) }
+    var cantidadAbierta by rememberSaveable { mutableStateOf<String?>(null) }
     val objetivo = remember(dieta, tipoDia) { modelo.objetivo }
     val tipos = dieta?.estructura?.tiposDia.orEmpty()
     val alcance = LocalAlcanceApp.current
@@ -206,7 +212,7 @@ fun DietaPantalla(modelo: ModeloApp) {
         Box(Modifier.padding(relleno.sinAbajo()).fillMaxSize()) {
             when {
                 fase == ModeloApp.Fase.LISTO && comidas.isNotEmpty() -> {
-                    val elegidas = ModeloApp.sumar(dia.values.flatMap { it.alimentos })
+                    val elegidas = ModeloApp.sumar(dia.values.flatMap { it.todos })
                     Recargable(recargando, ::recargar) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().testTag("dieta-lista"),
@@ -245,6 +251,10 @@ fun DietaPantalla(modelo: ModeloApp) {
                                     ajustada = dia[c.id],
                                     propia = ajustes.containsKey(c.id) && modelo.ajustesDeHoy.containsKey(c.id),
                                     alAjustar = { ajustando = c.id },
+                                    agregados = modelo.ajustesDeHoy[c.id]?.takeUnless { it.omitida }?.agregados.orEmpty(),
+                                    alAgregar = { agregandoA = c.id },
+                                    alCantidad = { i -> cantidadAbierta = PedidoCantidad(c.id, QueCantidad.DelPlan(i)).clave() },
+                                    alAgregado = { ts -> cantidadAbierta = PedidoCantidad(c.id, QueCantidad.Agregado(ts)).clave() },
                                 )
                             }
                             // Las comidas libres, solo con cuenta: en la demo no están (como en la web).
@@ -320,6 +330,17 @@ fun DietaPantalla(modelo: ModeloApp) {
     LaunchedEffect(ajustando, comidas) { if (ajustando != null && comidas.none { it.id == ajustando }) ajustando = null }
     ajustando?.let { id ->
         HojaAjustarComida(modelo, comidaId = id, opciones = vigentes, alCerrar = { ajustando = null })
+    }
+    LaunchedEffect(agregandoA, comidas) { if (agregandoA != null && comidas.none { it.id == agregandoA }) agregandoA = null }
+    agregandoA?.let { id ->
+        HojaAgregarAlimento(modelo, comidaId = id, opciones = vigentes, alCerrar = { agregandoA = null })
+    }
+    val pedidoCantidad = cantidadAbierta?.let { PedidoCantidad.desde(it) }
+    LaunchedEffect(cantidadAbierta, comidas) {
+        if (cantidadAbierta != null && (pedidoCantidad == null || comidas.none { it.id == pedidoCantidad.comidaId })) cantidadAbierta = null
+    }
+    pedidoCantidad?.let { p ->
+        key(cantidadAbierta) { HojaCantidad(modelo, p, opciones = vigentes, alCerrar = { cantidadAbierta = null }) }
     }
 }
 
@@ -610,6 +631,13 @@ private fun TarjetaComida(
     marca: MarcaComida? = null,
     alMarcar: (MarcaComida.Estado?) -> Unit = {},
     alTildar: (Int) -> Unit = {},
+    /** Los alimentos que el cliente sumó hoy a la comida (D1), después de los del plan. */
+    agregados: List<AlimentoAgregado> = emptyList(),
+    alAgregar: () -> Unit = {},
+    /** Tocar la cantidad de un alimento del plan (D2). */
+    alCantidad: (Int) -> Unit = {},
+    /** Tocar un agregado (su `_ts`). */
+    alAgregado: (Long) -> Unit = {},
 ) {
     val c = MyPump.colores
     // Con los reemplazos como clave: un parámetro que no se usa no cuenta para recomponer, y la tarjeta seguía mostrando
@@ -620,7 +648,7 @@ private fun TarjetaComida(
     // Lo que se muestra: el reemplazo (si hay) con la cantidad del ajuste de hoy (si hay).
     val hoy = alimentos.mapIndexed { i, (_, e) -> ajustada?.alimentos?.getOrNull(i) ?: e.alimento }
     val omitida = ajustada?.omitida == true
-    val total = ModeloApp.sumar(hoy)
+    val total = ModeloApp.sumar(if (omitida) hoy else hoy + agregados.map { it.alimento })
     val nombreOpcion = comida.opciones.getOrNull(opcion)?.nombre ?: letra(opcion)
     // «Comí» / «Salté» (D25). La que hoy no come no se marca.
     val estado = if (omitida) null else marca?.estado
@@ -667,7 +695,8 @@ private fun TarjetaComida(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(comida.nombre ?: "Comida $numero", style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, lineHeight = 25.sp))
                 Text(
-                    "Opción $nombreOpcion · ${alimentos.size} ${if (alimentos.size == 1) "alimento" else "alimentos"}",
+                    "Opción $nombreOpcion · ${alimentos.size} ${if (alimentos.size == 1) "alimento" else "alimentos"}" +
+                        if (agregados.isEmpty() || omitida) "" else " + ${agregados.size} ${if (agregados.size == 1) "agregado" else "agregados"}",
                     style = MaterialTheme.typography.bodySmall,
                     color = c.textoSecundario,
                     modifier = Modifier.testTag("resumen-${comida.id}"),
@@ -693,7 +722,7 @@ private fun TarjetaComida(
         if (!omitida) BotonesMarca(estado, comida.id, alMarcar)
         if (oMarcada != null) {
             if (excluidos != null) {
-                val contado = hoy.filterIndexed { i, _ -> i !in excluidos }.sumOf { it.kcal ?: 0.0 }
+                val contado = (hoy + agregados.map { it.alimento }).filterIndexed { i, _ -> i !in excluidos }.sumOf { it.kcal ?: 0.0 }
                 PistaMarca(
                     if (excluidos.isEmpty()) "Destildá lo que no comiste: solo cuenta lo tildado."
                     else "Cuenta lo tildado: ${Formato.miles(contado)} de ${Formato.miles(total.kcal)} kcal.",
@@ -715,25 +744,36 @@ private fun TarjetaComida(
         }
         if (ajustada != null && hayQueMostrarAviso(ajustada, propia)) AvisoAjuste(ajustada, propia, Modifier.testTag("ajuste-aviso-${comida.id}"))
         if (!omitida) {
-            TotalYAlimentos(comida, opcion, alimentos.map { it.first }, alimentos.map { it.second }, hoy, total, porciones, alTocarMano, alReemplazar, alRevertir, excluidos, alTildar)
+            TotalYAlimentos(
+                comida, opcion, alimentos.map { it.first }, alimentos.map { it.second }, hoy, total, porciones, alTocarMano, alReemplazar,
+                alRevertir, excluidos, alTildar, agregados = agregados, alCantidad = alCantidad, alAgregado = alAgregado,
+            )
         }
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(c.marcaSuave.copy(alpha = c.marcaSuave.alpha * 0.6f))
-                .clickable(role = Role.Button, onClick = alAjustar)
-                .heightIn(min = 48.dp)
-                .testTag("ajustar-${comida.id}"),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(IconosAjuste.Ajustar, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
-                Text(
-                    if (propia) "Cambiar el ajuste" else "Ajustar esta comida",
-                    style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = c.marcaTexto,
-                )
+        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+            if (!omitida) {
+                BotonDeTarjeta(IconosAjuste.Mas, "Agregar alimento", Modifier.weight(1f).testTag("agregar-${comida.id}"), alAgregar)
             }
+            BotonDeTarjeta(IconosAjuste.Ajustar, if (propia) "Cambiar el ajuste" else "Ajustar esta comida", Modifier.weight(1f).testTag("ajustar-${comida.id}"), alAjustar)
+        }
+    }
+}
+
+/** «Agregar alimento» / «Ajustar esta comida» al pie de la tarjeta: el texto en hasta dos renglones con la letra grande. */
+@Composable
+private fun BotonDeTarjeta(icono: ImageVector, texto: String, modifier: Modifier, alTocar: () -> Unit) {
+    val c = MyPump.colores
+    Box(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(c.marcaSuave.copy(alpha = c.marcaSuave.alpha * 0.6f))
+            .clickable(role = Role.Button, onClick = alTocar)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = Espacio.xs, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(icono, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
+            Text(texto, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = c.marcaTexto, textAlign = TextAlign.Center, maxLines = 2)
         }
     }
 }
@@ -836,6 +876,9 @@ private fun TotalYAlimentos(
     /** Con «Comí», mirando la opción que comió: lo que NO comió (DIE-06). null, sin tildes. */
     excluidos: Set<Int>? = null,
     alTildar: (Int) -> Unit = {},
+    agregados: List<AlimentoAgregado> = emptyList(),
+    alCantidad: (Int) -> Unit = {},
+    alAgregado: (Long) -> Unit = {},
 ) {
     val c = MyPump.colores
     Column {
@@ -855,8 +898,22 @@ private fun TotalYAlimentos(
                 enElPlan = if (hoy[i].qty != efectivo.alimento.qty) efectivo.alimento else null,
                 tildado = excluidos?.let { i !in it },
                 alTildar = { alTildar(i) },
+                alCantidad = { alCantidad(i) },
             )
-            if (i < originales.size - 1) Separador()
+            if (i < originales.size - 1 || agregados.isNotEmpty()) Separador()
+        }
+        // Los agregados (D1), después de los del plan: sus tildes siguen la numeración (n + j), como en la web y en iOS.
+        agregados.forEachIndexed { j, a ->
+            val n = originales.size + j
+            FilaAgregado(
+                a,
+                sufijo = "${comida.id}-$n",
+                etiquetaCantidad = "agregado-${comida.id}-$j",
+                tildado = excluidos?.let { n !in it },
+                alTildar = { alTildar(n) },
+                alTocar = { alAgregado(a.ts) },
+            )
+            if (j < agregados.size - 1) Separador()
         }
     }
     Column {
@@ -910,6 +967,8 @@ private fun FilaAlimento(
     /** Con «Comí», mirando la opción que comió: si lo comió (tildado) o lo dejó (DIE-06). null, sin tilde. */
     tildado: Boolean? = null,
     alTildar: () -> Unit = {},
+    /** Tocar la cantidad (D2): la hoja de cantidad. */
+    alCantidad: (() -> Unit)? = null,
 ) {
     val c = MyPump.colores
     val porcion = PorcionCasera.referencia(mostrado.nombre, mostrado.qty, mostrado.unidad, mostrado.gramosPorUnidad)
@@ -970,11 +1029,21 @@ private fun FilaAlimento(
                         }
                     }
                 }
-                Text(
-                    "${FormatoDieta.cantidad(mostrado.qty, mostrado.unidad)} · ${Formato.miles(mostrado.kcal)} kcal",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (enElPlan != null) c.marcaTexto else c.textoSecundario,
-                )
+                if (alCantidad != null && mostrado.qty != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PildoraCantidad(
+                            FormatoDieta.cantidad(mostrado.qty, mostrado.unidad), mostrado.nombre, cambiada = enElPlan != null,
+                            modifier = Modifier.testTag("cantidad-$sufijo"), alTocar = alCantidad,
+                        )
+                        Text("${Formato.miles(mostrado.kcal)} kcal", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
+                    }
+                } else {
+                    Text(
+                        "${FormatoDieta.cantidad(mostrado.qty, mostrado.unidad)} · ${Formato.miles(mostrado.kcal)} kcal",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (enElPlan != null) c.marcaTexto else c.textoSecundario,
+                    )
+                }
                 if (enElPlan != null) {
                     Text("En el plan: ${FormatoDieta.cantidad(enElPlan.qty, enElPlan.unidad)}", style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
                 }
@@ -1014,6 +1083,97 @@ private fun FilaAlimento(
                 Icon(Iconos.Mano, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(15.dp))
                 Text(if (p.startsWith("libre")) p else "≈ $p", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
             }
+        }
+    }
+}
+
+/** La cantidad de un alimento como botón (D2, el estilo de MyFitnessPal): «110 g ✎»; tocarla abre la hoja de cantidad. */
+@Composable
+private fun PildoraCantidad(texto: String, nombre: String, cambiada: Boolean, modifier: Modifier = Modifier, alTocar: () -> Unit) {
+    val c = MyPump.colores
+    Row(
+        modifier
+            .heightIn(min = 32.dp)
+            .clip(CircleShape)
+            .background(if (cambiada) c.marcaSuave else c.marcaSuave.copy(alpha = c.marcaSuave.alpha * 0.55f))
+            .clickable(role = Role.Button, onClickLabel = "Cambiar la cantidad", onClick = alTocar)
+            .semantics { contentDescription = "Cantidad de $nombre: $texto" }
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        // Lo lee la descripción de arriba («Cantidad de Huevo entero: 2 unidades»), no cada pieza.
+        Text(
+            texto,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum"),
+            color = c.marcaTexto,
+            modifier = Modifier.clearAndSetSemantics {},
+        )
+        Icon(Iconos.Lapiz, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(13.dp))
+    }
+}
+
+/**
+ * Un alimento que el cliente sumó a la comida (D1): con su distintivo, la cantidad que se toca para cambiarla o sacarlo, y
+ * el tilde de «Comí» como los del plan.
+ */
+@Composable
+private fun FilaAgregado(a: AlimentoAgregado, sufijo: String, etiquetaCantidad: String, tildado: Boolean?, alTildar: () -> Unit, alTocar: () -> Unit) {
+    val c = MyPump.colores
+    val tactil = LocalHapticFeedback.current
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Espacio.xxs),
+    ) {
+        if (tildado != null) {
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .toggleable(value = tildado, role = Role.Checkbox) {
+                        tactil.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        alTildar()
+                    }
+                    .semantics {
+                        contentDescription = a.nombre
+                        stateDescription = if (tildado) "Lo comiste" else "No lo comiste"
+                    }
+                    .testTag("comido-$sufijo"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (tildado) Iconos.TildeEnCirculo else Iconos.Circulo,
+                    contentDescription = null,
+                    tint = if (tildado) c.marca else c.textoSecundario,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+        }
+        Column(Modifier.weight(1f).testTag("alimento-$sufijo"), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    a.nombre,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = if (tildado == false) c.textoSecundario else Color.Unspecified,
+                    textDecoration = if (tildado == false) TextDecoration.LineThrough else null,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Row(
+                    Modifier.clip(CircleShape).background(c.marcaSuave).padding(horizontal = 6.dp, vertical = 2.dp).clearAndSetSemantics {},
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Icon(IconosAjuste.Mas, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(11.dp))
+                    Text("Agregado", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PildoraCantidad(FormatoDieta.cantidad(a.cantidad, a.unidad), a.nombre, cambiada = false, modifier = Modifier.testTag(etiquetaCantidad), alTocar = alTocar)
+                Text("${Formato.miles(a.kcal)} kcal", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
+            }
+            Text(FormatoDieta.macros(a.p, a.c, a.g, c.proteina, c.carbohidrato, c.grasa), style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
         }
     }
 }

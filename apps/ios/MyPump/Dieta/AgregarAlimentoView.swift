@@ -70,7 +70,7 @@ struct AgregarAlimentoView: View {
             }
             .listStyle(.insetGrouped)
             .searchable(text: $busqueda, placement: .navigationBarDrawer(displayMode: .always), prompt: "Buscar alimento")
-            .navigationTitle("Agregar a \(AjustarComidaView.conArticulo(nombreComida))")
+            .navigationTitle("Agregar \(AjustarComidaView.aLa(nombreComida))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { cerrar() } } }
             .navigationDestination(isPresented: $abierto) {
