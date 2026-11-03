@@ -91,7 +91,8 @@ public struct ModoCalibracion: @unchecked Sendable {
     public static let textoPrivacidad = """
         Con el modo prendido, el Apple Watch graba el acelerómetro y el giroscopio durante cada serie, con el ejercicio, \
         las reps que cargás y las que contó el reloj. Sirve para medir qué tan bien cuenta las repeticiones. Se guarda \
-        solo en el reloj y en este iPhone: no sale del teléfono salvo que vos lo exportes. No cambia las reps que cargás.
+        solo en el reloj y en este iPhone: no sale del teléfono salvo que vos lo exportes. Al terminar la serie, el reloj pone en las reps lo que contó: \
+        confirmalo o corregilo con la corona.
         """
 
     private let defaults: UserDefaults

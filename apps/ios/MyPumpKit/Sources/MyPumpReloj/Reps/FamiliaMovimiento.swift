@@ -105,29 +105,82 @@ public enum FamiliaMovimiento: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// El flujo final del conteo (tanda 4), preparado y APAGADO: al terminar la serie, el reloj propone «¿10 reps?» con la
-/// corona ya en lo que contó, solo en las familias de `habilitadas` (vacía hasta que la evaluación diga en cuáles el
-/// contador acierta ±1 rep en el 90 % de las series). En el modo calibración nunca propone: se compara, no se toca.
+/// La propuesta de reps (tanda 4): al terminar la serie, el reloj pone la corona en lo que contó y pregunta «¿10 reps?».
+/// - Fuera del modo calibración, solo en las familias de `habilitadas` (VACÍA: el flujo final está apagado hasta que la
+///   evaluación diga en cuáles el contador acierta ±1 rep en el 90 % de las series).
+/// - En el modo calibración, en TODAS las familias (`proponeEn`), con las mismas condiciones de serie clara. El alumno
+///   confirma o corrige con la corona; la etiqueta guarda lo propuesto y si lo tocó (`PropuestaSerie`), para que la
+///   evaluación no mida al contador contra su propia propuesta.
 public enum ConfirmacionReps {
-    /// Las familias donde el reloj propone las reps. VACÍA: nadie ve el flujo hasta que se decida con los datos.
+    /// Las familias donde el reloj propone fuera del modo calibración. VACÍA hasta que se decida con los datos.
     public static let habilitadas: Set<FamiliaMovimiento> = []
     /// La autocorrelación mínima para proponer.
     public static let calidadMinima: Double = 0.6
 
-    /// Corre el contador en esta familia (para el flujo final).
+    /// Corre el contador en esta familia fuera del modo calibración (para el flujo final).
     public static func cuenta(_ familia: FamiliaMovimiento, habilitadas: Set<FamiliaMovimiento> = habilitadas) -> Bool {
         habilitadas.contains(familia)
     }
 
-    /// Las reps a proponer con la corona, o nil: solo en una familia habilitada, con la serie terminada (quieto después
-    /// del tramo activo), una serie clara y fuera del modo calibración.
+    /// Propone en esta familia: en calibración, todas; si no, solo las habilitadas.
+    public static func proponeEn(_ familia: FamiliaMovimiento, calibrando: Bool,
+                                 habilitadas: Set<FamiliaMovimiento> = habilitadas) -> Bool {
+        calibrando || habilitadas.contains(familia)
+    }
+
+    /// Una serie terminada (quieto después del tramo activo), clara (calidad ≥ `calidadMinima`) y con reps en rango.
+    public static func serieClara(_ conteo: ContadorReps.Resultado) -> Bool {
+        conteo.quieto && conteo.calidad >= calidadMinima && conteo.reps >= SesionReloj.repsMin && conteo.reps <= SesionReloj.repsMax
+    }
+
+    /// Las reps a proponer con la corona, o nil (ver `proponeEn` y `serieClara`).
     public static func propuesta(_ familia: FamiliaMovimiento, conteo: ContadorReps.Resultado, calibrando: Bool,
                                  habilitadas: Set<FamiliaMovimiento> = habilitadas) -> Int? {
-        guard !calibrando, habilitadas.contains(familia), conteo.quieto, conteo.calidad >= calidadMinima,
-              conteo.reps >= SesionReloj.repsMin, conteo.reps <= SesionReloj.repsMax else { return nil }
+        guard proponeEn(familia, calibrando: calibrando, habilitadas: habilitadas), serieClara(conteo) else { return nil }
         return conteo.reps
     }
 
     /// «¿10 reps?»
     public static func texto(_ reps: Int) -> String { "¿\(reps) \(reps == 1 ? "rep" : "reps")?" }
+    /// Lo que dice VoiceOver cuando la corona se movió sola.
+    public static func textoAccesible(_ reps: Int) -> String {
+        "El reloj contó \(reps) \(reps == 1 ? "repetición" : "repeticiones"). Girá la corona si no es así."
+    }
+}
+
+/// La propuesta de una serie y si el alumno tocó las reps (la integridad de la etiqueta de calibración). Se reinicia al
+/// confirmar o al cambiar de ejercicio.
+/// - Una sola propuesta por serie.
+/// - Si el alumno ya giró las reps con la serie en marcha (el contador vio movimiento), no se le pisa lo que puso: no
+///   hay propuesta. Lo que gire en el descanso, antes de arrancar, no cuenta.
+/// - Si gira después de la propuesta, la serie queda `corregida`; si confirma sin tocar, `corregida == false` y la
+///   etiqueta puede venir del reloj (la evaluación la separa).
+public struct PropuestaSerie: Equatable, Sendable {
+    /// Lo que propuso el reloj en esta serie (nil = no propuso).
+    public private(set) var reps: Int?
+    /// El alumno giró las reps con la serie en marcha o después de la propuesta.
+    public private(set) var tocada = false
+
+    public init() {}
+
+    /// El alumno giró las reps. `contadas`: lo que va contando el reloj en esta serie.
+    public mutating func girar(contadas: Int?) {
+        if reps != nil || (contadas ?? 0) > 0 { tocada = true }
+    }
+
+    /// Las reps a poner en la corona, o nil (ya propuso, el alumno ya tocó o la serie no da).
+    public mutating func proponer(_ familia: FamiliaMovimiento, conteo: ContadorReps.Resultado, calibrando: Bool,
+                                  habilitadas: Set<FamiliaMovimiento> = ConfirmacionReps.habilitadas) -> Int? {
+        guard reps == nil, !tocada,
+              let n = ConfirmacionReps.propuesta(familia, conteo: conteo, calibrando: calibrando, habilitadas: habilitadas) else { return nil }
+        reps = n
+        return n
+    }
+
+    /// Para el encabezado: nil sin propuesta; si no, si el alumno la tocó antes de confirmar.
+    public var corregida: Bool? { reps == nil ? nil : tocada }
+    /// La propuesta sigue en la corona tal cual (para la pantalla).
+    public var aceptadaSinTocar: Bool { reps != nil && !tocada }
+
+    public mutating func reiniciar() { self = PropuestaSerie() }
 }

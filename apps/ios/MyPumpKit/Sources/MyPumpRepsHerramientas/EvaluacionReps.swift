@@ -7,9 +7,33 @@ import MyPumpReloj
 ///
 /// Por defecto vuelve a contar cada serie con el contador de hoy (así un cambio del algoritmo se mide sobre los datos
 /// viejos); con `recontar: false` usa lo que contó el reloj en vivo.
+///
+/// Desde el 3-nov el reloj propone las reps en calibración: una serie con la propuesta aceptada sin tocar puede tener
+/// la etiqueta del reloj y no la real. Esas van aparte (`aceptadas`) y NO deciden: las filas y el total que deciden
+/// son solo las de etiqueta independiente (sin propuesta o corregidas a mano). Es una cuenta conservadora: si el alumno
+/// solo corrige cuando el reloj se equivoca, las corregidas sobrerrepresentan los errores.
 public enum EvaluacionReps {
     public static let meta = 0.9
     public static let minimoSeries = 30
+
+    /// De dónde sale la etiqueta de una serie.
+    public enum Origen: String, Sendable {
+        /// El reloj no propuso (o el archivo es de antes): la etiqueta es del alumno.
+        case sinPropuesta = "sin_propuesta"
+        /// El reloj propuso y el alumno tocó las reps antes de confirmar.
+        case corregida
+        /// El reloj propuso y se confirmó sin tocar: la etiqueta puede ser la del reloj.
+        case aceptada
+
+        /// La etiqueta no depende de lo que propuso el reloj.
+        public var independiente: Bool { self != .aceptada }
+
+        /// Una propuesta sin el dato de si se tocó cuenta como aceptada (del lado seguro).
+        public static func de(_ e: EncabezadoSerie) -> Origen {
+            guard e.propuesta != nil else { return .sinPropuesta }
+            return e.corregida == true ? .corregida : .aceptada
+        }
+    }
 
     public struct Serie: Equatable, Sendable {
         public var archivo: String
@@ -18,10 +42,15 @@ public enum EvaluacionReps {
         public var cargadas: Int
         public var contadas: Int
         public var calidad: Double
+        /// Lo que propuso el reloj con la corona y de dónde sale la etiqueta.
+        public var propuesta: Int?
+        public var origen: Origen
         public var error: Int { contadas - cargadas }
-        public init(archivo: String, familia: FamiliaMovimiento, ejercicio: String, cargadas: Int, contadas: Int, calidad: Double) {
+        public init(archivo: String, familia: FamiliaMovimiento, ejercicio: String, cargadas: Int, contadas: Int, calidad: Double,
+                    propuesta: Int? = nil, origen: Origen = .sinPropuesta) {
             self.archivo = archivo; self.familia = familia; self.ejercicio = ejercicio
             self.cargadas = cargadas; self.contadas = contadas; self.calidad = calidad
+            self.propuesta = propuesta; self.origen = origen
         }
     }
 
@@ -39,9 +68,16 @@ public enum EvaluacionReps {
     }
 
     public struct Informe: Equatable, Sendable {
+        /// Todas las series (también las aceptadas).
         public var series: [Serie]
+        /// Por familia y en total, solo las de etiqueta independiente: son las que deciden.
         public var filas: [Fila]
         public var total: Fila
+        /// Las de propuesta aceptada sin tocar, por familia y en total: se muestran, no deciden.
+        public var filasAceptadas: [Fila]
+        public var aceptadas: Fila
+        /// Cuántas series tuvieron propuesta y el alumno la corrigió.
+        public var corregidas: Int
         /// Series que no se pudieron evaluar (sin conteo guardado con `recontar: false`).
         public var salteadas: Int
     }
@@ -59,7 +95,8 @@ public enum EvaluacionReps {
                 conteo = e.conteo ?? e.contadas.map { ContadorReps.Resultado(reps: $0, periodo: 0, calidad: 0, senal: .ninguna, desde: 0, hasta: 0, quieto: false) }
             }
             guard let c = conteo else { salteadas += 1; continue }
-            salida.append(Serie(archivo: archivo, familia: e.familia, ejercicio: e.ejercicio, cargadas: e.reps, contadas: c.reps, calidad: c.calidad))
+            salida.append(Serie(archivo: archivo, familia: e.familia, ejercicio: e.ejercicio, cargadas: e.reps, contadas: c.reps,
+                                calidad: c.calidad, propuesta: e.propuesta, origen: Origen.de(e)))
         }
         return (salida, salteadas)
     }
@@ -70,9 +107,15 @@ public enum EvaluacionReps {
     }
 
     public static func informe(_ s: [Serie], salteadas: Int = 0) -> Informe {
-        let porFamilia = Dictionary(grouping: s, by: \.familia)
-        let filas = FamiliaMovimiento.allCases.compactMap { f in porFamilia[f].map { fila($0, familia: f) } }
-        return Informe(series: s, filas: filas, total: fila(s, familia: nil), salteadas: salteadas)
+        func porFamilia(_ s: [Serie]) -> [Fila] {
+            let g = Dictionary(grouping: s, by: \.familia)
+            return FamiliaMovimiento.allCases.compactMap { f in g[f].map { fila($0, familia: f) } }
+        }
+        let independientes = s.filter(\.origen.independiente)
+        let aceptadas = s.filter { !$0.origen.independiente }
+        return Informe(series: s, filas: porFamilia(independientes), total: fila(independientes, familia: nil),
+                       filasAceptadas: porFamilia(aceptadas), aceptadas: fila(aceptadas, familia: nil),
+                       corregidas: s.filter { $0.origen == .corregida }.count, salteadas: salteadas)
     }
 
     static func fila(_ s: [Serie], familia: FamiliaMovimiento?) -> Fila {
@@ -88,11 +131,23 @@ public enum EvaluacionReps {
     public static func texto(_ i: Informe) -> String {
         func pct(_ x: Double) -> String { String(format: "%5.1f %%", x * 100) }
         func num(_ x: Double) -> String { String(format: "%+.2f", x) }
-        var l = ["Familia                     Series  Exactas  ±1 rep    Error medio  Error abs.  ¿Prender?"]
-        for f in i.filas + [i.total] {
+        func renglon(_ f: Fila, decide: Bool) -> String {
             let nombre = (f.familia?.nombre ?? "TOTAL").padding(toLength: 26, withPad: " ", startingAt: 0)
-            let decision = f.familia == nil ? "" : (f.habilitable ? "sí" : (f.series < minimoSeries ? "faltan series" : "no"))
-            l.append("\(nombre)  \(String(format: "%6d", f.series))  \(String(format: "%7d", f.exactas))  \(pct(f.porcentajeDentroDeUno))  \(num(f.errorMedio).padding(toLength: 11, withPad: " ", startingAt: 0))  \(String(format: "%10.2f", f.errorAbsolutoMedio))  \(decision)")
+            let decision = !decide || f.familia == nil ? "" : (f.habilitable ? "sí" : (f.series < minimoSeries ? "faltan series" : "no"))
+            return "\(nombre)  \(String(format: "%6d", f.series))  \(String(format: "%7d", f.exactas))  \(pct(f.porcentajeDentroDeUno))  \(num(f.errorMedio).padding(toLength: 11, withPad: " ", startingAt: 0))  \(String(format: "%10.2f", f.errorAbsolutoMedio))  \(decision)"
+        }
+        let cabecera = "Familia                     Series  Exactas  ±1 rep    Error medio  Error abs.  ¿Prender?"
+        var l = ["Etiqueta independiente (sin propuesta del reloj o corregida a mano): DECIDEN", cabecera]
+        for f in i.filas + [i.total] { l.append(renglon(f, decide: true)) }
+        if i.aceptadas.series > 0 {
+            l.append("")
+            l.append("Propuesta del reloj aceptada sin tocar: NO deciden (la etiqueta puede ser la del reloj)")
+            l.append(cabecera)
+            for f in i.filasAceptadas + [i.aceptadas] { l.append(renglon(f, decide: false)) }
+        }
+        let conPropuesta = i.aceptadas.series + i.corregidas
+        if conPropuesta > 0 {
+            l.append("\(conPropuesta) series con propuesta: \(i.aceptadas.series) aceptadas sin tocar, \(i.corregidas) corregidas.")
         }
         if i.salteadas > 0 { l.append("\(i.salteadas) series sin conteo guardado (se saltearon).") }
         l.append("Meta: ±1 rep en el \(Int(meta * 100)) % de las series, con al menos \(minimoSeries) series por familia.")
@@ -101,8 +156,8 @@ public enum EvaluacionReps {
 
     /// Una serie por renglón (para mirar en una planilla).
     public static func csv(_ i: Informe) -> String {
-        (["archivo,familia,ejercicio,cargadas,contadas,error,calidad"] + i.series.map {
-            "\($0.archivo),\($0.familia.rawValue),\"\($0.ejercicio)\",\($0.cargadas),\($0.contadas),\($0.error),\(String(format: "%.3f", $0.calidad))"
+        (["archivo,familia,ejercicio,cargadas,contadas,error,calidad,propuesta,origen"] + i.series.map {
+            "\($0.archivo),\($0.familia.rawValue),\"\($0.ejercicio)\",\($0.cargadas),\($0.contadas),\($0.error),\(String(format: "%.3f", $0.calidad)),\($0.propuesta.map(String.init) ?? ""),\($0.origen.rawValue)"
         }).joined(separator: "\n")
     }
 

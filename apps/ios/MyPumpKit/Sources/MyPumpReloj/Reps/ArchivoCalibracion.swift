@@ -12,7 +12,7 @@ import Foundation
 ///   crudo: en Python, `zlib.decompress(datos, -15)`).
 ///
 /// Lo que NO va: el token, la cuenta ni el nombre del alumno. Va el ejercicio (nombre y clave), las reps y el kg
-/// cargados, lo que contó el contador y la fecha.
+/// cargados, lo que contó el contador, lo que propuso con la corona (y si el alumno lo tocó) y la fecha.
 public enum ArchivoCalibracion {
     public static let magia = Data("MPC1".utf8)
     public static let extension_ = "mpcal"
@@ -141,6 +141,11 @@ public struct EncabezadoSerie: Codable, Equatable, Sendable {
     /// Lo que contó el contador en vivo al confirmar (nil si no corrió).
     public var contadas: Int?
     public var conteo: ContadorReps.Resultado?
+    /// Lo que propuso el reloj con la corona en esta serie (nil = no propuso; los archivos de antes del 3-nov no lo traen)
+    /// y si el alumno tocó las reps después (nil sin propuesta). Con `propuesta` y `corregida == false`, la etiqueta
+    /// puede ser la del reloj: `evaluar-reps` la cuenta aparte.
+    public var propuesta: Int?
+    public var corregida: Bool?
     /// La grilla de los cuadros.
     public var hz: Double = GrabadoraSerie.hz
     public var muestras: Int = 0
@@ -160,11 +165,12 @@ public struct EncabezadoSerie: Codable, Equatable, Sendable {
 
     public init(sesion: String, orden: Int, confirmada: Double, ejercicio: String, nombre: String, familia: FamiliaMovimiento,
                 patron: String? = nil, equipo: String? = nil, serie: Int, reps: Int, kg: Double? = nil, contadas: Int? = nil,
-                conteo: ContadorReps.Resultado? = nil, inicioConteo: Int = 0, finDescanso: Int? = nil, recortado: Double = 0,
+                conteo: ContadorReps.Resultado? = nil, propuesta: Int? = nil, corregida: Bool? = nil, inicioConteo: Int = 0, finDescanso: Int? = nil, recortado: Double = 0,
                 fuente: String, muneca: String? = nil, corona: String? = nil) {
         self.sesion = sesion; self.orden = orden; self.confirmada = confirmada; self.ejercicio = ejercicio; self.nombre = nombre
         self.familia = familia; self.patron = patron; self.equipo = equipo; self.serie = serie; self.reps = reps; self.kg = kg
-        self.contadas = contadas; self.conteo = conteo; self.inicioConteo = inicioConteo; self.finDescanso = finDescanso
+        self.contadas = contadas; self.conteo = conteo; self.propuesta = propuesta; self.corregida = corregida
+        self.inicioConteo = inicioConteo; self.finDescanso = finDescanso
         self.recortado = recortado; self.fuente = fuente; self.muneca = muneca; self.corona = corona
     }
 }

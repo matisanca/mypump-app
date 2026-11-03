@@ -325,13 +325,20 @@ struct EjercicioVista: View {
                         Text("Serie \(i + 1) de \(e.series.count)" + (e.repsPlan.map { " · objetivo \($0)" } ?? ""))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                        // Flujo final (apagado): el reloj propone lo que contó.
-                        if let n = estado.propuesta {
-                            Text(ConfirmacionReps.texto(n)).font(.headline).foregroundStyle(Marca.verde)
+                        // El reloj puso en las reps lo que contó (en calibración; fuera, el flujo final apagado). Se
+                        // ve mientras siga tal cual; si el alumno gira, el número ya es suyo.
+                        if let n = estado.propuesta, estado.propuestaSerie.aceptadaSinTocar {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(ConfirmacionReps.texto(n)).font(.headline).foregroundStyle(Marca.verde)
+                                Text("Lo contó el reloj. Girá para corregir.").font(.caption2).foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(ConfirmacionReps.textoAccesible(n))
                         }
                         if estado.calibrando { LineaCalibracion() }
                         HStack(spacing: 6) {
-                            CampoCorona(titulo: "Reps", valor: "\(s.reps)", activo: foco == .reps) { foco = .reps }
+                            CampoCorona(titulo: "Reps", valor: "\(s.reps)", activo: foco == .reps,
+                                        propuesto: estado.propuestaSerie.aceptadaSinTocar) { foco = .reps }
                             if !e.sinKg {
                                 CampoCorona(titulo: "Kg", valor: TextoReloj.kg(s.kg), activo: foco == .kg) { foco = .kg }
                             }
@@ -383,6 +390,8 @@ struct CampoCorona: View {
     let titulo: String
     let valor: String
     let activo: Bool
+    /// El valor lo puso el reloj (la propuesta, sin tocar).
+    var propuesto = false
     let tocar: () -> Void
     var body: some View {
         Button(action: tocar) {
@@ -399,7 +408,7 @@ struct CampoCorona: View {
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(activo ? Marca.verde : .clear, lineWidth: 2))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(titulo): \(valor)")
+        .accessibilityLabel("\(titulo): \(valor)" + (propuesto ? ", lo contó el reloj" : ""))
         .accessibilityHint(activo ? "Girá la corona para cambiarlo" : "Tocá para cambiarlo con la corona")
     }
 }
@@ -450,7 +459,8 @@ struct SeriesHechas: View {
     }
 }
 
-/// Tanda 4, modo calibración: «● Conté 7» mientras va la serie (el contador experimental; no cambia lo que cargás) y
+/// Tanda 4, modo calibración: «● Conté 7» mientras va la serie (el contador experimental; al terminar la serie lo pone
+/// en las reps, ver `EstadoReloj.proponer`) y
 /// la comparación de la última serie confirmada.
 struct LineaCalibracion: View {
     @Environment(EstadoReloj.self) private var estado

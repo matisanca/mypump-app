@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import WatchKit
 import WidgetKit
+import Accessibility
 import MyPumpReglas
 import MyPumpReloj
 
@@ -29,9 +30,10 @@ final class EstadoReloj {
     var conectado = false
     /// Tanda 4: el modo calibración y el contador experimental.
     let calibracion = CalibracionReloj()
-    /// Flujo final (apagado: `ConfirmacionReps.habilitadas` está vacía): las reps que el reloj propuso con la corona en
-    /// esta serie («¿10 reps?»).
-    private(set) var propuesta: Int?
+    /// Las reps que el reloj propuso con la corona en esta serie («¿10 reps?») y si el alumno las tocó: en el modo
+    /// calibración, en todas las familias; fuera, solo en las de `ConfirmacionReps.habilitadas` (vacía).
+    private(set) var propuestaSerie = PropuestaSerie()
+    var propuesta: Int? { propuestaSerie.reps }
     /// Sube cada vez que hay que entrar al día (llegó el día elegido o se tocó el que ya estaba): la raíz navega.
     private(set) var abrirDia = 0
 
@@ -95,13 +97,18 @@ final class EstadoReloj {
         calibracion.ajustar(prender: sesion.iniciada && !sesion.terminada && (calibrando || familias))
     }
 
-    /// Flujo final: con la serie terminada y una familia habilitada, la corona va a lo que contó el reloj y se pregunta
-    /// «¿N reps?». Nunca en calibración (`ConfirmacionReps.propuesta` lo descarta) y una sola vez por serie.
+    /// Con la serie terminada y clara, la corona va a lo que contó el reloj y se pregunta «¿N reps?» (en calibración,
+    /// en todas las familias; si no, solo en las habilitadas). Una sola vez por serie, y nunca encima de lo que el
+    /// alumno ya giró con la serie en marcha (`PropuestaSerie`).
     private func proponer(_ r: ContadorReps.Resultado?) {
-        guard propuesta == nil, let r, let e = sesion.actual, e.proximaSerie != nil,
-              let n = ConfirmacionReps.propuesta(e.familia, conteo: r, calibrando: calibrando) else { return }
+        guard let r, let e = sesion.actual, e.proximaSerie != nil else { return }
+        var p = propuestaSerie
+        guard let n = p.proponer(e.familia, conteo: r, calibrando: calibrando) else { return }
+        propuestaSerie = p
         cambiar(enviar: false) { $0.girarReps(n - $0.reps) }
-        propuesta = n
+        // Que se note que la corona se movió sola (también con VoiceOver).
+        WKInterfaceDevice.current().play(.click)
+        AccessibilityNotification.Announcement(ConfirmacionReps.textoAccesible(n)).post()
     }
 
     /// Los archivos de calibración que quedaron sin pasar al iPhone.
@@ -180,9 +187,13 @@ final class EstadoReloj {
     func elegir(_ lugar: String) {
         let otro = lugar != sesion.lugar
         cambiar { $0.elegir(lugar) }
-        if otro { propuesta = nil; calibracion.abrirVentana() }
+        if otro { propuestaSerie.reiniciar(); calibracion.abrirVentana() }
     }
-    func girarReps(_ n: Int) { cambiar(enviar: false) { $0.girarReps(n) } }
+    /// El alumno giró las reps con la corona (la propuesta del reloj no pasa por acá).
+    func girarReps(_ n: Int) {
+        propuestaSerie.girar(contadas: calibracion.contadas)
+        cambiar(enviar: false) { $0.girarReps(n) }
+    }
     func girarKg(_ n: Int) { cambiar(enviar: false) { $0.girarKg(n) } }
 
     func empezar() {
@@ -197,13 +208,14 @@ final class EstadoReloj {
         let etiqueta: CalibracionReloj.Etiqueta? = {
             guard let r = sesion.rutina, let e = sesion.actual, let i = e.proximaSerie else { return nil }
             return .init(sesion: CalibracionReloj.sesion(r), ejercicio: e, serie: i + 1, reps: sesion.reps,
-                         kg: e.sinKg ? nil : (sesion.kg ?? 0), cuenta: r.cuenta)
+                         kg: e.sinKg ? nil : (sesion.kg ?? 0), cuenta: r.cuenta,
+                         propuesta: propuestaSerie.reps, corregida: propuestaSerie.corregida)
         }()
         let estabaGrabando = calibracion.grabando
         var c: SesionReloj.Confirmacion?
         cambiar { c = $0.confirmar(ahora: ahora) }
         guard let c else { return }
-        propuesta = nil
+        propuestaSerie.reiniciar()
         // La primera serie confirmada sin «Empezar» arranca la sesión (y los sensores): esa serie no tiene ventana.
         if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: calibrando) } else { calibracion.abrirVentana() }
         if conSalud { entreno.empezar() }

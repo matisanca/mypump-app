@@ -8,6 +8,9 @@ import MyPumpRepsHerramientas
 //       [--csv salida.csv]   una serie por renglón
 //   swift run --package-path apps/ios/MyPumpKit evaluar-reps --sintetico <carpeta>
 //       escribe archivos de ejemplo con señales sintéticas (para probar la herramienta sin un reloj)
+//
+// Las series donde el reloj propuso las reps y se confirmaron sin tocar salen en una tabla aparte y no deciden: su
+// etiqueta puede ser la del reloj. Deciden las de etiqueta independiente (sin propuesta o corregidas a mano).
 
 var args = Array(CommandLine.arguments.dropFirst())
 @MainActor func sacar(_ flag: String, conValor: Bool) -> String?? {

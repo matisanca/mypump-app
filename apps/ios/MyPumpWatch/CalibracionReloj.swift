@@ -202,6 +202,9 @@ final class CalibracionReloj {
         var reps: Int
         var kg: Double?
         var cuenta: String
+        /// Lo que propuso el reloj con la corona y si el alumno lo tocó (la integridad de la etiqueta).
+        var propuesta: Int?
+        var corregida: Bool?
     }
 
     /// Al confirmar: cierra la ventana, cuenta sobre ella con la misma regla que la evaluación y, en calibración, la
@@ -229,6 +232,7 @@ final class CalibracionReloj {
                                     ejercicio: ClaveEjercicio.de(e.ejercicio.nombre), nombre: e.ejercicio.nombre,
                                     familia: e.ejercicio.familia, patron: e.ejercicio.patron, equipo: e.ejercicio.equipo,
                                     serie: e.serie, reps: e.reps, kg: e.kg, contadas: conteo.reps, conteo: conteo,
+                                    propuesta: e.propuesta, corregida: e.corregida,
                                     inicioConteo: v.inicioConteo, finDescanso: v.finDescanso, recortado: v.recortado,
                                     fuente: fuente, muneca: muneca, corona: corona)
                 },

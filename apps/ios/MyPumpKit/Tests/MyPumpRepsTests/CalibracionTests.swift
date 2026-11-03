@@ -107,6 +107,44 @@ import MyPumpRepsHerramientas
         #expect(throws: ArchivoCalibracion.Fallo.magia) { try ArchivoCalibracion.leer(Data("hola mundo".utf8)) }
     }
 
+    /// Lo que propuso el reloj y si se tocó viajan en el encabezado, también al rearmarlo como hace el iPhone.
+    @Test func elEncabezadoConLaPropuestaVaYVuelve() throws {
+        var r = registro(1)
+        r.encabezado.propuesta = 9
+        r.encabezado.corregida = true
+        let l = try #require(ArchivoCalibracion.leer(ArchivoCalibracion.datos(r)).first)
+        #expect(l.encabezado.propuesta == 9 && l.encabezado.corregida == true)
+        // El iPhone vuelve a escribir los registros que le llegan (CalibracionView.recibir).
+        let otra = try #require(ArchivoCalibracion.leer(ArchivoCalibracion.datos(l)).first)
+        #expect(otra.encabezado == l.encabezado)
+        #expect(try ArchivoCalibracion.encabezados(ArchivoCalibracion.datos(r)).first?.propuesta == 9)
+        // Sin propuesta, las claves no se escriben (un archivo nuevo sin propuesta es igual a uno viejo).
+        let sin = String(decoding: try ArchivoCalibracion.datos(registro(1)), as: UTF8.self)
+        #expect(!sin.contains("propuesta") && !sin.contains("corregida"))
+    }
+
+    /// Un archivo de antes (encabezado sin `propuesta` ni `corregida`) se sigue leyendo.
+    @Test func unArchivoViejoSeLee() throws {
+        let c = SenalSintetica.curlLimpio().cuadros.prefix(200)
+        var crudo = Data()
+        for q in c {
+            for (v, e) in [(q.ax, ArchivoCalibracion.escalaAcel), (q.ay, ArchivoCalibracion.escalaAcel), (q.az, ArchivoCalibracion.escalaAcel),
+                           (q.gx, ArchivoCalibracion.escalaGiro), (q.gy, ArchivoCalibracion.escalaGiro), (q.gz, ArchivoCalibracion.escalaGiro)] {
+                withUnsafeBytes(of: Int16(clamping: Int((Double(v) / e).rounded())).littleEndian) { crudo.append(contentsOf: $0) }
+            }
+        }
+        let comprimido = try (crudo as NSData).compressed(using: .zlib) as Data
+        // El JSON tal como lo escribía el reloj antes del 3-nov.
+        let json = Data(#"{"confirmada":1700000000000,"contadas":10,"ejercicio":"curl con barra","escalaAcel":0.0005,"escalaGiro":0.001,"familia":"curl","fuente":"batched","hz":100,"inicioConteo":0,"muestras":200,"nombre":"Curl con barra","orden":1,"recortado":0,"reps":10,"serie":1,"sesion":"s1","v":1}"#.utf8)
+        var d = ArchivoCalibracion.magia
+        ArchivoCalibracion.anexar(UInt32(json.count), a: &d); d.append(json)
+        ArchivoCalibracion.anexar(UInt32(comprimido.count), a: &d); d.append(comprimido)
+        let l = try #require(ArchivoCalibracion.leer(d).first)
+        #expect(l.encabezado.reps == 10 && l.cuadros.count == 200)
+        #expect(l.encabezado.propuesta == nil && l.encabezado.corregida == nil)
+        #expect(EvaluacionReps.Origen.de(l.encabezado) == .sinPropuesta)
+    }
+
     /// Nada de la cuenta ni del token en el archivo.
     @Test func elEncabezadoNoTraeLaCuenta() throws {
         let d = try ArchivoCalibracion.datos(registro(1))
@@ -188,14 +226,54 @@ import MyPumpRepsHerramientas
         let h: Set<FamiliaMovimiento> = [.curl]
         #expect(ConfirmacionReps.propuesta(.curl, conteo: conteo, calibrando: false, habilitadas: h) == 10)
         #expect(ConfirmacionReps.propuesta(.sentadilla, conteo: conteo, calibrando: false, habilitadas: h) == nil)
-        // En calibración nunca toca las reps.
-        #expect(ConfirmacionReps.propuesta(.curl, conteo: conteo, calibrando: true, habilitadas: h) == nil)
         // Con la serie sin terminar o poco clara, tampoco.
         var c = conteo; c.quieto = false
         #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: false, habilitadas: h) == nil)
         c = conteo; c.calidad = 0.4
         #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: false, habilitadas: h) == nil)
         #expect(ConfirmacionReps.texto(10) == "¿10 reps?" && ConfirmacionReps.texto(1) == "¿1 rep?")
+        #expect(ConfirmacionReps.textoAccesible(10).contains("contó 10 repeticiones"))
+    }
+
+    /// En calibración propone en TODAS las familias (con la lista vacía), con las mismas condiciones de serie clara.
+    @Test func enCalibracionProponeEnTodasLasFamilias() {
+        for f in FamiliaMovimiento.allCases {
+            #expect(ConfirmacionReps.propuesta(f, conteo: conteo, calibrando: true) == 10)
+            #expect(ConfirmacionReps.propuesta(f, conteo: conteo, calibrando: false) == nil)
+            // Fuera de calibración el contador no corre por la familia (los sensores siguen apagados).
+            #expect(!ConfirmacionReps.cuenta(f))
+        }
+        var c = conteo; c.quieto = false
+        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == nil, "serie sin terminar")
+        c = conteo; c.calidad = ConfirmacionReps.calidadMinima - 0.01
+        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == nil, "poco clara")
+        c.calidad = ConfirmacionReps.calidadMinima
+        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == 10, "justo en el mínimo")
+        c = conteo; c.reps = SesionReloj.repsMin - 1
+        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == nil, "debajo del rango")
+        c.reps = SesionReloj.repsMax + 1
+        #expect(ConfirmacionReps.propuesta(.curl, conteo: c, calibrando: true) == nil, "arriba del rango")
+    }
+
+    @Test func unaPropuestaPorSerieYSiTocoAntesNoSePisa() {
+        var p = PropuestaSerie()
+        #expect(p.corregida == nil && !p.aceptadaSinTocar)
+        // Girar en el descanso (el contador no vio movimiento) no bloquea la propuesta.
+        p.girar(contadas: nil); p.girar(contadas: 0)
+        #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == 10)
+        #expect(p.aceptadaSinTocar && p.corregida == false)
+        #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == nil, "una sola vez por serie")
+        p.girar(contadas: 10)
+        #expect(p.corregida == true && !p.aceptadaSinTocar && p.reps == 10)
+        p.reiniciar()
+        #expect(p == PropuestaSerie())
+        // Ya giró con la serie en marcha: no hay propuesta (no se le pisa lo que puso) y no queda etiqueta de corrección.
+        p.girar(contadas: 6)
+        #expect(p.proponer(.curl, conteo: conteo, calibrando: true) == nil)
+        #expect(p.reps == nil && p.corregida == nil)
+        // Fuera de calibración, con la lista vacía, nunca.
+        var fuera = PropuestaSerie()
+        #expect(fuera.proponer(.curl, conteo: conteo, calibrando: false) == nil)
     }
 
     @Test func elModoEsPorCuentaYNuncaEnLaDemo() throws {
@@ -263,5 +341,53 @@ import MyPumpRepsHerramientas
         #expect(abs(f.porcentajeDentroDeUno - 0.925) < 1e-9)
         #expect(f.habilitable)
         #expect(abs(f.errorMedio - (13.0 + 9.0) / 40) < 1e-9)
+    }
+
+    @Test func elOrigenDeLaEtiqueta() {
+        func enc(_ p: Int?, _ c: Bool?) -> EncabezadoSerie {
+            EncabezadoSerie(sesion: "s", orden: 1, confirmada: 0, ejercicio: "curl", nombre: "Curl", familia: .curl, serie: 1, reps: 10,
+                            propuesta: p, corregida: c, fuente: "x")
+        }
+        #expect(EvaluacionReps.Origen.de(enc(nil, nil)) == .sinPropuesta)
+        #expect(EvaluacionReps.Origen.de(enc(10, false)) == .aceptada)
+        #expect(EvaluacionReps.Origen.de(enc(10, true)) == .corregida)
+        // Sin el dato de si se tocó, del lado seguro: no decide.
+        #expect(EvaluacionReps.Origen.de(enc(10, nil)) == .aceptada)
+    }
+
+    /// Las aceptadas sin tocar van aparte y no deciden: 40 aceptadas «perfectas» no prenden una familia.
+    @Test func lasAceptadasSinTocarNoDeciden() throws {
+        var s: [EvaluacionReps.Serie] = []
+        for _ in 0..<40 {
+            s.append(.init(archivo: "a", familia: .curl, ejercicio: "curl", cargadas: 10, contadas: 10, calidad: 0.9, propuesta: 10, origen: .aceptada))
+        }
+        s.append(.init(archivo: "b", familia: .curl, ejercicio: "curl", cargadas: 10, contadas: 8, calidad: 0.9, propuesta: 8, origen: .corregida))
+        s.append(.init(archivo: "c", familia: .curl, ejercicio: "curl", cargadas: 10, contadas: 10, calidad: 0.9))
+        let i = EvaluacionReps.informe(s)
+        let curl = try #require(i.filas.first { $0.familia == .curl })
+        #expect(curl.series == 2 && curl.dentroDeUno == 1 && !curl.habilitable)
+        #expect(i.total.series == 2)
+        #expect(i.aceptadas.series == 40 && i.filasAceptadas.first?.familia == .curl && i.corregidas == 1)
+        #expect(i.series.count == 42)
+        let texto = EvaluacionReps.texto(i)
+        #expect(texto.contains("DECIDEN") && texto.contains("NO deciden"))
+        #expect(texto.contains("41 series con propuesta: 40 aceptadas sin tocar, 1 corregidas."))
+        let csv = EvaluacionReps.csv(i).split(separator: "\n")
+        #expect(csv[0].hasSuffix(",propuesta,origen") && csv.count == 43)
+        #expect(csv.contains { $0.hasSuffix(",10,aceptada") } && csv.contains { $0.hasSuffix(",,sin_propuesta") })
+        // Sin propuestas, el texto no muestra la segunda tabla.
+        #expect(!EvaluacionReps.texto(EvaluacionReps.informe(Array(s.suffix(1)))).contains("NO deciden"))
+    }
+
+    /// Desde los archivos: el encabezado decide el grupo.
+    @Test func desdeLosArchivosSeparaLosGrupos() {
+        let c = SenalSintetica.curlLimpio()
+        func reg(_ p: Int?, _ k: Bool?) -> (archivo: String, registro: ArchivoCalibracion.Registro) {
+            ("x", .init(encabezado: EncabezadoSerie(sesion: "s", orden: 1, confirmada: 0, ejercicio: "curl", nombre: "Curl", familia: .curl,
+                                                    serie: 1, reps: c.reps, propuesta: p, corregida: k, fuente: "x"), cuadros: c.cuadros))
+        }
+        let i = EvaluacionReps.evaluar([reg(nil, nil), reg(c.reps, false), reg(c.reps, true)])
+        #expect(i.total.series == 2 && i.aceptadas.series == 1 && i.corregidas == 1)
+        #expect(i.series.map(\.origen) == [.sinPropuesta, .aceptada, .corregida])
     }
 }
