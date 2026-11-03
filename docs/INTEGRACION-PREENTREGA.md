@@ -42,3 +42,4 @@ a clientes `test%`.
 3. El check de la semana 0 usa `mypump_checkin_semanal` de la semana en curso: si la entrega cae esa misma semana, el primer check real lo pisa. Aceptable, pero que se sepa.
 4. Sumar `youtube.com` a WKAppBoundDomains en un build futuro si se quiere el reproductor embebido en iOS.
 5. Perfil del gimnasio: la portada llama a `window.abrirPerfilGimnasio()` si existe (MyPump Pro 2.0).
+6. Formulario previo con nombre y datos (entregas_004, aplicada el 3/11): `mypump_get_formulario_previo` ahora devuelve también `nombre` y `datos_conocidos` ([{id: "dato_*", etiqueta, valor}]). La página web (`preguntas.html` del Cerebro) ya los muestra arriba, precargados y editables; si un dato cambia, se manda en `entregas_form_responder` con su id. En la portada de la app falta mostrarlos igual (hoy `preentrega.js` muestra solo las preguntas).
