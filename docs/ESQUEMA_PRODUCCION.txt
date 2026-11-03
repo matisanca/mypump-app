@@ -553,7 +553,7 @@ mypump_get_historico_por_clave: =X/postgres | postgres=X/postgres | anon=X/postg
 mypump_get_metricas_coach: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_mostrar_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_progresion_cargas: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
-mypump_get_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_recuperacion: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_recuperacion_cliente_coach: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_recuperacion_global: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_recuperacion_resumen: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres

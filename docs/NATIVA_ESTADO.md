@@ -6,7 +6,7 @@
 
 ## Candado
 
-**Trabaja:** sesión `7a9c6371` (MacBook), desde el 13-oct-2026 23:59.
+**Trabaja:** sesión «MyPump Pro 2.0» `f80976b2` (MacBook), desde el 3-nov-2026.
 
 Si el candado es de otra sesión y tiene menos de 6 h, no se toca este clon. Cuando una sesión termina, deja el
 candado libre.
@@ -261,6 +261,7 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+- **3-nov, `nativa_007` (recuperación con `confianza` y `motivo_falta`) aplicada por Mati** (8b159a0, interruptor `baja_sin_score` en FALSE). `nativa-recup` mergeada en `nativa-202`; contrato y esquema regenerados: `mypump_get_recuperacion` devuelve 14 columnas y ya no es ejecutable por PUBLIC (sí por anon). Plan de los pedidos del 2/11 aprobado: `~/Developer/nativa-evidencia/privado/PLAN_PEDIDOS_0211.md`. Sigue la 2.0.3 (tanda 1).
 - **27-oct 18:40, 2.0.2 enviada a las dos tiendas** (OK de Mati: «y luego subi la actualizacion si»). D25 «Comí / Salté» con el consumido en la tarjeta de Dieta, crunch con kg según el equipo del catálogo, − hasta 0 g en «Ajustar esta comida» y validación del alimento propio. Tags `nios-2.0.2-120` y `nand-2.0.2-105` sobre aad943f. App Store: 2.0.2 (120) en revisión, publicación automática para todos. Play: 105 al 100 % en revisión (AAB sha256 45fa73af7b87c28f, subido en 3 trozos). Pruebas: kit 531, JVM 698, XCUITest 46, Android UI 204.
 - **27-oct, D25 «Comí / Salté» en las dos apps** (rama `nativa-202`, nada subido a las tiendas): «Comí» / «Salté» por
   comida (tocar el activo desmarca), tildes por alimento con «Comí» (consumo parcial, `foods_excluidos`) y lo consumido
