@@ -11,6 +11,8 @@ struct BotonFoto<Etiqueta: View>: View {
     let maxPx: CGFloat
     /// Calidad del JPEG: 0,85 para la IA (plato, etiqueta); las fotos de progreso van a 0,7 como en la web.
     var calidad: CGFloat = 0.85
+    /// Abre la cámara (o la galería, sin cámara) apenas aparece: «Escanear la etiqueta» de un código que no se encontró.
+    var abrirAlAparecer = false
     let alElegir: (Data) -> Void
     @ViewBuilder let etiqueta: () -> Etiqueta
 
@@ -35,6 +37,12 @@ struct BotonFoto<Etiqueta: View>: View {
                 Button { galeria = true } label: { etiqueta() }
                     .buttonStyle(.plain)
             }
+        }
+        .task {
+            guard abrirAlAparecer else { return }
+            // Después de la transición de entrada: una hoja presentada a mitad de un push no se muestra.
+            try? await Task.sleep(for: .milliseconds(450))
+            if UIImagePickerController.isSourceTypeAvailable(.camera) { camara = true } else { galeria = true }
         }
         .photosPicker(isPresented: $galeria, selection: $item, matching: .images, photoLibrary: .shared())
         .fullScreenCover(isPresented: $camara) {

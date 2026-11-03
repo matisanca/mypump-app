@@ -7,8 +7,17 @@ import MyPumpDatos
 /// que corresponde a la unidad (por 100 g con g o ml, de 1 porción con el resto) y se guardan siempre por 100 g.
 /// La categoría es la del alimento que se está reemplazando, como en la web.
 struct CrearAlimentoView: View {
+    /// Lo que llega de un código de barras que Open Food Facts no tenía o tenía incompleto (2.1, S3): el código (se
+    /// muestra y queda asociado al alimento en el teléfono), lo que se pudo leer y si abre directo la foto de la etiqueta.
+    struct Precarga: Equatable {
+        var codigo: String
+        var parcial: CodigoBarras.Parcial?
+        var escanearEtiqueta: Bool
+    }
+
     let modelo: ModeloApp
     let categoria: String
+    var precarga: Precarga? = nil
     let alCrear: (AlimentoPropio) -> Void
 
     @State private var nombre = ""
@@ -22,6 +31,7 @@ struct CrearAlimentoView: View {
     @State private var guardando = false
     @State private var escaneando = false
     @State private var estadoEscaneo: String?
+    @State private var precargado = false
     @FocusState private var foco: Campo?
 
     enum Campo: Hashable { case nombre, kcal, prot, carb, fat, gramos }
@@ -30,7 +40,7 @@ struct CrearAlimentoView: View {
         Form {
             if modelo.token != nil {
                 Section {
-                    BotonFoto(maxPx: 1600, alElegir: escanear) {
+                    BotonFoto(maxPx: 1600, abrirAlAparecer: precarga?.escanearEtiqueta == true, alElegir: escanear) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Escanear etiqueta").font(.body.weight(.semibold)).foregroundStyle(.primary)
@@ -45,6 +55,18 @@ struct CrearAlimentoView: View {
                     }
                 } footer: {
                     Text("Después podés corregir cualquier valor.")
+                }
+            }
+            if let codigo = precarga?.codigo {
+                Section {
+                    LabeledContent {
+                        Text(codigo).monospacedDigit().foregroundStyle(.secondary).textSelection(.enabled)
+                    } label: {
+                        Label("Código de barras", systemImage: "barcode")
+                    }
+                    .accessibilityIdentifier("crear-codigo")
+                } footer: {
+                    Text("Queda guardado en este teléfono: la próxima vez que lo escanees, aparece tu alimento.")
                 }
             }
             Section {
@@ -119,7 +141,18 @@ struct CrearAlimentoView: View {
                 }
             }
         }
-        .onAppear { foco = .nombre }
+        .onAppear {
+            if let p = precarga?.parcial, !precargado {
+                precargado = true
+                if let n = p.nombre { nombre = n }
+                if let k = p.kcal { kcal = String(k.jsEntero) }
+                if let v = p.p { prot = v.kg }
+                if let v = p.c { carb = v.kg }
+                if let v = p.g { fat = v.kg }
+            }
+            // Con la foto de la etiqueta abriéndose, el teclado estorba.
+            if precarga?.escanearEtiqueta != true { foco = .nombre }
+        }
         .animation(.snappy, value: unidad)
         .animation(.snappy, value: error)
     }

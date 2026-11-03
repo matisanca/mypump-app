@@ -50,6 +50,8 @@ class ServidorDePrueba : Transporte {
         if (demoraMs > 0) delay(demoraMs)
         if (sinRed) throw IOException("sin conexión (prueba)")
         if (caido || funcion in fallas) return Respuesta(503, """{"message":"servicio caído (prueba)"}""".toByteArray())
+        // Dieta: Open Food Facts, el código de barras (ver el bloque de Barras, abajo).
+        rutaDeBarras(pedido)?.let { return it }
         // Revisión: las fotos de progreso y los relojes no son RPC (ver el bloque de Revisión, abajo).
         rutaDeRevision(pedido.ruta, cuerpo)?.let { return it }
         // Dieta: la visión y lo que la cuenta guarda de la dieta (ver el bloque de Dieta, abajo).
@@ -67,6 +69,25 @@ class ServidorDePrueba : Transporte {
             else -> 200 to "[]"
         }
         return Respuesta(status, texto.toByteArray())
+    }
+
+    // ── Barras: Open Food Facts (2.1, S3) ──────────────────────────────────────────────────────────────────────────
+    // `GET https://world.openfoodfacts.org/api/v2/product/<código>.json`: contesta lo que diga [productosOFF] para ese
+    // código (las respuestas reales de los vectores) o el 404 real de un producto que no está.
+
+    /** Código → respuesta de Open Food Facts. */
+    val productosOFF = ConcurrentHashMap<String, String>()
+
+    /** Lo que se le pidió a Open Food Facts (la URL y el User-Agent). */
+    val pedidosOFF = CopyOnWriteArrayList<Pedido>()
+
+    private fun rutaDeBarras(pedido: Pedido): Respuesta? {
+        if (!pedido.url.startsWith("https://world.openfoodfacts.org/")) return null
+        pedidosOFF += pedido
+        val codigo = Regex("/api/v2/product/([0-9]+)\\.json").find(pedido.ruta)?.groupValues?.get(1)
+        val r = codigo?.let { productosOFF[it] }
+            ?: return Respuesta(404, """{"code":"$codigo","status":0,"status_verbose":"product not found"}""".toByteArray())
+        return Respuesta(200, r.toByteArray())
     }
 
     /** Las llamadas a una función, con su cuerpo (para ver qué se mandó). */

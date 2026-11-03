@@ -108,6 +108,12 @@ public final class ModeloApp {
     @ObservationIgnored let almacen: AlmacenToken
     @ObservationIgnored public private(set) var token: String?
     @ObservationIgnored var disco: Disco?
+    /// Código de barras (2.1, S3): lo ya buscado en Open Food Facts (se lee del disco la primera vez) y, en DEBUG, el doble
+    /// de la red que ponen las pruebas de interfaz (`-offDePrueba`). Sin doble, va por el transporte del cliente.
+    @ObservationIgnored var cacheCodigos: CacheCodigos?
+    @ObservationIgnored public var transporteBarras: (any Transporte)?
+    /// El plazo total de la consulta a Open Food Facts (las pruebas lo achican).
+    @ObservationIgnored var esperaBarras: Double = CodigoBarras.esperaSegundos
     @ObservationIgnored public private(set) var outbox: Outbox?
     /// La sesión del día de la cuenta: la comparten la cola y el motor de Entreno (hallazgo 5).
     @ObservationIgnored private var sesionesDelDia = SesionesDelDia()
@@ -194,6 +200,7 @@ public final class ModeloApp {
 
     public func salir() {
         almacen.guardar(nil)
+        borrarCodigosDelDisco()
         token = nil
         disco = nil
         outbox = nil
@@ -249,6 +256,7 @@ public final class ModeloApp {
     private func soltarCuentaEnMemoria() {
         token = nil
         disco = nil
+        cacheCodigos = nil
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
@@ -269,6 +277,7 @@ public final class ModeloApp {
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
+        cacheCodigos = nil
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)
@@ -735,6 +744,8 @@ public final class ModeloApp {
     private func sumarPropio(_ a: AlimentoPropio) {
         if let i = alimentosPropios.firstIndex(where: { $0.nombre.lowercased() == a.nombre.lowercased() }) {
             alimentosPropios[i] = a
+            // Editado: si salió de un código con otros valores, el escaneo deja de traer el viejo.
+            conciliarCodigosPropios()
         } else {
             alimentosPropios.append(a)
         }
@@ -759,7 +770,10 @@ public final class ModeloApp {
         if case .success(let prefs) = prefs { excluir = prefs.first?.excluir ?? [] }
         let propios = await cliente.filas("mypump_get_custom_foods", p, como: AlimentoPropio.self)
         guard vigente() else { return }
-        if case .success(let propios) = propios { alimentosPropios = propios }
+        if case .success(let propios) = propios {
+            alimentosPropios = propios
+            conciliarCodigosPropios()
+        }
 
         let remotos: [FoodSwap]?
         switch await cliente.filas("mypump_get_food_swaps", ["p_token": .texto(t), "p_dieta_id": .texto(dieta.id)], como: FoodSwap.self) {

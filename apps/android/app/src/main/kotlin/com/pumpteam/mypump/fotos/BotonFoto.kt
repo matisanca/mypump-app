@@ -14,6 +14,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,7 @@ import com.pumpteam.mypump.diseno.MyPump
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -64,6 +66,8 @@ fun BotonFoto(
     alElegir: (ByteArray) -> Unit,
     modifier: Modifier = Modifier,
     habilitado: Boolean = true,
+    /** Abre la cámara (o la galería, sin cámara) apenas aparece: «Escanear la etiqueta» de un código que no se encontró. */
+    abrirAlAparecer: Boolean = false,
     contenido: @Composable () -> Unit,
 ) {
     val contexto = LocalContext.current
@@ -104,6 +108,15 @@ fun BotonFoto(
             archivo.delete()
             abrirGaleria()
         }
+    }
+
+    // Una sola vez (al girar el teléfono no se vuelve a abrir), después de la animación de entrada.
+    var yaAbrio by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(abrirAlAparecer) {
+        if (!abrirAlAparecer || yaAbrio) return@LaunchedEffect
+        yaAbrio = true
+        delay(350)
+        if (hayCamara) abrirCamara() else abrirGaleria()
     }
 
     Box(modifier) {
