@@ -409,3 +409,78 @@ class SaludVistaTest {
         assertTrue(s.filas.all { it.fuente == "health_connect" })
     }
 }
+
+/** Confianza y motivo_falta (nativa_007, R1 de la 2.0.3). Gemelo de `ConfianzaRecuperacionTests` de SaludVistaTests.swift. */
+class ConfianzaRecuperacionTest {
+    private val hoy = "2026-10-14"
+
+    private fun card(serie: List<RecuperacionDia>, conectado: Boolean = true, historial: Pair<Int, Int>? = null) =
+        SaludVista.cardRecuperacion(serie, conectado, true, emptyList(), historial, false, hoy)
+
+    @Test
+    fun decodificaLasCatorceColumnasYTambienLasDoceViejas() {
+        val nueva = """{"fecha":"2026-10-14","score":58,"estado":"ok","banda":"media","motivo_falta":"Confianza baja. Para mejorarla, usá el reloj para dormir.","confianza":"baja"}"""
+        val vieja = """{"fecha":"2026-10-14","score":58,"estado":"ok","banda":"media","dias_datos":30,"banda_provisoria":false,"estado_autonomico":null,"hrv_metrica":null,"discordancia":false,"cobertura":{},"componentes":{},"motivos":[]}"""
+        val n = RecuperacionDia.desde(kotlinx.serialization.json.Json.parseToJsonElement(nueva))
+        assertEquals("baja", n.confianza)
+        assertEquals("Confianza baja. Para mejorarla, usá el reloj para dormir.", n.motivoFalta)
+        val v = RecuperacionDia.desde(kotlinx.serialization.json.Json.parseToJsonElement(vieja))
+        assertEquals(58, v.score)
+        assertNull(v.confianza)
+        assertNull(v.motivoFalta)
+        assertNull(com.pumpteam.mypump.modelos.Recuperacion.desde(kotlinx.serialization.json.Json.parseToJsonElement(vieja)).confianza)
+        val rara = RecuperacionDia.desde(kotlinx.serialization.json.Json.parseToJsonElement("""{"fecha":"2026-10-14","score":40,"confianza":3}"""))
+        assertEquals(40, rara.score)
+        assertNull(SaludVista.confianza(rara))
+    }
+
+    @Test
+    fun soloMediaYBajaConScoreSeMuestran() {
+        val motivo = "Confianza media. Para mejorarla, dejá el reloj puesto toda la noche para que mida la VFC."
+        assertNull(SaludVista.confianza(RecuperacionDia(hoy, score = 70, confianza = "alta")))
+        assertNull(SaludVista.confianza(RecuperacionDia(hoy, score = 70)))
+        assertNull(SaludVista.confianza(RecuperacionDia(hoy, score = 70, confianza = "rara")))
+        assertNull(SaludVista.confianza(RecuperacionDia(hoy, estado = "insuficiente", confianza = "baja")))
+        val media = SaludVista.confianza(RecuperacionDia(hoy, score = 70, confianza = "media", motivoFalta = motivo))
+        assertEquals(SaludVista.Confianza("media", "Para mejorarla, dejá el reloj puesto toda la noche para que mida la VFC."), media)
+        assertEquals("Confianza media", media?.etiqueta)
+        assertEquals(false, media?.apagado)
+        val baja = SaludVista.confianza(RecuperacionDia(hoy, score = 45, confianza = "BAJA", motivoFalta = "  "))
+        assertEquals(SaludVista.Confianza("baja", null), baja)
+        assertEquals("Confianza baja", baja?.etiqueta)
+        assertEquals(true, baja?.apagado)
+        assertEquals("Usá el reloj.", SaludVista.confianza(RecuperacionDia(hoy, score = 45, confianza = "baja", motivoFalta = "Usá el reloj."))?.motivo)
+    }
+
+    private fun conScore(nivel: String?, motivo: String?): SaludVista.ConScore? =
+        (card(listOf(RecuperacionDia(hoy, score = 48, estado = "ok", banda = "media", motivoFalta = motivo, confianza = nivel))) as? SaludVista.CardRecuperacion.ConScore)?.score
+
+    @Test
+    fun laCardConScoreLlevaLaConfianza() {
+        assertNull(conScore("alta", null)?.confianza)
+        assertNull(conScore(null, null)?.confianza)
+        assertEquals(
+            SaludVista.Confianza("baja", "Para mejorarla, usá el reloj para dormir."),
+            conScore("baja", "Confianza baja. Para mejorarla, usá el reloj para dormir.")?.confianza,
+        )
+    }
+
+    @Test
+    fun sinScoreElMotivoReemplazaLaNota() {
+        val falta = "Faltan datos del reloj para calcular la recuperación de este día. Alcanza con usar el reloj para dormir o con que registre la frecuencia cardíaca en reposo."
+        val serie = listOf(RecuperacionDia(hoy, estado = "insuficiente", motivoFalta = falta))
+        assertEquals(SaludVista.CardRecuperacion.ConectadoSinScore(SaludVista.SinScore.Esperando, falta), card(serie))
+        assertEquals(SaludVista.CardRecuperacion.ConectadoSinScore(SaludVista.SinScore.TrayendoHistorial(3, 60)), card(serie, historial = 3 to 60))
+        assertEquals(SaludVista.CardRecuperacion.SinConectar, card(serie, conectado = false))
+        assertEquals(SaludVista.CardRecuperacion.ConectadoSinScore(SaludVista.SinScore.Esperando), card(listOf(RecuperacionDia(hoy, estado = "insuficiente"))))
+    }
+
+    @Test
+    fun calibrandoLlevaElMotivo() {
+        val falta = "Calibrando, hay 5 de 14 días con datos del reloj. Faltan 9 días."
+        assertEquals(
+            SaludVista.CardRecuperacion.Calibrando(5, 36, "", falta),
+            card(listOf(RecuperacionDia(hoy, estado = "calibrando", diasDatos = 5, motivoFalta = falta))),
+        )
+    }
+}

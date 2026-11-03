@@ -73,10 +73,20 @@ struct SaludDetalleView: View {
     @ViewBuilder private var recuperacion: some View {
         let componentes = modelo.componentes
         if let score = modelo.scoreDeHoy {
+            let confianza = modelo.confianzaDeHoy
             seccion("🔋", "Cómo se arma tu recuperación") {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(score)").font(.numeroGrande)
+                    Text("\(score)").font(.numeroGrande).foregroundStyle(confianza?.apagado == true ? .secondary : .primary)
                     Text("/100").font(.subheadline).foregroundStyle(.secondary)
+                }
+                // En el detalle la explicación va a la vista, sin tocar nada.
+                if let confianza {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Chip(texto: confianza.etiqueta, icono: "info.circle")
+                        NotaSalud(confianza.explicacion)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("detalle-confianza")
                 }
                 ForEach(componentes, id: \.clave) { c in
                     VStack(alignment: .leading, spacing: 4) {
@@ -91,6 +101,11 @@ struct SaludDetalleView: View {
                     }
                 }
                 NotaSalud("Los que no tenés no se promedian como cero: el score se reparte entre los datos que sí hay. Por eso podés tener número aunque tu reloj no mida variabilidad.")
+            }
+        } else if let falta = modelo.motivoFaltaDeHoy {
+            seccion("🔋", "Tu recuperación de hoy") {
+                Text(falta).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("detalle-motivo-falta")
             }
         }
     }

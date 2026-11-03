@@ -182,16 +182,18 @@ private struct ResumenRecuperacion: View {
         switch card {
         case .sinConectar:
             return Estado(texto: "Conectá tu reloj o Salud de Apple")
-        case .conectadoSinScore(let caso):
+        case .conectadoSinScore(let caso, _):
             return Estado(icono: "hourglass", texto: caso.frase)
-        case .calibrando(let dias, let porcentaje, _):
+        case .calibrando(let dias, let porcentaje, _, _):
             return Estado(icono: "chart.bar.fill", fraccion: Double(porcentaje) / 100, texto: "Calibrando: \(dias) de 14 días")
         case .oculto:
             return Estado(icono: "eye.slash", texto: "Tenés el score apagado")
         case .conScore(let c):
             let score = c.fila.score ?? 0
+            let confianza = c.confianza.map { " · \($0.etiqueta.lowercased())" } ?? ""
             return Estado(numero: "\(score)", fraccion: Double(score) / 100,
-                          color: CardRecuperacionView.color(c.banda), texto: "\(score)/100 · \(c.bandaTexto)")
+                          color: CardRecuperacionView.color(c.banda, apagado: c.confianza?.apagado == true),
+                          texto: "\(score)/100 · \(c.bandaTexto)\(confianza)")
         }
     }
 }

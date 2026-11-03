@@ -227,6 +227,10 @@ public final class ModeloSalud {
     /// Para "Cómo se arma tu recuperación" (la última fila, como la escena de la web).
     public var componentes: [SaludVista.Componente] { SaludVista.componentes(recuperacion.last) }
     public var scoreDeHoy: Int? { recuperacion.last?.score }
+    /// La confianza del score de hoy, si es media o baja (nativa_007).
+    public var confianzaDeHoy: SaludVista.Confianza? { SaludVista.confianza(recuperacion.last) }
+    /// Sin score hoy: qué falta, como lo explica el servidor.
+    public var motivoFaltaDeHoy: String? { recuperacion.last?.score == nil ? SaludVista.textoFalta(recuperacion.last?.motivoFalta) : nil }
 
     // MARK: - Mi reloj (Oura, WHOOP)
 

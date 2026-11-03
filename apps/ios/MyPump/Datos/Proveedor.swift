@@ -27,9 +27,11 @@ enum Proveedor {
             // `-sinRed YES`: como sin señal (el gimnasio). La app arranca de su copia guardada y lo que se carga queda
             // en la cola hasta el próximo arranque sin el argumento.
             // `-fotosDePrueba YES`: el servidor de verdad, salvo las fotos de progreso (ver `FotosDePrueba`).
+            // `-recuperacionDePrueba baja|alta|calibrando`: lo mismo con la serie de recuperación (ver `RecuperacionDePrueba`).
             let transporte: any Transporte
             if d.bool(forKey: "sinRed") { transporte = SinRed() }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
+            else if let caso = d.string(forKey: "recuperacionDePrueba") { transporte = RecuperacionDePrueba(caso: caso) }
             else { transporte = URLSession.shared }
             return ModeloApp(cliente: ClienteRPC(transporte: transporte), almacen: TokenEnMemoria(t))
         }
@@ -48,6 +50,46 @@ enum Proveedor {
 /// Todo pedido falla como sin señal (`-sinRed YES`).
 private struct SinRed: Transporte {
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) { throw URLError(.notConnectedToInternet) }
+}
+
+/// `-recuperacionDePrueba <caso>`: todo va al servidor de verdad salvo la recuperación, que es una serie inventada de 14
+/// días con las columnas de nativa_007 (`confianza`, `motivo_falta`). Para ver la pastilla de confianza y el texto de qué
+/// falta sin depender del reloj de la cuenta de prueba (R1 de la 2.0.3).
+private struct RecuperacionDePrueba: Transporte {
+    let caso: String
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = pedido.url?.path ?? ""
+        if ruta.hasSuffix("mypump_get_recuperacion") { return Self.respuesta(pedido, filas()) }
+        if ruta.hasSuffix("mypump_get_mostrar_recuperacion") { return Self.respuesta(pedido, "true") }
+        return try await URLSession.shared.data(for: pedido)
+    }
+
+    private func filas() -> String {
+        let hoy = DiaCalendario.numero(FechaLocal.hoy()) ?? 0
+        let deHoy: String
+        var conScore = 6
+        switch caso {
+        case "calibrando":
+            deHoy = #""score":null,"estado":"calibrando","dias_datos":5,"motivo_falta":"Calibrando, hay 5 de 14 días con datos del reloj. Faltan 9 días.","confianza":null"#
+            conScore = 0
+        case "alta":
+            deHoy = #""score":74,"estado":"ok","banda":"alta","dias_datos":40,"motivos":[],"motivo_falta":null,"confianza":"alta""#
+        default:
+            deHoy = #""score":41,"estado":"ok","banda":"media","dias_datos":40,"banda_provisoria":false,"discordancia":false,"motivos":[],"motivo_falta":"Confianza baja. Para mejorarla, usá el reloj para dormir.","confianza":"baja""#
+        }
+        let f = (0..<14).reversed().map { i -> String in
+            let fecha = DiaCalendario.texto(hoy - i)
+            if i == 0 { return #"{"fecha":"\#(fecha)",\#(deHoy)}"# }
+            if i < conScore { return #"{"fecha":"\#(fecha)","score":\#(50 + i * 3),"estado":"ok","banda":"media","dias_datos":40,"confianza":"media"}"# }
+            return #"{"fecha":"\#(fecha)","score":null,"estado":"insuficiente"}"#
+        }
+        return "[" + f.joined(separator: ",") + "]"
+    }
+
+    private static func respuesta(_ pedido: URLRequest, _ cuerpo: String) -> (Data, URLResponse) {
+        (Data(cuerpo.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
 }
 
 /// `-fotosDePrueba YES`: todo va al servidor de verdad salvo las fotos de progreso. Esas son cinco semanas de las tres

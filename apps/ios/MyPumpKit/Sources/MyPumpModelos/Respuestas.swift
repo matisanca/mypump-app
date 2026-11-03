@@ -278,9 +278,13 @@ public struct Recuperacion: Decodable, Sendable, Equatable {
     public let discordancia: Bool?
     public let cobertura: JSONValue?
     public let motivos: JSONValue?
+    /// nativa_007 (opcionales: una respuesta de 12 columnas no las trae).
+    public let motivoFalta: String?
+    public let confianza: String?
     enum CodingKeys: String, CodingKey {
         case fecha, score, estado, banda, diasDatos = "dias_datos", bandaProvisoria = "banda_provisoria"
         case estadoAutonomico = "estado_autonomico", hrvMetrica = "hrv_metrica", discordancia, cobertura, motivos
+        case motivoFalta = "motivo_falta", confianza
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -289,6 +293,7 @@ public struct Recuperacion: Decodable, Sendable, Equatable {
         hrvMetrica = c.texto(.hrvMetrica); discordancia = c.booleano(.discordancia)
         cobertura = try? c.decodeIfPresent(JSONValue.self, forKey: .cobertura)
         motivos = try? c.decodeIfPresent(JSONValue.self, forKey: .motivos)
+        motivoFalta = c.texto(.motivoFalta); confianza = c.texto(.confianza)
     }
 }
 

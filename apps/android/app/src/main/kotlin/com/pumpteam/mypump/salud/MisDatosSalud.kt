@@ -119,7 +119,11 @@ private fun resumen(card: SaludVista.CardRecuperacion, s: ModeloSalud): Resumen 
     SaludVista.CardRecuperacion.Oculto -> Resumen(icono = IconosSalud.OjoTachado, texto = "Tenés el score apagado")
     is SaludVista.CardRecuperacion.ConScore -> {
         val score = card.score.fila.score ?: 0
-        Resumen(numero = "$score", fraccion = score / 100.0, color = colorBanda(card.score.banda), texto = "$score/100 · ${card.score.bandaTexto}")
+        val confianza = card.score.confianza?.let { " · ${it.etiqueta.lowercase()}" } ?: ""
+        Resumen(
+            numero = "$score", fraccion = score / 100.0, color = colorBanda(card.score.banda, apagado = card.score.confianza?.apagado == true),
+            texto = "$score/100 · ${card.score.bandaTexto}$confianza",
+        )
     }
 }
 
