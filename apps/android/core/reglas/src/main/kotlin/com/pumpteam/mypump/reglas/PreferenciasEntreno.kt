@@ -24,17 +24,27 @@ object DescansoPropio {
 }
 
 /**
- * El RIR con el que arranca una serie sin cargar (2.0.3, E4): el objetivo del plan para la semana, así el selector no
- * arranca en 0 (el 48 % de los RIR cargados eran 0, la primera opción). Con un rango («1-2») vale el primer número; con
- * decimales, redondeado hacia arriba; topeado a 5 (el selector va de 0 a 5). Sin objetivo, "" (sin preselección: se
- * guarda null, como siempre). Desvío a propósito de la web, donde el RIR nunca se completa solo (SER-02).
+ * El RIR que se guarda sin preguntarlo (2.0.3, gemelo de `RIRDelPlan` en PreferenciasEntreno.swift): las series
+ * efectivas van al fallo y la app ya no muestra el RIR, pero la recuperación cuenta las «series duras» con `rir_real`
+ * ≤ 2 (todo null la apaga). Al confirmar se guarda el objetivo del plan para la semana: el primer número del rango
+ * (redondeado hacia arriba, entre 0 y 5); sin objetivo o sin número, 0. La leyenda debajo de «Series efectivas» es
+ * «Al fallo» o «Dejando 1–2 en reserva» con el rango del plan. Vectores: `entreno_203.json`, sección `rir`.
  */
-object RirInicial {
+object RirDelPlan {
     private val numero = Regex("""\d+([.,]\d+)?""")
+    private val rango = Regex("""\d+([.,]\d+)?(\s*[-–]\s*\d+([.,]\d+)?)?""")
 
-    fun de(objetivo: String?): String {
-        val primero = objetivo?.let { numero.find(it)?.value } ?: return ""
-        val n = primero.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: return ""
+    fun guardar(objetivo: String?): String {
+        val primero = objetivo?.let { numero.find(it)?.value } ?: return "0"
+        val n = primero.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: return "0"
         return ceil(n).toInt().coerceIn(0, 5).toString()
+    }
+
+    fun leyenda(objetivo: String?): String {
+        val r = objetivo?.let { rango.find(it)?.value } ?: return "Al fallo"
+        val numeros = numero.findAll(r).mapNotNull { it.value.replace(',', '.').toDoubleOrNull() }.toList()
+        if (numeros.all { it == 0.0 }) return "Al fallo"
+        val partes = r.split('-', '–').map { it.trim().replace('.', ',') }
+        return "Dejando ${partes.joinToString("–")} en reserva"
     }
 }

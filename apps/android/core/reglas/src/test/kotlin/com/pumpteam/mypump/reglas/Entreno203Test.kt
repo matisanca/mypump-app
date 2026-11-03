@@ -46,10 +46,13 @@ class Entreno203Test {
         }
     }
 
-    @Test fun rirInicial() {
-        val casos = v["rirInicial"]!!.jsonObject["casos"].lista()
-        assertTrue(casos.size >= 10)
-        for (c in casos.map { it.jsonObject }) assertEquals(c["sale"].txt(), RirInicial.de(c["objetivo"].txt()), c.toString())
+    @Test fun rirDelPlan() {
+        val casos = v["rir"]!!.jsonObject["casos"].lista()
+        assertTrue(casos.size >= 12)
+        for (c in casos.map { it.jsonObject }) {
+            assertEquals(c["guarda"].txt(), RirDelPlan.guardar(c["objetivo"].txt()), c.toString())
+            assertEquals(c["leyenda"].txt(), RirDelPlan.leyenda(c["objetivo"].txt()), c.toString())
+        }
     }
 
     @Test fun record() {
@@ -93,18 +96,24 @@ class Entreno203Test {
         assertTrue(d.confirmarSerie("e1", 0).efectos.contains(DiaEnCurso.Efecto.IniciarDescanso(75.0)))
     }
 
-    /** E4: arranca en el objetivo de la semana; sin objetivo queda vacío y se guarda null; lo confirmado no se toca. */
-    @Test fun rirPreseleccionado() {
+    /** El RIR del plan al confirmar: el primer número del rango, 0 sin objetivo; el calentamiento null; lo registrado no se toca. */
+    @Test fun rirDelPlanAlConfirmar() {
         val e1 = Ejercicio(id = "e1", nombre = "Press banca", series = 2, reps = "8", progresion = listOf(Progresion(semana = 1, series = 2, reps = "8", rir = "1-2")))
         val e2 = Ejercicio(id = "e2", nombre = "Curl", series = 1, reps = "12")
-        val d = DiaEnCurso(Dia(id = "d1", bloques = listOf(Bloque(ejercicios = listOf(e1, e2)))), semana = 1, sesionId = "s1")
-        d.escribir("e1", 1, "rir", "3")
-        d.preseleccionarRir()
-        assertEquals(listOf("1", "3"), d.ejercicios.getValue("e1").series.map { it.rir })
-        assertEquals(listOf(""), d.ejercicios.getValue("e2").series.map { it.rir })
-        d.escribir("e2", 0, "reps", "12"); d.escribir("e2", 0, "kg", "10")
-        val carga = d.confirmarSerie("e2", 0).efectos.filterIsInstance<DiaEnCurso.Efecto.Encolar>().first { it.kind == "carga" }
-        assertEquals(ValorJson.Nulo, carga.payload["datos"]?.get("rir"), "RIR sin cargar va null")
-        assertFalse(d.ejercicios.getValue("e2").series[0].rir.isNotEmpty())
+        val e3 = Ejercicio(id = "e3", nombre = "Movilidad", tipo = "calentamiento", series = 1, reps = "10")
+        val d = DiaEnCurso(Dia(id = "d1", bloques = listOf(Bloque(ejercicios = listOf(e1, e2, e3)))), semana = 1, sesionId = "s1")
+        assertEquals("Dejando 1–2 en reserva", d.leyendaRir("e1"))
+        assertEquals("Al fallo", d.leyendaRir("e2"))
+        fun cargaRir(id: String, idx: Int): ValorJson? {
+            d.escribir(id, idx, "reps", "8"); d.escribir(id, idx, "kg", "10")
+            d.fijarRirDelPlan(id, idx)
+            val carga = d.confirmarSerie(id, idx).efectos.filterIsInstance<DiaEnCurso.Efecto.Encolar>().first { it.kind == "carga" }
+            return carga.payload["datos"]?.get("rir")
+        }
+        assertEquals(ValorJson.Numero(1.0), cargaRir("e1", 0))
+        assertEquals(ValorJson.Numero(0.0), cargaRir("e2", 0))
+        assertEquals(ValorJson.Nulo, cargaRir("e3", 0), "el calentamiento no es serie dura")
+        d.ejercicios = d.ejercicios + ("e1" to d.ejercicios.getValue("e1").let { e -> e.copy(series = e.series.mapIndexed { i, s -> if (i == 1) s.copy(nombreRegistrado = "Press banca") else s }) })
+        assertEquals(ValorJson.Nulo, cargaRir("e1", 1), "una serie ya registrada conserva su RIR")
     }
 }

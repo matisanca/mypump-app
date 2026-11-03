@@ -56,7 +56,7 @@ class EntrenoUiTest : PruebaUi() {
         p.esperar("el historial del jalón") { p.estado(jalon)?.contains("récord") == true }
         val valor = p.estado(jalon)!!
         assertTrue(valor, valor.startsWith("Pendiente, 4 series de 10, RIR 0 (al fallo), descanso 2:30, última vez 58 kg × 9 · 4 series, "))
-        assertTrue(valor, valor.endsWith(", récord 58 kg × 9 · RIR 0"))
+        assertTrue(valor, valor.endsWith(", récord 58 kg × 9"))
         val textos = p.textosBajo(jalon)
         for (t in listOf("Jalón al pecho prono", "Dorsal ancho", "4 × 10", "RIR 0 (al fallo)", "2:30", "58 kg × 9")) {
             assertTrue("falta «$t» en $textos", t in textos)
@@ -67,7 +67,7 @@ class EntrenoUiTest : PruebaUi() {
         p.esperar("el historial del rollout") { p.estado(rollout)?.contains("récord") == true }
         val vRollout = p.estado(rollout)!!
         assertTrue(vRollout, vRollout.startsWith("Pendiente, 3 series de 12-15, descanso 1:00, última vez 12 reps · 3 series, "))
-        assertTrue(vRollout, vRollout.endsWith(", récord 12 reps · RIR 1"))
+        assertTrue(vRollout, vRollout.endsWith(", récord 12 reps"))
         // El cardio: sin series ni historial, con su chip; el descanso que faltaba es 1:30 (ENT-04).
         val cinta = etiqueta("ejercicio-cinta-10-min-entrada-en-calor-d1-0")
         assertEquals("Pendiente, cardio, 10 min, descanso 1:30", p.estado(cinta))
@@ -121,18 +121,17 @@ class EntrenoUiTest : PruebaUi() {
         )) {
             assertTrue("falta $parte en $carga", carga.contains(parte))
         }
-        // SER-04: en kg la coma pasa a punto. El RIR arranca en el objetivo de la semana (E4, 2.0.3: acá «0 al fallo»,
-        // por eso la primera sale con 0) y se cambia con el selector.
+        // SER-04: en kg la coma pasa a punto. 2.0.3: el RIR no se muestra ni se elige; se guarda el del plan (acá «0 al
+        // fallo», por eso las dos salen con 0) y la leyenda lo dice.
+        assertEquals(listOf("Al fallo"), p.textosBajo(etiqueta("leyenda-rir")))
+        assertFalse(p.existe(etiqueta("rir-serie-2")))
         p.escribir(etiqueta("campo-reps-2"), "8")
         p.escribir(etiqueta("campo-kg-2"), "52,5")
-        p.tocar(etiqueta("rir-serie-2"))
-        p.tocar(etiqueta("rir-1"))
-        p.esperar("RIR 1") { p.estado(etiqueta("rir-serie-2")) == "1, casi fallo" }
         p.tocar(etiqueta("confirmar-serie-2"))
         p.esperar("2 de 4") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("2 de 4") }
         p.esperar("52,5 con coma") { p.textoDe(etiqueta("campo-kg-2")) == "52,5" }
         val segunda = p.esperar("la segunda serie") { servidor.a("mypump_registrar_carga").firstOrNull { it.contains("\"p_serie\":2") } }
-        assertTrue(segunda, segunda.contains("\"p_peso\":52.5") && segunda.contains("\"p_reps\":8") && segunda.contains("\"p_rir\":1"))
+        assertTrue(segunda, segunda.contains("\"p_peso\":52.5") && segunda.contains("\"p_reps\":8") && segunda.contains("\"p_rir\":0"))
         // De vuelta en la lista, la card lo dice.
         p.tocar(etiqueta("volver"))
         p.esperar("la card con 2 de 4") { p.estado(jalon)?.startsWith("2 de 4 series, ") == true }

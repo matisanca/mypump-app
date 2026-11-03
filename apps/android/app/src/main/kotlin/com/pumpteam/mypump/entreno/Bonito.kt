@@ -69,7 +69,8 @@ object Bonito {
                 principal = principal.substring(0, abre)
             }
         }
-        val detalle = (partes + extra).filter { it.isNotEmpty() }
+        // Sin el «RIR n» del récord (2.0.3: el RIR ya no se muestra; con el del plan diría «RIR 0» en todos).
+        val detalle = (partes + extra).filter { it.isNotEmpty() && !it.startsWith("RIR ") }
         return principal to (if (detalle.isEmpty()) null else detalle.joinToString(" · "))
     }
 
@@ -207,7 +208,8 @@ object CardAccesible {
         pauta.rir?.let { partes += "RIR $it" }
         partes += "descanso ${TiempoEntreno.fmtTiempo(descansoSegundos.toDouble())}"
         ultima?.let { partes += "última vez ${Bonito.carga(it.valor)}, ${it.cuando}" }
-        record?.let { partes += "récord ${Bonito.carga(it)}" }
+        // Sin el «RIR n» (2.0.3: ya no se muestra; con el del plan diría «RIR 0» en todos).
+        record?.let { partes += "récord ${Bonito.carga(it).replace(Regex(""" · RIR \d+"""), "")}" }
         if (ultima == null && record == null && !porTiempo && !buscandoHistorial) partes += "primera vez con este ejercicio"
         return partes.joinToString(", ")
     }

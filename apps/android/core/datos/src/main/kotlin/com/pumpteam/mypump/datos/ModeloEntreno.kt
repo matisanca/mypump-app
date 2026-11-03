@@ -26,6 +26,7 @@ import com.pumpteam.mypump.reglas.FilaSerie
 import com.pumpteam.mypump.reglas.IndiceComentarios
 import com.pumpteam.mypump.reglas.Js
 import com.pumpteam.mypump.reglas.NormalizacionRutina
+import com.pumpteam.mypump.reglas.Preparacion
 import com.pumpteam.mypump.reglas.NotaProgresion
 import com.pumpteam.mypump.reglas.Pauta
 import com.pumpteam.mypump.reglas.Pregunta
@@ -120,6 +121,26 @@ class ModeloEntreno(
     val avisoRecord: StateFlow<AvisoRecord?> = _avisoRecord.asStateFlow()
     private var avisosDados = 0L
 
+    /**
+     * E1 (2.0.3): las filas de preparación que el alumno tocó como hechas hoy, por [Preparacion.claveTildes] (fecha + día
+     * + lugar). Solo para que se vean atenuadas: no es carga. Al abrir se descartan las de otros días.
+     */
+    private val _preparacionHecha = MutableStateFlow<Map<String, List<Int>>>(
+        (disco?.leer(Archivo.PREPARACION) as? JsonObject)?.mapNotNull { (k, v) ->
+            if (!k.startsWith(FechaLocal.hoy(reloj(), zona) + "|")) return@mapNotNull null
+            val l = (v as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: return@mapNotNull null
+            k to l
+        }?.toMap() ?: emptyMap(),
+    )
+    val preparacionHechas: StateFlow<Map<String, List<Int>>> = _preparacionHecha.asStateFlow()
+
+    /** E1: los ejercicios (por su clave) con la preparación oculta. */
+    private val _preparacionOculta = MutableStateFlow<Set<String>>(
+        (disco?.leer(Archivo.PREPARACION_OCULTA) as? kotlinx.serialization.json.JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.content }?.toSet() ?: emptySet(),
+    )
+    val preparacionOcultas: StateFlow<Set<String>> = _preparacionOculta.asStateFlow()
+
     /** E2 (2.0.3): los descansos elegidos a mano, por la clave del ejercicio. En el teléfono, para toda la cuenta. */
     private fun leerDescansosPropios(): Map<String, Int> =
         (disco?.leer(Archivo.DESCANSOS) as? JsonObject)?.mapNotNull { (k, v) ->
@@ -210,7 +231,6 @@ class ModeloEntreno(
         val d = DiaEnCurso(elegido, semana, demo, zona = zona)
         d.sustituciones = SustitucionesEntreno.compat(leerSustituciones(rutinaInicial.id))
         d.descansosPropios = leerDescansosPropios()
-        d.preseleccionarRir()
         sustitucionesGuardadas = leerEncoladas(rutinaInicial.id) ?: d.sustituciones
         desfaseReloj = (disco?.leer(Archivo.RELOJ) as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
         _dia = MutableStateFlow(d)
@@ -302,7 +322,6 @@ class ModeloEntreno(
         _dia.value = DiaEnCurso(nuevo, semana, demo, zona = zona).also {
             it.sustituciones = sustituciones
             it.descansosPropios = propios
-            it.preseleccionarRir()
         }
         diaCompletadoMostrado = false
         guardarDiaVisualizado()
@@ -440,6 +459,7 @@ class ModeloEntreno(
         var completo: DiaCompletado? = null
         // Lo que se muestra (el sustituto, si hay) decide si la serie lleva kg, como en la fila (revisión del 14-oct).
         val ef = _dia.value.ejercicio(lugar)?.let { efectivo(it).ejercicio }
+        mutarDia { it.fijarRirDelPlan(lugar, idx) }
         while (true) {
             val hoy = FechaLocal.hoy(reloj(), zona)
             val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas, ef, hoy) }
@@ -453,6 +473,57 @@ class ModeloEntreno(
                 DiaEnCurso.Paso.Motivo.REGISTRAR_IGUAL -> respuestas.copy(registrarIgual = si)
             }
         }
+    }
+
+    /**
+     * E1: la preparación del lugar: la del plan si la trae (también con un sustituto, que la hereda), si no la que arma la
+     * app con el tipo y el músculo del ejercicio que se hace (el del sustituto si el catálogo lo tiene). El kg sigue en
+     * vivo al de la primera serie efectiva (lo escrito o, si no, lo sugerido).
+     */
+    fun preparacion(lugar: String): List<Preparacion.Serie> {
+        val d = _dia.value
+        val lista = d.lista
+        val i = lista.indexOfFirst { it.id == lugar }.takeIf { it >= 0 } ?: return emptyList()
+        val cat = _catalogo.value
+        val entradas = lista.map { ex ->
+            val ef = efectivo(ex)
+            val musculo = ef.slugSustituto?.let { cat.entrada(it)?.primaryMuscle } ?: cat.resolver(ex)?.primaryMuscle
+            Preparacion.Entrada(ef.ejercicio.tipo, musculo, ef.ejercicio.nombre, ReglasEjercicio.esSinPeso(ef.ejercicio.nombre, ef.ejercicio.tipo, ef.ejercicio.equipo))
+        }
+        val ef = efectivo(lista[i]).ejercicio
+        val primera = d.ejercicios[lugar]?.series?.firstOrNull()
+        val sugerido = d.fila(lugar, 0, ef)?.placeholderKg ?: ""
+        val kg = Preparacion.kgEfectivo(primera?.kg ?: "", sugerido)
+        return Preparacion.series(entradas, i, ef.nombre, ef.equipo, ReglasEjercicio.sinKg(ef), kg, ef.aproximaciones)
+    }
+
+    private fun clavePreparacion(lugar: String): String =
+        Preparacion.claveTildes(FechaLocal.hoy(reloj(), zona), _dia.value.dia.id ?: "", lugar)
+
+    /** Las filas de preparación ya hechas hoy en el lugar. */
+    fun preparacionHecha(lugar: String): Set<Int> = _preparacionHecha.value[clavePreparacion(lugar)]?.toSet() ?: emptySet()
+
+    /** Tocar una fila: queda atenuada como hecha y arranca el descanso de 30 s; tocarla de nuevo la desmarca. Nada es carga. */
+    fun tocarPreparacion(lugar: String, i: Int) {
+        val clave = clavePreparacion(lugar)
+        val hechas = preparacionHecha(lugar).toMutableSet()
+        if (!hechas.remove(i)) {
+            hechas += i
+            mutarDescanso { it.iniciar(Preparacion.DESCANSO_SEGUNDOS.toDouble(), ahoraMs) }
+            guardarDescanso()
+        }
+        _preparacionHecha.value = if (hechas.isEmpty()) _preparacionHecha.value - clave else _preparacionHecha.value + (clave to hechas.sorted())
+        disco?.guardar(Archivo.PREPARACION, ValorJson.Objeto(_preparacionHecha.value.mapValues { (_, l) -> ValorJson.Lista(l.map { ValorJson.Numero(it.toDouble()) }) }))
+    }
+
+    /** La preparación del lugar está oculta (por la clave del ejercicio que se hace). */
+    fun preparacionOculta(lugar: String): Boolean = ClaveEjercicio.de(_dia.value.nombreEfectivo(lugar)) in _preparacionOculta.value
+
+    /** «Ocultar» / «Mostrar»: se recuerda para ese ejercicio. */
+    fun ocultarPreparacion(lugar: String, ocultar: Boolean) {
+        val clave = ClaveEjercicio.de(_dia.value.nombreEfectivo(lugar)).takeIf { it.isNotEmpty() } ?: return
+        _preparacionOculta.value = if (ocultar) _preparacionOculta.value + clave else _preparacionOculta.value - clave
+        disco?.guardar(Archivo.PREPARACION_OCULTA, ValorJson.Lista(_preparacionOculta.value.sorted().map { ValorJson.Texto(it) }))
     }
 
     /** E3: la vista ya mostró (o el cliente tocó) el aviso de récord. */
@@ -876,7 +947,6 @@ class ModeloEntreno(
         _dia.value = DiaEnCurso(elegido, semana, demo, zona = zona).also {
             it.sustituciones = sustituciones
             it.descansosPropios = propios
-            it.preseleccionarRir()
         }
         sustitucionesGuardadas = leerEncoladas(nueva.id) ?: sustituciones
         syncSustituciones = null
@@ -1334,6 +1404,10 @@ class ModeloEntreno(
 
         /** E2 (2.0.3): los descansos elegidos a mano, `{clave: segundos}`. */
         const val DESCANSOS = "entreno-descansos.json"
+
+        /** E1 (2.0.3): las filas de preparación tocadas hoy y las preparaciones ocultas. */
+        const val PREPARACION = "entreno-preparacion.json"
+        const val PREPARACION_OCULTA = "entreno-preparacion-oculta.json"
         const val LEGADO = "legado-entreno.json"
         fun dia(rutinaId: String): String = "entreno-dia_$rutinaId.json"
         fun sustituciones(rutinaId: String): String = "ejercicios-swaps_$rutinaId.json"

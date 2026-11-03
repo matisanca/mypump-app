@@ -358,17 +358,21 @@ class DiaEnCurso(
     }
 
     /**
-     * E4 (2.0.3): las series sin confirmar y sin RIR arrancan con el RIR objetivo de la semana ([RirInicial]), no vacías
-     * con el 0 como primera opción. Sin objetivo quedan vacías (se guarda null). Las confirmadas no se tocan.
+     * 2.0.3: el RIR ya no se elige. Antes de confirmar una serie que nunca se registró, se le pone el del plan
+     * ([RirDelPlan]): la recuperación lo necesita para contar las series duras. Las ya registradas (con su nombre, del
+     * servidor o de la cola) conservan lo que tenían, y el calentamiento y el cardio no llevan RIR (no son series duras).
+     * Va aparte de [confirmarSerie], que sigue igual a la web (sus vectores esperan el RIR que se eligió).
      */
-    fun preseleccionarRir() {
-        for (ex in lista) {
-            val e = ejercicios[ex.id] ?: continue
-            val inicial = RirInicial.de(Progresiones.pauta(ex, semana).rir)
-            if (inicial.isEmpty()) continue
-            ejercicios = ejercicios + (ex.id to e.copy(series = e.series.map { if (!it.confirmada && it.rir.isEmpty()) it.copy(rir = inicial) else it }))
-        }
+    fun fijarRirDelPlan(id: String, idx: Int) {
+        val ex = ejercicio(id) ?: return
+        val e = ejercicios[id] ?: return
+        val s = e.series.getOrNull(idx) ?: return
+        if (s.confirmada || s.rir.isNotEmpty() || s.nombreRegistrado != null || ex.tipo == "calentamiento" || ex.tipo == "cardio") return
+        cambiarSerie(id, idx) { it.copy(rir = RirDelPlan.guardar(Progresiones.pauta(ex, semana).rir)) }
     }
+
+    /** La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva». */
+    fun leyendaRir(id: String): String = RirDelPlan.leyenda(ejercicio(id)?.let { Progresiones.pauta(it, semana).rir })
 
     /** "Marcar ejercicio completo": solo con todas las series confirmadas. */
     fun marcarCompleto(id: String): List<Efecto> {

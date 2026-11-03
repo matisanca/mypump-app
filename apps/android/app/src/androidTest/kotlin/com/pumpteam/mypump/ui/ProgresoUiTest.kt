@@ -89,13 +89,13 @@ class ProgresoUiTest : PruebaUi() {
         )
         // La tabla: del más nuevo al más viejo, 8 filas, con el tope marcado.
         p.nodo(texto("Últimos registros"))
-        assertTrue(p.textosBajo(etiqueta("progreso-tabla")).containsAll(listOf("FECHA", "PESO", "REPS", "RIR")))
-        assertEquals(listOf("1 oct", "58 kg", "9", "0"), p.textosBajo(etiqueta("progreso-registro-0")))
+        assertTrue(p.textosBajo(etiqueta("progreso-tabla")).containsAll(listOf("FECHA", "PESO", "REPS")) && "RIR" !in p.textosBajo(etiqueta("progreso-tabla")))
+        assertEquals(listOf("1 oct", "58 kg", "9"), p.textosBajo(etiqueta("progreso-registro-0")))
         assertEquals("Tope", p.estado(etiqueta("progreso-registro-0")))
-        assertEquals(listOf("1 oct", "58 kg", "10", "0"), p.textosBajo(etiqueta("progreso-registro-3")))
-        assertEquals(listOf("24 sept", "56 kg", "8", "0"), p.textosBajo(etiqueta("progreso-registro-4")))
+        assertEquals(listOf("1 oct", "58 kg", "10"), p.textosBajo(etiqueta("progreso-registro-3")))
+        assertEquals(listOf("24 sept", "56 kg", "8"), p.textosBajo(etiqueta("progreso-registro-4")))
         assertNull(p.estado(etiqueta("progreso-registro-4")))
-        assertEquals(listOf("17 sept", "54 kg", "10", "0"), p.textosBajo(etiqueta("progreso-registro-7")))
+        assertEquals(listOf("17 sept", "54 kg", "10"), p.textosBajo(etiqueta("progreso-registro-7")))
         assertFalse(p.existe(etiqueta("progreso-registro-8")))
         // Con el dedo sobre la última sesión, su valor; al soltar, se va.
         val soltar = p.apoyar(textoQueContiene("Máximo por sesión: "), 0.84f)
@@ -129,7 +129,7 @@ class ProgresoUiTest : PruebaUi() {
         val encabezado = p.textosBajo(etiqueta("progreso-encabezado"))
         assertTrue(encabezado.toString(), encabezado.containsAll(listOf("CORE ANTERIOR · TOP", "Peso corporal", "Con el peso del cuerpo, el progreso está en las repeticiones.")))
         assertFalse(p.existe(etiqueta("progreso-grafico")))
-        assertEquals(listOf("4 oct", "—", "12", "1"), p.textosBajo(etiqueta("progreso-registro-0")))
+        assertEquals(listOf("4 oct", "—", "12"), p.textosBajo(etiqueta("progreso-registro-0")))
         assertNull(p.estado(etiqueta("progreso-registro-0")))
     }
 
