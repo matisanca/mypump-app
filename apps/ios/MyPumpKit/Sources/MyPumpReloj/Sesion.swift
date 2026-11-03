@@ -131,9 +131,10 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// Se está esperando el día pedido (dentro de `esperaDia`).
     public func esperandoDia(ahora: Double) -> Bool { diaPedido != nil && ahora - (pedidoEn ?? ahora) < Self.esperaDia }
 
-    /// El pedido no salió o no tuvo respuesta: se deja de esperar y se avisa por qué. No hace nada si ya llegó.
-    public mutating func pedidoFallido(_ motivo: String) {
-        guard diaPedido != nil else { return }
+    /// El pedido no salió o no tuvo respuesta: se deja de esperar y se avisa por qué. No hace nada si ya llegó. Con
+    /// `dia`, solo si ese sigue siendo el pedido (el error tardío de un pedido viejo no corta uno más nuevo).
+    public mutating func pedidoFallido(_ motivo: String, dia: String? = nil) {
+        guard let p = diaPedido, dia == nil || dia == p else { return }
         diaPedido = nil
         pedidoEn = nil
         avisoDia = motivo

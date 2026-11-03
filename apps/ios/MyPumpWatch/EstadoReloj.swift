@@ -59,6 +59,9 @@ final class EstadoReloj {
             sesion.recibir(.demo(fecha: FechaJS.ymd(Date(), zona: .current), generada: Self.ahoraMs))
         } else if let d = try? Data(contentsOf: Self.archivoSesion), let s = try? JSONDecoder().decode(SesionReloj.self, from: d) {
             sesion = s
+            // Un pedido de día guardado de antes de cerrarse la app: su espera murió con ella. Vencido, se avisa; si no,
+            // se vuelve a esperar (sin esto la lista quedaba trabada esperando para siempre).
+            if !sesion.vencerPedido(ahora: Self.ahoraMs), sesion.diaPedido != nil { esperarDia() }
         }
         conexion.alRecibir = { [weak self] m, v in self?.recibir(m, version: v) }
         conexion.alCambiarAlcance = { [weak self] alcanzable in
@@ -154,15 +157,19 @@ final class EstadoReloj {
             if llego { abrirDia += 1 }
         case .pedir:
             conexion.enviar(.pedirDia(diaId: id)) { [weak self] ok in
-                if !ok { self?.cambiar(enviar: false) { $0.pedidoFallido(SesionReloj.textoSinIPhone) } }
+                if !ok { self?.cambiar(enviar: false) { $0.pedidoFallido(SesionReloj.textoSinIPhone, dia: id) } }
             }
-            // Un iPhone que no conoce `pedirDia` no contesta: pasado `esperaDia` se deja de esperar y se avisa.
-            esperaDia?.cancel()
-            esperaDia = Task { [weak self] in
-                try? await Task.sleep(for: .milliseconds(Int(SesionReloj.esperaDia) + 200))
-                guard !Task.isCancelled, let self else { return }
-                if self.sesion.diaPedido != nil { self.cambiar(enviar: false) { _ = $0.vencerPedido(ahora: Self.ahoraMs) } }
-            }
+            esperarDia()
+        }
+    }
+
+    /// Un iPhone que no conoce `pedirDia` no contesta: pasado `esperaDia` se deja de esperar y se avisa.
+    private func esperarDia() {
+        esperaDia?.cancel()
+        esperaDia = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(Int(SesionReloj.esperaDia) + 200))
+            guard !Task.isCancelled, let self else { return }
+            if self.sesion.diaPedido != nil { self.cambiar(enviar: false) { _ = $0.vencerPedido(ahora: Self.ahoraMs) } }
         }
     }
 

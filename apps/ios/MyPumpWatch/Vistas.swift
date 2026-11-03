@@ -129,6 +129,7 @@ struct ListaDias: View {
                             FilaDia(d: d, marca: d.id == sugerido ? (abierto ? "Hoy" : "Próximo") : nil, pidiendo: s.diaPedido == d.id)
                         }
                         .disabled(!abierto && (!s.puedeCambiarDia || s.diaPedido != nil))
+                        .accessibilityAddTraits(abierto ? .isSelected : [])
                         .listRowBackground(d.id == sugerido ? RoundedRectangle(cornerRadius: 12).fill(Marca.verde.opacity(0.22)) : nil)
                         .id(d.id)
                     }
@@ -179,6 +180,7 @@ struct FilaDia: View {
             Spacer(minLength: 0)
             if pidiendo {
                 ProgressView().frame(width: 20)
+                    .accessibilityLabel("Pidiendo el día al iPhone")
             } else if d.hecho {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(Marca.verde)
                     .accessibilityLabel("Hecho esta semana")

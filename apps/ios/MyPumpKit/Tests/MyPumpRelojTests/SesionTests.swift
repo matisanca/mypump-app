@@ -475,5 +475,25 @@ func sesionDemo() -> SesionReloj {
         let leida = try JSONDecoder().decode(SesionReloj.self, from: JSONEncoder().encode(s))
         #expect(leida == s)
         #expect(leida.diaPedido == "d2")
+        // Al reabrir la app pasada la espera (el temporizador murió con ella), el pedido vence y la lista se destraba.
+        var reabierta = leida
+        let vencio = reabierta.vencerPedido(ahora: T0 + SesionReloj.esperaDia)
+        #expect(vencio)
+        #expect(reabierta.diaPedido == nil)
+        #expect(reabierta.avisoDia == SesionReloj.textoSinRespuesta)
+    }
+
+    @Test func elErrorTardioDeUnPedidoViejoNoCortaElNuevo() {
+        var s = sesionDemo()
+        _ = s.elegirDia("d2", conIPhone: true, ahora: T0)
+        _ = s.vencerPedido(ahora: T0 + SesionReloj.esperaDia)
+        _ = s.elegirDia("d3", conIPhone: true, ahora: T0 + SesionReloj.esperaDia + 1)
+        // Llega el error de WatchConnectivity del pedido de d2: el de d3 sigue esperando.
+        s.pedidoFallido(SesionReloj.textoSinIPhone, dia: "d2")
+        #expect(s.diaPedido == "d3")
+        #expect(s.avisoDia == nil)
+        s.pedidoFallido(SesionReloj.textoSinIPhone, dia: "d3")
+        #expect(s.diaPedido == nil)
+        #expect(s.avisoDia == SesionReloj.textoSinIPhone)
     }
 }
