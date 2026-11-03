@@ -7,6 +7,11 @@ _mypump_push_on_comentario()
 _mypump_push_rearmar(p_cliente_id text)
 _mypump_upsert_salud(p_cliente_id text, p_registros jsonb, p_fuente_default text)
 bot_merge_client(p_row_id text, p_client_id text, p_client jsonb)
+entregas_agenda(p_cliente_id text)
+entregas_flag(p_clave text, p_campo text)
+entregas_form_get(p_clave text)
+entregas_form_responder(p_clave text, p_respuestas jsonb)
+entregas_form_visible(f entregas_formulario)
 generate_mypump_token()
 get_benchmarks_90d()
 gin_extract_query_trgm(text, internal, smallint, internal, internal, internal, internal)
@@ -51,6 +56,7 @@ mypump_clientes_sin_ia(p_clientes text[])
 mypump_coach_comentar(p_cliente_id text, p_ambito text, p_referencia_id text, p_referencia_nombre text, p_contenido text)
 mypump_coach_comentar_v2(p_cliente_id text, p_contenido text, p_ambito text DEFAULT 'general'::text, p_referencia_id text DEFAULT NULL::text, p_referencia_nombre text DEFAULT NULL::text, p_origen text DEFAULT 'humano'::text, p_meta jsonb DEFAULT NULL::jsonb)
 mypump_conteos_cliente(p_token text)
+mypump_crear_cliente_preentrega(p_cliente_id text, p_nombre text, p_fecha_entrega timestamp with time zone, p_perfil text DEFAULT NULL::text)
 mypump_crear_comida_libre(p_token text, p_fecha date, p_hora time without time zone, p_descripcion text, p_kcal numeric, p_prot numeric, p_carb numeric, p_fat numeric, p_detalle jsonb DEFAULT NULL::jsonb)
 mypump_create_custom_food(p_token text, p_name text, p_kcal numeric, p_prot numeric, p_carb numeric, p_fat numeric, p_unit text, p_unit_grams numeric, p_category text)
 mypump_delete_exercise_swap(p_token text, p_rutina_id uuid, p_ex_id text, p_ts bigint)
@@ -85,6 +91,7 @@ mypump_get_elecciones_dia(p_token text, p_dieta_id uuid, p_fecha date)
 mypump_get_entrenos_health(p_token text, p_dias integer DEFAULT 30)
 mypump_get_exercise_swaps(p_token text, p_rutina_id uuid)
 mypump_get_food_swaps(p_token text, p_dieta_id uuid)
+mypump_get_formulario_previo(p_token text)
 mypump_get_fotos_progreso(p_token text, p_desde date DEFAULT NULL::date)
 mypump_get_gasto_real(p_token text, p_dias integer DEFAULT 14)
 mypump_get_habitos_dia(p_token text, p_fecha date)
@@ -93,6 +100,7 @@ mypump_get_historico_ejercicios(p_token text, p_ejercicio_ids text[], p_limit_po
 mypump_get_historico_por_clave(p_token text, p_claves text[], p_limit_por_ej integer DEFAULT 24)
 mypump_get_metricas_coach(p_semanas integer DEFAULT 6)
 mypump_get_mostrar_recuperacion(p_token text)
+mypump_get_preentrega(p_token text)
 mypump_get_progresion_cargas(p_cliente_id text, p_semanas integer DEFAULT 12)
 mypump_get_recuperacion(p_token text, p_dias integer DEFAULT 14)
 mypump_get_recuperacion_cliente_coach(p_cliente_id text, p_dias integer DEFAULT 21)
@@ -123,6 +131,7 @@ mypump_notify_coach_semana()
 mypump_oauth_completar_service(p_state text, p_acc_enc text, p_ref_enc text, p_kid text, p_expira timestamp with time zone, p_prov_user text, p_scopes text[])
 mypump_oauth_iniciar_service(p_token text, p_proveedor text, p_state text, p_verifier text)
 mypump_plan_resumen(p_cliente_id text)
+mypump_preentrega_progreso(p_token text, p_video text, p_segundos integer, p_visto boolean)
 mypump_publicar_cliente(p_cliente_id text, p_nombre text, p_perfil text, p_rutina jsonb, p_dieta jsonb)
 mypump_push_cobertura()
 mypump_push_pendientes(p_limite integer DEFAULT 50)
@@ -219,6 +228,27 @@ conversaciones_log:
 datos_medicos:
   id bigint, client_id text, paciente_id text, nombre_completo text, dni text, fecha_nacimiento date, sexo text, obra_social text, nro_afiliado text, plan_cobertura text, credencial_url text, credencial_texto text, observaciones text, cargado_por text, created_at timestamp with time zone, updated_at timestamp with time zone
 
+entregas_config:
+  clave text, valor jsonb, actualizado_en timestamp with time zone
+
+entregas_entrevista:
+  cliente_id text, coach_id uuid, faltantes jsonb, contradicciones jsonb, mensajes jsonb, respuestas jsonb, tamizaje jsonb, bloquea_plan boolean, estado text, creado_en timestamp with time zone, actualizado_en timestamp with time zone
+
+entregas_formulario:
+  clave text, cliente_id text, coach_id uuid, fecha_entrega timestamp with time zone, titulo text, intro text, preguntas jsonb, respuestas jsonb, estado text, abierto_en timestamp with time zone, respondido_en timestamp with time zone, vence_en timestamp with time zone, creado_en timestamp with time zone, actualizado_en timestamp with time zone
+
+entregas_metricas:
+  cliente_id text, fecha date, datos jsonb, actualizado_en timestamp with time zone
+
+entregas_pack:
+  cliente_id text, video_id text, orden integer, titulo text, yt_id text, url text, minutos numeric, linea text, estado text, visto boolean, segundos integer, abierto_en timestamp with time zone, visto_en timestamp with time zone, creado_en timestamp with time zone
+
+entregas_plan_previo:
+  id bigint, cliente_id text, coach_id uuid, fecha_entrega timestamp with time zone, rutina jsonb, dieta jsonb, decisiones_abiertas jsonb, revision jsonb, commit_generador text, estado text, creado_en timestamp with time zone
+
+entregas_post_llamada:
+  recording_id bigint, cliente_id text, coach_id uuid, fecha timestamp with time zone, paquete jsonb, promesas jsonb, verificacion jsonb, minutos_hasta_paquete numeric, estado text, creado_en timestamp with time zone
+
 extension_debug_logs:
   id uuid, created_at timestamp with time zone, tag text, level text, message text, data jsonb, source text
 
@@ -285,6 +315,9 @@ mypump_dietas:
 mypump_dietas_elecciones:
   id uuid, cliente_id text, dieta_id uuid, fecha date, comida_id text, opcion_elegida text, completada boolean, registrado_en timestamp with time zone
 
+mypump_dietas_macros_target_bak_20261027:
+  bak_id bigint, dieta_id uuid, cliente_id text, version integer, updated_at_viejo timestamp with time zone, ruta ARRAY, macros_target_viejo jsonb, macros_target_nuevo jsonb, estructura_vieja jsonb, motivo text, corrida text, creado timestamp with time zone
+
 mypump_ejercicios_catalogo:
   id uuid, slug_en text, name_en text, name_normalized text, primary_muscle text, equipment text, mechanic text, force text, image_eccentric text, image_concentric text, aliases_es ARRAY, created_at timestamp with time zone, patron_movimiento text
 
@@ -314,6 +347,9 @@ mypump_oauth_estados:
 
 mypump_pasos_salud:
   cliente_id text, promedio_7d integer, dias_7d integer, ultima_fecha date, ultimo_dia integer, fuente text, ultima_sync timestamp with time zone
+
+mypump_preentrega:
+  cliente_id text, coach_id uuid, fecha_entrega timestamp with time zone, estado text, perfil text, creado_en timestamp with time zone, creado_por text, actualizado_en timestamp with time zone
 
 mypump_push_cola:
   id bigint, cliente_id text, titulo text, cuerpo text, destino text, dedupe_key text, estado text, intentos integer, error text, creado_en timestamp with time zone, enviado_en timestamp with time zone
@@ -428,6 +464,12 @@ CHECK CONSTRAINTS
 ======================================================================
 briefs_preentrega.briefs_preentrega_origen_check: CHECK ((origen = ANY (ARRAY['nocturno'::text, 'ondemand'::text, 'auto-lote'::text, 'reintento'::text, 'auto-form'::text])))
 datos_medicos.datos_medicos_tiene_dueno: CHECK (((client_id IS NOT NULL) OR (paciente_id IS NOT NULL)))
+entregas_entrevista.entregas_entrevista_estado_check: CHECK ((estado = ANY (ARRAY['borrador'::text, 'enviada'::text, 'respondida'::text, 'cerrada'::text])))
+entregas_formulario.entregas_formulario_clave_check: CHECK ((length(clave) >= 32))
+entregas_formulario.entregas_formulario_estado_check: CHECK ((estado = ANY (ARRAY['borrador'::text, 'aprobado'::text, 'respondido'::text, 'cerrado'::text])))
+entregas_pack.entregas_pack_estado_check: CHECK ((estado = ANY (ARRAY['propuesto'::text, 'aprobado'::text, 'descartado'::text])))
+entregas_plan_previo.entregas_plan_previo_estado_check: CHECK ((estado = ANY (ARRAY['borrador'::text, 'revisado'::text, 'cargado'::text, 'descartado'::text])))
+entregas_post_llamada.entregas_post_llamada_estado_check: CHECK ((estado = ANY (ARRAY['borrador'::text, 'en_mesa'::text, 'aprobado'::text, 'descartado'::text])))
 mypump_ajustes_dieta.mypump_ajustes_dieta_ajustes_check: CHECK (((jsonb_typeof(ajustes) = 'object'::text) AND (pg_column_size(ajustes) <= 16000)))
 mypump_ajustes_dieta.mypump_ajustes_dieta_kcal_dia_check: CHECK (((kcal_dia IS NULL) OR ((kcal_dia >= (0)::numeric) AND (kcal_dia <= (30000)::numeric))))
 mypump_ajustes_dieta.mypump_ajustes_dieta_kcal_plan_check: CHECK (((kcal_plan IS NULL) OR ((kcal_plan >= (0)::numeric) AND (kcal_plan <= (30000)::numeric))))
@@ -466,6 +508,7 @@ mypump_habitos_diarios.mypump_habitos_diarios_entrenamiento_check: CHECK (((entr
 mypump_habitos_diarios.mypump_habitos_diarios_vasos_agua_check: CHECK (((vasos_agua >= 0) AND (vasos_agua <= 12)))
 mypump_migracion_nativa.mypump_migracion_nativa_corrida_check: CHECK (((corrida >= 0) AND (corrida <= 10000)))
 mypump_migracion_nativa.mypump_migracion_nativa_plataforma_check: CHECK ((plataforma = ANY (ARRAY['ios'::text, 'android'::text])))
+mypump_preentrega.mypump_preentrega_estado_check: CHECK ((estado = ANY (ARRAY['activa'::text, 'publicada'::text, 'cancelada'::text])))
 mypump_push_cola.mypump_push_cola_estado_check: CHECK ((estado = ANY (ARRAY['pendiente'::text, 'enviado'::text, 'error'::text, 'descartado'::text, 'sin_device'::text])))
 mypump_quimica.mypump_quimica_confianza_check: CHECK ((confianza = ANY (ARRAY['alta'::text, 'media'::text, 'baja'::text])))
 mypump_registros_carga.mypump_registros_carga_rir_real_check: CHECK (((rir_real >= 0) AND (rir_real <= 5)))
@@ -510,6 +553,7 @@ mypump_clientes_sin_ia: postgres=X/postgres | service_role=X/postgres
 mypump_coach_comentar: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_coach_comentar_v2: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_conteos_cliente: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_crear_cliente_preentrega: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_crear_comida_libre: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_create_custom_food: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_delete_exercise_swap: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -544,6 +588,7 @@ mypump_get_elecciones_dia: =X/postgres | postgres=X/postgres | anon=X/postgres |
 mypump_get_entrenos_health: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_exercise_swaps: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_food_swaps: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_formulario_previo: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_fotos_progreso: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_gasto_real: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_habitos_dia: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -552,6 +597,7 @@ mypump_get_historico_ejercicios: =X/postgres | postgres=X/postgres | anon=X/post
 mypump_get_historico_por_clave: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_metricas_coach: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_mostrar_recuperacion: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_get_preentrega: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_progresion_cargas: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_recuperacion: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_get_recuperacion_cliente_coach: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
@@ -582,6 +628,7 @@ mypump_notify_coach_semana: =X/postgres | postgres=X/postgres | anon=X/postgres 
 mypump_oauth_completar_service: postgres=X/postgres | service_role=X/postgres
 mypump_oauth_iniciar_service: postgres=X/postgres | service_role=X/postgres
 mypump_plan_resumen: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
+mypump_preentrega_progreso: postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_publicar_cliente: =X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_push_cobertura: postgres=X/postgres | authenticated=X/postgres | service_role=X/postgres
 mypump_push_pendientes: postgres=X/postgres | service_role=X/postgres
@@ -844,3 +891,7 @@ mypump_wearable_conexiones  (RLS ON, 2 politica/s)
       CHECK true
 
 mypump_chat_programados  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
+
+mypump_dietas_macros_target_bak_20261027  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
+
+mypump_preentrega  (RLS ON, SIN POLITICAS -> solo entra por SECURITY DEFINER o service_role)
