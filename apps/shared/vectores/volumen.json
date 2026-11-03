@@ -1,0 +1,789 @@
+{
+ "fuente": "A mano (3-nov, 2.1, S2): el volumen por músculo (series efectivas por semana). La leen VolumenMusculoTests (iOS) y VolumenMusculoTest (Android) y tienen que dar esto. Cada registro es una serie registrada (historial) o confirmada hoy (`hoyEnVivo`, sin la clave: no se pasó). `sale.filas` va en orden; `sale.deHoy` son los músculos de `filasDeHoy`, en orden.",
+ "casos": [
+  {
+   "nombre": "básico: esta semana, la pasada y lo viejo no cuenta",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 2
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 3
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-1",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-1",
+     "serie": 2
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-10-28",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-10-28",
+     "lugar": "d1-0",
+     "serie": 2
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-10-28",
+     "lugar": "d1-0",
+     "serie": 3
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-10-28",
+     "lugar": "d1-0",
+     "serie": 4
+    },
+    {
+     "musculo": "biceps",
+     "tipo": "aislamiento",
+     "fecha": "2026-10-30",
+     "lugar": "d2-3",
+     "serie": 1
+    },
+    {
+     "musculo": "biceps",
+     "tipo": "aislamiento",
+     "fecha": "2026-10-30",
+     "lugar": "d2-3",
+     "serie": 2
+    },
+    {
+     "musculo": "quadriceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d3-0",
+     "serie": 1
+    },
+    {
+     "musculo": "quadriceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d3-0",
+     "serie": 2
+    },
+    {
+     "musculo": "quadriceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d3-0",
+     "serie": 3
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-10-20",
+     "lugar": "d1-0",
+     "serie": 1
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 8,
+    "totalAnterior": 6,
+    "totalHoy": 3,
+    "filas": [
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 5,
+      "anterior": 4,
+      "hoy": 3
+     },
+     {
+      "musculo": "quadriceps",
+      "nombre": "Cuádriceps",
+      "semana": 3,
+      "anterior": 0,
+      "hoy": 0
+     },
+     {
+      "musculo": "biceps",
+      "nombre": "Bíceps",
+      "semana": 0,
+      "anterior": 2,
+      "hoy": 0
+     }
+    ],
+    "deHoy": [
+     "chest"
+    ]
+   }
+  },
+  {
+   "nombre": "cardio y calentamiento no cuentan; el core sí",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": null,
+     "tipo": "cardio",
+     "fecha": "2026-11-04",
+     "lugar": "d1-9",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "calentamiento",
+     "fecha": "2026-11-04",
+     "lugar": "d1-x",
+     "serie": 1
+    },
+    {
+     "musculo": "abdominals",
+     "tipo": "core",
+     "fecha": "2026-11-04",
+     "lugar": "d1-8",
+     "serie": 1
+    },
+    {
+     "musculo": "abdominals",
+     "tipo": "core",
+     "fecha": "2026-11-04",
+     "lugar": "d1-8",
+     "serie": 2
+    },
+    {
+     "musculo": "lats",
+     "tipo": null,
+     "fecha": "2026-11-04",
+     "lugar": "d1-7",
+     "serie": 1
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 3,
+    "totalAnterior": 0,
+    "totalHoy": 3,
+    "filas": [
+     {
+      "musculo": "abdominals",
+      "nombre": "Abdominales",
+      "semana": 2,
+      "anterior": 0,
+      "hoy": 2
+     },
+     {
+      "musculo": "lats",
+      "nombre": "Dorsales",
+      "semana": 1,
+      "anterior": 0,
+      "hoy": 1
+     }
+    ],
+    "deHoy": [
+     "abdominals",
+     "lats"
+    ]
+   }
+  },
+  {
+   "nombre": "una serie repetida cuenta una vez; sin número cuentan todas",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-0",
+     "serie": 2
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "triceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-4",
+     "serie": null
+    },
+    {
+     "musculo": "triceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-4",
+     "serie": null
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 5,
+    "totalAnterior": 0,
+    "totalHoy": 1,
+    "filas": [
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 3,
+      "anterior": 0,
+      "hoy": 1
+     },
+     {
+      "musculo": "triceps",
+      "nombre": "Tríceps",
+      "semana": 2,
+      "anterior": 0,
+      "hoy": 0
+     }
+    ],
+    "deHoy": [
+     "chest"
+    ]
+   }
+  },
+  {
+   "nombre": "sin músculo, uno desconocido y mayúsculas",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": null,
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "full body",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-1",
+     "serie": 1
+    },
+    {
+     "musculo": "  Chest ",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-2",
+     "serie": 1
+    },
+    {
+     "musculo": "",
+     "tipo": "compuesto",
+     "fecha": "2026-10-27",
+     "lugar": "d1-3",
+     "serie": 1
+    },
+    {
+     "musculo": "MIDDLE BACK",
+     "tipo": "compuesto",
+     "fecha": "2026-10-27",
+     "lugar": "d1-5",
+     "serie": 1
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 3,
+    "totalAnterior": 2,
+    "totalHoy": 0,
+    "filas": [
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 1,
+      "anterior": 0,
+      "hoy": 0
+     },
+     {
+      "musculo": "middle back",
+      "nombre": "Espalda media",
+      "semana": 0,
+      "anterior": 1,
+      "hoy": 0
+     },
+     {
+      "musculo": null,
+      "nombre": "Sin músculo asignado",
+      "semana": 2,
+      "anterior": 1,
+      "hoy": 0
+     }
+    ],
+    "deHoy": []
+   }
+  },
+  {
+   "nombre": "lo de hoy en vivo reemplaza al historial de hoy",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 2
+    },
+    {
+     "musculo": "biceps",
+     "tipo": "aislamiento",
+     "fecha": "2026-11-04",
+     "lugar": "d1-6",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-0",
+     "serie": 1
+    }
+   ],
+   "hoyEnVivo": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "",
+     "lugar": "d1-0",
+     "serie": 2
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "",
+     "lugar": "d1-0",
+     "serie": 3
+    },
+    {
+     "musculo": "triceps",
+     "tipo": "aislamiento",
+     "fecha": "2026-01-01",
+     "lugar": "d1-4",
+     "serie": 1
+    },
+    {
+     "musculo": null,
+     "tipo": "cardio",
+     "fecha": "",
+     "lugar": "d1-9",
+     "serie": 1
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 5,
+    "totalAnterior": 0,
+    "totalHoy": 4,
+    "filas": [
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 4,
+      "anterior": 0,
+      "hoy": 3
+     },
+     {
+      "musculo": "triceps",
+      "nombre": "Tríceps",
+      "semana": 1,
+      "anterior": 0,
+      "hoy": 1
+     }
+    ],
+    "deHoy": [
+     "chest",
+     "triceps"
+    ]
+   }
+  },
+  {
+   "nombre": "hoy en vivo vacío: hoy no hay nada aunque el historial diga",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "d1-0",
+     "serie": 1
+    }
+   ],
+   "hoyEnVivo": [],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 1,
+    "totalAnterior": 0,
+    "totalHoy": 0,
+    "filas": [
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 1,
+      "anterior": 0,
+      "hoy": 0
+     }
+    ],
+    "deHoy": []
+   }
+  },
+  {
+   "nombre": "fechas inválidas no cuentan",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "ayer",
+     "lugar": "d1-0",
+     "serie": 2
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-04T10:00",
+     "lugar": "d1-0",
+     "serie": 3
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 0,
+    "totalAnterior": 0,
+    "totalHoy": 0,
+    "filas": [],
+    "deHoy": []
+   }
+  },
+  {
+   "nombre": "domingo: el lunes siguiente ya es otra semana",
+   "hoy": "2026-11-08",
+   "historial": [
+    {
+     "musculo": "glutes",
+     "tipo": "compuesto",
+     "fecha": "2026-11-08",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "glutes",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "glutes",
+     "tipo": "compuesto",
+     "fecha": "2026-11-09",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "glutes",
+     "tipo": "compuesto",
+     "fecha": "2026-11-01",
+     "lugar": "d1-0",
+     "serie": 1
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 2,
+    "totalAnterior": 1,
+    "totalHoy": 1,
+    "filas": [
+     {
+      "musculo": "glutes",
+      "nombre": "Glúteos",
+      "semana": 2,
+      "anterior": 1,
+      "hoy": 1
+     }
+    ],
+    "deHoy": [
+     "glutes"
+    ]
+   }
+  },
+  {
+   "nombre": "lunes: la semana pasada es del 26 al 1",
+   "hoy": "2026-11-02",
+   "historial": [
+    {
+     "musculo": "hamstrings",
+     "tipo": "compuesto",
+     "fecha": "2026-10-26",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "hamstrings",
+     "tipo": "compuesto",
+     "fecha": "2026-11-01",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "hamstrings",
+     "tipo": "compuesto",
+     "fecha": "2026-10-25",
+     "lugar": "d1-0",
+     "serie": 1
+    },
+    {
+     "musculo": "hamstrings",
+     "tipo": "compuesto",
+     "fecha": "2026-11-02",
+     "lugar": "d1-0",
+     "serie": 1
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 1,
+    "totalAnterior": 2,
+    "totalHoy": 1,
+    "filas": [
+     {
+      "musculo": "hamstrings",
+      "nombre": "Isquiotibiales",
+      "semana": 1,
+      "anterior": 2,
+      "hoy": 1
+     }
+    ],
+    "deHoy": [
+     "hamstrings"
+    ]
+   }
+  },
+  {
+   "nombre": "desempate: más la semana pasada, después el orden del catálogo",
+   "hoy": "2026-11-04",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "a",
+     "serie": 1
+    },
+    {
+     "musculo": "quadriceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "b",
+     "serie": 1
+    },
+    {
+     "musculo": "biceps",
+     "tipo": "compuesto",
+     "fecha": "2026-11-03",
+     "lugar": "c",
+     "serie": 1
+    },
+    {
+     "musculo": "biceps",
+     "tipo": "compuesto",
+     "fecha": "2026-10-27",
+     "lugar": "c",
+     "serie": 1
+    },
+    {
+     "musculo": "calves",
+     "tipo": "compuesto",
+     "fecha": "2026-10-27",
+     "lugar": "e",
+     "serie": 1
+    },
+    {
+     "musculo": "shoulders",
+     "tipo": "compuesto",
+     "fecha": "2026-10-27",
+     "lugar": "f",
+     "serie": 1
+    }
+   ],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 3,
+    "totalAnterior": 3,
+    "totalHoy": 0,
+    "filas": [
+     {
+      "musculo": "biceps",
+      "nombre": "Bíceps",
+      "semana": 1,
+      "anterior": 1,
+      "hoy": 0
+     },
+     {
+      "musculo": "quadriceps",
+      "nombre": "Cuádriceps",
+      "semana": 1,
+      "anterior": 0,
+      "hoy": 0
+     },
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 1,
+      "anterior": 0,
+      "hoy": 0
+     },
+     {
+      "musculo": "shoulders",
+      "nombre": "Hombros",
+      "semana": 0,
+      "anterior": 1,
+      "hoy": 0
+     },
+     {
+      "musculo": "calves",
+      "nombre": "Pantorrillas",
+      "semana": 0,
+      "anterior": 1,
+      "hoy": 0
+     }
+    ],
+    "deHoy": []
+   }
+  },
+  {
+   "nombre": "cambio de año",
+   "hoy": "2027-01-01",
+   "historial": [
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-12-28",
+     "lugar": "a",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2027-01-01",
+     "lugar": "a",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-12-27",
+     "lugar": "a",
+     "serie": 1
+    },
+    {
+     "musculo": "chest",
+     "tipo": "compuesto",
+     "fecha": "2026-12-21",
+     "lugar": "a",
+     "serie": 1
+    }
+   ],
+   "sale": {
+    "semana": "2026-12-28",
+    "total": 2,
+    "totalAnterior": 2,
+    "totalHoy": 1,
+    "filas": [
+     {
+      "musculo": "chest",
+      "nombre": "Pecho",
+      "semana": 2,
+      "anterior": 2,
+      "hoy": 1
+     }
+    ],
+    "deHoy": [
+     "chest"
+    ]
+   }
+  },
+  {
+   "nombre": "nada",
+   "hoy": "2026-11-04",
+   "historial": [],
+   "sale": {
+    "semana": "2026-11-02",
+    "total": 0,
+    "totalAnterior": 0,
+    "totalHoy": 0,
+    "filas": [],
+    "deHoy": []
+   }
+  }
+ ]
+}
