@@ -176,7 +176,9 @@ struct AgregarAlimentoView: View {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Escanear la etiqueta").font(.body.weight(.semibold)).foregroundStyle(.primary)
-                                Text("Sacale una foto a la tabla nutricional y se completa solo").font(.caption).foregroundStyle(.secondary)
+                                // Gris del sistema explícito: `.secondary` dentro de un botón sale del tinte y en oscuro no se leía.
+                                Text("Sacale una foto a la tabla nutricional y se completa solo").font(.caption)
+                                    .foregroundStyle(Color(uiColor: .secondaryLabel))
                             }
                         } icon: {
                             Image(systemName: "text.viewfinder").foregroundStyle(Color.marcaTexto)
@@ -190,7 +192,7 @@ struct AgregarAlimentoView: View {
                 }
                 .accessibilityIdentifier("codigo-a-mano")
                 Button { Task { await escanear() } } label: {
-                    Label("Escanear otro código", systemImage: "barcode.viewfinder").foregroundStyle(.secondary)
+                    Label("Escanear otro código", systemImage: "barcode.viewfinder").foregroundStyle(Color(uiColor: .secondaryLabel))
                 }
                 .accessibilityIdentifier("codigo-otro")
             }

@@ -7,7 +7,7 @@ import MyPumpModelos
 /// respuestas reales de productos argentinos).
 public enum CodigoBarras {
     /// Los campos que se le piden a Open Food Facts (el resto no viaja).
-    public static let campos = "product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,quantity"
+    public static let campos = "product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,serving_quantity_unit,quantity"
     /// Open Food Facts contesta en menos de un segundo; con señal mala se corta antes de que la hoja parezca colgada.
     public static let esperaSegundos: Double = 8
 
@@ -94,7 +94,8 @@ public enum CodigoBarras {
 
     /// Lo que se pudo leer de un producto incompleto: precarga el alimento propio (todo editable).
     public struct Parcial: Codable, Equatable, Sendable {
-        public enum Motivo: String, Codable, Sendable { case sinNombre, faltanDatos, noCierran }
+        /// `enCero`: las macros en cero y sin calorías declaradas (no se sabe si es agua o si nadie cargó la etiqueta).
+        public enum Motivo: String, Codable, Sendable { case sinNombre, faltanDatos, noCierran, enCero }
         public var codigo: String
         public var motivo: Motivo
         public var nombre: String?
@@ -112,6 +113,7 @@ public enum CodigoBarras {
             switch motivo {
             case .sinNombre, .faltanDatos: "Open Food Facts tiene este producto, pero le faltan datos de la etiqueta."
             case .noCierran: "Open Food Facts tiene este producto, pero sus valores no cierran."
+            case .enCero: "Open Food Facts tiene este producto con todo en cero y sin calorías: revisá la etiqueta y cargalo."
             }
         }
     }
@@ -125,6 +127,13 @@ public enum CodigoBarras {
     /// La respuesta de `/api/v2/product/<código>.json`. Encontrado solo si tiene nombre, las tres macros y los valores
     /// pasan la validación del alimento propio (`AlimentoPropioNuevo.preparar` con «g»: nada de más de 950 kcal o 110 g de
     /// macros cada 100 g) y las kcal cierran con las macros. Lo demás es incompleto, con lo que se pudo leer.
+    ///
+    /// Todo en cero (agua, gaseosa sin azúcar): `preparar` lo rechaza («Cargá al menos las calorías o algún macro», que es
+    /// para lo que tipea el cliente), así que se acepta acá, SOLO para Open Food Facts, cuando la etiqueta declara 0 kcal
+    /// (o 0 kJ). Sin calorías declaradas es `enCero`: no se sabe si es agua o si faltan los datos.
+    ///
+    /// La porción solo se usa si viene en gramos: con `serving_quantity_unit` «ml» se queda por 100 g (la app muestra las
+    /// medidas en gramos y 200 ml no son 200 g).
     public static func leer(_ j: JSONValue, codigo: String) -> Lectura {
         guard j["status"]?.comoNumero == 1, case .objeto = j["product"], let p = j["product"] else { return .noEncontrado }
         var nombre = limpio(p["product_name_es"])
@@ -161,13 +170,20 @@ public enum CodigoBarras {
         guard !nombre.isEmpty else { return parcial(.sinNombre) }
         guard let prot, let carb, let grasa, let atwater else { return parcial(.faltanDatos) }
         if let k = kcal, !(0.6 * atwater - 25 <= k && k <= 1.4 * atwater + 40) { return parcial(.noCierran) }
-        guard case .success(let d) = AlimentoPropioNuevo.preparar(nombre: nombre, kcal: kcal, prot: prot, carb: carb, fat: grasa,
-                                                                  unidad: "g", gramosPorUnidad: nil, categoria: "") else {
-            return parcial(.noCierran)
+        let por100: MacrosPor100
+        if prot == 0, carb == 0, grasa == 0, kcal.map(jsRound) ?? 0 == 0 {
+            guard kcal != nil else { return parcial(.enCero) }
+            por100 = MacrosPor100(kcal: 0, p: 0, c: 0, g: 0)
+        } else {
+            guard case .success(let d) = AlimentoPropioNuevo.preparar(nombre: nombre, kcal: kcal, prot: prot, carb: carb, fat: grasa,
+                                                                      unidad: "g", gramosPorUnidad: nil, categoria: "") else {
+                return parcial(.noCierran)
+            }
+            por100 = MacrosPor100(kcal: d.kcal, p: d.prot, c: d.carb, g: d.fat)
         }
-        var producto = Producto(codigo: codigo, nombre: d.nombre, por100: MacrosPor100(kcal: d.kcal, p: d.prot, c: d.carb, g: d.fat),
-                                medida: nil, gramosMedida: nil)
-        if let sq = numero(p["serving_quantity"]), sq >= 1, sq <= 1000, jsRound(sq) != 100 {
+        var producto = Producto(codigo: codigo, nombre: nombre, por100: por100, medida: nil, gramosMedida: nil)
+        let unidadPorcion = limpio(p["serving_quantity_unit"]).lowercased()
+        if let sq = numero(p["serving_quantity"]), sq >= 1, sq <= 1000, jsRound(sq) != 100, unidadPorcion.isEmpty || unidadPorcion == "g" {
             producto.medida = nombreMedida(p["serving_size"]?.comoTexto)
             producto.gramosMedida = r1(sq)
         }
@@ -192,10 +208,19 @@ public enum CodigoBarras {
     private static let noEsMedida: Set<String> = ["portion", "portions", "serving", "servings", "porcion", "porción", "porciones",
                                                   "unit", "g", "gr", "grs", "gramo", "gramos", "ml", "cc", "oz", "kg", "l", "lt"]
 
-    /// Un texto con los espacios de más sacados.
-    private static func limpio(_ v: JSONValue?) -> String {
+    /// Un texto de Open Food Facts saneado (lo escribe cualquiera): sin etiquetas `<…>` (las que empiezan con letra, «/» o «!»: «2 < 3» queda), con los caracteres de control y
+    /// todos los espacios Unicode (NBSP U+00A0 incluido) como separadores, y sin espacios de más. Igual que en Android.
+    static func limpio(_ v: JSONValue?) -> String {
         guard let s = v?.comoTexto else { return "" }
-        return s.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ")
+        let sinEtiquetas = s.replacingOccurrences(of: "<[/!]?[A-Za-z][^<>]*>", with: " ", options: .regularExpression)
+        var t = String.UnicodeScalarView()
+        for u in sinEtiquetas.unicodeScalars {
+            switch u.properties.generalCategory {
+            case .control, .spaceSeparator, .lineSeparator, .paragraphSeparator: t.append(" ")
+            default: t.append(u)
+            }
+        }
+        return String(t).split(separator: " ", omittingEmptySubsequences: true).joined(separator: " ")
     }
 
     /// Un número de Open Food Facts: número o texto («7,5»); negativo, infinito o ilegible = nil.
@@ -240,6 +265,32 @@ public struct CacheCodigos: Codable, Equatable, Sendable {
         }
         let edad = ahoraMs - e.ms
         return edad >= 0 && edad < vida ? e.lectura : nil
+    }
+
+    /// Suelta los propios creados desde un código que ya no son como el alimento propio de la cuenta: se borró o se editó
+    /// (en la app o en la web). El próximo escaneo vuelve a preguntar. Se compara por nombre (sin distinguir mayúsculas,
+    /// como `sumarPropio`), macros, unidad y gramos por unidad. Devuelve si soltó alguno.
+    @discardableResult
+    public mutating func conciliarPropios(_ propios: [AlimentoPropio]) -> Bool {
+        let antes = entradas.count
+        entradas = entradas.filter { _, e in
+            guard case .encontrado(let p) = e.lectura, p.propio else { return true }
+            return propios.contains { Self.mismo(p, $0) }
+        }
+        return entradas.count != antes
+    }
+
+    static func mismo(_ p: CodigoBarras.Producto, _ a: AlimentoPropio) -> Bool {
+        func cerca(_ x: Double?, _ y: Double?) -> Bool {
+            switch (x, y) {
+            case (nil, nil): true
+            case let (x?, y?): abs(x - y) < 0.05
+            default: false
+            }
+        }
+        return p.nombre.lowercased() == a.nombre.lowercased()
+            && cerca(p.por100.kcal, a.kcal ?? 0) && cerca(p.por100.p, a.prot ?? 0) && cerca(p.por100.c, a.carb ?? 0)
+            && cerca(p.por100.g, a.fat ?? 0) && p.medida == a.unidad && cerca(p.gramosMedida, a.gramosPorUnidad)
     }
 
     /// Guarda una lectura (no pisa un propio con lo que diga Open Food Facts). Pasado el máximo, se van las más viejas (los

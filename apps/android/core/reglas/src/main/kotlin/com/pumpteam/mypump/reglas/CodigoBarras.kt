@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.reglas
 
+import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.modelos.ValorJson
 import kotlin.math.abs
 import kotlin.math.max
@@ -12,7 +13,7 @@ import kotlin.math.max
  */
 object CodigoBarras {
     /** Los campos que se le piden a Open Food Facts (el resto no viaja). */
-    const val CAMPOS = "product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,quantity"
+    const val CAMPOS = "product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,serving_quantity_unit,quantity"
 
     /** Open Food Facts contesta en menos de un segundo; con señal mala se corta antes de que la hoja parezca colgada. */
     const val ESPERA_MS = 8_000L
@@ -101,13 +102,15 @@ object CodigoBarras {
         val c: Double? = null,
         val g: Double? = null,
     ) {
-        enum class Motivo(val valor: String) { SIN_NOMBRE("sinNombre"), FALTAN_DATOS("faltanDatos"), NO_CIERRAN("noCierran") }
+        /** [EN_CERO]: las macros en cero y sin calorías declaradas (no se sabe si es agua o si nadie cargó la etiqueta). */
+        enum class Motivo(val valor: String) { SIN_NOMBRE("sinNombre"), FALTAN_DATOS("faltanDatos"), NO_CIERRAN("noCierran"), EN_CERO("enCero") }
 
         /** El renglón de la hoja: por qué no se puede agregar directo. */
         val texto: String
             get() = when (motivo) {
                 Motivo.SIN_NOMBRE, Motivo.FALTAN_DATOS -> "Open Food Facts tiene este producto, pero le faltan datos de la etiqueta."
                 Motivo.NO_CIERRAN -> "Open Food Facts tiene este producto, pero sus valores no cierran."
+                Motivo.EN_CERO -> "Open Food Facts tiene este producto con todo en cero y sin calorías: revisá la etiqueta y cargalo."
             }
     }
 
@@ -121,6 +124,13 @@ object CodigoBarras {
      * La respuesta de `/api/v2/product/<código>.json`. Encontrado solo si tiene nombre, las tres macros y los valores pasan
      * la validación del alimento propio ([AlimentoPropioNuevo.preparar] con «g»: nada de más de 950 kcal o 110 g de macros
      * cada 100 g) y las kcal cierran con las macros. Lo demás es incompleto, con lo que se pudo leer.
+     *
+     * Todo en cero (agua, gaseosa sin azúcar): `preparar` lo rechaza («Cargá al menos las calorías o algún macro», que es
+     * para lo que tipea el cliente), así que se acepta acá, SOLO para Open Food Facts, cuando la etiqueta declara 0 kcal (o
+     * 0 kJ). Sin calorías declaradas es [Parcial.Motivo.EN_CERO]: no se sabe si es agua o si faltan los datos.
+     *
+     * La porción solo se usa si viene en gramos: con `serving_quantity_unit` «ml» se queda por 100 g (la app muestra las
+     * medidas en gramos y 200 ml no son 200 g).
      */
     fun leer(j: ValorJson, codigo: String): Lectura {
         val p = j["product"] as? ValorJson.Objeto
@@ -157,13 +167,20 @@ object CodigoBarras {
         if (nombre.isEmpty()) return parcial(Parcial.Motivo.SIN_NOMBRE)
         if (prot == null || carb == null || grasa == null || atwater == null) return parcial(Parcial.Motivo.FALTAN_DATOS)
         if (kcal != null && !(0.6 * atwater - 25 <= kcal && kcal <= 1.4 * atwater + 40)) return parcial(Parcial.Motivo.NO_CIERRAN)
-        val d = AlimentoPropioNuevo.preparar(nombre, kcal, prot, carb, grasa, "g", null, "").datosONull()
-            ?: return parcial(Parcial.Motivo.NO_CIERRAN)
+        val por100 = if (prot == 0.0 && carb == 0.0 && grasa == 0.0 && (kcal?.let(::jsRound) ?: 0.0) == 0.0) {
+            if (kcal == null) return parcial(Parcial.Motivo.EN_CERO)
+            MacrosPor100(0.0, 0.0, 0.0, 0.0)
+        } else {
+            val d = AlimentoPropioNuevo.preparar(nombre, kcal, prot, carb, grasa, "g", null, "").datosONull()
+                ?: return parcial(Parcial.Motivo.NO_CIERRAN)
+            MacrosPor100(d.kcal, d.prot, d.carb, d.fat)
+        }
         val sq = numero(p["serving_quantity"])
-        val conMedida = sq != null && sq >= 1 && sq <= 1000 && jsRound(sq) != 100.0
+        val unidadPorcion = limpio(p["serving_quantity_unit"]).lowercase()
+        val conMedida = sq != null && sq >= 1 && sq <= 1000 && jsRound(sq) != 100.0 && (unidadPorcion.isEmpty() || unidadPorcion == "g")
         return Lectura.Encontrado(
             Producto(
-                codigo, d.nombre, MacrosPor100(d.kcal, d.prot, d.carb, d.fat),
+                codigo, nombre, por100,
                 if (conMedida) nombreMedida(p["serving_size"]?.comoTexto) else null, if (conMedida) r1(sq!!) else null,
             ),
         )
@@ -188,8 +205,18 @@ object CodigoBarras {
         "unit", "g", "gr", "grs", "gramo", "gramos", "ml", "cc", "oz", "kg", "l", "lt",
     )
 
-    /** Un texto con los espacios de más sacados. */
-    private fun limpio(v: ValorJson?): String = v?.comoTexto?.trim()?.split(Regex("\\s+"))?.filter { it.isNotEmpty() }?.joinToString(" ") ?: ""
+    /**
+     * Un texto de Open Food Facts saneado (lo escribe cualquiera): sin etiquetas `<…>` (las que empiezan con letra, «/» o «!»: «2 < 3» queda), con los caracteres de control y todos
+     * los espacios Unicode (NBSP U+00A0 incluido: `\s` de Java no lo cubre) como separadores, y sin espacios de más. Igual
+     * que en iOS.
+     */
+    internal fun limpio(v: ValorJson?): String {
+        val s = v?.comoTexto ?: return ""
+        return s.replace(ETIQUETA, " ").split(SEPARADOR).filter { it.isNotEmpty() }.joinToString(" ")
+    }
+
+    private val ETIQUETA = Regex("<[/!]?[A-Za-z][^<>]*>")
+    private val SEPARADOR = Regex("[\\p{Cc}\\p{Zs}\\p{Zl}\\p{Zp}\\u00A0]+")
 
     /** Un número de Open Food Facts: número o texto («7,5»); negativo, infinito o ilegible = null. */
     internal fun numero(v: ValorJson?): Double? {
@@ -238,6 +265,20 @@ class CacheCodigos(entradas: Map<String, Entrada> = emptyMap()) {
         }
     }
 
+    /**
+     * Suelta los propios creados desde un código que ya no son como el alimento propio de la cuenta: se borró o se editó (en
+     * la app o en la web). El próximo escaneo vuelve a preguntar. Se compara por nombre (sin distinguir mayúsculas, como
+     * `sumarPropio`), macros, unidad y gramos por unidad. Devuelve si soltó alguno.
+     */
+    fun conciliarPropios(propios: List<AlimentoPropio>): Boolean {
+        val sueltos = _entradas.filter { (_, e) ->
+            val p = (e.lectura as? CodigoBarras.Lectura.Encontrado)?.producto
+            p != null && p.propio && propios.none { mismo(p, it) }
+        }.keys
+        sueltos.forEach { _entradas.remove(it) }
+        return sueltos.isNotEmpty()
+    }
+
     private fun esPropio(l: CodigoBarras.Lectura?) = (l as? CodigoBarras.Lectura.Encontrado)?.producto?.propio == true
 
     /** El archivo en el teléfono. */
@@ -259,6 +300,13 @@ class CacheCodigos(entradas: Map<String, Entrada> = emptyMap()) {
                 r[k] = Entrada(l, ms.toLong())
             }
             return CacheCodigos(r)
+        }
+
+        internal fun mismo(p: CodigoBarras.Producto, a: AlimentoPropio): Boolean {
+            fun cerca(x: Double?, y: Double?) = if (x == null || y == null) x == y else abs(x - y) < 0.05
+            return p.nombre.lowercase() == a.nombre.lowercase() &&
+                cerca(p.por100.kcal, a.kcal ?: 0.0) && cerca(p.por100.p, a.prot ?: 0.0) && cerca(p.por100.c, a.carb ?: 0.0) &&
+                cerca(p.por100.g, a.fat ?: 0.0) && p.medida == a.unidad && cerca(p.gramosMedida, a.gramosPorUnidad)
         }
 
         private fun numeroONull(d: Double?): ValorJson = d?.let { ValorJson.Numero(it) } ?: ValorJson.Nulo

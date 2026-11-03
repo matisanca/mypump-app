@@ -1,6 +1,8 @@
 package com.pumpteam.mypump.datos
 
+import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.reglas.AgregadosComida
+import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
 import com.pumpteam.mypump.reglas.AlimentoAgregado
 import com.pumpteam.mypump.reglas.CodigoBarras
 import com.pumpteam.mypump.reglas.MacrosPor100
@@ -103,5 +105,74 @@ class BarrasDietaTest {
         assertEquals(AlimentoAgregado.Origen.PROPIO, p.candidato.origen)
         assertEquals("7790742000101", p.candidato.codigo)
         assertEquals(1, off.pedidos.size)
+    }
+
+    @Test
+    fun sinStatusNumerico0o1NoSeGuarda() = enUnHilo { alcance ->
+        val off = OFF()
+        val m = modelo(off, alcance)
+        for (cuerpo in listOf("""{"product":{}}""", """{"status":"1","product":{}}""", """{"status":2}""", "[]")) {
+            off.respuesta = 200 to cuerpo
+            assertEquals(ModeloApp.BusquedaCodigo.SinRed, m.buscarCodigo("7791337006355"), cuerpo)
+        }
+        off.respuesta = 200 to yogur
+        assertTrue((m.buscarCodigo("7791337006355") as ModeloApp.BusquedaCodigo.Leido).lectura is CodigoBarras.Lectura.Encontrado)
+        assertEquals(5, off.pedidos.size)
+    }
+
+    @Test
+    fun alSalirSeBorraLoBuscado() = enUnHilo { alcance ->
+        val off = OFF()
+        off.respuesta = 200 to yogur
+        val m = modelo(off, alcance)
+        assertTrue((m.buscarCodigo("7791337006355") as ModeloApp.BusquedaCodigo.Leido).lectura is CodigoBarras.Lectura.Encontrado)
+        val archivo = Disco(raiz, "AAAAAAAAAAAAAAAAAAAA").archivo(ModeloApp.ARCHIVO_CODIGOS)
+        assertTrue(archivo.exists())
+        m.salir()
+        assertTrue(!archivo.exists())
+        off.respuesta = null
+        assertEquals(ModeloApp.BusquedaCodigo.SinRed, modelo(off, alcance).buscarCodigo("7791337006355"), "Volver a entrar no lo encuentra")
+    }
+
+    @Test
+    fun laDemoNoPreguntaAOpenFoodFactsNiVeLaCacheDeLaCuenta() = enUnHilo { alcance ->
+        val off = OFF()
+        off.respuesta = 200 to yogur
+        val m = modelo(off, alcance)
+        assertTrue((m.buscarCodigo("7791337006355") as ModeloApp.BusquedaCodigo.Leido).lectura is CodigoBarras.Lectura.Encontrado)
+        m.entrarEnDemo("{}", "{}")
+        val no = ModeloApp.BusquedaCodigo.Leido(CodigoBarras.Lectura.NoEncontrado)
+        assertEquals(no, m.buscarCodigo("7791337006355"))
+        assertEquals(no, m.buscarCodigo("7790742000101"))
+        assertEquals(1, off.pedidos.size)
+    }
+
+    @Test
+    fun elPropioEditadoDejaDeAparecerConLosValoresViejos() = enUnHilo { alcance ->
+        val off = OFF()
+        val m = modelo(off, alcance)
+        suspend fun crear(kcal: Double): AlimentoPropio {
+            val d = AlimentoPropioNuevo.preparar("Leche X", kcal, 3.0, 5.0, 3.0, "porcion", 200.0, "").datosONull()!!
+            off.respuesta = 200 to """[{"name":"Leche X","kcal":${kcal.toInt()},"prot":3,"carb":5,"fat":3,"unit":"porcion","unit_grams":200,"category":null}]"""
+            return (m.crearAlimentoPropio(d) as Resultado.Ok).valor
+        }
+        val a = crear(120.0)
+        val codigo = "7790742000101"
+        m.recordarCodigoPropio(
+            codigo,
+            AgregadosComida.Candidato(
+                a.nombre, MacrosPor100(a.kcal ?: 0.0, a.prot ?: 0.0, a.carb ?: 0.0, a.fat ?: 0.0), a.unidad, a.gramosPorUnidad,
+                AlimentoAgregado.Origen.PROPIO, codigo,
+            ),
+        )
+        val antes = off.pedidos.size
+        val p = ((m.buscarCodigo(codigo) as ModeloApp.BusquedaCodigo.Leido).lectura as CodigoBarras.Lectura.Encontrado).producto
+        assertTrue(p.propio)
+        assertEquals(antes, off.pedidos.size)
+        // Se editó (mismo nombre, otras kcal): el código ya no trae el viejo y vuelve a preguntar.
+        crear(150.0)
+        off.respuesta = 404 to """{"status":0}"""
+        assertEquals(ModeloApp.BusquedaCodigo.Leido(CodigoBarras.Lectura.NoEncontrado), m.buscarCodigo(codigo))
+        assertEquals(antes + 2, off.pedidos.size)
     }
 }

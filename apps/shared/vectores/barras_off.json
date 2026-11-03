@@ -1,5 +1,5 @@
 {
- "campos": "product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,quantity",
+ "campos": "product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,serving_quantity_unit,quantity",
  "codigos": [
   {
    "esperado": "7791337006355",
@@ -1079,16 +1079,21 @@
    }
   },
   {
-   "caso": "todo en cero (agua)",
+   "caso": "todo en cero con 0 kcal declaradas (agua): se puede agregar",
    "codigo": "0000000000000",
    "esperado": {
-    "c": 0.0,
-    "estado": "incompleto",
-    "g": 0.0,
-    "kcal": 0,
-    "motivo": "noCierran",
+    "estado": "encontrado",
+    "medida": {
+     "gramos": 200.0,
+     "nombre": "porción"
+    },
     "nombre": "Yogurisimo sabor Natural (La serenisima)",
-    "p": 0.0
+    "por100": {
+     "c": 0.0,
+     "g": 0.0,
+     "kcal": 0,
+     "p": 0.0
+    }
    },
    "real": false,
    "respuesta": {
@@ -1100,6 +1105,36 @@
       "energy-kcal_100g": 0,
       "energy-kj_100g": 0,
       "energy_100g": 0,
+      "fat_100g": 0,
+      "proteins_100g": 0
+     },
+     "product_name": "Yogurisimo sabor Natural",
+     "product_name_es": "Yogurisimo sabor Natural",
+     "serving_quantity": 200,
+     "serving_size": "200 g"
+    },
+    "status": 1,
+    "status_verbose": "product found"
+   }
+  },
+  {
+   "caso": "todo en cero sin kcal ni kJ: incompleto, con texto propio",
+   "codigo": "0000000000000",
+   "esperado": {
+    "c": 0.0,
+    "estado": "incompleto",
+    "g": 0.0,
+    "motivo": "enCero",
+    "nombre": "Yogurisimo sabor Natural (La serenisima)",
+    "p": 0.0
+   },
+   "real": false,
+   "respuesta": {
+    "code": "0000000000000",
+    "product": {
+     "brands": "La serenisima",
+     "nutriments": {
+      "carbohydrates_100g": 0,
       "fat_100g": 0,
       "proteins_100g": 0
      },
@@ -1213,6 +1248,199 @@
    "respuesta": {
     "code": "0000000000000",
     "status": 1
+   }
+  },
+  {
+   "caso": "nombre con HTML",
+   "codigo": "7791337006355",
+   "esperado": {
+    "estado": "encontrado",
+    "medida": {
+     "gramos": 200.0,
+     "nombre": "porción"
+    },
+    "nombre": "Yogur Natural (La serenisima)",
+    "por100": {
+     "c": 6.3,
+     "g": 3.2,
+     "kcal": 82,
+     "p": 7.0
+    }
+   },
+   "real": false,
+   "respuesta": {
+    "code": "7791337006355",
+    "product": {
+     "brands": "La serenisima",
+     "nutriments": {
+      "carbohydrates_100g": 6.25,
+      "energy-kcal_100g": 81.5,
+      "energy-kj_100g": 341.8,
+      "energy_100g": 341.8,
+      "fat_100g": 3.15,
+      "proteins_100g": 7
+     },
+     "product_name": "Yogurisimo sabor Natural",
+     "product_name_es": "Yogur <b>Natural</b><br/>",
+     "serving_quantity": 200,
+     "serving_size": "200 g"
+    },
+    "status": 1,
+    "status_verbose": "product found"
+   }
+  },
+  {
+   "caso": "nombre con caracteres de control",
+   "codigo": "7791337006355",
+   "esperado": {
+    "estado": "encontrado",
+    "medida": {
+     "gramos": 200.0,
+     "nombre": "porción"
+    },
+    "nombre": "Yogur Natural (La serenisima)",
+    "por100": {
+     "c": 6.3,
+     "g": 3.2,
+     "kcal": 82,
+     "p": 7.0
+    }
+   },
+   "real": false,
+   "respuesta": {
+    "code": "7791337006355",
+    "product": {
+     "brands": "La\bserenisima",
+     "nutriments": {
+      "carbohydrates_100g": 6.25,
+      "energy-kcal_100g": 81.5,
+      "energy-kj_100g": 341.8,
+      "energy_100g": 341.8,
+      "fat_100g": 3.15,
+      "proteins_100g": 7
+     },
+     "product_name": "Yogurisimo sabor Natural",
+     "product_name_es": "Yogur\u0007Natural\u001f\t\n",
+     "serving_quantity": 200,
+     "serving_size": "200 g"
+    },
+    "status": 1,
+    "status_verbose": "product found"
+   }
+  },
+  {
+   "caso": "nombre con NBSP",
+   "codigo": "7791337006355",
+   "esperado": {
+    "estado": "encontrado",
+    "medida": {
+     "gramos": 200.0,
+     "nombre": "porción"
+    },
+    "nombre": "Yogur Natural (La serenisima)",
+    "por100": {
+     "c": 6.3,
+     "g": 3.2,
+     "kcal": 82,
+     "p": 7.0
+    }
+   },
+   "real": false,
+   "respuesta": {
+    "code": "7791337006355",
+    "product": {
+     "brands": "La serenisima, Otra",
+     "nutriments": {
+      "carbohydrates_100g": 6.25,
+      "energy-kcal_100g": 81.5,
+      "energy-kj_100g": 341.8,
+      "energy_100g": 341.8,
+      "fat_100g": 3.15,
+      "proteins_100g": 7
+     },
+     "product_name": "Yogurisimo sabor Natural",
+     "product_name_es": " Yogur  Natural ",
+     "serving_quantity": 200,
+     "serving_size": "200 g"
+    },
+    "status": 1,
+    "status_verbose": "product found"
+   }
+  },
+  {
+   "caso": "porción en ml: no se toma como gramos, queda por 100 g",
+   "codigo": "7791337006355",
+   "esperado": {
+    "estado": "encontrado",
+    "nombre": "Yogurisimo sabor Natural (La serenisima)",
+    "por100": {
+     "c": 6.3,
+     "g": 3.2,
+     "kcal": 82,
+     "p": 7.0
+    }
+   },
+   "real": false,
+   "respuesta": {
+    "code": "7791337006355",
+    "product": {
+     "brands": "La serenisima",
+     "nutriments": {
+      "carbohydrates_100g": 6.25,
+      "energy-kcal_100g": 81.5,
+      "energy-kj_100g": 341.8,
+      "energy_100g": 341.8,
+      "fat_100g": 3.15,
+      "proteins_100g": 7
+     },
+     "product_name": "Yogurisimo sabor Natural",
+     "product_name_es": "Yogurisimo sabor Natural",
+     "serving_quantity": 200,
+     "serving_quantity_unit": "ml",
+     "serving_size": "1 vaso 200 ml"
+    },
+    "status": 1,
+    "status_verbose": "product found"
+   }
+  },
+  {
+   "caso": "porción con unidad g explícita",
+   "codigo": "7791337006355",
+   "esperado": {
+    "estado": "encontrado",
+    "medida": {
+     "gramos": 200.0,
+     "nombre": "vaso"
+    },
+    "nombre": "Yogurisimo sabor Natural (La serenisima)",
+    "por100": {
+     "c": 6.3,
+     "g": 3.2,
+     "kcal": 82,
+     "p": 7.0
+    }
+   },
+   "real": false,
+   "respuesta": {
+    "code": "7791337006355",
+    "product": {
+     "brands": "La serenisima",
+     "nutriments": {
+      "carbohydrates_100g": 6.25,
+      "energy-kcal_100g": 81.5,
+      "energy-kj_100g": 341.8,
+      "energy_100g": 341.8,
+      "fat_100g": 3.15,
+      "proteins_100g": 7
+     },
+     "product_name": "Yogurisimo sabor Natural",
+     "product_name_es": "Yogurisimo sabor Natural",
+     "serving_quantity": 200,
+     "serving_quantity_unit": "g",
+     "serving_size": "1 vaso (200 g)"
+    },
+    "status": 1,
+    "status_verbose": "product found"
    }
   }
  ]

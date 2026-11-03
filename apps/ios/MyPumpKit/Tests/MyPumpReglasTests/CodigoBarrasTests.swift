@@ -148,7 +148,48 @@ struct CodigoBarrasTests {
 
     @Test func elPedidoVaConLosCamposYElAgente() {
         #expect(CodigoBarras.url("7791337006355")?.absoluteString
-            == "https://world.openfoodfacts.org/api/v2/product/7791337006355.json?fields=product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,quantity")
+            == "https://world.openfoodfacts.org/api/v2/product/7791337006355.json?fields=product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,serving_quantity_unit,quantity")
         #expect(CodigoBarras.agenteUsuario(version: "2.1.0", plataforma: "iOS") == "PumpTeam/2.1.0 (iOS)")
+    }
+
+    @Test func losCamposSonLosDeLosVectores() throws {
+        #expect(try Self.vectores["campos"] as? String == CodigoBarras.campos)
+    }
+
+    @Test func elNombreSeSaneaIgualQueEnAndroid() {
+        #expect(CodigoBarras.limpio(.texto("Yogur <b>Natural</b><br/>")) == "Yogur Natural")
+        #expect(CodigoBarras.limpio(.texto("Yogur\u{07}Natural\u{1F}\t\n")) == "Yogur Natural")
+        #expect(CodigoBarras.limpio(.texto("\u{A0}Yogur\u{A0}\u{A0}Natural\u{2007}\u{202F}\u{2028}x")) == "Yogur Natural x")
+        #expect(CodigoBarras.limpio(.texto("2 < 3 y 5 > 4")) == "2 < 3 y 5 > 4")
+        #expect(CodigoBarras.limpio(nil) == "")
+    }
+
+    @Test func todoEnCeroTieneSuTextoYNoDiceQueNoCierra() {
+        let t = CodigoBarras.Parcial(codigo: "1", motivo: .enCero).texto
+        #expect(!t.contains("no cierran") && t.contains("todo en cero"))
+    }
+
+    @Test func elPropioBorradoOEditadoSeSueltaDeLaCache() {
+        func propio(_ nombre: String, kcal: Double) -> CodigoBarras.Lectura {
+            .encontrado(.init(codigo: "x", nombre: nombre, por100: MacrosPor100(kcal: kcal, p: 3, c: 5, g: 3), medida: "porcion",
+                              gramosMedida: 200, propio: true))
+        }
+        var c = CacheCodigos()
+        c.guardar("a", propio("Leche A", kcal: 60), ahoraMs: 0)
+        c.guardar("b", propio("Leche B", kcal: 60), ahoraMs: 0)
+        c.guardar("c", propio("Leche C", kcal: 60), ahoraMs: 0)
+        c.guardar("o", .noEncontrado, ahoraMs: 0)
+        func ap(_ n: String, _ kcal: Double?, unidad: String? = "porcion", g: Double? = 200) -> AlimentoPropio {
+            AlimentoPropio(nombre: n, kcal: kcal, prot: 3, carb: 5, fat: 3, unidad: unidad, gramosPorUnidad: g, categoria: nil)
+        }
+        // A sigue igual (otro caso de letra), B se editó, C se borró.
+        let r1 = c.conciliarPropios([ap("leche a", 60.04), ap("Leche B", 75)])
+        #expect(r1)
+        #expect(c.entradas["a"] != nil && c.entradas["b"] == nil && c.entradas["c"] == nil && c.entradas["o"] != nil)
+        let r2 = c.conciliarPropios([ap("Leche A", 60)])
+        #expect(!r2, "Sin cambios no suelta nada")
+        let r3 = c.conciliarPropios([ap("Leche A", 60, g: 250)])
+        #expect(r3, "Otra porción también es una edición")
+        #expect(c.entradas["a"] == nil)
     }
 }

@@ -37,8 +37,9 @@ extension ModeloApp {
     }
 
     /// Busca un código ya normalizado (`CodigoBarras.normalizar`). Sin respuesta (sin señal, timeout, Open Food Facts caído)
-    /// es `.sinRed` y no se guarda nada.
+    /// es `.sinRed` y no se guarda nada. En la demo no se pregunta a nadie: no está (con las salidas de siempre).
     public func buscarCodigo(_ codigo: String) async -> BusquedaCodigo {
+        if esDemo { return .lectura(.noEncontrado) }
         if let l = cache.vigente(codigo, ahoraMs: Self.ahoraMs) { return .lectura(l) }
         guard let url = CodigoBarras.url(codigo) else { return .lectura(.noEncontrado) }
         var pedido = URLRequest(url: url, timeoutInterval: CodigoBarras.esperaSegundos)
@@ -47,24 +48,53 @@ extension ModeloApp {
         let transporte = transporteBarras ?? cliente.transporte
         let datos: Data, respuesta: URLResponse
         do {
-            (datos, respuesta) = try await transporte.enviar(pedido)
+            // `timeoutInterval` corta solo si la conexión se queda callada; el plazo es para toda la consulta.
+            let listo = pedido
+            (datos, respuesta) = try await Self.conPlazo(esperaBarras) { try await transporte.enviar(listo) }
         } catch {
             return .sinRed
         }
         let status = (respuesta as? HTTPURLResponse)?.statusCode ?? 0
         let j = try? JSONDecoder().decode(JSONValue.self, from: datos)
         let lectura: CodigoBarras.Lectura
-        if let j, (200..<300).contains(status) || status == 404 {
-            // Un producto que no está contesta 404 con `status: 0`.
+        if let j, (200..<300).contains(status) || status == 404, let st = j["status"]?.comoNumero, st == 0 || st == 1 {
+            // Un producto que no está contesta 404 con `status: 0`. Sin `status` 0 o 1 (un proxy, otra API) no se sabe nada
+            // del producto: no se guarda.
             lectura = CodigoBarras.leer(j, codigo: codigo)
         } else {
-            // 429, 5xx o una página de error: no es una respuesta sobre el producto.
+            // 429, 5xx, una página de error o un JSON sin `status`: no es una respuesta sobre el producto.
             return .sinRed
         }
         var c = cache
         c.guardar(codigo, lectura, ahoraMs: Self.ahoraMs)
         cache = c
         return .lectura(lectura)
+    }
+
+    /// Corre `op` con un plazo total: pasado, se cancela y tira `URLError(.timedOut)`.
+    nonisolated static func conPlazo<T: Sendable>(_ segundos: Double, _ op: @escaping @Sendable () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { g in
+            g.addTask { try await op() }
+            g.addTask {
+                try await Task.sleep(nanoseconds: UInt64(max(0, segundos) * 1_000_000_000))
+                throw URLError(.timedOut)
+            }
+            defer { g.cancelAll() }
+            guard let r = try await g.next() else { throw URLError(.timedOut) }
+            return r
+        }
+    }
+
+    /// Los propios creados desde un código que se borraron o se editaron dejan de aparecer al escanear (`conciliarPropios`).
+    func conciliarCodigosPropios() {
+        var c = cache
+        if c.conciliarPropios(alimentosPropios) { cache = c }
+    }
+
+    /// Lo buscado se va con la cuenta: al salir se borra del teléfono.
+    func borrarCodigosDelDisco() {
+        cacheCodigos = nil
+        disco?.borrar(Self.archivoCodigos)
     }
 
     /// Un alimento propio creado desde un código que Open Food Facts no tenía (o tenía incompleto): la próxima vez que se

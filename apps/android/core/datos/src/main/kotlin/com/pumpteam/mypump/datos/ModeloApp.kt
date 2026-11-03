@@ -339,6 +339,8 @@ class ModeloApp(
 
     fun salir() {
         almacen.guardar(null)
+        // Lo buscado por código se va con la cuenta: se borra del teléfono.
+        disco?.borrar(ARCHIVO_CODIGOS)
         soltarCuentaEnMemoria()
         _entreno.value = null
         _rutina.value = null
@@ -1085,7 +1087,6 @@ class ModeloApp(
         _agregadosRecientes.value = v?.elementos.orEmpty().mapNotNull { AlimentoAgregado.desde(it) }
     }
 
-    /** Lo último agregado va primero (un mismo alimento una sola vez, con la última cantidad). */
     // ── Código de barras (2.1, S3) ──
     // Con el número que leyó el escáner se pregunta a Open Food Facts (pública, gratis y sin clave; solo viaja el código, sin
     // token ni nada de la cuenta) y la respuesta se lleva a un alimento con [CodigoBarras.leer]. Lo buscado queda en el
@@ -1116,9 +1117,10 @@ class ModeloApp(
 
     /**
      * Busca un código ya normalizado ([CodigoBarras.normalizar]). Sin respuesta (sin señal, timeout, Open Food Facts caído)
-     * es [BusquedaCodigo.SinRed] y no se guarda nada.
+     * es [BusquedaCodigo.SinRed] y no se guarda nada. En la demo no se pregunta a nadie: no está (con las salidas de siempre).
      */
     suspend fun buscarCodigo(codigo: String): BusquedaCodigo {
+        if (_esDemo.value) return BusquedaCodigo.Leido(CodigoBarras.Lectura.NoEncontrado)
         cacheCodigos().vigente(codigo, System.currentTimeMillis())?.let { return BusquedaCodigo.Leido(it) }
         val pedido = Pedido(
             url = CodigoBarras.url(codigo), metodo = "GET",
@@ -1136,6 +1138,9 @@ class ModeloApp(
         if (r.status !in 200..299 && r.status != 404) return BusquedaCodigo.SinRed
         val j = withContext(Dispatchers.Default) { runCatching { ValorJson.parsear(r.cuerpo.toString(Charsets.UTF_8)) }.getOrNull() }
             ?: return BusquedaCodigo.SinRed
+        // Sin `status` 0 o 1 (un proxy, otra API) no se sabe nada del producto: no se guarda.
+        val st = j["status"]?.comoNumero
+        if (st != 0.0 && st != 1.0) return BusquedaCodigo.SinRed
         val lectura = CodigoBarras.leer(j, codigo)
         val c = cacheCodigos()
         c.guardar(codigo, lectura, System.currentTimeMillis())
@@ -1154,6 +1159,13 @@ class ModeloApp(
         guardarCodigos(cc)
     }
 
+    /** Los propios creados desde un código que se borraron o se editaron dejan de aparecer al escanear. */
+    private fun conciliarCodigosPropios() {
+        val c = cacheCodigos()
+        if (c.conciliarPropios(_alimentosPropios.value)) guardarCodigos(c)
+    }
+
+    /** Lo último agregado va primero (un mismo alimento una sola vez, con la última cantidad). */
     fun recordarReciente(a: AlimentoAgregado) {
         val r = listOf(a) + _agregadosRecientes.value.filter { it.nombre.lowercase() != a.nombre.lowercase() }
         _agregadosRecientes.value = r.take(MAXIMO_RECIENTES)
@@ -1390,10 +1402,14 @@ class ModeloApp(
 
     /** Como la web: reemplaza en su lugar al del mismo nombre (sin distinguir mayúsculas) o se agrega al final. */
     private fun sumarPropio(a: AlimentoPropio) {
+        var editado = false
         _alimentosPropios.update { lista ->
             val i = lista.indexOfFirst { it.nombre.lowercase() == a.nombre.lowercase() }
+            editado = i >= 0
             if (i >= 0) lista.toMutableList().also { it[i] = a } else lista + a
         }
+        // Editado: si salió de un código con otros valores, el escaneo deja de traer el viejo.
+        if (editado) conciliarCodigosPropios()
     }
 
     private fun leerSwaps(dietaId: String): Map<String, SwapLocal> {
@@ -1444,7 +1460,10 @@ class ModeloApp(
         prefs.valorONull()?.let { _excluir.value = it.firstOrNull()?.excluir ?: emptyList() }
         val propios = cliente.filas("mypump_get_custom_foods", p, AlimentoPropio::desde)
         if (!vigente()) return
-        propios.valorONull()?.let { _alimentosPropios.value = it }
+        propios.valorONull()?.let {
+            _alimentosPropios.value = it
+            conciliarCodigosPropios()
+        }
 
         // Lo que el cliente toque desde acá (mientras se espera la respuesta) le gana a lo que traiga el servidor.
         val desde = ordenSwaps.get()

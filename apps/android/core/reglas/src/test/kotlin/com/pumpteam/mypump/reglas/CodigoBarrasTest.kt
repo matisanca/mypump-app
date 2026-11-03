@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.reglas
 
+import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.modelos.ValorJson
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -164,9 +165,55 @@ class CodigoBarrasTest {
     @Test
     fun elPedidoVaConLosCamposYElAgente() {
         assertEquals(
-            "https://world.openfoodfacts.org/api/v2/product/7791337006355.json?fields=product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,quantity",
+            "https://world.openfoodfacts.org/api/v2/product/7791337006355.json?fields=product_name,product_name_es,brands,nutriments,serving_size,serving_quantity,serving_quantity_unit,quantity",
             CodigoBarras.url("7791337006355"),
         )
         assertEquals("PumpTeam/2.1.0 (Android)", CodigoBarras.agenteUsuario("2.1.0", "Android"))
+    }
+
+    @Test
+    fun losCamposSonLosDeLosVectores() {
+        assertEquals(CodigoBarras.CAMPOS, vectores["campos"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun elNombreSeSaneaIgualQueEnIos() {
+        fun t(s: String) = CodigoBarras.limpio(ValorJson.Texto(s))
+        assertEquals("Yogur Natural", t("Yogur <b>Natural</b><br/>"))
+        assertEquals("Yogur Natural", t("Yogur\u0007Natural\u001F\t\n"))
+        assertEquals("Yogur Natural x", t("\u00A0Yogur\u00A0\u00A0Natural\u2007\u202F\u2028x"))
+        assertEquals("2 < 3 y 5 > 4", t("2 < 3 y 5 > 4"))
+        assertEquals("", CodigoBarras.limpio(null))
+    }
+
+    @Test
+    fun todoEnCeroTieneSuTextoYNoDiceQueNoCierra() {
+        val t = CodigoBarras.Parcial("1", CodigoBarras.Parcial.Motivo.EN_CERO).texto
+        assertTrue(!t.contains("no cierran") && t.contains("todo en cero"))
+        // Va y vuelve del disco.
+        val l = CodigoBarras.Lectura.Incompleto(CodigoBarras.Parcial("1", CodigoBarras.Parcial.Motivo.EN_CERO, "Agua", null, 0.0, 0.0, 0.0))
+        assertEquals(l, CacheCodigos.lecturaDesde(CacheCodigos.lecturaAValor(l)))
+    }
+
+    @Test
+    fun elPropioBorradoOEditadoSeSueltaDeLaCache() {
+        fun propio(nombre: String, kcal: Double) = CodigoBarras.Lectura.Encontrado(
+            CodigoBarras.Producto("x", nombre, MacrosPor100(kcal, 3.0, 5.0, 3.0), "porcion", 200.0, propio = true),
+        )
+        val c = CacheCodigos()
+        c.guardar("a", propio("Leche A", 60.0), 0)
+        c.guardar("b", propio("Leche B", 60.0), 0)
+        c.guardar("c", propio("Leche C", 60.0), 0)
+        c.guardar("o", CodigoBarras.Lectura.NoEncontrado, 0)
+        fun ap(n: String, kcal: Double?, g: Double? = 200.0) = AlimentoPropio(n, kcal, 3.0, 5.0, 3.0, "porcion", g, null)
+        // A sigue igual (otro caso de letra), B se editó, C se borró.
+        assertTrue(c.conciliarPropios(listOf(ap("leche a", 60.04), ap("Leche B", 75.0))))
+        assertNotNull(c.entradas["a"])
+        assertNull(c.entradas["b"])
+        assertNull(c.entradas["c"])
+        assertNotNull(c.entradas["o"])
+        assertTrue(!c.conciliarPropios(listOf(ap("Leche A", 60.0))), "Sin cambios no suelta nada")
+        assertTrue(c.conciliarPropios(listOf(ap("Leche A", 60.0, g = 250.0))), "Otra porción también es una edición")
+        assertNull(c.entradas["a"])
     }
 }
