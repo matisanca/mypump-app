@@ -4,6 +4,9 @@
     python3 scripts/nativa/reloj-pbxproj.py            agrega MyPumpWatch (app watchOS) y MyPumpWatchComplicaciones
                                                      (extensión WidgetKit embebida en el reloj) y el esquema MyPumpWatch
     python3 scripts/nativa/reloj-pbxproj.py --revisar  solo dice si ya están
+    python3 scripts/nativa/reloj-pbxproj.py --embeber  RECIÉN cuando existan el App ID y los perfiles del reloj: embebe
+                                                     MyPumpWatch.app en MyPump.app (Watch/) y lo hace dependencia del
+                                                     target MyPump (ver docs/NATIVA_TANDAS_2_A_4.md)
 
 Es idempotente (si ya están, no hace nada) y con ids fijos (6B20…01xx), así el resultado es siempre el mismo.
 
@@ -234,6 +237,49 @@ def aplicar(t):
     return t
 
 
+E = {"bf": "6B2000000000000000000131", "fase": "6B2000000000000000000132", "proxy": "6B2000000000000000000133",
+     "dep": "6B2000000000000000000134"}
+MARCA_EMBEBIDO = f"{E['fase']} /* Embed Watch Content */"
+
+
+def embeber(t):
+    """El reloj dentro del iPhone: fase «Embed Watch Content» ($(CONTENTS_FOLDER_PATH)/Watch) y dependencia en MyPump."""
+    t = insertar(t, "PBXBuildFile",
+                 f"\t\t{E['bf']} /* MyPumpWatch.app in Embed Watch Content */ = {{isa = PBXBuildFile; fileRef = {W['app']} /* MyPumpWatch.app */; settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};\n")
+    t = insertar(t, "PBXContainerItemProxy", f"""\t\t{E['proxy']} /* PBXContainerItemProxy */ = {{
+\t\t\tisa = PBXContainerItemProxy;
+\t\t\tcontainerPortal = {PROYECTO} /* Project object */;
+\t\t\tproxyType = 1;
+\t\t\tremoteGlobalIDString = {W['target']};
+\t\t\tremoteInfo = MyPumpWatch;
+\t\t}};
+""")
+    t = insertar(t, "PBXCopyFilesBuildPhase", f"""\t\t{E['fase']} /* Embed Watch Content */ = {{
+\t\t\tisa = PBXCopyFilesBuildPhase;
+\t\t\tbuildActionMask = 2147483647;
+\t\t\tdstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+\t\t\tdstSubfolderSpec = 16;
+\t\t\tfiles = (
+\t\t\t\t{E['bf']} /* MyPumpWatch.app in Embed Watch Content */,
+\t\t\t);
+\t\t\tname = "Embed Watch Content";
+\t\t\trunOnlyForDeploymentPostprocessing = 0;
+\t\t}};
+""")
+    t = insertar(t, "PBXTargetDependency", f"""\t\t{E['dep']} /* PBXTargetDependency */ = {{
+\t\t\tisa = PBXTargetDependency;
+\t\t\ttarget = {W['target']} /* MyPumpWatch */;
+\t\t\ttargetProxy = {E['proxy']} /* PBXContainerItemProxy */;
+\t\t}};
+""")
+    t = t.replace("\t\t\t\t6B200000000000000000005A /* Embed Foundation Extensions */,\n\t\t\t);",
+                  f"\t\t\t\t6B200000000000000000005A /* Embed Foundation Extensions */,\n\t\t\t\t{E['fase']} /* Embed Watch Content */,\n\t\t\t);", 1)
+    t = t.replace("\t\t\t\t6B200000000000000000005C /* PBXTargetDependency */,\n\t\t\t);",
+                  f"\t\t\t\t6B200000000000000000005C /* PBXTargetDependency */,\n\t\t\t\t{E['dep']} /* PBXTargetDependency */,\n\t\t\t);", 1)
+    assert t.count(MARCA_EMBEBIDO) >= 2, "no se encontró la fase del target MyPump"
+    return t
+
+
 def referencia(id_, nombre, producto):
     return f"""            <BuildableReference
                BuildableIdentifier = "primary"
@@ -325,6 +371,13 @@ def main():
         print("✓ targets MyPumpWatch y MyPumpWatchComplicaciones agregados")
     else:
         print("el reloj ya estaba en el proyecto")
+    if "--embeber" in sys.argv:
+        texto = PBX.read_text()
+        if MARCA_EMBEBIDO in texto:
+            print("el reloj ya estaba embebido")
+        else:
+            PBX.write_text(embeber(texto))
+            print("✓ MyPumpWatch.app embebido en MyPump.app (Watch/)")
     if not ESQUEMA.exists():
         ESQUEMA.write_text(esquema())
         print("✓ esquema MyPumpWatch")
