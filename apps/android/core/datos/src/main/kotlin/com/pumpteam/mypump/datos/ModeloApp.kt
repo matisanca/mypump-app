@@ -16,6 +16,8 @@ import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.AjusteComida
 import com.pumpteam.mypump.reglas.AjustePorciones
 import com.pumpteam.mypump.reglas.AgregadosComida
+import com.pumpteam.mypump.reglas.CacheCodigos
+import com.pumpteam.mypump.reglas.CodigoBarras
 import com.pumpteam.mypump.reglas.AlimentoAgregado
 import com.pumpteam.mypump.reglas.AlimentoEfectivo
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
@@ -30,7 +32,9 @@ import com.pumpteam.mypump.reglas.NormalizarDieta
 import com.pumpteam.mypump.reglas.SwapLocal
 import com.pumpteam.mypump.reglas.SwapsDeComida
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -39,6 +43,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -402,6 +407,7 @@ class ModeloApp(
     private fun soltarCuentaEnMemoria() {
         token = null
         disco = null
+        cacheCodigos = null
         outbox?.cerrar()
         outbox = null
         _info.value = null
@@ -432,6 +438,7 @@ class ModeloApp(
     private fun prepararCuenta(t: String) {
         val d = Disco(raizDisco, t)
         disco = d
+        cacheCodigos = null
         val sesiones = SesionesDelDia(alcance)
         sesionesDelDia = sesiones
         val escrituras = Escrituras(cliente, t, sesiones)
@@ -1079,6 +1086,74 @@ class ModeloApp(
     }
 
     /** Lo último agregado va primero (un mismo alimento una sola vez, con la última cantidad). */
+    // ── Código de barras (2.1, S3) ──
+    // Con el número que leyó el escáner se pregunta a Open Food Facts (pública, gratis y sin clave; solo viaja el código, sin
+    // token ni nada de la cuenta) y la respuesta se lleva a un alimento con [CodigoBarras.leer]. Lo buscado queda en el
+    // teléfono (`codigos_barras.json`, por cuenta): un producto de todos los días no vuelve a la red y se encuentra sin señal.
+    // Gemelo de BarrasDieta.swift.
+
+    /** Lo que pasó al buscar: una lectura (de la caché o de Open Food Facts) o que no hubo respuesta. */
+    sealed interface BusquedaCodigo {
+        data class Leido(val lectura: CodigoBarras.Lectura) : BusquedaCodigo
+        data object SinRed : BusquedaCodigo
+    }
+
+    /** La versión de la app para el User-Agent que pide Open Food Facts (la pone el ViewModel). */
+    var versionApp: String = "2"
+
+    /** El doble de Open Food Facts de las pruebas; sin él, va por el transporte del cliente. */
+    var transporteBarras: Transporte? = null
+
+    private var cacheCodigos: CacheCodigos? = null
+
+    private fun cacheCodigos(): CacheCodigos =
+        cacheCodigos ?: CacheCodigos.desde(disco?.leer(ARCHIVO_CODIGOS)?.let { ValorJson.desde(it) }).also { cacheCodigos = it }
+
+    private fun guardarCodigos(c: CacheCodigos) {
+        cacheCodigos = c
+        if (!_esDemo.value) disco?.guardar(ARCHIVO_CODIGOS, c.aValor())
+    }
+
+    /**
+     * Busca un código ya normalizado ([CodigoBarras.normalizar]). Sin respuesta (sin señal, timeout, Open Food Facts caído)
+     * es [BusquedaCodigo.SinRed] y no se guarda nada.
+     */
+    suspend fun buscarCodigo(codigo: String): BusquedaCodigo {
+        cacheCodigos().vigente(codigo, System.currentTimeMillis())?.let { return BusquedaCodigo.Leido(it) }
+        val pedido = Pedido(
+            url = CodigoBarras.url(codigo), metodo = "GET",
+            cabeceras = mapOf("User-Agent" to CodigoBarras.agenteUsuario(versionApp, "Android"), "Accept" to "application/json"),
+            cuerpo = null, esperaMs = CodigoBarras.ESPERA_MS,
+        )
+        val r = try {
+            (transporteBarras ?: cliente.transporte).enviar(pedido)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return BusquedaCodigo.SinRed
+        }
+        // Un producto que no está contesta 404 con `status: 0`; 429, 5xx o una página de error no dicen nada del producto.
+        if (r.status !in 200..299 && r.status != 404) return BusquedaCodigo.SinRed
+        val j = withContext(Dispatchers.Default) { runCatching { ValorJson.parsear(r.cuerpo.toString(Charsets.UTF_8)) }.getOrNull() }
+            ?: return BusquedaCodigo.SinRed
+        val lectura = CodigoBarras.leer(j, codigo)
+        val c = cacheCodigos()
+        c.guardar(codigo, lectura, System.currentTimeMillis())
+        guardarCodigos(c)
+        return BusquedaCodigo.Leido(lectura)
+    }
+
+    /** Un alimento propio creado desde un código que Open Food Facts no tenía: la próxima vez que se escanee, aparece el suyo. */
+    fun recordarCodigoPropio(codigo: String, c: AgregadosComida.Candidato) {
+        val cc = cacheCodigos()
+        cc.guardar(
+            codigo,
+            CodigoBarras.Lectura.Encontrado(CodigoBarras.Producto(codigo, c.nombre, c.por100, c.unidad, c.gramosPorUnidad, propio = true)),
+            System.currentTimeMillis(),
+        )
+        guardarCodigos(cc)
+    }
+
     fun recordarReciente(a: AlimentoAgregado) {
         val r = listOf(a) + _agregadosRecientes.value.filter { it.nombre.lowercase() != a.nombre.lowercase() }
         _agregadosRecientes.value = r.take(MAXIMO_RECIENTES)
@@ -1445,6 +1520,7 @@ class ModeloApp(
         const val CLAVE_TOKEN_INVALIDO = "mypump_token_invalido"
         internal const val ARCHIVO_COPIA = "offline.json"
         internal const val ARCHIVO_RECIENTES = "agregados_recientes.json"
+        internal const val ARCHIVO_CODIGOS = "codigos_barras.json"
 
         /** Cuántos recientes se guardan. */
         internal const val MAXIMO_RECIENTES = 12

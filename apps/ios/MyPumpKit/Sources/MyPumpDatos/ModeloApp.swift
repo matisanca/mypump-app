@@ -104,6 +104,10 @@ public final class ModeloApp {
     @ObservationIgnored let almacen: AlmacenToken
     @ObservationIgnored public private(set) var token: String?
     @ObservationIgnored var disco: Disco?
+    /// Código de barras (2.1, S3): lo ya buscado en Open Food Facts (se lee del disco la primera vez) y, en DEBUG, el doble
+    /// de la red que ponen las pruebas de interfaz (`-offDePrueba`). Sin doble, va por el transporte del cliente.
+    @ObservationIgnored var cacheCodigos: CacheCodigos?
+    @ObservationIgnored public var transporteBarras: (any Transporte)?
     @ObservationIgnored public private(set) var outbox: Outbox?
     /// La sesión del día de la cuenta: la comparten la cola y el motor de Entreno (hallazgo 5).
     @ObservationIgnored private var sesionesDelDia = SesionesDelDia()
@@ -265,6 +269,7 @@ public final class ModeloApp {
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
+        cacheCodigos = nil
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)

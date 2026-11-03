@@ -25,7 +25,9 @@ public struct MacrosPor100: Codable, Equatable, Sendable {
 /// «el huevo lo tuve que poner en extras y no en la misma comida»). Vive en el ajuste de esa comida y de ese día
 /// (`AjusteComida.agregados`), con las macros ya calculadas por la cantidad: así la ficha y el brief lo leen sin la base.
 public struct AlimentoAgregado: Codable, Equatable, Sendable {
-    public enum Origen: String, Codable, Sendable { case base, propio }
+    /// `barras` (2.1, S3): escaneado y buscado en Open Food Facts, con su `codigo`. Una 2.0.3 no lo conoce y lo lee como
+    /// `base` (no descarta el agregado); si esa versión reescribe el día, se pierden el origen y el código, no las macros.
+    public enum Origen: String, Codable, Sendable { case base, propio, barras }
 
     public var nombre: String
     /// La cantidad en `unidad`: «g» o una medida casera («unidad», «palma», «taza»…).
@@ -45,16 +47,24 @@ public struct AlimentoAgregado: Codable, Equatable, Sendable {
     public var origen: Origen
     /// Cuándo se agregó (ms): lo identifica dentro de la comida.
     public var ts: Int64
+    /// El código de barras (EAN-13 o EAN-8) de un escaneado, o de un propio creado desde un código. nil en los demás.
+    public var codigo: String?
 
     enum CodingKeys: String, CodingKey {
-        case nombre, cantidad, unidad, gramosUnidad, gramos, kcal, p, c, g, por100, origen, ts = "_ts"
+        case nombre, cantidad, unidad, gramosUnidad, gramos, kcal, p, c, g, por100, origen, codigo, ts = "_ts"
     }
 
     public init(nombre: String, cantidad: Double, unidad: String, gramosUnidad: Double?, gramos: Double, kcal: Double,
-                p: Double, c: Double, g: Double, por100: MacrosPor100, origen: Origen, ts: Int64) {
+                p: Double, c: Double, g: Double, por100: MacrosPor100, origen: Origen, ts: Int64, codigo: String? = nil) {
         self.nombre = nombre; self.cantidad = cantidad; self.unidad = unidad; self.gramosUnidad = gramosUnidad
         self.gramos = gramos; self.kcal = kcal; self.p = p; self.c = c; self.g = g; self.por100 = por100
-        self.origen = origen; self.ts = ts
+        self.origen = origen; self.ts = ts; self.codigo = codigo
+    }
+
+    /// Un código guardado: solo dígitos, de 8 a 14. Otra cosa se ignora (sin descartar el agregado).
+    public static func codigoValido(_ s: String?) -> String? {
+        guard let s, (8...14).contains(s.count), s.unicodeScalars.allSatisfy({ ("0"..."9").contains($0) }) else { return nil }
+        return s
     }
 
     /// Estricto: lo que no tiene sentido (sin nombre, cantidad cero, macros negativas o absurdas) no es un agregado y el
@@ -77,6 +87,7 @@ public struct AlimentoAgregado: Codable, Equatable, Sendable {
         p = try n(.p, max: 10000); c = try n(.c, max: 10000); g = try n(.g, max: 10000)
         por100 = try x.decode(MacrosPor100.self, forKey: .por100)
         origen = (try? x.decode(Origen.self, forKey: .origen)) ?? .base
+        codigo = Self.codigoValido((try? x.decodeIfPresent(String.self, forKey: .codigo)) ?? nil)
         let t = try x.decode(Double.self, forKey: .ts)
         guard t.isFinite, t >= 0, t < 1e15 else { throw DecodingError.dataCorruptedError(forKey: .ts, in: x, debugDescription: "ts") }
         ts = Int64(t)
@@ -95,6 +106,7 @@ public struct AlimentoAgregado: Codable, Equatable, Sendable {
         try x.encode(g, forKey: .g)
         try x.encode(por100, forKey: .por100)
         try x.encode(origen, forKey: .origen)
+        try x.encodeIfPresent(codigo, forKey: .codigo)
         try x.encode(ts, forKey: .ts)
     }
 
@@ -106,7 +118,7 @@ public struct AlimentoAgregado: Codable, Equatable, Sendable {
     /// El alimento del que salió, para volver a abrir la hoja de cantidad.
     public var candidato: AgregadosComida.Candidato {
         AgregadosComida.Candidato(nombre: nombre, por100: por100, unidad: gramosUnidad != nil ? unidad : nil,
-                                  gramosPorUnidad: gramosUnidad, origen: origen)
+                                  gramosPorUnidad: gramosUnidad, origen: origen, codigo: codigo)
     }
 }
 
@@ -131,9 +143,13 @@ public enum AgregadosComida {
         public let unidad: String?
         public let gramosPorUnidad: Double?
         public let origen: AlimentoAgregado.Origen
+        /// El código de barras, si salió de un escaneo (va al agregado).
+        public let codigo: String?
 
-        public init(nombre: String, por100: MacrosPor100, unidad: String?, gramosPorUnidad: Double?, origen: AlimentoAgregado.Origen) {
+        public init(nombre: String, por100: MacrosPor100, unidad: String?, gramosPorUnidad: Double?, origen: AlimentoAgregado.Origen,
+                    codigo: String? = nil) {
             self.nombre = nombre; self.por100 = por100; self.unidad = unidad; self.gramosPorUnidad = gramosPorUnidad; self.origen = origen
+            self.codigo = codigo
         }
 
         public init(_ a: AlimentoBase) {
@@ -157,7 +173,9 @@ public enum AgregadosComida {
         if let u = c.unidad, let gu = c.gramosPorUnidad, gu.isFinite, gu > 0 {
             let n = PorcionCasera.normalizar(u)
             if !["", "g", "gr", "grs", "gramo", "gramos", "ml", "cc"].contains(n) {
-                let nombre = ["u", "un", "uni", "unid", "unidad", "unidades"].contains(n) ? "unidad" : PorcionCasera.singular(n)
+                // «porción» (la de los escaneados y los propios por porción) con su tilde: normalizada quedaba «porcion».
+                let nombre = ["u", "un", "uni", "unid", "unidad", "unidades"].contains(n) ? "unidad"
+                    : ["porcion", "porciones"].contains(n) ? "porción" : PorcionCasera.singular(n)
                 return [.gramo, Medida(nombre: nombre, gramos: gu)]
             }
         }
@@ -270,7 +288,7 @@ public enum AgregadosComida {
         return AlimentoAgregado(nombre: nombre, cantidad: q, unidad: m.nombre, gramosUnidad: m.esGramo ? nil : m.gramos,
                                 gramos: gramos, kcal: jsRound(c.por100.kcal * f), p: jsRound(c.por100.p * f * 10) / 10,
                                 c: jsRound(c.por100.c * f * 10) / 10, g: jsRound(c.por100.g * f * 10) / 10,
-                                por100: c.por100, origen: c.origen, ts: ts)
+                                por100: c.por100, origen: c.origen, ts: ts, codigo: c.codigo)
     }
 
     /// Por qué no se puede agregar uno más (nil: se puede). `ajustes` es el día con el agregado ya puesto.
