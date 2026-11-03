@@ -49,6 +49,18 @@ struct VolumenMusculoTests {
         }
     }
 
+    @Test func elTextoSinFilas() throws {
+        let url = raizRepo.appendingPathComponent("apps/shared/vectores/volumen.json")
+        let v = try JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: url))
+        let casos = v["vacios"]!.elementos
+        #expect(casos.count >= 7)
+        for c in casos {
+            guard case .bool(let hay)? = c["hayProgreso"], case .bool(let llego)? = c["yaLlego"] else { Issue.record("caso mal armado"); continue }
+            let estado = try #require(VolumenMusculo.EstadoHistorial(rawValue: c["estado"]!.txt!))
+            #expect(VolumenMusculo.textoVacio(hayProgreso: hay, estado: estado, yaLlego: llego) == c["sale"]!.txt!, "\(c["nombre"]!.txt!)")
+        }
+    }
+
     @Test func textos() {
         #expect(VolumenMusculo.series(1) == "1 serie")
         #expect(VolumenMusculo.series(0) == "0 series")

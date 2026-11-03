@@ -65,9 +65,9 @@ internal fun etiquetaVolumen(f: VolumenMusculo.Fila, prefijo: String = "volumen"
  * para TalkBack (`Fila.textoAccesible`). Liviana, como la preparación de Entreno: letra chica, sin cajas adentro.
  */
 /** Lo que dice la tarjeta sin filas: sin series, trayendo el historial o sin red. */
-const val VACIO_SIN_SERIES = "Todavía no registraste series esta semana."
-const val VACIO_CARGANDO = "Trayendo tus series de la semana…"
-const val VACIO_SIN_RED = "Sin conexión: tus series de la semana se ven cuando vuelva la señal."
+const val VACIO_SIN_SERIES = VolumenMusculo.VACIO_SIN_SERIES
+const val VACIO_CARGANDO = VolumenMusculo.VACIO_CARGANDO
+const val VACIO_SIN_RED = VolumenMusculo.VACIO_SIN_RED
 
 @Composable
 fun CardVolumenMusculo(resumen: VolumenMusculo.Resumen, modifier: Modifier = Modifier, vacio: String = VACIO_SIN_SERIES) {

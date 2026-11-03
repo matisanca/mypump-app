@@ -131,6 +131,17 @@ class VolumenDatosTest {
     }
 
     @Test
+    fun otraSesionNoHeredaLasFechas() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modelo()
+        m.anotarFecha("jal-d1-0", 1, "2026-07-20")
+        assertEquals(1, m.fechasSeries.value.size)
+        b.servidor.cuando("get_sesion_dia", "[]")
+        m.restaurarSesion()
+        assertTrue(m.fechasSeries.value.isEmpty(), "una clave repetida heredaba la fecha de la sesión anterior")
+    }
+
+    @Test
     fun unLugarDeTrabajoLeGanaAlCalentamientoConElMismoNombre() {
         assertTrue(VolumenDatos.esDeTrabajoMejor("calentamiento", "compuesto"))
         assertTrue(VolumenDatos.esDeTrabajoMejor("cardio", null))

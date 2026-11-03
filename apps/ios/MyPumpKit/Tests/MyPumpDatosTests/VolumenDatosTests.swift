@@ -102,6 +102,29 @@ struct VolumenEnVivoTests {
         #expect(otro.registrosVolumenEnVivo.map(\.fecha) == [esperada])
     }
 
+    @Test func otraSesionNoHeredaLasFechas() async {
+        let b = Banco()
+        let m = b.modelo()
+        m.anotarFecha("jal-d1-0", 1, "2026-07-20")
+        #expect(m.fechasSeries.count == 1)
+        b.servidor.cuando("get_sesion_dia", "[]")
+        await m.restaurarSesion()
+        #expect(m.fechasSeries.isEmpty, "una clave repetida heredaba la fecha de la sesión anterior")
+    }
+
+    @Test func unCatalogoNuevoDelMismoTamanoCambiaLaFirma() {
+        let m = Banco().modelo()
+        let antes = m.firmaVolumenEnVivo
+        let otro = try! CatalogoEjercicios(json: Data("""
+        [{"slug_en":"A","name_en":"A","primary_muscle":"chest","equipment":"cable","patron_movimiento":"x"},
+         {"slug_en":"B","name_en":"B","primary_muscle":"chest","equipment":"cable","patron_movimiento":"x"},
+         {"slug_en":"C","name_en":"C","primary_muscle":"chest","equipment":"cable","patron_movimiento":"x"}]
+        """.utf8))
+        #expect(otro.entradas.count == m.catalogo.entradas.count)
+        m.actualizarCatalogo(otro)
+        #expect(m.firmaVolumenEnVivo != antes)
+    }
+
     @Test func elVolumenDeLaAppSeCacheaYSeRecalculaAlConfirmar() async throws {
         let hoy = FechaLocal.hoy()
         let banca = ClaveEjercicio.de("Press banca")

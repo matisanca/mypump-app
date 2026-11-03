@@ -1,5 +1,5 @@
 {
- "fuente": "A mano (3-nov, 2.1, S2; revisado el 3-nov): el volumen por músculo (series efectivas por semana). La leen VolumenMusculoTests (iOS) y VolumenMusculoTest (Android) y tienen que dar esto. Cada registro es una serie registrada (historial: cada fila cuenta) o confirmada en el teléfono (`enVivo`, con la fecha real de la serie; solo suma lo que no está en el historial por clave, fecha y número). `clave` es la del ejercicio (sin ella, `lugar`). `sale.filas` va en orden; `sale.deHoy` son los músculos de `filasDeHoy`, en orden.",
+ "fuente": "A mano (3-nov, 2.1, S2; revisado el 3-nov): el volumen por músculo (series efectivas por semana). La leen VolumenMusculoTests (iOS) y VolumenMusculoTest (Android) y tienen que dar esto. Cada registro es una serie registrada (historial: cada fila cuenta) o confirmada en el teléfono (`enVivo`, con la fecha real de la serie; solo suma lo que no está en el historial por clave, fecha y número). `clave` es la del ejercicio (sin ella, `lugar`). `sale.filas` va en orden; `sale.deHoy` son los músculos de `filasDeHoy`, en orden. `vacios`: lo que dice la tarjeta de Fuerza sin filas (`textoVacio`), según si hay Progreso, su estado y si el historial ya llegó alguna vez.",
  "casos": [
   {
    "nombre": "básico: esta semana, la pasada y lo viejo no cuenta",
@@ -1015,6 +1015,57 @@
      "chest"
     ]
    }
+  }
+ ],
+ "vacios": [
+  {
+   "nombre": "sin progreso (demo o sin cuenta): no hay historial que esperar",
+   "hayProgreso": false,
+   "estado": "cargando",
+   "yaLlego": false,
+   "sale": "Todavía no registraste series esta semana."
+  },
+  {
+   "nombre": "la primera carga",
+   "hayProgreso": true,
+   "estado": "cargando",
+   "yaLlego": false,
+   "sale": "Trayendo tus series de la semana…"
+  },
+  {
+   "nombre": "la primera carga sin red",
+   "hayProgreso": true,
+   "estado": "sinRed",
+   "yaLlego": false,
+   "sale": "Sin conexión: tus series de la semana se ven cuando vuelva la señal."
+  },
+  {
+   "nombre": "llegó sin series",
+   "hayProgreso": true,
+   "estado": "listo",
+   "yaLlego": true,
+   "sale": "Todavía no registraste series esta semana."
+  },
+  {
+   "nombre": "recargando después de una carga sin series",
+   "hayProgreso": true,
+   "estado": "cargando",
+   "yaLlego": true,
+   "sale": "Todavía no registraste series esta semana."
+  },
+  {
+   "nombre": "recarga sin red después de una carga sin series",
+   "hayProgreso": true,
+   "estado": "sinRed",
+   "yaLlego": true,
+   "sale": "Todavía no registraste series esta semana."
+  },
+  {
+   "nombre": "listo sin historial (sin rutina)",
+   "hayProgreso": true,
+   "estado": "listo",
+   "yaLlego": false,
+   "sale": "Todavía no registraste series esta semana."
   }
  ]
 }

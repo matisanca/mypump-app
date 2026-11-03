@@ -45,6 +45,10 @@ class ModeloProgreso(private val cliente: ClienteRpc, private val token: String)
     private val _historialPorClave = MutableStateFlow<Map<String, List<RegistroHistorico>>>(emptyMap())
     val historialPorClave: StateFlow<Map<String, List<RegistroHistorico>>> = _historialPorClave.asStateFlow()
 
+    /** Cambia cada vez que llega el historial (0 = todavía no llegó nunca), como `versionHistorial` de iOS. */
+    private val _versionHistorial = MutableStateFlow(0)
+    val versionHistorial: StateFlow<Int> = _versionHistorial.asStateFlow()
+
     /**
      * La carga en curso: si mientras tanto empezó otra, lo que vuelve de esta se descarta. Dos cargas que se pisaban dejaban
      * las tarjetas de una con el historial de la otra (revisión adversarial del 15-oct, como iOS).
@@ -127,6 +131,7 @@ class ModeloProgreso(private val cliente: ClienteRpc, private val token: String)
         }
         if (mia != carga.get()) return
         _historialPorClave.value = filasPor
+        _versionHistorial.value += 1
         _tarjetas.value = tarjetas
         _sesiones.value = sesiones
         _estado.value = Estado.LISTO

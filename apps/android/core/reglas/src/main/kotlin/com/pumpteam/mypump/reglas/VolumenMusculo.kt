@@ -67,6 +67,27 @@ object VolumenMusculo {
         return n.substring(0, 1).uppercase() + n.substring(1)
     }
 
+    /** Lo que dice la tarjeta de Fuerza sin filas (revisión del 3-nov): sin series, trayendo el historial o sin red. */
+    const val VACIO_SIN_SERIES = "Todavía no registraste series esta semana."
+    const val VACIO_CARGANDO = "Trayendo tus series de la semana…"
+    const val VACIO_SIN_RED = "Sin conexión: tus series de la semana se ven cuando vuelva la señal."
+
+    enum class EstadoHistorial { CARGANDO, LISTO, SIN_RED }
+
+    /**
+     * Qué decir sin filas. Sin Progreso (la demo, sin cuenta) no hay historial que esperar. Si el historial ya llegó
+     * alguna vez, una recarga (o una recarga sin red) no vuelve a decir «Trayendo…»: lo que había era real. Solo la
+     * primera carga dice «Trayendo…» o, sin red, «Sin conexión». Gemelo de iOS (vectores `vacios`).
+     */
+    fun textoVacio(hayProgreso: Boolean, estado: EstadoHistorial, yaLlego: Boolean): String {
+        if (!hayProgreso || yaLlego) return VACIO_SIN_SERIES
+        return when (estado) {
+            EstadoHistorial.CARGANDO -> VACIO_CARGANDO
+            EstadoHistorial.SIN_RED -> VACIO_SIN_RED
+            EstadoHistorial.LISTO -> VACIO_SIN_SERIES
+        }
+    }
+
     fun calcular(historial: List<Registro>, enVivo: List<Registro> = emptyList(), hoy: String): Resumen {
         val lunes = FotosProgreso.lunes(hoy)
         val anterior = DiaCalendario.numero(lunes)?.let { DiaCalendario.texto(it - 7) } ?: ""

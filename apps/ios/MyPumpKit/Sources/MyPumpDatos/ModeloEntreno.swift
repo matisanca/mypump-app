@@ -35,7 +35,9 @@ public final class ModeloEntreno {
     public internal(set) var sesionIniciada = false
     /// Historial pedido y todavía sin respuesta.
     public internal(set) var historialCargando: Set<String> = []
-    public internal(set) var catalogo: CatalogoEjercicios
+    public internal(set) var catalogo: CatalogoEjercicios { didSet { versionCatalogo &+= 1 } }
+    /// Cambia con cada catálogo que llega (la firma del volumen: dos catálogos con la misma cantidad no son el mismo).
+    @ObservationIgnored public private(set) var versionCatalogo = 0
     /// E1: las filas de preparación que el alumno tocó como hechas hoy, por `Preparacion.claveTildes` (fecha + día +
     /// lugar). Es solo un estado visual del día: no va a la base.
     public internal(set) var preparacionHecha: [String: [Int]] = [:]
@@ -486,7 +488,8 @@ public final class ModeloEntreno {
 
     /// Lo que cambia `registrosVolumenEnVivo` (para el caché del volumen): las series confirmadas, con qué nombre y fecha.
     public var firmaVolumenEnVivo: String {
-        var partes: [String] = [dia.dia.id ?? "", "\(semana)", "\(catalogo.entradas.count)"]
+        _ = catalogo   // para que la vista se entere de un catálogo nuevo
+        var partes: [String] = [dia.dia.id ?? "", "\(semana)", "\(versionCatalogo)"]
         partes.append(dia.sustituciones.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ","))
         for ex in dia.lista {
             guard let e = dia.ejercicios[ex.id] else { continue }
@@ -615,6 +618,9 @@ public final class ModeloEntreno {
     public func restaurarSesion() async {
         restauracion += 1
         let seq = restauracion
+        // Las fechas de la sesión anterior no se heredan (una clave repetida, otro bloque con los mismos lugares): vuelven
+        // del servidor (`registrado_en`) y de la cola, y lo que se toque desde ahora se anota de nuevo.
+        fechasSeries = [:]
         dia.sesionId = nil
         dia.diaFinalizado = false
         sesionIniciada = false

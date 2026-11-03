@@ -80,6 +80,25 @@ public enum VolumenMusculo {
         public var tope: Int { filas.map { max($0.semana, $0.anterior) }.max() ?? 0 }
     }
 
+    /// Lo que dice la tarjeta de Fuerza sin filas (revisión del 3-nov): sin series, trayendo el historial o sin red.
+    public static let vacioSinSeries = "Todavía no registraste series esta semana."
+    public static let vacioCargando = "Trayendo tus series de la semana…"
+    public static let vacioSinRed = "Sin conexión: tus series de la semana se ven cuando vuelva la señal."
+
+    public enum EstadoHistorial: String, Sendable { case cargando, listo, sinRed }
+
+    /// Qué decir sin filas. Sin Progreso (la demo, sin cuenta) no hay historial que esperar. Si el historial ya llegó
+    /// alguna vez, una recarga (o una recarga sin red) no vuelve a decir «Trayendo…»: lo que había era real. Solo la
+    /// primera carga dice «Trayendo…» o, sin red, «Sin conexión». El mismo criterio en iOS y Android (vectores `vacios`).
+    public static func textoVacio(hayProgreso: Bool, estado: EstadoHistorial, yaLlego: Bool) -> String {
+        guard hayProgreso, !yaLlego else { return vacioSinSeries }
+        switch estado {
+        case .cargando: return vacioCargando
+        case .sinRed: return vacioSinRed
+        case .listo: return vacioSinSeries
+        }
+    }
+
     /// «1 serie», «12 series».
     public static func series(_ n: Int) -> String { n == 1 ? "1 serie" : "\(n) series" }
 

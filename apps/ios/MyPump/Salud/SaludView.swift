@@ -99,9 +99,7 @@ struct VolumenMusculoTarjeta: View {
     /// Lo que se dice sin filas: sin series, trayendo el historial o sin red.
     var vacio: String = Self.sinSeries
 
-    static let sinSeries = "Todavía no registraste series esta semana."
-    static let cargando = "Trayendo tus series de la semana…"
-    static let sinRed = "Sin conexión: tus series de la semana se ven cuando vuelva la señal."
+    static let sinSeries = VolumenMusculo.vacioSinSeries
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.s) {

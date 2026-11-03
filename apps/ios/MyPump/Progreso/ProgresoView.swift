@@ -41,15 +41,16 @@ struct FuerzaSeccion: View {
         return DemoUI.bocetos ? VolumenMuestra.resumen : nil
     }
 
-    /// Qué decir sin series: el historial todavía no llegó o no hay red no es «no registraste» (revisión del 3-nov).
+    /// Qué decir sin series: el historial todavía no llegó o no hay red no es «no registraste» (revisión del 3-nov). La
+    /// regla es la del kit (`VolumenMusculo.textoVacio`), la misma que Android.
     private var vacioVolumen: String {
-        guard !modelo.conMuestras else { return VolumenMusculoTarjeta.sinSeries }
-        guard let p = modelo.progreso else { return VolumenMusculoTarjeta.cargando }
-        switch p.estado {
-        case .cargando where p.versionHistorial == 0: return VolumenMusculoTarjeta.cargando
-        case .sinRed where p.versionHistorial == 0: return VolumenMusculoTarjeta.sinRed
-        default: return VolumenMusculoTarjeta.sinSeries
+        let p = modelo.conMuestras ? nil : modelo.progreso
+        let estado: VolumenMusculo.EstadoHistorial = switch p?.estado {
+        case .cargando?: .cargando
+        case .sinRed?: .sinRed
+        default: .listo
         }
+        return VolumenMusculo.textoVacio(hayProgreso: p != nil, estado: estado, yaLlego: (p?.versionHistorial ?? 0) > 0)
     }
 
     /// Agrupadas por los días donde aparece cada ejercicio ("Tirón", o "Tirón · Torso" si está en los dos), en el orden

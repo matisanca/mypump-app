@@ -50,6 +50,21 @@ class VolumenMusculoTest {
         }
     }
 
+    @Test fun elTextoSinFilas() {
+        val casos = v["vacios"].lista().map { it.jsonObject }
+        assertTrue(casos.size >= 7)
+        for (c in casos) {
+            val estado = when (c["estado"].txt()) {
+                "cargando" -> VolumenMusculo.EstadoHistorial.CARGANDO
+                "sinRed" -> VolumenMusculo.EstadoHistorial.SIN_RED
+                else -> VolumenMusculo.EstadoHistorial.LISTO
+            }
+            val hay = (c["hayProgreso"] as JsonPrimitive).content.toBoolean()
+            val llego = (c["yaLlego"] as JsonPrimitive).content.toBoolean()
+            assertEquals(c["sale"].txt(), VolumenMusculo.textoVacio(hay, estado, llego), c["nombre"].txt())
+        }
+    }
+
     @Test fun textos() {
         assertEquals("1 serie", VolumenMusculo.series(1))
         assertEquals("0 series", VolumenMusculo.series(0))

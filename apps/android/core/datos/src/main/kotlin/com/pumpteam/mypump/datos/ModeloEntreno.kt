@@ -751,6 +751,9 @@ class ModeloEntreno(
     suspend fun restaurarSesion() {
         restauracion += 1
         val seq = restauracion
+        // Las fechas de la sesión anterior no se heredan (una clave repetida, otro bloque con los mismos lugares): vuelven
+        // del servidor (`registrado_en`) y de la cola, y lo que se toque desde ahora se anota de nuevo.
+        _fechasSeries.value = emptyMap()
         mutarDia {
             it.sesionId = null
             it.diaFinalizado = false
