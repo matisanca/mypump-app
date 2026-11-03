@@ -260,6 +260,9 @@ struct RelojModeloTests {
         #expect(s.incompatible == "Actualizá Pump Team en el iPhone para usar el reloj.")
         #expect(s.paraEnviar(ahora: AHORA, forzar: true).isEmpty && s.cola.pendientes.count == 2, "guardado, sin reenviar")
         s.recibir(b.modelo().rutinaReloj())
-        #expect(s.incompatible == nil)
+        s.revisarVersion(ProtocoloReloj.version - 1)
+        #expect(s.incompatible != nil, "el mismo iPhone viejo: sigue sin reenviar")
+        s.revisarVersion(ProtocoloReloj.version)
+        #expect(s.incompatible == nil, "el iPhone se actualizó")
     }
 }

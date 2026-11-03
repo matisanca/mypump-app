@@ -15,7 +15,9 @@ import MyPumpReloj
 final class PuenteReloj: NSObject {
     static let compartido = PuenteReloj()
 
-    private var receptor: (motor: ObjectIdentifier, r: ReceptorReloj)?
+    /// El receptor de la cuenta abierta (sus aplicados viven en el disco de esa cuenta). Va atado a la cuenta, no a la
+    /// instancia del motor: un motor nuevo de la misma cuenta (otra rutina, un refresco) sigue con los mismos aplicados.
+    private var receptor: (cuenta: String, r: ReceptorReloj)?
     private var envio: Task<Void, Never>?
     /// La última rutina mandada (no se manda dos veces lo mismo).
     private var ultima: RutinaReloj?
@@ -91,24 +93,32 @@ final class PuenteReloj: NSObject {
     // MARK: - Lo que llega del reloj
 
     private func recibir(_ d: [String: Any]) async -> [String: Any] {
+        let ahora = Date().timeIntervalSince1970 * 1000
+        // Un reloj con otra versión del protocolo: se le contesta la nuestra y deja de reenviar hasta actualizar.
+        if let incompatible = ProtocoloReloj.respuestaIncompatible(d, ahora: ahora) { return incompatible }
         guard let sobre = try? ProtocoloReloj.leer(d) else { return [:] }
         switch sobre.mensaje {
         case .pedirRutina:
             mandarRutina(forzar: true)
             return [:]
         case .eventos(let lote):
-            guard let m = motor else { return [:] }
+            // Sin cuenta abierta también se contesta (pendiente, con el motivo): el reloj lo guarda y le dice al alumno qué falta.
+            let m = motor
             let r: ReceptorReloj
-            if let c = receptor, c.motor == ObjectIdentifier(m) { r = c.r } else {
-                r = ReceptorReloj(motor: m)
-                receptor = (ObjectIdentifier(m), r)
+            if let m {
+                if let c = receptor, c.cuenta == m.cuentaReloj { r = c.r } else {
+                    r = ReceptorReloj(motor: m)
+                    receptor = (m.cuentaReloj, r)
+                }
+            } else {
+                r = ReceptorReloj(disco: nil)
             }
             let acuses = await r.recibir(lote, motor: m)
             mandarRutina()
-            guard !acuses.isEmpty, let respuesta = try? ProtocoloReloj.diccionario(SobreReloj(.acuse(acuses), enviado: Date().timeIntervalSince1970 * 1000))
+            guard !acuses.isEmpty, let respuesta = try? ProtocoloReloj.diccionario(SobreReloj(.acuse(acuses), enviado: ahora))
             else { return [:] }
             return respuesta
-        case .rutina, .acuse, .sinRutina:
+        case .rutina, .acuse, .sinRutina, .incompatible:
             return [:]
         }
     }

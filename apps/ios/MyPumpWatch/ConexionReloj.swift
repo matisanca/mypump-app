@@ -8,9 +8,11 @@ import MyPumpReloj
 /// gana, aunque el reloj estuviera dormido) o como mensaje.
 @MainActor
 final class ConexionReloj: NSObject {
-    var alRecibir: ((MensajeReloj) -> Void)?
+    /// El mensaje y la versión del protocolo del iPhone que lo mandó.
+    var alRecibir: ((MensajeReloj, Int) -> Void)?
     var alCambiarAlcance: ((Bool) -> Void)?
-    var alFallarVersion: (() -> Void)?
+    /// El iPhone habla una versión que el reloj no entiende (la versión del iPhone).
+    var alFallarVersion: ((Int) -> Void)?
 
     /// Los eventos que ya salieron por `transferUserInfo` (no se encolan dos veces en el sistema).
     private var transferidos: Set<UUID> = []
@@ -53,9 +55,12 @@ final class ConexionReloj: NSObject {
 
     private func leer(_ d: [String: Any]) {
         do {
-            alRecibir?(try ProtocoloReloj.leer(d).mensaje)
-        } catch .versionNueva, .versionVieja {
-            alFallarVersion?()
+            let sobre = try ProtocoloReloj.leer(d)
+            alRecibir?(sobre.mensaje, sobre.v)
+        } catch .versionNueva(let v) {
+            alFallarVersion?(v)
+        } catch .versionVieja(let v) {
+            alFallarVersion?(v)
         } catch {
             // Un mensaje que no se entiende se descarta.
         }

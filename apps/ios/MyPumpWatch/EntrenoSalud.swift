@@ -2,9 +2,11 @@ import Foundation
 @preconcurrency import HealthKit
 import MyPumpReloj
 
-/// La FC y las calorías en vivo con `HKWorkoutSession` + `HKLiveWorkoutBuilder`. NO se guarda nada en Salud (decisión de
-/// Mati): al terminar, el builder se descarta (`discardWorkout`) en vez de `finishWorkout`. La sesión de entreno además
-/// deja la app viva con la muñeca baja (el descanso sigue vibrando).
+/// La FC y las calorías en vivo con `HKWorkoutSession` + `HKLiveWorkoutBuilder`. El ENTRENO no se guarda en Salud
+/// (decisión de Mati): al terminar, el builder se descarta (`discardWorkout`) en vez de `finishWorkout`. Ojo: las
+/// muestras de frecuencia cardíaca y de calorías activas que mide el reloj sí quedan en Salud, como siempre que se
+/// usa el reloj; lo que no queda es el entreno. La sesión de entreno además deja la app viva con la muñeca baja (el
+/// descanso sigue vibrando).
 ///
 /// Si no hay permiso o HealthKit no está, el entreno anda igual sin FC ni calorías.
 @MainActor
@@ -58,6 +60,30 @@ final class EntrenoSalud: NSObject {
         }
         sesion = nil
         builder = nil
+    }
+
+    /// La sesión que el sistema guardó al cerrarse la app a mitad de un entreno. `seguir`: el día sigue en curso y se
+    /// retoma la medición; si no, se cierra y se descarta (no queda un entreno abierto ni va nada a Salud).
+    func recuperar(seguir: Bool) {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        tienda.recoverActiveWorkoutSession { [weak self] s, _ in
+            guard let s else { return }
+            nonisolated(unsafe) let recuperada = s
+            Task { @MainActor in self?.adoptar(recuperada, seguir: seguir) }
+        }
+    }
+
+    private func adoptar(_ s: HKWorkoutSession, seguir: Bool) {
+        let b = s.associatedWorkoutBuilder()
+        if seguir, sesion == nil {
+            b.delegate = self
+            sesion = s
+            builder = b
+            return
+        }
+        guard s !== sesion else { return }
+        s.end()
+        b.endCollection(withEnd: Date()) { _, _ in b.discardWorkout() }
     }
 
     fileprivate func actualizar(_ estadisticas: [HKQuantityType: HKStatistics]) {

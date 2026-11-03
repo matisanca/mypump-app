@@ -17,10 +17,10 @@
 		<string>workout-processing</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Pump Team muestra tu frecuencia cardíaca y las calorías mientras entrenás. No las guarda.</string>
+	<string>Pump Team muestra tu frecuencia cardíaca y tus calorías activas mientras entrenás.</string>
 	<!-- HealthKit pide permiso de escritura de entrenamientos para poder abrir una sesión de entreno en el reloj. Pump
 	     Team no guarda el entreno en Salud (decisión de Mati): al terminar lo descarta. -->
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Pump Team necesita este permiso para medir tu entreno en vivo, pero no guarda nada en Salud.</string>
+	<string>Pump Team necesita este permiso para medir tu entreno en vivo. No guardamos el entreno en Salud; el reloj registra tu frecuencia cardíaca y tus calorías activas como siempre.</string>
 </dict>
 </plist>

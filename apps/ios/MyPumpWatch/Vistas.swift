@@ -61,12 +61,12 @@ struct SinRutina: View {
                 Image(systemName: "iphone.gen3.radiowaves.left.and.right")
                     .font(.system(size: 34))
                     .foregroundStyle(Marca.verde)
-                Text(estado.versionIncompatible ? "Actualizá Pump Team" : "Abrí Pump Team en el iPhone")
+                Text(estado.incompatible != nil ? "Actualizá Pump Team" : "Abrí Pump Team en el iPhone")
                     .font(.headline)
                     .multilineTextAlignment(.center)
-                Text(estado.versionIncompatible
-                     ? "El reloj y el iPhone tienen versiones distintas de la app."
-                     : (estado.sinRutina ?? "Para traer tu rutina de hoy. Después podés entrenar sin el teléfono."))
+                Text(estado.incompatible
+                     ?? 
+                     (estado.sinRutina ?? "Para traer tu rutina de hoy. Después podés entrenar sin el teléfono."))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -86,6 +86,19 @@ struct ListaDia: View {
         let r = s.rutina!
         let hechos = r.ejercicios.filter(\.terminado).count
         List {
+            if !s.rechazos.isEmpty {
+                Section {
+                    ForEach(Array(s.rechazos.enumerated()), id: \.offset) { _, t in
+                        Label(t, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(Marca.oro)
+                    }
+                    Button("Entendido") { estado.leerRechazos() }
+                }
+            }
+            if let t = estado.incompatible {
+                Section { Label(t, systemImage: "arrow.down.app").font(.footnote).foregroundStyle(Marca.oro) }
+            }
             Section {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(TextoReloj.titulo(r.nombreDia))
@@ -121,8 +134,12 @@ struct ListaDia: View {
                 }
             }
             if let t = s.resumen(ahora: EstadoReloj.ahoraMs).textoSinEnviar {
-                Section { Label(t, systemImage: "arrow.triangle.2.circlepath").font(.footnote).foregroundStyle(.secondary) }
-                    .listRowBackground(Color.clear)
+                Section {
+                    Label(t, systemImage: "arrow.triangle.2.circlepath").font(.footnote).foregroundStyle(.secondary)
+                    // Por qué el iPhone todavía no lo pasó (otra cuenta, otro día abierto, sin conexión…).
+                    if let e = s.esperando { Text(e).font(.footnote).foregroundStyle(.secondary) }
+                }
+                .listRowBackground(Color.clear)
             }
         }
         .navigationTitle("Hoy")

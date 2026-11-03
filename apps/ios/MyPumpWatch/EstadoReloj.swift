@@ -10,13 +10,15 @@ import MyPumpReloj
 /// guarda, actualiza las complicaciones y manda la cola.
 @MainActor @Observable
 final class EstadoReloj {
+    /// Uno solo: lo usan la app y el delegado (la recuperación del entreno tras un cierre).
+    static let compartido = EstadoReloj()
     static let grupo = "group.com.pumpteam.mypump.reloj"
 
     private(set) var sesion = SesionReloj()
     /// El iPhone dijo que no hay rutina (sin cuenta, sin rutina activa).
     private(set) var sinRutina: String?
-    /// El iPhone tiene otra versión del protocolo.
-    var versionIncompatible = false
+    /// El iPhone tiene otra versión del protocolo: qué actualizar (no se le reenvía nada hasta entonces).
+    var incompatible: String? { sesion.incompatible }
     /// El aviso de récord de la última serie.
     var avisoRecord: String?
     /// El resumen al terminar.
@@ -51,12 +53,12 @@ final class EstadoReloj {
         } else if let d = try? Data(contentsOf: Self.archivoSesion), let s = try? JSONDecoder().decode(SesionReloj.self, from: d) {
             sesion = s
         }
-        conexion.alRecibir = { [weak self] m in self?.recibir(m) }
+        conexion.alRecibir = { [weak self] m, v in self?.recibir(m, version: v) }
         conexion.alCambiarAlcance = { [weak self] alcanzable in
             self?.conectado = alcanzable
             if alcanzable { self?.sincronizar(forzar: true) }
         }
-        conexion.alFallarVersion = { [weak self] in self?.versionIncompatible = true }
+        conexion.alFallarVersion = { [weak self] v in self?.cambiar(enviar: false) { $0.marcarIncompatible(version: v) } }
         entreno.alMedir = { [weak self] s in self?.salud = s }
         if !args.contains("-demo") { conexion.activar() }
         actualizarComplicacion()
@@ -64,13 +66,16 @@ final class EstadoReloj {
 
     // MARK: - Lo que llega del iPhone
 
-    private func recibir(_ m: MensajeReloj) {
+    private func recibir(_ m: MensajeReloj, version: Int) {
+        if version != ProtocoloReloj.version || sesion.incompatible != nil { cambiar(enviar: false) { $0.revisarVersion(version) } }
         switch m {
         case .rutina(let r):
             sinRutina = nil
             cambiar { $0.recibir(r) }
         case .acuse(let a):
-            cambiar { $0.acusar(a) }
+            cambiar { $0.acusar(a, ahora: Self.ahoraMs) }
+        case .incompatible(let v):
+            cambiar(enviar: false) { $0.marcarIncompatible(version: v) }
         case .sinRutina(let motivo):
             sinRutina = motivo
         case .pedirRutina, .eventos:
@@ -109,6 +114,15 @@ final class EstadoReloj {
         WKInterfaceDevice.current().play(.stop)
     }
 
+    /// El alumno leyó lo que el iPhone no pudo guardar.
+    func leerRechazos() { cambiar(enviar: false) { $0.leerRechazos() } }
+
+    /// El sistema relanzó la app con un entreno de HealthKit abierto (se cerró o se colgó a mitad): si el día sigue en
+    /// curso se retoma la medición; si ya terminó (o no empezó), se cierra y se descarta.
+    func recuperarEntreno() {
+        entreno.recuperar(seguir: conSalud && sesion.iniciada && !sesion.terminada)
+    }
+
     func ajustarDescanso(_ s: Double) { cambiar(enviar: false) { $0.ajustarDescanso(s, ahora: Self.ahoraMs) } }
     func saltarDescanso() { cambiar(enviar: false) { $0.saltarDescanso() } }
 
@@ -145,6 +159,8 @@ final class EstadoReloj {
         var s = sesion
         f(&s)
         sesion = s
+        // El día se cerró (en el reloj o en el iPhone) o no hay nada empezado: el entreno de HealthKit no queda abierto.
+        if s.terminada || !s.iniciada { entreno.terminar() }
         guardar()
         actualizarComplicacion()
         if enviar { sincronizar() }

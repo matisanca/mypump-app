@@ -41,7 +41,6 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// todavía no acusó se sigue mandando); si es la misma, se le vuelven a poner encima las series que el teléfono
     /// todavía no tiene. Una rutina más vieja que la que ya hay se ignora.
     public mutating func recibir(_ nueva: RutinaReloj) {
-        incompatible = nil
         if let r = rutina, r.diaId == nueva.diaId, r.semana == nueva.semana, r.fecha == nueva.fecha, nueva.generada < r.generada { return }
         let mismoDia = rutina.map { $0.diaId == nueva.diaId && $0.semana == nueva.semana && $0.fecha == nueva.fecha } ?? false
         var r = nueva
@@ -283,7 +282,19 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// El iPhone habla otra versión del protocolo: no se le reenvía nada (los eventos quedan guardados en la cola) hasta
     /// que una de las dos apps se actualice. El texto es para el alumno.
     public private(set) var incompatible: String?
-    public mutating func marcarIncompatible(version v: Int) { incompatible = ProtocoloReloj.textoIncompatible(v, enElReloj: true) }
+    /// La versión del iPhone cuando dijo que no nos entiende.
+    private var versionIncompatible: Int?
+    public mutating func marcarIncompatible(version v: Int) {
+        incompatible = ProtocoloReloj.textoIncompatible(v, enElReloj: true)
+        versionIncompatible = v
+    }
+    /// Llegó un sobre del iPhone con la versión `v`: si es otra que la de cuando no nos entendía, se actualizó una de las
+    /// dos apps y se vuelve a mandar (si sigue sin entender, contesta `incompatible` otra vez).
+    public mutating func revisarVersion(_ v: Int) {
+        guard let vi = versionIncompatible, v != vi else { return }
+        incompatible = nil
+        versionIncompatible = nil
+    }
 
     public mutating func paraEnviar(ahora: Double, forzar: Bool = false) -> [EventoEnCola] {
         incompatible == nil ? cola.paraEnviar(ahora: ahora, forzar: forzar) : []
