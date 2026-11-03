@@ -16,20 +16,20 @@
 --       ms para las dos. Como el filtro va en `serie`, sale también de la banda
 --       de 60 días y del CV.
 --  [P3] Carga crónica dividida por 28 aunque hubiera menos historia: un cliente
---       con 10 días de registros tenía un ratio agudo:crónico inflado ~2,8x y el
+--       con 10 días de registros con RIR tenía un ratio agudo:crónico inflado ~2,8x y el
 --       componente de carga en 0. Ahora se divide por los días con historia
 --       (desde el primer registro de carga, tope 28) y el componente no existe
 --       hasta tener 7 días.
 --  [P4] La regularidad usaba STDDEV del punto medio del sueño en minutos del
 --       día: 23:50 y 00:10 daban 1000 min de diferencia. Ahora es el desvío
 --       circular, sqrt(-2 ln R), pasado a minutos.
---  [P5] Las "noches" de menos de 180 min (siesta o registro cortado) contaban
---       como la noche: duración, deuda y punto medio. Ya no reemplazan la noche:
---       ese día ese registro no cuenta (y si otra fuente trae la noche entera,
---       gana esa).
+--  [P5] Las "noches" de menos de 180 min (siesta o registro cortado) podían
+--       ganarle a la noche entera de otra fuente. Ahora, si ese día hay una
+--       noche de 180 min o más, el registro corto se descarta; si no la hay,
+--       es una noche corta real y cuenta como tal (nunca como "sin dato").
 --  [P6] Quien nunca llega al peso mínimo de 45 veía "insuficiente" sin saber
 --       qué falta. Columna nueva `motivo_falta` (texto legible) al FINAL de la
---       tabla: las apps decodifican por nombre, así que una columna de más no las
+--       tabla (y `confianza` después): las apps decodifican por nombre, así que una columna de más no las
 --       rompe. También explica el "calibrando" (cuántos días faltan).
 --  [P7] Respiración y SpO2 llegan como mediana del día y se colaban valores de
 --       vigilia/ejercicio (30 rpm, 84 %). Solo cuentan dentro del rango de
@@ -37,6 +37,12 @@
 --  [P8] La discordancia comparaba el check SEMANAL con el score DIARIO y saltaba
 --       casi día por medio. Ahora compara contra la media de 7 días del score
 --       (con al menos 3 días con score).
+--
+--  [B] Decisión de Mati (3-nov): el score sale con la mayor información que
+--       haya. Ya no hay peso mínimo de 45: alcanza con FC en reposo/VFC o con
+--       sueño (los pesos se renormalizan entre lo que exista). Solo queda
+--       "insuficiente" si no hay ninguno de los dos. Columna nueva `confianza`
+--       (alta/media/baja) y `motivo_falta` dice qué mejoraría el dato.
 --
 -- La respuesta de mypump_get_recuperacion conserva las 12 columnas con el mismo
 -- nombre, tipo y orden, y agrega `motivo_falta` al final. Cambia la firma de
@@ -61,7 +67,7 @@ CREATE FUNCTION public.mypump_calc_recuperacion(p_cliente_id TEXT, p_desde DATE,
 RETURNS TABLE(fecha date, score integer, estado text, banda text, dias_datos integer,
               banda_provisoria boolean, estado_autonomico text, hrv_metrica text,
               discordancia boolean, cobertura jsonb, componentes jsonb, motivos jsonb,
-              motivo_falta text)
+              motivo_falta text, confianza text)
 LANGUAGE sql
 STABLE SECURITY DEFINER
 SET search_path TO 'public'
@@ -69,14 +75,19 @@ AS $function$
 WITH
 -- ── 0. Registros que NO pueden representar la noche ─────────────────────────
 -- [P5] Un sueno_min < 180 es una siesta o una noche cortada. Se descarta ese
--- registro y, de la misma fecha y fuente, el punto medio y la eficiencia (son
--- del mismo bloque).
+-- registro (y, de la misma fecha y fuente, el punto medio y la eficiencia, que
+-- son del mismo bloque) SOLO si ese día hay otra fuente con una noche de 180
+-- min o más. Si no la hay, es una noche corta de verdad y cuenta como tal
+-- (duración baja y deuda): descartarla como "sin dato" haría SUBIR el score.
 corta AS (
   SELECT s.fecha, s.fuente
   FROM mypump_salud_diaria s
   WHERE s.cliente_id = p_cliente_id
     AND s.fecha BETWEEN (p_desde - 75) AND p_hasta
     AND s.tipo = 'sueno_min' AND s.valor < 180
+    AND EXISTS (SELECT 1 FROM mypump_salud_diaria l
+                WHERE l.cliente_id = p_cliente_id AND l.fecha = s.fecha
+                  AND l.tipo = 'sueno_min' AND l.valor >= 180)
 ),
 -- ── 1. Una fila por (fecha, tipo): resolver el conflicto multi-fuente ──────
 -- La unique key de la tabla es (cliente, fecha, tipo, fuente). Los filtros de
@@ -96,9 +107,11 @@ serie AS (
     AND NOT (s.tipo = 'hrv_ms' AND COALESCE(s.detalle->>'ventana', '') = 'dia')
     -- [P2] rango fisiológico, y SDNN con al menos 3 lecturas si trae n
     AND NOT (s.tipo = 'hrv_ms' AND (s.valor < 10 OR s.valor > 200))
+    -- (CASE y no AND: el orden de evaluación del AND no está garantizado y el
+    -- cast fallaría con un n no numérico; con detalle NULL el CASE da FALSE)
     AND NOT (s.tipo = 'hrv_ms' AND COALESCE(s.detalle->>'metrica', '') <> 'rmssd'
-             AND s.detalle ? 'n'
-             AND COALESCE(NULLIF(s.detalle->>'n', '')::NUMERIC, 0) < 3)
+             AND CASE WHEN jsonb_typeof(s.detalle->'n') = 'number'
+                      THEN (s.detalle->>'n')::NUMERIC < 3 ELSE FALSE END)
     -- [P5] siestas y noches cortadas
     AND NOT (s.tipo IN ('sueno_min', 'sueno_medio_min', 'sueno_eficiencia_pct')
              AND EXISTS (SELECT 1 FROM corta k WHERE k.fecha = s.fecha AND k.fuente = s.fuente))
@@ -213,11 +226,12 @@ dia_carga AS (
     AND r.registrado_en >= (p_desde - 75)::TIMESTAMPTZ
   GROUP BY 1
 ),
--- [P3] primer día con registros de carga (de toda la historia, no de la ventana)
+-- [P3] primer día con una serie CON RIR (lo único que usa la carga), de toda
+-- la historia y no solo de la ventana
 carga_ini AS (
   SELECT MIN((r.registrado_en AT TIME ZONE 'America/Argentina/Buenos_Aires')::DATE) AS d
   FROM mypump_registros_carga r
-  WHERE r.cliente_id = p_cliente_id
+  WHERE r.cliente_id = p_cliente_id AND r.rir_real IS NOT NULL
 ),
 carga AS (
   SELECT c.fecha,
@@ -341,7 +355,18 @@ tot AS (
 ),
 tot2 AS (
   SELECT t.*,
-    CASE WHEN t.dias_datos >= 14 AND t.w_tot >= 45 THEN t.num / NULLIF(t.w_tot, 0) END AS score_raw
+    -- [B] hay score con lo que haya, siempre que exista uno de los dos pilares
+    -- objetivos (FC en reposo/VFC o sueño). Los pesos ya se renormalizan al
+    -- dividir por w_tot, así que no hace falta un mínimo de peso.
+    (t.w_a > 0 OR t.w_b > 0) AS hay_base,
+    CASE WHEN t.dias_datos >= 14 AND (t.w_a > 0 OR t.w_b > 0)
+         THEN t.num / NULLIF(t.w_tot, 0) END AS score_raw,
+    -- [B] confianza: alta = VFC nocturna válida + sueño con fases;
+    -- baja = un solo pilar y sin VFC; media = el resto.
+    CASE WHEN t.dias_datos < 14 OR NOT (t.w_a > 0 OR t.w_b > 0) THEN NULL
+         WHEN t.w_a > 0 AND t.w_b > 0 AND t.hrv_metrica IS NOT NULL AND NOT t.sueno_estimado THEN 'alta'
+         WHEN (t.w_a = 0 OR t.w_b = 0) AND t.hrv_metrica IS NULL THEN 'baja'
+         ELSE 'media' END AS confianza
   FROM tot t
 ),
 -- [P8] media de 7 días del score (incluye el día): es lo comparable con un
@@ -350,25 +375,26 @@ tot3 AS (
   SELECT t.*,
     AVG(t.score_raw)   OVER w7i AS score_mu7,
     COUNT(t.score_raw) OVER w7i AS score_n7,
-    -- [P6] lo que falta, en orden de cuánto pesa
+    -- [P6] lo más útil para mejorar la confianza, en orden de prioridad: el
+    -- motivo muestra SOLO el primero (lo mínimo que más suma)
     ARRAY_REMOVE(ARRAY[
-      CASE WHEN t.w_a = 0 THEN 'la frecuencia cardíaca en reposo o la VFC del reloj' END,
-      CASE WHEN t.w_b = 0 THEN 'una noche de sueño de 3 h o más' END,
-      CASE WHEN t.w_b > 0 AND t.sueno_estimado THEN 'el sueño con fases (hoy llega solo el tiempo en cama)' END,
-      CASE WHEN t.w_c = 0 THEN 'series registradas con RIR en las últimas semanas' END,
-      CASE WHEN t.w_d = 0 THEN 'el check semanal de descanso y energía' END
-    ], NULL) AS faltan
+      CASE WHEN t.w_b = 0 THEN 'usá el reloj para dormir' END,
+      CASE WHEN t.w_a > 0 AND t.w_b > 0 AND t.hrv_metrica IS NULL THEN 'dejá el reloj puesto toda la noche para que mida la VFC' END,
+      CASE WHEN t.w_a = 0 THEN 'revisá que el reloj registre la frecuencia cardíaca en reposo' END,
+      CASE WHEN t.w_b > 0 AND t.sueno_estimado THEN 'revisá que el reloj registre las fases del sueño' END,
+      CASE WHEN t.w_c = 0 THEN 'cargá el RIR de tus series' END,
+      CASE WHEN t.w_d = 0 THEN 'completá el check semanal' END
+    ], NULL) AS mejoras
   FROM tot2 t
   WINDOW w7i AS (ORDER BY t.fecha ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)
 )
 SELECT
   t.fecha,
-  CASE WHEN t.dias_datos >= 14 AND t.w_tot >= 45
-       THEN ROUND(t.num / NULLIF(t.w_tot, 0))::INTEGER END AS score,
-  CASE WHEN t.w_tot < 45      THEN 'insuficiente'
+  ROUND(t.score_raw)::INTEGER AS score,
+  CASE WHEN NOT t.hay_base    THEN 'insuficiente'
        WHEN t.dias_datos < 14 THEN 'calibrando'
        ELSE 'ok' END AS estado,
-  CASE WHEN t.dias_datos >= 14 AND t.w_tot >= 45 THEN
+  CASE WHEN t.score_raw IS NOT NULL THEN
     CASE WHEN t.num / NULLIF(t.w_tot,0) >= 67 THEN 'alta'
          WHEN t.num / NULLIF(t.w_tot,0) >= 34 THEN 'media'
          ELSE 'baja' END END AS banda,
@@ -417,17 +443,16 @@ SELECT
    ) q) AS motivos,
   -- [P6] texto legible de qué falta; NULL cuando el score existe
   CASE
-    WHEN t.w_tot < 45 THEN
-      'Faltan datos para calcular la recuperación de este día. Hace falta '
-      || CASE WHEN COALESCE(array_length(t.faltan, 1), 0) = 0 THEN 'más datos del reloj'
-              WHEN array_length(t.faltan, 1) = 1 THEN t.faltan[1]
-              ELSE array_to_string(t.faltan[1:array_length(t.faltan, 1) - 1], ', ')
-                   || ' y ' || t.faltan[array_length(t.faltan, 1)] END
-      || '.'
+    WHEN NOT t.hay_base THEN
+      'Faltan datos del reloj para calcular la recuperación de este día. Alcanza con '
+      || 'cualquiera de estos, usar el reloj para dormir o que registre la frecuencia cardíaca en reposo.'
     WHEN t.dias_datos < 14 THEN
-      'Calibrando: hay ' || t.dias_datos || ' de 14 días con datos del reloj. Faltan '
+      'Calibrando, hay ' || t.dias_datos || ' de 14 días con datos del reloj. Faltan '
       || (14 - t.dias_datos) || CASE WHEN 14 - t.dias_datos = 1 THEN ' día.' ELSE ' días.' END
-  END AS motivo_falta
+    WHEN t.confianza IN ('media', 'baja') AND COALESCE(array_length(t.mejoras, 1), 0) > 0 THEN
+      'Confianza ' || t.confianza || '. Para mejorarla, ' || t.mejoras[1] || '.'
+  END AS motivo_falta,
+  t.confianza
 FROM tot3 t
 WHERE t.fecha BETWEEN p_desde AND p_hasta
 ORDER BY t.fecha;
@@ -438,7 +463,7 @@ CREATE FUNCTION public.mypump_get_recuperacion(p_token TEXT, p_dias INTEGER DEFA
 RETURNS TABLE(fecha date, score integer, estado text, banda text, dias_datos integer,
               banda_provisoria boolean, estado_autonomico text, hrv_metrica text,
               discordancia boolean, cobertura jsonb, componentes jsonb, motivos jsonb,
-              motivo_falta text)
+              motivo_falta text, confianza text)
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
 SET search_path TO 'public'
@@ -461,7 +486,7 @@ CREATE FUNCTION public.mypump_get_recuperacion_cliente_coach(p_cliente_id TEXT, 
 RETURNS TABLE(fecha date, score integer, estado text, banda text, dias_datos integer,
               banda_provisoria boolean, estado_autonomico text, hrv_metrica text,
               discordancia boolean, cobertura jsonb, componentes jsonb, motivos jsonb,
-              motivo_falta text)
+              motivo_falta text, confianza text)
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
 SET search_path TO 'public'
