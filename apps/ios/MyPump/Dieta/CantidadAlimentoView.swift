@@ -307,6 +307,12 @@ struct CantidadAlimentoView: View {
                         .padding(.horizontal, 6).padding(.vertical, 2).background(Color.marcaSuave, in: .capsule)
                 }
             }
+            // Escaneado (2.1, S3): de dónde salen los valores (la licencia de Open Food Facts pide nombrarla).
+            if candidato?.origen == .barras, let codigo = candidato?.codigo {
+                Label("Valores de Open Food Facts · \(codigo)", systemImage: "barcode")
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("cantidad-origen-barras")
+            }
             HStack(spacing: 18) {
                 AnilloMacros(partes: partes.map { ($0.2, $0.3) }) {
                     VStack(spacing: 0) {
