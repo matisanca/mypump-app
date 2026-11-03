@@ -51,11 +51,16 @@ class RecuperacionConfianzaUiTest : PruebaUi() {
     private fun hastaLaCard() {
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(etiqueta("card-recuperacion"))
-        val delta = p.esperar("se ubica la card") {
-            val visible = p.nodo(etiqueta("revision-lista"), ms = 0).boundsInRoot
-            p.nodo(etiqueta("card-recuperacion"), ms = 0).positionInRoot.y - visible.top - 24f
+        // La lista sigue creciendo mientras llegan el peso y la salud: se ubica hasta que la card quede arriba de todo.
+        repeat(4) {
+            p.quieto(400)
+            val delta = p.esperar("se ubica la card") {
+                val visible = p.nodo(etiqueta("revision-lista"), ms = 0).boundsInRoot
+                p.nodo(etiqueta("card-recuperacion"), ms = 0).positionInRoot.y - visible.top - 24f
+            }
+            if (kotlin.math.abs(delta) < 8f) return
+            p.desplazar(etiqueta("revision-lista"), delta)
         }
-        p.desplazar(etiqueta("revision-lista"), delta)
         p.quieto(400)
     }
 

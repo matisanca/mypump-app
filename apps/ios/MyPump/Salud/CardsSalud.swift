@@ -69,6 +69,8 @@ struct CardRecuperacionView: View {
             contenido
         }
         .tarjeta()
+        // Contenedor: sin esto el identificador de la card pisaba los de adentro (la pastilla y "ver-todos-mis-datos").
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("card-recuperacion")
     }
 
