@@ -412,16 +412,20 @@ public struct DiaEnCurso: Sendable, Equatable {
         return [.guardarSustituciones, .pedirHistorial(id)]
     }
 
-    /// E4 (2.0.3): las series sin confirmar y sin RIR arrancan con el RIR objetivo de la semana (`RIRInicial`), no
-    /// vacías con el 0 como primera opción. Sin objetivo quedan vacías (se guarda null). Las confirmadas no se tocan.
-    public mutating func preseleccionarRIR() {
-        for ex in lista {
-            guard var e = ejercicios[ex.id] else { continue }
-            let inicial = RIRInicial.de(Progresiones.pauta(ex, semana: semana).rir)
-            guard !inicial.isEmpty else { continue }
-            for i in e.series.indices where !e.series[i].confirmada && e.series[i].rir.isEmpty { e.series[i].rir = inicial }
-            ejercicios[ex.id] = e
-        }
+    /// 2.0.3: el RIR ya no se elige. Antes de confirmar una serie que nunca se registró, se le pone el del plan
+    /// ([RIRDelPlan]): la recuperación lo necesita para contar las series duras. Las ya registradas (con su nombre, del
+    /// servidor o de la cola) conservan lo que tenían, y el calentamiento y el cardio no llevan RIR (no son series duras).
+    /// Va aparte de `confirmarSerie`, que sigue igual a la web (sus vectores esperan el RIR que se eligió).
+    public mutating func fijarRIRDelPlan(_ id: String, _ idx: Int) {
+        guard let ex = ejercicio(id), let e = ejercicios[id], idx >= 0, idx < e.series.count else { return }
+        let s = e.series[idx]
+        guard !s.confirmada, s.rir.isEmpty, s.nombreRegistrado == nil, ex.tipo != "calentamiento", ex.tipo != "cardio" else { return }
+        ejercicios[id]!.series[idx].rir = RIRDelPlan.guardar(Progresiones.pauta(ex, semana: semana).rir)
+    }
+
+    /// La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva».
+    public func leyendaRIR(_ id: String) -> String {
+        RIRDelPlan.leyenda(ejercicio(id).flatMap { Progresiones.pauta($0, semana: semana).rir })
     }
 
     // MARK: - Restaurar (lo que trae el servidor)

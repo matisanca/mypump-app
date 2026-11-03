@@ -32,11 +32,12 @@ struct Entreno203Tests {
         }
     }
 
-    @Test func rirInicial() throws {
-        let casos = try leer("entreno_203.json")["rirInicial"]!["casos"]!.lista
-        #expect(casos.count >= 10)
+    @Test func rirDelPlan() throws {
+        let casos = try leer("entreno_203.json")["rir"]!["casos"]!.lista
+        #expect(casos.count >= 12)
         for c in casos {
-            #expect(RIRInicial.de(c["objetivo"]?.texto) == c["sale"]!.texto!, "\(c)")
+            #expect(RIRDelPlan.guardar(c["objetivo"]?.texto) == c["guarda"]!.texto!, "\(c)")
+            #expect(RIRDelPlan.leyenda(c["objetivo"]?.texto) == c["leyenda"]!.texto!, "\(c)")
         }
     }
 
@@ -85,21 +86,26 @@ struct Entreno203Tests {
         #expect(d.confirmarSerie("e1", 0).efectos.contains(.iniciarDescanso(segundos: 75)))
     }
 
-    /// E4: arranca en el objetivo de la semana; sin objetivo queda vacío y se guarda null; lo confirmado no se toca.
-    @Test func rirPreseleccionado() throws {
-        let j = #"{"id":"d1","bloques":[{"ejercicios":[{"id":"e1","nombre":"Press banca","series":2,"reps":"8","progresion":[{"semana":1,"series":2,"reps":"8","rir":"1-2"}]},{"id":"e2","nombre":"Curl","series":1,"reps":"12"}]}]}"#
+    /// El RIR del plan se pone al confirmar: el primer número del rango, 0 sin objetivo; el calentamiento queda null y una
+    /// serie ya registrada (con nombre) conserva el suyo.
+    @Test func rirDelPlanAlConfirmar() throws {
+        let j = #"{"id":"d1","bloques":[{"ejercicios":[{"id":"e1","nombre":"Press banca","series":2,"reps":"8","progresion":[{"semana":1,"series":2,"reps":"8","rir":"1-2"}]},{"id":"e2","nombre":"Curl","series":1,"reps":"12"},{"id":"e3","nombre":"Movilidad","tipo":"calentamiento","series":1,"reps":"10"}]}]}"#
         var d = DiaEnCurso(dia: try JSONDecoder().decode(Dia.self, from: Data(j.utf8)), semana: 1, sesionId: "s1")
-        d.ejercicios["e1"]!.series[1].rir = "3"
-        d.preseleccionarRIR()
-        #expect(d.ejercicios["e1"]?.series.map(\.rir) == ["1", "3"])
-        #expect(d.ejercicios["e2"]?.series.map(\.rir) == [""])
-        d.escribir("e2", 0, campo: "reps", valor: "12")
-        d.escribir("e2", 0, campo: "kg", valor: "10")
-        let p = d.confirmarSerie("e2", 0)
-        guard case .encolar(_, let payload, _)? = p.efectos.first(where: { if case .encolar(let k, _, _) = $0 { return k == "carga" }; return false }) else {
-            Issue.record("sin carga"); return
+        #expect(d.leyendaRIR("e1") == "Dejando 1–2 en reserva" && d.leyendaRIR("e2") == "Al fallo")
+        func cargaRIR(_ id: String, _ idx: Int) -> JSONValue? {
+            d.escribir(id, idx, campo: "reps", valor: "8")
+            d.escribir(id, idx, campo: "kg", valor: "10")
+            d.fijarRIRDelPlan(id, idx)
+            let p = d.confirmarSerie(id, idx)
+            guard case .encolar(_, let payload, _)? = p.efectos.first(where: { if case .encolar(let k, _, _) = $0 { return k == "carga" }; return false }) else { return nil }
+            return payload["datos"]?["rir"]
         }
-        #expect(payload["datos"]?["rir"] == .null, "RIR sin cargar va null")
+        #expect(cargaRIR("e1", 0) == .numero(1))
+        #expect(cargaRIR("e2", 0) == .numero(0))
+        #expect(cargaRIR("e3", 0) == .null, "el calentamiento no es serie dura")
+        // Una serie que vino del servidor sin RIR y se corrige con el lápiz no se toca.
+        d.ejercicios["e1"]!.series[1].nombreRegistrado = "Press banca"
+        #expect(cargaRIR("e1", 1) == .null)
     }
 }
 

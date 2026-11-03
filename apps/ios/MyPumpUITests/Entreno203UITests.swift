@@ -74,6 +74,10 @@ final class Entreno203UITests: XCTestCase {
         XCTAssertTrue(filas[2].label.hasPrefix("Aproximación 2") && filas[2].label.contains("50 kilos"), filas[2].label)
         XCTAssertTrue(filas[3].label.hasPrefix("Potenciación (opcional)") && filas[3].label.contains("65 kilos"), filas[3].label)
         XCTAssertTrue(app.staticTexts["Series efectivas"].exists, "Sin el título de las efectivas")
+        // 2.0.3: sin columna de RIR; en su lugar, la leyenda del plan.
+        XCTAssertFalse(app.staticTexts["RIR"].exists, "Quedó la columna de RIR")
+        let leyenda = app.staticTexts["leyenda-rir"]
+        XCTAssertTrue(leyenda.exists && (leyenda.label == "Al fallo" || leyenda.label.hasPrefix("Dejando ")), leyenda.label)
         captura("v2-compuesto-con-kg")
 
         // Tocar una fila: queda hecha y arranca el descanso corto.

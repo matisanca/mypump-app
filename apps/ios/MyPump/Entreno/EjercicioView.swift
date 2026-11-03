@@ -427,7 +427,6 @@ struct EjercicioView: View {
         for i in 0..<n {
             motor.escribir(lugar, i, campo: "reps", valor: String(max(tope - i, 1)))
             motor.escribir(lugar, i, campo: "kg", valor: "57.5")
-            await motor.elegirRIR(lugar, i, i == 0 ? 1 : 0)
             _ = await motor.confirmarSerie(lugar, i) { _ in true }
         }
         if DemoUI.sinDescanso { motor.saltarDescanso() }

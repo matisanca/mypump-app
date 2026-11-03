@@ -134,7 +134,6 @@ public final class ModeloEntreno {
         let elegido = TextosEntreno.diaSugerido(n.estructura.dias, ultimo: guardado) ?? Dia(id: "d1")
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: self.demo, zona: zona)
         dia.descansosPropios = disco?.leer([String: Int].self, Archivo.descansos) ?? [:]
-        dia.preseleccionarRIR()
         dia.sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(rutina.id)) ?? [:])
         sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: rutina.id))
             ?? dia.sustituciones
@@ -218,7 +217,6 @@ public final class ModeloEntreno {
         dia = DiaEnCurso(dia: nuevo, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
         dia.descansosPropios = descansos
-        dia.preseleccionarRIR()
         diaCompletadoMostrado = false
         guardarDiaVisualizado()
         async let historial: Void = precargarHistorial()
@@ -347,6 +345,7 @@ public final class ModeloEntreno {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado?
         let ef = dia.ejercicio(lugar).map { efectivo($0).ejercicio }
+        dia.fijarRIRDelPlan(lugar, idx)
         while true {
             let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(reloj(), zona: zona))
             if let r = paso.record { avisoRecord = AvisoRecord(id: UUID(), lugar: lugar, texto: r.texto) }
@@ -769,7 +768,6 @@ public final class ModeloEntreno {
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
         dia.descansosPropios = descansos
-        dia.preseleccionarRIR()
         sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: nueva.id)) ?? sustituciones
         syncSustituciones = nil
         tocadasDuranteSync = nil

@@ -137,11 +137,11 @@ struct ProgresoDetalleView: View {
         return VStack(alignment: .leading, spacing: Espacio.s) {
             Text("Últimos registros").font(.title3.weight(.bold)).padding(.horizontal, 4)
             VStack(spacing: 0) {
-                fila(["Fecha", "Peso", "Reps", "RIR"], encabezado: true)
+                fila(["Fecha", "Peso", "Reps"], encabezado: true)   // sin RIR desde 2.0.3: ya no se elige
                 ForEach(Array(filas.enumerated()), id: \.offset) { i, r in
                     let kg = r.pesoKg ?? 0
                     fila([Self.fecha(r.registradoEn, es),
-                          kg > 0 ? "\(kg.kg) kg" : "—", r.reps.map(String.init) ?? "—", r.rir.map(String.init) ?? "—"],
+                          kg > 0 ? "\(kg.kg) kg" : "—", r.reps.map(String.init) ?? "—"],
                          encabezado: false, destacada: kg > 0 && kg == linea.resumen.tope)
                         .background(i % 2 == 0 ? Color.clear : Color.campo.opacity(0.5))
                 }

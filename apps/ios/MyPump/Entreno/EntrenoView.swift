@@ -845,7 +845,8 @@ struct FilaEjercicio: View {
         let ultima = motor.dia.ultimaVez(lugar, ahora: .now)
         let record = motor.dia.record(lugar)
         if let u = ultima { partes.append("última vez \(Bonito.carga(u.valor)), \(u.cuando)") }
-        if let r = record { partes.append("récord \(Bonito.carga(r))") }
+        // Sin el «RIR n» (2.0.3: ya no se muestra; con el del plan diría «RIR 0» en todos).
+        if let r = record { partes.append("récord \(Bonito.carga(r).replacingOccurrences(of: #" · RIR \d+"#, with: "", options: .regularExpression))") }
         if ultima == nil && record == nil && !porTiempo && !motor.historialCargando.contains(lugar) {
             partes.append("primera vez con este ejercicio")
         }

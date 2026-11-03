@@ -4,8 +4,8 @@ import MyPumpReglas
 import MyPumpDatos
 
 /// La tabla de series del motor: campos grandes que invitan a cargar. Lo de la última vez aparece sugerido en gris y un
-/// toque en ✓ lo registra (SER-01); el kg se hereda de la serie anterior (SER-03); el RIR nunca se completa solo
-/// (SER-02); lo imposible se rechaza y lo raro se pregunta (SER-05); tocar ✓ de nuevo desconfirma (SER-06). Al
+/// toque en ✓ lo registra (SER-01); el kg se hereda de la serie anterior (SER-03); el RIR ya no se muestra ni se
+/// elige (2.0.3: las efectivas van al fallo; se guarda el del plan, ver `RIRDelPlan`); lo imposible se rechaza y lo raro se pregunta (SER-05); tocar ✓ de nuevo desconfirma (SER-06). Al
 /// confirmar arranca el descanso (salvo el calentamiento) y, con la última, el ejercicio queda completo.
 struct TablaSeries: View {
     let motor: ModeloEntreno
@@ -39,6 +39,14 @@ struct TablaSeries: View {
                     .foregroundStyle(tarjeta.confirmadas == filas.count && !filas.isEmpty ? Color.marcaTexto : Color.secondary)
                     .contentTransition(.numericText())
             }
+            // 2.0.3: en lugar de la columna de RIR, cómo se hacen: «Al fallo» o «Dejando 1–2 en reserva».
+            if !filas.isEmpty, tarjeta.efectivo.ejercicio.tipo != "calentamiento", tarjeta.efectivo.ejercicio.tipo != "cardio" {
+                Text(motor.dia.leyendaRIR(lugar))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, -6)
+                    .accessibilityIdentifier("leyenda-rir")
+            }
 
             // E3: el récord de la serie recién confirmada, arriba de la tabla.
             AvisoRecordVista(motor: motor, lugar: lugar)
@@ -63,7 +71,6 @@ struct TablaSeries: View {
                     Text(tamañoLetra.isAccessibilitySize ? "#" : "Serie").fixedSize().frame(width: 30, alignment: .center)
                     Text("Reps").frame(maxWidth: .infinity)
                     if !sinKg { Text("Kg").frame(maxWidth: .infinity) }
-                    Text("RIR").frame(maxWidth: .infinity)
                     Color.clear.frame(width: 44, height: 1)
                 }
                 .font(.caption2.weight(.semibold))
@@ -123,11 +130,6 @@ struct TablaSeries: View {
                                teclado: .decimalPad, confirmada: f.confirmada, marcada: marcada, foco: $foco, campo: .kg(i))
                         .accessibilityLabel("Kilos de la serie \(i + 1)")
                 }
-                SelectorRIR(rir: s.rir, confirmada: f.confirmada) { n in
-                    Task { await motor.elegirRIR(lugar, i, n) }
-                }
-                .accessibilityLabel("RIR de la serie \(i + 1)")
-
                 Button { tocarCheck(i, f) } label: {
                     ZStack {
                         Circle()
@@ -268,43 +270,6 @@ private struct CampoSerie: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
         }
-    }
-}
-
-/// RIR 0-5 en un menú, con la leyenda de la web; nunca se completa solo. "–" es sin dato, que no es lo mismo que 0.
-private struct SelectorRIR: View {
-    let rir: String
-    let confirmada: Bool
-    let elegir: (Int) -> Void
-
-    var body: some View {
-        Menu {
-            ForEach(0...5, id: \.self) { n in
-                Button {
-                    elegir(n)
-                } label: {
-                    if rir == String(n) {
-                        Label("\(n) · \(CamposSerie.leyendaRIR(String(n)))", systemImage: "checkmark")
-                    } else {
-                        Text("\(n) · \(CamposSerie.leyendaRIR(String(n)))")
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 2) {
-                Text(rir.isEmpty ? "–" : rir)
-                    .font(.title3.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(rir.isEmpty ? Color.secondary : Color.primary)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .background(confirmada ? Color.marcaSuave : Color.campo, in: .rect(cornerRadius: 12, style: .continuous))
-            .contentShape(.rect)
-        }
-        .menuIndicator(.hidden)
-        .sensoryFeedback(.selection, trigger: rir)
     }
 }
 
