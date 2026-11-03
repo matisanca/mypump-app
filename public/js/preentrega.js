@@ -21,7 +21,9 @@
   'use strict';
 
   const CFG = window.MYPUMP_CONFIG || {};
-  const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  // En la app nativa el origen también es https://localhost: el atajo de prueba vale solo en el navegador.
+  const NATIVA = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+  const LOCAL = !NATIVA && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const habilitado = () => !!CFG.PREENTREGA_ENABLED ||
     (LOCAL && new URLSearchParams(location.search).get('preentrega') === '1');
 
