@@ -75,7 +75,9 @@ final class PuenteReloj: NSObject {
         let ahora = Date().timeIntervalSince1970 * 1000
         let mensaje: MensajeReloj
         if let m = motor {
-            let r = m.rutinaReloj()
+            var r = m.rutinaReloj()
+            // Tanda 4: el modo calibración (local, por cuenta). Apagado no viaja el campo y el reloj no toca los sensores.
+            if !r.demo, ModoCalibracion().prendido(cuenta: r.cuenta) { r.calibracion = true }
             var comparable = r
             comparable.generada = ultima?.generada ?? 0
             if !forzar, comparable == ultima { return }
@@ -167,6 +169,11 @@ extension PuenteReloj: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         nonisolated(unsafe) let d = message
         Task { @MainActor in self.mandar(await self.recibir(d)) }
+    }
+
+    /// Tanda 4: una serie del modo calibración. Se guarda antes de volver (después el sistema borra el archivo).
+    nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        DatosCalibracion.recibir(file.fileURL, metadatos: file.metadata)
     }
 
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
