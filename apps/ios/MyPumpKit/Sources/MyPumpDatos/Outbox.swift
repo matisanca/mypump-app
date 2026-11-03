@@ -103,6 +103,10 @@ public actor Outbox {
     private var huboProblema = false
     /// La última pasada dejó algo sin guardar (sin red, transitorio, rechazo o token caído).
     private var ultimaFallo = false
+    /// La última pasada se cortó (sin red, transitorio o token caído): lo que venía detrás ni se intentó.
+    private var ultimaCorte = false
+    /// Los ids que intentó la última pasada (su copia de la cola). Lo encolado durante el vuelo no está acá.
+    private var ultimaTanda: Set<String> = []
     private var rachaSinRed = 0
     private var secuencia = 0
     private var alCambiar: (@Sendable (EstadoGuardado) -> Void)?
@@ -259,7 +263,12 @@ public actor Outbox {
                 enVuelo = t
                 await t.value
             }
-            if !estado.ops.contains(where: mandable) || ultimaFallo { return }
+            // Un rechazo en la pasada no frena lo que se encoló mientras volaba: esa pasada ni lo vio (con una sustitución
+            // rechazada en vuelo, «cerrar el día» cerraba la sesión sin la última serie; «hoy no la como» dejaba la marca en
+            // el servidor hasta el reintento). Un corte (sin red) sí frena todo: la próxima pasada también se cortaría.
+            let quedan = estado.ops.filter(mandable)
+            if quedan.isEmpty { return }
+            if ultimaFallo && (ultimaCorte || quedan.allSatisfy({ ultimaTanda.contains($0.id) })) { return }
         }
     }
 
@@ -280,7 +289,9 @@ public actor Outbox {
 
     private func pasada() async {
         ultimaFallo = false
+        ultimaCorte = false
         let tanda = estado.ops.filter(mandable)
+        ultimaTanda = Set(tanda.map(\.id))
         guard !tanda.isEmpty else { return }
         let hayVisibles = tanda.contains { !Self.silenciosas.contains($0.kind) }
         var resueltas = Set<String>()
@@ -307,7 +318,7 @@ public actor Outbox {
             do {
                 resultado = try await ejecutor(op)
             } catch let e as URLError {
-                _ = e; algunaFallo = true; rachaSinRed += 1; break           // un throw de red: no gasta intento
+                _ = e; algunaFallo = true; ultimaCorte = true; rachaSinRed += 1; break           // un throw de red: no gasta intento
             } catch {
                 // Un bug nuestro no es un corte de red: gasta intento y no congela a las de atrás.
                 if registrarFallo(op, motivo: "excepción: \(error)", resueltas: &resueltas, abandonadas: &abandonadas) { algunaFallo = true }
@@ -334,6 +345,7 @@ public actor Outbox {
                 if registrarFallo(op, motivo: motivo, resueltas: &resueltas, abandonadas: &abandonadas) { algunaFallo = true }
                 continue
             }
+            ultimaCorte = true
             break   // red, transitorio o token caído: no tiene sentido seguir con las demás
         }
         lenta.cancel()

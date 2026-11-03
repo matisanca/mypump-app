@@ -311,4 +311,47 @@ class OutboxTest {
         assertEquals(listOf("k1", "k2"), enviados.toList())
         assertEquals(0, o.pendientes())
     }
+
+    @Test
+    fun unRechazoEnVueloNoFrenaLoEncoladoDurante() = runBlocking {
+        // La pasada en vuelo solo vio k1 (rechazada: la base devolvió vacío). k2 se encoló durante el vuelo: drenar tiene que
+        // mandarla igual («hoy no la como» dejaba la marca en el servidor; «cerrar el día», la sesión sin la última serie).
+        val enviados = Collections.synchronizedList(mutableListOf<String>())
+        lateinit var o: Outbox
+        var primera = true
+        o = cola { op ->
+            enviados += op.dedupeKey ?: ""
+            if (op.dedupeKey == "k1") {
+                if (primera) {
+                    primera = false
+                    o.encolar("carga", carga(2), "k2")
+                }
+                ResultadoOp.Respuesta(Resultado.Ok(ValorJson.Lista(emptyList())))
+            } else {
+                ok
+            }
+        }
+        o.encolar("carga", carga(1), "k1")
+        o.drenar()
+        assertEquals(listOf("k1", "k1", "k2"), enviados.toList())
+        // k1 sigue pendiente con sus intentos (una por pasada); drenar no la repite sola hasta agotarlos.
+        assertEquals(listOf("k1"), o.operaciones().map { it.dedupeKey })
+        assertEquals(2, o.operaciones().single().tries)
+    }
+
+    @Test
+    fun unCorteEnVueloSiFrenaLoEncoladoDurante() = runBlocking {
+        // Sin red no tiene sentido otra pasada: k2 queda para el reintento.
+        val enviados = Collections.synchronizedList(mutableListOf<String>())
+        lateinit var o: Outbox
+        o = cola { op ->
+            enviados += op.dedupeKey ?: ""
+            if (op.dedupeKey == "k1") o.encolar("carga", carga(2), "k2")
+            red()
+        }
+        o.encolar("carga", carga(1), "k1")
+        o.drenar()
+        assertEquals(listOf("k1"), enviados.toList())
+        assertEquals(listOf("k1", "k2"), o.operaciones().map { it.dedupeKey })
+    }
 }
