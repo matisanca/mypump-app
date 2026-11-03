@@ -17,3 +17,21 @@ La 2.2 trae un **modo calibración**, oculto y por cuenta: graba el acelerómetr
 
 ## Web igual a la app (en paralelo)
 Se porta el diseño y las funciones de las apps, en este orden: Entreno y Dieta, después Salud, después Revisión y Chat. Entran Comí/Salté con porción, leer y escribir los ajustes de comida (incluido `agregados`), los sustitutos del mismo músculo, Siguiente →, el verde del logo, el modo oscuro y la preparación de E1. Sin «Mi Día». Cada parte se publica primero en una **vista previa** para que Mati la apruebe: un push a `main` publica al instante. También hay que corregir el progreso que se ve con un día de atraso para quien está en otra zona horaria (V1).
+
+## Tanda 2, S1 y S2: lo decidido (rama `t2-salud`, 3-nov)
+- **Salud** reemplaza a Progreso en el mismo lugar (siguen 5 pestañas), con un control segmentado: Recuperación, Fuerza y Cuerpo. Arranca en Recuperación y recuerda el segmento mientras viva la app. El banner de «te falta tu check» queda arriba de los segmentos.
+- **Recuperación:** las cards de recuperación y de salud, más Mi reloj (Oura/WHOOP), que también sale de Revisión. En la demo, un vacío que explica que sale del reloj o del teléfono.
+- **Fuerza:** arriba «Series por músculo · esta semana» y debajo lo que era Progreso, sin cambios.
+- **Cuerpo:** la tarjeta de peso entera (la media y la carga del día), «Fotos por semana» (la racha y la galería con el comparador) y «Tu check de la semana» de solo lectura. Sin fotos o sin check, un botón «Ir a Revisión».
+- **Revisión** queda para subir la semana: el aviso del plan, las fotos y el check (que ya trae el peso del día). La galería de fotos sigue también ahí.
+- **Mi Día** se sacó de las vistas, la navegación, los textos, las muestras, el modelo de Revisión (hábitos, agua, racha, adherencia: ya no se cargan) y las pruebas. Quedan a propósito los decodificadores del servidor (`HabitosDia`, `Racha`, `DiaAdherencia`) y el ejecutor de la cola para operaciones `habito` viejas, para que se vacíen.
+- **Avisos y anclas:** `progress` abre Salud → Fuerza; el viejo `myday` abre Salud → Recuperación (`DestinoAviso.fuerza` y `.recuperacion`). Las anclas de Revisión que se mudaron van a su segmento («peso» a Cuerpo; «reloj» y «midia» a Recuperación). `-pestana progreso` sigue andando y abre Salud. Nuevo `-segmento recuperacion|fuerza|cuerpo` para capturas y pruebas.
+- **Volumen por músculo** (`VolumenMusculo` en el kit, vectores en `apps/shared/vectores/volumen.json`, mismo resultado en iOS y Android):
+  - Cuenta cada serie registrada (una fila del historial) o confirmada hoy en el teléfono. La preparación nunca se registra; el cardio y el calentamiento no cuentan; el core sí (abdominales).
+  - Semana de lunes a domingo, como el check, con la semana pasada al lado.
+  - Músculo: el principal del catálogo con la cadena de E1 (`ModeloEntreno.musculo`: el del sustituto, si no `resolver`). Sin músculo, o uno fuera del catálogo, va a «Sin músculo asignado», al final.
+  - Orden: más series esta semana, después más la pasada, después el orden del catálogo.
+  - Lo de hoy en vivo reemplaza al historial de hoy (el historial se trae al abrir Fuerza y puede estar viejo). Si hoy no hay nada confirmado en el teléfono, vale el historial.
+  - Una serie (lugar + fecha + número) cuenta una vez. Las filas del historial van sin número: la RPC por clave no trae el `ejercicio_id` y cada fila del servidor ya es una serie distinta.
+  - Límite conocido: el historial trae 48 filas por clave, que alcanzan para dos semanas salvo un ejercicio hecho más de 48 series en ese lapso. Una clave que ya no está en el plan no se trae.
+- **Cierre del día:** «Series por músculo hoy» (N hoy · M en la semana) debajo del resumen, solo si hoy hay series. Si el historial no estaba cargado, lo pide al abrir.
