@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.reglas
 
 import com.pumpteam.mypump.modelos.Alimento
+import com.pumpteam.mypump.modelos.AlimentoPropio
 import com.pumpteam.mypump.modelos.Comida
 import com.pumpteam.mypump.modelos.ComidaMarcada
 import com.pumpteam.mypump.modelos.ValorJson
@@ -168,6 +169,23 @@ class AgregadosComidaTest {
             assertEquals(d(e["hechas"])!!.toInt(), r.hechas, "$nombre / hechas")
             assertEquals(d(e["salteadas"])!!.toInt(), r.salteadas, "$nombre / salteadas")
         }
+    }
+
+    @Test
+    fun laBusquedaEnLaBase() {
+        val base = BaseAlimentos.desde(Vectores.texto(Vectores.compartido("food-db.json")))
+            .conPropios(listOf(AlimentoPropio("Puré de zapallo casero", 45.0, 1.0, 9.0, 1.0, "g", null, null)))
+        val zapallo = AgregadosComida.buscar(base, "Zapallo")
+        assertEquals("Zapallo / Calabaza", zapallo.first().nombre)
+        assertTrue(zapallo.any { it.nombre == "Puré de zapallo casero" && it.esPropio })
+        assertEquals(listOf("Puré de zapallo casero"), AgregadosComida.buscar(base, "pure  ZAPALLO").map { it.nombre })
+        val huevo = AgregadosComida.buscar(base, "huevo").map { it.nombre }
+        assertEquals("Huevo entero", huevo.first())
+        assertTrue("Clara de huevo" in huevo)
+        assertEquals("Brócoli", AgregadosComida.buscar(base, "brocoli").first().nombre)
+        assertTrue(AgregadosComida.buscar(base, "  ").isEmpty())
+        assertEquals(5, AgregadosComida.buscar(base, "a", 5).size)
+        assertEquals(AlimentoAgregado.Origen.PROPIO, AgregadosComida.Candidato(zapallo.first { it.esPropio }).origen)
     }
 
     // ── Lectura, escritura y topes (los mismos casos que iOS) ──

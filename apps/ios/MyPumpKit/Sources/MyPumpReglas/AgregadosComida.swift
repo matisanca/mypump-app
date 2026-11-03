@@ -215,6 +215,18 @@ public enum AgregadosComida {
         return nil
     }
 
+    /// La búsqueda de la hoja de agregar, sobre la base con los propios: cada palabra de la consulta (sin tildes ni
+    /// mayúsculas) tiene que estar en el nombre. Primero los que empiezan con la primera palabra; después, el orden de la
+    /// base. Como mucho `limite`. Sin consulta, nada.
+    public static func buscar(_ base: BaseAlimentos, _ consulta: String, limite: Int = 60) -> [AlimentoBase] {
+        let palabras = SustitucionAlimentos.normalizar(consulta).split(whereSeparator: { $0 == " " || $0 == "/" }).map(String.init)
+        guard let primera = palabras.first else { return [] }
+        let todos = base.alimentos.filter { a in palabras.allSatisfy { a.normalizado.contains($0) } }
+        let empiezan = todos.filter { $0.normalizado.hasPrefix(primera) }
+        let resto = todos.filter { !$0.normalizado.hasPrefix(primera) }
+        return Array((empiezan + resto).prefix(limite))
+    }
+
     /// La medida con que abre la hoja: la de la base si la trae (1 huevo), si no 100 g.
     public static func inicial(_ c: Candidato) -> (cantidad: Double, medida: Medida) {
         let ms = medidas(c)

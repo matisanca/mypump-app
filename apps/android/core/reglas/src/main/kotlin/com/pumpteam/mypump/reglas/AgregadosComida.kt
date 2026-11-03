@@ -201,6 +201,19 @@ object AgregadosComida {
         return null
     }
 
+    /**
+     * La búsqueda de la hoja de agregar, sobre la base con los propios: cada palabra de la consulta (sin tildes ni
+     * mayúsculas) tiene que estar en el nombre. Primero los que empiezan con la primera palabra; después, el orden de la
+     * base. Como mucho [limite]. Sin consulta, nada.
+     */
+    fun buscar(base: BaseAlimentos, consulta: String, limite: Int = 60): List<AlimentoBase> {
+        val palabras = SustitucionAlimentos.normalizar(consulta).split(' ', '/').filter { it.isNotEmpty() }
+        val primera = palabras.firstOrNull() ?: return emptyList()
+        val todos = base.alimentos.filter { a -> palabras.all { a.normalizado.contains(it) } }
+        val (empiezan, resto) = todos.partition { it.normalizado.startsWith(primera) }
+        return (empiezan + resto).take(limite)
+    }
+
     /** La medida con que abre la hoja: la de la base si la trae (1 huevo), si no 100 g. */
     fun inicial(c: Candidato): Pair<Double, Medida> {
         val ms = medidas(c)

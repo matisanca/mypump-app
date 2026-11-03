@@ -77,6 +77,21 @@ struct AgregadosComidaTests {
         #expect(AgregadosComida.subir(1, u) == 1.5 && AgregadosComida.bajar(0.5, u) == 0.5 && AgregadosComida.subir(50, u) == 50)
     }
 
+    @Test func laBusquedaEnLaBase() throws {
+        let base = try BaseAlimentos(json: Data(contentsOf: archivoBaseAlimentos))
+            .conPropios([AlimentoPropio(nombre: "Puré de zapallo casero", kcal: 45, prot: 1, carb: 9, fat: 1, unidad: "g",
+                                        gramosPorUnidad: nil, categoria: nil)])
+        let zapallo = AgregadosComida.buscar(base, "Zapallo")
+        #expect(zapallo.first?.nombre == "Zapallo / Calabaza" && zapallo.contains { $0.nombre == "Puré de zapallo casero" && $0.esPropio })
+        #expect(AgregadosComida.buscar(base, "pure  ZAPALLO").map(\.nombre) == ["Puré de zapallo casero"])
+        let huevo = AgregadosComida.buscar(base, "huevo").map(\.nombre)
+        #expect(huevo.first == "Huevo entero" && huevo.contains("Clara de huevo"))
+        #expect(AgregadosComida.buscar(base, "brocoli").first?.nombre == "Brócoli")
+        #expect(AgregadosComida.buscar(base, "  ").isEmpty && AgregadosComida.buscar(base, "a", limite: 5).count == 5)
+        // Un propio de la base, con su medida: el candidato lo marca como propio.
+        #expect(AgregadosComida.Candidato(zapallo.first { $0.esPropio }!).origen == .propio)
+    }
+
     // MARK: - El día
 
     static let pollo = Alimento(nombre: "Pollo", qty: 200, unidad: "g", kcal: 330, prot: 62, carb: 0, fat: 7)
