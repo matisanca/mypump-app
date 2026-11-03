@@ -246,6 +246,13 @@ struct AgregadosComidaTests {
         // Una lista que no es lista: sin agregados, el resto igual.
         let otra = try JSONDecoder().decode(AjusteComida.self, from: Data(#"{"deltaKcal":50,"agregados":"x"}"#.utf8))
         #expect(otra.deltaKcal == 50 && otra.agregados.isEmpty)
+        // Dos con el mismo `_ts` (su identidad en las vistas y al borrar): queda el primero.
+        var segundo = con.agregados[0]
+        segundo = AlimentoAgregado(nombre: "Otro", cantidad: segundo.cantidad, unidad: segundo.unidad, gramosUnidad: segundo.gramosUnidad,
+                                   gramos: segundo.gramos, kcal: segundo.kcal, p: segundo.p, c: segundo.c, g: segundo.g, por100: segundo.por100,
+                                   origen: segundo.origen, ts: segundo.ts)
+        let doble = AjusteComida(agregados: [con.agregados[0], segundo])
+        #expect(try JSONDecoder().decode(AjusteComida.self, from: JSONEncoder().encode(doble)).agregados.map(\.nombre) == ["Huevo entero"])
     }
 
     @Test func losTopes() {
@@ -266,7 +273,32 @@ struct AgregadosComidaTests {
         let lleno = Dictionary(uniqueKeysWithValues: (0..<3).map { ("comida-\($0)", AjusteComida(deltaKcal: -50, cantidades: ["0": 120, "1": 35],
             anclas: ["0": AnclaAlimento(nombre: "Pechuga de pollo cocida", unidad: "g"), "1": AnclaAlimento(nombre: "Arroz integral", unidad: "g")],
             agregados: Array(repeating: largo, count: 8))) })
-        #expect(AgregadosComida.bytes(lleno) < 16000, "\(AgregadosComida.bytes(lleno))")
+        #expect(AgregadosComida.bytesJsonb(lleno) <= AgregadosComida.maximoBytesJsonb, "\(AgregadosComida.bytesJsonb(lleno))")
+        // El tope deja 1000 bytes de margen con los 16000 de nativa_004.
+        #expect(AgregadosComida.maximoBytesJsonb <= 15000)
+        // Un día que pasa la cota no entra, aunque no llegue a los topes de cantidad (el compacto de antes lo dejaba pasar).
+        let enorme = Self.ag(Self.cand(String(repeating: "Ñ", count: 80), 1.3, 0.1, 0.3, 0.1, unidad: "taza", gu: 245.5), 1.5,
+                             M(nombre: "taza", gramos: 245.5))
+        let gordo = Dictionary(uniqueKeysWithValues: (0..<3).map { i in
+            ("comida-\(i)", AjusteComida(cantidades: Dictionary(uniqueKeysWithValues: (0..<30).map { ("\($0)", 12.345 + Double($0)) }),
+                                       anclas: Dictionary(uniqueKeysWithValues: (0..<30).map { ("\($0)", AnclaAlimento(nombre: String(repeating: "x", count: 40), unidad: "g")) }),
+                                       agregados: (0..<8).map { j in AgregadosComida.agregado(enorme.candidato, cantidad: 1.5, medida: M(nombre: "taza", gramos: 245.5), ts: Int64(i * 10 + j)) }))
+        })
+        #expect(AgregadosComida.bytesJsonb(gordo) > AgregadosComida.maximoBytesJsonb)
+        #expect(AgregadosComida.motivoNoEntra(gordo, comidaId: "comida-0") == "No entran más alimentos agregados hoy.")
+    }
+
+    /// La cota del jsonb nunca da menos que lo que midió la base (y no se pasa de más del 15 %).
+    @Test func laCotaDelJsonbCubreLoMedido() throws {
+        let raiz = try JSONSerialization.jsonObject(with: Data(contentsOf: raizRepo.appendingPathComponent("apps/shared/vectores/agregados_jsonb_medido.json"))) as! [String: Any]
+        for caso in raiz["casos"] as! [[String: Any]] {
+            let medido = caso["jsonb"] as! Int
+            let datos = try JSONSerialization.data(withJSONObject: caso["ajustes"]!)
+            let dia = try JSONDecoder().decode([String: AjusteComida].self, from: datos)
+            let cota = AgregadosComida.bytesJsonb(dia)
+            #expect(cota >= medido, "\(caso["caso"]!): \(cota) < \(medido)")
+            #expect(Double(cota) <= Double(medido) * 1.15, "\(caso["caso"]!): \(cota) muy por encima de \(medido)")
+        }
     }
 
     // MARK: - Vectores compartidos con Android

@@ -212,6 +212,9 @@ class AgregadosComidaTest {
         assertEquals(AlimentoAgregado.Origen.BASE, rota.agregados[1].origen)
         val otra = AjusteComida.desde(ValorJson.parsear("""{"deltaKcal":50,"agregados":"x"}"""))!!
         assertTrue(otra.deltaKcal == 50 && otra.agregados.isEmpty())
+        // Dos con el mismo `_ts` (su identidad en las vistas y al borrar): queda el primero.
+        val doble = AjusteComida(agregados = listOf(con.agregados[0], con.agregados[0].copy(nombre = "Otro")))
+        assertEquals(listOf("Huevo entero"), AjusteComida.desde(ValorJson.parsear(doble.aValor().serializar()))!!.agregados.map { it.nombre })
     }
 
     @Test
@@ -235,6 +238,32 @@ class AgregadosComidaTest {
                 agregados = List(8) { largo },
             )
         }
-        assertTrue(AgregadosComida.bytes(lleno) < 16000, "${AgregadosComida.bytes(lleno)}")
+        assertTrue(AgregadosComida.bytesJsonb(lleno) <= AgregadosComida.MAXIMO_BYTES_JSONB, "${AgregadosComida.bytesJsonb(lleno)}")
+        // El tope deja 1000 bytes de margen con los 16000 de nativa_004.
+        assertTrue(AgregadosComida.MAXIMO_BYTES_JSONB <= 15000)
+        // Un día que pasa la cota no entra, aunque no llegue a los topes de cantidad (el compacto de antes lo dejaba pasar).
+        val enorme = AgregadosComida.Candidato("Ñ".repeat(80), MacrosPor100(1.3, 0.1, 0.3, 0.1), "taza", 245.5, AlimentoAgregado.Origen.BASE)
+        val gordo = (0 until 3).associate { i ->
+            "comida-$i" to AjusteComida(
+                cantidades = (0 until 30).associate { "$it" to 12.345 + it },
+                anclas = (0 until 30).associate { "$it" to AnclaAlimento("x".repeat(40), "g") },
+                agregados = List(8) { j -> AgregadosComida.agregado(enorme, 1.5, AgregadosComida.Medida("taza", 245.5), (i * 10 + j).toLong()) },
+            )
+        }
+        assertTrue(AgregadosComida.bytesJsonb(gordo) > AgregadosComida.MAXIMO_BYTES_JSONB)
+        assertEquals("No entran más alimentos agregados hoy.", AgregadosComida.motivoNoEntra(gordo, "comida-0"))
+    }
+
+    /** La cota del jsonb nunca da menos que lo que midió la base (y no se pasa de más del 15 %). */
+    @Test
+    fun laCotaDelJsonbCubreLoMedido() {
+        for (caso in Vectores.json(Vectores.publico("agregados_jsonb_medido"))["casos"]!!.jsonArray) {
+            val o = caso.jsonObject
+            val medido = o["jsonb"]!!.jsonPrimitive.intOrNull!!
+            val dia = (ValorJson.parsear(o["ajustes"].toString()) as ValorJson.Objeto).campos.mapValues { AjusteComida.desde(it.value)!! }
+            val cota = AgregadosComida.bytesJsonb(dia)
+            assertTrue(cota >= medido, "${texto(o["caso"])}: $cota < $medido")
+            assertTrue(cota <= medido * 1.15, "${texto(o["caso"])}: $cota muy por encima de $medido")
+        }
     }
 }

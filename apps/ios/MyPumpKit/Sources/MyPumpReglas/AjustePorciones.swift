@@ -64,9 +64,11 @@ public struct AjusteComida: Codable, Equatable, Sendable {
         opcion = (try? c.decode(Int.self, forKey: .opcion)).flatMap { (0...99).contains($0) ? $0 : nil } ?? 0
         cantidades = ((try? c.decode([String: Double].self, forKey: .cantidades)) ?? [:]).filter { $0.value.isFinite && $0.value >= 0 }
         anclas = (try? c.decode([String: AnclaAlimento].self, forKey: .anclas)) ?? [:]
-        // De a uno: un agregado roto se descarta solo (no se lleva los otros ni el ajuste).
+        // De a uno: un agregado roto se descarta solo (no se lleva los otros ni el ajuste). Sin dos con el mismo `_ts` (es su
+        // identidad en las vistas y al borrar): queda el primero.
+        var vistos = Set<Int64>()
         agregados = ((try? c.decode([Opcional<AlimentoAgregado>].self, forKey: .agregados)) ?? [])
-            .compactMap(\.valor).prefix(AgregadosComida.maximoAlLeer).map { $0 }
+            .compactMap(\.valor).filter { vistos.insert($0.ts).inserted }.prefix(AgregadosComida.maximoAlLeer).map { $0 }
     }
 
     public func encode(to encoder: Encoder) throws {

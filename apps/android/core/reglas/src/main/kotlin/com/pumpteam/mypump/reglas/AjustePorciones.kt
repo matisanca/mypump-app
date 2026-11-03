@@ -100,9 +100,10 @@ data class AjusteComida(
                 val r = m.mapValues { AnclaAlimento.desde(it.value) }
                 if (r.values.all { it != null }) r.mapValues { it.value!! } else null
             }.orEmpty()
-            // De a uno: un agregado roto se descarta solo (no se lleva los otros ni el ajuste).
+            // De a uno: un agregado roto se descarta solo (no se lleva los otros ni el ajuste). Sin dos con el mismo `_ts` (es
+            // su identidad en las vistas y al borrar): queda el primero.
             val agregados = (o["agregados"] as? ValorJson.Lista)?.elementos.orEmpty()
-                .mapNotNull { AlimentoAgregado.desde(it) }.take(AgregadosComida.MAXIMO_AL_LEER)
+                .mapNotNull { AlimentoAgregado.desde(it) }.distinctBy { it.ts }.take(AgregadosComida.MAXIMO_AL_LEER)
             return AjusteComida(
                 entero("deltaKcal", 0, -30000..30000), booleano("compensar", true), booleano("omitida", false), entero("opcion", 0, 0..99),
                 cantidades, anclas, agregados,

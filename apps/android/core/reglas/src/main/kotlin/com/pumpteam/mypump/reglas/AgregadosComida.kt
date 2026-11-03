@@ -2,6 +2,7 @@ package com.pumpteam.mypump.reglas
 
 import com.pumpteam.mypump.modelos.Alimento
 import com.pumpteam.mypump.modelos.ValorJson
+import kotlin.math.abs
 
 /** Las macros de un alimento cada 100 g (las de la base y las de los alimentos propios). Gemelo de iOS. */
 data class MacrosPor100(val kcal: Double, val p: Double, val c: Double, val g: Double) {
@@ -103,7 +104,11 @@ object AgregadosComida {
     /** Topes (la fila del día no puede pasar los 16000 bytes de nativa_004): por comida, por día y el tamaño del JSON. */
     const val MAXIMO_POR_COMIDA = 8
     const val MAXIMO_POR_DIA = 24
-    const val MAXIMO_BYTES = 12000
+    /**
+     * nativa_004 rechaza `ajustes` con `pg_column_size(jsonb) > 16000`, y el jsonb pesa entre 1,5 y 1,7 veces el JSON
+     * compacto (medido en producción el 3-nov): se acota la cota de arriba del jsonb ([bytesJsonb]), con 1000 de margen.
+     */
+    const val MAXIMO_BYTES_JSONB = 15000
 
     /** Lo más que se lee de una comida (una fila rota no puede traer mil). */
     internal const val MAXIMO_AL_LEER = 50
@@ -273,13 +278,38 @@ object AgregadosComida {
     fun motivoNoEntra(ajustes: Map<String, AjusteComida>, comidaId: String): String? {
         if ((ajustes[comidaId]?.agregados?.size ?: 0) > MAXIMO_POR_COMIDA) return "Llegaste a $MAXIMO_POR_COMIDA alimentos agregados en esta comida."
         if (ajustes.values.sumOf { it.agregados.size } > MAXIMO_POR_DIA) return "Llegaste a $MAXIMO_POR_DIA alimentos agregados en el día."
-        if (bytes(ajustes) > MAXIMO_BYTES) return "No entran más alimentos agregados hoy."
+        if (bytesJsonb(ajustes) > MAXIMO_BYTES_JSONB) return "No entran más alimentos agregados hoy."
         return null
     }
 
-    /** Lo que pesa el día en JSON (lo que la base acota a 16000 bytes). */
-    fun bytes(ajustes: Map<String, AjusteComida>): Int =
-        ValorJson.Objeto(ajustes.mapValues { it.value.aValor() }).serializar().toByteArray(Charsets.UTF_8).size
+    /**
+     * Una cota de arriba de lo que pesa el día como jsonb en la base (`pg_column_size`, lo que nativa_004 acota a 16000).
+     * Cada contenedor lleva 4 bytes de cabecera y 4 por entrada (clave y valor en los objetos); claves y textos, sus bytes
+     * UTF-8; un número es un numeric (cabecera de 4 + 2, y 2 por grupo de 4 dígitos) alineado a 4; los contenedores
+     * anidados también se alinean. Con el peor caso de la alineación nunca da menos que el real. Gemela de iOS.
+     */
+    fun bytesJsonb(ajustes: Map<String, AjusteComida>): Int = 4 + bytesJsonb(ValorJson.Objeto(ajustes.mapValues { it.value.aValor() }))
+
+    fun bytesJsonb(v: ValorJson): Int {
+        fun anidado(x: ValorJson): Int = if (x is ValorJson.Lista || x is ValorJson.Objeto) 3 + bytesJsonb(x) else bytesJsonb(x)
+        return when (v) {
+            is ValorJson.Nulo, is ValorJson.Booleano -> 0
+            is ValorJson.Texto -> v.valor.toByteArray(Charsets.UTF_8).size
+            is ValorJson.Numero -> bytesNumeric(v.valor)
+            is ValorJson.Lista -> 4 + 4 * v.elementos.size + v.elementos.sumOf { anidado(it) }
+            is ValorJson.Objeto -> 4 + 8 * v.campos.size + v.campos.entries.sumOf { it.key.toByteArray(Charsets.UTF_8).size + anidado(it.value) }
+        }
+    }
+
+    /** Un numeric: 3 de alineación + 4 de cabecera varlena + 2 de cabecera + 2 por grupo de 4 dígitos (entera y decimal). */
+    internal fun bytesNumeric(d: Double): Int {
+        if (!d.isFinite()) return 9
+        val s = String.format(java.util.Locale.ROOT, "%.6f", abs(d)).trimEnd('0')
+        val partes = s.split('.')
+        val entera = partes[0].trimStart('0').length
+        val decimal = partes.getOrNull(1)?.length ?: 0
+        return 9 + 2 * ((entera + 3) / 4 + (decimal + 3) / 4)
+    }
 
     /** Los agregados de la comida como alimentos (los de una comida que hoy no se come no cuentan, pero quedan guardados). */
     fun alimentos(aj: AjusteComida?): List<Alimento> = if (aj == null || aj.omitida) emptyList() else aj.agregados.map { it.alimento }

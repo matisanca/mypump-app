@@ -113,10 +113,12 @@ public struct AlimentoAgregado: Codable, Equatable, Sendable {
 /// Las cuentas de los alimentos agregados a una comida (D1) y de la hoja de cantidad (D2). Puro: lo usan las vistas y los
 /// tests, igual en iOS y en Android (vectores en `apps/shared/vectores/agregados_comida.json`).
 public enum AgregadosComida {
-    /// Topes (la fila del día no puede pasar los 16000 bytes de nativa_004): por comida, por día y el tamaño del JSON.
+    /// Topes: por comida, por día y el tamaño del día. nativa_004 rechaza `ajustes` con `pg_column_size(jsonb) > 16000`, y el
+    /// jsonb pesa entre 1,5 y 1,7 veces el JSON compacto (medido en producción el 3-nov), así que se acota la cota de arriba
+    /// del jsonb (`bytesJsonb`), con 1000 bytes de margen.
     public static let maximoPorComida = 8
     public static let maximoPorDia = 24
-    public static let maximoBytes = 12000
+    public static let maximoBytesJsonb = 15000
     /// Lo más que se lee de una comida (una fila rota no puede traer mil).
     static let maximoAlLeer = 50
     public static let largoNombre = 80
@@ -279,13 +281,45 @@ public enum AgregadosComida {
         if ajustes.values.reduce(0, { $0 + $1.agregados.count }) > maximoPorDia {
             return "Llegaste a \(maximoPorDia) alimentos agregados en el día."
         }
-        if bytes(ajustes) > maximoBytes { return "No entran más alimentos agregados hoy." }
+        if bytesJsonb(ajustes) > maximoBytesJsonb { return "No entran más alimentos agregados hoy." }
         return nil
     }
 
-    /// Lo que pesa el día en JSON (lo que la base acota a 16000 bytes).
-    public static func bytes(_ ajustes: [String: AjusteComida]) -> Int {
-        (try? JSONEncoder().encode(ajustes))?.count ?? Int.max
+    /// Una cota de arriba de lo que pesa el día como jsonb en la base (`pg_column_size`, lo que nativa_004 acota a 16000).
+    /// El formato de jsonb: cada contenedor lleva 4 bytes de cabecera y 4 por entrada (clave y valor en los objetos); las
+    /// claves y los textos, sus bytes UTF-8; un número es un numeric (cabecera de 4 + 2, y 2 por cada grupo de 4 dígitos),
+    /// alineado a 4; los contenedores anidados también se alinean. Se toma siempre el peor caso de la alineación, así que
+    /// nunca da menos que el real (con los casos medidos da entre 7 y 9 % más). Gemela de `bytesJsonb` de Android.
+    public static func bytesJsonb(_ ajustes: [String: AjusteComida]) -> Int {
+        guard let data = try? JSONEncoder().encode(ajustes), let v = try? JSONDecoder().decode(JSONValue.self, from: data) else { return Int.max }
+        return 4 + bytesJsonb(v)
+    }
+
+    public static func bytesJsonb(_ v: JSONValue) -> Int {
+        func anidado(_ x: JSONValue) -> Int {
+            switch x {
+            case .lista, .objeto: 3 + bytesJsonb(x)
+            default: bytesJsonb(x)
+            }
+        }
+        switch v {
+        case .null, .bool: return 0
+        case .texto(let t): return t.utf8.count
+        case .numero(let d): return bytesNumeric(d)
+        case .lista(let a): return 4 + 4 * a.count + a.reduce(0) { $0 + anidado($1) }
+        case .objeto(let o): return 4 + 8 * o.count + o.reduce(0) { $0 + $1.key.utf8.count + anidado($1.value) }
+        }
+    }
+
+    /// Un numeric: 3 de alineación + 4 de cabecera varlena + 2 de cabecera + 2 por grupo de 4 dígitos (entera y decimal).
+    static func bytesNumeric(_ d: Double) -> Int {
+        guard d.isFinite else { return 9 }
+        var s = String(format: "%.6f", abs(d))
+        while s.hasSuffix("0") { s.removeLast() }
+        let partes = s.split(separator: ".", omittingEmptySubsequences: false)
+        let entera = partes[0].drop { $0 == "0" }.count
+        let decimal = partes.count > 1 ? partes[1].count : 0
+        return 9 + 2 * ((entera + 3) / 4 + (decimal + 3) / 4)
     }
 
     /// Los agregados de la comida como alimentos (los de una comida que hoy no se come no cuentan, pero quedan guardados).
