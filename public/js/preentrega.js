@@ -69,7 +69,7 @@
 
   // ─── Estilos ───────────────────────────────────────────────────────
   const CSS = `
-#preentrega{position:fixed;inset:0;z-index:90;overflow-y:auto;background:var(--color-bg-secondary,#0d0f0e);color:var(--color-text-primary,#f2f2f2);
+#preentrega{position:fixed;inset:0;z-index:55;overflow-y:auto;background:var(--color-bg-secondary,#0d0f0e);color:var(--color-text-primary,#f2f2f2);
   padding:calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 28px);font-family:var(--font-sans,system-ui)}
 #preentrega h1{font-size:24px;line-height:1.2;margin:4px 0 6px}
 #preentrega .pe-sub{opacity:.8;margin:0 0 18px;font-size:15px;line-height:1.45}
@@ -97,8 +97,8 @@
 #preentrega .pe-revela{text-align:center;padding:22px 16px}
 #preentrega .pe-revela b{font-size:18px;display:block;margin-bottom:6px}
 #preentrega .pe-pie{display:flex;justify-content:center;margin-top:10px}
-#peVolver{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:89;border:0;border-radius:22px;padding:10px 14px;background:#2fbf71;color:#04140a;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.35)}
-#peReproductor{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.92);display:flex;flex-direction:column;justify-content:center;padding:16px}
+#peVolver{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom) + 84px);z-index:54;border:0;border-radius:22px;padding:10px 14px;background:#2fbf71;color:#04140a;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+#peReproductor{position:fixed;inset:0;z-index:58;background:rgba(0,0,0,.92);display:flex;flex-direction:column;justify-content:center;padding:16px}
 #peReproductor .pe-marco{position:relative;width:100%;padding-top:56.25%}
 #peReproductor .pe-marco>div,#peReproductor iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 #peReproductor button{margin-top:14px}
@@ -161,8 +161,12 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
 <p id="peFotosEstado" style="font-size:13px"></p>
 <button class="pe-b" data-pe="check">Guardar el check</button></div>`;
 
-    h += `<div class="pe-card"><h2><span class="pe-n">${paso()}</span>Contestame unas preguntas</h2>
-<p>${PRE.entrevista_pendiente ? 'Te dejé unas preguntas en el chat. Contestalas cuando puedas.' : 'Si te surge alguna duda antes de la llamada, escribime acá.'}</p>
+    h += `<div class="pe-card" id="peForm" hidden><h2><span class="pe-n">${paso()}</span>Contestame unas preguntas</h2>
+<p>Son pocas y me ahorran tiempo en la llamada.</p><div id="peFormCampos"></div>
+<button class="pe-b" data-pe="form">Enviar respuestas</button><p id="peFormEstado" style="font-size:13px"></p></div>`;
+
+    h += `<div class="pe-card"><h2><span class="pe-n">${paso()}</span>¿Alguna duda antes de vernos?</h2>
+<p>Si te surge algo antes de la llamada, escribime acá.</p>
 <div class="pe-chat" id="peChat"></div>
 <textarea id="peMsg" rows="2" placeholder="Escribí tu mensaje"></textarea>
 <button class="pe-b" data-pe="enviar">Enviar</button></div>`;
@@ -175,6 +179,7 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
     el.onclick = onClick;
     el.querySelectorAll('input[type=file]').forEach((i) => { i.onchange = onFoto; });
     cargarChat();
+    cargarFormulario();
   }
 
   function escala(campo, titulo, ayuda) {
@@ -189,7 +194,7 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
     if (!b) return;
     const esc5 = b.parentElement && b.parentElement.classList.contains('pe-escala') ? b.parentElement : null;
     if (esc5) {
-      CHECK[esc5.dataset.campo] = Number(b.dataset.v);
+      CHECK[esc5.dataset.campo] = esc5.dataset.campo.startsWith('f:') ? b.dataset.v : Number(b.dataset.v);
       esc5.querySelectorAll('button').forEach((x) => x.classList.toggle('sel', x === b));
       return;
     }
@@ -199,14 +204,16 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
     if (a === 'video') return abrirVideo(b.dataset.id);
     if (a === 'check') return guardarCheck(b);
     if (a === 'enviar') return enviar(b);
+    if (a === 'form') return enviarFormulario(b);
     if (a === 'explorar') return explorar();
   }
 
   async function activarAvisos(b) {
     try {
-      if (window.MyPumpNotif && typeof window.MyPumpNotif.activar === 'function') await window.MyPumpNotif.activar();
-      else if (typeof window.mostrarOnboardingPermisos === 'function') await window.mostrarOnboardingPermisos();
-      b.textContent = 'Listo';
+      let r = null;
+      if (window.MyPumpNotif && typeof window.MyPumpNotif.activar === 'function') r = await window.MyPumpNotif.activar();
+      else if (typeof window.mostrarOnboardingPermisos === 'function') { await window.mostrarOnboardingPermisos(); r = { ok: true }; }
+      b.textContent = r && r.ok ? 'Listo' : (r && r.motivo === 'denegado' ? 'Activalos desde Ajustes' : 'Acá no se pueden activar, hacelo desde la app');
     } catch (e) { b.textContent = 'No se pudo, probá desde Ajustes'; }
   }
 
@@ -231,7 +238,7 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
   async function abrirVideo(id) {
     const p = (PRE.pack || []).find((x) => x.video_id === id);
     if (!p) return;
-    const url = p.url || (p.yt_id ? 'https://www.youtube.com/watch?v=' + p.yt_id : '');
+    const url = (p.url && /^https:\/\//.test(p.url)) ? p.url : (p.yt_id ? 'https://www.youtube.com/watch?v=' + encodeURIComponent(p.yt_id) : '');
     if (plataforma() === 'ios' || !p.yt_id) return abrirAfuera(p, url);
     reproductor(p);
   }
@@ -272,7 +279,7 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
     host.innerHTML = `<div class="pe-marco"><div id="peYT"></div></div>
 <button style="appearance:none;border:0;border-radius:12px;padding:12px;font-weight:700;background:#2fbf71;color:#04140a">Cerrar</button>`;
     document.body.appendChild(host);
-    let player = null, max = p.segundos || 0, marcado = false;
+    let player = null, max = p.segundos || 0, marcado = false, cerrado = false;
     const tick = setInterval(async () => {
       if (!player || typeof player.getCurrentTime !== 'function') return;
       const t = Math.round(player.getCurrentTime() || 0), d = player.getDuration() || 0;
@@ -280,7 +287,7 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
       if (!marcado && d && max >= d * 0.8) { marcado = true; await progreso(p, max, true); }
     }, 5000);
     host.querySelector('button').onclick = async () => {
-      clearInterval(tick); host.remove();
+      cerrado = true; clearInterval(tick); host.remove();
       await progreso(p, max, marcado);
     };
     try {
@@ -288,7 +295,7 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
       player = new window.YT.Player('peYT', { videoId: p.yt_id, playerVars: { playsinline: 1, rel: 0 } });
     } catch (e) {
       clearInterval(tick); host.remove();
-      abrirAfuera(p, p.url || 'https://www.youtube.com/watch?v=' + p.yt_id);
+      if (!cerrado) abrirAfuera(p, p.url || 'https://www.youtube.com/watch?v=' + p.yt_id);
     }
   }
 
@@ -297,7 +304,15 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
       await rpc('mypump_preentrega_progreso', { p_token: TOKEN, p_video: p.video_id, p_segundos: segundos, p_visto: !!visto });
       if (visto) p.visto = true;
       p.segundos = Math.max(p.segundos || 0, segundos);
-      if (visto) montar();
+      if (visto) {
+        const btn = document.querySelector(`#preentrega [data-pe="video"][data-id="${CSS.escape(p.video_id)}"]`);
+        const fila = btn && btn.closest('.pe-video');
+        if (fila && !fila.querySelector('.pe-tilde')) fila.querySelector('b').insertAdjacentHTML('afterbegin', '<span class="pe-tilde">✓</span> ');
+        if (btn) btn.textContent = 'Ver otra vez';
+        const h2 = btn && btn.closest('.pe-card').querySelector('h2');
+        const pack = PRE.pack || [];
+        if (h2) h2.lastChild.textContent = 'Mirá estos videos (' + pack.filter((x) => x.visto).length + ' de ' + pack.length + ')';
+      }
     } catch (e) { console.warn('[preentrega] progreso', e); }
   }
 
@@ -317,14 +332,67 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
     const f = ev.target.files && ev.target.files[0];
     const pose = ev.target.dataset.pose;
     const out = document.getElementById('peFotosEstado');
-    if (!f || typeof window._subirFoto !== 'function') return;
-    const rd = new FileReader();
-    rd.onload = async () => {
-      if (out) out.textContent = 'Subiendo la foto de ' + pose + '…';
-      const r = await window._subirFoto(pose, rd.result, new Date().toLocaleDateString('en-CA'));
-      if (out) out.textContent = r && r.ok ? 'Foto de ' + pose + ' guardada' : 'No se pudo subir la de ' + pose + ', probá de nuevo';
-    };
-    rd.readAsDataURL(f);
+    if (!f || typeof window._subirFoto !== 'function' || typeof window._fotoAJpeg !== 'function') return;
+    (async () => {
+      try {
+        if (out) out.textContent = 'Subiendo la foto de ' + pose + '…';
+        const dataUrl = await window._fotoAJpeg(f);
+        if (!dataUrl || dataUrl.length > 2.4e6) { if (out) out.textContent = 'La foto de ' + pose + ' es muy pesada, probá con otra'; return; }
+        const r = await window._subirFoto(pose, dataUrl, new Date().toLocaleDateString('en-CA'));
+        if (out) out.textContent = r && r.ok ? 'Foto de ' + pose + ' guardada' : 'No se pudo subir la de ' + pose + ', probá de nuevo';
+      } catch (e) { if (out) out.textContent = 'No se pudo leer la foto de ' + pose; }
+    })();
+  }
+
+  // ─── Formulario previo (uno por cliente, además del de inscripción) ─
+  let FORM = null;
+  const RESP = {};
+
+  async function cargarFormulario() {
+    const card = document.getElementById('peForm');
+    if (!card) return;
+    try {
+      const f = await rpc('mypump_get_formulario_previo', { p_token: TOKEN });
+      if (!f || !f.ok || !Array.isArray(f.preguntas) || !f.preguntas.length) return;
+      FORM = f;
+      Object.assign(RESP, f.respuestas || {});
+      document.getElementById('peFormCampos').innerHTML = f.preguntas.map((q) => {
+        const v = RESP[q.id];
+        let h = `<div style="margin:10px 0"><b style="font-size:14px">${esc(q.texto)}</b>${q.ayuda ? ` <small style="opacity:.7">${esc(q.ayuda)}</small>` : ''}`;
+        if (q.tipo === 'opcion' || q.tipo === 'escala') {
+          const ops = q.tipo === 'escala' ? ['1', '2', '3', '4', '5'] : (Array.isArray(q.opciones) ? q.opciones : []);
+          h += `<div class="pe-escala" data-campo="f:${esc(q.id)}" style="flex-wrap:wrap">${ops.map((o) =>
+            `<button data-v="${esc(o)}"${String(v) === String(o) ? ' class="sel"' : ''}>${esc(o)}</button>`).join('')}</div>`;
+        } else {
+          h += `<textarea rows="2" data-fq="${esc(q.id)}" ${q.tipo === 'numero' ? 'inputmode="decimal"' : ''}>${esc(v == null ? '' : v)}</textarea>`;
+        }
+        return h + '</div>';
+      }).join('');
+      card.hidden = false;
+      if (f.estado === 'respondido') document.getElementById('peFormEstado').textContent = 'Ya me las mandaste. Si querés, podés corregirlas.';
+    } catch (e) { /* sin formulario: la tarjeta queda oculta */ }
+  }
+
+  async function enviarFormulario(b) {
+    if (!FORM) return;
+    const est = document.getElementById('peFormEstado');
+    document.querySelectorAll('#peFormCampos textarea[data-fq]').forEach((t) => {
+      const q = FORM.preguntas.find((x) => x.id === t.dataset.fq);
+      const val = t.value.trim();
+      if (!val) { delete RESP[t.dataset.fq]; return; }
+      if (q && q.tipo === 'numero') { const n = Number(val.replace(',', '.')); RESP[t.dataset.fq] = Number.isFinite(n) ? n : val; }
+      else RESP[t.dataset.fq] = val.slice(0, 2000);
+    });
+    Object.keys(CHECK).filter((k) => k.startsWith('f:')).forEach((k) => { RESP[k.slice(2)] = String(CHECK[k]); });
+    const falta = FORM.preguntas.filter((q) => q.obligatoria && (RESP[q.id] === undefined || RESP[q.id] === ''));
+    if (falta.length) { est.textContent = 'Te falta contestar ' + falta.length + (falta.length === 1 ? ' pregunta' : ' preguntas'); return; }
+    if (!Object.keys(RESP).length) { est.textContent = 'Contestá al menos una'; return; }
+    b.disabled = true; est.textContent = 'Enviando…';
+    try {
+      const ok = await rpc('entregas_form_responder', { p_clave: FORM.clave, p_respuestas: RESP });
+      est.textContent = ok ? 'Listo, gracias. Ya lo tengo.' : 'No se pudo guardar, probá de nuevo';
+    } catch (e) { est.textContent = 'No se pudo guardar, probá de nuevo'; }
+    b.disabled = false;
   }
 
   // ─── Chat ──────────────────────────────────────────────────────────
