@@ -27,6 +27,9 @@ public struct RutinaReloj: Codable, Equatable, Sendable {
     /// El descanso que corre en el teléfono (para seguirlo en el reloj).
     public var descanso: Descanso.Guardado?
     public var demo: Bool
+    /// Tanda 4: el modo calibración está prendido para esta cuenta en el iPhone (`ModoCalibracion`). nil o false = el
+    /// reloj no toca los sensores. Opcional: no sube la versión del protocolo.
+    public var calibracion: Bool?
 
     public init(cuenta: String = "", rutinaId: String, diaId: String, semana: Int, nombreDia: String, fecha: String, generada: Double,
                 ejercicios: [EjercicioReloj], inicioSesion: Double? = nil, diaFinalizado: Bool = false,
@@ -75,6 +78,8 @@ public struct EjercicioReloj: Codable, Equatable, Sendable {
     public var anteriores: [MarcaReloj]
     /// `RecordSerie.historiaSuficiente`: si es false, no se avisa récord.
     public var historiaSuficiente: Bool
+    /// Tanda 4: el `patron_movimiento` del catálogo (para la familia de movimiento del conteo de reps). Opcional.
+    public var patron: String?
 
     public init(lugar: String, nombre: String, bloque: String? = nil, tipo: String?, musculo: String?, equipo: String?,
                 sinKg: Bool, sinPeso: Bool = false, aproximacionesPlan: [AproximacionReloj]? = nil, descansoSegundos: Int,
@@ -87,6 +92,8 @@ public struct EjercicioReloj: Codable, Equatable, Sendable {
     }
 
     public var entrada: Preparacion.Entrada { Preparacion.Entrada(tipo: tipo, musculo: musculo, nombre: nombre, sinPeso: sinPeso) }
+    /// La familia de movimiento para el conteo de reps (tanda 4).
+    public var familia: FamiliaMovimiento { FamiliaMovimiento.de(patron: patron, equipo: equipo, nombre: nombre, tipo: tipo) }
     public var confirmadas: Int { series.filter(\.confirmada).count }
     public var terminado: Bool { EstadosEjercicio.terminales.contains(estado) || (!series.isEmpty && confirmadas == series.count) }
     /// El índice de la primera serie sin confirmar.

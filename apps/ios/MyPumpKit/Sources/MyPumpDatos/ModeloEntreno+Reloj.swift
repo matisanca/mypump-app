@@ -27,7 +27,7 @@ extension ModeloEntreno {
                                   kg: s.confirmada && !sinKg ? Self.numero(s.kg) : nil)
             }
             let historial = dia.historial[lugar] ?? []
-            return EjercicioReloj(
+            var e = EjercicioReloj(
                 lugar: lugar, nombre: conEquipo.nombre, bloque: nil, tipo: ef.tipo, musculo: musculo(plan), equipo: conEquipo.equipo,
                 sinKg: sinKg, sinPeso: ReglasEjercicio.esSinPeso(nombre: ef.nombre, tipo: ef.tipo, equipo: ef.equipo),
                 aproximacionesPlan: conEquipo.aproximaciones?.map(AproximacionReloj.init),
@@ -35,10 +35,18 @@ extension ModeloEntreno {
                 estado: dia.estado(lugar), series: series,
                 anteriores: RecordSerie.anteriores(historial, hoy: hoy, zona: zona).map(MarcaReloj.init),
                 historiaSuficiente: RecordSerie.historiaSuficiente(historial, hoy: hoy, zona: zona))
+            e.patron = patron(plan)
+            return e
         }
         return RutinaReloj(cuenta: cuentaReloj, rutinaId: rutina.id, diaId: dia.dia.id ?? "", semana: semana, nombreDia: dia.dia.nombre ?? "",
                            fecha: hoy, generada: ahoraMs, ejercicios: ejercicios, inicioSesion: inicioSesion,
                            diaFinalizado: dia.diaFinalizado, proximo: proximoEntreno(), descanso: descanso.descanso?.guardado, demo: demo)
+    }
+
+    /// El `patron_movimiento` del que se hace (el del sustituto, si hay; si no, el del catálogo): para la familia de
+    /// movimiento del conteo de reps del reloj (tanda 4).
+    func patron(_ ex: Ejercicio) -> String? {
+        efectivo(ex).slugSustituto.flatMap { catalogo.entrada(slug: $0)?.patronMovimiento } ?? catalogo.resolver(ex)?.patronMovimiento
     }
 
     /// El próximo día que falta en la semana (después del que se mira, dando la vuelta).
