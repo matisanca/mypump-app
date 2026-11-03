@@ -44,12 +44,13 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
 
     /// Al abrir con la cuenta (y al dar el permiso): se borra lo nuestro y se agenda el aviso del domingo que viene, una
     /// sola vez (`AvisoDomingo.proximo`). Sale siempre que haya permiso: no es algo que el cliente configure (pedido de
-    /// Mati, 14-oct).
+    /// Mati, 14-oct). Con la semana de revisión ya completa, el de esta semana se saltea (R2 de la 2.0.3).
     func reprogramar() async {
         let centro = UNUserNotificationCenter.current()
         guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { return }
         centro.removePendingNotificationRequests(withIdentifiers: [AvisoDomingo.id] + PreferenciasAvisos.idsViejos)
-        guard let cuando = AvisoDomingo.proximo(desde: Date()) else { return }
+        let completa = Proveedor.modelo.semanaDeRevisionCompleta
+        guard let cuando = AvisoDomingo.proximo(desde: Date(), semanaCompleta: completa) else { return }
         let c = UNMutableNotificationContent()
         c.title = AvisoDomingo.titulo
         c.body = AvisoDomingo.cuerpo
@@ -58,6 +59,22 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         let pedido = UNNotificationRequest(identifier: AvisoDomingo.id, content: c,
                                            trigger: UNCalendarNotificationTrigger(dateMatching: cuando, repeats: false))
         try? await centro.add(pedido)
+    }
+
+    /// Se completó (o se cargó) la semana de revisión: el aviso se vuelve a armar, solo con una cuenta de verdad y si ya
+    /// había permiso (nunca lo pide). Así quien sube todo el sábado no recibe nada el domingo.
+    func alCambiarLaSemana() async {
+        let m = Proveedor.modelo
+        guard m.token != nil, !m.esDemo, m.fase == .listo else { return }
+        await reprogramar()
+    }
+
+    /// Lo que hay agendado del domingo (las pruebas de interfaz lo leen con `-verAvisoDomingo`): "2026-11-08 11:00" o "".
+    func avisoDomingoAgendado() async -> String {
+        let pedidos = await UNUserNotificationCenter.current().pendingNotificationRequests()
+        guard let t = pedidos.first(where: { $0.identifier == AvisoDomingo.id })?.trigger as? UNCalendarNotificationTrigger else { return "" }
+        let c = t.dateComponents
+        return String(format: "%04d-%02d-%02d %02d:%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0, c.hour ?? 0, c.minute ?? 0)
     }
 
     /// Sin cuenta (salió) o con el link vencido: el aviso del domingo ya no es para este teléfono.
@@ -141,6 +158,13 @@ final class DelegadoApp: NSObject, UIApplicationDelegate {
         MainActor.assumeIsolated { CentroAvisos.shared.configurar() }
         #if DEBUG
         if let d = UserDefaults.standard.string(forKey: "avisoDePrueba") { Task { await CentroAvisos.shared.agendarAvisoDePrueba(d) } }
+        // `-semanaDePrueba`: la prueba del aviso del domingo necesita el permiso para que haya algo agendado.
+        if UserDefaults.standard.string(forKey: "semanaDePrueba") != nil {
+            Task { @MainActor in
+                _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+                await CentroAvisos.shared.alCambiarLaSemana()
+            }
+        }
         #endif
         return true
     }

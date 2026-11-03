@@ -118,6 +118,46 @@ public enum DiaCalendario {
     }
 }
 
+/// La semana de revisión y el aviso local (R2 de la 2.0.3). La semana termina el día de revisión del alumno (1 = lunes …
+/// 7 = domingo; 7 es la semana ISO de siempre): su lunes es el lunes ISO de (fecha + (7 − día)), la misma cuenta que el
+/// servidor. Vectores: apps/shared/vectores/aviso_revision.json.
+public enum SemanaRevision {
+    public static let diaPorDefecto = 7
+    /// El aviso sale el día de revisión a las 11:00, hora del teléfono (es cuando se arma la ronda de Mati).
+    public static let minutosAviso = 11 * 60
+
+    /// Un día fuera de 1…7 (un dato raro) vale el domingo.
+    public static func normalizado(_ dia: Int?) -> Int {
+        guard let dia, (1...7).contains(dia) else { return diaPorDefecto }
+        return dia
+    }
+
+    /// El lunes de la semana de revisión de `fecha`.
+    public static func lunes(_ fecha: String, dia: Int = diaPorDefecto) -> String {
+        guard let n = DiaCalendario.numero(fecha) else { return fecha }
+        return FotosProgreso.lunes(DiaCalendario.texto(n + 7 - normalizado(dia)))
+    }
+
+    /// Completa: lo mismo que deja el badge de Revisión en cero (el check guardado y las tres fotos de la semana).
+    public static func completa(checkinEnviado: Bool, posesDeLaSemana: Set<String>) -> Bool {
+        FotosProgreso.pendientes(checkinEnviado: checkinEnviado, posesDeLaSemana: posesDeLaSemana).total == 0
+    }
+
+    /// El día del próximo aviso: el día de revisión que viene (hoy, si es ese día antes de las 11). Si la semana de
+    /// revisión de hoy ya está completa y ese aviso cae en la misma semana, se saltea al de la semana siguiente: quien
+    /// subió todo el sábado no recibe nada el domingo.
+    public static func fechaAviso(hoy: String, minutos: Int, completa: Bool, dia: Int = diaPorDefecto) -> String? {
+        guard let n = DiaCalendario.numero(hoy) else { return nil }
+        let d = normalizado(dia)
+        let dow = ((n + 3) % 7 + 7) % 7 + 1   // 1970-01-01 fue jueves: 1 = lunes … 7 = domingo
+        var delta = ((d - dow) % 7 + 7) % 7
+        if delta == 0 && minutos >= minutosAviso { delta = 7 }
+        var aviso = n + delta
+        if completa && lunes(DiaCalendario.texto(aviso), dia: d) == lunes(hoy, dia: d) { aviso += 7 }
+        return DiaCalendario.texto(aviso)
+    }
+}
+
 /// Fotos de progreso (cliente.html:7476-7962): tres poses por semana (lunes ISO), la racha de semanas completas, el
 /// recordatorio semanal y el comparador antes/después (que espera a las 4 semanas: antes compara luz y retención de
 /// líquido, no cambios reales).

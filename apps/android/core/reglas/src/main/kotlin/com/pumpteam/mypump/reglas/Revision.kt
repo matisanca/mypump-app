@@ -115,6 +115,47 @@ object DiaCalendario {
  * recordatorio semanal y el comparador antes/después (que espera a las 4 semanas: antes compara luz y retención de
  * líquido, no cambios reales).
  */
+/**
+ * La semana de revisión y el aviso local (R2 de la 2.0.3). La semana termina el día de revisión del alumno (1 = lunes … 7 =
+ * domingo; 7 es la semana ISO de siempre): su lunes es el lunes ISO de (fecha + (7 − día)), la misma cuenta que el
+ * servidor. Vectores: apps/shared/vectores/aviso_revision.json. Gemelo de `SemanaRevision` de iOS.
+ */
+object SemanaRevision {
+    const val DIA_POR_DEFECTO = 7
+
+    /** El aviso sale el día de revisión a las 11:00, hora del teléfono (es cuando se arma la ronda de Mati). */
+    const val MINUTOS_AVISO = 11 * 60
+
+    /** Un día fuera de 1…7 (un dato raro) vale el domingo. */
+    fun normalizado(dia: Int?): Int = if (dia != null && dia in 1..7) dia else DIA_POR_DEFECTO
+
+    /** El lunes de la semana de revisión de [fecha]. */
+    fun lunes(fecha: String, dia: Int = DIA_POR_DEFECTO): String {
+        val n = DiaCalendario.numero(fecha) ?: return fecha
+        return FotosProgreso.lunes(DiaCalendario.texto(n + 7 - normalizado(dia)))
+    }
+
+    /** Completa: lo mismo que deja el badge de Revisión en cero (el check guardado y las tres fotos de la semana). */
+    fun completa(checkinEnviado: Boolean, posesDeLaSemana: Set<String>): Boolean =
+        FotosProgreso.pendientes(checkinEnviado, posesDeLaSemana).total == 0
+
+    /**
+     * El día del próximo aviso: el día de revisión que viene (hoy, si es ese día antes de las 11). Si la semana de revisión
+     * de hoy ya está completa y ese aviso cae en la misma semana, se saltea al de la semana siguiente: quien subió todo el
+     * sábado no recibe nada el domingo.
+     */
+    fun fechaAviso(hoy: String, minutos: Int, completa: Boolean, dia: Int = DIA_POR_DEFECTO): String? {
+        val n = DiaCalendario.numero(hoy) ?: return null
+        val d = normalizado(dia)
+        val dow = Math.floorMod(n + 3, 7L) + 1   // 1970-01-01 fue jueves: 1 = lunes … 7 = domingo
+        var delta = Math.floorMod(d - dow, 7L)
+        if (delta == 0L && minutos >= MINUTOS_AVISO) delta = 7
+        var aviso = n + delta
+        if (completa && lunes(DiaCalendario.texto(aviso), d) == lunes(hoy, d)) aviso += 7
+        return DiaCalendario.texto(aviso)
+    }
+}
+
 object FotosProgreso {
     val poses: List<Pair<String, String>> = listOf("frente" to "Frente", "perfil" to "Perfil", "espalda" to "Espalda")
     const val MAX_PENDIENTES = 3

@@ -24,6 +24,7 @@ import com.pumpteam.mypump.reglas.ComidaLibreNueva
 import com.pumpteam.mypump.reglas.ConsumoDelDia
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
+import com.pumpteam.mypump.reglas.SemanaRevision
 import com.pumpteam.mypump.reglas.MarcaComida
 import com.pumpteam.mypump.reglas.NormalizarDieta
 import com.pumpteam.mypump.reglas.SwapLocal
@@ -812,6 +813,18 @@ class ModeloApp(
             val f = _fotos.value
             if (r == null || f == null) return FotosProgreso.Pendientes(faltaCheck = false, faltanFotos = false, total = 0)
             return FotosProgreso.pendientes(r.checkinEnviado, f.posesDeLaSemana)
+        }
+
+    /**
+     * La semana de revisión ya está completa (el check y las tres fotos): el aviso del domingo se saltea esta semana. Sin
+     * cuenta, en la demo o sin el check y las fotos cargados, false: el aviso sale como siempre.
+     */
+    val semanaDeRevisionCompleta: Boolean
+        get() {
+            if (_esDemo.value) return false
+            val r = _revision.value ?: return false
+            val f = _fotos.value ?: return false
+            return SemanaRevision.completa(r.checkinEnviado, f.posesDeLaSemana)
         }
 
     private fun aplicar(c: CopiaOffline) {

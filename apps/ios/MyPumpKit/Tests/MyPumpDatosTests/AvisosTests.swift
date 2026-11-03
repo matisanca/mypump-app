@@ -87,6 +87,36 @@ struct ProximoDomingoTests {
         #expect(AvisoDomingo.proximo(desde: justo, calendario: cal)?.day == 25)
     }
 
+    /// R2 de la 2.0.3: con la semana de revisión completa, el aviso de esta semana se saltea; incompleta, como siempre.
+    @Test func conLaSemanaCompletaSeSalteaElDomingo() {
+        let zona = "America/Argentina/Buenos_Aires"
+        let (sabado, cal) = fecha("2026-10-31 18:00", zona)
+        #expect(AvisoDomingo.proximo(desde: sabado, semanaCompleta: true, calendario: cal)?.day == 8)
+        let s = AvisoDomingo.proximo(desde: sabado, semanaCompleta: false, calendario: cal)
+        #expect(s?.month == 11 && s?.day == 1 && s?.hour == 11 && s?.minute == 0)
+        #expect(s == AvisoDomingo.proximo(desde: sabado, calendario: cal))
+        let (domingo, _) = fecha("2026-11-01 10:30", zona)
+        #expect(AvisoDomingo.proximo(desde: domingo, semanaCompleta: true, calendario: cal)?.day == 8)
+        #expect(AvisoDomingo.proximo(desde: domingo, semanaCompleta: false, calendario: cal)?.day == 1)
+        // El lunes la semana es otra: completa, el domingo de ESTA semana se saltea.
+        let (lunes, _) = fecha("2026-11-02 09:00", zona)
+        #expect(AvisoDomingo.proximo(desde: lunes, semanaCompleta: false, calendario: cal)?.day == 8)
+        #expect(AvisoDomingo.proximo(desde: lunes, semanaCompleta: true, calendario: cal)?.day == 15)
+    }
+
+    /// Sin la semana completa, la cuenta nueva da lo mismo que la de siempre (`nextDate`), en cualquier hora de dos semanas.
+    @Test func incompletaEsIgualALaDeSiempre() {
+        for zona in ["America/Argentina/Buenos_Aires", "America/New_York", "Europe/Madrid"] {
+            var (d, cal) = fecha("2026-10-24 00:00", zona)
+            for _ in 0..<(14 * 24 * 2) {
+                let a = AvisoDomingo.proximo(desde: d, calendario: cal)
+                let b = AvisoDomingo.proximo(desde: d, semanaCompleta: false, calendario: cal)
+                #expect(a?.year == b?.year && a?.month == b?.month && a?.day == b?.day && a?.hour == b?.hour && a?.minute == b?.minute, "\(d)")
+                d.addTimeInterval(1_800)
+            }
+        }
+    }
+
     @Test func conCambioDeHoraSigueSiendoALas11() {
         // Nueva York pasa al horario de verano el domingo 8-mar-2026 a las 2: el aviso de ese día sigue a las 11.
         let (d, cal) = fecha("2026-03-07 12:00", "America/New_York")

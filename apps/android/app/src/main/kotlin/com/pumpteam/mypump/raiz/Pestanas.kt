@@ -264,6 +264,18 @@ fun pendientesDeLaSemana(modelo: ModeloApp): FotosProgreso.Pendientes {
     return remember(revision, fotos, checkin, subidas, enCola) { modelo.pendientesDeLaSemana }
 }
 
+/** La semana de revisión completa (`semanaDeRevisionCompleta` del modelo), mirando el check y las fotos para recomponer. */
+@Composable
+fun semanaDeRevisionCompleta(modelo: ModeloApp): Boolean {
+    val revision by modelo.revision.collectAsStateWithLifecycle()
+    val fotos by modelo.fotos.collectAsStateWithLifecycle()
+    val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    val checkin = revision?.checkin?.collectAsStateWithLifecycle()?.value
+    val subidas = fotos?.fotos?.collectAsStateWithLifecycle()?.value
+    val enCola = fotos?.pendientes?.collectAsStateWithLifecycle()?.value
+    return remember(revision, fotos, esDemo, checkin, subidas, enCola) { modelo.semanaDeRevisionCompleta }
+}
+
 /** En la demo: un aviso fijo arriba con la salida. */
 @Composable
 private fun BarraDemo(alSalir: () -> Unit) {

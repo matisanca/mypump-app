@@ -20,10 +20,16 @@ public struct RecuperacionDia: Decodable, Sendable, Equatable {
     public let componentes: JSONValue?
     /// `[{tipo, dir, valor, baseline, agudo}]`: hechos, la frase se arma en el cliente.
     public let motivos: JSONValue?
+    /// nativa_007: qué falta para tener score, o cómo mejorar la confianza (texto para el cliente). Una respuesta vieja,
+    /// de 12 columnas, no la trae.
+    public let motivoFalta: String?
+    /// nativa_007: alta | media | baja, null sin score.
+    public let confianza: String?
 
     enum CodingKeys: String, CodingKey {
         case fecha, score, estado, banda, diasDatos = "dias_datos", bandaProvisoria = "banda_provisoria"
         case estadoAutonomico = "estado_autonomico", hrvMetrica = "hrv_metrica", discordancia, cobertura, componentes, motivos
+        case motivoFalta = "motivo_falta", confianza
     }
 
     public init(from decoder: Decoder) throws {
@@ -34,14 +40,17 @@ public struct RecuperacionDia: Decodable, Sendable, Equatable {
         cobertura = try? c.decodeIfPresent(JSONValue.self, forKey: .cobertura)
         componentes = try? c.decodeIfPresent(JSONValue.self, forKey: .componentes)
         motivos = try? c.decodeIfPresent(JSONValue.self, forKey: .motivos)
+        motivoFalta = c.texto(.motivoFalta); confianza = c.texto(.confianza)
     }
 
     public init(fecha: String, score: Int? = nil, estado: String? = nil, banda: String? = nil, diasDatos: Int? = nil,
                 bandaProvisoria: Bool? = nil, estadoAutonomico: String? = nil, hrvMetrica: String? = nil, discordancia: Bool? = nil,
-                cobertura: JSONValue? = nil, componentes: JSONValue? = nil, motivos: JSONValue? = nil) {
+                cobertura: JSONValue? = nil, componentes: JSONValue? = nil, motivos: JSONValue? = nil,
+                motivoFalta: String? = nil, confianza: String? = nil) {
         self.fecha = fecha; self.score = score; self.estado = estado; self.banda = banda; self.diasDatos = diasDatos
         self.bandaProvisoria = bandaProvisoria; self.estadoAutonomico = estadoAutonomico; self.hrvMetrica = hrvMetrica
         self.discordancia = discordancia; self.cobertura = cobertura; self.componentes = componentes; self.motivos = motivos
+        self.motivoFalta = motivoFalta; self.confianza = confianza
     }
 }
 

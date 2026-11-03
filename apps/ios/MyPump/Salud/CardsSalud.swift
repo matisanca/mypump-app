@@ -60,6 +60,8 @@ struct EncabezadoSalud: View {
 
 struct CardRecuperacionView: View {
     let modelo: ModeloSalud
+    /// La pastilla de confianza abre (y cierra) cómo mejorarla.
+    @State private var verConfianza = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -67,6 +69,8 @@ struct CardRecuperacionView: View {
             contenido
         }
         .tarjeta()
+        // Contenedor: sin esto el identificador de la card pisaba los de adentro (la pastilla y "ver-todos-mis-datos").
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("card-recuperacion")
     }
 
@@ -80,17 +84,17 @@ struct CardRecuperacionView: View {
             } else {
                 NotaSalud("Si tenés reloj o anillo, conectalo desde la app de iPhone y esto se llena solo.")
             }
-        case .conectadoSinScore(let caso):
+        case .conectadoSinScore(let caso, let motivo):
             Text(caso.frase).font(.subheadline.weight(.medium)).monospacedDigit()
-            NotaSalud(caso.nota)
-        case .calibrando(let dias, let pct, let yaSe):
+            NotaSalud(motivo ?? caso.nota)
+        case .calibrando(let dias, let pct, let yaSe, let motivo):
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(dias)").font(.numeroGrande)
                 Text("/ 14 días").font(.subheadline).foregroundStyle(.secondary)
             }
             ProgressView(value: Double(pct), total: 100).tint(Color.marcaTexto)
             Text("Estoy aprendiendo cómo es tu normal. \(yaSe)").font(.subheadline.weight(.medium))
-            NotaSalud("Sin unos días de historia, cualquier número sería inventado.")
+            NotaSalud(motivo ?? "Sin unos días de historia, cualquier número sería inventado.")
         case .oculto:
             Text("Tenés el score apagado. Tus datos se siguen guardando y Mati los ve igual.").font(.subheadline)
             verTodo
@@ -100,16 +104,21 @@ struct CardRecuperacionView: View {
     }
 
     @ViewBuilder private func conScore(_ c: SaludVista.ConScore) -> some View {
+        let tono = Self.color(c.banda, apagado: c.confianza?.apagado == true)
         HStack(alignment: .top, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text("\(c.fila.score ?? 0)").font(.numeroGigante).foregroundStyle(Self.color(c.banda))
+                Text("\(c.fila.score ?? 0)").font(.numeroGigante).foregroundStyle(tono)
                 Text("/100").font(.subheadline).foregroundStyle(.secondary)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(c.bandaTexto).font(.headline).foregroundStyle(Self.color(c.banda))
+                Text(c.bandaTexto).font(.headline).foregroundStyle(tono)
                 if let frase = c.frase { Text(frase).font(.subheadline) }
+                if let conf = c.confianza { PastillaConfianza(confianza: conf, abierta: $verConfianza) }
             }
             .padding(.top, 8)
+        }
+        if let conf = c.confianza, verConfianza {
+            NotaSalud(conf.explicacion).transition(.opacity).accessibilityIdentifier("explicacion-confianza")
         }
         if let vieja = c.notaVieja { NotaSalud(vieja) }
         if !c.grafico.isEmpty {
@@ -117,7 +126,7 @@ struct CardRecuperacionView: View {
                 LineMark(x: .value("Día", i), y: .value("Score", p.score)).interpolationMethod(.monotone)
                 if i == c.grafico.count - 1 { PointMark(x: .value("Día", i), y: .value("Score", p.score)).symbolSize(30) }
             }
-            .foregroundStyle(Self.color(c.banda))
+            .foregroundStyle(tono)
             .chartYScale(domain: 0...100)
             .chartXAxis(.hidden).chartYAxis(.hidden)
             .frame(height: 38)
@@ -171,6 +180,26 @@ struct CardRecuperacionView: View {
         case "baja": .peligro
         default: .alerta
         }
+    }
+
+    /// Con confianza baja, el mismo color más apagado: el número sigue diciendo la banda pero no grita.
+    static func color(_ banda: String, apagado: Bool) -> Color { apagado ? color(banda).opacity(0.5) : color(banda) }
+}
+
+/// «Confianza media» / «Confianza baja» (nativa_007): una pastilla chica que, al tocarla, muestra cómo mejorarla.
+struct PastillaConfianza: View {
+    let confianza: SaludVista.Confianza
+    @Binding var abierta: Bool
+
+    var body: some View {
+        Button {
+            withAnimation(.snappy) { abierta.toggle() }
+        } label: {
+            Chip(texto: confianza.etiqueta, icono: abierta ? "chevron.up" : "info.circle")
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("confianza-recuperacion")
+        .accessibilityHint(abierta ? "Oculta cómo mejorarla" : "Muestra cómo mejorarla")
     }
 }
 
