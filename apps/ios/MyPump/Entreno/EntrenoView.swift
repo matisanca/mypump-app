@@ -632,6 +632,7 @@ private struct EjercicioEnLista: View {
     @Environment(Preguntador.self) private var preguntador
     @Environment(\.dynamicTypeSize) private var tamañoLetra
     @State private var sustituyendo = false
+    @State private var eligiendoDescanso = false
 
     var body: some View {
         if let t = motor.tarjeta(lugar) {
@@ -640,7 +641,14 @@ private struct EjercicioEnLista: View {
             // Con letra de accesibilidad, uno debajo del otro: en un renglón partían las palabras («Sus-tituir»).
             let acciones = tamañoLetra.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Espacio.s))
                                                           : AnyLayout(HStackLayout(spacing: Espacio.s))
+            let prep = t.filas.isEmpty ? [] : motor.preparacion(lugar)
             VStack(alignment: .leading, spacing: Espacio.s) {
+                // E1: la preparación, liviana y aparte, antes de las efectivas (solo indica; no se registra).
+                if !prep.isEmpty {
+                    PreparacionBloque(motor: motor, lugar: lugar, series: prep, sinKg: t.sinKg)
+                        .padding(.horizontal, Espacio.m)
+                        .padding(.top, Espacio.s)
+                }
                 TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
                 // Solo en los ejercicios con series (el cardio se marca con «Terminé»), igual que en la página.
                 if !t.filas.isEmpty { DescansoEnTarjeta() }
@@ -649,6 +657,13 @@ private struct EjercicioEnLista: View {
                         Label(t.efectivo.sustituido ? "Cambiar" : "Sustituir", systemImage: "arrow.triangle.2.circlepath")
                     }
                     .disabled(!(t.puedeSustituir || t.efectivo.sustituido))
+                    // E2: el descanso del ejercicio, a un toque (como el cronómetro de la fila de botones de la referencia).
+                    if !t.filas.isEmpty && t.efectivo.ejercicio.tipo != "calentamiento" {
+                        Button { eligiendoDescanso = true } label: { Label(t.descanso, systemImage: "timer") }
+                            .accessibilityLabel("Descanso \(t.descanso)\(t.descansoPropio ? ", elegido por vos" : "")")
+                            .accessibilityHint("Tocá para elegir otro descanso para este ejercicio")
+                            .accessibilityIdentifier("descanso-ejercicio")
+                    }
                     NavigationLink(value: lugar) {
                         Label("Técnica y notas", systemImage: "text.book.closed.fill")
                     }
@@ -682,6 +697,11 @@ private struct EjercicioEnLista: View {
             .padding(.bottom, Espacio.s)
             .background(Color.campo.opacity(0.35))
             .sheet(isPresented: $sustituyendo) { SustituirEjercicioView(motor: motor, lugar: lugar) }
+            .sheet(isPresented: $eligiendoDescanso) {
+                SelectorDescanso(segundos: t.descansoSegundos, plan: t.descansoPlan, propio: t.descansoPropio) { nuevo in
+                    motor.elegirDescanso(lugar, segundos: nuevo)
+                }
+            }
         }
     }
 }

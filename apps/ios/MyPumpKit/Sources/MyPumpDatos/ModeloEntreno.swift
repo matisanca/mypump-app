@@ -36,6 +36,11 @@ public final class ModeloEntreno {
     /// Historial pedido y todavía sin respuesta.
     public internal(set) var historialCargando: Set<String> = []
     public internal(set) var catalogo: CatalogoEjercicios
+    /// E1: las filas de preparación que el alumno tocó como hechas hoy, por `Preparacion.claveTildes` (fecha + día +
+    /// lugar). Es solo un estado visual del día: no va a la base.
+    public internal(set) var preparacionHecha: [String: [Int]] = [:]
+    /// E1: los ejercicios (por clave) con la preparación oculta («Ocultar» se recuerda).
+    public internal(set) var preparacionOculta: Set<String> = []
     /// El último récord (2.0.3, E3): lo muestra la tabla del lugar como aviso dorado y se va solo.
     public internal(set) var avisoRecord: AvisoRecord?
 
@@ -66,6 +71,10 @@ public final class ModeloEntreno {
         /// El servidor activó el bloque nuevo y no llegó: el viejo quedó archivado y no se puede seguir cargando en él.
         case bloqueSinTraer
     }
+
+    /// Solo para las capturas y las pruebas de interfaz de la demo (la app lo pone en DEBUG con `-historial muestra`): el
+    /// historial que devuelve la demo, que no tiene red. nil = sin historial, como siempre.
+    nonisolated(unsafe) public static var historialDeMuestra: (@Sendable (String) -> [RegistroHistorico])?
 
     /// Se llama cuando el modelo cambia la rutina (avanzar de semana, bloque nuevo, recargar).
     @ObservationIgnored public var alCambiarRutina: ((CambioRutina) -> Void)?
@@ -131,6 +140,10 @@ public final class ModeloEntreno {
             ?? dia.sustituciones
         desfaseReloj = disco?.leer(Double.self, Archivo.reloj) ?? 0
         descansoEnDisco = enDisco
+        // Los tildes de la preparación son del día: lo de otra fecha se descarta al arrancar.
+        let hoy = FechaJS.ymd(reloj(), zona: zona)
+        preparacionHecha = (disco?.leer([String: [Int]].self, Archivo.preparacion) ?? [:]).filter { $0.key.hasPrefix(hoy + "|") }
+        preparacionOculta = Set(disco?.leer([String].self, Archivo.preparacionOculta) ?? [])
         guardarDiaVisualizado()
     }
 
@@ -359,6 +372,63 @@ public final class ModeloEntreno {
         guard !clave.isEmpty else { return }
         dia.descansosPropios[clave] = DescansoPropio.valido(segundos)
         disco?.guardar(dia.descansosPropios, Archivo.descansos)
+    }
+
+    // MARK: - Preparación (E1, 2.0.3)
+
+    /// La preparación del lugar: la del plan si la trae (también con un sustituto, que la hereda), si no la que arma la app
+    /// con el tipo y el músculo del ejercicio que se hace (el músculo del sustituto si el catálogo lo tiene). El kg sigue
+    /// en vivo al de la primera serie efectiva (lo escrito o, si no, lo sugerido).
+    public func preparacion(_ lugar: String) -> [Preparacion.Serie] {
+        let lista = dia.lista
+        guard let i = lista.firstIndex(where: { $0.id == lugar }) else { return [] }
+        let entradas = lista.map { ex -> Preparacion.Entrada in
+            let ef = efectivo(ex)
+            let delSustituto = ef.slugSustituto.flatMap { catalogo.entrada(slug: $0)?.primaryMuscle }
+            let musculo = delSustituto ?? catalogo.resolver(ex)?.primaryMuscle
+            return Preparacion.Entrada(tipo: ef.ejercicio.tipo, musculo: musculo, nombre: ef.ejercicio.nombre,
+                                       sinPeso: ReglasEjercicio.esSinPeso(nombre: ef.ejercicio.nombre, tipo: ef.ejercicio.tipo, equipo: ef.ejercicio.equipo))
+        }
+        let ef = efectivo(lista[i]).ejercicio
+        let primera = dia.ejercicios[lugar]?.series.first
+        let sugerido = dia.fila(lugar, 0, efectivo: ef)?.placeholderKg ?? ""
+        let kg = Preparacion.kgEfectivo(escrito: primera?.kg ?? "", sugerido: sugerido)
+        return Preparacion.series(dia: entradas, indice: i, nombre: ef.nombre, equipo: ef.equipo, sinKg: ReglasEjercicio.sinKg(ef),
+                                  kgEfectivo: kg, plan: ef.aproximaciones)
+    }
+
+    func clavePreparacion(_ lugar: String) -> String {
+        Preparacion.claveTildes(fecha: FechaJS.ymd(reloj(), zona: zona), dia: dia.dia.id ?? "", lugar: lugar)
+    }
+
+    /// Las filas de preparación ya hechas hoy en el lugar.
+    public func preparacionHecha(_ lugar: String) -> Set<Int> { Set(preparacionHecha[clavePreparacion(lugar)] ?? []) }
+
+    /// Tocar una fila de preparación: queda atenuada como hecha y arranca el descanso corto (30 s). Tocarla de nuevo la
+    /// desmarca (sin descanso). No se registra nada como carga.
+    public func tocarPreparacion(_ lugar: String, _ i: Int) {
+        let clave = clavePreparacion(lugar)
+        var hechas = Set(preparacionHecha[clave] ?? [])
+        if hechas.contains(i) {
+            hechas.remove(i)
+        } else {
+            hechas.insert(i)
+            descanso.iniciar(segundos: Double(Preparacion.descansoSegundos), ahora: ahoraMs)
+            guardarDescanso()
+        }
+        preparacionHecha[clave] = hechas.isEmpty ? nil : hechas.sorted()
+        disco?.guardar(preparacionHecha, Archivo.preparacion)
+    }
+
+    /// La preparación del lugar está oculta (por la clave del ejercicio que se hace).
+    public func preparacionOculta(_ lugar: String) -> Bool { preparacionOculta.contains(ClaveEjercicio.de(dia.nombreEfectivo(lugar))) }
+
+    /// «Ocultar» / «Mostrar»: se recuerda para ese ejercicio.
+    public func ocultarPreparacion(_ lugar: String, _ ocultar: Bool) {
+        let clave = ClaveEjercicio.de(dia.nombreEfectivo(lugar))
+        guard !clave.isEmpty else { return }
+        if ocultar { preparacionOculta.insert(clave) } else { preparacionOculta.remove(clave) }
+        disco?.guardar(preparacionOculta.sorted(), Archivo.preparacionOculta)
     }
 
     /// El lápiz (SER-06).
@@ -768,7 +838,7 @@ public final class ModeloEntreno {
     }
 
     func traerHistorial(clave: String?, lugar: String) async -> Historial {
-        guard let token else { return .filas([]) }
+        guard let token else { return .filas(Self.historialDeMuestra?(clave ?? "") ?? []) }
         if let clave, !sinHistorialPorClave {
             switch await porClave([clave]) {
             case .some(.some(let m)): return .filas(m[clave] ?? [])
@@ -1094,6 +1164,9 @@ public final class ModeloEntreno {
         static let legado = "legado-entreno.json"
         /// E2: el descanso elegido a mano por ejercicio (`[clave: segundos]`), de la cuenta y no de una rutina.
         static let descansos = "entreno-descansos.json"
+        /// E1: los tildes de la preparación de hoy y los ejercicios con la preparación oculta.
+        static let preparacion = "entreno-preparacion.json"
+        static let preparacionOculta = "entreno-preparacion-oculta.json"
         static func dia(_ rutinaId: String) -> String { "entreno-dia_\(rutinaId).json" }
         static func sustituciones(_ rutinaId: String) -> String { "ejercicios-swaps_\(rutinaId).json" }
         /// SER-14: el desfase del reloj con el servidor.

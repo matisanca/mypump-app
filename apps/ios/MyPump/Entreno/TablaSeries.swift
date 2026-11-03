@@ -30,13 +30,18 @@ struct TablaSeries: View {
         VStack(alignment: .leading, spacing: Espacio.s) {
             HStack(alignment: .firstTextBaseline) {
                 // Abierta en la lista va más chica: arriba ya está el nombre del ejercicio, que es lo que manda.
-                Text("Series").font(enLista ? .headline : .title3.weight(.bold)).accessibilityAddTraits(.isHeader)
+                // Con la preparación arriba (E1), «Series efectivas».
+                Text(motor.preparacion(lugar).isEmpty ? "Series" : "Series efectivas")
+                    .font(enLista ? .headline : .title3.weight(.bold)).accessibilityAddTraits(.isHeader)
                 Spacer()
                 Text("\(tarjeta.confirmadas) de \(filas.count)")
                     .font(.subheadline.weight(.medium).monospacedDigit())
                     .foregroundStyle(tarjeta.confirmadas == filas.count && !filas.isEmpty ? Color.marcaTexto : Color.secondary)
                     .contentTransition(.numericText())
             }
+
+            // E3: el récord de la serie recién confirmada, arriba de la tabla.
+            AvisoRecordVista(motor: motor, lugar: lugar)
 
             if let v = tarjeta.variantes {
                 VStack(alignment: .leading, spacing: 6) {

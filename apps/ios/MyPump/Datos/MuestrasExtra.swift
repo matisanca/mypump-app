@@ -41,6 +41,16 @@ enum DemoUI {
     static var lleno: Bool { bocetos && valor("demo") == "lleno" }
     static var seriesHechas: Int { Int(valor("series") ?? "") ?? 0 }
     static var sinDescanso: Bool { valor("descanso") == "no" }
+    /// `-historial muestra`: la demo con historial (60 kg × 10 hace 4 días en cada ejercicio), para ver el kg sugerido, la
+    /// preparación con kg y el aviso de récord sin cuenta.
+    static var historialDeMuestra: Bool { valor("historial") == "muestra" }
+
+    /// Las dos series de muestra (sin datos reales).
+    static func filasDeMuestra(_ clave: String) -> [RegistroHistorico] {
+        let hace4 = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-4 * 86400))
+        let j = (1...2).map { #"{"clave":"\#(clave)","registrado_en":"\#(hace4)","peso_kg":60,"reps_realizadas":10,"rir_real":2,"serie_numero":\#($0)}"# }
+        return (try? JSONDecoder().decode([RegistroHistorico].self, from: Data("[\(j.joined(separator: ","))]".utf8))) ?? []
+    }
 
     private static func valor(_ clave: String) -> String? {
         #if DEBUG
