@@ -358,7 +358,14 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
       if (!f || !f.ok || !Array.isArray(f.preguntas) || !f.preguntas.length) return;
       FORM = f;
       Object.assign(RESP, f.respuestas || {});
-      document.getElementById('peFormCampos').innerHTML = f.preguntas.map((q) => {
+      const datos = Array.isArray(f.datos_conocidos) ? f.datos_conocidos : [];
+      // entregas_004: lo que ya sabemos, precargado y editable; si cambia, va como corrección con el id del dato
+      const sabe = datos.length ? `<div style="margin:6px 0 14px;padding:10px 12px;border-left:3px solid var(--accent,#2fbf71);border-radius:8px;background:rgba(127,127,127,.08)">
+        <b style="font-size:14px">Lo que ya sé de vos</b> <small style="opacity:.7">Si algo cambió, corregilo acá.</small>
+        ${datos.map((d) => `<div style="margin-top:8px"><small style="opacity:.7">${esc(d.etiqueta)}</small>
+          <input type="text" data-fd="${esc(d.id)}" data-orig="${esc(d.valor == null ? '' : d.valor)}" value="${esc(RESP[d.id] !== undefined ? RESP[d.id] : (d.valor == null ? '' : d.valor))}"></div>`).join('')}
+      </div>` : '';
+      document.getElementById('peFormCampos').innerHTML = sabe + f.preguntas.map((q) => {
         const v = RESP[q.id];
         let h = `<div style="margin:10px 0"><b style="font-size:14px">${esc(q.texto)}</b>${q.ayuda ? ` <small style="opacity:.7">${esc(q.ayuda)}</small>` : ''}`;
         if (q.tipo === 'opcion' || q.tipo === 'escala') {
@@ -384,6 +391,12 @@ ${escala('hambre', 'Hambre', '1 sin hambre, 5 mucha hambre')}
       if (!val) { delete RESP[t.dataset.fq]; return; }
       if (q && q.tipo === 'numero') { const n = Number(val.replace(',', '.')); RESP[t.dataset.fq] = Number.isFinite(n) ? n : val; }
       else RESP[t.dataset.fq] = val.slice(0, 2000);
+    });
+    document.querySelectorAll('#peFormCampos input[data-fd]').forEach((i) => {
+      const orig = String(i.dataset.orig || '').trim();
+      const val = i.value.trim() || orig;  // vacío = sin cambios
+      // la base mezcla respuestas: si había una corrección guardada y vuelve al original, se manda el original para pisarla
+      if (val !== orig || (FORM.respuestas || {})[i.dataset.fd] !== undefined) RESP[i.dataset.fd] = val.slice(0, 2000); else delete RESP[i.dataset.fd];
     });
     Object.keys(CHECK).filter((k) => k.startsWith('f:')).forEach((k) => { RESP[k.slice(2)] = String(CHECK[k]); });
     const falta = FORM.preguntas.filter((q) => q.obligatoria && (RESP[q.id] === undefined || RESP[q.id] === ''));
