@@ -113,7 +113,7 @@ struct PreparacionTests {
         for c in casos {
             let nombre = c["nombre"]!.texto!
             let dia = dias[c["dia"]!.texto!]!.lista.map {
-                Preparacion.Entrada(tipo: $0["tipo"]?.texto, musculo: $0["musculo"]?.texto, clave: $0["clave"]!.texto!)
+                Preparacion.Entrada(tipo: $0["tipo"]?.texto, musculo: $0["musculo"]?.texto, nombre: $0["nombre"]!.texto!, sinPeso: $0["sinPeso"]!.bool!)
             }
             let plan: [Aproximacion]? = c["plan"].flatMap { Aproximacion.lista($0) }
             let s = Preparacion.series(dia: dia, indice: Int(c["indice"]!.numero!), nombre: c["ejercicio"]!.texto!, equipo: c["equipo"]?.texto,
@@ -129,6 +129,16 @@ struct PreparacionTests {
                 #expect(a.opcional == b["opcional"]!.bool!, "\(nombre)")
                 #expect(a.nota == b["nota"]?.texto, "\(nombre)")
             }
+        }
+    }
+
+    @Test func clasificacion() throws {
+        let casos = try leer("preparacion.json")["clasificacion"]!["casos"]!.lista
+        #expect(casos.count >= 30)
+        for c in casos {
+            let n = c["nombre"]!.texto!
+            #expect(Preparacion.esPrincipal(nombre: n, tipo: c["tipo"]?.texto) == c["principal"]!.bool!, "\(n): principal")
+            #expect(Preparacion.sinPreparacion(n) == c["sinPreparacion"]!.bool!, "\(n): sin preparación")
         }
     }
 
