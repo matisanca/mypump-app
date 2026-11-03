@@ -41,7 +41,11 @@ struct MyPumpApp: App {
                 .environment(\.locale, Locale(identifier: "es_AR"))
                 .tint(Color.marcaTexto)
                 .preferredColorScheme(tema == "dark" ? .dark : nil)
-                .task { entrarEnDemoSiSePide() }
+                .task {
+                    entrarEnDemoSiSePide()
+                    // El Apple Watch (2.2): la rutina al reloj y sus series a la cola. Callado sin reloj con la app.
+                    PuenteReloj.compartido.activar()
+                }
         }
     }
 

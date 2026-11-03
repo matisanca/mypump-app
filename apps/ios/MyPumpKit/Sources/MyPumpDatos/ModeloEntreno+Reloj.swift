@@ -123,3 +123,8 @@ public final class ReceptorReloj {
         return acuses
     }
 }
+
+extension ReceptorReloj {
+    /// Con el disco de la cuenta del motor: los aplicados son de la cuenta, como la cola.
+    public convenience init(motor: ModeloEntreno) { self.init(disco: motor.disco) }
+}
