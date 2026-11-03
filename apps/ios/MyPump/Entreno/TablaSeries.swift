@@ -40,8 +40,9 @@ struct TablaSeries: View {
                     .contentTransition(.numericText())
             }
             // 2.0.3: en lugar de la columna de RIR, cómo se hacen: «Al fallo» o «Dejando 1–2 en reserva».
-            if !filas.isEmpty, tarjeta.efectivo.ejercicio.tipo != "calentamiento", tarjeta.efectivo.ejercicio.tipo != "cardio" {
-                Text(motor.dia.leyendaRIR(lugar))
+            // Sin leyenda en lo que no lleva RIR (calentamiento, cardio, core, peso corporal).
+            if !filas.isEmpty, let leyenda = motor.leyendaRIR(lugar) {
+                Text(leyenda)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.top, -6)

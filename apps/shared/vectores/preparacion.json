@@ -1053,6 +1053,135 @@
      "opcional": false
     }
    ]
+  },
+  {
+   "nombre": "barra con efectiva menor que la barra sola (15 kg): nada más pesado que la efectiva, todo sin kg",
+   "dia": "A",
+   "indice": 2,
+   "ejercicio": "Remo con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 15,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": null,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "barra con efectiva igual a la barra (20 kg): barra sola, que no supera la efectiva; la potenciación suma",
+   "dia": "A",
+   "indice": 2,
+   "ejercicio": "Remo con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 20,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 22.5,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "el equipo del catálogo para un nombre sin la palabra barra: «Sentadilla» con barbell lleva la barra",
+   "dia": "A",
+   "indice": 2,
+   "ejercicio": "Sentadilla",
+   "equipo": "barbell",
+   "sinKg": false,
+   "kg": 60,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 35,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 50,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 65,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
   }
  ],
  "clasificacion": {

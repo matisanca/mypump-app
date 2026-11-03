@@ -7,8 +7,10 @@ import MyPumpModelos
 /// vectores de `apps/shared/vectores/entreno_203.json`.
 ///
 /// - Lo mejor anterior es la serie más pesada del historial de días anteriores (misma clave) y, entre las de ese kg, la
-///   de más reps. Las series de hoy ya confirmadas también cuentan como piso: el récord que ya se avisó no se repite en la
-///   serie siguiente, y una serie de hoy por encima vuelve a avisar contra ella.
+///   de más reps. Las series de hoy ya confirmadas del mismo ejercicio (misma clave, en todo el día: también el mismo
+///   ejercicio en otro lugar) cuentan como piso, y también lo ya avisado en el lugar y la serie (el lápiz sobre una serie
+///   que dio récord no lo repite): el récord avisado no se repite, y una serie de hoy por encima vuelve a avisar contra él.
+/// - Con el historial cortado por el tope y más corto que `diasSuficientes`, no se avisa (`historiaSuficiente`).
 /// - Más kg con al menos 1 rep: «+N kg». El mismo kg que lo mejor con más reps: «+N rep(s)». Menos kg, nada.
 /// - Sin historia de días anteriores no hay aviso (la primera vez no es récord). Los ejercicios sin kg (peso corporal,
 ///   calentamiento) y las series no verosímiles (las que hubo que preguntar) no avisan. Las filas con 0 kg no cuentan
@@ -31,6 +33,33 @@ public enum RecordSerie {
     }
 
     static let tolerancia = 1e-6
+
+    /// El historial por clave llega con un tope de filas por ejercicio (`p_limit_por_ej` de `get_historico_por_clave`) y
+    /// no hay RPC que traiga el máximo histórico. Con el tope lleno, la mejor marca puede ser más vieja que lo cargado y
+    /// saldría «Récord» sin serlo: entonces solo se avisa si lo cargado abarca al menos `diasSuficientes` (la historia
+    /// cubre medio año: el récord es, como mínimo, el de los últimos seis meses). Decisión del 3-nov (revisión de e203).
+    public static let topeHistorial = 48
+    public static let diasSuficientes = 180
+
+    /// ¿Alcanza lo cargado para hablar de récord? Completo (menos filas que el tope) o abarca `diasSuficientes` días
+    /// hasta `hoy` (YYYY-MM-DD local).
+    public static func historiaSuficiente(_ h: [RegistroHistorico], hoy: String?, zona: TimeZone) -> Bool {
+        if h.count < topeHistorial { return true }
+        guard let hoy, let nHoy = numeroDeDia(hoy) else { return false }
+        let mas = h.compactMap { numeroDeDia(HistorialEntreno.fechaLocal($0.registradoEn, zona: zona)) }.min()
+        guard let mas else { return false }
+        return nHoy - mas >= diasSuficientes
+    }
+
+    /// Días desde una época fija para una fecha YYYY-MM-DD (para restar fechas sin calendario).
+    static func numeroDeDia(_ ymd: String) -> Int? {
+        let p = ymd.split(separator: "-").compactMap { Int($0) }
+        guard p.count == 3 else { return nil }
+        // Días julianos (algoritmo de Fliegel y Van Flandern).
+        let (y, m, d) = (p[0], p[1], p[2])
+        let a = (14 - m) / 12, yy = y + 4800 - a, mm = m + 12 * a - 3
+        return d + (153 * mm + 2) / 5 + 365 * yy + yy / 4 - yy / 100 + yy / 400 - 32045
+    }
 
     public static func evaluar(_ serie: Marca, sinKg: Bool, verosimil: Bool, anteriores: [Marca], hoy: [Marca]) -> Aviso? {
         guard !sinKg, verosimil, serie.reps >= 1, serie.kg > 0, serie.kg.isFinite else { return nil }

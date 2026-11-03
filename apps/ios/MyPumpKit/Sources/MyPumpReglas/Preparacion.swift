@@ -181,8 +181,10 @@ public enum Preparacion {
         guard indice >= 0, indice < dia.count else { return [] }
         let ref: Double? = sinKg ? nil : kgEfectivo.flatMap { $0 > 0 && $0.isFinite ? $0 : nil }
         let eq = self.equipo(nombre: nombre, equipo: equipo)
+        // Con barra y una efectiva más liviana que la barra sola, la barra ya pesa más que la efectiva: sin kg (solo reps).
+        let barraPesada = eq == .barra && (ref ?? 0) < kgBarra
         func kg(_ pct: Double) -> (Double?, Bool) {
-            guard let ref, let k = redondear(ref * pct / 100, equipo: eq) else { return (nil, false) }
+            guard let ref, !barraPesada, let k = redondear(ref * pct / 100, equipo: eq), k <= ref else { return (nil, false) }
             return (k, eq == .barra && k <= kgBarra)
         }
         if let plan {
@@ -224,11 +226,11 @@ public enum Preparacion {
             s.append(Serie(tipo: .aproximacion, numero: i + 1, reps: repsAproximacion, kg: k, barraSola: sola))
         }
         var kp: Double?
-        if let ref {
+        if let ref, !barraPesada {
             let suma = min(potenciacionTope, ref < potenciacionLimiteLiviano ? potenciacionKgLiviano : potenciacionKg)
             kp = redondear(ref + suma, equipo: eq)
         }
-        s.append(Serie(tipo: .potenciacion, reps: repsPotenciacion, kg: kp, opcional: true))
+        s.append(Serie(tipo: .potenciacion, reps: repsPotenciacion, kg: kp, barraSola: eq == .barra && kp == kgBarra, opcional: true))
         return s
     }
 

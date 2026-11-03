@@ -9,6 +9,7 @@ struct SelectorDescanso: View {
     let propio: Bool
     let elegir: (Int?) -> Void
     @State private var seleccion: Int
+    private let inicial: Int
     @Environment(\.dismiss) private var cerrar
 
     init(segundos: Int, plan: Int, propio: Bool, elegir: @escaping (Int?) -> Void) {
@@ -17,6 +18,7 @@ struct SelectorDescanso: View {
         self.elegir = elegir
         // Si el del plan no es un paso de 15 s (o está fuera de 0:30-5:00), la rueda arranca en el más cercano.
         let cercano = DescansoPropio.opciones.min { abs($0 - segundos) < abs($1 - segundos) } ?? 90
+        inicial = cercano
         _seleccion = State(initialValue: cercano)
     }
 
@@ -37,7 +39,8 @@ struct SelectorDescanso: View {
                 .frame(maxHeight: 160)
                 .accessibilityIdentifier("rueda-descanso")
                 Button {
-                    elegir(seleccion == plan ? nil : seleccion)
+                    // Lo elegido queda (aunque sea el del plan); solo «Volver al del plan» lo borra.
+                    if let v = DescansoPropio.alUsar(seleccion, inicial: inicial, plan: plan, propio: propio) { elegir(v) }
                     cerrar()
                 } label: { Text("Usar \(mmss(seleccion))") }
                     .buttonStyle(BotonMarca())

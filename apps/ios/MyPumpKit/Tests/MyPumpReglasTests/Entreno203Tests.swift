@@ -32,6 +32,18 @@ struct Entreno203Tests {
         }
     }
 
+    /// E2: «Usar» no borra el propio aunque elija el del plan, y sin mover la rueda con un del plan que no es opción no
+    /// guarda nada.
+    @Test func usarDelSelector() throws {
+        let casos = try leer("entreno_203.json")["descanso"]!["usar"]!["casos"]!.lista
+        #expect(casos.count >= 6)
+        for c in casos {
+            let g = DescansoPropio.alUsar(Int(c["seleccion"]!.numero!), inicial: Int(c["inicial"]!.numero!), plan: Int(c["plan"]!.numero!),
+                                          propio: c["propio"]!.bool!)
+            #expect(g == c["guarda"]?.numero.map(Int.init), "\(c["nombre"]!.texto!)")
+        }
+    }
+
     @Test func rirDelPlan() throws {
         let casos = try leer("entreno_203.json")["rir"]!["casos"]!.lista
         #expect(casos.count >= 12)
@@ -72,6 +84,73 @@ struct Entreno203Tests {
         d.escribir("e1", 2, campo: "reps", valor: "9")
         d.escribir("e1", 2, campo: "kg", valor: "82.5")
         #expect(d.confirmarSerie("e1", 2, hoy: "2026-11-03").record?.texto == "Récord: +1 rep")
+    }
+
+    private static let zonaAR = TimeZone(identifier: "America/Argentina/Buenos_Aires")!
+    private static func fila(_ fecha: String, _ kg: Double, _ reps: Int) -> RegistroHistorico {
+        try! JSONDecoder().decode(RegistroHistorico.self, from: Data(#"{"registrado_en":"\#(fecha)T15:00:00+00:00","peso_kg":\#(kg),"reps_realizadas":\#(reps),"serie_numero":1}"#.utf8))
+    }
+
+    /// El historial llega cortado en `topeHistorial` filas: lleno y más corto que medio año, la mejor marca puede ser más
+    /// vieja y no se avisa; lleno y de más de medio año, sí; con menos filas que el tope (completo), sí.
+    @Test func recordConHistoriaCorta() throws {
+        let j = #"{"id":"d1","bloques":[{"ejercicios":[{"id":"e1","nombre":"Press banca","tipo":"compuesto","series":1,"reps":"8"}]}]}"#
+        let plan = try JSONDecoder().decode(Dia.self, from: Data(j.utf8))
+        func confirmar(_ h: [RegistroHistorico]) -> String? {
+            var d = DiaEnCurso(dia: plan, semana: 1, sesionId: "s1", zona: Self.zonaAR)
+            d.historial["e1"] = h
+            d.escribir("e1", 0, campo: "reps", valor: "8")
+            d.escribir("e1", 0, campo: "kg", valor: "82,5")
+            return d.confirmarSerie("e1", 0, hoy: "2026-11-03").record?.texto
+        }
+        let corto = (0..<RecordSerie.topeHistorial).map { _ in Self.fila("2026-10-01", 80, 8) }
+        #expect(confirmar(corto) == nil, "48 filas de un mes: la mejor puede ser más vieja")
+        #expect(confirmar(Array(corto.dropLast())) == "Récord: +2,5 kg", "47 filas: el historial está completo")
+        let largo = Array(corto.dropLast()) + [Self.fila("2026-04-01", 80, 8)]
+        #expect(confirmar(largo) == "Récord: +2,5 kg", "48 filas que abarcan más de medio año")
+        #expect(RecordSerie.historiaSuficiente([], hoy: "2026-11-03", zona: Self.zonaAR))
+    }
+
+    /// El récord no se repite: el lápiz sobre la serie que lo dio, ni el mismo ejercicio en otro lugar del día.
+    @Test func recordNoSeRepite() throws {
+        let j = #"{"id":"d1","bloques":[{"ejercicios":[{"id":"e1","nombre":"Press banca","tipo":"compuesto","series":2,"reps":"8"},{"id":"e2","nombre":"Curl con barra","tipo":"aislamiento","series":1,"reps":"8"},{"id":"e3","nombre":"Press banca","tipo":"compuesto","series":1,"reps":"8"}]}]}"#
+        var d = DiaEnCurso(dia: try JSONDecoder().decode(Dia.self, from: Data(j.utf8)), semana: 1, sesionId: "s1", zona: Self.zonaAR)
+        d.historial["e1"] = [Self.fila("2026-10-30", 80, 8)]
+        d.historial["e3"] = [Self.fila("2026-10-30", 80, 8)]
+        d.escribir("e1", 0, campo: "reps", valor: "8")
+        d.escribir("e1", 0, campo: "kg", valor: "85")
+        #expect(d.confirmarSerie("e1", 0, hoy: "2026-11-03").record?.texto == "Récord: +5 kg")
+        // El lápiz: se corrige la misma serie con lo mismo; no vuelve a avisar.
+        _ = d.editarSerie("e1", 0)
+        #expect(d.confirmarSerie("e1", 0, hoy: "2026-11-03").record == nil, "el lápiz no repite el récord")
+        // El mismo ejercicio más tarde en el día: lo de hoy es piso.
+        d.escribir("e3", 0, campo: "reps", valor: "8")
+        d.escribir("e3", 0, campo: "kg", valor: "85")
+        #expect(d.confirmarSerie("e3", 0, hoy: "2026-11-03").record == nil, "mismo ejercicio en otro lugar")
+        d.escribir("e3", 0, campo: "kg", valor: "87,5")
+        _ = d.editarSerie("e3", 0)
+        d.escribir("e3", 0, campo: "kg", valor: "87,5")
+        #expect(d.confirmarSerie("e3", 0, hoy: "2026-11-03").record?.texto == "Récord: +2,5 kg", "por encima de lo de hoy sí")
+    }
+
+    /// El RIR del ejercicio que se hace: el core y lo que va sin peso quedan en null, aunque el plan diga otra cosa; un
+    /// objetivo en RPE es al fallo. El aviso de primera vez dice lo mismo que la leyenda (en el modelo: EntrenoModelo203Tests).
+    @Test func rirDelQueSeHaceYCalibracion() throws {
+        let j = #"{"id":"d1","bloques":[{"ejercicios":[{"id":"e1","nombre":"Plancha","tipo":"core","series":1,"reps":"30","progresion":[{"semana":1,"series":1,"reps":"30","rir":"1-2"}]},{"id":"e2","nombre":"Flexiones de brazos","tipo":"compuesto","series":1,"reps":"8","progresion":[{"semana":1,"series":1,"reps":"8","rir":"1"}]},{"id":"e3","nombre":"Press banca","tipo":"compuesto","series":1,"reps":"8","progresion":[{"semana":1,"series":1,"reps":"8","rir":"RPE 8"}]},{"id":"e4","nombre":"Remo con barra","tipo":"compuesto","series":1,"reps":"10","progresion":[{"semana":1,"series":1,"reps":"10","rir":"0"}]}]}]}"#
+        var d = DiaEnCurso(dia: try JSONDecoder().decode(Dia.self, from: Data(j.utf8)), semana: 1, sesionId: "s1")
+        #expect(d.leyendaRIR("e1") == nil && d.leyendaRIR("e2") == nil, "sin leyenda en el core ni en lo de peso corporal")
+        #expect(d.leyendaRIR("e3") == "Al fallo")
+        d.fijarRIRDelPlan("e1", 0)
+        d.fijarRIRDelPlan("e2", 0)
+        d.fijarRIRDelPlan("e3", 0)
+        #expect(d.ejercicios["e1"]!.series[0].rir == "" && d.ejercicios["e2"]!.series[0].rir == "")
+        #expect(d.ejercicios["e3"]!.series[0].rir == "0")
+        // El sustituto manda: un press (con peso) en lugar de las flexiones lleva el RIR de la pauta.
+        var press = d.ejercicio("e2")!
+        press.nombre = "Press banca con barra"; press.equipo = "barbell"
+        d.fijarRIRDelPlan("e2", 0, efectivo: press)
+        #expect(d.ejercicios["e2"]!.series[0].rir == "1")
+        #expect(RIRDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", leyenda: "Dejando 0–1 en reserva") == "… a 8 reps dejando 0–1 en reserva.")
     }
 
     /// E2: el descanso del ejercicio (por su clave) le gana al del plan y es el que arranca al confirmar.

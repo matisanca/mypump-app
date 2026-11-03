@@ -28,6 +28,9 @@ public struct DiaEnCurso: Sendable, Equatable {
     public var sustituciones: [String: JSONValue] = [:]
     /// El descanso elegido a mano por ejercicio (2.0.3, E2), por la clave del ejercicio que se hace: le gana al del plan.
     public var descansosPropios: [String: Int] = [:]
+    /// E3 (2.0.3): el récord ya avisado hoy por lugar y serie («lugar|índice»). Es piso para el siguiente: el lápiz sobre
+    /// una serie que ya dio récord no lo vuelve a avisar. Solo en memoria (al reabrir la app, lo confirmado ya es piso).
+    public var recordsAvisados: [String: RecordSerie.Marca] = [:]
     public var zona: TimeZone
 
     public struct MetaEstado: Equatable, Sendable {
@@ -143,6 +146,22 @@ public struct DiaEnCurso: Sendable, Equatable {
     /// La serie es del ejercicio que se hace ahora: sin nombre registrado (no se sabe con cuál se hizo) o con el mismo.
     func esDelEjercicioActual(_ id: String, _ s: SerieLocal) -> Bool {
         JS.verdadero(s.nombreRegistrado).map { ClaveEjercicio.de($0) == ClaveEjercicio.de(nombreEfectivo(id)) } ?? true
+    }
+
+    /// E3: el piso de hoy para el récord de la serie `idx` del lugar: las series confirmadas del mismo ejercicio (misma
+    /// clave) en todo el día, menos ella, y lo ya avisado en esos lugares (también en ella misma: el lápiz).
+    func marcasDeHoy(_ id: String, excepto idx: Int) -> [RecordSerie.Marca] {
+        let clave = ClaveEjercicio.de(nombreEfectivo(id))
+        let lugares = lista.map(\.id).filter { $0 == id || (!clave.isEmpty && ClaveEjercicio.de(nombreEfectivo($0)) == clave) }
+        var marcas: [RecordSerie.Marca] = []
+        for l in lugares {
+            for (i, s) in (ejercicios[l]?.series ?? []).enumerated() where !(l == id && i == idx) && s.confirmada && esDelEjercicioActual(l, s) {
+                if let m = RecordSerie.marca(s) { marcas.append(m) }
+            }
+        }
+        let prefijos = Set(lugares.map { "\($0)|" })
+        marcas += recordsAvisados.filter { k, _ in prefijos.contains { k.hasPrefix($0) } }.map(\.value)
+        return marcas
     }
 
     /// El descanso del lugar en segundos: el elegido a mano para el ejercicio que se hace (por su clave) o el del plan.
@@ -293,12 +312,12 @@ public struct DiaEnCurso: Sendable, Equatable {
         }
         // El récord: solo una serie de ESTE ejercicio, contra su historial de antes y las otras series suyas de hoy.
         var record: RecordSerie.Aviso?
-        if propia, let m = RecordSerie.marca(ejercicios[id]!.series[idx]) {
-            let hoyConfirmadas = ejercicios[id]!.series.enumerated()
-                .filter { $0.offset != idx && $0.element.confirmada && esDelEjercicioActual(id, $0.element) }
-                .compactMap { RecordSerie.marca($0.element) }
+        if propia, let m = RecordSerie.marca(ejercicios[id]!.series[idx]),
+           RecordSerie.historiaSuficiente(historial[id] ?? [], hoy: hoy, zona: zona) {
             record = RecordSerie.evaluar(m, sinKg: sinKg, verosimil: verosimil,
-                                         anteriores: RecordSerie.anteriores(historial[id] ?? [], hoy: hoy, zona: zona), hoy: hoyConfirmadas)
+                                         anteriores: RecordSerie.anteriores(historial[id] ?? [], hoy: hoy, zona: zona),
+                                         hoy: marcasDeHoy(id, excepto: idx))
+            if record != nil { recordsAvisados["\(id)|\(idx)"] = m }
         }
         if ejercicios[id]!.series.allSatisfy(\.confirmada) && estado(id) == "pendiente" {
             efectos += cambiarEstado(id, "completo", manual: false)
@@ -416,16 +435,20 @@ public struct DiaEnCurso: Sendable, Equatable {
     /// ([RIRDelPlan]): la recuperación lo necesita para contar las series duras. Las ya registradas (con su nombre, del
     /// servidor o de la cola) conservan lo que tenían, y el calentamiento y el cardio no llevan RIR (no son series duras).
     /// Va aparte de `confirmarSerie`, que sigue igual a la web (sus vectores esperan el RIR que se eligió).
-    public mutating func fijarRIRDelPlan(_ id: String, _ idx: Int) {
-        guard let ex = ejercicio(id), let e = ejercicios[id], idx >= 0, idx < e.series.count else { return }
+    /// `efectivo` es el ejercicio que se hace (el sustituto, con el tipo y el equipo del catálogo si lo sabe); sin él, el
+    /// del plan. El calentamiento, el cardio, el core y lo que va sin peso quedan sin RIR (null).
+    public mutating func fijarRIRDelPlan(_ id: String, _ idx: Int, efectivo: Ejercicio? = nil) {
+        guard let plan = ejercicio(id), let e = ejercicios[id], idx >= 0, idx < e.series.count else { return }
         let s = e.series[idx]
-        guard !s.confirmada, s.rir.isEmpty, s.nombreRegistrado == nil, ex.tipo != "calentamiento", ex.tipo != "cardio" else { return }
+        let ex = efectivo ?? plan
+        guard !s.confirmada, s.rir.isEmpty, s.nombreRegistrado == nil, RIRDelPlan.lleva(ex) else { return }
         ejercicios[id]!.series[idx].rir = RIRDelPlan.guardar(Progresiones.pauta(ex, semana: semana).rir)
     }
 
-    /// La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva».
-    public func leyendaRIR(_ id: String) -> String {
-        RIRDelPlan.leyenda(ejercicio(id).flatMap { Progresiones.pauta($0, semana: semana).rir })
+    /// La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva». nil si el ejercicio no lleva RIR.
+    public func leyendaRIR(_ id: String, efectivo: Ejercicio? = nil) -> String? {
+        guard let ex = efectivo ?? ejercicio(id), RIRDelPlan.lleva(ex) else { return nil }
+        return RIRDelPlan.leyenda(Progresiones.pauta(ex, semana: semana).rir)
     }
 
     // MARK: - Restaurar (lo que trae el servidor)

@@ -870,7 +870,7 @@ struct FilaEjercicio: View {
                         .labelStyle(EtiquetaCompacta())
                         .foregroundStyle(Color.record)
                         .fontWeight(.semibold)
-                        .accessibilityLabel("Récord: \(Bonito.carga(r))")
+                        .accessibilityLabel("Récord: \(Bonito.partir(r).principal)")   // sin «RIR n» (2.0.3)
                 }
             }
             .font(.caption)

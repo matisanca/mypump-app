@@ -1,4 +1,5 @@
 import Foundation
+import MyPumpModelos
 
 /// El descanso elegido a mano para un ejercicio (2.0.3, E2): tocar el descanso del ejercicio abre un selector de 0:30 a
 /// 5:00 en pasos de 15 s. Lo elegido vive en el teléfono, por la clave del ejercicio que se hace (`ClaveEjercicio`), y le
@@ -17,6 +18,14 @@ public enum DescansoPropio {
         return s
     }
 
+    /// «Usar» del selector: lo que se guarda, o nil para no tocar nada. Lo elegido se guarda aunque sea igual al del plan:
+    /// el propio solo se borra con «Volver al del plan». Si no había propio, la rueda no se movió y el del plan no es una
+    /// de las opciones (la rueda arrancó en la más cercana), no se guarda nada.
+    public static func alUsar(_ seleccion: Int, inicial: Int, plan: Int, propio: Bool) -> Int? {
+        if !propio && seleccion == inicial && valido(plan) == nil { return nil }
+        return valido(seleccion)
+    }
+
     /// El descanso que se usa: el propio si hay, si no el del plan (que `normalizarRutina` ya completó con 90).
     public static func segundos(propio: Int?, plan: Int?) -> Int {
         valido(propio) ?? plan ?? NormalizacionRutina.descansoPorDefecto
@@ -32,16 +41,32 @@ public enum RIRDelPlan {
     static let numeroRE = RegexWeb(#"\d+([.,]\d+)?"#)
     static let rangoRE = RegexWeb(#"\d+([.,]\d+)?(\s*[-–]\s*\d+([.,]\d+)?)?"#)
 
+    /// Un objetivo en RPE no es RIR: se toma como al fallo.
+    static let rpeRE = RegexWeb(#"rpe"#, i: true)
+
+    /// ¿La serie lleva RIR? No el calentamiento, el cardio, el core ni lo que va sin peso (plancha, abdominales): null.
+    public static func lleva(_ ex: Ejercicio) -> Bool {
+        !["calentamiento", "cardio", "core"].contains(ex.tipo ?? "")
+            && !ReglasEjercicio.esSinPeso(nombre: ex.nombre, tipo: ex.tipo, equipo: ex.equipo)
+    }
+
+    /// El aviso de primera vez con la leyenda en lugar de «dejando 1–2 en reserva».
+    public static func calibracion(_ texto: String, leyenda: String?) -> String {
+        guard let l = leyenda else { return texto }
+        let frase = l == "Al fallo" ? "al fallo" : l.prefix(1).lowercased() + l.dropFirst()
+        return texto.replacingOccurrences(of: "dejando 1–2 en reserva", with: frase)
+    }
+
     /// Lo que se guarda en `rir_real` (como texto, igual que lo que se elegía en el selector).
     public static func guardar(_ objetivo: String?) -> String {
-        guard let o = objetivo, let primero = numeroRE.todas(o).first,
+        guard let o = objetivo, !rpeRE.prueba(o), let primero = numeroRE.todas(o).first,
               let n = Double(primero.replacingOccurrences(of: ",", with: ".")), n.isFinite else { return "0" }
         return String(min(5, max(0, Int(n.rounded(.up)))))
     }
 
     /// «Al fallo» (objetivo 0 o sin objetivo) o «Dejando 1–2 en reserva».
     public static func leyenda(_ objetivo: String?) -> String {
-        guard let o = objetivo, let rango = rangoRE.todas(o).first else { return "Al fallo" }
+        guard let o = objetivo, !rpeRE.prueba(o), let rango = rangoRE.todas(o).first else { return "Al fallo" }
         let numeros = numeroRE.todas(rango).compactMap { Double($0.replacingOccurrences(of: ",", with: ".")) }
         if numeros.allSatisfy({ $0 == 0 }) { return "Al fallo" }
         let partes = rango.split(whereSeparator: { $0 == "-" || $0 == "–" })

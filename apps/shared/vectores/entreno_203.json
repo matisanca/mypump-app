@@ -72,7 +72,68 @@
         "plan": 75,
         "sale": 75
       }
-    ]
+    ],
+    "usar": {
+      "regla": "«Usar» del selector: lo elegido se guarda aunque sea el del plan (el propio solo se borra con «Volver al del plan»); sin propio, sin mover la rueda y con un del plan que no es opción, no se guarda nada (null).",
+      "casos": [
+        {
+          "nombre": "sin propio, igual al del plan: se guarda",
+          "seleccion": 120,
+          "inicial": 120,
+          "plan": 120,
+          "propio": false,
+          "guarda": 120
+        },
+        {
+          "nombre": "con propio, eligió otro",
+          "seleccion": 90,
+          "inicial": 75,
+          "plan": 120,
+          "propio": true,
+          "guarda": 90
+        },
+        {
+          "nombre": "con propio, eligió el del plan: no se borra, queda el del plan como propio",
+          "seleccion": 120,
+          "inicial": 75,
+          "plan": 120,
+          "propio": true,
+          "guarda": 120
+        },
+        {
+          "nombre": "del plan fuera de las opciones (100 s), sin mover la rueda: nada",
+          "seleccion": 105,
+          "inicial": 105,
+          "plan": 100,
+          "propio": false,
+          "guarda": null
+        },
+        {
+          "nombre": "del plan fuera de las opciones, eligió otro: se guarda",
+          "seleccion": 120,
+          "inicial": 105,
+          "plan": 100,
+          "propio": false,
+          "guarda": 120
+        },
+        {
+          "nombre": "del plan de 7 min, sin mover la rueda (arrancó en 5:00): nada",
+          "seleccion": 300,
+          "inicial": 300,
+          "plan": 420,
+          "propio": false,
+          "guarda": null
+        },
+        {
+          "nombre": "con propio y sin mover la rueda: se vuelve a guardar el mismo",
+          "seleccion": 75,
+          "inicial": 75,
+          "plan": 100,
+          "propio": true,
+          "guarda": 75
+        }
+      ]
+    }
   },
   "rir": {
     "regla": "2.0.3: el RIR ya no se elige (las efectivas van al fallo). Al confirmar se guarda el objetivo del plan para la semana: el primer número del rango, redondeado hacia arriba, entre 0 y 5; sin objetivo o sin número, 0. La leyenda debajo de «Series efectivas» es «Al fallo» (objetivo 0 o sin objetivo) o «Dejando N en reserva» con el rango del plan.",
@@ -149,6 +210,16 @@
       },
       {
         "objetivo": null,
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      },
+      {
+        "objetivo": "RPE 8",
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      },
+      {
+        "objetivo": "8-9 rpe",
         "guarda": "0",
         "leyenda": "Al fallo"
       }

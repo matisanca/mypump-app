@@ -57,6 +57,9 @@ public final class ModeloEntreno {
     @ObservationIgnored public let token: String?
     @ObservationIgnored let outbox: Outbox?
     @ObservationIgnored let disco: Disco?
+    /// E1: la preparación ya calculada (ver `preparacion(_:)`). Fuera de la observación: es un caché.
+    @ObservationIgnored private var cacheEntradas: (firma: String, entradas: [Preparacion.Entrada], ejercicios: [Ejercicio])?
+    @ObservationIgnored private var cachePreparacion: [String: (clave: String, series: [Preparacion.Serie])] = [:]
     @ObservationIgnored public let info: ClienteInfo?
     @ObservationIgnored public let demo: Bool
     @ObservationIgnored let zona: TimeZone
@@ -302,7 +305,7 @@ public final class ModeloEntreno {
             nota: ef.ejercicio.tipo == "calentamiento" ? nil : Progresiones.nota(ef.ejercicio, semanaActual: semana),
             sinKg: ReglasEjercicio.sinKg(ef.ejercicio), variantes: variantes,
             varianteActual: JS.verdadero(e?.variante) ?? variantes?.opciones.first,
-            filas: (e?.series.indices).map { $0.compactMap { dia.fila(lugar, $0, efectivo: ef.ejercicio) } } ?? [],
+            filas: (e?.series.indices).map { $0.compactMap { filaConLeyenda(lugar, $0, ef.ejercicio) } } ?? [],
             confirmadas: e?.series.filter(\.confirmada).count ?? 0,
             record: dia.record(lugar), ultimaVez: dia.ultimaVez(lugar, ahora: reloj()),
             puedeSustituir: !catalogo.sustitutos(de: ef).isEmpty || !catalogo.otrosDelMismoMusculo(de: ef).isEmpty,
@@ -315,6 +318,27 @@ public final class ModeloEntreno {
     /// `getEffectiveEx`: el sustituto si hay, o las fotos del catálogo si el plan no las trae.
     public func efectivo(_ ex: Ejercicio) -> EjercicioEfectivo {
         catalogo.efectivo(ex, sustitucion: SustitucionesEntreno.aplicada(dia.sustituciones[ex.id]))
+    }
+
+    /// El ejercicio que se hace con el equipo del catálogo: el del sustituto, y para el del plan el `equipment` de
+    /// `catalogo.resolver` (así «Sentadilla» o «Peso muerto» a secas reconocen la barra). Para la preparación y el RIR.
+    func hecho(_ ex: Ejercicio) -> Ejercicio {
+        var e = efectivo(ex).ejercicio
+        if e.equipo == nil { e.equipo = catalogo.resolver(ex)?.equipment }
+        return e
+    }
+
+    /// La fila, con el aviso de primera vez diciendo lo mismo que la leyenda («al fallo» o el rango del plan) y no el
+    /// «dejando 1–2 en reserva» fijo de la web (2.0.3).
+    func filaConLeyenda(_ lugar: String, _ idx: Int, _ ef: Ejercicio) -> FilaSerie? {
+        guard var f = dia.fila(lugar, idx, efectivo: ef) else { return nil }
+        f.calibracion = f.calibracion.map { RIRDelPlan.calibracion($0, leyenda: leyendaRIR(lugar)) }
+        return f
+    }
+
+    /// La leyenda debajo de «Series efectivas» («Al fallo» o el rango del plan); nil si el ejercicio no lleva RIR.
+    public func leyendaRIR(_ lugar: String) -> String? {
+        dia.leyendaRIR(lugar, efectivo: dia.ejercicio(lugar).map(hecho))
     }
 
     public func actualizarCatalogo(_ c: CatalogoEjercicios) { catalogo = c }
@@ -345,7 +369,7 @@ public final class ModeloEntreno {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado?
         let ef = dia.ejercicio(lugar).map { efectivo($0).ejercicio }
-        dia.fijarRIRDelPlan(lugar, idx)
+        dia.fijarRIRDelPlan(lugar, idx, efectivo: dia.ejercicio(lugar).map(hecho))
         while true {
             let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(reloj(), zona: zona))
             if let r = paso.record { avisoRecord = AvisoRecord(id: UUID(), lugar: lugar, texto: r.texto) }
@@ -381,19 +405,36 @@ public final class ModeloEntreno {
     public func preparacion(_ lugar: String) -> [Preparacion.Serie] {
         let lista = dia.lista
         guard let i = lista.firstIndex(where: { $0.id == lugar }) else { return [] }
-        let entradas = lista.map { ex -> Preparacion.Entrada in
+        let (entradas, ejercicios) = entradasPreparacion(lista)
+        let ef = ejercicios[i]
+        let primera = dia.ejercicios[lugar]?.series.first
+        let sugerido = dia.fila(lugar, 0, efectivo: efectivo(lista[i]).ejercicio)?.placeholderKg ?? ""
+        let kg = Preparacion.kgEfectivo(escrito: primera?.kg ?? "", sugerido: sugerido)
+        let clave = "\(lugar)|\(kg.map { "\($0)" } ?? "-")|\(cacheEntradas?.firma ?? "")"
+        if let c = cachePreparacion[lugar], c.clave == clave { return c.series }
+        let series = Preparacion.series(dia: entradas, indice: i, nombre: ef.nombre, equipo: ef.equipo,
+                                        sinKg: ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kgEfectivo: kg, plan: ef.aproximaciones)
+        cachePreparacion[lugar] = (clave, series)
+        return series
+    }
+
+    /// Las entradas del día para la preparación (lo caro: resolver cada ejercicio en el catálogo). Se recalculan solo si
+    /// cambia el día, una sustitución o el catálogo; no en cada dibujo ni al tipear.
+    private func entradasPreparacion(_ lista: [Ejercicio]) -> ([Preparacion.Entrada], [Ejercicio]) {
+        let firma = "\(dia.dia.id ?? "")|\(lista.map(\.id))|\(dia.sustituciones.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" })|\(catalogo.entradas.count)"
+        if let c = cacheEntradas, c.firma == firma { return (c.entradas, c.ejercicios) }
+        var entradas: [Preparacion.Entrada] = [], ejercicios: [Ejercicio] = []
+        for ex in lista {
             let ef = efectivo(ex)
             let delSustituto = ef.slugSustituto.flatMap { catalogo.entrada(slug: $0)?.primaryMuscle }
             let musculo = delSustituto ?? catalogo.resolver(ex)?.primaryMuscle
-            return Preparacion.Entrada(tipo: ef.ejercicio.tipo, musculo: musculo, nombre: ef.ejercicio.nombre,
-                                       sinPeso: ReglasEjercicio.esSinPeso(nombre: ef.ejercicio.nombre, tipo: ef.ejercicio.tipo, equipo: ef.ejercicio.equipo))
+            entradas.append(Preparacion.Entrada(tipo: ef.ejercicio.tipo, musculo: musculo, nombre: ef.ejercicio.nombre,
+                                                sinPeso: ReglasEjercicio.esSinPeso(nombre: ef.ejercicio.nombre, tipo: ef.ejercicio.tipo, equipo: ef.ejercicio.equipo)))
+            ejercicios.append(hecho(ex))
         }
-        let ef = efectivo(lista[i]).ejercicio
-        let primera = dia.ejercicios[lugar]?.series.first
-        let sugerido = dia.fila(lugar, 0, efectivo: ef)?.placeholderKg ?? ""
-        let kg = Preparacion.kgEfectivo(escrito: primera?.kg ?? "", sugerido: sugerido)
-        return Preparacion.series(dia: entradas, indice: i, nombre: ef.nombre, equipo: ef.equipo, sinKg: ReglasEjercicio.sinKg(ef),
-                                  kgEfectivo: kg, plan: ef.aproximaciones)
+        cacheEntradas = (firma, entradas, ejercicios)
+        cachePreparacion = [:]
+        return (entradas, ejercicios)
     }
 
     func clavePreparacion(_ lugar: String) -> String {
@@ -862,7 +903,7 @@ public final class ModeloEntreno {
         for k in ks { m[k] = [] }
         guard !ks.isEmpty else { return .some(m) }
         switch await cliente.filas("mypump_get_historico_por_clave",
-                                   ["p_token": .texto(token), "p_claves": .lista(ks.map(JSONValue.texto)), "p_limit_por_ej": .numero(48)],
+                                   ["p_token": .texto(token), "p_claves": .lista(ks.map(JSONValue.texto)), "p_limit_por_ej": .numero(Double(RecordSerie.topeHistorial))],
                                    como: RegistroHistorico.self) {
         case .failure(let e):
             if Self.noExiste(e) { sinHistorialPorClave = true; return nil }
