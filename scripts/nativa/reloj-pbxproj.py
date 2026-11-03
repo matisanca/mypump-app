@@ -41,18 +41,34 @@ C = {  # las complicaciones
 PROYECTO = "6B2000000000000000000010"
 
 
+# El ícono del reloj (App Store Connect rechaza una app de watchOS sin ícono): MyPumpWatch/Assets.xcassets/AppIcon.
+ICONO = "\t\t\t\tASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;\n"
+
+
+def icono(t):
+    """Agrega el ícono a un proyecto donde el reloj se agregó antes de tenerlo (idempotente)."""
+    for clave in ("debug", "release"):
+        i = t.index(f"\t\t{W[clave]} /* ")
+        j = t.index("buildSettings = {\n", i) + len("buildSettings = {\n")
+        fin = t.index("\t\t\t};", j)
+        if "ASSETCATALOG_COMPILER_APPICON_NAME" not in t[j:fin]:
+            t = t[:j] + ICONO + t[j:]
+    return t
+
+
 def ajustes(t, nombre, bundle, plist, ent, extension):
     rpath = '"@executable_path/Frameworks",' + ('\n\t\t\t\t\t"@executable_path/../../Frameworks",' if extension else "")
     extra = "" if extension else (
         '\t\t\t\tINFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";\n'
         "\t\t\t\tINFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.pumpteam.mypump;\n"
         "\t\t\t\tINFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;\n")
+    icono = "" if extension else ICONO
     bloques = []
     for clave, conf in (("debug", "Debug"), ("release", "Release")):
         bloques.append(f"""\t\t{t[clave]} /* {conf} */ = {{
 \t\t\tisa = XCBuildConfiguration;
 \t\t\tbuildSettings = {{
-\t\t\t\tCODE_SIGN_ENTITLEMENTS = {ent};
+{icono}\t\t\t\tCODE_SIGN_ENTITLEMENTS = {ent};
 \t\t\t\tCODE_SIGN_STYLE = Automatic;
 \t\t\t\tGENERATE_INFOPLIST_FILE = YES;
 \t\t\t\tINFOPLIST_FILE = "{plist}";
@@ -371,6 +387,10 @@ def main():
         print("✓ targets MyPumpWatch y MyPumpWatchComplicaciones agregados")
     else:
         print("el reloj ya estaba en el proyecto")
+    texto = PBX.read_text()
+    if icono(texto) != texto:
+        PBX.write_text(icono(texto))
+        print("✓ ícono del reloj")
     if "--embeber" in sys.argv:
         texto = PBX.read_text()
         if MARCA_EMBEBIDO in texto:

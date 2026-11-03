@@ -12,6 +12,7 @@
 		6B200000000000000000010B /* MyPumpKitReloj in Frameworks */ = {isa = PBXBuildFile; productRef = 6B200000000000000000010A /* MyPumpKitReloj */; };
 		6B200000000000000000010F /* MyPumpWatchComplicaciones.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6B2000000000000000000121 /* MyPumpWatchComplicaciones.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6B200000000000000000012B /* MyPumpKitReloj in Frameworks */ = {isa = PBXBuildFile; productRef = 6B200000000000000000012A /* MyPumpKitReloj */; };
+		6B2000000000000000000131 /* MyPumpWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 6B2000000000000000000101 /* MyPumpWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +52,13 @@
 			remoteGlobalIDString = 6B2000000000000000000126;
 			remoteInfo = MyPumpWatchComplicaciones;
 		};
+		6B2000000000000000000133 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6B2000000000000000000010 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6B2000000000000000000106;
+			remoteInfo = MyPumpWatch;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -74,6 +82,17 @@
 				6B200000000000000000010F /* MyPumpWatchComplicaciones.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6B2000000000000000000132 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				6B2000000000000000000131 /* MyPumpWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -196,11 +215,13 @@
 				6B2000000000000000000003 /* Frameworks */,
 				6B2000000000000000000009 /* Resources */,
 				6B200000000000000000005A /* Embed Foundation Extensions */,
+				6B2000000000000000000132 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				6B200000000000000000005C /* PBXTargetDependency */,
+				6B2000000000000000000134 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				6B2000000000000000000002 /* MyPump */,
@@ -455,6 +476,11 @@
 			target = 6B2000000000000000000126 /* MyPumpWatchComplicaciones */;
 			targetProxy = 6B2000000000000000000110 /* PBXContainerItemProxy */;
 		};
+		6B2000000000000000000134 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6B2000000000000000000106 /* MyPumpWatch */;
+			targetProxy = 6B2000000000000000000133 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -641,6 +667,7 @@
 		6B2000000000000000000108 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MyPumpWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -668,6 +695,7 @@
 		6B2000000000000000000109 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MyPumpWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
