@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		6B2000000000000000000020 /* MyPumpKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6B2000000000000000000021 /* MyPumpKit */; };
 		6B2000000000000000000059 /* DescansoWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6B2000000000000000000050 /* DescansoWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		6B200000000000000000010B /* MyPumpKitReloj in Frameworks */ = {isa = PBXBuildFile; productRef = 6B200000000000000000010A /* MyPumpKitReloj */; };
+		6B200000000000000000010F /* MyPumpWatchComplicaciones.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6B2000000000000000000121 /* MyPumpWatchComplicaciones.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		6B200000000000000000012B /* MyPumpKitReloj in Frameworks */ = {isa = PBXBuildFile; productRef = 6B200000000000000000012A /* MyPumpKitReloj */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +21,12 @@
 		6B2000000000000000000040 /* MyPumpUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MyPumpUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B2000000000000000000050 /* DescansoWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DescansoWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B200000000000000000005D /* DescansoWidget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "DescansoWidget-Info.plist"; sourceTree = "<group>"; };
+		6B2000000000000000000101 /* MyPumpWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyPumpWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6B200000000000000000010C /* MyPumpWatch-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "MyPumpWatch-Info.plist"; sourceTree = "<group>"; };
+		6B200000000000000000010D /* MyPumpWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyPumpWatch.entitlements; sourceTree = "<group>"; };
+		6B2000000000000000000121 /* MyPumpWatchComplicaciones.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MyPumpWatchComplicaciones.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6B200000000000000000012C /* MyPumpWatchComplicaciones-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "MyPumpWatchComplicaciones-Info.plist"; sourceTree = "<group>"; };
+		6B200000000000000000012D /* MyPumpWatchComplicaciones.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyPumpWatchComplicaciones.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +44,13 @@
 			remoteGlobalIDString = 6B2000000000000000000052;
 			remoteInfo = DescansoWidget;
 		};
+		6B2000000000000000000110 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6B2000000000000000000010 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6B2000000000000000000126;
+			remoteInfo = MyPumpWatchComplicaciones;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -45,6 +61,17 @@
 			dstSubfolderSpec = 13;
 			files = (
 				6B2000000000000000000059 /* DescansoWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6B200000000000000000010E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6B200000000000000000010F /* MyPumpWatchComplicaciones.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -72,6 +99,16 @@
 			path = Compartido;
 			sourceTree = "<group>";
 		};
+		6B2000000000000000000102 /* MyPumpWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MyPumpWatch;
+			sourceTree = "<group>";
+		};
+		6B2000000000000000000122 /* MyPumpWatchComplicaciones */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MyPumpWatchComplicaciones;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,6 +134,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6B2000000000000000000103 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B200000000000000000010B /* MyPumpKitReloj in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6B2000000000000000000123 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B200000000000000000012B /* MyPumpKitReloj in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -110,6 +163,12 @@
 				6B200000000000000000005D /* DescansoWidget-Info.plist */,
 				6B2000000000000000000051 /* DescansoWidget */,
 				6B200000000000000000005E /* Compartido */,
+				6B200000000000000000010C /* MyPumpWatch-Info.plist */,
+				6B200000000000000000010D /* MyPumpWatch.entitlements */,
+				6B2000000000000000000102 /* MyPumpWatch */,
+				6B200000000000000000012C /* MyPumpWatchComplicaciones-Info.plist */,
+				6B200000000000000000012D /* MyPumpWatchComplicaciones.entitlements */,
+				6B2000000000000000000122 /* MyPumpWatchComplicaciones */,
 				6B2000000000000000000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -120,6 +179,8 @@
 				6B2000000000000000000001 /* MyPump.app */,
 				6B2000000000000000000040 /* MyPumpUITests.xctest */,
 				6B2000000000000000000050 /* DescansoWidget.appex */,
+				6B2000000000000000000101 /* MyPumpWatch.app */,
+				6B2000000000000000000121 /* MyPumpWatchComplicaciones.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -199,6 +260,54 @@
 			productReference = 6B2000000000000000000050 /* DescansoWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		6B2000000000000000000106 /* MyPumpWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6B2000000000000000000107 /* Build configuration list for PBXNativeTarget "MyPumpWatch" */;
+			buildPhases = (
+				6B2000000000000000000104 /* Sources */,
+				6B2000000000000000000103 /* Frameworks */,
+				6B2000000000000000000105 /* Resources */,
+				6B200000000000000000010E /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6B2000000000000000000111 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				6B2000000000000000000102 /* MyPumpWatch */,
+			);
+			name = MyPumpWatch;
+			packageProductDependencies = (
+				6B200000000000000000010A /* MyPumpKitReloj */,
+			);
+			productName = MyPumpWatch;
+			productReference = 6B2000000000000000000101 /* MyPumpWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		6B2000000000000000000126 /* MyPumpWatchComplicaciones */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6B2000000000000000000127 /* Build configuration list for PBXNativeTarget "MyPumpWatchComplicaciones" */;
+			buildPhases = (
+				6B2000000000000000000124 /* Sources */,
+				6B2000000000000000000123 /* Frameworks */,
+				6B2000000000000000000125 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6B2000000000000000000122 /* MyPumpWatchComplicaciones */,
+			);
+			name = MyPumpWatchComplicaciones;
+			packageProductDependencies = (
+				6B200000000000000000012A /* MyPumpKitReloj */,
+			);
+			productName = MyPumpWatchComplicaciones;
+			productReference = 6B2000000000000000000121 /* MyPumpWatchComplicaciones.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -217,6 +326,12 @@
 						TestTargetID = 6B2000000000000000000006;
 					};
 					6B2000000000000000000052 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					6B2000000000000000000106 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					6B2000000000000000000126 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -242,6 +357,8 @@
 				6B2000000000000000000006 /* MyPump */,
 				6B2000000000000000000042 /* MyPumpUITests */,
 				6B2000000000000000000052 /* DescansoWidget */,
+				6B2000000000000000000106 /* MyPumpWatch */,
+				6B2000000000000000000126 /* MyPumpWatchComplicaciones */,
 			);
 		};
 /* End PBXProject section */
@@ -262,6 +379,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		6B2000000000000000000058 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6B2000000000000000000105 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6B2000000000000000000125 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -292,6 +423,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6B2000000000000000000104 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6B2000000000000000000124 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -304,6 +449,11 @@
 			isa = PBXTargetDependency;
 			target = 6B2000000000000000000052 /* DescansoWidget */;
 			targetProxy = 6B200000000000000000005B /* PBXContainerItemProxy */;
+		};
+		6B2000000000000000000111 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6B2000000000000000000126 /* MyPumpWatchComplicaciones */;
+			targetProxy = 6B2000000000000000000110 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -488,6 +638,110 @@
 			};
 			name = Release;
 		};
+		6B2000000000000000000108 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MyPumpWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MyPumpWatch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.pumpteam.mypump;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		6B2000000000000000000109 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MyPumpWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MyPumpWatch-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.pumpteam.mypump;
+				INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		6B2000000000000000000128 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MyPumpWatchComplicaciones.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MyPumpWatchComplicaciones-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump.watchkitapp.complicaciones;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		6B2000000000000000000129 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MyPumpWatchComplicaciones.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MyPumpWatchComplicaciones-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Pump Team";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pumpteam.mypump.watchkitapp.complicaciones;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -527,6 +781,24 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		6B2000000000000000000107 /* Build configuration list for PBXNativeTarget "MyPumpWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6B2000000000000000000108 /* Debug */,
+				6B2000000000000000000109 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6B2000000000000000000127 /* Build configuration list for PBXNativeTarget "MyPumpWatchComplicaciones" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6B2000000000000000000128 /* Debug */,
+				6B2000000000000000000129 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -540,6 +812,14 @@
 		6B2000000000000000000021 /* MyPumpKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MyPumpKit;
+		};
+		6B200000000000000000010A /* MyPumpKitReloj */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MyPumpKitReloj;
+		};
+		6B200000000000000000012A /* MyPumpKitReloj */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MyPumpKitReloj;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
