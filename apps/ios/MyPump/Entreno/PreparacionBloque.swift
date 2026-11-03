@@ -2,73 +2,89 @@ import SwiftUI
 import MyPumpReglas
 import MyPumpDatos
 
-/// E1 (2.0.3): «Calentamiento y aproximación», el bloque liviano antes de las series efectivas. Es una indicación, no un
-/// registro: celdas de solo lectura con borde (las efectivas son las rellenas), las reps, el kg (en vivo con el de la
-/// primera efectiva) y el descanso en cada fila. Tocar una fila la atenúa como hecha y arranca el descanso de 30 s; no se
-/// guarda nada como carga. «Ocultar» se recuerda por ejercicio; el «?» explica el criterio en una hoja corta.
+/// E1 (2.0.3): «Calentamiento y aproximación», la indicación liviana antes de las series efectivas. No es un lugar para
+/// cargar: filas de texto (etiqueta a la izquierda, «5 × 35 kg» a la derecha) sobre un relleno apenas distinto del de las
+/// efectivas, sin campos ni controles. Tocar una fila la atenúa con un check chico y arranca el descanso de 30 s; tocarla
+/// de nuevo lo deshace. No se guarda nada como carga. «Ocultar» lo colapsa a una línea y se recuerda por ejercicio.
 struct PreparacionBloque: View {
     let motor: ModeloEntreno
     let lugar: String
     let series: [Preparacion.Serie]
     let sinKg: Bool
     @State private var ayuda = false
-    private static let descanso = "\(Preparacion.descansoSegundos) s de descanso"
     @Environment(\.dynamicTypeSize) private var tamañoLetra
+
+    private static let titulo = "Calentamiento y aproximación"
+    /// Sin el kg de la última vez no hay número que mostrar: solo las reps.
+    private var sinReferencia: Bool { sinKg || series.contains { $0.kg == nil && !$0.barraSola } }
 
     var body: some View {
         let oculta = motor.preparacionOculta(lugar)
         let hechas = motor.preparacionHecha(lugar)
-        VStack(alignment: .leading, spacing: Espacio.s) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("Calentamiento y aproximación")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .accessibilityAddTraits(.isHeader)
-                Button { ayuda = true } label: {
-                    Image(systemName: "questionmark.circle").font(.subheadline).foregroundStyle(.tertiary)
-                        .frame(minWidth: 28, minHeight: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Cómo se arma la preparación")
-                .accessibilityIdentifier("ayuda-preparacion")
-                Spacer(minLength: 0)
-                Button(oculta ? "Mostrar" : "Ocultar") {
-                    withAnimation(.snappy) { motor.ocultarPreparacion(lugar, !oculta) }
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.marcaTexto)
-                .frame(minHeight: 32)
-                .accessibilityIdentifier("ocultar-preparacion")
-            }
-            if !oculta {
-                if !sinKg && series.contains(where: { $0.kg == nil && !$0.barraSola }) {
-                    Text(Preparacion.textoSinKg).font(.caption).foregroundStyle(.secondary)
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            if oculta {
+                colapsada
+            } else {
                 encabezado
-                VStack(spacing: 6) {
-                    ForEach(Array(series.enumerated()), id: \.offset) { i, s in fila(i, s, hecha: hechas.contains(i)) }
+                Text(sinReferencia ? "Usalas para encontrar tu peso de trabajo · 30 s entre cada una"
+                                   : "30 s de descanso entre cada una · no se anotan")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
+                    .padding(.bottom, 6)
+                    .accessibilityIdentifier("leyenda-preparacion")
+                ForEach(Array(series.enumerated()), id: \.offset) { i, s in
+                    if i > 0 { Divider().overlay(Color.borde) }
+                    fila(i, s, hecha: hechas.contains(i))
                 }
             }
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, Espacio.s)
+        .padding(.vertical, oculta ? 6 : Espacio.xs)
+        .background(Color(uiColor: .quaternarySystemFill), in: .rect(cornerRadius: Radio.control, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("bloque-preparacion")
         .sheet(isPresented: $ayuda) { AyudaPreparacion() }
     }
 
     private var encabezado: some View {
-        HStack(spacing: Espacio.xs) {
-            Text("Serie").frame(maxWidth: .infinity, alignment: .leading)
-            Text("Reps").frame(width: 64)
-            if !sinKg { Text("Kg").frame(width: 84) }
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(Self.titulo)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .accessibilityAddTraits(.isHeader)
+            Button { ayuda = true } label: {
+                Image(systemName: "questionmark.circle").font(.footnote).foregroundStyle(.tertiary)
+                    .frame(minWidth: 28, minHeight: 28)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Cómo se arma la preparación")
+            .accessibilityIdentifier("ayuda-preparacion")
+            Spacer(minLength: 0)
+            botonOcultar(oculta: false)
         }
-        .font(.caption2.weight(.semibold))
-        .textCase(.uppercase)
-        .tracking(0.6)
-        .foregroundStyle(.tertiary)
-        .lineLimit(1)
-        .minimumScaleFactor(0.6)
-        .accessibilityHidden(true)
+    }
+
+    private var colapsada: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("\(Self.titulo) · \(series.count)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            botonOcultar(oculta: true)
+        }
+    }
+
+    private func botonOcultar(oculta: Bool) -> some View {
+        Button(oculta ? "Mostrar" : "Ocultar") {
+            withAnimation(.snappy) { motor.ocultarPreparacion(lugar, !oculta) }
+        }
+        .font(.subheadline)
+        .foregroundStyle(Color.marcaTexto)
+        .frame(minHeight: 32)
+        .accessibilityIdentifier("ocultar-preparacion")
     }
 
     private func fila(_ i: Int, _ s: Preparacion.Serie, hecha: Bool) -> some View {
@@ -76,46 +92,55 @@ struct PreparacionBloque: View {
             withAnimation(.snappy(duration: 0.2)) { motor.tocarPreparacion(lugar, i) }
         } label: {
             HStack(spacing: Espacio.xs) {
-                HStack(spacing: 6) {
-                    Image(systemName: hecha ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(hecha ? Color.marcaTexto : Color(uiColor: .tertiaryLabel))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(s.etiqueta).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
-                            .lineLimit(1).minimumScaleFactor(0.75)
-                        Text(s.nota.map { "\($0) · \(Self.descanso)" } ?? Self.descanso)
-                            .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                    }
+                Text(s.tipo == .potenciacion ? "Potenciación" : s.etiqueta)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                if s.opcional {
+                    Text("opcional")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 6).padding(.vertical, 1)
+                        .background(Color.campo, in: .capsule)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                celda(s.reps).frame(width: 64)
-                if !sinKg { celda(s.textoKg ?? "–", chica: s.barraSola).frame(width: 84) }
+                Spacer(minLength: Espacio.xs)
+                cantidad(s)
+                if hecha {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.exito)
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
-            .opacity(hecha ? 0.45 : 1)
+            .frame(minHeight: tamañoLetra.isAccessibilitySize ? 52 : 40)
+            .opacity(hecha ? 0.4 : 1)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(etiquetaAccesible(s, hecha: hecha))
-        .accessibilityHint(hecha ? "Tocá para desmarcarla" : "Tocá cuando la hagas: arranca un descanso de 30 segundos")
+        .accessibilityHint(hecha ? "Tocá para desmarcarla" : "Tocá para arrancar el descanso")
         .accessibilityIdentifier("preparacion-\(i + 1)")
         .sensoryFeedback(.selection, trigger: hecha)
     }
 
-    /// Una celda liviana: solo el borde, sin relleno (las de las efectivas son rellenas y más grandes).
-    private func celda(_ texto: String, chica: Bool = false) -> some View {
-        Text(texto)
-            .font((chica ? Font.caption : Font.subheadline).weight(.semibold).monospacedDigit())
-            .foregroundStyle(.primary)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .frame(maxWidth: .infinity, minHeight: tamañoLetra.isAccessibilitySize ? 44 : 36)
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color(uiColor: .separator), lineWidth: 1)
+    /// «5 × 35 kg»: las reps en secundario, los kg en primario y semibold; sin kg de referencia, «5 reps».
+    private func cantidad(_ s: Preparacion.Serie) -> some View {
+        let reps = s.reps.replacingOccurrences(of: "-", with: "–")
+        let kg: String? = sinKg ? nil : (s.barraSola ? "barra sola" : s.textoKg.map { "\($0) kg" })
+        return Group {
+            if let kg {
+                Text("\(reps) × ").foregroundStyle(.secondary) + Text(kg).foregroundStyle(.primary).fontWeight(.semibold)
+            } else {
+                Text("\(reps) reps").foregroundStyle(.secondary)
             }
+        }
+        .font(.subheadline.monospacedDigit())
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
     }
 
     private func etiquetaAccesible(_ s: Preparacion.Serie, hecha: Bool) -> String {
-        var partes = [s.etiqueta, "\(s.reps) repeticiones"]
+        var partes = [s.etiqueta, "\(s.reps.replacingOccurrences(of: "-", with: " a ")) repeticiones"]
         if !sinKg, let k = s.textoKg { partes.append(s.barraSola ? k : "\(k) kilos") }
         if let n = s.nota { partes.append(n) }
         if hecha { partes.append("hecha") }
@@ -131,10 +156,11 @@ private struct AyudaPreparacion: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Espacio.m) {
-                    punto("Calentamiento", "16 a 20 reps muy livianas, en el primer ejercicio principal de cada músculo del día.")
-                    punto("Aproximaciones", "Series de 5 reps (máximo 6), nunca al fallo, para llegar al peso de trabajo: al 60 y al 85 % en el primer principal del músculo, y una al 75 % en los siguientes. En los accesorios, una de 5 a 6 al 60 %, solo la primera vez que trabajás ese músculo.")
-                    punto("Potenciación (opcional)", "En el primer principal del músculo, 1 a 3 reps con un poco más que tu peso de trabajo. Si no te sentís bien, salteala.")
-                    punto("Descanso", "30 segundos entre cada una. No se registran: tu progreso cuenta solo las series efectivas.")
+                    punto("Calentamiento", "Muy liviano, de 16 a 20 reps, para que entren en calor la articulación y el músculo. Va solo en el primer ejercicio de cada músculo.")
+                    punto("Aproximaciones", "Pocas reps (5, nunca más de 6), subiendo el peso hasta el de tu primera serie efectiva. Lejos del fallo: preparan y no cansan. La subida, lo más explosiva que puedas.")
+                    punto("Potenciación (opcional)", "De 1 a 3 reps con un poco más que tu peso de trabajo. Suele darte 1 o 2 reps extra en las efectivas. Si no te sentís bien, salteala.")
+                    punto("Los kilos", "Se calculan solos con el que pongas en tu primera serie efectiva.")
+                    punto("Descanso", "De 20 a 30 segundos entre cada una. No se anotan: solo cuentan las efectivas.")
                 }
                 .padding(Espacio.m)
             }
@@ -142,7 +168,7 @@ private struct AyudaPreparacion: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Listo") { cerrar() } } }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.fraction(0.75), .large])
         .presentationDragIndicator(.visible)
     }
 
