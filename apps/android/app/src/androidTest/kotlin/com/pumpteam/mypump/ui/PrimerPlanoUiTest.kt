@@ -88,7 +88,8 @@ class PrimerPlanoUiTest : PruebaUi() {
         assertTrue(servidor.fotosSubidas.isEmpty())
 
         // Sin red, el peso de hoy queda en la cola…
-        p.tocar(etiqueta("pestana-revision"))
+        p.tocar(etiqueta("pestana-salud"))
+        p.tocar(etiqueta("segmento-cuerpo"))
         p.nodo(etiqueta("guardar-peso"))
         servidor.sinRed = true
         p.escribir(etiqueta("peso-hoy"), "80")
@@ -182,6 +183,6 @@ class PrimerPlanoUiTest : PruebaUi() {
 
     private companion object {
         /** Lo "de hoy" que se recarga si cambió el día, con su `p_fecha`. */
-        val DE_HOY = listOf("mypump_get_comidas_libres", "mypump_get_habitos_dia", "mypump_get_checkin_semana")
+        val DE_HOY = listOf("mypump_get_comidas_libres", "mypump_get_checkin_semana")
     }
 }

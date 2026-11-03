@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Progreso (PRO-01…05), con el historial grabado de la cuenta de prueba (`test-nativa-real`: la rutina de 4 días y 384
+ * Salud → Fuerza (lo que era Progreso, PRO-01…05), con el historial grabado de la cuenta de prueba (`test-nativa-real`: la rutina de 4 días y 384
  * filas), como ProgresoGrabadoTest de `:core` pero en la pantalla. Las sesiones son días locales: el teléfono va en Buenos
  * Aires (la prueba corre en el proceso de la app).
  */
@@ -34,8 +34,14 @@ class ProgresoUiTest : PruebaUi() {
     }
 
     private fun abrirProgreso() = abrir().also {
-        p.tocar(etiqueta("pestana-progreso"))
-        p.nodo(etiqueta("progreso-pantalla"))
+        irAFuerza()
+        p.nodo(etiqueta("salud-pantalla"))
+    }
+
+    /** La pestaña Salud y su segmento Fuerza (Salud arranca en Recuperación; después recuerda el último). */
+    private fun irAFuerza() {
+        p.tocar(etiqueta("pestana-salud"))
+        p.tocar(etiqueta("segmento-fuerza"))
     }
 
     /** PRO-01 a 03: los totales, las secciones por día y cada fila con su PR, su tope, su curva y la variación. */
@@ -47,10 +53,13 @@ class ProgresoUiTest : PruebaUi() {
         // UN pedido con todas las claves del plan (33), al abrir la pestaña. Entreno pide aparte las de su día.
         assertEquals(1, pedidosDeProgreso())
         // El mismo ejercicio en dos días es una sola fila, en "Tirón · Piernas"; los días van en nombre propio.
+        // La card de series por músculo va arriba: se baja un poco para que la sección "Tirón" entre en la lista perezosa.
+        p.desplazar(etiqueta("progreso-lista"), 700f)
         val textos = p.textosBajo(etiqueta("progreso-lista"))
         assertTrue(textos.toString(), textos.indexOf("Tirón · Piernas") in 0 until textos.indexOf("Tirón"))
         assertTrue(textos.contains("máx. por sesión"))
         assertFalse(textos.any { it == "TIRÓN" || it == "TIRÓN · PIERNAS" })
+        p.desplazar(etiqueta("progreso-lista"), -700f)
         // Con el peso del cuerpo: "Peso corporal" y sin variación.
         val rollout = p.textosBajo(etiqueta("progreso-fila-$ROLLOUT"))
         assertTrue(rollout.toString(), rollout.containsAll(listOf("Rollout con ab wheel", "Core anterior", "Peso corporal", "—")))
@@ -62,7 +71,7 @@ class ProgresoUiTest : PruebaUi() {
         // Volver a la pestaña no lo vuelve a pedir: ya hay tarjetas (se actualiza tirando).
         p.tocar(etiqueta("pestana-dieta"))
         p.nodo(texto("de 2.373 kcal"))
-        p.tocar(etiqueta("pestana-progreso"))
+        irAFuerza()
         p.nodo(etiqueta("progreso-totales"))
         p.quieto(500)
         assertEquals(1, pedidosDeProgreso())
@@ -116,7 +125,8 @@ class ProgresoUiTest : PruebaUi() {
         p.atras()
         p.nodo(etiqueta("progreso-lista"))
         p.esperarQueNoEste(etiqueta("progreso-detalle"))
-        assertTrue(p.seleccionado(etiqueta("pestana-progreso")))
+        assertTrue(p.seleccionado(etiqueta("pestana-salud")))
+        assertTrue(p.seleccionado(etiqueta("segmento-fuerza")))
     }
 
     /** Con el peso del cuerpo no hay gráfico de kilos: el progreso está en las repeticiones. */
@@ -140,7 +150,7 @@ class ProgresoUiTest : PruebaUi() {
         val e = abrir()
         p.modeloCargado(e)
         servidor.sinRed = true
-        p.tocar(etiqueta("pestana-progreso"))
+        irAFuerza()
         p.nodo(etiqueta("progreso-sin-red"))
         p.nodo(texto("No pudimos traer tu historial"))
         p.nodo(texto("Sin conexión. Revisá la señal y probá de nuevo."))
@@ -157,12 +167,12 @@ class ProgresoUiTest : PruebaUi() {
         val e = abrir()
         p.modeloCargado(e)
         servidor.sinRed = true
-        p.tocar(etiqueta("pestana-progreso"))
+        irAFuerza()
         p.nodo(etiqueta("progreso-sin-red"))
         servidor.sinRed = false
         p.tocar(etiqueta("pestana-dieta"))
         p.nodo(texto("de 2.373 kcal"))
-        p.tocar(etiqueta("pestana-progreso"))
+        irAFuerza()
         p.esperar("la lista") { p.textosBajo(etiqueta("progreso-totales")).contains("32") }
     }
 
@@ -189,7 +199,7 @@ class ProgresoUiTest : PruebaUi() {
         p.quieto(500)
         // Lo que pidió Entreno para su día queda antes: el de Progreso es el que sale al abrir la pestaña.
         val antes = servidor.a("mypump_get_historico_por_clave").size
-        p.tocar(etiqueta("pestana-progreso"))
+        irAFuerza()
         p.esperar("los totales") { p.textosBajo(etiqueta("progreso-totales")).containsAll(listOf("2", "1")) }
         p.nodo(texto("Empuje · Torso"))
         p.nodo(texto("Empuje"))
@@ -202,15 +212,17 @@ class ProgresoUiTest : PruebaUi() {
         assertEquals(listOf(ClaveEjercicio.de("Press inclinado con mancuernas"), ClaveEjercicio.de("Sentadilla")), claves)
     }
 
-    /** En la demo, como la web, no hay historial: el vacío, sin pedir nada. */
+    /** En la demo, como la web, no hay historial: el vacío (debajo del volumen, también vacío), sin pedir nada. */
     @Test
     fun enLaDemoNoHayHistorial() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
-        p.tocar(etiqueta("pestana-progreso"))
+        irAFuerza()
         p.nodo(etiqueta("progreso-vacio"))
         p.nodo(texto("Aún no hay historial"))
         p.nodo(texto("Aún no hay historial registrado. Empezá tu primera sesión para ver el progreso acá."))
+        p.nodo(etiqueta("volumen-musculo"))
+        p.nodo(texto("Todavía no registraste series esta semana."))
         assertTrue(servidor.llamadas.none { "historico" in it.funcion })
     }
 
