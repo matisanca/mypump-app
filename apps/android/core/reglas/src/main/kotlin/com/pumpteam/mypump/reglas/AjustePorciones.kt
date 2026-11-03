@@ -58,18 +58,28 @@ data class AjusteComida(
     val cantidades: Map<String, Double> = emptyMap(),
     /** A qué alimento corresponde cada cantidad (las pone [AjustePorciones.anclar] al guardar). Sin ancla, vale. */
     val anclas: Map<String, AnclaAlimento> = emptyMap(),
+    /**
+     * Alimentos que el cliente sumó a la comida (2.0.3, D1), con sus macros por la cantidad. No dependen de la opción (no
+     * van por posición): cambiar de opción los deja. Con «Hoy no la como» quedan guardados pero no cuentan.
+     */
+    val agregados: List<AlimentoAgregado> = emptyList(),
 ) {
     /** Sin nada que cambie la comida: se borra. */
-    val neutro: Boolean get() = deltaKcal == 0 && cantidades.isEmpty() && !omitida
+    val neutro: Boolean get() = deltaKcal == 0 && cantidades.isEmpty() && !omitida && agregados.isEmpty()
 
-    fun aValor(): ValorJson = ValorJson.objeto(
-        "deltaKcal" to ValorJson.Numero(deltaKcal.toDouble()),
-        "compensar" to ValorJson.Booleano(compensar),
-        "omitida" to ValorJson.Booleano(omitida),
-        "opcion" to ValorJson.Numero(opcion.toDouble()),
-        "cantidades" to ValorJson.Objeto(cantidades.mapValues { ValorJson.Numero(it.value) }),
-        "anclas" to ValorJson.Objeto(anclas.mapValues { it.value.aValor() }),
-    )
+    fun aValor(): ValorJson {
+        val campos = linkedMapOf<String, ValorJson>(
+            "deltaKcal" to ValorJson.Numero(deltaKcal.toDouble()),
+            "compensar" to ValorJson.Booleano(compensar),
+            "omitida" to ValorJson.Booleano(omitida),
+            "opcion" to ValorJson.Numero(opcion.toDouble()),
+            "cantidades" to ValorJson.Objeto(cantidades.mapValues { ValorJson.Numero(it.value) }),
+            "anclas" to ValorJson.Objeto(anclas.mapValues { it.value.aValor() }),
+        )
+        // Sin agregados, la clave no va: el JSON queda igual que antes de la 2.0.3.
+        if (agregados.isNotEmpty()) campos["agregados"] = ValorJson.Lista(agregados.map { it.aValor() })
+        return ValorJson.Objeto(campos)
+    }
 
     companion object {
         /**
@@ -90,9 +100,13 @@ data class AjusteComida(
                 val r = m.mapValues { AnclaAlimento.desde(it.value) }
                 if (r.values.all { it != null }) r.mapValues { it.value!! } else null
             }.orEmpty()
+            // De a uno: un agregado roto se descarta solo (no se lleva los otros ni el ajuste). Sin dos con el mismo `_ts` (es
+            // su identidad en las vistas y al borrar): queda el primero.
+            val agregados = (o["agregados"] as? ValorJson.Lista)?.elementos.orEmpty()
+                .mapNotNull { AlimentoAgregado.desde(it) }.distinctBy { it.ts }.take(AgregadosComida.MAXIMO_AL_LEER)
             return AjusteComida(
                 entero("deltaKcal", 0, -30000..30000), booleano("compensar", true), booleano("omitida", false), entero("opcion", 0, 0..99),
-                cantidades, anclas,
+                cantidades, anclas, agregados,
             )
         }
     }
@@ -142,9 +156,14 @@ object AjustePorciones {
          * la siguiente. Cero si solo recibe; sin comerla, menos todo el plan.
          */
         val propio: Double,
+        /** Los alimentos agregados que cuentan hoy (D1): fijos, no se escalan con lo que llega. Sin comerla, ninguno. */
+        val agregados: List<Alimento> = emptyList(),
     ) {
+        /** Lo del plan de hoy y los agregados: lo que suma la comida. */
+        val todos: List<Alimento> get() = alimentos + agregados
+
         /** Hay que mostrarla como ajustada (por el cliente o por lo que le llega). */
-        val ajustada: Boolean get() = omitida || cambiados.isNotEmpty()
+        val ajustada: Boolean get() = omitida || cambiados.isNotEmpty() || agregados.isNotEmpty()
 
         /** Lo que tomó de las anteriores. */
         val absorbido: Double get() = compensacion - noAbsorbido
@@ -352,7 +371,9 @@ object AjustePorciones {
                     noAbsorbido = llega
                 }
             }
-            val hoy = kcal(als)
+            val extra = AgregadosComida.alimentos(aj)
+            // Los agregados suman a la comida y, como lo que se cambió a mano, cuentan en lo propio que se compensa.
+            val hoy = kcal(als) + kcal(extra)
             val cambiados = c.alimentos.indices.filter { als[it].qty != c.alimentos[it].qty }.toSet()
             // Lo que se apartó del plan por el cliente: lo de hoy menos el plan y lo que sí absorbió de las anteriores. Sin
             // nada propio (solo recibe), es cero: el redondeo de lo que absorbió no se le pasa a la siguiente.
@@ -360,6 +381,7 @@ object AjustePorciones {
             r[c.id] = ComidaAjustada(
                 alimentos = als, kcalPlan = plan, kcal = hoy, deltaPropio = delta.toInt(), omitida = omitida, compensacion = llega,
                 compensaDe = if (llega != 0.0) deQuien else emptyList(), noAbsorbido = noAbsorbido, cambiados = cambiados, propio = propio,
+                agregados = extra,
             )
             var siguiente = noAbsorbido
             val nuevosOrigenes = (if (noAbsorbido != 0.0) deQuien else emptyList()).toMutableList()

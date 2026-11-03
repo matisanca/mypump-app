@@ -15,6 +15,8 @@ import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.AjusteComida
 import com.pumpteam.mypump.reglas.AjustePorciones
+import com.pumpteam.mypump.reglas.AgregadosComida
+import com.pumpteam.mypump.reglas.AlimentoAgregado
 import com.pumpteam.mypump.reglas.AlimentoEfectivo
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
@@ -171,6 +173,20 @@ class ModeloApp(
 
     /** Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor). */
     private val ordenAjustes = java.util.concurrent.atomic.AtomicLong()
+
+    /**
+     * Los últimos alimentos agregados a una comida (2.0.3, D1), con su cantidad: «Recientes» de la hoja de agregar. Solo en
+     * el teléfono (`agregados_recientes.json`).
+     */
+    /**
+     * Los ajustes de hoy no se pudieron guardar en el servidor (la base los rechazó o se abandonaron): quedan en el
+     * teléfono, la hidratación no los pisa y Dieta lo avisa. Se baja cuando sale el día de nuevo. Gemelo de iOS.
+     */
+    internal val _ajustesSinGuardar = MutableStateFlow(false)
+    val ajustesSinGuardar: StateFlow<Boolean> = _ajustesSinGuardar.asStateFlow()
+
+    private val _agregadosRecientes = MutableStateFlow<List<AlimentoAgregado>>(emptyList())
+    val agregadosRecientes: StateFlow<List<AlimentoAgregado>> = _agregadosRecientes.asStateFlow()
 
     /**
      * «Comí» / «Salté» de hoy, por comida (D25; ver MarcasComidas.kt). Solo valen el día de [fechaMarcas]: lo que se
@@ -444,6 +460,14 @@ class ModeloApp(
 
     /** Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…". */
     private fun alGuardar(ops: List<OpGuardada>) {
+        // Salió el día: si era el de hoy, ya no hay nada sin guardar, y los fallidos viejos de ese día se olvidan (si no,
+        // la hidratación no volvería a traer lo del servidor nunca más ese día).
+        for (g in ops) {
+            if (g.op.kind != AjustesDieta.KIND) continue
+            val clave = g.op.dedupeKey ?: continue
+            if (clave == AjustesDieta.clave(FechaLocal.hoy())) _ajustesSinGuardar.value = false
+            outbox?.let { cola -> alcance.launch { cola.olvidarFallidos(clave) } }
+        }
         for (g in ops) {
             if (g.op.kind != "chat") continue
             val contenido = g.op.payload["contenido"]?.comoTexto ?: continue
@@ -456,6 +480,8 @@ class ModeloApp(
      * ("no salió → Reintentar"), como `marcarChatFallido` de la web.
      */
     private fun alAbandonar(ops: List<Operacion>) {
+        // La cola abandonó el día (8 intentos o un rechazo de la base, como el 22023 de un día demasiado grande).
+        if (ops.any { it.kind == AjustesDieta.KIND && it.dedupeKey == AjustesDieta.clave(FechaLocal.hoy()) }) _ajustesSinGuardar.value = true
         for (op in ops) {
             if (op.kind != "chat") continue
             op.payload["contenido"]?.comoTexto?.let { _chat.value?.marcarFallido(it) }
@@ -888,6 +914,7 @@ class ModeloApp(
     private fun cargarAjustes() {
         val hoy = FechaLocal.hoy()
         fechaAjustes = hoy
+        cargarRecientes()
         val g = _dieta.value?.id?.let { id -> disco?.leer(AjustesDieta.archivo(id)) }?.let(ValorJson::desde)
         _ajustes.value = if (g == null || g["fecha"]?.comoTexto != hoy) emptyMap()
         else AjustesDieta.comidasDesde(g["comidas"]).orEmpty().filterValues { !it.neutro }
@@ -925,6 +952,7 @@ class ModeloApp(
         if (nuevos == actuales) return
         ordenAjustes.incrementAndGet()
         _ajustes.value = nuevos
+        seguirTildes(comidaId, actuales[comidaId]?.agregados.orEmpty(), nuevos[comidaId]?.agregados.orEmpty())
         val id = _dieta.value?.id
         if (!_esDemo.value && id != null) {
             disco?.guardar(AjustesDieta.archivo(id), AjustesDieta.guardados(fechaAjustes, nuevos))
@@ -969,10 +997,14 @@ class ModeloApp(
             val d = dia[c.id] ?: return@mapNotNull null
             plan += d.kcalPlan
             hoy += d.kcal
-            ValorJson.objeto(
+            val renglon = linkedMapOf(
                 "comida_id" to texto(c.id), "nombre" to texto(c.nombre), "kcal_plan" to numero(d.kcalPlan),
                 "kcal_dia" to numero(d.kcal), "omitida" to ValorJson.Booleano(d.omitida),
             )
+            // 2.0.3 (D1): lo que sumó a la comida, si sumó algo y la come (`kcal_dia` ya lo incluye).
+            val agregados = if (d.omitida) emptyList() else AgregadosComida.resumen(ajustes[c.id])
+            if (agregados.isNotEmpty()) renglon["agregados"] = ValorJson.Lista(agregados)
+            ValorJson.Objeto(renglon)
         }
         val vacio = ajustes.isEmpty()
         val payload = ValorJson.objeto(
@@ -996,22 +1028,91 @@ class ModeloApp(
         // cambio y el siguiente borraba también lo del servidor).
         val antes = ordenAjustes.get()
         val pendienteAntes = cola.pendientesPorClave()[AjustesDieta.clave(hoy)] != null
+        // El aviso de «no se pudo guardar» sale de la cola, no del servidor: se corrige aunque no haya red (y se apaga el de
+        // ayer al pasar la medianoche con la app abierta).
+        val fallidoAntes = cola.fallidos().any { it.op.kind == AjustesDieta.KIND && it.op.dedupeKey == AjustesDieta.clave(hoy) }
+        if (vigente()) _ajustesSinGuardar.value = fallidoAntes
         val r = cliente.llamar("mypump_get_ajustes_dieta", mapOf("p_token" to texto(t), "p_desde" to texto(hoy), "p_hasta" to texto(hoy)))
         if (!vigente()) return
         val filas = ((r as? Resultado.Ok)?.valor as? ValorJson.Lista)?.elementos ?: return
         val pendiente = cola.pendientesPorClave()[AjustesDieta.clave(hoy)] != null
-        if (!vigente() || pendienteAntes || pendiente || ordenAjustes.get() != antes) return
+        // Un día que no se pudo guardar (la base lo rechazó): la fila del servidor es vieja y pisaría lo del teléfono.
+        val fallido = cola.fallidos().any { it.op.kind == AjustesDieta.KIND && it.op.dedupeKey == AjustesDieta.clave(hoy) }
+        if (vigente()) _ajustesSinGuardar.value = fallido
+        if (!vigente() || pendienteAntes || pendiente || fallido || ordenAjustes.get() != antes) return
         if (fechaAjustes != hoy) cargarAjustes()
         val remota = filas.firstOrNull { it["fecha"]?.comoTexto == hoy }
         if (remota != null) {
             if ((remota["dieta_id"]?.comoTexto ?: dieta.id) != dieta.id) return
             val validas = AjustesDieta.comidasDesde(remota["ajustes"])?.filterValues { !it.neutro } ?: return
             if (validas == _ajustes.value) return
+            val previos = _ajustes.value
             _ajustes.value = validas
+            for (id in previos.keys + validas.keys) seguirTildes(id, previos[id]?.agregados.orEmpty(), validas[id]?.agregados.orEmpty(), delUsuario = false)
             disco?.guardar(AjustesDieta.archivo(dieta.id), AjustesDieta.guardados(hoy, validas))
         } else if (_ajustes.value.isNotEmpty()) {
             encolarAjustes(emptyMap())
         }
+    }
+
+    // ── Alimentos agregados a una comida (2.0.3, D1) ──
+    // Van dentro del ajuste de esa comida y de ese día (AjusteComida.agregados), así que viajan con el resto del ajuste:
+    // en el teléfono, por la cola (`ajustes_dieta`, una op por día) y en `mypump_ajustes_dieta`. Gemelo de AgregadosDieta.swift.
+
+    /** Los recientes del teléfono (de cualquier día). La demo no tiene carpeta: los suyos duran hasta la próxima carga. */
+    private fun cargarRecientes() {
+        val v = disco?.leer(ARCHIVO_RECIENTES)?.let(ValorJson::desde) as? ValorJson.Lista
+        _agregadosRecientes.value = v?.elementos.orEmpty().mapNotNull { AlimentoAgregado.desde(it) }
+    }
+
+    /** Lo último agregado va primero (un mismo alimento una sola vez, con la última cantidad). */
+    fun recordarReciente(a: AlimentoAgregado) {
+        val r = listOf(a) + _agregadosRecientes.value.filter { it.nombre.lowercase() != a.nombre.lowercase() }
+        _agregadosRecientes.value = r.take(MAXIMO_RECIENTES)
+        if (!_esDemo.value) disco?.guardar(ARCHIVO_RECIENTES, ValorJson.Lista(_agregadosRecientes.value.map { it.aValor() }))
+    }
+
+    /**
+     * Saca un agregado de una comida de hoy (los tildes de «Comí» los corre [ajustar], por `_ts`). Se busca por `_ts` en el
+     * ajuste de AHORA: dos toques seguidos en «Sacar» no borran otro.
+     */
+    suspend fun borrarAgregado(comidaId: String, ts: Long, opciones: Map<String, Int>) {
+        val a = ajustesDeHoy[comidaId] ?: return
+        if (a.agregados.none { it.ts == ts }) return
+        ajustar(comidaId, a.copy(agregados = a.agregados.filter { it.ts != ts }), opciones)
+    }
+
+    /**
+     * Cambiaron los agregados de una comida marcada «Comí» (se borró uno, «Volver al plan», llegó otro día del servidor):
+     * sus tildes siguen a cada agregado por `_ts`. Va antes de cualquier espera (la marca cambia en memoria al toque), así dos
+     * cambios seguidos no leen una marca vieja.
+     * [delUsuario] false (la hidratación): se remapea solo en memoria y en disco, sin encolar ni contar como un toque, así
+     * [hidratarMarcas] trae igual la marca del servidor (la de otro teléfono, más nueva, no se pisa con la vieja de este). Si
+     * ya hay una op de marca de esa comida en la cola, esa es lo último del cliente y se corrige en la cola.
+     */
+    private suspend fun seguirTildes(comidaId: String, antes: List<AlimentoAgregado>, despues: List<AlimentoAgregado>, delUsuario: Boolean = true) {
+        if (antes.map { it.ts } == despues.map { it.ts }) return
+        val m = marcasDeHoy[comidaId] ?: return
+        if (m.estado != MarcaComida.Estado.COMIDO) return
+        val c = comidasDelDia.firstOrNull { it.id == comidaId } ?: return
+        val o = ConsumoDelDia.opcionDeLaMarca(c, m) ?: 0
+        val n = c.opciones.getOrNull(o)?.alimentos?.size ?: 0
+        val excluidos = AgregadosComida.excluidosTrasCambio(m.excluidos, n, antes.map { it.ts }, despues.map { it.ts })
+        if (excluidos == m.excluidos) return
+        val nueva = MarcaComida(m.opcion, MarcaComida.Estado.COMIDO, excluidos)
+        if (!delUsuario && !_esDemo.value) {
+            val fecha = fechaMarcas
+            val enCola = outbox?.pendientesPorClave()?.containsKey(MarcasComidas.clave(fecha, comidaId)) == true
+            // Mientras se miraba la cola la marca pudo cambiar (un toque): ese toque ya encoló lo suyo.
+            if (_marcas.value[comidaId] != m) return
+            if (!enCola) {
+                val todas = _marcas.value + (comidaId to nueva)
+                _marcas.value = todas
+                disco?.guardar(MarcasComidas.ARCHIVO, MarcasComidas.guardadas(fecha, todas))
+                return
+            }
+        }
+        cambiarMarca(comidaId, nueva, m.opcion)
     }
 
     // ── «Comí» / «Salté» y lo consumido (D25) ──
@@ -1330,6 +1431,10 @@ class ModeloApp(
         const val CLAVE_TIPO_DIA = "mypump_tipo_dia"
         const val CLAVE_TOKEN_INVALIDO = "mypump_token_invalido"
         internal const val ARCHIVO_COPIA = "offline.json"
+        internal const val ARCHIVO_RECIENTES = "agregados_recientes.json"
+
+        /** Cuántos recientes se guardan. */
+        internal const val MAXIMO_RECIENTES = 12
 
         fun sumar(a: List<Alimento>): Macros = Macros(
             kcal = a.mapNotNull { it.kcal }.sum(), prot = a.mapNotNull { it.prot }.sum(),

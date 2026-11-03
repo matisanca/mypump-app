@@ -24,6 +24,8 @@ struct AjustesDietaTests {
         private var _guardados: [JSONValue] = []
         var guardados: [JSONValue] { lock.withLock { _guardados } }
         var sinTabla = false
+        /// La base rechaza el día (el 22023 de nativa_004 con un `ajustes` de más de 16000 bytes en jsonb).
+        var rechaza = false
         /// `mypump_get_food_swaps` falla (un 500).
         var sinSwaps = false
         var filas = "[]"
@@ -35,9 +37,29 @@ struct AjustesDietaTests {
         var getEmpezo: Bool { lock.withLock { _getEmpezo } }
         func marcarGet() { lock.withLock { _getEmpezo = true } }
         func guardar(_ c: JSONValue) { lock.withLock { _guardados.append(c) } }
+        /// Dos teléfonos de la misma cuenta: lo que guarda uno es lo que lee el otro (el día de ajustes y las marcas).
+        var persistente = false
+        /// Las marcas no salen (sin red para esa escritura): quedan en la cola.
+        var marcasCaidas = false
+        private var _marcas: [String: JSONValue] = [:]
+        private var _marcasEscritas = 0
+        var marcasEscritas: Int { lock.withLock { _marcasEscritas } }
+        var marcasFilas: String {
+            lock.withLock { String(data: try! JSONEncoder().encode(JSONValue.lista(Array(_marcas.values))), encoding: .utf8)! }
+        }
+        func guardarMarca(_ c: JSONValue) {
+            lock.withLock {
+                _marcasEscritas += 1
+                guard let id = c["p_comida_id"]?.comoTexto else { return }
+                _marcas[id] = .objeto(["comida_id": .texto(id), "opcion_elegida": c["p_opcion"] ?? .null, "estado": c["p_estado"] ?? .null,
+                                       "foods_excluidos": c["p_foods_excluidos"] ?? .lista([])])
+            }
+        }
+        func desmarcar(_ c: JSONValue) { lock.withLock { _marcasEscritas += 1; if let id = c["p_comida_id"]?.comoTexto { _marcas[id] = nil } } }
+        func marcaDelServidor(_ id: String) -> JSONValue? { lock.withLock { _marcas[id] } }
     }
 
-    func modelo(_ s: Servidor) -> ModeloApp {
+    func modelo(_ s: Servidor, raiz otra: URL? = nil) -> ModeloApp {
         let dieta = Self.dieta
         let t = TransporteProgramado { fn, cuerpo in
             switch fn {
@@ -45,8 +67,22 @@ struct AjustesDietaTests {
             case "mypump_get_dieta_activa": return (200, s.dieta ?? dieta)
             case "mypump_guardar_ajustes_dieta":
                 if s.sinTabla { return (404, #"{"code":"PGRST202","message":"Could not find the function"}"#) }
+                if s.rechaza { return (400, #"{"code":"22023","message":"ajustes invalidos"}"#) }
                 s.guardar(cuerpo)
+                if s.persistente {
+                    let fila: JSONValue = .lista([.objeto(["fecha": cuerpo["p_fecha"] ?? .null, "dieta_id": cuerpo["p_dieta_id"] ?? .null,
+                                                           "tipo_dia": .null, "ajustes": cuerpo["p_ajustes"] ?? .objeto([:])])])
+                    s.filas = String(data: try JSONEncoder().encode(fila), encoding: .utf8)!
+                }
                 return (200, "true")
+            case "mypump_marcar_comida":
+                if s.marcasCaidas { return (503, #"{"message":"sin red"}"#) }
+                s.guardarMarca(cuerpo)
+                return (200, "true")
+            case "mypump_desmarcar_comida":
+                s.desmarcar(cuerpo)
+                return (200, "true")
+            case "mypump_get_comidas_marcadas" where s.persistente: return (200, s.marcasFilas)
             case "mypump_get_food_swaps" where s.sinSwaps: return (500, #"{"message":"caído"}"#)
             case "mypump_get_ajustes_dieta":
                 if s.sinTabla { return (404, #"{"code":"PGRST202","message":"Could not find the function"}"#) }
@@ -61,7 +97,7 @@ struct AjustesDietaTests {
             default: return (200, "[]")
             }
         }
-        return ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria(Self.token), raizDisco: raiz)
+        return ModeloApp(cliente: ClienteRPC(config: .produccion, transporte: t), almacen: TokenEnMemoria(Self.token), raizDisco: otra ?? raiz)
     }
 
     @Test func ajustarCambiaElDiaLoGuardaYLoMandaEntero() async {
@@ -137,6 +173,58 @@ struct AjustesDietaTests {
         #expect(await m.outbox?.pendientes == 0)
         #expect((await m.outbox?.fallidos ?? []).isEmpty)
         #expect(m.ajustesDeHoy["desayuno"]?.omitida == true)
+    }
+
+    /// Revisión adversarial del 3-nov: un día que la base rechaza termina en fallidos; la hidratación ya no lo veía
+    /// pendiente y la fila vieja del servidor pisaba el día del teléfono sin aviso. Ahora no lo pisa, Dieta avisa y el
+    /// próximo cambio que sale lo resuelve.
+    @Test func unDiaQueLaBaseRechazaNoLoPisaLaHidratacionYSeAvisa() async throws {
+        let s = Servidor()
+        s.rechaza = true
+        let m = modelo(s)
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(deltaKcal: 50), opciones: [:])
+        for _ in 0..<12 {
+            if (await m.outbox?.pendientes ?? 0) == 0 { break }
+            await m.outbox?.drenar()
+        }
+        #expect(await m.outbox?.pendientes == 0)
+        #expect((await m.outbox?.fallidos ?? []).count == 1)
+        for _ in 0..<100 where !m.ajustesSinGuardar { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(m.ajustesSinGuardar, "Dieta avisa que no se guardó")
+
+        // La fila vieja del servidor no pisa el día del teléfono.
+        let hoy = FechaLocal.hoy()
+        s.filas = #"[{"fecha":"\#(hoy)","dieta_id":"\#(Self.dietaId)","tipo_dia":null,"ajustes":{"almuerzo":{"deltaKcal":-100,"compensar":false,"omitida":false,"opcion":0,"cantidades":{}}}}]"#
+        await m.hidratarDieta()
+        #expect(m.ajustesDeHoy["desayuno"]?.deltaKcal == 50 && m.ajustesDeHoy["almuerzo"] == nil)
+        #expect(m.ajustesSinGuardar)
+
+        // El próximo cambio sale entero: el aviso se va y el fallido de ese día se olvida (la hidratación vuelve a valer).
+        s.rechaza = false
+        await m.ajustar("desayuno", AjusteComida(deltaKcal: 100), opciones: [:])
+        await m.outbox?.drenar()
+        for _ in 0..<100 {
+            let quedan = await m.outbox?.fallidos ?? []
+            if !m.ajustesSinGuardar && quedan.isEmpty { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(!m.ajustesSinGuardar)
+        #expect((await m.outbox?.fallidos ?? []).isEmpty)
+        await m.hidratarDieta()
+        #expect(m.ajustesDeHoy["almuerzo"]?.deltaKcal == -100, "con el día guardado, lo del servidor vuelve a valer")
+    }
+
+    /// El aviso que quedó de ayer (la app abierta pasada la medianoche) se apaga con la hidratación cuando hoy no hay
+    /// fallidos, aunque el servidor no conteste.
+    @Test func elAvisoDeAyerSeApagaAlHidratarSinFallidosDeHoy() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        m.ajustesSinGuardar = true   // lo que dejó el día anterior
+        s.sinTabla = true            // tampoco hace falta que el servidor conteste
+        await m.hidratarDieta()
+        #expect(!m.ajustesSinGuardar)
     }
 
     @Test func alHidratarGanaLoDelServidorSalvoQueHayaAlgoSinSalir() async {
@@ -308,5 +396,188 @@ struct AjustesDietaTests {
         await m.ajustar("d", AjusteComida(deltaKcal: 100), opciones: [:])
         #expect(m.ajustesDeHoy["d"]?.deltaKcal == 100, "en la demo se puede probar")
         #expect(m.outbox == nil)
+    }
+
+    // MARK: - Alimentos agregados (2.0.3, D1)
+
+    static func huevo(_ ts: Int64) -> AlimentoAgregado {
+        AgregadosComida.agregado(AgregadosComida.Candidato(nombre: "Huevo entero", por100: MacrosPor100(kcal: 143, p: 12.6, c: 0.7, g: 9.5),
+                                                           unidad: "unidad", gramosPorUnidad: 60, origen: .base),
+                                 cantidad: 1, medida: AgregadosComida.Medida(nombre: "unidad", gramos: 60), ts: ts)
+    }
+
+    /// Un agregado solo (sin otro cambio) ya es un ajuste: se guarda, sale con el día y va en el resumen de esa comida.
+    @Test func unAgregadoSaleConElDiaYVaEnElResumen() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        await m.outbox?.drenar()
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1)]), opciones: [:])
+        #expect(m.ajustesDeHoy["desayuno"]?.agregados.count == 1)
+        #expect(m.diaAjustado(opciones: [:])["desayuno"]!.kcal == 614 + 86)
+        await m.outbox?.drenar()
+        let g = s.guardados.last
+        #expect(g?["p_ajustes"]?["desayuno"]?["agregados"]?[0]?["nombre"]?.comoTexto == "Huevo entero")
+        let kcalDia = g?["p_kcal_dia"]?.comoNumero ?? 0
+        #expect(abs(kcalDia - (614 + 525 + 86)) < 1e-9)
+        guard case .lista(let resumen)? = g?["p_resumen"] else { Issue.record("sin resumen"); return }
+        #expect(resumen[0]["agregados"]?[0]?["kcal"]?.comoNumero == 86 && resumen[0]["agregados"]?[0]?["gramos"]?.comoNumero == 60)
+        // El almuerzo, sin agregados, queda como antes (sin la clave).
+        #expect(resumen[1]["agregados"] == nil)
+        // Al volver a abrir (otro arranque) lo lee del disco.
+        let otra = modelo(Servidor())
+        await otra.cargar()
+        #expect(otra.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [1])
+    }
+
+    /// Borrar un agregado de una comida marcada «Comí»: el tilde del borrado se va y los de los siguientes bajan uno.
+    @Test func borrarUnAgregadoCorreLosTildes() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2), Self.huevo(3)]), opciones: [:])
+        await m.marcar("desayuno", .comido, opcion: 0)
+        // Plan de 2 (avena, huevos): los agregados son 2, 3 y 4. Destilda el segundo y el tercero.
+        await m.alternarAlimento("desayuno", 3)
+        await m.alternarAlimento("desayuno", 4)
+        await m.borrarAgregado("desayuno", ts: 2, opciones: [:])
+        #expect(m.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [1, 3])
+        #expect(m.marcasDeHoy["desayuno"]?.excluidos == [3])
+        // Lo consumido: el plan entero y el primer huevo.
+        #expect(m.consumo(opciones: [:]).kcal == 614 + 86)
+        // Sin agregados ni otro cambio, el ajuste se va.
+        await m.borrarAgregado("desayuno", ts: 1, opciones: [:])
+        await m.borrarAgregado("desayuno", ts: 3, opciones: [:])
+        #expect(m.ajustesDeHoy["desayuno"] == nil && m.marcasDeHoy["desayuno"]?.excluidos == [])
+    }
+
+    /// Revisión del 3-nov: «Volver al plan» (o una hidratación con menos agregados) dejaba en la marca tildes de agregados
+    /// que ya no estaban, y el próximo agregado aparecía destildado. Los tildes siguen a cada agregado por su `_ts`.
+    @Test func volverAlPlanNoDejaTildesDeAgregadosViejos() async {
+        let m = modelo(Servidor())
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2)]), opciones: [:])
+        await m.marcar("desayuno", .comido, opcion: 0)
+        await m.alternarAlimento("desayuno", 0)   // la avena (del plan)
+        await m.alternarAlimento("desayuno", 3)   // el segundo huevo
+        #expect(m.marcasDeHoy["desayuno"]?.excluidos == [0, 3])
+        await m.ajustar("desayuno", nil, opciones: [:])
+        #expect(m.marcasDeHoy["desayuno"]?.excluidos == [0], "el del plan queda; el del agregado se va")
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(5), Self.huevo(6)]), opciones: [:])
+        #expect(m.consumo(opciones: [:]).kcal == 234 + 86 * 2, "los agregados nuevos llegan tildados")
+    }
+
+    /// Dos «Sacar» seguidos sin esperar (dos toques rápidos): cada uno saca el suyo y los tildes quedan bien.
+    @Test func dosBorradosSeguidosNoCorrenMalLosTildes() async {
+        let m = modelo(Servidor())
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2), Self.huevo(3)]), opciones: [:])
+        await m.marcar("desayuno", .comido, opcion: 0)
+        await m.alternarAlimento("desayuno", 4)   // el tercer huevo
+        async let a: Void = m.borrarAgregado("desayuno", ts: 1, opciones: [:])
+        async let b: Void = m.borrarAgregado("desayuno", ts: 2, opciones: [:])
+        async let c: Void = m.borrarAgregado("desayuno", ts: 2, opciones: [:])
+        _ = await (a, b, c)
+        #expect(m.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [3])
+        #expect(m.marcasDeHoy["desayuno"]?.excluidos == [2], "el tercero sigue destildado, ahora en el índice 2")
+    }
+
+    /// Segunda revisión del 3-nov: la hidratación de los ajustes corría los tildes ENCOLANDO una marca. Como en el arranque
+    /// los ajustes se hidratan antes que las marcas, la marca vieja de este teléfono quedaba en la cola y le ganaba a la
+    /// más nueva de otro: se perdían las exclusiones del otro teléfono. Ahora se remapea solo en memoria.
+    @Test func laHidratacionNoPisaLaMarcaDeOtroTelefono() async throws {
+        let s = Servidor()
+        s.persistente = true
+        let otraRaiz = FileManager.default.temporaryDirectory.appendingPathComponent("ajustes-b-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: otraRaiz) }
+        // Teléfono A: dos huevos agregados, «Comí» y destilda el segundo (índice 3: plan de 2 + agregado 1).
+        let a = modelo(s)
+        await a.cargar()
+        await a.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2)]), opciones: [:])
+        await a.marcar("desayuno", .comido, opcion: 0)
+        await a.alternarAlimento("desayuno", 3)
+        await a.outbox?.drenar()
+        #expect(await a.outbox?.pendientes == 0)
+
+        // Teléfono B: lo lee, saca el primer huevo (el segundo pasa al índice 2) y destilda la avena.
+        let b = modelo(s, raiz: otraRaiz)
+        await b.cargar()
+        #expect(b.marcasDeHoy["desayuno"]?.excluidos == [3])
+        await b.borrarAgregado("desayuno", ts: 1, opciones: [:])
+        await b.alternarAlimento("desayuno", 0)
+        await b.outbox?.drenar()
+        #expect(await b.outbox?.pendientes == 0)
+        #expect(Set(b.marcasDeHoy["desayuno"]?.excluidos ?? []) == [0, 2])
+        let escritas = s.marcasEscritas
+
+        // A vuelve a abrir: trae el día de B y su marca, sin mandar la suya vieja.
+        await a.cargar()
+        #expect(a.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [2])
+        #expect(Set(a.marcasDeHoy["desayuno"]?.excluidos ?? []) == [0, 2], "la marca de B, no la vieja de A remapeada")
+        #expect((await a.outbox?.pendientesPorClave() ?? [:]).keys.allSatisfy { !$0.hasPrefix("comida|") })
+        #expect(s.marcasEscritas == escritas, "A no escribió ninguna marca")
+        if case .lista(let excl)? = s.marcaDelServidor("desayuno")?["foods_excluidos"] {
+            #expect(Set(excl.compactMap { $0.comoNumero.map { Int($0) } }) == [0, 2])
+        } else { Issue.record("el servidor perdió la marca") }
+    }
+
+    /// Con una marca de esa comida todavía en la cola (lo último que hizo el cliente en este teléfono), la hidratación sí
+    /// corrige la cola: si no, saldría con los índices viejos.
+    @Test func conUnaMarcaEnLaColaLaHidratacionLaCorrigeEnLaCola() async throws {
+        let s = Servidor()
+        s.persistente = true
+        let a = modelo(s)
+        await a.cargar()
+        await a.ajustar("desayuno", AjusteComida(compensar: false, agregados: [Self.huevo(1), Self.huevo(2)]), opciones: [:])
+        await a.outbox?.drenar()
+        s.marcasCaidas = true
+        await a.marcar("desayuno", .comido, opcion: 0)
+        await a.alternarAlimento("desayuno", 3)   // queda en la cola: esa escritura no sale
+        // Otro teléfono sacó el primer huevo.
+        let hoy = FechaLocal.hoy()
+        let dia = AjusteComida(compensar: false, agregados: [Self.huevo(2)])
+        let ajustes = try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(["desayuno": dia]))
+        s.filas = String(data: try JSONEncoder().encode(JSONValue.lista([.objeto(["fecha": .texto(hoy), "dieta_id": .texto(Self.dietaId),
+                                                                                 "tipo_dia": .null, "ajustes": ajustes])])), encoding: .utf8)!
+        await a.hidratarDieta()
+        #expect(a.ajustesDeHoy["desayuno"]?.agregados.map(\.ts) == [2])
+        #expect(a.marcasDeHoy["desayuno"]?.excluidos == [2])
+        let op = try #require((await a.outbox?.pendientesPorClave() ?? [:])["comida|\(hoy)|desayuno"])
+        #expect(ModeloApp.marcaDelPayload(op.payload)?.excluidos == [2], "la cola sale con el índice nuevo")
+    }
+
+    /// Cambiar de opción saca las cantidades a mano (eran de la otra) pero deja los agregados.
+    @Test func losAgregadosSobrevivenAlCambioDeOpcion() async {
+        let s = Servidor()
+        let m = modelo(s)
+        await m.cargar()
+        await m.ajustar("desayuno", AjusteComida(cantidades: ["0": 50], agregados: [Self.huevo(1)]), opciones: ["desayuno": 0])
+        var a = m.ajustesDeHoy["desayuno"]!
+        a.opcion = 1
+        a.cantidades = [:]
+        await m.ajustar("desayuno", a, opciones: ["desayuno": 1])
+        #expect(m.ajustesDeHoy["desayuno"]?.agregados.count == 1 && m.ajustesDeHoy["desayuno"]?.cantidades.isEmpty == true)
+        #expect(m.diaAjustado(opciones: ["desayuno": 1])["desayuno"]!.kcal == 120 + 86)
+    }
+
+    @Test func losRecientesQuedanEnElTelefono() async {
+        let m = modelo(Servidor())
+        await m.cargar()
+        m.recordarReciente(Self.huevo(1))
+        var otro = Self.huevo(2)
+        otro.nombre = "Clara de huevo"
+        m.recordarReciente(otro)
+        m.recordarReciente(Self.huevo(3))
+        #expect(m.agregadosRecientes.map(\.ts) == [3, 2])
+        let otra = modelo(Servidor())
+        await otra.cargar()
+        #expect(otra.agregadosRecientes.map(\.nombre) == ["Huevo entero", "Clara de huevo"])
+    }
+}
+
+private extension JSONValue {
+    subscript(i: Int) -> JSONValue? {
+        guard case .lista(let a) = self, a.indices.contains(i) else { return nil }
+        return a[i]
     }
 }

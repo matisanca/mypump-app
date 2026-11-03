@@ -1,0 +1,6775 @@
+{
+  "agregados" : [
+    {
+      "candidato" : {
+        "nombre" : "Zapallo \/ Calabaza",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5,
+          "g" : 0.10000000000000001,
+          "kcal" : 26,
+          "p" : 1
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.10000000000000001,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 0,
+            "nombre" : "Zapallo \/ Calabaza",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 6.5,
+              "g" : 0.10000000000000001,
+              "kcal" : 26,
+              "p" : 1
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Zapallo \/ Calabaza",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5,
+          "g" : 0.10000000000000001,
+          "kcal" : 26,
+          "p" : 1
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 5.2000000000000002,
+            "cantidad" : 80,
+            "g" : 0.10000000000000001,
+            "gramos" : 80,
+            "kcal" : 21,
+            "nombre" : "Zapallo \/ Calabaza",
+            "origen" : "base",
+            "p" : 0.80000000000000004,
+            "por100" : {
+              "c" : 6.5,
+              "g" : 0.10000000000000001,
+              "kcal" : 26,
+              "p" : 1
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Zapallo \/ Calabaza",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5,
+          "g" : 0.10000000000000001,
+          "kcal" : 26,
+          "p" : 1
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.20000000000000001,
+            "cantidad" : 3,
+            "g" : 0,
+            "gramos" : 3,
+            "kcal" : 1,
+            "nombre" : "Zapallo \/ Calabaza",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 6.5,
+              "g" : 0.10000000000000001,
+              "kcal" : 26,
+              "p" : 1
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Zapallo \/ Calabaza",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5,
+          "g" : 0.10000000000000001,
+          "kcal" : 26,
+          "p" : 1
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 5.9000000000000004,
+            "cantidad" : 1,
+            "g" : 0.10000000000000001,
+            "gramos" : 90,
+            "gramosUnidad" : 90,
+            "kcal" : 23,
+            "nombre" : "Zapallo \/ Calabaza",
+            "origen" : "base",
+            "p" : 0.90000000000000002,
+            "por100" : {
+              "c" : 6.5,
+              "g" : 0.10000000000000001,
+              "kcal" : 26,
+              "p" : 1
+            },
+            "unidad" : "puño"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 90,
+        "nombre" : "puño"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Zapallo \/ Calabaza",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5,
+          "g" : 0.10000000000000001,
+          "kcal" : 26,
+          "p" : 1
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 292.5,
+            "cantidad" : 50,
+            "g" : 4.5,
+            "gramos" : 4500,
+            "gramosUnidad" : 90,
+            "kcal" : 1170,
+            "nombre" : "Zapallo \/ Calabaza",
+            "origen" : "base",
+            "p" : 45,
+            "por100" : {
+              "c" : 6.5,
+              "g" : 0.10000000000000001,
+              "kcal" : 26,
+              "p" : 1
+            },
+            "unidad" : "puño"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 90,
+        "nombre" : "puño"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Zapallo \/ Calabaza",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5,
+          "g" : 0.10000000000000001,
+          "kcal" : 26,
+          "p" : 1
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 14.6,
+            "cantidad" : 2.5,
+            "g" : 0.20000000000000001,
+            "gramos" : 225,
+            "gramosUnidad" : 90,
+            "kcal" : 59,
+            "nombre" : "Zapallo \/ Calabaza",
+            "origen" : "base",
+            "p" : 2.2999999999999998,
+            "por100" : {
+              "c" : 6.5,
+              "g" : 0.10000000000000001,
+              "kcal" : 26,
+              "p" : 1
+            },
+            "unidad" : "puño"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 90,
+        "nombre" : "puño"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 60,
+        "nombre" : "Huevo entero",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 9.5,
+          "kcal" : 143,
+          "p" : 12.6
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 0.10000000000000001,
+            "gramos" : 1,
+            "kcal" : 1,
+            "nombre" : "Huevo entero",
+            "origen" : "base",
+            "p" : 0.10000000000000001,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 9.5,
+              "kcal" : 143,
+              "p" : 12.6
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 60,
+        "nombre" : "Huevo entero",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 9.5,
+          "kcal" : 143,
+          "p" : 12.6
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.59999999999999998,
+            "cantidad" : 80,
+            "g" : 7.5999999999999996,
+            "gramos" : 80,
+            "kcal" : 114,
+            "nombre" : "Huevo entero",
+            "origen" : "base",
+            "p" : 10.1,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 9.5,
+              "kcal" : 143,
+              "p" : 12.6
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 60,
+        "nombre" : "Huevo entero",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 9.5,
+          "kcal" : 143,
+          "p" : 12.6
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 3,
+            "g" : 0.29999999999999999,
+            "gramos" : 3,
+            "kcal" : 4,
+            "nombre" : "Huevo entero",
+            "origen" : "base",
+            "p" : 0.40000000000000002,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 9.5,
+              "kcal" : 143,
+              "p" : 12.6
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 60,
+        "nombre" : "Huevo entero",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 9.5,
+          "kcal" : 143,
+          "p" : 12.6
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.40000000000000002,
+            "cantidad" : 1,
+            "g" : 5.7000000000000002,
+            "gramos" : 60,
+            "gramosUnidad" : 60,
+            "kcal" : 86,
+            "nombre" : "Huevo entero",
+            "origen" : "base",
+            "p" : 7.5999999999999996,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 9.5,
+              "kcal" : 143,
+              "p" : 12.6
+            },
+            "unidad" : "unidad"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 60,
+        "nombre" : "Huevo entero",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 9.5,
+          "kcal" : 143,
+          "p" : 12.6
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 21,
+            "cantidad" : 50,
+            "g" : 285,
+            "gramos" : 3000,
+            "gramosUnidad" : 60,
+            "kcal" : 4290,
+            "nombre" : "Huevo entero",
+            "origen" : "base",
+            "p" : 378,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 9.5,
+              "kcal" : 143,
+              "p" : 12.6
+            },
+            "unidad" : "unidad"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 60,
+        "nombre" : "Huevo entero",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 9.5,
+          "kcal" : 143,
+          "p" : 12.6
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 1,
+            "cantidad" : 2.5,
+            "g" : 14.300000000000001,
+            "gramos" : 150,
+            "gramosUnidad" : 60,
+            "kcal" : 215,
+            "nombre" : "Huevo entero",
+            "origen" : "base",
+            "p" : 18.899999999999999,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 9.5,
+              "kcal" : 143,
+              "p" : 12.6
+            },
+            "unidad" : "unidad"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 33,
+        "nombre" : "Clara de huevo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 0.20000000000000001,
+          "kcal" : 52,
+          "p" : 10.9
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 1,
+            "nombre" : "Clara de huevo",
+            "origen" : "base",
+            "p" : 0.10000000000000001,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 0.20000000000000001,
+              "kcal" : 52,
+              "p" : 10.9
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 33,
+        "nombre" : "Clara de huevo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 0.20000000000000001,
+          "kcal" : 52,
+          "p" : 10.9
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.59999999999999998,
+            "cantidad" : 80,
+            "g" : 0.20000000000000001,
+            "gramos" : 80,
+            "kcal" : 42,
+            "nombre" : "Clara de huevo",
+            "origen" : "base",
+            "p" : 8.6999999999999993,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 0.20000000000000001,
+              "kcal" : 52,
+              "p" : 10.9
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 33,
+        "nombre" : "Clara de huevo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 0.20000000000000001,
+          "kcal" : 52,
+          "p" : 10.9
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 3,
+            "g" : 0,
+            "gramos" : 3,
+            "kcal" : 2,
+            "nombre" : "Clara de huevo",
+            "origen" : "base",
+            "p" : 0.29999999999999999,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 0.20000000000000001,
+              "kcal" : 52,
+              "p" : 10.9
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 33,
+        "nombre" : "Clara de huevo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 0.20000000000000001,
+          "kcal" : 52,
+          "p" : 10.9
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.20000000000000001,
+            "cantidad" : 1,
+            "g" : 0.10000000000000001,
+            "gramos" : 33,
+            "gramosUnidad" : 33,
+            "kcal" : 17,
+            "nombre" : "Clara de huevo",
+            "origen" : "base",
+            "p" : 3.6000000000000001,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 0.20000000000000001,
+              "kcal" : 52,
+              "p" : 10.9
+            },
+            "unidad" : "unidad"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 33,
+        "nombre" : "unidad"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 33,
+        "nombre" : "Clara de huevo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 0.20000000000000001,
+          "kcal" : 52,
+          "p" : 10.9
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 11.5,
+            "cantidad" : 50,
+            "g" : 3.2999999999999998,
+            "gramos" : 1650,
+            "gramosUnidad" : 33,
+            "kcal" : 858,
+            "nombre" : "Clara de huevo",
+            "origen" : "base",
+            "p" : 179.90000000000001,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 0.20000000000000001,
+              "kcal" : 52,
+              "p" : 10.9
+            },
+            "unidad" : "unidad"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 33,
+        "nombre" : "unidad"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 33,
+        "nombre" : "Clara de huevo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 0.20000000000000001,
+          "kcal" : 52,
+          "p" : 10.9
+        },
+        "unidad" : "unidad"
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.59999999999999998,
+            "cantidad" : 2.5,
+            "g" : 0.20000000000000001,
+            "gramos" : 82.5,
+            "gramosUnidad" : 33,
+            "kcal" : 43,
+            "nombre" : "Clara de huevo",
+            "origen" : "base",
+            "p" : 9,
+            "por100" : {
+              "c" : 0.69999999999999996,
+              "g" : 0.20000000000000001,
+              "kcal" : 52,
+              "p" : 10.9
+            },
+            "unidad" : "unidad"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 33,
+        "nombre" : "unidad"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Brócoli",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5999999999999996,
+          "g" : 0.40000000000000002,
+          "kcal" : 34,
+          "p" : 2.7999999999999998
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.10000000000000001,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 0,
+            "nombre" : "Brócoli",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 6.5999999999999996,
+              "g" : 0.40000000000000002,
+              "kcal" : 34,
+              "p" : 2.7999999999999998
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Brócoli",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5999999999999996,
+          "g" : 0.40000000000000002,
+          "kcal" : 34,
+          "p" : 2.7999999999999998
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 5.2999999999999998,
+            "cantidad" : 80,
+            "g" : 0.29999999999999999,
+            "gramos" : 80,
+            "kcal" : 27,
+            "nombre" : "Brócoli",
+            "origen" : "base",
+            "p" : 2.2000000000000002,
+            "por100" : {
+              "c" : 6.5999999999999996,
+              "g" : 0.40000000000000002,
+              "kcal" : 34,
+              "p" : 2.7999999999999998
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Brócoli",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5999999999999996,
+          "g" : 0.40000000000000002,
+          "kcal" : 34,
+          "p" : 2.7999999999999998
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.20000000000000001,
+            "cantidad" : 3,
+            "g" : 0,
+            "gramos" : 3,
+            "kcal" : 1,
+            "nombre" : "Brócoli",
+            "origen" : "base",
+            "p" : 0.10000000000000001,
+            "por100" : {
+              "c" : 6.5999999999999996,
+              "g" : 0.40000000000000002,
+              "kcal" : 34,
+              "p" : 2.7999999999999998
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Brócoli",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5999999999999996,
+          "g" : 0.40000000000000002,
+          "kcal" : 34,
+          "p" : 2.7999999999999998
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 5.9000000000000004,
+            "cantidad" : 1,
+            "g" : 0.40000000000000002,
+            "gramos" : 90,
+            "gramosUnidad" : 90,
+            "kcal" : 31,
+            "nombre" : "Brócoli",
+            "origen" : "base",
+            "p" : 2.5,
+            "por100" : {
+              "c" : 6.5999999999999996,
+              "g" : 0.40000000000000002,
+              "kcal" : 34,
+              "p" : 2.7999999999999998
+            },
+            "unidad" : "puño"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 90,
+        "nombre" : "puño"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Brócoli",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5999999999999996,
+          "g" : 0.40000000000000002,
+          "kcal" : 34,
+          "p" : 2.7999999999999998
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 297,
+            "cantidad" : 50,
+            "g" : 18,
+            "gramos" : 4500,
+            "gramosUnidad" : 90,
+            "kcal" : 1530,
+            "nombre" : "Brócoli",
+            "origen" : "base",
+            "p" : 126,
+            "por100" : {
+              "c" : 6.5999999999999996,
+              "g" : 0.40000000000000002,
+              "kcal" : 34,
+              "p" : 2.7999999999999998
+            },
+            "unidad" : "puño"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 90,
+        "nombre" : "puño"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Brócoli",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5999999999999996,
+          "g" : 0.40000000000000002,
+          "kcal" : 34,
+          "p" : 2.7999999999999998
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 14.9,
+            "cantidad" : 2.5,
+            "g" : 0.90000000000000002,
+            "gramos" : 225,
+            "gramosUnidad" : 90,
+            "kcal" : 77,
+            "nombre" : "Brócoli",
+            "origen" : "base",
+            "p" : 6.2999999999999998,
+            "por100" : {
+              "c" : 6.5999999999999996,
+              "g" : 0.40000000000000002,
+              "kcal" : 34,
+              "p" : 2.7999999999999998
+            },
+            "unidad" : "puño"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 90,
+        "nombre" : "puño"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cruda)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 2.6000000000000001,
+          "kcal" : 120,
+          "p" : 22.5
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 1,
+            "nombre" : "Pechuga de pollo (cruda)",
+            "origen" : "base",
+            "p" : 0.20000000000000001,
+            "por100" : {
+              "c" : 0,
+              "g" : 2.6000000000000001,
+              "kcal" : 120,
+              "p" : 22.5
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cruda)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 2.6000000000000001,
+          "kcal" : 120,
+          "p" : 22.5
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 80,
+            "g" : 2.1000000000000001,
+            "gramos" : 80,
+            "kcal" : 96,
+            "nombre" : "Pechuga de pollo (cruda)",
+            "origen" : "base",
+            "p" : 18,
+            "por100" : {
+              "c" : 0,
+              "g" : 2.6000000000000001,
+              "kcal" : 120,
+              "p" : 22.5
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cruda)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 2.6000000000000001,
+          "kcal" : 120,
+          "p" : 22.5
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 3,
+            "g" : 0.10000000000000001,
+            "gramos" : 3,
+            "kcal" : 4,
+            "nombre" : "Pechuga de pollo (cruda)",
+            "origen" : "base",
+            "p" : 0.69999999999999996,
+            "por100" : {
+              "c" : 0,
+              "g" : 2.6000000000000001,
+              "kcal" : 120,
+              "p" : 22.5
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cruda)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 2.6000000000000001,
+          "kcal" : 120,
+          "p" : 22.5
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 3.5,
+            "gramos" : 133,
+            "gramosUnidad" : 133,
+            "kcal" : 160,
+            "nombre" : "Pechuga de pollo (cruda)",
+            "origen" : "base",
+            "p" : 29.899999999999999,
+            "por100" : {
+              "c" : 0,
+              "g" : 2.6000000000000001,
+              "kcal" : 120,
+              "p" : 22.5
+            },
+            "unidad" : "palma"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 133,
+        "nombre" : "palma"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cruda)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 2.6000000000000001,
+          "kcal" : 120,
+          "p" : 22.5
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 50,
+            "g" : 172.90000000000001,
+            "gramos" : 6650,
+            "gramosUnidad" : 133,
+            "kcal" : 7980,
+            "nombre" : "Pechuga de pollo (cruda)",
+            "origen" : "base",
+            "p" : 1496.3,
+            "por100" : {
+              "c" : 0,
+              "g" : 2.6000000000000001,
+              "kcal" : 120,
+              "p" : 22.5
+            },
+            "unidad" : "palma"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 133,
+        "nombre" : "palma"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cruda)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 2.6000000000000001,
+          "kcal" : 120,
+          "p" : 22.5
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 2.5,
+            "g" : 8.5999999999999996,
+            "gramos" : 332.5,
+            "gramosUnidad" : 133,
+            "kcal" : 399,
+            "nombre" : "Pechuga de pollo (cruda)",
+            "origen" : "base",
+            "p" : 74.799999999999997,
+            "por100" : {
+              "c" : 0,
+              "g" : 2.6000000000000001,
+              "kcal" : 120,
+              "p" : 22.5
+            },
+            "unidad" : "palma"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 133,
+        "nombre" : "palma"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cocida)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 3.6000000000000001,
+          "kcal" : 165,
+          "p" : 31
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 2,
+            "nombre" : "Pechuga de pollo (cocida)",
+            "origen" : "base",
+            "p" : 0.29999999999999999,
+            "por100" : {
+              "c" : 0,
+              "g" : 3.6000000000000001,
+              "kcal" : 165,
+              "p" : 31
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cocida)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 3.6000000000000001,
+          "kcal" : 165,
+          "p" : 31
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 80,
+            "g" : 2.8999999999999999,
+            "gramos" : 80,
+            "kcal" : 132,
+            "nombre" : "Pechuga de pollo (cocida)",
+            "origen" : "base",
+            "p" : 24.800000000000001,
+            "por100" : {
+              "c" : 0,
+              "g" : 3.6000000000000001,
+              "kcal" : 165,
+              "p" : 31
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cocida)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 3.6000000000000001,
+          "kcal" : 165,
+          "p" : 31
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 3,
+            "g" : 0.10000000000000001,
+            "gramos" : 3,
+            "kcal" : 5,
+            "nombre" : "Pechuga de pollo (cocida)",
+            "origen" : "base",
+            "p" : 0.90000000000000002,
+            "por100" : {
+              "c" : 0,
+              "g" : 3.6000000000000001,
+              "kcal" : 165,
+              "p" : 31
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cocida)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 3.6000000000000001,
+          "kcal" : 165,
+          "p" : 31
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 3.6000000000000001,
+            "gramos" : 100,
+            "gramosUnidad" : 100,
+            "kcal" : 165,
+            "nombre" : "Pechuga de pollo (cocida)",
+            "origen" : "base",
+            "p" : 31,
+            "por100" : {
+              "c" : 0,
+              "g" : 3.6000000000000001,
+              "kcal" : 165,
+              "p" : 31
+            },
+            "unidad" : "palma"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 100,
+        "nombre" : "palma"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cocida)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 3.6000000000000001,
+          "kcal" : 165,
+          "p" : 31
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 50,
+            "g" : 180,
+            "gramos" : 5000,
+            "gramosUnidad" : 100,
+            "kcal" : 8250,
+            "nombre" : "Pechuga de pollo (cocida)",
+            "origen" : "base",
+            "p" : 1550,
+            "por100" : {
+              "c" : 0,
+              "g" : 3.6000000000000001,
+              "kcal" : 165,
+              "p" : 31
+            },
+            "unidad" : "palma"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 100,
+        "nombre" : "palma"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cocida)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 3.6000000000000001,
+          "kcal" : 165,
+          "p" : 31
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 2.5,
+            "g" : 9,
+            "gramos" : 250,
+            "gramosUnidad" : 100,
+            "kcal" : 413,
+            "nombre" : "Pechuga de pollo (cocida)",
+            "origen" : "base",
+            "p" : 77.5,
+            "por100" : {
+              "c" : 0,
+              "g" : 3.6000000000000001,
+              "kcal" : 165,
+              "p" : 31
+            },
+            "unidad" : "palma"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 100,
+        "nombre" : "palma"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco cocido",
+        "origen" : "base",
+        "por100" : {
+          "c" : 28.600000000000001,
+          "g" : 0.29999999999999999,
+          "kcal" : 130,
+          "p" : 2.7000000000000002
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.29999999999999999,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 1,
+            "nombre" : "Arroz blanco cocido",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 28.600000000000001,
+              "g" : 0.29999999999999999,
+              "kcal" : 130,
+              "p" : 2.7000000000000002
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco cocido",
+        "origen" : "base",
+        "por100" : {
+          "c" : 28.600000000000001,
+          "g" : 0.29999999999999999,
+          "kcal" : 130,
+          "p" : 2.7000000000000002
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 22.899999999999999,
+            "cantidad" : 80,
+            "g" : 0.20000000000000001,
+            "gramos" : 80,
+            "kcal" : 104,
+            "nombre" : "Arroz blanco cocido",
+            "origen" : "base",
+            "p" : 2.2000000000000002,
+            "por100" : {
+              "c" : 28.600000000000001,
+              "g" : 0.29999999999999999,
+              "kcal" : 130,
+              "p" : 2.7000000000000002
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco cocido",
+        "origen" : "base",
+        "por100" : {
+          "c" : 28.600000000000001,
+          "g" : 0.29999999999999999,
+          "kcal" : 130,
+          "p" : 2.7000000000000002
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.90000000000000002,
+            "cantidad" : 3,
+            "g" : 0,
+            "gramos" : 3,
+            "kcal" : 4,
+            "nombre" : "Arroz blanco cocido",
+            "origen" : "base",
+            "p" : 0.10000000000000001,
+            "por100" : {
+              "c" : 28.600000000000001,
+              "g" : 0.29999999999999999,
+              "kcal" : 130,
+              "p" : 2.7000000000000002
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco cocido",
+        "origen" : "base",
+        "por100" : {
+          "c" : 28.600000000000001,
+          "g" : 0.29999999999999999,
+          "kcal" : 130,
+          "p" : 2.7000000000000002
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 50.100000000000001,
+            "cantidad" : 1,
+            "g" : 0.5,
+            "gramos" : 175,
+            "gramosUnidad" : 175,
+            "kcal" : 228,
+            "nombre" : "Arroz blanco cocido",
+            "origen" : "base",
+            "p" : 4.7000000000000002,
+            "por100" : {
+              "c" : 28.600000000000001,
+              "g" : 0.29999999999999999,
+              "kcal" : 130,
+              "p" : 2.7000000000000002
+            },
+            "unidad" : "taza"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 175,
+        "nombre" : "taza"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco cocido",
+        "origen" : "base",
+        "por100" : {
+          "c" : 28.600000000000001,
+          "g" : 0.29999999999999999,
+          "kcal" : 130,
+          "p" : 2.7000000000000002
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 2502.5,
+            "cantidad" : 50,
+            "g" : 26.300000000000001,
+            "gramos" : 8750,
+            "gramosUnidad" : 175,
+            "kcal" : 11375,
+            "nombre" : "Arroz blanco cocido",
+            "origen" : "base",
+            "p" : 236.30000000000001,
+            "por100" : {
+              "c" : 28.600000000000001,
+              "g" : 0.29999999999999999,
+              "kcal" : 130,
+              "p" : 2.7000000000000002
+            },
+            "unidad" : "taza"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 175,
+        "nombre" : "taza"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco cocido",
+        "origen" : "base",
+        "por100" : {
+          "c" : 28.600000000000001,
+          "g" : 0.29999999999999999,
+          "kcal" : 130,
+          "p" : 2.7000000000000002
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 125.09999999999999,
+            "cantidad" : 2.5,
+            "g" : 1.3,
+            "gramos" : 437.5,
+            "gramosUnidad" : 175,
+            "kcal" : 569,
+            "nombre" : "Arroz blanco cocido",
+            "origen" : "base",
+            "p" : 11.800000000000001,
+            "por100" : {
+              "c" : 28.600000000000001,
+              "g" : 0.29999999999999999,
+              "kcal" : 130,
+              "p" : 2.7000000000000002
+            },
+            "unidad" : "taza"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 175,
+        "nombre" : "taza"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco crudo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 80,
+          "g" : 0.69999999999999996,
+          "kcal" : 365,
+          "p" : 7.0999999999999996
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.80000000000000004,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 4,
+            "nombre" : "Arroz blanco crudo",
+            "origen" : "base",
+            "p" : 0.10000000000000001,
+            "por100" : {
+              "c" : 80,
+              "g" : 0.69999999999999996,
+              "kcal" : 365,
+              "p" : 7.0999999999999996
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco crudo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 80,
+          "g" : 0.69999999999999996,
+          "kcal" : 365,
+          "p" : 7.0999999999999996
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 64,
+            "cantidad" : 80,
+            "g" : 0.59999999999999998,
+            "gramos" : 80,
+            "kcal" : 292,
+            "nombre" : "Arroz blanco crudo",
+            "origen" : "base",
+            "p" : 5.7000000000000002,
+            "por100" : {
+              "c" : 80,
+              "g" : 0.69999999999999996,
+              "kcal" : 365,
+              "p" : 7.0999999999999996
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco crudo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 80,
+          "g" : 0.69999999999999996,
+          "kcal" : 365,
+          "p" : 7.0999999999999996
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 2.3999999999999999,
+            "cantidad" : 3,
+            "g" : 0,
+            "gramos" : 3,
+            "kcal" : 11,
+            "nombre" : "Arroz blanco crudo",
+            "origen" : "base",
+            "p" : 0.20000000000000001,
+            "por100" : {
+              "c" : 80,
+              "g" : 0.69999999999999996,
+              "kcal" : 365,
+              "p" : 7.0999999999999996
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco crudo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 80,
+          "g" : 0.69999999999999996,
+          "kcal" : 365,
+          "p" : 7.0999999999999996
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 148,
+            "cantidad" : 1,
+            "g" : 1.3,
+            "gramos" : 185,
+            "gramosUnidad" : 185,
+            "kcal" : 675,
+            "nombre" : "Arroz blanco crudo",
+            "origen" : "base",
+            "p" : 13.1,
+            "por100" : {
+              "c" : 80,
+              "g" : 0.69999999999999996,
+              "kcal" : 365,
+              "p" : 7.0999999999999996
+            },
+            "unidad" : "taza en crudo"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 185,
+        "nombre" : "taza en crudo"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco crudo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 80,
+          "g" : 0.69999999999999996,
+          "kcal" : 365,
+          "p" : 7.0999999999999996
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 7400,
+            "cantidad" : 50,
+            "g" : 64.799999999999997,
+            "gramos" : 9250,
+            "gramosUnidad" : 185,
+            "kcal" : 33763,
+            "nombre" : "Arroz blanco crudo",
+            "origen" : "base",
+            "p" : 656.79999999999995,
+            "por100" : {
+              "c" : 80,
+              "g" : 0.69999999999999996,
+              "kcal" : 365,
+              "p" : 7.0999999999999996
+            },
+            "unidad" : "taza en crudo"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 185,
+        "nombre" : "taza en crudo"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco crudo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 80,
+          "g" : 0.69999999999999996,
+          "kcal" : 365,
+          "p" : 7.0999999999999996
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 370,
+            "cantidad" : 2.5,
+            "g" : 3.2000000000000002,
+            "gramos" : 462.5,
+            "gramosUnidad" : 185,
+            "kcal" : 1688,
+            "nombre" : "Arroz blanco crudo",
+            "origen" : "base",
+            "p" : 32.799999999999997,
+            "por100" : {
+              "c" : 80,
+              "g" : 0.69999999999999996,
+              "kcal" : 365,
+              "p" : 7.0999999999999996
+            },
+            "unidad" : "taza en crudo"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 185,
+        "nombre" : "taza en crudo"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Aceite de oliva",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 100,
+          "kcal" : 884,
+          "p" : 0
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 1,
+            "gramos" : 1,
+            "kcal" : 9,
+            "nombre" : "Aceite de oliva",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 0,
+              "g" : 100,
+              "kcal" : 884,
+              "p" : 0
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Aceite de oliva",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 100,
+          "kcal" : 884,
+          "p" : 0
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 80,
+            "g" : 80,
+            "gramos" : 80,
+            "kcal" : 707,
+            "nombre" : "Aceite de oliva",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 0,
+              "g" : 100,
+              "kcal" : 884,
+              "p" : 0
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Aceite de oliva",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 100,
+          "kcal" : 884,
+          "p" : 0
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 3,
+            "g" : 3,
+            "gramos" : 3,
+            "kcal" : 27,
+            "nombre" : "Aceite de oliva",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 0,
+              "g" : 100,
+              "kcal" : 884,
+              "p" : 0
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Aceite de oliva",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 100,
+          "kcal" : 884,
+          "p" : 0
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 15,
+            "gramos" : 15,
+            "gramosUnidad" : 15,
+            "kcal" : 133,
+            "nombre" : "Aceite de oliva",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 0,
+              "g" : 100,
+              "kcal" : 884,
+              "p" : 0
+            },
+            "unidad" : "cucharada"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 15,
+        "nombre" : "cucharada"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Aceite de oliva",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 100,
+          "kcal" : 884,
+          "p" : 0
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 50,
+            "g" : 750,
+            "gramos" : 750,
+            "gramosUnidad" : 15,
+            "kcal" : 6630,
+            "nombre" : "Aceite de oliva",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 0,
+              "g" : 100,
+              "kcal" : 884,
+              "p" : 0
+            },
+            "unidad" : "cucharada"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 15,
+        "nombre" : "cucharada"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Aceite de oliva",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 100,
+          "kcal" : 884,
+          "p" : 0
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 2.5,
+            "g" : 37.5,
+            "gramos" : 37.5,
+            "gramosUnidad" : 15,
+            "kcal" : 332,
+            "nombre" : "Aceite de oliva",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 0,
+              "g" : 100,
+              "kcal" : 884,
+              "p" : 0
+            },
+            "unidad" : "cucharada"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 15,
+        "nombre" : "cucharada"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 30,
+        "nombre" : "Pan de molde integral",
+        "origen" : "base",
+        "por100" : {
+          "c" : 41,
+          "g" : 3.5,
+          "kcal" : 247,
+          "p" : 10.699999999999999
+        },
+        "unidad" : "rebanada"
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.40000000000000002,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 2,
+            "nombre" : "Pan de molde integral",
+            "origen" : "base",
+            "p" : 0.10000000000000001,
+            "por100" : {
+              "c" : 41,
+              "g" : 3.5,
+              "kcal" : 247,
+              "p" : 10.699999999999999
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 30,
+        "nombre" : "Pan de molde integral",
+        "origen" : "base",
+        "por100" : {
+          "c" : 41,
+          "g" : 3.5,
+          "kcal" : 247,
+          "p" : 10.699999999999999
+        },
+        "unidad" : "rebanada"
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 32.799999999999997,
+            "cantidad" : 80,
+            "g" : 2.7999999999999998,
+            "gramos" : 80,
+            "kcal" : 198,
+            "nombre" : "Pan de molde integral",
+            "origen" : "base",
+            "p" : 8.5999999999999996,
+            "por100" : {
+              "c" : 41,
+              "g" : 3.5,
+              "kcal" : 247,
+              "p" : 10.699999999999999
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 30,
+        "nombre" : "Pan de molde integral",
+        "origen" : "base",
+        "por100" : {
+          "c" : 41,
+          "g" : 3.5,
+          "kcal" : 247,
+          "p" : 10.699999999999999
+        },
+        "unidad" : "rebanada"
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 1.2,
+            "cantidad" : 3,
+            "g" : 0.10000000000000001,
+            "gramos" : 3,
+            "kcal" : 7,
+            "nombre" : "Pan de molde integral",
+            "origen" : "base",
+            "p" : 0.29999999999999999,
+            "por100" : {
+              "c" : 41,
+              "g" : 3.5,
+              "kcal" : 247,
+              "p" : 10.699999999999999
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 30,
+        "nombre" : "Pan de molde integral",
+        "origen" : "base",
+        "por100" : {
+          "c" : 41,
+          "g" : 3.5,
+          "kcal" : 247,
+          "p" : 10.699999999999999
+        },
+        "unidad" : "rebanada"
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 12.300000000000001,
+            "cantidad" : 1,
+            "g" : 1.1000000000000001,
+            "gramos" : 30,
+            "gramosUnidad" : 30,
+            "kcal" : 74,
+            "nombre" : "Pan de molde integral",
+            "origen" : "base",
+            "p" : 3.2000000000000002,
+            "por100" : {
+              "c" : 41,
+              "g" : 3.5,
+              "kcal" : 247,
+              "p" : 10.699999999999999
+            },
+            "unidad" : "rebanada"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 30,
+        "nombre" : "rebanada"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 30,
+        "nombre" : "Pan de molde integral",
+        "origen" : "base",
+        "por100" : {
+          "c" : 41,
+          "g" : 3.5,
+          "kcal" : 247,
+          "p" : 10.699999999999999
+        },
+        "unidad" : "rebanada"
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 615,
+            "cantidad" : 50,
+            "g" : 52.5,
+            "gramos" : 1500,
+            "gramosUnidad" : 30,
+            "kcal" : 3705,
+            "nombre" : "Pan de molde integral",
+            "origen" : "base",
+            "p" : 160.5,
+            "por100" : {
+              "c" : 41,
+              "g" : 3.5,
+              "kcal" : 247,
+              "p" : 10.699999999999999
+            },
+            "unidad" : "rebanada"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 30,
+        "nombre" : "rebanada"
+      }
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 30,
+        "nombre" : "Pan de molde integral",
+        "origen" : "base",
+        "por100" : {
+          "c" : 41,
+          "g" : 3.5,
+          "kcal" : 247,
+          "p" : 10.699999999999999
+        },
+        "unidad" : "rebanada"
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 30.800000000000001,
+            "cantidad" : 2.5,
+            "g" : 2.6000000000000001,
+            "gramos" : 75,
+            "gramosUnidad" : 30,
+            "kcal" : 185,
+            "nombre" : "Pan de molde integral",
+            "origen" : "base",
+            "p" : 8,
+            "por100" : {
+              "c" : 41,
+              "g" : 3.5,
+              "kcal" : 247,
+              "p" : 10.699999999999999
+            },
+            "unidad" : "rebanada"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 30,
+        "nombre" : "rebanada"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Leche de almendras (sin azúcar)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.59999999999999998,
+          "g" : 1.3999999999999999,
+          "kcal" : 17,
+          "p" : 0.59999999999999998
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 0,
+            "nombre" : "Leche de almendras (sin azúcar)",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 0.59999999999999998,
+              "g" : 1.3999999999999999,
+              "kcal" : 17,
+              "p" : 0.59999999999999998
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Leche de almendras (sin azúcar)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.59999999999999998,
+          "g" : 1.3999999999999999,
+          "kcal" : 17,
+          "p" : 0.59999999999999998
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.5,
+            "cantidad" : 80,
+            "g" : 1.1000000000000001,
+            "gramos" : 80,
+            "kcal" : 14,
+            "nombre" : "Leche de almendras (sin azúcar)",
+            "origen" : "base",
+            "p" : 0.5,
+            "por100" : {
+              "c" : 0.59999999999999998,
+              "g" : 1.3999999999999999,
+              "kcal" : 17,
+              "p" : 0.59999999999999998
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Leche de almendras (sin azúcar)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.59999999999999998,
+          "g" : 1.3999999999999999,
+          "kcal" : 17,
+          "p" : 0.59999999999999998
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 3,
+            "g" : 0,
+            "gramos" : 3,
+            "kcal" : 1,
+            "nombre" : "Leche de almendras (sin azúcar)",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 0.59999999999999998,
+              "g" : 1.3999999999999999,
+              "kcal" : 17,
+              "p" : 0.59999999999999998
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Leche de almendras (sin azúcar)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.59999999999999998,
+          "g" : 1.3999999999999999,
+          "kcal" : 17,
+          "p" : 0.59999999999999998
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 1.2,
+            "cantidad" : 1,
+            "g" : 2.7999999999999998,
+            "gramos" : 200,
+            "gramosUnidad" : 200,
+            "kcal" : 34,
+            "nombre" : "Leche de almendras (sin azúcar)",
+            "origen" : "base",
+            "p" : 1.2,
+            "por100" : {
+              "c" : 0.59999999999999998,
+              "g" : 1.3999999999999999,
+              "kcal" : 17,
+              "p" : 0.59999999999999998
+            },
+            "unidad" : "vaso"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 200,
+        "nombre" : "vaso"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Leche de almendras (sin azúcar)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.59999999999999998,
+          "g" : 1.3999999999999999,
+          "kcal" : 17,
+          "p" : 0.59999999999999998
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 60,
+            "cantidad" : 50,
+            "g" : 140,
+            "gramos" : 10000,
+            "gramosUnidad" : 200,
+            "kcal" : 1700,
+            "nombre" : "Leche de almendras (sin azúcar)",
+            "origen" : "base",
+            "p" : 60,
+            "por100" : {
+              "c" : 0.59999999999999998,
+              "g" : 1.3999999999999999,
+              "kcal" : 17,
+              "p" : 0.59999999999999998
+            },
+            "unidad" : "vaso"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 200,
+        "nombre" : "vaso"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Leche de almendras (sin azúcar)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.59999999999999998,
+          "g" : 1.3999999999999999,
+          "kcal" : 17,
+          "p" : 0.59999999999999998
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 3,
+            "cantidad" : 2.5,
+            "g" : 7,
+            "gramos" : 500,
+            "gramosUnidad" : 200,
+            "kcal" : 85,
+            "nombre" : "Leche de almendras (sin azúcar)",
+            "origen" : "base",
+            "p" : 3,
+            "por100" : {
+              "c" : 0.59999999999999998,
+              "g" : 1.3999999999999999,
+              "kcal" : 17,
+              "p" : 0.59999999999999998
+            },
+            "unidad" : "vaso"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 200,
+        "nombre" : "vaso"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Lechuga",
+        "origen" : "base",
+        "por100" : {
+          "c" : 2.8999999999999999,
+          "g" : 0.20000000000000001,
+          "kcal" : 15,
+          "p" : 1.3999999999999999
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 0,
+            "nombre" : "Lechuga",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 2.8999999999999999,
+              "g" : 0.20000000000000001,
+              "kcal" : 15,
+              "p" : 1.3999999999999999
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Lechuga",
+        "origen" : "base",
+        "por100" : {
+          "c" : 2.8999999999999999,
+          "g" : 0.20000000000000001,
+          "kcal" : 15,
+          "p" : 1.3999999999999999
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 2.2999999999999998,
+            "cantidad" : 80,
+            "g" : 0.20000000000000001,
+            "gramos" : 80,
+            "kcal" : 12,
+            "nombre" : "Lechuga",
+            "origen" : "base",
+            "p" : 1.1000000000000001,
+            "por100" : {
+              "c" : 2.8999999999999999,
+              "g" : 0.20000000000000001,
+              "kcal" : 15,
+              "p" : 1.3999999999999999
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Lechuga",
+        "origen" : "base",
+        "por100" : {
+          "c" : 2.8999999999999999,
+          "g" : 0.20000000000000001,
+          "kcal" : 15,
+          "p" : 1.3999999999999999
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.10000000000000001,
+            "cantidad" : 3,
+            "g" : 0,
+            "gramos" : 3,
+            "kcal" : 0,
+            "nombre" : "Lechuga",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 2.8999999999999999,
+              "g" : 0.20000000000000001,
+              "kcal" : 15,
+              "p" : 1.3999999999999999
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Puré de papa",
+        "origen" : "propio",
+        "por100" : {
+          "c" : 15,
+          "g" : 2.5,
+          "kcal" : 88,
+          "p" : 2
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.20000000000000001,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 1,
+            "nombre" : "Puré de papa",
+            "origen" : "propio",
+            "p" : 0,
+            "por100" : {
+              "c" : 15,
+              "g" : 2.5,
+              "kcal" : 88,
+              "p" : 2
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Puré de papa",
+        "origen" : "propio",
+        "por100" : {
+          "c" : 15,
+          "g" : 2.5,
+          "kcal" : 88,
+          "p" : 2
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 12,
+            "cantidad" : 80,
+            "g" : 2,
+            "gramos" : 80,
+            "kcal" : 70,
+            "nombre" : "Puré de papa",
+            "origen" : "propio",
+            "p" : 1.6000000000000001,
+            "por100" : {
+              "c" : 15,
+              "g" : 2.5,
+              "kcal" : 88,
+              "p" : 2
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Puré de papa",
+        "origen" : "propio",
+        "por100" : {
+          "c" : 15,
+          "g" : 2.5,
+          "kcal" : 88,
+          "p" : 2
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.5,
+            "cantidad" : 3,
+            "g" : 0.10000000000000001,
+            "gramos" : 3,
+            "kcal" : 3,
+            "nombre" : "Puré de papa",
+            "origen" : "propio",
+            "p" : 0.10000000000000001,
+            "por100" : {
+              "c" : 15,
+              "g" : 2.5,
+              "kcal" : 88,
+              "p" : 2
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Puré de papa",
+        "origen" : "propio",
+        "por100" : {
+          "c" : 15,
+          "g" : 2.5,
+          "kcal" : 88,
+          "p" : 2
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 26.300000000000001,
+            "cantidad" : 1,
+            "g" : 4.4000000000000004,
+            "gramos" : 175,
+            "gramosUnidad" : 175,
+            "kcal" : 154,
+            "nombre" : "Puré de papa",
+            "origen" : "propio",
+            "p" : 3.5,
+            "por100" : {
+              "c" : 15,
+              "g" : 2.5,
+              "kcal" : 88,
+              "p" : 2
+            },
+            "unidad" : "taza"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 175,
+        "nombre" : "taza"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Puré de papa",
+        "origen" : "propio",
+        "por100" : {
+          "c" : 15,
+          "g" : 2.5,
+          "kcal" : 88,
+          "p" : 2
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 1312.5,
+            "cantidad" : 50,
+            "g" : 218.80000000000001,
+            "gramos" : 8750,
+            "gramosUnidad" : 175,
+            "kcal" : 7700,
+            "nombre" : "Puré de papa",
+            "origen" : "propio",
+            "p" : 175,
+            "por100" : {
+              "c" : 15,
+              "g" : 2.5,
+              "kcal" : 88,
+              "p" : 2
+            },
+            "unidad" : "taza"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 175,
+        "nombre" : "taza"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Puré de papa",
+        "origen" : "propio",
+        "por100" : {
+          "c" : 15,
+          "g" : 2.5,
+          "kcal" : 88,
+          "p" : 2
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 65.599999999999994,
+            "cantidad" : 2.5,
+            "g" : 10.9,
+            "gramos" : 437.5,
+            "gramosUnidad" : 175,
+            "kcal" : 385,
+            "nombre" : "Puré de papa",
+            "origen" : "propio",
+            "p" : 8.8000000000000007,
+            "por100" : {
+              "c" : 15,
+              "g" : 2.5,
+              "kcal" : 88,
+              "p" : 2
+            },
+            "unidad" : "taza"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 175,
+        "nombre" : "taza"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Kombucha de jengibre",
+        "origen" : "base",
+        "por100" : {
+          "c" : 5,
+          "g" : 0,
+          "kcal" : 20,
+          "p" : 0
+        }
+      },
+      "cantidad" : 1,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.10000000000000001,
+            "cantidad" : 1,
+            "g" : 0,
+            "gramos" : 1,
+            "kcal" : 0,
+            "nombre" : "Kombucha de jengibre",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 5,
+              "g" : 0,
+              "kcal" : 20,
+              "p" : 0
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Kombucha de jengibre",
+        "origen" : "base",
+        "por100" : {
+          "c" : 5,
+          "g" : 0,
+          "kcal" : 20,
+          "p" : 0
+        }
+      },
+      "cantidad" : 80,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 4,
+            "cantidad" : 80,
+            "g" : 0,
+            "gramos" : 80,
+            "kcal" : 16,
+            "nombre" : "Kombucha de jengibre",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 5,
+              "g" : 0,
+              "kcal" : 20,
+              "p" : 0
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    },
+    {
+      "candidato" : {
+        "nombre" : "Kombucha de jengibre",
+        "origen" : "base",
+        "por100" : {
+          "c" : 5,
+          "g" : 0,
+          "kcal" : 20,
+          "p" : 0
+        }
+      },
+      "cantidad" : 2.5,
+      "esperado" : {
+        "agregados" : [
+          {
+            "_ts" : 42,
+            "c" : 0.20000000000000001,
+            "cantidad" : 3,
+            "g" : 0,
+            "gramos" : 3,
+            "kcal" : 1,
+            "nombre" : "Kombucha de jengibre",
+            "origen" : "base",
+            "p" : 0,
+            "por100" : {
+              "c" : 5,
+              "g" : 0,
+              "kcal" : 20,
+              "p" : 0
+            },
+            "unidad" : "g"
+          }
+        ],
+        "anclas" : {
+
+        },
+        "cantidades" : {
+
+        },
+        "compensar" : true,
+        "deltaKcal" : 0,
+        "omitida" : false,
+        "opcion" : 0
+      },
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      }
+    }
+  ],
+  "consumo" : [
+    {
+      "ajustes" : {
+        "c1" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0.40000000000000002,
+              "cantidad" : 1,
+              "g" : 5.7000000000000002,
+              "gramos" : 60,
+              "gramosUnidad" : 60,
+              "kcal" : 86,
+              "nombre" : "Huevo entero",
+              "origen" : "base",
+              "p" : 7.5999999999999996,
+              "por100" : {
+                "c" : 0.69999999999999996,
+                "g" : 9.5,
+                "kcal" : 143,
+                "p" : 12.6
+              },
+              "unidad" : "unidad"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : false,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 1.2,
+                  "fat" : 0.29999999999999999,
+                  "kcal" : 86,
+                  "name" : "Claras",
+                  "prot" : 18,
+                  "qty" : 5,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 40,
+                  "fat" : 4,
+                  "kcal" : 233,
+                  "name" : "Avena",
+                  "prot" : 10,
+                  "qty" : 60,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 41.600000000000001,
+        "comidas" : 2,
+        "fat" : 10,
+        "hechas" : 1,
+        "kcal" : 405,
+        "prot" : 35.600000000000001,
+        "salteadas" : 0
+      },
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "«Comí» con un huevo agregado: cuenta",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0.40000000000000002,
+              "cantidad" : 1,
+              "g" : 5.7000000000000002,
+              "gramos" : 60,
+              "gramosUnidad" : 60,
+              "kcal" : 86,
+              "nombre" : "Huevo entero",
+              "origen" : "base",
+              "p" : 7.5999999999999996,
+              "por100" : {
+                "c" : 0.69999999999999996,
+                "g" : 9.5,
+                "kcal" : 143,
+                "p" : 12.6
+              },
+              "unidad" : "unidad"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : false,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 1.2,
+                  "fat" : 0.29999999999999999,
+                  "kcal" : 86,
+                  "name" : "Claras",
+                  "prot" : 18,
+                  "qty" : 5,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 40,
+                  "fat" : 4,
+                  "kcal" : 233,
+                  "name" : "Avena",
+                  "prot" : 10,
+                  "qty" : 60,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 41.200000000000003,
+        "comidas" : 2,
+        "fat" : 4.2999999999999998,
+        "hechas" : 1,
+        "kcal" : 319,
+        "prot" : 28,
+        "salteadas" : 0
+      },
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : [
+            2
+          ],
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "el agregado destildado (índice n + j) no cuenta; el de la avena sí",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0.40000000000000002,
+              "cantidad" : 1,
+              "g" : 5.7000000000000002,
+              "gramos" : 60,
+              "gramosUnidad" : 60,
+              "kcal" : 86,
+              "nombre" : "Huevo entero",
+              "origen" : "base",
+              "p" : 7.5999999999999996,
+              "por100" : {
+                "c" : 0.69999999999999996,
+                "g" : 9.5,
+                "kcal" : 143,
+                "p" : 12.6
+              },
+              "unidad" : "unidad"
+            },
+            {
+              "_ts" : 1730000000002,
+              "c" : 5.2000000000000002,
+              "cantidad" : 80,
+              "g" : 0.10000000000000001,
+              "gramos" : 80,
+              "kcal" : 21,
+              "nombre" : "Zapallo \/ Calabaza",
+              "origen" : "base",
+              "p" : 0.80000000000000004,
+              "por100" : {
+                "c" : 6.5,
+                "g" : 0.10000000000000001,
+                "kcal" : 26,
+                "p" : 1
+              },
+              "unidad" : "g"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : false,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 1.2,
+                  "fat" : 0.29999999999999999,
+                  "kcal" : 86,
+                  "name" : "Claras",
+                  "prot" : 18,
+                  "qty" : 5,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 40,
+                  "fat" : 4,
+                  "kcal" : 233,
+                  "name" : "Avena",
+                  "prot" : 10,
+                  "qty" : 60,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 1.6000000000000001,
+        "comidas" : 2,
+        "fat" : 6,
+        "hechas" : 1,
+        "kcal" : 172,
+        "prot" : 25.600000000000001,
+        "salteadas" : 0
+      },
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : [
+            1,
+            3
+          ],
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "dos agregados, el segundo destildado y la avena destildada",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0.40000000000000002,
+              "cantidad" : 1,
+              "g" : 5.7000000000000002,
+              "gramos" : 60,
+              "gramosUnidad" : 60,
+              "kcal" : 86,
+              "nombre" : "Huevo entero",
+              "origen" : "base",
+              "p" : 7.5999999999999996,
+              "por100" : {
+                "c" : 0.69999999999999996,
+                "g" : 9.5,
+                "kcal" : 143,
+                "p" : 12.6
+              },
+              "unidad" : "unidad"
+            },
+            {
+              "_ts" : 1730000000002,
+              "c" : 5.2000000000000002,
+              "cantidad" : 80,
+              "g" : 0.10000000000000001,
+              "gramos" : 80,
+              "kcal" : 21,
+              "nombre" : "Zapallo \/ Calabaza",
+              "origen" : "base",
+              "p" : 0.80000000000000004,
+              "por100" : {
+                "c" : 6.5,
+                "g" : 0.10000000000000001,
+                "kcal" : 26,
+                "p" : 1
+              },
+              "unidad" : "g"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 1.2,
+                  "fat" : 0.29999999999999999,
+                  "kcal" : 86,
+                  "name" : "Claras",
+                  "prot" : 18,
+                  "qty" : 5,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 40,
+                  "fat" : 4,
+                  "kcal" : 233,
+                  "name" : "Avena",
+                  "prot" : 10,
+                  "qty" : 60,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 19.199999999999999,
+        "comidas" : 2,
+        "fat" : 3.1000000000000001,
+        "hechas" : 1,
+        "kcal" : 141,
+        "prot" : 10.800000000000001,
+        "salteadas" : 0
+      },
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : [
+            1
+          ],
+          "opcion_elegida" : "B"
+        }
+      ],
+      "nombre" : "marcada con la B: los agregados van después de su único alimento",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0.40000000000000002,
+              "cantidad" : 1,
+              "g" : 5.7000000000000002,
+              "gramos" : 60,
+              "gramosUnidad" : 60,
+              "kcal" : 86,
+              "nombre" : "Huevo entero",
+              "origen" : "base",
+              "p" : 7.5999999999999996,
+              "por100" : {
+                "c" : 0.69999999999999996,
+                "g" : 9.5,
+                "kcal" : 143,
+                "p" : 12.6
+              },
+              "unidad" : "unidad"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 1.2,
+                  "fat" : 0.29999999999999999,
+                  "kcal" : 86,
+                  "name" : "Claras",
+                  "prot" : 18,
+                  "qty" : 5,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 40,
+                  "fat" : 4,
+                  "kcal" : 233,
+                  "name" : "Avena",
+                  "prot" : 10,
+                  "qty" : 60,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 78,
+        "comidas" : 2,
+        "fat" : 16.199999999999999,
+        "hechas" : 2,
+        "kcal" : 846,
+        "prot" : 90.300000000000011,
+        "salteadas" : 0
+      },
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c2",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "agregado compensado en el almuerzo y las dos comidas marcadas",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 5.2000000000000002,
+              "cantidad" : 80,
+              "g" : 0.10000000000000001,
+              "gramos" : 80,
+              "kcal" : 21,
+              "nombre" : "Zapallo \/ Calabaza",
+              "origen" : "base",
+              "p" : 0.80000000000000004,
+              "por100" : {
+                "c" : 6.5,
+                "g" : 0.10000000000000001,
+                "kcal" : 26,
+                "p" : 1
+              },
+              "unidad" : "g"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 1.2,
+                  "fat" : 0.29999999999999999,
+                  "kcal" : 86,
+                  "name" : "Claras",
+                  "prot" : 18,
+                  "qty" : 5,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 40,
+                  "fat" : 4,
+                  "kcal" : 233,
+                  "name" : "Avena",
+                  "prot" : 10,
+                  "qty" : 60,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 0,
+        "comidas" : 2,
+        "fat" : 0,
+        "hechas" : 0,
+        "kcal" : 0,
+        "prot" : 0,
+        "salteadas" : 1
+      },
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "saltado",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "salteada con agregados: no suma",
+      "vistas" : {
+
+      }
+    },
+    {
+      "ajustes" : {
+        "c1" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 5.2000000000000002,
+              "cantidad" : 80,
+              "g" : 0.10000000000000001,
+              "gramos" : 80,
+              "kcal" : 21,
+              "nombre" : "Zapallo \/ Calabaza",
+              "origen" : "base",
+              "p" : 0.80000000000000004,
+              "por100" : {
+                "c" : 6.5,
+                "g" : 0.10000000000000001,
+                "kcal" : 26,
+                "p" : 1
+              },
+              "unidad" : "g"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : false,
+          "deltaKcal" : 0,
+          "omitida" : true,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "id" : "c1",
+          "name" : "Desayuno",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 1.2,
+                  "fat" : 0.29999999999999999,
+                  "kcal" : 86,
+                  "name" : "Claras",
+                  "prot" : 18,
+                  "qty" : 5,
+                  "unit" : "unidad"
+                },
+                {
+                  "carb" : 40,
+                  "fat" : 4,
+                  "kcal" : 233,
+                  "name" : "Avena",
+                  "prot" : 10,
+                  "qty" : 60,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            },
+            {
+              "foods" : [
+                {
+                  "carb" : 14,
+                  "fat" : 3,
+                  "kcal" : 120,
+                  "name" : "Yogur",
+                  "prot" : 10,
+                  "qty" : 200,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "B"
+            }
+          ]
+        },
+        {
+          "id" : "c2",
+          "name" : "Almuerzo",
+          "options" : [
+            {
+              "foods" : [
+                {
+                  "carb" : 0,
+                  "fat" : 7,
+                  "kcal" : 330,
+                  "name" : "Pollo",
+                  "prot" : 62,
+                  "qty" : 200,
+                  "unit" : "g"
+                },
+                {
+                  "carb" : 42,
+                  "fat" : 0.5,
+                  "kcal" : 195,
+                  "name" : "Arroz",
+                  "prot" : 4,
+                  "qty" : 150,
+                  "unit" : "g"
+                }
+              ],
+              "name" : "A"
+            }
+          ]
+        }
+      ],
+      "esperado" : {
+        "carb" : 42,
+        "comidas" : 1,
+        "fat" : 7.5,
+        "hechas" : 1,
+        "kcal" : 525,
+        "prot" : 66,
+        "salteadas" : 0
+      },
+      "marcas" : [
+        {
+          "comida_id" : "c1",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        },
+        {
+          "comida_id" : "c2",
+          "estado" : "comido",
+          "foods_excluidos" : null,
+          "opcion_elegida" : "A"
+        }
+      ],
+      "nombre" : "no la come: los agregados no suman aunque esté marcada",
+      "vistas" : {
+
+      }
+    }
+  ],
+  "dia" : [
+    {
+      "ajustes" : {
+        "desayuno" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0.40000000000000002,
+              "cantidad" : 1,
+              "g" : 5.7000000000000002,
+              "gramos" : 60,
+              "gramosUnidad" : 60,
+              "kcal" : 86,
+              "nombre" : "Huevo entero",
+              "origen" : "base",
+              "p" : 7.5999999999999996,
+              "por100" : {
+                "c" : 0.69999999999999996,
+                "g" : 9.5,
+                "kcal" : 143,
+                "p" : 12.6
+              },
+              "unidad" : "unidad"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 1.2,
+              "fat" : 0.29999999999999999,
+              "kcal" : 86,
+              "name" : "Claras",
+              "prot" : 18,
+              "qty" : 5,
+              "unit" : "unidad"
+            },
+            {
+              "carb" : 40,
+              "fat" : 4,
+              "kcal" : 233,
+              "name" : "Avena",
+              "prot" : 10,
+              "qty" : 60,
+              "unit" : "g"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "almuerzo" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : true,
+          "compensacion" : -86,
+          "kcal" : [
+            272,
+            169
+          ],
+          "kcalDia" : 441,
+          "kcalPlan" : 525,
+          "noAbsorbido" : 0,
+          "propio" : 0,
+          "qty" : [
+            165,
+            130
+          ]
+        },
+        "desayuno" : {
+          "agregados" : [
+            {
+              "carb" : 0.40000000000000002,
+              "fat" : 5.7000000000000002,
+              "kcal" : 86,
+              "prot" : 7.5999999999999996
+            }
+          ],
+          "ajustada" : true,
+          "compensacion" : 0,
+          "kcal" : [
+            86,
+            233
+          ],
+          "kcalDia" : 405,
+          "kcalPlan" : 319,
+          "noAbsorbido" : 0,
+          "propio" : 86,
+          "qty" : [
+            5,
+            60
+          ]
+        }
+      },
+      "nombre" : "un huevo en el desayuno: suma y se compensa en el almuerzo"
+    },
+    {
+      "ajustes" : {
+        "desayuno" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0.40000000000000002,
+              "cantidad" : 1,
+              "g" : 5.7000000000000002,
+              "gramos" : 60,
+              "gramosUnidad" : 60,
+              "kcal" : 86,
+              "nombre" : "Huevo entero",
+              "origen" : "base",
+              "p" : 7.5999999999999996,
+              "por100" : {
+                "c" : 0.69999999999999996,
+                "g" : 9.5,
+                "kcal" : 143,
+                "p" : 12.6
+              },
+              "unidad" : "unidad"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : false,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 1.2,
+              "fat" : 0.29999999999999999,
+              "kcal" : 86,
+              "name" : "Claras",
+              "prot" : 18,
+              "qty" : 5,
+              "unit" : "unidad"
+            },
+            {
+              "carb" : 40,
+              "fat" : 4,
+              "kcal" : 233,
+              "name" : "Avena",
+              "prot" : 10,
+              "qty" : 60,
+              "unit" : "g"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "almuerzo" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : false,
+          "compensacion" : 0,
+          "kcal" : [
+            330,
+            195
+          ],
+          "kcalDia" : 525,
+          "kcalPlan" : 525,
+          "noAbsorbido" : 0,
+          "propio" : 0,
+          "qty" : [
+            200,
+            150
+          ]
+        },
+        "desayuno" : {
+          "agregados" : [
+            {
+              "carb" : 0.40000000000000002,
+              "fat" : 5.7000000000000002,
+              "kcal" : 86,
+              "prot" : 7.5999999999999996
+            }
+          ],
+          "ajustada" : true,
+          "compensacion" : 0,
+          "kcal" : [
+            86,
+            233
+          ],
+          "kcalDia" : 405,
+          "kcalPlan" : 319,
+          "noAbsorbido" : 0,
+          "propio" : 86,
+          "qty" : [
+            5,
+            60
+          ]
+        }
+      },
+      "nombre" : "un huevo sin compensar: el día sube"
+    },
+    {
+      "ajustes" : {
+        "almuerzo" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 5.2000000000000002,
+              "cantidad" : 80,
+              "g" : 0.10000000000000001,
+              "gramos" : 80,
+              "kcal" : 21,
+              "nombre" : "Zapallo \/ Calabaza",
+              "origen" : "base",
+              "p" : 0.80000000000000004,
+              "por100" : {
+                "c" : 6.5,
+                "g" : 0.10000000000000001,
+                "kcal" : 26,
+                "p" : 1
+              },
+              "unidad" : "g"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 1.2,
+              "fat" : 0.29999999999999999,
+              "kcal" : 86,
+              "name" : "Claras",
+              "prot" : 18,
+              "qty" : 5,
+              "unit" : "unidad"
+            },
+            {
+              "carb" : 40,
+              "fat" : 4,
+              "kcal" : 233,
+              "name" : "Avena",
+              "prot" : 10,
+              "qty" : 60,
+              "unit" : "g"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "almuerzo" : {
+          "agregados" : [
+            {
+              "carb" : 5.2000000000000002,
+              "fat" : 0.10000000000000001,
+              "kcal" : 21,
+              "prot" : 0.80000000000000004
+            }
+          ],
+          "ajustada" : true,
+          "compensacion" : 0,
+          "kcal" : [
+            330,
+            195
+          ],
+          "kcalDia" : 546,
+          "kcalPlan" : 525,
+          "noAbsorbido" : 0,
+          "propio" : 21,
+          "qty" : [
+            200,
+            150
+          ]
+        },
+        "desayuno" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : false,
+          "compensacion" : 0,
+          "kcal" : [
+            86,
+            233
+          ],
+          "kcalDia" : 319,
+          "kcalPlan" : 319,
+          "noAbsorbido" : 0,
+          "propio" : 0,
+          "qty" : [
+            5,
+            60
+          ]
+        }
+      },
+      "nombre" : "zapallo en el almuerzo, que es la última: queda sin compensar"
+    },
+    {
+      "ajustes" : {
+        "almuerzo" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 5.2000000000000002,
+              "cantidad" : 80,
+              "g" : 0.10000000000000001,
+              "gramos" : 80,
+              "kcal" : 21,
+              "nombre" : "Zapallo \/ Calabaza",
+              "origen" : "base",
+              "p" : 0.80000000000000004,
+              "por100" : {
+                "c" : 6.5,
+                "g" : 0.10000000000000001,
+                "kcal" : 26,
+                "p" : 1
+              },
+              "unidad" : "g"
+            },
+            {
+              "_ts" : 1730000000000,
+              "c" : 9.9000000000000004,
+              "cantidad" : 150,
+              "g" : 0.59999999999999998,
+              "gramos" : 150,
+              "kcal" : 51,
+              "nombre" : "Brócoli",
+              "origen" : "base",
+              "p" : 4.2000000000000002,
+              "por100" : {
+                "c" : 6.5999999999999996,
+                "g" : 0.40000000000000002,
+                "kcal" : 34,
+                "p" : 2.7999999999999998
+              },
+              "unidad" : "g"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : true,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 1.2,
+              "fat" : 0.29999999999999999,
+              "kcal" : 86,
+              "name" : "Claras",
+              "prot" : 18,
+              "qty" : 5,
+              "unit" : "unidad"
+            },
+            {
+              "carb" : 40,
+              "fat" : 4,
+              "kcal" : 233,
+              "name" : "Avena",
+              "prot" : 10,
+              "qty" : 60,
+              "unit" : "g"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 14,
+              "fat" : 3,
+              "kcal" : 120,
+              "name" : "Yogur",
+              "prot" : 10,
+              "qty" : 200,
+              "unit" : "g"
+            }
+          ],
+          "id" : "merienda",
+          "nombre" : "Merienda",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 285,
+        "almuerzo" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : true,
+          "compensacion" : 0,
+          "kcal" : [
+            0,
+            0
+          ],
+          "kcalDia" : 0,
+          "kcalPlan" : 525,
+          "noAbsorbido" : 0,
+          "propio" : -525,
+          "qty" : [
+            0,
+            0
+          ]
+        },
+        "desayuno" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : false,
+          "compensacion" : 0,
+          "kcal" : [
+            86,
+            233
+          ],
+          "kcalDia" : 319,
+          "kcalPlan" : 319,
+          "noAbsorbido" : 0,
+          "propio" : 0,
+          "qty" : [
+            5,
+            60
+          ]
+        },
+        "merienda" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : true,
+          "compensacion" : 525,
+          "kcal" : [
+            360
+          ],
+          "kcalDia" : 360,
+          "kcalPlan" : 120,
+          "noAbsorbido" : 285,
+          "propio" : 0,
+          "qty" : [
+            600
+          ]
+        }
+      },
+      "nombre" : "agregados en una comida que hoy no se come: no cuentan"
+    },
+    {
+      "ajustes" : {
+        "almuerzo" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 9.9000000000000004,
+              "cantidad" : 150,
+              "g" : 0.59999999999999998,
+              "gramos" : 150,
+              "kcal" : 51,
+              "nombre" : "Brócoli",
+              "origen" : "base",
+              "p" : 4.2000000000000002,
+              "por100" : {
+                "c" : 6.5999999999999996,
+                "g" : 0.40000000000000002,
+                "kcal" : 34,
+                "p" : 2.7999999999999998
+              },
+              "unidad" : "g"
+            },
+            {
+              "_ts" : 1730000000001,
+              "c" : 5.2000000000000002,
+              "cantidad" : 80,
+              "g" : 0.10000000000000001,
+              "gramos" : 80,
+              "kcal" : 21,
+              "nombre" : "Zapallo \/ Calabaza",
+              "origen" : "base",
+              "p" : 0.80000000000000004,
+              "por100" : {
+                "c" : 6.5,
+                "g" : 0.10000000000000001,
+                "kcal" : 26,
+                "p" : 1
+              },
+              "unidad" : "g"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+            "0" : 180
+          },
+          "compensar" : true,
+          "deltaKcal" : 100,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 1.2,
+              "fat" : 0.29999999999999999,
+              "kcal" : 86,
+              "name" : "Claras",
+              "prot" : 18,
+              "qty" : 5,
+              "unit" : "unidad"
+            },
+            {
+              "carb" : 40,
+              "fat" : 4,
+              "kcal" : 233,
+              "name" : "Avena",
+              "prot" : 10,
+              "qty" : 60,
+              "unit" : "g"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 14,
+              "fat" : 3,
+              "kcal" : 120,
+              "name" : "Yogur",
+              "prot" : 10,
+              "qty" : 200,
+              "unit" : "g"
+            }
+          ],
+          "id" : "merienda",
+          "nombre" : "Merienda",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : -47,
+        "almuerzo" : {
+          "agregados" : [
+            {
+              "carb" : 9.9000000000000004,
+              "fat" : 0.59999999999999998,
+              "kcal" : 51,
+              "prot" : 4.2000000000000002
+            },
+            {
+              "carb" : 5.2000000000000002,
+              "fat" : 0.10000000000000001,
+              "kcal" : 21,
+              "prot" : 0.80000000000000004
+            }
+          ],
+          "ajustada" : true,
+          "compensacion" : 0,
+          "kcal" : [
+            297,
+            293
+          ],
+          "kcalDia" : 662,
+          "kcalPlan" : 525,
+          "noAbsorbido" : 0,
+          "propio" : 137,
+          "qty" : [
+            180,
+            225
+          ]
+        },
+        "desayuno" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : false,
+          "compensacion" : 0,
+          "kcal" : [
+            86,
+            233
+          ],
+          "kcalDia" : 319,
+          "kcalPlan" : 319,
+          "noAbsorbido" : 0,
+          "propio" : 0,
+          "qty" : [
+            5,
+            60
+          ]
+        },
+        "merienda" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : true,
+          "compensacion" : -137,
+          "kcal" : [
+            30
+          ],
+          "kcalDia" : 30,
+          "kcalPlan" : 120,
+          "noAbsorbido" : -47,
+          "propio" : 0,
+          "qty" : [
+            50
+          ]
+        }
+      },
+      "nombre" : "agregado más gramos a mano y kcal sumadas"
+    },
+    {
+      "ajustes" : {
+        "almuerzo" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0,
+              "cantidad" : 10,
+              "g" : 10,
+              "gramos" : 10,
+              "kcal" : 88,
+              "nombre" : "Aceite de oliva",
+              "origen" : "base",
+              "p" : 0,
+              "por100" : {
+                "c" : 0,
+                "g" : 100,
+                "kcal" : 884,
+                "p" : 0
+              },
+              "unidad" : "g"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : false,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 0
+        },
+        "desayuno" : {
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 150,
+          "omitida" : false,
+          "opcion" : 0
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 1.2,
+              "fat" : 0.29999999999999999,
+              "kcal" : 86,
+              "name" : "Claras",
+              "prot" : 18,
+              "qty" : 5,
+              "unit" : "unidad"
+            },
+            {
+              "carb" : 40,
+              "fat" : 4,
+              "kcal" : 233,
+              "name" : "Avena",
+              "prot" : 10,
+              "qty" : 60,
+              "unit" : "g"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 14,
+              "fat" : 3,
+              "kcal" : 120,
+              "name" : "Yogur",
+              "prot" : 10,
+              "qty" : 200,
+              "unit" : "g"
+            }
+          ],
+          "id" : "merienda",
+          "nombre" : "Merienda",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "almuerzo" : {
+          "agregados" : [
+            {
+              "carb" : 0,
+              "fat" : 10,
+              "kcal" : 88,
+              "prot" : 0
+            }
+          ],
+          "ajustada" : true,
+          "compensacion" : -151,
+          "kcal" : [
+            231,
+            143
+          ],
+          "kcalDia" : 462,
+          "kcalPlan" : 525,
+          "noAbsorbido" : 0,
+          "propio" : 88,
+          "qty" : [
+            140,
+            110
+          ]
+        },
+        "desayuno" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : true,
+          "compensacion" : 0,
+          "kcal" : [
+            120,
+            350
+          ],
+          "kcalDia" : 470,
+          "kcalPlan" : 319,
+          "noAbsorbido" : 0,
+          "propio" : 151,
+          "qty" : [
+            7,
+            90
+          ]
+        },
+        "merienda" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : false,
+          "compensacion" : 0,
+          "kcal" : [
+            120
+          ],
+          "kcalDia" : 120,
+          "kcalPlan" : 120,
+          "noAbsorbido" : 0,
+          "propio" : 0,
+          "qty" : [
+            200
+          ]
+        }
+      },
+      "nombre" : "la que recibe tiene un agregado: lo agregado no se achica"
+    },
+    {
+      "ajustes" : {
+        "desayuno" : {
+          "agregados" : [
+            {
+              "_ts" : 1730000000000,
+              "c" : 0.80000000000000004,
+              "cantidad" : 2,
+              "g" : 11.4,
+              "gramos" : 120,
+              "gramosUnidad" : 60,
+              "kcal" : 172,
+              "nombre" : "Huevo entero",
+              "origen" : "base",
+              "p" : 15.1,
+              "por100" : {
+                "c" : 0.69999999999999996,
+                "g" : 9.5,
+                "kcal" : 143,
+                "p" : 12.6
+              },
+              "unidad" : "unidad"
+            }
+          ],
+          "anclas" : {
+
+          },
+          "cantidades" : {
+
+          },
+          "compensar" : true,
+          "deltaKcal" : 0,
+          "omitida" : false,
+          "opcion" : 1
+        }
+      },
+      "comidas" : [
+        {
+          "alimentos" : [
+            {
+              "carb" : 14,
+              "fat" : 3,
+              "kcal" : 120,
+              "name" : "Yogur",
+              "prot" : 10,
+              "qty" : 200,
+              "unit" : "g"
+            }
+          ],
+          "id" : "desayuno",
+          "nombre" : "Desayuno",
+          "opcion" : 1
+        },
+        {
+          "alimentos" : [
+            {
+              "carb" : 0,
+              "fat" : 7,
+              "kcal" : 330,
+              "name" : "Pollo",
+              "prot" : 62,
+              "qty" : 200,
+              "unit" : "g"
+            },
+            {
+              "carb" : 42,
+              "fat" : 0.5,
+              "kcal" : 195,
+              "name" : "Arroz",
+              "prot" : 4,
+              "qty" : 150,
+              "unit" : "g"
+            }
+          ],
+          "id" : "almuerzo",
+          "nombre" : "Almuerzo",
+          "opcion" : 0
+        }
+      ],
+      "esperado" : {
+        "_sinCompensar" : 0,
+        "almuerzo" : {
+          "agregados" : [
+
+          ],
+          "ajustada" : true,
+          "compensacion" : -172,
+          "kcal" : [
+            223,
+            130
+          ],
+          "kcalDia" : 353,
+          "kcalPlan" : 525,
+          "noAbsorbido" : 0,
+          "propio" : 0,
+          "qty" : [
+            135,
+            100
+          ]
+        },
+        "desayuno" : {
+          "agregados" : [
+            {
+              "carb" : 0.80000000000000004,
+              "fat" : 11.4,
+              "kcal" : 172,
+              "prot" : 15.1
+            }
+          ],
+          "ajustada" : true,
+          "compensacion" : 0,
+          "kcal" : [
+            120
+          ],
+          "kcalDia" : 292,
+          "kcalPlan" : 120,
+          "noAbsorbido" : 0,
+          "propio" : 172,
+          "qty" : [
+            200
+          ]
+        }
+      },
+      "nombre" : "cambió de opción: los agregados siguen (no van por posición)"
+    }
+  ],
+  "generado" : "MyPumpKit AgregadosComidaTests (iOS). Android: AgregadosComidaTest.kt lo tiene que dar igual.",
+  "medidas" : [
+    {
+      "candidato" : {
+        "nombre" : "Zapallo \/ Calabaza",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5,
+          "g" : 0.10000000000000001,
+          "kcal" : 26,
+          "p" : 1
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 90,
+          "nombre" : "puño"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 60,
+        "nombre" : "Huevo entero",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 9.5,
+          "kcal" : 143,
+          "p" : 12.6
+        },
+        "unidad" : "unidad"
+      },
+      "inicial" : {
+        "cantidad" : 1,
+        "medida" : {
+          "gramos" : 60,
+          "nombre" : "unidad"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 60,
+          "nombre" : "unidad"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 33,
+        "nombre" : "Clara de huevo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.69999999999999996,
+          "g" : 0.20000000000000001,
+          "kcal" : 52,
+          "p" : 10.9
+        },
+        "unidad" : "unidad"
+      },
+      "inicial" : {
+        "cantidad" : 1,
+        "medida" : {
+          "gramos" : 33,
+          "nombre" : "unidad"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 33,
+          "nombre" : "unidad"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Brócoli",
+        "origen" : "base",
+        "por100" : {
+          "c" : 6.5999999999999996,
+          "g" : 0.40000000000000002,
+          "kcal" : 34,
+          "p" : 2.7999999999999998
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 90,
+          "nombre" : "puño"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cruda)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 2.6000000000000001,
+          "kcal" : 120,
+          "p" : 22.5
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 133,
+          "nombre" : "palma"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Pechuga de pollo (cocida)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 3.6000000000000001,
+          "kcal" : 165,
+          "p" : 31
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 100,
+          "nombre" : "palma"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco cocido",
+        "origen" : "base",
+        "por100" : {
+          "c" : 28.600000000000001,
+          "g" : 0.29999999999999999,
+          "kcal" : 130,
+          "p" : 2.7000000000000002
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 175,
+          "nombre" : "taza"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Arroz blanco crudo",
+        "origen" : "base",
+        "por100" : {
+          "c" : 80,
+          "g" : 0.69999999999999996,
+          "kcal" : 365,
+          "p" : 7.0999999999999996
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 185,
+          "nombre" : "taza en crudo"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Aceite de oliva",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0,
+          "g" : 100,
+          "kcal" : 884,
+          "p" : 0
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 15,
+          "nombre" : "cucharada"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "gramosPorUnidad" : 30,
+        "nombre" : "Pan de molde integral",
+        "origen" : "base",
+        "por100" : {
+          "c" : 41,
+          "g" : 3.5,
+          "kcal" : 247,
+          "p" : 10.699999999999999
+        },
+        "unidad" : "rebanada"
+      },
+      "inicial" : {
+        "cantidad" : 1,
+        "medida" : {
+          "gramos" : 30,
+          "nombre" : "rebanada"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 30,
+          "nombre" : "rebanada"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Leche de almendras (sin azúcar)",
+        "origen" : "base",
+        "por100" : {
+          "c" : 0.59999999999999998,
+          "g" : 1.3999999999999999,
+          "kcal" : 17,
+          "p" : 0.59999999999999998
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 200,
+          "nombre" : "vaso"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Lechuga",
+        "origen" : "base",
+        "por100" : {
+          "c" : 2.8999999999999999,
+          "g" : 0.20000000000000001,
+          "kcal" : 15,
+          "p" : 1.3999999999999999
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Puré de papa",
+        "origen" : "propio",
+        "por100" : {
+          "c" : 15,
+          "g" : 2.5,
+          "kcal" : 88,
+          "p" : 2
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        },
+        {
+          "gramos" : 175,
+          "nombre" : "taza"
+        }
+      ]
+    },
+    {
+      "candidato" : {
+        "nombre" : "Kombucha de jengibre",
+        "origen" : "base",
+        "por100" : {
+          "c" : 5,
+          "g" : 0,
+          "kcal" : 20,
+          "p" : 0
+        }
+      },
+      "inicial" : {
+        "cantidad" : 100,
+        "medida" : {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      },
+      "medidas" : [
+        {
+          "gramos" : 1,
+          "nombre" : "g"
+        }
+      ]
+    }
+  ],
+  "pasos" : [
+    {
+      "acotar" : 1,
+      "bajar" : 1,
+      "cantidad" : 0,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 5
+    },
+    {
+      "acotar" : 0.5,
+      "bajar" : 0.5,
+      "cantidad" : 0,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 0.5
+    },
+    {
+      "acotar" : 1,
+      "bajar" : 1,
+      "cantidad" : 0.29999999999999999,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 5
+    },
+    {
+      "acotar" : 0.5,
+      "bajar" : 0.5,
+      "cantidad" : 0.29999999999999999,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 1
+    },
+    {
+      "acotar" : 1,
+      "bajar" : 1,
+      "cantidad" : 1,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 5
+    },
+    {
+      "acotar" : 1,
+      "bajar" : 0.5,
+      "cantidad" : 1,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 1.5
+    },
+    {
+      "acotar" : 1,
+      "bajar" : 1,
+      "cantidad" : 1.3,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 5
+    },
+    {
+      "acotar" : 1.5,
+      "bajar" : 1,
+      "cantidad" : 1.3,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 2
+    },
+    {
+      "acotar" : 4,
+      "bajar" : 1,
+      "cantidad" : 4,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 5
+    },
+    {
+      "acotar" : 4,
+      "bajar" : 3.5,
+      "cantidad" : 4,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 4.5
+    },
+    {
+      "acotar" : 5,
+      "bajar" : 1,
+      "cantidad" : 5,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 10
+    },
+    {
+      "acotar" : 5,
+      "bajar" : 4.5,
+      "cantidad" : 5,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 5.5
+    },
+    {
+      "acotar" : 19,
+      "bajar" : 15,
+      "cantidad" : 19,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 20
+    },
+    {
+      "acotar" : 19,
+      "bajar" : 18.5,
+      "cantidad" : 19,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 19.5
+    },
+    {
+      "acotar" : 37,
+      "bajar" : 35,
+      "cantidad" : 37,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 40
+    },
+    {
+      "acotar" : 37,
+      "bajar" : 36.5,
+      "cantidad" : 37,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 37.5
+    },
+    {
+      "acotar" : 95,
+      "bajar" : 90,
+      "cantidad" : 95,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 100
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 50,
+      "cantidad" : 95,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    },
+    {
+      "acotar" : 100,
+      "bajar" : 95,
+      "cantidad" : 100,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 110
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 50,
+      "cantidad" : 100,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    },
+    {
+      "acotar" : 105,
+      "bajar" : 100,
+      "cantidad" : 105,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 110
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 50,
+      "cantidad" : 105,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    },
+    {
+      "acotar" : 110,
+      "bajar" : 100,
+      "cantidad" : 110,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 120
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 50,
+      "cantidad" : 110,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    },
+    {
+      "acotar" : 1999,
+      "bajar" : 1990,
+      "cantidad" : 1999,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 2000
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 50,
+      "cantidad" : 1999,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    },
+    {
+      "acotar" : 2000,
+      "bajar" : 1990,
+      "cantidad" : 2000,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 2000
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 50,
+      "cantidad" : 2000,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    },
+    {
+      "acotar" : 2000,
+      "bajar" : 2000,
+      "cantidad" : 2500,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 2000
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 50,
+      "cantidad" : 2500,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 45,
+      "cantidad" : 50,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 55
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 49.5,
+      "cantidad" : 50,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    },
+    {
+      "acotar" : 51,
+      "bajar" : 50,
+      "cantidad" : 51,
+      "medida" : {
+        "gramos" : 1,
+        "nombre" : "g"
+      },
+      "subir" : 55
+    },
+    {
+      "acotar" : 50,
+      "bajar" : 50,
+      "cantidad" : 51,
+      "medida" : {
+        "gramos" : 60,
+        "nombre" : "unidad"
+      },
+      "subir" : 50
+    }
+  ],
+  "tildes" : [
+    {
+      "esperado" : [
+        1,
+        3
+      ],
+      "excluidos" : [
+        1,
+        2,
+        4
+      ],
+      "j" : 0,
+      "n" : 2
+    },
+    {
+      "esperado" : [
+
+      ],
+      "excluidos" : [
+        3
+      ],
+      "j" : 1,
+      "n" : 2
+    },
+    {
+      "esperado" : [
+        0,
+        3
+      ],
+      "excluidos" : [
+        0,
+        4
+      ],
+      "j" : 1,
+      "n" : 2
+    },
+    {
+      "esperado" : [
+        0,
+        1,
+        2
+      ],
+      "excluidos" : [
+        0,
+        1,
+        2,
+        3
+      ],
+      "j" : 2,
+      "n" : 1
+    },
+    {
+      "esperado" : [
+
+      ],
+      "excluidos" : [
+
+      ],
+      "j" : 0,
+      "n" : 3
+    }
+  ]
+}

@@ -377,6 +377,165 @@ final class DietaUITests: XCTestCase {
         XCTAssertFalse(tilde.waitForExistence(timeout: 2), "Sin «Comí» quedaron los tildes")
     }
 
+    // MARK: - Agregar alimentos y cantidades a la vista (2.0.3, D1 y D2)
+
+    /// Las kcal de la hoja de cantidad: el valor empieza con el número («21 kcal»).
+    private var kcalDeCantidad: Int {
+        let e = app.descendants(matching: .any)["cantidad-kcal"].firstMatch
+        return Int(((e.value as? String) ?? "").prefix { $0 != " " }.filter(\.isNumber)) ?? -1
+    }
+
+    private func abrirAgregar(_ comidaId: String) {
+        let boton = app.buttons["agregar-\(comidaId)"]
+        for _ in 0..<15 where !boton.exists { app.swipeUp() }
+        XCTAssertTrue(boton.waitForExistence(timeout: 5), "No está «Agregar alimento» en la comida")
+        aLaVista(boton)
+        boton.tap()
+        XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5), "No se abrió la hoja de agregar")
+    }
+
+    /// D1 (el pedido: «comí 80 g de puré de zapallo y no lo pude cargar»): se busca en la base, se eligen los gramos con
+    /// las kcal en vivo y queda en la misma comida, que sube y lo dice; el «+» de los recientes lo suma de un toque; sobrevive
+    /// a reabrir la app; con «Comí» tiene su tilde; se saca desde su hoja y «Volver al plan» saca todo.
+    func testAgregarUnAlimentoALaComidaConSusGramos() throws {
+        let comidaId = primeraComida()
+        sinAjusteEn(comidaId)
+        sinMarcaEn(comidaId)
+        abrirAgregar(comidaId)
+        app.searchFields.firstMatch.tap()
+        app.searchFields.firstMatch.typeText("zapallo")
+        let resultado = app.buttons.matching(identifier: "agregar-alimento").firstMatch
+        XCTAssertTrue(resultado.waitForExistence(timeout: 5), "La búsqueda no encontró el zapallo")
+        XCTAssertTrue(resultado.label.contains("Zapallo"), resultado.label)
+        adjuntarCaptura("agregar-busqueda")
+        resultado.tap()
+
+        let campo = app.textFields["cantidad-campo"]
+        XCTAssertTrue(campo.waitForExistence(timeout: 5), "No se abrió la hoja de cantidad")
+        XCTAssertEqual(campo.value as? String, "100")
+        XCTAssertEqual(kcalDeCantidad, 26)
+        for _ in 0..<4 { app.buttons["cantidad-menos"].tap() }
+        XCTAssertEqual(campo.value as? String, "80")
+        XCTAssertEqual(kcalDeCantidad, 21, "Las kcal no se recalcularon en vivo")
+        let medidas = app.segmentedControls["cantidad-medida"]
+        XCTAssertTrue(medidas.exists && medidas.buttons.count == 2, "Sin la medida casera (puño)")
+        adjuntarCaptura("agregar-cantidad")
+        app.buttons["cantidad-confirmar"].tap()
+
+        let fila = app.buttons["agregado-\(comidaId)-0"]
+        XCTAssertTrue(fila.waitForExistence(timeout: 5), "El zapallo no quedó en la comida")
+        XCTAssertTrue(fila.label.contains("80 g"), fila.label)
+        XCTAssertTrue(aviso(comidaId).waitForExistence(timeout: 5))
+        XCTAssertTrue(aviso(comidaId).label.contains("+21 kcal"), aviso(comidaId).label)
+        aLaVista(fila)
+        adjuntarCaptura("agregado-en-la-comida")
+
+        // El «+» de los recientes: el mismo, de un toque.
+        abrirAgregar(comidaId)
+        let mas = app.buttons["reciente-agregar-0"]
+        XCTAssertTrue(mas.waitForExistence(timeout: 3), "No está el zapallo en los recientes")
+        mas.tap()
+        XCTAssertTrue(app.buttons["agregado-\(comidaId)-1"].waitForExistence(timeout: 5), "El «+» de un toque no lo agregó")
+        XCTAssertTrue(aviso(comidaId).label.contains("+42 kcal"), aviso(comidaId).label)
+
+        // Sobrevive a cerrar y abrir la app (quedó en disco y en la cola).
+        app.terminate()
+        app.launch()
+        _ = primeraComida()
+        let segundo = app.buttons["agregado-\(comidaId)-1"]
+        for _ in 0..<15 where !segundo.exists { app.swipeUp() }
+        XCTAssertTrue(segundo.waitForExistence(timeout: 5), "Los agregados no sobrevivieron a reabrir la app")
+
+        // «Comí» los cuenta y tienen su tilde (después de los del plan).
+        esperar(tocar("comi-\(comidaId)"), seleccionado: true, "«Comí» no quedó marcado")
+        let tildes = app.switches.matching(NSPredicate(format: "identifier BEGINSWITH %@", "comido-\(comidaId)-"))
+        XCTAssertTrue(tildes.firstMatch.waitForExistence(timeout: 5))
+        let n = tildes.count
+        XCTAssertTrue(app.switches["comido-\(comidaId)-\(n - 1)"].exists, "El agregado no tiene tilde")
+        let conTodo = consumidoAhora()
+        _ = tocar("comido-\(comidaId)-\(n - 1)")
+        XCTAssertEqual(consumidoAhora(), conTodo - 21, "Destildar el agregado no descontó sus kcal")
+        esperar(tocar("comi-\(comidaId)"), seleccionado: false, "No se desmarcó")
+
+        // Se saca desde su hoja.
+        aLaVista(segundo)
+        segundo.tap()
+        let borrar = app.buttons["cantidad-borrar"]
+        for _ in 0..<6 where !borrar.isHittable { app.swipeUp(velocity: .slow) }
+        borrar.tap()
+        XCTAssertTrue(segundo.waitForNonExistence(timeout: 5), "No se sacó el agregado")
+        XCTAssertTrue(app.buttons["agregado-\(comidaId)-0"].exists)
+
+        // «Volver al plan» también los saca.
+        sinAjusteEn(comidaId)
+        XCTAssertFalse(app.buttons["agregado-\(comidaId)-0"].exists, "«Volver al plan» dejó el agregado")
+    }
+
+    /// D2: la cantidad de un alimento del plan se toca en la misma fila, se cambia con las kcal en vivo, queda a mano (la
+    /// comida lo dice) y «Como el plan» la devuelve.
+    func testTocarLaCantidadDeUnAlimentoDelPlan() throws {
+        let comidaId = primeraComida()
+        sinAjusteEn(comidaId)
+        let pildora = app.buttons["cantidad-\(comidaId)-0"]
+        for _ in 0..<15 where !pildora.exists { app.swipeUp() }
+        XCTAssertTrue(pildora.waitForExistence(timeout: 5), "La cantidad no se puede tocar en la fila")
+        let antes = pildora.label
+        aLaVista(pildora)
+        pildora.tap()
+        let campo = app.textFields["cantidad-campo"]
+        XCTAssertTrue(campo.waitForExistence(timeout: 5), "No se abrió la hoja de cantidad")
+        let kcal0 = kcalDeCantidad
+        app.buttons["cantidad-mas"].tap()
+        app.buttons["cantidad-mas"].tap()
+        XCTAssertGreaterThan(kcalDeCantidad, kcal0, "Las kcal no subieron en vivo")
+        adjuntarCaptura("cantidad-del-plan")
+        app.buttons["cantidad-confirmar"].tap()
+        XCTAssertTrue(aviso(comidaId).waitForExistence(timeout: 5), "La comida no muestra el ajuste")
+        XCTAssertNotEqual(pildora.label, antes, "La fila no muestra la cantidad nueva")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "En el plan:")).firstMatch.exists)
+        aLaVista(pildora)
+        adjuntarCaptura("cantidad-en-la-fila")
+
+        pildora.tap()
+        let comoPlan = app.buttons["cantidad-como-plan"]
+        for _ in 0..<6 where !comoPlan.isHittable { app.swipeUp(velocity: .slow) }
+        XCTAssertTrue(comoPlan.exists, "Sin «Como el plan» con la cantidad a mano")
+        comoPlan.tap()
+        XCTAssertTrue(aviso(comidaId).waitForNonExistence(timeout: 5), "«Como el plan» no sacó la cantidad a mano")
+        XCTAssertEqual(pildora.label, antes)
+    }
+
+    /// Las pantallas nuevas en oscuro (el tema de la app, como «consumido-oscuro») y «Salté» sin «Agregar alimento»
+    /// (revisión del 3-nov: en una comida salteada no tiene sentido sumarle algo).
+    func testAgregarEnOscuroYSalteOcultaAgregar() throws {
+        app.terminate()
+        app.launchArguments += ["-mypump-theme", "dark"]
+        app.launch()
+        let comidaId = primeraComida()
+        sinAjusteEn(comidaId)
+        sinMarcaEn(comidaId)
+        abrirAgregar(comidaId)
+        adjuntarCaptura("agregar-oscuro")
+        app.searchFields.firstMatch.tap()
+        app.searchFields.firstMatch.typeText("zapallo")
+        let resultado = app.buttons.matching(identifier: "agregar-alimento").firstMatch
+        XCTAssertTrue(resultado.waitForExistence(timeout: 5))
+        resultado.tap()
+        XCTAssertTrue(app.textFields["cantidad-campo"].waitForExistence(timeout: 5))
+        adjuntarCaptura("cantidad-oscuro")
+        app.buttons["cantidad-confirmar"].tap()
+        let fila = app.buttons["agregado-\(comidaId)-0"]
+        XCTAssertTrue(fila.waitForExistence(timeout: 5))
+        aLaVista(fila)
+        adjuntarCaptura("agregado-oscuro")
+
+        esperar(tocar("salte-\(comidaId)"), seleccionado: true, "«Salté» no quedó marcado")
+        XCTAssertTrue(app.buttons["agregar-\(comidaId)"].waitForNonExistence(timeout: 5), "«Agregar alimento» sigue en una comida salteada")
+        esperar(tocar("salte-\(comidaId)"), seleccionado: false, "No se desmarcó «Salté»")
+        XCTAssertTrue(app.buttons["agregar-\(comidaId)"].waitForExistence(timeout: 5))
+        sinAjusteEn(comidaId)
+    }
+
     private func esperarQuieto(_ e: XCUIElement) {
         var antes = e.frame
         var iguales = 0

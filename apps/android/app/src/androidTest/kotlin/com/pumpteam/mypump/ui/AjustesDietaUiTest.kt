@@ -171,4 +171,174 @@ class AjustesDietaUiTest : PruebaUi() {
         assertEquals(comido, p.estado(etiqueta("consumido-kcal")))
         assertTrue(p.seleccionado(etiqueta("comi-c1")))
     }
+
+    // ── 2.0.3: agregar un alimento a la comida (D1) y tocar la cantidad en la fila (D2) ──
+
+    /** Las kcal de la hoja de cantidad: «21 kcal». */
+    private fun kcalCantidad(): Int = p.textosBajo(etiqueta("cantidad-kcal")).first().filter(Char::isDigit).toInt()
+
+    private fun campoCantidad(): String? = p.textosBajo(etiqueta("cantidad-campo")).firstOrNull { it.firstOrNull()?.isDigit() == true }
+
+    /**
+     * D1 (el pedido: «comí 80 g de puré de zapallo y no lo pude cargar»): se busca en la base, se eligen los gramos con las
+     * kcal en vivo y queda en la misma comida, que sube y lo dice; sale por la cola dentro del ajuste (y en el resumen); el
+     * «+» de los recientes lo suma de un toque; sobrevive a reabrir; con «Comí» tiene su tilde; se saca desde su hoja y
+     * «Volver al plan» saca todo. Gemela de testAgregarUnAlimentoALaComidaConSusGramos de iOS.
+     */
+    @Test
+    fun agregarUnAlimentoALaComidaConSusGramos() {
+        guardarCuenta()
+        abrir().also {
+            irADieta()
+            p.tocar(etiqueta("agregar-c1"))
+            p.nodo(etiqueta("hoja-agregar"))
+            p.escribir(etiqueta("buscar-agregar"), "zapallo")
+            p.nodo(texto("Zapallo / Calabaza"))
+            Telefono.captura("60-agregar-busqueda-claro")
+            p.tocar(texto("Zapallo / Calabaza"))
+            p.nodo(etiqueta("cantidad-campo"))
+            assertEquals("100", campoCantidad())
+            assertEquals(26, kcalCantidad())
+            repeat(4) { p.tocar(etiqueta("cantidad-menos")) }
+            p.esperar("80 g") { campoCantidad() == "80" }
+            assertEquals("las kcal en vivo", 21, kcalCantidad())
+            assertTrue("la medida casera", p.existe(etiqueta("cantidad-medida-1")))
+            assertTrue(p.prendido(etiqueta("cantidad-compensar")))
+            Telefono.captura("61-agregar-cantidad-claro")
+            assertEquals(listOf("Agregar al Desayuno"), p.textosBajo(etiqueta("cantidad-confirmar")))
+            p.tocar(etiqueta("cantidad-confirmar"))
+            p.esperarQueNoEste(etiqueta("hoja-agregar"))
+
+            p.nodo(etiqueta("agregado-c1-0"))
+            assertEquals(listOf("Cantidad de Zapallo / Calabaza: 80 g"), p.textosBajo(etiqueta("agregado-c1-0")))
+            p.esperar("el aviso del desayuno") { p.textosBajo(etiqueta("ajuste-aviso-c1")).any { it.startsWith("Ajustada: +21 kcal") } }
+            assertTrue(p.textosBajo(etiqueta("resumen-c1")).single().endsWith(" + 1 agregado"))
+            val g = ultimoGuardado()
+            val ag = g.getJSONObject("p_ajustes").getJSONObject("c1").getJSONArray("agregados")
+            assertEquals(1, ag.length())
+            assertEquals("Zapallo / Calabaza", ag.getJSONObject(0).getString("nombre"))
+            assertEquals(80.0, ag.getJSONObject(0).getDouble("gramos"), 0.01)
+            assertEquals("base", ag.getJSONObject(0).getString("origen"))
+            val fila = (0 until g.getJSONArray("p_resumen").length()).map { g.getJSONArray("p_resumen").getJSONObject(it) }.first { it.optString("comida_id") == "c1" }
+            assertEquals(1, fila.getJSONArray("agregados").length())
+            Telefono.captura("62-agregado-en-la-comida-claro")
+
+            // El «+» de los recientes: el mismo, de un toque.
+            p.tocar(etiqueta("agregar-c1"))
+            p.nodo(etiqueta("hoja-agregar"))
+            p.tocar(etiqueta("reciente-agregar-0"))
+            p.esperarQueNoEste(etiqueta("hoja-agregar"))
+            p.nodo(etiqueta("agregado-c1-1"))
+            p.esperar("+42") { p.textosBajo(etiqueta("ajuste-aviso-c1")).any { it.startsWith("Ajustada: +42 kcal") } }
+            p.esperar("los dos en el servidor") { ajusteDelDesayuno()?.optJSONArray("agregados")?.length() == 2 }
+            Unit
+        }.close()
+
+        // Al abrir de nuevo siguen (quedaron en el teléfono).
+        abrir()
+        irADieta()
+        p.nodo(etiqueta("agregado-c1-1"))
+        // «Comí» los cuenta y tienen su tilde, después de los del plan.
+        val n = p.textosBajo(etiqueta("resumen-c1")).single().substringAfter("· ").substringBefore(" ").toInt()
+        val antes = p.estado(etiqueta("consumido-kcal"))
+        p.tocar(etiqueta("comi-c1"))
+        p.esperar("sumó el desayuno") { p.estado(etiqueta("consumido-kcal")) != antes }
+        val conTodo = p.estado(etiqueta("consumido-kcal"))!!.substringBefore(" de").filter(Char::isDigit).toInt()
+        assertTrue(p.prendido(etiqueta("comido-c1-${n + 1}")))
+        p.tocar(etiqueta("comido-c1-${n + 1}"))
+        p.esperar("destildado") { !p.prendido(etiqueta("comido-c1-${n + 1}")) }
+        val sinEse = p.estado(etiqueta("consumido-kcal"))!!.substringBefore(" de").filter(Char::isDigit).toInt()
+        assertEquals("destildar el agregado descuenta sus kcal", conTodo - 21, sinEse)
+        p.tocar(etiqueta("comi-c1"))
+        p.esperar("desmarcada") { !p.seleccionado(etiqueta("comi-c1")) }
+
+        // Se saca desde su hoja.
+        p.tocar(etiqueta("agregado-c1-1"))
+        p.nodo(etiqueta("hoja-cantidad"))
+        p.tocar(etiqueta("cantidad-borrar"))
+        p.esperarQueNoEste(etiqueta("hoja-cantidad"))
+        p.esperarQueNoEste(etiqueta("agregado-c1-1"))
+        p.nodo(etiqueta("agregado-c1-0"))
+
+        // «Volver al plan» también los saca.
+        p.tocar(etiqueta("ajustar-c1"))
+        p.nodo(etiqueta("hoja-ajuste"))
+        p.nodo(etiqueta("ajuste-agregados"))
+        p.tocar(etiqueta("ajuste-volver-plan"))
+        p.esperarQueNoEste(etiqueta("hoja-ajuste"))
+        p.esperarQueNoEste(etiqueta("agregado-c1-0"))
+        p.esperar("volvió al plan en el servidor") { ultimoGuardado().getJSONObject("p_ajustes").length() == 0 }
+    }
+
+    /**
+     * D2: la cantidad de un alimento del plan se toca en la fila, se cambia con las kcal en vivo, queda a mano (la comida lo
+     * dice y sale en `cantidades`) y «Como el plan» la devuelve. Gemela de testTocarLaCantidadDeUnAlimentoDelPlan de iOS.
+     */
+    @Test
+    fun tocarLaCantidadDeUnAlimentoDelPlan() {
+        guardarCuenta()
+        abrir()
+        irADieta()
+        val antes = p.textosBajo(etiqueta("cantidad-c1-0")).single()
+        p.tocar(etiqueta("cantidad-c1-0"))
+        p.nodo(etiqueta("hoja-cantidad"))
+        val kcal0 = kcalCantidad()
+        p.tocar(etiqueta("cantidad-mas"))
+        p.tocar(etiqueta("cantidad-mas"))
+        p.esperar("las kcal suben en vivo") { kcalCantidad() > kcal0 }
+        assertTrue(p.textosBajo(etiqueta("cantidad-lista")).any { it.startsWith("En el plan: ") })
+        Telefono.captura("63-cantidad-del-plan-claro")
+        assertEquals(listOf("Listo"), p.textosBajo(etiqueta("cantidad-confirmar")))
+        p.tocar(etiqueta("cantidad-confirmar"))
+        p.esperarQueNoEste(etiqueta("hoja-cantidad"))
+        p.nodo(etiqueta("ajuste-aviso-c1"))
+        p.esperar("la fila con la cantidad nueva") { p.textosBajo(etiqueta("cantidad-c1-0")).single() != antes }
+        assertTrue(p.textosBajo(etiqueta("alimento-c1-0")).any { it.startsWith("En el plan: ") })
+        p.esperar("a mano en el servidor") { ajusteDelDesayuno()?.optJSONObject("cantidades")?.has("0") == true }
+
+        p.tocar(etiqueta("cantidad-c1-0"))
+        p.nodo(etiqueta("hoja-cantidad"))
+        p.tocar(etiqueta("cantidad-como-plan"))
+        p.esperarQueNoEste(etiqueta("hoja-cantidad"))
+        p.esperarQueNoEste(etiqueta("ajuste-aviso-c1"))
+        assertEquals(antes, p.textosBajo(etiqueta("cantidad-c1-0")).single())
+        p.esperar("como el plan en el servidor") { ultimoGuardado().getJSONObject("p_ajustes").length() == 0 }
+    }
+
+    /** Las pantallas nuevas en oscuro y «Salté» sin «Agregar alimento» (revisión del 3-nov). */
+    @Test
+    fun agregarEnOscuroYSalteOcultaAgregar() {
+        Telefono.modoNoche(true)
+        try {
+            guardarCuenta()
+            abrir()
+            irADieta()
+            p.tocar(etiqueta("agregar-c1"))
+            p.nodo(etiqueta("hoja-agregar"))
+            p.escribir(etiqueta("buscar-agregar"), "zapallo")
+            p.nodo(texto("Zapallo / Calabaza"))
+            Telefono.captura("64-agregar-busqueda-oscuro")
+            p.tocar(texto("Zapallo / Calabaza"))
+            p.nodo(etiqueta("cantidad-kcal"))
+            Telefono.captura("65-agregar-cantidad-oscuro")
+            p.tocar(etiqueta("cantidad-confirmar"))
+            p.esperarQueNoEste(etiqueta("hoja-agregar"))
+            p.nodo(etiqueta("agregado-c1-0"))
+            Telefono.captura("66-agregado-en-la-comida-oscuro")
+            p.tocar(etiqueta("agregado-c1-0"))
+            p.nodo(etiqueta("hoja-cantidad"))
+            Telefono.captura("67-agregado-cantidad-oscuro")
+            p.tocar(etiqueta("cantidad-cancelar"))
+            p.esperarQueNoEste(etiqueta("hoja-cantidad"))
+
+            p.tocar(etiqueta("salte-c1"))
+            p.esperar("salteada") { p.seleccionado(etiqueta("salte-c1")) }
+            p.esperarQueNoEste(etiqueta("agregar-c1"))
+            p.tocar(etiqueta("salte-c1"))
+            p.esperar("desmarcada") { !p.seleccionado(etiqueta("salte-c1")) }
+            p.nodo(etiqueta("agregar-c1"))
+        } finally {
+            Telefono.modoNoche(false)
+        }
+    }
 }

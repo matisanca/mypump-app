@@ -40,12 +40,12 @@ class DietaUiTest : PruebaUi() {
         // DIE-04: opción A por defecto, con sus alimentos.
         assertEquals(listOf("Opción A · 3 alimentos"), p.textosBajo(etiqueta("resumen-c1")))
         assertTrue(p.seleccionado(etiqueta("opcion-c1-0")))
-        assertEquals(listOf("Avena en copos", "100 g · 380 kcal", "P 13  ·  C 67  ·  G 7"), p.textosBajo(etiqueta("alimento-c1-0")))
+        assertEquals(listOf("Avena en copos", "Cantidad de Avena en copos: 100 g", "380 kcal", "P 13  ·  C 67  ·  G 7"), p.textosBajo(etiqueta("alimento-c1-0")))
         // La B del desayuno: cambian los alimentos, el total de la comida y lo que suman las elegidas (−10 %).
         p.tocar(etiqueta("opcion-c1-1"))
         p.esperar("opción B") { p.textosBajo(etiqueta("resumen-c1")) == listOf("Opción B · 3 alimentos") }
-        assertEquals(listOf("Pan integral", "80 g · 200 kcal", "P 8  ·  C 38  ·  G 2"), p.textosBajo(etiqueta("alimento-c1-0")))
-        assertEquals("0,5 u · 160 kcal", p.textosBajo(etiqueta("alimento-c1-2"))[1])
+        assertEquals(listOf("Pan integral", "Cantidad de Pan integral: 80 g", "200 kcal", "P 8  ·  C 38  ·  G 2"), p.textosBajo(etiqueta("alimento-c1-0")))
+        assertEquals(listOf("Cantidad de Palta: 0,5 u", "160 kcal"), p.textosBajo(etiqueta("alimento-c1-2")).subList(1, 3))
         p.nodo(texto("468"))
         p.nodo(texto("Con las opciones elegidas: 2.203 kcal (-10 %)"))
         // La elegida sigue al ir a otra pestaña y volver (vive en memoria, como en la web).

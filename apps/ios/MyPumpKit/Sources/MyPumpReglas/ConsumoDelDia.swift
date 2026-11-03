@@ -89,7 +89,8 @@ public enum ConsumoDelDia {
 
     /// Lo comido hoy.
     /// - Las marcadas «Comí» con la opción de la marca, con sus reemplazos (`efectivo`) y, si hoy hay ajustes, con las
-    ///   porciones de hoy (lo que le pasan las anteriores incluido), menos los alimentos que destildó.
+    ///   porciones de hoy (lo que le pasan las anteriores incluido) y los alimentos agregados (2.0.3), menos los que
+    ///   destildó (los agregados se tildan como n + j, después de los n del plan).
     /// - «Salté» no suma. Las que hoy no come no suman ni cuentan entre las comidas, aunque tengan marca (la web no conoce
     ///   los ajustes: ahí cuentan).
     /// - Más las comidas libres del día.
@@ -114,7 +115,9 @@ public enum ConsumoDelDia {
             guard m.estado == .comido else { t.salteadas += 1; continue }
             t.hechas += 1
             let excluidos = Set(m.excluidos)
-            for (i, a) in (ajustadas[c.id]?.alimentos ?? c.alimentos).enumerated() where !excluidos.contains(i) {
+            // Los agregados (D1) van después de los del plan: sus tildes son n + j.
+            let todos = (ajustadas[c.id]?.alimentos ?? c.alimentos) + (ajustadas[c.id]?.agregados ?? [])
+            for (i, a) in todos.enumerated() where !excluidos.contains(i) {
                 t.kcal += a.kcal ?? 0
                 t.prot += a.prot ?? 0
                 t.carb += a.carb ?? 0

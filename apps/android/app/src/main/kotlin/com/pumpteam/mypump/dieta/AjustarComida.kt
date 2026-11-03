@@ -228,6 +228,34 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
                     }
                 }
             }
+            if (!borrador.omitida && r.agregados.isNotEmpty()) {
+                item(key = "agregados") {
+                    Column(Modifier.widthIn(max = 640.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("AGREGADOS", style = Letras.ceja, color = c.textoSecundario, modifier = Modifier.padding(horizontal = Espacio.m))
+                        Tarjeta(espaciado = 0.dp, relleno = 0.dp, modifier = Modifier.testTag("ajuste-agregados")) {
+                            r.agregados.forEachIndexed { j, a ->
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = Espacio.m, vertical = 12.dp).semantics(mergeDescendants = true) {},
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(a.nombre, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                    Text(
+                                        "${FormatoDieta.cantidad(a.qty, a.unidad)} · ${Formato.miles(a.kcal)} kcal",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                                        color = c.textoSecundario,
+                                    )
+                                }
+                                if (j < r.agregados.size - 1) Separador(Modifier.padding(start = Espacio.m))
+                            }
+                        }
+                        Text(
+                            "Se cambian o se sacan tocándolos en la comida. Cuentan en las kcal de esta comida y en lo que se compensa.",
+                            style = Letras.caption, color = c.textoSecundario, modifier = Modifier.padding(horizontal = Espacio.m),
+                        )
+                    }
+                }
+            }
             item(key = "pie") {
                 Column(Modifier.widthIn(max = 640.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(horizontal = Espacio.m)) {
@@ -246,6 +274,12 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("Volver al plan", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = c.peligro)
+                        }
+                        if (borrador.agregados.isNotEmpty()) {
+                            Text(
+                                "«Volver al plan» también saca los alimentos que agregaste.",
+                                style = Letras.caption, color = c.textoSecundario, modifier = Modifier.padding(horizontal = Espacio.m),
+                            )
                         }
                     }
                 }
@@ -269,7 +303,7 @@ private val SaverAjuste = Saver<AjusteComida, String>(
 private fun ResumenAjuste(r: AjustePorciones.ComidaAjustada, comida: AjustePorciones.ComidaDelDia, dia: Map<String, AjustePorciones.ComidaAjustada>, modifier: Modifier) {
     val c = MyPump.colores
     val diferencia = r.kcal - r.kcalPlan
-    val hoy = ModeloApp.sumar(r.alimentos)
+    val hoy = ModeloApp.sumar(r.todos)
     val plan = ModeloApp.sumar(comida.alimentos)
     val diaHoy = dia.values.sumOf { it.kcal }
     val diaPlan = dia.values.sumOf { it.kcalPlan }
@@ -487,7 +521,7 @@ private fun FilaAlimentoAjuste(i: Int, plan: Alimento, hoy: Alimento, borrador: 
 
 /** − o + de un alimento: 48 dp de toque. */
 @Composable
-private fun BotonPaso(icono: ImageVector, descripcion: String, etiqueta: String, habilitado: Boolean, accion: () -> Unit) {
+internal fun BotonPaso(icono: ImageVector, descripcion: String, etiqueta: String, habilitado: Boolean, accion: () -> Unit) {
     val c = MyPump.colores
     Repetible(habilitado, descripcion, etiqueta, accion) { apretado ->
         Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
@@ -549,7 +583,7 @@ private fun Repetible(habilitado: Boolean, descripcion: String, etiqueta: String
 
 /** Una fila con un interruptor: toda la fila lo cambia (y es lo que anuncia TalkBack). */
 @Composable
-private fun FilaInterruptor(titulo: String, detalle: String, prendido: Boolean, etiqueta: String, alCambiar: (Boolean) -> Unit) {
+internal fun FilaInterruptor(titulo: String, detalle: String, prendido: Boolean, etiqueta: String, alCambiar: (Boolean) -> Unit) {
     val c = MyPump.colores
     Row(
         Modifier

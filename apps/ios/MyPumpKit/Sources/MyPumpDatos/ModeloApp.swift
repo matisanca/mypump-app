@@ -50,12 +50,18 @@ public final class ModeloApp {
     /// Los ajustes de porciones del día, por comida (feedback del 20-oct): ver AjustesDieta.swift. Solo valen el día de
     /// `fechaAjustes` (`ajustesDeHoy`).
     public internal(set) var ajustes: [String: AjusteComida] = [:]
+    /// Los ajustes de hoy no se pudieron guardar en el servidor (la base los rechazó o se abandonaron): quedan en el
+    /// teléfono, la hidratación no los pisa y Dieta lo avisa. Se baja cuando sale el día de nuevo (AjustesDieta.swift).
+    public internal(set) var ajustesSinGuardar = false
     @ObservationIgnored var fechaAjustes = ""
     /// Las opciones que se vieron por última vez en Dieta: el resumen que va al servidor las usa aunque el cambio venga de
     /// otro lado (un reemplazo, la hidratación).
     @ObservationIgnored var opcionesVistas: [String: Int] = [:]
     /// Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor).
     @ObservationIgnored var ordenAjustes = 0
+    /// Los últimos alimentos agregados a una comida (2.0.3, D1), con su cantidad: «Recientes» de la hoja de agregar. Solo
+    /// en el teléfono (AgregadosDieta.swift).
+    public internal(set) var agregadosRecientes: [AlimentoAgregado] = []
     /// «Comí» / «Salté» de hoy, por comida (D25): ver MarcasComidas.swift. Solo valen el día de `fechaMarcas`.
     public internal(set) var marcas: [String: MarcaComida] = [:]
     @ObservationIgnored var fechaMarcas = ""
@@ -284,6 +290,7 @@ public final class ModeloApp {
 
     /// Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…".
     private func alGuardar(_ ops: [OpGuardada]) {
+        for g in ops where g.op.kind == Self.kindAjustes { ajusteGuardado(g.op) }
         for g in ops where g.op.kind == "chat" {
             if let texto = g.op.payload["contenido"]?.comoTexto, let id = g.respuesta.comoTexto { chat?.confirmar(contenido: texto, id: id) }
         }
@@ -292,6 +299,7 @@ public final class ModeloApp {
     /// Lo que la cola abandonó (va a fallidos, no se borra). Un mensaje del chat se marca en su burbuja para
     /// reintentarlo ("no salió → Reintentar"), como `marcarChatFallido` de la web.
     private func alAbandonar(_ ops: [Operacion]) {
+        for op in ops where op.kind == Self.kindAjustes { ajusteAbandonado(op) }
         for op in ops where op.kind == "chat" {
             if let texto = op.payload["contenido"]?.comoTexto { chat?.marcarFallido(contenido: texto) }
         }
