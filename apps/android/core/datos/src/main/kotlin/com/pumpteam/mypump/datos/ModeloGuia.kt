@@ -72,6 +72,9 @@ class ModeloGuia(
         data class Rechazada(override val video: String?, val texto: String) : AvisoDuda
     }
 
+    /** Las dudas en audio para la videollamada (`entregas_019`): ver [ModeloAudioDudas]. */
+    val audios = ModeloAudioDudas(cliente, token, outbox, disco, alcance, esDemo)
+
     private val _guia = MutableStateFlow<Guia?>(null)
 
     /** La guía con lo del teléfono encima (lo visto que todavía no salió). */
@@ -326,6 +329,7 @@ class ModeloGuia(
 
     /** Lo que el servidor guardó (lo pasa [ModeloApp] desde la cola). */
     fun alGuardar(ops: List<OpGuardada>) {
+        audios.alGuardar(ops)
         val nuestras = ops.filter { it.op.kind == KIND_DUDA || it.op.kind == KIND_DUDA_LLAMADA }
         if (nuestras.isEmpty()) return
         alcance.launch {
@@ -338,6 +342,7 @@ class ModeloGuia(
 
     /** Lo que la cola abandonó tras 8 intentos (va a fallidos): la duda vuelve al campo. */
     fun alAbandonar(ops: List<Operacion>) {
+        audios.alAbandonar(ops)
         val nuestras = ops.filter { it.kind == KIND_DUDA || it.kind == KIND_DUDA_LLAMADA }
         if (nuestras.isEmpty()) return
         alcance.launch { for (op in nuestras) resolver(op, false) }

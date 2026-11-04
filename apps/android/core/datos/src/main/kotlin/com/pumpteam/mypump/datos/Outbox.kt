@@ -572,9 +572,10 @@ class Outbox(
         /**
          * Kinds que no muestran avisos ("guardando", "sin conexión", "no se guardó"): las sustituciones de ejercicio
          * (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
-         * El avance de «Tu guía» sale solo cada 10 s mientras corre un video: tampoco avisa.
+         * El avance de «Tu guía» sale solo cada 10 s mientras corre un video: tampoco avisa. Los audios de la guía tienen su
+         * propio estado al lado del botón («Mandando tu audio…», «No se pudo mandar»): el aviso general lo repetiría.
          */
-        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND, ModeloGuia.KIND_AVANCE)
+        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND, ModeloGuia.KIND_AVANCE, ModeloAudioDudas.KIND)
 
         /** Kinds que se anotan como [Operacion.intentada] antes de salir: el chat, que antes de reintentar mira si ya había llegado. */
         val ANOTAN_INTENTO: Set<String> = setOf("chat")

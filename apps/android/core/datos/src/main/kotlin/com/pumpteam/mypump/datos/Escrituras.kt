@@ -233,6 +233,8 @@ class Escrituras(
             ModeloGuia.KIND_DUDA_LLAMADA -> ResultadoOp.Respuesta(
                 cliente.llamar("entregas_app_llamada_duda", mapOf("p_token" to t, "p_texto" to de(p, "texto")) + idDeDuda(p)),
             )
+            // Un audio para la videollamada (`entregas_019`): iniciar, subir y subido (ver [EnvioAudioDuda]).
+            ModeloAudioDudas.KIND -> ResultadoOp.Respuesta(EnvioAudioDuda(cliente, token).ejecutar(p))
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
         }
@@ -315,7 +317,7 @@ class Escrituras(
             return if (UUID.matches(id)) mapOf("p_id" to ValorJson.Texto(id)) else emptyMap()
         }
 
-        val KINDS_GUIA: Set<String> = setOf(ModeloGuia.KIND_AVANCE, ModeloGuia.KIND_DUDA, ModeloGuia.KIND_DUDA_LLAMADA)
+        val KINDS_GUIA: Set<String> = setOf(ModeloGuia.KIND_AVANCE, ModeloGuia.KIND_DUDA, ModeloGuia.KIND_DUDA_LLAMADA, ModeloAudioDudas.KIND)
 
         /**
          * `valor === null ? 'null' : String(valor)` de la web (`setHabito`): null → "null", true → "true", 12 → "12".
