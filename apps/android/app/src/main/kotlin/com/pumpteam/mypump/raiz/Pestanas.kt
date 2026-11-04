@@ -122,7 +122,9 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     }
     val enMisDatos = navegacion.pestana == Pestana.REVISION && navegacion.misDatos
     val enGuia = navegacion.pestana == Pestana.ENTRENO && navegacion.guia
+    val enGuiaDeMisDatos = enMisDatos && navegacion.guiaEnMisDatos
     BackHandler(enabled = enMisDatos) { navegacion.misDatos = false }
+    BackHandler(enabled = enGuiaDeMisDatos) { navegacion.guiaEnMisDatos = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
 
@@ -146,7 +148,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                 Pestana.ENTRENO -> {
                                     val guia by modelo.guia.collectAsStateWithLifecycle()
                                     val g = guia
-                                    if (navegacion.guia && g != null && !esDemo) {
+                                    if (navegacion.guia && g != null) {
                                         GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guia = false })
                                     } else {
                                         EntrenoPantalla(modelo, vm.preguntasEntreno)
@@ -156,7 +158,13 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                 Pestana.CHAT -> ChatPantalla(modelo)
                                 Pestana.REVISION ->
                                     if (navegacion.misDatos) {
-                                        MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
+                                        val guia by modelo.guia.collectAsStateWithLifecycle()
+                                        val g = guia
+                                        if (navegacion.guiaEnMisDatos && g != null) {
+                                            GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guiaEnMisDatos = false })
+                                        } else {
+                                            MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
+                                        }
                                     } else {
                                         RevisionPantalla(modelo, alAbrirMisDatos = { navegacion.misDatos = true })
                                     }

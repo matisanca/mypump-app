@@ -143,6 +143,8 @@ val assetsCompartidos = tasks.register<CopiarCompartido>("assetsCompartidos") {
     desde(
         "demo/rutina.json" to "apps/shared/demo/rutina.json",
         "demo/dieta.json" to "apps/shared/demo/dieta.json",
+        // «Tu guía» de la demo: los clips genéricos de «Tu app» (los pasa la obra de entregas), con la forma del get.
+        "demo/guia.json" to "apps/shared/demo/guia.json",
         "bases/catalogo-ejercicios.json" to "apps/shared/catalogo-ejercicios.json",
         "licencias/Archivo-OFL.txt" to "apps/ios/MyPump/Recursos/Fuentes/Archivo-OFL.txt",
         // Dieta: la base de alimentos de la web (MYPUMP_FOOD_DB) contra la que se buscan los reemplazos.

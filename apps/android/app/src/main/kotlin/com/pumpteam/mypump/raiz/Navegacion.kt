@@ -62,12 +62,16 @@ class Navegacion(
     anclaRevision: String? = null,
     segmentoSalud: SegmentoSalud = SegmentoSalud.RECUPERACION,
     guia: Boolean = false,
+    guiaEnMisDatos: Boolean = false,
 ) {
     var pestana by mutableStateOf(pestana)
     var misDatos by mutableStateOf(misDatos)
 
     /** «Tu guía», abierta desde su tarjeta en Entreno (cuelga de Entreno, como Mis datos de Revisión). */
     var guia by mutableStateOf(guia)
+
+    /** «Tu guía», abierta desde la fila «Ver mi guía» de Mis datos (después de la entrega o quitada de Entreno). */
+    var guiaEnMisDatos by mutableStateOf(guiaEnMisDatos)
 
     /**
      * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check), como `anclaRevision` de
@@ -80,7 +84,10 @@ class Navegacion(
 
     /** Tocar una pestaña. Tocar Revisión estando en Mis datos vuelve a Revisión (como volver al principio de la pila). */
     fun elegir(p: Pestana) {
-        if (p == pestana && p == Pestana.REVISION) misDatos = false
+        if (p == pestana && p == Pestana.REVISION) {
+            misDatos = false
+            guiaEnMisDatos = false
+        }
         if (p == pestana && p == Pestana.ENTRENO) guia = false
         pestana = p
     }
@@ -99,6 +106,7 @@ class Navegacion(
             DestinoAviso.MIS_DATOS -> {
                 pestana = Pestana.REVISION
                 misDatos = true
+                guiaEnMisDatos = false
             }
         }
     }
@@ -107,6 +115,7 @@ class Navegacion(
     fun irARevision(ancla: String?) {
         pestana = Pestana.REVISION
         misDatos = false
+        guiaEnMisDatos = false
         anclaRevision = ancla
     }
 
@@ -118,7 +127,7 @@ class Navegacion(
 
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia, it.guiaEnMisDatos) },
             restore = {
                 Navegacion(
                     Pestana.entries.firstOrNull { p -> p.name == it[0] } ?: Pestana.ENTRENO,
@@ -126,6 +135,7 @@ class Navegacion(
                     (it.getOrNull(2) as? String)?.ifEmpty { null },
                     SegmentoSalud.entries.firstOrNull { s -> s.name == it.getOrNull(3) } ?: SegmentoSalud.RECUPERACION,
                     it.getOrNull(4) as? Boolean ?: false,
+                    it.getOrNull(5) as? Boolean ?: false,
                 )
             },
         )

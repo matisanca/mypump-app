@@ -1,5 +1,6 @@
 package com.pumpteam.mypump.ui
 
+import androidx.compose.ui.semantics.getOrNull
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
@@ -251,6 +252,141 @@ class GuiaUiTest : PruebaUi() {
 
     @Test
     fun capturasEnOscuro() = capturas(oscuro = true)
+
+    // ── Después de la entrega (`entregas_014`) y la demo ──
+
+    /**
+     * Desplaza lo que contiene a [s] hasta dejarlo cerca de [arriba] px del borde de arriba (para la captura). De a pasos
+     * cortos: en una lista perezosa el nodo existe antes de ubicarse (con límites en cero).
+     */
+    private fun mostrar(s: Selector, arriba: Float = 500f) {
+        repeat(20) {
+            val n = p.nodo(s)
+            val listo = p.enPrincipal<Boolean> {
+                val b = n.boundsInRoot
+                var q = n.parent
+                while (q != null && q.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) == null) q = q.parent
+                val scroll = q?.config?.getOrNull(androidx.compose.ui.semantics.SemanticsActions.ScrollBy)?.action ?: return@enPrincipal true
+                val dy = if (b.height <= 0f) 400f else b.top - arriba
+                if (kotlin.math.abs(dy) < 40f) return@enPrincipal true
+                scroll.invoke(0f, dy.coerceIn(-600f, 600f))
+                false
+            }
+            p.quieto(300)
+            if (listo) return
+        }
+    }
+
+    private fun aMisDatos() {
+        p.tocar(etiqueta("pestana-revision"))
+        p.tocar(etiqueta("mis-datos"))
+        p.nodo(etiqueta("mis-datos-pantalla"))
+    }
+
+    /** El brillo del cuadro que muestra la vista del video: más que negro puro (como `GuiaRealUiTest`). */
+    private fun cuadroConImagen(a: androidx.test.core.app.ActivityScenario<*>): Boolean {
+        var brillo = -1.0
+        a.onActivity { act ->
+            fun buscar(v: android.view.View): android.view.TextureView? = when (v) {
+                is android.view.TextureView -> v
+                is android.view.ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { buscar(v.getChildAt(it)) }
+                else -> null
+            }
+            val t = buscar(act.window.decorView) ?: return@onActivity
+            val b = t.getBitmap(64, 36) ?: return@onActivity
+            var suma = 0L
+            for (x in 0 until b.width) for (y in 0 until b.height) {
+                val c = b.getPixel(x, y)
+                suma += (c shr 16 and 0xff) + (c shr 8 and 0xff) + (c and 0xff)
+            }
+            brillo = suma / (3.0 * b.width * b.height)
+        }
+        return brillo > 8
+    }
+
+    @Test
+    fun pasadoElPlazoLaTarjetaSaleYQuedaLaFilaDeMisDatos() {
+        conGuia(res = """{"ok": true, "total": 20, "vistos": 4, "minutos_restantes": 11.6, "fecha_entrega": "2026-10-01T13:00:00+00:00", "mostrar_tarjeta": false}""")
+        guardarCuenta()
+        abrir()
+        p.nodo(etiqueta("entreno-lista"))
+        p.esperar("el resumen") { servidor.a("entregas_app_resumen").isNotEmpty() }
+        p.quieto(500)
+        assertFalse(p.existe(etiqueta("tarjeta-guia")))
+        aMisDatos()
+        p.nodo(etiqueta("mis-datos-guia"))
+        assertTrue(p.existe(texto("Ver mi guía")))
+        mostrar(etiqueta("mis-datos-guia"))
+        Telefono.captura("pe-fila-mis-datos")
+        assertEquals(0, servidor.a("entregas_app_get").size)
+        p.tocar(etiqueta("mis-datos-guia"))
+        p.nodo(etiqueta("guia-cabecera"))
+        p.esperar("el get") { servidor.a("entregas_app_get").size == 1 }
+        // Pasado el plazo no hay «Quitar de Entreno» ni «Volver a mostrar».
+        bajarHasta(etiqueta("guia-fin"))
+        assertFalse(p.existe(etiqueta("guia-quitar-entreno")))
+        assertFalse(p.existe(etiqueta("guia-volver-entreno")))
+        // Atrás vuelve a Mis datos, con la fila.
+        p.atras()
+        p.nodo(etiqueta("mis-datos-guia"))
+    }
+
+    @Test
+    fun quitarDeEntrenoYVolverAMostrar() {
+        conGuia()
+        guardarCuenta()
+        abrir()
+        // Con la tarjeta en Entreno, Mis datos no tiene la fila.
+        p.nodo(etiqueta("tarjeta-guia"))
+        abrirGuia()
+        bajarHasta(etiqueta("guia-quitar-entreno"))
+        mostrar(etiqueta("guia-fin"), 700f)
+        Telefono.captura("pe-accion-quitar")
+        p.tocar(etiqueta("guia-quitar-entreno"))
+        p.nodo(etiqueta("guia-volver-entreno"))
+        p.atras()
+        p.nodo(etiqueta("entreno-lista"))
+        p.esperarQueNoEste(etiqueta("tarjeta-guia"))
+        // Queda en Mis datos; desde ahí, «Volver a mostrar en Entreno» (el plazo no pasó).
+        aMisDatos()
+        p.tocar(etiqueta("mis-datos-guia"))
+        p.nodo(etiqueta("guia-cabecera"))
+        bajarHasta(etiqueta("guia-volver-entreno"))
+        mostrar(etiqueta("guia-fin"), 700f)
+        Telefono.captura("pe-accion-volver")
+        p.tocar(etiqueta("guia-volver-entreno"))
+        p.nodo(etiqueta("guia-quitar-entreno"))
+        p.atras()
+        p.esperarQueNoEste(etiqueta("mis-datos-guia"))
+        p.tocar(etiqueta("pestana-entreno"))
+        p.nodo(etiqueta("tarjeta-guia"))
+        // Solo en el teléfono: nada de esto escribe en el servidor.
+        assertEquals(0, servidor.a("entregas_app_avance").size)
+    }
+
+    @Test
+    fun laDemoTraeLaGuiaYReproduceDeVerdad() {
+        abrir().also { a ->
+            p.tocar(etiqueta("ver-demo"))
+            p.nodo(texto("Estás viendo la demo"))
+            p.nodo(etiqueta("tarjeta-guia"))
+            assertTrue(p.existe(textoQueContiene("0 de 8 videos")))
+            Telefono.captura("pe-demo-entreno")
+            p.tocar(etiqueta("tarjeta-guia"))
+            p.nodo(etiqueta("guia-cabecera"))
+            p.nodo(texto("Hola"))
+            p.nodo(etiqueta("clip-FT-2b"))
+            Telefono.captura("pe-demo-guia")
+            // Un clip corto de verdad (URL pública): se dibuja y, al 80 %, queda visto en memoria.
+            p.tocar(etiqueta("clip-FT-2b"))
+            p.esperar("el video visto", ms = 60_000, enElPrincipal = false) { p.estado(etiqueta("clip-FT-2b"))?.contains("visto") == true }
+            assertTrue("el video no dibuja cuadros", cuadroConImagen(a))
+            mostrar(etiqueta("guia-reproductor"), 250f)
+            Telefono.captura("pe-demo-reproduciendo")
+            // La demo no llama a nada de la guía.
+            assertTrue(servidor.llamadas.none { it.funcion.startsWith("entregas_app_") })
+        }
+    }
 
     /** Con la letra más grande del sistema (accesibilidad): la cabecera, las filas y las dudas no se cortan. */
     @Test

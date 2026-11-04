@@ -40,6 +40,11 @@ class ModeloGuia(
     private val outbox: Outbox?,
     private val disco: Disco?,
     private val alcance: CoroutineScope,
+    /**
+     * «Ver demo» (revisión de Apple): la guía de muestra empaquetada, sin cuenta. No llama al servidor; lo visto y las
+     * dudas quedan en memoria, como las demás escrituras de la demo. Ver [demo].
+     */
+    private val esDemo: Boolean = false,
 ) {
     enum class Estado {
         /** Nunca se abrió en este teléfono y todavía no se pidió. */
@@ -90,6 +95,17 @@ class ModeloGuia(
     private val _avisos = MutableStateFlow<List<AvisoDuda>>(emptyList())
     val avisos: StateFlow<List<AvisoDuda>> = _avisos.asStateFlow()
 
+    private val _ocultaAMano = MutableStateFlow(false)
+
+    /**
+     * El cliente tocó «Quitar de Entreno»: la tarjeta sale antes de tiempo y la guía queda en la fila de Mis datos. Solo en
+     * este teléfono y por cuenta (`guia-oculta.json` en la carpeta de la cuenta). Ver `ReglasGuia.lugar`.
+     */
+    val ocultaAMano: StateFlow<Boolean> = _ocultaAMano.asStateFlow()
+
+    /** Se tocó antes de que terminara de leerse el disco: lo leído no lo pisa. */
+    private var ocultaTocada = false
+
     private var abriendo = false
 
     /** El disco, fuera del hilo principal y de a una operación por vez, en el orden en que se pidieron. */
@@ -99,6 +115,8 @@ class ModeloGuia(
     /** La caché se lee al armar el modelo, en [serieDisco]; [abrir] y [refrescarResumen] la esperan. */
     private val lecturaInicial: Job = alcance.launch {
         val (g, r) = withContext(serieDisco) { Guia.desde(disco?.leer(ARCHIVO_GUIA)) to ResumenGuia.desde(disco?.leer(ARCHIVO_RESUMEN)) }
+        val oculta = withContext(serieDisco) { disco?.leer(ARCHIVO_OCULTA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
+        if (!ocultaTocada) _ocultaAMano.value = oculta
         if (_estado.value == Estado.SIN_DATOS && _guia.value == null && g != null) {
             _guia.value = g
             _estado.value = Estado.LISTA
@@ -135,6 +153,7 @@ class ModeloGuia(
      */
     suspend fun refrescarResumen() {
         lecturaInicial.join()
+        if (esDemo) return
         val r = cliente.llamar("entregas_app_resumen", parametros)
         // La función no existe (404, PGRST202): para la app no hay guía (la tarjeta no queda colgada de la caché).
         if (r is Resultado.Falla && (r.error.status == 404 || r.error.codigo == "PGRST202")) {
@@ -149,7 +168,12 @@ class ModeloGuia(
         }
         val nuevo = ResumenGuia.desde(valor) ?: return
         val local = _guia.value?.let(ResumenGuia::de)
-        val final = if (local != null && local.total == nuevo.total && local.vistos > nuevo.vistos) local else nuevo
+        // Lo visto en el teléfono gana, pero la fecha y `mostrar_tarjeta` son siempre las del servidor.
+        val final = if (local != null && local.total == nuevo.total && local.vistos > nuevo.vistos) {
+            local.copy(fechaEntrega = nuevo.fechaEntrega, mostrarTarjeta = nuevo.mostrarTarjeta)
+        } else {
+            nuevo
+        }
         _resumen.value = final
         alDisco { guardar(ARCHIVO_RESUMEN, final.aValor()) }
     }
@@ -163,6 +187,10 @@ class ModeloGuia(
         abriendo = true
         try {
             lecturaInicial.join()
+            if (esDemo) {
+                _estado.value = if (_guia.value != null) Estado.LISTA else Estado.NO_HAY
+                return
+            }
             if (_guia.value == null) _estado.value = Estado.CARGANDO
             when (val r = cliente.llamar("entregas_app_get", parametros)) {
                 is Resultado.Falla -> {
@@ -209,7 +237,12 @@ class ModeloGuia(
 
     private fun publicar(g: Guia) {
         _guia.value = g
-        val resumen = ResumenGuia.de(g)
+        // Dónde va la tarjeta sale del resumen (`fecha_entrega` y `mostrar_tarjeta`), no del get: calculado desde la guía
+        // quedan los del último resumen; sin resumen todavía, la fecha de la guía.
+        val previo = _resumen.value
+        val resumen = ResumenGuia.de(g)?.let { r ->
+            if (previo != null) r.copy(fechaEntrega = previo.fechaEntrega, mostrarTarjeta = previo.mostrarTarjeta) else r
+        }
         resumen?.let { _resumen.value = it }
         alDisco {
             guardar(ARCHIVO_GUIA, g.aValor())
@@ -218,6 +251,13 @@ class ModeloGuia(
     }
 
     // ── Escrituras ──
+
+    /** «Quitar de Entreno» (true) o «Volver a mostrar en Entreno» (false). Queda en el teléfono; no llama al servidor. */
+    fun ocultarDeEntreno(oculta: Boolean) {
+        ocultaTocada = true
+        _ocultaAMano.value = oculta
+        alDisco { if (oculta) guardar(ARCHIVO_OCULTA, ValorJson.Booleano(true)) else borrar(ARCHIVO_OCULTA) }
+    }
 
     /** Lo que decidió [SeguimientoAvance]: queda en el teléfono y sale por la cola (deduplicado por video). */
     suspend fun guardarAvance(g: SeguimientoAvance.Guardado) {
@@ -239,6 +279,7 @@ class ModeloGuia(
     /** Una duda de un video. Devuelve false si el texto no es válido (vacío o más de 1000) o no hay cola. */
     suspend fun enviarDudaVideo(video: String, texto: String): Boolean {
         val t = ReglasGuia.dudaValida(texto) ?: return false
+        if (esDemo) return dudaEnDemo(video, t)
         val cola = outbox ?: return false
         val op = cola.encolar(KIND_DUDA, ValorJson.objeto("video" to ValorJson.Texto(video), "texto" to ValorJson.Texto(t), "id" to ValorJson.Texto(nuevoId())), null)
         agregarPendiente(DudaPendiente(op.id, video, t))
@@ -249,6 +290,7 @@ class ModeloGuia(
     suspend fun enviarDudaLlamada(texto: String): Boolean {
         val t = ReglasGuia.dudaValida(texto) ?: return false
         if (!puedeSumarDudaLlamada()) return false
+        if (esDemo) return dudaEnDemo(null, t)
         val cola = outbox ?: return false
         val op = cola.encolar(KIND_DUDA_LLAMADA, ValorJson.objeto("texto" to ValorJson.Texto(t), "id" to ValorJson.Texto(nuevoId())), null)
         agregarPendiente(DudaPendiente(op.id, null, t))
@@ -258,6 +300,14 @@ class ModeloGuia(
     /** Todavía hay lugar (las guardadas más las que están saliendo no llegan a 30). */
     fun puedeSumarDudaLlamada(): Boolean =
         (_guia.value?.dudasLlamada?.size ?: 0) + _pendientes.value.count { it.video == null } < ReglasGuia.TOPE_DUDAS_LLAMADA
+
+    /** En la demo la duda no sale del teléfono: se suma a lo que se ve y se avisa «Listo», como si se hubiera guardado. */
+    private fun dudaEnDemo(video: String?, t: String): Boolean {
+        val g = _guia.value ?: return false
+        publicar(conDuda(g, DudaPendiente(nuevoId(), video, t)))
+        _avisos.update { it + AvisoDuda.Guardada(video) }
+        return true
+    }
 
     private fun agregarPendiente(p: DudaPendiente) {
         // La respuesta pudo haber vuelto antes que esto (la cola manda enseguida): ahí ya no está pendiente.
@@ -318,6 +368,18 @@ class ModeloGuia(
 
         internal const val ARCHIVO_GUIA = "guia.json"
         internal const val ARCHIVO_RESUMEN = "guia-resumen.json"
+        internal const val ARCHIVO_OCULTA = "guia-oculta.json"
+
+        /**
+         * La guía de «Ver demo»: [guia] es la respuesta de muestra con la forma del get (`apps/shared/demo/guia.json`). Sin
+         * token, cola ni disco: [refrescarResumen] y [abrir] no llaman al servidor.
+         */
+        fun demo(cliente: ClienteRpc, guia: Guia, alcance: CoroutineScope): ModeloGuia =
+            ModeloGuia(cliente, token = "", outbox = null, disco = null, alcance = alcance, esDemo = true).also { m ->
+                m._guia.value = guia
+                m._resumen.value = ResumenGuia.de(guia)
+                m._estado.value = Estado.LISTA
+            }
 
         fun claveAvance(video: String): String = "guia_avance_$video"
 

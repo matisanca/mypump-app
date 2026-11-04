@@ -53,6 +53,9 @@ import com.pumpteam.mypump.diseno.abrirEnNavegador
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.respaldo.HojaFuentes
 import com.pumpteam.mypump.salud.SeccionSaludMisDatos
+import com.pumpteam.mypump.guia.lugarDeLaGuia
+import com.pumpteam.mypump.raiz.LocalNavegacion
+import com.pumpteam.mypump.reglas.ReglasGuia
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -99,6 +102,15 @@ fun MisDatosPantalla(vm: ModeloAppViewModel, modelo: ModeloApp, alVolver: () -> 
         }
 
         Seccion("Tu información") {
+            // «Tu guía» después de la entrega (o quitada de Entreno): una sola fila, solo con resumen `ok: true`.
+            val guia by modelo.guia.collectAsStateWithLifecycle()
+            val navegacion = LocalNavegacion.current
+            guia?.let { g ->
+                if (lugarDeLaGuia(g).second == ReglasGuia.Lugar.MIS_DATOS) {
+                    FilaEnlace(Iconos.Video, c.marcaTexto, "Ver mi guía", etiqueta = "mis-datos-guia") { navegacion?.guiaEnMisDatos = true }
+                    Separador(sangria = 58.dp)
+                }
+            }
             FilaEnlace(Iconos.Libro, c.marcaTexto, "Respaldo científico del plan", etiqueta = "mis-datos-respaldo") { fuentes = true }
             Separador(sangria = 58.dp)
             FilaEnlace(Iconos.Privacidad, c.agua, "Política de privacidad") { abrirEnNavegador(contexto, URL_PRIVACIDAD) }

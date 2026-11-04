@@ -309,4 +309,60 @@ class GuiaReglasTest {
         assertNull(visto.alCortar(12.0))
         assertEquals(SeguimientoAvance.Guardado("V", 31, false), visto.alCortar(31.0))
     }
+
+    // ── Después de la entrega (`entregas_014`) ──
+
+    private val ahora: Instant = Instant.parse("2026-11-10T15:00:00Z")
+
+    private fun res(fecha: String? = null, mostrar: Boolean? = null) = ResumenGuia(10, 3, 5.0, fechaEntrega = fecha, mostrarTarjeta = mostrar)
+
+    @Test
+    fun mostrarTarjetaLosCuatroCasos() {
+        // 1 y 2: el campo del servidor manda, aunque la fecha diga otra cosa.
+        assertTrue(ReglasGuia.mostrarTarjeta(res("2026-10-01T13:00:00+00:00", true), ahora))
+        assertFalse(ReglasGuia.mostrarTarjeta(res(null, false), ahora))
+        // 3: sin el campo (vuelta atrás a la 012), la misma cuenta con la fecha: 48 h exactas.
+        assertFalse(ReglasGuia.mostrarTarjeta(res("2026-11-08T15:00:00Z"), ahora))
+        assertTrue(ReglasGuia.mostrarTarjeta(res("2026-11-08T15:00:01Z"), ahora))
+        assertTrue(ReglasGuia.mostrarTarjeta(res("2026-11-08T12:00:01-03:00"), ahora))
+        assertFalse(ReglasGuia.mostrarTarjeta(res("2026-11-01T13:00:00+00:00"), ahora))
+        assertTrue(ReglasGuia.mostrarTarjeta(res("2026-11-12T13:00:00+00:00"), ahora))
+        // 4: sin ninguno de los dos (o una fecha que no se entiende), la tarjeta.
+        assertTrue(ReglasGuia.mostrarTarjeta(res(), ahora))
+        assertTrue(ReglasGuia.mostrarTarjeta(res("cualquier cosa larga"), ahora))
+    }
+
+    @Test
+    fun resumenLeeLosCamposNuevosYSuFalta() {
+        fun r(s: String) = ResumenGuia.desde(Json.parseToJsonElement(s))
+        val nuevo = r("""{"ok":true,"total":8,"vistos":2,"minutos_restantes":3,"fecha_entrega":"2026-11-01T13:00:00+00:00","mostrar_tarjeta":false}""")!!
+        assertEquals("2026-11-01T13:00:00+00:00", nuevo.fechaEntrega)
+        assertEquals(false, nuevo.mostrarTarjeta)
+        val viejo = r("""{"ok":true,"total":8,"vistos":2,"minutos_restantes":3}""")!!
+        assertNull(viejo.fechaEntrega)
+        assertNull(viejo.mostrarTarjeta)
+        // ok:false no trae mostrar_tarjeta: no hay resumen, ni tarjeta ni fila.
+        assertNull(r("""{"ok":false}"""))
+        assertEquals(ReglasGuia.Lugar.NINGUNO, ReglasGuia.lugar(null, false, ahora))
+        assertEquals(ReglasGuia.AccionEntreno.NINGUNA, ReglasGuia.accionEntreno(null, false, ahora))
+        // La caché guarda lo mismo y lo vuelve a leer igual.
+        assertEquals(nuevo, ResumenGuia.desde(nuevo.aValor().aJson()))
+        assertEquals(viejo, ResumenGuia.desde(viejo.aValor().aJson()))
+    }
+
+    @Test
+    fun lugarYAccionConLaOcultacionManual() {
+        val vigente = res(mostrar = true)
+        val vencida = res(mostrar = false)
+        assertEquals(ReglasGuia.Lugar.ENTRENO, ReglasGuia.lugar(vigente, false, ahora))
+        assertEquals(ReglasGuia.AccionEntreno.QUITAR, ReglasGuia.accionEntreno(vigente, false, ahora))
+        // «Quitar de Entreno»: a Mis datos, y se puede volver a mostrar mientras el plazo no pasó.
+        assertEquals(ReglasGuia.Lugar.MIS_DATOS, ReglasGuia.lugar(vigente, true, ahora))
+        assertEquals(ReglasGuia.AccionEntreno.VOLVER_A_MOSTRAR, ReglasGuia.accionEntreno(vigente, true, ahora))
+        // Pasado el plazo: Mis datos, sin acción (oculta o no).
+        assertEquals(ReglasGuia.Lugar.MIS_DATOS, ReglasGuia.lugar(vencida, false, ahora))
+        assertEquals(ReglasGuia.Lugar.MIS_DATOS, ReglasGuia.lugar(vencida, true, ahora))
+        assertEquals(ReglasGuia.AccionEntreno.NINGUNA, ReglasGuia.accionEntreno(vencida, false, ahora))
+        assertEquals(ReglasGuia.AccionEntreno.NINGUNA, ReglasGuia.accionEntreno(vencida, true, ahora))
+    }
 }

@@ -4,6 +4,7 @@ import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -101,6 +104,8 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
     val desdeCache by modelo.desdeCache.collectAsStateWithLifecycle()
     val pendientes by modelo.pendientes.collectAsStateWithLifecycle()
     val avisos by modelo.avisos.collectAsStateWithLifecycle()
+    val resumenServidor by modelo.resumen.collectAsStateWithLifecycle()
+    val ocultaAMano by modelo.ocultaAMano.collectAsStateWithLifecycle()
     val alcance = LocalAlcanceApp.current
 
     LaunchedEffect(modelo) { modelo.abrir() }
@@ -143,6 +148,8 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
                 textos = textos,
                 mensajes = mensajes,
                 puedeSumarLlamada = modelo.puedeSumarDudaLlamada(),
+                accionEntreno = ReglasGuia.accionEntreno(resumenServidor, ocultaAMano),
+                alAccionEntreno = modelo::ocultarDeEntreno,
                 alEnviarDuda = { video, texto ->
                     val clave = video ?: LLAMADA
                     // Un doble toque no la manda dos veces: el campo se vacía ya (el botón queda apagado) y, mientras se
@@ -216,6 +223,8 @@ private fun ContenidoGuia(
     textos: SnapshotStateMap<String, String>,
     mensajes: Map<String, Pair<String, Boolean>>,
     puedeSumarLlamada: Boolean,
+    accionEntreno: ReglasGuia.AccionEntreno,
+    alAccionEntreno: (ocultar: Boolean) -> Unit,
     alEnviarDuda: (video: String?, texto: String) -> Unit,
 ) {
     val clips = remember(guia) { ReglasGuia.ordenados(guia.clipsDeLaLista) }
@@ -340,6 +349,8 @@ private fun ContenidoGuia(
                     mensajes = mensajes,
                     pendientes = pendientes,
                     puedeSumarLlamada = puedeSumarLlamada,
+                    accionEntreno = accionEntreno,
+                    alAccionEntreno = alAccionEntreno,
                     alEnviarDuda = alEnviarDuda,
                     porQue = porQue,
                     reproductor = tarjetaReproductor,
@@ -381,6 +392,8 @@ private fun LazyListScope.entradasGuia(
     mensajes: Map<String, Pair<String, Boolean>>,
     pendientes: List<ModeloGuia.DudaPendiente>,
     puedeSumarLlamada: Boolean,
+    accionEntreno: ReglasGuia.AccionEntreno,
+    alAccionEntreno: (ocultar: Boolean) -> Unit,
     alEnviarDuda: (String?, String) -> Unit,
     porQue: PorQueSuplemento,
     reproductor: @Composable (Modifier) -> Unit,
@@ -424,14 +437,43 @@ private fun LazyListScope.entradasGuia(
                     modifier = ancho.padding(top = Espacio.m),
                 )
                 Entrada.Suplementacion -> suple?.let { SuplementacionGuia(it, porQue, ancho.padding(top = Espacio.m)) }
-                Entrada.Fin -> Text(
-                    "Si algún video no te carga o tenés algo para contarme" + (if (despues) "" else " antes de la videollamada") + ", escribime por el chat.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MyPump.colores.textoSecundario,
-                    modifier = ancho.padding(top = Espacio.m, start = 4.dp, end = 4.dp).testTag("guia-fin"),
-                )
+                Entrada.Fin -> Column(ancho) {
+                    Text(
+                        "Si algún video no te carga o tenés algo para contarme" + (if (despues) "" else " antes de la videollamada") + ", escribime por el chat.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MyPump.colores.textoSecundario,
+                        modifier = Modifier.padding(top = Espacio.m, start = 4.dp, end = 4.dp).testTag("guia-fin"),
+                    )
+                    AccionEntrenoPie(accionEntreno, alAccionEntreno, Modifier.padding(top = Espacio.s))
+                }
             }
         }
+    }
+}
+
+/**
+ * «Quitar de Entreno» (la tarjeta sale antes de tiempo y la guía queda en Mis datos) o, ya quitada y dentro de las 48 h,
+ * «Volver a mostrar en Entreno». Discreta, al pie: un texto que se toca, sin cartel.
+ */
+@Composable
+private fun AccionEntrenoPie(accion: ReglasGuia.AccionEntreno, alTocar: (ocultar: Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val (texto, ayuda, etiqueta) = when (accion) {
+        ReglasGuia.AccionEntreno.NINGUNA -> return
+        ReglasGuia.AccionEntreno.QUITAR -> Triple("Quitar de Entreno", "La guía queda en Mis datos", "guia-quitar-entreno")
+        ReglasGuia.AccionEntreno.VOLVER_A_MOSTRAR -> Triple("Volver a mostrar en Entreno", "Ahora la encontrás en Mis datos", "guia-volver-entreno")
+    }
+    val c = MyPump.colores
+    Column(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClickLabel = texto) { alTocar(accion == ReglasGuia.AccionEntreno.QUITAR) }
+            .padding(horizontal = 4.dp, vertical = Espacio.xs)
+            .testTag(etiqueta),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(texto, style = MaterialTheme.typography.bodyMedium, color = c.marcaTexto)
+        Text(ayuda, style = MaterialTheme.typography.bodySmall, color = c.textoTerciario)
     }
 }
 
