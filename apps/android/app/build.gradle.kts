@@ -315,6 +315,9 @@ dependencies {
     // Salud: Health Connect (solo lectura; ver el manifest). La traducción de sus registros se prueba en la JVM
     // (`src/test`, JUnit 5 como los de :core) con dobles del cliente.
     implementation(libs.health.connect.client)
+    // «Tu guía»: Media3 (ExoPlayer + PlayerView) para los videos (MP4 públicos del bucket `videos-entrega`, sin bajarlos).
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
