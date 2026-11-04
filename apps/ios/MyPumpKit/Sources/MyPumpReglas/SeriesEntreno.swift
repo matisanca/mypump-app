@@ -125,9 +125,10 @@ public enum ReglasEjercicio {
     ]
     /// Cinta, bici, elíptico, remo ergómetro, caminata o escaladora en el nombre (en minúsculas y sin tildes). El remo
     /// solo como máquina: «Remo con barra» es fuerza.
-    static let cardioRE = RegexWeb(#"\bcinta\b|caminadora|treadmill|\bcaminata\b|\bcaminar\b|\btrote\b|\bcorrer\b|eliptic|elliptical|\bbici|\bbike\b|cicloergometro|spinning|escaladora|stairmaster|step\s*mill|remo\s+(ergometro|indoor|estatico)|maquina\s+de\s+remo|remoergometro|rowing|\brower\b"#)
-    /// Lo que se llama parecido y es de fuerza: la caminata del granjero, las estocadas caminando.
-    static let noCardioRE = RegexWeb(#"granjero|farmer|estocada|zancada|lunge|desplante"#)
+    static let cardioRE = RegexWeb(#"\bcinta\b|caminadora|treadmill|\bcaminata\b|\bcaminar\b|\btrote\b|\bcorrer\b|eliptic|elliptical|\bbici(cleta)?s?\b|\bbike\b|ergometro|\bcardio\b|spinning|escaladora|stairmaster|step\s*mill|remo\s+(ergometro|indoor|estatico)|maquina\s+de\s+remo|remoergometro|rowing|\brower\b"#)
+    /// Lo que se llama parecido y es de fuerza: la caminata del granjero, las estocadas caminando, la caminata lateral con
+    /// banda, el crunch bicicleta. «Bici» va como palabra entera: «pico bicipital» no es cardio (revisión del 4-nov).
+    static let noCardioRE = RegexWeb(#"granjero|farmer|estocada|zancada|lunge|desplante|crunch|abdominal|lateral|con\s+banda|\boso\b|monstruo|cangrejo"#)
 
     /// El ejercicio va por tiempo, sin series, kg ni RIR (reporte del 4-nov: la cinta con `progresion: []` pedía reps,
     /// kg y RIR porque `normalizarRutina` le pone `series = 1` a todo). Es cardio el `tipo: "cardio"` y, si el tipo es

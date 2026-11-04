@@ -95,6 +95,19 @@ class CardioPorTiempoTest {
         assertFalse(ReglasEjercicio.esCardio("Remo con barra", null))
         assertFalse(ReglasEjercicio.esCardio("Caminata del granjero", null))
         assertFalse(ReglasEjercicio.esCardio("Face-pull con banda", "calentamiento"))
+        // Revisión del 4-nov: «bici» como palabra entera, el core y la caminata lateral no son cardio.
+        assertFalse(ReglasEjercicio.esCardio("Curl en cable a una mano (cabeza corta — pico bicipital)", "calentamiento"), "Curl en cable a una mano (cabeza corta — pico bicipital)")
+        assertFalse(ReglasEjercicio.esCardio("Curl de bíceps liviano", "calentamiento"), "Curl de bíceps liviano")
+        assertFalse(ReglasEjercicio.esCardio("Crunch bicicleta", "calentamiento"), "Crunch bicicleta")
+        assertFalse(ReglasEjercicio.esCardio("Caminata lateral con banda", "calentamiento"), "Caminata lateral con banda")
+        assertFalse(ReglasEjercicio.esCardio("Mountain climbers (escaladores)", "calentamiento"), "Mountain climbers (escaladores)")
+        assertFalse(ReglasEjercicio.esCardio("Escalador", "calentamiento"), "Escalador")
+        assertTrue(ReglasEjercicio.esCardio("Bicis 10 min", "calentamiento"), "Bicis 10 min")
+        assertTrue(ReglasEjercicio.esCardio("Cardio suave 5 min", "calentamiento"), "Cardio suave 5 min")
+        assertTrue(ReglasEjercicio.esCardio("Cicloergómetro", "calentamiento"), "Cicloergómetro")
+        assertTrue(ReglasEjercicio.esCardio("Bicicleta reclinada", "calentamiento"), "Bicicleta reclinada")
+        assertTrue(ReglasEjercicio.esCardio("Cinta (trote)", "calentamiento"), "Cinta (trote)")
+        assertTrue(ReglasEjercicio.esCardio("Elíptico", "calentamiento"), "Elíptico")
         assertFalse(ReglasEjercicio.esCardio("Cinta (caminata)", "compuesto"), "un tipo de fuerza manda")
     }
 

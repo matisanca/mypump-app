@@ -86,6 +86,19 @@ struct CardioPorTiempoReglasTests {
         #expect(!ReglasEjercicio.esCardio(nombre: "Remo con barra", tipo: nil))
         #expect(!ReglasEjercicio.esCardio(nombre: "Caminata del granjero", tipo: nil))
         #expect(!ReglasEjercicio.esCardio(nombre: "Face-pull con banda", tipo: "calentamiento"))
+        // Revisión del 4-nov: «bici» como palabra entera, el core y la caminata lateral no son cardio.
+        #expect(!ReglasEjercicio.esCardio(nombre: "Curl en cable a una mano (cabeza corta — pico bicipital)", tipo: "calentamiento"), "Curl en cable a una mano (cabeza corta — pico bicipital)")
+        #expect(!ReglasEjercicio.esCardio(nombre: "Curl de bíceps liviano", tipo: "calentamiento"), "Curl de bíceps liviano")
+        #expect(!ReglasEjercicio.esCardio(nombre: "Crunch bicicleta", tipo: "calentamiento"), "Crunch bicicleta")
+        #expect(!ReglasEjercicio.esCardio(nombre: "Caminata lateral con banda", tipo: "calentamiento"), "Caminata lateral con banda")
+        #expect(!ReglasEjercicio.esCardio(nombre: "Mountain climbers (escaladores)", tipo: "calentamiento"), "Mountain climbers (escaladores)")
+        #expect(!ReglasEjercicio.esCardio(nombre: "Escalador", tipo: "calentamiento"), "Escalador")
+        #expect(ReglasEjercicio.esCardio(nombre: "Bicis 10 min", tipo: "calentamiento"), "Bicis 10 min")
+        #expect(ReglasEjercicio.esCardio(nombre: "Cardio suave 5 min", tipo: "calentamiento"), "Cardio suave 5 min")
+        #expect(ReglasEjercicio.esCardio(nombre: "Cicloergómetro", tipo: "calentamiento"), "Cicloergómetro")
+        #expect(ReglasEjercicio.esCardio(nombre: "Bicicleta reclinada", tipo: "calentamiento"), "Bicicleta reclinada")
+        #expect(ReglasEjercicio.esCardio(nombre: "Cinta (trote)", tipo: "calentamiento"), "Cinta (trote)")
+        #expect(ReglasEjercicio.esCardio(nombre: "Elíptico", tipo: "calentamiento"), "Elíptico")
         #expect(!ReglasEjercicio.esCardio(nombre: "Cinta (caminata)", tipo: "compuesto"), "un tipo de fuerza manda")
     }
 }
