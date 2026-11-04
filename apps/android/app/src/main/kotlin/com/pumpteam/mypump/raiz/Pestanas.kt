@@ -119,6 +119,9 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val suplementacion by modelo.suplementacion.collectAsStateWithLifecycle()
     val planSuplementacion = suplementacion?.plan?.collectAsStateWithLifecycle()?.value
     val conSuplementacion = planSuplementacion != null
+    // Hasta que termina la primera lectura de la copia del disco no se sabe si hay suplementación (sin modelo, no hay nada
+    // que leer: la demo sin muestra).
+    val suplementacionLeida = suplementacion?.leido?.collectAsStateWithLifecycle()?.value ?: true
     // El reloj del descanso corre arriba de las pestañas: termina (y suena) aunque se esté en otra.
     entreno?.let { RelojDescanso(it) }
 
@@ -134,9 +137,10 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val enGuiaDeMisDatos = enMisDatos && navegacion.guiaEnMisDatos
     // Salud fuera de la barra (con suplementación): Atrás vuelve a Revisión, de donde se abre.
     val saludFueraDeLaBarra = conSuplementacion && navegacion.pestana == Pestana.SALUD
-    // La suplementación dejó de existir (Mati la sacó) con su pestaña abierta: a Entreno.
-    LaunchedEffect(conSuplementacion) {
-        if (!conSuplementacion && navegacion.pestana == Pestana.SUPLEMENTACION) navegacion.pestana = Pestana.ENTRENO
+    // La suplementación dejó de existir (Mati la sacó) con su pestaña abierta: a Entreno. Al restaurar la app con la
+    // pestaña elegida se espera a la primera lectura de la copia: antes, «sin plan» todavía no quiere decir «no hay».
+    LaunchedEffect(conSuplementacion, suplementacionLeida) {
+        if (suplementacionLeida && !conSuplementacion && navegacion.pestana == Pestana.SUPLEMENTACION) navegacion.pestana = Pestana.ENTRENO
     }
     BackHandler(enabled = enMisDatos) { navegacion.misDatos = false }
     BackHandler(enabled = enGuiaDeMisDatos) { navegacion.guiaEnMisDatos = false }

@@ -35,6 +35,8 @@ class ModeloSuplementacionTest {
         val sinRed = ModeloSuplementacion(ClienteRpc(transporte = SinRed), "tok", disco, alcance).also { it.alDia() }
         assertEquals(m.plan.value, sinRed.plan.value)
         assertTrue(sinRed.desdeCache.value)
+        // La primera lectura del disco terminó (la raíz espera esto antes de sacar la pestaña elegida).
+        assertTrue(sinRed.leido.value)
         sinRed.refrescar()
         assertEquals(m.plan.value, sinRed.plan.value)
         assertTrue(sinRed.desdeCache.value)
@@ -74,7 +76,7 @@ class ModeloSuplementacionTest {
     }
 
     @Test
-    fun unErrorOUnaFormaRaraNoBorraLoQueHabia() = enUnHilo { alcance ->
+    fun unErrorNoBorraLoQueHabia() = enUnHilo { alcance ->
         var respuesta = 200 to unaFila
         val m = ModeloSuplementacion(ClienteRpc(transporte = TransporteProgramado { _, _ -> respuesta }), "tok", Disco(carpetaTemporal("supl"), "tok"), alcance)
             .also { it.alDia() }
@@ -85,14 +87,40 @@ class ModeloSuplementacionTest {
         m.refrescar()
         assertEquals(antes, m.plan.value)
         assertTrue(m.desdeCache.value)
-        // Una fila que no se entiende (sin ítems): queda lo que había.
-        respuesta = 200 to """[{"suplementacion":{"items":[]},"esquema":1}]"""
-        m.refrescar()
-        assertEquals(antes, m.plan.value)
-        // Un objeto en lugar de la lista: tampoco borra.
+        // Una fila que no es un objeto (como en iOS, falla la respuesta entera): tampoco borra.
+        for (rara in listOf("[5]", "[null]")) {
+            respuesta = 200 to rara
+            m.refrescar()
+            assertEquals(antes, m.plan.value, rara)
+        }
+        // Un objeto en lugar de la lista (la respuesta entera no se entiende): tampoco borra.
         respuesta = 200 to """{"raro":true}"""
         m.refrescar()
         assertEquals(antes, m.plan.value)
+    }
+
+    /** Como iOS: una fila mal formada o sin ningún ítem con nombre es «no hay»: se va la pestaña y se borra la copia. */
+    @Test
+    fun filaMalFormadaOSinItemsValidosSacaLaPestanaYBorraLaCopia() = enUnHilo { alcance ->
+        for (mala in listOf(
+            """[{"suplementacion":{"items":[]},"esquema":1}]""",
+            """[{"suplementacion":{"items":[{"cantidad":"5 g"},{"nombre":""}]}}]""",
+            """[{"suplementacion":"texto"}]""",
+        )) {
+            val disco = Disco(carpetaTemporal("supl"), "tok")
+            var respuesta = unaFila
+            val m = ModeloSuplementacion(ClienteRpc(transporte = TransporteProgramado { _, _ -> 200 to respuesta }), "tok", disco, alcance)
+                .also { it.alDia() }
+            m.refrescar()
+            m.alDia()
+            assertNotNull(disco.leer(ModeloSuplementacion.ARCHIVO), mala)
+            respuesta = mala
+            m.refrescar()
+            assertNull(m.plan.value, mala)
+            assertFalse(m.desdeCache.value, mala)
+            m.alDia()
+            assertNull(disco.leer(ModeloSuplementacion.ARCHIVO), mala)
+        }
     }
 
     @Test
@@ -102,6 +130,7 @@ class ModeloSuplementacionTest {
         val m = ModeloSuplementacion.demo(ClienteRpc(transporte = t), plan, alcance)
         m.refrescar()
         assertEquals(plan, m.plan.value)
+        assertTrue(m.leido.value)
         assertTrue(t.llamadas.isEmpty())
     }
 }

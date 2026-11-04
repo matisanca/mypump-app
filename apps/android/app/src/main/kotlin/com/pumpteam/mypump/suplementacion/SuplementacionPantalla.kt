@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -22,6 +23,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,7 +42,10 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,10 +83,21 @@ fun SuplementacionPantalla(m: ModeloSuplementacion, modelo: ModeloApp) {
     val p = plan ?: return
     val s = p.suplementacion
     val vista = remember(s) { SuplementacionVista.armar(s) }
-    // El ítem abierto, por su lugar en la lista: sobrevive a girar el teléfono. Si la lista cambió y ya no está, se cierra.
+    // El ítem abierto, por su lugar en la lista y su nombre: sobrevive a girar el teléfono. Si después de un refresco en
+    // ese lugar ya no está el mismo suplemento, el detalle se cierra (no muestra otro).
     var abierto by rememberSaveable { mutableStateOf<Int?>(null) }
+    var abiertoNombre by rememberSaveable { mutableStateOf<String?>(null) }
     fun abrir(item: ItemSuplemento) {
         abierto = s.items.indexOf(item).takeIf { it >= 0 }
+        abiertoNombre = item.nombre
+    }
+    fun cerrarDetalle() {
+        abierto = null
+        abiertoNombre = null
+    }
+    val itemAbierto = SuplementacionPestana.itemAbierto(s.items, abierto, abiertoNombre)
+    LaunchedEffect(abierto, itemAbierto) {
+        if (abierto != null && itemAbierto == null) cerrarDetalle()
     }
 
     PantallaConTitulo("Suplementación", desplazable = true, modifier = Modifier.testTag("suplementacion-pantalla")) {
@@ -105,8 +121,8 @@ fun SuplementacionPantalla(m: ModeloSuplementacion, modelo: ModeloApp) {
         }
     }
 
-    abierto?.let { i -> s.items.getOrNull(i) }?.let { item ->
-        HojaSuplemento(item, s, alCerrar = { abierto = null })
+    itemAbierto?.let { item ->
+        HojaSuplemento(item, s, alCerrar = ::cerrarDetalle)
     }
 }
 
@@ -244,44 +260,62 @@ private fun HojaSuplemento(item: ItemSuplemento, s: Suplementacion, alCerrar: ()
             Modifier.verticalScroll(rememberScrollState()).padding(horizontal = Espacio.m).padding(bottom = Espacio.xl),
             verticalArrangement = Arrangement.spacedBy(Espacio.m),
         ) {
-            if (d.sale) {
-                Chip("Dejás de tomar", tono = c.alerta)
-            } else {
-                Etiquetas(d.etiqueta, d.opcional, d.dias)
+            // Arriba, como en iOS: la dosis (con la anterior si cambió), el cambio, las etiquetas y la nota.
+            Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                d.dosis?.let { dosis ->
+                    val hablada = d.dosisHablada ?: dosis
+                    Text(
+                        dosis,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.semantics { contentDescription = hablada }.testTag("suplemento-dosis"),
+                    )
+                }
+                d.cambio?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario) }
+                if (d.sale) {
+                    Chip("Dejás de tomar", tono = c.alerta)
+                } else {
+                    Etiquetas(d.etiqueta, d.opcional, d.dias)
+                }
+                d.nota?.let { Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("suplemento-nota")) }
             }
-            if (!d.sale && (d.cantidad != null || d.tomas.isNotEmpty())) {
-                Column(
-                    Modifier.fillMaxWidth().superficieTarjeta().padding(horizontal = Espacio.m, vertical = Espacio.s),
-                    verticalArrangement = Arrangement.spacedBy(Espacio.xs),
-                ) {
-                    d.cantidad?.let { Text(it, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
-                    for (t in d.tomas) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Text(t.cuando, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                            t.cantidad?.let {
-                                Spacer(Modifier.width(Espacio.s))
-                                Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
+            if (d.tomas.isNotEmpty()) {
+                Seccion("Cuándo") {
+                    Column(
+                        Modifier.fillMaxWidth().superficieTarjeta().padding(horizontal = Espacio.m, vertical = Espacio.s),
+                        verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+                    ) {
+                        for (t in d.tomas) {
+                            Row(verticalAlignment = Alignment.Top) {
+                                Text(t.cuando, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                                t.cantidad?.let {
+                                    Spacer(Modifier.width(Espacio.s))
+                                    Text(it, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
+                                }
                             }
+                            t.nota?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textoSecundario) }
                         }
-                        t.nota?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textoSecundario) }
                     }
-                    d.nota?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textoSecundario) }
                 }
             }
-            if (d.antes != null || d.cambio != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    d.antes?.let { TextoRotulado("Antes.", it, tonoTexto = c.texto) }
-                    d.ahora?.let { TextoRotulado("Ahora.", it, tonoTexto = c.texto) }
-                    d.cambio?.let { TextoRotulado("Cambio.", it, tonoTexto = c.texto) }
-                }
-            }
-            d.porQue?.let { TextoRotulado("Por qué.", it, tonoTexto = c.texto) }
             if (d.detalle.isNotEmpty()) {
                 Seccion("Cómo tomarlo") { for (x in d.detalle) TextoConNegritas(x) }
             }
+            d.porQue?.let { TextoRotulado("Por qué.", it, tonoTexto = c.texto) }
             d.comprar?.let { compra ->
-                Seccion("Qué comprar") {
-                    compra.buscar?.let { Text(it, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold) }
+                Seccion("Para comprar") {
+                    // «Buscá» discreto y el producto en negrita, como en iOS; se puede seleccionar para copiarlo.
+                    compra.buscar?.let { b ->
+                        SelectionContainer {
+                            Text(
+                                buildAnnotatedString {
+                                    withStyle(SpanStyle(color = c.textoSecundario)) { append("Buscá ") }
+                                    withStyle(SpanStyle(color = c.texto, fontWeight = FontWeight.SemiBold)) { append(b) }
+                                },
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
                     compra.donde?.let { TextoRotulado("Dónde.", it) }
                     compra.nota?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textoSecundario) }
                 }

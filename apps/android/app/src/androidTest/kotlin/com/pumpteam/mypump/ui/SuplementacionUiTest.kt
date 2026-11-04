@@ -52,15 +52,16 @@ class SuplementacionUiTest : PruebaUi() {
         p.nodo(texto("Cómo tomarlo"))
         p.nodo(texto("Todos los días, también los de descanso"))
         p.nodo(textoQueContiene("Te ayuda a rendir más en las series pesadas"))
-        p.nodo(texto("Qué comprar"))
-        p.nodo(texto("Creatina monohidrato 100 % pura"))
+        p.nodo(texto("Para comprar"))
+        p.nodo(texto("Buscá Creatina monohidrato 100 % pura"))
         p.tocar(etiqueta("listo-suplemento"))
         p.esperarQueNoEste(etiqueta("hoja-suplemento"))
 
-        // El magnesio sube: antes y ahora.
+        // El magnesio sube: «antes → ahora», como en iOS, y TalkBack lo dice en palabras.
         p.tocar(etiqueta("suple-Magnesio glicinato"))
         p.nodo(etiqueta("hoja-suplemento"))
-        p.nodo(textoQueContiene("200 mg"))
+        val dosis = p.nodo(etiqueta("suplemento-dosis"))
+        assertEquals("Antes 200 mg, ahora 400 mg", p.enPrincipal { dosis.config[SemanticsProperties.ContentDescription].first() })
         p.nodo(texto("Sube"))
         p.tocar(etiqueta("listo-suplemento"))
         p.esperarQueNoEste(etiqueta("hoja-suplemento"))
@@ -81,6 +82,10 @@ class SuplementacionUiTest : PruebaUi() {
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(etiqueta("mis-datos"))
+        // El corazón se toca en 48 dp como mínimo.
+        val corazon = p.nodo(etiqueta("abrir-salud"))
+        val minimo = 48 * instr.targetContext.resources.displayMetrics.density
+        p.enPrincipal { corazon.size }.let { assertTrue("el corazón mide $it px", it.width >= minimo - 1 && it.height >= minimo - 1) }
         p.tocar(etiqueta("abrir-salud"))
         p.nodo(etiqueta("salud-pantalla"))
         p.tocar(etiqueta("segmento-fuerza"))
