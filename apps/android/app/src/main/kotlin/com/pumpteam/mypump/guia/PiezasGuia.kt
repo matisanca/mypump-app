@@ -389,7 +389,9 @@ fun CampoDuda(
             maxLines = 8,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = c.texto),
             cursorBrush = SolidColor(c.marcaTexto),
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = descripcion }.then(if (etiqueta != null) Modifier.testTag(etiqueta) else Modifier),
+            // Sin contentDescription: tapaba lo escrito y TalkBack no lo leía. La etiqueta va como un texto del campo (como
+            // el label de Material), que TalkBack lee junto con lo escrito o, vacío, como pista.
+            modifier = Modifier.fillMaxWidth().then(if (etiqueta != null) Modifier.testTag(etiqueta) else Modifier),
             decorationBox = { campo ->
                 Box(
                     Modifier
@@ -400,8 +402,10 @@ fun CampoDuda(
                         .border(1.dp, c.borde, RoundedCornerShape(Radio.control))
                         .padding(horizontal = Espacio.s, vertical = 10.dp),
                 ) {
+                    // La etiqueta, sin lugar en pantalla (lo visible es la pregunta de arriba y el ejemplo de adentro).
+                    Text(descripcion, modifier = Modifier.size(0.dp))
                     if (texto.isEmpty()) {
-                        Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = c.textoTerciario, modifier = Modifier.clearAndSetSemantics {})
+                        Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = c.textoTerciario)
                     }
                     campo()
                 }

@@ -133,7 +133,8 @@ data class ClipGuia(
     companion object {
         fun desde(e: JsonElement): ClipGuia? {
             val o = e as? JsonObject ?: return null
-            val id = o.texto("id")?.trim()?.ifEmpty { null } ?: return null
+            // El id tal cual (como lo compara el servidor con `video_id`): sin recortar.
+            val id = o.texto("id")?.ifEmpty { null } ?: return null
             val titulo = o.texto("titulo")?.trim()?.ifEmpty { null } ?: return null
             return ClipGuia(
                 id = id,
@@ -221,7 +222,8 @@ data class ItemSuplemento(
     companion object {
         fun desde(e: JsonElement): ItemSuplemento? {
             val o = e as? JsonObject ?: return null
-            val nombre = o.texto("nombre")?.trim()?.ifEmpty { null } ?: return null
+            // Como la web (`!it.nombre`): solo se descarta sin nombre o con "". Un nombre de espacios cuenta (y nombra su video).
+            val nombre = o.texto("nombre")?.ifEmpty { null } ?: return null
             val detalle = when (val d = o["detalle"]) {
                 is JsonArray -> d.mapNotNull { Lector.textoTolerante(it)?.ifBlank { null } }
                 null -> emptyList()
@@ -234,7 +236,8 @@ data class ItemSuplemento(
                 tomas = o.lista("tomas", TomaSuplemento::desde),
                 nota = o.texto("nota")?.ifBlank { null },
                 detalle = detalle,
-                estado = o.texto("estado")?.trim()?.lowercase()?.ifEmpty { null },
+                // Tal cual: la web y el servidor comparan exacto (`estado === 'sale'`); «Sale» no es «sale».
+                estado = o.texto("estado")?.ifEmpty { null },
                 opcional = o.booleano("opcional") ?: false,
                 porQue = o.texto("por_que")?.ifBlank { null },
                 videoId = o.texto("video_id")?.ifBlank { null },

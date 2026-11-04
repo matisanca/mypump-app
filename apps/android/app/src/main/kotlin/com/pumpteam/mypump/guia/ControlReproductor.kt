@@ -80,6 +80,9 @@ class ControlReproductor(
 
     var pantallaCompleta by mutableStateOf(false)
 
+    /** La pantalla completa la puso el giro del teléfono (al volver a vertical se saca sola). Sobrevive al giro. */
+    var porGiro by mutableStateOf(false)
+
     /** Si el video no carga: sin red o, con red, después de los reintentos solos ([RecuperacionVideo]). */
     private val recuperacion = RecuperacionVideo(contexto, alcance) { recargar() }
 
@@ -110,10 +113,13 @@ class ControlReproductor(
     private val escucha = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             reproduciendo = isPlaying
-            if (isPlaying) porQuePlayer?.pause()
-            if (isPlaying) leer() else {
+            if (isPlaying) {
+                enPausaExterna = false
+                porQuePlayer?.pause()
+                leer()
+            } else {
                 lectura?.cancel()
-                seguimiento?.alInterrumpir()
+                cortar()
             }
         }
 
@@ -153,6 +159,12 @@ class ControlReproductor(
         val deLista = ReglasGuia.ordenados(guia.clipsDeLaLista)
         val nuevos = deLista + guia.clipsDeSuplementos
         val otraCuenta = m !== modelo
+        if (otraCuenta) {
+            // Lo que faltaba guardar va a la cuenta de antes, no a la nueva.
+            cerrarPorQue()
+            cortar()
+            seguimiento = null
+        }
         modelo = m
         val idActual = clipActual?.id
         clips = nuevos
@@ -175,7 +187,10 @@ class ControlReproductor(
     /** Tocar una fila: arranca directo, sin placa (como la web). */
     fun reproducir(indice: Int) {
         if (clips.getOrNull(indice)?.sePuedeVer != true) return
+        enPausaExterna = false
         if (indice == actual && placa == null && !sinConexion) {
+            // El que terminó vuelve a empezar (si no, play() no hace nada).
+            player?.let { if (it.playbackState == Player.STATE_ENDED) it.seekToDefaultPosition() }
             player?.play()
             elegido++
             return
@@ -203,33 +218,56 @@ class ControlReproductor(
     fun cambiarVelocidad() {
         velocidad = ReglasReproductor.velocidadSiguiente(velocidad)
         player?.setPlaybackSpeed(velocidad)
+        porQuePlayer?.setPlaybackSpeed(velocidad)
     }
 
-    /** Tocar la placa (o que pasen los 2,6 s): arranca el video. */
+    /** El cliente tocó la placa: arranca el video. */
     fun cerrarPlaca() {
+        enPausaExterna = false
+        cerrarPlacaSola()
+    }
+
+    /** Pasaron los 2,6 s (o la tocó): se va la placa y arranca, salvo que la app o la guía se hayan ido ([pausar]). */
+    private fun cerrarPlacaSola() {
         if (placa == null) return
         temporizadorPlaca?.cancel()
         placa = null
-        player?.play()
+        if (!enPausaExterna) player?.play()
     }
 
-    /** Volvió la conexión (o el cliente tocó «Reintentar»): se carga de nuevo donde estaba. */
+    /** El cliente tocó «Reintentar»: se carga de nuevo donde estaba. */
     fun reintentar() {
+        enPausaExterna = false
         recuperacion.reiniciar()
         recargar()
     }
 
-    /** Vuelve a pedir el video donde estaba (después de un error, el reproductor queda parado). */
+    /** Vuelve a pedir el video donde estaba (después de un error queda parado). Suena solo si nada lo pausó de afuera. */
     private fun recargar() {
         val p = player ?: return
         p.prepare()
-        if (placa == null) p.play()
+        if (placa == null && !enPausaExterna) p.play()
     }
 
-    /** La app se fue atrás o se salió de la guía: el video se frena (no sigue sonando). */
+    /**
+     * Se pausó de afuera (la app se fue atrás, se salió de la guía): nada vuelve a sonar solo. Se corta el temporizador de
+     * la placa (queda a la vista; tocarla arranca) y un reintento o la vuelta de la red solo vuelven a cargar, sin play(),
+     * hasta que el cliente toque algo ([enPausaExterna]).
+     */
     fun pausar() {
+        enPausaExterna = true
+        temporizadorPlaca?.cancel()
         player?.pause()
         porQuePlayer?.pause()
+    }
+
+    /** Lo pausó la app o la guía (no el cliente): bloquea los play() automáticos. Lo apaga cualquier play del cliente. */
+    private var enPausaExterna = false
+
+    /** El video dejó de correr: el tramo que faltaba guardar ([SeguimientoAvance.alCortar]). */
+    private fun cortar() {
+        val p = player ?: return
+        seguimiento?.alCortar(p.currentPosition / 1000.0)?.let(::guardar)
     }
 
     /** El ViewModel se va: se suelta el reproductor. */
@@ -258,7 +296,12 @@ class ControlReproductor(
     var porQuePlayer: ExoPlayer? by mutableStateOf(null)
         private set
 
-    private val recuperacionPorQue = RecuperacionVideo(contexto, alcance) { porQuePlayer?.let { it.prepare(); it.play() } }
+    private val recuperacionPorQue = RecuperacionVideo(contexto, alcance) {
+        porQuePlayer?.let {
+            it.prepare()
+            if (!enPausaExterna) it.play()
+        }
+    }
 
     val fallaPorQue: FallaVideo? get() = recuperacionPorQue.falla
 
@@ -269,11 +312,12 @@ class ControlReproductor(
     private val escuchaPorQue = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) {
+                enPausaExterna = false
                 player?.pause()
                 leerPorQue()
             } else {
                 lecturaPorQue?.cancel()
-                seguimientoPorQue?.alInterrumpir()
+                cortarPorQue()
             }
         }
 
@@ -316,8 +360,12 @@ class ControlReproductor(
         val c = clips.firstOrNull { it.id == id } ?: return
         val url = c.url ?: return
         cerrarPorQue()
+        enPausaExterna = false
         player?.pause()
-        val p = fabrica(contexto).also { it.addListener(escuchaPorQue) }
+        val p = fabrica(contexto).also {
+            it.addListener(escuchaPorQue)
+            it.setPlaybackSpeed(velocidad)
+        }
         porQue = id
         porQuePlayer = p
         seguimientoPorQue = SeguimientoAvance(c)
@@ -328,10 +376,11 @@ class ControlReproductor(
         p.playWhenReady = true
     }
 
-    /** Pausa y suelta el reproductor chico (lo que corrió ya se guardó: al pausar, [SeguimientoAvance] corta el tramo). */
+    /** Guarda el tramo que faltaba ([SeguimientoAvance.alCortar]) y suelta el reproductor chico. */
     fun cerrarPorQue() {
         val p = porQuePlayer ?: return
         lecturaPorQue?.cancel()
+        cortarPorQue()
         p.pause()
         p.removeListener(escuchaPorQue)
         p.release()
@@ -341,7 +390,13 @@ class ControlReproductor(
         recuperacionPorQue.soltar()
     }
 
+    private fun cortarPorQue() {
+        val p = porQuePlayer ?: return
+        seguimientoPorQue?.alCortar(p.currentPosition / 1000.0)?.let(::guardar)
+    }
+
     fun reintentarPorQue() {
+        enPausaExterna = false
         recuperacionPorQue.reiniciar()
         porQuePlayer?.let { it.prepare(); it.play() }
     }
@@ -382,7 +437,9 @@ class ControlReproductor(
         val p = asegurarPlayer()
         lectura?.cancel()
         temporizadorPlaca?.cancel()
-        // Lo del video que se deja: si estaba corriendo, el último tramo se guarda (un salto no pierde los segundos).
+        // Lo del video que se deja: el tramo que faltaba guardar, antes de cambiar de video.
+        cortar()
+        if (reproducir) enPausaExterna = false
         actual = indice
         seguimiento = SeguimientoAvance(c)
         retomarPendiente = true
@@ -396,7 +453,7 @@ class ControlReproductor(
             p.playWhenReady = false
             temporizadorPlaca = alcance.launch {
                 delay(ReglasReproductor.PLACA_MS)
-                cerrarPlaca()
+                cerrarPlacaSola()
             }
         } else {
             placa = null

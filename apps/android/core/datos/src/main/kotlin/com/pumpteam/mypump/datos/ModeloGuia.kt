@@ -8,6 +8,9 @@ import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.SeguimientoAvance
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -89,22 +92,37 @@ class ModeloGuia(
 
     private var abriendo = false
 
-    init {
-        _guia.value = Guia.desde(disco?.leer(ARCHIVO_GUIA))
-        _resumen.value = ResumenGuia.desde(disco?.leer(ARCHIVO_RESUMEN)) ?: _guia.value?.let(ResumenGuia::de)
-        if (_guia.value != null) {
+    /** El disco, fuera del hilo principal y de a una operación por vez, en el orden en que se pidieron. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val serieDisco = Dispatchers.IO.limitedParallelism(1)
+
+    /** La caché se lee al armar el modelo, en [serieDisco]; [abrir] y [refrescarResumen] la esperan. */
+    private val lecturaInicial: Job = alcance.launch {
+        val (g, r) = withContext(serieDisco) { Guia.desde(disco?.leer(ARCHIVO_GUIA)) to ResumenGuia.desde(disco?.leer(ARCHIVO_RESUMEN)) }
+        if (_estado.value == Estado.SIN_DATOS && _guia.value == null && g != null) {
+            _guia.value = g
             _estado.value = Estado.LISTA
             _desdeCache.value = true
         }
+        if (_resumen.value == null && _estado.value != Estado.NO_HAY) _resumen.value = r ?: g?.let(ResumenGuia::de)
         // Las dudas que quedaron en la cola (la app se cerró antes de que salieran) se ven como pendientes.
         outbox?.let { cola ->
-            alcance.launch {
-                val ops = cola.operaciones()
-                _pendientes.value = ops.mapNotNull(::pendienteDe)
-                val conAvance = aplicarPendientes(_guia.value, ops)
-                if (conAvance != _guia.value) _guia.value = conAvance
-            }
+            val ops = cola.operaciones()
+            _pendientes.value = ops.mapNotNull(::pendienteDe)
+            val conAvance = aplicarPendientes(_guia.value, ops)
+            if (conAvance != _guia.value) _guia.value = conAvance
         }
+    }
+
+    private fun alDisco(f: Disco.() -> Unit) {
+        val d = disco ?: return
+        alcance.launch(serieDisco) { d.f() }
+    }
+
+    /** Para las pruebas: la caché ya se leyó y lo pedido al disco ya se escribió. */
+    suspend fun alDia() {
+        lecturaInicial.join()
+        alcance.launch(serieDisco) {}.join()
     }
 
     private val parametros: Map<String, ValorJson> get() = mapOf("p_token" to ValorJson.Texto(token))
@@ -116,9 +134,16 @@ class ModeloGuia(
      * sección desaparecen). Si la guía está en memoria y tiene lo visto en el teléfono que todavía no salió, se respeta.
      */
     suspend fun refrescarResumen() {
+        lecturaInicial.join()
         val r = cliente.llamar("entregas_app_resumen", parametros)
+        // La función no existe (404, PGRST202): para la app no hay guía (la tarjeta no queda colgada de la caché).
+        if (r is Resultado.Falla && (r.error.status == 404 || r.error.codigo == "PGRST202")) {
+            olvidar()
+            return
+        }
         val valor = (r as? Resultado.Ok)?.valor ?: return
-        if (esNoHay(valor)) {
+        // `ok: true` con total 0 (Mati sacó todos los videos): tampoco hay tarjeta.
+        if (esNoHay(valor) || (valor["ok"] == ValorJson.Booleano(true) && valor["total"]?.comoNumero?.let { it <= 0.0 } == true)) {
             olvidar()
             return
         }
@@ -126,7 +151,7 @@ class ModeloGuia(
         val local = _guia.value?.let(ResumenGuia::de)
         val final = if (local != null && local.total == nuevo.total && local.vistos > nuevo.vistos) local else nuevo
         _resumen.value = final
-        disco?.guardar(ARCHIVO_RESUMEN, final.aValor())
+        alDisco { guardar(ARCHIVO_RESUMEN, final.aValor()) }
     }
 
     /**
@@ -137,6 +162,7 @@ class ModeloGuia(
         if (abriendo) return
         abriendo = true
         try {
+            lecturaInicial.join()
             if (_guia.value == null) _estado.value = Estado.CARGANDO
             when (val r = cliente.llamar("entregas_app_get", parametros)) {
                 is Resultado.Falla -> {
@@ -175,16 +201,19 @@ class ModeloGuia(
         _resumen.value = null
         _desdeCache.value = false
         _estado.value = Estado.NO_HAY
-        disco?.borrar(ARCHIVO_GUIA)
-        disco?.borrar(ARCHIVO_RESUMEN)
+        alDisco {
+            borrar(ARCHIVO_GUIA)
+            borrar(ARCHIVO_RESUMEN)
+        }
     }
 
     private fun publicar(g: Guia) {
         _guia.value = g
-        disco?.guardar(ARCHIVO_GUIA, g.aValor())
-        ResumenGuia.de(g)?.let {
-            _resumen.value = it
-            disco?.guardar(ARCHIVO_RESUMEN, it.aValor())
+        val resumen = ResumenGuia.de(g)
+        resumen?.let { _resumen.value = it }
+        alDisco {
+            guardar(ARCHIVO_GUIA, g.aValor())
+            resumen?.let { guardar(ARCHIVO_RESUMEN, it.aValor()) }
         }
     }
 
@@ -211,7 +240,7 @@ class ModeloGuia(
     suspend fun enviarDudaVideo(video: String, texto: String): Boolean {
         val t = ReglasGuia.dudaValida(texto) ?: return false
         val cola = outbox ?: return false
-        val op = cola.encolar(KIND_DUDA, ValorJson.objeto("video" to ValorJson.Texto(video), "texto" to ValorJson.Texto(t)), null)
+        val op = cola.encolar(KIND_DUDA, ValorJson.objeto("video" to ValorJson.Texto(video), "texto" to ValorJson.Texto(t), "id" to ValorJson.Texto(nuevoId())), null)
         agregarPendiente(DudaPendiente(op.id, video, t))
         return true
     }
@@ -221,7 +250,7 @@ class ModeloGuia(
         val t = ReglasGuia.dudaValida(texto) ?: return false
         if (!puedeSumarDudaLlamada()) return false
         val cola = outbox ?: return false
-        val op = cola.encolar(KIND_DUDA_LLAMADA, ValorJson.objeto("texto" to ValorJson.Texto(t)), null)
+        val op = cola.encolar(KIND_DUDA_LLAMADA, ValorJson.objeto("texto" to ValorJson.Texto(t), "id" to ValorJson.Texto(nuevoId())), null)
         agregarPendiente(DudaPendiente(op.id, null, t))
         return true
     }
@@ -278,6 +307,12 @@ class ModeloGuia(
 
     companion object {
         const val KIND_AVANCE = "guia_avance"
+        /**
+         * El `p_id` de una duda (`entregas_013`): un uuid v4 al azar, armado una sola vez al entrar a la cola y guardado en
+         * el payload (`id`), así cada reintento de la cola manda el mismo y el servidor no la suma dos veces.
+         */
+        fun nuevoId(): String = java.util.UUID.randomUUID().toString()
+
         const val KIND_DUDA = "guia_duda"
         const val KIND_DUDA_LLAMADA = "guia_duda_llamada"
 

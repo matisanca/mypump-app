@@ -259,4 +259,54 @@ class GuiaReglasTest {
         assertEquals(listOf("Que diga " to false, "L-citrulina" to true, " sola." to false), SuplementacionVista.tramos("Que diga *L-citrulina* sola."))
         assertEquals(listOf("sin marcas" to false), SuplementacionVista.tramos("sin marcas"))
     }
+
+    /**
+     * Ningún video queda inaccesible: cada clip que sale de la lista (regla de `entregas_012`) tiene su «Ver por qué» en la
+     * vista de la suplementación, con los mismos bordes que la web (estado «Sale» no es «sale», un nombre de espacios cuenta).
+     */
+    @Test
+    fun cadaVideoQueSaleDeLaListaTieneSuVerPorQue() {
+        val casos = listOf(
+            """{"nombre":"Magnesio","estado":"sigue","video_id":"V1","momento":"desayuno"}""",
+            """{"nombre":"Magnesio","estado":"Sale","video_id":"V1","momento":"desayuno"}""",
+            """{"nombre":"  ","estado":"nuevo","video_id":"V1"}""",
+            """{"nombre":"Magnesio","video_id":"V1"}""",
+        )
+        for (item in casos) {
+            val g = Guia.desde(Json.parseToJsonElement(
+                """{"ok":true,"clips":[{"id":"V1","titulo":"T","url":"https://x.invalid/v1.mp4","minutos":0.5,"bloque":"Tu suplementación"}],"suplementacion":{"items":[$item]}}""",
+            ))!!
+            assertEquals(listOf("V1"), g.clipsDeSuplementos.map { it.id }, item)
+            val v = SuplementacionVista.armar(g.suplementacion!!)
+            val conBoton = v.momentos.flatMap { it.filas }.mapNotNull { it.videoId }
+            assertTrue("V1" in conBoton, item)
+        }
+        // Un ítem que «sale» (exacto) no saca el video de la lista ni le da botón: el clip sigue en la lista.
+        val sale = Guia.desde(Json.parseToJsonElement(
+            """{"ok":true,"clips":[{"id":"V1","titulo":"T","url":"u","minutos":0.5,"bloque":"Tu suplementación"}],"suplementacion":{"items":[{"nombre":"M","estado":"sale","video_id":"V1"}]}}""",
+        ))!!
+        assertTrue(sale.clipsDeSuplementos.isEmpty())
+        // El id del clip no se recorta: « V1» no es el «V1» del ítem.
+        val conEspacio = Guia.desde(Json.parseToJsonElement(
+            """{"ok":true,"clips":[{"id":" V1","titulo":"T","url":"u","minutos":0.5,"bloque":"Tu suplementación"}],"suplementacion":{"items":[{"nombre":"M","video_id":"V1"}]}}""",
+        ))!!
+        assertEquals(listOf(" V1"), conEspacio.clipsDeLaLista.map { it.id })
+    }
+
+    /** Al cortar (pausa, otro video, cerrar, segundo plano) se guarda el tramo que faltaba, solo si el máximo subió. */
+    @Test
+    fun alCortarGuardaElTramoQueFaltaba() {
+        val clip = ClipGuia("V", "T", "u", 1.0, null, null, visto = false, segundos = 0, duda = null)
+        val s = SeguimientoAvance(clip)
+        var t = 0.0
+        while (t <= 7.0) { assertNull(s.alAvanzar(t, 60.0)); t += 0.5 }
+        assertEquals(SeguimientoAvance.Guardado("V", 7, false), s.alCortar(7.2))
+        // Sin avanzar, cortar de nuevo no guarda nada.
+        assertNull(s.alCortar(7.2))
+        assertNull(s.alCortar(null))
+        // Lo que ya tenía el servidor no se vuelve a mandar.
+        val visto = SeguimientoAvance(clip.copy(segundos = 30))
+        assertNull(visto.alCortar(12.0))
+        assertEquals(SeguimientoAvance.Guardado("V", 31, false), visto.alCortar(31.0))
+    }
 }

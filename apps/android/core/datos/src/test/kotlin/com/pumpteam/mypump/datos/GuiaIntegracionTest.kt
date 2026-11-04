@@ -117,4 +117,38 @@ class GuiaIntegracionTest {
         assertTrue(ahora.clip(video)!!.duda!!.contains("$marca, video"))
         if (g.dudasLlamada.size < 30) assertTrue(ahora.dudasLlamada.any { it.texto == "$marca, llamada" })
     }
+
+    /**
+     * `entregas_013`: la misma duda mandada dos veces con el mismo `p_id` (una respuesta que se cortó y la cola reintentó)
+     * queda una sola vez, por video y para la llamada. Solo con `MYPUMP_PROBAR_DUDAS=1`.
+     */
+    @Test
+    fun laMismaDudaConElMismoPidQuedaUnaSolaVez() = enUnHilo { alcance ->
+        assumeTrue(System.getenv("MYPUMP_PROBAR_DUDAS") == "1", "las dudas se acumulan: solo con MYPUMP_PROBAR_DUDAS=1")
+        val cliente = ClienteRpc()
+        val (m, _) = modelo(alcance)
+        m.abrir()
+        val g = m.guia.value!!
+        val video = g.clips.first().id
+        val marca = "Prueba nativa Android pid ${System.currentTimeMillis()}"
+        val tok = ValorJson.Texto(token)
+        val idVideo = ValorJson.Texto(ModeloGuia.nuevoId())
+        repeat(2) {
+            val r = cliente.llamar("entregas_app_duda", mapOf("p_token" to tok, "p_video" to ValorJson.Texto(video), "p_texto" to ValorJson.Texto("$marca, video"), "p_id" to idVideo))
+            assertEquals(ValorJson.Booleano(true), (r as Resultado.Ok).valor)
+        }
+        val conLlamada = g.dudasLlamada.size < 30
+        if (conLlamada) {
+            val idLlamada = ValorJson.Texto(ModeloGuia.nuevoId())
+            repeat(2) {
+                val r = cliente.llamar("entregas_app_llamada_duda", mapOf("p_token" to tok, "p_texto" to ValorJson.Texto("$marca, llamada"), "p_id" to idLlamada))
+                assertEquals(ValorJson.Booleano(true), (r as Resultado.Ok).valor)
+            }
+        }
+        val (otro, _) = modelo(alcance)
+        otro.abrir()
+        val ahora = otro.guia.value!!
+        assertEquals(1, Regex(Regex.escape("$marca, video")).findAll(ahora.clip(video)!!.duda!!).count())
+        if (conLlamada) assertEquals(1, ahora.dudasLlamada.count { it.texto == "$marca, llamada" })
+    }
 }

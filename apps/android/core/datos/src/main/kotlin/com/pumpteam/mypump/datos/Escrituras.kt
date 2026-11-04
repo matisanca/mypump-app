@@ -228,10 +228,10 @@ class Escrituras(
                 ),
             )
             ModeloGuia.KIND_DUDA -> ResultadoOp.Respuesta(
-                cliente.llamar("entregas_app_duda", mapOf("p_token" to t, "p_video" to de(p, "video"), "p_texto" to de(p, "texto"))),
+                cliente.llamar("entregas_app_duda", mapOf("p_token" to t, "p_video" to de(p, "video"), "p_texto" to de(p, "texto")) + idDeDuda(p)),
             )
             ModeloGuia.KIND_DUDA_LLAMADA -> ResultadoOp.Respuesta(
-                cliente.llamar("entregas_app_llamada_duda", mapOf("p_token" to t, "p_texto" to de(p, "texto"))),
+                cliente.llamar("entregas_app_llamada_duda", mapOf("p_token" to t, "p_texto" to de(p, "texto")) + idDeDuda(p)),
             )
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
@@ -304,6 +304,17 @@ class Escrituras(
 
     companion object {
         /** Los kinds de «Tu guía» (ver [ModeloGuia]). */
+        private val UUID = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+        /**
+         * `p_id` de una duda de la guía (`entregas_013`): solo si el payload trae un uuid. Las ops viejas (sin `id`) se mandan
+         * sin el campo; nunca "" ni otra cosa (daría 400 22P02, que la cola no reintenta).
+         */
+        fun idDeDuda(p: ValorJson?): Map<String, ValorJson> {
+            val id = (p?.get("id") as? ValorJson.Texto)?.valor ?: return emptyMap()
+            return if (UUID.matches(id)) mapOf("p_id" to ValorJson.Texto(id)) else emptyMap()
+        }
+
         val KINDS_GUIA: Set<String> = setOf(ModeloGuia.KIND_AVANCE, ModeloGuia.KIND_DUDA, ModeloGuia.KIND_DUDA_LLAMADA)
 
         /**

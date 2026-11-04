@@ -38,7 +38,7 @@ class ModeloGuiaTest {
         val cliente = ClienteRpc(transporte = t)
         val esc = Escrituras(cliente, "tok")
         val cola = Outbox(archivo = disco.archivo("outbox.json"), reintentoAutomatico = false, alcance = alcance) { esc.ejecutar(it) }
-        val m = ModeloGuia(cliente, "tok", cola, disco, alcance)
+        val m = ModeloGuia(cliente, "tok", cola, disco, alcance).also { it.alDia() }
         cola.observar(estado = {}, abandonadas = m::alAbandonar, guardadas = m::alGuardar)
         yield()
         return Entorno(m, cola, t, disco, cuerpos)
@@ -63,7 +63,8 @@ class ModeloGuiaTest {
         assertEquals("tok", e.cuerpos[0].second["p_token"]?.comoTexto)
 
         // Sin red: abre desde la caché, sin error.
-        val sinRed = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance)
+        e.m.alDia()
+        val sinRed = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance).also { it.alDia() }
         assertEquals(ModeloGuia.Estado.LISTA, sinRed.estado.value)
         assertTrue(sinRed.desdeCache.value)
         sinRed.abrir()
@@ -75,12 +76,12 @@ class ModeloGuiaTest {
 
     @Test
     fun sinRedYSinCache() = enUnHilo { alcance ->
-        val m = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(carpetaTemporal("guia"), "tok"), alcance)
+        val m = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(carpetaTemporal("guia"), "tok"), alcance).also { it.alDia() }
         m.abrir()
         assertEquals(ModeloGuia.Estado.SIN_RED, m.estado.value)
         assertNull(m.guia.value)
         // Un 200 que no es JSON (portal cautivo) tampoco es «no hay guía».
-        val portal = ModeloGuia(ClienteRpc(transporte = PortalCautivo), "tok", null, Disco(carpetaTemporal("guia"), "tok"), alcance)
+        val portal = ModeloGuia(ClienteRpc(transporte = PortalCautivo), "tok", null, Disco(carpetaTemporal("guia"), "tok"), alcance).also { it.alDia() }
         portal.abrir()
         assertEquals(ModeloGuia.Estado.SIN_RED, portal.estado.value)
     }
@@ -97,10 +98,12 @@ class ModeloGuiaTest {
         assertEquals(ModeloGuia.Estado.NO_HAY, e.m.estado.value)
         assertNull(e.m.guia.value)
         assertNull(e.m.resumen.value)
+        e.m.alDia()
         assertFalse(e.disco.archivo(ModeloGuia.ARCHIVO_GUIA).exists())
         assertFalse(e.disco.archivo(ModeloGuia.ARCHIVO_RESUMEN).exists())
         // Al abrir otra vez la app no queda nada guardado.
-        val otra = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance)
+        e.m.alDia()
+        val otra = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance).also { it.alDia() }
         assertNull(otra.resumen.value)
         assertEquals(ModeloGuia.Estado.SIN_DATOS, otra.estado.value)
     }
@@ -113,7 +116,8 @@ class ModeloGuiaTest {
         assertEquals(ResumenGuia(20, 4, 11.6), e.m.resumen.value)
         assertEquals(listOf("entregas_app_resumen"), e.t.llamadas)
         // Sin red queda el último.
-        val sinRed = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance)
+        e.m.alDia()
+        val sinRed = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance).also { it.alDia() }
         sinRed.refrescarResumen()
         assertEquals(ResumenGuia(20, 4, 11.6), sinRed.resumen.value)
         // Token inválido, revocado o sin guía: la tarjeta desaparece.
@@ -153,7 +157,8 @@ class ModeloGuiaTest {
         // En el teléfono ya se ve visto (y en la caché).
         assertTrue(e.m.guia.value!!.clip("FT-25a")!!.visto)
         assertEquals(1, e.m.resumen.value!!.vistos)
-        val cache = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance)
+        e.m.alDia()
+        val cache = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance).also { it.alDia() }
         assertTrue(cache.guia.value!!.clip("FT-25a")!!.visto)
 
         e.cola.drenar()
@@ -202,6 +207,10 @@ class ModeloGuiaTest {
         val llamada = e.cuerpos.single { it.first == "entregas_app_llamada_duda" }.second
         assertEquals("Quiero hablar del cardio", llamada["p_texto"]?.comoTexto)
         assertNull(llamada["p_video"])
+        // Cada duda con su p_id (entregas_013): un uuid distinto por duda, el mismo que quedó en la cola.
+        val ids = (dudas + llamada).map { it["p_id"]?.comoTexto }
+        assertTrue(ids.all { it != null && Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$").matches(it) }, ids.toString())
+        assertEquals(3, ids.toSet().size)
         // Quedan sumadas como las suma el servidor, y el aviso de cada una.
         assertEquals("¿Y si no consigo el alimento?\n¿Y si no consigo el alimento?", e.m.guia.value!!.clip("FT-9a")!!.duda)
         assertEquals(3, e.m.guia.value!!.dudasLlamada.size)
@@ -260,6 +269,7 @@ class ModeloGuiaTest {
         e.m.enviarDudaVideo("FT-2c", "¿Cuándo paso de semana?")
         e.m.enviarDudaLlamada("Algo para la llamada")
         e.cola.cerrar()
+        e.m.alDia()
         // La app se cerró: la cola de la cuenta y el modelo se arman de nuevo desde el disco.
         val otra = entorno(alcance, disco) { fn, _ -> if (fn == "entregas_app_get") 200 to guia else 200 to "true" }
         asentar()
@@ -268,6 +278,50 @@ class ModeloGuiaTest {
         asentar()
         assertTrue(otra.m.pendientes.value.isEmpty())
         assertEquals("¿Cuándo paso de semana?", otra.m.guia.value!!.clip("FT-2c")!!.duda)
+    }
+
+    /** Un reintento de la cola manda el mismo p_id; una op vieja sin id (o con uno que no es uuid) va sin el campo. */
+    @Test
+    fun elPidSeReusaYLasOpsViejasVanSinElCampo() = enUnHilo { alcance ->
+        var corte = true
+        val e = entorno(alcance) { fn, _ ->
+            when {
+                fn == "entregas_app_get" -> 200 to avanzada
+                fn == "entregas_app_duda" && corte -> { corte = false; throw java.io.IOException("se cortó la respuesta") }
+                else -> 200 to "true"
+            }
+        }
+        e.m.abrir()
+        e.m.enviarDudaVideo("FT-9a", "Una duda")
+        e.cola.drenar()
+        e.cola.drenar()
+        val idas = e.cuerpos.filter { it.first == "entregas_app_duda" }.map { it.second["p_id"]?.comoTexto }
+        assertEquals(2, idas.size)
+        assertEquals(idas[0], idas[1])
+        assertEquals(mapOf<String, ValorJson>(), Escrituras.idDeDuda(ValorJson.objeto("texto" to ValorJson.Texto("vieja"))))
+        assertEquals(mapOf<String, ValorJson>(), Escrituras.idDeDuda(ValorJson.objeto("id" to ValorJson.Texto(""))))
+        assertEquals(mapOf<String, ValorJson>(), Escrituras.idDeDuda(ValorJson.objeto("id" to ValorJson.Texto("no-es-uuid"))))
+    }
+
+    /** La tarjeta no queda colgada de la caché: total 0 con ok true, o la función que no existe (404 PGRST202). */
+    @Test
+    fun resumenEnCeroOSinFuncionSacaLaTarjeta() = enUnHilo { alcance ->
+        for (respuesta in listOf(
+            200 to """{"ok":true,"total":0,"vistos":0,"minutos_restantes":0}""",
+            404 to """{"code":"PGRST202","message":"Could not find the function public.entregas_app_resumen"}""",
+        )) {
+            val disco = Disco(carpetaTemporal("guia"), "tok")
+            val previa = entorno(alcance, disco) { fn, _ -> if (fn == "entregas_app_get") 200 to guia else 200 to "true" }
+            previa.m.abrir()
+            previa.m.alDia()
+            val e = entorno(alcance, disco) { fn, _ -> if (fn == "entregas_app_resumen") respuesta else 200 to "true" }
+            assertNotNull(e.m.resumen.value)
+            e.m.refrescarResumen()
+            e.m.alDia()
+            assertNull(e.m.resumen.value, respuesta.second)
+            assertEquals(ModeloGuia.Estado.NO_HAY, e.m.estado.value)
+            assertFalse(disco.archivo(ModeloGuia.ARCHIVO_RESUMEN).exists())
+        }
     }
 
     @Test
@@ -291,7 +345,8 @@ class ModeloGuiaTest {
         val raiz = carpetaTemporal("guia")
         val e = entorno(alcance, Disco(raiz, "tok")) { fn, _ -> if (fn == "entregas_app_get") 200 to guia else 200 to "true" }
         e.m.abrir()
-        val otra = ModeloGuia(ClienteRpc(transporte = SinRed), "otro", null, Disco(raiz, "otro"), alcance)
+        e.m.alDia()
+        val otra = ModeloGuia(ClienteRpc(transporte = SinRed), "otro", null, Disco(raiz, "otro"), alcance).also { it.alDia() }
         assertNull(otra.guia.value)
         assertNull(otra.resumen.value)
     }

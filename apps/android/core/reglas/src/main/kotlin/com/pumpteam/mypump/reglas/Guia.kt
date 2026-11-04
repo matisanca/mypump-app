@@ -222,6 +222,9 @@ class SeguimientoAvance(private val clip: ClipGuia) {
     private var ultimaPosicion: Double? = null
     private var reproducido = 0.0
 
+    /** Los segundos del último [Guardado] (o lo que ya tenía el servidor): [alCortar] solo guarda si se pasó de acá. */
+    private var ultimoGuardado: Int = clip.segundos
+
     /** Una lectura de la posición mientras el video corre. */
     fun alAvanzar(posicion: Double, duracion: Double): Guardado? {
         if (!posicion.isFinite() || posicion < 0) return null
@@ -244,9 +247,20 @@ class SeguimientoAvance(private val clip: ClipGuia) {
         return null
     }
 
-    /** Se pausó o se buscó otra posición: la próxima lectura no suma reproducción desde la anterior. */
+    /** Se buscó otra posición: la próxima lectura no suma reproducción desde la anterior. */
     fun alInterrumpir() {
         ultimaPosicion = null
+    }
+
+    /**
+     * El video dejó de correr (pausa, otro video, se cerró «Ver por qué», la app se fue atrás) en [posicion]: el último
+     * tramo (hasta 10 s que todavía no se guardaron) se guarda si el máximo subió desde el último [Guardado].
+     */
+    fun alCortar(posicion: Double?): Guardado? {
+        if (posicion != null && posicion.isFinite() && posicion > maximo) maximo = posicion
+        ultimaPosicion = null
+        reproducido = 0.0
+        return if (maximo.roundToInt().coerceIn(0, MAX_SEGUNDOS) > ultimoGuardado) guardado(maximo) else null
     }
 
     /** Terminó: se guarda con visto y el final. */
@@ -258,8 +272,9 @@ class SeguimientoAvance(private val clip: ClipGuia) {
     }
 
     private fun guardado(posicion: Double): Guardado {
-        val s = maxOf(posicion, maximo)
-        return Guardado(clip.id, s.roundToInt().coerceIn(0, MAX_SEGUNDOS), visto)
+        val s = maxOf(posicion, maximo).roundToInt().coerceIn(0, MAX_SEGUNDOS)
+        ultimoGuardado = maxOf(ultimoGuardado, s)
+        return Guardado(clip.id, s, visto)
     }
 
     companion object {

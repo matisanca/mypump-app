@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -105,12 +106,15 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
     LaunchedEffect(modelo) { modelo.abrir() }
     LaunchedEffect(modelo, guia) { guia?.let { control.usar(modelo, it) } }
     LaunchedEffect(estado) { if (estado == ModeloGuia.Estado.NO_HAY) alVolver() }
-    // Salir de la guía (o cambiar de pestaña) frena el video.
-    DisposableEffect(Unit) { onDispose { control.pausar() } }
+    // Salir de la guía (o cambiar de pestaña) frena el video; girar el teléfono no (la Activity se arma de nuevo y la
+    // guía vuelve a componerse, pero el reproductor vive en el ViewModel y sigue).
+    val actividad = LocalContext.current.actividad()
+    DisposableEffect(Unit) { onDispose { if (actividad?.isChangingConfigurations != true) control.pausar() } }
     BackHandler(enabled = control.pantallaCompleta) { control.pantallaCompleta = false }
 
     val textos = rememberSaveable(saver = SaverMapa) { mutableStateMapOf() }
     val mensajes = remember { mutableStateMapOf<String, Pair<String, Boolean>>() }
+    val enviando = remember { mutableStateListOf<String>() }
     val despues = ReglasGuia.yaPaso(guia?.fechaEntrega)
     // Lo que volvió de las dudas: «Listo», o el texto de vuelta al campo con «No se pudo guardar».
     LaunchedEffect(avisos) {
@@ -119,7 +123,7 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
             when (a) {
                 is ModeloGuia.AvisoDuda.Guardada -> mensajes[clave] = textoListo(a.video == null, despues) to false
                 is ModeloGuia.AvisoDuda.Rechazada -> {
-                    if (textos[clave].isNullOrBlank()) textos[clave] = a.texto
+                    textos[clave] = devolverAlCampo(a.texto, textos[clave])
                     mensajes[clave] = (if (a.video == null) "No se pudo guardar, probá de nuevo o mandámela por el chat." else "No se pudo guardar, probá de nuevo.") to true
                 }
             }
@@ -141,10 +145,20 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
                 puedeSumarLlamada = modelo.puedeSumarDudaLlamada(),
                 alEnviarDuda = { video, texto ->
                     val clave = video ?: LLAMADA
-                    mensajes.remove(clave)
-                    alcance.launch {
-                        val ok = if (video == null) modelo.enviarDudaLlamada(texto) else modelo.enviarDudaVideo(video, texto)
-                        if (ok) textos[clave] = ""
+                    // Un doble toque no la manda dos veces: el campo se vacía ya (el botón queda apagado) y, mientras se
+                    // encola, otro toque no hace nada. Si no se pudo encolar, el texto vuelve al campo.
+                    if (clave !in enviando) {
+                        enviando += clave
+                        mensajes.remove(clave)
+                        textos[clave] = ""
+                        alcance.launch {
+                            try {
+                                val ok = if (video == null) modelo.enviarDudaLlamada(texto) else modelo.enviarDudaVideo(video, texto)
+                                if (!ok) textos[clave] = devolverAlCampo(texto, textos[clave])
+                            } finally {
+                                enviando -= clave
+                            }
+                        }
                     }
                 },
             )
@@ -219,13 +233,14 @@ private fun ContenidoGuia(
         val dosColumnas = maxWidth >= DOS_COLUMNAS
         // Un teléfono girado: el video a pantalla completa, como hace el sistema con los videos.
         val telefonoApaisado = !dosColumnas && maxWidth > maxHeight
-        var porGiro by remember { mutableStateOf(false) }
+        // `porGiro` vive en el control (el ViewModel): al girar, la Activity se arma de nuevo y un remember se perdía, y al
+        // volver a vertical quedaba trabado en pantalla completa.
         LaunchedEffect(telefonoApaisado) {
             if (telefonoApaisado && control.clipActual != null) {
-                porGiro = true
+                control.porGiro = true
                 control.pantallaCompleta = true
-            } else if (!telefonoApaisado && porGiro) {
-                porGiro = false
+            } else if (!telefonoApaisado && control.porGiro) {
+                control.porGiro = false
                 control.pantallaCompleta = false
             }
         }
@@ -742,4 +757,17 @@ private fun DudasLlamada(
             }
         }
     }
+}
+
+/**
+ * Una duda que no se guardó vuelve al campo y nunca se pierde: si el cliente ya escribió otra cosa, va adelante de lo
+ * que hay, separada por una línea en blanco.
+ */
+internal fun devolverAlCampo(rechazada: String, actual: String?): String =
+    if (actual.isNullOrBlank()) rechazada else rechazada + "\n\n" + actual
+
+private tailrec fun android.content.Context.actividad(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.actividad()
+    else -> null
 }
