@@ -263,6 +263,13 @@ struct ListaDia: View {
 struct FilaEjercicio: View {
     let e: EjercicioReloj
     let actual: Bool
+    /// «2/4 series · 8-10». Sin series (cardio sin duración, por ejemplo) no muestra «0/0 series»: lo planificado o
+    /// el tipo, y «Hecho» al terminarlo.
+    private var resumen: String {
+        if !e.series.isEmpty { return "\(e.confirmadas)/\(e.series.count) series" + (e.repsPlan.map { " · \($0)" } ?? "") }
+        if e.terminado { return "Hecho" }
+        return e.repsPlan ?? (e.tipo == "cardio" ? "Cardio" : "")
+    }
     var body: some View {
         HStack(spacing: 8) {
             ZStack {
@@ -278,7 +285,7 @@ struct FilaEjercicio: View {
             .frame(width: 22, height: 22)
             VStack(alignment: .leading, spacing: 1) {
                 Text(e.nombre).font(.body.weight(actual ? .semibold : .regular)).lineLimit(2)
-                Text("\(e.confirmadas)/\(e.series.count) series" + (e.repsPlan.map { " · \($0)" } ?? ""))
+                Text(resumen)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
