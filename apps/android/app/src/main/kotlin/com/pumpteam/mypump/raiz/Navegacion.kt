@@ -46,9 +46,12 @@ object AnclaRevision {
  * iOS). Sobrevive a rotar la pantalla. La usan la barra de pestañas, el banner de "te falta tu check" de las otras
  * pestañas, tocar un aviso y un link con `?scene=` (ACC-09).
  */
-class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, anclaRevision: String? = null) {
+class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, anclaRevision: String? = null, guia: Boolean = false) {
     var pestana by mutableStateOf(pestana)
     var misDatos by mutableStateOf(misDatos)
+
+    /** «Tu guía», abierta desde su tarjeta en Entreno (cuelga de Entreno, como Mis datos de Revisión). */
+    var guia by mutableStateOf(guia)
 
     /**
      * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check, peso, midia), como `anclaRevision` de
@@ -59,6 +62,7 @@ class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, 
     /** Tocar una pestaña. Tocar Revisión estando en Mis datos vuelve a Revisión (como volver al principio de la pila). */
     fun elegir(p: Pestana) {
         if (p == pestana && p == Pestana.REVISION) misDatos = false
+        if (p == pestana && p == Pestana.ENTRENO) guia = false
         pestana = p
     }
 
@@ -88,8 +92,10 @@ class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, 
 
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "") },
-            restore = { Navegacion(Pestana.valueOf(it[0] as String), it[1] as Boolean, (it.getOrNull(2) as? String)?.ifEmpty { null }) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.guia) },
+            restore = {
+                Navegacion(Pestana.valueOf(it[0] as String), it[1] as Boolean, (it.getOrNull(2) as? String)?.ifEmpty { null }, it.getOrNull(3) as? Boolean ?: false)
+            },
         )
     }
 }

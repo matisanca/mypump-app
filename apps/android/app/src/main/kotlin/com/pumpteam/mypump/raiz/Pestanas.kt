@@ -83,6 +83,7 @@ import com.pumpteam.mypump.entreno.BarraDescansoEntreno
 import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
+import com.pumpteam.mypump.guia.GuiaPantalla
 import com.pumpteam.mypump.misdatos.MisDatosPantalla
 import com.pumpteam.mypump.progreso.ProgresoPantalla
 import com.pumpteam.mypump.reglas.FotosProgreso
@@ -120,7 +121,9 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
         }
     }
     val enMisDatos = navegacion.pestana == Pestana.REVISION && navegacion.misDatos
+    val enGuia = navegacion.pestana == Pestana.ENTRENO && navegacion.guia
     BackHandler(enabled = enMisDatos) { navegacion.misDatos = false }
+    BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
 
     CompositionLocalProvider(LocalNavegacion provides navegacion) {
@@ -140,7 +143,15 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                     Box(Modifier.weight(1f).then(if (conBanner) Modifier.consumeWindowInsets(WindowInsets.statusBars) else Modifier)) {
                         estadosPestanas.SaveableStateProvider(navegacion.pestana.name) {
                             when (navegacion.pestana) {
-                                Pestana.ENTRENO -> EntrenoPantalla(modelo, vm.preguntasEntreno)
+                                Pestana.ENTRENO -> {
+                                    val guia by modelo.guia.collectAsStateWithLifecycle()
+                                    val g = guia
+                                    if (navegacion.guia && g != null && !esDemo) {
+                                        GuiaPantalla(g, vm.reproductorGuia, alVolver = { navegacion.guia = false })
+                                    } else {
+                                        EntrenoPantalla(modelo, vm.preguntasEntreno)
+                                    }
+                                }
                                 Pestana.DIETA -> DietaPantalla(modelo)
                                 Pestana.CHAT -> ChatPantalla(modelo)
                                 Pestana.REVISION ->
