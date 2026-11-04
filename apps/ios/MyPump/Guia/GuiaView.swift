@@ -304,8 +304,14 @@ struct GuiaView: View {
         .clipShape(RoundedRectangle(cornerRadius: Radio.control + 6, style: .continuous))
     }
 
+    /// SwiftUI puede volver a pintar una fila vieja del `ForEach` antes de recalcular el bloque (la observación de `clips`
+    /// dispara primero al hijo): si la guía se achicó en el medio, el índice ya no existe y `clips[i]` cerraba la app.
+    @ViewBuilder
     private func fila(_ i: Int, _ lector: ScrollViewProxy) -> some View {
-        let c = clips[i]
+        if clips.indices.contains(i) { filaClip(clips[i], i, lector) }
+    }
+
+    private func filaClip(_ c: ClipGuia, _ i: Int, _ lector: ScrollViewProxy) -> some View {
         let actual = control.actual == i
         let (hacer, paraQue) = ReglasGuia.partes(c.motivo)
         let tieneMotivo = !hacer.isEmpty || !paraQue.isEmpty
