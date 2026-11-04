@@ -1,0 +1,353 @@
+{
+ "ok": true,
+ "nombre_pila": "Marcelo",
+ "fecha_entrega": "2026-11-06T14:00:00-03:00",
+ "clips": [
+  {
+   "id": "FT-25a",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-25a.mp4",
+   "duda": null,
+   "visto": true,
+   "yt_id": null,
+   "bloque": "Tu app",
+   "motivo": "Conectá tu reloj a la app y subí tu check en la sección de revisión todas las semanas. ||| Para que sepas dónde está cada cosa de tu plan",
+   "titulo": "¿Cómo funciona la app Pump Team?",
+   "minutos": 0.7,
+   "segundos": 42
+  },
+  {
+   "id": "FT-2b",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-2b.mp4",
+   "duda": null,
+   "visto": true,
+   "yt_id": null,
+   "bloque": "Tu app",
+   "motivo": "Cuando de una semana a otra bajan las repeticiones, por ejemplo de 3x12 a 3x10, subí la carga. ||| Como vas cambiando cada tanto, acá ves que cuando la rutina baja las repeticiones de una semana a otra es momento de subir la carga.",
+   "titulo": "¿Cómo subo las cargas semana a semana?",
+   "minutos": 0.3,
+   "segundos": 18
+  },
+  {
+   "id": "FT-2c",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-2c.mp4",
+   "duda": null,
+   "visto": true,
+   "yt_id": null,
+   "bloque": "Tu app",
+   "motivo": "Al terminar cada sesión marcala como hecha y, cuando completes la semana, tocá pasar a la semana siguiente. ||| Al terminar cada entrenamiento lo cerrás en la app, así se arma tu semana",
+   "titulo": "¿Cómo cierro el entrenamiento y paso de semana?",
+   "minutos": 0.3,
+   "segundos": 18
+  },
+  {
+   "id": "FT-9a",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-9a.mp4",
+   "duda": null,
+   "visto": true,
+   "yt_id": null,
+   "bloque": "Tu app",
+   "motivo": "Si no te gusta una opción de comida, tocá el botón de sustituir en ese alimento y elegí un reemplazo, que ya viene con la cantidad cuadrada. ||| Si un alimento no te gusta o no lo conseguís, lo cambiás vos en la app",
+   "titulo": "¿Cómo sustituyo un alimento en la app?",
+   "minutos": 0.6,
+   "segundos": 36
+  },
+  {
+   "id": "FT-9b",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-9b.mp4",
+   "duda": "¿Puedo cambiar el orden de los ejercicios?",
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu app",
+   "motivo": "Si no tenés balanza a mano, tocá el ícono de la mano en cada alimento y usá esa porción como referencia. ||| Así no dependés de la balanza cuando comés afuera",
+   "titulo": "¿Tengo que pesar todo? ¿Cómo uso las porciones con la mano?",
+   "minutos": 0.5,
+   "segundos": 12
+  },
+  {
+   "id": "FT-9c",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-9c.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu app",
+   "motivo": "Si hacés una comida libre, sacale una foto desde la app para registrarla, y si un alimento no está, crealo sacándole foto a la etiqueta. ||| Para cargar una comida libre o un alimento con foto o etiqueta",
+   "titulo": "¿Cómo cargo una comida libre o un alimento con foto o etiqueta?",
+   "minutos": 0.5,
+   "segundos": 0
+  },
+  {
+   "id": "FT-2a",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-2a.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu app",
+   "motivo": "Cada lunes cargá en Revisión las fotos, el peso y el check del 1 al 5 de energía, descanso, hambre y adherencia. ||| Cada lunes me mandás la revisión, acá ves qué subir",
+   "titulo": "¿Qué subo en la revisión semanal?",
+   "minutos": 0.3,
+   "segundos": 0
+  },
+  {
+   "id": "FT-2d",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-2d.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu app",
+   "motivo": "Escribime cualquier duda por el chat de la app o por WhatsApp, como te sea más cómodo. ||| Para cualquier duda me escribís, acá ves por dónde",
+   "titulo": "¿Para qué sirve el chat de la app?",
+   "minutos": 0.3,
+   "segundos": 0
+  },
+  {
+   "id": "MC-7_clip1",
+   "url": "https://videos.prueba.invalid/videos-entrega/MC-7_clip1.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Lo que no te podés saltear",
+   "motivo": "Antes de las series efectivas hacé siempre la serie de calentamiento y las aproximaciones. ||| Me dijiste que no sabés qué son las series de aproximación, acá ves por qué sin ellas la primera serie efectiva sale floja.",
+   "titulo": "¿Por qué tu primera serie efectiva te sale floja?",
+   "minutos": 1.8,
+   "segundos": 0
+  },
+  {
+   "id": "MC-7_clip4",
+   "url": "https://videos.prueba.invalid/videos-entrega/MC-7_clip4.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Lo que no te podés saltear",
+   "motivo": "Si querés sumar una o dos repeticiones en la efectiva, probá la potenciación post activación en los multiarticulares. ||| Para que sepas qué te suma la serie de potenciación antes de las efectivas",
+   "titulo": "¿Por qué la potenciación post activación te da una o dos repeticiones más?",
+   "minutos": 1.5,
+   "segundos": 0
+  },
+  {
+   "id": "FT-3a",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-3a.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Lo que no te podés saltear",
+   "motivo": "Hacé el calentamiento solo en el primer ejercicio de cada músculo y las aproximaciones lejos del fallo, así llegás a la primera efectiva con todo ||| Como no conocías las aproximaciones, acá ves cómo se hace la serie de calentamiento y cuántas repeticiones lleva cada aproximación.",
+   "titulo": "¿Cómo hago el calentamiento y las aproximaciones?",
+   "minutos": 1.2,
+   "segundos": 0
+  },
+  {
+   "id": "MC-4_clip1",
+   "url": "https://videos.prueba.invalid/videos-entrega/MC-4_clip1.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Lo que no te podés saltear",
+   "motivo": "Contá que cada mil pasos son unas 40 a 50 calorías y usá los pasos como herramienta para definir. ||| Me pasaste que hacés unos 3500 pasos por día, acá ves cuántas calorías gasta cada mil pasos y cuánto suma subirlos.",
+   "titulo": "¿Cuántas calorías gastás por cada mil pasos?",
+   "minutos": 1.2,
+   "segundos": 0
+  },
+  {
+   "id": "MC-13_clip3",
+   "url": "https://videos.prueba.invalid/videos-entrega/MC-13_clip3.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu entrenamiento",
+   "motivo": "Anotá en el celular la carga y las repeticiones de cada serie y miralas antes de cada ejercicio. ||| Me contaste que no controlás pesos ni repeticiones, acá ves por qué sin anotarlos no sabés si progresás y cómo superar tu récord.",
+   "titulo": "Anotá cargas y repeticiones para saber si progresás",
+   "minutos": 1.2,
+   "segundos": 0
+  },
+  {
+   "id": "FT-5a",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-5a.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu entrenamiento",
+   "motivo": "Usá straps cuando entrenes espalda, desde las aproximaciones. ||| Me dijiste que no sabés qué son los straps, acá ves por qué el agarre se cansa antes que la espalda y cómo los straps lo resuelven.",
+   "titulo": "¿Para qué uso straps en espalda?",
+   "minutos": 0.5,
+   "segundos": 0
+  },
+  {
+   "id": "FT-26a",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-26a.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu alimentación",
+   "motivo": "Pesá todo en crudo salvo que la dieta diga cocido, y el arroz pesalo antes de cocinarlo. ||| Para que la cantidad sea la justa, acá ves cuándo pesar en crudo y cuándo en cocido",
+   "titulo": "¿Peso la comida cruda o cocida?",
+   "minutos": 0.6,
+   "segundos": 0
+  },
+  {
+   "id": "FT-17a",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-17a.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu alimentación",
+   "motivo": "Sumá verduras verdes sin pesarlas en cualquier comida y a la ensalada condimentala con vinagre, limón o sal, nunca con aceite. ||| Me contaste que no siempre le metés verduras a tus comidas, acá ves cuáles podés comer sin límite y cómo condimentarlas sin aceite.",
+   "titulo": "¿Qué verduras puedo comer libres?",
+   "minutos": 0.6,
+   "segundos": 0
+  },
+  {
+   "id": "FT-50b",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-50b.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu suplementación",
+   "motivo": "Para qué sirve la creatina y cómo tomarla todos los días |||",
+   "titulo": "¿La creatina hace ganar masa muscular o peso?",
+   "minutos": 0.6,
+   "segundos": 0
+  },
+  {
+   "id": "FT-1b",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-1b.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu suplementación",
+   "motivo": "Qué hace la citrulina antes de entrenar |||",
+   "titulo": "¿Para qué sirve la citrulina?",
+   "minutos": 0.7,
+   "segundos": 0
+  },
+  {
+   "id": "FT-4c",
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-4c.mp4",
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu suplementación",
+   "motivo": "Cuándo conviene la ashwagandha y cómo hacer los descansos |||",
+   "titulo": "¿Para qué sirve la ashwagandha?",
+   "minutos": 0.6,
+   "segundos": 0
+  },
+  {
+   "id": "FT-4b",
+   "url": null,
+   "duda": null,
+   "visto": false,
+   "yt_id": null,
+   "bloque": "Tu suplementación",
+   "motivo": "Qué magnesio comprar y cuándo tomarlo |||",
+   "titulo": "¿Qué magnesio compro y por qué los comunes no sirven?",
+   "minutos": 0.5,
+   "segundos": 0
+  }
+ ],
+ "dudas_llamada": [
+  {
+   "texto": "¿Puedo entrenar a la noche?",
+   "en": "2026-11-04T10:12:00-03:00"
+  },
+  {
+   "texto": "Quiero ver si cambio el desayuno",
+   "en": "2026-11-04T10:15:00-03:00"
+  }
+ ],
+ "suplementacion": {
+  "titulo": "Tu suplementación",
+  "accion": "Sumá lo nuevo de a uno por día, así ves cómo te cae cada cosa",
+  "dia": [
+   {
+    "id": "desayuno",
+    "nombre": "Desayuno"
+   },
+   {
+    "id": "pre",
+    "nombre": "30 a 60 minutos antes de entrenar"
+   },
+   {
+    "id": "cena",
+    "nombre": "Cena"
+   },
+   {
+    "id": "dormir",
+    "nombre": "Antes de dormir"
+   }
+  ],
+  "items": [
+   {
+    "nombre": "Creatina",
+    "cantidad": "5 g",
+    "estado": "sigue",
+    "nota": "todos los días",
+    "tomas": [
+     {
+      "momento": "pre",
+      "cantidad": "5 g",
+      "nota": "los días que entrenás"
+     },
+     {
+      "momento": "desayuno",
+      "cantidad": "5 g",
+      "nota": "los días que no entrenás"
+     }
+    ],
+    "detalle": "Seguí con la que venís usando.",
+    "por_que": "Te sostiene la fuerza entre series",
+    "video_id": "FT-50b"
+   },
+   {
+    "nombre": "L-citrulina",
+    "cantidad": "6 g",
+    "momento": "pre",
+    "estado": "nuevo",
+    "nota": "solo los días que entrenás",
+    "detalle": [
+     "Que diga *L-citrulina* sola.",
+     "Mezclala con agua."
+    ],
+    "por_que": "Mejora la circulación durante el entrenamiento",
+    "video_id": "FT-1b"
+   },
+   {
+    "nombre": "Omega 3",
+    "cantidad": "2 g",
+    "momento": "desayuno",
+    "estado": "nuevo",
+    "nota": "con la comida",
+    "por_que": "Ayuda a recuperar entre sesiones"
+   },
+   {
+    "nombre": "Magnesio",
+    "cantidad": "400 mg",
+    "momento": "dormir",
+    "estado": "sigue",
+    "nota": "todos los días",
+    "por_que": "Te ayuda a dormir más profundo",
+    "video_id": "FT-4b"
+   },
+   {
+    "nombre": "Melatonina",
+    "cantidad": "1 comprimido",
+    "momento": "dormir",
+    "estado": "nuevo",
+    "opcional": true,
+    "nota": "de prueba",
+    "por_que": "Para ver si te dormís más rápido"
+   },
+   {
+    "nombre": "Té verde en cápsulas",
+    "estado": "sale",
+    "por_que": "No suma con lo que hacés ahora"
+   },
+   {
+    "nombre": "Vitamina D",
+    "cantidad": "2000 UI",
+    "estado": "sigue",
+    "nota": "en el desayuno o el almuerzo"
+   }
+  ],
+  "sigue_texto": "Tu multivitamínico, como venías"
+ }
+}
