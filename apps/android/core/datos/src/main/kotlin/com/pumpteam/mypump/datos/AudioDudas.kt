@@ -226,8 +226,11 @@ class ModeloAudioDudas(
                 } else {
                     val motivo = r["motivo"]?.comoTexto
                     rechazados[id] = motivo to g.op
-                    // `id`: ese p_id es de otro cliente, un error permanente: la op queda en fallidos (no se pierde).
-                    if (motivo == "id") outbox?.archivarEnFallidos(listOf(g.op), "entregas_app_audio_iniciar: motivo id")
+                    // Queda en fallidos (no se pierde al cerrar la app): `id` (ese p_id es de otro cliente, permanente) y lo
+                    // que se puede reintentar (`pendientes`, sin motivo), que conserva su archivo para «Reintentar».
+                    if (motivo == "id" || ReglasAudioDuda.motivoReintentable(motivo)) {
+                        outbox?.archivarEnFallidos(listOf(g.op), "audio rechazado: ${motivo ?: "sin motivo"}")
+                    }
                     if (!ReglasAudioDuda.motivoReintentable(motivo)) borrarArchivo(g.op)
                 }
             }
@@ -262,6 +265,8 @@ class ModeloAudioDudas(
         val vistos = HashSet<String>()
         val lista = mutableListOf<Item>()
         for (s in servidor.sortedBy { it.en ?: "" }) {
+            // Otro estado (un ticket pedido que todavía no subió): manda lo del teléfono, si lo tiene.
+            if (s.estado != SUBIDO && s.estado != TRANSCRIPTO && s.estado != ERROR) continue
             if (!vistos.add(s.id)) continue
             lista += when (s.estado) {
                 TRANSCRIPTO -> Item(s.id, Estado.TRANSCRIPTO, texto = s.texto)

@@ -118,7 +118,8 @@ class AudioDudasTest {
         val lista = """[
             {"id": "a1", "estado": "transcripto", "en": "2026-11-04T10:00:00Z", "segundos": 31, "texto": "¿Puedo entrenar en ayunas?"},
             {"id": "a2", "estado": "error", "en": "2026-11-04T10:05:00Z", "texto": null},
-            {"id": "a3", "estado": "subido", "en": "2026-11-04T10:06:00Z"}
+            {"id": "a3", "estado": "subido", "en": "2026-11-04T10:06:00Z"},
+            {"id": "a4", "estado": "pendiente", "en": "2026-11-04T10:07:00Z"}
         ]"""
         val e = entorno(alcance, Servidor(normal(lista)))
         assertTrue(e.m.refrescar())
@@ -291,6 +292,11 @@ class AudioDudasTest {
         val pend = e.m.items.value.last()
         assertEquals("Esperá un toque que se terminen de mandar los otros audios.", pend.aviso)
         assertTrue(pend.reintentable)
+        assertEquals(1, carpetaAudios(e.disco).listFiles()!!.size)
+        // Queda en fallidos: al volver a abrir la app sigue ahí, con su archivo.
+        assertEquals(1, e.cola.fallidos().count { it.op.payload["id"]?.comoTexto == pend.id })
+        val otra = ModeloAudioDudas(ClienteRpc(transporte = s), "tok", e.cola, e.disco, alcance).also { it.alDia() }
+        assertTrue(otra.items.value.single { it.id == pend.id }.reintentable)
         assertEquals(1, carpetaAudios(e.disco).listFiles()!!.size)
         s.regla = base
         e.m.reintentar(pend.id)
