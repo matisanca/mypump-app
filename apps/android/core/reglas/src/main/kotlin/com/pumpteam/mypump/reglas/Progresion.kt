@@ -13,12 +13,19 @@ object Progresiones {
      * Port de `getProgresionActual` (cliente.html:1679). La semana se acota al largo del array: pasada la última, queda
      * la última. Sin progresión, valen los campos viejos (`series`, `reps`, `rir_objetivo ?? rir`).
      */
+    //
+    // El cardio sin progresión ([ReglasEjercicio.esCardio], la cinta de «10 min» con `progresion: []`) va por tiempo: sin
+    // series ni RIR, aunque `normalizarRutina` le haya puesto `series = 1` (desvío a propósito de la web, 4-nov: la cinta
+    // pedía reps, kg y RIR). Así la sesión no le arma filas, la lista lo muestra por tiempo y la tarjeta ofrece «Terminé»,
+    // tenga o no cargas viejas en esa clave. El cardio con progresión propia (intervalos «6 × 30 s / 30 s») sigue con las
+    // series del plan, como en la web. Igual que en iOS.
     fun pauta(e: Ejercicio, semana: Int?): Pauta {
         if (e.progresion.isNotEmpty()) {
             val idx = maxOf(0, minOf(semanaJs(semana) - 1, e.progresion.size - 1))
             val p = e.progresion[idx]
             return Pauta(p.series, p.reps, p.rir)
         }
+        if (ReglasEjercicio.esCardio(e)) return Pauta(null, e.reps, null)
         return Pauta(e.series, e.reps, e.rirObjetivo ?: e.rirSuelto)
     }
 

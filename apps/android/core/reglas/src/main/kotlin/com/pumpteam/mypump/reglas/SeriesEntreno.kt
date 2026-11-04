@@ -122,6 +122,45 @@ object ReglasEjercicio {
 
     fun sinKg(ex: Ejercicio): Boolean = sinKg(ex.nombre, ex.tipo, ex.equipo)
 
+    // ── Cardio: se registra por tiempo ──
+
+    /** El `tipo` del plan sin blancos de más y en minúsculas («Cardio » → «cardio»); null si viene vacío. */
+    fun tipoNormalizado(tipo: String?): String? = tipo?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+
+    /** Los slugs del catálogo que son máquinas de cardio (no «Air_Bike»: en free-exercise-db es un abdominal). */
+    val slugsCardio: Set<String> = setOf(
+        "walking_treadmill", "jogging_treadmill", "running_treadmill", "bicycling_stationary", "bicycling", "recumbent_bike",
+        "elliptical_trainer", "rowing_stationary", "stairmaster", "step_mill",
+    )
+
+    /**
+     * Cinta, bici, elíptico, remo ergómetro, caminata o escaladora en el nombre (en minúsculas y sin tildes). El remo solo
+     * como máquina: «Remo con barra» es fuerza. Igual que en iOS.
+     */
+    private val cardioRE = JsRegex(
+        """\bcinta\b|caminadora|treadmill|\bcaminata\b|\bcaminar\b|\btrote\b|\bcorrer\b|eliptic|elliptical|\bbici|\bbike\b|cicloergometro|spinning|escaladora|stairmaster|step\s*mill|remo\s+(ergometro|indoor|estatico)|maquina\s+de\s+remo|remoergometro|rowing|\brower\b""",
+    )
+    /** Lo que se llama parecido y es de fuerza: la caminata del granjero, las estocadas caminando. */
+    private val noCardioRE = JsRegex("""granjero|farmer|estocada|zancada|lunge|desplante""")
+
+    /**
+     * El ejercicio va por tiempo, sin series, kg ni RIR (reporte del 4-nov: la cinta con `progresion: []` pedía reps, kg
+     * y RIR porque `normalizarRutina` le pone `series = 1` a todo). Es cardio el `tipo: "cardio"` y, si el tipo es
+     * «calentamiento» o no viene, el que por slug o por nombre es una máquina de cardio. El calentamiento de fuerza
+     * (movilidad, banda, rotaciones) sigue con sus series.
+     */
+    fun esCardio(nombre: String?, tipo: String?, slugs: List<String?> = emptyList()): Boolean {
+        val t = tipoNormalizado(tipo)
+        if (t == "cardio") return true
+        if (t != null && t != "calentamiento") return false
+        if (slugs.any { s -> s != null && s.trim().lowercase() in slugsCardio }) return true
+        val n = java.text.Normalizer.normalize((nombre ?: "").lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "")
+        return cardioRE.prueba(n) && !noCardioRE.prueba(n)
+    }
+
+    fun esCardio(ex: Ejercicio): Boolean = esCardio(ex.nombre, ex.tipo, listOf(ex.catalogoSlug, ex.matchedSlug, ex.imagenes?.matchedSlug))
+
     /**
      * `_repsSug` (SER-01): el ÚLTIMO número de las reps del plan ("8-10" → 10). null con AMRAP, ∞ o máx: ahí no hay
      * registro de un toque.

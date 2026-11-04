@@ -110,6 +110,7 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.Js
 import com.pumpteam.mypump.reglas.NormalizacionRutina
 import com.pumpteam.mypump.reglas.Progresiones
+import com.pumpteam.mypump.reglas.ReglasEjercicio
 import com.pumpteam.mypump.reglas.SemanaEntreno
 import com.pumpteam.mypump.reglas.TextosEntreno
 import com.pumpteam.mypump.reglas.TiempoEntreno
@@ -670,14 +671,19 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
     val manual = estado == "completo_sin_datos" && v.dia.meta[lugar]?.manual == true
     val mensajes = v.comentarios.sinLeer(lugar)
     val tipo = ef.ejercicio.tipo
-    val porTiempo = tipo == "cardio" || pauta.series == null
+    // La cinta, la bici o el elíptico también con `tipo: "calentamiento"` o sin tipo (reporte del 4-nov).
+    val cardio = ReglasEjercicio.esCardio(ef.ejercicio)
+    val porTiempo = cardio || pauta.series == null
     val descanso = v.dia.descanso(lugar)
     val ahora = remember(v) { java.time.Instant.now() }
-    val ultima = v.dia.ultimaVez(lugar, ahora)
-    val record = v.dia.record(lugar)
+    // Lo que va por tiempo no tiene última vez ni récord: unas cargas viejas en su clave (la cinta registrada como serie)
+    // mostraban «Última: 60 kg × 10» en la cinta.
+    val ultima = if (porTiempo) null else v.dia.ultimaVez(lugar, ahora)
+    val record = if (porTiempo) null else v.dia.record(lugar)
     val buscando = lugar in v.cargandoHistorial
     val valor = CardAccesible.valor(
         estado, hechas, series.size, ef.sustituido, ef.fijado, manual, mensajes, tipo, pauta, descanso, ultima, record, buscando,
+        cardio = cardio,
     )
     // La flecha apunta abajo con el ejercicio abierto en la lista: tocar la fila lo abre y lo cierra ahí mismo.
     val giro by animateFloatAsState(if (v.dia.expandido == lugar) 90f else 0f, label = "flecha-$lugar")
@@ -698,7 +704,7 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
                 Miniatura(ef.ejercicio.imagenes?.concentric ?: ef.ejercicio.imagenes?.eccentric, tipo, 60.dp)
                 MarcaNumero(numero, estado, Modifier.offset(x = (-7).dp, y = (-7).dp))
             }
-            if (series.size > 1 && tipo != "cardio") PuntosSeries(series.size, hechas)
+            if (series.size > 1 && !cardio) PuntosSeries(series.size, hechas)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(nombre.principal, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), color = c.texto)
@@ -711,8 +717,10 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
                 if (ef.sustituido) InsigniaSustitucion(ef.fijado, Modifier.testTag("insignia-sustitucion"))
                 if (manual) ChipDato("Manual", icono = Iconos.Mano)
                 if (mensajes > 0) ChipDato("$mensajes", icono = Iconos.Burbuja, tono = c.peligro)
-                if (tipo == "calentamiento" || tipo == "cardio") ChipDato(if (tipo == "cardio") "Cardio" else "Calent.", icono = Iconos.Fuego, tono = c.alerta)
-                if (porTiempo) ChipDato(pauta.reps ?: "—") else ChipDato("${pauta.series} × ${pauta.reps ?: "—"}")
+                val calentamiento = ReglasEjercicio.tipoNormalizado(tipo) == "calentamiento"
+                if (calentamiento || cardio) ChipDato(if (calentamiento) "Calent." else "Cardio", icono = Iconos.Fuego, tono = c.alerta)
+                // Sin duración en el plan no va el «—»: el tiempo ya está en el nombre («10 min»).
+                if (porTiempo) pauta.reps?.let { ChipDato(it) } else ChipDato("${pauta.series} × ${pauta.reps ?: "—"}")
                 pauta.rir?.let { ChipDato("RIR $it") }
                 ChipDato(TiempoEntreno.fmtTiempo(descanso.toDouble()), icono = Iconos.Temporizador)
             }

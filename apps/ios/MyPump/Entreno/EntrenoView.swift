@@ -678,7 +678,10 @@ private struct EjercicioEnLista: View {
                         .padding(.horizontal, Espacio.m)
                         .padding(.top, Espacio.s)
                 }
-                TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
+                // El cardio va por tiempo: sin tabla («0 de 0» y «no tiene series esta semana»), se marca con «Terminé».
+                if !t.filas.isEmpty {
+                    TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
+                }
                 // Solo en los ejercicios con series (el cardio se marca con «Terminé»), igual que en la página.
                 if !t.filas.isEmpty { DescansoEnTarjeta() }
                 acciones {
@@ -791,6 +794,9 @@ struct FilaEjercicio: View {
         let manual = estado == "completo_sin_datos" && motor.dia.meta[lugar]?.manual == true
         let mensajes = motor.comentarios.sinLeer(ejercicio: lugar)
         let tipo = ef.ejercicio.tipo
+        // La cinta, la bici o el elíptico también con `tipo: "calentamiento"` o sin tipo (reporte del 4-nov).
+        let cardio = ReglasEjercicio.esCardio(ef.ejercicio)
+        let porTiempo = cardio || pauta.series == nil
         let disposicion = tamañoLetra.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: Espacio.s))
             : AnyLayout(HStackLayout(alignment: .top, spacing: 14))
@@ -801,7 +807,7 @@ struct FilaEjercicio: View {
                     .overlay(alignment: .topLeading) {
                         MarcaNumero(numero: numero, estado: estado).offset(x: -7, y: -7)
                     }
-                if series.count > 1, tipo != "cardio" {
+                if series.count > 1, !cardio {
                     PuntosSeries(total: series.count, hechas: hechas)
                 }
             }
@@ -817,11 +823,12 @@ struct FilaEjercicio: View {
                     if ef.sustituido { InsigniaSustitucion(fijado: ef.fijado) }
                     if manual { Chip(texto: "Manual", icono: "hand.raised.fill") }
                     if mensajes > 0 { Chip(texto: "\(mensajes)", icono: "bubble.left.fill", tono: .peligro) }
-                    if tipo == "calentamiento" || tipo == "cardio" {
-                        Chip(texto: tipo == "cardio" ? "Cardio" : "Calent.", icono: "flame.fill", tono: .alerta)
+                    if ReglasEjercicio.tipoNormalizado(tipo) == "calentamiento" || cardio {
+                        Chip(texto: ReglasEjercicio.tipoNormalizado(tipo) == "calentamiento" ? "Calent." : "Cardio", icono: "flame.fill", tono: .alerta)
                     }
-                    if tipo == "cardio" || pauta.series == nil {
-                        Chip(texto: pauta.reps ?? "—")
+                    if porTiempo {
+                        // Sin duración en el plan no va el «—»: el tiempo ya está en el nombre («10 min»).
+                        if let r = pauta.reps { Chip(texto: r) }
                     } else if let s = pauta.series {
                         Chip(texto: "\(s) × \(pauta.reps ?? "—")")
                     }
@@ -830,7 +837,7 @@ struct FilaEjercicio: View {
                 }
                 .padding(.top, 5)
                 // El cardio y lo que va por tiempo no tienen "última vez" que buscar.
-                historial(lugar, porTiempo: tipo == "cardio" || pauta.series == nil).padding(.top, 4)
+                historial(lugar, porTiempo: porTiempo).padding(.top, 4)
             }
             .padding(.trailing, Espacio.m)
         }
@@ -862,8 +869,9 @@ struct FilaEjercicio: View {
         if ef.sustituido { partes.append(ef.fijado ? "sustitución fijada" : "sustituido solo por hoy") }
         if manual { partes.append("marcado a mano") }
         if mensajes > 0 { partes.append(mensajes == 1 ? "1 mensaje sin leer" : "\(mensajes) mensajes sin leer") }
-        if tipo == "calentamiento" { partes.append("calentamiento") } else if tipo == "cardio" { partes.append("cardio") }
-        let porTiempo = tipo == "cardio" || pauta.series == nil
+        let cardio = ReglasEjercicio.esCardio(ef.ejercicio)
+        if ReglasEjercicio.tipoNormalizado(tipo) == "calentamiento" { partes.append("calentamiento") } else if cardio { partes.append("cardio") }
+        let porTiempo = cardio || pauta.series == nil
         if porTiempo {
             if let r = pauta.reps { partes.append(r) }
         } else if let s = pauta.series {
@@ -871,8 +879,9 @@ struct FilaEjercicio: View {
         }
         if let rir = pauta.rir { partes.append("RIR \(rir)") }
         partes.append("descanso \(TiempoEntreno.fmtTiempo(Double(ejercicio.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)))")
-        let ultima = motor.dia.ultimaVez(lugar, ahora: .now)
-        let record = motor.dia.record(lugar)
+        // Lo que va por tiempo no tiene última vez ni récord (unas cargas viejas en su clave no cuentan).
+        let ultima = porTiempo ? nil : motor.dia.ultimaVez(lugar, ahora: .now)
+        let record = porTiempo ? nil : motor.dia.record(lugar)
         if let u = ultima { partes.append("última vez \(Bonito.carga(u.valor)), \(u.cuando)") }
         // Sin el «RIR n» (2.0.3: ya no se muestra; con el del plan diría «RIR 0» en todos).
         if let r = record { partes.append("récord \(Bonito.carga(r).replacingOccurrences(of: #" · RIR \d+"#, with: "", options: .regularExpression))") }
@@ -884,8 +893,10 @@ struct FilaEjercicio: View {
 
     @ViewBuilder
     private func historial(_ lugar: String, porTiempo: Bool) -> some View {
-        let ultima = motor.dia.ultimaVez(lugar, ahora: .now)
-        let record = motor.dia.record(lugar)
+        // Lo que va por tiempo no tiene última vez ni récord: unas cargas viejas en su clave (la cinta registrada como
+        // serie) mostraban «Última: 60 kg × 10» en la cinta (reporte del 4-nov).
+        let ultima = porTiempo ? nil : motor.dia.ultimaVez(lugar, ahora: .now)
+        let record = porTiempo ? nil : motor.dia.record(lugar)
         if ultima != nil || record != nil {
             FilaFluida(espaciado: 8, interlineado: 2) {
                 if let u = ultima {

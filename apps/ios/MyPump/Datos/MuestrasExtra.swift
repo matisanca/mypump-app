@@ -48,6 +48,27 @@ enum DemoUI {
     /// preparación con kg y el aviso de récord sin cuenta.
     static var historialDeMuestra: Bool { valor("historial") == "muestra" }
 
+    /// `-cardio prueba`: la demo con la cinta tal como la manda el plan (sin duración, `progresion: []`), como cardio al
+    /// principio del día 1 y como calentamiento al principio del día 2 (reporte del 4-nov: pedía reps, kg y RIR).
+    static var cardioDePrueba: Bool { valor("cardio") == "prueba" }
+
+    static func conCintaDePrueba(_ rutina: Data) -> Data {
+        guard var raiz = (try? JSONSerialization.jsonObject(with: rutina)) as? [String: Any],
+              var dias = raiz["dias"] as? [[String: Any]], dias.count >= 2 else { return rutina }
+        func cinta(_ tipo: String, _ dia: String) -> [String: Any] {
+            ["id": "cinta-caminata-inclinada-10-min-\(dia)-0", "tipo": tipo, "nombre": "Cinta (caminata inclinada 10 min)",
+             "catalogo_slug": "Walking_Treadmill", "progresion": [Any](), "descanso_segundos": 0]
+        }
+        for (i, tipo) in [(0, "cardio"), (1, "calentamiento")] {
+            guard var bloques = dias[i]["bloques"] as? [[String: Any]], var ej = bloques.first?["ejercicios"] as? [[String: Any]] else { continue }
+            ej.insert(cinta(tipo, "d\(i + 1)"), at: 0)
+            bloques[0]["ejercicios"] = ej
+            dias[i]["bloques"] = bloques
+        }
+        raiz["dias"] = dias
+        return (try? JSONSerialization.data(withJSONObject: raiz)) ?? rutina
+    }
+
     /// Las dos series de muestra (sin datos reales).
     static func filasDeMuestra(_ clave: String) -> [RegistroHistorico] {
         let hace4 = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-4 * 86400))

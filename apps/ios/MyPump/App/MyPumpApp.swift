@@ -72,7 +72,7 @@ struct MyPumpApp: App {
               let r = Bundle.main.url(forResource: "rutina", withExtension: "json", subdirectory: "Demo.bundle"),
               let d = Bundle.main.url(forResource: "dieta", withExtension: "json", subdirectory: "Demo.bundle"),
               let rutina = try? Data(contentsOf: r), let dieta = try? Data(contentsOf: d) else { return }
-        Proveedor.modelo.entrarEnDemo(rutina: rutina, dieta: dieta, guia: DemoGuia.datos)
+        Proveedor.modelo.entrarEnDemo(rutina: DemoUI.cardioDePrueba ? DemoUI.conCintaDePrueba(rutina) : rutina, dieta: dieta, guia: DemoGuia.datos)
         #endif
     }
 }

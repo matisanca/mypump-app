@@ -558,7 +558,8 @@ public struct CatalogoEjercicios: Sendable {
 
     /// Los otros del mismo músculo para la tarjeta, resueltos sobre el original (como `sustitutos(de:)`).
     public func otrosDelMismoMusculo(de ef: EjercicioEfectivo) -> [SustitutoEjercicio] {
-        if ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio" { return [] }
+        let tipo = ReglasEjercicio.tipoNormalizado(ef.ejercicio.tipo)
+        if tipo == "calentamiento" || tipo == "cardio" || Self.esCardio(ef) { return [] }
         return otrosDelMismoMusculo(referenciaDeLasListas(ef))
     }
 
@@ -583,8 +584,39 @@ public struct CatalogoEjercicios: Sendable {
 
     /// `exGetSubs`: los sustitutos que ofrece la tarjeta, resueltos sobre el original. Ni calentamiento ni cardio.
     public func sustitutos(de ef: EjercicioEfectivo) -> [SustitutoEjercicio] {
-        if ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio" { return [] }
+        if Self.esCardio(ef) { return sustitutosDeCardio(ef) }
+        let tipo = ReglasEjercicio.tipoNormalizado(ef.ejercicio.tipo)
+        if tipo == "calentamiento" || tipo == "cardio" { return [] }
         return sustitutos(referenciaDeLasListas(ef))
+    }
+
+    /// Las máquinas de cardio que se ofrecen entre sí, con su nombre en castellano (el catálogo no las traduce y las
+    /// trae sin patrón, así que `findSubstitutes` no las encuentra). El orden es el de la lista.
+    public static let maquinasCardio: [(slug: String, nombre: String)] = [
+        ("Walking_Treadmill", "Cinta (caminata)"), ("Jogging_Treadmill", "Cinta (trote)"),
+        ("Bicycling_Stationary", "Bicicleta fija"), ("Recumbent_Bike", "Bicicleta reclinada"),
+        ("Elliptical_Trainer", "Elíptico"), ("Rowing_Stationary", "Remo ergómetro"), ("Stairmaster", "Escaladora"),
+    ]
+
+    /// El lugar es cardio según el ejercicio del plan (su nombre y slug originales, no los del sustituto).
+    static func esCardio(_ ef: EjercicioEfectivo) -> Bool {
+        ReglasEjercicio.esCardio(nombre: verdadero(ef.nombreOriginal) ?? ef.ejercicio.nombre, tipo: ef.ejercicio.tipo,
+                                 slugs: [ef.slugOriginal, ef.ejercicio.catalogoSlug])
+    }
+
+    /// Desvío a propósito de la web (4-nov): la cinta no ofrecía «Sustituir». Cardio por cardio: las otras máquinas de
+    /// `maquinasCardio` que están en el catálogo, sin la del plan. El nombre elegido sigue siendo de cardio, así que el
+    /// sustituto también va por tiempo.
+    public func sustitutosDeCardio(_ ef: EjercicioEfectivo) -> [SustitutoEjercicio] {
+        let propio = resolver(referenciaDeLasListas(ef))?.slugEn
+        return Self.maquinasCardio.compactMap { m in
+            guard let e = entrada(slug: m.slug), !igualJS(e.slugEn, propio) else { return nil }
+            return SustitutoEjercicio(slug: e.slugEn, nombre: m.nombre, nombreIngles: e.nameEn,
+                                      equipo: SustitucionEjercicios.etiquetaEquipo(e), equipoCrudo: e.equipment,
+                                      musculo: e.primaryMuscle, patron: e.patronMovimiento,
+                                      imagenes: Imagenes(eccentric: verdadero(e.imageEccentric), concentric: verdadero(e.imageConcentric)),
+                                      mismoEquipo: true)
+        }
     }
 
     /// Sobre qué se arman las dos listas de «Sustituir»: el `orig` de `exGetSubs` (`referencia(de:)`) y, con el lugar

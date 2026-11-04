@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.entreno
 
 import com.pumpteam.mypump.reglas.Pauta
+import com.pumpteam.mypump.reglas.ReglasEjercicio
 import com.pumpteam.mypump.reglas.TiempoEntreno
 import com.pumpteam.mypump.reglas.UltimaVez
 
@@ -193,13 +194,15 @@ object CardAccesible {
         ultima: UltimaVez?,
         record: String?,
         buscandoHistorial: Boolean,
+        /** [ReglasEjercicio.esCardio]: la cinta también como calentamiento (4-nov). */
+        cardio: Boolean = tipo == "cardio",
     ): String {
         val partes = mutableListOf(estado(estado, hechas, total))
         if (sustituido) partes += if (fijado) "sustitución fijada" else "sustituido solo por hoy"
         if (manual) partes += "marcado a mano"
         if (mensajes > 0) partes += if (mensajes == 1) "1 mensaje sin leer" else "$mensajes mensajes sin leer"
-        if (tipo == "calentamiento") partes += "calentamiento" else if (tipo == "cardio") partes += "cardio"
-        val porTiempo = tipo == "cardio" || pauta.series == null
+        if (ReglasEjercicio.tipoNormalizado(tipo) == "calentamiento") partes += "calentamiento" else if (cardio) partes += "cardio"
+        val porTiempo = cardio || pauta.series == null
         if (porTiempo) {
             pauta.reps?.let { partes += it }
         } else {

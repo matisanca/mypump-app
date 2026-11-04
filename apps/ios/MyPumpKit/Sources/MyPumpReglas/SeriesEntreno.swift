@@ -110,6 +110,44 @@ public enum ReglasEjercicio {
 
     public static func sinKg(_ ex: Ejercicio) -> Bool { sinKg(nombre: ex.nombre, tipo: ex.tipo, equipo: ex.equipo) }
 
+    // MARK: - Cardio: se registra por tiempo
+
+    /// El `tipo` del plan sin blancos de más y en minúsculas («Cardio » → «cardio»); nil si viene vacío.
+    public static func tipoNormalizado(_ tipo: String?) -> String? {
+        guard let t = tipo?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !t.isEmpty else { return nil }
+        return t
+    }
+
+    /// Los slugs del catálogo que son máquinas de cardio (no «Air_Bike»: en free-exercise-db es un abdominal).
+    public static let slugsCardio: Set<String> = [
+        "walking_treadmill", "jogging_treadmill", "running_treadmill", "bicycling_stationary", "bicycling", "recumbent_bike",
+        "elliptical_trainer", "rowing_stationary", "stairmaster", "step_mill",
+    ]
+    /// Cinta, bici, elíptico, remo ergómetro, caminata o escaladora en el nombre (en minúsculas y sin tildes). El remo
+    /// solo como máquina: «Remo con barra» es fuerza.
+    static let cardioRE = RegexWeb(#"\bcinta\b|caminadora|treadmill|\bcaminata\b|\bcaminar\b|\btrote\b|\bcorrer\b|eliptic|elliptical|\bbici|\bbike\b|cicloergometro|spinning|escaladora|stairmaster|step\s*mill|remo\s+(ergometro|indoor|estatico)|maquina\s+de\s+remo|remoergometro|rowing|\brower\b"#)
+    /// Lo que se llama parecido y es de fuerza: la caminata del granjero, las estocadas caminando.
+    static let noCardioRE = RegexWeb(#"granjero|farmer|estocada|zancada|lunge|desplante"#)
+
+    /// El ejercicio va por tiempo, sin series, kg ni RIR (reporte del 4-nov: la cinta con `progresion: []` pedía reps,
+    /// kg y RIR porque `normalizarRutina` le pone `series = 1` a todo). Es cardio el `tipo: "cardio"` y, si el tipo es
+    /// «calentamiento» o no viene, el que por slug o por nombre es una máquina de cardio. El calentamiento de fuerza
+    /// (movilidad, banda, rotaciones) sigue con sus series.
+    public static func esCardio(nombre: String?, tipo: String?, slugs: [String?] = []) -> Bool {
+        let t = tipoNormalizado(tipo)
+        if t == "cardio" { return true }
+        guard t == nil || t == "calentamiento" else { return false }
+        if slugs.contains(where: { s in s.map { slugsCardio.contains($0.trimmingCharacters(in: .whitespaces).lowercased()) } ?? false }) {
+            return true
+        }
+        let n = (nombre ?? "").folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "es")).lowercased()
+        return cardioRE.prueba(n) && !noCardioRE.prueba(n)
+    }
+
+    public static func esCardio(_ ex: Ejercicio) -> Bool {
+        esCardio(nombre: ex.nombre, tipo: ex.tipo, slugs: [ex.catalogoSlug, ex.matchedSlug, ex.imagenes?.matchedSlug])
+    }
+
     /// `_repsSug` (SER-01): el ÚLTIMO número de las reps del plan ("8-10" → 10). nil con AMRAP, ∞ o máx: ahí no hay
     /// registro de un toque.
     public static func repsDelPlan(_ reps: String?) -> Double? {
