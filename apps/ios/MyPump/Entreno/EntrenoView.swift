@@ -20,7 +20,7 @@ struct EntrenoView: View {
                 switch pantalla {
                 case .dia(let m):
                     // Con cuenta y un motor de ejemplo (Mati todavía no publicó el plan): el aviso de la web (ACC-08).
-                    ListaEntreno(motor: m, deEjemplo: m.demo && !modelo.esDemo, alCompletarDia: completoDia)
+                    ListaEntreno(motor: m, deEjemplo: m.demo && !modelo.esDemo, alCompletarDia: completoDia, abrirGuia: abrirGuia)
                 case .sinRed:
                     // Un corte dejó afuera la rutina y no había copia guardada.
                     ContentUnavailableView {
@@ -33,6 +33,10 @@ struct EntrenoView: View {
                     }
                 case .sinRutina:
                     ScrollView {
+                        // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
+                        if let g = GuiaUI.modelo {
+                            TarjetaGuia(modelo: g, abrir: abrirGuia).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                        }
                         ContentUnavailableView("Todavía no hay rutina", systemImage: "dumbbell",
                                                description: Text("Cuando Mati publique tu rutina, la vas a ver acá."))
                             .padding(.top, 80)
@@ -46,7 +50,9 @@ struct EntrenoView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.fondo)
             .navigationDestination(for: String.self) { lugar in
-                if let m = entrenamiento.motor {
+                if lugar == GuiaUI.destino {
+                    if let g = GuiaUI.modelo { GuiaView(modelo: g) }
+                } else if let m = entrenamiento.motor {
                     EjercicioView(motor: m, lugar: lugar, alCompletarDia: completoDia) { siguiente in
                         // El siguiente pendiente reemplaza al que se terminó (como la web abre la card siguiente).
                         ruta = [siguiente]
@@ -59,6 +65,18 @@ struct EntrenoView: View {
         .environment(preguntador)
         .preguntas(preguntador)
         .onChange(of: entrenamiento.motor?.dia.dia.id, initial: true) { _, _ in abrirParaCapturas() }
+        .onAppear {
+            // Capturas y pruebas: `-abrir guia` entra directo a «Tu guía».
+            if GuiaUI.abrirAlArrancar, !DemoUI.abrioYa.contains("guia"), GuiaUI.modelo != nil {
+                DemoUI.abrioYa.insert("guia")
+                ruta = [GuiaUI.destino]
+            }
+        }
+    }
+
+    private func abrirGuia() {
+        guard ruta.last != GuiaUI.destino else { return }
+        ruta.append(GuiaUI.destino)
     }
 
     private enum Pantalla { case dia(ModeloEntreno), cargando, sinRed, sinRutina }
@@ -103,6 +121,7 @@ private struct ListaEntreno: View {
     let motor: ModeloEntreno
     let deEjemplo: Bool
     let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
+    let abrirGuia: () -> Void
     @Environment(Preguntador.self) private var preguntador
     @State private var tituloEnBarra = false
     @State private var cerrando = false
@@ -125,6 +144,8 @@ private struct ListaEntreno: View {
                                     texto: Text(Bonito.sinEmoji(TextosEntreno.demo).replacingOccurrences(of: "Modo demo — ", with: "")),
                                     tono: .alerta)
                 }
+                // «Tu guía»: arriba, solo si `entregas_app_resumen` dijo que hay (D16: la barra no se toca).
+                if let g = GuiaUI.modelo { TarjetaGuia(modelo: g, abrir: abrirGuia) }
                 BannerRevision()
                 // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
                 if motor.dias.count > 1 { SelectorDias(motor: motor) }

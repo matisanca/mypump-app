@@ -64,6 +64,8 @@ public final class ModeloGuia {
     @ObservationIgnored let disco: Disco?
     @ObservationIgnored private var cargaEnCurso: Task<Void, Never>?
     @ObservationIgnored private var resumenEnCurso = false
+    /// La muestra de la maqueta: nunca toca la red.
+    @ObservationIgnored private var esMuestra = false
 
     static let archivoGuia = "guia.json"
     static let archivoResumen = "guia_resumen.json"
@@ -89,7 +91,7 @@ public final class ModeloGuia {
     /// `entregas_app_resumen`: solo lee. Al cargar la cuenta y al volver a primer plano (nunca en segundo plano). Sin
     /// red queda lo guardado.
     public func actualizarResumen() async {
-        guard !resumenEnCurso else { return }
+        guard !resumenEnCurso, !esMuestra else { return }
         resumenEnCurso = true
         defer { resumenEnCurso = false }
         guard case .success(let j) = await cliente.llamar("entregas_app_resumen", ["p_token": .texto(token)]) else { return }
@@ -100,6 +102,7 @@ public final class ModeloGuia {
 
     /// `entregas_app_get`: al abrir la sección. Si ya hay una carga en vuelo, se espera esa.
     public func abrir() async {
+        if esMuestra { return }
         if let t = cargaEnCurso { await t.value; return }
         let t = Task { await self.traer() }
         cargaEnCurso = t
@@ -290,6 +293,7 @@ public final class ModeloGuia {
         outbox = nil
         disco = nil
         guia = muestra
+        esMuestra = true
         estado = muestra.ok ? .lista : .oculta
         let a = ReglasGuia.avance(muestra.clips)
         resumen = ResumenGuia(ok: muestra.ok, total: a.total, vistos: a.vistos, minutosRestantes: a.minutosRestantes)
