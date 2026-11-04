@@ -18,6 +18,8 @@ struct GuiaView: View {
     @State private var volverA: String?
     /// `entregas_app_get` una vez por apertura: volver de otra pestaña no lo llama de nuevo.
     @State private var traida = false
+    /// La guía está en pantalla: la lista de audios se consulta solo así.
+    @State private var aLaVista = false
     @Environment(\.horizontalSizeClass) private var clase
     @Environment(\.dismiss) private var cerrar
     @Environment(\.scenePhase) private var fase
@@ -62,7 +64,9 @@ struct GuiaView: View {
             // quedar vivo al salir de la guía.
             verPorQue.alArrancar = { [weak control] in control?.frenarPorOtro() }
             control.alArrancar = { [weak verPorQue] in verPorQue?.pausar() }
-            guard !traida else { return }
+            prepararAudios()
+            // Volver a la guía (otra pestaña, otra pantalla): la lista de audios de nuevo, sin otro get.
+            if traida { if !GuiaUI.audioSinServidor { await modelo.audios.abrirSeccion() }; return }
             traida = true
             if modelo.guia != nil { prepararInicial() }
             // Capturas (DEBUG): `-guiaMotivo <id>` abre el «para qué» de una fila y `-guiaPlaca YES` deja la placa fija.
@@ -71,21 +75,40 @@ struct GuiaView: View {
             await modelo.abrir()
             prepararInicial()
             if let v = GuiaUI.verPorQue { verPorQue.alternar(v) }
+            if !GuiaUI.audioSinServidor { await modelo.audios.abrirSeccion() }
         }
         // La guía dejó de existir (token revocado o la página se dio de baja): la sección desaparece, sin mensaje.
         .onChange(of: modelo.estado) { _, e in if e == .oculta { control.pausar(); verPorQue.cerrar(); cerrar() } }
-        .onChange(of: fase) { _, f in if f == .background { control.pausar(); verPorQue.pausar(); SesionAudio.soltar() } }
+        .onChange(of: fase) { _, f in
+            if f == .background { control.pausar(); verPorQue.pausar(); SesionAudio.soltar(); modelo.audios.cortar(); modelo.audios.cerrarSeccion() }
+            // De vuelta a primer plano con la guía abierta: la lista de audios se consulta de nuevo (nunca de fondo).
+            if f == .active, traida, aLaVista, !GuiaUI.audioSinServidor { Task { await modelo.audios.abrirSeccion() } }
+        }
         // Llegó una guía (la primera, después de «Reintentar», o una nueva con otra lista): el reproductor se prepara de nuevo
         // si su video ya no está. Si sigue, no se toca.
         .onChange(of: clips.map(\.id)) { _, _ in prepararInicial() }
         // Otra pestaña o volver a Entreno: se pausa y queda guardado, y el audio vuelve a los demás. La pantalla completa
         // del sistema no cuenta.
+        .onAppear { aLaVista = true }
         .onDisappear {
+            aLaVista = false
             if !control.pantallaCompleta && !verPorQue.pantallaCompleta {
                 control.pausar(); verPorQue.pausar(); SesionAudio.soltar()
+                modelo.audios.cortar(); modelo.audios.cerrarSeccion()
             }
         }
         .sensoryFeedback(.selection, trigger: control.cambios)
+    }
+
+    /// Las dudas en audio: el micrófono y, al empezar a grabar, los videos en pausa (uno solo suena a la vez). Si arranca un
+    /// video mientras graba, se frena la grabación y pasa a revisar.
+    private func prepararAudios() {
+        let audios = modelo.audios
+        if audios.grabador == nil { audios.grabador = AudioDudaUI.grabador }
+        audios.alEmpezar = { [weak control, weak verPorQue] in control?.pausar(); verPorQue?.pausar() }
+        let antes = control.alArrancar, antesVer = verPorQue.alArrancar
+        control.alArrancar = { antes(); audios.cortar() }
+        verPorQue.alArrancar = { antesVer(); audios.cortar() }
     }
 
     private func prepararInicial() {
@@ -605,7 +628,8 @@ private struct DudasLlamada: View {
     let despues: Bool
 
     var body: some View {
-        let ya = modelo.guia?.dudasLlamada.map(\.texto) ?? []
+        // Sin las que ya se ven como transcripción de un audio.
+        let ya = modelo.dudasLlamadaVisibles
         let enCola = modelo.pendientesSinLlegar.filter { $0.video == nil }
         let borrador = Binding(get: { modelo.borradores[""] ?? "" }, set: { modelo.borradores[""] = $0 })
         VStack(alignment: .leading, spacing: Espacio.xs) {
@@ -655,6 +679,7 @@ private struct DudasLlamada: View {
                     .font(.footnote).foregroundStyle(.secondary)
                     .accessibilityIdentifier("guia-llamada-tope")
             }
+            if modelo.audios.disponible { AudioDudaView(modelo: modelo.audios, despues: despues) }
         }
         .padding(.vertical, Espacio.m).padding(.trailing, 20).padding(.leading, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -851,8 +876,11 @@ enum GuiaUI {
 
     #if DEBUG
     /// `-guiaTarjeta no`: el resumen de muestra con `mostrar_tarjeta` false (después de la entrega).
-    private static let muestra = ModeloGuia(muestra: GuiaMuestra.guia,
-                                            mostrarTarjeta: UserDefaults.standard.string(forKey: "guiaTarjeta") == "no" ? false : nil)
+    private static let muestra: ModeloGuia = {
+        let m = ModeloGuia(muestra: GuiaMuestra.guia, mostrarTarjeta: UserDefaults.standard.string(forKey: "guiaTarjeta") == "no" ? false : nil)
+        AudioDudaUI.preparar(m)
+        return m
+    }()
     #endif
 
     /// `-sinRed YES` (DEBUG): el reproductor dice «Necesitás conexión» aunque el simulador tenga red.
@@ -865,6 +893,8 @@ enum GuiaUI {
     }
 
     static var ancla: String? { valor("guiaAncla") }
+    /// `-audioSinServidor YES` (DEBUG): las pruebas con el cliente de prueba no consultan las RPC de audio.
+    static var audioSinServidor: Bool { valor("audioSinServidor") == "YES" }
     static var motivoAbierto: String? { valor("guiaMotivo") }
     static var placa: Bool { valor("guiaPlaca") == "YES" }
     /// Capturas: `-guiaVerPorQue <id>` abre el «Ver por qué» de ese video.

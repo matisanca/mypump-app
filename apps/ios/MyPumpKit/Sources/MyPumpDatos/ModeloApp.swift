@@ -293,7 +293,7 @@ public final class ModeloApp {
         cacheCodigos = nil
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
-        let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)
+        let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones, carpetaAudios: disco.url("audios"))
         let cola = Outbox(archivo: disco.url("outbox.json"), retenerLegadas: true, retenerSwaps: Self.faltaDecidirSwaps(en: disco)) { op in
             await escrituras.ejecutar(op)
         }

@@ -108,6 +108,8 @@ public actor Outbox {
     /// Los ids que intentó la última pasada (su copia de la cola). Lo encolado durante el vuelo no está acá.
     private var ultimaTanda: Set<String> = []
     private var rachaSinRed = 0
+    /// El temporizador armado espera solo a un audio con `pendientes`: algo nuevo encolado no tiene que esperarlo.
+    private var esperaSoloAudio = false
     private var secuencia = 0
     private var alCambiar: (@Sendable (EstadoGuardado) -> Void)?
     private var alAbandonar: (@Sendable ([Operacion]) -> Void)?
@@ -194,6 +196,7 @@ public actor Outbox {
         let op = Operacion(id: "\(Int64(ahora))_\(secuencia)", kind: kind, payload: payload.sinNoFinitos, dedupeKey: dedupeKey, ts: ahora)
         estado.ops.append(op)
         guardar()
+        if esperaSoloAudio { temporizador?.cancel(); temporizador = nil; esperaSoloAudio = false }
         programar(en: .zero)
         return op
     }
@@ -292,6 +295,7 @@ public actor Outbox {
 
     private func dispararTemporizador() async {
         temporizador = nil
+        esperaSoloAudio = false
         await drenar()
     }
 
@@ -304,6 +308,9 @@ public actor Outbox {
         let hayVisibles = tanda.contains { !Self.silenciosas.contains($0.kind) }
         var resueltas = Set<String>()
         var abandonadas: [Operacion] = []
+        /// El motivo de las que van directo a fallidos sin gastar intentos (un kind desconocido, un audio con `id`).
+        var motivoDirecto: [String: String] = [:]
+        var pendienteAudio = false
         var guardadas: [OpGuardada] = []
         var algunaFallo = false
         // "Guardando…" solo si tarda. Ojo: `try? await Task.sleep` se traga la cancelación y sigue de largo; sin el
@@ -340,11 +347,17 @@ public actor Outbox {
                 resueltas.insert(op.id)
                 guardadas.append(OpGuardada(op: op, respuesta: json))
                 continue
+            case .respuesta(.failure(let e)) where e.codigo == Escrituras.codigoAudioPendientes:
+                // Un audio que espera a que se terminen de mandar otros: más tarde, sin gastar intento y sin frenar a las
+                // demás. El backoff crece con la racha mientras sea lo único que queda.
+                pendienteAudio = true
+                continue
             case .respuesta(.failure(let e)) where e.clase != .permanente:
                 algunaFallo = true
                 rachaSinRed += 1
-            case .respuesta(.failure(let e)) where e.codigo == "KIND_DESCONOCIDO":
+            case .respuesta(.failure(let e)) where e.codigo == "KIND_DESCONOCIDO" || e.codigo == Escrituras.codigoAudioId:
                 abandonadas.append(op)
+                motivoDirecto[op.id] = e.codigo
                 resueltas.insert(op.id)
                 continue
             case .respuesta(let r):
@@ -362,9 +375,10 @@ public actor Outbox {
             estado.ops.removeAll { resueltas.contains($0.id) }
             rachaSinRed = 0
         }
+        if pendienteAudio { rachaSinRed += 1 }
         if !abandonadas.isEmpty {
             let ahora = Date().timeIntervalSince1970 * 1000
-            estado.fallidos.append(contentsOf: abandonadas.map { Fallido(op: $0, motivo: "abandonada tras \($0.tries) intentos", cuando: ahora) })
+            estado.fallidos.append(contentsOf: abandonadas.map { Fallido(op: $0, motivo: motivoDirecto[$0.id] ?? "abandonada tras \($0.tries) intentos", cuando: ahora) })
         }
         guardar()
 
@@ -376,7 +390,8 @@ public actor Outbox {
             huboProblema = false
             avisar(.perdido)
         }
-        ultimaFallo = algunaFallo
+        // Un audio en espera no es falta de señal: no muestra «sin conexión», pero la pasada cuenta como no terminada.
+        ultimaFallo = algunaFallo || pendienteAudio
         // Si lo que falló fue solo silencioso, para el cliente la pasada salió bien: se cierra el "Guardando…" que haya.
         if algunaFallo && estado.ops.contains(where: { !Self.silenciosas.contains($0.kind) }) {
             huboProblema = true
@@ -387,12 +402,14 @@ public actor Outbox {
         } else if abandonadasVisibles.isEmpty {
             avisar(.quieto)
         }
-        if algunaFallo {
+        if algunaFallo || pendienteAudio {
             let base = max(1, estado.ops.first?.tries ?? 1, rachaSinRed)
+            let libre = temporizador == nil
             programar(en: .milliseconds(min(30_000, 2_000 * base)))
+            if libre { esperaSoloAudio = !algunaFallo }
         }
         // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta.
-        if !estado.ops.isEmpty && !algunaFallo { programar(en: .zero) }
+        if !estado.ops.isEmpty && !algunaFallo && !pendienteAudio { programar(en: .zero) }
     }
 
     /// Suma un intento a la op (en la cola real, no en la copia). Devuelve true si sigue pendiente.

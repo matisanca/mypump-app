@@ -72,6 +72,8 @@ public final class ModeloGuia {
     /// «Quitar de Entreno»: el cliente sacó la tarjeta antes de tiempo. Solo en el teléfono y por cliente (en la carpeta
     /// de su cuenta); en la demo, en memoria.
     public private(set) var quitadaDeEntreno = false
+    /// Las dudas en audio del recuadro de la videollamada (`AudioDuda.swift`, entregas_019).
+    public private(set) var audios: ModeloAudioDuda
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
@@ -91,6 +93,7 @@ public final class ModeloGuia {
 
     public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco?) {
         self.cliente = cliente; self.token = token; self.outbox = outbox; self.disco = disco
+        audios = ModeloAudioDuda(cliente: cliente, token: token, outbox: outbox, disco: disco)
         let leida = disco?.leer(Guia.self, Self.archivoGuia)
         let copia = leida?.ok == true ? leida : nil
         guia = copia
@@ -354,6 +357,7 @@ public final class ModeloGuia {
     /// Lo que la cola guardó (lo llama `ModeloApp`). `true` = guardado; `false` = la base no lo aceptó (tope o token):
     /// el texto vuelve a su recuadro con «No se pudo guardar».
     func alGuardar(_ ops: [OpGuardada]) {
+        audios.alGuardar(ops)
         for g in ops where g.op.kind == Self.kindDuda || g.op.kind == Self.kindDudaLlamada {
             let video = g.op.kind == Self.kindDuda ? g.op.payload["video"]?.comoTexto : nil
             let texto = g.op.payload["texto"]?.comoTexto ?? ""
@@ -371,6 +375,7 @@ public final class ModeloGuia {
 
     /// Lo que la cola abandonó tras 8 intentos (va a fallidos): el texto vuelve al recuadro.
     func alAbandonar(_ ops: [Operacion]) {
+        audios.alAbandonar(ops)
         for op in ops where op.kind == Self.kindDuda || op.kind == Self.kindDudaLlamada {
             if pendientes.contains(where: { $0.id == op.id }) { pendientes.removeAll { $0.id == op.id } } else { resueltasAntes.insert(op.id) }
             devolver(op.payload["texto"]?.comoTexto ?? "", a: op.kind == Self.kindDuda ? op.payload["video"]?.comoTexto ?? "" : "")
@@ -409,6 +414,14 @@ public final class ModeloGuia {
         return cambio
     }
 
+    /// Las dudas de la videollamada que se pintan: sin las que ya se ven como transcripción de un audio.
+    public var dudasLlamadaVisibles: [String] {
+        ReglasAudioDuda.sinTranscriptos(guia?.dudasLlamada.map(\.texto) ?? [], transcriptos: audios.transcriptos)
+    }
+
+    /// Las pruebas de interfaz (DEBUG): las dudas en audio con una cola y un servidor de mentira.
+    public func usarAudios(_ a: ModeloAudioDuda) { audios = a }
+
     // MARK: - Muestras
 
     /// La demo («Ver demo») y la maqueta: una guía armada, sin red ni token. Nada sale; el avance queda en memoria.
@@ -418,6 +431,7 @@ public final class ModeloGuia {
         token = ""
         outbox = nil
         disco = nil
+        audios = ModeloAudioDuda(muestra: ())
         guia = muestra
         esMuestra = true
         estado = muestra.ok ? .lista : .oculta
