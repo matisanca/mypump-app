@@ -323,9 +323,9 @@ class ModeloGuia(
         }
 
         private fun sumarDuda(c: ClipGuia, t: String): ClipGuia {
+            // Dos dudas iguales son dos dudas (no se deduplican). Si un `get` llegó entre que se guardó y que volvió la
+            // respuesta, se vería repetida hasta el próximo `get`: es solo lo que se muestra, el servidor la tiene una vez.
             val antes = c.duda
-            // Un `get` que llegó justo después de guardarla ya la trae: no se repite.
-            if (antes != null && (antes == t || antes.endsWith("\n$t"))) return c
             return c.copy(duda = if (antes.isNullOrEmpty()) t else "$antes\n$t")
         }
     }
