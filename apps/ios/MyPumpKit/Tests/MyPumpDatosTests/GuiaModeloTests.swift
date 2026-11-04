@@ -65,7 +65,7 @@ struct GuiaModeloTests {
         #expect(m.estado == .cargando)
         await m.abrir()
         #expect(m.estado == .lista && !m.desdeCache)
-        #expect(m.guia?.nombrePila == "Marcelo")
+        #expect(m.guia?.nombrePila == "Tomás")
         #expect(m.clips.first?.id == "FT-25a")
         #expect(disco.leer(Guia.self, "guia.json")?.clips.count == 13)
         #expect(s.llamadas(a: "entregas_app_get").first?["p_token"] == .texto(token))

@@ -19,7 +19,7 @@ Rama `nativa-guia-ios`. Espec: `~/pump-entregas/docs/ESPEC-APP-PUMP-TEAM.md`. Co
 - **Cómo se entera sin abrir la guía:** con `entregas_app_resumen` (solo lee, no marca `abierto_en`), al terminar cada
   carga de la cuenta y al volver a primer plano. Queda en caché (`guia_resumen.json` en la carpeta de la cuenta): sin red
   se ve lo último. Con `ok: false` la tarjeta desaparece y se borra la copia de la guía.
-- **La sección** (`MyPump/Guia/GuiaView.swift`), con la línea de `pack.html`: cabecera («Hola Marcelo», el texto de Mati
+- **La sección** (`MyPump/Guia/GuiaView.swift`), con la línea de `pack.html`: cabecera («Hola Tomás», el texto de Mati
   y el avance), el reproductor con «Video N de M · bloque», el título, Anterior, Siguiente y Velocidad, el «para qué» y la
   duda del video; después «Tu app», el recuadro de dudas para la videollamada (tope 30), los demás capítulos plegables
   (abierto el del video que suena), la suplementación por momento del día con «Ver por qué», y el pie. iPad: dos
@@ -58,7 +58,7 @@ Rama `nativa-guia-ios`. Espec: `~/pump-entregas/docs/ESPEC-APP-PUMP-TEAM.md`. Co
 
 - `MyPumpReglas/Guia.swift`: orden y bloques, textos de avance, partes del motivo, fecha de la llamada, siguiente y
   anterior, retomar, velocidad, `AvanceVideo` (cuándo guarda) y `VistaSuplementacion` (port de `bloqueSuple`).
-- `MyPumpModelos/Guia.swift`: modelos tolerantes y `ResumenGuia`. `GuiaMuestra`: la guía inventada de «Marcelo».
+- `MyPumpModelos/Guia.swift`: modelos tolerantes y `ResumenGuia`. `GuiaMuestra`: la guía inventada de «Tomás».
 - `MyPumpDatos/Guia.swift`: `ModeloGuia` (lecturas, caché, cola, lo pendiente encima de lo del servidor).
 - Tests del kit: `GuiaTests` (reglas, modelos, avance, suplementación), `GuiaModeloTests` (servidor falso) y
   `GuiaIntegracionTests` contra el servidor con `MYPUMP_GUIA_TOKEN` (y `MYPUMP_GUIA_ESCRIBIR_DUDAS=1` para las dudas).

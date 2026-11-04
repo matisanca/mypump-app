@@ -411,7 +411,7 @@ final class GuiaUITests: XCTestCase {
         abrirMuestra(["-guiaVistos", "ninguno"])
         let titulo = app.staticTexts["guia-bienvenida-titulo"]
         XCTAssertTrue(titulo.waitForExistence(timeout: 15), "No apareció la bienvenida con 0 vistos")
-        XCTAssertEqual(titulo.label, "Hola Marcelo")
+        XCTAssertEqual(titulo.label, "Hola Tomás")
         let texto = app.staticTexts["guia-bienvenida-texto"]
         XCTAssertTrue(texto.label.hasPrefix("Antes de empezar, mirá tu guía. Son 11 videos cortos"), texto.label)
         XCTAssertTrue(app.buttons["guia-bienvenida-ver"].isHittable)

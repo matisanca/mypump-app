@@ -1,6 +1,6 @@
 import Foundation
 
-/// Una guía inventada con la forma de `entregas_app_get` (el «Marcelo» de la espec): la usan los tests, los previews y
+/// Una guía inventada con la forma de `entregas_app_get` (un cliente inventado, «Tomás»): la usan los tests, los previews y
 /// las capturas de la maqueta. Nada de un cliente real; los videos apuntan a un dominio que no existe.
 public enum GuiaMuestra {
     public static var guia: Guia { Guia(json: (try? JSONDecoder().decode(JSONValue.self, from: Data(json.utf8))) ?? .null) }
@@ -32,7 +32,7 @@ public enum GuiaMuestra {
             clip("FT-4b", "¿Qué magnesio compro y por qué los comunes no sirven?", "Tu suplementación", 0.5, visto: true),
         ]
         return """
-        {"ok":true,"nombre_pila":"Marcelo","fecha_entrega":null,
+        {"ok":true,"nombre_pila":"Tomás","fecha_entrega":null,
          "clips":[\(clips.joined(separator: ","))],
          "dudas_llamada":[{"texto":"¿Puedo entrenar a la noche?","en":"2026-11-04T10:12:00-03:00"}],
          "suplementacion":{"titulo":"Tu suplementación",
