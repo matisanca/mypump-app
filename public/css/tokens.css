@@ -7,9 +7,10 @@
 
 :root {
   /* --- Fondos --- */
+  /* Los de la app nativa (systemGroupedBackground, tarjeta, tertiarySystemFill). */
   --color-bg-primary:   #ffffff;
-  --color-bg-secondary: #fafafa;
-  --color-bg-tertiary:  #f4f4f5;
+  --color-bg-secondary: #f2f2f7;
+  --color-bg-tertiary:  #e9e9ee;
 
   /* --- Texto --- */
   --color-text-primary:   #0a0a0a;
@@ -20,11 +21,19 @@
   --color-border:       #e5e5e5;
   --color-border-strong:#d0d0d0;
 
-  /* --- Marca: verde lima Pump Team --- */
-  --color-brand:        #b8f060;
-  --color-brand-hover:  #a8e050;
-  --color-brand-subtle: rgba(184, 240, 96, 0.12);
-  --color-on-brand:     #0a0a0a; /* texto sobre verde — siempre negro */
+  /* --- Marca: el verde del logo, igual que la app nativa (Tema.swift) ---
+     Antes era el lima #b8f060 con texto negro encima; la app pasó al verde del
+     logo con texto blanco y la web se iguala (4-nov). */
+  --color-brand:        #1d9330;
+  --color-brand-hover:  #187f29;
+  --color-brand-subtle: rgba(29, 147, 48, 0.13);
+  --color-on-brand:     #ffffff;
+  --color-brand-text:   #157a28;
+  --color-alerta:       #c2410c;
+  --color-record:       #a16207;
+  --color-prot:         #e11d48;
+  --color-carb:         #b45309;
+  --color-fat:          #4f5bd5;
 
   /* --- Estados semánticos --- */
   --color-success: #16a34a;
@@ -124,9 +133,9 @@
 
 [data-theme="dark"] {
   /* --- Fondos --- */
-  --color-bg-primary:   #0a0a0a;
-  --color-bg-secondary: #141414;
-  --color-bg-tertiary:  #1f1f1f;
+  --color-bg-primary:   #1c1c1e;
+  --color-bg-secondary: #000000;
+  --color-bg-tertiary:  #2c2c2e;
 
   /* --- Texto --- */
   --color-text-primary:   #f5f5f5;
@@ -137,11 +146,17 @@
   --color-border:       #2a2a2a;
   --color-border-strong:#3a3a3a;
 
-  /* --- Marca: mismo verde, subtle más intenso en dark --- */
-  --color-brand:        #b8f060;
-  --color-brand-hover:  #a8e050;
-  --color-brand-subtle: rgba(184, 240, 96, 0.18);
-  --color-on-brand:     #0a0a0a;
+  /* --- Marca: el verde del logo en oscuro (Tema.swift) --- */
+  --color-brand:        #5bbe62;
+  --color-brand-hover:  #6fcb75;
+  --color-brand-subtle: rgba(91, 190, 98, 0.16);
+  --color-on-brand:     #040e04;
+  --color-brand-text:   #5bbe62;
+  --color-alerta:       #ff9f0a;
+  --color-record:       #ffd60a;
+  --color-prot:         #ff5c7a;
+  --color-carb:         #ffb020;
+  --color-fat:          #7d8bff;
 
   /* --- Estados semánticos --- */
   --color-success: #22c55e;

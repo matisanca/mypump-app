@@ -590,6 +590,27 @@ window.mypumpDB = {
     });
   },
 
+  // ─── AJUSTES DE COMIDAS DEL DÍA (D22, nativa_004) ────────
+  // Los mismos que guarda la app: una fila por día con {comida_id: AjusteComida}.
+  // Devuelve [{fecha, dieta_id, tipo_dia, ajustes}] o null ante error.
+  async getAjustesDieta(token, desde, hasta) {
+    return await rpc('mypump_get_ajustes_dieta', { p_token: token, p_desde: desde, p_hasta: hasta });
+  },
+
+  // Guarda el día entero (la última gana). ajustes {} = volver al plan.
+  async guardarAjustesDieta(token, d) {
+    return await rpcMutation('mypump_guardar_ajustes_dieta', {
+      p_token:     token,
+      p_fecha:     d.fecha,
+      p_dieta_id:  d.dietaId,
+      p_tipo_dia:  d.tipoDia || null,
+      p_ajustes:   d.ajustes || {},
+      p_resumen:   d.resumen || null,
+      p_kcal_plan: d.kcalPlan == null ? null : d.kcalPlan,
+      p_kcal_dia:  d.kcalDia == null ? null : d.kcalDia,
+    });
+  },
+
   // ─── CATÁLOGO DE EJERCICIOS (lectura pública anon) ────────
 
   // Devuelve el catálogo completo de ejercicios (para sustitución de

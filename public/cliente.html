@@ -117,7 +117,7 @@ main{padding:var(--space-4)}
 /* EXPANDED PANEL */
 .ex-panel{padding:0 var(--space-4) var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)}
 .divider{height:1px;background:var(--color-border);margin:0 calc(-1 * var(--space-4))}
-.sets-head,.set-row{display:grid;grid-template-columns:32px 1fr 1fr 60px 44px;gap:var(--space-2);align-items:center}
+.sets-head,.set-row{display:grid;grid-template-columns:40px 1fr 1fr 44px;gap:var(--space-2);align-items:center}
 .sets-head{padding:var(--space-2) var(--space-1);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);font-weight:600}
 .sets-list{display:flex;flex-direction:column;gap:var(--space-2)}
 .set-num{font-family:var(--font-num);font-size:16px;font-weight:600;text-align:center}
@@ -1001,6 +1001,177 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
   .ex-status,.set-confirm,.pip,.rest-bar,.hb,.track-btn,.sc-dot{animation:none!important}
   .ex-card,.day-pill,.tab svg,.tab-dot,.progress-fill{transition-duration:.01ms!important}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DISEÑO DE LA APP NATIVA (4-nov) — la web se iguala a la app 2.1:
+   fondo agrupado de iOS, tarjetas blancas de radio grande, el verde
+   del logo y los colores de macros de Tema.swift. Va al final para
+   ganarle a lo de arriba sin tocarlo.
+   ═══════════════════════════════════════════════════════════════ */
+body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-secondary)}
+.hdr{background:color-mix(in oklab,var(--color-bg-secondary) 88%,transparent);border-bottom:0}
+.hdr-title{font-size:30px;font-weight:800;letter-spacing:-.02em;text-transform:none}
+.week-pill{background:transparent;border:0;padding:0;color:var(--color-text-muted)}
+
+/* Dieta: cabecera del día */
+.dz-hdr{margin:var(--space-3) 0;padding:20px 18px;background:var(--color-bg-primary);border-radius:24px;display:flex;flex-direction:column;gap:14px}
+.dz-ring{position:relative;width:150px;height:150px;margin:0 auto}
+.dz-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dz-ring circle{fill:none;stroke-width:14}
+.dz-ring .track{stroke:var(--color-bg-tertiary)}
+.dz-ring .ring{stroke:var(--color-brand);stroke-linecap:round;transition:stroke-dashoffset .5s}
+.dz-ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.dz-ring-c b{font-family:"Archivo",var(--font-sans);font-size:38px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.dz-ring-c span{font-size:13px;color:var(--color-text-muted);margin-top:4px}
+.dz-cajas{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dz-caja{border-radius:16px;padding:10px 10px 12px;display:flex;flex-direction:column;gap:2px}
+.dz-caja.p{background:color-mix(in oklab,var(--color-prot) 11%,transparent);--m:var(--color-prot)}
+.dz-caja.c{background:color-mix(in oklab,var(--color-carb) 11%,transparent);--m:var(--color-carb)}
+.dz-caja.f{background:color-mix(in oklab,var(--color-fat) 11%,transparent);--m:var(--color-fat)}
+.dz-caja-lbl{font-size:13px;color:var(--color-text-secondary);display:flex;align-items:center;gap:6px}
+.dz-caja .dz-dot,.dz-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--m,currentColor);flex:0 0 auto}
+.dz-dot.p{--m:var(--color-prot)}.dz-dot.c{--m:var(--color-carb)}.dz-dot.f{--m:var(--color-fat)}
+.dz-caja-val{font-family:"Archivo",var(--font-sans);font-size:22px;font-weight:800}
+.dz-caja-meta{font-size:12px;color:var(--color-text-muted)}
+.dz-caja-bar{height:5px;border-radius:3px;background:color-mix(in oklab,var(--m) 22%,transparent);margin-top:6px;overflow:hidden}
+.dz-caja-bar span{display:block;height:100%;background:var(--m);border-radius:3px}
+.dz-linea{font-size:14px;color:var(--color-text-secondary);line-height:1.4}
+.dz-elegidas{color:var(--color-text-primary)}
+.dz-elegidas:not(.is-ok){color:var(--color-text-primary)}
+.dz-elegidas.is-ok{color:var(--color-brand-text)}
+.dz-ejemplo{margin:0 0 var(--space-3);padding:12px 14px;border-radius:16px;background:var(--color-brand-subtle);font-size:14px}
+
+/* Dieta: tarjeta de comida */
+.dz-meal{margin:0 0 var(--space-3);padding:18px 16px 16px;background:var(--color-bg-primary);border-radius:24px;display:flex;flex-direction:column;gap:12px}
+.dz-meal-head{display:flex;align-items:center;gap:12px}
+.dz-meal-ico{width:40px;height:40px;border-radius:12px;background:var(--color-brand-subtle);color:var(--color-brand-text);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.dz-meal-ico svg{width:20px;height:20px}
+.dz-meal-ico.is-comido{background:var(--color-brand);color:var(--color-on-brand)}
+.dz-meal-ico.is-saltado{background:var(--color-bg-tertiary);color:var(--color-text-secondary)}
+.dz-meal-tit{flex:1;min-width:0}
+.dz-meal-name{font-family:"Archivo",var(--font-sans);font-size:20px;font-weight:700;letter-spacing:-.01em}
+.dz-meal-sub{font-size:14px;color:var(--color-text-muted);margin-top:1px}
+.dz-meal-kcal{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
+.dz-meal-kcal b{font-family:"Archivo",var(--font-sans);font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.dz-meal-kcal span{font-size:12px;color:var(--color-text-muted);margin-top:3px}
+.dz-aviso{align-self:stretch;padding:9px 12px;border-radius:12px;background:var(--color-brand-subtle);color:var(--color-brand-text);font-size:13px;font-weight:600}
+.dz-opciones{display:flex;align-items:center;gap:12px}
+.dz-opciones>span{font-size:15px;color:var(--color-text-muted)}
+.dz-seg{flex:1;display:flex;background:var(--color-bg-tertiary);border-radius:12px;padding:3px;gap:2px}
+.dz-seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:7px 4px;font-size:14px;font-weight:500;cursor:pointer;color:var(--color-text-primary)}
+.dz-seg button.is-active{background:var(--color-bg-primary);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
+[data-theme="dark"] .dz-seg button.is-active{background:#636366}
+.dz-track{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dz-track-btn{height:44px;border:0;border-radius:12px;background:var(--color-bg-tertiary);font-size:16px;font-weight:600;cursor:pointer;color:var(--color-text-primary)}
+.dz-track-btn.yes.is-active{background:var(--color-brand);color:var(--color-on-brand)}
+.dz-track-btn.no.is-active{background:color-mix(in oklab,var(--color-alerta) 16%,transparent);color:var(--color-alerta)}
+.dz-hint{font-size:13px;color:var(--color-text-secondary);line-height:1.4}
+.dz-link{border:0;background:none;color:var(--color-brand-text);font-weight:600;padding:0;cursor:pointer;font-size:13px}
+.dz-foods{display:flex;flex-direction:column}
+.dz-foods>*+*{border-top:1px solid var(--color-border)}
+.dz-food{display:flex;align-items:center;gap:10px;padding:12px 0}
+.dz-food-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.dz-food-name{font-size:17px;font-weight:500}
+.dz-food-cant{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dz-pill{border:1px solid transparent;border-radius:14px;padding:4px 10px;background:color-mix(in oklab,var(--color-brand-subtle) 55%,transparent);color:var(--color-brand-text);font-size:16px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums}
+.dz-pill.is-cambiada{background:var(--color-brand-subtle);border-color:color-mix(in oklab,var(--color-brand-text) 35%,transparent)}
+.dz-food-kcal.is-cambiada{color:var(--color-brand-text)}
+/* Entreno como la app 2.0.3: métricas de la pauta, preparación (E1), título de series con la leyenda del RIR y récord (E3) */
+.ex-metricas{display:flex;align-items:stretch;margin:var(--space-2) 0 var(--space-3);border-radius:14px;background:var(--color-bg-secondary)}
+.ex-met{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:0;background:none;color:inherit;font:inherit;min-width:0}
+.ex-met+.ex-met{border-left:1px solid var(--color-border)}
+.ex-met-t{font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap}
+.ex-met-v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;text-align:center}
+.ex-met-d{font-size:11px;color:var(--color-text-muted);text-align:center}
+.ex-met.is-tocable{cursor:pointer}
+.ex-met.is-tocable .ex-met-v{color:var(--color-brand-text)}
+.prep{margin:0 0 var(--space-3);padding:8px 12px;border-radius:12px;background:var(--color-bg-tertiary)}
+.prep.is-oculta{padding:4px 12px}
+.prep-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:14px;font-weight:500;color:var(--color-text-secondary)}
+.prep-ocultar{border:0;background:none;color:var(--color-brand-text);font-size:14px;min-height:32px;cursor:pointer}
+.prep-leyenda{font-size:12px;color:var(--color-text-muted);margin:2px 0 6px}
+.prep-fila{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;border:0;border-top:1px solid var(--color-border);background:none;color:inherit;font:inherit;font-size:14px;text-align:left;cursor:pointer;padding:0}
+.prep-fila:first-of-type{border-top:0}
+.prep-fila.is-hecha .prep-nombre,.prep-fila.is-hecha .prep-cant{opacity:.4}
+.prep-nombre{flex:1;min-width:0}
+.prep-nombre small{font-size:11px;font-weight:500;color:var(--color-text-muted);background:var(--color-bg-secondary);border-radius:8px;padding:1px 6px}
+.prep-cant{color:var(--color-text-secondary);font-variant-numeric:tabular-nums}
+.prep-cant b{color:var(--color-text-primary)}
+.prep-ok{color:var(--color-brand-text);font-weight:700}
+.prep-nota{font-size:12px;color:var(--color-text-muted);margin:-4px 0 6px}
+.series-tit{display:flex;align-items:baseline;justify-content:space-between;margin-top:var(--space-2)}
+.series-tit b{font-size:17px}
+.series-tit span{font-size:14px;font-weight:500;color:var(--color-text-muted);font-variant-numeric:tabular-nums}
+.series-tit span.is-todas{color:var(--color-brand-text)}
+.series-leyenda{font-size:13px;color:var(--color-text-secondary);margin-top:2px}
+.ex-record{margin-top:var(--space-2);padding:9px 12px;border-radius:12px;background:color-mix(in oklab,var(--color-record) 16%,var(--color-bg-primary));color:var(--color-record);font-size:14px;font-weight:700}
+.dz-pill[disabled]{cursor:default}
+.dz-lapiz{font-size:13px;opacity:.85}
+.dz-food-kcal{font-size:15px;color:var(--color-text-muted)}
+.dz-enplan{font-size:12px;color:var(--color-text-muted)}
+.dz-macros{font-size:13px;color:var(--color-text-muted)}
+.dz-macros i{font-style:normal;opacity:.6;margin:0 3px}
+.m-p{color:var(--color-prot);font-weight:700}.m-c{color:var(--color-carb);font-weight:700}.m-f{color:var(--color-fat);font-weight:700}
+.dz-food-btns{display:flex;gap:10px}
+.dz-redondo{width:40px;height:40px;border-radius:50%;border:0;background:var(--color-bg-tertiary);font-size:17px;cursor:pointer;color:var(--color-text-secondary);display:flex;align-items:center;justify-content:center}
+.dz-redondo.is-active{background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.dz-chip-ag{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;background:var(--color-brand-subtle);color:var(--color-brand-text);vertical-align:2px}
+.dz-meal .food-comi-row{display:flex;align-items:center;gap:10px}
+.dz-meal .food-comi-body{flex:1;min-width:0}
+.dz-meal .food-comi-row.is-excluido .dz-food-name{text-decoration:line-through;color:var(--color-text-muted)}
+.dz-total{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 14px;border-radius:12px;background:color-mix(in oklab,var(--color-bg-tertiary) 60%,transparent);font-size:14px;color:var(--color-text-muted)}
+.dz-total>span:first-child{letter-spacing:.06em;font-weight:600}
+.dz-total b{color:var(--color-text-primary);font-weight:600;margin-right:8px}
+.dz-total .dz-dot{margin:0 3px 1px 0;vertical-align:middle}
+.dz-acciones{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dz-acciones .dz-accion:only-child{grid-column:1/-1}
+.dz-accion{height:46px;border:0;border-radius:14px;background:var(--color-brand-subtle);color:var(--color-brand-text);font-size:15px;white-space:nowrap;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.dz-mas{width:20px;height:20px;border-radius:50%;background:var(--color-brand);color:var(--color-on-brand);display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1}
+.dz-meal.is-omitida .dz-foods{opacity:.45}
+
+/* Hojas (cantidad, agregar, ajustar) */
+.dz-hoja-back{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200}
+.dz-hoja{position:fixed;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;max-height:92vh;overflow-y:auto;z-index:201;background:var(--color-bg-secondary);border-radius:26px 26px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;animation:dzSube .22s ease-out}
+@keyframes dzSube{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.dz-hoja-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.dz-hoja-top b{font-size:17px}
+.dz-hoja-x{justify-self:start;border:0;background:var(--color-bg-primary);color:var(--color-brand-text);border-radius:18px;padding:8px 14px;font-size:16px;cursor:pointer}
+.dz-hoja-card{background:var(--color-bg-primary);border-radius:20px;padding:16px}
+.dz-hoja-nombre{font-size:18px;font-weight:700;margin-bottom:10px}
+.dz-hoja-macros{display:flex;align-items:center;gap:16px}
+.dz-hoja-kcal{width:84px;height:84px;border-radius:50%;border:8px solid var(--color-brand-subtle);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto}
+.dz-hoja-kcal b{font-family:"Archivo",var(--font-sans);font-size:22px;font-weight:800;line-height:1}
+.dz-hoja-kcal span{font-size:11px;color:var(--color-text-muted)}
+.dz-hoja-mlist{flex:1;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.dz-hoja-mlist div{display:flex;align-items:center;gap:8px}
+.dz-hoja-mlist b{margin-left:auto}
+.dz-stepper{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dz-step{width:52px;height:52px;border-radius:50%;border:0;background:var(--color-brand-subtle);color:var(--color-brand-text);font-size:28px;cursor:pointer}
+.dz-step[disabled]{opacity:.35;cursor:default}
+.dz-step-val{text-align:center}
+.dz-step-val b{font-family:"Archivo",var(--font-sans);font-size:38px;font-weight:800;font-variant-numeric:tabular-nums}
+.dz-step-val span{color:var(--color-text-muted);font-size:16px}
+.dz-seg-medida{margin-top:14px}
+.dz-hoja-nota{font-size:13px;color:var(--color-text-muted);padding:0 4px;line-height:1.4}
+.dz-hoja-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0}
+.dz-hoja-fila+.dz-hoja-fila,.dz-hoja-fila+.dz-hoja-nota{border-top:1px solid var(--color-border);padding-top:12px;margin-top:6px}
+.dz-hoja-fila span{display:flex;flex-direction:column;gap:2px}
+.dz-hoja-fila b{font-weight:500;font-size:16px}
+.dz-hoja-fila small{font-size:13px;color:var(--color-text-muted)}
+.dz-switch{appearance:none;-webkit-appearance:none;width:51px;height:31px;border-radius:16px;background:var(--color-bg-tertiary);position:relative;cursor:pointer;flex:0 0 auto;transition:background .2s}
+.dz-switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:left .2s}
+.dz-switch:checked{background:var(--color-brand)}
+.dz-switch:checked::after{left:22px}
+.dz-hoja-dos{display:flex;gap:10px}
+.dz-hoja-sec{flex:1;height:46px;border:0;border-radius:14px;background:var(--color-bg-primary);color:var(--color-brand-text);font-size:16px;font-weight:600;cursor:pointer}
+.dz-hoja-sec.peligro{color:var(--color-danger)}
+.dz-hoja-listo{height:52px;border:0;border-radius:26px;background:var(--color-brand);color:var(--color-on-brand);font-size:18px;font-weight:600;cursor:pointer}
+.dz-buscar{height:44px;border:0;border-radius:12px;background:var(--color-bg-tertiary);padding:0 14px;font-size:16px;color:var(--color-text-primary);outline:none}
+.dz-resultados{display:flex;flex-direction:column;background:var(--color-bg-primary);border-radius:20px;overflow:hidden;min-height:120px}
+.dz-res{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;background:none;padding:13px 16px;text-align:left;font-size:16px;cursor:pointer;color:var(--color-text-primary)}
+.dz-res+.dz-res{border-top:1px solid var(--color-border)}
+.dz-res small{color:var(--color-text-muted);font-size:13px;white-space:nowrap}
+.dz-resultados .dz-hoja-nota{padding:16px}
 </style>
 <link rel="preload" href="/fonts/archivo-var-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
@@ -1175,6 +1346,8 @@ body{background-image:radial-gradient(130% 52% at 50% -14%,color-mix(in oklab,va
 <script src="/js/fcm-flag.js"></script>
 <script src="/js/supabase-client.js"></script>
 <script src="/js/food-db.js"></script>
+<script src="/js/ajustes-dieta.js"></script>
+<script src="/js/reglas-entreno.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1403,6 +1576,9 @@ const STATE = {
   comidasLoaded:      false,
   comidasFecha:       null,   // fecha local de la última carga de marcas (para recargar al cambiar de día)
   comidasLibres:      [],          // F10 — comidas fuera del plan (foto/manual) de HOY
+  ajustesDieta:       {},          // comida_id → AjusteComida de HOY (los mismos que guarda la app)
+  ajustesFecha:       null,
+  mealsTocadas:       new Set(),   // comidas en las que el cliente eligió la opción a mano
 };
 
 /* ---- SAMPLE DATA (fallback when no rutina/dieta published) ---- */
@@ -2748,6 +2924,13 @@ const Outbox = (() => {
       }
       return r;
     },
+    async ajustes_dieta(p) {
+      // El día entero (dedupe por fecha: la última gana), como la app.
+      const r = await window.mypumpDB.guardarAjustesDieta(TOKEN, p);
+      // NULL = token inválido: no tiene sentido reintentar.
+      if (r && r.success && r.data == null) return { success: false, error: 'token' };
+      return r;
+    },
     async swap_del(p) {
       // Revertir una sustitución. Comparte dedupeKey con la op 'swap' del
       // mismo alimento: si el swap todavía no había salido, esto lo reemplaza
@@ -3801,6 +3984,190 @@ async function startEntrenamiento() {
   renderTrain();
 }
 
+/* ---- Reglas de Entreno de la app 2.0.3 (ReglasEntreno): preparación (E1),
+   descanso elegido por ejercicio (E2), aviso de récord (E3) y RIR del plan (E4).
+   Lo que se elige acá queda en este navegador, como en el teléfono. ---- */
+const _PREP_HECHA_KEY = 'mypump_preparacion_hecha';
+const _PREP_OCULTA_KEY = 'mypump_preparacion_oculta';
+const _DESCANSOS_KEY = 'mypump_descansos_propios';
+function _leerLocal(k, vacio) {
+  try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v && typeof v === 'object' ? v : vacio; } catch (_) { return vacio; }
+}
+function _guardarLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
+
+// El descanso elegido a mano vale para ese ejercicio en cualquier día (por su clave).
+function _descansoPropio(exId) {
+  const c = claveDeSlot(exId);
+  return c ? ReglasEntreno.descansoValido(_leerLocal(_DESCANSOS_KEY, {})[c]) : null;
+}
+function _descansoDe(ex) {
+  return ReglasEntreno.segundosDescanso(_descansoPropio(ex.id), ReglasEntreno.descansoPlan(ex.descanso_segundos));
+}
+function _elegirDescanso(exId, segundos) {
+  const c = claveDeSlot(exId);
+  if (!c) return;
+  const todos = _leerLocal(_DESCANSOS_KEY, {});
+  const v = ReglasEntreno.descansoValido(segundos);
+  if (v == null) delete todos[c]; else todos[c] = v;
+  _guardarLocal(_DESCANSOS_KEY, todos);
+}
+function abrirDescanso(exId) {
+  const ex = getEffectiveEx(_exPorSlot(exId));
+  const plan = ReglasEntreno.descansoPlan(ex.descanso_segundos);
+  const ops = ReglasEntreno.OPCIONES_DESCANSO;
+  // Si el del plan no es un paso de 15 s, arranca en el más cercano.
+  let sel = ops.reduce((a, b) => Math.abs(b - _descansoDe(ex)) < Math.abs(a - _descansoDe(ex)) ? b : a, ops[0]);
+  const propio = _descansoPropio(exId) != null;
+  _abrirHoja(`
+    <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>Descanso</b><span></span></div>
+    <div class="dz-hoja-nota">Vale para este ejercicio en todos tus días. El del plan es ${fmtTime(plan)}.</div>
+    <div class="dz-hoja-card dz-stepper">
+      <button class="dz-step" data-menos aria-label="Menos">−</button>
+      <div class="dz-step-val"><b data-q></b></div>
+      <button class="dz-step" data-mas aria-label="Más">+</button>
+    </div>
+    <button class="dz-hoja-listo" data-listo></button>
+    ${propio ? `<div class="dz-hoja-dos"><button class="dz-hoja-sec" data-plan>Volver al del plan (${fmtTime(plan)})</button></div>` : ''}`, (h) => {
+    const pintar = () => {
+      h.querySelector('[data-q]').textContent = fmtTime(sel);
+      h.querySelector('[data-listo]').textContent = `Usar ${fmtTime(sel)}`;
+      h.querySelector('[data-menos]').disabled = sel <= ops[0];
+      h.querySelector('[data-mas]').disabled = sel >= ops[ops.length - 1];
+    };
+    pintar();
+    h.querySelector('[data-menos]').addEventListener('click', () => { sel = Math.max(ops[0], sel - ReglasEntreno.DESCANSO.paso); pintar(); });
+    h.querySelector('[data-mas]').addEventListener('click', () => { sel = Math.min(ops[ops.length - 1], sel + ReglasEntreno.DESCANSO.paso); pintar(); });
+    h.querySelector('[data-listo]').addEventListener('click', () => { _elegirDescanso(exId, sel); closeModal(); renderTrain(); });
+    const vp = h.querySelector('[data-plan]');
+    if (vp) vp.addEventListener('click', () => { _elegirDescanso(exId, null); closeModal(); renderTrain(); });
+  });
+}
+
+// La preparación del ejercicio: la del plan si la trae; si no, la que arma la app con el tipo y el
+// músculo (del catálogo) de cada ejercicio del día. El kg sigue al de la primera serie efectiva.
+function _entradaPreparacion(ex) {
+  const cat = window.MyPump && window.MyPump.exerciseSwap ? window.MyPump.exerciseSwap._resolve(ex) : null;
+  return { tipo: ex.tipo, musculo: cat ? cat.primary_muscle || null : null, nombre: ex.nombre, sinPeso: esSinPeso(ex) };
+}
+function _preparacionDe(ex) {
+  const lista = DATA.dia.bloques.flatMap(b => b.ejercicios).map(getEffectiveEx);
+  const i = lista.findIndex(e => e.id === ex.id);
+  if (i < 0) return [];
+  const cat = window.MyPump && window.MyPump.exerciseSwap ? window.MyPump.exerciseSwap._resolve(ex) : null;
+  const noKg = exNoKg(ex);
+  const s0 = STATE.session[ex.id] && STATE.session[ex.id].sets[0];
+  const kg = ReglasEntreno.kgEfectivo(s0 ? s0.kg : '', noKg ? '' : suggestedKg(ex.id, 0));
+  return ReglasEntreno.preparacion(lista.map(_entradaPreparacion), i, ex.nombre, cat ? cat.equipment : null, noKg, kg,
+    ReglasEntreno.aproximacionesDelPlan(ex.aproximaciones));
+}
+// Los tildes de la preparación no se registran: son de hoy, de ese día y ese ejercicio.
+function _clavePreparacion(exId) { return `${hoyLocal()}|${DATA.dia.id}|${exId}`; }
+function _preparacionHecha(exId) { return _leerLocal(_PREP_HECHA_KEY, {})[_clavePreparacion(exId)] || []; }
+function tocarPreparacion(exId, i) {
+  const hoy = hoyLocal();
+  const todas = _leerLocal(_PREP_HECHA_KEY, {});
+  for (const k of Object.keys(todas)) if (!k.startsWith(hoy + '|')) delete todas[k];
+  const k = _clavePreparacion(exId);
+  const hechas = new Set(todas[k] || []);
+  if (hechas.has(i)) hechas.delete(i);
+  else { hechas.add(i); startRest(ReglasEntreno.P.descansoSegundos); }
+  if (hechas.size) todas[k] = [...hechas].sort((a, b) => a - b); else delete todas[k];
+  _guardarLocal(_PREP_HECHA_KEY, todas);
+  renderTrain();
+}
+function _preparacionOculta(exId) { return (_leerLocal(_PREP_OCULTA_KEY, []) || []).includes(claveDeSlot(exId)); }
+function ocultarPreparacion(exId, ocultar) {
+  const c = claveDeSlot(exId);
+  if (!c) return;
+  const s = new Set(_leerLocal(_PREP_OCULTA_KEY, []));
+  if (ocultar) s.add(c); else s.delete(c);
+  _guardarLocal(_PREP_OCULTA_KEY, [...s]);
+  renderTrain();
+}
+function _preparacionHtml(ex, series, noKg) {
+  if (!series.length) return '';
+  const titulo = 'Calentamiento y aproximación';
+  if (_preparacionOculta(ex.id)) {
+    return `<div class="prep is-oculta"><div class="prep-head"><span>${titulo} · ${series.length}</span><button class="prep-ocultar" data-prep-ocultar="${ex.id}|0">Mostrar</button></div></div>`;
+  }
+  const hechas = _preparacionHecha(ex.id);
+  const sinRef = noKg || series.some(s => s.kg == null && !s.barraSola);
+  const filas = series.map((s, i) => {
+    const reps = String(s.reps).replace(/-/g, '–');
+    const kg = noKg ? null : (s.barraSola ? 'barra sola' : (ReglasEntreno.textoKgPreparacion(s) != null ? `${ReglasEntreno.textoKgPreparacion(s)} kg` : null));
+    const hecha = hechas.includes(i);
+    return `<button class="prep-fila${hecha ? ' is-hecha' : ''}" data-prep="${ex.id}|${i}">
+      <span class="prep-nombre">${ReglasEntreno.etiquetaPreparacion(s)}${s.opcional ? ' <small>opcional</small>' : ''}</span>
+      <span class="prep-cant">${kg ? `${reps} × <b>${kg}</b>` : `${reps} reps`}</span>
+      ${hecha ? '<span class="prep-ok">✓</span>' : ''}
+    </button>${s.nota ? `<div class="prep-nota">${escapeHtml(s.nota)}</div>` : ''}`;
+  }).join('');
+  return `<div class="prep">
+    <div class="prep-head"><span>${titulo}</span><button class="prep-ocultar" data-prep-ocultar="${ex.id}|1">Ocultar</button></div>
+    <div class="prep-leyenda">${sinRef ? 'Usalas para encontrar tu peso de trabajo · 30 s entre cada una' : '30 s de descanso entre cada una · no se anotan'}</div>
+    ${filas}
+  </div>`;
+}
+
+// La pauta de la semana como métricas: series × reps, RIR y descanso (el descanso se toca para elegirlo).
+function _partirPauta(s) {
+  const m = String(s).match(/^(.*?)\s*\(([^()]*)\)\s*$/);
+  return m && m[1] ? [m[1], m[2].trim() || null] : [String(s), null];
+}
+function _metricasHtml(ex, prog) {
+  const ms = [];
+  if (prog.reps != null && prog.reps !== '') {
+    if (prog.series != null && ex.tipo !== 'cardio') ms.push({ t: 'Series × reps', v: `${prog.series} × ${prog.reps}` });
+    else ms.push({ t: 'Duración', v: prog.reps });
+  }
+  if (prog.rir != null && prog.rir !== '') { const [v, d] = _partirPauta(prog.rir); ms.push({ t: 'RIR', v, d }); }
+  const seg = _descansoDe(ex);
+  if (seg > 0) ms.push({ t: 'Descanso', v: fmtTime(seg), d: _descansoPropio(ex.id) != null ? 'tuyo' : null, accion: true });
+  if (!ms.length) return '';
+  return `<div class="ex-metricas">${ms.map(m => {
+    const cuerpo = `<span class="ex-met-t">${m.t}</span><span class="ex-met-v">${escapeHtml(String(m.v))}</span>${m.d ? `<span class="ex-met-d">${escapeHtml(m.d)}</span>` : ''}`;
+    return m.accion ? `<button class="ex-met is-tocable" data-descanso="${ex.id}">${cuerpo}</button>` : `<div class="ex-met">${cuerpo}</div>`;
+  }).join('')}</div>`;
+}
+
+// El récord de la serie recién confirmada, arriba de la tabla (se va solo).
+let _avisoRecord = null;
+const _recordsAvisados = {};
+function _evaluarRecordSerie(ex, idx, setObj, verosimil) {
+  const kg = parseFloat(String(setObj.kg).replace(',', '.'));
+  const reps = parseInt(setObj.reps, 10);
+  const hoy = hoyLocal();
+  const h = DATA.historico_por_ejercicio[ex.id] || [];
+  if (!ReglasEntreno.historiaSuficiente(h.map(r => fechaLocalDe(r.registrado_en)).filter(Boolean), hoy)) return null;
+  const anteriores = h.filter(r => fechaLocalDe(r.registrado_en) !== hoy)
+    .map(r => ({ kg: Number(r.peso_kg), reps: Number(r.reps_realizadas != null ? r.reps_realizadas : r.reps) }));
+  const clave = claveDeSlot(ex.id);
+  const lugares = DATA.dia.bloques.flatMap(b => b.ejercicios).map(e => e.id)
+    .filter(id => id === ex.id || (clave && claveDeSlot(id) === clave));
+  const deHoy = [];
+  for (const l of lugares) {
+    (STATE.session[l] ? STATE.session[l].sets : []).forEach((s, i) => {
+      if ((l === ex.id && i === idx) || !s.confirmed) return;
+      const k = parseFloat(String(s.kg).replace(',', '.')), r = parseInt(s.reps, 10);
+      if (isFinite(k) && isFinite(r)) deHoy.push({ kg: k, reps: r });
+    });
+    for (const [k, m] of Object.entries(_recordsAvisados)) if (k.startsWith(l + '|')) deHoy.push(m);
+  }
+  const r = ReglasEntreno.evaluarRecord({ kg, reps }, exNoKg(ex), verosimil, anteriores, deHoy);
+  if (r) _recordsAvisados[`${ex.id}|${idx}`] = { kg, reps };
+  return r;
+}
+function _mostrarRecord(exId, texto) {
+  const id = Date.now();
+  _avisoRecord = { exId, texto, id };
+  setTimeout(() => {
+    if (!_avisoRecord || _avisoRecord.id !== id) return;
+    _avisoRecord = null;
+    const el = document.querySelector(`.ex-record[data-record="${exId}"]`);
+    if (el) el.remove();
+  }, 5000);
+}
+
 function renderExCard(ex, blockIdx) {
   const exState = STATE.session[ex.id];
   const isExpanded = STATE.expandedId === ex.id;
@@ -3855,7 +4222,7 @@ function renderExCard(ex, blockIdx) {
             ? `<span class="chip mono">${prog.reps || '—'}</span>`
             : `<span class="chip mono"><span class="lbl">×</span>${prog.series} <span class="lbl">·</span> ${prog.reps} <span class="lbl">reps</span></span>`
           }
-          <span class="chip mono"><span class="lbl">desc</span> ${fmtTime(ex.descanso_segundos)}</span>
+          <span class="chip mono"><span class="lbl">desc</span> ${fmtTime(_descansoDe(ex))}</span>
         </div>
         ${!isExpanded ? `<div class="ex-historic"><span class="lbl">${last ? '🏆 Récord:' : 'Última:'}</span><span class="val">${last || 'Primera vez con este ejercicio'}</span></div>` : ''}
       </div>
@@ -3873,6 +4240,8 @@ function renderExCard(ex, blockIdx) {
     const _varLabel = _varEntry ? (_varEntry.label || 'Variante') : '';
     const _varActual = (exState.variante || (_variantes ? _variantes[0] : ''));
     const _diaFin = _diaFinalizado;
+    const _prep = _preparacionDe(ex);
+    const _leyendaRir = ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex)) ? ReglasEntreno.leyendaRir(prog.rir) : null;
     // Selector de NIVEL/variante para ejercicios que lo tienen (ej: rueda abdominal).
     const variantePicker = _variantes ? `
       <div class="ex-variante">
@@ -3884,13 +4253,21 @@ function renderExCard(ex, blockIdx) {
     panel = `
     <div class="ex-panel">
       <div class="divider"></div>
+      ${_metricasHtml(ex, prog)}
       ${_progNota ? `<div class="ex-prog-nota ${_progNota.cambia ? 'is-cambio' : (_progNota.calibracion ? 'is-calibracion' : 'is-mantener')}">
         <span class="ex-prog-nota-lbl">${_progNota.cambia ? '📈 Cambio de la semana' : (_progNota.calibracion ? '🎯 Semana 1' : '📋 Esta semana')}</span>
         <span class="ex-prog-nota-txt">${_progNota.texto}</span>
       </div>` : ''}
+      ${_preparacionHtml(ex, _prep, _noKg)}
+      <div class="series-tit">
+        <b>${_prep.length ? 'Series efectivas' : 'Series'}</b>
+        <span class="${completedSets === exState.sets.length && exState.sets.length ? 'is-todas' : ''}">${completedSets} de ${exState.sets.length}</span>
+      </div>
+      ${_leyendaRir ? `<div class="series-leyenda">${_leyendaRir}</div>` : ''}
+      ${_avisoRecord && _avisoRecord.exId === ex.id ? `<div class="ex-record" data-record="${ex.id}">🏆 ${escapeHtml(_avisoRecord.texto)}</div>` : ''}
       ${variantePicker}
       <div class="sets-head">
-        <span></span><span>Reps</span><span>${_noKg ? '—' : 'Kg'}</span><span>RIR</span><span></span>
+        <span>Serie</span><span>Reps</span><span>${_noKg ? '—' : 'Kg'}</span><span></span>
       </div>
       <div class="sets-list">
         ${exState.sets.map((s,i) => renderSetRow(ex, s, i, i===activeIdx)).join('')}
@@ -4054,7 +4431,6 @@ function renderSetRow(ex, s, i, isActive) {
     <span class="set-num">${i+1}</span>
     <input class="set-input" inputmode="numeric" placeholder="${sugRepsHist !== '' ? sugRepsHist : (prog.reps || '')}" value="${s.reps}" data-field="reps" ${conf?'readonly':''} />
     <input class="set-input" inputmode="decimal" placeholder="${noKg ? '—' : (sugKg || kgHer)}" value="${noKg ? '' : s.kg}" data-field="kg" ${conf||noKg?'readonly':''} />
-    <button class="rir-btn" data-rir="${ex.id}|${i}">${s.rir!=='' ? `<span class="lbl">RIR</span>${s.rir}` : `<span class="lbl">RIR</span>·`}</button>
     ${conf
       ? `<button class="set-confirm is-edit" data-edit="${ex.id}|${i}" aria-label="Editar">${ICONS.edit}</button>`
       : `<button class="set-confirm" data-confirm="${ex.id}|${i}" aria-label="Registrar serie" title="${typed ? 'Registrar lo que hiciste' : 'Registrar lo sugerido'}"${canConfirm?'':' disabled'}>${ICONS.check}</button>`}
@@ -4138,6 +4514,7 @@ async function _serieVerosimil(exId, idx, setObj, noKg, prog) {
     cancelLabel: 'Corregir',
   });
   if (!ok) { _marcarSerieDudosa(exId, idx, null); return false; }
+  setObj._preguntada = true;   // se registra, pero no cuenta para el aviso de récord
   return true;
 }
 
@@ -4168,6 +4545,11 @@ async function confirmarSerie(exId, idx) {
   const noKg = exNoKg(ex);
   const prog = getProgresionActual(ex, DATA.rutina.semana_actual);
 
+  // 2.0.3: el RIR ya no se elige; se guarda el del plan (la recuperación cuenta las series duras con él).
+  // Lo que no lleva RIR (calentamiento, cardio, core, peso corporal) queda sin RIR.
+  if (setObj.rir === '' && !setObj.nombreRegistrado && ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex))) {
+    setObj.rir = ReglasEntreno.rirAGuardar(prog.rir);
+  }
   const editoManual = setObj.reps !== '' || setObj.kg !== '';
   if (!editoManual) {
     // One-tap: registrar lo de la ÚLTIMA vez (reps + peso). Reps: preferimos las
@@ -4195,6 +4577,8 @@ async function confirmarSerie(exId, idx) {
   // que entraba se volvía el SUGERIDO de la semana siguiente y se repetía
   // tres semanas con un solo toque (pasó: press plano en máquina, ago-2026).
   if (!(await _serieVerosimil(exId, idx, setObj, noKg, prog))) return;
+  const verosimil = !setObj._preguntada;
+  delete setObj._preguntada;
 
   setObj.confirmed = true;
   setObj.varianteRegistrada = (STATE.session[exId] && STATE.session[exId].variante) || null;
@@ -4206,7 +4590,12 @@ async function confirmarSerie(exId, idx) {
   ensureSesionIniciada().catch(() => {});
   writeSet(exId, idx); // fire-and-forget
 
-  if (!isWarmup) startRest(ex.descanso_segundos);
+  if (!isWarmup) startRest(_descansoDe(ex));
+  // E3: el récord, solo con una serie de este ejercicio (no una registrada con otro nombre).
+  if (!setObj.nombreRegistrado || setObj.nombreRegistrado === ex.nombre) {
+    const rec = _evaluarRecordSerie(ex, idx, setObj, verosimil);
+    if (rec) _mostrarRecord(exId, rec.texto);
+  }
 
   const allConfirmed = STATE.session[exId].sets.every(s => s.confirmed);
   if (allConfirmed && getExStatus(exId) === 'pendiente') {
@@ -4382,6 +4771,17 @@ function bindTrainEvents() {
       setTimeout(() => showDayCompletedModal(), 500);
     }
   }));
+
+  // Preparación (E1) y descanso elegido (E2)
+  $$('[data-prep]').forEach(btn => btn.addEventListener('click', () => {
+    const [id, i] = btn.getAttribute('data-prep').split('|');
+    tocarPreparacion(id, Number(i));
+  }));
+  $$('[data-prep-ocultar]').forEach(btn => btn.addEventListener('click', () => {
+    const [id, o] = btn.getAttribute('data-prep-ocultar').split('|');
+    ocultarPreparacion(id, o === '1');
+  }));
+  $$('[data-descanso]').forEach(btn => btn.addEventListener('click', () => abrirDescanso(btn.getAttribute('data-descanso'))));
 
   // Reabrir un ejercicio ya completado
   $$('[data-reopen]').forEach(btn => btn.addEventListener('click', () => {
@@ -5048,6 +5448,7 @@ document.addEventListener('visibilitychange', () => {
   // de ayer como "hoy". Al volver a foco en otro día se recargan.
   if (!document.hidden && STATE.comidasFecha && STATE.comidasFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadComidasMarcadas();
+    loadAjustesDieta();
     if (typeof loadComidasLibres === 'function') loadComidasLibres();
   }
   if (!document.hidden && STATE.mydayFecha && STATE.mydayFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
@@ -5102,6 +5503,7 @@ async function loadComidasMarcadas() {
     STATE.comidasMarcadas = map;
     STATE.comidasFecha = fecha;
     STATE.comidasLoaded = true;
+    _opcionesIniciales();
     if (STATE.scene === 'diet') renderDiet();
   } catch(e) {
     console.error('[Diet] error cargando comidas marcadas:', e);
@@ -5117,7 +5519,7 @@ async function toggleComidaEstado(comidaId, nuevoEstado) {
   const comida = plan.comidas.find(c => c.id === comidaId);
   if (!comida) return;
   const optIdx = STATE.meals[comidaId]?.selectedOpt || 0;
-  const opcionNombre = comida.options[optIdx]?.name || 'A';
+  const opcionNombre = _letraOpcion(comida.options[optIdx], optIdx);
 
   // Optimistic update. Marcar 'comido' arranca sin exclusiones (comió todo).
   const prev = STATE.comidasMarcadas[comidaId];
@@ -5182,41 +5584,6 @@ async function toggleFoodComido(comidaId, foodIdx) {
   }
 }
 
-function calcularConsumido() {
-  const plan = getActivePlan();
-  const tot = { kcal: 0, prot: 0, carb: 0, fat: 0 };
-  let nComidas = 0, nComidasMarcadas = 0;
-  for (const c of plan.comidas) {
-    nComidas++;
-    const mark = STATE.comidasMarcadas[c.id];
-    if (!mark || mark.estado !== 'comido') continue;
-    nComidasMarcadas++;
-    // Usar la opción guardada en la marca (no la actualmente seleccionada en UI)
-    const optIdx = c.options.findIndex(o => o.name === mark.opcion);
-    const opt = c.options[optIdx >= 0 ? optIdx : 0];
-    const idxFinal = optIdx >= 0 ? optIdx : 0;
-    // Aplicar swaps con getEffectiveFood (respeta sustituciones del cliente)
-    const foods = opt.foods.map((f, fi) => getEffectiveFood(f, c.id, idxFinal, fi));
-    // Consumo parcial: no sumar los alimentos que el cliente marcó como NO comidos.
-    const excluidos = new Set(mark.foodsExcluidos || []);
-    foods.forEach((f, fi) => {
-      if (excluidos.has(fi)) return;
-      tot.kcal += f.kcal || 0;
-      tot.prot += f.prot || 0;
-      tot.carb += f.carb || 0;
-      tot.fat  += f.fat  || 0;
-    });
-  }
-  // F10 — sumar las comidas LIBRES del día (foto del plato / manuales)
-  for (const cl of (STATE.comidasLibres || [])) {
-    tot.kcal += Number(cl.kcal) || 0;
-    tot.prot += Number(cl.prot) || 0;
-    tot.carb += Number(cl.carb) || 0;
-    tot.fat  += Number(cl.fat)  || 0;
-  }
-  return { ...tot, nComidas, nComidasMarcadas };
-}
-
 /* ---- F10: COMIDAS LIBRES (foto del plato / registro manual) ---- */
 async function loadComidasLibres() {
   if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getComidasLibres) {
@@ -5247,6 +5614,165 @@ async function borrarComidaLibre(id) {
   if (!res || !res.success) { STATE.comidasLibres = prev; renderDiet(); }
 }
 
+/* ---- AJUSTES DE COMIDAS (D22) Y ALIMENTOS AGREGADOS (D1) ----
+ * Los mismos que guarda la app (mypump_get/guardar_ajustes_dieta, nativa_004):
+ * una fila por día con {comida_id: AjusteComida}. La lógica es la de la app,
+ * portada en js/ajustes-dieta.js y verificada con sus vectores. Antes la web no
+ * los leía: quien ajustaba en la app veía acá el plan sin ajustar.
+ */
+function _dietaSinEscritura() { return !TOKEN || !!(DATA && (DATA._isDemo || DATA._dietaEjemplo)); }
+const _AJ_KEY = (fecha) => `ajustes_dieta|${fecha}`;
+
+async function loadAjustesDieta() {
+  const fecha = hoyLocal();
+  if (_dietaSinEscritura() || !DIETA_ID || !window.mypumpDB.getAjustesDieta) {
+    STATE.ajustesDieta = {}; STATE.ajustesFecha = fecha;
+    return;
+  }
+  const filas = await window.mypumpDB.getAjustesDieta(TOKEN, fecha, fecha);
+  // null = no se pudo preguntar: se queda lo que había (no se borra un ajuste por un corte de señal).
+  if (!Array.isArray(filas)) { STATE.ajustesFecha = fecha; return; }
+  const fila = filas.find(f => String(f.fecha).slice(0, 10) === fecha && f.dieta_id === DIETA_ID);
+  let aj = fila ? AjustesDieta.leerAjustes(fila.ajustes) : {};
+  // Lo que el cliente ajustó y todavía no salió gana sobre el servidor (igual que las marcas).
+  if (OUTBOX_ENABLED) {
+    for (const [k, op] of Outbox.pendingByKey()) {
+      if (k === _AJ_KEY(fecha)) aj = AjustesDieta.leerAjustes((op.payload || {}).ajustes);
+    }
+  }
+  STATE.ajustesDieta = aj;
+  STATE.ajustesFecha = fecha;
+  _opcionesIniciales();
+  if (STATE.scene === 'diet') renderDiet();
+}
+
+// La opción que se ve de cada comida sin que el cliente la haya elegido: la que
+// comió (si marcó «Comí») o la del ajuste. Es lo que hace la app.
+function _opcionesIniciales() {
+  if (!DIET) return;
+  for (const c of getActivePlan().comidas) {
+    if (!STATE.meals[c.id] || STATE.mealsTocadas.has(c.id)) continue;
+    const m = STATE.comidasMarcadas[c.id];
+    const aj = STATE.ajustesDieta[c.id];
+    let o = 0;
+    if (m && m.estado === 'comido') o = AjustesDieta.indiceOpcion(c, m.opcion);
+    else if (aj) o = aj.opcion;
+    STATE.meals[c.id].selectedOpt = Math.min(Math.max(0, o), Math.max(0, c.options.length - 1));
+  }
+}
+
+function _vistasDieta() {
+  const v = {};
+  for (const c of getActivePlan().comidas) v[c.id] = (STATE.meals[c.id] || {}).selectedOpt || 0;
+  return v;
+}
+const _efectivoDieta = (comidaId, o, i, a) => getEffectiveFood(a, comidaId, o, i);
+function _comidasDelDia(ajustes) {
+  return AjustesDieta.comidasDelDia(getActivePlan().comidas, STATE.comidasMarcadas, ajustes || STATE.ajustesDieta,
+    _vistasDieta(), _efectivoDieta);
+}
+// El día como se ve hoy: cada comida con sus porciones de hoy y sus agregados.
+function _diaDieta() {
+  const delDia = _comidasDelDia();
+  return { delDia, dia: AjustesDieta.dia(delDia, STATE.ajustesDieta) };
+}
+
+// Guarda el día entero (la última gana): sin los ajustes neutros, cada cantidad
+// con su ancla, con el resumen que lee Mati. Mismo payload que la app.
+function guardarAjustesDieta(ajustes) {
+  const delDia = _comidasDelDia(ajustes);
+  const limpio = {};
+  for (const c of delDia) {
+    const a = ajustes[c.id];
+    if (!a) continue;
+    const an = AjustesDieta.anclar(a, c);
+    if (!AjustesDieta.esNeutro(an)) limpio[c.id] = an;
+  }
+  STATE.ajustesDieta = limpio;
+  // «Hoy no la como» sobre una comida marcada: la marca se va (como en la app).
+  for (const id of Object.keys(limpio)) {
+    if (limpio[id].omitida && STATE.comidasMarcadas[id]) toggleComidaEstado(id, null);
+  }
+  renderDiet();
+  if (_dietaSinEscritura() || !DIETA_ID) return;
+  const fecha = hoyLocal();
+  const hay = Object.keys(limpio).length > 0;
+  const dia = AjustesDieta.dia(delDia, limpio);
+  const resumen = [];
+  let kcalPlan = 0, kcalDia = 0;
+  for (const c of delDia) {
+    const d = dia[c.id];
+    kcalPlan += d.kcalPlan; kcalDia += d.kcal;
+    const r = { comida_id: c.id, nombre: c.nombre, kcal_plan: d.kcalPlan, kcal_dia: d.kcal, omitida: d.omitida };
+    const ag = d.omitida ? [] : AjustesDieta.resumenAgregados(limpio[c.id]);
+    if (ag.length) r.agregados = ag;
+    resumen.push(r);
+  }
+  const ser = {};
+  for (const k of Object.keys(limpio)) ser[k] = AjustesDieta.serializarAjuste(limpio[k]);
+  const plan = getActivePlan();
+  const payload = {
+    fecha, dietaId: DIETA_ID, tipoDia: (DIET.tipos_dia && DIET.tipos_dia.length) ? plan.id : null,
+    ajustes: ser, resumen: hay ? resumen : null, kcalPlan: hay ? kcalPlan : null, kcalDia: hay ? kcalDia : null,
+  };
+  if (OUTBOX_ENABLED) { Outbox.enqueue('ajustes_dieta', payload, _AJ_KEY(fecha)); return; }
+  window.mypumpDB.guardarAjustesDieta(TOKEN, payload).then(r => {
+    if (!r || !r.success) console.error('[Dieta] error guardando ajustes:', r && r.error);
+  });
+}
+
+function _ajusteDe(comidaId) {
+  const aj = STATE.ajustesDieta[comidaId];
+  return aj ? AjustesDieta.clonarAjuste(aj) : AjustesDieta.nuevoAjuste((STATE.meals[comidaId] || {}).selectedOpt || 0);
+}
+function _ajustar(comidaId, aj) {
+  const todos = Object.assign({}, STATE.ajustesDieta);
+  if (aj) todos[comidaId] = aj; else delete todos[comidaId];
+  guardarAjustesDieta(todos);
+}
+
+/* ---- Formato (como la app: coma decimal, unidades en plural) ---- */
+const _coma = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
+function _unidadPlural(u, q) {
+  if (!u || AjustesDieta.esPeso(u) || q === 1 || u.length <= 2) return u || 'g';
+  if (/[aeiouáéíóú]$/i.test(u)) return u + 's';
+  if (/z$/i.test(u)) return u.slice(0, -1) + 'ces';
+  return u + 'es';
+}
+function _fmtCant(q, u) { return `${String(q).replace('.', ',')} ${_unidadPlural(u || 'g', q)}`; }
+function _macrosLinea(f) {
+  return `<span class="m-p">P</span> ${_coma(f.prot || 0)} <i>·</i> <span class="m-c">C</span> ${_coma(f.carb || 0)} <i>·</i> <span class="m-f">G</span> ${_coma(f.fat || 0)}`;
+}
+const _ICO_COMIDA = {
+  sol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  amanecer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 18a5 5 0 0 0-10 0"/><path d="M12 2v7M4.2 10.2l1.4 1.4M1 18h2M21 18h2M18.4 11.6l1.4-1.4M23 22H1M8 6l4-4 4 4"/></svg>',
+  taza: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg>',
+  luna: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>',
+  rayo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+  zanahoria: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.27 21.7s9.87-3.5 12.73-6.36a4.5 4.5 0 0 0-6.36-6.37C5.77 11.84 2.27 21.7 2.27 21.7zM8.64 14l-2.05-2.04M15.34 15l-2.46-2.46"/><path d="M22 9s-1.33-2-3.5-2C16.86 7 15 9 15 9s1.33 2 3.5 2S22 9 22 9z"/><path d="M15 2s-2 1.33-2 3.5S15 9 15 9s2-1.84 2-3.5C17 3.33 15 2 15 2z"/></svg>',
+  cubiertos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+};
+function _iconoComida(nombre) {
+  const n = AjustesDieta.normalizar(nombre);
+  if (/desayuno/.test(n)) return _ICO_COMIDA.amanecer;
+  if (/almuerzo/.test(n)) return _ICO_COMIDA.sol;
+  if (/merienda/.test(n)) return _ICO_COMIDA.taza;
+  if (/cena/.test(n)) return _ICO_COMIDA.luna;
+  if (/pre|post|entreno/.test(n)) return _ICO_COMIDA.rayo;
+  if (/colacion|snack/.test(n)) return _ICO_COMIDA.zanahoria;
+  return _ICO_COMIDA.cubiertos;
+}
+const _letraOpcion = (o, i) => (o && o.name) || String.fromCharCode(65 + i);
+
+/* ---- DIET TRACKING + RENDER ---- */
+function calcularConsumido() {
+  const t = AjustesDieta.consumo(getActivePlan().comidas, STATE.comidasMarcadas, STATE.comidasLibres || [],
+    STATE.ajustesDieta, _vistasDieta(), _efectivoDieta);
+  return { kcal: t.kcal, prot: t.prot, carb: t.carb, fat: t.fat, nComidas: t.comidas, nComidasMarcadas: t.hechas, nSalteadas: t.salteadas };
+}
+
 function renderDiet() {
   const root = $('#scene-diet');
   const plan = getActivePlan();
@@ -5262,55 +5788,45 @@ function renderDiet() {
     }</div>`;
   }
 
-  // Calcular consumido y porcentaje del ring de kcal
+  const { delDia, dia } = _diaDieta();
   const consumido = calcularConsumido();
   const pctKcal = tg.kcal > 0 ? Math.min(100, (consumido.kcal / tg.kcal) * 100) : 0;
-  // Ring SVG: circunferencia = 2 * PI * r (r=36) ≈ 226.19
-  const RING_CIRC = 226.19;
+  const RING_CIRC = 2 * Math.PI * 58;
   const ringOffset = RING_CIRC * (1 - pctKcal / 100);
+  const hayAjustes = Object.keys(STATE.ajustesDieta).length > 0;
+  const kcalElegidas = delDia.reduce((s, c) => s + dia[c.id].kcal, 0);
+  const desvio = tg.kcal > 0 ? (kcalElegidas - tg.kcal) / tg.kcal * 100 : 0;
+  const okDesvio = Math.abs(desvio) <= 5;
+  const caja = (cls, label, val, meta) => `
+    <div class="dz-caja ${cls}">
+      <div class="dz-caja-lbl"><span class="dz-dot"></span>${label}</div>
+      <div class="dz-caja-val">${Math.round(val)} g</div>
+      <div class="dz-caja-meta">de ${meta} g</div>
+      <div class="dz-caja-bar"><span style="width:${meta > 0 ? Math.min(100, val / meta * 100).toFixed(1) : 0}%"></span></div>
+    </div>`;
+  const nHechas = consumido.nComidasMarcadas, nSalt = consumido.nSalteadas;
 
   root.innerHTML = `
   ${tipoDiaHtml}
-  <div class="diet-hdr">
-    <div class="diet-hdr-top">
-      <div class="kcal-ring">
-        <svg viewBox="0 0 88 88">
-          <circle class="track" cx="44" cy="44" r="36"/>
-          <circle class="ring" cx="44" cy="44" r="36"
-                  stroke-dasharray="${RING_CIRC.toFixed(2)}"
-                  stroke-dashoffset="${ringOffset.toFixed(2)}"/>
-        </svg>
-        <div class="center"><span class="num">${Math.round(consumido.kcal).toLocaleString('es-AR')}</span><span class="lbl">/${tg.kcal}</span></div>
-      </div>
-      <div class="diet-info">
-        <div class="eyebrow">DIETA · SEM ${DATA.rutina.semana_actual + (DATA.rutina.semana_offset || 0)}/${DATA.rutina.semanas_total + (DATA.rutina.semana_offset || 0)}</div>
-        <h2>${tg.kcal} kcal objetivo</h2>
-        <div class="target"><strong>${tg.prot}g</strong> prot · <strong>${tg.carb}g</strong> carb · <strong>${tg.fat}g</strong> gra</div>
-      </div>
+  <div class="dz-hdr">
+    <div class="dz-ring">
+      <svg viewBox="0 0 132 132"><circle class="track" cx="66" cy="66" r="58"/>
+        <circle class="ring" cx="66" cy="66" r="58" stroke-dasharray="${RING_CIRC.toFixed(2)}" stroke-dashoffset="${ringOffset.toFixed(2)}"/></svg>
+      <div class="dz-ring-c"><b>${Math.round(consumido.kcal).toLocaleString('es-AR')}</b><span>de ${Number(tg.kcal).toLocaleString('es-AR')} kcal</span></div>
     </div>
-    <div class="macros-row">
-      ${renderMacroTarget('p','Proteína',tg.prot,'g')}
-      ${renderMacroTarget('c','Carbos',tg.carb,'g')}
-      ${renderMacroTarget('f','Grasa',tg.fat,'g')}
+    <div class="dz-cajas">
+      ${caja('p', 'Proteínas', consumido.prot, tg.prot)}
+      ${caja('c', 'Carbos', consumido.carb, tg.carb)}
+      ${caja('f', 'Grasas', consumido.fat, tg.fat)}
     </div>
-    <div class="consumido-row">
-      <div class="consumido-hdr">
-        <span class="consumido-lbl">Consumido hoy</span>
-        <span class="consumido-progreso">${consumido.nComidasMarcadas}/${consumido.nComidas} comidas</span>
-      </div>
-      <div class="consumido-bar">
-        <div class="consumido-bar-fill" style="width:${pctKcal.toFixed(1)}%"></div>
-      </div>
-      <div class="consumido-macros">
-        <strong>${Math.round(consumido.kcal)}</strong> / ${tg.kcal} kcal ·
-        <strong>${Math.round(consumido.prot)}</strong>p ·
-        <strong>${Math.round(consumido.carb)}</strong>c ·
-        <strong>${Math.round(consumido.fat)}</strong>g
-      </div>
-    </div>
+    <div class="dz-linea">${nHechas || nSalt
+      ? `Comiste ${nHechas} de ${consumido.nComidas} comidas${nSalt ? ` · salteaste ${nSalt}` : ''}`
+      : 'Tocá «Comí» en cada comida y acá se va sumando lo que comés.'}</div>
+    <div class="dz-linea dz-elegidas${okDesvio ? ' is-ok' : ''}">${okDesvio ? '✓' : '⚠'} ${hayAjustes ? 'Con tus ajustes de hoy' : 'Con las opciones elegidas'}: <b>${Math.round(kcalElegidas).toLocaleString('es-AR')} kcal</b> (${desvio >= 0 ? '+' : '−'}${Math.abs(Math.round(desvio))} %)</div>
     ${renderDietCite()}
   </div>
-  ${plan.comidas.map((c,i) => renderMeal(c,i)).join('')}
+  ${DATA && DATA._dietaEjemplo ? '<div class="dz-ejemplo">Ejemplo: todavía no tenés dieta. Cuando Mati publique la tuya, la vas a ver acá.</div>' : ''}
+  ${plan.comidas.map((c, i) => renderMeal(c, i, delDia, dia)).join('')}
   ${renderComidasLibres()}
   ${renderFuentesFooter('dieta')}`;
   bindDietEvents();
@@ -5655,118 +6171,387 @@ function porcionReferencia(food) {
   return null;
 }
 
-function renderFood(originalFood, comidaId, optIdx, foodIdx) {
+// Un alimento del plan como se ve hoy (f = con la porción de hoy; original = el
+// del plan, para el swap y la porción casera).
+function renderFood(originalFood, comidaId, optIdx, foodIdx, hoy, cambiado, planHoy) {
   const swap = getFoodSwap(originalFood, comidaId, optIdx, foodIdx);
-  const f = swap ? swap.current : originalFood;
+  const base = swap ? swap.current : originalFood;      // el del plan, con el reemplazo
+  const f = hoy || base;                                // con la porción de hoy
   const isSwapped = !!swap;
   const cat = originalFood.category || inferFoodCategory(originalFood);
   const swappable = originalFood.swappable !== false && cat !== 'condimento';
   const porcion = porcionReferencia(f);
   const porcionId = `porcion_${comidaId}_${optIdx}_${foodIdx}`;
   const porcionPrefix = porcion && /^libre/.test(porcion) ? '' : '≈ ';
-
+  const editable = planHoy && f.qty != null && Number(base.qty) > 0;
+  const pill = f.qty != null
+    ? `<button class="dz-pill${cambiado ? ' is-cambiada' : ''}" ${editable ? `data-cant="${comidaId}|${foodIdx}"` : 'disabled'}>${_fmtCant(f.qty, f.unit)}${editable ? ' <span class="dz-lapiz">✎</span>' : ''}</button>`
+    : '';
   return `
-  <div class="food">
-    <div class="food-info">
-      <div class="food-name">${f.name}${isSwapped
-        ? ` <span class="swap-badge" data-revert="${comidaId}|${optIdx}|${foodIdx}" title="Toca para volver al original">↔</span>`
+  <div class="dz-food">
+    <div class="dz-food-info">
+      <div class="dz-food-name">${escapeHtml(f.name)}${isSwapped
+        ? ` <span class="swap-badge" data-revert="${comidaId}|${optIdx}|${foodIdx}" title="Tocá para volver al original">↔</span>`
         : ''}</div>
-      <div class="food-qty">${f.qty} ${f.unit} · ${f.kcal} kcal</div>
-      ${porcion
-        ? `<div class="porcion-ref" id="${porcionId}" hidden>✋ ${porcionPrefix}${porcion}</div>`
-        : ''}
+      <div class="dz-food-cant">${pill}<span class="dz-food-kcal${cambiado ? ' is-cambiada' : ''}">${Math.round(f.kcal || 0)} kcal</span></div>
+      ${cambiado ? `<div class="dz-enplan">En el plan: ${_fmtCant(base.qty, base.unit)}</div>` : ''}
+      <div class="dz-macros">${_macrosLinea(f)}</div>
+      ${porcion ? `<div class="porcion-ref" id="${porcionId}" hidden>✋ ${porcionPrefix}${porcion}</div>` : ''}
     </div>
-    <div class="food-macros">
-      <span><strong>${f.prot}</strong>p</span>
-      <span><strong>${f.carb}</strong>c</span>
-      <span><strong>${f.fat}</strong>g</span>
-      ${porcion
-        ? `<button class="porcion-btn" data-porcion="${comidaId}|${optIdx}|${foodIdx}" aria-label="Ver porción casera" title="Ver porción casera">✋</button>`
-        : ''}
-      ${swappable
-        ? `<button class="swap-btn" data-swap="${comidaId}|${optIdx}|${foodIdx}" title="Sustituir">↔</button>`
-        : ''}
+    <div class="dz-food-btns">
+      ${porcion ? `<button class="dz-redondo porcion-btn" data-porcion="${comidaId}|${optIdx}|${foodIdx}" aria-label="Ver porción casera"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>` : ''}
+      ${swappable ? `<button class="dz-redondo" data-swap="${comidaId}|${optIdx}|${foodIdx}" aria-label="Reemplazar">⇄</button>` : ''}
     </div>
   </div>`;
 }
 
-function renderMeal(c, idx) {
-  const st = STATE.meals[c.id] || {selectedOpt:0};
-  const optIdx = st.selectedOpt || 0;
-  const opt = c.options[optIdx] || c.options[0];
-  const displayFoods = opt.foods.map((f,fi) => getEffectiveFood(f, c.id, optIdx, fi));
-  const tot = displayFoods.reduce((a,f) => ({
-    kcal: a.kcal+(f.kcal||0), prot: a.prot+(f.prot||0),
-    carb: a.carb+(f.carb||0), fat:  a.fat+(f.fat||0)
-  }), {kcal:0,prot:0,carb:0,fat:0});
-  const mealNum = idx !== undefined ? idx+1 : c.id.replace('c','');
-
-  // Estado de tracking (comido/saltado/pendiente)
-  const mark = STATE.comidasMarcadas[c.id];
-  const estado = mark?.estado;
-  // ¿La opción que se está viendo es la misma con la que se marcó "comí"?
-  // De eso depende que los tildes por alimento signifiquen algo: son índices
-  // sobre la lista de UNA opción, y se persisten contra mark.opcion.
-  const viendoLaMarcada = !mark || !mark.opcion || (opt && opt.name === mark.opcion);
-  const mealCls = 'meal' + (estado === 'comido' ? ' is-comido' : estado === 'saltado' ? ' is-saltado' : '');
-  const badge = estado === 'comido'  ? ' <span class="meal-badge ok">✓</span>'
-              : estado === 'saltado' ? ' <span class="meal-badge skip">✗</span>'
-              : '';
-
+function _renderAgregado(ag, comidaId, j) {
   return `
-  <div class="${mealCls}">
-    <button class="meal-head" data-meal="${c.id}">
-      <span class="meal-num">${mealNum}</span>
-      <div class="meal-info">
-        <div class="meal-name">${c.name}${badge}</div>
-        <div class="meal-sub">opción ${opt.name} · ${opt.foods.length} alimentos</div>
-      </div>
-      <span class="meal-kcal">${Math.round(tot.kcal)}<small>kcal</small></span>
-    </button>
-    <div class="meal-track">
-      <button class="track-btn track-yes${estado==='comido' ? ' is-active' : ''}"
-              data-comida-mark="${c.id}|comido"
-              aria-label="Marcar como comido">✓ Comí</button>
-      <button class="track-btn track-no${estado==='saltado' ? ' is-active' : ''}"
-              data-comida-mark="${c.id}|saltado"
-              aria-label="Marcar como saltado">✗ Salté</button>
-    </div>
-    <div class="meal-body">
-      <div class="opt-tabs">
-        ${c.options.map((o,i) =>
-          `<button class="opt-tab${i===optIdx?' is-active':''}" data-opt="${c.id}|${i}">Opción ${o.name}</button>`
-        ).join('')}
-      </div>
-      ${estado === 'comido'
-        ? (viendoLaMarcada
-            ? `<div class="comi-parte-hint">🍽️ Destildá lo que <b>no</b> comiste — solo se cuenta lo tildado.</div>`
-            : `<div class="comi-parte-hint">👀 Estás mirando la opción ${opt.name}, pero comiste la <b>${(mark.opcion || 'A')}</b>. Volvé a esa para marcar qué dejaste.</div>`)
-        : ''}
-      <div class="foods">
-        ${opt.foods.map((f,fi) => {
-          const foodHtml = renderFood(f, c.id, optIdx, fi);
-          // Los tildes SOLO si se está viendo la opción con la que se marcó.
-          //
-          // foodsExcluidos son ÍNDICES, y se guardan contra mark.opcion. Si el
-          // cliente marcaba "comí" con la opción A abierta, pasaba a la B y
-          // destildaba el 2º ítem que veía, se guardaba [1] contra la opción A:
-          // calcularConsumido descontaba el 2º alimento de A —otro alimento,
-          // otras calorías— y los tildes en pantalla tampoco correspondían a
-          // nada. Un índice no significa nada sin saber de qué lista es.
-          if (estado !== 'comido' || !viendoLaMarcada) return foodHtml;
-          const excl = (mark.foodsExcluidos || []).includes(fi);
-          return `<div class="food-comi-row${excl ? ' is-excluido' : ''}">
-            <button class="food-comi-check" data-food-comido="${c.id}|${fi}" role="checkbox" aria-checked="${excl ? 'false' : 'true'}" aria-label="${excl ? 'No comido' : 'Comido'}">${excl ? '' : '✓'}</button>
-            <div class="food-comi-body">${foodHtml}</div>
-          </div>`;
-        }).join('')}
-      </div>
-      <div class="meal-totals">
-        <span><span class="lbl">TOTAL</span></span>
-        <span><strong>${Math.round(tot.kcal)}</strong> kcal · <strong>${Math.round(tot.prot)}</strong>p / <strong>${Math.round(tot.carb)}</strong>c / <strong>${Math.round(tot.fat)}</strong>g</span>
-      </div>
+  <div class="dz-food">
+    <div class="dz-food-info">
+      <div class="dz-food-name">${escapeHtml(ag.nombre)} <span class="dz-chip-ag">+ Agregado</span></div>
+      <div class="dz-food-cant"><button class="dz-pill" data-ag="${comidaId}|${j}">${_fmtCant(ag.cantidad, ag.unidad)} <span class="dz-lapiz">✎</span></button><span class="dz-food-kcal">${Math.round(ag.kcal)} kcal</span></div>
+      <div class="dz-macros">${_macrosLinea({ prot: ag.p, carb: ag.c, fat: ag.g })}</div>
     </div>
   </div>`;
+}
+
+function renderMeal(c, idx, delDia, dia) {
+  const st = STATE.meals[c.id] || { selectedOpt: 0 };
+  const optIdx = Math.min(st.selectedOpt || 0, c.options.length - 1);
+  const opt = c.options[optIdx] || c.options[0];
+  const dd = delDia.find(x => x.id === c.id);
+  const d = dia[c.id];
+  const aj = STATE.ajustesDieta[c.id];
+  // Las porciones de hoy valen para la opción con la que se arma el día (la que
+  // comió, o la que se ve). Mirando otra, se ve el plan de esa opción.
+  const planHoy = dd && dd.opcion === optIdx && !_dietaSinEscritura();
+  const alimentosHoy = planHoy ? d.alimentos : opt.foods.map((f, fi) => getEffectiveFood(f, c.id, optIdx, fi));
+  const agregados = planHoy && d && !d.omitida && aj ? aj.agregados : [];
+  const todos = alimentosHoy.concat(agregados.map(AjustesDieta.comoAlimento));
+  const tot = todos.reduce((a, f) => ({ kcal: a.kcal + (f.kcal || 0), prot: a.prot + (f.prot || 0), carb: a.carb + (f.carb || 0), fat: a.fat + (f.fat || 0) }),
+    { kcal: 0, prot: 0, carb: 0, fat: 0 });
+  const omitida = !!(planHoy && d && d.omitida);
+
+  const mark = STATE.comidasMarcadas[c.id];
+  const estado = omitida ? null : mark?.estado;
+  const viendoLaMarcada = !mark || !mark.opcion || (opt && _letraOpcion(opt, optIdx) === mark.opcion) || (opt && opt.name === mark.opcion);
+  const n = opt.foods.length, nAg = agregados.length;
+
+  // Aviso de ajuste (AvisoAjuste de la app): lo que hizo el cliente y lo que tomó de las anteriores.
+  const avisos = [];
+  if (planHoy && d) {
+    const propia = !!aj;
+    const signo = x => `${x > 0 ? '+' : '−'}${Math.abs(Math.round(x))}`;
+    const absorbido = d.compensacion - d.noAbsorbido;
+    if (d.omitida) avisos.push('Hoy no la comés');
+    else if (propia) avisos.push(Math.abs(d.propio) >= 1 ? `Ajustada: ${signo(d.propio)} kcal` : 'Ajustada a mano');
+    const llega = propia ? absorbido : d.kcal - d.kcalPlan;
+    if (!d.omitida && Math.abs(absorbido) >= 1 && Math.abs(llega) >= 1) {
+      const de = d.compensaDe.map(_conArticulo);
+      avisos.push(`${signo(llega)} kcal por ${de.length ? _unir(de) : 'la comida anterior'}`);
+    }
+  }
+  const aviso = avisos.map(escapeHtml).join('<br>');
+  const icoCls = estado === 'comido' ? ' is-comido' : estado === 'saltado' ? ' is-saltado' : '';
+  const ico = estado === 'comido' ? _ICO_COMIDA.check : estado === 'saltado' ? _ICO_COMIDA.x : _iconoComida(c.name);
+  const kcalTildadas = estado === 'comido' && viendoLaMarcada
+    ? todos.reduce((s, f, i) => s + ((mark.foodsExcluidos || []).includes(i) ? 0 : (f.kcal || 0)), 0) : 0;
+
+  const filas = [];
+  alimentosHoy.forEach((f, fi) => {
+    const html = renderFood(opt.foods[fi], c.id, optIdx, fi, planHoy ? f : null, planHoy && d.cambiados.has(fi) && !d.omitida, planHoy && !omitida);
+    filas.push({ html, i: fi });
+  });
+  agregados.forEach((ag, j) => filas.push({ html: _renderAgregado(ag, c.id, j), i: n + j }));
+  const filasHtml = filas.map(({ html, i }) => {
+    if (estado !== 'comido' || !viendoLaMarcada) return html;
+    const excl = (mark.foodsExcluidos || []).includes(i);
+    return `<div class="food-comi-row${excl ? ' is-excluido' : ''}">
+      <button class="food-comi-check" data-food-comido="${c.id}|${i}" role="checkbox" aria-checked="${excl ? 'false' : 'true'}" aria-label="${excl ? 'No comido' : 'Comido'}">${excl ? '' : '✓'}</button>
+      <div class="food-comi-body">${html}</div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="dz-meal${estado === 'comido' ? ' is-comido' : estado === 'saltado' ? ' is-saltado' : ''}${omitida ? ' is-omitida' : ''}">
+    <div class="dz-meal-head">
+      <span class="dz-meal-ico${icoCls}">${ico}</span>
+      <div class="dz-meal-tit">
+        <div class="dz-meal-name">${escapeHtml(c.name || `Comida ${idx + 1}`)}</div>
+        <div class="dz-meal-sub">Opción ${escapeHtml(_letraOpcion(opt, optIdx))} · ${n} ${n === 1 ? 'alimento' : 'alimentos'}${nAg ? ` + ${nAg} ${nAg === 1 ? 'agregado' : 'agregados'}` : ''}</div>
+      </div>
+      <div class="dz-meal-kcal"><b>${Math.round(tot.kcal)}</b><span>kcal</span></div>
+    </div>
+    ${c.options.length > 1 ? `
+    <div class="dz-opciones"><span>Opción</span><div class="dz-seg">
+      ${c.options.map((o, i) => `<button class="${i === optIdx ? 'is-active' : ''}" data-opt="${c.id}|${i}">${escapeHtml(_letraOpcion(o, i))}</button>`).join('')}
+    </div></div>` : ''}
+    ${omitida ? '' : `
+    <div class="dz-track">
+      <button class="dz-track-btn yes${estado === 'comido' ? ' is-active' : ''}" data-comida-mark="${c.id}|comido">✓ Comí</button>
+      <button class="dz-track-btn no${estado === 'saltado' ? ' is-active' : ''}" data-comida-mark="${c.id}|saltado">✕ Salté</button>
+    </div>`}
+    ${estado === 'comido'
+      ? (viendoLaMarcada
+          ? `<div class="dz-hint">${(mark.foodsExcluidos || []).length
+              ? `Cuenta lo tildado: ${Math.round(kcalTildadas)} de ${Math.round(tot.kcal)} kcal.`
+              : 'Destildá lo que no comiste: solo cuenta lo tildado.'}</div>`
+          : `<div class="dz-hint">Comiste la opción ${escapeHtml(mark.opcion || 'A')}. Para marcar qué dejaste, volvé a esa. <button class="dz-link" data-ver-opcion="${c.id}">Ver la opción ${escapeHtml(mark.opcion || 'A')}</button></div>`)
+      : ''}
+    ${aviso ? `<div class="dz-aviso">${aviso}</div>` : ''}
+    <div class="dz-foods">${filasHtml}</div>
+    <div class="dz-total"><span>TOTAL</span><span><i class="dz-dot p"></i>P <b>${Math.round(tot.prot)} g</b> <i class="dz-dot c"></i>C <b>${Math.round(tot.carb)} g</b> <i class="dz-dot f"></i>G <b>${Math.round(tot.fat)} g</b></span></div>
+    ${planHoy ? `
+    <div class="dz-acciones">
+      ${omitida || estado === 'saltado' ? '' : `<button class="dz-accion" data-agregar="${c.id}"><span class="dz-mas">+</span> Agregar alimento</button>`}
+      <button class="dz-accion" data-ajustar="${c.id}">☰ ${aj ? (omitida ? 'Cambiar el ajuste' : 'Cambiar el ajuste') : 'Ajustar'}</button>
+    </div>` : ''}
+  </div>`;
+}
+
+/* ---- HOJAS: cantidad de un alimento, agregar alimento, ajustar la comida ---- */
+function _abrirHoja(html, onBind) {
+  const host = $('#modalHost');
+  host.innerHTML = `<div class="dz-hoja-back" data-hoja-cerrar></div><div class="dz-hoja" role="dialog" aria-modal="true">${html}</div>`;
+  host.querySelectorAll('[data-hoja-cerrar]').forEach(b => b.addEventListener('click', closeModal));
+  onBind(host.querySelector('.dz-hoja'));
+}
+// «la Merienda», «el Almuerzo» y «a, b y c», como la app (AjustarComidaView).
+function _conArticulo(nombre) {
+  if (!nombre) return 'la comida siguiente';
+  const primera = String(nombre).toLowerCase().split(/[ -]/)[0] || '';
+  return (/(a|ón|on)$/.test(primera) ? 'la ' : 'el ') + nombre;
+}
+function _unir(partes) {
+  return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' y ' + partes[partes.length - 1] : (partes[0] || '');
+}
+function _destinoNombre(comidaId) {
+  const delDia = _comidasDelDia();
+  const dst = AjustesDieta.destino(delDia, STATE.ajustesDieta, comidaId);
+  return dst ? dst.nombre : null;
+}
+function _filaCompensar(comidaId, on) {
+  const dst = _destinoNombre(comidaId);
+  if (!dst) return '<div class="dz-hoja-nota">No hay otra comida después para compensar: lo que sumes queda en el total del día.</div>';
+  return `<label class="dz-hoja-fila"><span><b>Compensar en la ${escapeHtml(dst)}</b><small>Lo que cambies acá se compensa ahí.</small></span>
+    <input type="checkbox" class="dz-switch" data-compensar ${on ? 'checked' : ''}></label>`;
+}
+function _macrosHoja(f) {
+  return `<div class="dz-hoja-macros"><div class="dz-hoja-kcal"><b>${Math.round(f.kcal || 0)}</b><span>kcal</span></div>
+    <div class="dz-hoja-mlist"><div><i class="dz-dot c"></i>Carbohidratos <b>${_coma(f.carb || 0)} g</b></div>
+    <div><i class="dz-dot f"></i>Grasas <b>${_coma(f.fat || 0)} g</b></div><div><i class="dz-dot p"></i>Proteínas <b>${_coma(f.prot || 0)} g</b></div></div></div>`;
+}
+
+// La cantidad de un alimento del plan (D2): ±5 g (±10 desde 100 g) o ±½ unidad,
+// hasta el triple del plan; con menos de un paso, 0 (sale de la comida por hoy).
+function abrirCantidad(comidaId, fi) {
+  const { delDia, dia } = _diaDieta();
+  const c = delDia.find(x => x.id === comidaId);
+  if (!c || !c.alimentos[fi]) return;
+  const planA = c.alimentos[fi];
+  let q = dia[comidaId].alimentos[fi].qty;
+  const aj0 = _ajusteDe(comidaId);
+  let compensar = aj0.compensar;
+  const pintar = (h) => {
+    const f = AjustesDieta.conCantidad(planA, q);
+    h.querySelector('[data-hoja-macros]').innerHTML = _macrosHoja(f);
+    h.querySelector('[data-q]').textContent = String(q).replace('.', ',');
+    h.querySelector('[data-u]').textContent = _unidadPlural(planA.unit || 'g', q);
+    h.querySelector('[data-menos]').disabled = !(q > 0);
+    h.querySelector('[data-mas]').disabled = !AjustesDieta.puedeSubir(planA, q);
+  };
+  _abrirHoja(`
+    <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>Cantidad</b><span></span></div>
+    <div class="dz-hoja-card"><div class="dz-hoja-nombre">${escapeHtml(planA.name)}</div><div data-hoja-macros></div></div>
+    <div class="dz-hoja-card dz-stepper">
+      <button class="dz-step" data-menos aria-label="Menos">−</button>
+      <div class="dz-step-val"><b data-q></b> <span data-u></span></div>
+      <button class="dz-step" data-mas aria-label="Más">+</button>
+    </div>
+    <div class="dz-hoja-nota">En el plan: ${_fmtCant(planA.qty, planA.unit)}. Vale solo por hoy.</div>
+    <div class="dz-hoja-card">${_filaCompensar(comidaId, compensar)}</div>
+    <div class="dz-hoja-dos"><button class="dz-hoja-sec" data-como-plan>Como el plan</button><button class="dz-hoja-sec peligro" data-sacar>Sacar de la comida</button></div>
+    <button class="dz-hoja-listo" data-listo>Listo</button>`, (h) => {
+    pintar(h);
+    h.querySelector('[data-menos]').addEventListener('click', () => { q = AjustesDieta.bajar(planA, q); pintar(h); });
+    h.querySelector('[data-mas]').addEventListener('click', () => { q = AjustesDieta.subir(planA, q); pintar(h); });
+    const sw = h.querySelector('[data-compensar]');
+    if (sw) sw.addEventListener('change', () => { compensar = sw.checked; });
+    const guardar = (cant) => {
+      const aj = _ajusteDe(comidaId);
+      aj.opcion = c.opcion;
+      aj.compensar = compensar;
+      if (cant == null) { delete aj.cantidades[String(fi)]; delete aj.anclas[String(fi)]; }
+      else aj.cantidades[String(fi)] = cant;
+      closeModal();
+      _ajustar(comidaId, aj);
+    };
+    h.querySelector('[data-como-plan]').addEventListener('click', () => guardar(null));
+    h.querySelector('[data-sacar]').addEventListener('click', () => guardar(0));
+    h.querySelector("[data-listo]").addEventListener("click", () => guardar(q === planA.qty ? null : q));
+  });
+}
+
+// Agregar un alimento a la comida (D1): la base de alimentos y los propios.
+function abrirAgregar(comidaId) {
+  const motivo = AjustesDieta.motivoNoEntra(Object.assign({}, STATE.ajustesDieta,
+    { [comidaId]: Object.assign(_ajusteDe(comidaId), { agregados: _ajusteDe(comidaId).agregados.concat([{}]) }) }), comidaId);
+  if (motivo) { MyPump.ui.showConfirmModal({ title: 'No entra', body: motivo, confirmLabel: 'Entendido', cancelLabel: 'Cerrar' }); return; }
+  const base = (window.MYPUMP_FOOD_DB || []).map(f => Object.assign({}, f, { _propio: !!f._isCustom }));
+  const lista = (consulta) => {
+    const res = consulta.trim() ? AjustesDieta.buscar(base, consulta) : [];
+    if (!consulta.trim()) return '<div class="dz-hoja-nota">Escribí qué comiste: «huevo», «yogur», «pan»…</div>';
+    if (!res.length) return '<div class="dz-hoja-nota">No está en la base. Probá con otra palabra.</div>';
+    return res.map((a, i) => `<button class="dz-res" data-res="${i}"><span>${escapeHtml(a.name)}${a._propio ? ' <small>tuyo</small>' : ''}</span><small>${Math.round(a.kcal)} kcal / 100 g</small></button>`).join('');
+  };
+  _abrirHoja(`
+    <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>Agregar alimento</b><span></span></div>
+    <input class="dz-buscar" type="search" placeholder="Buscar alimento" autocomplete="off" data-buscar>
+    <div class="dz-resultados" data-resultados>${lista('')}</div>`, (h) => {
+    const inp = h.querySelector('[data-buscar]');
+    let res = [];
+    const pintar = () => {
+      res = inp.value.trim() ? AjustesDieta.buscar(base, inp.value) : [];
+      h.querySelector('[data-resultados]').innerHTML = lista(inp.value);
+      h.querySelectorAll('[data-res]').forEach(b => b.addEventListener('click', () => {
+        const a = res[+b.getAttribute('data-res')];
+        if (a) abrirAgregado(comidaId, AjustesDieta.candidatoDeBase(a), null);
+      }));
+    };
+    inp.addEventListener('input', pintar);
+    setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
+  });
+}
+
+// La cantidad de un agregado (nuevo si j es null): en g o en su medida casera.
+function abrirAgregado(comidaId, cand, j) {
+  const aj0 = _ajusteDe(comidaId);
+  const previo = j != null ? aj0.agregados[j] : null;
+  const medidas = AjustesDieta.medidas(cand);
+  let medida, cant;
+  if (previo) {
+    medida = medidas.find(m => m.nombre === previo.unidad) || medidas[0];
+    cant = previo.cantidad;
+  } else {
+    const ini = AjustesDieta.inicial(cand);
+    medida = ini.medida; cant = ini.cantidad;
+  }
+  const pintar = (h) => {
+    const a = AjustesDieta.agregado(cand, cant, medida, 0);
+    h.querySelector('[data-hoja-macros]').innerHTML = _macrosHoja({ kcal: a.kcal, prot: a.p, carb: a.c, fat: a.g });
+    h.querySelector('[data-q]').textContent = String(a.cantidad).replace('.', ',');
+    h.querySelector('[data-u]').textContent = medida.nombre === 'g' ? 'g' : `${_unidadPlural(medida.nombre, a.cantidad)} · ${_coma(a.gramos)} g`;
+    h.querySelectorAll('[data-medida]').forEach(b => b.classList.toggle('is-active', b.getAttribute('data-medida') === medida.nombre));
+  };
+  _abrirHoja(`
+    <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>${previo ? 'Cantidad' : 'Agregar alimento'}</b><span></span></div>
+    <div class="dz-hoja-card"><div class="dz-hoja-nombre">${escapeHtml(cand.nombre)}</div><div data-hoja-macros></div></div>
+    <div class="dz-hoja-card"><div class="dz-stepper">
+      <button class="dz-step" data-menos aria-label="Menos">−</button>
+      <div class="dz-step-val"><b data-q></b> <span data-u></span></div>
+      <button class="dz-step" data-mas aria-label="Más">+</button></div>
+      ${medidas.length > 1 ? `<div class="dz-seg dz-seg-medida">${medidas.map(m => `<button data-medida="${escapeHtml(m.nombre)}">${m.nombre === 'g' ? 'g' : `${escapeHtml(m.nombre)} (${_coma(m.gramos)} g)`}</button>`).join('')}</div>` : ''}
+    </div>
+    <div class="dz-hoja-nota">Vale solo por hoy.</div>
+    ${previo ? '<div class="dz-hoja-dos"><button class="dz-hoja-sec peligro" data-quitar>Sacar de la comida</button></div>' : ''}
+    <button class="dz-hoja-listo" data-listo>${previo ? 'Listo' : 'Agregar'}</button>`, (h) => {
+    pintar(h);
+    h.querySelector('[data-menos]').addEventListener('click', () => { cant = AjustesDieta.bajarAgregado(cant, medida); pintar(h); });
+    h.querySelector('[data-mas]').addEventListener('click', () => { cant = AjustesDieta.subirAgregado(cant, medida); pintar(h); });
+    h.querySelectorAll('[data-medida]').forEach(b => b.addEventListener('click', () => {
+      const m = medidas.find(x => x.nombre === b.getAttribute('data-medida'));
+      if (!m || m.nombre === medida.nombre) return;
+      // Cambiar de medida conserva los gramos (como la app: 1 unidad de 60 g → 60 g).
+      const gramos = cant * medida.gramos;
+      medida = m;
+      cant = AjustesDieta.acotarAgregado(m.nombre === 'g' ? gramos : gramos / m.gramos, m);
+      pintar(h);
+    }));
+    const quitar = h.querySelector('[data-quitar]');
+    if (quitar) quitar.addEventListener('click', () => {
+      const aj = _ajusteDe(comidaId);
+      aj.agregados.splice(j, 1);
+      closeModal();
+      _tildesTrasBorrarAgregado(comidaId, j);
+      _ajustar(comidaId, aj);
+    });
+    h.querySelector('[data-listo]').addEventListener('click', () => {
+      const aj = _ajusteDe(comidaId);
+      let ts = previo ? previo._ts : Date.now();
+      while (!previo && aj.agregados.some(x => x._ts === ts)) ts++;
+      const nuevo = AjustesDieta.agregado(cand, cant, medida, ts);
+      if (previo) aj.agregados[j] = nuevo; else aj.agregados.push(nuevo);
+      if (!previo) aj.opcion = aj.opcion || 0;
+      closeModal();
+      _ajustar(comidaId, aj);
+    });
+  });
+}
+
+// Borrar un agregado corre los tildes de los que vienen después (n + j).
+function _tildesTrasBorrarAgregado(comidaId, j) {
+  const m = STATE.comidasMarcadas[comidaId];
+  if (!m || m.estado !== 'comido' || !(m.foodsExcluidos || []).length) return;
+  const c = _comidasDelDia().find(x => x.id === comidaId);
+  if (!c) return;
+  const nuevos = AjustesDieta.excluidosTrasBorrar(m.foodsExcluidos, c.alimentos.length, j);
+  m.foodsExcluidos = nuevos;
+  if (_dietaSinEscritura()) return;
+  const fecha = hoyLocal();
+  if (OUTBOX_ENABLED) Outbox.enqueue('comida', { fecha, comidaId, opcion: m.opcion || 'A', estado: 'comido', excl: nuevos }, `comida|${fecha}|${comidaId}`);
+  else window.mypumpDB.marcarComida(TOKEN, fecha, comidaId, m.opcion || 'A', 'comido', nuevos);
+}
+
+// Ajustar la comida: sumar o restar kcal de a 50 (las porciones se recalculan con
+// la proporción del plan), «Hoy no la como» y volver al plan.
+function abrirAjustar(comidaId) {
+  const delDia = _comidasDelDia();
+  const c = delDia.find(x => x.id === comidaId);
+  if (!c) return;
+  const aj0 = _ajusteDe(comidaId);
+  let delta = aj0.deltaKcal, omitida = aj0.omitida, compensar = aj0.compensar;
+  const limites = AjustesDieta.limitesDelta(c, aj0);
+  const pintar = (h) => {
+    const prueba = Object.assign({}, STATE.ajustesDieta, { [comidaId]: Object.assign(AjustesDieta.clonarAjuste(aj0), { deltaKcal: delta, omitida, compensar, opcion: c.opcion }) });
+    const d = AjustesDieta.dia(delDia, prueba)[comidaId];
+    h.querySelector('[data-q]').textContent = omitida ? '—' : `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)}`;
+    h.querySelector('[data-hoy]').textContent = omitida ? 'Hoy no la comés' : `Queda en ${Math.round(d.kcal)} kcal (plan: ${Math.round(d.kcalPlan)})`;
+    h.querySelector('[data-menos]').disabled = omitida || delta - AjustesDieta.PASO < limites.min;
+    h.querySelector('[data-mas]').disabled = omitida || delta + AjustesDieta.PASO > limites.max;
+    h.querySelector('[data-omitir]').checked = omitida;
+  };
+  _abrirHoja(`
+    <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>Ajustar ${escapeHtml(c.nombre)}</b><span></span></div>
+    <div class="dz-hoja-card dz-stepper">
+      <button class="dz-step" data-menos aria-label="Menos">−</button>
+      <div class="dz-step-val"><b data-q></b> <span>kcal</span></div>
+      <button class="dz-step" data-mas aria-label="Más">+</button>
+    </div>
+    <div class="dz-hoja-nota" data-hoy></div>
+    <div class="dz-hoja-card">
+      <label class="dz-hoja-fila"><span><b>Hoy no la como</b></span><input type="checkbox" class="dz-switch" data-omitir></label>
+      ${_filaCompensar(comidaId, compensar)}
+    </div>
+    <div class="dz-hoja-nota">Vale solo por hoy: mañana vuelve tu plan.</div>
+    ${STATE.ajustesDieta[comidaId] ? `<div class="dz-hoja-dos"><button class="dz-hoja-sec" data-volver>Volver al plan</button></div>
+    ${(STATE.ajustesDieta[comidaId].agregados || []).length ? '<div class="dz-hoja-nota">«Volver al plan» también saca los alimentos que agregaste.</div>' : ''}` : ''}
+    <button class="dz-hoja-listo" data-listo>Listo</button>`, (h) => {
+    pintar(h);
+    h.querySelector('[data-menos]').addEventListener('click', () => { delta -= AjustesDieta.PASO; pintar(h); });
+    h.querySelector('[data-mas]').addEventListener('click', () => { delta += AjustesDieta.PASO; pintar(h); });
+    h.querySelector('[data-omitir]').addEventListener('change', (e) => { omitida = e.target.checked; pintar(h); });
+    const sw = h.querySelector('[data-compensar]');
+    if (sw) sw.addEventListener('change', () => { compensar = sw.checked; });
+    const volver = h.querySelector('[data-volver]');
+    if (volver) volver.addEventListener('click', () => { closeModal(); _ajustar(comidaId, null); });
+    h.querySelector('[data-listo]').addEventListener('click', () => {
+      const aj = _ajusteDe(comidaId);
+      aj.deltaKcal = delta; aj.omitida = omitida; aj.compensar = compensar; aj.opcion = c.opcion;
+      closeModal();
+      _ajustar(comidaId, aj);
+    });
+  });
 }
 
 function bindDietEvents() {
@@ -5776,6 +6561,8 @@ function bindDietEvents() {
     STATE.activeTipoDia = btn.getAttribute('data-tipodía');
     localStorage.setItem('mypump_tipo_dia', STATE.activeTipoDia);
     STATE.meals = buildMeals();
+    STATE.mealsTocadas.clear();
+    _opcionesIniciales();
     renderDiet();
   }));
   // Expand/collapse meal (sin acciones hijas)
@@ -5831,6 +6618,16 @@ function bindDietEvents() {
     e.stopPropagation();
     const [id, idx] = btn.getAttribute('data-opt').split('|');
     STATE.meals[id].selectedOpt = +idx;
+    STATE.mealsTocadas.add(id);
+    // Otra opción en una comida ajustada: las cantidades a mano eran de la otra
+    // (se descartan) y se conservan las kcal, «Hoy no la como» y compensar. Como la app.
+    const aj = STATE.ajustesDieta[id];
+    if (aj && aj.opcion !== +idx && Object.keys(aj.cantidades).length) {
+      const nuevo = AjustesDieta.clonarAjuste(aj);
+      nuevo.opcion = +idx; nuevo.cantidades = {}; nuevo.anclas = {};
+      _ajustar(id, nuevo);
+      return;
+    }
     renderDiet();
   }));
   // Toggle referencia de porción casera (inline, sin re-render — tap mobile)
@@ -5872,6 +6669,28 @@ function bindDietEvents() {
         if (!res.success) console.warn('[swap] error borrando swap en backend:', res.error);
       }
     }
+  }));
+  // Ajustes del día (como la app): cantidad de un alimento, agregados y la comida entera.
+  $$('[data-cant]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const [comidaId, fi] = btn.getAttribute('data-cant').split('|');
+    abrirCantidad(comidaId, +fi);
+  }));
+  $$('[data-ag]').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const [comidaId, j] = btn.getAttribute('data-ag').split('|');
+    const ag = (STATE.ajustesDieta[comidaId] || {}).agregados?.[+j];
+    if (ag) abrirAgregado(comidaId, AjustesDieta.candidatoDeAgregado(ag), +j);
+  }));
+  $$('[data-agregar]').forEach(btn => btn.addEventListener('click', () => abrirAgregar(btn.getAttribute('data-agregar'))));
+  $$('[data-ajustar]').forEach(btn => btn.addEventListener('click', () => abrirAjustar(btn.getAttribute('data-ajustar'))));
+  $$('[data-ver-opcion]').forEach(btn => btn.addEventListener('click', () => {
+    const id = btn.getAttribute('data-ver-opcion');
+    const c = getActivePlan().comidas.find(x => x.id === id);
+    const m = STATE.comidasMarcadas[id];
+    if (!c || !m) return;
+    STATE.meals[id].selectedOpt = AjustesDieta.indiceOpcion(c, m.opcion);
+    renderDiet();
   }));
 }
 
@@ -8246,256 +9065,16 @@ async function desconectarWearable(btn) {
 function renderMyday() {
   const root = $('#myday-host');
   if (!root) return;
-
-  if (!STATE.mydayLoaded) {
-    root.innerHTML = `<div style="padding:var(--space-8);text-align:center;color:var(--color-text-muted);font-size:14px">Cargando hábitos…</div>`;
-    return;
-  }
-
-  const h = MYDAY || {};
-  const vasos = h.vasos_agua ?? 0;
-
+  // «Mi Día» (racha, hábitos, agua y adherencia) salió de la web igual que de la
+  // app (decisión de Mati, 3-nov). Quedan la recuperación y la salud del reloj,
+  // que en la app viven en Salud y llegan a la web en la etapa siguiente.
   root.innerHTML = `
-    <!-- STREAK -->
-    <div class="myday-streak" id="myday-streak"></div>
-
-    <!-- FECHA -->
-    <div class="myday-date">${formatFechaLocal(hoyLocal())}</div>
-
-    <!-- ENTRENAMIENTO -->
-    <div class="myday-section">
-      <div class="myday-section-hdr">
-        <span class="myday-section-icon">🏋️</span>
-        <span class="myday-section-title">Entrenamiento</span>
-      </div>
-      <div class="myday-section-body">
-        <div class="train-options">
-          <button class="train-opt opt-entrene${h.entrenamiento === 'entrene' ? ' is-active' : ''}" data-val="entrene">
-            <span class="opt-icon">💪</span>Entrené
-          </button>
-          <button class="train-opt opt-descanso${h.entrenamiento === 'descanso' ? ' is-active' : ''}" data-val="descanso">
-            <span class="opt-icon">😴</span>Descansé
-          </button>
-          <button class="train-opt opt-falte${h.entrenamiento === 'falte' ? ' is-active' : ''}" data-val="falte">
-            <span class="opt-icon">😞</span>Falté
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- HÁBITOS -->
-    <div class="myday-section">
-      <div class="myday-section-hdr">
-        <span class="myday-section-icon">✅</span>
-        <span class="myday-section-title">Hábitos</span>
-      </div>
-      <div class="myday-section-body">
-        <div class="habito-row">
-          <div class="habito-info">
-            <div class="habito-text">Comí según el plan</div>
-            <div class="habito-sub">Seguiste tu dieta hoy</div>
-          </div>
-          <div class="habito-btns">
-            <button class="hb is-yes${h.comio_segun_plan === true ? ' is-active' : ''}" data-campo="comio_segun_plan" data-val="true">✓</button>
-            <button class="hb is-no${h.comio_segun_plan === false ? ' is-active' : ''}" data-campo="comio_segun_plan" data-val="false">✗</button>
-          </div>
-        </div>
-        <div class="habito-row">
-          <div class="habito-info">
-            <div class="habito-text">Dormí bien</div>
-            <div class="habito-sub">7 horas o más</div>
-          </div>
-          <div class="habito-btns">
-            <button class="hb is-yes${h.durmio_bien === true ? ' is-active' : ''}" data-campo="durmio_bien" data-val="true">✓</button>
-            <button class="hb is-no${h.durmio_bien === false ? ' is-active' : ''}" data-campo="durmio_bien" data-val="false">✗</button>
-          </div>
-        </div>
-        <div class="habito-row">
-          <div class="habito-info">
-            <div class="habito-text">Hice cardio</div>
-            <div class="habito-sub">Sesión de cardio hoy</div>
-          </div>
-          <div class="habito-btns">
-            <button class="hb is-yes${h.cardio === true ? ' is-active' : ''}" data-campo="cardio" data-val="true">✓</button>
-            <button class="hb is-no${h.cardio === false ? ' is-active' : ''}" data-campo="cardio" data-val="false">✗</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- AGUA -->
-    <div class="myday-section">
-      <div class="myday-section-hdr">
-        <span class="myday-section-icon">💧</span>
-        <span class="myday-section-title">Agua</span>
-      </div>
-      <div class="myday-section-body">
-        <div class="agua-counter">
-          <button class="agua-btn" id="aguaMinus">−</button>
-          <div class="agua-display">
-            <span class="agua-num" id="aguaNum">${vasos}</span>
-            <span class="agua-unit">vasos</span>
-          </div>
-          <button class="agua-btn" id="aguaPlus">+</button>
-        </div>
-        <div class="agua-glasses" id="aguaGlasses">${renderAguaGlasses(vasos)}</div>
-      </div>
-    </div>
-
-    <!-- RECUPERACIÓN (score 0-100) — siempre visible: si no hay wearable,
-         explica cómo conectarlo. Que la card de Salud se auto-ocultara sin
-         datos es por lo que el sync roto pasó un mes sin que nadie lo viera. -->
     <div id="myday-recup"></div>
-
-    <!-- SALUD (wearables) — pasos y actividad del día -->
-    <div id="myday-salud"></div>
-
-    <!-- ADHERENCIA 30D -->
-    <div class="myday-section" style="margin-bottom:var(--space-6)">
-      <div class="myday-section-hdr">
-        <span class="myday-section-icon">📊</span>
-        <span class="myday-section-title">Mis últimos 30 días</span>
-      </div>
-      <button class="adh-toggle${STATE.adhOpen ? ' is-open' : ''}" id="adhToggle">
-        <span>Ver mi historial de adherencia</span>
-        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div id="adhContent" style="${STATE.adhOpen ? '' : 'display:none'}"></div>
-    </div>
-    ${renderFuentesFooter('myday')}`;
-
-  // Render streak
-  renderMydayStreak();
-  // Recuperación (score) arriba, y abajo pasos/actividad del día
+    <div id="myday-salud"></div>`;
   renderMydayRecuperacion();
   renderMydaySalud();
-
-  // Bind entrenamiento buttons
-  Array.from(root.querySelectorAll('.train-opt')).forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const val = btn.dataset.val;
-      // Toggle: si ya está activo, lo quita (null)
-      const newVal = (MYDAY?.entrenamiento === val) ? null : val;
-      await setHabito('entrenamiento', newVal);
-    });
-  });
-
-  // Bind hábito buttons
-  Array.from(root.querySelectorAll('.hb')).forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const campo = btn.dataset.campo;
-      const valStr = btn.dataset.val; // 'true' | 'false'
-      const current = MYDAY?.[campo];
-      // Toggle: si ya está activo, vuelve a null
-      const newVal = (String(current) === valStr) ? null : valStr;
-      await setHabito(campo, newVal);
-    });
-  });
-
-  // Bind agua
-  const aguaMinus = $('#aguaMinus');
-  const aguaPlus  = $('#aguaPlus');
-  if (aguaMinus) aguaMinus.addEventListener('click', () => cambiarAgua(-1));
-  if (aguaPlus)  aguaPlus.addEventListener('click',  () => cambiarAgua(+1));
-
-  // Bind adherencia toggle
-  const adhToggle = $('#adhToggle');
-  if (adhToggle) {
-    adhToggle.addEventListener('click', async () => {
-      STATE.adhOpen = !STATE.adhOpen;
-      adhToggle.classList.toggle('is-open', STATE.adhOpen);
-      const content = $('#adhContent');
-      if (!content) return;
-      if (STATE.adhOpen) {
-        content.style.display = '';
-        if (!STATE.adhData) {
-          content.innerHTML = `<div style="padding:var(--space-4);text-align:center;color:var(--color-text-muted);font-size:13px">Cargando…</div>`;
-          STATE.adhData = await window.mypumpDB.getAdherencia30d(TOKEN);
-        }
-        content.innerHTML = renderAdhGrid(STATE.adhData || []);
-      } else {
-        content.style.display = 'none';
-      }
-    });
-    // Si ya estaba abierto, cargar contenido inmediatamente
-    if (STATE.adhOpen && !STATE.adhData) {
-      const content = $('#adhContent');
-      if (content) {
-        content.innerHTML = `<div style="padding:var(--space-4);text-align:center;color:var(--color-text-muted);font-size:13px">Cargando…</div>`;
-        window.mypumpDB.getAdherencia30d(TOKEN).then(data => {
-          STATE.adhData = data || [];
-          if (content) content.innerHTML = renderAdhGrid(STATE.adhData);
-        });
-      }
-    }
-  }
 }
 
-function renderAguaGlasses(n) {
-  let html = '';
-  for (let i = 0; i < 12; i++) {
-    html += `<span class="agua-glass${i < n ? '' : ' empty'}">💧</span>`;
-  }
-  return html;
-}
-
-let _aguaTimer = null;
-function cambiarAgua(delta) {
-  const current = MYDAY?.vasos_agua ?? 0;
-  const next = Math.max(0, Math.min(12, current + delta));
-  if (next === current) return;
-
-  // Actualizar UI inmediatamente (optimistic)
-  if (MYDAY) MYDAY.vasos_agua = next;
-  else MYDAY = { vasos_agua: next };
-  const numEl = $('#aguaNum');
-  const glassEl = $('#aguaGlasses');
-  if (numEl) numEl.textContent = next;
-  if (glassEl) glassEl.innerHTML = renderAguaGlasses(next);
-
-  // Debounce: guardar al servidor 600ms después del último clic
-  clearTimeout(_aguaTimer);
-  _aguaTimer = setTimeout(() => {
-    const fecha = hoyLocal();
-    if (OUTBOX_ENABLED && !(DATA && DATA._isDemo)) {
-      Outbox.enqueue('habito', { fecha, campo: 'vasos_agua', valor: String(next) }, `habito|${fecha}|vasos_agua`);
-      return;
-    }
-    window.mypumpDB.setHabito(TOKEN, fecha, 'vasos_agua', String(next)).then(res => {
-      if (res.success && res.data?.length > 0) MYDAY = res.data[0];
-    });
-  }, 600);
-}
-
-function renderAdhGrid(rows) {
-  if (!rows || rows.length === 0) {
-    return `<div style="padding:var(--space-4);text-align:center;color:var(--color-text-muted);font-size:13px">Sin datos aún</div>`;
-  }
-  // rows ordenados más reciente primero (desde la RPC)
-  // Necesitamos reversed para mostrar cronológicamente de izq a der
-  const sorted = [...rows].reverse(); // más antiguo primero
-  let html = '<div class="adh-grid">';
-  sorted.forEach(row => {
-    const isHoy = row.fecha === hoyLocal();
-    let cls = 'adh-day vacio';
-    if (row.es_valido) cls = 'adh-day valido';
-    else if (row.entrenamiento || row.comio_segun_plan != null || row.durmio_bien != null) cls = 'adh-day parcial';
-    if (isHoy) cls += ' hoy';
-    const label = new Date(row.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-    html += `<div class="${cls}" title="${label}"></div>`;
-  });
-  html += '</div>';
-  // Leyenda
-  const validos = rows.filter(r => r.es_valido).length;
-  html += `<div style="padding:0 var(--space-4) var(--space-4);display:flex;gap:var(--space-3);font-size:12px;color:var(--color-text-muted);align-items:center">
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--color-brand);display:inline-block;opacity:.85"></span> Día cumplido</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--color-bg-tertiary);border:1px solid var(--color-border);display:inline-block"></span> Sin datos</span>
-    <span style="margin-left:auto;font-weight:600;color:var(--color-text-secondary)">${validos}/30</span>
-  </div>`;
-  return html;
-}
-
-/* ---- TABS / THEME ---- */
 function setScene(scene) {
   STATE.scene = scene;
   $$('.tab').forEach(t => {
@@ -8519,9 +9098,11 @@ function setScene(scene) {
     if (hp) hp.hidden = false;
   } else if (scene === 'diet') {
     $('#hdrEyebrow').textContent = 'DIETA · HOY';
-    $('#hdrTitle').textContent = 'Plan de alimentación';
+    $('#hdrTitle').textContent = 'Dieta';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+    // Lo que llegó estando en otra pestaña (ajustes, marcas) solo redibuja si se está acá.
+    if (DIET) renderDiet();
   } else if (scene === 'revision') {
     $('#hdrEyebrow').textContent = 'REVISIÓN · SEMANAL';
     $('#hdrTitle').textContent = 'Revisión';
@@ -8890,13 +9471,13 @@ async function init() {
   restoreRest();   // B2 — reanudar el timer de descanso si quedó uno corriendo
   // Las escenas se pintan al abrir el tab; los datos se van cargando de fondo.
   // Las tres son independientes entre si: si una falla, las otras cargan igual.
-  loadMyday();    // habitos diarios + streak → Mi Día
   loadSalud();    // alimenta la card Salud (Mi Día) Y la de Peso (Revisión)
   loadRecuperacion();  // score de recuperación (Mi Día) — motor SQL, mig 043
   loadConexiones();    // wearables conectados por OAuth (Revisión)
   loadRevision(); // check + fotos → Revisión
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();
+  loadAjustesDieta();   // los ajustes de comidas que hizo en la app (D22)
   // F10 — comidas libres de hoy (foto/manual), suman al anillo
   loadComidasLibres();
   // F1 — días completados de la semana (pinta el picker cuando llega)
