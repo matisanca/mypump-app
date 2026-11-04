@@ -80,7 +80,8 @@ public struct ClipGuia: Codable, Equatable, Sendable, Identifiable {
         motivo = c.texto(.motivo)
         bloque = c.texto(.bloque)
         visto = c.booleano(.visto) ?? false
-        segundos = max(0, c.entero(.segundos) ?? 0)
+        let seg = c.decimal(.segundos) ?? 0
+        segundos = seg.isFinite ? Int(min(36_000, max(0, seg))) : 0
         duda = c.texto(.duda).flatMap { $0.isEmpty ? nil : $0 }
     }
 }

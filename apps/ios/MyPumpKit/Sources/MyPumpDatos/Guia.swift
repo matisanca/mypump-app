@@ -266,16 +266,15 @@ public final class ModeloGuia {
         envios[clave] = .noSeGuardo
     }
 
-    /// Suma la duda guardada a lo que se ve (si el servidor ya la trajo en una lectura de recién, no se repite).
+    /// Suma la duda guardada a lo que se ve. Siempre: dos dudas iguales son dos dudas (no se compara con la última). Si una
+    /// apertura que salió justo después del guardado ya la trajo, se ve dos veces hasta la próxima apertura (solo en
+    /// pantalla; en la base está una vez).
     private func sumarDuda(_ texto: String, video: String?) {
         guard var g = guia else { return }
         if let video {
             guard let i = g.clips.firstIndex(where: { $0.id == video }) else { return }
-            let ya = ReglasGuia.renglones(g.clips[i].duda)
-            if ya.last == texto { return }
             g.clips[i].duda = g.clips[i].duda.map { $0 + "\n" + texto } ?? texto
         } else {
-            if g.dudasLlamada.last?.texto == texto { return }
             g.dudasLlamada.append(DudaLlamada(texto: texto, en: nil))
         }
         guia = g
