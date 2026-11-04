@@ -192,6 +192,7 @@ class AudioDudasTest {
         assertEquals(1, s.a("entregas_app_audio_subido").size)
         assertTrue(EnvioAudioDuda.quizasYaEstaba(Respuesta(409, ByteArray(0))))
         assertTrue(EnvioAudioDuda.quizasYaEstaba(Respuesta(400, """{"statusCode":"409","error":"Duplicate"}""".toByteArray())))
+        assertTrue(EnvioAudioDuda.quizasYaEstaba(Respuesta(400, """{"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy"}""".toByteArray())))
         assertFalse(EnvioAudioDuda.quizasYaEstaba(Respuesta(400, """{"statusCode":"400","message":"mime type not supported"}""".toByteArray())))
     }
 

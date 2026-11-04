@@ -23,6 +23,9 @@ tasks.withType<Test>().configureEach {
     // se acumulan en el servidor (3200 caracteres por video, 30 para la videollamada), se escriben solo a pedido.
     environment("MYPUMP_TOKEN_GUIA", System.getenv("MYPUMP_TOKEN_GUIA") ?: "")
     environment("MYPUMP_PROBAR_DUDAS", System.getenv("MYPUMP_PROBAR_DUDAS") ?: "")
+    // Las dudas en audio (entregas_019): cada corrida sube UN audio real al cliente de prueba (tope de 10), solo a pedido.
+    environment("MYPUMP_PROBAR_AUDIO", System.getenv("MYPUMP_PROBAR_AUDIO") ?: "")
+    environment("MYPUMP_AUDIO_M4A", System.getenv("MYPUMP_AUDIO_M4A") ?: "")
     // La integración contra el backend real no se cachea: lo que valida está afuera.
     outputs.upToDateWhen { false }
 }

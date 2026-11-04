@@ -470,8 +470,9 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
         internal fun quizasYaEstaba(r: Respuesta): Boolean {
             if (r.status == 403 || r.status == 409) return true
             if (r.status != 400) return false
-            val t = r.cuerpo.toString(Charsets.UTF_8)
-            return "\"409\"" in t || "Duplicate" in t || "already exists" in t
+            // Storage suele contestar HTTP 400 con el código de verdad adentro (`"statusCode":"403"` de la política, `"409"`).
+            val t = r.cuerpo.toString(Charsets.UTF_8).replace(" ", "")
+            return "\"statusCode\":\"403\"" in t || "\"statusCode\":\"409\"" in t || "Duplicate" in t || "alreadyexists" in t
         }
     }
 }
