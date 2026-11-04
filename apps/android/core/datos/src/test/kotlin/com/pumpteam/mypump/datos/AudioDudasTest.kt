@@ -47,7 +47,7 @@ class AudioDudasTest {
             "storage" -> 200 to """{"Key": "entregas-audio/cliente-x/a.m4a"}"""
             "entregas_app_audio_subido" -> 200 to "true"
             "entregas_app_audios" -> 200 to lista
-            "mypump_get_cliente_info" -> 200 to """[{"nombre": "Marcelo"}]"""
+            "mypump_get_cliente_info" -> 200 to """[{"nombre": "Tomás"}]"""
             else -> 200 to "true"
         }
     }

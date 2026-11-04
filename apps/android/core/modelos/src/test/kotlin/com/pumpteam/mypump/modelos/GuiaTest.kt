@@ -14,10 +14,10 @@ class GuiaTest {
 
     @Test
     fun decodificaLaGuiaEntera() {
-        val g = Guia.desde(fixture("get-marcelo"))
+        val g = Guia.desde(fixture("get-tomas"))
         assertNotNull(g)
         g!!
-        assertEquals("Marcelo", g.nombrePila)
+        assertEquals("Tomás", g.nombrePila)
         assertNull(g.fechaEntrega)
         assertEquals(20, g.clips.size)
         assertEquals(5, g.clips.map { it.bloque }.distinct().size)
@@ -38,7 +38,7 @@ class GuiaTest {
 
     @Test
     fun conAvanceDudasYUnVideoSinSubir() {
-        val g = Guia.desde(fixture("get-marcelo-avanzado"))!!
+        val g = Guia.desde(fixture("get-tomas-avanzado"))!!
         assertEquals(4, g.clips.count { it.visto })
         assertEquals(12, g.clips[4].segundos)
         assertEquals("¿Puedo cambiar el orden de los ejercicios?", g.clips[4].duda)
@@ -83,7 +83,7 @@ class GuiaTest {
 
     @Test
     fun laCacheSeLeeIgual() {
-        val g = Guia.desde(fixture("get-marcelo-avanzado"))!!
+        val g = Guia.desde(fixture("get-tomas-avanzado"))!!
         val vuelta = Guia.desde(g.aValor())
         assertEquals(g.copy(suplementacion = null), vuelta!!.copy(suplementacion = null))
         assertEquals(g.suplementacion!!.items, vuelta.suplementacion!!.items)
@@ -91,12 +91,12 @@ class GuiaTest {
 
     @Test
     fun resumen() {
-        val r = ResumenGuia.desde(fixture("resumen-marcelo"))!!
+        val r = ResumenGuia.desde(fixture("resumen-tomas"))!!
         assertEquals(ResumenGuia(20, 4, 11.6), r)
         assertEquals(r, ResumenGuia.desde(r.aValor()))
         assertNull(ResumenGuia.desde(Json.parseToJsonElement("""{"ok":true,"total":0}""")))
         assertEquals(ResumenGuia(3, 3, 0.0), ResumenGuia.desde(Json.parseToJsonElement("""{"ok":true,"total":3,"vistos":9}""")))
-        val g = Guia.desde(fixture("get-marcelo-avanzado"))!!
+        val g = Guia.desde(fixture("get-tomas-avanzado"))!!
         val local = ResumenGuia.de(g)!!
         // Como la web (A5): los 3 videos que nombra un suplemento no cuentan; FT-4c (sin suplemento que lo nombre) sí.
         assertEquals(17, local.total)
@@ -156,7 +156,7 @@ class GuiaTest {
 
     @Test
     fun losVideosDeLosSuplementosSalenDeLaLista() {
-        val g = Guia.desde(fixture("get-marcelo"))!!
+        val g = Guia.desde(fixture("get-tomas"))!!
         assertEquals(listOf("FT-50b", "FT-1b", "FT-4b"), g.clipsDeSuplementos.map { it.id })
         assertTrue(g.clipsDeLaLista.any { it.id == "FT-4c" })
         assertEquals(g.clips.size, g.clipsDeLaLista.size + g.clipsDeSuplementos.size)

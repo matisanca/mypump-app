@@ -17,9 +17,9 @@ import org.junit.jupiter.api.Test
  * la caché, `ok: false`, el resumen de la tarjeta y las escrituras por la cola con sus kinds nuevos.
  */
 class ModeloGuiaTest {
-    private val guia = Compartido.texto("fixtures/guia/get-marcelo.json")
-    private val avanzada = Compartido.texto("fixtures/guia/get-marcelo-avanzado.json")
-    private val resumen = Compartido.texto("fixtures/guia/resumen-marcelo.json")
+    private val guia = Compartido.texto("fixtures/guia/get-tomas.json")
+    private val avanzada = Compartido.texto("fixtures/guia/get-tomas-avanzado.json")
+    private val resumen = Compartido.texto("fixtures/guia/resumen-tomas.json")
     private val sinGuia = Compartido.texto("fixtures/guia/sin-guia.json")
 
     private class Entorno(val m: ModeloGuia, val cola: Outbox, val t: TransporteProgramado, val disco: Disco, val cuerpos: MutableList<Pair<String, ValorJson>>)

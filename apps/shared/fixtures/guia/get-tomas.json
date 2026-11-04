@@ -1,67 +1,67 @@
 {
  "ok": true,
- "nombre_pila": "Marcelo",
- "fecha_entrega": "2026-11-06T14:00:00-03:00",
+ "nombre_pila": "Tomás",
+ "fecha_entrega": null,
  "clips": [
   {
    "id": "FT-25a",
    "url": "https://videos.prueba.invalid/videos-entrega/FT-25a.mp4",
    "duda": null,
-   "visto": true,
+   "visto": false,
    "yt_id": null,
    "bloque": "Tu app",
    "motivo": "Conectá tu reloj a la app y subí tu check en la sección de revisión todas las semanas. ||| Para que sepas dónde está cada cosa de tu plan",
    "titulo": "¿Cómo funciona la app Pump Team?",
    "minutos": 0.7,
-   "segundos": 42
+   "segundos": 0
   },
   {
    "id": "FT-2b",
    "url": "https://videos.prueba.invalid/videos-entrega/FT-2b.mp4",
    "duda": null,
-   "visto": true,
+   "visto": false,
    "yt_id": null,
    "bloque": "Tu app",
    "motivo": "Cuando de una semana a otra bajan las repeticiones, por ejemplo de 3x12 a 3x10, subí la carga. ||| Como vas cambiando cada tanto, acá ves que cuando la rutina baja las repeticiones de una semana a otra es momento de subir la carga.",
    "titulo": "¿Cómo subo las cargas semana a semana?",
    "minutos": 0.3,
-   "segundos": 18
+   "segundos": 0
   },
   {
    "id": "FT-2c",
    "url": "https://videos.prueba.invalid/videos-entrega/FT-2c.mp4",
    "duda": null,
-   "visto": true,
+   "visto": false,
    "yt_id": null,
    "bloque": "Tu app",
    "motivo": "Al terminar cada sesión marcala como hecha y, cuando completes la semana, tocá pasar a la semana siguiente. ||| Al terminar cada entrenamiento lo cerrás en la app, así se arma tu semana",
    "titulo": "¿Cómo cierro el entrenamiento y paso de semana?",
    "minutos": 0.3,
-   "segundos": 18
+   "segundos": 0
   },
   {
    "id": "FT-9a",
    "url": "https://videos.prueba.invalid/videos-entrega/FT-9a.mp4",
    "duda": null,
-   "visto": true,
+   "visto": false,
    "yt_id": null,
    "bloque": "Tu app",
    "motivo": "Si no te gusta una opción de comida, tocá el botón de sustituir en ese alimento y elegí un reemplazo, que ya viene con la cantidad cuadrada. ||| Si un alimento no te gusta o no lo conseguís, lo cambiás vos en la app",
    "titulo": "¿Cómo sustituyo un alimento en la app?",
    "minutos": 0.6,
-   "segundos": 36
+   "segundos": 0
   },
   {
    "id": "FT-9b",
    "url": "https://videos.prueba.invalid/videos-entrega/FT-9b.mp4",
-   "duda": "¿Puedo cambiar el orden de los ejercicios?",
+   "duda": null,
    "visto": false,
    "yt_id": null,
    "bloque": "Tu app",
    "motivo": "Si no tenés balanza a mano, tocá el ícono de la mano en cada alimento y usá esa porción como referencia. ||| Así no dependés de la balanza cuando comés afuera",
    "titulo": "¿Tengo que pesar todo? ¿Cómo uso las porciones con la mano?",
    "minutos": 0.5,
-   "segundos": 12
+   "segundos": 0
   },
   {
    "id": "FT-9c",
@@ -233,7 +233,7 @@
   },
   {
    "id": "FT-4b",
-   "url": null,
+   "url": "https://videos.prueba.invalid/videos-entrega/FT-4b.mp4",
    "duda": null,
    "visto": false,
    "yt_id": null,
@@ -244,16 +244,7 @@
    "segundos": 0
   }
  ],
- "dudas_llamada": [
-  {
-   "texto": "¿Puedo entrenar a la noche?",
-   "en": "2026-11-04T10:12:00-03:00"
-  },
-  {
-   "texto": "Quiero ver si cambio el desayuno",
-   "en": "2026-11-04T10:15:00-03:00"
-  }
- ],
+ "dudas_llamada": [],
  "suplementacion": {
   "titulo": "Tu suplementación",
   "accion": "Sumá lo nuevo de a uno por día, así ves cómo te cae cada cosa",

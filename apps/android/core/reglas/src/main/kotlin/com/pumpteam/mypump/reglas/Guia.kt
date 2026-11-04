@@ -179,7 +179,7 @@ object ReglasGuia {
     /** El botón de la tarjeta destacada. */
     fun botonDestacada(r: ResumenGuia): String = if (r.vistos == 0) "Ver mi guía" else "Seguir viendo"
 
-    /** «Hola Marcelo» de la bienvenida: el nombre de la guía; si no, el primero del nombre de la cuenta; si no, «Hola». */
+    /** «Hola Tomás» de la bienvenida: el nombre de la guía; si no, el primero del nombre de la cuenta; si no, «Hola». */
     fun saludoBienvenida(nombrePila: String?, nombreCuenta: String?): String {
         val n = nombrePila?.trim()?.ifEmpty { null } ?: nombreCuenta?.trim()?.split(Regex("\\s+"))?.firstOrNull()?.ifEmpty { null }
         return n?.let { "Hola $it" } ?: "Hola"
@@ -214,7 +214,7 @@ object ReglasGuia {
         return "${dia.dayOfWeek.getDisplayName(TextStyle.FULL, ES).lowercase(ES)} ${dia.dayOfMonth}/${dia.monthValue}"
     }
 
-    /** La línea de la cabecera, debajo de «Hola Marcelo». */
+    /** La línea de la cabecera, debajo de «Hola Tomás». */
     fun lineaCabecera(g: Guia, ahora: Instant = Instant.now()): String {
         if (yaPaso(g.fechaEntrega, ahora)) return "Te dejo estos videos según lo que hablamos en la videollamada. Miralos con calma."
         val cuando = fechaCorta(g.fechaEntrega)

@@ -37,7 +37,7 @@ class GuiaReglasTest {
 
     @Test
     fun conLaFixture() {
-        val g = guia("get-marcelo")
+        val g = guia("get-tomas")
         val b = ReglasGuia.bloques(ReglasGuia.ordenados(g.clips))
         assertEquals(listOf("Tu app", "Lo que no te podés saltear", "Tu entrenamiento", "Tu alimentación", "Tu suplementación"), b.map { it.titulo })
         // 3,5 en coma flotante es 3,4999…: la web también redondea a 3.
@@ -86,11 +86,11 @@ class GuiaReglasTest {
         assertTrue(ReglasGuia.yaPaso("2026-11-03T14:00:00-03:00", ahora))
         assertFalse(ReglasGuia.yaPaso("2026-11-04", ahora))
         assertTrue(ReglasGuia.yaPaso("2026-11-03", ahora))
-        val g = guia("get-marcelo-avanzado")
+        val g = guia("get-tomas-avanzado")
         assertEquals("Armé estos videos para vos, antes de nuestra videollamada del viernes 6/11, según lo que me contaste.", ReglasGuia.lineaCabecera(g, ahora))
         assertEquals("Armé estos videos para vos, según lo que me contaste.", ReglasGuia.lineaCabecera(g.copy(fechaEntrega = null), ahora))
         assertTrue(ReglasGuia.lineaCabecera(g, Instant.parse("2026-11-08T12:00:00Z")).startsWith("Te dejo estos videos"))
-        assertEquals("Hola Marcelo", ReglasGuia.saludo(g))
+        assertEquals("Hola Tomás", ReglasGuia.saludo(g))
         assertEquals("Hola", ReglasGuia.saludo(g.copy(nombrePila = null)))
     }
 
@@ -225,7 +225,7 @@ class GuiaReglasTest {
 
     @Test
     fun suplementacionPorMomento() {
-        val v = SuplementacionVista.armar(guia("get-marcelo").suplementacion!!)
+        val v = SuplementacionVista.armar(guia("get-tomas").suplementacion!!)
         assertEquals("Tu suplementación", v.titulo)
         assertEquals(listOf("Desayuno", "30 a 60 minutos antes de entrenar", "Antes de dormir", "Además"), v.momentos.map { it.titulo })
         val desayuno = v.momentos[0].filas
@@ -249,7 +249,7 @@ class GuiaReglasTest {
 
     @Test
     fun suplementacionSinDiaUsaElOrdenConocido() {
-        val s = guia("get-marcelo").suplementacion!!
+        val s = guia("get-tomas").suplementacion!!
         val v = SuplementacionVista.armar(s.copy(dia = emptyList()))
         assertEquals(listOf("Desayuno", "Antes de entrenar", "Antes de dormir", "Además"), v.momentos.map { it.titulo })
     }
@@ -410,8 +410,8 @@ class GuiaReglasTest {
             ReglasGuia.textoBienvenida(nueva),
         )
         assertTrue(ReglasGuia.textoBienvenida(ResumenGuia(1, 0, 2.0)).contains("Es un video corto que armé para vos, de unos 2 min."))
-        assertEquals("Hola Marcelo", ReglasGuia.saludoBienvenida("Marcelo", "Otro Nombre"))
-        assertEquals("Hola Marcelo", ReglasGuia.saludoBienvenida(null, "  Marcelo  Pérez "))
+        assertEquals("Hola Tomás", ReglasGuia.saludoBienvenida("Tomás", "Otro Nombre"))
+        assertEquals("Hola Tomás", ReglasGuia.saludoBienvenida(null, "  Tomás  Ruiz "))
         assertEquals("Hola", ReglasGuia.saludoBienvenida(" ", null))
         assertEquals("Hola", ReglasGuia.saludoBienvenida(null, "   "))
         // Sin «:» al final ni emojis.
