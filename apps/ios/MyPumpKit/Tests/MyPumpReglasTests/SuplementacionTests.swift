@@ -89,6 +89,37 @@ struct SuplementacionDecodificacionTests {
         #expect(ReglasSuplementacion.textoDias(["feriados"]) == "Feriados", "lo que no se conoce, tal cual")
     }
 
+    /// `dias` se lee elemento por elemento: un número no se lleva a los demás (antes `["lunes", 3]` daba «todos los días»).
+    @Test func diasConUnNumeroNoPierdeLosDemas() throws {
+        let r = try respuesta("""
+        {"suplementacion":{"items":[
+          {"nombre":"A","momento":"cena","dias":["lunes",3]},
+          {"nombre":"B","momento":"cena","dias":["lunes",null,true,{"x":1},["mar"],"vie"]},
+          {"nombre":"C","momento":"cena","dias":3},
+          {"nombre":"D","momento":"cena","dias":{"x":1}}]}}
+        """)
+        let it = try #require(r.suplementacion?.items)
+        #expect(it.map(\.dias) == [["lunes", "3"], ["lunes", "vie"], ["3"], []])
+        #expect(ReglasSuplementacion.textoDias(it[0].dias) == "Lunes y 3")
+        #expect(ReglasSuplementacion.textoDias(it[1].dias) == "Lunes y viernes")
+        #expect(ReglasSuplementacion.textoDias(it[3].dias) == nil)
+    }
+
+    /// Los mismos casos que corre Android (`apps/shared/vectores/texto_dias.json`): `dias` como llega en el jsonb, leído
+    /// como lo lee la app, y el texto que se muestra.
+    @Test func diasConLosVectoresCompartidos() throws {
+        let url = raizRepo.appendingPathComponent("apps/shared/vectores/texto_dias.json")
+        let raiz = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let casos = try #require(raiz["casos"] as? [[String: Any]])
+        #expect(casos.count >= 15)
+        for c in casos {
+            let crudo = String(decoding: try JSONSerialization.data(withJSONObject: c["dias"] ?? NSNull(), options: [.fragmentsAllowed]), as: UTF8.self)
+            let r = try respuesta(#"{"suplementacion":{"items":[{"nombre":"X","momento":"cena","dias":"# + crudo + "}]}}")
+            let item = try #require(r.suplementacion?.items.first)
+            #expect(ReglasSuplementacion.textoDias(item.dias) == c["texto"] as? String, "dias = \(crudo)")
+        }
+    }
+
     @Test func esquemaDosConCamposNuevosSeLeeIgual() throws {
         let r = try respuesta("""
         {"suplementacion":{"titulo":"Tu suple","color":"#fff","dia":[{"id":"cena","icono":"luna"}],
@@ -186,6 +217,31 @@ struct SuplementacionAgrupacionTests {
         #expect(tomas.map(\.momento) == ["Con el desayuno", "30 minutos antes de acostarte"] && tomas.map(\.cantidad) == ["1 g", "1 g"])
         #expect(ReglasSuplementacion.tomas(s.items[2], dia: s.dia).map(\.momento) == ["30 a 60 minutos antes de entrenar"])
         #expect(ReglasSuplementacion.tomas(s.items[4], dia: s.dia).isEmpty)
+    }
+
+    @Test func dosisHablada() throws {
+        let s = try #require(try respuesta(ejemploContratoSuplementacion).suplementacion)
+        #expect(ReglasSuplementacion.dosisHablada(s.items[3]) == "Antes 200 mg, ahora 400 mg")
+        #expect(ReglasSuplementacion.dosisHablada(s.items[0]) == "5 g")
+        let r = try respuesta(#"{"suplementacion":{"items":[{"nombre":"A","cantidad":"5 g","antes":""},{"nombre":"B","cantidad":"5 g","antes":"5 g"}]}}"#)
+        #expect(r.suplementacion?.items.map { ReglasSuplementacion.dosisHablada($0) } == ["5 g", "5 g"])
+        #expect(r.suplementacion?.items.map { ReglasSuplementacion.dosis($0) } == ["5 g", "5 g"])
+    }
+
+    /// El detalle abierto se busca por su lugar y se confirma por el nombre: si un refresco puso otro ahí, se cierra.
+    @Test func detalleAbiertoPorLugarYNombre() throws {
+        let antes = try #require(try respuesta(ejemploContratoSuplementacion).suplementacion?.items)
+        #expect(ReglasSuplementacion.itemAbierto(antes, indice: 1, nombre: "Omega 3")?.nombre == "Omega 3")
+        // Un refresco sacó la creatina: en el lugar 1 quedó otro suplemento.
+        let despues = Array(antes.dropFirst())
+        #expect(ReglasSuplementacion.itemAbierto(despues, indice: 1, nombre: "Omega 3") == nil)
+        // La lista se achicó y el lugar ya no existe.
+        #expect(ReglasSuplementacion.itemAbierto(Array(despues.prefix(1)), indice: 3, nombre: "Magnesio glicinato") == nil)
+        #expect(ReglasSuplementacion.itemAbierto(antes, indice: -1, nombre: "Omega 3") == nil)
+        // El mismo nombre en el mismo lugar, con la dosis cambiada: sigue abierto, con lo nuevo.
+        var cambiada = antes
+        cambiada[3].cantidad = "600 mg"
+        #expect(ReglasSuplementacion.itemAbierto(cambiada, indice: 3, nombre: "Magnesio glicinato")?.cantidad == "600 mg")
     }
 
     @Test func loQueLeeVoiceOver() throws {

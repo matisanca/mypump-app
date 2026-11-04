@@ -228,7 +228,7 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
         opcional = c.booleano(.opcional) ?? false
         porQue = c.texto(.porQue).flatMap { $0.isEmpty ? nil : $0 }
         videoId = c.texto(.videoId).flatMap { $0.isEmpty ? nil : $0 }
-        dias = (c.textos(.dias) ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        dias = (c.textosTolerantes(.dias) ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         antes = c.texto(.antes).flatMap { $0.isEmpty ? nil : $0 }
         cambio = c.texto(.cambio).flatMap { $0.isEmpty ? nil : $0 }
         comprar = (try? c.decodeIfPresent(CompraSuplemento.self, forKey: .comprar)).flatMap { $0?.vacia == false ? $0 : nil }

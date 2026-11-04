@@ -10,9 +10,11 @@ struct SuplementacionView: View {
     let modelo: ModeloSuplementacion
     @State private var app = Proveedor.modelo
     @Environment(\.horizontalSizeClass) private var claseAncho
+    /// El detalle abierto. Si un refresco cambia la lista y en ese lugar ya no está el mismo suplemento, se cierra.
+    @State private var ruta: [SuplementoAbierto] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $ruta) {
             Group {
                 if let v = modelo.vista {
                     contenido(v)
@@ -26,6 +28,11 @@ struct SuplementacionView: View {
             .navigationDestination(for: SuplementoAbierto.self) { a in
                 DetalleSuplementoView(modelo: modelo, abierto: a)
             }
+        }
+        .onChange(of: modelo.respuesta) { _, r in
+            let items = r?.suplementacion?.items ?? []
+            let siguen = Array(ruta.prefix { ReglasSuplementacion.itemAbierto(items, indice: $0.item, nombre: $0.nombre) != nil })
+            if siguen.count != ruta.count { ruta = siguen }
         }
     }
 
@@ -84,9 +91,10 @@ struct SuplementacionView: View {
     }
 }
 
-/// Lo que se apila al tocar un suplemento: su índice en `items`.
+/// Lo que se apila al tocar un suplemento: su índice en `items` y su nombre, para no mostrar otro si la lista cambia.
 struct SuplementoAbierto: Hashable {
     let item: Int
+    let nombre: String
 }
 
 /// El `titulo` y la `accion`, si vienen.
@@ -149,7 +157,7 @@ private struct FilaSuplemento: View {
     @Environment(\.dynamicTypeSize) private var letra
 
     var body: some View {
-        NavigationLink(value: SuplementoAbierto(item: fila.item)) {
+        NavigationLink(value: SuplementoAbierto(item: fila.item, nombre: item.nombre)) {
             HStack(alignment: .center, spacing: Espacio.s) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: Espacio.xs) {
@@ -225,7 +233,7 @@ private struct FilaSale: View {
     let sale: VistaSuplementacion.Sale
 
     var body: some View {
-        NavigationLink(value: SuplementoAbierto(item: sale.item)) {
+        NavigationLink(value: SuplementoAbierto(item: sale.item, nombre: sale.nombre)) {
             HStack(spacing: Espacio.s) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(sale.nombre).font(.body.weight(.semibold)).foregroundStyle(.primary)
@@ -261,8 +269,8 @@ struct DetalleSuplementoView: View {
     var body: some View {
         let s = modelo.respuesta?.suplementacion
         Group {
-            if let s, s.items.indices.contains(abierto.item) {
-                contenido(s.items[abierto.item], dia: s.dia)
+            if let s, let it = ReglasSuplementacion.itemAbierto(s.items, indice: abierto.item, nombre: abierto.nombre) {
+                contenido(it, dia: s.dia)
             } else {
                 // La suplementación cambió mientras estaba abierto (otra carga): ese ítem ya no está.
                 ContentUnavailableView("Este suplemento ya no está", systemImage: "pills",
@@ -284,7 +292,7 @@ struct DetalleSuplementoView: View {
                         .accessibilityIdentifier("supl-detalle-nombre")
                     if let d = ReglasSuplementacion.dosis(it), !sale {
                         Text(d).font(.numeroMediano)
-                            .accessibilityLabel(it.antes.map { a in a != it.cantidad ? "Antes \(a), ahora \(it.cantidad ?? "")" : d } ?? d)
+                            .accessibilityLabel(ReglasSuplementacion.dosisHablada(it) ?? d)
                     }
                     if let c = it.cambio { Text(c).font(.subheadline).foregroundStyle(.secondary) }
                     Etiquetas(item: it, conSigue: true)

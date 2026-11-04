@@ -74,6 +74,20 @@ public enum ReglasSuplementacion {
         return c
     }
 
+    /// Lo que lee VoiceOver de la dosis: «Antes 200 mg, ahora 400 mg» si cambió; si no, la dosis.
+    public static func dosisHablada(_ it: ItemSuplemento) -> String? {
+        guard let c = it.cantidad, !c.isEmpty else { return nil }
+        if let a = it.antes, !a.isEmpty, a != c { return "Antes \(a), ahora \(c)" }
+        return c
+    }
+
+    /// El ítem del detalle abierto, buscado por su lugar en `items` y confirmado por su nombre: si después de un refresco
+    /// en ese lugar hay otro suplemento (o ya no hay nada), nil y el detalle se cierra.
+    public static func itemAbierto(_ items: [ItemSuplemento], indice: Int, nombre: String) -> ItemSuplemento? {
+        guard items.indices.contains(indice), items[indice].nombre == nombre else { return nil }
+        return items[indice]
+    }
+
     /// Las tomas del detalle: cada momento con su título, la cantidad y la nota. Un ítem de una sola toma da una, sin
     /// cantidad (el detalle ya la muestra arriba, con `dosis`).
     public struct Toma: Equatable, Sendable, Identifiable {

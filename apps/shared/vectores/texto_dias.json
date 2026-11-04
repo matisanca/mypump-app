@@ -1,0 +1,24 @@
+{
+ "fuente": "pestaña Suplementación (2.1.0, docs/NATIVA_CONTRATO.md sección 10): `dias` de un ítem tal como llega en el jsonb y el texto que muestran las dos apps (null = todos los días). Se lee elemento por elemento: un número pasa a texto y lo que no es texto ni número se descarta sin perder los demás. Abreviaturas y mayúsculas se traducen al nombre del día con tilde; gym, entreno y descanso, aunque vengan mezclados con días.",
+ "casos": [
+  { "dias": "todos", "texto": null },
+  { "dias": null, "texto": null },
+  { "dias": [], "texto": null },
+  { "dias": ["lunes", "TODOS"], "texto": null },
+  { "dias": "gym", "texto": "Días de entreno" },
+  { "dias": "descanso", "texto": "Días de descanso" },
+  { "dias": ["gym"], "texto": "Días de entreno" },
+  { "dias": ["entreno", "GYM"], "texto": "Días de entreno" },
+  { "dias": ["lunes", "Miércoles", "vie"], "texto": "Lunes, miércoles y viernes" },
+  { "dias": ["lun", "mie", "sab"], "texto": "Lunes, miércoles y sábado" },
+  { "dias": ["miercoles", "sabado", "DOM"], "texto": "Miércoles, sábado y domingo" },
+  { "dias": ["Mar", "  vi "], "texto": "Martes y viernes" },
+  { "dias": ["gym", "sábado"], "texto": "Días de entreno y sábado" },
+  { "dias": ["Descanso", "ju"], "texto": "Días de descanso y jueves" },
+  { "dias": ["feriados"], "texto": "Feriados" },
+  { "dias": [" ", "jueves", "Jueves"], "texto": "Jueves" },
+  { "dias": ["lunes", 3], "texto": "Lunes y 3" },
+  { "dias": ["lunes", null, true, {"x": 1}, ["mar"], "vie"], "texto": "Lunes y viernes" },
+  { "dias": 3, "texto": "3" }
+ ]
+}
