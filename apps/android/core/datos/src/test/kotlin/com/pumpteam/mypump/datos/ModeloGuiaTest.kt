@@ -56,7 +56,7 @@ class ModeloGuiaTest {
         assertEquals(ModeloGuia.Estado.LISTA, e.m.estado.value)
         assertFalse(e.m.desdeCache.value)
         assertEquals(20, e.m.guia.value!!.clips.size)
-        assertEquals(ResumenGuia(20, 0, ResumenGuia.de(e.m.guia.value!!)!!.minutosRestantes), e.m.resumen.value)
+        assertEquals(ResumenGuia(20, 0, ResumenGuia.deTodos(e.m.guia.value!!)!!.minutosRestantes), e.m.resumen.value)
         // Solo el get, con el token: nada de escrituras al abrir.
         assertEquals(listOf("entregas_app_get"), e.t.llamadas)
         assertEquals("tok", e.cuerpos[0].second["p_token"]?.comoTexto)

@@ -101,7 +101,7 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
     val alcance = LocalAlcanceApp.current
 
     LaunchedEffect(modelo) { modelo.abrir() }
-    LaunchedEffect(modelo, guia) { guia?.let { control.usar(modelo, it.clips) } }
+    LaunchedEffect(modelo, guia) { guia?.let { control.usar(modelo, it) } }
     LaunchedEffect(estado) { if (estado == ModeloGuia.Estado.NO_HAY) alVolver() }
     // Salir de la guía (o cambiar de pestaña) frena el video.
     DisposableEffect(Unit) { onDispose { control.pausar() } }
@@ -202,7 +202,7 @@ private fun ContenidoGuia(
     puedeSumarLlamada: Boolean,
     alEnviarDuda: (video: String?, texto: String) -> Unit,
 ) {
-    val clips = remember(guia) { ReglasGuia.ordenados(guia.clips) }
+    val clips = remember(guia) { ReglasGuia.ordenados(guia.clipsDeLaLista) }
     val bloques = remember(clips) { ReglasGuia.bloques(clips) }
     val resumen = remember(guia) { ResumenGuia.de(guia) }
     val suple = remember(guia) { guia.suplementacion?.let(SuplementacionVista::armar) }
@@ -235,8 +235,11 @@ private fun ContenidoGuia(
                 if (desdeCache) add(Entrada.SinRed)
                 add(Entrada.Cabecera)
                 if (!dosColumnas) add(Entrada.Reproductor)
-                bloques.forEach { add(Entrada.Bloque(it)) }
+                // Como la web (4/11): primero «Tu app», el recuadro de dudas para la videollamada y después los demás capítulos.
+                val (deLaApp, resto) = bloques.partition { ReglasGuia.esTuApp(it.titulo) }
+                deLaApp.forEach { add(Entrada.Bloque(it)) }
                 add(Entrada.Llamada)
+                resto.forEach { add(Entrada.Bloque(it)) }
                 if (suple != null) add(Entrada.Suplementacion)
                 add(Entrada.Fin)
             }
@@ -444,7 +447,8 @@ private fun TarjetaReproductor(
         }
         Column(Modifier.padding(start = Espacio.m, end = Espacio.m, top = Espacio.s), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                ReglasReproductor.textoNumero(control.actual, control.clips.size, clip.bloque).uppercase(),
+                (if (control.esDeSuplemento) clip.bloque?.trim() ?: "Tu suplementación"
+                else ReglasReproductor.textoNumero(control.actual, control.deLaLista, clip.bloque)).uppercase(),
                 style = MaterialTheme.typography.labelMedium,
                 color = c.marcaTexto,
                 fontWeight = FontWeight.SemiBold,

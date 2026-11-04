@@ -98,8 +98,21 @@ class GuiaTest {
         assertEquals(ResumenGuia(3, 3, 0.0), ResumenGuia.desde(Json.parseToJsonElement("""{"ok":true,"total":3,"vistos":9}""")))
         val g = Guia.desde(fixture("get-marcelo-avanzado"))!!
         val local = ResumenGuia.de(g)!!
-        assertEquals(20, local.total)
+        // Como la web (A5): los 3 videos que nombra un suplemento no cuentan; FT-4c (sin suplemento que lo nombre) sí.
+        assertEquals(17, local.total)
         assertEquals(4, local.vistos)
-        assertEquals(Math.round(g.clips.filter { !it.visto }.sumOf { it.minutos } * 10) / 10.0, local.minutosRestantes)
+        assertEquals(Math.round(g.clipsDeLaLista.filter { !it.visto }.sumOf { it.minutos } * 10) / 10.0, local.minutosRestantes)
+    }
+
+    @Test
+    fun losVideosDeLosSuplementosSalenDeLaLista() {
+        val g = Guia.desde(fixture("get-marcelo"))!!
+        assertEquals(listOf("FT-50b", "FT-1b", "FT-4b"), g.clipsDeSuplementos.map { it.id })
+        assertTrue(g.clipsDeLaLista.any { it.id == "FT-4c" })
+        assertEquals(g.clips.size, g.clipsDeLaLista.size + g.clipsDeSuplementos.size)
+        // Un suplemento que «sale» no saca su video de la lista; sin suplementación, quedan todos.
+        val sale = g.copy(suplementacion = g.suplementacion!!.copy(items = g.suplementacion!!.items.map { if (it.videoId == "FT-1b") it.copy(estado = "sale") else it }))
+        assertTrue(sale.clipsDeLaLista.any { it.id == "FT-1b" })
+        assertEquals(g.clips, g.copy(suplementacion = null).clipsDeLaLista)
     }
 }

@@ -34,7 +34,7 @@ object ReglasGuia {
         val resumen: String get() = "${cantidadVideos(indices.size)}, unos ${minutosRedondos(minutos)} minutos"
     }
 
-    private fun esTuApp(bloque: String?): Boolean = bloque?.trim()?.equals("tu app", ignoreCase = true) == true
+    fun esTuApp(bloque: String?): Boolean = bloque?.trim()?.equals("tu app", ignoreCase = true) == true
 
     /**
      * Los clips en el orden en que se muestran: los de «Tu app» primero (como la web) y el resto en el orden del servidor.

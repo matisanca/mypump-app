@@ -130,7 +130,7 @@ class GuiaUiTest : PruebaUi() {
         assertFalse(p.existe(etiqueta("guia-placa")))
         p.tocar(etiqueta("guia-siguiente"))
         p.nodo(etiqueta("guia-placa"), ms = 1_500)
-        assertTrue(p.textosBajo(etiqueta("guia-placa")).any { it.contains("VIDEO 7 DE 20") })
+        assertTrue(p.textosBajo(etiqueta("guia-placa")).any { it.contains("VIDEO 7 DE 17") })
         // Se cierra sola a los 2,6 s.
         p.esperarQueNoEste(etiqueta("guia-placa"), ms = 5_000)
         // Sin poder cargar el video: lo dice, y la lista se sigue viendo.

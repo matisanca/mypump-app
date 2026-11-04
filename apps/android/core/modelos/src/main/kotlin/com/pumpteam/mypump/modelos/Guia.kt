@@ -24,6 +24,21 @@ data class Guia(
 ) {
     fun clip(id: String): ClipGuia? = clips.firstOrNull { it.id == id }
 
+    /**
+     * Los clips de la lista y de «Viste X de N» (como la web desde el 4/11, A5): los del bloque «Tu suplementación» que
+     * nombra un suplemento (con nombre, `video_id` y que no «sale») se ven debajo de ese suplemento con «Ver por qué» y no
+     * van en la lista. Si ningún suplemento los nombra, quedan en la lista para no perderlos.
+     */
+    val clipsDeLaLista: List<ClipGuia> by lazy {
+        val nombrados = suplementacion?.items.orEmpty()
+            .filter { it.nombre.isNotBlank() && it.estado != "sale" && it.videoId != null }
+            .mapNotNull { it.videoId }.toSet()
+        clips.filterNot { esSuplementacion(it.bloque) && it.id in nombrados }
+    }
+
+    /** Los que salen de la lista porque los muestra su suplemento ([clipsDeLaLista]). */
+    val clipsDeSuplementos: List<ClipGuia> get() = clips.filterNot { it in clipsDeLaLista }
+
     /** Lo que se guarda en la caché del teléfono (la misma forma del servidor, así se lee con [desde]). */
     fun aValor(): ValorJson = ValorJson.Objeto(
         linkedMapOf(
@@ -236,10 +251,23 @@ data class ResumenGuia(val total: Int, val vistos: Int, val minutosRestantes: Do
         fun desde(v: ValorJson?): ResumenGuia? = v?.let { desde(it.aJson()) }
 
         /** Lo mismo calculado desde la guía entera (cuando el cliente ya la abrió y hay datos más nuevos en memoria). */
-        fun de(g: Guia): ResumenGuia? {
-            if (g.clips.isEmpty()) return null
-            val resta = g.clips.filter { !it.visto }.sumOf { it.minutos }
-            return ResumenGuia(g.clips.size, g.clips.count { it.visto }, Math.round(resta * 10) / 10.0)
+        /** Lo mismo que la web en «Viste X de N» (la cabecera de la sección): solo los clips de la lista ([Guia.clipsDeLaLista]). */
+        fun de(g: Guia): ResumenGuia? = de(g.clipsDeLaLista)
+
+        /**
+         * Con todos los clips, como cuenta hoy `entregas_app_resumen`: es lo de la tarjeta de inicio, que tiene que coincidir
+         * con el resumen del servidor (para no saltar entre dos totales). Si el servidor pasa a contar como la web, se usa [de].
+         */
+        fun deTodos(g: Guia): ResumenGuia? = de(g.clips)
+
+        private fun de(l: List<ClipGuia>): ResumenGuia? {
+            if (l.isEmpty()) return null
+            val resta = l.filter { !it.visto }.sumOf { it.minutos }
+            return ResumenGuia(l.size, l.count { it.visto }, Math.round(resta * 10) / 10.0)
         }
     }
 }
+
+/** «Tu suplementación», sin importar mayúsculas ni el acento (como la web). */
+internal fun esSuplementacion(bloque: String?): Boolean =
+    bloque?.trim()?.lowercase()?.let { it == "tu suplementación" || it == "tu suplementacion" } == true

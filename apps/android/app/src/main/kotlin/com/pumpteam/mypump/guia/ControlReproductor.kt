@@ -13,6 +13,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.pumpteam.mypump.datos.ModeloGuia
 import com.pumpteam.mypump.modelos.ClipGuia
+import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.ReglasReproductor
 import com.pumpteam.mypump.reglas.SeguimientoAvance
@@ -50,9 +51,22 @@ class ControlReproductor(
 
     private var modelo: ModeloGuia? = null
 
-    /** Los clips en el orden en que se muestran ([ReglasGuia.ordenados]). */
+    /**
+     * Los clips en el orden en que se muestran ([ReglasGuia.ordenados] de [Guia.clipsDeLaLista]) y, al final, los que solo
+     * se ven con «Ver por qué» de su suplemento ([Guia.clipsDeSuplementos]): esos no entran en «Anterior», «Siguiente», el
+     * paso solo al terminar ni el número «Video N de M».
+     */
     var clips: List<ClipGuia> by mutableStateOf(emptyList())
         private set
+
+    /** Cuántos de [clips] son de la lista (los primeros). */
+    var deLaLista by mutableStateOf(0)
+        private set
+
+    private val lista: List<ClipGuia> get() = clips.take(deLaLista)
+
+    /** El video cargado es de un suplemento (fuera de la lista). */
+    val esDeSuplemento: Boolean get() = actual >= deLaLista
 
     /** El índice (en [clips]) del video cargado; -1 si ninguno. */
     var actual by mutableStateOf(-1)
@@ -130,15 +144,17 @@ class ControlReproductor(
      * La guía que se muestra (al abrirla o cuando cambia). Con otra cuenta (otro [ModeloGuia]) o sin video cargado, carga
      * el inicial sin reproducir; con la misma, solo actualiza la lista (lo visto, las dudas) sin cortar lo que suena.
      */
-    fun usar(m: ModeloGuia, todos: List<ClipGuia>) {
-        val nuevos = ReglasGuia.ordenados(todos)
+    fun usar(m: ModeloGuia, guia: Guia) {
+        val deLista = ReglasGuia.ordenados(guia.clipsDeLaLista)
+        val nuevos = deLista + guia.clipsDeSuplementos
         val otraCuenta = m !== modelo
         modelo = m
         val idActual = clipActual?.id
         clips = nuevos
+        deLaLista = deLista.size
         if (otraCuenta || idActual == null) {
             detener()
-            val i = ReglasReproductor.indiceInicial(nuevos)
+            val i = ReglasReproductor.indiceInicial(deLista)
             if (i >= 0) cargar(i, reproducir = false, conPlaca = false)
             return
         }
@@ -146,7 +162,7 @@ class ControlReproductor(
         val i = nuevos.indexOfFirst { it.id == idActual }
         if (i >= 0) actual = i else {
             detener()
-            ReglasReproductor.indiceInicial(nuevos).takeIf { it >= 0 }?.let { cargar(it, reproducir = false, conPlaca = false) }
+            ReglasReproductor.indiceInicial(deLista).takeIf { it >= 0 }?.let { cargar(it, reproducir = false, conPlaca = false) }
         }
     }
 
@@ -168,15 +184,18 @@ class ControlReproductor(
         if (i >= 0) reproducir(i)
     }
 
-    val haySiguiente: Boolean get() = actual >= 0 && ReglasReproductor.siguiente(clips, actual) != null
-    val hayAnterior: Boolean get() = actual >= 0 && ReglasReproductor.anterior(clips, actual) != null
+    val haySiguiente: Boolean get() = proximo() != null
+    val hayAnterior: Boolean get() = previo() != null
+
+    private fun proximo(): Int? = if (actual in 0 until deLaLista) ReglasReproductor.siguiente(lista, actual) else null
+    private fun previo(): Int? = if (actual in 0 until deLaLista) ReglasReproductor.anterior(lista, actual) else null
 
     fun siguiente() {
-        ReglasReproductor.siguiente(clips, actual)?.let { cargar(it, reproducir = true, conPlaca = true) }
+        proximo()?.let { cargar(it, reproducir = true, conPlaca = true) }
     }
 
     fun anterior() {
-        ReglasReproductor.anterior(clips, actual)?.let { cargar(it, reproducir = true, conPlaca = true) }
+        previo()?.let { cargar(it, reproducir = true, conPlaca = true) }
     }
 
     /** 1x → 1,25x → 1,5x → 1x. */
@@ -214,6 +233,7 @@ class ControlReproductor(
         player = null
         modelo = null
         clips = emptyList()
+        deLaLista = 0
         actual = -1
     }
 
@@ -249,7 +269,7 @@ class ControlReproductor(
         p.setPlaybackSpeed(velocidad)
         p.prepare()
         if (reproducir && conPlaca) {
-            placa = Placa(indice, clips.size, c.bloque, c.titulo)
+            placa = Placa(indice, deLaLista, c.bloque, c.titulo)
             pasado++
             p.playWhenReady = false
             temporizadorPlaca = alcance.launch {
@@ -282,8 +302,8 @@ class ControlReproductor(
         lectura?.cancel()
         val dur = p.duration.takeIf { it != C.TIME_UNSET && it > 0 }?.div(1000.0) ?: (p.currentPosition / 1000.0)
         guardar(s.alTerminar(dur))
-        // Pasa solo al siguiente, con su placa. Si era el último, queda en el final.
-        ReglasReproductor.siguiente(clips, actual)?.let { cargar(it, reproducir = true, conPlaca = true) }
+        // Pasa solo al siguiente, con su placa. Si era el último (o uno de un suplemento), queda en el final.
+        proximo()?.let { cargar(it, reproducir = true, conPlaca = true) }
     }
 
     private fun guardar(g: SeguimientoAvance.Guardado) {

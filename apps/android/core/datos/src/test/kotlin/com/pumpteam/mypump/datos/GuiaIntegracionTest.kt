@@ -56,10 +56,11 @@ class GuiaIntegracionTest {
         assertEquals(4, s.items.count { it.videoId != null })
         // Cada «Ver por qué» apunta a un clip de la guía.
         assertTrue(s.items.mapNotNull { it.videoId }.all { g.clip(it) != null })
-        // El resumen y la guía cuentan lo mismo (la guía fresca con lo que diga el servidor).
-        val deLaGuia = ResumenGuia.de(g)!!
-        assertEquals(r.vistos, deLaGuia.vistos)
-        assertEquals(r.minutosRestantes, deLaGuia.minutosRestantes, 0.051)
+        // El resumen del servidor cuenta todos los clips; la lista (y la web desde el 4/11, A5) deja afuera los que nombra un
+        // suplemento. Pregunta de contrato abierta: si `entregas_app_resumen` pasa a contar como la web, esto cambia.
+        assertEquals(g.clips.size, r.total)
+        assertEquals(g.clips.count { it.visto }, r.vistos)
+        assertEquals(g.clips.size - 4, ResumenGuia.de(g)!!.total)
     }
 
     @Test
