@@ -73,6 +73,9 @@ public final class ModeloAudioDuda {
     public nonisolated static let kind = "guia_audio"
     nonisolated static func clave(_ id: String) -> String { "\(kind)_\(id)" }
     static let archivoDisponible = "guia_audio_disponible.json"
+    /// La última lista del servidor: la transcripción nunca aparece como duda, tampoco sin red ni en el primer pintado
+    /// (revisión del 4-nov, punto 4).
+    static let archivoServidor = "guia_audios.json"
 
     public private(set) var maquina = MaquinaAudio()
     /// Para el contador (se actualiza con cada tic mientras graba).
@@ -108,6 +111,10 @@ public final class ModeloAudioDuda {
     @ObservationIgnored private var seccionAbierta = false
     @ObservationIgnored private let esMuestra: Bool
     @ObservationIgnored private var consultaEnCurso = false
+    /// Los archivos que se están pasando a la cola: la limpieza no los toca (punto 12).
+    @ObservationIgnored private var enVuelo: Set<String> = []
+    /// El sondeo en curso: uno cancelado no suelta al nuevo (punto 13).
+    @ObservationIgnored private var marcaSondeo = 0
 
     /// `carpeta`: donde quedan los audios hasta que se confirman (la de la cuenta, `audios/`).
     public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco?, carpeta: URL? = nil,
@@ -117,6 +124,12 @@ public final class ModeloAudioDuda {
         self.reloj = reloj; self.esperaSondeo = esperaSondeo
         esMuestra = false
         disponible = disco?.leer(Bool.self, Self.archivoDisponible) ?? false
+        servidor = disco?.leer([AudioServidor].self, Self.archivoServidor) ?? []
+        if let outbox {
+            Task { [weak self] in
+                await outbox.observarAudios(sinRed: { ops in Task { @MainActor in self?.alFallarPorRed(ops) } })
+            }
+        }
     }
 
     /// La demo y la maqueta: se puede grabar y escuchar; «Mandar» dice «Vista previa». Nada sale.
@@ -154,6 +167,9 @@ public final class ModeloAudioDuda {
     }
 
     public var haySubidos: Bool { servidor.contains { $0.estado == .subido } || locales.contains { $0.estado == .subido } }
+
+    /// Un audio a la vez, como la web: mientras uno se está mandando, «Grabar un audio» queda desactivado.
+    public var mandandoAlguno: Bool { locales.contains { $0.estado == .mandando } }
 
     // MARK: - El grabador
 
@@ -205,6 +221,8 @@ public final class ModeloAudioDuda {
         case .encolar(let s):
             guard let u = archivoActual else { return }
             archivoActual = nil
+            // Anotado antes de soltar el hilo: la limpieza de `cargarDeLaCola` no lo borra mientras entra a la cola.
+            enVuelo.insert(u.lastPathComponent)
             Task { await encolar(archivo: u, segundos: s) }
         case .anunciar(let t):
             anuncio = t
@@ -231,6 +249,8 @@ public final class ModeloAudioDuda {
         let bytes = (try? FileManager.default.attributesOfItem(atPath: archivo.path)[.size] as? Int) ?? 0
         // El archivo toma el nombre del `p_id`: el mismo audio es el mismo archivo en cada reintento.
         let destino = carpeta.appendingPathComponent("\(id).m4a")
+        enVuelo.insert(destino.lastPathComponent)
+        defer { enVuelo.remove(archivo.lastPathComponent); enVuelo.remove(destino.lastPathComponent) }
         let nombre = (try? FileManager.default.moveItem(at: archivo, to: destino)) != nil ? destino.lastPathComponent : archivo.lastPathComponent
         locales.append(FilaAudio(id: id, estado: .mandando))
         await outbox.encolar(Self.kind, .objeto([
@@ -239,37 +259,48 @@ public final class ModeloAudioDuda {
         ]), dedupeKey: Self.clave(id))
     }
 
-    /// «Reintentar» de un audio que la cola abandonó: el mismo `p_id` y el mismo archivo.
+    /// «Reintentar»: de un audio que la cola abandonó, el mismo `p_id` y el mismo archivo; de uno que sigue en la cola (falló
+    /// por red), sale ya sin esperar el backoff. Primero se encola y después se olvida el fallido: en el medio, la limpieza
+    /// no encuentra el archivo sin nadie que lo nombre (punto 11).
     public func reintentar(_ id: String) async {
-        guard let outbox, let f = await outbox.fallidos.last(where: { $0.op.dedupeKey == Self.clave(id) }) else { return }
-        await outbox.olvidarFallidos(clave: Self.clave(id))
+        guard let outbox else { return }
+        if await outbox.operaciones.contains(where: { $0.dedupeKey == Self.clave(id) }) {
+            poner(id, .mandando)
+            await outbox.reintentarAudiosAhora()
+            return
+        }
+        guard let f = await outbox.fallidos.last(where: { $0.op.dedupeKey == Self.clave(id) }) else { return }
         // `id` (ese p_id es de otro cliente): el mismo archivo con un p_id nuevo. Si no, el mismo (idempotente).
         guard f.motivo.contains(Escrituras.codigoAudioId), case .objeto(var o) = f.op.payload else {
             poner(id, .mandando)
             await outbox.encolar(Self.kind, f.op.payload, dedupeKey: Self.clave(id))
+            await outbox.olvidarFallidos(clave: Self.clave(id))
             return
         }
         let nuevo = UUID().uuidString.lowercased()
         o["id"] = .texto(nuevo)
         if let i = locales.firstIndex(where: { $0.id == id }) { locales[i] = FilaAudio(id: nuevo, estado: .mandando) } else { poner(nuevo, .mandando) }
         await outbox.encolar(Self.kind, .objeto(o), dedupeKey: Self.clave(nuevo))
+        await outbox.olvidarFallidos(clave: Self.clave(id))
     }
 
     /// Lo que quedó en la cola de antes (otra apertura, la app cerrada): «Mandando» o «No se pudo mandar». Los archivos que
     /// nadie nombra (la app se cerró entre la confirmación y el borrado) se borran.
     public func cargarDeLaCola() async {
         guard let outbox else { return }
+        // La carpeta se lista ANTES de leer la cola: un archivo que entra a la cola en el medio ya está nombrado o en vuelo.
+        let archivos = (try? FileManager.default.contentsOfDirectory(atPath: carpeta.path)) ?? []
         let ops = await outbox.operaciones.filter { $0.kind == Self.kind }
         let fallidos = await outbox.fallidos.map(\.op).filter { $0.kind == Self.kind }
-        for op in ops { if let id = op.payload["id"]?.comoTexto { poner(id, .mandando) } }
+        let sinRed = await outbox.audiosSinRed
+        for op in ops { if let id = op.payload["id"]?.comoTexto { poner(id, sinRed.contains(op.id) ? .noSeMando : .mandando) } }
         for op in fallidos {
             guard let id = op.payload["id"]?.comoTexto, !ops.contains(where: { $0.payload["id"]?.comoTexto == id }) else { continue }
             poner(id, .noSeMando)
         }
         let nombrados = Set((ops + fallidos).compactMap { $0.payload["archivo"]?.comoTexto })
         let actual = archivoActual?.lastPathComponent
-        let archivos = (try? FileManager.default.contentsOfDirectory(atPath: carpeta.path)) ?? []
-        for a in archivos where !nombrados.contains(a) && a != actual {
+        for a in archivos where !nombrados.contains(a) && a != actual && !enVuelo.contains(a) {
             try? FileManager.default.removeItem(at: carpeta.appendingPathComponent(a))
         }
     }
@@ -298,6 +329,18 @@ public final class ModeloAudioDuda {
         if subio && seccionAbierta { Task { await self.consultar(); self.sondear() } }
     }
 
+    /// Falló por red o transitorio: «No se pudo mandar.» con «Reintentar», aunque la cola lo siga reintentando sola (si sale,
+    /// pasa a «Listo»). Un solo comportamiento sin red en las dos apps (punto 6).
+    public func alFallarPorRed(_ ops: [Operacion]) {
+        var cambio = false
+        for op in ops where op.kind == Self.kind {
+            guard let id = op.payload["id"]?.comoTexto, locales.first(where: { $0.id == id })?.estado != .noSeMando else { continue }
+            poner(id, .noSeMando)
+            cambio = true
+        }
+        if cambio { anuncio = ReglasAudioDuda.textoNoSeMando; anuncios += 1 }
+    }
+
     /// Lo que la cola abandonó tras 8 intentos: «No se pudo mandar.» con «Reintentar». El archivo queda.
     public func alAbandonar(_ ops: [Operacion]) {
         for op in ops where op.kind == Self.kind {
@@ -321,6 +364,7 @@ public final class ModeloAudioDuda {
     public func cerrarSeccion() {
         seccionAbierta = false
         sondeo?.cancel(); sondeo = nil
+        marcaSondeo += 1
     }
 
     /// `entregas_app_audios`. Si la función no existe (sin la 019), el botón no aparece.
@@ -331,6 +375,7 @@ public final class ModeloAudioDuda {
         switch await cliente.llamar("entregas_app_audios", ["p_token": .texto(token)]) {
         case .success(.lista(let a)):
             servidor = a.compactMap(AudioServidor.init(json:))
+            disco?.guardar(servidor, Self.archivoServidor)
             // Lo confirmado que ya trae el servidor deja de ser local.
             locales.removeAll { l in l.estado == .subido && servidor.contains { $0.id == l.id } }
             marcarDisponible(true)
@@ -354,15 +399,18 @@ public final class ModeloAudioDuda {
     func sondear() {
         guard seccionAbierta, haySubidos, sondeo == nil else { return }
         let inicio = reloj()
+        marcaSondeo += 1
+        let marca = marcaSondeo
         sondeo = Task { [weak self, esperaSondeo] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: esperaSondeo)
-                guard !Task.isCancelled, let self, self.seccionAbierta else { return }
+                guard !Task.isCancelled, let self, self.seccionAbierta else { break }
                 if self.reloj() - inicio > ReglasAudioDuda.sondeoMaximo { break }
                 await self.consultar()
                 if !self.haySubidos { break }
             }
-            self?.sondeo = nil
+            // Uno cancelado (se cerró y se volvió a abrir la sección) no suelta al sondeo nuevo.
+            if let self, self.marcaSondeo == marca { self.sondeo = nil }
         }
     }
 
@@ -371,6 +419,8 @@ public final class ModeloAudioDuda {
     /// Para la maqueta: deja la lista del servidor armada (sin red).
     public func ponerServidor(_ a: [AudioServidor]) { servidor = a }
     public func ponerLocal(_ f: FilaAudio) { locales.append(f) }
+    /// Para los tests: hay un sondeo vivo.
+    var sondeando: Bool { sondeo != nil }
 }
 
 // MARK: - La ejecución en la cola
@@ -386,10 +436,13 @@ extension Escrituras {
     /// nuevo (la base es idempotente por `p_id` y reactiva un ticket vencido con el mismo id). Red o transitorio en
     /// cualquier paso cortan sin gastar intento. Si `subido` contesta `sin_archivo` (hay que subir otra vez) o `vencido`
     /// (pedir el ticket de nuevo), se da una vuelta más dentro del mismo intento.
-    func ejecutarAudio(_ p: JSONValue) async -> ResultadoOp {
+    ///
+    /// `reintento`: la op ya salió antes. Solo entonces un 403 o 409 de Storage es «quizás ya subió» (lo decide `subido`);
+    /// en el primer intento es un rechazo (revisión del 4-nov, punto 15).
+    func ejecutarAudio(_ p: JSONValue, reintento: Bool = false) async -> ResultadoOp {
         guard let id = p["id"]?.comoTexto, UUID(uuidString: id) != nil,
               let nombre = p["archivo"]?.comoTexto, !nombre.isEmpty, !nombre.contains("/"),
-              let datos = try? Data(contentsOf: carpetaAudios.appendingPathComponent(nombre)), !datos.isEmpty
+              let datos = Self.datosAudio(nombre, en: carpetaAudios), !datos.isEmpty
         else {
             // Sin el archivo no hay nada que mandar: se da por resuelta con «No se pudo mandar».
             return .respuesta(.success(.objeto(["ok": .bool(false), "motivo": .texto("archivo")])))
@@ -397,8 +450,9 @@ extension Escrituras {
         let mime = p["mime"]?.comoTexto ?? ReglasAudioDuda.mime
         let segundos = (p["segundos"]?.comoNumero ?? 0).rounded()
         var ultimo = "sin_archivo"
-        for _ in 0..<2 {
-            switch await vueltaAudio(id: id, datos: datos, mime: mime, segundos: segundos) {
+        for vuelta in 0..<2 {
+            // La segunda vuelta es porque `subido` dijo que no hay archivo: ahí un 403 es un rechazo de verdad.
+            switch await vueltaAudio(id: id, datos: datos, mime: mime, segundos: segundos, quizasYaSubio: reintento && vuelta == 0) {
             case .listo(let r): return r
             case .otraVuelta(let m): ultimo = m
             }
@@ -408,7 +462,28 @@ extension Escrituras {
 
     private enum Vuelta { case listo(ResultadoOp), otraVuelta(String) }
 
-    private func vueltaAudio(id: String, datos: Data, mime: String, segundos: Double) async -> Vuelta {
+    /// El archivo del audio. Si no está en la carpeta de esta cuenta (un link regenerado lo dejó en la de la cuenta vieja de
+    /// la misma persona), se busca en las otras carpetas `cuenta-*` y se trae a esta: un audio en cola nunca se pierde por
+    /// un cambio de link (revisión del 4-nov, punto 2).
+    static func datosAudio(_ nombre: String, en carpeta: URL) -> Data? {
+        let propio = carpeta.appendingPathComponent(nombre)
+        if let d = try? Data(contentsOf: propio) { return d }
+        let cuenta = carpeta.deletingLastPathComponent()
+        let base = cuenta.deletingLastPathComponent()
+        let otras = ((try? FileManager.default.contentsOfDirectory(atPath: base.path)) ?? [])
+            .filter { $0.hasPrefix("cuenta-") && $0 != cuenta.lastPathComponent }
+            .sorted()
+        for o in otras {
+            let u = base.appendingPathComponent(o, isDirectory: true).appendingPathComponent(carpeta.lastPathComponent).appendingPathComponent(nombre)
+            guard let d = try? Data(contentsOf: u) else { continue }
+            try? FileManager.default.createDirectory(at: carpeta, withIntermediateDirectories: true)
+            if (try? FileManager.default.moveItem(at: u, to: propio)) == nil { try? d.write(to: propio, options: .atomic) }
+            return d
+        }
+        return nil
+    }
+
+    private func vueltaAudio(id: String, datos: Data, mime: String, segundos: Double, quizasYaSubio: Bool) async -> Vuelta {
         let t: JSONValue = .texto(token)
         let ticket: JSONValue
         switch await cliente.llamar("entregas_app_audio_iniciar", [
@@ -422,8 +497,9 @@ extension Escrituras {
         guard let bucket = ticket["bucket"]?.comoTexto, !bucket.isEmpty, let ruta = ticket["ruta"]?.comoTexto, !ruta.isEmpty else {
             return .listo(.respuesta(.failure(ErrorRPC(clase: .permanente, status: 200, codigo: "AUDIO_TICKET", mensaje: "ticket sin bucket o ruta"))))
         }
-        // Un 403 o un 409 es «quizás ya subió» (la re-subida de la misma ruta da 403): lo decide `subido`.
-        if case .failure(let e) = await cliente.subirObjeto(bucket: bucket, ruta: ruta, datos: datos, mime: ticket["mime"]?.comoTexto ?? mime) {
+        // En un reintento, un 403 o un 409 es «quizás ya subió» (la re-subida de la misma ruta da 403): lo decide `subido`.
+        if case .failure(let e) = await cliente.subirObjeto(bucket: bucket, ruta: ruta, datos: datos, mime: ticket["mime"]?.comoTexto ?? mime,
+                                                            aceptarExistente: quizasYaSubio) {
             return .listo(.respuesta(.failure(e)))
         }
         let r: JSONValue
@@ -459,9 +535,11 @@ extension Escrituras {
 
 extension ClienteRPC {
     /// `POST /storage/v1/object/{bucket}/{ruta}` con los bytes tal cual, el `Content-Type` exacto (el bucket lo compara) y
-    /// `x-upsert: false` (la política no deja pisar). Un 403, un 409 (o el 400 con `statusCode: "409"` de Storage) es que
-    /// quizás ya estaba: cuenta como subido y lo confirma `entregas_app_audio_subido`. Dos minutos de espera: 2,4 MB con poca señal tardan más que una RPC.
-    public func subirObjeto(bucket: String, ruta: String, datos: Data, mime: String, espera: TimeInterval = 120) async -> Result<Void, ErrorRPC> {
+    /// `x-upsert: false` (la política no deja pisar). Con `aceptarExistente` (un reintento), un 403, un 409 (o el 400 con
+    /// `statusCode: "409"` de Storage) es que quizás ya estaba: cuenta como subido y lo confirma `entregas_app_audio_subido`.
+    /// Sin eso (el primer intento), es un rechazo. Dos minutos de espera: 2,4 MB con poca señal tardan más que una RPC.
+    public func subirObjeto(bucket: String, ruta: String, datos: Data, mime: String, aceptarExistente: Bool = false,
+                            espera: TimeInterval = 120) async -> Result<Void, ErrorRPC> {
         var url = config.supabase.appendingPathComponent("storage/v1/object").appendingPathComponent(bucket)
         for parte in ruta.split(separator: "/") { url.appendPathComponent(String(parte)) }
         var pedido = URLRequest(url: url, timeoutInterval: espera)
@@ -478,11 +556,12 @@ extension ClienteRPC {
             return .failure(ErrorRPC(clase: .red, status: 0, mensaje: "\(error)"))
         }
         let status = (respuesta as? HTTPURLResponse)?.statusCode ?? 0
-        // 403 y 409: la ruta ya tiene el archivo (la política no deja pisar ni leer). Lo confirma `subido`.
-        if (200..<300).contains(status) || status == 409 || status == 403 { return .success(()) }
+        if (200..<300).contains(status) { return .success(()) }
         let json = try? JSONDecoder().decode(JSONValue.self, from: cuerpo)
         let codigoStorage = json?["statusCode"]?.comoTexto ?? json?["statusCode"]?.comoNumero.map { String(Int($0)) }
-        if codigoStorage == "409" || codigoStorage == "403" || json?["error"]?.comoTexto == "Duplicate" { return .success(()) }
+        // 403 y 409 en un reintento: la ruta ya tiene el archivo (la política no deja pisar ni leer). Lo confirma `subido`.
+        let existe = status == 409 || status == 403 || codigoStorage == "409" || codigoStorage == "403" || json?["error"]?.comoTexto == "Duplicate"
+        if existe && aceptarExistente { return .success(()) }
         let clase: ErrorRPC.Clase = (status == 429 || status == 408 || status >= 500) ? .transitorio : .permanente
         return .failure(ErrorRPC(clase: clase, status: status, codigo: codigoStorage, mensaje: json?["message"]?.comoTexto ?? "storage \(status)"))
     }

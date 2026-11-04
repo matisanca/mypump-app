@@ -158,7 +158,7 @@ public struct Escrituras: Sendable {
             return .respuesta(await cliente.llamar("entregas_app_llamada_duda", args))
         case ModeloAudioDuda.kind:
             // Una duda en audio (entregas_019): iniciar, subir y confirmar (`AudioDuda.swift`).
-            return await ejecutarAudio(p)
+            return await ejecutarAudio(p, reintento: op.intentada == true)
         default:
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo #2).
             return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 0, codigo: "KIND_DESCONOCIDO", mensaje: op.kind)))

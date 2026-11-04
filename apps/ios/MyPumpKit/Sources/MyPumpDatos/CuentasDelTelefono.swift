@@ -49,12 +49,28 @@ enum CuentasDelTelefono {
             let fallidos = vieja.fallidos.filter { !yaAdoptadas.contains($0.op.id) }
             guard !ops.isEmpty || !fallidos.isEmpty, Self.clienteId(de: otra) == clienteId else { continue }
             total += await cola.adoptar(ops, fallidos: fallidos).count
+            // Los audios de «Tu guía» en cola viven en `audios/` de la carpeta: van con su op, recién después de que la op
+            // quedó en esta cola (así la limpieza de esta cuenta los encuentra nombrados). Si alguno no se pudo mover, la
+            // ejecución lo busca en las otras carpetas (revisión del 4-nov, punto 2).
+            moverAudios(ops + fallidos.map(\.op), de: otra, a: disco)
             // Primero quedó en la cola de esta cuenta (en disco); recién después se anota en la vieja. Si el proceso muere
             // en el medio, la próxima vez no se duplica: lo que ya está en la cola tiene el mismo id.
             let anotadas = yaAdoptadas.union(ops.map(\.id)).union(fallidos.map(\.op.id))
             otra.guardar(anotadas.sorted(), archivoAdoptadas)
         }
         return total
+    }
+
+    static func moverAudios(_ ops: [Operacion], de otra: Disco, a disco: Disco) {
+        let fm = FileManager.default
+        for op in ops where op.kind == ModeloAudioDuda.kind {
+            guard let n = op.payload["archivo"]?.comoTexto, !n.isEmpty, !n.contains("/") else { continue }
+            let origen = otra.url("audios").appendingPathComponent(n)
+            let destino = disco.url("audios").appendingPathComponent(n)
+            guard fm.fileExists(atPath: origen.path), !fm.fileExists(atPath: destino.path) else { continue }
+            try? fm.createDirectory(at: disco.url("audios"), withIntermediateDirectories: true)
+            try? fm.moveItem(at: origen, to: destino)
+        }
     }
 
     /// Los mapas de reemplazos de comida sin decidir (sin la marca de migrados) de otras carpetas de la misma persona: pasan

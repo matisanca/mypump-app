@@ -39,7 +39,7 @@ struct AudioDudaIntegracionTests {
         let payload: JSONValue = .objeto(["id": .texto(id), "archivo": .texto(nombre), "mime": .texto("audio/mp4"),
                                           "bytes": .numero(Double(bytes)), "segundos": .numero(4)])
         await cola.encolar(ModeloAudioDuda.kind, payload, dedupeKey: "guia_audio_\(id)")
-        await cola.drenar()
+        await cola.drenarTodo()
         #expect(await cola.pendientes == 0)
         #expect(await cola.fallidos.isEmpty)
         try await Task.sleep(for: .milliseconds(300))
