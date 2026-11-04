@@ -149,8 +149,40 @@ public enum ReglasGuia {
     public static func textoTarjeta(_ a: Avance) -> String {
         if a.completo { return a.total == 1 ? "Viste el video" : "Viste los \(a.total) videos" }
         let min = max(1, Int(a.minutosRestantes.rounded()))
-        if a.vistos == 0 { return "\(a.total) \(a.total == 1 ? "video" : "videos"), unos \(min) min" }
+        if a.vistos == 0 { return "\(a.total) \(a.total == 1 ? "video corto" : "videos cortos"), unos \(min) min" }
         return "\(a.vistos) de \(a.total) videos, te quedan \(min) min"
+    }
+
+    // MARK: - Guía destacada (pedido de Mati, 4-nov: «súper llamativo, súper guiado, porque es lo primero»)
+
+    /// Cómo se ve la tarjeta de Entreno: verde y protagonista mientras falte algo; compacta (blanca, con el tilde) con
+    /// todo visto, así no molesta.
+    public enum EstiloTarjeta: Equatable, Sendable { case destacada, compacta }
+
+    public static func estiloTarjeta(_ a: Avance) -> EstiloTarjeta { a.completo ? .compacta : .destacada }
+
+    /// El botón de la tarjeta destacada.
+    public static func botonTarjeta(_ a: Avance) -> String { a.vistos == 0 ? "Ver mi guía" : "Seguir viendo" }
+
+    /// La bienvenida de la primera vez: con la tarjeta en Entreno (guía con videos, `mostrar_tarjeta` y sin quitar), sin
+    /// ningún video visto y una sola vez por cliente. Sale del resumen: nunca pide el get.
+    public static func mostrarBienvenida(_ r: ResumenGuia?, yaVista: Bool, quitada: Bool, ahora: Date = Date()) -> Bool {
+        guard !yaVista, let r, r.vistos == 0 else { return false }
+        return tarjetaEnEntreno(r, quitada: quitada, ahora: ahora)
+    }
+
+    /// «Hola Marcelo», o «Hola» si no vino el nombre.
+    public static func tituloBienvenida(_ nombrePila: String?) -> String {
+        let n = (nombrePila ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return n.isEmpty ? "Hola" : "Hola \(n)"
+    }
+
+    /// El texto de la bienvenida, en la voz de Mati.
+    public static func textoBienvenida(_ a: Avance) -> String {
+        let min = max(1, Int(a.minutosRestantes.rounded()))
+        let cuantos = a.total == 1 ? "Es un video corto que armé para vos, de unos \(min) min."
+                                   : "Son \(a.total) videos cortos que armé para vos, unos \(min) min."
+        return "Antes de empezar, mirá tu guía. \(cuantos) Así en la videollamada vamos directo a lo tuyo."
     }
 
     // MARK: - Textos

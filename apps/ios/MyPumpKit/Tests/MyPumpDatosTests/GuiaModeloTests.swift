@@ -402,6 +402,41 @@ struct GuiaModeloTests {
         #expect(!m.mostrarTarjeta && m.mostrarFila)
     }
 
+    @Test func bienvenidaUnaSolaVezPorClienteSinPedirElGet() async {
+        let s = ServidorGuia(["entregas_app_resumen": #"{"ok":true,"total":11,"vistos":0,"minutos_restantes":9.4,"fecha_entrega":null,"mostrar_tarjeta":true}"#])
+        let (m, _, _) = armar(s)
+        #expect(!m.mostrarBienvenida, "sin resumen todavía, nada")
+        await m.actualizarResumen()
+        #expect(m.mostrarBienvenida && m.tarjetaDestacada && m.primeraSesionTarjeta)
+        m.marcarBienvenidaVista()
+        m.marcarTarjetaVista()
+        #expect(!m.mostrarBienvenida && m.tarjetaDestacada && m.primeraSesionTarjeta, "el pulso sigue en esta sesión")
+        let (otro, _, _) = armar(s)
+        await otro.actualizarResumen()
+        #expect(otro.bienvenidaVista && !otro.mostrarBienvenida, "otro arranque recuerda que ya salió")
+        #expect(!otro.primeraSesionTarjeta, "el pulso es solo de la primera sesión")
+        let ajeno = ModeloGuia(cliente: ClienteRPC(transporte: s), token: "otro_cliente_123456", outbox: nil,
+                               disco: Disco(raiz: raiz, token: "otro_cliente_123456"))
+        await ajeno.actualizarResumen()
+        #expect(ajeno.mostrarBienvenida && ajeno.primeraSesionTarjeta, "es por cliente")
+        // Con todo visto, la compacta; con alguno visto, nunca la bienvenida.
+        s.responder("entregas_app_resumen", #"{"ok":true,"total":11,"vistos":11,"minutos_restantes":0,"mostrar_tarjeta":true}"#)
+        await ajeno.actualizarResumen()
+        #expect(!ajeno.mostrarBienvenida && ajeno.mostrarTarjeta && !ajeno.tarjetaDestacada)
+        #expect(s.llamadas(a: "entregas_app_get").isEmpty)
+    }
+
+    @Test func ocultarYDeshacerDesdeLaTarjeta() async {
+        let s = ServidorGuia(["entregas_app_resumen": #"{"ok":true,"total":11,"vistos":4,"minutos_restantes":6.2,"mostrar_tarjeta":true}"#])
+        let (m, _, _) = armar(s)
+        await m.actualizarResumen()
+        #expect(m.tarjetaDestacada && !m.mostrarFila)
+        m.quitarDeEntreno()
+        #expect(!m.mostrarTarjeta && !m.tarjetaDestacada && m.mostrarFila)
+        m.volverAMostrarEnEntreno()
+        #expect(m.tarjetaDestacada && !m.mostrarFila)
+    }
+
     @Test func quitarDeEntrenoQuedaEnElTelefonoPorCliente() async {
         let s = ServidorGuia(["entregas_app_resumen": #"{"ok":true,"total":13,"vistos":4,"minutos_restantes":7.4,"fecha_entrega":null,"mostrar_tarjeta":true}"#])
         let (m, _, _) = armar(s)

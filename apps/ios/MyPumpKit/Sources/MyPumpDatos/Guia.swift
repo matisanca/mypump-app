@@ -88,6 +88,8 @@ public final class ModeloGuia {
     static let archivoGuia = "guia.json"
     static let archivoResumen = "guia_resumen.json"
     static let archivoQuitada = "guia_quitada.json"
+    static let archivoBienvenida = "guia_bienvenida.json"
+    static let archivoTarjetaVista = "guia_tarjeta_vista.json"
 
     public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco?) {
         self.cliente = cliente; self.token = token; self.outbox = outbox; self.disco = disco
@@ -97,6 +99,10 @@ public final class ModeloGuia {
         resumen = disco?.leer(ResumenGuia.self, Self.archivoResumen)
         estado = copia != nil ? .lista : .cargando
         quitadaDeEntreno = disco?.leer(Bool.self, Self.archivoQuitada) ?? false
+        bienvenidaVista = disco?.leer(Bool.self, Self.archivoBienvenida) ?? false
+        let tarjetaVista = disco?.leer(Bool.self, Self.archivoTarjetaVista) ?? false
+        primeraSesionTarjeta = !tarjetaVista
+        tarjetaVistaGuardada = tarjetaVista
         // «Sin conexión» solo cuando el get falla (`traer`): mientras tanto se ve la copia sin aviso.
         desdeCache = false
     }
@@ -115,6 +121,35 @@ public final class ModeloGuia {
 
     public func quitarDeEntreno() { guardarQuitada(true) }
     public func volverAMostrarEnEntreno() { guardarQuitada(false) }
+
+    /// El avance de la tarjeta (del resumen; sin resumen, vacío).
+    public var avanceTarjeta: ReglasGuia.Avance {
+        ReglasGuia.Avance(total: resumen?.total ?? 0, vistos: resumen?.vistos ?? 0, minutosRestantes: resumen?.minutosRestantes ?? 0)
+    }
+    /// La tarjeta va verde y protagonista (falta ver algo) o compacta (vio todo).
+    public var tarjetaDestacada: Bool { mostrarTarjeta && ReglasGuia.estiloTarjeta(avanceTarjeta) == .destacada }
+
+    /// La bienvenida de la primera vez ya salió: una sola vez por cliente, guardado en el teléfono (en la muestra y la
+    /// demo, en memoria).
+    public private(set) var bienvenidaVista = false
+    /// Hay que mostrar la bienvenida (sin ningún video visto, con la tarjeta en Entreno). Nunca llama al get.
+    public var mostrarBienvenida: Bool {
+        ReglasGuia.mostrarBienvenida(resumen, yaVista: bienvenidaVista, quitada: quitadaDeEntreno)
+    }
+    public func marcarBienvenidaVista() {
+        bienvenidaVista = true
+        disco?.guardar(true, Self.archivoBienvenida)
+    }
+
+    /// Es la primera sesión en que se ve la tarjeta: el pulso suave del ícono va solo en esta. Se fija al arrancar y no
+    /// cambia en todo el proceso; `marcarTarjetaVista` deja anotado que ya la vio para el próximo arranque.
+    public let primeraSesionTarjeta: Bool
+    public func marcarTarjetaVista() {
+        guard !tarjetaVistaGuardada else { return }
+        tarjetaVistaGuardada = true
+        disco?.guardar(true, Self.archivoTarjetaVista)
+    }
+    @ObservationIgnored private var tarjetaVistaGuardada = false
 
     private func guardarQuitada(_ q: Bool) {
         quitadaDeEntreno = q
@@ -420,6 +455,7 @@ public final class ModeloGuia {
         disco = nil
         guia = muestra
         esMuestra = true
+        primeraSesionTarjeta = true
         estado = muestra.ok ? .lista : .oculta
         let a = ReglasGuia.avance(ReglasGuia.deLaLista(muestra))
         resumen = ResumenGuia(ok: muestra.ok, total: a.total, vistos: a.vistos, minutosRestantes: a.minutosRestantes,

@@ -11,7 +11,7 @@ final class GuiaUITests: XCTestCase {
     override func setUp() async throws {
         continueAfterFailure = false
         // La demo («Ver demo») no usa cuenta: corre sin el token.
-        if name.contains("Demo") { return }
+        if name.contains("Demo") || name.contains("Muestra") { return }
         guard let t = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !t.isEmpty else {
             throw XCTSkip("Falta MYPUMP_TOKEN: estas pruebas usan el cliente de prueba, nunca un cliente.")
         }
@@ -20,7 +20,8 @@ final class GuiaUITests: XCTestCase {
 
     private func abrirApp(_ extra: [String] = []) {
         app.terminate()
-        app.launchArguments = ["-token", token, "-pestana", "entreno", "-sinOnboarding", "YES"] + extra
+        // La bienvenida de la primera vez tiene sus propias pruebas (con la muestra): acá no tapa la tarjeta.
+        app.launchArguments = ["-token", token, "-pestana", "entreno", "-sinOnboarding", "YES", "-guiaBienvenida", "no"] + extra
         app.launch()
     }
 
@@ -330,7 +331,8 @@ final class GuiaUITests: XCTestCase {
         addTeardownBlock { @MainActor in
             // Que una falla a mitad de camino no deje la tarjeta quitada para las demás pruebas.
             self.app.terminate()
-            self.app.launchArguments = ["-token", self.token, "-pestana", "entreno", "-sinOnboarding", "YES", "-guiaVolverAEntreno", "YES"]
+            self.app.launchArguments = ["-token", self.token, "-pestana", "entreno", "-sinOnboarding", "YES", "-guiaVolverAEntreno", "YES",
+                                        "-guiaBienvenida", "no"]
             self.app.launch()
             _ = self.tarjeta.waitForExistence(timeout: 25)
         }
@@ -368,7 +370,10 @@ final class GuiaUITests: XCTestCase {
         app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "entreno"]
         app.launch()
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 15), "La demo no muestra la tarjeta de «Tu guía»")
-        XCTAssertTrue(tarjeta.label.contains("8 videos"), "La tarjeta de la demo dice otra cosa: \(tarjeta.label)")
+        // Sin ningún video visto, la destacada; en la demo de Apple, sin la bienvenida.
+        let texto = app.descendants(matching: .any)["guia-tarjeta-texto"]
+        XCTAssertTrue(texto.waitForExistence(timeout: 5) && texto.label.contains("8 videos"), "La tarjeta de la demo dice otra cosa: \(texto.label)")
+        XCTAssertFalse(app.buttons["guia-bienvenida-ver"].exists, "La demo de Apple no lleva la bienvenida")
         capturaMaqueta("demo-tarjeta")
         tarjeta.tap()
         XCTAssertTrue(app.descendants(matching: .any)["guia-avance"].waitForExistence(timeout: 10), "No abrió la guía de la demo")
@@ -386,6 +391,104 @@ final class GuiaUITests: XCTestCase {
         capturaMaqueta("demo-reproduciendo")
         // Nada sale: no hay «Quitar de Entreno» que falle; si está, oculta la tarjeta solo en memoria.
         XCTAssertTrue(accionAlPie("guia-quitar-entreno").exists)
+    }
+
+    // MARK: - Guía destacada (con la muestra: sin token ni red)
+
+    private func abrirMuestra(_ extra: [String] = []) {
+        app.terminate()
+        app.launchArguments = ["-bocetos", "YES", "-guiaMuestra", "YES", "-sinOnboarding", "YES", "-pestana", "entreno"] + extra
+        app.launch()
+    }
+
+    private var destacada: XCUIElement { app.descendants(matching: .any)["guia-destacada"] }
+
+    /// La primera vez, con 0 vistos: la bienvenida con el nombre; «Más tarde» deja la tarjeta verde y no vuelve a salir;
+    /// «Ver mi guía» (otro arranque) abre la guía.
+    func testMuestraBienvenidaConCeroVistosAbreLaGuia() throws {
+        abrirMuestra(["-guiaVistos", "ninguno"])
+        let titulo = app.staticTexts["guia-bienvenida-titulo"]
+        XCTAssertTrue(titulo.waitForExistence(timeout: 15), "No apareció la bienvenida con 0 vistos")
+        XCTAssertEqual(titulo.label, "Hola Marcelo")
+        let texto = app.staticTexts["guia-bienvenida-texto"]
+        XCTAssertTrue(texto.label.hasPrefix("Antes de empezar, mirá tu guía. Son 11 videos cortos"), texto.label)
+        XCTAssertTrue(app.buttons["guia-bienvenida-ver"].isHittable)
+        capturaMaqueta("destacada-bienvenida")
+        app.buttons["guia-bienvenida-despues"].tap()
+        XCTAssertTrue(esperar({ !titulo.exists }, segundos: 5), "«Más tarde» no cerró la bienvenida")
+        XCTAssertTrue(destacada.waitForExistence(timeout: 5), "Sin ningún video visto va la tarjeta destacada")
+        XCTAssertEqual(tarjeta.label, "Ver mi guía")
+        XCTAssertTrue(app.buttons["guia-ocultar"].exists)
+        // Una sola vez: no vuelve a salir en esta sesión.
+        sleep(3)
+        XCTAssertFalse(titulo.exists, "La bienvenida volvió a salir")
+        // «Ver mi guía» desde la bienvenida abre la guía en Entreno.
+        abrirMuestra(["-guiaVistos", "ninguno"])
+        XCTAssertTrue(app.buttons["guia-bienvenida-ver"].waitForExistence(timeout: 15))
+        app.buttons["guia-bienvenida-ver"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["guia-avance"].waitForExistence(timeout: 10), "«Ver mi guía» no abrió la guía")
+        XCTAssertTrue(app.pestana("Entreno").isSelected)
+    }
+
+    /// A mitad de camino: la destacada con «Seguir viendo»; «Ocultar» la pasa a Mis datos con el aviso y «Deshacer» la
+    /// devuelve. Sin deshacer, queda la fila de Mis datos.
+    func testMuestraTarjetaDestacadaOcultarYDeshacer() throws {
+        abrirMuestra()
+        XCTAssertTrue(destacada.waitForExistence(timeout: 15), "No está la tarjeta destacada")
+        XCTAssertFalse(app.staticTexts["guia-bienvenida-titulo"].exists, "Con videos vistos no va la bienvenida")
+        XCTAssertEqual(tarjeta.label, "Seguir viendo")
+        let texto = app.descendants(matching: .any)["guia-tarjeta-texto"]
+        XCTAssertEqual(texto.label, "Tu guía, 4 de 11 videos, te quedan 6 min")
+        // Va primera, arriba del título del día.
+        // (el título del día de la lista, no el de la barra, que está más arriba y oculto)
+        if let dia = app.staticTexts.matching(identifier: "Tirón A — Ancho").allElementsBoundByIndex.max(by: { $0.frame.minY < $1.frame.minY }) {
+            XCTAssertLessThan(destacada.frame.minY, dia.frame.minY, "La tarjeta tiene que ir arriba de todo")
+        }
+        let ocultar = app.buttons["guia-ocultar"]
+        XCTAssertGreaterThanOrEqual(ocultar.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(ocultar.frame.width, 44)
+        ocultar.tap()
+        let aviso = app.descendants(matching: .any)["guia-aviso-oculta"]
+        XCTAssertTrue(aviso.waitForExistence(timeout: 3), "No apareció el aviso")
+        XCTAssertTrue(app.staticTexts["La encontrás en Mis datos"].exists)
+        XCTAssertFalse(destacada.exists, "La tarjeta siguió en Entreno")
+        capturaMaqueta("destacada-aviso")
+        app.buttons["guia-deshacer"].tap()
+        XCTAssertTrue(destacada.waitForExistence(timeout: 3), "«Deshacer» no la devolvió")
+        XCTAssertTrue(esperar({ !aviso.exists }, segundos: 3))
+        // Sin deshacer: el aviso se va solo y la guía queda en Mis datos.
+        app.buttons["guia-ocultar"].tap()
+        XCTAssertTrue(aviso.waitForExistence(timeout: 3))
+        XCTAssertTrue(esperar({ !aviso.exists }, segundos: 15), "El aviso no se fue solo")
+        abrirMisDatos()
+        desplazarHasta(filaGuia)
+        XCTAssertTrue(filaGuia.waitForExistence(timeout: 10), "No está la fila «Ver mi guía» en Mis datos")
+    }
+
+    /// Con todo visto, la compacta de siempre (sin «Ocultar» ni bienvenida), y abre la guía.
+    func testMuestraTarjetaCompactaConTodoVisto() throws {
+        abrirMuestra(["-guiaVistos", "todos"])
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 15))
+        XCTAssertFalse(destacada.exists, "Con todo visto no va la destacada")
+        XCTAssertFalse(app.buttons["guia-ocultar"].exists)
+        XCTAssertFalse(app.staticTexts["guia-bienvenida-titulo"].exists)
+        XCTAssertTrue(tarjeta.label.contains("Viste los 11 videos"), tarjeta.label)
+        capturaMaqueta("destacada-compacta")
+        tarjeta.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["guia-avance"].waitForExistence(timeout: 10))
+    }
+
+    /// Letra más grande: la destacada entra sin cortar palabras y sus botones se tocan.
+    func testMuestraDestacadaConLetraGrande() throws {
+        abrirMuestra(["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        XCTAssertTrue(destacada.waitForExistence(timeout: 15))
+        XCTAssertLessThanOrEqual(destacada.frame.width, app.frame.width)
+        let ocultar = app.buttons["guia-ocultar"]
+        desplazarHasta(ocultar)
+        XCTAssertTrue(ocultar.isHittable, "«Ocultar» no se puede tocar con la letra grande")
+        desplazarHasta(tarjeta)
+        XCTAssertTrue(tarjeta.isHittable)
+        capturaMaqueta("destacada-letra-grande")
     }
 
     /// Los segundos de la duración que dice el valor de la fila («Sin ver, 18 segundos», «1 minuto y 12 segundos»).

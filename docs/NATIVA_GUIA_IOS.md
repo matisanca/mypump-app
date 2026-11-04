@@ -8,6 +8,14 @@ Rama `nativa-guia-ios`. Espec: `~/pump-entregas/docs/ESPEC-APP-PUMP-TEAM.md`. Co
 - **Tarjeta en Entreno** (la pestaña de inicio), arriba del aviso de Revisión. Aparece solo si `entregas_app_resumen`
   da `ok: true` con al menos un video, y muestra el avance («4 de 13 videos, te quedan 12 min»). La barra de pestañas no
   cambia (D16). También aparece en «Todavía no hay rutina».
+- **Guía destacada (Mati, 4-nov; `MyPump/Guia/GuiaDestacada.swift`):** mientras falte ver algo, la tarjeta es verde
+  (#17852B, blanco encima a 4,7:1) y va primera, arriba del título del día: «EMPEZÁ POR ACÁ», el avance con barra, «Ver
+  mi guía» o «Seguir viendo» y «Ocultar» (lo mismo que «Quitar de Entreno», con el aviso «La encontrás en Mis datos» y
+  «Deshacer»). Con todo visto vuelve la compacta. El ícono late suave solo en la primera sesión (`guia_tarjeta_vista.json`)
+  y nada con «Reducir movimiento». Con 0 vistos, la bienvenida a pantalla completa («Hola {nombre}», de la copia si hay)
+  sale una sola vez por cliente (`guia_bienvenida.json`), después de la hoja de permisos y nunca en la demo de Apple.
+  Reglas en `ReglasGuia.mostrarBienvenida` y `estiloTarjeta`. Capturas: `-guiaMuestra YES -guiaVistos ninguno|todos`,
+  `-guiaAvisoOculta YES`, y `-guiaBienvenida no` para apagarla.
 - **Cómo se entera sin abrir la guía:** con `entregas_app_resumen` (solo lee, no marca `abierto_en`), al terminar cada
   carga de la cuenta y al volver a primer plano. Queda en caché (`guia_resumen.json` en la carpeta de la cuenta): sin red
   se ve lo último. Con `ok: false` la tarjeta desaparece y se borra la copia de la guía.
