@@ -60,10 +60,11 @@ class AudioDudasTest {
         disco: Disco = Disco(carpetaTemporal("audio"), "tok"),
         reloj: () -> Long = System::currentTimeMillis,
         esperar: suspend (Long) -> Unit = {},
+        relojCola: () -> Long = System::currentTimeMillis,
     ): Entorno {
         val cliente = ClienteRpc(transporte = s)
         val esc = Escrituras(cliente, "tok")
-        val cola = Outbox(archivo = disco.archivo("outbox.json"), reintentoAutomatico = false, alcance = alcance) { esc.ejecutar(it) }
+        val cola = Outbox(archivo = disco.archivo("outbox.json"), reintentoAutomatico = false, alcance = alcance, reloj = relojCola) { esc.ejecutar(it) }
         val m = ModeloAudioDudas(cliente, "tok", cola, disco, alcance, reloj = reloj, esperar = esperar)
         m.alDia()
         cola.observar(estado = {}, abandonadas = m::alAbandonar, guardadas = m::alGuardar)
@@ -182,11 +183,17 @@ class AudioDudasTest {
 
     @Test
     fun laReSubidaConTresCientosTresLaDecideSubido() = enUnHilo { alcance ->
-        // Contrato final: la re-subida de la misma ruta da 403; `subido` confirma.
+        // Contrato final: la re-subida de la misma ruta da 403; `subido` confirma. Solo en un REINTENTO (hallazgo 15): en el
+        // primer intento un 403 es un error de verdad, gasta intento y no se pregunta a `subido`.
         val base = normal()
         val s = Servidor { fn, p -> if (fn == "storage") 403 to """{"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy"}""" else base(fn, p) }
         val e = entorno(alcance, s)
         e.m.mandar(grabado(), 10)
+        e.cola.drenar()
+        asentar()
+        assertEquals(1, e.cola.pendientes())
+        assertEquals(1, e.cola.operaciones().single().tries)
+        assertTrue(s.a("entregas_app_audio_subido").isEmpty(), "el primer intento no toma el 403 como subido")
         e.cola.drenar()
         asentar()
         assertEquals(0, e.cola.pendientes())
@@ -256,12 +263,28 @@ class AudioDudasTest {
         asentar()
         assertEquals(0, e.cola.pendientes())
         assertEquals(1, e.cola.fallidos().size)
-        assertFalse(e.m.items.value.single().reintentable)
+        // Hallazgo 17 (el de iOS): el archivo se conserva y «Reintentar» sale con un p_id nuevo.
+        val ajeno = e.m.items.value.single()
+        assertTrue(ajeno.reintentable)
+        assertEquals(1, carpetaAudios(e.disco).listFiles()!!.size)
+        motivo = "ok"
+        s.regla = base
+        e.m.reintentar(ajeno.id)
+        e.cola.drenar()
+        asentar()
+        val ids = s.a("entregas_app_audio_iniciar").map { s.cuerpo(it)["p_id"]?.comoTexto }
+        assertEquals(2, ids.size)
+        assertEquals(ajeno.id, ids.first())
+        assertTrue(ids.last() != ajeno.id, "el reintento va con otro p_id")
+        assertEquals(0, e.cola.pendientes())
+        assertTrue(e.cola.fallidos().isEmpty())
+        assertTrue(carpetaAudios(e.disco).listFiles()!!.isEmpty(), "confirmado, el archivo se borra")
+        s.regla = { fn, p -> if (fn == "entregas_app_audio_iniciar") 200 to """{"ok": false, "motivo": "$motivo"}""" else base(fn, p) }
         motivo = "error"
         e.m.mandar(grabado(), 10)
         e.cola.drenar()
         asentar()
-        val err = e.m.items.value.last()
+        val err = e.m.items.value.single { it.estado == ModeloAudioDudas.Estado.NO_SE_MANDO }
         assertEquals("No pude escuchar bien este audio, ¿me lo mandás de nuevo o lo escribís?", err.aviso)
         assertFalse(err.reintentable)
     }
@@ -433,5 +456,58 @@ class AudioDudasTest {
         assertTrue(m.refrescar())
         assertTrue(s.pedidos.isEmpty())
         assertNull(m.items.value.firstOrNull())
+    }
+
+    // ── Revisión adversarial del 4-nov ──
+
+    @Test
+    fun conLaSubidaSinRedLaSerieDeAtrasSaleYElAudioQuedaParaReintentar() = enUnHilo { alcance ->
+        // Hallazgo 1 con la ejecución de verdad: la subida tira por red, la serie encolada detrás sale.
+        val s = Servidor(normal()).apply { sinRedEnSubida = true }
+        val e = entorno(alcance, s)
+        e.m.mandar(grabado(), 10)
+        e.cola.encolar("habito", ValorJson.objeto("fecha" to ValorJson.Texto("2026-10-13"), "campo" to ValorJson.Texto("cardio"), "valor" to ValorJson.Texto("true")), "habito|2026-10-13|cardio")
+        e.cola.drenar()
+        asentar()
+        assertEquals(listOf(ModeloAudioDudas.KIND), e.cola.operaciones().map { it.kind }, "lo de atrás salió")
+        assertEquals(1, s.a("mypump_set_habito").size)
+        assertEquals(0, e.cola.operaciones().single().tries)
+        // Hallazgo 6: «No se pudo mandar.» con «Reintentar» mientras la cola lo vuelve a probar sola.
+        val item = e.m.items.value.single()
+        assertEquals(ModeloAudioDudas.Estado.NO_SE_MANDO, item.estado)
+        assertEquals("No se pudo mandar.", item.aviso)
+        assertTrue(item.reintentable)
+        s.sinRedEnSubida = false
+        e.cola.drenar()
+        asentar()
+        assertEquals(ModeloAudioDudas.Estado.SUBIDO, e.m.items.value.single().estado)
+    }
+
+    @Test
+    fun pendientesMasDeDosHorasQuedaNoSePudoMandarConReintentar() = enUnHilo { alcance ->
+        var ahora = 5_000_000L
+        val base = normal()
+        val s = Servidor { fn, p -> if (fn == "entregas_app_audio_iniciar") 200 to """{"ok": false, "motivo": "pendientes"}""" else base(fn, p) }
+        val e = entorno(alcance, s, relojCola = { ahora })
+        e.m.mandar(grabado(), 10)
+        e.cola.drenar()
+        asentar()
+        assertEquals("Esperá un toque que se terminen de mandar los otros audios.", e.m.items.value.single().aviso)
+        ahora += Outbox.TOPE_ESPERA_AUDIO_MS
+        e.cola.drenar()
+        asentar()
+        assertEquals(0, e.cola.pendientes())
+        val item = e.m.items.value.single()
+        assertEquals(ModeloAudioDudas.Estado.NO_SE_MANDO, item.estado)
+        assertEquals("No se pudo mandar.", item.aviso)
+        assertTrue(item.reintentable)
+        assertEquals(1, carpetaAudios(e.disco).listFiles()!!.size, "el archivo queda para «Reintentar»")
+        s.regla = base
+        e.m.reintentar(item.id)
+        e.cola.drenar()
+        asentar()
+        assertEquals(ModeloAudioDudas.Estado.SUBIDO, e.m.items.value.single().estado)
+        // Mismo p_id y marcado como reintento.
+        assertEquals(setOf(item.id), s.a("entregas_app_audio_iniciar").map { s.cuerpo(it)["p_id"]?.comoTexto }.toSet())
     }
 }

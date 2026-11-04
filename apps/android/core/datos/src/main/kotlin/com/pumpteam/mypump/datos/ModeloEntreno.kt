@@ -957,7 +957,8 @@ class ModeloEntreno(
         }
         asegurarSesion()
         val sid = _dia.value.sesionId ?: return ResultadoCierre.SIN_SESION
-        outbox?.drenar()
+        // Las series sí; los audios de la guía salen por su carril sin demorar el cierre (revisión del 4-nov, hallazgo 1).
+        outbox?.drenar(esperarAudios = false)
         val minutos = TiempoEntreno.minutosSesion(_inicioSesion.value, ahoraMs)
         val nota = Js.trim(notas)
         val r = cliente.llamar(

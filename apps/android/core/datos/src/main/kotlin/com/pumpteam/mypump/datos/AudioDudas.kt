@@ -77,6 +77,9 @@ class ModeloAudioDudas(
     private var enCola: Map<String, Operacion> = emptyMap()
     private var abandonados: Map<String, Operacion> = emptyMap()
 
+    /** Los audios en fallidos por `id` (ese p_id es de otro cliente): «Reintentar» va con un id nuevo. */
+    private var conIdAjeno: Set<String> = emptySet()
+
     /** Lo que `iniciar` rechazó (id → motivo, null si no vino) con su op, para reintentar. */
     private val rechazados = LinkedHashMap<String, Pair<String?, Operacion>>()
 
@@ -204,13 +207,24 @@ class ModeloAudioDudas(
         return true
     }
 
-    /** «Reintentar»: lo que está en la cola sale ya; lo rechazado o abandonado vuelve a la cola con el mismo `p_id`. */
+    /**
+     * «Reintentar»: lo que está en la cola sale ya; lo rechazado o abandonado vuelve a la cola con el mismo `p_id` (marcado
+     * como reintento: un 403 o 409 de Storage es «quizás ya subió»). Con el motivo `id` (ese p_id es de otro cliente) el
+     * mismo archivo sale con un `p_id` nuevo (hallazgo 17).
+     */
     suspend fun reintentar(id: String) {
         val cola = outbox ?: return
         VuelosAudio.olvidar(id)
-        val op = rechazados.remove(id)?.second ?: abandonados[id]
+        val rechazo = rechazados.remove(id)
+        val op = rechazo?.second ?: abandonados[id]
         if (op != null && enCola[id] == null) {
-            cola.encolar(KIND, op.payload, clave(id))
+            val campos = (op.payload as? ValorJson.Objeto)?.campos.orEmpty()
+            if (ReglasAudioDuda.pideIdNuevo(rechazo?.first) || id in conIdAjeno) {
+                val nuevo = java.util.UUID.randomUUID().toString()
+                cola.encolar(KIND, ValorJson.Objeto(campos - "reintento" + ("id" to ValorJson.Texto(nuevo))), clave(nuevo))
+            } else {
+                cola.encolar(KIND, ValorJson.Objeto(campos + ("reintento" to ValorJson.Booleano(true))), clave(id))
+            }
             cola.olvidarFallidos(clave(id))
         }
         leerCola()
@@ -233,9 +247,9 @@ class ModeloAudioDudas(
                 } else {
                     val motivo = r["motivo"]?.comoTexto
                     rechazados[id] = motivo to g.op
-                    // Queda en fallidos (no se pierde al cerrar la app): `id` (ese p_id es de otro cliente, permanente) y lo
-                    // que se puede reintentar (`pendientes`, sin motivo), que conserva su archivo para «Reintentar».
-                    if (motivo == "id" || ReglasAudioDuda.motivoReintentable(motivo)) {
+                    // Queda en fallidos (no se pierde al cerrar la app) lo que se puede reintentar (sin motivo, `pendientes`, o
+                    // `id`, que vuelve con un p_id nuevo), con su archivo para «Reintentar».
+                    if (ReglasAudioDuda.motivoReintentable(motivo)) {
                         outbox?.archivarEnFallidos(listOf(g.op), "audio rechazado: ${motivo ?: "sin motivo"}")
                     }
                     if (!ReglasAudioDuda.motivoReintentable(motivo)) borrarArchivo(g.op)
@@ -251,9 +265,14 @@ class ModeloAudioDudas(
         }
     }
 
-    /** Lo que la cola abandonó tras 8 intentos (queda en fallidos con su archivo): «No se pudo mandar» con «Reintentar». */
+    /**
+     * Lo que la cola abandonó tras 8 intentos, o tras 2 h en `pendientes` (queda en fallidos con su archivo): «No se pudo
+     * mandar» con «Reintentar».
+     */
     fun alAbandonar(ops: List<Operacion>) {
-        if (ops.none { it.kind == KIND }) return
+        val nuestras = ops.filter { it.kind == KIND }
+        if (nuestras.isEmpty()) return
+        nuestras.forEach { op -> idDe(op)?.let(VuelosAudio::olvidar) }
         alcance.launch {
             leerCola()
             pintar()
@@ -265,7 +284,9 @@ class ModeloAudioDudas(
     private suspend fun leerCola() {
         val cola = outbox ?: return
         enCola = cola.operaciones().filter { it.kind == KIND }.mapNotNull { op -> idDe(op)?.let { it to op } }.toMap()
-        abandonados = cola.fallidos().map { it.op }.filter { it.kind == KIND }.mapNotNull { op -> idDe(op)?.let { it to op } }.toMap()
+        val fallidos = cola.fallidos().filter { it.op.kind == KIND }
+        abandonados = fallidos.mapNotNull { f -> idDe(f.op)?.let { it to f.op } }.toMap()
+        conIdAjeno = fallidos.filter { it.motivo == MOTIVO_ID_AJENO }.mapNotNullTo(HashSet()) { idDe(it.op) }
     }
 
     private fun pintar() {
@@ -334,6 +355,9 @@ class ModeloAudioDudas(
 
         fun clave(id: String): String = "guia_audio_$id"
 
+        /** El motivo con el que queda en fallidos un audio rechazado por `id`. */
+        internal const val MOTIVO_ID_AJENO = "audio rechazado: id"
+
         internal fun idDe(op: Operacion): String? = op.payload["id"]?.comoTexto
 
         private fun listaDe(v: ValorJson?): List<AudioServidor>? = (v as? ValorJson.Lista)?.elementos?.mapNotNull(AudioServidor::desde)
@@ -370,9 +394,13 @@ object VuelosAudio {
  * [Resultado.Falla] de red o transitorio = reintento sin gastar intento; uno permanente gasta intento.
  */
 class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String) {
-    suspend fun ejecutar(p: ValorJson): Resultado<ValorJson> {
+    /**
+     * [reintento]: la op ya salió antes (o es «Reintentar» del mismo id). Solo entonces un 403 o 409 de la subida cuenta
+     * como «quizás ya subió» (revisión del 4-nov, hallazgo 15): en el primer intento es un error de verdad.
+     */
+    suspend fun ejecutar(p: ValorJson, reintento: Boolean = false): Resultado<ValorJson> {
         val id = p["id"]?.comoTexto ?: return rechazo("archivo")
-        val r = pasos(id, p)
+        val r = pasos(id, p, reintento)
         val e = r.errorONull()
         if (e != null && e.clase != ErrorRpc.Clase.PERMANENTE) {
             VuelosAudio.cortado(id, if (e.codigo == MOTIVO_PENDIENTES) ReglasAudioDuda.textoMotivo("pendientes")!! else ReglasAudioDuda.NO_SE_PUDO)
@@ -384,7 +412,7 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
 
     private class Ticket(val bucket: String, val ruta: String, val mime: String)
 
-    private suspend fun pasos(id: String, p: ValorJson): Resultado<ValorJson> {
+    private suspend fun pasos(id: String, p: ValorJson, reintento: Boolean): Resultado<ValorJson> {
         VuelosAudio.olvidar(id)
         val archivo = p["archivo"]?.comoTexto?.let(::File)
         // Un archivo que no se puede leer no es falta de red (una IOException acá la cola la tomaría como tal).
@@ -395,6 +423,8 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
         val segundos = (p["segundos"]?.comoNumero ?: 0.0).coerceIn(0.0, ReglasAudioDuda.TOPE_S.toDouble()).toInt()
 
         var ticket: Ticket? = null
+        // Ya se subió una vez en este intento (`sin_archivo` pidió otra): la re-subida también es un reintento.
+        var subioAntes = false
         repeat(RONDAS) {
             // 1. El ticket (de nuevo si `subido` dijo vencido o no_existe).
             val tk = ticket ?: run {
@@ -426,8 +456,9 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
                 Ticket(bucket, ruta, (v["mime"]?.comoTexto ?: mime).substringBefore(';').trim()).also { ticket = it }
             }
 
-            // 2. La subida. Un 403 o 409 es «quizás ya estaba»: lo decide `subido`.
-            subir(tk, bytes)?.let { return Resultado.Falla(it) }
+            // 2. La subida. En un reintento, un 403 o 409 es «quizás ya estaba»: lo decide `subido`.
+            subir(tk, bytes, reintento || subioAntes)?.let { return Resultado.Falla(it) }
+            subioAntes = true
 
             // 3. Avisar que subió.
             val v = when (val s = cliente.llamar("entregas_app_audio_subido", mapOf("p_token" to t, "p_id" to ValorJson.Texto(id)))) {
@@ -447,8 +478,8 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
         return Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 200, "SIN_CONFIRMAR", "entregas_app_audio_subido no confirmó en $RONDAS vueltas"))
     }
 
-    /** Devuelve el error, o null si quedó subido (o quizás ya estaba: 403 o 409 de la re-subida). */
-    private suspend fun subir(tk: Ticket, bytes: ByteArray): ErrorRpc? {
+    /** Devuelve el error, o null si quedó subido (o, en un [reintento], quizás ya estaba: 403 o 409 de la re-subida). */
+    private suspend fun subir(tk: Ticket, bytes: ByteArray, reintento: Boolean): ErrorRpc? {
         val c = cliente.config
         val camino = tk.ruta.split('/').joinToString("/") { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
         val pedido = Pedido(
@@ -470,7 +501,7 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
         } catch (e: Exception) {
             return ErrorRpc(ErrorRpc.Clase.RED, 0, mensaje = "subida: $e")
         }
-        if (r.status in 200..299 || quizasYaEstaba(r)) return null
+        if (r.status in 200..299 || (reintento && quizasYaEstaba(r))) return null
         val texto = r.cuerpo.copyOf(minOf(300, r.cuerpo.size)).toString(Charsets.UTF_8)
         return ErrorRpc(ErrorRpc.claseDe(r.status), r.status, "STORAGE", "subida: $texto")
     }

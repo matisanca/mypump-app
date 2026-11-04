@@ -73,10 +73,14 @@ object ReglasAudioDuda {
 
     /**
      * Un rechazo sin motivo (o `pendientes`, que igual no llega acá: la cola lo trata como transitorio): el audio queda y
-     * se puede reintentar con el mismo id. Los demás (`tope`, `tamano`, `largo`, `formato`, `error`, `id`, el archivo perdido) no
-     * van a entrar nunca así.
+     * se puede reintentar con el mismo id. `id` (ese p_id es de otro cliente) también conserva el archivo, pero
+     * «Reintentar» sale con un id nuevo ([pideIdNuevo]), como iOS (revisión del 4-nov, hallazgo 17). Los demás (`tope`,
+     * `tamano`, `largo`, `formato`, `error`, el archivo perdido) no van a entrar nunca así.
      */
-    fun motivoReintentable(motivo: String?): Boolean = motivo == null || motivo == "pendientes"
+    fun motivoReintentable(motivo: String?): Boolean = motivo == null || motivo == "pendientes" || motivo == "id"
+
+    /** `id`: el p_id es de otro cliente. El mismo audio se reintenta con un p_id nuevo. */
+    fun pideIdNuevo(motivo: String?): Boolean = motivo == "id"
 
     /** El contador, como número aparte: `0:42`, `4:30`. */
     fun contador(segundos: Int): String {

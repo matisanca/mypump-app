@@ -110,7 +110,10 @@ class AudioDudaTest {
         assertTrue(ReglasAudioDuda.motivoReintentable(null))
         assertFalse(ReglasAudioDuda.motivoReintentable("tope"))
         assertFalse(ReglasAudioDuda.motivoReintentable("formato"))
-        assertFalse(ReglasAudioDuda.motivoReintentable("id"))
+        // `id` (el de iOS, hallazgo 17): el archivo queda y «Reintentar» sale con un p_id nuevo.
+        assertTrue(ReglasAudioDuda.motivoReintentable("id"))
+        assertTrue(ReglasAudioDuda.pideIdNuevo("id"))
+        assertFalse(ReglasAudioDuda.pideIdNuevo(null))
         assertFalse(ReglasAudioDuda.motivoReintentable("error"))
         assertEquals(ReglasAudioDuda.ERROR_AUDIO, ReglasAudioDuda.textoMotivo("error"))
     }
