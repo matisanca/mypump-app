@@ -194,6 +194,14 @@ public actor Outbox {
         return op
     }
 
+    /// `encolar` con la op pendiente de la misma clave a la vista, en un solo paso del actor: leer lo previo, mezclar y
+    /// reemplazar no se puede intercalar con otro `encolar` de la misma clave (el avance de «Tu guía», que sale cada 10 s).
+    @discardableResult
+    public func encolar(_ kind: String, dedupeKey: String, mezclando mezcla: @Sendable (JSONValue?) -> JSONValue) -> Operacion {
+        let previa = estado.ops.last { $0.dedupeKey == dedupeKey }?.payload
+        return encolar(kind, mezcla(previa), dedupeKey: dedupeKey)
+    }
+
     /// Mete ops que ya existían (la migración del almacenamiento viejo), sin ejecutar, respetando el orden.
     public func importar(_ ops: [Operacion]) {
         for op in ops where !estado.ops.contains(where: { $0.id == op.id }) {
@@ -405,8 +413,10 @@ public actor Outbox {
 
     /// Kinds que no muestran avisos ("guardando", "sin conexión", "no se guardó"): las sustituciones de ejercicio
     /// (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
-    /// Los ajustes de porciones tampoco: valen en el teléfono aunque no hayan subido (son para que Mati los vea).
-    public static let silenciosas: Set<String> = [SustitucionesServidor.kindGuardar, SustitucionesServidor.kindBorrar, ModeloApp.kindAjustes]
+    /// Los ajustes de porciones tampoco: valen en el teléfono aunque no hayan subido (son para que Mati los vea). Ni el avance
+    /// de «Tu guía», que sale cada 10 s mientras corre un video: lo visto ya quedó en el teléfono.
+    public static let silenciosas: Set<String> = [SustitucionesServidor.kindGuardar, SustitucionesServidor.kindBorrar, ModeloApp.kindAjustes,
+                                                    ModeloGuia.kindAvance]
 
     /// Kinds que se anotan como `intentada` antes de salir: el chat, que antes de reintentar mira si ya había llegado.
     public static let anotanIntento: Set<String> = ["chat"]

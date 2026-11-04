@@ -1,0 +1,629 @@
+import AVFoundation
+import AVKit
+import Network
+import SwiftUI
+import MyPumpModelos
+import MyPumpReglas
+import MyPumpDatos
+
+/// El reproductor de «Tu guía»: un AVPlayer con los controles del sistema (pantalla completa y girar, como cualquier
+/// video de iOS). Lo que decide cuándo guardar, retomar y qué video sigue está en `ReglasGuia` y `AvanceVideo` (puros,
+/// con tests); acá solo se conecta el AVPlayer.
+///
+/// Como la web: tocar una fila arranca directo; «Anterior», «Siguiente» y el final de un video pasan al otro con la
+/// placa de 2,6 s («Otro tema · Video N de M»), y mientras está la placa el video no corre.
+@MainActor @Observable
+final class ControlReproductor {
+    /// El video cargado, por id: si una guía nueva cambia la lista, el índice sale de acá y nunca apunta a otro video.
+    private(set) var actualId: String?
+    /// La placa que se ve (id del video que viene).
+    private(set) var placaId: String?
+    /// El índice del video cargado en `clips` (nil si ya no está en la lista).
+    var actual: Int? { indice(actualId) }
+    /// El índice del video de la placa.
+    var placa: Int? { indice(placaId) }
+    private(set) var velocidad: Float = 1
+    private(set) var reproduciendo = false
+    /// Todavía no arrancó ninguno: se ve la portada con el título y el botón de play.
+    private(set) var portada = true
+    /// No se puede reproducir: sin red o el video no carga.
+    private(set) var sinConexion = false
+    /// Cambia cada vez que cambia el video (el destello del título, el desplazamiento de la lista).
+    private(set) var cambios = 0
+
+    @ObservationIgnored nonisolated(unsafe) let player = AVPlayer()
+    @ObservationIgnored var clips: () -> [ClipGuia] = { [] }
+    @ObservationIgnored var alGuardar: (String, AvanceVideo.Guardado) -> Void = { _, _ in }
+    /// DEBUG `-sinRed YES`: como sin señal, aunque el simulador tenga red.
+    @ObservationIgnored var forzarSinRed = false
+    /// Capturas (DEBUG `-guiaPlaca YES`): la placa queda fija hasta tocarla.
+    @ObservationIgnored var placaFija = false
+
+    @ObservationIgnored private var avance = AvanceVideo(visto: false)
+    @ObservationIgnored private var videoCargado: String?
+    @ObservationIgnored nonisolated(unsafe) private var observadorTiempo: Any?
+    @ObservationIgnored private var observadorEstado: NSKeyValueObservation?
+    @ObservationIgnored private var observadorControl: NSKeyValueObservation?
+    /// Los observadores de fin y falla del video: se sacan al cambiar de video y al soltar el control.
+    @ObservationIgnored nonisolated(unsafe) private var finales: [NSObjectProtocol] = []
+    @ObservationIgnored private var tareaPlaca: Task<Void, Never>?
+    @ObservationIgnored private var retomado = false
+    @ObservationIgnored nonisolated private let red = NWPathMonitor()
+    @ObservationIgnored private var hayRed = true
+    /// El video está en pantalla completa (la presenta el sistema): salir de la vista de la guía no lo pausa.
+    @ObservationIgnored var pantallaCompleta = false
+    /// Un solo video a la vez (como la web): al arrancar este se frena el de «Ver por qué».
+    @ObservationIgnored var alArrancar: () -> Void = {}
+    /// Hay algo escrito en el recuadro de duda de ese video: al terminar no pasa solo al siguiente (se escondería el texto).
+    @ObservationIgnored var hayBorrador: (String) -> Bool = { _ in false }
+
+    init() {
+        player.actionAtItemEnd = .pause
+        // La posición cada segundo: alcanza para «cada 10 s» y el 80 %.
+        observadorTiempo = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: 600), queue: .main) { [weak self] t in
+            MainActor.assumeIsolated { self?.avanzo(t.seconds) }
+        }
+        observadorControl = player.observe(\.timeControlStatus, options: [.new]) { [weak self] p, _ in
+            let corre = p.timeControlStatus != .paused
+            Task { @MainActor in
+                guard let self else { return }
+                // También cuando lo arrancan los controles del sistema.
+                if corre && !self.reproduciendo { self.alArrancar() }
+                self.reproduciendo = corre
+            }
+        }
+        red.pathUpdateHandler = { [weak self] camino in
+            let ok = camino.status == .satisfied
+            Task { @MainActor in self?.hayRed = ok }
+        }
+        red.start(queue: .main)
+    }
+
+    /// Al salir de la guía (la vista suelta el control): nada queda vivo, ni el monitor de red ni los observadores, y el
+    /// audio vuelve a los demás.
+    deinit {
+        red.cancel()
+        finales.forEach(NotificationCenter.default.removeObserver)
+        if let o = observadorTiempo { player.removeTimeObserver(o) }
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        SesionAudio.soltar()
+    }
+
+    private func indice(_ id: String?) -> Int? {
+        guard let id else { return nil }
+        return clips().firstIndex { $0.id == id }
+    }
+
+    var clipActual: ClipGuia? {
+        guard let id = actualId else { return nil }
+        return clips().first { $0.id == id }
+    }
+
+    var haySiguiente: Bool { actual.flatMap { ReglasGuia.siguiente(clips(), desde: $0) } != nil }
+    var hayAnterior: Bool { actual.flatMap { ReglasGuia.anterior(clips(), desde: $0) } != nil }
+
+    // MARK: - Acciones
+
+    /// Al abrir la sección, y cada vez que llega una guía: el primero sin ver, sin reproducir (se ve la portada). Si el
+    /// video cargado sigue en la lista, no se toca.
+    func prepararInicial() {
+        guard actual == nil, let i = ReglasGuia.inicial(clips()) else { return }
+        if actualId != nil { portada = true }
+        cargar(i, reproducir: false, conPlaca: false)
+    }
+
+    /// Tocar una fila (o «Ver por qué»): arranca directo, sin placa.
+    func reproducir(_ i: Int) { cargar(i, reproducir: true, conPlaca: false) }
+
+    func reproducir(video id: String) {
+        guard let i = clips().firstIndex(where: { $0.id == id && $0.url != nil }) else { return }
+        reproducir(i)
+    }
+
+    func siguiente() {
+        guard let a = actual, let i = ReglasGuia.siguiente(clips(), desde: a) else { return }
+        cargar(i, reproducir: true, conPlaca: true)
+    }
+
+    func anterior() {
+        guard let a = actual, let i = ReglasGuia.anterior(clips(), desde: a) else { return }
+        cargar(i, reproducir: true, conPlaca: true)
+    }
+
+    /// El play de la portada.
+    func empezar() {
+        guard actual != nil else { prepararInicial(); return }
+        portada = false
+        arrancar()
+    }
+
+    func cambiarVelocidad() {
+        velocidad = ReglasGuia.velocidadSiguiente(velocidad)
+        player.defaultRate = velocidad
+        if player.timeControlStatus != .paused { player.rate = velocidad }
+    }
+
+    /// La placa se cierra sola a los 2,6 s o al tocarla, y ahí arranca el video.
+    func cerrarPlaca() {
+        guard placaId != nil else { return }
+        tareaPlaca?.cancel()
+        placaId = nil
+        arrancar()
+    }
+
+    /// Reintentar después de «Necesitás conexión».
+    func reintentar() {
+        guard let i = actual else { return }
+        videoCargado = nil
+        cargar(i, reproducir: true, conPlaca: false)
+    }
+
+    /// Al salir de la sección o al ir a segundo plano: lo último que se vio queda guardado.
+    func guardarAlSalir() {
+        guard let id = videoCargado, player.currentItem != nil else { return }
+        if let g = avance.alSalir(player.currentTime().seconds) { alGuardar(id, g) }
+    }
+
+    func pausar() {
+        guardarAlSalir()
+        player.pause()
+    }
+
+    /// Arrancó otro video (un «Ver por qué»): este se frena y, si estaba la placa, se va sin arrancar (como la web).
+    func frenarPorOtro() {
+        tareaPlaca?.cancel()
+        placaId = nil
+        if player.timeControlStatus != .paused { pausar() }
+    }
+
+    // MARK: - Carga
+
+    private func cargar(_ i: Int, reproducir: Bool, conPlaca: Bool) {
+        let lista = clips()
+        guard lista.indices.contains(i), let url = lista[i].url else { return }
+        guardarAlSalir()
+        tareaPlaca?.cancel()
+        placaId = nil
+        let clip = lista[i]
+        actualId = clip.id
+        cambios += 1
+        if reproducir { portada = false }
+        sinConexion = false
+        if videoCargado != clip.id {
+            videoCargado = clip.id
+            avance = AvanceVideo(visto: clip.visto)
+            retomado = false
+            if forzarSinRed || !hayRed {
+                player.replaceCurrentItem(with: nil)
+                sinConexion = reproducir
+                return
+            }
+            let item = AVPlayerItem(url: url)
+            observar(item)
+            player.replaceCurrentItem(with: item)
+        }
+        player.defaultRate = velocidad
+        // En pantalla completa la placa no se ve (queda debajo) y el video quedaría quieto 2,6 s: ahí pasa directo.
+        if conPlaca && !pantallaCompleta {
+            player.pause()
+            placaId = clip.id
+            if placaFija { return }
+            tareaPlaca = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(ReglasGuia.placaSegundos))
+                guard !Task.isCancelled else { return }
+                self?.cerrarPlaca()
+            }
+        } else if reproducir {
+            arrancar()
+        } else {
+            player.pause()
+        }
+    }
+
+    private func arrancar() {
+        if forzarSinRed || (player.currentItem == nil && !hayRed) {
+            sinConexion = true
+            return
+        }
+        if player.currentItem == nil, let i = actual { videoCargado = nil; cargar(i, reproducir: true, conPlaca: false); return }
+        // Si ya había terminado, tocarlo de nuevo lo arranca desde el principio.
+        if let item = player.currentItem, ReglasGuia.estaAlFinal(player.currentTime().seconds, duracion: item.duration.seconds) {
+            player.seek(to: .zero)
+        }
+        SesionAudio.activar()
+        player.defaultRate = velocidad
+        player.play()
+        player.rate = velocidad
+    }
+
+    private func observar(_ item: AVPlayerItem) {
+        observadorEstado = item.observe(\.status, options: [.new]) { [weak self] it, _ in
+            let estado = it.status
+            let dur = it.duration.seconds
+            Task { @MainActor in self?.cambioEstado(estado, duracion: dur, item: it) }
+        }
+        finales.forEach(NotificationCenter.default.removeObserver)
+        finales = [
+            NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.termino() }
+            },
+            NotificationCenter.default.addObserver(forName: AVPlayerItem.failedToPlayToEndTimeNotification, object: item, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.sinConexion = true }
+            },
+        ]
+    }
+
+    private func cambioEstado(_ estado: AVPlayerItem.Status, duracion: Double, item: AVPlayerItem) {
+        guard item === player.currentItem else { return }
+        switch estado {
+        case .readyToPlay:
+            sinConexion = false
+            // Retoma desde donde lo dejó (ver espec 4.6), una vez por carga.
+            if !retomado, let c = clipActual {
+                retomado = true
+                if let desde = ReglasGuia.retomar(c, duracion: duracion) {
+                    avance = AvanceVideo(visto: c.visto, desde: desde)
+                    item.seek(to: CMTime(seconds: desde, preferredTimescale: 600), completionHandler: nil)
+                }
+            }
+        case .failed:
+            if !portada || placaId != nil { sinConexion = true }
+        default: break
+        }
+    }
+
+    private func avanzo(_ t: Double) {
+        guard placaId == nil, player.timeControlStatus == .playing, let id = videoCargado,
+              let dur = player.currentItem?.duration.seconds else { return }
+        if let g = avance.alAvanzar(t, duracion: dur) { alGuardar(id, g) }
+    }
+
+    private func termino() {
+        guard let id = videoCargado else { return }
+        alGuardar(id, avance.alTerminar(duracion: player.currentItem?.duration.seconds ?? .nan))
+        // Pasa solo al siguiente, con su placa. Si era el último, queda ahí. Con una duda a medio escribir, tampoco.
+        if haySiguiente && !hayBorrador(id) { siguiente() }
+    }
+}
+
+// MARK: - Vista
+
+/// El cuadro del video (16:9) con la portada, la placa y el aviso sin conexión encima.
+struct CuadroVideo: View {
+    let control: ControlReproductor
+    let total: Int
+
+    var body: some View {
+        ZStack {
+            Color.black
+            VistaAVPlayer(player: control.player) { [control] en in control.pantallaCompleta = en }
+                .opacity(control.portada || control.sinConexion ? 0 : 1)
+                .accessibilityLabel(control.clipActual.map { "Video: \($0.titulo)" } ?? "Video")
+            // La placa va primero: si el video no carga, el aviso aparece al cerrarla.
+            if let i = control.placa, let c = control.clips().indices.contains(i) ? control.clips()[i] : nil {
+                PlacaVideo(clip: c, indice: i, total: total) { control.cerrarPlaca() }
+                    .transition(.opacity)
+            } else if control.sinConexion {
+                SinConexionVideo { control.reintentar() }
+            } else if control.portada, let c = control.clipActual {
+                PortadaVideo(clip: c, indice: control.actual ?? 0, total: total) { control.empezar() }
+            }
+        }
+        .aspectRatio(16 / 9, contentMode: .fit)
+        .clipped()
+        .animation(.easeOut(duration: 0.3), value: control.placa)
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+/// AVPlayerViewController con los controles del sistema: pantalla completa, girar, AirPlay y Picture in Picture.
+struct VistaAVPlayer: UIViewControllerRepresentable {
+    let player: AVPlayer
+    /// Avisa cuando el sistema presenta el video a pantalla completa (la guía queda debajo y no se pausa).
+    let pantallaCompleta: @MainActor (Bool) -> Void
+
+    func makeCoordinator() -> Coordinador { Coordinador(pantallaCompleta: pantallaCompleta) }
+
+    @MainActor final class Coordinador: NSObject, @preconcurrency AVPlayerViewControllerDelegate {
+        let pantallaCompleta: @MainActor (Bool) -> Void
+        init(pantallaCompleta: @escaping @MainActor (Bool) -> Void) { self.pantallaCompleta = pantallaCompleta }
+
+        func playerViewController(_ vc: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator c: any UIViewControllerTransitionCoordinator) {
+            pantallaCompleta(true)
+        }
+
+        func playerViewController(_ vc: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator c: any UIViewControllerTransitionCoordinator) {
+            pantallaCompleta(false)
+        }
+    }
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let vc = AVPlayerViewController()
+        vc.delegate = context.coordinator
+        vc.allowsPictureInPicturePlayback = false
+        vc.player = player
+        vc.showsPlaybackControls = true
+        vc.videoGravity = .resizeAspect
+        vc.entersFullScreenWhenPlaybackBegins = false
+        vc.exitsFullScreenWhenPlaybackEnds = false
+        // La velocidad la maneja el botón de la app (1 → 1,25 → 1,5), como en la web.
+        vc.speeds = []
+        return vc
+    }
+
+    func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
+        if vc.player !== player { vc.player = player }
+    }
+}
+
+/// Antes del primer play: el título sobre negro, como el cuadro de la web, y el botón de reproducir.
+private struct PortadaVideo: View {
+    let clip: ClipGuia
+    let indice: Int
+    let total: Int
+    let alTocar: () -> Void
+
+    var body: some View {
+        Button(action: alTocar) {
+            ZStack {
+                LinearGradient(colors: [Color(white: 0.04), Color(red: 0.07, green: 0.11, blue: 0.08)], startPoint: .top, endPoint: .bottom)
+                VStack(spacing: Espacio.s) {
+                    Spacer(minLength: 0)
+                    Text(clip.titulo)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.7)
+                    Capsule().fill(Color(red: 0.36, green: 0.73, blue: 0.45)).frame(width: 56, height: 3)
+                    Spacer(minLength: 0)
+                    Image(systemName: "play.fill")
+                        .font(.title2)
+                        .foregroundStyle(.black)
+                        .frame(width: 56, height: 56)
+                        .background(.white, in: .circle)
+                        .padding(.bottom, Espacio.m)
+                }
+                .padding(.horizontal, Espacio.l)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Reproducir \(clip.titulo)")
+        .accessibilityHint("Video \(indice + 1) de \(total), \(ReglasGuia.duracionHablada(minutos: clip.minutos))")
+        .accessibilityIdentifier("guia-portada")
+    }
+}
+
+/// La placa al pasar a otro video: 2,6 s, se cierra sola o al tocarla.
+private struct PlacaVideo: View {
+    let clip: ClipGuia
+    let indice: Int
+    let total: Int
+    let alTocar: () -> Void
+    @State private var lleno = false
+
+    var body: some View {
+        Button(action: alTocar) {
+            VStack(alignment: .leading, spacing: 2) {
+                Spacer(minLength: 0)
+                Text(ReglasGuia.textoPlaca(indice, de: total))
+                    .font(.caption.weight(.semibold)).tracking(0.8).textCase(.uppercase)
+                    .foregroundStyle(Color(red: 0.66, green: 0.85, blue: 0.71))
+                if let b = clip.bloque, !b.isEmpty {
+                    Text(b).font(.subheadline).foregroundStyle(Color(white: 0.86))
+                }
+                Text(clip.titulo)
+                    .font(.title3.weight(.semibold)).foregroundStyle(.white)
+                    .lineLimit(3).minimumScaleFactor(0.75)
+                    .padding(.top, 6)
+                GeometryReader { g in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(.white.opacity(0.2))
+                        Capsule().fill(Color(red: 0.36, green: 0.73, blue: 0.45)).frame(width: lleno ? g.size.width : 0)
+                    }
+                }
+                .frame(height: 3)
+                .padding(.top, Espacio.s)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Espacio.l)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .background(Color(red: 0.067, green: 0.094, blue: 0.078))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .onAppear { withAnimation(.linear(duration: ReglasGuia.placaSegundos)) { lleno = true } }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(ReglasGuia.textoPlaca(indice, de: total)). \(clip.bloque ?? ""). \(clip.titulo)")
+        .accessibilityHint("Tocá para empezar ya")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("guia-placa")
+    }
+}
+
+struct SinConexionVideo: View {
+    let reintentar: () -> Void
+
+    var body: some View {
+        VStack(spacing: Espacio.s) {
+            Image(systemName: "wifi.slash").font(.title2).foregroundStyle(.white.opacity(0.8))
+            Text("Necesitás conexión para ver el video")
+                .font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .accessibilityIdentifier("guia-sin-conexion")
+            Button("Reintentar", action: reintentar)
+                .buttonStyle(BotonSecundario(compacto: true, tono: .white))
+        }
+        .padding(Espacio.m)
+    }
+}
+
+/// El video chico de un «Ver por qué» (web del 4/11, A5): se reproduce debajo de su suplemento, sin mover la página, guarda
+/// su avance por la misma cola (`guia_avance`) y tocar el botón de nuevo lo cierra. Hay uno abierto a la vez y un solo
+/// video suena: al arrancar este se frena el reproductor de arriba y al revés.
+@MainActor @Observable
+final class ControlVerPorQue {
+    /// El clip abierto (su id).
+    private(set) var abierto: String?
+    private(set) var reproduciendo = false
+    private(set) var sinConexion = false
+
+    @ObservationIgnored nonisolated(unsafe) let player = AVPlayer()
+    /// El clip por id, al día (visto y segundos).
+    @ObservationIgnored var clip: (String) -> ClipGuia? = { _ in nil }
+    @ObservationIgnored var alGuardar: (String, AvanceVideo.Guardado) -> Void = { _, _ in }
+    @ObservationIgnored var alArrancar: () -> Void = {}
+    @ObservationIgnored var forzarSinRed = false
+    @ObservationIgnored var pantallaCompleta = false
+
+    @ObservationIgnored private var avance = AvanceVideo(visto: false)
+    @ObservationIgnored nonisolated(unsafe) private var observadorTiempo: Any?
+    @ObservationIgnored private var observadorEstado: NSKeyValueObservation?
+    @ObservationIgnored private var observadorControl: NSKeyValueObservation?
+    @ObservationIgnored nonisolated(unsafe) private var finales: [NSObjectProtocol] = []
+    @ObservationIgnored private var retomado = false
+
+    init() {
+        player.actionAtItemEnd = .pause
+        observadorTiempo = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: 600), queue: .main) { [weak self] t in
+            MainActor.assumeIsolated { self?.avanzo(t.seconds) }
+        }
+        observadorControl = player.observe(\.timeControlStatus, options: [.new]) { [weak self] p, _ in
+            let corre = p.timeControlStatus != .paused
+            Task { @MainActor in
+                guard let self else { return }
+                if corre && !self.reproduciendo { self.alArrancar() }
+                self.reproduciendo = corre
+            }
+        }
+    }
+
+    deinit {
+        finales.forEach(NotificationCenter.default.removeObserver)
+        if let o = observadorTiempo { player.removeTimeObserver(o) }
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        SesionAudio.soltar()
+    }
+
+    /// El botón: abre y arranca, o cierra si ya estaba abierto.
+    func alternar(_ id: String) {
+        if abierto == id { cerrar(); return }
+        cerrar()
+        guard let c = clip(id), let url = c.url else { return }
+        abierto = id
+        avance = AvanceVideo(visto: c.visto)
+        retomado = false
+        sinConexion = false
+        if forzarSinRed { sinConexion = true; return }
+        let item = AVPlayerItem(url: url)
+        observar(item)
+        player.replaceCurrentItem(with: item)
+        SesionAudio.activar()
+        player.play()
+    }
+
+    func reintentar() {
+        guard let id = abierto else { return }
+        abierto = nil
+        alternar(id)
+    }
+
+    /// Cierra el abierto, con lo último guardado.
+    func cerrar() {
+        pausar()
+        player.replaceCurrentItem(with: nil)
+        observadorEstado = nil
+        finales.forEach(NotificationCenter.default.removeObserver)
+        finales = []
+        abierto = nil
+        sinConexion = false
+    }
+
+    /// Al salir de la sección, ir a segundo plano o arrancar el de arriba: queda abierto y frenado.
+    func pausar() {
+        guard let id = abierto, player.currentItem != nil else { return }
+        if let g = avance.alSalir(player.currentTime().seconds) { alGuardar(id, g) }
+        player.pause()
+    }
+
+    private func observar(_ item: AVPlayerItem) {
+        observadorEstado = item.observe(\.status, options: [.new]) { [weak self] it, _ in
+            let estado = it.status
+            let dur = it.duration.seconds
+            Task { @MainActor in self?.cambioEstado(estado, duracion: dur, item: it) }
+        }
+        finales.forEach(NotificationCenter.default.removeObserver)
+        finales = [
+            NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.termino() }
+            },
+            NotificationCenter.default.addObserver(forName: AVPlayerItem.failedToPlayToEndTimeNotification, object: item, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.sinConexion = true }
+            },
+        ]
+    }
+
+    private func cambioEstado(_ estado: AVPlayerItem.Status, duracion: Double, item: AVPlayerItem) {
+        guard item === player.currentItem else { return }
+        switch estado {
+        case .readyToPlay:
+            sinConexion = false
+            // Como la web: si lo había dejado a la mitad, sigue desde ahí.
+            if !retomado, let id = abierto, let c = clip(id) {
+                retomado = true
+                if let desde = ReglasGuia.retomar(c, duracion: duracion) {
+                    avance = AvanceVideo(visto: c.visto, desde: desde)
+                    item.seek(to: CMTime(seconds: desde, preferredTimescale: 600), completionHandler: nil)
+                }
+            }
+        case .failed:
+            sinConexion = true
+        default: break
+        }
+    }
+
+    private func avanzo(_ t: Double) {
+        guard player.timeControlStatus == .playing, let id = abierto,
+              let dur = player.currentItem?.duration.seconds else { return }
+        if let g = avance.alAvanzar(t, duracion: dur) { alGuardar(id, g) }
+    }
+
+    private func termino() {
+        guard let id = abierto else { return }
+        alGuardar(id, avance.alTerminar(duracion: player.currentItem?.duration.seconds ?? .nan))
+    }
+}
+
+/// La sesión de audio de los videos de la guía: se activa al reproducir y se suelta al salir (o al irse a segundo plano),
+/// así la música u otra app vuelven a sonar.
+enum SesionAudio {
+    static func activar() {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    static func soltar() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+}
+
+/// El cuadro chico de un «Ver por qué»: el video con los controles del sistema, o «Necesitás conexión».
+struct CuadroVerPorQue: View {
+    let control: ControlVerPorQue
+
+    var body: some View {
+        ZStack {
+            Color.black
+            if control.sinConexion {
+                SinConexionVideo(reintentar: control.reintentar)
+            } else {
+                VistaAVPlayer(player: control.player) { [control] en in control.pantallaCompleta = en }
+            }
+        }
+        .aspectRatio(16 / 9, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityIdentifier("guia-ver-por-que-video")
+    }
+}

@@ -135,6 +135,24 @@ public struct Escrituras: Sendable {
             return .respuesta(Self.sinTablaEsHecho(await cliente.llamar("mypump_delete_exercise_swap", [
                 "p_token": t, "p_rutina_id": p["rutinaId"] ?? .null, "p_ex_id": p["exId"] ?? .null, "p_ts": p["ts"] ?? .null,
             ])))
+        case ModeloGuia.kindAvance:
+            // «Tu guía» (entregas_010_app). Idempotente en la base: toma el mayor de los segundos y visto nunca vuelve a
+            // false. FALSE = token caído o sin guía: no hay nada que guardar (cuenta como hecho, como la web).
+            let seg = min(Double(ReglasGuia.maxSegundos), max(0, (p["segundos"]?.comoNumero ?? 0).rounded()))
+            return .respuesta(await cliente.llamar("entregas_app_avance", [
+                "p_token": t, "p_video": p["video"] ?? .null, "p_segundos": .numero(seg), "p_visto": .bool(p["visto"] == .bool(true)),
+            ]))
+        case ModeloGuia.kindDuda:
+            // FALSE = tope de 3200 caracteres del video o token: lo ve el recuadro («No se pudo guardar») por `alGuardar`.
+            // `p_id` (entregas_013): el mismo id en un reintento devuelve true sin sumarla de nuevo.
+            var args: [String: JSONValue] = ["p_token": t, "p_video": p["video"] ?? .null, "p_texto": p["texto"] ?? .null]
+            if let id = Self.idDeDuda(p) { args["p_id"] = .texto(id) }
+            return .respuesta(await cliente.llamar("entregas_app_duda", args))
+        case ModeloGuia.kindDudaLlamada:
+            // FALSE = tope de 30 o token. `p_id` como en la duda de video (un reintento no cuenta para el tope).
+            var args: [String: JSONValue] = ["p_token": t, "p_texto": p["texto"] ?? .null]
+            if let id = Self.idDeDuda(p) { args["p_id"] = .texto(id) }
+            return .respuesta(await cliente.llamar("entregas_app_llamada_duda", args))
         default:
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo #2).
             return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 0, codigo: "KIND_DESCONOCIDO", mensaje: op.kind)))
@@ -155,6 +173,13 @@ public struct Escrituras: Sendable {
     /// hora antes contaba como este y el nuevo no salía nunca (revisión del 15-oct, hallazgo 7). Sin él (lo que vino de
     /// la app vieja, o un hilo que nunca cargó), desde que se encoló con un minuto de margen. Sin red, se manda igual y
     /// decide la cola.
+    /// El `p_id` de una duda (entregas_013): solo si es un uuid. Las ops viejas sin id (o con uno roto) van sin el campo:
+    /// "" o algo que no es uuid da 400 22P02, que no se reintenta.
+    static func idDeDuda(_ p: JSONValue) -> String? {
+        guard let id = p["id"]?.comoTexto, UUID(uuidString: id) != nil else { return nil }
+        return id
+    }
+
     func yaLlego(_ contenido: String?, desde ts: Double, despuesDe: String?) async -> String? {
         guard let contenido, !contenido.isEmpty,
               case .success(let filas) = await cliente.filas("mypump_get_chat", ["p_token": .texto(token), "p_antes": .null, "p_limite": .numero(10)],
