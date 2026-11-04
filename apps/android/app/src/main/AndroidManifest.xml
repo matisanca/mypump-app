@@ -20,6 +20,9 @@
     <!-- Avisos: volver a agendar el aviso del domingo después de un reinicio (las alarmas no lo sobreviven). Sin
          SCHEDULE_EXACT_ALARM ni USE_EXACT_ALARM: las alarmas son inexactas a propósito (ver avisos/CentroAvisos). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- «Tu guía»: las dudas en audio para la videollamada (2.1.0). Se pide recién al tocar «Grabar un audio» y solo se
+         graba con la guía a la vista: sin servicio en primer plano (nada de FOREGROUND_SERVICE ni _MICROPHONE). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Health Connect: lectura. -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />

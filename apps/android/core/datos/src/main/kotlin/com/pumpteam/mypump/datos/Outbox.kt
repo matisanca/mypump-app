@@ -125,7 +125,7 @@ sealed interface ResultadoOp {
  * - Encolar borra las pendientes con el mismo `dedupeKey` (gana la última) y agrega al final.
  * - Se procesa una COPIA de la cola: lo encolado durante el vuelo no se pierde.
  * - `null`, `0` y `[]` cuentan como NO guardado (la base rechaza devolviendo vacío).
- * - Red y transitorio cortan la pasada sin gastar intento; cualquier otro fallo suma uno; con 8, se abandona.
+ * - Red y transitorio cortan la pasada sin gastar intento (un audio con `pendientes` no corta: se saltea y espera); cualquier otro fallo suma uno; con 8, se abandona.
  * - Backoff `min(30 s, 2 s × max(1, intentos de la primera, racha sin red))`.
  * - [drenar] comparte la pasada en curso: esperarla es esperar el envío de verdad (cerrar el día depende de eso).
  *
@@ -159,6 +159,9 @@ class Outbox(
     private val fallidosLista = mutableListOf<Fallido>()
     private var enVuelo: Deferred<Unit>? = null
     private var temporizador: Job? = null
+
+    /** El temporizador armado espera solo a un audio con `pendientes`: algo nuevo encolado no tiene que esperarlo. */
+    private var esperaSoloAudio = false
     private var huboProblema = false
 
     /** La última pasada dejó algo sin guardar (sin red, transitorio, rechazo o token caído). */
@@ -268,6 +271,11 @@ class Outbox(
         val op = Operacion(id = "${ahora.toLong()}_$secuencia", kind = kind, payload = payload.sinNoFinitos, dedupeKey = dedupeKey, ts = ahora)
         ops += op
         guardar()
+        if (esperaSoloAudio) {
+            temporizador?.cancel()
+            temporizador = null
+            esperaSoloAudio = false
+        }
         programar(0)
         op
     }
@@ -371,6 +379,7 @@ class Outbox(
         temporizador = alcance.launch(confinado) {
             delay(demoraMs)
             temporizador = null
+            esperaSoloAudio = false
             if (!cerrada) drenar()
         }
     }
@@ -386,6 +395,7 @@ class Outbox(
         val abandonadas = mutableListOf<Operacion>()
         val guardadas = mutableListOf<OpGuardada>()
         var algunaFallo = false
+        var pendienteAudio = false
         // "Guardando…" solo si tarda (y nunca después de terminar: cancelado, el delay corta).
         val lenta = alcance.launch(confinado) {
             delay(900)
@@ -431,6 +441,12 @@ class Outbox(
                 continue
             }
             val error = r.errorONull()
+            if (error?.codigo == EnvioAudioDuda.MOTIVO_PENDIENTES) {
+                // Un audio que espera a que se terminen de mandar otros (`pendientes`): más tarde, sin gastar intento y sin
+                // frenar a las demás ni mostrar «sin conexión». El backoff crece con la racha mientras sea lo único que queda.
+                pendienteAudio = true
+                continue
+            }
             if (error != null && error.clase != ErrorRpc.Clase.PERMANENTE) {
                 algunaFallo = true
                 ultimaCorte = true
@@ -451,6 +467,7 @@ class Outbox(
             ops.removeAll { it.id in resueltas }
             rachaSinRed = 0
         }
+        if (pendienteAudio) rachaSinRed += 1
         if (abandonadas.isNotEmpty()) {
             val ahora = System.currentTimeMillis().toDouble()
             abandonadas.mapTo(fallidosLista) { Fallido(it, "abandonada tras ${it.tries} intentos", ahora) }
@@ -465,7 +482,8 @@ class Outbox(
             huboProblema = false
             avisar(EstadoGuardado.PERDIDO)
         }
-        ultimaFallo = algunaFallo
+        // Un audio en espera no es falta de señal: no muestra «sin conexión», pero la pasada cuenta como no terminada.
+        ultimaFallo = algunaFallo || pendienteAudio
         // Si lo que falló fue solo silencioso, para el cliente la pasada salió bien: se cierra el "Guardando…" que haya.
         if (algunaFallo && ops.any { it.kind !in SILENCIOSAS }) {
             huboProblema = true
@@ -476,12 +494,14 @@ class Outbox(
         } else if (abandonadasVisibles.isEmpty()) {
             avisar(EstadoGuardado.QUIETO)
         }
-        if (algunaFallo) {
+        if (algunaFallo || pendienteAudio) {
             val base = maxOf(1, ops.firstOrNull()?.tries ?: 1, rachaSinRed)
+            val libre = temporizador == null
             programar(minOf(30_000L, 2_000L * base))
+            if (libre && temporizador != null) esperaSoloAudio = !algunaFallo
         }
         // Lo encolado DURANTE esta pasada quedó sin procesar: otra vuelta (las de la migración retenidas no cuentan).
-        if (ops.any(::mandable) && !algunaFallo) programar(0)
+        if (ops.any(::mandable) && !algunaFallo && !pendienteAudio) programar(0)
     }
 
     /** Suma un intento a la op (en la cola real, no en la copia). Devuelve true si sigue pendiente. */
@@ -572,9 +592,10 @@ class Outbox(
         /**
          * Kinds que no muestran avisos ("guardando", "sin conexión", "no se guardó"): las sustituciones de ejercicio
          * (SER-14) ya quedaron en el teléfono y el servidor solo las respalda. Antes no tocaban la red: que sigan sin avisar.
-         * El avance de «Tu guía» sale solo cada 10 s mientras corre un video: tampoco avisa.
+         * El avance de «Tu guía» sale solo cada 10 s mientras corre un video: tampoco avisa. Los audios de la guía tienen su
+         * propio estado al lado del botón («Mandando tu audio…», «No se pudo mandar»): el aviso general lo repetiría.
          */
-        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND, ModeloGuia.KIND_AVANCE)
+        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND, ModeloGuia.KIND_AVANCE, ModeloAudioDudas.KIND)
 
         /** Kinds que se anotan como [Operacion.intentada] antes de salir: el chat, que antes de reintentar mira si ya había llegado. */
         val ANOTAN_INTENTO: Set<String> = setOf("chat")

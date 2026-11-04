@@ -106,7 +106,10 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
     val avisos by modelo.avisos.collectAsStateWithLifecycle()
     val resumenServidor by modelo.resumen.collectAsStateWithLifecycle()
     val ocultaAMano by modelo.ocultaAMano.collectAsStateWithLifecycle()
+    val audios by modelo.audios.items.collectAsStateWithLifecycle()
     val alcance = LocalAlcanceApp.current
+    // Las dudas en audio (`entregas_019`): la grabación sigue al bajar la lista y se frena en segundo plano.
+    AudioDudaAlrededor(modelo.audios, control)
 
     LaunchedEffect(modelo) { modelo.abrir() }
     LaunchedEffect(modelo, guia) { guia?.let { control.usar(modelo, it) } }
@@ -150,6 +153,8 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
                 puedeSumarLlamada = modelo.puedeSumarDudaLlamada(),
                 accionEntreno = ReglasGuia.accionEntreno(resumenServidor, ocultaAMano),
                 alAccionEntreno = modelo::ocultarDeEntreno,
+                transcriptos = audios.filter { it.estado == com.pumpteam.mypump.datos.ModeloAudioDudas.Estado.TRANSCRIPTO }.mapNotNull { it.texto },
+                audioLlamada = { despuesAudio, m -> AudioDudaLlamada(modelo.audios, despuesAudio, m) },
                 alEnviarDuda = { video, texto ->
                     val clave = video ?: LLAMADA
                     // Un doble toque no la manda dos veces: el campo se vacía ya (el botón queda apagado) y, mientras se
@@ -226,6 +231,8 @@ private fun ContenidoGuia(
     accionEntreno: ReglasGuia.AccionEntreno,
     alAccionEntreno: (ocultar: Boolean) -> Unit,
     alEnviarDuda: (video: String?, texto: String) -> Unit,
+    transcriptos: List<String> = emptyList(),
+    audioLlamada: (@Composable (despues: Boolean, Modifier) -> Unit)? = null,
 ) {
     val clips = remember(guia) { ReglasGuia.ordenados(guia.clipsDeLaLista) }
     val bloques = remember(clips) { ReglasGuia.bloques(clips) }
@@ -352,6 +359,8 @@ private fun ContenidoGuia(
                     accionEntreno = accionEntreno,
                     alAccionEntreno = alAccionEntreno,
                     alEnviarDuda = alEnviarDuda,
+                    transcriptos = transcriptos,
+                    audioLlamada = audioLlamada,
                     porQue = porQue,
                     reproductor = tarjetaReproductor,
                 )
@@ -395,6 +404,8 @@ private fun LazyListScope.entradasGuia(
     accionEntreno: ReglasGuia.AccionEntreno,
     alAccionEntreno: (ocultar: Boolean) -> Unit,
     alEnviarDuda: (String?, String) -> Unit,
+    transcriptos: List<String>,
+    audioLlamada: (@Composable (despues: Boolean, Modifier) -> Unit)?,
     porQue: PorQueSuplemento,
     reproductor: @Composable (Modifier) -> Unit,
 ) {
@@ -434,6 +445,8 @@ private fun LazyListScope.entradasGuia(
                     pendientes = pendientes.filter { it.video == null }.map { it.texto },
                     puedeSumar = puedeSumarLlamada,
                     alEnviar = { alEnviarDuda(null, it) },
+                    transcriptos = transcriptos,
+                    audio = audioLlamada,
                     modifier = ancho.padding(top = Espacio.m),
                 )
                 Entrada.Suplementacion -> suple?.let { SuplementacionGuia(it, porQue, ancho.padding(top = Espacio.m)) }
@@ -742,9 +755,12 @@ private fun DudasLlamada(
     puedeSumar: Boolean,
     alEnviar: (String) -> Unit,
     modifier: Modifier = Modifier,
+    transcriptos: List<String> = emptyList(),
+    audio: (@Composable (despues: Boolean, Modifier) -> Unit)? = null,
 ) {
     val c = MyPump.colores
-    val ya = guia.dudasLlamada.map { it.texto }
+    // La transcripción de un audio entra después como una duda más: se saltea la que ya se ve en «Esto es lo que entendí».
+    val ya = com.pumpteam.mypump.reglas.ReglasAudioDuda.sinTranscriptas(guia.dudasLlamada.map { it.texto }, transcriptos)
     val acento = c.marca
     Row(
         modifier
@@ -797,6 +813,7 @@ private fun DudasLlamada(
                     modifier = Modifier.testTag("llamada-tope"),
                 )
             }
+            audio?.invoke(despues, Modifier)
         }
     }
 }
