@@ -68,7 +68,7 @@ fun TarjetaRecuperacionRevision(salud: ModeloSalud?, alAbrirSalud: () -> Unit, m
                 }
                 is SaludVista.CardRecuperacion.ConectadoSinScore -> Texto(card.sinScore.frase(salud.textos))
                 // El botón de conectar está adentro de Salud.
-                SaludVista.CardRecuperacion.SinConectar -> Texto("Conectá tu reloj o Salud para ver tu recuperación de cada día.")
+                SaludVista.CardRecuperacion.SinConectar -> Texto("Conectá tu reloj o Health Connect para ver tu recuperación de cada día.")
             }
         }
     }

@@ -32,7 +32,7 @@ Contenido según el estado que ya calcula `SaludVista.cardRecuperacion` (no se d
 | `oculto` | «Ocultaste el número de recuperación. Tocá para ver tus datos de salud.» |
 | `calibrando` | «Aprendiendo tu normal: n de 14 días» + `yaSe` si no está vacío. |
 | `conectadoSinScore` | La `frase` del caso (y nada más). |
-| `sinConectar` | «Conectá tu reloj o Salud para ver tu recuperación de cada día.» (el botón de conectar está adentro de Salud). |
+| `sinConectar` | «Conectá tu reloj o Salud para ver tu recuperación de cada día.» (Android: «… o Health Connect …»; el botón de conectar está adentro de Salud). |
 | Demo / sin cuenta | «Con tu cuenta, acá vas a ver tu recuperación de cada día.» |
 
 Al pie, una fila: «Ver sueño, corazón y cuerpo» con chevron.
