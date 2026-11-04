@@ -12,8 +12,8 @@ import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.diseno.Iconos
 
 /**
- * Las pestañas (GEN-01). Desde la 2.1 la última es Salud (lo que era Progreso, en su lugar). Con suplementación (2.1.0)
- * la barra cambia: ver [barra].
+ * Las pestañas (GEN-01). Salud (lo que era Progreso) ya no está en la barra (2.1.0, «Salud dentro de Revisión»): se abre
+ * desde la tarjeta Recuperación de Revisión y tapa Revisión hasta volver. Ver [barra].
  */
 enum class Pestana(val titulo: String) {
     ENTRENO("Entreno"),
@@ -40,12 +40,12 @@ enum class Pestana(val titulo: String) {
 
     companion object {
         /**
-         * Las 5 de la barra. Sin suplementación, las de siempre. Con suplementación (decisión de Mati, 2.1.0) entra
-         * Suplementación y Salud sale de la barra: se abre desde el botón de arriba en Revisión, junto a Mis datos, y los
-         * avisos y links que llevan a Salud siguen llegando ([Navegacion.irASalud]).
+         * Las de la barra: Entreno · Dieta · [Suplementación] · Chat · Revisión. Salud no está nunca (pedido de Mati del
+         * 4-nov: lo principal de Salud es la recuperación y va con la revisión): se abre desde la tarjeta Recuperación de
+         * Revisión, y los avisos y links que llevan a Salud siguen llegando ([Navegacion.irASalud]).
          */
         fun barra(conSuplementacion: Boolean): List<Pestana> =
-            if (conSuplementacion) listOf(ENTRENO, DIETA, SUPLEMENTACION, CHAT, REVISION) else listOf(ENTRENO, DIETA, CHAT, REVISION, SALUD)
+            if (conSuplementacion) listOf(ENTRENO, DIETA, SUPLEMENTACION, CHAT, REVISION) else listOf(ENTRENO, DIETA, CHAT, REVISION)
     }
 }
 
@@ -115,10 +115,10 @@ class Navegacion(
             DestinoAviso.ENTRENO -> pestana = Pestana.ENTRENO
             DestinoAviso.DIETA -> pestana = Pestana.DIETA
             DestinoAviso.CHAT -> pestana = Pestana.CHAT
-            // `progress` (lo que era Progreso): Salud → Fuerza.
+            // `progress` (lo que era Progreso): Revisión + Salud → Fuerza.
             DestinoAviso.FUERZA -> irASalud(SegmentoSalud.FUERZA)
             DestinoAviso.REVISION -> irARevision(null)
-            // `?scene=myday` y el aviso de Mi Día (ya no existe): Salud → Recuperación.
+            // `?scene=myday` y el aviso de Mi Día (ya no existe): Revisión + Salud → Recuperación.
             DestinoAviso.RECUPERACION -> irASalud(SegmentoSalud.RECUPERACION)
             DestinoAviso.MIS_DATOS -> {
                 pestana = Pestana.REVISION
@@ -136,7 +136,10 @@ class Navegacion(
         anclaRevision = ancla
     }
 
-    /** A Salud, en ese segmento. */
+    /**
+     * A Salud, en ese segmento: Revisión con Salud abierta encima (la barra marca Revisión y Atrás vuelve a Revisión). La
+     * usan la tarjeta Recuperación y los avisos y links de fuerza o recuperación.
+     */
     fun irASalud(segmento: SegmentoSalud) {
         segmentoSalud = segmento
         pestana = Pestana.SALUD

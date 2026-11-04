@@ -127,7 +127,7 @@ class CapturasTiendaTest : PruebaUi() {
             p.nodo(etiqueta("dieta-cabecera"))
             captura("$modo-3-dieta")
 
-            p.tocar(etiqueta("pestana-salud"))
+            p.abrirSalud()
             p.tocar(etiqueta("segmento-fuerza"))
             p.esperar("los totales de Progreso") { p.textosBajo(etiqueta("progreso-totales")).contains("32") }
             esperarFotos()

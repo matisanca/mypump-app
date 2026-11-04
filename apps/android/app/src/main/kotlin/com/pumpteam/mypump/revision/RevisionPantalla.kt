@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,9 +68,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Revisión (gemela de `RevisionView.swift`): desde la 2.1, solo para subir la semana: el aviso del plan incompleto
- * (GEN-05), las fotos de la semana y el check (que ya trae el peso del día). El peso, Mi reloj, la recuperación y la salud
- * pasaron a la pestaña Salud. De acá cuelga Mis datos (el ícono de arriba).
+ * Revisión (gemela de `RevisionView.swift`): arriba de todo las tarjetas Recuperación y Tu progreso, que abren Salud (2.1.0, «Salud dentro
+ * de Revisión»: Salud dejó de ser pestaña); después el aviso del plan incompleto (GEN-05), las fotos de la semana y el
+ * check (que ya trae el peso del día y, arriba del botón, «Tu salud, últimos 7 días»). De acá cuelgan Mis datos (el ícono
+ * de arriba) y Salud.
  *
  * Tirar para actualizar trae el check y las fotos. Un aviso o el banner de las otras pestañas piden una sección
  * ([AnclaRevision]): se desplaza hasta ella y se consume. En la demo el check se toca igual y no sale nada; las fotos
@@ -74,10 +79,12 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalud: (() -> Unit)? = null) {
+fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalud: () -> Unit, alAbrirFuerza: () -> Unit) {
     val revision by modelo.revision.collectAsStateWithLifecycle()
+    val salud by modelo.salud.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    val fechaRevision = revision?.fecha?.collectAsStateWithLifecycle()?.value
     val filasDePeso = revision?.salud?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pesoParaLasFotos = remember(filasDePeso) { PesoCorporal.serie(filasDePeso) }
     val alcance = LocalAlcanceApp.current
@@ -102,24 +109,6 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
         "Revisión",
         subtitulo = semanaActual(),
         acciones = {
-            // Con suplementación (2.1.0), Salud sale de la barra y se abre desde acá, junto a Mis datos.
-            // El área que se toca mide 48 dp (el mínimo de Android); el círculo de vidrio, 44 como el de Mis datos.
-            if (alAbrirSalud != null) {
-                Box(
-                    Modifier
-                        .padding(end = Espacio.s - 2.dp)
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .clickable(role = Role.Button, onClick = alAbrirSalud)
-                        .semantics { contentDescription = "Salud" }
-                        .testTag("abrir-salud"),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(Modifier.size(44.dp).vidrio(CircleShape, elevacion = 6.dp), contentAlignment = Alignment.Center) {
-                        Icon(Iconos.Corazon, contentDescription = null, tint = MyPump.colores.marcaTexto, modifier = Modifier.size(24.dp))
-                    }
-                }
-            }
             // El círculo de vidrio de iOS 26 (el mismo de volver), no un ícono suelto.
             Box(
                 Modifier
@@ -169,10 +158,35 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                        // Lo primero de Revisión: la recuperación y el progreso (reemplazan al corazón que había arriba).
+                        // En el teléfono, juntas (Espacio.m); en tablet, lado a lado.
+                        BoxWithConstraints {
+                            if (maxWidth >= 600.dp) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m), modifier = Modifier.height(IntrinsicSize.Max)) {
+                                    TarjetaRecuperacionRevision(salud, alAbrirSalud, Modifier.weight(1f).fillMaxHeight())
+                                    TarjetaProgresoRevision(modelo, alAbrirFuerza, Modifier.weight(1f).fillMaxHeight())
+                                }
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                                    TarjetaRecuperacionRevision(salud, alAbrirSalud)
+                                    TarjetaProgresoRevision(modelo, alAbrirFuerza)
+                                }
+                            }
+                        }
                         AvisoPlanIncompleto(modelo)
                     }
                     FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
-                    CheckSemanal(revision, Modifier.seccion(AnclaRevision.CHECK, secciones))
+                    CheckSemanal(
+                        revision,
+                        Modifier.seccion(AnclaRevision.CHECK, secciones),
+                        salud = filasSaludSemana(salud, hoyDemo = if (esDemo) fechaRevision else null),
+                        alEnviar = {
+                            // Con cuenta y la salud del sistema conectada: los últimos días al servidor, sin esperar ni
+                            // frenar el envío del check.
+                            val s = salud
+                            if (!esDemo && s != null && s.conectado.value) alcance.launch { s.sincronizar() }
+                        },
+                    )
                 }
             }
         }

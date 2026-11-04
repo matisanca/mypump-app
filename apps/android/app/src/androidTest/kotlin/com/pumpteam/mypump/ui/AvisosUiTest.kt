@@ -120,12 +120,17 @@ class AvisosUiTest : PruebaUi() {
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
         app.startActivity(intentDePush("train"))
         p.esperar("Entreno elegido") { p.seleccionado(etiqueta("pestana-entreno")) }
-        // `progress` (lo que era Progreso): Salud → Fuerza; el viejo `myday`: Salud → Recuperación.
+        // `progress` (lo que era Progreso): Revisión + Salud → Fuerza; el viejo `myday`: Revisión + Salud → Recuperación.
         app.startActivity(intentDePush("progress"))
-        p.esperar("Salud elegida") { p.seleccionado(etiqueta("pestana-salud")) }
+        p.esperar("Revisión + Salud") { p.enSalud() }
         p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
         app.startActivity(intentDePush("myday"))
         p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        assertTrue(p.enSalud())
+        // Atrás vuelve a Revisión, de donde cuelga Salud.
+        p.atras()
+        p.esperarQueNoEste(etiqueta("salud-pantalla"))
+        assertTrue(p.seleccionado(etiqueta("pestana-revision")))
     }
 
     /** De punta a punta: el aviso que publica la app, con su PendingIntent de verdad. */

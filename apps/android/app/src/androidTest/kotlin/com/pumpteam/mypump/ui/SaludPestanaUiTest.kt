@@ -38,7 +38,7 @@ class SaludPestanaUiTest : PruebaUi() {
     }
 
     private fun irA(segmento: String) {
-        p.tocar(etiqueta("pestana-salud"))
+        if (!p.existe(etiqueta("salud-pantalla"))) p.abrirSalud()
         p.tocar(etiqueta("segmento-$segmento"))
         p.esperar("$segmento elegido") { p.seleccionado(etiqueta("segmento-$segmento")) }
     }
@@ -80,26 +80,69 @@ class SaludPestanaUiTest : PruebaUi() {
 
     // ── S1: la pestaña y sus segmentos ──
 
-    /** Salud está donde estaba Progreso (5 pestañas), arranca en Recuperación y recuerda el segmento al volver. */
+    /**
+     * Salud (2.1.0) ya no es pestaña: se abre desde la tarjeta Recuperación de Revisión, siempre en Recuperación, con sus
+     * tres segmentos, y Revisión queda marcada en la barra.
+     */
     @Test
-    fun saludEnLugarDeProgresoYRecuerdaElSegmento() {
+    fun saludSeAbreDesdeRevisionEnRecuperacion() {
         sembrarEntreno()
         guardarCuenta()
         abrir()
-        p.nodo(etiqueta("pestana-salud"))
+        p.nodo(etiqueta("pestana-revision"))
+        assertFalse(p.existe(etiqueta("pestana-salud")))
         assertFalse(p.existe(etiqueta("pestana-progreso")))
-        assertTrue(p.textosBajo(etiqueta("pestana-salud")).toString(), "Salud" in p.textosBajo(etiqueta("pestana-salud")))
-        p.tocar(etiqueta("pestana-salud"))
-        p.nodo(etiqueta("salud-pantalla"))
+        p.abrirSalud()
+        assertTrue(p.enSalud())
         p.esperar("arranca en Recuperación") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         for (t in listOf("Recuperación", "Fuerza", "Cuerpo")) p.nodo(texto(t))
         p.nodo(etiqueta("card-recuperacion"))
         irA("cuerpo")
         p.nodo(etiqueta("seccion-peso"))
+        // La tarjeta vuelve a abrir Salud en Recuperación, aunque se haya quedado en otro segmento.
         p.tocar(etiqueta("pestana-dieta"))
-        p.tocar(etiqueta("pestana-salud"))
-        p.esperar("sigue en Cuerpo") { p.seleccionado(etiqueta("segmento-cuerpo")) }
-        assertFalse(p.seleccionado(etiqueta("segmento-recuperacion")))
+        p.abrirSalud()
+        p.esperar("en Recuperación") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        assertFalse(p.seleccionado(etiqueta("segmento-cuerpo")))
+    }
+
+    /**
+     * «Tu progreso» (2.1.0) debajo de Recuperación en Revisión: con lo sembrado (press hoy y la semana pasada, remo hace 7
+     * días) dice las sesiones de la semana; con un récord, el texto sin emojis y el trofeo. Abre Salud en Fuerza.
+     */
+    @Test
+    fun laTarjetaTuProgresoDiceLaSemanaYAbreFuerza() {
+        sembrarEntreno()
+        guardarCuenta()
+        abrir()
+        p.tocar(etiqueta("pestana-revision"))
+        p.nodo(etiqueta("tarjeta-progreso-revision"))
+        // La tarjeta trae el progreso sola (sin pasar por Fuerza).
+        p.nodo(texto("1 sesión entrenada esta semana"), ms = 20_000)
+        assertFalse(p.existe(etiqueta("trofeo-progreso")))
+        p.nodo(texto("Ver fuerza y récords"))
+        // Pegada a Recuperación: debajo, antes que las fotos.
+        val y = { t: String -> p.nodo(etiqueta(t)).let { n -> p.enPrincipal { n.positionInRoot.y } } }
+        assertTrue(y("tarjeta-recuperacion-revision") < y("tarjeta-progreso-revision"))
+        assertTrue(y("tarjeta-progreso-revision") < y("seccion-fotos"))
+        p.tocar(etiqueta("tarjeta-progreso-revision"))
+        p.nodo(etiqueta("salud-pantalla"))
+        p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
+        assertTrue(p.enSalud())
+    }
+
+    @Test
+    fun conUnRecordLaTarjetaTuProgresoLlevaElTrofeo() {
+        sembrarEntreno()
+        val hoy = LocalDate.now()
+        servidor.respuestas["mypump_get_historico_por_clave"] =
+            "[" + listOf(fila(PRESS, hoy, 1, kg = 65), fila(PRESS, hoy.minusDays(7), 1)).joinToString(",") + "]"
+        guardarCuenta()
+        abrir()
+        p.tocar(etiqueta("pestana-revision"))
+        p.nodo(texto("Récord en $PRESS, 65 kg"), ms = 20_000)
+        p.nodo(etiqueta("trofeo-progreso"))
+        Telefono.captura("salud-rev-03-progreso-record")
     }
 
     // ── S2: el volumen por músculo ──
@@ -216,7 +259,7 @@ class SaludPestanaUiTest : PruebaUi() {
         sembrarTodo()
         guardarCuenta()
         abrir().also {
-            p.tocar(etiqueta("pestana-salud"))
+            p.abrirSalud()
             p.nodo(etiqueta("card-recuperacion"))
             p.nodo(etiqueta("card-salud"))
             p.quieto(800)
@@ -247,9 +290,8 @@ class SaludPestanaUiTest : PruebaUi() {
         reiniciarEstado()
         abrir().also {
             p.tocar(etiqueta("ver-demo"))
-            // La demo trae suplementación: Salud se abre desde Revisión.
-            p.tocar(etiqueta("pestana-revision"))
-            p.tocar(etiqueta("abrir-salud"))
+            // Salud se abre desde la tarjeta Recuperación de Revisión.
+            p.abrirSalud()
             p.nodo(etiqueta("recuperacion-vacia"))
             p.nodo(texto("La recuperación sale de tu reloj o de tu teléfono. En la demo no hay datos."))
             foto("salud-06-demo-recuperacion")
@@ -274,9 +316,9 @@ class SaludPestanaUiTest : PruebaUi() {
         ]}}]"""
 
         /** Una serie del historial a las 12 locales de ese día. */
-        fun fila(nombre: String, dia: LocalDate, serie: Int): String {
+        fun fila(nombre: String, dia: LocalDate, serie: Int, kg: Int = 60): String {
             val cuando = dia.atTime(12, 0).atZone(ZoneId.systemDefault()).toOffsetDateTime()
-            return """{"clave":"${ClaveEjercicio.de(nombre)}","registrado_en":"$cuando","peso_kg":60,"reps_realizadas":8,""" +
+            return """{"clave":"${ClaveEjercicio.de(nombre)}","registrado_en":"$cuando","peso_kg":$kg,"reps_realizadas":8,""" +
                 """"rir_real":1,"serie_numero":$serie,"notas":null,"ejercicio_nombre":"$nombre"}"""
         }
     }

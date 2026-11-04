@@ -60,13 +60,8 @@ class RevisionUiTest : PruebaUi() {
 
     /** Salud en un segmento (desde la 2.1 el peso está en Cuerpo; Mi reloj, la recuperación y la salud en Recuperación). */
     private fun irASalud(segmento: String) {
-        // Con suplementación (la demo la trae) Salud no está en la barra: se abre desde el botón de arriba de Revisión.
-        if (p.existe(etiqueta("pestana-salud"))) {
-            p.tocar(etiqueta("pestana-salud"))
-        } else {
-            p.tocar(etiqueta("pestana-revision"))
-            p.tocar(etiqueta("abrir-salud"))
-        }
+        // Salud no está en la barra (2.1.0): se abre desde la tarjeta Recuperación de arriba de Revisión.
+        p.abrirSalud()
         p.tocar(etiqueta("segmento-$segmento"))
         p.esperar("$segmento elegido") { p.seleccionado(etiqueta("segmento-$segmento")) }
     }
@@ -484,19 +479,19 @@ class RevisionUiTest : PruebaUi() {
     }
 
     /**
-     * `scene=myday` (el link de la web a Mi Día, que ya no existe): desde la 2.1 lleva a Salud → Recuperación, lo que quedó
+     * `scene=myday` (el link de la web a Mi Día, que ya no existe): lleva a Revisión + Salud → Recuperación, lo que quedó
      * de él (la recuperación y la salud del reloj).
      */
     @Test
     fun unLinkConSceneMyDayLlevaARecuperacion() {
         abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=myday")
-        p.esperar("Salud elegida") { p.seleccionado(etiqueta("pestana-salud")) }
+        p.esperar("Revisión + Salud") { p.enSalud() }
         p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.nodo(etiqueta("card-recuperacion"))
-        // Tocar la pestaña después vuelve al mismo segmento.
-        p.tocar(etiqueta("pestana-entreno"))
-        p.tocar(etiqueta("pestana-salud"))
-        p.esperar("sigue en Recuperación") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        // Volver lleva a Revisión, con la tarjeta Recuperación arriba.
+        p.tocar(etiqueta("volver"))
+        p.esperarQueNoEste(etiqueta("salud-pantalla"))
+        p.nodo(etiqueta("tarjeta-recuperacion-revision"))
     }
 
     /** El aviso con destino `myday` (lo manda el servidor) también, aunque Salud haya quedado en otro segmento. */
@@ -507,7 +502,7 @@ class RevisionUiTest : PruebaUi() {
         irASalud("cuerpo")
         p.tocar(etiqueta("pestana-entreno"))
         app.startActivity(com.pumpteam.mypump.avisos.CentroAvisos.intentDeAviso(app, "myday"))
-        p.esperar("Salud elegida") { p.seleccionado(etiqueta("pestana-salud")) }
+        p.esperar("Revisión + Salud") { p.enSalud() }
         p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.nodo(etiqueta("card-recuperacion"))
     }
@@ -593,8 +588,8 @@ class RevisionUiTest : PruebaUi() {
         guardarPreferencia(ClaveSalud.HISTORIAL_HECHO, "1")
         guardarCuenta()
         abrir()
-        // Salud arranca en Recuperación.
-        p.tocar(etiqueta("pestana-salud"))
+        // Salud (desde la tarjeta de Revisión) arranca en Recuperación.
+        p.abrirSalud()
         p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.nodo(etiqueta("card-recuperacion"))
         p.nodo(etiqueta("card-salud"))

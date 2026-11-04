@@ -115,7 +115,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val estadosPestanas = rememberSaveableStateHolder()
     val badges = badges(modelo, esDemo)
     val entreno by modelo.entreno.collectAsStateWithLifecycle()
-    // Suplementación (2.1.0): con una fila del RPC hay pestaña y Salud pasa al botón de arriba de Revisión.
+    // Suplementación (2.1.0): con una fila del RPC hay pestaña.
     val suplementacion by modelo.suplementacion.collectAsStateWithLifecycle()
     val planSuplementacion = suplementacion?.plan?.collectAsStateWithLifecycle()?.value
     val conSuplementacion = planSuplementacion != null
@@ -135,8 +135,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val enMisDatos = navegacion.pestana == Pestana.REVISION && navegacion.misDatos
     val enGuia = navegacion.pestana == Pestana.ENTRENO && navegacion.guia
     val enGuiaDeMisDatos = enMisDatos && navegacion.guiaEnMisDatos
-    // Salud fuera de la barra (con suplementación): Atrás vuelve a Revisión, de donde se abre.
-    val saludFueraDeLaBarra = conSuplementacion && navegacion.pestana == Pestana.SALUD
+    // Salud (fuera de la barra desde la 2.1.0) cuelga de Revisión: Atrás vuelve a Revisión, de donde se abre.
+    val enSalud = navegacion.pestana == Pestana.SALUD
     // La suplementación dejó de existir (Mati la sacó) con su pestaña abierta: a Entreno. Al restaurar la app con la
     // pestaña elegida se espera a la primera lectura de la copia: antes, «sin plan» todavía no quiere decir «no hay».
     LaunchedEffect(conSuplementacion, suplementacionLeida) {
@@ -146,7 +146,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     BackHandler(enabled = enGuiaDeMisDatos) { navegacion.guiaEnMisDatos = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
-    BackHandler(enabled = saludFueraDeLaBarra) { navegacion.irARevision(null) }
+    BackHandler(enabled = enSalud) { navegacion.irARevision(null) }
 
     CompositionLocalProvider(LocalNavegacion provides navegacion) {
         val densidad = LocalDensity.current
@@ -189,10 +189,11 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                         RevisionPantalla(
                                             modelo,
                                             alAbrirMisDatos = { navegacion.misDatos = true },
-                                            alAbrirSalud = if (conSuplementacion) ({ navegacion.irASalud(navegacion.segmentoSalud) }) else null,
+                                            alAbrirSalud = { navegacion.irASalud(SegmentoSalud.RECUPERACION) },
+                                            alAbrirFuerza = { navegacion.irASalud(SegmentoSalud.FUERZA) },
                                         )
                                     }
-                                Pestana.SALUD -> SaludPantalla(modelo, alVolver = if (saludFueraDeLaBarra) ({ navegacion.irARevision(null) }) else null)
+                                Pestana.SALUD -> SaludPantalla(modelo, alVolver = { navegacion.irARevision(null) })
                                 Pestana.SUPLEMENTACION -> {
                                     val m = suplementacion
                                     if (m != null) SuplementacionPantalla(m, modelo)
@@ -244,7 +245,8 @@ private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>, pes
         verticalAlignment = Alignment.CenterVertically,
     ) {
         for (p in pestanas) {
-            val elegida = navegacion.pestana == p
+            // Con Salud abierta se marca Revisión, de donde cuelga (tocarla vuelve a Revisión).
+            val elegida = navegacion.pestana == p || (p == Pestana.REVISION && navegacion.pestana == Pestana.SALUD)
             val n = badges[p] ?: 0
             val tono = if (elegida) c.marcaTexto else c.texto
             Column(

@@ -66,6 +66,7 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.CheckinSemanal
 import com.pumpteam.mypump.reglas.PesoCorporal
 import com.pumpteam.mypump.reglas.FotosProgreso
+import com.pumpteam.mypump.reglas.SaludSemana
 import kotlinx.coroutines.launch
 
 /**
@@ -73,12 +74,19 @@ import kotlinx.coroutines.launch
  * el 15-oct, a pedido de Mati: el peso es parte de mandar la revisión; los demás días se carga en la tarjeta de peso). Cada escala es una
  * fila de botones redondos con sus extremos rotulados ("muy baja → excelente"); el botón dice qué falta ("Faltan: …") en
  * vez de quedar gris sin explicación. Sale por la cola (`ModeloRevision.enviarCheckin`); en la demo queda en la pantalla.
+ * Arriba del botón, «Tu salud, últimos 7 días» ([salud], 2.1.0): va con el check, y al mandarlo [alEnviar] dispara la
+ * sincronización de salud para que el servidor tenga los últimos días.
  *
  * El borrador sobrevive a cambiar de pestaña y a rotar, lo guardado no lo pisa mientras el cliente esté tocando, y se
  * vacía al cambiar de semana: antes quedaban las respuestas de la anterior con "Enviar" habilitado (revisión del 14-oct).
  */
 @Composable
-fun CheckSemanal(revision: ModeloRevision?, modifier: Modifier = Modifier) {
+fun CheckSemanal(
+    revision: ModeloRevision?,
+    modifier: Modifier = Modifier,
+    salud: List<SaludSemana.Fila> = emptyList(),
+    alEnviar: () -> Unit = {},
+) {
     val alcance = LocalAlcanceApp.current
     val tactil = LocalHapticFeedback.current
     val foco = LocalFocusManager.current
@@ -130,6 +138,7 @@ fun CheckSemanal(revision: ModeloRevision?, modifier: Modifier = Modifier) {
             } else {
                 // El peso sale con el check, por la misma cola que el de la tarjeta de peso.
                 if (kilos.isNotEmpty()) r.guardarPeso(kilos)
+                alEnviar()
                 peso = ""
                 editado = false
                 tactil.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -207,6 +216,7 @@ fun CheckSemanal(revision: ModeloRevision?, modifier: Modifier = Modifier) {
                 editado = true
                 aviso = null
             }
+            SaludDelCheck(salud)
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
                 BotonMarca(
                     if (enviado) "Actualizar mi check" else "Enviar mi check",
