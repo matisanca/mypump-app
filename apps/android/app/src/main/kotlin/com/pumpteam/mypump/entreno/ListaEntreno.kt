@@ -105,6 +105,7 @@ import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.modelos.Dia
 import com.pumpteam.mypump.modelos.Ejercicio
 import com.pumpteam.mypump.raiz.BannerRevision
+import com.pumpteam.mypump.guia.TarjetaGuiaDe
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.Js
 import com.pumpteam.mypump.reglas.NormalizacionRutina
@@ -188,6 +189,7 @@ fun ListaEntreno(
                             modifier = Modifier.testTag("aviso-demo"),
                         )
                     }
+                    TarjetaGuiaDe(modelo)
                     BannerRevision(modelo)
                     // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
                     if (motor.dias.size > 1) SelectorDias(motor, v)

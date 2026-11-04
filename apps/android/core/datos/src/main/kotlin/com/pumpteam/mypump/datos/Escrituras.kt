@@ -40,7 +40,8 @@ class Escrituras(
         val r = ejecutarSinVerificar(op)
         if (r !is ResultadoOp.Respuesta) return r
         val noGuardado = when (val res = r.resultado) {
-            is Resultado.Ok -> !Outbox.seGuardo(res.valor)
+            // «Tu guía» contesta `false` con el token caído (y también con el tope de dudas): se mira si fue el token.
+            is Resultado.Ok -> !Outbox.seGuardo(res.valor) || (op.kind in KINDS_GUIA && res.valor == ValorJson.Booleano(false))
             is Resultado.Falla -> res.error.clase == ErrorRpc.Clase.PERMANENTE && res.error.codigo != "KIND_DESCONOCIDO"
         }
         if (noGuardado && verificacion.cayo(cliente, token)) return ResultadoOp.TokenCaido
@@ -213,6 +214,25 @@ class Escrituras(
                     ),
                 ),
             )
+            // «Tu guía» (`entregas_010_app`). Devuelven bool: TRUE = guardado; FALSE = token inválido, sin guía o, en las
+            // dudas, el tope (3200 caracteres por video, 30 para la videollamada). Un FALSE que no es del token queda como
+            // hecho y [ModeloGuia] lo avisa («No se pudo guardar»): reintentarlo daría lo mismo.
+            ModeloGuia.KIND_AVANCE -> ResultadoOp.Respuesta(
+                cliente.llamar(
+                    "entregas_app_avance",
+                    mapOf(
+                        "p_token" to t, "p_video" to de(p, "video"),
+                        "p_segundos" to numero((p["segundos"]?.comoNumero ?: 0.0).coerceIn(0.0, 36_000.0).toInt()),
+                        "p_visto" to ValorJson.Booleano((p["visto"] as? ValorJson.Booleano)?.valor == true),
+                    ),
+                ),
+            )
+            ModeloGuia.KIND_DUDA -> ResultadoOp.Respuesta(
+                cliente.llamar("entregas_app_duda", mapOf("p_token" to t, "p_video" to de(p, "video"), "p_texto" to de(p, "texto")) + idDeDuda(p)),
+            )
+            ModeloGuia.KIND_DUDA_LLAMADA -> ResultadoOp.Respuesta(
+                cliente.llamar("entregas_app_llamada_duda", mapOf("p_token" to t, "p_texto" to de(p, "texto")) + idDeDuda(p)),
+            )
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
         }
@@ -283,6 +303,20 @@ class Escrituras(
     }
 
     companion object {
+        /** Los kinds de «Tu guía» (ver [ModeloGuia]). */
+        private val UUID = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+        /**
+         * `p_id` de una duda de la guía (`entregas_013`): solo si el payload trae un uuid. Las ops viejas (sin `id`) se mandan
+         * sin el campo; nunca "" ni otra cosa (daría 400 22P02, que la cola no reintenta).
+         */
+        fun idDeDuda(p: ValorJson?): Map<String, ValorJson> {
+            val id = (p?.get("id") as? ValorJson.Texto)?.valor ?: return emptyMap()
+            return if (UUID.matches(id)) mapOf("p_id" to ValorJson.Texto(id)) else emptyMap()
+        }
+
+        val KINDS_GUIA: Set<String> = setOf(ModeloGuia.KIND_AVANCE, ModeloGuia.KIND_DUDA, ModeloGuia.KIND_DUDA_LLAMADA)
+
         /**
          * `valor === null ? 'null' : String(valor)` de la web (`setHabito`): null → "null", true → "true", 12 → "12".
          * Un valor que falta también es "null" (en la web sería "undefined", y no pasa: la app siempre lo manda).

@@ -213,6 +213,10 @@ class ModeloApp(
      * [cargar] y sincroniza en [alVolverAPrimerPlano]; la fuente del sistema la pone `:app` en
      * [ModeloSalud.fuenteDelSistema].
      */
+    /** «Tu guía»: la tarjeta de inicio y la sección (solo con una cuenta; en la demo no hay). */
+    private val _guia = MutableStateFlow<ModeloGuia?>(null)
+    val guia: StateFlow<ModeloGuia?> = _guia.asStateFlow()
+
     private val _salud = MutableStateFlow<ModeloSalud?>(null)
     val salud: StateFlow<ModeloSalud?> = _salud.asStateFlow()
 
@@ -403,6 +407,7 @@ class ModeloApp(
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
+        _guia.value = null
         _entreno.value = null
     }
 
@@ -432,6 +437,7 @@ class ModeloApp(
         _revision.value = ModeloRevision(cliente, t, cola, alcance)
         _fotos.value = ModeloFotos(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
+        _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
         _salud.value?.cancelarEspera()
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3 del 15-oct).
         _salud.value = ModeloSalud(cliente, t, almacen = AlmacenSaludPorCuenta(preferencias, Disco.huella(t)), alcance = alcance)
@@ -444,6 +450,7 @@ class ModeloApp(
 
     /** Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…". */
     private fun alGuardar(ops: List<OpGuardada>) {
+        _guia.value?.alGuardar(ops)
         for (g in ops) {
             if (g.op.kind != "chat") continue
             val contenido = g.op.payload["contenido"]?.comoTexto ?: continue
@@ -456,6 +463,7 @@ class ModeloApp(
      * ("no salió → Reintentar"), como `marcarChatFallido` de la web.
      */
     private fun alAbandonar(ops: List<Operacion>) {
+        _guia.value?.alAbandonar(ops)
         for (op in ops) {
             if (op.kind != "chat") continue
             op.payload["contenido"]?.comoTexto?.let { _chat.value?.marcarFallido(it) }
@@ -627,6 +635,8 @@ class ModeloApp(
             launch { _revision.value?.cargarMiDia() }
             launch { _revision.value?.cargarRevision() }
             launch { _fotos.value?.cargar() }
+            // «Tu guía»: solo el resumen (no marca `abierto_en`); el `get` es solo al abrir la sección.
+            launch { _guia.value?.refrescarResumen() }
         }
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
@@ -671,6 +681,7 @@ class ModeloApp(
         hidratarMarcas()
         _chat.value?.sondear()
         _fotos.value?.drenar()
+        _guia.value?.refrescarResumen()
         _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)
         _entreno.value?.alVolverAPrimerPlano()
     }

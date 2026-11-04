@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- «Tu guía»: la vista de Media3 con TextureView (no SurfaceView), para que respete las esquinas redondeadas de Compose,
+     se mueva con la lista sin dejar el video atrás y salga en las capturas. Los videos son cortos: el costo no se nota. -->
+<androidx.media3.ui.PlayerView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:surface_type="texture_view"
+    app:use_controller="true" />

@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import com.pumpteam.mypump.guia.ControlReproductor
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -180,9 +181,20 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { _modelo.value?.salirDeDemo() }
     }
 
-    /** La app pasó a primer plano o a segundo: los sondeos solo corren a la vista (CHA-04). */
+    private var _reproductorGuia: ControlReproductor? = null
+
+    /** El reproductor de «Tu guía»: vive acá para que girar el teléfono (la Activity se vuelve a crear) no corte el video. */
+    val reproductorGuia: ControlReproductor
+        get() = _reproductorGuia ?: ControlReproductor(app, viewModelScope).also { _reproductorGuia = it }
+
+    /**
+     * La app pasó a primer plano o a segundo: los sondeos solo corren a la vista (CHA-04), y con la app atrás el video de
+     * la guía se pausa (y no vuelve a sonar solo, ver [ControlReproductor.pausar]).
+     */
     fun primerPlano(visible: Boolean) {
         aLaVista = visible
+        // Con la app atrás, el video de la guía no sigue sonando.
+        if (!visible) _reproductorGuia?.pausar()
         val m = _modelo.value ?: return
         m.enPrimerPlano = visible
         if (visible) viewModelScope.launch { m.alVolverAPrimerPlano() }
@@ -190,5 +202,6 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         apariencia.cerrar()
+        _reproductorGuia?.liberar()
     }
 }

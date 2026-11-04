@@ -19,6 +19,10 @@ dependencies {
 tasks.withType<Test>().configureEach {
     // La subida de fotos de la integración corre solo a pedido (el servicio deja 12 por día por cliente).
     environment("MYPUMP_PROBAR_FOTOS", System.getenv("MYPUMP_PROBAR_FOTOS") ?: "")
+    // «Tu guía»: el token de la cuenta de prueba puede llegar por variable (si no, el registro privado), y las dudas, que
+    // se acumulan en el servidor (3200 caracteres por video, 30 para la videollamada), se escriben solo a pedido.
+    environment("MYPUMP_TOKEN_GUIA", System.getenv("MYPUMP_TOKEN_GUIA") ?: "")
+    environment("MYPUMP_PROBAR_DUDAS", System.getenv("MYPUMP_PROBAR_DUDAS") ?: "")
     // La integración contra el backend real no se cachea: lo que valida está afuera.
     outputs.upToDateWhen { false }
 }
