@@ -6,10 +6,29 @@
 
 ## Candado
 
-**Trabajan (4-nov-2026 de noche, por pedido de Mati):** «MyPump Pro 2.0» `87d2a7a8` en el clon principal (`nativa-202`) y sus worktrees, con la 2.0.3 y el Watch. «MYPUMP PRO» `c96aa5` solo en los worktrees `guia`, `guia-ios` y `guia-and` (rama `nativa-guia`). Ninguna toca lo de la otra. La guía entra a `nativa-202` con un merge que hace «MyPump Pro 2.0» cuando MYPUMP PRO le avisa.
+**Trabaja (4-nov-2026 tarde):** solo «MyPump Pro 2.0» `87d2a7a8`, en el clon principal (`nativa-202`), con el envío de la 2.1.0. MYPUMP PRO soltó su parte: «Tu guía», cardio y Suplementación ya están en `nativa-202` (03c1919). Los worktrees `guia*`, `cardio` y `guia-pe-*` quedan para limpiar.
 
 Si el candado es de otra sesión y tiene menos de 6 h, no se toca este clon. Cuando una sesión termina, deja el
 candado libre.
+
+## 2.1.0 unificada (4-nov)
+
+- **Contenido:**
+  - la 2.0.3 (en iOS ya publicada como 121, Apple la aprobó; en Android nunca salió);
+  - la tanda 2: Salud, volumen por músculo y código de barras;
+  - el Apple Watch, con el conteo de reps prendido por defecto (se apaga en Mis datos → Conteo de reps);
+  - «Tu guía» (ver `docs/NATIVA_GUIA.md`), que se oculta de Entreno 48 h después de la entrega;
+  - el arreglo de la cinta y el cardio;
+  - la pestaña **Suplementación**, que lee `mypump_suplementacion` (entregas_015) y aparece solo con datos; con ella, Salud pasa al corazón de arriba de Revisión;
+  - en el reloj, nada de «0/0 series» en el cardio sin duración.
+- **Tags:** `nios-2.1.0-127` sobre af0abdd y `nand-2.1.0-106` después de la corrida completa de Android.
+- **Novedades y notas al revisor:** en `docs/NATIVA_TIENDAS_2.1.md`.
+- **Pasada final de MYPUMP PRO sobre 03c1919:**
+  - kit 830/830;
+  - XCUITest 62 pasan, 0 fallan;
+  - contratos 59/59;
+  - JVM 826;
+  - las 13 clases de interfaz de Android, de a una.
 
 ## Dónde
 
