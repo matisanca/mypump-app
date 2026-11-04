@@ -19,9 +19,25 @@ candado libre.
   - el Apple Watch, con el conteo de reps prendido por defecto (se apaga en Mis datos → Conteo de reps);
   - «Tu guía» (ver `docs/NATIVA_GUIA.md`), que se oculta de Entreno 48 h después de la entrega;
   - el arreglo de la cinta y el cardio;
-  - la pestaña **Suplementación**, que lee `mypump_suplementacion` (entregas_015) y aparece solo con datos; con ella, Salud pasa al corazón de arriba de Revisión;
-  - en el reloj, nada de «0/0 series» en el cardio sin duración.
-- **Tags:** `nios-2.1.0-127` sobre af0abdd y `nand-2.1.0-106` después de la corrida completa de Android.
+  - la pestaña **Suplementación**, que lee `mypump_suplementacion` (entregas_015) y aparece solo con datos;
+  - **Salud dentro de Revisión** (pedido de Mati, 4-nov; `docs/NATIVA_SALUD_EN_REVISION.md`): Salud deja de ser
+    pestaña; arriba de Revisión, las tarjetas Recuperación (abre Salud) y «Tu progreso» (abre Fuerza), y el check trae
+    «Tu salud, últimos 7 días». Sin migración: el coach ya lee la recuperación del servidor (lo del panel o el brief
+    lo toma BOT MINI, con OK de Mati). En nativa-202 hasta dd56d3d, con dos revisiones opus aplicadas;
+  - en el reloj, nada de «0/0 series» en el cardio sin duración;
+  - en camino, de MYPUMP PRO: «Tu guía» destacada (bienvenida, tarjeta verde con «Ocultar») y dudas en audio en la guía
+    (entregas_018).
+- **Envíos del 4-nov, deshechos:** la iOS 127 se mandó a revisión a las 16:17 y se sacó a pedido de Mati para sumar
+  Salud en Revisión (queda «Rechazado por el desarrollador»; novedades y notas ya actualizadas en ASC). El AAB 106
+  (`nand-2.1.0-106`) se armó pero no se subió a Play: queda descartado.
+- **Lo que falta para enviar** (con el OK que ya dio Mati):
+  1. que MYPUMP PRO pase los hashes integrados (guía destacada y audio) sobre nativa-202;
+  2. pruebas de lo tocado y tags `nios-2.1.0-128` y `nand-2.1.0-107`;
+  3. ASC: build 128 en la 2.1.0; privacidad, sumar «Audio Data» (funcionalidad, vinculado al usuario); notas al revisor
+     con el micrófono; capturas del reloj ya están (5 JPG); «Añadir a revisión» y enviar;
+  4. Play: AAB 107 (en trozos), novedades de `docs/NATIVA_TIENDAS_2.1.md` (489/500), Seguridad de los datos con
+     «Grabaciones de voz», enviar al 100 %.
+- **Tags:** `nios-2.1.0-127` sobre af0abdd y `nand-2.1.0-106` (los dos superados por la 128 y la 107).
 - **Novedades y notas al revisor:** en `docs/NATIVA_TIENDAS_2.1.md`.
 - **Pasada final de MYPUMP PRO sobre 03c1919:**
   - kit 830/830;
