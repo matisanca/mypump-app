@@ -43,7 +43,7 @@ class RedYGuardadoUiTest : PruebaUi() {
 
     /** Salud → Cuerpo, en Peso corporal: el peso de hoy sale por la cola (con la misma clave en el día: el último gana). */
     private fun irAlPeso() {
-        p.tocar(etiqueta("pestana-salud"))
+        p.abrirSalud()
         p.tocar(etiqueta("segmento-cuerpo"))
         p.nodo(etiqueta("guardar-peso"))
     }

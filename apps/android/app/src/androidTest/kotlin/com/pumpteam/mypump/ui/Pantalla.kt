@@ -531,3 +531,16 @@ object FotosDePrueba {
         ImagenesRemotas.bajar = ImagenesRemotas.porRed
     }
 }
+
+/**
+ * Salud (2.1.0): ya no es pestaña. Se abre desde la tarjeta Recuperación de arriba de Revisión, en Recuperación, y tapa
+ * Revisión (que queda marcada en la barra) hasta volver.
+ */
+fun Pantalla.abrirSalud() {
+    tocar(etiqueta("pestana-revision"))
+    tocar(etiqueta("tarjeta-recuperacion-revision"))
+    nodo(etiqueta("salud-pantalla"))
+}
+
+/** Salud abierta encima de Revisión: la pantalla de Salud a la vista y Revisión marcada en la barra. */
+fun Pantalla.enSalud(): Boolean = existe(etiqueta("salud-pantalla")) && seleccionado(etiqueta("pestana-revision"))

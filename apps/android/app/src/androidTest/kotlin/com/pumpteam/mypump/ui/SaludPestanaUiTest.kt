@@ -38,7 +38,7 @@ class SaludPestanaUiTest : PruebaUi() {
     }
 
     private fun irA(segmento: String) {
-        p.tocar(etiqueta("pestana-salud"))
+        if (!p.existe(etiqueta("salud-pantalla"))) p.abrirSalud()
         p.tocar(etiqueta("segmento-$segmento"))
         p.esperar("$segmento elegido") { p.seleccionado(etiqueta("segmento-$segmento")) }
     }
@@ -80,26 +80,30 @@ class SaludPestanaUiTest : PruebaUi() {
 
     // ── S1: la pestaña y sus segmentos ──
 
-    /** Salud está donde estaba Progreso (5 pestañas), arranca en Recuperación y recuerda el segmento al volver. */
+    /**
+     * Salud (2.1.0) ya no es pestaña: se abre desde la tarjeta Recuperación de Revisión, siempre en Recuperación, con sus
+     * tres segmentos, y Revisión queda marcada en la barra.
+     */
     @Test
-    fun saludEnLugarDeProgresoYRecuerdaElSegmento() {
+    fun saludSeAbreDesdeRevisionEnRecuperacion() {
         sembrarEntreno()
         guardarCuenta()
         abrir()
-        p.nodo(etiqueta("pestana-salud"))
+        p.nodo(etiqueta("pestana-revision"))
+        assertFalse(p.existe(etiqueta("pestana-salud")))
         assertFalse(p.existe(etiqueta("pestana-progreso")))
-        assertTrue(p.textosBajo(etiqueta("pestana-salud")).toString(), "Salud" in p.textosBajo(etiqueta("pestana-salud")))
-        p.tocar(etiqueta("pestana-salud"))
-        p.nodo(etiqueta("salud-pantalla"))
+        p.abrirSalud()
+        assertTrue(p.enSalud())
         p.esperar("arranca en Recuperación") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         for (t in listOf("Recuperación", "Fuerza", "Cuerpo")) p.nodo(texto(t))
         p.nodo(etiqueta("card-recuperacion"))
         irA("cuerpo")
         p.nodo(etiqueta("seccion-peso"))
+        // La tarjeta vuelve a abrir Salud en Recuperación, aunque se haya quedado en otro segmento.
         p.tocar(etiqueta("pestana-dieta"))
-        p.tocar(etiqueta("pestana-salud"))
-        p.esperar("sigue en Cuerpo") { p.seleccionado(etiqueta("segmento-cuerpo")) }
-        assertFalse(p.seleccionado(etiqueta("segmento-recuperacion")))
+        p.abrirSalud()
+        p.esperar("en Recuperación") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        assertFalse(p.seleccionado(etiqueta("segmento-cuerpo")))
     }
 
     // ── S2: el volumen por músculo ──
@@ -216,7 +220,7 @@ class SaludPestanaUiTest : PruebaUi() {
         sembrarTodo()
         guardarCuenta()
         abrir().also {
-            p.tocar(etiqueta("pestana-salud"))
+            p.abrirSalud()
             p.nodo(etiqueta("card-recuperacion"))
             p.nodo(etiqueta("card-salud"))
             p.quieto(800)
@@ -247,9 +251,8 @@ class SaludPestanaUiTest : PruebaUi() {
         reiniciarEstado()
         abrir().also {
             p.tocar(etiqueta("ver-demo"))
-            // La demo trae suplementación: Salud se abre desde Revisión.
-            p.tocar(etiqueta("pestana-revision"))
-            p.tocar(etiqueta("abrir-salud"))
+            // Salud se abre desde la tarjeta Recuperación de Revisión.
+            p.abrirSalud()
             p.nodo(etiqueta("recuperacion-vacia"))
             p.nodo(texto("La recuperación sale de tu reloj o de tu teléfono. En la demo no hay datos."))
             foto("salud-06-demo-recuperacion")

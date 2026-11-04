@@ -98,7 +98,7 @@ class MovimientoReducidoUiTest : PruebaUi() {
         p.tocar(etiqueta("volver"))
         p.nodo(etiqueta("cronometro"))
         servidor.demoraMs = 10_000
-        p.tocar(etiqueta("pestana-salud"))
+        p.abrirSalud()
         p.tocar(etiqueta("segmento-fuerza"))
         p.nodo(etiqueta("progreso-cargando"), ms = 20_000)
         p.esperar("el esqueleto quieto", ms = 8_000, enElPrincipal = false) { Telefono.quietoConTope(2_000) && p.dibujosEn(600) == 0 }

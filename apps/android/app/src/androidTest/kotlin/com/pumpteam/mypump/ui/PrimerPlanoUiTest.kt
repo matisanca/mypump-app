@@ -88,7 +88,7 @@ class PrimerPlanoUiTest : PruebaUi() {
         assertTrue(servidor.fotosSubidas.isEmpty())
 
         // Sin red, el peso de hoy queda en la cola…
-        p.tocar(etiqueta("pestana-salud"))
+        p.abrirSalud()
         p.tocar(etiqueta("segmento-cuerpo"))
         p.nodo(etiqueta("guardar-peso"))
         servidor.sinRed = true

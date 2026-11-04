@@ -1,0 +1,116 @@
+package com.pumpteam.mypump.revision
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.pumpteam.mypump.datos.ModeloSalud
+import com.pumpteam.mypump.diseno.Espacio
+import com.pumpteam.mypump.diseno.Iconos
+import com.pumpteam.mypump.diseno.MyPump
+import com.pumpteam.mypump.diseno.Numeros
+import com.pumpteam.mypump.diseno.superficieTarjeta
+import com.pumpteam.mypump.entreno.Letras
+import com.pumpteam.mypump.reglas.SaludVista
+import com.pumpteam.mypump.salud.EncabezadoSalud
+import com.pumpteam.mypump.salud.NotaSalud
+import com.pumpteam.mypump.salud.cardRecuperacion
+import com.pumpteam.mypump.salud.colorBanda
+
+/**
+ * «Recuperación», arriba de todo en Revisión (2.1.0, pedido de Mati del 4-nov: «la parte de salud […] la integraría con
+ * la revisión […] que aparezca arriba de todo ahí»). Un resumen del caso que ya calcula `SaludVista.cardRecuperacion` (no
+ * se repite la lógica): el score con su banda, o qué falta. Toda la tarjeta se toca y abre Salud en Recuperación, donde
+ * está el detalle y el botón de conectar. Reemplaza al corazón que había arriba de Revisión. Gemela de la de iOS.
+ *
+ * Sin [salud] (la demo o sin cuenta) dice lo que se va a ver con la cuenta.
+ */
+@Composable
+fun TarjetaRecuperacionRevision(salud: ModeloSalud?, alAbrirSalud: () -> Unit, modifier: Modifier = Modifier) {
+    val c = MyPump.colores
+    Column(
+        modifier
+            .fillMaxWidth()
+            .superficieTarjeta()
+            .clickable(role = Role.Button, onClickLabel = "Abre Salud", onClick = alAbrirSalud)
+            .padding(Espacio.m)
+            .testTag("tarjeta-recuperacion-revision"),
+        verticalArrangement = Arrangement.spacedBy(Espacio.s),
+    ) {
+        EncabezadoSalud("🔋", "Recuperación")
+        if (salud == null) {
+            Texto("Con tu cuenta, acá vas a ver tu recuperación de cada día.")
+        } else {
+            when (val card = cardRecuperacion(salud)) {
+                is SaludVista.CardRecuperacion.ConScore -> ConScore(card.score)
+                SaludVista.CardRecuperacion.Oculto -> Texto("Ocultaste el número de recuperación. Tocá para ver tus datos de salud.")
+                is SaludVista.CardRecuperacion.Calibrando -> {
+                    Texto("Aprendiendo tu normal: ${card.dias} de 14 días")
+                    if (card.yaSe.isNotEmpty()) NotaSalud(card.yaSe)
+                }
+                is SaludVista.CardRecuperacion.ConectadoSinScore -> Texto(card.sinScore.frase(salud.textos))
+                // El botón de conectar está adentro de Salud.
+                SaludVista.CardRecuperacion.SinConectar -> Texto("Conectá tu reloj o Salud para ver tu recuperación de cada día.")
+            }
+        }
+        HorizontalDivider(color = c.borde)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            Text(
+                "Ver sueño, corazón, fuerza y cuerpo",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = c.marcaTexto,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(Iconos.Chevron, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun Texto(texto: String) {
+    Text(texto, style = MaterialTheme.typography.bodyMedium.merge(Letras.cifras), fontWeight = FontWeight.Medium)
+}
+
+/** El score grande con «de 100», la banda en su color, la confianza (sin tocar: la tarjeta entera abre Salud) y una línea. */
+@Composable
+private fun ConScore(s: SaludVista.ConScore) {
+    val c = MyPump.colores
+    val color = colorBanda(s.banda, apagado = s.confianza?.apagado == true)
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("${s.fila.score ?: 0}", style = Numeros.grande, color = color, modifier = Modifier.testTag("score-revision"))
+            Text("de 100", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.padding(bottom = 6.dp))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(s.bandaTexto, style = MaterialTheme.typography.titleMedium, color = color)
+            s.confianza?.let {
+                Text(
+                    it.etiqueta,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = c.textoSecundario,
+                    modifier = Modifier.clip(CircleShape).background(c.campo).padding(horizontal = 9.dp, vertical = 5.dp),
+                )
+            }
+        }
+    }
+    (s.frase ?: s.motivos.firstOrNull()?.texto)?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+    s.notaVieja?.let { NotaSalud(it) }
+}

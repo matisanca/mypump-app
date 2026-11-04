@@ -38,9 +38,9 @@ class ProgresoUiTest : PruebaUi() {
         p.nodo(etiqueta("salud-pantalla"))
     }
 
-    /** La pestaña Salud y su segmento Fuerza (Salud arranca en Recuperación; después recuerda el último). */
+    /** Salud (desde la tarjeta Recuperación de Revisión, 2.1.0) y su segmento Fuerza. */
     private fun irAFuerza() {
-        p.tocar(etiqueta("pestana-salud"))
+        p.abrirSalud()
         p.tocar(etiqueta("segmento-fuerza"))
     }
 
@@ -125,7 +125,7 @@ class ProgresoUiTest : PruebaUi() {
         p.atras()
         p.nodo(etiqueta("progreso-lista"))
         p.esperarQueNoEste(etiqueta("progreso-detalle"))
-        assertTrue(p.seleccionado(etiqueta("pestana-salud")))
+        assertTrue(p.enSalud())
         assertTrue(p.seleccionado(etiqueta("segmento-fuerza")))
     }
 
@@ -217,9 +217,8 @@ class ProgresoUiTest : PruebaUi() {
     fun enLaDemoNoHayHistorial() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
-        // La demo trae suplementación: Salud se abre desde Revisión.
-        p.tocar(etiqueta("pestana-revision"))
-        p.tocar(etiqueta("abrir-salud"))
+        // Salud se abre desde la tarjeta Recuperación de Revisión.
+        p.abrirSalud()
         p.tocar(etiqueta("segmento-fuerza"))
         p.nodo(etiqueta("progreso-vacio"))
         p.nodo(texto("Aún no hay historial"))

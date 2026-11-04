@@ -9,8 +9,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * La pestaña Suplementación (2.1.0): aparece solo con suplementación, Salud pasa al botón de arriba de Revisión (y los
- * links siguen llevando a Salud), «Tu día», «Dejás de tomar» y el detalle en una hoja. Datos ficticios.
+ * La pestaña Suplementación (2.1.0): aparece solo con suplementación (Salud no está en la barra con ni sin ella: se abre
+ * desde la tarjeta Recuperación de Revisión, y los links siguen llevando a Salud), «Tu día», «Dejás de tomar» y el detalle
+ * en una hoja. Datos ficticios.
  */
 @RunWith(AndroidJUnit4::class)
 class SuplementacionUiTest : PruebaUi() {
@@ -24,7 +25,7 @@ class SuplementacionUiTest : PruebaUi() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         p.nodo(etiqueta("pestana-suplementacion"))
-        // Con suplementación: Entreno, Dieta, Suplementación, Chat y Revisión. Salud sale de la barra.
+        // Con suplementación: Entreno, Dieta, Suplementación, Chat y Revisión. Salud no está en la barra.
         assertEquals(listOf("entreno", "dieta", "suplementacion", "chat", "revision"), barra())
         assertFalse(p.existe(etiqueta("pestana-salud")))
 
@@ -82,37 +83,39 @@ class SuplementacionUiTest : PruebaUi() {
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(etiqueta("mis-datos"))
-        // El corazón se toca en 48 dp como mínimo.
-        val corazon = p.nodo(etiqueta("abrir-salud"))
-        val minimo = 48 * instr.targetContext.resources.displayMetrics.density
-        p.enPrincipal { corazon.size }.let { assertTrue("el corazón mide $it px", it.width >= minimo - 1 && it.height >= minimo - 1) }
-        p.tocar(etiqueta("abrir-salud"))
+        // El corazón de arriba ya no está: lo reemplaza la tarjeta Recuperación.
+        assertFalse(p.existe(etiqueta("abrir-salud")))
+        p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.nodo(etiqueta("salud-pantalla"))
+        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.tocar(etiqueta("segmento-fuerza"))
         p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
         // Volver (la flecha) lleva a Revisión.
         p.tocar(etiqueta("volver"))
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
         p.esperarQueNoEste(etiqueta("salud-pantalla"))
-        // Otra vez, y con Atrás del sistema.
-        p.tocar(etiqueta("abrir-salud"))
+        // Otra vez (en Recuperación, aunque antes quedó en Fuerza), y con Atrás del sistema.
+        p.tocar(etiqueta("tarjeta-recuperacion-revision"))
         p.nodo(etiqueta("salud-pantalla"))
+        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         instr.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
         p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
     }
 
     @Test
-    fun sinSuplementacionLaBarraQuedaComoHoy() {
+    fun sinSuplementacionLaBarraNoTieneSalud() {
         // El servidor de prueba contesta cero filas (`[]`): no hay suplementación.
         guardarCuenta()
         abrir()
         p.nodo(etiqueta("pestana-entreno"))
         p.esperar("pidió la suplementación") { servidor.llamadas.any { it.funcion == "mypump_suplementacion" } }
         p.quieto(500)
-        assertEquals(listOf("entreno", "dieta", "chat", "revision", "salud"), barra())
+        // Sin suplementación tampoco hay Salud en la barra (2.1.0): Entreno, Dieta, Chat y Revisión.
+        assertEquals(listOf("entreno", "dieta", "chat", "revision"), barra())
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(etiqueta("mis-datos"))
         assertFalse(p.existe(etiqueta("abrir-salud")))
+        p.nodo(etiqueta("tarjeta-recuperacion-revision"))
     }
 
     @Test
@@ -123,6 +126,7 @@ class SuplementacionUiTest : PruebaUi() {
         p.nodo(etiqueta("salud-pantalla"))
         p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
         assertFalse(p.existe(etiqueta("pestana-salud")))
+        assertTrue(p.enSalud())
         p.tocar(etiqueta("pestana-suplementacion"))
         p.nodo(texto("Antes de dormir"))
         p.nodo(etiqueta("suple-Zinc"))

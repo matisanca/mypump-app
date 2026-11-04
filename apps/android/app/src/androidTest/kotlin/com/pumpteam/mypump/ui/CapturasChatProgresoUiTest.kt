@@ -134,7 +134,7 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         Telefono.modoNoche(oscuro)
         guardarCuenta()
         abrir().also {
-            p.tocar(etiqueta("pestana-salud"))
+            p.abrirSalud()
             p.tocar(etiqueta("segmento-fuerza"))
             p.esperar("los totales") { p.textosBajo(etiqueta("progreso-totales")).contains("32") }
             foto("progreso-01-lista")
@@ -162,7 +162,7 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         abrir().also { e ->
             p.modeloCargado(e)
             servidor.sinRed = true
-            p.tocar(etiqueta("pestana-salud"))
+            p.abrirSalud()
             p.tocar(etiqueta("segmento-fuerza"))
             p.nodo(etiqueta("progreso-sin-red"))
             foto("progreso-07-sin-red")
@@ -171,8 +171,8 @@ class CapturasChatProgresoUiTest : PruebaUi() {
 
         servidor.demoraMs = 2_500
         abrir().also {
-            p.nodo(etiqueta("pestana-salud"), ms = 40_000)
-            p.tocar(etiqueta("pestana-salud"))
+            p.nodo(etiqueta("pestana-revision"), ms = 40_000)
+            p.abrirSalud()
             p.tocar(etiqueta("segmento-fuerza"))
             p.nodo(etiqueta("progreso-cargando"), ms = 20_000)
             foto("progreso-08-cargando")
@@ -182,9 +182,8 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         reiniciarEstado()
         abrir().also {
             p.tocar(etiqueta("ver-demo"))
-            // La demo trae suplementación: Salud se abre desde Revisión.
-            p.tocar(etiqueta("pestana-revision"))
-            p.tocar(etiqueta("abrir-salud"))
+            // Salud se abre desde la tarjeta Recuperación de Revisión.
+            p.abrirSalud()
             p.tocar(etiqueta("segmento-fuerza"))
             p.nodo(etiqueta("progreso-vacio"))
             foto("progreso-09-vacio")
