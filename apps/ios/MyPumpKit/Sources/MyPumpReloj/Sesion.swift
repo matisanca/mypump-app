@@ -255,7 +255,7 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     public struct Confirmacion: Equatable, Sendable {
         /// «Récord: +2,5 kg»
         public var record: String?
-        /// Arrancó un descanso (no en la última serie del día).
+        /// Arrancó un descanso (no en la última serie del día ni en una de calentamiento).
         public var descanso: Bool
         /// Con esta serie quedó todo hecho.
         public var diaCompleto: Bool
@@ -291,19 +291,23 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         actualizada = ahora
         let completo = todoHecho
         var siguiente: String?
+        // Como el teléfono (`DiaEnCurso.confirmarSerie`): una serie de calentamiento no arranca descanso.
+        let conDescanso = !completo && e.tipo != "calentamiento"
         if completo {
             descanso = nil
             descansoSono = false
         } else {
-            descanso = Descanso.iniciar(segundos: Double(e.descansoSegundos), ahora: ahora).guardado
-            descansoSono = false
+            if conDescanso {
+                descanso = Descanso.iniciar(segundos: Double(e.descansoSegundos), ahora: ahora).guardado
+                descansoSono = false
+            }
             if e.terminado, let sig = r.ejercicios[(ei + 1)...].first(where: { !$0.terminado }) ?? r.ejercicios.first(where: { !$0.terminado }) {
                 lugar = sig.lugar
                 siguiente = sig.lugar
             }
         }
         cargarCorona()
-        return Confirmacion(record: record, descanso: !completo, diaCompleto: completo, siguiente: siguiente)
+        return Confirmacion(record: record, descanso: conDescanso, diaCompleto: completo, siguiente: siguiente)
     }
 
     // MARK: - Sesión

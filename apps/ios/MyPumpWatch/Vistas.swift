@@ -325,6 +325,10 @@ struct EjercicioVista: View {
                         Text("Serie \(i + 1) de \(e.series.count)" + (e.repsPlan.map { " · objetivo \($0)" } ?? ""))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                        // El RIR del plan (2.0.3), como la leyenda de «Series efectivas» en el teléfono.
+                        if let leyenda = e.leyendaRIR {
+                            Text(leyenda).font(.caption2).foregroundStyle(.secondary)
+                        }
                         // El reloj puso en las reps lo que contó (en calibración; fuera, el flujo final apagado). Se
                         // ve mientras la corona siga en ese número; si el alumno gira, el número ya es suyo.
                         if let n = estado.propuesta, estado.propuestaSerie.enLaCorona(s.reps) {

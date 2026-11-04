@@ -107,6 +107,9 @@ public struct EjercicioReloj: Codable, Equatable, Sendable {
     public var descansoSegundos: Int
     /// "8-10"
     public var repsPlan: String?
+    /// La leyenda del RIR del plan de la 2.0.3, la misma que el teléfono pone debajo de «Series efectivas»: «Al fallo» o
+    /// «Dejando 1–2 en reserva». nil = el ejercicio no lleva RIR (o un iPhone viejo que no la manda).
+    public var leyendaRIR: String?
     /// "pendiente", "en_curso", "completo", "completo_sin_datos"…
     public var estado: String
     public var series: [SerieReloj]

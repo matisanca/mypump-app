@@ -38,7 +38,7 @@ final class PuenteReloj: NSObject {
     // MARK: - La rutina al reloj
 
     /// Sigue al motor mientras haya un reloj con la app: un cambio del día (series, estados, sustituciones), de la sesión,
-    /// de la rutina o de la cuenta vuelve a mandar la rutina, medio segundo después y juntando los cambios seguidos. El
+    /// de la rutina, del catálogo o de la cuenta vuelve a mandar la rutina, medio segundo después y juntando los cambios seguidos. El
     /// tick del descanso (4 por segundo) no se sigue: la rutina se arma solo cuando cambia algo que el reloj muestra.
     private var observando = false
     private func observar() {
@@ -50,6 +50,8 @@ final class PuenteReloj: NSObject {
                 _ = m.inicioSesion
                 _ = m.diasCompletados
                 _ = m.rutina
+                // El catálogo nuevo (llega después del empaquetado) cambia el músculo, el equipo y con eso la preparación.
+                _ = m.catalogo
             }
         } onChange: {
             Task { @MainActor [weak self] in

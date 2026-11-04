@@ -99,6 +99,20 @@ func sesionDemo() -> SesionReloj {
         #expect(s.preparacion("press-banca-d1-0").isEmpty, "[] del plan es sin preparación")
     }
 
+    @Test func unaSerieDeCalentamientoNoArrancaDescanso() throws {
+        // Como el teléfono: el calentamiento no lleva descanso (sí se registra y pasa a la serie siguiente).
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0)
+        r.ejercicios[0].tipo = "calentamiento"
+        var s = SesionReloj()
+        s.recibir(r)
+        let confirmada = s.confirmar(ahora: T0)
+        let c = try #require(confirmada)
+        #expect(!c.descanso)
+        #expect(s.descanso == nil)
+        #expect(s.actual?.series[0].confirmada == true)
+        #expect(s.cola.pendientes.count == 2, "iniciar y la serie")
+    }
+
     @Test func confirmarEncolaIniciarYLaSerieYArrancaElDescanso() throws {
         var s = sesionDemo()
         let r10 = s.confirmar(ahora: T0)

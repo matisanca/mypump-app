@@ -36,6 +36,7 @@ extension ModeloEntreno {
                 anteriores: RecordSerie.anteriores(historial, hoy: hoy, zona: zona).map(MarcaReloj.init),
                 historiaSuficiente: RecordSerie.historiaSuficiente(historial, hoy: hoy, zona: zona))
             e.patron = patron(plan)
+            e.leyendaRIR = leyendaRIR(lugar)
             return e
         }
         var r = RutinaReloj(cuenta: cuentaReloj, rutinaId: rutina.id, diaId: dia.dia.id ?? "", semana: semana, nombreDia: dia.dia.nombre ?? "",

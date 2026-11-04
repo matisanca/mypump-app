@@ -41,6 +41,16 @@ struct RelojModeloTests {
         #expect(jalon.repsPlan == "10")
         #expect(jalon.series.first?.repsSugeridas == 10, "sin historial, lo del plan")
         #expect(jalon.musculo == "lats")
+        // Lo de la 2.0.3 en cada ejercicio, con el mismo valor que la card del teléfono: el descanso (el elegido a mano,
+        // si hay), la preparación del plan y la leyenda del RIR.
+        for e in r.ejercicios {
+            #expect(e.descansoSegundos == m.dia.descanso(e.lugar), "\(e.lugar)")
+            #expect(e.leyendaRIR == m.leyendaRIR(e.lugar), "\(e.lugar)")
+            #expect(e.aproximacionesPlan?.map(\.aproximacion) == m.dia.ejercicio(e.lugar).flatMap { m.hecho($0).aproximaciones }, "\(e.lugar)")
+        }
+        #expect(jalon.leyendaRIR != nil, "el jalón lleva RIR")
+        m.elegirDescanso("jal-d1-0", segundos: 105)
+        #expect(m.rutinaReloj().ejercicios.first?.descansoSegundos == 105, "el descanso elegido a mano llega al reloj")
         // Viaja por el protocolo sin perder nada.
         let vuelta = try ProtocoloReloj.leer(ProtocoloReloj.diccionario(SobreReloj(.rutina(r), enviado: AHORA)))
         #expect(vuelta.mensaje == .rutina(r))
