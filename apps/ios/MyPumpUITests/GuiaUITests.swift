@@ -46,9 +46,40 @@ final class GuiaUITests: XCTestCase {
         }
     }
 
+    /// Desplaza hasta que el elemento quede entero en la zona visible: debajo de la barra de navegación y encima del
+    /// teclado o de la barra de pestañas. `isHittable` solo no alcanza: un campo detrás de la barra translúcida de arriba
+    /// da `true` y el toque se lo lleva la barra.
     private func desplazarHasta(_ e: XCUIElement, maximo: Int = 15) {
-        var n = 0
-        while !e.isHittable && n < maximo { app.swipeUp(velocity: .slow); n += 1 }
+        for _ in 0..<maximo {
+            guard e.exists else { app.swipeUp(velocity: .slow); continue }
+            let z = zonaVisible(), f = e.frame
+            let arribaBien = f.minY >= z.minY
+            let abajoBien = f.maxY <= z.maxY || f.height > z.height
+            if e.isHittable && arribaBien && abajoBien { return }
+            // Arrastres medidos y con pausa al final, sin inercia, para no pasarse de largo.
+            let tope = z.height * 0.6
+            let d: CGFloat
+            if !arribaBien { d = min(z.minY - f.minY + 24, tope) }        // está arriba: el dedo baja
+            else if !abajoBien { d = -min(f.maxY - z.maxY + 24, tope) }   // está abajo: el dedo sube
+            else { d = -tope }
+            let origen = app.coordinate(withNormalizedOffset: .zero)
+            let desde = origen.withOffset(CGVector(dx: z.midX, dy: z.midY - d / 2))
+            let hasta = origen.withOffset(CGVector(dx: z.midX, dy: z.midY + d / 2))
+            desde.press(forDuration: 0.05, thenDragTo: hasta, withVelocity: .slow, thenHoldForDuration: 0.2)
+        }
+    }
+
+    /// Lo que se ve de la pantalla entre la barra de navegación y el teclado (o la barra de pestañas).
+    private func zonaVisible() -> CGRect {
+        let ventana = app.frame
+        let arriba = app.navigationBars.allElementsBoundByIndex
+            .map(\.frame).filter { !$0.isEmpty && $0.minY < ventana.midY }.map(\.maxY).max() ?? ventana.minY
+        var abajo = ventana.maxY
+        let teclado = app.keyboards.firstMatch
+        if teclado.exists, !teclado.frame.isEmpty { abajo = min(abajo, teclado.frame.minY) }
+        let pestanas = app.tabBars.firstMatch
+        if pestanas.exists, !pestanas.frame.isEmpty, pestanas.frame.minY > ventana.midY { abajo = min(abajo, pestanas.frame.minY) }
+        return CGRect(x: ventana.minX, y: arriba, width: ventana.width, height: max(abajo - arriba, 1))
     }
 
     private func esperar(_ condicion: () -> Bool, segundos: Double) -> Bool {
