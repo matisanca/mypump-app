@@ -41,6 +41,14 @@ extension KeyedDecodingContainer {
         return nil
     }
 
+    /// Array de textos que se lee elemento por elemento (pasa en `dias` de la suplementación): un número pasa a texto
+    /// (`3` → "3") y lo que no es texto ni número (null, objeto, booleano) se descarta sin perder los demás. Un texto o un
+    /// número suelto valen como array de uno. A diferencia de `textos`, un elemento raro no invalida el array entero.
+    func textosTolerantes(_ k: Key) -> [String]? {
+        if let a = try? decodeIfPresent([TextoTolerante].self, forKey: k) { return a.compactMap(\.valor) }
+        return texto(k).map { [$0] }
+    }
+
     /// Array que tolera elementos null o con forma rota: se descartan, no rompen el resto.
     func lista<T: Decodable>(_ tipo: T.Type, _ k: Key) -> [T] {
         guard let crudos = try? decodeIfPresent([Opcional<T>].self, forKey: k) else { return [] }
@@ -53,6 +61,18 @@ struct Opcional<T: Decodable>: Decodable {
     let valor: T?
     init(from decoder: Decoder) throws {
         valor = try? T(from: decoder)
+    }
+}
+
+/// Un elemento de `textosTolerantes`: el texto, el número como texto, o nil para cualquier otra cosa. Nunca tira.
+struct TextoTolerante: Decodable {
+    let valor: String?
+    init(from decoder: Decoder) throws {
+        guard let c = try? decoder.singleValueContainer() else { valor = nil; return }
+        if let s = try? c.decode(String.self) { valor = s }
+        else if let i = try? c.decode(Int.self) { valor = String(i) }
+        else if let d = try? c.decode(Double.self), d.isFinite { valor = String(d) }
+        else { valor = nil }
     }
 }
 

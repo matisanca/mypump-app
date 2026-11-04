@@ -186,6 +186,15 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
     public var porQue: String?
     /// El id de un clip del bloque «Tu suplementación»: el ítem muestra «Ver por qué».
     public var videoId: String?
+    /// Contrato 10 (`mypump_suplementacion`): `"todos"`, `"gym"`, `"descanso"` o los días de la semana. Un texto suelto
+    /// queda como lista de uno; vacío = todos los días.
+    public var dias: [String]
+    /// La dosis anterior (con `sube`, `baja` o `cambia`).
+    public var antes: String?
+    /// El texto del cambio («de 3 a 5 g»).
+    public var cambio: String?
+    /// Qué buscar en la tienda.
+    public var comprar: CompraSuplemento?
     /// El `video_id` que este ítem saca de la lista y de los conteos, con la regla de `entregas_012` y de pack.html sobre los
     /// valores tal como vienen: nombre no vacío, estado distinto de «sale» y `video_id` no vacío. nil si no saca ninguno.
     public var nombraVideo: String? {
@@ -194,12 +203,16 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
     }
 
     public init(nombre: String, cantidad: String? = nil, momento: String? = nil, tomas: [TomaSuplemento] = [], nota: String? = nil,
-                detalle: [String] = [], estado: String? = nil, opcional: Bool = false, porQue: String? = nil, videoId: String? = nil) {
+                detalle: [String] = [], estado: String? = nil, opcional: Bool = false, porQue: String? = nil, videoId: String? = nil,
+                dias: [String] = [], antes: String? = nil, cambio: String? = nil, comprar: CompraSuplemento? = nil) {
         self.nombre = nombre; self.cantidad = cantidad; self.momento = momento; self.tomas = tomas; self.nota = nota
         self.detalle = detalle; self.estado = estado; self.opcional = opcional; self.porQue = porQue; self.videoId = videoId
+        self.dias = dias; self.antes = antes; self.cambio = cambio; self.comprar = comprar
     }
 
-    enum CodingKeys: String, CodingKey { case nombre, cantidad, momento, tomas, nota, detalle, estado, opcional, porQue = "por_que", videoId = "video_id" }
+    enum CodingKeys: String, CodingKey {
+        case nombre, cantidad, momento, tomas, nota, detalle, estado, opcional, porQue = "por_que", videoId = "video_id", dias, antes, cambio, comprar
+    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -215,7 +228,35 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
         opcional = c.booleano(.opcional) ?? false
         porQue = c.texto(.porQue).flatMap { $0.isEmpty ? nil : $0 }
         videoId = c.texto(.videoId).flatMap { $0.isEmpty ? nil : $0 }
+        dias = (c.textosTolerantes(.dias) ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        antes = c.texto(.antes).flatMap { $0.isEmpty ? nil : $0 }
+        cambio = c.texto(.cambio).flatMap { $0.isEmpty ? nil : $0 }
+        comprar = (try? c.decodeIfPresent(CompraSuplemento.self, forKey: .comprar)).flatMap { $0?.vacia == false ? $0 : nil }
     }
+}
+
+/// `comprar` de un ítem: qué buscar, dónde y una aclaración. Un texto suelto se toma como `buscar`.
+public struct CompraSuplemento: Codable, Equatable, Sendable {
+    public var buscar: String?
+    public var donde: String?
+    public var nota: String?
+
+    public init(buscar: String? = nil, donde: String? = nil, nota: String? = nil) { self.buscar = buscar; self.donde = donde; self.nota = nota }
+
+    enum CodingKeys: String, CodingKey { case buscar, donde, nota }
+
+    public init(from decoder: Decoder) throws {
+        if let s = try? decoder.singleValueContainer().decode(String.self) {
+            buscar = s.isEmpty ? nil : s; donde = nil; nota = nil
+            return
+        }
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        buscar = c.texto(.buscar).flatMap { $0.isEmpty ? nil : $0 }
+        donde = c.texto(.donde).flatMap { $0.isEmpty ? nil : $0 }
+        nota = c.texto(.nota).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    public var vacia: Bool { buscar == nil && donde == nil && nota == nil }
 }
 
 /// Lo que devuelve `entregas_app_resumen` (`entregas_011`, y desde `entregas_014` también `fecha_entrega` y

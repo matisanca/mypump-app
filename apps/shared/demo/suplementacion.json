@@ -1,0 +1,74 @@
+{
+  "suplementacion": {
+    "titulo": "Tu suplementación",
+    "accion": "Empezá esta semana con lo nuevo",
+    "dia": [
+      {
+        "id": "desayuno",
+        "nombre": "Con el desayuno"
+      },
+      {
+        "id": "pre",
+        "nombre": "30 a 60 minutos antes de entrenar"
+      },
+      {
+        "id": "dormir",
+        "nombre": "30 minutos antes de acostarte"
+      }
+    ],
+    "items": [
+      {
+        "nombre": "Creatina monohidrato",
+        "cantidad": "5 g",
+        "momento": "desayuno",
+        "estado": "nuevo",
+        "detalle": [
+          "Todos los días, también los de descanso",
+          "Con agua o con el desayuno"
+        ],
+        "por_que": "Te ayuda a rendir más en las series pesadas",
+        "comprar": {
+          "buscar": "Creatina monohidrato 100 % pura"
+        }
+      },
+      {
+        "nombre": "Omega 3",
+        "estado": "sigue",
+        "tomas": [
+          {
+            "momento": "desayuno",
+            "cantidad": "1 g"
+          },
+          {
+            "momento": "dormir",
+            "cantidad": "1 g"
+          }
+        ]
+      },
+      {
+        "nombre": "Cafeína",
+        "cantidad": "200 mg",
+        "momento": "pre",
+        "estado": "nuevo",
+        "dias": "gym",
+        "opcional": true,
+        "nota": "No después de las 17"
+      },
+      {
+        "nombre": "Magnesio glicinato",
+        "cantidad": "400 mg",
+        "antes": "200 mg",
+        "momento": "dormir",
+        "estado": "sube"
+      },
+      {
+        "nombre": "Multivitamínico",
+        "estado": "sale",
+        "por_que": "Ya lo cubrís con la dieta"
+      }
+    ]
+  },
+  "fase": "final",
+  "actualizado": "2026-11-04T18:30:00+00:00",
+  "esquema": 1
+}

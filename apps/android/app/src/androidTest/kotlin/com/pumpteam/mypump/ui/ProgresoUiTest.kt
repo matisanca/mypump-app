@@ -217,7 +217,10 @@ class ProgresoUiTest : PruebaUi() {
     fun enLaDemoNoHayHistorial() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
-        irAFuerza()
+        // La demo trae suplementación: Salud se abre desde Revisión.
+        p.tocar(etiqueta("pestana-revision"))
+        p.tocar(etiqueta("abrir-salud"))
+        p.tocar(etiqueta("segmento-fuerza"))
         p.nodo(etiqueta("progreso-vacio"))
         p.nodo(texto("Aún no hay historial"))
         p.nodo(texto("Aún no hay historial registrado. Empezá tu primera sesión para ver el progreso acá."))

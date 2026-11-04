@@ -729,8 +729,8 @@ private struct Suplementacion: View {
     }
 }
 
-/// `*negrita*` del PDF.
-private struct ConNegritas: View {
+/// `*negrita*` del PDF. También la usa el detalle de la pestaña Suplementación.
+struct ConNegritas: View {
     let texto: String
     var body: some View {
         ReglasGuia.negritas(texto).reduce(Text("")) { acc, t in acc + (t.negrita ? Text(t.texto).fontWeight(.semibold) : Text(t.texto)) }

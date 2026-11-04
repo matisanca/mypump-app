@@ -72,13 +72,15 @@ struct MyPumpApp: App {
               let r = Bundle.main.url(forResource: "rutina", withExtension: "json", subdirectory: "Demo.bundle"),
               let d = Bundle.main.url(forResource: "dieta", withExtension: "json", subdirectory: "Demo.bundle"),
               let rutina = try? Data(contentsOf: r), let dieta = try? Data(contentsOf: d) else { return }
-        Proveedor.modelo.entrarEnDemo(rutina: DemoUI.cardioDePrueba ? DemoUI.conCintaDePrueba(rutina) : rutina, dieta: dieta, guia: DemoGuia.datos)
+        Proveedor.modelo.entrarEnDemo(rutina: DemoUI.cardioDePrueba ? DemoUI.conCintaDePrueba(rutina) : rutina, dieta: dieta, guia: DemoGuia.datos,
+                                      suplementacion: DemoSuplementacion.datos)
         #endif
     }
 }
 
-/// Las 5 pestañas de la app actual: Entreno · Dieta · Chat · Revisión · Progreso. Mis datos cuelga de Revisión.
-/// En iPad (iOS 18+) la barra de arriba se puede convertir en barra lateral.
+/// Las 5 pestañas: Entreno · Dieta · Chat · Revisión · Salud. Mis datos cuelga de Revisión. Con suplementación (2.1.0):
+/// Entreno · Dieta · Suplementación · Chat · Revisión, y Salud se abre en una hoja desde arriba de Revisión, al lado de Mis
+/// datos (`Navegacion.saludEnMas`). En iPad (iOS 18+) la barra de arriba se puede convertir en barra lateral.
 struct Raiz: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
@@ -86,7 +88,7 @@ struct Raiz: View {
     @State private var navegacion = Navegacion(pestaña: Pestaña(argumento: UserDefaults.standard.string(forKey: "pestana") ?? "") ?? .entreno)
 
     enum Pestaña: String, Hashable {
-        case entreno, dieta, chat, revision, salud
+        case entreno, dieta, chat, revision, salud, suplementacion
 
         /// `-pestana progreso` (scripts y pruebas viejas) es Salud desde la 2.1.
         init?(argumento: String) { self.init(rawValue: argumento == "progreso" ? "salud" : argumento) }
@@ -97,6 +99,8 @@ struct Raiz: View {
     private var badgeEntreno: Int { modelo.conMuestras ? 0 : modelo.entreno?.sinLeerEntreno ?? 0 }
     private var badgeChat: Int { modelo.conMuestras ? 0 : modelo.chat?.noLeidos ?? 0 }
     private var badgeRevision: Int { modelo.conMuestras ? 0 : modelo.pendientesDeLaSemana.total }
+    /// La pestaña Suplementación: solo si `mypump_suplementacion` devolvió algo (o la demo trae la muestra).
+    private var suplementacionVisible: ModeloSuplementacion? { modelo.suplementacion.flatMap { $0.hay ? $0 : nil } }
 
     var body: some View {
         @Bindable var navegacion = navegacion
@@ -106,11 +110,16 @@ struct Raiz: View {
                     Tab("Entreno", systemImage: "dumbbell.fill", value: Pestaña.entreno) { entreno }
                         .badge(badgeEntreno)
                     Tab("Dieta", systemImage: "fork.knife", value: Pestaña.dieta) { dieta }
+                    if let s = suplementacionVisible {
+                        Tab("Suplementación", systemImage: "pills.fill", value: Pestaña.suplementacion) { suplementacion(s) }
+                    }
                     Tab("Chat", systemImage: "bubble.left.and.bubble.right.fill", value: Pestaña.chat) { chat }
                         .badge(badgeChat)
                     Tab("Revisión", systemImage: "checklist", value: Pestaña.revision) { revision }
                         .badge(badgeRevision)
-                    Tab("Salud", systemImage: "heart.text.square.fill", value: Pestaña.salud) { salud }
+                    if suplementacionVisible == nil {
+                        Tab("Salud", systemImage: "heart.text.square.fill", value: Pestaña.salud) { salud }
+                    }
                 }
                 .tabViewStyle(.sidebarAdaptable)
             } else {
@@ -118,15 +127,36 @@ struct Raiz: View {
                     entreno.tabItem { Label("Entreno", systemImage: "dumbbell.fill") }.tag(Pestaña.entreno)
                         .badge(badgeEntreno)
                     dieta.tabItem { Label("Dieta", systemImage: "fork.knife") }.tag(Pestaña.dieta)
+                    if let s = suplementacionVisible {
+                        suplementacion(s).tabItem { Label("Suplementación", systemImage: "pills.fill") }.tag(Pestaña.suplementacion)
+                    }
                     chat.tabItem { Label("Chat", systemImage: "bubble.left.and.bubble.right.fill") }.tag(Pestaña.chat)
                         .badge(badgeChat)
                     revision.tabItem { Label("Revisión", systemImage: "checklist") }.tag(Pestaña.revision)
                         .badge(badgeRevision)
-                    salud.tabItem { Label("Salud", systemImage: "heart.text.square.fill") }.tag(Pestaña.salud)
+                    if suplementacionVisible == nil {
+                        salud.tabItem { Label("Salud", systemImage: "heart.text.square.fill") }.tag(Pestaña.salud)
+                    }
                 }
             }
         }
         .environment(navegacion)
+        // Con suplementación, Salud en una hoja (desde arriba de Revisión, un aviso o un link). Cambiar de pestaña la cierra.
+        .sheet(isPresented: $navegacion.saludAbierta) {
+            SaludView(datos: datos, alCerrar: { navegacion.saludAbierta = false })
+                .environment(navegacion)
+        }
+        .onChange(of: suplementacionVisible != nil, initial: true) { _, con in
+            navegacion.saludEnMas = con
+            if con, navegacion.pestaña == .salud {
+                // Estaba en Salud (o se pidió con `-pestana salud`): sigue viéndola, ahora en la hoja.
+                navegacion.pestaña = .revision
+                navegacion.saludAbierta = true
+            } else if !con {
+                if navegacion.saludAbierta { navegacion.pestaña = .salud }   // vuelve a su pestaña (y la hoja se cierra)
+                if navegacion.pestaña == .suplementacion { navegacion.pestaña = .entreno }
+            }
+        }
         .accesorioDeDescanso()
         // La barra de pestañas queda siempre entera: achicarla al bajar, como Música, empeoraba mucho el uso (Mati,
         // 15-oct). No volver a ponerle `tabBarMinimizeBehavior`.
@@ -156,6 +186,7 @@ struct Raiz: View {
     private var chat: some View { ChatView(datos: datos).islaDeDescanso() }
     private var revision: some View { RevisionView(datos: datos).islaDeDescanso() }
     private var salud: some View { SaludView(datos: datos).islaDeDescanso() }
+    private func suplementacion(_ s: ModeloSuplementacion) -> some View { SuplementacionView(modelo: s).islaDeDescanso() }
 }
 
 #if DEBUG

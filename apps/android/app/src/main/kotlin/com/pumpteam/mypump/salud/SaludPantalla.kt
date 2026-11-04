@@ -89,7 +89,7 @@ import kotlinx.coroutines.launch
  *   Revisión.
  */
 @Composable
-fun SaludPantalla(modelo: ModeloApp) {
+fun SaludPantalla(modelo: ModeloApp, alVolver: (() -> Unit)? = null) {
     val navegacion = LocalNavegacion.current
     val segmento = navegacion?.segmentoSalud ?: SegmentoSalud.RECUPERACION
     val progreso by modelo.progreso.collectAsStateWithLifecycle()
@@ -116,7 +116,7 @@ fun SaludPantalla(modelo: ModeloApp) {
         if (t != null) {
             ProgresoDetalle(t, alVolver = { abierto = null })
         } else {
-            MarcoPantalla("Salud", modifier = Modifier.testTag("salud-pantalla")) { relleno ->
+            MarcoPantalla("Salud", modifier = Modifier.testTag("salud-pantalla"), alVolver = alVolver) { relleno ->
                 Column(Modifier.padding(relleno.sinAbajo()).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Column(
                         Modifier.widthIn(max = AnchoLectura).fillMaxWidth().padding(horizontal = Espacio.m).padding(bottom = Espacio.xs),

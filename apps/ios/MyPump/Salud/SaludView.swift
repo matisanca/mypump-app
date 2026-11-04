@@ -13,6 +13,8 @@ import MyPumpDatos
 /// en `Navegacion.segmentoSalud`, y acá se consume.
 struct SaludView: View {
     let datos: Muestras
+    /// Con suplementación, Salud se abre en una hoja (`Navegacion.saludEnMas`): «Listo» la cierra. nil = es la pestaña.
+    var alCerrar: (() -> Void)?
     @State private var modelo = Proveedor.modelo
     @Environment(Navegacion.self) private var navegacion: Navegacion?
     @Environment(\.horizontalSizeClass) private var claseAncho
@@ -50,6 +52,13 @@ struct SaludView: View {
             .background(Color.fondo)
             .navigationTitle("Salud")
             .navigationDestination(for: LineaProgreso.self) { ProgresoDetalleView(linea: $0) }
+            .toolbar {
+                if let alCerrar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Listo", action: alCerrar).accessibilityIdentifier("salud-cerrar")
+                    }
+                }
+            }
             .sensoryFeedback(.selection, trigger: segmento)
         }
         .onChange(of: navegacion?.segmentoSalud, initial: true) { _, pedido in

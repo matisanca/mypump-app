@@ -414,6 +414,8 @@ public struct VistaSuplementacion: Equatable, Sendable {
         public let porQue: String?
         public let detalle: [String]
         public let videoId: String?
+        /// El índice del ítem en `items`: la pestaña Suplementación abre su detalle (en cualquiera de sus tomas).
+        public let item: Int
     }
 
     public struct Momento: Equatable, Sendable, Identifiable {
@@ -426,6 +428,8 @@ public struct VistaSuplementacion: Equatable, Sendable {
         public let nombre: String
         public let porQue: String?
         public let detalle: [String]
+        /// El índice del ítem en `items`.
+        public let item: Int
     }
 
     public let titulo: String
@@ -433,6 +437,8 @@ public struct VistaSuplementacion: Equatable, Sendable {
     public let momentos: [Momento]
     public let sigue: String?
     public let sale: [Sale]
+    /// Los ítems tal como vinieron: el detalle de la pestaña Suplementación lee de acá (`Fila.item`, `Sale.item`).
+    public let items: [ItemSuplemento]
 
     /// Los momentos que conoce el PDF, en su orden del día.
     public static let momentosConocidos: [(String, String)] = [
@@ -444,7 +450,6 @@ public struct VistaSuplementacion: Equatable, Sendable {
     /// nil si no hay nada que mostrar (null, vacía o sin ítems).
     public init?(_ s: SuplementacionGuia?) {
         guard let s, !s.items.isEmpty else { return nil }
-        let nombres = Dictionary(Self.momentosConocidos, uniquingKeysWith: { a, _ in a })
         var def: [String: MomentoDia] = [:]
         for m in s.dia where def[m.id] == nil { def[m.id] = m }
 
@@ -455,7 +460,7 @@ public struct VistaSuplementacion: Equatable, Sendable {
         var sale: [Sale] = []
         for (i, it) in s.items.enumerated() {
             if it.estado == "sale" {
-                sale.append(Sale(nombre: it.nombre, porQue: it.porQue, detalle: it.detalle))
+                sale.append(Sale(nombre: it.nombre, porQue: it.porQue, detalle: it.detalle, item: i))
                 continue
             }
             let ts: [Toma]?
@@ -493,13 +498,12 @@ public struct VistaSuplementacion: Equatable, Sendable {
                         cantidad: t.cantidad.flatMap { $0.isEmpty ? nil : $0 }, nota: Self.mayuscula(t.nota),
                         nuevo: it.estado == "nuevo", opcional: it.opcional,
                         porQue: primera ? it.porQue : nil, detalle: primera ? it.detalle : [],
-                        videoId: primera ? it.videoId : nil)
+                        videoId: primera ? it.videoId : nil, item: t.item)
         }
         var grupos: [Momento] = []
         for m in orden {
             guard let ts = tomas[m] else { continue }
-            let titulo = def[m]?.nombre.flatMap { $0.isEmpty ? nil : $0 } ?? nombres[m]
-                ?? Self.mayuscula(m.replacingOccurrences(of: "_", with: " ")) ?? m
+            let titulo = Self.titulo(momento: m, definido: def[m])
             grupos.append(Momento(id: m, titulo: titulo, filas: ts.enumerated().map { fila($1, $0, momento: m) }))
         }
         if !sueltos.isEmpty {
@@ -510,6 +514,20 @@ public struct VistaSuplementacion: Equatable, Sendable {
         momentos = grupos
         sigue = s.sigueTexto
         self.sale = sale
+        items = s.items
+    }
+
+    static let nombresConocidos = Dictionary(momentosConocidos, uniquingKeysWith: { a, _ in a })
+
+    /// El título de un momento: el `nombre` de `dia` si lo trae, si no el texto propio del id, y si el id no se conoce, el
+    /// id legible («raro_x» → «Raro x»).
+    public static func titulo(momento m: String, dia: [MomentoDia]) -> String {
+        titulo(momento: m, definido: dia.first { $0.id == m })
+    }
+
+    static func titulo(momento m: String, definido: MomentoDia?) -> String {
+        definido?.nombre.flatMap { $0.isEmpty ? nil : $0 } ?? nombresConocidos[m]
+            ?? mayuscula(m.replacingOccurrences(of: "_", with: " ")) ?? m
     }
 
     static func mayuscula(_ s: String?) -> String? {

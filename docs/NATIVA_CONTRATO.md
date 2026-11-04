@@ -365,3 +365,140 @@ Mientras una función no exista (PGRST202), la app sigue como antes.
   (lápidas incluidas). Lo que no entra queda solo en el teléfono.
 - Sin clave foránea a `mypump_rutinas`: si el Cerebro borra y vuelve a crear una rutina, un `ON DELETE CASCADE` se
   llevaría las sustituciones.
+
+
+## 10. Suplementación (2.1.0, RPC `mypump_suplementacion`, migración entregas_015)
+
+
+Lo que devuelve `mypump_suplementacion(p_token text)` (migración entregas_015) para la app MyPump y la web.
+El ejemplo de abajo es ficticio.
+
+### El RPC
+
+```sql
+mypump_suplementacion(p_token text)
+  returns table (suplementacion jsonb, fase text, actualizado timestamptz, esquema int)
+```
+
+- SECURITY DEFINER, `search_path = public, pg_temp`, execute solo para `anon` y `authenticated`.
+- El token se valida igual que en los demás RPC `mypump_get_*` de la app.
+- Token inválido, inactivo, nulo o vacío: **cero filas, sin error**.
+- Sin suplementación cargada (o si después del filtro no queda ningún ítem): **cero filas**.
+- Si hay: **una fila**.
+  - `fase`: `'final'` (la de después de la llamada) o `'pre'` (la de antes). Si hay final, gana siempre.
+  - `actualizado`: cuándo se escribió por última vez la versión que se devuelve.
+  - `esquema`: versión de este contrato, hoy `1`. Si cambia la forma de forma incompatible, sube.
+
+### Forma del jsonb `suplementacion`
+
+```json
+{
+  "titulo": "string, opcional",
+  "accion": "string, opcional: la frase de qué hacer",
+  "sigue_texto": "string, opcional",
+  "dia":   [ { "id": "momento", "nombre": "string opcional", "hora": "opcional", "antes": "opcional", "despues": "opcional" } ],
+  "items": [ { ... ver abajo ... } ]
+}
+```
+
+Arriba solo vienen `titulo`, `accion`, `sigue_texto`, `dia` e `items`. Las que estén vacías no vienen. Cada ítem trae solo los campos de la tabla de abajo, y los vacíos no vienen. Siempre vienen `items` (al menos uno) y `dia` (puede venir `[]`).
+
+### Momentos (`dia[].id`, `items[].momento`, `tomas[].momento`)
+
+Valores posibles, en el orden del día:
+
+| orden | id | qué es |
+|---|---|---|
+| 1 | `despertar` | al levantarse |
+| 2 | `ayunas` | en ayunas |
+| 3 | `desayuno` | con el desayuno |
+| 4 | `media_manana` | media mañana |
+| 5 | `almuerzo` | con el almuerzo o la primera comida |
+| 6 | `merienda` | merienda |
+| 7 | `pre` | antes de entrenar (por lo general de 30 a 60 minutos) |
+| 8 | `intra` | durante el entrenamiento |
+| 9 | `post` | después de entrenar |
+| 10 | `cena` | con la cena |
+| 11 | `dormir` | antes de acostarse |
+| 12 | `noche` | a la noche |
+
+- `dia[]` ya viene ordenado por la tabla y **solo con los momentos que usa algún ítem que no sale**. Mostrar los momentos en el orden de `dia[]`.
+- `dia[].nombre` es el texto para el cliente («30 a 60 minutos antes de entrenar»). Si falta, la app usa un texto propio para ese id.
+- Un momento que no esté en la tabla: mostrarlo al final, con su `nombre` si lo trae, o ignorarlo. No es un error.
+
+### Ítem
+
+Cada ítem trae **`momento`** (una sola toma) **o `tomas[]`** (varias tomas en el día), nunca los dos. Un ítem con `estado: "sale"` puede no traer ninguno de los dos.
+
+| campo | tipo | ¿siempre? | qué es |
+|---|---|---|---|
+| `nombre` | string | sí | nombre del suplemento |
+| `cantidad` | string | casi siempre | dosis en texto libre («5 g», «2 cápsulas») |
+| `momento` | string | uno de los dos | id de la tabla de momentos |
+| `tomas` | array | uno de los dos | `[{ "momento", "cantidad" (opcional), "nota" (opcional) }]` |
+| `estado` | string | casi siempre | ver abajo; si falta, tratarlo como `nuevo` |
+| `nota` | string | opcional | aclaración corta al lado de la toma |
+| `detalle` | string **o** array de strings | opcional | cómo tomarlo; si es array, una línea por elemento |
+| `por_que` | string | opcional | una línea con el porqué para este cliente |
+| `opcional` | boolean | opcional | `true` = puede no tomarlo |
+| `dias` | string o array | opcional | `"todos"` (o ausente) = todos los días; `"gym"` = solo los días que entrena; `"descanso"` = solo los días que no entrena; array = esos días de la semana |
+| `antes` | string | opcional | dosis anterior (con `sube`, `baja` o `cambia`) |
+| `cambio` | string | opcional | texto del cambio («de 3 a 5 g») |
+| `comprar` | objeto | opcional | `{ "buscar", "donde" (opcional), "nota" (opcional) }`: qué buscar en la tienda |
+| `video_id` | string | opcional | id de un video de la guía que explica ese suplemento |
+
+Campos desconocidos: ignorarlos.
+
+### Estados
+
+| estado | significa |
+|---|---|
+| `nuevo` | lo empieza ahora |
+| `sigue` | ya lo tomaba y sigue igual |
+| `cambia` | sigue, pero cambia la dosis, la forma o el momento |
+| `sube` | sigue con más dosis (`antes` → `cantidad`) |
+| `baja` | sigue con menos dosis (`antes` → `cantidad`) |
+| `vuelve` | lo había dejado y lo retoma |
+| `sale` | lo deja: mostrarlo como «dejá de tomar», no en el día |
+
+Hoy en la práctica salen sobre todo `nuevo`, `sigue`, `cambia` y `sale`.
+
+### Qué filtra el RPC
+
+Solo llega la suplementación natural. Se descarta el ítem:
+
+- marcado como fármaco (`tipo` distinto de `"natural"`);
+- cuyo nombre corresponde a un medicamento, según una lista interna.
+
+La app no tiene que filtrar nada: todo lo que llega se muestra.
+
+### Ejemplo (ficticio)
+
+```json
+{
+  "suplementacion": {
+    "titulo": "Tu suplementación",
+    "accion": "Empezá esta semana con lo nuevo",
+    "dia": [
+      { "id": "desayuno", "nombre": "Con el desayuno" },
+      { "id": "pre", "nombre": "30 a 60 minutos antes de entrenar" },
+      { "id": "dormir", "nombre": "30 minutos antes de acostarte" }
+    ],
+    "items": [
+      { "nombre": "Creatina monohidrato", "cantidad": "5 g", "momento": "desayuno", "estado": "nuevo",
+        "detalle": ["Todos los días, también los de descanso", "Con agua o con el desayuno"],
+        "por_que": "Te ayuda a rendir más en las series pesadas",
+        "comprar": { "buscar": "Creatina monohidrato 100 % pura" }, "video_id": "VID-1" },
+      { "nombre": "Omega 3", "estado": "sigue",
+        "tomas": [ { "momento": "desayuno", "cantidad": "1 g" }, { "momento": "dormir", "cantidad": "1 g" } ] },
+      { "nombre": "Cafeína", "cantidad": "200 mg", "momento": "pre", "estado": "nuevo", "dias": "gym", "opcional": true,
+        "nota": "No después de las 17" },
+      { "nombre": "Magnesio glicinato", "cantidad": "400 mg", "antes": "200 mg", "momento": "dormir", "estado": "sube" },
+      { "nombre": "Multivitamínico", "estado": "sale", "por_que": "Ya lo cubrís con la dieta" }
+    ]
+  },
+  "fase": "final",
+  "actualizado": "2026-11-04T18:30:00+00:00",
+  "esquema": 1
+}
+```
