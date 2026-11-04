@@ -106,6 +106,14 @@ class ModeloGuia(
     /** Se tocó antes de que terminara de leerse el disco: lo leído no lo pisa. */
     private var ocultaTocada = false
 
+    private val _bienvenidaVista = MutableStateFlow<Boolean?>(null)
+
+    /**
+     * La bienvenida de la primera vez ya salió en este teléfono para esta cuenta (`guia-bienvenida.json` en su carpeta).
+     * null mientras no se leyó el disco: hasta saberlo no se muestra (así no sale dos veces). Ver `ReglasGuia.mostrarBienvenida`.
+     */
+    val bienvenidaVista: StateFlow<Boolean?> = _bienvenidaVista.asStateFlow()
+
     private var abriendo = false
 
     /** El disco, fuera del hilo principal y de a una operación por vez, en el orden en que se pidieron. */
@@ -117,6 +125,8 @@ class ModeloGuia(
         val (g, r) = withContext(serieDisco) { Guia.desde(disco?.leer(ARCHIVO_GUIA)) to ResumenGuia.desde(disco?.leer(ARCHIVO_RESUMEN)) }
         val oculta = withContext(serieDisco) { disco?.leer(ARCHIVO_OCULTA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
         if (!ocultaTocada) _ocultaAMano.value = oculta
+        val bienvenida = withContext(serieDisco) { disco?.leer(ARCHIVO_BIENVENIDA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
+        if (_bienvenidaVista.value == null) _bienvenidaVista.value = bienvenida
         if (_estado.value == Estado.SIN_DATOS && _guia.value == null && g != null) {
             _guia.value = g
             _estado.value = Estado.LISTA
@@ -259,6 +269,13 @@ class ModeloGuia(
         alDisco { if (oculta) guardar(ARCHIVO_OCULTA, ValorJson.Booleano(true)) else borrar(ARCHIVO_OCULTA) }
     }
 
+    /** La bienvenida ya se mostró: no vuelve a salir para esta cuenta en este teléfono. No llama al servidor. */
+    fun marcarBienvenidaVista() {
+        if (_bienvenidaVista.value == true) return
+        _bienvenidaVista.value = true
+        alDisco { guardar(ARCHIVO_BIENVENIDA, ValorJson.Booleano(true)) }
+    }
+
     /** Lo que decidió [SeguimientoAvance]: queda en el teléfono y sale por la cola (deduplicado por video). */
     suspend fun guardarAvance(g: SeguimientoAvance.Guardado) {
         val clave = claveAvance(g.video)
@@ -369,6 +386,7 @@ class ModeloGuia(
         internal const val ARCHIVO_GUIA = "guia.json"
         internal const val ARCHIVO_RESUMEN = "guia-resumen.json"
         internal const val ARCHIVO_OCULTA = "guia-oculta.json"
+        internal const val ARCHIVO_BIENVENIDA = "guia-bienvenida.json"
 
         /**
          * La guía de «Ver demo»: [guia] es la respuesta de muestra con la forma del get (`apps/shared/demo/guia.json`). Sin

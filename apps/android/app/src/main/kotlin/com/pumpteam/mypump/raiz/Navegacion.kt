@@ -96,6 +96,9 @@ class Navegacion(
      */
     var anclaRevision by mutableStateOf(anclaRevision)
 
+    /** Cada «Ocultar» de la tarjeta de la guía suma uno: dispara el aviso «La encontrás en Mis datos» con «Deshacer». */
+    var avisoGuiaOculta by mutableStateOf(0)
+
     /** El segmento de Salud: arranca en Recuperación y queda el último elegido mientras viva la app. */
     var segmentoSalud by mutableStateOf(segmentoSalud)
 

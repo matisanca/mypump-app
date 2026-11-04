@@ -370,7 +370,9 @@ class GuiaUiTest : PruebaUi() {
             p.tocar(etiqueta("ver-demo"))
             p.nodo(texto("Estás viendo la demo"))
             p.nodo(etiqueta("tarjeta-guia"))
-            assertTrue(p.existe(textoQueContiene("0 de 8 videos")))
+            // Sin ver ninguno, la destacada: «8 videos cortos, unos N min» (sin bienvenida en la demo).
+            assertTrue(p.existe(textoQueContiene("8 videos cortos, unos")))
+            assertFalse(p.existe(etiqueta("guia-bienvenida")))
             Telefono.captura("pe-demo-entreno")
             p.tocar(etiqueta("tarjeta-guia"))
             p.nodo(etiqueta("guia-cabecera"))
@@ -440,5 +442,138 @@ class GuiaUiTest : PruebaUi() {
             p.quieto(900)   // que la lista termine de subir hasta el reproductor (la placa dura 2,6 s)
             Telefono.shell("screencap -p ${Telefono.CARPETA_CAPTURAS}/guia-09-placa-$sufijo.png")
         }
+    }
+
+    // ── La guía bien destacada (GUIA_DESTACADA.md, Mati 4/11) ──
+
+    private val resumenNuevo = """{"ok": true, "total": 20, "vistos": 0, "minutos_restantes": 14.4}"""
+    private val resumenCompleto = """{"ok": true, "total": 20, "vistos": 20, "minutos_restantes": 0}"""
+
+    @Test
+    fun laBienvenidaSaleConCeroVistosUnaSolaVezYAbreLaGuia() {
+        conGuia(get = fixture("get-marcelo"), res = resumenNuevo)
+        guardarCuenta()
+        abrir().also { a ->
+            p.nodo(etiqueta("guia-bienvenida-ver"), ms = 15_000)
+            p.nodo(etiqueta("guia-bienvenida-saludo"))
+            assertTrue(p.existe(textoQueContiene("Son 20 videos cortos que armé para vos, unos 14 min")))
+            // Usa el resumen: el get (que marca `abierto_en`) sale recién al abrir la guía.
+            assertEquals(0, servidor.a("entregas_app_get").size)
+            p.tocar(etiqueta("guia-bienvenida-ver"))
+            p.nodo(etiqueta("guia-cabecera"))
+            p.esperar("el get") { servidor.a("entregas_app_get").size == 1 }
+            p.esperarQueNoEste(etiqueta("guia-bienvenida"))
+            a.close()
+        }
+        // Una sola vez: al volver a entrar, la tarjeta y nada encima.
+        abrir()
+        p.nodo(etiqueta("tarjeta-guia"))
+        p.quieto(3_500)
+        assertFalse(p.existe(etiqueta("guia-bienvenida")))
+    }
+
+    @Test
+    fun masTardeDejaLaTarjetaDestacadaConCeroVistos() {
+        conGuia(get = fixture("get-marcelo"), res = resumenNuevo)
+        guardarCuenta()
+        abrir()
+        p.tocar(etiqueta("guia-bienvenida-despues"), ms = 15_000)
+        p.esperarQueNoEste(etiqueta("guia-bienvenida"))
+        p.nodo(etiqueta("guia-empeza-por-aca"))
+        assertTrue(p.existe(texto("20 videos cortos, unos 14 min")))
+        assertTrue(p.existe(texto("Ver mi guía")))
+        assertEquals(0, servidor.a("entregas_app_get").size)
+        p.tocar(etiqueta("tarjeta-guia-ver"))
+        p.nodo(etiqueta("guia-cabecera"))
+    }
+
+    @Test
+    fun ocultarLlevaAMisDatosConAvisoYDeshacer() {
+        conGuia()
+        guardarCuenta()
+        abrir()
+        p.nodo(etiqueta("guia-empeza-por-aca"))
+        // A mitad: «Seguir viendo» y la línea de avance; sin bienvenida (ya vio alguno).
+        assertTrue(p.existe(texto("Seguir viendo")))
+        assertTrue(p.existe(texto("4 de 20 videos, te quedan 12 min")))
+        assertFalse(p.existe(etiqueta("guia-bienvenida")))
+        p.tocar(etiqueta("tarjeta-guia-ocultar"))
+        p.nodo(etiqueta("aviso-guia-oculta"))
+        assertTrue(p.existe(texto("La encontrás en Mis datos")))
+        p.esperarQueNoEste(etiqueta("tarjeta-guia"))
+        // Deshacer la vuelve a Entreno.
+        p.tocar(etiqueta("aviso-guia-deshacer"))
+        p.nodo(etiqueta("tarjeta-guia"))
+        // Otra vez, y el aviso se va solo: la guía queda en la fila de Mis datos.
+        p.tocar(etiqueta("tarjeta-guia-ocultar"))
+        p.esperarQueNoEste(etiqueta("tarjeta-guia"))
+        p.esperarQueNoEste(etiqueta("aviso-guia-oculta"), ms = 30_000)
+        aMisDatos()
+        p.tocar(etiqueta("mis-datos-guia"))
+        p.nodo(etiqueta("guia-cabecera"))
+        // Es el mismo «Quitar de Entreno»: desde la sección se puede volver a mostrar.
+        bajarHasta(etiqueta("guia-volver-entreno"))
+        // Solo en el teléfono.
+        assertEquals(0, servidor.a("entregas_app_avance").size)
+    }
+
+    @Test
+    fun conTodoVistoLaTarjetaEsLaCompacta() {
+        conGuia(res = resumenCompleto)
+        guardarCuenta()
+        abrir()
+        p.nodo(etiqueta("tarjeta-guia-completa"))
+        assertTrue(p.existe(textoQueContiene("Viste los 20 videos")))
+        assertFalse(p.existe(etiqueta("guia-empeza-por-aca")))
+        assertFalse(p.existe(etiqueta("tarjeta-guia-ocultar")))
+        p.quieto(3_000)
+        assertFalse(p.existe(etiqueta("guia-bienvenida")))
+        abrirGuia()
+    }
+
+    @Test
+    fun capturasDestacadaClaro() = capturasDestacada(oscuro = false)
+
+    @Test
+    fun capturasDestacadaOscuro() = capturasDestacada(oscuro = true)
+
+    @Test
+    fun capturasDestacadaLetraGrande() {
+        Telefono.shell("settings put system font_scale 1.3")
+        capturasDestacada(oscuro = false, sufijo = "letra-grande")
+    }
+
+    /** Las de GUIA_DESTACADA.md: la bienvenida, la tarjeta con 0 vistos, a mitad, «Ocultar» con el aviso y la compacta. */
+    private fun capturasDestacada(oscuro: Boolean, sufijo: String = if (oscuro) "oscuro" else "claro") {
+        Telefono.modoNoche(oscuro)
+        fun foto(n: String) = Telefono.captura("$n-$sufijo")
+        conGuia(get = fixture("get-marcelo"), res = resumenNuevo)
+        guardarCuenta()
+        abrir().also { a ->
+            p.nodo(etiqueta("guia-bienvenida-ver"), ms = 15_000)
+            p.quieto(700)
+            foto("01-bienvenida")
+            p.tocar(etiqueta("guia-bienvenida-despues"))
+            p.esperarQueNoEste(etiqueta("guia-bienvenida"))
+            p.nodo(etiqueta("guia-empeza-por-aca"))
+            foto("02-tarjeta-0-vistos")
+            a.close()
+        }
+        conGuia(res = resumen)
+        abrir().also { a ->
+            p.nodo(texto("Seguir viendo"))
+            foto("03-tarjeta-a-mitad")
+            p.tocar(etiqueta("tarjeta-guia-ocultar"))
+            p.nodo(etiqueta("aviso-guia-oculta"))
+            p.quieto(500)
+            foto("04-ocultar-aviso")
+            p.tocar(etiqueta("aviso-guia-deshacer"))
+            p.nodo(etiqueta("tarjeta-guia"))
+            a.close()
+        }
+        conGuia(res = resumenCompleto)
+        abrir()
+        p.nodo(etiqueta("tarjeta-guia-completa"))
+        foto("05-tarjeta-compacta")
     }
 }
