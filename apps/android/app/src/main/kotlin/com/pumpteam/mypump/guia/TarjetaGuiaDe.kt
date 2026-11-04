@@ -19,13 +19,15 @@ import com.pumpteam.mypump.reglas.ReglasGuia
  * volver a primer plano.
  */
 @Composable
-fun TarjetaGuiaDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
+fun TarjetaGuiaDe(modelo: ModeloApp, modifier: Modifier = Modifier, solo: ReglasGuia.EstiloTarjeta? = null) {
     val navegacion = LocalNavegacion.current
     val guia by modelo.guia.collectAsStateWithLifecycle()
     val g = guia ?: return
     val (resumen, lugar) = lugarDeLaGuia(g)
     if (resumen == null || lugar != ReglasGuia.Lugar.ENTRENO) return
     val estilo = ReglasGuia.estiloTarjeta(resumen)
+    // Entreno pone la destacada arriba de la cabecera y la compacta debajo: cada lugar pide la suya.
+    if (solo != null && estilo != solo) return
     if (estilo == ReglasGuia.EstiloTarjeta.DESTACADA) LaunchedEffect(g) { g.marcarTarjetaVista() }
     when (estilo) {
         ReglasGuia.EstiloTarjeta.DESTACADA -> TarjetaGuiaDestacada(

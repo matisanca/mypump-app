@@ -4,9 +4,15 @@ import android.Manifest
 import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.media.AudioRecordingConfiguration
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,7 +34,10 @@ import kotlinx.coroutines.launch
 
 /** Lo que graba. En la app es [GrabadorMediaRecorder]; en las pruebas de interfaz, un doble ([AudioDudaEntorno]). */
 interface GrabadorAudio {
-    /** Arranca a grabar en [archivo]. Tira si el micrófono no se puede usar (lo tiene otra app, una llamada). */
+    /**
+     * Arranca a grabar en [archivo]. Tira si el micrófono no se puede usar (lo tiene otra app, una llamada). [alCortarse]
+     * avisa que se cortó a mitad de camino (llamada, pérdida del foco, micrófono silenciado, error): quien graba lo frena.
+     */
     fun empezar(archivo: File, alCortarse: () -> Unit)
 
     /** Frena. Devuelve false si no quedó nada que se pueda escuchar. */
@@ -41,11 +50,56 @@ interface GrabadorAudio {
 /**
  * MediaRecorder con MPEG_4/AAC, mono, 64 kbps y 44,1 kHz (lo de iOS): `audio/mp4`, unos 2,4 MB en 5 minutos. En Android 9
  * y 10 (API < 31) va el constructor viejo. Sin servicio en primer plano: si la app se va, se frena (ver [ControlAudioDuda]).
+ *
+ * Pide el foco del audio transitorio mientras graba (revisión del 4-nov, hallazgo 9): la música del cliente se pausa y, si
+ * otra app o una llamada se lo lleva, avisa con `alCortarse`. Desde Android 10 también avisa si el sistema le silencia el
+ * micrófono (otra app con prioridad, una llamada). No pide permisos nuevos (nada de READ_PHONE_STATE).
  */
 class GrabadorMediaRecorder(private val contexto: Context) : GrabadorAudio {
     private var rec: MediaRecorder? = null
+    private val audio: AudioManager? = contexto.getSystemService(AudioManager::class.java)
+    private var foco: AudioFocusRequest? = null
+    private var vigiaGrabacion: AudioManager.AudioRecordingCallback? = null
+    private val principal = Handler(Looper.getMainLooper())
+
+    private fun pedirFoco(alCortarse: () -> Unit) {
+        val am = audio ?: return
+        val pedido = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+            .setAudioAttributes(
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build(),
+            )
+            .setOnAudioFocusChangeListener({ cambio ->
+                // Bajar el volumen para una notificación (CAN_DUCK) no corta: una llamada u otra app grabando, sí.
+                if (cambio == AudioManager.AUDIOFOCUS_LOSS || cambio == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) alCortarse()
+            }, principal)
+            .build()
+        // Con una llamada en curso el sistema lo niega: el micrófono no se puede usar.
+        if (am.requestAudioFocus(pedido) == AudioManager.AUDIOFOCUS_REQUEST_FAILED) throw IllegalStateException("sin foco de audio")
+        foco = pedido
+    }
+
+    private fun vigilarSilencio(r: MediaRecorder, alCortarse: () -> Unit) {
+        val am = audio ?: return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val cb = object : AudioManager.AudioRecordingCallback() {
+            override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>?) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || rec !== r) return
+                if (runCatching { r.activeRecordingConfiguration?.isClientSilenced == true }.getOrDefault(false)) alCortarse()
+            }
+        }
+        am.registerAudioRecordingCallback(cb, principal)
+        vigiaGrabacion = cb
+    }
+
+    private fun soltarFoco() {
+        vigiaGrabacion?.let { cb -> audio?.unregisterAudioRecordingCallback(cb) }
+        vigiaGrabacion = null
+        foco?.let { f -> audio?.abandonAudioFocusRequest(f) }
+        foco = null
+    }
 
     override fun empezar(archivo: File, alCortarse: () -> Unit) {
+        pedirFoco(alCortarse)
         val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(contexto) else @Suppress("DEPRECATION") MediaRecorder()
         try {
             r.setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -60,15 +114,18 @@ class GrabadorMediaRecorder(private val contexto: Context) : GrabadorAudio {
             r.prepare()
             r.start()
             rec = r
+            vigilarSilencio(r, alCortarse)
         } catch (e: Exception) {
             r.release()
+            soltarFoco()
             throw e
         }
     }
 
     override fun detener(): Boolean {
-        val r = rec ?: return false
+        val r = rec ?: return false.also { soltarFoco() }
         rec = null
+        soltarFoco()
         return try {
             r.stop()   // tira si no llegó a grabar nada (RuntimeException de MediaRecorder)
             true
@@ -80,6 +137,7 @@ class GrabadorMediaRecorder(private val contexto: Context) : GrabadorAudio {
     }
 
     override fun soltar() {
+        soltarFoco()
         val r = rec ?: return
         rec = null
         runCatching { r.stop() }
@@ -257,7 +315,8 @@ class ControlAudioDuda(app: Application) : AndroidViewModel(app) {
         val f = File(carpeta, "grabacion-${System.currentTimeMillis()}.m4a")
         val g = AudioDudaEntorno.grabador?.invoke(app) ?: GrabadorMediaRecorder(app)
         try {
-            g.empezar(f) { viewModelScope.launch { if (estado is Estado.Grabando) aplicar(MaquinaAudioDuda.seCorto()) } }
+            // Una llamada, otra app con el foco del audio, el micrófono silenciado o un error: se frena y pasa a revisar.
+            g.empezar(f) { viewModelScope.launch { if (estado is Estado.Grabando) aplicar(MaquinaAudioDuda.seCorto(estado, ahora())) } }
         } catch (_: Exception) {
             f.delete()
             aplicar(MaquinaAudioDuda.noEmpezo(MaquinaAudioDuda.Fallo.OCUPADO))

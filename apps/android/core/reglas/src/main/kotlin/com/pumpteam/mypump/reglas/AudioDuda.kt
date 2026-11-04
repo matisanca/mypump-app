@@ -198,8 +198,12 @@ object MaquinaAudioDuda {
         return Paso(Estado.Revisando(s), Aviso(ReglasAudioDuda.anuncioDuracion(s)), listOf(Efecto.Detener))
     }
 
-    /** El grabador se cortó solo (un error del sistema a mitad de camino): lo que haya quedado se descarta. */
-    fun seCorto(): Paso = Paso(Estado.Reposo, Aviso(ReglasAudioDuda.MICROFONO_OCUPADO, error = true), listOf(Efecto.Descartar))
+    /**
+     * El grabador se cortó solo a mitad de camino: entró una llamada, otra app tomó el foco del audio, el sistema silenció
+     * el micrófono o falló. Como «Terminar» (revisión del 4-nov, hallazgo 9): se frena y pasa a revisar con lo grabado; con
+     * menos de 2 s, se borra con el aviso. Fuera de la grabación no hace nada.
+     */
+    fun seCorto(estado: Estado, ahoraMs: Long): Paso = terminar(estado, ahoraMs)
 
     fun borrar(estado: Estado): Paso = Paso(Estado.Reposo, null, if (estado is Estado.Revisando || estado is Estado.Grabando) listOf(Efecto.Descartar) else emptyList())
 

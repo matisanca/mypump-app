@@ -94,7 +94,12 @@ class AudioDudaTest {
     fun fallosDelMicrofono() {
         assertEquals(ReglasAudioDuda.SIN_MICROFONO, m.noEmpezo(MaquinaAudioDuda.Fallo.SIN_MICROFONO).aviso?.texto)
         assertEquals(ReglasAudioDuda.MICROFONO_OCUPADO, m.noEmpezo(MaquinaAudioDuda.Fallo.OCUPADO).aviso?.texto)
-        assertEquals(listOf(Efecto.Descartar), m.seCorto().efectos)
+        // Hallazgo 9: una llamada, el micrófono silenciado o la pérdida del foco frenan y pasan a revisar.
+        val cortado = m.seCorto(Estado.Grabando(1_000), 31_000)
+        assertEquals(Estado.Revisando(30), cortado.estado)
+        assertEquals(listOf(Efecto.Detener), cortado.efectos)
+        assertEquals(listOf(Efecto.Descartar), m.seCorto(Estado.Grabando(1_000), 2_000).efectos, "menos de 2 s se borra")
+        assertEquals(Estado.Revisando(5), m.seCorto(Estado.Revisando(5), 99).estado)
         // Terminar fuera de la grabación (un segundo plano en reposo) no cambia nada.
         assertEquals(Estado.Revisando(5), m.terminar(Estado.Revisando(5), 99).estado)
         assertNull(m.tic(Estado.Reposo, 1))

@@ -217,7 +217,7 @@ private fun IconoPlayConPulso(pulso: Boolean) {
  * abajo. Dura 6 s, más si TalkBack lo pide. Lo dispara [Navegacion.avisoGuiaOculta].
  */
 @Composable
-fun AvisoGuiaOculta(navegacion: Navegacion, modelo: ModeloApp, modifier: Modifier = Modifier) {
+fun AvisoGuiaOculta(navegacion: Navegacion, modelo: ModeloApp, modifier: Modifier = Modifier, separacion: androidx.compose.ui.unit.Dp = 0.dp) {
     val vez = navegacion.avisoGuiaOculta
     var visible by remember { mutableStateOf(false) }
     val accesibilidad = LocalAccessibilityManager.current
@@ -234,7 +234,8 @@ fun AvisoGuiaOculta(navegacion: Navegacion, modelo: ModeloApp, modifier: Modifie
         enter = slideInVertically { it } + fadeIn(),
         exit = slideOutVertically { it } + fadeOut(),
     ) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), contentAlignment = Alignment.Center) {
+        // [separacion] va adentro: con el aviso oculto no deja un hueco abajo.
+        Box(Modifier.fillMaxWidth().padding(horizontal = Espacio.m).padding(bottom = separacion), contentAlignment = Alignment.Center) {
             Row(
                 Modifier
                     .widthIn(max = 520.dp)
@@ -269,7 +270,7 @@ fun AvisoGuiaOculta(navegacion: Navegacion, modelo: ModeloApp, modifier: Modifie
 }
 
 /**
- * La bienvenida de la primera vez ([ReglasGuia.mostrarBienvenida]): una hoja grande con el play, «Hola Marcelo», el texto de
+ * La bienvenida de la primera vez ([ReglasGuia.mostrarBienvenida]): una hoja grande con el play, «Hola Tomás», el texto de
  * Mati, «Ver mi guía» y «Más tarde». Sale después de la hoja de permisos (si está pendiente, espera a que termine) y se marca
  * vista al aparecer, así nunca sale dos veces. No llama a `entregas_app_get`: usa el resumen y la caché; el get sale al abrir
  * la guía.

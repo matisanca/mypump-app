@@ -66,6 +66,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
@@ -111,6 +112,7 @@ import com.pumpteam.mypump.reglas.Js
 import com.pumpteam.mypump.reglas.NormalizacionRutina
 import com.pumpteam.mypump.reglas.Progresiones
 import com.pumpteam.mypump.reglas.ReglasEjercicio
+import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.SemanaEntreno
 import com.pumpteam.mypump.reglas.TextosEntreno
 import com.pumpteam.mypump.reglas.TiempoEntreno
@@ -180,7 +182,10 @@ fun ListaEntreno(
                         .padding(top = Espacio.xxs, bottom = Espacio.xl + LocalRellenoInferior.current),
                     verticalArrangement = Arrangement.spacedBy(Espacio.l),
                 ) {
-                    Cabecera(motor, v, titulo, Modifier.onSizeChanged { altoCabecera = it.height })
+                    // «Tu guía» mientras falta ver algo: verde y primera, arriba de todo, como iOS (revisión del 4-nov, hallazgo 5).
+                    TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
+                    // Hasta dónde llega la cabecera (con la tarjeta arriba, no es solo su alto): el título pasa a la barra después.
+                    Cabecera(motor, v, titulo, Modifier.onGloballyPositioned { altoCabecera = (it.positionInParent().y + it.size.height).toInt() })
                     if (deEjemplo) {
                         // Con cuenta y un motor de ejemplo (Mati todavía no publicó el plan): el aviso de la web (ACC-08).
                         AvisoTenido(
@@ -190,7 +195,8 @@ fun ListaEntreno(
                             modifier = Modifier.testTag("aviso-demo"),
                         )
                     }
-                    TarjetaGuiaDe(modelo)
+                    // Con todo visto, la compacta en su lugar de siempre.
+                    TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.COMPACTA)
                     BannerRevision(modelo)
                     // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
                     if (motor.dias.size > 1) SelectorDias(motor, v)
