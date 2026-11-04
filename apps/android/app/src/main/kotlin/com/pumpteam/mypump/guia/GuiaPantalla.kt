@@ -503,9 +503,8 @@ private fun VistaVideo(control: ControlReproductor, modifier: Modifier = Modifie
     val player = control.player
     AndroidView(
         factory = { ctx ->
-            PlayerView(ctx).apply {
+            (android.view.LayoutInflater.from(ctx).inflate(com.pumpteam.mypump.R.layout.guia_reproductor, null) as PlayerView).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                useController = true
                 setShowPreviousButton(false)
                 setShowNextButton(false)
                 setShowSubtitleButton(false)

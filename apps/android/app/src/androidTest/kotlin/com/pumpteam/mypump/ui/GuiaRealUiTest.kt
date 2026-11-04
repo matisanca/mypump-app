@@ -112,6 +112,28 @@ class GuiaRealUiTest : PruebaUi() {
         }
     }
 
+    /** El brillo del cuadro que muestra la vista del video: más que negro puro. */
+    private fun cuadroConImagen(a: androidx.test.core.app.ActivityScenario<*>): Boolean {
+        var brillo = -1.0
+        a.onActivity { act ->
+            fun buscar(v: android.view.View): android.view.TextureView? = when (v) {
+                is android.view.TextureView -> v
+                is android.view.ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { buscar(v.getChildAt(it)) }
+                else -> null
+            }
+            val t = buscar(act.window.decorView) ?: return@onActivity
+            val b = t.getBitmap(64, 36) ?: return@onActivity
+            var suma = 0L
+            for (x in 0 until b.width) for (y in 0 until b.height) {
+                val c = b.getPixel(x, y)
+                suma += (c shr 16 and 0xff) + (c shr 8 and 0xff) + (c and 0xff)
+            }
+            brillo = suma / (3.0 * b.width * b.height)
+        }
+        android.util.Log.i("MyPumpPruebas", "brillo del cuadro del video: $brillo")
+        return brillo > 8
+    }
+
     @Test
     fun verUnVideoHastaEl80CerrarYVolver() {
         guardarCuenta(token)
@@ -138,6 +160,8 @@ class GuiaRealUiTest : PruebaUi() {
                 reales("entregas_app_avance").firstOrNull { it.cuerpo.contains("\"p_video\":\"$id\"") && it.cuerpo.contains("\"p_visto\":true") && it.respuesta.trim() == "true" }
             }
             foto("03-visto")
+            // El video se dibuja de verdad (no solo avanza el reloj): el cuadro de la TextureView no es todo negro.
+            assertTrue("el video no dibuja cuadros", cuadroConImagen(a))
             a.close()
         }
         // Se cierra y se vuelve a abrir: la guía viene del servidor y el video sigue visto.

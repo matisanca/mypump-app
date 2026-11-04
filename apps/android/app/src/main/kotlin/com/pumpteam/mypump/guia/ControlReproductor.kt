@@ -44,7 +44,8 @@ class ControlReproductor(
     /** Lo que muestra la placa de «Otro tema». */
     data class Placa(val indice: Int, val total: Int, val bloque: String?, val titulo: String)
 
-    var player: ExoPlayer? = null
+    /** Estado de Compose: la vista del video se compone antes de que exista el reproductor y tiene que enterarse. */
+    var player: ExoPlayer? by mutableStateOf(null)
         private set
 
     private var modelo: ModeloGuia? = null
