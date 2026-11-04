@@ -11,6 +11,8 @@ import MyPumpDatos
 struct GuiaView: View {
     let modelo: ModeloGuia
     @State private var control = ControlReproductor()
+    /// El video chico del «Ver por qué» de un suplemento.
+    @State private var verPorQue = ControlVerPorQue()
     @State private var abiertos: Set<String> = []
     @State private var motivosAbiertos: Set<String> = []
     @State private var volverA: String?
@@ -52,6 +54,12 @@ struct GuiaView: View {
             control.clips = { [modelo] in modelo.clips }
             control.alGuardar = { [modelo] id, g in Task { await modelo.avance(video: id, segundos: g.segundos, visto: g.visto) } }
             control.forzarSinRed = GuiaUI.sinRed
+            verPorQue.clip = { [modelo] id in modelo.clipDeSuplemento(id) }
+            verPorQue.alGuardar = control.alGuardar
+            verPorQue.forzarSinRed = GuiaUI.sinRed
+            // Un solo video a la vez, como la web.
+            verPorQue.alArrancar = { [control] in control.frenarPorOtro() }
+            control.alArrancar = { [verPorQue] in verPorQue.pausar() }
             guard !traida else { return }
             traida = true
             if modelo.guia != nil { prepararInicial() }
@@ -60,12 +68,16 @@ struct GuiaView: View {
             if GuiaUI.placa { control.placaFija = true; control.siguiente() }
             await modelo.abrir()
             prepararInicial()
+            if let v = GuiaUI.verPorQue { verPorQue.alternar(v) }
         }
         // La guía dejó de existir (token revocado o la página se dio de baja): la sección desaparece, sin mensaje.
-        .onChange(of: modelo.estado) { _, e in if e == .oculta { control.pausar(); cerrar() } }
-        .onChange(of: fase) { _, f in if f == .background { control.pausar() } }
+        .onChange(of: modelo.estado) { _, e in if e == .oculta { control.pausar(); verPorQue.cerrar(); cerrar() } }
+        .onChange(of: fase) { _, f in if f == .background { control.pausar(); verPorQue.pausar() } }
         // Otra pestaña o volver a Entreno: se pausa y queda guardado. La pantalla completa del sistema no cuenta.
-        .onDisappear { if !control.pantallaCompleta { control.pausar() } }
+        .onDisappear {
+            if !control.pantallaCompleta { control.pausar() }
+            if !verPorQue.pantallaCompleta { verPorQue.pausar() }
+        }
         .sensoryFeedback(.selection, trigger: control.cambios)
     }
 
@@ -139,10 +151,7 @@ struct GuiaView: View {
         DudasLlamada(modelo: modelo, despues: despues)
         ForEach(bloques.filter { !$0.esApp }) { b in bloque(b, lector) }
         if let s = VistaSuplementacion(modelo.guia?.suplementacion) {
-            Suplementacion(vista: s, puedeVer: { id in clips.contains { $0.id == id && $0.url != nil } }) { id in
-                control.reproducir(video: id)
-                irAlReproductor(lector, desde: nil)
-            }
+            Suplementacion(vista: s, modelo: modelo, verPorQue: verPorQue, despues: despues)
         }
         Text(despues ? "Si algún video no te carga o tenés algo para contarme, escribime por el chat."
                      : "Si algún video no te carga o tenés algo para contarme antes de la llamada, escribime por el chat.")
@@ -466,6 +475,8 @@ private struct DudaVideo: View {
     @Bindable var modelo: ModeloGuia
     let clip: ClipGuia
     let despues: Bool
+    /// Para los identificadores de accesibilidad del recuadro de un «Ver por qué» (el de arriba va sin sufijo).
+    var sufijo = ""
 
     var body: some View {
         let ya = ReglasGuia.renglones(clip.duda)
@@ -489,10 +500,10 @@ private struct DudaVideo: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.campo, in: RoundedRectangle(cornerRadius: Radio.miniatura, style: .continuous))
                 .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("guia-dudas-video")
+                .accessibilityIdentifier("guia-dudas-video\(sufijo)")
             }
             CampoDuda(texto: borrador, placeholder: despues ? "Escribila acá y me llega" : "Escribila acá y me llega antes de la videollamada",
-                      identificador: "guia-duda-campo")
+                      identificador: "guia-duda-campo\(sufijo)")
             HStack {
                 EstadoEnvio(envio: modelo.envios[clip.id], listo: despues ? "Listo, me llega y te contesto." : "Listo, me llega antes de la videollamada.",
                             enCola: !enCola.isEmpty)
@@ -500,9 +511,51 @@ private struct DudaVideo: View {
                 Button("Enviar duda") { Task { await modelo.enviarDuda(video: clip.id) } }
                     .buttonStyle(BotonMarca(compacto: true))
                     .disabled(ReglasGuia.textoParaMandar(borrador.wrappedValue) == nil)
-                    .accessibilityIdentifier("guia-duda-enviar")
+                    .accessibilityIdentifier("guia-duda-enviar\(sufijo)")
             }
         }
+    }
+}
+
+/// «Ver por qué» de un suplemento (web del 4/11, A5): el botón abre el video chico ahí mismo, sin mover la página, con su
+/// recuadro de duda; tocarlo de nuevo lo cierra. Con el clip visto, el botón lleva el tilde.
+private struct VerPorQue: View {
+    let clip: ClipGuia
+    let nombre: String
+    @Bindable var modelo: ModeloGuia
+    let control: ControlVerPorQue
+    let despues: Bool
+
+    var body: some View {
+        let abierto = control.abierto == clip.id
+        VStack(alignment: .leading, spacing: Espacio.s) {
+            Button {
+                withAnimation(.snappy) { control.alternar(clip.id) }
+            } label: {
+                Label {
+                    Text(abierto ? "Cerrar el video" : ReglasGuia.rotuloVerPorQue(clip))
+                } icon: {
+                    Image(systemName: abierto ? "stop.fill" : clip.visto ? "checkmark.circle.fill" : "play.fill")
+                        .foregroundStyle(!abierto && clip.visto ? Color.marca : Color.marcaTexto)
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.marcaTexto)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 36)
+                .overlay(Capsule().strokeBorder(Color.marcaTexto, lineWidth: 1))
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .frame(minHeight: 44)
+            .accessibilityLabel(abierto ? "Cerrar el video de \(nombre)" : "\(ReglasGuia.rotuloVerPorQue(clip)), \(nombre)\(clip.visto ? ", visto" : "")")
+            .accessibilityValue(abierto ? "Abierto" : "Cerrado")
+            .accessibilityIdentifier("guia-ver-por-que-\(clip.id)")
+            if abierto {
+                CuadroVerPorQue(control: control)
+                DudaVideo(modelo: modelo, clip: clip, despues: despues, sufijo: "-\(clip.id)")
+            }
+        }
+        .padding(.top, 4)
     }
 }
 
@@ -602,8 +655,9 @@ private struct DudasLlamada: View {
 /// «Tu suplementación», al final y por momento del día, como «Tu día» del PDF.
 private struct Suplementacion: View {
     let vista: VistaSuplementacion
-    let puedeVer: (String) -> Bool
-    let verPorQue: (String) -> Void
+    @Bindable var modelo: ModeloGuia
+    let verPorQue: ControlVerPorQue
+    let despues: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: Espacio.s) {
@@ -656,13 +710,8 @@ private struct Suplementacion: View {
                     .padding(.leading, 10)
                     .overlay(alignment: .leading) { Rectangle().fill(Color.borde).frame(width: 2) }
             }
-            if let v = f.videoId, puedeVer(v) {
-                Button { verPorQue(v) } label: { Label("Ver por qué", systemImage: "play.circle.fill") }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.marcaTexto)
-                    .frame(minHeight: 44)
-                    .accessibilityHint("Reproduce el video de \(f.nombre)")
-                    .accessibilityIdentifier("guia-ver-por-que-\(v)")
+            if let c = modelo.clipDeSuplemento(f.videoId) {
+                VerPorQue(clip: c, nombre: f.nombre, modelo: modelo, control: verPorQue, despues: despues)
             }
         }
         .fixedSize(horizontal: false, vertical: true)
@@ -761,6 +810,8 @@ enum GuiaUI {
     static var ancla: String? { valor("guiaAncla") }
     static var motivoAbierto: String? { valor("guiaMotivo") }
     static var placa: Bool { valor("guiaPlaca") == "YES" }
+    /// Capturas: `-guiaVerPorQue <id>` abre el «Ver por qué» de ese video.
+    static var verPorQue: String? { valor("guiaVerPorQue") }
 
     private static func valor(_ k: String) -> String? {
         #if DEBUG

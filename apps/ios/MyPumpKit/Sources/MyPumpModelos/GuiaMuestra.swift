@@ -29,7 +29,7 @@ public enum GuiaMuestra {
             clip("FT-26a", "¿Peso la comida cruda o cocida?", "Tu alimentación", 0.6),
             clip("FT-17a", "¿Qué verduras puedo comer libres?", "Tu alimentación", 0.6),
             clip("FT-1b", "¿Para qué sirve la citrulina?", "Tu suplementación", 0.7),
-            clip("FT-4b", "¿Qué magnesio compro y por qué los comunes no sirven?", "Tu suplementación", 0.5),
+            clip("FT-4b", "¿Qué magnesio compro y por qué los comunes no sirven?", "Tu suplementación", 0.5, visto: true),
         ]
         return """
         {"ok":true,"nombre_pila":"Marcelo","fecha_entrega":null,

@@ -16,6 +16,12 @@ Rama `nativa-guia-ios`. Espec: `~/pump-entregas/docs/ESPEC-APP-PUMP-TEAM.md`. Co
   duda del video; después «Tu app», el recuadro de dudas para la videollamada (tope 30), los demás capítulos plegables
   (abierto el del video que suena), la suplementación por momento del día con «Ver por qué», y el pie. iPad: dos
   columnas, el reproductor fijo a la izquierda y la lista a la derecha.
+- **Videos de los suplementos (A5, web del 4/11)**: un clip del bloque «Tu suplementación» que nombra un suplemento
+  (nombre no vacío, estado distinto de «sale» y `video_id` no vacío, sin recortar) no va en la lista, ni en «Viste X de
+  N», ni en el reproductor de arriba: se ve con «Ver por qué (N s)», que lo abre chico debajo del suplemento, con su
+  recuadro de duda, y lo cierra al tocarlo de nuevo. Con el clip visto, el botón lleva el tilde. Su avance va por la
+  misma cola (`guia_avance`). Suena un solo video a la vez. La regla (`ReglasGuia.deLaLista`) es la de `entregas_012`,
+  así la tarjeta del servidor y la lista dan lo mismo.
 - **`entregas_app_get`** se llama solo al abrir la sección, una vez por apertura. Sin red, la copia guardada
   (`guia.json`) con el aviso «Sin conexión: ves lo último que guardaste».
 - **Reproductor** (`ReproductorGuia.swift`): AVPlayerViewController con los controles del sistema (pantalla completa y

@@ -287,3 +287,95 @@ struct VistaSuplementacionTests {
         #expect(v.momentos.map(\.titulo) == ["La cena", "Desayuno", "Zz"])
     }
 }
+
+@Suite("Tu guía: los videos de los suplementos (A5)")
+struct GuiaVerPorQueTests {
+    @Test func laMuestraSacaLosDosDeLaLista() {
+        let g = GuiaMuestra.guia
+        let lista = ReglasGuia.deLaLista(g)
+        #expect(lista.count == 11)
+        #expect(!lista.contains { $0.id == "FT-1b" || $0.id == "FT-4b" })
+        #expect(ReglasGuia.esBloqueApp(lista[0].bloque), "«Tu app» sigue primero")
+        #expect(ReglasGuia.clipDeSuplemento(g, videoId: "FT-1b")?.id == "FT-1b")
+        #expect(ReglasGuia.avance(lista).total == 11)
+    }
+
+    /// Los bordes de la regla de `entregas_012` (la tarjeta del servidor y la lista tienen que dar lo mismo).
+    private static let bordes = guia("""
+    {"ok":true,"clips":[
+      {"id":"esp","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"  TU SUPLEMENTACIÓN \u{A0}"},
+      {"id":"sinacento","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"Tu Suplementacion"},
+      {"id":"nulo","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":null},
+      {"id":"otro","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"Otro tema"},
+      {"id":"sale","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"Tu suplementación"},
+      {"id":"Sale","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"Tu suplementación"},
+      {"id":"sinnombre","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"Tu suplementación"},
+      {"id":"blanco","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"Tu suplementación"},
+      {"id":"suelto","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"Tu suplementación"}],
+     "suplementacion":{"items":[
+      {"nombre":"Creatina","video_id":"esp"},
+      {"nombre":"Creatina","video_id":"sinacento"},
+      {"nombre":"Zinc","video_id":"nulo"},
+      {"nombre":"Zinc","video_id":"otro"},
+      {"nombre":"Cafeína","estado":"sale","video_id":"sale"},
+      {"nombre":"Cafeína","estado":"Sale","video_id":"Sale"},
+      {"nombre":"","video_id":"sinnombre"},
+      {"nombre":"  ","video_id":"blanco"},
+      {"nombre":"Omega 3","video_id":""}]}}
+    """)
+
+    @Test func bloqueConEspaciosEnMayusculasOSinAcento() {
+        let fuera = Set(GuiaMuestra.guia.clips.map(\.id)).subtracting(ReglasGuia.deLaLista(GuiaMuestra.guia).map(\.id))
+        #expect(fuera == ["FT-1b", "FT-4b"])
+        let lista = ReglasGuia.deLaLista(Self.bordes).map(\.id)
+        #expect(!lista.contains("esp"))
+        #expect(!lista.contains("sinacento"))
+    }
+
+    @Test func bloqueNuloUOtroNoSale() {
+        let lista = ReglasGuia.deLaLista(Self.bordes).map(\.id)
+        #expect(lista.contains("nulo"))
+        #expect(lista.contains("otro"))
+        #expect(!ReglasGuia.esBloqueSuplementacion(nil))
+    }
+
+    @Test func itemQueSaleNoLoNombra() {
+        let lista = ReglasGuia.deLaLista(Self.bordes).map(\.id)
+        #expect(lista.contains("sale"))
+        // Como el servidor (`<> 'sale'`): solo «sale» exacto.
+        #expect(!lista.contains("Sale"))
+    }
+
+    @Test func nombreVacioYVideoIdVacio() {
+        let lista = ReglasGuia.deLaLista(Self.bordes).map(\.id)
+        #expect(lista.contains("sinnombre"))
+        #expect(!lista.contains("blanco"), "el servidor no recorta el nombre: «  » no es vacío")
+        #expect(lista.contains("suelto"), "video_id vacío no nombra a nadie")
+        #expect(lista == ["nulo", "otro", "sale", "sinnombre", "suelto"])
+        #expect(ReglasGuia.avance(ReglasGuia.deLaLista(Self.bordes)).total == 5)
+    }
+
+    @Test func laCacheGuardaLaRegla() throws {
+        let datos = try JSONEncoder().encode(Self.bordes)
+        let leida = try JSONDecoder().decode(Guia.self, from: datos)
+        #expect(ReglasGuia.deLaLista(leida).map(\.id) == ReglasGuia.deLaLista(Self.bordes).map(\.id))
+    }
+
+    @Test func sinSuplementacionNoSacaNada() {
+        let g = guia(#"{"ok":true,"clips":[{"id":"a","titulo":"A","minutos":1,"bloque":"Tu suplementación"}]}"#)
+        #expect(ReglasGuia.deLaLista(g).map(\.id) == ["a"])
+        #expect(ReglasGuia.deLaLista(nil).isEmpty)
+    }
+
+    @Test func elClipSinUrlNoTieneBoton() {
+        let g = guia(#"{"ok":true,"clips":[{"id":"a","titulo":"A","minutos":1,"bloque":"Tu suplementación"}],"suplementacion":{"items":[{"nombre":"Creatina","video_id":"a"}]}}"#)
+        #expect(ReglasGuia.clipDeSuplemento(g, videoId: "a") == nil)
+        #expect(ReglasGuia.clipDeSuplemento(g, videoId: nil) == nil)
+        #expect(ReglasGuia.clipDeSuplemento(g, videoId: "zz") == nil)
+    }
+
+    @Test func elRotuloEnSegundos() {
+        #expect(ReglasGuia.rotuloVerPorQue(clip("a", minutos: 0.7)) == "Ver por qué (42 s)")
+        #expect(ReglasGuia.rotuloVerPorQue(clip("a", minutos: 0)) == "Ver por qué (1 s)")
+    }
+}

@@ -65,7 +65,8 @@ struct GuiaModeloTests {
         #expect(m.clips.first?.id == "FT-25a")
         #expect(disco.leer(Guia.self, "guia.json")?.clips.count == 13)
         #expect(s.llamadas(a: "entregas_app_get").first?["p_token"] == .texto(token))
-        #expect(m.resumen == ResumenGuia(ok: true, total: 13, vistos: 4, minutosRestantes: 7.4), "la tarjeta sigue a la guía abierta")
+        // Como `entregas_012`: sin los dos videos que nombran los suplementos (FT-1b y FT-4b).
+        #expect(m.resumen == ResumenGuia(ok: true, total: 11, vistos: 4, minutosRestantes: 6.2), "la tarjeta sigue a la guía abierta")
     }
 
     @Test func sinRedUsaLaCopiaYSinCopiaLoDice() async {

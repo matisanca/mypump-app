@@ -25,6 +25,43 @@ public enum ReglasGuia {
         clips.filter { esBloqueApp($0.bloque) } + clips.filter { !esBloqueApp($0.bloque) }
     }
 
+    /// Los espacios que recorta `entregas_012` alrededor del bloque (`\s` de Postgres, el espacio duro y el BOM).
+    private static let espaciosDelServidor = CharacterSet(charactersIn: " \t\n\r\u{0B}\u{0C}\u{A0}\u{FEFF}")
+
+    /// «Tu suplementación» como lo compara `entregas_012` (y pack.html): sin los espacios de alrededor, sin importar
+    /// mayúsculas y con o sin acento en la ó. Un bloque nil no es ese bloque.
+    public static func esBloqueSuplementacion(_ bloque: String?) -> Bool {
+        guard let bloque else { return false }
+        let t = bloque.trimmingCharacters(in: espaciosDelServidor).lowercased()
+        return t == "tu suplementación" || t == "tu suplementacion"
+    }
+
+    /// Los ids de los clips que nombra un suplemento (`nombraVideo`: nombre no vacío, estado distinto de «sale» y
+    /// `video_id` no vacío), como `nombrados` en la web y en `entregas_012`.
+    public static func nombradosPorSuplementos(_ s: SuplementacionGuia?) -> Set<String> {
+        Set(s?.videosNombrados ?? [])
+    }
+
+    /// Los clips de la lista, de «Viste X de N» y del reproductor (web del 4/11, A5): los del bloque «Tu suplementación» que
+    /// nombra un suplemento se ven solo debajo de ese suplemento, con «Ver por qué». Si ningún suplemento los nombra,
+    /// quedan en la lista para no perderlos. Mismo orden que `ordenados`.
+    public static func deLaLista(_ g: Guia?) -> [ClipGuia] {
+        guard let g else { return [] }
+        let nombrados = nombradosPorSuplementos(g.suplementacion)
+        return ordenados(g.clips.filter { !(esBloqueSuplementacion($0.bloque) && nombrados.contains($0.id)) })
+    }
+
+    /// El clip de un «Ver por qué»: el que nombra el suplemento, si existe y tiene url (como `vid` en la web).
+    public static func clipDeSuplemento(_ g: Guia?, videoId: String?) -> ClipGuia? {
+        guard let videoId, let c = g?.clips.first(where: { $0.id == videoId }), c.url != nil else { return nil }
+        return c
+    }
+
+    /// El rótulo del botón, como la web: «Ver por qué (N s)», al menos 1 s.
+    public static func rotuloVerPorQue(_ c: ClipGuia) -> String {
+        "Ver por qué (\(max(1, Int((c.minutos * 60).rounded()))) s)"
+    }
+
     public struct Bloque: Equatable, Sendable, Identifiable {
         public var id: String { titulo }
         public let titulo: String

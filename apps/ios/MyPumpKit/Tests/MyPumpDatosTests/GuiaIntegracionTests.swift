@@ -34,7 +34,10 @@ struct GuiaIntegracionTests {
         await m.abrir()
         #expect(m.estado == .lista)
         let g = try #require(m.guia)
-        #expect(g.clips.count == r.total)
+        // `entregas_012` cuenta como la lista: sin los videos que nombra un suplemento.
+        let lista = m.clips
+        #expect(lista.count == r.total)
+        #expect(lista.filter(\.visto).count == r.vistos)
         #expect(g.clips.allSatisfy { !$0.id.isEmpty && !$0.titulo.isEmpty })
         #expect(g.clips.contains { $0.url != nil })
         #expect(!ReglasGuiaBloques.titulos(g.clips).isEmpty)

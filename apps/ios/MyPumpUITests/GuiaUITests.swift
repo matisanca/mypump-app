@@ -66,6 +66,33 @@ final class GuiaUITests: XCTestCase {
 
     // MARK: - Pruebas
 
+    /// «Ver por qué» (A5): el video del suplemento no está en la lista; el botón lo abre ahí mismo, chico, y lo cierra.
+    func testVerPorQueAbreElVideoDebajoDelSuplemento() throws {
+        abrirApp()
+        abrirGuia()
+        abrirCapitulos()
+        let enLaLista = Set(filas().map { $0.identifier.replacingOccurrences(of: "guia-fila-", with: "") })
+        let botones = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'guia-ver-por-que-' AND identifier != 'guia-ver-por-que-video'"))
+        let boton = botones.firstMatch
+        var n = 0
+        while !(boton.exists && boton.isHittable) && n < 30 { app.swipeUp(velocity: .slow); n += 1 }
+        guard boton.exists else {
+            throw XCTSkip("El cliente de prueba no tiene suplementos con video: no hay «Ver por qué» para probar.")
+        }
+        let id = boton.identifier.replacingOccurrences(of: "guia-ver-por-que-", with: "")
+        XCTAssertFalse(enLaLista.contains(id), "El video de un suplemento no va en la lista de capítulos")
+        XCTAssertTrue(boton.label.hasPrefix("Ver por qué ("), "Rótulo inesperado: \(boton.label)")
+        boton.tap()
+        let video = app.descendants(matching: .any)["guia-ver-por-que-video"]
+        XCTAssertTrue(video.waitForExistence(timeout: 10), "No se abrió el video debajo del suplemento")
+        XCTAssertTrue(app.buttons["guia-ver-por-que-\(id)"].label.hasPrefix("Cerrar el video"))
+        XCTAssertTrue(app.textViews["guia-duda-campo-\(id)"].exists || app.textFields["guia-duda-campo-\(id)"].exists
+                      || app.descendants(matching: .any)["guia-duda-campo-\(id)"].exists, "Falta el recuadro de duda del video")
+        captura("ver-por-que-abierto")
+        app.buttons["guia-ver-por-que-\(id)"].tap()
+        XCTAssertTrue(esperar({ !video.exists }, segundos: 5), "No se cerró el video")
+    }
+
     /// Abrir, ver un video hasta pasar el 80 % (a 1,5x), cerrar la app y volver: sigue visto (salió por la cola al servidor).
     func testVerUnVideoQuedaVistoAlVolver() throws {
         abrirApp()

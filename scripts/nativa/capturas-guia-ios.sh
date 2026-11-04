@@ -26,6 +26,7 @@ while IFS='=' read -r nombre udid; do
     foto $udid $corto-$modo-2-guia -pestana entreno -abrir guia
     foto $udid $corto-$modo-3-bloques -pestana entreno -abrir guia -guiaAncla dudas-llamada -guiaMotivo MC-7a
     foto $udid $corto-$modo-4-suple -pestana entreno -abrir guia -guiaAncla suplementacion
+    foto $udid $corto-$modo-4b-suple-ver-por-que -pestana entreno -abrir guia -guiaAncla suplementacion -guiaVerPorQue FT-1b
     ESPERA=3 foto $udid $corto-$modo-5-placa -pestana entreno -abrir guia -guiaPlaca YES
   done
   if [[ $corto == SE ]]; then

@@ -85,8 +85,12 @@ public final class ModeloGuia {
     /// Hay que mostrar la tarjeta de inicio.
     public var mostrarTarjeta: Bool { resumen?.hayGuia == true }
 
-    /// Los clips en el orden en que se muestran («Tu app» primero).
-    public var clips: [ClipGuia] { ReglasGuia.ordenados(guia?.clips ?? []) }
+    /// Los clips de la lista, de «Viste X de N» y del reproductor, en el orden en que se muestran («Tu app» primero). Los
+    /// que nombra un suplemento no van: se ven con «Ver por qué» (`clipDeSuplemento`).
+    public var clips: [ClipGuia] { ReglasGuia.deLaLista(guia) }
+
+    /// El clip del «Ver por qué» de un suplemento (con su avance y sus dudas al día).
+    public func clipDeSuplemento(_ videoId: String?) -> ClipGuia? { ReglasGuia.clipDeSuplemento(guia, videoId: videoId) }
 
     /// `entregas_app_resumen`: solo lee. Al cargar la cuenta y al volver a primer plano (nunca en segundo plano). Sin
     /// red queda lo guardado.
@@ -170,7 +174,8 @@ public final class ModeloGuia {
 
     private func recalcularResumen() {
         guard let g = guia, g.ok else { return }
-        let a = ReglasGuia.avance(g.clips)
+        // Como `entregas_012`: sin los videos de los suplementos, igual que «Viste X de N».
+        let a = ReglasGuia.avance(ReglasGuia.deLaLista(g))
         aplicarResumen(ResumenGuia(ok: true, total: a.total, vistos: a.vistos, minutosRestantes: (a.minutosRestantes * 10).rounded() / 10))
     }
 
@@ -295,7 +300,7 @@ public final class ModeloGuia {
         guia = muestra
         esMuestra = true
         estado = muestra.ok ? .lista : .oculta
-        let a = ReglasGuia.avance(muestra.clips)
+        let a = ReglasGuia.avance(ReglasGuia.deLaLista(muestra))
         resumen = ResumenGuia(ok: muestra.ok, total: a.total, vistos: a.vistos, minutosRestantes: a.minutosRestantes)
     }
 }
