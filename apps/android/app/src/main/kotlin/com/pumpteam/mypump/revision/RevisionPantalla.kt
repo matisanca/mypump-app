@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,7 +68,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Revisión (gemela de `RevisionView.swift`): arriba de todo la tarjeta Recuperación, que abre Salud (2.1.0, «Salud dentro
+ * Revisión (gemela de `RevisionView.swift`): arriba de todo las tarjetas Recuperación y Tu progreso, que abren Salud (2.1.0, «Salud dentro
  * de Revisión»: Salud dejó de ser pestaña); después el aviso del plan incompleto (GEN-05), las fotos de la semana y el
  * check (que ya trae el peso del día y, arriba del botón, «Tu salud, últimos 7 días»). De acá cuelgan Mis datos (el ícono
  * de arriba) y Salud.
@@ -75,7 +79,7 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalud: () -> Unit) {
+fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalud: () -> Unit, alAbrirFuerza: () -> Unit) {
     val revision by modelo.revision.collectAsStateWithLifecycle()
     val salud by modelo.salud.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
@@ -154,10 +158,21 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     verticalArrangement = Arrangement.spacedBy(Espacio.xl),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                        // Lo primero de Revisión: la recuperación (reemplaza al corazón que había arriba).
-                        TarjetaRecuperacionRevision(salud, alAbrirSalud)
-                        // Lugar previsto (todavía NO se muestra; lo decide Mati): una segunda tarjeta «Tu progreso» acá,
-                        // debajo de Recuperación, que abra Salud en Fuerza (`irASalud(SegmentoSalud.FUERZA)`).
+                        // Lo primero de Revisión: la recuperación y el progreso (reemplazan al corazón que había arriba).
+                        // En el teléfono, juntas (Espacio.m); en tablet, lado a lado.
+                        BoxWithConstraints {
+                            if (maxWidth >= 600.dp) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(Espacio.m), modifier = Modifier.height(IntrinsicSize.Max)) {
+                                    TarjetaRecuperacionRevision(salud, alAbrirSalud, Modifier.weight(1f).fillMaxHeight())
+                                    TarjetaProgresoRevision(modelo, alAbrirFuerza, Modifier.weight(1f).fillMaxHeight())
+                                }
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
+                                    TarjetaRecuperacionRevision(salud, alAbrirSalud)
+                                    TarjetaProgresoRevision(modelo, alAbrirFuerza)
+                                }
+                            }
+                        }
                         AvisoPlanIncompleto(modelo)
                     }
                     FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))

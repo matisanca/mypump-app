@@ -49,7 +49,8 @@ object SaludSemana {
             if (vals.isEmpty()) continue
             val prom = vals.sum() / vals.size
             val valor = when (clave) {
-                "sueno" -> SaludVista.horas(prom)
+                // A minutos enteros antes de armar el texto: 419,5 min es «7h 00», no «6h 60».
+                "sueno" -> SaludVista.horas(Math.round(prom).toDouble())
                 "hrv" -> "${SaludVista.enteroJS(prom)} ms"
                 "fc_reposo" -> "${SaludVista.enteroJS(prom)} lpm"
                 else -> "${SaludVista.miles(prom)} por día"

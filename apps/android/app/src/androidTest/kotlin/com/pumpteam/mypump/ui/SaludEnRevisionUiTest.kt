@@ -43,7 +43,10 @@ class SaludEnRevisionUiTest : PruebaUi() {
         assertFalse(p.existe(etiqueta("abrir-salud")))
         // En la demo: lo que se va a ver con la cuenta, y la fila de abajo.
         p.nodo(texto("Con tu cuenta, acá vas a ver tu recuperación de cada día."))
-        p.nodo(texto("Ver sueño, corazón, fuerza y cuerpo"))
+        p.nodo(texto("Ver sueño, corazón y cuerpo"))
+        // «Tu progreso», debajo: en la demo, lo genérico; abre Salud en Fuerza (se prueba con cuenta en SaludPestanaUiTest).
+        p.nodo(etiqueta("tarjeta-progreso-revision"))
+        p.nodo(texto("Tu fuerza y tus récords, ejercicio por ejercicio."))
         Telefono.captura("salud-rev-01-tarjeta-demo")
 
         p.tocar(etiqueta("tarjeta-recuperacion-revision"))
@@ -53,6 +56,9 @@ class SaludEnRevisionUiTest : PruebaUi() {
         p.tocar(etiqueta("volver"))
         p.esperarQueNoEste(etiqueta("salud-pantalla"))
         p.nodo(etiqueta("tarjeta-recuperacion-revision"))
+        p.tocar(etiqueta("tarjeta-progreso-revision"))
+        p.nodo(etiqueta("salud-pantalla"))
+        p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
     }
 
     @Test

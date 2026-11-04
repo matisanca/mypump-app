@@ -190,6 +190,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                             modelo,
                                             alAbrirMisDatos = { navegacion.misDatos = true },
                                             alAbrirSalud = { navegacion.irASalud(SegmentoSalud.RECUPERACION) },
+                                            alAbrirFuerza = { navegacion.irASalud(SegmentoSalud.FUERZA) },
                                         )
                                     }
                                 Pestana.SALUD -> SaludPantalla(modelo, alVolver = { navegacion.irARevision(null) })

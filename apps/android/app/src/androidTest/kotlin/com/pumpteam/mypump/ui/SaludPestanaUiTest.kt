@@ -106,6 +106,45 @@ class SaludPestanaUiTest : PruebaUi() {
         assertFalse(p.seleccionado(etiqueta("segmento-cuerpo")))
     }
 
+    /**
+     * «Tu progreso» (2.1.0) debajo de Recuperación en Revisión: con lo sembrado (press hoy y la semana pasada, remo hace 7
+     * días) dice las sesiones de la semana; con un récord, el texto sin emojis y el trofeo. Abre Salud en Fuerza.
+     */
+    @Test
+    fun laTarjetaTuProgresoDiceLaSemanaYAbreFuerza() {
+        sembrarEntreno()
+        guardarCuenta()
+        abrir()
+        p.tocar(etiqueta("pestana-revision"))
+        p.nodo(etiqueta("tarjeta-progreso-revision"))
+        // La tarjeta trae el progreso sola (sin pasar por Fuerza).
+        p.nodo(texto("1 sesión entrenada esta semana"), ms = 20_000)
+        assertFalse(p.existe(etiqueta("trofeo-progreso")))
+        p.nodo(texto("Ver fuerza y récords"))
+        // Pegada a Recuperación: debajo, antes que las fotos.
+        val y = { t: String -> p.nodo(etiqueta(t)).let { n -> p.enPrincipal { n.positionInRoot.y } } }
+        assertTrue(y("tarjeta-recuperacion-revision") < y("tarjeta-progreso-revision"))
+        assertTrue(y("tarjeta-progreso-revision") < y("seccion-fotos"))
+        p.tocar(etiqueta("tarjeta-progreso-revision"))
+        p.nodo(etiqueta("salud-pantalla"))
+        p.esperar("Fuerza elegida") { p.seleccionado(etiqueta("segmento-fuerza")) }
+        assertTrue(p.enSalud())
+    }
+
+    @Test
+    fun conUnRecordLaTarjetaTuProgresoLlevaElTrofeo() {
+        sembrarEntreno()
+        val hoy = LocalDate.now()
+        servidor.respuestas["mypump_get_historico_por_clave"] =
+            "[" + listOf(fila(PRESS, hoy, 1, kg = 65), fila(PRESS, hoy.minusDays(7), 1)).joinToString(",") + "]"
+        guardarCuenta()
+        abrir()
+        p.tocar(etiqueta("pestana-revision"))
+        p.nodo(texto("Récord en $PRESS, 65 kg"), ms = 20_000)
+        p.nodo(etiqueta("trofeo-progreso"))
+        Telefono.captura("salud-rev-03-progreso-record")
+    }
+
     // ── S2: el volumen por músculo ──
     // (Cada fila es una sola frase para TalkBack: la primera de lo que hay bajo la etiqueta; el árbol sin fusionar que lee
     // la prueba también trae los textos de adentro.)
@@ -277,9 +316,9 @@ class SaludPestanaUiTest : PruebaUi() {
         ]}}]"""
 
         /** Una serie del historial a las 12 locales de ese día. */
-        fun fila(nombre: String, dia: LocalDate, serie: Int): String {
+        fun fila(nombre: String, dia: LocalDate, serie: Int, kg: Int = 60): String {
             val cuando = dia.atTime(12, 0).atZone(ZoneId.systemDefault()).toOffsetDateTime()
-            return """{"clave":"${ClaveEjercicio.de(nombre)}","registrado_en":"$cuando","peso_kg":60,"reps_realizadas":8,""" +
+            return """{"clave":"${ClaveEjercicio.de(nombre)}","registrado_en":"$cuando","peso_kg":$kg,"reps_realizadas":8,""" +
                 """"rir_real":1,"serie_numero":$serie,"notas":null,"ejercicio_nombre":"$nombre"}"""
         }
     }
