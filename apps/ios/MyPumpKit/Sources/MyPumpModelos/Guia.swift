@@ -1,7 +1,7 @@
 import Foundation
 
 /// «Tu guía»: lo que devuelve `entregas_app_get` (obra de entregas, `entregas_010_app`). Los videos cortos de Mati
-/// antes de la videollamada, las dudas y la suplementación del cliente. Ver `docs/NATIVA_GUIA.md`.
+/// antes de la videollamada, las dudas y la suplementación del cliente. Ver `docs/NATIVA_GUIA_IOS.md`.
 ///
 /// Todo es tolerante: un campo que falta, viene null o con otro tipo no rompe el resto (un clip roto se descarta, no la
 /// guía). Con un token inválido o sin página aprobada la base devuelve `{"ok": false}` o `false`: `ok` queda en false.

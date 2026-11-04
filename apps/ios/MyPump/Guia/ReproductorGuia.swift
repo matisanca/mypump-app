@@ -40,11 +40,14 @@ final class ControlReproductor {
     @ObservationIgnored private var observadorTiempo: Any?
     @ObservationIgnored private var observadorEstado: NSKeyValueObservation?
     @ObservationIgnored private var observadorControl: NSKeyValueObservation?
-    @ObservationIgnored private var finales: [NSObjectProtocol] = []
+    /// Los observadores de fin y falla del video: se sacan al cambiar de video y al soltar el control.
+    @ObservationIgnored nonisolated(unsafe) private var finales: [NSObjectProtocol] = []
     @ObservationIgnored private var tareaPlaca: Task<Void, Never>?
     @ObservationIgnored private var retomado = false
-    @ObservationIgnored private let red = NWPathMonitor()
+    @ObservationIgnored nonisolated private let red = NWPathMonitor()
     @ObservationIgnored private var hayRed = true
+    /// El video está en pantalla completa (la presenta el sistema): salir de la vista de la guía no lo pausa.
+    @ObservationIgnored var pantallaCompleta = false
 
     init() {
         player.actionAtItemEnd = .pause
@@ -63,17 +66,9 @@ final class ControlReproductor {
         red.start(queue: .main)
     }
 
-    func soltar() {
-        guardarAlSalir()
-        player.pause()
-        if let o = observadorTiempo { player.removeTimeObserver(o) }
-        observadorTiempo = nil
-        observadorEstado = nil
-        observadorControl = nil
-        finales.forEach(NotificationCenter.default.removeObserver)
-        finales = []
-        tareaPlaca?.cancel()
+    deinit {
         red.cancel()
+        finales.forEach(NotificationCenter.default.removeObserver)
     }
 
     var clipActual: ClipGuia? {
@@ -266,7 +261,7 @@ struct CuadroVideo: View {
     var body: some View {
         ZStack {
             Color.black
-            VistaAVPlayer(player: control.player)
+            VistaAVPlayer(player: control.player, control: control)
                 .opacity(control.portada || control.sinConexion ? 0 : 1)
                 .accessibilityLabel(control.clipActual.map { "Video: \($0.titulo)" } ?? "Video")
             // La placa va primero: si el video no carga, el aviso aparece al cerrarla.
@@ -289,9 +284,28 @@ struct CuadroVideo: View {
 /// AVPlayerViewController con los controles del sistema: pantalla completa, girar, AirPlay y Picture in Picture.
 struct VistaAVPlayer: UIViewControllerRepresentable {
     let player: AVPlayer
+    let control: ControlReproductor
+
+    func makeCoordinator() -> Coordinador { Coordinador(control: control) }
+
+    /// Avisa al control cuando el sistema presenta el video a pantalla completa (la guía queda debajo y no se pausa).
+    @MainActor final class Coordinador: NSObject, @preconcurrency AVPlayerViewControllerDelegate {
+        let control: ControlReproductor
+        init(control: ControlReproductor) { self.control = control }
+
+        func playerViewController(_ vc: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator c: any UIViewControllerTransitionCoordinator) {
+            control.pantallaCompleta = true
+        }
+
+        func playerViewController(_ vc: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator c: any UIViewControllerTransitionCoordinator) {
+            control.pantallaCompleta = false
+        }
+    }
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let vc = AVPlayerViewController()
+        vc.delegate = context.coordinator
+        vc.allowsPictureInPicturePlayback = false
         vc.player = player
         vc.showsPlaybackControls = true
         vc.videoGravity = .resizeAspect

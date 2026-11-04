@@ -4,7 +4,7 @@ import MyPumpModelos
 import MyPumpReglas
 
 /// «Tu guía»: los videos de Mati antes de la videollamada, con el avance, las dudas y la suplementación. Contrato de la
-/// obra de entregas (`entregas_010_app` y `entregas_011`), ver `docs/NATIVA_GUIA.md`:
+/// obra de entregas (`entregas_010_app` y `entregas_011`), ver `docs/NATIVA_GUIA_IOS.md`:
 /// - `entregas_app_resumen` (solo lee): la tarjeta de inicio, al cargar la cuenta y al volver a primer plano.
 /// - `entregas_app_get` (marca `abierto_en` la primera vez): SOLO cuando el cliente abre la sección.
 /// - `entregas_app_avance`, `entregas_app_duda` y `entregas_app_llamada_duda`: por la cola de escrituras.

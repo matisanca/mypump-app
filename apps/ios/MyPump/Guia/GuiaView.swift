@@ -14,6 +14,8 @@ struct GuiaView: View {
     @State private var abiertos: Set<String> = []
     @State private var motivosAbiertos: Set<String> = []
     @State private var volverA: String?
+    /// `entregas_app_get` una vez por apertura: volver de otra pestaña no lo llama de nuevo.
+    @State private var traida = false
     @Environment(\.horizontalSizeClass) private var clase
     @Environment(\.dismiss) private var cerrar
     @Environment(\.scenePhase) private var fase
@@ -50,6 +52,8 @@ struct GuiaView: View {
             control.clips = { [modelo] in modelo.clips }
             control.alGuardar = { [modelo] id, g in Task { await modelo.avance(video: id, segundos: g.segundos, visto: g.visto) } }
             control.forzarSinRed = GuiaUI.sinRed
+            guard !traida else { return }
+            traida = true
             if modelo.guia != nil { prepararInicial() }
             // Capturas (DEBUG): `-guiaMotivo <id>` abre el «para qué» de una fila y `-guiaPlaca YES` deja la placa fija.
             if let m = GuiaUI.motivoAbierto { motivosAbiertos.insert(m) }
@@ -59,8 +63,9 @@ struct GuiaView: View {
         }
         // La guía dejó de existir (token revocado o la página se dio de baja): la sección desaparece, sin mensaje.
         .onChange(of: modelo.estado) { _, e in if e == .oculta { control.pausar(); cerrar() } }
-        .onChange(of: fase) { _, f in if f != .active { control.pausar() } }
-        .onDisappear { control.pausar() }
+        .onChange(of: fase) { _, f in if f == .background { control.pausar() } }
+        // Otra pestaña o volver a Entreno: se pausa y queda guardado. La pantalla completa del sistema no cuenta.
+        .onDisappear { if !control.pantallaCompleta { control.pausar() } }
         .sensoryFeedback(.selection, trigger: control.cambios)
     }
 
