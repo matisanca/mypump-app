@@ -18,6 +18,8 @@ struct GuiaView: View {
     @State private var volverA: String?
     /// `entregas_app_get` una vez por apertura: volver de otra pestaña no lo llama de nuevo.
     @State private var traida = false
+    /// La guía está en pantalla: la lista de audios se consulta solo así.
+    @State private var aLaVista = false
     @Environment(\.horizontalSizeClass) private var clase
     @Environment(\.dismiss) private var cerrar
     @Environment(\.scenePhase) private var fase
@@ -63,7 +65,8 @@ struct GuiaView: View {
             verPorQue.alArrancar = { [weak control] in control?.frenarPorOtro() }
             control.alArrancar = { [weak verPorQue] in verPorQue?.pausar() }
             prepararAudios()
-            guard !traida else { return }
+            // Volver a la guía (otra pestaña, otra pantalla): la lista de audios de nuevo, sin otro get.
+            if traida { if !GuiaUI.audioSinServidor { await modelo.audios.abrirSeccion() }; return }
             traida = true
             if modelo.guia != nil { prepararInicial() }
             // Capturas (DEBUG): `-guiaMotivo <id>` abre el «para qué» de una fila y `-guiaPlaca YES` deja la placa fija.
@@ -79,14 +82,16 @@ struct GuiaView: View {
         .onChange(of: fase) { _, f in
             if f == .background { control.pausar(); verPorQue.pausar(); SesionAudio.soltar(); modelo.audios.cortar(); modelo.audios.cerrarSeccion() }
             // De vuelta a primer plano con la guía abierta: la lista de audios se consulta de nuevo (nunca de fondo).
-            if f == .active, traida, !GuiaUI.audioSinServidor { Task { await modelo.audios.abrirSeccion() } }
+            if f == .active, traida, aLaVista, !GuiaUI.audioSinServidor { Task { await modelo.audios.abrirSeccion() } }
         }
         // Llegó una guía (la primera, después de «Reintentar», o una nueva con otra lista): el reproductor se prepara de nuevo
         // si su video ya no está. Si sigue, no se toca.
         .onChange(of: clips.map(\.id)) { _, _ in prepararInicial() }
         // Otra pestaña o volver a Entreno: se pausa y queda guardado, y el audio vuelve a los demás. La pantalla completa
         // del sistema no cuenta.
+        .onAppear { aLaVista = true }
         .onDisappear {
+            aLaVista = false
             if !control.pantallaCompleta && !verPorQue.pantallaCompleta {
                 control.pausar(); verPorQue.pausar(); SesionAudio.soltar()
                 modelo.audios.cortar(); modelo.audios.cerrarSeccion()

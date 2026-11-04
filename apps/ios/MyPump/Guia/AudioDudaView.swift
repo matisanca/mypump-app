@@ -222,7 +222,7 @@ private struct FilaAudioView: View {
         }
         switch d.string(forKey: "audioEstado") {
         case "transcripto":
-            guia.audios.ponerServidor([AudioServidor(id: "m1", estado: .transcripto, texto: "¿Puedo entrenar en ayunas o me conviene comer algo antes?")])
+            guia.audios.ponerServidor([AudioServidor(id: "m1", estado: .transcripto, texto: "¿Puedo entrenar a la noche?")])
         case "mandando": guia.audios.ponerLocal(FilaAudio(id: "m2", estado: .mandando))
         case "noSeMando": guia.audios.ponerLocal(FilaAudio(id: "m3", estado: .noSeMando))
         case "subido": guia.audios.ponerServidor([AudioServidor(id: "m4", estado: .subido)])

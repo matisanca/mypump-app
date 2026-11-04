@@ -298,7 +298,8 @@ public final class ModeloAudioDuda {
                 anuncio = ReglasAudioDuda.texto(a); anuncios += 1
             }
         }
-        if subio { Task { await self.consultar(); self.sondear() } }
+        // La lista se consulta solo con la sección abierta (la cola puede confirmar con la guía cerrada).
+        if subio && seccionAbierta { Task { await self.consultar(); self.sondear() } }
     }
 
     /// Lo que la cola abandonó tras 8 intentos: «No se pudo mandar.» con «Reintentar». El archivo queda.

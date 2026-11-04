@@ -20,7 +20,8 @@ final class GuiaUITests: XCTestCase {
 
     private func abrirApp(_ extra: [String] = []) {
         app.terminate()
-        app.launchArguments = ["-token", token, "-pestana", "entreno", "-sinOnboarding", "YES"] + extra
+        // `-audioSinServidor`: estas pruebas no consultan las RPC de audio (las de audio van con dobles, AudioDudaUITests).
+        app.launchArguments = ["-token", token, "-pestana", "entreno", "-sinOnboarding", "YES", "-audioSinServidor", "YES"] + extra
         app.launch()
     }
 
