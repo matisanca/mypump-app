@@ -66,12 +66,13 @@ fuerza y cuerpo, más el volumen por músculo; Entreno trae la preparación (E1)
 récord; Dieta trae los ajustes de comidas (agregar alimentos, tocar la cantidad) y el código de barras; el aviso local de
 revisión ya no sale con la semana completa.
 
-### App Store (1159 de 4000 caracteres)
+### App Store (1279 de 4000 caracteres)
 
 ```
 Pump Team 2.1 llega al Apple Watch y estrena la pestaña Salud.
 
 • Tu guía: los videos que tu entrenador preparó para vos antes de empezar, sobre la app, tu entrenamiento, tu alimentación y tu suplementación. Ves tu avance, retomás donde quedaste y le dejás tus dudas para la videollamada.
+• Suplementación: una pestaña con tu suplementación del día por momento, el porqué de cada uno y lo que dejás de tomar.
 • Apple Watch: tu rutina del día en la muñeca. Elegí el día, cargá reps y kg con la corona, el descanso te avisa con una vibración y ves tu frecuencia cardíaca y calorías en vivo. Al terminar cada serie, el reloj cuenta tus repeticiones y te las propone: confirmalas o corregilas con la corona. Si dejás el iPhone en el bolso, lo que cargás se guarda y se pasa solo después. Con complicaciones para la esfera.
 • Salud: recuperación (con qué tan confiable es el dato), fuerza, cuerpo y volumen por músculo, todo en un lugar.
 • Entreno: preparación antes de la primera serie, descanso propio por ejercicio y aviso cuando hacés un récord.
@@ -81,13 +82,14 @@ Pump Team 2.1 llega al Apple Watch y estrena la pestaña Salud.
 Tu cuenta y tu historial siguen intactos.
 ```
 
-### Google Play (467 de 500 caracteres; sin reloj)
+### Google Play (494 de 500 caracteres; sin reloj)
 
 ```
 Pump Team 2.1 estrena Tu guía y la pestaña Salud.
 
 • Tu guía: los videos de tu entrenador para empezar, con tu avance y un lugar para dejar tus dudas.
-• Salud: recuperación (con qué tan confiable es el dato), fuerza, cuerpo y volumen por músculo.
+• Suplementación: tu día por momento y el porqué de cada uno.
+• Salud: recuperación, fuerza, cuerpo y volumen por músculo.
 • Entreno: preparación antes de la primera serie, descanso por ejercicio y aviso de récord.
 • Dieta: sumá alimentos a una comida, tocá la cantidad y escaneá el código de barras.
 
@@ -156,6 +158,11 @@ It is on by default and can be turned off in the iPhone app (Mis datos -> Conteo
 the watch and the iPhone and are only shared if the user exports them; nothing is sent to our servers. In the demo the
 counter is also on, and its recordings are discarded.
 
+Supplements tab (new in 2.1.0): a read-only list of the user's natural supplements (no prescription drugs) as set by
+their coach, grouped by time of day. It only appears when the coach has loaded supplements for that user; the demo
+includes a sample. When it is shown, Health ("Salud") moves from the tab bar to the heart button at the top of the
+"Revisión" tab.
+
 To test: no sign-in is needed. On the iPhone, tap "Ver demo" on the welcome screen; then open the Pump Team app on the
 paired Apple Watch, choose a day and tap "Empezar". After each set the watch proposes the rep count. The on/off switch
 (Mis datos -> Conteo de reps) only appears with a real coaching account and a paired watch, not in the demo.
@@ -222,7 +229,7 @@ para los tags. Nada se manda sin ese OK.
 | 2 | Crear y empujar el tag; Codemagic arma el AAB | Yo (terminal) |
 | 3 | Probar el build de prueba interna en un Android (Salud, código de barras con Play Services, preparación, récord) | Mati |
 | 4 | En Play Console, Producción → «Crear versión» y subir el AAB (si pesa, en trozos como la 2.0.2) | Yo en Chrome |
-| 5 | Pegar las novedades de Play (es-419, 467/500) | Yo en Chrome |
+| 5 | Pegar las novedades de Play (es-419, 494/500) | Yo en Chrome |
 | 6 | Data safety y permisos: sin cambios (el Google code scanner no pide cámara) | Yo verifico en Chrome |
 | 7 | Porcentaje del lanzamiento (la 2.0.2 fue al 100 %) | Mati decide |
 | 8 | «Enviar a revisión» | Mati da el OK; el clic, con ese OK, yo |
