@@ -354,11 +354,13 @@ object SuplementacionVista {
         val porQue: String?,
         val detalle: List<String>,
         val videoId: String?,
+        /** El ítem entero (la pestaña Suplementación lo usa para la etiqueta, los días y el detalle). */
+        val item: ItemSuplemento,
     )
 
     data class Momento(val id: String, val titulo: String, val filas: List<Fila>)
 
-    data class Sale(val nombre: String, val porQue: String?, val detalle: List<String>)
+    data class Sale(val nombre: String, val porQue: String?, val detalle: List<String>, val item: ItemSuplemento)
 
     data class Vista(val titulo: String, val accion: String?, val momentos: List<Momento>, val sigue: String?, val sale: List<Sale>)
 
@@ -372,8 +374,6 @@ object SuplementacionVista {
     private const val ADEMAS = "__ademas__"
 
     fun armar(s: Suplementacion): Vista {
-        val nombres = MOMENTOS.toMap()
-        val definidos = s.dia.associateBy { it.id }
         val porMomento = LinkedHashMap<String, MutableList<Pair<ItemSuplemento, TomaVista>>>()
         val sueltos = mutableListOf<Pair<ItemSuplemento, TomaVista>>()
         val sale = mutableListOf<ItemSuplemento>()
@@ -411,11 +411,11 @@ object SuplementacionVista {
                 porQue = if (primera) it.porQue else null,
                 detalle = if (primera) it.detalle else emptyList(),
                 videoId = if (primera) it.videoId else null,
+                item = it,
             )
         }
         val momentos = orden.filter { it in porMomento }.map { m ->
-            val titulo = definidos[m]?.nombre ?: nombres[m] ?: mayuscula(m.replace('_', ' ')) ?: m
-            Momento(m, titulo, porMomento.getValue(m).map(::fila))
+            Momento(m, tituloMomento(m, s), porMomento.getValue(m).map(::fila))
         }.toMutableList()
         if (sueltos.isNotEmpty()) momentos += Momento(ADEMAS, "Además", sueltos.map(::fila))
         return Vista(
@@ -423,9 +423,13 @@ object SuplementacionVista {
             accion = s.accion,
             momentos = momentos,
             sigue = s.sigueTexto,
-            sale = sale.map { Sale(it.nombre, it.porQue, it.detalle) },
+            sale = sale.map { Sale(it.nombre, it.porQue, it.detalle, it) },
         )
     }
+
+    /** El nombre de un momento: el de `dia[]` si lo trae, si no el propio de la app, si no el id legible. */
+    fun tituloMomento(id: String, s: Suplementacion): String =
+        s.dia.lastOrNull { it.id == id }?.nombre ?: MOMENTOS.firstOrNull { it.first == id }?.second ?: mayuscula(id.replace('_', ' ')) ?: id
 
     private data class TomaVista(val momento: String, val cantidad: String?, val nota: String?, val nombre: String?)
 

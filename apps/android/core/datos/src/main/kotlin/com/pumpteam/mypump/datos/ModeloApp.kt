@@ -11,6 +11,7 @@ import com.pumpteam.mypump.modelos.EstructuraDieta
 import com.pumpteam.mypump.modelos.FoodSwap
 import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.Macros
+import com.pumpteam.mypump.modelos.PlanSuplementacion
 import com.pumpteam.mypump.modelos.PreferenciasCliente
 import com.pumpteam.mypump.modelos.RutinaActiva
 import com.pumpteam.mypump.modelos.ValorJson
@@ -240,6 +241,13 @@ class ModeloApp(
     private val _guia = MutableStateFlow<ModeloGuia?>(null)
     val guia: StateFlow<ModeloGuia?> = _guia.asStateFlow()
 
+    /**
+     * La pestaña Suplementación (2.1.0): con una cuenta, o la de muestra en la demo ([ModeloSuplementacion.demo]). La
+     * pestaña existe solo si su [ModeloSuplementacion.plan] no es null.
+     */
+    private val _suplementacion = MutableStateFlow<ModeloSuplementacion?>(null)
+    val suplementacion: StateFlow<ModeloSuplementacion?> = _suplementacion.asStateFlow()
+
     private val _salud = MutableStateFlow<ModeloSalud?>(null)
     val salud: StateFlow<ModeloSalud?> = _salud.asStateFlow()
 
@@ -359,7 +367,7 @@ class ModeloApp(
      * "Ver demo": la rutina y la dieta de ejemplo de la web (`SAMPLE_RUTINA` / `SAMPLE_DIET`, que la app trae
      * empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria.
      */
-    fun entrarEnDemo(rutina: String, dieta: String, guia: String? = null) {
+    fun entrarEnDemo(rutina: String, dieta: String, guia: String? = null, suplementacion: String? = null) {
         fun envolver(estructura: String): JsonElement? = try {
             ValorJson.objeto(
                 "id" to texto("demo"), "version" to numero(1), "estructura" to ValorJson.parsear(estructura), "semana_actual" to numero(1),
@@ -388,6 +396,14 @@ class ModeloApp(
                 null
             }
         }?.let { ModeloGuia.demo(cliente, it, alcance) }
+        // La suplementación de muestra (la fila del RPC), opcional como la guía.
+        _suplementacion.value = suplementacion?.let { s ->
+            try {
+                PlanSuplementacion.desde(ValorJson.parsear(s))
+            } catch (_: Exception) {
+                null
+            }
+        }?.let { ModeloSuplementacion.demo(cliente, it, alcance) }
         _entreno.value = _rutina.value?.let { r ->
             ModeloEntreno(cliente, token = null, outbox = null, disco = null, rutinaInicial = r, catalogoInicial = catalogoVigente, alcance = alcance)
         }
@@ -409,6 +425,7 @@ class ModeloApp(
         _revision.value = null   // los de la demo
         _chat.value = null
         _guia.value = null
+        _suplementacion.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {
@@ -443,6 +460,7 @@ class ModeloApp(
         _salud.value?.cancelarEspera()
         _salud.value = null
         _guia.value = null
+        _suplementacion.value = null
         _entreno.value = null
     }
 
@@ -474,6 +492,7 @@ class ModeloApp(
         _fotos.value = ModeloFotos(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
+        _suplementacion.value = ModeloSuplementacion(cliente, t, d, alcance)
         _salud.value?.cancelarEspera()
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3 del 15-oct).
         _salud.value = ModeloSalud(cliente, t, almacen = AlmacenSaludPorCuenta(preferencias, Disco.huella(t)), alcance = alcance)
@@ -679,6 +698,7 @@ class ModeloApp(
             launch { _fotos.value?.cargar() }
             // «Tu guía»: solo el resumen (no marca `abierto_en`); el `get` es solo al abrir la sección.
             launch { _guia.value?.refrescarResumen() }
+            launch { _suplementacion.value?.refrescar() }
         }
         _fotos.value?.drenar()
         diaCargado = FechaLocal.hoy()
@@ -723,6 +743,8 @@ class ModeloApp(
         _chat.value?.sondear()
         _fotos.value?.drenar()
         _guia.value?.refrescarResumen()
+        // Suplementación: aparte, así no demora lo que sigue (es solo lectura).
+        _suplementacion.value?.let { m -> alcance.launch { m.refrescar() } }
         _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)
         _entreno.value?.alVolverAPrimerPlano()
     }
