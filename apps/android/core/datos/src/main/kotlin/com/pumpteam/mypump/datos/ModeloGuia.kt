@@ -91,7 +91,7 @@ class ModeloGuia(
 
     init {
         _guia.value = Guia.desde(disco?.leer(ARCHIVO_GUIA))
-        _resumen.value = ResumenGuia.desde(disco?.leer(ARCHIVO_RESUMEN)) ?: _guia.value?.let(ResumenGuia::deTodos)
+        _resumen.value = ResumenGuia.desde(disco?.leer(ARCHIVO_RESUMEN)) ?: _guia.value?.let(ResumenGuia::de)
         if (_guia.value != null) {
             _estado.value = Estado.LISTA
             _desdeCache.value = true
@@ -123,7 +123,7 @@ class ModeloGuia(
             return
         }
         val nuevo = ResumenGuia.desde(valor) ?: return
-        val local = _guia.value?.let(ResumenGuia::deTodos)
+        val local = _guia.value?.let(ResumenGuia::de)
         val final = if (local != null && local.total == nuevo.total && local.vistos > nuevo.vistos) local else nuevo
         _resumen.value = final
         disco?.guardar(ARCHIVO_RESUMEN, final.aValor())
@@ -182,7 +182,7 @@ class ModeloGuia(
     private fun publicar(g: Guia) {
         _guia.value = g
         disco?.guardar(ARCHIVO_GUIA, g.aValor())
-        ResumenGuia.deTodos(g)?.let {
+        ResumenGuia.de(g)?.let {
             _resumen.value = it
             disco?.guardar(ARCHIVO_RESUMEN, it.aValor())
         }

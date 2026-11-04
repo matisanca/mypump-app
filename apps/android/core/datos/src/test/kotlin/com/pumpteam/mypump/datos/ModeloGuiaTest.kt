@@ -56,7 +56,8 @@ class ModeloGuiaTest {
         assertEquals(ModeloGuia.Estado.LISTA, e.m.estado.value)
         assertFalse(e.m.desdeCache.value)
         assertEquals(20, e.m.guia.value!!.clips.size)
-        assertEquals(ResumenGuia(20, 0, ResumenGuia.deTodos(e.m.guia.value!!)!!.minutosRestantes), e.m.resumen.value)
+        // La tarjeta cuenta como la lista (17: los 3 videos que nombra un suplemento no cuentan).
+        assertEquals(ResumenGuia(17, 0, ResumenGuia.de(e.m.guia.value!!)!!.minutosRestantes), e.m.resumen.value)
         // Solo el get, con el token: nada de escrituras al abrir.
         assertEquals(listOf("entregas_app_get"), e.t.llamadas)
         assertEquals("tok", e.cuerpos[0].second["p_token"]?.comoTexto)
@@ -127,7 +128,7 @@ class ModeloGuiaTest {
         val e = entorno(alcance) { fn, _ ->
             when (fn) {
                 "entregas_app_get" -> 200 to guia
-                "entregas_app_resumen" -> 200 to """{"ok":true,"total":20,"vistos":0,"minutos_restantes":14.5}"""
+                "entregas_app_resumen" -> 200 to """{"ok":true,"total":17,"vistos":0,"minutos_restantes":12.7}"""
                 else -> 200 to "true"
             }
         }

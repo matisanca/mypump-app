@@ -104,15 +104,63 @@ class GuiaTest {
         assertEquals(Math.round(g.clipsDeLaLista.filter { !it.visto }.sumOf { it.minutos } * 10) / 10.0, local.minutosRestantes)
     }
 
+    /** Una guía mínima: un clip por (id, bloque) y los ítems de la suplementación tal cual (JSON). */
+    private fun guiaCon(clips: List<Pair<String, String?>>, items: String): Guia {
+        val cs = clips.joinToString(",") { (id, b) ->
+            """{"id":"$id","titulo":"T $id","url":"https://x.invalid/$id.mp4","minutos":0.5,"bloque":${b?.let { Json.encodeToString(kotlinx.serialization.json.JsonPrimitive(it)) } ?: "null"}}"""
+        }
+        return Guia.desde(Json.parseToJsonElement("""{"ok":true,"clips":[$cs],"suplementacion":{"items":$items}}"""))!!
+    }
+
+    private fun fuera(g: Guia) = g.clips.map { it.id } - g.clipsDeLaLista.map { it.id }.toSet()
+
+    /** La regla de `entregas_012`, borde por borde: sale solo con las dos condiciones a la vez. */
+    @Test
+    fun reglaDelServidorBordePorBorde() {
+        val item = """[{"nombre":"Magnesio","estado":"sigue","video_id":"V1"}]"""
+        // (a) El bloque: con espacios, en mayúsculas, sin acento, con no-break o BOM, sí; null u otro bloque, no.
+        for (b in listOf("Tu suplementación", "  tu suplementación  ", "TU SUPLEMENTACIÓN", "Tu suplementacion", "\u00a0Tu suplementación\ufeff")) {
+            assertEquals(listOf("V1"), fuera(guiaCon(listOf("V1" to b), item)), b)
+        }
+        for (b in listOf(null, "", "Tu app", "Tu suplementación extra", "Suplementación")) {
+            assertEquals(emptyList<String>(), fuera(guiaCon(listOf("V1" to b), item)), b.toString())
+        }
+        // (b) El ítem: estado «sale», nombre vacío o null, video_id vacío o ausente: el clip queda en la lista y cuenta.
+        val bloque = "Tu suplementación"
+        for (i in listOf(
+            """[{"nombre":"Magnesio","estado":"sale","video_id":"V1"}]""",
+            """[{"nombre":"","estado":"sigue","video_id":"V1"}]""",
+            """[{"nombre":null,"video_id":"V1"}]""",
+            """[{"nombre":"Magnesio","video_id":""}]""",
+            """[{"nombre":"Magnesio"}]""",
+            """[{"nombre":"Magnesio","video_id":"OTRO"}]""",
+        )) {
+            val g = guiaCon(listOf("V1" to bloque), i)
+            assertEquals(emptyList<String>(), fuera(g), i)
+            assertEquals(1, ResumenGuia.de(g)!!.total, i)
+        }
+        // Como en SQL, sin recortar ni pasar a minúsculas: «Sale» no es «sale», un nombre de espacios no es vacío, estado
+        // null no es «sale».
+        for (i in listOf(
+            """[{"nombre":"Magnesio","estado":"Sale","video_id":"V1"}]""",
+            """[{"nombre":"  ","estado":"sigue","video_id":"V1"}]""",
+            """[{"nombre":"Magnesio","estado":null,"video_id":"V1"}]""",
+        )) assertEquals(listOf("V1"), fuera(guiaCon(listOf("V1" to bloque), i)), i)
+        // Basta un ítem que lo nombre, aunque otro con el mismo video «sale».
+        assertEquals(listOf("V1"), fuera(guiaCon(listOf("V1" to bloque), """[{"nombre":"A","estado":"sale","video_id":"V1"},{"nombre":"B","video_id":"V1"}]""")))
+        // La caché guarda la suplementación cruda: la regla da lo mismo después de leerla de vuelta.
+        val g = guiaCon(listOf("V1" to bloque, "V2" to bloque), """[{"nombre":"  ","video_id":"V1"}]""")
+        assertEquals(listOf("V1"), fuera(g))
+        assertEquals(listOf("V1"), fuera(Guia.desde(g.aValor())!!))
+    }
+
     @Test
     fun losVideosDeLosSuplementosSalenDeLaLista() {
         val g = Guia.desde(fixture("get-marcelo"))!!
         assertEquals(listOf("FT-50b", "FT-1b", "FT-4b"), g.clipsDeSuplementos.map { it.id })
         assertTrue(g.clipsDeLaLista.any { it.id == "FT-4c" })
         assertEquals(g.clips.size, g.clipsDeLaLista.size + g.clipsDeSuplementos.size)
-        // Un suplemento que «sale» no saca su video de la lista; sin suplementación, quedan todos.
-        val sale = g.copy(suplementacion = g.suplementacion!!.copy(items = g.suplementacion!!.items.map { if (it.videoId == "FT-1b") it.copy(estado = "sale") else it }))
-        assertTrue(sale.clipsDeLaLista.any { it.id == "FT-1b" })
-        assertEquals(g.clips, g.copy(suplementacion = null).clipsDeLaLista)
+        // Sin ningún suplemento que los nombre, quedan todos (los bordes, en reglaDelServidorBordePorBorde).
+        assertEquals(g.clips, g.copy(idsDeSuplementos = emptySet()).clipsDeLaLista)
     }
 }

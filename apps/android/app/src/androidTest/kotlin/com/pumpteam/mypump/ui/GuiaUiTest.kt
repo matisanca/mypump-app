@@ -33,6 +33,12 @@ class GuiaUiTest : PruebaUi() {
         servidor.respuestas["entregas_app_llamada_duda"] = "true"
     }
 
+    /** La guía avanzada con el video de la creatina (un «Ver por qué») ya visto. */
+    private fun conCreatinaVista(): String = org.json.JSONObject(fixture("get-marcelo-avanzado")).apply {
+        val clips = getJSONArray("clips")
+        for (i in 0 until clips.length()) clips.getJSONObject(i).let { if (it.getString("id") == "FT-50b") it.put("visto", true) }
+    }.toString()
+
     @After
     fun letraNormal() {
         Telefono.shell("settings put system font_scale 1.0")
@@ -44,6 +50,25 @@ class GuiaUiTest : PruebaUi() {
     }
 
     /** Baja la lista hasta que aparece [s] (los ítems de una lista perezosa no existen hasta verse). */
+    /**
+     * Deja el video del suplemento abierto arriba de la pantalla. La lista perezosa compone de antemano ítems que todavía no
+     * ubicó (sus nodos existen con límites en cero): se baja hasta que el video tenga lugar en pantalla y se ajusta.
+     */
+    private fun alVideoDelSuplemento() {
+        fun arriba(): Float? {
+            val n = p.nodo(etiqueta("guia-video-porque-caja"))
+            return p.enPrincipal { n.boundsInRoot }.takeIf { it.height > 0f }?.top
+        }
+        repeat(30) {
+            val y = arriba()
+            if (y != null) {
+                p.desplazar(etiqueta("guia-lista"), y - 420f)
+                return
+            }
+            p.desplazar(etiqueta("guia-lista"), 500f)
+        }
+    }
+
     private fun bajarHasta(s: Selector, paso: Float = 600f, veces: Int = 25) {
         repeat(veces) {
             if (p.existe(s)) return
@@ -134,7 +159,7 @@ class GuiaUiTest : PruebaUi() {
         // Se cierra sola a los 2,6 s.
         p.esperarQueNoEste(etiqueta("guia-placa"), ms = 5_000)
         // Sin poder cargar el video: lo dice, y la lista se sigue viendo.
-        p.nodo(etiqueta("guia-sin-conexion-video"), ms = 15_000)
+        p.nodo(etiqueta("guia-sin-conexion-video"), ms = 45_000)
         p.tocar(etiqueta("guia-velocidad"))
         p.nodo(texto("Velocidad 1,25x"))
     }
@@ -189,18 +214,34 @@ class GuiaUiTest : PruebaUi() {
         p.tocar(etiqueta("tarjeta-guia"))
         p.nodo(etiqueta("guia-desde-cache"))
         p.nodo(texto("Hola Marcelo"))
-        p.nodo(etiqueta("guia-sin-conexion-video"), ms = 15_000)
+        p.nodo(etiqueta("guia-sin-conexion-video"), ms = 45_000)
     }
 
+    /** Como pack.html (A5): «Ver por qué (N s)» abre el video debajo del suplemento, con su duda; el tilde si ya lo vio. */
     @Test
     fun suplementacionConVerPorQue() {
-        conGuia()
+        conGuia(get = conCreatinaVista())
         guardarCuenta()
         abrir()
         abrirGuia()
+        val tituloArriba = p.textosBajo(etiqueta("guia-titulo"))
         bajarHasta(etiqueta("ver-por-que-FT-1b"))
+        assertTrue(p.textosBajo(etiqueta("ver-por-que-FT-1b")).any { it.startsWith("Ver por qué (") && it.endsWith(" s)") })
+        assertTrue(p.estado(etiqueta("ver-por-que-FT-50b"))!!.contains("visto"))
+        assertFalse(p.estado(etiqueta("ver-por-que-FT-1b"))!!.contains("visto"))
         p.tocar(etiqueta("ver-por-que-FT-1b"))
-        p.esperar("el video de la citrulina") { p.textosBajo(etiqueta("guia-titulo")).any { it.contains("citrulina") } }
+        p.nodo(etiqueta("guia-porque-FT-1b"))
+        p.nodo(etiqueta("duda-campo-porque"))
+        assertTrue(p.textosBajo(etiqueta("ver-por-que-FT-1b")).contains("Cerrar el video"))
+        // El reproductor de arriba no cambia de video.
+        assertEquals(tituloArriba, p.textosBajo(etiqueta("guia-titulo")))
+        // Otro suplemento cierra el anterior; el mismo botón lo cierra. Sin url (el magnesio), no hay botón, como la web.
+        assertFalse(p.existe(etiqueta("ver-por-que-FT-4b")))
+        p.tocar(etiqueta("ver-por-que-FT-50b"))
+        p.nodo(etiqueta("guia-porque-FT-50b"))
+        assertFalse(p.existe(etiqueta("guia-porque-FT-1b")))
+        p.tocar(etiqueta("ver-por-que-FT-50b"))
+        p.esperarQueNoEste(etiqueta("guia-porque-FT-50b"))
     }
 
     // ── La maqueta: capturas en claro y en oscuro ──
@@ -220,7 +261,7 @@ class GuiaUiTest : PruebaUi() {
 
     private fun capturas(oscuro: Boolean, sufijo: String = if (oscuro) "oscuro" else "claro", completas: Boolean = true) {
         Telefono.modoNoche(oscuro)
-        conGuia()
+        conGuia(get = conCreatinaVista())
         guardarCuenta()
         fun foto(n: String) = Telefono.captura("guia-$n-$sufijo")
         abrir()
@@ -245,6 +286,14 @@ class GuiaUiTest : PruebaUi() {
             bajarHasta(etiqueta("guia-suplementacion"))
             p.desplazar(etiqueta("guia-lista"), 1400f)
             foto("07-suplementacion")
+            if (completas) {
+                bajarHasta(etiqueta("ver-por-que-FT-1b"))
+                p.tocar(etiqueta("ver-por-que-FT-1b"))
+                p.nodo(etiqueta("guia-porque-FT-1b"))
+                alVideoDelSuplemento()
+                foto("07b-ver-por-que-abierto")
+                p.tocar(etiqueta("ver-por-que-FT-1b"))
+            }
             bajarHasta(etiqueta("guia-fin"))
             foto("08-fin")
         }

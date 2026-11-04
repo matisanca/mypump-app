@@ -4,6 +4,7 @@ import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -44,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -266,7 +268,24 @@ private fun ContenidoGuia(
             val i = entradas.indexOfFirst { it is Entrada.Bloque && control.actual in it.bloque.indices }
             if (i >= 0) alcance.launch { lista.animateScrollToItem(i) }
         }
-        val verPorQue: (String) -> Unit = { id -> control.reproducirPorId(id) }
+        // «Ver por qué»: el video del suplemento se abre debajo de él, con su duda (como pack.html, A5).
+        val porQue = PorQueSuplemento(
+            abierto = control.porQue,
+            clip = { id -> guia.clip(id) },
+            alternar = control::alternarPorQue,
+            contenido = { clip ->
+                VideoDelSuplemento(
+                    control = control,
+                    clip = clip,
+                    despues = despues,
+                    texto = textos[clip.id] ?: "",
+                    alCambiar = { textos[clip.id] = it },
+                    mensaje = mensajes[clip.id],
+                    pendientes = pendientes.filter { it.video == clip.id }.map { it.texto },
+                    alEnviar = { alEnviarDuda(clip.id, it) },
+                )
+            },
+        )
         val tarjetaReproductor: @Composable (Modifier) -> Unit = { m ->
             TarjetaReproductor(
                 control = control,
@@ -307,7 +326,7 @@ private fun ContenidoGuia(
                     pendientes = pendientes,
                     puedeSumarLlamada = puedeSumarLlamada,
                     alEnviarDuda = alEnviarDuda,
-                    verPorQue = verPorQue,
+                    porQue = porQue,
                     reproductor = tarjetaReproductor,
                 )
             }
@@ -348,7 +367,7 @@ private fun LazyListScope.entradasGuia(
     pendientes: List<ModeloGuia.DudaPendiente>,
     puedeSumarLlamada: Boolean,
     alEnviarDuda: (String?, String) -> Unit,
-    verPorQue: (String) -> Unit,
+    porQue: PorQueSuplemento,
     reproductor: @Composable (Modifier) -> Unit,
 ) {
     val ancho = Modifier.widthIn(max = 700.dp).fillMaxWidth()
@@ -389,7 +408,7 @@ private fun LazyListScope.entradasGuia(
                     alEnviar = { alEnviarDuda(null, it) },
                     modifier = ancho.padding(top = Espacio.m),
                 )
-                Entrada.Suplementacion -> suple?.let { SuplementacionGuia(it, verPorQue, ancho.padding(top = Espacio.m)) }
+                Entrada.Suplementacion -> suple?.let { SuplementacionGuia(it, porQue, ancho.padding(top = Espacio.m)) }
                 Entrada.Fin -> Text(
                     "Si algún video no te carga o tenés algo para contarme" + (if (despues) "" else " antes de la videollamada") + ", escribime por el chat.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -497,14 +516,69 @@ private fun TarjetaReproductor(
 @Composable
 private fun CapasVideo(control: ControlReproductor) {
     control.placa?.let { PlacaGuia(it, alTocar = control::cerrarPlaca) }
-    if (control.sinConexion && control.placa == null) SinConexionVideo(alReintentar = control::reintentar)
+    control.falla?.let { if (control.placa == null) SinConexionVideo(it, alReintentar = control::reintentar) }
 }
 
 /** La vista de Media3 con sus controles (reproducir, la barra, la pantalla completa). Una sola a la vez tiene el reproductor. */
 @OptIn(UnstableApi::class)
 @Composable
-private fun VistaVideo(control: ControlReproductor, modifier: Modifier = Modifier, completa: Boolean = false) {
-    val player = control.player
+private fun VistaVideo(control: ControlReproductor, modifier: Modifier = Modifier, completa: Boolean = false) =
+    VistaMedia3(
+        player = control.player,
+        etiqueta = if (completa) "guia-video-completo" else "guia-video",
+        alPantallaCompleta = { control.pantallaCompleta = it },
+        completa = completa,
+        modifier = modifier,
+    )
+
+/** El video de un suplemento («Ver por qué»): el reproductor chico y, abajo, la duda de ese video. */
+@Composable
+private fun VideoDelSuplemento(
+    control: ControlReproductor,
+    clip: com.pumpteam.mypump.modelos.ClipGuia,
+    despues: Boolean,
+    texto: String,
+    alCambiar: (String) -> Unit,
+    mensaje: Pair<String, Boolean>?,
+    pendientes: List<String>,
+    alEnviar: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().testTag("guia-porque-${clip.id}"), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.Black)
+                .testTag("guia-video-porque-caja"),
+        ) {
+            VistaMedia3(player = control.porQuePlayer, etiqueta = "guia-video-porque", alPantallaCompleta = null, completa = false, modifier = Modifier.fillMaxSize())
+            control.fallaPorQue?.let { SinConexionVideo(it, alReintentar = control::reintentarPorQue) }
+        }
+        DudaVideo(
+            video = clip.id,
+            yaDejo = clip.duda,
+            despues = despues,
+            texto = texto,
+            alCambiar = alCambiar,
+            mensaje = mensaje,
+            pendientes = pendientes,
+            alEnviar = alEnviar,
+            sufijo = "-porque",
+        )
+    }
+}
+
+/** La vista de Media3 con sus controles. Sin [alPantallaCompleta], no muestra el botón de pantalla completa. */
+@OptIn(UnstableApi::class)
+@Composable
+private fun VistaMedia3(
+    player: androidx.media3.common.Player?,
+    etiqueta: String,
+    alPantallaCompleta: ((Boolean) -> Unit)?,
+    completa: Boolean,
+    modifier: Modifier = Modifier,
+) {
     AndroidView(
         factory = { ctx ->
             (android.view.LayoutInflater.from(ctx).inflate(com.pumpteam.mypump.R.layout.guia_reproductor, null) as PlayerView).apply {
@@ -513,14 +587,16 @@ private fun VistaVideo(control: ControlReproductor, modifier: Modifier = Modifie
                 setShowNextButton(false)
                 setShowSubtitleButton(false)
                 setShowShuffleButton(false)
-                setFullscreenButtonClickListener { control.pantallaCompleta = it }
-                setFullscreenButtonState(completa)
+                if (alPantallaCompleta != null) {
+                    setFullscreenButtonClickListener { alPantallaCompleta(it) }
+                    setFullscreenButtonState(completa)
+                }
                 contentDescription = "Video de tu guía"
             }
         },
         update = { v -> if (v.player !== player) v.player = player },
         onRelease = { v -> v.player = null },
-        modifier = modifier.testTag(if (completa) "guia-video-completo" else "guia-video"),
+        modifier = modifier.testTag(etiqueta),
     )
 }
 
@@ -563,9 +639,10 @@ private fun DudaVideo(
     mensaje: Pair<String, Boolean>?,
     pendientes: List<String>,
     alEnviar: (String) -> Unit,
+    sufijo: String = "",
 ) {
     val c = MyPump.colores
-    Column(Modifier.fillMaxWidth().testTag("duda-video"), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+    Column(Modifier.fillMaxWidth().testTag("duda-video$sufijo"), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
         Text("¿Te quedó alguna duda de este video?", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
         if (yaDejo != null) YaDejaste("Ya me dejaste", yaDejo.split('\n').filter { it.isNotBlank() }, Modifier.testTag("duda-ya-$video"))
         if (pendientes.isNotEmpty()) YaDejaste("Enviando…", pendientes, enviando = true)
@@ -574,7 +651,7 @@ private fun DudaVideo(
             alCambiar = alCambiar,
             placeholder = "Escribila acá y me llega" + if (despues) "" else " antes de la videollamada",
             descripcion = "Tu duda de este video",
-            etiqueta = "duda-campo",
+            etiqueta = "duda-campo$sufijo",
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             BotonMarca(
@@ -582,14 +659,14 @@ private fun DudaVideo(
                 alTocar = { alEnviar(texto) },
                 compacto = true,
                 habilitado = ReglasGuia.dudaValida(texto) != null,
-                modifier = Modifier.testTag("duda-enviar"),
+                modifier = Modifier.testTag("duda-enviar$sufijo"),
             )
             mensaje?.let { (m, error) ->
                 Text(
                     m,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (error) c.peligro else c.textoSecundario,
-                    modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }.testTag("duda-mensaje"),
+                    modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }.testTag("duda-mensaje$sufijo"),
                 )
             }
         }

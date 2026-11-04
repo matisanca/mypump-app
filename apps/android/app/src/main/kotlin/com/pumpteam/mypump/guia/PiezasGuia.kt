@@ -4,6 +4,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -335,15 +337,15 @@ fun PlacaGuia(placa: ControlReproductor.Placa, alTocar: () -> Unit, modifier: Mo
 
 /** Sin red: el reproductor lo dice, y se puede reintentar. La lista se sigue viendo. */
 @Composable
-fun SinConexionVideo(alReintentar: () -> Unit, modifier: Modifier = Modifier) {
+fun SinConexionVideo(falla: FallaVideo, alReintentar: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxSize().background(Color(0xFF111814)).padding(Espacio.m).testTag("guia-sin-conexion-video"),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(Iconos.SinWifi, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+        if (falla == FallaVideo.SIN_RED) Icon(Iconos.SinWifi, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
         Text(
-            "Necesitás conexión para ver el video",
+            if (falla == FallaVideo.SIN_RED) "Necesitás conexión para ver el video" else "No se pudo cargar el video",
             color = Color.White,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
@@ -435,7 +437,7 @@ fun YaDejaste(rotulo: String, textos: List<String>, modifier: Modifier = Modifie
 
 /** «Tu suplementación» por momento del día, como «Tu día» del PDF. [alVerPorQue] reproduce el clip del ítem. */
 @Composable
-fun SuplementacionGuia(v: SuplementacionVista.Vista, alVerPorQue: ((String) -> Unit)?, modifier: Modifier = Modifier) {
+fun SuplementacionGuia(v: SuplementacionVista.Vista, porQue: PorQueSuplemento?, modifier: Modifier = Modifier) {
     val c = MyPump.colores
     Column(
         modifier
@@ -456,7 +458,7 @@ fun SuplementacionGuia(v: SuplementacionVista.Vista, alVerPorQue: ((String) -> U
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 4.dp).semantics { heading() },
             )
-            for (f in m.filas) FilaSuplemento(f, alVerPorQue)
+            for (f in m.filas) FilaSuplemento(f, porQue)
         }
         if (v.sigue != null || v.sale.isNotEmpty()) SeparadorFino()
         v.sigue?.let { TextoRotulado("Sigue igual.", it, tonoTexto = c.texto) }
@@ -476,7 +478,7 @@ private fun SeparadorFino() {
 }
 
 @Composable
-private fun FilaSuplemento(f: SuplementacionVista.Fila, alVerPorQue: ((String) -> Unit)?) {
+private fun FilaSuplemento(f: SuplementacionVista.Fila, porQue: PorQueSuplemento?) {
     val c = MyPump.colores
     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("suple-${f.nombre}"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.Top) {
@@ -497,19 +499,53 @@ private fun FilaSuplemento(f: SuplementacionVista.Fila, alVerPorQue: ((String) -
         f.nota?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = c.textoSecundario) }
         f.porQue?.let { TextoRotulado("Por qué.", it, tonoTexto = c.texto) }
         for (d in f.detalle) TextoConNegritas(d, Modifier.padding(start = 2.dp))
-        if (f.videoId != null && alVerPorQue != null) {
-            TextButton(
-                onClick = { alVerPorQue(f.videoId!!) },
-                modifier = Modifier.heightIn(min = 44.dp).semantics { contentDescription = "Ver por qué, video de ${f.nombre}" }.testTag("ver-por-que-${f.videoId}"),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp),
+        val clip = f.videoId?.let { porQue?.clip?.invoke(it) }?.takeIf { it.url != null }
+        if (clip != null && porQue != null) {
+            val abierto = porQue.abierto == clip.id
+            OutlinedButton(
+                onClick = { porQue.alternar(clip.id) },
+                shape = RoundedCornerShape(50),
+                border = BorderStroke(1.dp, c.marcaTexto),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, end = 14.dp),
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .heightIn(min = 44.dp)
+                    .semantics {
+                        contentDescription = if (abierto) "Cerrar el video de ${f.nombre}" else "Ver por qué, video de ${f.nombre}"
+                        stateDescription = (if (abierto) "abierto" else "cerrado") + if (clip.visto) ", visto" else ""
+                    }
+                    .testTag("ver-por-que-${clip.id}"),
             ) {
-                Icon(Iconos.Play, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Ver por qué", color = c.marcaTexto, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                when {
+                    abierto -> Box(Modifier.size(9.dp).background(c.marcaTexto, RoundedCornerShape(1.dp)))
+                    clip.visto -> Box(Modifier.size(16.dp).background(c.marca, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Iconos.Tilde, contentDescription = null, tint = Color.White, modifier = Modifier.size(11.dp))
+                    }
+                    else -> Icon(Iconos.Play, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(12.dp))
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (abierto) "Cerrar el video" else ReglasGuia.rotuloPorQue(clip.minutos),
+                    color = c.marcaTexto,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
+            if (abierto) Box(Modifier.padding(top = Espacio.s)) { porQue.contenido(clip) }
         }
     }
 }
+
+/**
+ * «Ver por qué» de la suplementación (como pack.html, A5): el video del suplemento se abre debajo, en un reproductor chico,
+ * con su duda. [abierto] es el clip abierto; [contenido] dibuja el reproductor y la duda de ese clip.
+ */
+class PorQueSuplemento(
+    val abierto: String?,
+    val clip: (String) -> ClipGuia?,
+    val alternar: (String) -> Unit,
+    val contenido: @Composable (ClipGuia) -> Unit,
+)
 
 /** Un texto con *negrita* de Markdown (el detalle de la suplementación). */
 @Composable

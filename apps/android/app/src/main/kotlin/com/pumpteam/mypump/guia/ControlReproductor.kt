@@ -80,9 +80,13 @@ class ControlReproductor(
 
     var pantallaCompleta by mutableStateOf(false)
 
-    /** El último error de carga (sin red): la vista muestra «Necesitás conexión para ver el video». */
-    var sinConexion by mutableStateOf(false)
-        private set
+    /** Si el video no carga: sin red o, con red, después de los reintentos solos ([RecuperacionVideo]). */
+    private val recuperacion = RecuperacionVideo(contexto, alcance) { recargar() }
+
+    val falla: FallaVideo? get() = recuperacion.falla
+
+    /** Hay algo que mostrar en lugar del video (sin red o no cargó). */
+    val sinConexion: Boolean get() = recuperacion.falla != null
 
     var reproduciendo by mutableStateOf(false)
         private set
@@ -106,6 +110,7 @@ class ControlReproductor(
     private val escucha = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             reproduciendo = isPlaying
+            if (isPlaying) porQuePlayer?.pause()
             if (isPlaying) leer() else {
                 lectura?.cancel()
                 seguimiento?.alInterrumpir()
@@ -116,7 +121,7 @@ class ControlReproductor(
             val p = player ?: return
             when (playbackState) {
                 Player.STATE_READY -> {
-                    sinConexion = false
+                    recuperacion.reiniciar()
                     if (retomarPendiente) {
                         retomarPendiente = false
                         val c = clipActual ?: return
@@ -135,8 +140,8 @@ class ControlReproductor(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            sinConexion = true
             reproduciendo = false
+            recuperacion.alFallar(error)
         }
     }
 
@@ -153,6 +158,7 @@ class ControlReproductor(
         clips = nuevos
         deLaLista = deLista.size
         if (otraCuenta || idActual == null) {
+            cerrarPorQue()
             detener()
             val i = ReglasReproductor.indiceInicial(deLista)
             if (i >= 0) cargar(i, reproducir = false, conPlaca = false)
@@ -178,11 +184,6 @@ class ControlReproductor(
         elegido++
     }
 
-    /** «Ver por qué» de la suplementación: el clip por su id. */
-    fun reproducirPorId(id: String) {
-        val i = clips.indexOfFirst { it.id == id }
-        if (i >= 0) reproducir(i)
-    }
 
     val haySiguiente: Boolean get() = proximo() != null
     val hayAnterior: Boolean get() = previo() != null
@@ -214,19 +215,26 @@ class ControlReproductor(
 
     /** Volvió la conexión (o el cliente tocó «Reintentar»): se carga de nuevo donde estaba. */
     fun reintentar() {
+        recuperacion.reiniciar()
+        recargar()
+    }
+
+    /** Vuelve a pedir el video donde estaba (después de un error, el reproductor queda parado). */
+    private fun recargar() {
         val p = player ?: return
-        sinConexion = false
         p.prepare()
-        p.play()
+        if (placa == null) p.play()
     }
 
     /** La app se fue atrás o se salió de la guía: el video se frena (no sigue sonando). */
     fun pausar() {
         player?.pause()
+        porQuePlayer?.pause()
     }
 
     /** El ViewModel se va: se suelta el reproductor. */
     fun liberar() {
+        cerrarPorQue()
         detener()
         player?.removeListener(escucha)
         player?.release()
@@ -235,6 +243,120 @@ class ControlReproductor(
         clips = emptyList()
         deLaLista = 0
         actual = -1
+    }
+
+    // ── «Ver por qué»: el reproductor chico debajo del suplemento (como pack.html desde el 4/11, A5) ──
+    //
+    // Un solo video de suplemento abierto a la vez, con su propio reproductor: arranca solo, retoma como el de arriba
+    // (espec 4.6), guarda el avance igual (cada 10 s, al 80 % con visto y al terminar, por guia_avance) y al terminar no
+    // pasa a otro. Mientras suena, el de arriba se pausa (y al revés), para que no suenen dos.
+
+    /** El id del clip abierto con «Ver por qué», o null. */
+    var porQue by mutableStateOf<String?>(null)
+        private set
+
+    var porQuePlayer: ExoPlayer? by mutableStateOf(null)
+        private set
+
+    private val recuperacionPorQue = RecuperacionVideo(contexto, alcance) { porQuePlayer?.let { it.prepare(); it.play() } }
+
+    val fallaPorQue: FallaVideo? get() = recuperacionPorQue.falla
+
+    private var seguimientoPorQue: SeguimientoAvance? = null
+    private var retomarPorQue = false
+    private var lecturaPorQue: Job? = null
+
+    private val escuchaPorQue = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) {
+                player?.pause()
+                leerPorQue()
+            } else {
+                lecturaPorQue?.cancel()
+                seguimientoPorQue?.alInterrumpir()
+            }
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            val p = porQuePlayer ?: return
+            when (playbackState) {
+                Player.STATE_READY -> {
+                    recuperacionPorQue.reiniciar()
+                    if (retomarPorQue) {
+                        retomarPorQue = false
+                        val c = clips.firstOrNull { it.id == porQue } ?: return
+                        val dur = p.duration.takeIf { it != C.TIME_UNSET }?.div(1000.0) ?: 0.0
+                        val desde = ReglasReproductor.retomarDesde(c, dur)
+                        if (desde > 0) p.seekTo((desde * 1000).toLong())
+                    }
+                }
+                Player.STATE_ENDED -> {
+                    lecturaPorQue?.cancel()
+                    val s = seguimientoPorQue ?: return
+                    val dur = p.duration.takeIf { it != C.TIME_UNSET && it > 0 }?.div(1000.0) ?: (p.currentPosition / 1000.0)
+                    guardar(s.alTerminar(dur))
+                }
+                else -> {}
+            }
+        }
+
+        override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) seguimientoPorQue?.alInterrumpir()
+        }
+
+        override fun onPlayerError(error: PlaybackException) = recuperacionPorQue.alFallar(error)
+    }
+
+    /** El botón «Ver por qué» / «Cerrar el video» del suplemento: abre ese video debajo, o lo cierra si ya estaba abierto. */
+    fun alternarPorQue(id: String) {
+        if (porQue == id) {
+            cerrarPorQue()
+            return
+        }
+        val c = clips.firstOrNull { it.id == id } ?: return
+        val url = c.url ?: return
+        cerrarPorQue()
+        player?.pause()
+        val p = fabrica(contexto).also { it.addListener(escuchaPorQue) }
+        porQue = id
+        porQuePlayer = p
+        seguimientoPorQue = SeguimientoAvance(c)
+        retomarPorQue = true
+        recuperacionPorQue.reiniciar()
+        p.setMediaItem(MediaItem.Builder().setUri(url).setMediaId(c.id).build())
+        p.prepare()
+        p.playWhenReady = true
+    }
+
+    /** Pausa y suelta el reproductor chico (lo que corrió ya se guardó: al pausar, [SeguimientoAvance] corta el tramo). */
+    fun cerrarPorQue() {
+        val p = porQuePlayer ?: return
+        lecturaPorQue?.cancel()
+        p.pause()
+        p.removeListener(escuchaPorQue)
+        p.release()
+        porQuePlayer = null
+        porQue = null
+        seguimientoPorQue = null
+        recuperacionPorQue.soltar()
+    }
+
+    fun reintentarPorQue() {
+        recuperacionPorQue.reiniciar()
+        porQuePlayer?.let { it.prepare(); it.play() }
+    }
+
+    private fun leerPorQue() {
+        lecturaPorQue?.cancel()
+        lecturaPorQue = alcance.launch {
+            while (isActive) {
+                val p = porQuePlayer ?: break
+                val s = seguimientoPorQue ?: break
+                val dur = p.duration.takeIf { it != C.TIME_UNSET && it > 0 }?.div(1000.0) ?: 0.0
+                s.alAvanzar(p.currentPosition / 1000.0, dur)?.let { g -> guardar(g) }
+                delay(500)
+            }
+        }
     }
 
     private fun asegurarPlayer(): ExoPlayer = player ?: fabrica(contexto).also {
@@ -247,7 +369,7 @@ class ControlReproductor(
         lectura?.cancel()
         temporizadorPlaca?.cancel()
         placa = null
-        sinConexion = false
+        recuperacion.reiniciar()
         player?.stop()
         player?.clearMediaItems()
         seguimiento = null
@@ -264,7 +386,7 @@ class ControlReproductor(
         actual = indice
         seguimiento = SeguimientoAvance(c)
         retomarPendiente = true
-        sinConexion = false
+        recuperacion.reiniciar()
         p.setMediaItem(MediaItem.Builder().setUri(url).setMediaId(c.id).build())
         p.setPlaybackSpeed(velocidad)
         p.prepare()

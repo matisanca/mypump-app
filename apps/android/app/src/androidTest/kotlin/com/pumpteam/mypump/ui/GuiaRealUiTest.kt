@@ -95,6 +95,25 @@ class GuiaRealUiTest : PruebaUi() {
         p.nodo(etiqueta("guia-cabecera"), ms = 30_000)
     }
 
+    /**
+     * Deja el video del suplemento abierto arriba de la pantalla. La lista perezosa compone de antemano ítems que todavía no
+     * ubicó (sus nodos existen con límites en cero): se baja hasta que el video tenga lugar en pantalla y se ajusta.
+     */
+    private fun alVideoDelSuplemento() {
+        fun arriba(): Float? {
+            val n = p.nodo(etiqueta("guia-video-porque-caja"))
+            return p.enPrincipal { n.boundsInRoot }.takeIf { it.height > 0f }?.top
+        }
+        repeat(30) {
+            val y = arriba()
+            if (y != null) {
+                p.desplazar(etiqueta("guia-lista"), y - 420f)
+                return
+            }
+            p.desplazar(etiqueta("guia-lista"), 500f)
+        }
+    }
+
     private fun bajarHasta(s: Selector, paso: Float = 600f, veces: Int = 30) {
         repeat(veces) {
             if (p.existe(s)) return
@@ -203,7 +222,7 @@ class GuiaRealUiTest : PruebaUi() {
         p.esperar("la duda general", ms = 30_000, enElPrincipal = false) {
             reales("entregas_app_llamada_duda").firstOrNull { it.cuerpo.contains(dudaLlamada) }
         }.also { assertEquals("true", it.respuesta.trim()) }
-        p.nodo(textoQueContiene("Ya me dejaste estas ${dudas + 1}"), ms = 30_000)
+        p.nodo(texto(if (dudas == 0) "Ya me dejaste esta" else "Ya me dejaste estas ${dudas + 1}"), ms = 30_000)
         foto("06-duda-llamada")
     }
 
@@ -244,6 +263,8 @@ class GuiaRealUiTest : PruebaUi() {
             p.tocar(etiqueta("clip-${primero.getString("id")}"))
         }
         p.nodo(etiqueta("guia-sin-conexion-video"), ms = 30_000)
+        // Sin red de verdad (y solo así) dice que falta conexión.
+        p.nodo(texto("Necesitás conexión para ver el video"))
         foto("08-sin-red")
     }
 
@@ -261,6 +282,38 @@ class GuiaRealUiTest : PruebaUi() {
             bajarHasta(etiqueta("guia-llamada"))
             foto("11-llamada-letra-grande")
         }
+    }
+
+    /** «Ver por qué»: el video del suplemento debajo de él, hasta el 80 %; el avance va por guia_avance y queda el tilde. */
+    @Test
+    fun verPorQueHastaEl80() {
+        guardarCuenta(token)
+        abrir()
+        abrirGuia()
+        p.esperar("el get") { reales("entregas_app_get").isNotEmpty() }
+        val g = guiaGuardada()
+        val items = g.getJSONObject("suplementacion").getJSONArray("items")
+        val ids = (0 until items.length()).map { items.getJSONObject(it) }
+            .filter { it.optString("estado") != "sale" && it.optString("nombre").isNotBlank() && !it.isNull("video_id") }
+            .map { it.getString("video_id") }.toSet()
+        val candidatos = clips(g).filter { it.getString("id") in ids && !it.isNull("url") }
+        assumeTrue("la guía de prueba no tiene videos de suplementos", candidatos.isNotEmpty())
+        val clip = (candidatos.filter { !it.optBoolean("visto") }.ifEmpty { candidatos }).minBy { it.optDouble("minutos", 99.0) }
+        val id = clip.getString("id")
+        bajarHasta(etiqueta("ver-por-que-$id"))
+        p.tocar(etiqueta("ver-por-que-$id"))
+        p.nodo(etiqueta("guia-porque-$id"))
+        alVideoDelSuplemento()
+        Thread.sleep(3_000)
+        foto("12-ver-por-que")
+        val topeMs = (clip.optDouble("minutos", 1.0) * 60_000).toLong() + 60_000
+        p.esperar("el avance con visto de $id", ms = topeMs, enElPrincipal = false) {
+            reales("entregas_app_avance").firstOrNull { it.cuerpo.contains("\"p_video\":\"$id\"") && it.cuerpo.contains("\"p_visto\":true") && it.respuesta.trim() == "true" }
+        }
+        bajarHasta(etiqueta("ver-por-que-$id"), paso = -300f)
+        p.tocar(etiqueta("ver-por-que-$id"))
+        p.esperar("el tilde de visto") { p.estado(etiqueta("ver-por-que-$id"))?.contains("visto") == true }
+        foto("13-ver-por-que-visto")
     }
 
     /** Para el lado a lado con `pack.html`: la cabecera («Viste N de M»), «Tu app» con lo visto y las dudas para la llamada. */

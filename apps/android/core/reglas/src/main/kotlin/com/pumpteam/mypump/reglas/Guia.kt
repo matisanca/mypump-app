@@ -34,6 +34,9 @@ object ReglasGuia {
         val resumen: String get() = "${cantidadVideos(indices.size)}, unos ${minutosRedondos(minutos)} minutos"
     }
 
+    /** El botón del video de un suplemento, como pack.html: «Ver por qué (18 s)» (al menos 1 s). */
+    fun rotuloPorQue(minutos: Double): String = "Ver por qué (" + maxOf(1L, Math.round(minutos * 60)) + " s)"
+
     fun esTuApp(bloque: String?): Boolean = bloque?.trim()?.equals("tu app", ignoreCase = true) == true
 
     /**

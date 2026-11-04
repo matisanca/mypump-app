@@ -2,7 +2,9 @@ package com.pumpteam.mypump.modelos
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * «Tu guía» (`entregas_app_get`, obra de entregas `entregas_010_app`): los videos cortos de Mati antes de la videollamada
@@ -21,19 +23,25 @@ data class Guia(
     val dudasLlamada: List<DudaLlamada>,
     /** null o sin ítems: no se muestra. */
     val suplementacion: Suplementacion?,
+    /**
+     * Los `video_id` que saca de la lista la regla del servidor (`entregas_012`), leídos del JSON tal cual vino (sin
+     * recortar ni pasar a minúsculas, como `it ->> 'nombre'` en SQL). Ver [idsNombrados].
+     */
+    val idsDeSuplementos: Set<String> = emptySet(),
+    /** La suplementación tal cual vino, para la caché (así [desde] la vuelve a leer igual). */
+    val suplementacionCruda: ValorJson? = suplementacion?.crudo,
 ) {
     fun clip(id: String): ClipGuia? = clips.firstOrNull { it.id == id }
 
     /**
-     * Los clips de la lista y de «Viste X de N» (como la web desde el 4/11, A5): los del bloque «Tu suplementación» que
-     * nombra un suplemento (con nombre, `video_id` y que no «sale») se ven debajo de ese suplemento con «Ver por qué» y no
-     * van en la lista. Si ningún suplemento los nombra, quedan en la lista para no perderlos.
+     * Los clips de la lista y de «Viste X de N», con la misma regla que `entregas_app_resumen` (`entregas_012`) y la web
+     * (A5): un clip sale solo si (a) su bloque es «Tu suplementación» (sin espacios alrededor y sin distinguir mayúsculas;
+     * un bloque null no lo es) y (b) su id es el `video_id` de un ítem con nombre no vacío, estado distinto de «sale» y
+     * `video_id` no vacío. Esos se ven debajo de su suplemento con «Ver por qué». Si ningún suplemento lo nombra, el clip
+     * se sigue mostrando y contando.
      */
     val clipsDeLaLista: List<ClipGuia> by lazy {
-        val nombrados = suplementacion?.items.orEmpty()
-            .filter { it.nombre.isNotBlank() && it.estado != "sale" && it.videoId != null }
-            .mapNotNull { it.videoId }.toSet()
-        clips.filterNot { esSuplementacion(it.bloque) && it.id in nombrados }
+        clips.filterNot { esSuplementacion(it.bloque) && it.id in idsDeSuplementos }
     }
 
     /** Los que salen de la lista porque los muestra su suplemento ([clipsDeLaLista]). */
@@ -47,7 +55,7 @@ data class Guia(
             "fecha_entrega" to (fechaEntrega?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
             "clips" to ValorJson.Lista(clips.map { it.aValor() }),
             "dudas_llamada" to ValorJson.Lista(dudasLlamada.map { it.aValor() }),
-            "suplementacion" to (suplementacion?.crudo ?: ValorJson.Nulo),
+            "suplementacion" to (suplementacionCruda ?: ValorJson.Nulo),
         ),
     )
 
@@ -56,13 +64,33 @@ data class Guia(
         fun desde(e: JsonElement?): Guia? {
             val o = e as? JsonObject ?: return null
             if (o["ok"]?.let(Lector::booleanoCrudo) != true) return null
+            val s = o["suplementacion"]
             return Guia(
                 nombrePila = o.cadena("nombre_pila")?.trim()?.ifEmpty { null },
                 fechaEntrega = o.cadena("fecha_entrega")?.ifEmpty { null },
                 clips = o.lista("clips", ClipGuia::desde),
                 dudasLlamada = o.lista("dudas_llamada", DudaLlamada::desde),
-                suplementacion = Suplementacion.desde(o["suplementacion"]),
+                suplementacion = Suplementacion.desde(s),
+                idsDeSuplementos = idsNombrados(s),
+                suplementacionCruda = (s as? JsonObject)?.let { ValorJson.desde(it) },
             )
+        }
+
+        /**
+         * La condición (b) de `entregas_012`, sobre el JSON crudo de `suplementacion`: por cada ítem, `nombre`, `estado` y
+         * `video_id` como texto de SQL (`->>`: null o ausente = vacío, un número o un booleano = su texto) y sin tocar.
+         */
+        fun idsNombrados(s: JsonElement?): Set<String> {
+            val items = (s as? JsonObject)?.get("items") as? JsonArray ?: return emptySet()
+            fun comoSql(v: JsonElement?): String = when (v) {
+                null, is JsonNull -> ""
+                is JsonPrimitive -> v.content
+                else -> v.toString()
+            }
+            return items.mapNotNull { it as? JsonObject }
+                .filter { comoSql(it["nombre"]) != "" && comoSql(it["estado"]) != "sale" && comoSql(it["video_id"]) != "" }
+                .map { comoSql(it["video_id"]) }
+                .toSet()
         }
 
         fun desde(v: ValorJson?): Guia? = v?.let { desde(it.aJson()) }
@@ -251,14 +279,11 @@ data class ResumenGuia(val total: Int, val vistos: Int, val minutosRestantes: Do
         fun desde(v: ValorJson?): ResumenGuia? = v?.let { desde(it.aJson()) }
 
         /** Lo mismo calculado desde la guía entera (cuando el cliente ya la abrió y hay datos más nuevos en memoria). */
-        /** Lo mismo que la web en «Viste X de N» (la cabecera de la sección): solo los clips de la lista ([Guia.clipsDeLaLista]). */
-        fun de(g: Guia): ResumenGuia? = de(g.clipsDeLaLista)
-
         /**
-         * Con todos los clips, como cuenta hoy `entregas_app_resumen`: es lo de la tarjeta de inicio, que tiene que coincidir
-         * con el resumen del servidor (para no saltar entre dos totales). Si el servidor pasa a contar como la web, se usa [de].
+         * «Viste X de N» de la cabecera y de la tarjeta de inicio: solo los clips de la lista ([Guia.clipsDeLaLista]), como
+         * cuenta `entregas_app_resumen` desde `entregas_012` y la web.
          */
-        fun deTodos(g: Guia): ResumenGuia? = de(g.clips)
+        fun de(g: Guia): ResumenGuia? = de(g.clipsDeLaLista)
 
         private fun de(l: List<ClipGuia>): ResumenGuia? {
             if (l.isEmpty()) return null
@@ -268,6 +293,11 @@ data class ResumenGuia(val total: Int, val vistos: Int, val minutosRestantes: Do
     }
 }
 
-/** «Tu suplementación», sin importar mayúsculas ni el acento (como la web). */
-internal fun esSuplementacion(bloque: String?): Boolean =
-    bloque?.trim()?.lowercase()?.let { it == "tu suplementación" || it == "tu suplementacion" } == true
+/**
+ * La condición (a) de `entregas_012`, la misma expresión del servidor: `coalesce(bloque, '') ~*
+ * '^[\s\u00a0\ufeff]*tu suplementaci[oóÓ]n[\s\u00a0\ufeff]*$'` (espacios, no-break y BOM alrededor; sin distinguir
+ * mayúsculas). Un bloque null no lo es.
+ */
+private val BLOQUE_SUPLEMENTACION = Regex("^[\\s\u00a0\ufeff]*tu suplementaci[oóÓ]n[\\s\u00a0\ufeff]*$", RegexOption.IGNORE_CASE)
+
+internal fun esSuplementacion(bloque: String?): Boolean = BLOQUE_SUPLEMENTACION.matches(bloque ?: "")
