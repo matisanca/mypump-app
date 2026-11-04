@@ -58,7 +58,8 @@ struct AudioDudaView: View {
                     Label(ReglasAudioDuda.textoGrabar, systemImage: "mic.fill")
                 }
                 .buttonStyle(BotonSecundario(compacto: true, tono: .marcaTexto))
-                .disabled(modelo.fase == .pidiendoPermiso)
+                // Un audio a la vez, como la web: mientras uno se manda, no se graba otro.
+                .disabled(modelo.fase == .pidiendoPermiso || modelo.mandandoAlguno)
                 .accessibilityIdentifier("audio-grabar")
                 if modelo.faltaPermiso {
                     Text(ReglasAudioDuda.textoAntesDelPermiso).font(.caption).foregroundStyle(.secondary)

@@ -80,7 +80,8 @@ struct GuiaView: View {
         // La guía dejó de existir (token revocado o la página se dio de baja): la sección desaparece, sin mensaje.
         .onChange(of: modelo.estado) { _, e in if e == .oculta { control.pausar(); verPorQue.cerrar(); cerrar() } }
         .onChange(of: fase) { _, f in
-            if f == .background { control.pausar(); verPorQue.pausar(); SesionAudio.soltar(); modelo.audios.cortar(); modelo.audios.cerrarSeccion() }
+            // Primero se corta el grabador y después se suelta la sesión (revisión del 4-nov, punto 7).
+            if f == .background { control.pausar(); verPorQue.pausar(); modelo.audios.cortar(); SesionAudio.soltar(); modelo.audios.cerrarSeccion() }
             // De vuelta a primer plano con la guía abierta: la lista de audios se consulta de nuevo (nunca de fondo).
             if f == .active, traida, aLaVista, !GuiaUI.audioSinServidor { Task { await modelo.audios.abrirSeccion() } }
         }
@@ -93,8 +94,8 @@ struct GuiaView: View {
         .onDisappear {
             aLaVista = false
             if !control.pantallaCompleta && !verPorQue.pantallaCompleta {
-                control.pausar(); verPorQue.pausar(); SesionAudio.soltar()
-                modelo.audios.cortar(); modelo.audios.cerrarSeccion()
+                control.pausar(); verPorQue.pausar()
+                modelo.audios.cortar(); SesionAudio.soltar(); modelo.audios.cerrarSeccion()
             }
         }
         .sensoryFeedback(.selection, trigger: control.cambios)

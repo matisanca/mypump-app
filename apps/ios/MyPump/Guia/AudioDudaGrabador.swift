@@ -128,6 +128,8 @@ final class ReproductorRevision: NSObject, AVAudioPlayerDelegate {
     @ObservationIgnored private var player: AVAudioPlayer?
     @ObservationIgnored private var archivo: URL?
     @ObservationIgnored private var tics: Task<Void, Never>?
+    /// La sesión la tomó este reproductor (y nadie la soltó todavía).
+    @ObservationIgnored private var sesionTomada = false
 
     func alternar(_ url: URL) {
         if sonando { pausar(); return }
@@ -138,6 +140,7 @@ final class ReproductorRevision: NSObject, AVAudioPlayerDelegate {
         }
         guard let player else { return }
         SesionAudio.activar()
+        sesionTomada = true
         player.play()
         sonando = true
         tics?.cancel()
@@ -156,19 +159,28 @@ final class ReproductorRevision: NSObject, AVAudioPlayerDelegate {
         tics?.cancel()
     }
 
-    /// Al mandar, grabar de nuevo o borrar: se suelta el archivo.
+    /// Al mandar, grabar de nuevo, borrar o salir: se suelta el archivo y la sesión, así la música del cliente vuelve.
     func soltar() {
         pausar()
         player = nil
         archivo = nil
         actual = 0
+        soltarSesion()
     }
 
+    private func soltarSesion() {
+        guard sesionTomada else { return }
+        sesionTomada = false
+        SesionAudio.soltar()
+    }
+
+    /// Al terminar de escucharse, la sesión se suelta con `.notifyOthersOnDeactivation` (revisión del 4-nov, punto 8).
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
             self.sonando = false
             self.actual = 0
             self.tics?.cancel()
+            self.soltarSesion()
         }
     }
 }
