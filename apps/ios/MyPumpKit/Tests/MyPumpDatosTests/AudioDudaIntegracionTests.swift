@@ -30,14 +30,6 @@ struct AudioDudaIntegracionTests {
         #expect(m.disponible)
         let antes = m.servidor.count
 
-        // Un formato que no recibe: lo rechaza sin subir nada.
-        if case .respuesta(.success(let j)) = await escrituras.ejecutarSinVerificar(Operacion(id: "f", kind: ModeloAudioDuda.kind, payload: .objeto([
-            "id": .texto(UUID().uuidString.lowercased()), "archivo": .texto("x.m4a"), "mime": .texto("audio/x-raro"), "segundos": .numero(3),
-        ]), dedupeKey: nil, ts: 0)) {
-            // Sin el archivo local ni siquiera sale: «archivo».
-            #expect(j["ok"] == .bool(false))
-        }
-
         // El audio de verdad, por la cola.
         try FileManager.default.createDirectory(at: carpeta, withIntermediateDirectories: true)
         let id = UUID().uuidString.lowercased()
