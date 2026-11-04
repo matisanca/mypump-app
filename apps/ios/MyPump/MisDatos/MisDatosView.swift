@@ -85,6 +85,14 @@ struct MisDatosView: View {
             }
 
             Section("Tu información") {
+                // «Tu guía» después de la entrega (o si la quitó de Entreno): una sola fila, primera, como en Android. Sale
+                // del resumen, sin cartel.
+                if let guia = GuiaUI.modelo, guia.mostrarFila {
+                    NavigationLink { GuiaView(modelo: guia) } label: {
+                        Label { Text("Ver mi guía") } icon: { IconoAzulejo("play.rectangle.fill", color: .marcaTexto) }
+                    }
+                    .accessibilityIdentifier("mis-datos-guia")
+                }
                 Button { fuentes = true } label: {
                     fila("Respaldo científico del plan", icono: "book.closed.fill", color: .marcaTexto)
                 }

@@ -218,17 +218,25 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
     }
 }
 
-/// Lo que devuelve `entregas_app_resumen` (`entregas_011`): solo lee y no marca `abierto_en`. Es lo que usa la tarjeta de
-/// inicio, al abrir la app y al volver a primer plano. Con token inválido, revocado o sin guía, `{"ok": false}`.
+/// Lo que devuelve `entregas_app_resumen` (`entregas_011`, y desde `entregas_014` también `fecha_entrega` y
+/// `mostrar_tarjeta`): solo lee y no marca `abierto_en`. Es lo que usa la tarjeta de inicio, al abrir la app y al volver a
+/// primer plano. Con token inválido, revocado o sin guía, `{"ok": false}` (y ahí no viene `mostrar_tarjeta`).
 public struct ResumenGuia: Codable, Equatable, Sendable {
     public var ok: Bool
     public var total: Int
     public var vistos: Int
     /// Ya viene redondeado a un decimal.
     public var minutosRestantes: Double
+    /// La de la videollamada, como en el get (timestamptz ISO o null). nil también si el servidor no la manda (la 012).
+    public var fechaEntrega: String?
+    /// Lo que dijo el servidor: `fecha_entrega` null o antes de las 48 h siguientes. nil = no vino (vuelta atrás a la 012):
+    /// la app hace la cuenta con `fechaEntrega` (`ReglasGuia.mostrarTarjeta`).
+    public var mostrarTarjetaServidor: Bool?
 
-    public init(ok: Bool, total: Int = 0, vistos: Int = 0, minutosRestantes: Double = 0) {
+    public init(ok: Bool, total: Int = 0, vistos: Int = 0, minutosRestantes: Double = 0, fechaEntrega: String? = nil,
+                mostrarTarjetaServidor: Bool? = nil) {
         self.ok = ok; self.total = total; self.vistos = vistos; self.minutosRestantes = minutosRestantes
+        self.fechaEntrega = fechaEntrega; self.mostrarTarjetaServidor = mostrarTarjetaServidor
     }
 
     public init(json: JSONValue) {
@@ -239,7 +247,9 @@ public struct ResumenGuia: Codable, Equatable, Sendable {
         self = r
     }
 
-    enum CodingKeys: String, CodingKey { case ok, total, vistos, minutosRestantes = "minutos_restantes" }
+    enum CodingKeys: String, CodingKey {
+        case ok, total, vistos, minutosRestantes = "minutos_restantes", fechaEntrega = "fecha_entrega", mostrarTarjetaServidor = "mostrar_tarjeta"
+    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -248,6 +258,9 @@ public struct ResumenGuia: Codable, Equatable, Sendable {
         vistos = min(max(0, c.entero(.vistos) ?? 0), max(0, c.entero(.total) ?? 0))
         let m = c.decimal(.minutosRestantes) ?? 0
         minutosRestantes = m.isFinite && m > 0 ? m : 0
+        fechaEntrega = c.texto(.fechaEntrega).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+        // Se lee primero ok: con false no hay tarjeta ni fila, venga lo que venga.
+        mostrarTarjetaServidor = ok ? c.booleano(.mostrarTarjetaServidor) : nil
     }
 
     /// Hay guía para mostrar la tarjeta: `ok` y al menos un video.

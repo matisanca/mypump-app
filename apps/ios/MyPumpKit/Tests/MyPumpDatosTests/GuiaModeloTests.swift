@@ -371,6 +371,81 @@ struct GuiaModeloTests {
         await m.actualizarResumen()
         #expect(m.resumen?.vistos == antes + 1)
     }
+
+    // MARK: - Después de la entrega (entregas_014)
+
+    @Test func conMostrarTarjetaFalseSaleDeEntrenoYQuedaLaFila() async {
+        let s = ServidorGuia(["entregas_app_resumen": #"{"ok":true,"total":13,"vistos":4,"minutos_restantes":7.4,"fecha_entrega":"2026-10-01T14:00:00+00:00","mostrar_tarjeta":false}"#])
+        let (m, _, _) = armar(s)
+        await m.actualizarResumen()
+        #expect(!m.mostrarTarjeta && m.mostrarFila && !m.puedeQuitarDeEntreno && !m.puedeVolverAMostrar)
+        #expect(s.llamadas(a: "entregas_app_get").isEmpty, "nada de esto llama al get")
+        // Abrir la guía recalcula los conteos pero no pierde `mostrar_tarjeta`.
+        s.responder("entregas_app_get", GuiaMuestra.json)
+        await m.abrir()
+        #expect(m.resumen?.total == 11 && m.resumen?.mostrarTarjetaServidor == false && !m.mostrarTarjeta)
+        // Con avances en la cola el resumen nuevo también trae su `mostrar_tarjeta`.
+        s.sinRed = true
+        await m.avance(video: "FT-2a", segundos: 100, visto: true)
+        s.sinRed = false
+        s.responder("entregas_app_resumen", #"{"ok":true,"total":11,"vistos":4,"minutos_restantes":6.2,"fecha_entrega":null,"mostrar_tarjeta":true}"#)
+        await m.actualizarResumen()
+        #expect(m.resumen?.vistos == 5 && m.mostrarTarjeta && !m.mostrarFila)
+    }
+
+    @Test func sinLosCamposSeCuentaConLaFechaDeLaGuia() async {
+        let vieja = GuiaMuestra.json.replacingOccurrences(of: #""fecha_entrega":null"#, with: #""fecha_entrega":"2026-01-01T10:00:00-03:00""#)
+        let s = ServidorGuia(["entregas_app_get": vieja])
+        let (m, _, _) = armar(s)
+        await m.abrir()
+        #expect(m.resumen?.fechaEntrega == "2026-01-01T10:00:00-03:00" && m.resumen?.mostrarTarjetaServidor == nil)
+        #expect(!m.mostrarTarjeta && m.mostrarFila)
+    }
+
+    @Test func quitarDeEntrenoQuedaEnElTelefonoPorCliente() async {
+        let s = ServidorGuia(["entregas_app_resumen": #"{"ok":true,"total":13,"vistos":4,"minutos_restantes":7.4,"fecha_entrega":null,"mostrar_tarjeta":true}"#])
+        let (m, _, _) = armar(s)
+        await m.actualizarResumen()
+        #expect(m.mostrarTarjeta && !m.mostrarFila && m.puedeQuitarDeEntreno)
+        m.quitarDeEntreno()
+        #expect(!m.mostrarTarjeta && m.mostrarFila && m.puedeVolverAMostrar)
+        let (otro, _, _) = armar(s)
+        #expect(otro.quitadaDeEntreno && !otro.mostrarTarjeta, "otro arranque recuerda que la quitó")
+        let ajeno = ModeloGuia(cliente: ClienteRPC(transporte: s), token: "otro_cliente_123456", outbox: nil,
+                               disco: Disco(raiz: raiz, token: "otro_cliente_123456"))
+        #expect(!ajeno.quitadaDeEntreno, "es por cliente")
+        otro.volverAMostrarEnEntreno()
+        let (tercero, _, _) = armar(s)
+        #expect(!tercero.quitadaDeEntreno && tercero.mostrarTarjeta)
+        // Con mostrar_tarjeta false ya no se ofrece volver.
+        m.quitarDeEntreno()
+        s.responder("entregas_app_resumen", #"{"ok":true,"total":13,"vistos":4,"minutos_restantes":7.4,"mostrar_tarjeta":false}"#)
+        await m.actualizarResumen()
+        #expect(!m.puedeVolverAMostrar && m.mostrarFila)
+        #expect(s.llamadas(a: "entregas_app_get").isEmpty)
+    }
+
+    @Test func okFalseNoDejaNiTarjetaNiFila() async {
+        let s = ServidorGuia(["entregas_app_resumen": #"{"ok":false}"#])
+        let (m, _, _) = armar(s)
+        await m.actualizarResumen()
+        #expect(!m.mostrarTarjeta && !m.mostrarFila)
+    }
+
+    @Test func laDemoGuardaElAvanceEnMemoriaYNoTocaLaRed() async {
+        let m = ModeloGuia(muestra: GuiaMuestra.guia)
+        #expect(m.mostrarTarjeta && !m.mostrarFila)
+        let antes = m.resumen?.vistos ?? 0
+        await m.avance(video: "FT-2a", segundos: 30, visto: true)
+        #expect(m.guia?.clips.first { $0.id == "FT-2a" }?.visto == true && m.resumen?.vistos == antes + 1)
+        await m.abrir()
+        await m.actualizarResumen()
+        #expect(m.estado == .lista)
+        m.quitarDeEntreno()
+        #expect(!m.mostrarTarjeta && m.mostrarFila)
+        let despues = ModeloGuia(muestra: GuiaMuestra.guia, mostrarTarjeta: false)
+        #expect(!despues.mostrarTarjeta && despues.mostrarFila)
+    }
 }
 
 /// Atajo de los tests: los renglones de una duda acumulada.

@@ -123,7 +123,7 @@ struct AccesoView: View {
         guard let r = Bundle.main.url(forResource: "rutina", withExtension: "json", subdirectory: "Demo.bundle"),
               let d = Bundle.main.url(forResource: "dieta", withExtension: "json", subdirectory: "Demo.bundle"),
               let rutina = try? Data(contentsOf: r), let dieta = try? Data(contentsOf: d) else { return }
-        withAnimation(.snappy) { modelo.entrarEnDemo(rutina: rutina, dieta: dieta) }
+        withAnimation(.snappy) { modelo.entrarEnDemo(rutina: rutina, dieta: dieta, guia: DemoGuia.datos) }
     }
 }
 

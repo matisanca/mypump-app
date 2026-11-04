@@ -214,8 +214,9 @@ public final class ModeloApp {
     }
 
     /// "Ver demo": la rutina y la dieta de ejemplo de la web (`SAMPLE_RUTINA` / `SAMPLE_DIET`, que la app trae
-    /// empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria.
-    public func entrarEnDemo(rutina: Data, dieta: Data) {
+    /// empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria. `guia`: «Tu guía» de
+    /// muestra (los clips genéricos de «Tu app», sin fecha de entrega), con el avance en memoria.
+    public func entrarEnDemo(rutina: Data, dieta: Data, guia: Data? = nil) {
         func envolver(_ estructura: Data, id: String) -> Data? {
             guard let e = try? JSONDecoder().decode(JSONValue.self, from: estructura) else { return nil }
             return try? JSONEncoder().encode(JSONValue.objeto(["id": .texto(id), "version": .numero(1), "estructura": e,
@@ -234,6 +235,8 @@ public final class ModeloApp {
         desdeCache = false
         sinRedEn = []
         esDemo = true
+        self.guia = guia.flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) }.map(Guia.init(json:))
+            .flatMap { $0.ok ? ModeloGuia(muestra: $0) : nil }
         if let r = self.rutina {
             entreno = ModeloEntreno(cliente: cliente, token: nil, outbox: nil, disco: nil, rutina: r, catalogo: catalogoVigente)
         }
@@ -244,7 +247,7 @@ public final class ModeloApp {
     /// Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada).
     public func salirDeDemo() async {
         esDemo = false
-        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; entreno = nil
+        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; entreno = nil; guia = nil
         token = almacen.leer()
         if let t = token {
             prepararCuenta(t)

@@ -38,6 +38,8 @@ enum Proveedor {
             // `-guiaOkFalse YES`: «Tu guía» contesta `{"ok": false}`, como con el token revocado o la página dada de baja (la
             // sección tiene que desaparecer). Lo demás va al servidor de verdad.
             if d.bool(forKey: "guiaOkFalse") { transporte = GuiaRevocada(resto: transporte) }
+            // `-guiaTarjeta no`: el resumen de verdad con `mostrar_tarjeta` false, como pasadas las 48 h de la entrega.
+            else if d.string(forKey: "guiaTarjeta") == "no" { transporte = GuiaDespuesDeLaEntrega(resto: transporte) }
             let m = ModeloApp(cliente: ClienteRPC(transporte: transporte), almacen: TokenEnMemoria(t))
             // `-offDePrueba encontrado|incompleto|noEncontrado|sinRed`: Open Food Facts de mentira (ver `OFFDePrueba`).
             if let caso = d.string(forKey: "offDePrueba") { m.transporteBarras = OFFDePrueba(caso: caso) }
@@ -70,6 +72,19 @@ private struct GuiaRevocada: Transporte {
             return (Data(#"{"ok":false}"#.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
         }
         return try await resto.enviar(pedido)
+    }
+}
+
+/// `-guiaTarjeta no`: `entregas_app_resumen` del servidor de verdad, con `mostrar_tarjeta` false (lo demás tal cual).
+private struct GuiaDespuesDeLaEntrega: Transporte {
+    let resto: any Transporte
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let (datos, respuesta) = try await resto.enviar(pedido)
+        guard pedido.url?.path.hasSuffix("entregas_app_resumen") == true,
+              var o = (try? JSONSerialization.jsonObject(with: datos)) as? [String: Any], o["ok"] as? Bool == true else { return (datos, respuesta) }
+        o["mostrar_tarjeta"] = false
+        return ((try? JSONSerialization.data(withJSONObject: o)) ?? datos, respuesta)
     }
 }
 

@@ -10,6 +10,8 @@ final class GuiaUITests: XCTestCase {
 
     override func setUp() async throws {
         continueAfterFailure = false
+        // La demo («Ver demo») no usa cuenta: corre sin el token.
+        if name.contains("Demo") { return }
         guard let t = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !t.isEmpty else {
             throw XCTSkip("Falta MYPUMP_TOKEN: estas pruebas usan el cliente de prueba, nunca un cliente.")
         }
@@ -256,6 +258,134 @@ final class GuiaUITests: XCTestCase {
         let a = XCTAttachment(string: hallazgos.isEmpty ? "sin hallazgos" : hallazgos.joined(separator: "\n"))
         a.name = "auditoria-guia"; a.lifetime = .keepAlways; add(a)
         XCTAssertTrue(hallazgos.filter { $0.contains("guia-") }.isEmpty, hallazgos.joined(separator: "\n"))
+    }
+
+    // MARK: - Después de la entrega y demo
+
+    private var evidencia: String? { ProcessInfo.processInfo.environment["GUIA_CAPTURAS"] }
+
+    /// Captura adjunta y, si se pidió (`GUIA_CAPTURAS`, la carpeta de la maqueta), también en disco.
+    private func capturaMaqueta(_ nombre: String) {
+        let s = XCUIScreen.main.screenshot()
+        let a = XCTAttachment(screenshot: s); a.name = nombre; a.lifetime = .keepAlways; add(a)
+        guard let dir = evidencia else { return }
+        let equipo = app.frame.width < 380 ? "SE" : (UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "17Pro")
+        try? s.pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent("ios-pe-\(nombre)-\(equipo).png"))
+    }
+
+    /// Mis datos, desde la pestaña Revisión.
+    private func abrirMisDatos() {
+        let pestana = app.pestana("Revisión")
+        XCTAssertTrue(pestana.waitForExistence(timeout: 10))
+        pestana.tap()
+        let boton = app.buttons["Mis datos"].firstMatch
+        XCTAssertTrue(boton.waitForExistence(timeout: 10))
+        boton.tap()
+        XCTAssertTrue(app.navigationBars["Mis datos"].waitForExistence(timeout: 10))
+    }
+
+    private var filaGuia: XCUIElement { app.buttons["mis-datos-guia"] }
+
+    /// Hasta el pie de la guía, donde está «Quitar de Entreno» o «Volver a mostrar en Entreno».
+    private func accionAlPie(_ id: String) -> XCUIElement {
+        let b = app.buttons[id]
+        var n = 0
+        while !(b.exists && b.isHittable) && n < 40 { app.swipeUp(velocity: .fast); n += 1 }
+        return b
+    }
+
+    /// 48 h después de la entrega (`mostrar_tarjeta` false, el resumen de verdad con ese campo cambiado): la tarjeta no
+    /// está en Entreno; la fila «Ver mi guía» de Mis datos sí, y abre la guía.
+    func testDespuesDeLaEntregaLaGuiaQuedaEnMisDatos() throws {
+        abrirApp(["-guiaVolverAEntreno", "YES"])
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 25))
+        abrirApp(["-guiaTarjeta", "no"])
+        XCTAssertTrue(esperar({ !self.tarjeta.exists }, segundos: 20), "La tarjeta siguió en Entreno con mostrar_tarjeta false")
+        XCTAssertTrue(app.pestana("Entreno").exists, "Tiene que seguir en Entreno")
+        capturaMaqueta("entreno-sin-tarjeta")
+        abrirMisDatos()
+        desplazarHasta(filaGuia)
+        XCTAssertTrue(filaGuia.waitForExistence(timeout: 10), "No está la fila «Ver mi guía»")
+        XCTAssertEqual(filaGuia.label, "Ver mi guía")
+        capturaMaqueta("fila")
+        filaGuia.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["guia-avance"].waitForExistence(timeout: 20), "La fila no abrió la guía")
+        // Con mostrar_tarjeta false no hay «Quitar de Entreno» ni «Volver a mostrar».
+        _ = accionAlPie("guia-quitar-entreno")
+        XCTAssertFalse(app.buttons["guia-quitar-entreno"].exists)
+        XCTAssertFalse(app.buttons["guia-volver-entreno"].exists)
+        // Con mostrar_tarjeta true la fila no está.
+        abrirApp()
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 25))
+        abrirMisDatos()
+        let respaldo = app.buttons["Respaldo científico del plan"]
+        desplazarHasta(respaldo)
+        XCTAssertTrue(respaldo.exists)
+        XCTAssertFalse(filaGuia.exists, "Con la tarjeta en Entreno la fila sobra")
+    }
+
+    /// «Quitar de Entreno»: la tarjeta sale (también al volver a abrir la app), la guía queda en Mis datos y desde ahí
+    /// «Volver a mostrar en Entreno» la devuelve.
+    func testQuitarDeEntrenoYVolverAMostrar() throws {
+        addTeardownBlock { @MainActor in
+            // Que una falla a mitad de camino no deje la tarjeta quitada para las demás pruebas.
+            self.app.terminate()
+            self.app.launchArguments = ["-token", self.token, "-pestana", "entreno", "-sinOnboarding", "YES", "-guiaVolverAEntreno", "YES"]
+            self.app.launch()
+            _ = self.tarjeta.waitForExistence(timeout: 25)
+        }
+        abrirApp(["-guiaVolverAEntreno", "YES"])
+        abrirGuia()
+        let quitar = accionAlPie("guia-quitar-entreno")
+        XCTAssertTrue(quitar.exists, "No está «Quitar de Entreno» al pie de la guía")
+        XCTAssertEqual(quitar.label, "Quitar de Entreno")
+        capturaMaqueta("accion")
+        quitar.tap()
+        XCTAssertTrue(app.buttons["guia-volver-entreno"].waitForExistence(timeout: 5), "No ofrece volver a mostrarla")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(esperar({ !self.tarjeta.exists }, segundos: 5), "La tarjeta siguió en Entreno")
+        // Queda guardado en el teléfono.
+        abrirApp()
+        sleep(3)
+        XCTAssertFalse(tarjeta.exists, "Al volver a abrir la app la tarjeta volvió")
+        abrirMisDatos()
+        desplazarHasta(filaGuia)
+        XCTAssertTrue(filaGuia.waitForExistence(timeout: 10))
+        filaGuia.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["guia-avance"].waitForExistence(timeout: 20))
+        let volver = accionAlPie("guia-volver-entreno")
+        XCTAssertTrue(volver.exists, "No está «Volver a mostrar en Entreno»")
+        capturaMaqueta("volver")
+        volver.tap()
+        XCTAssertTrue(app.buttons["guia-quitar-entreno"].waitForExistence(timeout: 5))
+        app.pestana("Entreno").tap()
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 10), "La tarjeta no volvió a Entreno")
+    }
+
+    /// «Ver demo» (la revisión de Apple, sin cuenta): la tarjeta de la guía está en Entreno y abre los clips de «Tu app».
+    func testDemoTieneLaGuia() throws {
+        app.terminate()
+        app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "entreno"]
+        app.launch()
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 15), "La demo no muestra la tarjeta de «Tu guía»")
+        XCTAssertTrue(tarjeta.label.contains("8 videos"), "La tarjeta de la demo dice otra cosa: \(tarjeta.label)")
+        capturaMaqueta("demo-tarjeta")
+        tarjeta.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["guia-avance"].waitForExistence(timeout: 10), "No abrió la guía de la demo")
+        XCTAssertEqual(filas().count, 8, "La demo tiene que traer los 8 clips de «Tu app»")
+        let titulo = app.staticTexts["guia-titulo-actual"]
+        XCTAssertTrue(titulo.waitForExistence(timeout: 5))
+        XCTAssertEqual(titulo.label, "¿Cómo funciona la app Pump Team?")
+        capturaMaqueta("demo-guia")
+        // Reproduce de verdad la URL pública: el primer video queda visto al terminar (dura unos 40 s).
+        let primera = app.buttons["guia-fila-FT-2b"]
+        desplazarHasta(primera)
+        primera.tap()
+        XCTAssertTrue(esperar({ (primera.value as? String ?? "").hasPrefix("Visto") }, segundos: 60),
+                      "El video de la demo no se reprodujo hasta el final")
+        capturaMaqueta("demo-reproduciendo")
+        // Nada sale: no hay «Quitar de Entreno» que falle; si está, oculta la tarjeta solo en memoria.
+        XCTAssertTrue(accionAlPie("guia-quitar-entreno").exists)
     }
 
     /// Los segundos de la duración que dice el valor de la fila («Sin ver, 18 segundos», «1 minuto y 12 segundos»).
