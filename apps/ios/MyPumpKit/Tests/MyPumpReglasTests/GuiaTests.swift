@@ -428,3 +428,77 @@ struct GuiaRevisionTests {
         #expect(!ReglasGuia.estaAlFinal(.nan, duracion: 60))
     }
 }
+
+@Suite("Tu guía: después de la entrega (entregas_014)")
+struct GuiaPostEntregaTests {
+    private func r(_ campos: [String: JSONValue]) -> ResumenGuia {
+        var o: [String: JSONValue] = ["ok": .bool(true), "total": .numero(8), "vistos": .numero(2), "minutos_restantes": .numero(3.1)]
+        for (k, v) in campos { o[k] = v }
+        return ResumenGuia(json: .objeto(o))
+    }
+    private let ahora = ISO8601DateFormatter().date(from: "2026-11-04T15:00:00Z")!
+
+    @Test func lee014() {
+        let x = r(["fecha_entrega": .texto("2026-11-01T14:00:00+00:00"), "mostrar_tarjeta": .bool(false)])
+        #expect(x.fechaEntrega == "2026-11-01T14:00:00+00:00" && x.mostrarTarjetaServidor == false)
+        let y = r([:])
+        #expect(y.fechaEntrega == nil && y.mostrarTarjetaServidor == nil, "la 012 no los manda")
+        let copia = try? JSONDecoder().decode(ResumenGuia.self, from: JSONEncoder().encode(x))
+        #expect(copia == x, "la copia guardada los conserva")
+    }
+
+    @Test func mostrarTarjetaTrueYFalseMandan() {
+        // Lo del servidor manda aunque la fecha diga otra cosa.
+        #expect(ReglasGuia.mostrarTarjeta(r(["mostrar_tarjeta": .bool(true), "fecha_entrega": .texto("2020-01-01T00:00:00Z")]), ahora: ahora))
+        #expect(!ReglasGuia.mostrarTarjeta(r(["mostrar_tarjeta": .bool(false), "fecha_entrega": .null]), ahora: ahora))
+    }
+
+    @Test func sinElCampoSeCuentaConLaFecha() {
+        // 48 h exactas: hasta el instante anterior sí, desde ese instante no.
+        #expect(ReglasGuia.mostrarTarjeta(r(["fecha_entrega": .texto("2026-11-02T15:00:01Z")]), ahora: ahora))
+        #expect(!ReglasGuia.mostrarTarjeta(r(["fecha_entrega": .texto("2026-11-02T15:00:00Z")]), ahora: ahora))
+        #expect(ReglasGuia.mostrarTarjeta(r(["fecha_entrega": .texto("2026-11-06T10:00:00-03:00")]), ahora: ahora), "entrega por venir")
+        #expect(!ReglasGuia.mostrarTarjeta(r(["fecha_entrega": .texto("2026-10-20 14:00:00.123456+00")]), ahora: ahora), "como lo escribe Postgres")
+        #expect(ReglasGuia.mostrarTarjeta(r(["fecha_entrega": .null]), ahora: ahora), "fecha null: se muestra")
+    }
+
+    @Test func sinNingunoDeLosDosSeMuestra() {
+        #expect(ReglasGuia.mostrarTarjeta(r([:]), ahora: ahora))
+        #expect(ReglasGuia.mostrarTarjeta(r(["fecha_entrega": .texto("cualquier cosa")]), ahora: ahora), "fecha ilegible: se muestra")
+        #expect(ReglasGuia.tarjetaEnEntreno(r([:]), quitada: false, ahora: ahora))
+        #expect(!ReglasGuia.filaEnMisDatos(r([:]), quitada: false, ahora: ahora))
+    }
+
+    @Test func okFalseNoHayTarjetaNiFila() {
+        let x = ResumenGuia(json: .objeto(["ok": .bool(false), "mostrar_tarjeta": .bool(true)]))
+        #expect(x.mostrarTarjetaServidor == nil, "con ok false se lee primero ok")
+        #expect(!ReglasGuia.mostrarTarjeta(x, ahora: ahora))
+        #expect(!ReglasGuia.tarjetaEnEntreno(x, quitada: false, ahora: ahora))
+        #expect(!ReglasGuia.filaEnMisDatos(x, quitada: false, ahora: ahora))
+        #expect(!ReglasGuia.filaEnMisDatos(x, quitada: true, ahora: ahora))
+        #expect(!ReglasGuia.puedeVolverAMostrar(x, quitada: true, ahora: ahora))
+        #expect(!ReglasGuia.filaEnMisDatos(nil, quitada: false, ahora: ahora))
+    }
+
+    @Test func conFalseSaleLaTarjetaYQuedaLaFila() {
+        let x = r(["mostrar_tarjeta": .bool(false)])
+        #expect(!ReglasGuia.tarjetaEnEntreno(x, quitada: false, ahora: ahora))
+        #expect(ReglasGuia.filaEnMisDatos(x, quitada: false, ahora: ahora))
+        #expect(!ReglasGuia.puedeVolverAMostrar(x, quitada: true, ahora: ahora), "volver solo si mostrar_tarjeta sigue true")
+    }
+
+    @Test func quitarDeEntreno() {
+        let x = r(["mostrar_tarjeta": .bool(true)])
+        #expect(ReglasGuia.tarjetaEnEntreno(x, quitada: false, ahora: ahora))
+        #expect(!ReglasGuia.tarjetaEnEntreno(x, quitada: true, ahora: ahora))
+        #expect(ReglasGuia.filaEnMisDatos(x, quitada: true, ahora: ahora))
+        #expect(ReglasGuia.puedeVolverAMostrar(x, quitada: true, ahora: ahora))
+        #expect(!ReglasGuia.puedeVolverAMostrar(x, quitada: false, ahora: ahora))
+    }
+
+    @Test func okSinVideosNoTieneTarjetaPeroSiFila() {
+        let x = ResumenGuia(json: .objeto(["ok": .bool(true), "total": .numero(0), "mostrar_tarjeta": .bool(true)]))
+        #expect(!ReglasGuia.tarjetaEnEntreno(x, quitada: false, ahora: ahora))
+        #expect(ReglasGuia.filaEnMisDatos(x, quitada: false, ahora: ahora))
+    }
+}

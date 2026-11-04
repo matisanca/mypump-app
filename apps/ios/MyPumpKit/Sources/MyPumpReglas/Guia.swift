@@ -285,6 +285,53 @@ public enum ReglasGuia {
         return "Video \(i + 1) de \(total)" + (b.map { " · \($0)" } ?? "")
     }
 
+    // MARK: - Después de la entrega
+
+    /// Cuánto sigue la tarjeta en Entreno después de la videollamada (`entregas_014`: 48 h exactas).
+    public static let horasTarjetaDespues: Double = 48
+
+    /// `mostrar_tarjeta` con la regla de `entregas_014`: se lee primero `ok` (con false, nada). Si el servidor lo mandó,
+    /// manda eso. Si no vino (vuelta atrás a la 012), la misma cuenta con `fecha_entrega`: null o antes de las 48 h
+    /// siguientes. Sin ninguno de los dos, o con una fecha que no se entiende, se muestra (como antes).
+    public static func mostrarTarjeta(_ r: ResumenGuia?, ahora: Date = Date()) -> Bool {
+        guard let r, r.ok else { return false }
+        if let m = r.mostrarTarjetaServidor { return m }
+        guard let f = r.fechaEntrega, let d = instante(f) else { return true }
+        return ahora < d.addingTimeInterval(horasTarjetaDespues * 3600)
+    }
+
+    /// La tarjeta va en Entreno: hay guía con videos, el servidor (o la cuenta) dice que sí y el cliente no la quitó.
+    public static func tarjetaEnEntreno(_ r: ResumenGuia?, quitada: Bool, ahora: Date = Date()) -> Bool {
+        r?.hayGuia == true && !quitada && mostrarTarjeta(r, ahora: ahora)
+    }
+
+    /// La fila «Ver mi guía» de Mis datos: con `ok: true` y la tarjeta fuera de Entreno (por la fecha o porque la quitó).
+    public static func filaEnMisDatos(_ r: ResumenGuia?, quitada: Bool, ahora: Date = Date()) -> Bool {
+        r?.ok == true && !tarjetaEnEntreno(r, quitada: quitada, ahora: ahora)
+    }
+
+    /// «Volver a mostrar en Entreno»: solo si la quitó y la tarjeta todavía correspondería.
+    public static func puedeVolverAMostrar(_ r: ResumenGuia?, quitada: Bool, ahora: Date = Date()) -> Bool {
+        quitada && tarjetaEnEntreno(r, quitada: false, ahora: ahora)
+    }
+
+    /// Un instante del servidor: ISO con zona (con o sin fracción, de cualquier largo; con «T» o con espacio, como lo
+    /// escribe Postgres). Solo la fecha cuenta desde el principio de ese día en Buenos Aires.
+    public static func instante(_ s: String) -> Date? {
+        var t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.count == 10 { t += "T00:00:00-03:00" }
+        if t.count > 10, t[t.index(t.startIndex, offsetBy: 10)] == " " {
+            t.replaceSubrange(t.index(t.startIndex, offsetBy: 10)...t.index(t.startIndex, offsetBy: 10), with: "T")
+        }
+        // La fracción a milésimas (el formateador no entiende microsegundos) y «+00» a «+00:00».
+        if let r = t.range(of: #"\.\d+"#, options: .regularExpression) {
+            let frac = t[r].dropFirst()
+            t.replaceSubrange(r, with: "." + String((frac + "000").prefix(3)))
+        }
+        if t.range(of: #"[+-]\d{2}$"#, options: .regularExpression) != nil { t += ":00" }
+        return fechaISO(t)
+    }
+
     // MARK: - Fechas
 
     static let zonaBA = TimeZone(identifier: "America/Argentina/Buenos_Aires") ?? TimeZone(secondsFromGMT: -3 * 3600)!

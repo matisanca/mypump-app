@@ -66,6 +66,10 @@ struct EntrenoView: View {
         .preguntas(preguntador)
         .onChange(of: entrenamiento.motor?.dia.dia.id, initial: true) { _, _ in abrirParaCapturas() }
         .onAppear {
+            #if DEBUG
+            // Pruebas: `-guiaVolverAEntreno YES` deshace un «Quitar de Entreno» que quedó de una corrida anterior.
+            if UserDefaults.standard.bool(forKey: "guiaVolverAEntreno") { GuiaUI.modelo?.volverAMostrarEnEntreno() }
+            #endif
             // Capturas y pruebas: `-abrir guia` entra directo a «Tu guía».
             if GuiaUI.abrirAlArrancar, !DemoUI.abrioYa.contains("guia"), GuiaUI.modelo != nil {
                 DemoUI.abrioYa.insert("guia")

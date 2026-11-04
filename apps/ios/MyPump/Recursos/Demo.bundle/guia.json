@@ -1,0 +1,97 @@
+{
+  "ok": true,
+  "nombre_pila": null,
+  "fecha_entrega": null,
+  "clips": [
+    {
+      "id": "FT-25a",
+      "titulo": "¿Cómo funciona la app Pump Team?",
+      "url": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/5231c1bde6641101/FT-25a.mp4",
+      "minutos": 0.7,
+      "motivo": "Conectá tu reloj a la app y subí tu check en la sección de revisión todas las semanas. ||| Para que sepas dónde está cada cosa de tu plan",
+      "bloque": "Tu app",
+      "visto": false,
+      "segundos": 0,
+      "duda": null
+    },
+    {
+      "id": "FT-2b",
+      "titulo": "¿Cómo subo las cargas semana a semana?",
+      "url": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/4f6624e371325690/FT-2b.mp4",
+      "minutos": 0.3,
+      "motivo": "Cuando de una semana a otra bajan las repeticiones, por ejemplo de 3x12 a 3x10, subí la carga. ||| Para que llegues sabiendo, como todos antes de arrancar, que cuando bajan las repeticiones de tu rutina toca subir la carga.",
+      "bloque": "Tu app",
+      "visto": false,
+      "segundos": 0,
+      "duda": null
+    },
+    {
+      "id": "FT-2c",
+      "titulo": "¿Cómo cierro el entrenamiento y paso de semana?",
+      "url": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/13caa30e391b8bb7/FT-2c.mp4",
+      "minutos": 0.3,
+      "motivo": "Al terminar cada sesión marcala como hecha y, cuando completes la semana, tocá pasar a la semana siguiente. ||| Al terminar cada entrenamiento lo cerrás en la app, así se arma tu semana",
+      "bloque": "Tu app",
+      "visto": false,
+      "segundos": 0,
+      "duda": null
+    },
+    {
+      "id": "FT-9a",
+      "titulo": "¿Cómo sustituyo un alimento en la app?",
+      "url": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/006e4973b91165b2/FT-9a.mp4",
+      "minutos": 0.6,
+      "motivo": "Si no te gusta una opción de comida, tocá el botón de sustituir en ese alimento y elegí un reemplazo, que ya viene con la cantidad cuadrada. ||| Si un alimento no te gusta o no lo conseguís, lo cambiás vos en la app",
+      "bloque": "Tu app",
+      "visto": false,
+      "segundos": 0,
+      "duda": null
+    },
+    {
+      "id": "FT-9b",
+      "titulo": "¿Tengo que pesar todo? ¿Cómo uso las porciones con la mano?",
+      "url": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/4109e672f7be3242/FT-9b.mp4",
+      "minutos": 0.5,
+      "motivo": "Si no tenés balanza a mano, tocá el ícono de la mano en cada alimento y usá esa porción como referencia. ||| Así no dependés de la balanza cuando comés afuera",
+      "bloque": "Tu app",
+      "visto": false,
+      "segundos": 0,
+      "duda": null
+    },
+    {
+      "id": "FT-9c",
+      "titulo": "¿Cómo cargo una comida libre o un alimento con foto o etiqueta?",
+      "url": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/dfdf44d3d259c4d6/FT-9c.mp4",
+      "minutos": 0.5,
+      "motivo": "Si hacés una comida libre, sacale una foto desde la app para registrarla, y si un alimento no está, crealo sacándole foto a la etiqueta. ||| Para cargar una comida libre o un alimento con foto o etiqueta",
+      "bloque": "Tu app",
+      "visto": false,
+      "segundos": 0,
+      "duda": null
+    },
+    {
+      "id": "FT-2a",
+      "titulo": "¿Qué subo en la revisión semanal?",
+      "url": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/b0cda179e409be15/FT-2a.mp4",
+      "minutos": 0.3,
+      "motivo": "Cada lunes cargá en Revisión las fotos, el peso y el check del 1 al 5 de energía, descanso, hambre y adherencia. ||| Cada lunes me mandás la revisión, acá ves qué subir",
+      "bloque": "Tu app",
+      "visto": false,
+      "segundos": 0,
+      "duda": null
+    },
+    {
+      "id": "FT-2d",
+      "titulo": "¿Para qué sirve el chat de la app?",
+      "url": "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/b199cc7f4c12247b/FT-2d.mp4",
+      "minutos": 0.3,
+      "motivo": "Escribime cualquier duda por el chat de la app o por WhatsApp, como te sea más cómodo. ||| Para cualquier duda me escribís, acá ves por dónde",
+      "bloque": "Tu app",
+      "visto": false,
+      "segundos": 0,
+      "duda": null
+    }
+  ],
+  "dudas_llamada": [],
+  "suplementacion": null
+}

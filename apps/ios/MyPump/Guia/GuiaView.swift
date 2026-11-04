@@ -165,6 +165,7 @@ struct GuiaView: View {
             .font(.subheadline).foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .tarjeta()
+        AccionEntreno(modelo: modelo)
     }
 
     private func irAlReproductor(_ lector: ScrollViewProxy, desde fila: String?) {
@@ -180,7 +181,7 @@ struct GuiaView: View {
         let a = ReglasGuia.avance(clips)
         let cuando = ReglasGuia.fechaLlamada(g?.fechaEntrega)
         return VStack(alignment: .leading, spacing: Espacio.xs) {
-            Text("Hola \(g?.nombrePila ?? "")")
+            Text(g?.nombrePila.flatMap { $0.isEmpty ? nil : "Hola \($0)" } ?? "Hola")
                 .font(.title2.weight(.bold))
                 .accessibilityAddTraits(.isHeader)
             Text(despues ? "Te dejo estos videos según lo que hablamos en la videollamada. Miralos con calma, te van a servir para arrancar bien."
@@ -748,6 +749,45 @@ private struct BannerGuiaSinConexion: View {
     }
 }
 
+// MARK: - Quitar de Entreno
+
+/// Al pie de la guía, discreta: «Quitar de Entreno» saca la tarjeta antes de tiempo (queda la fila de Mis datos) y, si
+/// la quitó y todavía correspondería, «Volver a mostrar en Entreno». Se guarda solo en el teléfono.
+private struct AccionEntreno: View {
+    let modelo: ModeloGuia
+
+    var body: some View {
+        Group {
+            if modelo.puedeQuitarDeEntreno {
+                boton("Quitar de Entreno", icono: "eye.slash", id: "guia-quitar-entreno") { modelo.quitarDeEntreno() }
+                    .accessibilityHint("La guía queda en Mis datos")
+            } else if modelo.puedeVolverAMostrar {
+                boton("Volver a mostrar en Entreno", icono: "eye", id: "guia-volver-entreno") { modelo.volverAMostrarEnEntreno() }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, Espacio.xs)
+    }
+
+    private func boton(_ titulo: String, icono: String, id: String, accion: @escaping () -> Void) -> some View {
+        Button { withAnimation(.snappy) { accion() } } label: {
+            Label(titulo, systemImage: icono).font(.subheadline)
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(.secondary)
+        .frame(minHeight: 44)
+        .accessibilityIdentifier(id)
+    }
+}
+
+/// «Tu guía» de la demo («Ver demo», la revisión de Apple): los clips genéricos de «Tu app» que trae la app
+/// (`Demo.bundle/guia.json`, como la rutina y la dieta de ejemplo), sin fecha de entrega ni suplementación.
+enum DemoGuia {
+    static var datos: Data? {
+        Bundle.main.url(forResource: "guia", withExtension: "json", subdirectory: "Demo.bundle").flatMap { try? Data(contentsOf: $0) }
+    }
+}
+
 // MARK: - Tarjeta de inicio
 
 /// La entrada en Entreno: aparece solo con `entregas_app_resumen` en `ok: true`, con el avance («4 de 13 videos, te
@@ -757,7 +797,8 @@ struct TarjetaGuia: View {
     let abrir: () -> Void
 
     var body: some View {
-        if let r = modelo.resumen, r.hayGuia {
+        // Con `mostrar_tarjeta` false (48 h después de la entrega) o «Quitar de Entreno», sale sola: queda la fila de Mis datos.
+        if modelo.mostrarTarjeta, let r = modelo.resumen {
             let a = ReglasGuia.Avance(total: r.total, vistos: r.vistos, minutosRestantes: r.minutosRestantes)
             Button(action: abrir) {
                 HStack(spacing: Espacio.s) {
@@ -803,7 +844,9 @@ enum GuiaUI {
     }
 
     #if DEBUG
-    private static let muestra = ModeloGuia(muestra: GuiaMuestra.guia)
+    /// `-guiaTarjeta no`: el resumen de muestra con `mostrar_tarjeta` false (después de la entrega).
+    private static let muestra = ModeloGuia(muestra: GuiaMuestra.guia,
+                                            mostrarTarjeta: UserDefaults.standard.string(forKey: "guiaTarjeta") == "no" ? false : nil)
     #endif
 
     /// `-sinRed YES` (DEBUG): el reproductor dice «Necesitás conexión» aunque el simulador tenga red.
