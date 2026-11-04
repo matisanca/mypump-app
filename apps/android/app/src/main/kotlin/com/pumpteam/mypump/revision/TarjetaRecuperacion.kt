@@ -83,12 +83,14 @@ fun TarjetaRecuperacionRevision(salud: ModeloSalud?, alAbrirSalud: () -> Unit, m
 fun TarjetaProgresoRevision(modelo: ModeloApp, alAbrirFuerza: () -> Unit, modifier: Modifier = Modifier) {
     val progreso by modelo.progreso.collectAsStateWithLifecycle()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    val conRutina = modelo.rutina.collectAsStateWithLifecycle().value != null
     val tarjetas = progreso?.tarjetas?.collectAsStateWithLifecycle()?.value.orEmpty()
     val alcance = LocalAlcanceApp.current
     // Como al abrir Fuerza: solo si no hay tarjetas o faltó la red, en el alcance de la app (cambiar de pestaña no la corta).
-    LaunchedEffect(progreso, esDemo) {
+    // Espera a la rutina: sin ella la carga deja la lista vacía y la tarjeta quedaba en lo genérico (revisión, hallazgo 1).
+    LaunchedEffect(progreso, esDemo, conRutina) {
         val p = progreso ?: return@LaunchedEffect
-        if (esDemo) return@LaunchedEffect
+        if (esDemo || !conRutina) return@LaunchedEffect
         if (p.tarjetas.value.isEmpty() || p.estado.value == ModeloProgreso.Estado.SIN_RED) alcance.launch { modelo.cargarProgreso() }
     }
     val hoy = FechaLocal.hoy()
@@ -96,7 +98,8 @@ fun TarjetaProgresoRevision(modelo: ModeloApp, alAbrirFuerza: () -> Unit, modifi
         if (esDemo) null else ProgresoSemana.linea(tarjetas.map { ProgresoSemana.ejercicio(it.nombre, it.filas) }, hoy)
     }
     val c = MyPump.colores
-    TarjetaRevision("📈", "Tu progreso", "Ver fuerza y récords", "tarjeta-progreso-revision", alAbrirFuerza, modifier) {
+    TarjetaRevision("📈", "Tu progreso", "Ver fuerza y récords", "tarjeta-progreso-revision", alAbrirFuerza, modifier,
+        pista = "Abre tu fuerza y tus récords") {
         if (linea != null) {
             // Con un récord, el trofeo a la izquierda (decorativo: el texto ya dice «Récord»).
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
@@ -120,6 +123,7 @@ private fun TarjetaRevision(
     etiqueta: String,
     alTocar: () -> Unit,
     modifier: Modifier,
+    pista: String = "Abre Salud",
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
     val c = MyPump.colores
@@ -127,7 +131,7 @@ private fun TarjetaRevision(
         modifier
             .fillMaxWidth()
             .superficieTarjeta()
-            .clickable(role = Role.Button, onClickLabel = "Abre Salud", onClick = alTocar)
+            .clickable(role = Role.Button, onClickLabel = pista, onClick = alTocar)
             .padding(Espacio.m)
             .testTag(etiqueta),
         verticalArrangement = Arrangement.spacedBy(Espacio.s),
@@ -175,6 +179,8 @@ private fun ConScore(s: SaludVista.ConScore) {
             }
         }
     }
-    (s.frase ?: s.motivos.firstOrNull()?.texto)?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+    // Como iOS: la frase o, sin frase, el primer motivo con su flecha.
+    (s.frase ?: s.motivos.firstOrNull()?.let { "${if (it.sube) "↑" else "↓"} ${it.texto}" })
+        ?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
     s.notaVieja?.let { NotaSalud(it) }
 }

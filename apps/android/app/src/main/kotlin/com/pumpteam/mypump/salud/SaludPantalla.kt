@@ -96,6 +96,13 @@ fun SaludPantalla(modelo: ModeloApp, alVolver: (() -> Unit)? = null) {
     val tarjetas = progreso?.tarjetas?.collectAsStateWithLifecycle()?.value.orEmpty()
     // El ejercicio abierto en Fuerza (su id). Sobrevive a cambiar de pestaña y a rotar, como la pila de iOS.
     var abierto by rememberSaveable { mutableStateOf<String?>(null) }
+    // Abrir Salud de nuevo (la tarjeta o un aviso) arranca en la lista, no en el ejercicio que había quedado abierto.
+    val aperturas = navegacion?.aperturasSalud ?: 0
+    var aperturaVista by rememberSaveable { mutableStateOf(aperturas) }
+    if (aperturas != aperturaVista) {
+        aperturaVista = aperturas
+        abierto = null
+    }
     // Afuera de la lista: al volver del detalle queda donde estaba.
     val estadoLista = rememberLazyListState()
     val elegida = abierto?.takeIf { segmento == SegmentoSalud.FUERZA }?.let { id -> tarjetas.firstOrNull { it.id == id } }

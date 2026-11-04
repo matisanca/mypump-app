@@ -99,6 +99,10 @@ class Navegacion(
     /** El segmento de Salud: arranca en Recuperación y queda el último elegido mientras viva la app. */
     var segmentoSalud by mutableStateOf(segmentoSalud)
 
+    /** Cuántas veces se pidió abrir Salud: Salud lo mira para volver a la lista de Fuerza en vez del detalle viejo. */
+    var aperturasSalud by mutableStateOf(0)
+        private set
+
     /** Tocar una pestaña. Tocar Revisión estando en Mis datos vuelve a Revisión (como volver al principio de la pila). */
     fun elegir(p: Pestana) {
         if (p == pestana && p == Pestana.REVISION) {
@@ -142,6 +146,9 @@ class Navegacion(
      */
     fun irASalud(segmento: SegmentoSalud) {
         segmentoSalud = segmento
+        // Mis datos quedaba prendido: al volver a Revisión desde la barra caía ahí (revisión, hallazgo 2).
+        misDatos = false
+        aperturasSalud++
         pestana = Pestana.SALUD
     }
 

@@ -12,8 +12,8 @@ import org.junit.runner.RunWith
 
 /**
  * «Salud dentro de Revisión» (2.1.0, `docs/NATIVA_SALUD_EN_REVISION.md`): la barra sin Salud, la tarjeta Recuperación
- * arriba de todo en Revisión que abre Salud, un aviso de fuerza que abre Revisión + Salud en ese segmento y «Tu salud,
- * últimos 7 días» en el check de la demo (con la salud de muestra, ficticia). Las capturas quedan en
+ * arriba de todo en Revisión que abre Salud, «Tu progreso» que abre Fuerza, un aviso de fuerza que abre Revisión + Salud
+ * en ese segmento y que la demo, sin datos de salud, no muestra «Tu salud, últimos 7 días» en el check. Las capturas quedan en
  * [Telefono.CARPETA_CAPTURAS] (`salud-rev-*`).
  */
 @RunWith(AndroidJUnit4::class)

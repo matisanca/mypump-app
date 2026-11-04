@@ -104,7 +104,8 @@ final class SaludUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 5), "La tarjeta no abrió Salud")
         XCTAssertTrue(control.buttons["Recuperación"].isSelected, "No abrió en Recuperación")
         app.buttons["salud-cerrar"].tap()
-        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "«Listo» no volvió a Revisión")
+        // La tarjeta existe detrás de la hoja: lo que prueba el cierre es que la barra de Salud se va.
+        XCTAssertTrue(app.navigationBars["Salud"].waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
 
         // «Tu progreso», debajo: abre Salud en Fuerza.
         let progreso = app.buttons["tarjeta-progreso-revision"]
@@ -115,6 +116,7 @@ final class SaludUITests: XCTestCase {
         XCTAssertTrue(control.buttons["Fuerza"].isSelected, "Tu progreso no abrió Fuerza")
         captura("salud-fuerza-desde-progreso")
         app.buttons["salud-cerrar"].tap()
+        XCTAssertTrue(app.navigationBars["Salud"].waitForNonExistence(timeout: 5), "«Listo» no cerró Salud")
         // Volver a tocar Recuperación después de cerrar: la hoja vuelve a abrir (y en Recuperación).
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
         tarjeta.tap()
