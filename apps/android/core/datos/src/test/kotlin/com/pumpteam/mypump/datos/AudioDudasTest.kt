@@ -111,7 +111,8 @@ class AudioDudasTest {
         // Confirmado: el archivo se borra y se ve «Listo, me llegó tu audio» hasta que la lista lo traiga.
         assertTrue(carpetaAudios(e.disco).listFiles()!!.isEmpty())
         assertEquals(ModeloAudioDudas.Estado.SUBIDO, e.m.items.value.single().estado)
-        assertTrue(e.s.a("entregas_app_audios").isNotEmpty(), "después de mandar se pide la lista")
+        // Sin la guía a la vista no se pide la lista (hallazgo 10; con la guía abierta lo prueba alGuardarSoloPideLaListaConLaGuiaALaVista).
+        assertTrue(e.s.a("entregas_app_audios").isEmpty())
     }
 
     @Test
@@ -509,5 +510,30 @@ class AudioDudasTest {
         assertEquals(ModeloAudioDudas.Estado.SUBIDO, e.m.items.value.single().estado)
         // Mismo p_id y marcado como reintento.
         assertEquals(setOf(item.id), s.a("entregas_app_audio_iniciar").map { s.cuerpo(it)["p_id"]?.comoTexto }.toSet())
+    }
+
+    @Test
+    fun alGuardarSoloPideLaListaConLaGuiaALaVista() = enUnHilo { alcance ->
+        // Hallazgo 10: un audio que sale con la guía cerrada no llama a `entregas_app_audios`.
+        val s = Servidor(normal())
+        val e = entorno(alcance, s, esperar = { kotlinx.coroutines.awaitCancellation() })
+        e.m.mandar(grabado(), 10)
+        e.cola.drenar()
+        asentar()
+        assertEquals(0, e.cola.pendientes())
+        assertTrue(s.a("entregas_app_audios").isEmpty(), "sin la guía a la vista no se pregunta")
+        assertEquals(ModeloAudioDudas.Estado.SUBIDO, e.m.items.value.single().estado)
+        // Con la guía a la vista: la lista al abrir y otra al confirmarse el audio.
+        val seguir = alcance.launch { e.m.seguir() }
+        asentar()
+        assertTrue(e.m.aLaVista)
+        assertEquals(1, s.a("entregas_app_audios").size)
+        e.m.mandar(grabado(), 10)
+        e.cola.drenar()
+        asentar()
+        assertEquals(2, s.a("entregas_app_audios").size)
+        seguir.cancel()
+        asentar()
+        assertFalse(e.m.aLaVista)
     }
 }

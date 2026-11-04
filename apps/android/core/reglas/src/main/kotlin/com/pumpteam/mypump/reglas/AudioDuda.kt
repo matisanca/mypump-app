@@ -50,9 +50,6 @@ object ReglasAudioDuda {
     const val MUY_CORTO = "No se escuchó nada, probá de nuevo."
     const val VISTA_PREVIA = "Vista previa: el audio no se manda."
 
-    /** El modo silencio de iOS no existe igual en Android: lo que apaga la revisión es el volumen multimedia. */
-    const val SIN_SONIDO = "Si no lo escuchás, fijate que el volumen del celu no esté en cero."
-
     /** `NotAllowedError` de la web, adaptado a la app: en Android el permiso está en los ajustes de la app. */
     const val PERMISO_NEGADO = "Tu celu no me dio permiso para el micrófono. Tocá «Abrir ajustes», entrá en Permisos, Micrófono y ponelo en Permitir. O escribime la duda acá arriba."
     const val ABRIR_AJUSTES = "Abrir ajustes"

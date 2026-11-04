@@ -1,8 +1,8 @@
 package com.pumpteam.mypump.guia
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
@@ -25,10 +25,13 @@ fun TarjetaGuiaDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     val g = guia ?: return
     val (resumen, lugar) = lugarDeLaGuia(g)
     if (resumen == null || lugar != ReglasGuia.Lugar.ENTRENO) return
-    when (ReglasGuia.estiloTarjeta(resumen)) {
+    val estilo = ReglasGuia.estiloTarjeta(resumen)
+    if (estilo == ReglasGuia.EstiloTarjeta.DESTACADA) LaunchedEffect(g) { g.marcarTarjetaVista() }
+    when (estilo) {
         ReglasGuia.EstiloTarjeta.DESTACADA -> TarjetaGuiaDestacada(
             resumen,
-            pulso = remember { PrimeraSesionGuia.decidir(modelo.preferencias) },
+            // Por cuenta, como iOS: la primera sesión en que esta cuenta ve la tarjeta.
+            pulso = g.pulsoTarjeta.collectAsStateWithLifecycle().value == true,
             alAbrir = { navegacion?.guia = true },
             // Lo mismo que «Quitar de Entreno» de la sección: la guía queda en la fila de Mis datos, con el aviso y «Deshacer».
             alOcultar = {

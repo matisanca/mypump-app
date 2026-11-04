@@ -409,7 +409,7 @@ class GuiaReglasTest {
             "Antes de empezar, mirá tu guía. Son 20 videos cortos que armé para vos, unos 14 min. Así en la videollamada vamos directo a lo tuyo.",
             ReglasGuia.textoBienvenida(nueva),
         )
-        assertTrue(ReglasGuia.textoBienvenida(ResumenGuia(1, 0, 2.0)).contains("Es 1 video corto que armé para vos, unos 2 min."))
+        assertTrue(ReglasGuia.textoBienvenida(ResumenGuia(1, 0, 2.0)).contains("Es un video corto que armé para vos, de unos 2 min."))
         assertEquals("Hola Marcelo", ReglasGuia.saludoBienvenida("Marcelo", "Otro Nombre"))
         assertEquals("Hola Marcelo", ReglasGuia.saludoBienvenida(null, "  Marcelo  Pérez "))
         assertEquals("Hola", ReglasGuia.saludoBienvenida(" ", null))

@@ -431,4 +431,19 @@ class ModeloGuiaTest {
         assertEquals(2, m.avisos.value.count { it is ModeloGuia.AvisoDuda.Guardada })
         assertEquals(emptyList<String>(), llamadas)
     }
+
+    @Test
+    fun elPulsoDeLaTarjetaEsPorCuentaYSoloLaPrimeraSesion() = enUnHilo { alcance ->
+        // Hallazgo 18: como iOS, por cuenta (la carpeta de la cuenta), no por teléfono.
+        val raiz = carpetaTemporal("pulso")
+        val primera = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }
+        assertEquals(true, primera.pulsoTarjeta.value)
+        primera.marcarTarjetaVista()
+        primera.alDia()
+        assertEquals(true, primera.pulsoTarjeta.value, "esta sesión lo conserva")
+        val despues = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }
+        assertEquals(false, despues.pulsoTarjeta.value, "la próxima sesión de la misma cuenta, sin pulso")
+        val otra = ModeloGuia(ClienteRpc(transporte = SinRed), "otro", null, Disco(raiz, "otro"), alcance).also { it.alDia() }
+        assertEquals(true, otra.pulsoTarjeta.value, "otra cuenta en el mismo teléfono sí lo tiene")
+    }
 }

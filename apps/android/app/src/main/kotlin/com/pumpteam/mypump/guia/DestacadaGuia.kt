@@ -72,7 +72,6 @@ import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.acceso.Onboarding
 import com.pumpteam.mypump.datos.ModeloApp
-import com.pumpteam.mypump.datos.Preferencias
 import com.pumpteam.mypump.diseno.AsaHoja
 import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.Espacio
@@ -213,17 +212,6 @@ private fun IconoPlayConPulso(pulso: Boolean) {
     }
 }
 
-/** El brillo del play sale solo en la primera sesión de la app (por teléfono): se decide una vez por proceso. */
-internal object PrimeraSesionGuia {
-    const val CLAVE = "mypump_guia_pulso_v1"
-    private var esta: Boolean? = null
-
-    fun decidir(p: Preferencias): Boolean = esta ?: (p.leer(CLAVE) != "1").also {
-        esta = it
-        p.guardar(CLAVE, "1")
-    }
-}
-
 /**
  * El aviso de «Ocultar»: «La encontrás en Mis datos» con «Deshacer», la pastilla de vidrio de la app (como AvisoGuardado),
  * abajo. Dura 6 s, más si TalkBack lo pide. Lo dispara [Navegacion.avisoGuiaOculta].
@@ -299,7 +287,9 @@ fun BienvenidaGuiaDe(modelo: ModeloApp, navegacion: Navegacion) {
     // Lo que se ve queda fijo mientras la hoja está abierta (el resumen puede cambiar por debajo).
     var fijo by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    val candidata = fase == ModeloApp.Fase.LISTO && vista == false &&
+    // Solo estando en Entreno, como iOS (revisión del 4-nov, hallazgo 18): es donde está la tarjeta que la abre.
+    val enEntreno = navegacion.pestana == Pestana.ENTRENO
+    val candidata = fase == ModeloApp.Fase.LISTO && vista == false && enEntreno &&
         ReglasGuia.mostrarBienvenida(resumen, oculta, yaVista = false, esDemo = esDemo || modelo.token == null)
     LaunchedEffect(candidata) {
         if (!candidata || mostrando) return@LaunchedEffect
@@ -310,7 +300,7 @@ fun BienvenidaGuiaDe(modelo: ModeloApp, navegacion: Navegacion) {
         val m = modelo.guia.value ?: return@LaunchedEffect
         val r = m.resumen.value
         if (m.bienvenidaVista.value != false || !ReglasGuia.mostrarBienvenida(r, m.ocultaAMano.value, false, modelo.esDemo.value)) return@LaunchedEffect
-        if (navegacion.guia || navegacion.guiaEnMisDatos) return@LaunchedEffect
+        if (navegacion.guia || navegacion.guiaEnMisDatos || navegacion.pestana != Pestana.ENTRENO) return@LaunchedEffect
         m.marcarBienvenidaVista()
         mostrando = true
     }

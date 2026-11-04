@@ -185,10 +185,12 @@ object ReglasGuia {
         return n?.let { "Hola $it" } ?: "Hola"
     }
 
-    /** El texto de la bienvenida, en la voz de Mati. */
-    fun textoBienvenida(r: ResumenGuia): String =
-        "Antes de empezar, mirá tu guía. " + (if (r.total == 1) "Es " else "Son ") + videosCortos(r.total) +
-            " que armé para vos, unos ${minutosRedondos(r.minutosRestantes)} min. Así en la videollamada vamos directo a lo tuyo."
+    /** El texto de la bienvenida, en la voz de Mati. Con un solo video, «Es un video corto…, de unos X min.», como iOS. */
+    fun textoBienvenida(r: ResumenGuia): String {
+        val min = minutosRedondos(r.minutosRestantes)
+        val cuantos = if (r.total == 1) "Es un video corto que armé para vos, de unos $min min." else "Son ${r.total} videos cortos que armé para vos, unos $min min."
+        return "Antes de empezar, mirá tu guía. $cuantos Así en la videollamada vamos directo a lo tuyo."
+    }
 
     private fun instante(iso: String): Instant? = try {
         OffsetDateTime.parse(iso).toInstant()

@@ -90,6 +90,12 @@ class ModeloAudioDudas(
     private var siguiendoDesde = 0L
     private val reinicios = MutableStateFlow(0)
 
+    /** [seguir] está corriendo: la guía está a la vista y en primer plano. Fuera de eso no se le pregunta nada al servidor. */
+    @Volatile private var siguiendo = 0
+
+    /** Para las pruebas. */
+    internal val aLaVista: Boolean get() = siguiendo > 0
+
     private val carpeta: File? get() = disco?.archivo(CARPETA)
 
     /** La caché y la cola se leen al armar el modelo; [mandar] lo espera (si no, la limpieza podía borrar el audio nuevo). */
@@ -156,16 +162,21 @@ class ModeloAudioDudas(
      */
     suspend fun seguir() {
         if (esDemo) return
-        siguiendoDesde = reloj()
-        refrescar()
-        while (true) {
-            val vuelta = reinicios.value
-            if (!ReglasAudioDuda.seguirConsultando(haySubido(), siguiendoDesde, reloj())) {
-                reinicios.first { it != vuelta }
-                continue
-            }
-            esperar(ReglasAudioDuda.CONSULTA_CADA_MS)
+        siguiendo += 1
+        try {
+            siguiendoDesde = reloj()
             refrescar()
+            while (true) {
+                val vuelta = reinicios.value
+                if (!ReglasAudioDuda.seguirConsultando(haySubido(), siguiendoDesde, reloj())) {
+                    reinicios.first { it != vuelta }
+                    continue
+                }
+                esperar(ReglasAudioDuda.CONSULTA_CADA_MS)
+                refrescar()
+            }
+        } finally {
+            siguiendo -= 1
         }
     }
 
@@ -257,7 +268,9 @@ class ModeloAudioDudas(
             }
             leerCola()
             pintar()
-            if (nuestras.any { it.respuesta["ok"] == ValorJson.Booleano(true) }) {
+            // La lista se vuelve a pedir solo con la guía a la vista (revisión del 4-nov, hallazgo 10): un audio que la cola
+            // mandó en segundo plano no llama a `entregas_app_audios`; al abrir la sección, [seguir] la pide.
+            if (siguiendo > 0 && nuestras.any { it.respuesta["ok"] == ValorJson.Booleano(true) }) {
                 siguiendoDesde = reloj()
                 reinicios.update { it + 1 }
                 refrescar()
