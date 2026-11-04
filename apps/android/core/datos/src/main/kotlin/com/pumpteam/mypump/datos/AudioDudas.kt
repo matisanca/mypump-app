@@ -282,7 +282,7 @@ class ModeloAudioDudas(
             vistos += id
             lista += when {
                 id in confirmados -> Item(id, Estado.SUBIDO)
-                id in enCola -> if (id in sinRed) Item(id, Estado.NO_SE_MANDO, aviso = ReglasAudioDuda.NO_SE_PUDO, reintentable = true) else Item(id, Estado.MANDANDO)
+                id in enCola -> sinRed[id]?.let { Item(id, Estado.NO_SE_MANDO, aviso = it, reintentable = true) } ?: Item(id, Estado.MANDANDO)
                 id in rechazados -> {
                     val motivo = rechazados[id]?.first
                     Item(id, Estado.NO_SE_MANDO, aviso = ReglasAudioDuda.textoMotivo(motivo) ?: ReglasAudioDuda.NO_SE_PUDO, reintentable = ReglasAudioDuda.motivoReintentable(motivo))
@@ -338,10 +338,11 @@ class ModeloAudioDudas(
  * mandar» y «Reintentar» mientras la cola los vuelve a probar sola. Por id (uuid), así sirve para cualquier cuenta.
  */
 object VuelosAudio {
-    private val _sinRed = MutableStateFlow<Set<String>>(emptySet())
-    val sinRed: StateFlow<Set<String>> = _sinRed.asStateFlow()
+    /** id → lo que se muestra («No se pudo mandar.», o «Esperá un toque…» con `pendientes`). */
+    private val _sinRed = MutableStateFlow<Map<String, String>>(emptyMap())
+    val sinRed: StateFlow<Map<String, String>> = _sinRed.asStateFlow()
 
-    fun cortado(id: String) = _sinRed.update { it + id }
+    fun cortado(id: String, aviso: String = ReglasAudioDuda.NO_SE_PUDO) = _sinRed.update { it + (id to aviso) }
 
     fun olvidar(id: String) = _sinRed.update { it - id }
 }
@@ -366,7 +367,11 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
         val id = p["id"]?.comoTexto ?: return rechazo("archivo")
         val r = pasos(id, p)
         val e = r.errorONull()
-        if (e != null && e.clase != ErrorRpc.Clase.PERMANENTE) VuelosAudio.cortado(id) else VuelosAudio.olvidar(id)
+        if (e != null && e.clase != ErrorRpc.Clase.PERMANENTE) {
+            VuelosAudio.cortado(id, if (e.codigo == MOTIVO_PENDIENTES) ReglasAudioDuda.textoMotivo("pendientes")!! else ReglasAudioDuda.NO_SE_PUDO)
+        } else {
+            VuelosAudio.olvidar(id)
+        }
         return r
     }
 
@@ -401,6 +406,8 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
                     val motivo = v["motivo"]?.comoTexto
                     // El token (o una respuesta vacía, como contestan las demás con el token caído): que la cola lo verifique.
                     if (motivo == null || motivo == "token") return Resultado.Ok(ValorJson.Booleano(false))
+                    // `pendientes` (3 a la vez): se arregla esperando. Transitorio: la cola reintenta sin gastar intento.
+                    if (motivo == "pendientes") return Resultado.Falla(ErrorRpc(ErrorRpc.Clase.TRANSITORIO, 200, MOTIVO_PENDIENTES, "entregas_app_audio_iniciar: pendientes"))
                     return rechazo(motivo)
                 }
                 val bucket = v["bucket"]?.comoTexto
@@ -464,6 +471,8 @@ class EnvioAudioDuda(private val cliente: ClienteRpc, private val token: String)
     companion object {
         /** Vueltas de iniciar, subir y subido en un mismo intento (sin_archivo o vencido piden otra). */
         const val RONDAS = 3
+
+        internal const val MOTIVO_PENDIENTES = "PENDIENTES"
 
         fun rechazo(motivo: String): Resultado<ValorJson> =
             Resultado.Ok(ValorJson.objeto("ok" to ValorJson.Booleano(false), "motivo" to ValorJson.Texto(motivo)))

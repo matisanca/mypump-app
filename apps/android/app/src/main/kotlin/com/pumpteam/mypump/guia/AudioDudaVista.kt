@@ -102,7 +102,8 @@ fun AudioDudaAlrededor(audios: ModeloAudioDudas, control: ControlReproductor) {
 
 /**
  * El audio dentro del recuadro de dudas para la videollamada, debajo del campo: la invitación, «Grabar un audio», la
- * grabación con su contador, la revisión (escuchar, Mandar, Grabar de nuevo, Borrar) y cómo va cada audio mandado. Sin la
+ * grabación con su contador, la revisión (escuchar, Mandar, Grabar de nuevo, Borrar) y cómo va cada audio mandado
+ * (sin la transcripción: el cliente no se entera de que se pasa a texto). Sin la
  * 019 en el servidor no se muestra nada ([ModeloAudioDudas.disponible]).
  */
 @Composable
@@ -276,7 +277,7 @@ private fun Revisando(
     }
 }
 
-/** Cómo va un audio mandado: saliendo, no salió, me llegó, lo que entendí o no se escuchó. */
+/** Cómo va un audio mandado: saliendo, no salió, me llegó o no se escuchó. La transcripción nunca se muestra. */
 @Composable
 private fun ItemAudio(item: ModeloAudioDudas.Item, despues: Boolean, alReintentar: () -> Unit) {
     val c = MyPump.colores
@@ -287,7 +288,7 @@ private fun ItemAudio(item: ModeloAudioDudas.Item, despues: Boolean, alReintenta
             .background(c.campo)
             .padding(horizontal = Espacio.s, vertical = Espacio.xs)
             .semantics(mergeDescendants = false) { liveRegion = LiveRegionMode.Polite }
-            .testTag("audio-item-" + item.estado.name.lowercase()),
+            .testTag("audio-item-" + (if (item.estado == ModeloAudioDudas.Estado.TRANSCRIPTO) "subido" else item.estado.name.lowercase())),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         when (item.estado) {
@@ -301,16 +302,12 @@ private fun ItemAudio(item: ModeloAudioDudas.Item, despues: Boolean, alReintenta
                     BotonSecundario(ReglasAudioDuda.REINTENTAR, alTocar = alReintentar, compacto = true, tono = c.marcaTexto, modifier = Modifier.testTag("audio-reintentar"))
                 }
             }
-            ModeloAudioDudas.Estado.SUBIDO -> Text(
+            // Subido o transcripto se ve igual: el cliente no se entera de que se pasa a texto (Mati, 4-nov).
+            ModeloAudioDudas.Estado.SUBIDO, ModeloAudioDudas.Estado.TRANSCRIPTO -> Text(
                 if (despues) ReglasAudioDuda.SUBIDO_DESPUES else ReglasAudioDuda.SUBIDO,
                 style = MaterialTheme.typography.bodyMedium,
                 color = c.textoSecundario,
             )
-            ModeloAudioDudas.Estado.TRANSCRIPTO -> {
-                Text(ReglasAudioDuda.ENTENDI, style = MaterialTheme.typography.labelMedium, color = c.marcaTexto, fontWeight = FontWeight.SemiBold)
-                item.texto?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = c.texto) }
-                Text(ReglasAudioDuda.SI_QUEDO_MAL, style = MaterialTheme.typography.bodySmall, color = c.textoTerciario)
-            }
             ModeloAudioDudas.Estado.ERROR -> Text(ReglasAudioDuda.ERROR_AUDIO, style = MaterialTheme.typography.bodyMedium, color = c.peligro)
         }
     }

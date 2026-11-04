@@ -284,26 +284,49 @@ class AudioDudasTest {
         assertTrue(carpetaAudios(e.disco).listFiles()!!.isEmpty())
         assertTrue(s.a("storage").isEmpty())
 
-        // `pendientes`: el audio queda y se puede reintentar con el mismo id.
+        // `pendientes` (3 a la vez): transitorio. Queda en la cola sin gastar intento, con «Esperá un toque…».
         motivo = "pendientes"
         e.m.mandar(grabado(), 11)
         e.cola.drenar()
         asentar()
+        assertEquals(1, e.cola.pendientes())
+        assertEquals(0, e.cola.operaciones().single().tries)
+        assertTrue(e.cola.fallidos().isEmpty())
         val pend = e.m.items.value.last()
         assertEquals("Esperá un toque que se terminen de mandar los otros audios.", pend.aviso)
         assertTrue(pend.reintentable)
         assertEquals(1, carpetaAudios(e.disco).listFiles()!!.size)
-        // Queda en fallidos: al volver a abrir la app sigue ahí, con su archivo.
-        assertEquals(1, e.cola.fallidos().count { it.op.payload["id"]?.comoTexto == pend.id })
-        val otra = ModeloAudioDudas(ClienteRpc(transporte = s), "tok", e.cola, e.disco, alcance).also { it.alDia() }
-        assertTrue(otra.items.value.single { it.id == pend.id }.reintentable)
-        assertEquals(1, carpetaAudios(e.disco).listFiles()!!.size)
         s.regla = base
-        e.m.reintentar(pend.id)
         e.cola.drenar()
         asentar()
         assertEquals(ModeloAudioDudas.Estado.SUBIDO, e.m.items.value.single { it.id == pend.id }.estado)
         assertTrue(carpetaAudios(e.disco).listFiles()!!.isEmpty())
+    }
+
+    @Test
+    fun sinMotivoQuedaEnFallidosConSuArchivo() = enUnHilo { alcance ->
+        // Un `{ok: false}` sin motivo con el token bien: rechazado, se puede reintentar y sobrevive a cerrar la app.
+        val base = normal()
+        val s = Servidor { fn, p -> if (fn == "entregas_app_audio_iniciar") 200 to """{"ok": false, "motivo": "otra_cosa"}""" else base(fn, p) }
+        val e = entorno(alcance, s)
+        e.m.mandar(grabado(), 10)
+        e.cola.drenar()
+        asentar()
+        assertFalse(e.m.items.value.single().reintentable)
+        s.regla = { fn, p -> if (fn == "entregas_app_audio_iniciar") 200 to "false" else base(fn, p) }
+        e.m.mandar(grabado(), 10)
+        e.cola.drenar()
+        asentar()
+        val id = e.m.items.value.last().id
+        assertEquals(1, e.cola.fallidos().count { it.op.payload["id"]?.comoTexto == id })
+        val otra = ModeloAudioDudas(ClienteRpc(transporte = s), "tok", e.cola, e.disco, alcance).also { it.alDia() }
+        assertTrue(otra.items.value.single { it.id == id }.reintentable)
+        assertEquals(1, carpetaAudios(e.disco).listFiles()!!.size)
+        s.regla = base
+        e.m.reintentar(id)
+        e.cola.drenar()
+        asentar()
+        assertEquals(ModeloAudioDudas.Estado.SUBIDO, e.m.items.value.single { it.id == id }.estado)
     }
 
     @Test

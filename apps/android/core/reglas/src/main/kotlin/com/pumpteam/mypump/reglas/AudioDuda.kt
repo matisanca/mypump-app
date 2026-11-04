@@ -30,7 +30,8 @@ object ReglasAudioDuda {
 
     // ── Textos (voz de Mati, sin «:», sin guiones, sin emojis; los de la web tal cual salvo lo que es del navegador) ──
 
-    const val INVITACION = "¿Te es más fácil hablarlo? Mandame un audio, como por WhatsApp. Lo paso a texto y me llega junto con las que escribas. Hasta 5 minutos cada uno."
+    // Mati, 4-nov 18:40: el cliente NO se entera de que el audio se pasa a texto (como pack.html, cerebro 1a9c5e6).
+    const val INVITACION = "¿Te es más fácil hablarlo? Mandame un audio, como por WhatsApp. Hasta 5 minutos cada uno."
     const val GRABAR = "Grabar un audio"
     const val TERMINAR = "Terminar"
     const val TERMINAR_ACCESIBLE = "Terminar de grabar"
@@ -42,10 +43,9 @@ object ReglasAudioDuda {
     const val MANDANDO = "Mandando tu audio…"
     const val NO_SE_PUDO = "No se pudo mandar."
     const val REINTENTAR = "Reintentar"
-    const val SUBIDO = "Listo, me llegó tu audio. Lo estoy pasando a texto."
+    /** Subido o transcripto se ve igual: la transcripción nunca aparece en pantalla. */
+    const val SUBIDO = "Listo, me llegó tu audio, lo escucho antes de la videollamada."
     const val SUBIDO_DESPUES = "Listo, me llegó tu audio, te contesto por WhatsApp."
-    const val ENTENDI = "Esto es lo que entendí"
-    const val SI_QUEDO_MAL = "Si algo quedó mal, mandame otro o escribilo acá."
     const val ERROR_AUDIO = "No pude escuchar bien este audio, ¿me lo mandás de nuevo o lo escribís?"
     const val MUY_CORTO = "No se escuchó nada, probá de nuevo."
     const val VISTA_PREVIA = "Vista previa: el audio no se manda."
@@ -72,8 +72,8 @@ object ReglasAudioDuda {
     }
 
     /**
-     * Un rechazo que se arregla solo con esperar (`pendientes`, hasta 3 a la vez) o sin motivo: el audio queda y se puede
-     * reintentar con el mismo id. Los demás (`tope`, `tamano`, `largo`, `formato`, `error`, `id`, el archivo perdido) no
+     * Un rechazo sin motivo (o `pendientes`, que igual no llega acá: la cola lo trata como transitorio): el audio queda y
+     * se puede reintentar con el mismo id. Los demás (`tope`, `tamano`, `largo`, `formato`, `error`, `id`, el archivo perdido) no
      * van a entrar nunca así.
      */
     fun motivoReintentable(motivo: String?): Boolean = motivo == null || motivo == "pendientes"
@@ -90,6 +90,7 @@ object ReglasAudioDuda {
     /**
      * La deduplicación de la web: la transcripción entra después como una duda más de la videollamada; al pintarlas se
      * saltean los textos iguales a un `texto` transcripto de la lista de audios (comparados sin los espacios de las puntas).
+     * Así el cliente nunca ve la transcripción.
      */
     fun sinTranscriptas(dudas: List<String>, transcriptos: Collection<String>): List<String> {
         if (transcriptos.isEmpty()) return dudas

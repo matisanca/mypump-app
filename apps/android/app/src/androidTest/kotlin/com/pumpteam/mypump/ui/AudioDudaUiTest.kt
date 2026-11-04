@@ -89,7 +89,7 @@ class AudioDudaUiTest : PruebaUi() {
         guardarCuenta()
         abrir()
         p.tocar(etiqueta("tarjeta-guia"))
-        p.nodo(etiqueta("guia-cabecera"))
+        p.nodo(etiqueta("guia-cabecera"), ms = 60_000)
         alAudio()
     }
 
@@ -128,7 +128,7 @@ class AudioDudaUiTest : PruebaUi() {
         conGuia()
         abrirGuiaHastaElAudio()
         p.nodo(texto("Grabar un audio"))
-        p.nodo(textoQueContiene("¿Te es más fácil hablarlo?"))
+        p.nodo(texto("¿Te es más fácil hablarlo? Mandame un audio, como por WhatsApp. Hasta 5 minutos cada uno."))
         foto("reposo", sufijo)
 
         p.tocar(etiqueta("audio-grabar"))
@@ -154,7 +154,7 @@ class AudioDudaUiTest : PruebaUi() {
         fotoYa("mandando", sufijo)
         p.esperar("subido", ms = 20_000) { servidor.a("entregas_app_audio_subido").isNotEmpty() }
         p.nodo(etiqueta("audio-item-subido"), ms = 15_000)
-        p.nodo(texto("Listo, me llegó tu audio. Lo estoy pasando a texto."))
+        p.nodo(texto("Listo, me llegó tu audio, lo escucho antes de la videollamada."))
         servidor.demoraMs = 0
         foto("subido", sufijo)
 
@@ -164,15 +164,17 @@ class AudioDudaUiTest : PruebaUi() {
         assertEquals(24_000, ini.getInt("p_bytes"))
         assertTrue(ini.getString("p_id").length == 36)
 
-        // La transcripción: «Esto es lo que entendí» y, al volver a abrir, la duda no se ve dos veces.
+        // Transcripto se ve igual que subido (el cliente no se entera de que se pasa a texto) y la transcripción, que entra
+        // como una duda más de la videollamada, no se muestra.
         servidor.respuestas["entregas_app_audios"] = """[{"id": "${ini.getString("p_id")}", "estado": "transcripto", "en": "2026-11-04T10:00:00Z", "segundos": 2, "texto": "$texto"}]"""
         servidor.respuestas["entregas_app_get"] = getConTranscripta()
         p.atras()
         p.tocar(etiqueta("tarjeta-guia"))
-        p.nodo(etiqueta("guia-cabecera"))
-        alAudio(etiqueta("audio-item-transcripto"))
-        p.nodo(texto("Esto es lo que entendí"))
-        assertEquals(1, p.cuantos(texto(texto)))
+        p.nodo(etiqueta("guia-cabecera"), ms = 60_000)
+        alAudio(etiqueta("audio-item-subido"))
+        p.nodo(texto("Listo, me llegó tu audio, lo escucho antes de la videollamada."))
+        assertEquals(0, p.cuantos(texto(texto)))
+        assertFalse(p.existe(textoQueContiene("entendí")))
         foto("transcripto", sufijo)
     }
 
@@ -251,7 +253,7 @@ class AudioDudaUiTest : PruebaUi() {
         guardarCuenta()
         abrir()
         p.tocar(etiqueta("tarjeta-guia"))
-        p.nodo(etiqueta("guia-cabecera"))
+        p.nodo(etiqueta("guia-cabecera"), ms = 60_000)
         p.esperar("la lista de audios") { servidor.a("entregas_app_audios").isNotEmpty() }
         repeat(12) { p.desplazar(etiqueta("guia-lista"), 500f) }
         p.nodo(etiqueta("guia-fin"))
@@ -275,7 +277,7 @@ class AudioDudaUiTest : PruebaUi() {
         p.tocar(etiqueta("ver-demo"))
         p.nodo(texto("Estás viendo la demo"))
         p.tocar(etiqueta("tarjeta-guia"))
-        p.nodo(etiqueta("guia-cabecera"))
+        p.nodo(etiqueta("guia-cabecera"), ms = 60_000)
         alAudio()
         grabarYTerminar()
         p.tocar(etiqueta("audio-mandar"))
