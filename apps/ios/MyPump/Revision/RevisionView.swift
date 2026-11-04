@@ -141,7 +141,7 @@ struct RevisionView: View {
                 await modelo.cargarProgreso()
             }
     }
-    private var lineaProgreso: String? {
+    private var lineaProgreso: ProgresoSemana.Linea? {
         guard let p = modelo.conMuestras ? nil : modelo.progreso else { return nil }
         return ProgresoSemana.linea(p.tarjetas.map { ProgresoSemana.ejercicio(nombre: $0.nombre, filas: $0.filas) }, hoy: FechaLocal.hoy())
     }

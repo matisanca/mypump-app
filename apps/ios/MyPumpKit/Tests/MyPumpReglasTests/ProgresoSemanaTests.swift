@@ -6,7 +6,8 @@ import MyPumpModelos
 // La línea de «Tu progreso» en Revisión, contra los vectores compartidos con Android (progreso_semana.json).
 private struct ArchivoProgreso: Decodable {
     struct Ejercicio: Decodable { let nombre: String; let sesiones: [String: Double] }
-    struct Caso: Decodable { let nombre: String; let hoy: String; let ejercicios: [Ejercicio]; let esperado: String? }
+    struct Esperado: Decodable { let texto: String; let record: Bool }
+    struct Caso: Decodable { let nombre: String; let hoy: String; let ejercicios: [Ejercicio]; let esperado: Esperado? }
     struct Kilo: Decodable {
         let kg: Double; let texto: String
         init(from d: Decoder) throws { var c = try d.unkeyedContainer(); kg = try c.decode(Double.self); texto = try c.decode(String.self) }
@@ -26,7 +27,9 @@ struct ProgresoSemanaTests {
         #expect(a.casos.count == 9)
         for c in a.casos {
             let r = ProgresoSemana.linea(c.ejercicios.map { .init(nombre: $0.nombre, sesiones: $0.sesiones) }, hoy: c.hoy)
-            #expect(r == c.esperado, "\(c.nombre)")
+            #expect(r?.texto == c.esperado?.texto, "\(c.nombre)")
+            #expect(r?.record == c.esperado?.record, "\(c.nombre)")
+            #expect(!(r?.texto.contains("🏆") ?? false), "Sin emojis en el texto")
         }
         for k in a.kilos { #expect(ProgresoSemana.kilos(k.kg) == k.texto) }
     }

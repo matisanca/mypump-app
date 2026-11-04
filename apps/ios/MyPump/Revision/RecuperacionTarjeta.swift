@@ -87,17 +87,25 @@ struct RecuperacionTarjeta: View {
 /// récord, los ejercicios que subieron o las sesiones; `ProgresoSemana`). Toda la tarjeta abre Salud en Fuerza, lo que era
 /// la pestaña Progreso. Sin línea (la demo, o sin entrenos esta semana), lo genérico.
 struct ProgresoTarjeta: View {
-    let linea: String?
+    let linea: ProgresoSemana.Linea?
     let abrir: () -> Void
 
     var body: some View {
         Button(action: abrir) {
             VStack(alignment: .leading, spacing: 12) {
                 EncabezadoSalud(icono: "📈", titulo: "Tu progreso")
-                Text(linea ?? "Tu fuerza y tus récords, ejercicio por ejercicio.")
-                    .font(linea == nil ? .subheadline : .subheadline.weight(.medium))
-                    .foregroundStyle(linea == nil ? .secondary : .primary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let linea {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        // El trofeo es ícono, no texto: los textos para el cliente van sin emojis.
+                        if linea.record {
+                            Image(systemName: "trophy.fill").font(.subheadline).foregroundStyle(Color.alerta).accessibilityHidden(true)
+                        }
+                        Text(linea.texto).font(.subheadline.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    Text("Tu fuerza y tus récords, ejercicio por ejercicio.")
+                        .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
                 Divider()
                 HStack(spacing: Espacio.s) {
                     Text("Ver fuerza y récords")
