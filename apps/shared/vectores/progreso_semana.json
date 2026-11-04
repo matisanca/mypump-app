@@ -9,7 +9,7 @@
         {"nombre": "Press banca", "sesiones": {"2026-10-20": 75, "2026-10-27": 80, "2026-11-03": 82.5}},
         {"nombre": "Remo", "sesiones": {"2026-10-20": 70, "2026-10-28": 60, "2026-11-02": 65}}
       ],
-      "esperado": "🏆 Récord en Press banca: 82,5 kg"
+      "esperado": {"texto": "Récord en Press banca, 82,5 kg", "record": true}
     },
     {
       "nombre": "dos récords",
@@ -18,7 +18,7 @@
         {"nombre": "Press banca", "sesiones": {"2026-10-27": 80, "2026-11-03": 82.5}},
         {"nombre": "Sentadilla", "sesiones": {"2026-10-27": 100, "2026-11-04": 105}}
       ],
-      "esperado": "🏆 2 récords esta semana: Press banca y Sentadilla"
+      "esperado": {"texto": "2 récords esta semana, en Press banca y Sentadilla", "record": true}
     },
     {
       "nombre": "tres récords o más",
@@ -28,7 +28,7 @@
         {"nombre": "Sentadilla", "sesiones": {"2026-10-27": 100, "2026-11-04": 105}},
         {"nombre": "Remo", "sesiones": {"2026-10-27": 60, "2026-11-01": 62.5}}
       ],
-      "esperado": "🏆 3 récords esta semana: Press banca, Sentadilla y 1 más"
+      "esperado": {"texto": "3 récords esta semana, en Press banca, Sentadilla y 1 más", "record": true}
     },
     {
       "nombre": "subió contra la sesión anterior pero no es récord",
@@ -37,7 +37,7 @@
         {"nombre": "Press banca", "sesiones": {"2026-10-20": 90, "2026-10-27": 80, "2026-11-03": 85}},
         {"nombre": "Remo", "sesiones": {"2026-10-27": 60, "2026-11-02": 60}}
       ],
-      "esperado": "Subiste en Press banca esta semana"
+      "esperado": {"texto": "Subiste en Press banca esta semana", "record": false}
     },
     {
       "nombre": "varios subieron",
@@ -46,7 +46,7 @@
         {"nombre": "Press banca", "sesiones": {"2026-10-20": 90, "2026-10-27": 80, "2026-11-03": 85}},
         {"nombre": "Remo", "sesiones": {"2026-10-20": 70, "2026-10-27": 60, "2026-11-02": 65}}
       ],
-      "esperado": "Subiste en 2 ejercicios esta semana"
+      "esperado": {"texto": "Subiste en 2 ejercicios esta semana", "record": false}
     },
     {
       "nombre": "sin subir: las sesiones de la semana (días distintos entre ejercicios); el récord de hace 8 días no cuenta",
@@ -56,7 +56,7 @@
         {"nombre": "Remo", "sesiones": {"2026-10-27": 60, "2026-11-01": 55, "2026-11-03": 50}},
         {"nombre": "Curl", "sesiones": {"2026-10-20": 10, "2026-10-27": 12}}
       ],
-      "esperado": "2 sesiones entrenadas esta semana"
+      "esperado": {"texto": "2 sesiones entrenadas esta semana", "record": false}
     },
     {
       "nombre": "una sola sesión y primera vez con el ejercicio (sin anterior no hay récord)",
@@ -64,7 +64,7 @@
       "ejercicios": [
         {"nombre": "Press banca", "sesiones": {"2026-11-04": 60}}
       ],
-      "esperado": "1 sesión entrenada esta semana"
+      "esperado": {"texto": "1 sesión entrenada esta semana", "record": false}
     },
     {
       "nombre": "un 0 de hoy no es récord ni sube",
@@ -72,7 +72,7 @@
       "ejercicios": [
         {"nombre": "Dominadas", "sesiones": {"2026-10-27": 0, "2026-11-04": 0}}
       ],
-      "esperado": "1 sesión entrenada esta semana"
+      "esperado": {"texto": "1 sesión entrenada esta semana", "record": false}
     },
     {
       "nombre": "nada en la semana: nil (la tarjeta dice lo genérico)",

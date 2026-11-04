@@ -27,7 +27,13 @@ public enum ProgresoSemana {
         return Ejercicio(nombre: nombre, sesiones: porFecha)
     }
 
-    public static func linea(_ ejercicios: [Ejercicio], hoy: String) -> String? {
+    /// El texto va sin emojis (la voz de Mati con el cliente): el trofeo lo pone la tarjeta como ícono si `record`.
+    public struct Linea: Sendable, Equatable {
+        public let texto: String
+        public let record: Bool
+    }
+
+    public static func linea(_ ejercicios: [Ejercicio], hoy: String) -> Linea? {
         guard let n = DiaCalendario.numero(hoy) else { return nil }
         let semana = Set((0..<7).map { DiaCalendario.texto(n - $0) })
         var records: [(nombre: String, kg: Double)] = []
@@ -45,20 +51,20 @@ public enum ProgresoSemana {
         }
 
         switch records.count {
-        case 1: return "🏆 Récord en \(records[0].nombre): \(kilos(records[0].kg)) kg"
-        case 2: return "🏆 2 récords esta semana: \(records[0].nombre) y \(records[1].nombre)"
-        case 3...: return "🏆 \(records.count) récords esta semana: \(records[0].nombre), \(records[1].nombre) y \(records.count - 2) más"
+        case 1: return Linea(texto: "Récord en \(records[0].nombre), \(kilos(records[0].kg)) kg", record: true)
+        case 2: return Linea(texto: "2 récords esta semana, en \(records[0].nombre) y \(records[1].nombre)", record: true)
+        case 3...: return Linea(texto: "\(records.count) récords esta semana, en \(records[0].nombre), \(records[1].nombre) y \(records.count - 2) más", record: true)
         default: break
         }
         switch subieron.count {
-        case 1: return "Subiste en \(subieron[0]) esta semana"
-        case 2...: return "Subiste en \(subieron.count) ejercicios esta semana"
+        case 1: return Linea(texto: "Subiste en \(subieron[0]) esta semana", record: false)
+        case 2...: return Linea(texto: "Subiste en \(subieron.count) ejercicios esta semana", record: false)
         default: break
         }
         switch dias.count {
         case 0: return nil
-        case 1: return "1 sesión entrenada esta semana"
-        default: return "\(dias.count) sesiones entrenadas esta semana"
+        case 1: return Linea(texto: "1 sesión entrenada esta semana", record: false)
+        default: return Linea(texto: "\(dias.count) sesiones entrenadas esta semana", record: false)
         }
     }
 
