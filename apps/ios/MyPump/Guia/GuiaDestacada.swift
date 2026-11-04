@@ -216,10 +216,12 @@ struct AvisoGuiaOculta: View {
 
 // MARK: - Bienvenida
 
-/// La primera vez, antes de todo: «Hola Marcelo», cuántos videos son y cuánto duran, «Ver mi guía» y «Más tarde». Sale
+/// La primera vez, antes de todo: «Hola Tomás», cuántos videos son y cuánto duran, «Ver mi guía» y «Más tarde». Sale
 /// una sola vez por cliente (queda guardado al aparecer).
 struct BienvenidaGuia: View {
     let modelo: ModeloGuia
+    /// El nombre de la cuenta (`ClienteInfo.nombre`): si la guía no trae `nombre_pila`, se saluda con el de pila de la cuenta.
+    var nombreCuenta: String? = nil
     let ver: () -> Void
     let despues: () -> Void
     @ScaledMetric(relativeTo: .largeTitle) private var ladoEscalado: CGFloat = 104
@@ -257,7 +259,7 @@ struct BienvenidaGuia: View {
                     .shadow(color: Color.marca.opacity(0.35), radius: 18, x: 0, y: 8)
             }
             VStack(spacing: Espacio.s) {
-                Text(ReglasGuia.tituloBienvenida(modelo.guia?.nombrePila))
+                Text(ReglasGuia.tituloBienvenida(modelo.guia?.nombrePila, nombreCuenta: nombreCuenta))
                     .font(Archivo.fuente(34, relativoA: .largeTitle))
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityIdentifier("guia-bienvenida-titulo")

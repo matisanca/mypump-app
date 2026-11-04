@@ -132,6 +132,8 @@ struct AudioDudaTests {
         #expect(ReglasAudioDuda.aviso(motivo: "tamano") == .largo)
         #expect(ReglasAudioDuda.aviso(motivo: "largo") == .largo)
         #expect(ReglasAudioDuda.aviso(motivo: "formato") == .formato)
+        // El texto de Android: nada de navegador, Safari ni Chrome (punto 14).
+        #expect(ReglasAudioDuda.texto(.formato) == "Este audio está en un formato que no puedo recibir. Escribime la duda acá arriba.")
         #expect(ReglasAudioDuda.aviso(motivo: "error") == .yaFallo)
         #expect(ReglasAudioDuda.aviso(motivo: "id") == .noSeMando)
         #expect(ReglasAudioDuda.aviso(motivo: nil) == .noSeMando)

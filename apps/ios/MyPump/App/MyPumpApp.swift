@@ -180,7 +180,7 @@ struct Raiz: View {
             navegacion.abrirGuia = true
         }) {
             if let g = GuiaUI.modelo {
-                BienvenidaGuia(modelo: g, ver: { bienvenidaAbreGuia = true; bienvenidaGuia = false }, despues: { bienvenidaGuia = false })
+                BienvenidaGuia(modelo: g, nombreCuenta: modelo.info?.nombre, ver: { bienvenidaAbreGuia = true; bienvenidaGuia = false }, despues: { bienvenidaGuia = false })
             }
         }
         .task(id: pedirBienvenida) { await presentarBienvenida() }

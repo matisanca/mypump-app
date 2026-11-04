@@ -171,9 +171,13 @@ public enum ReglasGuia {
         return tarjetaEnEntreno(r, quitada: quitada, ahora: ahora)
     }
 
-    /// «Hola Marcelo», o «Hola» si no vino el nombre.
-    public static func tituloBienvenida(_ nombrePila: String?) -> String {
-        let n = (nombrePila ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    /// «Hola Tomás». Sin nombre en la guía, el nombre de pila de la cuenta (la primera palabra de `nombre`, como Android); si
+    /// tampoco hay, «Hola».
+    public static func tituloBienvenida(_ nombrePila: String?, nombreCuenta: String? = nil) -> String {
+        var n = (nombrePila ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if n.isEmpty {
+            n = (nombreCuenta ?? "").split(whereSeparator: { $0.isWhitespace }).first.map(String.init) ?? ""
+        }
         return n.isEmpty ? "Hola" : "Hola \(n)"
     }
 

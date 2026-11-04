@@ -17,7 +17,7 @@ struct GuiaDecodificacionTests {
     @Test func laMuestraEntera() {
         let g = GuiaMuestra.guia
         #expect(g.ok)
-        #expect(g.nombrePila == "Marcelo")
+        #expect(g.nombrePila == "Tomás")
         #expect(g.fechaEntrega == nil)
         #expect(g.clips.count == 13)
         #expect(g.clips[0].visto && g.clips[0].id == "FT-25a")
@@ -455,9 +455,14 @@ struct GuiaPostEntregaTests {
     }
 
     @Test func textosDeLaBienvenida() {
-        #expect(ReglasGuia.tituloBienvenida("Marcelo") == "Hola Marcelo")
+        #expect(ReglasGuia.tituloBienvenida("Tomás") == "Hola Tomás")
         #expect(ReglasGuia.tituloBienvenida("  ") == "Hola")
         #expect(ReglasGuia.tituloBienvenida(nil) == "Hola")
+        // Sin nombre en la guía, el nombre de pila de la cuenta, como Android (revisión del 4-nov, punto 18).
+        #expect(ReglasGuia.tituloBienvenida(nil, nombreCuenta: "Tomás Ruiz") == "Hola Tomás")
+        #expect(ReglasGuia.tituloBienvenida(" ", nombreCuenta: "  Tomás  Ruiz ") == "Hola Tomás")
+        #expect(ReglasGuia.tituloBienvenida("Tomi", nombreCuenta: "Tomás Ruiz") == "Hola Tomi")
+        #expect(ReglasGuia.tituloBienvenida(nil, nombreCuenta: "  ") == "Hola")
         #expect(ReglasGuia.textoBienvenida(.init(total: 11, vistos: 0, minutosRestantes: 9.4))
                 == "Antes de empezar, mirá tu guía. Son 11 videos cortos que armé para vos, unos 9 min. Así en la videollamada vamos directo a lo tuyo.")
         #expect(ReglasGuia.textoBienvenida(.init(total: 1, vistos: 0, minutosRestantes: 0.2)).contains("Es un video corto que armé para vos, de unos 1 min."))

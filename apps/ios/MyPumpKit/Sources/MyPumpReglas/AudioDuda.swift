@@ -61,7 +61,8 @@ public enum ReglasAudioDuda {
         case .tope: "Ya me mandaste 10 audios. Lo que te falte escribímelo o lo vemos en la llamada."
         case .pendientes: "Esperá un toque que se terminen de mandar los otros audios."
         case .largo: "Es muy largo, mandámelo en audios de hasta 5 minutos."
-        case .formato: "Tu navegador graba en un formato que no puedo recibir. Probá desde Safari o Chrome, o escribime la duda."
+        // El de Android: sin «navegador» ni Safari o Chrome (revisión del 4-nov, punto 14).
+        case .formato: "Este audio está en un formato que no puedo recibir. Escribime la duda acá arriba."
         case .noSeMando: textoNoSeMando
         case .vistaPrevia: "Vista previa: el audio no se manda."
         case .yaFallo: textoErrorTranscripcion
