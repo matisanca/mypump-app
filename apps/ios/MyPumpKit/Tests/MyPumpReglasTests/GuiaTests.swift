@@ -379,3 +379,52 @@ struct GuiaVerPorQueTests {
         #expect(ReglasGuia.rotuloVerPorQue(clip("a", minutos: 0)) == "Ver por qué (1 s)")
     }
 }
+
+@Suite("Tu guía: revisión adversarial (4/11)")
+struct GuiaRevisionTests {
+    @Test func suplementacionEnNFDNoEsElBloque() {
+        // «ó» descompuesta (o + acento combinado): Swift la compara igual, el regex de entregas_012 no.
+        #expect(!ReglasGuia.esBloqueSuplementacion("Tu suplementacio\u{301}n"))
+        #expect(ReglasGuia.esBloqueSuplementacion("Tu suplementaci\u{F3}n"))
+        #expect(ReglasGuia.esBloqueSuplementacion("\u{FEFF}\t tu SUPLEMENTACI\u{D3}N \u{A0}\n"))
+        #expect(!ReglasGuia.esBloqueSuplementacion("Tu suplementación\u{2003}"), "un espacio que el servidor no recorta")
+        #expect(!ReglasGuia.esBloqueSuplementacion("Tu  suplementación"))
+        #expect(!ReglasGuia.esBloqueSuplementacion("Tu suplementaciones"))
+        #expect(!ReglasGuia.esBloqueSuplementacion(""))
+    }
+
+    @Test func saleConMayusculaYNombreEnBlancoSeVenConSuVideo() throws {
+        let g = guia("""
+        {"ok":true,"clips":[
+          {"id":"a","titulo":"A","url":"https://x.invalid/a.mp4","minutos":1,"bloque":"Tu suplementación"},
+          {"id":"b","titulo":"B","url":"https://x.invalid/b.mp4","minutos":1,"bloque":"Tu suplementación"}],
+         "suplementacion":{"items":[
+          {"nombre":"Cafeína","estado":"Sale","video_id":"a"},
+          {"nombre":"  ","video_id":"b"},
+          {"nombre":"","video_id":"zz"}]}}
+        """)
+        let s = try #require(g.suplementacion)
+        #expect(s.items.count == 2, "sin nombre no va; en blanco sí, como la web")
+        #expect(ReglasGuia.deLaLista(g).isEmpty)
+        let v = try #require(VistaSuplementacion(s))
+        #expect(v.sale.isEmpty, "«Sale» no es «sale»: va con los demás, como la web")
+        let filas = v.momentos.flatMap(\.filas)
+        #expect(filas.compactMap(\.videoId) == ["a", "b"], "los dos videos se pueden ver con «Ver por qué»")
+    }
+
+    @Test func vecesCuentaDudasDeVariosRenglones() {
+        #expect(ReglasGuia.veces("hola", en: "hola\nchau\nhola") == 2)
+        #expect(ReglasGuia.veces("a\nb", en: "x\na\nb\na\nb") == 2)
+        #expect(ReglasGuia.veces("hola", en: "holas") == 0)
+        #expect(ReglasGuia.veces("hola", en: nil) == 0)
+        #expect(ReglasGuia.veces("", en: "hola") == 0)
+        #expect(ReglasGuia.veces("x", en: [DudaLlamada(texto: "x", en: nil), DudaLlamada(texto: "y", en: nil), DudaLlamada(texto: "x", en: nil)]) == 2)
+    }
+
+    @Test func alFinalSeVuelveAEmpezar() {
+        #expect(ReglasGuia.estaAlFinal(59.8, duracion: 60))
+        #expect(!ReglasGuia.estaAlFinal(30, duracion: 60))
+        #expect(!ReglasGuia.estaAlFinal(10, duracion: .nan))
+        #expect(!ReglasGuia.estaAlFinal(.nan, duracion: 60))
+    }
+}

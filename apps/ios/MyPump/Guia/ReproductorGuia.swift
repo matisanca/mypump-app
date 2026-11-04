@@ -14,10 +14,14 @@ import MyPumpDatos
 /// placa de 2,6 s («Otro tema · Video N de M»), y mientras está la placa el video no corre.
 @MainActor @Observable
 final class ControlReproductor {
-    /// El video cargado (índice en `clips`).
-    private(set) var actual: Int?
-    /// La placa que se ve (índice del video que viene).
-    private(set) var placa: Int?
+    /// El video cargado, por id: si una guía nueva cambia la lista, el índice sale de acá y nunca apunta a otro video.
+    private(set) var actualId: String?
+    /// La placa que se ve (id del video que viene).
+    private(set) var placaId: String?
+    /// El índice del video cargado en `clips` (nil si ya no está en la lista).
+    var actual: Int? { indice(actualId) }
+    /// El índice del video de la placa.
+    var placa: Int? { indice(placaId) }
     private(set) var velocidad: Float = 1
     private(set) var reproduciendo = false
     /// Todavía no arrancó ninguno: se ve la portada con el título y el botón de play.
@@ -27,7 +31,7 @@ final class ControlReproductor {
     /// Cambia cada vez que cambia el video (el destello del título, el desplazamiento de la lista).
     private(set) var cambios = 0
 
-    @ObservationIgnored let player = AVPlayer()
+    @ObservationIgnored nonisolated(unsafe) let player = AVPlayer()
     @ObservationIgnored var clips: () -> [ClipGuia] = { [] }
     @ObservationIgnored var alGuardar: (String, AvanceVideo.Guardado) -> Void = { _, _ in }
     /// DEBUG `-sinRed YES`: como sin señal, aunque el simulador tenga red.
@@ -37,7 +41,7 @@ final class ControlReproductor {
 
     @ObservationIgnored private var avance = AvanceVideo(visto: false)
     @ObservationIgnored private var videoCargado: String?
-    @ObservationIgnored private var observadorTiempo: Any?
+    @ObservationIgnored nonisolated(unsafe) private var observadorTiempo: Any?
     @ObservationIgnored private var observadorEstado: NSKeyValueObservation?
     @ObservationIgnored private var observadorControl: NSKeyValueObservation?
     /// Los observadores de fin y falla del video: se sacan al cambiar de video y al soltar el control.
@@ -50,6 +54,8 @@ final class ControlReproductor {
     @ObservationIgnored var pantallaCompleta = false
     /// Un solo video a la vez (como la web): al arrancar este se frena el de «Ver por qué».
     @ObservationIgnored var alArrancar: () -> Void = {}
+    /// Hay algo escrito en el recuadro de duda de ese video: al terminar no pasa solo al siguiente (se escondería el texto).
+    @ObservationIgnored var hayBorrador: (String) -> Bool = { _ in false }
 
     init() {
         player.actionAtItemEnd = .pause
@@ -73,15 +79,25 @@ final class ControlReproductor {
         red.start(queue: .main)
     }
 
+    /// Al salir de la guía (la vista suelta el control): nada queda vivo, ni el monitor de red ni los observadores, y el
+    /// audio vuelve a los demás.
     deinit {
         red.cancel()
         finales.forEach(NotificationCenter.default.removeObserver)
+        if let o = observadorTiempo { player.removeTimeObserver(o) }
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        SesionAudio.soltar()
+    }
+
+    private func indice(_ id: String?) -> Int? {
+        guard let id else { return nil }
+        return clips().firstIndex { $0.id == id }
     }
 
     var clipActual: ClipGuia? {
-        guard let i = actual else { return nil }
-        let c = clips()
-        return c.indices.contains(i) ? c[i] : nil
+        guard let id = actualId else { return nil }
+        return clips().first { $0.id == id }
     }
 
     var haySiguiente: Bool { actual.flatMap { ReglasGuia.siguiente(clips(), desde: $0) } != nil }
@@ -89,9 +105,11 @@ final class ControlReproductor {
 
     // MARK: - Acciones
 
-    /// Al abrir la sección: el primero sin ver, sin reproducir (se ve la portada).
+    /// Al abrir la sección, y cada vez que llega una guía: el primero sin ver, sin reproducir (se ve la portada). Si el
+    /// video cargado sigue en la lista, no se toca.
     func prepararInicial() {
         guard actual == nil, let i = ReglasGuia.inicial(clips()) else { return }
+        if actualId != nil { portada = true }
         cargar(i, reproducir: false, conPlaca: false)
     }
 
@@ -128,9 +146,9 @@ final class ControlReproductor {
 
     /// La placa se cierra sola a los 2,6 s o al tocarla, y ahí arranca el video.
     func cerrarPlaca() {
-        guard placa != nil else { return }
+        guard placaId != nil else { return }
         tareaPlaca?.cancel()
-        placa = nil
+        placaId = nil
         arrancar()
     }
 
@@ -155,7 +173,7 @@ final class ControlReproductor {
     /// Arrancó otro video (un «Ver por qué»): este se frena y, si estaba la placa, se va sin arrancar (como la web).
     func frenarPorOtro() {
         tareaPlaca?.cancel()
-        placa = nil
+        placaId = nil
         if player.timeControlStatus != .paused { pausar() }
     }
 
@@ -166,9 +184,9 @@ final class ControlReproductor {
         guard lista.indices.contains(i), let url = lista[i].url else { return }
         guardarAlSalir()
         tareaPlaca?.cancel()
-        placa = nil
+        placaId = nil
         let clip = lista[i]
-        actual = i
+        actualId = clip.id
         cambios += 1
         if reproducir { portada = false }
         sinConexion = false
@@ -186,9 +204,10 @@ final class ControlReproductor {
             player.replaceCurrentItem(with: item)
         }
         player.defaultRate = velocidad
-        if conPlaca {
+        // En pantalla completa la placa no se ve (queda debajo) y el video quedaría quieto 2,6 s: ahí pasa directo.
+        if conPlaca && !pantallaCompleta {
             player.pause()
-            placa = i
+            placaId = clip.id
             if placaFija { return }
             tareaPlaca = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(ReglasGuia.placaSegundos))
@@ -208,8 +227,11 @@ final class ControlReproductor {
             return
         }
         if player.currentItem == nil, let i = actual { videoCargado = nil; cargar(i, reproducir: true, conPlaca: false); return }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        try? AVAudioSession.sharedInstance().setActive(true)
+        // Si ya había terminado, tocarlo de nuevo lo arranca desde el principio.
+        if let item = player.currentItem, ReglasGuia.estaAlFinal(player.currentTime().seconds, duracion: item.duration.seconds) {
+            player.seek(to: .zero)
+        }
+        SesionAudio.activar()
         player.defaultRate = velocidad
         player.play()
         player.rate = velocidad
@@ -246,13 +268,13 @@ final class ControlReproductor {
                 }
             }
         case .failed:
-            if !portada || placa != nil { sinConexion = true }
+            if !portada || placaId != nil { sinConexion = true }
         default: break
         }
     }
 
     private func avanzo(_ t: Double) {
-        guard placa == nil, player.timeControlStatus == .playing, let id = videoCargado,
+        guard placaId == nil, player.timeControlStatus == .playing, let id = videoCargado,
               let dur = player.currentItem?.duration.seconds else { return }
         if let g = avance.alAvanzar(t, duracion: dur) { alGuardar(id, g) }
     }
@@ -260,8 +282,8 @@ final class ControlReproductor {
     private func termino() {
         guard let id = videoCargado else { return }
         alGuardar(id, avance.alTerminar(duracion: player.currentItem?.duration.seconds ?? .nan))
-        // Pasa solo al siguiente, con su placa. Si era el último, queda ahí.
-        if haySiguiente { siguiente() }
+        // Pasa solo al siguiente, con su placa. Si era el último, queda ahí. Con una duda a medio escribir, tampoco.
+        if haySiguiente && !hayBorrador(id) { siguiente() }
     }
 }
 
@@ -447,7 +469,7 @@ final class ControlVerPorQue {
     private(set) var reproduciendo = false
     private(set) var sinConexion = false
 
-    @ObservationIgnored let player = AVPlayer()
+    @ObservationIgnored nonisolated(unsafe) let player = AVPlayer()
     /// El clip por id, al día (visto y segundos).
     @ObservationIgnored var clip: (String) -> ClipGuia? = { _ in nil }
     @ObservationIgnored var alGuardar: (String, AvanceVideo.Guardado) -> Void = { _, _ in }
@@ -456,7 +478,7 @@ final class ControlVerPorQue {
     @ObservationIgnored var pantallaCompleta = false
 
     @ObservationIgnored private var avance = AvanceVideo(visto: false)
-    @ObservationIgnored private var observadorTiempo: Any?
+    @ObservationIgnored nonisolated(unsafe) private var observadorTiempo: Any?
     @ObservationIgnored private var observadorEstado: NSKeyValueObservation?
     @ObservationIgnored private var observadorControl: NSKeyValueObservation?
     @ObservationIgnored nonisolated(unsafe) private var finales: [NSObjectProtocol] = []
@@ -477,7 +499,13 @@ final class ControlVerPorQue {
         }
     }
 
-    deinit { finales.forEach(NotificationCenter.default.removeObserver) }
+    deinit {
+        finales.forEach(NotificationCenter.default.removeObserver)
+        if let o = observadorTiempo { player.removeTimeObserver(o) }
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        SesionAudio.soltar()
+    }
 
     /// El botón: abre y arranca, o cierra si ya estaba abierto.
     func alternar(_ id: String) {
@@ -492,8 +520,7 @@ final class ControlVerPorQue {
         let item = AVPlayerItem(url: url)
         observar(item)
         player.replaceCurrentItem(with: item)
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        try? AVAudioSession.sharedInstance().setActive(true)
+        SesionAudio.activar()
         player.play()
     }
 
@@ -566,6 +593,19 @@ final class ControlVerPorQue {
     private func termino() {
         guard let id = abierto else { return }
         alGuardar(id, avance.alTerminar(duracion: player.currentItem?.duration.seconds ?? .nan))
+    }
+}
+
+/// La sesión de audio de los videos de la guía: se activa al reproducir y se suelta al salir (o al irse a segundo plano),
+/// así la música u otra app vuelven a sonar.
+enum SesionAudio {
+    static func activar() {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    static func soltar() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
 

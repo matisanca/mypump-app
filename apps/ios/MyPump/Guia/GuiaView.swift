@@ -57,9 +57,11 @@ struct GuiaView: View {
             verPorQue.clip = { [modelo] id in modelo.clipDeSuplemento(id) }
             verPorQue.alGuardar = control.alGuardar
             verPorQue.forzarSinRed = GuiaUI.sinRed
-            // Un solo video a la vez, como la web.
-            verPorQue.alArrancar = { [control] in control.frenarPorOtro() }
-            control.alArrancar = { [verPorQue] in verPorQue.pausar() }
+            control.hayBorrador = { [modelo] id in ReglasGuia.textoParaMandar(modelo.borradores[id] ?? "") != nil }
+            // Un solo video a la vez, como la web. Débiles: los dos controles se nombran entre sí y ninguno tiene que
+            // quedar vivo al salir de la guía.
+            verPorQue.alArrancar = { [weak control] in control?.frenarPorOtro() }
+            control.alArrancar = { [weak verPorQue] in verPorQue?.pausar() }
             guard !traida else { return }
             traida = true
             if modelo.guia != nil { prepararInicial() }
@@ -72,11 +74,16 @@ struct GuiaView: View {
         }
         // La guía dejó de existir (token revocado o la página se dio de baja): la sección desaparece, sin mensaje.
         .onChange(of: modelo.estado) { _, e in if e == .oculta { control.pausar(); verPorQue.cerrar(); cerrar() } }
-        .onChange(of: fase) { _, f in if f == .background { control.pausar(); verPorQue.pausar() } }
-        // Otra pestaña o volver a Entreno: se pausa y queda guardado. La pantalla completa del sistema no cuenta.
+        .onChange(of: fase) { _, f in if f == .background { control.pausar(); verPorQue.pausar(); SesionAudio.soltar() } }
+        // Llegó una guía (la primera, después de «Reintentar», o una nueva con otra lista): el reproductor se prepara de nuevo
+        // si su video ya no está. Si sigue, no se toca.
+        .onChange(of: clips.map(\.id)) { _, _ in prepararInicial() }
+        // Otra pestaña o volver a Entreno: se pausa y queda guardado, y el audio vuelve a los demás. La pantalla completa
+        // del sistema no cuenta.
         .onDisappear {
-            if !control.pantallaCompleta { control.pausar() }
-            if !verPorQue.pantallaCompleta { verPorQue.pausar() }
+            if !control.pantallaCompleta && !verPorQue.pantallaCompleta {
+                control.pausar(); verPorQue.pausar(); SesionAudio.soltar()
+            }
         }
         .sensoryFeedback(.selection, trigger: control.cambios)
     }
@@ -480,7 +487,7 @@ private struct DudaVideo: View {
 
     var body: some View {
         let ya = ReglasGuia.renglones(clip.duda)
-        let enCola = modelo.pendientes.filter { $0.video == clip.id }
+        let enCola = modelo.pendientesSinLlegar.filter { $0.video == clip.id }
         let borrador = Binding(get: { modelo.borradores[clip.id] ?? "" }, set: { modelo.borradores[clip.id] = $0 })
         VStack(alignment: .leading, spacing: Espacio.xs) {
             Divider().padding(.bottom, 4)
@@ -543,10 +550,11 @@ private struct VerPorQue: View {
                 .padding(.horizontal, 14)
                 .frame(minHeight: 36)
                 .overlay(Capsule().strokeBorder(Color.marcaTexto, lineWidth: 1))
-                .contentShape(Capsule())
+                // La cápsula se ve de 36 pt, como la web; lo que se puede tocar mide 44.
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .frame(minHeight: 44)
             .accessibilityLabel(abierto ? "Cerrar el video de \(nombre)" : "\(ReglasGuia.rotuloVerPorQue(clip)), \(nombre)\(clip.visto ? ", visto" : "")")
             .accessibilityValue(abierto ? "Abierto" : "Cerrado")
             .accessibilityIdentifier("guia-ver-por-que-\(clip.id)")
@@ -591,7 +599,7 @@ private struct DudasLlamada: View {
 
     var body: some View {
         let ya = modelo.guia?.dudasLlamada.map(\.texto) ?? []
-        let enCola = modelo.pendientes.filter { $0.video == nil }
+        let enCola = modelo.pendientesSinLlegar.filter { $0.video == nil }
         let borrador = Binding(get: { modelo.borradores[""] ?? "" }, set: { modelo.borradores[""] = $0 })
         VStack(alignment: .leading, spacing: Espacio.xs) {
             Text(despues ? "¿Te quedó algo para preguntarme?" : "¿Qué querés que hablemos en la videollamada?")

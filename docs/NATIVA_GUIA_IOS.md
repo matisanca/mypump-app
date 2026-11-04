@@ -35,6 +35,14 @@ Rama `nativa-guia-ios`. Espec: `~/pump-entregas/docs/ESPEC-APP-PUMP-TEAM.md`. Co
 - **Dudas:** `guia_duda` y `guia_duda_llamada` por la cola, sin deduplicar. Lo que está en la cola se ve con un reloj
   («Se envía sola apenas tengas señal»). Si la base devuelve `false` (tope o token) o la cola la abandona, el texto
   vuelve al campo con «No se pudo guardar».
+- **Sin duplicados (revisión del 4/11):** cada duda lleva un uuid v4 (`id` en el payload, `p_id` de `entregas_013`)
+  armado al encolarla: un reintento con la respuesta perdida no la suma de nuevo; las ops viejas sin id van sin el
+  campo. `previas` (cuántas iguales había) evita verla dos veces si un get ya la trae, y una duda confirmada se
+  vuelve a poner encima de un get que salió antes de la confirmación. La mezcla del avance es un solo paso del actor
+  de la cola (`Outbox.encolar(_:dedupeKey:mezclando:)`). Con avances en la cola, la tarjeta no retrocede.
+- **Reproductor:** sigue el video por id (una guía nueva con otra lista no lo desfasa) y se vuelve a preparar cuando
+  llega una guía; sin placa en pantalla completa; con una duda a medio escribir no pasa solo al siguiente; un video
+  terminado vuelve a empezar; al salir se sueltan los dos AVPlayer, el monitor de red y la sesión de audio.
 - **Accesibilidad:** claro y oscuro, Dynamic Type (con letra de accesibilidad la fila apila título y duración), VoiceOver
   (fila con «Visto/Sin ver», la duración hablada y el video actual; placa como botón), toques de 44 pt o más.
 

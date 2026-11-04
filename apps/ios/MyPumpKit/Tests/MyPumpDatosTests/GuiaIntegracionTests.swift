@@ -69,6 +69,23 @@ struct GuiaIntegracionTests {
         #expect(otro.guia?.dudasLlamada.contains { $0.texto == marca } == true)
     }
 
+    /// entregas_013: la misma duda mandada dos veces con el mismo `p_id` (un reintento con la respuesta perdida) queda una vez.
+    @Test(.enabled(if: escribirDudas)) func elMismoPIdDosVecesLlegaUnaSola() async throws {
+        let (m, _) = armar()
+        await m.abrir()
+        let clip = try #require(m.clips.first)
+        let marca = "Prueba p_id iOS \(Int(Date().timeIntervalSince1970))"
+        let escrituras = Escrituras(cliente: ClienteRPC(), token: tokenGuia ?? "")
+        let op = Operacion(id: "pid_\(UUID().uuidString.prefix(8))", kind: ModeloGuia.kindDuda,
+                           payload: .objeto(["video": .texto(clip.id), "texto": .texto(marca), "id": .texto(UUID().uuidString.lowercased())]),
+                           dedupeKey: nil, ts: Date().timeIntervalSince1970 * 1000)
+        _ = await escrituras.ejecutar(op)
+        _ = await escrituras.ejecutar(op)
+        let (otro, _) = armar()
+        await otro.abrir()
+        #expect(ReglasGuiaVeces.de(marca, en: otro.guia?.clips.first { $0.id == clip.id }?.duda) == 1)
+    }
+
     @Test func unTokenQueNoExisteNoTieneGuia() async {
         let falso = "token_que_no_existe_\(UUID().uuidString.prefix(8))"
         let m = ModeloGuia(cliente: ClienteRPC(), token: falso, outbox: nil, disco: Disco(raiz: raiz, token: falso))
@@ -77,6 +94,10 @@ struct GuiaIntegracionTests {
         await m.abrir()
         #expect(m.estado == .oculta)
     }
+}
+
+enum ReglasGuiaVeces {
+    static func de(_ t: String, en s: String?) -> Int { (s ?? "").components(separatedBy: "\n").filter { $0 == t }.count }
 }
 
 enum ReglasGuiaBloques {

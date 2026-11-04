@@ -194,6 +194,14 @@ public actor Outbox {
         return op
     }
 
+    /// `encolar` con la op pendiente de la misma clave a la vista, en un solo paso del actor: leer lo previo, mezclar y
+    /// reemplazar no se puede intercalar con otro `encolar` de la misma clave (el avance de «Tu guía», que sale cada 10 s).
+    @discardableResult
+    public func encolar(_ kind: String, dedupeKey: String, mezclando mezcla: @Sendable (JSONValue?) -> JSONValue) -> Operacion {
+        let previa = estado.ops.last { $0.dedupeKey == dedupeKey }?.payload
+        return encolar(kind, mezcla(previa), dedupeKey: dedupeKey)
+    }
+
     /// Mete ops que ya existían (la migración del almacenamiento viejo), sin ejecutar, respetando el orden.
     public func importar(_ ops: [Operacion]) {
         for op in ops where !estado.ops.contains(where: { $0.id == op.id }) {

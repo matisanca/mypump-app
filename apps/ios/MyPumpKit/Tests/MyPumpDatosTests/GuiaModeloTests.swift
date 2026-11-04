@@ -9,6 +9,7 @@ final class ServidorGuia: Transporte, @unchecked Sendable {
     private var _respuestas: [String: String] = [:]
     private var _llamadas: [(fn: String, cuerpo: JSONValue)] = []
     private var _sinRed = false
+    private var _demoras: [String: Duration] = [:]
 
     init(_ respuestas: [String: String] = [:]) { _respuestas = respuestas }
 
@@ -17,17 +18,20 @@ final class ServidorGuia: Transporte, @unchecked Sendable {
         set { cerrojo.withLock { _sinRed = newValue } }
     }
     func responder(_ fn: String, _ cuerpo: String) { cerrojo.withLock { _respuestas[fn] = cuerpo } }
+    /// La respuesta de esa función tarda (contesta con lo que había al llegar el pedido).
+    func demorar(_ fn: String, _ d: Duration?) { cerrojo.withLock { _demoras[fn] = d } }
     var llamadas: [(fn: String, cuerpo: JSONValue)] { cerrojo.withLock { _llamadas } }
     func llamadas(a fn: String) -> [JSONValue] { llamadas.filter { $0.fn == fn }.map(\.cuerpo) }
 
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
         let fn = pedido.url?.lastPathComponent ?? ""
         let cuerpo = pedido.httpBody.flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) } ?? .null
-        let (r, sinRed): (String?, Bool) = cerrojo.withLock {
+        let (r, sinRed, demora): (String?, Bool, Duration?) = cerrojo.withLock {
             _llamadas.append((fn, cuerpo))
-            return (_respuestas[fn], _sinRed)
+            return (_respuestas[fn], _sinRed, _demoras[fn])
         }
         if sinRed { throw URLError(.notConnectedToInternet) }
+        if let demora { try? await Task.sleep(for: demora) }
         return (Data((r ?? "true").utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
     }
 }
@@ -75,7 +79,7 @@ struct GuiaModeloTests {
         await m.abrir()
         s.sinRed = true
         let (otro, _, _) = armar(s)
-        #expect(otro.estado == .lista && otro.desdeCache, "arranca con la copia")
+        #expect(otro.estado == .lista && !otro.desdeCache, "arranca con la copia, sin «Sin conexión» hasta que el get falle")
         await otro.abrir()
         #expect(otro.estado == .lista && otro.desdeCache)
         #expect(otro.guia?.clips.count == 13)
@@ -242,6 +246,130 @@ struct GuiaModeloTests {
         let fallidos = await cola.fallidos
         let quedan = await cola.pendientes
         #expect(quedan == 0 && fallidos.isEmpty, "false = token caído o sin guía: nada que reintentar")
+    }
+
+    // MARK: - Revisión adversarial (4/11)
+
+    /// La muestra con una duda más en FT-9a (lo que trae un get si la duda ya llegó al servidor).
+    private static let conNueva = GuiaMuestra.json.replacingOccurrences(of: "\"¿Puedo cambiar el arroz por fideos?\"",
+                                                                         with: "\"¿Puedo cambiar el arroz por fideos?\\nnueva\"")
+
+    @Test func cadaDudaLlevaSuPIdYLasViejasVanSinElCampo() async throws {
+        let s = ServidorGuia(["entregas_app_get": GuiaMuestra.json, "entregas_app_duda": "true", "entregas_app_llamada_duda": "true"])
+        let (m, cola, _) = armar(s)
+        await m.abrir()
+        _ = await m.enviarDudaPorTexto(video: "FT-9a", "con id")
+        m.borradores[""] = "para la llamada"
+        _ = await m.enviarDudaLlamada()
+        await cola.importar([
+            Operacion(id: "viejo_1", kind: ModeloGuia.kindDuda, payload: .objeto(["video": .texto("FT-9a"), "texto": .texto("vieja")]), dedupeKey: nil, ts: 1),
+            Operacion(id: "viejo_2", kind: ModeloGuia.kindDudaLlamada, payload: .objeto(["texto": .texto("vieja"), "id": .texto("")]), dedupeKey: nil, ts: 2),
+        ])
+        await cola.drenar()
+        let duda = s.llamadas(a: "entregas_app_duda"), llamada = s.llamadas(a: "entregas_app_llamada_duda")
+        let id1 = try #require(duda.first?["p_id"]?.comoTexto)
+        #expect(UUID(uuidString: id1) != nil && id1 == id1.lowercased())
+        #expect(UUID(uuidString: llamada.first?["p_id"]?.comoTexto ?? "") != nil)
+        #expect(id1 != llamada.first?["p_id"]?.comoTexto)
+        #expect(duda.last?["p_id"] == nil, "una op vieja sin id va sin el campo")
+        #expect(llamada.last?["p_id"] == nil, "nunca \"\": da 22P02")
+    }
+
+    @Test func elReintentoMandaElMismoPId() async {
+        let s = ServidorGuia(["entregas_app_get": GuiaMuestra.json, "entregas_app_duda": "true"])
+        let (m, cola, _) = armar(s)
+        await m.abrir()
+        s.sinRed = true
+        _ = await m.enviarDudaPorTexto(video: "FT-9a", "reintento")
+        await cola.drenar()
+        s.sinRed = false
+        await cola.drenar()
+        let ids = s.llamadas(a: "entregas_app_duda").compactMap { $0["p_id"]?.comoTexto }
+        #expect(ids.count == 2 && Set(ids).count == 1)
+    }
+
+    @Test func siElGetYaTraeLaDudaNoSeVeNiSeSumaDosVeces() async {
+        let s = ServidorGuia(["entregas_app_get": GuiaMuestra.json, "entregas_app_duda": "true"])
+        let (m, cola, _) = armar(s)
+        await m.abrir()
+        s.sinRed = true
+        _ = await m.enviarDudaPorTexto(video: "FT-9a", "nueva")
+        s.sinRed = false
+        // Llegó al servidor pero la respuesta se perdió; el get la trae mientras sigue en la cola.
+        s.responder("entregas_app_get", Self.conNueva)
+        await m.abrir()
+        #expect(m.pendientes.count == 1 && m.pendientesSinLlegar.isEmpty, "no se ve dos veces")
+        await cola.drenar()
+        await hasta { m.pendientes.isEmpty }
+        #expect(ReglasGuiaRenglones.de(m.guia?.clips.first { $0.id == "FT-9a" }?.duda) == ["¿Puedo cambiar el arroz por fideos?", "nueva"])
+    }
+
+    @Test func unGetViejoNoBorraLaDudaRecienConfirmada() async {
+        let s = ServidorGuia(["entregas_app_get": GuiaMuestra.json, "entregas_app_duda": "true"])
+        let (m, cola, _) = armar(s)
+        await m.abrir()
+        // Un get sale (y tarda) antes de que la duda se confirme: vuelve sin ella.
+        s.demorar("entregas_app_get", .milliseconds(600))
+        let carga = Task { await m.abrir() }
+        try? await Task.sleep(for: .milliseconds(100))
+        _ = await m.enviarDudaPorTexto(video: "FT-9a", "nueva")
+        await cola.drenar()
+        await hasta { m.pendientes.isEmpty && m.envios["FT-9a"] == .listo }
+        await carga.value
+        #expect(ReglasGuiaRenglones.de(m.guia?.clips.first { $0.id == "FT-9a" }?.duda) == ["¿Puedo cambiar el arroz por fideos?", "nueva"])
+        // Un get que sale después de la confirmación ya la trae: no se agrega de nuevo.
+        s.demorar("entregas_app_get", nil)
+        s.responder("entregas_app_get", Self.conNueva)
+        await m.abrir()
+        #expect(ReglasGuiaRenglones.de(m.guia?.clips.first { $0.id == "FT-9a" }?.duda) == ["¿Puedo cambiar el arroz por fideos?", "nueva"])
+    }
+
+    @Test func laDudaDeLaLlamadaQueYaLlegoNoCuentaDosVeces() async {
+        let s = ServidorGuia(["entregas_app_get": GuiaMuestra.json])
+        let (m, _, _) = armar(s)
+        await m.abrir()
+        let antes = m.dudasLlamadaContadas
+        s.sinRed = true
+        m.borradores[""] = "¿Y los domingos?"
+        _ = await m.enviarDudaLlamada()
+        #expect(m.dudasLlamadaContadas == antes + 1)
+        s.sinRed = false
+        s.responder("entregas_app_get", GuiaMuestra.json.replacingOccurrences(
+            of: #""dudas_llamada":["#, with: #""dudas_llamada":[{"texto":"¿Y los domingos?","en":null},"#))
+        await m.abrir()
+        #expect(m.dudasLlamadaContadas == antes + 1, "la de la cola ya vino en el get")
+    }
+
+    @Test func dosAvancesALaVezSeMezclanSinPisarse() async {
+        let s = ServidorGuia(["entregas_app_get": GuiaMuestra.json])
+        let (m, cola, _) = armar(s)
+        await m.abrir()
+        s.sinRed = true
+        await withTaskGroup(of: Void.self) { g in
+            g.addTask { await m.avance(video: "FT-2a", segundos: 40, visto: false) }
+            g.addTask { await m.avance(video: "FT-2a", segundos: 20, visto: true) }
+            g.addTask { await m.avance(video: "FT-2a", segundos: 30, visto: false) }
+        }
+        let ops = await cola.operaciones.filter { $0.kind == ModeloGuia.kindAvance }
+        #expect(ops.count == 1)
+        #expect(ops.first?.payload["segundos"] == .numero(40) && ops.first?.payload["visto"] == .bool(true))
+        let c = m.guia?.clips.first { $0.id == "FT-2a" }
+        #expect(c?.segundos == 40 && c?.visto == true)
+    }
+
+    @Test func laTarjetaNoRetrocedeConAvancesEnLaCola() async {
+        let s = ServidorGuia(["entregas_app_get": GuiaMuestra.json])
+        let (m, _, _) = armar(s)
+        await m.abrir()
+        let antes = m.resumen?.vistos ?? 0
+        s.sinRed = true
+        await m.avance(video: "FT-2a", segundos: 100, visto: true)
+        #expect(m.resumen?.vistos == antes + 1)
+        s.sinRed = false
+        // El servidor todavía no recibió el avance.
+        s.responder("entregas_app_resumen", #"{"ok":true,"total":11,"vistos":\#(antes),"minutos_restantes":6.2}"#)
+        await m.actualizarResumen()
+        #expect(m.resumen?.vistos == antes + 1)
     }
 }
 

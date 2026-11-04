@@ -25,21 +25,30 @@ public enum ReglasGuia {
         clips.filter { esBloqueApp($0.bloque) } + clips.filter { !esBloqueApp($0.bloque) }
     }
 
-    /// Los espacios que recorta `entregas_012` alrededor del bloque (`\s` de Postgres, el espacio duro y el BOM).
-    private static let espaciosDelServidor = CharacterSet(charactersIn: " \t\n\r\u{0B}\u{0C}\u{A0}\u{FEFF}")
+    /// Lo que recorta `entregas_012` alrededor del bloque: `[\s\u00a0\ufeff]` del regex (`\s` de Postgres es espacio,
+    /// tab, salto de línea, retorno, tab vertical y salto de página).
+    private static let espaciosDelServidor: Set<Unicode.Scalar> = [" ", "\t", "\n", "\r", "\u{0B}", "\u{0C}", "\u{A0}", "\u{FEFF}"]
 
-    /// «Tu suplementación» como lo compara `entregas_012` (y pack.html): sin los espacios de alrededor, sin importar
-    /// mayúsculas y con o sin acento en la ó. Un bloque nil no es ese bloque.
+    /// «Tu suplementación» como el regex de `entregas_012` (`~* '^…tu suplementaci[oóÓ]n…$'`): escalar por escalar (una ó
+    /// descompuesta, NFD, no es la ó del regex aunque Swift las compare iguales), sin distinguir mayúsculas en ASCII y con o,
+    /// ó u Ó. Un bloque nil no es ese bloque.
     public static func esBloqueSuplementacion(_ bloque: String?) -> Bool {
         guard let bloque else { return false }
-        let t = bloque.trimmingCharacters(in: espaciosDelServidor).lowercased()
-        return t == "tu suplementación" || t == "tu suplementacion"
+        var e = Array(bloque.unicodeScalars)
+        while let f = e.first, espaciosDelServidor.contains(f) { e.removeFirst() }
+        while let l = e.last, espaciosDelServidor.contains(l) { e.removeLast() }
+        let base = Array("tu suplementaci".unicodeScalars)
+        guard e.count == base.count + 2 else { return false }
+        for (x, y) in zip(e, base) where x.properties.lowercaseMapping != String(y) { return false }
+        let o = e[base.count]
+        guard o == "o" || o == "O" || o == "\u{F3}" || o == "\u{D3}" else { return false }
+        return e[base.count + 1] == "n" || e[base.count + 1] == "N"
     }
 
     /// Los ids de los clips que nombra un suplemento (`nombraVideo`: nombre no vacío, estado distinto de «sale» y
     /// `video_id` no vacío), como `nombrados` en la web y en `entregas_012`.
     public static func nombradosPorSuplementos(_ s: SuplementacionGuia?) -> Set<String> {
-        Set(s?.videosNombrados ?? [])
+        Set((s?.items ?? []).compactMap(\.nombraVideo))
     }
 
     /// Los clips de la lista, de «Viste X de N» y del reproductor (web del 4/11, A5): los del bloque «Tu suplementación» que
@@ -189,6 +198,24 @@ public enum ReglasGuia {
         (duda ?? "").split(separator: "\n", omittingEmptySubsequences: true).map { String($0) }
     }
 
+    /// Cuántas veces está una duda en lo que trajo el servidor para un video (las dudas van una tras otra, separadas por
+    /// un salto de línea; una duda puede tener varios renglones). Para saber si una duda que se mandó ya llegó.
+    public static func veces(_ texto: String, en duda: String?) -> Int {
+        guard let duda, !texto.isEmpty else { return 0 }
+        let todo = duda.components(separatedBy: "\n"), buscado = texto.components(separatedBy: "\n")
+        guard buscado.count <= todo.count else { return 0 }
+        var n = 0, i = 0
+        while i + buscado.count <= todo.count {
+            if Array(todo[i..<(i + buscado.count)]) == buscado { n += 1; i += buscado.count } else { i += 1 }
+        }
+        return n
+    }
+
+    /// Lo mismo para las dudas de la videollamada (una por fila).
+    public static func veces(_ texto: String, en dudas: [DudaLlamada]) -> Int {
+        dudas.filter { $0.texto == texto }.count
+    }
+
     /// `*negrita*` del PDF en tramos: (texto, en negrita).
     public static func negritas(_ s: String) -> [(texto: String, negrita: Bool)] {
         var out: [(String, Bool)] = []
@@ -226,6 +253,12 @@ public enum ReglasGuia {
         guard !clip.visto, duracion.isFinite, duracion > 0 else { return nil }
         let s = Double(clip.segundos)
         return s > 5 && s < duracion - 5 ? s : nil
+    }
+
+    /// El video quedó en el final (terminó): tocarlo de nuevo lo arranca desde cero.
+    public static func estaAlFinal(_ t: Double, duracion: Double) -> Bool {
+        guard t.isFinite, duracion.isFinite, duracion > 0 else { return false }
+        return t >= duracion - 0.5
     }
 
     /// 1x → 1,25x → 1,5x → 1x.

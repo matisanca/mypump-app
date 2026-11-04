@@ -42,6 +42,18 @@ public final class ModeloGuia {
         public let id: String      // el `_id` de la op
         public let video: String?  // nil = para la videollamada
         public let texto: String
+        /// Cuántas iguales había al mandarla (en el servidor y antes en la cola): si el servidor tiene más, ya llegó.
+        public var previas: Int = 0
+    }
+
+    /// Una duda que el servidor confirmó y todavía puede faltar en un `get` que salió antes de la confirmación.
+    private struct Confirmada {
+        let video: String?
+        let texto: String
+        /// Cuántas tiene que haber en el servidor con esta adentro.
+        let esperadas: Int
+        /// La última carga que había salido al confirmarse: una carga posterior ya la trae.
+        let carga: Int
     }
 
     public private(set) var estado: Estado
@@ -66,6 +78,9 @@ public final class ModeloGuia {
     @ObservationIgnored private var resumenEnCurso = false
     /// La muestra de la maqueta: nunca toca la red.
     @ObservationIgnored private var esMuestra = false
+    /// Cuántas cargas (`get`) salieron: para saber si una trae o no una duda recién confirmada.
+    @ObservationIgnored private var cargas = 0
+    @ObservationIgnored private var confirmadas: [Confirmada] = []
 
     static let archivoGuia = "guia.json"
     static let archivoResumen = "guia_resumen.json"
@@ -77,7 +92,8 @@ public final class ModeloGuia {
         guia = copia
         resumen = disco?.leer(ResumenGuia.self, Self.archivoResumen)
         estado = copia != nil ? .lista : .cargando
-        desdeCache = copia != nil
+        // «Sin conexión» solo cuando el get falla (`traer`): mientras tanto se ve la copia sin aviso.
+        desdeCache = false
     }
 
     // MARK: - Lectura
@@ -100,8 +116,17 @@ public final class ModeloGuia {
         defer { resumenEnCurso = false }
         guard case .success(let j) = await cliente.llamar("entregas_app_resumen", ["p_token": .texto(token)]) else { return }
         let r = ResumenGuia(json: j)
-        aplicarResumen(r)
-        if !r.ok { ocultar() }
+        guard r.ok else { aplicarResumen(r); ocultar(); return }
+        // Con avances todavía en la cola, el servidor cuenta menos de lo que el cliente ya vio: la tarjeta no retrocede.
+        // Si hay guía guardada, se cuenta con ella (lo de la cola ya está encima); si no, nunca menos vistos que antes.
+        let enCola = await outbox?.operaciones.contains { $0.kind == Self.kindAvance && $0.payload["visto"] == .bool(true) } ?? false
+        if enCola, guia != nil {
+            await superponerPendientes()
+        } else if enCola, let antes = resumen, antes.ok, antes.total == r.total, antes.vistos > r.vistos {
+            return
+        } else {
+            aplicarResumen(r)
+        }
     }
 
     /// `entregas_app_get`: al abrir la sección. Si ya hay una carga en vuelo, se espera esa.
@@ -115,6 +140,8 @@ public final class ModeloGuia {
     }
 
     private func traer() async {
+        cargas += 1
+        let carga = cargas
         switch await cliente.llamar("entregas_app_get", ["p_token": .texto(token)]) {
         case .failure:
             // Sin red o el servidor caído: lo guardado, si hay.
@@ -126,8 +153,11 @@ public final class ModeloGuia {
                 estado = .sinRed
             }
         case .success(let j):
-            let g = Guia(json: j)
+            var g = Guia(json: j)
             guard g.ok else { ocultar(); return }
+            // Lo confirmado después de que salió este get todavía no viene: se pone encima (si ya viene, no se repite).
+            for c in confirmadas where c.carga >= carga { Self.asegurar(c, en: &g) }
+            confirmadas.removeAll { $0.carga < carga }
             guia = g
             desdeCache = false
             disco?.guardar(g, Self.archivoGuia)
@@ -162,9 +192,13 @@ public final class ModeloGuia {
                 aplicarAvanceLocal(video: v, segundos: Int(op.payload["segundos"]?.comoNumero ?? 0),
                                    visto: op.payload["visto"] == .bool(true), guardarCopia: false)
             case Self.kindDuda:
-                if let v = op.payload["video"]?.comoTexto, let t = op.payload["texto"]?.comoTexto { pend.append(DudaPendiente(id: op.id, video: v, texto: t)) }
+                if let v = op.payload["video"]?.comoTexto, let t = op.payload["texto"]?.comoTexto {
+                    pend.append(DudaPendiente(id: op.id, video: v, texto: t, previas: Int(op.payload["previas"]?.comoNumero ?? 0)))
+                }
             case Self.kindDudaLlamada:
-                if let t = op.payload["texto"]?.comoTexto { pend.append(DudaPendiente(id: op.id, video: nil, texto: t)) }
+                if let t = op.payload["texto"]?.comoTexto {
+                    pend.append(DudaPendiente(id: op.id, video: nil, texto: t, previas: Int(op.payload["previas"]?.comoNumero ?? 0)))
+                }
             default: continue
             }
         }
@@ -186,15 +220,23 @@ public final class ModeloGuia {
     public func avance(video: String, segundos: Int, visto: Bool) async {
         guard let outbox else { return }
         let clave = "\(Self.kindAvance)_\(video)"
-        var s = min(ReglasGuia.maxSegundos, max(0, segundos))
-        var v = visto
-        if let previa = await outbox.pendientesPorClave()[clave] {
-            s = max(s, Int(previa.payload["segundos"]?.comoNumero ?? 0))
-            v = v || previa.payload["visto"] == .bool(true)
-        }
-        if let c = guia?.clips.first(where: { $0.id == video }), c.visto { v = true }
+        let s = min(ReglasGuia.maxSegundos, max(0, segundos))
+        let v = visto || guia?.clips.first(where: { $0.id == video })?.visto == true
+        // Lo de la pantalla primero (no espera a la cola); la mezcla con lo pendiente es un solo paso del actor, así dos
+        // avances seguidos del mismo video no se pisan.
         aplicarAvanceLocal(video: video, segundos: s, visto: v, guardarCopia: true)
-        await outbox.encolar(Self.kindAvance, .objeto(["video": .texto(video), "segundos": .numero(Double(s)), "visto": .bool(v)]), dedupeKey: clave)
+        let op = await outbox.encolar(Self.kindAvance, dedupeKey: clave) { previa in
+            Self.mezclarAvance(video: video, segundos: s, visto: v, previa: previa)
+        }
+        aplicarAvanceLocal(video: video, segundos: Int(op.payload["segundos"]?.comoNumero ?? 0),
+                           visto: op.payload["visto"] == .bool(true), guardarCopia: true)
+    }
+
+    /// El mayor de los segundos y visto si alguno lo tenía (la base hace lo mismo).
+    nonisolated static func mezclarAvance(video: String, segundos: Int, visto: Bool, previa: JSONValue?) -> JSONValue {
+        let s = max(segundos, Int(previa?["segundos"]?.comoNumero ?? 0))
+        let v = visto || previa?["visto"] == .bool(true)
+        return .objeto(["video": .texto(video), "segundos": .numero(Double(s)), "visto": .bool(v)])
     }
 
     private func aplicarAvanceLocal(video: String, segundos: Int, visto: Bool, guardarCopia: Bool) {
@@ -220,8 +262,11 @@ public final class ModeloGuia {
         guard let outbox, let texto = ReglasGuia.textoParaMandar(borradores[video] ?? "") else { return false }
         borradores[video] = ""
         envios[video] = .enviando
-        let op = await outbox.encolar(Self.kindDuda, .objeto(["video": .texto(video), "texto": .texto(texto)]), dedupeKey: nil)
-        if !alGuardarYa(op.id) { pendientes.append(DudaPendiente(id: op.id, video: video, texto: texto)) }
+        let previas = previasDe(texto, video: video)
+        // `id`: el `p_id` de entregas_013, un uuid al azar armado una sola vez: cada reintento manda el mismo.
+        let op = await outbox.encolar(Self.kindDuda, .objeto(["video": .texto(video), "texto": .texto(texto), "previas": .numero(Double(previas)),
+                                                              "id": .texto(UUID().uuidString.lowercased())]), dedupeKey: nil)
+        sumarPendiente(DudaPendiente(id: op.id, video: video, texto: texto, previas: previas))
         return true
     }
 
@@ -231,13 +276,38 @@ public final class ModeloGuia {
         guard let outbox, puedeSumarDudaLlamada, let texto = ReglasGuia.textoParaMandar(borradores[""] ?? "") else { return false }
         borradores[""] = ""
         envios[""] = .enviando
-        let op = await outbox.encolar(Self.kindDudaLlamada, .objeto(["texto": .texto(texto)]), dedupeKey: nil)
-        if !alGuardarYa(op.id) { pendientes.append(DudaPendiente(id: op.id, video: nil, texto: texto)) }
+        let previas = previasDe(texto, video: nil)
+        let op = await outbox.encolar(Self.kindDudaLlamada, .objeto(["texto": .texto(texto), "previas": .numero(Double(previas)),
+                                                                     "id": .texto(UUID().uuidString.lowercased())]), dedupeKey: nil)
+        sumarPendiente(DudaPendiente(id: op.id, video: nil, texto: texto, previas: previas))
         return true
     }
 
+    /// La op pudo volver de la cola mientras se encolaba, o entrar ya por `superponerPendientes`: no se suma dos veces.
+    private func sumarPendiente(_ d: DudaPendiente) {
+        guard !alGuardarYa(d.id), !pendientes.contains(where: { $0.id == d.id }) else { return }
+        pendientes.append(d)
+    }
+
+    /// Cuántas iguales hay en lo que se ve del servidor y en la cola (las de la cola salen antes que esta).
+    private func previasDe(_ texto: String, video: String?) -> Int {
+        vecesEnGuia(texto, video: video) + pendientes.filter { $0.video == video && $0.texto == texto }.count
+    }
+
+    private func vecesEnGuia(_ texto: String, video: String?) -> Int {
+        guard let g = guia else { return 0 }
+        if let video { return ReglasGuia.veces(texto, en: g.clips.first { $0.id == video }?.duda) }
+        return ReglasGuia.veces(texto, en: g.dudasLlamada)
+    }
+
+    /// Las dudas de la cola que el servidor todavía no trae: si un get ya la trajo (se perdió la respuesta y está por
+    /// reintentarse), no se ve ni se cuenta dos veces.
+    public var pendientesSinLlegar: [DudaPendiente] {
+        pendientes.filter { vecesEnGuia($0.texto, video: $0.video) <= $0.previas }
+    }
+
     /// Cuántas dudas para la videollamada hay, contando las que están en la cola.
-    public var dudasLlamadaContadas: Int { (guia?.dudasLlamada.count ?? 0) + pendientes.filter { $0.video == nil }.count }
+    public var dudasLlamadaContadas: Int { (guia?.dudasLlamada.count ?? 0) + pendientesSinLlegar.filter { $0.video == nil }.count }
     public var puedeSumarDudaLlamada: Bool { dudasLlamadaContadas < ReglasGuia.maxDudasLlamada }
 
     /// La op ya volvió de la cola mientras se encolaba (con red, `encolar` dispara la pasada enseguida).
@@ -254,7 +324,9 @@ public final class ModeloGuia {
             if g.respuesta == .bool(false) {
                 devolver(texto, a: video ?? "")
             } else {
-                sumarDuda(texto, video: video)
+                let c = Confirmada(video: video, texto: texto, esperadas: Int(g.op.payload["previas"]?.comoNumero ?? 0) + 1, carga: cargas)
+                confirmadas.append(c)
+                if var gu = guia, Self.asegurar(c, en: &gu) { guia = gu; disco?.guardar(gu, Self.archivoGuia) }
                 envios[video ?? ""] = .listo
             }
         }
@@ -274,19 +346,30 @@ public final class ModeloGuia {
         envios[clave] = .noSeGuardo
     }
 
-    /// Suma la duda guardada a lo que se ve. Siempre: dos dudas iguales son dos dudas (no se compara con la última). Si una
-    /// apertura que salió justo después del guardado ya la trajo, se ve dos veces hasta la próxima apertura (solo en
-    /// pantalla; en la base está una vez).
-    private func sumarDuda(_ texto: String, video: String?) {
-        guard var g = guia else { return }
-        if let video {
-            guard let i = g.clips.firstIndex(where: { $0.id == video }) else { return }
-            g.clips[i].duda = g.clips[i].duda.map { $0 + "\n" + texto } ?? texto
-        } else {
-            g.dudasLlamada.append(DudaLlamada(texto: texto, en: nil))
+    /// Que la duda confirmada se vea: si lo que hay tiene menos copias de las que tiene que haber, se suma (dos dudas iguales
+    /// son dos dudas). Si un get ya la trajo, no se repite. Devuelve si cambió algo.
+    @discardableResult
+    private static func asegurar(_ c: Confirmada, en g: inout Guia) -> Bool {
+        // Tope de vueltas: nunca un bucle sin fin con un texto raro.
+        guard !c.texto.isEmpty else { return false }
+        var vueltas = 0
+        if let video = c.video {
+            guard let i = g.clips.firstIndex(where: { $0.id == video }) else { return false }
+            var cambio = false
+            while ReglasGuia.veces(c.texto, en: g.clips[i].duda) < c.esperadas && vueltas < 5 {
+                vueltas += 1
+                g.clips[i].duda = g.clips[i].duda.map { $0 + "\n" + c.texto } ?? c.texto
+                cambio = true
+            }
+            return cambio
         }
-        guia = g
-        disco?.guardar(g, Self.archivoGuia)
+        var cambio = false
+        while ReglasGuia.veces(c.texto, en: g.dudasLlamada) < c.esperadas && vueltas < 5 {
+            vueltas += 1
+            g.dudasLlamada.append(DudaLlamada(texto: c.texto, en: nil))
+            cambio = true
+        }
+        return cambio
     }
 
     // MARK: - Muestras

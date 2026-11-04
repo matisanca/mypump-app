@@ -117,23 +117,16 @@ public struct SuplementacionGuia: Codable, Equatable, Sendable {
 
     public init(titulo: String? = nil, dia: [MomentoDia] = [], items: [ItemSuplemento] = [], sigueTexto: String? = nil, accion: String? = nil) {
         self.titulo = titulo; self.dia = dia; self.items = items; self.sigueTexto = sigueTexto; self.accion = accion
-        videosNombrados = items.compactMap(\.nombraVideo)
     }
 
-    /// Los `video_id` que nombran los ítems (`ItemSuplemento.nombraVideo`), contando los que no se muestran por tener el
-    /// nombre en blanco: el servidor no recorta el nombre, así que «  » cuenta como nombre (`entregas_012`).
-    public var videosNombrados: [String]
-
-    enum CodingKeys: String, CodingKey { case titulo, dia, items, sigueTexto = "sigue_texto", accion, videosNombrados = "videos_nombrados" }
+    enum CodingKeys: String, CodingKey { case titulo, dia, items, sigueTexto = "sigue_texto", accion }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         titulo = c.texto(.titulo)
         dia = c.lista(MomentoDia.self, .dia).filter { !$0.id.isEmpty }
-        let todos = c.lista(ItemSuplemento.self, .items)
-        items = todos.filter { !$0.nombre.isEmpty }
-        // De la caché viene ya calculado; del servidor, con todos los ítems.
-        videosNombrados = c.contains(.videosNombrados) ? (c.textos(.videosNombrados) ?? []) : todos.compactMap(\.nombraVideo)
+        // Como la web (`if (!it || !it.nombre) return`): sin nombre no va; un nombre en blanco sí (y su video también).
+        items = c.lista(ItemSuplemento.self, .items).filter { !$0.nombre.isEmpty }
         sigueTexto = c.texto(.sigueTexto).flatMap { $0.isEmpty ? nil : $0 }
         accion = c.texto(.accion).flatMap { $0.isEmpty ? nil : $0 }
     }
@@ -194,41 +187,34 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
     /// El id de un clip del bloque «Tu suplementación»: el ítem muestra «Ver por qué».
     public var videoId: String?
     /// El `video_id` que este ítem saca de la lista y de los conteos, con la regla de `entregas_012` y de pack.html sobre los
-    /// valores tal como vienen (sin recortar ni pasar a minúsculas): nombre no vacío, estado distinto de «sale» y
-    /// `video_id` no vacío. nil si no saca ninguno. Se guarda en la caché porque `nombre` y `estado` se normalizan al leer.
-    public var nombraVideo: String?
+    /// valores tal como vienen: nombre no vacío, estado distinto de «sale» y `video_id` no vacío. nil si no saca ninguno.
+    public var nombraVideo: String? {
+        guard !nombre.isEmpty, estado != "sale", let v = videoId, !v.isEmpty else { return nil }
+        return v
+    }
 
     public init(nombre: String, cantidad: String? = nil, momento: String? = nil, tomas: [TomaSuplemento] = [], nota: String? = nil,
                 detalle: [String] = [], estado: String? = nil, opcional: Bool = false, porQue: String? = nil, videoId: String? = nil) {
         self.nombre = nombre; self.cantidad = cantidad; self.momento = momento; self.tomas = tomas; self.nota = nota
         self.detalle = detalle; self.estado = estado; self.opcional = opcional; self.porQue = porQue; self.videoId = videoId
-        nombraVideo = Self.nombra(nombre: nombre, estado: estado, videoId: videoId)
     }
 
-    static func nombra(nombre: String?, estado: String?, videoId: String?) -> String? {
-        guard let n = nombre, !n.isEmpty, estado != "sale", let v = videoId, !v.isEmpty else { return nil }
-        return v
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case nombre, cantidad, momento, tomas, nota, detalle, estado, opcional, porQue = "por_que", videoId = "video_id", nombraVideo = "nombra_video"
-    }
+    enum CodingKeys: String, CodingKey { case nombre, cantidad, momento, tomas, nota, detalle, estado, opcional, porQue = "por_que", videoId = "video_id" }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        nombre = c.texto(.nombre)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        // Tal como viene (como la web y `entregas_012`): un nombre en blanco no es un nombre vacío.
+        nombre = c.texto(.nombre) ?? ""
         cantidad = c.texto(.cantidad)
         momento = c.texto(.momento)
         tomas = c.lista(TomaSuplemento.self, .tomas)
         nota = c.texto(.nota)
         detalle = (c.textos(.detalle) ?? []).filter { !$0.isEmpty }
-        estado = c.texto(.estado)?.lowercased()
+        // Tal como viene: «sale» y «nuevo» se comparan exactos, como la web (`it.estado === 'sale'`).
+        estado = c.texto(.estado)
         opcional = c.booleano(.opcional) ?? false
         porQue = c.texto(.porQue).flatMap { $0.isEmpty ? nil : $0 }
         videoId = c.texto(.videoId).flatMap { $0.isEmpty ? nil : $0 }
-        // De la caché viene ya calculado; del servidor se calcula con los valores crudos.
-        nombraVideo = c.contains(.nombraVideo) ? c.texto(.nombraVideo)
-            : Self.nombra(nombre: c.texto(.nombre), estado: c.texto(.estado), videoId: c.texto(.videoId))
     }
 }
 
