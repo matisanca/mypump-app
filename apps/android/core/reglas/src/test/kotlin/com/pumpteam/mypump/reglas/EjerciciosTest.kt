@@ -160,7 +160,15 @@ private fun fallasCasos(v: ArchivoSustitutos, cat: CatalogoEjercicios): List<Str
         val resueltoUi = texto(c["resueltoUI"])
         val e = c["e"]!!.jsonPrimitive.int
         val esperado = if (sw == null || e !in antesDeSustituir) resueltoUi else antesDeSustituir[e]
-        if (c["excluido"] == JsonPrimitive(true)) {
+        val cardio = CatalogoEjercicios.esCardio(ef)
+        if (cardio) {
+            // Desvío a propósito (4-nov): el cardio (también «Cardio» con mayúscula y la cinta de calentamiento) ofrece las
+            // otras máquinas de cardio; la web, ninguno. Igual que en iOS.
+            val deCardio = CatalogoEjercicios.MAQUINAS_CARDIO.map { it.second }.toSet()
+            if (subs.isEmpty() || !subs.all { it.nombre in deCardio } || subs != cat.sustitutosDeCardio(ef)) {
+                fallas += "$quien: el cardio ofrece ${subs.map { it.nombre }}"
+            }
+        } else if (c["excluido"] == JsonPrimitive(true)) {
             if (subs.isNotEmpty()) fallas += "$quien: calentamiento o cardio con ${subs.size} sustitutos"
         } else {
             val r = cat.resolver(CatalogoEjercicios.referencia(ef))
@@ -169,7 +177,7 @@ private fun fallasCasos(v: ArchivoSustitutos, cat: CatalogoEjercicios): List<Str
             if (rl?.slugEn != esperado) fallas += "$quien: las listas van sobre ${rl?.slugEn} y no $esperado"
             diferencia(subs, lista(esperado), cat, v.traducciones)?.let { fallas += "$quien: exGetSubs $it" }
         }
-        if (subs.size != (if (sw == null) c["subs"]!!.jsonPrimitive.int else lista(esperado).size)) fallas += "$quien: exGetSubs da ${subs.size}, la web ${c["subs"]}"
+        if (!cardio && subs.size != (if (sw == null) c["subs"]!!.jsonPrimitive.int else lista(esperado).size)) fallas += "$quien: exGetSubs da ${subs.size}, la web ${c["subs"]}"
     }
     return fallas
 }

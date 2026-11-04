@@ -533,7 +533,8 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
 
     /** Los otros del mismo músculo para la tarjeta, resueltos sobre el original (como [sustitutos]). */
     fun otrosDelMismoMusculo(ef: EjercicioEfectivo): List<SustitutoEjercicio> {
-        if (ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio") return emptyList()
+        val tipo = ReglasEjercicio.tipoNormalizado(ef.ejercicio.tipo)
+        if (tipo == "calentamiento" || tipo == "cardio" || esCardio(ef)) return emptyList()
         return otrosDelMismoMusculo(referenciaDeLasListas(ef))
     }
 
@@ -564,8 +565,29 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
 
     /** `exGetSubs`: los sustitutos que ofrece la tarjeta, resueltos sobre el original. Ni calentamiento ni cardio. */
     fun sustitutos(ef: EjercicioEfectivo): List<SustitutoEjercicio> {
-        if (ef.ejercicio.tipo == "calentamiento" || ef.ejercicio.tipo == "cardio") return emptyList()
+        if (esCardio(ef)) return sustitutosDeCardio(ef)
+        val tipo = ReglasEjercicio.tipoNormalizado(ef.ejercicio.tipo)
+        if (tipo == "calentamiento" || tipo == "cardio") return emptyList()
         return sustitutos(referenciaDeLasListas(ef))
+    }
+
+    /**
+     * Desvío a propósito de la web (4-nov): la cinta no ofrecía «Sustituir». Cardio por cardio: las otras máquinas de
+     * [MAQUINAS_CARDIO] que están en el catálogo, sin la del plan. El nombre elegido sigue siendo de cardio, así que el
+     * sustituto también va por tiempo. Igual que en iOS.
+     */
+    fun sustitutosDeCardio(ef: EjercicioEfectivo): List<SustitutoEjercicio> {
+        val propio = resolver(referenciaDeLasListas(ef))?.slugEn
+        return MAQUINAS_CARDIO.mapNotNull { (slug, nombre) ->
+            val e = entrada(slug) ?: return@mapNotNull null
+            if (e.slugEn == propio) return@mapNotNull null
+            SustitutoEjercicio(
+                slug = e.slugEn, nombre = nombre, nombreIngles = e.nameEn, equipo = SustitucionEjercicios.etiquetaEquipo(e),
+                equipoCrudo = e.equipment, musculo = e.primaryMuscle, patron = e.patronMovimiento,
+                imagenes = Imagenes(eccentric = verdadero(e.imageEccentric), concentric = verdadero(e.imageConcentric)),
+                mismoEquipo = true,
+            )
+        }
     }
 
     /**
@@ -583,6 +605,21 @@ class CatalogoEjercicios(val entradas: List<EntradaCatalogoEjercicio>) {
     }
 
     companion object {
+        /**
+         * Las máquinas de cardio que se ofrecen entre sí, con su nombre en castellano (el catálogo no las traduce y las trae
+         * sin patrón, así que `findSubstitutes` no las encuentra). El orden es el de la lista.
+         */
+        val MAQUINAS_CARDIO: List<Pair<String, String>> = listOf(
+            "Walking_Treadmill" to "Cinta (caminata)", "Jogging_Treadmill" to "Cinta (trote)",
+            "Bicycling_Stationary" to "Bicicleta fija", "Recumbent_Bike" to "Bicicleta reclinada",
+            "Elliptical_Trainer" to "Elíptico", "Rowing_Stationary" to "Remo ergómetro", "Stairmaster" to "Escaladora",
+        )
+
+        /** El lugar es cardio según el ejercicio del plan (su nombre y slug originales, no los del sustituto). */
+        fun esCardio(ef: EjercicioEfectivo): Boolean = ReglasEjercicio.esCardio(
+            verdadero(ef.nombreOriginal) ?: ef.ejercicio.nombre, ef.ejercicio.tipo, listOf(ef.slugOriginal, ef.ejercicio.catalogoSlug),
+        )
+
         /** El JSON del GET (o del archivo empaquetado), en el orden en que viene. */
         fun desde(json: String): CatalogoEjercicios = CatalogoEjercicios(listaEstricta(json, EntradaCatalogoEjercicio::desde))
 

@@ -425,7 +425,9 @@ class ModeloEntreno(
             varianteActual = Js.verdadero(e?.variante) ?: variantes?.opciones?.firstOrNull(),
             filas = e?.series?.indices?.mapNotNull { filaConLeyenda(lugar, it, ef.ejercicio) } ?: emptyList(),
             confirmadas = e?.series?.count { it.confirmada } ?: 0,
-            record = d.record(lugar), ultimaVez = d.ultimaVez(lugar, reloj()),
+            // El cardio va por tiempo: sin última vez ni récord aunque haya cargas viejas en su clave (4-nov).
+            record = if (ReglasEjercicio.esCardio(ef.ejercicio)) null else d.record(lugar),
+            ultimaVez = if (ReglasEjercicio.esCardio(ef.ejercicio)) null else d.ultimaVez(lugar, reloj()),
             puedeSustituir = _catalogo.value.sustitutos(ef).isNotEmpty() || _catalogo.value.otrosDelMismoMusculo(ef).isNotEmpty(),
             descanso = TiempoEntreno.fmtTiempo(d.descanso(lugar).toDouble()),
             comentarios = _comentarios.value.comentarios(lugar),

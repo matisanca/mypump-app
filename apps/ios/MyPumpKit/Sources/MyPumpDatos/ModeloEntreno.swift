@@ -319,7 +319,9 @@ public final class ModeloEntreno {
             varianteActual: JS.verdadero(e?.variante) ?? variantes?.opciones.first,
             filas: (e?.series.indices).map { $0.compactMap { filaConLeyenda(lugar, $0, ef.ejercicio) } } ?? [],
             confirmadas: e?.series.filter(\.confirmada).count ?? 0,
-            record: dia.record(lugar), ultimaVez: dia.ultimaVez(lugar, ahora: reloj()),
+            // El cardio va por tiempo: sin última vez ni récord aunque haya cargas viejas en su clave (4-nov).
+            record: ReglasEjercicio.esCardio(ef.ejercicio) ? nil : dia.record(lugar),
+            ultimaVez: ReglasEjercicio.esCardio(ef.ejercicio) ? nil : dia.ultimaVez(lugar, ahora: reloj()),
             puedeSustituir: !catalogo.sustitutos(de: ef).isEmpty || !catalogo.otrosDelMismoMusculo(de: ef).isEmpty,
             descanso: TiempoEntreno.fmtTiempo(Double(dia.descanso(lugar))),
             descansoSegundos: dia.descanso(lugar), descansoPlan: plan.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto,

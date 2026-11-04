@@ -99,6 +99,7 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.EstadosEjercicio
 import com.pumpteam.mypump.reglas.IndiceComentarios
 import com.pumpteam.mypump.reglas.NotaProgresion
+import com.pumpteam.mypump.reglas.ReglasEjercicio
 import com.pumpteam.mypump.reglas.Pauta
 import com.pumpteam.mypump.reglas.TextosEntreno
 import java.time.ZoneId
@@ -790,7 +791,8 @@ internal fun EjercicioEnLista(
             .testTag("ejercicio-abierto-$lugar"),
         verticalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
-        TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia, enLista = true)
+        // El cardio va por tiempo: sin tabla («0 de 0» y «no tiene series esta semana»), se marca con «Terminé».
+        if (t.filas.isNotEmpty()) TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia, enLista = true)
         // Solo en los ejercicios con series, como en iOS (el cardio se marca con «Terminé»).
         if (t.filas.isNotEmpty()) DescansoEnTarjeta(motor)
         // Con la letra muy grande, uno debajo del otro: en un renglón partían las palabras («Sus-tituir»).

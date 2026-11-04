@@ -170,7 +170,14 @@ func fallasCasos(_ v: ArchivoSustitutos, _ cat: CatalogoEjercicios) throws -> [S
         // (`referenciaDeLasListas`). La web, con un plan sin fotos, las arma sobre la foto del sustituto
         // (`_origImages || images`) y al reabrir «Cambiar» ofrece las del sustituto. El `orig` de la web sigue igual.
         let esperado: String? = sw == nil ? c.resueltoUI : (antesDeSustituir[c.e] ?? c.resueltoUI)
-        if c.excluido == true {
+        if CatalogoEjercicios.esCardio(ef) {
+            // Desvío a propósito (4-nov): el cardio (también «Cardio» con mayúscula y la cinta de calentamiento) ofrece
+            // las otras máquinas de cardio; la web, ninguno.
+            let deCardio = Set(CatalogoEjercicios.maquinasCardio.map(\.nombre))
+            if subs.isEmpty || !subs.allSatisfy({ deCardio.contains($0.nombre) }) || subs != cat.sustitutosDeCardio(ef) {
+                fallas.append("\(quien): el cardio ofrece \(subs.map(\.nombre))")
+            }
+        } else if c.excluido == true {
             if !subs.isEmpty { fallas.append("\(quien): calentamiento o cardio con \(subs.count) sustitutos") }
         } else {
             let r = cat.resolver(CatalogoEjercicios.referencia(de: ef))
@@ -179,7 +186,7 @@ func fallasCasos(_ v: ArchivoSustitutos, _ cat: CatalogoEjercicios) throws -> [S
             if !exacto(rl?.slugEn, esperado) { fallas.append("\(quien): las listas van sobre \(rl?.slugEn ?? "null") y no \(esperado ?? "null")") }
             if let d = diferencia(subs, lista(esperado), cat, v.traducciones) { fallas.append("\(quien): exGetSubs \(d)") }
         }
-        if subs.count != (sw == nil ? c.subs : lista(esperado).count) { fallas.append("\(quien): exGetSubs da \(subs.count), la web \(c.subs)") }
+        if !CatalogoEjercicios.esCardio(ef), subs.count != (sw == nil ? c.subs : lista(esperado).count) { fallas.append("\(quien): exGetSubs da \(subs.count), la web \(c.subs)") }
     }
     return fallas
 }
