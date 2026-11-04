@@ -389,6 +389,7 @@ class ModeloApp(
         _revision.value = ModeloRevision.demo(cliente, alcance)
         _chat.value = ModeloChat(cliente, token = null, outbox = null, alcance = alcance)
         // «Tu guía» de muestra (los clips genéricos de «Tu app»), como la rutina: sin red; lo visto y las dudas en memoria.
+        _guia.value?.cerrar()
         _guia.value = guia?.let { g ->
             try {
                 Guia.desde(ValorJson.parsear(g).aJson())
@@ -424,6 +425,7 @@ class ModeloApp(
         _entreno.value = null
         _revision.value = null   // los de la demo
         _chat.value = null
+        _guia.value?.cerrar()
         _guia.value = null
         _suplementacion.value = null
         val t = almacen.leer()
@@ -459,6 +461,7 @@ class ModeloApp(
         _progreso.value = null
         _salud.value?.cancelarEspera()
         _salud.value = null
+        _guia.value?.cerrar()
         _guia.value = null
         _suplementacion.value = null
         _entreno.value = null
@@ -491,6 +494,7 @@ class ModeloApp(
         _revision.value = ModeloRevision(cliente, t, cola, alcance)
         _fotos.value = ModeloFotos(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
+        _guia.value?.cerrar()
         _guia.value = ModeloGuia(cliente, t, cola, d, alcance)
         _suplementacion.value = ModeloSuplementacion(cliente, t, d, alcance)
         _salud.value?.cancelarEspera()

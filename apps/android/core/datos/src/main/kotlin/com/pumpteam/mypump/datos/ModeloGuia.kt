@@ -75,6 +75,9 @@ class ModeloGuia(
     /** Las dudas en audio para la videollamada (`entregas_019`): ver [ModeloAudioDudas]. */
     val audios = ModeloAudioDudas(cliente, token, outbox, disco, alcance, esDemo)
 
+    /** Lo suelta [ModeloApp] al cambiar de cuenta, salir o entrar a la demo. */
+    fun cerrar() = audios.cerrar()
+
     private val _guia = MutableStateFlow<Guia?>(null)
 
     /** La guía con lo del teléfono encima (lo visto que todavía no salió). */

@@ -101,8 +101,15 @@ class ModeloAudioDudas(
             pintar()
     }
 
-    init {
-        alcance.launch { VuelosAudio.sinRed.collect { pintar() } }
+    /**
+     * El aviso de «sin red» es de todo el proceso ([VuelosAudio]) y el alcance es el de la app: sin [cerrar], cada cuenta
+     * que pasaba por el teléfono dejaba un collector vivo.
+     */
+    private val vigia = alcance.launch { VuelosAudio.sinRed.collect { pintar() } }
+
+    /** El modelo se suelta (otra cuenta, salir, la demo): deja de escuchar los avisos. Lo pendiente sigue en la cola. */
+    fun cerrar() {
+        vigia.cancel()
     }
 
     /** Para las pruebas: ya se leyó la caché y la cola. */
