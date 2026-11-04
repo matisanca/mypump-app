@@ -304,6 +304,8 @@ public actor Outbox {
         let hayVisibles = tanda.contains { !Self.silenciosas.contains($0.kind) }
         var resueltas = Set<String>()
         var abandonadas: [Operacion] = []
+        /// El motivo de las que van directo a fallidos sin gastar intentos (un kind desconocido, un audio con `id`).
+        var motivoDirecto: [String: String] = [:]
         var guardadas: [OpGuardada] = []
         var algunaFallo = false
         // "Guardando…" solo si tarda. Ojo: `try? await Task.sleep` se traga la cancelación y sigue de largo; sin el
@@ -343,8 +345,9 @@ public actor Outbox {
             case .respuesta(.failure(let e)) where e.clase != .permanente:
                 algunaFallo = true
                 rachaSinRed += 1
-            case .respuesta(.failure(let e)) where e.codigo == "KIND_DESCONOCIDO":
+            case .respuesta(.failure(let e)) where e.codigo == "KIND_DESCONOCIDO" || e.codigo == Escrituras.codigoAudioId:
                 abandonadas.append(op)
+                motivoDirecto[op.id] = e.codigo
                 resueltas.insert(op.id)
                 continue
             case .respuesta(let r):
@@ -364,7 +367,7 @@ public actor Outbox {
         }
         if !abandonadas.isEmpty {
             let ahora = Date().timeIntervalSince1970 * 1000
-            estado.fallidos.append(contentsOf: abandonadas.map { Fallido(op: $0, motivo: "abandonada tras \($0.tries) intentos", cuando: ahora) })
+            estado.fallidos.append(contentsOf: abandonadas.map { Fallido(op: $0, motivo: motivoDirecto[$0.id] ?? "abandonada tras \($0.tries) intentos", cuando: ahora) })
         }
         guardar()
 

@@ -13,9 +13,12 @@ public struct Escrituras: Sendable {
     let sesiones: SesionesDelDia
 
     let verificacion: VerificacionToken
+    /// Donde esperan los audios de «Tu guía» hasta que suben (`guia_audio`): la carpeta `audios/` de la cuenta.
+    let carpetaAudios: URL
 
-    public init(cliente: ClienteRPC, token: String, sesiones: SesionesDelDia = SesionesDelDia()) {
+    public init(cliente: ClienteRPC, token: String, sesiones: SesionesDelDia = SesionesDelDia(), carpetaAudios: URL? = nil) {
         self.cliente = cliente; self.token = token; self.sesiones = sesiones; self.verificacion = VerificacionToken()
+        self.carpetaAudios = carpetaAudios ?? Disco(token: token).url("audios")
     }
 
     /// Ejecuta la op y, si no se guardó, mira una vez si el token cayó (arreglo nativo n.º 3): un token revocado hace que
@@ -153,6 +156,9 @@ public struct Escrituras: Sendable {
             var args: [String: JSONValue] = ["p_token": t, "p_texto": p["texto"] ?? .null]
             if let id = Self.idDeDuda(p) { args["p_id"] = .texto(id) }
             return .respuesta(await cliente.llamar("entregas_app_llamada_duda", args))
+        case ModeloAudioDuda.kind:
+            // Una duda en audio (entregas_019): iniciar, subir y confirmar (`AudioDuda.swift`).
+            return await ejecutarAudio(p)
         default:
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo #2).
             return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 0, codigo: "KIND_DESCONOCIDO", mensaje: op.kind)))
