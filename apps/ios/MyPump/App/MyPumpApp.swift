@@ -78,9 +78,9 @@ struct MyPumpApp: App {
     }
 }
 
-/// Las 5 pestañas: Entreno · Dieta · Chat · Revisión · Salud. Mis datos cuelga de Revisión. Con suplementación (2.1.0):
-/// Entreno · Dieta · Suplementación · Chat · Revisión, y Salud se abre en una hoja desde arriba de Revisión, al lado de Mis
-/// datos (`Navegacion.saludEnMas`). En iPad (iOS 18+) la barra de arriba se puede convertir en barra lateral.
+/// Las pestañas: Entreno · Dieta · [Suplementación] · Chat · Revisión. Mis datos cuelga de Revisión, y Salud se abre en
+/// una hoja desde la tarjeta Recuperación de arriba de Revisión (2.1.0, `Navegacion.saludAbierta`). En iPad (iOS 18+) la
+/// barra de arriba se puede convertir en barra lateral.
 struct Raiz: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
@@ -117,9 +117,6 @@ struct Raiz: View {
                         .badge(badgeChat)
                     Tab("Revisión", systemImage: "checklist", value: Pestaña.revision) { revision }
                         .badge(badgeRevision)
-                    if suplementacionVisible == nil {
-                        Tab("Salud", systemImage: "heart.text.square.fill", value: Pestaña.salud) { salud }
-                    }
                 }
                 .tabViewStyle(.sidebarAdaptable)
             } else {
@@ -134,28 +131,21 @@ struct Raiz: View {
                         .badge(badgeChat)
                     revision.tabItem { Label("Revisión", systemImage: "checklist") }.tag(Pestaña.revision)
                         .badge(badgeRevision)
-                    if suplementacionVisible == nil {
-                        salud.tabItem { Label("Salud", systemImage: "heart.text.square.fill") }.tag(Pestaña.salud)
-                    }
                 }
             }
         }
         .environment(navegacion)
-        // Con suplementación, Salud en una hoja (desde arriba de Revisión, un aviso o un link). Cambiar de pestaña la cierra.
+        // Salud, en una hoja (desde la tarjeta de Revisión, un aviso o un link). Cambiar de pestaña la cierra.
         .sheet(isPresented: $navegacion.saludAbierta) {
             SaludView(datos: datos, alCerrar: { navegacion.saludAbierta = false })
                 .environment(navegacion)
         }
+        // `-pestana salud` (o `progreso`): Revisión con la hoja de Salud abierta.
+        .onAppear {
+            if navegacion.pestaña == .salud { navegacion.irASalud(nil) }
+        }
         .onChange(of: suplementacionVisible != nil, initial: true) { _, con in
-            navegacion.saludEnMas = con
-            if con, navegacion.pestaña == .salud {
-                // Estaba en Salud (o se pidió con `-pestana salud`): sigue viéndola, ahora en la hoja.
-                navegacion.pestaña = .revision
-                navegacion.saludAbierta = true
-            } else if !con {
-                if navegacion.saludAbierta { navegacion.pestaña = .salud }   // vuelve a su pestaña (y la hoja se cierra)
-                if navegacion.pestaña == .suplementacion { navegacion.pestaña = .entreno }
-            }
+            if !con, navegacion.pestaña == .suplementacion { navegacion.pestaña = .entreno }
         }
         .accesorioDeDescanso()
         // La barra de pestañas queda siempre entera: achicarla al bajar, como Música, empeoraba mucho el uso (Mati,
@@ -185,7 +175,6 @@ struct Raiz: View {
     private var dieta: some View { DietaView(datos: datos).islaDeDescanso() }
     private var chat: some View { ChatView(datos: datos).islaDeDescanso() }
     private var revision: some View { RevisionView(datos: datos).islaDeDescanso() }
-    private var salud: some View { SaludView(datos: datos).islaDeDescanso() }
     private func suplementacion(_ s: ModeloSuplementacion) -> some View { SuplementacionView(modelo: s).islaDeDescanso() }
 }
 

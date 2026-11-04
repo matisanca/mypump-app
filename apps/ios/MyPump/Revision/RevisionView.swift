@@ -3,9 +3,9 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Revisión: solo subir la semana (2.1): las fotos y el check, que trae el peso del día. El peso con su media, Mi reloj y
-/// la recuperación se mudaron a Salud (Cuerpo y Recuperación). En iPad, en dos columnas: las fotos a la izquierda, el
-/// check a la derecha. Con una cuenta sale de `ModeloRevision` y `ModeloFotos`; en la demo y en los bocetos, de las
+/// Revisión: arriba de todo la tarjeta Recuperación, que abre Salud (2.1.0, pedido de Mati del 4-nov: Salud ya no es una
+/// pestaña); después subir la semana: las fotos y el check, que trae el peso del día y la salud de los últimos 7 días. En
+/// iPad, la tarjeta a lo ancho y debajo dos columnas: las fotos a la izquierda, el check a la derecha. Con una cuenta sale de `ModeloRevision` y `ModeloFotos`; en la demo y en los bocetos, de las
 /// muestras.
 struct RevisionView: View {
     let datos: Muestras
@@ -26,6 +26,7 @@ struct RevisionView: View {
                     Group {
                         if claseAncho == .regular {
                             VStack(alignment: .leading, spacing: Espacio.l) {
+                                recuperacion
                                 avisoPlan
                                 // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                                 HStack(alignment: .top, spacing: Espacio.l) {
@@ -41,7 +42,7 @@ struct RevisionView: View {
                             }
                             .anchoLectura(Ancho.doble)
                         } else {
-                            VStack(alignment: .leading, spacing: Espacio.xl) { avisoPlan; fotos; check }
+                            VStack(alignment: .leading, spacing: Espacio.xl) { recuperacion; avisoPlan; fotos; check }
                                 .anchoLectura()
                         }
                     }
@@ -55,7 +56,8 @@ struct RevisionView: View {
                     guard let revision else { return }
                     async let r: Void = revision.cargarRevision()
                     async let f: Void = modeloFotos?.cargar() ?? ()
-                    _ = await (r, f)
+                    async let s: Void = modelo.salud?.cargar() ?? ()
+                    _ = await (r, f, s)
                 }
                 .task {
                     // Bocetos: `-ir check` (o fotos) abre desplazado hasta esa sección.
@@ -77,17 +79,6 @@ struct RevisionView: View {
             .navigationTitle("Revisión")
             .subtituloNavegacion(Self.semanaActual())
             .toolbar {
-                // Con suplementación, Salud sale de la barra de pestañas y se abre desde acá, al lado de Mis datos.
-                if navegacion?.saludEnMas == true {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { navegacion?.irASalud(nil) } label: {
-                            Image(systemName: "heart.text.square")
-                        }
-                        .accessibilityLabel("Salud")
-                        .accessibilityHint("Abre tu recuperación, fuerza y cuerpo")
-                        .accessibilityIdentifier("abrir-salud")
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink { MisDatosView(datos: datos) } label: {
                         Image(systemName: "person.crop.circle")
@@ -127,12 +118,30 @@ struct RevisionView: View {
         }
     }
 
+    /// Lo principal de Salud; tocarla abre Salud en Recuperación.
+    // Lugar previsto (lo decide Mati): una segunda tarjeta «Tu progreso» debajo de esta, que abra Salud en Fuerza.
+    private var recuperacion: some View {
+        RecuperacionTarjeta(modelo: modelo.conMuestras ? nil : modelo.salud) { navegacion?.irASalud(.recuperacion) }
+            .id("recuperacion")
+    }
     private var fotos: some View {
         FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(muestras.salud))
             .id("fotos")
     }
     private var check: some View {
-        CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : muestras.checkin).id("check")
+        CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : muestras.checkin,
+                     saludSemana: saludSemana, sincronizarSalud: sincronizarSalud).id("check")
+    }
+    /// Lo de salud que acompaña al check: con cuenta, de `ModeloSalud`; sin cuenta, de las muestras (vacías en la demo).
+    private var saludSemana: [SaludSemana.Fila] {
+        if let s = modelo.conMuestras ? nil : modelo.salud {
+            return SaludSemana.resumen(salud: s.salud, recuperacion: s.recuperacion, hoy: s.fecha, mostrarScore: s.mostrarRecuperacion)
+        }
+        return SaludSemana.resumen(salud: muestras.salud, recuperacion: [], hoy: FechaLocal.hoy(), mostrarScore: false)
+    }
+    private var sincronizarSalud: (() -> Void)? {
+        guard let s = modelo.conMuestras ? nil : modelo.salud, s.conectado else { return nil }
+        return { Task { _ = await s.sincronizar() } }
     }
     /// "Semana del 12 al 18 de octubre" (de lunes a domingo).
     static func semanaActual(_ hoy: Date = .now) -> String {

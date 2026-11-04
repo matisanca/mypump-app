@@ -15,10 +15,8 @@ final class Navegacion {
     var segmentoSalud: SegmentoSalud?
     /// Abrir Mis datos (desde Revisión).
     var misDatos = false
-    /// Con suplementación (2.1.0) Salud sale de la barra: se abre en una hoja desde el botón de arriba de Revisión, al lado
-    /// de Mis datos. Lo pone la raíz según haya o no suplementación.
-    var saludEnMas = false
-    /// La hoja de Salud (solo con `saludEnMas`).
+    /// La hoja de Salud. Desde la 2.1.0 Salud no es una pestaña: se abre desde la tarjeta Recuperación de arriba de
+    /// Revisión (pedido de Mati, 4-nov), un aviso o un link.
     var saludAbierta = false
 
     init(pestaña: Raiz.Pestaña) { self.pestaña = pestaña }
@@ -38,10 +36,12 @@ final class Navegacion {
         }
     }
 
-    /// Salud, en su pestaña o, con suplementación, en la hoja (los avisos y `?scene=progress|myday` llegan acá).
+    /// Salud, en la hoja sobre Revisión (los avisos y `?scene=progress|myday` llegan acá). Primero la pestaña: cambiarla
+    /// cierra la hoja.
     func irASalud(_ segmento: SegmentoSalud?) {
         segmentoSalud = segmento
-        if saludEnMas { saludAbierta = true } else { pestaña = .salud }
+        pestaña = .revision
+        saludAbierta = true
     }
 
     /// Una sección de Revisión; las que se mudaron a Salud van a su segmento.

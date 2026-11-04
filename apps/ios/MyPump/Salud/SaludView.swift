@@ -3,7 +3,8 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// La pestaña Salud (2.1, S1), que reemplaza a Progreso, con tres segmentos:
+/// Salud (2.1, S1), que reemplaza a Progreso, con tres segmentos. Desde la 2.1.0 no es una pestaña: se abre en una hoja
+/// desde la tarjeta Recuperación de Revisión, un aviso o un link.
 /// - Recuperación: la card de recuperación (score, motivos, confianza, tendencia de 14 días), la de salud (sueño,
 ///   corazón, actividad) y Mi reloj. Salieron de Revisión.
 /// - Fuerza: las series por músculo de la semana (S2) y lo que era Progreso (récords y curvas).
@@ -13,7 +14,7 @@ import MyPumpDatos
 /// en `Navegacion.segmentoSalud`, y acá se consume.
 struct SaludView: View {
     let datos: Muestras
-    /// Con suplementación, Salud se abre en una hoja (`Navegacion.saludEnMas`): «Listo» la cierra. nil = es la pestaña.
+    /// La hoja de Salud (`Navegacion.saludAbierta`): «Listo» la cierra. nil = sin botón (bocetos).
     var alCerrar: (() -> Void)?
     @State private var modelo = Proveedor.modelo
     @Environment(Navegacion.self) private var navegacion: Navegacion?

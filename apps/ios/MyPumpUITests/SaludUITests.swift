@@ -1,6 +1,6 @@
 import XCTest
 
-/// La pestaña Salud (2.1, S1 y S2): los tres segmentos con la cuenta de prueba (el token llega por
+/// Salud (2.1, S1 y S2; desde la 2.1.0 una hoja sobre Revisión): los tres segmentos con la cuenta de prueba (el token llega por
 /// `TEST_RUNNER_MYPUMP_TOKEN`, nunca escrito en el repo), en claro y oscuro, y las series por músculo del cierre del día
 /// en la demo. Gemelo de `SaludPestanaUiTest.kt`.
 @MainActor
@@ -31,7 +31,7 @@ final class SaludUITests: XCTestCase {
         let tema = oscuro ? "oscuro" : "claro"
         try abrir(oscuro: oscuro)
         XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 20), "No abrió Salud")
-        XCTAssertTrue(app.pestana("Salud").exists, "La pestaña no se llama Salud")
+        XCTAssertFalse(app.tabBars.buttons["Salud"].exists, "Salud ya no es una pestaña: se abre desde Revisión")
         XCTAssertFalse(app.pestana("Progreso").exists, "Quedó la pestaña Progreso")
         XCTAssertTrue(control.waitForExistence(timeout: 5), "Falta el control de segmentos")
         for nombre in ["Recuperación", "Fuerza", "Cuerpo"] {
@@ -86,6 +86,23 @@ final class SaludUITests: XCTestCase {
         app.launchArguments = ["-token", token, "-pestana", "progreso", "-sinOnboarding", "YES"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 20))
+    }
+
+    /// 2.1.0: Salud no está en la barra; arriba de todo en Revisión, la tarjeta Recuperación la abre, y «Listo» vuelve.
+    func testLaTarjetaDeRevisionAbreSalud() throws {
+        guard let token = ProcessInfo.processInfo.environment["MYPUMP_TOKEN"], !token.isEmpty else { throw XCTSkip("Falta MYPUMP_TOKEN") }
+        app.launchArguments = ["-token", token, "-pestana", "revision", "-sinOnboarding", "YES"]
+        app.launch()
+        let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Revisión")
+        XCTAssertFalse(app.tabBars.buttons["Salud"].exists, "Salud quedó en la barra")
+        XCTAssertTrue(app.pestana("Revisión").exists && app.pestana("Entreno").exists)
+        captura("revision-con-recuperacion")
+        tarjeta.tap()
+        XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 5), "La tarjeta no abrió Salud")
+        XCTAssertTrue(control.buttons["Recuperación"].isSelected, "No abrió en Recuperación")
+        app.buttons["salud-cerrar"].tap()
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "«Listo» no volvió a Revisión")
     }
 
     /// El cierre del día en la demo, con 3 series confirmadas: «Series por músculo hoy».

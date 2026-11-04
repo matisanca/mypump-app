@@ -12,10 +12,10 @@ final class SuplementacionUITests: XCTestCase {
         app.launch()
     }
 
-    func testDemoMuestraLaPestanaYSaludPasaAMas() throws {
+    func testDemoMuestraLaPestanaYSaludSeAbreDesdeRevision() throws {
         let pestana = app.pestana("Suplementación")
         XCTAssertTrue(pestana.waitForExistence(timeout: 15), "La demo no muestra la pestaña Suplementación")
-        XCTAssertFalse(app.tabBars.buttons["Salud"].exists, "Con suplementación, Salud no va en la barra")
+        XCTAssertFalse(app.tabBars.buttons["Salud"].exists, "Salud ya no va en la barra")
         XCTAssertTrue(app.pestana("Revisión").exists && app.pestana("Chat").exists && app.pestana("Dieta").exists)
 
         // Tu día: los momentos de la muestra, en el orden de dia[].
@@ -44,15 +44,17 @@ final class SuplementacionUITests: XCTestCase {
         XCTAssertTrue(sale.isHittable, "No se ve «Dejás de tomar»")
         XCTAssertTrue(sale.label.contains("Multivitamínico"))
 
-        // Salud, desde arriba de Revisión, al lado de Mis datos.
+        // Salud, desde la tarjeta Recuperación de arriba de Revisión (en la demo, sin datos de salud).
         app.pestana("Revisión").tap()
-        let abrirSalud = app.buttons["abrir-salud"]
-        XCTAssertTrue(abrirSalud.waitForExistence(timeout: 5), "Falta el acceso a Salud en Revisión")
-        abrirSalud.tap()
+        let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "Falta la tarjeta Recuperación en Revisión")
+        XCTAssertTrue(tarjeta.label.contains("Con tu cuenta"), "La tarjeta de la demo dice otra cosa: \(tarjeta.label)")
+        XCTAssertFalse(app.descendants(matching: .any)["salud-semana-check"].exists, "La demo no tiene salud que resumir")
+        tarjeta.tap()
         XCTAssertTrue(app.descendants(matching: .any)["segmento-salud"].waitForExistence(timeout: 5), "No abrió Salud")
-        captura("suplementacion-salud-en-mas")
+        captura("suplementacion-salud-desde-revision")
         app.buttons["salud-cerrar"].tap()
-        XCTAssertTrue(abrirSalud.waitForExistence(timeout: 5))
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
         XCTAssertFalse(app.descendants(matching: .any)["segmento-salud"].exists, "«Listo» no cerró Salud")
     }
 

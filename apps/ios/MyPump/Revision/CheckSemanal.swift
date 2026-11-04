@@ -11,6 +11,10 @@ struct CheckSemanal: View {
     /// El modelo real, o nil con las muestras.
     let revision: ModeloRevision?
     let muestra: CheckinSemana?
+    /// «Tu salud, últimos 7 días» (2.1.0): va arriba del botón. Vacío, no se muestra.
+    var saludSemana: [SaludSemana.Fila] = []
+    /// Con cuenta, al mandar el check: sincronizar la salud para que el servidor tenga los últimos días.
+    var sincronizarSalud: (() -> Void)?
     @State private var valores: [String: Int] = [:]
     @State private var nota = ""
     @State private var peso = ""
@@ -85,6 +89,8 @@ struct CheckSemanal: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if !saludSemana.isEmpty { SaludSemanaBloque(filas: saludSemana) }
+
                 VStack(spacing: Espacio.xs) {
                     Button(action: enviar) {
                         Text(enviado ? "Actualizar mi check" : "Enviar mi check")
@@ -146,11 +152,48 @@ struct CheckSemanal: View {
             } else {
                 // El peso sale con el check, por la misma cola que el de la tarjeta de peso.
                 if !kilos.isEmpty { await revision.guardarPeso(kilos) }
+                sincronizarSalud?()
                 peso = ""
                 editado = false
                 envios += 1
             }
         }
+    }
+}
+
+/// «Tu salud, últimos 7 días»: los promedios que acompañan al check (`SaludSemana`). Mati los ve en su panel junto a las
+/// respuestas: salen de lo que la app ya sincroniza con el servidor.
+private struct SaludSemanaBloque: View {
+    let filas: [SaludSemana.Fila]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Espacio.s) {
+            VStack(alignment: .leading, spacing: 2) {
+                Label("Tu salud, últimos 7 días", systemImage: "heart.text.square.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .labelStyle(IconoTeñido(color: .corazon))
+                Text("Va con tu check: Mati lo ve junto a tus respuestas.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            VStack(spacing: 10) {
+                ForEach(filas, id: \.clave) { f in
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(f.etiqueta).font(.subheadline)
+                        Spacer(minLength: Espacio.s)
+                        VStack(alignment: .trailing, spacing: 0) {
+                            Text(f.valor).font(.subheadline.weight(.semibold).monospacedDigit())
+                            Text(f.detalle).font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(Espacio.m)
+            .background(Color.campo, in: .rect(cornerRadius: Radio.control, style: .continuous))
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("salud-semana-check")
     }
 }
 
