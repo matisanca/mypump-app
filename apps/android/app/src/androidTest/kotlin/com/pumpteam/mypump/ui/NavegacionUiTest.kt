@@ -16,7 +16,7 @@ class NavegacionUiTest : PruebaUi() {
             """[{"id":"m1","autor":"coach","contenido":"¿Cómo venís con el plan?","leido_por_cliente":false,"created_at":"2026-10-14T12:00:00Z"}]"""
         guardarCuenta()
         abrir()
-        for (pestana in listOf("entreno", "dieta", "chat", "revision", "progreso")) p.nodo(etiqueta("pestana-$pestana"))
+        for (pestana in listOf("entreno", "dieta", "chat", "revision", "salud")) p.nodo(etiqueta("pestana-$pestana"))
         assertTrue(p.seleccionado(etiqueta("pestana-entreno")))
         p.esperar("el badge de Chat") { "1" in p.textosBajo(etiqueta("pestana-chat")) }
         p.esperar("el badge de Revisión (check y fotos)") { "2" in p.textosBajo(etiqueta("pestana-revision")) }

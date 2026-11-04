@@ -36,7 +36,7 @@ class AccesoUiTest : PruebaUi() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         p.nodo(texto("Estás viendo la demo"))
-        for (pestana in listOf("entreno", "dieta", "chat", "revision", "progreso")) p.nodo(etiqueta("pestana-$pestana"))
+        for (pestana in listOf("entreno", "dieta", "chat", "revision", "salud")) p.nodo(etiqueta("pestana-$pestana"))
         p.tocar(etiqueta("pestana-dieta"))
         // La dieta de ejemplo de la web: el objetivo es la suma de las opciones A.
         p.nodo(texto("Desayuno"))

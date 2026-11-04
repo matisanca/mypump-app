@@ -32,7 +32,8 @@ class BonitoTest {
 
     @Test
     fun partirElPrincipalDelDetalle() {
-        assertEquals("58 kg × 9" to "RIR 0 · Agarre neutro", Bonito.partir("58kg × 9 · RIR 0 (Agarre neutro)"))
+        // 2.0.3: el «RIR n» del récord ya no se muestra.
+        assertEquals("58 kg × 9" to "Agarre neutro", Bonito.partir("58kg × 9 · RIR 0 (Agarre neutro)"))
         assertEquals("82,5 kg × 8" to "3 series · Soga", Bonito.partir("82.5kg × 8 (Soga) · 3 series"))
         assertEquals("58 kg × 9" to "4 series", Bonito.partir("58kg × 9 · 4 series"))
         assertEquals("80 kg × 10" to null, Bonito.partir("80kg × 10"))
@@ -84,7 +85,7 @@ class BonitoTest {
     @Test
     fun loQueLeeTalkBackEnLaCard() {
         assertEquals(
-            "Pendiente, 4 series de 10, RIR 0 (al fallo), descanso 2:30, última vez 58 kg × 9 · 4 series, hace 3 días, récord 58 kg × 9 · RIR 0",
+            "Pendiente, 4 series de 10, RIR 0 (al fallo), descanso 2:30, última vez 58 kg × 9 · 4 series, hace 3 días, récord 58 kg × 9",
             CardAccesible.valor(
                 "pendiente", 0, 4, sustituido = false, fijado = false, manual = false, mensajes = 0, tipo = "compuesto",
                 pauta = Pauta(4, "10", "0 (al fallo)"), descansoSegundos = 150,
