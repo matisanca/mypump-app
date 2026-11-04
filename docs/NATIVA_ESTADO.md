@@ -261,6 +261,13 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+### 4-nov ~04:00 — versión unificada 2.1.0 lista para compilar (falta «Tu guía» y los OK de Mati)
+- `nativa-202` @ d8fcd59: 2.0.3 + 2.1 (Salud, volumen, barras) + Apple Watch (elegir el día, RIR del plan, descanso por ejercicio, cola, FC, complicaciones) + calibración de reps.
+- Revisión opus de la combinación: 3 huecos del reloj arreglados (3ad3b8b). Material de tiendas en `docs/NATIVA_TIENDAS_2.1.md` (5f3b954): novedades para las dos tiendas, reloj en ASC, notas al revisor y lista de chequeo. Capturas del reloj en `nativa-evidencia/tiendas-2.1/reloj/`.
+- Verde: contratos, kit 724, jvm 764, ios-ui 50/50, android-ui 229/233 y las 4 restantes eran tests viejos, corregidos y en verde (d8fcd59).
+- Lo que tiene que decidir Mati: (1) qué hacer con iOS 2.0.3 (121) en revisión: dejarla salir o retirarla; (2) dejar o sacar el párrafo para el revisor sobre el modo calibración oculto (guía 2.3.1); (3) la cuenta demo del revisor necesita una rutina; (4) el OK para los tags `nios-2.1.0-<≥127>` y `nand-2.1.0-106`, y para el envío.
+- Falta: el merge de «Tu guía» (rama `nativa-guia`, de MYPUMP PRO) y una línea en las novedades.
+
 ### 4-nov 01:50 — versión unificada (2.0.3 + 2.1 + Apple Watch), en pausa hasta las 05:35 por el límite de la cuenta
 - `nativa-202` ya tiene el merge de `t4-reps` (47eb478): 2.0.3 + tanda 2 (Salud, volumen, código de barras) + Apple Watch (elegir el día, cola, FC, complicaciones) + calibración de reps (lo contado pasa a la corona solo en calibración).
 - Verde: `check-contratos` (59 RPC), `probar.sh kit` (724), `probar.sh jvm` (764, 0 fallas).
