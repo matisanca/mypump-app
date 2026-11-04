@@ -3,9 +3,9 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Revisión: arriba de todo la tarjeta Recuperación, que abre Salud (2.1.0, pedido de Mati del 4-nov: Salud ya no es una
-/// pestaña); después subir la semana: las fotos y el check, que trae el peso del día y la salud de los últimos 7 días. En
-/// iPad, la tarjeta a lo ancho y debajo dos columnas: las fotos a la izquierda, el check a la derecha. Con una cuenta sale de `ModeloRevision` y `ModeloFotos`; en la demo y en los bocetos, de las
+/// Revisión: arriba de todo las tarjetas Recuperación y Tu progreso, que abren Salud (2.1.0, pedido de Mati del 4-nov:
+/// Salud ya no es una pestaña); después subir la semana: las fotos y el check, que trae el peso del día y la salud de los últimos 7 días. En
+/// iPad, las dos tarjetas lado a lado y debajo dos columnas: las fotos a la izquierda, el check a la derecha. Con una cuenta sale de `ModeloRevision` y `ModeloFotos`; en la demo y en los bocetos, de las
 /// muestras.
 struct RevisionView: View {
     let datos: Muestras
@@ -26,7 +26,11 @@ struct RevisionView: View {
                     Group {
                         if claseAncho == .regular {
                             VStack(alignment: .leading, spacing: Espacio.l) {
-                                recuperacion
+                                HStack(alignment: .top, spacing: Espacio.l) {
+                                    recuperacion.frame(maxWidth: .infinity, alignment: .top)
+                                    progreso.frame(maxWidth: .infinity, alignment: .top)
+                                }
+                                .fixedSize(horizontal: false, vertical: true)
                                 avisoPlan
                                 // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                                 HStack(alignment: .top, spacing: Espacio.l) {
@@ -42,7 +46,11 @@ struct RevisionView: View {
                             }
                             .anchoLectura(Ancho.doble)
                         } else {
-                            VStack(alignment: .leading, spacing: Espacio.xl) { recuperacion; avisoPlan; fotos; check }
+                            VStack(alignment: .leading, spacing: Espacio.xl) {
+                                // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
+                                VStack(spacing: Espacio.m) { recuperacion; progreso }
+                                avisoPlan; fotos; check
+                            }
                                 .anchoLectura()
                         }
                     }
@@ -119,10 +127,23 @@ struct RevisionView: View {
     }
 
     /// Lo principal de Salud; tocarla abre Salud en Recuperación.
-    // Lugar previsto (lo decide Mati): una segunda tarjeta «Tu progreso» debajo de esta, que abra Salud en Fuerza.
     private var recuperacion: some View {
         RecuperacionTarjeta(modelo: modelo.conMuestras ? nil : modelo.salud) { navegacion?.irASalud(.recuperacion) }
             .id("recuperacion")
+    }
+    /// Lo que era la pestaña Progreso, en una línea; tocarla abre Salud en Fuerza.
+    private var progreso: some View {
+        ProgresoTarjeta(linea: lineaProgreso) { navegacion?.irASalud(.fuerza) }
+            .id("progreso")
+            // El historial se trae al abrir Fuerza; si todavía no se abrió, acá (una vez, o al volver la red).
+            .task {
+                guard let p = modelo.conMuestras ? nil : modelo.progreso, p.tarjetas.isEmpty || p.estado == .sinRed else { return }
+                await modelo.cargarProgreso()
+            }
+    }
+    private var lineaProgreso: String? {
+        guard let p = modelo.conMuestras ? nil : modelo.progreso else { return nil }
+        return ProgresoSemana.linea(p.tarjetas.map { ProgresoSemana.ejercicio(nombre: $0.nombre, filas: $0.filas) }, hoy: FechaLocal.hoy())
     }
     private var fotos: some View {
         FotosSemana(modelo: modeloFotos, muestras: muestras.fotos, peso: revision?.serieDePeso ?? PesoCorporal.serie(muestras.salud))

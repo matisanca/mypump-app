@@ -86,6 +86,8 @@ final class SaludUITests: XCTestCase {
         app.launchArguments = ["-token", token, "-pestana", "progreso", "-sinOnboarding", "YES"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Salud"].waitForExistence(timeout: 20))
+        XCTAssertTrue(control.buttons["Fuerza"].waitForExistence(timeout: 5))
+        XCTAssertTrue(control.buttons["Fuerza"].isSelected, "El viejo «Progreso» tiene que abrir Fuerza")
     }
 
     /// 2.1.0: Salud no está en la barra; arriba de todo en Revisión, la tarjeta Recuperación la abre, y «Listo» vuelve.
@@ -103,6 +105,21 @@ final class SaludUITests: XCTestCase {
         XCTAssertTrue(control.buttons["Recuperación"].isSelected, "No abrió en Recuperación")
         app.buttons["salud-cerrar"].tap()
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "«Listo» no volvió a Revisión")
+
+        // «Tu progreso», debajo: abre Salud en Fuerza.
+        let progreso = app.buttons["tarjeta-progreso-revision"]
+        XCTAssertTrue(progreso.waitForExistence(timeout: 5), "Falta la tarjeta Tu progreso")
+        XCTAssertGreaterThan(progreso.frame.minY, tarjeta.frame.minY, "Tu progreso va debajo de Recuperación")
+        progreso.tap()
+        XCTAssertTrue(control.buttons["Fuerza"].waitForExistence(timeout: 5))
+        XCTAssertTrue(control.buttons["Fuerza"].isSelected, "Tu progreso no abrió Fuerza")
+        captura("salud-fuerza-desde-progreso")
+        app.buttons["salud-cerrar"].tap()
+        // Volver a tocar Recuperación después de cerrar: la hoja vuelve a abrir (y en Recuperación).
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
+        tarjeta.tap()
+        XCTAssertTrue(control.buttons["Recuperación"].waitForExistence(timeout: 5))
+        XCTAssertTrue(control.buttons["Recuperación"].isSelected)
     }
 
     /// El cierre del día en la demo, con 3 series confirmadas: «Series por músculo hoy».

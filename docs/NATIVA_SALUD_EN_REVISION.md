@@ -15,8 +15,8 @@ Mismo comportamiento en iOS y Android.
   tarjeta. Mis datos sigue igual.
 - Avisos, links y `-pestana salud|progreso` que pedían Salud o un segmento (recuperación, fuerza, cuerpo, reloj, peso):
   pestaña Revisión + la hoja de Salud en ese segmento.
-- Progreso sigue siendo el segmento «Fuerza» de Salud. Lugar previsto (todavía NO se muestra; lo decide Mati): una
-  segunda tarjeta «Tu progreso» debajo de Recuperación que abra Salud en Fuerza. Dejar un comentario en ese lugar.
+- Progreso sigue siendo el segmento «Fuerza» de Salud, y se abre directo desde la tarjeta «Tu progreso» (abajo). El
+  destino viejo «progreso» abre Salud en Fuerza.
 
 ## 2. Tarjeta «Recuperación», arriba de todo en Revisión
 
@@ -35,7 +35,15 @@ Contenido según el estado que ya calcula `SaludVista.cardRecuperacion` (no se d
 | `sinConectar` | «Conectá tu reloj o Salud para ver tu recuperación de cada día.» (el botón de conectar está adentro de Salud). |
 | Demo / sin cuenta | «Con tu cuenta, acá vas a ver tu recuperación de cada día.» |
 
-Al pie, una fila: «Ver sueño, corazón, fuerza y cuerpo» con chevron.
+Al pie, una fila: «Ver sueño, corazón y cuerpo» con chevron.
+
+### «Tu progreso» (aprobada por Mati el 4-nov)
+
+Debajo de Recuperación, pegada (en el teléfono, las dos con poco espacio entre sí; en tablet, lado a lado). Mismo estilo:
+«📈 Tu progreso», una línea de `ProgresoSemana.linea` (récords → ejercicios que subieron → sesiones de la semana;
+vectores en `apps/shared/vectores/progreso_semana.json`) o, sin línea, «Tu fuerza y tus récords, ejercicio por
+ejercicio.» en gris; al pie «Ver fuerza y récords». Abre Salud en Fuerza. Identificador `tarjeta-progreso-revision`.
+Si el progreso no se cargó todavía, la tarjeta lo trae.
 
 ## 3. «Tu salud, últimos 7 días» en el check de la semana
 
@@ -46,7 +54,7 @@ Al pie, una fila: «Ver sueño, corazón, fuerza y cuerpo» con chevron.
   (iOS `MyPumpReglas/SaludSemana.swift`; Android, la misma en `core/reglas`, contra
   `apps/shared/vectores/salud_semana.json`). Sin filas, el bloque no se muestra.
 - Entradas: las filas de salud y la recuperación de `ModeloSalud` (ya trae 60 días de salud y 14 de recuperación),
-  `mostrarRecuperacion` y la fecha de hoy. Demo: las filas de salud de las muestras, sin recuperación.
+  `mostrarRecuperacion` y la fecha de hoy. La demo no tiene datos de salud: el bloque no aparece.
 - Al enviar el check con cuenta: además de lo de siempre, se dispara la sincronización de salud (sin esperar ni frenar
   el envío) para que el servidor tenga los últimos días.
 - **Sin migración**: el puntaje se calcula en Postgres (`mypump_calc_recuperacion`, 043) con `mypump_salud_diaria`, que

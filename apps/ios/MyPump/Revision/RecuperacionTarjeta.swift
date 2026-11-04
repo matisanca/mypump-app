@@ -17,7 +17,7 @@ struct RecuperacionTarjeta: View {
                 contenido
                 Divider()
                 HStack(spacing: Espacio.s) {
-                    Text("Ver sueño, corazón, fuerza y cuerpo")
+                    Text("Ver sueño, corazón y cuerpo")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.marcaTexto)
                     Spacer(minLength: 0)
@@ -80,5 +80,41 @@ struct RecuperacionTarjeta: View {
         if let f = c.frase { return f }
         guard let m = c.motivos.first else { return nil }
         return "\(m.sube ? "↑" : "↓") \(m.antes)\(m.negrita)\(m.despues)"
+    }
+}
+
+/// «Tu progreso», debajo de Recuperación (2.1.0, aprobada por Mati el 4-nov): en una línea lo más útil de la semana (un
+/// récord, los ejercicios que subieron o las sesiones; `ProgresoSemana`). Toda la tarjeta abre Salud en Fuerza, lo que era
+/// la pestaña Progreso. Sin línea (la demo, o sin entrenos esta semana), lo genérico.
+struct ProgresoTarjeta: View {
+    let linea: String?
+    let abrir: () -> Void
+
+    var body: some View {
+        Button(action: abrir) {
+            VStack(alignment: .leading, spacing: 12) {
+                EncabezadoSalud(icono: "📈", titulo: "Tu progreso")
+                Text(linea ?? "Tu fuerza y tus récords, ejercicio por ejercicio.")
+                    .font(linea == nil ? .subheadline : .subheadline.weight(.medium))
+                    .foregroundStyle(linea == nil ? .secondary : .primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Divider()
+                HStack(spacing: Espacio.s) {
+                    Text("Ver fuerza y récords")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.marcaTexto)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .multilineTextAlignment(.leading)
+            .tarjeta()
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Abre tu fuerza y tus récords")
+        .accessibilityIdentifier("tarjeta-progreso-revision")
     }
 }

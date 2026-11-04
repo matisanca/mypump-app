@@ -6,30 +6,131 @@
       "hoy": "2026-11-04",
       "mostrar_score": true,
       "salud": [
-        {"fecha": "2026-11-04", "tipo": "sueno_min", "valor": 430, "fuente": "apple_health"},
-        {"fecha": "2026-11-03", "tipo": "sueno_min", "valor": 401, "fuente": "apple_health"},
-        {"fecha": "2026-10-28", "tipo": "sueno_min", "valor": 100, "fuente": "apple_health"},
-        {"fecha": "2026-11-04", "tipo": "hrv_ms", "valor": 90, "fuente": "apple_health", "detalle": {"metrica": "sdnn"}},
-        {"fecha": "2026-11-04", "tipo": "hrv_ms", "valor": 48.4, "fuente": "apple_health", "detalle": {"metrica": "rmssd"}},
-        {"fecha": "2026-11-02", "tipo": "hrv_ms", "valor": 51, "fuente": "apple_health", "detalle": {"metrica": "rmssd"}},
-        {"fecha": "2026-11-01", "tipo": "fc_reposo", "valor": 56.5, "fuente": "apple_health"},
-        {"fecha": "2026-11-04", "tipo": "pasos", "valor": 8000, "fuente": "apple_health"},
-        {"fecha": "2026-11-03", "tipo": "pasos", "valor": 9001, "fuente": "apple_health"},
-        {"fecha": "2026-11-02", "tipo": "pasos", "valor": 0, "fuente": "apple_health"},
-        {"fecha": "2026-11-04", "tipo": "peso_kg", "valor": 80, "fuente": "manual"}
+        {
+          "fecha": "2026-11-04",
+          "tipo": "sueno_min",
+          "valor": 430,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-11-03",
+          "tipo": "sueno_min",
+          "valor": 401,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-10-28",
+          "tipo": "sueno_min",
+          "valor": 100,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-11-04",
+          "tipo": "hrv_ms",
+          "valor": 90,
+          "fuente": "apple_health",
+          "detalle": {
+            "metrica": "sdnn"
+          }
+        },
+        {
+          "fecha": "2026-11-04",
+          "tipo": "hrv_ms",
+          "valor": 48.4,
+          "fuente": "apple_health",
+          "detalle": {
+            "metrica": "rmssd"
+          }
+        },
+        {
+          "fecha": "2026-11-02",
+          "tipo": "hrv_ms",
+          "valor": 51,
+          "fuente": "apple_health",
+          "detalle": {
+            "metrica": "rmssd"
+          }
+        },
+        {
+          "fecha": "2026-11-01",
+          "tipo": "fc_reposo",
+          "valor": 56.5,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-11-04",
+          "tipo": "pasos",
+          "valor": 8000,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-11-03",
+          "tipo": "pasos",
+          "valor": 9001,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-11-02",
+          "tipo": "pasos",
+          "valor": 0,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-11-04",
+          "tipo": "peso_kg",
+          "valor": 80,
+          "fuente": "manual"
+        }
       ],
       "recuperacion": [
-        {"fecha": "2026-10-28", "score": 10},
-        {"fecha": "2026-10-29", "score": 70},
-        {"fecha": "2026-11-03", "score": 75},
-        {"fecha": "2026-11-04", "score": null}
+        {
+          "fecha": "2026-10-28",
+          "score": 10
+        },
+        {
+          "fecha": "2026-10-29",
+          "score": 70
+        },
+        {
+          "fecha": "2026-11-03",
+          "score": 75
+        },
+        {
+          "fecha": "2026-11-04",
+          "score": null
+        }
       ],
       "esperado": [
-        {"clave": "recuperacion", "etiqueta": "Recuperación", "valor": "73 de 100", "detalle": "promedio de 2 días"},
-        {"clave": "sueno", "etiqueta": "Sueño", "valor": "6h 56", "detalle": "promedio de 2 días"},
-        {"clave": "hrv", "etiqueta": "Variabilidad (HRV)", "valor": "50 ms", "detalle": "promedio de 2 días"},
-        {"clave": "fc_reposo", "etiqueta": "Pulso en reposo", "valor": "57 lpm", "detalle": "1 día"},
-        {"clave": "pasos", "etiqueta": "Pasos", "valor": "8.501 por día", "detalle": "promedio de 2 días"}
+        {
+          "clave": "recuperacion",
+          "etiqueta": "Recuperación",
+          "valor": "73 de 100",
+          "detalle": "promedio de 2 días"
+        },
+        {
+          "clave": "sueno",
+          "etiqueta": "Sueño",
+          "valor": "6h 56",
+          "detalle": "promedio de 2 días"
+        },
+        {
+          "clave": "hrv",
+          "etiqueta": "Variabilidad (HRV)",
+          "valor": "50 ms",
+          "detalle": "promedio de 2 días"
+        },
+        {
+          "clave": "fc_reposo",
+          "etiqueta": "Pulso en reposo",
+          "valor": "57 lpm",
+          "detalle": "1 día"
+        },
+        {
+          "clave": "pasos",
+          "etiqueta": "Pasos",
+          "valor": "8.501 por día",
+          "detalle": "promedio de 2 días"
+        }
       ]
     },
     {
@@ -37,13 +138,26 @@
       "hoy": "2026-11-04",
       "mostrar_score": false,
       "salud": [
-        {"fecha": "2026-11-04", "tipo": "pasos", "valor": 1234.4, "fuente": "health_connect"}
+        {
+          "fecha": "2026-11-04",
+          "tipo": "pasos",
+          "valor": 1234.4,
+          "fuente": "health_connect"
+        }
       ],
       "recuperacion": [
-        {"fecha": "2026-11-04", "score": 80}
+        {
+          "fecha": "2026-11-04",
+          "score": 80
+        }
       ],
       "esperado": [
-        {"clave": "pasos", "etiqueta": "Pasos", "valor": "1.234 por día", "detalle": "1 día"}
+        {
+          "clave": "pasos",
+          "etiqueta": "Pasos",
+          "valor": "1.234 por día",
+          "detalle": "1 día"
+        }
       ]
     },
     {
@@ -51,10 +165,68 @@
       "hoy": "2026-11-04",
       "mostrar_score": true,
       "salud": [
-        {"fecha": "2026-10-20", "tipo": "pasos", "valor": 5000, "fuente": "apple_health"}
+        {
+          "fecha": "2026-10-20",
+          "tipo": "pasos",
+          "valor": 5000,
+          "fuente": "apple_health"
+        }
       ],
       "recuperacion": [],
       "esperado": []
+    },
+    {
+      "nombre": "sueño con resto cerca de 60 (419,5 min es 7h 00, no 6h 60) y un score repetido con null que no pisa al número",
+      "hoy": "2026-11-04",
+      "mostrar_score": true,
+      "salud": [
+        {
+          "fecha": "2026-11-04",
+          "tipo": "sueno_min",
+          "valor": 430,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-11-03",
+          "tipo": "sueno_min",
+          "valor": 409,
+          "fuente": "apple_health"
+        },
+        {
+          "fecha": "2026-11-02",
+          "tipo": "fc_reposo",
+          "valor": -3,
+          "fuente": "apple_health"
+        }
+      ],
+      "recuperacion": [
+        {
+          "fecha": "2026-11-03",
+          "score": 60
+        },
+        {
+          "fecha": "2026-11-03",
+          "score": null
+        },
+        {
+          "fecha": "2026-11-04",
+          "score": 81
+        }
+      ],
+      "esperado": [
+        {
+          "clave": "recuperacion",
+          "etiqueta": "Recuperación",
+          "valor": "71 de 100",
+          "detalle": "promedio de 2 días"
+        },
+        {
+          "clave": "sueno",
+          "etiqueta": "Sueño",
+          "valor": "7h 00",
+          "detalle": "promedio de 2 días"
+        }
+      ]
     }
   ]
 }

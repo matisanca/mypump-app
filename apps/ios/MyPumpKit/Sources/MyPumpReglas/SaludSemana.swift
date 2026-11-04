@@ -29,7 +29,7 @@ public enum SaludSemana {
         var filas: [Fila] = []
 
         if mostrarScore {
-            // Un score por fecha (la última fila de esa fecha, si viniera repetida).
+            // Un score por fecha: el último con número de esa fecha, si viniera repetida.
             var porFecha: [String: Int] = [:]
             for r in recuperacion where fechas.contains(r.fecha) { if let s = r.score { porFecha[r.fecha] = s } }
             if !porFecha.isEmpty {
@@ -45,7 +45,8 @@ public enum SaludSemana {
             let prom = vals.reduce(0, +) / Double(vals.count)
             let valor: String
             switch t.clave {
-            case "sueno": valor = SaludVista.horas(prom)
+            // Redondeado antes: con decimales, `horas` redondea el resto aparte y 419,5 min salía «6h 60».
+            case "sueno": valor = SaludVista.horas(prom.rounded())
             case "hrv": valor = "\(SaludVista.enteroJS(prom)) ms"
             case "fc_reposo": valor = "\(SaludVista.enteroJS(prom)) lpm"
             default: valor = "\(SaludVista.miles(prom)) por día"

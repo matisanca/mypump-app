@@ -22,7 +22,7 @@ struct SaludSemanaTests {
     @Test func comoLosVectores() throws {
         let url = raizRepo.appendingPathComponent("apps/shared/vectores/salud_semana.json")
         let archivo = try JSONDecoder().decode(ArchivoSemana.self, from: Data(contentsOf: url))
-        #expect(archivo.casos.count == 3)
+        #expect(archivo.casos.count == 4)
         for c in archivo.casos {
             let r = SaludSemana.resumen(salud: c.salud, recuperacion: c.recuperacion, hoy: c.hoy, mostrarScore: c.mostrar_score)
             #expect(r.map(\.clave) == c.esperado.map(\.clave), "\(c.nombre)")
