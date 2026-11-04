@@ -13,6 +13,8 @@ El detalle con nombres vive fuera del repo, en `nativa-evidencia/privado/PLAN_PE
 Un target watchOS nuevo, con la rutina del día y las series con la corona (reps y kg). El descanso avisa con háptica. Muestra la FC y las calorías en vivo con `HKWorkoutSession`, pero **no escribe en Salud todavía** (decisión de Mati). Se puede iniciar y terminar desde el reloj, y usarlo sin el teléfono, con una cola propia que se sincroniza al volver la conexión. La sincronización con el iPhone es inmediata (WatchConnectivity). Trae complicaciones (el próximo entreno y el descanso en curso) y un resumen al terminar. La preparación de E1 se muestra como en el teléfono. Lo que tiene que hacer Mati: crear el App ID y el perfil de firma, y la revisión de Apple. Android Wear queda para después.
 
 ## Tanda 4 → 2.3: conteo de reps
+> **4-nov (Mati):** el modo calibración dejó de ser oculto. Viene prendido para todas las cuentas, se apaga en Mis datos → Conteo de reps y en la demo cuenta sin guardar. Lo de abajo sobre los siete toques y `cuentasPrecargadas` quedó como historia.
+
 La 2.2 trae un **modo calibración**, oculto y por cuenta: graba el acelerómetro y el giroscopio (`CMBatchedSensorManager`) de cada serie, etiquetados con las reps cargadas a mano y con la familia de movimiento. No cuenta nada. Con esos datos se mide el error por familia. El conteo por picos y autocorrelación se prende solo en las familias que acierten ±1 rep en el 90 % de las series. Al terminar cada serie muestra «¿10 reps?» con la corona.
 
 ## Web igual a la app (en paralelo)

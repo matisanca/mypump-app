@@ -57,20 +57,22 @@ macros cada 100 g, o kcal que no cierran con las macros.
 ## Novedades de la 2.1.0 (release notes, es-419)
 
 La 2.1.0 es la versión unificada: suma todo lo de la 2.0.3 (que en Android nunca salió y en iOS está en revisión como
-121), la tanda 2 (Salud, volumen por músculo, código de barras) y la app del Apple Watch. El modo calibración de reps
-**no se anuncia** (es oculto y por cuenta). Si «Tu guía» entra antes del envío, sumarle una línea a las dos.
+121), la tanda 2 (Salud, volumen por músculo, código de barras) y la app del Apple Watch. El conteo de reps del reloj
+(antes «modo calibración», oculto) **viene prendido para todos** desde el 4-nov (decisión de Mati) y se anuncia; se
+apaga en Mis datos → Conteo de reps. «Tu guía» entra en las dos (texto de MYPUMP PRO).
 
 Qué cubre cada línea: Salud reemplaza a Progreso y trae recuperación (con confianza y motivo cuando falta el dato),
 fuerza y cuerpo, más el volumen por músculo; Entreno trae la preparación (E1), el descanso por ejercicio y el aviso de
 récord; Dieta trae los ajustes de comidas (agregar alimentos, tocar la cantidad) y el código de barras; el aviso local de
 revisión ya no sale con la semana completa.
 
-### App Store (819 de 4000 caracteres)
+### App Store (1159 de 4000 caracteres)
 
 ```
 Pump Team 2.1 llega al Apple Watch y estrena la pestaña Salud.
 
-• Apple Watch: tu rutina del día en la muñeca. Elegí el día, cargá reps y kg con la corona, el descanso te avisa con una vibración y ves tu frecuencia cardíaca y calorías en vivo. Si dejás el iPhone en el bolso, lo que cargás se guarda y se pasa solo después. Con complicaciones para la esfera.
+• Tu guía: los videos que tu entrenador preparó para vos antes de empezar, sobre la app, tu entrenamiento, tu alimentación y tu suplementación. Ves tu avance, retomás donde quedaste y le dejás tus dudas para la videollamada.
+• Apple Watch: tu rutina del día en la muñeca. Elegí el día, cargá reps y kg con la corona, el descanso te avisa con una vibración y ves tu frecuencia cardíaca y calorías en vivo. Al terminar cada serie, el reloj cuenta tus repeticiones y te las propone: confirmalas o corregilas con la corona. Si dejás el iPhone en el bolso, lo que cargás se guarda y se pasa solo después. Con complicaciones para la esfera.
 • Salud: recuperación (con qué tan confiable es el dato), fuerza, cuerpo y volumen por músculo, todo en un lugar.
 • Entreno: preparación antes de la primera serie, descanso propio por ejercicio y aviso cuando hacés un récord.
 • Dieta: sumá alimentos a una comida, tocá la cantidad para cambiarla y escaneá el código de barras del envase.
@@ -79,15 +81,15 @@ Pump Team 2.1 llega al Apple Watch y estrena la pestaña Salud.
 Tu cuenta y tu historial siguen intactos.
 ```
 
-### Google Play (443 de 500 caracteres; sin reloj)
+### Google Play (467 de 500 caracteres; sin reloj)
 
 ```
-Pump Team 2.1 estrena la pestaña Salud y suma control al entreno.
+Pump Team 2.1 estrena Tu guía y la pestaña Salud.
 
+• Tu guía: los videos de tu entrenador para empezar, con tu avance y un lugar para dejar tus dudas.
 • Salud: recuperación (con qué tan confiable es el dato), fuerza, cuerpo y volumen por músculo.
 • Entreno: preparación antes de la primera serie, descanso por ejercicio y aviso de récord.
 • Dieta: sumá alimentos a una comida, tocá la cantidad y escaneá el código de barras.
-• El aviso de revisión no sale si ya cargaste peso y fotos.
 
 Tu cuenta y tu historial siguen intactos.
 ```
@@ -148,17 +150,20 @@ HealthKit on Apple Watch: the watch app reads heart rate and active energy only 
 requires it; when the user ends the session, the workout is discarded (discardWorkout) and is never saved to Health.
 Live heart rate and calories stay on the watch: they are not sent to the iPhone app or to our servers.
 
-Motion (NSMotionUsageDescription): only used by an internal calibration mode that our coaching staff enables per
-account to evaluate rep counting. It is off for regular users, who never see this permission prompt. Calibration
-recordings stay on the watch and the iPhone and are only shared if the user exports them.
+Motion (NSMotionUsageDescription): the watch app counts reps. During each set it reads the accelerometer and gyroscope
+(Core Motion) and, when the set ends, proposes the count, which the user confirms or corrects with the Digital Crown.
+It is on by default and can be turned off in the iPhone app (Mis datos -> Conteo de reps). The motion recordings stay on
+the watch and the iPhone and are only shared if the user exports them; nothing is sent to our servers. In the demo the
+counter is also on, and its recordings are discarded.
 
-To test: sign in with the demo account below, open the Pump Team app on the paired Apple Watch, choose a day and tap
-"Empezar".
+To test: no sign-in is needed. On the iPhone, tap "Ver demo" on the welcome screen; then open the Pump Team app on the
+paired Apple Watch, choose a day and tap "Empezar". After each set the watch proposes the rep count. The on/off switch
+(Mis datos -> Conteo de reps) only appears with a real coaching account and a paired watch, not in the demo.
 ```
 
-La línea de Motion va porque la guía 2.3.1 pide no tener funciones ocultas sin contárselas a App Review; al público no
-se anuncia. Si Mati prefiere no nombrarla, sacar ese párrafo (el riesgo es un rechazo por 2.3.1 si la descubren).
-Revisar que la cuenta de demo del revisor tenga un plan con rutina, o el reloj muestra «sin rutina».
+El conteo de reps ya no es oculto (4-nov), así que la línea de Motion describe una función pública. El revisor no
+inicia sesión: usa la demo integrada («Ver demo»), con la rutina de muestra; «Tu guía» le aparece solo si va en las
+muestras de la demo (la suma MYPUMP PRO).
 
 ### Etiqueta de privacidad: no cambia
 
@@ -217,7 +222,7 @@ para los tags. Nada se manda sin ese OK.
 | 2 | Crear y empujar el tag; Codemagic arma el AAB | Yo (terminal) |
 | 3 | Probar el build de prueba interna en un Android (Salud, código de barras con Play Services, preparación, récord) | Mati |
 | 4 | En Play Console, Producción → «Crear versión» y subir el AAB (si pesa, en trozos como la 2.0.2) | Yo en Chrome |
-| 5 | Pegar las novedades de Play (es-419, 443/500) | Yo en Chrome |
+| 5 | Pegar las novedades de Play (es-419, 467/500) | Yo en Chrome |
 | 6 | Data safety y permisos: sin cambios (el Google code scanner no pide cámara) | Yo verifico en Chrome |
 | 7 | Porcentaje del lanzamiento (la 2.0.2 fue al 100 %) | Mati decide |
 | 8 | «Enviar a revisión» | Mati da el OK; el clic, con ese OK, yo |

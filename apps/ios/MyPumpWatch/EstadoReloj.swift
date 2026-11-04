@@ -83,10 +83,10 @@ final class EstadoReloj {
 
     // MARK: - Modo calibración (tanda 4)
 
-    /// El iPhone mandó el modo prendido para esta cuenta (en la demo, solo con `-calibracion`, para las capturas).
+    /// El iPhone mandó el modo prendido para esta cuenta (también en la demo, o con `-calibracion` para las capturas).
     var calibrando: Bool {
         guard let r = sesion.rutina else { return false }
-        if r.demo { return ProcessInfo.processInfo.arguments.contains("-calibracion") }
+        if r.demo && ProcessInfo.processInfo.arguments.contains("-calibracion") { return true }
         return r.calibracion == true
     }
 
@@ -232,7 +232,7 @@ final class EstadoReloj {
         guard let c else { return }
         propuestaSerie.reiniciar()
         // La primera serie confirmada sin «Empezar» arranca la sesión (y los sensores): esa serie no tiene ventana.
-        if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: calibrando) } else { calibracion.abrirVentana() }
+        if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: calibrando && sesion.rutina?.cuenta != "demo") } else { calibracion.abrirVentana() }
         if conSalud { entreno.empezar() }
         WKInterfaceDevice.current().play(c.record != nil ? .success : .click)
         avisoRecord = c.record

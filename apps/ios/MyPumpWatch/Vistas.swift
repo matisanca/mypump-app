@@ -473,7 +473,7 @@ struct LineaCalibracion: View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 4) {
                 Circle().fill(c.grabando ? Color.red : Color.secondary).frame(width: 6, height: 6)
-                Text(c.contadas.map { "Conté \($0)" } ?? (c.grabando ? "Contando…" : "Calibración"))
+                Text(c.contadas.map { "Conté \($0)" } ?? (c.grabando ? "Contando…" : "Cuenta reps"))
                     .font(.footnote.weight(.semibold).monospacedDigit())
             }
             if let u = c.ultimaComparacion {
@@ -481,7 +481,7 @@ struct LineaCalibracion: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(c.contadas.map { "Modo calibración. El reloj contó \($0) repeticiones" } ?? "Modo calibración")
+        .accessibilityLabel(c.contadas.map { "El reloj contó \($0) repeticiones" } ?? "Conteo de repeticiones")
     }
 }
 
