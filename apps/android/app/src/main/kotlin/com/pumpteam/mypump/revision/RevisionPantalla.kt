@@ -84,7 +84,6 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
     val salud by modelo.salud.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
-    val fechaRevision = revision?.fecha?.collectAsStateWithLifecycle()?.value
     val filasDePeso = revision?.salud?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pesoParaLasFotos = remember(filasDePeso) { PesoCorporal.serie(filasDePeso) }
     val alcance = LocalAlcanceApp.current
@@ -179,7 +178,7 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                     CheckSemanal(
                         revision,
                         Modifier.seccion(AnclaRevision.CHECK, secciones),
-                        salud = filasSaludSemana(salud, hoyDemo = if (esDemo) fechaRevision else null),
+                        salud = filasSaludSemana(salud),
                         alEnviar = {
                             // Con cuenta y la salud del sistema conectada: los últimos días al servidor, sin esperar ni
                             // frenar el envío del check.

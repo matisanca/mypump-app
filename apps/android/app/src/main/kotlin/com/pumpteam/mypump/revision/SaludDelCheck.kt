@@ -19,21 +19,16 @@ import com.pumpteam.mypump.datos.ModeloSalud
 import com.pumpteam.mypump.entreno.Letras
 import com.pumpteam.mypump.diseno.Espacio
 import com.pumpteam.mypump.diseno.MyPump
-import com.pumpteam.mypump.modelos.FilaSalud
-import com.pumpteam.mypump.reglas.DiaCalendario
 import com.pumpteam.mypump.reglas.SaludSemana
 
 /**
  * Las filas de «Tu salud, últimos 7 días» (`SaludSemana.resumen`), leyendo los flujos de los que dependen. Con cuenta, la
- * salud (60 días) y la recuperación (14) de [ModeloSalud], con el interruptor del número; en la demo ([salud] null y
- * [hoyDemo] con la fecha), las filas de salud de muestra, sin recuperación.
+ * salud (60 días) y la recuperación (14) de [ModeloSalud], con el interruptor del número. La demo no tiene datos de salud
+ * (como iOS): sin filas, el bloque no aparece.
  */
 @Composable
-fun filasSaludSemana(salud: ModeloSalud?, hoyDemo: String?): List<SaludSemana.Fila> {
-    if (salud == null) {
-        val hoy = hoyDemo ?: return emptyList()
-        return remember(hoy) { SaludSemana.resumen(MuestraSaludDemo.filas(hoy), emptyList(), hoy, mostrarScore = true) }
-    }
+fun filasSaludSemana(salud: ModeloSalud?): List<SaludSemana.Fila> {
+    if (salud == null) return emptyList()
     val filas by salud.salud.collectAsStateWithLifecycle()
     val serie by salud.recuperacion.collectAsStateWithLifecycle()
     val mostrar by salud.mostrarRecuperacion.collectAsStateWithLifecycle()
@@ -65,32 +60,6 @@ fun SaludDelCheck(filas: List<SaludSemana.Fila>, modifier: Modifier = Modifier) 
                     Text(f.detalle, style = Letras.caption, color = c.textoSecundario)
                 }
             }
-        }
-    }
-}
-
-/**
- * La salud de muestra de la demo (ficticia, sin datos de nadie): sueño, variabilidad, pulso en reposo y pasos de los
- * últimos 7 días, con la forma de `mypump_get_salud`. Solo alimenta «Tu salud, últimos 7 días» del check.
- */
-internal object MuestraSaludDemo {
-    private val porDia = listOf(
-        // sueño (min), HRV (ms), pulso en reposo, pasos; de hoy hacia atrás
-        listOf(412.0, 52.0, 58.0, 7400.0),
-        listOf(438.0, 55.0, 57.0, 9150.0),
-        listOf(395.0, 47.0, 60.0, 6200.0),
-        listOf(450.0, 58.0, 56.0, 10300.0),
-        listOf(421.0, 51.0, 58.0, 8050.0),
-        listOf(405.0, 49.0, 59.0, 7700.0),
-        listOf(444.0, 56.0, 57.0, 8900.0),
-    )
-    private val tipos = listOf("sueno_min", "hrv_ms", "fc_reposo", "pasos")
-
-    fun filas(hoy: String): List<FilaSalud> {
-        val n = DiaCalendario.numero(hoy) ?: return emptyList()
-        return porDia.flatMapIndexed { i, valores ->
-            val fecha = DiaCalendario.texto(n - i)
-            tipos.zip(valores) { tipo, v -> FilaSalud(fecha, tipo, v, "demo", null) }
         }
     }
 }

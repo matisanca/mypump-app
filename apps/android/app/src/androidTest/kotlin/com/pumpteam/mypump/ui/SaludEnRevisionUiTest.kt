@@ -62,25 +62,13 @@ class SaludEnRevisionUiTest : PruebaUi() {
     }
 
     @Test
-    fun elCheckDeLaDemoLlevaTuSaludDeLosUltimos7Dias() {
+    fun elCheckDeLaDemoNoTraeSaludPorqueNoHayDatos() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("pestana-revision"))
-        p.nodo(etiqueta("salud-del-check"))
-        llevarArriba("salud-del-check")
-        // Una segunda vez: la primera puede quedarse corta si lo de arriba todavía se estaba acomodando.
-        llevarArriba("salud-del-check")
-        p.nodo(texto("Tu salud, últimos 7 días"))
-        p.nodo(texto("Va con tu check: Mati lo ve junto a tus respuestas."))
-        // La salud de muestra: 7 días de sueño, HRV, pulso y pasos; sin recuperación (la demo no tiene cuenta).
-        assertFalse(p.existe(etiqueta("salud-check-recuperacion")))
-        assertEquals(listOf("Sueño", "7h 04", "promedio de 7 días"), p.textosBajo(etiqueta("salud-check-sueno")))
-        assertEquals(listOf("Variabilidad (HRV)", "53 ms", "promedio de 7 días"), p.textosBajo(etiqueta("salud-check-hrv")))
-        assertEquals(listOf("Pulso en reposo", "58 lpm", "promedio de 7 días"), p.textosBajo(etiqueta("salud-check-fc_reposo")))
-        assertEquals(listOf("Pasos", "8.243 por día", "promedio de 7 días"), p.textosBajo(etiqueta("salud-check-pasos")))
-        // Arriba del botón de enviar.
-        assertTrue(arriba("salud-del-check") < arriba("enviar-check"))
-        Telefono.captura("salud-rev-02-check-demo")
+        p.nodo(etiqueta("enviar-check"))
+        // Como iOS: la demo no tiene datos de salud y el bloque «Tu salud, últimos 7 días» no aparece.
+        assertFalse(p.existe(etiqueta("salud-del-check")))
         assertTrue("la demo tocó la red: ${servidor.llamadas.map { it.funcion }}", servidor.llamadas.isEmpty())
     }
 
