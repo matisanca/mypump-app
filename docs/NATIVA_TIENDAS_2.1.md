@@ -66,15 +66,15 @@ fuerza y cuerpo, más el volumen por músculo; Entreno trae la preparación (E1)
 récord; Dieta trae los ajustes de comidas (agregar alimentos, tocar la cantidad) y el código de barras; el aviso local de
 revisión ya no sale con la semana completa.
 
-### App Store (1279 de 4000 caracteres)
+### App Store (1374 de 4000 caracteres)
 
 ```
-Pump Team 2.1 llega al Apple Watch y estrena la pestaña Salud.
+Pump Team 2.1 llega al Apple Watch y suma tu salud a la revisión.
 
 • Tu guía: los videos que tu entrenador preparó para vos antes de empezar, sobre la app, tu entrenamiento, tu alimentación y tu suplementación. Ves tu avance, retomás donde quedaste y le dejás tus dudas para la videollamada.
 • Suplementación: una pestaña con tu suplementación del día por momento, el porqué de cada uno y lo que dejás de tomar.
 • Apple Watch: tu rutina del día en la muñeca. Elegí el día, cargá reps y kg con la corona, el descanso te avisa con una vibración y ves tu frecuencia cardíaca y calorías en vivo. Al terminar cada serie, el reloj cuenta tus repeticiones y te las propone: confirmalas o corregilas con la corona. Si dejás el iPhone en el bolso, lo que cargás se guarda y se pasa solo después. Con complicaciones para la esfera.
-• Salud: recuperación (con qué tan confiable es el dato), fuerza, cuerpo y volumen por músculo, todo en un lugar.
+• Revisión: arriba, tu recuperación del día (con qué tan confiable es el dato); tocala y ves sueño, corazón, fuerza, cuerpo y volumen por músculo. Tu check va con el resumen de salud de tus últimos 7 días.
 • Entreno: preparación antes de la primera serie, descanso propio por ejercicio y aviso cuando hacés un récord.
 • Dieta: sumá alimentos a una comida, tocá la cantidad para cambiarla y escaneá el código de barras del envase.
 • El aviso de revisión no sale si ya cargaste el peso y las fotos de la semana.
@@ -82,14 +82,14 @@ Pump Team 2.1 llega al Apple Watch y estrena la pestaña Salud.
 Tu cuenta y tu historial siguen intactos.
 ```
 
-### Google Play (494 de 500 caracteres; sin reloj)
+### Google Play (489 de 500 caracteres; sin reloj)
 
 ```
-Pump Team 2.1 estrena Tu guía y la pestaña Salud.
+Pump Team 2.1 estrena Tu guía y suma tu salud a Revisión.
 
-• Tu guía: los videos de tu entrenador para empezar, con tu avance y un lugar para dejar tus dudas.
+• Tu guía: los videos de tu entrenador para empezar, con tu avance y tus dudas.
 • Suplementación: tu día por momento y el porqué de cada uno.
-• Salud: recuperación, fuerza, cuerpo y volumen por músculo.
+• Revisión: tu recuperación arriba y tu salud semanal con el check.
 • Entreno: preparación antes de la primera serie, descanso por ejercicio y aviso de récord.
 • Dieta: sumá alimentos a una comida, tocá la cantidad y escaneá el código de barras.
 
@@ -160,8 +160,11 @@ counter is also on, and its recordings are discarded.
 
 Supplements tab (new in 2.1.0): a read-only list of the user's natural supplements (no prescription drugs) as set by
 their coach, grouped by time of day. It only appears when the coach has loaded supplements for that user; the demo
-includes a sample. When it is shown, Health ("Salud") moves from the tab bar to the heart button at the top of the
-"Revisión" tab.
+includes a sample.
+
+Health ("Salud") is no longer a tab: a "Recuperación" card at the top of the "Revisión" tab opens it. The weekly
+check-in shows 7-day averages of the health data the app already syncs (recovery, sleep, HRV, resting heart rate,
+steps); nothing new is collected or sent.
 
 To test: no sign-in is needed. On the iPhone, tap "Ver demo" on the welcome screen; then open the Pump Team app on the
 paired Apple Watch, choose a day and tap "Empezar". After each set the watch proposes the rep count. The on/off switch
