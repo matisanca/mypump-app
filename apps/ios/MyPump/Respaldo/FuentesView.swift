@@ -4,7 +4,7 @@ import SafariServices
 /// "Respaldo científico" (App Store 1.4.1, cliente.html:4711-4837): las guías y trabajos en los que se apoyan los números
 /// y las recomendaciones, agrupados por la afirmación que respaldan, cada uno con su link (navegador interno) y la URL
 /// como texto seleccionable, y el aviso legal al final. Se abre desde el renglón pegado a los números de Dieta y desde
-/// el pie de Dieta, Entreno y Mi Día.
+/// el pie de Dieta y Entreno.
 struct FuentesView: View {
     @Environment(\.dismiss) private var cerrar
     @State private var abierta: URL?
@@ -127,9 +127,9 @@ struct NavegadorInterno: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
 }
 
-/// La fila al pie de Dieta, Entreno y Mi Día (GEN-09): "Respaldo científico del plan" con las siglas de cada escena.
+/// La fila al pie de Dieta y Entreno (GEN-09): "Respaldo científico del plan" con las siglas de cada escena.
 struct PieRespaldo: View {
-    enum Origen { case dieta, entreno, miDia }
+    enum Origen { case dieta, entreno }
     let origen: Origen
     @State private var abierta = false
 
@@ -137,7 +137,6 @@ struct PieRespaldo: View {
         switch origen {
         case .dieta: "Mifflin-St Jeor · ISSN · NASEM · OMS · Guías Alimentarias (Argentina)"
         case .entreno: "ACSM · OMS · MedlinePlus (NIH)"
-        case .miDia: "NASEM · OMS · MedlinePlus (NIH)"
         }
     }
 

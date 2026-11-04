@@ -63,40 +63,25 @@ class DemoTest {
     }
 
     /**
-     * ACC-07: Mi Día de la demo viene sembrado como la web (cliente.html:8870-8876) y `MuestrasExtra.demo` de iOS: racha 3
-     * hasta hoy, hoy "entrené" y 2 vasos. El chat, con el hilo vacío. Se toca igual, pero nada sale: ni red, ni cola, ni disco.
+     * ACC-07: en la demo, Revisión existe sin cuenta y el chat tiene el hilo vacío. Se toca igual, pero nada sale: ni red,
+     * ni cola, ni disco. Mi Día ya no existe (2.1).
      */
     @Test
-    fun miDiaSembradoYElChatVacio() = enUnHilo { alcance ->
+    fun revisionYElChatVacioSinRed() = enUnHilo { alcance ->
         val t = TransporteProgramado { _, _ -> 200 to "[]" }
         val raiz = carpetaTemporal("mypump-demo")
         val m = ModeloApp(ClienteRpc(transporte = t), TokenEnMemoria(null), raiz, PreferenciasEnMemoria(), alcance)
         m.entrarEnDemo(Compartido.texto("demo/rutina.json"), Compartido.texto("demo/dieta.json"))
         val r = m.revision.value!!
-        assertEquals(3, r.racha.value)
-        assertEquals(FechaLocal.hoy(), r.ultimoDiaValido.value)
-        assertEquals(HabitosHoy("entrene", comioSegunPlan = true, durmioBien = true, cardio = false, vasosAgua = 2), r.habitos.value)
-        assertTrue(r.miDiaCargado.value)
-        // Los 30 días de muestra de iOS, de hoy para atrás: los tres primeros cumplidos, como la racha.
-        val dias = r.adherencia.value!!
-        assertEquals(30, dias.size)
-        assertEquals(FechaLocal.hoy(), dias.first().fecha)
-        assertEquals(listOf(true, true, true, false), dias.take(4).map { it.esValido })
+        assertEquals(FechaLocal.hoy(), r.fecha.value)
         val chat = m.chat.value!!
         assertTrue(chat.demo)
         assertTrue(chat.hilo.value.mensajes.isEmpty() && !chat.hilo.value.hayMas)
 
-        // Se toca igual (tocar lo elegido lo borra) y nada sale.
-        r.tocar("entrenamiento", "entrene")
-        assertNull(r.habitos.value.entrenamiento)
-        r.cambiarAgua(1)
-        assertEquals(3, r.habitos.value.vasosAgua)
-        r.cargarMiDia()
-        r.cargarAdherencia()
+        // Se toca igual y nada sale.
+        assertTrue(r.guardarPeso("80"))
         r.cargarRevision()
-        assertEquals(3, r.racha.value)
-        assertEquals(3, r.habitos.value.vasosAgua)
-        assertEquals(30, r.adherencia.value?.size)
+        assertEquals(80.0, r.serieDePeso.lastOrNull()?.kg)
         chat.enviar("Hola Mati")
         chat.cargar()
         chat.sondear()

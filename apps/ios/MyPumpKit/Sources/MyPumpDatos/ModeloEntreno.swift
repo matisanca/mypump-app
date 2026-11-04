@@ -35,7 +35,9 @@ public final class ModeloEntreno {
     public internal(set) var sesionIniciada = false
     /// Historial pedido y todavía sin respuesta.
     public internal(set) var historialCargando: Set<String> = []
-    public internal(set) var catalogo: CatalogoEjercicios
+    public internal(set) var catalogo: CatalogoEjercicios { didSet { versionCatalogo &+= 1 } }
+    /// Cambia con cada catálogo que llega (la firma del volumen: dos catálogos con la misma cantidad no son el mismo).
+    @ObservationIgnored public private(set) var versionCatalogo = 0
     /// E1: las filas de preparación que el alumno tocó como hechas hoy, por `Preparacion.claveTildes` (fecha + día +
     /// lugar). Es solo un estado visual del día: no va a la base.
     public internal(set) var preparacionHecha: [String: [Int]] = [:]
@@ -91,6 +93,9 @@ public final class ModeloEntreno {
     @ObservationIgnored let sesiones: SesionesDelDia
     /// SER-14: lo último que se escribió en el archivo de la rutina. Lo que cambie desde acá sale por la cola.
     @ObservationIgnored var sustitucionesGuardadas: [String: JSONValue] = [:]
+    /// La fecha real (local, YYYY-MM-DD) de cada serie confirmada del día que se mira (`claveFecha`): la del toque, la
+    /// del `registrado_en` o la de la cola. Para el volumen por músculo (revisión del 3-nov).
+    public internal(set) var fechasSeries: [String: String] = [:]
     /// SER-14: mientras se espera al servidor, lo que se tocó en el medio (ahí gana lo del teléfono). nil = no se espera.
     @ObservationIgnored var tocadasDuranteSync: Set<String>?
     /// SER-14: la sincronización en curso (una a la vez; cambiar de rutina la deja sin efecto).
@@ -109,6 +114,13 @@ public final class ModeloEntreno {
     @ObservationIgnored var habiaDiaGuardado = false
     /// Lo último que se escribió del descanso (el tick corre cada 250 ms: se escribe solo si cambió).
     @ObservationIgnored var descansoEnDisco: Descanso.Guardado?
+    /// ms: cuándo pasó la acción que se está aplicando, si no es ahora (un evento del reloj).
+    @ObservationIgnored var instanteEvento: Double?
+    /// Las series confirmadas por un evento del reloj (clave de `claveFecha` → `creado` del evento). Solo en memoria: sin
+    /// la marca, gana lo que hay en el teléfono.
+    @ObservationIgnored var seriesDelReloj: [String: Double] = [:]
+    /// Hay eventos del Apple Watch que esperan hace horas sin poder pasar (el aviso de Entreno); nil si no.
+    public internal(set) var relojEsperando: String?
 
     public init(cliente: ClienteRPC, token: String?, outbox: Outbox?, disco: Disco?, rutina: RutinaActiva, info: ClienteInfo? = nil,
                 catalogo: CatalogoEjercicios = CatalogoEjercicios([]), demo: Bool? = nil, zona: TimeZone = .current,
@@ -365,13 +377,21 @@ public final class ModeloEntreno {
     /// El check o el "✓ Tocá para registrar lo de la última vez" (SER-01/03/05). `preguntar` muestra la pregunta y
     /// devuelve lo que eligió el cliente (reabrir el día cerrado; "¿Está bien cargado?").
     @discardableResult
-    public func confirmarSerie(_ lugar: String, _ idx: Int, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
+    public func confirmarSerie(_ lugar: String, _ idx: Int, delReloj: Double? = nil, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado?
+        // La serie se fecha (y el récord y el volumen) con la hora de ahora en el iPhone, igual que el servidor
+        // (`registrado_en` = now()). `delReloj` (ms): cuándo se hizo en el reloj; solo ancla el descanso y deja anotado
+        // que la serie vino del reloj (una corrección posterior del reloj puede pisarla; un pendiente viejo, no).
+        let cuando = reloj()
+        instanteEvento = delReloj
+        defer { instanteEvento = nil }
+        seriesDelReloj[claveFecha(lugar, idx + 1)] = delReloj
         let ef = dia.ejercicio(lugar).map { efectivo($0).ejercicio }
         dia.fijarRIRDelPlan(lugar, idx, efectivo: dia.ejercicio(lugar).map(hecho))
         while true {
-            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(reloj(), zona: zona))
+            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(cuando, zona: zona))
+            anotarFecha(lugar, idx + 1, FechaJS.ymd(cuando, zona: zona), soloConfirmada: true)
             if let r = paso.record { avisoRecord = AvisoRecord(id: UUID(), lugar: lugar, texto: r.texto) }
             if let c = await ejecutar(paso.efectos) { completo = c }
             guard let p = paso.pregunta, let motivo = paso.motivo else { return completo }
@@ -426,15 +446,72 @@ public final class ModeloEntreno {
         var entradas: [Preparacion.Entrada] = [], ejercicios: [Ejercicio] = []
         for ex in lista {
             let ef = efectivo(ex)
-            let delSustituto = ef.slugSustituto.flatMap { catalogo.entrada(slug: $0)?.primaryMuscle }
-            let musculo = delSustituto ?? catalogo.resolver(ex)?.primaryMuscle
-            entradas.append(Preparacion.Entrada(tipo: ef.ejercicio.tipo, musculo: musculo, nombre: ef.ejercicio.nombre,
+            entradas.append(Preparacion.Entrada(tipo: ef.ejercicio.tipo, musculo: musculo(ex), nombre: ef.ejercicio.nombre,
                                                 sinPeso: ReglasEjercicio.esSinPeso(nombre: ef.ejercicio.nombre, tipo: ef.ejercicio.tipo, equipo: ef.ejercicio.equipo)))
             ejercicios.append(hecho(ex))
         }
         cacheEntradas = (firma, entradas, ejercicios)
         cachePreparacion = [:]
         return (entradas, ejercicios)
+    }
+
+    /// El músculo principal del ejercicio que se hace: el del sustituto si el catálogo lo tiene; si no, el del original
+    /// (`CatalogoEjercicios.resolver`: catalogo_slug → matched → reglas y nombre). nil = el catálogo no lo tiene (el
+    /// respaldo conservador). La misma cadena para la preparación (E1) y el volumen por músculo (S2).
+    public func musculo(_ ex: Ejercicio) -> String? {
+        efectivo(ex).slugSustituto.flatMap { catalogo.entrada(slug: $0)?.primaryMuscle } ?? catalogo.resolver(ex)?.primaryMuscle
+    }
+
+    // MARK: - Volumen por músculo (2.1, S2)
+
+    /// La clave de `fechasSeries`: el día, la semana, el lugar y el número de la serie.
+    func claveFecha(_ lugar: String, _ n: Int) -> String { "\(dia.dia.id ?? "")|\(semana)|\(lugar)|\(n)" }
+
+    /// Anota la fecha real (local) de una serie del día que se mira, si no tenía: la primera vale (el servidor conserva
+    /// el `registrado_en` al corregirla). `soloConfirmada`: solo si la serie quedó confirmada (el toque).
+    func anotarFecha(_ lugar: String, _ n: Int, _ fecha: String, soloConfirmada: Bool = false) {
+        guard fecha.count == 10 else { return }
+        if soloConfirmada {
+            guard let e = dia.ejercicios[lugar], n >= 1, n <= e.series.count, e.series[n - 1].confirmada else { return }
+        }
+        let k = claveFecha(lugar, n)
+        if fechasSeries[k] == nil { fechasSeries[k] = fecha }
+    }
+
+    /// Las series confirmadas en el teléfono del día que se mira, para el volumen por músculo (el cierre del día y Salud
+    /// → Fuerza), cada una con su fecha REAL: la del toque, la del `registrado_en` si vino del servidor o la de la cola si
+    /// quedó sin mandar. Una sin fecha conocida no va (ya está en el historial). El día que se mira puede ser de otro día
+    /// (`restaurarSesion` va por día y semana): antes todo salía con la fecha de hoy y se contaba dos veces (revisión del
+    /// 3-nov). Van con la clave del ejercicio con que se registraron, para no sumar lo que el historial ya tiene. Las de
+    /// preparación no están: nunca se registran.
+    public var registrosVolumenEnVivo: [VolumenMusculo.Registro] {
+        var vistos = Set<String>()
+        var out: [VolumenMusculo.Registro] = []
+        for ex in dia.lista where vistos.insert(ex.id).inserted {
+            guard let e = dia.ejercicios[ex.id], e.series.contains(where: \.confirmada) else { continue }
+            let m = musculo(ex), ef = efectivo(ex).ejercicio
+            for (i, s) in e.series.enumerated() where s.confirmada {
+                guard let fecha = fechasSeries[claveFecha(ex.id, i + 1)] else { continue }
+                let c = ClaveEjercicio.de(JS.verdadero(s.nombreRegistrado) ?? ef.nombre)
+                out.append(VolumenMusculo.Registro(musculo: m, tipo: ef.tipo, fecha: fecha, lugar: ex.id, serie: i + 1,
+                                                   clave: c.isEmpty ? ex.id : c))
+            }
+        }
+        return out
+    }
+
+    /// Lo que cambia `registrosVolumenEnVivo` (para el caché del volumen): las series confirmadas, con qué nombre y fecha.
+    public var firmaVolumenEnVivo: String {
+        _ = catalogo   // para que la vista se entere de un catálogo nuevo
+        var partes: [String] = [dia.dia.id ?? "", "\(semana)", "\(versionCatalogo)"]
+        partes.append(dia.sustituciones.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ","))
+        for ex in dia.lista {
+            guard let e = dia.ejercicios[ex.id] else { continue }
+            for (i, s) in e.series.enumerated() where s.confirmada {
+                partes.append("\(ex.id)#\(i)#\(s.nombreRegistrado ?? "")#\(fechasSeries[claveFecha(ex.id, i + 1)] ?? "")")
+            }
+        }
+        return partes.joined(separator: "|")
     }
 
     func clavePreparacion(_ lugar: String) -> String {
@@ -501,8 +578,13 @@ public final class ModeloEntreno {
     // MARK: - Sesión (SES-01/02/03)
 
     /// "▶ Empezar entrenamiento": arranca el cronómetro y crea la sesión.
-    public func empezar() async {
+    public func empezar(desde: Double? = nil) async {
         iniciadaConBoton = true
+        // Empezado en el reloj: el cronómetro arranca cuando se tocó allá, no cuando llegó.
+        if let desde, inicioSesion == nil, desde <= ahoraMs {
+            inicioSesion = desde
+            guardarInicio()
+        }
         await asegurarSesion()
     }
 
@@ -555,6 +637,9 @@ public final class ModeloEntreno {
     public func restaurarSesion() async {
         restauracion += 1
         let seq = restauracion
+        // Las fechas de la sesión anterior no se heredan (una clave repetida, otro bloque con los mismos lugares): vuelven
+        // del servidor (`registrado_en`) y de la cola, y lo que se toque desde ahora se anota de nuevo.
+        fechasSeries = [:]
         dia.sesionId = nil
         dia.diaFinalizado = false
         sesionIniciada = false
@@ -644,7 +729,10 @@ public final class ModeloEntreno {
         let (estados, registros) = await (e, r)
         guard seq == restauracion, dia.sesionId == sid else { return }
         if case .success(let f) = estados { dia.aplicarEstados(f) }
-        if case .success(let f) = registros { dia.aplicarRegistros(f) }
+        if case .success(let f) = registros {
+            for r in f { if let t = r.registradoEn { anotarFecha(r.ejercicioId, r.serie, FechaLocal.de(t, zona: zona)) } }
+            dia.aplicarRegistros(f)
+        }
         await aplicarPendientes()
     }
 
@@ -664,6 +752,7 @@ public final class ModeloEntreno {
                 e.series[i].confirmada = true
                 e.series[i].nombreRegistrado = d["ejercicioNombre"]?.comoTexto
                 e.series[i].varianteRegistrada = d["notas"]?.comoTexto
+                anotarFecha(ex, i + 1, FechaJS.ymd(Date(timeIntervalSince1970: op.ts / 1000), zona: zona))
                 dia.ejercicios[ex] = e
             } else if op.kind == "estado", let ex = p["exId"]?.comoTexto, let st = p["status"]?.comoTexto {
                 dia.estados[ex] = st
@@ -695,7 +784,7 @@ public final class ModeloEntreno {
 
     /// `writeFinish`: PRIMERO vacía la cola (las series tienen que estar en la base antes de cerrar), después
     /// `finalizar_sesion` con la duración (null si pasa de 6 h). Un `false` es que no se cerró.
-    public func cerrarDia(notas: String) async -> ResultadoCierre {
+    public func cerrarDia(notas: String, fin: Double? = nil) async -> ResultadoCierre {
         guard !demo, let token else {
             // La demo no cierra nada en el servidor, pero el descanso termina igual.
             if demo {
@@ -707,7 +796,8 @@ public final class ModeloEntreno {
         await asegurarSesion()
         guard let sid = dia.sesionId else { return .sinSesion }
         await outbox?.drenar()
-        let minutos = TiempoEntreno.minutosSesion(inicio: inicioSesion, ahora: ahoraMs)
+        // `fin`: cuándo se terminó de verdad (el «terminar» del reloj que llega después).
+        let minutos = TiempoEntreno.minutosSesion(inicio: inicioSesion, ahora: min(fin ?? ahoraMs, ahoraMs))
         let notas = JS.trim(notas)
         let r = await cliente.llamar("mypump_finalizar_sesion", [
             "p_token": .texto(token), "p_sesion_id": .texto(sid), "p_notas": notas.isEmpty ? .null : .texto(notas),
@@ -1142,8 +1232,12 @@ public final class ModeloEntreno {
             case .encolar(let kind, let payload, let clave):
                 await outbox?.encolar(kind, payload, dedupeKey: clave)
             case .iniciarDescanso(let s):
-                descanso.iniciar(segundos: s, ahora: ahoraMs)
-                guardarDescanso()
+                // Una serie que llega tarde (del reloj) ancla el descanso a cuando se hizo; si ya terminó, no arranca.
+                let desde = min(instanteEvento ?? ahoraMs, ahoraMs)
+                if desde + (s + 2) * 1000 > ahoraMs {
+                    descanso.iniciar(segundos: s, ahora: desde)
+                    guardarDescanso()
+                }
             case .detenerDescanso:
                 descanso.detener()
                 guardarDescanso()

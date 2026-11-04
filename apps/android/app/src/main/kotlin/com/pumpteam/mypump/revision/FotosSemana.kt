@@ -331,7 +331,7 @@ private fun IconoPose(estado: EstadoPose) {
  * luz y retención de líquido, no cambios reales). Una pantalla entera por encima de Revisión, como la hoja de iOS.
  */
 @Composable
-private fun GaleriaFotos(
+internal fun GaleriaFotos(
     modelo: ModeloFotos?,
     fotos: List<FotoProgreso>,
     urls: Map<String, String>,

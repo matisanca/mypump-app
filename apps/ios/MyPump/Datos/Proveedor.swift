@@ -35,7 +35,10 @@ enum Proveedor {
             // `-semanaDePrueba completa|incompleta`: el check y las fotos de esta semana inventados (ver `SemanaDePrueba`).
             else if let caso = d.string(forKey: "semanaDePrueba") { transporte = SemanaDePrueba(completa: caso == "completa") }
             else { transporte = URLSession.shared }
-            return ModeloApp(cliente: ClienteRPC(transporte: transporte), almacen: TokenEnMemoria(t))
+            let m = ModeloApp(cliente: ClienteRPC(transporte: transporte), almacen: TokenEnMemoria(t))
+            // `-offDePrueba encontrado|incompleto|noEncontrado|sinRed`: Open Food Facts de mentira (ver `OFFDePrueba`).
+            if let caso = d.string(forKey: "offDePrueba") { m.transporteBarras = OFFDePrueba(caso: caso) }
+            return m
         }
         // `-reiniciar YES`: arranca como recién instalada (sin token guardado), para probar la bienvenida.
         if d.bool(forKey: "reiniciar") {

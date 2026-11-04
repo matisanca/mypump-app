@@ -41,5 +41,5 @@ final class AuditoriaAccesibilidadUITests: XCTestCase {
     func testChat() throws { abrir(["-pestana", "chat"]); try auditar("chat", pasos: 0) }
     func testRevision() throws { abrir(["-pestana", "revision"]); try auditar("revision", pasos: 8) }
     func testMisDatos() throws { abrir(["-pestana", "revision", "-abrir", "misdatos"]); try auditar("misdatos", pasos: 6) }
-    func testProgreso() throws { abrir(["-pestana", "progreso"]); try auditar("progreso", pasos: 6) }
+    func testSalud() throws { abrir(["-pestana", "salud", "-segmento", "fuerza"]); try auditar("salud-fuerza", pasos: 6) }
 }

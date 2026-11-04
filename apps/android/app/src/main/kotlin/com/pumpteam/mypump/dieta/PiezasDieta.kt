@@ -282,6 +282,20 @@ internal object IconosDieta {
         )
     }
 
+    /** Un código de barras entre las esquinas del visor (las de document_scanner): «Escanear código de barras». */
+    val CodigoBarras: ImageVector by lazy {
+        icono(
+            "CodigoBarras",
+            "M7,3H4v3H2V1h5V3zM22,6V1h-5v2h3v3H22zM7,21H4v-3H2v5h5V21zM20,18v3h-3v2h5v-5H20z" +
+                "M5,6h2v12H5zM8.5,6h1v12h-1zM11,6h2v12h-2zM14.5,6h1v12h-1zM17,6h2v12h-2z",
+        )
+    }
+
+    /** edit_note: «Cargarlo a mano». */
+    val AMano: ImageVector by lazy {
+        icono("AMano", "M3,10h11v2H3V10zM3,8h11V6H3V8zM3,16h7v-2H3V16zM18.01,12.87l0.71,-0.71c0.39,-0.39 1.02,-0.39 1.41,0l0.71,0.71c0.39,0.39 0.39,1.02 0,1.41l-0.71,0.71L18.01,12.87zM17.3,13.58l-5.3,5.3V21h2.12l5.3,-5.3L17.3,13.58z")
+    }
+
     /** fastfood: las comidas libres (fuera del plan). */
     val ComidaAfuera: ImageVector by lazy {
         icono(

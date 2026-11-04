@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- La app del Apple Watch (tanda 3, 2.2). Se mezcla con el Info.plist generado; va fuera de la carpeta sincronizada
+	     para que no se copie como recurso. -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>es-419</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>es-419</string>
+		<string>es</string>
+	</array>
+	<!-- La sesión de entreno sigue con la pantalla apagada o la muñeca baja (FC, calorías y el descanso). -->
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Pump Team muestra tu frecuencia cardíaca y tus calorías activas mientras entrenás.</string>
+	<!-- HealthKit pide permiso de escritura de entrenamientos para poder abrir una sesión de entreno en el reloj. Pump
+	     Team no guarda el entreno en Salud (decisión de Mati): al terminar lo descarta. -->
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Pump Team necesita este permiso para medir tu entreno en vivo. No guardamos el entreno en Salud; el reloj registra tu frecuencia cardíaca y tus calorías activas como siempre.</string>
+	<!-- Tanda 4: solo con el modo calibración prendido (oculto, por cuenta) el reloj usa el acelerómetro y el giroscopio
+	     durante las series. Apagado, no se pide ni se usa. -->
+	<key>NSMotionUsageDescription</key>
+	<string>Con el modo calibración prendido, Pump Team usa el movimiento del reloj durante cada serie para medir qué tan bien cuenta las repeticiones. Queda en el reloj y en tu iPhone.</string>
+</dict>
+</plist>

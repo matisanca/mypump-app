@@ -2,13 +2,16 @@ import SwiftUI
 import MyPumpDatos
 import MyPumpReglas
 
-/// A dónde se va dentro de la app: la pestaña y, en Revisión, una sección o Mis datos. La usan tocar un aviso
-/// (`CentroAvisos.destino`) y el banner de "te falta tu check" de Entreno y Dieta.
+/// A dónde se va dentro de la app: la pestaña y, en Revisión, una sección o Mis datos; en Salud, el segmento. La usan
+/// tocar un aviso (`CentroAvisos.destino`), el banner de "te falta tu check" y los botones «Ir a Revisión» de Cuerpo.
 @MainActor @Observable
 final class Navegacion {
     var pestaña: Raiz.Pestaña
-    /// Una sección de Revisión a la que desplazarse ("fotos", "check", "peso", "midia"); Revisión la consume al llegar.
+    /// Una sección de Revisión a la que desplazarse ("fotos", "check"); Revisión la consume al llegar. Las que se mudaron
+    /// a Salud en la 2.1 ("peso" a Cuerpo; "reloj" y la vieja "midia" a Recuperación) cambian de pestaña (`irARevision`).
     var anclaRevision: String?
+    /// El segmento de Salud que hay que mostrar; Salud lo consume al llegar.
+    var segmentoSalud: SegmentoSalud?
     /// Abrir Mis datos (desde Revisión).
     var misDatos = false
 
@@ -20,19 +23,46 @@ final class Navegacion {
         case .entreno: pestaña = .entreno
         case .dieta: pestaña = .dieta
         case .chat: pestaña = .chat
-        case .progreso: pestaña = .progreso
+        case .fuerza: irASalud(.fuerza)
         case .revision: pestaña = .revision
-        case .miDia:
-            pestaña = .revision
-            anclaRevision = "midia"
+        case .recuperacion: irASalud(.recuperacion)
         case .misDatos:
             pestaña = .revision
             misDatos = true
         }
     }
+
+    func irASalud(_ segmento: SegmentoSalud) {
+        segmentoSalud = segmento
+        pestaña = .salud
+    }
+
+    /// Una sección de Revisión; las que se mudaron a Salud van a su segmento.
+    func irARevision(_ ancla: String) {
+        switch ancla {
+        case "peso": irASalud(.cuerpo)
+        case "reloj", "midia": irASalud(.recuperacion)
+        default:
+            anclaRevision = ancla
+            pestaña = .revision
+        }
+    }
 }
 
-/// "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno, Dieta, Chat y Progreso
+/// Los tres segmentos de Salud (2.1).
+enum SegmentoSalud: String, CaseIterable, Identifiable {
+    case recuperacion, fuerza, cuerpo
+    var id: String { rawValue }
+    var titulo: String {
+        switch self {
+        case .recuperacion: "Recuperación"
+        case .fuerza: "Fuerza"
+        case .cuerpo: "Cuerpo"
+        }
+    }
+}
+
+/// "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno, Dieta, Chat y Salud
 /// (la web lo pone en todas las escenas menos Revisión). Tocarlo lleva a Revisión. Con todo hecho, en la demo o sin
 /// cuenta no se ve.
 struct BannerRevision: View {

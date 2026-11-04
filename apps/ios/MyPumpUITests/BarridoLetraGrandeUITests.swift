@@ -54,6 +54,6 @@ final class BarridoLetraGrandeUITests: XCTestCase {
     func testDieta() { abrir(["-pestana", "dieta"]); recorrer("dieta", pasos: 12) }
     func testRevision() { abrir(["-pestana", "revision"]); recorrer("revision", pasos: 12) }
     func testMisDatos() { abrir(["-pestana", "revision", "-abrir", "misdatos"]); recorrer("misdatos", pasos: 8) }
-    func testProgreso() { abrir(["-pestana", "progreso"]); recorrer("progreso", pasos: 8) }
+    func testSalud() { abrir(["-pestana", "salud", "-segmento", "fuerza"]); recorrer("salud-fuerza", pasos: 8) }
     func testChat() { abrir(["-pestana", "chat"]); sleep(5); captura("chat-00") }
 }

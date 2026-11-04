@@ -41,9 +41,10 @@ class RedYGuardadoUiTest : PruebaUi() {
     /** Los pesos que intentaron salir (el peso va por `ingest_salud`, con el tipo `peso_kg`). */
     private fun pesos() = servidor.a("mypump_ingest_salud").count { "peso_kg" in it }
 
-    /** Revisión, en Peso corporal: el peso de hoy sale por la cola (con la misma clave en el día: el último gana). */
+    /** Salud → Cuerpo, en Peso corporal: el peso de hoy sale por la cola (con la misma clave en el día: el último gana). */
     private fun irAlPeso() {
-        p.tocar(etiqueta("pestana-revision"))
+        p.tocar(etiqueta("pestana-salud"))
+        p.tocar(etiqueta("segmento-cuerpo"))
         p.nodo(etiqueta("guardar-peso"))
     }
 

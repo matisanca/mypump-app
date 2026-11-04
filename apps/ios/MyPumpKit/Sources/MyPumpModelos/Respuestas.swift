@@ -46,14 +46,17 @@ public struct RegistroSesion: Decodable, Sendable, Equatable {
     public let rir: Int?
     public let ejercicioNombre: String?
     public let notas: String?
+    /// Cuándo se registró (el servidor lo conserva al corregir la serie): la fecha real para el volumen por músculo.
+    public let registradoEn: String?
     enum CodingKeys: String, CodingKey {
         case ejercicioId = "ejercicio_id", serie = "serie_numero", pesoKg = "peso_kg", reps = "reps_realizadas"
-        case rir = "rir_real", ejercicioNombre = "ejercicio_nombre", notas
+        case rir = "rir_real", ejercicioNombre = "ejercicio_nombre", notas, registradoEn = "registrado_en"
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         ejercicioId = c.texto(.ejercicioId) ?? ""; serie = c.entero(.serie) ?? 1; pesoKg = c.decimal(.pesoKg)
         reps = c.entero(.reps); rir = c.entero(.rir); ejercicioNombre = c.texto(.ejercicioNombre); notas = c.texto(.notas)
+        registradoEn = c.texto(.registradoEn)
     }
 }
 

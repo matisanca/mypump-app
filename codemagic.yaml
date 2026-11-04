@@ -277,6 +277,11 @@ workflows:
     environment:
       # Mismo Xcode mayor con el que se compila y prueba local (26.x).
       xcode: latest
+      # Por bundle id: Codemagic trae los perfiles App Store de com.pumpteam.mypump y de los bundle ids que empiezan
+      # con él (la extensión del descanso y, desde la 2.2, el reloj y sus complicaciones). Los perfiles subidos tienen
+      # estas referencias, por si hiciera falta pasar a `provisioning_profiles:` (junto con la referencia del
+      # certificado en `certificates:`): mypump-appstore-profile, mypump-descanso-appstore-profile,
+      # mypump-watch-appstore-profile y mypump-watch-complicaciones-appstore-profile.
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.pumpteam.mypump
@@ -307,13 +312,16 @@ workflows:
           security find-identity -v -p codesigning | grep -q "Apple Distribution" || { echo "✗ sin identidad Apple Distribution"; exit 1; }
           # Desde la 2.0.1 viaja la extensión del descanso (Live Activity): necesita su propio perfil App Store, y
           # `use-profiles` deja sin firmar lo que no tiene perfil (el error recién salía al exportar, 10 minutos después).
-          /usr/libexec/PlistBuddy -c "Print :provisioningProfiles:com.pumpteam.mypump.descanso" "$HOME/export_options.plist" >/dev/null 2>&1 || {
-            echo "✗ falta el perfil App Store de com.pumpteam.mypump.descanso (la extensión del descanso)."
-            echo "  developer.apple.com → Identifiers: crear el App ID; Profiles: uno App Store con el certificado de distribución;"
-            echo "  Codemagic → Code signing identities → iOS provisioning profiles: traerlo."
-            exit 1
-          }
-          echo "✓ Firma lista (app y extensión)"
+          # Desde la 2.2 viaja también el Apple Watch (Watch/MyPumpWatch.app) con sus complicaciones: cada uno con su perfil.
+          for B in com.pumpteam.mypump.descanso com.pumpteam.mypump.watchkitapp com.pumpteam.mypump.watchkitapp.complicaciones; do
+            /usr/libexec/PlistBuddy -c "Print :provisioningProfiles:$B" "$HOME/export_options.plist" >/dev/null 2>&1 || {
+              echo "✗ falta el perfil App Store de $B."
+              echo "  developer.apple.com → Identifiers: crear el App ID; Profiles: uno App Store con el certificado de distribución;"
+              echo "  Codemagic → Code signing identities → iOS provisioning profiles: traerlo."
+              exit 1
+            }
+          done
+          echo "✓ Firma lista (app, descanso, reloj y complicaciones)"
       - name: Compilar IPA
         script: |
           xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
@@ -341,7 +349,25 @@ workflows:
             && [ "$(leer CFBundleVersion "$APP/Info.plist")" = "$(leer CFBundleVersion "$EXT/Info.plist")" ] \
             || { echo "✗ la extensión no tiene la misma versión y build que la app"; exit 1; }
           [ "$(leer NSSupportsLiveActivities "$APP/Info.plist")" = "true" ] || { echo "✗ falta NSSupportsLiveActivities en la app"; exit 1; }
-          echo "✓ IPA revisado (con la extensión del descanso $(leer CFBundleShortVersionString "$EXT/Info.plist") ($(leer CFBundleVersion "$EXT/Info.plist")))"
+          # El Apple Watch (2.2): la app del reloj en Watch/ y sus complicaciones adentro, firmadas, con la misma versión
+          # y build que la app, Salud y el App Group en los entitlements del reloj.
+          RELOJ="$APP/Watch/MyPumpWatch.app"
+          COMP="$RELOJ/PlugIns/MyPumpWatchComplicaciones.appex"
+          test -d "$RELOJ" || { echo "✗ falta la app del reloj (Watch/MyPumpWatch.app)"; exit 1; }
+          test -d "$COMP" || { echo "✗ faltan las complicaciones del reloj (MyPumpWatchComplicaciones.appex)"; exit 1; }
+          for X in "$RELOJ" "$COMP"; do
+            codesign --verify --strict "$X" || { echo "✗ $(basename "$X") no está bien firmado"; exit 1; }
+            [ "$(leer CFBundleShortVersionString "$APP/Info.plist")" = "$(leer CFBundleShortVersionString "$X/Info.plist")" ] \
+              && [ "$(leer CFBundleVersion "$APP/Info.plist")" = "$(leer CFBundleVersion "$X/Info.plist")" ] \
+              || { echo "✗ $(basename "$X") no tiene la misma versión y build que la app"; exit 1; }
+          done
+          [ "$(leer WKCompanionAppBundleIdentifier "$RELOJ/Info.plist")" = "com.pumpteam.mypump" ] || { echo "✗ el reloj no apunta a la app del iPhone"; exit 1; }
+          codesign -d --entitlements :- "$RELOJ" > /tmp/ent-reloj.plist 2>/dev/null
+          for k in com.apple.developer.healthkit group.com.pumpteam.mypump.reloj; do
+            grep -q "$k" /tmp/ent-reloj.plist || { echo "✗ al reloj le falta $k en los entitlements"; exit 1; }
+          done
+          codesign -d --entitlements :- "$COMP" 2>/dev/null | grep -q group.com.pumpteam.mypump.reloj || { echo "✗ a las complicaciones les falta el App Group"; exit 1; }
+          echo "✓ IPA revisado (con la extensión del descanso $(leer CFBundleShortVersionString "$EXT/Info.plist") ($(leer CFBundleVersion "$EXT/Info.plist")) y el reloj $(leer CFBundleVersion "$RELOJ/Info.plist"))"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log

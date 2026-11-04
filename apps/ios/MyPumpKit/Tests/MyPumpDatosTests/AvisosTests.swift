@@ -7,8 +7,8 @@ struct AvisosTests {
     @Test func destinos() {
         #expect(DestinoAviso(destino: "train") == .entreno)
         #expect(DestinoAviso(destino: "diet") == .dieta)
-        #expect(DestinoAviso(destino: "progress") == .progreso)
-        #expect(DestinoAviso(destino: "myday") == .miDia)
+        #expect(DestinoAviso(destino: "progress") == .fuerza)
+        #expect(DestinoAviso(destino: "myday") == .recuperacion)
         #expect(DestinoAviso(destino: "revision") == .revision)
         #expect(DestinoAviso(destino: "salud") == .misDatos)
         #expect(DestinoAviso(destino: "chat") == .chat)

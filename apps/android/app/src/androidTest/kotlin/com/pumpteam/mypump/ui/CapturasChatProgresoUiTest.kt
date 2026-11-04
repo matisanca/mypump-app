@@ -134,7 +134,8 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         Telefono.modoNoche(oscuro)
         guardarCuenta()
         abrir().also {
-            p.tocar(etiqueta("pestana-progreso"))
+            p.tocar(etiqueta("pestana-salud"))
+            p.tocar(etiqueta("segmento-fuerza"))
             p.esperar("los totales") { p.textosBajo(etiqueta("progreso-totales")).contains("32") }
             foto("progreso-01-lista")
             p.desplazar(etiqueta("progreso-lista"), 1_400f)
@@ -161,7 +162,8 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         abrir().also { e ->
             p.modeloCargado(e)
             servidor.sinRed = true
-            p.tocar(etiqueta("pestana-progreso"))
+            p.tocar(etiqueta("pestana-salud"))
+            p.tocar(etiqueta("segmento-fuerza"))
             p.nodo(etiqueta("progreso-sin-red"))
             foto("progreso-07-sin-red")
             servidor.sinRed = false
@@ -169,8 +171,9 @@ class CapturasChatProgresoUiTest : PruebaUi() {
 
         servidor.demoraMs = 2_500
         abrir().also {
-            p.nodo(etiqueta("pestana-progreso"), ms = 40_000)
-            p.tocar(etiqueta("pestana-progreso"))
+            p.nodo(etiqueta("pestana-salud"), ms = 40_000)
+            p.tocar(etiqueta("pestana-salud"))
+            p.tocar(etiqueta("segmento-fuerza"))
             p.nodo(etiqueta("progreso-cargando"), ms = 20_000)
             foto("progreso-08-cargando")
         }.close()
@@ -179,7 +182,8 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         reiniciarEstado()
         abrir().also {
             p.tocar(etiqueta("ver-demo"))
-            p.tocar(etiqueta("pestana-progreso"))
+            p.tocar(etiqueta("pestana-salud"))
+            p.tocar(etiqueta("segmento-fuerza"))
             p.nodo(etiqueta("progreso-vacio"))
             foto("progreso-09-vacio")
         }.close()

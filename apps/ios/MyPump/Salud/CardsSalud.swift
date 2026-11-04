@@ -4,8 +4,8 @@ import MyPumpDatos
 import MyPumpModelos
 import MyPumpReglas
 
-// Las dos cards de salud de Mi Día (cliente.html:6680-6788 y 7233-7328), con los datos de ModeloSalud. Son vistas
-// sueltas: las ubica quien arma Revisión. "Ver todos mis datos" empuja SaludDetalleView (hace falta un NavigationStack).
+// Las dos cards de salud (cliente.html:6680-6788 y 7233-7328, lo que en la web era Mi Día), con los datos de
+// ModeloSalud. Son vistas sueltas: las ubica Salud → Recuperación. "Ver todos mis datos" empuja SaludDetalleView (hace falta un NavigationStack).
 
 /// "Conectar Apple Health" con todo lo que hace la web al tocarlo (`_conectarSalud`): el botón no se puede tocar dos
 /// veces, un error se explica debajo y, si el historial termina sin un solo dato, se avisa dónde se activan los
@@ -43,7 +43,7 @@ struct BotonConectarSalud: View {
     }
 }
 
-/// Encabezado de las secciones de Mi Día (ícono + título), como `myday-section-hdr`.
+/// Encabezado de las secciones de salud (ícono + título), como `myday-section-hdr` de la web.
 struct EncabezadoSalud: View {
     let icono: String
     let titulo: String

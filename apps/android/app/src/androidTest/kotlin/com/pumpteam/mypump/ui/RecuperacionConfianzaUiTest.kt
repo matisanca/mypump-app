@@ -47,20 +47,11 @@ class RecuperacionConfianzaUiTest : PruebaUi() {
         guardarCuenta()
     }
 
-    /** Revisión con la card de recuperación arriba de todo (como `RevisionCapturasTest`). */
+    /** Salud → Recuperación (donde arranca Salud desde la 2.1): la card de recuperación va arriba de todo. */
     private fun hastaLaCard() {
-        p.tocar(etiqueta("pestana-revision"))
+        p.tocar(etiqueta("pestana-salud"))
+        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.nodo(etiqueta("card-recuperacion"))
-        // La lista sigue creciendo mientras llegan el peso y la salud: se ubica hasta que la card quede arriba de todo.
-        repeat(4) {
-            p.quieto(400)
-            val delta = p.esperar("se ubica la card") {
-                val visible = p.nodo(etiqueta("revision-lista"), ms = 0).boundsInRoot
-                p.nodo(etiqueta("card-recuperacion"), ms = 0).positionInRoot.y - visible.top - 24f
-            }
-            if (kotlin.math.abs(delta) < 8f) return
-            p.desplazar(etiqueta("revision-lista"), delta)
-        }
         p.quieto(400)
     }
 

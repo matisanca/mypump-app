@@ -1,10 +1,7 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.CheckinSemana
-import com.pumpteam.mypump.modelos.DiaAdherencia
 import com.pumpteam.mypump.modelos.FilaSalud
-import com.pumpteam.mypump.modelos.HabitosDia
-import com.pumpteam.mypump.modelos.Racha
 import com.pumpteam.mypump.modelos.TextoJs
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.CheckinSemanal
@@ -13,55 +10,21 @@ import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.reglas.PesoCorporal
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-
-/**
- * Los hábitos del día como los muestra Mi Día (el `MYDAY` de la web): lo del servidor con lo que el cliente tocó y todavía
- * no salió encima.
- */
-data class HabitosHoy(
-    /** "entrene" | "descanso" | "falte" | null. */
-    val entrenamiento: String? = null,
-    val comioSegunPlan: Boolean? = null,
-    val durmioBien: Boolean? = null,
-    val cardio: Boolean? = null,
-    val vasosAgua: Int = 0,
-) {
-    /** `_valorHabito`: el valor como viaja en la cola (texto) llevado a su tipo. */
-    fun aplicar(campo: String, valor: ValorJson?): HabitosHoy {
-        val texto = Escrituras.stringJs(valor)
-        return when (campo) {
-            "vasos_agua" -> copy(vasosAgua = (texto.toDoubleOrNull() ?: 0.0).toInt())
-            "entrenamiento" -> copy(entrenamiento = if (texto == "null" || texto.isEmpty()) null else texto)
-            "comio_segun_plan" -> copy(comioSegunPlan = booleano(texto))
-            "durmio_bien" -> copy(durmioBien = booleano(texto))
-            "cardio" -> copy(cardio = booleano(texto))
-            else -> this
-        }
-    }
-
-    companion object {
-        fun de(h: HabitosDia?) = HabitosHoy(h?.entrenamiento, h?.comioSegunPlan, h?.durmioBien, h?.cardio, h?.vasosAgua ?: 0)
-
-        private fun booleano(t: String): Boolean? = if (t == "null") null else t == "true"
-    }
-}
 
 /** Un check de la semana como lo ve el cliente: el guardado (o el optimista recién mandado). */
 data class Checkin(val valores: Map<String, Int> = emptyMap(), val nota: String = "")
 
 /**
- * Revisión (lo semanal: check, peso, fotos) y Mi Día (lo diario: entrené/descansé/falté, hábitos, agua, racha, adherencia
- * de 30 días). Todo lo que escribe el cliente sale por la cola con la clave de la web, y lo pendiente gana sobre lo que
- * trae el servidor (DIA-06). Sin token es la demo ([demo]): Mi Día sembrado, se toca igual y no sale nada.
+ * Revisión (lo semanal: check, peso; las fotos son de [ModeloFotos]). Todo lo que escribe el cliente sale por la cola con
+ * la clave de la web, y lo pendiente gana sobre lo que trae el servidor. Sin token es la demo ([demo]): se toca igual y
+ * no sale nada. Mi Día (hábitos, agua, racha, adherencia) se sacó en la 2.1: la cola igual sabe vaciar operaciones
+ * `habito` viejas (EjecutorLegado).
  */
 class ModeloRevision(
     private val cliente: ClienteRpc,
@@ -70,23 +33,6 @@ class ModeloRevision(
     private val outbox: Outbox?,
     private val alcance: CoroutineScope,
 ) {
-    private val _habitos = MutableStateFlow(HabitosHoy())
-    val habitos: StateFlow<HabitosHoy> = _habitos.asStateFlow()
-
-    private val _racha = MutableStateFlow(0)
-    val racha: StateFlow<Int> = _racha.asStateFlow()
-
-    /** `ultimo_dia_valido` de `get_streak` (YYYY-MM-DD): "Último día válido: martes, 21 de julio" con 2 días o más. */
-    private val _ultimoDiaValido = MutableStateFlow<String?>(null)
-    val ultimoDiaValido: StateFlow<String?> = _ultimoDiaValido.asStateFlow()
-
-    private val _miDiaCargado = MutableStateFlow(false)
-    val miDiaCargado: StateFlow<Boolean> = _miDiaCargado.asStateFlow()
-
-    /** Mis últimos 30 días: se trae al abrirla. */
-    private val _adherencia = MutableStateFlow<List<DiaAdherencia>?>(null)
-    val adherencia: StateFlow<List<DiaAdherencia>?> = _adherencia.asStateFlow()
-
     private val _checkin = MutableStateFlow<Checkin?>(null)
     val checkin: StateFlow<Checkin?> = _checkin.asStateFlow()
 
@@ -100,105 +46,13 @@ class ModeloRevision(
     /** El lunes de la semana de [fecha]: el check es de esa semana (las vistas vacían su borrador cuando cambia). */
     val semana: String get() = FotosProgreso.lunes(_fecha.value)
 
-    /**
-     * De qué día son los hábitos y de qué semana el check que hay en memoria. Lo de ayer no sirve ni como base: un toque
-     * sobre los 8 vasos de ayer encolaba 9 para hoy (revisión del 14-oct, hallazgos 3 y 4).
-     */
-    private var diaDeLosHabitos: String? = null
+    /** De qué semana es el check que hay en memoria: el de la semana anterior no sirve ni como base. */
     private var semanaDelCheck: String? = null
 
     /** El día de hoy (los tests lo fijan para simular la medianoche con la app abierta). */
     internal var diaDeHoy: () -> String = { FechaLocal.hoy() }
 
-    private var esperaAgua: Job? = null
     private val t get() = texto(token ?: "")   // la demo no llega acá: no toca la red
-
-    // ── Mi Día ──
-
-    /**
-     * `loadMyday`: hábitos de hoy y racha. Sin red quedan los de hoy si ya estaban; los de otro día no (la web vacía
-     * `MYDAY`): se puede marcar igual y sale por la cola. Lo pendiente de hoy se pinta encima.
-     */
-    suspend fun cargarMiDia() {
-        if (token == null) return   // la demo viene sembrada ([demo]), como `loadMyday` sin TOKEN
-        val hoy = diaDeHoy()
-        _fecha.value = hoy
-        if (diaDeLosHabitos != hoy) _habitos.value = HabitosHoy()
-        diaDeLosHabitos = hoy
-        val (rh, rr) = coroutineScope {
-            val h = async { cliente.filas("mypump_get_habitos_dia", mapOf("p_token" to t, "p_fecha" to texto(hoy)), HabitosDia::desde) }
-            val r = async { cliente.filas("mypump_get_streak", mapOf("p_token" to t), Racha::desde) }
-            h.await() to r.await()
-        }
-        rh.valorONull()?.let { filas -> if (diaDeHoy() == hoy) _habitos.value = HabitosHoy.de(filas.firstOrNull()) }
-        rr.valorONull()?.let { filas ->
-            _racha.value = filas.firstOrNull()?.streak ?: 0
-            _ultimoDiaValido.value = filas.firstOrNull()?.ultimoDiaValido
-        }
-        aplicarPendientes()
-        _miDiaCargado.value = true
-    }
-
-    /** Entrené / descansé / falté y los hábitos de sí o no: tocar lo que ya está lo borra (null). */
-    suspend fun tocar(campo: String, valor: String) {
-        val h = _habitos.value
-        val actual: String? = when (campo) {
-            "entrenamiento" -> h.entrenamiento
-            "comio_segun_plan" -> h.comioSegunPlan?.toString()
-            "durmio_bien" -> h.durmioBien?.toString()
-            "cardio" -> h.cardio?.toString()
-            else -> null
-        }
-        setHabito(campo, if (actual == valor) null else valor)
-    }
-
-    /** `setHabito`: optimista y por la cola (gana el último por campo y fecha). */
-    suspend fun setHabito(campo: String, valor: String?) {
-        val v: ValorJson = valor?.let { texto(it) } ?: ValorJson.Nulo
-        // La fecha es la de AHORA (la app pudo quedar abierta de un día para otro), como `hoyLocal()` en la web.
-        val dia = diaDeHoy()
-        _habitos.update { it.aplicar(campo, v) }
-        if (token == null) return   // en la demo se toca igual, pero no se guarda nada (como Mi Día de iOS)
-        outbox?.encolar("habito", ValorJson.objeto("fecha" to texto(dia), "campo" to texto(campo), "valor" to v), "habito|$dia|$campo")
-        if (campo in listOf("entrenamiento", "comio_segun_plan", "durmio_bien")) {
-            outbox?.drenar()
-            cliente.filas("mypump_get_streak", mapOf("p_token" to t), Racha::desde).valorONull()?.let { filas ->
-                _racha.value = filas.firstOrNull()?.streak ?: _racha.value
-                filas.firstOrNull()?.let { _ultimoDiaValido.value = it.ultimoDiaValido }
-            }
-        }
-    }
-
-    /** `cambiarAgua`: 0 a 12 vasos, se ve al instante y se guarda 600 ms después del último toque. */
-    fun cambiarAgua(delta: Int) {
-        val nuevo = (_habitos.value.vasosAgua + delta).coerceIn(0, 12)
-        if (nuevo == _habitos.value.vasosAgua) return
-        _habitos.update { it.copy(vasosAgua = nuevo) }
-        esperaAgua?.cancel()
-        val dia = diaDeHoy()
-        esperaAgua = alcance.launch {
-            delay(600)
-            outbox?.encolar(
-                "habito",
-                ValorJson.objeto("fecha" to texto(dia), "campo" to texto("vasos_agua"), "valor" to texto(nuevo.toString())),
-                "habito|$dia|vasos_agua",
-            )
-        }
-    }
-
-    /** "Mis últimos 30 días". */
-    suspend fun cargarAdherencia() {
-        if (token == null) return   // la demo ya trae sus 30 días
-        cliente.filas("mypump_get_adherencia_30d", mapOf("p_token" to t), DiaAdherencia::desde).valorONull()?.let { _adherencia.value = it }
-    }
-
-    private suspend fun aplicarPendientes() {
-        val prefijo = "habito|${diaDeHoy()}|"
-        val pendientes = outbox?.pendientesPorClave() ?: return
-        for ((k, op) in pendientes) {
-            if (k.startsWith(prefijo)) _habitos.update { it.aplicar(k.removePrefix(prefijo), op.payload["valor"]) }
-        }
-    }
 
     // ── Revisión ──
 
@@ -287,42 +141,8 @@ class ModeloRevision(
     }
 
     companion object {
-        /**
-         * "Ver demo" (ACC-07): Mi Día sembrado como la web (cliente.html:8870-8876) y `MuestrasExtra.demo` de iOS, para que no
-         * quede en "Cargando…": racha de 3 hasta hoy, hoy "entrené" con la dieta y el sueño cumplidos, sin cardio y 2 vasos,
-         * y los 30 días de muestra. Se toca igual, pero no sale nada: ni red ni cola.
-         */
+        /** "Ver demo" (ACC-07): sin cuenta, sin red ni cola; el check y el peso se tocan igual y no sale nada. */
         fun demo(cliente: ClienteRpc, alcance: CoroutineScope, hoy: String = FechaLocal.hoy()): ModeloRevision =
-            ModeloRevision(cliente, token = null, outbox = null, alcance = alcance).also { m ->
-                m._fecha.value = hoy
-                m.diaDeLosHabitos = hoy
-                m._habitos.value = HabitosHoy(entrenamiento = "entrene", comioSegunPlan = true, durmioBien = true, cardio = false, vasosAgua = 2)
-                m._racha.value = 3
-                m._ultimoDiaValido.value = hoy
-                m._adherencia.value = adherenciaDemo(hoy)
-                m._miDiaCargado.value = true
-            }
-
-        /** Los 30 días de la demo, de hoy para atrás (el patrón de `MuestrasExtra.demo`). */
-        private val PATRON_DEMO = listOf(
-            true, true, true, false, true, false, false, true, true, false, true, true, false, false, true,
-            true, false, true, true, true, false, true, false, false, true, true, true, false, true, false,
-        )
-
-        /** Como `MuestrasExtra.dias` de iOS: los días no cumplidos alternan parcial y vacío. */
-        private fun adherenciaDemo(hoy: String): List<DiaAdherencia> {
-            val n = DiaCalendario.numero(hoy) ?: 0
-            return PATRON_DEMO.mapIndexed { i, valido ->
-                val parcial = !valido && i % 3 == 0
-                DiaAdherencia(
-                    fecha = DiaCalendario.texto(n - i),
-                    entrenamiento = if (valido) (if (i % 2 == 0) "entrene" else "descanso") else if (parcial) "entrene" else null,
-                    comioSegunPlan = if (valido || parcial) true else null,
-                    durmioBien = if (valido) true else null,
-                    vasosAgua = if (valido) 8 else 2,
-                    esValido = valido,
-                )
-            }
-        }
+            ModeloRevision(cliente, token = null, outbox = null, alcance = alcance).also { m -> m._fecha.value = hoy }
     }
 }

@@ -46,15 +46,21 @@ data class AlimentoAgregado(
     val origen: Origen,
     /** Cuándo se agregó (ms): lo identifica dentro de la comida. */
     val ts: Long,
+    /** El código de barras (EAN-13 o EAN-8) de un escaneado, o de un propio creado desde un código. null en los demás. */
+    val codigo: String? = null,
 ) {
-    enum class Origen(val valor: String) { BASE("base"), PROPIO("propio") }
+    /**
+     * `BARRAS` (2.1, S3): escaneado y buscado en Open Food Facts, con su [codigo]. Una 2.0.3 no lo conoce y lo lee como
+     * `BASE` (no descarta el agregado); si esa versión reescribe el día, se pierden el origen y el código, no las macros.
+     */
+    enum class Origen(val valor: String) { BASE("base"), PROPIO("propio"), BARRAS("barras") }
 
     /** Como alimento de la comida (para las sumas, lo consumido y las filas). */
     val alimento: Alimento get() = Alimento(nombre = nombre, qty = cantidad, unidad = unidad, kcal = kcal, prot = p, carb = c, fat = g)
 
     /** El alimento del que salió, para volver a abrir la hoja de cantidad. */
     val candidato: AgregadosComida.Candidato
-        get() = AgregadosComida.Candidato(nombre, por100, if (gramosUnidad != null) unidad else null, gramosUnidad, origen)
+        get() = AgregadosComida.Candidato(nombre, por100, if (gramosUnidad != null) unidad else null, gramosUnidad, origen, codigo)
 
     fun aValor(): ValorJson {
         val campos = linkedMapOf<String, ValorJson>(
@@ -68,6 +74,7 @@ data class AlimentoAgregado(
         campos["g"] = ValorJson.Numero(g)
         campos["por100"] = por100.aValor()
         campos["origen"] = ValorJson.Texto(origen.valor)
+        codigo?.let { campos["codigo"] = ValorJson.Texto(it) }
         campos["_ts"] = ValorJson.Numero(ts.toDouble())
         return ValorJson.Objeto(campos)
     }
@@ -92,8 +99,12 @@ data class AlimentoAgregado(
             val por100 = MacrosPor100.desde(o["por100"]) ?: return null
             val origen = Origen.entries.firstOrNull { it.valor == o["origen"]?.comoTexto } ?: Origen.BASE
             val ts = o["_ts"]?.comoNumero?.takeIf { it.isFinite() && it >= 0 && it < 1e15 } ?: return null
-            return AlimentoAgregado(nombre, cantidad, unidad, gramosUnidad, gramos, kcal, p, c, g, por100, origen, ts.toLong())
+            val codigo = codigoValido(o["codigo"]?.comoTexto)
+            return AlimentoAgregado(nombre, cantidad, unidad, gramosUnidad, gramos, kcal, p, c, g, por100, origen, ts.toLong(), codigo)
         }
+
+        /** Un código guardado: solo dígitos, de 8 a 14. Otra cosa se ignora (sin descartar el agregado). */
+        fun codigoValido(s: String?): String? = s?.takeIf { it.length in 8..14 && it.all { c -> c in '0'..'9' } }
     }
 }
 
@@ -123,6 +134,8 @@ object AgregadosComida {
         val unidad: String?,
         val gramosPorUnidad: Double?,
         val origen: AlimentoAgregado.Origen,
+        /** El código de barras, si salió de un escaneo (va al agregado). */
+        val codigo: String? = null,
     ) {
         constructor(a: AlimentoBase) : this(
             a.nombre, MacrosPor100(a.kcal, a.prot, a.carb, a.fat), a.unidad, a.gramosPorUnidad,
@@ -149,7 +162,12 @@ object AgregadosComida {
         if (u != null && gu != null && gu.isFinite() && gu > 0) {
             val n = PorcionCasera.normalizar(u)
             if (n !in setOf("", "g", "gr", "grs", "gramo", "gramos", "ml", "cc")) {
-                val nombre = if (n in setOf("u", "un", "uni", "unid", "unidad", "unidades")) "unidad" else PorcionCasera.singular(n)
+                // «porción» (la de los escaneados y los propios por porción) con su tilde: normalizada quedaba «porcion».
+                val nombre = when (n) {
+                    in setOf("u", "un", "uni", "unid", "unidad", "unidades") -> "unidad"
+                    "porcion", "porciones" -> "porción"
+                    else -> PorcionCasera.singular(n)
+                }
                 return listOf(Medida.GRAMO, Medida(nombre, gu))
             }
         }
@@ -258,12 +276,12 @@ object AgregadosComida {
             nombre = c.nombre.trim().let { recortar(it) }, cantidad = q, unidad = medida.nombre,
             gramosUnidad = if (medida.esGramo) null else medida.gramos, gramos = gramos, kcal = jsRound(c.por100.kcal * f),
             p = jsRound(c.por100.p * f * 10) / 10, c = jsRound(c.por100.c * f * 10) / 10, g = jsRound(c.por100.g * f * 10) / 10,
-            por100 = c.por100, origen = c.origen, ts = ts,
+            por100 = c.por100, origen = c.origen, ts = ts, codigo = c.codigo,
         )
     }
 
     /** Los primeros [LARGO_NOMBRE] caracteres (los de Swift: grafemas, así una tilde suelta no queda cortada). */
-    private fun recortar(s: String): String {
+    internal fun recortar(s: String): String {
         val bi = java.text.BreakIterator.getCharacterInstance()
         bi.setText(s)
         var fin = 0

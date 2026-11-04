@@ -536,6 +536,92 @@ final class DietaUITests: XCTestCase {
         sinAjusteEn(comidaId)
     }
 
+    // MARK: - Código de barras (2.1, S3)
+
+    /// Relanza con el código que «lee» el escáner (`-codigoDePrueba`, el simulador no tiene cámara) y Open Food Facts de
+    /// mentira (`-offDePrueba`, con la respuesta real del yogur de los vectores). Cada caso usa su propio código: lo buscado
+    /// queda en la caché del teléfono.
+    private func relanzarConCodigo(_ codigo: String, off: String, oscuro: Bool = false) {
+        app.terminate()
+        app.launchArguments += ["-codigoDePrueba", codigo, "-offDePrueba", off]
+        if oscuro { app.launchArguments += ["-mypump-theme", "dark"] }
+        app.launch()
+    }
+
+    /// Encontrado: el acceso bien visible arriba de la hoja, la misma hoja de cantidad con la porción de la etiqueta
+    /// (1 porción de 200 g = 164 kcal) y de dónde salen los valores; queda en la comida con su nombre y marca.
+    func testEscanearUnCodigoQueEstaAbreLaCantidadYLoAgrega() throws {
+        relanzarConCodigo("7791337006355", off: "encontrado")
+        let comidaId = primeraComida()
+        sinAjusteEn(comidaId)
+        sinMarcaEn(comidaId)
+        abrirAgregar(comidaId)
+        let escanear = app.buttons["agregar-escanear"]
+        XCTAssertTrue(escanear.waitForExistence(timeout: 3), "No está «Escanear código de barras» en la hoja")
+        XCTAssertTrue(app.buttons["agregar-escanear-barra"].exists, "No está el botón del código en la barra")
+        adjuntarCaptura("barras-hoja")
+        escanear.tap()
+        // «Buscando…» dura lo que tarda Open Food Facts; con el código ya en la caché del simulador ni aparece.
+
+        let campo = app.textFields["cantidad-campo"]
+        XCTAssertTrue(campo.waitForExistence(timeout: 8), "No abrió la hoja de cantidad")
+        XCTAssertEqual(kcalDeCantidad, 164, "1 porción de 200 g del yogur (82 kcal cada 100 g)")
+        let medidas = app.segmentedControls["cantidad-medida"]
+        XCTAssertTrue(medidas.buttons["porción (200 g)"].exists, "Sin la porción de la etiqueta")
+        XCTAssertTrue(medidas.buttons["porción (200 g)"].isSelected, "No abrió en la porción")
+        XCTAssertTrue(app.descendants(matching: .any)["cantidad-origen-barras"].exists, "No dice de dónde salen los valores")
+        XCTAssertTrue(app.staticTexts["Yogurisimo sabor Natural (La serenisima)"].exists)
+        adjuntarCaptura("barras-cantidad")
+        app.buttons["cantidad-confirmar"].tap()
+
+        let fila = app.buttons["agregado-\(comidaId)-0"]
+        XCTAssertTrue(fila.waitForExistence(timeout: 5), "El escaneado no quedó en la comida")
+        XCTAssertTrue(fila.label.contains("Yogurisimo"), fila.label)
+        XCTAssertTrue(aviso(comidaId).label.contains("+164 kcal"), aviso(comidaId).label)
+        aLaVista(fila)
+        adjuntarCaptura("barras-agregado")
+        sinAjusteEn(comidaId)
+    }
+
+    /// No está: el mensaje con las dos salidas; «Cargarlo a mano» abre el alimento propio con el código, sin guardar nada.
+    func testEscanearUnCodigoQueNoEstaOfreceCargarloAManoOConLaEtiqueta() throws {
+        relanzarConCodigo("7790742000101", off: "noEncontrado")
+        let comidaId = primeraComida()
+        abrirAgregar(comidaId)
+        app.buttons["agregar-escanear"].tap()
+        let aviso = app.descendants(matching: .any)["codigo-sin-producto"]
+        XCTAssertTrue(aviso.waitForExistence(timeout: 8), "No avisó que no lo encontró")
+        XCTAssertTrue(aviso.label.contains("No encontramos este producto"), aviso.label)
+        XCTAssertTrue(app.buttons["codigo-etiqueta"].exists, "Sin «Escanear la etiqueta»")
+        XCTAssertTrue(app.buttons["codigo-a-mano"].exists, "Sin «Cargarlo a mano»")
+        adjuntarCaptura("barras-no-encontrado")
+        app.buttons["codigo-a-mano"].tap()
+        let codigo = app.descendants(matching: .any)["crear-codigo"]
+        XCTAssertTrue(codigo.waitForExistence(timeout: 5), "El alimento propio no muestra el código")
+        XCTAssertTrue(app.staticTexts["7790742000101"].exists)
+        adjuntarCaptura("barras-a-mano")
+    }
+
+    /// Incompleto, en oscuro: el aviso de que le faltan datos y el alimento propio precargado con lo que se pudo leer.
+    func testEscanearUnCodigoIncompletoPrecargaElAlimentoEnOscuro() throws {
+        relanzarConCodigo("7793913013993", off: "incompleto", oscuro: true)
+        let comidaId = primeraComida()
+        abrirAgregar(comidaId)
+        XCTAssertTrue(app.buttons["agregar-escanear"].waitForExistence(timeout: 3))
+        adjuntarCaptura("barras-hoja-oscuro")
+        app.buttons["agregar-escanear"].tap()
+        let aviso = app.descendants(matching: .any)["codigo-sin-producto"]
+        XCTAssertTrue(aviso.waitForExistence(timeout: 8))
+        XCTAssertTrue(aviso.label.contains("Le faltan datos"), aviso.label)
+        adjuntarCaptura("barras-incompleto-oscuro")
+        app.buttons["codigo-a-mano"].tap()
+        let nombre = app.textFields["Ej: Pan integral marca X"]
+        XCTAssertTrue(nombre.waitForExistence(timeout: 5))
+        XCTAssertEqual(nombre.value as? String, "Yogurisimo sabor Natural (La serenisima)", "No precargó el nombre")
+        XCTAssertEqual(app.textFields["Calorías en kcal"].value as? String, "82", "No precargó las kcal")
+        adjuntarCaptura("barras-precargado-oscuro")
+    }
+
     private func esperarQuieto(_ e: XCUIElement) {
         var antes = e.frame
         var iguales = 0

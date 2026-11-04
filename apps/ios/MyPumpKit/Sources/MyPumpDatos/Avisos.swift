@@ -3,9 +3,10 @@ import MyPumpModelos
 import MyPumpReglas
 
 /// A dónde lleva tocar un aviso: el `destino` que mandan `push.py` (comentarios del coach) y la notificación local del
-/// domingo. Uno desconocido, como el histórico `comentarios`, cae a Chat (NOT-03).
+/// domingo. Uno desconocido, como el histórico `comentarios`, cae a Chat (NOT-03). Desde la 2.1, `progress` abre Salud →
+/// Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación.
 public enum DestinoAviso: String, Sendable, Equatable {
-    case entreno, dieta, chat, revision, progreso, miDia, misDatos
+    case entreno, dieta, chat, revision, fuerza, recuperacion, misDatos
 
     /// `?scene=<escena>` del link (ACC-09): solo una escena que existe; cualquier otra cosa no hace nada (en la web,
     /// una escena inexistente dejaba la app en blanco).
@@ -18,8 +19,8 @@ public enum DestinoAviso: String, Sendable, Equatable {
         switch destino {
         case "train": self = .entreno
         case "diet": self = .dieta
-        case "progress": self = .progreso
-        case "myday": self = .miDia
+        case "progress": self = .fuerza
+        case "myday": self = .recuperacion
         case "revision": self = .revision
         case "salud": self = .misDatos
         default: self = .chat

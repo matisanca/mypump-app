@@ -4,6 +4,7 @@ import UserNotifications
 import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
+import MyPumpReloj
 
 /// Mis datos (propuesta D3 de la paridad): un lugar fijo para recuperación, salud, privacidad y borrado. Hoy en la web
 /// solo se llega desde la card de Recuperación. Con la forma de Ajustes: filas con ícono en azulejo de color. La
@@ -22,6 +23,9 @@ struct MisDatosView: View {
     @AppStorage("mypump-theme") private var tema = ""
     @State private var fuentes = false
     @State private var pagina: Pagina?
+    /// Tanda 4: siete toques en «Versión» muestran el modo calibración (oculto, por cuenta).
+    @State private var toquesVersion = 0
+    @State private var calibracionVisible = false
 
     /// Las páginas legales de la web, en Safari dentro de la app (como hoy).
     enum Pagina: String, Identifiable {
@@ -96,8 +100,28 @@ struct MisDatosView: View {
                 }
             }
 
+            if calibracionVisible, let cuenta = cuentaCalibracion {
+                Section {
+                    NavigationLink { CalibracionView(cuenta: cuenta) } label: {
+                        Label { Text("Modo calibración") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
+                    }
+                    .accessibilityIdentifier("mis-datos-calibracion")
+                } footer: {
+                    Text("Experimental: el Apple Watch graba el movimiento de cada serie para medir el conteo de repeticiones. Queda en tu iPhone.")
+                }
+            }
+
             Section {
                 LabeledContent("Versión", value: ArranqueMigracion.version)
+                    .contentShape(.rect)
+                    .onTapGesture {
+                        guard cuentaCalibracion != nil else { return }
+                        toquesVersion += 1
+                        if toquesVersion >= ModoCalibracion.toquesParaMostrar {
+                            ModoCalibracion().mostrar()
+                            calibracionVisible = true
+                        }
+                    }
                 if InformeActualizacion.existe {
                     NavigationLink("Informe de la actualización") { InformeActualizacion() }
                 }
@@ -107,6 +131,7 @@ struct MisDatosView: View {
         }
         .margenesDeLectura()
         .task { permiso = await CentroAvisos.shared.permiso() }
+        .onAppear { calibracionVisible = cuentaCalibracion.map { ModoCalibracion().visible(cuenta: $0) } ?? false }
         // Al volver de Ajustes el permiso pudo cambiar.
         .onChange(of: fase) { _, nueva in
             if nueva == .active { Task { permiso = await CentroAvisos.shared.permiso() } }
@@ -117,6 +142,12 @@ struct MisDatosView: View {
         .sheet(item: $pagina) { p in
             NavegadorInterno(url: URL(string: p.rawValue)!).ignoresSafeArea()
         }
+    }
+
+    /// La cuenta para el modo calibración (el hash del reloj, nunca el token). Sin cuenta o en la demo, no hay modo.
+    private var cuentaCalibracion: String? {
+        guard !modelo.conMuestras, let c = modelo.entreno?.cuentaReloj, c != "demo" else { return nil }
+        return c
     }
 
     private var conPermiso: Bool { [.authorized, .provisional, .ephemeral].contains(permiso) }
@@ -143,7 +174,7 @@ struct MisDatosView: View {
 }
 
 /// La recuperación de hoy en una fila: el anillo con el score (o los días de calibración) y qué pasa, con lo mismo que
-/// muestra la card de Mi Día.
+/// muestra la card de Salud → Recuperación.
 private struct ResumenRecuperacion: View {
     let salud: ModeloSalud
 
