@@ -415,15 +415,50 @@
     return { nombre: ag.nombre, por100: ag.por100, unidad: ag.gramosUnidad ? ag.unidad : null,
       gramosPorUnidad: ag.gramosUnidad || null, origen: ag.origen, codigo: ag.codigo };
   }
-  // Estimación conservadora del tamaño (el servidor corta en pg_column_size 16000).
+  // Cota de arriba de lo que pesa el día como jsonb en la base (pg_column_size, que nativa_004 acota a 16000):
+  // la misma cuenta que la app (AgregadosComida.bytesJsonb). Cada contenedor lleva 4 de cabecera y 4 por entrada
+  // (clave y valor en los objetos), los textos sus bytes UTF-8 y los números un numeric; la alineación, en el peor caso.
+  const utf8 = (t) => new TextEncoder().encode(t).length;
+  function gruposNumeric(texto) {
+    const pe = String(texto).toLowerCase().split('e');
+    const exponente = pe.length > 1 ? (parseInt(pe[1], 10) || 0) : 0;
+    const pm = pe[0].split('.');
+    let digitos = (pm[0] + (pm.length > 1 ? pm[1] : '')).split('');
+    let n = pm[0].length + exponente;
+    while (digitos[0] === '0') { digitos.shift(); n -= 1; }
+    while (digitos[digitos.length - 1] === '0') digitos.pop();
+    if (!digitos.length) return { grupos: 0, largo: false };
+    const grupo = (q) => Math.floor(q / 4);
+    const alto = n - 1, bajo = n - digitos.length;
+    const peso = grupo(alto);
+    const decimales = Math.max(-bajo, 0);
+    return { grupos: peso - grupo(bajo) + 1, largo: decimales > 63 || peso > 63 || peso < -64 };
+  }
+  function bytesNumeric(d) {
+    if (!isFinite(d)) return 9;
+    const g = gruposNumeric(String(Math.abs(d)));
+    return 9 + (g.largo ? 2 : 0) + 2 * g.grupos;
+  }
+  function bytesValor(v) {
+    const anidado = (x) => (x !== null && typeof x === 'object' ? 3 : 0) + bytesValor(x);
+    if (v === null || v === undefined || typeof v === 'boolean') return 0;
+    if (typeof v === 'string') return utf8(v);
+    if (typeof v === 'number') return bytesNumeric(v);
+    if (Array.isArray(v)) return 4 + 4 * v.length + v.reduce((s, x) => s + anidado(x), 0);
+    const ks = Object.keys(v).filter(k => v[k] !== undefined);
+    return 4 + 8 * ks.length + ks.reduce((s, k) => s + utf8(k) + anidado(v[k]), 0);
+  }
+  function bytesJsonb(ajustes) {
+    const o = {};
+    for (const k of Object.keys(ajustes)) o[k] = serializarAjuste(ajustes[k]);
+    return 4 + bytesValor(JSON.parse(JSON.stringify(o)));
+  }
   function motivoNoEntra(ajustes, comidaId) {
     const a = ajustes[comidaId];
     if (a && a.agregados.length > MAX_POR_COMIDA) return `Llegaste a ${MAX_POR_COMIDA} alimentos agregados en esta comida.`;
     const total = Object.values(ajustes).reduce((s, x) => s + x.agregados.length, 0);
     if (total > MAX_POR_DIA) return `Llegaste a ${MAX_POR_DIA} alimentos agregados en el día.`;
-    const o = {};
-    for (const k of Object.keys(ajustes)) o[k] = serializarAjuste(ajustes[k]);
-    if (new TextEncoder().encode(JSON.stringify(o)).length > MAX_BYTES) return 'No entran más alimentos agregados hoy.';
+    if (bytesJsonb(ajustes) > MAX_BYTES) return 'No entran más alimentos agregados hoy.';
     return null;
   }
   function excluidosTrasBorrar(excluidos, n, j) {
@@ -492,7 +527,7 @@
     leerAjuste, leerAjustes, clonarAjuste, nuevoAjuste, serializarAjuste,
     leerAgregado, comoAlimento, alimentosAgregados, medidas, medidaCasera, buscar, candidatoDeBase,
     candidatoDeAgregado, inicial, pasoAgregado, acotarAgregado, subirAgregado, bajarAgregado, agregado,
-    motivoNoEntra, excluidosTrasBorrar, resumenAgregados, normalizar,
+    motivoNoEntra, bytesJsonb, bytesValor, gruposNumeric, excluidosTrasBorrar, resumenAgregados, normalizar,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.AjustesDieta = API;

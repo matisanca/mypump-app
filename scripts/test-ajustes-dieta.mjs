@@ -96,4 +96,22 @@ assert.deepEqual(A.leerAjuste({ deltaKcal: 99999, opcion: 300, compensar: 'x' })
   { deltaKcal: 0, compensar: true, omitida: false, opcion: 0, cantidades: {}, anclas: {}, agregados: [] });
 n++;
 
+// 5. El tope de tamaño: la cota del jsonb nunca da menos que lo que midió la base (ni más del 15 %).
+const jb = V('agregados_jsonb_medido');
+for (const c of jb.casos) {
+  const cota = A.bytesJsonb(A.leerAjustes(c.ajustes));
+  assert.ok(cota >= c.jsonb && cota <= c.jsonb * 1.15, `${c.caso}: ${cota} contra ${c.jsonb}`);
+  n++;
+}
+for (const x of jb.numeros) {
+  const cota = 4 + A.bytesValor([Number(x.texto)]);
+  assert.ok(cota >= x.jsonb && cota <= x.jsonb + 3, `${x.texto}: ${cota} contra ${x.jsonb}`);
+  n++;
+}
+assert.equal(A.gruposNumeric(String(99.89999999999999)).grupos, 5);
+assert.deepEqual(A.gruposNumeric('1e-7'), { grupos: 1, largo: false });
+assert.ok(A.gruposNumeric('5e-324').largo);
+assert.equal(A.gruposNumeric('0').grupos, 0);
+n++;
+
 console.log(`✓ ajustes de dieta iguales a la app (${n} casos)`);

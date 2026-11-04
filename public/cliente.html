@@ -1578,6 +1578,7 @@ const STATE = {
   comidasLibres:      [],          // F10 — comidas fuera del plan (foto/manual) de HOY
   ajustesDieta:       {},          // comida_id → AjusteComida de HOY (los mismos que guarda la app)
   ajustesFecha:       null,
+  ajustesCargados:    null,        // fecha de la última lectura buena: sin ella no se escribe
   mealsTocadas:       new Set(),   // comidas en las que el cliente eligió la opción a mano
 };
 
@@ -4093,7 +4094,7 @@ function _preparacionHtml(ex, series, noKg) {
   const hechas = _preparacionHecha(ex.id);
   const sinRef = noKg || series.some(s => s.kg == null && !s.barraSola);
   const filas = series.map((s, i) => {
-    const reps = String(s.reps).replace(/-/g, '–');
+    const reps = escapeHtml(String(s.reps).replace(/-/g, '–'));
     const kg = noKg ? null : (s.barraSola ? 'barra sola' : (ReglasEntreno.textoKgPreparacion(s) != null ? `${ReglasEntreno.textoKgPreparacion(s)} kg` : null));
     const hecha = hechas.includes(i);
     return `<button class="prep-fila${hecha ? ' is-hecha' : ''}" data-prep="${ex.id}|${i}">
@@ -4547,8 +4548,9 @@ async function confirmarSerie(exId, idx) {
 
   // 2.0.3: el RIR ya no se elige; se guarda el del plan (la recuperación cuenta las series duras con él).
   // Lo que no lleva RIR (calentamiento, cardio, core, peso corporal) queda sin RIR.
-  if (setObj.rir === '' && !setObj.nombreRegistrado && ReglasEntreno.llevaRir(ex.tipo, esSinPeso(ex))) {
-    setObj.rir = ReglasEntreno.rirAGuardar(prog.rir);
+  const exHecho = getEffectiveEx(ex);   // el sustituto, si lo hay (la app decide con el ejercicio que se hace)
+  if (setObj.rir === '' && !setObj.nombreRegistrado && ReglasEntreno.llevaRir(exHecho.tipo, esSinPeso(exHecho))) {
+    setObj.rir = ReglasEntreno.rirAGuardar(getProgresionActual(exHecho, DATA.rutina.semana_actual).rir);
   }
   const editoManual = setObj.reps !== '' || setObj.kg !== '';
   if (!editoManual) {
@@ -5448,9 +5450,10 @@ document.addEventListener('visibilitychange', () => {
   // de ayer como "hoy". Al volver a foco en otro día se recargan.
   if (!document.hidden && STATE.comidasFecha && STATE.comidasFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadComidasMarcadas();
-    loadAjustesDieta();
     if (typeof loadComidasLibres === 'function') loadComidasLibres();
   }
+  // Los ajustes se releen siempre al volver: lo que se ajustó en la app con la web abierta no se pisa.
+  if (!document.hidden && STATE.ajustesFecha && TOKEN && !(DATA && DATA._isDemo)) loadAjustesDieta();
   if (!document.hidden && STATE.mydayFecha && STATE.mydayFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadMyday();   // hábitos y vasos de agua de HOY, no los de ayer
   }
@@ -5630,8 +5633,10 @@ async function loadAjustesDieta() {
     return;
   }
   const filas = await window.mypumpDB.getAjustesDieta(TOKEN, fecha, fecha);
-  // null = no se pudo preguntar: se queda lo que había (no se borra un ajuste por un corte de señal).
+  // null = no se pudo preguntar: se queda lo que había (no se borra un ajuste por un corte de señal), y hasta
+  // una lectura buena no se escribe (_ajustar).
   if (!Array.isArray(filas)) { STATE.ajustesFecha = fecha; return; }
+  STATE.ajustesCargados = fecha;
   const fila = filas.find(f => String(f.fecha).slice(0, 10) === fecha && f.dieta_id === DIETA_ID);
   let aj = fila ? AjustesDieta.leerAjustes(fila.ajustes) : {};
   // Lo que el cliente ajustó y todavía no salió gana sobre el servidor (igual que las marcas).
@@ -5679,20 +5684,20 @@ function _diaDieta() {
 
 // Guarda el día entero (la última gana): sin los ajustes neutros, cada cantidad
 // con su ancla, con el resumen que lee Mati. Mismo payload que la app.
-function guardarAjustesDieta(ajustes) {
+function guardarAjustesDieta(ajustes, comidaId) {
   const delDia = _comidasDelDia(ajustes);
-  const limpio = {};
-  for (const c of delDia) {
-    const a = ajustes[c.id];
-    if (!a) continue;
-    const an = AjustesDieta.anclar(a, c);
-    if (!AjustesDieta.esNeutro(an)) limpio[c.id] = an;
+  // Como la app: se ancla solo la comida que cambió. Las demás quedan como estaban, también las de otro tipo
+  // de día o de un plan anterior: el día se manda entero y la última escritura gana, así que soltarlas
+  // borraría lo que se ajustó en el teléfono.
+  const limpio = Object.assign({}, ajustes);
+  if (limpio[comidaId]) {
+    const c = delDia.find(x => x.id === comidaId);
+    const an = c ? AjustesDieta.anclar(limpio[comidaId], c) : limpio[comidaId];
+    if (AjustesDieta.esNeutro(an)) delete limpio[comidaId]; else limpio[comidaId] = an;
   }
   STATE.ajustesDieta = limpio;
   // «Hoy no la como» sobre una comida marcada: la marca se va (como en la app).
-  for (const id of Object.keys(limpio)) {
-    if (limpio[id].omitida && STATE.comidasMarcadas[id]) toggleComidaEstado(id, null);
-  }
+  if (limpio[comidaId] && limpio[comidaId].omitida && STATE.comidasMarcadas[comidaId]) toggleComidaEstado(comidaId, null);
   renderDiet();
   if (_dietaSinEscritura() || !DIETA_ID) return;
   const fecha = hoyLocal();
@@ -5725,10 +5730,18 @@ function _ajusteDe(comidaId) {
   const aj = STATE.ajustesDieta[comidaId];
   return aj ? AjustesDieta.clonarAjuste(aj) : AjustesDieta.nuevoAjuste((STATE.meals[comidaId] || {}).selectedOpt || 0);
 }
-function _ajustar(comidaId, aj) {
+async function _ajustar(comidaId, aj) {
+  // Sin una lectura buena de hoy no se escribe: el día viaja entero y pisaría lo que se ajustó en la app.
+  if (!_dietaSinEscritura() && DIETA_ID && STATE.ajustesCargados !== hoyLocal()) {
+    await loadAjustesDieta();
+    if (STATE.ajustesCargados !== hoyLocal()) {
+      MyPump.ui.showConfirmModal({ title: 'No se pudo guardar', body: 'No pudimos leer tus ajustes de hoy. Revisá la conexión y probá de nuevo.', confirmLabel: 'Entendido' });
+      return;
+    }
+  }
   const todos = Object.assign({}, STATE.ajustesDieta);
   if (aj) todos[comidaId] = aj; else delete todos[comidaId];
-  guardarAjustesDieta(todos);
+  guardarAjustesDieta(todos, comidaId);
 }
 
 /* ---- Formato (como la app: coma decimal, unidades en plural) ---- */
@@ -5739,7 +5752,7 @@ function _unidadPlural(u, q) {
   if (/z$/i.test(u)) return u.slice(0, -1) + 'ces';
   return u + 'es';
 }
-function _fmtCant(q, u) { return `${String(q).replace('.', ',')} ${_unidadPlural(u || 'g', q)}`; }
+function _fmtCant(q, u) { return escapeHtml(`${String(q).replace('.', ',')} ${_unidadPlural(u || 'g', q)}`); }
 function _macrosLinea(f) {
   return `<span class="m-p">P</span> ${_coma(f.prot || 0)} <i>·</i> <span class="m-c">C</span> ${_coma(f.carb || 0)} <i>·</i> <span class="m-f">G</span> ${_coma(f.fat || 0)}`;
 }
@@ -6374,22 +6387,30 @@ function abrirCantidad(comidaId, fi) {
     <div class="dz-hoja-dos"><button class="dz-hoja-sec" data-como-plan>Como el plan</button><button class="dz-hoja-sec peligro" data-sacar>Sacar de la comida</button></div>
     <button class="dz-hoja-listo" data-listo>Listo</button>`, (h) => {
     pintar(h);
-    h.querySelector('[data-menos]').addEventListener('click', () => { q = AjustesDieta.bajar(planA, q); pintar(h); });
-    h.querySelector('[data-mas]').addEventListener('click', () => { q = AjustesDieta.subir(planA, q); pintar(h); });
+    // Como la app: la cantidad solo se fija si se tocó el paso; abrir la hoja para mirar y tocar «Listo» no la
+    // saca del escalado (q arranca en la cantidad ya ajustada por las kcal o la compensación).
+    let tocado = false;
+    h.querySelector('[data-menos]').addEventListener('click', () => { q = AjustesDieta.bajar(planA, q); tocado = true; pintar(h); });
+    h.querySelector('[data-mas]').addEventListener('click', () => { q = AjustesDieta.subir(planA, q); tocado = true; pintar(h); });
     const sw = h.querySelector('[data-compensar]');
     if (sw) sw.addEventListener('change', () => { compensar = sw.checked; });
     const guardar = (cant) => {
       const aj = _ajusteDe(comidaId);
       aj.opcion = c.opcion;
       aj.compensar = compensar;
-      if (cant == null) { delete aj.cantidades[String(fi)]; delete aj.anclas[String(fi)]; }
+      if (cant === undefined) { /* sin tocar la cantidad */ }
+      else if (cant == null) { delete aj.cantidades[String(fi)]; delete aj.anclas[String(fi)]; }
       else aj.cantidades[String(fi)] = cant;
       closeModal();
       _ajustar(comidaId, aj);
     };
     h.querySelector('[data-como-plan]').addEventListener('click', () => guardar(null));
     h.querySelector('[data-sacar]').addEventListener('click', () => guardar(0));
-    h.querySelector("[data-listo]").addEventListener("click", () => guardar(q === planA.qty ? null : q));
+    h.querySelector("[data-listo]").addEventListener("click", () => {
+      if (tocado) guardar(q === planA.qty ? null : q);
+      else if (compensar !== aj0.compensar) guardar(undefined);
+      else closeModal();
+    });
   });
 }
 
