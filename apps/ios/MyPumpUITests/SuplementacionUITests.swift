@@ -50,6 +50,9 @@ final class SuplementacionUITests: XCTestCase {
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "Falta la tarjeta Recuperación en Revisión")
         XCTAssertTrue(tarjeta.label.contains("Con tu cuenta"), "La tarjeta de la demo dice otra cosa: \(tarjeta.label)")
         XCTAssertFalse(app.descendants(matching: .any)["salud-semana-check"].exists, "La demo no tiene salud que resumir")
+        let progreso = app.buttons["tarjeta-progreso-revision"]
+        XCTAssertTrue(progreso.exists, "Falta la tarjeta Tu progreso")
+        XCTAssertTrue(progreso.label.contains("Tu fuerza y tus récords"), "La demo no tiene historial: \(progreso.label)")
         tarjeta.tap()
         XCTAssertTrue(app.descendants(matching: .any)["segmento-salud"].waitForExistence(timeout: 5), "No abrió Salud")
         captura("suplementacion-salud-desde-revision")

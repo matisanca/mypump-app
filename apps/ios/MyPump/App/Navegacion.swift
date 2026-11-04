@@ -37,11 +37,13 @@ final class Navegacion {
     }
 
     /// Salud, en la hoja sobre Revisión (los avisos y `?scene=progress|myday` llegan acá). Primero la pestaña: cambiarla
-    /// cierra la hoja.
+    /// cierra la hoja. La hoja se pide en la vuelta siguiente: si quedó `saludAbierta` en true sin mostrarse (otra hoja
+    /// abierta cuando llegó un aviso), el false de la pestaña tiene que llegar a SwiftUI antes del true; si no, la tarjeta
+    /// dejaba de abrir Salud (revisión, hallazgo 1).
     func irASalud(_ segmento: SegmentoSalud?) {
         segmentoSalud = segmento
         pestaña = .revision
-        saludAbierta = true
+        Task { @MainActor in self.saludAbierta = true }
     }
 
     /// Una sección de Revisión; las que se mudaron a Salud van a su segmento.

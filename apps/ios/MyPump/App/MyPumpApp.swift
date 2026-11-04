@@ -140,9 +140,11 @@ struct Raiz: View {
             SaludView(datos: datos, alCerrar: { navegacion.saludAbierta = false })
                 .environment(navegacion)
         }
-        // `-pestana salud` (o `progreso`): Revisión con la hoja de Salud abierta.
+        // `-pestana salud`: Revisión con la hoja de Salud abierta; el viejo `progreso`, en Fuerza.
         .onAppear {
-            if navegacion.pestaña == .salud { navegacion.irASalud(nil) }
+            if navegacion.pestaña == .salud {
+                navegacion.irASalud(UserDefaults.standard.string(forKey: "pestana") == "progreso" ? .fuerza : nil)
+            }
         }
         .onChange(of: suplementacionVisible != nil, initial: true) { _, con in
             if !con, navegacion.pestaña == .suplementacion { navegacion.pestaña = .entreno }
