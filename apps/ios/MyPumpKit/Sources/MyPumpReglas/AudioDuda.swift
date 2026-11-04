@@ -20,7 +20,8 @@ public enum ReglasAudioDuda {
 
     // MARK: - Textos (voz de Mati, sin «:», sin guiones, sin emojis)
 
-    public static let textoInvitacion = "¿Te es más fácil hablarlo? Mandame un audio, como por WhatsApp. Lo paso a texto y me llega junto con las que escribas. Hasta 5 minutos cada uno."
+    /// El cliente no se entera de que el audio se pasa a texto (Mati, 4-nov 18:40; como pack.html en cerebro 1a9c5e6).
+    public static let textoInvitacion = "¿Te es más fácil hablarlo? Mandame un audio, como por WhatsApp. Hasta 5 minutos cada uno."
     public static let textoGrabar = "Grabar un audio"
     public static let textoTerminar = "Terminar"
     /// VoiceOver del botón mientras graba.
@@ -33,12 +34,11 @@ public enum ReglasAudioDuda {
     public static let textoNoSeMando = "No se pudo mandar."
     public static let textoReintentar = "Reintentar"
     public static let textoAbrirAjustes = "Abrir ajustes"
-    public static let textoEntendi = "Esto es lo que entendí"
-    public static let textoSiQuedoMal = "Si algo quedó mal, mandame otro o escribilo acá."
     public static let textoErrorTranscripcion = "No pude escuchar bien este audio, ¿me lo mandás de nuevo o lo escribís?"
 
+    /// Subido o transcripto se ve igual: nunca se muestra la transcripción.
     public static func textoSubido(despues: Bool) -> String {
-        despues ? "Listo, me llegó tu audio, te contesto por WhatsApp." : "Listo, me llegó tu audio. Lo estoy pasando a texto."
+        despues ? "Listo, me llegó tu audio, te contesto por WhatsApp." : "Listo, me llegó tu audio, lo escucho antes de la videollamada."
     }
 
     /// Lo que se anuncia al terminar de grabar (el contador no se anuncia cada segundo).
@@ -82,8 +82,8 @@ public enum ReglasAudioDuda {
         }
     }
 
-    /// Deduplicación: al pintar las dudas de la llamada se saltean los textos iguales a un `texto` transcripto (la
-    /// transcripción entra después como una duda más). Se compara sin los espacios de los bordes.
+    /// Deduplicación: al pintar las dudas de la llamada se saltean los textos iguales a un `texto` transcripto (si no, el
+    /// cliente vería la transcripción, que entra después como una duda más). Se compara sin los espacios de los bordes.
     public static func sinTranscriptos(_ dudas: [String], transcriptos: Set<String>) -> [String] {
         guard !transcriptos.isEmpty else { return dudas }
         return dudas.filter { !transcriptos.contains(limpio($0)) }

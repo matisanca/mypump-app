@@ -224,7 +224,30 @@ struct AudioDudaModeloTests {
         }
     }
 
-    @Test func pendientesYStorageRechazadoGastanIntentoYAlFinalReintentar() async {
+    @Test func pendientesEsperaSinGastarYNoFrenaALasDemas() async {
+        let s = ServidorAudio()
+        s.rpc("entregas_app_audio_iniciar", #"{"ok":false,"motivo":"pendientes"}"#)
+        s.rpc("entregas_app_llamada_duda", "true")
+        let a = armar(s)
+        await grabar(a)
+        a.modelo.mandar()
+        await hastaA { await a.cola.pendientes == 1 }
+        // Una duda escrita detrás del audio sale igual.
+        await a.cola.encolar(ModeloGuia.kindDudaLlamada, .objeto(["texto": .texto("una duda"), "id": .texto(UUID().uuidString.lowercased())]), dedupeKey: nil)
+        for _ in 0..<10 { await a.cola.drenar() }
+        let ops = await a.cola.operaciones
+        #expect(ops.count == 1 && ops.first?.kind == "guia_audio" && ops.first?.tries == 0)
+        #expect(s.pedidos(a: "entregas_app_llamada_duda").count == 1)
+        #expect(await a.cola.fallidos.isEmpty)
+        #expect(a.modelo.filas.first?.estado == .mandando)
+        // Cuando se liberan los otros, sale.
+        s.rpc("entregas_app_audio_iniciar", #"{"ok":true,"id":"ID","bucket":"entregas-audio","ruta":"cliente/ID.m4a","mime":"audio/mp4"}"#)
+        await a.cola.drenar()
+        await hasta { a.modelo.filas.first?.estado == .subido }
+        #expect(a.modelo.filas.first?.estado == .subido)
+    }
+
+    @Test func pendientesNoGastaYStorageRechazadoSiHastaReintentar() async {
         let s = ServidorAudio()
         s.rpc("entregas_app_audio_iniciar", #"{"ok":false,"motivo":"pendientes"}"#)
         let a = armar(s)
@@ -232,7 +255,7 @@ struct AudioDudaModeloTests {
         a.modelo.mandar()
         await hastaA { await a.cola.pendientes == 1 }
         await a.cola.drenar()
-        #expect(await a.cola.operaciones.first?.tries == 1)
+        #expect(await a.cola.operaciones.first?.tries == 0)
         s.rpc("entregas_app_audio_iniciar", #"{"ok":true,"id":"ID","bucket":"entregas-audio","ruta":"cliente/ID.m4a","mime":"audio/mp4"}"#)
         // La subida «quizás subió» (403) pero subido dice siempre sin_archivo: gasta intento hasta abandonar.
         s.storage(403, #"{"statusCode":"403","error":"Unauthorized","message":"policy"}"#)
@@ -341,8 +364,10 @@ struct AudioDudaModeloTests {
         #expect(a.modelo.disponible)
         #expect(a.modelo.filas == [FilaAudio(id: "a1", estado: .subido)])
         s.rpc("entregas_app_audios", #"[{"id":"a1","estado":"transcripto","texto":" ¿Puedo entrenar en ayunas? "},{"id":"a2","estado":"error","segundos":14},{"estado":"raro"}]"#)
-        await hasta { a.modelo.filas.first?.estado == .transcripto(" ¿Puedo entrenar en ayunas? ") }
-        #expect(a.modelo.filas.map(\.estado) == [.transcripto(" ¿Puedo entrenar en ayunas? "), .error])
+        await hasta { a.modelo.filas.last?.estado == .error }
+        // Transcripto se ve igual que subido: la transcripción nunca va a la pantalla, solo a la deduplicación.
+        #expect(a.modelo.filas.map(\.estado) == [.subido, .error])
+        #expect(!a.modelo.haySubidos)
         #expect(a.modelo.transcriptos == ["¿Puedo entrenar en ayunas?"])
         #expect(a.modelo.servidor.last?.segundos == 14)
         // Sin subidos el sondeo se corta solo.

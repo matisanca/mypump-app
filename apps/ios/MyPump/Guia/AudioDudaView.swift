@@ -144,7 +144,7 @@ private struct PuntoQueLate: View {
     }
 }
 
-/// Un audio mandado: mandando, no se pudo, rechazado, pasando a texto, transcripto o con error.
+/// Un audio mandado: mandando, no se pudo, rechazado, llegó o con error. La transcripción nunca se muestra.
 private struct FilaAudioView: View {
     let fila: FilaAudio
     let despues: Bool
@@ -166,10 +166,6 @@ private struct FilaAudioView: View {
                     Text(ReglasAudioDuda.texto(a)).foregroundStyle(Color.peligro)
                 case .subido:
                     Text(ReglasAudioDuda.textoSubido(despues: despues)).foregroundStyle(.secondary)
-                case .transcripto(let t):
-                    Text(ReglasAudioDuda.textoEntendi).font(.caption.weight(.semibold)).foregroundStyle(Color.marcaTexto)
-                    Text(t)
-                    Text(ReglasAudioDuda.textoSiQuedoMal).font(.caption).foregroundStyle(.secondary)
                 case .error:
                     Text(ReglasAudioDuda.textoErrorTranscripcion).foregroundStyle(Color.peligro)
                 }
@@ -188,14 +184,13 @@ private struct FilaAudioView: View {
         case .mandando: "arrow.up.circle"
         case .noSeMando, .rechazado, .error: "exclamationmark.circle"
         case .subido: "checkmark.circle"
-        case .transcripto: "text.bubble"
         }
     }
 
     private var tono: Color {
         switch fila.estado {
         case .noSeMando, .rechazado, .error: .peligro
-        case .subido, .transcripto: .marca
+        case .subido: .marca
         case .mandando: .secondary
         }
     }
@@ -204,7 +199,7 @@ private struct FilaAudioView: View {
 #if DEBUG
 /// Las pruebas de interfaz y las capturas (`-audioDoble YES`): la guía de muestra con el micrófono de mentira y, con
 /// `-audioServidor YES`, una cola y un servidor de mentira (la 019 simulada), así se ve «Mandando», «Listo» y la
-/// transcripción sin tocar la base. `-audioEstado transcripto|mandando|noSeMando|error` deja la lista armada.
+/// lista que pasa a transcripto sin tocar la base. `-audioEstado transcripto|mandando|noSeMando|error` deja la lista armada.
 @MainActor enum AudioDudaUI {
     static func preparar(_ guia: ModeloGuia) {
         let d = UserDefaults.standard

@@ -41,8 +41,8 @@ final class AudioDudaUITests: XCTestCase {
 
     private var sufijo: String { ProcessInfo.processInfo.environment["AUDIO_SUFIJO"] ?? "" }
 
-    /// Grabar, revisar, escuchar y mandar con la cola y la 019 simuladas: «Mandando tu audio…», «Listo, me llegó tu
-    /// audio…» y la transcripción.
+    /// Grabar, revisar, escuchar y mandar con la cola y la 019 simuladas: «Mandando tu audio…» y «Listo, me llegó tu
+    /// audio…». Cuando el servidor ya lo transcribió, la pantalla no cambia: el cliente no ve la transcripción.
     func testGrabarRevisarYMandar() throws {
         abrir(["-audioServidor", "YES"])
         captura("reposo\(sufijo)")
@@ -61,11 +61,14 @@ final class AudioDudaUITests: XCTestCase {
         XCTAssertTrue(texto("Mandando tu audio").waitForExistence(timeout: 5), "No se vio «Mandando tu audio…»")
         XCTAssertTrue(boton("audio-grabar").exists, "El grabador no volvió a reposo")
         captura("mandando\(sufijo)")
-        XCTAssertTrue(texto("Listo, me llegó tu audio").waitForExistence(timeout: 15), "No se confirmó la subida")
+        XCTAssertTrue(texto("Listo, me llegó tu audio, lo escucho antes de la videollamada.").waitForExistence(timeout: 15),
+                      "No se confirmó la subida")
         captura("subido\(sufijo)")
-        XCTAssertTrue(texto("Esto es lo que entendí").waitForExistence(timeout: 15), "No llegó la transcripción")
-        XCTAssertTrue(texto("¿Puedo tomar café antes de entrenar?").exists)
-        captura("transcripto\(sufijo)")
+        // El doble pasa a transcripto a la segunda consulta (2 s): sigue igual y sin el texto.
+        sleep(6)
+        XCTAssertTrue(texto("Listo, me llegó tu audio, lo escucho antes de la videollamada.").exists)
+        XCTAssertFalse(texto("¿Puedo tomar café antes de entrenar?").exists, "Se ve la transcripción")
+        XCTAssertFalse(texto("pasando a texto").exists || texto("Esto es lo que entendí").exists)
     }
 
     /// Menos de 2 segundos no se manda.
@@ -129,11 +132,12 @@ final class AudioDudaUITests: XCTestCase {
         XCTAssertTrue(texto("Te va a pedir permiso para usar el micrófono").exists)
     }
 
-    /// La transcripción no se repite en «Ya me dejaste esta» (la muestra trae la misma duda escrita).
-    func testTranscriptoSeVeUnaSolaVez() throws {
+    /// La transcripción no se ve: ni en la fila del audio ni en «Ya me dejaste esta» (la muestra trae la misma duda
+    /// escrita, que es la que entró desde el audio).
+    func testLaTranscripcionNoSeVe() throws {
         abrir(["-audioEstado", "transcripto"])
-        XCTAssertTrue(texto("Esto es lo que entendí").waitForExistence(timeout: 5))
-        XCTAssertTrue(texto("¿Puedo entrenar a la noche?").exists)
+        XCTAssertTrue(texto("Listo, me llegó tu audio, lo escucho antes de la videollamada.").waitForExistence(timeout: 5))
+        XCTAssertFalse(texto("¿Puedo entrenar a la noche?").exists, "Se ve la transcripción")
         // La única duda escrita de la muestra es la misma que la transcripción: no queda «Ya me dejaste esta».
         XCTAssertFalse(texto("Ya me dejaste").exists)
     }

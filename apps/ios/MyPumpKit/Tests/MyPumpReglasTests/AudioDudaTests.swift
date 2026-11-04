@@ -142,8 +142,19 @@ struct AudioDudaTests {
         let todos = [AvisoAudio.permisoNegado, .sinMicrofono, .ocupado, .muyCorto, .quedan30, .tope, .pendientes, .largo, .formato,
                      .noSeMando, .yaFallo].map(ReglasAudioDuda.texto)
             + [ReglasAudioDuda.textoInvitacion, ReglasAudioDuda.textoAntesDelPermiso, ReglasAudioDuda.textoSubido(despues: true),
-               ReglasAudioDuda.textoSubido(despues: false), ReglasAudioDuda.textoSiQuedoMal, ReglasAudioDuda.textoErrorTranscripcion]
+               ReglasAudioDuda.textoSubido(despues: false), ReglasAudioDuda.textoErrorTranscripcion]
         for t in todos { #expect(!t.contains(":") && !t.contains(" - "), "\(t)") }
+    }
+
+    /// Mati, 4-nov 18:40: el cliente no se entera de que el audio se pasa a texto.
+    @Test func losTextosNoDicenQueSePasaATexto() {
+        #expect(ReglasAudioDuda.textoInvitacion == "¿Te es más fácil hablarlo? Mandame un audio, como por WhatsApp. Hasta 5 minutos cada uno.")
+        #expect(ReglasAudioDuda.textoSubido(despues: false) == "Listo, me llegó tu audio, lo escucho antes de la videollamada.")
+        #expect(ReglasAudioDuda.textoSubido(despues: true) == "Listo, me llegó tu audio, te contesto por WhatsApp.")
+        #expect(ReglasAudioDuda.textoErrorTranscripcion == "No pude escuchar bien este audio, ¿me lo mandás de nuevo o lo escribís?")
+        let todos = [ReglasAudioDuda.textoInvitacion, ReglasAudioDuda.textoSubido(despues: false), ReglasAudioDuda.textoSubido(despues: true)]
+            + [AvisoAudio.tope, .pendientes, .largo, .noSeMando].map(ReglasAudioDuda.texto)
+        for t in todos { #expect(!t.lowercased().contains("texto") && !t.contains("entendí"), "\(t)") }
     }
 
     @Test func deduplicaLasDudasTranscriptas() {

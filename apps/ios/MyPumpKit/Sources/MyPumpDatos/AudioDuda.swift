@@ -58,8 +58,8 @@ public struct FilaAudio: Equatable, Sendable, Identifiable {
         case noSeMando
         /// La base dijo que no (tope, largo, formato): no se reintenta.
         case rechazado(AvisoAudio)
+        /// Subido o transcripto: «Listo, me llegó tu audio…». La transcripción nunca se muestra.
         case subido
-        case transcripto(String)
         case error
     }
     public let id: String
@@ -140,12 +140,8 @@ public final class ModeloAudioDuda {
     public var filas: [FilaAudio] {
         var out: [FilaAudio] = servidor.map { a in
             switch a.estado {
-            case .subido: FilaAudio(id: a.id, estado: .subido)
+            case .subido, .transcripto: FilaAudio(id: a.id, estado: .subido)
             case .error: FilaAudio(id: a.id, estado: .error)
-            case .transcripto:
-                // Sin texto es raro: se sigue viendo como «lo estoy pasando a texto».
-                if let t = a.texto, !ReglasAudioDuda.limpio(t).isEmpty { FilaAudio(id: a.id, estado: .transcripto(t)) }
-                else { FilaAudio(id: a.id, estado: .subido) }
             }
         }
         for l in locales where !out.contains(where: { $0.id == l.id }) { out.append(l) }
@@ -353,7 +349,8 @@ public final class ModeloAudioDuda {
         disco?.guardar(d, Self.archivoDisponible)
     }
 
-    /// Cada 15 s mientras haya alguno en `subido`, como mucho 3 minutos y solo con la sección abierta.
+    /// Cada 15 s mientras haya alguno en `subido`, como mucho 3 minutos y solo con la sección abierta: sirve para ver un
+    /// `error` (el texto no se muestra) y para la deduplicación.
     func sondear() {
         guard seccionAbierta, haySubidos, sondeo == nil else { return }
         let inicio = reloj()
@@ -382,6 +379,8 @@ extension Escrituras {
     /// El código de la falla que manda la op directo a fallidos: `iniciar` dijo `id` (ese `p_id` es de otro cliente). Con
     /// «Reintentar» sale con un `p_id` nuevo.
     static let codigoAudioId = "AUDIO_ID"
+    /// `iniciar` dijo `pendientes`: se reintenta más tarde sin gastar intento (`Outbox.pasada`).
+    static let codigoAudioPendientes = "AUDIO_PENDIENTES"
 
     /// `guia_audio`: iniciar, subir y confirmar, con el mismo `p_id` en cada reintento. Cada intento pide el ticket de
     /// nuevo (la base es idempotente por `p_id` y reactiva un ticket vencido con el mismo id). Red o transitorio en
@@ -446,8 +445,9 @@ extension Escrituras {
         case "token":
             return .respuesta(.success(.null))
         case "pendientes":
-            // Otros audios a medio mandar (hasta 3 a la vez, con la web): más tarde, gastando intento.
-            return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 200, codigo: "AUDIO_PENDIENTES", mensaje: "pendientes")))
+            // Otros audios a medio mandar (hasta 3 a la vez, con la web): más tarde, sin gastar intento y con backoff. La
+            // cola sigue con las demás ops (no corta la pasada como la red: un audio no frena el chat ni las dudas).
+            return .respuesta(.failure(ErrorRPC(clase: .transitorio, status: 200, codigo: codigoAudioPendientes, mensaje: "pendientes")))
         case "id":
             // Ese p_id es de otro cliente: permanente, directo a fallidos.
             return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 200, codigo: codigoAudioId, mensaje: "id")))
