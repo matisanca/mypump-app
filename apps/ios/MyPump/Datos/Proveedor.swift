@@ -27,10 +27,13 @@ enum Proveedor {
             // `-sinRed YES`: como sin señal (el gimnasio). La app arranca de su copia guardada y lo que se carga queda
             // en la cola hasta el próximo arranque sin el argumento.
             // `-fotosDePrueba YES`: el servidor de verdad, salvo las fotos de progreso (ver `FotosDePrueba`).
-            let transporte: any Transporte
+            var transporte: any Transporte
             if d.bool(forKey: "sinRed") { transporte = SinRed() }
             else if d.bool(forKey: "fotosDePrueba") { transporte = FotosDePrueba() }
             else { transporte = URLSession.shared }
+            // `-guiaOkFalse YES`: «Tu guía» contesta `{"ok": false}`, como con el token revocado o la página dada de baja (la
+            // sección tiene que desaparecer). Lo demás va al servidor de verdad.
+            if d.bool(forKey: "guiaOkFalse") { transporte = GuiaRevocada(resto: transporte) }
             return ModeloApp(cliente: ClienteRPC(transporte: transporte), almacen: TokenEnMemoria(t))
         }
         // `-reiniciar YES`: arranca como recién instalada (sin token guardado), para probar la bienvenida.
@@ -48,6 +51,19 @@ enum Proveedor {
 /// Todo pedido falla como sin señal (`-sinRed YES`).
 private struct SinRed: Transporte {
     func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) { throw URLError(.notConnectedToInternet) }
+}
+
+/// `-guiaOkFalse YES`: las lecturas de «Tu guía» dicen que no hay guía.
+private struct GuiaRevocada: Transporte {
+    let resto: any Transporte
+
+    func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+        let ruta = pedido.url?.path ?? ""
+        if ruta.hasSuffix("entregas_app_get") || ruta.hasSuffix("entregas_app_resumen") {
+            return (Data(#"{"ok":false}"#.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
+        return try await resto.enviar(pedido)
+    }
 }
 
 /// `-fotosDePrueba YES`: todo va al servidor de verdad salvo las fotos de progreso. Esas son cinco semanas de las tres
