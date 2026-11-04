@@ -127,7 +127,7 @@ fun TarjetaGuiaDestacada(resumen: ResumenGuia, pulso: Boolean, alAbrir: () -> Un
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.08.em,
                 color = Color.White,
-                modifier = Modifier.weight(1f).padding(top = Espacio.xs).clearAndSetSemantics {}.testTag("guia-empeza-por-aca"),
+                modifier = Modifier.weight(1f).padding(top = Espacio.xs).testTag("guia-empeza-por-aca").clearAndSetSemantics {},
             )
             TextButton(
                 onClick = alOcultar,

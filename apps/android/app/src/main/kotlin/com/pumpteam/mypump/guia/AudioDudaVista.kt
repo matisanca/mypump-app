@@ -218,7 +218,7 @@ private fun Grabando(segundos: Int, alTerminar: () -> Unit) {
             ReglasAudioDuda.contador(segundos),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.clearAndSetSemantics {}.testTag("audio-contador"),
+            modifier = Modifier.testTag("audio-contador").clearAndSetSemantics {},
         )
     }
 }
