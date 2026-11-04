@@ -111,6 +111,51 @@ object ReglasGuia {
         return dia.isBefore(ahora.atZone(ZONA).toLocalDate())
     }
 
+    // ── Después de la entrega (`entregas_014`, decisión de Mati del 4/11) ──
+
+    /** Lo que se ve de la guía fuera de la sección: la tarjeta en Entreno, la fila «Ver mi guía» en Mis datos o nada. */
+    enum class Lugar { ENTRENO, MIS_DATOS, NINGUNO }
+
+    /** La acción discreta al pie de la sección. */
+    enum class AccionEntreno { QUITAR, VOLVER_A_MOSTRAR, NINGUNA }
+
+    /** Las horas después de la videollamada en que la tarjeta sigue en Entreno (exactas, como el servidor). */
+    const val HORAS_TARJETA = 48L
+
+    /**
+     * `mostrar_tarjeta` del resumen. Si no vino (vuelta atrás a la 012), la misma cuenta del servidor con `fecha_entrega`:
+     * sin fecha, o antes de fecha + 48 h exactas. Una fecha que no se entiende muestra la tarjeta (lo de siempre).
+     */
+    fun mostrarTarjeta(r: ResumenGuia, ahora: Instant = Instant.now()): Boolean = r.mostrarTarjeta ?: dentroDelPlazo(r.fechaEntrega, ahora)
+
+    internal fun dentroDelPlazo(fechaEntrega: String?, ahora: Instant): Boolean {
+        val f = fechaEntrega?.trim()?.ifEmpty { null } ?: return true
+        val desde = if (f.length > 10) instante(f) else try {
+            LocalDate.parse(f.take(10)).atStartOfDay(ZONA).toInstant()
+        } catch (_: Exception) {
+            null
+        }
+        desde ?: return true
+        return ahora.isBefore(desde.plusSeconds(HORAS_TARJETA * 3600))
+    }
+
+    /**
+     * Dónde queda la guía. Sin resumen (`ok: false`, sin guía) no hay tarjeta ni fila. Con la tarjeta oculta a mano o pasado
+     * el plazo, la fila de Mis datos.
+     */
+    fun lugar(r: ResumenGuia?, ocultaAMano: Boolean, ahora: Instant = Instant.now()): Lugar = when {
+        r == null -> Lugar.NINGUNO
+        !ocultaAMano && mostrarTarjeta(r, ahora) -> Lugar.ENTRENO
+        else -> Lugar.MIS_DATOS
+    }
+
+    /** «Quitar de Entreno» mientras la tarjeta está; «Volver a mostrar en Entreno» solo si el plazo todavía no pasó. */
+    fun accionEntreno(r: ResumenGuia?, ocultaAMano: Boolean, ahora: Instant = Instant.now()): AccionEntreno = when {
+        r == null || !mostrarTarjeta(r, ahora) -> AccionEntreno.NINGUNA
+        ocultaAMano -> AccionEntreno.VOLVER_A_MOSTRAR
+        else -> AccionEntreno.QUITAR
+    }
+
     private fun instante(iso: String): Instant? = try {
         OffsetDateTime.parse(iso).toInstant()
     } catch (_: Exception) {

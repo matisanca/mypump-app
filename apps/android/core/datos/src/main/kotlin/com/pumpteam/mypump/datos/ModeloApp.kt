@@ -9,6 +9,7 @@ import com.pumpteam.mypump.modelos.ComidaMarcada
 import com.pumpteam.mypump.modelos.DietaActiva
 import com.pumpteam.mypump.modelos.EstructuraDieta
 import com.pumpteam.mypump.modelos.FoodSwap
+import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.Macros
 import com.pumpteam.mypump.modelos.PreferenciasCliente
 import com.pumpteam.mypump.modelos.RutinaActiva
@@ -235,7 +236,7 @@ class ModeloApp(
      * [cargar] y sincroniza en [alVolverAPrimerPlano]; la fuente del sistema la pone `:app` en
      * [ModeloSalud.fuenteDelSistema].
      */
-    /** «Tu guía»: la tarjeta de inicio y la sección (solo con una cuenta; en la demo no hay). */
+    /** «Tu guía»: la tarjeta de inicio y la sección (con una cuenta, o la de muestra en la demo: [ModeloGuia.demo]). */
     private val _guia = MutableStateFlow<ModeloGuia?>(null)
     val guia: StateFlow<ModeloGuia?> = _guia.asStateFlow()
 
@@ -358,7 +359,7 @@ class ModeloApp(
      * "Ver demo": la rutina y la dieta de ejemplo de la web (`SAMPLE_RUTINA` / `SAMPLE_DIET`, que la app trae
      * empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria.
      */
-    fun entrarEnDemo(rutina: String, dieta: String) {
+    fun entrarEnDemo(rutina: String, dieta: String, guia: String? = null) {
         fun envolver(estructura: String): JsonElement? = try {
             ValorJson.objeto(
                 "id" to texto("demo"), "version" to numero(1), "estructura" to ValorJson.parsear(estructura), "semana_actual" to numero(1),
@@ -379,6 +380,14 @@ class ModeloApp(
         // ACC-07: Revisión y el chat con el hilo vacío, sin red ni cola.
         _revision.value = ModeloRevision.demo(cliente, alcance)
         _chat.value = ModeloChat(cliente, token = null, outbox = null, alcance = alcance)
+        // «Tu guía» de muestra (los clips genéricos de «Tu app»), como la rutina: sin red; lo visto y las dudas en memoria.
+        _guia.value = guia?.let { g ->
+            try {
+                Guia.desde(ValorJson.parsear(g).aJson())
+            } catch (_: Exception) {
+                null
+            }
+        }?.let { ModeloGuia.demo(cliente, it, alcance) }
         _entreno.value = _rutina.value?.let { r ->
             ModeloEntreno(cliente, token = null, outbox = null, disco = null, rutinaInicial = r, catalogoInicial = catalogoVigente, alcance = alcance)
         }
@@ -399,6 +408,7 @@ class ModeloApp(
         _entreno.value = null
         _revision.value = null   // los de la demo
         _chat.value = null
+        _guia.value = null
         val t = almacen.leer()
         token = t
         if (t != null) {

@@ -260,12 +260,26 @@ data class TomaSuplemento(val momento: String, val cantidad: String?, val nota: 
  * `entregas_app_resumen`: lo que muestra la tarjeta de inicio. Es de solo lectura y no marca `abierto_en`, así que se puede
  * pedir al abrir la app y al volver a primer plano (el `get` queda solo para cuando el cliente abre la sección).
  */
-data class ResumenGuia(val total: Int, val vistos: Int, val minutosRestantes: Double) {
-    fun aValor(): ValorJson = ValorJson.objeto(
-        "ok" to ValorJson.Booleano(true),
-        "total" to ValorJson.Numero(total.toDouble()),
-        "vistos" to ValorJson.Numero(vistos.toDouble()),
-        "minutos_restantes" to ValorJson.Numero(minutosRestantes),
+data class ResumenGuia(
+    val total: Int,
+    val vistos: Int,
+    val minutosRestantes: Double,
+    /** `fecha_entrega` (`entregas_014`): el mismo valor del get. null si no viene o viene null. */
+    val fechaEntrega: String? = null,
+    /**
+     * `mostrar_tarjeta` (`entregas_014`): la tarjeta va en Entreno. null si no vino (vuelta atrás a la 012, o calculado
+     * desde la guía): ahí la app hace la misma cuenta con [fechaEntrega] (ver `ReglasGuia.mostrarTarjeta`).
+     */
+    val mostrarTarjeta: Boolean? = null,
+) {
+    fun aValor(): ValorJson = ValorJson.Objeto(
+        linkedMapOf<String, ValorJson>(
+            "ok" to ValorJson.Booleano(true),
+            "total" to ValorJson.Numero(total.toDouble()),
+            "vistos" to ValorJson.Numero(vistos.toDouble()),
+            "minutos_restantes" to ValorJson.Numero(minutosRestantes),
+            "fecha_entrega" to (fechaEntrega?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
+        ).apply { mostrarTarjeta?.let { put("mostrar_tarjeta", ValorJson.Booleano(it)) } },
     )
 
     companion object {
@@ -276,7 +290,13 @@ data class ResumenGuia(val total: Int, val vistos: Int, val minutosRestantes: Do
             val total = o.entero("total")?.takeIf { it > 0 } ?: return null
             val vistos = (o.entero("vistos") ?: 0).coerceIn(0, total)
             val minutos = o.decimal("minutos_restantes")?.takeIf { it >= 0 } ?: 0.0
-            return ResumenGuia(total, vistos, minutos)
+            return ResumenGuia(
+                total,
+                vistos,
+                minutos,
+                fechaEntrega = o.cadena("fecha_entrega")?.trim()?.ifEmpty { null },
+                mostrarTarjeta = o["mostrar_tarjeta"]?.let(Lector::booleanoCrudo),
+            )
         }
 
         fun desde(v: ValorJson?): ResumenGuia? = v?.let { desde(it.aJson()) }
@@ -286,12 +306,12 @@ data class ResumenGuia(val total: Int, val vistos: Int, val minutosRestantes: Do
          * «Viste X de N» de la cabecera y de la tarjeta de inicio: solo los clips de la lista ([Guia.clipsDeLaLista]), como
          * cuenta `entregas_app_resumen` desde `entregas_012` y la web.
          */
-        fun de(g: Guia): ResumenGuia? = de(g.clipsDeLaLista)
+        fun de(g: Guia): ResumenGuia? = de(g.clipsDeLaLista, g.fechaEntrega)
 
-        private fun de(l: List<ClipGuia>): ResumenGuia? {
+        private fun de(l: List<ClipGuia>, fechaEntrega: String?): ResumenGuia? {
             if (l.isEmpty()) return null
             val resta = l.filter { !it.visto }.sumOf { it.minutos }
-            return ResumenGuia(l.size, l.count { it.visto }, Math.round(resta * 10) / 10.0)
+            return ResumenGuia(l.size, l.count { it.visto }, Math.round(resta * 10) / 10.0, fechaEntrega = fechaEntrega)
         }
     }
 }

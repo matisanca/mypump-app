@@ -350,4 +350,68 @@ class ModeloGuiaTest {
         assertNull(otra.guia.value)
         assertNull(otra.resumen.value)
     }
+
+    // ── Después de la entrega y la demo ──
+
+    @Test
+    fun elResumenTraeMostrarTarjetaYLaGuiaNoLoPisa() = enUnHilo { alcance ->
+        val vencido = """{"ok":true,"total":17,"vistos":0,"minutos_restantes":10,"fecha_entrega":"2026-10-01T13:00:00+00:00","mostrar_tarjeta":false}"""
+        val get = guia.replace(Regex("\"fecha_entrega\"\\s*:\\s*(null|\"[^\"]*\")"), "\"fecha_entrega\": \"2026-10-01T13:00:00+00:00\"")
+        val e = entorno(alcance) { fn, _ -> if (fn == "entregas_app_get") 200 to get else 200 to vencido }
+        e.m.refrescarResumen()
+        assertEquals(false, e.m.resumen.value!!.mostrarTarjeta)
+        // Abrir la sección recalcula el resumen desde la guía: `mostrar_tarjeta` queda el del servidor.
+        e.m.abrir()
+        assertEquals(false, e.m.resumen.value!!.mostrarTarjeta)
+        assertEquals("2026-10-01T13:00:00+00:00", e.m.resumen.value!!.fechaEntrega)
+        // Y la caché lo guarda.
+        e.m.alDia()
+        val otra = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, e.disco, alcance).also { it.alDia() }
+        assertEquals(false, otra.resumen.value!!.mostrarTarjeta)
+    }
+
+    @Test
+    fun quitarDeEntrenoQuedaEnElTelefonoPorCuenta() = enUnHilo { alcance ->
+        val raiz = carpetaTemporal("guia")
+        val e = entorno(alcance, disco = Disco(raiz, "tok")) { _, _ -> 200 to resumen }
+        assertFalse(e.m.ocultaAMano.value)
+        e.m.ocultarDeEntreno(true)
+        assertTrue(e.m.ocultaAMano.value)
+        e.m.alDia()
+        // No llama al servidor.
+        assertTrue(e.t.llamadas.none { it.startsWith("entregas_app_") && it != "entregas_app_resumen" })
+        assertTrue(ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }.ocultaAMano.value)
+        // Otra cuenta en el mismo teléfono no la hereda.
+        assertFalse(ModeloGuia(ClienteRpc(transporte = SinRed), "otro", null, Disco(raiz, "otro"), alcance).also { it.alDia() }.ocultaAMano.value)
+        // «Volver a mostrar en Entreno».
+        e.m.ocultarDeEntreno(false)
+        e.m.alDia()
+        assertFalse(ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }.ocultaAMano.value)
+    }
+
+    @Test
+    fun laDemoNoLlamaAlServidorYGuardaEnMemoria() = enUnHilo { alcance ->
+        val llamadas = mutableListOf<String>()
+        val cliente = ClienteRpc(transporte = TransporteProgramado { fn, _ -> llamadas += fn; 500 to "{}" })
+        val g = com.pumpteam.mypump.modelos.Guia.desde(ValorJson.parsear(Compartido.texto("demo/guia.json")).aJson())!!
+        assertEquals(8, g.clips.size)
+        assertNull(g.fechaEntrega)
+        assertNull(g.suplementacion)
+        assertTrue(g.clips.all { it.motivo!!.contains("|||") && it.url!!.startsWith("https://") })
+        val m = ModeloGuia.demo(cliente, g, alcance).also { it.alDia() }
+        assertEquals(ModeloGuia.Estado.LISTA, m.estado.value)
+        assertEquals(8, m.resumen.value!!.total)
+        m.refrescarResumen()
+        m.abrir()
+        m.guardarAvance(SeguimientoAvance.Guardado(g.clips[0].id, 30, true))
+        assertTrue(m.guia.value!!.clips[0].visto)
+        assertEquals(1, m.resumen.value!!.vistos)
+        assertTrue(m.enviarDudaVideo(g.clips[1].id, "¿Y si me olvido?"))
+        assertEquals("¿Y si me olvido?", m.guia.value!!.clip(g.clips[1].id)!!.duda)
+        assertTrue(m.enviarDudaLlamada("Una duda"))
+        assertEquals(1, m.guia.value!!.dudasLlamada.size)
+        asentar()
+        assertEquals(2, m.avisos.value.count { it is ModeloGuia.AvisoDuda.Guardada })
+        assertEquals(emptyList<String>(), llamadas)
+    }
 }
