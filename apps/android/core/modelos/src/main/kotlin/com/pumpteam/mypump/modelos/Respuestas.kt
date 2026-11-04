@@ -47,6 +47,8 @@ data class RegistroSesion(
     val rir: Int?,
     val ejercicioNombre: String?,
     val notas: String?,
+    /** Cuándo se registró (el servidor lo conserva al corregir la serie): la fecha real para el volumen por músculo. */
+    val registradoEn: String? = null,
 ) {
     companion object {
         fun desde(e: JsonElement): RegistroSesion {
@@ -54,7 +56,7 @@ data class RegistroSesion(
             return RegistroSesion(
                 ejercicioId = o.texto("ejercicio_id") ?: "", serie = o.entero("serie_numero") ?: 1, pesoKg = o.decimal("peso_kg"),
                 reps = o.entero("reps_realizadas"), rir = o.entero("rir_real"), ejercicioNombre = o.texto("ejercicio_nombre"),
-                notas = o.texto("notas"),
+                notas = o.texto("notas"), registradoEn = o.texto("registrado_en"),
             )
         }
     }
@@ -278,6 +280,9 @@ data class Recuperacion(
     val discordancia: Boolean?,
     val cobertura: ValorJson?,
     val motivos: ValorJson?,
+    /** nativa_007 (opcionales: una respuesta de 12 columnas no las trae). */
+    val motivoFalta: String? = null,
+    val confianza: String? = null,
 ) {
     companion object {
         fun desde(e: JsonElement): Recuperacion {
@@ -287,6 +292,7 @@ data class Recuperacion(
                 diasDatos = o.entero("dias_datos"), bandaProvisoria = o.booleano("banda_provisoria"),
                 estadoAutonomico = o.texto("estado_autonomico"), hrvMetrica = o.texto("hrv_metrica"),
                 discordancia = o.booleano("discordancia"), cobertura = o.valorJson("cobertura"), motivos = o.valorJson("motivos"),
+                motivoFalta = o.texto("motivo_falta"), confianza = o.texto("confianza"),
             )
         }
     }

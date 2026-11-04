@@ -11,13 +11,14 @@ import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.salud.EstadoHealthConnect
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Las capturas de evidencia de Revisión, en claro y en oscuro (como `CapturasUiTest`): cada sección arriba de todo, Mi
- * Día con la recuperación, los 30 días, la galería con el comparador (6 semanas de fotos, que en iOS no se pudieron
- * sembrar por la ventana del servidor) y la demo. Las miniaturas son siluetas lisas armadas acá: las URLs firmadas de
+ * Las capturas de evidencia de Revisión, en claro y en oscuro (como `CapturasUiTest`): las fotos, el check, la galería
+ * con el comparador (6 semanas de fotos, que en iOS no se pudieron sembrar por la ventana del servidor) y la demo. Desde
+ * la 2.1 el peso, Mi reloj y la recuperación tienen sus capturas en `SaludCapturasTest`. Las miniaturas son siluetas lisas armadas acá: las URLs firmadas de
  * prueba no van a la red. Quedan en [Telefono.CARPETA_CAPTURAS] y las baja `scripts/nativa/emu-ui.sh`.
  */
 @RunWith(AndroidJUnit4::class)
@@ -55,19 +56,6 @@ class RevisionCapturasTest : PruebaUi() {
         // Oura para conectar y WHOOP conectado.
         servidor.relojes = listOf("oura", "whoop")
         servidor.respuestas["mypump_get_conexiones"] = """[{"proveedor":"whoop","estado":"conectada","ultimo_pull_en":"2026-10-14T07:10:00Z"}]"""
-        // Mi Día con historia: 9 días seguidos, hoy entrené y comí según el plan, 5 vasos (los bocetos llenos de iOS).
-        servidor.respuestas["mypump_get_streak"] = """[{"streak":9,"ultimo_dia_valido":"${DiaCalendario.texto(hoy - 1)}"}]"""
-        servidor.respuestas["mypump_get_habitos_dia"] =
-            """[{"fecha":"${FechaLocal.hoy()}","entrenamiento":"entrene","comio_segun_plan":true,"durmio_bien":false,"cardio":null,"vasos_agua":5}]"""
-        val patron = listOf(
-            false, true, true, true, true, true, true, true, true, true, false, true, true, false, true,
-            true, true, false, false, true, true, true, true, false, true, true, true, true, false, false,
-        )
-        servidor.respuestas["mypump_get_adherencia_30d"] = patron.mapIndexed { i, valido ->
-            val parcial = !valido && i % 3 == 0
-            val entreno = if (valido) (if (i % 2 == 0) "\"entrene\"" else "\"descanso\"") else if (parcial) "\"entrene\"" else "null"
-            """{"fecha":"${DiaCalendario.texto(hoy - i)}","entrenamiento":$entreno,"comio_segun_plan":${if (valido || parcial) "true" else "null"},"durmio_bien":${if (valido) "true" else "null"},"vasos_agua":${if (valido) 8 else 2},"es_valido":$valido}"""
-        }.joinToString(",", "[", "]")
         // Recuperación y Salud con los datos de reloj de la cuenta de iOS.
         ModeloSalud.fuenteDelSistema = FuenteDeMentira()
         EstadoHealthConnect.forzado = EstadoHealthConnect.DISPONIBLE
@@ -86,7 +74,7 @@ class RevisionCapturasTest : PruebaUi() {
         guardarCuenta()
         abrir().also {
             p.tocar(etiqueta("pestana-revision"))
-            p.nodo(etiqueta("seccion-midia"))
+            p.nodo(etiqueta("seccion-check"))
             p.esperar("las miniaturas") { servidor.a("urls").firstOrNull() }
             p.quieto(800)
             foto("revision-01-fotos")
@@ -95,13 +83,9 @@ class RevisionCapturasTest : PruebaUi() {
             p.escribir(etiqueta("peso-check"), "80,4")
             p.nodo(texto("Faltan: Adherencia"))
             foto("revision-02-check")
-            llevarArriba("seccion-peso")
-            foto("revision-03-peso")
-            llevarArriba("seccion-reloj")
-            foto("revision-04-mi-reloj")
-            // Sin Mi Día (15-oct): al pie quedan la recuperación y la salud.
-            llevarArriba("card-recuperacion")
-            foto("revision-06-recuperacion-y-salud")
+            // Desde la 2.1 Revisión termina en el check: el peso, Mi reloj, la recuperación y la salud están en Salud
+            // (las capturas de SaludCapturasTest).
+            assertFalse(p.existe(etiqueta("seccion-peso")) || p.existe(etiqueta("card-recuperacion")) || p.existe(etiqueta("card-reloj")))
             llevarArriba("seccion-fotos")
             p.tocar(etiqueta("ver-mis-fotos"))
             p.nodo(etiqueta("comparador"))
@@ -111,7 +95,7 @@ class RevisionCapturasTest : PruebaUi() {
             p.esperarQueNoEste(etiqueta("galeria-fotos"))
         }.close()
 
-        // La demo: sin fotos, reloj ni salud.
+        // La demo: sin fotos.
         reiniciarEstado()
         abrir().also {
             p.tocar(etiqueta("ver-demo"))

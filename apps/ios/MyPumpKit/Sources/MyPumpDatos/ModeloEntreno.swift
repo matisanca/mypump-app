@@ -35,7 +35,23 @@ public final class ModeloEntreno {
     public internal(set) var sesionIniciada = false
     /// Historial pedido y todavía sin respuesta.
     public internal(set) var historialCargando: Set<String> = []
-    public internal(set) var catalogo: CatalogoEjercicios
+    public internal(set) var catalogo: CatalogoEjercicios { didSet { versionCatalogo &+= 1 } }
+    /// Cambia con cada catálogo que llega (la firma del volumen: dos catálogos con la misma cantidad no son el mismo).
+    @ObservationIgnored public private(set) var versionCatalogo = 0
+    /// E1: las filas de preparación que el alumno tocó como hechas hoy, por `Preparacion.claveTildes` (fecha + día +
+    /// lugar). Es solo un estado visual del día: no va a la base.
+    public internal(set) var preparacionHecha: [String: [Int]] = [:]
+    /// E1: los ejercicios (por clave) con la preparación oculta («Ocultar» se recuerda).
+    public internal(set) var preparacionOculta: Set<String> = []
+    /// El último récord (2.0.3, E3): lo muestra la tabla del lugar como aviso dorado y se va solo.
+    public internal(set) var avisoRecord: AvisoRecord?
+
+    /// «Récord: +2,5 kg» en el lugar; el id cambia en cada aviso (dos récords seguidos se ven los dos).
+    public struct AvisoRecord: Equatable, Sendable {
+        public let id: UUID
+        public let lugar: String
+        public let texto: String
+    }
 
     // MARK: - Dependencias
 
@@ -43,6 +59,9 @@ public final class ModeloEntreno {
     @ObservationIgnored public let token: String?
     @ObservationIgnored let outbox: Outbox?
     @ObservationIgnored let disco: Disco?
+    /// E1: la preparación ya calculada (ver `preparacion(_:)`). Fuera de la observación: es un caché.
+    @ObservationIgnored private var cacheEntradas: (firma: String, entradas: [Preparacion.Entrada], ejercicios: [Ejercicio])?
+    @ObservationIgnored private var cachePreparacion: [String: (clave: String, series: [Preparacion.Serie])] = [:]
     @ObservationIgnored public let info: ClienteInfo?
     @ObservationIgnored public let demo: Bool
     @ObservationIgnored let zona: TimeZone
@@ -58,6 +77,10 @@ public final class ModeloEntreno {
         case bloqueSinTraer
     }
 
+    /// Solo para las capturas y las pruebas de interfaz de la demo (la app lo pone en DEBUG con `-historial muestra`): el
+    /// historial que devuelve la demo, que no tiene red. nil = sin historial, como siempre.
+    nonisolated(unsafe) public static var historialDeMuestra: (@Sendable (String) -> [RegistroHistorico])?
+
     /// Se llama cuando el modelo cambia la rutina (avanzar de semana, bloque nuevo, recargar).
     @ObservationIgnored public var alCambiarRutina: ((CambioRutina) -> Void)?
 
@@ -70,6 +93,9 @@ public final class ModeloEntreno {
     @ObservationIgnored let sesiones: SesionesDelDia
     /// SER-14: lo último que se escribió en el archivo de la rutina. Lo que cambie desde acá sale por la cola.
     @ObservationIgnored var sustitucionesGuardadas: [String: JSONValue] = [:]
+    /// La fecha real (local, YYYY-MM-DD) de cada serie confirmada del día que se mira (`claveFecha`): la del toque, la
+    /// del `registrado_en` o la de la cola. Para el volumen por músculo (revisión del 3-nov).
+    public internal(set) var fechasSeries: [String: String] = [:]
     /// SER-14: mientras se espera al servidor, lo que se tocó en el medio (ahí gana lo del teléfono). nil = no se espera.
     @ObservationIgnored var tocadasDuranteSync: Set<String>?
     /// SER-14: la sincronización en curso (una a la vez; cambiar de rutina la deja sin efecto).
@@ -88,6 +114,13 @@ public final class ModeloEntreno {
     @ObservationIgnored var habiaDiaGuardado = false
     /// Lo último que se escribió del descanso (el tick corre cada 250 ms: se escribe solo si cambió).
     @ObservationIgnored var descansoEnDisco: Descanso.Guardado?
+    /// ms: cuándo pasó la acción que se está aplicando, si no es ahora (un evento del reloj).
+    @ObservationIgnored var instanteEvento: Double?
+    /// Las series confirmadas por un evento del reloj (clave de `claveFecha` → `creado` del evento). Solo en memoria: sin
+    /// la marca, gana lo que hay en el teléfono.
+    @ObservationIgnored var seriesDelReloj: [String: Double] = [:]
+    /// Hay eventos del Apple Watch que esperan hace horas sin poder pasar (el aviso de Entreno); nil si no.
+    public internal(set) var relojEsperando: String?
 
     public init(cliente: ClienteRPC, token: String?, outbox: Outbox?, disco: Disco?, rutina: RutinaActiva, info: ClienteInfo? = nil,
                 catalogo: CatalogoEjercicios = CatalogoEjercicios([]), demo: Bool? = nil, zona: TimeZone = .current,
@@ -115,11 +148,16 @@ public final class ModeloEntreno {
         habiaDiaGuardado = guardado != nil
         let elegido = TextosEntreno.diaSugerido(n.estructura.dias, ultimo: guardado) ?? Dia(id: "d1")
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: self.demo, zona: zona)
+        dia.descansosPropios = disco?.leer([String: Int].self, Archivo.descansos) ?? [:]
         dia.sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(rutina.id)) ?? [:])
         sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: rutina.id))
             ?? dia.sustituciones
         desfaseReloj = disco?.leer(Double.self, Archivo.reloj) ?? 0
         descansoEnDisco = enDisco
+        // Los tildes de la preparación son del día: lo de otra fecha se descarta al arrancar.
+        let hoy = FechaJS.ymd(reloj(), zona: zona)
+        preparacionHecha = (disco?.leer([String: [Int]].self, Archivo.preparacion) ?? [:]).filter { $0.key.hasPrefix(hoy + "|") }
+        preparacionOculta = Set(disco?.leer([String].self, Archivo.preparacionOculta) ?? [])
         guardarDiaVisualizado()
     }
 
@@ -190,8 +228,10 @@ public final class ModeloEntreno {
         historialEnVuelo = [:]
         historialCargando = []
         generacionHistorial = generacionHistorial.mapValues { $0 + 1 }
+        let descansos = dia.descansosPropios
         dia = DiaEnCurso(dia: nuevo, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
+        dia.descansosPropios = descansos
         diaCompletadoMostrado = false
         guardarDiaVisualizado()
         async let historial: Void = precargarHistorial()
@@ -254,8 +294,13 @@ public final class ModeloEntreno {
         /// Hay con qué sustituirlo: una variante del mismo movimiento U otro ejercicio del mismo músculo (revisión del
         /// 21-oct: a «Fondos» o a la patada de tríceps, sin variantes, se les apagaba «Sustituir» aunque tenían 26 a 30).
         public let puedeSustituir: Bool
-        /// El chip del descanso ("2:30").
+        /// El chip del descanso ("2:30"): el elegido a mano para este ejercicio, si hay (E2), o el del plan.
         public let descanso: String
+        /// El mismo descanso en segundos, y el del plan (para «Volver al del plan»).
+        public let descansoSegundos: Int
+        public let descansoPlan: Int
+        /// El descanso es el elegido a mano, no el del plan.
+        public let descansoPropio: Bool
         public let comentarios: [Comentario]
     }
 
@@ -272,17 +317,40 @@ public final class ModeloEntreno {
             nota: ef.ejercicio.tipo == "calentamiento" ? nil : Progresiones.nota(ef.ejercicio, semanaActual: semana),
             sinKg: ReglasEjercicio.sinKg(ef.ejercicio), variantes: variantes,
             varianteActual: JS.verdadero(e?.variante) ?? variantes?.opciones.first,
-            filas: (e?.series.indices).map { $0.compactMap { dia.fila(lugar, $0, efectivo: ef.ejercicio) } } ?? [],
+            filas: (e?.series.indices).map { $0.compactMap { filaConLeyenda(lugar, $0, ef.ejercicio) } } ?? [],
             confirmadas: e?.series.filter(\.confirmada).count ?? 0,
             record: dia.record(lugar), ultimaVez: dia.ultimaVez(lugar, ahora: reloj()),
             puedeSustituir: !catalogo.sustitutos(de: ef).isEmpty || !catalogo.otrosDelMismoMusculo(de: ef).isEmpty,
-            descanso: TiempoEntreno.fmtTiempo(Double(plan.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)),
+            descanso: TiempoEntreno.fmtTiempo(Double(dia.descanso(lugar))),
+            descansoSegundos: dia.descanso(lugar), descansoPlan: plan.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto,
+            descansoPropio: dia.tieneDescansoPropio(lugar),
             comentarios: comentarios.comentarios(ejercicio: lugar))
     }
 
     /// `getEffectiveEx`: el sustituto si hay, o las fotos del catálogo si el plan no las trae.
     public func efectivo(_ ex: Ejercicio) -> EjercicioEfectivo {
         catalogo.efectivo(ex, sustitucion: SustitucionesEntreno.aplicada(dia.sustituciones[ex.id]))
+    }
+
+    /// El ejercicio que se hace con el equipo del catálogo: el del sustituto, y para el del plan el `equipment` de
+    /// `catalogo.resolver` (así «Sentadilla» o «Peso muerto» a secas reconocen la barra). Para la preparación y el RIR.
+    func hecho(_ ex: Ejercicio) -> Ejercicio {
+        var e = efectivo(ex).ejercicio
+        if e.equipo == nil { e.equipo = catalogo.resolver(ex)?.equipment }
+        return e
+    }
+
+    /// La fila, con el aviso de primera vez diciendo lo mismo que la leyenda («al fallo» o el rango del plan) y no el
+    /// «dejando 1–2 en reserva» fijo de la web (2.0.3).
+    func filaConLeyenda(_ lugar: String, _ idx: Int, _ ef: Ejercicio) -> FilaSerie? {
+        guard var f = dia.fila(lugar, idx, efectivo: ef) else { return nil }
+        f.calibracion = f.calibracion.map { RIRDelPlan.calibracion($0, leyenda: leyendaRIR(lugar)) }
+        return f
+    }
+
+    /// La leyenda debajo de «Series efectivas» («Al fallo» o el rango del plan); nil si el ejercicio no lleva RIR.
+    public func leyendaRIR(_ lugar: String) -> String? {
+        dia.leyendaRIR(lugar, efectivo: dia.ejercicio(lugar).map(hecho))
     }
 
     public func actualizarCatalogo(_ c: CatalogoEjercicios) { catalogo = c }
@@ -309,12 +377,22 @@ public final class ModeloEntreno {
     /// El check o el "✓ Tocá para registrar lo de la última vez" (SER-01/03/05). `preguntar` muestra la pregunta y
     /// devuelve lo que eligió el cliente (reabrir el día cerrado; "¿Está bien cargado?").
     @discardableResult
-    public func confirmarSerie(_ lugar: String, _ idx: Int, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
+    public func confirmarSerie(_ lugar: String, _ idx: Int, delReloj: Double? = nil, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado?
+        // La serie se fecha (y el récord y el volumen) con la hora de ahora en el iPhone, igual que el servidor
+        // (`registrado_en` = now()). `delReloj` (ms): cuándo se hizo en el reloj; solo ancla el descanso y deja anotado
+        // que la serie vino del reloj (una corrección posterior del reloj puede pisarla; un pendiente viejo, no).
+        let cuando = reloj()
+        instanteEvento = delReloj
+        defer { instanteEvento = nil }
+        seriesDelReloj[claveFecha(lugar, idx + 1)] = delReloj
         let ef = dia.ejercicio(lugar).map { efectivo($0).ejercicio }
+        dia.fijarRIRDelPlan(lugar, idx, efectivo: dia.ejercicio(lugar).map(hecho))
         while true {
-            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas)
+            let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(cuando, zona: zona))
+            anotarFecha(lugar, idx + 1, FechaJS.ymd(cuando, zona: zona), soloConfirmada: true)
+            if let r = paso.record { avisoRecord = AvisoRecord(id: UUID(), lugar: lugar, texto: r.texto) }
             if let c = await ejecutar(paso.efectos) { completo = c }
             guard let p = paso.pregunta, let motivo = paso.motivo else { return completo }
             let si = await preguntar(p)
@@ -323,6 +401,151 @@ public final class ModeloEntreno {
             case .registrarIgual: respuestas.registrarIgual = si
             }
         }
+    }
+
+    /// El aviso de récord ya se mostró (o se tocó): se va.
+    public func descartarRecord(_ id: UUID) {
+        if avisoRecord?.id == id { avisoRecord = nil }
+    }
+
+    /// E2 (2.0.3): el descanso de este ejercicio elegido a mano (por su clave, vale en cualquier día y rutina); nil vuelve
+    /// al del plan. Queda en el teléfono; el descanso que ya corre no cambia, el próximo sale con este.
+    public func elegirDescanso(_ lugar: String, segundos: Int?) {
+        let clave = ClaveEjercicio.de(dia.nombreEfectivo(lugar))
+        guard !clave.isEmpty else { return }
+        dia.descansosPropios[clave] = DescansoPropio.valido(segundos)
+        disco?.guardar(dia.descansosPropios, Archivo.descansos)
+    }
+
+    // MARK: - Preparación (E1, 2.0.3)
+
+    /// La preparación del lugar: la del plan si la trae (también con un sustituto, que la hereda), si no la que arma la app
+    /// con el tipo y el músculo del ejercicio que se hace (el músculo del sustituto si el catálogo lo tiene). El kg sigue
+    /// en vivo al de la primera serie efectiva (lo escrito o, si no, lo sugerido).
+    public func preparacion(_ lugar: String) -> [Preparacion.Serie] {
+        let lista = dia.lista
+        guard let i = lista.firstIndex(where: { $0.id == lugar }) else { return [] }
+        let (entradas, ejercicios) = entradasPreparacion(lista)
+        let ef = ejercicios[i]
+        let primera = dia.ejercicios[lugar]?.series.first
+        let sugerido = dia.fila(lugar, 0, efectivo: efectivo(lista[i]).ejercicio)?.placeholderKg ?? ""
+        let kg = Preparacion.kgEfectivo(escrito: primera?.kg ?? "", sugerido: sugerido)
+        let clave = "\(lugar)|\(kg.map { "\($0)" } ?? "-")|\(cacheEntradas?.firma ?? "")"
+        if let c = cachePreparacion[lugar], c.clave == clave { return c.series }
+        let series = Preparacion.series(dia: entradas, indice: i, nombre: ef.nombre, equipo: ef.equipo,
+                                        sinKg: ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kgEfectivo: kg, plan: ef.aproximaciones)
+        cachePreparacion[lugar] = (clave, series)
+        return series
+    }
+
+    /// Las entradas del día para la preparación (lo caro: resolver cada ejercicio en el catálogo). Se recalculan solo si
+    /// cambia el día, una sustitución o el catálogo; no en cada dibujo ni al tipear.
+    private func entradasPreparacion(_ lista: [Ejercicio]) -> ([Preparacion.Entrada], [Ejercicio]) {
+        let firma = "\(dia.dia.id ?? "")|\(lista.map(\.id))|\(dia.sustituciones.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" })|\(catalogo.entradas.count)"
+        if let c = cacheEntradas, c.firma == firma { return (c.entradas, c.ejercicios) }
+        var entradas: [Preparacion.Entrada] = [], ejercicios: [Ejercicio] = []
+        for ex in lista {
+            let ef = efectivo(ex)
+            entradas.append(Preparacion.Entrada(tipo: ef.ejercicio.tipo, musculo: musculo(ex), nombre: ef.ejercicio.nombre,
+                                                sinPeso: ReglasEjercicio.esSinPeso(nombre: ef.ejercicio.nombre, tipo: ef.ejercicio.tipo, equipo: ef.ejercicio.equipo)))
+            ejercicios.append(hecho(ex))
+        }
+        cacheEntradas = (firma, entradas, ejercicios)
+        cachePreparacion = [:]
+        return (entradas, ejercicios)
+    }
+
+    /// El músculo principal del ejercicio que se hace: el del sustituto si el catálogo lo tiene; si no, el del original
+    /// (`CatalogoEjercicios.resolver`: catalogo_slug → matched → reglas y nombre). nil = el catálogo no lo tiene (el
+    /// respaldo conservador). La misma cadena para la preparación (E1) y el volumen por músculo (S2).
+    public func musculo(_ ex: Ejercicio) -> String? {
+        efectivo(ex).slugSustituto.flatMap { catalogo.entrada(slug: $0)?.primaryMuscle } ?? catalogo.resolver(ex)?.primaryMuscle
+    }
+
+    // MARK: - Volumen por músculo (2.1, S2)
+
+    /// La clave de `fechasSeries`: el día, la semana, el lugar y el número de la serie.
+    func claveFecha(_ lugar: String, _ n: Int) -> String { "\(dia.dia.id ?? "")|\(semana)|\(lugar)|\(n)" }
+
+    /// Anota la fecha real (local) de una serie del día que se mira, si no tenía: la primera vale (el servidor conserva
+    /// el `registrado_en` al corregirla). `soloConfirmada`: solo si la serie quedó confirmada (el toque).
+    func anotarFecha(_ lugar: String, _ n: Int, _ fecha: String, soloConfirmada: Bool = false) {
+        guard fecha.count == 10 else { return }
+        if soloConfirmada {
+            guard let e = dia.ejercicios[lugar], n >= 1, n <= e.series.count, e.series[n - 1].confirmada else { return }
+        }
+        let k = claveFecha(lugar, n)
+        if fechasSeries[k] == nil { fechasSeries[k] = fecha }
+    }
+
+    /// Las series confirmadas en el teléfono del día que se mira, para el volumen por músculo (el cierre del día y Salud
+    /// → Fuerza), cada una con su fecha REAL: la del toque, la del `registrado_en` si vino del servidor o la de la cola si
+    /// quedó sin mandar. Una sin fecha conocida no va (ya está en el historial). El día que se mira puede ser de otro día
+    /// (`restaurarSesion` va por día y semana): antes todo salía con la fecha de hoy y se contaba dos veces (revisión del
+    /// 3-nov). Van con la clave del ejercicio con que se registraron, para no sumar lo que el historial ya tiene. Las de
+    /// preparación no están: nunca se registran.
+    public var registrosVolumenEnVivo: [VolumenMusculo.Registro] {
+        var vistos = Set<String>()
+        var out: [VolumenMusculo.Registro] = []
+        for ex in dia.lista where vistos.insert(ex.id).inserted {
+            guard let e = dia.ejercicios[ex.id], e.series.contains(where: \.confirmada) else { continue }
+            let m = musculo(ex), ef = efectivo(ex).ejercicio
+            for (i, s) in e.series.enumerated() where s.confirmada {
+                guard let fecha = fechasSeries[claveFecha(ex.id, i + 1)] else { continue }
+                let c = ClaveEjercicio.de(JS.verdadero(s.nombreRegistrado) ?? ef.nombre)
+                out.append(VolumenMusculo.Registro(musculo: m, tipo: ef.tipo, fecha: fecha, lugar: ex.id, serie: i + 1,
+                                                   clave: c.isEmpty ? ex.id : c))
+            }
+        }
+        return out
+    }
+
+    /// Lo que cambia `registrosVolumenEnVivo` (para el caché del volumen): las series confirmadas, con qué nombre y fecha.
+    public var firmaVolumenEnVivo: String {
+        _ = catalogo   // para que la vista se entere de un catálogo nuevo
+        var partes: [String] = [dia.dia.id ?? "", "\(semana)", "\(versionCatalogo)"]
+        partes.append(dia.sustituciones.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ","))
+        for ex in dia.lista {
+            guard let e = dia.ejercicios[ex.id] else { continue }
+            for (i, s) in e.series.enumerated() where s.confirmada {
+                partes.append("\(ex.id)#\(i)#\(s.nombreRegistrado ?? "")#\(fechasSeries[claveFecha(ex.id, i + 1)] ?? "")")
+            }
+        }
+        return partes.joined(separator: "|")
+    }
+
+    func clavePreparacion(_ lugar: String) -> String {
+        Preparacion.claveTildes(fecha: FechaJS.ymd(reloj(), zona: zona), dia: dia.dia.id ?? "", lugar: lugar)
+    }
+
+    /// Las filas de preparación ya hechas hoy en el lugar.
+    public func preparacionHecha(_ lugar: String) -> Set<Int> { Set(preparacionHecha[clavePreparacion(lugar)] ?? []) }
+
+    /// Tocar una fila de preparación: queda atenuada como hecha y arranca el descanso corto (30 s). Tocarla de nuevo la
+    /// desmarca (sin descanso). No se registra nada como carga.
+    public func tocarPreparacion(_ lugar: String, _ i: Int) {
+        let clave = clavePreparacion(lugar)
+        var hechas = Set(preparacionHecha[clave] ?? [])
+        if hechas.contains(i) {
+            hechas.remove(i)
+        } else {
+            hechas.insert(i)
+            descanso.iniciar(segundos: Double(Preparacion.descansoSegundos), ahora: ahoraMs)
+            guardarDescanso()
+        }
+        preparacionHecha[clave] = hechas.isEmpty ? nil : hechas.sorted()
+        disco?.guardar(preparacionHecha, Archivo.preparacion)
+    }
+
+    /// La preparación del lugar está oculta (por la clave del ejercicio que se hace).
+    public func preparacionOculta(_ lugar: String) -> Bool { preparacionOculta.contains(ClaveEjercicio.de(dia.nombreEfectivo(lugar))) }
+
+    /// «Ocultar» / «Mostrar»: se recuerda para ese ejercicio.
+    public func ocultarPreparacion(_ lugar: String, _ ocultar: Bool) {
+        let clave = ClaveEjercicio.de(dia.nombreEfectivo(lugar))
+        guard !clave.isEmpty else { return }
+        if ocultar { preparacionOculta.insert(clave) } else { preparacionOculta.remove(clave) }
+        disco?.guardar(preparacionOculta.sorted(), Archivo.preparacionOculta)
     }
 
     /// El lápiz (SER-06).
@@ -355,8 +578,13 @@ public final class ModeloEntreno {
     // MARK: - Sesión (SES-01/02/03)
 
     /// "▶ Empezar entrenamiento": arranca el cronómetro y crea la sesión.
-    public func empezar() async {
+    public func empezar(desde: Double? = nil) async {
         iniciadaConBoton = true
+        // Empezado en el reloj: el cronómetro arranca cuando se tocó allá, no cuando llegó.
+        if let desde, inicioSesion == nil, desde <= ahoraMs {
+            inicioSesion = desde
+            guardarInicio()
+        }
         await asegurarSesion()
     }
 
@@ -409,6 +637,9 @@ public final class ModeloEntreno {
     public func restaurarSesion() async {
         restauracion += 1
         let seq = restauracion
+        // Las fechas de la sesión anterior no se heredan (una clave repetida, otro bloque con los mismos lugares): vuelven
+        // del servidor (`registrado_en`) y de la cola, y lo que se toque desde ahora se anota de nuevo.
+        fechasSeries = [:]
         dia.sesionId = nil
         dia.diaFinalizado = false
         sesionIniciada = false
@@ -498,7 +729,10 @@ public final class ModeloEntreno {
         let (estados, registros) = await (e, r)
         guard seq == restauracion, dia.sesionId == sid else { return }
         if case .success(let f) = estados { dia.aplicarEstados(f) }
-        if case .success(let f) = registros { dia.aplicarRegistros(f) }
+        if case .success(let f) = registros {
+            for r in f { if let t = r.registradoEn { anotarFecha(r.ejercicioId, r.serie, FechaLocal.de(t, zona: zona)) } }
+            dia.aplicarRegistros(f)
+        }
         await aplicarPendientes()
     }
 
@@ -518,6 +752,7 @@ public final class ModeloEntreno {
                 e.series[i].confirmada = true
                 e.series[i].nombreRegistrado = d["ejercicioNombre"]?.comoTexto
                 e.series[i].varianteRegistrada = d["notas"]?.comoTexto
+                anotarFecha(ex, i + 1, FechaJS.ymd(Date(timeIntervalSince1970: op.ts / 1000), zona: zona))
                 dia.ejercicios[ex] = e
             } else if op.kind == "estado", let ex = p["exId"]?.comoTexto, let st = p["status"]?.comoTexto {
                 dia.estados[ex] = st
@@ -549,7 +784,7 @@ public final class ModeloEntreno {
 
     /// `writeFinish`: PRIMERO vacía la cola (las series tienen que estar en la base antes de cerrar), después
     /// `finalizar_sesion` con la duración (null si pasa de 6 h). Un `false` es que no se cerró.
-    public func cerrarDia(notas: String) async -> ResultadoCierre {
+    public func cerrarDia(notas: String, fin: Double? = nil) async -> ResultadoCierre {
         guard !demo, let token else {
             // La demo no cierra nada en el servidor, pero el descanso termina igual.
             if demo {
@@ -561,7 +796,8 @@ public final class ModeloEntreno {
         await asegurarSesion()
         guard let sid = dia.sesionId else { return .sinSesion }
         await outbox?.drenar()
-        let minutos = TiempoEntreno.minutosSesion(inicio: inicioSesion, ahora: ahoraMs)
+        // `fin`: cuándo se terminó de verdad (el «terminar» del reloj que llega después).
+        let minutos = TiempoEntreno.minutosSesion(inicio: inicioSesion, ahora: min(fin ?? ahoraMs, ahoraMs))
         let notas = JS.trim(notas)
         let r = await cliente.llamar("mypump_finalizar_sesion", [
             "p_token": .texto(token), "p_sesion_id": .texto(sid), "p_notas": notas.isEmpty ? .null : .texto(notas),
@@ -659,8 +895,10 @@ public final class ModeloEntreno {
         let semana = nueva.semanaActual == 0 ? 1 : nueva.semanaActual
         let elegido = TextosEntreno.diaSugerido(n.estructura.dias, ultimo: disco?.leer(String.self, Archivo.dia(nueva.id))) ?? Dia(id: "d1")
         let sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(nueva.id)) ?? [:])
+        let descansos = dia.descansosPropios
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
+        dia.descansosPropios = descansos
         sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: nueva.id)) ?? sustituciones
         syncSustituciones = nil
         tocadasDuranteSync = nil
@@ -729,7 +967,7 @@ public final class ModeloEntreno {
     }
 
     func traerHistorial(clave: String?, lugar: String) async -> Historial {
-        guard let token else { return .filas([]) }
+        guard let token else { return .filas(Self.historialDeMuestra?(clave ?? "") ?? []) }
         if let clave, !sinHistorialPorClave {
             switch await porClave([clave]) {
             case .some(.some(let m)): return .filas(m[clave] ?? [])
@@ -755,7 +993,7 @@ public final class ModeloEntreno {
         for k in ks { m[k] = [] }
         guard !ks.isEmpty else { return .some(m) }
         switch await cliente.filas("mypump_get_historico_por_clave",
-                                   ["p_token": .texto(token), "p_claves": .lista(ks.map(JSONValue.texto)), "p_limit_por_ej": .numero(48)],
+                                   ["p_token": .texto(token), "p_claves": .lista(ks.map(JSONValue.texto)), "p_limit_por_ej": .numero(Double(RecordSerie.topeHistorial))],
                                    como: RegistroHistorico.self) {
         case .failure(let e):
             if Self.noExiste(e) { sinHistorialPorClave = true; return nil }
@@ -994,8 +1232,12 @@ public final class ModeloEntreno {
             case .encolar(let kind, let payload, let clave):
                 await outbox?.encolar(kind, payload, dedupeKey: clave)
             case .iniciarDescanso(let s):
-                descanso.iniciar(segundos: s, ahora: ahoraMs)
-                guardarDescanso()
+                // Una serie que llega tarde (del reloj) ancla el descanso a cuando se hizo; si ya terminó, no arranca.
+                let desde = min(instanteEvento ?? ahoraMs, ahoraMs)
+                if desde + (s + 2) * 1000 > ahoraMs {
+                    descanso.iniciar(segundos: s, ahora: desde)
+                    guardarDescanso()
+                }
             case .detenerDescanso:
                 descanso.detener()
                 guardarDescanso()
@@ -1053,6 +1295,11 @@ public final class ModeloEntreno {
         static let sesiones = "entreno-sesiones.json"
         static let descanso = "entreno-descanso.json"
         static let legado = "legado-entreno.json"
+        /// E2: el descanso elegido a mano por ejercicio (`[clave: segundos]`), de la cuenta y no de una rutina.
+        static let descansos = "entreno-descansos.json"
+        /// E1: los tildes de la preparación de hoy y los ejercicios con la preparación oculta.
+        static let preparacion = "entreno-preparacion.json"
+        static let preparacionOculta = "entreno-preparacion-oculta.json"
         static func dia(_ rutinaId: String) -> String { "entreno-dia_\(rutinaId).json" }
         static func sustituciones(_ rutinaId: String) -> String { "ejercicios-swaps_\(rutinaId).json" }
         /// SER-14: el desfase del reloj con el servidor.

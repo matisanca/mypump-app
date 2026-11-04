@@ -261,3 +261,52 @@ private final class Estados: @unchecked Sendable {
     var lista: [EstadoGuardado] { lock.withLock { _lista } }
     func anotar(_ e: EstadoGuardado) { lock.withLock { _lista.append(e) } }
 }
+
+/// La cola, para encolar desde adentro del ejecutor (como un toque mientras vuela la pasada).
+private final class CajaCola: @unchecked Sendable {
+    var o: Outbox?
+}
+
+@Suite("Outbox: lo encolado en vuelo con una pasada que falla")
+struct OutboxEnVueloTests {
+    @Test func unRechazoEnVueloNoFrenaLoEncoladoDurante() async {
+        // La pasada en vuelo solo vio k1 (rechazada: la base devolvió vacío). k2 se encoló durante el vuelo: drenar tiene que
+        // mandarla igual («hoy no la como» dejaba la marca en el servidor; «cerrar el día», la sesión sin la última serie).
+        let r = Registro()
+        let primera = Bandera()
+        let caja = CajaCola()
+        let o = cola { op in
+            await r.anotar(op.dedupeKey ?? "")
+            guard op.dedupeKey == "k1" else { return ok }
+            if await !primera.valor {
+                await primera.prender()
+                _ = await caja.o?.encolar("carga", carga(2), dedupeKey: "k2")
+            }
+            return .respuesta(.success(.lista([])))
+        }
+        caja.o = o
+        _ = await o.encolar("carga", carga(1), dedupeKey: "k1")
+        await o.drenar()
+        #expect(await r.enviados == ["k1", "k1", "k2"])
+        // k1 sigue pendiente con sus intentos (una por pasada); drenar no la repite sola hasta agotarlos.
+        let quedan = await o.operaciones
+        #expect(quedan.map(\.dedupeKey) == ["k1"])
+        #expect(quedan.first?.tries == 2)
+    }
+
+    @Test func unCorteEnVueloSiFrenaLoEncoladoDurante() async {
+        // Sin red no tiene sentido otra pasada: k2 queda para el reintento.
+        let r = Registro()
+        let caja = CajaCola()
+        let o = cola { op in
+            await r.anotar(op.dedupeKey ?? "")
+            if op.dedupeKey == "k1" { _ = await caja.o?.encolar("carga", carga(2), dedupeKey: "k2") }
+            return .respuesta(.failure(ErrorRPC(clase: .red, status: 0, mensaje: "x")))
+        }
+        caja.o = o
+        _ = await o.encolar("carga", carga(1), dedupeKey: "k1")
+        await o.drenar()
+        #expect(await r.enviados == ["k1"])
+        #expect(await o.operaciones.map(\.dedupeKey) == ["k1", "k2"])
+    }
+}

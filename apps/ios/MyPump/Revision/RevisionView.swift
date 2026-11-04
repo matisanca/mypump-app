@@ -3,10 +3,10 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Revisión: lo de la semana (fotos, check con el peso, peso), Mi reloj y, al final, la recuperación y la salud. Mi Día
-/// (la racha, el entrenamiento del día, los hábitos, el agua y los últimos 30 días) se sacó el 15-oct: nadie lo usaba
-/// (Mati). En iPad, en dos columnas: lo semanal a la izquierda, la salud a la derecha. Con una cuenta sale de `ModeloRevision`, `ModeloFotos` y `ModeloSalud`; en la demo y en los
-/// bocetos, de las muestras (y sin salud: no existe sin cuenta).
+/// Revisión: solo subir la semana (2.1): las fotos y el check, que trae el peso del día. El peso con su media, Mi reloj y
+/// la recuperación se mudaron a Salud (Cuerpo y Recuperación). En iPad, en dos columnas: las fotos a la izquierda, el
+/// check a la derecha. Con una cuenta sale de `ModeloRevision` y `ModeloFotos`; en la demo y en los bocetos, de las
+/// muestras.
 struct RevisionView: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
@@ -16,9 +16,8 @@ struct RevisionView: View {
 
     private var revision: ModeloRevision? { modelo.conMuestras ? nil : modelo.revision }
     private var modeloFotos: ModeloFotos? { modelo.conMuestras ? nil : modelo.fotos }
-    /// Sin cuenta: las muestras en los bocetos; la demo, como la web, sin fotos, check ni peso (Mi Día trae su semilla).
+    /// Sin cuenta: las muestras en los bocetos; la demo, como la web, sin fotos ni check.
     private var muestras: Muestras { datos.paraPantalla() }
-    private var salud: ModeloSalud? { modelo.conMuestras ? nil : modelo.salud }
 
     var body: some View {
         NavigationStack {
@@ -30,11 +29,11 @@ struct RevisionView: View {
                                 avisoPlan
                                 // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                                 HStack(alignment: .top, spacing: Espacio.l) {
-                                    VStack(alignment: .leading, spacing: Espacio.xl) { fotos; check; peso; reloj }
+                                    VStack(alignment: .leading, spacing: Espacio.xl) { fotos }
                                         .frame(maxWidth: .infinity, alignment: .top)
                                         .fixedSize(horizontal: false, vertical: true)
                                         .topeArriba()
-                                    VStack(alignment: .leading, spacing: Espacio.xl) { saludDeHoy }
+                                    VStack(alignment: .leading, spacing: Espacio.xl) { check }
                                         .frame(maxWidth: .infinity, alignment: .top)
                                         .fixedSize(horizontal: false, vertical: true)
                                         .topeArriba()
@@ -42,7 +41,7 @@ struct RevisionView: View {
                             }
                             .anchoLectura(Ancho.doble)
                         } else {
-                            VStack(alignment: .leading, spacing: Espacio.xl) { avisoPlan; fotos; check; peso; reloj; saludDeHoy }
+                            VStack(alignment: .leading, spacing: Espacio.xl) { avisoPlan; fotos; check }
                                 .anchoLectura()
                         }
                     }
@@ -51,16 +50,15 @@ struct RevisionView: View {
                     .padding(.bottom, Espacio.xl)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                // Tirar para actualizar: el check, el peso, las fotos y la salud (sin cuenta no hay nada que traer).
+                // Tirar para actualizar: el check y las fotos (sin cuenta no hay nada que traer).
                 .refreshable {
                     guard let revision else { return }
                     async let r: Void = revision.cargarRevision()
                     async let f: Void = modeloFotos?.cargar() ?? ()
-                    async let s: Void = salud?.cargar() ?? ()
-                    _ = await (r, f, s)
+                    _ = await (r, f)
                 }
                 .task {
-                    // Bocetos: `-ir peso` (o check, reloj, midia, dias) abre desplazado hasta esa sección.
+                    // Bocetos: `-ir check` (o fotos) abre desplazado hasta esa sección.
                     guard let ancla = DemoUI.ir else { return }
                     try? await Task.sleep(for: .milliseconds(350))
                     lector.scrollTo(ancla, anchor: .top)
@@ -125,23 +123,6 @@ struct RevisionView: View {
     private var check: some View {
         CheckSemanal(revision: revision, muestra: DemoUI.lleno ? MuestrasExtra.checkinLleno : muestras.checkin).id("check")
     }
-    private var peso: some View { PesoTarjeta(revision: revision, saludMuestra: muestras.salud).id("peso") }
-    /// Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar). Sin cuenta no hay.
-    @ViewBuilder private var reloj: some View {
-        if let salud { MiRelojView(modelo: salud).id("reloj") }
-    }
-    /// La recuperación y la salud (SAL-09/10), las cards de `ModeloSalud`. Conserva el ancla "midia": los avisos y links
-    /// que llevaban a Mi Día caen acá. Sin cuenta no hay salud.
-    @ViewBuilder private var saludDeHoy: some View {
-        if let salud {
-            VStack(alignment: .leading, spacing: Espacio.l) {
-                CardRecuperacionView(modelo: salud)
-                CardSaludView(modelo: salud)
-            }
-            .id("midia")
-        }
-    }
-
     /// "Semana del 12 al 18 de octubre" (de lunes a domingo).
     static func semanaActual(_ hoy: Date = .now) -> String {
         var cal = Calendar(identifier: .gregorian)

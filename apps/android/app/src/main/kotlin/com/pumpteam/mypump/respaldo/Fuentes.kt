@@ -221,11 +221,11 @@ fun RenglonFuentes(
     if (abierta) HojaFuentes(alCerrar = { abierta = false })
 }
 
-/** La fila al pie de Dieta, Entreno y Mi Día (GEN-09): "Respaldo científico del plan" con las siglas de cada escena. */
+/** La fila al pie de Dieta, Entreno y Salud → Recuperación (GEN-09): "Respaldo científico del plan" con las siglas de cada escena. */
 enum class OrigenRespaldo(val subtitulo: String) {
     DIETA("Mifflin-St Jeor · ISSN · NASEM · OMS · Guías Alimentarias (Argentina)"),
     ENTRENO("ACSM · OMS · MedlinePlus (NIH)"),
-    MI_DIA("NASEM · OMS · MedlinePlus (NIH)"),
+    RECUPERACION("NASEM · OMS · MedlinePlus (NIH)"),
 }
 
 @Composable

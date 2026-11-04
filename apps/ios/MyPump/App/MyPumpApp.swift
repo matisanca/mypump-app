@@ -14,6 +14,9 @@ struct MyPumpApp: App {
     init() {
         // Apple Health cableada explícita (si no, ModeloSalud la busca por nombre y un renombre la apagaría sin avisar).
         ModeloSalud.fuenteDelSistema = FuenteHealthKit()
+        #if DEBUG
+        if DemoUI.historialDeMuestra { ModeloEntreno.historialDeMuestra = { DemoUI.filasDeMuestra($0) } }
+        #endif
         // Los avisos de las pestañas con los colores de la marca: el verde del logo con el número en blanco.
         UITabBarItem.appearance().badgeColor = UIColor(hex: 0x1D9330)
         UITabBarItem.appearance().setBadgeTextAttributes([.foregroundColor: UIColor.white], for: .normal)
@@ -38,7 +41,11 @@ struct MyPumpApp: App {
                 .environment(\.locale, Locale(identifier: "es_AR"))
                 .tint(Color.marcaTexto)
                 .preferredColorScheme(tema == "dark" ? .dark : nil)
-                .task { entrarEnDemoSiSePide() }
+                .task {
+                    entrarEnDemoSiSePide()
+                    // El Apple Watch (2.2): la rutina al reloj y sus series a la cola. Callado sin reloj con la app.
+                    PuenteReloj.compartido.activar()
+                }
         }
     }
 
@@ -76,9 +83,14 @@ struct Raiz: View {
     let datos: Muestras
     @State private var modelo = Proveedor.modelo
     // `simctl launch … -pestana dieta` abre directo en esa pestaña (capturas y pruebas de interfaz).
-    @State private var navegacion = Navegacion(pestaña: Pestaña(rawValue: UserDefaults.standard.string(forKey: "pestana") ?? "") ?? .entreno)
+    @State private var navegacion = Navegacion(pestaña: Pestaña(argumento: UserDefaults.standard.string(forKey: "pestana") ?? "") ?? .entreno)
 
-    enum Pestaña: String, Hashable { case entreno, dieta, chat, revision, progreso }
+    enum Pestaña: String, Hashable {
+        case entreno, dieta, chat, revision, salud
+
+        /// `-pestana progreso` (scripts y pruebas viejas) es Salud desde la 2.1.
+        init?(argumento: String) { self.init(rawValue: argumento == "progreso" ? "salud" : argumento) }
+    }
 
     /// Entreno: comentarios de Mati sin leer en los ejercicios. Chat: lo de Mati que llegó con el chat cerrado.
     /// Revisión: lo que falta de la semana (check y fotos). Siempre los reales: en la demo y en los bocetos, ninguno.
@@ -98,7 +110,7 @@ struct Raiz: View {
                         .badge(badgeChat)
                     Tab("Revisión", systemImage: "checklist", value: Pestaña.revision) { revision }
                         .badge(badgeRevision)
-                    Tab("Progreso", systemImage: "chart.line.uptrend.xyaxis", value: Pestaña.progreso) { progreso }
+                    Tab("Salud", systemImage: "heart.text.square.fill", value: Pestaña.salud) { salud }
                 }
                 .tabViewStyle(.sidebarAdaptable)
             } else {
@@ -110,7 +122,7 @@ struct Raiz: View {
                         .badge(badgeChat)
                     revision.tabItem { Label("Revisión", systemImage: "checklist") }.tag(Pestaña.revision)
                         .badge(badgeRevision)
-                    progreso.tabItem { Label("Progreso", systemImage: "chart.line.uptrend.xyaxis") }.tag(Pestaña.progreso)
+                    salud.tabItem { Label("Salud", systemImage: "heart.text.square.fill") }.tag(Pestaña.salud)
                 }
             }
         }
@@ -125,6 +137,13 @@ struct Raiz: View {
             withAnimation(.snappy) { navegacion.ir(a: destino) }
             CentroAvisos.shared.destino = nil
         }
+        // R2 de la 2.0.3: completar la semana de revisión (o terminar de cargarla al abrir) vuelve a armar el aviso del
+        // domingo, que se saltea si ya está todo.
+        .onChange(of: modelo.semanaDeRevisionCompleta) { Task { await CentroAvisos.shared.alCambiarLaSemana() } }
+        #if DEBUG
+        // `-verAvisoDomingo YES`: lo agendado del domingo, para que la prueba de interfaz lo lea.
+        .overlay(alignment: .top) { if UserDefaults.standard.bool(forKey: "verAvisoDomingo") { AvisoDomingoDePrueba() } }
+        #endif
         // `?diag=health` (SAL-13): el diagnóstico de Salud directo, sin los cinco toques. Sin cuenta no hay qué diagnosticar.
         .sheet(isPresented: Binding(get: { CentroAvisos.shared.diagnosticoSalud && modelo.salud != nil },
                                     set: { if !$0 { CentroAvisos.shared.diagnosticoSalud = false } })) {
@@ -136,5 +155,26 @@ struct Raiz: View {
     private var dieta: some View { DietaView(datos: datos).islaDeDescanso() }
     private var chat: some View { ChatView(datos: datos).islaDeDescanso() }
     private var revision: some View { RevisionView(datos: datos).islaDeDescanso() }
-    private var progreso: some View { ProgresoView(datos: datos).islaDeDescanso() }
+    private var salud: some View { SaludView(datos: datos).islaDeDescanso() }
 }
+
+#if DEBUG
+/// `-verAvisoDomingo YES`: cuándo está agendado el aviso del domingo ("2026-11-08 11:00", o "sin aviso"), releído cada
+/// segundo. Solo para la prueba de interfaz del R2 de la 2.0.3: lo agendado no se ve desde XCUITest.
+private struct AvisoDomingoDePrueba: View {
+    @State private var texto = ""
+    var body: some View {
+        Text(texto.isEmpty ? "sin aviso" : texto)
+            .font(.caption2.monospaced())
+            .padding(4)
+            .background(.yellow)
+            .accessibilityIdentifier("aviso-domingo")
+            .task {
+                while !Task.isCancelled {
+                    texto = await CentroAvisos.shared.avisoDomingoAgendado()
+                    try? await Task.sleep(for: .seconds(1))
+                }
+            }
+    }
+}
+#endif

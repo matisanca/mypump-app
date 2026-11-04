@@ -36,6 +36,21 @@ class AgendaAvisosTest {
         assertEquals(Instant.parse("2026-10-25T14:00:00Z"), AvisoDomingo.proximo(en(buenosAires, "2026-10-19T00:00"), buenosAires))
     }
 
+    /** R2 de la 2.0.3: con la semana de revisión completa, el aviso de esta semana se saltea; incompleta, como siempre. */
+    @Test
+    fun conLaSemanaCompletaSeSalteaElDomingo() {
+        val sabado = en(buenosAires, "2026-10-31T18:00")
+        assertEquals(Instant.parse("2026-11-08T14:00:00Z"), AvisoDomingo.proximo(sabado, buenosAires, semanaCompleta = true))
+        assertEquals(Instant.parse("2026-11-01T14:00:00Z"), AvisoDomingo.proximo(sabado, buenosAires, semanaCompleta = false))
+        val domingo = en(buenosAires, "2026-11-01T10:30")
+        assertEquals(Instant.parse("2026-11-08T14:00:00Z"), AvisoDomingo.proximo(domingo, buenosAires, semanaCompleta = true))
+        assertEquals(Instant.parse("2026-11-01T14:00:00Z"), AvisoDomingo.proximo(domingo, buenosAires))
+        // El lunes la semana es otra: completa, el domingo de ESTA semana se saltea.
+        val lunes = en(buenosAires, "2026-11-02T09:00")
+        assertEquals(Instant.parse("2026-11-08T14:00:00Z"), AvisoDomingo.proximo(lunes, buenosAires))
+        assertEquals(Instant.parse("2026-11-15T14:00:00Z"), AvisoDomingo.proximo(lunes, buenosAires, semanaCompleta = true))
+    }
+
     /** La hora sale del reloj de ESE domingo: con el cambio de hora en el medio sigue sonando a las 11:00 del teléfono. */
     @Test
     fun conCambioDeHoraSigueSiendoALas11DelTelefono() {
@@ -256,7 +271,7 @@ class AgendaAvisosTest {
         // El que mostró el sistema con la app en segundo plano: FCM agrega sus claves a los datos de push.py.
         val fcm = setOf(DestinoAviso.EXTRA_FCM, "from", "google.sent_time", DestinoAviso.EXTRA_DESTINO)
         assertEquals(DestinoAviso.DIETA, DestinoAviso.alTocar(fcm, "diet"))
-        assertEquals(DestinoAviso.MI_DIA, DestinoAviso.alTocar(fcm, "myday"))
+        assertEquals(DestinoAviso.RECUPERACION, DestinoAviso.alTocar(fcm, "myday"))
         // Sin destino o con el histórico "comentarios": Chat.
         assertEquals(DestinoAviso.CHAT, DestinoAviso.alTocar(setOf(DestinoAviso.EXTRA_FCM, "from"), null))
         assertEquals(DestinoAviso.CHAT, DestinoAviso.alTocar(fcm, "comentarios"))

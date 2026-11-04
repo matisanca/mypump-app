@@ -85,7 +85,7 @@ import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
 import com.pumpteam.mypump.guia.GuiaPantalla
 import com.pumpteam.mypump.misdatos.MisDatosPantalla
-import com.pumpteam.mypump.progreso.ProgresoPantalla
+import com.pumpteam.mypump.salud.SaludPantalla
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.revision.RevisionPantalla
 import com.pumpteam.mypump.salud.DiagnosticoSaludDesdeLink
@@ -160,7 +160,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                     } else {
                                         RevisionPantalla(modelo, alAbrirMisDatos = { navegacion.misDatos = true })
                                     }
-                                Pestana.PROGRESO -> ProgresoPantalla(modelo)
+                                Pestana.SALUD -> SaludPantalla(modelo)
                             }
                         }
                     }
@@ -275,6 +275,18 @@ fun pendientesDeLaSemana(modelo: ModeloApp): FotosProgreso.Pendientes {
     return remember(revision, fotos, checkin, subidas, enCola) { modelo.pendientesDeLaSemana }
 }
 
+/** La semana de revisión completa (`semanaDeRevisionCompleta` del modelo), mirando el check y las fotos para recomponer. */
+@Composable
+fun semanaDeRevisionCompleta(modelo: ModeloApp): Boolean {
+    val revision by modelo.revision.collectAsStateWithLifecycle()
+    val fotos by modelo.fotos.collectAsStateWithLifecycle()
+    val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    val checkin = revision?.checkin?.collectAsStateWithLifecycle()?.value
+    val subidas = fotos?.fotos?.collectAsStateWithLifecycle()?.value
+    val enCola = fotos?.pendientes?.collectAsStateWithLifecycle()?.value
+    return remember(revision, fotos, esDemo, checkin, subidas, enCola) { modelo.semanaDeRevisionCompleta }
+}
+
 /** En la demo: un aviso fijo arriba con la salida. */
 @Composable
 private fun BarraDemo(alSalir: () -> Unit) {
@@ -315,7 +327,7 @@ private fun BannerSinConexion() {
 }
 
 /**
- * "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno, Dieta, Chat y Progreso.
+ * "Te faltan tu check y tus fotos de la semana · entrá a Revisión" (GEN-03), arriba de Entreno, Dieta, Chat y Salud.
  * Tocarlo lleva a Revisión, a lo que falta: al check si es lo único, si no a las fotos (como iOS). Con todo hecho o en la
  * demo no se ve.
  */

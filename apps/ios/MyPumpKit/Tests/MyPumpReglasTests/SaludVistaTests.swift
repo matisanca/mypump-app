@@ -114,7 +114,7 @@ struct SaludVistaTests {
         for n in [Int.max, Int.min, 7] {
             let card = SaludVista.cardRecuperacion(serie: [RecuperacionDia(fecha: hoy, estado: "calibrando", diasDatos: n)], conectado: true,
                                                    mostrar: true, salud: [], historial: nil, sinDatos: false, hoy: hoy)
-            if case .calibrando(let dias, let pct, _) = card { #expect(dias == n && pct <= 100) } else { Issue.record("\(card)") }
+            if case .calibrando(let dias, let pct, _, _) = card { #expect(dias == n && pct <= 100) } else { Issue.record("\(card)") }
         }
     }
 
@@ -260,5 +260,78 @@ struct SaludVistaTests {
         #expect(RelojLocal.iso(1_792_032_617_345) == "2026-10-15T02:50:17.345Z")
         #expect(RelojLocal.desdeISO("2026-10-14 13:59:00.123456+00:00") == 1_791_986_340_123)
         #expect(RelojLocal.desdeISO("2026-10-14T13:59:00Z") == 1_791_986_340_000)
+    }
+}
+
+// MARK: - Confianza y motivo_falta (nativa_007, R1 de la 2.0.3). Los mismos casos en SaludVistaTest.kt.
+
+struct ConfianzaRecuperacionTests {
+    private let hoy = "2026-10-14"
+
+    private func card(_ serie: [RecuperacionDia], conectado: Bool = true, salud: [FilaSalud] = [],
+                      historial: (Int, Int)? = nil) -> SaludVista.CardRecuperacion {
+        SaludVista.cardRecuperacion(serie: serie, conectado: conectado, mostrar: true, salud: salud,
+                                    historial: historial.map { ($0.0, $0.1) }, sinDatos: false, hoy: hoy)
+    }
+
+    @Test func decodificaLasCatorceColumnasYTambienLasDoceViejas() throws {
+        let nueva = #"[{"fecha":"2026-10-14","score":58,"estado":"ok","banda":"media","motivo_falta":"Confianza baja. Para mejorarla, usá el reloj para dormir.","confianza":"baja"}]"#
+        let vieja = #"[{"fecha":"2026-10-14","score":58,"estado":"ok","banda":"media","dias_datos":30,"banda_provisoria":false,"estado_autonomico":null,"hrv_metrica":null,"discordancia":false,"cobertura":{},"componentes":{},"motivos":[]}]"#
+        let n = try JSONDecoder().decode([RecuperacionDia].self, from: Data(nueva.utf8))
+        #expect(n.first?.confianza == "baja")
+        #expect(n.first?.motivoFalta == "Confianza baja. Para mejorarla, usá el reloj para dormir.")
+        let v = try JSONDecoder().decode([RecuperacionDia].self, from: Data(vieja.utf8))
+        #expect(v.first?.score == 58 && v.first?.confianza == nil && v.first?.motivoFalta == nil)
+        let r = try JSONDecoder().decode([Recuperacion].self, from: Data(vieja.utf8))
+        #expect(r.first?.confianza == nil)
+        // Un tipo raro (un número donde va texto) no tira abajo la fila: la confianza desconocida no muestra nada.
+        let rara = try JSONDecoder().decode([RecuperacionDia].self, from: Data(#"[{"fecha":"2026-10-14","score":40,"confianza":3}]"#.utf8))
+        #expect(rara.first?.score == 40 && SaludVista.confianza(rara.first) == nil)
+    }
+
+    @Test func soloMediaYBajaConScoreSeMuestran() {
+        let motivo = "Confianza media. Para mejorarla, dejá el reloj puesto toda la noche para que mida la VFC."
+        #expect(SaludVista.confianza(RecuperacionDia(fecha: hoy, score: 70, motivoFalta: nil, confianza: "alta")) == nil)
+        #expect(SaludVista.confianza(RecuperacionDia(fecha: hoy, score: 70)) == nil)
+        #expect(SaludVista.confianza(RecuperacionDia(fecha: hoy, score: 70, confianza: "rara")) == nil)
+        #expect(SaludVista.confianza(RecuperacionDia(fecha: hoy, estado: "insuficiente", confianza: "baja")) == nil)
+        let media = SaludVista.confianza(RecuperacionDia(fecha: hoy, score: 70, motivoFalta: motivo, confianza: "media"))
+        #expect(media == .init(nivel: "media", motivo: "Para mejorarla, dejá el reloj puesto toda la noche para que mida la VFC."))
+        #expect(media?.etiqueta == "Confianza media" && media?.apagado == false)
+        let baja = SaludVista.confianza(RecuperacionDia(fecha: hoy, score: 45, motivoFalta: "  ", confianza: "BAJA"))
+        #expect(baja == .init(nivel: "baja", motivo: nil))
+        #expect(baja?.etiqueta == "Confianza baja" && baja?.apagado == true)
+        // Un texto sin el prefijo se muestra entero.
+        #expect(SaludVista.confianza(RecuperacionDia(fecha: hoy, score: 45, motivoFalta: "Usá el reloj.", confianza: "baja"))?.motivo == "Usá el reloj.")
+    }
+
+    private func conScore(nivel: String?, motivo: String?) -> SaludVista.ConScore? {
+        let fila = RecuperacionDia(fecha: hoy, score: 48, estado: "ok", banda: "media", motivoFalta: motivo, confianza: nivel)
+        if case .conScore(let c) = card([fila]) { return c }
+        return nil
+    }
+
+    @Test func laCardConScoreLlevaLaConfianza() {
+        #expect(conScore(nivel: "alta", motivo: nil)?.confianza == nil)
+        #expect(conScore(nivel: nil, motivo: nil)?.confianza == nil)
+        #expect(conScore(nivel: "baja", motivo: "Confianza baja. Para mejorarla, usá el reloj para dormir.")?.confianza
+                == .init(nivel: "baja", motivo: "Para mejorarla, usá el reloj para dormir."))
+    }
+
+    @Test func sinScoreElMotivoReemplazaLaNota() {
+        let falta = "Faltan datos del reloj para calcular la recuperación de este día. Alcanza con usar el reloj para dormir o con que registre la frecuencia cardíaca en reposo."
+        let serie = [RecuperacionDia(fecha: hoy, estado: "insuficiente", motivoFalta: falta)]
+        #expect(card(serie) == .conectadoSinScore(.esperando, motivo: falta))
+        // Trayendo el historial, el motivo todavía no aplica; sin conectar, se ofrece conectar como siempre.
+        #expect(card(serie, historial: (3, 60)) == .conectadoSinScore(.trayendoHistorial(hecho: 3, total: 60)))
+        #expect(card(serie, conectado: false) == .sinConectar)
+        // Sin el campo (servidor viejo), como antes.
+        #expect(card([RecuperacionDia(fecha: hoy, estado: "insuficiente")]) == .conectadoSinScore(.esperando))
+    }
+
+    @Test func calibrandoLlevaElMotivo() {
+        let falta = "Calibrando, hay 5 de 14 días con datos del reloj. Faltan 9 días."
+        let c = card([RecuperacionDia(fecha: hoy, estado: "calibrando", diasDatos: 5, motivoFalta: falta)])
+        #expect(c == .calibrando(dias: 5, porcentaje: 36, yaSe: "", motivo: falta))
     }
 }

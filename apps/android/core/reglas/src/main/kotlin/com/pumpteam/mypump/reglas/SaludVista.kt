@@ -142,11 +142,11 @@ object SaludVista {
         data object SinConectar : CardRecuperacion
 
         /** Conectado pero sin score: qué falta (trayendo historial, faltan datos de la noche, solo pasos, no llega nada,
-         *  esperando). */
-        data class ConectadoSinScore(val sinScore: SinScore) : CardRecuperacion
+         *  esperando). [motivo] es el `motivo_falta` del servidor (nativa_007): reemplaza la nota de abajo. */
+        data class ConectadoSinScore(val sinScore: SinScore, val motivo: String? = null) : CardRecuperacion
 
-        /** Aprendiendo la normal del cliente: n de 14 días. */
-        data class Calibrando(val dias: Int, val porcentaje: Int, val yaSe: String) : CardRecuperacion
+        /** Aprendiendo la normal del cliente: n de 14 días. [motivo], el `motivo_falta` del servidor ("faltan 9 días"). */
+        data class Calibrando(val dias: Int, val porcentaje: Int, val yaSe: String, val motivo: String? = null) : CardRecuperacion
 
         /** El cliente apagó el número. */
         data object Oculto : CardRecuperacion
@@ -196,7 +196,48 @@ object SaludVista {
         val provisoria: Boolean,
         /** El gráfico de 14 días (los puntos con score; hacen falta 3). */
         val grafico: List<Pair<String, Int>>,
+        /** Confianza media o baja (nativa_007); con alta o sin el dato, null y la card queda como siempre. */
+        val confianza: Confianza? = null,
     )
+
+    /**
+     * Cuánto se puede confiar en un score (nativa_007: alta = variabilidad nocturna + sueño con fases; baja = una sola señal
+     * y sin variabilidad). Solo existe para media y baja: con alta no se muestra nada. Gemelo de `SaludVista.Confianza`.
+     */
+    data class Confianza(
+        /** media | baja */
+        val nivel: String,
+        /** Cómo mejorarla, sin repetir el nivel: "Para mejorarla, usá el reloj para dormir.". */
+        val motivo: String?,
+    ) {
+        /** "Confianza media" | "Confianza baja": la pastilla. */
+        val etiqueta: String get() = "Confianza $nivel"
+
+        /** Con confianza baja el número va en un tono más apagado. */
+        val apagado: Boolean get() = nivel == "baja"
+
+        /** Lo que se lee al tocar la pastilla o en el detalle. */
+        val explicacion: String get() = motivo ?: "Con más datos de tu reloj, este número se vuelve más preciso."
+    }
+
+    /** La confianza que se muestra de una fila CON score: media o baja. Alta, desconocida o sin score: null. */
+    fun confianza(fila: RecuperacionDia?): Confianza? {
+        if (fila?.score == null) return null
+        val n = fila.confianza?.lowercase() ?: return null
+        if (n != "media" && n != "baja") return null
+        return Confianza(n, sinPrefijoConfianza(fila.motivoFalta, n))
+    }
+
+    /** `motivo_falta` listo para mostrar: sin espacios de más y null si viene vacío. */
+    fun textoFalta(texto: String?): String? = texto?.trim()?.takeIf { it.isNotEmpty() }
+
+    /** El servidor arranca con "Confianza media. ": al lado de la pastilla, que ya lo dice, sobra. */
+    internal fun sinPrefijoConfianza(texto: String?, nivel: String): String? {
+        val t = textoFalta(texto) ?: return null
+        val prefijo = "confianza $nivel."
+        if (!t.lowercase().startsWith(prefijo)) return t
+        return textoFalta(t.drop(prefijo.length))
+    }
 
     val textoBanda: Map<String, String> = mapOf("alta" to "Recuperado", "media" to "Medio", "baja" to "Poco recuperado")
 
@@ -218,7 +259,10 @@ object SaludVista {
         val fila = conScore ?: ultima
         if (fila == null || fila.estado == "insuficiente") {
             if (!conectado) return CardRecuperacion.SinConectar
-            return CardRecuperacion.ConectadoSinScore(sinScore(salud, historial, sinDatos, hoy))
+            val caso = sinScore(salud, historial, sinDatos, hoy)
+            // Mientras trae el historial, lo que falta es eso: el motivo del servidor todavía no sabe de esos días.
+            if (caso is SinScore.TrayendoHistorial) return CardRecuperacion.ConectadoSinScore(caso)
+            return CardRecuperacion.ConectadoSinScore(caso, if (ultima?.score == null) textoFalta(ultima?.motivoFalta) else null)
         }
         if (fila.estado == "calibrando" || fila.score == null) {
             // `row.dias_datos || 0` y `Math.min(100, Math.round(n / 14 * 100))`.
@@ -232,7 +276,7 @@ object SaludVista {
                 cob is ValorJson.Objeto && SemanticaJs.esVerdadero(fc) -> "Ya sé que tu pulso en reposo ronda los ${enteroJS(SemanticaJs.numero(fc))}."
                 else -> ""
             }
-            return CardRecuperacion.Calibrando(n, pct, ya)
+            return CardRecuperacion.Calibrando(n, pct, ya, textoFalta(fila.motivoFalta))
         }
         if (!mostrar) return CardRecuperacion.Oculto
 
@@ -258,6 +302,7 @@ object SaludVista {
                 notaVieja = if (vieja) "Score de ${diaDeLaSemana(fila.fecha)}: la de anoche todavía no llegó." else null,
                 provisoria = fila.bandaProvisoria == true,
                 grafico = if (puntos.size >= 3) puntos else emptyList(),
+                confianza = confianza(fila),
             ),
         )
     }

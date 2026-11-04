@@ -26,6 +26,11 @@ data class RecuperacionDia(
     val componentes: ValorJson? = null,
     /** `[{tipo, dir, valor, baseline, agudo}]`: hechos, la frase se arma en el cliente. */
     val motivos: ValorJson? = null,
+    /** nativa_007: qué falta para tener score, o cómo mejorar la confianza (texto para el cliente). Una respuesta vieja, de
+     *  12 columnas, no la trae. */
+    val motivoFalta: String? = null,
+    /** nativa_007: alta | media | baja, null sin score. */
+    val confianza: String? = null,
 ) {
     companion object {
         fun desde(e: JsonElement): RecuperacionDia {
@@ -36,6 +41,7 @@ data class RecuperacionDia(
                 estadoAutonomico = o.texto("estado_autonomico"), hrvMetrica = o.texto("hrv_metrica"),
                 discordancia = o.booleano("discordancia"), cobertura = o.valorJson("cobertura"),
                 componentes = o.valorJson("componentes"), motivos = o.valorJson("motivos"),
+                motivoFalta = o.texto("motivo_falta"), confianza = o.texto("confianza"),
             )
         }
     }

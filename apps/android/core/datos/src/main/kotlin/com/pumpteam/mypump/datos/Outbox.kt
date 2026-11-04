@@ -163,6 +163,12 @@ class Outbox(
 
     /** La última pasada dejó algo sin guardar (sin red, transitorio, rechazo o token caído). */
     private var ultimaFallo = false
+
+    /** La última pasada se cortó (sin red, transitorio o token caído): lo que venía detrás ni se intentó. */
+    private var ultimaCorte = false
+
+    /** Los ids que intentó la última pasada (su copia de la cola). Lo encolado durante el vuelo no está acá. */
+    private var ultimaTanda: Set<String> = emptySet()
     private var rachaSinRed = 0
     private var secuencia = 0
     private var alCambiar: ((EstadoGuardado) -> Unit)? = null
@@ -315,6 +321,11 @@ class Outbox(
         guardar()
     }
 
+    /** Olvida los fallidos con esa clave (una op posterior con la misma clave se guardó: ya no hay nada que se perdió). */
+    suspend fun olvidarFallidos(clave: String) = withContext(confinado) {
+        if (fallidosLista.removeAll { it.op.dedupeKey == clave }) guardar()
+    }
+
     /**
      * Vacía la cola: pasadas hasta que no quede nada o hasta que una falle (sin red, el servidor mal, un rechazo). Si ya
      * hay una pasada en curso, la espera y sigue con lo que se encoló mientras tanto: así "cerrar el día" espera el envío
@@ -335,7 +346,14 @@ class Outbox(
                 }.also { enVuelo = it }
             }
             pasada.await()
-            if (withContext(confinado) { ops.none(::mandable) || ultimaFallo }) return
+            // Un rechazo en la pasada no frena lo que se encoló mientras volaba: esa pasada ni lo vio (con una sustitución
+            // rechazada en vuelo, «cerrar el día» cerraba la sesión sin la última serie; «hoy no la como» dejaba la marca en
+            // el servidor hasta el reintento). Un corte (sin red) sí frena todo: la próxima pasada también se cortaría.
+            val seguir = withContext(confinado) {
+                val quedan = ops.filter(::mandable)
+                quedan.isNotEmpty() && (!ultimaFallo || (!ultimaCorte && quedan.any { it.id !in ultimaTanda }))
+            }
+            if (!seguir) return
         }
     }
 
@@ -359,7 +377,9 @@ class Outbox(
 
     private suspend fun pasada() {
         ultimaFallo = false
+        ultimaCorte = false
         val tanda = ops.filter(::mandable)
+        ultimaTanda = tanda.mapTo(HashSet()) { it.id }
         if (tanda.isEmpty()) return
         val hayVisibles = tanda.any { it.kind !in SILENCIOSAS }
         val resueltas = HashSet<String>()
@@ -390,6 +410,7 @@ class Outbox(
                 throw e
             } catch (_: IOException) {
                 algunaFallo = true      // un throw de red: no gasta intento
+                ultimaCorte = true
                 rachaSinRed += 1
                 break
             } catch (e: Exception) {
@@ -399,6 +420,7 @@ class Outbox(
             }
             if (resultado is ResultadoOp.TokenCaido) {
                 algunaFallo = true
+                ultimaCorte = true
                 rachaSinRed += 1
                 break                   // no tiene sentido seguir con las demás
             }
@@ -411,6 +433,7 @@ class Outbox(
             val error = r.errorONull()
             if (error != null && error.clase != ErrorRpc.Clase.PERMANENTE) {
                 algunaFallo = true
+                ultimaCorte = true
                 rachaSinRed += 1
                 break                   // red o transitorio: no tiene sentido seguir con las demás
             }

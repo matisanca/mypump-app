@@ -106,10 +106,10 @@ public enum SaludVista {
         /// Sin score y sin Salud conectada: explicación + "Conectar Apple Health".
         case sinConectar
         /// Conectado pero sin score: qué falta (trayendo historial, faltan datos de la noche, solo pasos, no llega nada,
-        /// esperando).
-        case conectadoSinScore(SinScore)
-        /// Aprendiendo la normal del cliente: n de 14 días.
-        case calibrando(dias: Int, porcentaje: Int, yaSe: String)
+        /// esperando). `motivo` es el `motivo_falta` del servidor (nativa_007): reemplaza la nota de abajo.
+        case conectadoSinScore(SinScore, motivo: String? = nil)
+        /// Aprendiendo la normal del cliente: n de 14 días. `motivo`, el `motivo_falta` del servidor ("faltan 9 días").
+        case calibrando(dias: Int, porcentaje: Int, yaSe: String, motivo: String? = nil)
         /// El cliente apagó el número.
         case oculto
         case conScore(ConScore)
@@ -156,11 +156,51 @@ public enum SaludVista {
         public let provisoria: Bool
         /// El gráfico de 14 días (los puntos con score; hacen falta 3).
         public let grafico: [(fecha: String, score: Int)]
+        /// Confianza media o baja (nativa_007); con alta o sin el dato, nil y la card queda como siempre.
+        public var confianza: Confianza? = nil
 
         public static func == (a: ConScore, b: ConScore) -> Bool {
             a.fila == b.fila && a.banda == b.banda && a.frase == b.frase && a.motivos == b.motivos && a.notaVieja == b.notaVieja
                 && a.provisoria == b.provisoria && a.grafico.map(\.fecha) == b.grafico.map(\.fecha) && a.grafico.map(\.score) == b.grafico.map(\.score)
+                && a.confianza == b.confianza
         }
+    }
+
+    /// Cuánto se puede confiar en un score (nativa_007: alta = variabilidad nocturna + sueño con fases; baja = una sola
+    /// señal y sin variabilidad). Solo existe para media y baja: con alta no se muestra nada.
+    public struct Confianza: Sendable, Equatable {
+        /// media | baja
+        public let nivel: String
+        /// Cómo mejorarla, sin repetir el nivel: "Para mejorarla, usá el reloj para dormir.".
+        public let motivo: String?
+        /// "Confianza media" | "Confianza baja": la pastilla.
+        public var etiqueta: String { "Confianza \(nivel)" }
+        /// Con confianza baja el número va en un tono más apagado.
+        public var apagado: Bool { nivel == "baja" }
+        /// Lo que se lee al tocar la pastilla o en el detalle.
+        public var explicacion: String { motivo ?? "Con más datos de tu reloj, este número se vuelve más preciso." }
+
+        public init(nivel: String, motivo: String?) { self.nivel = nivel; self.motivo = motivo }
+    }
+
+    /// La confianza que se muestra de una fila CON score: media o baja. Alta, desconocida o sin score: nil.
+    public static func confianza(_ fila: RecuperacionDia?) -> Confianza? {
+        guard let fila, fila.score != nil, let n = fila.confianza?.lowercased(), n == "media" || n == "baja" else { return nil }
+        return Confianza(nivel: n, motivo: sinPrefijoConfianza(fila.motivoFalta, nivel: n))
+    }
+
+    /// `motivo_falta` listo para mostrar: sin espacios de más y nil si viene vacío.
+    public static func textoFalta(_ texto: String?) -> String? {
+        guard let t = texto?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { return nil }
+        return t
+    }
+
+    /// El servidor arranca con "Confianza media. ": al lado de la pastilla, que ya lo dice, sobra.
+    static func sinPrefijoConfianza(_ texto: String?, nivel: String) -> String? {
+        guard let t = textoFalta(texto) else { return nil }
+        let prefijo = "confianza \(nivel)."
+        guard t.lowercased().hasPrefix(prefijo) else { return t }
+        return textoFalta(String(t.dropFirst(prefijo.count)))
     }
 
     public static let textoBanda = ["alta": "Recuperado", "media": "Medio", "baja": "Poco recuperado"]
@@ -173,7 +213,10 @@ public enum SaludVista {
         let conScore = serie.suffix(3).reversed().first { $0.score != nil }
         guard let fila = conScore ?? ultima, fila.estado != "insuficiente" else {
             guard conectado else { return .sinConectar }
-            return .conectadoSinScore(sinScore(salud: salud, historial: historial, sinDatos: sinDatos, hoy: hoy))
+            let caso = sinScore(salud: salud, historial: historial, sinDatos: sinDatos, hoy: hoy)
+            // Mientras trae el historial, lo que falta es eso: el motivo del servidor todavía no sabe de esos días.
+            if case .trayendoHistorial = caso { return .conectadoSinScore(caso) }
+            return .conectadoSinScore(caso, motivo: ultima?.score == nil ? textoFalta(ultima?.motivoFalta) : nil)
         }
         if fila.estado == "calibrando" || fila.score == nil {
             let n = fila.diasDatos ?? 0
@@ -181,7 +224,7 @@ public enum SaludVista {
             var ya = ""
             if let s = numero(fila.cobertura?["sueno_min"]), s != 0 { ya = "Ya sé que dormís cerca de \(horasSinEspacio(s))." }
             else if let f = numero(fila.cobertura?["fc_reposo"]), f != 0 { ya = "Ya sé que tu pulso en reposo ronda los \(enteroJS(f))." }
-            return .calibrando(dias: n, porcentaje: pct, yaSe: ya)
+            return .calibrando(dias: n, porcentaje: pct, yaSe: ya, motivo: textoFalta(fila.motivoFalta))
         }
         if !mostrar { return .oculto }
 
@@ -200,7 +243,7 @@ public enum SaludVista {
             fila: fila, banda: banda, bandaTexto: textoBanda[banda] ?? "", frase: frase, motivos: motivos,
             notaVieja: vieja ? "Score de \(diaDeLaSemana(fila.fecha)): la de anoche todavía no llegó." : nil,
             provisoria: fila.bandaProvisoria == true,
-            grafico: puntos.count >= 3 ? puntos : []))
+            grafico: puntos.count >= 3 ? puntos : [], confianza: confianza(fila)))
     }
 
     /// `_recupSinScoreConectado`: lo que separa los casos es qué está llegando, no cuánto falta.

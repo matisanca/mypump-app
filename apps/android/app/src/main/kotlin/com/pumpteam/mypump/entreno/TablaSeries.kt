@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -135,11 +136,22 @@ fun TablaSeries(
             Tarjeta(Modifier.testTag("tabla-series"), contenido = contenido)
         }
     }
+    // E1 (2.0.3): la preparación va antes de las efectivas, fuera de su tarjeta (en la lista, con el margen de la tabla).
+    val preparacion = if (filas.isEmpty()) emptyList() else motor.preparacion(lugar)
+    if (preparacion.isNotEmpty()) {
+        PreparacionBloque(
+            motor,
+            lugar,
+            preparacion,
+            sinKg = sinKg,
+            modifier = if (enLista) Modifier.padding(start = Espacio.m, end = Espacio.m, top = Espacio.s) else Modifier,
+        )
+    }
     contenedor {
         Row(verticalAlignment = Alignment.Bottom) {
             // Abierta en la lista va más chica: arriba ya está el nombre del ejercicio, que es lo que manda.
             Text(
-                "Series",
+                if (preparacion.isNotEmpty()) "Series efectivas" else "Series",
                 style = if (enLista) MaterialTheme.typography.titleMedium else Letras.titulo3,
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
@@ -150,6 +162,18 @@ fun TablaSeries(
                 modifier = Modifier.testTag("series-confirmadas"),
             )
         }
+        // 2.0.3: en lugar de la columna de RIR, cómo se hacen: «Al fallo» o «Dejando 1–2 en reserva».
+        // Sin leyenda en lo que no lleva RIR (calentamiento, cardio, core, peso corporal).
+        val leyenda = if (filas.isEmpty()) null else motor.leyendaRir(lugar)
+        if (leyenda != null) {
+            Text(
+                leyenda,
+                style = Letras.caption,
+                color = c.textoSecundario,
+                modifier = Modifier.offset(y = (-6).dp).testTag("leyenda-rir"),
+            )
+        }
+        AvisoRecordVista(motor, lugar)
 
         t.variantes?.let { va ->
             // SER-07: el agarre o el nivel (vale para las series que se confirmen después).
@@ -187,7 +211,6 @@ fun TablaSeries(
                 )
                 Text("REPS", style = rotulo, color = c.textoSecundario, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                 if (!sinKg) Text("KG", style = rotulo, color = c.textoSecundario, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
-                Text("RIR", style = rotulo, color = c.textoSecundario, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(44.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
@@ -257,7 +280,6 @@ private fun FilaDeSerie(
                     modifier = Modifier.weight(1f).testTag("campo-kg-${i + 1}"),
                 )
             }
-            SelectorRir(s.rir, f.confirmada, i, Modifier.weight(1f)) { n -> alcance.launch { motor.elegirRir(lugar, i, n) } }
             BotonCheck(i, f, alTocarCheck)
         }
         val aviso = s.aviso
@@ -358,56 +380,6 @@ private fun CampoSerie(
 
 /** Cuánto después del foco se selecciona todo (el toque ubica el cursor al soltar). */
 private const val SELECCION_MS = 80L
-
-/** RIR 0-5 en un menú, con la leyenda de la web; nunca se completa solo. "–" es sin dato, que no es lo mismo que 0. */
-@Composable
-private fun SelectorRir(rir: String, confirmada: Boolean, i: Int, modifier: Modifier = Modifier, elegir: (Int) -> Unit) {
-    val c = MyPump.colores
-    var abierto by remember { mutableStateOf(false) }
-    Box(modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (confirmada) c.marcaSuave else c.campo)
-                .clickable(role = Role.DropdownList) { abierto = true }
-                .semantics {
-                    contentDescription = "RIR de la serie ${i + 1}"
-                    stateDescription = if (rir.isEmpty()) "sin cargar" else "$rir, ${CamposSerie.leyendaRir(rir)}"
-                }
-                .testTag("rir-serie-${i + 1}"),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                rir.ifEmpty { "–" },
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = Inter, fontWeight = FontWeight.SemiBold, fontSize = 20.sp).merge(Letras.cifras),
-                color = if (rir.isEmpty()) c.textoSecundario else c.texto,
-            )
-            Icon(Iconos.ArribaAbajo, contentDescription = null, tint = c.textoTerciario, modifier = Modifier.size(12.dp))
-        }
-        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }, shape = FormaMenu, containerColor = MyPump.colores.tarjeta, shadowElevation = 12.dp) {
-            for (n in 0..5) {
-                DropdownMenuItem(
-                    text = { Text("$n · ${CamposSerie.leyendaRir(n.toString())}") },
-                    onClick = {
-                        abierto = false
-                        elegir(n)
-                    },
-                    leadingIcon = {
-                        if (rir == n.toString()) {
-                            Icon(Iconos.Tilde, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.size(18.dp))
-                        } else {
-                            Spacer(Modifier.size(18.dp))
-                        }
-                    },
-                    modifier = Modifier.testTag("rir-$n"),
-                )
-            }
-        }
-    }
-}
 
 /** El ✓ de la fila: confirma (lo escrito o lo sugerido) o, si ya está hecha, la desconfirma para corregirla. */
 @Composable

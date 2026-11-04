@@ -1,14 +1,21 @@
 package com.pumpteam.mypump.datos
 
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.reglas.AgregadosComida
 import com.pumpteam.mypump.reglas.AjusteComida
+import com.pumpteam.mypump.reglas.AlimentoAgregado
+import com.pumpteam.mypump.reglas.MacrosPor100
+import com.pumpteam.mypump.reglas.MarcaComida
 import com.pumpteam.mypump.reglas.AnclaAlimento
 import com.pumpteam.mypump.reglas.FechaLocal
 import java.util.Collections
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -30,6 +37,9 @@ class AjustesDietaTest {
         /** `mypump_guardar_ajustes_dieta` falla (un 500: la op queda en la cola). */
         @Volatile var guardarFalla = false
 
+        /** La base rechaza el día (el 22023 de nativa_004 con un `ajustes` de más de 16000 bytes en jsonb). */
+        @Volatile var rechaza = false
+
         /** `mypump_get_food_swaps` falla (un 500). */
         @Volatile var sinSwaps = false
         @Volatile var filas = "[]"
@@ -41,6 +51,14 @@ class AjustesDietaTest {
         @Volatile var getLento = false
         @Volatile var getEmpezo = false
 
+        /** Dos teléfonos de la misma cuenta: lo que guarda uno es lo que lee el otro (el día de ajustes y las marcas). */
+        @Volatile var persistente = false
+
+        /** Las marcas no salen (sin red para esa escritura): quedan en la cola. */
+        @Volatile var marcasCaidas = false
+        val marcas: MutableMap<String, ValorJson> = Collections.synchronizedMap(mutableMapOf())
+        @Volatile var marcasEscritas = 0
+
         val transporte = TransporteProgramado { fn, cuerpo ->
             when (fn) {
                 "mypump_get_cliente_info" -> 200 to """[{"cliente_id":"c1","nombre":"Cliente","perfil":"natural"}]"""
@@ -49,10 +67,37 @@ class AjustesDietaTest {
                 "mypump_guardar_ajustes_dieta" ->
                     if (sinTabla) 404 to """{"code":"PGRST202","message":"Could not find the function"}"""
                     else if (guardarFalla) 500 to """{"message":"caído"}"""
+                    else if (rechaza) 400 to """{"code":"22023","message":"ajustes invalidos"}"""
                     else {
                         guardados += cuerpo
+                        if (persistente) {
+                            filas = ValorJson.Lista(listOf(ValorJson.objeto(
+                                "fecha" to (cuerpo["p_fecha"] ?: ValorJson.Nulo), "dieta_id" to (cuerpo["p_dieta_id"] ?: ValorJson.Nulo),
+                                "tipo_dia" to ValorJson.Nulo, "ajustes" to (cuerpo["p_ajustes"] ?: ValorJson.objeto()),
+                            ))).serializar()
+                        }
                         200 to "true"
                     }
+                "mypump_marcar_comida" ->
+                    if (marcasCaidas) {
+                        503 to """{"message":"sin red"}"""
+                    } else {
+                        marcasEscritas++
+                        val id = cuerpo["p_comida_id"]!!.comoTexto!!
+                        marcas[id] = ValorJson.objeto(
+                            "comida_id" to ValorJson.Texto(id), "opcion_elegida" to (cuerpo["p_opcion"] ?: ValorJson.Nulo),
+                            "estado" to (cuerpo["p_estado"] ?: ValorJson.Nulo),
+                            "foods_excluidos" to (cuerpo["p_foods_excluidos"]?.takeIf { it !is ValorJson.Nulo } ?: ValorJson.Lista(emptyList())),
+                        )
+                        200 to "true"
+                    }
+                "mypump_desmarcar_comida" -> {
+                    marcasEscritas++
+                    cuerpo["p_comida_id"]?.comoTexto?.let { marcas.remove(it) }
+                    200 to "true"
+                }
+                "mypump_get_comidas_marcadas" ->
+                    200 to (if (persistente) ValorJson.Lista(synchronized(marcas) { marcas.values.toList() }).serializar() else "[]")
                 "mypump_get_ajustes_dieta" ->
                     if (sinTabla) {
                         404 to """{"code":"PGRST202","message":"Could not find the function"}"""
@@ -71,8 +116,8 @@ class AjustesDietaTest {
         }
     }
 
-    private fun modelo(s: Servidor, alcance: CoroutineScope) =
-        ModeloApp(ClienteRpc(transporte = s.transporte), TokenEnMemoria(TOKEN), raiz, PreferenciasEnMemoria(), alcance)
+    private fun modelo(s: Servidor, alcance: CoroutineScope, otra: java.io.File? = null) =
+        ModeloApp(ClienteRpc(transporte = s.transporte), TokenEnMemoria(TOKEN), otra ?: raiz, PreferenciasEnMemoria(), alcance)
 
     private val hoy get() = FechaLocal.hoy()
 
@@ -361,6 +406,149 @@ class AjustesDietaTest {
         assertNull(m.outbox)
     }
 
+    // ── Alimentos agregados (2.0.3, D1) ──
+
+    private fun huevo(ts: Long): AlimentoAgregado = AgregadosComida.agregado(
+        AgregadosComida.Candidato("Huevo entero", MacrosPor100(143.0, 12.6, 0.7, 9.5), "unidad", 60.0, AlimentoAgregado.Origen.BASE),
+        1.0, AgregadosComida.Medida("unidad", 60.0), ts,
+    )
+
+    /** Un agregado solo (sin otro cambio) ya es un ajuste: se guarda, sale con el día y va en el resumen de esa comida. */
+    @Test
+    fun unAgregadoSaleConElDiaYVaEnElResumen() = enUnHilo { alcance ->
+        val s = Servidor()
+        val m = modelo(s, alcance)
+        m.cargar()
+        m.outbox?.drenar()
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1))), emptyMap())
+        assertEquals(1, m.ajustesDeHoy["desayuno"]?.agregados?.size)
+        assertEquals(614.0 + 86, m.diaAjustado(emptyMap()).getValue("desayuno").kcal)
+        m.outbox?.drenar()
+        val g = s.guardados.last()
+        val ag = (g["p_ajustes"]?.get("desayuno")?.get("agregados") as ValorJson.Lista).elementos
+        assertEquals("Huevo entero", ag[0]["nombre"]?.comoTexto)
+        assertEquals(614.0 + 525 + 86, g["p_kcal_dia"]?.comoNumero)
+        val resumen = (g["p_resumen"] as ValorJson.Lista).elementos
+        val r0 = (resumen[0]["agregados"] as ValorJson.Lista).elementos
+        assertEquals(86.0, r0[0]["kcal"]?.comoNumero)
+        assertEquals(60.0, r0[0]["gramos"]?.comoNumero)
+        // El almuerzo, sin agregados, queda como antes (sin la clave).
+        assertNull(resumen[1]["agregados"])
+        val otro = modelo(Servidor(), alcance)
+        otro.cargar()
+        assertEquals(listOf(1L), otro.ajustesDeHoy["desayuno"]?.agregados?.map { it.ts })
+    }
+
+    /** Borrar un agregado de una comida marcada «Comí»: el tilde del borrado se va y los de los siguientes bajan uno. */
+    @Test
+    fun borrarUnAgregadoCorreLosTildes() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1), huevo(2), huevo(3))), emptyMap())
+        m.marcar("desayuno", MarcaComida.Estado.COMIDO, 0)
+        // Plan de 2 (avena, huevos): los agregados son 2, 3 y 4. Destilda el segundo y el tercero.
+        m.alternarAlimento("desayuno", 3)
+        m.alternarAlimento("desayuno", 4)
+        m.borrarAgregado("desayuno", 2, emptyMap())
+        assertEquals(listOf(1L, 3L), m.ajustesDeHoy["desayuno"]?.agregados?.map { it.ts })
+        assertEquals(listOf(3), m.marcasDeHoy["desayuno"]?.excluidos)
+        assertEquals(614.0 + 86, m.consumo(emptyMap()).kcal)
+        m.borrarAgregado("desayuno", 1, emptyMap())
+        m.borrarAgregado("desayuno", 3, emptyMap())
+        assertNull(m.ajustesDeHoy["desayuno"])
+        assertEquals(emptyList<Int>(), m.marcasDeHoy["desayuno"]?.excluidos)
+    }
+
+    /**
+     * Revisión del 3-nov: un día que la base rechaza termina en fallidos; la hidratación ya no lo veía pendiente y la fila
+     * vieja del servidor pisaba el día del teléfono sin aviso. Ahora no lo pisa, Dieta avisa y el próximo cambio lo resuelve.
+     */
+    @Test
+    fun unDiaQueLaBaseRechazaNoLoPisaLaHidratacionYSeAvisa() = enUnHilo { alcance ->
+        val s = Servidor().apply { rechaza = true }
+        val m = modelo(s, alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(deltaKcal = 50), emptyMap())
+        repeat(12) { if ((m.outbox?.pendientes() ?: 0) > 0) m.outbox?.drenar() }
+        assertEquals(0, m.outbox?.pendientes())
+        assertEquals(1, m.outbox?.fallidos()?.size)
+        assertTrue(m.ajustesSinGuardar.value, "Dieta avisa que no se guardó")
+        // La fila vieja del servidor no pisa el día del teléfono.
+        s.filas = """[{"fecha":"$hoy","dieta_id":"$DIETA_ID","tipo_dia":null,"ajustes":{"almuerzo":{"deltaKcal":-100,"compensar":false,"omitida":false,"opcion":0,"cantidades":{}}}}]"""
+        m.hidratarDieta()
+        assertEquals(50, m.ajustesDeHoy["desayuno"]?.deltaKcal)
+        assertNull(m.ajustesDeHoy["almuerzo"])
+        assertTrue(m.ajustesSinGuardar.value)
+        // El próximo cambio sale entero: el aviso se va y el fallido de ese día se olvida (la hidratación vuelve a valer).
+        s.rechaza = false
+        m.ajustar("desayuno", AjusteComida(deltaKcal = 100), emptyMap())
+        m.outbox?.drenar()
+        repeat(100) { if (m.ajustesSinGuardar.value || m.outbox?.fallidos().orEmpty().isNotEmpty()) delay(10) }
+        assertFalse(m.ajustesSinGuardar.value)
+        assertTrue(m.outbox?.fallidos().orEmpty().isEmpty())
+        m.hidratarDieta()
+        assertEquals(-100, m.ajustesDeHoy["almuerzo"]?.deltaKcal, "con el día guardado, lo del servidor vuelve a valer")
+    }
+
+    /** «Volver al plan» no deja en la marca tildes de agregados que ya no están: siguen a cada agregado por `_ts`. */
+    @Test
+    fun volverAlPlanNoDejaTildesDeAgregadosViejos() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1), huevo(2))), emptyMap())
+        m.marcar("desayuno", MarcaComida.Estado.COMIDO, 0)
+        m.alternarAlimento("desayuno", 0)
+        m.alternarAlimento("desayuno", 3)
+        assertEquals(listOf(0, 3), m.marcasDeHoy["desayuno"]?.excluidos)
+        m.ajustar("desayuno", null, emptyMap())
+        assertEquals(listOf(0), m.marcasDeHoy["desayuno"]?.excluidos, "el del plan queda; el del agregado se va")
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(5), huevo(6))), emptyMap())
+        assertEquals(234.0 + 86 * 2, m.consumo(emptyMap()).kcal, "los agregados nuevos llegan tildados")
+    }
+
+    /** Dos «Sacar» seguidos sin esperar (dos toques rápidos): cada uno saca el suyo y los tildes quedan bien. */
+    @Test
+    fun dosBorradosSeguidosNoCorrenMalLosTildes() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1), huevo(2), huevo(3))), emptyMap())
+        m.marcar("desayuno", MarcaComida.Estado.COMIDO, 0)
+        m.alternarAlimento("desayuno", 4)
+        listOf(
+            alcance.launch { m.borrarAgregado("desayuno", 1, emptyMap()) },
+            alcance.launch { m.borrarAgregado("desayuno", 2, emptyMap()) },
+            alcance.launch { m.borrarAgregado("desayuno", 2, emptyMap()) },
+        ).joinAll()
+        assertEquals(listOf(3L), m.ajustesDeHoy["desayuno"]?.agregados?.map { it.ts })
+        assertEquals(listOf(2), m.marcasDeHoy["desayuno"]?.excluidos, "el tercero sigue destildado, ahora en el índice 2")
+    }
+
+    /** Cambiar de opción saca las cantidades a mano (eran de la otra) pero deja los agregados. */
+    @Test
+    fun losAgregadosSobrevivenAlCambioDeOpcion() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.ajustar("desayuno", AjusteComida(cantidades = mapOf("0" to 50.0), agregados = listOf(huevo(1))), mapOf("desayuno" to 0))
+        val a = m.ajustesDeHoy.getValue("desayuno")
+        m.ajustar("desayuno", a.copy(opcion = 1, cantidades = emptyMap()), mapOf("desayuno" to 1))
+        assertEquals(1, m.ajustesDeHoy["desayuno"]?.agregados?.size)
+        assertTrue(m.ajustesDeHoy["desayuno"]?.cantidades?.isEmpty() == true)
+        assertEquals(120.0 + 86, m.diaAjustado(mapOf("desayuno" to 1)).getValue("desayuno").kcal)
+    }
+
+    @Test
+    fun losRecientesQuedanEnElTelefono() = enUnHilo { alcance ->
+        val m = modelo(Servidor(), alcance)
+        m.cargar()
+        m.recordarReciente(huevo(1))
+        m.recordarReciente(huevo(2).copy(nombre = "Clara de huevo"))
+        m.recordarReciente(huevo(3))
+        assertEquals(listOf(3L, 2L), m.agregadosRecientes.value.map { it.ts })
+        val otro = modelo(Servidor(), alcance)
+        otro.cargar()
+        assertEquals(listOf("Huevo entero", "Clara de huevo"), otro.agregadosRecientes.value.map { it.nombre })
+    }
+
     private companion object {
         const val TOKEN = "AAAAAAAAAAAAAAAAAAAA"
         const val DIETA_ID = "44444444-4444-4444-8444-444444444444"
@@ -370,5 +558,82 @@ class AjustesDietaTest {
             """{"id":"desayuno","name":"Desayuno","options":[{"name":"A","foods":[$AVENA,$HUEVOS]},{"name":"B","foods":[{"name":"Yogur","qty":200,"unit":"g","kcal":120,"prot":10,"carb":14,"fat":3}]}]},""" +
             """{"id":"almuerzo","name":"Almuerzo","options":[{"name":"A","foods":[{"name":"Pollo","qty":200,"unit":"g","kcal":330,"prot":62,"carb":0,"fat":7},{"name":"Arroz","qty":150,"unit":"g","kcal":195,"prot":4,"carb":42,"fat":0.5}]}]}""" +
             "]}}]"
+    }
+
+    /**
+     * Segunda revisión del 3-nov: la hidratación de los ajustes corría los tildes ENCOLANDO una marca. Como en el arranque los
+     * ajustes se hidratan antes que las marcas, la marca vieja de este teléfono quedaba en la cola y le ganaba a la más nueva
+     * de otro: se perdían las exclusiones del otro teléfono. Ahora se remapea solo en memoria.
+     */
+    @Test
+    fun laHidratacionNoPisaLaMarcaDeOtroTelefono() = enUnHilo { alcance ->
+        val s = Servidor().apply { persistente = true }
+        // Teléfono A: dos huevos agregados, «Comí» y destilda el segundo (índice 3: plan de 2 + agregado 1).
+        val a = modelo(s, alcance)
+        a.cargar()
+        a.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1), huevo(2))), emptyMap())
+        a.marcar("desayuno", MarcaComida.Estado.COMIDO, 0)
+        a.alternarAlimento("desayuno", 3)
+        a.outbox?.drenar()
+        assertEquals(0, a.outbox?.pendientes())
+
+        // Teléfono B: lo lee, saca el primer huevo (el segundo pasa al índice 2) y destilda la avena.
+        val b = modelo(s, alcance, carpetaTemporal("ajustes-dieta-b"))
+        b.cargar()
+        assertEquals(listOf(3), b.marcasDeHoy["desayuno"]?.excluidos)
+        b.borrarAgregado("desayuno", 1, emptyMap())
+        b.alternarAlimento("desayuno", 0)
+        b.outbox?.drenar()
+        assertEquals(0, b.outbox?.pendientes())
+        assertEquals(setOf(0, 2), b.marcasDeHoy["desayuno"]?.excluidos?.toSet())
+        val escritas = s.marcasEscritas
+
+        // A vuelve a abrir: trae el día de B y su marca, sin mandar la suya vieja.
+        a.cargar()
+        a.outbox?.drenar()
+        assertEquals(listOf(2L), a.ajustesDeHoy["desayuno"]?.agregados?.map { it.ts })
+        assertEquals(setOf(0, 2), a.marcasDeHoy["desayuno"]?.excluidos?.toSet(), "la marca de B, no la vieja de A remapeada")
+        assertTrue(a.outbox?.pendientesPorClave().orEmpty().keys.none { it.startsWith("comida|") })
+        assertEquals(escritas, s.marcasEscritas, "A no escribió ninguna marca")
+        val excl = (s.marcas["desayuno"]?.get("foods_excluidos") as ValorJson.Lista).elementos.mapNotNull { it.comoNumero?.toInt() }
+        assertEquals(setOf(0, 2), excl.toSet())
+    }
+
+    /**
+     * Con una marca de esa comida todavía en la cola (lo último que hizo el cliente en este teléfono), la hidratación sí
+     * corrige la cola: si no, saldría con los índices viejos.
+     */
+    @Test
+    fun conUnaMarcaEnLaColaLaHidratacionLaCorrigeEnLaCola() = enUnHilo { alcance ->
+        val s = Servidor().apply { persistente = true }
+        val a = modelo(s, alcance)
+        a.cargar()
+        a.ajustar("desayuno", AjusteComida(compensar = false, agregados = listOf(huevo(1), huevo(2))), emptyMap())
+        a.outbox?.drenar()
+        s.marcasCaidas = true
+        a.marcar("desayuno", MarcaComida.Estado.COMIDO, 0)
+        a.alternarAlimento("desayuno", 3)   // queda en la cola: esa escritura no sale
+        // Otro teléfono sacó el primer huevo.
+        val ajustes = ValorJson.objeto("desayuno" to AjusteComida(compensar = false, agregados = listOf(huevo(2))).aValor())
+        s.filas = ValorJson.Lista(listOf(ValorJson.objeto(
+            "fecha" to ValorJson.Texto(hoy), "dieta_id" to ValorJson.Texto(DIETA_ID), "tipo_dia" to ValorJson.Nulo, "ajustes" to ajustes,
+        ))).serializar()
+        a.hidratarDieta()
+        assertEquals(listOf(2L), a.ajustesDeHoy["desayuno"]?.agregados?.map { it.ts })
+        assertEquals(listOf(2), a.marcasDeHoy["desayuno"]?.excluidos)
+        val op = a.outbox?.pendientesPorClave().orEmpty()["comida|$hoy|desayuno"]
+        assertEquals(listOf(2), op?.let { MarcasComidas.desdePayload(it.payload) }?.excluidos, "la cola sale con el índice nuevo")
+    }
+
+    /** El aviso que quedó de ayer (la app abierta pasada la medianoche) se apaga al hidratar si hoy no hay fallidos. */
+    @Test
+    fun elAvisoDeAyerSeApagaAlHidratarSinFallidosDeHoy() = enUnHilo { alcance ->
+        val s = Servidor()
+        val m = modelo(s, alcance)
+        m.cargar()
+        m._ajustesSinGuardar.value = true   // lo que dejó el día anterior
+        s.sinTabla = true                   // tampoco hace falta que el servidor conteste
+        m.hidratarDieta()
+        assertFalse(m.ajustesSinGuardar.value)
     }
 }

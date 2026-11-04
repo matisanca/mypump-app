@@ -301,7 +301,7 @@ extension EncabezadoSeccion where Accesorio == EmptyView {
 
 /// Renglón de respaldo científico (Apple 1.4.1): pegado a los números, gris y chico, con "Ver fuentes" en el verde de
 /// la marca. Es solo la etiqueta: lo que abre las 14 fuentes es `RenglonFuentes` (y `PieRespaldo` para el pie de
-/// Dieta, Entreno y Mi Día), en `Respaldo/FuentesView.swift`.
+/// Dieta y Entreno), en `Respaldo/FuentesView.swift`.
 struct RespaldoCientifico: View {
     var texto = "Objetivos calculados con Mifflin-St Jeor · macros según ISSN y NASEM"
 

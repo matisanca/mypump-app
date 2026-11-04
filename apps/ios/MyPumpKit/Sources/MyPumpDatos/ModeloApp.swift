@@ -18,7 +18,11 @@ public final class ModeloApp {
 
     public private(set) var fase: Fase
     public private(set) var info: ClienteInfo?
-    public private(set) var rutina: RutinaActiva?
+    public private(set) var rutina: RutinaActiva? { didSet { versionRutina &+= 1 } }
+    /// Cambia con cada rutina que llega (para el caché del volumen por músculo).
+    @ObservationIgnored private(set) var versionRutina = 0
+    /// El volumen por músculo ya calculado y lo que lo armó (`volumenPorMusculo`).
+    @ObservationIgnored var cacheVolumen: (firma: String, resumen: VolumenMusculo.Resumen)?
     public private(set) var dieta: DietaActiva?
     /// Lo cargado vino de la copia offline (banner "sin conexión").
     public private(set) var desdeCache = false
@@ -50,12 +54,18 @@ public final class ModeloApp {
     /// Los ajustes de porciones del día, por comida (feedback del 20-oct): ver AjustesDieta.swift. Solo valen el día de
     /// `fechaAjustes` (`ajustesDeHoy`).
     public internal(set) var ajustes: [String: AjusteComida] = [:]
+    /// Los ajustes de hoy no se pudieron guardar en el servidor (la base los rechazó o se abandonaron): quedan en el
+    /// teléfono, la hidratación no los pisa y Dieta lo avisa. Se baja cuando sale el día de nuevo (AjustesDieta.swift).
+    public internal(set) var ajustesSinGuardar = false
     @ObservationIgnored var fechaAjustes = ""
     /// Las opciones que se vieron por última vez en Dieta: el resumen que va al servidor las usa aunque el cambio venga de
     /// otro lado (un reemplazo, la hidratación).
     @ObservationIgnored var opcionesVistas: [String: Int] = [:]
     /// Cuántas veces cambió el cliente los ajustes (la hidratación no pisa lo que se tocó mientras esperaba al servidor).
     @ObservationIgnored var ordenAjustes = 0
+    /// Los últimos alimentos agregados a una comida (2.0.3, D1), con su cantidad: «Recientes» de la hoja de agregar. Solo
+    /// en el teléfono (AgregadosDieta.swift).
+    public internal(set) var agregadosRecientes: [AlimentoAgregado] = []
     /// «Comí» / «Salté» de hoy, por comida (D25): ver MarcasComidas.swift. Solo valen el día de `fechaMarcas`.
     public internal(set) var marcas: [String: MarcaComida] = [:]
     @ObservationIgnored var fechaMarcas = ""
@@ -100,6 +110,12 @@ public final class ModeloApp {
     @ObservationIgnored let almacen: AlmacenToken
     @ObservationIgnored public private(set) var token: String?
     @ObservationIgnored var disco: Disco?
+    /// Código de barras (2.1, S3): lo ya buscado en Open Food Facts (se lee del disco la primera vez) y, en DEBUG, el doble
+    /// de la red que ponen las pruebas de interfaz (`-offDePrueba`). Sin doble, va por el transporte del cliente.
+    @ObservationIgnored var cacheCodigos: CacheCodigos?
+    @ObservationIgnored public var transporteBarras: (any Transporte)?
+    /// El plazo total de la consulta a Open Food Facts (las pruebas lo achican).
+    @ObservationIgnored var esperaBarras: Double = CodigoBarras.esperaSegundos
     @ObservationIgnored public private(set) var outbox: Outbox?
     /// La sesión del día de la cuenta: la comparten la cola y el motor de Entreno (hallazgo 5).
     @ObservationIgnored private var sesionesDelDia = SesionesDelDia()
@@ -186,6 +202,7 @@ public final class ModeloApp {
 
     public func salir() {
         almacen.guardar(nil)
+        borrarCodigosDelDisco()
         token = nil
         disco = nil
         outbox = nil
@@ -241,6 +258,7 @@ public final class ModeloApp {
     private func soltarCuentaEnMemoria() {
         token = nil
         disco = nil
+        cacheCodigos = nil
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
@@ -261,6 +279,7 @@ public final class ModeloApp {
     private func prepararCuenta(_ t: String) {
         let disco = Disco(raiz: raizDisco, token: t)
         self.disco = disco
+        cacheCodigos = nil
         let sesiones = SesionesDelDia()
         sesionesDelDia = sesiones
         let escrituras = Escrituras(cliente: cliente, token: t, sesiones: sesiones)
@@ -288,6 +307,7 @@ public final class ModeloApp {
     /// Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…".
     private func alGuardar(_ ops: [OpGuardada]) {
         guia?.alGuardar(ops)
+        for g in ops where g.op.kind == Self.kindAjustes { ajusteGuardado(g.op) }
         for g in ops where g.op.kind == "chat" {
             if let texto = g.op.payload["contenido"]?.comoTexto, let id = g.respuesta.comoTexto { chat?.confirmar(contenido: texto, id: id) }
         }
@@ -297,6 +317,7 @@ public final class ModeloApp {
     /// reintentarlo ("no salió → Reintentar"), como `marcarChatFallido` de la web.
     private func alAbandonar(_ ops: [Operacion]) {
         guia?.alAbandonar(ops)
+        for op in ops where op.kind == Self.kindAjustes { ajusteAbandonado(op) }
         for op in ops where op.kind == "chat" {
             if let texto = op.payload["contenido"]?.comoTexto { chat?.marcarFallido(contenido: texto) }
         }
@@ -333,9 +354,6 @@ public final class ModeloApp {
                 aplicar(copia)
                 desdeCache = true
                 fase = .listo
-                // Sin red igual se puede marcar el día (sale por la cola), como la web con `MYDAY` vacío. Sin esto
-                // Mi Día quedaba tapado hasta que volviera la señal (revisión del 14-oct, hallazgo 10).
-                if let revision { Task { await revision.cargarMiDia() } }
             } else {
                 fase = .sinServicio
             }
@@ -429,10 +447,9 @@ public final class ModeloApp {
         await outbox?.drenar()
         let chatPorTraer = chat.flatMap { c in c !== chatAlEmpezar || c.ultimasTraidas == traidasAlEmpezar ? c : nil }
         async let cargaChat: Void = chatPorTraer?.cargar() ?? ()
-        async let cargaMiDia: Void = revision?.cargarMiDia() ?? ()
         async let cargaRevision: Void = revision?.cargarRevision() ?? ()
         async let cargaFotos: Void = fotos?.cargar() ?? ()
-        _ = await (cargaChat, cargaMiDia, cargaRevision, cargaFotos)
+        _ = await (cargaChat, cargaRevision, cargaFotos)
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -544,7 +561,6 @@ public final class ModeloApp {
             cargarAjustes()
             cargarMarcas()
             await cargarComidasLibres()
-            await revision?.cargarMiDia()
             await revision?.cargarRevision()
             diaCargado = hoy
         }
@@ -576,6 +592,13 @@ public final class ModeloApp {
     public var pendientesDeLaSemana: (faltaCheck: Bool, faltanFotos: Bool, total: Int) {
         guard let revision, let fotos else { return (false, false, 0) }
         return FotosProgreso.pendientes(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: fotos.posesDeLaSemana)
+    }
+
+    /// La semana de revisión ya está completa (el check y las tres fotos): el aviso del domingo se saltea esta semana.
+    /// Sin cuenta, en la demo o sin el check y las fotos cargados, false: el aviso sale como siempre.
+    public var semanaDeRevisionCompleta: Bool {
+        guard !esDemo, let revision, let fotos else { return false }
+        return SemanaRevision.completa(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: fotos.posesDeLaSemana)
     }
 
     private func aplicar(_ c: CopiaOffline) {
@@ -730,6 +753,8 @@ public final class ModeloApp {
     private func sumarPropio(_ a: AlimentoPropio) {
         if let i = alimentosPropios.firstIndex(where: { $0.nombre.lowercased() == a.nombre.lowercased() }) {
             alimentosPropios[i] = a
+            // Editado: si salió de un código con otros valores, el escaneo deja de traer el viejo.
+            conciliarCodigosPropios()
         } else {
             alimentosPropios.append(a)
         }
@@ -754,7 +779,10 @@ public final class ModeloApp {
         if case .success(let prefs) = prefs { excluir = prefs.first?.excluir ?? [] }
         let propios = await cliente.filas("mypump_get_custom_foods", p, como: AlimentoPropio.self)
         guard vigente() else { return }
-        if case .success(let propios) = propios { alimentosPropios = propios }
+        if case .success(let propios) = propios {
+            alimentosPropios = propios
+            conciliarCodigosPropios()
+        }
 
         let remotos: [FoodSwap]?
         switch await cliente.filas("mypump_get_food_swaps", ["p_token": .texto(t), "p_dieta_id": .texto(dieta.id)], como: FoodSwap.self) {

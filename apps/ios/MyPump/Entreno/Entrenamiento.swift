@@ -152,7 +152,8 @@ enum Bonito {
             extra.insert(String(limpio[abre.upperBound...].dropLast()), at: 0)
             limpio = String(limpio[..<abre.lowerBound])
         }
-        let detalle = (partes + extra).filter { !$0.isEmpty }
+        // Sin el «RIR n» del récord (2.0.3: el RIR ya no se muestra; con el del plan diría «RIR 0» en todos).
+        let detalle = (partes + extra).filter { !$0.isEmpty && !$0.hasPrefix("RIR ") }
         return (limpio, detalle.isEmpty ? nil : detalle.joined(separator: " · "))
     }
 

@@ -48,6 +48,18 @@ class DiaEnCurso(
     /** Las sustituciones, en el formato de la web (ver [SustitucionesEntreno]). */
     var sustituciones: Map<String, ValorJson> = emptyMap()
 
+    /**
+     * E2 (2.0.3): el descanso elegido a mano, por la clave del ejercicio que se hace ([ClaveEjercicio]). Vive en el
+     * teléfono (lo carga y guarda la app) y le gana al del plan ([descanso]).
+     */
+    var descansosPropios: Map<String, Int> = emptyMap()
+
+    /**
+     * E3 (2.0.3): el récord ya avisado hoy por lugar y serie («lugar|índice»). Es piso para el siguiente: el lápiz sobre
+     * una serie que ya dio récord no lo vuelve a avisar. Solo en memoria.
+     */
+    var recordsAvisados: Map<String, RecordSerie.Marca> = emptyMap()
+
     data class MetaEstado(val seriesCompletadas: Int, val manual: Boolean)
 
     /** Lo que la app tiene que hacer después de una acción. */
@@ -87,6 +99,8 @@ class DiaEnCurso(
         it.expandido = expandido
         it.historial = historial
         it.sustituciones = sustituciones
+        it.descansosPropios = descansosPropios
+        it.recordsAvisados = recordsAvisados
     }
 
     // ── Lecturas ──
@@ -101,6 +115,12 @@ class DiaEnCurso(
     fun estado(id: String): String = Js.verdadero(ejercicios[id]?.estado) ?: Js.verdadero(estados[id]) ?: "pendiente"
 
     /** El ejercicio que se hace en el lugar: el sustituto, si hay; si no, el del plan. Es el nombre que se registra. */
+    /** E2: el descanso del ejercicio en ese lugar: el elegido a mano para el que se hace, si no el del plan. */
+    fun descanso(id: String): Int =
+        DescansoPropio.segundos(descansosPropios[ClaveEjercicio.de(nombreEfectivo(id))], ejercicio(id)?.descansoSegundos)
+
+    fun tieneDescansoPropio(id: String): Boolean = DescansoPropio.valido(descansosPropios[ClaveEjercicio.de(nombreEfectivo(id))]) != null
+
     fun nombreEfectivo(id: String): String? = SustitucionesEntreno.aplicada(sustituciones[id])?.nombre ?: ejercicio(id)?.nombre
 
     /**
@@ -224,7 +244,13 @@ class DiaEnCurso(
      * Un paso de una acción que puede tener que preguntar: los efectos hasta acá y, si hace falta, la pregunta. Se vuelve
      * a llamar con la respuesta (así nada queda esperando al cliente con el día "abierto" para escribir).
      */
-    data class Paso(val efectos: List<Efecto> = emptyList(), val pregunta: Pregunta? = null, val motivo: Motivo? = null) {
+    data class Paso(
+        val efectos: List<Efecto> = emptyList(),
+        val pregunta: Pregunta? = null,
+        val motivo: Motivo? = null,
+        /** E3 (2.0.3): el aviso de récord de la serie recién confirmada, si lo hay ([RecordSerie]). */
+        val record: RecordSerie.Aviso? = null,
+    ) {
         enum class Motivo { REABRIR, REGISTRAR_IGUAL }
     }
 
@@ -234,7 +260,14 @@ class DiaEnCurso(
      * calentamiento). Con la última serie el ejercicio pasa a completo y se abre el siguiente pendiente (ENT-17). Si
      * devuelve una pregunta, se vuelve a llamar con la respuesta en `respuestas`.
      */
-    fun confirmarSerie(id: String, idx: Int, respuestas: Respuestas = Respuestas(), efectivo: Ejercicio? = null): Paso {
+    fun confirmarSerie(
+        id: String,
+        idx: Int,
+        respuestas: Respuestas = Respuestas(),
+        efectivo: Ejercicio? = null,
+        /** El día de hoy (YYYY-MM-DD local): el historial de hoy no cuenta como «lo mejor anterior» del récord. */
+        hoy: String? = null,
+    ): Paso {
         val e = ejercicios[id] ?: return Paso()
         if (idx < 0 || idx >= e.series.size || e.series[idx].confirmada) return Paso()
         val ex = ejercicio(id) ?: return Paso()
@@ -269,6 +302,7 @@ class DiaEnCurso(
         val evaluacion = Verosimilitud.evaluar(
             serie.reps, serie.kg, sinKg, if (propia) HistorialEntreno.recordKg(historial[id] ?: emptyList()) else 0.0, repsUlt, prog.reps,
         )
+        val verosimil = evaluacion == Verosimilitud.Resultado.Ok
         when (evaluacion) {
             Verosimilitud.Resultado.Ok -> {}
             is Verosimilitud.Resultado.Rechazada -> {
@@ -302,7 +336,16 @@ class DiaEnCurso(
         efectos += Efecto.AsegurarSesion
         efectos += escribirSerie(id, idx)
         if (ex.tipo != "calentamiento") {
-            efectos += Efecto.IniciarDescanso((ex.descansoSegundos ?: NormalizacionRutina.DESCANSO_POR_DEFECTO).toDouble())
+            efectos += Efecto.IniciarDescanso(descanso(id).toDouble())
+        }
+        // El récord: solo una serie de ESTE ejercicio, contra su historial de antes y las otras series suyas de hoy.
+        var record: RecordSerie.Aviso? = null
+        val series = ejercicios.getValue(id).series
+        if (propia && RecordSerie.historiaSuficiente(historial[id] ?: emptyList(), hoy, zona)) {
+            RecordSerie.marca(series[idx])?.let { m ->
+                record = RecordSerie.evaluar(m, sinKg, verosimil, RecordSerie.anteriores(historial[id] ?: emptyList(), hoy, zona), marcasDeHoy(id, idx))
+                if (record != null) recordsAvisados = recordsAvisados + ("$id|$idx" to m)
+            }
         }
         if (ejercicios.getValue(id).series.all { it.confirmada } && estado(id) == "pendiente") {
             efectos += cambiarEstado(id, "completo", manual = false)
@@ -316,7 +359,49 @@ class DiaEnCurso(
             }
         }
         if (!demo && diaCompleto) efectos += Efecto.DiaCompleto
-        return Paso(efectos)
+        return Paso(efectos, record = record)
+    }
+
+    /**
+     * 2.0.3: el RIR ya no se elige. Antes de confirmar una serie que nunca se registró, se le pone el del plan
+     * ([RirDelPlan]): la recuperación lo necesita para contar las series duras. Las ya registradas (con su nombre, del
+     * servidor o de la cola) conservan lo que tenían, y el calentamiento y el cardio no llevan RIR (no son series duras).
+     * Va aparte de [confirmarSerie], que sigue igual a la web (sus vectores esperan el RIR que se eligió).
+     */
+    fun fijarRirDelPlan(id: String, idx: Int, efectivo: Ejercicio? = null) {
+        val plan = ejercicio(id) ?: return
+        val e = ejercicios[id] ?: return
+        val s = e.series.getOrNull(idx) ?: return
+        val ex = efectivo ?: plan
+        // [efectivo] es el que se hace (el sustituto, con el tipo y el equipo del catálogo); el calentamiento, el cardio, el
+        // core y lo que va sin peso quedan sin RIR (null).
+        if (s.confirmada || s.rir.isNotEmpty() || s.nombreRegistrado != null || !RirDelPlan.lleva(ex)) return
+        cambiarSerie(id, idx) { it.copy(rir = RirDelPlan.guardar(Progresiones.pauta(ex, semana).rir)) }
+    }
+
+    /** La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva»; null si no lleva RIR. */
+    fun leyendaRir(id: String, efectivo: Ejercicio? = null): String? {
+        val ex = efectivo ?: ejercicio(id) ?: return null
+        if (!RirDelPlan.lleva(ex)) return null
+        return RirDelPlan.leyenda(Progresiones.pauta(ex, semana).rir)
+    }
+
+    /**
+     * E3: el piso de hoy para el récord de la serie [idx] del lugar: las series confirmadas del mismo ejercicio (misma
+     * clave) en todo el día, menos ella, y lo ya avisado en esos lugares (también en ella misma: el lápiz).
+     */
+    internal fun marcasDeHoy(id: String, idx: Int): List<RecordSerie.Marca> {
+        val clave = ClaveEjercicio.de(nombreEfectivo(id))
+        val lugares = lista.map { it.id }.filter { it == id || (clave.isNotEmpty() && ClaveEjercicio.de(nombreEfectivo(it)) == clave) }
+        val marcas = mutableListOf<RecordSerie.Marca>()
+        for (l in lugares) {
+            ejercicios[l]?.series?.forEachIndexed { i, s ->
+                if (!(l == id && i == idx) && s.confirmada && esDelEjercicioActual(l, s)) RecordSerie.marca(s)?.let { marcas += it }
+            }
+        }
+        val prefijos = lugares.map { "$it|" }
+        marcas += recordsAvisados.filterKeys { k -> prefijos.any { k.startsWith(it) } }.values
+        return marcas
     }
 
     /** "Marcar ejercicio completo": solo con todas las series confirmadas. */

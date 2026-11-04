@@ -250,7 +250,7 @@ object CentroAvisos {
             cancelarDomingo(c)
             return
         }
-        programarDomingo(c)
+        programarDomingo(c, semanaCompleta = m.semanaDeRevisionCompleta)
         registrarPush(c, m, version)
     }
 
@@ -258,8 +258,18 @@ object CentroAvisos {
     fun alActivar(c: Context, m: ModeloApp, version: String, alcance: CoroutineScope) {
         if (!concedido(c)) return
         crearCanales(c)
-        programarDomingo(c)
+        programarDomingo(c, semanaCompleta = m.semanaDeRevisionCompleta)
         alcance.launch { registrarPush(c, m, version) }
+    }
+
+    /**
+     * Se completó (o se terminó de cargar) la semana de revisión: el aviso se vuelve a armar si ya había permiso (nunca lo
+     * pide). Así quien sube todo el sábado no recibe nada el domingo (R2 de la 2.0.3).
+     */
+    fun alCambiarLaSemana(c: Context, completa: Boolean) {
+        if (!concedido(c)) return
+        crearCanales(c)
+        programarDomingo(c, semanaCompleta = completa)
     }
 
     /** Sin cuenta (salió), con el link vencido o en la demo: el aviso del domingo ya no es para este teléfono. */
@@ -393,10 +403,15 @@ object CentroAvisos {
 
     /**
      * Agenda el domingo que viene a las 11:00 de la zona del teléfono, una sola vez (pisa el que hubiera), y lo anota en
-     * [CLAVE_DOMINGO]. Devuelve cuándo.
+     * [CLAVE_DOMINGO]. Con la semana de revisión ya completa ([semanaCompleta]), el de la semana que viene. Devuelve cuándo.
      */
-    fun programarDomingo(c: Context, ahora: Instant = Instant.now(), zona: ZoneId = ZoneId.systemDefault()): Instant? {
-        val cuando = AvisoDomingo.proximo(ahora, zona)
+    fun programarDomingo(
+        c: Context,
+        ahora: Instant = Instant.now(),
+        zona: ZoneId = ZoneId.systemDefault(),
+        semanaCompleta: Boolean = false,
+    ): Instant? {
+        val cuando = AvisoDomingo.proximo(ahora, zona, semanaCompleta)
         if (!armarDomingo(c, cuando)) return null
         PreferenciasCompartidas(c).guardar(CLAVE_DOMINGO, AvisoDomingo.anotar(cuando, zona))
         return cuando

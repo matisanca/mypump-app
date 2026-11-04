@@ -27,6 +27,8 @@ public final class ModeloProgreso {
     public private(set) var sesiones = 0
     /// Lo traído por clave, para que Entreno use el mismo historial (última vez y récord).
     public private(set) var historialPorClave: [String: [RegistroHistorico]] = [:]
+    /// Cambia cada vez que llega el historial (para el caché del volumen por músculo).
+    public private(set) var versionHistorial = 0
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
@@ -102,6 +104,7 @@ public final class ModeloProgreso {
         }.value
         guard mia == carga else { return }
         historialPorClave = filasPor
+        versionHistorial &+= 1
         tarjetas = nuevas
         sesiones = cuantas
         estado = .listo

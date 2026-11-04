@@ -16,6 +16,7 @@ final class EntrenoUITests: XCTestCase {
     func testTocarUnCampoLoSeleccionaEntero() throws {
         let campos = app.textFields
         XCTAssertTrue(campos.firstMatch.waitForExistence(timeout: 15), "No abrió el ejercicio")
+        traerALaVista(campos.firstMatch)
         XCTAssertGreaterThanOrEqual(campos.count, 2, "El ejercicio no tiene columna de kg")
         let reps = campos.element(boundBy: 0), kg = campos.element(boundBy: 1)
         kg.tap()
@@ -32,6 +33,7 @@ final class EntrenoUITests: XCTestCase {
     func testElDescansoApareceALaVistaYSeAjusta() throws {
         let campos = app.textFields
         XCTAssertTrue(campos.firstMatch.waitForExistence(timeout: 15), "No abrió el ejercicio")
+        traerALaVista(campos.firstMatch)
         let reps = campos.element(boundBy: 0), kg = campos.element(boundBy: 1)
         reps.tap()
         reps.typeText("10")
@@ -57,6 +59,14 @@ final class EntrenoUITests: XCTestCase {
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "descanso-en-tarjeta"; a.lifetime = .keepAlways; add(a)
         saltar.tap()
         XCTAssertTrue(tarjeta.waitForNonExistence(timeout: 4), "«Saltar descanso» no lo sacó")
+    }
+
+    /// Con la preparación arriba (E1), la tabla queda más abajo: se sube hasta que el campo quede lejos de la barra.
+    private func traerALaVista(_ e: XCUIElement) {
+        for _ in 0..<3 where e.frame.maxY > app.frame.maxY * 0.6 {
+            app.scrollViews.firstMatch.swipeUp(velocity: .slow)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+        }
     }
 
     /// «Descanso, quedan 1:30» → 90.
@@ -88,7 +98,13 @@ final class EntrenoUITests: XCTestCase {
     /// Desde la página de un ejercicio, la hoja «Sustituir» (la barra de la hoja).
     private func abrirSustituir() -> XCUIElement {
         let sustituir = app.buttons["Sustituir"].firstMatch
-        for _ in 0..<6 where !(sustituir.exists && sustituir.isHittable) { app.swipeUp() }
+        // Al confirmar, el foco pasa a la serie siguiente y el teclado (su ventana) se come el toque aunque el botón se vea.
+        if app.keyboards.firstMatch.exists { app.buttons["Listo"].firstMatch.tap() }
+        // Lejos de la barra de abajo (el descanso que corre la tapa): con la preparación arriba (E1) queda más abajo.
+        for _ in 0..<6 where !(sustituir.exists && sustituir.isHittable && sustituir.frame.maxY < app.frame.maxY * 0.7) {
+            app.scrollViews.firstMatch.swipeUp(velocity: .slow)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.8))   // un toque mientras frena solo frena el scroll
+        }
         sustituir.tap()
         let hoja = app.navigationBars["Sustituir ejercicio"]
         XCTAssertTrue(hoja.waitForExistence(timeout: 5), "No abrió la hoja de sustituir")

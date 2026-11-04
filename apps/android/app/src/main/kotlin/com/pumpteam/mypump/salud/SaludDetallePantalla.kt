@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -204,13 +205,29 @@ private fun Seccion(
 /** "Cómo se arma tu recuperación": el score de hoy y cada componente con su barra y lo que pesa. */
 @Composable
 private fun Recuperacion(salud: ModeloSalud, hay: Boolean) {
-    val score = salud.scoreDeHoy
-    if (!hay || score == null) return
+    if (!hay) return
     val c = MyPump.colores
+    val score = salud.scoreDeHoy
+    if (score == null) {
+        // Sin score hoy: qué falta, como lo explica el servidor (nativa_007).
+        val falta = salud.motivoFaltaDeHoy ?: return
+        Seccion(salud, "🔋", "Tu recuperación de hoy") {
+            Text(falta, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("detalle-motivo-falta"))
+        }
+        return
+    }
+    val confianza = salud.confianzaDeHoy
     Seccion(salud, "🔋", "Cómo se arma tu recuperación") {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("$score", style = Numeros.grande)
+            Text("$score", style = Numeros.grande, color = if (confianza?.apagado == true) c.textoSecundario else Color.Unspecified)
             Text("/100", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.padding(bottom = 6.dp))
+        }
+        // En el detalle la explicación va a la vista, sin tocar nada.
+        if (confianza != null) {
+            Column(Modifier.semantics(mergeDescendants = true) {}.testTag("detalle-confianza"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Chip(confianza.etiqueta)
+                NotaSalud(confianza.explicacion)
+            }
         }
         for (comp in salud.componentes) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

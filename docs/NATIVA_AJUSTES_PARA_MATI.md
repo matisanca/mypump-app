@@ -21,8 +21,8 @@ con el OK de Mati). Hay una fila por cliente y por día:
 | `cliente_id`, `fecha` | La clave. La fecha es la del teléfono del cliente |
 | `dieta_id` | La dieta activa ese día (la de `mypump_dietas`) |
 | `tipo_dia` | El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`; si no, null |
-| `ajustes` | `{comida_id: {deltaKcal, compensar, omitida, opcion, cantidades, anclas}}`. `{}` = volvió al plan (la fila no se borra) |
-| `resumen` | `[{comida_id, nombre, kcal_plan, kcal_dia, omitida}]`, cómo le quedó cada comida. null si `ajustes` es `{}` |
+| `ajustes` | `{comida_id: {deltaKcal, compensar, omitida, opcion, cantidades, anclas, agregados}}`. `{}` = volvió al plan (la fila no se borra) |
+| `resumen` | `[{comida_id, nombre, kcal_plan, kcal_dia, omitida, agregados?}]`, cómo le quedó cada comida. null si `ajustes` es `{}` |
 | `kcal_plan`, `kcal_dia` | El total del día: el plan y lo que quedó con los ajustes |
 | `actualizado_en` | El último cambio del día |
 
@@ -32,7 +32,14 @@ Lo que significa cada campo de `ajustes`:
 - `omitida`: «Hoy no la como».
 - `opcion` es la opción elegida (0 = A).
 - `cantidades` son los gramos o unidades puestos a mano por posición del alimento (`anclas` dice a qué alimento va cada
-  una).
+  una). Desde la 2.0.3 también se ponen tocando la cantidad de un alimento en la tarjeta de la comida.
+- `agregados` (desde la 2.0.3; no está si no sumó nada) son los alimentos que el cliente sumó a esa comida, de la base de
+  alimentos o propios: `[{nombre, cantidad, unidad, gramosUnidad?, gramos, kcal, p, c, g, por100, origen, _ts}]`.
+  `cantidad` va en `unidad` («g», «unidad», «puño»…), `gramos` es el total, `kcal/p/c/g` lo que aporta y `origen` es
+  `base` o `propio`. Cuentan en las kcal de la comida (no se escalan con `deltaKcal`) y, con `compensar`, lo que suben
+  sale de las siguientes. Tope: 8 por comida y 24 por día.
+
+En `resumen`, `agregados` (solo si sumó algo y la come) trae `[{nombre, cantidad, unidad, gramos, kcal, p, c, g}]`; `kcal_dia` ya los incluye.
 
 ## Lectura sugerida
 
@@ -59,4 +66,8 @@ que usa el teléfono del cliente.
 - **No es «Comí / Salté».** Es el plan del día ajustado por el cliente, no lo que comió.
 - **Solo desde la 2.0.1 de las apps.** Los que se hicieron antes de la migración (en un TestFlight) suben solos la
   próxima vez que se abre la app.
+- **Con «Hoy no la como» los agregados quedan guardados pero no cuentan** (ni salen en `resumen`): si la vuelve a
+  comer, vuelven. «Volver al plan» los borra junto con el resto del ajuste de esa comida.
+- **Las apps 2.0.2 o anteriores no conocen `agregados`**: si el mismo cliente ajusta el mismo día desde un teléfono con
+  la versión vieja, ese guardado reescribe el día entero sin ellos. La web no escribe esta tabla.
 - **Las kcal del resumen ya vienen redondeadas** a porciones servibles. Pueden diferir en unas pocas kcal de lo pedido.

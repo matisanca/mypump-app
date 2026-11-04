@@ -1,0 +1,491 @@
+{
+  "fuente": "A mano (3-nov, 2.0.3): reglas de la nativa que la web no tiene. La leen Entreno203Tests (iOS) y Entreno203Test (Android) y tienen que dar esto.",
+  "descanso": {
+    "regla": "E2: el descanso elegido a mano (0:30 a 5:00 en pasos de 15 s) le gana al del plan; un valor fuera de las opciones no vale; sin nada, el del plan o 90.",
+    "opciones": [
+      30,
+      45,
+      60,
+      75,
+      90,
+      105,
+      120,
+      135,
+      150,
+      165,
+      180,
+      195,
+      210,
+      225,
+      240,
+      255,
+      270,
+      285,
+      300
+    ],
+    "casos": [
+      {
+        "propio": null,
+        "plan": 120,
+        "sale": 120
+      },
+      {
+        "propio": 150,
+        "plan": 120,
+        "sale": 150
+      },
+      {
+        "propio": 30,
+        "plan": null,
+        "sale": 30
+      },
+      {
+        "propio": 300,
+        "plan": 60,
+        "sale": 300
+      },
+      {
+        "propio": null,
+        "plan": null,
+        "sale": 90
+      },
+      {
+        "propio": 100,
+        "plan": 120,
+        "sale": 120,
+        "por": "no es un paso de 15 s"
+      },
+      {
+        "propio": 15,
+        "plan": 60,
+        "sale": 60,
+        "por": "debajo de 0:30"
+      },
+      {
+        "propio": 315,
+        "plan": 60,
+        "sale": 60,
+        "por": "arriba de 5:00"
+      },
+      {
+        "propio": 0,
+        "plan": 75,
+        "sale": 75
+      }
+    ],
+    "usar": {
+      "regla": "«Usar» del selector: lo elegido se guarda aunque sea el del plan (el propio solo se borra con «Volver al del plan»); sin propio, sin mover la rueda y con un del plan que no es opción, no se guarda nada (null).",
+      "casos": [
+        {
+          "nombre": "sin propio, igual al del plan: se guarda",
+          "seleccion": 120,
+          "inicial": 120,
+          "plan": 120,
+          "propio": false,
+          "guarda": 120
+        },
+        {
+          "nombre": "con propio, eligió otro",
+          "seleccion": 90,
+          "inicial": 75,
+          "plan": 120,
+          "propio": true,
+          "guarda": 90
+        },
+        {
+          "nombre": "con propio, eligió el del plan: no se borra, queda el del plan como propio",
+          "seleccion": 120,
+          "inicial": 75,
+          "plan": 120,
+          "propio": true,
+          "guarda": 120
+        },
+        {
+          "nombre": "del plan fuera de las opciones (100 s), sin mover la rueda: nada",
+          "seleccion": 105,
+          "inicial": 105,
+          "plan": 100,
+          "propio": false,
+          "guarda": null
+        },
+        {
+          "nombre": "del plan fuera de las opciones, eligió otro: se guarda",
+          "seleccion": 120,
+          "inicial": 105,
+          "plan": 100,
+          "propio": false,
+          "guarda": 120
+        },
+        {
+          "nombre": "del plan de 7 min, sin mover la rueda (arrancó en 5:00): nada",
+          "seleccion": 300,
+          "inicial": 300,
+          "plan": 420,
+          "propio": false,
+          "guarda": null
+        },
+        {
+          "nombre": "con propio y sin mover la rueda: se vuelve a guardar el mismo",
+          "seleccion": 75,
+          "inicial": 75,
+          "plan": 100,
+          "propio": true,
+          "guarda": 75
+        }
+      ]
+    }
+  },
+  "rir": {
+    "regla": "2.0.3: el RIR ya no se elige (las efectivas van al fallo). Al confirmar se guarda el objetivo del plan para la semana: el primer número del rango, redondeado hacia arriba, entre 0 y 5; sin objetivo o sin número, 0. La leyenda debajo de «Series efectivas» es «Al fallo» (objetivo 0 o sin objetivo) o «Dejando N en reserva» con el rango del plan.",
+    "casos": [
+      {
+        "objetivo": "2",
+        "guarda": "2",
+        "leyenda": "Dejando 2 en reserva"
+      },
+      {
+        "objetivo": "1-2",
+        "guarda": "1",
+        "leyenda": "Dejando 1–2 en reserva"
+      },
+      {
+        "objetivo": "1 - 2",
+        "guarda": "1",
+        "leyenda": "Dejando 1–2 en reserva"
+      },
+      {
+        "objetivo": "2-3",
+        "guarda": "2",
+        "leyenda": "Dejando 2–3 en reserva"
+      },
+      {
+        "objetivo": "0 (al fallo)",
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      },
+      {
+        "objetivo": "0",
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      },
+      {
+        "objetivo": "0-1",
+        "guarda": "0",
+        "leyenda": "Dejando 0–1 en reserva"
+      },
+      {
+        "objetivo": "1.5",
+        "guarda": "2",
+        "leyenda": "Dejando 1,5 en reserva"
+      },
+      {
+        "objetivo": "1,5-2",
+        "guarda": "2",
+        "leyenda": "Dejando 1,5–2 en reserva"
+      },
+      {
+        "objetivo": "RIR 3",
+        "guarda": "3",
+        "leyenda": "Dejando 3 en reserva"
+      },
+      {
+        "objetivo": "1-2 (cerca del fallo)",
+        "guarda": "1",
+        "leyenda": "Dejando 1–2 en reserva"
+      },
+      {
+        "objetivo": "8",
+        "guarda": "5",
+        "leyenda": "Dejando 8 en reserva"
+      },
+      {
+        "objetivo": "al fallo",
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      },
+      {
+        "objetivo": "",
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      },
+      {
+        "objetivo": null,
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      },
+      {
+        "objetivo": "RPE 8",
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      },
+      {
+        "objetivo": "8-9 rpe",
+        "guarda": "0",
+        "leyenda": "Al fallo"
+      }
+    ]
+  },
+  "record": {
+    "regla": "E3: contra lo mejor anterior del ejercicio (la serie más pesada de días anteriores y, a ese kg, la de más reps; las series de hoy ya confirmadas también son piso). Más kg con al menos 1 rep: «+N kg»; el mismo kg con más reps: «+N rep(s)». Sin historia de antes, sin kg o no verosímil: nada.",
+    "casos": [
+      {
+        "nombre": "más kg",
+        "serie": {
+          "kg": 82.5,
+          "reps": 8
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          },
+          {
+            "kg": 77.5,
+            "reps": 12
+          }
+        ],
+        "hoy": [],
+        "sale": "Récord: +2,5 kg"
+      },
+      {
+        "nombre": "más kg con 1 rep",
+        "serie": {
+          "kg": 85,
+          "reps": 1
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          }
+        ],
+        "hoy": [],
+        "sale": "Récord: +5 kg"
+      },
+      {
+        "nombre": "mismo kg, una rep más",
+        "serie": {
+          "kg": 80,
+          "reps": 11
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          },
+          {
+            "kg": 70,
+            "reps": 15
+          }
+        ],
+        "hoy": [],
+        "sale": "Récord: +1 rep"
+      },
+      {
+        "nombre": "mismo kg, tres reps más",
+        "serie": {
+          "kg": 80,
+          "reps": 13
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 8
+          },
+          {
+            "kg": 80,
+            "reps": 10
+          }
+        ],
+        "hoy": [],
+        "sale": "Récord: +3 reps"
+      },
+      {
+        "nombre": "mismo kg, mismas reps",
+        "serie": {
+          "kg": 80,
+          "reps": 10
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          }
+        ],
+        "hoy": [],
+        "sale": null
+      },
+      {
+        "nombre": "menos kg con más reps no es récord",
+        "serie": {
+          "kg": 70,
+          "reps": 20
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          },
+          {
+            "kg": 70,
+            "reps": 15
+          }
+        ],
+        "hoy": [],
+        "sale": null
+      },
+      {
+        "nombre": "sin historia de antes",
+        "serie": {
+          "kg": 100,
+          "reps": 10
+        },
+        "anteriores": [],
+        "hoy": [
+          {
+            "kg": 90,
+            "reps": 10
+          }
+        ],
+        "sale": null
+      },
+      {
+        "nombre": "lo de hoy ya avisado no se repite",
+        "serie": {
+          "kg": 82.5,
+          "reps": 8
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          }
+        ],
+        "hoy": [
+          {
+            "kg": 82.5,
+            "reps": 8
+          }
+        ],
+        "sale": null
+      },
+      {
+        "nombre": "por encima de lo de hoy vuelve a avisar",
+        "serie": {
+          "kg": 85,
+          "reps": 6
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          }
+        ],
+        "hoy": [
+          {
+            "kg": 82.5,
+            "reps": 8
+          }
+        ],
+        "sale": "Récord: +2,5 kg"
+      },
+      {
+        "nombre": "una rep más que lo de hoy",
+        "serie": {
+          "kg": 82.5,
+          "reps": 9
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          }
+        ],
+        "hoy": [
+          {
+            "kg": 82.5,
+            "reps": 8
+          }
+        ],
+        "sale": "Récord: +1 rep"
+      },
+      {
+        "nombre": "decimales",
+        "serie": {
+          "kg": 31.25,
+          "reps": 8
+        },
+        "anteriores": [
+          {
+            "kg": 30,
+            "reps": 8
+          }
+        ],
+        "hoy": [],
+        "sale": "Récord: +1,25 kg"
+      },
+      {
+        "nombre": "filas con 0 kg no cuentan",
+        "serie": {
+          "kg": 20,
+          "reps": 8
+        },
+        "anteriores": [
+          {
+            "kg": 0,
+            "reps": 12
+          }
+        ],
+        "hoy": [],
+        "sale": null
+      },
+      {
+        "nombre": "0 reps no es serie",
+        "serie": {
+          "kg": 100,
+          "reps": 0
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          }
+        ],
+        "hoy": [],
+        "sale": null
+      },
+      {
+        "nombre": "sin kg (peso corporal)",
+        "sinKg": true,
+        "serie": {
+          "kg": 0,
+          "reps": 20
+        },
+        "anteriores": [
+          {
+            "kg": 0,
+            "reps": 15
+          }
+        ],
+        "hoy": [],
+        "sale": null
+      },
+      {
+        "nombre": "no verosímil (se preguntó)",
+        "verosimil": false,
+        "serie": {
+          "kg": 250,
+          "reps": 8
+        },
+        "anteriores": [
+          {
+            "kg": 80,
+            "reps": 10
+          }
+        ],
+        "hoy": [],
+        "sale": null
+      }
+    ]
+  }
+}

@@ -55,7 +55,14 @@ class RevisionUiTest : PruebaUi() {
 
     private fun irARevision() {
         p.tocar(etiqueta("pestana-revision"))
-        p.nodo(etiqueta("seccion-peso"))
+        p.nodo(etiqueta("seccion-check"))
+    }
+
+    /** Salud en un segmento (desde la 2.1 el peso está en Cuerpo; Mi reloj, la recuperación y la salud en Recuperación). */
+    private fun irASalud(segmento: String) {
+        p.tocar(etiqueta("pestana-salud"))
+        p.tocar(etiqueta("segmento-$segmento"))
+        p.esperar("$segmento elegido") { p.seleccionado(etiqueta("segmento-$segmento")) }
     }
 
     /** Dónde empieza una sección, medido en pantallas de lo que se ve de Revisión (0 = arriba de todo, 1 = abajo). */
@@ -112,29 +119,38 @@ class RevisionUiTest : PruebaUi() {
         }
     }
 
-    // ── REV-01: el orden de la web ──
+    // ── REV-01, desde la 2.1: Revisión es solo para subir la semana ──
 
+    /**
+     * Fotos y check, en ese orden, y nada más: el peso, Mi reloj, la recuperación, la salud y el respaldo pasaron a Salud.
+     * Con un reloj para ofrecer y la salud conectada, para que si alguna tarjeta quedara se viera.
+     */
     @Test
-    fun lasTarjetasVanEnElOrdenDeLaWeb() {
+    fun revisionSoloTieneLasFotosYElCheck() {
         servidor.relojes = listOf("oura")
+        ModeloSalud.fuenteDelSistema = FuenteDeMentira()
+        EstadoHealthConnect.forzado = EstadoHealthConnect.DISPONIBLE
+        guardarPreferencia(ClaveSalud.CONECTADO, "1")
         guardarCuenta()
         abrir()
         irARevision()
-        p.nodo(etiqueta("card-reloj"))
-        val ys = listOf("fotos", "check", "peso", "reloj", "midia").map { it to altura(it) }
-        assertEquals("Fotos → Check → Peso → Mi reloj → Mi Día: $ys", ys.sortedBy { it.second }.map { it.first }, ys.map { it.first })
-        // El encabezado de la semana sigue arriba, y sin relojes en el servidor la tarjeta no ocupa lugar.
+        val ys = listOf("fotos", "check").map { it to altura(it) }
+        assertEquals("Fotos → Check: $ys", ys.sortedBy { it.second }.map { it.first }, ys.map { it.first })
         p.nodo(textoQueContiene("Semana del"))
-        Telefono.captura("revision-orden-claro")
+        p.quieto(1_000)
+        for (fuera in listOf("seccion-peso", "card-reloj", "seccion-reloj", "card-recuperacion", "card-salud", "seccion-midia", "respaldo-cientifico")) {
+            assertFalse("Revisión sigue teniendo $fuera", p.existe(etiqueta(fuera)))
+        }
+        Telefono.captura("revision-solo-la-semana-claro")
     }
 
     /**
      * Gemela de testMisDatosAbreElRespaldoYLaPolitica (la de los interruptores es `SinPermisoIAUiTest`): desde Mis datos
      * se abren el respaldo científico y la política de privacidad (en la Custom Tab, que acá no se abre de verdad: el
-     * monitor se queda con el pedido). Y el pie de Mi Día abre el mismo respaldo (GEN-09).
+     * monitor se queda con el pedido). Y el pie de Salud → Recuperación abre el mismo respaldo (GEN-09).
      */
     @Test
-    fun misDatosAbreElRespaldoYLaPoliticaYMiDiaTambienElRespaldo() {
+    fun misDatosAbreElRespaldoYLaPoliticaYRecuperacionTambienElRespaldo() {
         val vistos = CopyOnWriteArrayList<Intent>()
         val m = object : Instrumentation.ActivityMonitor() {
             override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
@@ -147,13 +163,14 @@ class RevisionUiTest : PruebaUi() {
         monitores += m
         guardarCuenta()
         abrir()
-        irARevision()
+        irASalud("recuperacion")
         p.tocar(etiqueta("respaldo-cientifico"))
         p.nodo(etiqueta("hoja-fuentes"))
         p.nodo(texto("Cómo se calcula tu objetivo de calorías"))
         p.tocar(etiqueta("fuentes-listo"))
         p.esperarQueNoEste(etiqueta("hoja-fuentes"))
 
+        irARevision()
         p.tocar(etiqueta("mis-datos"))
         p.nodo(etiqueta("mis-datos-pantalla"))
         p.tocar(etiqueta("mis-datos-respaldo"))
@@ -201,19 +218,19 @@ class RevisionUiTest : PruebaUi() {
         p.esperar("el badge baja a 1") { "1" in p.textosBajo(etiqueta("pestana-revision")) }
     }
 
-    // ── REV-07: el peso fuera de rango no sale ──
+    // ── REV-07: el peso fuera de rango no sale (desde la 2.1, en Salud → Cuerpo) ──
 
     @Test
     fun unPesoFueraDeRangoNoSeGuarda() {
         guardarCuenta()
         abrir()
-        irARevision()
+        irASalud("cuerpo")
         // La cuenta grabada tiene 21 días de peso: el gráfico (la tendencia depende de la fecha del teléfono).
         p.nodo(etiqueta("grafico-peso"))
         p.escribir(etiqueta("peso-hoy"), "25")
         p.tocar(etiqueta("guardar-peso"))
         p.nodo(texto("Tiene que estar entre 30 y 300 kg."))
-        Telefono.captura("revision-peso-invalido-claro")
+        Telefono.captura("salud-cuerpo-peso-invalido-claro")
         p.quieto(600)
         assertTrue("salió un peso inválido", servidor.a("mypump_ingest_salud").isEmpty())
         // Escribir de nuevo saca el aviso; uno válido sale por la cola, de fuente manual.
@@ -451,43 +468,42 @@ class RevisionUiTest : PruebaUi() {
         guardarCuenta()
         abrir()
         irARevision()
-        // Desplazada hasta abajo; el banner la lleva de nuevo a las fotos. Sin Mi Día (15-oct) Revisión es más corta: abajo de
-        // todo, las fotos quedan media pantalla o más arriba de la vista.
+        // Desplazada hasta abajo; el banner la lleva de nuevo a las fotos. Desde la 2.1 Revisión es solo fotos y check: abajo
+        // de todo, las fotos quedan arriba, fuera de la vista.
         p.desplazar(etiqueta("revision-lista"), 5_000f)
-        p.esperar("bien abajo") { alturaYa("fotos") < -0.4f }
+        p.esperar("bien abajo") { alturaYa("fotos") < -0.15f }
         p.tocar(etiqueta("pestana-dieta"))
         p.tocar(etiqueta("banner-revision"))
         p.esperar("las fotos arriba de todo") { alturaYa("fotos").let { it in -0.05f..0.2f } }
     }
 
     /**
-     * `scene=myday` (el link de la web a Mi Día): sin Mi Día (15-oct), lleva a lo que quedó de él, la recuperación y la
-     * salud del reloj, al pie de Revisión. Va lo más abajo que se puede: la sección entra en la pantalla.
+     * `scene=myday` (el link de la web a Mi Día, que ya no existe): desde la 2.1 lleva a Salud → Recuperación, lo que quedó
+     * de él (la recuperación y la salud del reloj).
      */
     @Test
-    fun unLinkConSceneMyDayLlevaALaSalud() {
+    fun unLinkConSceneMyDayLlevaARecuperacion() {
         abrirConLink("https://app.mypumpteam.com/?t=${ServidorDePrueba.TOKEN}&scene=myday")
-        p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
-        p.esperar("la salud a la vista") { alturaYa("fotos") < -0.05f && alturaYa("midia") in 0f..0.9f }
-        Telefono.captura("revision-ancla-salud-claro")
-        // Tocar la pestaña después vuelve donde quedó (el ancla se consumió: no salta de nuevo).
+        p.esperar("Salud elegida") { p.seleccionado(etiqueta("pestana-salud")) }
+        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.nodo(etiqueta("card-recuperacion"))
+        // Tocar la pestaña después vuelve al mismo segmento.
         p.tocar(etiqueta("pestana-entreno"))
-        p.tocar(etiqueta("pestana-revision"))
-        p.quieto(800)
-        assertTrue(altura("midia") in 0f..0.9f)
+        p.tocar(etiqueta("pestana-salud"))
+        p.esperar("sigue en Recuperación") { p.seleccionado(etiqueta("segmento-recuperacion")) }
     }
 
-    /** El aviso con destino `myday` (lo manda el servidor) también: a Revisión, con la salud a la vista. */
+    /** El aviso con destino `myday` (lo manda el servidor) también, aunque Salud haya quedado en otro segmento. */
     @Test
-    fun unAvisoDeMiDiaLlevaALaSalud() {
+    fun unAvisoDeMiDiaLlevaARecuperacion() {
         guardarCuenta()
         abrir()
-        irARevision()
-        p.esperar("arriba de todo") { alturaYa("fotos") in -0.05f..0.2f }
+        irASalud("cuerpo")
         p.tocar(etiqueta("pestana-entreno"))
         app.startActivity(com.pumpteam.mypump.avisos.CentroAvisos.intentDeAviso(app, "myday"))
-        p.esperar("Revisión elegida") { p.seleccionado(etiqueta("pestana-revision")) }
-        p.esperar("la salud a la vista") { alturaYa("fotos") < -0.05f && alturaYa("midia") in 0f..0.9f }
+        p.esperar("Salud elegida") { p.seleccionado(etiqueta("pestana-salud")) }
+        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
+        p.nodo(etiqueta("card-recuperacion"))
     }
 
     // ── REV-08: Mi reloj ──
@@ -518,12 +534,12 @@ class RevisionUiTest : PruebaUi() {
             servidor.respuestas["mypump_get_conexiones"] = """[{"proveedor":"whoop","estado":"conectada","ultimo_pull_en":"2026-10-14T10:00:00Z"}]"""
             guardarCuenta()
             abrir()
-            irARevision()
+            irASalud("recuperacion")
             p.nodo(etiqueta("card-reloj"))
             p.nodo(texto("Si usás Oura o WHOOP, conectalo y tus datos de sueño y recuperación entran solos. Tu reloj no se conecta acá: va por Health Connect."))
             p.nodo(texto("conectado"))
             p.nodo(textoQueContiene("Última sincronización: "))
-            Telefono.captura("revision-mi-reloj-claro")
+            Telefono.captura("salud-mi-reloj-claro")
 
             // Quitar pregunta antes; Cancelar no hace nada.
             p.tocar(etiqueta("reloj-quitar-whoop"))
@@ -558,10 +574,10 @@ class RevisionUiTest : PruebaUi() {
         }
     }
 
-    // ── SAL-09 y SAL-10: Recuperación y Salud, al pie de Revisión (sin Mi Día desde el 15-oct) ──
+    // ── SAL-09 y SAL-10: Recuperación y Salud, en Salud → Recuperación (2.1) ──
 
     @Test
-    fun recuperacionYSaludVanAlPie() {
+    fun recuperacionYSaludEnElSegmentoRecuperacion() {
         ModeloSalud.fuenteDelSistema = FuenteDeMentira()
         EstadoHealthConnect.forzado = EstadoHealthConnect.DISPONIBLE
         for (f in listOf("get_salud", "get_recuperacion", "get_mostrar_recuperacion")) {
@@ -571,14 +587,15 @@ class RevisionUiTest : PruebaUi() {
         guardarPreferencia(ClaveSalud.HISTORIAL_HECHO, "1")
         guardarCuenta()
         abrir()
-        irARevision()
+        // Salud arranca en Recuperación.
+        p.tocar(etiqueta("pestana-salud"))
+        p.esperar("Recuperación elegida") { p.seleccionado(etiqueta("segmento-recuperacion")) }
         p.nodo(etiqueta("card-recuperacion"))
         p.nodo(etiqueta("card-salud"))
-        // Después del peso, la recuperación y abajo la salud. Los hábitos, la racha y los 30 días ya no están.
-        val peso = p.nodo(etiqueta("seccion-peso")).positionInRoot.y
+        // Arriba la recuperación y abajo la salud. Los hábitos, la racha y los 30 días ya no están.
         val recuperacion = p.nodo(etiqueta("card-recuperacion")).positionInRoot.y
         val salud = p.nodo(etiqueta("card-salud")).positionInRoot.y
-        assertTrue("Recuperación fuera de lugar ($peso, $recuperacion, $salud)", peso < recuperacion && recuperacion < salud)
+        assertTrue("Recuperación fuera de lugar ($recuperacion, $salud)", recuperacion < salud)
         for (fuera in listOf("agua", "ultimos-30", "entrenamiento-entrene")) assertFalse("sigue $fuera", p.existe(etiqueta(fuera)))
         // La entrada al detalle es un botón que invita: «Ver cómo está mi cuerpo».
         p.nodo(texto("Ver cómo está mi cuerpo"))
@@ -597,24 +614,29 @@ class RevisionUiTest : PruebaUi() {
         p.tocar(etiqueta("pestana-revision"))
         p.nodo(etiqueta("seccion-check"))
         servidor.llamadas.clear()
-        // El check se llena igual, con el peso de hoy (15-oct): el peso queda en Peso corporal, que pasa a «Corregir».
-        for (t in listOf("Energía: 4 de 5", "Descanso: 4 de 5", "Hambre: 3 de 5", "Adherencia: 5 de 5")) p.tocar(texto(t))
-        p.escribir(etiqueta("peso-check"), "80")
-        p.tocar(etiqueta("enviar-check"))
-        p.nodo(etiqueta("check-enviado"))
-        p.esperar("el peso del check en Peso corporal") { p.textosBajo(etiqueta("guardar-peso")) == listOf("Corregir") }
-        // Y el de otro día, fuera del check.
-        p.escribir(etiqueta("peso-hoy"), "79,5")
-        p.tocar(etiqueta("guardar-peso"))
-        p.nodo(texto("Corregir"))
         // Las fotos no se guardan (ni se abre la cámara).
         p.tocar(etiqueta("foto-frente"))
         p.nodo(texto("En la demo las fotos no se guardan."))
         assertFalse(p.existe(etiqueta("sacar-foto")))
-        // Sin cuenta no hay reloj ni salud (y Mi Día ya no está).
+        // El check se llena igual, con el peso de hoy (15-oct): el peso queda en Peso corporal (Salud → Cuerpo), que pasa a
+        // «Corregir».
+        for (t in listOf("Energía: 4 de 5", "Descanso: 4 de 5", "Hambre: 3 de 5", "Adherencia: 5 de 5")) p.tocar(texto(t))
+        p.escribir(etiqueta("peso-check"), "80")
+        p.tocar(etiqueta("enviar-check"))
+        p.nodo(etiqueta("check-enviado"))
+        irASalud("cuerpo")
+        p.esperar("el peso del check en Peso corporal") { p.textosBajo(etiqueta("guardar-peso")) == listOf("Corregir") }
+        // El check, de solo lectura en Cuerpo.
+        p.nodo(etiqueta("cuerpo-check-energia"))
+        // Y el de otro día, fuera del check.
+        p.escribir(etiqueta("peso-hoy"), "79,5")
+        p.tocar(etiqueta("guardar-peso"))
+        p.nodo(texto("Corregir"))
+        // Sin cuenta no hay reloj ni salud: Recuperación lo dice (y Mi Día ya no está).
+        irASalud("recuperacion")
+        p.nodo(etiqueta("recuperacion-vacia"))
         assertFalse(p.existe(etiqueta("card-reloj")))
         assertFalse(p.existe(etiqueta("card-recuperacion")))
-        assertFalse(p.existe(etiqueta("seccion-midia")))
         p.quieto(1_500)
         assertTrue("la demo tocó la red: ${servidor.llamadas.map { it.funcion }}", servidor.llamadas.isEmpty())
     }

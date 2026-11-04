@@ -6,7 +6,7 @@
 
 ## Candado
 
-**Trabaja:** sesión `7a9c6371` (MacBook), desde el 13-oct-2026 23:59.
+**Trabajan (4-nov-2026 de noche, por pedido de Mati):** «MyPump Pro 2.0» `87d2a7a8` en el clon principal (`nativa-202`) y sus worktrees, con la 2.0.3 y el Watch. «MYPUMP PRO» `c96aa5` solo en los worktrees `guia`, `guia-ios` y `guia-and` (rama `nativa-guia`). Ninguna toca lo de la otra. La guía entra a `nativa-202` con un merge que hace «MyPump Pro 2.0» cuando MYPUMP PRO le avisa.
 
 Si el candado es de otra sesión y tiene menos de 6 h, no se toca este clon. Cuando una sesión termina, deja el
 candado libre.
@@ -261,6 +261,21 @@ la terminal), `probar-ui.sh` (XCUITest con `TEST_RUNNER_MYPUMP_TOKEN`), `spike-l
 
 ## Bitácora
 
+### 4-nov ~04:00 — versión unificada 2.1.0 lista para compilar (falta «Tu guía» y los OK de Mati)
+- `nativa-202` @ d8fcd59: 2.0.3 + 2.1 (Salud, volumen, barras) + Apple Watch (elegir el día, RIR del plan, descanso por ejercicio, cola, FC, complicaciones) + calibración de reps.
+- Revisión opus de la combinación: 3 huecos del reloj arreglados (3ad3b8b). Material de tiendas en `docs/NATIVA_TIENDAS_2.1.md` (5f3b954): novedades para las dos tiendas, reloj en ASC, notas al revisor y lista de chequeo. Capturas del reloj en `nativa-evidencia/tiendas-2.1/reloj/`.
+- Verde: contratos, kit 724, jvm 764, ios-ui 50/50, android-ui 229/233 y las 4 restantes eran tests viejos, corregidos y en verde (d8fcd59).
+- Lo que tiene que decidir Mati: (1) qué hacer con iOS 2.0.3 (121) en revisión: dejarla salir o retirarla; (2) dejar o sacar el párrafo para el revisor sobre el modo calibración oculto (guía 2.3.1); (3) la cuenta demo del revisor necesita una rutina; (4) el OK para los tags `nios-2.1.0-<≥127>` y `nand-2.1.0-106`, y para el envío.
+- Falta: el merge de «Tu guía» (rama `nativa-guia`, de MYPUMP PRO) y una línea en las novedades.
+
+### 4-nov 01:50 — versión unificada (2.0.3 + 2.1 + Apple Watch), en pausa hasta las 05:35 por el límite de la cuenta
+- `nativa-202` ya tiene el merge de `t4-reps` (47eb478): 2.0.3 + tanda 2 (Salud, volumen, código de barras) + Apple Watch (elegir el día, cola, FC, complicaciones) + calibración de reps (lo contado pasa a la corona solo en calibración).
+- Verde: `check-contratos` (59 RPC), `probar.sh kit` (724), `probar.sh jvm` (764, 0 fallas).
+- En curso, sin tokens: android-ui completo en un emulador propio (`nativa36`, emulator-5580) y después ios-ui en el iPhone 17 Pro (5AEF73CA). Logs en `nativa-evidencia/unificada/`.
+- Falta: resultado de las corridas de UI, la revisión opus de la combinación (se cortó por el límite), el merge de «Tu guía» cuando avise MYPUMP PRO, la versión (iOS 2.0.3/121 ya está en revisión de Apple, así que la unificada sale como **2.1.0**: iOS build ≥126, Android `nand-2.1.0-106`), y el OK de Mati para tags y tiendas.
+
+- **3/11 noche, en autónomo (Mati duerme; ver docs/NATIVA_203.md y NATIVA_TANDAS_2_A_4.md).** Mergeado en `nativa-202`: Dieta 2.0.3 (d203, dos revisiones opus), el catálogo con inicio y pico corregidos y nativa_008 con su ensayo (sin aplicar). En curso: e203 (preparación v2 aprobada por Mati, Android E1 y sin RIR: se guarda 0 o el objetivo) y r203 (confianza y motivo_falta, aviso de revisión con la semana completa; revision_dia en la rama `r203-dia`, que espera a la 008). Sigue la tanda 2. Esperan el OK de Mati: aplicar la 008 (y una posible 009 de `agregados`), los cambios en la Mini, los tags nios/nand, las tiendas y el aviso a los alumnos.
+- **3-nov, `nativa_007` (recuperación con `confianza` y `motivo_falta`) aplicada por Mati** (8b159a0, interruptor `baja_sin_score` en FALSE). `nativa-recup` mergeada en `nativa-202`; contrato y esquema regenerados: `mypump_get_recuperacion` devuelve 14 columnas y ya no es ejecutable por PUBLIC (sí por anon). Plan de los pedidos del 2/11 aprobado: `~/Developer/nativa-evidencia/privado/PLAN_PEDIDOS_0211.md`. Sigue la 2.0.3 (tanda 1).
 - **27-oct 18:40, 2.0.2 enviada a las dos tiendas** (OK de Mati: «y luego subi la actualizacion si»). D25 «Comí / Salté» con el consumido en la tarjeta de Dieta, crunch con kg según el equipo del catálogo, − hasta 0 g en «Ajustar esta comida» y validación del alimento propio. Tags `nios-2.0.2-120` y `nand-2.0.2-105` sobre aad943f. App Store: 2.0.2 (120) en revisión, publicación automática para todos. Play: 105 al 100 % en revisión (AAB sha256 45fa73af7b87c28f, subido en 3 trozos). Pruebas: kit 531, JVM 698, XCUITest 46, Android UI 204.
 - **27-oct, D25 «Comí / Salté» en las dos apps** (rama `nativa-202`, nada subido a las tiendas): «Comí» / «Salté» por
   comida (tocar el activo desmarca), tildes por alimento con «Comí» (consumo parcial, `foods_excluidos`) y lo consumido

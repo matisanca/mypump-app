@@ -149,6 +149,11 @@ data class Ejercicio(
      * trae: en los del plan decide el nombre, que escribe Mati con el equipo («Crunch en polea»).
      */
     val equipo: String? = null,
+    /**
+     * E1 (2.0.3): la preparación que pone el plan a mano. Gana a la que arma la app; `[]` = sin preparación; null = la
+     * arma la app. Si no se puede leer, null (nunca tira abajo el ejercicio). Gemelo de `Aproximacion.lista` en Swift.
+     */
+    val aproximaciones: List<Aproximacion>? = null,
 ) {
     companion object {
         fun desde(e: JsonElement): Ejercicio {
@@ -168,7 +173,39 @@ data class Ejercicio(
                 reps = o.texto("reps"),
                 rirObjetivo = o.texto("rir_objetivo"),
                 rirSuelto = o.texto("rir"),
+                aproximaciones = Aproximacion.lista(o.valorJson("aproximaciones")),
             )
+        }
+    }
+}
+
+/** Una serie de preparación escrita en el plan: reps (número o texto corto), % del peso de trabajo o kg, y una nota. */
+data class Aproximacion(val reps: String? = null, val pct: Double? = null, val kg: Double? = null, val nota: String? = null) {
+    companion object {
+        /** La lista del plan: null si no es una lista o si ninguna serie se pudo leer; `[]` queda `[]`. */
+        fun lista(v: ValorJson?): List<Aproximacion>? {
+            val l = (v as? ValorJson.Lista)?.elementos ?: return null
+            val series = l.mapNotNull(::una)
+            return if (l.isEmpty() || series.isNotEmpty()) series else null
+        }
+
+        internal fun una(v: ValorJson): Aproximacion? {
+            val o = (v as? ValorJson.Objeto)?.campos ?: return null
+            val reps = when (val r = o["reps"]) {
+                is ValorJson.Numero -> r.valor.takeIf { it.isFinite() && it >= 1 && it <= 100 }?.let { Math.round(it).toInt().toString() }
+                is ValorJson.Texto -> r.valor.trim().takeIf { it.isNotEmpty() && r.valor.length <= 12 }
+                else -> null
+            }
+            val pct = numero(o["pct"])?.takeIf { it > 0 && it <= 150 }
+            val kg = numero(o["kg"])?.takeIf { it > 0 && it <= 1000 }
+            val nota = (o["nota"] as? ValorJson.Texto)?.valor?.takeIf { it.isNotBlank() }
+            return if (reps != null || kg != null) Aproximacion(reps, pct, kg, nota) else null
+        }
+
+        private fun numero(v: ValorJson?): Double? = when (v) {
+            is ValorJson.Numero -> v.valor.takeIf { it.isFinite() }
+            is ValorJson.Texto -> v.valor.replace("%", "").replace(",", ".").trim().toDoubleOrNull()?.takeIf { it.isFinite() }
+            else -> null
         }
     }
 }

@@ -212,7 +212,7 @@ private struct MarcoPose: View {
 
 /// Mis fotos por semana (REV-04), y desde las 4 semanas el comparador antes/después (antes compara luz y retención de
 /// líquido, no cambios reales).
-private struct GaleriaFotos: View {
+struct GaleriaFotos: View {
     let modelo: ModeloFotos?
     let fotos: [FotoProgreso]
     let peso: [PesoCorporal.Punto]

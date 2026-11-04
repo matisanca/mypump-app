@@ -46,14 +46,17 @@ public struct RegistroSesion: Decodable, Sendable, Equatable {
     public let rir: Int?
     public let ejercicioNombre: String?
     public let notas: String?
+    /// Cuándo se registró (el servidor lo conserva al corregir la serie): la fecha real para el volumen por músculo.
+    public let registradoEn: String?
     enum CodingKeys: String, CodingKey {
         case ejercicioId = "ejercicio_id", serie = "serie_numero", pesoKg = "peso_kg", reps = "reps_realizadas"
-        case rir = "rir_real", ejercicioNombre = "ejercicio_nombre", notas
+        case rir = "rir_real", ejercicioNombre = "ejercicio_nombre", notas, registradoEn = "registrado_en"
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         ejercicioId = c.texto(.ejercicioId) ?? ""; serie = c.entero(.serie) ?? 1; pesoKg = c.decimal(.pesoKg)
         reps = c.entero(.reps); rir = c.entero(.rir); ejercicioNombre = c.texto(.ejercicioNombre); notas = c.texto(.notas)
+        registradoEn = c.texto(.registradoEn)
     }
 }
 
@@ -278,9 +281,13 @@ public struct Recuperacion: Decodable, Sendable, Equatable {
     public let discordancia: Bool?
     public let cobertura: JSONValue?
     public let motivos: JSONValue?
+    /// nativa_007 (opcionales: una respuesta de 12 columnas no las trae).
+    public let motivoFalta: String?
+    public let confianza: String?
     enum CodingKeys: String, CodingKey {
         case fecha, score, estado, banda, diasDatos = "dias_datos", bandaProvisoria = "banda_provisoria"
         case estadoAutonomico = "estado_autonomico", hrvMetrica = "hrv_metrica", discordancia, cobertura, motivos
+        case motivoFalta = "motivo_falta", confianza
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -289,6 +296,7 @@ public struct Recuperacion: Decodable, Sendable, Equatable {
         hrvMetrica = c.texto(.hrvMetrica); discordancia = c.booleano(.discordancia)
         cobertura = try? c.decodeIfPresent(JSONValue.self, forKey: .cobertura)
         motivos = try? c.decodeIfPresent(JSONValue.self, forKey: .motivos)
+        motivoFalta = c.texto(.motivoFalta); confianza = c.texto(.confianza)
     }
 }
 

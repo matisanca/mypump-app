@@ -14,16 +14,23 @@ import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.BannerSemana
 import com.pumpteam.mypump.reglas.BarraDescanso
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
+import com.pumpteam.mypump.reglas.VolumenMusculo
 import com.pumpteam.mypump.reglas.ClaveEjercicio
 import com.pumpteam.mypump.reglas.Descanso
+import com.pumpteam.mypump.reglas.DescansoPropio
 import com.pumpteam.mypump.reglas.DiaEnCurso
 import com.pumpteam.mypump.reglas.EjercicioEfectivo
 import com.pumpteam.mypump.reglas.EstadosEjercicio
 import com.pumpteam.mypump.reglas.FechaJs
+import com.pumpteam.mypump.reglas.FechaLocal
+import com.pumpteam.mypump.reglas.de
 import com.pumpteam.mypump.reglas.FilaSerie
 import com.pumpteam.mypump.reglas.IndiceComentarios
 import com.pumpteam.mypump.reglas.Js
 import com.pumpteam.mypump.reglas.NormalizacionRutina
+import com.pumpteam.mypump.reglas.Preparacion
+import com.pumpteam.mypump.reglas.RecordSerie
+import com.pumpteam.mypump.reglas.RirDelPlan
 import com.pumpteam.mypump.reglas.NotaProgresion
 import com.pumpteam.mypump.reglas.Pauta
 import com.pumpteam.mypump.reglas.Pregunta
@@ -111,6 +118,39 @@ class ModeloEntreno(
     private val _descanso = MutableStateFlow(BarraDescanso(descansoEnDisco))
     val descanso: StateFlow<BarraDescanso> = _descanso.asStateFlow()
 
+    /** E3 (2.0.3): el aviso de récord de la última serie confirmada; la vista lo muestra unos segundos y lo descarta. */
+    data class AvisoRecord(val id: Long, val lugar: String, val texto: String)
+
+    private val _avisoRecord = MutableStateFlow<AvisoRecord?>(null)
+    val avisoRecord: StateFlow<AvisoRecord?> = _avisoRecord.asStateFlow()
+    private var avisosDados = 0L
+
+    /**
+     * E1 (2.0.3): las filas de preparación que el alumno tocó como hechas hoy, por [Preparacion.claveTildes] (fecha + día
+     * + lugar). Solo para que se vean atenuadas: no es carga. Al abrir se descartan las de otros días.
+     */
+    private val _preparacionHecha = MutableStateFlow<Map<String, List<Int>>>(
+        (disco?.leer(Archivo.PREPARACION) as? JsonObject)?.mapNotNull { (k, v) ->
+            if (!k.startsWith(FechaLocal.hoy(reloj(), zona) + "|")) return@mapNotNull null
+            val l = (v as? kotlinx.serialization.json.JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() } ?: return@mapNotNull null
+            k to l
+        }?.toMap() ?: emptyMap(),
+    )
+    val preparacionHechas: StateFlow<Map<String, List<Int>>> = _preparacionHecha.asStateFlow()
+
+    /** E1: los ejercicios (por su clave) con la preparación oculta. */
+    private val _preparacionOculta = MutableStateFlow<Set<String>>(
+        (disco?.leer(Archivo.PREPARACION_OCULTA) as? kotlinx.serialization.json.JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.content }?.toSet() ?: emptySet(),
+    )
+    val preparacionOcultas: StateFlow<Set<String>> = _preparacionOculta.asStateFlow()
+
+    /** E2 (2.0.3): los descansos elegidos a mano, por la clave del ejercicio. En el teléfono, para toda la cuenta. */
+    private fun leerDescansosPropios(): Map<String, Int> =
+        (disco?.leer(Archivo.DESCANSOS) as? JsonObject)?.mapNotNull { (k, v) ->
+            DescansoPropio.valido((v as? JsonPrimitive)?.content?.toDoubleOrNull()?.toInt())?.let { k to it }
+        }?.toMap() ?: emptyMap()
+
     /** Cuándo arrancó la sesión del día (ms desde 1970, `_sessionStart`). */
     private val _inicioSesion = MutableStateFlow<Double?>(null)
     val inicioSesion: StateFlow<Double?> = _inicioSesion.asStateFlow()
@@ -183,6 +223,13 @@ class ModeloEntreno(
     /** Había un día guardado en este teléfono al arrancar (si no, el del almacenamiento viejo puede ganar). */
     private var habiaDiaGuardado: Boolean
 
+    /**
+     * La fecha real (local, YYYY-MM-DD) de cada serie confirmada del día que se mira ([claveFecha]): la del toque, la del
+     * `registrado_en` o la de la cola. Para el volumen por músculo (revisión del 3-nov).
+     */
+    private val _fechasSeries = MutableStateFlow<Map<String, String>>(emptyMap())
+    val fechasSeries: StateFlow<Map<String, String>> = _fechasSeries.asStateFlow()
+
     /** El día que se mira, con su sesión, sus series, su historial y las sustituciones de la rutina. */
     private val _dia: MutableStateFlow<DiaEnCurso>
     val dia: StateFlow<DiaEnCurso>
@@ -194,6 +241,7 @@ class ModeloEntreno(
         val elegido = TextosEntreno.diaSugerido(normalizacionInicial.estructura.dias, guardado) ?: Dia(id = "d1")
         val d = DiaEnCurso(elegido, semana, demo, zona = zona)
         d.sustituciones = SustitucionesEntreno.compat(leerSustituciones(rutinaInicial.id))
+        d.descansosPropios = leerDescansosPropios()
         sustitucionesGuardadas = leerEncoladas(rutinaInicial.id) ?: d.sustituciones
         desfaseReloj = (disco?.leer(Archivo.RELOJ) as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
         _dia = MutableStateFlow(d)
@@ -281,7 +329,11 @@ class ModeloEntreno(
         historialEnVuelo.clear()
         _historialCargando.value = emptySet()
         generacionHistorial.replaceAll { _, g -> g + 1 }
-        _dia.value = DiaEnCurso(nuevo, semana, demo, zona = zona).also { it.sustituciones = sustituciones }
+        val propios = _dia.value.descansosPropios
+        _dia.value = DiaEnCurso(nuevo, semana, demo, zona = zona).also {
+            it.sustituciones = sustituciones
+            it.descansosPropios = propios
+        }
         diaCompletadoMostrado = false
         guardarDiaVisualizado()
         coroutineScope {
@@ -348,9 +400,13 @@ class ModeloEntreno(
          * a «Fondos» o a la patada de tríceps, sin variantes, se les apagaba «Sustituir» aunque tenían 26 a 30).
          */
         val puedeSustituir: Boolean,
-        /** El chip del descanso ("2:30"). */
+        /** El chip del descanso ("2:30"): el elegido a mano (E2) si hay, si no el del plan. */
         val descanso: String,
         val comentarios: List<Comentario>,
+        /** E2: el descanso en segundos, el del plan y si es uno elegido a mano. */
+        val descansoSegundos: Int = NormalizacionRutina.DESCANSO_POR_DEFECTO,
+        val descansoPlan: Int = NormalizacionRutina.DESCANSO_POR_DEFECTO,
+        val descansoPropio: Boolean = false,
     )
 
     fun tarjeta(lugar: String): Tarjeta? {
@@ -367,18 +423,42 @@ class ModeloEntreno(
             nota = if (ef.ejercicio.tipo == "calentamiento") null else Progresiones.nota(ef.ejercicio, semanaActual = semana),
             sinKg = ReglasEjercicio.sinKg(ef.ejercicio), variantes = variantes,
             varianteActual = Js.verdadero(e?.variante) ?: variantes?.opciones?.firstOrNull(),
-            filas = e?.series?.indices?.mapNotNull { d.fila(lugar, it, ef.ejercicio) } ?: emptyList(),
+            filas = e?.series?.indices?.mapNotNull { filaConLeyenda(lugar, it, ef.ejercicio) } ?: emptyList(),
             confirmadas = e?.series?.count { it.confirmada } ?: 0,
             record = d.record(lugar), ultimaVez = d.ultimaVez(lugar, reloj()),
             puedeSustituir = _catalogo.value.sustitutos(ef).isNotEmpty() || _catalogo.value.otrosDelMismoMusculo(ef).isNotEmpty(),
-            descanso = TiempoEntreno.fmtTiempo((plan.descansoSegundos ?: NormalizacionRutina.DESCANSO_POR_DEFECTO).toDouble()),
+            descanso = TiempoEntreno.fmtTiempo(d.descanso(lugar).toDouble()),
             comentarios = _comentarios.value.comentarios(lugar),
+            descansoSegundos = d.descanso(lugar),
+            descansoPlan = plan.descansoSegundos ?: NormalizacionRutina.DESCANSO_POR_DEFECTO,
+            descansoPropio = d.tieneDescansoPropio(lugar),
         )
     }
 
     /** `getEffectiveEx`: el sustituto si hay, o las fotos del catálogo si el plan no las trae. */
     fun efectivo(ex: Ejercicio): EjercicioEfectivo =
         _catalogo.value.efectivo(ex, SustitucionesEntreno.aplicada(_dia.value.sustituciones[ex.id]))
+
+    /**
+     * El ejercicio que se hace con el equipo del catálogo: el del sustituto, y para el del plan el `equipment` de
+     * `catalogo.resolver` (así «Sentadilla» o «Peso muerto» a secas reconocen la barra). Para la preparación y el RIR.
+     */
+    internal fun hecho(ex: Ejercicio): Ejercicio {
+        val e = efectivo(ex).ejercicio
+        return if (e.equipo != null) e else e.copy(equipo = _catalogo.value.resolver(ex)?.equipment)
+    }
+
+    /** La leyenda debajo de «Series efectivas» («Al fallo» o el rango del plan); null si el ejercicio no lleva RIR. */
+    fun leyendaRir(lugar: String): String? = _dia.value.let { d -> d.leyendaRir(lugar, d.ejercicio(lugar)?.let { hecho(it) }) }
+
+    /**
+     * La fila, con el aviso de primera vez diciendo lo mismo que la leyenda («al fallo» o el rango del plan) y no el
+     * «dejando 1–2 en reserva» fijo de la web (2.0.3).
+     */
+    private fun filaConLeyenda(lugar: String, idx: Int, ef: Ejercicio): FilaSerie? {
+        val f = _dia.value.fila(lugar, idx, ef) ?: return null
+        return f.calibracion?.let { f.copy(calibracion = RirDelPlan.calibracion(it, leyendaRir(lugar))) } ?: f
+    }
 
     fun actualizarCatalogo(c: CatalogoEjercicios) {
         _catalogo.value = c
@@ -411,8 +491,13 @@ class ModeloEntreno(
         var completo: DiaCompletado? = null
         // Lo que se muestra (el sustituto, si hay) decide si la serie lleva kg, como en la fila (revisión del 14-oct).
         val ef = _dia.value.ejercicio(lugar)?.let { efectivo(it).ejercicio }
+        val hecho = _dia.value.ejercicio(lugar)?.let { hecho(it) }
+        mutarDia { it.fijarRirDelPlan(lugar, idx, hecho) }
         while (true) {
-            val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas, ef) }
+            val hoy = FechaLocal.hoy(reloj(), zona)
+            val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas, ef, hoy) }
+            anotarFecha(lugar, idx + 1, hoy, soloConfirmada = true)
+            paso.record?.let { _avisoRecord.value = AvisoRecord(++avisosDados, lugar, it.texto) }
             ejecutar(paso.efectos)?.let { completo = it }
             val p = paso.pregunta ?: return completo
             val motivo = paso.motivo ?: return completo
@@ -422,6 +507,154 @@ class ModeloEntreno(
                 DiaEnCurso.Paso.Motivo.REGISTRAR_IGUAL -> respuestas.copy(registrarIgual = si)
             }
         }
+    }
+
+    /**
+     * E1: la preparación del lugar: la del plan si la trae (también con un sustituto, que la hereda), si no la que arma la
+     * app con el tipo y el músculo del ejercicio que se hace (el del sustituto si el catálogo lo tiene). El kg sigue en
+     * vivo al de la primera serie efectiva (lo escrito o, si no, lo sugerido).
+     */
+    fun preparacion(lugar: String): List<Preparacion.Serie> {
+        val d = _dia.value
+        val lista = d.lista
+        val i = lista.indexOfFirst { it.id == lugar }.takeIf { it >= 0 } ?: return emptyList()
+        val (entradas, hechos) = entradasPreparacion(lista)
+        val ef = hechos[i]
+        val primera = d.ejercicios[lugar]?.series?.firstOrNull()
+        val sugerido = d.fila(lugar, 0, efectivo(lista[i]).ejercicio)?.placeholderKg ?: ""
+        val kg = Preparacion.kgEfectivo(primera?.kg ?: "", sugerido)
+        val clave = "$lugar|$kg|${cacheEntradas?.first}"
+        cachePreparacion[lugar]?.let { (c, series) -> if (c == clave) return series }
+        val series = Preparacion.series(entradas, i, ef.nombre, ef.equipo, ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kg, ef.aproximaciones)
+        cachePreparacion[lugar] = clave to series
+        return series
+    }
+
+    /**
+     * Las entradas del día para la preparación (lo caro: resolver cada ejercicio en el catálogo). Se recalculan solo si
+     * cambia el día, una sustitución o el catálogo; no en cada dibujo ni al tipear.
+     */
+    private fun entradasPreparacion(lista: List<Ejercicio>): Pair<List<Preparacion.Entrada>, List<Ejercicio>> {
+        val cat = _catalogo.value
+        val firma = "${_dia.value.dia.id}|${lista.map { it.id }}|${_dia.value.sustituciones.toSortedMap()}|${System.identityHashCode(cat)}"
+        cacheEntradas?.let { (f, e, h) -> if (f == firma) return e to h }
+        val entradas = lista.map { ex ->
+            val ef = efectivo(ex)
+            Preparacion.Entrada(ef.ejercicio.tipo, musculo(ex), ef.ejercicio.nombre, ReglasEjercicio.esSinPeso(ef.ejercicio.nombre, ef.ejercicio.tipo, ef.ejercicio.equipo))
+        }
+        val hechos = lista.map { hecho(it) }
+        cacheEntradas = Triple(firma, entradas, hechos)
+        cachePreparacion.clear()
+        return entradas to hechos
+    }
+
+    /**
+     * El músculo principal del ejercicio que se hace: el del sustituto si el catálogo lo tiene; si no, el del original
+     * (`CatalogoEjercicios.resolver`: catalogo_slug → matched → reglas y nombre). null = el catálogo no lo tiene (el
+     * respaldo conservador). La misma cadena para la preparación (E1) y el volumen por músculo (S2).
+     */
+    fun musculo(ex: Ejercicio): String? {
+        val cat = _catalogo.value
+        return efectivo(ex).slugSustituto?.let { cat.entrada(it)?.primaryMuscle } ?: cat.resolver(ex)?.primaryMuscle
+    }
+
+    /** La clave de [fechasSeries]: el día, la semana, el lugar y el número de la serie. */
+    internal fun claveFecha(lugar: String, n: Int): String = "${_dia.value.dia.id ?: ""}|$semana|$lugar|$n"
+
+    /**
+     * Anota la fecha real de una serie del día que se mira, si no tenía: la primera vale (el servidor conserva el
+     * `registrado_en` al corregirla). `soloConfirmada`: solo si la serie quedó confirmada (el toque).
+     */
+    internal fun anotarFecha(lugar: String, n: Int, fecha: String, soloConfirmada: Boolean = false) {
+        if (fecha.length != 10) return
+        if (soloConfirmada) {
+            val e = _dia.value.ejercicios[lugar] ?: return
+            if (n < 1 || n > e.series.size || !e.series[n - 1].confirmada) return
+        }
+        val k = claveFecha(lugar, n)
+        if (k !in _fechasSeries.value) _fechasSeries.value = _fechasSeries.value + (k to fecha)
+    }
+
+    /**
+     * Volumen por músculo (2.1, S2): las series confirmadas en el teléfono del día que se mira, para el cierre del día y
+     * Salud → Fuerza, cada una con su fecha REAL: la del toque, la del `registrado_en` si vino del servidor o la de la
+     * cola si quedó sin mandar. Una sin fecha conocida no va (ya está en el historial). El día que se mira puede ser de
+     * otro día ([restaurarSesion] va por día y semana): antes todo salía con la fecha de hoy y se contaba dos veces
+     * (revisión del 3-nov). Van con la clave del ejercicio con que se registraron, para no sumar lo que el historial ya
+     * tiene. Las de preparación no están: nunca se registran.
+     */
+    val registrosVolumenEnVivo: List<VolumenMusculo.Registro>
+        get() {
+            val d = _dia.value
+            val fechas = _fechasSeries.value
+            val vistos = HashSet<String>()
+            val out = ArrayList<VolumenMusculo.Registro>()
+            for (ex in d.lista) {
+                if (!vistos.add(ex.id)) continue
+                val e = d.ejercicios[ex.id] ?: continue
+                if (e.series.none { it.confirmada }) continue
+                val m = musculo(ex)
+                val ef = efectivo(ex).ejercicio
+                e.series.forEachIndexed { i, s ->
+                    if (!s.confirmada) return@forEachIndexed
+                    val fecha = fechas[claveFecha(ex.id, i + 1)] ?: return@forEachIndexed
+                    val c = ClaveEjercicio.de(Js.verdadero(s.nombreRegistrado) ?: ef.nombre).ifEmpty { ex.id }
+                    out += VolumenMusculo.Registro(m, ef.tipo, fecha, ex.id, i + 1, c)
+                }
+            }
+            return out
+        }
+
+    /** E1: la preparación ya calculada (ver [preparacion]). Es un caché, no estado de la pantalla. */
+    private var cacheEntradas: Triple<String, List<Preparacion.Entrada>, List<Ejercicio>>? = null
+    private val cachePreparacion = HashMap<String, Pair<String, List<Preparacion.Serie>>>()
+
+    private fun clavePreparacion(lugar: String): String =
+        Preparacion.claveTildes(FechaLocal.hoy(reloj(), zona), _dia.value.dia.id ?: "", lugar)
+
+    /** Las filas de preparación ya hechas hoy en el lugar. */
+    fun preparacionHecha(lugar: String): Set<Int> = _preparacionHecha.value[clavePreparacion(lugar)]?.toSet() ?: emptySet()
+
+    /** Tocar una fila: queda atenuada como hecha y arranca el descanso de 30 s; tocarla de nuevo la desmarca. Nada es carga. */
+    fun tocarPreparacion(lugar: String, i: Int) {
+        val clave = clavePreparacion(lugar)
+        val hechas = preparacionHecha(lugar).toMutableSet()
+        if (!hechas.remove(i)) {
+            hechas += i
+            mutarDescanso { it.iniciar(Preparacion.DESCANSO_SEGUNDOS.toDouble(), ahoraMs) }
+            guardarDescanso()
+        }
+        _preparacionHecha.value = if (hechas.isEmpty()) _preparacionHecha.value - clave else _preparacionHecha.value + (clave to hechas.sorted())
+        disco?.guardar(Archivo.PREPARACION, ValorJson.Objeto(_preparacionHecha.value.mapValues { (_, l) -> ValorJson.Lista(l.map { ValorJson.Numero(it.toDouble()) }) }))
+    }
+
+    /** La preparación del lugar está oculta (por la clave del ejercicio que se hace). */
+    fun preparacionOculta(lugar: String): Boolean = ClaveEjercicio.de(_dia.value.nombreEfectivo(lugar)) in _preparacionOculta.value
+
+    /** «Ocultar» / «Mostrar»: se recuerda para ese ejercicio. */
+    fun ocultarPreparacion(lugar: String, ocultar: Boolean) {
+        val clave = ClaveEjercicio.de(_dia.value.nombreEfectivo(lugar)).takeIf { it.isNotEmpty() } ?: return
+        _preparacionOculta.value = if (ocultar) _preparacionOculta.value + clave else _preparacionOculta.value - clave
+        disco?.guardar(Archivo.PREPARACION_OCULTA, ValorJson.Lista(_preparacionOculta.value.sorted().map { ValorJson.Texto(it) }))
+    }
+
+    /** E3: la vista ya mostró (o el cliente tocó) el aviso de récord. */
+    fun descartarRecord(id: Long) {
+        if (_avisoRecord.value?.id == id) _avisoRecord.value = null
+    }
+
+    /**
+     * E2: el descanso elegido a mano para el ejercicio que se hace en ese lugar (null = «Volver al del plan»). Se guarda
+     * por su clave, en el teléfono; el descanso que ya corre no cambia.
+     */
+    fun elegirDescanso(lugar: String, segundos: Int?) {
+        val clave = ClaveEjercicio.de(_dia.value.nombreEfectivo(lugar)).takeIf { it.isNotEmpty() } ?: return
+        val nuevos = mutarDia { d ->
+            val v = DescansoPropio.valido(segundos)
+            d.descansosPropios = if (v == null) d.descansosPropios - clave else d.descansosPropios + (clave to v)
+            d.descansosPropios
+        }
+        disco?.guardar(Archivo.DESCANSOS, ValorJson.Objeto(nuevos.mapValues { ValorJson.Numero(it.value.toDouble()) }))
     }
 
     /** El lápiz (SER-06). */
@@ -518,6 +751,9 @@ class ModeloEntreno(
     suspend fun restaurarSesion() {
         restauracion += 1
         val seq = restauracion
+        // Las fechas de la sesión anterior no se heredan (una clave repetida, otro bloque con los mismos lugares): vuelven
+        // del servidor (`registrado_en`) y de la cola, y lo que se toque desde ahora se anota de nuevo.
+        _fechasSeries.value = emptyMap()
         mutarDia {
             it.sesionId = null
             it.diaFinalizado = false
@@ -631,7 +867,10 @@ class ModeloEntreno(
         }
         if (seq != restauracion || _dia.value.sesionId != sid) return
         estados.valorONull()?.let { f -> mutarDia { it.aplicarEstados(f) } }
-        registros.valorONull()?.let { f -> mutarDia { it.aplicarRegistros(f) } }
+        registros.valorONull()?.let { f ->
+            for (r in f) r.registradoEn?.let { anotarFecha(r.ejercicioId, r.serie, FechaLocal.de(it, zona)) }
+            mutarDia { it.aplicarRegistros(f) }
+        }
         aplicarPendientes()
     }
 
@@ -665,6 +904,7 @@ class ModeloEntreno(
                         nombreRegistrado = datos["ejercicioNombre"]?.comoTexto,
                         varianteRegistrada = datos["notas"]?.comoTexto,
                     )
+                    anotarFecha(ex, i + 1, FechaLocal.hoy(Instant.ofEpochMilli(op.ts.toLong()), zona))
                     d.ejercicios = d.ejercicios + (ex to e.copy(series = series))
                 } else if (op.kind == "estado" && exId != null && status != null) {
                     d.estados = d.estados + (exId to status)
@@ -822,7 +1062,11 @@ class ModeloEntreno(
         val semana = if (nueva.semanaActual == 0) 1 else nueva.semanaActual
         val elegido = TextosEntreno.diaSugerido(n.estructura.dias, disco?.let { leerTexto(it, Archivo.dia(nueva.id)) }) ?: Dia(id = "d1")
         val sustituciones = SustitucionesEntreno.compat(leerSustituciones(nueva.id))
-        _dia.value = DiaEnCurso(elegido, semana, demo, zona = zona).also { it.sustituciones = sustituciones }
+        val propios = _dia.value.descansosPropios
+        _dia.value = DiaEnCurso(elegido, semana, demo, zona = zona).also {
+            it.sustituciones = sustituciones
+            it.descansosPropios = propios
+        }
         sustitucionesGuardadas = leerEncoladas(nueva.id) ?: sustituciones
         syncSustituciones = null
         tocadasDuranteSync = null
@@ -933,7 +1177,7 @@ class ModeloEntreno(
         return when (
             val r = cliente.filas(
                 "mypump_get_historico_por_clave",
-                mapOf("p_token" to texto(t), "p_claves" to ValorJson.Lista(ks.map { texto(it) }), "p_limit_por_ej" to numero(48)),
+                mapOf("p_token" to texto(t), "p_claves" to ValorJson.Lista(ks.map { texto(it) }), "p_limit_por_ej" to numero(RecordSerie.TOPE_HISTORIAL)),
                 RegistroHistorico::desde,
             )
         ) {
@@ -1276,6 +1520,13 @@ class ModeloEntreno(
     object Archivo {
         const val SESIONES = "entreno-sesiones.json"
         const val DESCANSO = "entreno-descanso.json"
+
+        /** E2 (2.0.3): los descansos elegidos a mano, `{clave: segundos}`. */
+        const val DESCANSOS = "entreno-descansos.json"
+
+        /** E1 (2.0.3): las filas de preparación tocadas hoy y las preparaciones ocultas. */
+        const val PREPARACION = "entreno-preparacion.json"
+        const val PREPARACION_OCULTA = "entreno-preparacion-oculta.json"
         const val LEGADO = "legado-entreno.json"
         fun dia(rutinaId: String): String = "entreno-dia_$rutinaId.json"
         fun sustituciones(rutinaId: String): String = "ejercicios-swaps_$rutinaId.json"

@@ -4,15 +4,16 @@ import MyPumpModelos
 import MyPumpReglas
 import MyPumpDatos
 
-/// Progreso (PRO-01…05): totales arriba y, por día, cada ejercicio una sola vez (por clave, no por lugar) con el tope
-/// de sus últimas 8 sesiones, la variación, el 🏆 PR y una curva chica. Tocar abre el detalle con el gráfico y la
-/// tabla. Con una cuenta sale de `ModeloProgreso` (se carga al abrir la pestaña); en los bocetos, de las muestras con
-/// las mismas reglas; en la demo, como la web, sin historial.
-struct ProgresoView: View {
+/// Salud → Fuerza (lo que era la pestaña Progreso, PRO-01…05): las series por músculo de la semana (S2) arriba, los
+/// totales y, por día, cada ejercicio una sola vez (por clave, no por lugar) con el tope de sus últimas 8 sesiones, la
+/// variación, el 🏆 PR y una curva chica. Tocar abre el detalle con el gráfico y la tabla (lo empuja el NavigationStack
+/// de `SaludView`). Con una cuenta sale de `ModeloProgreso` (se carga al abrir el segmento); en los bocetos, de las
+/// muestras con las mismas reglas; en la demo, como la web, sin historial. Va dentro del ScrollView de Salud.
+struct FuerzaSeccion: View {
     let datos: Muestras
+    @Binding var ruta: [LineaProgreso]
     @State private var modelo = Proveedor.modelo
     @Environment(\.horizontalSizeClass) private var claseAncho
-    @State private var ruta: [LineaProgreso] = []
     @State private var abrioDetalle = false
 
     private var progreso: ModeloProgreso? { modelo.conMuestras ? nil : modelo.progreso }
@@ -34,6 +35,24 @@ struct ProgresoView: View {
         return ProgresoEjercicio.sesiones(datos.paraPantalla().historial).count
     }
 
+    /// Con cuenta, lo del modelo; en los bocetos, una semana de muestra; en la demo, nada (como el historial).
+    private var volumen: VolumenMusculo.Resumen? {
+        if !modelo.conMuestras { return modelo.volumenPorMusculo() }
+        return DemoUI.bocetos ? VolumenMuestra.resumen : nil
+    }
+
+    /// Qué decir sin series: el historial todavía no llegó o no hay red no es «no registraste» (revisión del 3-nov). La
+    /// regla es la del kit (`VolumenMusculo.textoVacio`), la misma que Android.
+    private var vacioVolumen: String {
+        let p = modelo.conMuestras ? nil : modelo.progreso
+        let estado: VolumenMusculo.EstadoHistorial = switch p?.estado {
+        case .cargando?: .cargando
+        case .sinRed?: .sinRed
+        default: .listo
+        }
+        return VolumenMusculo.textoVacio(hayProgreso: p != nil, estado: estado, yaLlego: (p?.versionHistorial ?? 0) > 0)
+    }
+
     /// Agrupadas por los días donde aparece cada ejercicio ("Tirón", o "Tirón · Torso" si está en los dos), en el orden
     /// de la rutina, como la web.
     private func secciones(_ ls: [LineaProgreso]) -> [Seccion] {
@@ -51,14 +70,12 @@ struct ProgresoView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $ruta) {
+        VStack(alignment: .leading, spacing: Espacio.l) {
+            if let volumen { VolumenMusculoTarjeta(resumen: volumen, vacio: vacioVolumen) }
             contenido
-                .background(Color.fondo)
-                .navigationTitle("Progreso")
-                .navigationDestination(for: LineaProgreso.self) { ProgresoDetalleView(linea: $0) }
         }
         .task {
-            // Al abrir la pestaña (como la web); si ya está, se actualiza tirando para abajo.
+            // Al abrir el segmento (como la web al abrir Progreso); si ya está, se actualiza tirando para abajo.
             guard let progreso, progreso.tarjetas.isEmpty || progreso.estado == .sinRed else { return }
             await modelo.cargarProgreso()
         }
@@ -73,7 +90,7 @@ struct ProgresoView: View {
     @ViewBuilder private var contenido: some View {
         let ls = lineas
         if DemoUI.estado == .cargando || (progreso?.estado == .cargando && ls.isEmpty) {
-            ScrollView { EsqueletoProgreso().padding(.horizontal, Espacio.m).anchoLectura() }.scrollDisabled(true)
+            EsqueletoProgreso()
         } else if DemoUI.estado == .error || (progreso?.estado == .sinRed && ls.isEmpty) {
             ContentUnavailableView {
                 Label("No pudimos traer tu historial", systemImage: "wifi.exclamationmark")
@@ -95,39 +112,30 @@ struct ProgresoView: View {
     }
 
     private func lista(_ ss: [Seccion], ejercicios: Int) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Espacio.l) {
-                // Como la web, arriba de todas las escenas menos Revisión (GEN-03).
-                BannerRevision()
-                // Con letra de accesibilidad los totales van uno debajo del otro (no se cortan las palabras).
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Espacio.s) { totales(ejercicios, sesiones) }
-                    VStack(spacing: Espacio.s) { totales(ejercicios, sesiones) }
+        VStack(alignment: .leading, spacing: Espacio.l) {
+            // Con letra de accesibilidad los totales van uno debajo del otro (no se cortan las palabras).
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Espacio.s) { totales(ejercicios, sesiones) }
+                VStack(spacing: Espacio.s) { totales(ejercicios, sesiones) }
+            }
+            if claseAncho == .regular {
+                // iPad: dos columnas que se llenan parejas (cada sección va a la más corta), sin los huecos de
+                // una grilla cuando una sección tiene 1 ejercicio y la de al lado 7.
+                let (izquierda, derecha) = Self.repartir(ss)
+                HStack(alignment: .top, spacing: Espacio.l) {
+                    VStack(alignment: .leading, spacing: Espacio.l) { ForEach(izquierda) { seccion($0) } }
+                        .frame(maxWidth: .infinity, alignment: .top)
+                        .topeArriba()
+                    VStack(alignment: .leading, spacing: Espacio.l) { ForEach(derecha) { seccion($0) } }
+                        .frame(maxWidth: .infinity, alignment: .top)
+                        .topeArriba()
                 }
-                if claseAncho == .regular {
-                    // iPad: dos columnas que se llenan parejas (cada sección va a la más corta), sin los huecos de
-                    // una grilla cuando una sección tiene 1 ejercicio y la de al lado 7.
-                    let (izquierda, derecha) = Self.repartir(ss)
-                    HStack(alignment: .top, spacing: Espacio.l) {
-                        VStack(alignment: .leading, spacing: Espacio.l) { ForEach(izquierda) { seccion($0) } }
-                            .frame(maxWidth: .infinity, alignment: .top)
-                            .topeArriba()
-                        VStack(alignment: .leading, spacing: Espacio.l) { ForEach(derecha) { seccion($0) } }
-                            .frame(maxWidth: .infinity, alignment: .top)
-                            .topeArriba()
-                    }
-                } else {
-                    LazyVStack(alignment: .leading, spacing: Espacio.l) {
-                        ForEach(ss) { s in seccion(s) }
-                    }
+            } else {
+                LazyVStack(alignment: .leading, spacing: Espacio.l) {
+                    ForEach(ss) { s in seccion(s) }
                 }
             }
-            .padding(.horizontal, Espacio.m)
-            .padding(.top, Espacio.xs)
-            .padding(.bottom, Espacio.xl)
-            .anchoLectura(claseAncho == .regular ? Ancho.doble : Ancho.lectura)
         }
-        .refreshable { await modelo.cargarProgreso() }
     }
 
     /// Reparte las secciones en dos columnas por altura estimada (encabezado + filas), en orden.
@@ -409,7 +417,6 @@ private struct EsqueletoProgreso: View {
                 }
             }
         }
-        .padding(.top, Espacio.xs)
         .esqueleto()
     }
 }

@@ -770,7 +770,7 @@
      "tipo": "integer"
     }
    ],
-   "devuelve": "TABLE(fecha date, score integer, estado text, banda text, dias_datos integer, banda_provisoria boolean, estado_autonomico text, hrv_metrica text, discordancia boolean, cobertura jsonb, componentes jsonb, motivos jsonb)",
+   "devuelve": "TABLE(fecha date, score integer, estado text, banda text, dias_datos integer, banda_provisoria boolean, estado_autonomico text, hrv_metrica text, discordancia boolean, cobertura jsonb, componentes jsonb, motivos jsonb, motivo_falta text, confianza text)",
    "security_definer": true,
    "anon_ejecuta": true,
    "tipo": "lectura",

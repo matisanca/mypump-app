@@ -1,0 +1,1426 @@
+{
+ "fuente": "A mano (3-nov, 2.0.3, E1, regla PRINCIPAL/ACCESORIO aprobada por Mati): la preparación que arma la app y el override del plan (`aproximaciones`). La leen PreparacionTests (iOS) y PreparacionTest (Android) y tienen que dar esto. `dias` trae el tipo, el músculo del catálogo (null si no lo tiene), el nombre y si es de peso corporal. `plan` es el JSON crudo del campo (sin la clave: no vino).",
+ "dias": {
+  "A": [
+   {
+    "tipo": "compuesto",
+    "musculo": "chest",
+    "nombre": "press banca con barra",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "chest",
+    "nombre": "press inclinado con mancuernas",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "middle back",
+    "nombre": "remo con barra",
+    "sinPeso": false
+   },
+   {
+    "tipo": "aislamiento",
+    "musculo": "biceps",
+    "nombre": "curl con mancuernas",
+    "sinPeso": false
+   },
+   {
+    "tipo": "aislamiento",
+    "musculo": "biceps",
+    "nombre": "curl en polea",
+    "sinPeso": false
+   },
+   {
+    "tipo": "core",
+    "musculo": "abdominals",
+    "nombre": "crunch en polea",
+    "sinPeso": false
+   },
+   {
+    "tipo": "cardio",
+    "musculo": null,
+    "nombre": "cinta",
+    "sinPeso": true
+   }
+  ],
+  "B": [
+   {
+    "tipo": "compuesto",
+    "musculo": "chest",
+    "nombre": "press banca con barra",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "chest",
+    "nombre": "press inclinado en maquina",
+    "sinPeso": false
+   },
+   {
+    "tipo": "aislamiento",
+    "musculo": "chest",
+    "nombre": "aperturas en polea",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "triceps",
+    "nombre": "press de banca agarre cerrado",
+    "sinPeso": false
+   },
+   {
+    "tipo": "aislamiento",
+    "musculo": "triceps",
+    "nombre": "extension de triceps en polea",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "middle back",
+    "nombre": "remo unilateral en maquina",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "shoulders",
+    "nombre": "remo al menton en polea",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "glutes",
+    "nombre": "hip thrust con barra",
+    "sinPeso": false
+   }
+  ],
+  "C": [
+   {
+    "tipo": "compuesto",
+    "musculo": "shoulders",
+    "nombre": "press militar con barra",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "quadriceps",
+    "nombre": "prensa 45",
+    "sinPeso": false
+   },
+   {
+    "tipo": "aislado",
+    "musculo": "quadriceps",
+    "nombre": "extension de cuadriceps en maquina",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "chest",
+    "nombre": "flexiones de brazo",
+    "sinPeso": true
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": null,
+    "nombre": "ejercicio raro",
+    "sinPeso": false
+   }
+  ],
+  "D": [
+   {
+    "tipo": "aislamiento",
+    "musculo": null,
+    "nombre": "pajaro en banco",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": null,
+    "nombre": "ejercicio raro",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": null,
+    "nombre": "otro raro",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "glutes",
+    "nombre": "salto al cajon",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "glutes",
+    "nombre": "hip thrust con barra",
+    "sinPeso": false
+   }
+  ],
+  "E": [
+   {
+    "tipo": "compuesto",
+    "musculo": null,
+    "nombre": "ejercicio raro",
+    "sinPeso": false
+   },
+   {
+    "tipo": "aislamiento",
+    "musculo": null,
+    "nombre": "curl raro",
+    "sinPeso": false
+   }
+  ],
+  "F": [
+   {
+    "tipo": "compuesto",
+    "musculo": "quadriceps",
+    "nombre": "sentadilla isometrica en multipower",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "quadriceps",
+    "nombre": "sentadilla goblet",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "quadriceps",
+    "nombre": "step up con mancuernas",
+    "sinPeso": false
+   },
+   {
+    "tipo": "compuesto",
+    "musculo": "quadriceps",
+    "nombre": "sentadilla con barra",
+    "sinPeso": false
+   }
+  ]
+ },
+ "casos": [
+  {
+   "nombre": "primer principal del músculo con barra: calentamiento (barra sola), 60 y 85 %, potenciación +5",
+   "dia": "A",
+   "indice": 0,
+   "ejercicio": "Press banca con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 80,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 47.5,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 67.5,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 85,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "principal siguiente del mismo músculo: una sola al 75 %, mancuernas de 2 en 2 desde 10",
+   "dia": "A",
+   "indice": 1,
+   "ejercicio": "Press inclinado con mancuernas",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 30,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5",
+     "kg": 22,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "remo con barra, primer principal de su músculo",
+   "dia": "A",
+   "indice": 2,
+   "ejercicio": "Remo con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 60,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 35,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 50,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 65,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "primer accesorio del músculo: una de 5-6 al 60 %, mancuernas de 1 en 1 hasta 10",
+   "dia": "A",
+   "indice": 3,
+   "ejercicio": "Curl con mancuernas",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 14,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 8,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "accesorio repetido del músculo: nada",
+   "dia": "A",
+   "indice": 4,
+   "ejercicio": "Curl en polea",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 20,
+   "sale": []
+  },
+  {
+   "nombre": "core: nada",
+   "dia": "A",
+   "indice": 5,
+   "ejercicio": "Crunch en polea",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 30,
+   "sale": []
+  },
+  {
+   "nombre": "cardio: nada",
+   "dia": "A",
+   "indice": 6,
+   "ejercicio": "Cinta",
+   "equipo": null,
+   "sinKg": true,
+   "kg": null,
+   "sale": []
+  },
+  {
+   "nombre": "sin kg de referencia (primera vez): solo reps",
+   "dia": "A",
+   "indice": 0,
+   "ejercicio": "Press banca con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": null,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": null,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "press inclinado en máquina es principal: siguiente del pecho, 75 % de 5 en 5",
+   "dia": "B",
+   "indice": 1,
+   "ejercicio": "Press inclinado en máquina",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 70,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5",
+     "kg": 55,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "accesorio primero de su músculo aunque haya principales antes (máquina o polea de 5 en 5)",
+   "dia": "B",
+   "indice": 2,
+   "ejercicio": "Aperturas en polea",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 25,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 15,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "press de banca agarre cerrado: compuesto accesorio (tríceps)",
+   "dia": "B",
+   "indice": 3,
+   "ejercicio": "Press de banca agarre cerrado",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 60,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 35,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "segundo accesorio del tríceps: nada",
+   "dia": "B",
+   "indice": 4,
+   "ejercicio": "Extensión de tríceps en polea",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 30,
+   "sale": []
+  },
+  {
+   "nombre": "remo unilateral en máquina: compuesto accesorio",
+   "dia": "B",
+   "indice": 5,
+   "ejercicio": "Remo unilateral en máquina",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 40,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "remo al mentón en polea: compuesto accesorio",
+   "dia": "B",
+   "indice": 6,
+   "ejercicio": "Remo al mentón en polea",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 30,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 20,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "hip thrust con barra: principal, potenciación +5",
+   "dia": "B",
+   "indice": 7,
+   "ejercicio": "Hip thrust con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 100,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 60,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 85,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 105,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "barra liviana: lo que no llega a la barra es barra sola; potenciación +2,5 bajo 50 kg",
+   "dia": "C",
+   "indice": 0,
+   "ejercicio": "Press militar con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 30,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 32.5,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "máquina (prensa) de 5 en 5",
+   "dia": "C",
+   "indice": 1,
+   "ejercicio": "Prensa 45°",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 147,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 35,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 90,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 125,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 150,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "aislado en máquina, primer accesorio del cuádriceps",
+   "dia": "C",
+   "indice": 2,
+   "ejercicio": "Extensión de cuádriceps en máquina",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 45,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "peso corporal: no lleva preparación",
+   "dia": "C",
+   "indice": 3,
+   "ejercicio": "Flexiones de brazo",
+   "equipo": null,
+   "sinKg": true,
+   "kg": 50,
+   "sale": []
+  },
+  {
+   "nombre": "principal sin músculo y no es el primero de fuerza: dos aproximaciones sin calentamiento ni potenciación",
+   "dia": "C",
+   "indice": 4,
+   "ejercicio": "Ejercicio raro",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 40,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 35,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "accesorio sin músculo: nada",
+   "dia": "D",
+   "indice": 0,
+   "ejercicio": "Pájaro en banco",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 20,
+   "sale": []
+  },
+  {
+   "nombre": "el accesorio sin músculo cuenta como ejercicio de fuerza: el principal sin músculo que sigue no lleva calentamiento",
+   "dia": "D",
+   "indice": 1,
+   "ejercicio": "Ejercicio raro",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 40,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 35,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "potencia (salto al cajón): nada, y no cuenta para el músculo",
+   "dia": "D",
+   "indice": 3,
+   "ejercicio": "Salto al cajón",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 0,
+   "sale": []
+  },
+  {
+   "nombre": "después de uno de potencia del mismo músculo, el primer principal lleva todo",
+   "dia": "D",
+   "indice": 4,
+   "ejercicio": "Hip thrust con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 100,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 60,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 85,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 105,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "principal sin músculo, primero de fuerza del día: calentamiento y dos aproximaciones, sin potenciación",
+   "dia": "E",
+   "indice": 0,
+   "ejercicio": "Ejercicio raro",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 40,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 10,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 35,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "isométrico: nada",
+   "dia": "F",
+   "indice": 0,
+   "ejercicio": "Sentadilla isométrica en multipower",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 80,
+   "sale": []
+  },
+  {
+   "nombre": "goblet: accesorio",
+   "dia": "F",
+   "indice": 1,
+   "ejercicio": "Sentadilla goblet",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 24,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 15,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "step: accesorio (segundo del músculo, nada)",
+   "dia": "F",
+   "indice": 2,
+   "ejercicio": "Step up con mancuernas",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 12,
+   "sale": []
+  },
+  {
+   "nombre": "sentadilla con barra: primer principal (el isométrico no cuenta)",
+   "dia": "F",
+   "indice": 3,
+   "ejercicio": "Sentadilla con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 100,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 25,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 60,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 85,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 105,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "sustituto del catálogo con mancuernas (equipo dumbbell) aunque el nombre no lo diga",
+   "dia": "A",
+   "indice": 3,
+   "ejercicio": "Curl",
+   "equipo": "dumbbell",
+   "sinKg": false,
+   "kg": 21,
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 12,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "override del plan: gana y reemplaza a la regla (pct del kg efectivo redondeado; kg explícito tal cual)",
+   "dia": "A",
+   "indice": 0,
+   "ejercicio": "Press banca con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 80,
+   "plan": [
+    {
+     "reps": 10,
+     "pct": 50
+    },
+    {
+     "reps": 5,
+     "pct": 70
+    },
+    {
+     "kg": 20,
+     "reps": 8,
+     "nota": "lento"
+    }
+   ],
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "10",
+     "kg": 40,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 55,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 3,
+     "reps": "8",
+     "kg": 20,
+     "barraSola": false,
+     "opcional": false,
+     "nota": "lento"
+    }
+   ]
+  },
+  {
+   "nombre": "aproximaciones: [] explícito = sin preparación",
+   "dia": "A",
+   "indice": 0,
+   "ejercicio": "Press banca con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 80,
+   "plan": [],
+   "sale": []
+  },
+  {
+   "nombre": "override con tipos raros: se saltea lo que no se entiende",
+   "dia": "A",
+   "indice": 3,
+   "ejercicio": "Curl con mancuernas",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 14,
+   "plan": [
+    {
+     "reps": "8-10",
+     "pct": "50%"
+    },
+    {
+     "foo": 1
+    },
+    3,
+    null,
+    {
+     "reps": -2
+    }
+   ],
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "8-10",
+     "kg": 7,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "override ilegible (no es lista): decide la regla",
+   "dia": "A",
+   "indice": 3,
+   "ejercicio": "Curl con mancuernas",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 14,
+   "plan": "10 y 5",
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 8,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "override sin ninguna serie entendible: decide la regla",
+   "dia": "A",
+   "indice": 3,
+   "ejercicio": "Curl con mancuernas",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 14,
+   "plan": [
+    {
+     "x": 1
+    },
+    "y"
+   ],
+   "sale": [
+    {
+     "tipo": "aproximacion",
+     "numero": null,
+     "reps": "5-6",
+     "kg": 8,
+     "barraSola": false,
+     "opcional": false
+    }
+   ]
+  },
+  {
+   "nombre": "barra con efectiva menor que la barra sola (15 kg): nada más pesado que la efectiva, todo sin kg",
+   "dia": "A",
+   "indice": 2,
+   "ejercicio": "Remo con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 15,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": null,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": null,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "barra con efectiva igual a la barra (20 kg): barra sola, que no supera la efectiva; la potenciación suma",
+   "dia": "A",
+   "indice": 2,
+   "ejercicio": "Remo con barra",
+   "equipo": null,
+   "sinKg": false,
+   "kg": 20,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 22.5,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  },
+  {
+   "nombre": "el equipo del catálogo para un nombre sin la palabra barra: «Sentadilla» con barbell lleva la barra",
+   "dia": "A",
+   "indice": 2,
+   "ejercicio": "Sentadilla",
+   "equipo": "barbell",
+   "sinKg": false,
+   "kg": 60,
+   "sale": [
+    {
+     "tipo": "calentamiento",
+     "numero": null,
+     "reps": "16-20",
+     "kg": 20,
+     "barraSola": true,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 1,
+     "reps": "5",
+     "kg": 35,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "aproximacion",
+     "numero": 2,
+     "reps": "5",
+     "kg": 50,
+     "barraSola": false,
+     "opcional": false
+    },
+    {
+     "tipo": "potenciacion",
+     "numero": null,
+     "reps": "1-3",
+     "kg": 65,
+     "barraSola": false,
+     "opcional": true
+    }
+   ]
+  }
+ ],
+ "clasificacion": {
+  "regla": "PRINCIPAL = compuesto menos los accesorios por nombre; sin preparación = potencia, sin kg de referencia o isométrico (nombres sin tildes ni mayúsculas). «principal» se evalúa con el tipo; «sinPreparacion» solo con el nombre.",
+  "casos": [
+   {
+    "nombre": "Press inclinado en máquina",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Hip thrust con barra",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Press plano con mancuernas",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Hack squat",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "RDL",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Remo unilateral en máquina",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Press de banca agarre cerrado",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Remo al mentón en polea",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Press cerrado en multipower",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Remo con mancuerna a una mano",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Press a un brazo",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Prensa a una pierna",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Sentadilla búlgara",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Zancadas con mancuernas",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Estocada atrás",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Fondos en máquina",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Pull through en polea",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Pull-through",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Subida al cajón",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Step up",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Sentadilla goblet",
+    "tipo": "compuesto",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Stepper",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Curl con barra",
+    "tipo": "aislamiento",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Extensión de cuádriceps",
+    "tipo": "aislado",
+    "principal": false,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Salto al cajón",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Box jump",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Swing con kettlebell",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Turkish get-up",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Get up turco",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Hang power clean",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Cargada de potencia",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Farmer walk",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Paseo del granjero",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Monster walk con banda",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Rollout con barra",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Dominada isométrica arriba",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Sentadilla isométrica en multipower",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": true
+   },
+   {
+    "nombre": "Peso muerto rumano",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": false
+   },
+   {
+    "nombre": "Sentadilla con barra",
+    "tipo": "compuesto",
+    "principal": true,
+    "sinPreparacion": false
+   }
+  ]
+ }
+}

@@ -31,18 +31,20 @@ final class RevisionUITests: XCTestCase {
         adjuntarCaptura("mis-datos-sin-interruptores")
     }
 
-    /// Pedidos de Mati (15-oct): Revisión sin Mi día (sin el agua, los hábitos ni los últimos 30 días) y el peso como
-    /// parte del check («Tu peso de hoy»), con la tarjeta de peso para los demás días.
-    func testRevisionSinMiDiaYConElPesoEnElCheck() throws {
+    /// 2.1: Revisión queda solo para subir la semana: las fotos y el check (que trae el peso del día). La recuperación, la
+    /// salud, Mi reloj y la tarjeta de peso se mudaron a Salud; Mi Día ya no existe en ningún lado.
+    func testRevisionSoloSubeLaSemana() throws {
         let enviar = app.buttons["enviar-check"].firstMatch
         XCTAssertTrue(enviar.waitForExistence(timeout: 20), "No apareció el check")
         for _ in 0..<6 where !app.textFields["peso-check"].isHittable { app.swipeUp() }
         XCTAssertTrue(app.textFields["peso-check"].exists, "El check no trae el peso")
         for _ in 0..<8 { app.swipeUp() }
-        XCTAssertFalse(app.otherElements["control-agua"].exists, "Volvió el agua de Mi día")
+        XCTAssertFalse(app.otherElements["card-recuperacion"].exists, "La card de recuperación sigue en Revisión")
+        XCTAssertFalse(app.otherElements["card-salud"].exists, "La card de salud sigue en Revisión")
+        XCTAssertFalse(app.textFields["peso-hoy"].exists, "La tarjeta de peso sigue en Revisión")
         XCTAssertFalse(app.staticTexts["Mi día"].exists, "Volvió Mi día")
         XCTAssertFalse(app.staticTexts["Mis últimos 30 días"].exists, "Volvieron los últimos 30 días")
-        adjuntarCaptura("revision-sin-mi-dia")
+        adjuntarCaptura("t2-revision-solo-la-semana")
     }
 
     /// 5.1.1(i) y 1.4.1: desde Mis datos se abren el respaldo científico y la política de privacidad. Las dos hojas

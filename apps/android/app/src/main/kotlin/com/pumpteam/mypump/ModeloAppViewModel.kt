@@ -39,6 +39,13 @@ import kotlinx.coroutines.withContext
 object Entorno {
     @Volatile
     var transporte: Transporte? = null
+
+    /**
+     * El código que «lee» el escáner de barras (2.1, S3) en las pruebas, sin abrir el escáner de Google (que es otra app,
+     * de Play Services). Open Food Facts contesta por [transporte]. En la app siempre es null.
+     */
+    @Volatile
+    var codigoDePrueba: String? = null
 }
 
 /**
@@ -99,6 +106,7 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
                 )
             }
             catalogo.await()?.let { ModeloApp.catalogoEmpaquetado = it }
+            m.versionApp = versionCorta
             m.enPrimerPlano = aLaVista
             _modelo.value = m
             // El `.task` de RaizApp: con una cuenta guardada, se trae todo al abrir.

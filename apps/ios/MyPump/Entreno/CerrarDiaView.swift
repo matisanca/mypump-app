@@ -2,8 +2,9 @@ import SwiftUI
 import MyPumpReglas
 import MyPumpDatos
 
-/// "Cerrar sesión de hoy" (SES-06): el resumen (series, reps, volumen y minutos), lo que queda sin completar si se
-/// cierra antes, y las notas para Mati. El motor vacía la cola antes de cerrar.
+/// "Cerrar sesión de hoy" (SES-06): el resumen (series, reps, volumen y minutos), las series por músculo de hoy (S2, con
+/// la semana al lado), lo que queda sin completar si se cierra antes, y las notas para Mati. El motor vacía la cola
+/// antes de cerrar.
 struct CerrarDiaView: View {
     let motor: ModeloEntreno
     @Environment(\.dismiss) private var cerrar
@@ -14,6 +15,7 @@ struct CerrarDiaView: View {
     /// Con ejercicios pendientes hay más para leer (la lista): abre alta, así las notas no quedan debajo del botón.
     @State private var detente: PresentationDetent
     @FocusState private var escribiendo: Bool
+    @State private var modelo = Proveedor.modelo
 
     init(motor: ModeloEntreno) {
         self.motor = motor
@@ -37,6 +39,8 @@ struct CerrarDiaView: View {
                     }
                     .fixedSize(horizontal: false, vertical: true)
                     .tarjeta(relleno: 14)
+
+                    porMusculo
 
                     if let titulo = motor.dia.avisoPendientes {
                         VStack(alignment: .leading, spacing: Espacio.xs) {
@@ -106,9 +110,46 @@ struct CerrarDiaView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { cerrar() } } }
         }
+        .task {
+            // La semana necesita el historial de los días anteriores (se trae al abrir Salud → Fuerza): si no está, acá.
+            guard !modelo.conMuestras, modelo.entreno === motor, let p = modelo.progreso, p.tarjetas.isEmpty || p.estado == .sinRed else { return }
+            await modelo.cargarProgreso()
+        }
         .presentationDetents([.medium, .large], selection: $detente)
         .presentationDragIndicator(.visible)
         .animation(.snappy, value: aviso)
+    }
+
+    /// Con la cuenta, la semana entera; en la demo, solo lo de hoy.
+    private var volumen: VolumenMusculo.Resumen {
+        if !modelo.conMuestras, modelo.entreno === motor { return modelo.volumenPorMusculo() }
+        return VolumenMusculo.calcular(historial: [], enVivo: motor.registrosVolumenEnVivo, hoy: FechaLocal.hoy())
+    }
+
+    /// «Series por músculo hoy»: solo si hoy hay alguna.
+    @ViewBuilder private var porMusculo: some View {
+        let v = volumen
+        if v.totalHoy > 0 {
+            VStack(alignment: .leading, spacing: Espacio.xs) {
+                Text("Series por músculo hoy")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(v.filasDeHoy) { f in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(f.nombre).font(.subheadline).foregroundStyle(f.musculo == nil ? .secondary : .primary)
+                        Spacer(minLength: Espacio.xs)
+                        Text("\(f.hoy) hoy").font(.subheadline.weight(.semibold)).monospacedDigit()
+                        Text("\(f.semana) en la semana").font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(f.nombre), \(VolumenMusculo.series(f.hoy)) hoy, \(f.semana) en la semana")
+                }
+            }
+            .padding(.horizontal, Espacio.xxs)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("volumen-hoy")
+        }
     }
 
     private var separador: some View {

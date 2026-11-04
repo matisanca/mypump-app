@@ -284,6 +284,13 @@ class ModeloSalud(
     val componentes: List<SaludVista.Componente> get() = SaludVista.componentes(_recuperacion.value.lastOrNull())
     val scoreDeHoy: Int? get() = _recuperacion.value.lastOrNull()?.score
 
+    /** La confianza del score de hoy, si es media o baja (nativa_007). */
+    val confianzaDeHoy: SaludVista.Confianza? get() = SaludVista.confianza(_recuperacion.value.lastOrNull())
+
+    /** Sin score hoy: qué falta, como lo explica el servidor. */
+    val motivoFaltaDeHoy: String?
+        get() = _recuperacion.value.lastOrNull()?.takeIf { it.score == null }?.let { SaludVista.textoFalta(it.motivoFalta) }
+
     // MARK: Mi reloj (Oura, WHOOP)
 
     data class Reloj(

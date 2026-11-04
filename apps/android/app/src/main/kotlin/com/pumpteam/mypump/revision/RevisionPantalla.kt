@@ -27,7 +27,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,12 +54,6 @@ import com.pumpteam.mypump.raiz.AnclaRevision
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.PesoCorporal
-import com.pumpteam.mypump.respaldo.OrigenRespaldo
-import com.pumpteam.mypump.respaldo.PieRespaldo
-import com.pumpteam.mypump.salud.CardRecuperacion
-import com.pumpteam.mypump.salud.CardSalud
-import com.pumpteam.mypump.salud.PantallaSuperpuesta
-import com.pumpteam.mypump.salud.SaludDetallePantalla
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -71,20 +64,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Revisión (gemela de `RevisionView.swift`): lo de la semana (fotos, check, peso), Mi reloj y, al final, Mi Día (lo de
- * todos los días, con la recuperación y la salud). Mismo orden que la web (REV-01). Arriba, el aviso de plan incompleto
- * (GEN-05); de acá cuelga Mis datos (el ícono de arriba).
+ * Revisión (gemela de `RevisionView.swift`): desde la 2.1, solo para subir la semana: el aviso del plan incompleto
+ * (GEN-05), las fotos de la semana y el check (que ya trae el peso del día). El peso, Mi reloj, la recuperación y la salud
+ * pasaron a la pestaña Salud. De acá cuelga Mis datos (el ícono de arriba).
  *
- * Tirar para actualizar trae el check, el peso, Mi Día, las fotos y la salud. Un aviso, el banner de las otras pestañas
- * o `?scene=myday` piden una sección ([AnclaRevision]): se desplaza hasta ella y se consume. En la demo el check, el
- * peso y Mi Día se tocan igual y no sale nada; las fotos dicen que no se guardan, y sin cuenta no hay reloj ni salud.
+ * Tirar para actualizar trae el check y las fotos. Un aviso o el banner de las otras pestañas piden una sección
+ * ([AnclaRevision]): se desplaza hasta ella y se consume. En la demo el check se toca igual y no sale nada; las fotos
+ * dicen que no se guardan.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
     val revision by modelo.revision.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
-    val salud by modelo.salud.collectAsStateWithLifecycle()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
     val filasDePeso = revision?.salud?.collectAsStateWithLifecycle()?.value ?: emptyList()
     val pesoParaLasFotos = remember(filasDePeso) { PesoCorporal.serie(filasDePeso) }
@@ -95,7 +87,6 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
     // al componer, y se anota en cada cuadro del desplazamiento.
     val secciones = remember { HashMap<String, Float>() }
     var recargando by remember { mutableStateOf(false) }
-    var detalleSalud by rememberSaveable { mutableStateOf(false) }
     val margen = with(LocalDensity.current) { Espacio.xs.toPx() }
 
     // Un aviso o el banner de las otras pestañas piden una sección: se va y se consume.
@@ -137,7 +128,6 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
                         coroutineScope {
                             launch { revision?.cargarRevision() }
                             launch { fotos?.cargar() }
-                            launch { salud?.cargar() }
                         }
                     } finally {
                         recargando = false
@@ -165,28 +155,8 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
                     }
                     FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
                     CheckSemanal(revision, Modifier.seccion(AnclaRevision.CHECK, secciones))
-                    PesoTarjeta(revision, Modifier.seccion(AnclaRevision.PESO, secciones))
-                    // Oura y WHOOP según lo que ofrezca el servidor (sin relojes para ofrecer, no ocupa lugar). Sin cuenta no hay.
-                    salud?.let { MiReloj(it, Modifier.seccion(AnclaRevision.RELOJ, secciones)) }
-                    // La recuperación y la salud. Mi día (la racha, el entrenamiento del día, los hábitos, el agua y los
-                    // últimos 30 días) se sacó el 15-oct: nadie lo usaba (Mati). Conserva el ancla: los avisos y links que
-                    // llevaban a Mi día caen acá.
-                    salud?.let { s ->
-                        Column(Modifier.seccion(AnclaRevision.MI_DIA, secciones), verticalArrangement = Arrangement.spacedBy(Espacio.m)) {
-                            CardRecuperacion(s, alVerTodo = { detalleSalud = true })
-                            CardSalud(s)
-                        }
-                    }
-                    PieRespaldo(OrigenRespaldo.MI_DIA)
                 }
             }
-        }
-    }
-
-    val s = salud
-    if (detalleSalud && s != null) {
-        PantallaSuperpuesta(alCerrar = { detalleSalud = false }) {
-            SaludDetallePantalla(s, alVolver = { detalleSalud = false })
         }
     }
 }

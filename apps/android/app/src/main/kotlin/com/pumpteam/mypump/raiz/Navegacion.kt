@@ -11,13 +11,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.diseno.Iconos
 
-/** Las 5 pestañas de la app actual (GEN-01), en el mismo orden. */
+/** Las 5 pestañas (GEN-01), en el mismo orden. Desde la 2.1 la última es Salud (lo que era Progreso, en su lugar). */
 enum class Pestana(val titulo: String) {
     ENTRENO("Entreno"),
     DIETA("Dieta"),
     CHAT("Chat"),
     REVISION("Revisión"),
-    PROGRESO("Progreso");
+    SALUD("Salud");
 
     val icono: ImageVector
         get() = when (this) {
@@ -25,7 +25,7 @@ enum class Pestana(val titulo: String) {
             DIETA -> Iconos.Cubiertos
             CHAT -> Iconos.Chat
             REVISION -> Iconos.Checklist
-            PROGRESO -> Iconos.Progreso
+            SALUD -> Iconos.Progreso
         }
 
     /** Para las pruebas y las herramientas que leen la pantalla (`pestana-dieta`). */
@@ -36,9 +36,19 @@ enum class Pestana(val titulo: String) {
 object AnclaRevision {
     const val FOTOS = "fotos"
     const val CHECK = "check"
-    const val PESO = "peso"
-    const val RELOJ = "reloj"
-    const val MI_DIA = "midia"
+}
+
+/**
+ * Los tres segmentos de Salud (2.1, S1): Recuperación (el score, la salud del reloj o del teléfono y Mi reloj), Fuerza
+ * (el volumen por músculo y lo que era Progreso) y Cuerpo (el peso, las fotos y el check de la semana, de solo lectura).
+ */
+enum class SegmentoSalud(val titulo: String) {
+    RECUPERACION("Recuperación"),
+    FUERZA("Fuerza"),
+    CUERPO("Cuerpo");
+
+    /** Para las pruebas (`segmento-fuerza`). */
+    val etiqueta: String get() = "segmento-${name.lowercase()}"
 }
 
 /**
@@ -46,7 +56,13 @@ object AnclaRevision {
  * iOS). Sobrevive a rotar la pantalla. La usan la barra de pestañas, el banner de "te falta tu check" de las otras
  * pestañas, tocar un aviso y un link con `?scene=` (ACC-09).
  */
-class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, anclaRevision: String? = null, guia: Boolean = false) {
+class Navegacion(
+    pestana: Pestana = Pestana.ENTRENO,
+    misDatos: Boolean = false,
+    anclaRevision: String? = null,
+    segmentoSalud: SegmentoSalud = SegmentoSalud.RECUPERACION,
+    guia: Boolean = false,
+) {
     var pestana by mutableStateOf(pestana)
     var misDatos by mutableStateOf(misDatos)
 
@@ -54,10 +70,13 @@ class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, 
     var guia by mutableStateOf(guia)
 
     /**
-     * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check, peso, midia), como `anclaRevision` de
+     * Una sección de Revisión a la que desplazarse ([AnclaRevision]: fotos, check), como `anclaRevision` de
      * `Navegacion.swift`. Revisión la consume al llegar.
      */
     var anclaRevision by mutableStateOf(anclaRevision)
+
+    /** El segmento de Salud: arranca en Recuperación y queda el último elegido mientras viva la app. */
+    var segmentoSalud by mutableStateOf(segmentoSalud)
 
     /** Tocar una pestaña. Tocar Revisión estando en Mis datos vuelve a Revisión (como volver al principio de la pila). */
     fun elegir(p: Pestana) {
@@ -72,10 +91,11 @@ class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, 
             DestinoAviso.ENTRENO -> pestana = Pestana.ENTRENO
             DestinoAviso.DIETA -> pestana = Pestana.DIETA
             DestinoAviso.CHAT -> pestana = Pestana.CHAT
-            DestinoAviso.PROGRESO -> pestana = Pestana.PROGRESO
+            // `progress` (lo que era Progreso): Salud → Fuerza.
+            DestinoAviso.FUERZA -> irASalud(SegmentoSalud.FUERZA)
             DestinoAviso.REVISION -> irARevision(null)
-            // `?scene=myday` y el aviso de Mi Día: Revisión, ya desplazada hasta Mi Día.
-            DestinoAviso.MI_DIA -> irARevision(AnclaRevision.MI_DIA)
+            // `?scene=myday` y el aviso de Mi Día (ya no existe): Salud → Recuperación.
+            DestinoAviso.RECUPERACION -> irASalud(SegmentoSalud.RECUPERACION)
             DestinoAviso.MIS_DATOS -> {
                 pestana = Pestana.REVISION
                 misDatos = true
@@ -90,11 +110,23 @@ class Navegacion(pestana: Pestana = Pestana.ENTRENO, misDatos: Boolean = false, 
         anclaRevision = ancla
     }
 
+    /** A Salud, en ese segmento. */
+    fun irASalud(segmento: SegmentoSalud) {
+        segmentoSalud = segmento
+        pestana = Pestana.SALUD
+    }
+
     companion object {
         val Guardador: Saver<Navegacion, List<Any>> = Saver(
-            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.guia) },
+            save = { listOf(it.pestana.name, it.misDatos, it.anclaRevision ?: "", it.segmentoSalud.name, it.guia) },
             restore = {
-                Navegacion(Pestana.valueOf(it[0] as String), it[1] as Boolean, (it.getOrNull(2) as? String)?.ifEmpty { null }, it.getOrNull(3) as? Boolean ?: false)
+                Navegacion(
+                    Pestana.entries.firstOrNull { p -> p.name == it[0] } ?: Pestana.ENTRENO,
+                    it[1] as Boolean,
+                    (it.getOrNull(2) as? String)?.ifEmpty { null },
+                    SegmentoSalud.entries.firstOrNull { s -> s.name == it.getOrNull(3) } ?: SegmentoSalud.RECUPERACION,
+                    it.getOrNull(4) as? Boolean ?: false,
+                )
             },
         )
     }

@@ -147,6 +147,10 @@ private struct ListaEntreno: View {
                 // «Tu guía»: arriba, solo si `entregas_app_resumen` dijo que hay (D16: la barra no se toca).
                 if let g = GuiaUI.modelo { TarjetaGuia(modelo: g, abrir: abrirGuia) }
                 BannerRevision()
+                // Eventos del Apple Watch que esperan hace horas sin poder pasar (otro día abierto, otra cuenta…).
+                if let t = motor.relojEsperando {
+                    AvisoProgresion(icono: "applewatch", texto: Text(t), tono: .alerta)
+                }
                 // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
                 if motor.dias.count > 1 { SelectorDias(motor: motor) }
                 if motor.vacio {
@@ -653,6 +657,7 @@ private struct EjercicioEnLista: View {
     @Environment(Preguntador.self) private var preguntador
     @Environment(\.dynamicTypeSize) private var tamañoLetra
     @State private var sustituyendo = false
+    @State private var eligiendoDescanso = false
 
     var body: some View {
         if let t = motor.tarjeta(lugar) {
@@ -661,7 +666,14 @@ private struct EjercicioEnLista: View {
             // Con letra de accesibilidad, uno debajo del otro: en un renglón partían las palabras («Sus-tituir»).
             let acciones = tamañoLetra.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Espacio.s))
                                                           : AnyLayout(HStackLayout(spacing: Espacio.s))
+            let prep = t.filas.isEmpty ? [] : motor.preparacion(lugar)
             VStack(alignment: .leading, spacing: Espacio.s) {
+                // E1: la preparación, liviana y aparte, antes de las efectivas (solo indica; no se registra).
+                if !prep.isEmpty {
+                    PreparacionBloque(motor: motor, lugar: lugar, series: prep, sinKg: t.sinKg)
+                        .padding(.horizontal, Espacio.m)
+                        .padding(.top, Espacio.s)
+                }
                 TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
                 // Solo en los ejercicios con series (el cardio se marca con «Terminé»), igual que en la página.
                 if !t.filas.isEmpty { DescansoEnTarjeta() }
@@ -670,6 +682,13 @@ private struct EjercicioEnLista: View {
                         Label(t.efectivo.sustituido ? "Cambiar" : "Sustituir", systemImage: "arrow.triangle.2.circlepath")
                     }
                     .disabled(!(t.puedeSustituir || t.efectivo.sustituido))
+                    // E2: el descanso del ejercicio, a un toque (como el cronómetro de la fila de botones de la referencia).
+                    if !t.filas.isEmpty && t.efectivo.ejercicio.tipo != "calentamiento" {
+                        Button { eligiendoDescanso = true } label: { Label(t.descanso, systemImage: "timer") }
+                            .accessibilityLabel("Descanso \(t.descanso)\(t.descansoPropio ? ", elegido por vos" : "")")
+                            .accessibilityHint("Tocá para elegir otro descanso para este ejercicio")
+                            .accessibilityIdentifier("descanso-ejercicio")
+                    }
                     NavigationLink(value: lugar) {
                         Label("Técnica y notas", systemImage: "text.book.closed.fill")
                     }
@@ -703,6 +722,11 @@ private struct EjercicioEnLista: View {
             .padding(.bottom, Espacio.s)
             .background(Color.campo.opacity(0.35))
             .sheet(isPresented: $sustituyendo) { SustituirEjercicioView(motor: motor, lugar: lugar) }
+            .sheet(isPresented: $eligiendoDescanso) {
+                SelectorDescanso(segundos: t.descansoSegundos, plan: t.descansoPlan, propio: t.descansoPropio) { nuevo in
+                    motor.elegirDescanso(lugar, segundos: nuevo)
+                }
+            }
         }
     }
 }
@@ -846,7 +870,8 @@ struct FilaEjercicio: View {
         let ultima = motor.dia.ultimaVez(lugar, ahora: .now)
         let record = motor.dia.record(lugar)
         if let u = ultima { partes.append("última vez \(Bonito.carga(u.valor)), \(u.cuando)") }
-        if let r = record { partes.append("récord \(Bonito.carga(r))") }
+        // Sin el «RIR n» (2.0.3: ya no se muestra; con el del plan diría «RIR 0» en todos).
+        if let r = record { partes.append("récord \(Bonito.carga(r).replacingOccurrences(of: #" · RIR \d+"#, with: "", options: .regularExpression))") }
         if ultima == nil && record == nil && !porTiempo && !motor.historialCargando.contains(lugar) {
             partes.append("primera vez con este ejercicio")
         }
@@ -870,7 +895,7 @@ struct FilaEjercicio: View {
                         .labelStyle(EtiquetaCompacta())
                         .foregroundStyle(Color.record)
                         .fontWeight(.semibold)
-                        .accessibilityLabel("Récord: \(Bonito.carga(r))")
+                        .accessibilityLabel("Récord: \(Bonito.partir(r).principal)")   // sin «RIR n» (2.0.3)
                 }
             }
             .font(.caption)

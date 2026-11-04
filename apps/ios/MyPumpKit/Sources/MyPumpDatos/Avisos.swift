@@ -1,10 +1,12 @@
 import Foundation
 import MyPumpModelos
+import MyPumpReglas
 
 /// A dónde lleva tocar un aviso: el `destino` que mandan `push.py` (comentarios del coach) y la notificación local del
-/// domingo. Uno desconocido, como el histórico `comentarios`, cae a Chat (NOT-03).
+/// domingo. Uno desconocido, como el histórico `comentarios`, cae a Chat (NOT-03). Desde la 2.1, `progress` abre Salud →
+/// Fuerza (lo que era Progreso) y el viejo `myday` (Mi Día ya no existe) abre Salud → Recuperación.
 public enum DestinoAviso: String, Sendable, Equatable {
-    case entreno, dieta, chat, revision, progreso, miDia, misDatos
+    case entreno, dieta, chat, revision, fuerza, recuperacion, misDatos
 
     /// `?scene=<escena>` del link (ACC-09): solo una escena que existe; cualquier otra cosa no hace nada (en la web,
     /// una escena inexistente dejaba la app en blanco).
@@ -17,8 +19,8 @@ public enum DestinoAviso: String, Sendable, Equatable {
         switch destino {
         case "train": self = .entreno
         case "diet": self = .dieta
-        case "progress": self = .progreso
-        case "myday": self = .miDia
+        case "progress": self = .fuerza
+        case "myday": self = .recuperacion
         case "revision": self = .revision
         case "salud": self = .misDatos
         default: self = .chat
@@ -50,6 +52,19 @@ public enum AvisoDomingo {
         patron.minute = minuto
         guard let fecha = calendario.nextDate(after: ahora, matching: patron, matchingPolicy: .nextTime) else { return nil }
         return calendario.dateComponents([.year, .month, .day, .hour, .minute], from: fecha)
+    }
+
+    /// Como `proximo(desde:)`, pero si la semana de revisión ya está completa (el check y las tres fotos) se saltea el
+    /// aviso de esta semana y queda el de la que viene (R2 de la 2.0.3, `SemanaRevision.fechaAviso`). Con la semana
+    /// incompleta da lo mismo que `proximo(desde:)`.
+    public static func proximo(desde ahora: Date, semanaCompleta: Bool, calendario: Calendar = .current) -> DateComponents? {
+        let c = calendario.dateComponents([.year, .month, .day, .hour, .minute], from: ahora)
+        guard let a = c.year, let m = c.month, let d = c.day else { return nil }
+        let hoy = String(format: "%04d-%02d-%02d", a, m, d)
+        guard let fecha = SemanaRevision.fechaAviso(hoy: hoy, minutos: (c.hour ?? 0) * 60 + (c.minute ?? 0), completa: semanaCompleta),
+              let n = DiaCalendario.numero(fecha) else { return nil }
+        let utc = Formateadores.utc.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: Double(n) * 86_400))
+        return DateComponents(year: utc.year, month: utc.month, day: utc.day, hour: hora, minute: minuto)
     }
 }
 

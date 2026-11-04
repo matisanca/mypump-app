@@ -1,0 +1,348 @@
+{
+ "fuente": "regla R2 de la 2.0.3 (docs/NATIVA_203.md): semana_lunes = lunes ISO de (fecha + (7 - revision_dia)); el aviso sale el día de revisión a las 11:00 y se saltea si la semana de revisión de hoy ya está completa",
+ "horaAviso": "11:00",
+ "casos": [
+  {
+   "hoy": "2026-10-31",
+   "diaSemana": "Sat",
+   "hora": "09:30",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-01"
+  },
+  {
+   "hoy": "2026-10-31",
+   "diaSemana": "Sat",
+   "hora": "09:30",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-10-31",
+   "diaSemana": "Sat",
+   "hora": "11:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-01"
+  },
+  {
+   "hoy": "2026-10-31",
+   "diaSemana": "Sat",
+   "hora": "11:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-10-31",
+   "diaSemana": "Sat",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-01"
+  },
+  {
+   "hoy": "2026-10-31",
+   "diaSemana": "Sat",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-01",
+   "diaSemana": "Sun",
+   "hora": "09:30",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-01"
+  },
+  {
+   "hoy": "2026-11-01",
+   "diaSemana": "Sun",
+   "hora": "09:30",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-01",
+   "diaSemana": "Sun",
+   "hora": "11:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-01",
+   "diaSemana": "Sun",
+   "hora": "11:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-01",
+   "diaSemana": "Sun",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-01",
+   "diaSemana": "Sun",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-10-26",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-02",
+   "diaSemana": "Mon",
+   "hora": "09:30",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-02",
+   "diaSemana": "Mon",
+   "hora": "09:30",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-02",
+   "diaSemana": "Mon",
+   "hora": "11:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-02",
+   "diaSemana": "Mon",
+   "hora": "11:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-02",
+   "diaSemana": "Mon",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-02",
+   "diaSemana": "Mon",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-03",
+   "diaSemana": "Tue",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-03",
+   "diaSemana": "Tue",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-04",
+   "diaSemana": "Wed",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-04",
+   "diaSemana": "Wed",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-05",
+   "diaSemana": "Thu",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-05",
+   "diaSemana": "Thu",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-06",
+   "diaSemana": "Fri",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-06",
+   "diaSemana": "Fri",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-07",
+   "diaSemana": "Sat",
+   "hora": "09:30",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-07",
+   "diaSemana": "Sat",
+   "hora": "09:30",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-07",
+   "diaSemana": "Sat",
+   "hora": "11:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-07",
+   "diaSemana": "Sat",
+   "hora": "11:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-07",
+   "diaSemana": "Sat",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-07",
+   "diaSemana": "Sat",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-08",
+   "diaSemana": "Sun",
+   "hora": "09:30",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-08"
+  },
+  {
+   "hoy": "2026-11-08",
+   "diaSemana": "Sun",
+   "hora": "09:30",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-08",
+   "diaSemana": "Sun",
+   "hora": "11:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-08",
+   "diaSemana": "Sun",
+   "hora": "11:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-08",
+   "diaSemana": "Sun",
+   "hora": "18:00",
+   "completa": false,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  },
+  {
+   "hoy": "2026-11-08",
+   "diaSemana": "Sun",
+   "hora": "18:00",
+   "completa": true,
+   "revisionDia": 7,
+   "semana": "2026-11-02",
+   "aviso": "2026-11-15"
+  }
+ ]
+}

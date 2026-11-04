@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import com.pumpteam.mypump.diseno.Radio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,7 +54,7 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.SaludVista
 import kotlinx.coroutines.launch
 
-// Las dos tarjetas de salud de Mi Día (cliente.html:6680-6788 y 7233-7328) con los datos de ModeloSalud: gemelas de
+// Las dos tarjetas de salud (en Salud → Recuperación desde la 2.1; antes en Mi Día, cliente.html:6680-6788 y 7233-7328) con los datos de ModeloSalud: gemelas de
 // CardsSalud.swift, con los textos de Health Connect (`TextosSalud.ANDROID`, SAL-08). Son piezas sueltas: las ubica quien
 // arme Revisión (en Android todavía no existe); Mis datos usa el resumen, el botón y el detalle.
 
@@ -144,12 +145,38 @@ fun NotaSalud(texto: String, modifier: Modifier = Modifier) {
     Text(texto, style = MaterialTheme.typography.bodySmall, color = MyPump.colores.textoSecundario, modifier = modifier)
 }
 
-/** El color de la banda del score: verde arriba, rojo abajo, ámbar en el medio. */
+/** El color de la banda del score: verde arriba, rojo abajo, ámbar en el medio. Con confianza baja ([apagado]), el mismo
+ *  color más apagado: el número sigue diciendo la banda pero no grita. */
 @Composable
-fun colorBanda(banda: String): Color = when (banda) {
-    "alta" -> MyPump.colores.exito
-    "baja" -> MyPump.colores.peligro
-    else -> MyPump.colores.alerta
+fun colorBanda(banda: String, apagado: Boolean = false): Color {
+    val color = when (banda) {
+        "alta" -> MyPump.colores.exito
+        "baja" -> MyPump.colores.peligro
+        else -> MyPump.colores.alerta
+    }
+    return if (apagado) color.copy(alpha = 0.5f) else color
+}
+
+/** «Confianza media» / «Confianza baja» (nativa_007): una pastilla chica que, al tocarla, muestra cómo mejorarla. */
+@Composable
+fun PastillaConfianza(confianza: SaludVista.Confianza, abierta: Boolean, alTocar: () -> Unit) {
+    val c = MyPump.colores
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(c.campo)
+            .clickable(role = Role.Button, onClickLabel = if (abierta) "Ocultar cómo mejorarla" else "Ver cómo mejorarla", onClick = alTocar)
+            .padding(horizontal = 9.dp, vertical = 5.dp)
+            .testTag("confianza-recuperacion"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(confianza.etiqueta, style = MaterialTheme.typography.labelMedium, color = c.textoSecundario)
+        Icon(
+            Iconos.Chevron, contentDescription = null, tint = c.textoSecundario,
+            modifier = Modifier.size(14.dp).rotate(if (abierta) -90f else 90f),
+        )
+    }
 }
 
 /**
@@ -189,7 +216,7 @@ fun CardRecuperacion(salud: ModeloSalud, alVerTodo: () -> Unit, modifier: Modifi
             }
             is SaludVista.CardRecuperacion.ConectadoSinScore -> {
                 Text(card.sinScore.frase(t), style = MaterialTheme.typography.bodyMedium.merge(Letras.cifras), fontWeight = FontWeight.Medium)
-                NotaSalud(card.sinScore.nota(t))
+                NotaSalud(card.motivo ?: card.sinScore.nota(t))
             }
             is SaludVista.CardRecuperacion.Calibrando -> {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -204,7 +231,7 @@ fun CardRecuperacion(salud: ModeloSalud, alVerTodo: () -> Unit, modifier: Modifi
                     drawStopIndicator = {},
                 )
                 Text("Estoy aprendiendo cómo es tu normal. ${card.yaSe}".trim(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                NotaSalud("Sin unos días de historia, cualquier número sería inventado.")
+                NotaSalud(card.motivo ?: "Sin unos días de historia, cualquier número sería inventado.")
             }
             SaludVista.CardRecuperacion.Oculto -> {
                 Text("Tenés el score apagado. Tus datos se siguen guardando y Mati los ve igual.", style = MaterialTheme.typography.bodyMedium)
@@ -221,7 +248,8 @@ fun CardRecuperacion(salud: ModeloSalud, alVerTodo: () -> Unit, modifier: Modifi
 @Composable
 private fun ConScore(s: SaludVista.ConScore) {
     val c = MyPump.colores
-    val color = colorBanda(s.banda)
+    val color = colorBanda(s.banda, apagado = s.confianza?.apagado == true)
+    var verConfianza by rememberSaveable { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("${s.fila.score ?: 0}", style = Numeros.gigante, color = color)
@@ -230,8 +258,10 @@ private fun ConScore(s: SaludVista.ConScore) {
         Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(s.bandaTexto, style = MaterialTheme.typography.titleMedium, color = color)
             s.frase?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            s.confianza?.let { PastillaConfianza(it, verConfianza) { verConfianza = !verConfianza } }
         }
     }
+    s.confianza?.takeIf { verConfianza }?.let { NotaSalud(it.explicacion, Modifier.testTag("explicacion-confianza")) }
     s.notaVieja?.let { NotaSalud(it) }
     if (s.grafico.isNotEmpty()) {
         LineaSalud(

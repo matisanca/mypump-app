@@ -318,6 +318,8 @@ dependencies {
     // «Tu guía»: Media3 (ExoPlayer + PlayerView) para los videos (MP4 públicos del bucket `videos-entrega`, sin bajarlos).
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
+    // Dieta: el código de barras con el escáner de Google (sin permiso de cámara; ver libs.versions.toml).
+    implementation(libs.play.services.code.scanner)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
