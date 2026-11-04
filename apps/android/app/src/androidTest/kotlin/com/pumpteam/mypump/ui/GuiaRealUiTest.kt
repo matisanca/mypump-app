@@ -263,6 +263,25 @@ class GuiaRealUiTest : PruebaUi() {
         }
     }
 
+    /** Para el lado a lado con `pack.html`: la cabecera («Viste N de M»), «Tu app» con lo visto y las dudas para la llamada. */
+    @Test
+    fun ladoALado() {
+        guardarCuenta(token)
+        abrir()
+        abrirGuia()
+        p.esperar("el get") { reales("entregas_app_get").isNotEmpty() }
+        p.nodo(etiqueta("guia-avance"), ms = 30_000)
+        foto("lado-1-cabecera")
+        if (p.existe(etiqueta("guia-lista"))) {
+            bajarHasta(etiqueta("bloque-Tu app"))
+            p.desplazar(etiqueta("guia-lista"), 250f)
+            foto("lado-2-tu-app")
+            bajarHasta(etiqueta("llamada-ya"))
+            p.desplazar(etiqueta("guia-lista"), 300f)
+            foto("lado-3-llamada")
+        }
+    }
+
     companion object {
         private var leido: String? = null
 
