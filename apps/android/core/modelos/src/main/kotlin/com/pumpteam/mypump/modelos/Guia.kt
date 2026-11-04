@@ -218,6 +218,17 @@ data class ItemSuplemento(
     val porQue: String?,
     /** El `id` de un clip (del bloque «Tu suplementación»): el ítem muestra «Ver por qué». */
     val videoId: String?,
+    /** La dosis anterior (con `sube`, `baja` o `cambia`). Solo la muestra la pestaña Suplementación. */
+    val antes: String? = null,
+    /** El texto del cambio («de 3 a 5 g»). */
+    val cambio: String? = null,
+    /**
+     * `dias`: vacía = todos los días («todos» o sin el campo); `["gym"]`, `["descanso"]` o los días de la semana tal cual
+     * vinieron. Un texto suelto llega como lista de uno.
+     */
+    val dias: List<String> = emptyList(),
+    /** Qué buscar en la tienda. */
+    val comprar: CompraSuplemento? = null,
 ) {
     companion object {
         fun desde(e: JsonElement): ItemSuplemento? {
@@ -241,7 +252,34 @@ data class ItemSuplemento(
                 opcional = o.booleano("opcional") ?: false,
                 porQue = o.texto("por_que")?.ifBlank { null },
                 videoId = o.texto("video_id")?.ifBlank { null },
+                antes = o.texto("antes")?.ifBlank { null },
+                cambio = o.texto("cambio")?.ifBlank { null },
+                dias = when (val d = o["dias"]) {
+                    is JsonArray -> d.mapNotNull { Lector.textoTolerante(it)?.trim()?.ifEmpty { null } }
+                    null -> emptyList()
+                    else -> listOfNotNull(Lector.textoTolerante(d)?.trim()?.ifEmpty { null })
+                },
+                comprar = CompraSuplemento.desde(o["comprar"]),
             )
+        }
+    }
+}
+
+/** `comprar` de un ítem: qué buscar en la tienda, dónde y una nota. null si no trae nada que mostrar. */
+data class CompraSuplemento(val buscar: String?, val donde: String?, val nota: String?) {
+    companion object {
+        fun desde(e: JsonElement?): CompraSuplemento? {
+            val c = when (e) {
+                is JsonObject -> CompraSuplemento(
+                    e.texto("buscar")?.trim()?.ifEmpty { null },
+                    e.texto("donde")?.trim()?.ifEmpty { null },
+                    e.texto("nota")?.trim()?.ifEmpty { null },
+                )
+                // Tolerante: un texto suelto es lo que hay que buscar.
+                is JsonPrimitive -> CompraSuplemento(Lector.textoTolerante(e)?.trim()?.ifEmpty { null }, null, null)
+                else -> null
+            }
+            return c?.takeIf { it.buscar != null || it.donde != null || it.nota != null }
         }
     }
 }

@@ -11,13 +11,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.diseno.Iconos
 
-/** Las 5 pestañas (GEN-01), en el mismo orden. Desde la 2.1 la última es Salud (lo que era Progreso, en su lugar). */
+/**
+ * Las pestañas (GEN-01). Desde la 2.1 la última es Salud (lo que era Progreso, en su lugar). Con suplementación (2.1.0)
+ * la barra cambia: ver [barra].
+ */
 enum class Pestana(val titulo: String) {
     ENTRENO("Entreno"),
     DIETA("Dieta"),
     CHAT("Chat"),
     REVISION("Revisión"),
-    SALUD("Salud");
+    SALUD("Salud"),
+
+    /** Solo si el cliente tiene suplementación (`mypump_suplementacion` devolvió una fila). */
+    SUPLEMENTACION("Suplementación");
 
     val icono: ImageVector
         get() = when (this) {
@@ -26,10 +32,21 @@ enum class Pestana(val titulo: String) {
             CHAT -> Iconos.Chat
             REVISION -> Iconos.Checklist
             SALUD -> Iconos.Progreso
+            SUPLEMENTACION -> Iconos.Pastilla
         }
 
     /** Para las pruebas y las herramientas que leen la pantalla (`pestana-dieta`). */
     val etiqueta: String get() = "pestana-${name.lowercase()}"
+
+    companion object {
+        /**
+         * Las 5 de la barra. Sin suplementación, las de siempre. Con suplementación (decisión de Mati, 2.1.0) entra
+         * Suplementación y Salud sale de la barra: se abre desde el botón de arriba en Revisión, junto a Mis datos, y los
+         * avisos y links que llevan a Salud siguen llegando ([Navegacion.irASalud]).
+         */
+        fun barra(conSuplementacion: Boolean): List<Pestana> =
+            if (conSuplementacion) listOf(ENTRENO, DIETA, SUPLEMENTACION, CHAT, REVISION) else listOf(ENTRENO, DIETA, CHAT, REVISION, SALUD)
+    }
 }
 
 /** Las secciones de Revisión a las que se puede llevar al cliente (los `.id` de `RevisionView.swift`). */

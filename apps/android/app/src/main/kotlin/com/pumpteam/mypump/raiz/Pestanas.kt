@@ -28,11 +28,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
@@ -58,6 +61,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -89,6 +93,7 @@ import com.pumpteam.mypump.salud.SaludPantalla
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.revision.RevisionPantalla
 import com.pumpteam.mypump.salud.DiagnosticoSaludDesdeLink
+import com.pumpteam.mypump.suplementacion.SuplementacionPantalla
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -110,6 +115,10 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val estadosPestanas = rememberSaveableStateHolder()
     val badges = badges(modelo, esDemo)
     val entreno by modelo.entreno.collectAsStateWithLifecycle()
+    // Suplementación (2.1.0): con una fila del RPC hay pestaña y Salud pasa al botón de arriba de Revisión.
+    val suplementacion by modelo.suplementacion.collectAsStateWithLifecycle()
+    val planSuplementacion = suplementacion?.plan?.collectAsStateWithLifecycle()?.value
+    val conSuplementacion = planSuplementacion != null
     // El reloj del descanso corre arriba de las pestañas: termina (y suena) aunque se esté en otra.
     entreno?.let { RelojDescanso(it) }
 
@@ -123,10 +132,17 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
     val enMisDatos = navegacion.pestana == Pestana.REVISION && navegacion.misDatos
     val enGuia = navegacion.pestana == Pestana.ENTRENO && navegacion.guia
     val enGuiaDeMisDatos = enMisDatos && navegacion.guiaEnMisDatos
+    // Salud fuera de la barra (con suplementación): Atrás vuelve a Revisión, de donde se abre.
+    val saludFueraDeLaBarra = conSuplementacion && navegacion.pestana == Pestana.SALUD
+    // La suplementación dejó de existir (Mati la sacó) con su pestaña abierta: a Entreno.
+    LaunchedEffect(conSuplementacion) {
+        if (!conSuplementacion && navegacion.pestana == Pestana.SUPLEMENTACION) navegacion.pestana = Pestana.ENTRENO
+    }
     BackHandler(enabled = enMisDatos) { navegacion.misDatos = false }
     BackHandler(enabled = enGuiaDeMisDatos) { navegacion.guiaEnMisDatos = false }
     BackHandler(enabled = enGuia) { navegacion.guia = false }
     BackHandler(enabled = !enMisDatos && navegacion.pestana != Pestana.ENTRENO) { navegacion.pestana = Pestana.ENTRENO }
+    BackHandler(enabled = saludFueraDeLaBarra) { navegacion.irARevision(null) }
 
     CompositionLocalProvider(LocalNavegacion provides navegacion) {
         val densidad = LocalDensity.current
@@ -166,9 +182,17 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                                             MisDatosPantalla(vm, modelo, alVolver = { navegacion.misDatos = false })
                                         }
                                     } else {
-                                        RevisionPantalla(modelo, alAbrirMisDatos = { navegacion.misDatos = true })
+                                        RevisionPantalla(
+                                            modelo,
+                                            alAbrirMisDatos = { navegacion.misDatos = true },
+                                            alAbrirSalud = if (conSuplementacion) ({ navegacion.irASalud(navegacion.segmentoSalud) }) else null,
+                                        )
                                     }
-                                Pestana.SALUD -> SaludPantalla(modelo)
+                                Pestana.SALUD -> SaludPantalla(modelo, alVolver = if (saludFueraDeLaBarra) ({ navegacion.irARevision(null) }) else null)
+                                Pestana.SUPLEMENTACION -> {
+                                    val m = suplementacion
+                                    if (m != null) SuplementacionPantalla(m, modelo)
+                                }
                             }
                         }
                     }
@@ -185,7 +209,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 entreno?.let { BarraDescansoEntreno(it) }
-                BarraPestanas(navegacion, badges)
+                BarraPestanas(navegacion, badges, Pestana.barra(conSuplementacion))
             }
             AvisoGuardado(estadoGuardado, Modifier.align(Alignment.BottomCenter).padding(bottom = abajo + Espacio.xs))
             // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
@@ -201,7 +225,7 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
  * con el ícono y el nombre en el verde de texto, y las demás en el color del texto, como en el iPhone.
  */
 @Composable
-private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>) {
+private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>, pestanas: List<Pestana>) {
     val c = MyPump.colores
     Row(
         modifier = Modifier
@@ -215,7 +239,7 @@ private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>) {
             .testTag("barra-pestanas"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        for (p in Pestana.entries) {
+        for (p in pestanas) {
             val elegida = navegacion.pestana == p
             val n = badges[p] ?: 0
             val tono = if (elegida) c.marcaTexto else c.texto
@@ -246,7 +270,19 @@ private fun BarraPestanas(navegacion: Navegacion, badges: Map<Pestana, Int>) {
                 // la barra de iOS, que no agranda sus rótulos.
                 val d = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(d.density, minOf(d.fontScale, 1.2f))) {
-                    Text(p.titulo, color = tono, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
+                    if (p == Pestana.SUPLEMENTACION) {
+                        // «Suplementación» no entra a 11 en un quinto de la barra: se achica lo justo para entrar entera,
+                        // con el mismo estilo que las demás (las otras quedan como estaban).
+                        BasicText(
+                            p.titulo,
+                            style = LocalTextStyle.current.merge(TextStyle(color = tono, fontSize = 11.sp, fontWeight = FontWeight.Medium)),
+                            maxLines = 1,
+                            softWrap = false,
+                            autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = 11.sp, stepSize = 0.25.sp),
+                        )
+                    } else {
+                        Text(p.titulo, color = tono, fontSize = 11.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
+                    }
                 }
             }
         }

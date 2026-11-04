@@ -74,7 +74,7 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
+fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalud: (() -> Unit)? = null) {
     val revision by modelo.revision.collectAsStateWithLifecycle()
     val fotos by modelo.fotos.collectAsStateWithLifecycle()
     val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
@@ -102,6 +102,21 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit) {
         "Revisión",
         subtitulo = semanaActual(),
         acciones = {
+            // Con suplementación (2.1.0), Salud sale de la barra y se abre desde acá, junto a Mis datos.
+            if (alAbrirSalud != null) {
+                Box(
+                    Modifier
+                        .padding(end = Espacio.s)
+                        .size(44.dp)
+                        .vidrio(CircleShape, elevacion = 6.dp)
+                        .clickable(role = Role.Button, onClick = alAbrirSalud)
+                        .semantics { contentDescription = "Salud" }
+                        .testTag("abrir-salud"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Iconos.Corazon, contentDescription = null, tint = MyPump.colores.marcaTexto, modifier = Modifier.size(24.dp))
+                }
+            }
             // El círculo de vidrio de iOS 26 (el mismo de volver), no un ícono suelto.
             Box(
                 Modifier
