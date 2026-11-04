@@ -247,7 +247,9 @@ class SaludPestanaUiTest : PruebaUi() {
         reiniciarEstado()
         abrir().also {
             p.tocar(etiqueta("ver-demo"))
-            p.tocar(etiqueta("pestana-salud"))
+            // La demo trae suplementación: Salud se abre desde Revisión.
+            p.tocar(etiqueta("pestana-revision"))
+            p.tocar(etiqueta("abrir-salud"))
             p.nodo(etiqueta("recuperacion-vacia"))
             p.nodo(texto("La recuperación sale de tu reloj o de tu teléfono. En la demo no hay datos."))
             foto("salud-06-demo-recuperacion")

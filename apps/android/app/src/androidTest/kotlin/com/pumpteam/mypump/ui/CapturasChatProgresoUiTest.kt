@@ -182,7 +182,9 @@ class CapturasChatProgresoUiTest : PruebaUi() {
         reiniciarEstado()
         abrir().also {
             p.tocar(etiqueta("ver-demo"))
-            p.tocar(etiqueta("pestana-salud"))
+            // La demo trae suplementación: Salud se abre desde Revisión.
+            p.tocar(etiqueta("pestana-revision"))
+            p.tocar(etiqueta("abrir-salud"))
             p.tocar(etiqueta("segmento-fuerza"))
             p.nodo(etiqueta("progreso-vacio"))
             foto("progreso-09-vacio")

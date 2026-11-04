@@ -36,7 +36,9 @@ class AccesoUiTest : PruebaUi() {
         abrir()
         p.tocar(etiqueta("ver-demo"))
         p.nodo(texto("Estás viendo la demo"))
-        for (pestana in listOf("entreno", "dieta", "chat", "revision", "salud")) p.nodo(etiqueta("pestana-$pestana"))
+        // La demo trae suplementación (2.1.0): su pestaña entra y Salud pasa al botón de arriba de Revisión.
+        for (pestana in listOf("entreno", "dieta", "suplementacion", "chat", "revision")) p.nodo(etiqueta("pestana-$pestana"))
+        assertFalse(p.existe(etiqueta("pestana-salud")))
         p.tocar(etiqueta("pestana-dieta"))
         // La dieta de ejemplo de la web: el objetivo es la suma de las opciones A.
         p.nodo(texto("Desayuno"))

@@ -92,6 +92,36 @@ object Iconos {
             .build()
     }
 
+    /**
+     * Suplementación (como `medication` / `pills` de iOS): una cápsula en diagonal, con la mitad rellena y la otra de
+     * contorno, con las puntas redondeadas como los demás.
+     */
+    val Pastilla: ImageVector by lazy {
+        ImageVector.Builder(name = "Pastilla", defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+            .addGroup(rotate = -45f, pivotX = 12f, pivotY = 12f)
+            // La mitad rellena: de la punta izquierda hasta el medio.
+            .addPath(pathData = addPathNodes("M12,7.25H7.75A4.75,4.75 0 0 0 7.75,16.75H12Z"), fill = SolidColor(Color.Black))
+            // El contorno entero de la cápsula.
+            .addPath(
+                pathData = addPathNodes(rect(3f, 7.25f, 18f, 9.5f, 4.75f)),
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round,
+            )
+            .clearGroup()
+            .build()
+    }
+
+    /** Salud, en el botón de arriba de Revisión cuando hay suplementación (favorite, como el `heart.fill` de iOS). */
+    val Corazon: ImageVector by lazy {
+        icono(
+            "Corazon",
+            "M12,21.35l-1.45,-1.32C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3c1.74,0 3.41,0.81 4.5,2.09C13.09,3.81 14.76,3 16.5,3 " +
+                "19.58,3 22,5.42 22,8.5c0,3.78 -3.4,6.86 -8.55,11.54L12,21.35z",
+        )
+    }
+
     /** Mis datos (account_circle). */
     val Persona: ImageVector by lazy {
         simbolo("Persona", "M235.2-279.59q51-38.52 113.52-60.54 62.52-22.02 131.33-22.02t131.64 22.38q62.83 22.38 113.11 60.42 34.29-41.24 53.31-91.92 19.02-50.69 19.02-108.73 0-131.57-92.78-224.35T480-797.13q-131.57 0-224.35 92.78T162.87-480q0 57.8 18.9 108.49 18.9 50.68 53.43 91.92ZM480-437.85q-59.96 0-100.93-40.86-40.98-40.86-40.98-100.81 0-59.96 40.98-100.94 40.97-40.97 100.93-40.97 59.96 0 100.93 40.97 40.98 40.98 40.98 100.94 0 59.95-40.98 100.81-40.97 40.86-100.93 40.86Zm-.02 365.98q-84.65 0-159.09-32.1-74.43-32.1-129.63-87.29-55.19-55.2-87.29-129.65-32.1-74.46-32.1-159.11 0-84.65 32.1-159.09 32.1-74.43 87.29-129.63 55.2-55.19 129.65-87.29 74.46-32.1 159.11-32.1 84.65 0 159.09 32.1 74.43 32.1 129.63 87.29 55.19 55.2 87.29 129.65 32.1 74.46 32.1 159.11 0 84.65-32.1 159.09-32.1 74.43-87.29 129.63-55.2 55.19-129.65 87.29-74.46 32.1-159.11 32.1Zm.02-91q51.8 0 97.37-14.9 45.56-14.9 84.56-42.95-39.47-28.28-84.44-43.06-44.97-14.79-97.49-14.79-52.52 0-97.37 14.79-44.85 14.78-84.33 43.06 39 28.05 84.45 42.95 45.45 14.9 97.25 14.9Zm0-358.56q25.04 0 41.57-16.53 16.52-16.52 16.52-41.56 0-25.05-16.52-41.69-16.53-16.64-41.57-16.64t-41.57 16.64q-16.52 16.64-16.52 41.69 0 25.04 16.52 41.56 16.53 16.53 41.57 16.53Zm0-58.09Zm.24 358.8Z")

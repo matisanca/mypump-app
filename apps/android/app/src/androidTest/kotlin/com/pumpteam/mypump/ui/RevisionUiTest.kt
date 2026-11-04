@@ -60,7 +60,13 @@ class RevisionUiTest : PruebaUi() {
 
     /** Salud en un segmento (desde la 2.1 el peso está en Cuerpo; Mi reloj, la recuperación y la salud en Recuperación). */
     private fun irASalud(segmento: String) {
-        p.tocar(etiqueta("pestana-salud"))
+        // Con suplementación (la demo la trae) Salud no está en la barra: se abre desde el botón de arriba de Revisión.
+        if (p.existe(etiqueta("pestana-salud"))) {
+            p.tocar(etiqueta("pestana-salud"))
+        } else {
+            p.tocar(etiqueta("pestana-revision"))
+            p.tocar(etiqueta("abrir-salud"))
+        }
         p.tocar(etiqueta("segmento-$segmento"))
         p.esperar("$segmento elegido") { p.seleccionado(etiqueta("segmento-$segmento")) }
     }
