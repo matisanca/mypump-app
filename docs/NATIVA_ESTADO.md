@@ -6,7 +6,7 @@
 
 ## Candado
 
-**Trabaja:** sesión «MYPUMP PRO» `c96aa5` (MacBook), desde el 4-nov-2026 01:35, en «Tu guía» (rama `nativa-guia`, worktree `.claude/worktrees/guia`). La 2.0.3 de «MyPump Pro 2.0» quedó frenada desde el 3-nov 16:32: el clon principal (`nativa-202`) no se toca.
+**Trabajan (4-nov-2026 de noche, por pedido de Mati):** «MyPump Pro 2.0» `87d2a7a8` en el clon principal (`nativa-202`) y sus worktrees, con la 2.0.3 y el Watch. «MYPUMP PRO» `c96aa5` solo en los worktrees `guia`, `guia-ios` y `guia-and` (rama `nativa-guia`). Ninguna toca lo de la otra. La guía entra a `nativa-202` con un merge que hace «MyPump Pro 2.0» cuando MYPUMP PRO le avisa.
 
 Si el candado es de otra sesión y tiene menos de 6 h, no se toca este clon. Cuando una sesión termina, deja el
 candado libre.
