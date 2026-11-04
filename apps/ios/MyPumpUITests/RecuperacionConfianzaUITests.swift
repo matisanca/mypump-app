@@ -92,4 +92,33 @@ final class RecuperacionConfianzaUITests: XCTestCase {
         a.lifetime = .keepAlways
         add(a)
     }
+
+    /// 2.1.0: la tarjeta corta de arriba de Revisión, con score y confianza baja: el número, la banda y la pastilla.
+    func testLaTarjetaDeRevisionResumeElScore() {
+        app.launchArguments = ["-token", token, "-pestana", "revision", "-sinOnboarding", "YES", "-recuperacionDePrueba", "baja"]
+        app.launch()
+        let tarjeta = app.buttons["tarjeta-recuperacion-revision"]
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "Falta la tarjeta Recuperación en Revisión")
+        let conScore = NSPredicate(format: "label CONTAINS 'de 100'")
+        expectation(for: conScore, evaluatedWith: tarjeta)
+        waitForExpectations(timeout: 15)
+        XCTAssertTrue(tarjeta.label.contains("Confianza baja"), "Falta la confianza: \(tarjeta.label)")
+        let a = XCTAttachment(screenshot: app.screenshot())
+        a.name = "revision-tarjeta-score"
+        a.lifetime = .keepAlways
+        add(a)
+
+        // El check trae «Tu salud, últimos 7 días» con el promedio de recuperación de la serie.
+        let bloque = app.descendants(matching: .any)["salud-semana-check"].firstMatch
+        for _ in 0..<8 where !(bloque.exists && bloque.isHittable) { app.swipeUp() }
+        XCTAssertTrue(bloque.exists, "Falta el bloque de salud en el check")
+        XCTAssertTrue(app.staticTexts["Tu salud, últimos 7 días"].exists)
+        XCTAssertTrue(bloque.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'de 100'")).count > 0,
+                      "El bloque no trae la recuperación")
+        let b = XCTAttachment(screenshot: app.screenshot())
+        b.name = "check-salud-semana"
+        b.lifetime = .keepAlways
+        add(b)
+    }
+
 }
