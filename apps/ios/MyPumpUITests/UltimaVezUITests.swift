@@ -51,20 +51,34 @@ final class UltimaVezUITests: XCTestCase {
         app.launch()
         let fila = app.buttons["fila-ejercicio-1"]
         XCTAssertTrue(fila.waitForExistence(timeout: 25), "No apareció el primer ejercicio")
-        for _ in 0..<8 where !fila.isHittable { app.swipeUp() }
+        // Bien arriba de la barra de abajo: con Suplementación la barra suma una pestaña y un toque bajo cae en ella.
+        let barra = app.tabBars.firstMatch
+        // Arrastres cortos (250 pt): un swipe entero, con el ejercicio abierto, lo pasa de largo para el otro lado.
+        func arrastrar(_ dy: CGFloat) {
+            let medio = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            medio.press(forDuration: 0.05, thenDragTo: medio.withOffset(CGVector(dx: 0, dy: dy)))
+        }
+        func aLaVista() {
+            for _ in 0..<12 {
+                if fila.frame.minY < 150 { arrastrar(250) }
+                else if !fila.isHittable || (barra.exists && fila.frame.maxY > barra.frame.minY - 160) { arrastrar(-250) }
+                else { return }
+            }
+        }
+        aLaVista()
         // Arriba de la fila: con un descanso corriendo (de la otra prueba), la isla de abajo tapa la parte de abajo.
         let arriba = fila.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.2))
         arriba.tap()
         let tecnica = app.buttons["tecnica-y-notas"]
         // Si una corrida anterior lo dejó abierto (lo abierto se recuerda), el toque lo cerró: otro toque lo abre.
         if !tecnica.waitForExistence(timeout: 3) {
-            for _ in 0..<4 where !fila.isHittable { app.swipeDown() }
+            aLaVista()
             fila.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.2)).tap()
         }
         XCTAssertTrue(tecnica.waitForExistence(timeout: 6), "El ejercicio no se abrió en la lista")
         XCTAssertTrue(fila.exists, "La lista desapareció: se fue a otra página")
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "ejercicio-en-la-lista"; a.lifetime = .keepAlways; add(a)
-        for _ in 0..<4 where !fila.isHittable { app.swipeDown() }
+        aLaVista()
         fila.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.2)).tap()
         let cerrado = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: tecnica)
         wait(for: [cerrado], timeout: 6)
