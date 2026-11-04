@@ -58,7 +58,7 @@ enum DatosCalibracion {
     }
 }
 
-/// Mis datos → Modo calibración (oculto: aparece con siete toques en «Versión»). Prende el modo para la cuenta abierta,
+/// Mis datos → Conteo de reps (con el reloj emparejado). Viene prendido; acá se apaga para la cuenta abierta,
 /// explica qué se graba y exporta los datos (un archivo por sesión).
 struct CalibracionView: View {
     let cuenta: String
@@ -75,29 +75,29 @@ struct CalibracionView: View {
                     modo.poner(nuevo, cuenta: cuenta)
                     PuenteReloj.compartido.mandarRutina(forzar: true)
                 })) {
-                    Label { Text("Modo calibración") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
+                    Label { Text("Contar reps con el reloj") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
                 }
                 .tint(Color.marcaVivo)
                 .accessibilityIdentifier("modo-calibracion")
             } header: {
-                Text("Conteo de repeticiones · experimental")
+                Text("Apple Watch")
             } footer: {
                 Text(ModoCalibracion.textoPrivacidad)
             }
 
             Section {
                 if sesiones.isEmpty {
-                    Text("Todavía no hay series grabadas. Entrená con el reloj con el modo prendido.")
+                    Text("Todavía no hay series grabadas. Entrená con el reloj y el conteo prendido.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(sesiones) { s in
                         LabeledContent(s.titulo, value: "\(s.series) \(s.series == 1 ? "serie" : "series") · \(ByteCountFormatter.string(fromByteCount: Int64(s.bytes), countStyle: .file))")
                     }
                     ShareLink(items: sesiones.map(\.url)) {
-                        Label("Exportar datos de calibración", systemImage: "square.and.arrow.up")
+                        Label("Exportar series grabadas", systemImage: "square.and.arrow.up")
                     }
                     .accessibilityIdentifier("exportar-calibracion")
-                    Button("Borrar datos de calibración", role: .destructive) { confirmarBorrado = true }
+                    Button("Borrar series grabadas", role: .destructive) { confirmarBorrado = true }
                 }
             } header: {
                 Text("Grabado en este iPhone")
@@ -105,7 +105,7 @@ struct CalibracionView: View {
                 Text("Un archivo por sesión de entreno. Al exportarlo elegís a dónde va; la app no lo manda a ningún lado.")
             }
         }
-        .navigationTitle("Modo calibración")
+        .navigationTitle("Conteo de reps")
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("¿Borrar todas las series grabadas en este iPhone?", isPresented: $confirmarBorrado, titleVisibility: .visible) {
             Button("Borrar", role: .destructive) {

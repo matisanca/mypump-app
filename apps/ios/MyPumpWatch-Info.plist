@@ -22,9 +22,9 @@
 	     Team no guarda el entreno en Salud (decisión de Mati): al terminar lo descarta. -->
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Pump Team necesita este permiso para medir tu entreno en vivo. No guardamos el entreno en Salud; el reloj registra tu frecuencia cardíaca y tus calorías activas como siempre.</string>
-	<!-- Tanda 4: solo con el modo calibración prendido (oculto, por cuenta) el reloj usa el acelerómetro y el giroscopio
-	     durante las series. Apagado, no se pide ni se usa. -->
+	<!-- Tanda 4: con el conteo de reps prendido (viene así; se apaga en Mis datos) el reloj usa el acelerómetro y el
+	     giroscopio durante las series. Apagado, no se pide ni se usa. -->
 	<key>NSMotionUsageDescription</key>
-	<string>Con el modo calibración prendido, Pump Team usa el movimiento del reloj durante cada serie para medir qué tan bien cuenta las repeticiones. Queda en el reloj y en tu iPhone.</string>
+	<string>Pump Team usa el movimiento del reloj durante cada serie para contar tus repeticiones. Queda en el reloj y en tu iPhone, y lo podés apagar en Mis datos.</string>
 </dict>
 </plist>

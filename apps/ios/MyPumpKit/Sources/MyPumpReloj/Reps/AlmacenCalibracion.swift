@@ -2,7 +2,7 @@ import Foundation
 
 /// Una carpeta de archivos `.mpcal` con tope de espacio (tanda 4). El reloj guarda ahí cada serie hasta que el iPhone
 /// la recibe; el iPhone junta las series en un archivo por sesión hasta que el alumno las exporta o las borra. Si se
-/// pasa del tope, se borran los archivos más viejos (es un experimento: nunca se llena el disco por esto).
+/// pasa del tope, se borran los archivos más viejos (nunca se llena el disco por esto).
 public struct AlmacenCalibracion: Sendable {
     public let carpeta: URL
     public let tope: Int
@@ -76,21 +76,16 @@ public struct AlmacenCalibracion: Sendable {
     private func crear() throws { try FileManager.default.createDirectory(at: carpeta, withIntermediateDirectories: true) }
 }
 
-/// El modo calibración (tanda 4): oculto y por cuenta, sin pasar por el servidor. Se prende en el iPhone (Mis datos →
-/// siete toques en «Versión» muestran la fila; ver `MisDatosView`) o viene prendido para las cuentas de
-/// `cuentasPrecargadas` (hashes de `ModeloEntreno.hashCuenta`, vacía en el repo público). Viaja al reloj con la rutina
-/// (`RutinaReloj.calibracion`). Apagado (lo normal), nada cambia: el reloj no toca los sensores.
+/// El modo calibración (tanda 4), por cuenta y sin pasar por el servidor: viene prendido y se apaga en el iPhone (Mis
+/// datos → Conteo de reps, ver `MisDatosView`). Viaja al reloj con la rutina (`RutinaReloj.calibracion`). Apagado, el
+/// reloj no toca los sensores. En la demo el reloj cuenta pero no se guarda nada.
 public struct ModoCalibracion: @unchecked Sendable {
-    /// Las cuentas que lo traen prendido de fábrica (hashes, nunca tokens). Vacía.
-    public static let cuentasPrecargadas: Set<String> = []
-    /// Los toques en «Versión» que muestran la fila.
-    public static let toquesParaMostrar = 7
-    static let claveCuentas = "mypump-calibracion-cuentas"
-    static let claveVisible = "mypump-calibracion-visible"
+    /// 4-nov (Mati): viene prendido para todas las cuentas; se guardan solo las que lo apagaron (hashes, nunca tokens).
+    static let claveApagadas = "mypump-calibracion-apagadas"
 
     public static let textoPrivacidad = """
-        Con el modo prendido, el Apple Watch graba el acelerómetro y el giroscopio durante cada serie, con el ejercicio, \
-        las reps que cargás y las que contó el reloj. Sirve para medir qué tan bien cuenta las repeticiones. Se guarda \
+        Viene prendido. Durante cada serie, el Apple Watch graba el acelerómetro y el giroscopio, con el ejercicio, \
+        las reps que cargás y las que contó el reloj, para contar tus repeticiones y mejorar el conteo. Se guarda \
         solo en el reloj y en este iPhone: no sale del teléfono salvo que vos lo exportes. Al terminar la serie, el reloj pone en las reps lo que contó: \
         confirmalo o corregilo con la corona.
         """
@@ -100,17 +95,13 @@ public struct ModoCalibracion: @unchecked Sendable {
 
     public func prendido(cuenta: String) -> Bool {
         guard cuenta != "demo", !cuenta.isEmpty else { return false }
-        return Self.cuentasPrecargadas.contains(cuenta) || (defaults.stringArray(forKey: Self.claveCuentas) ?? []).contains(cuenta)
+        return !(defaults.stringArray(forKey: Self.claveApagadas) ?? []).contains(cuenta)
     }
 
     public func poner(_ prender: Bool, cuenta: String) {
         guard cuenta != "demo", !cuenta.isEmpty else { return }
-        var c = Set(defaults.stringArray(forKey: Self.claveCuentas) ?? [])
-        if prender { c.insert(cuenta) } else { c.remove(cuenta) }
-        defaults.set(c.sorted(), forKey: Self.claveCuentas)
+        var c = Set(defaults.stringArray(forKey: Self.claveApagadas) ?? [])
+        if prender { c.remove(cuenta) } else { c.insert(cuenta) }
+        defaults.set(c.sorted(), forKey: Self.claveApagadas)
     }
-
-    /// La fila del modo se ve en Mis datos (después de los siete toques, o con el modo prendido).
-    public func visible(cuenta: String) -> Bool { defaults.bool(forKey: Self.claveVisible) || prendido(cuenta: cuenta) }
-    public func mostrar() { defaults.set(true, forKey: Self.claveVisible) }
 }

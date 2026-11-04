@@ -293,21 +293,17 @@ import MyPumpRepsHerramientas
                                                          corregida: q.corregida(confirmadas: 12), fuente: "t")) == .corregida)
     }
 
-    @Test func elModoEsPorCuentaYNuncaEnLaDemo() throws {
+    @Test func elModoVienePrendidoSeApagaPorCuentaYNuncaEnLaDemo() throws {
         let d = try #require(UserDefaults(suiteName: "calibracion-\(UUID().uuidString)"))
         let m = ModoCalibracion(defaults: d)
-        #expect(!m.prendido(cuenta: "abc"))
-        #expect(!m.visible(cuenta: "abc"))
+        #expect(m.prendido(cuenta: "abc") && m.prendido(cuenta: "otra"))
+        m.poner(false, cuenta: "abc")
+        #expect(!m.prendido(cuenta: "abc") && m.prendido(cuenta: "otra"))
         m.poner(true, cuenta: "abc")
-        #expect(m.prendido(cuenta: "abc") && !m.prendido(cuenta: "otra"))
-        #expect(m.visible(cuenta: "abc"))
+        #expect(m.prendido(cuenta: "abc"))
+        #expect(!m.prendido(cuenta: "demo") && !m.prendido(cuenta: ""))
         m.poner(true, cuenta: "demo")
         #expect(!m.prendido(cuenta: "demo"))
-        m.poner(false, cuenta: "abc")
-        #expect(!m.prendido(cuenta: "abc"))
-        m.mostrar()
-        #expect(m.visible(cuenta: "otra"))
-        #expect(ModoCalibracion.cuentasPrecargadas.isEmpty)
         #expect(ModoCalibracion.textoPrivacidad.contains("no sale del teléfono salvo que vos lo exportes"))
     }
 

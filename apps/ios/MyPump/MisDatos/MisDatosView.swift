@@ -23,8 +23,8 @@ struct MisDatosView: View {
     @AppStorage("mypump-theme") private var tema = ""
     @State private var fuentes = false
     @State private var pagina: Pagina?
-    /// Tanda 4: siete toques en «Versión» muestran el modo calibración (oculto, por cuenta).
-    @State private var toquesVersion = 0
+    /// Tanda 4: la fila del conteo de reps, con el reloj emparejado y la app del reloj instalada, o con series grabadas
+    /// en el iPhone (para poder exportarlas o borrarlas aunque ya no haya reloj).
     @State private var calibracionVisible = false
 
     /// Las páginas legales de la web, en Safari dentro de la app (como hoy).
@@ -103,25 +103,16 @@ struct MisDatosView: View {
             if calibracionVisible, let cuenta = cuentaCalibracion {
                 Section {
                     NavigationLink { CalibracionView(cuenta: cuenta) } label: {
-                        Label { Text("Modo calibración") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
+                        Label { Text("Conteo de reps") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
                     }
                     .accessibilityIdentifier("mis-datos-calibracion")
                 } footer: {
-                    Text("Experimental: el Apple Watch graba el movimiento de cada serie para medir el conteo de repeticiones. Queda en tu iPhone.")
+                    Text("El Apple Watch cuenta las repeticiones de cada serie y te las propone. Lo grabado queda en tu iPhone.")
                 }
             }
 
             Section {
                 LabeledContent("Versión", value: ArranqueMigracion.version)
-                    .contentShape(.rect)
-                    .onTapGesture {
-                        guard cuentaCalibracion != nil else { return }
-                        toquesVersion += 1
-                        if toquesVersion >= ModoCalibracion.toquesParaMostrar {
-                            ModoCalibracion().mostrar()
-                            calibracionVisible = true
-                        }
-                    }
                 if InformeActualizacion.existe {
                     NavigationLink("Informe de la actualización") { InformeActualizacion() }
                 }
@@ -131,10 +122,13 @@ struct MisDatosView: View {
         }
         .margenesDeLectura()
         .task { permiso = await CentroAvisos.shared.permiso() }
-        .onAppear { calibracionVisible = cuentaCalibracion.map { ModoCalibracion().visible(cuenta: $0) } ?? false }
+        .onAppear { calibracionVisible = conFilaCalibracion }
         // Al volver de Ajustes el permiso pudo cambiar.
         .onChange(of: fase) { _, nueva in
-            if nueva == .active { Task { permiso = await CentroAvisos.shared.permiso() } }
+            if nueva == .active {
+                calibracionVisible = conFilaCalibracion
+                Task { permiso = await CentroAvisos.shared.permiso() }
+            }
         }
         .navigationTitle("Mis datos")
         .tint(Color.marcaTexto)
@@ -148,6 +142,10 @@ struct MisDatosView: View {
     private var cuentaCalibracion: String? {
         guard !modelo.conMuestras, let c = modelo.entreno?.cuentaReloj, c != "demo" else { return nil }
         return c
+    }
+
+    private var conFilaCalibracion: Bool {
+        cuentaCalibracion != nil && (PuenteReloj.compartido.hayReloj || !DatosCalibracion.sesiones().isEmpty)
     }
 
     private var conPermiso: Bool { [.authorized, .provisional, .ephemeral].contains(permiso) }
