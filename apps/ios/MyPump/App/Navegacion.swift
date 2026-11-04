@@ -18,6 +18,8 @@ final class Navegacion {
     /// La hoja de Salud. Desde la 2.1.0 Salud no es una pestaña: se abre desde la tarjeta Recuperación de arriba de
     /// Revisión (pedido de Mati, 4-nov), un aviso o un link.
     var saludAbierta = false
+    /// Abrir «Tu guía» en Entreno (el «Ver mi guía» de la bienvenida); Entreno lo consume al llegar.
+    var abrirGuia = false
 
     init(pestaña: Raiz.Pestaña) { self.pestaña = pestaña }
 

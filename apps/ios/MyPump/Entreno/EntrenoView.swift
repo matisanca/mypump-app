@@ -13,6 +13,10 @@ struct EntrenoView: View {
     @State private var modelo = Proveedor.modelo
     @State private var ruta: [String] = []
     @State private var preguntador = Preguntador()
+    @Environment(Navegacion.self) private var navegacion: Navegacion?
+    /// «La encontrás en Mis datos» con «Deshacer», después de «Ocultar» en la tarjeta de la guía.
+    @State private var avisoGuiaOculta = false
+    @State private var cierreAviso: Task<Void, Never>?
 
     var body: some View {
         NavigationStack(path: $ruta) {
@@ -20,7 +24,8 @@ struct EntrenoView: View {
                 switch pantalla {
                 case .dia(let m):
                     // Con cuenta y un motor de ejemplo (Mati todavía no publicó el plan): el aviso de la web (ACC-08).
-                    ListaEntreno(motor: m, deEjemplo: m.demo && !modelo.esDemo, alCompletarDia: completoDia, abrirGuia: abrirGuia)
+                    ListaEntreno(motor: m, deEjemplo: m.demo && !modelo.esDemo, alCompletarDia: completoDia, abrirGuia: abrirGuia,
+                                 ocultarGuia: ocultarGuia)
                 case .sinRed:
                     // Un corte dejó afuera la rutina y no había copia guardada.
                     ContentUnavailableView {
@@ -35,7 +40,7 @@ struct EntrenoView: View {
                     ScrollView {
                         // «Tu guía» también sin rutina: en el flujo nuevo la guía puede llegar antes que el plan.
                         if let g = GuiaUI.modelo {
-                            TarjetaGuia(modelo: g, abrir: abrirGuia).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
+                            TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia).padding(.horizontal, Espacio.m).padding(.top, Espacio.m).anchoLectura()
                         }
                         ContentUnavailableView("Todavía no hay rutina", systemImage: "dumbbell",
                                                description: Text("Cuando Mati publique tu rutina, la vas a ver acá."))
@@ -49,6 +54,13 @@ struct EntrenoView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.fondo)
+            .overlay(alignment: .bottom) {
+                if avisoGuiaOculta {
+                    AvisoGuiaOculta(deshacer: deshacerOcultarGuia)
+                        .padding(.bottom, Espacio.m)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             .navigationDestination(for: String.self) { lugar in
                 if lugar == GuiaUI.destino {
                     if let g = GuiaUI.modelo { GuiaView(modelo: g) }
@@ -65,10 +77,24 @@ struct EntrenoView: View {
         .environment(preguntador)
         .preguntas(preguntador)
         .onChange(of: entrenamiento.motor?.dia.dia.id, initial: true) { _, _ in abrirParaCapturas() }
+        // «Ver mi guía» de la bienvenida (la presenta `Raiz`): abre la guía acá, en Entreno.
+        .onChange(of: navegacion?.abrirGuia ?? false, initial: true) { _, pedida in
+            guard pedida else { return }
+            navegacion?.abrirGuia = false
+            abrirGuia()
+        }
+        // Al entrar a otra pantalla el aviso ya no corresponde.
+        .onChange(of: ruta) { _, r in if !r.isEmpty, avisoGuiaOculta { cierreAviso?.cancel(); avisoGuiaOculta = false } }
         .onAppear {
             #if DEBUG
             // Pruebas: `-guiaVolverAEntreno YES` deshace un «Quitar de Entreno» que quedó de una corrida anterior.
             if UserDefaults.standard.bool(forKey: "guiaVolverAEntreno") { GuiaUI.modelo?.volverAMostrarEnEntreno() }
+            // Capturas: `-guiaAvisoOculta YES` arranca con la tarjeta recién ocultada y el aviso fijo.
+            if GuiaUI.avisoOcultaFijo, !DemoUI.abrioYa.contains("guia-aviso") {
+                DemoUI.abrioYa.insert("guia-aviso")
+                GuiaUI.modelo?.quitarDeEntreno()
+                avisoGuiaOculta = true
+            }
             #endif
             // Capturas y pruebas: `-abrir guia` entra directo a «Tu guía».
             if GuiaUI.abrirAlArrancar, !DemoUI.abrioYa.contains("guia"), GuiaUI.modelo != nil {
@@ -81,6 +107,31 @@ struct EntrenoView: View {
     private func abrirGuia() {
         guard ruta.last != GuiaUI.destino else { return }
         ruta.append(GuiaUI.destino)
+    }
+
+    /// «Ocultar» en la tarjeta destacada: lo mismo que «Quitar de Entreno» (la guía pasa a Mis datos), con el aviso para
+    /// deshacerlo. Con VoiceOver el aviso dura más, para que se llegue a «Deshacer».
+    private func ocultarGuia() {
+        withAnimation(.snappy) {
+            GuiaUI.modelo?.quitarDeEntreno()
+            avisoGuiaOculta = true
+        }
+        UIAccessibility.post(notification: .announcement, argument: "Listo, la guía te queda en Mis datos")
+        cierreAviso?.cancel()
+        let segundos: Double = UIAccessibility.isVoiceOverRunning ? 12 : 6
+        cierreAviso = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(segundos))
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { avisoGuiaOculta = false }
+        }
+    }
+
+    private func deshacerOcultarGuia() {
+        cierreAviso?.cancel()
+        withAnimation(.snappy) {
+            GuiaUI.modelo?.volverAMostrarEnEntreno()
+            avisoGuiaOculta = false
+        }
     }
 
     private enum Pantalla { case dia(ModeloEntreno), cargando, sinRed, sinRutina }
@@ -126,6 +177,7 @@ private struct ListaEntreno: View {
     let deEjemplo: Bool
     let alCompletarDia: (ModeloEntreno.DiaCompletado) -> Void
     let abrirGuia: () -> Void
+    let ocultarGuia: () -> Void
     @Environment(Preguntador.self) private var preguntador
     @State private var tituloEnBarra = false
     @State private var cerrando = false
@@ -142,14 +194,18 @@ private struct ListaEntreno: View {
         ScrollViewReader { lector in
         ScrollView {
             VStack(alignment: .leading, spacing: Espacio.l) {
+                // «Tu guía» mientras falte ver algo: verde y primera, arriba de todo (pedido de Mati, 4-nov). Abajo,
+                // el aviso de Revisión.
+                if let g = GuiaUI.modelo, g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia, ocultar: ocultarGuia) }
                 cabecera
                 if deEjemplo {
                     AvisoProgresion(icono: "exclamationmark.triangle.fill",
                                     texto: Text(Bonito.sinEmoji(TextosEntreno.demo).replacingOccurrences(of: "Modo demo — ", with: "")),
                                     tono: .alerta)
                 }
-                // «Tu guía»: arriba, solo si `entregas_app_resumen` dijo que hay (D16: la barra no se toca).
-                if let g = GuiaUI.modelo { TarjetaGuia(modelo: g, abrir: abrirGuia) }
+                // «Tu guía» con todo visto: la compacta, en su lugar de siempre (solo si `entregas_app_resumen` dijo que
+                // hay; D16: la barra no se toca).
+                if let g = GuiaUI.modelo, !g.tarjetaDestacada { TarjetaGuia(modelo: g, abrir: abrirGuia) }
                 BannerRevision()
                 // Eventos del Apple Watch que esperan hace horas sin poder pasar (otro día abierto, otra cuenta…).
                 if let t = motor.relojEsperando {

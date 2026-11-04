@@ -115,7 +115,8 @@ struct GuiaReglasTests {
         let todos = ReglasGuia.avance(c.map { var x = $0; x.visto = true; return x })
         #expect(ReglasGuia.textoAvance(todos) == "Viste todos, nos vemos en la videollamada")
         #expect(ReglasGuia.textoTarjeta(todos) == "Viste los 3 videos")
-        #expect(ReglasGuia.textoTarjeta(.init(total: 13, vistos: 0, minutosRestantes: 12.4)) == "13 videos, unos 12 min")
+        #expect(ReglasGuia.textoTarjeta(.init(total: 13, vistos: 0, minutosRestantes: 12.4)) == "13 videos cortos, unos 12 min")
+        #expect(ReglasGuia.textoTarjeta(.init(total: 1, vistos: 0, minutosRestantes: 0.3)) == "1 video corto, unos 1 min")
         #expect(ReglasGuia.textoTarjeta(.init(total: 13, vistos: 4, minutosRestantes: 12)) == "4 de 13 videos, te quedan 12 min")
     }
 
@@ -431,6 +432,40 @@ struct GuiaRevisionTests {
 
 @Suite("Tu guía: después de la entrega (entregas_014)")
 struct GuiaPostEntregaTests {
+    // MARK: Guía destacada
+
+    @Test func destacadaHastaVerTodoYDespuesCompacta() {
+        #expect(ReglasGuia.estiloTarjeta(.init(total: 11, vistos: 0, minutosRestantes: 9)) == .destacada)
+        #expect(ReglasGuia.estiloTarjeta(.init(total: 11, vistos: 10, minutosRestantes: 0.5)) == .destacada)
+        #expect(ReglasGuia.estiloTarjeta(.init(total: 11, vistos: 11, minutosRestantes: 0)) == .compacta)
+        #expect(ReglasGuia.botonTarjeta(.init(total: 11, vistos: 0, minutosRestantes: 9)) == "Ver mi guía")
+        #expect(ReglasGuia.botonTarjeta(.init(total: 11, vistos: 3, minutosRestantes: 6)) == "Seguir viendo")
+    }
+
+    @Test func bienvenidaSoloConCeroVistosYUnaVez() {
+        let cero = r(["vistos": .numero(0), "minutos_restantes": .numero(9.4)])
+        #expect(ReglasGuia.mostrarBienvenida(cero, yaVista: false, quitada: false, ahora: ahora))
+        #expect(!ReglasGuia.mostrarBienvenida(cero, yaVista: true, quitada: false, ahora: ahora), "una sola vez")
+        #expect(!ReglasGuia.mostrarBienvenida(cero, yaVista: false, quitada: true, ahora: ahora), "la sacó de Entreno")
+        #expect(!ReglasGuia.mostrarBienvenida(r([:]), yaVista: false, quitada: false, ahora: ahora), "ya vio alguno")
+        #expect(!ReglasGuia.mostrarBienvenida(r(["vistos": .numero(0), "mostrar_tarjeta": .bool(false)]), yaVista: false, quitada: false, ahora: ahora))
+        #expect(!ReglasGuia.mostrarBienvenida(r(["vistos": .numero(0), "ok": .bool(false)]), yaVista: false, quitada: false, ahora: ahora))
+        #expect(!ReglasGuia.mostrarBienvenida(r(["vistos": .numero(0), "total": .numero(0)]), yaVista: false, quitada: false, ahora: ahora), "sin videos")
+        #expect(!ReglasGuia.mostrarBienvenida(nil, yaVista: false, quitada: false, ahora: ahora))
+    }
+
+    @Test func textosDeLaBienvenida() {
+        #expect(ReglasGuia.tituloBienvenida("Marcelo") == "Hola Marcelo")
+        #expect(ReglasGuia.tituloBienvenida("  ") == "Hola")
+        #expect(ReglasGuia.tituloBienvenida(nil) == "Hola")
+        #expect(ReglasGuia.textoBienvenida(.init(total: 11, vistos: 0, minutosRestantes: 9.4))
+                == "Antes de empezar, mirá tu guía. Son 11 videos cortos que armé para vos, unos 9 min. Así en la videollamada vamos directo a lo tuyo.")
+        #expect(ReglasGuia.textoBienvenida(.init(total: 1, vistos: 0, minutosRestantes: 0.2)).contains("Es un video corto que armé para vos, de unos 1 min."))
+        for t in [ReglasGuia.textoBienvenida(.init(total: 3, vistos: 0, minutosRestantes: 2)), ReglasGuia.tituloBienvenida("Ana")] {
+            #expect(!t.hasSuffix(":"))
+        }
+    }
+
     private func r(_ campos: [String: JSONValue]) -> ResumenGuia {
         var o: [String: JSONValue] = ["ok": .bool(true), "total": .numero(8), "vistos": .numero(2), "minutos_restantes": .numero(3.1)]
         for (k, v) in campos { o[k] = v }

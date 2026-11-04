@@ -823,13 +823,20 @@ enum DemoGuia {
 
 /// La entrada en Entreno: aparece solo con `entregas_app_resumen` en `ok: true`, con el avance («4 de 13 videos, te
 /// quedan 12 min»). Tocarla abre la guía.
+///
+/// Mientras falte ver algo, la tarjeta es la verde y protagonista (`TarjetaGuiaDestacada`, con «Ocultar»); con todo
+/// visto, esta compacta, que no molesta.
 struct TarjetaGuia: View {
     let modelo: ModeloGuia
     let abrir: () -> Void
+    /// «Ocultar» de la destacada (lo mismo que «Quitar de Entreno», con el aviso para deshacer). nil = sin el botón.
+    var ocultar: (() -> Void)? = nil
 
     var body: some View {
         // Con `mostrar_tarjeta` false (48 h después de la entrega) o «Quitar de Entreno», sale sola: queda la fila de Mis datos.
-        if modelo.mostrarTarjeta, let r = modelo.resumen {
+        if modelo.tarjetaDestacada {
+            TarjetaGuiaDestacada(modelo: modelo, abrir: abrir, ocultar: ocultar)
+        } else if modelo.mostrarTarjeta, let r = modelo.resumen {
             let a = ReglasGuia.Avance(total: r.total, vistos: r.vistos, minutosRestantes: r.minutosRestantes)
             Button(action: abrir) {
                 HStack(spacing: Espacio.s) {
@@ -876,12 +883,34 @@ enum GuiaUI {
 
     #if DEBUG
     /// `-guiaTarjeta no`: el resumen de muestra con `mostrar_tarjeta` false (después de la entrega).
+    /// `-guiaVistos ninguno|todos`: la muestra sin ningún video visto (la bienvenida y la tarjeta en 0) o con todos (la
+    /// compacta). Sin el argumento, a mitad de camino.
     private static let muestra: ModeloGuia = {
-        let m = ModeloGuia(muestra: GuiaMuestra.guia, mostrarTarjeta: UserDefaults.standard.string(forKey: "guiaTarjeta") == "no" ? false : nil)
+        var g = GuiaMuestra.guia
+        switch UserDefaults.standard.string(forKey: "guiaVistos") {
+        case "ninguno": for i in g.clips.indices { g.clips[i].visto = false; g.clips[i].segundos = 0 }
+        case "todos": for i in g.clips.indices { g.clips[i].visto = true }
+        default: break
+        }
+        let m = ModeloGuia(muestra: g, mostrarTarjeta: UserDefaults.standard.string(forKey: "guiaTarjeta") == "no" ? false : nil)
         AudioDudaUI.preparar(m)
         return m
     }()
     #endif
+
+    /// La bienvenida de la primera vez: con la cuenta, nunca en la demo de Apple (el revisor entra varias veces y no es un
+    /// cliente con videollamada). En DEBUG, la muestra sí la tiene (capturas y pruebas) y `-guiaBienvenida no` la apaga
+    /// (las pruebas contra el cliente de prueba, que puede tener 0 vistos).
+    static var bienvenidaPermitida: Bool {
+        #if DEBUG
+        if valor("guiaBienvenida") == "no" { return false }
+        if UserDefaults.standard.bool(forKey: "guiaMuestra") { return true }
+        #endif
+        return !Proveedor.modelo.esDemo
+    }
+
+    /// Capturas (DEBUG): `-guiaAvisoOculta YES` arranca con la tarjeta recién ocultada y el aviso fijo.
+    static var avisoOcultaFijo: Bool { valor("guiaAvisoOculta") == "YES" }
 
     /// `-sinRed YES` (DEBUG): el reproductor dice «Necesitás conexión» aunque el simulador tenga red.
     static var sinRed: Bool {

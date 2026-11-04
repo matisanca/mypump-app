@@ -86,6 +86,9 @@ struct Raiz: View {
     @State private var modelo = Proveedor.modelo
     // `simctl launch … -pestana dieta` abre directo en esa pestaña (capturas y pruebas de interfaz).
     @State private var navegacion = Navegacion(pestaña: Pestaña(argumento: UserDefaults.standard.string(forKey: "pestana") ?? "") ?? .entreno)
+    /// La bienvenida de «Tu guía» (la primera vez, sin ningún video visto) y si se cerró con «Ver mi guía».
+    @State private var bienvenidaGuia = false
+    @State private var bienvenidaAbreGuia = false
 
     enum Pestaña: String, Hashable {
         case entreno, dieta, chat, revision, salud, suplementacion
@@ -101,6 +104,26 @@ struct Raiz: View {
     private var badgeRevision: Int { modelo.conMuestras ? 0 : modelo.pendientesDeLaSemana.total }
     /// La pestaña Suplementación: solo si `mypump_suplementacion` devolvió algo (o la demo trae la muestra).
     private var suplementacionVisible: ModeloSuplementacion? { modelo.suplementacion.flatMap { $0.hay ? $0 : nil } }
+
+    /// Corresponde la bienvenida: hay guía sin ningún video visto, no salió nunca, se está en Entreno y no hay otra hoja.
+    /// Sale del resumen y de la copia (nunca del get).
+    private var pedirBienvenida: Bool {
+        GuiaUI.bienvenidaPermitida && GuiaUI.modelo?.mostrarBienvenida == true && navegacion.pestaña == .entreno
+            && !navegacion.saludAbierta && !bienvenidaGuia
+    }
+
+    private func presentarBienvenida() async {
+        guard pedirBienvenida else { return }
+        // Primero los permisos de la primera vez (la hoja de `RaizApp`): la bienvenida espera a que se cierren.
+        while OnboardingPermisos.pendiente && !modelo.esDemo && modelo.token != nil {
+            try? await Task.sleep(for: .seconds(1))
+            if Task.isCancelled { return }
+        }
+        // Que se vea Entreno un momento antes (y que termine de irse la hoja de permisos, si estaba).
+        try? await Task.sleep(for: .milliseconds(900))
+        guard !Task.isCancelled, pedirBienvenida, !OnboardingPermisos.pendiente || modelo.esDemo || modelo.token == nil else { return }
+        bienvenidaGuia = true
+    }
 
     var body: some View {
         @Bindable var navegacion = navegacion
@@ -149,6 +172,18 @@ struct Raiz: View {
         .onChange(of: suplementacionVisible != nil, initial: true) { _, con in
             if !con, navegacion.pestaña == .suplementacion { navegacion.pestaña = .entreno }
         }
+        // «Tu guía», la primera vez: la bienvenida a pantalla completa. «Ver mi guía» la abre en Entreno al cerrarse la hoja.
+        .sheet(isPresented: $bienvenidaGuia, onDismiss: {
+            guard bienvenidaAbreGuia else { return }
+            bienvenidaAbreGuia = false
+            navegacion.pestaña = .entreno
+            navegacion.abrirGuia = true
+        }) {
+            if let g = GuiaUI.modelo {
+                BienvenidaGuia(modelo: g, ver: { bienvenidaAbreGuia = true; bienvenidaGuia = false }, despues: { bienvenidaGuia = false })
+            }
+        }
+        .task(id: pedirBienvenida) { await presentarBienvenida() }
         .accesorioDeDescanso()
         // La barra de pestañas queda siempre entera: achicarla al bajar, como Música, empeoraba mucho el uso (Mati,
         // 15-oct). No volver a ponerle `tabBarMinimizeBehavior`.
