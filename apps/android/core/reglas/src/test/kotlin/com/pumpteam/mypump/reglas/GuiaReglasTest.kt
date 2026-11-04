@@ -365,4 +365,59 @@ class GuiaReglasTest {
         assertEquals(ReglasGuia.AccionEntreno.NINGUNA, ReglasGuia.accionEntreno(vencida, false, ahora))
         assertEquals(ReglasGuia.AccionEntreno.NINGUNA, ReglasGuia.accionEntreno(vencida, true, ahora))
     }
+
+    // ── La guía bien destacada (GUIA_DESTACADA.md) ──
+
+    private val nueva = ResumenGuia(20, 0, 14.4, mostrarTarjeta = true)
+    private val aMitad = ResumenGuia(20, 4, 11.6, mostrarTarjeta = true)
+    private val completa = ResumenGuia(20, 20, 0.0, mostrarTarjeta = true)
+
+    @Test
+    fun bienvenidaSoloConCeroVistosUnaVezYNuncaEnLaDemo() {
+        val ahora = Instant.parse("2026-11-04T18:00:00Z")
+        assertTrue(ReglasGuia.mostrarBienvenida(nueva, ocultaAMano = false, yaVista = false, esDemo = false, ahora = ahora))
+        // Una sola vez.
+        assertFalse(ReglasGuia.mostrarBienvenida(nueva, false, yaVista = true, esDemo = false, ahora = ahora))
+        // Ya vio alguno.
+        assertFalse(ReglasGuia.mostrarBienvenida(aMitad, false, false, false, ahora))
+        // La demo, sin guía, oculta a mano o fuera del plazo de la tarjeta: no.
+        assertFalse(ReglasGuia.mostrarBienvenida(nueva, false, false, esDemo = true, ahora = ahora))
+        assertFalse(ReglasGuia.mostrarBienvenida(null, false, false, false, ahora))
+        assertFalse(ReglasGuia.mostrarBienvenida(nueva, ocultaAMano = true, yaVista = false, esDemo = false, ahora = ahora))
+        assertFalse(ReglasGuia.mostrarBienvenida(nueva.copy(mostrarTarjeta = false), false, false, false, ahora))
+        // Sin `mostrar_tarjeta` (vuelta atrás), la cuenta de las 48 h.
+        assertTrue(ReglasGuia.mostrarBienvenida(nueva.copy(mostrarTarjeta = null, fechaEntrega = "2026-11-03T13:00:00Z"), false, false, false, ahora))
+        assertFalse(ReglasGuia.mostrarBienvenida(nueva.copy(mostrarTarjeta = null, fechaEntrega = "2026-11-01T13:00:00Z"), false, false, false, ahora))
+    }
+
+    @Test
+    fun destacadaHastaVerTodoYDespuesCompacta() {
+        assertEquals(ReglasGuia.EstiloTarjeta.DESTACADA, ReglasGuia.estiloTarjeta(nueva))
+        assertEquals(ReglasGuia.EstiloTarjeta.DESTACADA, ReglasGuia.estiloTarjeta(aMitad))
+        assertEquals(ReglasGuia.EstiloTarjeta.DESTACADA, ReglasGuia.estiloTarjeta(ResumenGuia(20, 19, 0.5)))
+        assertEquals(ReglasGuia.EstiloTarjeta.COMPACTA, ReglasGuia.estiloTarjeta(completa))
+    }
+
+    @Test
+    fun textosDeLaDestacadaYLaBienvenida() {
+        assertEquals("20 videos cortos, unos 14 min", ReglasGuia.textoDestacada(nueva))
+        assertEquals("4 de 20 videos, te quedan 12 min", ReglasGuia.textoDestacada(aMitad))
+        assertEquals("1 video corto, unos 1 min", ReglasGuia.textoDestacada(ResumenGuia(1, 0, 0.3)))
+        assertEquals("Ver mi guía", ReglasGuia.botonDestacada(nueva))
+        assertEquals("Seguir viendo", ReglasGuia.botonDestacada(aMitad))
+        assertEquals(
+            "Antes de empezar, mirá tu guía. Son 20 videos cortos que armé para vos, unos 14 min. Así en la videollamada vamos directo a lo tuyo.",
+            ReglasGuia.textoBienvenida(nueva),
+        )
+        assertTrue(ReglasGuia.textoBienvenida(ResumenGuia(1, 0, 2.0)).contains("Es 1 video corto que armé para vos, unos 2 min."))
+        assertEquals("Hola Marcelo", ReglasGuia.saludoBienvenida("Marcelo", "Otro Nombre"))
+        assertEquals("Hola Marcelo", ReglasGuia.saludoBienvenida(null, "  Marcelo  Pérez "))
+        assertEquals("Hola", ReglasGuia.saludoBienvenida(" ", null))
+        assertEquals("Hola", ReglasGuia.saludoBienvenida(null, "   "))
+        // Sin «:» al final ni emojis.
+        for (t in listOf(ReglasGuia.textoBienvenida(nueva), ReglasGuia.textoDestacada(nueva), ReglasGuia.textoDestacada(aMitad))) {
+            assertFalse(t.trimEnd().endsWith(":"))
+            assertTrue(t.codePoints().noneMatch { it > 0x2FFF })
+        }
+    }
 }

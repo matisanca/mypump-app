@@ -94,8 +94,10 @@ fun TarjetaGuia(resumen: ResumenGuia, alAbrir: () -> Unit, modifier: Modifier = 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(c.marca), contentAlignment = Alignment.Center) {
-            Icon(Iconos.Play, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(20.dp))
+        // Con todo visto (la compacta que no molesta), el tilde en lugar del play.
+        val completa = resumen.vistos >= resumen.total
+        Box(Modifier.size(40.dp).clip(CircleShape).background(c.marca).then(if (completa) Modifier.testTag("tarjeta-guia-completa") else Modifier), contentAlignment = Alignment.Center) {
+            Icon(if (completa) Iconos.Tilde else Iconos.Play, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Tu guía", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

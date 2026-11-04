@@ -390,6 +390,23 @@ class ModeloGuiaTest {
     }
 
     @Test
+    fun laBienvenidaSaleUnaSolaVezPorCuenta() = enUnHilo { alcance ->
+        val raiz = carpetaTemporal("guia")
+        val e = entorno(alcance, disco = Disco(raiz, "tok")) { _, _ -> 200 to resumen }
+        e.m.alDia()
+        // Leído el disco (y no antes): todavía no salió.
+        assertEquals(false, e.m.bienvenidaVista.value)
+        e.m.marcarBienvenidaVista()
+        assertEquals(true, e.m.bienvenidaVista.value)
+        e.m.alDia()
+        // No llama al servidor (ni el get, que marca `abierto_en`).
+        assertTrue(e.t.llamadas.none { it.startsWith("entregas_app_") && it != "entregas_app_resumen" })
+        assertEquals(true, ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }.bienvenidaVista.value)
+        // Otra cuenta en el mismo teléfono sí la ve.
+        assertEquals(false, ModeloGuia(ClienteRpc(transporte = SinRed), "otro", null, Disco(raiz, "otro"), alcance).also { it.alDia() }.bienvenidaVista.value)
+    }
+
+    @Test
     fun laDemoNoLlamaAlServidorYGuardaEnMemoria() = enUnHilo { alcance ->
         val llamadas = mutableListOf<String>()
         val cliente = ClienteRpc(transporte = TransporteProgramado { fn, _ -> llamadas += fn; 500 to "{}" })

@@ -156,6 +156,40 @@ object ReglasGuia {
         else -> AccionEntreno.QUITAR
     }
 
+    // ── «Tu guía» bien destacada (pedido de Mati del 4/11 a la tarde, GUIA_DESTACADA.md) ──
+
+    /** Cómo se ve la tarjeta de Entreno: la verde que manda (antes de terminar) o la compacta blanca con el tilde. */
+    enum class EstiloTarjeta { DESTACADA, COMPACTA }
+
+    fun estiloTarjeta(r: ResumenGuia): EstiloTarjeta = if (r.vistos < r.total) EstiloTarjeta.DESTACADA else EstiloTarjeta.COMPACTA
+
+    /**
+     * La bienvenida de la primera vez: con la tarjeta en Entreno ([lugar]), sin ningún video visto y una sola vez por cliente
+     * ([yaVista], guardado en el teléfono). Nunca en la demo (el revisor de las tiendas ve la tarjeta, no una hoja encima).
+     */
+    fun mostrarBienvenida(r: ResumenGuia?, ocultaAMano: Boolean, yaVista: Boolean, esDemo: Boolean, ahora: Instant = Instant.now()): Boolean =
+        !esDemo && !yaVista && r != null && r.vistos == 0 && lugar(r, ocultaAMano, ahora) == Lugar.ENTRENO
+
+    private fun videosCortos(n: Int): String = if (n == 1) "1 video corto" else "$n videos cortos"
+
+    /** La línea de la tarjeta destacada: «20 videos cortos, unos 14 min» sin ver ninguno; si no, la de siempre. */
+    fun textoDestacada(r: ResumenGuia): String =
+        if (r.vistos == 0) "${videosCortos(r.total)}, unos ${minutosRedondos(r.minutosRestantes)} min" else textoTarjeta(r)
+
+    /** El botón de la tarjeta destacada. */
+    fun botonDestacada(r: ResumenGuia): String = if (r.vistos == 0) "Ver mi guía" else "Seguir viendo"
+
+    /** «Hola Marcelo» de la bienvenida: el nombre de la guía; si no, el primero del nombre de la cuenta; si no, «Hola». */
+    fun saludoBienvenida(nombrePila: String?, nombreCuenta: String?): String {
+        val n = nombrePila?.trim()?.ifEmpty { null } ?: nombreCuenta?.trim()?.split(Regex("\\s+"))?.firstOrNull()?.ifEmpty { null }
+        return n?.let { "Hola $it" } ?: "Hola"
+    }
+
+    /** El texto de la bienvenida, en la voz de Mati. */
+    fun textoBienvenida(r: ResumenGuia): String =
+        "Antes de empezar, mirá tu guía. " + (if (r.total == 1) "Es " else "Son ") + videosCortos(r.total) +
+            " que armé para vos, unos ${minutosRedondos(r.minutosRestantes)} min. Así en la videollamada vamos directo a lo tuyo."
+
     private fun instante(iso: String): Instant? = try {
         OffsetDateTime.parse(iso).toInstant()
     } catch (_: Exception) {

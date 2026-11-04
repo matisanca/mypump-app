@@ -87,6 +87,8 @@ import com.pumpteam.mypump.entreno.BarraDescansoEntreno
 import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
+import com.pumpteam.mypump.guia.AvisoGuiaOculta
+import com.pumpteam.mypump.guia.BienvenidaGuiaDe
 import com.pumpteam.mypump.guia.GuiaPantalla
 import com.pumpteam.mypump.misdatos.MisDatosPantalla
 import com.pumpteam.mypump.salud.SaludPantalla
@@ -217,6 +219,10 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                 BarraPestanas(navegacion, badges, Pestana.barra(conSuplementacion))
             }
             AvisoGuardado(estadoGuardado, Modifier.align(Alignment.BottomCenter).padding(bottom = abajo + Espacio.xs))
+            // «Ocultar» de la tarjeta de la guía: «La encontrás en Mis datos» con «Deshacer».
+            AvisoGuiaOculta(navegacion, modelo, Modifier.align(Alignment.BottomCenter).padding(bottom = abajo + Espacio.xs))
+            // La bienvenida de «Tu guía» la primera vez (después de la hoja de permisos).
+            BienvenidaGuiaDe(modelo, navegacion)
             // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
             DialogoPreguntas(vm.preguntasEntreno)
             // Salud: el diagnóstico que pidió un link con `?diag=health` (SAL-13), arriba de todo.
