@@ -6,7 +6,8 @@ import MyPumpReglas
 /// tocar un aviso (`CentroAvisos.destino`), el banner de "te falta tu check" y los botones «Ir a Revisión» de Cuerpo.
 @MainActor @Observable
 final class Navegacion {
-    var pestaña: Raiz.Pestaña
+    /// Cambiar de pestaña (tocarla, un aviso, «Ir a Revisión», el banner) cierra la hoja de Salud si estaba abierta.
+    var pestaña: Raiz.Pestaña { didSet { saludAbierta = false } }
     /// Una sección de Revisión a la que desplazarse ("fotos", "check"); Revisión la consume al llegar. Las que se mudaron
     /// a Salud en la 2.1 ("peso" a Cuerpo; "reloj" y la vieja "midia" a Recuperación) cambian de pestaña (`irARevision`).
     var anclaRevision: String?
@@ -14,6 +15,11 @@ final class Navegacion {
     var segmentoSalud: SegmentoSalud?
     /// Abrir Mis datos (desde Revisión).
     var misDatos = false
+    /// Con suplementación (2.1.0) Salud sale de la barra: se abre en una hoja desde el botón de arriba de Revisión, al lado
+    /// de Mis datos. Lo pone la raíz según haya o no suplementación.
+    var saludEnMas = false
+    /// La hoja de Salud (solo con `saludEnMas`).
+    var saludAbierta = false
 
     init(pestaña: Raiz.Pestaña) { self.pestaña = pestaña }
 
@@ -32,9 +38,10 @@ final class Navegacion {
         }
     }
 
-    func irASalud(_ segmento: SegmentoSalud) {
+    /// Salud, en su pestaña o, con suplementación, en la hoja (los avisos y `?scene=progress|myday` llegan acá).
+    func irASalud(_ segmento: SegmentoSalud?) {
         segmentoSalud = segmento
-        pestaña = .salud
+        if saludEnMas { saludAbierta = true } else { pestaña = .salud }
     }
 
     /// Una sección de Revisión; las que se mudaron a Salud van a su segmento.

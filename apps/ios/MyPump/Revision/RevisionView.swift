@@ -77,6 +77,17 @@ struct RevisionView: View {
             .navigationTitle("Revisión")
             .subtituloNavegacion(Self.semanaActual())
             .toolbar {
+                // Con suplementación, Salud sale de la barra de pestañas y se abre desde acá, al lado de Mis datos.
+                if navegacion?.saludEnMas == true {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { navegacion?.irASalud(nil) } label: {
+                            Image(systemName: "heart.text.square")
+                        }
+                        .accessibilityLabel("Salud")
+                        .accessibilityHint("Abre tu recuperación, fuerza y cuerpo")
+                        .accessibilityIdentifier("abrir-salud")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink { MisDatosView(datos: datos) } label: {
                         Image(systemName: "person.crop.circle")
