@@ -135,6 +135,21 @@ public struct Escrituras: Sendable {
             return .respuesta(Self.sinTablaEsHecho(await cliente.llamar("mypump_delete_exercise_swap", [
                 "p_token": t, "p_rutina_id": p["rutinaId"] ?? .null, "p_ex_id": p["exId"] ?? .null, "p_ts": p["ts"] ?? .null,
             ])))
+        case ModeloGuia.kindAvance:
+            // «Tu guía» (entregas_010_app). Idempotente en la base: toma el mayor de los segundos y visto nunca vuelve a
+            // false. FALSE = token caído o sin guía: no hay nada que guardar (cuenta como hecho, como la web).
+            let seg = min(Double(ReglasGuia.maxSegundos), max(0, (p["segundos"]?.comoNumero ?? 0).rounded()))
+            return .respuesta(await cliente.llamar("entregas_app_avance", [
+                "p_token": t, "p_video": p["video"] ?? .null, "p_segundos": .numero(seg), "p_visto": .bool(p["visto"] == .bool(true)),
+            ]))
+        case ModeloGuia.kindDuda:
+            // FALSE = tope de 3200 caracteres del video o token: lo ve el recuadro («No se pudo guardar») por `alGuardar`.
+            return .respuesta(await cliente.llamar("entregas_app_duda", [
+                "p_token": t, "p_video": p["video"] ?? .null, "p_texto": p["texto"] ?? .null,
+            ]))
+        case ModeloGuia.kindDudaLlamada:
+            // FALSE = tope de 30 o token.
+            return .respuesta(await cliente.llamar("entregas_app_llamada_duda", ["p_token": t, "p_texto": p["texto"] ?? .null]))
         default:
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo #2).
             return .respuesta(.failure(ErrorRPC(clase: .permanente, status: 0, codigo: "KIND_DESCONOCIDO", mensaje: op.kind)))

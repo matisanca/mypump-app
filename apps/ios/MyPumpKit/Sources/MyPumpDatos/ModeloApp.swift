@@ -85,6 +85,8 @@ public final class ModeloApp {
     /// Salud, recuperación y Mi reloj (no existen en la demo ni sin cuenta). Gancho: se crea con la cuenta, arranca al
     /// terminar `cargar()` y sincroniza en `alVolverAPrimerPlano()`; HealthKit lo pone la app (ver ModeloSalud.swift).
     public private(set) var salud: ModeloSalud?
+    /// «Tu guía» (no existe en la demo ni sin cuenta): la tarjeta de inicio con `entregas_app_resumen` y la sección.
+    public private(set) var guia: ModeloGuia?
     /// El tipo de día elegido (entreno/descanso) en dietas con `tipos_dia`. Es global en la web (`mypump_tipo_dia`).
     public var tipoDia: String? {
         didSet {
@@ -188,7 +190,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         esDemo = false
         sinRedEn = []
         fase = .sinToken
@@ -241,7 +243,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
     }
 
     /// Hay un mapa de reemplazos de comida sin la marca de migrados: el servidor quizás nunca los vio y, hasta decidirlo, la
@@ -273,6 +275,7 @@ public final class ModeloApp {
         revision = ModeloRevision(cliente: cliente, token: t, outbox: cola)
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
+        guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         // Salud por cuenta: con el link de otra persona en este teléfono no se sube la salud del dueño (hallazgo 3).
         salud = ModeloSalud(cliente: cliente, token: t, almacen: AlmacenSaludPorCuenta(base: AlmacenSaludDefaults(), cuenta: Disco.huella(t)))
         Task { [weak self] in
@@ -284,6 +287,7 @@ public final class ModeloApp {
 
     /// Lo que el servidor guardó: un mensaje del chat que deduplicó (la fila que ya estaba) saca su burbuja "enviando…".
     private func alGuardar(_ ops: [OpGuardada]) {
+        guia?.alGuardar(ops)
         for g in ops where g.op.kind == "chat" {
             if let texto = g.op.payload["contenido"]?.comoTexto, let id = g.respuesta.comoTexto { chat?.confirmar(contenido: texto, id: id) }
         }
@@ -292,6 +296,7 @@ public final class ModeloApp {
     /// Lo que la cola abandonó (va a fallidos, no se borra). Un mensaje del chat se marca en su burbuja para
     /// reintentarlo ("no salió → Reintentar"), como `marcarChatFallido` de la web.
     private func alAbandonar(_ ops: [Operacion]) {
+        guia?.alAbandonar(ops)
         for op in ops where op.kind == "chat" {
             if let texto = op.payload["contenido"]?.comoTexto { chat?.marcarFallido(contenido: texto) }
         }
@@ -432,6 +437,8 @@ public final class ModeloApp {
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
         if let salud { Task { await salud.alAbrir() } }
+        // La tarjeta de «Tu guía»: el resumen, que solo lee (no marca que abrió la guía).
+        if let guia { Task { await guia.actualizarResumen() } }
     }
 
     // MARK: - Entreno
@@ -541,6 +548,8 @@ public final class ModeloApp {
             await revision?.cargarRevision()
             diaCargado = hoy
         }
+        // La tarjeta de «Tu guía», que solo lee (`entregas_app_resumen`), sin frenar lo demás.
+        if let guia { Task { await guia.actualizarResumen() } }
         await outbox?.drenar()
         // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
         await hidratarMarcas()
