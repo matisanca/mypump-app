@@ -30,14 +30,17 @@ candado libre.
 - **Envíos del 4-nov, deshechos:** la iOS 127 se mandó a revisión a las 16:17 y se sacó a pedido de Mati para sumar
   Salud en Revisión (queda «Rechazado por el desarrollador»; novedades y notas ya actualizadas en ASC). El AAB 106
   (`nand-2.1.0-106`) se armó pero no se subió a Play: queda descartado.
-- **Lo que falta para enviar** (con el OK que ya dio Mati):
-  1. que MYPUMP PRO pase los hashes integrados (guía destacada y audio) sobre nativa-202;
-  2. pruebas de lo tocado y tags `nios-2.1.0-128` y `nand-2.1.0-107`;
-  3. ASC: build 128 en la 2.1.0; privacidad, sumar «Audio Data» (funcionalidad, vinculado al usuario); notas al revisor
-     con el micrófono; capturas del reloj ya están (5 JPG); «Añadir a revisión» y enviar;
-  4. Play: AAB 107 (en trozos), novedades de `docs/NATIVA_TIENDAS_2.1.md` (489/500), Seguridad de los datos con
-     «Grabaciones de voz», enviar al 100 %.
-- **Tags:** `nios-2.1.0-127` sobre af0abdd y `nand-2.1.0-106` (los dos superados por la 128 y la 107).
+- **4-nov ~22:00, 2.1.0 enviada a las dos tiendas** (OK de Mati), con la guía destacada y las dudas en audio de MYPUMP
+  PRO (nativa-integ f5ebabc, por fast-forward):
+  - **App Store:** 2.1.0 (128, `nios-2.1.0-128` sobre f5ebabc) «Pendiente de revisión» desde las 21:57. Privacidad:
+    sumado «Datos de audio» (funcionalidad, vinculado, sin seguimiento). Notas al revisor con el micrófono (3986/4000)
+    y novedades con «por escrito o en un audio». Apple tardó ~40 min en mostrar el 128 después de la subida.
+  - **Play:** 108 (`nand-2.1.0-108` sobre e1d4280) al 100 % en revisión, con Seguridad de los datos + «Grabaciones de
+    voz o sonido» (recopilados, opcionales, funciones de la app). El 107 no se usó: RECORD_AUDIO vuelve obligatorio
+    `android.hardware.microphone` y Play sacaba la app de 36 equipos; con `required="false"` quedan afuera solo 24
+    terminales de punto de venta y autos, todos con 0 instalaciones. AAB subido en 3 trozos (SHA-256 252356b1…).
+  - Al publicarse en las dos: avisar a AUTOMATIZAR ENTREGAS (mensaje nuevo de WhatsApp, con OK de Mati).
+- **Tags:** `nios-2.1.0-127` sobre af0abdd y `nand-2.1.0-106`/`-107`, superados por `nios-2.1.0-128` y `nand-2.1.0-108`.
 - **Novedades y notas al revisor:** en `docs/NATIVA_TIENDAS_2.1.md`.
 - **Pasada final de MYPUMP PRO sobre 03c1919:**
   - kit 830/830;
