@@ -234,7 +234,10 @@ class Escrituras(
                 cliente.llamar("entregas_app_llamada_duda", mapOf("p_token" to t, "p_texto" to de(p, "texto")) + idDeDuda(p)),
             )
             // Un audio para la videollamada (`entregas_019`): iniciar, subir y subido (ver [EnvioAudioDuda]).
-            ModeloAudioDudas.KIND -> ResultadoOp.Respuesta(EnvioAudioDuda(cliente, token).ejecutar(p))
+            // Solo en un reintento (ya salió una vez, o «Reintentar» con el mismo id) un 403 o 409 de Storage es «quizás ya subió».
+            ModeloAudioDudas.KIND -> ResultadoOp.Respuesta(
+                EnvioAudioDuda(cliente, token).ejecutar(p, reintento = op.intentada == true || p["reintento"] == ValorJson.Booleano(true)),
+            )
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
         }

@@ -122,7 +122,7 @@ fun BarraAvance(fraccion: Float, modifier: Modifier = Modifier) {
     )
 }
 
-/** «Hola Marcelo», una línea y el avance. */
+/** «Hola Tomás», una línea y el avance. */
 @Composable
 fun CabeceraGuia(saludo: String, linea: String, resumen: ResumenGuia?, modifier: Modifier = Modifier) {
     val c = MyPump.colores

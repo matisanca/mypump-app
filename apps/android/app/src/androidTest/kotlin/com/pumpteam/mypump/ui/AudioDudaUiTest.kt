@@ -42,12 +42,12 @@ class AudioDudaUiTest : PruebaUi() {
     private val texto = "Quería saber si puedo entrenar en ayunas"
 
     /** La guía con la duda transcripta ya sumada a las de la videollamada (como queda en el servidor). */
-    private fun getConTranscripta(): String = org.json.JSONObject(fixture("get-marcelo-avanzado")).apply {
+    private fun getConTranscripta(): String = org.json.JSONObject(fixture("get-tomas-avanzado")).apply {
         val l = optJSONArray("dudas_llamada") ?: org.json.JSONArray().also { put("dudas_llamada", it) }
         l.put(org.json.JSONObject().put("texto", texto).put("en", "2026-11-04T10:00:00Z"))
     }.toString()
 
-    private fun conGuia(audios: String = "[]", get: String = fixture("get-marcelo-avanzado")) {
+    private fun conGuia(audios: String = "[]", get: String = fixture("get-tomas-avanzado")) {
         servidor.respuestas["entregas_app_resumen"] = """{"ok": true, "total": 20, "vistos": 4, "minutos_restantes": 11.6}"""
         servidor.respuestas["entregas_app_get"] = get
         servidor.respuestas["entregas_app_avance"] = "true"

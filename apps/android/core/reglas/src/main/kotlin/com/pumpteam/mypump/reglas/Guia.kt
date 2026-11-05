@@ -179,16 +179,18 @@ object ReglasGuia {
     /** El botón de la tarjeta destacada. */
     fun botonDestacada(r: ResumenGuia): String = if (r.vistos == 0) "Ver mi guía" else "Seguir viendo"
 
-    /** «Hola Marcelo» de la bienvenida: el nombre de la guía; si no, el primero del nombre de la cuenta; si no, «Hola». */
+    /** «Hola Tomás» de la bienvenida: el nombre de la guía; si no, el primero del nombre de la cuenta; si no, «Hola». */
     fun saludoBienvenida(nombrePila: String?, nombreCuenta: String?): String {
         val n = nombrePila?.trim()?.ifEmpty { null } ?: nombreCuenta?.trim()?.split(Regex("\\s+"))?.firstOrNull()?.ifEmpty { null }
         return n?.let { "Hola $it" } ?: "Hola"
     }
 
-    /** El texto de la bienvenida, en la voz de Mati. */
-    fun textoBienvenida(r: ResumenGuia): String =
-        "Antes de empezar, mirá tu guía. " + (if (r.total == 1) "Es " else "Son ") + videosCortos(r.total) +
-            " que armé para vos, unos ${minutosRedondos(r.minutosRestantes)} min. Así en la videollamada vamos directo a lo tuyo."
+    /** El texto de la bienvenida, en la voz de Mati. Con un solo video, «Es un video corto…, de unos X min.», como iOS. */
+    fun textoBienvenida(r: ResumenGuia): String {
+        val min = minutosRedondos(r.minutosRestantes)
+        val cuantos = if (r.total == 1) "Es un video corto que armé para vos, de unos $min min." else "Son ${r.total} videos cortos que armé para vos, unos $min min."
+        return "Antes de empezar, mirá tu guía. $cuantos Así en la videollamada vamos directo a lo tuyo."
+    }
 
     private fun instante(iso: String): Instant? = try {
         OffsetDateTime.parse(iso).toInstant()
@@ -212,7 +214,7 @@ object ReglasGuia {
         return "${dia.dayOfWeek.getDisplayName(TextStyle.FULL, ES).lowercase(ES)} ${dia.dayOfMonth}/${dia.monthValue}"
     }
 
-    /** La línea de la cabecera, debajo de «Hola Marcelo». */
+    /** La línea de la cabecera, debajo de «Hola Tomás». */
     fun lineaCabecera(g: Guia, ahora: Instant = Instant.now()): String {
         if (yaPaso(g.fechaEntrega, ahora)) return "Te dejo estos videos según lo que hablamos en la videollamada. Miralos con calma."
         val cuando = fechaCorta(g.fechaEntrega)

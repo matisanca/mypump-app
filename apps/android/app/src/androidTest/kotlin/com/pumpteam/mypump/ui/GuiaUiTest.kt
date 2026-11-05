@@ -26,7 +26,7 @@ class GuiaUiTest : PruebaUi() {
 
     private val resumen = """{"ok": true, "total": 20, "vistos": 4, "minutos_restantes": 11.6}"""
 
-    private fun conGuia(get: String = fixture("get-marcelo-avanzado"), res: String = resumen) {
+    private fun conGuia(get: String = fixture("get-tomas-avanzado"), res: String = resumen) {
         servidor.respuestas["entregas_app_resumen"] = res
         servidor.respuestas["entregas_app_get"] = get
         servidor.respuestas["entregas_app_avance"] = "true"
@@ -35,7 +35,7 @@ class GuiaUiTest : PruebaUi() {
     }
 
     /** La guía avanzada con el video de la creatina (un «Ver por qué») ya visto. */
-    private fun conCreatinaVista(): String = org.json.JSONObject(fixture("get-marcelo-avanzado")).apply {
+    private fun conCreatinaVista(): String = org.json.JSONObject(fixture("get-tomas-avanzado")).apply {
         val clips = getJSONArray("clips")
         for (i in 0 until clips.length()) clips.getJSONObject(i).let { if (it.getString("id") == "FT-50b") it.put("visto", true) }
     }.toString()
@@ -90,7 +90,7 @@ class GuiaUiTest : PruebaUi() {
         assertEquals(0, servidor.a("entregas_app_get").size)
         abrirGuia()
         p.esperar("el get") { servidor.a("entregas_app_get").size == 1 }
-        p.nodo(texto("Hola Marcelo"))
+        p.nodo(texto("Hola Tomás"))
         p.nodo(etiqueta("guia-avance"))
         // Atrás vuelve a Entreno con la tarjeta.
         p.atras()
@@ -214,7 +214,7 @@ class GuiaUiTest : PruebaUi() {
         // Sin red la app abre desde su copia; la tarjeta, desde la caché del resumen.
         p.tocar(etiqueta("tarjeta-guia"))
         p.nodo(etiqueta("guia-desde-cache"))
-        p.nodo(texto("Hola Marcelo"))
+        p.nodo(texto("Hola Tomás"))
         p.nodo(etiqueta("guia-sin-conexion-video"), ms = 45_000)
     }
 
@@ -451,7 +451,7 @@ class GuiaUiTest : PruebaUi() {
 
     @Test
     fun laBienvenidaSaleConCeroVistosUnaSolaVezYAbreLaGuia() {
-        conGuia(get = fixture("get-marcelo"), res = resumenNuevo)
+        conGuia(get = fixture("get-tomas"), res = resumenNuevo)
         guardarCuenta()
         abrir().also { a ->
             p.nodo(etiqueta("guia-bienvenida-ver"), ms = 15_000)
@@ -474,7 +474,7 @@ class GuiaUiTest : PruebaUi() {
 
     @Test
     fun masTardeDejaLaTarjetaDestacadaConCeroVistos() {
-        conGuia(get = fixture("get-marcelo"), res = resumenNuevo)
+        conGuia(get = fixture("get-tomas"), res = resumenNuevo)
         guardarCuenta()
         abrir()
         p.tocar(etiqueta("guia-bienvenida-despues"), ms = 15_000)
@@ -547,7 +547,7 @@ class GuiaUiTest : PruebaUi() {
     private fun capturasDestacada(oscuro: Boolean, sufijo: String = if (oscuro) "oscuro" else "claro") {
         Telefono.modoNoche(oscuro)
         fun foto(n: String) = Telefono.captura("$n-$sufijo")
-        conGuia(get = fixture("get-marcelo"), res = resumenNuevo)
+        conGuia(get = fixture("get-tomas"), res = resumenNuevo)
         guardarCuenta()
         abrir().also { a ->
             p.nodo(etiqueta("guia-bienvenida-ver"), ms = 15_000)

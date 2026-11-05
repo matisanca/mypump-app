@@ -17,9 +17,9 @@ import org.junit.jupiter.api.Test
  * la caché, `ok: false`, el resumen de la tarjeta y las escrituras por la cola con sus kinds nuevos.
  */
 class ModeloGuiaTest {
-    private val guia = Compartido.texto("fixtures/guia/get-marcelo.json")
-    private val avanzada = Compartido.texto("fixtures/guia/get-marcelo-avanzado.json")
-    private val resumen = Compartido.texto("fixtures/guia/resumen-marcelo.json")
+    private val guia = Compartido.texto("fixtures/guia/get-tomas.json")
+    private val avanzada = Compartido.texto("fixtures/guia/get-tomas-avanzado.json")
+    private val resumen = Compartido.texto("fixtures/guia/resumen-tomas.json")
     private val sinGuia = Compartido.texto("fixtures/guia/sin-guia.json")
 
     private class Entorno(val m: ModeloGuia, val cola: Outbox, val t: TransporteProgramado, val disco: Disco, val cuerpos: MutableList<Pair<String, ValorJson>>)
@@ -430,5 +430,20 @@ class ModeloGuiaTest {
         asentar()
         assertEquals(2, m.avisos.value.count { it is ModeloGuia.AvisoDuda.Guardada })
         assertEquals(emptyList<String>(), llamadas)
+    }
+
+    @Test
+    fun elPulsoDeLaTarjetaEsPorCuentaYSoloLaPrimeraSesion() = enUnHilo { alcance ->
+        // Hallazgo 18: como iOS, por cuenta (la carpeta de la cuenta), no por teléfono.
+        val raiz = carpetaTemporal("pulso")
+        val primera = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }
+        assertEquals(true, primera.pulsoTarjeta.value)
+        primera.marcarTarjetaVista()
+        primera.alDia()
+        assertEquals(true, primera.pulsoTarjeta.value, "esta sesión lo conserva")
+        val despues = ModeloGuia(ClienteRpc(transporte = SinRed), "tok", null, Disco(raiz, "tok"), alcance).also { it.alDia() }
+        assertEquals(false, despues.pulsoTarjeta.value, "la próxima sesión de la misma cuenta, sin pulso")
+        val otra = ModeloGuia(ClienteRpc(transporte = SinRed), "otro", null, Disco(raiz, "otro"), alcance).also { it.alDia() }
+        assertEquals(true, otra.pulsoTarjeta.value, "otra cuenta en el mismo teléfono sí lo tiene")
     }
 }

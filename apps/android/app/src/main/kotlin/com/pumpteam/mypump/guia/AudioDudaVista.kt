@@ -218,7 +218,7 @@ private fun Grabando(segundos: Int, alTerminar: () -> Unit) {
             ReglasAudioDuda.contador(segundos),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.clearAndSetSemantics {}.testTag("audio-contador"),
+            modifier = Modifier.testTag("audio-contador").clearAndSetSemantics {},
         )
     }
 }
@@ -268,7 +268,6 @@ private fun Revisando(
                 )
             }
         }
-        Text(ReglasAudioDuda.SIN_SONIDO, style = MaterialTheme.typography.bodySmall, color = c.textoTerciario)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(Espacio.xs), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
             BotonMarca(ReglasAudioDuda.MANDAR, alTocar = alMandar, compacto = true, cargando = mandando, modifier = Modifier.testTag("audio-mandar"))
             BotonSecundario(ReglasAudioDuda.GRABAR_DE_NUEVO, alTocar = alGrabarDeNuevo, compacto = true, habilitado = !mandando, modifier = Modifier.testTag("audio-de-nuevo"))

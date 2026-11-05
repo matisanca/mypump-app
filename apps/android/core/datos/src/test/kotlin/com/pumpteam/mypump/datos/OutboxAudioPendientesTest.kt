@@ -50,7 +50,7 @@ class OutboxAudioPendientesTest {
         o.encolar("carga", serie(1), "k1")
         o.drenar()
 
-        assertEquals(listOf(ModeloAudioDudas.KIND, "carga"), enviados.toList())
+        assertEquals(setOf(ModeloAudioDudas.KIND, "carga"), enviados.toSet())
         val quedan = o.operaciones()
         assertEquals(listOf(ModeloAudioDudas.KIND), quedan.map { it.kind })
         assertEquals(0, quedan.single().tries)   // no gasta intento
@@ -87,5 +87,78 @@ class OutboxAudioPendientesTest {
         libre.set(true)
         o.drenar()
         assertEquals(0, o.pendientes())
+    }
+
+    // ── Revisión adversarial del 4-nov ──
+
+    private val sinRedAudio: ResultadoOp = ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.RED, 0, mensaje = "subida: sin red")))
+
+    @Test
+    fun conLaSubidaDelAudioFallandoPorRedUnaSerieEncoladaDetrasSale() = runBlocking {
+        // Hallazgo 1 (bloqueante): un audio sin red no corta la pasada; la serie sale y el audio no gasta intento.
+        for (falla in listOf<suspend () -> ResultadoOp>({ sinRedAudio }, { throw java.io.IOException("sin red") })) {
+            val enviados = Collections.synchronizedList(mutableListOf<String>())
+            val estados = Collections.synchronizedList(mutableListOf<EstadoGuardado>())
+            val o = Outbox(archivo = null, reintentoAutomatico = false, alcance = alcance()) { op ->
+                enviados += op.kind
+                if (op.kind == ModeloAudioDudas.KIND) falla() else ok
+            }
+            o.observar(estado = { estados += it }, abandonadas = {})
+            o.encolar(ModeloAudioDudas.KIND, audio("a1"), "guia_audio_a1")
+            o.encolar(ModeloAudioDudas.KIND, audio("a2"), "guia_audio_a2")
+            o.encolar("carga", serie(1), "k1")
+            o.drenar()
+            assertTrue("carga" in enviados)
+            assertEquals(2, enviados.count { it == ModeloAudioDudas.KIND }, "el segundo audio también se probó (continue)")
+            val quedan = o.operaciones()
+            assertEquals(listOf(ModeloAudioDudas.KIND, ModeloAudioDudas.KIND), quedan.map { it.kind })
+            assertTrue(quedan.all { it.tries == 0 })
+            assertFalse(EstadoGuardado.SIN_CONEXION in estados)
+        }
+    }
+
+    @Test
+    fun cerrarElDiaNoEsperaALosAudios() = runBlocking {
+        val suelta = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val enviados = Collections.synchronizedList(mutableListOf<String>())
+        val o = Outbox(archivo = null, reintentoAutomatico = false, alcance = alcance()) { op ->
+            enviados += op.kind
+            if (op.kind == ModeloAudioDudas.KIND) suelta.await()
+            ok
+        }
+        o.encolar(ModeloAudioDudas.KIND, audio("a1"), "guia_audio_a1")
+        o.encolar("carga", serie(1), "k1")
+        kotlinx.coroutines.withTimeout(2_000) { o.drenar(esperarAudios = false) }
+        assertEquals(listOf(ModeloAudioDudas.KIND), o.operaciones().map { it.kind }, "la serie salió con el audio en vuelo")
+        suelta.complete(Unit)
+        o.drenar()
+        assertEquals(0, o.pendientes())
+    }
+
+    @Test
+    fun pendientesPasadasDosHorasVaAFallidos() = runBlocking {
+        // Hallazgo 16: sin gastar intento, pero con un tope de 2 h desde la primera vez; después, fallidos («No se pudo mandar»).
+        var ahora = 1_000_000L
+        val archivo = java.io.File.createTempFile("outbox", ".json").apply { delete() }
+        val abandonadas = Collections.synchronizedList(mutableListOf<Operacion>())
+        val o = Outbox(archivo = archivo, reintentoAutomatico = false, alcance = alcance(), reloj = { ahora }) { pendientes }
+        o.observar(estado = {}, abandonadas = { abandonadas += it })
+        o.encolar(ModeloAudioDudas.KIND, audio("a1"), "guia_audio_a1")
+        o.drenar()
+        assertEquals(ahora.toDouble(), o.operaciones().single().esperaDesde)
+        // Se guarda en el archivo: cerrar la app no reinicia el reloj.
+        val otra = Outbox(archivo = archivo, reintentoAutomatico = false, alcance = alcance(), reloj = { ahora }) { pendientes }
+        assertEquals(ahora.toDouble(), otra.operaciones().single().esperaDesde)
+        ahora += Outbox.TOPE_ESPERA_AUDIO_MS - 1
+        o.drenar()
+        assertEquals(1, o.pendientes())
+        assertEquals(0, o.operaciones().single().tries)
+        ahora += 1
+        o.drenar()
+        assertEquals(0, o.pendientes())
+        val f = o.fallidos().single()
+        assertEquals(Outbox.MOTIVO_ESPERA_VENCIDA, f.motivo)
+        assertEquals(listOf(ModeloAudioDudas.KIND), abandonadas.map { it.kind })
+        archivo.delete()
     }
 }

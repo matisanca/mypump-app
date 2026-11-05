@@ -120,6 +120,16 @@ class ModeloGuia(
      */
     val bienvenidaVista: StateFlow<Boolean?> = _bienvenidaVista.asStateFlow()
 
+    private val _pulsoTarjeta = MutableStateFlow<Boolean?>(if (esDemo) true else null)
+
+    /**
+     * El pulso del play de la tarjeta destacada: solo en la primera sesión en que esta CUENTA ve la tarjeta, como iOS
+     * (revisión del 4-nov, hallazgo 18). Se fija al leer el disco y no cambia mientras viva el modelo; [marcarTarjetaVista]
+     * deja anotado (`guia-tarjeta-vista.json`) que ya la vio para la próxima. null mientras no se leyó.
+     */
+    val pulsoTarjeta: StateFlow<Boolean?> = _pulsoTarjeta.asStateFlow()
+    private var tarjetaVistaGuardada = false
+
     private var abriendo = false
 
     /** El disco, fuera del hilo principal y de a una operación por vez, en el orden en que se pidieron. */
@@ -133,6 +143,9 @@ class ModeloGuia(
         if (!ocultaTocada) _ocultaAMano.value = oculta
         val bienvenida = withContext(serieDisco) { disco?.leer(ARCHIVO_BIENVENIDA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
         if (_bienvenidaVista.value == null) _bienvenidaVista.value = bienvenida
+        val tarjetaVista = withContext(serieDisco) { disco?.leer(ARCHIVO_TARJETA_VISTA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
+        if (_pulsoTarjeta.value == null) _pulsoTarjeta.value = !tarjetaVista
+        tarjetaVistaGuardada = tarjetaVistaGuardada || tarjetaVista
         if (_estado.value == Estado.SIN_DATOS && _guia.value == null && g != null) {
             _guia.value = g
             _estado.value = Estado.LISTA
@@ -282,6 +295,13 @@ class ModeloGuia(
         alDisco { guardar(ARCHIVO_BIENVENIDA, ValorJson.Booleano(true)) }
     }
 
+    /** La tarjeta destacada se vio: la próxima sesión de esta cuenta va sin pulso (esta lo conserva). */
+    fun marcarTarjetaVista() {
+        if (tarjetaVistaGuardada || esDemo) return
+        tarjetaVistaGuardada = true
+        alDisco { guardar(ARCHIVO_TARJETA_VISTA, ValorJson.Booleano(true)) }
+    }
+
     /** Lo que decidió [SeguimientoAvance]: queda en el teléfono y sale por la cola (deduplicado por video). */
     suspend fun guardarAvance(g: SeguimientoAvance.Guardado) {
         val clave = claveAvance(g.video)
@@ -395,6 +415,7 @@ class ModeloGuia(
         internal const val ARCHIVO_RESUMEN = "guia-resumen.json"
         internal const val ARCHIVO_OCULTA = "guia-oculta.json"
         internal const val ARCHIVO_BIENVENIDA = "guia-bienvenida.json"
+        internal const val ARCHIVO_TARJETA_VISTA = "guia-tarjeta-vista.json"
 
         /**
          * La guía de «Ver demo»: [guia] es la respuesta de muestra con la forma del get (`apps/shared/demo/guia.json`). Sin

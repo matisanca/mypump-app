@@ -72,7 +72,6 @@ import androidx.compose.ui.unit.em
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.acceso.Onboarding
 import com.pumpteam.mypump.datos.ModeloApp
-import com.pumpteam.mypump.datos.Preferencias
 import com.pumpteam.mypump.diseno.AsaHoja
 import com.pumpteam.mypump.diseno.BotonMarca
 import com.pumpteam.mypump.diseno.Espacio
@@ -128,7 +127,7 @@ fun TarjetaGuiaDestacada(resumen: ResumenGuia, pulso: Boolean, alAbrir: () -> Un
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.08.em,
                 color = Color.White,
-                modifier = Modifier.weight(1f).padding(top = Espacio.xs).clearAndSetSemantics {}.testTag("guia-empeza-por-aca"),
+                modifier = Modifier.weight(1f).padding(top = Espacio.xs).testTag("guia-empeza-por-aca").clearAndSetSemantics {},
             )
             TextButton(
                 onClick = alOcultar,
@@ -213,23 +212,12 @@ private fun IconoPlayConPulso(pulso: Boolean) {
     }
 }
 
-/** El brillo del play sale solo en la primera sesión de la app (por teléfono): se decide una vez por proceso. */
-internal object PrimeraSesionGuia {
-    const val CLAVE = "mypump_guia_pulso_v1"
-    private var esta: Boolean? = null
-
-    fun decidir(p: Preferencias): Boolean = esta ?: (p.leer(CLAVE) != "1").also {
-        esta = it
-        p.guardar(CLAVE, "1")
-    }
-}
-
 /**
  * El aviso de «Ocultar»: «La encontrás en Mis datos» con «Deshacer», la pastilla de vidrio de la app (como AvisoGuardado),
  * abajo. Dura 6 s, más si TalkBack lo pide. Lo dispara [Navegacion.avisoGuiaOculta].
  */
 @Composable
-fun AvisoGuiaOculta(navegacion: Navegacion, modelo: ModeloApp, modifier: Modifier = Modifier) {
+fun AvisoGuiaOculta(navegacion: Navegacion, modelo: ModeloApp, modifier: Modifier = Modifier, separacion: androidx.compose.ui.unit.Dp = 0.dp) {
     val vez = navegacion.avisoGuiaOculta
     var visible by remember { mutableStateOf(false) }
     val accesibilidad = LocalAccessibilityManager.current
@@ -246,7 +234,8 @@ fun AvisoGuiaOculta(navegacion: Navegacion, modelo: ModeloApp, modifier: Modifie
         enter = slideInVertically { it } + fadeIn(),
         exit = slideOutVertically { it } + fadeOut(),
     ) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = Espacio.m), contentAlignment = Alignment.Center) {
+        // [separacion] va adentro: con el aviso oculto no deja un hueco abajo.
+        Box(Modifier.fillMaxWidth().padding(horizontal = Espacio.m).padding(bottom = separacion), contentAlignment = Alignment.Center) {
             Row(
                 Modifier
                     .widthIn(max = 520.dp)
@@ -281,7 +270,7 @@ fun AvisoGuiaOculta(navegacion: Navegacion, modelo: ModeloApp, modifier: Modifie
 }
 
 /**
- * La bienvenida de la primera vez ([ReglasGuia.mostrarBienvenida]): una hoja grande con el play, «Hola Marcelo», el texto de
+ * La bienvenida de la primera vez ([ReglasGuia.mostrarBienvenida]): una hoja grande con el play, «Hola Tomás», el texto de
  * Mati, «Ver mi guía» y «Más tarde». Sale después de la hoja de permisos (si está pendiente, espera a que termine) y se marca
  * vista al aparecer, así nunca sale dos veces. No llama a `entregas_app_get`: usa el resumen y la caché; el get sale al abrir
  * la guía.
@@ -299,7 +288,9 @@ fun BienvenidaGuiaDe(modelo: ModeloApp, navegacion: Navegacion) {
     // Lo que se ve queda fijo mientras la hoja está abierta (el resumen puede cambiar por debajo).
     var fijo by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    val candidata = fase == ModeloApp.Fase.LISTO && vista == false &&
+    // Solo estando en Entreno, como iOS (revisión del 4-nov, hallazgo 18): es donde está la tarjeta que la abre.
+    val enEntreno = navegacion.pestana == Pestana.ENTRENO
+    val candidata = fase == ModeloApp.Fase.LISTO && vista == false && enEntreno &&
         ReglasGuia.mostrarBienvenida(resumen, oculta, yaVista = false, esDemo = esDemo || modelo.token == null)
     LaunchedEffect(candidata) {
         if (!candidata || mostrando) return@LaunchedEffect
@@ -310,7 +301,7 @@ fun BienvenidaGuiaDe(modelo: ModeloApp, navegacion: Navegacion) {
         val m = modelo.guia.value ?: return@LaunchedEffect
         val r = m.resumen.value
         if (m.bienvenidaVista.value != false || !ReglasGuia.mostrarBienvenida(r, m.ocultaAMano.value, false, modelo.esDemo.value)) return@LaunchedEffect
-        if (navegacion.guia || navegacion.guiaEnMisDatos) return@LaunchedEffect
+        if (navegacion.guia || navegacion.guiaEnMisDatos || navegacion.pestana != Pestana.ENTRENO) return@LaunchedEffect
         m.marcarBienvenidaVista()
         mostrando = true
     }

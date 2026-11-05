@@ -300,7 +300,7 @@ class ModeloChat(
      */
     private fun traerDespuesDeMandar() {
         alcance.launch {
-            outbox?.drenar()
+            outbox?.drenar(esperarAudios = false)
             delay(250)
             sondear()
         }

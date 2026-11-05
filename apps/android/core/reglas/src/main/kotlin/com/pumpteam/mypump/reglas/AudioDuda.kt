@@ -50,9 +50,6 @@ object ReglasAudioDuda {
     const val MUY_CORTO = "No se escuchó nada, probá de nuevo."
     const val VISTA_PREVIA = "Vista previa: el audio no se manda."
 
-    /** El modo silencio de iOS no existe igual en Android: lo que apaga la revisión es el volumen multimedia. */
-    const val SIN_SONIDO = "Si no lo escuchás, fijate que el volumen del celu no esté en cero."
-
     /** `NotAllowedError` de la web, adaptado a la app: en Android el permiso está en los ajustes de la app. */
     const val PERMISO_NEGADO = "Tu celu no me dio permiso para el micrófono. Tocá «Abrir ajustes», entrá en Permisos, Micrófono y ponelo en Permitir. O escribime la duda acá arriba."
     const val ABRIR_AJUSTES = "Abrir ajustes"
@@ -73,10 +70,14 @@ object ReglasAudioDuda {
 
     /**
      * Un rechazo sin motivo (o `pendientes`, que igual no llega acá: la cola lo trata como transitorio): el audio queda y
-     * se puede reintentar con el mismo id. Los demás (`tope`, `tamano`, `largo`, `formato`, `error`, `id`, el archivo perdido) no
-     * van a entrar nunca así.
+     * se puede reintentar con el mismo id. `id` (ese p_id es de otro cliente) también conserva el archivo, pero
+     * «Reintentar» sale con un id nuevo ([pideIdNuevo]), como iOS (revisión del 4-nov, hallazgo 17). Los demás (`tope`,
+     * `tamano`, `largo`, `formato`, `error`, el archivo perdido) no van a entrar nunca así.
      */
-    fun motivoReintentable(motivo: String?): Boolean = motivo == null || motivo == "pendientes"
+    fun motivoReintentable(motivo: String?): Boolean = motivo == null || motivo == "pendientes" || motivo == "id"
+
+    /** `id`: el p_id es de otro cliente. El mismo audio se reintenta con un p_id nuevo. */
+    fun pideIdNuevo(motivo: String?): Boolean = motivo == "id"
 
     /** El contador, como número aparte: `0:42`, `4:30`. */
     fun contador(segundos: Int): String {
@@ -197,8 +198,12 @@ object MaquinaAudioDuda {
         return Paso(Estado.Revisando(s), Aviso(ReglasAudioDuda.anuncioDuracion(s)), listOf(Efecto.Detener))
     }
 
-    /** El grabador se cortó solo (un error del sistema a mitad de camino): lo que haya quedado se descarta. */
-    fun seCorto(): Paso = Paso(Estado.Reposo, Aviso(ReglasAudioDuda.MICROFONO_OCUPADO, error = true), listOf(Efecto.Descartar))
+    /**
+     * El grabador se cortó solo a mitad de camino: entró una llamada, otra app tomó el foco del audio, el sistema silenció
+     * el micrófono o falló. Como «Terminar» (revisión del 4-nov, hallazgo 9): se frena y pasa a revisar con lo grabado; con
+     * menos de 2 s, se borra con el aviso. Fuera de la grabación no hace nada.
+     */
+    fun seCorto(estado: Estado, ahoraMs: Long): Paso = terminar(estado, ahoraMs)
 
     fun borrar(estado: Estado): Paso = Paso(Estado.Reposo, null, if (estado is Estado.Revisando || estado is Estado.Grabando) listOf(Efecto.Descartar) else emptyList())
 

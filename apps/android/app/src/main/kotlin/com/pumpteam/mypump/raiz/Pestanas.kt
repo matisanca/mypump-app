@@ -218,9 +218,16 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                 entreno?.let { BarraDescansoEntreno(it) }
                 BarraPestanas(navegacion, badges, Pestana.barra(conSuplementacion))
             }
-            AvisoGuardado(estadoGuardado, Modifier.align(Alignment.BottomCenter).padding(bottom = abajo + Espacio.xs))
-            // «Ocultar» de la tarjeta de la guía: «La encontrás en Mis datos» con «Deshacer».
-            AvisoGuiaOculta(navegacion, modelo, Modifier.align(Alignment.BottomCenter).padding(bottom = abajo + Espacio.xs))
+            // Los avisos de abajo, apilados (revisión del 4-nov, hallazgo 19): «Ocultar» de la tarjeta de la guía («La
+            // encontrás en Mis datos» con «Deshacer») va arriba del de guardado, nunca encima. Cada uno ocupa lugar solo
+            // mientras se ve.
+            Column(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = abajo + Espacio.xs),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                AvisoGuiaOculta(navegacion, modelo, separacion = Espacio.xs)
+                AvisoGuardado(estadoGuardado)
+            }
             // La bienvenida de «Tu guía» la primera vez (después de la hoja de permisos).
             BienvenidaGuiaDe(modelo, navegacion)
             // Las preguntas de Entreno (reabrir el día, "¿Está bien cargado?", "¡Día completado!", avanzar de semana).
