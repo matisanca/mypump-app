@@ -23,6 +23,9 @@
     <!-- «Tu guía»: las dudas en audio para la videollamada (2.1.0). Se pide recién al tocar «Grabar un audio» y solo se
          graba con la guía a la vista: sin servicio en primer plano (nada de FOREGROUND_SERVICE ni _MICROPHONE). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Sin esto, RECORD_AUDIO vuelve obligatorio el micrófono y Play saca la app de 36 equipos que no tienen (tablets y
+         TV). Sin micrófono, «Grabar un audio» avisa y no graba (AudioDudaGrabador.empezar, Fallo.SIN_MICROFONO). -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- Health Connect: lectura. -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
