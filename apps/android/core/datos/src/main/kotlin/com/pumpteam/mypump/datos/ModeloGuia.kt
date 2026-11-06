@@ -5,7 +5,10 @@ import com.pumpteam.mypump.modelos.DudaLlamada
 import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.ResumenGuia
 import com.pumpteam.mypump.modelos.ValorJson
+import com.pumpteam.mypump.modelos.AgendaEntrega
+import com.pumpteam.mypump.reglas.ReglasAgenda
 import com.pumpteam.mypump.reglas.ReglasGuia
+import com.pumpteam.mypump.reglas.ReglasNovedad
 import com.pumpteam.mypump.reglas.SeguimientoAvance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +48,10 @@ class ModeloGuia(
      * dudas quedan en memoria, como las demás escrituras de la demo. Ver [demo].
      */
     private val esDemo: Boolean = false,
+    /** La agenda de muestra de «Ver demo» (`apps/shared/demo/agenda.json`), o null. Ver [agenda]. */
+    private val agendaDemo: AgendaEntrega? = null,
+    /** ms desde 1970: la fecha de la marca de «Ocultar» (en las pruebas, fija). */
+    private val reloj: () -> Long = System::currentTimeMillis,
 ) {
     enum class Estado {
         /** Nunca se abrió en este teléfono y todavía no se pidió. */
@@ -106,8 +113,24 @@ class ModeloGuia(
     /**
      * El cliente tocó «Quitar de Entreno»: la tarjeta sale antes de tiempo y la guía queda en la fila de Mis datos. Solo en
      * este teléfono y por cuenta (`guia-oculta.json` en la carpeta de la cuenta). Ver `ReglasGuia.lugar`.
+     *
+     * Es la marca **efectiva** (2.2.0): si `novedad_en` del resumen es posterior a la fecha de la marca, la tarjeta vuelve
+     * ([ReglasNovedad.reaparece]). Ocultarla de nuevo guarda la fecha de ahora. Sin `novedad_en`, la marca tal cual.
      */
     val ocultaAMano: StateFlow<Boolean> = _ocultaAMano.asStateFlow()
+
+    /** La marca guardada, sin mirar la novedad, y cuándo se puso (ISO; null = una marca de la 2.1.0, sin fecha). */
+    private var ocultaMarcada = false
+    private var ocultaEn: String? = null
+
+    private fun recalcularOculta() {
+        _ocultaAMano.value = ReglasNovedad.ocultaEfectiva(ocultaMarcada, ocultaEn, _resumen.value?.novedadEn)
+    }
+
+    private fun ponerResumen(r: ResumenGuia?) {
+        _resumen.value = r
+        recalcularOculta()
+    }
 
     /** Se tocó antes de que terminara de leerse el disco: lo leído no lo pisa. */
     private var ocultaTocada = false
@@ -132,6 +155,16 @@ class ModeloGuia(
 
     private var abriendo = false
 
+    /**
+     * La agenda de la entrega al final de la guía (2.2.0): ver [ModeloAgenda]. Sin el servidor nuevo queda en null y no se
+     * muestra nada. En la demo, la de muestra, habilitada con lo visto en el teléfono.
+     */
+    val agenda: ModeloAgenda = if (agendaDemo != null) {
+        ModeloAgenda.demo(cliente, agendaDemo, alcance) { _guia.value?.let(ReglasAgenda::faltan) ?: 0 }
+    } else {
+        ModeloAgenda(cliente, token, outbox, disco, alcance)
+    }
+
     /** El disco, fuera del hilo principal y de a una operación por vez, en el orden en que se pidieron. */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val serieDisco = Dispatchers.IO.limitedParallelism(1)
@@ -139,8 +172,13 @@ class ModeloGuia(
     /** La caché se lee al armar el modelo, en [serieDisco]; [abrir] y [refrescarResumen] la esperan. */
     private val lecturaInicial: Job = alcance.launch {
         val (g, r) = withContext(serieDisco) { Guia.desde(disco?.leer(ARCHIVO_GUIA)) to ResumenGuia.desde(disco?.leer(ARCHIVO_RESUMEN)) }
-        val oculta = withContext(serieDisco) { disco?.leer(ARCHIVO_OCULTA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
-        if (!ocultaTocada) _ocultaAMano.value = oculta
+        val oculta = withContext(serieDisco) { disco?.leer(ARCHIVO_OCULTA)?.let { ValorJson.desde(it) } }
+        if (!ocultaTocada) {
+            // `true` (la 2.1.0) o `{oculta: true, en: ISO}` (2.2.0, para que la novedad la haga volver).
+            ocultaMarcada = oculta == ValorJson.Booleano(true) || oculta?.get("oculta") == ValorJson.Booleano(true)
+            ocultaEn = oculta?.get("en")?.comoTexto
+            recalcularOculta()
+        }
         val bienvenida = withContext(serieDisco) { disco?.leer(ARCHIVO_BIENVENIDA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
         if (_bienvenidaVista.value == null) _bienvenidaVista.value = bienvenida
         val tarjetaVista = withContext(serieDisco) { disco?.leer(ARCHIVO_TARJETA_VISTA)?.let { ValorJson.desde(it) } == ValorJson.Booleano(true) }
@@ -151,7 +189,7 @@ class ModeloGuia(
             _estado.value = Estado.LISTA
             _desdeCache.value = true
         }
-        if (_resumen.value == null && _estado.value != Estado.NO_HAY) _resumen.value = r ?: g?.let(ResumenGuia::de)
+        if (_resumen.value == null && _estado.value != Estado.NO_HAY) ponerResumen(r ?: g?.let(ResumenGuia::de))
         // Las dudas que quedaron en la cola (la app se cerró antes de que salieran) se ven como pendientes.
         outbox?.let { cola ->
             val ops = cola.operaciones()
@@ -199,11 +237,14 @@ class ModeloGuia(
         val local = _guia.value?.let(ResumenGuia::de)
         // Lo visto en el teléfono gana, pero la fecha y `mostrar_tarjeta` son siempre las del servidor.
         val final = if (local != null && local.total == nuevo.total && local.vistos > nuevo.vistos) {
-            local.copy(fechaEntrega = nuevo.fechaEntrega, mostrarTarjeta = nuevo.mostrarTarjeta)
+            local.copy(
+                fechaEntrega = nuevo.fechaEntrega, mostrarTarjeta = nuevo.mostrarTarjeta,
+                novedadEn = nuevo.novedadEn, reserva = nuevo.reserva, nuevosTotal = nuevo.nuevosTotal, nuevosVistos = nuevo.nuevosVistos,
+            )
         } else {
             nuevo
         }
-        _resumen.value = final
+        ponerResumen(final)
         alDisco { guardar(ARCHIVO_RESUMEN, final.aValor()) }
     }
 
@@ -255,7 +296,7 @@ class ModeloGuia(
     /** La sección deja de existir: sin caché y sin tarjeta. */
     private fun olvidar() {
         _guia.value = null
-        _resumen.value = null
+        ponerResumen(null)
         _desdeCache.value = false
         _estado.value = Estado.NO_HAY
         alDisco {
@@ -270,9 +311,18 @@ class ModeloGuia(
         // quedan los del último resumen; sin resumen todavía, la fecha de la guía.
         val previo = _resumen.value
         val resumen = ResumenGuia.de(g)?.let { r ->
-            if (previo != null) r.copy(fechaEntrega = previo.fechaEntrega, mostrarTarjeta = previo.mostrarTarjeta) else r
+            if (previo != null) {
+                r.copy(
+                    fechaEntrega = previo.fechaEntrega, mostrarTarjeta = previo.mostrarTarjeta,
+                    // La novedad y la reserva también son del resumen; sin `novedad_en` ahí, la del get.
+                    novedadEn = previo.novedadEn ?: r.novedadEn, reserva = previo.reserva,
+                    nuevosTotal = previo.nuevosTotal, nuevosVistos = previo.nuevosVistos,
+                )
+            } else {
+                r
+            }
         }
-        resumen?.let { _resumen.value = it }
+        resumen?.let { ponerResumen(it) }
         alDisco {
             guardar(ARCHIVO_GUIA, g.aValor())
             resumen?.let { guardar(ARCHIVO_RESUMEN, it.aValor()) }
@@ -284,8 +334,15 @@ class ModeloGuia(
     /** «Quitar de Entreno» (true) o «Volver a mostrar en Entreno» (false). Queda en el teléfono; no llama al servidor. */
     fun ocultarDeEntreno(oculta: Boolean) {
         ocultaTocada = true
-        _ocultaAMano.value = oculta
-        alDisco { if (oculta) guardar(ARCHIVO_OCULTA, ValorJson.Booleano(true)) else borrar(ARCHIVO_OCULTA) }
+        ocultaMarcada = oculta
+        // Con la fecha: una novedad posterior la hace volver ([ReglasNovedad.reaparece]).
+        ocultaEn = if (oculta) java.time.Instant.ofEpochMilli(reloj()).toString() else null
+        recalcularOculta()
+        val en = ocultaEn
+        alDisco {
+            if (oculta) guardar(ARCHIVO_OCULTA, ValorJson.objeto("oculta" to ValorJson.Booleano(true), "en" to ValorJson.Texto(en!!)))
+            else borrar(ARCHIVO_OCULTA)
+        }
     }
 
     /** La bienvenida ya se mostró: no vuelve a salir para esta cuenta en este teléfono. No llama al servidor. */
@@ -307,7 +364,12 @@ class ModeloGuia(
         val clave = claveAvance(g.video)
         val previo = outbox?.pendientesPorClave()?.get(clave)?.let(::avanceDe)
         val final = SeguimientoAvance.fusionar(previo, g)
-        _guia.value?.let { actual -> publicar(conAvance(actual, final)) }
+        val antes = _guia.value
+        antes?.let { actual -> publicar(conAvance(actual, final)) }
+        // Un obligatorio recién visto (y la agenda existe): la agenda se pide de nuevo cuando el avance ya salió, así el
+        // contador del servidor baja y, con el último, se habilita (2.2.0).
+        val ahora = _guia.value
+        val nuevoObligatorio = antes != null && ahora != null && ReglasAgenda.faltan(ahora) < ReglasAgenda.faltan(antes)
         outbox?.encolar(
             KIND_AVANCE,
             ValorJson.objeto(
@@ -317,6 +379,12 @@ class ModeloGuia(
             ),
             clave,
         )
+        if (nuevoObligatorio && agenda.agenda.value != null) {
+            alcance.launch {
+                outbox?.drenar(esperarAudios = false)
+                agenda.refrescar()
+            }
+        }
     }
 
     /** Una duda de un video. Devuelve false si el texto no es válido (vacío o más de 1000) o no hay cola. */
@@ -370,6 +438,7 @@ class ModeloGuia(
     /** Lo que el servidor guardó (lo pasa [ModeloApp] desde la cola). */
     fun alGuardar(ops: List<OpGuardada>) {
         audios.alGuardar(ops)
+        agenda.alGuardar(ops)
         val nuestras = ops.filter { it.op.kind == KIND_DUDA || it.op.kind == KIND_DUDA_LLAMADA }
         if (nuestras.isEmpty()) return
         alcance.launch {
@@ -383,6 +452,7 @@ class ModeloGuia(
     /** Lo que la cola abandonó tras 8 intentos (va a fallidos): la duda vuelve al campo. */
     fun alAbandonar(ops: List<Operacion>) {
         audios.alAbandonar(ops)
+        agenda.alAbandonar(ops)
         val nuestras = ops.filter { it.kind == KIND_DUDA || it.kind == KIND_DUDA_LLAMADA }
         if (nuestras.isEmpty()) return
         alcance.launch { for (op in nuestras) resolver(op, false) }
@@ -421,11 +491,13 @@ class ModeloGuia(
          * La guía de «Ver demo»: [guia] es la respuesta de muestra con la forma del get (`apps/shared/demo/guia.json`). Sin
          * token, cola ni disco: [refrescarResumen] y [abrir] no llaman al servidor.
          */
-        fun demo(cliente: ClienteRpc, guia: Guia, alcance: CoroutineScope): ModeloGuia =
-            ModeloGuia(cliente, token = "", outbox = null, disco = null, alcance = alcance, esDemo = true).also { m ->
+        fun demo(cliente: ClienteRpc, guia: Guia, alcance: CoroutineScope, agenda: AgendaEntrega? = null): ModeloGuia =
+            ModeloGuia(cliente, token = "", outbox = null, disco = null, alcance = alcance, esDemo = true, agendaDemo = agenda).also { m ->
                 m._guia.value = guia
-                m._resumen.value = ResumenGuia.de(guia)
+                m.ponerResumen(ResumenGuia.de(guia))
                 m._estado.value = Estado.LISTA
+                // La agenda de muestra se arma con lo visto de la guía, que recién ahora está.
+                if (agenda != null) alcance.launch { m.agenda.refrescar() }
             }
 
         fun claveAvance(video: String): String = "guia_avance_$video"

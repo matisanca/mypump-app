@@ -106,6 +106,7 @@ import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.modelos.Dia
 import com.pumpteam.mypump.modelos.Ejercicio
 import com.pumpteam.mypump.raiz.BannerRevision
+import com.pumpteam.mypump.guia.EntregaAhoraDe
 import com.pumpteam.mypump.guia.TarjetaGuiaDe
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.Js
@@ -183,6 +184,8 @@ fun ListaEntreno(
                     verticalArrangement = Arrangement.spacedBy(Espacio.l),
                 ) {
                     // «Tu guía» mientras falta ver algo: verde y primera, arriba de todo, como iOS (revisión del 4-nov, hallazgo 5).
+                    // «Tu entrega empieza a las 10:00 · Entrar» (2.2.0): desde 30 min antes hasta el fin de la franja.
+                    EntregaAhoraDe(modelo)
                     TarjetaGuiaDe(modelo, solo = ReglasGuia.EstiloTarjeta.DESTACADA)
                     // Hasta dónde llega la cabecera (con la tarjeta arriba, no es solo su alto): el título pasa a la barra después.
                     Cabecera(motor, v, titulo, Modifier.onGloballyPositioned { altoCabecera = (it.positionInParent().y + it.size.height).toInt() })

@@ -85,6 +85,7 @@ import com.pumpteam.mypump.modelos.ResumenGuia
 import com.pumpteam.mypump.raiz.Navegacion
 import com.pumpteam.mypump.raiz.Pestana
 import com.pumpteam.mypump.reglas.ReglasGuia
+import com.pumpteam.mypump.reglas.ReglasNovedad
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -104,9 +105,19 @@ val VerdeGuia = Color(0xFF157A28)
  * botón blanco y, arriba a la derecha, «Ocultar» (48 dp de toque). Tocar la tarjeta también abre la guía.
  */
 @Composable
-fun TarjetaGuiaDestacada(resumen: ResumenGuia, pulso: Boolean, alAbrir: () -> Unit, alOcultar: () -> Unit, modifier: Modifier = Modifier) {
-    val texto = ReglasGuia.textoDestacada(resumen)
-    val boton = ReglasGuia.botonDestacada(resumen)
+fun TarjetaGuiaDestacada(
+    resumen: ResumenGuia,
+    pulso: Boolean,
+    alAbrir: () -> Unit,
+    alOcultar: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Con novedad (2.2.0): «NOVEDAD EN TU GUÍA», el mismo verde, y el avance de los nuevos solamente. */
+    novedad: ReglasNovedad.Tarjeta? = null,
+) {
+    val texto = novedad?.let(ReglasNovedad::textoTarjeta) ?: ReglasGuia.textoDestacada(resumen)
+    val boton = if (novedad != null) ReglasNovedad.BOTON else ReglasGuia.botonDestacada(resumen)
+    val etiquetaArriba = if (novedad != null) "NOVEDAD EN TU GUÍA" else "EMPEZÁ POR ACÁ"
+    val fraccion = novedad?.fraccion ?: ReglasGuia.fraccion(resumen)
     val forma = RoundedCornerShape(Radio.tarjeta)
     Column(
         modifier = modifier
@@ -114,7 +125,7 @@ fun TarjetaGuiaDestacada(resumen: ResumenGuia, pulso: Boolean, alAbrir: () -> Un
             .clip(forma)
             .background(VerdeGuia)
             // TalkBack lee la tarjeta entera de una (la etiqueta, el título y el avance); «Ocultar» y el botón, aparte.
-            .semantics { contentDescription = "Empezá por acá. Tu guía. $texto" }
+            .semantics { contentDescription = (if (novedad != null) "Novedad en tu guía. " else "Empezá por acá. Tu guía. ") + texto }
             .clickable(onClickLabel = "Abrir tu guía", role = Role.Button, onClick = alAbrir)
             .testTag("tarjeta-guia")
             .padding(start = Espacio.m + 2.dp, end = Espacio.xs, top = Espacio.xs, bottom = Espacio.m + 2.dp),
@@ -122,12 +133,12 @@ fun TarjetaGuiaDestacada(resumen: ResumenGuia, pulso: Boolean, alAbrir: () -> Un
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "EMPEZÁ POR ACÁ",
+                etiquetaArriba,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.08.em,
                 color = Color.White,
-                modifier = Modifier.weight(1f).padding(top = Espacio.xs).testTag("guia-empeza-por-aca").clearAndSetSemantics {},
+                modifier = Modifier.weight(1f).padding(top = Espacio.xs).testTag(if (novedad != null) "guia-novedad" else "guia-empeza-por-aca").clearAndSetSemantics {},
             )
             TextButton(
                 onClick = alOcultar,
@@ -152,7 +163,7 @@ fun TarjetaGuiaDestacada(resumen: ResumenGuia, pulso: Boolean, alAbrir: () -> Un
             }
         }
         LinearProgressIndicator(
-            progress = { ReglasGuia.fraccion(resumen).coerceIn(0f, 1f) },
+            progress = { fraccion.coerceIn(0f, 1f) },
             modifier = Modifier.padding(end = Espacio.s).fillMaxWidth().height(6.dp).clip(CircleShape).clearAndSetSemantics {},
             color = Color.White,
             trackColor = Color.White.copy(alpha = 0.28f),

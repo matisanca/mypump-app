@@ -179,9 +179,9 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
             val (rutina, dieta, opcionales) = withContext(Dispatchers.IO) {
                 fun leer(n: String) = app.assets.open("demo/$n.json").use { it.readBytes().toString(Charsets.UTF_8) }
                 // La guía y la suplementación de muestra son opcionales: si faltaran, la demo sigue sin ellas.
-                Triple(leer("rutina"), leer("dieta"), runCatching { leer("guia") }.getOrNull() to runCatching { leer("suplementacion") }.getOrNull())
+                Triple(leer("rutina"), leer("dieta"), listOf("guia", "suplementacion", "agenda").map { runCatching { leer(it) }.getOrNull() })
             }
-            m.entrarEnDemo(rutina, dieta, opcionales.first, opcionales.second)
+            m.entrarEnDemo(rutina, dieta, opcionales[0], opcionales[1], opcionales[2])
         }
     }
 

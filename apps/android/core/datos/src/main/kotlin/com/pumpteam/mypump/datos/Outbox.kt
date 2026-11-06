@@ -143,6 +143,9 @@ sealed interface ResultadoOp {
  * tiene un tope de 2 h desde la primera vez ([TOPE_ESPERA_AUDIO_MS]); pasado, va a fallidos. «Cerrar el día» y el chat
  * drenan sin esperar a los audios ([drenar] con `esperarAudios = false`).
  *
+ * La reserva de la entrega ([ModeloAgenda.KIND], 2.2.0) tiene otro carril igual al de los audios: sin red no gasta intento
+ * ni frena a nadie, y tiene su estado en la pantalla («Estamos reservando tu horario…»).
+ *
  * Y uno de la nativa: las ops de la migración ([Operacion.legado]) quedan en la cola sin mandarse mientras la palanca
  * remota `migracion_ops_legadas` está apagada o todavía no se leyó ([usarPalanca]).
  *
@@ -174,8 +177,11 @@ class Outbox(
     private val ops = mutableListOf<Operacion>()
     private val fallidosLista = mutableListOf<Fallido>()
 
-    /** Un carril de la cola: el general y el de los audios de la guía. Cada uno con su pasada, su temporizador y su racha. */
-    private class Carril(val audio: Boolean) {
+    /**
+     * Un carril de la cola: el general, el de los audios de la guía y el de la reserva de la entrega. Cada uno con su pasada,
+     * su temporizador y su racha. [aparte]: los de la guía, que no frenan ni avisan (ver la documentación de la clase).
+     */
+    private class Carril(val aparte: Boolean) {
         var enVuelo: Deferred<Unit>? = null
         var temporizador: Job? = null
 
@@ -190,12 +196,20 @@ class Outbox(
         var racha = 0
     }
 
-    private val general = Carril(audio = false)
-    private val audios = Carril(audio = true)
+    private val general = Carril(aparte = false)
+    private val audios = Carril(aparte = true)
 
-    private fun carrilDe(op: Operacion): Carril = if (op.kind == ModeloAudioDudas.KIND) audios else general
+    /** La reserva de la entrega (2.2.0, [ModeloAgenda.KIND]): su propio carril, como el audio. */
+    private val reservas = Carril(aparte = true)
+    private val carriles = listOf(general, audios, reservas)
 
-    private fun enCarril(c: Carril, op: Operacion): Boolean = (op.kind == ModeloAudioDudas.KIND) == c.audio
+    private fun carrilDe(op: Operacion): Carril = when (op.kind) {
+        ModeloAudioDudas.KIND -> audios
+        ModeloAgenda.KIND -> reservas
+        else -> general
+    }
+
+    private fun enCarril(c: Carril, op: Operacion): Boolean = carrilDe(op) === c
 
     private var huboProblema = false
     private var secuencia = 0
@@ -254,7 +268,7 @@ class Outbox(
         val antes = retenerLegadas
         retenerLegadas = !opsLegadas
         if (antes && opsLegadas) {
-            for (c in listOf(general, audios)) if (ops.any { it.legado == true && enCarril(c, it) }) programar(c, 0)
+            for (c in carriles) if (ops.any { it.legado == true && enCarril(c, it) }) programar(c, 0)
         }
     }
 
@@ -366,14 +380,19 @@ class Outbox(
      */
     suspend fun drenar(esperarAudios: Boolean = true) {
         if (!esperarAudios) {
-            if (!cerrada) alcance.launch { drenarCarril(audios) }
+            if (!cerrada) {
+                alcance.launch { drenarCarril(audios) }
+                alcance.launch { drenarCarril(reservas) }
+            }
             drenarCarril(general)
             return
         }
         coroutineScope {
             val a = async { drenarCarril(audios) }
+            val r = async { drenarCarril(reservas) }
             drenarCarril(general)
             a.await()
+            r.await()
         }
     }
 
@@ -407,7 +426,7 @@ class Outbox(
     fun cerrar() {
         cerrada = true
         alcance.launch(confinado) {
-            for (c in listOf(general, audios)) {
+            for (c in carriles) {
                 c.temporizador?.cancel()
                 c.temporizador = null
             }
@@ -442,7 +461,7 @@ class Outbox(
         c.ultimaTanda = tanda.mapTo(HashSet()) { it.id }
         if (tanda.isEmpty()) return
         // El carril de los audios no toca el aviso general: tienen su estado al lado del botón.
-        val hayVisibles = !c.audio && tanda.any { it.kind !in SILENCIOSAS }
+        val hayVisibles = !c.aparte && tanda.any { it.kind !in SILENCIOSAS }
         val resueltas = HashSet<String>()
         val abandonadas = mutableListOf<Operacion>()
         val vencidas = mutableListOf<Operacion>()
@@ -472,7 +491,7 @@ class Outbox(
                 lenta.cancel()
                 throw e
             } catch (_: IOException) {
-                if (c.audio) {
+                if (c.aparte) {
                     esperaAudio = true  // un audio sin red no frena a los otros audios ni gasta intento
                     continue
                 }
@@ -510,7 +529,7 @@ class Outbox(
                 continue
             }
             if (error != null && error.clase != ErrorRpc.Clase.PERMANENTE) {
-                if (c.audio) {
+                if (c.aparte) {
                     esperaAudio = true  // red o transitorio en un audio: se saltea, sin gastar intento
                     continue
                 }
@@ -547,7 +566,7 @@ class Outbox(
         if (abandonadas.isNotEmpty() || vencidas.isNotEmpty()) alAbandonar?.invoke(abandonadas + vencidas)
         // Un audio en espera no es falta de señal: no muestra «sin conexión», pero la pasada cuenta como no terminada.
         c.ultimaFallo = algunaFallo || esperaAudio
-        if (!c.audio) {
+        if (!c.aparte) {
             if (abandonadasVisibles.isNotEmpty()) {
                 huboProblema = false
                 avisar(EstadoGuardado.PERDIDO)
@@ -662,7 +681,7 @@ class Outbox(
          * El avance de «Tu guía» sale solo cada 10 s mientras corre un video: tampoco avisa. Los audios de la guía tienen su
          * propio estado al lado del botón («Mandando tu audio…», «No se pudo mandar»): el aviso general lo repetiría.
          */
-        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND, ModeloGuia.KIND_AVANCE, ModeloAudioDudas.KIND)
+        val SILENCIOSAS: Set<String> = setOf(SustitucionesServidor.KIND_GUARDAR, SustitucionesServidor.KIND_BORRAR, AjustesDieta.KIND, ModeloGuia.KIND_AVANCE, ModeloAudioDudas.KIND, ModeloAgenda.KIND)
 
         /**
          * Kinds que se anotan como [Operacion.intentada] antes de salir: el chat, que antes de reintentar mira si ya había

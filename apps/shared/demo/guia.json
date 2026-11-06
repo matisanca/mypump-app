@@ -2,6 +2,8 @@
   "ok": true,
   "nombre_pila": null,
   "fecha_entrega": null,
+  "fase": 2,
+  "novedad_en": "2026-11-05T12:00:00-03:00",
   "clips": [
     {
       "id": "FT-25a",
@@ -12,7 +14,9 @@
       "bloque": "Tu app",
       "visto": false,
       "segundos": 0,
-      "duda": null
+      "duda": null,
+      "nuevo": false,
+      "obligatorio": true
     },
     {
       "id": "FT-2b",
@@ -23,7 +27,9 @@
       "bloque": "Tu app",
       "visto": false,
       "segundos": 0,
-      "duda": null
+      "duda": null,
+      "nuevo": false,
+      "obligatorio": true
     },
     {
       "id": "FT-2c",
@@ -34,7 +40,9 @@
       "bloque": "Tu app",
       "visto": false,
       "segundos": 0,
-      "duda": null
+      "duda": null,
+      "nuevo": false,
+      "obligatorio": false
     },
     {
       "id": "FT-9a",
@@ -45,7 +53,9 @@
       "bloque": "Tu app",
       "visto": false,
       "segundos": 0,
-      "duda": null
+      "duda": null,
+      "nuevo": false,
+      "obligatorio": false
     },
     {
       "id": "FT-9b",
@@ -56,7 +66,9 @@
       "bloque": "Tu app",
       "visto": false,
       "segundos": 0,
-      "duda": null
+      "duda": null,
+      "nuevo": true,
+      "obligatorio": true
     },
     {
       "id": "FT-9c",
@@ -67,7 +79,9 @@
       "bloque": "Tu app",
       "visto": false,
       "segundos": 0,
-      "duda": null
+      "duda": null,
+      "nuevo": true,
+      "obligatorio": true
     },
     {
       "id": "FT-2a",
@@ -78,7 +92,9 @@
       "bloque": "Tu app",
       "visto": false,
       "segundos": 0,
-      "duda": null
+      "duda": null,
+      "nuevo": false,
+      "obligatorio": false
     },
     {
       "id": "FT-2d",
@@ -89,7 +105,9 @@
       "bloque": "Tu app",
       "visto": false,
       "segundos": 0,
-      "duda": null
+      "duda": null,
+      "nuevo": false,
+      "obligatorio": false
     }
   ],
   "dudas_llamada": [],

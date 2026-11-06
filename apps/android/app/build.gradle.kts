@@ -145,6 +145,8 @@ val assetsCompartidos = tasks.register<CopiarCompartido>("assetsCompartidos") {
         "demo/dieta.json" to "apps/shared/demo/dieta.json",
         // «Tu guía» de la demo: los clips genéricos de «Tu app» (los pasa la obra de entregas), con la forma del get.
         "demo/guia.json" to "apps/shared/demo/guia.json",
+        // La agenda de la entrega de la demo (2.2.0): franjas ficticias; reservar confirma sin crear videollamada.
+        "demo/agenda.json" to "apps/shared/demo/agenda.json",
         // Suplementación de la demo: la fila de `mypump_suplementacion` (ficticia).
         "demo/suplementacion.json" to "apps/shared/demo/suplementacion.json",
         "bases/catalogo-ejercicios.json" to "apps/shared/catalogo-ejercicios.json",

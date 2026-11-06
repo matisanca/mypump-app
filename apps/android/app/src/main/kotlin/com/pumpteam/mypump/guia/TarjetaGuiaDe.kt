@@ -10,6 +10,7 @@ import com.pumpteam.mypump.datos.ModeloGuia
 import com.pumpteam.mypump.modelos.ResumenGuia
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.ReglasGuia
+import com.pumpteam.mypump.reglas.ReglasNovedad
 
 /**
  * La tarjeta de «Tu guía» arriba de Entreno (la verde destacada hasta ver todo, después la compacta con el tilde), con lo que dijo el último `entregas_app_resumen` (o la guía en memoria, si es
@@ -24,8 +25,11 @@ fun TarjetaGuiaDe(modelo: ModeloApp, modifier: Modifier = Modifier, solo: Reglas
     val guia by modelo.guia.collectAsStateWithLifecycle()
     val g = guia ?: return
     val (resumen, lugar) = lugarDeLaGuia(g)
+    val enMemoria by g.guia.collectAsStateWithLifecycle()
     if (resumen == null || lugar != ReglasGuia.Lugar.ENTRENO) return
-    val estilo = ReglasGuia.estiloTarjeta(resumen)
+    // Con novedad sin ver (2.2.0), la verde con «NOVEDAD EN TU GUÍA»: la compacta solo si también vio los nuevos.
+    val novedad = ReglasNovedad.tarjeta(resumen, enMemoria)
+    val estilo = if (novedad != null) ReglasGuia.EstiloTarjeta.DESTACADA else ReglasGuia.estiloTarjeta(resumen)
     // Entreno pone la destacada arriba de la cabecera y la compacta debajo: cada lugar pide la suya.
     if (solo != null && estilo != solo) return
     if (estilo == ReglasGuia.EstiloTarjeta.DESTACADA) LaunchedEffect(g) { g.marcarTarjetaVista() }
@@ -41,6 +45,7 @@ fun TarjetaGuiaDe(modelo: ModeloApp, modifier: Modifier = Modifier, solo: Reglas
                 navegacion?.let { it.avisoGuiaOculta++ }
             },
             modifier = modifier,
+            novedad = novedad,
         )
         ReglasGuia.EstiloTarjeta.COMPACTA -> TarjetaGuia(resumen, alAbrir = { navegacion?.guia = true }, modifier = modifier)
     }

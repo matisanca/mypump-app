@@ -9,6 +9,7 @@ import com.pumpteam.mypump.modelos.ComidaMarcada
 import com.pumpteam.mypump.modelos.DietaActiva
 import com.pumpteam.mypump.modelos.EstructuraDieta
 import com.pumpteam.mypump.modelos.FoodSwap
+import com.pumpteam.mypump.modelos.AgendaEntrega
 import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.Macros
 import com.pumpteam.mypump.modelos.PlanSuplementacion
@@ -367,7 +368,7 @@ class ModeloApp(
      * "Ver demo": la rutina y la dieta de ejemplo de la web (`SAMPLE_RUTINA` / `SAMPLE_DIET`, que la app trae
      * empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria.
      */
-    fun entrarEnDemo(rutina: String, dieta: String, guia: String? = null, suplementacion: String? = null) {
+    fun entrarEnDemo(rutina: String, dieta: String, guia: String? = null, suplementacion: String? = null, agenda: String? = null) {
         fun envolver(estructura: String): JsonElement? = try {
             ValorJson.objeto(
                 "id" to texto("demo"), "version" to numero(1), "estructura" to ValorJson.parsear(estructura), "semana_actual" to numero(1),
@@ -396,7 +397,11 @@ class ModeloApp(
             } catch (_: Exception) {
                 null
             }
-        }?.let { ModeloGuia.demo(cliente, it, alcance) }
+        }?.let { g ->
+            // La agenda de muestra (2.2.0), opcional: sin ella la guía de la demo queda como en la 2.1.0.
+            val a = agenda?.let { runCatching { AgendaEntrega.desde(ValorJson.parsear(it).aJson()) }.getOrNull() }
+            ModeloGuia.demo(cliente, g, alcance, a)
+        }
         // La suplementación de muestra (la fila del RPC), opcional como la guía.
         _suplementacion.value = suplementacion?.let { s ->
             try {
@@ -747,6 +752,8 @@ class ModeloApp(
         _chat.value?.sondear()
         _fotos.value?.drenar()
         _guia.value?.refrescarResumen()
+        // La agenda de la entrega, solo con una reserva pendiente (con la guía abierta la consulta su pantalla).
+        _guia.value?.agenda?.let { a -> alcance.launch { a.alVolverAPrimerPlano() } }
         // Suplementación: aparte, así no demora lo que sigue (es solo lectura).
         _suplementacion.value?.let { m -> alcance.launch { m.refrescar() } }
         _salud.value?.alVolver()   // con la salud del sistema conectada: 7 días y retomar el historial (visibilitychange)

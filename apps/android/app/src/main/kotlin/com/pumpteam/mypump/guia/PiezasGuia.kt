@@ -69,6 +69,7 @@ import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.modelos.ClipGuia
 import com.pumpteam.mypump.modelos.ResumenGuia
+import com.pumpteam.mypump.reglas.ReglasAgenda
 import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.ReglasReproductor
 import com.pumpteam.mypump.reglas.SuplementacionVista
@@ -160,7 +161,7 @@ fun EncabezadoBloque(bloque: ReglasGuia.Bloque, vistos: Int, abierto: Boolean, a
                 stateDescription = estado
             }
             .padding(horizontal = Espacio.m + 4.dp, vertical = Espacio.s)
-            .testTag("bloque-${bloque.titulo}"),
+            .testTag(if (bloque.esNovedad) "bloque-novedad" else "bloque-${bloque.titulo}"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -192,6 +193,8 @@ fun FilaClip(
     alTocar: () -> Unit,
     alExpandir: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Cuenta para habilitar la agenda (2.2.0): la etiqueta discreta «Para ver antes de la entrega», la misma en todos. */
+    paraLaEntrega: Boolean = false,
 ) {
     val c = MyPump.colores
     val (hacer, paraQue) = ReglasGuia.partesMotivo(clip.motivo)
@@ -209,7 +212,8 @@ fun FilaClip(
                     .heightIn(min = 56.dp)
                     .clickable(enabled = clip.sePuedeVer, role = Role.Button, onClickLabel = "Reproducir", onClick = alTocar)
                     .semantics(mergeDescendants = true) {
-                        contentDescription = clip.titulo + ". " + (if (clip.sePuedeVer) ReglasGuia.duracionHablada(clip.minutos) else "Lo estoy subiendo")
+                        contentDescription = clip.titulo + ". " + (if (clip.sePuedeVer) ReglasGuia.duracionHablada(clip.minutos) else "Lo estoy subiendo") +
+                            (if (paraLaEntrega) ". ${ReglasAgenda.ETIQUETA}" else "")
                         stateDescription = estado
                     }
                     .padding(start = Espacio.m + 4.dp, end = if (tieneMotivo) 0.dp else Espacio.m, top = 10.dp, bottom = 10.dp)
@@ -218,12 +222,21 @@ fun FilaClip(
                 horizontalArrangement = Arrangement.spacedBy(Espacio.s),
             ) {
                 IconoClip(clip, actual)
-                Text(
-                    clip.titulo,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (clip.sePuedeVer) c.texto else c.textoSecundario,
-                    modifier = Modifier.weight(1f),
-                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        clip.titulo,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (clip.sePuedeVer) c.texto else c.textoSecundario,
+                    )
+                    if (paraLaEntrega) {
+                        Text(
+                            ReglasAgenda.ETIQUETA,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = c.textoTerciario,
+                            modifier = Modifier.testTag("para-la-entrega-${clip.id}"),
+                        )
+                    }
+                }
                 Text(
                     if (clip.sePuedeVer) ReglasGuia.duracion(clip.minutos) else "Lo estoy subiendo",
                     style = MaterialTheme.typography.bodyMedium,

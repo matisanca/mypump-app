@@ -29,9 +29,14 @@ object ReglasGuia {
     private val ES = Locale.forLanguageTag("es-AR")
 
     /** Un capítulo: su nombre tal cual viene y los índices de sus clips (en la lista de [ordenados]). */
-    data class Bloque(val titulo: String, val indices: List<Int>, val minutos: Double) {
-        /** «8 videos, unos 4 minutos», como la web. */
-        val resumen: String get() = "${cantidadVideos(indices.size)}, unos ${minutosRedondos(minutos)} minutos"
+    data class Bloque(val titulo: String, val indices: List<Int>, val minutos: Double, val esNovedad: Boolean = false) {
+        /** «8 videos, unos 4 minutos», como la web. En «Novedad», «3 videos nuevos para vos · 9 min». */
+        val resumen: String get() =
+            if (esNovedad) ReglasNovedad.textoNovedad(indices.size, minutos)
+            else "${cantidadVideos(indices.size)}, ${unosMinutos(minutosRedondos(minutos), corto = false)}"
+
+        /** Lo que lo identifica en la lista (los abiertos, la clave): «Novedad» no choca con un capítulo que se llame igual. */
+        val clave: String get() = if (esNovedad) ReglasNovedad.CLAVE_NOVEDAD else titulo
     }
 
     /** El botón del video de un suplemento, como pack.html: «Ver por qué (18 s)» (al menos 1 s). */
@@ -54,6 +59,10 @@ object ReglasGuia {
 
     /** `Math.max(1, Math.round(m))` de la web. */
     fun minutosRedondos(m: Double): Int = maxOf(1, Math.round(m).toInt())
+
+    /** «unos 12 minutos» / «unos 12 min»; con 1, «1 minuto» / «1 min» (nunca «unos 1», como iOS). */
+    fun unosMinutos(m: Int, corto: Boolean): String =
+        if (m == 1) (if (corto) "1 min" else "1 minuto") else "unos $m " + (if (corto) "min" else "minutos")
 
     private fun cantidadVideos(n: Int): String = if (n == 1) "1 video" else "$n videos"
 
@@ -78,12 +87,15 @@ object ReglasGuia {
     /** «Viste 4 de 13, te quedan unos 12 minutos» (la cabecera, como la web). */
     fun textoAvance(r: ResumenGuia): String =
         if (r.vistos >= r.total) "Viste todos, nos vemos en la videollamada"
-        else "Viste ${r.vistos} de ${r.total}, te quedan unos ${minutosRedondos(r.minutosRestantes)} minutos"
+        else "Viste ${r.vistos} de ${r.total}, " + minutosRedondos(r.minutosRestantes).let { if (it == 1) "te queda 1 minuto" else "te quedan unos $it minutos" }
 
     /** «4 de 13 videos, te quedan 12 min» (la tarjeta de inicio, propuesta de la espec). */
     fun textoTarjeta(r: ResumenGuia): String =
         if (r.vistos >= r.total) "Viste los ${r.total} videos"
-        else "${r.vistos} de ${r.total} videos, te quedan ${minutosRedondos(r.minutosRestantes)} min"
+        else "${r.vistos} de ${r.total} videos, ${teQuedanMin(minutosRedondos(r.minutosRestantes))}"
+
+    /** «te quedan 12 min»; con 1, «te queda 1 min». */
+    fun teQuedanMin(m: Int): String = if (m == 1) "te queda 1 min" else "te quedan $m min"
 
     /** La fracción vista, para la barra. */
     fun fraccion(r: ResumenGuia): Float = if (r.total <= 0) 0f else r.vistos.toFloat() / r.total
@@ -174,7 +186,7 @@ object ReglasGuia {
 
     /** La línea de la tarjeta destacada: «20 videos cortos, unos 14 min» sin ver ninguno; si no, la de siempre. */
     fun textoDestacada(r: ResumenGuia): String =
-        if (r.vistos == 0) "${videosCortos(r.total)}, unos ${minutosRedondos(r.minutosRestantes)} min" else textoTarjeta(r)
+        if (r.vistos == 0) "${videosCortos(r.total)}, ${unosMinutos(minutosRedondos(r.minutosRestantes), corto = true)}" else textoTarjeta(r)
 
     /** El botón de la tarjeta destacada. */
     fun botonDestacada(r: ResumenGuia): String = if (r.vistos == 0) "Ver mi guía" else "Seguir viendo"
@@ -187,8 +199,8 @@ object ReglasGuia {
 
     /** El texto de la bienvenida, en la voz de Mati. Con un solo video, «Es un video corto…, de unos X min.», como iOS. */
     fun textoBienvenida(r: ResumenGuia): String {
-        val min = minutosRedondos(r.minutosRestantes)
-        val cuantos = if (r.total == 1) "Es un video corto que armé para vos, de unos $min min." else "Son ${r.total} videos cortos que armé para vos, unos $min min."
+        val min = unosMinutos(minutosRedondos(r.minutosRestantes), corto = true)
+        val cuantos = if (r.total == 1) "Es un video corto que armé para vos, de $min." else "Son ${r.total} videos cortos que armé para vos, $min."
         return "Antes de empezar, mirá tu guía. $cuantos Así en la videollamada vamos directo a lo tuyo."
     }
 

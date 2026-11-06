@@ -30,6 +30,13 @@ data class Guia(
     val idsDeSuplementos: Set<String> = emptySet(),
     /** La suplementación tal cual vino, para la caché (así [desde] la vuelve a leer igual). */
     val suplementacionCruda: ValorJson? = suplementacion?.crudo,
+    /** `fase` (2.2.0): 1 o 2 (la guía v2, con la novedad). Si falta o es otra cosa, 1. */
+    val fase: Int = 1,
+    /**
+     * `novedad_en` (2.2.0): cuándo se aprobó la última tanda nueva, ISO con zona. null: no hay novedad y todo sigue como en
+     * la 2.1.0. Hace volver la tarjeta de Entreno si el cliente la había ocultado antes (ver `ReglasNovedad`).
+     */
+    val novedadEn: String? = null,
 ) {
     fun clip(id: String): ClipGuia? = clips.firstOrNull { it.id == id }
 
@@ -47,6 +54,9 @@ data class Guia(
     /** Los que salen de la lista porque los muestra su suplemento ([clipsDeLaLista]). */
     val clipsDeSuplementos: List<ClipGuia> get() = clips.filterNot { it in clipsDeLaLista }
 
+    /** Los de la última tanda (`nuevo: true`), de la lista y en su orden: el bloque «Novedad» de arriba. */
+    val nuevos: List<ClipGuia> get() = clipsDeLaLista.filter { it.nuevo }
+
     /** Lo que se guarda en la caché del teléfono (la misma forma del servidor, así se lee con [desde]). */
     fun aValor(): ValorJson = ValorJson.Objeto(
         linkedMapOf(
@@ -56,7 +66,11 @@ data class Guia(
             "clips" to ValorJson.Lista(clips.map { it.aValor() }),
             "dudas_llamada" to ValorJson.Lista(dudasLlamada.map { it.aValor() }),
             "suplementacion" to (suplementacionCruda ?: ValorJson.Nulo),
-        ),
+        ).apply {
+            // Solo si vinieron: la caché de una guía de antes queda igual que en la 2.1.0.
+            if (fase != 1) put("fase", ValorJson.Numero(fase.toDouble()))
+            novedadEn?.let { put("novedad_en", ValorJson.Texto(it)) }
+        },
     )
 
     companion object {
@@ -73,6 +87,8 @@ data class Guia(
                 suplementacion = Suplementacion.desde(s),
                 idsDeSuplementos = idsNombrados(s),
                 suplementacionCruda = (s as? JsonObject)?.let { ValorJson.desde(it) },
+                fase = o.entero("fase")?.takeIf { it == 2 } ?: 1,
+                novedadEn = o.cadena("novedad_en")?.trim()?.ifEmpty { null },
             )
         }
 
@@ -113,6 +129,13 @@ data class ClipGuia(
     val segundos: Int,
     /** Lo que ya dejó, acumulado con saltos de línea (hasta 3200 caracteres). */
     val duda: String?,
+    /** `nuevo` (2.2.0): es de la última tanda. Va arriba, en «Novedad». */
+    val nuevo: Boolean = false,
+    /**
+     * `obligatorio` (2.2.0): cuenta para habilitar la agenda. null = el clip no trae el campo; si ninguno lo trae (servidor
+     * viejo), cuentan todos los que se pueden ver (ver `ReglasAgenda.obligatorios`).
+     */
+    val obligatorio: Boolean? = null,
 ) {
     val sePuedeVer: Boolean get() = !url.isNullOrBlank()
 
@@ -127,7 +150,10 @@ data class ClipGuia(
             "visto" to ValorJson.Booleano(visto),
             "segundos" to ValorJson.Numero(segundos.toDouble()),
             "duda" to (duda?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
-        ),
+        ).apply {
+            if (nuevo) put("nuevo", ValorJson.Booleano(true))
+            obligatorio?.let { put("obligatorio", ValorJson.Booleano(it)) }
+        },
     )
 
     companion object {
@@ -146,6 +172,8 @@ data class ClipGuia(
                 visto = o.booleano("visto") ?: false,
                 segundos = o.decimal("segundos")?.takeIf { it.isFinite() && it > 0 }?.toInt() ?: 0,
                 duda = o.cadena("duda")?.ifBlank { null },
+                nuevo = o.booleano("nuevo") ?: false,
+                obligatorio = o.booleano("obligatorio"),
             )
         }
     }
@@ -309,6 +337,16 @@ data class ResumenGuia(
      * desde la guía): ahí la app hace la misma cuenta con [fechaEntrega] (ver `ReglasGuia.mostrarTarjeta`).
      */
     val mostrarTarjeta: Boolean? = null,
+    /** `novedad_en` (2.2.0), como en el get. null: sin novedad (la tarjeta de la 2.1.0). */
+    val novedadEn: String? = null,
+    /**
+     * `reserva` (2.2.0, opcional): la reserva de la entrega, para que la tarjeta de Entreno muestre «Entrar» sin pedir la
+     * agenda ni el get.
+     */
+    val reserva: ReservaEntrega? = null,
+    /** `nuevos_total` y `nuevos_vistos` (2.2.0, opcionales): el avance de la tarjeta «NOVEDAD EN TU GUÍA». */
+    val nuevosTotal: Int? = null,
+    val nuevosVistos: Int? = null,
 ) {
     fun aValor(): ValorJson = ValorJson.Objeto(
         linkedMapOf<String, ValorJson>(
@@ -317,7 +355,13 @@ data class ResumenGuia(
             "vistos" to ValorJson.Numero(vistos.toDouble()),
             "minutos_restantes" to ValorJson.Numero(minutosRestantes),
             "fecha_entrega" to (fechaEntrega?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
-        ).apply { mostrarTarjeta?.let { put("mostrar_tarjeta", ValorJson.Booleano(it)) } },
+        ).apply {
+            mostrarTarjeta?.let { put("mostrar_tarjeta", ValorJson.Booleano(it)) }
+            novedadEn?.let { put("novedad_en", ValorJson.Texto(it)) }
+            reserva?.let { put("reserva", it.aValor()) }
+            nuevosTotal?.let { put("nuevos_total", ValorJson.Numero(it.toDouble())) }
+            nuevosVistos?.let { put("nuevos_vistos", ValorJson.Numero(it.toDouble())) }
+        },
     )
 
     companion object {
@@ -334,6 +378,10 @@ data class ResumenGuia(
                 minutos,
                 fechaEntrega = o.cadena("fecha_entrega")?.trim()?.ifEmpty { null },
                 mostrarTarjeta = o["mostrar_tarjeta"]?.let(Lector::booleanoCrudo),
+                novedadEn = o.cadena("novedad_en")?.trim()?.ifEmpty { null },
+                reserva = ReservaEntrega.desde(o["reserva"]),
+                nuevosTotal = o.entero("nuevos_total")?.takeIf { it >= 0 },
+                nuevosVistos = o.entero("nuevos_vistos")?.takeIf { it >= 0 },
             )
         }
 
@@ -344,7 +392,7 @@ data class ResumenGuia(
          * «Viste X de N» de la cabecera y de la tarjeta de inicio: solo los clips de la lista ([Guia.clipsDeLaLista]), como
          * cuenta `entregas_app_resumen` desde `entregas_012` y la web.
          */
-        fun de(g: Guia): ResumenGuia? = de(g.clipsDeLaLista, g.fechaEntrega)
+        fun de(g: Guia): ResumenGuia? = de(g.clipsDeLaLista, g.fechaEntrega)?.copy(novedadEn = g.novedadEn)
 
         private fun de(l: List<ClipGuia>, fechaEntrega: String?): ResumenGuia? {
             if (l.isEmpty()) return null

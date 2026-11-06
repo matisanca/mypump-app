@@ -52,7 +52,7 @@ class ControlReproductor(
     private var modelo: ModeloGuia? = null
 
     /**
-     * Los clips en el orden en que se muestran ([ReglasGuia.ordenados] de [Guia.clipsDeLaLista]) y, al final, los que solo
+     * Los clips en el orden en que se muestran ([ReglasNovedad.ordenDeLaLista] de [Guia.clipsDeLaLista]) y, al final, los que solo
      * se ven con «Ver por qué» de su suplemento ([Guia.clipsDeSuplementos]): esos no entran en «Anterior», «Siguiente», el
      * paso solo al terminar ni el número «Video N de M».
      */
@@ -156,7 +156,8 @@ class ControlReproductor(
      * el inicial sin reproducir; con la misma, solo actualiza la lista (lo visto, las dudas) sin cortar lo que suena.
      */
     fun usar(m: ModeloGuia, guia: Guia) {
-        val deLista = ReglasGuia.ordenados(guia.clipsDeLaLista)
+        // Los nuevos arriba (2.2.0, «Novedad»): el mismo orden que la lista, así «Video N de M» y «Siguiente» coinciden.
+        val deLista = com.pumpteam.mypump.reglas.ReglasNovedad.ordenDeLaLista(guia.clipsDeLaLista)
         val nuevos = deLista + guia.clipsDeSuplementos
         val otraCuenta = m !== modelo
         if (otraCuenta) {
