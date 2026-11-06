@@ -16,7 +16,7 @@
       "segundos": 0,
       "duda": null,
       "nuevo": false,
-      "obligatorio": true
+      "obligatorio": false
     },
     {
       "id": "FT-2b",
@@ -29,7 +29,7 @@
       "segundos": 0,
       "duda": null,
       "nuevo": false,
-      "obligatorio": true
+      "obligatorio": false
     },
     {
       "id": "FT-2c",
@@ -67,8 +67,8 @@
       "visto": false,
       "segundos": 0,
       "duda": null,
-      "nuevo": true,
-      "obligatorio": true
+      "nuevo": false,
+      "obligatorio": false
     },
     {
       "id": "FT-9c",
@@ -80,8 +80,8 @@
       "visto": false,
       "segundos": 0,
       "duda": null,
-      "nuevo": true,
-      "obligatorio": true
+      "nuevo": false,
+      "obligatorio": false
     },
     {
       "id": "FT-2a",
@@ -93,8 +93,8 @@
       "visto": false,
       "segundos": 0,
       "duda": null,
-      "nuevo": false,
-      "obligatorio": false
+      "nuevo": true,
+      "obligatorio": true
     },
     {
       "id": "FT-2d",
@@ -106,8 +106,8 @@
       "visto": false,
       "segundos": 0,
       "duda": null,
-      "nuevo": false,
-      "obligatorio": false
+      "nuevo": true,
+      "obligatorio": true
     }
   ],
   "dudas_llamada": [],

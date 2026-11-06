@@ -171,9 +171,9 @@ android {
         targetSdk = 36
         // La Capacitor publicada es 18 / 1.0.12. La nativa arranca en 100 / 2.0.0: un versionCode no se puede reusar
         // en Play, y el salto deja lugar a arreglos de la 1.0.x mientras la 2.0.0 está en prueba.
-        // El flujo android-nativa de Codemagic los pasa desde el tag (nand-<versión>-<versionCode>); local quedan estos.
-        versionCode = (findProperty("mypump.versionCode") as String?)?.toInt() ?: 100
-        versionName = (findProperty("mypump.versionName") as String?) ?: "2.0.0"
+        // El flujo android-nativa de Codemagic los pasa desde el tag (nand-<versión>-<versionCode>); local quedan los de la última.
+        versionCode = (findProperty("mypump.versionCode") as String?)?.toInt() ?: 109
+        versionName = (findProperty("mypump.versionName") as String?) ?: "2.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
