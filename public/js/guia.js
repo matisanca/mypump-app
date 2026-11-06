@@ -723,7 +723,8 @@
         this._sondeo = null;
         if (!this.seccionAbierta || Date.now() - this._sondeoInicio > SONDEO_MAX_MS) return;
         await this.cargarLista();
-        if (this.haySubidos && this.seccionAbierta) this._sondeo = setTimeout(vuelta, SONDEO_CADA_MS);
+        // Mientras se esperaba la lista pudo arrancar otro sondeo: no se duplica.
+        if (!this._sondeo && this.haySubidos && this.seccionAbierta) this._sondeo = setTimeout(vuelta, SONDEO_CADA_MS);
       };
       this._sondeo = setTimeout(vuelta, SONDEO_CADA_MS);
     }
@@ -776,6 +777,9 @@
       this._chunks = [];
       this.mime = (rec.mimeType || elegido || 'audio/webm').split(';')[0];
       rec.ondataavailable = ev => { if (ev.data && ev.data.size) this._chunks.push(ev.data); };
+      // Si el micrófono se corta (otra app, se desconectó) o el grabador falla, se cierra lo grabado.
+      rec.onerror = () => { if (this.fase === 'grabando') this._parar(); };
+      stream.getTracks().forEach(tr => { tr.onended = () => { if (this.fase === 'grabando' && this._rec === rec) this._parar(); }; });
       rec.onstop = () => {
         // Sin timeslice: el Blob se arma acá (con timeslice Safari armaba mp4 rotos).
         if (this.fase === 'revisando' && this._chunks.length) {
@@ -1327,7 +1331,15 @@
   // Volvió la señal o la pestaña: se vacían las colas.
   window.addEventListener('online', () => { for (const m of modelos.values()) { m._espera = 0; m.procesarCola(); } });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') for (const m of modelos.values()) if (m.cola.length) m.procesarCola();
+    if (document.visibilityState !== 'visible') return;
+    for (const m of modelos.values()) {
+      if (m.cola.length) m.procesarCola();
+      // Al volver a primer plano, el resumen de nuevo (como la app), a lo sumo cada 5 minutos.
+      if (!m._resumenAlVolver || Date.now() - m._resumenAlVolver > 300000) {
+        m._resumenAlVolver = Date.now();
+        Promise.resolve(m.actualizarResumen()).then(() => m.avisar()).catch(() => {});
+      }
+    }
   });
 
   // ─── Íconos ─────────────────────────────────────────────────────

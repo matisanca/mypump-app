@@ -641,6 +641,10 @@ main{padding:var(--space-4)}
 .vm-ant-b{background:var(--color-brand-subtle)}
 .vm-sem-b{background:var(--color-brand)}
 .vm-pie{font-size:12px;color:var(--color-text-muted);margin-top:8px;line-height:1.4}
+.rv-aviso-plan{display:flex;gap:10px;align-items:flex-start;padding:var(--space-3) var(--space-4);margin:var(--space-3) 0;border-radius:var(--radius-lg);background:var(--color-bg-secondary);border:1px solid var(--color-border)}
+.rv-aviso-ico{flex:none;color:var(--color-warning, #d08700);margin-top:1px}
+.rv-aviso-tit{font-size:14px;font-weight:600;line-height:1.4;color:var(--color-text-primary)}
+.rv-aviso-det{font-size:12px;line-height:1.4;color:var(--color-text-muted);margin-top:4px}
 .rv-tarjetas{display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-4)}
 .rv-card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;width:100%;padding:var(--space-4);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer}
 .rv-card .rv-tit{font-size:16px;font-weight:700;color:var(--color-text-primary)}
@@ -2172,17 +2176,8 @@ function normalizarDieta(est) {
 function avisarPlanIncompleto(problemas) {
   if (!problemas || !problemas.length) return;
   console.warn('[plan] problemas detectados:', problemas);
-  const d = document.createElement('div');
-  d.className = 'rec-nota';
-  d.style.cssText = 'margin:10px 14px;line-height:1.5';
-  d.innerHTML = 'A tu plan le falta información y algunas cosas pueden verse raras. '
-    + 'Avisale a Mati y lo republica.<br><small style="opacity:.7">' +
-    problemas.slice(0, 3).map(p => p.replace(/</g, '&lt;')).join(' · ') + '</small>';
-  // 'scene-myday' ya no existe (Mi Dia vive dentro de Revision). Sin este
-  // cambio el aviso caia siempre al body, o sea arriba de todo y fuera de
-  // cualquier escena.
-  const cont = document.getElementById('scene-revision') || document.body;
-  cont.insertBefore(d, cont.firstChild);
+  // Lo muestra Revisión (_avisoPlanHtml), entre las tarjetas y las fotos.
+  if (STATE.scene === 'revision') { try { renderRevision(); } catch (_) {} }
 }
 
 function getSuggestedDay(dias, rutinaId) {
@@ -3371,6 +3366,7 @@ async function writeFinish(notas) {
   }
   // Día cerrado = día HECHO (aunque no se hayan tildado todos los ejercicios).
   _diaFinalizado = true;
+  STATE.progressLoaded = false;   // Revisión / Fuerza vuelven a traer el historial con lo de hoy
   localStorage.setItem(`mypump_sesion_${TOKEN}_${DATA.dia.id}_finalizada`, '1');
   // F1 — marcar el día en verde en el picker, al instante.
   STATE.diasCompletados.add(DATA.dia.id);
@@ -4329,7 +4325,7 @@ function renderExCard(ex, blockIdx) {
       <div class="ex-status">${statusIcon}</div>
       ${thumbHtml}
       <div class="ex-body">
-        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="${ex._swapFijado ? 'Sustitución fijada — se mantiene las próximas semanas' : 'Sustituido solo por hoy — la próxima sesión vuelve el original'}">${ex._swapFijado ? 'Fijado' : 'Solo hoy'}</span>` : ''}${manualBadge}${(() => { const u = getUnreadFor('ejercicio', ex.id); return u > 0 ? ` <span class="ex-comment-badge" title="${u} comentario(s) nuevo(s) de Mati">💬 ${u}</span>` : ''; })()}</div>
+        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="${ex._swapFijado ? 'Sustitución fijada — se mantiene las próximas semanas' : 'Sustituido solo por hoy — la próxima sesión vuelve el original'}">${ex._swapFijado ? 'Fijado' : 'Solo hoy'}</span>` : ''}${manualBadge}${(() => { const u = getUnreadFor('ejercicio', ex.id); return u > 0 ? ` <span class="ex-comment-badge" title="${u} comentario(s) nuevo(s) de Mati">${u}</span>` : ''; })()}</div>
         <div class="ex-meta">
           ${isWarmup ? '<span class="chip warm">CALENT.</span>' : ''}
           ${(ex.tipo === 'cardio' || prog.series === null)
@@ -4369,7 +4365,7 @@ function renderExCard(ex, blockIdx) {
       <div class="divider"></div>
       ${_metricasHtml(ex, prog)}
       ${_progNota ? `<div class="ex-prog-nota ${_progNota.cambia ? 'is-cambio' : (_progNota.calibracion ? 'is-calibracion' : 'is-mantener')}">
-        <span class="ex-prog-nota-lbl">${_progNota.cambia ? 'Cambio de la semana' : (_progNota.calibracion ? '🎯 Semana 1' : '📋 Esta semana')}</span>
+        <span class="ex-prog-nota-lbl">${_progNota.cambia ? 'Cambio de la semana' : (_progNota.calibracion ? 'Semana 1' : 'Esta semana')}</span>
         <span class="ex-prog-nota-txt">${_progNota.texto}</span>
       </div>` : ''}
       ${_preparacionHtml(ex, _prep, _noKg)}
@@ -4388,10 +4384,10 @@ function renderExCard(ex, blockIdx) {
       </div>
       ${(() => {
         const prev = prevSessionStr(ex.id);
-        const recordHtml = last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">🏆 Récord a superar:</span><span class="val">${last}</span></div>` : '';
+        const recordHtml = last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">Récord a superar:</span><span class="val">${last}</span></div>` : '';
         const prevHtml = prev ? `<div class="ex-prev-sesion"><span class="lbl">Última vez (${prev.rel}):</span><span class="val">${prev.val}</span></div>` : '';
         if (!recordHtml && !prevHtml) return '';
-        return `<div style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)">${prevHtml}${last ? `<div class="ex-historic" style="margin-top:${prevHtml?'var(--space-1)':'0'}"><span class="lbl">🏆 Récord a superar:</span><span class="val">${last}</span></div>` : ''}</div>`;
+        return `<div style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)">${prevHtml}${last ? `<div class="ex-historic" style="margin-top:${prevHtml?'var(--space-1)':'0'}"><span class="lbl">Récord a superar:</span><span class="val">${last}</span></div>` : ''}</div>`;
       })()}
       ${ex.images && (ex.images.eccentric || ex.images.concentric) ? `
         <div class="ex-images">
@@ -6570,7 +6566,7 @@ const _ICONO_BARRAS = '<svg width="22" height="22" viewBox="0 0 24 24" fill="non
    existe (Safari) se escribe el número. Siempre se puede escribir. */
 function abrirBarras(comidaId) {
   const conCamara = ('BarcodeDetector' in window) && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-  let stream = null, buscando = false;
+  let stream = null, buscando = false, ultimoLeido = null, tLeido = null;
   const parar = () => { try { if (stream) stream.getTracks().forEach(tr => tr.stop()); } catch (_) {} stream = null; };
   _abrirHoja(`
     <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>Código de barras</b><span></span></div>
@@ -6617,7 +6613,12 @@ function abrirBarras(comidaId) {
           if (!buscando) {
             try {
               const r = await det.detect(video);
-              if (r && r[0] && r[0].rawValue) { await resolver(r[0].rawValue, r[0].format === 'upc_e'); }
+              const raw = r && r[0] && r[0].rawValue;
+              // El mismo código no se busca de nuevo enseguida (sin red quedaba en bucle).
+              if (raw && raw !== ultimoLeido) {
+                ultimoLeido = raw; clearTimeout(tLeido); tLeido = setTimeout(() => { ultimoLeido = null; }, 8000);
+                await resolver(raw, r[0].format === 'upc_e');
+              }
             } catch (_) {}
           }
           setTimeout(ciclo, 250);
@@ -7980,6 +7981,7 @@ function renderSalud() {
         `<p class="salud-connect-txt">Cuando conectes tu reloj o tu anillo, acá vas a ver todo lo que mide: sueño con sus fases, pulso en reposo, variabilidad, respiración, oxígeno y temperatura.</p>
          ${native ? `<button class="btn-primary" id="sdConnect" style="width:100%">${_T('boton')}</button>`
                   : `<div class="rec-nota">Se conecta desde ${_T('desdeApp')}. Si usás Oura o Whoop, pronto vas a poder conectarlos desde acá también.</div>`}`)}
+      <div id="myday-conex"></div>
       <div id="sdAppleHealth"></div>
       <div id="sdNotif"></div>`;
     const b = document.getElementById('sdConnect');
@@ -9179,6 +9181,7 @@ function renderRevision() {
   // (se entra por la tarjeta Recuperación); el peso de la semana va en el check.
   root.innerHTML = `
     <div id="rv-tarjetas" class="rv-tarjetas"></div>
+    ${_avisoPlanHtml()}
     <div id="myday-fotos"></div>
     <div id="fpGaleria" class="fp-galeria"></div>
     <div id="myday-checkin"></div>`;
@@ -9188,10 +9191,22 @@ function renderRevision() {
   renderMydayCheckin();
   // La línea de «Tu progreso» sale del historial de cargas: si todavía no se
   // trajo, se trae (la misma carga que usa Fuerza).
-  if (!STATE.progressLoaded && !STATE._cargandoProgreso && DATA && !DATA._isDemo) {
+  const enCola = (() => { try { return Outbox.pending() > 0; } catch (_) { return false; } })();
+  if (!STATE.progressLoaded && !STATE._cargandoProgreso && !enCola && DATA && !DATA._isDemo) {
     STATE._cargandoProgreso = true;
     Promise.resolve(loadProgressAndRender()).catch(() => {}).finally(() => { STATE._cargandoProgreso = false; });
   }
+}
+
+/* GEN-05: al plan publicado le falta algo. Es para la captura que el cliente le
+   manda a Mati (qué republicar), como RevisionView.avisoPlan. */
+function _avisoPlanHtml() {
+  const p = (DATA && DATA._isDemo) ? [] : (_PLAN_PROBLEMAS || []);
+  if (!p.length) return '';
+  const ico = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+  return `<div class="rv-aviso-plan"><span class="rv-aviso-ico">${ico}</span><div>
+    <div class="rv-aviso-tit">A tu plan le falta información y algunas cosas pueden verse raras. Avisale a Mati y lo republica.</div>
+    <div class="rv-aviso-det">${p.slice(0, 3).map(x => escapeHtml(String(x))).join(' · ')}</div></div></div>`;
 }
 
 /* "Semana del 3 al 9 de noviembre" (de lunes a domingo), como RevisionView.semanaActual. */
@@ -9433,7 +9448,7 @@ function _vistaSupl(s) {
 
 /* `dias` para el cliente (ReglasSuplementacion.textoDias): null = todos los días. */
 function _suplDias(d) {
-  const partes = (Array.isArray(d) ? d : (typeof d === 'string' ? [d] : [])).map(x => String(x).trim()).filter(Boolean);
+  const partes = (Array.isArray(d) ? d : [d]).filter(x => typeof x === 'string' || typeof x === 'number').map(x => String(x).trim()).filter(Boolean);
   const clave = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   if (!partes.length || partes.some(p => clave(p) === 'todos')) return null;
   const SEM = [['lunes', ['lunes', 'lun', 'lu']], ['martes', ['martes', 'mar', 'ma']], ['miércoles', ['miercoles', 'mie', 'mi']],
@@ -9470,13 +9485,17 @@ function renderSupl() {
   if (STATE.suplAbierto != null) {
     const it = v.items[STATE.suplAbierto];
     if (it) { root.innerHTML = _suplDetalleHtml(it, v); _bindSuplDetalle(root); window.scrollTo(0, 0); return; }
-    STATE.suplAbierto = null;
+    root.innerHTML = `<button class="sd-volver" id="suplVolver">‹ Suplementación</button>
+      <div class="supl-sinred" style="margin-top:12px">Este suplemento ya no está</div>`;
+    const vb = document.getElementById('suplVolver');
+    if (vb) vb.onclick = () => { STATE.suplAbierto = null; renderSupl(); };
+    return;
   }
   const chips = it => {
     const est = _suplEstado(it.estado);
     const dias = _suplDias(it.dias);
     const c = [];
-    if (est) c.push(`<span class="supl-chip${est === 'sigue' ? '' : ' is-marca'}">${_SUPL_ESTADOS[est]}</span>`);
+    if (est && est !== 'sigue') c.push(`<span class="supl-chip is-marca">${_SUPL_ESTADOS[est]}</span>`);
     if (it.opcional === true) c.push('<span class="supl-chip">Opcional</span>');
     if (dias) c.push(`<span class="supl-chip">${E(dias)}</span>`);
     return c.length ? `<div class="supl-chips">${c.join('')}</div>` : '';
@@ -9551,9 +9570,17 @@ function renderMisDatos() {
   // Resumen de recuperación de la fila de arriba (ResumenRecuperacion).
   const serie = STATE.recup || [];
   const conScore = serie.slice(-3).reverse().find(r => r && r.score != null);
-  const recTxt = STATE.mostrarRecup === false ? 'Ocultaste el número de recuperación.'
-    : conScore ? `${conScore.score} de 100 · ${_REC_BANDA_TXT[conScore.banda || 'media'] || ''}`
-    : 'Todavía no hay nada registrado.';
+  const ultima = serie[serie.length - 1];
+  const rowRec = conScore || ultima;
+  const conectadoRec = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable() && window.MyPumpHealth.isConnected())
+    || (STATE.salud || []).some(r => r.fuente !== 'manual')
+    || (STATE.conexiones || []).some(c => c && c.estado === 'conectada');
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const recTxt = STATE.mostrarRecup === false ? 'Tenés el score apagado'
+    : (rowRec && rowRec.score != null && rowRec.estado !== 'calibrando') ? `${rowRec.score}/100 · ${_REC_BANDA_TXT[rowRec.banda || 'media'] || ''}`
+    : (rowRec && (rowRec.estado === 'calibrando' || (rowRec.score == null && rowRec.estado !== 'insuficiente'))) ? `Calibrando: ${rowRec.dias_datos || 0} de 14 días`
+    : conectadoRec ? 'Todavía no hay datos de esta noche para calcular tu recuperación.'
+    : (ios ? 'Conectá tu reloj o Salud de Apple' : 'Conectá tu reloj o Health Connect');
   const guia = !!(window.MyPumpGuia && TOKEN && window.MyPumpGuia.mostrarFila(TOKEN));
   const fila = (id, titulo, extra = '', cls = '') => `<button class="md-fila${cls}" id="${id}"><span>${titulo}</span>${extra}<span class="md-chev">${_CHEV_DER}</span></button>`;
   root.innerHTML = `
@@ -9924,9 +9951,18 @@ _guiaHost.hidden = true;
 function arrancarGuia() {
   if (!window.MyPumpGuia || !TOKEN || DEMO || (DATA && DATA._isDemo) || _guiaHost.dataset.montado) return;
   _guiaHost.dataset.montado = '1';
-  if (STATE.scene === 'train') { const r = document.getElementById('scene-train'); if (r) r.insertBefore(_guiaHost, r.firstChild); }
+  const r = document.getElementById('scene-train');
+  if (r) r.insertBefore(_guiaHost, r.firstChild);
   window.MyPumpGuia.montarTarjeta(_guiaHost, TOKEN).catch(() => {});
   window.MyPumpGuia.alCambiar(() => { if (STATE.scene === 'misdatos') renderMisDatos(); });
+  document.addEventListener('visibilitychange', _bienvenidaGuia);
+  _bienvenidaGuia();
+}
+// La bienvenida de la guía, una sola vez y solo con Entreno a la vista.
+let _bienvenidaPedida = false;
+function _bienvenidaGuia() {
+  if (_bienvenidaPedida || !_guiaHost.dataset.montado || STATE.scene !== 'train' || document.visibilityState !== 'visible') return;
+  _bienvenidaPedida = true;
   const nombre = String((DATA && DATA.cliente && DATA.cliente.nombre) || '').trim().split(/\s+/)[0] || '';
   window.MyPumpGuia.bienvenidaSiCorresponde(TOKEN, { nombre }).catch(() => {});
 }
@@ -9946,7 +9982,7 @@ function arrancarGuia() {
   renderTrain = function () {
     _rt.apply(this, arguments);
     const r = document.getElementById('scene-train');
-    if (r && window.MyPumpGuia && _guiaHost.dataset.montado) r.insertBefore(_guiaHost, r.firstChild);
+    if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
