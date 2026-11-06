@@ -238,9 +238,36 @@ class Escrituras(
             ModeloAudioDudas.KIND -> ResultadoOp.Respuesta(
                 EnvioAudioDuda(cliente, token).ejecutar(p, reintento = op.intentada == true || p["reintento"] == ValorJson.Booleano(true)),
             )
+            // La reserva de la entrega (2.2.0, `entregas_021_agenda`): idempotente por `p_id`, el uuid fijo del payload.
+            ModeloAgenda.KIND -> ResultadoOp.Respuesta(reservar(p))
             // Un kind desconocido no se descarta: va a fallidos (arreglo nativo n.º 2).
             else -> ResultadoOp.Respuesta(Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "KIND_DESCONOCIDO", op.kind)))
         }
+    }
+
+    /**
+     * `entregas_app_reservar(p_token, p_franja, p_id)`: `{ok: true, reserva}` o `{ok: false, motivo}` (`obligatorios`,
+     * `autorizada`, `tomada`, `ya_tiene`, `franja`, `error`) quedan como hechos y los muestra [ModeloAgenda]; `token` (o una
+     * respuesta vacía) es `false`, que la cola verifica y estaciona. Sin la función (PGRST202), un rechazo: reintentar daría
+     * lo mismo. Red y transitorio vuelven tal cual (en su carril, sin gastar intento).
+     */
+    private suspend fun reservar(p: ValorJson): Resultado<ValorJson> {
+        val id = (p["id"] as? ValorJson.Texto)?.valor?.takeIf { UUID.matches(it) }
+        val franja = (p["franja"] as? ValorJson.Texto)?.valor?.ifEmpty { null }
+        fun rechazo(m: String) = Resultado.Ok(ValorJson.objeto("ok" to ValorJson.Booleano(false), "motivo" to ValorJson.Texto(m)))
+        if (id == null || franja == null) return rechazo("franja")
+        val r = cliente.llamar(
+            "entregas_app_reservar",
+            mapOf("p_token" to texto(token), "p_franja" to ValorJson.Texto(franja), "p_id" to ValorJson.Texto(id)),
+        )
+        val v = when (r) {
+            is Resultado.Falla -> return if (r.error.funcionInexistente) rechazo("error") else r
+            is Resultado.Ok -> r.valor
+        }
+        if (v !is ValorJson.Objeto) return Resultado.Ok(ValorJson.Booleano(false))
+        val motivo = v["motivo"]?.comoTexto
+        if (v["ok"] != ValorJson.Booleano(true) && (motivo == null || motivo == "token")) return Resultado.Ok(ValorJson.Booleano(false))
+        return r
     }
 
     /**
@@ -320,7 +347,7 @@ class Escrituras(
             return if (UUID.matches(id)) mapOf("p_id" to ValorJson.Texto(id)) else emptyMap()
         }
 
-        val KINDS_GUIA: Set<String> = setOf(ModeloGuia.KIND_AVANCE, ModeloGuia.KIND_DUDA, ModeloGuia.KIND_DUDA_LLAMADA, ModeloAudioDudas.KIND)
+        val KINDS_GUIA: Set<String> = setOf(ModeloGuia.KIND_AVANCE, ModeloGuia.KIND_DUDA, ModeloGuia.KIND_DUDA_LLAMADA, ModeloAudioDudas.KIND, ModeloAgenda.KIND)
 
         /**
          * `valor === null ? 'null' : String(valor)` de la web (`setHabito`): null → "null", true → "true", 12 → "12".
