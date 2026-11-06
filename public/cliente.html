@@ -576,6 +576,14 @@ main{padding:var(--space-4)}
 .ex-comment-send{flex:0 0 auto;height:40px;padding:0 var(--space-4);background:var(--color-brand);color:var(--color-on-brand);border:none;border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer}
 .ex-comment-send:disabled{opacity:.6;cursor:default}
 /* ── Nota automática de progresión ── */
+.recordatorio-semanal{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2);margin-bottom:var(--space-3);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:14px;cursor:pointer}
+.recordatorio-semanal .rs-ico{flex:none;width:32px;height:32px;border-radius:50%;background:var(--color-brand);color:#fff;display:grid;place-items:center}
+[data-theme="dark"] .recordatorio-semanal .rs-ico{color:#040E04}
+.recordatorio-semanal .rs-ico svg{width:16px;height:16px}
+.recordatorio-semanal .rs-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.recordatorio-semanal .rs-tit{font-size:14px;font-weight:600;color:var(--color-text-primary)}
+.recordatorio-semanal .rs-sub{font-size:12px;color:var(--color-text-muted);line-height:1.35}
+.recordatorio-semanal .rs-chev{flex:none;color:var(--color-text-muted);opacity:.6;display:grid;place-items:center}
 .prog-banner{background:var(--color-brand-subtle);border:1px solid var(--color-brand);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);margin-bottom:var(--space-3);font-size:13px;line-height:1.4;color:var(--color-text-primary)}
 /* F3 — Start + cronómetro de sesión */
 .session-start{display:flex;align-items:center;gap:var(--space-3);width:100%;padding:var(--space-3) var(--space-4);margin-bottom:var(--space-3);background:var(--color-brand);color:var(--color-on-brand);border:0;border-radius:var(--radius-md);cursor:pointer;text-align:left}
@@ -1289,6 +1297,14 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
       <span>Dieta</span>
       <span class="tab-dot"></span>
     </button>
+    <!-- SUPLEMENTACIÓN, como en la app 2.1.0: solo si mypump_suplementacion trae
+         algún ítem con nombre. Progreso dejó de ser pestaña: vive en Revisión
+         (tarjeta «Tu progreso»), igual que en la app. -->
+    <button class="tab" data-scene="supl" role="tab" aria-selected="false" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+      <span>Suplementación</span>
+      <span class="tab-dot"></span>
+    </button>
     <!-- CHAT en la tabbar, en el lugar que tenia Mi Dia.
          Estaba como un icono chico en el header y no se encontraba: el cliente
          no va a buscar la conversacion con su coach en una lupa arriba a la
@@ -1306,11 +1322,6 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
       <span class="tab-badge" id="tabBadgeRevision" hidden></span>
       <span class="tab-dot"></span>
     </button>
-    <button class="tab" data-scene="progress" role="tab" aria-selected="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 14 4-4 4 4 5-5"/></svg>
-      <span>Progreso</span>
-      <span class="tab-dot"></span>
-    </button>
   </nav>
 
 </div><!-- /app -->
@@ -1325,8 +1336,8 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
     <div class="dl-title" id="dlTitle">MyPump anda mejor<br>como app</div>
     <div class="dl-sub">Descargala del App Store. Es la misma cuenta, no tenés que volver a entrar.</div>
     <div class="dl-list">
-      <div class="dl-li"><span>🔔</span>Te avisa cuando Mati te escribe</div>
-      <div class="dl-li"><span>📶</span>Funciona sin señal en el gimnasio</div>
+      <div class="dl-li"><span>✓</span>Te avisa cuando Mati te escribe</div>
+      <div class="dl-li"><span>✓</span>Funciona sin señal en el gimnasio</div>
       <div class="dl-li"><span>⌚</span>Se conecta con la salud de tu teléfono</div>
     </div>
     <a class="dl-cta" id="dlCta" href="https://apps.apple.com/ar/app/mypump/id6793259380" target="_blank" rel="noopener">Descargar gratis</a>
@@ -3325,8 +3336,8 @@ async function doAvanzarSemana() {
 async function confirmEmpezarBloqueNuevo() {
   const ok = await MyPump.ui.showConfirmModal({
     title:        '¡Nuevo bloque!',
-    body:         'Terminaste tu plan 💪. Tu coach ya te dejó preparado el siguiente bloque. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo — tus cargas anteriores quedan guardadas.',
-    confirmLabel: '🎉 Empezar bloque nuevo →',
+    body:         'Terminaste tu plan. Tu coach ya te dejó preparado el siguiente bloque. ¿Lo empezamos? Vas a arrancar en la primera semana del bloque nuevo — tus cargas anteriores quedan guardadas.',
+    confirmLabel: 'Empezar bloque nuevo',
     cancelLabel:  'Ahora no',
   });
   if (ok) await doEmpezarBloqueNuevo();
@@ -3390,7 +3401,7 @@ async function showDayCompletedModal() {
     // Último día de la lista — solo felicitar, sin avance automático.
     // El cliente debe usar el botón manual "Pasar a Semana N+1" cuando él decida.
     await MyPump.ui.showConfirmModal({
-      title:        '🎉 ¡Día completado!',
+      title:        '¡Día completado!',
       body:         'Buen trabajo. Cuando hayas terminado todos los días de la semana, usá el botón "Pasar a Semana N+1" abajo para avanzar.',
       confirmLabel: 'Listo',
       cancelLabel:  'Cerrar',
@@ -3400,7 +3411,7 @@ async function showDayCompletedModal() {
 
   const nextNombre = nextDia.nombre || `Día ${currentIdx + 2}`;
   const ok = await MyPump.ui.showConfirmModal({
-    title:        '🎉 ¡Día completado!',
+    title:        '¡Día completado!',
     body:         `Buen trabajo. ¿Querés ir al siguiente día (${nextNombre})?`,
     confirmLabel: `Ir a ${nextNombre} →`,
     cancelLabel:  'Ahora no',
@@ -3725,7 +3736,7 @@ function renderDayPicker() {
       <span class="dp-n">DÍA ${num}</span>
       <span class="dp-name">${name}</span>
       ${done ? `<span class="dp-check" title="Día completado">✓</span>` : ''}
-      ${unread > 0 ? `<span class="dp-com-badge" title="${unread} comentario(s) nuevo(s) de Mati">💬</span>` : ''}
+      ${unread > 0 ? `<span class="dp-com-badge" title="${unread} comentario(s) nuevo(s) de Mati">${unread}</span>` : ''}
     </button>`;
   }).join('');
   // Solo se muestra en Entreno, que es la unica escena con dias. Antes era un
@@ -3845,7 +3856,7 @@ function renderTrain() {
         <div class="fs-cell"><span class="lbl">Duración</span><span class="val">${mins||'—'}<small>min</small></span></div>
       </div>
       ${_diaFinalizado
-        ? `<div class="finish-cerrado-msg">Tu sesión de hoy quedó guardada. 💪</div>`
+        ? `<div class="finish-cerrado-msg">Tu sesión de hoy quedó guardada.</div>`
         : `<button class="btn-primary" id="finishBtn">${ICONS.flag} Cerrar sesión de hoy</button>`}
     </div>`;
   }
@@ -3856,9 +3867,9 @@ function renderTrain() {
   // Calibración solo en la semana 1 del PRIMER macrociclo (fase 2+ continúa cargas)
   const _esCalibracion = (DATA.rutina.semana_actual || 1) <= 1 && !(DATA.rutina.semana_offset || 0);
   if (_nCambian > 0) {
-    html += `<div class="prog-banner">📈 Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
+    html += `<div class="prog-banner">Esta semana <strong>${_nCambian}</strong> ${_nCambian === 1 ? 'ejercicio cambia' : 'ejercicios cambian'} carga o volumen. Mirá el detalle al abrir cada uno.</div>`;
   } else if (_esCalibracion) {
-    html += `<div class="prog-banner is-calibracion">🎯 Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3) — no te guardes reps.</div>`;
+    html += `<div class="prog-banner is-calibracion">Semana de calibración: llegá cerca del fallo muscular y encontrá tu peso real. Las reps son una guía (±2-3) — no te guardes reps.</div>`;
   }
 
   // F3 — Inicio claro del cronómetro de sesión (el timer de DESCANSO es otro y
@@ -3926,7 +3937,7 @@ function renderTrain() {
     html += `
     <div class="week-advance-wrap">
       <button class="btn-week-advance" style="background:var(--color-brand)" onclick="confirmEmpezarBloqueNuevo()">
-        🎉 Empezar bloque nuevo →
+        Empezar bloque nuevo
       </button>
       <div style="font-size:11px;color:var(--color-text-muted);text-align:center;margin-top:6px;font-family:var(--font-num)">Terminaste tu plan. Tu próximo bloque ya está listo.</div>
     </div>`;
@@ -4216,7 +4227,7 @@ function renderExCard(ex, blockIdx) {
       <div class="ex-status">${statusIcon}</div>
       ${thumbHtml}
       <div class="ex-body">
-        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="${ex._swapFijado ? 'Sustitución fijada — se mantiene las próximas semanas' : 'Sustituido solo por hoy — la próxima sesión vuelve el original'}">${ex._swapFijado ? '🔒' : '↔ hoy'}</span>` : ''}${manualBadge}${(() => { const u = getUnreadFor('ejercicio', ex.id); return u > 0 ? ` <span class="ex-comment-badge" title="${u} comentario(s) nuevo(s) de Mati">💬 ${u}</span>` : ''; })()}</div>
+        <div class="ex-name">${ex.nombre}${ex._isSwapped ? ` <span class="swap-badge" title="${ex._swapFijado ? 'Sustitución fijada — se mantiene las próximas semanas' : 'Sustituido solo por hoy — la próxima sesión vuelve el original'}">${ex._swapFijado ? 'Fijado' : 'Solo hoy'}</span>` : ''}${manualBadge}${(() => { const u = getUnreadFor('ejercicio', ex.id); return u > 0 ? ` <span class="ex-comment-badge" title="${u} comentario(s) nuevo(s) de Mati">💬 ${u}</span>` : ''; })()}</div>
         <div class="ex-meta">
           ${isWarmup ? '<span class="chip warm">CALENT.</span>' : ''}
           ${(ex.tipo === 'cardio' || prog.series === null)
@@ -4225,7 +4236,7 @@ function renderExCard(ex, blockIdx) {
           }
           <span class="chip mono"><span class="lbl">desc</span> ${fmtTime(_descansoDe(ex))}</span>
         </div>
-        ${!isExpanded ? `<div class="ex-historic"><span class="lbl">${last ? '🏆 Récord:' : 'Última:'}</span><span class="val">${last || 'Primera vez con este ejercicio'}</span></div>` : ''}
+        ${!isExpanded ? `<div class="ex-historic"><span class="lbl">${last ? 'Récord:' : 'Última:'}</span><span class="val">${last || 'Primera vez con este ejercicio'}</span></div>` : ''}
       </div>
       ${!isExpanded ? `<div class="ex-pip-row">${pips}</div>` : `<div class="ex-chevron">${ICONS.chevron}</div>`}
     </button>`;
@@ -4256,7 +4267,7 @@ function renderExCard(ex, blockIdx) {
       <div class="divider"></div>
       ${_metricasHtml(ex, prog)}
       ${_progNota ? `<div class="ex-prog-nota ${_progNota.cambia ? 'is-cambio' : (_progNota.calibracion ? 'is-calibracion' : 'is-mantener')}">
-        <span class="ex-prog-nota-lbl">${_progNota.cambia ? '📈 Cambio de la semana' : (_progNota.calibracion ? '🎯 Semana 1' : '📋 Esta semana')}</span>
+        <span class="ex-prog-nota-lbl">${_progNota.cambia ? 'Cambio de la semana' : (_progNota.calibracion ? '🎯 Semana 1' : '📋 Esta semana')}</span>
         <span class="ex-prog-nota-txt">${_progNota.texto}</span>
       </div>` : ''}
       ${_preparacionHtml(ex, _prep, _noKg)}
@@ -4265,7 +4276,7 @@ function renderExCard(ex, blockIdx) {
         <span class="${completedSets === exState.sets.length && exState.sets.length ? 'is-todas' : ''}">${completedSets} de ${exState.sets.length}</span>
       </div>
       ${_leyendaRir ? `<div class="series-leyenda">${_leyendaRir}</div>` : ''}
-      ${_avisoRecord && _avisoRecord.exId === ex.id ? `<div class="ex-record" data-record="${ex.id}">🏆 ${escapeHtml(_avisoRecord.texto)}</div>` : ''}
+      ${_avisoRecord && _avisoRecord.exId === ex.id ? `<div class="ex-record" data-record="${ex.id}">${escapeHtml(_avisoRecord.texto)}</div>` : ''}
       ${variantePicker}
       <div class="sets-head">
         <span>Serie</span><span>Reps</span><span>${_noKg ? '—' : 'Kg'}</span><span></span>
@@ -4276,7 +4287,7 @@ function renderExCard(ex, blockIdx) {
       ${(() => {
         const prev = prevSessionStr(ex.id);
         const recordHtml = last ? `<div class="ex-historic" style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)"><span class="lbl">🏆 Récord a superar:</span><span class="val">${last}</span></div>` : '';
-        const prevHtml = prev ? `<div class="ex-prev-sesion"><span class="lbl">📅 Última vez (${prev.rel}):</span><span class="val">${prev.val}</span></div>` : '';
+        const prevHtml = prev ? `<div class="ex-prev-sesion"><span class="lbl">Última vez (${prev.rel}):</span><span class="val">${prev.val}</span></div>` : '';
         if (!recordHtml && !prevHtml) return '';
         return `<div style="border-top:1px dashed var(--color-border);padding-top:var(--space-3)">${prevHtml}${last ? `<div class="ex-historic" style="margin-top:${prevHtml?'var(--space-1)':'0'}"><span class="lbl">🏆 Récord a superar:</span><span class="val">${last}</span></div>` : ''}</div>`;
       })()}
@@ -4314,7 +4325,7 @@ function renderExCard(ex, blockIdx) {
         }).join('');
         return `
         <div class="ex-comments">
-          <div class="ex-comments-title">💬 Comentarios</div>
+          <div class="ex-comments-title">Comentarios</div>
           <div class="ex-comments-list">${items || '<div class="ex-com-empty">Todavía no hay comentarios. Dejale una nota a Mati o contale cómo te fue.</div>'}</div>
           <div class="ex-comment-form">
             <textarea class="ex-comment-input" rows="2" placeholder="Escribí una nota… (ej: hice plano con mancuernas porque la máquina estaba ocupada)" data-comment-input="${ex.id}"></textarea>
@@ -4425,7 +4436,7 @@ function renderSetRow(ex, s, i, isActive) {
   // guiar la elección del peso en vez de dejar el input mudo. No aplica a los
   // ejercicios sin peso (peso corporal).
   const calibHint = (!conf && isActive && !hasSug && !typed && !noKg && sugRepsPlan != null)
-    ? `<div class="set-sug-hint is-calib">🎯 Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps dejando 1–2 en reserva. Queda de referencia para la próxima.</div>`
+    ? `<div class="set-sug-hint is-calib">Primera vez con este ejercicio: elegí un peso con el que llegues a ${prog.reps} reps dejando 1–2 en reserva. Queda de referencia para la próxima.</div>`
     : '';
   return `
   <div class="${cls}" data-set="${ex.id}|${i}">
@@ -5864,7 +5875,7 @@ function renderComidasLibres() {
     <div class="cl-title">Comidas libres <span class="cl-sub">fuera del plan</span></div>
     ${items || ''}
     <div class="cl-actions">
-      ${tieneVision ? `<button class="btn-custom-food" id="clFotoBtn">📷 Registrar comida con foto</button>` : ''}
+      ${tieneVision ? `<button class="btn-custom-food" id="clFotoBtn">Registrar comida con foto</button>` : ''}
       <button class="btn-custom-food" id="clManualBtn">＋ Agregar a mano</button>
       <input type="file" id="clFotoInput" accept="image/*" capture="environment" style="display:none">
     </div>
@@ -5882,7 +5893,7 @@ function openComidaLibreModal(est) {
   // los totales (los campos de abajo siguen siendo editables a mano igual).
   const _ali = (d.alimentos && d.alimentos.length) ? d.alimentos : [];
   const detalleHtml = _ali.length
-    ? `${d.escala ? `<div class="cf-hint" style="opacity:.75;font-size:11px">📐 ${String(d.escala).replace(/</g,'&lt;')}</div>` : ''}
+    ? `${d.escala ? `<div class="cf-hint" style="opacity:.75;font-size:11px">${String(d.escala).replace(/</g,'&lt;')}</div>` : ''}
        <div class="cl-detalle" style="display:flex;flex-direction:column;gap:6px">
          ${_ali.map((a, i) => `
            <div style="display:flex;align-items:center;gap:8px">
@@ -6147,7 +6158,7 @@ function porcionReferencia(food) {
     return n + ' medianas';
   }
   if (has('lechuga', 'rucula', 'radicheta', 'escarola', 'hojas verdes', 'mix de hojas')) {
-    return 'libre 🥗';
+    return 'libre';
   }
   // Verduras — puño = 90 g (≈ 1 taza). Continuo, sin techo.
   if (has('brocoli', 'brecol', 'coliflor', 'calabaza', 'zapallo', 'zanahoria',
@@ -6209,7 +6220,7 @@ function renderFood(originalFood, comidaId, optIdx, foodIdx, hoy, cambiado, plan
       <div class="dz-food-cant">${pill}<span class="dz-food-kcal${cambiado ? ' is-cambiada' : ''}">${Math.round(f.kcal || 0)} kcal</span></div>
       ${cambiado ? `<div class="dz-enplan">En el plan: ${_fmtCant(base.qty, base.unit)}</div>` : ''}
       <div class="dz-macros">${_macrosLinea(f)}</div>
-      ${porcion ? `<div class="porcion-ref" id="${porcionId}" hidden>✋ ${porcionPrefix}${porcion}</div>` : ''}
+      ${porcion ? `<div class="porcion-ref" id="${porcionId}" hidden>${porcionPrefix}${porcion}</div>` : ''}
     </div>
     <div class="dz-food-btns">
       ${porcion ? `<button class="dz-redondo porcion-btn" data-porcion="${comidaId}|${optIdx}|${foodIdx}" aria-label="Ver porción casera"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></button>` : ''}
@@ -6318,7 +6329,7 @@ function renderMeal(c, idx, delDia, dia) {
     ${planHoy ? `
     <div class="dz-acciones">
       ${omitida || estado === 'saltado' ? '' : `<button class="dz-accion" data-agregar="${c.id}"><span class="dz-mas">+</span> Agregar alimento</button>`}
-      <button class="dz-accion" data-ajustar="${c.id}">☰ ${aj ? (omitida ? 'Cambiar el ajuste' : 'Cambiar el ajuste') : 'Ajustar'}</button>
+      <button class="dz-accion" data-ajustar="${c.id}">${aj ? (omitida ? 'Cambiar el ajuste' : 'Cambiar el ajuste') : 'Ajustar'}</button>
     </div>` : ''}
   </div>`;
 }
@@ -6610,7 +6621,7 @@ function bindDietEvents() {
       if (!file) return;
       clFoto.disabled = true;
       const txtOrig = clFoto.textContent;
-      clFoto.textContent = '📷 Analizando el plato… (~30s)';
+      clFoto.textContent = 'Analizando el plato… (~30s)';
       try {
         const est = await visionDesdeFoto(file, 'plato');
         openComidaLibreModal(est);
@@ -6901,7 +6912,7 @@ function renderProgress() {
         html += `
         <button class="exer-row" data-detail="${ex.id}">
           <div class="info">
-            <div class="name">${ex.name}${ex.isPR ? ` <span class="pr-badge" title="¡Récord! Tu último tope superó todo lo anterior">🏆 PR</span>` : ''}</div>
+            <div class="name">${ex.name}${ex.isPR ? ` <span class="pr-badge" title="¡Récord! Tu último tope superó todo lo anterior">Récord</span>` : ''}</div>
             <div class="meta">Top: <strong>${ex.top}</strong></div>
           </div>
           ${sparkSVG(ex.series, 88, 36)}
@@ -7503,7 +7514,7 @@ function _recupSinScoreConectado() {
   // 3. El iPhone manda pasos, pero nadie mide la noche, y nunca lo hizo. Es el
   //    cliente sin reloj: no es un error, y hay que decirlo sin prometer nada.
   if (diurnosReciente) {
-    return `<div class="rec-frase">${_T('esteTel')} ya está mandando pasos y actividad. 👌</div>
+    return `<div class="rec-frase">${_T('esteTel')} ya está mandando pasos y actividad.</div>
       <div class="rec-nota">Para el score de recuperación hace falta lo que se mide durmiendo — pulso en reposo, sueño y variabilidad — y eso lo da un reloj o un anillo (${_T('relojes')}). En cuanto uses uno, esto se arma solo.</div>`;
   }
 
@@ -8510,17 +8521,21 @@ function renderRecordatorio() {
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
   if (p.total === 0 || STATE.scene === 'revision') return;
 
-  const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan <b>tu check y tus fotos</b> de la semana'
-              : p.faltaCheck ? 'Te falta <b>tu check de la semana</b>'
-              : 'Te faltan <b>tus fotos de la semana</b>';
+  const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan tu check y tus fotos de la semana'
+              : p.faltaCheck ? 'Te falta tu check de la semana'
+              : 'Te faltan tus fotos de la semana';
   const host = document.querySelector(`#scene-${STATE.scene} main, #scene-${STATE.scene}`);
   if (!host) return;
   const div = document.createElement('div');
-  div.className = 'prog-banner recordatorio-semanal';
-  div.innerHTML = `📋 ${texto} — entrá a <b>Revisión</b>.`;
+  div.className = 'recordatorio-semanal';
+  div.setAttribute('role', 'button');
+  // Mismo texto que la app 2.1.0 (BannerRevision): sin emoji ni guion.
+  div.innerHTML = `<span class="rs-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 2 2 4-4"/><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span><span class="rs-txt"><span class="rs-tit">${texto}</span><span class="rs-sub">Entrá a Revisión: es un minuto y Mati lo ve antes de tu devolución.</span></span><span class="rs-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></span>`;
   div.addEventListener('click', () => {
-    const t = [...document.querySelectorAll('.tab')].find(x => x.dataset.scene === 'revision');
-    if (t) t.click();
+    setScene('revision');
+    // Como la app: si solo falta el check, al check; si no, a las fotos.
+    const destino = (p.faltaCheck && !p.faltanFotos) ? 'myday-checkin' : 'myday-fotos';
+    setTimeout(() => { const el = document.getElementById(destino); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
   });
   host.insertBefore(div, host.firstChild);
 }
@@ -8558,7 +8573,7 @@ function renderMydayFotos() {
     const thumb = urls[`${semanaAct}|${p.k}`];
     return `<button class="fp-slot${lista ? ' is-done' : ''}${thumb ? ' has-thumb' : ''}" data-pose="${p.k}">
       ${thumb ? `<img class="fp-slot-img" src="${thumb}" alt="" loading="lazy">` : ''}
-      ${thumb ? '' : `<span class="fp-slot-ico">${lista ? '✓' : '📷'}</span>`}
+      ${thumb ? '' : `<span class="fp-slot-ico">${lista ? '✓' : '+'}</span>`}
       <span class="fp-slot-lbl">${p.label}</span>
       ${subiendo ? '<span class="fp-slot-sub">subiendo…</span>' : ''}
     </button>`;
@@ -8586,7 +8601,7 @@ function renderMydayFotos() {
       <div class="myday-section-body">
         <p class="fp-intro">Mismo lugar, misma luz, en ayunas. Las ve <b>solo Mati</b>: no se publican ni salen de la app.</p>
         <div class="fp-slots">${slots}</div>
-        ${serie >= 2 ? `<div class="fp-serie">🔥 ${serie} semanas seguidas registradas</div>` : ''}
+        ${serie >= 2 ? `<div class="fp-serie">${serie} semanas seguidas registradas</div>` : ''}
         ${comparador}
         <div class="fp-msg" id="fpMsg"></div>
       </div>
@@ -8639,8 +8654,8 @@ function _pedirFoto(pose) {
   ov.innerHTML = `
     <div class="fp-pick-card" role="dialog" aria-label="Elegir foto">
       <div class="fp-pick-tit">${et}</div>
-      <button class="fp-pick-btn" data-origen="camara">📷 Sacar la foto ahora</button>
-      <button class="fp-pick-btn" data-origen="galeria">🖼️ Elegir de la galería</button>
+      <button class="fp-pick-btn" data-origen="camara">Sacar la foto ahora</button>
+      <button class="fp-pick-btn" data-origen="galeria">Elegir de la galería</button>
       <button class="fp-pick-btn is-cancel" data-origen="">Cancelar</button>
     </div>`;
   const cerrar = () => ov.remove();
@@ -8821,7 +8836,7 @@ function renderMydayCheckin() {
   const escala = (m) => `
     <div class="ck-metric">
       <div class="ck-metric-top">
-        <span class="ck-metric-lbl">${m.icon} ${m.label}</span>
+        <span class="ck-metric-lbl">${m.label}</span>
         <span class="ck-metric-hint">${ck[m.k] ? '' : `${m.lo} → ${m.hi}`}</span>
       </div>
       <div class="ck-scale" data-k="${m.k}">
@@ -9051,7 +9066,7 @@ async function conectarWearable(btn) {
         if (B && typeof B.close === 'function') { try { await B.close(); } catch (e) {} }
         renderMydayConexiones();
         const m2 = document.getElementById('cxMsg');
-        if (m2) { m2.hidden = false; m2.textContent = '✅ Listo. Tus datos van a aparecer en un rato.'; }
+        if (m2) { m2.hidden = false; m2.textContent = 'Listo. Tus datos van a aparecer en un rato.'; }
         loadSalud(); loadRecuperacion();
         return;
       }
@@ -9103,7 +9118,7 @@ function setScene(scene) {
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
-    const tabDe = scene === 'salud' ? 'revision' : scene;
+    const tabDe = (scene === 'salud' || scene === 'progress') ? 'revision' : scene;
     const active = t.getAttribute('data-scene') === tabDe;
     t.classList.toggle('is-active', active);
     t.setAttribute('aria-selected', active);
@@ -9539,8 +9554,8 @@ function updateOfflineBanner() {
   if (offline) {
     if (!el) { el = document.createElement('div'); el.id = 'offline-banner'; document.body.appendChild(el); }
     el.textContent = (DATA && DATA._offline)
-      ? '⚡ Sin conexión — mostrando tu última rutina guardada. Lo que cargues se sincroniza al volver.'
-      : '⚡ Sin conexión — lo que cargues se guarda y se sincroniza al volver.';
+      ? 'Sin conexión. Te muestro tu última rutina guardada. Lo que cargues se sincroniza al volver.'
+      : 'Sin conexión. Lo que cargues se guarda y se sincroniza al volver.';
     el.classList.add('show');
   } else if (el) {
     el.classList.remove('show');
@@ -9616,7 +9631,7 @@ function _swapCardHtml(s, allSubs, food) {
   const sign = kcalDiff > 0 ? '+' : '';
   const dCls = Math.abs(kcalDiff) <= 5 ? 'ok' : 'warn';
   const customBadge = s._isCustom ? '<span class="swap-custom-badge">★ Personalizado</span>' : '';
-  const uniBadge = s._universal ? '<span class="swap-uni-badge" style="margin-left:6px">🌍</span>' : '';
+  const uniBadge = s._universal ? '<span class="swap-uni-badge" style="margin-left:6px">Global</span>' : '';
   const enLabel = s._en ? `<div class="swap-card-en" style="font-size:11px;color:var(--color-text-muted);margin-top:1px">${s._en}</div>` : '';
   return `<div class="swap-card${origIdx===_swapState.selected?' is-selected':''}" data-sub="${origIdx}" onclick="selectSwapCard(this,${origIdx})">
     <div class="swap-card-info">
@@ -9641,7 +9656,7 @@ function _swapListHtml(subs, allSubs, food, query) {
   const rest = subs.filter(s => !s._universal);
   let html = '';
   if (uni.length) {
-    html += `<div class="swap-subs-title">🌍 Disponibles en cualquier país</div>`;
+    html += `<div class="swap-subs-title">Disponibles en cualquier país</div>`;
     html += `<div class="swap-list">${uni.map(s => _swapCardHtml(s, allSubs, food)).join('')}</div>`;
   }
   if (rest.length) {
@@ -9851,7 +9866,7 @@ function renderExSwapModal() {
       ${subsHtml}
       <label class="swap-fijar">
         <input type="checkbox" id="exSwapFijar" ${_exSwapState.fijar ? 'checked' : ''}>
-        <span><strong>🔒 Fijar para las próximas semanas</strong>
+        <span><strong>Fijar para las próximas semanas</strong>
         <small>Si no lo fijás, vale solo por hoy: la próxima sesión vuelve “${ex._origNombre || ex.nombre}”.</small></span>
       </label>
       <div style="display:flex;gap:8px;margin-top:var(--space-3)">
@@ -9943,7 +9958,7 @@ function openCustomFoodModal() {
            ambigüedad es lo que hacía que entraran macros en la base
            equivocada. -->
       ${(window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) ? `
-      <button class="cf-scan-btn" id="cfScanBtn" type="button">📷 <strong>Escanear etiqueta</strong> <small>— sacale una foto a la tabla nutricional y se completa solo (después lo podés corregir)</small></button>
+      <button class="cf-scan-btn" id="cfScanBtn" type="button"><strong>Escanear etiqueta</strong> <small>— sacale una foto a la tabla nutricional y se completa solo (después lo podés corregir)</small></button>
       <input type="file" id="cfScanInput" accept="image/*" capture="environment" style="display:none">
       <div class="cf-scan-status" id="cfScanStatus" hidden></div>` : ''}
       <div class="cf-form">
@@ -10031,7 +10046,7 @@ function openCustomFoodModal() {
       if (!file) return;
       scanBtn.disabled = true;
       scanStatus.hidden = false;
-      scanStatus.textContent = '📷 Leyendo la etiqueta… puede tardar ~30 segundos';
+      scanStatus.textContent = 'Leyendo la etiqueta… puede tardar ~30 segundos';
       try {
         const d = await visionDesdeFoto(file, 'etiqueta');
         // Prefill (todo editable). porcion_g=100 → valores por 100 g (unidad g);
