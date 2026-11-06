@@ -132,7 +132,13 @@ object ReglasAgenda {
      * El número que se muestra: el `faltan` de `entregas_app_agenda` si vino (el servidor cuenta con su filtro); el del
      * teléfono solo de respaldo (sin respuesta de la agenda o un servidor viejo).
      */
-    fun faltanAMostrar(a: AgendaEntrega?, g: Guia?): Int = a?.faltan ?: g?.let(::faltan) ?: 0
+    fun faltanAMostrar(a: AgendaEntrega?, g: Guia?): Int = when {
+        a == null -> g?.let(::faltan) ?: 0
+        a.faltan != null -> a.faltan!!
+        // Habilitada sin `faltan`: no hay nada que contar (puede no exigir los obligatorios, spec §7).
+        a.habilitada -> 0
+        else -> g?.let(::faltan) ?: 0
+    }
 
     /** El primer obligatorio sin ver que se puede ver, en el orden en que se muestran ([orden]). */
     fun proximoQueFalta(g: Guia, orden: List<ClipGuia>): ClipGuia? {
@@ -179,10 +185,47 @@ object ReglasAgenda {
     fun vista(a: AgendaEntrega, faltan: Int, reservando: Boolean): Vista = when {
         a.reserva?.estado == ReservaEntrega.Estado.CONFIRMADA -> Vista.CONFIRMADA
         reservando || a.reserva?.estado == ReservaEntrega.Estado.PENDIENTE -> Vista.PENDIENTE
+        // Lo que diga el servidor (spec §7): habilitada manda, aunque queden videos sin ver.
+        a.habilitada -> if (a.franjas.isEmpty()) Vista.SIN_FRANJAS else Vista.ELEGIR
         !a.autorizada -> Vista.NO_AUTORIZADA
-        !a.habilitada -> if (faltan > 0) Vista.BLOQUEADA else Vista.HABILITANDO
-        a.franjas.isEmpty() -> Vista.SIN_FRANJAS
-        else -> Vista.ELEGIR
+        faltan > 0 -> Vista.BLOQUEADA
+        else -> Vista.HABILITANDO
+    }
+
+    // ── Textos editables (spec §7: `textos` de `entregas_app_agenda`) ──
+
+    /**
+     * El texto de [clave]: el del servidor si vino y no está vacío, con `{hora}`, `{dia}`, `{duracion}` y `{faltan}`
+     * reemplazados; si no, [propio]. Una clave que la app no usa se ignora.
+     */
+    fun texto(
+        a: AgendaEntrega?,
+        clave: String,
+        propio: String,
+        hora: String? = null,
+        dia: String? = null,
+        duracion: String? = null,
+        faltan: Int? = null,
+    ): String {
+        val t = a?.textos?.get(clave)?.trim()?.ifEmpty { null } ?: return propio
+        return t.replace("{hora}", hora.orEmpty())
+            .replace("{dia}", dia.orEmpty())
+            .replace("{duracion}", duracion.orEmpty())
+            .replace("{faltan}", faltan?.toString().orEmpty())
+            .replace(Regex(" {2,}"), " ")
+            .trim()
+    }
+
+    fun textoTitulo(a: AgendaEntrega?): String = texto(a, "titulo", "Agendá tu entrega")
+
+    /** La duración común de las franjas («alrededor de 1 hora»), o null si no todas duran lo mismo. */
+    fun duracionComun(franjas: List<FranjaEntrega>): String? =
+        franjas.map { duracion(it.inicio, it.fin) }.distinct().singleOrNull()
+
+    /** El encabezado de las franjas: «Elegí el horario que mejor te quede. Dura alrededor de 1 hora.» */
+    fun textoEncabezado(a: AgendaEntrega?, franjas: List<FranjaEntrega>): String {
+        val d = duracionComun(franjas)
+        return texto(a, "encabezado", "Elegí el horario que mejor te quede." + (d?.let { " Dura $it." } ?: ""), duracion = d)
     }
 
     /** El aviso arriba de las franjas después de un fallo: `tomada` (o la franja que ya no está), o cualquier otro. */
@@ -216,36 +259,38 @@ object ReglasAgenda {
      * «¿Confirmás la entrega el jueves 12 a las 10:00? Dura unas 2 horas.» La duración sale de la franja (fin − inicio): los
      * horarios y la duración cambian solo con datos.
      */
-    fun textoConfirmar(f: FranjaEntrega, zona: ZoneId): String {
+    fun textoConfirmar(f: FranjaEntrega, zona: ZoneId, a: AgendaEntrega? = null): String {
         val dura = textoDuracion(f.inicio, f.fin)?.let { " $it." } ?: ""
-        return "¿Confirmás la entrega el ${diaCorto(f.inicio, zona)} a las ${hora(f.inicio, zona)}?$dura"
+        val propio = "¿Confirmás la entrega el ${diaCorto(f.inicio, zona)} a las ${hora(f.inicio, zona)}?$dura"
+        return texto(a, "confirmar", propio, hora(f.inicio, zona), diaCorto(f.inicio, zona), duracion(f.inicio, f.fin))
     }
 
     /**
      * «Dura unas 2 horas», «Dura alrededor de 1 hora y media», «Dura alrededor de 1 hora», «Dura unos 45 minutos». Más de
      * 1 h se redondea a la media hora; hasta 1 h, a los 15 min. null si no cierra.
      */
-    fun textoDuracion(inicio: Instant, fin: Instant): String? {
+    fun textoDuracion(inicio: Instant, fin: Instant): String? = duracion(inicio, fin)?.let { "Dura $it" }
+
+    /** «unas 2 horas», «alrededor de 1 hora y media», «alrededor de 1 hora», «unos 45 minutos» (el `{duracion}`). */
+    fun duracion(inicio: Instant, fin: Instant): String? {
         val min = java.time.Duration.between(inicio, fin).toMinutes()
         if (min <= 0) return null
         if (min > 60) {
             val medias = Math.round(min / 30.0).toInt()
             val horas = medias / 2
-            val yMedia = medias % 2 == 1
-            return when {
-                horas == 1 -> "Dura alrededor de 1 hora" + if (yMedia) " y media" else ""
-                else -> "Dura unas $horas horas" + if (yMedia) " y media" else ""
-            }
+            val yMedia = if (medias % 2 == 1) " y media" else ""
+            return if (horas == 1) "alrededor de 1 hora$yMedia" else "unas $horas horas$yMedia"
         }
         val cuartos = (Math.round(min / 15.0) * 15).coerceAtLeast(15)
-        return if (cuartos >= 60) "Dura alrededor de 1 hora" else "Dura unos $cuartos minutos"
+        return if (cuartos >= 60) "alrededor de 1 hora" else "unos $cuartos minutos"
     }
 
     /** «Tu entrega: jueves 12 de noviembre, 10:00 a 12:00». */
-    fun textoConfirmada(r: ReservaEntrega, zona: ZoneId): String {
+    fun textoConfirmada(r: ReservaEntrega, zona: ZoneId, a: AgendaEntrega? = null): String {
         val i = r.inicio ?: return "Tu entrega está confirmada"
-        val f = r.fin ?: return "Tu entrega: ${dia(i, zona)}, ${hora(i, zona)}"
-        return "Tu entrega: ${dia(i, zona)}, ${rango(i, f, zona)}"
+        val f = r.fin
+        val propio = if (f == null) "Tu entrega: ${dia(i, zona)}, ${hora(i, zona)}" else "Tu entrega: ${dia(i, zona)}, ${rango(i, f, zona)}"
+        return texto(a, "confirmada", propio, hora(i, zona), dia(i, zona), f?.let { duracion(i, it) })
     }
 
     /** Desde cuánto antes de la franja se muestra la tarjeta de Entreno y se consulta seguido si Mati ya abrió la sala. */
@@ -279,14 +324,18 @@ object ReglasAgenda {
      * Se espera que Mati abra la sala: confirmada, desde 30 min antes hasta el fin y todavía sin `sala_abierta_en`. Con la
      * pantalla abierta se consulta cada 30 s ([CONSULTA_SALA_MS]); la tarjeta de Entreno se muestra (sin botón).
      */
-    fun esperandoSala(r: ReservaEntrega?, ahora: Instant): Boolean {
+    fun esperandoSala(r: ReservaEntrega?, ahora: Instant, avisoMin: Int? = null): Boolean {
         if (r == null || r.estado != ReservaEntrega.Estado.CONFIRMADA || r.salaAbiertaEn != null) return false
         val i = r.inicio ?: return false
-        return !ahora.isBefore(i.minusSeconds(MINUTOS_ANTES * 60)) && ahora.isBefore(fin(r)!!)
+        return !ahora.isBefore(i.minusSeconds(minutosAntes(avisoMin) * 60)) && ahora.isBefore(fin(r)!!)
     }
 
-    /** La tarjeta de Entreno: desde 30 min antes (o con la sala ya abierta) hasta el fin de la franja. */
-    fun tarjetaEntreno(r: ReservaEntrega?, ahora: Instant): Boolean = esperandoSala(r, ahora) || puedeEntrar(r, ahora)
+    /** Los minutos del aviso: `aviso_min` del servidor (spec §7) o los 30 de la app. */
+    fun minutosAntes(avisoMin: Int?): Long = avisoMin?.toLong() ?: MINUTOS_ANTES
+
+    /** La tarjeta de Entreno: desde `aviso_min` (30) antes (o con la sala ya abierta) hasta el fin de la franja. */
+    fun tarjetaEntreno(r: ReservaEntrega?, ahora: Instant, avisoMin: Int? = null): Boolean =
+        esperandoSala(r, ahora, avisoMin) || puedeEntrar(r, ahora)
 
     const val TEXTO_SALA_ABIERTA = "Mati ya está en la videollamada"
 
@@ -296,14 +345,34 @@ object ReglasAgenda {
      * botón para entrar.»; con el respaldo de la hora de inicio, «Tu entrega empezó a las 10:00». Antes del día, null (solo
      * la fecha y la hora).
      */
-    fun textoSala(r: ReservaEntrega, zona: ZoneId, ahora: Instant): String? {
+    fun textoSala(r: ReservaEntrega, zona: ZoneId, ahora: Instant, a: AgendaEntrega? = null): String? {
         if (r.estado != ReservaEntrega.Estado.CONFIRMADA) return null
         val i = r.inicio ?: return null
         val f = fin(r)!!
         if (!ahora.isBefore(f)) return null
-        if (r.salaAbiertaEn != null && r.meetUrl != null) return TEXTO_SALA_ABIERTA
-        if (!ahora.isBefore(i) && r.meetUrl != null) return "Tu entrega empezó a las ${hora(i, zona)}"
+        val h = hora(i, zona)
+        if (r.salaAbiertaEn != null && r.meetUrl != null) return texto(a, "sala_abierta", TEXTO_SALA_ABIERTA, h, dia(i, zona))
+        if (!ahora.isBefore(i) && r.meetUrl != null) return "Tu entrega empezó a las $h"
         if (i.atZone(zona).toLocalDate() != ahora.atZone(zona).toLocalDate()) return null
-        return "Tu entrega es hoy a las ${hora(i, zona)}. Cuando Mati abra la videollamada se habilita el botón para entrar."
+        return texto(
+            a,
+            "hoy_sin_sala",
+            "Tu entrega es hoy a las $h. Cuando Mati abra la videollamada se habilita el botón para entrar.",
+            h,
+            dia(i, zona),
+            r.fin?.let { duracion(i, it) },
+        )
+    }
+
+    /**
+     * La tarjeta de Entreno: con la sala abierta, «Mati ya está en la videollamada»; si no, `entreno_aviso` (si vino) o lo
+     * mismo que la guía.
+     */
+    fun textoEntreno(r: ReservaEntrega, zona: ZoneId, ahora: Instant, a: AgendaEntrega? = null): String {
+        val i = r.inicio
+        val sala = textoSala(r, zona, ahora, a)
+        val propio = sala ?: textoConfirmada(r, zona, a)
+        if (i == null || (r.salaAbiertaEn != null && r.meetUrl != null)) return propio
+        return texto(a, "entreno_aviso", propio, hora(i, zona), dia(i, zona), r.fin?.let { duracion(i, it) })
     }
 }

@@ -193,7 +193,8 @@ class AgendaReglasTest {
         assertNull(minima.faltan)
         assertTrue(minima.franjas.isEmpty())
         // Habilitada pero sin `autorizada` (servidor viejo): no se agenda.
-        assertFalse(AgendaEntrega.desde(j("""{"ok":true,"habilitada":true,"franjas":$franjas}"""))!!.puedeAgendar)
+        // Lo que diga `habilitada` (spec §7), aunque no venga `autorizada`.
+        assertTrue(AgendaEntrega.desde(j("""{"ok":true,"habilitada":true,"franjas":$franjas}"""))!!.puedeAgendar)
     }
 
     @Test
@@ -236,8 +237,9 @@ class AgendaReglasTest {
         fun a(s: String) = AgendaEntrega.desde(j("""{"ok":true$s}"""))!!
         val r = """"inicio":"2026-11-12T10:00:00-03:00","fin":"2026-11-12T12:00:00-03:00""""
         assertEquals(ReglasAgenda.Vista.NO_AUTORIZADA, ReglasAgenda.vista(a(""","habilitada":false,"autorizada":false,"faltan":2"""), 2, false))
-        // Sin `autorizada` (servidor viejo), también.
-        assertEquals(ReglasAgenda.Vista.NO_AUTORIZADA, ReglasAgenda.vista(a(""","habilitada":true,"franjas":$franjas"""), 0, false))
+        // `habilitada` del servidor manda (spec §7): sin `autorizada`, o con videos sin ver (`exigir_obligatorios` false).
+        assertEquals(ReglasAgenda.Vista.ELEGIR, ReglasAgenda.vista(a(""","habilitada":true,"franjas":$franjas"""), 0, false))
+        assertEquals(ReglasAgenda.Vista.ELEGIR, ReglasAgenda.vista(a(""","habilitada":true,"autorizada":true,"faltan":3,"franjas":$franjas"""), 3, false))
         assertEquals(ReglasAgenda.Vista.BLOQUEADA, ReglasAgenda.vista(a(""","habilitada":false,"autorizada":true,"faltan":2"""), 2, false))
         assertEquals(ReglasAgenda.Vista.HABILITANDO, ReglasAgenda.vista(a(""","habilitada":false,"autorizada":true"""), 0, false))
         assertEquals(ReglasAgenda.Vista.SIN_FRANJAS, ReglasAgenda.vista(a(""","habilitada":true,"autorizada":true,"franjas":[]"""), 0, false))
@@ -357,5 +359,65 @@ class AgendaReglasTest {
         val abierta = r.copy(meetUrl = "https://meet.google.com/x", salaAbiertaEn = i)
         assertTrue(ReglasAgenda.puedeEntrar(abierta, i.plusSeconds(44 * 60)))
         assertFalse(ReglasAgenda.puedeEntrar(abierta, i.plusSeconds(45 * 60)))
+    }
+
+    // ── Editable sin versión nueva (spec §7) ──
+
+    @Test
+    fun conHabilitadaDelServidorNoSeBloqueaAunqueFaltenVideos() {
+        // `exigir_obligatorios` false: el servidor dice habilitada aunque haya obligatorios sin ver.
+        val g = Guia.desde(j("""{"ok":true,"fase":2,"clips":[{"id":"a","titulo":"A","url":"https://x/a.mp4","obligatorio":true,"visto":false}]}"""))
+        val a = AgendaEntrega.desde(j("""{"ok":true,"habilitada":true,"autorizada":true,"franjas":$franjas}"""))!!
+        assertEquals(1, ReglasAgenda.faltan(g!!))
+        // Sin `faltan` del servidor, con habilitada no hay nada que contar; el conteo local solo sin respuesta.
+        assertEquals(0, ReglasAgenda.faltanAMostrar(a, g))
+        assertEquals(1, ReglasAgenda.faltanAMostrar(null, g))
+        assertEquals(ReglasAgenda.Vista.ELEGIR, ReglasAgenda.vista(a, ReglasAgenda.faltanAMostrar(a, g), false))
+        // Y el número del servidor, si viene, es el que se muestra.
+        assertEquals(0, ReglasAgenda.faltanAMostrar(a.copy(faltan = 0), g))
+    }
+
+    @Test
+    fun unTextoPisadoPorElServidor() {
+        val ar = ReglasAgenda.ARGENTINA
+        val a = AgendaEntrega.desde(j("""{"ok":true,"habilitada":true,"autorizada":true,"franjas":$franjas,"textos":{
+            "confirmar":"¿Te queda bien el {dia} a las {hora}? Son {duracion}.",
+            "titulo":"Reservá tu llamada","bloqueada":"Mirá los {faltan} videos que faltan","pendiente":"",
+            "sala_abierta":"Ya te espero","clave_que_no_existe":"x","cambiar":7}}"""))!!
+        // Vacío o que no es texto: se ignora; una clave desconocida, también.
+        assertEquals(mapOf("confirmar" to "¿Te queda bien el {dia} a las {hora}? Son {duracion}.", "titulo" to "Reservá tu llamada", "bloqueada" to "Mirá los {faltan} videos que faltan", "sala_abierta" to "Ya te espero", "clave_que_no_existe" to "x"), a.textos)
+        assertEquals(a, AgendaEntrega.desde(a.aValor()))
+        val f1 = a.franjas.first { it.id == "f1" }
+        assertEquals("¿Te queda bien el jueves 12 a las 10:00? Son unas 2 horas.", ReglasAgenda.textoConfirmar(f1, ar, a))
+        assertEquals("Reservá tu llamada", ReglasAgenda.textoTitulo(a))
+        assertEquals("Mirá los 2 videos que faltan", ReglasAgenda.texto(a, "bloqueada", ReglasAgenda.textoBloqueada(2), faltan = 2))
+        assertEquals(ReglasAgenda.TEXTO_PENDIENTE, ReglasAgenda.texto(a, "pendiente", ReglasAgenda.TEXTO_PENDIENTE))
+        assertEquals(ReglasAgenda.TEXTO_CAMBIAR, ReglasAgenda.texto(a, "cambiar", ReglasAgenda.TEXTO_CAMBIAR))
+        // Sin `textos`, los de la app; el encabezado con la duración común de las franjas.
+        assertEquals("Agendá tu entrega", ReglasAgenda.textoTitulo(a.copy(textos = emptyMap())))
+        assertEquals("Elegí el horario que mejor te quede.", ReglasAgenda.textoEncabezado(a, a.franjas))
+        assertEquals("Elegí el horario que mejor te quede. Dura unas 2 horas.", ReglasAgenda.textoEncabezado(a, a.franjas.filter { it.id != "f3" }))
+        // La sala abierta, pisada.
+        val i = Instant.parse("2026-11-12T13:00:00Z")
+        val r = ReservaEntrega("r", i, i.plusSeconds(3600), ReservaEntrega.Estado.CONFIRMADA, "https://meet.google.com/x", null, salaAbiertaEn = i)
+        assertEquals("Ya te espero", ReglasAgenda.textoSala(r, ar, i, a))
+    }
+
+    @Test
+    fun avisoMin15CambiaCuandoApareceLaTarjetaDeEntreno() {
+        val ar = ReglasAgenda.ARGENTINA
+        val i = Instant.parse("2026-11-12T13:00:00Z")
+        val r = ReservaEntrega("r", i, i.plusSeconds(3600), ReservaEntrega.Estado.CONFIRMADA, "https://meet.google.com/x", null)
+        val a = AgendaEntrega.desde(j("""{"ok":true,"habilitada":true,"autorizada":true,"aviso_min":15,"textos":{"entreno_aviso":"Hoy a las {hora}: tu entrega"}}"""))!!
+        assertEquals(15, a.avisoMin)
+        // Con 30 (el de la app) ya se vería a los 20 min; con 15, no.
+        assertTrue(ReglasAgenda.tarjetaEntreno(r, i.minusSeconds(20 * 60)))
+        assertFalse(ReglasAgenda.tarjetaEntreno(r, i.minusSeconds(20 * 60), a.avisoMin))
+        assertTrue(ReglasAgenda.tarjetaEntreno(r, i.minusSeconds(15 * 60), a.avisoMin))
+        assertEquals("Hoy a las 10:00: tu entrega", ReglasAgenda.textoEntreno(r, ar, i.minusSeconds(10 * 60), a))
+        // Sin `entreno_aviso`, lo mismo que la guía.
+        assertTrue(ReglasAgenda.textoEntreno(r, ar, i.minusSeconds(10 * 60), a.copy(textos = emptyMap())).startsWith("Tu entrega es hoy a las 10:00."))
+        // Un aviso_min que no tiene sentido se ignora.
+        assertEquals(null, AgendaEntrega.desde(j("""{"ok":true,"aviso_min":-5}"""))!!.avisoMin)
     }
 }

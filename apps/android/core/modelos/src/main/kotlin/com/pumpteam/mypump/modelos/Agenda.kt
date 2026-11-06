@@ -4,6 +4,7 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * La agenda de la entrega al final de «Tu guía» (`entregas_app_agenda`, propuesta `entregas_021_agenda`): si ya se puede
@@ -28,9 +29,16 @@ data class AgendaEntrega(
     /** En orden de inicio. Solo con [habilitada] y sin reserva vigente. */
     val franjas: List<FranjaEntrega>,
     val reserva: ReservaEntrega?,
+    /** `aviso_min` (spec §7): desde cuántos minutos antes se avisa en Entreno. null = el de la app (30). */
+    val avisoMin: Int? = null,
+    /** `textos` (spec §7): clave → texto que pisa el de la app (con `{hora}`, `{dia}`, `{duracion}`, `{faltan}`). */
+    val textos: Map<String, String> = emptyMap(),
 ) {
-    /** Se pueden elegir franjas: habilitada **y** autorizada (sin `autorizada` del servidor, nunca). */
-    val puedeAgendar: Boolean get() = habilitada && autorizada
+    /**
+     * Se pueden elegir franjas: lo que diga `habilitada` del servidor (spec §7: ya aplica `autorizada` y, si
+     * `exigir_obligatorios`, los videos). La app nunca bloquea por su cuenta si el servidor la habilitó.
+     */
+    val puedeAgendar: Boolean get() = habilitada
 
     fun aValor(): ValorJson = ValorJson.Objeto(
         linkedMapOf(
@@ -41,6 +49,8 @@ data class AgendaEntrega(
             "zona" to (zona?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
             "franjas" to ValorJson.Lista(franjas.map { it.aValor() }),
             "reserva" to (reserva?.aValor() ?: ValorJson.Nulo),
+            "aviso_min" to (avisoMin?.let { ValorJson.Numero(it.toDouble()) } ?: ValorJson.Nulo),
+            "textos" to ValorJson.Objeto(LinkedHashMap(textos.mapValues { ValorJson.Texto(it.value) })),
         ),
     )
 
@@ -59,6 +69,11 @@ data class AgendaEntrega(
                 franjas = if (reserva?.vigente == true) emptyList()
                 else o.lista("franjas", FranjaEntrega::desde).distinctBy { it.id }.sortedBy { it.inicio },
                 reserva = reserva,
+                avisoMin = o.entero("aviso_min")?.takeIf { it in 0..24 * 60 },
+                // Solo textos no vacíos; lo demás (un número, null) se ignora y queda el de la app.
+                textos = (o["textos"] as? JsonObject).orEmpty().mapNotNull { (k, v) ->
+                    (v as? JsonPrimitive)?.takeIf { it.isString }?.content?.trim()?.ifEmpty { null }?.let { k to it }
+                }.toMap(),
             )
         }
 

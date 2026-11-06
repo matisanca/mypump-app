@@ -187,7 +187,7 @@ class ModeloAgenda(
         if (esDemo) return
         inicial.join()
         while (true) {
-            if (ReglasAgenda.esperandoSala(reserva(), ahora())) refrescar()
+            if (ReglasAgenda.esperandoSala(reserva(), ahora(), _agenda.value?.avisoMin)) refrescar()
             esperar(ReglasAgenda.CONSULTA_SALA_MS)
         }
     }
@@ -199,8 +199,9 @@ class ModeloAgenda(
         if (r == null || r.estado != ReservaEntrega.Estado.CONFIRMADA || r.salaAbiertaEn != null) return null
         val i = r.inicio ?: return null
         val n = ahora()
-        if (ReglasAgenda.esperandoSala(r, n)) return ReglasAgenda.CONSULTA_SALA_MS
-        val ventana = i.minusSeconds(ReglasAgenda.MINUTOS_ANTES * 60)
+        val avisoMin = _agenda.value?.avisoMin
+        if (ReglasAgenda.esperandoSala(r, n, avisoMin)) return ReglasAgenda.CONSULTA_SALA_MS
+        val ventana = i.minusSeconds(ReglasAgenda.minutosAntes(avisoMin) * 60)
         return if (n.isBefore(ventana)) Duration.between(n, ventana).toMillis().coerceAtLeast(1) else null
     }
 
@@ -219,7 +220,7 @@ class ModeloAgenda(
         inicial.join()
         if (esDemo) return
         val r = _agenda.value?.reserva
-        if (_reservando.value != null || r?.estado == ReservaEntrega.Estado.PENDIENTE || ReglasAgenda.esperandoSala(r, ahora())) refrescar()
+        if (_reservando.value != null || r?.estado == ReservaEntrega.Estado.PENDIENTE || ReglasAgenda.esperandoSala(r, ahora(), _agenda.value?.avisoMin)) refrescar()
     }
 
     private fun olvidar() {

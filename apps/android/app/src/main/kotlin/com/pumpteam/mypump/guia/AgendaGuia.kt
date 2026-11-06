@@ -139,15 +139,20 @@ fun TarjetaAgenda(
             }
         }
         when (vista) {
-            ReglasAgenda.Vista.NO_AUTORIZADA -> Bloqueada(ReglasAgenda.TEXTO_NO_AUTORIZADA, null, "agenda-no-autorizada")
-            ReglasAgenda.Vista.BLOQUEADA -> Bloqueada(ReglasAgenda.textoBloqueada(faltan), alIrAlProximo, "agenda-bloqueada")
-            ReglasAgenda.Vista.HABILITANDO -> Bloqueada(ReglasAgenda.textoBloqueada(0), null, "agenda-habilitando")
-            ReglasAgenda.Vista.SIN_FRANJAS -> TarjetaTexto(ReglasAgenda.TEXTO_SIN_FRANJAS, "agenda-sin-franjas")
-            ReglasAgenda.Vista.ELEGIR -> Franjas(agenda.franjas, aviso, zona, alElegir = { elegida = it })
-            ReglasAgenda.Vista.PENDIENTE -> Pendiente()
+            // Cada texto puede venir pisado del servidor (`textos`, spec §7).
+            val titulo = ReglasAgenda.textoTitulo(agenda)
+            ReglasAgenda.Vista.NO_AUTORIZADA ->
+                Bloqueada(titulo, ReglasAgenda.texto(agenda, "no_autorizada", ReglasAgenda.TEXTO_NO_AUTORIZADA, faltan = faltan), null, "agenda-no-autorizada")
+            ReglasAgenda.Vista.BLOQUEADA ->
+                Bloqueada(titulo, ReglasAgenda.texto(agenda, "bloqueada", ReglasAgenda.textoBloqueada(faltan), faltan = faltan), alIrAlProximo, "agenda-bloqueada")
+            ReglasAgenda.Vista.HABILITANDO -> Bloqueada(titulo, ReglasAgenda.textoBloqueada(0), null, "agenda-habilitando")
+            ReglasAgenda.Vista.SIN_FRANJAS -> TarjetaTexto(titulo, ReglasAgenda.texto(agenda, "sin_franjas", ReglasAgenda.TEXTO_SIN_FRANJAS), "agenda-sin-franjas")
+            ReglasAgenda.Vista.ELEGIR -> Franjas(agenda, aviso?.let { ReglasAgenda.texto(agenda, "fallo", it) }, zona, alElegir = { elegida = it })
+            ReglasAgenda.Vista.PENDIENTE -> Pendiente(ReglasAgenda.texto(agenda, "pendiente", ReglasAgenda.TEXTO_PENDIENTE))
             ReglasAgenda.Vista.CONFIRMADA -> agenda.reserva?.let { r ->
                 Confirmada(
                     r,
+                    agenda = agenda,
                     esDemo = esDemo,
                     zona = zona,
                     alEntrar = { url -> abrirMeet(contexto, url) },
@@ -158,7 +163,7 @@ fun TarjetaAgenda(
     }
     elegida?.let { f ->
         HojaConfirmar(
-            texto = ReglasAgenda.textoConfirmar(f, zona),
+            texto = ReglasAgenda.textoConfirmar(f, zona, agenda),
             alConfirmar = {
                 elegida = null
                 alReservar(f)
@@ -169,9 +174,9 @@ fun TarjetaAgenda(
 }
 
 @Composable
-private fun TituloAgenda(modifier: Modifier = Modifier) {
+private fun TituloAgenda(titulo: String, modifier: Modifier = Modifier) {
     Text(
-        "Agendá tu entrega",
+        titulo,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
         modifier = modifier.semantics { heading() },
@@ -180,7 +185,7 @@ private fun TituloAgenda(modifier: Modifier = Modifier) {
 
 /** La tarjeta gris con candado. */
 @Composable
-private fun Bloqueada(texto: String, alIrAlProximo: (() -> Unit)?, etiqueta: String) {
+private fun Bloqueada(titulo: String, texto: String, alIrAlProximo: (() -> Unit)?, etiqueta: String) {
     val c = MyPump.colores
     Column(
         Modifier.fillMaxWidth().superficieTarjeta(color = c.campo).padding(Espacio.m + 2.dp).testTag(etiqueta),
@@ -188,7 +193,7 @@ private fun Bloqueada(texto: String, alIrAlProximo: (() -> Unit)?, etiqueta: Str
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
             Icon(Iconos.Candado, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(22.dp))
-            TituloAgenda(Modifier.weight(1f))
+            TituloAgenda(titulo, Modifier.weight(1f))
         }
         Text(texto, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.testTag("agenda-texto"))
         if (alIrAlProximo != null) {
@@ -205,10 +210,10 @@ private fun Bloqueada(texto: String, alIrAlProximo: (() -> Unit)?, etiqueta: Str
 }
 
 @Composable
-private fun TarjetaTexto(texto: String, etiqueta: String) {
+private fun TarjetaTexto(titulo: String, texto: String, etiqueta: String) {
     val c = MyPump.colores
     Column(Modifier.fillMaxWidth().superficieTarjeta().padding(Espacio.m + 2.dp).testTag(etiqueta), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
-        TituloAgenda()
+        TituloAgenda(titulo)
         Text(texto, style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
     }
 }
@@ -216,16 +221,22 @@ private fun TarjetaTexto(texto: String, etiqueta: String) {
 /** Las franjas por día, con chips «10:00 a 12:00». */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Franjas(franjas: List<FranjaEntrega>, aviso: String?, zona: ZoneId, alElegir: (FranjaEntrega) -> Unit) {
+private fun Franjas(agenda: AgendaEntrega, aviso: String?, zona: ZoneId, alElegir: (FranjaEntrega) -> Unit) {
     val c = MyPump.colores
+    val franjas = agenda.franjas
     val dias = remember(franjas, zona) { ReglasAgenda.porDia(franjas, zona) }
     val difiere = remember(franjas, zona) { ReglasAgenda.difiereDeArgentina(zona, franjas.map { it.inicio }) }
     Column(
         Modifier.fillMaxWidth().superficieTarjeta().padding(Espacio.m + 2.dp).testTag("agenda-franjas"),
         verticalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
-        TituloAgenda()
-        Text("Elegí el horario que mejor te quede.", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
+        TituloAgenda(ReglasAgenda.textoTitulo(agenda))
+        Text(
+            ReglasAgenda.textoEncabezado(agenda, franjas),
+            style = MaterialTheme.typography.bodyMedium,
+            color = c.textoSecundario,
+            modifier = Modifier.testTag("agenda-encabezado"),
+        )
         if (aviso != null) {
             Text(
                 aviso,
@@ -262,7 +273,7 @@ private fun Franjas(franjas: List<FranjaEntrega>, aviso: String?, zona: ZoneId, 
 }
 
 @Composable
-private fun Pendiente() {
+private fun Pendiente(texto: String) {
     val c = MyPump.colores
     Row(
         Modifier
@@ -275,7 +286,7 @@ private fun Pendiente() {
         horizontalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
         CircularProgressIndicator(color = c.marca, strokeWidth = 3.dp, modifier = Modifier.size(24.dp))
-        Text(ReglasAgenda.TEXTO_PENDIENTE, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(texto, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
     }
 }
 
@@ -286,11 +297,11 @@ private fun Pendiente() {
  * (la agenda la consulta `seguir`).
  */
 @Composable
-private fun Confirmada(r: ReservaEntrega, esDemo: Boolean, zona: ZoneId, alEntrar: (String) -> Unit, alAgregar: () -> Unit) {
+private fun Confirmada(r: ReservaEntrega, agenda: AgendaEntrega, esDemo: Boolean, zona: ZoneId, alEntrar: (String) -> Unit, alAgregar: () -> Unit) {
     val forma = RoundedCornerShape(Radio.tarjeta)
-    val texto = ReglasAgenda.textoConfirmada(r, zona)
+    val texto = ReglasAgenda.textoConfirmada(r, zona, agenda)
     val ahora = ahoraCada30s(r)
-    val sala = ReglasAgenda.textoSala(r, zona, ahora)
+    val sala = ReglasAgenda.textoSala(r, zona, ahora, agenda)
     val puedeEntrar = ReglasAgenda.puedeEntrar(r, ahora)
     Column(
         Modifier.fillMaxWidth().clip(forma).background(VerdeGuia).padding(Espacio.m + 2.dp).testTag("agenda-confirmada"),
@@ -342,7 +353,7 @@ private fun Confirmada(r: ReservaEntrega, esDemo: Boolean, zona: ZoneId, alEntra
                 Text("Agregar a mi calendario", style = MaterialTheme.typography.labelLarge)
             }
         }
-        Text(ReglasAgenda.TEXTO_CAMBIAR, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.92f), modifier = Modifier.testTag("agenda-cambiar"))
+        Text(ReglasAgenda.texto(agenda, "cambiar", ReglasAgenda.TEXTO_CAMBIAR), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.92f), modifier = Modifier.testTag("agenda-cambiar"))
     }
 }
 
@@ -423,11 +434,11 @@ fun EntregaAhoraDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
         }
     }
     val ahora = ahoraCada30s(r)
-    if (r == null || !ReglasAgenda.tarjetaEntreno(r, ahora)) return
+    if (r == null || !ReglasAgenda.tarjetaEntreno(r, ahora, agenda?.avisoMin)) return
     val zona = ZoneId.systemDefault()
     val url = r.meetUrl?.takeIf { ReglasAgenda.puedeEntrar(r, ahora) }
     val contexto = LocalContext.current
-    val texto = ReglasAgenda.textoSala(r, zona, ahora) ?: ReglasAgenda.textoConfirmada(r, zona)
+    val texto = ReglasAgenda.textoEntreno(r, zona, ahora, agenda)
     val forma = RoundedCornerShape(Radio.tarjeta)
     Row(
         modifier
