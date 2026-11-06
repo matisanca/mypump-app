@@ -363,6 +363,50 @@ struct AgendaDemoTests {
         // En el futuro, como vinieron.
         #expect(ReglasAgenda.correrAlFuturo(fs, ahora: ReglasGuia.instante("2026-11-01T10:00:00-03:00")!) == fs)
     }
+
+    /// Como el servidor (`agenda_lib.huecos`): solo de lunes a viernes. Un viernes a la noche, la primera cae el lunes.
+    @Test func laDemoNuncaOfreceSabadosNiDomingos() throws {
+        let demo = [("a", "2026-11-12T10:00:00-03:00"), ("b", "2026-11-12T14:00:00-03:00"), ("c", "2026-11-13T10:00:00-03:00"),
+                    ("d", "2026-11-16T10:00:00-03:00"), ("e", "2026-11-16T14:00:00-03:00"), ("f", "2026-11-17T14:00:00-03:00")]
+        let fs = demo.map { FranjaAgenda(id: $0.0, inicio: $0.1, fin: $0.1.replacingOccurrences(of: ":00:00-", with: ":59:00-")) }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Argentina/Buenos_Aires")!
+        // Cada día de dos semanas, a las 8 y a las 23.
+        for d in 0..<14 {
+            for h in [8, 23] {
+                let ahora = cal.date(byAdding: .hour, value: 24 * d + h, to: ReglasGuia.instante("2026-11-20T00:00:00-03:00")!)!
+                let c = ReglasAgenda.correrAlFuturo(fs, ahora: ahora)
+                #expect(c.count == fs.count)
+                for f in c {
+                    let i = try #require(ReglasGuia.instante(f.inicio))
+                    #expect(!cal.isDateInWeekend(i), "\(f.inicio) cae fin de semana (ahora \(ahora))")
+                    #expect(i > ahora)
+                }
+                // El mismo orden y la misma hora.
+                #expect(c.map(\.id) == fs.map(\.id))
+                #expect(c.map { String($0.inicio.dropFirst(11)) } == fs.map { String($0.inicio.dropFirst(11)) })
+            }
+        }
+        // Viernes 4/12 a la noche: el jueves y el viernes de la demo van al lunes 7 y al martes 8; su lunes, al miércoles 9.
+        let c = ReglasAgenda.correrAlFuturo(fs, ahora: ReglasGuia.instante("2026-12-04T20:30:00-03:00")!)
+        #expect(c.map(\.inicio) == ["2026-12-07T10:00:00-03:00", "2026-12-07T14:00:00-03:00", "2026-12-08T10:00:00-03:00",
+                                     "2026-12-09T10:00:00-03:00", "2026-12-09T14:00:00-03:00", "2026-12-10T14:00:00-03:00"])
+        #expect(c.first?.fin == "2026-12-07T10:59:00-03:00")
+    }
+
+    @Test func elProximoDiaHabil() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Argentina/Buenos_Aires")!
+        let viernes = ReglasGuia.instante("2026-11-06T18:00:00-03:00")!
+        let fmt = { (d: Date) in ReglasAgenda.claveDia(d, zona: cal.timeZone) }
+        #expect(fmt(ReglasAgenda.diaHabil(1, desde: viernes, cal)) == "2026-11-09")
+        #expect(fmt(ReglasAgenda.diaHabil(2, desde: viernes, cal)) == "2026-11-10")
+        #expect(fmt(ReglasAgenda.diaHabil(4, desde: viernes, cal)) == "2026-11-12")
+        let sabado = ReglasGuia.instante("2026-11-07T10:00:00-03:00")!
+        #expect(fmt(ReglasAgenda.diaHabil(1, desde: sabado, cal)) == "2026-11-09")
+        let martes = ReglasGuia.instante("2026-11-10T10:00:00-03:00")!
+        #expect(fmt(ReglasAgenda.diaHabil(4, desde: martes, cal)) == "2026-11-16")
+    }
 }
 
 /// Spec §7: Mati edita todo desde el servidor, sin versión nueva.

@@ -224,7 +224,7 @@ public final class ModeloApp {
     /// empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria. `guia`: «Tu guía» de
     /// muestra (los clips genéricos de «Tu app», sin fecha de entrega), con el avance en memoria. `suplementacion`: la fila
     /// de `mypump_suplementacion` de muestra (`Demo.bundle/suplementacion.json`), así la revisión de Apple ve la pestaña.
-    /// `agenda`: la de la demo (`Demo.bundle/agenda.json`, 2.2.0), con las franjas corridas a mañana; reservar confirma sin
+    /// `agenda`: la de la demo (`Demo.bundle/agenda.json`, 2.2.0), con las franjas corridas al próximo día hábil; reservar confirma sin
     /// crear ninguna videollamada.
     public func entrarEnDemo(rutina: Data, dieta: Data, guia: Data? = nil, suplementacion: Data? = nil, agenda: Data? = nil) {
         func envolver(_ estructura: Data, id: String) -> Data? {

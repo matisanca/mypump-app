@@ -508,9 +508,10 @@ final class ServidorAgendaUI: Transporte, @unchecked Sendable {
         cal.timeZone = TimeZone(identifier: "America/Argentina/Buenos_Aires")!
         let iso = ISO8601DateFormatter()
         iso.timeZone = cal.timeZone
+        // Días hábiles, como el servidor (`agenda_lib.huecos`): el próximo, el siguiente y el cuarto, nunca fin de semana.
         for (dia, hora) in [(1, 10), (1, 14), (2, 14), (4, 10), (4, 14)] {
-            guard let d = cal.date(byAdding: .day, value: dia, to: cal.startOfDay(for: base)),
-                  let i = cal.date(bySettingHour: hora, minute: 0, second: 0, of: d) else { continue }
+            let d = ReglasAgenda.diaHabil(dia, desde: base, cal)
+            guard let i = cal.date(bySettingHour: hora, minute: 0, second: 0, of: d) else { continue }
             fs.append(FranjaAgenda(id: "f\(fs.count + 1)", inicio: iso.string(from: i), fin: iso.string(from: i.addingTimeInterval(3600))))
         }
         franjas = escenario == "sinFranjas" ? [] : fs

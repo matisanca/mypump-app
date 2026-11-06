@@ -50,6 +50,26 @@ final class AgendaUITests: XCTestCase {
         }
     }
 
+    /// Deja la tarjeta de la agenda entera a la vista para la captura: su borde de arriba justo debajo de la barra de «Tu
+    /// guía» (con letra grande, si no entra, al menos el comienzo). Se arrastra de a poco y se mide de nuevo.
+    private func mostrarTarjeta() {
+        let caja = id("agenda")
+        XCTAssertTrue(caja.waitForExistence(timeout: 10), "No está la tarjeta de la agenda")
+        let h = app.frame.height
+        let objetivo = h * 0.15
+        var anterior = CGFloat.nan
+        for _ in 0..<15 {
+            let y = caja.frame.minY
+            let d = objetivo - y
+            if abs(d) < 12 || abs(y - anterior) < 2 { break }
+            anterior = y
+            let origen = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let paso = min(max(d, -h * 0.35), h * 0.35)
+            origen.press(forDuration: 0.05, thenDragTo: origen.withOffset(CGVector(dx: 0, dy: paso)), withVelocity: .slow, thenHoldForDuration: 0.2)
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.8))
+    }
+
     private func captura(_ nombre: String) {
         let s = XCUIScreen.main.screenshot()
         let a = XCTAttachment(screenshot: s); a.name = nombre; a.lifetime = .keepAlways; add(a)
@@ -89,6 +109,7 @@ final class AgendaUITests: XCTestCase {
         XCTAssertTrue(bloqueada.waitForExistence(timeout: 10), "No está la agenda bloqueada")
         XCTAssertTrue(bloqueada.label.contains("Cuando termines los videos de arriba se habilita la agenda. Te falta 1."), bloqueada.label)
         XCTAssertEqual(app.buttons["agenda-contador"].label, "Te falta 1 video para habilitar la agenda")
+        mostrarTarjeta()
         captura("agenda-bloqueada")
 
         // «Ir al próximo video»: arranca el que falta. Se ve entero a 1,5x y queda visto.
@@ -108,6 +129,7 @@ final class AgendaUITests: XCTestCase {
         llevarALaVista(franja)
         XCTAssertFalse(id("agenda-bloqueada").exists)
         XCTAssertGreaterThanOrEqual(franja.frame.height, 44)
+        mostrarTarjeta()
         captura("agenda-habilitada")
         franja.tap()
         let hoja = app.staticTexts["agenda-hoja-texto"]
@@ -126,6 +148,7 @@ final class AgendaUITests: XCTestCase {
         let reservando = id("agenda-reservando")
         XCTAssertTrue(reservando.waitForExistence(timeout: 8), "No se vio «Estamos reservando tu horario…»")
         llevarALaVista(reservando)
+        mostrarTarjeta()
         captura("agenda-pendiente")
         let confirmada = id("agenda-confirmada")
         XCTAssertTrue(confirmada.waitForExistence(timeout: 30), "No se confirmó")
@@ -136,6 +159,7 @@ final class AgendaUITests: XCTestCase {
         llevarALaVista(app.buttons["agenda-calendario"])
         XCTAssertFalse(app.buttons["agenda-entrar"].exists, "Al confirmar no aparece «Entrar»")
         XCTAssertFalse(id("agenda-esperando-sala").exists, "Antes del día no hay aviso de la sala")
+        mostrarTarjeta()
         captura("agenda-confirmada")
     }
 
@@ -149,6 +173,7 @@ final class AgendaUITests: XCTestCase {
                       && esperando.label.hasSuffix("Cuando Mati abra la videollamada se habilita el botón para entrar."), esperando.label)
         XCTAssertFalse(app.buttons["agenda-entrar"].exists, "Sin la sala abierta no hay botón")
         llevarALaVista(esperando)
+        mostrarTarjeta()
         captura("agenda-confirmada-sin-sala")
 
         abrir("salaSeAbre", ["-guiaAncla", "agenda", "-agendaSalaCada", "2"])
@@ -157,6 +182,7 @@ final class AgendaUITests: XCTestCase {
         XCTAssertFalse(id("agenda-esperando-sala").exists)
         XCTAssertEqual(id("agenda-sala").label, "Mati ya está en la videollamada")
         llevarALaVista(entrar)
+        mostrarTarjeta()
         captura("agenda-confirmada-sala-abierta")
         entrar.tap()
         // Abre el link de Meet afuera (el navegador del simulador): la app pasa a segundo plano.
@@ -178,6 +204,7 @@ final class AgendaUITests: XCTestCase {
         XCTAssertTrue(esperar({ !app.buttons["agenda-franja-f1"].exists }, segundos: 10), "La tomada sigue")
         XCTAssertTrue(app.buttons["agenda-franja-f2"].exists)
         llevarALaVista(aviso)
+        mostrarTarjeta()
         captura("agenda-fallo-tomada")
     }
 
@@ -199,8 +226,10 @@ final class AgendaUITests: XCTestCase {
         XCTAssertEqual(b.label, "Cuando termines de ver todo te habilitamos la agenda.")
         XCTAssertEqual(app.buttons["agenda-contador"].label, "Te falta 1 video para habilitar la agenda")
         XCTAssertFalse(app.buttons["agenda-ir-al-video"].exists)
+        mostrarTarjeta()
         captura("agenda-no-autorizada")
         // El contador salta al video que falta.
+        llevarALaVista(app.buttons["agenda-contador"])
         app.buttons["agenda-contador"].tap()
         let titulo = app.staticTexts["guia-titulo-actual"]
         XCTAssertTrue(esperar({ titulo.exists && titulo.isHittable && titulo.label == "Lo que cambia en tu entrenamiento" }, segundos: 8))
@@ -212,6 +241,7 @@ final class AgendaUITests: XCTestCase {
         XCTAssertTrue(sin.waitForExistence(timeout: 15))
         XCTAssertEqual(sin.label, "Ahora no hay horarios libres. Te escribimos por WhatsApp para coordinar.")
         llevarALaVista(sin)
+        mostrarTarjeta()
         captura("agenda-sin-franjas")
         abrir("pendiente", ["-guiaAncla", "agenda"])
         XCTAssertTrue(id("agenda-reservando").waitForExistence(timeout: 15))
@@ -242,6 +272,7 @@ final class AgendaUITests: XCTestCase {
         let entrar = app.buttons["agenda-entrar"]
         llevarALaVista(entrar)
         XCTAssertTrue(entrar.isHittable, "Sin red, el link tiene que seguir a mano")
+        mostrarTarjeta()
         captura("agenda-sin-red")
     }
 
@@ -298,6 +329,7 @@ final class AgendaUITests: XCTestCase {
         XCTAssertEqual(demo.label, "En la demo no se crea ninguna videollamada.")
         XCTAssertFalse(app.buttons["agenda-entrar"].exists, "En la demo no hay videollamada")
         llevarALaVista(demo)
+        mostrarTarjeta()
         captura("demo-confirmada")
     }
 }

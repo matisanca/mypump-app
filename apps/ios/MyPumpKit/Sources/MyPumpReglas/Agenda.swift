@@ -318,24 +318,54 @@ public enum ReglasAgenda {
 
     // MARK: - La demo
 
-    /// Las franjas de la demo (`Demo.bundle/agenda.json`) corridas para que la primera caiga mañana, con los mismos días de
-    /// diferencia entre sí y la misma hora de Argentina. Si ya están en el futuro, quedan como vinieron.
+    /// Las franjas de la demo (`Demo.bundle/agenda.json`) corridas para que la primera caiga el próximo día hábil, con la
+    /// misma hora de Argentina y los mismos días hábiles de diferencia entre sí. Como el servidor (`agenda_lib.huecos`),
+    /// solo de lunes a viernes: nunca un sábado ni un domingo. Si ya están en el futuro, quedan como vinieron.
     public static func correrAlFuturo(_ fs: [FranjaAgenda], ahora: Date = Date()) -> [FranjaAgenda] {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = zonaBA
-        guard let primero = fs.compactMap({ ReglasGuia.instante($0.inicio) }).min(), primero <= ahora,
-              let manana = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: ahora)),
-              let dias = cal.dateComponents([.day], from: cal.startOfDay(for: primero), to: manana).day else { return fs }
+        guard let primero = fs.compactMap({ ReglasGuia.instante($0.inicio) }).min(), primero <= ahora else { return fs }
+        let base = cal.startOfDay(for: primero)
+        let hoy = cal.startOfDay(for: ahora)
         let iso = ISO8601DateFormatter()
         iso.timeZone = zonaBA
         iso.formatOptions = [.withInternetDateTime]
-        func correr(_ s: String) -> String? {
+        func correr(_ s: String, _ dias: Int) -> String? {
             ReglasGuia.instante(s).flatMap { cal.date(byAdding: .day, value: dias, to: $0) }.map(iso.string(from:))
         }
         return fs.compactMap { f in
-            guard let i = correr(f.inicio), let fi = correr(f.fin) else { return nil }
-            return FranjaAgenda(id: f.id, inicio: i, fin: fi)
+            guard let i = ReglasGuia.instante(f.inicio) else { return nil }
+            let dia = cal.startOfDay(for: i)
+            let destino = diaHabil(1 + habilesEntre(base, dia, cal), desde: hoy, cal)
+            guard let dias = cal.dateComponents([.day], from: dia, to: destino).day,
+                  let ni = correr(f.inicio, dias), let nf = correr(f.fin, dias) else { return nil }
+            return FranjaAgenda(id: f.id, inicio: ni, fin: nf)
         }
+    }
+
+    /// De lunes a viernes, como las franjas del servidor.
+    public static func esHabil(_ d: Date, _ cal: Calendar) -> Bool { !cal.isDateInWeekend(d) }
+
+    /// El `n`-ésimo día hábil después de `desde` (n = 1: el próximo), a las 0 de ese día.
+    public static func diaHabil(_ n: Int, desde: Date, _ cal: Calendar) -> Date {
+        var d = cal.startOfDay(for: desde)
+        var k = 0
+        while k < max(n, 1) {
+            d = cal.date(byAdding: .day, value: 1, to: d) ?? d
+            if esHabil(d, cal) { k += 1 }
+        }
+        return d
+    }
+
+    /// Cuántos días hábiles hay después de `a` hasta `b` inclusive (0 si `b` no es posterior).
+    static func habilesEntre(_ a: Date, _ b: Date, _ cal: Calendar) -> Int {
+        var d = cal.startOfDay(for: a)
+        var k = 0
+        while d < b {
+            d = cal.date(byAdding: .day, value: 1, to: d) ?? b
+            if d <= b, esHabil(d, cal) { k += 1 }
+        }
+        return k
     }
 
     // MARK: - Formatos
