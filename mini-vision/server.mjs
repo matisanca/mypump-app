@@ -433,6 +433,12 @@ function normalizarEtiqueta(j) {
     const plano = columna(j);
     if (plano) { if (es100) p100 = plano; else pp = plano; }
   }
+  // Columna rellena con ceros al lado de otra con números: es la que el modelo no usó, se descarta (revisión 6-nov).
+  const todoCero = (c) => !!c && Object.values(c).every((v) => v === null || v === 0);
+  if (pp && p100) {
+    if (todoCero(pp) && !todoCero(p100)) pp = null;
+    else if (todoCero(p100) && !todoCero(pp)) p100 = null;
+  }
   if (es100 && pp && !p100) { p100 = pp; pp = null; }   // "Porción 100 g": esa columna ES la de 100 g
 
   let base, valores, porcionG;

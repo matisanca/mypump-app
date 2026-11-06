@@ -16,6 +16,10 @@ t('porción sin gramos → desconocida, porcion_g null', () => { const r = N({ p
   assert.equal(r.base, 'desconocida'); assert.equal(r.porcion_g, null); assert.equal(r.kcal, 132); assert.equal(r.confianza, 'baja'); });
 t('columna en cero vale (gaseosa light)', () => { const r = N({ porcion_g: 100, por_100g: { kcal: 0, prot: 0, carb: 0, fat: 0 }, confianza: 'alta' });
   assert.equal(r.base, '100g'); assert.equal(r.kcal, 0); assert.equal(r.prot, 0); });
+t('columna de porción en ceros al lado de la de 100 g → 100 g', () => { const r = N({ porcion_g: 30, por_porcion: { kcal: 0, prot: 0, carb: 0, fat: 0 }, por_100g: { kcal: 440, prot: 80, carb: 16, fat: 6.3 }, confianza: 'alta' });
+  assert.equal(r.base, '100g'); assert.equal(r.kcal, 440); });
+t('columna de 100 g en ceros al lado de la porción → porción', () => { const r = N({ porcion_g: 30, por_porcion: { kcal: 132, prot: 24, carb: 4.8, fat: 1.9 }, por_100g: { kcal: 0, prot: 0, carb: 0, fat: 0 } });
+  assert.equal(r.base, 'porcion'); assert.equal(r.kcal, 132); });
 t('confianza en mayúsculas', () => { assert.equal(N({ porcion_g: 100, por_100g: { kcal: 64, prot: 3.2, carb: 4.8, fat: 3.5 }, confianza: 'Alta' }).confianza, 'alta'); });
 t('porción de 100 g → base 100g', () => { const r = N({ porcion_g: 100, por_porcion: whey, por_100g: null });
   assert.equal(r.base, '100g'); assert.equal(r.porcion_g, 100); });
