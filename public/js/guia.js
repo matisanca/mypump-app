@@ -1391,8 +1391,9 @@
 .gu-firma{font-size:14px;color:var(--color-text-secondary)}
 .gu-progreso{height:6px;border-radius:3px;background:var(--color-bg-tertiary);overflow:hidden;margin-top:6px}
 .gu-progreso>span{display:block;height:100%;background:var(--color-brand);border-radius:3px;transition:width var(--transition-base)}
-.gu-cuadro{position:relative;width:100%;aspect-ratio:16/9;background:#000}
-.gu-cuadro video{position:absolute;inset:0;width:100%;height:100%;background:#000;object-fit:contain}
+.gu-cuadro{position:relative;width:100%;aspect-ratio:16/9;max-height:78vh;margin:0 auto;background:#000}
+.gu-cuadro video{position:absolute;inset:0;width:100%;height:100%;background:transparent;object-fit:contain}
+.gu-cuadro.gu-ajustado,.gu-vpq-cuadro.gu-ajustado{background:transparent}
 .gu-capa{position:absolute;inset:0;display:flex}
 .gu-capa:empty{pointer-events:none}
 .gu-portada,.gu-placa,.gu-sinvideo{flex:1;border:0;margin:0;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px 20px;text-align:center;cursor:pointer}
@@ -1500,8 +1501,8 @@
 .gu-vpq-boton{align-self:flex-start;min-height:36px;padding:0 14px;border:1px solid var(--color-brand-text);border-radius:var(--radius-full);background:transparent;color:var(--color-brand-text);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:4px 0}
 .gu-vpq-boton svg{width:14px;height:14px}
 .gu-vpq-boton .gu-visto-t{color:var(--color-brand)}
-.gu-vpq-cuadro{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:var(--radius-md);overflow:hidden}
-.gu-vpq-cuadro video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.gu-vpq-cuadro{position:relative;width:100%;aspect-ratio:16/9;max-height:78vh;margin:0 auto;background:#000;border-radius:var(--radius-md);overflow:hidden}
+.gu-vpq-cuadro video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent}
 .gu-vpq-cuadro .gu-sinvideo{position:absolute;inset:0}
 .gu-pie{font-size:14px;color:var(--color-text-secondary);line-height:1.45;padding:16px 20px;margin:0}
 .gu-accion{align-self:center;min-height:44px;padding:0 16px;border:0;background:transparent;color:var(--color-text-secondary);font-size:14px;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
@@ -1734,7 +1735,7 @@
       const v = this.video;
       v.addEventListener('timeupdate', () => this.avanzo(v.currentTime));
       v.addEventListener('ended', () => this.termino());
-      v.addEventListener('loadedmetadata', () => this.listo());
+      v.addEventListener('loadedmetadata', () => { ajustarCuadro(v); this.listo(); });
       v.addEventListener('error', () => {
         if (!v.getAttribute('src')) return;
         if (!this.portada || this.placaId) { this.sinConexion = true; this.programar(); }
@@ -1922,6 +1923,7 @@
         this.m.avance(this.vpq.abierto, g.segundos, g.visto);
       });
       v.addEventListener('loadedmetadata', () => {
+        ajustarCuadro(v);
         if (this.vpq.retomado) return;
         this.vpq.retomado = true;
         const c = R.clipDeSuplemento(this.m.guia, this.vpq.abierto);
@@ -2143,7 +2145,7 @@
     // la misma tarea (así no se pausa).
     ubicarVpq() {
       const slot = this.z.resto.querySelector('[data-gu-slot="vpq"]');
-      if (slot && this.vpq.video) slot.insertBefore(this.vpq.video, slot.firstChild);
+      if (slot && this.vpq.video) { slot.insertBefore(this.vpq.video, slot.firstChild); ajustarCuadro(this.vpq.video); }
     }
 
     pintarTicAudio() {
@@ -2503,6 +2505,17 @@
       fila_en_mis_datos: m.mostrarFila,
       quitada: m.quitada,
     };
+  }
+
+  // El cuadro de un video toma la proporción real del clip, con el alto topeado
+  // en 78vh (el ancho baja en proporción): el video lo llena entero, sin franjas.
+  function ajustarCuadro(v) {
+    const c = v && v.parentElement;
+    if (!c || !v.videoWidth || !v.videoHeight) return;
+    const r = v.videoWidth / v.videoHeight;
+    c.style.aspectRatio = `${v.videoWidth} / ${v.videoHeight}`;
+    c.style.width = `min(100%, ${(78 * r).toFixed(2)}vh)`;
+    c.classList.add('gu-ajustado');
   }
 
   window.MyPumpGuia = {
