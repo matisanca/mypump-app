@@ -9575,12 +9575,11 @@ function renderMisDatos() {
   const conectadoRec = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable() && window.MyPumpHealth.isConnected())
     || (STATE.salud || []).some(r => r.fuente !== 'manual')
     || (STATE.conexiones || []).some(c => c && c.estado === 'conectada');
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const recTxt = STATE.mostrarRecup === false ? 'Tenés el score apagado'
     : (rowRec && rowRec.score != null && rowRec.estado !== 'calibrando') ? `${rowRec.score}/100 · ${_REC_BANDA_TXT[rowRec.banda || 'media'] || ''}`
     : (rowRec && (rowRec.estado === 'calibrando' || (rowRec.score == null && rowRec.estado !== 'insuficiente'))) ? `Calibrando: ${rowRec.dias_datos || 0} de 14 días`
     : conectadoRec ? 'Todavía no hay datos de esta noche para calcular tu recuperación.'
-    : (ios ? 'Conectá tu reloj o Salud de Apple' : 'Conectá tu reloj o Health Connect');
+    : `Conectá tu reloj o ${_T('app')}`;
   const guia = !!(window.MyPumpGuia && TOKEN && window.MyPumpGuia.mostrarFila(TOKEN));
   const fila = (id, titulo, extra = '', cls = '') => `<button class="md-fila${cls}" id="${id}"><span>${titulo}</span>${extra}<span class="md-chev">${_CHEV_DER}</span></button>`;
   root.innerHTML = `
