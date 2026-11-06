@@ -79,6 +79,7 @@ struct GuiaView: View {
             await modelo.abrir()
             prepararInicial()
             if let v = GuiaUI.verPorQue { verPorQue.alternar(v) }
+            if let v = GuiaUI.video { control.reproducir(video: v) }
             // La agenda de la entrega (2.2.0): lo que quedó en la cola y la consulta. Sin la 021 no se ve nada.
             await modelo.agenda.cargarDeLaCola()
             await modelo.agenda.consultar()
@@ -946,6 +947,9 @@ enum GuiaUI {
         case "todos": for i in g.clips.indices { g.clips[i].visto = true }
         default: break
         }
+        if VideosDePrueba.activo {
+            for i in g.clips.indices { if let u = VideosDePrueba.url(g.clips[i].id) { g.clips[i].url = u } }
+        }
         let m = ModeloGuia(muestra: g, mostrarTarjeta: UserDefaults.standard.string(forKey: "guiaTarjeta") == "no" ? false : nil)
         AudioDudaUI.preparar(m)
         return m
@@ -982,6 +986,8 @@ enum GuiaUI {
     static var placa: Bool { valor("guiaPlaca") == "YES" }
     /// Capturas: `-guiaVerPorQue <id>` abre el «Ver por qué» de ese video.
     static var verPorQue: String? { valor("guiaVerPorQue") }
+    /// Pruebas: `-guiaVideo <id>` arranca ese video (con `-guiaFormatos YES`, los de cada formato).
+    static var video: String? { valor("guiaVideo") }
 
     private static func valor(_ k: String) -> String? {
         #if DEBUG
