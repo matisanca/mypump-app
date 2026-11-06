@@ -13,11 +13,15 @@ public struct Guia: Codable, Equatable, Sendable {
     public var clips: [ClipGuia]
     public var dudasLlamada: [DudaLlamada]
     public var suplementacion: SuplementacionGuia?
+    /// La fase de la guía (2.2.0): `1` o `2` (la guía v2, con la tanda nueva). Si falta, 1.
+    public var fase: Int
+    /// Cuándo se aprobó la última tanda nueva (timestamptz ISO). nil = no hay novedad (servidor viejo o fase 1).
+    public var novedadEn: String?
 
     public init(ok: Bool, nombrePila: String? = nil, fechaEntrega: String? = nil, clips: [ClipGuia] = [],
-                dudasLlamada: [DudaLlamada] = [], suplementacion: SuplementacionGuia? = nil) {
+                dudasLlamada: [DudaLlamada] = [], suplementacion: SuplementacionGuia? = nil, fase: Int = 1, novedadEn: String? = nil) {
         self.ok = ok; self.nombrePila = nombrePila; self.fechaEntrega = fechaEntrega; self.clips = clips
-        self.dudasLlamada = dudasLlamada; self.suplementacion = suplementacion
+        self.dudasLlamada = dudasLlamada; self.suplementacion = suplementacion; self.fase = fase; self.novedadEn = novedadEn
     }
 
     /// La respuesta de la base tal cual: un objeto, `false`, `null` o cualquier otra cosa (todo lo que no sea un objeto con
@@ -30,7 +34,10 @@ public struct Guia: Codable, Equatable, Sendable {
         self = g
     }
 
-    enum CodingKeys: String, CodingKey { case ok, nombrePila = "nombre_pila", fechaEntrega = "fecha_entrega", clips, dudasLlamada = "dudas_llamada", suplementacion }
+    enum CodingKeys: String, CodingKey {
+        case ok, nombrePila = "nombre_pila", fechaEntrega = "fecha_entrega", clips, dudasLlamada = "dudas_llamada", suplementacion, fase
+        case novedadEn = "novedad_en"
+    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -41,6 +48,9 @@ public struct Guia: Codable, Equatable, Sendable {
         clips = c.lista(ClipGuia.self, .clips).filter { !$0.id.isEmpty }
         dudasLlamada = c.lista(DudaLlamada.self, .dudasLlamada).filter { !$0.texto.isEmpty }
         suplementacion = (try? c.decodeIfPresent(SuplementacionGuia.self, forKey: .suplementacion)) ?? nil
+        // Lo de la 2.2.0, todo opcional: sin los campos (servidor viejo), la guía es la de la 2.1.0.
+        fase = c.entero(.fase) == 2 ? 2 : 1
+        novedadEn = c.texto(.novedadEn).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
     }
 }
 
@@ -57,14 +67,19 @@ public struct ClipGuia: Codable, Equatable, Sendable, Identifiable {
     public var segundos: Int
     /// Las dudas de este video, acumuladas con un salto de línea (hasta 3200 caracteres).
     public var duda: String?
+    /// 2.2.0: es de la última tanda (va en el bloque «Novedad», arriba de todo).
+    public var nuevo: Bool
+    /// 2.2.0: cuenta para habilitar la agenda. nil = el servidor no mandó el campo (ahí cuentan todos los que tienen url,
+    /// si ningún clip lo trae: `ReglasAgenda.obligatorios`).
+    public var obligatorio: Bool?
 
     public init(id: String, titulo: String, url: URL?, minutos: Double, motivo: String? = nil, bloque: String? = nil,
-                visto: Bool = false, segundos: Int = 0, duda: String? = nil) {
+                visto: Bool = false, segundos: Int = 0, duda: String? = nil, nuevo: Bool = false, obligatorio: Bool? = nil) {
         self.id = id; self.titulo = titulo; self.url = url; self.minutos = minutos; self.motivo = motivo; self.bloque = bloque
-        self.visto = visto; self.segundos = segundos; self.duda = duda
+        self.visto = visto; self.segundos = segundos; self.duda = duda; self.nuevo = nuevo; self.obligatorio = obligatorio
     }
 
-    enum CodingKeys: String, CodingKey { case id, titulo, url, minutos, motivo, bloque, visto, segundos, duda }
+    enum CodingKeys: String, CodingKey { case id, titulo, url, minutos, motivo, bloque, visto, segundos, duda, nuevo, obligatorio }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -83,6 +98,8 @@ public struct ClipGuia: Codable, Equatable, Sendable, Identifiable {
         let seg = c.decimal(.segundos) ?? 0
         segundos = seg.isFinite ? Int(min(36_000, max(0, seg))) : 0
         duda = c.texto(.duda).flatMap { $0.isEmpty ? nil : $0 }
+        nuevo = c.booleano(.nuevo) ?? false
+        obligatorio = c.booleano(.obligatorio)
     }
 }
 
@@ -273,11 +290,21 @@ public struct ResumenGuia: Codable, Equatable, Sendable {
     /// Lo que dijo el servidor: `fecha_entrega` null o antes de las 48 h siguientes. nil = no vino (vuelta atrás a la 012):
     /// la app hace la cuenta con `fechaEntrega` (`ReglasGuia.mostrarTarjeta`).
     public var mostrarTarjetaServidor: Bool?
+    /// 2.2.0, opcional: cuándo se aprobó la última tanda nueva (como en el get). Hace reaparecer la tarjeta ocultada.
+    public var novedadEn: String?
+    /// 2.2.0, opcional: la reserva de la entrega (`{inicio, fin, estado, meet_url}`), para el «Entrar» de la tarjeta sin
+    /// pedir el get.
+    public var reserva: ReservaAgenda?
+    /// 2.2.0, opcionales: el avance de la tanda nueva, para la tarjeta «NOVEDAD EN TU GUÍA».
+    public var nuevosTotal: Int?
+    public var nuevosVistos: Int?
 
     public init(ok: Bool, total: Int = 0, vistos: Int = 0, minutosRestantes: Double = 0, fechaEntrega: String? = nil,
-                mostrarTarjetaServidor: Bool? = nil) {
+                mostrarTarjetaServidor: Bool? = nil, novedadEn: String? = nil, reserva: ReservaAgenda? = nil,
+                nuevosTotal: Int? = nil, nuevosVistos: Int? = nil) {
         self.ok = ok; self.total = total; self.vistos = vistos; self.minutosRestantes = minutosRestantes
         self.fechaEntrega = fechaEntrega; self.mostrarTarjetaServidor = mostrarTarjetaServidor
+        self.novedadEn = novedadEn; self.reserva = reserva; self.nuevosTotal = nuevosTotal; self.nuevosVistos = nuevosVistos
     }
 
     public init(json: JSONValue) {
@@ -290,6 +317,7 @@ public struct ResumenGuia: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case ok, total, vistos, minutosRestantes = "minutos_restantes", fechaEntrega = "fecha_entrega", mostrarTarjetaServidor = "mostrar_tarjeta"
+        case novedadEn = "novedad_en", reserva, nuevosTotal = "nuevos_total", nuevosVistos = "nuevos_vistos"
     }
 
     public init(from decoder: Decoder) throws {
@@ -302,6 +330,11 @@ public struct ResumenGuia: Codable, Equatable, Sendable {
         fechaEntrega = c.texto(.fechaEntrega).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
         // Se lee primero ok: con false no hay tarjeta ni fila, venga lo que venga.
         mostrarTarjetaServidor = ok ? c.booleano(.mostrarTarjetaServidor) : nil
+        novedadEn = ok ? c.texto(.novedadEn).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 } : nil
+        reserva = ok ? ((try? c.decodeIfPresent(ReservaAgenda.self, forKey: .reserva)) ?? nil) : nil
+        let nt = ok ? c.entero(.nuevosTotal).map { max(0, $0) } : nil
+        nuevosTotal = nt
+        nuevosVistos = nt.flatMap { t in c.entero(.nuevosVistos).map { min(max(0, $0), t) } }
     }
 
     /// Hay guía para mostrar la tarjeta: `ok` y al menos un video.

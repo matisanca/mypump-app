@@ -54,10 +54,14 @@ public enum ReglasGuia {
     /// Los clips de la lista, de «Viste X de N» y del reproductor (web del 4/11, A5): los del bloque «Tu suplementación» que
     /// nombra un suplemento se ven solo debajo de ese suplemento, con «Ver por qué». Si ningún suplemento los nombra,
     /// quedan en la lista para no perderlos. Mismo orden que `ordenados`.
+    ///
+    /// 2.2.0: los `nuevo` van primero, en el orden del servidor (el bloque «Novedad»); después, los de siempre. Sin ningún
+    /// `nuevo` (servidor viejo), el orden de la 2.1.0 tal cual.
     public static func deLaLista(_ g: Guia?) -> [ClipGuia] {
         guard let g else { return [] }
         let nombrados = nombradosPorSuplementos(g.suplementacion)
-        return ordenados(g.clips.filter { !(esBloqueSuplementacion($0.bloque) && nombrados.contains($0.id)) })
+        let lista = g.clips.filter { !(esBloqueSuplementacion($0.bloque) && nombrados.contains($0.id)) }
+        return lista.filter(\.nuevo) + ordenados(lista.filter { !$0.nuevo })
     }
 
     /// El clip de un «Ver por qué»: el que nombra el suplemento, si existe y tiene url (como `vid` en la web).
@@ -72,33 +76,48 @@ public enum ReglasGuia {
     }
 
     public struct Bloque: Equatable, Sendable, Identifiable {
-        public var id: String { titulo }
+        /// El del bloque «Novedad» no choca con un bloque del servidor que se llame igual.
+        public var id: String { novedad ? ReglasGuia.idNovedad : titulo }
         public let titulo: String
         /// Índices en la lista de `ordenados`.
         public let indices: [Int]
         public let minutos: Double
-        public var esApp: Bool { ReglasGuia.esBloqueApp(titulo) }
+        /// 2.2.0: el bloque «Novedad», con los clips `nuevo`, arriba de todo.
+        public var novedad: Bool = false
+        public var esApp: Bool { !novedad && ReglasGuia.esBloqueApp(titulo) }
+    }
+
+    /// La clave del bloque «Novedad» (y de su fila en la pantalla).
+    public static let idNovedad = "_novedad"
+
+    /// La clave del bloque de un clip (la que usa `Bloque.id`): «Novedad» si es nuevo; si no, su bloque o «Videos».
+    public static func claveBloque(_ c: ClipGuia) -> String {
+        c.nuevo ? idNovedad : (c.bloque?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Videos"
     }
 
     /// Agrupa por `bloque` respetando el orden en que aparece cada uno (los nombres vienen del servidor, tal cual). Un
-    /// clip sin bloque va a «Videos», como en la web.
+    /// clip sin bloque va a «Videos», como en la web. Los `nuevo` van juntos en «Novedad» (2.2.0).
     public static func bloques(_ clips: [ClipGuia]) -> [Bloque] {
         var titulos: [String] = []
         var indices: [String: [Int]] = [:]
         for (i, c) in clips.enumerated() {
-            let t = (c.bloque?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Videos"
+            let t = claveBloque(c)
             if indices[t] == nil { titulos.append(t) }
             indices[t, default: []].append(i)
         }
         return titulos.map { t in
             let ix = indices[t] ?? []
-            return Bloque(titulo: t, indices: ix, minutos: ix.reduce(0) { $0 + clips[$1].minutos })
+            let m = ix.reduce(0) { $0 + clips[$1].minutos }
+            return t == idNovedad ? Bloque(titulo: "Novedad", indices: ix, minutos: m, novedad: true) : Bloque(titulo: t, indices: ix, minutos: m)
         }
     }
 
-    /// «4 videos, unos 2 minutos».
+    /// «4 videos, unos 2 minutos». El de «Novedad»: «3 videos nuevos para vos · 9 min».
     public static func textoBloque(_ b: Bloque) -> String {
         let n = b.indices.count
+        if b.novedad {
+            return "\(n) \(n == 1 ? "video nuevo" : "videos nuevos") para vos · \(max(1, Int(b.minutos.rounded()))) min"
+        }
         let m = max(1, Int(b.minutos.rounded()))
         return "\(n) \(n == 1 ? "video" : "videos"), unos \(m) \(m == 1 ? "minuto" : "minutos")"
     }
@@ -163,6 +182,48 @@ public enum ReglasGuia {
 
     /// El botón de la tarjeta destacada.
     public static func botonTarjeta(_ a: Avance) -> String { a.vistos == 0 ? "Ver mi guía" : "Seguir viendo" }
+
+    // MARK: - Novedad (2.2.0, fase 2 de la guía)
+
+    /// El avance de la tarjeta «NOVEDAD EN TU GUÍA»: con `novedad_en` (del resumen o de la copia) y algún nuevo sin ver,
+    /// cuenta solo los nuevos. nil = la tarjeta de la 2.1.0 tal cual (sin `novedad_en`, o vio todo lo nuevo).
+    ///
+    /// Si la copia guardada todavía no sabe de esa tanda (no abrió la guía desde que llegó, y la tarjeta nunca pide el get),
+    /// cuenta con el resumen mientras falte algo: la tanda nueva es lo que falta.
+    public static func avanceNovedad(_ r: ResumenGuia?, guia: Guia?) -> Avance? {
+        guard let n = r?.novedadEn ?? guia?.novedadEn else { return nil }
+        let nuevos = deLaLista(guia).filter(\.nuevo)
+        // El resumen trae el avance de la tanda nueva: manda ese. Los minutos, de la copia si la tiene; si no, los del resumen.
+        if let r, r.ok, let t = r.nuevosTotal, let v = r.nuevosVistos {
+            guard t > 0, v < t else { return nil }
+            let copiaAlDia = !nuevos.isEmpty && (guia?.novedadEn == n || r.novedadEn == nil)
+            let min = copiaAlDia ? nuevos.filter { !$0.visto }.reduce(0) { $0 + $1.minutos } : r.minutosRestantes
+            return Avance(total: t, vistos: v, minutosRestantes: min)
+        }
+        if !nuevos.isEmpty, guia?.novedadEn == n || r?.novedadEn == nil {
+            let a = avance(nuevos)
+            return a.completo ? nil : a
+        }
+        if let g = guia, g.novedadEn == n { return nil }   // la copia está al día y no trae nuevos
+        guard let r, r.ok, r.total > 0, r.vistos < r.total else { return nil }
+        return Avance(total: r.total, vistos: r.vistos, minutosRestantes: r.minutosRestantes)
+    }
+
+    /// La línea de la tarjeta con novedad: «2 videos nuevos, unos 3 min» o «1 de 2 videos nuevos, te quedan 2 min».
+    public static func textoTarjetaNovedad(_ a: Avance) -> String {
+        let min = max(1, Int(a.minutosRestantes.rounded()))
+        if a.vistos == 0 { return "\(a.total) \(a.total == 1 ? "video nuevo" : "videos nuevos"), unos \(min) min" }
+        return "\(a.vistos) de \(a.total) videos nuevos, te quedan \(min) min"
+    }
+
+    /// La marca de «Ocultar» sigue valiendo: sin `novedad_en`, como en la 2.1.0. Con una novedad posterior a la marca (o
+    /// una marca de antes de la 2.2.0, sin fecha), la tarjeta vuelve.
+    public static func quitadaVigente(quitada: Bool, marca: Date?, novedadEn: String?) -> Bool {
+        guard quitada else { return false }
+        guard let n = novedadEn, let d = instante(n) else { return true }
+        guard let marca else { return false }
+        return d <= marca
+    }
 
     /// La bienvenida de la primera vez: con la tarjeta en Entreno (guía con videos, `mostrar_tarjeta` y sin quitar), sin
     /// ningún video visto y una sola vez por cliente. Sale del resumen: nunca pide el get.

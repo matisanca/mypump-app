@@ -74,6 +74,10 @@ public final class ModeloGuia {
     public private(set) var quitadaDeEntreno = false
     /// Las dudas en audio del recuadro de la videollamada (`AudioDuda.swift`, entregas_019).
     public private(set) var audios: ModeloAudioDuda
+    /// La agenda de la entrega al final de la guía (`Agenda.swift`, entregas_021). Sin la 021, no se ve nada.
+    public private(set) var agenda: ModeloAgenda
+    /// Cuándo se ocultó la tarjeta (2.2.0): una novedad posterior la hace volver. nil = sin marca, o una de antes de la 2.2.0.
+    public private(set) var quitadaEn: Date?
 
     @ObservationIgnored let cliente: ClienteRPC
     @ObservationIgnored let token: String
@@ -90,18 +94,22 @@ public final class ModeloGuia {
     static let archivoGuia = "guia.json"
     static let archivoResumen = "guia_resumen.json"
     static let archivoQuitada = "guia_quitada.json"
+    /// Aparte del de la 2.1.0 (un Bool), así una vuelta atrás a la 2.1.0 lee la marca como siempre.
+    static let archivoQuitadaEn = "guia_quitada_en.json"
     static let archivoBienvenida = "guia_bienvenida.json"
     static let archivoTarjetaVista = "guia_tarjeta_vista.json"
 
     public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco?) {
         self.cliente = cliente; self.token = token; self.outbox = outbox; self.disco = disco
         audios = ModeloAudioDuda(cliente: cliente, token: token, outbox: outbox, disco: disco)
+        agenda = ModeloAgenda(cliente: cliente, token: token, outbox: outbox, disco: disco)
         let leida = disco?.leer(Guia.self, Self.archivoGuia)
         let copia = leida?.ok == true ? leida : nil
         guia = copia
         resumen = disco?.leer(ResumenGuia.self, Self.archivoResumen)
         estado = copia != nil ? .lista : .cargando
         quitadaDeEntreno = disco?.leer(Bool.self, Self.archivoQuitada) ?? false
+        quitadaEn = disco?.leer(Double.self, Self.archivoQuitadaEn).map { Date(timeIntervalSince1970: $0) }
         bienvenidaVista = disco?.leer(Bool.self, Self.archivoBienvenida) ?? false
         let tarjetaVista = disco?.leer(Bool.self, Self.archivoTarjetaVista) ?? false
         primeraSesionTarjeta = !tarjetaVista
@@ -114,13 +122,36 @@ public final class ModeloGuia {
 
     /// Hay que mostrar la tarjeta de inicio: con videos, dentro de las 48 h después de la entrega (`mostrar_tarjeta`) y
     /// sin «Quitar de Entreno». Sale del resumen y de la copia: nunca llama al get.
-    public var mostrarTarjeta: Bool { ReglasGuia.tarjetaEnEntreno(resumen, quitada: quitadaDeEntreno) }
+    public var mostrarTarjeta: Bool { ReglasGuia.tarjetaEnEntreno(resumen, quitada: quitada) }
     /// La fila «Ver mi guía» de Mis datos (la tarjeta no está en Entreno y el resumen dijo `ok: true`).
-    public var mostrarFila: Bool { ReglasGuia.filaEnMisDatos(resumen, quitada: quitadaDeEntreno) }
+    public var mostrarFila: Bool { ReglasGuia.filaEnMisDatos(resumen, quitada: quitada) }
     /// «Quitar de Entreno» tiene sentido solo con la tarjeta en Entreno.
     public var puedeQuitarDeEntreno: Bool { mostrarTarjeta }
     /// «Volver a mostrar en Entreno»: la quitó y `mostrar_tarjeta` todavía es true.
-    public var puedeVolverAMostrar: Bool { ReglasGuia.puedeVolverAMostrar(resumen, quitada: quitadaDeEntreno) }
+    public var puedeVolverAMostrar: Bool { ReglasGuia.puedeVolverAMostrar(resumen, quitada: quitada) }
+
+    /// La marca de «Ocultar» que vale: sin `novedad_en`, la de la 2.1.0 tal cual; con una novedad posterior, la tarjeta vuelve.
+    var quitada: Bool { ReglasGuia.quitadaVigente(quitada: quitadaDeEntreno, marca: quitadaEn, novedadEn: novedadEn) }
+
+    // MARK: - Novedad (2.2.0)
+
+    /// La de la última tanda nueva: la del resumen (más nuevo) o la de la copia.
+    public var novedadEn: String? { resumen?.novedadEn ?? guia?.novedadEn }
+    /// El avance de la tarjeta «NOVEDAD EN TU GUÍA» (solo los nuevos). nil = la tarjeta de la 2.1.0.
+    public var avanceNovedad: ReglasGuia.Avance? { ReglasGuia.avanceNovedad(resumen, guia: guia) }
+
+    // MARK: - Agenda (2.2.0)
+
+    /// Los obligatorios que faltan según el teléfono (con lo de la cola encima): el respaldo del `faltan` del servidor.
+    public var faltanLocal: Int? { guia.map { ReglasAgenda.faltan($0) } }
+    /// Lo que muestra el final de la guía.
+    public var vistaAgenda: ReglasAgenda.Vista { agenda.vista(faltanLocal: faltanLocal) }
+    /// Cuántos faltan para el contador: el del servidor si lo mandó; si no, el del teléfono.
+    public var faltanAgenda: Int { agenda.agenda?.faltan ?? faltanLocal ?? 0 }
+    /// La reserva para el «Entrar» de la tarjeta de Entreno: la del resumen o la de la agenda, la que pueda entrar.
+    public func reservaParaEntrar(ahora: Date = Date()) -> ReservaAgenda? {
+        [agenda.reserva, resumen?.reserva].compactMap { $0 }.first { ReglasAgenda.puedeEntrar($0, ahora: ahora) }
+    }
 
     public func quitarDeEntreno() { guardarQuitada(true) }
     public func volverAMostrarEnEntreno() { guardarQuitada(false) }
@@ -130,14 +161,17 @@ public final class ModeloGuia {
         ReglasGuia.Avance(total: resumen?.total ?? 0, vistos: resumen?.vistos ?? 0, minutosRestantes: resumen?.minutosRestantes ?? 0)
     }
     /// La tarjeta va verde y protagonista (falta ver algo) o compacta (vio todo).
-    public var tarjetaDestacada: Bool { mostrarTarjeta && ReglasGuia.estiloTarjeta(avanceTarjeta) == .destacada }
+    /// Con novedad sin ver, también destacada (la compacta de «ya viste todo» va solo si vio también lo nuevo).
+    public var tarjetaDestacada: Bool {
+        mostrarTarjeta && (avanceNovedad != nil || ReglasGuia.estiloTarjeta(avanceTarjeta) == .destacada)
+    }
 
     /// La bienvenida de la primera vez ya salió: una sola vez por cliente, guardado en el teléfono (en la muestra y la
     /// demo, en memoria).
     public private(set) var bienvenidaVista = false
     /// Hay que mostrar la bienvenida (sin ningún video visto, con la tarjeta en Entreno). Nunca llama al get.
     public var mostrarBienvenida: Bool {
-        ReglasGuia.mostrarBienvenida(resumen, yaVista: bienvenidaVista, quitada: quitadaDeEntreno)
+        ReglasGuia.mostrarBienvenida(resumen, yaVista: bienvenidaVista, quitada: quitada)
     }
     public func marcarBienvenidaVista() {
         bienvenidaVista = true
@@ -154,10 +188,21 @@ public final class ModeloGuia {
     }
     @ObservationIgnored private var tarjetaVistaGuardada = false
 
-    private func guardarQuitada(_ q: Bool) {
+    /// Ocultar guarda también la fecha (una novedad posterior la hace volver); volver a mostrar borra las dos.
+    private func guardarQuitada(_ q: Bool, ahora: Date = Date()) {
         quitadaDeEntreno = q
-        if q { disco?.guardar(true, Self.archivoQuitada) } else { disco?.borrar(Self.archivoQuitada) }
+        quitadaEn = q ? ahora : nil
+        if q {
+            disco?.guardar(true, Self.archivoQuitada)
+            disco?.guardar(ahora.timeIntervalSince1970, Self.archivoQuitadaEn)
+        } else {
+            disco?.borrar(Self.archivoQuitada)
+            disco?.borrar(Self.archivoQuitadaEn)
+        }
     }
+
+    /// Para los tests: ocultar con una fecha dada.
+    func quitarDeEntreno(ahora: Date) { guardarQuitada(true, ahora: ahora) }
 
     /// Los clips de la lista, de «Viste X de N» y del reproductor, en el orden en que se muestran («Tu app» primero). Los
     /// que nombra un suplemento no van: se ven con «Ver por qué» (`clipDeSuplemento`).
@@ -187,6 +232,8 @@ public final class ModeloGuia {
         } else {
             aplicarResumen(r)
         }
+        // Una reserva pendiente: al volver a primer plano se consulta la agenda, aunque la guía esté cerrada.
+        await agenda.alVolver()
     }
 
     /// `entregas_app_get`: al abrir la sección. Si ya hay una carga en vuelo, se espera esa.
@@ -272,8 +319,14 @@ public final class ModeloGuia {
         let a = ReglasGuia.avance(ReglasGuia.deLaLista(g))
         // La fecha y `mostrar_tarjeta` siguen siendo los del último resumen (si no hubo, la fecha de la guía y la cuenta).
         let base = resumen?.ok == true ? resumen : nil
+        // Lo de la 2.2.0 sigue al resumen; el avance de lo nuevo, a la guía si la guía sabe de esa tanda.
+        let nuevos = ReglasGuia.deLaLista(g).filter(\.nuevo)
+        let alDia = !nuevos.isEmpty && (base?.novedadEn == nil || base?.novedadEn == g.novedadEn)
         aplicarResumen(ResumenGuia(ok: true, total: a.total, vistos: a.vistos, minutosRestantes: (a.minutosRestantes * 10).rounded() / 10,
-                                   fechaEntrega: base?.fechaEntrega ?? g.fechaEntrega, mostrarTarjetaServidor: base?.mostrarTarjetaServidor))
+                                   fechaEntrega: base?.fechaEntrega ?? g.fechaEntrega, mostrarTarjetaServidor: base?.mostrarTarjetaServidor,
+                                   novedadEn: base?.novedadEn ?? g.novedadEn, reserva: base?.reserva,
+                                   nuevosTotal: alDia && base?.nuevosTotal != nil ? nuevos.count : base?.nuevosTotal,
+                                   nuevosVistos: alDia && base?.nuevosTotal != nil ? nuevos.filter(\.visto).count : base?.nuevosVistos))
     }
 
     /// Los conteos de `conteos` con la fecha y `mostrar_tarjeta` de `r`.
@@ -281,6 +334,15 @@ public final class ModeloGuia {
         var x = conteos
         x.fechaEntrega = r.fechaEntrega
         x.mostrarTarjetaServidor = r.mostrarTarjetaServidor
+        x.novedadEn = r.novedadEn
+        x.reserva = r.reserva
+        // El avance de lo nuevo es un conteo: con avances en la cola, nunca menos vistos que los de `conteos`.
+        if let t = r.nuevosTotal, let v = r.nuevosVistos {
+            x.nuevosTotal = t
+            x.nuevosVistos = conteos.nuevosTotal == t ? max(v, conteos.nuevosVistos ?? 0) : v
+        } else {
+            x.nuevosTotal = nil; x.nuevosVistos = nil
+        }
         return x
     }
 
@@ -299,7 +361,10 @@ public final class ModeloGuia {
         let v = visto || guia?.clips.first(where: { $0.id == video })?.visto == true
         // Lo de la pantalla primero (no espera a la cola); la mezcla con lo pendiente es un solo paso del actor, así dos
         // avances seguidos del mismo video no se pisan.
+        let faltabanAntes = faltanLocal ?? 0
         aplicarAvanceLocal(video: video, segundos: s, visto: v, guardarCopia: true)
+        // Vio el último obligatorio: la agenda de nuevo (y otra vez cuando el avance llegue al servidor, en `alGuardar`).
+        if faltabanAntes > 0, faltanLocal == 0, agenda.disponible { Task { await agenda.consultar() } }
         let op = await outbox.encolar(Self.kindAvance, dedupeKey: clave) { previa in
             Self.mezclarAvance(video: video, segundos: s, visto: v, previa: previa)
         }
@@ -393,6 +458,12 @@ public final class ModeloGuia {
     /// el texto vuelve a su recuadro con «No se pudo guardar».
     func alGuardar(_ ops: [OpGuardada]) {
         audios.alGuardar(ops)
+        agenda.alGuardar(ops)
+        // El último obligatorio llegó al servidor: ahora sí la agenda se habilita.
+        if ops.contains(where: { $0.op.kind == Self.kindAvance && $0.op.payload["visto"] == .bool(true) }), faltanLocal == 0,
+           agenda.disponible, agenda.agenda?.habilitada != true || agenda.agenda?.faltan ?? 0 > 0 {
+            Task { await agenda.consultar() }
+        }
         for g in ops where g.op.kind == Self.kindDuda || g.op.kind == Self.kindDudaLlamada {
             let video = g.op.kind == Self.kindDuda ? g.op.payload["video"]?.comoTexto : nil
             let texto = g.op.payload["texto"]?.comoTexto ?? ""
@@ -411,6 +482,7 @@ public final class ModeloGuia {
     /// Lo que la cola abandonó tras 8 intentos (va a fallidos): el texto vuelve al recuadro.
     func alAbandonar(_ ops: [Operacion]) {
         audios.alAbandonar(ops)
+        agenda.alAbandonar(ops)
         for op in ops where op.kind == Self.kindDuda || op.kind == Self.kindDudaLlamada {
             if pendientes.contains(where: { $0.id == op.id }) { pendientes.removeAll { $0.id == op.id } } else { resueltasAntes.insert(op.id) }
             devolver(op.payload["texto"]?.comoTexto ?? "", a: op.kind == Self.kindDuda ? op.payload["video"]?.comoTexto ?? "" : "")
@@ -461,18 +533,22 @@ public final class ModeloGuia {
 
     /// La demo («Ver demo») y la maqueta: una guía armada, sin red ni token. Nada sale; el avance queda en memoria.
     /// `mostrarTarjeta`: el `mostrar_tarjeta` del resumen de muestra (nil = sin el campo, se cuenta con la fecha).
-    public init(muestra: Guia, mostrarTarjeta: Bool? = nil) {
+    /// `agenda`: la de la demo (2.2.0), que se habilita sola al ver los obligatorios. nil = sin agenda, como la 2.1.0.
+    public init(muestra: Guia, mostrarTarjeta: Bool? = nil, agenda muestraAgenda: AgendaGuia? = nil) {
         cliente = ClienteRPC()
         token = ""
         outbox = nil
         disco = nil
         audios = ModeloAudioDuda(muestra: ())
+        agenda = ModeloAgenda(muestra: muestraAgenda)
         guia = muestra
         esMuestra = true
         primeraSesionTarjeta = true
         estado = muestra.ok ? .lista : .oculta
         let a = ReglasGuia.avance(ReglasGuia.deLaLista(muestra))
         resumen = ResumenGuia(ok: muestra.ok, total: a.total, vistos: a.vistos, minutosRestantes: a.minutosRestantes,
-                              fechaEntrega: muestra.fechaEntrega, mostrarTarjetaServidor: muestra.ok ? mostrarTarjeta : nil)
+                              fechaEntrega: muestra.fechaEntrega, mostrarTarjetaServidor: muestra.ok ? mostrarTarjeta : nil,
+                              novedadEn: muestra.ok ? muestra.novedadEn : nil)
+        agenda.faltanMuestra = { [weak self] in self?.faltanLocal ?? 0 }
     }
 }
