@@ -97,6 +97,90 @@ object AlimentoPropioNuevo {
     internal fun imposible(d: Datos): Boolean =
         d.kcal > MAXIMO_KCAL_POR_100 || (d.unidad != "ml" && d.prot + d.carb + d.fat > MAXIMO_MACROS_POR_100)
 
+    // Lectura de la etiqueta y aviso de proteína en polvo (6-nov)
+
+    /**
+     * En qué base vinieron los números de la foto de la etiqueta: de 1 porción de tantos gramos, por 100 g, o no se sabe
+     * (la etiqueta no dice cuánto pesa la porción; se le pregunta al cliente). Antes una porción sin gramos se tomaba como
+     * 100 g: un whey de 30 g = 132 kcal quedó en 132 kcal por 100 g y el reemplazo pidió 151 g (5 scoops).
+     */
+    sealed interface BaseLectura {
+        data class Porcion(val gramos: Double) : BaseLectura
+        data object Cien : BaseLectura
+        data object Desconocida : BaseLectura
+    }
+
+    /**
+     * `base` la manda mini-vision desde el 6-nov ('porcion' | '100g' | 'desconocida'); con uno viejo se deduce de
+     * `porcion_g`, y sin gramos ya no se asume 100 g.
+     */
+    fun baseLectura(porcionG: Double?, base: String?): BaseLectura {
+        val g = porcionG?.takeIf { it.isFinite() && it > 0 }
+        return when {
+            base == "100g" -> BaseLectura.Cien
+            base == "desconocida" || g == null -> BaseLectura.Desconocida
+            jsRound(g) == 100.0 -> BaseLectura.Cien
+            else -> BaseLectura.Porcion(g)
+        }
+    }
+
+    const val PREGUNTA_BASE = "¿Estos valores son por 100 g o de 1 porción?"
+
+    /** El renglón que queda después de leer la etiqueta: dice en qué base quedaron los números. */
+    fun textoLectura(base: BaseLectura, confianzaBaja: Boolean, avisos: List<String> = emptyList()): String {
+        val enBase = when (base) {
+            is BaseLectura.Porcion -> "Quedaron como valores de 1 porción de ${NumeroJs.texto(jsRound(base.gramos))} g."
+            BaseLectura.Cien -> "Quedaron como valores por 100 g."
+            BaseLectura.Desconocida -> "La etiqueta no dice cuánto pesa la porción. $PREGUNTA_BASE"
+        }
+        if (confianzaBaja) {
+            val detalle = if (avisos.isEmpty()) "" else " (${avisos.joinToString("; ")})"
+            return "⚠ La etiqueta se leyó con poca claridad$detalle: revisá los valores antes de guardar. $enBase"
+        }
+        if (base == BaseLectura.Desconocida) return "✓ Etiqueta leída. $enBase"
+        return "✓ Etiqueta leída. $enBase Revisalos y tocá \"Crear y usar\"."
+    }
+
+    /**
+     * Una proteína en polvo tiene 350 a 420 kcal cada 100 g. Por debajo de este piso casi seguro se cargaron los valores
+     * de 1 scoop como si fueran de 100 g.
+     */
+    const val PISO_KCAL_POLVO_PROTEINA = 300.0
+
+    internal fun esPolvoDeProteina(nombre: String): Boolean {
+        val n = PorcionCasera.normalizar(nombre)
+        if (listOf("whey", "caseina", "isolat", "scoop", "proteina en polvo", "protein powder").any { n.contains(it) }) return true
+        return n.contains("prote") && n.contains("polvo")
+    }
+
+    /** El aviso (no frena el guardado) cuando un polvo de proteína queda con menos de 300 kcal por 100 g. null si no aplica. */
+    fun avisoPolvoProteina(
+        nombre: String,
+        kcal: Double?,
+        prot: Double?,
+        carb: Double?,
+        fat: Double?,
+        unidad: String,
+        gramosPorUnidad: Double?,
+    ): String? {
+        if (!esPolvoDeProteina(nombre)) return null
+        fun num(x: Double?) = if (x != null && x.isFinite() && x > 0) x else 0.0
+        val k = if (num(kcal) > 0) num(kcal) else num(prot) * 4 + num(carb) * 4 + num(fat) * 9
+        if (k <= 0) return null
+        val porcion = if (porUnidad(unidad)) {
+            gramosPorUnidad?.takeIf { it.isFinite() && it > 0 } ?: return null
+        } else {
+            100.0
+        }
+        if (k * 100 / porcion >= PISO_KCAL_POLVO_PROTEINA) return null
+        val que = if (porUnidad(unidad)) {
+            "Revisá que los gramos de 1 ${texto(unidad)} sean los de la etiqueta."
+        } else {
+            "Si estos valores son de 1 scoop, elegí «porción» y poné cuánto pesa."
+        }
+        return "Para una proteína en polvo son pocas calorías: suele tener 350 a 420 kcal cada 100 g. $que"
+    }
+
     /** Lo que escribe el cliente en un campo numérico (ver [leerNumeroEscrito]). */
     fun leerNumero(texto: String): Double? = leerNumeroEscrito(texto)
 }

@@ -1,7 +1,9 @@
 import Foundation
 
 /// `data` de `POST /vision` (mini-vision) con `tipo: etiqueta`: la tabla nutricional leída de una foto.
-/// `porcionG` 100 = valores por 100 g; otra porción = valores de esa porción.
+/// `porcionG` 100 = valores por 100 g; otra porción = valores de esa porción; nil = no se sabe (desde el 6-nov la app
+/// pregunta en vez de asumir 100 g). `base` ('porcion' | '100g' | 'desconocida') y `avisos` los manda mini-vision desde
+/// el 6-nov; un servidor viejo no los trae.
 public struct LecturaEtiqueta: Decodable, Sendable, Equatable {
     public let nombre: String?
     public let porcionG: Double?
@@ -11,11 +13,14 @@ public struct LecturaEtiqueta: Decodable, Sendable, Equatable {
     public let fat: Double?
     /// "alta" | "media" | "baja".
     public let confianza: String?
-    enum CodingKeys: String, CodingKey { case nombre, porcionG = "porcion_g", kcal, prot, carb, fat, confianza }
+    public let base: String?
+    public let avisos: [String]
+    enum CodingKeys: String, CodingKey { case nombre, porcionG = "porcion_g", kcal, prot, carb, fat, confianza, base, avisos }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         nombre = c.texto(.nombre); porcionG = c.decimal(.porcionG); kcal = c.decimal(.kcal); prot = c.decimal(.prot)
         carb = c.decimal(.carb); fat = c.decimal(.fat); confianza = c.texto(.confianza)
+        base = c.texto(.base); avisos = c.textos(.avisos) ?? []
     }
 }
 

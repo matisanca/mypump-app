@@ -32,6 +32,8 @@ struct CrearAlimentoView: View {
     @State private var escaneando = false
     @State private var estadoEscaneo: String?
     @State private var precargado = false
+    /// La etiqueta no dijo cuánto pesa la porción: se pregunta si los números son por 100 g o de 1 porción (6-nov).
+    @State private var preguntaBase = false
     @FocusState private var foco: Campo?
 
     enum Campo: Hashable { case nombre, kcal, prot, carb, fat, gramos }
@@ -52,6 +54,17 @@ struct CrearAlimentoView: View {
                     }
                     if let estadoEscaneo {
                         Text(estadoEscaneo).font(.footnote).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("crear-estado-escaneo")
+                    }
+                    if preguntaBase {
+                        HStack(spacing: 10) {
+                            Button("Por 100 g") { elegirBase(porcion: false) }
+                                .accessibilityIdentifier("crear-base-100")
+                            Button("De 1 porción") { elegirBase(porcion: true) }
+                                .accessibilityIdentifier("crear-base-porcion")
+                        }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } footer: {
                     Text("Después podés corregir cualquier valor.")
@@ -80,7 +93,7 @@ struct CrearAlimentoView: View {
             }
 
             Section {
-                Picker("Unidad", selection: $unidad) {
+                Picker("Unidad", selection: Binding(get: { unidad }, set: { unidad = $0; preguntaBase = false })) {
                     ForEach(AlimentoPropioNuevo.unidades, id: \.valor) { Text($0.texto).tag($0.valor) }
                 }
                 if AlimentoPropioNuevo.porUnidad(unidad) {
@@ -102,8 +115,15 @@ struct CrearAlimentoView: View {
             } header: {
                 Text("Valores")
             } footer: {
-                Text(AlimentoPropioNuevo.base(unidad: unidad, gramosPorUnidad: AlimentoPropioNuevo.leerNumero(gramos)))
-                    + Text(" Si no sabés las calorías, se calculan con los macros.")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(AlimentoPropioNuevo.base(unidad: unidad, gramosPorUnidad: AlimentoPropioNuevo.leerNumero(gramos)))
+                        + Text(" Si no sabés las calorías, se calculan con los macros.")
+                    if let aviso = avisoPolvo {
+                        Label(aviso, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(Color.alerta)
+                            .accessibilityIdentifier("crear-aviso-polvo")
+                    }
+                }
             }
 
             if let error {
@@ -172,8 +192,26 @@ struct CrearAlimentoView: View {
         }
     }
 
-    /// "Escanear etiqueta" (F7): prellena todo editable. `porcion_g` 100 = valores por 100 g (unidad g); otra porción =
-    /// unidad "porción" con sus gramos, como la web.
+    /// No frena el guardado: un polvo de proteína con menos de 300 kcal por 100 g (casi seguro, el scoop cargado como 100 g).
+    private var avisoPolvo: String? {
+        let leer = AlimentoPropioNuevo.leerNumero
+        return AlimentoPropioNuevo.avisoPolvoProteina(nombre: nombre, kcal: leer(kcal), prot: leer(prot), carb: leer(carb),
+                                                      fat: leer(fat), unidad: unidad, gramosPorUnidad: leer(gramos))
+    }
+
+    /// La respuesta a «¿por 100 g o de 1 porción?». De 1 porción pide los gramos (la etiqueta no los dijo).
+    private func elegirBase(porcion: Bool) {
+        preguntaBase = false
+        error = nil
+        unidad = porcion ? "porcion" : "g"
+        estadoEscaneo = porcion
+            ? "Poné cuánto pesa 1 porción en gramos y revisá los valores."
+            : "✓ Quedaron como valores por 100 g. Revisalos y tocá \"Crear y usar\"."
+        if porcion { foco = .gramos }
+    }
+
+    /// "Escanear etiqueta" (F7): prellena todo editable y dice en qué base quedó. Porción con gramos = unidad "porción"
+    /// con sus gramos, como la web; 100 g = unidad g; sin gramos de la porción se pregunta (antes se asumía 100 g).
     private func escanear(_ jpeg: Data) {
         escaneando = true
         foco = nil
@@ -191,15 +229,23 @@ struct CrearAlimentoView: View {
                 if let p = d.prot { prot = p.kg }
                 if let c = d.carb { carb = c.kg }
                 if let f = d.fat { fat = f.kg }
-                if let g = d.porcionG, g.isFinite, g > 0, jsRound(g) != 100 {
+                let base = AlimentoPropioNuevo.baseLectura(porcionG: d.porcionG, base: d.base)
+                switch base {
+                case .porcion(let g):
                     unidad = "porcion"
                     gramos = String(g.jsEntero)
-                } else {
+                    preguntaBase = false
+                case .cien:
                     unidad = "g"
+                    preguntaBase = false
+                case .desconocida:
+                    unidad = "g"
+                    gramos = ""
+                    // Sin ningún número (no se leyó la tabla) no hay nada que ubicar: se carga a mano.
+                    preguntaBase = [d.kcal, d.prot, d.carb, d.fat].contains { $0 != nil }
                 }
-                estadoEscaneo = d.confianza == "baja"
-                    ? "⚠ La etiqueta se leyó con poca claridad: revisá los valores antes de guardar."
-                    : "✓ Etiqueta leída. Revisá los valores y tocá \"Crear y usar\"."
+                error = nil
+                estadoEscaneo = AlimentoPropioNuevo.textoLectura(base, confianzaBaja: d.confianza == "baja", avisos: d.avisos)
             case .failure(let e):
                 estadoEscaneo = "⚠ No pudimos leer la foto (\(e.clase == .red ? "sin conexión" : e.mensaje)). Cargalo a mano o probá otra foto con más luz."
             }
@@ -208,6 +254,10 @@ struct CrearAlimentoView: View {
 
     private func crear() async {
         foco = nil   // que el aviso de abajo no quede tapado por el teclado (Android ya lo hace)
+        if preguntaBase {
+            error = "Antes de guardar, elegí si los valores son por 100 g o de 1 porción."
+            return
+        }
         let leer = AlimentoPropioNuevo.leerNumero
         switch AlimentoPropioNuevo.preparar(nombre: nombre, kcal: leer(kcal), prot: leer(prot), carb: leer(carb), fat: leer(fat),
                                             unidad: unidad, gramosPorUnidad: leer(gramos), categoria: categoria) {

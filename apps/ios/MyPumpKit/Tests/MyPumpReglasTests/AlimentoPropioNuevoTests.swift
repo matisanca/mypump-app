@@ -86,4 +86,55 @@ struct AlimentoPropioNuevoTests {
         #expect(AlimentoPropioNuevo.leerNumero("") == nil)
         #expect(AlimentoPropioNuevo.leerNumero("abc") == nil)
     }
+
+    // MARK: - Lectura de la etiqueta y aviso de proteína en polvo (6-nov, el whey de 30 g guardado como 100 g)
+
+    @Test func laBaseDeLaLectura() {
+        typealias B = AlimentoPropioNuevo.BaseLectura
+        #expect(AlimentoPropioNuevo.baseLectura(porcionG: 30, base: "porcion") == B.porcion(30))
+        #expect(AlimentoPropioNuevo.baseLectura(porcionG: 100, base: "100g") == B.cien)
+        #expect(AlimentoPropioNuevo.baseLectura(porcionG: nil, base: "desconocida") == B.desconocida)
+        // Servidor viejo, sin `base`: sin gramos ya no se asume 100 g.
+        #expect(AlimentoPropioNuevo.baseLectura(porcionG: nil, base: nil) == B.desconocida)
+        #expect(AlimentoPropioNuevo.baseLectura(porcionG: 0, base: nil) == B.desconocida)
+        #expect(AlimentoPropioNuevo.baseLectura(porcionG: 100.4, base: nil) == B.cien)
+        #expect(AlimentoPropioNuevo.baseLectura(porcionG: 30, base: nil) == B.porcion(30))
+        #expect(AlimentoPropioNuevo.baseLectura(porcionG: nil, base: "porcion") == B.desconocida)
+    }
+
+    @Test func elTextoDiceLaBase() {
+        #expect(AlimentoPropioNuevo.textoLectura(.porcion(30), confianzaBaja: false)
+            == "✓ Etiqueta leída. Quedaron como valores de 1 porción de 30 g. Revisalos y tocá \"Crear y usar\".")
+        #expect(AlimentoPropioNuevo.textoLectura(.cien, confianzaBaja: false)
+            == "✓ Etiqueta leída. Quedaron como valores por 100 g. Revisalos y tocá \"Crear y usar\".")
+        #expect(AlimentoPropioNuevo.textoLectura(.desconocida, confianzaBaja: false)
+            == "✓ Etiqueta leída. La etiqueta no dice cuánto pesa la porción. ¿Estos valores son por 100 g o de 1 porción?")
+        #expect(AlimentoPropioNuevo.textoLectura(.cien, confianzaBaja: true, avisos: ["las calorías no cierran con los macros"])
+            == "⚠ La etiqueta se leyó con poca claridad (las calorías no cierran con los macros): revisá los valores antes de guardar. Quedaron como valores por 100 g.")
+    }
+
+    @Test func avisoDelPolvoDeProteina() {
+        func aviso(_ nombre: String, _ kcal: Double?, unidad: String = "g", gramos: Double? = nil, prot: Double? = nil) -> String? {
+            AlimentoPropioNuevo.avisoPolvoProteina(nombre: nombre, kcal: kcal, prot: prot, carb: nil, fat: nil, unidad: unidad,
+                                                   gramosPorUnidad: gramos)
+        }
+        // El caso de Camila: el scoop (132 kcal) cargado como 100 g.
+        #expect(aviso("BEST WHEY", 132)?.contains("elegí «porción»") == true)
+        #expect(aviso("Proteína en polvo", 132) != nil)
+        #expect(aviso("Caseína micelar", 120) != nil)
+        #expect(aviso("Proteina vegetal en polvo", 110) != nil)
+        // Bien cargado: por 100 g o por porción con sus gramos.
+        #expect(aviso("BEST WHEY", 440) == nil)
+        #expect(aviso("BEST WHEY", 132, unidad: "porcion", gramos: 30) == nil)
+        // Porción con gramos de más (132 kcal en 100 g de «porción»): avisa y pide revisar los gramos.
+        #expect(aviso("BEST WHEY", 132, unidad: "porcion", gramos: 100)?.contains("Revisá que los gramos") == true)
+        // Sin kcal se miran los macros (24 g de proteína = 96 kcal).
+        #expect(aviso("Whey", nil, prot: 24) != nil)
+        // No es polvo de proteína: no avisa (leche proteica, cacao en polvo).
+        #expect(aviso("Leche Protein", 37) == nil)
+        #expect(aviso("Cacao en polvo", 228) == nil)
+        // Porción sin gramos o sin valores: no hay con qué calcular.
+        #expect(aviso("Whey", 132, unidad: "porcion", gramos: nil) == nil)
+        #expect(aviso("Whey", nil) == nil)
+    }
 }

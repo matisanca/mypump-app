@@ -91,7 +91,7 @@ class DietaCapturasTest : PruebaUi() {
             p.tocar(etiqueta("elegir-de-la-galeria"))
             p.nodo(texto("Leyendo la etiqueta…"))
             foto("dieta-03-leyendo-etiqueta")
-            p.nodo(texto("✓ Etiqueta leída. Revisá los valores y tocá \"Crear y usar\"."), ms = 30_000)
+            p.nodo(texto("✓ Etiqueta leída. Quedaron como valores de 1 porción de 50 g. Revisalos y tocá \"Crear y usar\"."), ms = 30_000)
             p.quieto(400)
             foto("dieta-04-alimento-propio")
             p.tocar(etiqueta("volver-a-reemplazos"))

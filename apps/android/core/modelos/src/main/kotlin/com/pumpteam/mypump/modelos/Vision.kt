@@ -5,7 +5,9 @@ import kotlinx.serialization.json.JsonElement
 
 /**
  * `data` de `POST /vision` (mini-vision) con `tipo: etiqueta`: la tabla nutricional leída de una foto.
- * `porcionG` 100 = valores por 100 g; otra porción = valores de esa porción.
+ * `porcionG` 100 = valores por 100 g; otra porción = valores de esa porción; null = no se sabe (desde el 6-nov la app
+ * pregunta en vez de asumir 100 g). `base` ('porcion' | '100g' | 'desconocida') y `avisos` los manda mini-vision desde el
+ * 6-nov; un servidor viejo no los trae.
  */
 data class LecturaEtiqueta(
     val nombre: String?,
@@ -16,6 +18,8 @@ data class LecturaEtiqueta(
     val fat: Double?,
     /** "alta" | "media" | "baja". */
     val confianza: String?,
+    val base: String? = null,
+    val avisos: List<String> = emptyList(),
 ) {
     companion object {
         fun desde(e: JsonElement): LecturaEtiqueta {
@@ -23,6 +27,7 @@ data class LecturaEtiqueta(
             return LecturaEtiqueta(
                 nombre = o.texto("nombre"), porcionG = o.decimal("porcion_g"), kcal = o.decimal("kcal"), prot = o.decimal("prot"),
                 carb = o.decimal("carb"), fat = o.decimal("fat"), confianza = o.texto("confianza"),
+                base = o.texto("base"), avisos = o.textos("avisos") ?: emptyList(),
             )
         }
     }

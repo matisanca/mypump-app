@@ -310,7 +310,7 @@ class DietaEscrituraUiTest : PruebaUi() {
         crearAlimento()
         p.tocar(etiqueta("escanear-etiqueta"))
         p.tocar(etiqueta("elegir-de-la-galeria"))
-        p.nodo(texto("✓ Etiqueta leída. Revisá los valores y tocá \"Crear y usar\"."), ms = 30_000)
+        p.nodo(texto("✓ Etiqueta leída. Quedaron como valores de 1 porción de 30 g. Revisalos y tocá \"Crear y usar\"."), ms = 30_000)
         assertEquals(1, pedidos.size)
         // A la IA va reducida (1.600 px de lado mayor) y sin la ubicación.
         val foto = fotoQueLlego("etiqueta")
@@ -346,7 +346,7 @@ class DietaEscrituraUiTest : PruebaUi() {
         servidor.vision = { 200 to """{"ok":true,"data":{"nombre":"Barrita","porcion_g":100,"kcal":380,"prot":10,"carb":60,"fat":12,"confianza":"baja"}}""" }
         p.tocar(etiqueta("escanear-etiqueta"))
         p.tocar(etiqueta("elegir-de-la-galeria"))
-        p.nodo(texto("⚠ La etiqueta se leyó con poca claridad: revisá los valores antes de guardar."), ms = 30_000)
+        p.nodo(texto("⚠ La etiqueta se leyó con poca claridad: revisá los valores antes de guardar. Quedaron como valores por 100 g."), ms = 30_000)
         assertEquals("Barrita", p.textoDe(etiqueta("nombre-alimento")))
         // Por 100 g: queda en gramos.
         assertEquals("gramos (g)", p.estado(etiqueta("unidad")))
@@ -533,7 +533,7 @@ class DietaEscrituraUiTest : PruebaUi() {
         p.nodo(texto("Leyendo la etiqueta…"))
         e.recreate()
         p.nodo(etiqueta("crear-alimento-formulario"))
-        p.nodo(texto("✓ Etiqueta leída. Revisá los valores y tocá \"Crear y usar\"."), ms = 30_000)
+        p.nodo(texto("✓ Etiqueta leída. Quedaron como valores por 100 g. Revisalos y tocá \"Crear y usar\"."), ms = 30_000)
         assertEquals("Tofu firme", p.textoDe(etiqueta("nombre-alimento")))
         assertEquals("144", p.textoDe(etiqueta("kcal-alimento")))
         assertEquals(1, servidor.fotosVision.size)
