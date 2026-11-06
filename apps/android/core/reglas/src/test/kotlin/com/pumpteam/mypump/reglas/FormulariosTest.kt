@@ -114,6 +114,66 @@ class AlimentoPropioNuevoTest {
         assertEquals(listOf("g", "ml", "unidad", "rebanada", "taza", "porcion", "cucharada"), AlimentoPropioNuevo.unidades.map { it.first })
         assertEquals("porción", AlimentoPropioNuevo.texto("porcion"))
     }
+
+    // Lectura de la etiqueta y aviso de proteína en polvo (6-nov, el whey de 30 g guardado como 100 g)
+
+    @Test
+    fun laBaseDeLaLectura() {
+        assertEquals(AlimentoPropioNuevo.BaseLectura.Porcion(30.0), AlimentoPropioNuevo.baseLectura(30.0, "porcion"))
+        assertEquals(AlimentoPropioNuevo.BaseLectura.Cien, AlimentoPropioNuevo.baseLectura(100.0, "100g"))
+        assertEquals(AlimentoPropioNuevo.BaseLectura.Desconocida, AlimentoPropioNuevo.baseLectura(null, "desconocida"))
+        // Servidor viejo, sin `base`: sin gramos ya no se asume 100 g.
+        assertEquals(AlimentoPropioNuevo.BaseLectura.Desconocida, AlimentoPropioNuevo.baseLectura(null, null))
+        assertEquals(AlimentoPropioNuevo.BaseLectura.Desconocida, AlimentoPropioNuevo.baseLectura(0.0, null))
+        assertEquals(AlimentoPropioNuevo.BaseLectura.Cien, AlimentoPropioNuevo.baseLectura(100.4, null))
+        assertEquals(AlimentoPropioNuevo.BaseLectura.Porcion(30.0), AlimentoPropioNuevo.baseLectura(30.0, null))
+        assertEquals(AlimentoPropioNuevo.BaseLectura.Desconocida, AlimentoPropioNuevo.baseLectura(null, "porcion"))
+    }
+
+    @Test
+    fun elTextoDiceLaBase() {
+        assertEquals(
+            "✓ Etiqueta leída. Quedaron como valores de 1 porción de 30 g. Revisalos y tocá \"Crear y usar\".",
+            AlimentoPropioNuevo.textoLectura(AlimentoPropioNuevo.BaseLectura.Porcion(30.0), false),
+        )
+        assertEquals(
+            "✓ Etiqueta leída. Quedaron como valores por 100 g. Revisalos y tocá \"Crear y usar\".",
+            AlimentoPropioNuevo.textoLectura(AlimentoPropioNuevo.BaseLectura.Cien, false),
+        )
+        assertEquals(
+            "✓ Etiqueta leída. La etiqueta no dice cuánto pesa la porción. ¿Estos valores son por 100 g o de 1 porción?",
+            AlimentoPropioNuevo.textoLectura(AlimentoPropioNuevo.BaseLectura.Desconocida, false),
+        )
+        assertEquals(
+            "⚠ La etiqueta se leyó con poca claridad (las calorías no cierran con los macros): revisá los valores antes de " +
+                "guardar. Quedaron como valores por 100 g.",
+            AlimentoPropioNuevo.textoLectura(AlimentoPropioNuevo.BaseLectura.Cien, true, listOf("las calorías no cierran con los macros")),
+        )
+    }
+
+    @Test
+    fun avisoDelPolvoDeProteina() {
+        fun aviso(nombre: String, kcal: Double?, unidad: String = "g", gramos: Double? = null, prot: Double? = null) =
+            AlimentoPropioNuevo.avisoPolvoProteina(nombre, kcal, prot, null, null, unidad, gramos)
+        // El caso de Camila: el scoop (132 kcal) cargado como 100 g.
+        assertTrue(aviso("BEST WHEY", 132.0)!!.contains("elegí «porción»"))
+        assertTrue(aviso("Proteína en polvo", 132.0) != null)
+        assertTrue(aviso("Caseína micelar", 120.0) != null)
+        assertTrue(aviso("Proteina vegetal en polvo", 110.0) != null)
+        // Bien cargado: por 100 g o por porción con sus gramos.
+        assertNull(aviso("BEST WHEY", 440.0))
+        assertNull(aviso("BEST WHEY", 132.0, unidad = "porcion", gramos = 30.0))
+        // Porción con gramos de más: avisa y pide revisar los gramos.
+        assertTrue(aviso("BEST WHEY", 132.0, unidad = "porcion", gramos = 100.0)!!.contains("Revisá que los gramos"))
+        // Sin kcal se miran los macros (24 g de proteína = 96 kcal).
+        assertTrue(aviso("Whey", null, prot = 24.0) != null)
+        // No es polvo de proteína: no avisa (leche proteica, cacao en polvo).
+        assertNull(aviso("Leche Protein", 37.0))
+        assertNull(aviso("Cacao en polvo", 228.0))
+        // Porción sin gramos o sin valores: no hay con qué calcular.
+        assertNull(aviso("Whey", 132.0, unidad = "porcion", gramos = null))
+        assertNull(aviso("Whey", null))
+    }
 }
 
 /** Gemelo de ComidaLibreNuevaTests.swift: el mismo re-escalado y validación que la web. */

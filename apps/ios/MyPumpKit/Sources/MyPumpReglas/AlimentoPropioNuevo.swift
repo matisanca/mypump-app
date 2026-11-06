@@ -79,6 +79,74 @@ public enum AlimentoPropioNuevo {
         d.kcal > maximoKcalPor100 || (d.unidad != "ml" && d.prot + d.carb + d.fat > maximoMacrosPor100)
     }
 
+    // MARK: - Lectura de la etiqueta y aviso de proteína en polvo (6-nov)
+
+    /// En qué base vinieron los números de la foto de la etiqueta: de 1 porción de tantos gramos, por 100 g, o no se
+    /// sabe (la etiqueta no dice cuánto pesa la porción; se le pregunta al cliente). Antes una porción sin gramos se
+    /// tomaba como 100 g: un whey de 30 g = 132 kcal quedó en 132 kcal por 100 g y el reemplazo pidió 151 g (5 scoops).
+    public enum BaseLectura: Equatable, Sendable { case porcion(Double), cien, desconocida }
+
+    /// `base` la manda mini-vision desde el 6-nov ('porcion' | '100g' | 'desconocida'); con uno viejo se deduce de
+    /// `porcion_g`, y sin gramos ya no se asume 100 g.
+    public static func baseLectura(porcionG: Double?, base: String?) -> BaseLectura {
+        let g: Double? = { guard let p = porcionG, p.isFinite, p > 0 else { return nil }; return p }()
+        if base == "100g" { return .cien }
+        if base == "desconocida" { return .desconocida }
+        guard let g else { return .desconocida }
+        return jsRound(g) == 100 ? .cien : .porcion(g)
+    }
+
+    public static let preguntaBase = "¿Estos valores son por 100 g o de 1 porción?"
+
+    /// El renglón que queda después de leer la etiqueta: dice en qué base quedaron los números.
+    public static func textoLectura(_ base: BaseLectura, confianzaBaja: Bool, avisos: [String] = []) -> String {
+        let enBase: String
+        switch base {
+        case .porcion(let g): enBase = "Quedaron como valores de 1 porción de \(numeroJS(jsRound(g))) g."
+        case .cien: enBase = "Quedaron como valores por 100 g."
+        case .desconocida: enBase = "La etiqueta no dice cuánto pesa la porción. \(preguntaBase)"
+        }
+        if confianzaBaja {
+            let detalle = avisos.isEmpty ? "" : " (\(avisos.joined(separator: "; ")))"
+            return "⚠ La etiqueta se leyó con poca claridad\(detalle): revisá los valores antes de guardar. \(enBase)"
+        }
+        if base == .desconocida { return "✓ Etiqueta leída. \(enBase)" }
+        return "✓ Etiqueta leída. \(enBase) Revisalos y tocá \"Crear y usar\"."
+    }
+
+    /// Una proteína en polvo tiene 350 a 420 kcal cada 100 g. Por debajo de este piso casi seguro se cargaron los valores
+    /// de 1 scoop como si fueran de 100 g.
+    public static let pisoKcalPolvoProteina = 300.0
+
+    static func esPolvoDeProteina(_ nombre: String) -> Bool {
+        let n = PorcionCasera.normalizar(nombre)
+        if ["whey", "caseina", "isolat", "scoop", "proteina en polvo", "protein powder"].contains(where: { n.contains($0) }) {
+            return true
+        }
+        return n.contains("prote") && n.contains("polvo")
+    }
+
+    /// El aviso (no frena el guardado) cuando un polvo de proteína queda con menos de 300 kcal por 100 g. nil si no aplica.
+    public static func avisoPolvoProteina(nombre: String, kcal: Double?, prot: Double?, carb: Double?, fat: Double?,
+                                          unidad: String, gramosPorUnidad: Double?) -> String? {
+        guard esPolvoDeProteina(nombre) else { return nil }
+        func num(_ x: Double?) -> Double { guard let x, x.isFinite, x > 0 else { return 0 } ; return x }
+        let k = num(kcal) > 0 ? num(kcal) : num(prot) * 4 + num(carb) * 4 + num(fat) * 9
+        guard k > 0 else { return nil }
+        let porcion: Double
+        if porUnidad(unidad) {
+            guard let g = gramosPorUnidad, g.isFinite, g > 0 else { return nil }
+            porcion = g
+        } else {
+            porcion = 100
+        }
+        guard k * 100 / porcion < pisoKcalPolvoProteina else { return nil }
+        let que = porUnidad(unidad)
+            ? "Revisá que los gramos de 1 \(texto(unidad)) sean los de la etiqueta."
+            : "Si estos valores son de 1 scoop, elegí «porción» y poné cuánto pesa."
+        return "Para una proteína en polvo son pocas calorías: suele tener 350 a 420 kcal cada 100 g. \(que)"
+    }
+
     /// Lo que escribe el cliente en un campo numérico: acepta coma o punto decimal ("1,5" y "1.5"). Vacío o
     /// ilegible = nil.
     public static func leerNumero(_ texto: String) -> Double? {

@@ -164,4 +164,17 @@ struct ToleranciaTests {
         let vuelta = try JSONEncoder().encode(s.foodData)
         #expect(try JSONDecoder().decode(JSONValue.self, from: vuelta) == s.foodData)
     }
+
+    /// mini-vision desde el 6-nov: `base`, `avisos` y porcion_g null cuando la etiqueta no dice cuánto pesa la porción.
+    @Test func laLecturaDeEtiquetaTraeBaseYAvisos() throws {
+        let vieja = try JSONDecoder().decode(LecturaEtiqueta.self, from: Data(#"{"nombre":"Yogur","porcion_g":"30","kcal":75,"confianza":"alta"}"#.utf8))
+        #expect(vieja.porcionG == 30)
+        #expect(vieja.base == nil)
+        #expect(vieja.avisos.isEmpty)
+        let nueva = try JSONDecoder().decode(LecturaEtiqueta.self, from: Data(
+            #"{"porcion_g":null,"kcal":132,"base":"desconocida","avisos":["no se ve cuánto pesa la porción"]}"#.utf8))
+        #expect(nueva.porcionG == nil)
+        #expect(nueva.base == "desconocida")
+        #expect(nueva.avisos == ["no se ve cuánto pesa la porción"])
+    }
 }

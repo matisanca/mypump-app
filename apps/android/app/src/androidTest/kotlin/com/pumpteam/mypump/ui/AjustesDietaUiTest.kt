@@ -425,7 +425,7 @@ class AjustesDietaUiTest : PruebaUi() {
             p.nodo(etiqueta("codigo-sin-producto"))
 
             p.tocar(etiqueta("codigo-etiqueta"))
-            p.nodo(texto("✓ Etiqueta leída. Revisá los valores y tocá \"Crear y usar\"."), ms = 30_000)
+            p.nodo(texto("✓ Etiqueta leída. Quedaron como valores de 1 porción de 200 g. Revisalos y tocá \"Crear y usar\"."), ms = 30_000)
             assertEquals("la cámara se abrió sola", 1, camara.pedidos.size)
             assertEquals("Leche de prueba", p.textoDe(etiqueta("nombre-alimento")))
             p.tocar(etiqueta("crear-y-usar"))

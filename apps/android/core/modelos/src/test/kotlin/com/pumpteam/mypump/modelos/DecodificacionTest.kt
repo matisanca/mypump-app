@@ -306,6 +306,15 @@ class LectoresTest {
         assertTrue(rota.alimentos.isEmpty())
         val etiqueta = LecturaEtiqueta.desde(Json.parseToJsonElement("""{"nombre":"Yogur","porcion_g":"30","kcal":75,"confianza":"alta"}"""))
         assertEquals(30.0, etiqueta.porcionG)
+        assertNull(etiqueta.base)
+        assertTrue(etiqueta.avisos.isEmpty())
+        // mini-vision desde el 6-nov: `base`, `avisos` y porcion_g null cuando la etiqueta no dice cuánto pesa la porción.
+        val nueva = LecturaEtiqueta.desde(
+            Json.parseToJsonElement("""{"porcion_g":null,"kcal":132,"base":"desconocida","avisos":["no se ve cuánto pesa la porción"]}"""),
+        )
+        assertNull(nueva.porcionG)
+        assertEquals("desconocida", nueva.base)
+        assertEquals(listOf("no se ve cuánto pesa la porción"), nueva.avisos)
     }
 
     @Test

@@ -43,6 +43,7 @@ import com.pumpteam.mypump.datos.ErrorRpc
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.Resultado
 import com.pumpteam.mypump.diseno.BotonMarca
+import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.BotonVolver
 import com.pumpteam.mypump.diseno.EncabezadoHoja
 import com.pumpteam.mypump.diseno.Espacio
@@ -58,7 +59,6 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
 import com.pumpteam.mypump.reglas.CodigoBarras
 import com.pumpteam.mypump.reglas.Formulario
-import com.pumpteam.mypump.reglas.jsRound
 import kotlinx.coroutines.launch
 
 /**
@@ -101,6 +101,8 @@ fun CrearAlimento(
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var guardando by remember { mutableStateOf(false) }
     var estadoEscaneo by rememberSaveable { mutableStateOf<String?>(null) }
+    // La etiqueta no dijo cuánto pesa la porción: se pregunta si los números son por 100 g o de 1 porción (6-nov).
+    var preguntaBase by rememberSaveable { mutableStateOf(false) }
     // La lectura de la etiqueta vive afuera de la composición: si el teléfono gira mientras la IA mira la foto, la respuesta
     // llega igual a este formulario (ver EsperasDieta).
     val escaneo = remember(modelo) { EsperasDieta.etiqueta(modelo) }
@@ -116,7 +118,10 @@ fun CrearAlimento(
         escaneo.escanear(modelo, alcance, jpeg)
     }
 
-    /** Lo que leyó la visión: prellena todo editable. `porcion_g` 100 = valores por 100 g (unidad g); otra porción = "porción". */
+    /**
+     * Lo que leyó la visión: prellena todo editable y dice en qué base quedó. Porción con gramos = "porción" con sus
+     * gramos; 100 g = unidad g; sin gramos de la porción se pregunta (antes se asumía 100 g).
+     */
     LaunchedEffect(escaneo.resultado) {
         val r = escaneo.resultado ?: return@LaunchedEffect
         escaneo.consumir()
@@ -134,19 +139,24 @@ fun CrearAlimento(
                 d.prot?.let { prot = Formato.decimal(it) }
                 d.carb?.let { carb = Formato.decimal(it) }
                 d.fat?.let { fat = Formato.decimal(it) }
-                val g = d.porcionG
-                if (g != null && g.isFinite() && g > 0 && jsRound(g) != 100.0) {
-                    unidad = "porcion"
-                    gramos = jsEntero(g).toString()
-                } else {
-                    unidad = "g"
+                val base = AlimentoPropioNuevo.baseLectura(d.porcionG, d.base)
+                when (base) {
+                    is AlimentoPropioNuevo.BaseLectura.Porcion -> {
+                        unidad = "porcion"
+                        gramos = jsEntero(base.gramos).toString()
+                        preguntaBase = false
+                    }
+                    AlimentoPropioNuevo.BaseLectura.Cien -> {
+                        unidad = "g"
+                        preguntaBase = false
+                    }
+                    AlimentoPropioNuevo.BaseLectura.Desconocida -> {
+                        unidad = "g"
+                        preguntaBase = true
+                    }
                 }
                 error = null
-                estadoEscaneo = if (d.confianza == "baja") {
-                    "⚠ La etiqueta se leyó con poca claridad: revisá los valores antes de guardar."
-                } else {
-                    "✓ Etiqueta leída. Revisá los valores y tocá \"Crear y usar\"."
-                }
+                estadoEscaneo = AlimentoPropioNuevo.textoLectura(base, d.confianza == "baja", d.avisos)
                 tactil.performHapticFeedback(HapticFeedbackType.Confirm)
             }
             is Resultado.Falla -> {
@@ -157,8 +167,25 @@ fun CrearAlimento(
         }
     }
 
+    /** La respuesta a «¿por 100 g o de 1 porción?». De 1 porción pide los gramos (la etiqueta no los dijo). */
+    fun elegirBase(porcion: Boolean) {
+        preguntaBase = false
+        error = null
+        unidad = if (porcion) "porcion" else "g"
+        estadoEscaneo = if (porcion) {
+            "Poné cuánto pesa 1 porción en gramos y revisá los valores."
+        } else {
+            "✓ Quedaron como valores por 100 g. Revisalos y tocá \"Crear y usar\"."
+        }
+    }
+
     fun crear() {
         foco.clearFocus()
+        if (preguntaBase) {
+            error = "Antes de guardar, elegí si los valores son por 100 g o de 1 porción."
+            tactil.performHapticFeedback(HapticFeedbackType.Reject)
+            return
+        }
         val leer = AlimentoPropioNuevo::leerNumero
         val f = AlimentoPropioNuevo.preparar(nombre, leer(kcal), leer(prot), leer(carb), leer(fat), unidad, leer(gramos), categoria)
         when (f) {
@@ -237,6 +264,25 @@ fun CrearAlimento(
                                 modifier = Modifier.padding(horizontal = Espacio.m, vertical = 10.dp).testTag("estado-escaneo"),
                             )
                         }
+                        if (preguntaBase) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = Espacio.m).padding(bottom = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+                            ) {
+                                BotonSecundario(
+                                    "Por 100 g",
+                                    alTocar = { elegirBase(porcion = false) },
+                                    modifier = Modifier.weight(1f).testTag("base-100"),
+                                    compacto = true,
+                                )
+                                BotonSecundario(
+                                    "De 1 porción",
+                                    alTocar = { elegirBase(porcion = true) },
+                                    modifier = Modifier.weight(1f).testTag("base-porcion"),
+                                    compacto = true,
+                                )
+                            }
+                        }
                     }
                 }
                 precarga?.let { p ->
@@ -275,7 +321,10 @@ fun CrearAlimento(
                         null
                     },
                 ) {
-                    SelectorUnidad(unidad, alElegir = { unidad = it })
+                    SelectorUnidad(unidad, alElegir = {
+                        unidad = it
+                        preguntaBase = false
+                    })
                     if (AlimentoPropioNuevo.porUnidad(unidad)) {
                         SeparadorFila()
                         FilaNumero(
@@ -299,6 +348,20 @@ fun CrearAlimento(
                     FilaNumero("Carbohidratos", carb, alCambiar = { carb = it }, unidad = "g", etiqueta = "carb-alimento")
                     SeparadorFila()
                     FilaNumero("Grasas", fat, alCambiar = { fat = it }, unidad = "g", etiqueta = "fat-alimento")
+                }
+                // No frena el guardado: un polvo de proteína con menos de 300 kcal por 100 g (casi seguro, el scoop como 100 g).
+                val leerAviso = AlimentoPropioNuevo::leerNumero
+                AlimentoPropioNuevo.avisoPolvoProteina(
+                    nombre, leerAviso(kcal), leerAviso(prot), leerAviso(carb), leerAviso(fat), unidad, leerAviso(gramos),
+                )?.let { aviso ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = Espacio.m).semantics(mergeDescendants = true) {}
+                            .testTag("aviso-polvo"),
+                        horizontalArrangement = Arrangement.spacedBy(Espacio.s),
+                    ) {
+                        Icon(Iconos.Alerta, contentDescription = null, tint = c.alerta, modifier = Modifier.size(18.dp))
+                        Text(aviso, style = MaterialTheme.typography.bodySmall, color = c.alerta)
+                    }
                 }
                 error?.let { ErrorFormulario(it, etiqueta = "error-alimento") }
             }
