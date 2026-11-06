@@ -1459,6 +1459,7 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 <script src="/js/food-db.js"></script>
 <script src="/js/ajustes-dieta.js"></script>
 <script src="/js/codigo-barras.js"></script>
+<script src="/js/guia.js"></script>
 <script src="/js/reglas-entreno.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
@@ -8770,7 +8771,8 @@ function renderRecordatorio() {
     const destino = (p.faltaCheck && !p.faltanFotos) ? 'myday-checkin' : 'myday-fotos';
     setTimeout(() => { const el = document.getElementById(destino); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
   });
-  host.insertBefore(div, host.firstChild);
+  const guia = host.querySelector(':scope > #guiaHost');
+  host.insertBefore(div, guia ? guia.nextSibling : host.firstChild);
 }
 
 function renderMydayFotos() {
@@ -9552,7 +9554,7 @@ function renderMisDatos() {
   const recTxt = STATE.mostrarRecup === false ? 'Ocultaste el número de recuperación.'
     : conScore ? `${conScore.score} de 100 · ${_REC_BANDA_TXT[conScore.banda || 'media'] || ''}`
     : 'Todavía no hay nada registrado.';
-  const guia = window.MyPumpGuia && STATE.guiaResumen && STATE.guiaResumen.mostrarFila !== false;
+  const guia = !!(window.MyPumpGuia && TOKEN && window.MyPumpGuia.mostrarFila(TOKEN));
   const fila = (id, titulo, extra = '', cls = '') => `<button class="md-fila${cls}" id="${id}"><span>${titulo}</span>${extra}<span class="md-chev">${_CHEV_DER}</span></button>`;
   root.innerHTML = `
     <div class="md-grupo">
@@ -9914,6 +9916,21 @@ function setScene(scene) {
 
 $$('.tab').forEach(t => t.addEventListener('click', () => setScene(t.getAttribute('data-scene'))));
 
+/* «Tu guía» (app 2.1.0, js/guia.js): la tarjeta va arriba de Entreno y el
+   aviso de Revisión debajo de ella, como en la app. */
+const _guiaHost = document.createElement('div');
+_guiaHost.id = 'guiaHost';
+_guiaHost.hidden = true;
+function arrancarGuia() {
+  if (!window.MyPumpGuia || !TOKEN || DEMO || (DATA && DATA._isDemo) || _guiaHost.dataset.montado) return;
+  _guiaHost.dataset.montado = '1';
+  if (STATE.scene === 'train') { const r = document.getElementById('scene-train'); if (r) r.insertBefore(_guiaHost, r.firstChild); }
+  window.MyPumpGuia.montarTarjeta(_guiaHost, TOKEN).catch(() => {});
+  window.MyPumpGuia.alCambiar(() => { if (STATE.scene === 'misdatos') renderMisDatos(); });
+  const nombre = String((DATA && DATA.cliente && DATA.cliente.nombre) || '').trim().split(/\s+/)[0] || '';
+  window.MyPumpGuia.bienvenidaSiCorresponde(TOKEN, { nombre }).catch(() => {});
+}
+
 // Recuperación (renderSalud) y Fuerza (renderProgress) llevan arriba el
 // selector de Salud; se envuelven para que lo pongan en todos sus caminos,
 // también en los repintados que llegan solos después de una carga.
@@ -9924,6 +9941,12 @@ $$('.tab').forEach(t => t.addEventListener('click', () => setScene(t.getAttribut
     try { renderMydayRecuperacion(); } catch (_) {}
     try { renderMydayConexiones(); } catch (_) {}
     _ponerSegSalud('salud');
+  };
+  const _rt = renderTrain;
+  renderTrain = function () {
+    _rt.apply(this, arguments);
+    const r = document.getElementById('scene-train');
+    if (r && window.MyPumpGuia && _guiaHost.dataset.montado) r.insertBefore(_guiaHost, r.firstChild);
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
@@ -10282,6 +10305,7 @@ async function init() {
   loadRecuperacion();  // score de recuperación (Mi Día) — motor SQL, mig 043
   loadConexiones();    // wearables conectados por OAuth (Revisión)
   loadSuplementacion(); // pestaña Suplementación (app 2.1.0), solo si hay ítems
+  try { arrancarGuia(); } catch (_) {}   // «Tu guía»: tarjeta en Entreno y bienvenida
   loadRevision(); // check + fotos → Revisión
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();

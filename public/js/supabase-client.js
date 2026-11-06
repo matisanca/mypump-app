@@ -745,4 +745,111 @@ window.mypumpDB = {
     });
   },
 
+  // ─── TU GUÍA (obra de entregas: entregas_010 a entregas_019) ──
+  // Los videos de Mati antes de la videollamada. Todo por token; las mismas
+  // RPC que usan las apps nativas (MyPumpDatos/Guia.swift y AudioDuda.swift).
+  // La usa public/js/guia.js.
+
+  // Para la tarjeta de Entreno: {ok, total, vistos, minutos_restantes,
+  // fecha_entrega, mostrar_tarjeta}. Solo lee: NO marca abierto_en.
+  async getGuiaResumen(token) {
+    return await rpc('entregas_app_resumen', { p_token: token });
+  },
+
+  // La guía entera. Marca abierto_en la primera vez: se llama SOLO cuando el
+  // cliente abre la sección, nunca en segundo plano.
+  async getGuia(token) {
+    return await rpc('entregas_app_get', { p_token: token });
+  },
+
+  // El avance de un video. Idempotente en la base: toma el mayor de los
+  // segundos y visto nunca vuelve a false. FALSE = token caído o sin guía.
+  async guardarAvanceGuia(token, video, segundos, visto) {
+    return await rpcMutation('entregas_app_avance', {
+      p_token:    token,
+      p_video:    video,
+      p_segundos: Math.min(36000, Math.max(0, Math.round(Number(segundos) || 0))),
+      p_visto:    !!visto,
+    });
+  },
+
+  // Una duda de un video. data === false = tope de 3200 caracteres del video
+  // o token caído. `id` (entregas_013): uuid armado una sola vez por duda; el
+  // mismo id en un reintento devuelve true sin sumarla de nuevo. Si no es un
+  // uuid se omite (un "" daría 400 22P02, que no se reintenta).
+  async enviarDudaGuia(token, video, texto, id) {
+    const params = { p_token: token, p_video: video, p_texto: texto };
+    if (_esUuidGuia(id)) params.p_id = id;
+    return await rpcMutation('entregas_app_duda', params);
+  },
+
+  // Una duda para la videollamada (tope de 30, compartido con la web y la app).
+  async enviarDudaLlamadaGuia(token, texto, id) {
+    const params = { p_token: token, p_texto: texto };
+    if (_esUuidGuia(id)) params.p_id = id;
+    return await rpcMutation('entregas_app_llamada_duda', params);
+  },
+
+  // Dudas en audio (entregas_019). → {ok, id, bucket, ruta, mime, max_bytes,
+  // estado} o {ok:false, motivo}. Idempotente por p_id.
+  async iniciarAudioGuia(token, mime, bytes, segundos, id) {
+    return await rpcMutation('entregas_app_audio_iniciar', {
+      p_token:    token,
+      p_mime:     mime,
+      p_bytes:    Math.max(0, Math.round(Number(bytes) || 0)),
+      p_segundos: Math.max(0, Math.round(Number(segundos) || 0)),
+      p_id:       id,
+    });
+  },
+
+  // Confirma la subida: {ok, estado} o {ok:false, motivo} (token, no_existe,
+  // sin_archivo, vencido, tamano).
+  async subidoAudioGuia(token, id) {
+    return await rpcMutation('entregas_app_audio_subido', { p_token: token, p_id: id });
+  },
+
+  // [{id, estado: subido|transcripto|error, en, segundos, texto}].
+  async getAudiosGuia(token) {
+    return await rpc('entregas_app_audios', { p_token: token });
+  },
+
+  // La subida del audio a la ruta que dio el ticket: POST con la anon key, el
+  // Content-Type exacto del ticket (el bucket lo compara) y x-upsert false (la
+  // política no deja pisar). Devuelve {ok, status, existe, red, transitorio}.
+  // `existe`: 403 o 409 (o el 400 con statusCode "409"); en un reintento
+  // quiere decir «quizás ya subió», y lo decide entregas_app_audio_subido.
+  async subirAudioGuia(bucket, ruta, blob, mime) {
+    const camino = [bucket].concat(String(ruta).split('/')).map(encodeURIComponent).join('/');
+    let res;
+    try {
+      res = await fetch(`${SUPABASE_URL}/storage/v1/object/${camino}`, {
+        method: 'POST',
+        headers: {
+          apikey:         SUPABASE_ANON_KEY,
+          Authorization:  `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': mime,
+          'x-upsert':     'false',
+        },
+        body: blob,
+      });
+    } catch (e) {
+      logDev('subirAudioGuia red:', e);
+      return { ok: false, status: 0, existe: false, red: true, transitorio: true };
+    }
+    if (res.ok) return { ok: true, status: res.status, existe: false, red: false, transitorio: false };
+    let cuerpo = null;
+    try { cuerpo = await res.json(); } catch (_) { /* sin cuerpo */ }
+    const codigo = cuerpo && cuerpo.statusCode != null ? String(cuerpo.statusCode) : '';
+    const existe = res.status === 403 || res.status === 409 || codigo === '403' || codigo === '409'
+                || !!(cuerpo && cuerpo.error === 'Duplicate');
+    const transitorio = res.status === 429 || res.status === 408 || res.status >= 500;
+    logDev('subirAudioGuia:', res.status, cuerpo);
+    return { ok: false, status: res.status, existe, red: false, transitorio };
+  },
+
 };
+
+// El p_id de las dudas y los audios de «Tu guía»: solo un uuid.
+function _esUuidGuia(s) {
+  return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+}
