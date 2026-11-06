@@ -1,5 +1,10 @@
 package com.pumpteam.mypump.guia
 
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import java.time.ZoneId
+
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -81,7 +86,9 @@ import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.ResumenGuia
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
+import com.pumpteam.mypump.reglas.ReglasAgenda
 import com.pumpteam.mypump.reglas.ReglasGuia
+import com.pumpteam.mypump.reglas.ReglasNovedad
 import com.pumpteam.mypump.reglas.ReglasReproductor
 import com.pumpteam.mypump.reglas.SuplementacionVista
 import kotlinx.coroutines.launch
@@ -107,7 +114,15 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
     val resumenServidor by modelo.resumen.collectAsStateWithLifecycle()
     val ocultaAMano by modelo.ocultaAMano.collectAsStateWithLifecycle()
     val audios by modelo.audios.items.collectAsStateWithLifecycle()
+    val agenda by modelo.agenda.agenda.collectAsStateWithLifecycle()
+    val reservando by modelo.agenda.reservando.collectAsStateWithLifecycle()
+    val avisoAgenda by modelo.agenda.aviso.collectAsStateWithLifecycle()
+    val agendaGuardada by modelo.agenda.desdeCache.collectAsStateWithLifecycle()
     val alcance = LocalAlcanceApp.current
+    // La agenda de la entrega (2.2.0): al abrir y cada vez que vuelve a primer plano con la guía a la vista; con la reserva
+    // pendiente, cada 5 s hasta 60 s. Fuera de la vista no consulta.
+    val ciclo = LocalLifecycleOwner.current
+    LaunchedEffect(modelo, ciclo) { ciclo.repeatOnLifecycle(Lifecycle.State.RESUMED) { modelo.agenda.seguir() } }
     // Las dudas en audio (`entregas_019`): la grabación sigue al bajar la lista y se frena en segundo plano.
     AudioDudaAlrededor(modelo.audios, control)
 
@@ -155,6 +170,29 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
                 alAccionEntreno = modelo::ocultarDeEntreno,
                 transcriptos = audios.filter { it.estado == com.pumpteam.mypump.datos.ModeloAudioDudas.Estado.TRANSCRIPTO }.mapNotNull { it.texto },
                 audioLlamada = { despuesAudio, m -> AudioDudaLlamada(modelo.audios, despuesAudio, m) },
+                // Sin la agenda del servidor (antes de la 021, o `ok: false`), nada de esto: la guía de la 2.1.0.
+                agendaPie = agenda?.let { a ->
+                    { m, irAlProximo ->
+                        val faltan = ReglasAgenda.faltanAMostrar(a, g)
+                        val vista = ReglasAgenda.vista(a, faltan, reservando != null)
+                        Column(m, verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+                            if (faltan > 0 && (vista == ReglasAgenda.Vista.BLOQUEADA || vista == ReglasAgenda.Vista.NO_AUTORIZADA)) {
+                                ContadorObligatorios(faltan, irAlProximo)
+                            }
+                            TarjetaAgenda(
+                                agenda = a,
+                                vista = vista,
+                                faltan = faltan,
+                                aviso = avisoAgenda,
+                                desdeCache = agendaGuardada,
+                                esDemo = modelo.agenda.esDemo,
+                                zona = ZoneId.systemDefault(),
+                                alIrAlProximo = irAlProximo,
+                                alReservar = { f -> alcance.launch { modelo.agenda.reservar(f) } },
+                            )
+                        }
+                    }
+                },
                 alEnviarDuda = { video, texto ->
                     val clave = video ?: LLAMADA
                     // Un doble toque no la manda dos veces: el campo se vacía ya (el botón queda apagado) y, mientras se
@@ -212,9 +250,10 @@ private sealed interface Entrada {
     data object SinRed : Entrada { override val clave = "sin-red" }
     data object Cabecera : Entrada { override val clave = "cabecera" }
     data object Reproductor : Entrada { override val clave = "reproductor" }
-    data class Bloque(val bloque: ReglasGuia.Bloque) : Entrada { override val clave = "bloque-${bloque.titulo}" }
+    data class Bloque(val bloque: ReglasGuia.Bloque) : Entrada { override val clave = "bloque-${bloque.clave}" }
     data object Llamada : Entrada { override val clave = "llamada" }
     data object Suplementacion : Entrada { override val clave = "suplementacion" }
+    data object Agenda : Entrada { override val clave = "agenda" }
     data object Fin : Entrada { override val clave = "fin" }
 }
 
@@ -233,16 +272,23 @@ private fun ContenidoGuia(
     alEnviarDuda: (video: String?, texto: String) -> Unit,
     transcriptos: List<String> = emptyList(),
     audioLlamada: (@Composable (despues: Boolean, Modifier) -> Unit)? = null,
+    /** La agenda al final (2.2.0), con «Ir al próximo video». null: el servidor no la tiene y no se muestra nada nuevo. */
+    agendaPie: (@Composable (Modifier, irAlProximo: (() -> Unit)?) -> Unit)? = null,
 ) {
-    val clips = remember(guia) { ReglasGuia.ordenados(guia.clipsDeLaLista) }
-    val bloques = remember(clips) { ReglasGuia.bloques(clips) }
+    // Los nuevos arriba, en «Novedad» (2.2.0); sin nuevos, el orden y los capítulos de siempre.
+    val clips = remember(guia) { ReglasNovedad.ordenDeLaLista(guia.clipsDeLaLista) }
+    val bloques = remember(clips) { ReglasNovedad.bloques(clips) }
+    // La etiqueta «Para ver antes de la entrega», solo con la agenda del servidor.
+    val paraLaEntrega = remember(guia, agendaPie != null) {
+        if (agendaPie == null) emptySet() else ReglasAgenda.obligatorios(guia).mapTo(HashSet()) { it.id }
+    }
     val resumen = remember(guia) { ResumenGuia.de(guia) }
     val suple = remember(guia) { guia.suplementacion?.let(SuplementacionVista::armar) }
     val despues = ReglasGuia.yaPaso(guia.fechaEntrega)
     // Los capítulos abiertos: el del video que suena siempre; los demás, como los deje el cliente.
     val abiertos = rememberSaveable(saver = SaverConjunto) { mutableStateListOf() }
     val expandidas = rememberSaveable(saver = SaverConjunto) { mutableStateListOf() }
-    val bloqueActual = clips.getOrNull(control.actual)?.bloque ?: "Videos"
+    val bloqueActual = bloques.firstOrNull { control.actual in it.indices }?.clave ?: clips.getOrNull(control.actual)?.bloque ?: "Videos"
     LaunchedEffect(bloqueActual) { if (bloqueActual !in abiertos) abiertos += bloqueActual }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -263,17 +309,22 @@ private fun ContenidoGuia(
 
         val lista = rememberLazyListState()
         val alcance = LocalAlcanceApp.current
-        val entradas = remember(bloques, desdeCache, suple, dosColumnas) {
+        val conAgenda = agendaPie != null
+        val entradas = remember(bloques, desdeCache, suple, dosColumnas, conAgenda) {
             buildList {
                 if (desdeCache) add(Entrada.SinRed)
                 add(Entrada.Cabecera)
                 if (!dosColumnas) add(Entrada.Reproductor)
                 // Como la web (4/11): primero «Tu app», el recuadro de dudas para la videollamada y después los demás capítulos.
-                val (deLaApp, resto) = bloques.partition { ReglasGuia.esTuApp(it.titulo) }
+                // La novedad (2.2.0) va arriba de todo.
+                bloques.filter { it.esNovedad }.forEach { add(Entrada.Bloque(it)) }
+                val (deLaApp, resto) = bloques.filterNot { it.esNovedad }.partition { ReglasGuia.esTuApp(it.titulo) }
                 deLaApp.forEach { add(Entrada.Bloque(it)) }
                 add(Entrada.Llamada)
                 resto.forEach { add(Entrada.Bloque(it)) }
                 if (suple != null) add(Entrada.Suplementacion)
+                // La agenda de la entrega, al final de todo (2.2.0).
+                if (conAgenda) add(Entrada.Agenda)
                 add(Entrada.Fin)
             }
         }
@@ -363,6 +414,13 @@ private fun ContenidoGuia(
                     audioLlamada = audioLlamada,
                     porQue = porQue,
                     reproductor = tarjetaReproductor,
+                    paraLaEntrega = paraLaEntrega,
+                    agendaPie = agendaPie?.let { pie ->
+                        { m ->
+                            val proximo = ReglasAgenda.proximoQueFalta(guia, clips)?.let { c -> clips.indexOf(c) }?.takeIf { it >= 0 }
+                            pie(m, proximo?.let { i -> { control.reproducir(i) } })
+                        }
+                    },
                 )
             }
         }
@@ -408,6 +466,8 @@ private fun LazyListScope.entradasGuia(
     audioLlamada: (@Composable (despues: Boolean, Modifier) -> Unit)?,
     porQue: PorQueSuplemento,
     reproductor: @Composable (Modifier) -> Unit,
+    paraLaEntrega: Set<String> = emptySet(),
+    agendaPie: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val ancho = Modifier.widthIn(max = 700.dp).fillMaxWidth()
     for (e in entradas) {
@@ -418,10 +478,10 @@ private fun LazyListScope.entradasGuia(
                 Entrada.Reproductor -> reproductor(ancho.padding(bottom = Espacio.s))
                 is Entrada.Bloque -> {
                     val b = e.bloque
-                    val abierto = b.titulo in abiertos
+                    val abierto = b.clave in abiertos
                     val vistos = b.indices.count { clips[it].visto }
                     Column(ancho.padding(top = Espacio.xs).superficieTarjeta().padding(bottom = if (abierto) Espacio.xs else 0.dp)) {
-                        EncabezadoBloque(b, vistos, abierto, alTocar = { if (abierto) abiertos.remove(b.titulo) else abiertos.add(b.titulo) })
+                        EncabezadoBloque(b, vistos, abierto, alTocar = { if (abierto) abiertos.remove(b.clave) else abiertos.add(b.clave) })
                         if (abierto) {
                             for (i in b.indices) {
                                 val c = clips[i]
@@ -431,6 +491,7 @@ private fun LazyListScope.entradasGuia(
                                     expandida = c.id in expandidas,
                                     alTocar = { control.reproducir(i) },
                                     alExpandir = { if (c.id in expandidas) expandidas.remove(c.id) else expandidas.add(c.id) },
+                                    paraLaEntrega = c.id in paraLaEntrega,
                                 )
                             }
                         }
@@ -450,6 +511,7 @@ private fun LazyListScope.entradasGuia(
                     modifier = ancho.padding(top = Espacio.m),
                 )
                 Entrada.Suplementacion -> suple?.let { SuplementacionGuia(it, porQue, ancho.padding(top = Espacio.m)) }
+                Entrada.Agenda -> agendaPie?.invoke(ancho.padding(top = Espacio.m))
                 Entrada.Fin -> Column(ancho) {
                     Text(
                         "Si algún video no te carga o tenés algo para contarme" + (if (despues) "" else " antes de la videollamada") + ", escribime por el chat.",
