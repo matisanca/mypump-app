@@ -52,4 +52,34 @@ public enum GuiaMuestra {
           "accion":"Sumá lo nuevo de a uno por día"}}
         """
     }()
+
+    // MARK: - La guía v2 (2.2.0): novedad, obligatorios y agenda
+
+    /// La misma forma con lo de la 2.2.0: `fase: 2`, `novedad_en`, dos clips `nuevo` (uno visto y otro no) y los
+    /// `obligatorio`. Falta ver un solo obligatorio (`N-1`, el nuevo sin ver): así se prueba «bloqueada → ver el último →
+    /// habilitada». `urlPendiente` cambia la url de ese clip (las pruebas de interfaz usan un video que se pueda reproducir)
+    /// y `todoVisto` lo deja visto (la agenda habilitada desde el arranque).
+    public static func jsonV2(urlPendiente: String? = nil, todoVisto: Bool = false) -> String {
+        func clipV2(_ id: String, _ titulo: String, _ bloque: String, _ minutos: Double, visto: Bool, nuevo: Bool, obligatorio: Bool,
+                    url: String? = nil) -> String {
+            let u = url ?? "https://videos.example.invalid/videos-entrega/\(id).mp4"
+            return """
+            {"id":"\(id)","titulo":"\(titulo)","url":"\(u)","minutos":\(minutos),"motivo":"Para qué te sirve este video","bloque":"\(bloque)","visto":\(visto),"segundos":0,"duda":null,"nuevo":\(nuevo),"obligatorio":\(obligatorio)}
+            """
+        }
+        let clips = [
+            clipV2("FT-25a", "¿Cómo funciona la app?", "Tu app", 1.2, visto: true, nuevo: false, obligatorio: true),
+            clipV2("FT-2b", "¿Cómo subo las cargas semana a semana?", "Tu app", 0.3, visto: true, nuevo: false, obligatorio: true),
+            clipV2("MC-7a", "¿Por qué tu primera serie efectiva te sale floja?", "Lo que no te podés saltear", 1.8, visto: true, nuevo: false, obligatorio: true),
+            clipV2("FT-26a", "¿Peso la comida cruda o cocida?", "Tu alimentación", 0.6, visto: false, nuevo: false, obligatorio: false),
+            clipV2("N-1", "Lo que cambia en tu entrenamiento", "Tu entrenamiento", 0.4, visto: todoVisto, nuevo: true, obligatorio: true, url: urlPendiente),
+            clipV2("N-2", "Cómo ajustamos tu dieta esta etapa", "Tu alimentación", 0.8, visto: true, nuevo: true, obligatorio: true),
+        ]
+        return """
+        {"ok":true,"nombre_pila":"Tomás","fecha_entrega":null,"fase":2,"novedad_en":"2026-11-05T12:00:00-03:00",
+         "clips":[\(clips.joined(separator: ","))],"dudas_llamada":[],"suplementacion":null}
+        """
+    }
+
+    public static var guiaV2: Guia { Guia(json: (try? JSONDecoder().decode(JSONValue.self, from: Data(jsonV2().utf8))) ?? .null) }
 }

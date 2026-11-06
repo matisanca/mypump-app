@@ -172,7 +172,9 @@ public actor Outbox {
     /// Los audios que fallaron por red o transitorio (siguen en la cola): para «No se pudo mandar.» con «Reintentar».
     public func observarAudios(sinRed: @escaping @Sendable ([Operacion]) -> Void) { alEsperarAudio = sinRed }
 
-    static func esAudio(_ op: Operacion) -> Bool { op.kind == ModeloAudioDuda.kind }
+    /// El carril propio (`pasadaAudios`): los audios de la guía y la reserva de la entrega (2.2.0), que tampoco tiene que
+    /// frenar ni esperar a las demás.
+    static func esAudio(_ op: Operacion) -> Bool { op.kind == ModeloAudioDuda.kind || op.kind == ModeloAgenda.kind }
 
     /// Lo que dijo la palanca remota (`migracion_ops_legadas`): con false, las ops de la migración quedan en la cola sin
     /// mandarse; al volver a true salen en la próxima pasada.
@@ -590,7 +592,7 @@ public actor Outbox {
     /// de «Tu guía», que sale cada 10 s mientras corre un video: lo visto ya quedó en el teléfono.
     /// Los audios de la guía tampoco: su fila dice «Mandando» o «No se pudo mandar».
     public static let silenciosas: Set<String> = [SustitucionesServidor.kindGuardar, SustitucionesServidor.kindBorrar, ModeloApp.kindAjustes,
-                                                    ModeloGuia.kindAvance, ModeloAudioDuda.kind]
+                                                    ModeloGuia.kindAvance, ModeloAudioDuda.kind, ModeloAgenda.kind]
 
     /// Kinds que se anotan como `intentada` antes de salir: el chat, que antes de reintentar mira si ya había llegado, y el
     /// audio, que solo en un reintento toma un 403 o 409 de Storage como «quizás ya subió».

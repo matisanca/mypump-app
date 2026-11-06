@@ -30,6 +30,8 @@ final class ControlReproductor {
     private(set) var sinConexion = false
     /// Cambia cada vez que cambia el video (el destello del título, el desplazamiento de la lista).
     private(set) var cambios = 0
+    /// La forma del clip elegido: el cuadro la toma (sin franjas negras).
+    let forma = FormaVideo()
 
     @ObservationIgnored nonisolated(unsafe) let player = AVPlayer()
     @ObservationIgnored var clips: () -> [ClipGuia] = { [] }
@@ -187,6 +189,8 @@ final class ControlReproductor {
         placaId = nil
         let clip = lista[i]
         actualId = clip.id
+        // Sin red, la forma sale de lo guardado (el video no se puede leer).
+        forma.preparar(id: clip.id, url: forzarSinRed || !hayRed ? nil : url)
         cambios += 1
         if reproducir { portada = false }
         sinConexion = false
@@ -201,6 +205,7 @@ final class ControlReproductor {
             }
             let item = AVPlayerItem(url: url)
             observar(item)
+            forma.observar(item, id: clip.id)
             player.replaceCurrentItem(with: item)
         }
         player.defaultRate = velocidad
@@ -289,15 +294,21 @@ final class ControlReproductor {
 
 // MARK: - Vista
 
-/// El cuadro del video (16:9) con la portada, la placa y el aviso sin conexión encima.
+/// El cuadro del video, con la forma del clip, y la portada, la placa y el aviso sin conexión encima.
 struct CuadroVideo: View {
     let control: ControlReproductor
     let total: Int
 
     var body: some View {
+        CuadroConForma(proporcion: control.forma.proporcion) {
+            cuadro.accessibilityElement(children: .contain).accessibilityIdentifier("guia-cuadro-video")
+        }
+    }
+
+    private var cuadro: some View {
         ZStack {
-            Color.black
-            VistaAVPlayer(player: control.player) { [control] en in control.pantallaCompleta = en }
+            if control.sinConexion { Color(white: 0.1) }
+            VistaAVPlayer(player: control.player, recortar: control.forma.recorte != nil) { [control] en in control.pantallaCompleta = en }
                 .opacity(control.portada || control.sinConexion ? 0 : 1)
                 .accessibilityLabel(control.clipActual.map { "Video: \($0.titulo)" } ?? "Video")
             // La placa va primero: si el video no carga, el aviso aparece al cerrarla.
@@ -310,8 +321,6 @@ struct CuadroVideo: View {
                 PortadaVideo(clip: c, indice: control.actual ?? 0, total: total) { control.empezar() }
             }
         }
-        .aspectRatio(16 / 9, contentMode: .fit)
-        .clipped()
         .animation(.easeOut(duration: 0.3), value: control.placa)
         .environment(\.colorScheme, .dark)
     }
@@ -320,6 +329,9 @@ struct CuadroVideo: View {
 /// AVPlayerViewController con los controles del sistema: pantalla completa, girar, AirPlay y Picture in Picture.
 struct VistaAVPlayer: UIViewControllerRepresentable {
     let player: AVPlayer
+    /// El archivo trae franjas negras: el cuadro ya tiene la forma de la zona útil y el video la llena (se recorta parejo
+    /// de los dos lados, también en pantalla completa).
+    var recortar = false
     /// Avisa cuando el sistema presenta el video a pantalla completa (la guía queda debajo y no se pausa).
     let pantallaCompleta: @MainActor (Bool) -> Void
 
@@ -344,7 +356,9 @@ struct VistaAVPlayer: UIViewControllerRepresentable {
         vc.allowsPictureInPicturePlayback = false
         vc.player = player
         vc.showsPlaybackControls = true
-        vc.videoGravity = .resizeAspect
+        // El cuadro ya tiene la forma del clip: sin fondo negro (en pantalla completa, el sistema lo encaja entero).
+        vc.videoGravity = recortar ? .resizeAspectFill : .resizeAspect
+        vc.view.backgroundColor = .clear
         vc.entersFullScreenWhenPlaybackBegins = false
         vc.exitsFullScreenWhenPlaybackEnds = false
         // La velocidad la maneja el botón de la app (1 → 1,25 → 1,5), como en la web.
@@ -354,6 +368,8 @@ struct VistaAVPlayer: UIViewControllerRepresentable {
 
     func updateUIViewController(_ vc: AVPlayerViewController, context: Context) {
         if vc.player !== player { vc.player = player }
+        let g: AVLayerVideoGravity = recortar ? .resizeAspectFill : .resizeAspect
+        if vc.videoGravity != g { vc.videoGravity = g }
     }
 }
 
@@ -470,6 +486,7 @@ final class ControlVerPorQue {
     private(set) var sinConexion = false
 
     @ObservationIgnored nonisolated(unsafe) let player = AVPlayer()
+    let forma = FormaVideo()
     /// El clip por id, al día (visto y segundos).
     @ObservationIgnored var clip: (String) -> ClipGuia? = { _ in nil }
     @ObservationIgnored var alGuardar: (String, AvanceVideo.Guardado) -> Void = { _, _ in }
@@ -516,9 +533,11 @@ final class ControlVerPorQue {
         avance = AvanceVideo(visto: c.visto)
         retomado = false
         sinConexion = false
+        forma.preparar(id: id, url: forzarSinRed ? nil : url)
         if forzarSinRed { sinConexion = true; return }
         let item = AVPlayerItem(url: url)
         observar(item)
+        forma.observar(item, id: id)
         player.replaceCurrentItem(with: item)
         SesionAudio.activar()
         player.play()
@@ -614,16 +633,18 @@ struct CuadroVerPorQue: View {
     let control: ControlVerPorQue
 
     var body: some View {
-        ZStack {
-            Color.black
-            if control.sinConexion {
-                SinConexionVideo(reintentar: control.reintentar)
-            } else {
-                VistaAVPlayer(player: control.player) { [control] en in control.pantallaCompleta = en }
+        CuadroConForma(proporcion: control.forma.proporcion) {
+            ZStack {
+                if control.sinConexion {
+                    Color(white: 0.1)
+                    SinConexionVideo(reintentar: control.reintentar)
+                } else {
+                    VistaAVPlayer(player: control.player, recortar: control.forma.recorte != nil) { [control] en in control.pantallaCompleta = en }
+                }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("guia-ver-por-que-video")
         }
-        .aspectRatio(16 / 9, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .accessibilityIdentifier("guia-ver-por-que-video")
     }
 }

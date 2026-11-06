@@ -31,16 +31,20 @@ struct TarjetaGuiaDestacada: View {
     @Environment(\.dynamicTypeSize) private var tamañoLetra
 
     var body: some View {
-        let a = modelo.avanceTarjeta
+        // 2.2.0: con novedad sin ver, «NOVEDAD EN TU GUÍA» con el avance de lo nuevo; si no, la de la 2.1.0.
+        let novedad = modelo.avanceNovedad
+        let a = novedad ?? modelo.avanceTarjeta
+        let linea = novedad.map(ReglasGuia.textoTarjetaNovedad) ?? ReglasGuia.textoTarjeta(a)
         let apilada = tamañoLetra.isAccessibilitySize
         VStack(alignment: .leading, spacing: Espacio.s) {
             HStack(alignment: .center, spacing: Espacio.xs) {
-                Text("Empezá por acá")
+                Text(novedad != nil ? "Novedad en tu guía" : "Empezá por acá")
                     .textCase(.uppercase)
                     .font(.caption.weight(.heavy))
                     .tracking(1)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilitySortPriority(4)
+                    .accessibilityIdentifier("guia-tarjeta-ceja")
                 // Con letra de accesibilidad «Ocultar» baja al pie: al lado cortaba las dos palabras («EMPE-ZÁ», «Ocul-tar»).
                 if !apilada {
                     Spacer(minLength: Espacio.xs)
@@ -58,13 +62,13 @@ struct TarjetaGuiaDestacada: View {
                               pulso: modelo.primeraSesionTarjeta)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Tu guía").font(Archivo.fuente(26, relativoA: .title2))
-                    Text(ReglasGuia.textoTarjeta(a)).font(.subheadline.weight(.medium))
+                    Text(linea).font(.subheadline.weight(.medium))
                 }
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Tu guía, \(ReglasGuia.textoTarjeta(a))")
+            .accessibilityLabel("\(novedad != nil ? "Novedad en tu guía" : "Tu guía"), \(linea)")
             .accessibilityIdentifier("guia-tarjeta-texto")
             .accessibilitySortPriority(3)
 
@@ -73,7 +77,7 @@ struct TarjetaGuiaDestacada: View {
                 .accessibilityHidden(true)
 
             Button(action: abrir) {
-                Label(ReglasGuia.botonTarjeta(a), systemImage: "play.fill")
+                Label(novedad != nil ? "Ver lo nuevo" : ReglasGuia.botonTarjeta(a), systemImage: "play.fill")
             }
             .buttonStyle(BotonSobreVerde())
             .accessibilityHint("Abre los videos de Mati")
