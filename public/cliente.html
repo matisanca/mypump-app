@@ -622,6 +622,10 @@ main{padding:var(--space-4)}
 .cf-scan-btn{display:block;width:100%;margin:var(--space-3) 0;padding:10px 12px;border:1px dashed color-mix(in oklab,var(--color-brand) 50%,var(--color-border));background:var(--color-brand-subtle);border-radius:var(--radius-md);font-size:13px;color:var(--color-text-primary);cursor:pointer;text-align:left;line-height:1.35}
 .cf-scan-btn small{display:block;color:var(--color-text-muted);font-size:11px}
 .cf-scan-btn:disabled{opacity:.6}
+.cf-base-pregunta{display:flex;gap:8px;margin:0 0 var(--space-3)}
+.cf-base-pregunta[hidden],.cf-aviso[hidden]{display:none}
+.cf-base-pregunta .btn-secondary{flex:1}
+.cf-aviso{margin:var(--space-2) 0;padding:8px 10px;border-radius:var(--radius-md);border:1px solid #c2410c;color:#c2410c;font-size:12px;line-height:1.4}
 .cf-scan-status{margin:0 0 var(--space-3);padding:8px 10px;border-radius:var(--radius-md);background:var(--color-bg-secondary);border:1px solid var(--color-border);font-size:12px;line-height:1.4;color:var(--color-text-secondary)}
 /* F8 — avisos del modal de sustitución */
 .swap-aviso{margin:var(--space-2) 0;padding:8px 10px;border-radius:var(--radius-md);background:color-mix(in oklab,var(--color-warning) 8%,var(--color-bg-secondary));border:1px solid color-mix(in oklab,var(--color-warning) 30%,var(--color-border));font-size:12px;line-height:1.45;color:var(--color-text-secondary)}
@@ -9343,7 +9347,11 @@ function openCustomFoodModal() {
       ${(window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) ? `
       <button class="cf-scan-btn" id="cfScanBtn" type="button">📷 <strong>Escanear etiqueta</strong> <small>— sacale una foto a la tabla nutricional y se completa solo (después lo podés corregir)</small></button>
       <input type="file" id="cfScanInput" accept="image/*" capture="environment" style="display:none">
-      <div class="cf-scan-status" id="cfScanStatus" hidden></div>` : ''}
+      <div class="cf-scan-status" id="cfScanStatus" hidden></div>
+      <div class="cf-base-pregunta" id="cfBasePregunta" hidden>
+        <button type="button" class="btn-secondary" data-base="100">Por 100 g</button>
+        <button type="button" class="btn-secondary" data-base="porcion">De 1 porción</button>
+      </div>` : ''}
       <div class="cf-form">
         <label class="cf-field"><span>Nombre</span>
           <input type="text" id="cfName" placeholder="Ej: Pan integral marca X" />
@@ -9382,6 +9390,7 @@ function openCustomFoodModal() {
         </div>
         <input type="hidden" id="cfCategory" value="${originalCat}" />
       </div>
+      <div class="cf-aviso" id="cfAvisoPolvo" hidden></div>
       <div class="cf-err" id="cfErr" style="display:none"></div>
       <div style="display:flex;gap:8px;margin-top:var(--space-3)">
         <button class="btn-secondary" style="flex:1" onclick="closeCustomFoodModal()">Cancelar</button>
@@ -9414,7 +9423,27 @@ function openCustomFoodModal() {
         : 'Poné los valores <b>por 100 g</b>, como vienen en la etiqueta.';
     }
   }
-  unitSel.addEventListener('change', syncUnitGramsField);
+  unitSel.addEventListener('change', () => { _cfPreguntaBase(false); syncUnitGramsField(); });
+  // Aviso que no frena: un polvo de proteína con menos de 300 kcal por 100 g (6-nov).
+  ['cfName', 'cfKcal', 'cfProt', 'cfCarb', 'cfFat', 'cfUnitGrams'].forEach((id) => {
+    const el = document.getElementById(id); if (el) el.addEventListener('input', _cfSyncAvisoPolvo);
+  });
+  unitSel.addEventListener('change', _cfSyncAvisoPolvo);
+  _cfPreguntaBase(false);
+  const basePregunta = $('#cfBasePregunta');
+  if (basePregunta) basePregunta.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-base]'); if (!b) return;
+    const porcion = b.dataset.base === 'porcion';
+    _cfPreguntaBase(false);
+    unitSel.value = porcion ? 'porcion' : 'g';
+    syncUnitGramsField(); _cfSyncAvisoPolvo();
+    const errEl = $('#cfErr'); if (errEl) errEl.style.display = 'none';
+    const st = $('#cfScanStatus');
+    if (st) st.textContent = porcion
+      ? 'Poné cuánto pesa 1 porción en gramos y revisá los valores.'
+      : '✓ Quedaron como valores por 100 g. Revisalos y tocá "Crear y usar".';
+    if (porcion) { const ug = $('#cfUnitGrams'); if (ug) ug.focus(); }
+  });
   // También al tipear los gramos, para que el label muestre "de 1 porción
   // (30 g)" y el cliente vea exactamente sobre qué está cargando.
   if ($('#cfUnitGrams')) $('#cfUnitGrams').addEventListener('input', syncUnitGramsField);
@@ -9432,25 +9461,28 @@ function openCustomFoodModal() {
       scanStatus.textContent = '📷 Leyendo la etiqueta… puede tardar ~30 segundos';
       try {
         const d = await visionDesdeFoto(file, 'etiqueta');
-        // Prefill (todo editable). porcion_g=100 → valores por 100 g (unidad g);
-        // otra porción → unidad "porcion" con sus gramos.
+        // Prefill (todo editable) y en qué base quedó. Porción con gramos → unidad "porcion" con sus gramos;
+        // 100 g → unidad g; sin gramos de la porción se pregunta (6-nov: antes se asumía 100 g y un whey de
+        // 30 g = 132 kcal quedó en 132 kcal por 100 g).
         if (d.nombre) $('#cfName').value = d.nombre;
         if (d.kcal != null) $('#cfKcal').value = Math.round(d.kcal);
         if (d.prot != null) $('#cfProt').value = d.prot;
         if (d.carb != null) $('#cfCarb').value = d.carb;
         if (d.fat  != null) $('#cfFat').value  = d.fat;
-        const porg = Number(d.porcion_g);
-        if (isFinite(porg) && porg > 0 && Math.round(porg) !== 100) {
+        const base = _cfBaseLectura(d.porcion_g, d.base);
+        if (base.tipo === 'porcion') {
           unitSel.value = 'porcion';
           syncUnitGramsField();
-          const ug = $('#cfUnitGrams'); if (ug) ug.value = Math.round(porg);
+          const ug = $('#cfUnitGrams'); if (ug) ug.value = Math.round(base.gramos);
+          syncUnitGramsField();
         } else {
           unitSel.value = 'g';
           syncUnitGramsField();
         }
-        scanStatus.textContent = d.confianza === 'baja'
-          ? '⚠ La etiqueta se leyó con poca claridad — revisá los valores antes de guardar.'
-          : '✓ Etiqueta leída. Revisá los valores y tocá "Crear y usar".';
+        _cfPreguntaBase(base.tipo === 'desconocida');
+        _cfSyncAvisoPolvo();
+        const errEl = $('#cfErr'); if (errEl) errEl.style.display = 'none';
+        scanStatus.textContent = _cfTextoLectura(base, d.confianza === 'baja', Array.isArray(d.avisos) ? d.avisos : []);
       } catch (e) {
         scanStatus.textContent = '⚠ No pudimos leer la foto (' + (e.message || 'error') + '). Cargalo a mano o probá otra foto con más luz.';
       } finally {
@@ -9462,6 +9494,61 @@ function openCustomFoodModal() {
 
   // Auto-focus nombre
   setTimeout(() => { const n = $('#cfName'); if (n) n.focus(); }, 60);
+}
+
+/* ---- Lectura de la etiqueta y aviso de proteína en polvo (6-nov; gemelos de AlimentoPropioNuevo de las apps) ---- */
+let _cfPreguntandoBase = false;
+function _cfPreguntaBase(si) {
+  _cfPreguntandoBase = !!si;
+  const el = document.getElementById('cfBasePregunta');
+  if (el) el.hidden = !si;
+}
+// `base` la manda mini-vision desde el 6-nov ('porcion' | '100g' | 'desconocida'); con uno viejo se deduce de
+// porcion_g, y sin gramos ya no se asume 100 g.
+function _cfBaseLectura(porcionG, base) {
+  const n = Number(porcionG);
+  const g = (porcionG !== null && porcionG !== undefined && porcionG !== '' && isFinite(n) && n > 0) ? n : null;
+  if (base === '100g') return { tipo: '100g' };
+  if (base === 'desconocida' || g === null) return { tipo: 'desconocida' };
+  return Math.round(g) === 100 ? { tipo: '100g' } : { tipo: 'porcion', gramos: g };
+}
+function _cfTextoLectura(base, confianzaBaja, avisos) {
+  const enBase = base.tipo === 'porcion' ? `Quedaron como valores de 1 porción de ${Math.round(base.gramos)} g.`
+    : base.tipo === '100g' ? 'Quedaron como valores por 100 g.'
+    : 'La etiqueta no dice cuánto pesa la porción. ¿Estos valores son por 100 g o de 1 porción?';
+  if (confianzaBaja) {
+    const detalle = avisos && avisos.length ? ` (${avisos.join('; ')})` : '';
+    return `⚠ La etiqueta se leyó con poca claridad${detalle}: revisá los valores antes de guardar. ${enBase}`;
+  }
+  if (base.tipo === 'desconocida') return `✓ Etiqueta leída. ${enBase}`;
+  return `✓ Etiqueta leída. ${enBase} Revisalos y tocá "Crear y usar".`;
+}
+function _cfEsPolvoDeProteina(nombre) {
+  const n = String(nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  if (['whey', 'caseina', 'isolat', 'scoop', 'proteina en polvo', 'protein powder'].some((k) => n.includes(k))) return true;
+  return n.includes('prote') && n.includes('polvo');
+}
+// Una proteína en polvo tiene 350 a 420 kcal cada 100 g: por debajo de 300, casi seguro el scoop quedó como 100 g.
+function _cfAvisoPolvoProteina(nombre, kcal, prot, carb, fat, unidad, gramosPorUnidad) {
+  if (!_cfEsPolvoDeProteina(nombre)) return null;
+  const num = (x) => { const v = parseFloat(x); return isFinite(v) && v > 0 ? v : 0; };
+  const k = num(kcal) > 0 ? num(kcal) : num(prot) * 4 + num(carb) * 4 + num(fat) * 9;
+  if (k <= 0) return null;
+  const porUnidad = unidad !== 'g' && unidad !== 'ml';
+  const porcion = porUnidad ? num(gramosPorUnidad) : 100;
+  if (!(porcion > 0)) return null;
+  if (k * 100 / porcion >= 300) return null;
+  const que = porUnidad
+    ? `Revisá que los gramos de 1 ${unidad === 'porcion' ? 'porción' : unidad} sean los de la etiqueta.`
+    : 'Si estos valores son de 1 scoop, elegí «porción» y poné cuánto pesa.';
+  return `Para una proteína en polvo son pocas calorías: suele tener 350 a 420 kcal cada 100 g. ${que}`;
+}
+function _cfSyncAvisoPolvo() {
+  const el = document.getElementById('cfAvisoPolvo'); if (!el) return;
+  const v = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+  const aviso = _cfAvisoPolvoProteina(v('cfName'), v('cfKcal'), v('cfProt'), v('cfCarb'), v('cfFat'), v('cfUnit'), v('cfUnitGrams'));
+  el.hidden = !aviso;
+  el.textContent = aviso ? '⚠ ' + aviso : '';
 }
 
 /* ---- VISIÓN (F7/F10): foto → JSON vía el servicio Codex de la Mini ---- */
@@ -9529,6 +9616,7 @@ async function saveCustomFood() {
   const errEl = $('#cfErr');
   function showErr(msg) { if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; } }
 
+  if (_cfPreguntandoBase) { showErr('Antes de guardar, elegí si los valores son por 100 g o de 1 porción.'); return; }
   if (!name) { showErr('El nombre es obligatorio.'); return; }
   if (kcal <= 0 && prot <= 0 && carb <= 0 && fat <= 0) {
     showErr('Cargá al menos las calorías o algún macro.'); return;
