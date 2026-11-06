@@ -67,7 +67,7 @@ final class AgendaUITests: XCTestCase {
         let ceja = id("guia-tarjeta-ceja")
         XCTAssertTrue(ceja.waitForExistence(timeout: 20), "No está la tarjeta destacada")
         XCTAssertEqual(ceja.label.lowercased(), "novedad en tu guía")
-        XCTAssertEqual(id("guia-tarjeta-texto").label, "Novedad en tu guía, 1 de 2 videos nuevos, te quedan 1 min")
+        XCTAssertEqual(id("guia-tarjeta-texto").label, "Novedad en tu guía, 1 de 2 videos nuevos, te queda 1 min")
         XCTAssertEqual(app.buttons["guia-tarjeta"].label, "Ver lo nuevo")
         captura("tarjeta-novedad")
         app.buttons["guia-tarjeta"].tap()
@@ -112,7 +112,7 @@ final class AgendaUITests: XCTestCase {
         franja.tap()
         let hoja = app.staticTexts["agenda-hoja-texto"]
         XCTAssertTrue(hoja.waitForExistence(timeout: 5), "No abrió la confirmación")
-        XCTAssertTrue(hoja.label.hasPrefix("¿Confirmás la entrega el ") && hoja.label.hasSuffix("a las 10:00? Dura unas 2 horas."), hoja.label)
+        XCTAssertTrue(hoja.label.hasPrefix("¿Confirmás la entrega el ") && hoja.label.hasSuffix("a las 10:00? Dura alrededor de 1 hora."), hoja.label)
         captura("agenda-hoja")
         // «Elegir otro» cierra sin reservar.
         app.buttons["agenda-elegir-otro"].tap()
@@ -129,7 +129,7 @@ final class AgendaUITests: XCTestCase {
         captura("agenda-pendiente")
         let confirmada = id("agenda-confirmada")
         XCTAssertTrue(confirmada.waitForExistence(timeout: 30), "No se confirmó")
-        XCTAssertTrue(confirmada.label.hasPrefix("Tu entrega: ") && confirmada.label.hasSuffix(", 10:00 a 12:00"), confirmada.label)
+        XCTAssertTrue(confirmada.label.hasPrefix("Tu entrega: ") && confirmada.label.hasSuffix(", 10:00 a 11:00"), confirmada.label)
         XCTAssertTrue(texto("¿Necesitás cambiarla? Escribinos por WhatsApp").exists)
         XCTAssertTrue(app.buttons["agenda-calendario"].exists)
         // Confirmada para mañana: solo el día y la hora, sin botón ni aviso de la sala (el cliente nunca entra directo).

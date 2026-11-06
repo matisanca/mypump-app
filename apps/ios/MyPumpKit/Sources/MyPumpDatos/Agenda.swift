@@ -82,6 +82,11 @@ public final class ModeloAgenda {
         return a
     }
 
+    /// Los textos de la agenda, con los que pisa Mati desde el servidor (spec §7).
+    public var textos: ReglasAgenda.Textos { ReglasAgenda.Textos(agenda?.textos ?? [:]) }
+    /// Desde cuántos minutos antes aparece la entrega en Entreno: el de la agenda (nil: los 30 de la app).
+    public var avisoMin: Int? { agenda?.avisoMin }
+
     /// La reserva que se ve, para la tarjeta de Entreno (el «Entrar»).
     public var reserva: ReservaAgenda? { agenda?.reserva }
 
@@ -127,9 +132,9 @@ public final class ModeloAgenda {
 
     private func anunciar(_ r: ReservaAgenda) {
         switch r.estado {
-        case .confirmada: anuncio = ReglasAgenda.textoConfirmada(r) ?? "Tu entrega quedó confirmada"
-        case .fallo: anuncio = r.motivo == "tomada" ? ReglasAgenda.Aviso.tomada.texto : ReglasAgenda.Aviso.error.texto
-        case .pendiente: anuncio = ReglasAgenda.textoReservando
+        case .confirmada: anuncio = textos.confirmada(r) ?? "Tu entrega quedó confirmada"
+        case .fallo: anuncio = textos.fallo(r.motivo == "tomada" ? .tomada : .error)
+        case .pendiente: anuncio = textos.pendiente
         }
         anuncios += 1
     }
@@ -163,7 +168,7 @@ public final class ModeloAgenda {
     /// esté cerrada): una consulta (y, si sigue pendiente, otra ventana de 60 s).
     public func alVolver() async {
         let ahora = Date(timeIntervalSince1970: reloj())
-        guard agenda?.reserva?.estado == .pendiente || ReglasAgenda.esperandoSala(agenda?.reserva, ahora: ahora) else { return }
+        guard agenda?.reserva?.estado == .pendiente || ReglasAgenda.esperandoSala(agenda?.reserva, ahora: ahora, avisoMin: avisoMin) else { return }
         await consultar()
         sondear()
     }
@@ -177,7 +182,7 @@ public final class ModeloAgenda {
               let f = ReglasGuia.instante(r.fin), ahora < f {
             try? await Task.sleep(for: esperaSala)
             guard !Task.isCancelled else { return }
-            if ReglasAgenda.esperandoSala(agenda?.reserva, ahora: ahora) { await consultar() }
+            if ReglasAgenda.esperandoSala(agenda?.reserva, ahora: ahora, avisoMin: avisoMin) { await consultar() }
         }
     }
 
@@ -248,7 +253,7 @@ public final class ModeloAgenda {
         guard ops.contains(where: { $0.kind == Self.kind }) else { return }
         enCola = nil
         aviso = .error
-        anuncio = ReglasAgenda.Aviso.error.texto; anuncios += 1
+        anuncio = textos.fallo(.error); anuncios += 1
         Task { await self.consultar() }
     }
 

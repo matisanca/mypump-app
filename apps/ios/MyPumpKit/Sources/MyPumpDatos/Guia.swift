@@ -149,12 +149,12 @@ public final class ModeloGuia {
     public var vistaAgenda: ReglasAgenda.Vista { agenda.vista(faltanLocal: faltanLocal) }
     /// Cuántos faltan para el contador: el del servidor si lo mandó; si no, el del teléfono.
     public var faltanAgenda: Int { agenda.agenda?.faltan ?? faltanLocal ?? 0 }
-    /// La reserva de la tarjeta de la entrega en Entreno (desde 30 min antes hasta el fin): la de la agenda o la del
+    /// La reserva de la tarjeta de la entrega en Entreno (desde `aviso_min`, 30 si no vino, antes hasta el fin): la de la agenda o la del
     /// resumen, primero la que ya deja entrar (la más nueva de las dos).
     public func reservaEnVentana(ahora: Date = Date()) -> ReservaAgenda? {
         // Sin guía (token revocado o la página dada de baja) no queda nada en Entreno, tampoco la copia de la agenda.
         guard resumen?.ok != false, estado != .oculta else { return nil }
-        let rs = [agenda.reserva, resumen?.reserva].compactMap { $0 }.filter { ReglasAgenda.enVentana($0, ahora: ahora) }
+        let rs = [agenda.reserva, resumen?.reserva].compactMap { $0 }.filter { ReglasAgenda.enVentana($0, ahora: ahora, avisoMin: agenda.avisoMin) }
         return rs.first { ReglasAgenda.puedeEntrar($0, ahora: ahora) } ?? rs.first
     }
 

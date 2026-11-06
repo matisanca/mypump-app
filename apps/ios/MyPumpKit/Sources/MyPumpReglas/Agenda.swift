@@ -150,10 +150,42 @@ public enum ReglasAgenda {
     }
 
     /// «¿Confirmás la entrega el jueves 12 a las 10:00? Dura unas 2 horas.» Si el teléfono está en otra zona, también la
-    /// hora de Argentina.
+    /// hora de Argentina. La duración sale de la franja (Mati cambia horarios y duración solo con datos).
     public static func textoConfirmar(_ c: Chip, zona: TimeZone = .current) -> String {
         let ar = difiereDeArgentina([c.inicio], zona: zona) ? " (\(hora(c.inicio, zona: zonaBA)) en Argentina)" : ""
-        return "¿Confirmás la entrega el \(diaCorto(c.inicio, zona: zona)) a las \(hora(c.inicio, zona: zona))\(ar)? Dura unas 2 horas."
+        let dura = textoDuracion(desde: c.inicio, hasta: c.fin).map { " \($0)" } ?? ""
+        return "¿Confirmás la entrega el \(diaCorto(c.inicio, zona: zona)) a las \(hora(c.inicio, zona: zona))\(ar)?\(dura)"
+    }
+
+    /// El encabezado de las franjas: «Elegí un horario para la videollamada.» y, si todas duran lo mismo (redondeado), la
+    /// duración. Si duran distinto, la de cada una va en la hoja de confirmación.
+    public static func textoElegir(_ chips: [Chip]) -> String {
+        let base = "Elegí un horario para la videollamada."
+        let duraciones = Set(chips.map { textoDuracion(desde: $0.inicio, hasta: $0.fin) })
+        guard duraciones.count == 1, let d = duraciones.first, let d else { return base }
+        return "\(base) \(d)"
+    }
+
+    /// «Dura unas 2 horas», «Dura alrededor de 1 hora», «Dura unos 45 minutos»: de fin − inicio, a la media hora si pasa
+    /// de 1 h y a los 15 min si no. nil si la franja no tiene sentido.
+    public static func textoDuracion(desde inicio: Date, hasta fin: Date) -> String? {
+        duracion(desde: inicio, hasta: fin).map { "Dura \($0)." }
+    }
+
+    /// Lo que va después de «Dura» (y en `{duracion}` de los textos de Mati): «unas 2 horas», «alrededor de 1 hora»,
+    /// «unos 45 minutos».
+    public static func duracion(desde inicio: Date, hasta fin: Date) -> String? {
+        let total = fin.timeIntervalSince(inicio) / 60
+        guard total.isFinite, total > 0 else { return nil }
+        if total > 60 {
+            let medias = Int((total / 30).rounded())
+            let horas = medias / 2, media = medias % 2 == 1
+            if horas == 1 { return media ? "alrededor de 1 hora y media" : "alrededor de 1 hora" }
+            return "unas \(horas) horas\(media ? " y media" : "")"
+        }
+        let cuartos = max(1, Int((total / 15).rounded()))
+        if cuartos == 4 { return "alrededor de 1 hora" }
+        return "unos \(cuartos * 15) minutos"
     }
 
     /// «Tu entrega: jueves 12 de noviembre, 10:00 a 12:00».
@@ -164,10 +196,12 @@ public enum ReglasAgenda {
 
     // MARK: - Entrar (cambio de Mati, 6/11: el cliente nunca entra directo)
 
-    /// La tarjeta de la entrega en Entreno: confirmada, desde 30 min antes hasta el fin de la franja.
-    public static func enVentana(_ r: ReservaAgenda?, ahora: Date = Date()) -> Bool {
+    /// La tarjeta de la entrega en Entreno: confirmada, desde `avisoMin` antes (el de la agenda; si no vino, 30) hasta el
+    /// fin de la franja.
+    public static func enVentana(_ r: ReservaAgenda?, ahora: Date = Date(), avisoMin: Int? = nil) -> Bool {
         guard let r, r.estado == .confirmada, let i = ReglasGuia.instante(r.inicio), let f = ReglasGuia.instante(r.fin) else { return false }
-        return ahora >= i.addingTimeInterval(-minutosAntesEntrar * 60) && ahora < f
+        let antes = avisoMin.map(Double.init) ?? minutosAntesEntrar
+        return ahora >= i.addingTimeInterval(-antes * 60) && ahora < f
     }
 
     /// El botón para entrar: confirmada, con link, antes del fin y con `sala_abierta_en` (Mati ya está en el Meet). Si el
@@ -179,8 +213,8 @@ public enum ReglasAgenda {
     }
 
     /// En la franja y todavía sin el botón: la pantalla abierta consulta la agenda cada 30 s.
-    public static func esperandoSala(_ r: ReservaAgenda?, ahora: Date = Date()) -> Bool {
-        enVentana(r, ahora: ahora) && !puedeEntrar(r, ahora: ahora)
+    public static func esperandoSala(_ r: ReservaAgenda?, ahora: Date = Date(), avisoMin: Int? = nil) -> Bool {
+        enVentana(r, ahora: ahora, avisoMin: avisoMin) && !puedeEntrar(r, ahora: ahora)
     }
 
     /// Es el día de la entrega (en la zona del teléfono) y todavía no terminó.
@@ -200,6 +234,86 @@ public enum ReglasAgenda {
     public static func textoEsperandoSala(_ r: ReservaAgenda, zona: TimeZone = .current) -> String {
         let h = ReglasGuia.instante(r.inicio).map { hora($0, zona: zona) } ?? ""
         return "Tu entrega es hoy a las \(h). Cuando Mati abra la videollamada se habilita el botón para entrar."
+    }
+
+    // MARK: - Los textos que edita Mati (spec §7)
+
+    /// Las claves de `textos` en `entregas_app_agenda`. Una que no está acá se ignora.
+    public enum Clave: String, CaseIterable, Sendable {
+        case bloqueada, noAutorizada = "no_autorizada", titulo, encabezado, confirmar, pendiente, confirmada
+        case hoySinSala = "hoy_sin_sala", salaAbierta = "sala_abierta", fallo, sinFranjas = "sin_franjas", cambiar
+        case entrenoAviso = "entreno_aviso"
+    }
+
+    /// Los textos de la agenda: el de Mati si vino y no está vacío, con `{hora}`, `{dia}`, `{duracion}` y `{faltan}`
+    /// reemplazados; si no, el de la app. Si el de Mati pide un valor que acá no hay (`{hora}` sin hora), va el de la app:
+    /// nunca se muestra una llave.
+    public struct Textos: Equatable, Sendable {
+        public let servidor: [String: String]
+
+        public init(_ servidor: [String: String] = [:]) { self.servidor = servidor }
+
+        public func texto(_ clave: Clave, propio: String, hora: String? = nil, dia: String? = nil, duracion: String? = nil,
+                          faltan: Int? = nil) -> String {
+            guard var t = servidor[clave.rawValue], !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return propio }
+            for (llave, valor) in [("{hora}", hora), ("{dia}", dia), ("{duracion}", duracion), ("{faltan}", faltan.map(String.init))]
+            where t.contains(llave) {
+                guard let valor else { return propio }
+                t = t.replacingOccurrences(of: llave, with: valor)
+            }
+            return t
+        }
+
+        public var titulo: String { texto(.titulo, propio: "Agendá tu entrega") }
+        public var noAutorizada: String { texto(.noAutorizada, propio: ReglasAgenda.textoNoAutorizada) }
+        public var sinFranjas: String { texto(.sinFranjas, propio: ReglasAgenda.textoSinFranjas) }
+        public var pendiente: String { texto(.pendiente, propio: ReglasAgenda.textoReservando) }
+        public var cambiar: String { texto(.cambiar, propio: ReglasAgenda.textoCambiar) }
+
+        /// Con 0 («Ya viste todo…») no hay clave: es el instante en que el servidor todavía no se enteró.
+        public func bloqueada(_ faltan: Int) -> String {
+            faltan > 0 ? texto(.bloqueada, propio: ReglasAgenda.textoBloqueada(faltan), faltan: faltan) : ReglasAgenda.textoBloqueada(0)
+        }
+
+        /// Tomada, vencida o error: el mismo texto de Mati para todas. La demo no se pisa.
+        public func fallo(_ a: Aviso) -> String { a == .demo ? a.texto : texto(.fallo, propio: a.texto) }
+
+        public func encabezado(_ chips: [Chip]) -> String {
+            let durs = Set(chips.map { ReglasAgenda.duracion(desde: $0.inicio, hasta: $0.fin) })
+            let una = durs.count == 1 ? durs.first ?? nil : nil
+            return texto(.encabezado, propio: ReglasAgenda.textoElegir(chips), duracion: una)
+        }
+
+        public func confirmar(_ c: Chip, zona: TimeZone = .current) -> String {
+            texto(.confirmar, propio: ReglasAgenda.textoConfirmar(c, zona: zona), hora: ReglasAgenda.hora(c.inicio, zona: zona),
+                  dia: ReglasAgenda.diaCorto(c.inicio, zona: zona), duracion: ReglasAgenda.duracion(desde: c.inicio, hasta: c.fin))
+        }
+
+        public func confirmada(_ r: ReservaAgenda, zona: TimeZone = .current) -> String? {
+            guard let propio = ReglasAgenda.textoConfirmada(r, zona: zona), let i = ReglasGuia.instante(r.inicio),
+                  let f = ReglasGuia.instante(r.fin) else { return nil }
+            return texto(.confirmada, propio: propio, hora: ReglasAgenda.hora(i, zona: zona), dia: ReglasAgenda.diaLargo(i, zona: zona),
+                         duracion: ReglasAgenda.duracion(desde: i, hasta: f))
+        }
+
+        /// Con el botón: «Mati ya está en la videollamada» (la clave `sala_abierta`) o el respaldo de la hora de inicio.
+        public func entrar(_ r: ReservaAgenda, zona: TimeZone = .current) -> String {
+            let propio = ReglasAgenda.textoEntrar(r, zona: zona)
+            return r.salaAbiertaEn != nil ? texto(.salaAbierta, propio: propio) : propio
+        }
+
+        public func hoySinSala(_ r: ReservaAgenda, zona: TimeZone = .current) -> String {
+            texto(.hoySinSala, propio: ReglasAgenda.textoEsperandoSala(r, zona: zona), hora: horaInicio(r, zona))
+        }
+
+        /// La tarjeta de Entreno antes de que se abra la sala: `entreno_aviso` si vino; si no, el mismo de la guía.
+        public func entrenoAviso(_ r: ReservaAgenda, zona: TimeZone = .current) -> String {
+            texto(.entrenoAviso, propio: hoySinSala(r, zona: zona), hora: horaInicio(r, zona))
+        }
+
+        private func horaInicio(_ r: ReservaAgenda, _ zona: TimeZone) -> String? {
+            ReglasGuia.instante(r.inicio).map { ReglasAgenda.hora($0, zona: zona) }
+        }
     }
 
     // MARK: - La demo

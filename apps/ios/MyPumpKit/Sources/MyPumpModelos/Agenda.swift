@@ -6,8 +6,8 @@ import Foundation
 // El servidor decide: la app no calcula franjas ni habla con Google. Todo tolerante, como la guía: un campo que falta o
 // viene con otro tipo no rompe el resto (una franja rota se descarta, no la agenda).
 
-/// Un horario libre para la entrega (2 h, a las 10:00 o a las 14:00 de Argentina). Las horas quedan como vinieron (ISO
-/// con zona) y las lee `ReglasAgenda`.
+/// Un horario libre para la entrega. Los horarios y la duración los decide el servidor (hoy 10:00 o 14:00 de Argentina,
+/// 2 h; pueden cambiar sin tocar la app). Las horas quedan como vinieron (ISO con zona) y las lee `ReglasAgenda`.
 public struct FranjaAgenda: Codable, Equatable, Sendable, Identifiable {
     public var id: String
     public var inicio: String
@@ -93,11 +93,15 @@ public struct AgendaGuia: Codable, Equatable, Sendable {
     public var zona: String?
     public var franjas: [FranjaAgenda]
     public var reserva: ReservaAgenda?
+    /// Desde cuántos minutos antes del inicio aparece la entrega en Entreno (spec §7: lo edita Mati). nil: los 30 de la app.
+    public var avisoMin: Int?
+    /// Los textos que Mati edita (`clave → texto`, spec §7): pisan los de la app. Solo los que vienen como texto no vacío.
+    public var textos: [String: String]
 
     public init(ok: Bool, motivo: String? = nil, autorizada: Bool = false, habilitada: Bool = false, faltan: Int? = nil, zona: String? = nil,
-                franjas: [FranjaAgenda] = [], reserva: ReservaAgenda? = nil) {
+                franjas: [FranjaAgenda] = [], reserva: ReservaAgenda? = nil, avisoMin: Int? = nil, textos: [String: String] = [:]) {
         self.ok = ok; self.motivo = motivo; self.autorizada = autorizada; self.habilitada = habilitada; self.faltan = faltan
-        self.zona = zona; self.franjas = franjas; self.reserva = reserva
+        self.zona = zona; self.franjas = franjas; self.reserva = reserva; self.avisoMin = avisoMin; self.textos = textos
     }
 
     public init(json: JSONValue) {
@@ -108,7 +112,7 @@ public struct AgendaGuia: Codable, Equatable, Sendable {
         self = a
     }
 
-    enum CodingKeys: String, CodingKey { case ok, motivo, autorizada, habilitada, faltan, zona, franjas, reserva }
+    enum CodingKeys: String, CodingKey { case ok, motivo, autorizada, habilitada, faltan, zona, franjas, reserva, avisoMin = "aviso_min", textos }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -124,5 +128,11 @@ public struct AgendaGuia: Codable, Equatable, Sendable {
         let fs = c.lista(FranjaAgenda.self, .franjas)
         var vistas = Set<String>()
         franjas = habilitada && reserva?.vigente != true ? fs.filter { vistas.insert($0.id).inserted } : []
+        // Hasta un día antes; lo que no tiene sentido queda en los 30 de la app.
+        avisoMin = c.entero(.avisoMin).flatMap { (0...1440).contains($0) ? $0 : nil }
+        let crudos = (try? c.decodeIfPresent([String: JSONValue].self, forKey: .textos)) ?? nil
+        textos = (crudos ?? [:]).reduce(into: [:]) { r, par in
+            if case .texto(let t) = par.value, !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { r[par.key] = t }
+        }
     }
 }

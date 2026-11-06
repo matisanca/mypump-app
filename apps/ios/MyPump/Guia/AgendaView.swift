@@ -42,7 +42,7 @@ struct AgendaEntrega: View {
             }
             .id("agenda")
             .sheet(item: $elegido) { c in
-                HojaConfirmar(texto: ReglasAgenda.textoConfirmar(c, zona: zona),
+                HojaConfirmar(texto: modelo.agenda.textos.confirmar(c, zona: zona),
                               confirmar: { elegido = nil; Task { await modelo.agenda.reservar(c.franja) } },
                               otro: { elegido = nil })
             }
@@ -64,37 +64,38 @@ struct AgendaEntrega: View {
     }
 
     @ViewBuilder private func tarjeta(_ v: ReglasAgenda.Vista) -> some View {
+        let t = modelo.agenda.textos
         switch v {
         case .nada:
             EmptyView()
         case .noAutorizada:
-            Bloqueada(texto: ReglasAgenda.textoNoAutorizada, sinRed: modelo.agenda.desdeCache, accion: nil)
+            Bloqueada(titulo: t.titulo, texto: t.noAutorizada, sinRed: modelo.agenda.desdeCache, accion: nil)
         case .bloqueada(let n):
-            Bloqueada(texto: ReglasAgenda.textoBloqueada(n), sinRed: modelo.agenda.desdeCache,
+            Bloqueada(titulo: t.titulo, texto: t.bloqueada(n), sinRed: modelo.agenda.desdeCache,
                       accion: n > 0 ? ReglasAgenda.primeroQueFalta(modelo.guia).map { c in { irAlVideo(c) } } : nil,
                       habilitando: n == 0)
         case .franjas(let aviso):
-            Franjas(dias: ReglasAgenda.dias(modelo.agenda.agenda?.franjas ?? [], zona: zona), zona: zona, aviso: aviso,
+            Franjas(t: t, dias: ReglasAgenda.dias(modelo.agenda.agenda?.franjas ?? [], zona: zona), zona: zona, aviso: aviso,
                     sinRed: modelo.agenda.desdeCache) { elegido = $0 }
         case .sinFranjas(let aviso):
             CajaAgenda(sinRed: modelo.agenda.desdeCache) {
-                Encabezado(icono: "calendar", titulo: "Agendá tu entrega")
-                if let aviso { AvisoAgenda(texto: aviso.texto) }
-                Text(ReglasAgenda.textoSinFranjas).font(.body).fixedSize(horizontal: false, vertical: true)
+                Encabezado(icono: "calendar", titulo: t.titulo)
+                if let aviso { AvisoAgenda(texto: t.fallo(aviso)) }
+                Text(t.sinFranjas).font(.body).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("agenda-sin-franjas")
             }
         case .reservando:
             CajaAgenda(sinRed: modelo.agenda.desdeCache) {
-                Encabezado(icono: "calendar", titulo: "Agendá tu entrega")
+                Encabezado(icono: "calendar", titulo: t.titulo)
                 HStack(spacing: Espacio.s) {
                     ProgressView()
-                    Text(ReglasAgenda.textoReservando).font(.body).fixedSize(horizontal: false, vertical: true)
+                    Text(t.pendiente).font(.body).fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("agenda-reservando")
             }
         case .confirmada(let r, let aviso):
-            Confirmada(reserva: r, zona: zona, aviso: aviso, sinRed: modelo.agenda.desdeCache,
+            Confirmada(t: t, reserva: r, zona: zona, aviso: aviso, sinRed: modelo.agenda.desdeCache,
                        entrar: { if let u = r.meetUrl { abrirURL(u) } },
                        calendario: { paraCalendario = ParaCalendario(reserva: r) })
                 // En la franja, con la guía abierta: la agenda cada 30 s hasta que Mati abre la sala.
@@ -176,6 +177,7 @@ private struct AvisoAgenda: View {
 
 /// La gris con candado: sin autorizar, o con videos que faltan («Ir al próximo video»).
 private struct Bloqueada: View {
+    let titulo: String
     let texto: String
     let sinRed: Bool
     let accion: (() -> Void)?
@@ -183,7 +185,7 @@ private struct Bloqueada: View {
 
     var body: some View {
         CajaAgenda(fondo: .campo, sinRed: sinRed) {
-            Encabezado(icono: "lock.fill", titulo: "Agendá tu entrega", tono: .secondary)
+            Encabezado(icono: "lock.fill", titulo: titulo, tono: .secondary)
             HStack(alignment: .firstTextBaseline, spacing: Espacio.xs) {
                 if habilitando { ProgressView().controlSize(.small) }
                 Text(texto).font(.body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -201,6 +203,7 @@ private struct Bloqueada: View {
 
 /// Las franjas por día, en la hora del teléfono, como chips. Tocar uno abre la confirmación.
 private struct Franjas: View {
+    let t: ReglasAgenda.Textos
     let dias: [ReglasAgenda.Dia]
     let zona: TimeZone
     let aviso: ReglasAgenda.Aviso?
@@ -209,9 +212,9 @@ private struct Franjas: View {
 
     var body: some View {
         CajaAgenda(sinRed: sinRed) {
-            Encabezado(icono: "calendar", titulo: "Agendá tu entrega", tono: .marcaTexto)
-            if let aviso { AvisoAgenda(texto: aviso.texto) }
-            Text("Elegí un horario para la videollamada. Dura unas 2 horas.")
+            Encabezado(icono: "calendar", titulo: t.titulo, tono: .marcaTexto)
+            if let aviso { AvisoAgenda(texto: t.fallo(aviso)) }
+            Text(t.encabezado(dias.flatMap(\.chips)))
                 .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if ReglasAgenda.difiereDeArgentina(dias.flatMap(\.chips).map(\.inicio), zona: zona) {
                 LineaConIcono(texto: ReglasAgenda.textoZonaTelefono, icono: "globe.americas")
@@ -256,6 +259,7 @@ private struct ChipFranja: ButtonStyle {
 
 /// La verde: el día y la hora, «Agregar a mi calendario», cómo cambiarla y, con la sala abierta, «Entrar a la videollamada».
 private struct Confirmada: View {
+    let t: ReglasAgenda.Textos
     let reserva: ReservaAgenda
     let zona: TimeZone
     let aviso: ReglasAgenda.Aviso?
@@ -266,7 +270,7 @@ private struct Confirmada: View {
     var body: some View {
         CajaAgenda(fondo: .marcaSuave, sinRed: sinRed) {
             Encabezado(icono: "checkmark.circle.fill", titulo: "Entrega confirmada", tono: .marcaTexto)
-            Text(ReglasAgenda.textoConfirmada(reserva, zona: zona) ?? "Tu entrega está confirmada")
+            Text(t.confirmada(reserva, zona: zona) ?? "Tu entrega está confirmada")
                 .font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("agenda-confirmada")
             if ReglasAgenda.difiereDeArgentina(ReglasGuia.instante(reserva.inicio).map { [$0] } ?? [], zona: zona) {
@@ -278,7 +282,7 @@ private struct Confirmada: View {
             TimelineView(.periodic(from: .now, by: 15)) { ctx in
                 if ReglasAgenda.puedeEntrar(reserva, ahora: ctx.date) {
                     VStack(alignment: .leading, spacing: Espacio.s) {
-                        Text(ReglasAgenda.textoEntrar(reserva, zona: zona))
+                        Text(t.entrar(reserva, zona: zona))
                             .font(.headline).foregroundStyle(Color.marcaTexto)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("agenda-sala")
@@ -288,7 +292,7 @@ private struct Confirmada: View {
                             .accessibilityIdentifier("agenda-entrar")
                     }
                 } else if reserva.meetUrl != nil, ReglasAgenda.esHoy(reserva, zona: zona, ahora: ctx.date) {
-                    Text(ReglasAgenda.textoEsperandoSala(reserva, zona: zona))
+                    Text(t.hoySinSala(reserva, zona: zona))
                         .font(.subheadline).fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("agenda-esperando-sala")
                 }
@@ -296,7 +300,7 @@ private struct Confirmada: View {
             Button(action: calendario) { Label("Agregar a mi calendario", systemImage: "calendar.badge.plus") }
                 .buttonStyle(BotonSecundario(tono: .marcaTexto))
                 .accessibilityIdentifier("agenda-calendario")
-            Text(ReglasAgenda.textoCambiar).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(t.cambiar).font(.footnote).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -347,7 +351,7 @@ private struct AgregarAlCalendario: UIViewControllerRepresentable {
         let e = EKEvent(eventStore: tienda)
         e.title = "Entrega Pump Team"
         e.startDate = ReglasGuia.instante(reserva.inicio) ?? Date()
-        e.endDate = ReglasGuia.instante(reserva.fin) ?? e.startDate.addingTimeInterval(7200)
+        e.endDate = ReglasGuia.instante(reserva.fin) ?? e.startDate.addingTimeInterval(3600)
         e.url = reserva.meetUrl
         e.notes = reserva.meetUrl.map { "Videollamada: \($0.absoluteString)" }
         let vc = EKEventEditViewController()
@@ -383,7 +387,7 @@ struct TarjetaEntregaAhora: View {
                 if let r = modelo.reservaEnVentana(ahora: ctx.date) {
                     Group {
                     if ReglasAgenda.puedeEntrar(r, ahora: ctx.date), let u = r.meetUrl {
-                        let texto = ReglasAgenda.textoEntrar(r, zona: AgendaUI.zona)
+                        let texto = modelo.agenda.textos.entrar(r, zona: AgendaUI.zona)
                         Button { abrirURL(u) } label: {
                             fila(icono: "video.fill", Text(texto) + Text(" · ") + Text("Entrar").bold(), flecha: true)
                         }
@@ -391,7 +395,7 @@ struct TarjetaEntregaAhora: View {
                         .accessibilityLabel("\(texto). Entrar a la videollamada")
                         .accessibilityIdentifier("agenda-entrar-tarjeta")
                     } else {
-                        fila(icono: "clock", Text(ReglasAgenda.textoEsperandoSala(r, zona: AgendaUI.zona)), flecha: false)
+                        fila(icono: "clock", Text(modelo.agenda.textos.entrenoAviso(r, zona: AgendaUI.zona)), flecha: false)
                             .accessibilityElement(children: .combine)
                             .accessibilityIdentifier("agenda-esperando-tarjeta")
                     }
@@ -507,7 +511,7 @@ final class ServidorAgendaUI: Transporte, @unchecked Sendable {
         for (dia, hora) in [(1, 10), (1, 14), (2, 14), (4, 10), (4, 14)] {
             guard let d = cal.date(byAdding: .day, value: dia, to: cal.startOfDay(for: base)),
                   let i = cal.date(bySettingHour: hora, minute: 0, second: 0, of: d) else { continue }
-            fs.append(FranjaAgenda(id: "f\(fs.count + 1)", inicio: iso.string(from: i), fin: iso.string(from: i.addingTimeInterval(7200))))
+            fs.append(FranjaAgenda(id: "f\(fs.count + 1)", inicio: iso.string(from: i), fin: iso.string(from: i.addingTimeInterval(3600))))
         }
         franjas = escenario == "sinFranjas" ? [] : fs
         let guia = Guia(json: (try? JSONDecoder().decode(JSONValue.self, from: Data(GuiaMuestra.jsonV2().utf8))) ?? .null)
@@ -518,7 +522,7 @@ final class ServidorAgendaUI: Transporte, @unchecked Sendable {
             reserva = ReservaAgenda(id: "r1", inicio: fs[0].inicio, fin: fs[0].fin, estado: .pendiente)
         case "confirmada", "salaAbierta", "salaSeAbre":
             let i = base.addingTimeInterval(10 * 60)
-            reserva = ReservaAgenda(id: "r1", inicio: iso.string(from: i), fin: iso.string(from: i.addingTimeInterval(7200)), estado: .confirmada,
+            reserva = ReservaAgenda(id: "r1", inicio: iso.string(from: i), fin: iso.string(from: i.addingTimeInterval(3600)), estado: .confirmada,
                                     meetUrl: URL(string: "https://meet.google.com/abc-defg-hij"),
                                     salaAbiertaEn: escenario == "salaAbierta" ? iso.string(from: base) : nil)
         case "vencida":
