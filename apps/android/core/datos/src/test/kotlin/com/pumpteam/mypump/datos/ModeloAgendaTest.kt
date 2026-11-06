@@ -448,6 +448,8 @@ class ModeloAgendaTest {
         assertTrue(hab.franjas.isNotEmpty())
         // Las franjas de muestra siempre empiezan mañana o después.
         assertTrue(hab.franjas.all { it.inicio.isAfter(Instant.now()) })
+        // Y de lunes a viernes, como el servidor: nunca un sábado ni un domingo.
+        assertTrue(hab.franjas.all { ReglasAgenda.esHabil(it.inicio.atZone(ReglasAgenda.ARGENTINA).toLocalDate()) }, "${hab.franjas}")
         assertTrue(m.agenda.reservar(hab.franjas.first()))
         val r = m.agenda.agenda.value!!.reserva!!
         assertEquals(ReservaEntrega.Estado.CONFIRMADA, r.estado)

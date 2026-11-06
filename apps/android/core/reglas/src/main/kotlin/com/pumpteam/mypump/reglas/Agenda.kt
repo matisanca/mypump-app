@@ -6,9 +6,13 @@ import com.pumpteam.mypump.modelos.FranjaEntrega
 import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.ReservaEntrega
 import com.pumpteam.mypump.modelos.ResumenGuia
+import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /**
@@ -108,6 +112,45 @@ object ReglasNovedad {
  */
 object ReglasAgenda {
     val ARGENTINA: ZoneId = ZoneId.of("America/Argentina/Buenos_Aires")
+
+    /** De lunes a viernes, como las franjas del servidor (`agenda_lib.huecos`, `weekday < 5`). */
+    fun esHabil(d: LocalDate): Boolean = d.dayOfWeek != DayOfWeek.SATURDAY && d.dayOfWeek != DayOfWeek.SUNDAY
+
+    /** El [n]-ésimo día hábil después de [desde] (n = 1: el próximo). */
+    fun diaHabil(desde: LocalDate, n: Int): LocalDate {
+        var d = desde
+        var k = 0
+        while (k < maxOf(n, 1)) {
+            d = d.plusDays(1)
+            if (esHabil(d)) k++
+        }
+        return d
+    }
+
+    /** Cuántos días hábiles hay después de [a] hasta [b] inclusive (0 si [b] no es posterior). */
+    internal fun habilesEntre(a: LocalDate, b: LocalDate): Int {
+        var d = a
+        var k = 0
+        while (d.isBefore(b)) {
+            d = d.plusDays(1)
+            if (esHabil(d)) k++
+        }
+        return k
+    }
+
+    /**
+     * Las franjas de la demo (`demo/agenda.json`) corridas para que la primera caiga el próximo día hábil después de [hoy],
+     * con la misma hora de Argentina y los mismos días hábiles de diferencia entre sí: nunca un sábado ni un domingo.
+     */
+    fun correrADiasHabiles(franjas: List<FranjaEntrega>, hoy: LocalDate): List<FranjaEntrega> {
+        val base = franjas.minOfOrNull { it.inicio }?.atZone(ARGENTINA)?.toLocalDate() ?: return franjas
+        return franjas.map { f ->
+            val dia = f.inicio.atZone(ARGENTINA).toLocalDate()
+            val dias = ChronoUnit.DAYS.between(dia, diaHabil(hoy, 1 + habilesEntre(base, dia)))
+            // Argentina no cambia de hora: correr días enteros deja la misma hora.
+            f.copy(inicio = f.inicio.plus(Duration.ofDays(dias)), fin = f.fin.plus(Duration.ofDays(dias)))
+        }
+    }
     private val ES = Locale.forLanguageTag("es-AR")
     private val DIA = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", ES)
     private val DIA_CORTO = DateTimeFormatter.ofPattern("EEEE d", ES)

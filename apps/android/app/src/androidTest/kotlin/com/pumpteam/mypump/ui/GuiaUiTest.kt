@@ -167,7 +167,9 @@ class GuiaUiTest : PruebaUi() {
 
     @Test
     fun dudaDeVideoYDudaParaLaLlamada() {
-        conGuia()
+        // Antes de la entrega (los textos de «antes de la videollamada»): la fecha relativa a hoy, no la del fixture.
+        val enUnaSemana = java.time.OffsetDateTime.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires")).plusDays(7).withNano(0)
+        conGuia(get = org.json.JSONObject(fixture("get-tomas-avanzado")).put("fecha_entrega", enUnaSemana.toString()).toString())
         guardarCuenta()
         abrir()
         abrirGuia()

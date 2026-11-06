@@ -312,13 +312,10 @@ class ModeloAgenda(
     /** La demo: las franjas de muestra corridas para que empiecen mañana, y habilitada con lo visto en el teléfono. */
     private fun armarDemo(p: AgendaEntrega, reserva: ReservaEntrega?): AgendaEntrega {
         val faltan = faltanDemo()
-        val primero = p.franjas.minOfOrNull { it.inicio }
-        val corridas = if (primero == null) p.franjas else {
-            // `LocalDate.ofInstant` es de Java 9 (Android 14): con `atZone` anda desde Android 8.
-            val hoy = Instant.ofEpochMilli(reloj()).atZone(ReglasAgenda.ARGENTINA).toLocalDate()
-            val dias = java.time.temporal.ChronoUnit.DAYS.between(primero.atZone(ReglasAgenda.ARGENTINA).toLocalDate(), hoy.plusDays(1))
-            p.franjas.map { it.copy(inicio = it.inicio.plus(Duration.ofDays(dias)), fin = it.fin.plus(Duration.ofDays(dias))) }
-        }
+        // Desde el próximo día hábil, de lunes a viernes como el servidor. `LocalDate.ofInstant` es de Java 9 (Android 14):
+        // con `atZone` anda desde Android 8.
+        val hoy = Instant.ofEpochMilli(reloj()).atZone(ReglasAgenda.ARGENTINA).toLocalDate()
+        val corridas = ReglasAgenda.correrADiasHabiles(p.franjas, hoy)
         val habilitada = p.autorizada && faltan == 0
         return p.copy(
             habilitada = habilitada,

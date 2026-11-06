@@ -420,4 +420,49 @@ class AgendaReglasTest {
         // Un aviso_min que no tiene sentido se ignora.
         assertEquals(null, AgendaEntrega.desde(j("""{"ok":true,"aviso_min":-5}"""))!!.avisoMin)
     }
+
+    // ── La demo: solo días hábiles, como el servidor (`agenda_lib.huecos`) ──
+
+    private fun franja(id: String, inicio: String) =
+        FranjaEntrega(id, java.time.OffsetDateTime.parse(inicio).toInstant(), java.time.OffsetDateTime.parse(inicio).toInstant().plusSeconds(3600))
+
+    private val demo = listOf(
+        franja("a", "2026-11-12T10:00:00-03:00"), franja("b", "2026-11-12T14:00:00-03:00"), franja("c", "2026-11-13T10:00:00-03:00"),
+        franja("d", "2026-11-16T10:00:00-03:00"), franja("e", "2026-11-16T14:00:00-03:00"), franja("f", "2026-11-17T14:00:00-03:00"),
+    )
+
+    @Test
+    fun elProximoDiaHabil() {
+        val viernes = java.time.LocalDate.of(2026, 11, 6)
+        assertEquals(java.time.LocalDate.of(2026, 11, 9), ReglasAgenda.diaHabil(viernes, 1))
+        assertEquals(java.time.LocalDate.of(2026, 11, 10), ReglasAgenda.diaHabil(viernes, 2))
+        assertEquals(java.time.LocalDate.of(2026, 11, 12), ReglasAgenda.diaHabil(viernes, 4))
+        assertEquals(java.time.LocalDate.of(2026, 11, 9), ReglasAgenda.diaHabil(java.time.LocalDate.of(2026, 11, 7), 1))
+        assertEquals(java.time.LocalDate.of(2026, 11, 16), ReglasAgenda.diaHabil(java.time.LocalDate.of(2026, 11, 10), 4))
+    }
+
+    @Test
+    fun laDemoNuncaOfreceSabadosNiDomingos() {
+        val ar = ReglasAgenda.ARGENTINA
+        // Cada día de dos semanas: todas de lunes a viernes, en el futuro, en el mismo orden y a la misma hora.
+        for (d in 0L until 14L) {
+            val hoy = java.time.LocalDate.of(2026, 11, 20).plusDays(d)
+            val c = ReglasAgenda.correrADiasHabiles(demo, hoy)
+            assertEquals(demo.map { it.id }, c.map { it.id })
+            for ((f, o) in c.zip(demo)) {
+                val z = f.inicio.atZone(ar)
+                assertTrue(ReglasAgenda.esHabil(z.toLocalDate()), "${z} cae fin de semana (hoy $hoy)")
+                assertTrue(z.toLocalDate().isAfter(hoy))
+                assertEquals(o.inicio.atZone(ar).toLocalTime(), z.toLocalTime())
+                assertEquals(java.time.Duration.ofHours(1), java.time.Duration.between(f.inicio, f.fin))
+            }
+        }
+        // Viernes 6/11: el jueves y el viernes de la demo van al lunes 9 y al martes 10; su lunes, al miércoles 11.
+        val c = ReglasAgenda.correrADiasHabiles(demo, java.time.LocalDate.of(2026, 11, 6))
+        assertEquals(
+            listOf("2026-11-09T10:00", "2026-11-09T14:00", "2026-11-10T10:00", "2026-11-11T10:00", "2026-11-11T14:00", "2026-11-12T14:00"),
+            c.map { it.inicio.atZone(ar).toLocalDateTime().toString() },
+        )
+        assertEquals(emptyList<FranjaEntrega>(), ReglasAgenda.correrADiasHabiles(emptyList(), java.time.LocalDate.of(2026, 11, 6)))
+    }
 }

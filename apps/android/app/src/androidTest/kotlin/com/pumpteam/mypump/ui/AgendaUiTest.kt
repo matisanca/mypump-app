@@ -4,6 +4,7 @@ import android.app.Instrumentation
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.pumpteam.mypump.reglas.ReglasAgenda
 import com.pumpteam.mypump.reglas.SeguimientoAvance
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -35,6 +36,8 @@ class AgendaUiTest : PruebaUi() {
     private fun guiaV2(ultimoVisto: Boolean = false): String = JSONObject(fixture("get-tomas-avanzado")).apply {
         put("fase", 2)
         put("novedad_en", novedadEn)
+        // La entrega todavía no pasó (la agenda es de antes): la fecha, relativa a hoy, así la prueba no depende del día.
+        put("fecha_entrega", ReglasAgenda.diaHabil(hoyAr(), 5).atTime(14, 0).atZone(ReglasAgenda.ARGENTINA).toOffsetDateTime().toString())
         val clips = getJSONArray("clips")
         for (i in 0 until clips.length()) clips.getJSONObject(i).let { c ->
             val id = c.getString("id")
@@ -46,18 +49,20 @@ class AgendaUiTest : PruebaUi() {
 
     private val resumen = """{"ok": true, "total": 17, "vistos": 4, "minutos_restantes": 9.0, "novedad_en": "$novedadEn", "nuevos_total": 2, "nuevos_vistos": 0}"""
 
-    /** Franjas siempre en el futuro: mañana y pasado, 10 y 14 de Argentina. */
+    private fun hoyAr(): java.time.LocalDate = Instant.now().atZone(ReglasAgenda.ARGENTINA).toLocalDate()
+
+    /** Franjas siempre en el futuro y de lunes a viernes, como el servidor: los dos próximos días hábiles, 10 y 14 de Argentina. */
     private fun franjas(): String {
-        val manana = Instant.now().atZone(java.time.ZoneId.of("America/Argentina/Buenos_Aires")).toLocalDate().plusDays(1)
-        fun f(n: Int, dia: Long, hora: Int): String {
-            val i = manana.plusDays(dia).atTime(hora, 0).atZone(java.time.ZoneId.of("America/Argentina/Buenos_Aires")).toOffsetDateTime()
+        fun f(n: Int, dia: Int, hora: Int): String {
+            val i = ReglasAgenda.diaHabil(hoyAr(), dia).atTime(hora, 0).atZone(ReglasAgenda.ARGENTINA).toOffsetDateTime()
             return """{"id": "0000000$n-0000-4000-8000-000000000000", "inicio": "$i", "fin": "${i.plusHours(1)}"}"""
         }
-        return "[${f(1, 0, 10)}, ${f(2, 0, 14)}, ${f(3, 1, 10)}]"
+        return "[${f(1, 1, 10)}, ${f(2, 1, 14)}, ${f(3, 2, 10)}]"
     }
 
     private fun reserva(estado: String, meet: String? = null): String {
-        val i = Instant.now().plus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS)
+        // La primera franja (el próximo día hábil a las 10), la que se reserva en el flujo.
+        val i = ReglasAgenda.diaHabil(hoyAr(), 1).atTime(10, 0).atZone(ReglasAgenda.ARGENTINA).toInstant()
         return """{"id": "r1", "inicio": "$i", "fin": "${i.plus(1, ChronoUnit.HOURS)}", "estado": "$estado", "meet_url": ${meet?.let { "\"$it\"" } ?: "null"}, "motivo": null}"""
     }
 
@@ -103,16 +108,36 @@ class AgendaUiTest : PruebaUi() {
         p.nodo(s)
     }
 
-    /** Deja [s] cerca de [arriba] px del borde de arriba (para la captura), de a pasos cortos. */
+    /**
+     * Deja [s] cerca de [arriba] px del borde de arriba (para la captura), de a pasos cortos. Después espera que la lista se
+     * quede quieta y vuelve a medir: si algo la movió, la acomoda de nuevo, así la captura muestra la tarjeta entera.
+     */
     private fun mostrar(s: Selector, arriba: Float = 400f) {
-        bajarHasta(s)
-        repeat(20) {
-            val n = p.nodo(s)
-            val b = p.enPrincipal { n.boundsInRoot }
-            val dy = if (b.height <= 0f) 400f else b.top - arriba
-            if (kotlin.math.abs(dy) < 40f) return
-            p.desplazar(etiqueta("guia-lista"), dy.coerceIn(-600f, 600f))
-            p.quieto(250)
+        fun cerca(): Boolean {
+            if (!p.existe(s)) return false
+            val n = p.nodo(s, ms = 0)
+            return p.enPrincipal { n.layoutInfo.isPlaced && n.size.height > 0 && kotlin.math.abs(n.positionInRoot.y - arriba) < 60f }
+        }
+        for (vuelta in 0 until 3) {
+            bajarHasta(s)
+            var antes = Float.NaN
+            var tope = false
+            for (i in 0 until 20) {
+                val n = p.nodo(s)
+                // La lista perezosa compone (y mide) por adelantado la tarjeta que viene, sin ubicarla: ese nodo «existe»
+                // con la posición del borde de la lista y la captura quedaba en el bloque del audio. Hasta que no está
+                // ubicada, se sigue bajando.
+                val (puesta, top) = p.enPrincipal { (n.layoutInfo.isPlaced && n.size.height > 0) to n.positionInRoot.y }
+                val dy = if (!puesta) 400f else top - arriba
+                if (puesta && kotlin.math.abs(dy) < 40f) break
+                // La lista ya no se mueve (la tarjeta está al final): más no se puede subir.
+                if (puesta && kotlin.math.abs(top - antes) < 4f) { tope = true; break }
+                antes = top
+                p.desplazar(etiqueta("guia-lista"), dy.coerceIn(-600f, 600f))
+                p.quieto(250)
+            }
+            p.quieto(900)
+            if (cerca() || tope) return
         }
     }
 
@@ -178,7 +203,9 @@ class AgendaUiTest : PruebaUi() {
         marcarVisto(e, "FT-9b")
         p.esperar("el avance") { servidor.a("entregas_app_avance").any { it.contains("FT-9b") } }
         p.esperar("la agenda de nuevo") { servidor.a("entregas_app_agenda").size > antes }
+        // Hasta «Agendá tu entrega»: la tarjeta entera en la captura.
         mostrar(etiqueta("agenda-franjas"), arriba = 200f)
+        assertTrue(p.existe(etiqueta("agenda-encabezado")))
         assertFalse(p.existe(etiqueta("agenda-contador")))
         foto("04-agenda-habilitada")
         // Tocar un chip abre la hoja de confirmación.
