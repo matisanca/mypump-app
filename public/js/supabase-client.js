@@ -484,6 +484,12 @@ window.mypumpDB = {
     return await rpcMutation('mypump_set_mostrar_recuperacion', { p_token: token, p_mostrar: !!mostrar });
   },
 
+  // ─── SUPLEMENTACIÓN (app 2.1.0, migración entregas_015) ───
+  // Cero filas si el token no vale o no hay suplementación; una fila si hay.
+  async getSuplementacion(token) {
+    return await rpc('mypump_suplementacion', { p_token: token });
+  },
+
   async getMostrarRecuperacion(token) {
     return await rpc('mypump_get_mostrar_recuperacion', { p_token: token });
   },

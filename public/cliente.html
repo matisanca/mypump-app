@@ -576,6 +576,32 @@ main{padding:var(--space-4)}
 .ex-comment-send{flex:0 0 auto;height:40px;padding:0 var(--space-4);background:var(--color-brand);color:var(--color-on-brand);border:none;border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer}
 .ex-comment-send:disabled{opacity:.6;cursor:default}
 /* ── Nota automática de progresión ── */
+.supl-vacio{text-align:center;padding:var(--space-8) var(--space-4)}
+.supl-vacio-tit{font-size:18px;font-weight:700;margin-bottom:6px;color:var(--color-text-primary)}
+.supl-sinred{font-size:13px;font-weight:600;color:var(--color-warning);margin-bottom:var(--space-3)}
+.supl-cab{margin-bottom:var(--space-4)}
+.supl-cab-tit{font-size:20px;font-weight:700;color:var(--color-text-primary)}
+.supl-cab-acc{font-size:14px;font-weight:600;color:var(--color-brand-text);margin-top:4px}
+.supl-ceja{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted);margin:var(--space-4) 0 var(--space-2)}
+.supl-momento{background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);margin-bottom:var(--space-3);overflow:hidden}
+.supl-momento-tit{font-size:14px;font-weight:600;color:var(--color-brand-text);padding:var(--space-3) var(--space-4) 2px}
+.supl-fila{all:unset;box-sizing:border-box;display:block;width:100%;padding:var(--space-3) var(--space-4);cursor:pointer}
+.supl-fila + .supl-fila{border-top:1px solid var(--color-border)}
+.supl-fila-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:15px;color:var(--color-text-primary)}
+.supl-nombre{font-weight:600}
+.supl-cant{font-weight:600;font-family:var(--font-num);white-space:nowrap}
+.supl-nota{font-size:13px;color:var(--color-text-muted);margin-top:2px;line-height:1.4}
+.supl-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.supl-chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--color-bg-secondary);color:var(--color-text-muted)}
+.supl-chip.is-marca{background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.supl-sigue{font-size:14px;padding:var(--space-3) var(--space-4);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);margin:var(--space-3) 0}
+.supl-det-cab{margin:var(--space-2) 0 var(--space-3)}
+.supl-det-nombre{font-size:24px;font-weight:800;color:var(--color-text-primary)}
+.supl-det-dosis{font-size:22px;font-weight:700;font-family:var(--font-num);margin-top:4px}
+.supl-det-nota{font-size:14px;margin-top:6px}
+.supl-sec{padding:var(--space-2) var(--space-4)}
+.supl-toma,.supl-det-li{padding:6px 0;font-size:15px;line-height:1.4}
+.supl-toma + .supl-toma,.supl-det-li + .supl-det-li{border-top:1px solid var(--color-border)}
 .rv-tarjetas{display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-4)}
 .rv-card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;width:100%;padding:var(--space-4);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer}
 .rv-card .rv-tit{font-size:16px;font-weight:700;color:var(--color-text-primary)}
@@ -1290,6 +1316,7 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
     <section class="scene" id="scene-revision"></section>
     <!-- CHAT: tampoco tiene tab (ver .hdr-chat); se entra por el ícono del header. -->
     <section class="scene" id="scene-chat"></section>
+    <section class="scene" id="scene-supl"></section>
     <!-- SALUD: todo lo que manda el reloj. No es un tab (6 tabs dejan cada uno
          en ~62px en un iPhone SE); se entra desde la card de Mi Día. -->
     <section class="scene" id="scene-salud"></section>
@@ -9144,6 +9171,200 @@ function _repintarSaludSemana() {
   if (h) h.innerHTML = _saludSemanaHtml();
 }
 
+/* ═══════ SUPLEMENTACIÓN (app 2.1.0) ═══════
+   mypump_suplementacion(p_token): solo lectura, cero filas si no hay. La
+   pestaña aparece solo con algún ítem con nombre (como `hay` de la app). Se
+   guarda la última respuesta en el navegador para verla sin señal. La
+   agrupación por momento es la de VistaSuplementacion (MyPumpReglas/Guia.swift). */
+const _SUPL_CACHE = 'mypump_supl_v1';
+const _SUPL_MOMENTOS = [
+  ['despertar', 'Al despertar'], ['ayunas', 'En ayunas'], ['desayuno', 'Desayuno'], ['media_manana', 'Media mañana'],
+  ['almuerzo', 'Almuerzo'], ['merienda', 'Merienda'], ['pre', 'Antes de entrenar'], ['intra', 'Mientras entrenás'],
+  ['post', 'Después de entrenar'], ['cena', 'Cena'], ['dormir', 'Antes de dormir'], ['noche', 'Si te despertás de noche'],
+];
+const _SUPL_ESTADOS = { nuevo: 'Nuevo', sigue: 'Sigue igual', cambia: 'Cambia', sube: 'Sube', baja: 'Baja', vuelve: 'Vuelve', sale: 'Dejás de tomar' };
+
+function _suplTxt(v) { return (typeof v === 'string' && v.trim()) ? v.trim() : null; }
+function _suplLista(v) { return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()) : []; }
+function _suplMayus(s) { const x = (s || '').trim(); return x ? x[0].toUpperCase() + x.slice(1) : null; }
+function _suplHay(s) { return !!(s && Array.isArray(s.items) && s.items.some(it => it && _suplTxt(it.nombre))); }
+
+async function loadSuplementacion() {
+  if (!TOKEN || (DATA && DATA._isDemo) || !window.mypumpDB.getSuplementacion) return;
+  let resp = null, desdeCache = false;
+  // rpc() devuelve null si falló (red o error) y [] si no hay suplementación:
+  // solo un [] o una fila buena cambian lo guardado.
+  const filas = await window.mypumpDB.getSuplementacion(TOKEN).catch(() => null);
+  if (Array.isArray(filas)) {
+    const f = filas[0];
+    resp = (f && _suplHay(f.suplementacion)) ? f : null;
+    try {
+      if (resp) localStorage.setItem(_SUPL_CACHE, JSON.stringify({ token: TOKEN, resp }));
+      else localStorage.removeItem(_SUPL_CACHE);
+    } catch (_) {}
+  } else {
+    // Sin red: lo último guardado de esta cuenta, si hay.
+    try {
+      const c = JSON.parse(localStorage.getItem(_SUPL_CACHE) || 'null');
+      if (c && c.token === TOKEN && c.resp && _suplHay(c.resp.suplementacion)) { resp = c.resp; desdeCache = true; }
+    } catch (_) {}
+  }
+  STATE.supl = resp;
+  STATE.suplDesdeCache = desdeCache;
+  const tab = document.querySelector('.tab[data-scene="supl"]');
+  if (tab) tab.hidden = !resp;
+  // Si los datos dejan de estar estando en la pestaña, se vuelve a Entreno (como la app).
+  if (!resp && STATE.scene === 'supl') setScene('train');
+  else if (STATE.scene === 'supl') renderSupl();
+}
+
+/* VistaSuplementacion: un grupo por momento en el orden de `dia`, lo que no
+   tiene momento en «Además» y lo que sale en «Dejás de tomar». */
+function _vistaSupl(s) {
+  const items = (s.items || []).filter(it => it && _suplTxt(it.nombre));
+  if (!items.length) return null;
+  const dia = Array.isArray(s.dia) ? s.dia.filter(m => m && _suplTxt(m.id)) : [];
+  const def = {};
+  dia.forEach(m => { if (!def[m.id]) def[m.id] = m; });
+  const tomas = {}, ordenAparicion = [], sueltos = [], sale = [];
+  items.forEach((it, i) => {
+    if (it.estado === 'sale') { sale.push({ nombre: it.nombre, porQue: _suplTxt(it.por_que), item: i }); return; }
+    const ts = Array.isArray(it.tomas) ? it.tomas.filter(x => x && typeof x === 'object') : [];
+    let lista = null, momentos = [];
+    if (ts.length) { lista = ts.map(x => ({ item: i, nombre: _suplTxt(x.nombre), cantidad: _suplTxt(x.cantidad), nota: _suplTxt(x.nota) })); momentos = ts.map(x => _suplTxt(x.momento) || ''); }
+    else if (_suplTxt(it.momento)) { lista = [{ item: i, nombre: null, cantidad: _suplTxt(it.cantidad), nota: _suplTxt(it.nota) }]; momentos = [it.momento.trim()]; }
+    if (!lista) { sueltos.push({ item: i, nombre: null, cantidad: _suplTxt(it.cantidad), nota: _suplTxt(it.nota) }); return; }
+    lista.forEach((tm, k) => {
+      const m = momentos[k];
+      if (!tomas[m]) { tomas[m] = []; ordenAparicion.push(m); }
+      tomas[m].push(tm);
+    });
+  });
+  let orden = dia.map(m => m.id);
+  _SUPL_MOMENTOS.forEach(([m]) => { if (tomas[m] && !orden.includes(m)) orden.push(m); });
+  ordenAparicion.forEach(m => { if (!orden.includes(m)) orden.push(m); });
+  if (!dia.length) {
+    const pos = m => { const k = _SUPL_MOMENTOS.findIndex(x => x[0] === m); return k < 0 ? 98 : k; };
+    orden = orden.map((m, k) => [m, k]).sort((a, b) => (pos(a[0]) - pos(b[0])) || (a[1] - b[1])).map(x => x[0]);
+  }
+  const nombres = Object.fromEntries(_SUPL_MOMENTOS);
+  const titulo = m => _suplTxt(def[m] && def[m].nombre) || nombres[m] || _suplMayus(m.replace(/_/g, ' ')) || m;
+  const fila = tm => ({ nombre: tm.nombre || items[tm.item].nombre, cantidad: tm.cantidad, nota: _suplMayus(tm.nota), item: tm.item });
+  const grupos = [];
+  orden.forEach(m => { if (tomas[m]) grupos.push({ id: m, titulo: titulo(m), filas: tomas[m].map(fila) }); });
+  if (sueltos.length) grupos.push({ id: '_ademas', titulo: 'Además', filas: sueltos.map(fila) });
+  return { titulo: _suplTxt(s.titulo), accion: _suplTxt(s.accion), momentos: grupos, sigue: _suplTxt(s.sigue_texto), sale, items, dia, tituloMomento: titulo };
+}
+
+/* `dias` para el cliente (ReglasSuplementacion.textoDias): null = todos los días. */
+function _suplDias(d) {
+  const partes = (Array.isArray(d) ? d : (typeof d === 'string' ? [d] : [])).map(x => String(x).trim()).filter(Boolean);
+  const clave = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (!partes.length || partes.some(p => clave(p) === 'todos')) return null;
+  const SEM = [['lunes', ['lunes', 'lun', 'lu']], ['martes', ['martes', 'mar', 'ma']], ['miércoles', ['miercoles', 'mie', 'mi']],
+    ['jueves', ['jueves', 'jue', 'ju']], ['viernes', ['viernes', 'vie', 'vi']], ['sábado', ['sabado', 'sab', 'sa']], ['domingo', ['domingo', 'dom', 'do']]];
+  const textos = [];
+  for (const p of partes) {
+    const k = clave(p);
+    const tx = (k === 'gym' || k === 'entreno' || k === 'entrenamiento') ? 'días de entreno'
+      : k === 'descanso' ? 'días de descanso'
+      : ((SEM.find(s => s[1].includes(k)) || [])[0] || p);
+    if (!textos.includes(tx)) textos.push(tx);
+  }
+  const junto = textos.length > 1 ? textos.slice(0, -1).join(', ') + ' y ' + textos[textos.length - 1] : textos[0];
+  return junto[0].toUpperCase() + junto.slice(1);
+}
+function _suplEstado(e) { return (!e) ? 'nuevo' : (_SUPL_ESTADOS[e] ? e : null); }
+function _suplDosis(it) {
+  const c = _suplTxt(it.cantidad); if (!c) return null;
+  const a = _suplTxt(it.antes);
+  return (a && a !== c) ? `${a} → ${c}` : c;
+}
+
+function renderSupl() {
+  const root = document.getElementById('scene-supl');
+  if (!root) return;
+  const s = STATE.supl && STATE.supl.suplementacion;
+  const v = s ? _vistaSupl(s) : null;
+  if (!v) {
+    root.innerHTML = `<div class="supl-vacio"><div class="supl-vacio-tit">Sin suplementación</div>
+      <div class="rv-txt">Cuando Mati cargue tu suplementación, la vas a ver acá.</div></div>`;
+    return;
+  }
+  const E = escapeHtml;
+  if (STATE.suplAbierto != null) {
+    const it = v.items[STATE.suplAbierto];
+    if (it) { root.innerHTML = _suplDetalleHtml(it, v); _bindSuplDetalle(root); window.scrollTo(0, 0); return; }
+    STATE.suplAbierto = null;
+  }
+  const chips = it => {
+    const est = _suplEstado(it.estado);
+    const dias = _suplDias(it.dias);
+    const c = [];
+    if (est) c.push(`<span class="supl-chip${est === 'sigue' ? '' : ' is-marca'}">${_SUPL_ESTADOS[est]}</span>`);
+    if (it.opcional === true) c.push('<span class="supl-chip">Opcional</span>');
+    if (dias) c.push(`<span class="supl-chip">${E(dias)}</span>`);
+    return c.length ? `<div class="supl-chips">${c.join('')}</div>` : '';
+  };
+  const filaHtml = f => `
+    <button class="supl-fila" data-supl-item="${f.item}">
+      <div class="supl-fila-top"><span class="supl-nombre">${E(f.nombre)}</span>${f.cantidad ? `<span class="supl-cant">${E(f.cantidad)}</span>` : ''}</div>
+      ${f.nota ? `<div class="supl-nota">${E(f.nota)}</div>` : ''}
+      ${chips(v.items[f.item])}
+    </button>`;
+  root.innerHTML = `
+    ${STATE.suplDesdeCache ? '<div class="supl-sinred">Sin conexión: ves lo último que guardaste</div>' : ''}
+    ${(v.titulo || v.accion) ? `<div class="supl-cab">${v.titulo ? `<div class="supl-cab-tit">${E(v.titulo)}</div>` : ''}${v.accion ? `<div class="supl-cab-acc">${E(v.accion)}</div>` : ''}</div>` : ''}
+    ${v.momentos.length ? `<div class="supl-ceja">Tu día</div>${v.momentos.map(m => `
+      <div class="supl-momento"><div class="supl-momento-tit">${E(m.titulo)}</div>${m.filas.map(filaHtml).join('')}</div>`).join('')}` : ''}
+    ${v.sigue ? `<div class="supl-sigue"><b>Sigue igual.</b> ${E(v.sigue)}</div>` : ''}
+    ${v.sale.length ? `<div class="supl-ceja">Dejás de tomar</div><div class="supl-momento">${v.sale.map(x => `
+      <button class="supl-fila" data-supl-item="${x.item}"><div class="supl-fila-top"><span class="supl-nombre">${E(x.nombre)}</span></div>
+      ${x.porQue ? `<div class="supl-nota">${E(x.porQue)}</div>` : ''}</button>`).join('')}</div>` : ''}`;
+  root.querySelectorAll('[data-supl-item]').forEach(b => b.onclick = () => {
+    STATE.suplAbierto = Number(b.dataset.suplItem); renderSupl();
+  });
+}
+
+function _suplDetalleHtml(it, v) {
+  const E = escapeHtml;
+  const sale = it.estado === 'sale';
+  const dosis = !sale ? _suplDosis(it) : null;
+  const ts = Array.isArray(it.tomas) ? it.tomas.filter(x => x && _suplTxt(x.momento)) : [];
+  const tomas = ts.length
+    ? ts.map(x => ({ momento: v.tituloMomento(x.momento.trim()), cantidad: _suplTxt(x.cantidad), nota: _suplMayus(x.nota) }))
+    : (_suplTxt(it.momento) ? [{ momento: v.tituloMomento(it.momento.trim()), cantidad: null, nota: null }] : []);
+  const dias = _suplDias(it.dias);
+  const det = _suplLista(it.detalle);
+  const porQue = _suplTxt(it.por_que);
+  const c = it.comprar && typeof it.comprar === 'object' ? it.comprar : null;
+  const sec = (tit, body) => `<div class="supl-ceja">${tit}</div><div class="supl-momento supl-sec">${body}</div>`;
+  return `
+    <button class="sd-volver" id="suplVolver">‹ Suplementación</button>
+    <div class="supl-det-cab">
+      <div class="supl-det-nombre">${E(it.nombre)}</div>
+      ${dosis ? `<div class="supl-det-dosis">${E(dosis)}</div>` : ''}
+      ${_suplTxt(it.cambio) ? `<div class="supl-nota">${E(it.cambio)}</div>` : ''}
+      ${_suplTxt(it.nota) && !ts.length ? `<div class="supl-det-nota">${E(_suplMayus(it.nota))}</div>` : ''}
+      ${(() => { const e = _suplEstado(it.estado); const ch = [];
+        if (e) ch.push(`<span class="supl-chip${e === 'sigue' ? '' : ' is-marca'}">${_SUPL_ESTADOS[e]}</span>`);
+        if (it.opcional === true) ch.push('<span class="supl-chip">Opcional</span>');
+        if (dias) ch.push(`<span class="supl-chip">${E(dias)}</span>`);
+        return ch.length ? `<div class="supl-chips">${ch.join('')}</div>` : ''; })()}
+    </div>
+    ${tomas.length && !sale ? sec('Cuándo', tomas.map(x => `<div class="supl-toma"><div class="supl-fila-top"><span>${E(x.momento)}</span>${x.cantidad ? `<span class="supl-cant">${E(x.cantidad)}</span>` : ''}</div>${x.nota ? `<div class="supl-nota">${E(x.nota)}</div>` : ''}</div>`).join('')) : ''}
+    ${det.length ? sec('Cómo tomarlo', det.map(d => `<div class="supl-det-li">${E(d)}</div>`).join('')) : ''}
+    ${porQue ? sec('Por qué', `<div class="supl-det-li">${E(porQue)}</div>`) : ''}
+    ${c && (_suplTxt(c.buscar) || _suplTxt(c.donde) || _suplTxt(c.nota)) ? sec('Para comprar',
+      `${_suplTxt(c.buscar) ? `<div class="supl-det-li"><span class="supl-nota">Buscá </span><b>${E(c.buscar)}</b></div>` : ''}
+       ${_suplTxt(c.donde) ? `<div class="supl-det-li">${E(c.donde)}</div>` : ''}
+       ${_suplTxt(c.nota) ? `<div class="supl-nota">${E(c.nota)}</div>` : ''}`) : ''}`;
+}
+function _bindSuplDetalle(root) {
+  const b = root.querySelector('#suplVolver');
+  if (b) b.onclick = () => { STATE.suplAbierto = null; renderSupl(); };
+}
+
 /* Salud: Recuperación · Fuerza · Cuerpo, como el selector de la app (SaludView). */
 const _SEG_SALUD = [['salud', 'Recuperación'], ['progress', 'Fuerza'], ['cuerpo', 'Cuerpo']];
 function _ponerSegSalud(scene) {
@@ -9433,6 +9654,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = 'Salud';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'supl') {
+    $('#hdrEyebrow').textContent = 'SUPLEMENTACIÓN';
+    $('#hdrTitle').textContent = 'Suplementación';
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   } else if (scene === 'cuerpo') {
     $('#hdrEyebrow').textContent = 'REVISIÓN';
     $('#hdrTitle').textContent = 'Salud';
@@ -9447,6 +9673,7 @@ function setScene(scene) {
   if (scene === 'salud') renderSalud();
   if (scene === 'progress') renderProgress();
   if (scene === 'cuerpo') renderCuerpo();
+  if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
   // render lo borraba y solo reaparecia cuando terminaba alguna carga async.
@@ -9802,6 +10029,7 @@ async function init() {
   loadSalud();    // alimenta la card Salud (Mi Día) Y la de Peso (Revisión)
   loadRecuperacion();  // score de recuperación (Mi Día) — motor SQL, mig 043
   loadConexiones();    // wearables conectados por OAuth (Revisión)
+  loadSuplementacion(); // pestaña Suplementación (app 2.1.0), solo si hay ítems
   loadRevision(); // check + fotos → Revisión
   // Tracking de comidas del día — en background, re-renderiza si la scene es 'diet'
   loadComidasMarcadas();
