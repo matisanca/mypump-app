@@ -602,6 +602,34 @@ main{padding:var(--space-4)}
 .supl-sec{padding:var(--space-2) var(--space-4)}
 .supl-toma,.supl-det-li{padding:6px 0;font-size:15px;line-height:1.4}
 .supl-toma + .supl-toma,.supl-det-li + .supl-det-li{border-top:1px solid var(--color-border)}
+.md-ceja{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted);margin:var(--space-5) var(--space-3) 6px}
+.md-grupo{background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden}
+.md-fila{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:48px;padding:10px var(--space-4);font-size:15px;color:var(--color-text-primary);cursor:pointer;text-decoration:none}
+.md-fila + .md-fila{border-top:1px solid var(--color-border)}
+.md-chev{color:var(--color-text-muted);opacity:.6;display:grid;place-items:center}
+.md-rec > span:first-child{display:flex;flex-direction:column;gap:2px}
+.md-rec-tit{font-size:16px;font-weight:600}
+.md-rec-sub{font-size:13px;color:var(--color-text-muted)}
+.md-pie{font-size:12px;color:var(--color-text-muted);margin:6px var(--space-3) 0;line-height:1.4}
+.md-legal{margin-top:var(--space-5);margin-bottom:var(--space-8)}
+.md-peligro{color:var(--color-danger)}
+.md-toggle input{position:absolute;opacity:0;pointer-events:none}
+.md-switch{flex:none;width:46px;height:28px;border-radius:999px;background:var(--color-bg-secondary);position:relative;transition:background .2s}
+.md-switch::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.md-toggle input:checked + .md-switch{background:var(--color-brand)}
+.md-toggle input:checked + .md-switch::after{transform:translateX(18px)}
+.dz-barras-fila{display:flex;align-items:center;gap:12px;width:100%;border:1px solid var(--color-border);background:var(--color-bg-primary);border-radius:12px;padding:12px 14px;margin:8px 0;text-align:left;cursor:pointer;color:var(--color-text-primary)}
+.dz-barras-fila b{display:block;font-size:15px}
+.dz-barras-fila small{display:block;font-size:12px;color:var(--color-text-muted);margin-top:2px}
+.dz-barras-ico{flex:none;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--color-brand-subtle);color:var(--color-brand-text)}
+.dz-barras-cam{border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:8px}
+.dz-barras-cam video{width:100%;height:100%;object-fit:cover;display:block}
+.dz-barras-man{display:flex;gap:8px;align-items:center}
+.dz-barras-man .dz-buscar{flex:1;margin:0}
+.dz-barras-ir{width:auto!important;padding:0 18px!important;margin:0!important}
+.dz-barras-error{color:var(--color-danger)}
+.dz-barras-form label{display:block;font-size:13px;color:var(--color-text-muted);margin-bottom:8px}
+.dz-barras-form .dz-buscar{margin-top:4px}
 .rv-tarjetas{display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-4)}
 .rv-card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;width:100%;padding:var(--space-4);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer}
 .rv-card .rv-tit{font-size:16px;font-weight:700;color:var(--color-text-primary)}
@@ -1295,7 +1323,10 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
         <div class="hdr-eyebrow"><span id="hdrEyebrow">ENTRENAMIENTO</span><span class="dot"></span><span class="week-pill mono">SEM <strong id="hdrWeek">1</strong>/<span id="hdrWeekTotal">1</span></span></div>
         <div class="hdr-title" id="hdrTitle">Cargando…</div>
       </div>
-      <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema">
+      <button class="icon-btn" id="misDatosBtn" aria-label="Mis datos" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+      </button>
+      <button class="icon-btn" id="themeToggle" aria-label="Cambiar tema" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
       </button>
     </div>
@@ -1321,6 +1352,7 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
          en ~62px en un iPhone SE); se entra desde la card de Mi Día. -->
     <section class="scene" id="scene-salud"></section>
     <section class="scene" id="scene-cuerpo"></section>
+    <section class="scene" id="scene-misdatos"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -1415,6 +1447,7 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
 <script src="/js/supabase-client.js"></script>
 <script src="/js/food-db.js"></script>
 <script src="/js/ajustes-dieta.js"></script>
+<script src="/js/codigo-barras.js"></script>
 <script src="/js/reglas-entreno.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
@@ -6497,7 +6530,12 @@ function abrirAgregar(comidaId) {
   _abrirHoja(`
     <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>Agregar alimento</b><span></span></div>
     <input class="dz-buscar" type="search" placeholder="Buscar alimento" autocomplete="off" data-buscar>
+    ${window.CodigoBarras ? `<button class="dz-barras-fila" data-barras>
+      <span class="dz-barras-ico">${_ICONO_BARRAS}</span>
+      <span><b>Escanear código de barras</b><small>Apuntá al código del envase y se carga solo</small></span></button>` : ''}
     <div class="dz-resultados" data-resultados>${lista('')}</div>`, (h) => {
+    const bb = h.querySelector('[data-barras]');
+    if (bb) bb.addEventListener('click', () => abrirBarras(comidaId));
     const inp = h.querySelector('[data-buscar]');
     let res = [];
     const pintar = () => {
@@ -6510,6 +6548,116 @@ function abrirAgregar(comidaId) {
     };
     inp.addEventListener('input', pintar);
     setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
+  });
+}
+
+const _ICONO_BARRAS = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 7v10"/><path d="M12 7v10"/><path d="M16 7v10"/></svg>';
+
+/* Código de barras (app 2.1.0, CodigoBarras.swift → js/codigo-barras.js).
+   Con BarcodeDetector (Chrome de Android) se lee con la cámara; donde no
+   existe (Safari) se escribe el número. Siempre se puede escribir. */
+function abrirBarras(comidaId) {
+  const conCamara = ('BarcodeDetector' in window) && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+  let stream = null, buscando = false;
+  const parar = () => { try { if (stream) stream.getTracks().forEach(tr => tr.stop()); } catch (_) {} stream = null; };
+  _abrirHoja(`
+    <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>Código de barras</b><span></span></div>
+    ${conCamara ? `<div class="dz-barras-cam"><video playsinline muted data-cam></video></div>
+      <div class="dz-hoja-nota" style="text-align:center">Apuntá al código de barras del envase</div>` : ''}
+    <div class="dz-hoja-card">
+      <div class="dz-hoja-nota" style="padding:0 0 8px">${conCamara ? 'O escribí el número que está debajo de las barras.' : 'Escribí el número que está debajo de las barras.'}</div>
+      <div class="dz-barras-man"><input class="dz-buscar" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 7790000000000" data-cod>
+        <button class="dz-hoja-listo dz-barras-ir" data-ir>Buscar</button></div>
+    </div>
+    <div data-barras-msg></div>`, (h) => {
+    const msg = h.querySelector('[data-barras-msg]');
+    const inp = h.querySelector('[data-cod]');
+    const resolver = async (texto, upcE) => {
+      if (buscando) return;
+      const codigo = window.CodigoBarras.normalizar(texto, upcE);
+      if (!codigo) { msg.innerHTML = '<div class="dz-hoja-nota dz-barras-error">Ese número no es un código de barras válido. Revisalo.</div>'; return; }
+      buscando = true;
+      msg.innerHTML = '<div class="dz-hoja-nota">Buscando en Open Food Facts…</div>';
+      const l = await window.CodigoBarras.buscar(codigo);
+      buscando = false;
+      if (!document.body.contains(msg)) return;
+      if (l.estado === 'encontrado') { parar(); abrirAgregado(comidaId, window.CodigoBarras.candidato(l.producto), null); return; }
+      if (l.estado === 'sinRed') { msg.innerHTML = '<div class="dz-hoja-nota dz-barras-error">No pude conectarme con Open Food Facts. Probá de nuevo en un rato.</div>'; return; }
+      parar();
+      const pc = l.estado === 'incompleto' ? l.parcial : { codigo };
+      const texto0 = l.estado === 'incompleto' ? window.CodigoBarras.TEXTO_PARCIAL[pc.motivo] : 'Open Food Facts no tiene este producto.';
+      msg.innerHTML = `<div class="dz-hoja-nota">${escapeHtml(texto0)}</div>
+        <button class="dz-hoja-sec" data-a-mano style="margin-top:10px;width:100%">Cargarlo con la etiqueta</button>`;
+      msg.querySelector('[data-a-mano]').addEventListener('click', () => abrirBarrasManual(comidaId, pc));
+    };
+    h.querySelector('[data-ir]').addEventListener('click', () => resolver(inp.value, false));
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); resolver(inp.value, false); } });
+    const video = h.querySelector('[data-cam]');
+    if (!video) return;
+    (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+        const det = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+        const ciclo = async () => {
+          if (!stream || !document.body.contains(video)) { parar(); return; }
+          if (!buscando) {
+            try {
+              const r = await det.detect(video);
+              if (r && r[0] && r[0].rawValue) { await resolver(r[0].rawValue, r[0].format === 'upc_e'); }
+            } catch (_) {}
+          }
+          setTimeout(ciclo, 250);
+        };
+        ciclo();
+      } catch (_) {
+        parar();
+        // Sin permiso o sin cámara: queda solo escribir el número.
+        const cam = h.querySelector('.dz-barras-cam');
+        if (cam) {
+          const aviso = cam.nextElementSibling;
+          if (aviso && aviso.classList.contains('dz-hoja-nota')) aviso.remove();
+          const d = document.createElement('div');
+          d.className = 'dz-hoja-nota';
+          d.style.padding = '0 4px 8px';
+          d.textContent = 'No pude abrir la cámara. Escribí el número.';
+          cam.replaceWith(d);
+        }
+      }
+    })();
+  });
+}
+
+/* Un producto que Open Food Facts no tiene completo: se carga con la etiqueta
+   (por 100 g), precargado con lo que se pudo leer. Vale solo para esta comida. */
+function abrirBarrasManual(comidaId, pc) {
+  const v = x => (x == null ? '' : String(x).replace('.', ','));
+  _abrirHoja(`
+    <div class="dz-hoja-top"><button class="dz-hoja-x" data-hoja-cerrar>Cancelar</button><b>Cargar con la etiqueta</b><span></span></div>
+    <div class="dz-hoja-card dz-barras-form">
+      <label>Nombre<input class="dz-buscar" data-f="nombre" maxlength="80" value="${escapeHtml(pc.nombre || '')}"></label>
+      <div class="dz-hoja-nota" style="padding:4px 0">Valores cada 100 g, como en la etiqueta.</div>
+      <label>Calorías<input class="dz-buscar" inputmode="decimal" data-f="kcal" value="${v(pc.kcal)}"></label>
+      <label>Proteínas (g)<input class="dz-buscar" inputmode="decimal" data-f="p" value="${v(pc.p)}"></label>
+      <label>Carbohidratos (g)<input class="dz-buscar" inputmode="decimal" data-f="c" value="${v(pc.c)}"></label>
+      <label>Grasas (g)<input class="dz-buscar" inputmode="decimal" data-f="g" value="${v(pc.g)}"></label>
+    </div>
+    <div class="dz-hoja-nota dz-barras-error" data-err></div>
+    <button class="dz-hoja-listo" data-seguir>Seguir</button>`, (h) => {
+    h.querySelector('[data-seguir]').addEventListener('click', () => {
+      const f = k => h.querySelector(`[data-f="${k}"]`).value;
+      const num = k => { const t = String(f(k)).trim().replace(',', '.'); const x = t ? Number(t) : null; return x != null && isFinite(x) && x >= 0 ? x : null; };
+      const nombre = String(f('nombre')).trim();
+      const err = h.querySelector('[data-err]');
+      if (!nombre) { err.textContent = 'El nombre es obligatorio.'; return; }
+      const p = num('p') || 0, c = num('c') || 0, g = num('g') || 0;
+      const kcal = num('kcal') || Math.round(p * 4 + c * 4 + g * 9);
+      if (kcal <= 0 && p <= 0 && c <= 0 && g <= 0) { err.textContent = 'Cargá al menos las calorías o algún macro.'; return; }
+      if (kcal > 950 || p + c + g > 110) { err.textContent = 'Esos valores no pueden ser de 100 g: revisá la etiqueta.'; return; }
+      const por100 = { kcal: Math.round(kcal), p: Math.round(p * 10) / 10, c: Math.round(c * 10) / 10, g: Math.round(g * 10) / 10 };
+      abrirAgregado(comidaId, { nombre: nombre.slice(0, 80), por100, origen: 'propio', codigo: pc.codigo }, null);
+    });
   });
 }
 
@@ -6543,6 +6691,7 @@ function abrirAgregado(comidaId, cand, j) {
       ${medidas.length > 1 ? `<div class="dz-seg dz-seg-medida">${medidas.map(m => `<button data-medida="${escapeHtml(m.nombre)}">${m.nombre === 'g' ? 'g' : `${escapeHtml(m.nombre)} (${_coma(m.gramos)} g)`}</button>`).join('')}</div>` : ''}
     </div>
     <div class="dz-hoja-nota">Vale solo por hoy.</div>
+    ${cand.origen === 'barras' && cand.codigo ? `<div class="dz-hoja-nota">Valores de Open Food Facts · ${escapeHtml(cand.codigo)}</div>` : ''}
     ${previo ? '<div class="dz-hoja-dos"><button class="dz-hoja-sec peligro" data-quitar>Sacar de la comida</button></div>' : ''}
     <button class="dz-hoja-listo" data-listo>${previo ? 'Listo' : 'Agregar'}</button>`, (h) => {
     pintar(h);
@@ -9365,6 +9514,57 @@ function _bindSuplDetalle(root) {
   if (b) b.onclick = () => { STATE.suplAbierto = null; renderSupl(); };
 }
 
+/* ═══════ MIS DATOS (app 2.1.0, MisDatosView) ═══════
+   Un lugar fijo para recuperación, apariencia, la guía, privacidad y borrado.
+   Se entra desde el ícono de persona de Revisión. Lo del Apple Watch y el
+   informe de la actualización son de la app y no van acá. */
+function renderMisDatos() {
+  const root = document.getElementById('scene-misdatos');
+  if (!root) return;
+  const oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+  // Resumen de recuperación de la fila de arriba (ResumenRecuperacion).
+  const serie = STATE.recup || [];
+  const conScore = serie.slice(-3).reverse().find(r => r && r.score != null);
+  const recTxt = STATE.mostrarRecup === false ? 'Ocultaste el número de recuperación.'
+    : conScore ? `${conScore.score} de 100 · ${_REC_BANDA_TXT[conScore.banda || 'media'] || ''}`
+    : 'Todavía no hay nada registrado.';
+  const guia = window.MyPumpGuia && STATE.guiaResumen && STATE.guiaResumen.mostrarFila !== false;
+  const fila = (id, titulo, extra = '', cls = '') => `<button class="md-fila${cls}" id="${id}"><span>${titulo}</span>${extra}<span class="md-chev">${_CHEV_DER}</span></button>`;
+  root.innerHTML = `
+    <div class="md-grupo">
+      <button class="md-fila md-rec" id="mdRec"><span><span class="md-rec-tit">Recuperación</span><span class="md-rec-sub">${escapeHtml(recTxt)}</span></span><span class="md-chev">${_CHEV_DER}</span></button>
+    </div>
+    <div class="md-pie">Sueño, pulso, variabilidad y actividad, si mostrar el score, y la conexión con tu reloj.</div>
+
+    <div class="md-ceja">Apariencia</div>
+    <div class="md-grupo">
+      <label class="md-fila md-toggle"><span>Siempre en modo oscuro</span>
+        <input type="checkbox" id="mdOscuro" ${oscuro ? 'checked' : ''}><span class="md-switch" aria-hidden="true"></span></label>
+    </div>
+    <div class="md-pie" id="mdOscuroPie">${oscuro ? 'La app queda oscura.' : 'La app queda clara.'}</div>
+
+    <div class="md-ceja">Tu información</div>
+    <div class="md-grupo">
+      ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
+      <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
+      <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
+      <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
+    </div>
+    <div class="md-pie md-legal">Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.</div>`;
+  document.getElementById('mdRec').onclick = () => setScene('salud');
+  const g = document.getElementById('mdGuia');
+  if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
+  const sw = document.getElementById('mdOscuro');
+  if (sw) sw.onchange = () => {
+    const next = sw.checked ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    document.body.setAttribute('data-theme', next);
+    try { localStorage.setItem('mypump-theme', next); } catch (_) {}
+    const pie = document.getElementById('mdOscuroPie');
+    if (pie) pie.textContent = sw.checked ? 'La app queda oscura.' : 'La app queda clara.';
+  };
+}
+
 /* Salud: Recuperación · Fuerza · Cuerpo, como el selector de la app (SaludView). */
 const _SEG_SALUD = [['salud', 'Recuperación'], ['progress', 'Fuerza'], ['cuerpo', 'Cuerpo']];
 function _ponerSegSalud(scene) {
@@ -9608,7 +9808,7 @@ function setScene(scene) {
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
-    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo') ? 'revision' : scene;
+    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision' : scene;
     const active = t.getAttribute('data-scene') === tabDe;
     t.classList.toggle('is-active', active);
     t.setAttribute('aria-selected', active);
@@ -9617,6 +9817,7 @@ function setScene(scene) {
   // La semana del plan es de Entreno y Dieta; en Revisión y Salud el
   // encabezado dice la semana del calendario, como la app.
   $$('.hdr-eyebrow .week-pill, .hdr-eyebrow .dot').forEach(n => { n.hidden = !(scene === 'train' || scene === 'diet'); });
+  { const md = document.getElementById('misDatosBtn'); if (md) md.hidden = scene !== 'revision' || !!(DATA && DATA._isDemo); }
 
   const dp = $('#dayPicker');
   const hp = $('#hdrProgress');
@@ -9659,6 +9860,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = 'Suplementación';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'misdatos') {
+    $('#hdrEyebrow').textContent = 'REVISIÓN';
+    $('#hdrTitle').textContent = 'Mis datos';
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   } else if (scene === 'cuerpo') {
     $('#hdrEyebrow').textContent = 'REVISIÓN';
     $('#hdrTitle').textContent = 'Salud';
@@ -9673,6 +9879,7 @@ function setScene(scene) {
   if (scene === 'salud') renderSalud();
   if (scene === 'progress') renderProgress();
   if (scene === 'cuerpo') renderCuerpo();
+  if (scene === 'misdatos') renderMisDatos();
   if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
@@ -9729,6 +9936,8 @@ function _aplicarSceneDeURL() {
     if (validas.indexOf(s) !== -1) setScene(s);
   } catch (e) {}
 }
+
+$('#misDatosBtn').addEventListener('click', () => setScene('misdatos'));
 
 $('#themeToggle').addEventListener('click', () => {
   const cur = document.documentElement.getAttribute('data-theme');
