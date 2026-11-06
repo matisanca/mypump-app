@@ -42,12 +42,17 @@ public struct ReservaAgenda: Codable, Equatable, Sendable {
     /// Solo https (lo que no lo es no se abre).
     public var meetUrl: URL?
     public var motivo: String?
+    /// Cuándo entró Mati al Meet (lo carga el daemon de la Mini con la Meet API). Opcional: sin esto no hay botón para
+    /// entrar hasta la hora de inicio (cambio de Mati del 6/11: el cliente nunca entra directo).
+    public var salaAbiertaEn: String?
 
-    public init(id: String? = nil, inicio: String, fin: String, estado: Estado, meetUrl: URL? = nil, motivo: String? = nil) {
+    public init(id: String? = nil, inicio: String, fin: String, estado: Estado, meetUrl: URL? = nil, motivo: String? = nil,
+                salaAbiertaEn: String? = nil) {
         self.id = id; self.inicio = inicio; self.fin = fin; self.estado = estado; self.meetUrl = meetUrl; self.motivo = motivo
+        self.salaAbiertaEn = salaAbiertaEn
     }
 
-    enum CodingKeys: String, CodingKey { case id, inicio, fin, estado, meetUrl = "meet_url", motivo }
+    enum CodingKeys: String, CodingKey { case id, inicio, fin, estado, meetUrl = "meet_url", motivo, salaAbiertaEn = "sala_abierta_en" }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -66,6 +71,7 @@ public struct ReservaAgenda: Codable, Equatable, Sendable {
             return u
         }
         motivo = c.texto(.motivo).flatMap { $0.isEmpty ? nil : $0 }
+        salaAbiertaEn = c.texto(.salaAbiertaEn).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
     }
 
     /// La reserva sigue en pie (no se eligen otras franjas).

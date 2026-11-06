@@ -4,8 +4,10 @@ import MyPumpModelos
 /// Las reglas de los videos obligatorios y de la agenda de la entrega (2.2.0), puras y con tests. La app no calcula
 /// franjas: las muestra en la hora del teléfono, agrupadas por día, y decide qué tarjeta va según lo que dijo el servidor.
 public enum ReglasAgenda {
-    /// Desde cuánto antes del inicio aparece «Entrar» en la tarjeta de Entreno.
+    /// Desde cuánto antes del inicio aparece la tarjeta de la entrega en Entreno.
     public static let minutosAntesEntrar: Double = 30
+    /// Durante la franja, con la pantalla abierta y sin la sala abierta, la agenda se consulta cada 30 s.
+    public static let salaCada: Double = 30
     /// La consulta de una reserva pendiente: cada 5 s durante 60 s (después, al volver a primer plano).
     public static let sondeoCada: Double = 5
     public static let sondeoMaximo: Double = 60
@@ -160,17 +162,44 @@ public enum ReglasAgenda {
         return "Tu entrega: \(diaLargo(i, zona: zona)), \(hora(i, zona: zona)) a \(hora(f, zona: zona))"
     }
 
-    /// «Entrar» en la tarjeta de Entreno: confirmada, con link, desde 30 min antes hasta el fin de la franja.
-    public static func puedeEntrar(_ r: ReservaAgenda?, ahora: Date = Date()) -> Bool {
-        guard let r, r.estado == .confirmada, r.meetUrl != nil,
-              let i = ReglasGuia.instante(r.inicio), let f = ReglasGuia.instante(r.fin) else { return false }
+    // MARK: - Entrar (cambio de Mati, 6/11: el cliente nunca entra directo)
+
+    /// La tarjeta de la entrega en Entreno: confirmada, desde 30 min antes hasta el fin de la franja.
+    public static func enVentana(_ r: ReservaAgenda?, ahora: Date = Date()) -> Bool {
+        guard let r, r.estado == .confirmada, let i = ReglasGuia.instante(r.inicio), let f = ReglasGuia.instante(r.fin) else { return false }
         return ahora >= i.addingTimeInterval(-minutosAntesEntrar * 60) && ahora < f
     }
 
-    /// «Tu entrega empieza a las 10:00» (o «empezó», si ya arrancó).
-    public static func textoEntrar(_ r: ReservaAgenda, zona: TimeZone = .current, ahora: Date = Date()) -> String {
-        guard let i = ReglasGuia.instante(r.inicio) else { return "Tu entrega" }
-        return "Tu entrega \(ahora >= i ? "empezó" : "empieza") a las \(hora(i, zona: zona))"
+    /// El botón para entrar: confirmada, con link, antes del fin y con `sala_abierta_en` (Mati ya está en el Meet). Si el
+    /// daemon no lo puede ver, el respaldo es la hora de inicio.
+    public static func puedeEntrar(_ r: ReservaAgenda?, ahora: Date = Date()) -> Bool {
+        guard let r, r.estado == .confirmada, r.meetUrl != nil,
+              let i = ReglasGuia.instante(r.inicio), let f = ReglasGuia.instante(r.fin), ahora < f else { return false }
+        return r.salaAbiertaEn != nil || ahora >= i
+    }
+
+    /// En la franja y todavía sin el botón: la pantalla abierta consulta la agenda cada 30 s.
+    public static func esperandoSala(_ r: ReservaAgenda?, ahora: Date = Date()) -> Bool {
+        enVentana(r, ahora: ahora) && !puedeEntrar(r, ahora: ahora)
+    }
+
+    /// Es el día de la entrega (en la zona del teléfono) y todavía no terminó.
+    public static func esHoy(_ r: ReservaAgenda, zona: TimeZone = .current, ahora: Date = Date()) -> Bool {
+        guard let i = ReglasGuia.instante(r.inicio), let f = ReglasGuia.instante(r.fin), ahora < f else { return false }
+        return claveDia(i, zona: zona) == claveDia(ahora, zona: zona) || ahora >= i
+    }
+
+    /// Con el botón: «Mati ya está en la videollamada» (o, por el respaldo de la hora, «Tu entrega empezó a las 10:00»).
+    public static func textoEntrar(_ r: ReservaAgenda, zona: TimeZone = .current) -> String {
+        if r.salaAbiertaEn != nil { return "Mati ya está en la videollamada" }
+        guard let i = ReglasGuia.instante(r.inicio) else { return "Tu entrega ya empezó" }
+        return "Tu entrega empezó a las \(hora(i, zona: zona))"
+    }
+
+    /// El día de la entrega, sin el botón todavía.
+    public static func textoEsperandoSala(_ r: ReservaAgenda, zona: TimeZone = .current) -> String {
+        let h = ReglasGuia.instante(r.inicio).map { hora($0, zona: zona) } ?? ""
+        return "Tu entrega es hoy a las \(h). Cuando Mati abra la videollamada se habilita el botón para entrar."
     }
 
     // MARK: - La demo

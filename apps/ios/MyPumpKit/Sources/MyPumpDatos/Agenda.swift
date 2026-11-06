@@ -34,6 +34,8 @@ public final class ModeloAgenda {
     @ObservationIgnored let outbox: Outbox?
     @ObservationIgnored let disco: Disco?
     @ObservationIgnored let esperaSondeo: Duration
+    /// Cada cuánto se mira si Mati abrió la sala (30 s; las pruebas de interfaz lo bajan).
+    @ObservationIgnored let esperaSala: Duration
     @ObservationIgnored let reloj: @Sendable () -> Double
     @ObservationIgnored private var consultaEnCurso: Task<Void, Never>?
     @ObservationIgnored private var sondeo: Task<Void, Never>?
@@ -44,9 +46,9 @@ public final class ModeloAgenda {
     @ObservationIgnored var faltanMuestra: () -> Int = { 0 }
 
     public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco?, esperaSondeo: Duration = .seconds(ReglasAgenda.sondeoCada),
-                reloj: @escaping @Sendable () -> Double = { Date().timeIntervalSince1970 }) {
+                esperaSala: Duration = .seconds(ReglasAgenda.salaCada), reloj: @escaping @Sendable () -> Double = { Date().timeIntervalSince1970 }) {
         self.cliente = cliente; self.token = token; self.outbox = outbox; self.disco = disco
-        self.esperaSondeo = esperaSondeo; self.reloj = reloj
+        self.esperaSondeo = esperaSondeo; self.esperaSala = esperaSala; self.reloj = reloj
         esMuestra = false
         let copia = disco?.leer(AgendaGuia.self, Self.archivo)
         agenda = copia?.ok == true ? copia : nil
@@ -55,7 +57,7 @@ public final class ModeloAgenda {
     /// La demo y la maqueta: `agenda` es la empaquetada (con las franjas ya corridas a fechas futuras).
     public init(muestra agenda: AgendaGuia?) {
         cliente = ClienteRPC(); token = ""; outbox = nil; disco = nil
-        esperaSondeo = .seconds(ReglasAgenda.sondeoCada); reloj = { Date().timeIntervalSince1970 }
+        esperaSondeo = .seconds(ReglasAgenda.sondeoCada); esperaSala = .seconds(ReglasAgenda.salaCada); reloj = { Date().timeIntervalSince1970 }
         esMuestra = true
         self.agenda = agenda?.ok == true ? agenda : nil
     }
@@ -157,11 +159,26 @@ public final class ModeloAgenda {
         marcaSondeo += 1
     }
 
-    /// De vuelta a primer plano con una reserva pendiente (aunque la guía esté cerrada): una consulta y otra ventana de 60 s.
+    /// De vuelta a primer plano con una reserva pendiente, o en la franja esperando que Mati abra la sala (aunque la guía
+    /// esté cerrada): una consulta (y, si sigue pendiente, otra ventana de 60 s).
     public func alVolver() async {
-        guard agenda?.reserva?.estado == .pendiente else { return }
+        let ahora = Date(timeIntervalSince1970: reloj())
+        guard agenda?.reserva?.estado == .pendiente || ReglasAgenda.esperandoSala(agenda?.reserva, ahora: ahora) else { return }
         await consultar()
         sondear()
+    }
+
+    /// Mientras la pantalla que lo llama está abierta (`.task`, se cancela al salir), durante la franja y sin el botón:
+    /// la agenda cada 30 s, hasta que Mati abre la sala o termina la franja.
+    public func vigilarSala() async {
+        if esMuestra { return }
+        // Antes de la franja solo se mira el reloj (sin red); en la franja, la agenda.
+        while !Task.isCancelled, let r = agenda?.reserva, r.estado == .confirmada, !ReglasAgenda.puedeEntrar(r, ahora: ahora),
+              let f = ReglasGuia.instante(r.fin), ahora < f {
+            try? await Task.sleep(for: esperaSala)
+            guard !Task.isCancelled else { return }
+            if ReglasAgenda.esperandoSala(agenda?.reserva, ahora: ahora) { await consultar() }
+        }
     }
 
     /// Hay una reserva pendiente (la de la tarjeta de Entreno o la de la cola).
@@ -239,6 +256,8 @@ public final class ModeloAgenda {
         guard case .objeto = j, let d = try? JSONEncoder().encode(j) else { return nil }
         return try? JSONDecoder().decode(ReservaAgenda.self, from: d)
     }
+
+    private var ahora: Date { Date(timeIntervalSince1970: reloj()) }
 
     // MARK: - Pruebas
 

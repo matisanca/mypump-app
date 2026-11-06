@@ -266,7 +266,7 @@ struct AgendaVistaTests {
         #expect(dx.map(\.titulo) == ["jueves 12 de noviembre"] && dx[0].chips.map(\.texto) == ["07:00 a 09:00", "19:00 a 21:00"])
         let r = ReservaAgenda(inicio: "2026-11-12T10:00:00-03:00", fin: "2026-11-12T12:00:00-03:00", estado: .confirmada)
         #expect(ReglasAgenda.textoConfirmada(r, zona: mexico) == "Tu entrega: jueves 12 de noviembre, 07:00 a 09:00")
-        #expect(ReglasAgenda.textoEntrar(r, zona: madrid, ahora: ahora) == "Tu entrega empieza a las 14:00")
+        #expect(ReglasAgenda.textoEsperandoSala(r, zona: madrid) == "Tu entrega es hoy a las 14:00. Cuando Mati abra la videollamada se habilita el botón para entrar.")
     }
 
     @Test func lasQueYaEmpezaronOVienenRotasNoVan() throws {
@@ -279,18 +279,42 @@ struct AgendaVistaTests {
         #expect(d.flatMap(\.chips).map(\.id) == ["ok"] && d[0].chips[0].texto == "10:00 a 12:00")
     }
 
-    @Test func entrarDesde30MinutosAntesHastaElFin() {
+    @Test func entrarSoloConLaSalaAbiertaOALaHoraDeInicio() throws {
+        let ba = try #require(TimeZone(identifier: "America/Argentina/Buenos_Aires"))
         let r = ReservaAgenda(inicio: "2026-11-12T10:00:00-03:00", fin: "2026-11-12T12:00:00-03:00", estado: .confirmada,
                               meetUrl: URL(string: "https://meet.google.com/abc"))
-        #expect(!ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T09:29:00-03:00")))
-        #expect(ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T09:30:00-03:00")))
-        #expect(ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T11:59:00-03:00")))
+        // La tarjeta de Entreno: desde 30 min antes hasta el fin.
+        #expect(!ReglasAgenda.enVentana(r, ahora: fecha("2026-11-12T09:29:00-03:00")))
+        #expect(ReglasAgenda.enVentana(r, ahora: fecha("2026-11-12T09:30:00-03:00")))
+        #expect(!ReglasAgenda.enVentana(r, ahora: fecha("2026-11-12T12:00:00-03:00")))
+        // Sin `sala_abierta_en`: sin botón hasta la hora de inicio (el respaldo), y mientras tanto se espera la sala.
+        #expect(!ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T09:50:00-03:00")))
+        #expect(ReglasAgenda.esperandoSala(r, ahora: fecha("2026-11-12T09:50:00-03:00")))
+        #expect(!ReglasAgenda.esperandoSala(r, ahora: fecha("2026-11-12T09:00:00-03:00")), "antes de la ventana no se consulta")
+        #expect(ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T10:00:00-03:00")))
+        #expect(!ReglasAgenda.esperandoSala(r, ahora: fecha("2026-11-12T10:00:00-03:00")))
+        #expect(ReglasAgenda.textoEntrar(r, zona: ba) == "Tu entrega empezó a las 10:00")
         #expect(!ReglasAgenda.puedeEntrar(r, ahora: fecha("2026-11-12T12:00:00-03:00")))
-        var sinLink = r; sinLink.meetUrl = nil
+        // Con `sala_abierta_en`: el botón enseguida, con «Mati ya está en la videollamada».
+        var abierta = r; abierta.salaAbiertaEn = "2026-11-12T09:52:00-03:00"
+        #expect(ReglasAgenda.puedeEntrar(abierta, ahora: fecha("2026-11-12T09:53:00-03:00")))
+        #expect(ReglasAgenda.textoEntrar(abierta, zona: ba) == "Mati ya está en la videollamada")
+        #expect(!ReglasAgenda.puedeEntrar(abierta, ahora: fecha("2026-11-12T12:01:00-03:00")))
+        // Sin link o sin confirmar: nunca.
+        var sinLink = abierta; sinLink.meetUrl = nil
         #expect(!ReglasAgenda.puedeEntrar(sinLink, ahora: fecha("2026-11-12T10:00:00-03:00")))
-        var pendiente = r; pendiente.estado = .pendiente
+        var pendiente = abierta; pendiente.estado = .pendiente
         #expect(!ReglasAgenda.puedeEntrar(pendiente, ahora: fecha("2026-11-12T10:00:00-03:00")))
-        #expect(ReglasAgenda.textoEntrar(r, zona: TimeZone(identifier: "America/Argentina/Buenos_Aires")!, ahora: fecha("2026-11-12T10:05:00-03:00")) == "Tu entrega empezó a las 10:00")
+        #expect(!ReglasAgenda.enVentana(pendiente, ahora: fecha("2026-11-12T10:00:00-03:00")))
+        // «Es hoy»: el mismo día del teléfono, hasta el fin. Antes del día, solo la fecha y la hora.
+        #expect(ReglasAgenda.esHoy(r, zona: ba, ahora: fecha("2026-11-12T07:00:00-03:00")))
+        #expect(!ReglasAgenda.esHoy(r, zona: ba, ahora: fecha("2026-11-11T22:00:00-03:00")))
+        #expect(!ReglasAgenda.esHoy(r, zona: ba, ahora: fecha("2026-11-12T12:30:00-03:00")))
+        #expect(ReglasAgenda.textoEsperandoSala(r, zona: ba) == "Tu entrega es hoy a las 10:00. Cuando Mati abra la videollamada se habilita el botón para entrar.")
+        // Decodificar: opcional y tolerante.
+        let a = agenda(#"{"ok":true,"autorizada":true,"habilitada":true,"reserva":{"inicio":"2026-11-12T10:00:00-03:00","fin":"2026-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/abc","sala_abierta_en":"2026-11-12T09:52:00-03:00"}}"#)
+        #expect(a.reserva?.salaAbiertaEn == "2026-11-12T09:52:00-03:00")
+        #expect(agenda(#"{"ok":true,"reserva":{"inicio":"2026-11-12T10:00:00-03:00","fin":"2026-11-12T12:00:00-03:00","estado":"confirmada","sala_abierta_en":" "}}"#).reserva?.salaAbiertaEn == nil)
     }
 }
 

@@ -38,7 +38,11 @@ public final class ModeloApp {
     @ObservationIgnored public var conAvisos: (@MainActor () async -> Void)?
     /// Lo pone la raíz con el `scenePhase`: los sondeos solo corren con la app a la vista.
     public var enPrimerPlano = true {
-        didSet { if enPrimerPlano && fase != .tokenInvalido && !esDemo { chat?.empezarSondeo() } else { chat?.pararSondeo() } }
+        didSet {
+            if enPrimerPlano && fase != .tokenInvalido && !esDemo { chat?.empezarSondeo() } else { chat?.pararSondeo() }
+            // La reserva pendiente de la agenda tampoco se consulta de fondo (vuelve con `actualizarResumen`).
+            if !enPrimerPlano { guia?.agenda.pararSondeo() }
+        }
     }
 
     public enum Parte: Sendable, Hashable { case rutina, dieta }

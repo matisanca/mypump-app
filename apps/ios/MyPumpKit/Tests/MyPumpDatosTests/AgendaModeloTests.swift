@@ -83,7 +83,7 @@ struct AgendaModeloTests {
         #expect(m.vistaAgenda == .nada && !m.agenda.disponible && !m.agenda.desdeCache)
         #expect(disco.leer(AgendaGuia.self, "guia_agenda.json") == nil)
         #expect(m.clips.first?.id == "FT-25a" && ReglasGuia.bloques(m.clips).allSatisfy { !$0.novedad })
-        #expect(m.avanceNovedad == nil && m.tarjetaDestacada && m.reservaParaEntrar() == nil)
+        #expect(m.avanceNovedad == nil && m.tarjetaDestacada && m.reservaEnVentana() == nil)
         #expect(m.resumen == ResumenGuia(ok: true, total: 11, vistos: 4, minutosRestantes: 6.2, mostrarTarjetaServidor: true))
         // Ocultar sigue igual: queda oculta (sin novedad no vuelve).
         m.quitarDeEntreno()
@@ -368,15 +368,54 @@ struct AgendaModeloTests {
         await m.actualizarResumen()
         #expect(m.resumen?.nuevosVistos == 2 && m.avanceNovedad == nil)
         await cola.drenarTodo()
-        #expect(m.reservaParaEntrar(ahora: ReglasGuia.instante("2099-11-12T09:45:00-03:00")!) != nil)
-        #expect(m.reservaParaEntrar(ahora: ReglasGuia.instante("2099-11-12T09:00:00-03:00")!) == nil)
+        #expect(m.reservaEnVentana(ahora: ReglasGuia.instante("2099-11-12T09:45:00-03:00")!) != nil)
+        #expect(m.reservaEnVentana(ahora: ReglasGuia.instante("2099-11-12T09:00:00-03:00")!) == nil)
+    }
+
+    @Test func enLaFranjaSeConsultaHastaQueMatiAbreLaSala() async {
+        // Confirmada y empieza en 10 min, sin la sala abierta: se consulta hasta que el daemon carga `sala_abierta_en`.
+        let iso = ISO8601DateFormatter()
+        let i = iso.string(from: Date().addingTimeInterval(600)), f = iso.string(from: Date().addingTimeInterval(600 + 7200))
+        func agenda(_ sala: Bool) -> String {
+            #"{"ok":true,"autorizada":true,"habilitada":true,"reserva":{"inicio":"\#(i)","fin":"\#(f)","estado":"confirmada","meet_url":"https://meet.google.com/abc"\#(sala ? #","sala_abierta_en":"\#(i)""# : "")}}"#
+        }
+        let s = ServidorAgenda(["entregas_app_agenda": agenda(false)])
+        let a = ModeloAgenda(cliente: ClienteRPC(transporte: s), token: token, outbox: nil, disco: nil, esperaSala: .milliseconds(30))
+        await a.consultar()
+        #expect(ReglasAgenda.esperandoSala(a.reserva) && !ReglasAgenda.puedeEntrar(a.reserva))
+        s.encadenar("entregas_app_agenda", [agenda(false), agenda(false)])
+        s.responder("entregas_app_agenda", agenda(true))
+        let vigia = Task { await a.vigilarSala() }
+        await hasta({ ReglasAgenda.puedeEntrar(a.reserva) }, 3)
+        #expect(ReglasAgenda.puedeEntrar(a.reserva) && a.reserva?.salaAbiertaEn != nil)
+        await vigia.value   // con la sala abierta, el vigía termina solo
+        let n = s.llamadas(a: "entregas_app_agenda").count
+        #expect(n == 4)
+        // Al volver a primer plano esperando la sala, una consulta; sin nada que esperar, ninguna.
+        await a.alVolver()
+        #expect(s.llamadas(a: "entregas_app_agenda").count == n, "con la sala abierta no hay nada que esperar")
+        s.responder("entregas_app_agenda", agenda(false))
+        await a.consultar()
+        await a.alVolver()
+        #expect(s.llamadas(a: "entregas_app_agenda").count == n + 2)
+    }
+
+    @Test func antesDeLaFranjaElVigiaNoUsaLaRed() async {
+        let s = ServidorAgenda(["entregas_app_agenda": #"{"ok":true,"autorizada":true,"habilitada":true,"reserva":{"inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T12:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/abc"}}"#])
+        let a = ModeloAgenda(cliente: ClienteRPC(transporte: s), token: token, outbox: nil, disco: nil, esperaSala: .milliseconds(20))
+        await a.consultar()
+        let vigia = Task { await a.vigilarSala() }
+        try? await Task.sleep(for: .milliseconds(200))
+        vigia.cancel()
+        await vigia.value
+        #expect(s.llamadas(a: "entregas_app_agenda").count == 1)
     }
 
     // MARK: - La demo
 
     @Test func laDemoSeHabilitaSolaYConfirmaSinVideollamada() async {
-        let a = AgendaGuia(ok: true, autorizada: true, habilitada: false, franjas: [
-            FranjaAgenda(id: "d1", inicio: "2099-11-12T10:00:00-03:00", fin: "2099-11-12T12:00:00-03:00")])
+        // Como `Demo.bundle/agenda.json`, decodificada (con `habilitada: false` las franjas no sobrevivirían al decodificar).
+        let a = AgendaGuia(json: (try? JSONDecoder().decode(JSONValue.self, from: Data(#"{"ok":true,"autorizada":true,"habilitada":true,"faltan":2,"franjas":[{"id":"d1","inicio":"2099-11-12T10:00:00-03:00","fin":"2099-11-12T12:00:00-03:00"}]}"#.utf8))) ?? .null)
         let m = ModeloGuia(muestra: GuiaMuestra.guiaV2, agenda: a)
         #expect(m.vistaAgenda == .bloqueada(faltan: 1))
         await m.avance(video: "N-1", segundos: 30, visto: true)

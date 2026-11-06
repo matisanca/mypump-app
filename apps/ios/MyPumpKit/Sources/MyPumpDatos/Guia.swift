@@ -99,10 +99,11 @@ public final class ModeloGuia {
     static let archivoBienvenida = "guia_bienvenida.json"
     static let archivoTarjetaVista = "guia_tarjeta_vista.json"
 
-    public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco?) {
+    /// `esperaSala`: cada cuánto se mira si Mati abrió la sala durante la franja (30 s; las pruebas de interfaz lo bajan).
+    public init(cliente: ClienteRPC, token: String, outbox: Outbox?, disco: Disco?, esperaSala: Duration = .seconds(ReglasAgenda.salaCada)) {
         self.cliente = cliente; self.token = token; self.outbox = outbox; self.disco = disco
         audios = ModeloAudioDuda(cliente: cliente, token: token, outbox: outbox, disco: disco)
-        agenda = ModeloAgenda(cliente: cliente, token: token, outbox: outbox, disco: disco)
+        agenda = ModeloAgenda(cliente: cliente, token: token, outbox: outbox, disco: disco, esperaSala: esperaSala)
         let leida = disco?.leer(Guia.self, Self.archivoGuia)
         let copia = leida?.ok == true ? leida : nil
         guia = copia
@@ -148,11 +149,13 @@ public final class ModeloGuia {
     public var vistaAgenda: ReglasAgenda.Vista { agenda.vista(faltanLocal: faltanLocal) }
     /// Cuántos faltan para el contador: el del servidor si lo mandó; si no, el del teléfono.
     public var faltanAgenda: Int { agenda.agenda?.faltan ?? faltanLocal ?? 0 }
-    /// La reserva para el «Entrar» de la tarjeta de Entreno: la del resumen o la de la agenda, la que pueda entrar.
-    public func reservaParaEntrar(ahora: Date = Date()) -> ReservaAgenda? {
+    /// La reserva de la tarjeta de la entrega en Entreno (desde 30 min antes hasta el fin): la de la agenda o la del
+    /// resumen, primero la que ya deja entrar (la más nueva de las dos).
+    public func reservaEnVentana(ahora: Date = Date()) -> ReservaAgenda? {
         // Sin guía (token revocado o la página dada de baja) no queda nada en Entreno, tampoco la copia de la agenda.
         guard resumen?.ok != false, estado != .oculta else { return nil }
-        return [agenda.reserva, resumen?.reserva].compactMap { $0 }.first { ReglasAgenda.puedeEntrar($0, ahora: ahora) }
+        let rs = [agenda.reserva, resumen?.reserva].compactMap { $0 }.filter { ReglasAgenda.enVentana($0, ahora: ahora) }
+        return rs.first { ReglasAgenda.puedeEntrar($0, ahora: ahora) } ?? rs.first
     }
 
     public func quitarDeEntreno() { guardarQuitada(true) }
