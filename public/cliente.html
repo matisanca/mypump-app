@@ -1687,6 +1687,7 @@ const STATE = {
   mostrarRecup:       true,       // preferencia del cliente (mig 043)
   fotos:              [],         // metadata de fotos de progreso (sin path ni URL)
   fotosUrls:          null,       // {mapa:{'semana|pose':url}, exp} — URLs firmadas cacheadas
+  fpMsg:              null,       // aviso de la sección de fotos {t, cls, cola} (ver _fpMsg)
   adhOpen:            false,
   adhData:            null,
   comidasMarcadas:    {},          // comida_id → {opcion, estado, marcada_en}
@@ -8629,6 +8630,26 @@ function _fotoAJpeg(file, maxPx = 900, calidad = 0.7) {
 
 const FOTOS_URL = () => (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '';
 
+/* El aviso de la sección (#fpMsg) vive en STATE.fpMsg y se pinta en el #fpMsg
+   que está en la página. renderMydayFotos rehace el bloque con innerHTML y crea
+   uno nuevo: _tomarFoto escribía en el que agarró al arrancar, y desde el primer
+   render 'Subiendo…', 'Listo, guardada ✓' o un rechazo iban a un elemento que ya
+   no estaba (el cliente nunca se enteraba de un 4xx). Cada render lo vuelve a
+   pintar, así no lo borran las URLs firmadas ni una pasada de la cola.
+   `cola`: la clave de la foto que quedó esperando; ese aviso se va cuando la foto
+   sale de la cola. Al salir de Revisión se borra (setScene), como en la app. */
+function _fpMsg(t, cls = '', cola = null) {
+  STATE.fpMsg = t ? { t, cls, cola } : null;
+  _fpPintarMsg();
+}
+function _fpPintarMsg() {
+  const el = document.getElementById('fpMsg');
+  if (!el) return;
+  const m = STATE.fpMsg;
+  el.textContent = m ? m.t : '';
+  el.className = 'fp-msg' + (m && m.cls ? ' ' + m.cls : '');
+}
+
 async function _subirFoto(pose, dataUrl, fecha) {
   const base = FOTOS_URL();
   if (!base) return { ok: false, error: 'servicio no configurado' };
@@ -8844,6 +8865,11 @@ function renderMydayFotos() {
       </div>
     </div>`;
 
+  // El innerHTML dejó el #fpMsg vacío: se vuelve a pintar el aviso. El de una
+  // foto que esperaba en la cola se va cuando la pasada la subió o la rechazaron.
+  if (STATE.fpMsg && STATE.fpMsg.cola && !pendientes[STATE.fpMsg.cola]) STATE.fpMsg = null;
+  _fpPintarMsg();
+
   try { renderRecordatorio(); } catch (_) {}
 
   // Si hay fotos pero todavia no tenemos las URLs firmadas, pedirlas y
@@ -8914,8 +8940,8 @@ async function _tomarFoto(pose, origen) {
     const file = inp.files && inp.files[0];
     inp.value = '';                       // permite re-elegir el MISMO archivo
     if (!file) return;
-    const msg = document.getElementById('fpMsg');
-    const setMsg = (t, cls = '') => { if (msg) { msg.textContent = t; msg.className = 'fp-msg ' + cls; } };
+    // Al #fpMsg que está en pantalla, no al de antes del render (ver _fpMsg).
+    const setMsg = _fpMsg;
     setMsg('Preparando la foto…');
     let dataUrl;
     try { dataUrl = await _fotoAJpeg(file); }
@@ -8950,7 +8976,7 @@ async function _tomarFoto(pose, origen) {
       setMsg(`No se pudo guardar: ${res.error}`, 'is-err');
     } else if (guardo) {
       renderMydayFotos();
-      setMsg('Sin conexión: queda guardada y se sube sola.', 'is-warn');
+      setMsg('Sin conexión: queda guardada y se sube sola.', 'is-warn', key);
     } else {
       renderMydayFotos();
       setMsg('No se pudo guardar. Probá de nuevo con señal.', 'is-err');
@@ -8960,11 +8986,10 @@ async function _tomarFoto(pose, origen) {
 }
 
 async function abrirGaleriaFotos() {
-  const msg = document.getElementById('fpMsg');
-  if (msg) { msg.textContent = 'Cargando tus fotos…'; msg.className = 'fp-msg'; }
+  _fpMsg('Cargando tus fotos…');
   const mapa = await cargarFotosFirmadas();
-  if (msg) msg.textContent = '';
-  if (!mapa) { if (msg) { msg.textContent = 'No se pudieron cargar las fotos ahora.'; msg.className = 'fp-msg is-err'; } return; }
+  _fpMsg('');
+  if (!mapa) { _fpMsg('No se pudieron cargar las fotos ahora.', 'is-err'); return; }
 
   const porSemana = {};
   Object.keys(mapa).forEach(k => {
@@ -9854,6 +9879,8 @@ function renderMyday() {
 }
 
 function setScene(scene) {
+  // El aviso de las fotos es de esta visita a Revisión: al irse, se va (como en la app).
+  if (scene !== 'revision') STATE.fpMsg = null;
   STATE.scene = scene;
   $$('.tab').forEach(t => {
     // 'salud' no tiene tab propio (se entra desde Mi Día). Sin este mapeo el
