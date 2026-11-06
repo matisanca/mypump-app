@@ -32,7 +32,7 @@ class GuiaReglasTest {
         assertEquals(listOf("Tu app", "tu app ", "Tu entrenamiento", "Videos"), b.map { it.titulo })
         assertEquals(listOf(2, 3), b[2].indices)
         assertEquals("2 videos, unos 2 minutos", b[2].resumen)
-        assertEquals("1 video, unos 1 minutos", b[3].resumen)
+        assertEquals("1 video, 1 minuto", b[3].resumen)
     }
 
     @Test
@@ -47,7 +47,10 @@ class GuiaReglasTest {
     @Test
     fun avanceYTarjeta() {
         assertEquals("Viste 4 de 13, te quedan unos 12 minutos", ReglasGuia.textoAvance(ResumenGuia(13, 4, 11.6)))
-        assertEquals("Viste 0 de 2, te quedan unos 1 minutos", ReglasGuia.textoAvance(ResumenGuia(2, 0, 0.3)))
+        // Con 1, en singular y sin «unos» (como iOS); el plural queda igual.
+        assertEquals("Viste 0 de 2, te queda 1 minuto", ReglasGuia.textoAvance(ResumenGuia(2, 0, 0.3)))
+        assertEquals("1 de 2 videos, te queda 1 min", ReglasGuia.textoTarjeta(ResumenGuia(2, 1, 0.3)))
+        assertEquals("1 de 13 videos, te quedan 12 min", ReglasGuia.textoTarjeta(ResumenGuia(13, 1, 11.6)))
         assertEquals("Viste todos, nos vemos en la videollamada", ReglasGuia.textoAvance(ResumenGuia(5, 5, 0.0)))
         assertEquals("4 de 13 videos, te quedan 12 min", ReglasGuia.textoTarjeta(ResumenGuia(13, 4, 11.6)))
         assertEquals("Viste los 5 videos", ReglasGuia.textoTarjeta(ResumenGuia(5, 5, 0.0)))
@@ -402,7 +405,7 @@ class GuiaReglasTest {
     fun textosDeLaDestacadaYLaBienvenida() {
         assertEquals("20 videos cortos, unos 14 min", ReglasGuia.textoDestacada(nueva))
         assertEquals("4 de 20 videos, te quedan 12 min", ReglasGuia.textoDestacada(aMitad))
-        assertEquals("1 video corto, unos 1 min", ReglasGuia.textoDestacada(ResumenGuia(1, 0, 0.3)))
+        assertEquals("1 video corto, 1 min", ReglasGuia.textoDestacada(ResumenGuia(1, 0, 0.3)))
         assertEquals("Ver mi guía", ReglasGuia.botonDestacada(nueva))
         assertEquals("Seguir viendo", ReglasGuia.botonDestacada(aMitad))
         assertEquals(

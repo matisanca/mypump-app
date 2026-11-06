@@ -82,7 +82,7 @@ object ReglasNovedad {
         val total = t.total ?: return "Hay videos nuevos para vos"
         val min = t.minutosRestantes?.let { ReglasGuia.minutosRedondos(it) }
         return if (t.vistos == 0) (if (total == 1) "1 video nuevo para vos" else "$total videos nuevos para vos") + (min?.let { " · $it min" } ?: "")
-        else "${t.vistos} de $total videos nuevos" + (min?.let { ", te quedan $it min" } ?: "")
+        else "${t.vistos} de $total videos nuevos" + (min?.let { ", " + ReglasGuia.teQuedanMin(it) } ?: "")
     }
 
     const val BOTON = "Ver lo nuevo"
