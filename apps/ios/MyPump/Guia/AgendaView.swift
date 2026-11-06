@@ -97,6 +97,8 @@ struct AgendaEntrega: View {
             Confirmada(reserva: r, zona: zona, aviso: aviso, sinRed: modelo.agenda.desdeCache,
                        entrar: { if let u = r.meetUrl { abrirURL(u) } },
                        calendario: { paraCalendario = ParaCalendario(reserva: r) })
+                // En la franja, con la guía abierta: la agenda cada 30 s hasta que Mati abre la sala.
+                .task(id: r) { await modelo.agenda.vigilarSala() }
         }
     }
 }
@@ -252,7 +254,7 @@ private struct ChipFranja: ButtonStyle {
     }
 }
 
-/// La verde: el día y la hora, «Entrar a la videollamada», «Agregar a mi calendario» y cómo cambiarla.
+/// La verde: el día y la hora, «Agregar a mi calendario», cómo cambiarla y, con la sala abierta, «Entrar a la videollamada».
 private struct Confirmada: View {
     let reserva: ReservaAgenda
     let zona: TimeZone
@@ -271,11 +273,25 @@ private struct Confirmada: View {
                 Text(ReglasAgenda.textoZonaTelefono).font(.footnote).foregroundStyle(.secondary)
             }
             if let aviso { Text(aviso.texto).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("agenda-demo") }
-            if reserva.meetUrl != nil {
-                Button(action: entrar) { Label("Entrar a la videollamada", systemImage: "video.fill") }
-                    .buttonStyle(BotonMarca())
-                    .accessibilityHint("Abre Google Meet")
-                    .accessibilityIdentifier("agenda-entrar")
+            // El cliente nunca entra directo (Mati, 6/11): el botón aparece con la sala abierta o, de respaldo, a la hora
+            // de inicio. El día de la entrega, mientras tanto, el aviso. Antes del día, solo la fecha y la hora.
+            TimelineView(.periodic(from: .now, by: 15)) { ctx in
+                if ReglasAgenda.puedeEntrar(reserva, ahora: ctx.date) {
+                    VStack(alignment: .leading, spacing: Espacio.s) {
+                        Text(ReglasAgenda.textoEntrar(reserva, zona: zona))
+                            .font(.headline).foregroundStyle(Color.marcaTexto)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("agenda-sala")
+                        Button(action: entrar) { Label("Entrar a la videollamada", systemImage: "video.fill") }
+                            .buttonStyle(BotonMarca())
+                            .accessibilityHint("Abre Google Meet")
+                            .accessibilityIdentifier("agenda-entrar")
+                    }
+                } else if reserva.meetUrl != nil, ReglasAgenda.esHoy(reserva, zona: zona, ahora: ctx.date) {
+                    Text(ReglasAgenda.textoEsperandoSala(reserva, zona: zona))
+                        .font(.subheadline).fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("agenda-esperando-sala")
+                }
             }
             Button(action: calendario) { Label("Agregar a mi calendario", systemImage: "calendar.badge.plus") }
                 .buttonStyle(BotonSecundario(tono: .marcaTexto))
@@ -354,44 +370,64 @@ private struct AgregarAlCalendario: UIViewControllerRepresentable {
 
 // MARK: - En Entreno
 
-/// «Tu entrega empieza a las 10:00 · Entrar», arriba de Entreno desde 30 min antes hasta el fin de la franja.
+/// La entrega en Entreno, desde 30 min antes hasta el fin de la franja, con la regla de la guía: «Mati ya está en la
+/// videollamada · Entrar» con la sala abierta (o desde la hora de inicio, de respaldo); antes, el aviso sin botón.
 struct TarjetaEntregaAhora: View {
     let modelo: ModeloGuia
     @Environment(\.openURL) private var abrirURL
 
     var body: some View {
-        // Solo se mira el reloj si hay una confirmada con link que no terminó.
+        // Solo se mira el reloj si hay una confirmada que no terminó.
         if hayAlguna {
-            TimelineView(.periodic(from: .now, by: 30)) { ctx in
-                if let r = modelo.reservaParaEntrar(ahora: ctx.date), let u = r.meetUrl {
-                    Button { abrirURL(u) } label: {
-                        HStack(spacing: Espacio.s) {
-                            Image(systemName: "video.fill").font(.headline).accessibilityHidden(true)
-                            (Text(ReglasAgenda.textoEntrar(r, zona: AgendaUI.zona, ahora: ctx.date)) + Text(" · ") + Text("Entrar").bold())
-                                .font(.headline)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right").font(.caption.weight(.bold)).accessibilityHidden(true)
+            TimelineView(.periodic(from: .now, by: 15)) { ctx in
+                if let r = modelo.reservaEnVentana(ahora: ctx.date) {
+                    Group {
+                    if ReglasAgenda.puedeEntrar(r, ahora: ctx.date), let u = r.meetUrl {
+                        let texto = ReglasAgenda.textoEntrar(r, zona: AgendaUI.zona)
+                        Button { abrirURL(u) } label: {
+                            fila(icono: "video.fill", Text(texto) + Text(" · ") + Text("Entrar").bold(), flecha: true)
                         }
-                        .foregroundStyle(.white)
-                        .padding(Espacio.m)
-                        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-                        .background(Color.guiaDestacada, in: .rect(cornerRadius: Radio.control + 6, style: .continuous))
-                        .contentShape(.rect)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(texto). Entrar a la videollamada")
+                        .accessibilityIdentifier("agenda-entrar-tarjeta")
+                    } else {
+                        fila(icono: "clock", Text(ReglasAgenda.textoEsperandoSala(r, zona: AgendaUI.zona)), flecha: false)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("agenda-esperando-tarjeta")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(ReglasAgenda.textoEntrar(r, zona: AgendaUI.zona, ahora: ctx.date)). Entrar a la videollamada")
-                    .accessibilityIdentifier("agenda-entrar-tarjeta")
+                    }
+                    // Ya en la ventana, con Entreno a la vista: la agenda cada 30 s hasta que Mati abre la sala. Si la
+                    // reserva vino solo del resumen (la guía no se abrió), primero se trae la agenda.
+                    .task(id: r) {
+                        if modelo.agenda.agenda?.reserva == nil { await modelo.agenda.consultar() }
+                        await modelo.agenda.vigilarSala()
+                    }
                 }
             }
         }
     }
 
+    private func fila(icono: String, _ texto: Text, flecha: Bool) -> some View {
+        HStack(spacing: Espacio.s) {
+            Image(systemName: icono).font(.headline).accessibilityHidden(true)
+            texto
+                .font(.headline)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            if flecha { Image(systemName: "chevron.right").font(.caption.weight(.bold)).accessibilityHidden(true) }
+        }
+        .foregroundStyle(.white)
+        .padding(Espacio.m)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .background(Color.guiaDestacada, in: .rect(cornerRadius: Radio.control + 6, style: .continuous))
+        .contentShape(.rect)
+    }
+
     private var hayAlguna: Bool {
         guard modelo.resumen?.ok != false, modelo.estado != .oculta else { return false }
         return [modelo.agenda.reserva, modelo.resumen?.reserva].contains { r in
-            guard let r, r.estado == .confirmada, r.meetUrl != nil, let f = ReglasGuia.instante(r.fin) else { return false }
+            guard let r, r.estado == .confirmada, let f = ReglasGuia.instante(r.fin) else { return false }
             return f > Date()
         }
     }
@@ -412,7 +448,9 @@ enum AgendaUI {
     #if DEBUG
     /// `-agendaDemo <escenario>`: «Tu guía» v2 con un servidor de mentira (nada sale a la red salvo el video público de la
     /// demo). Escenarios: `flujo` (falta un video; reservar queda pendiente y se confirma a la tercera consulta), `tomada`,
-    /// `noAutorizada`, `sinFranjas`, `pendiente`, `confirmada` (empieza en 10 min, con «Entrar» en Entreno), `vencida`.
+    /// `noAutorizada`, `sinFranjas`, `pendiente`, `vencida`, `confirmada` (empieza en 10 min,
+    /// sin la sala abierta), `salaAbierta` (lo mismo, con Mati en el Meet) y `salaSeAbre` (la sala se abre a la tercera
+    /// consulta; con `-agendaSalaCada 2` se consulta cada 2 s en vez de cada 30).
     /// `-agendaSinRed YES` deja todo sin red (con la copia de la corrida anterior si se pasó `-agendaConservar YES`).
     static var modelo: ModeloGuia? {
         if !creado { creado = true; guardado = crear() }
@@ -432,7 +470,8 @@ enum AgendaUI {
         let cliente = ClienteRPC(transporte: servidor)
         let escrituras = Escrituras(cliente: cliente, token: token, carpetaAudios: raiz.appendingPathComponent("audios"))
         let cola = Outbox(archivo: disco.url("outbox.json")) { await escrituras.ejecutar($0) }
-        let m = ModeloGuia(cliente: cliente, token: token, outbox: cola, disco: disco)
+        let sala = Double(d.string(forKey: "agendaSalaCada") ?? "") ?? ReglasAgenda.salaCada
+        let m = ModeloGuia(cliente: cliente, token: token, outbox: cola, disco: disco, esperaSala: .seconds(sala))
         Task { await cola.observar(estado: { _ in }, abandonadas: { ops in Task { @MainActor in m.alAbandonar(ops) } },
                                    guardadas: { ops in Task { @MainActor in m.alGuardar(ops) } }) }
         Task { await m.actualizarResumen() }
@@ -452,6 +491,7 @@ final class ServidorAgendaUI: Transporte, @unchecked Sendable {
     private var reserva: ReservaAgenda?
     private var consultasPendiente = 0
     private var reservas = 0
+    private var consultasSala = 0
     /// El video que falta ver: uno público y corto de la demo (18 s), así la prueba lo reproduce de verdad.
     static let videoPendiente = "https://gydinputrtptqakdzyvc.supabase.co/storage/v1/object/public/videos-entrega/4f6624e371325690/FT-2b.mp4"
 
@@ -476,10 +516,11 @@ final class ServidorAgendaUI: Transporte, @unchecked Sendable {
         switch escenario {
         case "pendiente":
             reserva = ReservaAgenda(id: "r1", inicio: fs[0].inicio, fin: fs[0].fin, estado: .pendiente)
-        case "confirmada":
+        case "confirmada", "salaAbierta", "salaSeAbre":
             let i = base.addingTimeInterval(10 * 60)
             reserva = ReservaAgenda(id: "r1", inicio: iso.string(from: i), fin: iso.string(from: i.addingTimeInterval(7200)), estado: .confirmada,
-                                    meetUrl: URL(string: "https://meet.google.com/abc-defg-hij"))
+                                    meetUrl: URL(string: "https://meet.google.com/abc-defg-hij"),
+                                    salaAbiertaEn: escenario == "salaAbierta" ? iso.string(from: base) : nil)
         case "vencida":
             reserva = ReservaAgenda(id: "r1", inicio: fs[0].inicio, fin: fs[0].fin, estado: .fallo, motivo: "vencida")
         default: break
@@ -516,6 +557,10 @@ final class ServidorAgendaUI: Transporte, @unchecked Sendable {
                 return "[]"
             case "entregas_app_agenda":
                 let faltan = ReglasAgenda.faltan(guia)
+                if escenario == "salaSeAbre", reserva?.salaAbiertaEn == nil {
+                    consultasSala += 1
+                    if consultasSala >= 3 { reserva?.salaAbiertaEn = ISO8601DateFormatter().string(from: Date()) }
+                }
                 let autorizada = escenario != "noAutorizada"
                 if reserva?.estado == .pendiente, escenario == "flujo" {
                     consultasPendiente += 1

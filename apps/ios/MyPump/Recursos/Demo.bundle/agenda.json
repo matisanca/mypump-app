@@ -1,7 +1,7 @@
 {
   "ok": true,
   "autorizada": true,
-  "habilitada": false,
+  "habilitada": true,
   "faltan": 2,
   "zona": "America/Argentina/Buenos_Aires",
   "franjas": [
