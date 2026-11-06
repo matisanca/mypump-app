@@ -257,6 +257,47 @@ class ModeloAgendaTest {
     }
 
     @Test
+    fun enLaFranjaSeConsultaCada30sHastaQueMatiAbraLaSala() = enUnHilo { alcance ->
+        // 9:40 de Argentina del día de la entrega (10:00): 20 min antes, dentro de la ventana.
+        var ahora = Instant.parse("2026-11-12T12:40:00Z").toEpochMilli()
+        val esperas = mutableListOf<Long>()
+        var consultas = 0
+        val t = TransporteProgramado { fn, _ ->
+            if (fn != "entregas_app_agenda") return@TransporteProgramado 200 to "true"
+            consultas++
+            // A la tercera consulta Mati ya entró al Meet.
+            val sala = if (consultas >= 3) ""","sala_abierta_en":"2026-11-12T09:59:00-03:00"""" else ""
+            200 to """{"ok":true,"habilitada":true,"autorizada":true,"faltan":0,"reserva":${reserva("confirmada", ""","meet_url":"https://meet.google.com/abc"$sala""")}}"""
+        }
+        val m = ModeloAgenda(ClienteRpc(transporte = t), "tok", null, null, alcance, reloj = { ahora }, esperar = { ms ->
+            esperas += ms
+            ahora += ms
+        })
+        val trabajo = alcance.launch { m.seguir() }
+        kotlinx.coroutines.withTimeout(10_000) { while (consultas < 3) kotlinx.coroutines.delay(5) }
+        kotlinx.coroutines.delay(300)
+        trabajo.cancel()
+        // Sin la sala: sin botón; cada 30 s; con la sala, para (queda esperando un cambio).
+        assertEquals(listOf(ReglasAgenda.CONSULTA_SALA_MS, ReglasAgenda.CONSULTA_SALA_MS), esperas)
+        assertEquals(3, consultas)
+        val r = m.agenda.value!!.reserva!!
+        assertNotNull(r.salaAbiertaEn)
+        assertTrue(ReglasAgenda.puedeEntrar(r, Instant.ofEpochMilli(ahora)))
+        // Al volver a primer plano en la franja sin sala, consulta; antes del día, no.
+        var c2 = 0
+        val sinSala = """{"ok":true,"habilitada":true,"autorizada":true,"faltan":0,"reserva":${reserva("confirmada", ""","meet_url":"https://meet.google.com/abc"""")}}"""
+        val t2 = TransporteProgramado { fn, _ -> if (fn == "entregas_app_agenda") { c2++; 200 to sinSala } else 200 to "true" }
+        var reloj2 = Instant.parse("2026-11-11T12:40:00Z").toEpochMilli()
+        val m2 = ModeloAgenda(ClienteRpc(transporte = t2), "tok", null, null, alcance, reloj = { reloj2 })
+        m2.refrescar()
+        m2.alVolverAPrimerPlano()
+        assertEquals(1, c2)
+        reloj2 = Instant.parse("2026-11-12T12:50:00Z").toEpochMilli()
+        m2.alVolverAPrimerPlano()
+        assertEquals(2, c2)
+    }
+
+    @Test
     fun laFranjaTomadaAvisaYMuestraLasFranjasDeNuevo() = enUnHilo { alcance ->
         var tomada = false
         val e = entorno(alcance) { fn, _ ->

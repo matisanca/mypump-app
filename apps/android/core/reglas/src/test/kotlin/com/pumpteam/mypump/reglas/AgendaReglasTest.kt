@@ -282,16 +282,42 @@ class AgendaReglasTest {
     }
 
     @Test
-    fun entrarDesde30MinutosAntesHastaElFin() {
+    fun entrarSoloConLaSalaAbiertaODesdeElInicio() {
         val i = Instant.parse("2026-11-12T13:00:00Z")
+        val ar = ReglasAgenda.ARGENTINA
         val r = ReservaEntrega("r", i, i.plusSeconds(7200), ReservaEntrega.Estado.CONFIRMADA, "https://meet.google.com/x", null)
-        assertFalse(ReglasAgenda.puedeEntrar(r, i.minusSeconds(31 * 60)))
-        assertTrue(ReglasAgenda.puedeEntrar(r, i.minusSeconds(30 * 60)))
-        assertTrue(ReglasAgenda.puedeEntrar(r, i.plusSeconds(7199)))
-        assertFalse(ReglasAgenda.puedeEntrar(r, i.plusSeconds(7200)))
-        assertFalse(ReglasAgenda.puedeEntrar(r.copy(meetUrl = null), i))
-        assertFalse(ReglasAgenda.puedeEntrar(r.copy(estado = ReservaEntrega.Estado.PENDIENTE), i))
-        assertEquals("Tu entrega empieza a las 10:00", ReglasAgenda.textoEmpieza(r, ReglasAgenda.ARGENTINA, i.minusSeconds(600)))
-        assertNotNull(ReglasAgenda.textoEmpieza(r, ReglasAgenda.ARGENTINA, i.plusSeconds(60)))
+        // Al confirmar, sin botón: antes del día, solo la fecha y la hora.
+        assertFalse(ReglasAgenda.puedeEntrar(r, i.minusSeconds(86_400)))
+        assertNull(ReglasAgenda.textoSala(r, ar, i.minusSeconds(86_400)))
+        assertFalse(ReglasAgenda.tarjetaEntreno(r, i.minusSeconds(86_400)))
+        // El mismo día, sin sala: el texto de espera y sin botón.
+        assertFalse(ReglasAgenda.puedeEntrar(r, i.minusSeconds(600)))
+        assertEquals(
+            "Tu entrega es hoy a las 10:00. Cuando Mati abra la videollamada se habilita el botón para entrar.",
+            ReglasAgenda.textoSala(r, ar, i.minusSeconds(3 * 3600)),
+        )
+        assertFalse(ReglasAgenda.esperandoSala(r, i.minusSeconds(31 * 60)))
+        assertTrue(ReglasAgenda.esperandoSala(r, i.minusSeconds(30 * 60)))
+        assertTrue(ReglasAgenda.tarjetaEntreno(r, i.minusSeconds(600)))
+        // Mati entró al Meet: «Mati ya está en la videollamada · Entrar», aunque falten minutos.
+        val abierta = r.copy(salaAbiertaEn = i.minusSeconds(300))
+        assertTrue(ReglasAgenda.puedeEntrar(abierta, i.minusSeconds(240)))
+        assertEquals("Mati ya está en la videollamada", ReglasAgenda.textoSala(abierta, ar, i.minusSeconds(240)))
+        assertFalse(ReglasAgenda.esperandoSala(abierta, i.minusSeconds(240)))
+        // Respaldo: sin `sala_abierta_en`, el botón aparece a la hora de inicio.
+        assertTrue(ReglasAgenda.puedeEntrar(r, i))
+        assertEquals("Tu entrega empezó a las 10:00", ReglasAgenda.textoSala(r, ar, i.plusSeconds(60)))
+        // Hasta el fin de la franja.
+        assertTrue(ReglasAgenda.puedeEntrar(abierta, i.plusSeconds(7199)))
+        assertFalse(ReglasAgenda.puedeEntrar(abierta, i.plusSeconds(7200)))
+        assertFalse(ReglasAgenda.tarjetaEntreno(abierta, i.plusSeconds(7200)))
+        // Sin link o sin confirmar, nunca.
+        assertFalse(ReglasAgenda.puedeEntrar(abierta.copy(meetUrl = null), i))
+        assertFalse(ReglasAgenda.puedeEntrar(abierta.copy(estado = ReservaEntrega.Estado.PENDIENTE), i))
+        // `sala_abierta_en` se decodifica (y si falta, null).
+        val d = ReservaEntrega.desde(j("""{"inicio":"2026-11-12T10:00:00-03:00","estado":"confirmada","meet_url":"https://meet.google.com/x","sala_abierta_en":"2026-11-12T09:55:00-03:00"}"""))!!
+        assertEquals(Instant.parse("2026-11-12T12:55:00Z"), d.salaAbiertaEn)
+        assertEquals(d, ReservaEntrega.desde(d.aValor()))
+        assertNull(ReservaEntrega.desde(j("""{"estado":"confirmada","sala_abierta_en":"nunca"}"""))!!.salaAbiertaEn)
     }
 }

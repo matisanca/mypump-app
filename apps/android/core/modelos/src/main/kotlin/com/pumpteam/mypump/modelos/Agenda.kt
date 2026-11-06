@@ -117,6 +117,11 @@ data class ReservaEntrega(
     val estado: Estado,
     val meetUrl: String?,
     val motivo: String?,
+    /**
+     * `sala_abierta_en` (opcional, cambio de Mati del 6/11): el daemon lo carga cuando Mati ya entró al Meet. Hasta ahí no
+     * hay botón para entrar (salvo el respaldo de la hora de inicio, ver `ReglasAgenda.puedeEntrar`).
+     */
+    val salaAbiertaEn: Instant? = null,
 ) {
     enum class Estado(val valor: String) { PENDIENTE("pendiente"), CONFIRMADA("confirmada"), FALLO("fallo") }
 
@@ -130,6 +135,7 @@ data class ReservaEntrega(
         "estado" to ValorJson.Texto(estado.valor),
         "meet_url" to (meetUrl?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
         "motivo" to (motivo?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
+        "sala_abierta_en" to (salaAbiertaEn?.let { ValorJson.Texto(it.toString()) } ?: ValorJson.Nulo),
     )
 
     companion object {
@@ -146,6 +152,7 @@ data class ReservaEntrega(
                 // Solo un link https: otra cosa no se abre.
                 meetUrl = o.cadena("meet_url")?.trim()?.takeIf { it.startsWith("https://", ignoreCase = true) },
                 motivo = o.texto("motivo")?.trim()?.ifEmpty { null },
+                salaAbiertaEn = AgendaEntrega.instante(o.cadena("sala_abierta_en")),
             )
         }
 

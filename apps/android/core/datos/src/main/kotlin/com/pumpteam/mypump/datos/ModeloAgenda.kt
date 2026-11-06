@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -149,7 +150,8 @@ class ModeloAgenda(
 
     /**
      * Lo que corre la pantalla mientras «Tu guía» está a la vista y en primer plano (se cancela al salir o al ir a segundo
-     * plano; al volver, empieza de nuevo y consulta). Con la reserva pendiente, cada 5 s hasta 60 s.
+     * plano; al volver, empieza de nuevo y consulta). Con la reserva pendiente, cada 5 s hasta 60 s. Con la confirmada y
+     * Mati todavía sin entrar al Meet, cada 30 s desde 30 min antes hasta el fin de la franja (si falta, espera a esa hora).
      */
     suspend fun seguir() {
         if (esDemo) {
@@ -160,13 +162,46 @@ class ModeloAgenda(
         refrescar()
         while (true) {
             val vuelta = reinicios.value
-            if (!seguirConsultando()) {
-                reinicios.first { it != vuelta }
+            val antes = _agenda.value
+            if (seguirConsultando()) {
+                esperar(CONSULTA_CADA_MS)
+                refrescar()
                 continue
             }
-            esperar(CONSULTA_CADA_MS)
-            refrescar()
+            val sala = esperaSala(antes?.reserva)
+            if (sala != null) {
+                esperar(sala)
+                refrescar()
+                continue
+            }
+            // Nada que seguir: hasta que empiece una reserva o cambie la agenda (por ejemplo, al volver a primer plano).
+            combine(reinicios, _agenda) { v, a -> v != vuelta || a !== antes }.first { it }
         }
+    }
+
+    /**
+     * La tarjeta de Entreno abierta (y en primer plano): cada 30 s mira si está en la franja esperando que Mati abra la sala
+     * y, si es así, consulta. La reserva es la de la agenda o, si no se consultó, la del resumen.
+     */
+    suspend fun seguirSala(reserva: () -> ReservaEntrega?) {
+        if (esDemo) return
+        inicial.join()
+        while (true) {
+            if (ReglasAgenda.esperandoSala(reserva(), ahora())) refrescar()
+            esperar(ReglasAgenda.CONSULTA_SALA_MS)
+        }
+    }
+
+    private fun ahora(): Instant = Instant.ofEpochMilli(reloj())
+
+    /** Cuánto esperar para la próxima consulta de la sala: 30 s dentro de la franja, hasta 30 min antes si falta; null si no aplica. */
+    private fun esperaSala(r: ReservaEntrega?): Long? {
+        if (r == null || r.estado != ReservaEntrega.Estado.CONFIRMADA || r.salaAbiertaEn != null) return null
+        val i = r.inicio ?: return null
+        val n = ahora()
+        if (ReglasAgenda.esperandoSala(r, n)) return ReglasAgenda.CONSULTA_SALA_MS
+        val ventana = i.minusSeconds(ReglasAgenda.MINUTOS_ANTES * 60)
+        return if (n.isBefore(ventana)) Duration.between(n, ventana).toMillis().coerceAtLeast(1) else null
     }
 
     private fun seguirConsultando(): Boolean {
@@ -179,11 +214,12 @@ class ModeloAgenda(
         reinicios.update { it + 1 }
     }
 
-    /** La app volvió a primer plano (con la guía cerrada): solo si hay una reserva pendiente. */
+    /** La app volvió a primer plano (con la guía cerrada): solo con una reserva pendiente o esperando que Mati abra la sala. */
     suspend fun alVolverAPrimerPlano() {
         inicial.join()
         if (esDemo) return
-        if (_reservando.value != null || _agenda.value?.reserva?.estado == ReservaEntrega.Estado.PENDIENTE) refrescar()
+        val r = _agenda.value?.reserva
+        if (_reservando.value != null || r?.estado == ReservaEntrega.Estado.PENDIENTE || ReglasAgenda.esperandoSala(r, ahora())) refrescar()
     }
 
     private fun olvidar() {

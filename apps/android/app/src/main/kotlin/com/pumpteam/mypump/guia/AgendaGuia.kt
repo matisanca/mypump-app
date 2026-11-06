@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -61,7 +62,10 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.diseno.AsaHoja
 import com.pumpteam.mypump.diseno.BotonMarca
@@ -275,11 +279,19 @@ private fun Pendiente() {
     }
 }
 
-/** La tarjeta verde: el día y la hora, «Entrar a la videollamada», «Agregar a mi calendario» y cómo cambiarla. */
+/**
+ * La tarjeta verde: el día y la hora, «Agregar a mi calendario» y cómo cambiarla. «Entrar a la videollamada» no aparece al
+ * confirmar: recién con Mati en el Meet (`sala_abierta_en`) o, de respaldo, a la hora de inicio (cambio de Mati del 6/11).
+ * El mismo día, mientras tanto, «Tu entrega es hoy a las 10:00. Cuando Mati abra…». La hora se vuelve a mirar cada 30 s
+ * (la agenda la consulta `seguir`).
+ */
 @Composable
 private fun Confirmada(r: ReservaEntrega, esDemo: Boolean, zona: ZoneId, alEntrar: (String) -> Unit, alAgregar: () -> Unit) {
     val forma = RoundedCornerShape(Radio.tarjeta)
     val texto = ReglasAgenda.textoConfirmada(r, zona)
+    val ahora = ahoraCada30s(r)
+    val sala = ReglasAgenda.textoSala(r, zona, ahora)
+    val puedeEntrar = ReglasAgenda.puedeEntrar(r, ahora)
     Column(
         Modifier.fillMaxWidth().clip(forma).background(VerdeGuia).padding(Espacio.m + 2.dp).testTag("agenda-confirmada"),
         verticalArrangement = Arrangement.spacedBy(Espacio.s),
@@ -296,8 +308,17 @@ private fun Confirmada(r: ReservaEntrega, esDemo: Boolean, zona: ZoneId, alEntra
                 modifier = Modifier.weight(1f).semantics { heading() }.testTag("agenda-confirmada-texto"),
             )
         }
+        if (sala != null) {
+            Text(
+                sala,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White,
+                // Que TalkBack avise cuando cambia (Mati abrió la sala) sin tener que volver a recorrer la tarjeta.
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }.testTag("agenda-sala"),
+            )
+        }
         val url = r.meetUrl
-        if (url != null) {
+        if (url != null && puedeEntrar) {
             Button(
                 onClick = { alEntrar(url) },
                 modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 52.dp).testTag("agenda-entrar"),
@@ -305,9 +326,9 @@ private fun Confirmada(r: ReservaEntrega, esDemo: Boolean, zona: ZoneId, alEntra
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = VerdeGuia),
                 elevation = null,
             ) {
-                Text("Entrar a la videollamada", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text(if (r.salaAbiertaEn != null) "Entrar" else "Entrar a la videollamada", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
             }
-        } else if (esDemo) {
+        } else if (url == null && esDemo) {
             Text(ReglasAgenda.TEXTO_DEMO, style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.testTag("agenda-demo"))
         }
         if (r.inicio != null) {
@@ -371,9 +392,23 @@ private fun HojaConfirmar(texto: String, alConfirmar: () -> Unit, alCerrar: () -
     }
 }
 
+/** La hora, que se vuelve a mirar cada 30 s (y al cambiar la reserva): para que el botón aparezca a tiempo. */
+@Composable
+private fun ahoraCada30s(r: ReservaEntrega?): Instant {
+    val ahora by produceState(Instant.now(), r) {
+        while (true) {
+            value = Instant.now()
+            delay(ReglasAgenda.CONSULTA_SALA_MS)
+        }
+    }
+    return ahora
+}
+
 /**
- * «Tu entrega empieza a las 10:00 · Entrar» arriba de Entreno: con la reserva confirmada, desde 30 min antes hasta el fin
- * de la franja. La reserva sale de la agenda (si se consultó) o del resumen, sin pedir nada. Se vuelve a mirar cada 30 s.
+ * La entrega arriba de Entreno, con la reserva confirmada, desde 30 min antes hasta el fin de la franja, con la misma regla
+ * que la tarjeta de la guía: sin botón hasta que Mati abra la sala («Mati ya está en la videollamada · Entrar») o, de
+ * respaldo, hasta la hora de inicio. La reserva sale de la agenda (si se consultó) o del resumen. Con la pantalla en primer
+ * plano y en la franja, la agenda se consulta cada 30 s.
  */
 @Composable
 fun EntregaAhoraDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
@@ -381,31 +416,38 @@ fun EntregaAhoraDe(modelo: ModeloApp, modifier: Modifier = Modifier) {
     val resumen by g.resumen.collectAsStateWithLifecycle()
     val agenda by g.agenda.agenda.collectAsStateWithLifecycle()
     val r = (if (agenda != null) agenda?.reserva else null) ?: resumen?.reserva
-    val ahora by produceState(Instant.now(), r) {
-        while (true) {
-            value = Instant.now()
-            delay(30_000)
+    val ciclo = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(g, ciclo) {
+        ciclo.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            g.agenda.seguirSala { g.agenda.agenda.value?.reserva ?: g.resumen.value?.reserva }
         }
     }
-    if (r == null || !ReglasAgenda.puedeEntrar(r, ahora)) return
-    val url = r.meetUrl ?: return
+    val ahora = ahoraCada30s(r)
+    if (r == null || !ReglasAgenda.tarjetaEntreno(r, ahora)) return
+    val zona = ZoneId.systemDefault()
+    val url = r.meetUrl?.takeIf { ReglasAgenda.puedeEntrar(r, ahora) }
     val contexto = LocalContext.current
-    val texto = ReglasAgenda.textoEmpieza(r, ZoneId.systemDefault(), ahora)
+    val texto = ReglasAgenda.textoSala(r, zona, ahora) ?: ReglasAgenda.textoConfirmada(r, zona)
     val forma = RoundedCornerShape(Radio.tarjeta)
     Row(
         modifier
             .fillMaxWidth()
             .clip(forma)
             .background(VerdeGuia)
-            .clickable(role = Role.Button, onClickLabel = "Entrar a la videollamada") { abrirMeet(contexto, url) }
+            .then(
+                if (url != null) Modifier.clickable(role = Role.Button, onClickLabel = "Entrar a la videollamada") { abrirMeet(contexto, url) }
+                else Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
             .padding(horizontal = Espacio.m + 2.dp, vertical = Espacio.s)
             .testTag("entrega-ahora"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
         Icon(Iconos.Video, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-        Text("$texto ·", style = MaterialTheme.typography.bodyLarge, color = Color.White, modifier = Modifier.weight(1f))
-        Text("Entrar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(texto, style = MaterialTheme.typography.bodyLarge, color = Color.White, modifier = Modifier.weight(1f))
+        if (url != null) {
+            Text("Entrar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.testTag("entrega-ahora-entrar"))
+        }
     }
 }
 

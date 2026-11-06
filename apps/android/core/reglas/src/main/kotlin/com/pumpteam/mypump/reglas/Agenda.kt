@@ -222,20 +222,55 @@ object ReglasAgenda {
         return "Tu entrega: ${dia(i, zona)}, ${rango(i, r.fin ?: i.plusSeconds(2 * 3600), zona)}"
     }
 
-    /** Desde cuánto antes de la franja aparece «Entrar» en la tarjeta de Entreno. */
+    /** Desde cuánto antes de la franja se muestra la tarjeta de Entreno y se consulta seguido si Mati ya abrió la sala. */
     const val MINUTOS_ANTES = 30L
 
-    /** «Entrar» en Entreno: confirmada, con link, desde 30 min antes hasta el fin de la franja. */
+    /** Cada cuánto se consulta la agenda, con la pantalla abierta, mientras se espera que Mati abra la sala. */
+    const val CONSULTA_SALA_MS = 30_000L
+
+    private fun fin(r: ReservaEntrega): Instant? = r.fin ?: r.inicio?.plusSeconds(2 * 3600)
+
+    /**
+     * «Entrar» (cambio de Mati del 6/11: el cliente nunca entra directo): confirmada, con link y antes del fin, y además
+     * con `sala_abierta_en` (Mati ya está en el Meet) o, de respaldo si el daemon no ve a los participantes, desde la hora
+     * de inicio. Entrar igual pide que Mati lo acepte (el Meet es restringido).
+     */
     fun puedeEntrar(r: ReservaEntrega?, ahora: Instant): Boolean {
         if (r == null || r.estado != ReservaEntrega.Estado.CONFIRMADA || r.meetUrl == null) return false
         val i = r.inicio ?: return false
-        val fin = r.fin ?: i.plusSeconds(2 * 3600)
-        return !ahora.isBefore(i.minusSeconds(MINUTOS_ANTES * 60)) && ahora.isBefore(fin)
+        if (!ahora.isBefore(fin(r)!!)) return false
+        return r.salaAbiertaEn != null || !ahora.isBefore(i)
     }
 
-    /** «Tu entrega empieza a las 10:00» (o «empezó», ya en curso). */
-    fun textoEmpieza(r: ReservaEntrega, zona: ZoneId, ahora: Instant): String {
-        val i = r.inicio ?: return "Tu entrega"
-        return if (ahora.isBefore(i)) "Tu entrega empieza a las ${hora(i, zona)}" else "Tu entrega empezó a las ${hora(i, zona)}"
+    /**
+     * Se espera que Mati abra la sala: confirmada, desde 30 min antes hasta el fin y todavía sin `sala_abierta_en`. Con la
+     * pantalla abierta se consulta cada 30 s ([CONSULTA_SALA_MS]); la tarjeta de Entreno se muestra (sin botón).
+     */
+    fun esperandoSala(r: ReservaEntrega?, ahora: Instant): Boolean {
+        if (r == null || r.estado != ReservaEntrega.Estado.CONFIRMADA || r.salaAbiertaEn != null) return false
+        val i = r.inicio ?: return false
+        return !ahora.isBefore(i.minusSeconds(MINUTOS_ANTES * 60)) && ahora.isBefore(fin(r)!!)
+    }
+
+    /** La tarjeta de Entreno: desde 30 min antes (o con la sala ya abierta) hasta el fin de la franja. */
+    fun tarjetaEntreno(r: ReservaEntrega?, ahora: Instant): Boolean = esperandoSala(r, ahora) || puedeEntrar(r, ahora)
+
+    const val TEXTO_SALA_ABIERTA = "Mati ya está en la videollamada"
+
+    /**
+     * La línea de la reserva confirmada sobre el botón (o en su lugar): con la sala abierta, «Mati ya está en la
+     * videollamada»; el mismo día, sin sala, «Tu entrega es hoy a las 10:00. Cuando Mati abra la videollamada se habilita el
+     * botón para entrar.»; con el respaldo de la hora de inicio, «Tu entrega empezó a las 10:00». Antes del día, null (solo
+     * la fecha y la hora).
+     */
+    fun textoSala(r: ReservaEntrega, zona: ZoneId, ahora: Instant): String? {
+        if (r.estado != ReservaEntrega.Estado.CONFIRMADA) return null
+        val i = r.inicio ?: return null
+        val f = fin(r)!!
+        if (!ahora.isBefore(f)) return null
+        if (r.salaAbiertaEn != null && r.meetUrl != null) return TEXTO_SALA_ABIERTA
+        if (!ahora.isBefore(i) && r.meetUrl != null) return "Tu entrega empezó a las ${hora(i, zona)}"
+        if (i.atZone(zona).toLocalDate() != ahora.atZone(zona).toLocalDate()) return null
+        return "Tu entrega es hoy a las ${hora(i, zona)}. Cuando Mati abra la videollamada se habilita el botón para entrar."
     }
 }
