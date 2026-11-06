@@ -29,9 +29,14 @@ object ReglasGuia {
     private val ES = Locale.forLanguageTag("es-AR")
 
     /** Un capítulo: su nombre tal cual viene y los índices de sus clips (en la lista de [ordenados]). */
-    data class Bloque(val titulo: String, val indices: List<Int>, val minutos: Double) {
-        /** «8 videos, unos 4 minutos», como la web. */
-        val resumen: String get() = "${cantidadVideos(indices.size)}, unos ${minutosRedondos(minutos)} minutos"
+    data class Bloque(val titulo: String, val indices: List<Int>, val minutos: Double, val esNovedad: Boolean = false) {
+        /** «8 videos, unos 4 minutos», como la web. En «Novedad», «3 videos nuevos para vos · 9 min». */
+        val resumen: String get() =
+            if (esNovedad) ReglasNovedad.textoNovedad(indices.size, minutos)
+            else "${cantidadVideos(indices.size)}, unos ${minutosRedondos(minutos)} minutos"
+
+        /** Lo que lo identifica en la lista (los abiertos, la clave): «Novedad» no choca con un capítulo que se llame igual. */
+        val clave: String get() = if (esNovedad) ReglasNovedad.CLAVE_NOVEDAD else titulo
     }
 
     /** El botón del video de un suplemento, como pack.html: «Ver por qué (18 s)» (al menos 1 s). */
