@@ -240,7 +240,9 @@ struct CrearAlimentoView: View {
                     preguntaBase = false
                 case .desconocida:
                     unidad = "g"
-                    preguntaBase = true
+                    gramos = ""
+                    // Sin ningún número (no se leyó la tabla) no hay nada que ubicar: se carga a mano.
+                    preguntaBase = [d.kcal, d.prot, d.carb, d.fat].contains { $0 != nil }
                 }
                 error = nil
                 estadoEscaneo = AlimentoPropioNuevo.textoLectura(base, confianzaBaja: d.confianza == "baja", avisos: d.avisos)

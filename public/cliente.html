@@ -9477,9 +9477,11 @@ function openCustomFoodModal() {
           syncUnitGramsField();
         } else {
           unitSel.value = 'g';
+          if (base.tipo === 'desconocida') { const ug = $('#cfUnitGrams'); if (ug) ug.value = ''; }
           syncUnitGramsField();
         }
-        _cfPreguntaBase(base.tipo === 'desconocida');
+        // Sin ningún número (no se leyó la tabla) no hay nada que ubicar: se carga a mano.
+        _cfPreguntaBase(base.tipo === 'desconocida' && [d.kcal, d.prot, d.carb, d.fat].some((x) => x !== null && x !== undefined));
         _cfSyncAvisoPolvo();
         const errEl = $('#cfErr'); if (errEl) errEl.style.display = 'none';
         scanStatus.textContent = _cfTextoLectura(base, d.confianza === 'baja', Array.isArray(d.avisos) ? d.avisos : []);

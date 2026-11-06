@@ -152,7 +152,9 @@ fun CrearAlimento(
                     }
                     AlimentoPropioNuevo.BaseLectura.Desconocida -> {
                         unidad = "g"
-                        preguntaBase = true
+                        gramos = ""
+                        // Sin ningún número (no se leyó la tabla) no hay nada que ubicar: se carga a mano.
+                        preguntaBase = listOf(d.kcal, d.prot, d.carb, d.fat).any { it != null }
                     }
                 }
                 error = null

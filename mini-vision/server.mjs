@@ -416,11 +416,13 @@ function normalizarEtiqueta(j) {
   const columna = (o) => {
     if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
     const c = { kcal: n(o.kcal), prot: n(o.prot), carb: n(o.carb), fat: n(o.fat) };
-    return Object.values(c).some((v) => v !== null && v > 0) ? c : null;
+    // Una columna con ceros vale (gaseosa light, café): alcanza con que traiga algún número.
+    return Object.values(c).some((v) => v !== null) ? c : null;
   };
   const avisos = [];
   const NIVEL = { alta: 2, media: 1, baja: 0 };
-  let confianza = Object.prototype.hasOwnProperty.call(NIVEL, j.confianza) ? j.confianza : 'media';
+  const confLeida = String(j.confianza || '').trim().toLowerCase();
+  let confianza = Object.prototype.hasOwnProperty.call(NIVEL, confLeida) ? confLeida : 'media';
   const bajar = (a) => { if (NIVEL[a] < NIVEL[confianza]) confianza = a; };
   let porcion = n(j.porcion_g);
   if (!(porcion > 0)) porcion = null;
@@ -451,7 +453,8 @@ function normalizarEtiqueta(j) {
     base = '100g'; valores = p100; porcionG = 100;
   } else if (pp) {
     avisos.push('no se ve cuánto pesa la porción');
-    bajar('media');
+    // Baja (no media): las apps 2.0.2 y 2.1.0 lo guardan como 100 g; así por lo menos muestran «revisá los valores».
+    bajar('baja');
     base = 'desconocida'; valores = pp; porcionG = null;
   } else {
     return { ...nada, nombre: typeof j.nombre === 'string' ? j.nombre : null };
