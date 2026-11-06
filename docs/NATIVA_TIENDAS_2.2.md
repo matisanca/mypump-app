@@ -43,3 +43,8 @@ Pump Team 2.2 te deja agendar tu entrega desde Tu guía.
 
 Tu cuenta y tu historial siguen intactos.
 ```
+
+## Envíos (6-nov)
+- Tags nios-2.2.0-129 y nand-2.2.0-109 sobre 6746d5c; Codemagic verde en los dos.
+- Play: 109 (2.2.0) en producción al 100 %, novedades es-419, enviado a revisión ~20:35. Publicación administrada apagada: al aprobarse sale sola. AAB sha256 41eb596d20c51020…, subido en 3 trozos.
+- App Store: 2.2.0 (129) enviada a revisión 6-nov 20:44, publicación automática al aprobarse, para todos de una (sin escalonado). Notas para el revisor actualizadas (WHAT IS NEW IN 2.2.0).
