@@ -592,8 +592,9 @@ private fun TarjetaReproductor(
     val clip = control.clipActual
     Column(modifier.fillMaxWidth().superficieTarjeta().testTag("guia-reproductor")) {
         // La proporción de lo que se ve: la del archivo y, si trae las franjas metidas, solo la zona útil.
-        val recorte = recorteDe(clip?.url)
-        CajaVideo(ReglasVideo.proporcionVisible(proporcionDe(control.player, clip?.id), recorte)) {
+        val proporcion = proporcionDe(control.player, clip?.id)
+        val recorte = recorteDe(clip?.url, clip?.id)
+        CajaVideo(ReglasVideo.proporcionVisible(proporcion, recorte)) {
             if (!control.pantallaCompleta) VistaVideo(control, Modifier.fillMaxSize(), recorte = recorte)
             CapasVideo(control)
         }
@@ -687,8 +688,9 @@ private fun VideoDelSuplemento(
     alEnviar: (String) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().testTag("guia-porque-${clip.id}"), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-        val recorte = recorteDe(clip.url)
-        CajaVideo(ReglasVideo.proporcionVisible(proporcionDe(control.porQuePlayer, clip.id), recorte)) {
+        val proporcion = proporcionDe(control.porQuePlayer, clip.id)
+        val recorte = recorteDe(clip.url, clip.id)
+        CajaVideo(ReglasVideo.proporcionVisible(proporcion, recorte)) {
           Box(Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)).testTag("guia-video-porque-caja")) {
             VistaMedia3(recorte = recorte, player = control.porQuePlayer, etiqueta = "guia-video-porque", alPantallaCompleta = null, completa = false, modifier = Modifier.fillMaxSize())
             control.fallaPorQue?.let { SinConexionVideo(it, alReintentar = control::reintentarPorQue) }
@@ -774,8 +776,9 @@ private fun PantallaCompleta(control: ControlReproductor) {
         }
         Box(Modifier.fillMaxSize().background(Color.Black).testTag("guia-pantalla-completa"), contentAlignment = Alignment.Center) {
             // La proporción del clip también acá: lo más grande que entra sin deformarse.
-            val recorte = recorteDe(control.clipActual?.url)
-            val prop = ReglasVideo.proporcionVisible(proporcionDe(control.player, control.clipActual?.id), recorte)
+            val proporcion = proporcionDe(control.player, control.clipActual?.id)
+            val recorte = recorteDe(control.clipActual?.url, control.clipActual?.id)
+            val prop = ReglasVideo.proporcionVisible(proporcion, recorte)
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val (ancho, alto) = ReglasVideo.completa(prop, maxWidth.value, maxHeight.value)
                 Box(Modifier.size(ancho.dp, alto.dp).clipToBounds().testTag("guia-video-completo-caja")) {

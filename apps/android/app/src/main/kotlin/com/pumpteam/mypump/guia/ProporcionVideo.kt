@@ -138,7 +138,11 @@ internal object RecuadrosVideo {
         guardado(contexto, url)?.takeIf { it != SIN_RECORTE }?.let(ReglasVideo.Recuadro::desde)
 
     /** Detecta y guarda. Devuelve el recorte a aplicar (null = el cuadro entero). */
-    suspend fun detectar(contexto: Context, url: String): ReglasVideo.Recuadro? = withContext(Dispatchers.IO) {
+    /** De a una por vez: cada medición abre el archivo con su decodificador, y no tiene que competir con otras. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val serie = Dispatchers.IO.limitedParallelism(1)
+
+    suspend fun detectar(contexto: Context, url: String): ReglasVideo.Recuadro? = withContext(serie) {
         // Los 3 cuadros todo negros no dicen nada (un fundido, o el decodificador ocupado que devuelve negro mientras
         // reproduce, visto en el emulador): se reintenta un par de veces antes de darlo por perdido.
         var r: Result<Medicion> = Result.failure(IllegalStateException("sin medir"))
@@ -210,13 +214,18 @@ internal object RecuadrosVideo {
     }
 }
 
-/** El recorte del clip en [url]: el guardado enseguida y, si no se sabe, lo detecta en segundo plano. */
+/**
+ * El recorte del clip [id] en [url]: el guardado enseguida y, si no se sabe, lo detecta en segundo plano, pero recién
+ * cuando el reproductor ya mostró ese clip ([proporcionDe] lo guardó): así nunca se abre un archivo que no carga (sin red,
+ * un link roto), que deja al lector del sistema colgado.
+ */
 @Composable
-internal fun recorteDe(url: String?): ReglasVideo.Recuadro? {
+internal fun recorteDe(url: String?, id: String?): ReglasVideo.Recuadro? {
     val contexto = LocalContext.current.applicationContext
     var r by remember(url) { mutableStateOf(url?.let { RecuadrosVideo.recorteGuardado(contexto, it) }) }
-    LaunchedEffect(url) {
-        if (url != null && RecuadrosVideo.guardado(contexto, url) == null) r = RecuadrosVideo.detectar(contexto, url)
+    val cargo = id != null && ProporcionesVideo.de(contexto, id) != null
+    LaunchedEffect(url, cargo) {
+        if (url != null && cargo && RecuadrosVideo.guardado(contexto, url) == null) r = RecuadrosVideo.detectar(contexto, url)
     }
     return r
 }
