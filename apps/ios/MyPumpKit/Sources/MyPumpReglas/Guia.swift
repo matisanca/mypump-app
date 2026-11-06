@@ -119,7 +119,17 @@ public enum ReglasGuia {
             return "\(n) \(n == 1 ? "video nuevo" : "videos nuevos") para vos · \(max(1, Int(b.minutos.rounded()))) min"
         }
         let m = max(1, Int(b.minutos.rounded()))
-        return "\(n) \(n == 1 ? "video" : "videos"), unos \(m) \(m == 1 ? "minuto" : "minutos")"
+        return "\(n) \(n == 1 ? "video" : "videos"), \(unos(m, corto: false))"
+    }
+
+    /// «unos 12 minutos» / «unos 12 min»; con 1, «1 minuto» / «1 min» (nunca «unos 1 minutos»).
+    static func unos(_ m: Int, corto: Bool) -> String {
+        m == 1 ? (corto ? "1 min" : "1 minuto") : "unos \(m) \(corto ? "min" : "minutos")"
+    }
+
+    /// «te quedan 12 min» / «te queda 1 min».
+    static func teQuedan(_ m: Int, corto: Bool) -> String {
+        m == 1 ? "te queda 1 \(corto ? "min" : "minuto")" : "te quedan \(m) \(corto ? "min" : "minutos")"
     }
 
     /// La duración de una fila, «1:12».
@@ -161,15 +171,16 @@ public enum ReglasGuia {
     /// La línea de la cabecera, igual que la web: «Viste 4 de 13, te quedan unos 12 minutos».
     public static func textoAvance(_ a: Avance) -> String {
         if a.completo { return "Viste todos, nos vemos en la videollamada" }
-        return "Viste \(a.vistos) de \(a.total), te quedan unos \(max(1, Int(a.minutosRestantes.rounded()))) minutos"
+        let m = max(1, Int(a.minutosRestantes.rounded()))
+        return "Viste \(a.vistos) de \(a.total), \(m == 1 ? "te queda 1 minuto" : "te quedan unos \(m) minutos")"
     }
 
     /// La línea de la tarjeta de inicio: «4 de 13 videos, te quedan 12 min».
     public static func textoTarjeta(_ a: Avance) -> String {
         if a.completo { return a.total == 1 ? "Viste el video" : "Viste los \(a.total) videos" }
         let min = max(1, Int(a.minutosRestantes.rounded()))
-        if a.vistos == 0 { return "\(a.total) \(a.total == 1 ? "video corto" : "videos cortos"), unos \(min) min" }
-        return "\(a.vistos) de \(a.total) videos, te quedan \(min) min"
+        if a.vistos == 0 { return "\(a.total) \(a.total == 1 ? "video corto" : "videos cortos"), \(unos(min, corto: true))" }
+        return "\(a.vistos) de \(a.total) videos, \(teQuedan(min, corto: true))"
     }
 
     // MARK: - Guía destacada (pedido de Mati, 4-nov: «súper llamativo, súper guiado, porque es lo primero»)
@@ -212,8 +223,8 @@ public enum ReglasGuia {
     /// La línea de la tarjeta con novedad: «2 videos nuevos, unos 3 min» o «1 de 2 videos nuevos, te quedan 2 min».
     public static func textoTarjetaNovedad(_ a: Avance) -> String {
         let min = max(1, Int(a.minutosRestantes.rounded()))
-        if a.vistos == 0 { return "\(a.total) \(a.total == 1 ? "video nuevo" : "videos nuevos"), unos \(min) min" }
-        return "\(a.vistos) de \(a.total) videos nuevos, te quedan \(min) min"
+        if a.vistos == 0 { return "\(a.total) \(a.total == 1 ? "video nuevo" : "videos nuevos"), \(unos(min, corto: true))" }
+        return "\(a.vistos) de \(a.total) videos nuevos, \(teQuedan(min, corto: true))"
     }
 
     /// La marca de «Ocultar» sigue valiendo: sin `novedad_en`, como en la 2.1.0. Con una novedad posterior a la marca (o
@@ -245,8 +256,8 @@ public enum ReglasGuia {
     /// El texto de la bienvenida, en la voz de Mati.
     public static func textoBienvenida(_ a: Avance) -> String {
         let min = max(1, Int(a.minutosRestantes.rounded()))
-        let cuantos = a.total == 1 ? "Es un video corto que armé para vos, de unos \(min) min."
-                                   : "Son \(a.total) videos cortos que armé para vos, unos \(min) min."
+        let cuantos = a.total == 1 ? "Es un video corto que armé para vos, de \(unos(min, corto: true))."
+                                   : "Son \(a.total) videos cortos que armé para vos, \(unos(min, corto: true))."
         return "Antes de empezar, mirá tu guía. \(cuantos) Así en la videollamada vamos directo a lo tuyo."
     }
 

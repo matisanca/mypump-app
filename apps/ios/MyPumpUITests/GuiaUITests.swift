@@ -375,7 +375,7 @@ final class GuiaUITests: XCTestCase {
         // Sin ningún video visto, la destacada; en la demo de Apple, sin la bienvenida.
         let texto = app.descendants(matching: .any)["guia-tarjeta-texto"]
         // 2.2.0: la demo trae dos videos nuevos (FT-2a y FT-2d): la tarjeta es la de la novedad.
-        XCTAssertTrue(texto.waitForExistence(timeout: 5) && texto.label == "Novedad en tu guía, 2 videos nuevos, unos 1 min",
+        XCTAssertTrue(texto.waitForExistence(timeout: 5) && texto.label == "Novedad en tu guía, 2 videos nuevos, 1 min",
                       "La tarjeta de la demo dice otra cosa: \(texto.label)")
         XCTAssertFalse(app.buttons["guia-bienvenida-ver"].exists, "La demo de Apple no lleva la bienvenida")
         capturaMaqueta("demo-tarjeta")

@@ -94,7 +94,7 @@ struct GuiaReglasTests {
         #expect(abs(b[0].minutos - 1.7) < 0.0001)
         #expect(b[2].indices == [3, 4])
         #expect(ReglasGuia.textoBloque(b[0]) == "2 videos, unos 2 minutos")
-        #expect(ReglasGuia.textoBloque(b[1]) == "1 video, unos 1 minuto")
+        #expect(ReglasGuia.textoBloque(b[1]) == "1 video, 1 minuto")
     }
 
     @Test func duraciones() {
@@ -110,13 +110,13 @@ struct GuiaReglasTests {
         let c = [clip("a", minutos: 1.2, visto: true), clip("b", minutos: 0.3), clip("c", minutos: 0.4)]
         let a = ReglasGuia.avance(c)
         #expect(a.vistos == 1 && a.total == 3 && abs(a.minutosRestantes - 0.7) < 0.0001)
-        #expect(ReglasGuia.textoAvance(a) == "Viste 1 de 3, te quedan unos 1 minutos")
-        #expect(ReglasGuia.textoTarjeta(a) == "1 de 3 videos, te quedan 1 min")
+        #expect(ReglasGuia.textoAvance(a) == "Viste 1 de 3, te queda 1 minuto")
+        #expect(ReglasGuia.textoTarjeta(a) == "1 de 3 videos, te queda 1 min")
         let todos = ReglasGuia.avance(c.map { var x = $0; x.visto = true; return x })
         #expect(ReglasGuia.textoAvance(todos) == "Viste todos, nos vemos en la videollamada")
         #expect(ReglasGuia.textoTarjeta(todos) == "Viste los 3 videos")
         #expect(ReglasGuia.textoTarjeta(.init(total: 13, vistos: 0, minutosRestantes: 12.4)) == "13 videos cortos, unos 12 min")
-        #expect(ReglasGuia.textoTarjeta(.init(total: 1, vistos: 0, minutosRestantes: 0.3)) == "1 video corto, unos 1 min")
+        #expect(ReglasGuia.textoTarjeta(.init(total: 1, vistos: 0, minutosRestantes: 0.3)) == "1 video corto, 1 min")
         #expect(ReglasGuia.textoTarjeta(.init(total: 13, vistos: 4, minutosRestantes: 12)) == "4 de 13 videos, te quedan 12 min")
     }
 
@@ -465,7 +465,7 @@ struct GuiaPostEntregaTests {
         #expect(ReglasGuia.tituloBienvenida(nil, nombreCuenta: "  ") == "Hola")
         #expect(ReglasGuia.textoBienvenida(.init(total: 11, vistos: 0, minutosRestantes: 9.4))
                 == "Antes de empezar, mirá tu guía. Son 11 videos cortos que armé para vos, unos 9 min. Así en la videollamada vamos directo a lo tuyo.")
-        #expect(ReglasGuia.textoBienvenida(.init(total: 1, vistos: 0, minutosRestantes: 0.2)).contains("Es un video corto que armé para vos, de unos 1 min."))
+        #expect(ReglasGuia.textoBienvenida(.init(total: 1, vistos: 0, minutosRestantes: 0.2)).contains("Es un video corto que armé para vos, de 1 min."))
         for t in [ReglasGuia.textoBienvenida(.init(total: 3, vistos: 0, minutosRestantes: 2)), ReglasGuia.tituloBienvenida("Ana")] {
             #expect(!t.hasSuffix(":"))
         }
