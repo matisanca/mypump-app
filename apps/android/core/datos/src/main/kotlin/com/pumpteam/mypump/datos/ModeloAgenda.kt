@@ -336,7 +336,8 @@ class ModeloAgenda(
         internal fun franjaDe(op: Operacion): FranjaEntrega? {
             val id = op.payload["franja"]?.comoTexto ?: return null
             val i = AgendaEntrega.instante(op.payload["inicio"]?.comoTexto) ?: return null
-            return FranjaEntrega(id, i, AgendaEntrega.instante(op.payload["fin"]?.comoTexto) ?: i.plusSeconds(2 * 3600))
+            val f = AgendaEntrega.instante(op.payload["fin"]?.comoTexto)?.takeIf { it.isAfter(i) } ?: return null
+            return FranjaEntrega(id, i, f)
         }
 
         /** La agenda de «Ver demo» (`apps/shared/demo/agenda.json`), para [ModeloGuia.demo]. */

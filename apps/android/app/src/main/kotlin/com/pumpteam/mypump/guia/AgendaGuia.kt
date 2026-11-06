@@ -466,11 +466,11 @@ internal fun abrirMeet(contexto: Context, url: String) {
  */
 internal fun agregarAlCalendario(contexto: Context, r: ReservaEntrega) {
     val inicio = r.inicio ?: return
-    val fin = r.fin ?: inicio.plusSeconds(2 * 3600)
     val intent = Intent(Intent.ACTION_INSERT)
         .setData(CalendarContract.Events.CONTENT_URI)
         .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, inicio.toEpochMilli())
-        .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, fin.toEpochMilli())
+        // Sin fin, el calendario pone su duración (no se inventa una).
+        .apply { r.fin?.let { putExtra(CalendarContract.EXTRA_EVENT_END_TIME, it.toEpochMilli()) } }
         .putExtra(CalendarContract.Events.TITLE, "Entrega Pump Team")
         .apply { r.meetUrl?.let { putExtra(CalendarContract.Events.DESCRIPTION, it).putExtra(CalendarContract.Events.EVENT_LOCATION, it) } }
     try {

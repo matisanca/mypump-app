@@ -85,7 +85,10 @@ data class AgendaEntrega(
     }
 }
 
-/** Una franja libre: 2 h que empiezan a las 10 o a las 14 de Argentina (lo arma el servidor). */
+/**
+ * Una franja libre, como la arma el servidor. Los horarios y la duración son solo datos (pueden cambiar: 10, 11 y 12 con
+ * llamadas más cortas): la app no supone ninguna hora ni duración, la saca de [inicio] y [fin].
+ */
 data class FranjaEntrega(val id: String, val inicio: Instant, val fin: Instant) {
     fun aValor(): ValorJson = ValorJson.objeto(
         "id" to ValorJson.Texto(id),
@@ -98,8 +101,8 @@ data class FranjaEntrega(val id: String, val inicio: Instant, val fin: Instant) 
             val o = e as? JsonObject ?: return null
             val id = o.texto("id")?.trim()?.ifEmpty { null } ?: return null
             val inicio = AgendaEntrega.instante(o.cadena("inicio")) ?: return null
-            // Sin fin (o uno que no cierra), las 2 h de siempre.
-            val fin = AgendaEntrega.instante(o.cadena("fin"))?.takeIf { it.isAfter(inicio) } ?: inicio.plusSeconds(2 * 3600)
+            // Sin fin (o uno que no cierra) no se sabe cuánto dura: la franja no se muestra.
+            val fin = AgendaEntrega.instante(o.cadena("fin"))?.takeIf { it.isAfter(inicio) } ?: return null
             return FranjaEntrega(id, inicio, fin)
         }
     }
@@ -147,7 +150,8 @@ data class ReservaEntrega(
             return ReservaEntrega(
                 id = o.texto("id")?.trim()?.ifEmpty { null },
                 inicio = inicio,
-                fin = AgendaEntrega.instante(o.cadena("fin"))?.takeIf { inicio == null || it.isAfter(inicio) } ?: inicio?.plusSeconds(2 * 3600),
+                // Sin fin queda null: no se inventa una duración (ver `ReglasAgenda.finDe`).
+                fin = AgendaEntrega.instante(o.cadena("fin"))?.takeIf { inicio == null || it.isAfter(inicio) },
                 estado = estado,
                 // Solo un link https: otra cosa no se abre.
                 meetUrl = o.cadena("meet_url")?.trim()?.takeIf { it.startsWith("https://", ignoreCase = true) },

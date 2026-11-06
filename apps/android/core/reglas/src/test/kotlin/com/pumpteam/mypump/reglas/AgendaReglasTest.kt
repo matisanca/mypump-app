@@ -1,6 +1,7 @@
 package com.pumpteam.mypump.reglas
 
 import com.pumpteam.mypump.modelos.AgendaEntrega
+import com.pumpteam.mypump.modelos.FranjaEntrega
 import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.ReservaEntrega
 import com.pumpteam.mypump.modelos.ResumenGuia
@@ -165,7 +166,8 @@ class AgendaReglasTest {
     private val franjas = """[
         {"id":"f2","inicio":"2026-11-12T14:00:00-03:00","fin":"2026-11-12T16:00:00-03:00"},
         {"id":"f1","inicio":"2026-11-12T10:00:00-03:00","fin":"2026-11-12T12:00:00-03:00"},
-        {"id":"f3","inicio":"2026-11-13 13:00:00+00","otro":1},
+        {"id":"f3","inicio":"2026-11-13 13:00:00+00","fin":"2026-11-13 14:00:00+00","otro":1},
+        {"id":"sin-fin","inicio":"2026-11-13T11:00:00-03:00"},
         {"inicio":"2026-11-14T10:00:00-03:00"},
         {"id":"rota","inicio":"mañana"}
     ]"""
@@ -174,8 +176,8 @@ class AgendaReglasTest {
     fun decodificaLaAgendaConCamposDeMasYDeMenos() {
         val a = AgendaEntrega.desde(j("""{"ok":true,"habilitada":true,"autorizada":true,"faltan":0,"zona":"America/Argentina/Buenos_Aires","franjas":$franjas,"reserva":null,"nuevo_campo":[1,2]}"""))!!
         assertEquals(listOf("f1", "f2", "f3"), a.franjas.map { it.id })
-        // Sin fin, las 2 h; con la hora de Postgres.
-        assertEquals(Instant.parse("2026-11-13T15:00:00Z"), a.franjas[2].fin)
+        // Con la hora de Postgres; sin fin no se sabe cuánto dura y no se muestra (no se supone ninguna duración).
+        assertEquals(Instant.parse("2026-11-13T14:00:00Z"), a.franjas[2].fin)
         assertTrue(a.puedeAgendar)
         assertNull(a.reserva)
         assertEquals(a, AgendaEntrega.desde(a.aValor()))
@@ -319,5 +321,41 @@ class AgendaReglasTest {
         assertEquals(Instant.parse("2026-11-12T12:55:00Z"), d.salaAbiertaEn)
         assertEquals(d, ReservaEntrega.desde(d.aValor()))
         assertNull(ReservaEntrega.desde(j("""{"estado":"confirmada","sala_abierta_en":"nunca"}"""))!!.salaAbiertaEn)
+    }
+
+    @Test
+    fun laDuracionSaleDeCadaFranja() {
+        val ar = ReglasAgenda.ARGENTINA
+        fun f(desde: String, hasta: String) = FranjaEntrega("x", Instant.parse(desde), Instant.parse(hasta))
+        // Horarios que no son 10 ni 14, y llamadas más cortas: todo sale de los datos.
+        assertEquals(
+            "¿Confirmás la entrega el jueves 12 a las 11:00? Dura alrededor de 1 hora.",
+            ReglasAgenda.textoConfirmar(f("2026-11-12T14:00:00Z", "2026-11-12T15:00:00Z"), ar),
+        )
+        assertEquals(
+            "¿Confirmás la entrega el jueves 12 a las 12:00? Dura unos 45 minutos.",
+            ReglasAgenda.textoConfirmar(f("2026-11-12T15:00:00Z", "2026-11-12T15:45:00Z"), ar),
+        )
+        val i = Instant.parse("2026-11-12T13:00:00Z")
+        fun d(min: Long) = ReglasAgenda.textoDuracion(i, i.plusSeconds(min * 60))
+        assertEquals("Dura unas 2 horas", d(120))
+        assertEquals("Dura unas 2 horas", d(130))
+        assertEquals("Dura unas 2 horas y media", d(140))
+        assertEquals("Dura alrededor de 1 hora y media", d(90))
+        assertEquals("Dura alrededor de 1 hora", d(70))
+        assertEquals("Dura alrededor de 1 hora", d(60))
+        assertEquals("Dura alrededor de 1 hora", d(55))
+        assertEquals("Dura unos 45 minutos", d(50))
+        assertEquals("Dura unos 30 minutos", d(30))
+        assertEquals("Dura unos 15 minutos", d(5))
+        assertNull(d(0))
+        // La tarjeta confirmada con la franja de 45 min, y sin fin solo la hora de inicio.
+        val r = ReservaEntrega("r", i, i.plusSeconds(45 * 60), ReservaEntrega.Estado.CONFIRMADA, null, null)
+        assertEquals("Tu entrega: jueves 12 de noviembre, 10:00 a 10:45", ReglasAgenda.textoConfirmada(r, ar))
+        assertEquals("Tu entrega: jueves 12 de noviembre, 10:00", ReglasAgenda.textoConfirmada(r.copy(fin = null), ar))
+        // Y el «Entrar» dura lo que la franja: a los 45 min ya no está.
+        val abierta = r.copy(meetUrl = "https://meet.google.com/x", salaAbiertaEn = i)
+        assertTrue(ReglasAgenda.puedeEntrar(abierta, i.plusSeconds(44 * 60)))
+        assertFalse(ReglasAgenda.puedeEntrar(abierta, i.plusSeconds(45 * 60)))
     }
 }

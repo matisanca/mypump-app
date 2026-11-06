@@ -212,14 +212,40 @@ object ReglasAgenda {
     fun difiereDeArgentina(zona: ZoneId, instantes: List<Instant>): Boolean =
         instantes.any { zona.rules.getOffset(it) != ARGENTINA.rules.getOffset(it) }
 
-    /** «¿Confirmás la entrega el jueves 12 a las 10:00? Dura unas 2 horas.» */
-    fun textoConfirmar(f: FranjaEntrega, zona: ZoneId): String =
-        "¿Confirmás la entrega el ${diaCorto(f.inicio, zona)} a las ${hora(f.inicio, zona)}? Dura unas 2 horas."
+    /**
+     * «¿Confirmás la entrega el jueves 12 a las 10:00? Dura unas 2 horas.» La duración sale de la franja (fin − inicio): los
+     * horarios y la duración cambian solo con datos.
+     */
+    fun textoConfirmar(f: FranjaEntrega, zona: ZoneId): String {
+        val dura = textoDuracion(f.inicio, f.fin)?.let { " $it." } ?: ""
+        return "¿Confirmás la entrega el ${diaCorto(f.inicio, zona)} a las ${hora(f.inicio, zona)}?$dura"
+    }
+
+    /**
+     * «Dura unas 2 horas», «Dura alrededor de 1 hora y media», «Dura alrededor de 1 hora», «Dura unos 45 minutos». Más de
+     * 1 h se redondea a la media hora; hasta 1 h, a los 15 min. null si no cierra.
+     */
+    fun textoDuracion(inicio: Instant, fin: Instant): String? {
+        val min = java.time.Duration.between(inicio, fin).toMinutes()
+        if (min <= 0) return null
+        if (min > 60) {
+            val medias = Math.round(min / 30.0).toInt()
+            val horas = medias / 2
+            val yMedia = medias % 2 == 1
+            return when {
+                horas == 1 -> "Dura alrededor de 1 hora" + if (yMedia) " y media" else ""
+                else -> "Dura unas $horas horas" + if (yMedia) " y media" else ""
+            }
+        }
+        val cuartos = (Math.round(min / 15.0) * 15).coerceAtLeast(15)
+        return if (cuartos >= 60) "Dura alrededor de 1 hora" else "Dura unos $cuartos minutos"
+    }
 
     /** «Tu entrega: jueves 12 de noviembre, 10:00 a 12:00». */
     fun textoConfirmada(r: ReservaEntrega, zona: ZoneId): String {
         val i = r.inicio ?: return "Tu entrega está confirmada"
-        return "Tu entrega: ${dia(i, zona)}, ${rango(i, r.fin ?: i.plusSeconds(2 * 3600), zona)}"
+        val f = r.fin ?: return "Tu entrega: ${dia(i, zona)}, ${hora(i, zona)}"
+        return "Tu entrega: ${dia(i, zona)}, ${rango(i, f, zona)}"
     }
 
     /** Desde cuánto antes de la franja se muestra la tarjeta de Entreno y se consulta seguido si Mati ya abrió la sala. */
@@ -228,7 +254,14 @@ object ReglasAgenda {
     /** Cada cuánto se consulta la agenda, con la pantalla abierta, mientras se espera que Mati abra la sala. */
     const val CONSULTA_SALA_MS = 30_000L
 
-    private fun fin(r: ReservaEntrega): Instant? = r.fin ?: r.inicio?.plusSeconds(2 * 3600)
+    /**
+     * Hasta cuándo dura la entrega: el `fin` de la reserva. Sin él (no debería pasar: el servidor lo manda siempre) no se
+     * inventa una duración: se toma el fin de ese día en Argentina, para no cortar el «Entrar» antes de tiempo.
+     */
+    fun finDe(r: ReservaEntrega): Instant? =
+        r.fin ?: r.inicio?.let { it.atZone(ARGENTINA).toLocalDate().plusDays(1).atStartOfDay(ARGENTINA).toInstant() }
+
+    private fun fin(r: ReservaEntrega): Instant? = finDe(r)
 
     /**
      * «Entrar» (cambio de Mati del 6/11: el cliente nunca entra directo): confirmada, con link y antes del fin, y además
