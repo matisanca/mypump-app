@@ -37,8 +37,15 @@ final class AgendaUITests: XCTestCase {
         for _ in 0..<maximo {
             if e.exists, e.isHittable, e.frame.minY > app.frame.height * 0.1, e.frame.maxY < app.frame.height * 0.82 { return }
             let origen = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let arriba = e.exists && e.frame.maxY < app.frame.height * 0.1 && e.frame.maxY > 0
-            let d: CGFloat = arriba ? app.frame.height * 0.25 : -app.frame.height * 0.3
+            // Si ya se sabe dónde está, se arrastra lo justo para centrarlo (con letra grande y pantalla chica, un paso
+            // fijo lo pasa de largo de un lado al otro).
+            let h = app.frame.height
+            let d: CGFloat
+            if e.exists, !e.frame.isEmpty, e.frame.midY > -h, e.frame.midY < 2 * h {
+                d = min(max(h * 0.45 - e.frame.midY, -h * 0.3), h * 0.3)
+            } else {
+                d = -h * 0.3
+            }
             origen.press(forDuration: 0.05, thenDragTo: origen.withOffset(CGVector(dx: 0, dy: d)), withVelocity: .fast, thenHoldForDuration: 0.1)
         }
     }
