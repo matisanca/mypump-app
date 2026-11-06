@@ -370,17 +370,34 @@ class GuiaUiTest : PruebaUi() {
             p.tocar(etiqueta("ver-demo"))
             p.nodo(texto("Estás viendo la demo"))
             p.nodo(etiqueta("tarjeta-guia"))
-            // Sin ver ninguno, la destacada: «8 videos cortos, unos N min» (sin bienvenida en la demo).
-            assertTrue(p.existe(textoQueContiene("8 videos cortos, unos")))
+            // La demo es de fase 2 (2.2.0): la destacada es «NOVEDAD EN TU GUÍA» con los nuevos (sin bienvenida en la demo).
+            assertTrue(p.existe(etiqueta("guia-novedad")))
+            assertTrue(p.existe(textoQueContiene("videos nuevos para vos")))
             assertFalse(p.existe(etiqueta("guia-bienvenida")))
             Telefono.captura("pe-demo-entreno")
             p.tocar(etiqueta("tarjeta-guia"))
             p.nodo(etiqueta("guia-cabecera"))
             p.nodo(texto("Hola"))
-            p.nodo(etiqueta("clip-FT-2b"))
+            // Fase 2 (2.2.0): arriba va «Novedad», abierta; FT-2b está en «Tu app», que se abre.
+            p.nodo(etiqueta("bloque-novedad"))
+            if (!p.existe(etiqueta("clip-FT-2b"))) {
+                bajarHasta(etiqueta("bloque-Tu app"))
+                p.tocar(etiqueta("bloque-Tu app"))
+            }
+            bajarHasta(etiqueta("clip-FT-2b"))
             Telefono.captura("pe-demo-guia")
             // Un clip corto de verdad (URL pública): se dibuja y, al 80 %, queda visto en memoria.
             p.tocar(etiqueta("clip-FT-2b"))
+            // FT-2b trae las franjas negras metidas en el archivo (1280×720 con contenido en las columnas 422 a 855): la caja
+            // toma la proporción de la zona útil (vertical, ~0,6), no la del archivo (se mira mientras corre: al terminar pasa
+            // al siguiente).
+            p.esperar("la caja de FT-2b sin franjas", ms = 30_000, enElPrincipal = false) {
+                val n = p.nodo(etiqueta("guia-video"))
+                val t = p.enPrincipal { n.size }
+                (t.height > 0 && t.width.toFloat() / t.height in 0.5f..0.7f).takeIf { it }
+            }
+            p.quieto(600)
+            Telefono.captura("video-ft2b-sin-franjas")
             p.esperar("el video visto", ms = 60_000, enElPrincipal = false) { p.estado(etiqueta("clip-FT-2b"))?.contains("visto") == true }
             assertTrue("el video no dibuja cuadros", cuadroConImagen(a))
             mostrar(etiqueta("guia-reproductor"), 250f)

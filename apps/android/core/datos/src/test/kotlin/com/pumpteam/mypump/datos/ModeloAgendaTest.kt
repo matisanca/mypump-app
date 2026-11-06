@@ -235,7 +235,7 @@ class ModeloAgendaTest {
     }
 
     @Test
-    fun laReservaPendienteSeConsultaCada5sHasta60s() = enUnHilo { alcance ->
+    fun laReservaPendienteSeConsultaCada5sElPrimerMinutoYDespuesCada30s() = enUnHilo { alcance ->
         var ahora = 0L
         val esperas = mutableListOf<Long>()
         val t = TransporteProgramado { fn, _ ->
@@ -246,14 +246,12 @@ class ModeloAgendaTest {
             ahora += ms
         })
         val trabajo = alcance.launch { m.seguir() }
-        kotlinx.coroutines.withTimeout(10_000) { while (esperas.size < 12) kotlinx.coroutines.delay(5) }
-        // Y después no sigue: queda esperando la vuelta a primer plano.
-        kotlinx.coroutines.delay(300)
+        kotlinx.coroutines.withTimeout(10_000) { while (esperas.size < 15) kotlinx.coroutines.delay(5) }
         trabajo.cancel()
-        // La primera al abrir y después cada 5 s durante 60 s; ahí para (hasta volver a primer plano).
-        assertTrue(esperas.all { it == ModeloAgenda.CONSULTA_CADA_MS })
-        assertEquals(12, esperas.size)
-        assertEquals(13, t.llamadas.count { it == "entregas_app_agenda" })
+        // La primera al abrir, cada 5 s durante 60 s y después cada 30 s (el daemon puede tardar).
+        assertEquals(List(12) { ModeloAgenda.CONSULTA_CADA_MS }, esperas.take(12))
+        assertTrue(esperas.drop(12).all { it == ReglasAgenda.CONSULTA_SALA_MS })
+        assertTrue(t.llamadas.count { it == "entregas_app_agenda" } >= 15)
     }
 
     @Test
@@ -295,6 +293,28 @@ class ModeloAgendaTest {
         reloj2 = Instant.parse("2026-11-12T12:50:00Z").toEpochMilli()
         m2.alVolverAPrimerPlano()
         assertEquals(2, c2)
+    }
+
+    @Test
+    fun conLaPantallaAbiertaLaPendienteSeConfirmaSola() = enUnHilo { alcance ->
+        var respuesta = habilitada
+        val e = entorno(alcance) { fn, _ ->
+            when (fn) {
+                "entregas_app_agenda" -> 200 to respuesta
+                "entregas_app_reservar" -> 200 to """{"ok":true,"reserva":${reserva("pendiente")}}"""
+                else -> 200 to "true"
+            }
+        }
+        val trabajo = alcance.launch { e.agenda.seguir() }
+        kotlinx.coroutines.withTimeout(5_000) { while (e.agenda.agenda.value?.franjas.isNullOrEmpty()) kotlinx.coroutines.delay(20) }
+        respuesta = """{"ok":true,"habilitada":true,"autorizada":true,"faltan":0,"reserva":${reserva("pendiente")}}"""
+        assertTrue(e.agenda.reservar(e.agenda.agenda.value!!.franjas.first()))
+        e.cola.drenar()
+        kotlinx.coroutines.withTimeout(5_000) { while (e.agenda.agenda.value?.reserva?.estado != ReservaEntrega.Estado.PENDIENTE) kotlinx.coroutines.delay(20) }
+        respuesta = """{"ok":true,"habilitada":true,"autorizada":true,"faltan":0,"reserva":${reserva("confirmada", ""","meet_url":"https://meet.google.com/abc"""")}}"""
+        // La consulta de cada 5 s la trae confirmada.
+        kotlinx.coroutines.withTimeout(12_000) { while (e.agenda.agenda.value?.reserva?.estado != ReservaEntrega.Estado.CONFIRMADA) kotlinx.coroutines.delay(50) }
+        trabajo.cancel()
     }
 
     @Test

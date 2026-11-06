@@ -7,7 +7,6 @@ import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.ReglasAgenda
 import java.time.Duration
 import java.time.Instant
-import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -150,7 +149,7 @@ class ModeloAgenda(
 
     /**
      * Lo que corre la pantalla mientras «Tu guía» está a la vista y en primer plano (se cancela al salir o al ir a segundo
-     * plano; al volver, empieza de nuevo y consulta). Con la reserva pendiente, cada 5 s hasta 60 s. Con la confirmada y
+     * plano; al volver, empieza de nuevo y consulta). Con la reserva pendiente, cada 5 s el primer minuto y después cada 30 s. Con la confirmada y
      * Mati todavía sin entrar al Meet, cada 30 s desde 30 min antes hasta el fin de la franja (si falta, espera a esa hora).
      */
     suspend fun seguir() {
@@ -165,6 +164,12 @@ class ModeloAgenda(
             val antes = _agenda.value
             if (seguirConsultando()) {
                 esperar(CONSULTA_CADA_MS)
+                refrescar()
+                continue
+            }
+            // Pasado el minuto sigue pendiente (el daemon tarda): de a 30 s, hasta que se confirme o falle.
+            if (_reservando.value != null || antes?.reserva?.estado == ReservaEntrega.Estado.PENDIENTE) {
+                esperar(ReglasAgenda.CONSULTA_SALA_MS)
                 refrescar()
                 continue
             }
@@ -309,8 +314,9 @@ class ModeloAgenda(
         val faltan = faltanDemo()
         val primero = p.franjas.minOfOrNull { it.inicio }
         val corridas = if (primero == null) p.franjas else {
-            val hoy = LocalDate.ofInstant(Instant.ofEpochMilli(reloj()), ReglasAgenda.ARGENTINA)
-            val dias = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.ofInstant(primero, ReglasAgenda.ARGENTINA), hoy.plusDays(1))
+            // `LocalDate.ofInstant` es de Java 9 (Android 14): con `atZone` anda desde Android 8.
+            val hoy = Instant.ofEpochMilli(reloj()).atZone(ReglasAgenda.ARGENTINA).toLocalDate()
+            val dias = java.time.temporal.ChronoUnit.DAYS.between(primero.atZone(ReglasAgenda.ARGENTINA).toLocalDate(), hoy.plusDays(1))
             p.franjas.map { it.copy(inicio = it.inicio.plus(Duration.ofDays(dias)), fin = it.fin.plus(Duration.ofDays(dias))) }
         }
         val habilitada = p.autorizada && faltan == 0

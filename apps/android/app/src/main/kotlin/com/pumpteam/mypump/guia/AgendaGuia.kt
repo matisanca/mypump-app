@@ -138,9 +138,9 @@ fun TarjetaAgenda(
                 Text("Sin conexión", style = MaterialTheme.typography.labelLarge, color = MyPump.colores.alerta)
             }
         }
+        // Cada texto puede venir pisado del servidor (`textos`, spec §7).
+        val titulo = ReglasAgenda.textoTitulo(agenda)
         when (vista) {
-            // Cada texto puede venir pisado del servidor (`textos`, spec §7).
-            val titulo = ReglasAgenda.textoTitulo(agenda)
             ReglasAgenda.Vista.NO_AUTORIZADA ->
                 Bloqueada(titulo, ReglasAgenda.texto(agenda, "no_autorizada", ReglasAgenda.TEXTO_NO_AUTORIZADA, faltan = faltan), null, "agenda-no-autorizada")
             ReglasAgenda.Vista.BLOQUEADA ->

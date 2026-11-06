@@ -44,22 +44,31 @@ class AgendaUiTest : PruebaUi() {
         }
     }.toString()
 
-    private val resumen = """{"ok": true, "total": 17, "vistos": 4, "minutos_restantes": 9.0, "novedad_en": "$novedadEn"}"""
+    private val resumen = """{"ok": true, "total": 17, "vistos": 4, "minutos_restantes": 9.0, "novedad_en": "$novedadEn", "nuevos_total": 2, "nuevos_vistos": 0}"""
 
     /** Franjas siempre en el futuro: mañana y pasado, 10 y 14 de Argentina. */
     private fun franjas(): String {
         val manana = Instant.now().atZone(java.time.ZoneId.of("America/Argentina/Buenos_Aires")).toLocalDate().plusDays(1)
         fun f(n: Int, dia: Long, hora: Int): String {
             val i = manana.plusDays(dia).atTime(hora, 0).atZone(java.time.ZoneId.of("America/Argentina/Buenos_Aires")).toOffsetDateTime()
-            return """{"id": "0000000$n-0000-4000-8000-000000000000", "inicio": "$i", "fin": "${i.plusHours(2)}"}"""
+            return """{"id": "0000000$n-0000-4000-8000-000000000000", "inicio": "$i", "fin": "${i.plusHours(1)}"}"""
         }
         return "[${f(1, 0, 10)}, ${f(2, 0, 14)}, ${f(3, 1, 10)}]"
     }
 
     private fun reserva(estado: String, meet: String? = null): String {
         val i = Instant.now().plus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS)
-        return """{"id": "r1", "inicio": "$i", "fin": "${i.plus(2, ChronoUnit.HOURS)}", "estado": "$estado", "meet_url": ${meet?.let { "\"$it\"" } ?: "null"}, "motivo": null}"""
+        return """{"id": "r1", "inicio": "$i", "fin": "${i.plus(1, ChronoUnit.HOURS)}", "estado": "$estado", "meet_url": ${meet?.let { "\"$it\"" } ?: "null"}, "motivo": null}"""
     }
+
+    /** Una reserva confirmada que empieza en 10 min (dentro de la ventana de la sala), con o sin Mati en el Meet. */
+    private fun reservaHoy(sala: Boolean): String {
+        val i = Instant.now().plus(10, ChronoUnit.MINUTES).truncatedTo(ChronoUnit.MINUTES)
+        val abierta = if (sala) "\"${Instant.now().minus(1, ChronoUnit.MINUTES)}\"" else "null"
+        return """{"id": "r1", "inicio": "$i", "fin": "${i.plus(1, ChronoUnit.HOURS)}", "estado": "confirmada", "meet_url": "$meet", "motivo": null, "sala_abierta_en": $abierta}"""
+    }
+
+    private fun agendaCon(r: String) = """{"ok": true, "habilitada": true, "autorizada": true, "faltan": 0, "reserva": $r}"""
 
     private val bloqueada = """{"ok": true, "habilitada": false, "autorizada": true, "faltan": 1, "franjas": [], "reserva": null}"""
     private fun habilitada() = """{"ok": true, "habilitada": true, "autorizada": true, "faltan": 0, "franjas": ${franjas()}, "reserva": null}"""
@@ -106,6 +115,9 @@ class AgendaUiTest : PruebaUi() {
             p.quieto(250)
         }
     }
+
+    /** El texto de un nodo que no es un campo (lo que lee TalkBack). */
+    private fun texto(s: Selector): String = p.textosBajo(s).joinToString(" ")
 
     private fun marcarVisto(e: androidx.test.core.app.ActivityScenario<*>, video: String) {
         @Suppress("UNCHECKED_CAST")
@@ -158,7 +170,7 @@ class AgendaUiTest : PruebaUi() {
         // «Ir al próximo video» lleva al que falta.
         p.tocar(etiqueta("agenda-ir-al-proximo"))
         val titulo = JSONObject(guiaV2()).getJSONArray("clips").let { l -> (0 until l.length()).map { l.getJSONObject(it) }.first { it.getString("id") == "FT-9b" }.getString("titulo") }
-        p.esperar("FT-9b en el reproductor", enElPrincipal = false) { p.textoDe(etiqueta("guia-titulo")).takeIf { it == titulo } }
+        p.esperar("FT-9b en el reproductor", enElPrincipal = false) { texto(etiqueta("guia-titulo")).takeIf { it == titulo } }
         // Ve el último: el avance sale y la agenda se consulta de nuevo, ya habilitada.
         servidor.respuestas["entregas_app_get"] = guiaV2(ultimoVisto = true)
         servidor.respuestas["entregas_app_agenda"] = habilitada()
@@ -172,8 +184,8 @@ class AgendaUiTest : PruebaUi() {
         // Tocar un chip abre la hoja de confirmación.
         p.tocar(etiqueta("agenda-franja-00000001-0000-4000-8000-000000000000"))
         p.nodo(etiqueta("agenda-hoja-texto"))
-        assertTrue(p.textoDe(etiqueta("agenda-hoja-texto")).startsWith("¿Confirmás la entrega el "))
-        assertTrue(p.textoDe(etiqueta("agenda-hoja-texto")).endsWith("Dura unas 2 horas."))
+        assertTrue(texto(etiqueta("agenda-hoja-texto")).startsWith("¿Confirmás la entrega el "))
+        assertTrue(texto(etiqueta("agenda-hoja-texto")).endsWith("Dura alrededor de 1 hora."))
         foto("05-confirmacion")
         // Confirmar: sale por la cola y queda pendiente.
         servidor.respuestas["entregas_app_reservar"] = """{"ok": true, "reserva": ${reserva("pendiente")}}"""
@@ -191,23 +203,68 @@ class AgendaUiTest : PruebaUi() {
         Telefono.shell("screencap -p ${Telefono.CARPETA_CAPTURAS}/agenda-06-pendiente-$modo.png")
         // El daemon la confirma: la consulta de cada 5 s la trae con el link.
         servidor.respuestas["entregas_app_agenda"] = """{"ok": true, "habilitada": true, "autorizada": true, "faltan": 0, "reserva": ${reserva("confirmada", meet)}}"""
-        p.nodo(etiqueta("agenda-confirmada"), ms = 15_000)
+        // (Al terminar FT-9b la placa del siguiente puede subir la lista al reproductor: se vuelve a bajar.)
+        @Suppress("UNCHECKED_CAST")
+        val (_, mod) = p.modeloCargado(e as androidx.test.core.app.ActivityScenario<com.pumpteam.mypump.MainActivity>)
+        // La consulta de cada 5 s corre 60 s; si la captura de arriba tardó más (la lista que salta), la trae la de volver a
+        // primer plano, que se simula acá.
+        kotlinx.coroutines.runBlocking { mod.guia.value!!.agenda.refrescar() }
+        p.esperar("la confirmada", ms = 20_000) {
+            mod.guia.value?.agenda?.agenda?.value?.reserva?.estado == com.pumpteam.mypump.modelos.ReservaEntrega.Estado.CONFIRMADA
+        }
+        bajarHasta(etiqueta("agenda-confirmada"))
         mostrar(etiqueta("agenda-confirmada"))
-        assertTrue(p.textoDe(etiqueta("agenda-confirmada-texto")).startsWith("Tu entrega: "))
+        assertTrue(texto(etiqueta("agenda-confirmada-texto")).startsWith("Tu entrega: "))
         assertTrue(p.existe(texto("¿Necesitás cambiarla? Escribinos por WhatsApp")))
+        // Al confirmar no hay botón para entrar (cambio de Mati): antes del día, solo la fecha y la hora.
+        assertFalse(p.existe(etiqueta("agenda-entrar")))
+        assertFalse(p.existe(etiqueta("agenda-sala")))
         foto("07-confirmada")
-        // «Entrar a la videollamada» abre el link de Meet; «Agregar a mi calendario», el calendario del teléfono.
+        // «Agregar a mi calendario» abre el calendario del teléfono.
         val (monitor, links) = monitorDeLinks()
         try {
-            p.tocar(etiqueta("agenda-entrar"))
-            p.esperar("el link") { links.firstOrNull { it.action == Intent.ACTION_VIEW } }
-            assertEquals(meet, links.first { it.action == Intent.ACTION_VIEW }.dataString)
             p.tocar(etiqueta("agenda-calendario"))
             val cal = p.esperar("el calendario") { links.firstOrNull { it.action == Intent.ACTION_INSERT } }
             assertTrue(cal.getLongExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, 0) > 0)
         } finally {
             InstrumentationRegistry.getInstrumentation().removeMonitor(monitor)
         }
+    }
+
+    /**
+     * El día de la entrega: sin Mati en el Meet, el texto de espera y sin botón; la agenda se consulta cada 30 s y, cuando
+     * llega `sala_abierta_en`, aparece «Mati ya está en la videollamada» con «Entrar», que abre el link.
+     */
+    @Test
+    fun elBotonParaEntrarApareceCuandoMatiAbreLaSala() {
+        for (modo in listOf("claro", "oscuro", "grande")) {
+            Telefono.modoNoche(modo == "oscuro")
+            Telefono.shell("settings put system font_scale ${if (modo == "grande") "1.3" else "1.0"}")
+            conGuia(get = guiaV2(ultimoVisto = true), agenda = agendaCon(reservaHoy(sala = false)))
+            guardarCuenta()
+            val e = abrir()
+            abrirGuia()
+            mostrar(etiqueta("agenda-confirmada"))
+            assertTrue(texto(etiqueta("agenda-sala")).startsWith("Tu entrega es hoy a las "))
+            assertTrue(texto(etiqueta("agenda-sala")).endsWith("Cuando Mati abra la videollamada se habilita el botón para entrar."))
+            assertFalse(p.existe(etiqueta("agenda-entrar")))
+            Telefono.captura("agenda-12-sin-sala-abierta-$modo")
+            // Mati entra al Meet: el daemon carga `sala_abierta_en` y la consulta de cada 30 s lo trae.
+            servidor.respuestas["entregas_app_agenda"] = agendaCon(reservaHoy(sala = true))
+            p.nodo(etiqueta("agenda-entrar"), ms = 45_000)
+            mostrar(etiqueta("agenda-confirmada"))
+            assertEquals("Mati ya está en la videollamada", texto(etiqueta("agenda-sala")))
+            Telefono.captura("agenda-13-sala-abierta-$modo")
+            val (monitor, links) = monitorDeLinks()
+            try {
+                p.tocar(etiqueta("agenda-entrar"))
+                assertEquals(meet, p.esperar("el link") { links.firstOrNull { it.action == Intent.ACTION_VIEW } }.dataString)
+            } finally {
+                InstrumentationRegistry.getInstrumentation().removeMonitor(monitor)
+            }
+            e.close()
+        }
+        Telefono.shell("settings put system font_scale 1.0")
     }
 
     @Test
@@ -234,7 +291,7 @@ class AgendaUiTest : PruebaUi() {
             p.tocar(etiqueta("agenda-franja-00000002-0000-4000-8000-000000000000"))
             p.tocar(etiqueta("agenda-confirmar"))
             p.nodo(etiqueta("agenda-aviso"))
-            assertEquals("Ese horario se ocupó recién, elegí otro.", p.textoDe(etiqueta("agenda-aviso")))
+            assertEquals("Ese horario se ocupó recién, elegí otro.", texto(etiqueta("agenda-aviso")))
             mostrar(etiqueta("agenda-franjas"), arriba = 200f)
             assertTrue(p.existe(etiqueta("agenda-franja-00000001-0000-4000-8000-000000000000")))
             Telefono.captura("agenda-08-fallo-$modo")
@@ -244,7 +301,7 @@ class AgendaUiTest : PruebaUi() {
 
     @Test
     fun sinRedQuedaLoGuardadoYElLinkSigueAMano() {
-        conGuia(get = guiaV2(ultimoVisto = true), agenda = """{"ok": true, "habilitada": true, "autorizada": true, "faltan": 0, "reserva": ${reserva("confirmada", meet)}}""")
+        conGuia(get = guiaV2(ultimoVisto = true), agenda = agendaCon(reservaHoy(sala = true)))
         guardarCuenta()
         abrir().also { e ->
             abrirGuia()
@@ -299,15 +356,24 @@ class AgendaUiTest : PruebaUi() {
     }
 
     @Test
-    fun laTarjetaDeEntrenoMuestraEntrarMediaHoraAntes() {
-        val i = Instant.now().plus(10, ChronoUnit.MINUTES)
-        val r = """{"inicio": "$i", "fin": "${i.plus(2, ChronoUnit.HOURS)}", "estado": "confirmada", "meet_url": "$meet"}"""
-        conGuia(get = guiaV2(ultimoVisto = true), res = """{"ok": true, "total": 17, "vistos": 17, "minutos_restantes": 0, "reserva": $r}""", agenda = null)
+    fun laTarjetaDeEntrenoSigueLaMismaRegla() {
+        // Sin Mati en el Meet: la tarjeta con el texto de espera, sin «Entrar».
+        conGuia(
+            get = guiaV2(ultimoVisto = true),
+            res = """{"ok": true, "total": 17, "vistos": 17, "minutos_restantes": 0, "reserva": ${reservaHoy(sala = false)}}""",
+            agenda = agendaCon(reservaHoy(sala = false)),
+        )
         guardarCuenta()
         abrir()
         p.nodo(etiqueta("entrega-ahora"))
-        assertTrue(p.existe(textoQueContiene("Tu entrega empieza a las ")))
-        Telefono.captura("agenda-11-entreno-entrar-claro")
+        assertTrue(p.existe(textoQueContiene("Cuando Mati abra la videollamada se habilita el botón para entrar.")))
+        assertFalse(p.existe(etiqueta("entrega-ahora-entrar")))
+        Telefono.captura("agenda-11-entreno-sin-sala-claro")
+        // Mati entra: la consulta de cada 30 s de la tarjeta lo trae.
+        servidor.respuestas["entregas_app_agenda"] = agendaCon(reservaHoy(sala = true))
+        p.nodo(etiqueta("entrega-ahora-entrar"), ms = 45_000)
+        assertTrue(p.existe(textoQueContiene("Mati ya está en la videollamada")))
+        Telefono.captura("agenda-11-entreno-sala-abierta-claro")
         val (monitor, links) = monitorDeLinks()
         try {
             p.tocar(etiqueta("entrega-ahora"))

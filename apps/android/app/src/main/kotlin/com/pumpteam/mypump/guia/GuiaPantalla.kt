@@ -5,6 +5,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import java.time.ZoneId
 
+import android.view.View
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,6 +53,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.draw.clip
@@ -89,6 +93,7 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.ReglasAgenda
 import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.ReglasNovedad
+import com.pumpteam.mypump.reglas.ReglasVideo
 import com.pumpteam.mypump.reglas.ReglasReproductor
 import com.pumpteam.mypump.reglas.SuplementacionVista
 import kotlinx.coroutines.launch
@@ -292,6 +297,8 @@ private fun ContenidoGuia(
     LaunchedEffect(bloqueActual) { if (bloqueActual !in abiertos) abiertos += bloqueActual }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        // El alto visible (sin la barra de arriba ni las pestañas): el tope del 60 % de los videos verticales.
+        CompositionLocalProvider(LocalAltoVisible provides maxHeight.value) {
         val dosColumnas = maxWidth >= DOS_COLUMNAS
         // Un teléfono girado: el video a pantalla completa, como hace el sistema con los videos.
         val telefonoApaisado = !dosColumnas && maxWidth > maxHeight
@@ -443,6 +450,7 @@ private fun ContenidoGuia(
             listaGuia(Modifier.fillMaxSize().padding(top = relleno.calculateTopPadding()))
         }
     }
+    }
 }
 
 private fun LazyListScope.entradasGuia(
@@ -566,7 +574,7 @@ private fun AvisoSinRed(modifier: Modifier = Modifier) {
 }
 
 /**
- * La tarjeta del reproductor: el video 16:9 (con la placa o «Necesitás conexión» encima), el número y el título, los
+ * La tarjeta del reproductor: el video con la proporción del clip ([CajaVideo]; con la placa o «Necesitás conexión» encima), el número y el título, los
  * botones, lo que dice el video (qué hacer y para qué) y su duda.
  */
 @Composable
@@ -583,8 +591,10 @@ private fun TarjetaReproductor(
     val c = MyPump.colores
     val clip = control.clipActual
     Column(modifier.fillMaxWidth().superficieTarjeta().testTag("guia-reproductor")) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black)) {
-            if (!control.pantallaCompleta) VistaVideo(control, Modifier.fillMaxSize())
+        // La proporción de lo que se ve: la del archivo y, si trae las franjas metidas, solo la zona útil.
+        val recorte = recorteDe(clip?.url)
+        CajaVideo(ReglasVideo.proporcionVisible(proporcionDe(control.player, clip?.id), recorte)) {
+            if (!control.pantallaCompleta) VistaVideo(control, Modifier.fillMaxSize(), recorte = recorte)
             CapasVideo(control)
         }
         if (clip == null) {
@@ -654,8 +664,9 @@ private fun CapasVideo(control: ControlReproductor) {
 /** La vista de Media3 con sus controles (reproducir, la barra, la pantalla completa). Una sola a la vez tiene el reproductor. */
 @OptIn(UnstableApi::class)
 @Composable
-private fun VistaVideo(control: ControlReproductor, modifier: Modifier = Modifier, completa: Boolean = false) =
+private fun VistaVideo(control: ControlReproductor, modifier: Modifier = Modifier, completa: Boolean = false, recorte: ReglasVideo.Recuadro? = null) =
     VistaMedia3(
+        recorte = recorte,
         player = control.player,
         etiqueta = if (completa) "guia-video-completo" else "guia-video",
         alPantallaCompleta = { control.pantallaCompleta = it },
@@ -676,16 +687,12 @@ private fun VideoDelSuplemento(
     alEnviar: (String) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().testTag("guia-porque-${clip.id}"), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color.Black)
-                .testTag("guia-video-porque-caja"),
-        ) {
-            VistaMedia3(player = control.porQuePlayer, etiqueta = "guia-video-porque", alPantallaCompleta = null, completa = false, modifier = Modifier.fillMaxSize())
+        val recorte = recorteDe(clip.url)
+        CajaVideo(ReglasVideo.proporcionVisible(proporcionDe(control.porQuePlayer, clip.id), recorte)) {
+          Box(Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)).testTag("guia-video-porque-caja")) {
+            VistaMedia3(recorte = recorte, player = control.porQuePlayer, etiqueta = "guia-video-porque", alPantallaCompleta = null, completa = false, modifier = Modifier.fillMaxSize())
             control.fallaPorQue?.let { SinConexionVideo(it, alReintentar = control::reintentarPorQue) }
+          }
         }
         DudaVideo(
             video = clip.id,
@@ -710,6 +717,7 @@ private fun VistaMedia3(
     alPantallaCompleta: ((Boolean) -> Unit)?,
     completa: Boolean,
     modifier: Modifier = Modifier,
+    recorte: ReglasVideo.Recuadro? = null,
 ) {
     AndroidView(
         factory = { ctx ->
@@ -719,14 +727,27 @@ private fun VistaMedia3(
                 setShowNextButton(false)
                 setShowSubtitleButton(false)
                 setShowShuffleButton(false)
+                // La caja ya tiene la proporción del clip: FIT no recorta ni deforma, y sin el fondo negro del obturador
+                // (mientras carga se ve el fondo de la tarjeta, no una franja negra).
+                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 if (alPantallaCompleta != null) {
                     setFullscreenButtonClickListener { alPantallaCompleta(it) }
                     setFullscreenButtonState(completa)
                 }
                 contentDescription = "Video de tu guía"
+                // El recorte de la zona útil se vuelve a aplicar cada vez que cambia el tamaño (el marco o la vista).
+                val alCambiar = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> aplicarRecorte(this, tag as? ReglasVideo.Recuadro) }
+                addOnLayoutChangeListener(alCambiar)
+                findViewById<View>(androidx.media3.ui.R.id.exo_content_frame)?.addOnLayoutChangeListener(alCambiar)
             }
         },
-        update = { v -> if (v.player !== player) v.player = player },
+        update = { v ->
+            if (v.player !== player) v.player = player
+            v.tag = recorte
+            aplicarRecorte(v, recorte)
+        },
         onRelease = { v -> v.player = null },
         modifier = modifier.testTag(etiqueta),
     )
@@ -752,9 +773,15 @@ private fun PantallaCompleta(control: ControlReproductor) {
             onDispose { }
         }
         Box(Modifier.fillMaxSize().background(Color.Black).testTag("guia-pantalla-completa"), contentAlignment = Alignment.Center) {
-            Box(Modifier.fillMaxSize()) {
-                VistaVideo(control, Modifier.fillMaxSize(), completa = true)
-                CapasVideo(control)
+            // La proporción del clip también acá: lo más grande que entra sin deformarse.
+            val recorte = recorteDe(control.clipActual?.url)
+            val prop = ReglasVideo.proporcionVisible(proporcionDe(control.player, control.clipActual?.id), recorte)
+            BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                val (ancho, alto) = ReglasVideo.completa(prop, maxWidth.value, maxHeight.value)
+                Box(Modifier.size(ancho.dp, alto.dp).clipToBounds().testTag("guia-video-completo-caja")) {
+                    VistaVideo(control, Modifier.fillMaxSize(), completa = true, recorte = recorte)
+                    CapasVideo(control)
+                }
             }
         }
     }
