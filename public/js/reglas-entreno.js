@@ -217,12 +217,69 @@
     return nHoy - Math.min(...ns) >= DIAS_SUFICIENTES;
   }
 
+  /* ── Volumen por músculo (app 2.1, VolumenMusculo.swift) ──
+     Las series de cada músculo de lunes a domingo, con la semana pasada al
+     lado y lo de hoy aparte. Cada fila del historial es una serie; el
+     calentamiento y el cardio no cuentan. Sin músculo del catálogo va a «Sin
+     músculo asignado», al final. Vectores: apps/shared/vectores/volumen.json. */
+  const VOL_NO_CUENTAN = ['cardio', 'calentamiento'];
+  const VOL_ORDEN = ['quadriceps', 'shoulders', 'abdominals', 'chest', 'hamstrings', 'triceps', 'biceps', 'lats',
+    'middle back', 'calves', 'lower back', 'forearms', 'glutes', 'traps', 'adductors', 'neck', 'abductors'];
+  const VOL_NOMBRES = { quadriceps: 'cuádriceps', shoulders: 'hombros', abdominals: 'abdominales', chest: 'pecho',
+    hamstrings: 'isquiotibiales', triceps: 'tríceps', biceps: 'bíceps', lats: 'dorsales', 'middle back': 'espalda media',
+    calves: 'pantorrillas', 'lower back': 'zona lumbar', forearms: 'antebrazos', glutes: 'glúteos', traps: 'trapecios',
+    adductors: 'aductores', neck: 'cuello', abductors: 'abductores' };
+  const VOL_SIN_MUSCULO = 'Sin músculo asignado';
+  const VOL_VACIO = 'Todavía no registraste series esta semana.';
+  function volNormalizar(m) {
+    const x = String(m == null ? '' : m).trim().toLowerCase();
+    return VOL_ORDEN.includes(x) ? x : null;
+  }
+  function volNombre(m) {
+    const n = VOL_NOMBRES[volNormalizar(m)];
+    return n ? n[0].toUpperCase() + n.slice(1) : VOL_SIN_MUSCULO;
+  }
+  const _fechaOk = (f) => typeof f === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f) && !isNaN(Date.parse(f + 'T12:00:00Z'))
+    && new Date(f + 'T12:00:00Z').toISOString().slice(0, 10) === f;
+  function _lunes(f) {
+    const d = new Date(f + 'T12:00:00Z');
+    const dow = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - dow);
+    return d.toISOString().slice(0, 10);
+  }
+  function _menos7(f) { const d = new Date(f + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString().slice(0, 10); }
+  // historial: [{musculo, tipo, fecha 'YYYY-MM-DD', lugar, serie}]
+  function volumenMusculo(historial, hoy) {
+    const lunes = _lunes(hoy), anterior = _menos7(lunes);
+    const cuenta = new Map();
+    for (const r of (historial || [])) {
+      if (r.tipo && VOL_NO_CUENTAN.includes(r.tipo)) continue;
+      if (!_fechaOk(r.fecha)) continue;
+      const sem = _lunes(r.fecha);
+      const k = volNormalizar(r.musculo) || '';
+      const c = cuenta.get(k) || { semana: 0, anterior: 0, hoy: 0 };
+      if (sem === lunes) { c.semana++; if (r.fecha === hoy) c.hoy++; }
+      else if (sem === anterior) c.anterior++;
+      else continue;
+      cuenta.set(k, c);
+    }
+    const rango = (m) => { if (!m) return VOL_ORDEN.length; const i = VOL_ORDEN.indexOf(m); return i < 0 ? VOL_ORDEN.length : i; };
+    const filas = [...cuenta.entries()].sort((a, b) =>
+      (b[1].semana - a[1].semana) || (b[1].anterior - a[1].anterior) || (rango(a[0]) - rango(b[0])))
+      .map(([k, v]) => ({ musculo: k || null, nombre: volNombre(k || null), semana: v.semana, anterior: v.anterior, hoy: v.hoy }));
+    const ordenadas = filas.filter(f => f.musculo).concat(filas.filter(f => !f.musculo));
+    const suma = (c) => ordenadas.reduce((s, f) => s + f[c], 0);
+    const tope = ordenadas.reduce((m, f) => Math.max(m, f.semana, f.anterior), 0);
+    return { semana: lunes, filas: ordenadas, total: suma('semana'), totalAnterior: suma('anterior'), totalHoy: suma('hoy'), tope };
+  }
+
   const API = {
     P, TEXTO_SIN_KG, esPrincipal, sinPreparacion, equipoDe, redondearKg, primero, aproximacionesDelPlan, preparacion,
     etiquetaPreparacion, textoKgPreparacion, kgEfectivo,
     DESCANSO, OPCIONES_DESCANSO, descansoValido, descansoPlan, segundosDescanso,
     llevaRir, rirAGuardar, leyendaRir,
     evaluarRecord, historiaSuficiente, TOPE_HISTORIAL,
+    volumenMusculo, VOL_VACIO,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else raiz.ReglasEntreno = API;

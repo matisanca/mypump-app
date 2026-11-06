@@ -630,6 +630,17 @@ main{padding:var(--space-4)}
 .dz-barras-error{color:var(--color-danger)}
 .dz-barras-form label{display:block;font-size:13px;color:var(--color-text-muted);margin-bottom:8px}
 .dz-barras-form .dz-buscar{margin-top:4px}
+.vm-fila{padding:8px 0}
+.vm-top{display:flex;align-items:baseline;gap:6px}
+.vm-nom{flex:1;font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.vm-nom.is-sin{color:var(--color-text-muted)}
+.vm-n{font-size:15px;font-weight:700;font-family:var(--font-num)}
+.vm-ant{font-size:12px;color:var(--color-text-muted);font-family:var(--font-num);white-space:nowrap}
+.vm-barra{position:relative;height:6px;border-radius:999px;background:var(--color-bg-secondary);margin-top:5px;overflow:hidden}
+.vm-barra span{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
+.vm-ant-b{background:var(--color-brand-subtle)}
+.vm-sem-b{background:var(--color-brand)}
+.vm-pie{font-size:12px;color:var(--color-text-muted);margin-top:8px;line-height:1.4}
 .rv-tarjetas{display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-4)}
 .rv-card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;width:100%;padding:var(--space-4);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer}
 .rv-card .rv-tit{font-size:16px;font-weight:700;color:var(--color-text-primary)}
@@ -7146,6 +7157,7 @@ async function loadProgressAndRender() {
   // (bug 2). Ahora se agrupa por clave del ejercicio efectivo y se listan los
   // días en los que aparece.
   const porClave = new Map();
+  const _volInfo = {};
   for (const d of dias) {
     const diaNombre = (d.nombre || `Día ${getDayNum(d, dias)}`);
     for (const b of (d.bloques || [])) {
@@ -7156,6 +7168,8 @@ async function loadProgressAndRender() {
         const prev = porClave.get(clave);
         if (prev) { if (!prev.dias.includes(diaNombre)) prev.dias.push(diaNombre); prev.ids.push(ex.id); continue; }
         porClave.set(clave, { id: ex.id, ids: [ex.id], clave, nombre: eff.nombre, dias: [diaNombre] });
+        // Para «Series por músculo»: el músculo del catálogo (la misma cadena que la preparación) y el tipo.
+        try { _volInfo[clave] = { musculo: _entradaPreparacion(eff).musculo, tipo: eff.tipo || null }; } catch (_) { _volInfo[clave] = { musculo: null, tipo: eff.tipo || null }; }
       }
     }
   }
@@ -7248,6 +7262,16 @@ async function loadProgressAndRender() {
   }
 
   try { STATE.progresoLinea = _progresoSemanaLinea(results); } catch (_) { STATE.progresoLinea = null; }
+  // Series por músculo (VolumenMusculo): cada fila del historial es una serie.
+  try {
+    const hist = [];
+    results.forEach((r, i) => {
+      const clave = allEx[i] && allEx[i].clave;
+      const info = (clave && _volInfo[clave]) || { musculo: null, tipo: null };
+      for (const row of (r.rows || [])) hist.push({ musculo: info.musculo, tipo: info.tipo, fecha: fechaLocalDe(row.registrado_en), lugar: clave, serie: row.serie });
+    });
+    STATE.volumen = ReglasEntreno.volumenMusculo(hist, hoyLocal());
+  } catch (_) { STATE.volumen = null; }
   if (STATE.scene === 'revision') { try { _renderRevTarjetas(); } catch (_) {} }
 
   STATE.progressData = {
@@ -9901,7 +9925,26 @@ $$('.tab').forEach(t => t.addEventListener('click', () => setScene(t.getAttribut
     try { renderMydayConexiones(); } catch (_) {}
     _ponerSegSalud('salud');
   };
-  renderProgress = function () { _rp.apply(this, arguments); _ponerSegSalud('progress'); };
+  renderProgress = function () {
+    _rp.apply(this, arguments);
+    _ponerSegSalud('progress');
+    // «Series por músculo · esta semana», arriba de lo que era Progreso (como Fuerza en la app).
+    const root = document.getElementById('scene-progress');
+    if (root && STATE.progressLoaded && STATE.volumen) {
+      const v = STATE.volumen;
+      const filas = v.filas.length ? v.filas.map(f => `
+        <div class="vm-fila"><div class="vm-top"><span class="vm-nom${f.musculo ? '' : ' is-sin'}">${escapeHtml(f.nombre)}</span>
+          <span class="vm-n">${f.semana}</span><span class="vm-ant">${f.anterior} la pasada</span></div>
+          <div class="vm-barra"><span class="vm-ant-b" style="width:${v.tope ? f.anterior / v.tope * 100 : 0}%"></span><span class="vm-sem-b" style="width:${v.tope ? f.semana / v.tope * 100 : 0}%"></span></div></div>`).join('')
+        : `<div class="rv-txt">${ReglasEntreno.VOL_VACIO}</div>`;
+      const card = document.createElement('div');
+      card.className = 'myday-section vm-card';
+      card.innerHTML = `<div class="myday-section-hdr"><span class="myday-section-title">Series por músculo</span><span class="ck-saved">esta semana</span></div>
+        <div class="myday-section-body">${filas}<div class="vm-pie">Series efectivas registradas, de lunes a domingo. La preparación no cuenta.</div></div>`;
+      const seg = root.querySelector(':scope > .seg-salud-wrap');
+      root.insertBefore(card, seg ? seg.nextSibling : root.firstChild);
+    }
+  };
 }
 
 /* ?scene=dieta — abrir directo en una pantalla.
