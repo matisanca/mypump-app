@@ -576,6 +576,35 @@ main{padding:var(--space-4)}
 .ex-comment-send{flex:0 0 auto;height:40px;padding:0 var(--space-4);background:var(--color-brand);color:var(--color-on-brand);border:none;border-radius:var(--radius-md);font-size:13px;font-weight:600;cursor:pointer}
 .ex-comment-send:disabled{opacity:.6;cursor:default}
 /* ── Nota automática de progresión ── */
+.rv-tarjetas{display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-4)}
+.rv-card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;width:100%;padding:var(--space-4);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer}
+.rv-card .rv-tit{font-size:16px;font-weight:700;color:var(--color-text-primary)}
+.rv-txt{font-size:14px;line-height:1.4;color:var(--color-text-muted)}
+.rv-fuerte{font-size:14px;font-weight:600;color:var(--color-text-primary)}
+.rv-score{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.rv-num{font-size:34px;font-weight:800;font-family:var(--font-num);line-height:1}
+.rv-de{font-size:14px;color:var(--color-text-muted)}
+.rv-banda{font-size:15px;font-weight:700;margin-left:8px}
+.rv-linea{display:flex;align-items:flex-start;gap:6px;font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.rv-trofeo{flex:none;color:var(--color-warning);margin-top:2px}
+.rv-pie{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--color-border);font-size:14px;font-weight:600;color:var(--color-brand-text,var(--color-brand))}
+.rv-pie svg{color:var(--color-text-muted)}
+.ck-peso{margin:var(--space-3) 0}
+.ck-peso-lbl{font-size:14px;font-weight:600;margin-bottom:6px;color:var(--color-text-primary)}
+.ck-peso-row{display:flex;align-items:center;gap:8px}
+.ck-peso-row .peso-input{flex:1}
+.ck-peso-kg{font-size:14px;color:var(--color-text-muted)}
+.ck-peso-aviso{font-size:12px;color:var(--color-danger);margin-top:4px}
+.ss-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--color-border)}
+.ss-fila:first-of-type{border-top:0}
+.ss-etq{font-size:14px;color:var(--color-text-primary)}
+.ss-det{font-size:12px;color:var(--color-text-muted)}
+.ss-val{font-size:15px;font-weight:700;font-family:var(--font-num);white-space:nowrap}
+.seg-salud-wrap{margin-bottom:var(--space-4)}
+.seg-salud{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px;border-radius:9px;background:var(--color-bg-secondary,rgba(118,118,128,.12))}
+.seg-btn{all:unset;text-align:center;padding:6px 4px;font-size:13px;font-weight:600;border-radius:7px;color:var(--color-text-primary);cursor:pointer}
+.seg-btn.is-on{background:var(--color-bg-primary);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#scene-salud #recVerTodo{display:none}
 .recordatorio-semanal{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2);margin-bottom:var(--space-3);background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:14px;cursor:pointer}
 .recordatorio-semanal .rs-ico{flex:none;width:32px;height:32px;border-radius:50%;background:var(--color-brand);color:#fff;display:grid;place-items:center}
 [data-theme="dark"] .recordatorio-semanal .rs-ico{color:#040E04}
@@ -1264,6 +1293,7 @@ body,[data-theme="dark"] body{background-image:none;background:var(--color-bg-se
     <!-- SALUD: todo lo que manda el reloj. No es un tab (6 tabs dejan cada uno
          en ~62px en un iPhone SE); se entra desde la card de Mi Día. -->
     <section class="scene" id="scene-salud"></section>
+    <section class="scene" id="scene-cuerpo"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -7041,6 +7071,9 @@ async function loadProgressAndRender() {
     if (dt) fechas.add(dt);
   }
 
+  try { STATE.progresoLinea = _progresoSemanaLinea(results); } catch (_) { STATE.progresoLinea = null; }
+  if (STATE.scene === 'revision') { try { _renderRevTarjetas(); } catch (_) {} }
+
   STATE.progressData = {
     stats: [
       {lbl:'Ejercicios',  val: exercises.length, suffix:'', delta:null},
@@ -7148,7 +7181,7 @@ async function loadMyday() {
 async function loadRevision() {
   if (!TOKEN) return;
   loadCheckin();
-  loadFotos().then(() => { if (STATE.scene === 'revision') renderMydayFotos(); flushFotos(); });
+  loadFotos().then(() => { if (STATE.scene === 'revision') renderMydayFotos(); if (STATE.scene === 'cuerpo') renderCuerpo(); flushFotos(); });
 }
 
 /* El valor de un hábito como lo espera el render: llega STRING desde el
@@ -7224,8 +7257,8 @@ async function loadSalud() {
   // Recuperación también: desde que su estado "conectado pero sin score" decide
   // el texto mirando STATE.salud, si no se repinta acá el cliente se queda con
   // la copy que se calculó cuando STATE.salud todavía estaba vacío.
-  if (STATE.scene === 'revision')  { renderMydaySalud(); renderMydayRecuperacion(); }
-  if (STATE.scene === 'revision') renderMydayPeso();
+  if (STATE.scene === 'revision') { _renderRevTarjetas(); _repintarSaludSemana(); }
+  if (STATE.scene === 'cuerpo') renderMydayPeso();
 }
 /* Valor de un tipo en una fecha, eligiendo la MEJOR fuente.
  *
@@ -7426,7 +7459,7 @@ async function loadRecuperacion() {
       STATE.mostrarRecup = (m === null || m === undefined) ? true : !!m;
     }
   } catch (_) { STATE.mostrarRecup = true; }
-  if (STATE.scene === 'revision') renderMydayRecuperacion();
+  if (STATE.scene === 'revision') { _renderRevTarjetas(); _repintarSaludSemana(); }
   if (STATE.scene === 'salud') renderSalud();
 }
 
@@ -7741,7 +7774,7 @@ function renderSalud() {
   const native = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable());
 
   if (!hayAlgo) {
-    root.innerHTML = `<button class="sd-volver" id="sdVolver">‹ Volver a Mi Día</button>
+    root.innerHTML = `
       ${_seccionSalud('⌚️', 'Todavía no hay datos',
         `<p class="salud-connect-txt">Cuando conectes tu reloj o tu anillo, acá vas a ver todo lo que mide: sueño con sus fases, pulso en reposo, variabilidad, respiración, oxígeno y temperatura.</p>
          ${native ? `<button class="btn-primary" id="sdConnect" style="width:100%">${_T('boton')}</button>`
@@ -7877,19 +7910,19 @@ function renderSalud() {
   ].join('');
 
   root.innerHTML = `
-    <button class="sd-volver" id="sdVolver">‹ Volver a Mi Día</button>
+    <div id="myday-recup"></div>
     ${recHtml}
     ${suenoHtml}
     ${_seccionSalud('❤️', 'Corazón', corazon)}
     ${_seccionSalud('👟', 'Actividad', actividad)}
     ${_seccionSalud('🌡', 'Otras señales', otras, 'Solo importan comparadas con lo normal tuyo, no con una tabla general.')}
-    ${_seccionSalud('⚖️', 'Cuerpo', cuerpo)}
     ${_seccionSalud('⚙️', 'Preferencias',
       `<div class="cx-fila"><div class="cx-info">
          <div class="cx-nombre">Mostrarme el score</div>
          <div class="cx-desc">Si preferís no ver el número, lo apagás acá. Tus datos se siguen guardando y Mati los sigue viendo igual.</div>
        </div>
        <button class="cx-btn${STATE.mostrarRecup === false ? '' : ' is-off'}" id="sdToggleRec">${STATE.mostrarRecup === false ? 'Mostrar' : 'Ocultar'}</button></div>`)}
+    <div id="myday-conex"></div>
     <div id="sdAppleHealth"></div>
     <div id="sdNotif"></div>
     <div class="sd-nota" style="padding:0 var(--space-1) var(--space-6)">Los datos los manda tu reloj a ${_T('app')} y de ahí llegan acá. Si algo no aparece, es porque tu dispositivo no lo mide.</div>
@@ -8855,9 +8888,22 @@ function renderMydayCheckin() {
         <p class="ck-intro">Contame en 10 segundos cómo venís. Mati lo ve antes de tu devolución.</p>
         ${CHECKIN_METRICAS.map(escala).join('')}
         <textarea class="ck-nota" id="ckNota" rows="2" placeholder="Algo que quieras contarme (opcional)">${(ck.nota || '').replace(/</g,'&lt;')}</textarea>
+        <div class="ck-peso">
+          <div class="ck-peso-lbl">Tu peso de hoy</div>
+          <div class="ck-peso-row"><input type="text" inputmode="decimal" class="peso-input mono" id="ckPeso" placeholder="Ej: 78,4" value="${escapeHtml(STATE.checkinPeso || '')}"><span class="ck-peso-kg">kg</span></div>
+          <div class="peso-hint">En ayunas, al despertar. Si hoy no te pesaste, dejalo vacío: lo cargás otro día en Peso corporal.</div>
+          <div class="ck-peso-aviso" id="ckPesoAviso" hidden>Revisá el peso: tiene que estar entre 30 y 300 kg.</div>
+        </div>
         <button class="ck-save btn-primary" id="ckSave">${yaGuardado ? 'Actualizar mi check' : 'Enviar mi check'}</button>
       </div>
-    </div>`;
+    </div>
+    <div id="ss-host">${_saludSemanaHtml()}</div>`;
+
+  const ckPeso = document.getElementById('ckPeso');
+  if (ckPeso) ckPeso.addEventListener('input', () => {
+    STATE.checkinPeso = ckPeso.value;
+    const av = document.getElementById('ckPesoAviso'); if (av) av.hidden = true;
+  });
 
   // La nota se guarda en el borrador MIENTRAS se escribe. Antes solo entraba
   // al draft al tocar una escala: escribir la nota al final y cambiar de tab
@@ -8880,6 +8926,23 @@ function renderMydayCheckin() {
       setTimeout(() => renderMydayCheckin(), 1600);
       return;
     }
+    // El peso sale con el check (app 2.1.0), por la misma cola que la tarjeta de Peso corporal.
+    const kilosTxt = String(document.getElementById('ckPeso')?.value || '').trim();
+    let kilos = null;
+    if (kilosTxt) {
+      const v = parseFloat(kilosTxt.replace(',', '.'));
+      if (!isFinite(v) || v < 30 || v > 300) {
+        const av = document.getElementById('ckPesoAviso'); if (av) av.hidden = false;
+        return;
+      }
+      kilos = Math.round(v * 10) / 10;
+    }
+    if (kilos != null) {
+      STATE.salud = (STATE.salud || []).filter(r => !(r.tipo === 'peso_kg' && r.fecha === hoyLocal() && r.fuente === 'manual'));
+      STATE.salud.push({ fecha: hoyLocal(), tipo: 'peso_kg', valor: kilos, fuente: 'manual' });
+      Outbox.enqueue('peso', { fecha: hoyLocal(), valor: kilos }, 'peso_' + hoyLocal());
+    }
+    STATE.checkinPeso = '';
     const datos = { energia: d.energia, descanso: d.descanso, hambre: d.hambre, adherencia: d.adherencia, nota: (d.nota || '').trim() };
     STATE.checkin = { ...datos };          // update optimista
     STATE.checkinDraft = null;
@@ -8909,36 +8972,241 @@ function renderRevision() {
   const root = $('#scene-revision');
   if (!root) return;
 
+  // Mismo orden que la app 2.1.0 (RevisionView): Recuperación, Tu progreso,
+  // fotos y check. El peso, el reloj y la salud del día viven en Salud
+  // (se entra por la tarjeta Recuperación); el peso de la semana va en el check.
   root.innerHTML = `
-    <!-- FOTOS DE PROGRESO — P2/P3.
-         #fpGaleria tiene que vivir en la MISMA escena que el boton que la
-         abre: si no, se abre dentro de un display:none y parece que el boton
-         no hace nada. -->
+    <div id="rv-tarjetas" class="rv-tarjetas"></div>
     <div id="myday-fotos"></div>
     <div id="fpGaleria" class="fp-galeria"></div>
+    <div id="myday-checkin"></div>`;
 
-    <!-- CHECK SEMANAL — N8 -->
-    <div id="myday-checkin"></div>
-
-    <!-- PESO CORPORAL — N1 -->
-    <div id="myday-peso"></div>
-
-    <!-- CONEXIONES DE WEARABLES — Vía A. Va acá y no en Mi Día porque es
-         configuración: se toca una vez y no se vuelve a mirar. -->
-    <div id="myday-conex" style="margin-bottom:var(--space-6)"></div>
-
-    <!-- MI DIA (habitos, racha, salud del dia). Va al final: es lo de todos
-         los dias, debajo de lo de la semana. -->
-    <div id="myday-host"></div>`;
-
-  // Cada render bindea sus propios handlers.
+  _renderRevTarjetas();
   renderMydayFotos();
   renderMydayCheckin();
+  // La línea de «Tu progreso» sale del historial de cargas: si todavía no se
+  // trajo, se trae (la misma carga que usa Fuerza).
+  if (!STATE.progressLoaded && !STATE._cargandoProgreso && DATA && !DATA._isDemo) {
+    STATE._cargandoProgreso = true;
+    Promise.resolve(loadProgressAndRender()).catch(() => {}).finally(() => { STATE._cargandoProgreso = false; });
+  }
+}
+
+/* "Semana del 3 al 9 de noviembre" (de lunes a domingo), como RevisionView.semanaActual. */
+function _semanaActualTxt() {
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const lunes = new Date(`${_lunesISO(hoyLocal())}T12:00:00`);
+  const dom = new Date(lunes); dom.setDate(lunes.getDate() + 6);
+  const desde = lunes.getMonth() === dom.getMonth() ? `${lunes.getDate()}` : `${lunes.getDate()} de ${MESES[lunes.getMonth()]}`;
+  return `Semana del ${desde} al ${dom.getDate()} de ${MESES[dom.getMonth()]}`;
+}
+
+const _CHEV_DER = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+const _TROFEO = '<svg class="rv-trofeo" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V17h3v3H8v-3h3v-2.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3V3Zm0 4H6v1a2 2 0 0 0 1 1.7V7Zm10 0v2.7A2 2 0 0 0 18 8V7h-1Z"/></svg>';
+
+/* Tarjetas «Recuperación» y «Tu progreso» de Revisión (RecuperacionTarjeta.swift). */
+function _renderRevTarjetas() {
+  const el = document.getElementById('rv-tarjetas');
+  if (!el) return;
+  const txt = s => `<div class="rv-txt">${s}</div>`;
+  let rec;
+  if (DATA && DATA._isDemo) {
+    rec = txt('Con tu cuenta, acá vas a ver tu recuperación de cada día.');
+  } else {
+    const serie = STATE.recup || [];
+    const ultima = serie.length ? serie[serie.length - 1] : null;
+    const conScore = serie.slice(-3).reverse().find(r => r && r.score != null);
+    const row = conScore || ultima;
+    const native = !!(window.MyPumpHealth && window.MyPumpHealth.isAvailable());
+    const conectado = (native && window.MyPumpHealth.isConnected())
+      || (STATE.salud || []).some(r => r.fuente !== 'manual')
+      || (STATE.conexiones || []).some(c => c && c.estado === 'conectada');
+    if (STATE.mostrarRecup === false) {
+      rec = txt('Ocultaste el número de recuperación. Tocá para ver tus datos de salud.');
+    } else if (row && row.score != null && row.estado !== 'calibrando') {
+      const banda = row.banda || 'media';
+      const frase = row.discordancia ? 'Los números dicen una cosa y vos me dijiste otra. Le creo a lo que sentís.'
+        : row.estado_autonomico === 'maladaptacion' ? 'Tu cuerpo viene peleando con la carga. Hoy conviene aflojar.'
+        : row.estado_autonomico === 'fatiga_acumulada' ? 'Venís con fatiga acumulada de varios días.'
+        : banda === 'alta' ? 'Venís bien. Aprovechalo.' : banda === 'baja' ? 'Hoy tu cuerpo pide más descanso.' : 'Estás en tu rango normal.';
+      rec = `<div class="rv-score"><span class="rv-num rec-${banda}">${row.score}</span><span class="rv-de">de 100</span>
+          <span class="rv-banda rec-${banda}">${_REC_BANDA_TXT[banda] || ''}</span></div>${txt(frase)}`;
+    } else if (row && (row.estado === 'calibrando' || (row.score == null && row.estado !== 'insuficiente'))) {
+      const n = row.dias_datos || 0;
+      const cob = row.cobertura || {};
+      const ya = cob.sueno_min ? `Ya sé que dormís cerca de ${_fmtHs(cob.sueno_min)}.`
+               : cob.fc_reposo ? `Ya sé que tu pulso en reposo ronda los ${Math.round(cob.fc_reposo)}.` : '';
+      rec = `<div class="rv-fuerte">Aprendiendo tu normal: ${n} de 14 días</div>${ya ? txt(ya) : ''}`;
+    } else if (conectado) {
+      rec = txt('Todavía no hay datos de esta noche para calcular tu recuperación.');
+    } else {
+      rec = txt('Conectá tu reloj o Salud para ver tu recuperación de cada día.');
+    }
+  }
+  const linea = STATE.progresoLinea;
+  const prog = linea
+    ? `<div class="rv-linea">${linea.record ? _TROFEO : ''}<span>${escapeHtml(linea.texto)}</span></div>`
+    : txt('Tu fuerza y tus récords, ejercicio por ejercicio.');
+  const tarjeta = (id, titulo, cuerpo, pie) => `
+    <button class="rv-card" id="${id}">
+      <div class="rv-tit">${titulo}</div>
+      ${cuerpo}
+      <div class="rv-pie"><span>${pie}</span>${_CHEV_DER}</div>
+    </button>`;
+  el.innerHTML = tarjeta('rvRecup', 'Recuperación', rec, 'Ver sueño, corazón y cuerpo')
+               + tarjeta('rvProg', 'Tu progreso', prog, 'Ver fuerza y récords');
+  document.getElementById('rvRecup').onclick = () => setScene('salud');
+  document.getElementById('rvProg').onclick = () => setScene('progress');
+}
+
+/* «Tu progreso»: la línea de la semana (ProgresoSemana.swift). Últimos 7 días
+   con hoy; por ejercicio, la última sesión contra las anteriores (máximo de kg
+   por día). Récords, después ejercicios que subieron, después sesiones. */
+function _kilosTxt(kg) {
+  const c = Math.round(kg * 100), e = Math.trunc(c / 100), r = c % 100;
+  if (r === 0) return `${e}`;
+  return r % 10 === 0 ? `${e},${r / 10}` : `${e},${String(r).padStart(2, '0')}`;
+}
+function _progresoSemanaLinea(results) {
+  const hoy = new Date(`${hoyLocal()}T12:00:00`);
+  const semana = new Set();
+  for (let i = 0; i < 7; i++) { const d = new Date(hoy); d.setDate(hoy.getDate() - i); semana.add(d.toLocaleDateString('en-CA')); }
+  const records = [], subieron = [], dias = new Set();
+  for (const r of (results || [])) {
+    const ses = {};
+    for (const row of (r.rows || [])) {
+      const f = fechaLocalDe(row.registrado_en);
+      if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(f)) continue;
+      ses[f] = Math.max(ses[f] ?? 0, Number(row.peso_kg) || 0);
+    }
+    const fechas = Object.keys(ses).sort();
+    fechas.filter(f => semana.has(f)).forEach(f => dias.add(f));
+    const ultima = fechas[fechas.length - 1];
+    if (!ultima || !semana.has(ultima)) continue;
+    const kg = ses[ultima];
+    if (!(isFinite(kg) && kg > 0)) continue;
+    const anteriores = fechas.slice(0, -1).map(f => ses[f]).filter(isFinite);
+    if (!anteriores.length) continue;
+    const previa = anteriores[anteriores.length - 1];
+    if (kg > Math.max(...anteriores)) records.push({ nombre: r.name, kg });
+    else if (kg > previa) subieron.push(r.name);
+  }
+  if (records.length === 1) return { texto: `Récord en ${records[0].nombre}, ${_kilosTxt(records[0].kg)} kg`, record: true };
+  if (records.length === 2) return { texto: `2 récords esta semana, en ${records[0].nombre} y ${records[1].nombre}`, record: true };
+  if (records.length >= 3) return { texto: `${records.length} récords esta semana, en ${records[0].nombre}, ${records[1].nombre} y ${records.length - 2} más`, record: true };
+  if (subieron.length === 1) return { texto: `Subiste en ${subieron[0]} esta semana`, record: false };
+  if (subieron.length >= 2) return { texto: `Subiste en ${subieron.length} ejercicios esta semana`, record: false };
+  if (dias.size === 1) return { texto: '1 sesión entrenada esta semana', record: false };
+  if (dias.size >= 2) return { texto: `${dias.size} sesiones entrenadas esta semana`, record: false };
+  return null;
+}
+
+/* «Tu salud, últimos 7 días» (SaludSemana.swift): promedios de 7 días con hoy,
+   debajo del check. Sin ningún dato, no aparece. */
+function _saludSemanaHtml() {
+  if (DATA && DATA._isDemo) return '';
+  const hoy = new Date(`${hoyLocal()}T12:00:00`);
+  const fechas = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(hoy); d.setDate(hoy.getDate() - i); fechas.push(d.toLocaleDateString('en-CA')); }
+  const det = n => n === 1 ? '1 día' : `promedio de ${n} días`;
+  const filas = [];
+  if (STATE.mostrarRecup !== false) {
+    const porFecha = {};
+    for (const r of (STATE.recup || [])) {
+      const f = String(r && r.fecha || '').slice(0, 10);
+      if (fechas.includes(f) && r.score != null) porFecha[f] = Number(r.score);
+    }
+    const v = Object.values(porFecha).filter(isFinite);
+    if (v.length) filas.push(['Recuperación', `${Math.round(v.reduce((a, b) => a + b, 0) / v.length)} de 100`, det(v.length)]);
+  }
+  const TIPOS = [['sueno_min', 'Sueño'], ['hrv_ms', 'Variabilidad (HRV)'], ['fc_reposo', 'Pulso en reposo'], ['pasos', 'Pasos']];
+  for (const [tipo, etq] of TIPOS) {
+    const vals = fechas.map(f => Number(_saludValor(tipo, f))).filter(x => isFinite(x) && x > 0);
+    if (!vals.length) continue;
+    const prom = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const valor = tipo === 'sueno_min' ? (() => { const m = Math.round(prom); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}`; })()
+      : tipo === 'hrv_ms' ? `${Math.round(prom)} ms`
+      : tipo === 'fc_reposo' ? `${Math.round(prom)} lpm`
+      : `${Math.round(prom).toLocaleString('es-AR')} por día`;
+    filas.push([etq, valor, det(vals.length)]);
+  }
+  if (!filas.length) return '';
+  return `<div class="myday-section">
+      <div class="myday-section-hdr"><span class="myday-section-title">Tu salud, últimos 7 días</span></div>
+      <div class="myday-section-body">
+        <p class="ck-intro">Va con tu check: Mati lo ve junto a tus respuestas.</p>
+        ${filas.map(([e, v, d]) => `<div class="ss-fila"><div><div class="ss-etq">${e}</div><div class="ss-det">${d}</div></div><div class="ss-val">${v}</div></div>`).join('')}
+      </div></div>`;
+}
+
+function _repintarSaludSemana() {
+  const h = document.getElementById('ss-host');
+  if (h) h.innerHTML = _saludSemanaHtml();
+}
+
+/* Salud: Recuperación · Fuerza · Cuerpo, como el selector de la app (SaludView). */
+const _SEG_SALUD = [['salud', 'Recuperación'], ['progress', 'Fuerza'], ['cuerpo', 'Cuerpo']];
+function _ponerSegSalud(scene) {
+  const root = document.getElementById(`scene-${scene}`);
+  if (!root) return;
+  root.querySelectorAll(':scope > .seg-salud-wrap').forEach(n => n.remove());
+  const w = document.createElement('div');
+  w.className = 'seg-salud-wrap';
+  w.innerHTML = `<button class="sd-volver" data-seg-volver>‹ Volver a Revisión</button>
+    <div class="seg-salud" role="tablist" aria-label="Sección de Salud">${_SEG_SALUD.map(([s, l]) =>
+      `<button role="tab" class="seg-btn${s === scene ? ' is-on' : ''}" aria-selected="${s === scene}" data-seg="${s}">${l}</button>`).join('')}</div>`;
+  root.insertBefore(w, root.firstChild);
+  w.querySelector('[data-seg-volver]').onclick = () => setScene('revision');
+  w.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => { if (b.dataset.seg !== STATE.scene) setScene(b.dataset.seg); });
+}
+
+/* Cuerpo: peso, fotos por semana y el check de la semana en lectura. */
+function renderCuerpo() {
+  const root = document.getElementById('scene-cuerpo');
+  if (!root) return;
+  const fotos = STATE.fotos || [];
+  const porSemana = {};
+  fotos.forEach(f => { (porSemana[f.semana_lunes] = porSemana[f.semana_lunes] || new Set()).add(f.pose); });
+  const semanas = Object.keys(porSemana).sort();
+  const completas = semanas.filter(s => porSemana[s].size === 3);
+  let racha = 0;
+  for (let i = completas.length - 1; i >= 0; i--) {
+    const esperada = new Date(`${completas[completas.length - 1]}T00:00:00`);
+    esperada.setDate(esperada.getDate() - (completas.length - 1 - i) * 7);
+    if (completas[i] === esperada.toLocaleDateString('en-CA')) racha++; else break;
+  }
+  const faltan = 4 - semanas.length;
+  const fotosBody = !semanas.length
+    ? `<div class="rv-txt">Las fotos se suben desde Revisión.</div>`
+    : `${racha >= 2 ? `<div class="fp-serie">${racha} semanas seguidas registradas</div>` : ''}
+       ${semanas.length < 4 ? `<div class="fp-nota-comp">El comparador antes/después se abre en ${faltan} semana${faltan > 1 ? 's' : ''} más.</div>` : ''}
+       <button class="fp-vergaleria" id="cuVerFotos">Ver mis fotos</button>`;
+  const ck = STATE.checkin && STATE.checkin.energia ? STATE.checkin : null;
+  const ckBody = ck
+    ? CHECKIN_METRICAS.map(m => `<div class="ss-fila"><div class="ss-etq">${m.label}</div><div class="ss-val">${Number(ck[m.k]) || 0} de 5</div></div>`).join('')
+      + (ck.nota ? `<div class="rv-txt" style="margin-top:8px">${escapeHtml(ck.nota)}</div>` : '')
+    : `<div class="rv-txt">Todavía no mandaste el check de esta semana.</div>`;
+  const grasa = _filaSalud({ tipo: 'grasa_pct', nombre: 'Grasa corporal', unidad: '%', fmt: v => v.toFixed(1) });
+  root.innerHTML = `
+    <div id="myday-peso"></div>
+    ${_seccionSalud('', 'Composición', grasa)}
+    <div class="myday-section">
+      <div class="myday-section-hdr"><span class="myday-section-title">Fotos por semana</span>
+        ${semanas.length ? `<span class="ck-saved">${semanas.length} semana${semanas.length === 1 ? '' : 's'}</span>` : ''}</div>
+      <div class="myday-section-body">${fotosBody}</div>
+    </div>
+    <div class="myday-section">
+      <div class="myday-section-hdr"><span class="myday-section-title">Tu check de la semana</span>
+        ${ck ? '<span class="ck-saved">Enviado</span>' : ''}</div>
+      <div class="myday-section-body">${ckBody}</div>
+    </div>`;
   renderMydayPeso();
-  renderMydayConexiones();
-  // Mi Dia va DESPUES de que renderRevision pise el innerHTML: al reves, el
-  // #myday-host todavia no existe y no se dibuja nada.
-  renderMyday();
+  const vf = document.getElementById('cuVerFotos');
+  if (vf) vf.onclick = () => {
+    setScene('revision');
+    setTimeout(() => { const g = document.getElementById('fpVerGaleria'); if (g) g.click(); }, 60);
+  };
+  _ponerSegSalud('cuerpo');
 }
 
 /* ---- CONECTAR MI RELOJ (Vía A: Oura, Whoop) ----
@@ -8988,7 +9256,8 @@ async function loadConexiones() {
   await cargarProveedoresDisponibles();
   try { STATE.conexiones = (await window.mypumpDB.getConexiones(TOKEN)) || []; }
   catch (_) { STATE.conexiones = []; }
-  if (STATE.scene === 'revision') renderMydayConexiones();
+  if (STATE.scene === 'salud') renderMydayConexiones();
+  if (STATE.scene === 'revision') _renderRevTarjetas();
 }
 
 function renderMydayConexiones() {
@@ -9118,12 +9387,15 @@ function setScene(scene) {
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
-    const tabDe = (scene === 'salud' || scene === 'progress') ? 'revision' : scene;
+    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo') ? 'revision' : scene;
     const active = t.getAttribute('data-scene') === tabDe;
     t.classList.toggle('is-active', active);
     t.setAttribute('aria-selected', active);
   });
   $$('.scene').forEach(s => s.classList.toggle('is-active', s.id === `scene-${scene}`));
+  // La semana del plan es de Entreno y Dieta; en Revisión y Salud el
+  // encabezado dice la semana del calendario, como la app.
+  $$('.hdr-eyebrow .week-pill, .hdr-eyebrow .dot').forEach(n => { n.hidden = !(scene === 'train' || scene === 'diet'); });
 
   const dp = $('#dayPicker');
   const hp = $('#hdrProgress');
@@ -9140,7 +9412,7 @@ function setScene(scene) {
     // Lo que llegó estando en otra pestaña (ajustes, marcas) solo redibuja si se está acá.
     if (DIET) renderDiet();
   } else if (scene === 'revision') {
-    $('#hdrEyebrow').textContent = 'REVISIÓN · SEMANAL';
+    $('#hdrEyebrow').textContent = _semanaActualTxt();
     $('#hdrTitle').textContent = 'Revisión';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
@@ -9150,15 +9422,20 @@ function setScene(scene) {
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
   } else if (scene === 'salud') {
-    $('#hdrEyebrow').textContent = 'SALUD · TU RELOJ';
-    $('#hdrTitle').textContent = 'Mis datos';
+    $('#hdrEyebrow').textContent = 'REVISIÓN';
+    $('#hdrTitle').textContent = 'Salud';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
   } else if (scene === 'progress') {
     // Rama explicita a proposito: cuando esto era un `else` suelto, cualquier
     // escena nueva heredaba el header de Progreso y parecia un bug de CSS.
-    $('#hdrEyebrow').textContent = `PROGRESO · ${DATA.rutina.nombre_plan.split('—')[0].trim().toUpperCase()}`;
-    $('#hdrTitle').textContent = 'Tu evolución';
+    $('#hdrEyebrow').textContent = 'REVISIÓN';
+    $('#hdrTitle').textContent = 'Salud';
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
+  } else if (scene === 'cuerpo') {
+    $('#hdrEyebrow').textContent = 'REVISIÓN';
+    $('#hdrTitle').textContent = 'Salud';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
   }
@@ -9169,6 +9446,7 @@ function setScene(scene) {
   if (scene === 'revision') renderRevision();
   if (scene === 'salud') renderSalud();
   if (scene === 'progress') renderProgress();
+  if (scene === 'cuerpo') renderCuerpo();
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
   // render lo borraba y solo reaparecia cuando terminaba alguna carga async.
@@ -9177,6 +9455,20 @@ function setScene(scene) {
 }
 
 $$('.tab').forEach(t => t.addEventListener('click', () => setScene(t.getAttribute('data-scene'))));
+
+// Recuperación (renderSalud) y Fuerza (renderProgress) llevan arriba el
+// selector de Salud; se envuelven para que lo pongan en todos sus caminos,
+// también en los repintados que llegan solos después de una carga.
+{
+  const _rs = renderSalud, _rp = renderProgress;
+  renderSalud = function () {
+    _rs.apply(this, arguments);
+    try { renderMydayRecuperacion(); } catch (_) {}
+    try { renderMydayConexiones(); } catch (_) {}
+    _ponerSegSalud('salud');
+  };
+  renderProgress = function () { _rp.apply(this, arguments); _ponerSegSalud('progress'); };
+}
 
 /* ?scene=dieta — abrir directo en una pantalla.
  *
