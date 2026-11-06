@@ -31,7 +31,7 @@ public enum ReglasAgenda {
 
     /// «Te faltan 2 videos para habilitar la agenda».
     public static func textoContador(_ n: Int) -> String {
-        "Te faltan \(n) \(n == 1 ? "video" : "videos") para habilitar la agenda"
+        n == 1 ? "Te falta 1 video para habilitar la agenda" : "Te faltan \(n) videos para habilitar la agenda"
     }
 
     /// La etiqueta discreta de los obligatorios (la marca de los datos no se muestra).
@@ -95,7 +95,7 @@ public enum ReglasAgenda {
 
     /// El texto de la agenda bloqueada.
     public static func textoBloqueada(_ faltan: Int) -> String {
-        faltan > 0 ? "Cuando termines los videos de arriba se habilita la agenda. Te faltan \(faltan)."
+        faltan > 0 ? "Cuando termines los videos de arriba se habilita la agenda. \(faltan == 1 ? "Te falta 1" : "Te faltan \(faltan)")."
                    : "Ya viste todo. Estamos habilitando tu agenda…"
     }
 
@@ -171,6 +171,28 @@ public enum ReglasAgenda {
     public static func textoEntrar(_ r: ReservaAgenda, zona: TimeZone = .current, ahora: Date = Date()) -> String {
         guard let i = ReglasGuia.instante(r.inicio) else { return "Tu entrega" }
         return "Tu entrega \(ahora >= i ? "empezó" : "empieza") a las \(hora(i, zona: zona))"
+    }
+
+    // MARK: - La demo
+
+    /// Las franjas de la demo (`Demo.bundle/agenda.json`) corridas para que la primera caiga mañana, con los mismos días de
+    /// diferencia entre sí y la misma hora de Argentina. Si ya están en el futuro, quedan como vinieron.
+    public static func correrAlFuturo(_ fs: [FranjaAgenda], ahora: Date = Date()) -> [FranjaAgenda] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = zonaBA
+        guard let primero = fs.compactMap({ ReglasGuia.instante($0.inicio) }).min(), primero <= ahora,
+              let manana = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: ahora)),
+              let dias = cal.dateComponents([.day], from: cal.startOfDay(for: primero), to: manana).day else { return fs }
+        let iso = ISO8601DateFormatter()
+        iso.timeZone = zonaBA
+        iso.formatOptions = [.withInternetDateTime]
+        func correr(_ s: String) -> String? {
+            ReglasGuia.instante(s).flatMap { cal.date(byAdding: .day, value: dias, to: $0) }.map(iso.string(from:))
+        }
+        return fs.compactMap { f in
+            guard let i = correr(f.inicio), let fi = correr(f.fin) else { return nil }
+            return FranjaAgenda(id: f.id, inicio: i, fin: fi)
+        }
     }
 
     // MARK: - Formatos

@@ -220,7 +220,9 @@ public final class ModeloApp {
     /// empaquetadas), sin cuenta. No toca la red ni escribe nada; los reemplazos viven en memoria. `guia`: «Tu guía» de
     /// muestra (los clips genéricos de «Tu app», sin fecha de entrega), con el avance en memoria. `suplementacion`: la fila
     /// de `mypump_suplementacion` de muestra (`Demo.bundle/suplementacion.json`), así la revisión de Apple ve la pestaña.
-    public func entrarEnDemo(rutina: Data, dieta: Data, guia: Data? = nil, suplementacion: Data? = nil) {
+    /// `agenda`: la de la demo (`Demo.bundle/agenda.json`, 2.2.0), con las franjas corridas a mañana; reservar confirma sin
+    /// crear ninguna videollamada.
+    public func entrarEnDemo(rutina: Data, dieta: Data, guia: Data? = nil, suplementacion: Data? = nil, agenda: Data? = nil) {
         func envolver(_ estructura: Data, id: String) -> Data? {
             guard let e = try? JSONDecoder().decode(JSONValue.self, from: estructura) else { return nil }
             return try? JSONEncoder().encode(JSONValue.objeto(["id": .texto(id), "version": .numero(1), "estructura": e,
@@ -240,7 +242,12 @@ public final class ModeloApp {
         sinRedEn = []
         esDemo = true
         self.guia = guia.flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) }.map(Guia.init(json:))
-            .flatMap { $0.ok ? ModeloGuia(muestra: $0) : nil }
+            .flatMap { g in
+                guard g.ok else { return nil }
+                var a = agenda.flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) }.map(AgendaGuia.init(json:))
+                if let x = a, x.ok { a?.franjas = ReglasAgenda.correrAlFuturo(x.franjas) }
+                return ModeloGuia(muestra: g, agenda: a?.ok == true ? a : nil)
+            }
         self.suplementacion = suplementacion.flatMap { try? JSONDecoder().decode(RespuestaSuplementacion.self, from: $0) }
             .flatMap { $0.hay ? ModeloSuplementacion(muestra: $0) : nil }
         if let r = self.rutina {

@@ -66,7 +66,11 @@ struct GuiaView: View {
             control.alArrancar = { [weak verPorQue] in verPorQue?.pausar() }
             prepararAudios()
             // Volver a la guía (otra pestaña, otra pantalla): la lista de audios de nuevo, sin otro get.
-            if traida { if !GuiaUI.audioSinServidor { await modelo.audios.abrirSeccion() }; return }
+            if traida {
+                if !GuiaUI.audioSinServidor { await modelo.audios.abrirSeccion() }
+                await modelo.agenda.consultar()
+                return
+            }
             traida = true
             if modelo.guia != nil { prepararInicial() }
             // Capturas (DEBUG): `-guiaMotivo <id>` abre el «para qué» de una fila y `-guiaPlaca YES` deja la placa fija.
@@ -75,13 +79,21 @@ struct GuiaView: View {
             await modelo.abrir()
             prepararInicial()
             if let v = GuiaUI.verPorQue { verPorQue.alternar(v) }
+            // La agenda de la entrega (2.2.0): lo que quedó en la cola y la consulta. Sin la 021 no se ve nada.
+            await modelo.agenda.cargarDeLaCola()
+            await modelo.agenda.consultar()
             if !GuiaUI.audioSinServidor { await modelo.audios.abrirSeccion() }
         }
         // La guía dejó de existir (token revocado o la página se dio de baja): la sección desaparece, sin mensaje.
         .onChange(of: modelo.estado) { _, e in if e == .oculta { control.pausar(); verPorQue.cerrar(); cerrar() } }
         .onChange(of: fase) { _, f in
             // Primero se corta el grabador y después se suelta la sesión (revisión del 4-nov, punto 7).
-            if f == .background { control.pausar(); verPorQue.pausar(); modelo.audios.cortar(); SesionAudio.soltar(); modelo.audios.cerrarSeccion() }
+            if f == .background {
+                control.pausar(); verPorQue.pausar(); modelo.audios.cortar(); SesionAudio.soltar(); modelo.audios.cerrarSeccion()
+                modelo.agenda.pararSondeo()
+            }
+            // La agenda también, con la guía abierta (la pendiente la consulta el resumen aunque esté cerrada).
+            if f == .active, traida, aLaVista { Task { await modelo.agenda.consultar() } }
             // De vuelta a primer plano con la guía abierta: la lista de audios se consulta de nuevo (nunca de fondo).
             if f == .active, traida, aLaVista, !GuiaUI.audioSinServidor { Task { await modelo.audios.abrirSeccion() } }
         }
@@ -117,9 +129,8 @@ struct GuiaView: View {
         if let c = control.clipActual { abiertos.insert(bloqueDe(c)) }
     }
 
-    private func bloqueDe(_ c: ClipGuia) -> String {
-        (c.bloque?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Videos"
-    }
+    /// La clave de su bloque (`Bloque.id`): «Novedad» para los nuevos.
+    private func bloqueDe(_ c: ClipGuia) -> String { ReglasGuia.claveBloque(c) }
 
     // MARK: - Disposición
 
@@ -159,10 +170,12 @@ struct GuiaView: View {
                 if modelo.desdeCache { BannerGuiaSinConexion() }
             }
             .task {
-                // Capturas (DEBUG): `-guiaAncla dudas-llamada|suplementacion|<id de clip>`.
+                // Capturas (DEBUG): `-guiaAncla dudas-llamada|suplementacion|agenda|<id de clip>`.
                 guard let a = GuiaUI.ancla else { return }
                 try? await Task.sleep(for: .milliseconds(700))
-                lector.scrollTo(a, anchor: .top)
+                // La agenda llega después del get: se espera a que aparezca.
+                for _ in 0..<20 where a == "agenda" && modelo.vistaAgenda == .nada { try? await Task.sleep(for: .milliseconds(200)) }
+                lector.scrollTo(a, anchor: a == "agenda" ? .center : .top)
             }
             .onChange(of: control.cambios) { _, _ in
                 // El bloque del video que suena queda abierto.
@@ -178,18 +191,34 @@ struct GuiaView: View {
 
     @ViewBuilder private func listaSinCabecera(_ lector: ScrollViewProxy) -> some View {
         let bloques = ReglasGuia.bloques(clips)
+        // 2.2.0: lo nuevo arriba de todo; debajo, lo de siempre.
+        ForEach(bloques.filter(\.novedad)) { b in bloque(b, lector) }
         ForEach(bloques.filter(\.esApp)) { b in bloque(b, lector) }
         DudasLlamada(modelo: modelo, despues: despues)
-        ForEach(bloques.filter { !$0.esApp }) { b in bloque(b, lector) }
+        ForEach(bloques.filter { !$0.esApp && !$0.novedad }) { b in bloque(b, lector) }
         if let s = VistaSuplementacion(modelo.guia?.suplementacion) {
             Suplementacion(vista: s, modelo: modelo, verPorQue: verPorQue, despues: despues)
         }
+        // La agenda de la entrega, al final (después de las dudas para la llamada).
+        AgendaEntrega(modelo: modelo) { c in irAlVideo(c, lector) }
         Text(despues ? "Si algún video no te carga o tenés algo para contarme, escribime por el chat."
                      : "Si algún video no te carga o tenés algo para contarme antes de la llamada, escribime por el chat.")
             .font(.subheadline).foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .tarjeta()
         AccionEntreno(modelo: modelo)
+    }
+
+    /// «Ir al próximo video» y el contador de la agenda: abre su capítulo, lo reproduce y sube al reproductor.
+    private func irAlVideo(_ c: ClipGuia, _ lector: ScrollViewProxy) {
+        guard let i = clips.firstIndex(where: { $0.id == c.id }) else { return }
+        withAnimation(.snappy) { _ = abiertos.insert(bloqueDe(c)) }
+        control.reproducir(i)
+        if clase == .regular {
+            withAnimation(.snappy) { lector.scrollTo(c.id, anchor: .center) }
+        } else {
+            irAlReproductor(lector, desde: "agenda")
+        }
     }
 
     private func irAlReproductor(_ lector: ScrollViewProxy, desde fila: String?) {
@@ -290,15 +319,20 @@ struct GuiaView: View {
     // MARK: - Bloques
 
     private func bloque(_ b: ReglasGuia.Bloque, _ lector: ScrollViewProxy) -> some View {
-        let abierto = abiertos.contains(b.titulo)
+        let abierto = abiertos.contains(b.id)
         let vistos = b.indices.filter { clips.indices.contains($0) && clips[$0].visto }.count
         return VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.snappy) { if abierto { abiertos.remove(b.titulo) } else { abiertos.insert(b.titulo) } }
+                withAnimation(.snappy) { if abierto { abiertos.remove(b.id) } else { abiertos.insert(b.id) } }
             } label: {
                 HStack(alignment: .center, spacing: Espacio.s) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(b.titulo).font(.headline).foregroundStyle(.primary)
+                        if b.novedad {
+                            Label(b.titulo, systemImage: "sparkles")
+                                .font(.headline).foregroundStyle(Color.marcaTexto)
+                        } else {
+                            Text(b.titulo).font(.headline).foregroundStyle(.primary)
+                        }
                         Text(ReglasGuia.textoBloque(b) + (vistos > 0 ? ", \(vistos == b.indices.count ? "todos vistos" : "\(vistos) \(vistos == 1 ? "visto" : "vistos")")" : ""))
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
@@ -316,7 +350,7 @@ struct GuiaView: View {
             .accessibilityAddTraits(.isHeader)
             .accessibilityValue(abierto ? "Abierto" : "Cerrado")
             .accessibilityHint(abierto ? "Pliega el capítulo" : "Muestra los videos")
-            .accessibilityIdentifier("guia-bloque-\(b.titulo)")
+            .accessibilityIdentifier("guia-bloque-\(b.id)")
             if abierto {
                 // Los índices son de `clips` en este mismo pase; si la guía cambió en el medio, lo que sobra no se pinta.
                 ForEach(b.indices.filter { clips.indices.contains($0) }, id: \.self) { i in fila(i, lector) }
@@ -345,6 +379,15 @@ struct GuiaView: View {
         let apilado = tamañoLetra.isAccessibilitySize
         let duracion = Text(c.url == nil ? "Lo estoy subiendo" : ReglasGuia.duracion(minutos: c.minutos))
             .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+        // 2.2.0: la etiqueta discreta de los obligatorios, solo con la agenda en el servidor.
+        let etiqueta = modelo.agenda.disponible && ReglasAgenda.esObligatorio(c, en: modelo.guia) ? ReglasAgenda.etiquetaObligatorio : nil
+        let titulo = VStack(alignment: .leading, spacing: 2) {
+            Text(c.titulo).font(.body).foregroundStyle(.primary)
+            if let etiqueta {
+                Label(etiqueta, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
+                    .labelStyle(EtiquetaChica())
+            }
+        }
         let botonMotivo = Button {
             withAnimation(.snappy) { if motivoAbierto { motivosAbiertos.remove(c.id) } else { motivosAbiertos.insert(c.id) } }
         } label: {
@@ -374,16 +417,14 @@ struct GuiaView: View {
                             .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 5 }
                         if apilado {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(c.titulo).font(.body).foregroundStyle(.primary)
+                                titulo
                                 duracion
                             }
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 0)
                         } else {
-                            Text(c.titulo)
-                                .font(.body)
-                                .foregroundStyle(.primary)
+                            titulo
                                 .multilineTextAlignment(.leading)
                                 .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: Espacio.xs)
@@ -399,7 +440,7 @@ struct GuiaView: View {
                 .disabled(c.url == nil)
                 .opacity(c.url == nil ? 0.5 : 1)
                 .accessibilityLabel(c.titulo)
-                .accessibilityValue([c.visto ? "Visto" : "Sin ver", actual ? "Es el video actual" : nil,
+                .accessibilityValue([c.visto ? "Visto" : "Sin ver", actual ? "Es el video actual" : nil, etiqueta,
                                      c.url == nil ? "Lo estoy subiendo" : ReglasGuia.duracionHablada(minutos: c.minutos)].compactMap { $0 }.joined(separator: ", "))
                 .accessibilityHint(c.url == nil ? "" : "Reproduce el video")
                 .accessibilityIdentifier("guia-fila-\(c.id)")
@@ -418,6 +459,13 @@ struct GuiaView: View {
 }
 
 // MARK: - Piezas
+
+/// La etiqueta chica: el ícono pegado al texto.
+private struct EtiquetaChica: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) { configuration.icon.imageScale(.small); configuration.title }
+    }
+}
 
 /// El círculo de la fila: vacío sin ver, verde con la tilde visto, con el play en el que suena.
 private struct IconoClip: View {
@@ -818,6 +866,10 @@ enum DemoGuia {
     static var datos: Data? {
         Bundle.main.url(forResource: "guia", withExtension: "json", subdirectory: "Demo.bundle").flatMap { try? Data(contentsOf: $0) }
     }
+    /// La agenda de la demo (2.2.0): franjas ficticias que se corren a mañana. Reservar confirma sin videollamada.
+    static var agenda: Data? {
+        Bundle.main.url(forResource: "agenda", withExtension: "json", subdirectory: "Demo.bundle").flatMap { try? Data(contentsOf: $0) }
+    }
 }
 
 // MARK: - Tarjeta de inicio
@@ -878,6 +930,7 @@ enum GuiaUI {
     static var modelo: ModeloGuia? {
         #if DEBUG
         if UserDefaults.standard.bool(forKey: "guiaMuestra") { return muestra }
+        if let m = AgendaUI.modelo { return m }
         #endif
         return Proveedor.modelo.guia
     }

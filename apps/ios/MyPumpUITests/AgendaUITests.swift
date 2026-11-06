@@ -1,0 +1,245 @@
+import XCTest
+
+/// «Tu guía» v2 (2.2.0): la novedad, los obligatorios y la agenda de la entrega, con la 021 de mentira
+/// (`-agendaDemo <escenario>`, `ServidorAgendaUI`): nunca toca la base. Lo único que sale a la red es el video público de
+/// la demo que hay que ver. Con `AGENDA_CAPTURAS=<carpeta>` en el entorno del runner (`TEST_RUNNER_AGENDA_CAPTURAS`), deja
+/// las capturas `ios-<nombre><AGENDA_SUFIJO>.png` ahí.
+@MainActor
+final class AgendaUITests: XCTestCase {
+    private var app = XCUIApplication()
+
+    override func setUp() async throws { continueAfterFailure = false }
+
+    private func abrir(_ escenario: String, guia: Bool = true, _ extra: [String] = []) {
+        app.terminate()
+        app.launchArguments = ["-bocetos", "YES", "-agendaDemo", escenario, "-sinOnboarding", "YES", "-pestana", "entreno"]
+            + (guia ? ["-abrir", "guia"] : []) + extra
+        app.launch()
+        if guia { XCTAssertTrue(app.descendants(matching: .any)["guia-avance"].waitForExistence(timeout: 20), "No abrió la guía") }
+    }
+
+    private func id(_ i: String) -> XCUIElement { app.descendants(matching: .any)[i].firstMatch }
+    private func texto(_ t: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", t)).firstMatch
+    }
+
+    private func esperar(_ condicion: () -> Bool, segundos: Double) -> Bool {
+        let limite = Date().addingTimeInterval(segundos)
+        while Date() < limite {
+            if condicion() { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+        }
+        return condicion()
+    }
+
+    /// Baja (o sube) hasta que el elemento quede tocable en la mitad de la pantalla.
+    private func llevarALaVista(_ e: XCUIElement, maximo: Int = 25) {
+        for _ in 0..<maximo {
+            if e.exists, e.isHittable, e.frame.minY > app.frame.height * 0.1, e.frame.maxY < app.frame.height * 0.82 { return }
+            let origen = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let arriba = e.exists && e.frame.maxY < app.frame.height * 0.1 && e.frame.maxY > 0
+            let d: CGFloat = arriba ? app.frame.height * 0.25 : -app.frame.height * 0.3
+            origen.press(forDuration: 0.05, thenDragTo: origen.withOffset(CGVector(dx: 0, dy: d)), withVelocity: .fast, thenHoldForDuration: 0.1)
+        }
+    }
+
+    private func captura(_ nombre: String) {
+        let s = XCUIScreen.main.screenshot()
+        let a = XCTAttachment(screenshot: s); a.name = nombre; a.lifetime = .keepAlways; add(a)
+        guard let dir = ProcessInfo.processInfo.environment["AGENDA_CAPTURAS"], !dir.isEmpty else { return }
+        let sufijo = ProcessInfo.processInfo.environment["AGENDA_SUFIJO"] ?? ""
+        try? s.pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent("ios-\(nombre)\(sufijo).png"))
+    }
+
+    // MARK: - Pruebas
+
+    /// La spec §5: bloqueada → ver el último → habilitada → reservar → pendiente → confirmada → Entrar. De paso, la
+    /// tarjeta NOVEDAD de Entreno y el bloque «Novedad» arriba de la guía.
+    func testBloqueadaVerElUltimoReservarYEntrar() throws {
+        abrir("flujo", guia: false)
+        let ceja = id("guia-tarjeta-ceja")
+        XCTAssertTrue(ceja.waitForExistence(timeout: 20), "No está la tarjeta destacada")
+        XCTAssertEqual(ceja.label.lowercased(), "novedad en tu guía")
+        XCTAssertEqual(id("guia-tarjeta-texto").label, "Novedad en tu guía, 1 de 2 videos nuevos, te quedan 1 min")
+        XCTAssertEqual(app.buttons["guia-tarjeta"].label, "Ver lo nuevo")
+        captura("tarjeta-novedad")
+        app.buttons["guia-tarjeta"].tap()
+        XCTAssertTrue(id("guia-avance").waitForExistence(timeout: 15))
+        // El bloque «Novedad» va primero, con el subtítulo, y abre con el video nuevo sin ver.
+        let novedad = app.buttons["guia-bloque-_novedad"]
+        llevarALaVista(novedad)
+        XCTAssertTrue(novedad.exists && novedad.label.contains("2 videos nuevos para vos · 1 min"), novedad.label)
+        if novedad.value as? String == "Cerrado" { novedad.tap() }
+        let fila = app.buttons["guia-fila-N-1"]
+        XCTAssertTrue(fila.waitForExistence(timeout: 5))
+        XCTAssertTrue((fila.value as? String ?? "").contains("Para ver antes de la entrega"), "Falta la etiqueta: \(fila.value ?? "")")
+        XCTAssertLessThan(novedad.frame.minY, app.buttons["guia-bloque-Tu app"].frame.minY, "«Novedad» va arriba de «Tu app»")
+        captura("novedad-arriba")
+
+        // Bloqueada: el contador y la gris con candado.
+        let bloqueada = id("agenda-bloqueada")
+        llevarALaVista(bloqueada)
+        XCTAssertTrue(bloqueada.waitForExistence(timeout: 10), "No está la agenda bloqueada")
+        XCTAssertTrue(bloqueada.label.contains("Cuando termines los videos de arriba se habilita la agenda. Te falta 1."), bloqueada.label)
+        XCTAssertEqual(app.buttons["agenda-contador"].label, "Te falta 1 video para habilitar la agenda")
+        captura("agenda-bloqueada")
+
+        // «Ir al próximo video»: arranca el que falta. Se ve entero a 1,5x y queda visto.
+        let ir = app.buttons["agenda-ir-al-video"]
+        llevarALaVista(ir)
+        ir.tap()
+        let titulo = app.staticTexts["guia-titulo-actual"]
+        XCTAssertTrue(esperar({ titulo.exists && titulo.label == "Lo que cambia en tu entrenamiento" }, segundos: 8), "No fue al video que falta")
+        let velocidad = app.buttons["guia-velocidad"]
+        if velocidad.waitForExistence(timeout: 5) { velocidad.tap(); velocidad.tap() }
+        XCTAssertTrue(esperar({ (app.buttons["guia-fila-N-1"].value as? String ?? "").hasPrefix("Visto") }, segundos: 60),
+                      "El video que faltaba no quedó visto")
+
+        // Habilitada: las franjas por día.
+        let franja = app.buttons["agenda-franja-f1"]
+        XCTAssertTrue(esperar({ franja.exists }, segundos: 20), "La agenda no se habilitó")
+        llevarALaVista(franja)
+        XCTAssertFalse(id("agenda-bloqueada").exists)
+        XCTAssertGreaterThanOrEqual(franja.frame.height, 44)
+        captura("agenda-habilitada")
+        franja.tap()
+        let hoja = app.staticTexts["agenda-hoja-texto"]
+        XCTAssertTrue(hoja.waitForExistence(timeout: 5), "No abrió la confirmación")
+        XCTAssertTrue(hoja.label.hasPrefix("¿Confirmás la entrega el ") && hoja.label.hasSuffix("a las 10:00? Dura unas 2 horas."), hoja.label)
+        captura("agenda-hoja")
+        // «Elegir otro» cierra sin reservar.
+        app.buttons["agenda-elegir-otro"].tap()
+        XCTAssertTrue(esperar({ !hoja.exists }, segundos: 5))
+        XCTAssertTrue(franja.exists)
+        franja.tap()
+        XCTAssertTrue(app.buttons["agenda-confirmar"].waitForExistence(timeout: 5))
+        app.buttons["agenda-confirmar"].tap()
+
+        // Pendiente → confirmada (el doble confirma a la tercera consulta, cada 5 s).
+        let reservando = id("agenda-reservando")
+        XCTAssertTrue(reservando.waitForExistence(timeout: 8), "No se vio «Estamos reservando tu horario…»")
+        llevarALaVista(reservando)
+        captura("agenda-pendiente")
+        let confirmada = id("agenda-confirmada")
+        XCTAssertTrue(confirmada.waitForExistence(timeout: 30), "No se confirmó")
+        XCTAssertTrue(confirmada.label.hasPrefix("Tu entrega: ") && confirmada.label.hasSuffix(", 10:00 a 12:00"), confirmada.label)
+        XCTAssertTrue(texto("¿Necesitás cambiarla? Escribinos por WhatsApp").exists)
+        XCTAssertTrue(app.buttons["agenda-calendario"].exists)
+        let entrar = app.buttons["agenda-entrar"]
+        llevarALaVista(entrar)
+        captura("agenda-confirmada")
+        entrar.tap()
+        // Abre el link de Meet afuera (el navegador del simulador): la app pasa a segundo plano.
+        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 10), "«Entrar a la videollamada» no abrió el link")
+    }
+
+    /// La franja se ocupó al reservar: el aviso y las franjas de nuevo, sin la tomada.
+    func testTomadaVuelveALasFranjas() throws {
+        abrir("tomada", ["-guiaAncla", "agenda"])
+        let franja = app.buttons["agenda-franja-f1"]
+        XCTAssertTrue(franja.waitForExistence(timeout: 15))
+        llevarALaVista(franja)
+        franja.tap()
+        XCTAssertTrue(app.buttons["agenda-confirmar"].waitForExistence(timeout: 5))
+        app.buttons["agenda-confirmar"].tap()
+        let aviso = id("agenda-aviso")
+        XCTAssertTrue(aviso.waitForExistence(timeout: 15), "No apareció el aviso")
+        XCTAssertEqual(aviso.label, "Ese horario se ocupó recién, elegí otro.")
+        XCTAssertTrue(esperar({ !app.buttons["agenda-franja-f1"].exists }, segundos: 10), "La tomada sigue")
+        XCTAssertTrue(app.buttons["agenda-franja-f2"].exists)
+        llevarALaVista(aviso)
+        captura("agenda-fallo-tomada")
+    }
+
+    /// El daemon la pasó a `fallo` con `vencida` (más de 30 min pendiente): «No pudimos reservar…» y las franjas.
+    func testVencidaVuelveALasFranjas() throws {
+        abrir("vencida", ["-guiaAncla", "agenda"])
+        let aviso = id("agenda-aviso")
+        XCTAssertTrue(aviso.waitForExistence(timeout: 15))
+        XCTAssertEqual(aviso.label, "No pudimos reservar ese horario, elegí otro.")
+        XCTAssertTrue(app.buttons["agenda-franja-f2"].exists)
+    }
+
+    /// Sin el OK de horarios (el punto de control): el texto y el contador, sin candado de «Ir al próximo video».
+    func testSinAutorizar() throws {
+        abrir("noAutorizada", ["-guiaAncla", "agenda"])
+        let b = id("agenda-bloqueada")
+        XCTAssertTrue(b.waitForExistence(timeout: 15))
+        llevarALaVista(b)
+        XCTAssertEqual(b.label, "Cuando termines de ver todo te habilitamos la agenda.")
+        XCTAssertEqual(app.buttons["agenda-contador"].label, "Te falta 1 video para habilitar la agenda")
+        XCTAssertFalse(app.buttons["agenda-ir-al-video"].exists)
+        captura("agenda-no-autorizada")
+        // El contador salta al video que falta.
+        app.buttons["agenda-contador"].tap()
+        let titulo = app.staticTexts["guia-titulo-actual"]
+        XCTAssertTrue(esperar({ titulo.exists && titulo.isHittable && titulo.label == "Lo que cambia en tu entrenamiento" }, segundos: 8))
+    }
+
+    func testSinFranjasYPendiente() throws {
+        abrir("sinFranjas", ["-guiaAncla", "agenda"])
+        let sin = id("agenda-sin-franjas")
+        XCTAssertTrue(sin.waitForExistence(timeout: 15))
+        XCTAssertEqual(sin.label, "Ahora no hay horarios libres. Te escribimos por WhatsApp para coordinar.")
+        llevarALaVista(sin)
+        captura("agenda-sin-franjas")
+        abrir("pendiente", ["-guiaAncla", "agenda"])
+        XCTAssertTrue(id("agenda-reservando").waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["agenda-franja-f2"].exists, "Con la reserva pendiente no van franjas")
+    }
+
+    /// Confirmada y sin red: lo último guardado, con «Sin conexión», y el link sigue a mano. En Entreno, «Entrar» desde
+    /// 30 min antes.
+    func testSinRedConLaConfirmadaGuardada() throws {
+        abrir("confirmada", guia: false)
+        let tarjeta = app.buttons["agenda-entrar-tarjeta"]
+        XCTAssertTrue(tarjeta.waitForExistence(timeout: 20), "No está «Entrar» en Entreno")
+        XCTAssertTrue(tarjeta.label.hasPrefix("Tu entrega empieza a las "), tarjeta.label)
+        captura("entreno-entrar")
+        // Se abre la guía con red (queda guardada) y se vuelve a abrir sin red.
+        abrir("confirmada", ["-guiaAncla", "agenda"])
+        XCTAssertTrue(id("agenda-confirmada").waitForExistence(timeout: 15))
+        abrir("confirmada", ["-agendaSinRed", "YES", "-agendaConservar", "YES", "-guiaAncla", "agenda"])
+        let sinRed = id("agenda-sin-red")
+        XCTAssertTrue(sinRed.waitForExistence(timeout: 15), "No dice «Sin conexión»")
+        XCTAssertTrue(id("agenda-confirmada").exists)
+        let entrar = app.buttons["agenda-entrar"]
+        llevarALaVista(entrar)
+        XCTAssertTrue(entrar.isHittable, "Sin red, el link tiene que seguir a mano")
+        captura("agenda-sin-red")
+    }
+
+    /// Letra de accesibilidad: la confirmada y la hoja se leen enteras y los botones se tocan.
+    func testLetraGrande() throws {
+        let grande = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        abrir("confirmada", ["-guiaAncla", "agenda"] + grande)
+        let entrar = app.buttons["agenda-entrar"]
+        XCTAssertTrue(entrar.waitForExistence(timeout: 15))
+        llevarALaVista(entrar)
+        XCTAssertTrue(entrar.isHittable)
+        XCTAssertLessThanOrEqual(entrar.frame.width, app.frame.width)
+        captura("agenda-confirmada-letra-grande")
+        abrir("tomada", ["-guiaAncla", "agenda"] + grande)
+        let franja = app.buttons["agenda-franja-f2"]
+        XCTAssertTrue(franja.waitForExistence(timeout: 15))
+        llevarALaVista(franja)
+        XCTAssertTrue(franja.isHittable)
+        captura("agenda-habilitada-letra-grande")
+        franja.tap()
+        let confirmar = app.buttons["agenda-confirmar"]
+        XCTAssertTrue(confirmar.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmar.isHittable || { app.swipeUp(); return confirmar.isHittable }())
+        captura("agenda-hoja-letra-grande")
+    }
+
+    /// «Ver demo» (la revisión de Apple): la agenda está, bloqueada hasta ver los dos nuevos.
+    func testDemoTieneLaAgenda() throws {
+        app.terminate()
+        app.launchArguments = ["-entrar", "demo", "-sinOnboarding", "YES", "-pestana", "entreno", "-abrir", "guia", "-guiaAncla", "agenda"]
+        app.launch()
+        let b = id("agenda-bloqueada")
+        XCTAssertTrue(b.waitForExistence(timeout: 20), "La demo no tiene la agenda")
+        XCTAssertTrue(b.label.hasSuffix("Te faltan 2."), b.label)
+        XCTAssertEqual(app.buttons["agenda-contador"].label, "Te faltan 2 videos para habilitar la agenda")
+    }
+}

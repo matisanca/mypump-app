@@ -374,7 +374,9 @@ final class GuiaUITests: XCTestCase {
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 15), "La demo no muestra la tarjeta de «Tu guía»")
         // Sin ningún video visto, la destacada; en la demo de Apple, sin la bienvenida.
         let texto = app.descendants(matching: .any)["guia-tarjeta-texto"]
-        XCTAssertTrue(texto.waitForExistence(timeout: 5) && texto.label.contains("8 videos"), "La tarjeta de la demo dice otra cosa: \(texto.label)")
+        // 2.2.0: la demo trae dos videos nuevos (FT-2a y FT-2d): la tarjeta es la de la novedad.
+        XCTAssertTrue(texto.waitForExistence(timeout: 5) && texto.label == "Novedad en tu guía, 2 videos nuevos, unos 1 min",
+                      "La tarjeta de la demo dice otra cosa: \(texto.label)")
         XCTAssertFalse(app.buttons["guia-bienvenida-ver"].exists, "La demo de Apple no lleva la bienvenida")
         capturaMaqueta("demo-tarjeta")
         tarjeta.tap()
@@ -382,7 +384,8 @@ final class GuiaUITests: XCTestCase {
         XCTAssertEqual(filas().count, 8, "La demo tiene que traer los 8 clips de «Tu app»")
         let titulo = app.staticTexts["guia-titulo-actual"]
         XCTAssertTrue(titulo.waitForExistence(timeout: 5))
-        XCTAssertEqual(titulo.label, "¿Cómo funciona la app Pump Team?")
+        // Abre con lo nuevo, que va arriba de todo.
+        XCTAssertEqual(titulo.label, "¿Qué subo en la revisión semanal?")
         capturaMaqueta("demo-guia")
         // Reproduce de verdad la URL pública: el primer video queda visto al terminar (dura unos 40 s).
         let primera = app.buttons["guia-fila-FT-2b"]

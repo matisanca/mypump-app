@@ -121,7 +121,8 @@ struct ObligatoriosTests {
         #expect(ReglasAgenda.faltan(g) == 6)
         #expect(ReglasAgenda.primeroQueFalta(g)?.id == "FT-2a")
         #expect(ReglasAgenda.textoContador(6) == "Te faltan 6 videos para habilitar la agenda")
-        #expect(ReglasAgenda.textoContador(1) == "Te faltan 1 video para habilitar la agenda")
+        #expect(ReglasAgenda.textoContador(1) == "Te falta 1 video para habilitar la agenda")
+        #expect(ReglasAgenda.textoBloqueada(1) == "Cuando termines los videos de arriba se habilita la agenda. Te falta 1.")
     }
 
     @Test func conUnoSoloConElCampoLosDemasNoCuentan() {
@@ -290,5 +291,19 @@ struct AgendaVistaTests {
         var pendiente = r; pendiente.estado = .pendiente
         #expect(!ReglasAgenda.puedeEntrar(pendiente, ahora: fecha("2026-11-12T10:00:00-03:00")))
         #expect(ReglasAgenda.textoEntrar(r, zona: TimeZone(identifier: "America/Argentina/Buenos_Aires")!, ahora: fecha("2026-11-12T10:05:00-03:00")) == "Tu entrega empezó a las 10:00")
+    }
+}
+
+@Suite("Agenda de la demo (2.2.0)")
+struct AgendaDemoTests {
+    @Test func lasFranjasDeLaDemoSeCorrenAMañana() throws {
+        let fs = [FranjaAgenda(id: "a", inicio: "2026-11-12T10:00:00-03:00", fin: "2026-11-12T12:00:00-03:00"),
+                  FranjaAgenda(id: "b", inicio: "2026-11-13T14:00:00-03:00", fin: "2026-11-13T16:00:00-03:00")]
+        let ahora = ReglasGuia.instante("2026-12-01T20:30:00-03:00")!
+        let c = ReglasAgenda.correrAlFuturo(fs, ahora: ahora)
+        #expect(c.map(\.inicio) == ["2026-12-02T10:00:00-03:00", "2026-12-03T14:00:00-03:00"])
+        #expect(c.map(\.fin) == ["2026-12-02T12:00:00-03:00", "2026-12-03T16:00:00-03:00"])
+        // En el futuro, como vinieron.
+        #expect(ReglasAgenda.correrAlFuturo(fs, ahora: ReglasGuia.instante("2026-11-01T10:00:00-03:00")!) == fs)
     }
 }

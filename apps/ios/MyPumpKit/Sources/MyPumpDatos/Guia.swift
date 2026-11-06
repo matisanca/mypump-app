@@ -150,7 +150,9 @@ public final class ModeloGuia {
     public var faltanAgenda: Int { agenda.agenda?.faltan ?? faltanLocal ?? 0 }
     /// La reserva para el «Entrar» de la tarjeta de Entreno: la del resumen o la de la agenda, la que pueda entrar.
     public func reservaParaEntrar(ahora: Date = Date()) -> ReservaAgenda? {
-        [agenda.reserva, resumen?.reserva].compactMap { $0 }.first { ReglasAgenda.puedeEntrar($0, ahora: ahora) }
+        // Sin guía (token revocado o la página dada de baja) no queda nada en Entreno, tampoco la copia de la agenda.
+        guard resumen?.ok != false, estado != .oculta else { return nil }
+        return [agenda.reserva, resumen?.reserva].compactMap { $0 }.first { ReglasAgenda.puedeEntrar($0, ahora: ahora) }
     }
 
     public func quitarDeEntreno() { guardarQuitada(true) }
@@ -456,7 +458,7 @@ public final class ModeloGuia {
 
     /// Lo que la cola guardó (lo llama `ModeloApp`). `true` = guardado; `false` = la base no lo aceptó (tope o token):
     /// el texto vuelve a su recuadro con «No se pudo guardar».
-    func alGuardar(_ ops: [OpGuardada]) {
+    public func alGuardar(_ ops: [OpGuardada]) {
         audios.alGuardar(ops)
         agenda.alGuardar(ops)
         // El último obligatorio llegó al servidor: ahora sí la agenda se habilita.
@@ -480,7 +482,7 @@ public final class ModeloGuia {
     }
 
     /// Lo que la cola abandonó tras 8 intentos (va a fallidos): el texto vuelve al recuadro.
-    func alAbandonar(_ ops: [Operacion]) {
+    public func alAbandonar(_ ops: [Operacion]) {
         audios.alAbandonar(ops)
         agenda.alAbandonar(ops)
         for op in ops where op.kind == Self.kindDuda || op.kind == Self.kindDudaLlamada {
