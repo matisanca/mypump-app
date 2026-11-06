@@ -92,15 +92,18 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 const PROMPTS = {
+  // Pide las DOS columnas por separado y copiadas tal cual (6-nov): con un solo juego de valores "por esa porción" la IA
+  // a veces devolvía porcion_g 100 (o nada) con los números del scoop, y la app los guardaba como por 100 g (un whey de
+  // 30 g = 132 kcal quedó en 132 kcal/100 g y el reemplazo pedía 151 g, 5 scoops). La base la decide normalizarEtiqueta.
   etiqueta: `Mirá la foto adjunta: es la tabla de "Información Nutricional" de un producto alimenticio (probablemente en español).
-Extraé los datos y respondé SOLO con un objeto JSON válido, sin texto extra, con esta forma exacta:
+Copiá los números TAL COMO ESTÁN IMPRESOS, sin hacer cuentas. Muchas tablas tienen DOS columnas de valores: una "por 100 g" (o "100 ml") y otra "por porción" (ej. "Porción 30 g (1 scoop)"). Otras tienen una sola. No mezcles columnas: cada número va con la columna de la que salió.
+Respondé SOLO con un objeto JSON válido, sin texto extra, con esta forma exacta:
 {"nombre": string (nombre del producto si se ve, si no un nombre genérico corto),
- "porcion_g": number (tamaño de la porción de referencia en gramos o ml; si la tabla es por 100g, usá 100),
- "kcal": number (calorías POR ESA porción),
- "prot": number (proteínas en g por porción),
- "carb": number (carbohidratos en g por porción),
- "fat": number (grasas totales en g por porción),
+ "porcion_g": number o null (cuánto pesa o mide la porción que declara la etiqueta, en g o ml, ej. 30 para "Porción 30 g"; null si la etiqueta no dice cuánto pesa la porción o no se lee),
+ "por_porcion": {"kcal": number, "prot": number, "carb": number, "fat": number} o null (los valores de la columna de la porción; null si la tabla no tiene esa columna),
+ "por_100g": {"kcal": number, "prot": number, "carb": number, "fat": number} o null (los valores de la columna por 100 g o 100 ml; null si la tabla no tiene esa columna),
  "confianza": "alta"|"media"|"baja" (qué tan legible estaba la tabla)}
+kcal = valor energético en kcal (si solo figura en kJ, dividilo por 4.184). prot = proteínas, carb = carbohidratos totales, fat = grasas totales, en gramos.
 Si un valor no se lee, estimalo con criterio y bajá la confianza. Números con punto decimal, sin unidades.`,
   plato: `Sos un nutricionista deportivo experto en estimar porciones a ojo. Mirá la foto: es un plato de comida real (contexto argentino).
 Lo MÁS importante de tu respuesta es que los GRAMOS sean realistas. Seguí este método y razoná brevemente en voz alta ANTES del JSON.
@@ -234,7 +237,7 @@ const esJPEG = (buf) => buf.length > 3 && buf[0] === 0xFF && buf[1] === 0xD8 && 
 function runCodex(imgPath, prompt) {
   return new Promise((resolve, reject) => {
     const args = ['exec', '--skip-git-repo-check', '-s', 'read-only',
-                  '-c', 'mcp_servers={}', '-i', imgPath, '--', prompt];
+                  '-c', 'features.shell_tool=false', '--ignore-user-config', '-m', 'gpt-5.6-sol', '-c', 'model_reasoning_effort=low', '-i', imgPath, '--', prompt];
     const child = execFile(CODEX_BIN, args, { timeout: TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024, cwd: tmpdir() },
       (err, stdout, stderr) => {
         if (err) console.error('[vision] codex err:', err.message, '| stderr:', String(stderr).slice(-500));
@@ -286,7 +289,8 @@ function runClaude(buf, prompt) {
   return new Promise((resolve, reject) => {
     const tok = tokenClaude();
     if (!tok) return reject(new Error('sin CLAUDE_CODE_OAUTH_TOKEN (ni en el entorno ni en ~/pump-trazabilidad/.env)'));
-    const env = { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: tok };
+    // CLAUDE_CODE_DISABLE_ATTACHMENTS: un "@/ruta" en el texto adjuntaría ese archivo (27/10)
+    const env = { ...process.env, CLAUDE_CODE_OAUTH_TOKEN: tok, CLAUDE_CODE_DISABLE_ATTACHMENTS: '1' };
     for (const v of VARIABLES_DE_API) delete env[v];
     const mensaje = JSON.stringify({ type: 'user', message: { role: 'user', content: [
       { type: 'text', text: prompt },
@@ -391,6 +395,101 @@ function normalizarPlato(j) {
       ? teorico : declarado;
   }
   return j;
+}
+
+// ── Normalizar la lectura de una ETIQUETA (6-nov) ──
+// Devuelve UNA sola base coherente, con la forma que ya entienden las apps publicadas (2.0.2 y 2.1.0):
+//   porcion_g > 0 y distinto de 100 → kcal/prot/carb/fat son de ESA porción (la app elige unidad «porción»);
+//   porcion_g 100                    → son por 100 g o 100 ml;
+//   porcion_g null                   → no se sabe la base (la app nueva pregunta; la vieja asume 100 g, como antes).
+// Suma `base` ('porcion' | '100g' | 'desconocida') y `avisos` (textos cortos). Lo que no cierra baja la confianza.
+// Acepta también la forma vieja (un solo juego de valores "por esa porción"), por si el modelo no sigue la nueva.
+function normalizarEtiqueta(j) {
+  const nada = { nombre: null, porcion_g: null, kcal: null, prot: null, carb: null, fat: null, confianza: 'baja',
+                 base: 'desconocida', avisos: ['no se pudo leer la tabla'] };
+  if (!j || typeof j !== 'object' || Array.isArray(j)) return nada;
+  const n = (v) => {
+    if (v === null || v === undefined || v === '' || typeof v === 'boolean') return null;
+    const x = typeof v === 'number' ? v : Number(String(v).trim().replace(',', '.'));
+    return Number.isFinite(x) && x >= 0 ? x : null;
+  };
+  const columna = (o) => {
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+    const c = { kcal: n(o.kcal), prot: n(o.prot), carb: n(o.carb), fat: n(o.fat) };
+    return Object.values(c).some((v) => v !== null && v > 0) ? c : null;
+  };
+  const avisos = [];
+  const NIVEL = { alta: 2, media: 1, baja: 0 };
+  let confianza = Object.prototype.hasOwnProperty.call(NIVEL, j.confianza) ? j.confianza : 'media';
+  const bajar = (a) => { if (NIVEL[a] < NIVEL[confianza]) confianza = a; };
+  let porcion = n(j.porcion_g);
+  if (!(porcion > 0)) porcion = null;
+  const es100 = porcion !== null && Math.round(porcion) === 100;
+  let pp = columna(j.por_porcion);
+  let p100 = columna(j.por_100g);
+  if (!pp && !p100) {
+    const plano = columna(j);
+    if (plano) { if (es100) p100 = plano; else pp = plano; }
+  }
+  if (es100 && pp && !p100) { p100 = pp; pp = null; }   // "Porción 100 g": esa columna ES la de 100 g
+
+  let base, valores, porcionG;
+  if (pp && p100 && porcion !== null && !es100) {
+    // Dos columnas: tienen que cerrar entre sí (la de 100 g escalada a la porción ≈ la de la porción).
+    const esperado = p100.kcal !== null ? p100.kcal * porcion / 100 : null;
+    if (esperado !== null && pp.kcal !== null && esperado > 0 && pp.kcal > 0
+        && Math.abs(esperado - pp.kcal) / Math.max(esperado, pp.kcal) > 0.2) {
+      avisos.push('las dos columnas no cierran entre sí: revisá la porción');
+      bajar('baja');
+      base = '100g'; valores = p100; porcionG = 100;
+    } else {
+      base = 'porcion'; valores = pp; porcionG = porcion;
+    }
+  } else if (pp && porcion !== null && !es100) {
+    base = 'porcion'; valores = pp; porcionG = porcion;
+  } else if (p100) {
+    base = '100g'; valores = p100; porcionG = 100;
+  } else if (pp) {
+    avisos.push('no se ve cuánto pesa la porción');
+    bajar('media');
+    base = 'desconocida'; valores = pp; porcionG = null;
+  } else {
+    return { ...nada, nombre: typeof j.nombre === 'string' ? j.nombre : null };
+  }
+
+  const r1 = (x) => (x === null ? null : Math.round(x * 10) / 10);
+  const kcal = valores.kcal === null ? null : Math.round(valores.kcal);
+  const prot = r1(valores.prot), carb = r1(valores.carb), fat = r1(valores.fat);
+
+  // Las kcal tienen que cerrar con los macros (4/4/9). Fibra, polioles y redondeos mueven un poco: margen amplio.
+  const teorico = (prot || 0) * 4 + (carb || 0) * 4 + (fat || 0) * 9;
+  if (kcal !== null && kcal > 0 && teorico > 0 && Math.abs(kcal - teorico) > 20 && Math.abs(kcal - teorico) / teorico > 0.25) {
+    avisos.push('las calorías no cierran con los macros');
+    bajar('baja');
+  }
+  // Llevado a 100 g no puede pasar lo que no entra en 100 g (mismo tope que la app: 950 kcal, 110 g de macros).
+  if (base !== 'desconocida') {
+    const a100 = 100 / porcionG;
+    if ((kcal || 0) * a100 > 950 || ((prot || 0) + (carb || 0) + (fat || 0)) * a100 > 110) {
+      avisos.push('esos valores no entran en ' + (base === 'porcion' ? `${porcionG} g` : '100 g'));
+      bajar('baja');
+    }
+  }
+  return { nombre: typeof j.nombre === 'string' ? j.nombre : null, porcion_g: porcionG, kcal, prot, carb, fat,
+           confianza, base, avisos };
+}
+
+// Una línea por etiqueta leída, sin la imagen: lo que devolvió la IA (crudo, recortado) y lo que salió.
+function logEtiqueta(clienteId, crudo, sale) {
+  try {
+    const c = crudo && typeof crudo === 'object'
+      ? JSON.stringify({ porcion_g: crudo.porcion_g, por_porcion: crudo.por_porcion, por_100g: crudo.por_100g,
+                         kcal: crudo.kcal, confianza: crudo.confianza }).slice(0, 400)
+      : String(crudo).slice(0, 100);
+    console.log(`[etiqueta] ${new Date().toISOString()} ${clienteId} base=${sale.base} porcion_g=${sale.porcion_g} `
+      + `kcal=${sale.kcal} p=${sale.prot} c=${sale.carb} g=${sale.fat} conf=${sale.confianza} `
+      + `avisos=${JSON.stringify(sale.avisos)} ia=${c}`);
+  } catch { /* el log nunca tumba el pedido */ }
 }
 
 function send(res, status, obj, origin) {
@@ -560,7 +659,10 @@ const server = createServer(async (req, res) => {
         console.error(`[vision] sin JSON parseable. Output de ${proveedorIA()} (últimos 800):`, String(out).slice(-800));
         return send(res, 502, { ok: false, error: 'no se pudo interpretar la foto, probá con más luz' }, origin);
       }
-      send(res, 200, { ok: true, data: tipo === 'plato' ? normalizarPlato(json) : json }, origin);
+      let sale;
+      if (tipo === 'plato') sale = normalizarPlato(json);
+      else { sale = normalizarEtiqueta(json); logEtiqueta(cid, json, sale); }
+      send(res, 200, { ok: true, data: sale }, origin);
     } catch (e) {
       send(res, 502, { ok: false, error: `visión falló: ${String(e.message || e).slice(0, 200)}` }, origin);
     } finally {
@@ -569,4 +671,5 @@ const server = createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => console.log(`[mini-vision] escuchando en :${PORT}`));
+if (process.env.MINI_VISION_SIN_ESCUCHAR !== '1') server.listen(PORT, () => console.log(`[mini-vision] escuchando en :${PORT}`));
+export { normalizarEtiqueta };
