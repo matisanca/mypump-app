@@ -569,11 +569,12 @@
       const marca = ++this._marcaSondeo;
       const vuelta = async () => {
         if (marca !== this._marcaSondeo) return;
-        this._sondeo = null;
-        if (Date.now() - inicio > RA.SONDEO_MAXIMO_MS || document.visibilityState === 'hidden') return;
+        if (Date.now() - inicio > RA.SONDEO_MAXIMO_MS || document.visibilityState === 'hidden') { this._sondeo = null; return; }
+        this._sondeo = 'consultando';   // ocupado: la consulta no puede abrir otro sondeo
         // Mientras la reserva sigue en la cola no hay nada que consultar: espera su respuesta.
         if (!this.enCola) await this.consultar();
-        if (marca !== this._marcaSondeo || !this.pendiente) return;
+        if (marca !== this._marcaSondeo) return;
+        if (!this.pendiente) { this._sondeo = null; return; }
         this._sondeo = setTimeout(vuelta, RA.SONDEO_CADA_MS);
       };
       this._sondeo = setTimeout(vuelta, RA.SONDEO_CADA_MS);
@@ -581,7 +582,8 @@
 
     // Segundo plano: nunca se consulta de fondo.
     pararSondeo() {
-      clearTimeout(this._sondeo); this._sondeo = null;
+      if (typeof this._sondeo === 'number') clearTimeout(this._sondeo);
+      this._sondeo = null;
       this._marcaSondeo++;
       this._pararReloj();
     }
@@ -610,8 +612,30 @@
       });
     }
 
+    // Cuánto falta para que la confirmada más cercana empiece (ms), o null.
+    _faltaParaEntrega() {
+      const ahora = Date.now();
+      const ts = [this.reserva, this.m.resumen && this.m.resumen.reserva]
+        .filter(r => r && r.estado === 'confirmada')
+        .map(r => R.instante(r.inicio)).filter(Boolean).map(d => d.getTime() - ahora);
+      return ts.length ? Math.min(...ts) : null;
+    }
+
     _vigilar() {
       if (this._reloj || !this.vigilantes.size || document.visibilityState === 'hidden' || !this._hayConfirmadaViva()) return;
+      // Lejos de la entrega no cambia nada cada 15 s: se despierta una vez antes
+      // de la ventana (el aviso del servidor + 1 h de margen) o a las 6 h.
+      const falta = this._faltaParaEntrega();
+      const ventana = (Math.max(0, Number(this.avisoMin) || 0) + 60) * 60000;
+      if (falta != null && falta > ventana + 3 * 3600000) {
+        this._relojLejos = setTimeout(() => {
+          this._relojLejos = null;
+          this.m.avisar();
+          this._vigilar();
+        }, Math.min(falta - ventana - 3 * 3600000, 6 * 3600000));
+        this._reloj = this._relojLejos;
+        return;
+      }
       this._tics = 0;
       this._reloj = setInterval(() => {
         if (!this.vigilantes.size || document.visibilityState === 'hidden' || !this._hayConfirmadaViva()) { this._pararReloj(); this.m.avisar(); return; }
@@ -622,7 +646,10 @@
       }, 15000);
     }
 
-    _pararReloj() { clearInterval(this._reloj); this._reloj = null; }
+    _pararReloj() {
+      clearInterval(this._reloj); this._reloj = null;
+      if (this._relojLejos) { clearTimeout(this._relojLejos); this._relojLejos = null; }
+    }
 
     // ── Reservar ──
     // La franja elegida en la hoja de confirmación. Por la cola, con un p_id
@@ -1161,12 +1188,14 @@
     for (const m of modelos.values()) {
       if (m.cola.length) m.procesarCola();
       if (m.agenda.op) m.agenda.procesar();
-      // Con una reserva pendiente o esperando la sala: la agenda enseguida (sin el tope del resumen).
-      m.agenda.alVolver().then(() => m.avisar()).catch(() => {});
-      // Al volver a primer plano, el resumen de nuevo (como la app), a lo sumo cada 5 minutos.
+      // Al volver a primer plano, el resumen de nuevo (como la app), a lo sumo cada
+      // 5 minutos; al terminar consulta la agenda (alVolver). Si no toca el
+      // resumen, la agenda directo (pendiente o esperando la sala).
       if (!m._resumenAlVolver || Date.now() - m._resumenAlVolver > 300000) {
         m._resumenAlVolver = Date.now();
         Promise.resolve(m.actualizarResumen()).then(() => m.avisar()).catch(() => {});
+      } else {
+        m.agenda.alVolver().then(() => m.avisar()).catch(() => {});
       }
     }
   });
