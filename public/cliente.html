@@ -10805,9 +10805,11 @@ function confirmExSwap() {
 }
 
 // ---- CUSTOM FOOD MODAL ----
+let _cfApertura = 0;
 function openCustomFoodModal() {
   const original = _swapState.original;
   if (!original) return;
+  _cfApertura++;
   const originalCat = original.category || inferFoodCategory(original);
 
   $('#modalHost').innerHTML = `
@@ -10935,8 +10937,13 @@ function openCustomFoodModal() {
       scanBtn.disabled = true;
       scanStatus.hidden = false;
       scanStatus.textContent = 'Leyendo la etiqueta… puede tardar ~30 segundos';
+      const apertura = _cfApertura;
       try {
         const d = await visionDesdeFoto(file, 'etiqueta');
+        // Cerró el modal (o abrió otro) mientras se leía: la respuesta vieja no
+        // escribe en el modal nuevo (un scoop podía quedar guardado como 100 g).
+        if (apertura !== _cfApertura || !unitSel.isConnected) return;
+        if (!d || typeof d !== 'object') throw new Error('respuesta vacía');
         // Prefill (todo editable) y en qué base quedó. Porción con gramos → unidad "porcion" con sus gramos;
         // 100 g → unidad g; sin gramos de la porción se pregunta (6-nov: antes se asumía 100 g y un whey de
         // 30 g = 132 kcal quedó en 132 kcal por 100 g).
