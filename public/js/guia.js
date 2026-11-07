@@ -1,13 +1,17 @@
 /* =============================================================
    guia.js — «Tu guía» en la web del cliente
 
-   Port de la sección de la app nativa MyPump 2.1.0 (rama nativa-202):
+   Port de la sección de la app nativa MyPump 2.2.0 (rama nativa-220):
    · apps/ios/MyPump/Guia/GuiaView.swift, GuiaDestacada.swift,
-     ReproductorGuia.swift, AudioDudaView.swift (la interfaz);
-   · apps/ios/MyPumpKit/Sources/MyPumpReglas/Guia.swift y AudioDuda.swift
-     (las reglas, copiadas una por una);
-   · MyPumpModelos/Guia.swift (la forma tolerante del JSON);
-   · MyPumpDatos/Guia.swift, AudioDuda.swift y Escrituras.swift (las RPC).
+     ReproductorGuia.swift, AudioDudaView.swift, AgendaView.swift y
+     FormaVideo.swift (la interfaz);
+   · las reglas puras y la lectura del JSON están en js/reglas-guia.js
+     (MyPumpReglas/Guia.swift, Agenda.swift y FormatoVideo.swift), que se
+     carga antes que este archivo;
+   · MyPumpDatos/Guia.swift, Agenda.swift, AudioDuda.swift y Escrituras.swift
+     (las RPC y las colas).
+   2.2.0: la NOVEDAD arriba de la guía, los videos obligatorios, la agenda de
+   la entrega al final y el recorte de las franjas negras de los videos.
 
    Módulo independiente: no depende de la estructura de cliente.html. Usa
    window.mypumpDB (supabase-client.js) y las variables de css/tokens.css.
@@ -29,11 +33,8 @@
   if (window.MyPumpGuia) return;
 
   // ─── Constantes (ReglasGuia y ReglasAudioDuda) ─────────────────
-  const MAX_TEXTO = 1000;            // la base acepta de 1 a 1000 caracteres
   const MAX_DUDAS_LLAMADA = 30;      // compartido con la web y la app
   const PLACA_MS = 2600;             // la placa al cambiar de video
-  const MAX_SEGUNDOS = 36000;        // p_segundos de 0 a 36000
-  const HORAS_TARJETA = 48;          // entregas_014: 48 h exactas
   const INTENTOS_MAX = 8;            // la cola abandona después de 8 rechazos
   const AUDIO_TOPE = 300;            // corta solo a los 5 minutos
   const AUDIO_AVISO = 270;           // «Te quedan 30 segundos.»
@@ -41,7 +42,6 @@
   const AUDIO_BITRATE = 64000;
   const SONDEO_CADA_MS = 15000;      // la lista de audios, cada 15 s
   const SONDEO_MAX_MS = 180000;      // como mucho 3 minutos
-  const ZONA_BA = 'America/Argentina/Buenos_Aires';
 
   // ─── Utilidades ─────────────────────────────────────────────────
   function esc(s) {
@@ -85,501 +85,14 @@
   const db = () => window.mypumpDB || null;
   const tokenValido = t => typeof t === 'string' && t.length > 0;
   const reducirMovimiento = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-  // Caracteres como los cuenta la base (puntos de código), no unidades UTF-16.
-  const largo = s => Array.from(s || '').length;
   const fmtNum = n => Number(n).toLocaleString('es-AR');
 
-  // ─── Lectura tolerante (MyPumpModelos/Guia.swift) ───────────────
-  // Un campo que falta, viene null o con otro tipo no rompe el resto.
-  function texto(v) {
-    if (typeof v === 'string') return v;
-    if (typeof v === 'number' && isFinite(v)) return String(v);
-    return null;
-  }
-  function booleano(v) {
-    if (typeof v === 'boolean') return v;
-    if (v === 'true' || v === 1) return true;
-    if (v === 'false' || v === 0) return false;
-    return null;
-  }
-  function decimal(v) {
-    const n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
-    return isFinite(n) ? n : null;
-  }
-  function entero(v) { const n = decimal(v); return n == null ? null : Math.trunc(n); }
-  const lista = v => (Array.isArray(v) ? v : []);
-  const esObjeto = v => !!v && typeof v === 'object' && !Array.isArray(v);
-  const noVacio = s => (s == null || s === '' ? null : s);
-  function textos(v) {
-    if (typeof v === 'string') return [v];
-    if (Array.isArray(v)) return v.map(texto).filter(x => x != null);
-    return null;
-  }
-  const trimServidor = s => s.replace(/^[\s\u00a0\ufeff]+|[\s\u00a0\ufeff]+$/g, '');
-
-  function normalizarClip(o) {
-    if (!esObjeto(o)) return null;
-    const id = (texto(o.id) || '').trim();
-    // Sin id no se puede guardar el avance ni la duda: el clip no sirve.
-    if (!id) return null;
-    let url = null;
-    const u = (texto(o.url) || '').trim();
-    if (/^https?:\/\//i.test(u)) url = u;
-    const m = decimal(o.minutos) || 0;
-    const seg = decimal(o.segundos) || 0;
-    return {
-      id,
-      titulo: texto(o.titulo) || '',
-      url,                                   // sin url, el video todavía se está subiendo
-      minutos: m > 0 ? m : 0,
-      motivo: texto(o.motivo),
-      bloque: texto(o.bloque),
-      visto: booleano(o.visto) || false,
-      segundos: Math.trunc(Math.min(MAX_SEGUNDOS, Math.max(0, seg))),
-      duda: noVacio(texto(o.duda)),
-    };
-  }
-
-  function normalizarDudaLlamada(o) {
-    // La web también acepta una lista de textos sueltos: se toleran las dos formas.
-    if (typeof o === 'string') return { texto: o, en: null };
-    if (!esObjeto(o)) return null;
-    return { texto: texto(o.texto) || '', en: texto(o.en) };
-  }
-
-  function normalizarComprar(o) {
-    if (typeof o === 'string') return o ? { buscar: o, donde: null, nota: null } : null;
-    if (!esObjeto(o)) return null;
-    const c = { buscar: noVacio(texto(o.buscar)), donde: noVacio(texto(o.donde)), nota: noVacio(texto(o.nota)) };
-    return c.buscar || c.donde || c.nota ? c : null;
-  }
-
-  function normalizarItem(o) {
-    if (!esObjeto(o)) return null;
-    return {
-      // Tal como viene (como la web y entregas_012): un nombre en blanco no es vacío.
-      nombre: texto(o.nombre) || '',
-      cantidad: texto(o.cantidad),
-      momento: texto(o.momento),
-      tomas: lista(o.tomas).filter(esObjeto).map(t => ({
-        momento: texto(t.momento), cantidad: texto(t.cantidad), nota: texto(t.nota), nombre: texto(t.nombre),
-      })),
-      nota: texto(o.nota),
-      detalle: (textos(o.detalle) || []).filter(x => x !== ''),
-      estado: texto(o.estado),
-      opcional: booleano(o.opcional) || false,
-      porQue: noVacio(texto(o.por_que)),
-      videoId: noVacio(texto(o.video_id)),
-      dias: (textos(o.dias) || []).map(x => x.trim()).filter(Boolean),
-      antes: noVacio(texto(o.antes)),
-      cambio: noVacio(texto(o.cambio)),
-      comprar: normalizarComprar(o.comprar),
-    };
-  }
-
-  function normalizarSuplementacion(o) {
-    if (!esObjeto(o)) return null;
-    return {
-      titulo: texto(o.titulo),
-      dia: lista(o.dia).filter(esObjeto).map(m => ({ id: texto(m.id) || '', nombre: texto(m.nombre) })).filter(m => m.id),
-      // Como la web (`if (!it || !it.nombre) return`): sin nombre no va.
-      items: lista(o.items).map(normalizarItem).filter(it => it && it.nombre !== ''),
-      sigueTexto: noVacio(texto(o.sigue_texto)),
-      accion: noVacio(texto(o.accion)),
-    };
-  }
-
-  // Lo que devuelve entregas_app_get. Todo lo que no sea un objeto con
-  // ok:true es «no hay guía».
-  function normalizarGuia(j) {
-    if (!esObjeto(j)) return { ok: false, nombrePila: null, fechaEntrega: null, clips: [], dudasLlamada: [], suplementacion: null };
-    return {
-      ok: booleano(j.ok) || false,
-      nombrePila: texto(j.nombre_pila),
-      fechaEntrega: texto(j.fecha_entrega),
-      clips: lista(j.clips).map(normalizarClip).filter(Boolean),
-      dudasLlamada: lista(j.dudas_llamada).map(normalizarDudaLlamada).filter(d => d && d.texto !== ''),
-      suplementacion: normalizarSuplementacion(j.suplementacion),
-    };
-  }
-
-  // Lo que devuelve entregas_app_resumen (entregas_011 y 014).
-  function normalizarResumen(j) {
-    if (!esObjeto(j)) return { ok: false, total: 0, vistos: 0, minutosRestantes: 0, fechaEntrega: null, mostrarTarjetaServidor: null };
-    const ok = booleano(j.ok) || false;
-    const total = Math.max(0, entero(j.total) || 0);
-    const m = decimal(j.minutos_restantes) || 0;
-    const f = texto(j.fecha_entrega);
-    return {
-      ok,
-      total,
-      vistos: Math.min(Math.max(0, entero(j.vistos) || 0), total),
-      minutosRestantes: m > 0 ? m : 0,
-      fechaEntrega: f && f.trim() ? f : null,
-      // Se lee primero ok: con false no hay tarjeta ni fila, venga lo que venga.
-      mostrarTarjetaServidor: ok ? booleano(j.mostrar_tarjeta) : null,
-    };
-  }
-
-  // ─── Reglas (MyPumpReglas/Guia.swift) ───────────────────────────
-  const MOMENTOS = [
-    ['despertar', 'Al despertar'], ['ayunas', 'En ayunas'], ['desayuno', 'Desayuno'], ['media_manana', 'Media mañana'],
-    ['almuerzo', 'Almuerzo'], ['merienda', 'Merienda'], ['pre', 'Antes de entrenar'], ['intra', 'Mientras entrenás'],
-    ['post', 'Después de entrenar'], ['cena', 'Cena'], ['dormir', 'Antes de dormir'], ['noche', 'Si te despertás de noche'],
-  ];
-  const NOMBRES_MOMENTOS = Object.fromEntries(MOMENTOS);
-
-  function mayuscula(s) {
-    const t = (s || '').trim();
-    if (!t) return null;
-    const cs = Array.from(t);
-    return cs[0].toUpperCase() + cs.slice(1).join('');
-  }
-
-  function diaBA(d) {
-    const p = new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_BA, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
-    const v = k => (p.find(x => x.type === k) || {}).value;
-    return `${v('year')}-${v('month')}-${v('day')}`;
-  }
-
-  const R = {
-    esBloqueApp: b => (b || '').trim().toLowerCase() === 'tu app',
-
-    ordenados(clips) {
-      return clips.filter(c => R.esBloqueApp(c.bloque)).concat(clips.filter(c => !R.esBloqueApp(c.bloque)));
-    },
-
-    // «Tu suplementación» como el regex de entregas_012, carácter por carácter
-    // (una ó descompuesta no es la ó del regex).
-    esBloqueSuplementacion(bloque) {
-      if (bloque == null) return false;
-      const e = Array.from(trimServidor(bloque));
-      const base = Array.from('tu suplementaci');
-      if (e.length !== base.length + 2) return false;
-      for (let i = 0; i < base.length; i++) if (e[i].toLowerCase() !== base[i]) return false;
-      const o = e[base.length];
-      if (!(o === 'o' || o === 'O' || o === '\u00f3' || o === '\u00d3')) return false;
-      return e[base.length + 1] === 'n' || e[base.length + 1] === 'N';
-    },
-
-    nombradoPor(it) {
-      return it.nombre !== '' && it.estado !== 'sale' && it.videoId ? it.videoId : null;
-    },
-
-    nombradosPorSuplementos(s) {
-      return new Set(((s && s.items) || []).map(R.nombradoPor).filter(Boolean));
-    },
-
-    // Los de la lista, de «Viste X de N» y del reproductor: los del bloque
-    // «Tu suplementación» que nombra un suplemento se ven solo debajo de él.
-    deLaLista(g) {
-      if (!g) return [];
-      const nombrados = R.nombradosPorSuplementos(g.suplementacion);
-      return R.ordenados(g.clips.filter(c => !(R.esBloqueSuplementacion(c.bloque) && nombrados.has(c.id))));
-    },
-
-    clipDeSuplemento(g, videoId) {
-      if (!videoId || !g) return null;
-      const c = g.clips.find(x => x.id === videoId);
-      return c && c.url ? c : null;
-    },
-
-    rotuloVerPorQue: c => `Ver por qué (${Math.max(1, Math.round(c.minutos * 60))} s)`,
-
-    nombreBloque: c => ((c.bloque || '').trim() || 'Videos'),
-
-    bloques(clips) {
-      const titulos = [];
-      const indices = new Map();
-      clips.forEach((c, i) => {
-        const t = R.nombreBloque(c);
-        if (!indices.has(t)) { titulos.push(t); indices.set(t, []); }
-        indices.get(t).push(i);
-      });
-      return titulos.map(t => {
-        const ix = indices.get(t);
-        return { titulo: t, indices: ix, minutos: ix.reduce((a, i) => a + clips[i].minutos, 0), esApp: R.esBloqueApp(t) };
-      });
-    },
-
-    textoBloque(b) {
-      const n = b.indices.length;
-      const m = Math.max(1, Math.round(b.minutos));
-      return `${n} ${n === 1 ? 'video' : 'videos'}, unos ${m} ${m === 1 ? 'minuto' : 'minutos'}`;
-    },
-
-    duracion(minutos) {
-      const s = Math.round(minutos * 60);
-      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-    },
-
-    duracionHablada(minutos) {
-      const s = Math.round(minutos * 60);
-      const m = Math.floor(s / 60), r = s % 60;
-      const partes = [];
-      if (m > 0) partes.push(m === 1 ? '1 minuto' : `${m} minutos`);
-      if (r > 0 || m === 0) partes.push(r === 1 ? '1 segundo' : `${r} segundos`);
-      return partes.join(' y ');
-    },
-
-    avance(clips) {
-      return {
-        total: clips.length,
-        vistos: clips.filter(c => c.visto).length,
-        minutosRestantes: clips.filter(c => !c.visto).reduce((a, c) => a + c.minutos, 0),
-      };
-    },
-    completo: a => a.total > 0 && a.vistos >= a.total,
-    fraccion: a => (a.total > 0 ? Math.min(1, a.vistos / a.total) : 0),
-
-    textoAvance(a) {
-      if (R.completo(a)) return 'Viste todos, nos vemos en la videollamada';
-      return `Viste ${a.vistos} de ${a.total}, te quedan unos ${Math.max(1, Math.round(a.minutosRestantes))} minutos`;
-    },
-
-    textoTarjeta(a) {
-      if (R.completo(a)) return a.total === 1 ? 'Viste el video' : `Viste los ${a.total} videos`;
-      const min = Math.max(1, Math.round(a.minutosRestantes));
-      if (a.vistos === 0) return `${a.total} ${a.total === 1 ? 'video corto' : 'videos cortos'}, unos ${min} min`;
-      return `${a.vistos} de ${a.total} videos, te quedan ${min} min`;
-    },
-
-    botonTarjeta: a => (a.vistos === 0 ? 'Ver mi guía' : 'Seguir viendo'),
-
-    mostrarBienvenida(r, yaVista, quitada, ahora) {
-      if (yaVista || !r || r.vistos !== 0) return false;
-      return R.tarjetaEnEntreno(r, quitada, ahora);
-    },
-
-    tituloBienvenida(nombrePila, nombreCuenta) {
-      let n = (nombrePila || '').trim();
-      if (!n) n = ((nombreCuenta || '').trim().split(/\s+/)[0]) || '';
-      return n ? `Hola ${n}` : 'Hola';
-    },
-
-    textoBienvenida(a) {
-      const min = Math.max(1, Math.round(a.minutosRestantes));
-      const cuantos = a.total === 1 ? `Es un video corto que armé para vos, de unos ${min} min.`
-                                    : `Son ${a.total} videos cortos que armé para vos, unos ${min} min.`;
-      return `Antes de empezar, mirá tu guía. ${cuantos} Así en la videollamada vamos directo a lo tuyo.`;
-    },
-
-    // «indicación ||| motivo»: la indicación es «Qué hacer» y el motivo, «Para qué».
-    partes(motivo) {
-      const m = motivo || '';
-      const i = m.indexOf('|||');
-      if (i < 0) return { hacer: '', paraQue: m.trim() };
-      return { hacer: m.slice(0, i).trim(), paraQue: m.slice(i + 3).trim() };
-    },
-
-    // Un instante del servidor: ISO con zona (con «T» o con espacio, como lo
-    // escribe Postgres). Solo la fecha cuenta desde el principio de ese día en
-    // Buenos Aires.
-    instante(s) {
-      let t = String(s || '').trim();
-      if (!t) return null;
-      if (t.length === 10) t += 'T00:00:00-03:00';
-      if (t.length > 10 && t[10] === ' ') t = t.slice(0, 10) + 'T' + t.slice(11);
-      t = t.replace(/\.(\d+)/, (_, f) => '.' + (f + '000').slice(0, 3));
-      if (/[+-]\d{2}$/.test(t)) t += ':00';
-      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/.test(t)) return null;
-      const d = new Date(t);
-      return isNaN(d.getTime()) ? null : d;
-    },
-
-    // ¿Ya pasó la videollamada? Con hora, contra este instante; solo la fecha,
-    // contra hoy en Buenos Aires.
-    yaPaso(fecha, ahora) {
-      const f = (fecha || '').trim();
-      if (!f) return false;
-      const now = ahora || new Date();
-      if (f.length > 10) { const d = R.instante(f); return d ? d < now : false; }
-      return f.slice(0, 10) < diaBA(now);
-    },
-
-    // «miércoles 4/11», en la hora de Buenos Aires.
-    fechaLlamada(fecha) {
-      if (!fecha) return null;
-      const d = R.instante(fecha) || R.instante(String(fecha).slice(0, 10) + 'T12:00:00-03:00');
-      if (!d) return null;
-      const dia = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA_BA, weekday: 'long' }).format(d);
-      const p = new Intl.DateTimeFormat('en-US', { timeZone: ZONA_BA, day: 'numeric', month: 'numeric' }).formatToParts(d);
-      const v = k => (p.find(x => x.type === k) || {}).value;
-      return `${dia} ${v('day')}/${v('month')}`;
-    },
-
-    textoParaMandar(s) {
-      const t = String(s || '').trim();
-      if (!t || largo(t) > MAX_TEXTO) return null;
-      return t;
-    },
-
-    renglones: duda => String(duda || '').split('\n').filter(x => x !== ''),
-
-    // Cuántas veces está una duda en lo que trajo el servidor para un video.
-    veces(textoDuda, duda) {
-      if (!duda || !textoDuda) return 0;
-      const todo = duda.split('\n'), buscado = textoDuda.split('\n');
-      if (buscado.length > todo.length) return 0;
-      let n = 0, i = 0;
-      while (i + buscado.length <= todo.length) {
-        let igual = true;
-        for (let k = 0; k < buscado.length; k++) if (todo[i + k] !== buscado[k]) { igual = false; break; }
-        if (igual) { n++; i += buscado.length; } else i++;
-      }
-      return n;
-    },
-    vecesLlamada: (t, dudas) => dudas.filter(d => d.texto === t).length,
-
-    // `*negrita*` del PDF en tramos.
-    negritas(s) {
-      const out = [];
-      let resto = String(s || '');
-      for (;;) {
-        const a = resto.indexOf('*');
-        if (a < 0) break;
-        const b = resto.indexOf('*', a + 1);
-        if (b < 0 || b === a + 1) break;
-        if (a > 0) out.push({ texto: resto.slice(0, a), negrita: false });
-        out.push({ texto: resto.slice(a + 1, b), negrita: true });
-        resto = resto.slice(b + 1);
-      }
-      if (resto) out.push({ texto: resto, negrita: false });
-      return out;
-    },
-
-    inicial(clips) {
-      let i = clips.findIndex(c => !c.visto && c.url);
-      if (i < 0) i = clips.findIndex(c => c.url);
-      return i < 0 ? null : i;
-    },
-    siguiente(clips, i) {
-      for (let k = i + 1; k < clips.length; k++) if (clips[k].url) return k;
-      return null;
-    },
-    anterior(clips, i) {
-      if (i <= 0 || i > clips.length) return null;
-      for (let k = i - 1; k >= 0; k--) if (clips[k].url) return k;
-      return null;
-    },
-
-    // Retoma si no está visto y quedó entre el segundo 5 y 5 segundos antes del final.
-    retomar(clip, duracion) {
-      if (clip.visto || !isFinite(duracion) || duracion <= 0) return null;
-      const s = clip.segundos;
-      return s > 5 && s < duracion - 5 ? s : null;
-    },
-    estaAlFinal: (t, d) => isFinite(t) && isFinite(d) && d > 0 && t >= d - 0.5,
-
-    velocidadSiguiente: v => (v < 1.1 ? 1.25 : v < 1.4 ? 1.5 : 1),
-    textoVelocidad: v => `${String(v).replace('.', ',')}x`,
-    textoPlaca: (i, total) => `Otro tema · Video ${i + 1} de ${total}`,
-    textoNumero(i, total, bloque) {
-      return `Video ${i + 1} de ${total}` + (bloque ? ` · ${bloque}` : '');
-    },
-
-    // mostrar_tarjeta con la regla de entregas_014.
-    mostrarTarjeta(r, ahora) {
-      if (!r || !r.ok) return false;
-      if (r.mostrarTarjetaServidor != null) return r.mostrarTarjetaServidor;
-      const d = r.fechaEntrega ? R.instante(r.fechaEntrega) : null;
-      if (!d) return true;
-      return (ahora || new Date()).getTime() < d.getTime() + HORAS_TARJETA * 3600 * 1000;
-    },
-    hayGuia: r => !!(r && r.ok && r.total > 0),
-    tarjetaEnEntreno: (r, quitada, ahora) => R.hayGuia(r) && !quitada && R.mostrarTarjeta(r, ahora),
-    filaEnMisDatos: (r, quitada, ahora) => !!(r && r.ok) && !R.tarjetaEnEntreno(r, quitada, ahora),
-    puedeVolverAMostrar: (r, quitada, ahora) => !!quitada && R.tarjetaEnEntreno(r, false, ahora),
-  };
-
-  // Cuándo guarda el avance un video que se está reproduciendo (AvanceVideo):
-  // cada 10 s de diferencia con lo último guardado y al pasar el 80 % (ahí
-  // con visto); al terminar; y al salir a mitad de video.
-  const segundosGuardar = t => Math.trunc(Math.min(MAX_SEGUNDOS, Math.max(0, Math.round(t))));
-  class AvanceVideo {
-    constructor(visto, desde) {
-      this.visto = !!visto;
-      this.ultimo = isFinite(desde) ? Math.max(0, desde) : 0;
-    }
-    alAvanzar(t, duracion) {
-      if (!isFinite(t) || t < 0) return null;
-      const pasa80 = isFinite(duracion) && duracion > 0 && t / duracion >= 0.8;
-      if (!(Math.abs(t - this.ultimo) >= 10 || (pasa80 && !this.visto))) return null;
-      this.ultimo = t;
-      if (pasa80) this.visto = true;
-      return { segundos: segundosGuardar(t), visto: this.visto };
-    }
-    alTerminar(duracion) {
-      this.visto = true;
-      const d = isFinite(duracion) && duracion > 0 ? duracion : this.ultimo;
-      this.ultimo = d;
-      return { segundos: segundosGuardar(d), visto: true };
-    }
-    alSalir(t) {
-      if (!isFinite(t) || t <= this.ultimo + 1) return null;
-      this.ultimo = t;
-      return { segundos: segundosGuardar(t), visto: this.visto };
-    }
-  }
-
-  // «Tu suplementación» como «Tu día» del PDF (VistaSuplementacion).
-  function tituloMomento(m, definido) {
-    return (definido && noVacio(definido.nombre)) || NOMBRES_MOMENTOS[m] || mayuscula(m.replace(/_/g, ' ')) || m;
-  }
-  function vistaSuplementacion(s) {
-    if (!s || !s.items.length) return null;
-    const def = new Map();
-    for (const m of s.dia) if (!def.has(m.id)) def.set(m.id, m);
-    const tomas = new Map();
-    const ordenAparicion = [], sueltos = [], sale = [];
-    s.items.forEach((it, i) => {
-      if (it.estado === 'sale') { sale.push({ nombre: it.nombre, porQue: it.porQue, detalle: it.detalle, item: i }); return; }
-      let ts = null;
-      if (it.tomas.length) ts = it.tomas.map(t => ({ item: i, nombre: t.nombre, cantidad: t.cantidad, nota: t.nota }));
-      else if (it.momento) ts = [{ item: i, nombre: null, cantidad: it.cantidad, nota: it.nota }];
-      if (!ts) { sueltos.push({ item: i, nombre: null, cantidad: it.cantidad, nota: it.nota }); return; }
-      const momentos = it.tomas.length ? it.tomas.map(t => t.momento || '') : [it.momento || ''];
-      ts.forEach((t, k) => {
-        const m = momentos[k];
-        if (!tomas.has(m)) { tomas.set(m, []); ordenAparicion.push(m); }
-        tomas.get(m).push(t);
-      });
-    });
-    let orden = s.dia.map(m => m.id);
-    for (const [m] of MOMENTOS) if (tomas.has(m) && !orden.includes(m)) orden.push(m);
-    for (const m of ordenAparicion) if (!orden.includes(m)) orden.push(m);
-    if (!s.dia.length) {
-      const pos = m => { const p = MOMENTOS.findIndex(x => x[0] === m); return p < 0 ? 98 : p; };
-      orden = orden.map((m, o) => [m, o]).sort((a, b) => pos(a[0]) - pos(b[0]) || a[1] - b[1]).map(x => x[0]);
-    }
-    const vistos = new Set();
-    const fila = (t, n, momento) => {
-      const it = s.items[t.item];
-      const primera = !vistos.has(t.item);
-      vistos.add(t.item);
-      return {
-        id: `${momento}-${t.item}-${n}`,
-        nombre: noVacio(t.nombre) || it.nombre,
-        cantidad: noVacio(t.cantidad),
-        nota: mayuscula(t.nota),
-        nuevo: it.estado === 'nuevo',
-        opcional: it.opcional,
-        // El «por qué», el detalle y «Ver por qué» van solo en la primera toma.
-        porQue: primera ? it.porQue : null,
-        detalle: primera ? it.detalle : [],
-        videoId: primera ? it.videoId : null,
-        item: t.item,
-      };
-    };
-    const grupos = [];
-    for (const m of orden) {
-      const ts = tomas.get(m);
-      if (!ts) continue;
-      grupos.push({ id: m, titulo: tituloMomento(m, def.get(m)), filas: ts.map((t, n) => fila(t, n, m)) });
-    }
-    if (sueltos.length) grupos.push({ id: '_ademas', titulo: 'Además', filas: sueltos.map((t, n) => fila(t, n, '_ademas')) });
-    return { titulo: noVacio(s.titulo) || 'Tu suplementación', accion: s.accion, momentos: grupos, sigue: s.sigueTexto, sale };
-  }
+  // ─── Las reglas puras: js/reglas-guia.js (window.ReglasGuia) ────
+  // Sin ese archivo (un caché viejo a medio actualizar) la guía no arranca.
+  const RG = window.ReglasGuia;
+  if (!RG) return;
+  const { MAX_TEXTO, MAX_SEGUNDOS, texto, esObjeto, lista, largo, R, RA, RV, AvanceVideo, vistaSuplementacion,
+          normalizarGuia, normalizarResumen, normalizarAgenda, normalizarReserva } = RG;
 
   // ─── Textos del audio (ReglasAudioDuda) ─────────────────────────
   // El cliente no se entera de que el audio se pasa a texto (Mati, 4-nov).
@@ -959,6 +472,255 @@
     }
   }
 
+  // ─── La agenda de la entrega (MyPumpDatos/Agenda.swift, 2.2.0) ──
+  // · entregas_app_agenda al abrir la guía, al ver el último obligatorio y al
+  //   volver a primer plano con la guía abierta o con una reserva pendiente.
+  //   Nunca en segundo plano.
+  // · entregas_app_reservar por su propia cola (el carril de la reserva, que
+  //   no frena ni espera a los avances y las dudas), con un p_id fijo: sin red
+  //   no se gasta el intento y un reintento devuelve la misma reserva.
+  // Sin el servidor nuevo (PGRST202 u ok:false) no se muestra nada y no hay
+  // errores: la guía queda como en la 2.1.0.
+  class Agenda {
+    constructor(modelo) {
+      this.m = modelo;
+      const a = almacen.leer(modelo.k('agenda'), null);
+      // La copia guardada es la respuesta ya leída: se vuelve a leer igual (tolerante).
+      this.agenda = esObjeto(a) && a.ok === true ? normalizarAgendaCopia(a) : null;
+      this.desdeCache = false;
+      this.aviso = null;           // tomada | vencida | error (lo último que dijo reservar)
+      this.anuncio = '';
+      this.anuncios = 0;
+      const op = almacen.leer(modelo.k('reserva'), null);
+      // Lo que quedó en la cola de otra apertura: «Estamos reservando…».
+      this.op = esObjeto(op) && RG.esUuid(op.id) && typeof op.franja === 'string' && op.franja ? op : null;
+      this.enCola = this.op ? { id: this.op.franja, inicio: this.op.inicio || '', fin: this.op.fin || '' } : null;
+      this._consulta = null;
+      this._sondeo = null; this._marcaSondeo = 0;
+      this._enVuelo = false; this._reintento = null; this._espera = 0;
+      this.vigilantes = new Set();   // la guía abierta y las tarjetas de Entreno a la vista
+      this._reloj = null; this._tics = 0;
+      if (this.op) setTimeout(() => this.procesar(), 0);
+    }
+
+    get disponible() { return !!(this.agenda && this.agenda.ok); }
+    get textos() { return RA.textos(this.agenda ? this.agenda.textos : {}); }
+    get avisoMin() { return this.agenda ? this.agenda.avisoMin : null; }
+    get reserva() { return this.agenda ? this.agenda.reserva : null; }
+    get pendiente() { return !!this.enCola || !!(this.reserva && this.reserva.estado === 'pendiente'); }
+    vista(faltanLocal) { return RA.vista(this.agenda, faltanLocal, !!this.enCola, this.aviso); }
+
+    _guardar() { if (this.agenda) almacen.guardar(this.m.k('agenda'), this.agenda); }
+
+    // entregas_app_agenda. Si ya hay una en vuelo, se espera esa.
+    consultar() {
+      if (this._consulta) return this._consulta;
+      this._consulta = this._traer().finally(() => { this._consulta = null; });
+      return this._consulta;
+    }
+
+    async _traer() {
+      const d = db();
+      if (!d || typeof d.getAgendaGuia !== 'function') return;
+      let r;
+      try { r = await d.getAgendaGuia(this.m.token); } catch (_) { r = { success: false, transitorio: true }; }
+      if (!r || !r.success) {
+        // Sin red o el servidor ocupado: lo guardado, con «Sin conexión».
+        if (r && r.transitorio) { this.desdeCache = !!this.agenda; this.m.avisar(); return; }
+        // PGRST202 (sin la 021) o cualquier rechazo: no hay agenda, como en la 2.1.0. Sin mensajes.
+        this._olvidar();
+        return;
+      }
+      const a = normalizarAgenda(r.data);
+      if (!a.ok) { this._olvidar(); return; }
+      const antes = this.reserva ? this.reserva.estado : null;
+      this.agenda = a;
+      this.desdeCache = false;
+      this._guardar();
+      // Lo último que dijo reservar deja de valer cuando la reserva cambia de estado o ya no hay.
+      if (a.reserva && (a.reserva.estado === 'fallo' || RA.vigente(a.reserva))) this.aviso = null;
+      if (a.reserva && a.reserva.estado !== antes) this._anunciar(a.reserva);
+      if (a.reserva && a.reserva.estado === 'pendiente') this.sondear();
+      this._vigilar();
+      this.m.avisar();
+    }
+
+    _olvidar() {
+      const habia = !!this.agenda;
+      this.agenda = null;
+      this.desdeCache = false;
+      almacen.borrar(this.m.k('agenda'));
+      if (habia) this.m.avisar();
+    }
+
+    _anunciar(r) {
+      const t = this.textos;
+      if (r.estado === 'confirmada') this.anuncio = t.confirmada(r) || 'Tu entrega quedó confirmada';
+      else if (r.estado === 'fallo') this.anuncio = t.fallo(r.motivo === 'tomada' ? 'tomada' : 'error');
+      else this.anuncio = t.pendiente;
+      this.anuncios++;
+    }
+
+    // Una reserva pendiente: cada 5 s durante 60 s (después, al volver a
+    // primer plano). Uno solo a la vez.
+    sondear() {
+      if (this._sondeo || !this.pendiente) return;
+      const inicio = Date.now();
+      const marca = ++this._marcaSondeo;
+      const vuelta = async () => {
+        if (marca !== this._marcaSondeo) return;
+        this._sondeo = null;
+        if (Date.now() - inicio > RA.SONDEO_MAXIMO_MS || document.visibilityState === 'hidden') return;
+        // Mientras la reserva sigue en la cola no hay nada que consultar: espera su respuesta.
+        if (!this.enCola) await this.consultar();
+        if (marca !== this._marcaSondeo || !this.pendiente) return;
+        this._sondeo = setTimeout(vuelta, RA.SONDEO_CADA_MS);
+      };
+      this._sondeo = setTimeout(vuelta, RA.SONDEO_CADA_MS);
+    }
+
+    // Segundo plano: nunca se consulta de fondo.
+    pararSondeo() {
+      clearTimeout(this._sondeo); this._sondeo = null;
+      this._marcaSondeo++;
+      this._pararReloj();
+    }
+
+    // De vuelta a primer plano con una reserva pendiente, o en la franja
+    // esperando que Mati abra la sala (aunque la guía esté cerrada).
+    async alVolver() {
+      if (!this.pendiente && !RA.esperandoSala(this.reserva, new Date(), this.avisoMin)) { this._vigilar(); return; }
+      await this.consultar();
+      this.sondear();
+      this._vigilar();
+    }
+
+    // ── El reloj de la confirmada (TimelineView cada 15 s y vigilarSala) ──
+    // Con una confirmada que no terminó y alguien mirando (la guía abierta o
+    // la tarjeta de Entreno): se repinta cada 15 s (el botón aparece a la hora)
+    // y, en la franja sin la sala abierta, se consulta la agenda cada 30 s.
+    vigilar(quien) { this.vigilantes.add(quien); this._vigilar(); }
+    dejarDeVigilar(quien) { this.vigilantes.delete(quien); if (!this.vigilantes.size) this._pararReloj(); }
+
+    _hayConfirmadaViva() {
+      const ahora = Date.now();
+      return [this.reserva, this.m.resumen && this.m.resumen.reserva].some(r => {
+        const f = r && r.estado === 'confirmada' ? R.instante(r.fin) : null;
+        return !!f && f.getTime() > ahora;
+      });
+    }
+
+    _vigilar() {
+      if (this._reloj || !this.vigilantes.size || document.visibilityState === 'hidden' || !this._hayConfirmadaViva()) return;
+      this._tics = 0;
+      this._reloj = setInterval(() => {
+        if (!this.vigilantes.size || document.visibilityState === 'hidden' || !this._hayConfirmadaViva()) { this._pararReloj(); this.m.avisar(); return; }
+        this._tics++;
+        const pasos = Math.max(1, Math.round(RA.SALA_CADA_MS / 15000));
+        if (this._tics % pasos === 0 && RA.esperandoSala(this.reserva, new Date(), this.avisoMin)) this.consultar();
+        this.m.avisar();
+      }, 15000);
+    }
+
+    _pararReloj() { clearInterval(this._reloj); this._reloj = null; }
+
+    // ── Reservar ──
+    // La franja elegida en la hoja de confirmación. Por la cola, con un p_id
+    // armado una sola vez: cada reintento manda el mismo. Si ya hay una
+    // saliendo, no se encola otra.
+    reservar(f) {
+      if (this.enCola || this.op || RA.vigente(this.reserva) || !f) return;
+      this.aviso = null;
+      this.op = { id: uuid(), franja: f.id, inicio: f.inicio, fin: f.fin, intentos: 0 };
+      this.enCola = { id: f.id, inicio: f.inicio, fin: f.fin };
+      almacen.guardar(this.m.k('reserva'), this.op);
+      this._espera = 0;
+      this.m.avisar();
+      this.procesar();
+    }
+
+    _soltarOp() { this.op = null; this.enCola = null; almacen.borrar(this.m.k('reserva')); }
+
+    // entregas_app_reservar(p_token, p_franja, p_id). Red o transitorio: se
+    // reintenta con el mismo p_id sin gastar intento. Sin la función
+    // (PGRST202): se da por resuelta con «error» (la pantalla deja elegir otra).
+    async procesar() {
+      const op = this.op;
+      const d = db();
+      if (!op || this._enVuelo || !d || typeof d.reservarEntregaGuia !== 'function') return;
+      if (navigator.onLine === false) { this._programar(); return; }
+      clearTimeout(this._reintento); this._reintento = null;
+      this._enVuelo = true;
+      let r;
+      try { r = await d.reservarEntregaGuia(this.m.token, op.franja, op.id); } catch (_) { r = { success: false, transitorio: true }; }
+      this._enVuelo = false;
+      if (this.op !== op) return;
+      let respuesta = null;
+      if (!r || !r.success) {
+        if (!r || r.transitorio) { this._programar(); return; }    // sin red: no se gasta el intento
+        if (r.code === 'PGRST202') respuesta = { ok: false, motivo: 'error' };
+      } else if (esObjeto(r.data) && texto(r.data.motivo) !== 'token') {
+        respuesta = r.data;
+      }
+      if (!respuesta) {
+        // Rechazado (token caído, una respuesta vacía, otro error permanente): cuenta como intento.
+        op.intentos = (op.intentos || 0) + 1;
+        if (op.intentos >= INTENTOS_MAX) { this._alAbandonar(); return; }
+        almacen.guardar(this.m.k('reserva'), op);
+        this._programar();
+        return;
+      }
+      this._alGuardar(respuesta);
+    }
+
+    _programar() {
+      if (this._reintento) return;
+      this._espera = Math.min(60000, this._espera ? this._espera * 2 : 3000);
+      this._reintento = setTimeout(() => { this._reintento = null; this.procesar(); }, this._espera);
+    }
+
+    // La respuesta de entregas_app_reservar.
+    _alGuardar(r) {
+      this._soltarOp();
+      this._espera = 0;
+      const reserva = normalizarReserva(r.reserva);
+      const motivo = texto(r.motivo);
+      if ((r.ok === true || motivo === 'ya_tiene') && reserva) {
+        // Bien, o ya tenía una (la vigente): esa es la que se ve.
+        if (this.agenda) { this.agenda.reserva = reserva; this.agenda.franjas = []; this._guardar(); }
+        this._anunciar(reserva);
+      } else if (r.ok === true) {
+        this.aviso = null;   // salió sin la reserva en la respuesta: la trae la agenda
+      } else {
+        if (motivo === 'tomada') this.aviso = 'tomada';
+        else if (motivo === 'franja') this.aviso = 'vencida';
+        else if (motivo === 'obligatorios' || motivo === 'autorizada' || motivo === 'ya_tiene') this.aviso = null;   // la agenda de nuevo dice qué pasa
+        else this.aviso = 'error';
+        if (this.aviso) { this.anuncio = RA.TEXTO_AVISO[this.aviso]; this.anuncios++; }
+      }
+      this.m.avisar();
+      this.consultar().then(() => this.sondear());
+    }
+
+    // Abandonada (8 rechazos): se elige otra.
+    _alAbandonar() {
+      this._soltarOp();
+      this.aviso = 'error';
+      this.anuncio = this.textos.fallo('error'); this.anuncios++;
+      this.m.avisar();
+      this.consultar();
+    }
+  }
+  // La copia guardada: los nombres ya leídos vuelven al formato del servidor.
+  function normalizarAgendaCopia(a) {
+    const r = a.reserva;
+    return normalizarAgenda({
+      ok: a.ok, motivo: a.motivo, autorizada: a.autorizada, habilitada: a.habilitada, faltan: a.faltan, zona: a.zona,
+      franjas: a.franjas, aviso_min: a.avisoMin, textos: a.textos,
+      reserva: r ? { id: r.id, inicio: r.inicio, fin: r.fin, estado: r.estado, meet_url: r.meetUrl, motivo: r.motivo, sala_abierta_en: r.salaAbiertaEn } : null,
+    });
+  }
+
   // ─── El modelo de un cliente (ModeloGuia) ───────────────────────
   class Modelo {
     constructor(token) {
@@ -973,6 +735,10 @@
       this.desdeCache = false;
       // «Quitar de Entreno»: solo en este navegador, por cliente (guia_quitada.json).
       this.quitada = !!almacen.leer(this.k('quitada'), false);
+      // 2.2.0: cuándo se ocultó (una novedad posterior la hace volver). Aparte de
+      // la marca de la 2.1.0, que sigue igual. null = sin fecha.
+      const qe = Number(almacen.leer(this.k('quitada_en'), NaN));
+      this.quitadaEn = this.quitada && isFinite(qe) && qe > 0 ? new Date(qe) : null;
       this.bienvenidaVista = !!almacen.leer(this.k('bienvenida'), false);
       const tv = !!almacen.leer(this.k('tarjeta_vista'), false);
       this.primeraSesionTarjeta = !tv;
@@ -985,6 +751,7 @@
       this.cargas = 0;
       this.oyentes = new Set();
       this.audios = new Audios(this);
+      this.agenda = new Agenda(this);
       this._procesando = false;
       this._reintento = null;
       this._espera = 0;
@@ -997,20 +764,49 @@
     }
 
     // ── Tarjeta y fila (nunca llaman al get) ──
-    get mostrarTarjeta() { return R.tarjetaEnEntreno(this.resumen, this.quitada); }
-    get mostrarFila() { return R.filaEnMisDatos(this.resumen, this.quitada); }
+    // La marca de «Ocultar» que vale: sin novedad_en, la de la 2.1.0 tal cual;
+    // con una novedad posterior, la tarjeta vuelve.
+    get quitadaVigente() { return R.quitadaVigente(this.quitada, this.quitadaEn, this.novedadEn); }
+    get mostrarTarjeta() { return R.tarjetaEnEntreno(this.resumen, this.quitadaVigente); }
+    get mostrarFila() { return R.filaEnMisDatos(this.resumen, this.quitadaVigente); }
     get puedeQuitar() { return this.mostrarTarjeta; }
-    get puedeVolverAMostrar() { return R.puedeVolverAMostrar(this.resumen, this.quitada); }
+    get puedeVolverAMostrar() { return R.puedeVolverAMostrar(this.resumen, this.quitadaVigente); }
     get avanceTarjeta() {
       const r = this.resumen || {};
       return { total: r.total || 0, vistos: r.vistos || 0, minutosRestantes: r.minutosRestantes || 0 };
     }
-    get tarjetaDestacada() { return this.mostrarTarjeta && !R.completo(this.avanceTarjeta); }
-    get mostrarBienvenida() { return R.mostrarBienvenida(this.resumen, this.bienvenidaVista, this.quitada); }
+    // Con novedad sin ver, también destacada (la compacta de «ya viste todo» va
+    // solo si vio también lo nuevo).
+    get tarjetaDestacada() { return this.mostrarTarjeta && (!!this.avanceNovedad || !R.completo(this.avanceTarjeta)); }
+    get mostrarBienvenida() { return R.mostrarBienvenida(this.resumen, this.bienvenidaVista, this.quitadaVigente); }
 
+    // ── Novedad (2.2.0) ──
+    // La de la última tanda nueva: la del resumen (más nuevo) o la de la copia.
+    get novedadEn() { return (this.resumen && this.resumen.novedadEn) || (this.guia && this.guia.novedadEn) || null; }
+    // El avance de la tarjeta «NOVEDAD EN TU GUÍA» (solo los nuevos). null = la de la 2.1.0.
+    get avanceNovedad() { return R.avanceNovedad(this.resumen, this.guia); }
+
+    // ── Agenda (2.2.0) ──
+    // Los obligatorios que faltan según el navegador (con lo de la cola encima):
+    // el respaldo del `faltan` del servidor.
+    get faltanLocal() { return this.guia ? RA.faltan(this.guia) : null; }
+    get vistaAgenda() { return this.agenda.vista(this.faltanLocal); }
+    // La reserva de la tarjeta de la entrega en Entreno: la de la agenda o la del
+    // resumen, primero la que ya deja entrar.
+    reservaEnVentana(ahora) {
+      // Sin guía (token revocado o la página dada de baja) no queda nada en Entreno.
+      if ((this.resumen && this.resumen.ok === false) || this.estado === 'oculta') return null;
+      const t = ahora || new Date();
+      const rs = [this.agenda.reserva, this.resumen && this.resumen.reserva].filter(r => r && RA.enVentana(r, t, this.agenda.avisoMin));
+      return rs.find(r => RA.puedeEntrar(r, t)) || rs[0] || null;
+    }
+
+    // Ocultar guarda también la fecha; volver a mostrar borra las dos.
     ponerQuitada(q) {
       this.quitada = !!q;
-      if (q) almacen.guardar(this.k('quitada'), true); else almacen.borrar(this.k('quitada'));
+      this.quitadaEn = q ? new Date() : null;
+      if (q) { almacen.guardar(this.k('quitada'), true); almacen.guardar(this.k('quitada_en'), this.quitadaEn.getTime()); }
+      else { almacen.borrar(this.k('quitada')); almacen.borrar(this.k('quitada_en')); }
       this.avisar();
     }
     marcarBienvenidaVista() { this.bienvenidaVista = true; almacen.guardar(this.k('bienvenida'), true); }
@@ -1041,7 +837,17 @@
         // Con avances todavía en la cola, el servidor cuenta menos de lo que el
         // cliente ya vio: la tarjeta no retrocede.
         const enCola = this.cola.some(op => op.kind === 'avance' && op.payload.visto === true);
-        const conFechas = (c, de) => Object.assign({}, c, { fechaEntrega: de.fechaEntrega, mostrarTarjetaServidor: de.mostrarTarjetaServidor });
+        // Los conteos de `c` con la fecha, `mostrar_tarjeta` y lo de la 2.2.0 de `de`.
+        const conFechas = (c, de) => {
+          const x = Object.assign({}, c, { fechaEntrega: de.fechaEntrega, mostrarTarjetaServidor: de.mostrarTarjetaServidor,
+                                          novedadEn: de.novedadEn, reserva: de.reserva });
+          // El avance de lo nuevo es un conteo: con avances en la cola, nunca menos vistos.
+          if (de.nuevosTotal != null && de.nuevosVistos != null) {
+            x.nuevosTotal = de.nuevosTotal;
+            x.nuevosVistos = c.nuevosTotal === de.nuevosTotal ? Math.max(de.nuevosVistos, c.nuevosVistos || 0) : de.nuevosVistos;
+          } else { x.nuevosTotal = null; x.nuevosVistos = null; }
+          return x;
+        };
         if (enCola && this.guia) {
           this.resumen = conFechas(this.resumen && this.resumen.ok ? this.resumen : r, r);
           this.superponer();
@@ -1052,6 +858,8 @@
         }
         this.avisar();
         if (this.cola.length) this.procesarCola();
+        // Una reserva pendiente: al volver se consulta la agenda, aunque la guía esté cerrada.
+        await this.agenda.alVolver();
       })().finally(() => { this._resumenEnCurso = null; });
       return this._resumenEnCurso;
     }
@@ -1112,10 +920,19 @@
       // Como entregas_012: sin los videos de los suplementos.
       const a = R.avance(R.deLaLista(g));
       const base = this.resumen && this.resumen.ok ? this.resumen : null;
+      // Lo de la 2.2.0 sigue al resumen; el avance de lo nuevo, a la guía si la guía sabe de esa tanda.
+      const nuevos = R.deLaLista(g).filter(c => c.nuevo);
+      const bNovedad = base ? base.novedadEn || null : null;
+      const alDia = nuevos.length > 0 && (bNovedad == null || bNovedad === g.novedadEn);
+      const conNuevos = alDia && base && base.nuevosTotal != null;
       this.aplicarResumen({
         ok: true, total: a.total, vistos: a.vistos, minutosRestantes: Math.round(a.minutosRestantes * 10) / 10,
         fechaEntrega: base ? base.fechaEntrega : g.fechaEntrega,
         mostrarTarjetaServidor: base ? base.mostrarTarjetaServidor : null,
+        novedadEn: bNovedad || g.novedadEn || null,
+        reserva: base ? base.reserva || null : null,
+        nuevosTotal: conNuevos ? nuevos.length : (base ? base.nuevosTotal == null ? null : base.nuevosTotal : null),
+        nuevosVistos: conNuevos ? nuevos.filter(c => c.visto).length : (base ? base.nuevosVistos == null ? null : base.nuevosVistos : null),
       });
     }
 
@@ -1142,7 +959,10 @@
     avance(video, segundos, visto) {
       const s = Math.min(MAX_SEGUNDOS, Math.max(0, Math.round(segundos)));
       const v = !!visto || this.clipVisto(video);
+      const faltabanAntes = this.faltanLocal || 0;
       const cambio = this._avanceLocal(video, s, v, true);
+      // Vio el último obligatorio: la agenda de nuevo (y otra vez cuando el avance llegue al servidor).
+      if (faltabanAntes > 0 && this.faltanLocal === 0 && this.agenda.disponible) this.agenda.consultar();
       const previa = this.cola.find(op => op.kind === 'avance' && op.payload.video === video && !op.enVuelo);
       if (previa) {
         previa.payload.segundos = Math.max(previa.payload.segundos || 0, s);
@@ -1282,6 +1102,9 @@
     }
 
     _alGuardar(op, data) {
+      // El último obligatorio llegó al servidor: ahora sí la agenda se habilita.
+      if (op.kind === 'avance' && op.payload.visto === true && this.faltanLocal === 0 && this.agenda.disponible
+          && (!this.agenda.agenda.habilitada || (this.agenda.agenda.faltan || 0) > 0)) this.agenda.consultar();
       if (op.kind !== 'duda' && op.kind !== 'llamada') return;
       const video = op.kind === 'duda' ? op.payload.video : null;
       const clave = video == null ? '' : video;
@@ -1329,11 +1152,17 @@
   }
 
   // Volvió la señal o la pestaña: se vacían las colas.
-  window.addEventListener('online', () => { for (const m of modelos.values()) { m._espera = 0; m.procesarCola(); } });
+  window.addEventListener('online', () => {
+    for (const m of modelos.values()) { m._espera = 0; m.procesarCola(); m.agenda._espera = 0; m.agenda.procesar(); }
+  });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
+    // La reserva pendiente tampoco se consulta de fondo.
+    if (document.visibilityState !== 'visible') { for (const m of modelos.values()) m.agenda.pararSondeo(); return; }
     for (const m of modelos.values()) {
       if (m.cola.length) m.procesarCola();
+      if (m.agenda.op) m.agenda.procesar();
+      // Con una reserva pendiente o esperando la sala: la agenda enseguida (sin el tope del resumen).
+      m.agenda.alVolver().then(() => m.avisar()).catch(() => {});
       // Al volver a primer plano, el resumen de nuevo (como la app), a lo sumo cada 5 minutos.
       if (!m._resumenAlVolver || Date.now() - m._resumenAlVolver > 300000) {
         m._resumenAlVolver = Date.now();
@@ -1361,6 +1190,13 @@
     alerta: svg('<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="16.5" r="1.3" fill="currentColor"/>'),
     subiendo: svg('<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 16.5V8M8.5 11.5L12 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'),
     listo: svg('<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 12.3l2.8 2.8L16.2 9.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'),
+    // 2.2.0: la novedad y la agenda
+    destello: svg('<path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9z" fill="currentColor"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" fill="currentColor"/>'),
+    calendario: svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'),
+    candado: svg('<rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/>'),
+    playCirculo: svg('<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 8.5v7l5.6-3.5z" fill="currentColor"/>'),
+    globo: svg('<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.6 5.4 3.6 8.5s-1.1 5.9-3.6 8.5c-2.5-2.6-3.6-5.4-3.6-8.5S9.5 6.1 12 3.5z" fill="none" stroke="currentColor" stroke-width="1.8"/>'),
+    video: svg('<rect x="3" y="6.5" width="12.5" height="11" rx="2.2" fill="currentColor"/><path d="M15.5 10.5l5-3v9l-5-3z" fill="currentColor"/>'),
   };
 
   // ─── Estilos ────────────────────────────────────────────────────
@@ -1391,7 +1227,7 @@
 .gu-firma{font-size:14px;color:var(--color-text-secondary)}
 .gu-progreso{height:6px;border-radius:3px;background:var(--color-bg-tertiary);overflow:hidden;margin-top:6px}
 .gu-progreso>span{display:block;height:100%;background:var(--color-brand);border-radius:3px;transition:width var(--transition-base)}
-.gu-cuadro{position:relative;width:100%;aspect-ratio:16/9;max-height:78vh;margin:0 auto;background:#000}
+.gu-cuadro{position:relative;width:100%;aspect-ratio:16/9;max-height:calc((100vh - 52px) * .6);margin:0 auto;background:#000}
 .gu-cuadro video{position:absolute;inset:0;width:100%;height:100%;background:transparent;object-fit:contain}
 .gu-cuadro.gu-ajustado,.gu-vpq-cuadro.gu-ajustado{background:transparent}
 .gu-capa{position:absolute;inset:0;display:flex}
@@ -1501,7 +1337,7 @@
 .gu-vpq-boton{align-self:flex-start;min-height:36px;padding:0 14px;border:1px solid var(--color-brand-text);border-radius:var(--radius-full);background:transparent;color:var(--color-brand-text);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:4px 0}
 .gu-vpq-boton svg{width:14px;height:14px}
 .gu-vpq-boton .gu-visto-t{color:var(--color-brand)}
-.gu-vpq-cuadro{position:relative;width:100%;aspect-ratio:16/9;max-height:78vh;margin:0 auto;background:#000;border-radius:var(--radius-md);overflow:hidden}
+.gu-vpq-cuadro{position:relative;width:100%;aspect-ratio:16/9;max-height:calc((100vh - 52px) * .6);margin:0 auto;background:#000;border-radius:var(--radius-md);overflow:hidden}
 .gu-vpq-cuadro video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent}
 .gu-vpq-cuadro .gu-sinvideo{position:absolute;inset:0}
 .gu-pie{font-size:14px;color:var(--color-text-secondary);line-height:1.45;padding:16px 20px;margin:0}
@@ -1555,7 +1391,56 @@
 .gu-bv-botones .gu-boton-marca{min-height:52px;width:100%;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px}
 .gu-bv-botones .gu-boton-marca svg{width:16px;height:16px}
 .gu-mas-tarde{min-height:48px;border:0;background:transparent;color:var(--color-brand-text);font-size:17px;font-weight:600;cursor:pointer}
-@media (prefers-reduced-motion: reduce){.gu-punto,.gu-icono-play.gu-pulso::before,.gu-girando{animation:none}.gu-placa-barra>span{animation:none;width:100%}}
+/* 2.2.0: la novedad, los obligatorios y la agenda de la entrega */
+.gu-novedad{display:inline-flex;align-items:center;gap:6px;color:var(--color-brand-text)}
+.gu-novedad svg{width:18px;height:18px;flex:0 0 18px}
+.gu-etq-oblig{display:flex;align-items:center;gap:4px;margin-top:2px;font-size:12px;font-weight:400;color:var(--color-text-secondary)}
+.gu-etq-oblig svg{width:12px;height:12px;flex:0 0 12px}
+.gu-agenda{display:flex;flex-direction:column;gap:8px}
+.gu-agenda-contador{min-height:44px;border:0;background:transparent;color:var(--color-brand-text);font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;text-align:left;padding:0 4px;cursor:pointer}
+.gu-agenda-contador svg{width:20px;height:20px;flex:0 0 20px}
+.gu-agenda-caja{padding:20px;display:flex;flex-direction:column;gap:10px}
+.gu-agenda-caja.gu-gris{background:var(--color-bg-tertiary);box-shadow:none}
+.gu-agenda-caja.gu-verde{background:var(--color-brand-subtle)}
+.gu-agenda-cab{margin:0;display:flex;align-items:center;gap:8px;font-size:17px;font-weight:600}
+.gu-agenda-cab svg{width:20px;height:20px;flex:0 0 20px}
+.gu-apagado{color:var(--color-text-secondary)}
+.gu-agenda-cab.gu-apagado span{color:var(--color-text-primary)}
+.gu-agenda-texto{margin:0;font-size:16px;line-height:1.45;display:flex;align-items:center;gap:8px}
+.gu-agenda-sinred,.gu-agenda-zona{display:flex;align-items:center;gap:6px;margin:0;font-size:13px;font-weight:600;color:var(--color-text-secondary)}
+.gu-agenda-zona{font-weight:400}
+.gu-agenda-sinred svg,.gu-agenda-zona svg{width:15px;height:15px;flex:0 0 15px}
+.gu-agenda-aviso{display:flex;align-items:flex-start;gap:6px;margin:0;font-size:15px;font-weight:600;color:var(--color-alerta)}
+.gu-agenda-aviso svg{width:17px;height:17px;flex:0 0 17px;margin-top:1px}
+.gu-agenda-dia{display:flex;flex-direction:column;gap:8px;padding-top:4px}
+.gu-agenda-dia-titulo{font-size:15px;font-weight:600}
+.gu-chips{display:flex;flex-wrap:wrap;gap:8px}
+.gu-chip{min-height:44px;padding:0 16px;border:1px solid color-mix(in srgb,var(--color-brand) 35%,transparent);border-radius:var(--radius-full);background:var(--color-brand-subtle);color:var(--color-brand-text);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;transition:transform .18s}
+.gu-chip:active{transform:scale(.96)}
+.gu-agenda-confirmada{margin:0;font-size:20px;font-weight:600;line-height:1.3}
+.gu-agenda-sala{margin:0;font-size:17px;font-weight:600;color:var(--color-brand-text)}
+.gu-boton-ancho{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.gu-boton-ancho svg,.gu-boton-sec svg{width:16px;height:16px}
+.gu-girando.gu-chico{width:16px;height:16px;border-width:2px;flex:0 0 16px}
+.gu-hoja-fondo{position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.45)}
+.gu-hoja{position:fixed;left:0;right:0;bottom:0;z-index:9201;max-width:520px;margin:0 auto;max-height:90vh;overflow-y:auto;background:var(--color-bg-primary);color:var(--color-text-primary);border-radius:20px 20px 0 0;box-shadow:var(--shadow-lg);padding:24px 24px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.gu-hoja-icono{color:var(--color-brand)}
+.gu-hoja-icono svg{width:44px;height:44px}
+.gu-hoja p{margin:0 0 8px;font-size:20px;font-weight:600;line-height:1.35}
+.gu-hoja .gu-boton-sec{justify-content:center}
+/* La entrega en Entreno, desde 30 min antes hasta el fin */
+.gu-entrega{display:flex;align-items:center;gap:12px;min-height:56px;padding:16px;border-radius:var(--radius-lg);background:#17852b;color:#fff;font-size:17px;font-weight:600;line-height:1.3;text-decoration:none;margin-bottom:12px}
+[data-theme="dark"] .gu-entrega{background:#157a28}
+.gu-entrega>svg{width:20px;height:20px;flex:0 0 20px}
+.gu-entrega>span{flex:1}
+.gu-entrega .gu-chev{transform:rotate(-90deg);color:#fff}
+/* El recorte de las franjas negras metidas en el archivo: el cuadro ya tiene la
+   forma de la zona útil y el video la llena, parejo de los dos lados. En
+   pantalla completa se ve entero. */
+.gu-cuadro.gu-recortado video,.gu-vpq-cuadro.gu-recortado video{object-fit:cover}
+.gu-cuadro video:fullscreen,.gu-vpq-cuadro video:fullscreen{object-fit:contain}
+.gu-cuadro video:-webkit-full-screen,.gu-vpq-cuadro video:-webkit-full-screen{object-fit:contain}
+@media (prefers-reduced-motion: reduce){.gu-punto,.gu-icono-play.gu-pulso::before,.gu-girando{animation:none}.gu-chip{transition:none}.gu-placa-barra>span{animation:none;width:100%}}
 `;
 
   function inyectarEstilos() {
@@ -1623,6 +1508,29 @@
     return '<span class="gu-icono"></span>';
   }
 
+  const mayusculaInicial = t => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+
+  // «Agregar a mi calendario»: un .ics que abre el calendario del teléfono o de
+  // la compu (como EventKit en iOS e Intent.ACTION_INSERT en Android: local,
+  // sin permisos de cuenta). Nada sale del navegador.
+  function agregarAlCalendario(r) {
+    const i = r && R.instante(r.inicio), f = r && R.instante(r.fin);
+    if (!i) return;
+    const fin = f && f > i ? f : new Date(i.getTime() + 3600000);
+    const utc = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const escIcs = t => String(t).replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
+    const lineas = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Pump Team//MyPump//ES', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT',
+      `UID:${escIcs((r.id || utc(i)) + '@mypump')}`, `DTSTAMP:${utc(new Date())}`, `DTSTART:${utc(i)}`, `DTEND:${utc(fin)}`,
+      'SUMMARY:Entrega Pump Team'];
+    if (r.meetUrl) lineas.push(`URL:${r.meetUrl}`, `DESCRIPTION:${escIcs('Videollamada: ' + r.meetUrl)}`);
+    lineas.push('END:VEVENT', 'END:VCALENDAR');
+    const url = URL.createObjectURL(new Blob([lineas.join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'entrega-pump-team.ics'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+
   // ─── La vista de la guía (GuiaView + ControlReproductor) ────────
   let vistaAbierta = null;
 
@@ -1642,6 +1550,8 @@
       this.avance = new AvanceVideo(false);
       this.retomado = false;
       this.vpq = { abierto: null, video: null, avance: null, retomado: false, sinConexion: false };
+      this.elegido = null;          // la franja de la hoja de confirmación
+      this._anuncios = m.agenda.anuncios;
       this.previo = {};
       this._rafId = 0;
       this._oyente = () => this.programar();
@@ -1652,6 +1562,8 @@
       m.audios.alEmpezar = () => { this.pausar(); this.vpqPausar(); };
       m.audios.alAnunciar = t => { if (this.vivo) { this.vivo.textContent = ''; setTimeout(() => { if (this.vivo) this.vivo.textContent = t; }, 50); } };
       m.audios.alTic = () => this.pintarTicAudio();
+      // La guía abierta mira el reloj de la entrega confirmada (el botón para entrar).
+      m.agenda.vigilar(this);
     }
 
     get despues() { return R.yaPaso(this.m.guia && this.m.guia.fechaEntrega); }
@@ -1689,6 +1601,7 @@
           </section>
           <div data-gu-zona="resto" style="display:flex;flex-direction:column;gap:16px"></div>
         </div></div>
+        <div data-gu-zona="hoja"></div>
         <div class="gu-oculto" aria-live="polite" data-gu-zona="vivo"></div>`;
       this.root = root;
       this.z = {};
@@ -1698,12 +1611,20 @@
       this.conectarVideo();
       root.addEventListener('click', e => this.alClic(e));
       root.addEventListener('input', e => this.alEscribir(e));
-      root.addEventListener('keydown', e => { if (e.key === 'Escape' && !this.pantallaCompleta) { e.preventDefault(); cerrarGuia(); } });
+      root.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || this.pantallaCompleta) return;
+        e.preventDefault();
+        // Con la hoja de confirmación abierta, Escape es «Elegir otro».
+        if (this.elegido) { this.cerrarHoja(); return; }
+        cerrarGuia();
+      });
       this._visibilidad = () => {
         if (document.visibilityState === 'hidden') {
           this.pausar(); this.vpqPausar(); this.m.audios.cortar(); this.m.audios.cerrarSeccion();
         } else if (this.m.estado === 'lista') {
           this.m.audios.abrirSeccion();
+          // De vuelta con la guía abierta: la agenda de nuevo (nunca de fondo).
+          this.m.agenda.consultar();
         }
       };
       this._salida = () => { this.guardarAlSalir(); this.vpqGuardar(); };
@@ -1722,6 +1643,7 @@
       this.m.audios.cortar();
       this.m.audios.cerrarSeccion();
       this.m.audios.alEmpezar = null; this.m.audios.alAnunciar = null; this.m.audios.alTic = null;
+      this.m.agenda.dejarDeVigilar(this);
       this.m.oyentes.delete(this._oyente);
       document.removeEventListener('visibilitychange', this._visibilidad);
       window.removeEventListener('pagehide', this._salida);
@@ -1821,7 +1743,7 @@
       clearTimeout(this.tPlaca);
       this.placaId = null;
       this.actualId = clip.id;
-      this.abiertos.add(R.nombreBloque(clip));
+      this.abiertos.add(R.claveBloque(clip));
       if (reproducir) this.portada = false;
       this.sinConexion = false;
       const v = this.video;
@@ -1836,6 +1758,7 @@
           this.programar();
           return;
         }
+        marcarClip(v, clip.id, clip.url);
         v.src = clip.url;
         try { v.load(); } catch (_) { /* nada */ }
       }
@@ -1971,6 +1894,7 @@
       if (navigator.onLine === false) {
         this.vpq.sinConexion = true;
       } else {
+        marcarClip(v, c.id, c.url);
         v.src = c.url;
         try { v.load(); } catch (_) { /* nada */ }
         this.frenarPorOtro();
@@ -2048,8 +1972,49 @@
         case 'regrabar': m.audios.grabarDeNuevo(); break;
         case 'borrar-audio': m.audios.borrar(); break;
         case 'reintentar-audio': m.audios.reintentar(b.dataset.id); break;
+        // La agenda de la entrega (2.2.0)
+        case 'ir-video': this.irAlVideo(b.dataset.id); break;
+        case 'franja': this.elegido = b.dataset.id; this.programar(); break;
+        case 'confirmar-reserva': {
+          const c = this.chipElegido();
+          this.elegido = null;
+          if (c) m.agenda.reservar(c.franja);
+          this.programar();
+          break;
+        }
+        case 'elegir-otro': this.cerrarHoja(); break;
+        case 'calendario': agregarAlCalendario(m.agenda.reserva); break;
         default: break;
       }
+    }
+
+    // «Ir al próximo video» y el contador de la agenda: abre su capítulo, lo
+    // reproduce y sube al reproductor.
+    irAlVideo(id) {
+      const i = this.clips().findIndex(c => c.id === id);
+      if (i < 0) return;
+      this.abiertos.add(R.claveBloque(this.clips()[i]));
+      this.reproducir(i);
+      this.volverA = id;
+      this.z.reproductor.scrollIntoView({ behavior: reducirMovimiento() ? 'auto' : 'smooth', block: 'start' });
+    }
+
+    chipElegido() {
+      if (!this.elegido) return null;
+      const a = this.m.agenda.agenda;
+      for (const d of RA.dias(a ? a.franjas : [])) for (const c of d.chips) if (c.id === this.elegido) return c;
+      return null;
+    }
+
+    cerrarHoja() {
+      const id = this.elegido;
+      this.elegido = null;
+      this.programar();
+      // El foco vuelve al chip que la abrió.
+      setTimeout(() => {
+        const b = id && this.root.querySelector(`[data-gu="franja"][data-id="${cssEsc(id)}"]`);
+        if (b) b.focus({ preventScroll: true });
+      }, 30);
     }
 
     alEscribir(e) {
@@ -2075,7 +2040,7 @@
       if (this.m.estado !== 'lista') return;
       this.prepararInicial();
       const c = this.clipActual;
-      if (c) this.abiertos.add(R.nombreBloque(c));
+      if (c) this.abiertos.add(R.claveBloque(c));
       this.programar();
     }
 
@@ -2139,6 +2104,19 @@
       if (this.zona('resto', this.htmlResto(clips, despues))) this.ubicarVpq();
       else if (this.vpq.abierto && this.vpq.video && !this.vpq.video.isConnected) this.ubicarVpq();
       this.pintarTicAudio();
+      // La hoja de confirmación: solo mientras la franja sigue entre las que se ven.
+      const chip = this.chipElegido();
+      if (this.elegido && (!chip || this.m.vistaAgenda.tipo !== 'franjas')) this.elegido = null;
+      if (this.zona('hoja', this.elegido ? this.htmlHoja(chip) : '') && this.elegido) {
+        setTimeout(() => { const b = this.root.querySelector('[data-gu="confirmar-reserva"]'); if (b) b.focus({ preventScroll: true }); }, 0);
+      }
+      // Lo que dice la agenda (confirmada, tomada…), para los lectores de pantalla.
+      const ag = this.m.agenda;
+      if (ag.anuncios !== this._anuncios) {
+        this._anuncios = ag.anuncios;
+        const t = ag.anuncio;
+        if (this.vivo && t) { this.vivo.textContent = ''; setTimeout(() => { if (this.vivo) this.vivo.textContent = t; }, 50); }
+      }
     }
 
     // El video del «Ver por qué» vive fuera del HTML: se mueve a su lugar en
@@ -2215,11 +2193,13 @@
     }
 
     htmlBloque(b, clips) {
-      const abierto = this.abiertos.has(b.titulo);
+      const abierto = this.abiertos.has(b.id);
       const vistos = b.indices.filter(i => clips[i] && clips[i].visto).length;
       const sub = R.textoBloque(b) + (vistos > 0 ? `, ${vistos === b.indices.length ? 'todos vistos' : `${vistos} ${vistos === 1 ? 'visto' : 'vistos'}`}` : '');
-      let h = `<div class="gu-card"><button type="button" class="gu-bloque-cab" data-gu="bloque" data-b="${esc(b.titulo)}" aria-expanded="${abierto}">
-        <span><span class="gu-bloque-titulo">${esc(b.titulo)}</span><span class="gu-sub">${esc(sub)}</span></span>${I.chevron.replace('<svg', '<svg class="gu-chev"')}</button>`;
+      // 2.2.0: «Novedad», con el destello y el color de la marca.
+      const titulo = b.novedad ? `<span class="gu-bloque-titulo gu-novedad">${I.destello}${esc(b.titulo)}</span>` : `<span class="gu-bloque-titulo">${esc(b.titulo)}</span>`;
+      let h = `<div class="gu-card"><button type="button" class="gu-bloque-cab" data-gu="bloque" data-b="${esc(b.id)}" aria-expanded="${abierto}">
+        <span>${titulo}<span class="gu-sub">${esc(sub)}</span></span>${I.chevron.replace('<svg', '<svg class="gu-chev"')}</button>`;
       if (abierto) {
         h += '<div class="gu-filas">';
         for (const i of b.indices) if (clips[i]) h += this.htmlFila(clips[i], i);
@@ -2234,11 +2214,13 @@
       const tieneMotivo = !!(hacer || paraQue);
       const abierto = this.motivos.has(c.id);
       const sonando = actual && this.reproduciendo;
-      const valor = [c.visto ? 'Visto' : 'Sin ver', actual ? 'Es el video actual' : null,
+      // 2.2.0: la etiqueta discreta de los obligatorios, solo con la agenda en el servidor.
+      const etiqueta = this.m.agenda.disponible && RA.esObligatorio(c, this.m.guia) ? RA.ETIQUETA_OBLIGATORIO : null;
+      const valor = [c.visto ? 'Visto' : 'Sin ver', actual ? 'Es el video actual' : null, etiqueta,
                      c.url ? R.duracionHablada(c.minutos) : 'Lo estoy subiendo'].filter(Boolean).join(', ');
       let h = `<div class="gu-fila${actual ? ' gu-fila-actual' : ''}" data-gu-fila="${esc(c.id)}"><div class="gu-fila-linea">
         <button type="button" class="gu-fila-boton" data-gu="fila" data-i="${i}" ${c.url ? '' : 'disabled'} aria-label="${esc(c.titulo + ', ' + valor)}">
-          ${htmlIconoClip(c.visto, actual, sonando)}<span class="gu-fila-titulo">${esc(c.titulo)}</span>
+          ${htmlIconoClip(c.visto, actual, sonando)}<span class="gu-fila-titulo">${esc(c.titulo)}${etiqueta ? `<span class="gu-etq-oblig" aria-hidden="true">${I.calendario}${esc(etiqueta)}</span>` : ''}</span>
           <span class="gu-dur">${esc(c.url ? R.duracion(c.minutos) : 'Lo estoy subiendo')}</span></button>`;
       if (tieneMotivo) {
         h += `<button type="button" class="gu-motivo-boton" data-gu="motivo" data-id="${esc(c.id)}" aria-label="Para qué sirve" aria-expanded="${abierto}">${I.chevron.replace('<svg', '<svg class="gu-chev"')}</button>`;
@@ -2351,12 +2333,104 @@
       return h + '</div>';
     }
 
+    // ── La agenda de la entrega (AgendaView, 2.2.0) ──
+    // El servidor decide: acá solo se pide, se muestra y se reserva. Sin la 021
+    // (vista «nada») no se pinta nada.
+    htmlAgenda() {
+      const m = this.m, ag = m.agenda;
+      const v = m.vistaAgenda;
+      if (v.tipo === 'nada') return '';
+      const t = ag.textos;
+      const primero = RA.primeroQueFalta(m.guia);
+      let h = '<div class="gu-agenda" data-gu-ancla="agenda">';
+      // El contador va con la agenda bloqueada o sin autorizar, si falta alguno.
+      if ((v.tipo === 'noAutorizada' || v.tipo === 'bloqueada') && v.faltan > 0 && primero) {
+        h += `<button type="button" class="gu-agenda-contador" data-gu="ir-video" data-id="${esc(primero.id)}" title="Va al primer video que te falta">${I.playCirculo}<span>${esc(RA.textoContador(v.faltan))}</span></button>`;
+      }
+      const caja = (clase, cuerpo) => `<section class="gu-card gu-agenda-caja${clase ? ' ' + clase : ''}" aria-label="${esc(t.titulo)}">${
+        ag.desdeCache ? `<div class="gu-agenda-sinred">${I.sinRed}<span>Sin conexión</span></div>` : ''}${cuerpo}</section>`;
+      const cab = (icono, titulo, tono) => `<h3 class="gu-agenda-cab${tono ? ' ' + tono : ''}">${icono}<span>${esc(titulo)}</span></h3>`;
+      const aviso = a => (a ? `<p class="gu-agenda-aviso" role="status">${I.alerta}<span>${esc(t.fallo(a))}</span></p>` : '');
+      switch (v.tipo) {
+        case 'noAutorizada':
+          h += caja('gu-gris', cab(I.candado, t.titulo, 'gu-apagado') + `<p class="gu-agenda-texto gu-apagado">${esc(t.noAutorizada)}</p>`);
+          break;
+        case 'bloqueada': {
+          const habilitando = v.faltan === 0;
+          let c = cab(I.candado, t.titulo, 'gu-apagado');
+          c += `<p class="gu-agenda-texto gu-apagado">${habilitando ? '<span class="gu-girando gu-chico" aria-hidden="true"></span>' : ''}${esc(t.bloqueada(v.faltan))}</p>`;
+          if (v.faltan > 0 && primero) c += `<div><button type="button" class="gu-boton-sec" data-gu="ir-video" data-id="${esc(primero.id)}">${I.play}Ir al próximo video</button></div>`;
+          h += caja('gu-gris', c);
+          break;
+        }
+        case 'franjas': {
+          const dias = RA.dias(ag.agenda.franjas);
+          const chips = dias.flatMap(d => d.chips);
+          let c = cab(I.calendario, t.titulo, 'gu-marca-t') + aviso(v.aviso);
+          c += `<p class="gu-sub" style="margin:0">${esc(t.encabezado(chips))}</p>`;
+          if (RA.difiereDeArgentina(chips.map(x => x.inicio))) c += `<p class="gu-agenda-zona">${I.globo}<span>${esc(RA.TEXTO_ZONA_TELEFONO)}</span></p>`;
+          for (const d of dias) {
+            c += `<div class="gu-agenda-dia"><div class="gu-agenda-dia-titulo" role="heading" aria-level="4">${esc(mayusculaInicial(d.titulo))}</div><div class="gu-chips">`;
+            c += d.chips.map(x => `<button type="button" class="gu-chip" data-gu="franja" data-id="${esc(x.id)}" aria-label="${esc(`${d.titulo}, de ${x.texto}`)}" title="Abre la confirmación">${esc(x.texto)}</button>`).join('');
+            c += '</div></div>';
+          }
+          h += caja('', c);
+          break;
+        }
+        case 'sinFranjas':
+          h += caja('', cab(I.calendario, t.titulo) + aviso(v.aviso) + `<p class="gu-agenda-texto">${esc(t.sinFranjas)}</p>`);
+          break;
+        case 'reservando':
+          h += caja('', cab(I.calendario, t.titulo) + `<p class="gu-agenda-texto" role="status"><span class="gu-girando gu-chico" aria-hidden="true"></span>${esc(t.pendiente)}</p>`);
+          break;
+        case 'confirmada': {
+          const r = v.reserva, ahora = new Date();
+          const i = R.instante(r.inicio);
+          let c = cab(I.listo, 'Entrega confirmada', 'gu-marca-t');
+          c += `<p class="gu-agenda-confirmada">${esc(t.confirmada(r) || 'Tu entrega está confirmada')}</p>`;
+          if (i && RA.difiereDeArgentina([i])) c += `<p class="gu-nota">${esc(RA.TEXTO_ZONA_TELEFONO)}</p>`;
+          if (v.aviso) c += `<p class="gu-sub" style="margin:0">${esc(RA.TEXTO_AVISO[v.aviso] || '')}</p>`;
+          // El cliente nunca entra directo (Mati, 6/11): el botón aparece con la sala
+          // abierta o, de respaldo, a la hora de inicio. El día de la entrega, mientras
+          // tanto, el aviso. Antes del día, solo la fecha y la hora.
+          if (RA.puedeEntrar(r, ahora)) {
+            c += `<p class="gu-agenda-sala">${esc(t.entrar(r))}</p>
+              <a class="gu-boton-marca gu-boton-ancho" href="${esc(r.meetUrl)}" target="_blank" rel="noopener noreferrer" title="Abre Google Meet">${I.video}Entrar a la videollamada</a>`;
+          } else if (r.meetUrl && RA.esHoy(r, undefined, ahora)) {
+            c += `<p class="gu-agenda-texto">${esc(t.hoySinSala(r))}</p>`;
+          }
+          c += `<div><button type="button" class="gu-boton-sec" data-gu="calendario">${I.calendario}Agregar a mi calendario</button></div>`;
+          c += `<p class="gu-nota">${esc(t.cambiar)}</p>`;
+          h += caja('gu-verde', c);
+          break;
+        }
+        default: break;
+      }
+      return h + '</div>';
+    }
+
+    // La hoja de confirmación: sin formularios, «Confirmar» o «Elegir otro».
+    htmlHoja(c) {
+      const t = this.m.agenda.textos;
+      return `<div class="gu-hoja-fondo" data-gu="elegir-otro"></div>
+        <div class="gu-hoja" role="dialog" aria-modal="true" aria-labelledby="gu-hoja-texto">
+          <span class="gu-hoja-icono" aria-hidden="true">${I.calendario}</span>
+          <p id="gu-hoja-texto">${esc(t.confirmar(c))}</p>
+          <button type="button" class="gu-boton-marca gu-boton-ancho" data-gu="confirmar-reserva">Confirmar</button>
+          <button type="button" class="gu-boton-sec gu-boton-ancho" data-gu="elegir-otro">Elegir otro</button>
+        </div>`;
+    }
+
     htmlResto(clips, despues) {
       const bloques = R.bloques(clips);
-      let h = bloques.filter(b => b.esApp).map(b => this.htmlBloque(b, clips)).join('');
+      // 2.2.0: lo nuevo arriba de todo; debajo, lo de siempre.
+      let h = bloques.filter(b => b.novedad).map(b => this.htmlBloque(b, clips)).join('');
+      h += bloques.filter(b => b.esApp).map(b => this.htmlBloque(b, clips)).join('');
       h += this.htmlLlamada(despues);
-      h += bloques.filter(b => !b.esApp).map(b => this.htmlBloque(b, clips)).join('');
+      h += bloques.filter(b => !b.esApp && !b.novedad).map(b => this.htmlBloque(b, clips)).join('');
       h += this.htmlSupl(despues);
+      // La agenda de la entrega, al final (después de las dudas para la llamada).
+      h += this.htmlAgenda();
       h += `<p class="gu-card gu-pie">${despues ? 'Si algún video no te carga o tenés algo para contarme, escribime por el chat.'
                                                : 'Si algún video no te carga o tenés algo para contarme antes de la llamada, escribime por el chat.'}</p>`;
       if (this.m.puedeQuitar) h += `<button type="button" class="gu-accion" data-gu="quitar" title="La guía queda en Mis datos">${I.ojoTachado}Quitar de Entreno</button>`;
@@ -2393,24 +2467,48 @@
     v.alLlegarGuia();
     if (m.estado === 'lista') m.audios.abrirSeccion();
     if (m.cola.length) m.procesarCola();
+    // La agenda de la entrega (2.2.0): lo que quedó en la cola ya está en el
+    // modelo; acá, la consulta. Sin la 021 no se ve nada.
+    if (m.estado === 'lista') m.agenda.consultar();
     return true;
   }
 
   // ─── La tarjeta de Entreno (TarjetaGuia y TarjetaGuiaDestacada) ──
   const tarjetas = [];
 
+  // La entrega en Entreno (TarjetaEntregaAhora), desde `aviso_min` (30) antes
+  // hasta el fin de la franja, aunque la tarjeta de la guía esté oculta: «Mati
+  // ya está en la videollamada · Entrar» con la sala abierta (o desde la hora de
+  // inicio, de respaldo); antes, el aviso sin botón.
+  function htmlEntregaAhora(m) {
+    const r = m.reservaEnVentana();
+    if (!r) return '';
+    const t = m.agenda.textos;
+    if (RA.puedeEntrar(r) && r.meetUrl) {
+      const texto = t.entrar(r);
+      return `<a class="gu-tarjeta gu-entrega" href="${esc(r.meetUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(texto + '. Entrar a la videollamada')}">${I.video}<span>${esc(texto)} · <b>Entrar</b></span>${I.chevron.replace('<svg', '<svg class="gu-chev"')}</a>`;
+    }
+    return `<div class="gu-tarjeta gu-entrega" role="status">${I.reloj}<span>${esc(t.entrenoAviso(r))}</span></div>`;
+  }
+
   function htmlTarjeta(m) {
+    return htmlEntregaAhora(m) + htmlTarjetaGuia(m);
+  }
+
+  function htmlTarjetaGuia(m) {
     if (m.tarjetaDestacada) {
-      const a = m.avanceTarjeta;
-      const t = R.textoTarjeta(a);
+      // 2.2.0: con novedad sin ver, «NOVEDAD EN TU GUÍA» con el avance de lo nuevo; si no, la de la 2.1.0.
+      const nov = m.avanceNovedad;
+      const a = nov || m.avanceTarjeta;
+      const t = nov ? R.textoTarjetaNovedad(nov) : R.textoTarjeta(a);
       const pulso = m.primeraSesionTarjeta && !reducirMovimiento();
-      return `<div class="gu-tarjeta gu-destacada" role="group" aria-label="Tu guía">
-        <div class="gu-dest-cab"><span class="gu-dest-ceja">Empezá por acá</span>
+      return `<div class="gu-tarjeta gu-destacada" role="group" aria-label="${nov ? 'Novedad en tu guía' : 'Tu guía'}">
+        <div class="gu-dest-cab"><span class="gu-dest-ceja">${nov ? 'Novedad en tu guía' : 'Empezá por acá'}</span>
           <button type="button" class="gu-ocultar" data-gu-t="ocultar" title="La guía queda en Mis datos">Ocultar</button></div>
         <div class="gu-dest-fila"><span class="gu-icono-play${pulso ? ' gu-pulso' : ''}" aria-hidden="true">${I.play}</span>
           <div><div class="gu-dest-titulo">Tu guía</div><div class="gu-dest-sub">${esc(t)}</div></div></div>
         <div class="gu-barra-blanca" aria-hidden="true"><span style="width:${R.fraccion(a) > 0 ? Math.max(3, R.fraccion(a) * 100).toFixed(1) : 0}%"></span></div>
-        <button type="button" class="gu-boton-blanco" data-gu-t="abrir">${I.play}${esc(R.botonTarjeta(a))}</button></div>`;
+        <button type="button" class="gu-boton-blanco" data-gu-t="abrir">${I.play}${esc(nov ? 'Ver lo nuevo' : R.botonTarjeta(a))}</button></div>`;
     }
     if (m.mostrarTarjeta) {
       const a = m.avanceTarjeta;
@@ -2428,6 +2526,16 @@
 
   function pintarTarjeta(reg) {
     const m = modelo(reg.token);
+    // La entrega confirmada que no terminó: la tarjeta mira el reloj (15 s) y, en
+    // la franja sin la sala abierta, la agenda cada 30 s. Si la reserva vino solo
+    // del resumen (la guía no se abrió), primero se trae la agenda, una vez.
+    if (!esDemo() && reg.contenedor.isConnected) {
+      m.agenda.vigilar(reg);
+      const r = m.reservaEnVentana();
+      if (r && !m.agenda.reserva && !reg.agendaPedida) { reg.agendaPedida = true; m.agenda.consultar(); }
+    } else {
+      m.agenda.dejarDeVigilar(reg);
+    }
     const html = esDemo() ? '' : htmlTarjeta(m);
     if (reg.previo === html) return !!html;
     reg.previo = html;
@@ -2439,7 +2547,7 @@
 
   function repintarTarjetas() {
     for (let i = tarjetas.length - 1; i >= 0; i--) {
-      if (!tarjetas[i].contenedor.isConnected) { tarjetas.splice(i, 1); continue; }
+      if (!tarjetas[i].contenedor.isConnected) { modelo(tarjetas[i].token).agenda.dejarDeVigilar(tarjetas[i]); tarjetas.splice(i, 1); continue; }
       pintarTarjeta(tarjetas[i]);
     }
   }
@@ -2503,19 +2611,140 @@
       // Lo que ya resolvieron las reglas de la app:
       tarjeta_en_entreno: m.mostrarTarjeta,
       fila_en_mis_datos: m.mostrarFila,
-      quitada: m.quitada,
+      quitada: m.quitadaVigente,
     };
   }
 
-  // El cuadro de un video toma la proporción real del clip, con el alto topeado
-  // en 78vh (el ancho baja en proporción): el video lo llena entero, sin franjas.
+  // ─── La forma de cada video (FormaVideo.swift y ReglasVideo) ────
+  // El cuadro toma la proporción real del clip: a todo el ancho si entra; los
+  // verticales hasta el 60 % del alto visible, centrados. Además, si el archivo
+  // trae el negro adentro (una grabación vertical metida en un 1280×720), el
+  // cuadro toma la forma de la zona útil y el video se recorta a ella (pedido de
+  // Mati del 6/11: «nunca hay franjas negras»).
+  //
+  // La zona útil se mide una sola vez por clip (id y url), con el clip ya
+  // cargado y de a uno: en un <video> aparte con crossorigin (sin tocar el que
+  // se ve), 4 cuadros chicos al 30, 50, 70 y 90 % (desde el 30 % para saltear
+  // la placa del título), dibujados en un canvas. Si el servidor no deja leer
+  // los píxeles (el canvas queda «tainted») o algo falla, no se recorta y queda
+  // como antes, sin errores. Lo medido queda guardado en el navegador.
+  const CLAVE_RECUADROS = 'mypump_guia_recuadros';
+  const TOPE_RECUADROS = 300;
+  const claveRecuadro = (id, url) => `${id}|${url}`;
+  const sinMedir = new Set();      // falló en esta sesión (CORS, red): no se insiste hasta recargar
+  let colaMedir = Promise.resolve();
+  const enMedicion = new Set();
+
+  function recuadroGuardado(id, url) {
+    const t = almacen.leer(CLAVE_RECUADROS, null);
+    const v = esObjeto(t) ? t[claveRecuadro(id, url)] : null;
+    if (!Array.isArray(v) || v.length !== 4 || !v.every(x => typeof x === 'number' && isFinite(x) && x >= 0 && x <= 1) || !(v[2] > 0) || !(v[3] > 0)) return null;
+    return { x: v[0], y: v[1], ancho: v[2], alto: v[3] };
+  }
+  function guardarRecuadro(id, url, r) {
+    let t = almacen.leer(CLAVE_RECUADROS, null);
+    if (!esObjeto(t)) t = {};
+    const k = claveRecuadro(id, url);
+    if (Object.keys(t).length >= TOPE_RECUADROS && !(k in t)) t = {};
+    t[k] = [r.x, r.y, r.ancho, r.alto];
+    almacen.guardar(CLAVE_RECUADROS, t);
+  }
+
+  // El clip que va a mostrar este <video> (para la forma guardada y la medición).
+  function marcarClip(v, id, url) { if (v) { v.dataset.guClip = id || ''; v.dataset.guUrl = url || ''; } }
+
   function ajustarCuadro(v) {
     const c = v && v.parentElement;
     if (!c || !v.videoWidth || !v.videoHeight) return;
-    const r = v.videoWidth / v.videoHeight;
-    c.style.aspectRatio = `${v.videoWidth} / ${v.videoHeight}`;
-    c.style.width = `min(100%, ${(78 * r).toFixed(2)}vh)`;
+    const id = v.dataset.guClip, url = v.dataset.guUrl;
+    const archivo = RV.proporcion(v.videoWidth, v.videoHeight) || RV.PROPORCION_DEFECTO;
+    const medido = id && url ? recuadroGuardado(id, url) : null;
+    const recorte = RV.recorte(medido);
+    const p = RV.conRecorte(archivo, recorte);
+    c.style.aspectRatio = String(p);
+    c.style.width = `min(100%, calc((100vh - 52px) * ${(RV.ALTO_MAXIMO * p).toFixed(4)}))`;
     c.classList.add('gu-ajustado');
+    c.classList.toggle('gu-recortado', !!recorte);
+    if (!medido && id && url) medirDespues(v, id, url);
+  }
+
+  function medirDespues(v, id, url) {
+    const k = claveRecuadro(id, url);
+    if (sinMedir.has(k) || enMedicion.has(k)) return;
+    enMedicion.add(k);
+    // De a una: cada medición abre el archivo y no compite con otra.
+    colaMedir = colaMedir.then(async () => {
+      // Un respiro para que el video que se ve arranque primero.
+      await new Promise(r => setTimeout(r, 1200));
+      let r = null;
+      try { r = await medirRecuadro(url); } catch (_) { r = null; }
+      enMedicion.delete(k);
+      if (!r) { sinMedir.add(k); return; }
+      guardarRecuadro(id, url, r);
+      // Si ese <video> sigue con el mismo clip, el cuadro toma la forma nueva.
+      if (v.isConnected && v.dataset.guClip === id && v.dataset.guUrl === url) ajustarCuadro(v);
+    }).catch(() => { enMedicion.delete(k); });
+  }
+
+  function esperar(el, evento, ms) {
+    return new Promise((ok, mal) => {
+      const t = setTimeout(() => { limpiar(); mal(new Error('tiempo')); }, ms);
+      const bien = () => { limpiar(); ok(); };
+      const error = () => { limpiar(); mal(new Error('error')); };
+      const limpiar = () => { clearTimeout(t); el.removeEventListener(evento, bien); el.removeEventListener('error', error); };
+      el.addEventListener(evento, bien);
+      el.addEventListener('error', error);
+    });
+  }
+
+  // La unión de lo que no es negro en 4 cuadros chicos. RV.ENTERO si no hay
+  // nada que medir de más (un video negro entero no se recorta); null si no se
+  // pudo leer (se prueba en la próxima carga de la página).
+  async function medirRecuadro(url) {
+    if (!document.body) return null;
+    const v = document.createElement('video');
+    v.crossOrigin = 'anonymous';
+    v.muted = true; v.defaultMuted = true;
+    v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+    v.preload = 'auto';
+    v.setAttribute('aria-hidden', 'true');
+    v.style.cssText = 'position:fixed;left:-10px;top:-10px;width:2px;height:2px;opacity:0;pointer-events:none';
+    document.body.appendChild(v);
+    try {
+      v.src = url;
+      // En iOS un video que no arranca no carga cuadros: mudo y en línea se puede arrancar y frenar.
+      try { const p = v.play(); if (p && p.then) p.then(() => v.pause()).catch(() => {}); } catch (_) { /* nada */ }
+      await esperar(v, 'loadeddata', 20000);
+      v.pause();
+      const dur = v.duration;
+      if (!isFinite(dur) || dur <= 0 || !v.videoWidth || !v.videoHeight) return null;
+      const escala = Math.min(1, 320 / Math.max(v.videoWidth, v.videoHeight));
+      const w = Math.max(1, Math.round(v.videoWidth * escala)), h = Math.max(1, Math.round(v.videoHeight * escala));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+      const rs = [];
+      let leidos = 0;
+      for (const f of [0.3, 0.5, 0.7, 0.9]) {
+        try {
+          v.currentTime = dur * f;
+          await esperar(v, 'seeked', 8000);
+        } catch (_) { continue; }
+        ctx.drawImage(v, 0, 0, w, h);
+        let px;
+        try { px = ctx.getImageData(0, 0, w, h).data; } catch (_) { return null; }   // «tainted»: no se recorta
+        leidos++;
+        const r = RV.recuadro(RV.luma(px, w * h), w, h);
+        if (r) rs.push(r);
+      }
+      if (!leidos) return null;
+      return RV.unir(rs) || RV.ENTERO;
+    } finally {
+      v.removeAttribute('src');
+      try { v.load(); } catch (_) { /* nada */ }
+      v.remove();
+    }
   }
 
   window.MyPumpGuia = {
@@ -2575,7 +2804,7 @@
     },
 
     // Para la fila «Ver mi guía» de Mis datos (con el resumen ya cargado).
-    quitada(token) { return tokenValido(token) ? modelo(token).quitada : false; },
+    quitada(token) { return tokenValido(token) ? modelo(token).quitadaVigente : false; },
     mostrarFila(token) { return tokenValido(token) && !esDemo() ? modelo(token).mostrarFila : false; },
     puedeVolverAMostrar(token) { return tokenValido(token) && !esDemo() ? modelo(token).puedeVolverAMostrar : false; },
     quitar(token) { if (tokenValido(token)) modelo(token).ponerQuitada(true); },

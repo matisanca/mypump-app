@@ -745,7 +745,7 @@ window.mypumpDB = {
     });
   },
 
-  // ─── TU GUÍA (obra de entregas: entregas_010 a entregas_019) ──
+  // ─── TU GUÍA (obra de entregas: entregas_010 a entregas_021) ──
   // Los videos de Mati antes de la videollamada. Todo por token; las mismas
   // RPC que usan las apps nativas (MyPumpDatos/Guia.swift y AudioDuda.swift).
   // La usa public/js/guia.js.
@@ -811,6 +811,26 @@ window.mypumpDB = {
   // [{id, estado: subido|transcripto|error, en, segundos, texto}].
   async getAudiosGuia(token) {
     return await rpc('entregas_app_audios', { p_token: token });
+  },
+
+  // La agenda de la entrega al final de la guía (entregas_021, app 2.2.0).
+  // → {success, data, transitorio, code}: data = {ok, autorizada, habilitada,
+  // faltan, zona, franjas, reserva, aviso_min, textos} o {ok:false, motivo}.
+  // Por POST (rpc normal): la base puede vencer pendientes al consultar. Sin la
+  // 021 responde PGRST202 (permanente) y la guía queda como en la 2.1.0.
+  async getAgendaGuia(token) {
+    return await rpcMutation('entregas_app_agenda', { p_token: token });
+  },
+
+  // Reserva una franja: {ok, reserva} o {ok:false, motivo} (token,
+  // obligatorios, autorizada, tomada, ya_tiene, franja, error). Idempotente por
+  // p_id: la misma llamada devuelve la misma reserva. RESERVA UN TURNO REAL en
+  // la agenda del profesional: lo llama solo la cola de la reserva de guia.js.
+  async reservarEntregaGuia(token, franja, id) {
+    if (!_esUuidGuia(id) || typeof franja !== 'string' || !franja) {
+      return { success: true, data: { ok: false, motivo: 'error' }, error: null };
+    }
+    return await rpcMutation('entregas_app_reservar', { p_token: token, p_franja: franja, p_id: id });
   },
 
   // La subida del audio a la ruta que dio el ticket: POST con la anon key, el
