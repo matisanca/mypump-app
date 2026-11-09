@@ -150,7 +150,8 @@ class Entreno203UiTest : PruebaUi() {
         fijarCarga("62,5")
         // Con otra carga la base es la del plan: para el récord (más kilo con las mismas reps) tienen que ser las 10.
         fijarReps(10)
-        darOK()
+        // Sin `darOK`: el aviso dura 3 s y en un emulador chico su espera se los come.
+        p.tocar(etiqueta("ok-serie"))
         p.esperar("el aviso de récord") { p.textosBajo(etiqueta("aviso-record-panel")).contains("Récord: +2,5 kg") }
         Telefono.captura("203-record-aviso")
         val carga = p.esperar("la serie en el servidor") { servidor.a("mypump_registrar_carga").firstOrNull() }

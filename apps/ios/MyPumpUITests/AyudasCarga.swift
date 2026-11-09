@@ -17,14 +17,16 @@ extension XCUIApplication {
         XCTAssertTrue(okSerie.waitForExistence(timeout: 5), "El panel no volvió al bajar el teclado")
     }
 
-    /// El panel fijo tapa lo de abajo de la lista: lo sube hasta que quede arriba del dial.
+    /// Deja el elemento entre la barra de arriba y el panel fijo, con arrastres cortos para no pasarse.
     func traerArribaDelPanel(_ e: XCUIElement) {
         let dial = descendants(matching: .any)["reps-dial"]
-        for _ in 0..<8 {
+        let centro = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.28))
+        for _ in 0..<10 {
             let tope = dial.exists ? dial.frame.minY - 90 : frame.maxY - 120
-            if e.isHittable && e.frame.maxY < tope { return }
-            swipeUp(velocity: .slow)
-            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            let dy: CGFloat
+            if e.frame.minY < 170 { dy = 130 } else if e.frame.maxY > tope { dy = -130 } else if e.isHittable { return } else { dy = -60 }
+            centro.press(forDuration: 0.05, thenDragTo: centro.withOffset(CGVector(dx: 0, dy: dy)))
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
         }
     }
 

@@ -86,10 +86,10 @@ final class EntrenoUITests: XCTestCase {
         // Al confirmar, el foco pasa a la serie siguiente y el teclado (su ventana) se come el toque aunque el botón se vea.
         if app.keyboards.firstMatch.exists { app.buttons["Listo"].firstMatch.tap() }
         // Lejos de la barra de abajo (el descanso que corre la tapa): con la preparación arriba (E1) queda más abajo.
-        for _ in 0..<6 where !(sustituir.exists && sustituir.isHittable && sustituir.frame.maxY < app.frame.maxY * 0.7) {
-            app.scrollViews.firstMatch.swipeUp(velocity: .slow)
-            RunLoop.current.run(until: Date().addingTimeInterval(0.8))   // un toque mientras frena solo frena el scroll
-        }
+        RunLoop.current.run(until: Date().addingTimeInterval(1))   // que termine la bajada sola de la lista
+        for _ in 0..<8 where !sustituir.exists { app.swipeUp(velocity: .slow) }
+        app.traerArribaDelPanel(sustituir)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.8))   // un toque mientras frena solo frena el scroll
         sustituir.tap()
         let hoja = app.navigationBars["Sustituir ejercicio"]
         XCTAssertTrue(hoja.waitForExistence(timeout: 5), "No abrió la hoja de sustituir")

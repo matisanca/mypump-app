@@ -99,8 +99,7 @@ struct TarjetaCarga: View {
                 .font(.numeroGrande)
                 .monospacedDigit()
                 .focused($enCarga)
-                .fixedSize()
-                .frame(minWidth: 96, alignment: .trailing)
+                .frame(width: 132)
                 .accessibilityLabel("Carga en kilos")
                 .accessibilityIdentifier("carga-valor")
                 .onChange(of: textoCarga) { _, t in
@@ -115,8 +114,6 @@ struct TarjetaCarga: View {
         }
         .frame(maxWidth: .infinity)
         .frame(minHeight: 56)
-        .contentShape(.rect)
-        .onTapGesture { if !enCarga { enCarga = true } }
     }
 
     @ViewBuilder private func bannerAumento(_ s: CargaSimple) -> some View {
