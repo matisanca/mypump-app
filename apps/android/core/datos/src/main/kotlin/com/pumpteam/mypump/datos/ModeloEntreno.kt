@@ -13,9 +13,12 @@ import com.pumpteam.mypump.modelos.Sesion
 import com.pumpteam.mypump.modelos.ValorJson
 import com.pumpteam.mypump.reglas.BannerSemana
 import com.pumpteam.mypump.reglas.BarraDescanso
+import com.pumpteam.mypump.reglas.CargaSimple
 import com.pumpteam.mypump.reglas.CatalogoEjercicios
 import com.pumpteam.mypump.reglas.VolumenMusculo
 import com.pumpteam.mypump.reglas.ClaveEjercicio
+import com.pumpteam.mypump.reglas.ContextoCarga
+import com.pumpteam.mypump.reglas.Correccion
 import com.pumpteam.mypump.reglas.Descanso
 import com.pumpteam.mypump.reglas.DescansoPropio
 import com.pumpteam.mypump.reglas.DiaEnCurso
@@ -25,6 +28,7 @@ import com.pumpteam.mypump.reglas.FechaJs
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.de
 import com.pumpteam.mypump.reglas.FilaSerie
+import com.pumpteam.mypump.reglas.GuardiaOK
 import com.pumpteam.mypump.reglas.IndiceComentarios
 import com.pumpteam.mypump.reglas.Js
 import com.pumpteam.mypump.reglas.NormalizacionRutina
@@ -45,12 +49,16 @@ import com.pumpteam.mypump.reglas.TextosEntreno
 import com.pumpteam.mypump.reglas.TiempoEntreno
 import com.pumpteam.mypump.reglas.UltimaVez
 import com.pumpteam.mypump.reglas.VariantesEjercicio
+import com.pumpteam.mypump.reglas.cambiarCarga
+import com.pumpteam.mypump.reglas.cargaSimple
+import com.pumpteam.mypump.reglas.corregirSerie
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -220,6 +228,26 @@ class ModeloEntreno(
     private var restauracion = 0
     private var diaCompletadoMostrado = false
 
+    // Carga simple (2.3.0): el último OK deshacible (la foto), la serie que se está corrigiendo y la guardia contra el OK apurado.
+    private var fotoOK: FotoOK? = null
+    private var oksDados = 0L
+
+    /** Un OK en vuelo: un segundo toque mientras el primero espera a la cola no puede pisar su foto ni perder lo demorado. */
+    private var okEnCurso = false
+
+    private val _deshacible = MutableStateFlow<OKDeshacible?>(null)
+    val deshacible: StateFlow<OKDeshacible?> = _deshacible.asStateFlow()
+
+    private val _corrigiendo = MutableStateFlow<SerieEnCorreccion?>(null)
+    val corrigiendo: StateFlow<SerieEnCorreccion?> = _corrigiendo.asStateFlow()
+
+    private val _guardia = MutableStateFlow(GuardiaOK())
+    val guardia: StateFlow<GuardiaOK> = _guardia.asStateFlow()
+
+    /** El día se completó con un OK cuya ventana venció después (no hay callback): la pantalla lo muestra y lo limpia. */
+    private val _diaCompletado = MutableStateFlow<DiaCompletado?>(null)
+    val diaCompletado: StateFlow<DiaCompletado?> = _diaCompletado.asStateFlow()
+
     /** Había un día guardado en este teléfono al arrancar (si no, el del almacenamiento viejo puede ganar). */
     private var habiaDiaGuardado: Boolean
 
@@ -242,6 +270,7 @@ class ModeloEntreno(
         val d = DiaEnCurso(elegido, semana, demo, zona = zona)
         d.sustituciones = SustitucionesEntreno.compat(leerSustituciones(rutinaInicial.id))
         d.descansosPropios = leerDescansosPropios()
+        leerCargas(d, rutinaInicial.id)
         sustitucionesGuardadas = leerEncoladas(rutinaInicial.id) ?: d.sustituciones
         desfaseReloj = (disco?.leer(Archivo.RELOJ) as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
         _dia = MutableStateFlow(d)
@@ -255,6 +284,10 @@ class ModeloEntreno(
      * días completados de la semana y los comentarios.
      */
     suspend fun cargar() {
+        // Un OK todavía deshacible en esta misma app (tirar para actualizar) se cierra antes de leer: si no, lo guardado en
+        // disco salía a la cola y «Deshacer» ya no deshacía nada.
+        vaciarDeshacer()
+        recuperarDeshacerGuardado()
         // Lo que se cambió y no llegó a la cola (la app se cerró en el medio), antes de leer el servidor.
         encolarSustituciones()
         podarSustituciones()
@@ -320,6 +353,8 @@ class ModeloEntreno(
     suspend fun cambiarDia(id: String) {
         val nuevo = dias.firstOrNull { it.id == id } ?: return
         if (nuevo.id == _dia.value.dia.id) return
+        vaciarDeshacer()
+        guardarCargas()
         mutarDescanso { it.detener() }
         guardarDescanso()
         podarSustituciones(sinPrecarga = true)
@@ -333,6 +368,7 @@ class ModeloEntreno(
         _dia.value = DiaEnCurso(nuevo, semana, demo, zona = zona).also {
             it.sustituciones = sustituciones
             it.descansosPropios = propios
+            leerCargas(it, _rutina.value.id)
         }
         diaCompletadoMostrado = false
         guardarDiaVisualizado()
@@ -488,21 +524,33 @@ class ModeloEntreno(
      * El check o el "✓ Tocá para registrar lo de la última vez" (SER-01/03/05). `preguntar` muestra la pregunta y devuelve
      * lo que eligió el cliente (reabrir el día cerrado; "¿Está bien cargado?").
      */
-    suspend fun confirmarSerie(lugar: String, idx: Int, preguntar: suspend (Pregunta) -> Boolean): DiaCompletado? {
+    suspend fun confirmarSerie(lugar: String, idx: Int, preguntar: suspend (Pregunta) -> Boolean): DiaCompletado? =
+        confirmarSerieInterno(lugar, idx, demorar = false, preguntar).first
+
+    /** `demorar`: lo que escribe (cola y «día completado») no sale ahora y vuelve aparte, para poder deshacer el OK. */
+    private suspend fun confirmarSerieInterno(
+        lugar: String,
+        idx: Int,
+        demorar: Boolean,
+        preguntar: suspend (Pregunta) -> Boolean,
+    ): Pair<DiaCompletado?, List<DiaEnCurso.Efecto>> {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado? = null
         // Lo que se muestra (el sustituto, si hay) decide si la serie lleva kg, como en la fila (revisión del 14-oct).
         val ef = _dia.value.ejercicio(lugar)?.let { efectivo(it).ejercicio }
         val hecho = _dia.value.ejercicio(lugar)?.let { hecho(it) }
         mutarDia { it.fijarRirDelPlan(lugar, idx, hecho) }
+        val diferidos = mutableListOf<DiaEnCurso.Efecto>()
         while (true) {
             val hoy = FechaLocal.hoy(reloj(), zona)
             val paso = mutarDia { it.confirmarSerie(lugar, idx, respuestas, ef, hoy) }
             anotarFecha(lugar, idx + 1, hoy, soloConfirmada = true)
             paso.record?.let { _avisoRecord.value = AvisoRecord(++avisosDados, lugar, it.texto) }
-            ejecutar(paso.efectos)?.let { completo = it }
-            val p = paso.pregunta ?: return completo
-            val motivo = paso.motivo ?: return completo
+            val (demorados, ahora) = if (demorar) paso.efectos.partition(::seDemora) else emptyList<DiaEnCurso.Efecto>() to paso.efectos
+            diferidos += demorados
+            ejecutar(ahora)?.let { completo = it }
+            val p = paso.pregunta ?: return completo to diferidos
+            val motivo = paso.motivo ?: return completo to diferidos
             val si = preguntar(p)
             respuestas = when (motivo) {
                 DiaEnCurso.Paso.Motivo.REABRIR -> respuestas.copy(reabrir = si)
@@ -524,7 +572,9 @@ class ModeloEntreno(
         val ef = hechos[i]
         val primera = d.ejercicios[lugar]?.series?.firstOrNull()
         val sugerido = d.fila(lugar, 0, efectivo(lista[i]).ejercicio)?.placeholderKg ?: ""
-        val kg = Preparacion.kgEfectivo(primera?.kg ?: "", sugerido)
+        // La carga única se elige antes de empezar: la preparación se calcula con ella (sin heredarla como serie).
+        val conCarga = primera?.kg?.takeIf { it.isNotEmpty() } ?: d.cargas[lugar]?.carga?.let(Js::texto) ?: ""
+        val kg = Preparacion.kgEfectivo(conCarga, sugerido)
         val clave = "$lugar|$kg|${cacheEntradas?.first}"
         cachePreparacion[lugar]?.let { (c, series) -> if (c == clave) return series }
         val series = Preparacion.series(entradas, i, ef.nombre, ef.equipo, ReglasEjercicio.sinKg(efectivo(lista[i]).ejercicio), kg, ef.aproximaciones)
@@ -659,9 +709,14 @@ class ModeloEntreno(
         disco?.guardar(Archivo.DESCANSOS, ValorJson.Objeto(nuevos.mapValues { ValorJson.Numero(it.value.toDouble()) }))
     }
 
-    /** El lápiz (SER-06). */
+    /**
+     * Tocar una serie hecha abre la corrección: nunca la desmarca. El servidor no tiene cómo borrar una serie y una desmarcada
+     * volvía al recargar (error de 2.2.0). Se reescribe con [guardarCorreccion].
+     */
     suspend fun editarSerie(lugar: String, idx: Int) {
-        ejecutar(mutarDia { it.editarSerie(lugar, idx) })
+        if (_dia.value.ejercicios[lugar]?.series?.getOrNull(idx)?.confirmada != true) return
+        vaciarDeshacer()
+        _corrigiendo.value = SerieEnCorreccion(lugar, idx)
     }
 
     /** El selector de RIR 0-5 (SER-02): la leyenda del valor actual es `CamposSerie.leyendaRir`. */
@@ -672,13 +727,18 @@ class ModeloEntreno(
     /** Agarre o nivel (SER-07). */
     fun elegirVariante(lugar: String, v: String) {
         mutarDia { it.elegirVariante(lugar, v) }
+        guardarCargas()
     }
 
     /** "Marcar ejercicio completo" */
-    suspend fun marcarCompleto(lugar: String): DiaCompletado? = ejecutar(mutarDia { it.marcarCompleto(lugar) })
+    suspend fun marcarCompleto(lugar: String): DiaCompletado? {
+        vaciarDeshacer()
+        return ejecutar(mutarDia { it.marcarCompleto(lugar) })
+    }
 
     /** "Terminé este ejercicio" (SER-15) */
     suspend fun terminar(lugar: String, preguntar: suspend (Pregunta) -> Boolean): DiaCompletado? {
+        vaciarDeshacer()
         val p = _dia.value.preguntaTerminar(lugar)
         if (p != null && !preguntar(p)) return null
         // La web espera la sesión antes de marcar: el estado sale con su id.
@@ -688,6 +748,7 @@ class ModeloEntreno(
 
     /** "Reabrir ejercicio" */
     suspend fun reabrir(lugar: String) {
+        vaciarDeshacer()
         ejecutar(mutarDia { it.reabrir(lugar) })
     }
 
@@ -946,6 +1007,7 @@ class ModeloEntreno(
      * `finalizar_sesion` con la duración (null si pasa de 6 h). Un `false` es que no se cerró.
      */
     suspend fun cerrarDia(notas: String): ResultadoCierre {
+        vaciarDeshacer()
         val t = token
         if (demo || t == null) {
             // La demo no cierra nada en el servidor, pero el descanso termina igual.
@@ -997,6 +1059,7 @@ class ModeloEntreno(
      * cachés de sesión y recarga.
      */
     suspend fun avanzarSemana(): ResultadoAvance {
+        vaciarDeshacer()
         val t = token
         if (t == null || demo) return ResultadoAvance.Error(SemanaEntreno.errorAvanzar(false))
         val destino = semana + 1
@@ -1019,6 +1082,7 @@ class ModeloEntreno(
 
     /** `doEmpezarBloqueNuevo`: `activar_siguiente`, y si activó, lo mismo que avanzar. */
     suspend fun empezarBloqueNuevo(): ResultadoAvance {
+        vaciarDeshacer()
         val t = token
         if (t == null || demo) return ResultadoAvance.Error(SemanaEntreno.errorBloqueNuevo(false))
         val r = cliente.llamar("mypump_activar_siguiente", mapOf("p_token" to texto(t)))
@@ -1037,6 +1101,7 @@ class ModeloEntreno(
 
     /** Lo que en la web es `location.reload()`: trae la rutina activa y arranca de nuevo. false si no llegó. */
     suspend fun recargar(): Boolean {
+        vaciarDeshacer()
         val t = token ?: return false
         val fila = cliente.llamar("mypump_get_rutina_activa", mapOf("p_token" to texto(t))).valorONull()?.primeraFila ?: return false
         val nueva = try {
@@ -1052,6 +1117,7 @@ class ModeloEntreno(
 
     /** Una rutina nueva (la trajo este modelo o [ModeloApp]): todo lo del día se arma de cero. */
     fun reemplazarRutina(nueva: RutinaActiva) {
+        soltarDeshacer()
         historialEnVuelo.values.forEach { it.cancel() }
         historialEnVuelo.clear()
         _historialCargando.value = emptySet()
@@ -1069,6 +1135,7 @@ class ModeloEntreno(
         _dia.value = DiaEnCurso(elegido, semana, demo, zona = zona).also {
             it.sustituciones = sustituciones
             it.descansosPropios = propios
+            leerCargas(it, nueva.id)
         }
         sustitucionesGuardadas = leerEncoladas(nueva.id) ?: sustituciones
         syncSustituciones = null
@@ -1257,6 +1324,7 @@ class ModeloEntreno(
 
     /** `confirmExSwap`: sin fijar vale solo por hoy. La serie se registra con el nombre del sustituto y el id del lugar. */
     suspend fun sustituir(lugar: String, sub: SustitutoEjercicio, fijar: Boolean) {
+        vaciarDeshacer()
         val ex = _dia.value.ejercicio(lugar) ?: return
         val ef = efectivo(ex)
         invalidarHistorial(lugar)
@@ -1274,13 +1342,16 @@ class ModeloEntreno(
                 efectos
             },
         )
+        guardarCargas()   // sin esto, relanzar traía de vuelta la carga del ejercicio anterior
     }
 
     /** "Volver a …" */
     suspend fun revertirSustitucion(lugar: String) {
+        vaciarDeshacer()
         pisoPorClave[lugar] = maxOf(pisoPorClave[lugar] ?: 0.0, SustitucionesServidor.ts(_dia.value.sustituciones[lugar]))
         invalidarHistorial(lugar)
         ejecutar(mutarDia { it.revertir(lugar) })
+        guardarCargas()
     }
 
     /** `pruneExerciseSwaps` (SER-12): las no fijadas de otra semana o de un día cerrado se van. */
@@ -1439,6 +1510,285 @@ class ModeloEntreno(
         return termino
     }
 
+    // ── Carga simple (2.3.0; gemelo de ModeloEntreno+Carga.swift) ──
+    //
+    // La carga única por ejercicio, el OK con su guardia, el Deshacer real y la corrección. El OK no le promete nada al
+    // servidor hasta que vence la ventana de Deshacer: lo escrito queda demorado (en disco, por si la app muere en el medio) y
+    // deshacer dentro de la ventana no escribe nada.
+
+    data class SerieEnCorreccion(val lugar: String, val indice: Int)
+
+    /** El último OK, mientras todavía se puede deshacer. */
+    data class OKDeshacible(val id: Long, val lugar: String, val indice: Int)
+
+    enum class ResultadoOK {
+        REGISTRADA,
+        FALTAN_DATOS,
+
+        /** Se levantó la guardia, o un doble toque que no cuenta. */
+        GUARDIA,
+
+        /** Lo imposible, o «no» a «¿está bien cargado?»: la serie queda como estaba, con el aviso. */
+        NO_REGISTRADA,
+    }
+
+    sealed interface ResultadoCorreccion {
+        data object Guardada : ResultadoCorreccion
+        data object SinCambios : ResultadoCorreccion
+        data class Rechazada(val aviso: String) : ResultadoCorreccion
+    }
+
+    /** Lo que hace falta para volver atrás un OK. */
+    private class FotoOK(
+        val id: Long,
+        val lugar: String,
+        val indice: Int,
+        val ejercicio: com.pumpteam.mypump.reglas.EjercicioEnSesion?,
+        val estado: String?,
+        val meta: DiaEnCurso.MetaEstado?,
+        val expandido: String?,
+        val carga: CargaSimple.Estado?,
+        val record: RecordSerie.Marca?,
+        val diferidos: List<DiaEnCurso.Efecto>,
+    )
+
+    /** Lo que se escribe y sale recién cuando vence la ventana de Deshacer. */
+    private fun seDemora(e: DiaEnCurso.Efecto): Boolean = e is DiaEnCurso.Efecto.Encolar || e == DiaEnCurso.Efecto.DiaCompleto
+
+    /** El contexto del lugar: el ejercicio que se hace, su equipo real, el mensaje de la semana y hoy. */
+    private fun contextoCarga(lugar: String): ContextoCarga? {
+        val plan = _dia.value.ejercicio(lugar) ?: return null
+        val conEquipo = hecho(plan)
+        val mensaje = _estructura.value.mensajesSemana.firstOrNull { it.n == semana }?.msg
+        return ContextoCarga(efectivo(plan).ejercicio, Preparacion.equipo(conEquipo.nombre, conEquipo.equipo), mensaje, FechaLocal.hoy(reloj(), zona))
+    }
+
+    fun cargaSimple(lugar: String): CargaSimple? = contextoCarga(lugar)?.let { _dia.value.cargaSimple(lugar, it) }
+
+    /** Una acción de la tarjeta de carga o del dial. */
+    fun cambiarCarga(lugar: String, accion: (CargaSimple) -> Unit) {
+        val c = contextoCarga(lugar) ?: return
+        mutarDia { it.cambiarCarga(lugar, c, accion) }
+        guardarCargas()
+    }
+
+    /**
+     * El OK del panel: guardia, confirmación por el mismo camino de siempre y, si se registró, la ventana de Deshacer.
+     * `venceEn` (segundos): null no vence sola (TalkBack).
+     */
+    suspend fun okSerie(lugar: String, idx: Int, venceEn: Double? = 6.0, preguntar: suspend (Pregunta) -> Boolean): ResultadoOK {
+        if (okEnCurso) return ResultadoOK.GUARDIA
+        okEnCurso = true
+        try {
+            return okSerieUno(lugar, idx, venceEn, preguntar)
+        } finally {
+            okEnCurso = false
+        }
+    }
+
+    private suspend fun okSerieUno(lugar: String, idx: Int, venceEn: Double?, preguntar: suspend (Pregunta) -> Boolean): ResultadoOK {
+        val ahora = ahoraMs
+        if (_guardia.value.esDobleToque(idx, ahora)) return ResultadoOK.GUARDIA
+        val insistio = _guardia.value.esSegundoToque(idx, ahora)
+        val carga = cargaSimple(lugar) ?: return ResultadoOK.FALTAN_DATOS
+        val ev = carga.evaluarOK(idx, ahora, insistio)
+        if (ev == CargaSimple.Evaluacion.FaltanDatos) return ResultadoOK.FALTAN_DATOS
+        if (ev == CargaSimple.Evaluacion.Guardia) {
+            _guardia.value = _guardia.value.levantar(idx, ahora)
+            return ResultadoOK.GUARDIA
+        }
+        ev as CargaSimple.Evaluacion.Lista
+        _guardia.value = _guardia.value.limpiar()
+        vaciarDeshacer()
+        val d = _dia.value
+        val e = d.ejercicios[lugar]
+        val foto = FotoOK(
+            ++oksDados, lugar, idx, e, d.estados[lugar], d.meta[lugar], d.expandido, d.cargas[lugar], d.recordsAvisados["$lugar|$idx"], emptyList(),
+        )
+        escribir(lugar, idx, "reps", ev.reps.toString())
+        escribir(lugar, idx, "kg", ev.kg?.let(Js::texto) ?: "")
+        val (completo, diferidos) = confirmarSerieInterno(lugar, idx, demorar = true, preguntar)
+        if (_dia.value.ejercicios[lugar]?.series?.getOrNull(idx)?.confirmada != true) {
+            // No se registró (imposible o «no»): lo que puso el OK no queda como si lo hubiera tipeado. El aviso, sí.
+            val aviso = _dia.value.ejercicios[lugar]?.series?.getOrNull(idx)?.aviso
+            mutarDia { x ->
+                if (e != null) {
+                    x.ejercicios = x.ejercicios + (lugar to e.copy(series = e.series.mapIndexed { i, s -> if (i == idx) s.copy(aviso = aviso) else s }))
+                }
+            }
+            return ResultadoOK.NO_REGISTRADA
+        }
+        cambiarCarga(lugar) { it.anotarOK(ahora) }
+        if (completo != null) _diaCompletado.value = completo
+        abrirVentanaDeshacer(foto, diferidos, venceEn)
+        return ResultadoOK.REGISTRADA
+    }
+
+    private fun abrirVentanaDeshacer(foto: FotoOK, diferidos: List<DiaEnCurso.Efecto>, venceEn: Double?) {
+        val f = FotoOK(foto.id, foto.lugar, foto.indice, foto.ejercicio, foto.estado, foto.meta, foto.expandido, foto.carga, foto.record, diferidos)
+        fotoOK = f
+        _deshacible.value = OKDeshacible(f.id, f.lugar, f.indice)
+        guardarOKDemorado(f)
+        if (venceEn == null) return
+        alcance.launch {
+            delay((venceEn * 1000).toLong())
+            if (fotoOK?.id == f.id) vaciarDeshacer()
+        }
+    }
+
+    /** El botón Deshacer: el servidor todavía no sabe nada, así que volver atrás es volver atrás de verdad. */
+    fun deshacerOK() {
+        val f = fotoOK ?: return
+        fotoOK = null
+        _deshacible.value = null
+        disco?.borrar(Archivo.OK_DEMORADO)
+        mutarDia { d ->
+            d.ejercicios = if (f.ejercicio != null) d.ejercicios + (f.lugar to f.ejercicio) else d.ejercicios - f.lugar
+            d.estados = if (f.estado != null) d.estados + (f.lugar to f.estado) else d.estados - f.lugar
+            d.meta = if (f.meta != null) d.meta + (f.lugar to f.meta) else d.meta - f.lugar
+            d.expandido = f.expandido
+            d.cargas = if (f.carga != null) d.cargas + (f.lugar to f.carga) else d.cargas - f.lugar
+            val k = "${f.lugar}|${f.indice}"
+            d.recordsAvisados = if (f.record != null) d.recordsAvisados + (k to f.record) else d.recordsAvisados - k
+        }
+        if (_avisoRecord.value?.lugar == f.lugar) _avisoRecord.value = null
+        _fechasSeries.value = _fechasSeries.value - claveFecha(f.lugar, f.indice + 1)
+        mutarDescanso { it.detener() }
+        guardarDescanso()
+        guardarCargas()
+    }
+
+    /**
+     * Cierra la ventana: lo demorado sale a la cola. También al irse a segundo plano, al próximo OK y antes de todo lo que lea
+     * o cambie el día (cerrar, cambiar de día, recargar…).
+     */
+    suspend fun vaciarDeshacer() {
+        val f = fotoOK ?: return
+        fotoOK = null
+        _deshacible.value = null
+        val c = ejecutar(f.diferidos)
+        // Si mientras tanto entró otro OK, el archivo ya es el suyo.
+        if (fotoOK == null) disco?.borrar(Archivo.OK_DEMORADO)
+        if (c != null) _diaCompletado.value = c
+    }
+
+    /** Reemplazar la rutina no espera: lo demorado se manda aparte y ese OK ya no se puede deshacer sobre el día nuevo. */
+    private fun soltarDeshacer() {
+        val f = fotoOK ?: return
+        fotoOK = null
+        _deshacible.value = null
+        alcance.launch {
+            ejecutar(f.diferidos.filterIsInstance<DiaEnCurso.Efecto.Encolar>())
+            if (fotoOK == null) disco?.borrar(Archivo.OK_DEMORADO)
+        }
+    }
+
+    private fun guardarOKDemorado(f: FotoOK) {
+        val escrituras = f.diferidos.filterIsInstance<DiaEnCurso.Efecto.Encolar>()
+        val completo = DiaEnCurso.Efecto.DiaCompleto in f.diferidos
+        if (escrituras.isEmpty() && !completo) return
+        disco?.guardar(
+            Archivo.OK_DEMORADO,
+            ValorJson.objeto(
+                "escrituras" to ValorJson.Lista(escrituras.map { ValorJson.objeto("kind" to texto(it.kind), "payload" to it.payload, "clave" to texto(it.clave)) }),
+                "diaCompleto" to ValorJson.Booleano(completo),
+            ),
+        )
+    }
+
+    /** La app murió con un OK dentro de la ventana: esa serie se registró y no se pierde. Va a la cola antes de leer el servidor. */
+    private suspend fun recuperarDeshacerGuardado() {
+        val d = disco ?: return
+        val g = d.leer(Archivo.OK_DEMORADO)?.let(ValorJson::desde) ?: return
+        for (e in (g["escrituras"] as? ValorJson.Lista)?.elementos ?: emptyList()) {
+            val kind = e["kind"]?.comoTexto ?: continue
+            val payload = e["payload"] ?: continue
+            outbox?.encolar(kind, payload, e["clave"]?.comoTexto)
+        }
+        d.borrar(Archivo.OK_DEMORADO)
+    }
+
+    fun cancelarCorreccion() {
+        _corrigiendo.value = null
+    }
+
+    fun limpiarGuardia() {
+        _guardia.value = _guardia.value.limpiar()
+    }
+
+    /** El día completado ya se mostró. */
+    fun limpiarDiaCompletado() {
+        _diaCompletado.value = null
+    }
+
+    /** Guardar la corrección abierta: pasa por los mismos topes y reescribe esa serie. */
+    suspend fun guardarCorreccion(reps: Int, kg: Double?, preguntar: suspend (Pregunta) -> Boolean): ResultadoCorreccion {
+        val c = _corrigiendo.value ?: return ResultadoCorreccion.SinCambios
+        val ctx = contextoCarga(c.lugar) ?: return ResultadoCorreccion.SinCambios
+        var r = mutarDia { it.corregirSerie(c.lugar, c.indice, reps, kg, ctx.efectivo) }
+        if (r is Correccion.Preguntar) {
+            val si = preguntar(r.pregunta)
+            r = mutarDia { it.corregirSerie(c.lugar, c.indice, reps, kg, ctx.efectivo, registrarIgual = si) }
+        }
+        return when (r) {
+            is Correccion.Guardada -> {
+                ejecutar(r.efectos)
+                _corrigiendo.value = null
+                ResultadoCorreccion.Guardada
+            }
+            Correccion.SinCambios, Correccion.FaltanDatos, is Correccion.Preguntar -> {
+                _corrigiendo.value = null
+                ResultadoCorreccion.SinCambios
+            }
+            is Correccion.Rechazada -> ResultadoCorreccion.Rechazada(r.aviso)
+        }
+    }
+
+    /** «Cambiarlas también»: las hechas pasan a la carga actual, de a una por el camino de la corrección. */
+    suspend fun aplicarCargaALasHechas(lugar: String) {
+        val ctx = contextoCarga(lugar) ?: return
+        vaciarDeshacer()
+        var indices = emptyList<Int>()
+        mutarDia { d -> d.cambiarCarga(lugar, ctx) { indices = it.aplicarCargaALasHechas() } }
+        val carga = _dia.value.cargaSimple(lugar, ctx)?.carga ?: return
+        for (i in indices) {
+            val r = _dia.value.ejercicios[lugar]?.series?.getOrNull(i)?.reps?.toIntOrNull() ?: continue
+            val c = mutarDia { it.corregirSerie(lugar, i, r, carga, ctx.efectivo, registrarIgual = true) }
+            if (c is Correccion.Guardada) ejecutar(c.efectos)
+        }
+        guardarCargas()
+    }
+
+    private fun guardarCargas() {
+        val diaId = _dia.value.dia.id ?: return
+        val d = disco ?: return
+        val archivo = Archivo.cargas(_rutina.value.id)
+        val previo = d.leer(archivo)?.let(ValorJson::desde)
+        val dias = LinkedHashMap((previo?.takeIf { it["semana"]?.comoNumero == semana.toDouble() }?.get("dias") as? ValorJson.Objeto)?.campos ?: emptyMap())
+        dias[diaId] = ValorJson.Objeto(_dia.value.cargas.mapValues { it.value.aValor() })
+        d.guardar(
+            archivo,
+            ValorJson.objeto(
+                "semana" to numero(semana),
+                "dias" to ValorJson.Objeto(dias),
+                "aumentos" to ValorJson.Lista(_dia.value.aumentosSemana.sorted().map { texto(it) }),
+            ),
+        )
+    }
+
+    /** Solo la semana actual: la semana que viene las referencias vuelven a salir del historial. */
+    private fun leerCargas(d: DiaEnCurso, rutinaId: String) {
+        val g = disco?.leer(Archivo.cargas(rutinaId))?.let(ValorJson::desde)?.takeIf { it["semana"]?.comoNumero == d.semana.toDouble() }
+        val diaId = d.dia.id
+        if (g == null || diaId == null) {
+            d.cargas = emptyMap()
+            d.aumentosSemana = emptySet()
+            return
+        }
+        d.cargas = (g["dias"]?.get(diaId) as? ValorJson.Objeto)?.campos?.mapValues { CargaSimple.Estado.desde(it.value) } ?: emptyMap()
+        d.aumentosSemana = (g["aumentos"] as? ValorJson.Lista)?.elementos?.mapNotNull { it.comoTexto }?.toSet() ?: emptySet()
+    }
+
     // ── Efectos ──
 
     internal suspend fun ejecutar(efectos: List<DiaEnCurso.Efecto>): DiaCompletado? {
@@ -1530,6 +1880,12 @@ class ModeloEntreno(
         /** E1 (2.0.3): las filas de preparación tocadas hoy y las preparaciones ocultas. */
         const val PREPARACION = "entreno-preparacion.json"
         const val PREPARACION_OCULTA = "entreno-preparacion-oculta.json"
+
+        /** 2.3.0: lo escrito por un OK dentro de su ventana de Deshacer (si la app muere ahí, va a la cola al abrir). */
+        const val OK_DEMORADO = "entreno-ok-demorado.json"
+
+        /** 2.3.0: la carga simple de la semana. */
+        fun cargas(rutinaId: String): String = "entreno-cargas_$rutinaId.json"
         const val LEGADO = "legado-entreno.json"
         fun dia(rutinaId: String): String = "entreno-dia_$rutinaId.json"
         fun sustituciones(rutinaId: String): String = "ejercicios-swaps_$rutinaId.json"

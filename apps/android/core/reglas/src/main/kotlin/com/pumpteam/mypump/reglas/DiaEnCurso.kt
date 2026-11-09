@@ -54,6 +54,15 @@ class DiaEnCurso(
      */
     var descansosPropios: Map<String, Int> = emptyMap()
 
+    /** La carga simple de cada ejercicio del día (2.3.0), por lugar. Sin entrada, sale de la vez pasada. Se guarda en el teléfono. */
+    var cargas: Map<String, CargaSimple.Estado> = emptyMap()
+
+    /**
+     * Los ejercicios (clave y semana) en que ya se aceptó o se dejó pasar la sugerencia de aumento: un ejercicio que está dos
+     * veces en la semana sube una sola vez.
+     */
+    var aumentosSemana: Set<String> = emptySet()
+
     /**
      * E3 (2.0.3): el récord ya avisado hoy por lugar y serie («lugar|índice»). Es piso para el siguiente: el lápiz sobre
      * una serie que ya dio récord no lo vuelve a avisar. Solo en memoria.
@@ -101,6 +110,8 @@ class DiaEnCurso(
         it.sustituciones = sustituciones
         it.descansosPropios = descansosPropios
         it.recordsAvisados = recordsAvisados
+        it.cargas = cargas
+        it.aumentosSemana = aumentosSemana
     }
 
     // ── Lecturas ──
@@ -363,8 +374,8 @@ class DiaEnCurso(
     }
 
     /**
-     * 2.0.3: el RIR ya no se elige. Antes de confirmar una serie que nunca se registró, se le pone el del plan
-     * ([RirDelPlan]): la recuperación lo necesita para contar las series duras. Las ya registradas (con su nombre, del
+     * 2.0.3: el RIR ya no se elige. Antes de confirmar una serie que nunca se registró, se le pone «al fallo»
+     * ([RirDelPlan.AL_FALLO]): la recuperación lo necesita para contar las series duras. Las ya registradas (con su nombre, del
      * servidor o de la cola) conservan lo que tenían, y el calentamiento y el cardio no llevan RIR (no son series duras).
      * Va aparte de [confirmarSerie], que sigue igual a la web (sus vectores esperan el RIR que se eligió).
      */
@@ -376,14 +387,15 @@ class DiaEnCurso(
         // [efectivo] es el que se hace (el sustituto, con el tipo y el equipo del catálogo); el calentamiento, el cardio, el
         // core y lo que va sin peso quedan sin RIR (null).
         if (s.confirmada || s.rir.isNotEmpty() || s.nombreRegistrado != null || !RirDelPlan.lleva(ex)) return
-        cambiarSerie(id, idx) { it.copy(rir = RirDelPlan.guardar(Progresiones.pauta(ex, semana).rir)) }
+        // 2.3.0 (Mati, 9-nov): todo al fallo. El RIR del plan no se copia a lo registrado: una serie que lleva RIR va con 0.
+        cambiarSerie(id, idx) { it.copy(rir = RirDelPlan.AL_FALLO) }
     }
 
-    /** La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva»; null si no lleva RIR. */
+    /** La leyenda debajo de «Series efectivas»: «Al fallo», nunca «Dejando N en reserva» aunque el plan traiga RIR (2.3.0); null si no lleva RIR. */
     fun leyendaRir(id: String, efectivo: Ejercicio? = null): String? {
         val ex = efectivo ?: ejercicio(id) ?: return null
         if (!RirDelPlan.lleva(ex)) return null
-        return RirDelPlan.leyenda(Progresiones.pauta(ex, semana).rir)
+        return "Al fallo"
     }
 
     /**
@@ -470,7 +482,8 @@ class DiaEnCurso(
 
     /** La variante (SER-07): vale para las series que se confirmen DESPUÉS. */
     fun elegirVariante(id: String, v: String) {
-        if (ejercicios[id] == null) return
+        val e = ejercicios[id] ?: return
+        if (e.variante != v) cargas = cargas - id   // un agarre, una carga: el otro trae su historia
         actualizar(id) { it.copy(variante = v) }
     }
 
@@ -497,6 +510,7 @@ class DiaEnCurso(
     fun sustituir(id: String, sub: SustitutoEjercicio, efectivo: EjercicioEfectivo, fijado: Boolean): List<Efecto> {
         sustituciones = sustituciones + (id to SustitucionesEntreno.nueva(sub, efectivo, fijado, semana, dia.id ?: ""))
         historial = historial - id
+        cargas = cargas - id   // otro ejercicio: su carga no es la del anterior
         return listOf(Efecto.GuardarSustituciones, Efecto.PedirHistorial(id))
     }
 
@@ -504,6 +518,7 @@ class DiaEnCurso(
     fun revertir(id: String): List<Efecto> {
         sustituciones = sustituciones - id
         historial = historial - id
+        cargas = cargas - id
         return listOf(Efecto.GuardarSustituciones, Efecto.PedirHistorial(id))
     }
 
@@ -583,6 +598,11 @@ class DiaEnCurso(
                 EscriturasEntreno.claveCarga(d, id, idx, semana),
             ),
         )
+    }
+
+    /** Una corrección ya aprobada ([corregirSerie]): cambia los datos de esa serie y sigue hecha. */
+    internal fun reescribirSerie(id: String, idx: Int, reps: String, kg: String) {
+        cambiarSerie(id, idx) { it.copy(reps = reps, kg = kg, aviso = null) }
     }
 
     internal fun siguientePendiente(id: String): String? = EstadosEjercicio.siguientePendiente(lista.map { it.id }, id, ::estado)

@@ -96,13 +96,13 @@ class Entreno203Test {
         assertTrue(d.confirmarSerie("e1", 0).efectos.contains(DiaEnCurso.Efecto.IniciarDescanso(75.0)))
     }
 
-    /** El RIR del plan al confirmar: el primer número del rango, 0 sin objetivo; el calentamiento null; lo registrado no se toca. */
+    /** El RIR al confirmar: siempre 0 (al fallo), nunca el del plan; el calentamiento null; lo registrado no se toca. */
     @Test fun rirDelPlanAlConfirmar() {
         val e1 = Ejercicio(id = "e1", nombre = "Press banca", series = 2, reps = "8", progresion = listOf(Progresion(semana = 1, series = 2, reps = "8", rir = "1-2")))
         val e2 = Ejercicio(id = "e2", nombre = "Curl", series = 1, reps = "12")
         val e3 = Ejercicio(id = "e3", nombre = "Movilidad", tipo = "calentamiento", series = 1, reps = "10")
         val d = DiaEnCurso(Dia(id = "d1", bloques = listOf(Bloque(ejercicios = listOf(e1, e2, e3)))), semana = 1, sesionId = "s1")
-        assertEquals("Dejando 1–2 en reserva", d.leyendaRir("e1"))
+        assertEquals("Al fallo", d.leyendaRir("e1"))
         assertEquals("Al fallo", d.leyendaRir("e2"))
         fun cargaRir(id: String, idx: Int): ValorJson? {
             d.escribir(id, idx, "reps", "8"); d.escribir(id, idx, "kg", "10")
@@ -110,7 +110,7 @@ class Entreno203Test {
             val carga = d.confirmarSerie(id, idx).efectos.filterIsInstance<DiaEnCurso.Efecto.Encolar>().first { it.kind == "carga" }
             return carga.payload["datos"]?.get("rir")
         }
-        assertEquals(ValorJson.Numero(1.0), cargaRir("e1", 0))
+        assertEquals(ValorJson.Numero(0.0), cargaRir("e1", 0), "el RIR del plan (1-2) no se copia")
         assertEquals(ValorJson.Numero(0.0), cargaRir("e2", 0))
         assertEquals(ValorJson.Nulo, cargaRir("e3", 0), "el calentamiento no es serie dura")
         d.ejercicios = d.ejercicios + ("e1" to d.ejercicios.getValue("e1").let { e -> e.copy(series = e.series.mapIndexed { i, s -> if (i == 1) s.copy(nombreRegistrado = "Press banca") else s }) })
@@ -160,7 +160,7 @@ class Entreno203Test {
         assertEquals("Récord: +2,5 kg", d.confirmarSerie("e3", 0, hoy = "2026-11-03").record?.texto, "por encima de lo de hoy sí")
     }
 
-    /** El RIR del que se hace: core y peso corporal en null; RPE es al fallo; el sustituto con peso lleva el de la pauta. */
+    /** El RIR del que se hace: core y peso corporal en null; RPE es al fallo; el sustituto con peso va al fallo. */
     @Test fun rirDelQueSeHaceYCalibracion() {
         fun p(rir: String) = listOf(Progresion(semana = 1, series = 1, reps = "8", rir = rir))
         val e1 = Ejercicio(id = "e1", nombre = "Plancha", tipo = "core", series = 1, reps = "30", progresion = p("1-2"))
@@ -174,7 +174,7 @@ class Entreno203Test {
         assertEquals("", d.ejercicios.getValue("e2").series[0].rir)
         assertEquals("0", d.ejercicios.getValue("e3").series[0].rir)
         d.fijarRirDelPlan("e2", 0, e2.copy(nombre = "Press banca con barra", equipo = "barbell"))
-        assertEquals("1", d.ejercicios.getValue("e2").series[0].rir)
+        assertEquals("0", d.ejercicios.getValue("e2").series[0].rir, "2.3.0: todo al fallo, nunca el RIR del plan")
         assertEquals("… a 8 reps dejando 0–1 en reserva.", RirDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", "Dejando 0–1 en reserva"))
         assertEquals("… a 8 reps al fallo.", RirDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", "Al fallo"))
     }

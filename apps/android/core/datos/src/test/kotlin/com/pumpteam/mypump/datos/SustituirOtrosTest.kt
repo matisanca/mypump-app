@@ -163,7 +163,7 @@ class SustituirOtrosTest {
             "$s2",
         )
         // El lápiz sobre la serie 1: se corrige el kg y sigue siendo de la extensión.
-        m.editarSerie(lugar, 0)
+        m.ejecutar(m.dia.value.editarSerie(lugar, 0))
         m.escribir(lugar, 0, "kg", "32")
         m.confirmarSerie(lugar, 0) { true }
         val s1 = carga(0)!!
@@ -172,7 +172,7 @@ class SustituirOtrosTest {
             "$s1",
         )
         // Y otra vez el lápiz y el ✓, sin tocar nada: sigue siendo de la extensión, con su agarre.
-        m.editarSerie(lugar, 0)
+        m.ejecutar(m.dia.value.editarSerie(lugar, 0))
         m.confirmarSerie(lugar, 0) { true }
         val otraVez = carga(0)!!
         assertTrue(
@@ -236,7 +236,7 @@ class SustituirOtrosTest {
         )
         m.sustituir(lugar, plancha, fijar = false)
         assertTrue(m.tarjeta(lugar)!!.filas[1].sinKg, "la plancha no lleva kg")
-        m.editarSerie(lugar, 0)
+        m.ejecutar(m.dia.value.editarSerie(lugar, 0))
         m.escribir(lugar, 0, "reps", "14")
         m.confirmarSerie(lugar, 0) { true }
         val s1 = carga(0)!!
@@ -269,7 +269,7 @@ class SustituirOtrosTest {
         assertTrue(s1["ejercicioNombre"]?.comoTexto == "Crunch" && s1["peso"] == ValorJson.Numero(25.0), "$s1")
 
         m.revertirSustitucion(lugar)
-        m.editarSerie(lugar, 0)
+        m.ejecutar(m.dia.value.editarSerie(lugar, 0))
         m.escribir(lugar, 0, "reps", "14")
         m.confirmarSerie(lugar, 0) { true }
         val otraVez = carga(0)!!

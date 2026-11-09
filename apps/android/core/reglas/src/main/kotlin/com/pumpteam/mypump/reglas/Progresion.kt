@@ -41,12 +41,7 @@ object Progresiones {
         if (prog.isEmpty()) return null
         val sem = semanaJs(semanaActual)
 
-        fun porSemana(s: Int): Progresion = prog.firstOrNull { it.semana == s } ?: prog[maxOf(0, minOf(s - 1, prog.size - 1))]
-        val cur = porSemana(sem)
-
-        // JS: ej.progresion.find(p => p.semana === sem - 1) || ej.progresion[sem - 2]. Sin acotar: fuera de rango es
-        // undefined, y eso también es "calibración".
-        val prev = if (sem > 1) prog.firstOrNull { it.semana == sem - 1 } ?: prog.getOrNull(sem - 2) else null
+        val (cur, prev) = pasoDePlan(prog, sem)
         if (prev == null) return NotaProgresion(TEXTO_CALIBRACION, cambia = false, calibracion = true)
 
         val curReps = tope(cur.reps)
@@ -85,6 +80,14 @@ object Progresiones {
             }
         }
         return NotaProgresion(partes.joinToString(" "), cambia, calibracion = false)
+    }
+
+    /** La pauta de la semana y la de la anterior, como las compara [nota]. Sin anterior (la primera semana, o fuera de rango) es calibración. */
+    internal fun pasoDePlan(prog: List<Progresion>, sem: Int): Pair<Progresion, Progresion?> {
+        val cur = prog.firstOrNull { it.semana == sem } ?: prog[maxOf(0, minOf(sem - 1, prog.size - 1))]
+        // JS: ej.progresion.find(p => p.semana === sem - 1) || ej.progresion[sem - 2]. Sin acotar: fuera de rango es undefined.
+        val prev = if (sem > 1) prog.firstOrNull { it.semana == sem - 1 } ?: prog.getOrNull(sem - 2) else null
+        return cur to prev
     }
 
     /** `semana || 1` de JS: null, undefined y 0 valen 1. */

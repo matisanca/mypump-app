@@ -95,7 +95,7 @@ class EntrenoIntegracionTest {
         m.sustituir(lugar, sub, fijar = false)
         assertEquals(sub.nombre, m.efectivo(m.dia.value.ejercicio(lugar)!!).ejercicio.nombre)
         // Una corrida anterior la dejó confirmada en el servidor: el lápiz la abre para volver a escribirla (SER-06).
-        if (m.dia.value.ejercicios[lugar]?.series?.get(0)?.confirmada == true) m.editarSerie(lugar, 0)
+        if (m.dia.value.ejercicios[lugar]?.series?.get(0)?.confirmada == true) m.ejecutar(m.dia.value.editarSerie(lugar, 0))
         m.escribir(lugar, 0, "reps", "10")
         m.escribir(lugar, 0, "kg", "40")
         m.elegirRir(lugar, 0, 0)
@@ -192,7 +192,7 @@ class EntrenoIntegracionTest {
 
         // Cargar una serie en el día cerrado pregunta, reabre y usa la MISMA sesión (SES-07).
         val preguntas = mutableListOf<String>()
-        if (m.dia.value.ejercicios[lugar]?.series?.get(1)?.confirmada == true) m.editarSerie(lugar, 1)
+        if (m.dia.value.ejercicios[lugar]?.series?.get(1)?.confirmada == true) m.ejecutar(m.dia.value.editarSerie(lugar, 1))
         m.escribir(lugar, 1, "reps", "8")
         m.escribir(lugar, 1, "kg", "40")
         m.confirmarSerie(lugar, 1) { p ->

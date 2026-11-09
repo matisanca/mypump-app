@@ -254,6 +254,29 @@ object HistorialEntreno {
         return Js.texto(p)
     }
 
+    /**
+     * La sesión anterior a `hoy` serie por serie, para la carga única: el mismo filtro de variante que [ultimaSerie], pero sin
+     * las filas de hoy (el historial trae también lo que se está cargando, y copiarlo falsearía la base).
+     */
+    fun ultimaSesion(h: List<RegistroHistorico>, variante: String?, esDefault: Boolean, antesDe: String, zona: ZoneId): List<CargaSimple.Referencia> {
+        val v = Js.verdadero(variante)
+        val candidatas = h.filter { r ->
+            fechaLocal(r.registradoEn, zona) < antesDe && r.reps != null && (v == null || r.notas == v || (esDefault && r.notas == null))
+        }
+        val ultimo = candidatas.maxOfOrNull { fechaLocal(it.registradoEn, zona) } ?: return emptyList()
+        // Una fila por número de serie: si se corrigió, queda la más nueva (el historial viene de más nuevo a más viejo).
+        val porSerie = HashMap<Int, RegistroHistorico>()
+        for (r in candidatas) {
+            if (fechaLocal(r.registradoEn, zona) != ultimo) continue
+            val n = r.serie ?: (porSerie.size + 1)
+            if (n !in porSerie) porSerie[n] = r
+        }
+        return porSerie.keys.sorted().mapNotNull { n ->
+            val r = porSerie.getValue(n)
+            r.reps?.let { CargaSimple.Referencia(it, r.pesoKg?.takeIf { p -> p > 0 }) }
+        }
+    }
+
     /** `suggestedReps`: las reps de la última vez en esta serie. */
     fun repsSugeridas(h: List<RegistroHistorico>, indice: Int, variante: String?, esDefault: Boolean, zona: ZoneId): String {
         val i = ultimaSerie(h, indice, variante, esDefault, zona) ?: return ""
@@ -376,7 +399,7 @@ data class FilaSerie(
             val haySugerido = repsSug != null && (sinKg || kgSug.isNotEmpty())
             val tipeo = s.reps.isNotEmpty() || s.kg.isNotEmpty()
             val her = if (sinKg) "" else kgHeredable
-            val puede = if (tipeo) s.reps.isNotEmpty() && (sinKg || s.kg.isNotEmpty() || her.isNotEmpty()) else haySugerido
+            val puede = if (tipeo) s.reps.isNotEmpty() && (sinKg || s.kg.isNotEmpty() || her.isNotEmpty() || kgSug.isNotEmpty()) else haySugerido
             val pista = if (!s.confirmada && activa && haySugerido && !tipeo) {
                 TextoConNegrita(
                     "✓ Tocá para registrar lo de la última vez · ",
@@ -424,13 +447,18 @@ object ConfirmacionSerie {
     ): Pair<SerieLocal, Boolean> {
         var s = serie
         if (s.reps.isEmpty() && s.kg.isEmpty()) {
-            val usar = repsUltimaVez.ifEmpty { ReglasEjercicio.repsDelPlan(repsPlan)?.let(Js::texto) ?: "" }
-            val kg = if (sinKg) "" else kgUltimaVez
+            // Lo de HOY le gana a lo de la semana pasada (error de 2.2.0: subías en la serie 1 y el ✓ de la 2 grababa el kilo
+            // viejo). Con otro kilo que la vez pasada, las reps de entonces ya no describen la serie: van las del plan.
+            val kg = if (sinKg) "" else kgHeredable.ifEmpty { kgUltimaVez }
+            val plan = ReglasEjercicio.repsDelPlan(repsPlan)?.let(Js::texto) ?: ""
+            val mismaCarga = sinKg || kgUltimaVez.isEmpty() || kg == kgUltimaVez
+            val usar = if (repsUltimaVez.isNotEmpty() && (mismaCarga || plan.isEmpty())) repsUltimaVez else plan
             if (usar.isNotEmpty()) s = s.copy(reps = usar)
             if (!sinKg && kg.isNotEmpty()) s = s.copy(kg = kg)
         }
         if (sinKg) s = s.copy(kg = "")
-        if (!sinKg && s.kg.isEmpty() && s.reps.isNotEmpty() && kgHeredable.isNotEmpty()) s = s.copy(kg = kgHeredable)
+        // Solo las reps escritas: el kilo sale de hoy o, en la primera serie, de la vez pasada (no hay que escribirlo otra vez).
+        if (!sinKg && s.kg.isEmpty() && s.reps.isNotEmpty()) s = s.copy(kg = kgHeredable.ifEmpty { kgUltimaVez })
         return s to !(s.reps.isEmpty() || (!sinKg && s.kg.isEmpty()))
     }
 }

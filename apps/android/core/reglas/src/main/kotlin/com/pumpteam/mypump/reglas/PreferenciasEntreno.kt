@@ -59,6 +59,9 @@ object RirDelPlan {
         return texto.replace("dejando 1–2 en reserva", frase)
     }
 
+    /** Lo que se guarda en `rir_real` (2.3.0, Mati, 9-nov): todo al fallo. El RIR del plan no se copia a lo registrado. */
+    const val AL_FALLO = "0"
+
     fun guardar(objetivo: String?): String {
         if (objetivo != null && rpe.containsMatchIn(objetivo)) return "0"
         val primero = objetivo?.let { numero.find(it)?.value } ?: return "0"

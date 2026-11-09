@@ -85,7 +85,7 @@ class VolumenDatosTest {
         assertEquals(2, v.total)
         assertEquals(0, v.totalHoy)
         // Corregirla (el lápiz) no le cambia la fecha: el servidor conserva el `registrado_en`.
-        m.editarSerie("jal-d1-0", 0)
+        m.ejecutar(m.dia.value.editarSerie("jal-d1-0", 0))
         m.confirmarSerie("jal-d1-0", 0) { true }
         assertEquals("2026-10-14", m.registrosVolumenEnVivo.first().fecha)
     }
