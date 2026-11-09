@@ -161,6 +161,45 @@ struct EntrenoIntegracionTests {
         #expect(m.dia.historial[lugar].map { h in h.allSatisfy { $0.clave == ClaveEjercicio.de(nombrePlan) } } ?? true)
     }
 
+    /// Carga simple contra el backend: Deshacer no deja nada en el servidor y lo que sale con el OK es lo que vuelve al recargar.
+    @Test func cargaSimple_deshacerNoEscribe_yAlRecargarQuedaLoGuardado() async throws {
+        let raiz = carpeta()
+        defer { try? FileManager.default.removeItem(at: raiz) }
+        let a = try await armar(raiz: raiz)
+        let m = a.modelo
+        await m.cargar()
+        await m.cambiarDia("d1")
+        let lugar = try #require(m.dia.lista.dropFirst().first { $0.tipo != "calentamiento" && !ReglasEjercicio.sinKg($0) }).id
+        let peso = 30 + 2.5 * Double(Int.random(in: 0...12))
+        func recargado() async throws -> [SerieLocal] {
+            let otra = carpeta()
+            defer { try? FileManager.default.removeItem(at: otra) }
+            let b = try await armar(raiz: otra)
+            await b.modelo.cargar()
+            await b.modelo.cambiarDia("d1")
+            return b.modelo.dia.ejercicios[lugar]?.series ?? []
+        }
+        if let i = m.dia.ejercicios[lugar]?.series.firstIndex(where: { !$0.confirmada }) {
+            m.cambiarCarga(lugar) { $0.fijarCarga(peso); $0.ajustarReps(i, 1) }
+            #expect(await m.okSerie(lugar, i, venceEn: nil) { _ in true } == .registrada)
+            m.deshacerOK()
+            await a.cola.drenar()
+            #expect(try await recargado()[i].confirmada == false, "Deshacer dejó la serie en el servidor")
+            #expect(await m.okSerie(lugar, i, venceEn: nil) { _ in true } != .noRegistrada)
+            await m.vaciarDeshacer()
+            await a.cola.drenar()
+            #expect(await a.cola.operaciones.isEmpty)
+            let s = try await recargado()[i]
+            #expect(s.confirmada && Double(s.kg) == peso, "al recargar no quedó lo guardado: \(s.kg)")
+        } else {
+            await m.editarSerie(lugar, 0)
+            #expect(await m.guardarCorreccion(reps: 9, kg: peso) { _ in true } == .guardada)
+            await a.cola.drenar()
+            let s = try await recargado()[0]
+            #expect(s.confirmada && Double(s.kg) == peso && s.reps == "9")
+        }
+    }
+
     @Test func cerrarElDia_yReabrirloConUnaSerie() async throws {
         let raiz = carpeta()
         defer { try? FileManager.default.removeItem(at: raiz) }

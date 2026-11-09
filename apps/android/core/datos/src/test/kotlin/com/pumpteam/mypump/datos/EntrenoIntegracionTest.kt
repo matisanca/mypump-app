@@ -80,6 +80,43 @@ class EntrenoIntegracionTest {
         error("ningún ejercicio del día tiene un sustituto fuera del plan")
     }
 
+    /** Carga simple contra el backend: Deshacer no deja nada en el servidor y lo que sale con el OK es lo que vuelve al recargar. */
+    @Test
+    fun cargaSimpleDeshacerNoEscribeYAlRecargarQuedaLoGuardado() = enUnHilo { alcance ->
+        val a = armar(carpetaTemporal("mypump-entreno-real"), alcance)
+        val m = a.modelo
+        val d1 = m.dias.first().id!!
+        m.cargar()
+        m.cambiarDia(d1)
+        val lugar = m.dia.value.lista.drop(1).first { it.tipo != "calentamiento" && !ReglasEjercicio.sinKg(it) }.id
+        val peso = 30 + 2.5 * (0..12).random()
+        suspend fun recargado(): List<com.pumpteam.mypump.reglas.SerieLocal> {
+            val b = armar(carpetaTemporal("mypump-entreno-real"), alcance)
+            b.modelo.cargar()
+            b.modelo.cambiarDia(d1)
+            return b.modelo.dia.value.ejercicios.getValue(lugar).series
+        }
+        val i = m.dia.value.ejercicios.getValue(lugar).series.indexOfFirst { !it.confirmada }
+        if (i >= 0) {
+            m.cambiarCarga(lugar) { it.fijarCarga(peso); it.ajustarReps(i, 1) }
+            assertEquals(ModeloEntreno.ResultadoOK.REGISTRADA, m.okSerie(lugar, i, venceEn = null) { true })
+            m.deshacerOK()
+            a.cola.drenar()
+            assertTrue(!recargado()[i].confirmada, "Deshacer dejó la serie en el servidor")
+            m.okSerie(lugar, i, venceEn = null) { true }
+            m.vaciarDeshacer()
+            a.cola.drenar()
+            val s = recargado()[i]
+            assertTrue(s.confirmada && s.kg.toDouble() == peso, "al recargar no quedó lo guardado: ${s.kg}")
+        } else {
+            m.editarSerie(lugar, 0)
+            m.guardarCorreccion(9, peso) { true }
+            a.cola.drenar()
+            val s = recargado()[0]
+            assertTrue(s.confirmada && s.kg.toDouble() == peso && s.reps == "9")
+        }
+    }
+
     @Test
     fun serieConSustitutoEstadoHistorialPorClaveYRestaurar() = enUnHilo { alcance ->
         val a = armar(carpetaTemporal("mypump-entreno-real"), alcance)
