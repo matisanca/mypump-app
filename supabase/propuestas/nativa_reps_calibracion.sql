@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS mypump_reps_subida (
   cliente_id     TEXT        PRIMARY KEY,
   automatica     BOOLEAN     NOT NULL DEFAULT FALSE,
   adoptar_sin_marca BOOLEAN  NOT NULL DEFAULT FALSE,
+  -- Revocó y el borrado todavía no se confirmó: mini-vision lo reintenta y no se puede volver a aceptar.
+  borrado_pendiente BOOLEAN  NOT NULL DEFAULT FALSE,
   acepta         BOOLEAN,
   plataforma     TEXT        CHECK (plataforma IN ('ios', 'android')),
   app_version    TEXT,
@@ -84,14 +86,13 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT COALESCE((SELECT automatica OR acepta IS TRUE FROM mypump_reps_subida WHERE cliente_id = p_cliente_id), FALSE);
+  SELECT COALESCE((SELECT automatica OR (acepta IS TRUE AND NOT borrado_pendiente) FROM mypump_reps_subida WHERE cliente_id = p_cliente_id), FALSE);
 $$;
 
 REVOKE ALL ON FUNCTION mypump_reps_puede_subir(TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION mypump_reps_puede_subir(TEXT) TO service_role;
 
--- Solo mini-vision (`/reps/consentimiento`): la decisión del alumno. TRUE = guardado; NULL = token caído.
--- El borrado de lo ya subido al revocar lo hace mini-vision (`/reps/consentimiento`), que también llama a esta función.
+-- Solo mini-vision (`/reps/consentimiento`): aceptar. TRUE = guardado; FALSE = todavía se está borrando; NULL = token caído.
 CREATE OR REPLACE FUNCTION mypump_reps_consentir(
   p_token      TEXT,
   p_acepta     BOOLEAN,
@@ -108,9 +109,10 @@ DECLARE
 BEGIN
   v_cliente_id := mypump_get_cliente_id_from_token(p_token);
   IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
-  IF p_acepta IS NULL OR (p_plataforma IS NOT NULL AND p_plataforma NOT IN ('ios', 'android')) THEN
+  IF p_acepta IS DISTINCT FROM TRUE OR (p_plataforma IS NOT NULL AND p_plataforma NOT IN ('ios', 'android')) THEN
     RAISE EXCEPTION 'consentimiento inválido' USING ERRCODE = '22023';
   END IF;
+  IF EXISTS (SELECT 1 FROM mypump_reps_subida WHERE cliente_id = v_cliente_id AND borrado_pendiente) THEN RETURN FALSE; END IF;
   INSERT INTO mypump_reps_subida (cliente_id, acepta, plataforma, app_version, actualizado_en)
   VALUES (v_cliente_id, p_acepta, p_plataforma, p_app, NOW())
   ON CONFLICT (cliente_id) DO UPDATE
@@ -122,6 +124,80 @@ $$;
 
 REVOKE ALL ON FUNCTION mypump_reps_consentir(TEXT, BOOLEAN, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION mypump_reps_consentir(TEXT, BOOLEAN, TEXT, TEXT) TO service_role;
+
+-- Solo mini-vision: revocar. Vale con el token dado de baja (`access_token_active = FALSE`): dejar de tener acceso no
+-- quita el derecho a que se borre. NULL = el token no existe. No toca nada de la cuenta salvo estas grabaciones.
+CREATE OR REPLACE FUNCTION mypump_reps_revocar(p_token TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_cliente_id TEXT;
+  v_automatica BOOLEAN;
+BEGIN
+  SELECT cliente_id INTO v_cliente_id FROM mypump_clientes WHERE access_token = p_token;
+  IF v_cliente_id IS NULL THEN RETURN NULL; END IF;
+  SELECT automatica INTO v_automatica FROM mypump_reps_subida WHERE cliente_id = v_cliente_id;
+  IF v_automatica IS TRUE THEN
+    RETURN jsonb_build_object('cliente_id', v_cliente_id, 'automatica', TRUE);
+  END IF;
+  INSERT INTO mypump_reps_subida (cliente_id, acepta, borrado_pendiente, actualizado_en)
+  VALUES (v_cliente_id, FALSE, TRUE, NOW())
+  ON CONFLICT (cliente_id) DO UPDATE SET acepta = FALSE, borrado_pendiente = TRUE, actualizado_en = NOW();
+  RETURN jsonb_build_object('cliente_id', v_cliente_id, 'automatica', FALSE);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION mypump_reps_revocar(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_reps_revocar(TEXT) TO service_role;
+
+-- Solo mini-vision: a quién le falta borrar (revocación sin confirmar, o filas de quien revocó).
+CREATE OR REPLACE FUNCTION mypump_reps_para_borrar()
+RETURNS JSONB
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(jsonb_agg(cliente_id), '[]'::jsonb) FROM (
+    SELECT cliente_id FROM mypump_reps_subida WHERE borrado_pendiente
+    UNION
+    SELECT g.cliente_id FROM mypump_reps_grabaciones g JOIN mypump_reps_subida s USING (cliente_id)
+    WHERE s.acepta IS FALSE AND NOT s.automatica
+    LIMIT 50
+  ) t;
+$$;
+
+REVOKE ALL ON FUNCTION mypump_reps_para_borrar() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_reps_para_borrar() TO service_role;
+
+CREATE OR REPLACE FUNCTION mypump_reps_borrado_hecho(p_cliente_id TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE mypump_reps_subida SET borrado_pendiente = FALSE, actualizado_en = NOW() WHERE cliente_id = p_cliente_id RETURNING TRUE;
+$$;
+
+REVOKE ALL ON FUNCTION mypump_reps_borrado_hecho(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_reps_borrado_hecho(TEXT) TO service_role;
+
+-- Solo mini-vision: lo guardado en total, para el tope del bucket.
+CREATE OR REPLACE FUNCTION mypump_reps_total_bytes()
+RETURNS BIGINT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(SUM(bytes), 0)::BIGINT FROM mypump_reps_grabaciones;
+$$;
+
+REVOKE ALL ON FUNCTION mypump_reps_total_bytes() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION mypump_reps_total_bytes() TO service_role;
 
 COMMIT;
 

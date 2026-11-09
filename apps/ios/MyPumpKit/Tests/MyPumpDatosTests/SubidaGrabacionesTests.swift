@@ -18,7 +18,22 @@ import MyPumpModelos
         return u
     }
 
-    func cliente(_ t: TransporteProgramado) -> ClienteRPC { ClienteRPC(config: .produccion, transporte: t) }
+    func cliente(_ t: TransporteProgramado) -> ClienteRPC { ClienteRPC(config: .produccion, transporte: AdaptadorSubida(t)) }
+
+    /// La subida va cruda y con cabeceras: acá se le muestra al doble como un cuerpo JSON, para escribir las reglas igual.
+    final class AdaptadorSubida: Transporte, @unchecked Sendable {
+        let t: TransporteProgramado
+        init(_ t: TransporteProgramado) { self.t = t }
+        func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+            guard pedido.url?.lastPathComponent == "subir" else { return try await t.enviar(pedido) }
+            var p = pedido
+            let c: [String: JSONValue] = ["token": .texto(pedido.value(forHTTPHeaderField: "x-reps-token") ?? ""),
+                                          "sesion": .texto(pedido.value(forHTTPHeaderField: "x-reps-sesion") ?? ""),
+                                          "sha256": .texto(pedido.value(forHTTPHeaderField: "x-reps-sha256") ?? "")]
+            p.httpBody = try JSONEncoder().encode(JSONValue.objeto(c))
+            return try await t.enviar(p)
+        }
+    }
 
     /// El estado que contesta la RPC y lo que contesta el POST de subir.
     func transporte(estado: (Int, String) = (200, #"{"automatica":false,"acepta":true}"#), subir: (Int, String) = (200, #"{"ok":true}"#)) -> TransporteProgramado {
@@ -144,6 +159,24 @@ import MyPumpModelos
         #expect(nombres(.init(automatica: true, adoptarSinMarca: true), prendidas: ["yo"]) == ["calibracion-a.mpcal", "calibracion-viejo.mpcal"])
         #expect(nombres(.init(automatica: true, adoptarSinMarca: true), prendidas: ["yo", "otra"]) == ["calibracion-a.mpcal"])
         #expect(nombres(.init(automatica: true, adoptarSinMarca: true), prendidas: []) == ["calibracion-a.mpcal"], "si no se sabe quién grabó, tampoco")
+    }
+
+    /// El token nunca en la URL; el cuerpo es el archivo tal cual, con su largo.
+    @Test func laSubidaVaCrudaConElTokenEnCabecera() async {
+        final class Mira: Transporte, @unchecked Sendable {
+            nonisolated(unsafe) var visto: URLRequest?
+            func enviar(_ pedido: URLRequest) async throws -> (Data, URLResponse) {
+                visto = pedido
+                return (Data(#"{"ok":true}"#.utf8), HTTPURLResponse(url: pedido.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+            }
+        }
+        let m = Mira()
+        let datos = Data("MPC1datos".utf8)
+        #expect(await ClienteRPC(config: .produccion, transporte: m).subirGrabacion(token: "tok", sesion: "s-1", sha256: "ab", datos: datos) == .hecho)
+        #expect(m.visto?.httpBody == datos)
+        #expect(m.visto?.value(forHTTPHeaderField: "x-reps-token") == "tok")
+        #expect(m.visto?.value(forHTTPHeaderField: "Content-Length") == String(datos.count))
+        #expect(m.visto?.url?.absoluteString.contains("tok") == false)
     }
 
     @Test func elNombreDebeSerDeUnaSesion() {

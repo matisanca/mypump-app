@@ -53,14 +53,22 @@ extension ClienteRPC {
         return ((respuesta as? HTTPURLResponse)?.statusCode ?? 0, try? JSONDecoder().decode(JSONValue.self, from: datos))
     }
 
-    /// `POST <vision>/reps/subir`. Idempotente del lado del servidor (cuenta, sesión y hash).
+    /// `POST <vision>/reps/subir`: el archivo crudo y el token en una cabecera, para que el servidor valide antes de leerlo.
+    /// Idempotente del lado del servidor (cuenta, sesión y hash).
     public func subirGrabacion(token: String, sesion: String, sha256: String, datos: Data) async -> ResultadoSubida {
-        guard let r = await postVision("reps/subir", cuerpo: [
-            "token": .texto(token), "sesion": .texto(sesion), "sha256": .texto(sha256), "mpcal_base64": .texto(datos.base64EncodedString()),
-        ], espera: 120) else { return .reintentar }
-        if (200..<300).contains(r.status), r.json?["ok"] == .bool(true) { return .hecho }
-        if r.status == 403 { return .noHabilitada }
-        return r.status == 400 ? .rechazada : .reintentar
+        var pedido = URLRequest(url: config.vision.appendingPathComponent("reps/subir"), timeoutInterval: 120)
+        pedido.httpMethod = "POST"
+        pedido.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        pedido.setValue(token, forHTTPHeaderField: "x-reps-token")
+        pedido.setValue(sesion, forHTTPHeaderField: "x-reps-sesion")
+        pedido.setValue(sha256, forHTTPHeaderField: "x-reps-sha256")
+        pedido.setValue(String(datos.count), forHTTPHeaderField: "Content-Length")
+        pedido.httpBody = datos
+        guard let (cuerpo, respuesta) = try? await transporte.enviar(pedido) else { return .reintentar }
+        let status = (respuesta as? HTTPURLResponse)?.statusCode ?? 0
+        if (200..<300).contains(status), (try? JSONDecoder().decode(JSONValue.self, from: cuerpo))?["ok"] == .bool(true) { return .hecho }
+        if status == 403 { return .noHabilitada }
+        return status == 400 ? .rechazada : .reintentar
     }
 
     /// `POST <vision>/reps/consentimiento`. Con `acepta: false` el servidor borra además lo ya subido. true = guardado.

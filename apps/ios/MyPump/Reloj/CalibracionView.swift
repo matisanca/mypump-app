@@ -16,9 +16,9 @@ enum DatosCalibracion {
     static let claveMarcas = "mypump-calibracion-marcas"
     /// La cuenta automática ya prendió la grabación una vez (si después la apaga a mano, no se vuelve a prender).
     static let claveAutomatica = "mypump-calibracion-automatica"
-    /// El alumno revocó y el servidor todavía no lo confirmó.
-    static let claveRevocarPendiente = "mypump-reps-revocar-pendiente"
-    /// Lo último que dijo el servidor (`ACEPTA` o `AUTOMATICA` por cuenta), para que el texto siga siendo cierto sin red.
+    /// El alumno de esta cuenta revocó y el servidor todavía no lo confirmó (por cuenta: el iPhone puede tener varias).
+    static func claveRevocarPendiente(_ cuenta: String) -> String { "mypump-reps-revocar-pendiente-\(cuenta)" }
+    /// Lo último que dijo el servidor por cuenta: sin estado, si alguna vez se mandó no se puede afirmar ni una cosa ni la otra.
     static func claveSeManda(_ cuenta: String) -> String { "mypump-reps-se-manda-\(cuenta)" }
     private static let quietudSegundos: TimeInterval = 15 * 60
     /// «?» = dos cuentas con el mismo archivo: no sube ninguna.
@@ -42,9 +42,9 @@ enum DatosCalibracion {
         let subida = subida, carpeta = carpeta, cliente = m.cliente
         Task.detached(priority: .utility) {
             // Una revocación que no llegó al servidor va primero, y mientras no salga no se sube nada.
-            if UserDefaults.standard.bool(forKey: claveRevocarPendiente) {
+            if UserDefaults.standard.bool(forKey: claveRevocarPendiente(cuenta)) {
                 guard await cliente.guardarConsentimientoReps(token: token, acepta: false, plataforma: "ios", app: nil) else { return }
-                UserDefaults.standard.set(false, forKey: claveRevocarPendiente)
+                UserDefaults.standard.set(false, forKey: claveRevocarPendiente(cuenta))
                 await subida.olvidarSubidas()
             }
             await subida.subirPendientes(token: token, archivos: { estado in
@@ -136,17 +136,19 @@ struct CalibracionView: View {
         Si lo prendés, MyPump recibe las series que grabaste y las que grabes con el Apple Watch: el movimiento del reloj, \
         el ejercicio, las reps, los kilos, la fecha y en qué muñeca llevás el reloj. No incluye tu nombre; queda asociado a tu \
         cuenta para poder borrarlo. Se usa solo para mejorar el conteo de reps. Lo podés apagar cuando quieras: se dejan de \
-        mandar y se borra lo que ya recibimos.
+        mandar y se borra lo que ya recibimos. Si ya no tenés acceso a la app, escribinos y lo borramos.
         """
 
-    /// Sin red no hay estado: vale lo último que dijo el servidor (sin servidor nunca hubo: no se manda).
-    private var seManda: Bool { subidaEstado?.puedeSubir ?? UserDefaults.standard.bool(forKey: DatosCalibracion.claveSeManda(cuenta)) }
+    /// Solo el servidor habilita: sin su estado (sin red o sin la parte del servidor) nunca se afirma que se manda.
+    private var seManda: Bool { subidaEstado?.puedeSubir == true }
 
-    /// Lo que pasa con el archivo, verdadero según la cuenta.
+    /// Lo que pasa con el archivo, verdadero según la cuenta. Sin estado, si esta cuenta alguna vez mandó no se afirma nada.
     private var textoArchivo: String {
-        seManda
-            ? "Un archivo por sesión de entreno. Se manda a MyPump para mejorar el conteo; si lo exportás, elegís vos a dónde más va."
-            : "Un archivo por sesión de entreno. Al exportarlo elegís a dónde va; la app no lo manda a ningún lado."
+        if seManda { return "Un archivo por sesión de entreno. Se manda a MyPump para mejorar el conteo; si lo exportás, elegís vos a dónde más va." }
+        if subidaEstado == nil, UserDefaults.standard.bool(forKey: DatosCalibracion.claveSeManda(cuenta)) {
+            return "Un archivo por sesión de entreno. Al exportarlo elegís a dónde va."
+        }
+        return "Un archivo por sesión de entreno. Al exportarlo elegís a dónde va; la app no lo manda a ningún lado."
     }
 
     private func consentir(_ acepta: Bool) {
@@ -159,12 +161,12 @@ struct CalibracionView: View {
             guard ok else {
                 if acepta { errorConsentimiento = true; return }
                 // Revocar no se pierde por falta de red: se apaga acá y se reintenta antes de cualquier subida.
-                UserDefaults.standard.set(true, forKey: DatosCalibracion.claveRevocarPendiente)
+                UserDefaults.standard.set(true, forKey: DatosCalibracion.claveRevocarPendiente(cuenta))
                 subidaEstado?.acepta = false
                 UserDefaults.standard.set(false, forKey: DatosCalibracion.claveSeManda(cuenta))
                 return
             }
-            UserDefaults.standard.set(false, forKey: DatosCalibracion.claveRevocarPendiente)
+            UserDefaults.standard.set(false, forKey: DatosCalibracion.claveRevocarPendiente(cuenta))
             subidaEstado?.acepta = acepta
             UserDefaults.standard.set(acepta, forKey: DatosCalibracion.claveSeManda(cuenta))
             if acepta {
@@ -261,7 +263,7 @@ struct CalibracionView: View {
             sesiones = DatosCalibracion.sesiones()
             if let token = Proveedor.modelo.token, !Proveedor.modelo.conMuestras {
                 subidaEstado = await Proveedor.modelo.cliente.estadoSubidaReps(token: token)
-                if UserDefaults.standard.bool(forKey: DatosCalibracion.claveRevocarPendiente) { subidaEstado?.acepta = false }
+                if UserDefaults.standard.bool(forKey: DatosCalibracion.claveRevocarPendiente(cuenta)) { subidaEstado?.acepta = false }
                 if let e = subidaEstado { UserDefaults.standard.set(e.puedeSubir, forKey: DatosCalibracion.claveSeManda(cuenta)) }
             }
         }
