@@ -61,7 +61,7 @@ public enum ReglasGuia {
         guard let g else { return [] }
         let nombrados = nombradosPorSuplementos(g.suplementacion)
         let lista = g.clips.filter { !(esBloqueSuplementacion($0.bloque) && nombrados.contains($0.id)) }
-        return lista.filter(\.nuevo) + ordenados(lista.filter { !$0.nuevo })
+        return lista.filter(\.nuevo) + ReglasDolor.conDolorPrimero(ordenados(lista.filter { !$0.nuevo }), g.dolor)
     }
 
     /// El clip de un «Ver por qué»: el que nombra el suplemento, si existe y tiene url (como `vid` en la web).

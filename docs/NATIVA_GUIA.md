@@ -70,5 +70,10 @@ Todo lo aplicó la sesión de entregas, que es la dueña de los RPC.
 - Las pruebas contra el servidor ensucian los clientes de prueba (vistos y dudas). La sesión de entregas los limpia cuando se le pide.
 - Al revisor de Apple la guía solo le aparece si la cuenta demo tiene una aprobada. Lo decide Mati.
 
+## «Lo que más te importa» (rama `nativa-guia-dolor`, para la 2.3.0)
+- **Qué hace:** con `dolor` en `entregas_app_get`, arriba del reproductor va el recuadro del caso, sus partes «## Título» y los videos del bloque del mismo título, con la misma lógica que `pack.html`. Sin `dolor`, o con el texto en blanco, la guía es la de la 2.2.0.
+- **Forma:** `"dolor": {"titulo": string|null, "texto": string}`. Reglas en `GuiaDolor.swift` y `GuiaDolor.kt`; casos compartidos en `apps/shared/fixtures/guia/dolor-casos.json`.
+- **Introducción:** «Antes de nuestra videollamada del <fecha>, hacé estos dos pasos» (videos y dudas; el de entrar a la app no va). Solo con `dolor` y antes de la llamada. La fecha es `fecha_entrega` en hora de Argentina; si es null, va sin fecha.
+
 ## Versión
 Sale dentro de la 2.1.0 unificada, junto con la 2.0.3, Salud, volumen, código de barras y el Apple Watch. La compila y la envía «MyPump Pro 2.0», con el OK de Mati.

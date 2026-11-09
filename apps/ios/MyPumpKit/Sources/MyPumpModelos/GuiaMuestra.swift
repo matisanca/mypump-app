@@ -53,6 +53,31 @@ public enum GuiaMuestra {
         """
     }()
 
+    // MARK: - «Lo que más te importa»
+
+    /// El texto de ejemplo, inventado. Trae una parte «## Tu plan para estas semanas» y marcas que no se tienen que ver.
+    public static let dolor = DolorGuia(titulo: "Bajar la panza sin perder fuerza", texto: """
+    Me contaste que lo que más te molesta es la **panza** y que venís perdiendo fuerza cuando comés poco.
+
+    El plan arranca por ahí, con comida que te llene y una rutina que te sostenga las cargas.
+
+    ## Tu plan para estas semanas
+
+    Las primeras dos semanas el objetivo es que anotes todo y no te saltees comidas.
+    """)
+
+    /// La muestra con `dolor`: dos videos pasan al bloque del dolor y uno a la parte. `fecha` es la de la videollamada.
+    public static func guiaConDolor(fecha: String? = nil) -> Guia {
+        var g = guia
+        g.dolor = dolor
+        g.fechaEntrega = fecha
+        for (i, c) in g.clips.enumerated() {
+            if c.id == "MC-7a" || c.id == "FT-3a" { g.clips[i].bloque = "Lo que más te importa" }
+            if c.id == "MC-13c" { g.clips[i].bloque = "Tu plan para estas semanas" }
+        }
+        return g
+    }
+
     // MARK: - La guía v2 (2.2.0): novedad, obligatorios y agenda
 
     /// La misma forma con lo de la 2.2.0: `fase: 2`, `novedad_en`, dos clips `nuevo` (uno visto y otro no) y los

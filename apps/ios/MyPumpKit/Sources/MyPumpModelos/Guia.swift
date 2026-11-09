@@ -17,11 +17,15 @@ public struct Guia: Codable, Equatable, Sendable {
     public var fase: Int
     /// Cuándo se aprobó la última tanda nueva (timestamptz ISO). nil = no hay novedad (servidor viejo o fase 1).
     public var novedadEn: String?
+    /// «Lo que más te importa». Opcional: sin el campo, o con el texto en blanco, nil y la guía de siempre.
+    public var dolor: DolorGuia?
 
     public init(ok: Bool, nombrePila: String? = nil, fechaEntrega: String? = nil, clips: [ClipGuia] = [],
-                dudasLlamada: [DudaLlamada] = [], suplementacion: SuplementacionGuia? = nil, fase: Int = 1, novedadEn: String? = nil) {
+                dudasLlamada: [DudaLlamada] = [], suplementacion: SuplementacionGuia? = nil, fase: Int = 1, novedadEn: String? = nil,
+                dolor: DolorGuia? = nil) {
         self.ok = ok; self.nombrePila = nombrePila; self.fechaEntrega = fechaEntrega; self.clips = clips
         self.dudasLlamada = dudasLlamada; self.suplementacion = suplementacion; self.fase = fase; self.novedadEn = novedadEn
+        self.dolor = dolor
     }
 
     /// La respuesta de la base tal cual: un objeto, `false`, `null` o cualquier otra cosa (todo lo que no sea un objeto con
@@ -36,7 +40,7 @@ public struct Guia: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case ok, nombrePila = "nombre_pila", fechaEntrega = "fecha_entrega", clips, dudasLlamada = "dudas_llamada", suplementacion, fase
-        case novedadEn = "novedad_en"
+        case novedadEn = "novedad_en", dolor
     }
 
     public init(from decoder: Decoder) throws {
@@ -51,6 +55,25 @@ public struct Guia: Codable, Equatable, Sendable {
         // Lo de la 2.2.0, todo opcional: sin los campos (servidor viejo), la guía es la de la 2.1.0.
         fase = c.entero(.fase) == 2 ? 2 : 1
         novedadEn = c.texto(.novedadEn).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+        // Un `dolor` de otro tipo o sin texto es lo mismo que no tenerlo.
+        dolor = ((try? c.decodeIfPresent(DolorGuia.self, forKey: .dolor)) ?? nil).flatMap { $0.texto.isEmpty ? nil : $0 }
+    }
+}
+
+/// El texto del caso (`dolor` en `entregas_app_get`): `titulo` opcional y `texto` con párrafos separados por una línea en
+/// blanco; un párrafo «## Título» abre una parte aparte. Las reglas están en `ReglasDolor`.
+public struct DolorGuia: Codable, Equatable, Sendable {
+    public var titulo: String?
+    public var texto: String
+
+    public init(titulo: String? = nil, texto: String) { self.titulo = titulo; self.texto = texto }
+
+    enum CodingKeys: String, CodingKey { case titulo, texto }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        titulo = c.texto(.titulo)
+        texto = c.texto(.texto) ?? ""
     }
 }
 

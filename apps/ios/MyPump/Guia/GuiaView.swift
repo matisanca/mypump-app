@@ -27,6 +27,14 @@ struct GuiaView: View {
 
     private var clips: [ClipGuia] { modelo.clips }
     private var despues: Bool { ReglasGuia.yaPaso(modelo.guia?.fechaEntrega) }
+    /// «Lo que más te importa». nil (sin `dolor` o en blanco): la guía de siempre.
+    private var vistaDolor: ReglasDolor.Vista? { ReglasDolor.vista(modelo.guia?.dolor) }
+    /// Algo escrito o grabado para la videollamada o sobre un video: el paso «Dejá tus dudas» se tilda solo.
+    private var hayDudas: Bool {
+        guard let g = modelo.guia else { return false }
+        return !g.dudasLlamada.isEmpty || g.clips.contains { !($0.duda ?? "").isEmpty } || !modelo.pendientesSinLlegar.isEmpty
+            || !modelo.audios.locales.isEmpty || !modelo.audios.servidor.isEmpty
+    }
 
     var body: some View {
         Group {
@@ -156,7 +164,8 @@ struct GuiaView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: Espacio.m) {
-                            cabecera
+                            cabecera(lector)
+                            tarjetasDolor(lector)
                             reproductor(lector).id("reproductor")
                             listaSinCabecera(lector)
                         }
@@ -186,12 +195,14 @@ struct GuiaView: View {
     }
 
     @ViewBuilder private func lista(_ lector: ScrollViewProxy) -> some View {
-        cabecera
+        cabecera(lector)
+        tarjetasDolor(lector)
         listaSinCabecera(lector)
     }
 
     @ViewBuilder private func listaSinCabecera(_ lector: ScrollViewProxy) -> some View {
-        let bloques = ReglasGuia.bloques(clips)
+        // Sin `dolor`, `resto` son todos los capítulos, como siempre.
+        let bloques = ReglasDolor.reparto(ReglasGuia.bloques(clips), vistaDolor).resto
         // 2.2.0: lo nuevo arriba de todo; debajo, lo de siempre.
         ForEach(bloques.filter(\.novedad)) { b in bloque(b, lector) }
         ForEach(bloques.filter(\.esApp)) { b in bloque(b, lector) }
@@ -208,6 +219,37 @@ struct GuiaView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .tarjeta()
         AccionEntreno(modelo: modelo)
+    }
+
+    /// «Lo que más te importa» y sus partes, arriba del reproductor como en la web.
+    @ViewBuilder private func tarjetasDolor(_ lector: ScrollViewProxy) -> some View {
+        if let v = vistaDolor {
+            let r = ReglasDolor.reparto(ReglasGuia.bloques(clips), v)
+            TarjetaDolor(titulo: ReglasDolor.tituloBloque, subtitulo: v.subtitulo, parrafos: v.parrafos, identificador: "guia-dolor") {
+                videosDolor(r.principal, lector)
+            }
+            ForEach(Array(v.partes.enumerated()), id: \.offset) { i, p in
+                TarjetaDolor(titulo: p.titulo, parrafos: p.parrafos, identificador: "guia-parte-\(i)") {
+                    videosDolor(r.partes.indices.contains(i) ? r.partes[i] : nil, lector)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func videosDolor(_ b: ReglasGuia.Bloque?, _ lector: ScrollViewProxy) -> some View {
+        if let b {
+            Divider()
+            bloque(b, lector, titulo: ReglasDolor.tituloVideos, embebido: true)
+        }
+    }
+
+    /// Un paso del mapa de la cabecera: al reproductor o a las dudas para la videollamada.
+    private func irAPaso(_ p: ReglasDolor.Paso, _ lector: ScrollViewProxy) {
+        if p.id == "videos" {
+            irAlReproductor(lector, desde: nil)
+        } else {
+            withAnimation(.snappy) { lector.scrollTo("dudas-llamada", anchor: .top) }
+        }
     }
 
     /// «Ir al próximo video» y el contador de la agenda: abre su capítulo, lo reproduce y sube al reproductor.
@@ -230,19 +272,28 @@ struct GuiaView: View {
 
     // MARK: - Cabecera
 
-    private var cabecera: some View {
+    private func cabecera(_ lector: ScrollViewProxy) -> some View {
         let g = modelo.guia
         let a = ReglasGuia.avance(clips)
         let cuando = ReglasGuia.fechaLlamada(g?.fechaEntrega)
+        let intro = ReglasDolor.introduccion(g, hayDudas: hayDudas)
         return VStack(alignment: .leading, spacing: Espacio.xs) {
             Text(g?.nombrePila.flatMap { $0.isEmpty ? nil : "Hola \($0)" } ?? "Hola")
                 .font(.title2.weight(.bold))
                 .accessibilityAddTraits(.isHeader)
-            Text(despues ? "Te dejo estos videos según lo que hablamos en la videollamada. Miralos con calma, te van a servir para arrancar bien."
-                         : "Armé estos videos para vos\(cuando.map { ", antes de nuestra videollamada del \($0)" } ?? ""), según lo que me contaste. Si llegás a ver el primer bloque, en la llamada vamos directo a lo tuyo.")
-                .font(.body)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Mati").font(.subheadline).foregroundStyle(.secondary)
+            if let intro {
+                Text(verbatim: intro.texto)
+                    .font(.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("guia-intro")
+                PasosGuia(pasos: intro.pasos) { irAPaso($0, lector) }
+            } else {
+                Text(despues ? "Te dejo estos videos según lo que hablamos en la videollamada. Miralos con calma, te van a servir para arrancar bien."
+                             : "Armé estos videos para vos\(cuando.map { ", antes de nuestra videollamada del \($0)" } ?? ""), según lo que me contaste. Si llegás a ver el primer bloque, en la llamada vamos directo a lo tuyo.")
+                    .font(.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Mati").font(.subheadline).foregroundStyle(.secondary)
+            }
             VStack(alignment: .leading, spacing: 6) {
                 Text(ReglasGuia.textoAvance(a)).font(.subheadline).foregroundStyle(.secondary)
                 ProgressView(value: a.fraccion).tint(Color.marca)
@@ -319,7 +370,19 @@ struct GuiaView: View {
 
     // MARK: - Bloques
 
-    private func bloque(_ b: ReglasGuia.Bloque, _ lector: ScrollViewProxy) -> some View {
+    /// `titulo` reemplaza el del capítulo y `embebido` lo deja sin recuadro propio (va adentro de otra tarjeta).
+    @ViewBuilder
+    private func bloque(_ b: ReglasGuia.Bloque, _ lector: ScrollViewProxy, titulo: String? = nil, embebido: Bool = false) -> some View {
+        if embebido {
+            cuerpoBloque(b, lector, titulo: titulo)
+        } else {
+            cuerpoBloque(b, lector, titulo: titulo)
+                .superficieTarjeta(radio: Radio.control + 6)
+                .clipShape(RoundedRectangle(cornerRadius: Radio.control + 6, style: .continuous))
+        }
+    }
+
+    private func cuerpoBloque(_ b: ReglasGuia.Bloque, _ lector: ScrollViewProxy, titulo: String?) -> some View {
         let abierto = abiertos.contains(b.id)
         let vistos = b.indices.filter { clips.indices.contains($0) && clips[$0].visto }.count
         return VStack(alignment: .leading, spacing: 0) {
@@ -332,7 +395,7 @@ struct GuiaView: View {
                             Label(b.titulo, systemImage: "sparkles")
                                 .font(.headline).foregroundStyle(Color.marcaTexto)
                         } else {
-                            Text(b.titulo).font(.headline).foregroundStyle(.primary)
+                            Text(verbatim: titulo ?? b.titulo).font(.headline).foregroundStyle(.primary)
                         }
                         Text(ReglasGuia.textoBloque(b) + (vistos > 0 ? ", \(vistos == b.indices.count ? "todos vistos" : "\(vistos) \(vistos == 1 ? "visto" : "vistos")")" : ""))
                             .font(.subheadline).foregroundStyle(.secondary)
@@ -359,8 +422,6 @@ struct GuiaView: View {
             }
         }
         .padding(.bottom, abierto ? 6 : 0)
-        .superficieTarjeta(radio: Radio.control + 6)
-        .clipShape(RoundedRectangle(cornerRadius: Radio.control + 6, style: .continuous))
     }
 
     /// SwiftUI puede volver a pintar una fila vieja del `ForEach` antes de recalcular el bloque (la observación de `clips`
@@ -941,7 +1002,9 @@ enum GuiaUI {
     /// `-guiaVistos ninguno|todos`: la muestra sin ningún video visto (la bienvenida y la tarjeta en 0) o con todos (la
     /// compacta). Sin el argumento, a mitad de camino.
     private static let muestra: ModeloGuia = {
-        var g = GuiaMuestra.guia
+        // `-guiaDolor YES`: con «Lo que más te importa». `-guiaDolorFecha <ISO>`: con fecha de videollamada.
+        var g = UserDefaults.standard.bool(forKey: "guiaDolor")
+            ? GuiaMuestra.guiaConDolor(fecha: UserDefaults.standard.string(forKey: "guiaDolorFecha")) : GuiaMuestra.guia
         switch UserDefaults.standard.string(forKey: "guiaVistos") {
         case "ninguno": for i in g.clips.indices { g.clips[i].visto = false; g.clips[i].segundos = 0 }
         case "todos": for i in g.clips.indices { g.clips[i].visto = true }
