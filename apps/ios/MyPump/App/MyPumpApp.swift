@@ -201,6 +201,8 @@ struct Raiz: View {
         // R2 de la 2.0.3: completar la semana de revisión (o terminar de cargarla al abrir) vuelve a armar el aviso del
         // domingo, que se saltea si ya está todo.
         .onChange(of: modelo.semanaDeRevisionCompleta) { Task { await CentroAvisos.shared.alCambiarLaSemana() } }
+        // El día de revisión llega del servidor después de armar el aviso al abrir (y puede cambiarlo el equipo).
+        .onChange(of: modelo.diaDeRevision) { Task { await CentroAvisos.shared.alCambiarLaSemana() } }
         #if DEBUG
         // `-verAvisoDomingo YES`: lo agendado del domingo, para que la prueba de interfaz lo lea.
         .overlay(alignment: .top) { if UserDefaults.standard.bool(forKey: "verAvisoDomingo") { AvisoDomingoDePrueba() } }

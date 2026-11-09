@@ -24,16 +24,25 @@ struct SemanaRevisionTests {
         for c in a.casos {
             let p = c.hora.split(separator: ":").compactMap { Int($0) }
             let minutos = p[0] * 60 + p[1]
-            #expect(SemanaRevision.lunes(c.hoy, dia: c.revisionDia) == c.semana, "\(c.hoy) día \(c.revisionDia)")
+            #expect(FotosProgreso.lunes(c.hoy) == c.semana, "\(c.hoy) día \(c.revisionDia)")
             #expect(SemanaRevision.fechaAviso(hoy: c.hoy, minutos: minutos, completa: c.completa, dia: c.revisionDia) == c.aviso,
                     "\(c.hoy) \(c.hora) completa=\(c.completa) día \(c.revisionDia)")
         }
     }
 
-    @Test func conElDomingoEsLaSemanaISO() {
-        for f in ["2026-10-26", "2026-10-29", "2026-11-01", "2026-11-02"] {
-            #expect(SemanaRevision.lunes(f) == FotosProgreso.lunes(f))
-        }
+    @Test func elTextoDelDiaSoloApareceParaQuienNoRevisaElDomingo() {
+        #expect(SemanaRevision.textoDia(7) == nil)
+        #expect(SemanaRevision.textoDia(nil) == nil)
+        #expect(SemanaRevision.textoDia(99) == nil)
+        #expect(SemanaRevision.textoDia(6) == "Tu día de revisión es el sábado")
+        #expect(SemanaRevision.textoDia(1) == "Tu día de revisión es el lunes")
+    }
+
+    /// Un alumno del sábado: el domingo es todavía la misma semana, y lo cargado ese domingo no le adelanta el próximo aviso.
+    @Test func elDomingoSigueSiendoDeLaMismaSemana() {
+        #expect(SemanaRevision.fechaAviso(hoy: "2026-11-01", minutos: 600, completa: true, dia: 6) == "2026-11-07")
+        #expect(SemanaRevision.fechaAviso(hoy: "2026-10-30", minutos: 600, completa: true, dia: 6) == "2026-11-07")
+        #expect(SemanaRevision.fechaAviso(hoy: "2026-10-30", minutos: 600, completa: false, dia: 6) == "2026-10-31")
     }
 
     @Test func completaEsLoMismoQueElBadgeEnCero() {

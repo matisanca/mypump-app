@@ -9,6 +9,7 @@ import com.pumpteam.mypump.reglas.DiaCalendario
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
 import com.pumpteam.mypump.reglas.PesoCorporal
+import com.pumpteam.mypump.reglas.SemanaRevision
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.intOrNull
 
 /** Un check de la semana como lo ve el cliente: el guardado (o el optimista recién mandado). */
 data class Checkin(val valores: Map<String, Int> = emptyMap(), val nota: String = "")
@@ -32,7 +35,15 @@ class ModeloRevision(
     private val token: String?,
     private val outbox: Outbox?,
     private val alcance: CoroutineScope,
+    private val disco: Disco? = null,
 ) {
+    /**
+     * El día de revisión del alumno (`mypump_get_revision_dia`, 1 = lunes … 7 = domingo): cuándo sale el aviso local. La
+     * semana no cambia por esto: sigue siendo de lunes a domingo. Lo elige el equipo; la app solo lo lee.
+     */
+    private val _revisionDia = MutableStateFlow(SemanaRevision.normalizado((disco?.leer(ARCHIVO_DIA) as? JsonPrimitive)?.intOrNull))
+    val revisionDia: StateFlow<Int> = _revisionDia.asStateFlow()
+
     private val _checkin = MutableStateFlow<Checkin?>(null)
     val checkin: StateFlow<Checkin?> = _checkin.asStateFlow()
 
@@ -56,6 +67,20 @@ class ModeloRevision(
 
     // ── Revisión ──
 
+    /**
+     * Sin red o con un error pasajero queda el último que se supo (el aviso se arma también sin señal). Sin la función en la
+     * base (PGRST202: nativa_008 todavía no aplicada, o revertida) es el domingo, lo de siempre.
+     */
+    private fun aplicarDia(r: Resultado<ValorJson>) {
+        val nuevo = when (r) {
+            is Resultado.Ok -> SemanaRevision.normalizado(r.valor.comoNumero?.toInt())
+            is Resultado.Falla -> if (r.error.funcionInexistente) SemanaRevision.DIA_POR_DEFECTO else return
+        }
+        if (nuevo == _revisionDia.value) return
+        _revisionDia.value = nuevo
+        disco?.guardar(ARCHIVO_DIA, JsonPrimitive(nuevo))
+    }
+
     /** `loadRevision` + `loadSalud`: el check de la semana y 60 días de salud (para el peso). */
     suspend fun cargarRevision() {
         if (token == null) return   // la demo, como la web: sin check, peso ni fotos
@@ -65,13 +90,15 @@ class ModeloRevision(
         if (semanaDelCheck != semana) _checkin.value = null
         semanaDelCheck = semana
         val desde = DiaCalendario.numero(hoy)?.let { DiaCalendario.texto(it - 59) } ?: hoy
-        val (rc, rs) = coroutineScope {
+        val (rc, rs, rd) = coroutineScope {
             val c = async { cliente.filas("mypump_get_checkin_semana", mapOf("p_token" to t, "p_fecha" to texto(hoy)), CheckinSemana::desde) }
             val s = async {
                 cliente.filas("mypump_get_salud", mapOf("p_token" to t, "p_desde" to texto(desde), "p_hasta" to texto(hoy)), FilaSalud::desde)
             }
-            c.await() to s.await()
+            val d = async { cliente.llamar("mypump_get_revision_dia", mapOf("p_token" to t)) }
+            Triple(c.await(), s.await(), d.await())
         }
+        aplicarDia(rd)
         rc.valorONull()?.let { filas ->
             _checkin.value = filas.firstOrNull()?.let { f ->
                 val v = LinkedHashMap<String, Int>()
@@ -141,6 +168,8 @@ class ModeloRevision(
     }
 
     companion object {
+        private const val ARCHIVO_DIA = "revision_dia.json"
+
         /** "Ver demo" (ACC-07): sin cuenta, sin red ni cola; el check y el peso se tocan igual y no sale nada. */
         fun demo(cliente: ClienteRpc, alcance: CoroutineScope, hoy: String = FechaLocal.hoy()): ModeloRevision =
             ModeloRevision(cliente, token = null, outbox = null, alcance = alcance).also { m -> m._fecha.value = hoy }

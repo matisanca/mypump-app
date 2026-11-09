@@ -32,6 +32,7 @@ import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.RegistroPush
 import com.pumpteam.mypump.datos.TransporteOkHttp
 import com.pumpteam.mypump.datos.registrarPush
+import com.pumpteam.mypump.reglas.SemanaRevision
 import com.pumpteam.mypump.legado.ArranqueMigracion
 import java.io.File
 import java.time.Instant
@@ -250,7 +251,7 @@ object CentroAvisos {
             cancelarDomingo(c)
             return
         }
-        programarDomingo(c, semanaCompleta = m.semanaDeRevisionCompleta)
+        programarDomingo(c, semanaCompleta = m.semanaDeRevisionCompleta, dia = m.diaDeRevision)
         registrarPush(c, m, version)
     }
 
@@ -258,7 +259,7 @@ object CentroAvisos {
     fun alActivar(c: Context, m: ModeloApp, version: String, alcance: CoroutineScope) {
         if (!concedido(c)) return
         crearCanales(c)
-        programarDomingo(c, semanaCompleta = m.semanaDeRevisionCompleta)
+        programarDomingo(c, semanaCompleta = m.semanaDeRevisionCompleta, dia = m.diaDeRevision)
         alcance.launch { registrarPush(c, m, version) }
     }
 
@@ -266,10 +267,10 @@ object CentroAvisos {
      * Se completó (o se terminó de cargar) la semana de revisión: el aviso se vuelve a armar si ya había permiso (nunca lo
      * pide). Así quien sube todo el sábado no recibe nada el domingo (R2 de la 2.0.3).
      */
-    fun alCambiarLaSemana(c: Context, completa: Boolean) {
+    fun alCambiarLaSemana(c: Context, completa: Boolean, dia: Int) {
         if (!concedido(c)) return
         crearCanales(c)
-        programarDomingo(c, semanaCompleta = completa)
+        programarDomingo(c, semanaCompleta = completa, dia = dia)
     }
 
     /** Sin cuenta (salió), con el link vencido o en la demo: el aviso del domingo ya no es para este teléfono. */
@@ -410,8 +411,9 @@ object CentroAvisos {
         ahora: Instant = Instant.now(),
         zona: ZoneId = ZoneId.systemDefault(),
         semanaCompleta: Boolean = false,
+        dia: Int = SemanaRevision.DIA_POR_DEFECTO,
     ): Instant? {
-        val cuando = AvisoDomingo.proximo(ahora, zona, semanaCompleta)
+        val cuando = AvisoDomingo.proximo(ahora, zona, semanaCompleta, dia)
         if (!armarDomingo(c, cuando)) return null
         PreferenciasCompartidas(c).guardar(CLAVE_DOMINGO, AvisoDomingo.anotar(cuando, zona))
         return cuando

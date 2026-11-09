@@ -50,7 +50,7 @@ final class CentroAvisos: NSObject, UNUserNotificationCenterDelegate {
         guard [.authorized, .provisional, .ephemeral].contains(await permiso()) else { return }
         centro.removePendingNotificationRequests(withIdentifiers: [AvisoDomingo.id] + PreferenciasAvisos.idsViejos)
         let completa = Proveedor.modelo.semanaDeRevisionCompleta
-        guard let cuando = AvisoDomingo.proximo(desde: Date(), semanaCompleta: completa) else { return }
+        guard let cuando = AvisoDomingo.proximo(desde: Date(), semanaCompleta: completa, dia: Proveedor.modelo.diaDeRevision) else { return }
         let c = UNMutableNotificationContent()
         c.title = AvisoDomingo.titulo
         c.body = AvisoDomingo.cuerpo

@@ -346,6 +346,15 @@ fun pendientesDeLaSemana(modelo: ModeloApp): FotosProgreso.Pendientes {
     return remember(revision, fotos, checkin, subidas, enCola) { modelo.pendientesDeLaSemana }
 }
 
+/** El día de revisión del alumno (`diaDeRevision` del modelo), recomponiendo cuando llega del servidor. */
+@Composable
+fun diaDeRevision(modelo: ModeloApp): Int {
+    val revision by modelo.revision.collectAsStateWithLifecycle()
+    val esDemo by modelo.esDemo.collectAsStateWithLifecycle()
+    val dia = revision?.revisionDia?.collectAsStateWithLifecycle()?.value
+    return remember(revision, esDemo, dia) { modelo.diaDeRevision }
+}
+
 /** La semana de revisión completa (`semanaDeRevisionCompleta` del modelo), mirando el check y las fotos para recomponer. */
 @Composable
 fun semanaDeRevisionCompleta(modelo: ModeloApp): Boolean {

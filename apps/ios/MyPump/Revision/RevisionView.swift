@@ -31,6 +31,7 @@ struct RevisionView: View {
                                     progreso.frame(maxWidth: .infinity, alignment: .top)
                                 }
                                 .fixedSize(horizontal: false, vertical: true)
+                                diaDeRevision
                                 avisoPlan
                                 // Cada columna a su alto ideal: si no, la pila horizontal negocia alturas y corta textos.
                                 HStack(alignment: .top, spacing: Espacio.l) {
@@ -49,7 +50,7 @@ struct RevisionView: View {
                             VStack(alignment: .leading, spacing: Espacio.xl) {
                                 // Las dos tarjetas de Salud, juntas: son una sola cosa ("cómo vengo").
                                 VStack(spacing: Espacio.m) { recuperacion; progreso }
-                                avisoPlan; fotos; check
+                                diaDeRevision; avisoPlan; fotos; check
                             }
                                 .anchoLectura()
                         }
@@ -106,6 +107,17 @@ struct RevisionView: View {
 
     /// GEN-05: al plan publicado le falta algo. No es para el cliente sino para la captura que le manda a Mati (qué
     /// republicar): discreto, con el detalle chico y gris.
+    /// Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo). El domingo no agrega nada.
+    @ViewBuilder private var diaDeRevision: some View {
+        if let texto = SemanaRevision.textoDia(modelo.diaDeRevision) {
+            Text(texto)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("dia-de-revision")
+        }
+    }
+
     @ViewBuilder private var avisoPlan: some View {
         if let aviso = modelo.avisoPlanIncompleto {
             HStack(alignment: .top, spacing: Espacio.s) {

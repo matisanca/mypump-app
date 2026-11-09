@@ -60,4 +60,26 @@ final class AvisoRevisionUITests: XCTestCase {
         let quiero = esperado(completa: false)
         XCTAssertTrue(esperar(aviso, texto: quiero), "Agendado: \(aviso.exists ? aviso.label : "nada"); esperaba \(quiero)")
     }
+
+    /// Un alumno que revisa los sábados (`-revisionDiaDePrueba 6`, porque nativa_008 todavía no está en la base): el aviso
+    /// se agenda su sábado y la pestaña lo dice. La semana no se corre.
+    func testConDiaSabadoElAvisoSaleElSabado() {
+        app.launchArguments = ["-token", token, "-pestana", "revision", "-sinOnboarding", "YES", "-semanaDePrueba", "incompleta",
+                               "-revisionDiaDePrueba", "6", "-verAvisoDomingo", "YES"]
+        app.launch()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let permitir = springboard.alerts.buttons.matching(NSPredicate(format: "label IN %@", ["Allow", "Permitir"])).firstMatch
+        if permitir.waitForExistence(timeout: 5) { permitir.tap() }
+        let cal = Calendar.current
+        var patron = DateComponents()
+        patron.weekday = 7; patron.hour = 11; patron.minute = 0
+        let d = cal.nextDate(after: Date(), matching: patron, matchingPolicy: .nextTime)!
+        let c = cal.dateComponents([.year, .month, .day], from: d)
+        let quiero = String(format: "%04d-%02d-%02d 11:00", c.year!, c.month!, c.day!)
+        let aviso = app.staticTexts["aviso-domingo"].firstMatch
+        XCTAssertTrue(aviso.waitForExistence(timeout: 30))
+        let llego = expectation(for: NSPredicate(format: "label == %@", quiero), evaluatedWith: aviso)
+        wait(for: [llego], timeout: 30)
+        XCTAssertTrue(app.staticTexts["dia-de-revision"].firstMatch.waitForExistence(timeout: 10))
+    }
 }

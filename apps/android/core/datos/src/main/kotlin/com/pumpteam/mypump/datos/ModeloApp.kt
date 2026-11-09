@@ -510,7 +510,7 @@ class ModeloApp(
         val chat = ModeloChat(cliente, t, cola, alcance)
         _chat.value = chat
         if (enPrimerPlano) chat.empezarSondeo()
-        _revision.value = ModeloRevision(cliente, t, cola, alcance)
+        _revision.value = ModeloRevision(cliente, t, cola, alcance, d)
         _fotos.value = ModeloFotos(cliente, t, d)
         _progreso.value = ModeloProgreso(cliente, t)
         _guia.value?.cerrar()
@@ -903,6 +903,10 @@ class ModeloApp(
             val f = _fotos.value ?: return false
             return SemanaRevision.completa(r.checkinEnviado, f.posesDeLaSemana)
         }
+
+    /** El día de revisión del alumno (1 = lunes … 7 = domingo). Sin cuenta o en la demo, el domingo. */
+    val diaDeRevision: Int
+        get() = if (_esDemo.value) SemanaRevision.DIA_POR_DEFECTO else _revision.value?.revisionDia?.value ?: SemanaRevision.DIA_POR_DEFECTO
 
     private fun aplicar(c: CopiaOffline) {
         _info.value = decodificar(c.info.aJson(), ClienteInfo::desde)

@@ -22,14 +22,26 @@ class SemanaRevisionTest {
             val (h, m) = c["hora"]!!.jsonPrimitive.content.split(":").map { it.toInt() }
             val dia = c["revisionDia"]!!.jsonPrimitive.int
             val completa = c["completa"]!!.jsonPrimitive.boolean
-            assertEquals(c["semana"]!!.jsonPrimitive.content, SemanaRevision.lunes(hoy, dia), "$hoy día $dia")
+            assertEquals(c["semana"]!!.jsonPrimitive.content, FotosProgreso.lunes(hoy), "$hoy día $dia")
             assertEquals(c["aviso"]!!.jsonPrimitive.content, SemanaRevision.fechaAviso(hoy, h * 60 + m, completa, dia), "$c")
         }
     }
 
     @Test
-    fun conElDomingoEsLaSemanaIso() {
-        for (f in listOf("2026-10-26", "2026-10-29", "2026-11-01", "2026-11-02")) assertEquals(FotosProgreso.lunes(f), SemanaRevision.lunes(f))
+    fun elTextoDelDiaSoloApareceParaQuienNoRevisaElDomingo() {
+        assertEquals(null, SemanaRevision.textoDia(7))
+        assertEquals(null, SemanaRevision.textoDia(null))
+        assertEquals(null, SemanaRevision.textoDia(99))
+        assertEquals("Tu día de revisión es el sábado", SemanaRevision.textoDia(6))
+        assertEquals("Tu día de revisión es el lunes", SemanaRevision.textoDia(1))
+    }
+
+    /** Un alumno del sábado: el domingo es todavía la misma semana, y lo cargado ese domingo no le adelanta el próximo aviso. */
+    @Test
+    fun elDomingoSigueSiendoDeLaMismaSemana() {
+        assertEquals("2026-11-07", SemanaRevision.fechaAviso("2026-11-01", 600, true, 6))
+        assertEquals("2026-11-07", SemanaRevision.fechaAviso("2026-10-30", 600, true, 6))
+        assertEquals("2026-10-31", SemanaRevision.fechaAviso("2026-10-30", 600, false, 6))
     }
 
     @Test

@@ -279,4 +279,12 @@ class AgendaAvisosTest {
         assertNull(DestinoAviso.alTocar(emptySet(), null))
         assertNull(DestinoAviso.alTocar(setOf(DestinoAviso.EXTRA_DESTINO), "diet"))
     }
+
+    @Test
+    fun elAvisoSaleElDiaDelAlumno() {
+        val z = ZoneId.of("America/Argentina/Buenos_Aires")
+        val miercoles = java.time.ZonedDateTime.of(2026, 11, 4, 9, 0, 0, 0, z).toInstant()
+        assertEquals(Instant.parse("2026-11-07T14:00:00Z"), AvisoDomingo.proximo(miercoles, z, false, 6))
+        assertEquals(Instant.parse("2026-11-14T14:00:00Z"), AvisoDomingo.proximo(miercoles, z, true, 6))
+    }
 }

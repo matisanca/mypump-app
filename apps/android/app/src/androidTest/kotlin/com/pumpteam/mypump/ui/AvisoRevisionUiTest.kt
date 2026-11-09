@@ -73,4 +73,18 @@ class AvisoRevisionUiTest : PruebaUi() {
             esperarDomingo(completa = true)
         }.close()
     }
+
+    /** Un alumno que revisa los sábados: el aviso se agenda su sábado y la pestaña lo dice. La semana no se corre. */
+    @Test
+    fun conDiaSabadoElAvisoSaleElSabado() {
+        PermisoDePrueba.estado = PermisoAvisos.CONCEDIDO
+        servidor.respuestas["mypump_get_revision_dia"] = "6"
+        guardarCuenta()
+        val quiero = AvisoDomingo.anotar(AvisoDomingo.proximo(Instant.now(), zona, false, 6), zona)
+        abrir().also {
+            p.tocar(etiqueta("pestana-revision"))
+            p.nodo(etiqueta("dia-de-revision"))
+            p.esperar("el aviso agendado para $quiero") { CentroAvisos.domingoPendiente(app)?.takeIf { it == quiero } }
+        }.close()
+    }
 }

@@ -116,9 +116,9 @@ object DiaCalendario {
  * líquido, no cambios reales).
  */
 /**
- * La semana de revisión y el aviso local (R2 de la 2.0.3). La semana termina el día de revisión del alumno (1 = lunes … 7 =
- * domingo; 7 es la semana ISO de siempre): su lunes es el lunes ISO de (fecha + (7 − día)), la misma cuenta que el
- * servidor. Vectores: apps/shared/vectores/aviso_revision.json. Gemelo de `SemanaRevision` de iOS.
+ * La semana de revisión y el aviso local (R2 de la 2.0.3). La semana es SIEMPRE de lunes a domingo (`FotosProgreso.lunes`):
+ * el día de revisión del alumno (1 = lunes … 7 = domingo) solo mueve el aviso, no corre la semana. Vectores:
+ * apps/shared/vectores/aviso_revision.json. Gemelo de `SemanaRevision` de iOS.
  */
 object SemanaRevision {
     const val DIA_POR_DEFECTO = 7
@@ -129,10 +129,11 @@ object SemanaRevision {
     /** Un día fuera de 1…7 (un dato raro) vale el domingo. */
     fun normalizado(dia: Int?): Int = if (dia != null && dia in 1..7) dia else DIA_POR_DEFECTO
 
-    /** El lunes de la semana de revisión de [fecha]. */
-    fun lunes(fecha: String, dia: Int = DIA_POR_DEFECTO): String {
-        val n = DiaCalendario.numero(fecha) ?: return fecha
-        return FotosProgreso.lunes(DiaCalendario.texto(n + 7 - normalizado(dia)))
+    /** La línea de la pestaña Revisión para quien no revisa el domingo. Con el domingo (lo de siempre) no se dice nada. */
+    fun textoDia(dia: Int?): String? {
+        val d = normalizado(dia)
+        if (d == DIA_POR_DEFECTO) return null
+        return "Tu día de revisión es el ${listOf("lunes", "martes", "miércoles", "jueves", "viernes", "sábado")[d - 1]}"
     }
 
     /** Completa: lo mismo que deja el badge de Revisión en cero (el check guardado y las tres fotos de la semana). */
@@ -151,7 +152,7 @@ object SemanaRevision {
         var delta = Math.floorMod(d - dow, 7L)
         if (delta == 0L && minutos >= MINUTOS_AVISO) delta = 7
         var aviso = n + delta
-        if (completa && lunes(DiaCalendario.texto(aviso), d) == lunes(hoy, d)) aviso += 7
+        if (completa && FotosProgreso.lunes(DiaCalendario.texto(aviso)) == FotosProgreso.lunes(hoy)) aviso += 7
         return DiaCalendario.texto(aviso)
     }
 }

@@ -48,6 +48,7 @@ import com.pumpteam.mypump.diseno.PieSeccion
 import com.pumpteam.mypump.diseno.RotuloSeccion
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
+import com.pumpteam.mypump.raiz.diaDeRevision
 import com.pumpteam.mypump.raiz.semanaDeRevisionCompleta
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -99,8 +100,10 @@ fun AvisosDeLaApp(vm: ModeloAppViewModel, m: ModeloApp, enLaApp: Boolean) {
     // R2 de la 2.0.3: completar la semana de revisión (o terminar de cargarla al abrir) vuelve a armar el aviso del
     // domingo, que se saltea si ya está todo; si vuelve a quedar incompleta (la semana nueva con la app abierta), vuelve.
     val semanaCompleta = semanaDeRevisionCompleta(m)
-    LaunchedEffect(semanaCompleta, conCuenta) {
-        if (conCuenta) CentroAvisos.alCambiarLaSemana(contexto, completa = semanaCompleta)
+    // El día de revisión llega del servidor después de armar el aviso al abrir (y puede cambiarlo el equipo).
+    val diaDeRevision = diaDeRevision(m)
+    LaunchedEffect(semanaCompleta, diaDeRevision, conCuenta) {
+        if (conCuenta) CentroAvisos.alCambiarLaSemana(contexto, completa = semanaCompleta, dia = diaDeRevision)
     }
 
     // GEN-06: la primera vez con una cuenta, 1,2 s después de pintar. Nunca en la demo.

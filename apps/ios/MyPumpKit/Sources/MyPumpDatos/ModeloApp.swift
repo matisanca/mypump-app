@@ -318,7 +318,7 @@ public final class ModeloApp {
         chat?.pararSondeo()   // al cambiar de cuenta, el sondeo de la anterior no sigue
         chat = ModeloChat(cliente: cliente, token: t, outbox: cola)
         if enPrimerPlano { chat?.empezarSondeo() }
-        revision = ModeloRevision(cliente: cliente, token: t, outbox: cola)
+        revision = ModeloRevision(cliente: cliente, token: t, outbox: cola, disco: disco)
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
@@ -634,6 +634,13 @@ public final class ModeloApp {
     public var semanaDeRevisionCompleta: Bool {
         guard !esDemo, let revision, let fotos else { return false }
         return SemanaRevision.completa(checkinEnviado: revision.checkinEnviado, posesDeLaSemana: fotos.posesDeLaSemana)
+    }
+
+    /// El día de revisión del alumno (1 = lunes … 7 = domingo), para el aviso local y la línea de Revisión. Sin cuenta o en
+    /// la demo, el domingo.
+    public var diaDeRevision: Int {
+        guard !esDemo, let revision else { return SemanaRevision.diaPorDefecto }
+        return revision.revisionDia
     }
 
     private func aplicar(_ c: CopiaOffline) {
