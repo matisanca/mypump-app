@@ -73,13 +73,14 @@ async function sacarObjetoReps(path) {
   return borrarObjetosReps([path]).then(() => true, (e) => { console.error('[reps] borrar lo recién subido', e.message || e); return false; });
 }
 
-// Un objeto sin fila que el alumno ya revocó: sin esta marca el barrido no lo vería nunca.
+// Un objeto sin fila de quien ya revocó (`acepta` falso, no un simple «no puede subir»: sacarle la marca automática no
+// borra): sin esta marca el barrido no lo vería nunca.
 async function marcarBorradoSiRevoco(clienteId) {
   try {
-    if (await puedeSubirReps(clienteId)) return;
-    await fetchReps(urlFilasReps('mypump_reps_subida', { cliente_id: clienteId }), {
+    const r = await fetchReps(urlFilasReps('mypump_reps_subida', { cliente_id: clienteId, acepta: false }), {
       method: 'PATCH', headers: svcHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ borrado_pendiente: true }),
     });
+    if (!r.ok) throw new ErrorServicioReps(`marcar: HTTP ${r.status}`);
   } catch (e) {
     console.error('[reps] marcar borrado pendiente', e.message || e);
   }

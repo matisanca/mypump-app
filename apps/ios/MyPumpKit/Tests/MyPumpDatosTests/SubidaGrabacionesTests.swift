@@ -89,6 +89,16 @@ import MyPumpModelos
         #expect(await subir(t, [archivo("2026-11-07-s6-a"), archivo("2026-11-08-s6-b")]) == 1)
     }
 
+    @Test func laRevocacionDeUnLinkCaidoSeReintentaSinCuentaActiva() {
+        let si: (String) -> Bool = { _ in true }
+        #expect(SubidaGrabaciones.linkCaidoARevocar(caido: "a", activo: nil, activoListo: false, pendiente: si) == "a")   // arranque en frío
+        #expect(SubidaGrabaciones.linkCaidoARevocar(caido: "a", activo: "a", activoListo: false, pendiente: si) == "a")   // recién detectado
+        #expect(SubidaGrabaciones.linkCaidoARevocar(caido: "a", activo: "b", activoListo: true, pendiente: si) == "a")    // otra cuenta
+        #expect(SubidaGrabaciones.linkCaidoARevocar(caido: "a", activo: "a", activoListo: true, pendiente: si) == nil)
+        #expect(SubidaGrabaciones.linkCaidoARevocar(caido: "a", activo: nil, activoListo: false, pendiente: { _ in false }) == nil)
+        #expect(SubidaGrabaciones.linkCaidoARevocar(caido: nil, activo: nil, activoListo: false, pendiente: si) == nil)
+    }
+
     @Test func unArchivoQueNoEntraEnElTopeNoFrenaALosDemas() async {
         let t = TransporteProgramado { fn, cuerpo in
             if fn == "mypump_reps_estado" { return (200, #"{"automatica":true,"acepta":null}"#) }

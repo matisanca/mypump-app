@@ -31,20 +31,26 @@ enum DatosCalibracion {
 
     @MainActor static let subida = SubidaGrabaciones(cliente: Proveedor.modelo.cliente)
 
+    /// Con el link dado de baja no se sube más, pero revocar sigue valiendo: el servidor lo acepta y lo prometimos. No depende
+    /// de la fase: al arrancar de nuevo el link caído ya no está en el almacén y la app queda en `.sinToken`.
+    @MainActor static func revocarLinkCaido() {
+        let m = Proveedor.modelo
+        guard !m.conMuestras, let viejo = SubidaGrabaciones.linkCaidoARevocar(
+            caido: UserDefaults.standard.string(forKey: "mypump_token_invalido"), activo: m.token, activoListo: m.fase == .listo,
+            pendiente: { UserDefaults.standard.bool(forKey: claveRevocarPendiente(ModeloEntreno.hashCuenta($0))) }
+        ) else { return }
+        let cuenta = ModeloEntreno.hashCuenta(viejo), cliente = m.cliente
+        Task.detached(priority: .utility) {
+            guard await cliente.guardarConsentimientoReps(token: viejo, acepta: false, plataforma: "ios", app: nil) else { return }
+            UserDefaults.standard.set(false, forKey: claveRevocarPendiente(cuenta))
+        }
+    }
+
     /// Manda lo pendiente si el servidor lo habilita para esta cuenta. Sin esperar a nadie ni bloquear la pantalla: lo que
     /// no salga queda en el iPhone para la próxima.
     @MainActor static func subirSiCorresponde() {
+        revocarLinkCaido()
         let m = Proveedor.modelo
-        // Con el link dado de baja no se sube más, pero revocar sigue valiendo: el servidor lo acepta y lo prometimos.
-        if m.fase == .tokenInvalido, !m.conMuestras, let viejo = m.token ?? UserDefaults.standard.string(forKey: "mypump_token_invalido") {
-            let cuenta = ModeloEntreno.hashCuenta(viejo), cliente = m.cliente
-            guard UserDefaults.standard.bool(forKey: claveRevocarPendiente(cuenta)) else { return }
-            Task.detached(priority: .utility) {
-                guard await cliente.guardarConsentimientoReps(token: viejo, acepta: false, plataforma: "ios", app: nil) else { return }
-                UserDefaults.standard.set(false, forKey: claveRevocarPendiente(cuenta))
-            }
-            return
-        }
         // La cuenta sale del token, no de `entreno`: al cambiar de link los dos están un rato desfasados.
         guard m.fase == .listo, !m.conMuestras, let token = m.token else { return }
         let cuenta = ModeloEntreno.hashCuenta(token)

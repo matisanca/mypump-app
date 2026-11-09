@@ -113,7 +113,8 @@ const doble = createServer(async (req, res) => {
   const json = () => (crudo.length ? JSON.parse(crudo.toString()) : {});
   if (url.pathname.startsWith('/rest/v1/rpc/')) return contestar(200, rpc(url.pathname.split('/').pop(), json()));
   if (url.pathname === '/rest/v1/mypump_reps_subida' && req.method === 'PATCH') {
-    db.subida.get(url.searchParams.get('cliente_id').replace('eq.', '')).pendiente = json().borrado_pendiente;
+    const x = db.subida.get(url.searchParams.get('cliente_id').replace('eq.', ''));
+    if (x && url.searchParams.get('acepta') === `eq.${x.acepta}`) x.pendiente = json().borrado_pendiente;
     return contestar(200, []);
   }
   if (url.pathname === '/rest/v1/mypump_reps_grabaciones') {
@@ -496,6 +497,19 @@ test('sin registrar, sin poder borrar y ya revocó: queda marcado para el barrid
   assert.equal((await sube).status, 502);
   assert.equal(db.subida.get('cli-a').pendiente, true);
   assert.deepEqual(rpc('mypump_reps_para_borrar', {}), ['cli-a']);
+});
+
+test('sin registrar y sin poder borrar, sin haber revocado: no se marca nada para borrar', async () => {
+  const r = retener(/POST \/storage\/v1\/object\/reps-calibracion\//);
+  const sube = subir(mpcal(), TOK_AUTO);
+  await r.llegada;
+  db.subida.get('cli-auto').automatica = false;
+  fallar(/POST \/rest\/v1\/mypump_reps_grabaciones/, 503);
+  fallar(/DELETE \/storage\/v1\/object\/reps-calibracion/, 503);
+  r.soltar();
+  assert.equal((await sube).status, 502);
+  assert.ok(!db.subida.get('cli-auto').pendiente);
+  assert.deepEqual(rpc('mypump_reps_para_borrar', {}), []);
 });
 
 test('rechequeo falla y además revocó: el barrido termina el borrado', async () => {

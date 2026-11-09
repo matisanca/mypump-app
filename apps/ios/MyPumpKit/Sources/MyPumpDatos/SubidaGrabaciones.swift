@@ -102,6 +102,12 @@ public actor SubidaGrabaciones {
 
     public static func sha256(_ d: Data) -> String { SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined() }
 
+    /// El link caído al que todavía se le debe una revocación. nil si no hay, o si es el activo y anda: de ese se ocupa la vuelta normal.
+    public static func linkCaidoARevocar(caido: String?, activo: String?, activoListo: Bool, pendiente: (String) -> Bool) -> String? {
+        guard let caido, !caido.isEmpty, !(caido == activo && activoListo), pendiente(caido) else { return nil }
+        return caido
+    }
+
     /// Los archivos de esta cuenta. `marcas` dice de quién es cada archivo recibido. Los viejos, sin marca, solo los toma
     /// la cuenta que el servidor habilitó para eso, y solo si es la única con el modo prendido en este iPhone (`prendidas`).
     public static func deLaCuenta(_ urls: [URL], cuenta: String, marcas: [String: String], prendidas: [String], estado: EstadoSubidaReps) -> [URL] {
