@@ -168,6 +168,7 @@ struct DiaPasadoDietaTests {
     @Test func loPendienteDeEseDiaGanaALoDelServidor() async {
         let s = Servidor(); let m = modelo(s); await m.cargar()
         await m.irADia(hace(1))
+        s.sinRed = true   // si la marca llegara al servidor ya no sería «lo pendiente» y esto dependería de cuándo sale la cola
         await m.marcar("desayuno", .comido, opcion: 1)
         await m.irADia(nil)
         s.ponerMarca(hace(1), "desayuno", "A", "saltado")   // algo viejo o de otro lado
