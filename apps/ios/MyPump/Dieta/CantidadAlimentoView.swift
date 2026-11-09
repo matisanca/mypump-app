@@ -60,7 +60,7 @@ struct CantidadAlimentoView: View {
         self.opciones = opciones
         self.enHoja = enHoja
         self.alTerminar = alTerminar
-        let existente = modelo.ajustesDeHoy[pedido.comidaId]
+        let existente = modelo.ajustesVista[pedido.comidaId]
         var q = 100.0, m = Medida.gramo, ts = Self.nuevoTs(existente)
         switch pedido.que {
         case .nuevo(let c):
@@ -97,7 +97,7 @@ struct CantidadAlimentoView: View {
     /// en «Ajustar esta comida»). Sin ajuste, uno nuevo con compensar prendido.
     static func base(_ modelo: ModeloApp, _ comidaId: String, opciones: [String: Int]) -> AjusteComida {
         let opcion = modelo.comidasParaAjustar(opciones: opciones).first { $0.id == comidaId }?.opcion ?? 0
-        var a = modelo.ajustesDeHoy[comidaId] ?? AjusteComida(opcion: opcion)
+        var a = modelo.ajustesVista[comidaId] ?? AjusteComida(opcion: opcion)
         if a.opcion != opcion { a.opcion = opcion; a.cantidades = [:]; a.anclas = [:] }
         return a
     }
@@ -115,7 +115,7 @@ struct CantidadAlimentoView: View {
     private var candidato: AgregadosComida.Candidato? {
         switch pedido.que {
         case .nuevo(let c): c
-        case .agregado(let t): modelo.ajustesDeHoy[comidaId]?.agregados.first { $0.ts == t }?.candidato
+        case .agregado(let t): modelo.ajustesVista[comidaId]?.agregados.first { $0.ts == t }?.candidato
         case .delPlan: nil
         }
     }
@@ -171,7 +171,7 @@ struct CantidadAlimentoView: View {
     }
 
     private var ajustesConBorrador: [String: AjusteComida] {
-        var aj = modelo.ajustesDeHoy
+        var aj = modelo.ajustesVista
         let b = borrador
         aj[comidaId] = b.neutro ? nil : b
         return aj
@@ -209,7 +209,7 @@ struct CantidadAlimentoView: View {
                     Text("Cantidad")
                 } footer: {
                     if let p = delPlan?.plan {
-                        Text("En el plan: \(FormatoDieta.cantidad(p.qty, p.unidad)). Vale solo por hoy.")
+                        Text("En el plan: \(FormatoDieta.cantidad(p.qty, p.unidad)). \(modelo.enDiaPasado ? "Vale solo para ese día." : "Vale solo por hoy.")")
                     } else if let casera = textoCasera(a) {
                         Text("≈ \(casera)")
                     }
@@ -217,7 +217,7 @@ struct CantidadAlimentoView: View {
                 Section {
                     if case .nuevo = pedido.que {
                         Picker("Comida", selection: Binding(get: { comidaId }, set: { elegirComida($0) })) {
-                            ForEach(comidas.filter { modelo.ajustesDeHoy[$0.id]?.omitida != true }, id: \.id) { Text($0.nombre).tag($0.id) }
+                            ForEach(comidas.filter { modelo.ajustesVista[$0.id]?.omitida != true }, id: \.id) { Text($0.nombre).tag($0.id) }
                         }
                         .accessibilityIdentifier("cantidad-comida")
                     } else {
@@ -408,7 +408,7 @@ struct CantidadAlimentoView: View {
     /// Otra comida destino (solo al agregar): su compensar es el de su ajuste.
     private func elegirComida(_ id: String) {
         comidaId = id
-        compensar = modelo.ajustesDeHoy[id]?.compensar ?? true
+        compensar = modelo.ajustesVista[id]?.compensar ?? true
         aviso = nil
     }
 
@@ -431,7 +431,7 @@ struct CantidadAlimentoView: View {
                 .accessibilityIdentifier("cantidad-borrar")
             }
         case .delPlan(let i):
-            if modelo.ajustesDeHoy[comidaId]?.cantidades[String(i)] != nil {
+            if modelo.ajustesVista[comidaId]?.cantidades[String(i)] != nil {
                 Section {
                     Button("Como el plan") {
                         var a = borrador
@@ -451,7 +451,7 @@ struct CantidadAlimentoView: View {
 
     private func guardar() {
         let a = borrador
-        var dia = modelo.ajustesDeHoy
+        var dia = modelo.ajustesVista
         dia[comidaId] = a
         if case .delPlan = pedido.que {} else if let m = AgregadosComida.motivoNoEntra(dia, comidaId: comidaId) {
             aviso = m

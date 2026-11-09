@@ -8,6 +8,8 @@ import MyPumpDatos
 struct ComidaLibreView: View {
     let modelo: ModeloApp
     let estimacion: EstimacionPlato?
+    /// El día en que se empezó a cargar (se fija al abrir o al sacar la foto: mientras la IA mira, el cliente puede cambiar de día).
+    let fecha: String?
 
     @Environment(\.dismiss) private var cerrar
     @State private var descripcion: String
@@ -24,7 +26,8 @@ struct ComidaLibreView: View {
 
     enum Campo: Hashable { case descripcion, kcal, prot, carb, fat, gramos(Int) }
 
-    init(modelo: ModeloApp, estimacion: EstimacionPlato?) {
+    init(modelo: ModeloApp, estimacion: EstimacionPlato?, fecha: String? = nil) {
+        self.fecha = fecha
         self.modelo = modelo
         self.estimacion = estimacion
         let b = ComidaLibreNueva.bases(estimacion)
@@ -89,6 +92,13 @@ struct ComidaLibreView: View {
                     campo("Grasas", texto: $fat, unidad: "g", campo: .fat)
                 } header: {
                     Text("Valores")
+                }
+                if let fecha, fecha != FechaLocal.hoy() {
+                    Section {
+                        Label("Se carga en: \(DiasDieta.rotuloLargo(fecha))", systemImage: "calendar.badge.clock")
+                            .font(.footnote.weight(.semibold)).foregroundStyle(Color.alerta)
+                            .accessibilityIdentifier("libre-fecha")
+                    }
                 }
                 if let error {
                     Section {
@@ -161,7 +171,7 @@ struct ComidaLibreView: View {
             error = nil
             guardando = true
             defer { guardando = false }
-            switch await modelo.crearComidaLibre(datos) {
+            switch await modelo.crearComidaLibre(datos, fecha: fecha) {
             case .success: cerrar()
             case .failure(let e):
                 error = e.clase == .red ? "Sin conexión: probá de nuevo cuando tengas señal." : "No se pudo guardar. Probá de nuevo."

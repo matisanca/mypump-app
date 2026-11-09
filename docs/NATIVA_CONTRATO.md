@@ -47,7 +47,10 @@
 - **Valores comunes:**
   - `p_token`: el token guardado.
   - `p_fecha`: la fecha **local** del teléfono en `YYYY-MM-DD`, calculada en el momento de la acción (gregoriano,
-    `en_US_POSIX`). El servidor acepta de −7 a +1 días respecto de hoy en Argentina.
+    `en_US_POSIX`). El servidor acepta de −7 a +1 días respecto de hoy en Argentina, **salvo `marcar_comida`, que acepta
+    de −2 a 0** (verificado en la base el 9-nov-2026; la migración 028 del repo dice otra cosa y no está vigente). Las apps
+    miran la clave `dieta_dias_marcar` de `mypump_get_app_config` (sin la clave, 2). El SQL que la ensancha a 7 días está
+    propuesto, sin aplicar, en `supabase/propuestas/nativa_marcar_comida_7_dias.sql`.
   - `p_semana`: `semana_actual` de `get_rutina_activa`. `semana_offset` solo cambia rótulos.
   - Los ids (`p_dia_id`, `p_ejercicio_id`, `p_comida_id`) son los de la estructura publicada. `p_ejercicio_id` es el id
     del **lugar** en la rutina (`slug-d<n>-<i>`), aunque haya una sustitución.

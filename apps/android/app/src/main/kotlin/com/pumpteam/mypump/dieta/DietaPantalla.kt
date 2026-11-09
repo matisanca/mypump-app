@@ -53,6 +53,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -78,6 +79,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.ajustesVista
+import com.pumpteam.mypump.datos.comidasVista
+import com.pumpteam.mypump.datos.diasMarcar
+import com.pumpteam.mypump.datos.efectivoVista
+import com.pumpteam.mypump.datos.elegirTipoDia
+import com.pumpteam.mypump.datos.fechaVista
+import com.pumpteam.mypump.datos.fechasDieta
+import com.pumpteam.mypump.datos.irADia
+import com.pumpteam.mypump.datos.marcasVista
+import com.pumpteam.mypump.datos.objetivoVista
+import com.pumpteam.mypump.datos.refrescarDiaPasado
+import com.pumpteam.mypump.datos.tipoDiaVista
+import com.pumpteam.mypump.datos.vistaEditable
+import com.pumpteam.mypump.datos.vistaPuedeMarcar
 import com.pumpteam.mypump.diseno.Alerta
 import com.pumpteam.mypump.diseno.AnchoLectura
 import com.pumpteam.mypump.diseno.BotonAlerta
@@ -105,6 +120,7 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.AjustePorciones
 import com.pumpteam.mypump.reglas.AlimentoAgregado
 import com.pumpteam.mypump.reglas.ConsumoDelDia
+import com.pumpteam.mypump.reglas.DiasDieta
 import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.MarcaComida
 import com.pumpteam.mypump.reglas.PorcionCasera
@@ -128,6 +144,9 @@ import kotlinx.coroutines.launch
  *
  * Los ajustes de porciones del día (feedback del 20-oct): «Ajustar esta comida» abre [HojaAjustarComida] (sumar o restar
  * kcal, cantidades a mano, «Hoy no la como», compensar en la siguiente) y las tarjetas muestran las porciones de hoy.
+ *
+ * Con la tira de días de arriba (DiaDietaVistas.kt) todo esto se puede cargar en un día anterior: lo que dibuja la pantalla
+ * es el día a la vista (DiaPasadoDieta.kt del modelo); lo de hoy no cambia.
  */
 @Composable
 fun DietaPantalla(modelo: ModeloApp) {
@@ -139,29 +158,48 @@ fun DietaPantalla(modelo: ModeloApp) {
     val sinRedEn by modelo.sinRedEn.collectAsStateWithLifecycle()
     val ajustesSinGuardar by modelo.ajustesSinGuardar.collectAsStateWithLifecycle()
     // DIE-04: la opción elegida vive en memoria (y sobrevive a cambiar de pestaña o rotar); al abrir la app vuelve a A.
-    var opciones by rememberSaveable { mutableStateOf(mapOf<String, Int>()) }
-    val comidas = remember(dieta, tipoDia) { modelo.comidasDelDia }
+    // Por día: cada uno tiene la suya (la de ayer no cambia lo que se ve hoy).
+    var opcionesPorDia by rememberSaveable { mutableStateOf(mapOf<String, Map<String, Int>>()) }
+    val diaPasado by modelo.diaPasado.collectAsStateWithLifecycle()
+    val esHoy = diaPasado == null
+    val comidas = remember(dieta, tipoDia, esHoy, diaPasado?.tipoDia) { modelo.comidasVista }
     // «Comí» / «Salté» de hoy (D25). Con el día como clave: pasada la medianoche no quedan las de ayer.
     val marcasGuardadas by modelo.marcas.collectAsStateWithLifecycle()
     val libresDeHoy by modelo.comidasLibres.collectAsStateWithLifecycle()
     val hoy = FechaLocal.hoy()
-    val marcas = remember(marcasGuardadas, hoy) { modelo.marcasDeHoy }
+    val marcas = remember(marcasGuardadas, hoy, diaPasado) { modelo.marcasVista }
+    val ajustesVistos = remember(ajustes, hoy, diaPasado) { modelo.ajustesVista }
+
+    // Las que se eligieron en el día a la vista, leídas al momento (ver `opcionVigente`).
+    fun opciones(): Map<String, Int> = opcionesPorDia[modelo.fechaVista].orEmpty()
+
+    fun fijarOpcion(comidaId: String, o: Int) {
+        opcionesPorDia = opcionesPorDia + (modelo.fechaVista to opciones() + (comidaId to o))
+    }
+
     // La opción que se ve de una comida: la que se eligió acá, si no la que comió («Comí»), si no la del ajuste de hoy, si
     // no A. Dentro de las que hay (si Mati vuelve a publicar con menos opciones, la del ajuste puede no existir). Se lee
     // al momento: los toques que llegan antes de recomponer (la lambda de la composición anterior) ven la de ahora.
     fun opcionVigente(c: Comida): Int =
-        (opciones[c.id] ?: ConsumoDelDia.opcionDeLaMarca(c, modelo.marcasDeHoy[c.id]) ?: modelo.ajustesDeHoy[c.id]?.opcion ?: 0)
+        (opciones()[c.id] ?: ConsumoDelDia.opcionDeLaMarca(c, modelo.marcasVista[c.id]) ?: modelo.ajustesVista[c.id]?.opcion ?: 0)
             .coerceIn(0, max(c.opciones.size - 1, 0))
-    val vigentes = remember(comidas, opciones, ajustes, marcas) { comidas.associate { c -> c.id to opcionVigente(c) } }
+    val vigentes = remember(comidas, opcionesPorDia, ajustesVistos, marcas, diaPasado?.fecha) { comidas.associate { c -> c.id to opcionVigente(c) } }
     // El día con las opciones, los reemplazos y los ajustes de hoy: lo que dibujan las tarjetas y la cabecera.
-    val dia = remember(comidas, vigentes, swaps, ajustes) { modelo.diaAjustado(vigentes) }
+    val dia = remember(comidas, vigentes, swaps, ajustesVistos) { modelo.diaAjustado(vigentes) }
     // Lo comido hoy (DIE-07): las marcadas «Comí» con la opción de la marca, menos lo destildado, más las comidas libres.
-    val consumo = remember(comidas, vigentes, swaps, ajustes, marcas, libresDeHoy) { modelo.consumo(vigentes) }
+    val consumo = remember(comidas, vigentes, swaps, ajustesVistos, marcas, libresDeHoy, diaPasado) { modelo.consumo(vigentes) }
     var ajustando by rememberSaveable { mutableStateOf<String?>(null) }
     // 2.0.3 (D1 y D2): la comida a la que se agrega un alimento y la cantidad que se toca («comida|plan|i», «comida|agregado|ts»).
     var agregandoA by rememberSaveable { mutableStateOf<String?>(null) }
     var cantidadAbierta by rememberSaveable { mutableStateOf<String?>(null) }
-    val objetivo = remember(dieta, tipoDia) { modelo.objetivo }
+    // La hoja de copiar a hoy lo cargado otro día: desde qué día abre.
+    var copiandoDe by rememberSaveable { mutableStateOf<String?>(null) }
+    // El día de las hojas de edición. Se guarda con ellas: al restaurar tras matar el proceso se abre hoy, y una hoja de ayer
+    // guardaría en otra fecha. Si el día cambia (medianoche, volver a hoy) se cierran sin guardar.
+    val fechaVista = modelo.fechaVista
+    var fechaHojas by rememberSaveable { mutableStateOf(fechaVista) }
+    val hojasVigentes = fechaHojas == fechaVista
+    val objetivo = remember(dieta, tipoDia, esHoy, diaPasado?.tipoDia) { modelo.objetivoVista }
     val tipos = dieta?.estructura?.tiposDia.orEmpty()
     val alcance = LocalAlcanceApp.current
     // ── Dieta con escritura (DIE-08..18) ──
@@ -170,18 +208,27 @@ fun DietaPantalla(modelo: ModeloApp) {
     var porciones by rememberSaveable { mutableStateOf(setOf<String>()) }
     var reemplazando by rememberSaveable { mutableStateOf<String?>(null) }
     var revirtiendo by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(fechaVista) {
+        if (fechaHojas == fechaVista) return@LaunchedEffect
+        ajustando = null
+        agregandoA = null
+        cantidadAbierta = null
+        reemplazando = null
+        revirtiendo = null
+        fechaHojas = fechaVista
+    }
     val libres = rememberEstadoComidasLibres(modelo)
     var recargando by remember { mutableStateOf(false) }
 
     // Elegir otra opción de una comida (el selector, o «Ver la opción X» de una comida marcada).
     fun elegir(c: Comida, nueva: Int) {
-        opciones = opciones + (c.id to nueva)
+        fijarOpcion(c.id, nueva)
         // Marcada «Comí» (D25): mirar otra opción no toca el ajuste. Lo comido es la opción de la marca, con sus porciones
         // de hoy (las cantidades a mano no se descartan por mirar).
-        if (modelo.marcasDeHoy[c.id]?.estado == MarcaComida.Estado.COMIDO) return
+        if (modelo.marcasVista[c.id]?.estado == MarcaComida.Estado.COMIDO) return
         // Las cantidades a mano eran de la otra opción y se descartan (las kcal sumadas o restadas, «no la como» y
         // compensar siguen).
-        val a = modelo.ajustesDeHoy[c.id]
+        val a = modelo.ajustesVista[c.id]
         if (a != null) {
             if (a.opcion != nueva) {
                 val vistas = vigentes + (c.id to nueva)
@@ -197,7 +244,7 @@ fun DietaPantalla(modelo: ModeloApp) {
         alcance.launch {
             recargando = true
             try {
-                modelo.cargar()
+                if (modelo.diaPasado.value != null) modelo.refrescarDiaPasado() else modelo.cargar()
             } finally {
                 recargando = false
             }
@@ -207,66 +254,100 @@ fun DietaPantalla(modelo: ModeloApp) {
     MarcoPantalla(
         "Dieta",
         acciones = {
-            if (tipos.size > 1) SelectorTipoDia(tipos, elegido = tipoDia ?: tipos[0].id, alElegir = { modelo.tipoDia = it })
+            if (tipos.size > 1) SelectorTipoDia(tipos, elegido = (if (esHoy) tipoDia else diaPasado?.tipoDia) ?: tipos[0].id, habilitado = modelo.vistaEditable, alElegir = { modelo.elegirTipoDia(it) })
         },
     ) { relleno ->
         Box(Modifier.padding(relleno.sinAbajo()).fillMaxSize()) {
             when {
                 fase == ModeloApp.Fase.LISTO && comidas.isNotEmpty() -> {
                     val elegidas = ModeloApp.sumar(dia.values.flatMap { it.todos })
-                    Recargable(recargando, ::recargar) {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize().testTag("dieta-lista"),
-                            contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xxs, bottom = Espacio.xl + relleno.calculateBottomPadding()),
-                            verticalArrangement = Arrangement.spacedBy(Espacio.m),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            item(key = "cabecera") {
-                                Cabecera(objetivo, consumo, elegidas, Modifier.widthIn(max = AnchoLectura), conAjustes = modelo.ajustesDeHoy.isNotEmpty())
-                            }
-                            item(key = "banner") { BannerRevision(modelo, Modifier.widthIn(max = AnchoLectura)) }
-                            if (ajustesSinGuardar) {
-                                // Revisión del 3-nov: un día que la base rechazó quedaba solo en el teléfono, sin que nadie lo supiera.
-                                item(key = "ajustes-sin-guardar") { AvisoSinGuardar(Modifier.widthIn(max = AnchoLectura)) }
-                            }
-                            itemsIndexed(comidas, key = { i, c -> "$i-${c.id}" }) { n, c ->
-                                val o = vigentes[c.id] ?: 0
-                                TarjetaComida(
-                                    modelo = modelo,
-                                    comida = c,
-                                    numero = n + 1,
-                                    opcion = o,
-                                    swaps = swaps,
-                                    alElegir = { nueva -> elegir(c, nueva) },
-                                    marca = marcas[c.id],
-                                    // Con el alcance de la app: la marca sale aunque se cambie de pestaña al toque.
-                                    alMarcar = { e ->
-                                        // La opción que se ve queda fija: si venía de la marca, desmarcar o «Salté» no la
-                                        // cambian (en la web tampoco salta) y un «Comí» después es con la que se mira.
-                                        val actual = opcionVigente(c)
-                                        if (c.id !in opciones) opciones = opciones + (c.id to actual)
-                                        alcance.launch { modelo.marcar(c.id, e, actual) }
-                                    },
-                                    alTildar = { i -> alcance.launch { modelo.alternarAlimento(c.id, i) } },
-                                    modifier = Modifier.widthIn(max = AnchoLectura),
-                                    porciones = porciones,
-                                    alTocarMano = { k -> porciones = if (k in porciones) porciones - k else porciones + k },
-                                    alReemplazar = { reemplazando = it },
-                                    alRevertir = { revirtiendo = it },
-                                    ajustada = dia[c.id],
-                                    propia = ajustes.containsKey(c.id) && modelo.ajustesDeHoy.containsKey(c.id),
-                                    alAjustar = { ajustando = c.id },
-                                    agregados = modelo.ajustesDeHoy[c.id]?.takeUnless { it.omitida }?.agregados.orEmpty(),
-                                    alAgregar = { agregandoA = c.id },
-                                    alCantidad = { i -> cantidadAbierta = PedidoCantidad(c.id, QueCantidad.DelPlan(i)).clave() },
-                                    alAgregado = { ts -> cantidadAbierta = PedidoCantidad(c.id, QueCantidad.Agregado(ts)).clave() },
+                    val fechas = modelo.fechasDieta
+                    val editable = modelo.vistaEditable
+                    val puedeMarcar = modelo.vistaPuedeMarcar
+                    Column(Modifier.fillMaxSize()) {
+                        // La tira de días, fija al scrollear y, mirando otro día, el aviso con la vuelta a hoy.
+                        if (fechas.isNotEmpty()) {
+                            SelectorDiaDieta(fechas, modelo.fechaVista, alElegir = { f -> alcance.launch { modelo.irADia(f) } })
+                            diaPasado?.let { p ->
+                                BannerDiaPasado(
+                                    p,
+                                    puedeMarcar = puedeMarcar || !editable,
+                                    diasMarcar = modelo.diasMarcar,
+                                    copiar = { copiandoDe = p.fecha },
+                                    volver = { alcance.launch { modelo.irADia(null) } },
                                 )
                             }
-                            // Las comidas libres, solo con cuenta: en la demo no están (como en la web).
-                            if (!esDemo && modelo.token != null) {
-                                item(key = "comidas-libres") { ComidasLibresSeccion(modelo, libres, Modifier.widthIn(max = AnchoLectura)) }
+                        }
+                        Box(Modifier.weight(1f).fillMaxWidth()) {
+                            Recargable(recargando, ::recargar) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize().testTag("dieta-lista"),
+                                    contentPadding = PaddingValues(start = Espacio.m, end = Espacio.m, top = Espacio.xxs, bottom = Espacio.xl + relleno.calculateBottomPadding()),
+                                    verticalArrangement = Arrangement.spacedBy(Espacio.m),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    item(key = "cabecera") {
+                                        Cabecera(objetivo, consumo, elegidas, Modifier.widthIn(max = AnchoLectura), conAjustes = ajustesVistos.isNotEmpty(), esHoy = esHoy)
+                                    }
+                                    if (esHoy) {
+                                        item(key = "banner") { BannerRevision(modelo, Modifier.widthIn(max = AnchoLectura)) }
+                                        if (fechas.isNotEmpty()) {
+                                            item(key = "copiar-de-otro-dia") {
+                                                BotonDeTarjeta(
+                                                    Iconos.Documento, "Copiar de otro día", Modifier.widthIn(max = AnchoLectura).fillMaxWidth().testTag("copiar-de-otro-dia"),
+                                                    alTocar = { copiandoDe = DiasDieta.sumar(hoy, -1) },
+                                                )
+                                            }
+                                        }
+                                    }
+                                    if (diaPasado?.sinGuardar ?: ajustesSinGuardar) {
+                                        // Revisión del 3-nov: un día que la base rechazó quedaba solo en el teléfono, sin que nadie lo supiera.
+                                        item(key = "ajustes-sin-guardar") { AvisoSinGuardar(esHoy, Modifier.widthIn(max = AnchoLectura)) }
+                                    }
+                                    itemsIndexed(comidas, key = { i, c -> "$i-${c.id}" }) { n, c ->
+                                        val o = vigentes[c.id] ?: 0
+                                        TarjetaComida(
+                                            modelo = modelo,
+                                            comida = c,
+                                            numero = n + 1,
+                                            opcion = o,
+                                            swaps = swaps,
+                                            alElegir = { nueva -> elegir(c, nueva) },
+                                            marca = marcas[c.id],
+                                            // Con el alcance de la app: la marca sale aunque se cambie de pestaña al toque.
+                                            alMarcar = { e ->
+                                                // La opción que se ve queda fija: si venía de la marca, desmarcar o «Salté» no la
+                                                // cambian (en la web tampoco salta) y un «Comí» después es con la que se mira.
+                                                val actual = opcionVigente(c)
+                                                if (c.id !in opciones()) fijarOpcion(c.id, actual)
+                                                alcance.launch { modelo.marcar(c.id, e, actual) }
+                                            },
+                                            alTildar = { i -> alcance.launch { modelo.alternarAlimento(c.id, i) } },
+                                            modifier = Modifier.widthIn(max = AnchoLectura),
+                                            porciones = porciones,
+                                            alTocarMano = { k -> porciones = if (k in porciones) porciones - k else porciones + k },
+                                            alReemplazar = { reemplazando = it },
+                                            alRevertir = { revirtiendo = it },
+                                            ajustada = dia[c.id],
+                                            propia = ajustesVistos.containsKey(c.id),
+                                            alAjustar = { ajustando = c.id },
+                                            agregados = ajustesVistos[c.id]?.takeUnless { it.omitida }?.agregados.orEmpty(),
+                                            alAgregar = { agregandoA = c.id },
+                                            alCantidad = { i -> cantidadAbierta = PedidoCantidad(c.id, QueCantidad.DelPlan(i)).clave() },
+                                            alAgregado = { ts -> cantidadAbierta = PedidoCantidad(c.id, QueCantidad.Agregado(ts)).clave() },
+                                            editable = editable,
+                                            puedeMarcar = puedeMarcar,
+                                            esHoy = esHoy,
+                                        )
+                                    }
+                                    // Las comidas libres, solo con cuenta: en la demo no están (como en la web).
+                                    if (!esDemo && modelo.token != null) {
+                                        item(key = "comidas-libres") { ComidasLibresSeccion(modelo, libres, Modifier.widthIn(max = AnchoLectura)) }
+                                    }
+                                    item(key = "pie") { PieRespaldo(OrigenRespaldo.DIETA, Modifier.widthIn(max = AnchoLectura).padding(top = Espacio.xxs)) }
+                                }
                             }
-                            item(key = "pie") { PieRespaldo(OrigenRespaldo.DIETA, Modifier.widthIn(max = AnchoLectura).padding(top = Espacio.xxs)) }
+                            diaPasado?.takeIf { it.cargando || it.sinRed }?.let { p -> EstadoDiaPasado(p, recargando, ::recargar) }
                         }
                     }
                     if (libres.analizando) AnalizandoFoto("Analizando el plato…")
@@ -331,21 +412,41 @@ fun DietaPantalla(modelo: ModeloApp) {
         )
     }
     HojasComidasLibres(modelo, libres)
+    copiandoDe?.let { o -> key(o) { HojaCopiarDia(modelo, o, alCerrar = { copiandoDe = null }) } }
     // La comida que se ajusta ya no está (tirar para actualizar, otro tipo de día): la hoja se cierra.
     LaunchedEffect(ajustando, comidas) { if (ajustando != null && comidas.none { it.id == ajustando }) ajustando = null }
-    ajustando?.let { id ->
-        HojaAjustarComida(modelo, comidaId = id, opciones = vigentes, alCerrar = { ajustando = null })
+    ajustando?.takeIf { hojasVigentes }?.let { id ->
+        HojaAjustarComida(modelo, comidaId = id, fecha = fechaHojas, opciones = vigentes, alCerrar = { ajustando = null })
     }
     LaunchedEffect(agregandoA, comidas) { if (agregandoA != null && comidas.none { it.id == agregandoA }) agregandoA = null }
-    agregandoA?.let { id ->
-        HojaAgregarAlimento(modelo, comidaId = id, opciones = vigentes, alCerrar = { agregandoA = null })
+    agregandoA?.takeIf { hojasVigentes }?.let { id ->
+        HojaAgregarAlimento(modelo, comidaId = id, fecha = fechaHojas, opciones = vigentes, alCerrar = { agregandoA = null })
     }
     val pedidoCantidad = cantidadAbierta?.let { PedidoCantidad.desde(it) }
     LaunchedEffect(cantidadAbierta, comidas) {
         if (cantidadAbierta != null && (pedidoCantidad == null || comidas.none { it.id == pedidoCantidad.comidaId })) cantidadAbierta = null
     }
-    pedidoCantidad?.let { p ->
-        key(cantidadAbierta) { HojaCantidad(modelo, p, opciones = vigentes, alCerrar = { cantidadAbierta = null }) }
+    pedidoCantidad?.takeIf { hojasVigentes }?.let { p ->
+        key(cantidadAbierta) { HojaCantidad(modelo, p, fechaHojas, opciones = vigentes, alCerrar = { cantidadAbierta = null }) }
+    }
+}
+
+/** El día anterior todavía sin leer, o sin señal para traerlo: tapa la lista, que sería un día vacío. */
+@Composable
+private fun EstadoDiaPasado(p: com.pumpteam.mypump.datos.DiaPasado, recargando: Boolean, alReintentar: () -> Unit) {
+    val c = MyPump.colores
+    Box(Modifier.fillMaxSize().background(c.fondo), contentAlignment = Alignment.Center) {
+        if (p.cargando) {
+            CircularProgressIndicator(Modifier.testTag("dia-cargando"), color = c.marcaTexto)
+        } else {
+            EstadoVacio(
+                icono = Iconos.SinWifi,
+                titulo = "No pudimos traer ese día",
+                texto = "Para ver o cargar un día anterior hace falta conexión.",
+                accion = { BotonSecundario("Reintentar", alTocar = alReintentar, compacto = true, cargando = recargando) },
+                modifier = Modifier.testTag("dia-sin-red"),
+            )
+        }
     }
 }
 
@@ -388,11 +489,11 @@ private fun Recargable(recargando: Boolean, alRecargar: () -> Unit, contenido: @
 
 /** DIE-01: el tipo de día (entreno/descanso) en dietas con `tipos_dia`; se guarda para todo el teléfono (`mypump_tipo_dia`). */
 @Composable
-private fun SelectorTipoDia(tipos: List<TipoDia>, elegido: String, alElegir: (String) -> Unit) {
+private fun SelectorTipoDia(tipos: List<TipoDia>, elegido: String, habilitado: Boolean, alElegir: (String) -> Unit) {
     var abierto by remember { mutableStateOf(false) }
     val actual = tipos.firstOrNull { it.id == elegido } ?: tipos[0]
     Box {
-        TextButton(onClick = { abierto = true }, modifier = Modifier.testTag("tipo-dia")) {
+        TextButton(onClick = { abierto = true }, enabled = habilitado, modifier = Modifier.testTag("tipo-dia")) {
             Icon(Iconos.Calendario, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(actual.nombre ?: actual.id, fontWeight = FontWeight.SemiBold)
@@ -421,7 +522,7 @@ private fun SelectorTipoDia(tipos: List<TipoDia>, elegido: String, alElegir: (St
  * Abajo, cuántas comidas van, cuánto suman las opciones elegidas contra el objetivo y el respaldo (DIE-03).
  */
 @Composable
-private fun Cabecera(objetivo: Macros, consumo: ConsumoDelDia.Consumo, elegidas: Macros, modifier: Modifier = Modifier, conAjustes: Boolean = false) {
+private fun Cabecera(objetivo: Macros, consumo: ConsumoDelDia.Consumo, elegidas: Macros, modifier: Modifier = Modifier, conAjustes: Boolean = false, esHoy: Boolean = true) {
     val c = MyPump.colores
     val meta = objetivo.kcal ?: 0.0
     val delta = if (meta > 0) ((elegidas.kcal ?: 0.0) - meta) / meta * 100 else 0.0
@@ -438,7 +539,7 @@ private fun Cabecera(objetivo: Macros, consumo: ConsumoDelDia.Consumo, elegidas:
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             if (maxWidth >= 520.dp * max(1f, escala)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    AnilloConsumido(consumo.kcal, meta)
+                    AnilloConsumido(consumo.kcal, meta, esHoy = esHoy)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         for ((m, color) in macros) FilaMacro(m.first, m.second, m.third, color)
                     }
@@ -447,21 +548,21 @@ private fun Cabecera(objetivo: Macros, consumo: ConsumoDelDia.Consumo, elegidas:
                 // Letra muy grande: ni las tres columnas entran (quedaban en "Proteí", "Carbo"). Van una debajo de la otra,
                 // como en iOS con la letra de accesibilidad.
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    AnilloConsumido(consumo.kcal, meta, lado = 200.dp)
+                    AnilloConsumido(consumo.kcal, meta, lado = 200.dp, esHoy = esHoy)
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         for ((m, color) in macros) ColumnaMacro(m.first, m.second, m.third, color, Modifier.fillMaxWidth())
                     }
                 }
             } else {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    AnilloConsumido(consumo.kcal, meta)
+                    AnilloConsumido(consumo.kcal, meta, esHoy = esHoy)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         for ((m, color) in macros) ColumnaMacro(m.first, m.second, m.third, color, Modifier.weight(1f))
                     }
                 }
             }
         }
-        RenglonComidas(consumo)
+        RenglonComidas(consumo, esHoy)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("opciones-elegidas")) {
             val dentro = abs(delta) <= 5
             Icon(
@@ -472,7 +573,7 @@ private fun Cabecera(objetivo: Macros, consumo: ConsumoDelDia.Consumo, elegidas:
             )
             Text(
                 buildAnnotatedString {
-                    append(if (conAjustes) "Con tus ajustes de hoy: " else "Con las opciones elegidas: ")
+                    append(if (!conAjustes) "Con las opciones elegidas: " else if (esHoy) "Con tus ajustes de hoy: " else "Con tus ajustes de ese día: ")
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("${Formato.miles(elegidas.kcal)} kcal") }
                     // Con espacio duro: el "%)" no queda solo en el renglón de abajo.
                     if (abs(delta) >= 0.5) append(" (${if (delta > 0) "+" else ""}${Formato.entero(delta)} %)")
@@ -489,7 +590,7 @@ private const val ESCALA_APILADA = 1.5f
 
 /** Las kcal consumidas hoy en un anillo que se llena hasta el objetivo (pasado, queda lleno). */
 @Composable
-private fun AnilloConsumido(kcal: Double, meta: Double, lado: Dp = 132.dp) {
+private fun AnilloConsumido(kcal: Double, meta: Double, lado: Dp = 132.dp, esHoy: Boolean = true) {
     val c = MyPump.colores
     AnilloProgreso(
         fraccion = if (meta > 0) kcal / meta else 0.0,
@@ -497,7 +598,7 @@ private fun AnilloConsumido(kcal: Double, meta: Double, lado: Dp = 132.dp) {
             .size(lado)
             // TalkBack: «Consumido hoy, 544 de 2.373 kcal» (el `accessibilityValue` de iOS, que leen también las pruebas).
             .semantics(mergeDescendants = true) {
-                contentDescription = "Consumido hoy"
+                contentDescription = if (esHoy) "Consumido hoy" else "Consumido ese día"
                 stateDescription = if (meta > 0) "${Formato.miles(kcal)} de ${Formato.miles(meta)} kcal" else "${Formato.miles(kcal)} kcal"
             }
             .testTag("consumido-kcal"),
@@ -512,7 +613,7 @@ private fun AnilloConsumido(kcal: Double, meta: Double, lado: Dp = 132.dp) {
                 autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp),
             )
             Text(
-                if (meta > 0) "de ${Formato.miles(meta)} kcal" else "kcal hoy",
+                if (meta > 0) "de ${Formato.miles(meta)} kcal" else if (esHoy) "kcal hoy" else "kcal",
                 style = MaterialTheme.typography.labelSmall,
                 color = c.textoSecundario,
                 maxLines = 1,
@@ -523,7 +624,7 @@ private fun AnilloConsumido(kcal: Double, meta: Double, lado: Dp = 132.dp) {
 
 /** «Comiste 1 de 4 comidas · salteaste 1», o cómo se usa mientras no marcó ninguna. */
 @Composable
-private fun RenglonComidas(consumo: ConsumoDelDia.Consumo) {
+private fun RenglonComidas(consumo: ConsumoDelDia.Consumo, esHoy: Boolean) {
     val c = MyPump.colores
     val ninguna = consumo.hechas + consumo.salteadas == 0
     Row(
@@ -534,7 +635,7 @@ private fun RenglonComidas(consumo: ConsumoDelDia.Consumo) {
         Icon(if (ninguna) Iconos.Toque else Iconos.Cubiertos, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(18.dp))
         Text(
             if (ninguna) {
-                AnnotatedString("Tocá «Comí» en cada comida y acá se va sumando lo que comés.")
+                AnnotatedString(if (esHoy) "Tocá «Comí» en cada comida y acá se va sumando lo que comés." else "Tocá «Comí» en lo que comiste ese día y acá se va sumando.")
             } else {
                 buildAnnotatedString {
                     append("Comiste ")
@@ -643,12 +744,18 @@ private fun TarjetaComida(
     alCantidad: (Int) -> Unit = {},
     /** Tocar un agregado (su `_ts`). */
     alAgregado: (Long) -> Unit = {},
+    /** Se puede tocar el plan de esta comida (un día anterior sin leer u otro plan, no). */
+    editable: Boolean = true,
+    /** «Comí» / «Salté» valen para este día. */
+    puedeMarcar: Boolean = true,
+    /** En un día anterior no se ofrecen los reemplazos (son del plan, no de un día) y los textos no dicen «hoy». */
+    esHoy: Boolean = true,
 ) {
     val c = MyPump.colores
     // Con los reemplazos como clave: un parámetro que no se usa no cuenta para recomponer, y la tarjeta seguía mostrando
     // el alimento del plan después de reemplazarlo (`efectivo` lee el modelo, no un estado de Compose).
-    val alimentos = remember(comida, opcion, swaps) {
-        (comida.opciones.getOrNull(opcion)?.alimentos ?: emptyList()).mapIndexed { i, a -> a to modelo.efectivo(a, comida.id, opcion, i) }
+    val alimentos = remember(comida, opcion, swaps, esHoy, modelo.tipoDiaVista) {
+        (comida.opciones.getOrNull(opcion)?.alimentos ?: emptyList()).mapIndexed { i, a -> a to modelo.efectivoVista(a, comida.id, opcion, i) }
     }
     // Lo que se muestra: el reemplazo (si hay) con la cantidad del ajuste de hoy (si hay).
     val hoy = alimentos.mapIndexed { i, (_, e) -> ajustada?.alimentos?.getOrNull(i) ?: e.alimento }
@@ -657,6 +764,8 @@ private fun TarjetaComida(
     val nombreOpcion = comida.opciones.getOrNull(opcion)?.nombre ?: letra(opcion)
     // «Comí» / «Salté» (D25). La que hoy no come no se marca.
     val estado = if (omitida) null else marca?.estado
+    // Fuera de la ventana de «Comí», los agregados de una comida marcada quedan fijos: sus tildes no se podrían guardar.
+    val agregadosFijos = estado == MarcaComida.Estado.COMIDO && !puedeMarcar
     // Los tildes por alimento son índices de la opción con que marcó «Comí»: solo se ven mirando esa opción (la web guardaba
     // el índice de la que se miraba contra la marcada y descontaba otro alimento).
     val oMarcada = if (omitida) null else ConsumoDelDia.opcionDeLaMarca(comida, marca)
@@ -719,12 +828,13 @@ private fun TarjetaComida(
                     opciones = comida.opciones.mapIndexed { i, op -> op.nombre ?: letra(i) },
                     elegida = opcion,
                     alElegir = alElegir,
+                    habilitado = editable,
                     etiquetaPrueba = { "opcion-${comida.id}-$it" },
                     modifier = Modifier.weight(1f),
                 )
             }
         }
-        if (!omitida) BotonesMarca(estado, comida.id, alMarcar)
+        if (!omitida) BotonesMarca(estado, comida.id, puedeMarcar, alMarcar)
         if (oMarcada != null) {
             if (excluidos != null) {
                 val contado = (hoy + agregados.map { it.alimento }).filterIndexed { i, _ -> i !in excluidos }.sumOf { it.kcal ?: 0.0 }
@@ -747,16 +857,17 @@ private fun TarjetaComida(
                 }
             }
         }
-        if (ajustada != null && hayQueMostrarAviso(ajustada, propia)) AvisoAjuste(ajustada, propia, Modifier.testTag("ajuste-aviso-${comida.id}"))
+        if (ajustada != null && hayQueMostrarAviso(ajustada, propia)) AvisoAjuste(ajustada, propia, esHoy, Modifier.testTag("ajuste-aviso-${comida.id}"))
         if (!omitida) {
             TotalYAlimentos(
                 comida, opcion, alimentos.map { it.first }, alimentos.map { it.second }, hoy, total, porciones, alTocarMano, alReemplazar,
                 alRevertir, excluidos, alTildar, agregados = agregados, alCantidad = alCantidad, alAgregado = alAgregado,
+                tildeHabilitado = puedeMarcar, cantidadHabilitada = editable, agregadoHabilitado = editable && !agregadosFijos, conReemplazo = esHoy,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+        if (editable) Row(horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
             // Ni en la que hoy no come ni en la que salteó (revisión del 3-nov).
-            if (!omitida && estado != MarcaComida.Estado.SALTADO) {
+            if (!omitida && estado != MarcaComida.Estado.SALTADO && !agregadosFijos) {
                 BotonDeTarjeta(IconosAjuste.Mas, "Agregar alimento", Modifier.weight(1f).testTag("agregar-${comida.id}"), alAgregar)
             }
             BotonDeTarjeta(IconosAjuste.Ajustar, if (propia) "Cambiar el ajuste" else "Ajustar esta comida", Modifier.weight(1f).testTag("ajustar-${comida.id}"), alAjustar)
@@ -766,7 +877,7 @@ private fun TarjetaComida(
 
 /** Los ajustes de hoy no se pudieron guardar en la cuenta: quedan en el teléfono (discreto, sin botón). */
 @Composable
-private fun AvisoSinGuardar(modifier: Modifier = Modifier) {
+private fun AvisoSinGuardar(esHoy: Boolean, modifier: Modifier = Modifier) {
     val c = MyPump.colores
     Row(
         modifier.fillMaxWidth().padding(horizontal = 4.dp).semantics(mergeDescendants = true) {}.testTag("ajustes-sin-guardar"),
@@ -775,7 +886,8 @@ private fun AvisoSinGuardar(modifier: Modifier = Modifier) {
     ) {
         Icon(Iconos.SinWifi, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(16.dp).padding(top = 2.dp))
         Text(
-            "Tus ajustes de hoy no se pudieron guardar en tu cuenta. Quedan en este teléfono y se vuelven a mandar con el próximo cambio.",
+            if (esHoy) "Tus ajustes de hoy no se pudieron guardar en tu cuenta. Quedan en este teléfono y se vuelven a mandar con el próximo cambio."
+            else "Tus ajustes de ese día no se pudieron guardar en tu cuenta. Volvé a intentarlo con el próximo cambio.",
             style = MaterialTheme.typography.bodySmall,
             color = c.textoSecundario,
         )
@@ -807,7 +919,7 @@ private fun BotonDeTarjeta(icono: ImageVector, texto: String, modifier: Modifier
  * web. Con letra muy grande van uno debajo del otro.
  */
 @Composable
-private fun BotonesMarca(estado: MarcaComida.Estado?, comidaId: String, alElegir: (MarcaComida.Estado?) -> Unit) {
+private fun BotonesMarca(estado: MarcaComida.Estado?, comidaId: String, habilitado: Boolean, alElegir: (MarcaComida.Estado?) -> Unit) {
     val tactil = LocalHapticFeedback.current
     val tocar = { e: MarcaComida.Estado ->
         val nuevo = if (estado == e) null else e
@@ -816,19 +928,19 @@ private fun BotonesMarca(estado: MarcaComida.Estado?, comidaId: String, alElegir
     }
     if (LocalDensity.current.fontScale >= ESCALA_APILADA) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            BotonMarca(MarcaComida.Estado.COMIDO, estado, comidaId, Modifier.fillMaxWidth(), tocar)
-            BotonMarca(MarcaComida.Estado.SALTADO, estado, comidaId, Modifier.fillMaxWidth(), tocar)
+            BotonMarca(MarcaComida.Estado.COMIDO, estado, comidaId, habilitado, Modifier.fillMaxWidth(), tocar)
+            BotonMarca(MarcaComida.Estado.SALTADO, estado, comidaId, habilitado, Modifier.fillMaxWidth(), tocar)
         }
     } else {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            BotonMarca(MarcaComida.Estado.COMIDO, estado, comidaId, Modifier.weight(1f), tocar)
-            BotonMarca(MarcaComida.Estado.SALTADO, estado, comidaId, Modifier.weight(1f), tocar)
+            BotonMarca(MarcaComida.Estado.COMIDO, estado, comidaId, habilitado, Modifier.weight(1f), tocar)
+            BotonMarca(MarcaComida.Estado.SALTADO, estado, comidaId, habilitado, Modifier.weight(1f), tocar)
         }
     }
 }
 
 @Composable
-private fun BotonMarca(e: MarcaComida.Estado, estado: MarcaComida.Estado?, comidaId: String, modifier: Modifier, alTocar: (MarcaComida.Estado) -> Unit) {
+private fun BotonMarca(e: MarcaComida.Estado, estado: MarcaComida.Estado?, comidaId: String, habilitado: Boolean, modifier: Modifier, alTocar: (MarcaComida.Estado) -> Unit) {
     val c = MyPump.colores
     val activo = estado == e
     val comi = e == MarcaComida.Estado.COMIDO
@@ -848,10 +960,11 @@ private fun BotonMarca(e: MarcaComida.Estado, estado: MarcaComida.Estado?, comid
     Row(
         modifier
             .heightIn(min = 48.dp)
+            .alpha(if (habilitado) 1f else 0.45f)
             .clip(RoundedCornerShape(12.dp))
             .background(fondo)
             // TalkBack: «Comí, seleccionado, botón: tocá dos veces para desmarcar».
-            .clickable(role = Role.Button, onClickLabel = if (activo) "desmarcar" else null) { alTocar(e) }
+            .clickable(enabled = habilitado, role = Role.Button, onClickLabel = if (activo) "desmarcar" else null) { alTocar(e) }
             .semantics { selected = activo }
             .testTag("${if (comi) "comi" else "salte"}-$comidaId")
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -903,6 +1016,10 @@ private fun TotalYAlimentos(
     agregados: List<AlimentoAgregado> = emptyList(),
     alCantidad: (Int) -> Unit = {},
     alAgregado: (Long) -> Unit = {},
+    tildeHabilitado: Boolean = true,
+    cantidadHabilitada: Boolean = true,
+    agregadoHabilitado: Boolean = true,
+    conReemplazo: Boolean = true,
 ) {
     val c = MyPump.colores
     Column {
@@ -923,6 +1040,9 @@ private fun TotalYAlimentos(
                 tildado = excluidos?.let { i !in it },
                 alTildar = { alTildar(i) },
                 alCantidad = { alCantidad(i) },
+                tildeHabilitado = tildeHabilitado,
+                cantidadHabilitada = cantidadHabilitada,
+                conReemplazo = conReemplazo,
             )
             if (i < originales.size - 1 || agregados.isNotEmpty()) Separador()
         }
@@ -936,6 +1056,8 @@ private fun TotalYAlimentos(
                 tildado = excluidos?.let { n !in it },
                 alTildar = { alTildar(n) },
                 alTocar = { alAgregado(a.ts) },
+                tildeHabilitado = tildeHabilitado,
+                cantidadHabilitada = agregadoHabilitado,
             )
             if (j < agregados.size - 1) Separador()
         }
@@ -993,6 +1115,10 @@ private fun FilaAlimento(
     alTildar: () -> Unit = {},
     /** Tocar la cantidad (D2): la hoja de cantidad. */
     alCantidad: (() -> Unit)? = null,
+    tildeHabilitado: Boolean = true,
+    cantidadHabilitada: Boolean = true,
+    /** Los reemplazos son del plan, no de un día: en un día anterior no se tocan. */
+    conReemplazo: Boolean = true,
 ) {
     val c = MyPump.colores
     val porcion = PorcionCasera.referencia(mostrado.nombre, mostrado.qty, mostrado.unidad, mostrado.gramosPorUnidad)
@@ -1006,7 +1132,7 @@ private fun FilaAlimento(
                     Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .toggleable(value = tildado, role = Role.Checkbox) {
+                        .toggleable(value = tildado, enabled = tildeHabilitado, role = Role.Checkbox) {
                             tactil.performHapticFeedback(HapticFeedbackType.SegmentTick)
                             alTildar()
                         }
@@ -1036,7 +1162,7 @@ private fun FilaAlimento(
                         textDecoration = if (tildado == false) TextDecoration.LineThrough else null,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (sustituido) {
+                    if (sustituido && conReemplazo) {
                         // La marca del reemplazo: tocarla ofrece volver al del plan (28 dp de toque sin agrandar el renglón).
                         Box(
                             Modifier
@@ -1057,7 +1183,7 @@ private fun FilaAlimento(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         PildoraCantidad(
                             FormatoDieta.cantidad(mostrado.qty, mostrado.unidad), mostrado.nombre, cambiada = enElPlan != null,
-                            modifier = Modifier.testTag("cantidad-$sufijo"), alTocar = alCantidad,
+                            modifier = Modifier.testTag("cantidad-$sufijo"), habilitada = cantidadHabilitada, alTocar = alCantidad,
                         )
                         Text("${Formato.miles(mostrado.kcal)} kcal", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
                     }
@@ -1082,7 +1208,7 @@ private fun FilaAlimento(
                     modifier = Modifier.testTag("mano-$sufijo"),
                 )
             }
-            if (sustituible) {
+            if (sustituible && conReemplazo) {
                 BotonCircular(
                     Iconos.Intercambio,
                     descripcion = "Reemplazar ${mostrado.nombre}",
@@ -1113,14 +1239,14 @@ private fun FilaAlimento(
 
 /** La cantidad de un alimento como botón (D2, el estilo de MyFitnessPal): «110 g ✎»; tocarla abre la hoja de cantidad. */
 @Composable
-private fun PildoraCantidad(texto: String, nombre: String, cambiada: Boolean, modifier: Modifier = Modifier, alTocar: () -> Unit) {
+private fun PildoraCantidad(texto: String, nombre: String, cambiada: Boolean, modifier: Modifier = Modifier, habilitada: Boolean = true, alTocar: () -> Unit) {
     val c = MyPump.colores
     Row(
         modifier
             .heightIn(min = 32.dp)
             .clip(CircleShape)
             .background(if (cambiada) c.marcaSuave else c.marcaSuave.copy(alpha = c.marcaSuave.alpha * 0.55f))
-            .clickable(role = Role.Button, onClickLabel = "Cambiar la cantidad", onClick = alTocar)
+            .clickable(enabled = habilitada, role = Role.Button, onClickLabel = "Cambiar la cantidad", onClick = alTocar)
             .semantics { contentDescription = "Cantidad de $nombre: $texto" }
             .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1142,7 +1268,16 @@ private fun PildoraCantidad(texto: String, nombre: String, cambiada: Boolean, mo
  * el tilde de «Comí» como los del plan.
  */
 @Composable
-private fun FilaAgregado(a: AlimentoAgregado, sufijo: String, etiquetaCantidad: String, tildado: Boolean?, alTildar: () -> Unit, alTocar: () -> Unit) {
+private fun FilaAgregado(
+    a: AlimentoAgregado,
+    sufijo: String,
+    etiquetaCantidad: String,
+    tildado: Boolean?,
+    alTildar: () -> Unit,
+    alTocar: () -> Unit,
+    tildeHabilitado: Boolean = true,
+    cantidadHabilitada: Boolean = true,
+) {
     val c = MyPump.colores
     val tactil = LocalHapticFeedback.current
     Row(
@@ -1155,7 +1290,7 @@ private fun FilaAgregado(a: AlimentoAgregado, sufijo: String, etiquetaCantidad: 
                 Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .toggleable(value = tildado, role = Role.Checkbox) {
+                    .toggleable(value = tildado, enabled = tildeHabilitado, role = Role.Checkbox) {
                         tactil.performHapticFeedback(HapticFeedbackType.SegmentTick)
                         alTildar()
                     }
@@ -1194,7 +1329,7 @@ private fun FilaAgregado(a: AlimentoAgregado, sufijo: String, etiquetaCantidad: 
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PildoraCantidad(FormatoDieta.cantidad(a.cantidad, a.unidad), a.nombre, cambiada = false, modifier = Modifier.testTag(etiquetaCantidad), alTocar = alTocar)
+                PildoraCantidad(FormatoDieta.cantidad(a.cantidad, a.unidad), a.nombre, cambiada = false, modifier = Modifier.testTag(etiquetaCantidad), habilitada = cantidadHabilitada, alTocar = alTocar)
                 Text("${Formato.miles(a.kcal)} kcal", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
             }
             Text(FormatoDieta.macros(a.p, a.c, a.g, c.proteina, c.carbohidrato, c.grasa), style = MaterialTheme.typography.bodySmall, color = c.textoSecundario)
@@ -1207,7 +1342,7 @@ private fun FilaAgregado(a: AlimentoAgregado, sufijo: String, etiquetaCantidad: 
  * no la come o no tiene qué escalar, no se cuenta acá: se ve en la que lo recibe). Gemelo del `AvisoAjuste` de iOS.
  */
 @Composable
-private fun AvisoAjuste(a: AjustePorciones.ComidaAjustada, propia: Boolean, modifier: Modifier = Modifier) {
+private fun AvisoAjuste(a: AjustePorciones.ComidaAjustada, propia: Boolean, esHoy: Boolean, modifier: Modifier = Modifier) {
     val c = MyPump.colores
     val llega = llegaPorOtras(a, propia)
     Column(
@@ -1227,7 +1362,7 @@ private fun AvisoAjuste(a: AjustePorciones.ComidaAjustada, propia: Boolean, modi
             }
         }
         if (a.omitida) {
-            renglon(Iconos.Luna, "Hoy no la comés")
+            renglon(Iconos.Luna, if (esHoy) "Hoy no la comés" else "Ese día no la comiste")
         } else if (propia) {
             renglon(IconosAjuste.Ajustar, if (abs(a.propio) >= 1) "Ajustada: ${TextosAjuste.signo(a.propio)} kcal" else "Ajustada a mano")
         }

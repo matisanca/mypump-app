@@ -24,11 +24,11 @@ struct AjustarComidaView: View {
         // cantidad de un alimento que Mati cambió, kcal que ya no entran): si no, los − / + no hacían nada.
         let comida = modelo.comidasParaAjustar(opciones: opciones).first { $0.id == comidaId }
         let elegida = comida?.opcion ?? 0
-        var a = modelo.ajustesDeHoy[comidaId] ?? AjusteComida(opcion: elegida)
+        var a = modelo.ajustesVista[comidaId] ?? AjusteComida(opcion: elegida)
         if a.opcion != elegida { a.opcion = elegida; a.cantidades = [:]; a.anclas = [:] }
         if let comida { a = AjustePorciones.anclar(a, en: comida) }
         _borrador = State(initialValue: a)
-        teniaAjuste = modelo.ajustesDeHoy[comidaId] != nil
+        teniaAjuste = modelo.ajustesVista[comidaId] != nil
     }
 
     /// Con un alimento puesto a mano entra menos: las kcal sumadas o restadas quedan dentro de lo que la comida absorbe
@@ -41,7 +41,7 @@ struct AjustarComidaView: View {
 
     /// Los ajustes del día con el borrador en lugar del guardado.
     private var ajustes: [String: AjusteComida] {
-        var aj = modelo.ajustesDeHoy
+        var aj = modelo.ajustesVista
         aj[comidaId] = borrador.neutro ? nil : borrador
         return aj
     }
@@ -72,10 +72,10 @@ struct AjustarComidaView: View {
                         }
                         Toggle(isOn: $borrador.omitida.animation(.snappy)) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Hoy no la como")
+                                Text(modelo.enDiaPasado ? "Ese día no la comí" : "Hoy no la como")
                                 Text(borrador.omitida && borrador.compensar && destino != nil
                                      ? "Sus \(r.kcalPlan.enteroSeguro) kcal pasan \(Self.aLa(destino?.nombre ?? ""))."
-                                     : "Las porciones de esta comida quedan en cero por hoy.")
+                                     : (modelo.enDiaPasado ? "Las porciones de esta comida quedan en cero ese día." : "Las porciones de esta comida quedan en cero por hoy."))
                                     .font(.footnote).foregroundStyle(.secondary)
                             }
                         }
@@ -94,7 +94,7 @@ struct AjustarComidaView: View {
                         } header: {
                             Text("Alimentos")
                         } footer: {
-                            Text("Tocá − o + para cambiar la cantidad de un alimento; en 0 no lo comés hoy. Para volver a la del plan, deslizalo.")
+                            Text("Tocá − o + para cambiar la cantidad de un alimento; en 0 no lo comés \(modelo.enDiaPasado ? "ese día" : "hoy"). Para volver a la del plan, deslizalo.")
                         }
                     }
                     if !borrador.omitida, !r.agregados.isEmpty {
@@ -115,7 +115,7 @@ struct AjustarComidaView: View {
                         }
                     }
                     Section {
-                        Label("Vale solo por hoy: mañana vuelve tu plan.", systemImage: "calendar")
+                        Label(modelo.enDiaPasado ? "Vale solo para ese día: no cambia tu plan." : "Vale solo por hoy: mañana vuelve tu plan.", systemImage: "calendar")
                             .font(.footnote).foregroundStyle(.secondary)
                         if teniaAjuste || !borrador.neutro {
                             Button("Volver al plan", role: .destructive) {

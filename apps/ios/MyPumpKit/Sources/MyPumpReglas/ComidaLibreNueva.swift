@@ -32,6 +32,10 @@ public enum ComidaLibreNueva {
         public var carb: Double
         public var fat: Double
         public var detalle: JSONValue?
+
+        public init(hora: String?, descripcion: String, kcal: Double, prot: Double, carb: Double, fat: Double, detalle: JSONValue?) {
+            self.hora = hora; self.descripcion = descripcion; self.kcal = kcal; self.prot = prot; self.carb = carb; self.fat = fat; self.detalle = detalle
+        }
     }
 
     public static func bases(_ e: EstimacionPlato?) -> [Base] {

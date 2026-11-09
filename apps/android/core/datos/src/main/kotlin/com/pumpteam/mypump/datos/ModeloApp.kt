@@ -69,7 +69,7 @@ class ModeloApp(
     private val raizDisco: File,
     /** `UserDefaults` de iOS: lo poco que se recuerda fuera de la cuenta. */
     val preferencias: Preferencias,
-    private val alcance: CoroutineScope,
+    internal val alcance: CoroutineScope,
 ) {
     enum class Fase {
         /** "Bienvenido a MyPump": pegá tu link o mirá la demo. */
@@ -174,7 +174,8 @@ class ModeloApp(
      */
     private val _ajustes = MutableStateFlow<Map<String, AjusteComida>>(emptyMap())
     val ajustes: StateFlow<Map<String, AjusteComida>> = _ajustes.asStateFlow()
-    @Volatile private var fechaAjustes = ""
+    @Volatile internal var fechaAjustes = ""
+        private set
 
     /** Las opciones que se vieron por última vez en Dieta: el resumen que va al servidor las usa aunque el cambio venga de otro lado. */
     @Volatile internal var opcionesVistas: Map<String, Int> = emptyMap()
@@ -203,7 +204,8 @@ class ModeloApp(
      */
     private val _marcas = MutableStateFlow<Map<String, MarcaComida>>(emptyMap())
     val marcas: StateFlow<Map<String, MarcaComida>> = _marcas.asStateFlow()
-    @Volatile private var fechaMarcas = ""
+    @Volatile internal var fechaMarcas = ""
+        private set
 
     /** Cuándo tocó el cliente cada marca por última vez (la lectura del servidor no pisa lo que se tocó mientras viajaba). */
     private val ordenMarcas = java.util.concurrent.ConcurrentHashMap<String, Long>()
@@ -212,6 +214,14 @@ class ModeloApp(
     /** Comidas libres (fuera del plan) del día local. */
     private val _comidasLibres = MutableStateFlow<List<ComidaLibre>>(emptyList())
     val comidasLibres: StateFlow<List<ComidaLibre>> = _comidasLibres.asStateFlow()
+
+    /** El día anterior que se está mirando en Dieta (null: hoy). Ver DiaPasadoDieta.kt. */
+    internal val _diaPasado = MutableStateFlow<DiaPasado?>(null)
+    val diaPasado: StateFlow<DiaPasado?> = _diaPasado.asStateFlow()
+    internal var vueltaDiaPasado = 0
+
+    /** Cuántas veces tocó algo del día pasado (la lectura no pisa lo que se tocó mientras viajaba). */
+    internal var ordenDiaPasado = 0
 
     /** El chat con Mati (no existe sin cuenta; en la demo es el hilo vacío, sin red). */
     private val _chat = MutableStateFlow<ModeloChat?>(null)
@@ -427,6 +437,7 @@ class ModeloApp(
         opcionesVistas = emptyMap()
         _marcas.value = emptyMap()
         ordenMarcas.clear()
+        _diaPasado.value = null
         _entreno.value = null
         _revision.value = null   // los de la demo
         _chat.value = null
@@ -456,6 +467,7 @@ class ModeloApp(
         opcionesVistas = emptyMap()
         _marcas.value = emptyMap()
         ordenMarcas.clear()
+        _diaPasado.value = null
         _comidasLibres.value = emptyList()
         _alimentosPropios.value = emptyList()
         _excluir.value = emptyList()
@@ -479,6 +491,8 @@ class ModeloApp(
     internal fun faltaDecidirSwaps(d: Disco): Boolean = faltaDecidirSwapsEn(d)
 
     private fun prepararCuenta(t: String) {
+        // Otra cuenta (un link tocado mirando un día anterior): lo que se estaba mirando no es de esta.
+        _diaPasado.value = null
         val d = Disco(raizDisco, t)
         disco = d
         cacheCodigos = null
@@ -521,6 +535,7 @@ class ModeloApp(
             if (g.op.kind != AjustesDieta.KIND) continue
             val clave = g.op.dedupeKey ?: continue
             if (clave == AjustesDieta.clave(FechaLocal.hoy())) _ajustesSinGuardar.value = false
+            _diaPasado.update { p -> if (p != null && clave == AjustesDieta.clave(p.fecha)) p.copy(sinGuardar = false) else p }
             outbox?.let { cola -> alcance.launch { cola.olvidarFallidos(clave) } }
         }
         for (g in ops) {
@@ -538,6 +553,7 @@ class ModeloApp(
         _guia.value?.alAbandonar(ops)
         // La cola abandonó el día (8 intentos o un rechazo de la base, como el 22023 de un día demasiado grande).
         if (ops.any { it.kind == AjustesDieta.KIND && it.dedupeKey == AjustesDieta.clave(FechaLocal.hoy()) }) _ajustesSinGuardar.value = true
+        _diaPasado.update { p -> if (p != null && ops.any { it.kind == AjustesDieta.KIND && it.dedupeKey == AjustesDieta.clave(p.fecha) }) p.copy(sinGuardar = true) else p }
         for (op in ops) {
             if (op.kind != "chat") continue
             op.payload["contenido"]?.comoTexto?.let { _chat.value?.marcarFallido(it) }
@@ -745,10 +761,13 @@ class ModeloApp(
             cargarComidasLibres()
             _revision.value?.cargarRevision()
             diaCargado = hoy
+            // Cambió el día: se vuelve a hoy (el que se miraba pudo salir de la ventana del servidor).
+            irADia(null)
         }
         outbox?.drenar()
         // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
         hidratarMarcas()
+        refrescarDiaPasado()
         _chat.value?.sondear()
         _fotos.value?.drenar()
         _guia.value?.refrescarResumen()
@@ -933,9 +952,8 @@ class ModeloApp(
     fun clave(comidaId: String, opt: Int, idx: Int): String = SwapsDeComida.clave(_dieta.value?.id ?: "demo", comidaId, opt, idx)
 
     /** Lo que se muestra en esa posición: el sustituto si el swap aplica (anclaje), si no el alimento del plan. */
-    fun efectivo(original: Alimento, comidaId: String, opt: Int, idx: Int): AlimentoEfectivo {
+    fun efectivo(original: Alimento, comidaId: String, opt: Int, idx: Int, tipo: String? = tipoDia): AlimentoEfectivo {
         val e = _dieta.value?.estructura ?: EstructuraDieta()
-        val tipo = tipoDia
         return SwapsDeComida.efectivo(original, _swaps.value[clave(comidaId, opt, idx)], comidaId) {
             SwapsDeComida.enPosicion(e, tipo, comidaId, opt, idx)
         }
@@ -982,7 +1000,7 @@ class ModeloApp(
         get() = if (fechaAjustes == FechaLocal.hoy()) _ajustes.value else emptyMap()
 
     /** Al cargar la dieta (y al cambiar de día): lo del teléfono, si es de hoy y de esta dieta. */
-    private fun cargarAjustes() {
+    internal fun cargarAjustes() {
         val hoy = FechaLocal.hoy()
         fechaAjustes = hoy
         cargarRecientes()
@@ -995,29 +1013,44 @@ class ModeloApp(
      * Las comidas de hoy como las ve el cliente: la opción elegida ([opciones], si no la del ajuste, si no A) y los
      * reemplazos. Es lo que necesita la cuenta del día.
      */
-    fun comidasParaAjustar(opciones: Map<String, Int>): List<AjustePorciones.ComidaDelDia> {
-        val deHoy = ajustesDeHoy
-        return comidasDelDia.map { c ->
-            val elegida = opciones[c.id] ?: deHoy[c.id]?.opcion ?: 0
-            val o = if (c.opciones.isEmpty()) 0 else elegida.coerceIn(0, c.opciones.size - 1)
-            val alimentos = c.opciones.getOrNull(o)?.alimentos?.mapIndexed { i, a -> efectivo(a, c.id, o, i).alimento } ?: emptyList()
-            AjustePorciones.ComidaDelDia(c.id, c.nombre ?: "", o, alimentos)
-        }
+    fun comidasParaAjustar(opciones: Map<String, Int>): List<AjustePorciones.ComidaDelDia> =
+        _diaPasado.value?.let { comidasVistaParaAjustar(it, opciones) } ?: comidasDeHoyParaAjustar(opciones)
+
+    /** Las de hoy, se esté mirando el día que se esté mirando (lo que sale a la cola para hoy). */
+    internal fun comidasDeHoyParaAjustar(opciones: Map<String, Int>): List<AjustePorciones.ComidaDelDia> =
+        comidasAjustables(comidasDelDia, ajustesDeHoy, tipoDia, opciones)
+
+    internal fun comidasAjustables(
+        comidas: List<Comida>,
+        ajustes: Map<String, AjusteComida>,
+        tipo: String?,
+        opciones: Map<String, Int>,
+    ): List<AjustePorciones.ComidaDelDia> = comidas.map { c ->
+        val elegida = opciones[c.id] ?: ajustes[c.id]?.opcion ?: 0
+        val o = if (c.opciones.isEmpty()) 0 else elegida.coerceIn(0, c.opciones.size - 1)
+        val alimentos = c.opciones.getOrNull(o)?.alimentos?.mapIndexed { i, a -> efectivo(a, c.id, o, i, tipo).alimento } ?: emptyList()
+        AjustePorciones.ComidaDelDia(c.id, c.nombre ?: "", o, alimentos)
     }
 
-    /** El día con los ajustes de hoy aplicados (lo que dibuja Dieta). */
+    /** El día con los ajustes del día a la vista aplicados (lo que dibuja Dieta). */
     fun diaAjustado(opciones: Map<String, Int>): Map<String, AjustePorciones.ComidaAjustada> =
-        AjustePorciones.dia(comidasParaAjustar(opciones), ajustesDeHoy)
+        AjustePorciones.dia(comidasParaAjustar(opciones), ajustesVista)
 
     /**
      * Cambia (o saca, con null o un ajuste neutro) el ajuste de una comida, lo guarda y manda el día entero. Cada cantidad
      * a mano queda anclada al alimento que se veía (si Mati vuelve a publicar con otro alimento ahí, no vale). En la demo
      * queda en memoria.
      */
-    suspend fun ajustar(comidaId: String, ajuste: AjusteComida?, opciones: Map<String, Int>) {
+    suspend fun ajustar(comidaId: String, ajuste: AjusteComida?, opciones: Map<String, Int>, fecha: String? = null) {
+        // La hoja era de otro día (medianoche, o se volvió a hoy): no guarda en una fecha que no es la que mostraba.
+        if (fecha != null && fecha != fechaVista) return
+        if (_diaPasado.value != null) ajustarPasado(comidaId, ajuste, opciones) else ajustarHoy(comidaId, ajuste, opciones)
+    }
+
+    internal suspend fun ajustarHoy(comidaId: String, ajuste: AjusteComida?, opciones: Map<String, Int>) {
         if (fechaAjustes != FechaLocal.hoy()) cargarAjustes()
         opcionesVistas = opcionesVistas + opciones
-        val anclado = ajuste?.let { a -> comidasParaAjustar(opcionesVistas).firstOrNull { it.id == comidaId }?.let { AjustePorciones.anclar(a, it) } ?: a }
+        val anclado = ajuste?.let { a -> comidasDeHoyParaAjustar(opcionesVistas).firstOrNull { it.id == comidaId }?.let { AjustePorciones.anclar(a, it) } ?: a }
         val actuales = _ajustes.value
         val nuevos = if (anclado != null && !anclado.neutro) actuales + (comidaId to anclado) else actuales - comidaId
         if (nuevos == actuales) return
@@ -1031,7 +1064,7 @@ class ModeloApp(
         }
         // «Hoy no la como» sobre una comida marcada: la marca se va (D25: no se come, no se marca ni cuenta). Al final: la
         // espera de la cola, entre el ajuste en memoria y el del disco, dejaba que una carga leyera el ajuste viejo.
-        if (ajustesDeHoy[comidaId]?.omitida == true && marcasDeHoy[comidaId] != null) marcar(comidaId, null, 0)
+        if (ajustesDeHoy[comidaId]?.omitida == true && marcasDeHoy[comidaId] != null) marcarHoy(comidaId, null, 0)
     }
 
     /**
@@ -1043,7 +1076,7 @@ class ModeloApp(
         val a = ajustesDeHoy[comidaId]
         val k = idx.toString()
         if (a != null && a.opcion == opt && a.cantidades[k] != null) {
-            ajustar(comidaId, a.copy(cantidades = a.cantidades - k, anclas = a.anclas - k), mapOf(comidaId to opt))
+            ajustarHoy(comidaId, a.copy(cantidades = a.cantidades - k, anclas = a.anclas - k), mapOf(comidaId to opt))
         } else if (ajustesDeHoy.isNotEmpty() && !_esDemo.value) {
             encolarAjustes(emptyMap())
         }
@@ -1051,16 +1084,23 @@ class ModeloApp(
 
     /** Otra opción a la vista en una comida sin ajuste: el resumen del día (si hay ajustes) se rehace con ella. */
     suspend fun verOpcion(comidaId: String, opcion: Int) {
+        if (_diaPasado.value != null) {
+            verOpcionPasado(comidaId, opcion)
+            return
+        }
         opcionesVistas = opcionesVistas + (comidaId to opcion)
         if (ajustesDeHoy.isNotEmpty() && !_esDemo.value) encolarAjustes(emptyMap())
     }
 
     /** El día entero a la cola (una op por día: la última gana). Con el resumen por comida para que Mati lo lea sin la app. */
     private suspend fun encolarAjustes(opciones: Map<String, Int>) {
+        encolarDia(fechaAjustes, _ajustes.value, tipoDia, comidasDeHoyParaAjustar(opcionesVistas + opciones))
+    }
+
+    /** Un día entero a la cola (hoy o un día anterior: la clave lleva la fecha). */
+    internal suspend fun encolarDia(fecha: String, ajustes: Map<String, AjusteComida>, tipo: String?, comidas: List<AjustePorciones.ComidaDelDia>) {
         val dieta = _dieta.value ?: return
         val cola = outbox ?: return
-        val comidas = comidasParaAjustar(opcionesVistas + opciones)
-        val ajustes = _ajustes.value
         val dia = AjustePorciones.dia(comidas, ajustes)
         var plan = 0.0
         var hoy = 0.0
@@ -1079,11 +1119,11 @@ class ModeloApp(
         }
         val vacio = ajustes.isEmpty()
         val payload = ValorJson.objeto(
-            "fecha" to texto(fechaAjustes), "dietaId" to texto(dieta.id), "tipoDia" to (tipoDia?.let(::texto) ?: ValorJson.Nulo),
+            "fecha" to texto(fecha), "dietaId" to texto(dieta.id), "tipoDia" to (tipo?.let(::texto) ?: ValorJson.Nulo),
             "ajustes" to AjustesDieta.aValor(ajustes), "resumen" to (if (vacio) ValorJson.Nulo else ValorJson.Lista(resumen)),
             "kcalPlan" to (if (vacio) ValorJson.Nulo else numero(plan)), "kcalDia" to (if (vacio) ValorJson.Nulo else numero(hoy)),
         ).sinNoFinitos
-        cola.encolar(AjustesDieta.KIND, payload, AjustesDieta.clave(fechaAjustes))
+        cola.encolar(AjustesDieta.KIND, payload, AjustesDieta.clave(fecha))
     }
 
     /**
@@ -1226,7 +1266,7 @@ class ModeloApp(
      * ajuste de AHORA: dos toques seguidos en «Sacar» no borran otro.
      */
     suspend fun borrarAgregado(comidaId: String, ts: Long, opciones: Map<String, Int>) {
-        val a = ajustesDeHoy[comidaId] ?: return
+        val a = ajustesVista[comidaId] ?: return
         if (a.agregados.none { it.ts == ts }) return
         ajustar(comidaId, a.copy(agregados = a.agregados.filter { it.ts != ts }), opciones)
     }
@@ -1271,7 +1311,7 @@ class ModeloApp(
         get() = if (fechaMarcas == FechaLocal.hoy()) _marcas.value else emptyMap()
 
     /** Al cargar (y al cambiar de día): las del teléfono, si son de hoy. La demo no tiene carpeta: empieza sin marcas. */
-    private fun cargarMarcas() {
+    internal fun cargarMarcas() {
         val hoy = FechaLocal.hoy()
         fechaMarcas = hoy
         val g = disco?.leer(MarcasComidas.ARCHIVO)?.let(ValorJson::desde)
@@ -1283,8 +1323,8 @@ class ModeloApp(
      * reemplazos, los ajustes de hoy y las comidas libres.
      */
     fun consumo(opciones: Map<String, Int>): ConsumoDelDia.Consumo =
-        ConsumoDelDia.calcular(comidasDelDia, marcasDeHoy, _comidasLibres.value, ajustesDeHoy, opciones) { cid, o, i, a ->
-            efectivo(a, cid, o, i).alimento
+        ConsumoDelDia.calcular(comidasVista, marcasVista, libresVista, ajustesVista, opciones) { cid, o, i, a ->
+            efectivoVista(a, cid, o, i).alimento
         }
 
     /**
@@ -1292,6 +1332,10 @@ class ModeloApp(
      * Optimista: se ve al toque, queda en el teléfono y sale por la cola (sin red, cuando vuelva). En la demo, en memoria.
      */
     suspend fun marcar(comidaId: String, estado: MarcaComida.Estado?, opcion: Int) {
+        if (_diaPasado.value != null) marcarPasado(comidaId, estado, opcion) else marcarHoy(comidaId, estado, opcion)
+    }
+
+    private suspend fun marcarHoy(comidaId: String, estado: MarcaComida.Estado?, opcion: Int) {
         if (fechaMarcas != FechaLocal.hoy()) cargarMarcas()
         val c = comidasDelDia.firstOrNull { it.id == comidaId } ?: return
         val o = if (c.opciones.isEmpty()) 0 else opcion.coerceIn(0, c.opciones.size - 1)
@@ -1304,6 +1348,10 @@ class ModeloApp(
      * opción de la marca: Dieta solo muestra los tildes mirando esa opción.
      */
     suspend fun alternarAlimento(comidaId: String, idx: Int) {
+        if (_diaPasado.value != null) {
+            alternarAlimentoPasado(comidaId, idx)
+            return
+        }
         if (fechaMarcas != FechaLocal.hoy()) cargarMarcas()
         val m = _marcas.value[comidaId] ?: return
         if (idx < 0 || m.estado != MarcaComida.Estado.COMIDO) return
@@ -1311,7 +1359,7 @@ class ModeloApp(
         cambiarMarca(comidaId, MarcaComida(m.opcion, MarcaComida.Estado.COMIDO, excluidos), m.opcion)
     }
 
-    private suspend fun cambiarMarca(comidaId: String, nueva: MarcaComida?, opcionAlDesmarcar: String?) {
+    internal suspend fun cambiarMarca(comidaId: String, nueva: MarcaComida?, opcionAlDesmarcar: String?) {
         val actuales = _marcas.value
         if (nueva == actuales[comidaId]) return
         ordenMarcas[comidaId] = contadorMarcas.incrementAndGet()
@@ -1395,7 +1443,7 @@ class ModeloApp(
      * esperaba entró el link de otra persona o la demo, no se aplica. Antes las comidas libres y el alimento propio de A
      * terminaban en B (y un borrado que fallaba le volvía a poner a B las comidas de A).
      */
-    private fun deLaCuenta(t: String): Boolean = token == t && !_esDemo.value
+    internal fun deLaCuenta(t: String): Boolean = token == t && !_esDemo.value
 
     // ── Comidas libres ──
 
@@ -1411,10 +1459,13 @@ class ModeloApp(
     }
 
     /** `guardarComidaLibre`: directo, no por la cola (como la web), con la fecha local. */
-    suspend fun crearComidaLibre(d: ComidaLibreNueva.Datos): Resultado<ComidaLibre> {
+    suspend fun crearComidaLibre(d: ComidaLibreNueva.Datos, fecha: String? = null): Resultado<ComidaLibre> = crearComidaLibreEn(fecha ?: fechaVista, d)
+
+    /** La crea en [fecha] y la suma a esa caja (hoy o el día pasado que se siga mirando). */
+    internal suspend fun crearComidaLibreEn(fecha: String, d: ComidaLibreNueva.Datos): Resultado<ComidaLibre> {
         val t = token ?: return Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 0, "SIN_CUENTA", "demo"))
         val p = mapOf(
-            "p_token" to texto(t), "p_fecha" to texto(FechaLocal.hoy()), "p_hora" to (d.hora?.let { texto(it) } ?: ValorJson.Nulo),
+            "p_token" to texto(t), "p_fecha" to texto(fecha), "p_hora" to (d.hora?.let { texto(it) } ?: ValorJson.Nulo),
             "p_descripcion" to texto(d.descripcion), "p_kcal" to numero(d.kcal), "p_prot" to numero(d.prot),
             "p_carb" to numero(d.carb), "p_fat" to numero(d.fat), "p_detalle" to (d.detalle ?: ValorJson.Nulo),
         )
@@ -1424,7 +1475,12 @@ class ModeloApp(
                 val c = r.valor.firstOrNull()
                     ?: return Resultado.Falla(ErrorRpc(ErrorRpc.Clase.PERMANENTE, 200, "SIN_FILA", "mypump_crear_comida_libre: vacío"))
                 // Quedó guardada en la cuenta de `t`: en la lista de otra no va.
-                if (deLaCuenta(t)) _comidasLibres.update { it + c }
+                if (deLaCuenta(t)) {
+                    if (fecha == _diaPasado.value?.fecha) {
+                        ordenDiaPasado += 1
+                        _diaPasado.update { p -> p?.copy(libres = p.libres + c) }
+                    } else if (fecha == FechaLocal.hoy()) _comidasLibres.update { it + c }
+                }
                 Resultado.Ok(c)
             }
         }
@@ -1432,6 +1488,7 @@ class ModeloApp(
 
     /** `borrarComidaLibre`: optimista; si el servidor no contesta bien, vuelve a aparecer. */
     suspend fun borrarComidaLibre(id: String): Boolean {
+        if (_diaPasado.value?.libres?.any { it.id == id } == true) return borrarComidaLibrePasada(id)
         val previas = _comidasLibres.value
         _comidasLibres.update { lista -> lista.filterNot { it.id == id } }
         val t = token ?: return true

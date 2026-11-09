@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.ajustesVista
 import com.pumpteam.mypump.diseno.AccionHoja
 import com.pumpteam.mypump.diseno.AsaHoja
 import com.pumpteam.mypump.diseno.EncabezadoHoja
@@ -97,28 +98,30 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String, Int>, alCerrar: () -> Unit) {
+fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, fecha: String, opciones: Map<String, Int>, alCerrar: () -> Unit) {
     val c = MyPump.colores
     val hoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val alcanceHoja = rememberCoroutineScope()
     val alcance = LocalAlcanceApp.current
     val tactil = LocalHapticFeedback.current
     val guardados by modelo.ajustes.collectAsStateWithLifecycle()
+    val diaPasado by modelo.diaPasado.collectAsStateWithLifecycle()
+    val esHoy = diaPasado == null
     val swaps by modelo.swaps.collectAsStateWithLifecycle()
-    val teniaAjuste = remember { modelo.ajustesDeHoy[comidaId] != null }
+    val teniaAjuste = remember { modelo.ajustesVista[comidaId] != null }
     var borrador by rememberSaveable(stateSaver = SaverAjuste) {
         // La opción como la ve la cuenta del día (acotada a las que hay) y el ajuste guardado sin lo que ya no vale (una
         // cantidad de un alimento que Mati cambió, kcal que ya no entran): si no, los − / + no hacían nada.
         val comida = modelo.comidasParaAjustar(opciones).firstOrNull { it.id == comidaId }
         val elegida = comida?.opcion ?: 0
-        var a = modelo.ajustesDeHoy[comidaId] ?: AjusteComida(opcion = elegida)
+        var a = modelo.ajustesVista[comidaId] ?: AjusteComida(opcion = elegida)
         if (a.opcion != elegida) a = a.copy(opcion = elegida, cantidades = emptyMap(), anclas = emptyMap())
         mutableStateOf(comida?.let { AjustePorciones.anclar(a, it) } ?: a)
     }
-    val comidas = remember(guardados, swaps, opciones) { modelo.comidasParaAjustar(opciones) }
+    val comidas = remember(guardados, diaPasado, swaps, opciones) { modelo.comidasParaAjustar(opciones) }
     // Los ajustes del día con el borrador en lugar del guardado.
-    val ajustes = remember(guardados, borrador) {
-        modelo.ajustesDeHoy.toMutableMap().apply { if (borrador.neutro) remove(comidaId) else put(comidaId, borrador) }.toMap()
+    val ajustes = remember(guardados, diaPasado, borrador) {
+        modelo.ajustesVista.toMutableMap().apply { if (borrador.neutro) remove(comidaId) else put(comidaId, borrador) }.toMap()
     }
     val dia = remember(comidas, ajustes) { AjustePorciones.dia(comidas, ajustes) }
     val comida = comidas.firstOrNull { it.id == comidaId }
@@ -130,7 +133,7 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
     }
 
     fun guardar(a: AjusteComida?) {
-        alcance.launch { modelo.ajustar(comidaId, a, opciones) }
+        alcance.launch { modelo.ajustar(comidaId, a, opciones, fecha) }
         cerrar()
     }
 
@@ -189,11 +192,11 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
                         }
                         Separador(Modifier.padding(start = Espacio.m))
                         FilaInterruptor(
-                            titulo = "Hoy no la como",
+                            titulo = if (esHoy) "Hoy no la como" else "Ese día no la comí",
                             detalle = if (borrador.omitida && borrador.compensar && destino != null) {
                                 "Sus ${Formato.miles(r.kcalPlan)} kcal pasan ${TextosAjuste.aLa(destino.nombre)}."
                             } else {
-                                "Las porciones de esta comida quedan en cero por hoy."
+                                if (esHoy) "Las porciones de esta comida quedan en cero por hoy." else "Las porciones de esta comida quedan en cero ese día."
                             },
                             prendido = borrador.omitida,
                             etiqueta = "ajuste-omitir",
@@ -222,7 +225,7 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
                             }
                         }
                         Text(
-                            "Tocá − o + para cambiar la cantidad de un alimento; en 0 no lo comés hoy. «Como el plan» la vuelve a la del plan.",
+                            "Tocá − o + para cambiar la cantidad de un alimento; en 0 ${if (esHoy) "no lo comés hoy" else "no lo comiste ese día"}. «Como el plan» la vuelve a la del plan.",
                             style = Letras.caption, color = c.textoSecundario, modifier = Modifier.padding(horizontal = Espacio.m),
                         )
                     }
@@ -260,7 +263,7 @@ fun HojaAjustarComida(modelo: ModeloApp, comidaId: String, opciones: Map<String,
                 Column(Modifier.widthIn(max = 640.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(horizontal = Espacio.m)) {
                         Icon(Iconos.Calendario, contentDescription = null, tint = c.textoSecundario, modifier = Modifier.size(16.dp))
-                        Text("Vale solo por hoy: mañana vuelve tu plan.", style = Letras.caption, color = c.textoSecundario)
+                        Text(if (esHoy) "Vale solo por hoy: mañana vuelve tu plan." else "Vale solo para ese día: no cambia tu plan.", style = Letras.caption, color = c.textoSecundario)
                     }
                     if (teniaAjuste || !borrador.neutro) {
                         Box(

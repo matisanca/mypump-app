@@ -4,7 +4,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.pumpteam.mypump.datos.ClienteRpc
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.Resultado
 import com.pumpteam.mypump.modelos.ValorJson
@@ -39,42 +38,45 @@ internal object EsperasDieta {
 }
 
 /**
- * "Escanear etiqueta" mientras la visión lee la foto: el formulario de "Alimento propio" aplica [resultado] cuando llega
- * (aunque se haya vuelto a armar en el medio) y lo consume. Cerrar la hoja lo olvida: una lectura que llega tarde no
- * prellena el próximo alimento.
+ * "Escanear etiqueta" mientras la visión lee la foto: la lectura es de un formulario de "Alimento propio" ([dueno], un id que
+ * sobrevive a la rotación). Ese formulario aplica [resultado] cuando llega (aunque se haya vuelto a armar en el medio) y lo
+ * consume; otro formulario no la ve ni queda bloqueado por ella, y si escanea, la de antes ya no es de nadie.
  */
 @Stable
 class EscaneoEtiqueta {
-    var escaneando by mutableStateOf(false)
-        private set
-
-    /** Lo que contestó la visión y todavía no se aplicó al formulario. */
-    var resultado by mutableStateOf<Resultado<ValorJson>?>(null)
-        private set
-
+    private var dueno by mutableStateOf<String?>(null)
+    private var enCurso by mutableStateOf(false)
+    private var respuesta by mutableStateOf<Resultado<ValorJson>?>(null)
     private var vuelta = 0
 
-    fun escanear(modelo: ModeloApp, alcance: CoroutineScope, jpeg: ByteArray) {
-        if (escaneando) return
+    fun escaneando(dueno: String): Boolean = enCurso && this.dueno == dueno
+
+    /** Lo que contestó la visión para ese formulario y todavía no se aplicó. */
+    fun resultado(dueno: String): Resultado<ValorJson>? = respuesta.takeIf { this.dueno == dueno }
+
+    fun escanear(dueno: String, alcance: CoroutineScope, leer: suspend () -> Resultado<ValorJson>) {
+        if (escaneando(dueno)) return
         val esta = ++vuelta
-        escaneando = true
-        resultado = null
+        this.dueno = dueno
+        enCurso = true
+        respuesta = null
         alcance.launch {
-            val r = modelo.analizarFoto(jpeg, ClienteRpc.TipoVision.ETIQUETA)
+            val r = leer()
             if (esta != vuelta) return@launch
-            resultado = r
-            escaneando = false
+            respuesta = r
+            enCurso = false
         }
     }
 
-    fun consumir() {
-        resultado = null
+    fun consumir(dueno: String) {
+        if (this.dueno == dueno) respuesta = null
     }
 
     /** La hoja se cerró: lo que esté en camino ya no es de nadie. */
     fun olvidar() {
         vuelta++
-        escaneando = false
-        resultado = null
+        dueno = null
+        enCurso = false
+        respuesta = null
     }
 }

@@ -11,14 +11,15 @@ struct ComidasLibresSeccion: View {
 
     @State private var formulario: Formulario?
     @State private var errorFoto: String?
+    @State private var fechaFoto: String?
 
     enum Formulario: Identifiable {
-        case manual
-        case estimada(EstimacionPlato)
+        case manual(String)
+        case estimada(EstimacionPlato, String)
         var id: String {
             switch self {
-            case .manual: "manual"
-            case .estimada(let e): "estimada-\(e.descripcion ?? "")-\(e.kcal ?? 0)"
+            case .manual(let f): "manual-\(f)"
+            case .estimada(let e, let f): "estimada-\(e.descripcion ?? "")-\(e.kcal ?? 0)-\(f)"
             }
         }
     }
@@ -38,11 +39,11 @@ struct ComidasLibresSeccion: View {
                 }
             }
 
-            if !modelo.comidasLibres.isEmpty {
+            if !modelo.libresVista.isEmpty {
                 VStack(spacing: 0) {
-                    ForEach(Array(modelo.comidasLibres.enumerated()), id: \.element.id) { i, c in
+                    ForEach(Array(modelo.libresVista.enumerated()), id: \.element.id) { i, c in
                         fila(c)
-                        if i < modelo.comidasLibres.count - 1 { Divider() }
+                        if i < modelo.libresVista.count - 1 { Divider() }
                     }
                 }
             }
@@ -55,7 +56,7 @@ struct ComidasLibresSeccion: View {
                         .foregroundStyle(Color.sobreMarca)
                         .background(Color.marca, in: .rect(cornerRadius: 12, style: .continuous))
                 }
-                Button { formulario = .manual } label: {
+                Button { formulario = .manual(modelo.fechaVista) } label: {
                     Label("A mano", systemImage: "square.and.pencil")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 44)
@@ -64,18 +65,19 @@ struct ComidasLibresSeccion: View {
                 }
                 .buttonStyle(.plain)
             }
+            .disabled(!modelo.vistaAdmiteLibres)
             // En la fila de botones y no en la tarjeta, que ya tiene la hoja del formulario: una `.sheet` por vista.
         }
         .tarjeta()
-        .animation(.snappy, value: modelo.comidasLibres.map(\.id))
+        .animation(.snappy, value: modelo.libresVista.map(\.id))
         .sheet(item: $formulario) { f in
             switch f {
-            case .manual: ComidaLibreView(modelo: modelo, estimacion: nil)
-            case .estimada(let e): ComidaLibreView(modelo: modelo, estimacion: e)
+            case .manual(let fecha): ComidaLibreView(modelo: modelo, estimacion: nil, fecha: fecha)
+            case .estimada(let e, let fecha): ComidaLibreView(modelo: modelo, estimacion: e, fecha: fecha)
             }
         }
         .alert("No pudimos leer la foto", isPresented: Binding(get: { errorFoto != nil }, set: { if !$0 { errorFoto = nil } })) {
-            Button("Cargar a mano") { formulario = .manual }
+            Button("Cargar a mano") { formulario = .manual(fechaFoto ?? modelo.fechaVista) }
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text("\(errorFoto ?? ""). Podés cargarla a mano.")
@@ -119,13 +121,16 @@ struct ComidasLibresSeccion: View {
 
     private func analizar(_ jpeg: Data) {
         analizando = true
+        // El día en que sacó la foto, aunque cambie de día mientras la IA mira.
+        let fecha = modelo.fechaVista
+        fechaFoto = fecha
         Task {
             let r = await modelo.analizarFoto(jpeg, tipo: .plato)
             analizando = false
             switch r {
             case .success(let data):
                 if let e = try? JSONDecoder().decode(EstimacionPlato.self, from: JSONEncoder().encode(data)) {
-                    formulario = .estimada(e)
+                    formulario = .estimada(e, fecha)
                 } else {
                     errorFoto = "respuesta inesperada"
                 }

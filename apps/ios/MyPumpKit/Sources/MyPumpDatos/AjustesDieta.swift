@@ -38,11 +38,21 @@ extension ModeloApp {
     /// Las comidas de hoy como las ve el cliente: la opción elegida (`opciones`, si no la del ajuste, si no A) y los
     /// reemplazos. Es lo que necesita la cuenta del día.
     public func comidasParaAjustar(opciones: [String: Int]) -> [AjustePorciones.ComidaDelDia] {
-        comidasDelDia.map { c in
-            let elegida = opciones[c.id] ?? ajustesDeHoy[c.id]?.opcion ?? 0
+        if let p = diaPasado { return comidasVistaParaAjustar(p, opciones: opciones) }
+        return comidasDeHoyParaAjustar(opciones: opciones)
+    }
+
+    /// Las de hoy, se esté mirando el día que se esté mirando (lo que sale a la cola para hoy).
+    func comidasDeHoyParaAjustar(opciones: [String: Int]) -> [AjustePorciones.ComidaDelDia] {
+        comidasAjustables(comidasDelDia, ajustes: ajustesDeHoy, tipo: tipoDia, opciones: opciones)
+    }
+
+    func comidasAjustables(_ comidas: [Comida], ajustes: [String: AjusteComida], tipo: String?, opciones: [String: Int]) -> [AjustePorciones.ComidaDelDia] {
+        comidas.map { c in
+            let elegida = opciones[c.id] ?? ajustes[c.id]?.opcion ?? 0
             let o = c.opciones.isEmpty ? 0 : min(max(0, elegida), c.opciones.count - 1)
             let alimentos = c.opciones.indices.contains(o)
-                ? c.opciones[o].alimentos.enumerated().map { efectivo($1, comidaId: c.id, opt: o, idx: $0).alimento }
+                ? c.opciones[o].alimentos.enumerated().map { efectivo($1, comidaId: c.id, opt: o, idx: $0, tipo: tipo).alimento }
                 : []
             return AjustePorciones.ComidaDelDia(id: c.id, nombre: c.nombre ?? "", opcion: o, alimentos: alimentos)
         }
@@ -50,18 +60,23 @@ extension ModeloApp {
 
     /// El día con los ajustes de hoy aplicados (lo que dibuja Dieta).
     public func diaAjustado(opciones: [String: Int]) -> [String: AjustePorciones.ComidaAjustada] {
-        AjustePorciones.dia(comidasParaAjustar(opciones: opciones), ajustes: ajustesDeHoy)
+        AjustePorciones.dia(comidasParaAjustar(opciones: opciones), ajustes: ajustesVista)
     }
 
     /// Cambia (o saca, con nil o un ajuste neutro) el ajuste de una comida, lo guarda y manda el día entero. Cada cantidad
     /// a mano queda anclada al alimento que se veía (si Mati vuelve a publicar con otro alimento ahí, no vale). En la demo
     /// queda en memoria.
     public func ajustar(_ comidaId: String, _ ajuste: AjusteComida?, opciones: [String: Int]) async {
+        if diaPasado != nil { await ajustarPasado(comidaId, ajuste, opciones: opciones); return }
+        await ajustarHoy(comidaId, ajuste, opciones: opciones)
+    }
+
+    func ajustarHoy(_ comidaId: String, _ ajuste: AjusteComida?, opciones: [String: Int]) async {
         if fechaAjustes != FechaLocal.hoy() { cargarAjustes() }
         opcionesVistas.merge(opciones) { $1 }
         var nuevos = ajustes
         var a = ajuste
-        if let x = a, let c = comidasParaAjustar(opciones: opcionesVistas).first(where: { $0.id == comidaId }) {
+        if let x = a, let c = comidasDeHoyParaAjustar(opciones: opcionesVistas).first(where: { $0.id == comidaId }) {
             a = AjustePorciones.anclar(x, en: c)
         }
         if let a, !a.neutro { nuevos[comidaId] = a } else { nuevos[comidaId] = nil }
@@ -76,7 +91,7 @@ extension ModeloApp {
         }
         // «Hoy no la como» sobre una comida marcada: la marca se va (D25: no se come, no se marca ni cuenta). Al final: la
         // espera de la cola, entre el ajuste en memoria y el del disco, dejaba que una carga leyera el ajuste viejo.
-        if ajustesDeHoy[comidaId]?.omitida == true, marcasDeHoy[comidaId] != nil { await marcar(comidaId, nil, opcion: 0) }
+        if ajustesDeHoy[comidaId]?.omitida == true, marcasDeHoy[comidaId] != nil { await marcarHoy(comidaId, nil, opcion: 0) }
     }
 
     /// Un reemplazo (o volver al alimento del plan) cambia el alimento de esa posición: la cantidad puesta a mano era del
@@ -85,7 +100,7 @@ extension ModeloApp {
     func planCambio(comidaId: String, opt: Int, idx: Int) async {
         if var a = ajustesDeHoy[comidaId], a.opcion == opt, a.cantidades[String(idx)] != nil {
             a.cantidades[String(idx)] = nil
-            await ajustar(comidaId, a, opciones: [comidaId: opt])
+            await ajustarHoy(comidaId, a, opciones: [comidaId: opt])
         } else if !ajustesDeHoy.isEmpty, !esDemo {
             await encolarAjustes(opciones: [:])
         }
@@ -93,14 +108,20 @@ extension ModeloApp {
 
     /// Otra opción a la vista en una comida sin ajuste: el resumen del día (si hay ajustes) se rehace con ella.
     public func verOpcion(_ comidaId: String, _ opcion: Int) async {
+        if diaPasado != nil { await verOpcionPasado(comidaId, opcion); return }
         opcionesVistas[comidaId] = opcion
         if !ajustesDeHoy.isEmpty, !esDemo { await encolarAjustes(opciones: [:]) }
     }
 
     /// El día entero a la cola (una op por día: la última gana). Con el resumen por comida para que Mati lo lea sin la app.
     func encolarAjustes(opciones: [String: Int]) async {
+        await encolarDia(fecha: fechaAjustes, ajustes: ajustes, tipo: tipoDia,
+                         comidas: comidasDeHoyParaAjustar(opciones: opcionesVistas.merging(opciones) { $1 }))
+    }
+
+    /// Un día entero a la cola (hoy o un día anterior: la clave lleva la fecha).
+    func encolarDia(fecha: String, ajustes: [String: AjusteComida], tipo: String?, comidas: [AjustePorciones.ComidaDelDia]) async {
         guard let dieta, let outbox else { return }
-        let comidas = comidasParaAjustar(opciones: opcionesVistas.merging(opciones) { $1 })
         let dia = AjustePorciones.dia(comidas, ajustes: ajustes)
         var resumen: [JSONValue] = []
         var plan = 0.0, hoy = 0.0
@@ -117,11 +138,11 @@ extension ModeloApp {
         }
         let ajustesJSON = (try? JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(ajustes))) ?? .objeto([:])
         let payload: JSONValue = .objeto([
-            "fecha": .texto(fechaAjustes), "dietaId": .texto(dieta.id), "tipoDia": tipoDia.map(JSONValue.texto) ?? .null,
+            "fecha": .texto(fecha), "dietaId": .texto(dieta.id), "tipoDia": tipo.map(JSONValue.texto) ?? .null,
             "ajustes": ajustesJSON, "resumen": ajustes.isEmpty ? .null : .lista(resumen),
             "kcalPlan": ajustes.isEmpty ? .null : .numero(plan), "kcalDia": ajustes.isEmpty ? .null : .numero(hoy),
         ]).sinNoFinitos
-        await outbox.encolar(Self.kindAjustes, payload, dedupeKey: Self.claveAjustes(fechaAjustes))
+        await outbox.encolar(Self.kindAjustes, payload, dedupeKey: Self.claveAjustes(fecha))
     }
 
     /// Salió el día: si era el de hoy, ya no hay nada sin guardar y los fallidos viejos de ese día se olvidan (si no, la
@@ -129,12 +150,14 @@ extension ModeloApp {
     func ajusteGuardado(_ op: Operacion) {
         guard let clave = op.dedupeKey else { return }
         if clave == Self.claveAjustes(FechaLocal.hoy()) { ajustesSinGuardar = false }
+        if let f = diaPasado?.fecha, clave == Self.claveAjustes(f) { diaPasado?.sinGuardar = false }
         Task { await outbox?.olvidarFallidos(clave: clave) }
     }
 
     /// La cola abandonó el día (8 intentos o un rechazo de la base, como el 22023 de un día demasiado grande).
     func ajusteAbandonado(_ op: Operacion) {
         if op.dedupeKey == Self.claveAjustes(FechaLocal.hoy()) { ajustesSinGuardar = true }
+        if let f = diaPasado?.fecha, op.dedupeKey == Self.claveAjustes(f) { diaPasado?.sinGuardar = true }
     }
 
     /// Al hidratar la dieta: lo que tiene el servidor para hoy, salvo que haya un cambio del teléfono que todavía no

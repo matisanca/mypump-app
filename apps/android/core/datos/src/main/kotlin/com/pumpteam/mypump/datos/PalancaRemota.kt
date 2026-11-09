@@ -16,6 +16,8 @@ data class PalancaRemota(
     val anclajeBorraSwaps: Boolean = true,
     val versionMinimaIOS: String? = null,
     val versionMinimaAndroid: String? = null,
+    /** Cuántos días atrás acepta «Comí» / «Salté» el servidor (`dieta_dias_marcar`). Sin la clave, lo de fábrica. */
+    val diasMarcarDieta: Int? = null,
 ) {
     companion object {
         val deFabrica = PalancaRemota()
@@ -27,6 +29,7 @@ data class PalancaRemota(
             anclajeBorraSwaps = (j["anclaje_borra_swaps"] as? ValorJson.Booleano)?.valor ?: true,
             versionMinimaIOS = (j["version_minima_ios"] as? ValorJson.Texto)?.valor?.takeIf { it.isNotEmpty() },
             versionMinimaAndroid = (j["version_minima_android"] as? ValorJson.Texto)?.valor?.takeIf { it.isNotEmpty() },
+            diasMarcarDieta = (j["dieta_dias_marcar"] as? ValorJson.Numero)?.valor?.takeIf { it == Math.rint(it) && it in 0.0..30.0 }?.toInt(),
         )
 
         /** null = no se pudo preguntar (red o servicio caído): quien llama decide si espera. */

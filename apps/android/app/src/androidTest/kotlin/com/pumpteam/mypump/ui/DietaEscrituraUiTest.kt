@@ -646,20 +646,26 @@ class DietaEscrituraUiTest : PruebaUi() {
         Telefono.modoNoche(true)
         abrir()
         irADieta()
+        // En pantalla chica no entran juntas la cabecera y la comida: se va de una a la otra.
+        irA("0-c1")
         p.esperar("«Comí» sigue") { p.seleccionado(etiqueta("comi-c1")) }
-        assertEquals("544 de 2.373 kcal", consumido())
         irA("cabecera")
+        assertEquals("544 de 2.373 kcal", consumido())
         Telefono.captura("dieta-consumido-oscuro")
 
         // «Salté» la saca de lo consumido; tocarla de nuevo desmarca (y se borra en el servidor).
+        irA("0-c1")
         p.tocar(etiqueta("salte-c1"))
         p.esperar("«Salté» marcado") { p.seleccionado(etiqueta("salte-c1")) && !p.seleccionado(etiqueta("comi-c1")) }
+        p.esperar("salteada en el servidor") { marcaGuardada("c1")?.getString("estado") == "saltado" }
+        irA("cabecera")
         p.esperar("sin el desayuno") { consumido() == "0 de 2.373 kcal" }
         p.nodo(texto("Comiste 0 de 4 comidas · salteaste 1"))
-        p.esperar("salteada en el servidor") { marcaGuardada("c1")?.getString("estado") == "saltado" }
+        irA("0-c1")
         p.tocar(etiqueta("salte-c1"))
         p.esperar("desmarcada") { !p.seleccionado(etiqueta("salte-c1")) }
         p.esperar("borrada en el servidor") { marcaGuardada("c1") == null && servidor.a("mypump_desmarcar_comida").isNotEmpty() }
+        irA("cabecera")
         p.nodo(texto("Tocá «Comí» en cada comida y acá se va sumando lo que comés."))
     }
 

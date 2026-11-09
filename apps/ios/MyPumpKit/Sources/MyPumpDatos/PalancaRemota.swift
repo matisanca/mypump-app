@@ -14,6 +14,8 @@ public struct PalancaRemota: Equatable, Sendable {
     public var anclajeBorraSwaps = true
     public var versionMinimaIOS: String?
     public var versionMinimaAndroid: String?
+    /// Cuántos días atrás acepta «Comí» / «Salté» el servidor (`dieta_dias_marcar`). Sin la clave, lo de fábrica.
+    public var diasMarcarDieta: Int?
 
     public init() {}
 
@@ -26,6 +28,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["anclaje_borra_swaps"] { anclajeBorraSwaps = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
+        if case .numero(let n)? = j["dieta_dias_marcar"], n == n.rounded(), n >= 0, n <= 30 { diasMarcarDieta = Int(n) }
     }
 
     /// nil = no se pudo preguntar (red o servicio caído): quien llama decide si espera.

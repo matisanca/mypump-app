@@ -51,6 +51,8 @@ import com.pumpteam.mypump.datos.ClienteRpc
 import com.pumpteam.mypump.datos.ErrorRpc
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.Resultado
+import com.pumpteam.mypump.datos.vistaAdmiteLibres
+import com.pumpteam.mypump.datos.fechaVista
 import com.pumpteam.mypump.diseno.AccionHoja
 import com.pumpteam.mypump.diseno.Alerta
 import com.pumpteam.mypump.diseno.AsaHoja
@@ -72,6 +74,8 @@ import com.pumpteam.mypump.modelos.EstimacionPlato
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
 import com.pumpteam.mypump.reglas.ComidaLibreNueva
+import com.pumpteam.mypump.reglas.DiasDieta
+import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.Formulario
 import com.pumpteam.mypump.reglas.jsRound
 import java.time.Instant
@@ -81,9 +85,12 @@ import kotlinx.coroutines.launch
 
 /** Lo que abre la hoja de comida libre: vacía (a mano) o con la estimación de la foto del plato. */
 sealed interface FormularioComidaLibre {
-    data object AMano : FormularioComidaLibre
+    /** El día al que va, fijado al empezar: pasada la medianoche o vuelto a hoy, sigue siendo ese. */
+    val fecha: String
 
-    data class Estimada(val estimacion: EstimacionPlato) : FormularioComidaLibre
+    data class AMano(override val fecha: String) : FormularioComidaLibre
+
+    data class Estimada(val estimacion: EstimacionPlato, override val fecha: String) : FormularioComidaLibre
 }
 
 /**
@@ -99,10 +106,16 @@ class EstadoComidasLibres {
     var formulario by mutableStateOf<FormularioComidaLibre?>(null)
     var errorFoto by mutableStateOf<String?>(null)
 
+    /** El día de la última foto: si la visión falla y se carga a mano, sigue siendo para ese. */
+    var fechaFoto: String? = null
+        private set
+
     /** La foto del plato (JPEG ya reducido) a la visión: con la estimación se abre el formulario; si falla, el aviso (DIE-16). */
     fun analizar(modelo: ModeloApp, alcance: CoroutineScope, jpeg: ByteArray) {
         if (analizando) return
         analizando = true
+        val fecha = modelo.fechaVista
+        fechaFoto = fecha
         alcance.launch {
             val r = modelo.analizarFoto(jpeg, ClienteRpc.TipoVision.PLATO)
             analizando = false
@@ -113,7 +126,7 @@ class EstadoComidasLibres {
                     } catch (_: Exception) {
                         null
                     }
-                    if (e != null) formulario = FormularioComidaLibre.Estimada(e) else errorFoto = "respuesta inesperada"
+                    if (e != null) formulario = FormularioComidaLibre.Estimada(e, fecha) else errorFoto = "respuesta inesperada"
                 }
                 is Resultado.Falla -> errorFoto = if (r.error.clase == ErrorRpc.Clase.RED) "sin conexión" else r.error.mensaje
             }
@@ -138,7 +151,11 @@ fun ComidasLibresSeccion(modelo: ModeloApp, estado: EstadoComidasLibres, modifie
     val c = MyPump.colores
     val alcance = LocalAlcanceApp.current
     val tactil = LocalHapticFeedback.current
-    val comidas by modelo.comidasLibres.collectAsStateWithLifecycle()
+    val deHoy by modelo.comidasLibres.collectAsStateWithLifecycle()
+    val diaPasado by modelo.diaPasado.collectAsStateWithLifecycle()
+    val comidas = diaPasado?.libres ?: deHoy
+    // Sin haber leído el día no se carga nada.
+    val admite = modelo.vistaAdmiteLibres
 
     Tarjeta(modifier.testTag("comidas-libres"), espaciado = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.semantics(mergeDescendants = true) {}) {
@@ -173,7 +190,7 @@ fun ComidasLibresSeccion(modelo: ModeloApp, estado: EstadoComidasLibres, modifie
                 maxPx = 1280,
                 calidad = 0.85,
                 alElegir = { jpeg -> estado.analizar(modelo, alcance, jpeg) },
-                habilitado = !estado.analizando,
+                habilitado = !estado.analizando && admite,
                 modifier = Modifier.weight(1f),
             ) {
                 Row(
@@ -196,7 +213,7 @@ fun ComidasLibresSeccion(modelo: ModeloApp, estado: EstadoComidasLibres, modifie
                     .heightIn(min = 44.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(c.campo)
-                    .clickable(role = Role.Button) { estado.formulario = FormularioComidaLibre.AMano }
+                    .clickable(enabled = admite, role = Role.Button) { estado.formulario = FormularioComidaLibre.AMano(modelo.fechaVista) }
                     .testTag("a-mano"),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
@@ -271,7 +288,7 @@ private fun FilaComidaLibre(comida: ComidaLibre, alBorrar: () -> Unit) {
 fun HojasComidasLibres(modelo: ModeloApp, estado: EstadoComidasLibres) {
     val c = MyPump.colores
     estado.formulario?.let { f ->
-        HojaComidaLibre(modelo, (f as? FormularioComidaLibre.Estimada)?.estimacion, alCerrar = { estado.formulario = null })
+        HojaComidaLibre(modelo, (f as? FormularioComidaLibre.Estimada)?.estimacion, f.fecha, alCerrar = { estado.formulario = null })
     }
     estado.errorFoto?.let { motivo ->
         Alerta(
@@ -282,7 +299,7 @@ fun HojasComidasLibres(modelo: ModeloApp, estado: EstadoComidasLibres) {
                 BotonAlerta("Cancelar", etiqueta = "cancelar-foto", cancelar = true) { estado.errorFoto = null },
                 BotonAlerta("Cargar a mano", etiqueta = "cargar-a-mano") {
                     estado.errorFoto = null
-                    estado.formulario = FormularioComidaLibre.AMano
+                    estado.formulario = FormularioComidaLibre.AMano(estado.fechaFoto ?: modelo.fechaVista)
                 },
             ),
             alDescartar = { estado.errorFoto = null },
@@ -298,7 +315,7 @@ fun HojasComidasLibres(modelo: ModeloApp, estado: EstadoComidasLibres) {
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun HojaComidaLibre(modelo: ModeloApp, estimacion: EstimacionPlato?, alCerrar: () -> Unit) {
+fun HojaComidaLibre(modelo: ModeloApp, estimacion: EstimacionPlato?, fecha: String, alCerrar: () -> Unit) {
     val c = MyPump.colores
     val hoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val alcanceHoja = rememberCoroutineScope()
@@ -347,7 +364,7 @@ fun HojaComidaLibre(modelo: ModeloApp, estimacion: EstimacionPlato?, alCerrar: (
                 error = null
                 guardando = true
                 alcance.launch {
-                    val r = modelo.crearComidaLibre(f.datos)
+                    val r = modelo.crearComidaLibre(f.datos, fecha)
                     guardando = false
                     when (r) {
                         is Resultado.Ok -> {
@@ -385,6 +402,15 @@ fun HojaComidaLibre(modelo: ModeloApp, estimacion: EstimacionPlato?, alCerrar: (
                 .padding(top = Espacio.xs, bottom = Espacio.s),
             verticalArrangement = Arrangement.spacedBy(Espacio.l),
         ) {
+            if (fecha != FechaLocal.hoy()) {
+                Text(
+                    "Se carga en: ${DiasDieta.rotuloLargo(fecha)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = c.marcaTexto,
+                    modifier = Modifier.testTag("libre-fecha"),
+                )
+            }
             if (estimacion != null) {
                 SeccionFormulario(titulo = null) {
                     Row(
