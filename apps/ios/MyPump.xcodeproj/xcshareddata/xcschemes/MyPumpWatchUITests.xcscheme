@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme version="1.7">
+ <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"/>
+ <TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="" selectedLauncherIdentifier="" shouldUseLaunchSchemeArgsEnv="YES">
+  <Testables><TestableReference skipped="NO">
+   <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="7C2000000000000000000003" BuildableName="MyPumpWatchUITests.xctest" BlueprintName="MyPumpWatchUITests" ReferencedContainer="container:MyPump.xcodeproj"/>
+  </TestableReference></Testables>
+ </TestAction>
+</Scheme>

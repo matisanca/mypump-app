@@ -316,10 +316,22 @@ struct EjercicioVista: View {
     let lugar: String
     @Environment(EstadoReloj.self) private var estado
     @Environment(\.dismiss) private var cerrar
+    @Environment(\.scenePhase) private var fase
     enum Campo { case reps, kg }
     @State private var foco: Campo = .reps
     @State private var corona = 0.0
     @FocusState private var enfocado: Bool
+
+    /// Devuelve la corona a esta pantalla. El `fullScreenCover` del descanso se lleva el foco y al cerrarse no lo devuelve
+    /// (la corona quedaba muerta desde la segunda serie: reproducido con XCUITest). `@FocusState` hay que apagarlo y
+    /// volver a prenderlo, después de que el descanso termine de irse. También al volver a primer plano y al tocar un campo.
+    private func recuperarCorona(demora: Int = 500) {
+        enfocado = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(demora))
+            if estado.sesion.descanso == nil { enfocado = true }
+        }
+    }
 
     var body: some View {
         let s = estado.sesion
@@ -349,9 +361,9 @@ struct EjercicioVista: View {
                         if estado.calibrando { LineaCalibracion() }
                         HStack(spacing: 6) {
                             CampoCorona(titulo: "Reps", valor: "\(s.reps)", activo: foco == .reps,
-                                        propuesto: estado.propuestaSerie.enLaCorona(s.reps)) { foco = .reps }
+                                        propuesto: estado.propuestaSerie.enLaCorona(s.reps)) { foco = .reps; recuperarCorona(demora: 60) }
                             if !e.sinKg {
-                                CampoCorona(titulo: "Kg", valor: TextoReloj.kg(s.kg), activo: foco == .kg) { foco = .kg }
+                                CampoCorona(titulo: "Kg", valor: TextoReloj.kg(s.kg), activo: foco == .kg) { foco = .kg; recuperarCorona(demora: 60) }
                             }
                         }
                         Button { estado.confirmar() } label: {
@@ -363,6 +375,7 @@ struct EjercicioVista: View {
                         Label("Ejercicio hecho", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(Marca.verde)
                     }
+                    AvisoCola()
                     if let r = estado.avisoRecord {
                         Label(r, systemImage: "trophy.fill")
                             .font(.footnote.weight(.semibold))
@@ -391,6 +404,12 @@ struct EjercicioVista: View {
             .onAppear {
                 estado.elegir(lugar)
                 enfocado = true
+            }
+            .onChange(of: s.descanso == nil) { _, sinDescanso in
+                if sinDescanso { recuperarCorona() }
+            }
+            .onChange(of: fase) { _, f in
+                if f == .active { recuperarCorona() }
             }
             .navigationTitle(e.bloque ?? "Serie")
         }
@@ -421,6 +440,27 @@ struct CampoCorona: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(titulo): \(valor)" + (propuesto ? ", lo contó el reloj" : ""))
         .accessibilityHint(activo ? "Girá la corona para cambiarlo" : "Tocá para cambiarlo con la corona")
+    }
+}
+
+/// En la pantalla donde se entrena: lo que el iPhone no aceptó y lo que todavía no le llegó (antes solo se veía en la lista
+/// del día), con el motivo («Abrí Pump Team en el iPhone»).
+struct AvisoCola: View {
+    @Environment(EstadoReloj.self) private var estado
+    var body: some View {
+        let s = estado.sesion
+        if let t = s.rechazos.last {
+            VStack(alignment: .leading, spacing: 2) {
+                Label(t, systemImage: "exclamationmark.triangle.fill").font(.caption2).foregroundStyle(Marca.oro)
+                Button("Entendido") { estado.leerRechazos() }.font(.caption2)
+            }
+        }
+        if let t = s.resumen(ahora: EstadoReloj.ahoraMs).textoSinEnviar {
+            VStack(alignment: .leading, spacing: 0) {
+                Label(t, systemImage: "arrow.triangle.2.circlepath").font(.caption2).foregroundStyle(.secondary)
+                if let e = s.esperando { Text(e).font(.caption2).foregroundStyle(Marca.oro) }
+            }
+        }
     }
 }
 

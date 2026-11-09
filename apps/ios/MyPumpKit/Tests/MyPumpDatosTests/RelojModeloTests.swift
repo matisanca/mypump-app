@@ -363,6 +363,31 @@ struct RelojModeloTests {
         #expect(m.relojEsperando == nil, "pasó: el aviso se va")
     }
 
+    // Reloj 9-nov: una serie rechazada salía de la cola del reloj y su único rastro era un aviso en una pantalla del reloj.
+    @Test func elIPhoneAvisaLasSeriesDelRelojQueNoSeGuardaron() async throws {
+        let b = Banco()
+        let m = b.modelo()
+        let receptor = ReceptorReloj(disco: b.disco)
+        let a = await receptor.recibir([serie(rutina: "otra-rutina"), serie(1, rutina: "otra-rutina")], motor: m)
+        #expect(a.map(\.resultado) == [.rechazado, .rechazado])
+        let t = try #require(m.relojEsperando)
+        #expect(t.contains("2 series") && t.contains("no se guardaron") && t.contains("tu rutina cambió"), "\(t)")
+        // Un lote siguiente sin problemas no borra el aviso de lo que se perdió.
+        _ = await receptor.recibir([serie(0, reps: 11)], motor: m)
+        #expect(m.relojEsperando == t, "sigue a la vista")
+    }
+
+    @Test func unaSerieQueYaEstaEnElTelefonoNoAvisaQueSePerdio() async throws {
+        let b = Banco()
+        let m = b.modelo()
+        m.escribir("jal-d1-0", 0, campo: "reps", valor: "12")
+        m.escribir("jal-d1-0", 0, campo: "kg", valor: "60")
+        await m.confirmarSerie("jal-d1-0", 0) { _ in true }
+        let a = await ReceptorReloj(disco: b.disco).recibir([serie(0, reps: 7)], motor: m)
+        #expect(a.first?.motivo == "ya cargaste esta serie en el teléfono.")
+        #expect(m.relojEsperando == nil, "esa serie está guardada: no se perdió nada")
+    }
+
     // MARK: - Reentrada
 
     @Test func unLoteDuplicadoEnElMedioNoAplicaDosVeces() async {

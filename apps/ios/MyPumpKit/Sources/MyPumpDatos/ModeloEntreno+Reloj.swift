@@ -99,6 +99,7 @@ extension ModeloEntreno {
     public var cuentaReloj: String { Self.hashCuenta(token) }
 
     static let motivoDiaCerrado = "ese día ya lo cerraste en el teléfono."
+    static let motivoYaCargada = "ya cargaste esta serie en el teléfono."
 
     nonisolated public static func hashCuenta(_ token: String?) -> String {
         guard let token, !token.isEmpty else { return "demo" }
@@ -157,7 +158,7 @@ extension ModeloEntreno {
             if dia.diaFinalizado { return r(.rechazado, Self.motivoDiaCerrado) }
             if s.confirmada {
                 guard let previa = seriesDelReloj[claveFecha(lugar, i + 1)], previa < ec.creado else {
-                    return r(.rechazado, "ya cargaste esta serie en el teléfono.")
+                    return r(.rechazado, Self.motivoYaCargada)
                 }
                 await editarSerie(lugar, i)
             }
@@ -242,6 +243,20 @@ extension ReceptorReloj {
     /// El aviso de Entreno: el pendiente más viejo de este lote, si espera hace más de `avisarDespues`. Un lote sin
     /// pendientes lo apaga.
     func avisar(_ motor: ModeloEntreno, _ eventos: [EventoEnCola], _ acuses: [AcuseEvento]) {
+        // Una serie rechazada ya salió de la cola del reloj: si no se guardó en ningún lado, se avisa acá (y gana a cualquier
+        // otro aviso, y no se apaga con el lote siguiente). «Ya cargaste esta serie en el teléfono» no es una pérdida: está.
+        let perdidas = acuses.filter { a in
+            a.resultado == .rechazado && a.motivo != ModeloEntreno.motivoYaCargada &&
+                eventos.first { $0.id == a.id }.map { if case .serie = $0.evento { true } else { false } } == true
+        }
+        if !perdidas.isEmpty {
+            let motivo = perdidas.first?.motivo ?? ""
+            let n = perdidas.count
+            motor.relojEsperando = "\(n) \(n == 1 ? "serie" : "series") del Apple Watch no se guardaron: \(motivo) Cargalas a mano."
+            motor.relojPerdidas = true
+            return
+        }
+        if motor.relojPerdidas { return }
         let pendientes = Set(acuses.filter { $0.resultado == .pendiente }.map(\.id))
         guard let viejo = eventos.filter({ pendientes.contains($0.id) }).min(by: { $0.creado < $1.creado }) else {
             motor.relojEsperando = nil

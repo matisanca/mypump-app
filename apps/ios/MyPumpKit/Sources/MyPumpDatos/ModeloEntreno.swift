@@ -121,6 +121,8 @@ public final class ModeloEntreno {
     @ObservationIgnored var seriesDelReloj: [String: Double] = [:]
     /// Hay eventos del Apple Watch que esperan hace horas sin poder pasar (el aviso de Entreno); nil si no.
     public internal(set) var relojEsperando: String?
+    /// `relojEsperando` avisa series que no se guardaron: se queda a la vista aunque los lotes siguientes pasen bien.
+    @ObservationIgnored var relojPerdidas = false
 
     public init(cliente: ClienteRPC, token: String?, outbox: Outbox?, disco: Disco?, rutina: RutinaActiva, info: ClienteInfo? = nil,
                 catalogo: CatalogoEjercicios = CatalogoEjercicios([]), demo: Bool? = nil, zona: TimeZone = .current,

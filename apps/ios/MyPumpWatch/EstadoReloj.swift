@@ -323,6 +323,23 @@ final class EstadoReloj {
             }
         }
         if forzar || sesion.rutina == nil { conexion.enviar(.pedirRutina, alTerminar: nil) }
+        reintentarMientrasHaya()
+    }
+
+    @ObservationIgnored private var reintento: Task<Void, Never>?
+
+    /// Con la cola sin acusar se vuelve a mandar cada `ColaReloj.reintento`, sin esperar a que el alumno toque algo (si
+    /// el iPhone tardó en tener la cuenta lista, lo pendiente quedaba hasta volver a abrir el reloj).
+    private func reintentarMientrasHaya() {
+        guard reintento == nil, !sesion.cola.vacia else { return }
+        reintento = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(Int(ColaReloj.reintento) + 500))
+                guard let self else { return }
+                if self.sesion.cola.vacia { self.reintento = nil; return }
+                self.sincronizar()
+            }
+        }
     }
 
     private func actualizarComplicacion() {

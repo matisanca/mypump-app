@@ -16,6 +16,10 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// Lo que marca la corona para la próxima serie del lugar.
     public private(set) var reps: Int = 10
     public private(set) var kg: Double?
+    /// La serie en la que el alumno giró la corona («día#semana#lugar#serie»): lo que marca es suyo y una rutina que llega
+    /// del iPhone (al levantar la muñeca, al volver la conexión, tras cada serie) no lo vuelve a lo sugerido. Opcional
+    /// para que una sesión guardada por una versión anterior se siga leyendo.
+    private var coronaTocada: String?
     public private(set) var descanso: Descanso.Guardado?
     /// El descanso actual ya vibró.
     private var descansoSono = false
@@ -187,6 +191,10 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// se hizo en la serie de arriba.
     mutating func cargarCorona() {
         guard let e = actual else { return }
+        // La serie en la que el alumno ya giró: lo que marca se queda. Cualquier otra serie (confirmó, cambió de ejercicio
+        // o de día) arranca de nuevo.
+        if let c = claveCorona, c == coronaTocada { return }
+        coronaTocada = nil
         let i = e.proximaSerie ?? max(0, e.series.count - 1)
         let s = e.series.indices.contains(i) ? e.series[i] : nil
         let arriba = i > 0 && e.series.indices.contains(i - 1) ? e.series[i - 1] : nil
@@ -215,7 +223,16 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     }
 
     /// Un clic de la corona en reps (±1).
-    public mutating func girarReps(_ pasos: Int) { reps = Self.acotarReps(reps + pasos) }
+    public mutating func girarReps(_ pasos: Int) {
+        reps = Self.acotarReps(reps + pasos)
+        coronaTocada = claveCorona
+    }
+
+    /// La serie que está en la corona (nil sin rutina o sin serie para hacer).
+    private var claveCorona: String? {
+        guard let r = rutina, let e = actual, let i = e.proximaSerie else { return nil }
+        return "\(r.diaId)#\(r.semana)#\(e.lugar)#\(i)"
+    }
 
     /// Un clic de la corona en kg: un paso del equipo (alineado a su grilla: un 21 de mancuerna sube a 22 y baja a 20),
     /// sin bajar de 0 ni pasar el tope.
@@ -233,6 +250,7 @@ public struct SesionReloj: Codable, Equatable, Sendable {
             k = min(Self.kgMax, max(0, (k * 100).rounded() / 100))
         }
         kg = k
+        coronaTocada = claveCorona
     }
 
     // MARK: - La preparación (E1)
