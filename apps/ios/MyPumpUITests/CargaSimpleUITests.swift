@@ -75,6 +75,8 @@ final class CargaSimpleUITests: XCTestCase {
         lanzar()
         app.darOK()
         espera("label CONTAINS 'hecha'", app.filaSerie(1))
+        // Al confirmar, la lista baja sola hasta el descanso: un toque mientras se mueve solo la frena.
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
         app.traerArribaDelPanel(app.filaSerie(1))
         app.filaSerie(1).tap()
         XCTAssertTrue(app.buttons["correccion-guardar"].waitForExistence(timeout: 3), "No abrió la corrección")

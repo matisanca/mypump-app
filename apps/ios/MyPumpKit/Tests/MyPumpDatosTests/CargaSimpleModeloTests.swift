@@ -44,6 +44,22 @@ struct CargaSimpleModeloTests {
         #expect(await cargasEnCola(b).count == 1)
     }
 
+    @Test func sinRedElOKQuedaEnLaColaYSaleAlVolver() async {
+        let b = Banco(ejecutar: true); historial(b)
+        let m = await modelo(b)
+        b.servidor.cuando("iniciar_sesion", #""ses-1""#)
+        b.servidor.sinRed("registrar_carga")
+        #expect(await ok(m, 0) == .registrada)
+        await m.vaciarDeshacer()
+        await b.cola.drenar()
+        #expect(m.dia.ejercicios[lugar]?.series[0].confirmada == true)
+        #expect(await cargasEnCola(b).count == 1, "sin red la serie no se puede perder")
+        b.servidor.cuando("registrar_carga", #""fila-1""#)
+        await b.cola.drenar()
+        #expect(await cargasEnCola(b).isEmpty)
+        #expect(b.servidor.llamadas("registrar_carga").last?["p_peso"]?.comoNumero == 80)
+    }
+
     @Test func okDentroDeLaVentanaNoSaleHastaQueVence() async {
         let b = Banco(); historial(b)
         let m = await modelo(b)
@@ -215,7 +231,7 @@ struct CargaSimpleModeloTests {
 
     @Test func cerrarElDiaManda_loDemoradoAntes() async {
         let b = Banco(ejecutar: true); historial(b)
-        b.servidor.cuando("registrar_carga", "null")
+        b.servidor.cuando("registrar_carga", #""fila-1""#)
         b.servidor.cuando("get_sesion_dia", sesionJSON("s1", semana: 2))
         let m = await modelo(b)
         _ = await ok(m, 0)
