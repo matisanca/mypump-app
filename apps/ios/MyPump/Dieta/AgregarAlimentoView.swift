@@ -330,7 +330,7 @@ struct AgregarAlimentoView: View {
         var a = CantidadAlimentoView.base(modelo, comidaId, opciones: opciones)
         let nuevo = AgregadosComida.agregado(r.candidato, cantidad: r.cantidad, medida: medida, ts: CantidadAlimentoView.nuevoTs(a))
         a.agregados.append(nuevo)
-        var dia = modelo.ajustesDeHoy
+        var dia = modelo.ajustesVista
         dia[comidaId] = a
         if let m = AgregadosComida.motivoNoEntra(dia, comidaId: comidaId) {
             withAnimation(.snappy) { aviso = m }

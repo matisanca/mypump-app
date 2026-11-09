@@ -75,6 +75,11 @@ public final class ModeloApp {
     @ObservationIgnored var fechaMarcas = ""
     /// Cuántas veces tocó el cliente cada marca (la lectura del servidor no pisa lo que se tocó mientras viajaba).
     @ObservationIgnored var ordenMarcas: [String: Int] = [:]
+    /// El día anterior que se está mirando en Dieta (nil: hoy). Ver DiaPasadoDieta.swift.
+    public internal(set) var diaPasado: DiaPasado?
+    @ObservationIgnored var vueltaDiaPasado = 0
+    /// Cuántas veces tocó algo del día pasado (la lectura no pisa lo que se tocó mientras viajaba).
+    @ObservationIgnored var ordenDiaPasado = 0
     /// La palanca remota (G2). Se lee en cada carga; sin la tabla o sin red queda la de fábrica (todo prendido).
     public private(set) var palanca = PalancaRemota.deFabrica
 
@@ -212,7 +217,7 @@ public final class ModeloApp {
         token = nil
         disco = nil
         outbox = nil
-        info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         esDemo = false
@@ -264,7 +269,7 @@ public final class ModeloApp {
     /// Salir de la demo vuelve a la bienvenida (o a la cuenta, si había una guardada).
     public func salirDeDemo() async {
         esDemo = false
-        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; entreno = nil; guia = nil
+        rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; entreno = nil; guia = nil
         suplementacion = nil
         token = almacen.leer()
         if let t = token {
@@ -281,7 +286,7 @@ public final class ModeloApp {
         disco = nil
         cacheCodigos = nil
         outbox = nil
-        info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; comidasLibres = []; alimentosPropios = []; excluir = []
+        info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
         chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
     }
@@ -588,6 +593,8 @@ public final class ModeloApp {
             await cargarComidasLibres()
             await revision?.cargarRevision()
             diaCargado = hoy
+            // Cambió el día: se vuelve a hoy (el que se miraba pudo salir de la ventana del servidor).
+            await irADia(nil)
         }
         // La tarjeta de «Tu guía», que solo lee (`entregas_app_resumen`), sin frenar lo demás.
         if let guia { Task { await guia.actualizarResumen() } }
@@ -596,6 +603,7 @@ public final class ModeloApp {
         await outbox?.drenar()
         // Las marcas de hoy, cada vez: las pudo cambiar la web u otro teléfono (DIE-05, D25).
         await hidratarMarcas()
+        await refrescarDiaPasado()
         await chat?.sondear()
         await fotos?.drenar()
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
@@ -665,9 +673,18 @@ public final class ModeloApp {
 
     /// Lo que se muestra en esa posición: el sustituto si el swap aplica (anclaje), si no el alimento del plan.
     public func efectivo(_ original: Alimento, comidaId: String, opt: Int, idx: Int) -> (alimento: Alimento, sustituido: Bool) {
+        efectivo(original, comidaId: comidaId, opt: opt, idx: idx, tipo: tipoDia)
+    }
+
+    /// Lo mismo para el tipo de día del día a la vista.
+    public func efectivoVista(_ original: Alimento, comidaId: String, opt: Int, idx: Int) -> (alimento: Alimento, sustituido: Bool) {
+        efectivo(original, comidaId: comidaId, opt: opt, idx: idx, tipo: tipoDiaVista)
+    }
+
+    func efectivo(_ original: Alimento, comidaId: String, opt: Int, idx: Int, tipo: String?) -> (alimento: Alimento, sustituido: Bool) {
         let e = dieta?.estructura ?? EstructuraDieta()
         return SwapsDeComida.efectivo(original, swap: swaps[clave(comidaId, opt, idx)], comidaId: comidaId) {
-            SwapsDeComida.enPosicion(e, tipoActivo: tipoDia, comidaId: comidaId, optIdx: opt, foodIdx: idx)
+            SwapsDeComida.enPosicion(e, tipoActivo: tipo, comidaId: comidaId, optIdx: opt, foodIdx: idx)
         }
     }
 
@@ -737,10 +754,15 @@ public final class ModeloApp {
     }
 
     /// `guardarComidaLibre`: directo, no por la cola (como la web), con la fecha local.
-    public func crearComidaLibre(_ d: ComidaLibreNueva.Datos) async -> Result<ComidaLibre, ErrorRPC> {
+    public func crearComidaLibre(_ d: ComidaLibreNueva.Datos, fecha: String? = nil) async -> Result<ComidaLibre, ErrorRPC> {
+        await crearComidaLibreEn(fecha ?? fechaVista, d)
+    }
+
+    /// La crea en `fecha` y la suma a esa caja (hoy o el día pasado que se siga mirando).
+    func crearComidaLibreEn(_ fecha: String, _ d: ComidaLibreNueva.Datos) async -> Result<ComidaLibre, ErrorRPC> {
         guard let t = token else { return .failure(ErrorRPC(clase: .permanente, status: 0, codigo: "SIN_CUENTA", mensaje: "demo")) }
         let p: [String: JSONValue] = [
-            "p_token": .texto(t), "p_fecha": .texto(FechaLocal.hoy()), "p_hora": d.hora.map(JSONValue.texto) ?? .null,
+            "p_token": .texto(t), "p_fecha": .texto(fecha), "p_hora": d.hora.map(JSONValue.texto) ?? .null,
             "p_descripcion": .texto(d.descripcion), "p_kcal": .numero(d.kcal), "p_prot": .numero(d.prot),
             "p_carb": .numero(d.carb), "p_fat": .numero(d.fat), "p_detalle": d.detalle ?? .null,
         ]
@@ -751,7 +773,10 @@ public final class ModeloApp {
             guard let c = filas.first else {
                 return .failure(ErrorRPC(clase: .permanente, status: 200, codigo: "SIN_FILA", mensaje: "mypump_crear_comida_libre: vacío"))
             }
-            if token == t { comidasLibres.append(c) }
+            if token == t {
+                if fecha == diaPasado?.fecha { diaPasado?.libres.append(c); ordenDiaPasado += 1 }
+                else if fecha == FechaLocal.hoy() { comidasLibres.append(c) }
+            }
             return .success(c)
         }
     }
@@ -759,12 +784,25 @@ public final class ModeloApp {
     /// `borrarComidaLibre`: optimista; si el servidor no contesta bien, vuelve a aparecer.
     @discardableResult
     public func borrarComidaLibre(_ id: String) async -> Bool {
+        if diaPasado?.libres.contains(where: { $0.id == id }) == true { return await borrarComidaLibrePasada(id) }
         let previas = comidasLibres
         comidasLibres.removeAll { $0.id == id }
         guard let t = token else { return true }
         if case .failure = await cliente.llamar("mypump_borrar_comida_libre", ["p_token": .texto(t), "p_id": .texto(id)]) {
             // Volver atrás solo en la misma cuenta: con otra en el medio, `previas` es de la anterior.
             if token == t { comidasLibres = previas }
+            return false
+        }
+        return true
+    }
+
+    private func borrarComidaLibrePasada(_ id: String) async -> Bool {
+        guard let fecha = diaPasado?.fecha, let previas = diaPasado?.libres else { return false }
+        diaPasado?.libres.removeAll { $0.id == id }
+        ordenDiaPasado += 1
+        guard let t = token else { return true }
+        if case .failure = await cliente.llamar("mypump_borrar_comida_libre", ["p_token": .texto(t), "p_id": .texto(id)]) {
+            if token == t, diaPasado?.fecha == fecha { diaPasado?.libres = previas }
             return false
         }
         return true

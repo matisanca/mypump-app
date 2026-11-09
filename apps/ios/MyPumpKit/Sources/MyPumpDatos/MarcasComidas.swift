@@ -38,14 +38,19 @@ extension ModeloApp {
     /// Lo comido hoy con las opciones que se ven (las comidas marcadas «Comí» se cuentan con la de la marca), los
     /// reemplazos, los ajustes de hoy y las comidas libres.
     public func consumo(opciones: [String: Int]) -> ConsumoDelDia.Consumo {
-        ConsumoDelDia.calcular(comidasDelDia, marcas: marcasDeHoy, libres: comidasLibres, ajustes: ajustesDeHoy, vistas: opciones) {
-            efectivo($3, comidaId: $0, opt: $1, idx: $2).alimento
+        ConsumoDelDia.calcular(comidasVista, marcas: marcasVista, libres: libresVista, ajustes: ajustesVista, vistas: opciones) {
+            efectivoVista($3, comidaId: $0, opt: $1, idx: $2).alimento
         }
     }
 
     /// «Comí» o «Salté» con la opción `opcion` (la que se ve), o nil para desmarcar. «Comí» arranca con todo tildado.
     /// Optimista: se ve al toque, queda en el teléfono y sale por la cola (sin red, cuando vuelva). En la demo, en memoria.
     public func marcar(_ comidaId: String, _ estado: MarcaComida.Estado?, opcion: Int) async {
+        if diaPasado != nil { await marcarPasado(comidaId, estado, opcion: opcion); return }
+        await marcarHoy(comidaId, estado, opcion: opcion)
+    }
+
+    func marcarHoy(_ comidaId: String, _ estado: MarcaComida.Estado?, opcion: Int) async {
         if fechaMarcas != FechaLocal.hoy() { cargarMarcas() }
         guard let c = comidasDelDia.first(where: { $0.id == comidaId }) else { return }
         let o = c.opciones.isEmpty ? 0 : min(max(0, opcion), c.opciones.count - 1)
@@ -56,6 +61,7 @@ extension ModeloApp {
     /// Consumo parcial (DIE-06): destilda (o vuelve a tildar) un alimento de una comida marcada «Comí». El índice es de la
     /// opción de la marca: Dieta solo muestra los tildes mirando esa opción.
     public func alternarAlimento(_ comidaId: String, _ idx: Int) async {
+        if diaPasado != nil { await alternarAlimentoPasado(comidaId, idx); return }
         if fechaMarcas != FechaLocal.hoy() { cargarMarcas() }
         guard idx >= 0, let m = marcas[comidaId], m.estado == .comido else { return }
         let excluidos = m.excluidos.contains(idx) ? m.excluidos.filter { $0 != idx } : m.excluidos + [idx]

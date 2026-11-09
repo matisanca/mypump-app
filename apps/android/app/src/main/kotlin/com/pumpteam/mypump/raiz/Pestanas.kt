@@ -72,6 +72,8 @@ import com.pumpteam.mypump.chat.ChatPantalla
 import com.pumpteam.mypump.datos.DestinoAviso
 import com.pumpteam.mypump.datos.EstadoGuardado
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.enDiaPasado
+import com.pumpteam.mypump.datos.irADia
 import com.pumpteam.mypump.dieta.DietaPantalla
 import com.pumpteam.mypump.diseno.BotonSecundario
 import com.pumpteam.mypump.diseno.Espacio
@@ -134,6 +136,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
             vm.destinoConsumido()
         }
     }
+    // Salir de Dieta de verdad vuelve a hoy (girar el teléfono no: la pestaña sigue siendo la misma).
+    LaunchedEffect(navegacion.pestana) { if (navegacion.pestana != Pestana.DIETA && modelo.enDiaPasado) modelo.irADia(null) }
     val enMisDatos = navegacion.pestana == Pestana.REVISION && navegacion.misDatos
     val enGuia = navegacion.pestana == Pestana.ENTRENO && navegacion.guia
     val enGuiaDeMisDatos = enMisDatos && navegacion.guiaEnMisDatos

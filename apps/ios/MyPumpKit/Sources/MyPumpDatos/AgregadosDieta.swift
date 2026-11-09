@@ -28,7 +28,7 @@ extension ModeloApp {
     /// Saca un agregado de una comida de hoy (los tildes de «Comí» los corre `ajustar`, por `_ts`). Se busca por `_ts` en
     /// el ajuste de AHORA: dos toques seguidos en «Sacar» no borran otro.
     public func borrarAgregado(_ comidaId: String, ts: Int64, opciones: [String: Int]) async {
-        guard var a = ajustesDeHoy[comidaId], let j = a.agregados.firstIndex(where: { $0.ts == ts }) else { return }
+        guard var a = ajustesVista[comidaId], let j = a.agregados.firstIndex(where: { $0.ts == ts }) else { return }
         a.agregados.remove(at: j)
         await ajustar(comidaId, a, opciones: opciones)
     }

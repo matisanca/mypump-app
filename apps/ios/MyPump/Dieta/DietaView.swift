@@ -10,7 +10,8 @@ import MyPumpDatos
 /// toca en la misma fila (D2), al estilo de MyFitnessPal.
 struct DietaView: View {
     @State private var modelo = Proveedor.modelo
-    @State private var opcion: [String: Int] = [:]
+    /// La opción que se eligió mirar, por día (cada día tiene la suya: la de ayer no cambia lo que se ve hoy).
+    @State private var opcionesPorDia: [String: [String: Int]] = [:]
     @State private var porcionesAbiertas: Set<String> = []
     @State private var reemplazo: Reemplazo?
     @State private var revertir: Reemplazo?
@@ -19,6 +20,8 @@ struct DietaView: View {
     /// La hoja de agregar alimento (D1) y la de cantidad de un alimento (D2, o uno agregado).
     @State private var agregandoA: ComidaAAjustar?
     @State private var cantidadAbierta: CantidadAlimento?
+    /// La hoja de copiar a hoy lo cargado otro día.
+    @State private var copiando: CopiaPedida?
     /// En iPad la dieta va en una columna centrada: el título grande del sistema quedaba pegado al borde, lejos de la
     /// columna. Ahí el título va adentro de la columna (como el encabezado de Entreno) y arriba queda chico.
     @Environment(\.horizontalSizeClass) private var claseAncho
@@ -26,6 +29,16 @@ struct DietaView: View {
 
     /// La raíz todavía pasa las muestras de los bocetos; Dieta ya usa el modelo real y las ignora.
     init(datos: Muestras? = nil) {}
+
+    private var opcion: [String: Int] {
+        get { opcionesPorDia[modelo.fechaVista] ?? [:] }
+        nonmutating set { opcionesPorDia[modelo.fechaVista] = newValue }
+    }
+
+    struct CopiaPedida: Identifiable {
+        let origen: String
+        var id: String { origen }
+    }
 
     struct ComidaAAjustar: Identifiable {
         let id: String
@@ -79,7 +92,8 @@ struct DietaView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.fondo)
             .navigationTitle("Dieta")
-            .navigationBarTitleDisplayMode(claseAncho == .regular ? .inline : .automatic)
+            // Con la tira de días, título chico: el grande dejaba un hueco vacío arriba de la tira al estar fija.
+            .navigationBarTitleDisplayMode(claseAncho == .regular || !modelo.fechasDieta.isEmpty ? .inline : .automatic)
             .toolbar { selectorTipoDia }
         }
         .task { if modelo.fase == .cargando || modelo.fase == .sinServicio { await modelo.cargar() } }
@@ -100,6 +114,11 @@ struct DietaView: View {
             }
             .presentationDetents([.large])
         }
+        // Las hojas son de un día: si cambia (medianoche, o se volvió a hoy), se cierran sin guardar en otra fecha.
+        .onChange(of: modelo.fechaVista) { ajustando = nil; agregandoA = nil; cantidadAbierta = nil; reemplazo = nil; revertir = nil }
+        .sheet(item: $copiando) { c in
+            CopiarDiaView(modelo: modelo, origen: c.origen)
+        }
     }
 
     // MARK: - Contenido
@@ -108,9 +127,9 @@ struct DietaView: View {
     /// si no A. Dentro de las que hay (si Mati vuelve a publicar con menos opciones, la del ajuste puede no existir).
     private var opcionesVigentes: [String: Int] {
         var r: [String: Int] = [:]
-        let marcas = modelo.marcasDeHoy
-        for c in modelo.comidasDelDia {
-            let o = opcion[c.id] ?? ConsumoDelDia.opcionDeLaMarca(c, marcas[c.id]) ?? modelo.ajustesDeHoy[c.id]?.opcion ?? 0
+        let marcas = modelo.marcasVista
+        for c in modelo.comidasVista {
+            let o = opcion[c.id] ?? ConsumoDelDia.opcionDeLaMarca(c, marcas[c.id]) ?? modelo.ajustesVista[c.id]?.opcion ?? 0
             r[c.id] = c.opciones.isEmpty ? 0 : min(max(0, o), c.opciones.count - 1)
         }
         return r
@@ -129,18 +148,32 @@ struct DietaView: View {
                             .accessibilityAddTraits(.isHeader)
                             .padding(.top, Espacio.s)
                     }
-                    Cabecera(objetivo: modelo.objetivo, consumo: consumo, elegidas: Self.total(dia), conAjustes: !modelo.ajustesDeHoy.isEmpty)
-                    BannerRevision()
-                    if modelo.ajustesSinGuardar {
+                    Cabecera(objetivo: modelo.objetivoVista, consumo: consumo, elegidas: Self.total(dia),
+                             conAjustes: !modelo.ajustesVista.isEmpty, esHoy: !modelo.enDiaPasado)
+                    if !modelo.enDiaPasado {
+                        BannerRevision()
+                        if !modelo.fechasDieta.isEmpty {
+                            Button { copiando = CopiaPedida(origen: DiasDieta.sumar(FechaLocal.hoy(), dias: -1) ?? "") } label: {
+                                Label("Copiar de otro día", systemImage: "doc.on.doc")
+                                    .font(.subheadline.weight(.semibold))
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Color.marcaTexto)
+                            .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
+                            .accessibilityIdentifier("copiar-de-otro-dia")
+                        }
+                    }
+                    if modelo.ajustesSinGuardarVista {
                         // Revisión del 3-nov: un día que la base rechazó quedaba solo en el teléfono, sin que nadie lo supiera.
-                        Label("Tus ajustes de hoy no se pudieron guardar en tu cuenta. Quedan en este teléfono y se vuelven a mandar con el próximo cambio.",
+                        Label(modelo.enDiaPasado ? "Tus ajustes de ese día no se pudieron guardar en tu cuenta. Volvé a intentarlo con el próximo cambio." : "Tus ajustes de hoy no se pudieron guardar en tu cuenta. Quedan en este teléfono y se vuelven a mandar con el próximo cambio.",
                               systemImage: "exclamationmark.icloud")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 4)
                             .accessibilityIdentifier("ajustes-sin-guardar")
                     }
-                    ForEach(Array(modelo.comidasDelDia.enumerated()), id: \.element.id) { n, c in
+                    ForEach(Array(modelo.comidasVista.enumerated()), id: \.element.id) { n, c in
                         tarjeta(c, numero: n + 1, ajustada: dia[c.id])
                     }
                 }
@@ -159,7 +192,22 @@ struct DietaView: View {
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
         }
-        .refreshable { await modelo.cargar() }
+        .refreshable { if modelo.enDiaPasado { await modelo.refrescarDiaPasado() } else { await modelo.cargar() } }
+        .overlay {
+            if modelo.diaPasado?.cargando == true {
+                ProgressView().controlSize(.large).frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.fondo)
+                    .accessibilityIdentifier("dia-cargando")
+            } else if modelo.diaPasado?.sinRed == true {
+                ContentUnavailableView {
+                    Label("No pudimos traer ese día", systemImage: "wifi.slash")
+                } description: {
+                    Text("Para ver o cargar un día anterior hace falta conexión.")
+                } actions: {
+                    Button("Reintentar") { Task { await modelo.refrescarDiaPasado() } }.buttonStyle(BotonSecundario(compacto: true))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.fondo)
+            }
+        }
         .overlay {
             if analizandoFoto {
                 ZStack {
@@ -170,6 +218,25 @@ struct DietaView: View {
             }
         }
         .animation(.snappy, value: analizandoFoto)
+        // Después de los overlays: «cargando» y «sin señal» no pueden tapar la tira de días ni la vuelta a hoy.
+        .safeAreaInset(edge: .top, spacing: 0) { barraDeDias }
+    }
+
+    /// La tira de días arriba de todo (fija al scrollear) y, mirando otro día, el aviso con la vuelta a hoy.
+    @ViewBuilder private var barraDeDias: some View {
+        if !modelo.fechasDieta.isEmpty {
+            VStack(spacing: 0) {
+                SelectorDiaDieta(fechas: modelo.fechasDieta, elegida: modelo.fechaVista) { f in
+                    Task { await modelo.irADia(f) }
+                }
+                if let p = modelo.diaPasado {
+                    BannerDiaPasado(dia: p, puedeMarcar: modelo.vistaPuedeMarcar || !modelo.vistaEditable, diasMarcar: modelo.diasMarcar,
+                                    copiar: { copiando = CopiaPedida(origen: p.fecha) },
+                                    volver: { Task { await modelo.irADia(nil) } })
+                }
+            }
+            .background(Color.fondo)
+        }
     }
 
     @ToolbarContentBuilder
@@ -177,13 +244,14 @@ struct DietaView: View {
         if let tipos = modelo.dieta?.estructura.tiposDia, tipos.count > 1 {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Picker("Tipo de día", selection: Binding(get: { modelo.tipoDia ?? tipos[0].id }, set: { modelo.tipoDia = $0 })) {
+                    Picker("Tipo de día", selection: Binding(get: { modelo.tipoDiaVista ?? tipos[0].id }, set: { modelo.elegirTipoDia($0) })) {
                         ForEach(tipos, id: \.id) { Text($0.nombre ?? $0.id).tag($0.id) }
                     }
                 } label: {
-                    Label(tipos.first { $0.id == (modelo.tipoDia ?? tipos[0].id) }?.nombre ?? "Tipo de día", systemImage: "calendar")
+                    Label(tipos.first { $0.id == (modelo.tipoDiaVista ?? tipos[0].id) }?.nombre ?? "Tipo de día", systemImage: "calendar")
                         .labelStyle(.titleAndIcon)
                 }
+                .disabled(!modelo.vistaEditable)
             }
         }
     }
@@ -198,19 +266,21 @@ struct DietaView: View {
     private func tarjeta(_ c: Comida, numero: Int, ajustada: AjustePorciones.ComidaAjustada?) -> some View {
         let o = min(opcionesVigentes[c.id] ?? 0, max(c.opciones.count - 1, 0))
         let alimentos = (c.opciones[safe: o]?.alimentos ?? []).enumerated().map { i, a in
-            let e = modelo.efectivo(a, comidaId: c.id, opt: o, idx: i)
+            let e = modelo.efectivoVista(a, comidaId: c.id, opt: o, idx: i)
             // Lo que se muestra: el reemplazo (si hay) con la cantidad del ajuste de hoy (si hay).
             return (i: i, original: a, efectivo: e, hoy: ajustada?.alimentos[safe: i] ?? e.alimento)
         }
         let omitida = ajustada?.omitida == true
         // La ajustó el cliente (no solo le llega lo de otra).
-        let propia = modelo.ajustesDeHoy[c.id] != nil
+        let propia = modelo.ajustesVista[c.id] != nil
         // Los alimentos que sumó a la comida (D1): van después de los del plan y sus tildes son n + j.
-        let agregados = omitida ? [] : (modelo.ajustesDeHoy[c.id]?.agregados ?? [])
+        let agregados = omitida ? [] : (modelo.ajustesVista[c.id]?.agregados ?? [])
         let total = ModeloApp.sumar(alimentos.map(\.hoy) + agregados.map(\.alimento))
         let nombreOpcion = c.opciones[safe: o]?.nombre ?? Self.letra(o)
         // «Comí» / «Salté» (D25). La que hoy no come no se marca.
-        let marca = omitida ? nil : modelo.marcasDeHoy[c.id]
+        let marca = omitida ? nil : modelo.marcasVista[c.id]
+        let editable = modelo.vistaEditable
+        let puedeMarcar = modelo.vistaPuedeMarcar
         // Los tildes por alimento son índices de la opción con que marcó «Comí»: solo se ven mirando esa opción (la web
         // guardaba el índice de la que se miraba contra la marcada y descontaba otro alimento).
         let oMarcada = ConsumoDelDia.opcionDeLaMarca(c, marca)
@@ -265,6 +335,7 @@ struct DietaView: View {
                         ForEach(Array(c.opciones.enumerated()), id: \.offset) { i, op in Text(op.nombre ?? Self.letra(i)).tag(i) }
                     }
                     .pickerStyle(.segmented)
+                    .disabled(!editable)
                     // Solo cuando la elige el cliente: la opción también cambia sola con una marca que llega de la web.
                     .sensoryFeedback(.selection, trigger: o) { _, nueva in opcion[c.id] == nueva }
                     .accessibilityIdentifier("opciones-\(c.id)")
@@ -277,6 +348,7 @@ struct DietaView: View {
                     if opcion[c.id] == nil { opcion[c.id] = o }
                     Task { await modelo.marcar(c.id, nuevo, opcion: o) }
                 }
+                .disabled(!puedeMarcar)
             }
             if let oMarcada {
                 if let excluidos {
@@ -309,7 +381,7 @@ struct DietaView: View {
                 }
             }
             if let ajustada, AvisoAjuste.hayQueMostrar(ajustada, propia: propia) {
-                AvisoAjuste(ajustada: ajustada, propia: propia)
+                AvisoAjuste(ajustada: ajustada, propia: propia, esHoy: !modelo.enDiaPasado)
                     .accessibilityIdentifier("ajuste-aviso-\(c.id)")
             }
             if !omitida {
@@ -320,8 +392,11 @@ struct DietaView: View {
                                      enElPlan: item.hoy.qty != item.efectivo.alimento.qty ? item.efectivo.alimento : nil,
                                      tildado: excluidos.map { !$0.contains(item.i) }, idTilde: "comido-\(c.id)-\(item.i)",
                                      alTildar: { Task { await modelo.alternarAlimento(c.id, item.i) } },
+                                     tildeHabilitado: puedeMarcar,
                                      idCantidad: "cantidad-\(c.id)-\(item.i)",
                                      alTocarCantidad: { cantidadAbierta = CantidadAlimento(comidaId: c.id, que: .delPlan(item.i)) },
+                                     cantidadHabilitada: editable,
+                                     conReemplazo: !modelo.enDiaPasado,
                                      porcionAbierta: porcionesAbiertas.contains(clave)) {
                             withAnimation(.snappy) {
                                 if porcionesAbiertas.contains(clave) { porcionesAbiertas.remove(clave) } else { porcionesAbiertas.insert(clave) }
@@ -348,6 +423,7 @@ struct DietaView: View {
                         FilaAgregado(agregado: a, tildado: excluidos.map { !$0.contains(k) }, idTilde: "comido-\(c.id)-\(k)",
                                      idCantidad: "agregado-\(c.id)-\(j)",
                                      alTildar: { Task { await modelo.alternarAlimento(c.id, k) } },
+                                     tildeHabilitado: puedeMarcar, cantidadHabilitada: editable && (marca?.estado != .comido || puedeMarcar),
                                      alTocar: { cantidadAbierta = CantidadAlimento(comidaId: c.id, que: .agregado(a.ts)) })
                         if j < agregados.count - 1 { Divider() }
                     }
@@ -378,9 +454,9 @@ struct DietaView: View {
             // «Agregar alimento» (D1) a la vista en cada comida, como en MyFitnessPal; al lado, el ajuste de siempre. Con la
             // letra de accesibilidad, uno debajo del otro.
             let botones = apilada ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
-            botones {
+            if editable { botones {
                 // Ni en la que hoy no come ni en la que salteó (revisión del 3-nov).
-                if !omitida, marca?.estado != .saltado {
+                if !omitida, marca?.estado != .saltado, marca?.estado != .comido || puedeMarcar {
                     Button { agregandoA = ComidaAAjustar(id: c.id) } label: {
                         Label("Agregar alimento", systemImage: "plus.circle.fill")
                             .font(.subheadline.weight(.semibold))
@@ -401,7 +477,7 @@ struct DietaView: View {
                 .background(Color.marcaSuave.opacity(0.6), in: .rect(cornerRadius: 12, style: .continuous))
                 .accessibilityLabel(propia ? "Cambiar el ajuste" : "Ajustar esta comida")
                 .accessibilityIdentifier("ajustar-\(c.id)")
-            }
+            } }
         }
         .tarjeta()
         .animation(.snappy, value: o)
@@ -414,9 +490,9 @@ struct DietaView: View {
     /// comido es la opción de la marca, con sus porciones de hoy.
     private func elegirOpcion(_ comidaId: String, _ nueva: Int) {
         withAnimation(.snappy) { opcion[comidaId] = nueva }
-        if modelo.marcasDeHoy[comidaId]?.estado == .comido { return }
+        if modelo.marcasVista[comidaId]?.estado == .comido { return }
         let opciones = opcionesVigentes
-        if var a = modelo.ajustesDeHoy[comidaId] {
+        if var a = modelo.ajustesVista[comidaId] {
             guard a.opcion != nueva else { return }
             a.opcion = nueva
             a.cantidades = [:]
@@ -453,9 +529,13 @@ private struct FilaAlimento: View {
     var tildado: Bool? = nil
     var idTilde: String = ""
     var alTildar: () -> Void = {}
+    var tildeHabilitado = true
     /// D2: la cantidad se toca y abre la hoja de cantidad.
     var idCantidad: String = ""
     var alTocarCantidad: () -> Void = {}
+    var cantidadHabilitada = true
+    /// Los reemplazos son del plan, no de un día: en un día anterior no se tocan.
+    var conReemplazo = true
     let porcionAbierta: Bool
     let alTocarMano: () -> Void
     let alReemplazar: () -> Void
@@ -488,6 +568,7 @@ private struct FilaAlimento: View {
                     .accessibilityHint(tildado ? "Tocá si no lo comiste" : "Tocá si lo comiste")
                     .accessibilityAddTraits(.isToggle)
                     .accessibilityIdentifier(idTilde)
+                    .disabled(!tildeHabilitado)
                     .sensoryFeedback(.selection, trigger: toques)
                 }
                 VStack(alignment: .leading, spacing: 3) {
@@ -495,7 +576,7 @@ private struct FilaAlimento: View {
                         Text(mostrado.nombre).font(.body.weight(.medium))
                             .strikethrough(tildado == false)
                             .foregroundStyle(tildado == false ? Color.secondary : Color.primary)
-                        if sustituido {
+                        if sustituido && conReemplazo {
                             Button(action: alRevertir) {
                                 Image(systemName: "arrow.left.arrow.right")
                                     .font(.caption2.weight(.heavy))
@@ -512,6 +593,7 @@ private struct FilaAlimento: View {
                         PildoraCantidad(texto: FormatoDieta.cantidad(mostrado.qty, mostrado.unidad), cambiada: enElPlan != nil,
                                         nombre: mostrado.nombre, accion: alTocarCantidad)
                             .accessibilityIdentifier(idCantidad)
+                            .disabled(!cantidadHabilitada)
                         Text("\((mostrado.kcal ?? 0).enteroSeguro) kcal")
                             .font(.subheadline).foregroundStyle(enElPlan != nil ? Color.marcaTexto : .secondary)
                             .contentTransition(.numericText())
@@ -530,7 +612,7 @@ private struct FilaAlimento: View {
                         .symbolEffect(.bounce, value: porcionAbierta)
                         .accessibilityLabel(porcionAbierta ? "Ocultar porción casera" : "Ver porción casera")
                 }
-                if sustituible {
+                if sustituible && conReemplazo {
                     BotonCircular(icono: "arrow.left.arrow.right", activo: false, accion: alReemplazar)
                         .accessibilityLabel("Reemplazar \(mostrado.nombre)")
                 }
@@ -584,6 +666,8 @@ private struct FilaAgregado: View {
     var idTilde: String
     var idCantidad: String
     let alTildar: () -> Void
+    var tildeHabilitado = true
+    var cantidadHabilitada = true
     let alTocar: () -> Void
     @State private var toques = 0
 
@@ -606,6 +690,7 @@ private struct FilaAgregado: View {
                 .accessibilityValue(tildado ? "Lo comiste" : "No lo comiste")
                 .accessibilityAddTraits(.isToggle)
                 .accessibilityIdentifier(idTilde)
+                .disabled(!tildeHabilitado)
                 .sensoryFeedback(.selection, trigger: toques)
             }
             VStack(alignment: .leading, spacing: 3) {
@@ -624,6 +709,7 @@ private struct FilaAgregado: View {
                 HStack(spacing: 8) {
                     PildoraCantidad(texto: FormatoDieta.cantidad(agregado.cantidad, agregado.unidad), nombre: agregado.nombre, accion: alTocar)
                         .accessibilityIdentifier(idCantidad)
+                        .disabled(!cantidadHabilitada)
                     Text("\(agregado.kcal.enteroSeguro) kcal").font(.subheadline).foregroundStyle(.secondary)
                 }
                 FormatoDieta.macros(prot: agregado.p, carb: agregado.c, fat: agregado.g)
@@ -748,6 +834,7 @@ private struct Cabecera: View {
     let consumo: ConsumoDelDia.Consumo
     let elegidas: Macros
     var conAjustes = false
+    var esHoy = true
     @Environment(\.dynamicTypeSize) private var tamañoLetra
     @Environment(\.horizontalSizeClass) private var claseAncho
 
@@ -761,14 +848,14 @@ private struct Cabecera: View {
             VStack(spacing: 0) {
                 Text(consumo.kcal.enteroSeguro, format: .number).font(.numeroGrande).contentTransition(.numericText())
                     .minimumScaleFactor(0.5).lineLimit(1)
-                Text(meta > 0 ? "de \(meta.enteroSeguro.formatted()) kcal" : "kcal hoy").font(.caption).foregroundStyle(.secondary)
+                Text(meta > 0 ? "de \(meta.enteroSeguro.formatted()) kcal" : (esHoy ? "kcal hoy" : "kcal")).font(.caption).foregroundStyle(.secondary)
                     .minimumScaleFactor(0.5).lineLimit(1)
             }
             .padding(.horizontal, 14)
         }
         .frame(width: lado, height: lado)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Consumido hoy")
+        .accessibilityLabel(esHoy ? "Consumido hoy" : "Consumido ese día")
         .accessibilityValue(meta > 0 ? "\(consumo.kcal.enteroSeguro) de \(meta.enteroSeguro) kcal" : "\(consumo.kcal.enteroSeguro) kcal")
         .accessibilityIdentifier("consumido-kcal")
         let macros = [("Proteínas", consumo.prot, objetivo.prot, Color.proteina), ("Carbos", consumo.carb, objetivo.carb, Color.carbohidrato),
@@ -811,7 +898,7 @@ private struct Cabecera: View {
             }
             Group {
                 if consumo.hechas + consumo.salteadas == 0 {
-                    Label("Tocá «Comí» en cada comida y acá se va sumando lo que comés.", systemImage: "hand.tap")
+                    Label(esHoy ? "Tocá «Comí» en cada comida y acá se va sumando lo que comés." : "Tocá «Comí» en lo que comiste ese día y acá se va sumando.", systemImage: "hand.tap")
                 } else {
                     Label {
                         Text("Comiste ") + Text("\(consumo.hechas) de \(consumo.comidas)").bold()
@@ -829,7 +916,7 @@ private struct Cabecera: View {
             HStack(spacing: 8) {
                 Image(systemName: abs(delta) <= 5 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(abs(delta) <= 5 ? Color.exito : Color.alerta)
-                Text(conAjustes ? "Con tus ajustes de hoy: " : "Con las opciones elegidas: ") + Text("\((elegidas.kcal ?? 0).enteroSeguro) kcal").bold()
+                Text(conAjustes ? (esHoy ? "Con tus ajustes de hoy: " : "Con tus ajustes de ese día: ") : "Con las opciones elegidas: ") + Text("\((elegidas.kcal ?? 0).enteroSeguro) kcal").bold()
                     + Text(abs(delta) < 0.5 ? "" : " (\(delta > 0 ? "+" : "")\(delta.enteroSeguro) %)")
             }
             .font(.footnote)
@@ -938,11 +1025,12 @@ private struct AvisoAjuste: View {
     let ajustada: AjustePorciones.ComidaAjustada
     /// La ajustó el cliente.
     let propia: Bool
+    var esHoy = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if ajustada.omitida {
-                Label("Hoy no la comés", systemImage: "moon.zzz.fill")
+                Label(esHoy ? "Hoy no la comés" : "Ese día no la comiste", systemImage: "moon.zzz.fill")
             } else if propia {
                 Label(abs(ajustada.propio) >= 1 ? "Ajustada: \(AjustarComidaView.signo(ajustada.propio)) kcal" : "Ajustada a mano",
                       systemImage: "slider.horizontal.3")

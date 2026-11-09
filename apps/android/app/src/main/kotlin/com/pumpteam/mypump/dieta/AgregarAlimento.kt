@@ -72,6 +72,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
+import com.pumpteam.mypump.datos.ajustesVista
+import com.pumpteam.mypump.datos.enDiaPasado
 import com.pumpteam.mypump.diseno.AccionHoja
 import com.pumpteam.mypump.diseno.AsaHoja
 import com.pumpteam.mypump.diseno.BotonMarca
@@ -146,7 +148,7 @@ internal object CuentasCantidad {
      */
     fun base(modelo: ModeloApp, comidaId: String, opciones: Map<String, Int>): AjusteComida {
         val opcion = modelo.comidasParaAjustar(opciones).firstOrNull { it.id == comidaId }?.opcion ?: 0
-        val a = modelo.ajustesDeHoy[comidaId] ?: AjusteComida(opcion = opcion)
+        val a = modelo.ajustesVista[comidaId] ?: AjusteComida(opcion = opcion)
         return if (a.opcion != opcion) a.copy(opcion = opcion, cantidades = emptyMap(), anclas = emptyMap()) else a
     }
 
@@ -164,7 +166,7 @@ internal object CuentasCantidad {
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<String, Int>, alCerrar: () -> Unit) {
+fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, fecha: String, opciones: Map<String, Int>, alCerrar: () -> Unit) {
     val c = MyPump.colores
     val hoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val alcanceHoja = rememberCoroutineScope()
@@ -265,13 +267,13 @@ fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<Strin
         val a0 = CuentasCantidad.base(modelo, comidaId, opciones)
         val nuevo = AgregadosComida.agregado(r.candidato, r.cantidad, CuentasCantidad.medidaDe(r), CuentasCantidad.nuevoTs(a0))
         val a = a0.copy(agregados = a0.agregados + nuevo)
-        val dia = modelo.ajustesDeHoy + (comidaId to a)
+        val dia = modelo.ajustesVista + (comidaId to a)
         AgregadosComida.motivoNoEntra(dia, comidaId)?.let {
             aviso = it
             return
         }
         tactil.performHapticFeedback(HapticFeedbackType.Confirm)
-        alcance.launch { modelo.ajustar(comidaId, a, opciones) }
+        alcance.launch { modelo.ajustar(comidaId, a, opciones, fecha) }
         modelo.recordarReciente(nuevo)
         cerrar()
     }
@@ -307,7 +309,7 @@ fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<Strin
             when (p) {
                 2 -> elegido?.let { e ->
                     ContenidoCantidad(
-                        modelo, e, opciones,
+                        modelo, e, fecha, opciones,
                         izquierda = { BotonVolver({ elegido = null }, descripcion = "Volver a la búsqueda", etiqueta = "volver-a-agregar") },
                         alTerminar = ::cerrar,
                     )
@@ -420,7 +422,7 @@ fun HojaAgregarAlimento(modelo: ModeloApp, comidaId: String, opciones: Map<Strin
 /** La hoja de cantidad sola: tocar la cantidad de un alimento del plan (D2) o de uno agregado. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun HojaCantidad(modelo: ModeloApp, pedido: PedidoCantidad, opciones: Map<String, Int>, alCerrar: () -> Unit) {
+fun HojaCantidad(modelo: ModeloApp, pedido: PedidoCantidad, fecha: String, opciones: Map<String, Int>, alCerrar: () -> Unit) {
     val c = MyPump.colores
     val hoja = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val alcanceHoja = rememberCoroutineScope()
@@ -438,7 +440,7 @@ fun HojaCantidad(modelo: ModeloApp, pedido: PedidoCantidad, opciones: Map<String
         dragHandle = { AsaHoja() },
         modifier = Modifier.semantics { testTagsAsResourceId = true }.testTag("hoja-cantidad"),
     ) {
-        ContenidoCantidad(modelo, pedido, opciones, cancelar = AccionHoja("Cancelar", "cantidad-cancelar", alTocar = ::cerrar), alTerminar = ::cerrar)
+        ContenidoCantidad(modelo, pedido, fecha, opciones, cancelar = AccionHoja("Cancelar", "cantidad-cancelar", alTocar = ::cerrar), alTerminar = ::cerrar)
     }
 }
 
@@ -452,6 +454,7 @@ fun HojaCantidad(modelo: ModeloApp, pedido: PedidoCantidad, opciones: Map<String
 private fun ContenidoCantidad(
     modelo: ModeloApp,
     pedido: PedidoCantidad,
+    fecha: String,
     opciones: Map<String, Int>,
     cancelar: AccionHoja? = null,
     izquierda: (@Composable () -> Unit)? = null,
@@ -461,11 +464,12 @@ private fun ContenidoCantidad(
     val alcance = LocalAlcanceApp.current
     val tactil = LocalHapticFeedback.current
     val guardados by modelo.ajustes.collectAsStateWithLifecycle()
+    val diaPasado by modelo.diaPasado.collectAsStateWithLifecycle()
     val swaps by modelo.swaps.collectAsStateWithLifecycle()
     val que = pedido.que
 
     // ── Con qué abre (una sola vez) ──
-    val existente = remember { modelo.ajustesDeHoy[pedido.comidaId] }
+    val existente = remember { modelo.ajustesVista[pedido.comidaId] }
     val inicio = remember {
         when (que) {
             is QueCantidad.Nuevo -> pedido.inicial?.let { (q, m) -> AgregadosComida.acotar(q, m) to m } ?: AgregadosComida.inicial(que.candidato)
@@ -491,13 +495,13 @@ private fun ContenidoCantidad(
     val medida = AgregadosComida.Medida(medidaNombre, medidaGramos)
 
     // ── La cuenta ──
-    val comidas = remember(guardados, swaps, opciones) { modelo.comidasParaAjustar(opciones) }
+    val comidas = remember(guardados, diaPasado, swaps, opciones) { modelo.comidasParaAjustar(opciones) }
     val delPlan: Pair<Int, Alimento>? = (que as? QueCantidad.DelPlan)?.let { d ->
         comidas.firstOrNull { it.id == comidaId }?.alimentos?.getOrNull(d.i)?.let { d.i to it }
     }
     val candidato: AgregadosComida.Candidato? = when (que) {
         is QueCantidad.Nuevo -> que.candidato
-        is QueCantidad.Agregado -> modelo.ajustesDeHoy[comidaId]?.agregados?.firstOrNull { it.ts == que.ts }?.candidato
+        is QueCantidad.Agregado -> modelo.ajustesVista[comidaId]?.agregados?.firstOrNull { it.ts == que.ts }?.candidato
         is QueCantidad.DelPlan -> null
     }
     val medidas: List<AgregadosComida.Medida> = when {
@@ -532,7 +536,7 @@ private fun ContenidoCantidad(
         }
         a
     }
-    val ajustes = modelo.ajustesDeHoy.toMutableMap().apply { if (borrador.neutro) remove(comidaId) else put(comidaId, borrador) }.toMap()
+    val ajustes = modelo.ajustesVista.toMutableMap().apply { if (borrador.neutro) remove(comidaId) else put(comidaId, borrador) }.toMap()
     val dia = AjustePorciones.dia(comidas, ajustes)
     val destino = AjustePorciones.destino(comidas, ajustes, comidaId)
     val nombreComida = comidas.firstOrNull { it.id == comidaId }?.nombre.orEmpty()
@@ -579,14 +583,14 @@ private fun ContenidoCantidad(
     fun guardar() {
         val a = borrador
         if (que !is QueCantidad.DelPlan) {
-            AgregadosComida.motivoNoEntra(modelo.ajustesDeHoy + (comidaId to a), comidaId)?.let {
+            AgregadosComida.motivoNoEntra(modelo.ajustesVista + (comidaId to a), comidaId)?.let {
                 aviso = it
                 return
             }
         }
         tactil.performHapticFeedback(HapticFeedbackType.Confirm)
         val id = comidaId
-        alcance.launch { modelo.ajustar(id, a.takeUnless { it.neutro }, opciones) }
+        alcance.launch { modelo.ajustar(id, a.takeUnless { it.neutro }, opciones, fecha) }
         agregadoNuevo?.let { if (que is QueCantidad.Nuevo) modelo.recordarReciente(it) }
         alTerminar()
     }
@@ -665,7 +669,7 @@ private fun ContenidoCantidad(
                             )
                         }
                     }
-                    val pie = delPlan?.second?.let { p -> "En el plan: ${FormatoDieta.cantidad(p.qty, p.unidad)}. Vale solo por hoy." }
+                    val pie = delPlan?.second?.let { p -> "En el plan: ${FormatoDieta.cantidad(p.qty, p.unidad)}. ${if (modelo.enDiaPasado) "Vale solo para ese día." else "Vale solo por hoy."}" }
                         ?: if (medida.esGramo) {
                             PorcionCasera.referencia(mostrado.nombre, cantidadValida, "g", null)?.takeUnless { it.startsWith("libre") }?.let { "≈ $it" }
                         } else {
@@ -679,11 +683,11 @@ private fun ContenidoCantidad(
                     Tarjeta(espaciado = 0.dp, relleno = 0.dp) {
                         if (que is QueCantidad.Nuevo) {
                             SelectorComida(
-                                comidas.filter { modelo.ajustesDeHoy[it.id]?.omitida != true },
+                                comidas.filter { modelo.ajustesVista[it.id]?.omitida != true },
                                 elegida = comidaId,
                                 alElegir = { id ->
                                     comidaId = id
-                                    compensar = modelo.ajustesDeHoy[id]?.compensar ?: true
+                                    compensar = modelo.ajustesVista[id]?.compensar ?: true
                                     aviso = null
                                 },
                             )
@@ -717,12 +721,12 @@ private fun ContenidoCantidad(
                     alcance.launch { modelo.borrarAgregado(id, que.ts, opciones) }
                     alTerminar()
                 }
-                is QueCantidad.DelPlan -> if (modelo.ajustesDeHoy[comidaId]?.cantidades?.get(que.i.toString()) != null) {
+                is QueCantidad.DelPlan -> if (modelo.ajustesVista[comidaId]?.cantidades?.get(que.i.toString()) != null) {
                     "cantidad-como-plan" to {
                         val k = que.i.toString()
                         val a = borrador.copy(cantidades = borrador.cantidades - k, anclas = borrador.anclas - k)
                         val id = comidaId
-                        alcance.launch { modelo.ajustar(id, a.takeUnless { it.neutro }, opciones) }
+                        alcance.launch { modelo.ajustar(id, a.takeUnless { it.neutro }, opciones, fecha) }
                         alTerminar()
                     }
                 } else {

@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pumpteam.mypump.datos.ClienteRpc
 import com.pumpteam.mypump.datos.ErrorRpc
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.Resultado
@@ -59,6 +60,7 @@ import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.AlimentoPropioNuevo
 import com.pumpteam.mypump.reglas.CodigoBarras
 import com.pumpteam.mypump.reglas.Formulario
+import java.util.UUID
 import kotlinx.coroutines.launch
 
 /**
@@ -106,6 +108,10 @@ fun CrearAlimento(
     // La lectura de la etiqueta vive afuera de la composición: si el teléfono gira mientras la IA mira la foto, la respuesta
     // llega igual a este formulario (ver EsperasDieta).
     val escaneo = remember(modelo) { EsperasDieta.etiqueta(modelo) }
+    // De quién es la lectura (`rememberSaveable`: el mismo formulario al girar). Un formulario nuevo no hereda la de otro.
+    val dueno = rememberSaveable { UUID.randomUUID().toString() }
+    val escaneando = escaneo.escaneando(dueno)
+    val resultadoEscaneo = escaneo.resultado(dueno)
     val focoNombre = remember { FocusRequester() }
     val conCuenta = modelo.token != null
 
@@ -115,16 +121,16 @@ fun CrearAlimento(
     /** "Escanear etiqueta": la foto a la visión (`tipo: etiqueta`). */
     fun escanear(jpeg: ByteArray) {
         foco.clearFocus()
-        escaneo.escanear(modelo, alcance, jpeg)
+        escaneo.escanear(dueno, alcance) { modelo.analizarFoto(jpeg, ClienteRpc.TipoVision.ETIQUETA) }
     }
 
     /**
      * Lo que leyó la visión: prellena todo editable y dice en qué base quedó. Porción con gramos = "porción" con sus
      * gramos; 100 g = unidad g; sin gramos de la porción se pregunta (antes se asumía 100 g).
      */
-    LaunchedEffect(escaneo.resultado) {
-        val r = escaneo.resultado ?: return@LaunchedEffect
-        escaneo.consumir()
+    LaunchedEffect(resultadoEscaneo) {
+        val r = resultadoEscaneo ?: return@LaunchedEffect
+        escaneo.consumir(dueno)
         when (r) {
             is Resultado.Ok -> {
                 val d = try {
@@ -241,7 +247,7 @@ fun CrearAlimento(
                             maxPx = 1600,
                             calidad = 0.85,
                             alElegir = ::escanear,
-                            habilitado = !escaneo.escaneando && !guardando,
+                            habilitado = !escaneando && !guardando,
                             abrirAlAparecer = precarga?.escanearEtiqueta == true,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
@@ -371,13 +377,13 @@ fun CrearAlimento(
                 BotonMarca(
                     "Crear y usar",
                     alTocar = ::crear,
-                    habilitado = nombre.isNotBlank() && !escaneo.escaneando,
+                    habilitado = nombre.isNotBlank() && !escaneando,
                     cargando = guardando,
                     modifier = Modifier.testTag("crear-y-usar"),
                 )
             }
         }
-        if (escaneo.escaneando) AnalizandoFoto("Leyendo la etiqueta…", Modifier.matchParentSize())
+        if (escaneando) AnalizandoFoto("Leyendo la etiqueta…", Modifier.matchParentSize())
     }
 }
 

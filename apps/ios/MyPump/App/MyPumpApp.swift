@@ -158,6 +158,10 @@ struct Raiz: View {
             }
         }
         .environment(navegacion)
+        // Dieta se abre siempre en hoy: salir de la pestaña deja de mirar el día anterior (la cámara o una hoja no cuentan).
+        .onChange(of: navegacion.pestaña) { anterior, _ in
+            if anterior == .dieta { Task { await Proveedor.modelo.irADia(nil) } }
+        }
         // Salud, en una hoja (desde la tarjeta de Revisión, un aviso o un link). Cambiar de pestaña la cierra.
         .sheet(isPresented: $navegacion.saludAbierta) {
             SaludView(datos: datos, alCerrar: { navegacion.saludAbierta = false })
