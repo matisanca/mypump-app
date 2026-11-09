@@ -394,6 +394,19 @@ struct RelojModeloTests {
         #expect(m.relojPerdidas?.ids.count == 1)
     }
 
+    @Test func unaRechazadaQueSeAplicaEnElReenvioYaNoAvisa() async throws {
+        let b = Banco()
+        let m = b.modelo()
+        let receptor = ReceptorReloj(disco: b.disco)
+        var e = serie(rutina: "otra-rutina")
+        #expect(await receptor.recibir([e], motor: m).first?.resultado == .rechazado)
+        #expect(m.relojPerdidas?.ids == [e.id])
+        e.rutinaId = "rut-prueba"
+        #expect(await receptor.recibir([e], motor: m).first?.resultado == .aplicado)
+        #expect(m.relojPerdidas == nil, "se guardó: el aviso se va")
+        #expect(b.modelo().relojPerdidas == nil, "también del disco")
+    }
+
     @Test func unaSerieQueYaEstaEnElTelefonoNoAvisaQueSePerdio() async throws {
         let b = Banco()
         let m = b.modelo()

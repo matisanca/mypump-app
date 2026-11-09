@@ -196,6 +196,13 @@ public struct PerdidasReloj: Codable, Equatable, Sendable {
         motivo = m
     }
 
+    /// Saca los ids que ya no están perdidos. true si sacó alguno.
+    mutating func quitar(_ salen: [UUID]) -> Bool {
+        let antes = ids.count
+        ids.removeAll { salen.contains($0) }
+        return ids.count != antes
+    }
+
     public var texto: String {
         let n = ids.count
         return "\(n) \(n == 1 ? "serie" : "series") del Apple Watch no se guardaron: \(motivo) Revisá y cargalas a mano."
@@ -266,6 +273,11 @@ extension ReceptorReloj {
     func avisar(_ motor: ModeloEntreno, _ eventos: [EventoEnCola], _ acuses: [AcuseEvento]) {
         // Una serie rechazada ya salió de la cola del reloj: si no se guardó en ningún lado, se avisa acá (y gana a cualquier
         // otro aviso, y no se apaga con el lote siguiente). «Ya cargaste esta serie en el teléfono» no es una pérdida: está.
+        // Una rechazada que en un reenvío sí se aplicó ya no está perdida.
+        if var p = motor.relojPerdidas, p.quitar(acuses.filter { $0.resultado == .aplicado }.map(\.id)) {
+            motor.relojPerdidas = p.ids.isEmpty ? nil : p
+            if p.ids.isEmpty { motor.disco?.borrar(PerdidasReloj.archivo) } else { _ = motor.disco?.guardar(p, PerdidasReloj.archivo) }
+        }
         let perdidas = acuses.filter { a in
             a.resultado == .rechazado && a.motivo != ModeloEntreno.motivoYaCargada &&
                 eventos.first { $0.id == a.id }.map { if case .serie = $0.evento { true } else { false } } == true
