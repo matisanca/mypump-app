@@ -246,6 +246,60 @@ func sesionDemo() -> SesionReloj {
         #expect(s.ejercicio("press-banca-d1-0")?.confirmadas == 1)
     }
 
+    // Reloj 9-nov: cada rutina que llegaba del iPhone (al levantar la muñeca, al volver la conexión, tras cada serie)
+    // volvía a poner en la corona lo sugerido y se perdía lo que el alumno había girado.
+    @Test func loGiradoSobreviveAUnaRutinaNuevaDeLaMismaSerie() {
+        var s = sesionDemo()
+        let reps = s.reps, kg = s.kg
+        s.girarReps(3)
+        s.girarKg(2)
+        let repsGiradas = s.reps, kgGirado = s.kg
+        #expect(repsGiradas == reps + 3 && kgGirado != kg)
+        s.recibir(.demo(fecha: HOY, generada: T0 + 5_000))
+        #expect(s.reps == repsGiradas, "las reps giradas no se pisan")
+        #expect(s.kg == kgGirado, "el kg girado no se pisa")
+        s.elegir("press-banca-d1-0")
+        #expect(s.reps == repsGiradas, "volver a entrar al ejercicio tampoco las pisa")
+    }
+
+    @Test func alConfirmarLaCoronaVuelveALoSugeridoDeLaSerieSiguiente() throws {
+        var s = sesionDemo()
+        s.girarReps(3)
+        try #require(s.confirmar(ahora: T0) != nil)
+        let e = try #require(s.ejercicio("press-banca-d1-0"))
+        #expect(s.reps == e.series[1].repsSugeridas ?? s.reps, "la serie siguiente arranca con lo suyo")
+        s.recibir(.demo(fecha: HOY, generada: T0 + 5_000))
+        #expect(s.ejercicio("press-banca-d1-0")?.series[0].reps == e.series[0].reps, "lo confirmado no cambia")
+    }
+
+    @Test func loGiradoNoPasaAUnEjercicioSustituidoEnElIPhone() {
+        var s = sesionDemo()
+        s.girarReps(3)
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0 + 5_000)
+        r.ejercicios[0].nombre = "Press con mancuernas"
+        r.ejercicios[0].series[0].repsSugeridas = 7
+        s.recibir(r)
+        #expect(s.reps == 7, "otro ejercicio en el mismo lugar arranca con lo suyo")
+    }
+
+    @Test func sinGirarLaCoronaSigueLoQueMandaElIPhone() {
+        var s = sesionDemo()
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0 + 5_000)
+        r.ejercicios[0].series[0].repsSugeridas = 7
+        r.ejercicios[0].series[0].kgSugerido = 90
+        s.recibir(r)
+        #expect(s.reps == 7 && s.kg == 90, "nadie giró: gana lo nuevo del iPhone")
+    }
+
+    @Test func unaSesionGuardadaSinLaMarcaDeLaCoronaSeLeeIgual() throws {
+        var s = sesionDemo()
+        s.girarReps(1)
+        var d = try JSONSerialization.jsonObject(with: JSONEncoder().encode(s)) as! [String: Any]
+        d.removeValue(forKey: "coronaTocada")
+        let vieja = try JSONDecoder().decode(SesionReloj.self, from: JSONSerialization.data(withJSONObject: d))
+        #expect(vieja.reps == s.reps, "la sesión de la versión anterior no se pierde")
+    }
+
     @Test func unaRutinaMasViejaSeIgnoraYOtroDiaReemplaza() {
         var s = sesionDemo()
         s.confirmar(ahora: T0)

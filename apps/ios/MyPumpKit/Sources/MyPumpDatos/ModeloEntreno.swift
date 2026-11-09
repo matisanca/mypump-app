@@ -121,6 +121,14 @@ public final class ModeloEntreno {
     @ObservationIgnored var seriesDelReloj: [String: Double] = [:]
     /// Hay eventos del Apple Watch que esperan hace horas sin poder pasar (el aviso de Entreno); nil si no.
     public internal(set) var relojEsperando: String?
+    /// Series del reloj que no se guardaron en ningún lado: en disco, a la vista en Entreno hasta que el alumno la cierre.
+    public internal(set) var relojPerdidas: PerdidasReloj?
+
+    /// El alumno leyó el aviso de las series del reloj que no se guardaron.
+    public func leerRelojPerdidas() {
+        relojPerdidas = nil
+        disco?.borrar(PerdidasReloj.archivo)
+    }
 
     public init(cliente: ClienteRPC, token: String?, outbox: Outbox?, disco: Disco?, rutina: RutinaActiva, info: ClienteInfo? = nil,
                 catalogo: CatalogoEjercicios = CatalogoEjercicios([]), demo: Bool? = nil, zona: TimeZone = .current,
@@ -129,6 +137,7 @@ public final class ModeloEntreno {
         self.token = token
         self.outbox = outbox
         self.disco = disco
+        relojPerdidas = disco?.leer(PerdidasReloj.self, PerdidasReloj.archivo)
         self.sesiones = sesiones
         self.info = info
         self.catalogo = catalogo

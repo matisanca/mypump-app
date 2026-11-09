@@ -99,6 +99,7 @@ extension ModeloEntreno {
     public var cuentaReloj: String { Self.hashCuenta(token) }
 
     static let motivoDiaCerrado = "ese día ya lo cerraste en el teléfono."
+    static let motivoYaCargada = "ya cargaste esta serie en el teléfono."
 
     nonisolated public static func hashCuenta(_ token: String?) -> String {
         guard let token, !token.isEmpty else { return "demo" }
@@ -157,7 +158,7 @@ extension ModeloEntreno {
             if dia.diaFinalizado { return r(.rechazado, Self.motivoDiaCerrado) }
             if s.confirmada {
                 guard let previa = seriesDelReloj[claveFecha(lugar, i + 1)], previa < ec.creado else {
-                    return r(.rechazado, "ya cargaste esta serie en el teléfono.")
+                    return r(.rechazado, Self.motivoYaCargada)
                 }
                 await editarSerie(lugar, i)
             }
@@ -179,6 +180,32 @@ extension ModeloEntreno {
             case .sinSesion, .fallo: return r(.pendiente, "No se pudo cerrar la sesión en el iPhone (sin conexión).")
             }
         }
+    }
+}
+
+/// Series confirmadas en el reloj que el iPhone rechazó y no quedaron guardadas: el aviso de Entreno. Con los ids, para que
+/// un reenvío del mismo evento no las cuente dos veces.
+public struct PerdidasReloj: Codable, Equatable, Sendable {
+    public static let archivo = "reloj-perdidas.json"
+    public private(set) var ids: [UUID] = []
+    public private(set) var motivo = ""
+    public init() {}
+
+    mutating func sumar(_ nuevos: [UUID], motivo m: String) {
+        ids += nuevos.filter { !ids.contains($0) }
+        motivo = m
+    }
+
+    /// Saca los ids que ya no están perdidos. true si sacó alguno.
+    mutating func quitar(_ salen: [UUID]) -> Bool {
+        let antes = ids.count
+        ids.removeAll { salen.contains($0) }
+        return ids.count != antes
+    }
+
+    public var texto: String {
+        let n = ids.count
+        return "\(n) \(n == 1 ? "serie" : "series") del Apple Watch no se guardaron: \(motivo) Revisá y cargalas a mano."
     }
 }
 
@@ -229,7 +256,9 @@ public final class ReceptorReloj {
             enCurso.insert(e.id)
             let a = await motor.aplicarEventoReloj(e)
             enCurso.remove(e.id)
-            if a.resultado == .pendiente { aplicados.quitar(e.id) }
+            // Pendiente, se reintenta. Rechazado, tampoco queda anotado: si la respuesta se perdió, un reenvío tiene que volver a
+            // contestar el motivo (como `repetido`, el reloj la sacaba de su cola sin mostrar nada).
+            if a.resultado == .pendiente || a.resultado == .rechazado { aplicados.quitar(e.id) }
             _ = disco?.guardar(aplicados, Self.archivo)
             acuses.append(a)
         }
@@ -242,6 +271,23 @@ extension ReceptorReloj {
     /// El aviso de Entreno: el pendiente más viejo de este lote, si espera hace más de `avisarDespues`. Un lote sin
     /// pendientes lo apaga.
     func avisar(_ motor: ModeloEntreno, _ eventos: [EventoEnCola], _ acuses: [AcuseEvento]) {
+        // Una serie rechazada ya salió de la cola del reloj: si no se guardó en ningún lado, se avisa acá (y gana a cualquier
+        // otro aviso, y no se apaga con el lote siguiente). «Ya cargaste esta serie en el teléfono» no es una pérdida: está.
+        // Una rechazada que en un reenvío sí se aplicó ya no está perdida.
+        if var p = motor.relojPerdidas, p.quitar(acuses.filter { $0.resultado == .aplicado }.map(\.id)) {
+            motor.relojPerdidas = p.ids.isEmpty ? nil : p
+            if p.ids.isEmpty { motor.disco?.borrar(PerdidasReloj.archivo) } else { _ = motor.disco?.guardar(p, PerdidasReloj.archivo) }
+        }
+        let perdidas = acuses.filter { a in
+            a.resultado == .rechazado && a.motivo != ModeloEntreno.motivoYaCargada &&
+                eventos.first { $0.id == a.id }.map { if case .serie = $0.evento { true } else { false } } == true
+        }
+        if !perdidas.isEmpty {
+            var p = motor.relojPerdidas ?? PerdidasReloj()
+            p.sumar(perdidas.map(\.id), motivo: perdidas.first?.motivo ?? "")
+            motor.relojPerdidas = p
+            _ = motor.disco?.guardar(p, PerdidasReloj.archivo)
+        }
         let pendientes = Set(acuses.filter { $0.resultado == .pendiente }.map(\.id))
         guard let viejo = eventos.filter({ pendientes.contains($0.id) }).min(by: { $0.creado < $1.creado }) else {
             motor.relojEsperando = nil

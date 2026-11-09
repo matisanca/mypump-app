@@ -38,23 +38,29 @@ final class ConexionReloj: NSObject {
             s.sendMessage(d, replyHandler: { @Sendable [weak self] respuesta in
                 nonisolated(unsafe) let r = respuesta
                 Task { @MainActor in self?.leer(r) }
-            }, errorHandler: { @Sendable _ in
-                Task { @MainActor in fin?(false) }
+            }, errorHandler: { @Sendable [weak self] _ in
+                // El iPhone «se veía» pero el mensaje no llegó (la app del iPhone cerrada o sin responder): que no dependa de
+                // que el reloj siga abierto, los eventos salen también por la vía que el sistema entrega después.
+                Task { @MainActor in
+                    if case .eventos(let lote) = m { self?.transferir(lote) }
+                    fin?(false)
+                }
             })
             alTerminar?(true)
             return
         }
         // Sin el iPhone a la vista: los eventos nuevos, una vez, por la vía que el sistema entrega después.
-        if case .eventos(let lote) = m {
-            let nuevos = lote.filter { !transferidos.contains($0.id) }
-            guard !nuevos.isEmpty, let dn = try? ProtocoloReloj.diccionario(SobreReloj(.eventos(nuevos), enviado: Date().timeIntervalSince1970 * 1000)) else {
-                alTerminar?(false)
-                return
-            }
-            s.transferUserInfo(dn)
-            nuevos.forEach { transferidos.insert($0.id) }
-        }
+        if case .eventos(let lote) = m { transferir(lote) }
         alTerminar?(false)
+    }
+
+    /// Los eventos que todavía no salieron por `transferUserInfo`, una sola vez (el iPhone descarta los repetidos por id).
+    private func transferir(_ lote: [EventoEnCola]) {
+        let nuevos = lote.filter { !transferidos.contains($0.id) }
+        guard let s = sesion, s.activationState == .activated, !nuevos.isEmpty,
+              let dn = try? ProtocoloReloj.diccionario(SobreReloj(.eventos(nuevos), enviado: Date().timeIntervalSince1970 * 1000)) else { return }
+        s.transferUserInfo(dn)
+        nuevos.forEach { transferidos.insert($0.id) }
     }
 
     /// Tanda 4: el iPhone recibió un archivo de calibración (se borra del reloj).
