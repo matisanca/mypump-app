@@ -60,6 +60,38 @@ struct LinkPegadoTests {
         #expect(FormatoToken.extraer(de: t) == t)
         #expect(FormatoToken.extraer(de: "hola") == nil)
     }
+
+    private static let t = "abcdefghij0123456789ABCDEFGHIJ_-"
+
+    /// Un token válido no puede salir con «No reconocí ese link» por lo que le agrega el copiar y pegar.
+    @Test(arguments: [
+        "\u{200E}\(t)\u{200F}",                                          // marcas invisibles de dirección (WhatsApp)
+        "\u{FEFF}https://app.mypumpteam.com/?t=\(t)\u{200B}",
+        "\(t).",                                                         // el punto final de la frase
+        "«\(t)»",
+        "(https://app.mypumpteam.com/acceso/\(t))",
+        "Tu link: https://app.mypumpteam.com/acceso/\(t) entrá cuando puedas",
+        "https://app.mypumpteam.com/? t=\(t)",                            // un espacio del autocorrector
+        "https://app.mypumpteam.com/?t=\n\(t)",
+        "  \n\(t)\n  ",
+        "?t=\(t)",
+    ])
+    func loQueAgregaElPegarNoLoRompe(pegado: String) {
+        #expect(FormatoToken.extraer(de: pegado) == Self.t, "no reconoció: \(pegado.debugDescription)")
+    }
+
+    @Test(arguments: [
+        "https://app.mypumpteam.com/",
+        "hola este mensaje largo no trae ningun link",
+        "holaestemensajelargonotraeningunlink ok",
+        "https://app.mypumpteam.com/?t=corto",
+        "https://app.mypumpteam.com/?t=corto hola que tal todo",
+        "https://app.mypumpteam.com/?\(t)",
+        "",
+    ])
+    func loQueNoTraeTokenSigueSinReconocerse(pegado: String) {
+        #expect(FormatoToken.extraer(de: pegado) == nil)
+    }
 }
 
 /// Hallazgo 8 de la revisión del 15-oct: el aviso del domingo es de una sola vez (la app lo arma al abrir y al volver al

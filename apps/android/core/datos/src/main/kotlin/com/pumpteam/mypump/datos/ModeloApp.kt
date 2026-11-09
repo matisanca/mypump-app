@@ -319,6 +319,8 @@ class ModeloApp(
      */
     suspend fun entrar(texto: String, avisar: Boolean = true): Boolean {
         val t = FormatoToken.extraer(texto) ?: return false
+        // El link puede llegar antes que la vuelta a primer plano: con una cuenta que no se pudo leer al nacer, no la pisa.
+        retomarCuentaGuardada()
         entradas += 1
         val entrada = entradas
         // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de WhatsApp de
@@ -343,12 +345,20 @@ class ModeloApp(
                     if (avisar) _avisoLink.value = AvisoLink.SIN_CONEXION
                     return false
                 }
-                is Resultado.Ok -> if ((r.valor as? ValorJson.Lista)?.elementos.isNullOrEmpty()) {
-                    preferencias.guardar(CLAVE_TOKEN_INVALIDO, t)
-                    // La cuenta que anda es la que queda guardada (la migración pudo haber dejado el otro en el almacén).
-                    if (almacen.leer() != actual) almacen.guardar(actual)
-                    if (avisar) _avisoLink.value = AvisoLink.VENCIDO
-                    return false
+                is Resultado.Ok -> {
+                    // Un 200 que no es una lista (vacío, un objeto: un proxy, un corte) no dice nada de ese link.
+                    val filas = r.valor as? ValorJson.Lista
+                    if (filas == null) {
+                        if (avisar) _avisoLink.value = AvisoLink.SIN_CONEXION
+                        return false
+                    }
+                    if (filas.elementos.isEmpty()) {
+                        preferencias.guardar(CLAVE_TOKEN_INVALIDO, t)
+                        // La cuenta que anda es la que queda guardada (la migración pudo haber dejado el otro en el almacén).
+                        if (almacen.leer() != actual) almacen.guardar(actual)
+                        if (avisar) _avisoLink.value = AvisoLink.VENCIDO
+                        return false
+                    }
                 }
             }
         }
@@ -601,23 +611,33 @@ class ModeloApp(
         val chatAlEmpezar = _chat.value
         val traidasAlEmpezar = chatAlEmpezar?.ultimasTraidas
 
+        // Sin red o servicio caído: la copia offline, si hay. La cuenta sigue guardada.
+        fun sinRespuesta(clase: ErrorRpc.Clase) {
+            _ultimaFalla.value = clase
+            val copia = leerCopia()
+            if (copia != null) {
+                aplicar(copia)
+                _desdeCache.value = true
+                _fase.value = Fase.LISTO
+            } else {
+                _fase.value = Fase.SIN_SERVICIO
+            }
+        }
+
         val respuestaInfo = when (val r = cliente.llamar("mypump_get_cliente_info", p)) {
             is Resultado.Falla -> {
                 if (!vigente()) return
-                _ultimaFalla.value = r.error.clase
-                // Sin red o servicio caído: la copia offline, si hay.
-                val copia = leerCopia()
-                if (copia != null) {
-                    aplicar(copia)
-                    _desdeCache.value = true
-                    _fase.value = Fase.LISTO
-                } else {
-                    _fase.value = Fase.SIN_SERVICIO
-                }
+                sinRespuesta(r.error.clase)
                 return
             }
             is Resultado.Ok -> {
                 if (!vigente()) return
+                // Un 200 que no es una lista (vacío, `null`, un objeto: un proxy, un corte) no dice que el token no sirva: antes
+                // cerraba la sesión y dejaba anotado como vencido un token válido.
+                if (r.valor !is ValorJson.Lista) {
+                    sinRespuesta(ErrorRpc.Clase.TRANSITORIO)
+                    return
+                }
                 r.valor
             }
         }
@@ -743,11 +763,26 @@ class ModeloApp(
     }
 
     /**
+     * El modelo pudo nacer sin poder leer el almacén (una falla pasajera del Keystore): parecía que no había cuenta y quedaba
+     * en «Entrá con tu link» con la sesión guardada. Al volver se mira de nuevo (gemelo de iOS).
+     */
+    private suspend fun retomarCuentaGuardada(): Boolean {
+        if (_fase.value != Fase.SIN_TOKEN || token != null || _esDemo.value) return false
+        val t = almacen.leer()?.takeIf(FormatoToken::valido) ?: return false
+        token = t
+        prepararCuenta(t)
+        _fase.value = Fase.CARGANDO
+        cargar()
+        return true
+    }
+
+    /**
      * Al volver a primer plano (GEN-07): salen las colas, se mira el chat, y si cambió el día se recarga lo que es "de
      * hoy" (comidas libres, el check de la semana). Si se estaba mostrando la copia offline, se intenta traer todo
      * de nuevo.
      */
     suspend fun alVolverAPrimerPlano() {
+        if (retomarCuentaGuardada()) return
         if (_fase.value != Fase.LISTO || _esDemo.value || token == null) return
         if (_desdeCache.value) {
             cargar()

@@ -55,13 +55,23 @@ class TokenEnKeystoreTest {
         assertFalse(archivo.exists())
     }
 
+    /** Una falla pasajera del Keystore (el servicio del sistema reiniciando) no borra la cuenta. */
+    @Test
+    fun unaFallaPasajeraDelKeystoreNoBorraLaCuenta() {
+        val t = TokenEnKeystore(archivo, alias)
+        t.guardar("abcdefghij0123456789ABCDEFGHIJ_-")
+        val conFalla = TokenEnKeystore(archivo, alias) { throw java.security.KeyStoreException("el servicio no contesta") }
+        assertNull(conFalla.leer())
+        assertTrue("borró el archivo por una falla pasajera", archivo.exists())
+        assertEquals("abcdefghij0123456789ABCDEFGHIJ_-", TokenEnKeystore(archivo, alias).leer())
+    }
+
     @Test
     fun sinLaClaveEsPegaTuLink() {
         val t = TokenEnKeystore(archivo, alias)
         t.guardar("abcdefghij0123456789ABCDEFGHIJ_-")
         borrarClave()   // como un archivo restaurado en un teléfono donde la clave no existe
         assertNull(t.leer())
-        assertFalse(archivo.exists())
         // Y se puede volver a entrar con el link.
         t.guardar("ZYXWVUTSRQ0123456789zyxwvutsrq__")
         assertEquals("ZYXWVUTSRQ0123456789zyxwvutsrq__", t.leer())

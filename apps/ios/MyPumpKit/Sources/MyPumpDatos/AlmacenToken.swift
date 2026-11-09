@@ -48,20 +48,39 @@ public enum FormatoToken {
         t.range(of: #"^[a-zA-Z0-9_-]{16,64}$"#, options: .regularExpression) != nil
     }
 
-    /// Lo que pega el cliente: el link entero, a medias o el token solo (index.html:376-423).
+    /// Lo que pega el cliente: el link entero, a medias o el token solo (index.html:376-423). Le saca lo que agrega el
+    /// copiar y pegar, para que un token válido no salga con «No reconocí ese link»: caracteres invisibles (las marcas de
+    /// dirección de WhatsApp) y la puntuación de la frase alrededor.
     public static func extraer(de texto: String) -> String? {
-        let t = texto.trimmingCharacters(in: .whitespacesAndNewlines)
+        let t = limpio(texto)
         if valido(t) { return t }
         if let c = URLComponents(string: t.hasPrefix("http") ? t : "https://\(t)"),
            let q = c.queryItems?.first(where: { $0.name == "t" })?.value, valido(q) { return q }
-        if let ultimo = t.split(separator: "/").last.map(String.init)?.split(separator: "?").first.map(String.init), valido(ultimo) {
+        // Sin omitir el tramo vacío: `…/?TOKEN` no es un link (como la web y Android).
+        if let ultimo = t.split(separator: "/").last.map(String.init)?.split(separator: "?", omittingEmptySubsequences: false).first.map(String.init),
+           valido(ultimo) {
             return ultimo
         }
-        // El mensaje entero de WhatsApp ("Hola! Este es tu link: https://…/?t=…"): el `[?&]t=` de la web.
-        if let r = t.range(of: #"[?&]t=[a-zA-Z0-9_-]{16,64}"#, options: .regularExpression) {
-            return String(t[r].dropFirst(3))
+        // El mensaje entero de WhatsApp ("Hola! Este es tu link: https://…/?t=…"): el `[?&]t=` de la web, y un espacio o un
+        // salto de línea alrededor del `t=` (nunca adentro del token: se cortaría o se pegaría con el texto que sigue).
+        if let r = t.range(of: #"[?&]\s*t\s*=\s*[a-zA-Z0-9_-]{16,64}"#, options: .regularExpression),
+           let igual = t[r].firstIndex(of: "=") {
+            return String(t[t.index(after: igual)..<r.upperBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        // El link con el token en la ruta, adentro de un mensaje.
+        if let r = t.range(of: #"/acceso/[a-zA-Z0-9_-]{16,64}"#, options: .regularExpression) {
+            return String(t[r].dropFirst(8))
         }
         return nil
+    }
+
+    /// Nunca incluye `-` ni `_`, que son parte del token, ni `?`, que puede ser el principio de `?t=…` pegado a medias.
+    private static let bordes = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ".,;:!()[]{}<>\"'«»“”‘’"))
+
+    private static func limpio(_ texto: String) -> String {
+        var visibles = String.UnicodeScalarView()
+        visibles.append(contentsOf: texto.unicodeScalars.filter { $0.properties.generalCategory != .format })
+        return String(visibles).trimmingCharacters(in: bordes)
     }
 }
 

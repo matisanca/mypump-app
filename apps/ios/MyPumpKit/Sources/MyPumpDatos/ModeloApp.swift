@@ -166,6 +166,8 @@ public final class ModeloApp {
     @discardableResult
     public func entrar(con texto: String, avisar: Bool = true) async -> Bool {
         guard let t = FormatoToken.extraer(de: texto) else { return false }
+        // El link puede llegar antes que la vuelta a primer plano: con una cuenta que no se pudo leer al nacer, no la pisa.
+        _ = await retomarCuentaGuardada()
         entradas += 1
         let entrada = entradas
         // Un link viejo que ya se sabe inválido no pisa una cuenta que anda (ACC-02): pasa al tocar un link de
@@ -192,7 +194,12 @@ public final class ModeloApp {
                 if avisar { avisoLink = .sinConexion }
                 return false
             case .success(let j):
-                guard case .lista(let filas) = j, !filas.isEmpty else {
+                // Un 200 que no es una lista (vacío, un objeto: un proxy, un corte) no dice nada de ese link.
+                guard case .lista(let filas) = j else {
+                    if avisar { avisoLink = .sinConexion }
+                    return false
+                }
+                guard !filas.isEmpty else {
                     UserDefaults.standard.set(t, forKey: "mypump_token_invalido")
                     // La cuenta que anda es la que queda guardada (la migración pudo haber dejado el otro en el Keychain).
                     if almacen.leer() != actual { almacen.guardar(actual) }
@@ -372,12 +379,9 @@ public final class ModeloApp {
         let chatAlEmpezar = chat
         let traidasAlEmpezar = chat?.ultimasTraidas
 
-        let respuestaInfo: JSONValue
-        switch await cliente.llamar("mypump_get_cliente_info", p) {
-        case .failure(let e):
-            guard vigente() else { return }
-            ultimaFalla = e.clase
-            // Sin red o servicio caído: la copia offline, si hay.
+        // Sin red o servicio caído: la copia offline, si hay. La cuenta sigue guardada.
+        func sinRespuesta(_ clase: ErrorRPC.Clase) {
+            ultimaFalla = clase
             if let copia = disco?.leer(CopiaOffline.self, "offline.json") {
                 aplicar(copia)
                 desdeCache = true
@@ -385,9 +389,22 @@ public final class ModeloApp {
             } else {
                 fase = .sinServicio
             }
+        }
+
+        let respuestaInfo: JSONValue
+        switch await cliente.llamar("mypump_get_cliente_info", p) {
+        case .failure(let e):
+            guard vigente() else { return }
+            sinRespuesta(e.clase)
             return
         case .success(let j):
             guard vigente() else { return }
+            // Un 200 que no es una lista (vacío, `null`, un objeto: un proxy, un corte) no dice que el token no sirva: antes
+            // cerraba la sesión y dejaba anotado como vencido un token válido.
+            guard case .lista = j else {
+                sinRespuesta(.transitorio)
+                return
+            }
             respuestaInfo = j
         }
         ultimaFalla = nil
@@ -578,10 +595,23 @@ public final class ModeloApp {
         await fotos?.drenar()
     }
 
+    /// El modelo se crea una sola vez y puede nacer con la app en segundo plano antes del primer desbloqueo (reinicio del
+    /// teléfono, Salud): ahí el Keychain no se puede leer y parecía que no había cuenta. Quedaba en «Entrá con tu link» hasta
+    /// matar la app, con la sesión guardada. Al volver se mira de nuevo.
+    private func retomarCuentaGuardada() async -> Bool {
+        guard fase == .sinToken, token == nil, !esDemo, let t = almacen.leer(), FormatoToken.valido(t) else { return false }
+        token = t
+        prepararCuenta(t)
+        fase = .cargando
+        await cargar()
+        return true
+    }
+
     /// Al volver a primer plano (GEN-07): salen las colas, se mira el chat, y si cambió el día se recarga lo que es "de
     /// hoy" (comidas libres, Mi Día, el check de la semana). Si se estaba mostrando la copia offline, se intenta traer
     /// todo de nuevo.
     public func alVolverAPrimerPlano() async {
+        if await retomarCuentaGuardada() { return }
         guard fase == .listo, !esDemo, token != nil else { return }
         await conAvisos?()
         if desdeCache { await cargar(); return }
