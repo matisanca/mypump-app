@@ -36,6 +36,9 @@ struct EjercicioView: View {
             }
         }
         .background(Color.fondo)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if motor.tarjeta(lugar)?.filas.isEmpty == false { PanelCarga(motor: motor, lugar: lugar) }
+        }
         // Al volver, el ejercicio queda abierto en la lista de Entreno, donde se carga (15-oct).
         .task { await abrirCard() }
         .sheet(isPresented: $sustituyendo) { SustituirEjercicioView(motor: motor, lugar: lugar) }
@@ -199,7 +202,7 @@ struct EjercicioView: View {
             // E1: la preparación, liviana y aparte, antes de las efectivas (solo indica; no se registra).
             let prep = motor.preparacion(lugar)
             if !prep.isEmpty { PreparacionBloque(motor: motor, lugar: lugar, series: prep, sinKg: t.sinKg) }
-            TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia).id("series")
+            TarjetaCarga(motor: motor, lugar: lugar, tarjeta: t).id("series")
             DescansoEnTarjeta(enLista: false)
         }
     }
@@ -491,10 +494,6 @@ private struct MetricasPauta: View {
         if let r = pauta.reps {
             if let s = pauta.series, tipo != "cardio" { m.append(Metrica(titulo: "Series × reps", valor: "\(s) × \(r)")) }
             else { m.append(Metrica(titulo: "Duración", valor: r)) }
-        }
-        if let rir = pauta.rir {
-            let partes = Self.partir(rir)
-            m.append(Metrica(titulo: "RIR", valor: partes.0, detalle: partes.1))
         }
         if let d = descanso, !d.isEmpty, d != "0:00" {
             m.append(Metrica(titulo: "Descanso", valor: d, detalle: descansoPropio ? "tuyo" : nil, accion: alTocarDescanso))

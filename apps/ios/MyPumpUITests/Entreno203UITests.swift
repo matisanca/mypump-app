@@ -74,10 +74,10 @@ final class Entreno203UITests: XCTestCase {
         XCTAssertTrue(filas[2].label.hasPrefix("Aproximación 2") && filas[2].label.contains("50 kilos"), filas[2].label)
         XCTAssertTrue(filas[3].label.hasPrefix("Potenciación (opcional)") && filas[3].label.contains("65 kilos"), filas[3].label)
         XCTAssertTrue(app.staticTexts["Series efectivas"].exists, "Sin el título de las efectivas")
-        // 2.0.3: sin columna de RIR; en su lugar, la leyenda del plan.
+        // Sin RIR: todo al fallo.
         XCTAssertFalse(app.staticTexts["RIR"].exists, "Quedó la columna de RIR")
         let leyenda = app.staticTexts["leyenda-rir"]
-        XCTAssertTrue(leyenda.exists && (leyenda.label == "Al fallo" || leyenda.label.hasPrefix("Dejando ")), leyenda.label)
+        XCTAssertTrue(leyenda.exists && (leyenda.label == "Al fallo"), leyenda.label)
         captura("v2-compuesto-con-kg")
 
         // Tocar una fila: queda hecha y arranca el descanso corto.
@@ -96,20 +96,11 @@ final class Entreno203UITests: XCTestCase {
         captura("v2-dos-tocadas")
 
         // El kg en vivo: 62,5 en la primera efectiva → la aproximación al 60 % pasa a 37,5.
-        let campos = app.textFields
-        let reps = campos.element(boundBy: 0), kg = campos.element(boundBy: 1)
-        // Los campos lejos del teclado (la captura de arriba dejó el bloque a la vista).
-        for _ in 0..<6 where reps.frame.maxY > app.frame.height * 0.5 {
-            app.swipeUp(velocity: .slow)
-            RunLoop.current.run(until: Date().addingTimeInterval(0.8))
-        }
-        reps.tap(); reps.typeText("10")
-        kg.tap(); kg.typeText("62,5")
+        app.fijarCarga("62,5")
         XCTAssertTrue(app.buttons["preparacion-2"].label.contains("37,5 kilos"), app.buttons["preparacion-2"].label)
 
         // E3: confirmar 62,5 × 10 contra 60 × 10 de la última vez.
-        let confirmar = app.buttons["confirmar-serie-1"]
-        confirmar.tap()
+        app.darOK()
         let aviso = app.descendants(matching: .any)["aviso-record"]
         XCTAssertTrue(aviso.waitForExistence(timeout: 5), "No avisó el récord")
         XCTAssertTrue(aviso.label.contains("Récord: +2,5 kg"), aviso.label)
@@ -160,7 +151,7 @@ final class Entreno203UITests: XCTestCase {
         rueda.adjust(toPickerWheelValue: "2:15")
         app.buttons["guardar-descanso"].tap()
         XCTAssertTrue(descanso.label.contains("2:15"), descanso.label)
-        app.buttons["confirmar-serie-1"].tap()   // lo de la última vez, de un toque
+        app.darOK()   // lo de la última vez, de un toque
         let tarjeta = app.otherElements["descanso-en-tarjeta"]
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5))
         XCTAssertTrue(tarjeta.staticTexts.matching(NSPredicate(format: "label CONTAINS '2:15'")).firstMatch.exists, "No arrancó con 2:15")

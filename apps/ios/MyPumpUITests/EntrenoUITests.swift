@@ -14,14 +14,8 @@ final class EntrenoUITests: XCTestCase {
     /// SER-04: al tocar un campo se selecciona todo y lo que se escribe reemplaza lo anterior (como `select()` en la
     /// web). Sin eso, 80 kg corregido a 7 quedaba "807" (revisión del 14-oct, hallazgo 2).
     func testTocarUnCampoLoSeleccionaEntero() throws {
-        let campos = app.textFields
-        XCTAssertTrue(campos.firstMatch.waitForExistence(timeout: 15), "No abrió el ejercicio")
-        traerALaVista(campos.firstMatch)
-        XCTAssertGreaterThanOrEqual(campos.count, 2, "El ejercicio no tiene columna de kg")
-        let reps = campos.element(boundBy: 0), kg = campos.element(boundBy: 1)
-        kg.tap()
-        kg.typeText("80")
-        reps.tap()   // el foco se va
+        app.fijarCarga("80")
+        let kg = app.cargaValor
         kg.tap()
         RunLoop.current.run(until: Date().addingTimeInterval(0.4))   // la selección llega 0,08 s después del foco
         kg.typeText("7")
@@ -31,17 +25,8 @@ final class EntrenoUITests: XCTestCase {
     /// D23 (Ian Actis, 20-oct): al confirmar una serie el descanso aparece grande, pegado a la tabla y traído a la vista
     /// sin tocar nada; −15 y +15 lo mueven y «Saltar descanso» lo saca.
     func testElDescansoApareceALaVistaYSeAjusta() throws {
-        let campos = app.textFields
-        XCTAssertTrue(campos.firstMatch.waitForExistence(timeout: 15), "No abrió el ejercicio")
-        traerALaVista(campos.firstMatch)
-        let reps = campos.element(boundBy: 0), kg = campos.element(boundBy: 1)
-        reps.tap()
-        reps.typeText("10")
-        kg.tap()
-        kg.typeText("60")
-        let confirmar = app.buttons["confirmar-serie-1"]
-        XCTAssertTrue(confirmar.waitForExistence(timeout: 3))
-        confirmar.tap()
+        app.fijarCarga("60")
+        app.darOK()
         let tarjeta = app.otherElements["descanso-en-tarjeta"]
         XCTAssertTrue(tarjeta.waitForExistence(timeout: 5), "No apareció el descanso en la tarjeta")
         let saltar = tarjeta.buttons["Saltar descanso"]
@@ -137,22 +122,14 @@ final class EntrenoUITests: XCTestCase {
     /// Ahora la tabla sugiere lo mismo que se graba. Gemela de alCambiarDeMovimientoElKgNoSugiereElDeLaPolea de Android.
     func testAlCambiarDeMovimientoElKgNoSugiereElDeLaPolea() throws {
         abrirLaExtension()
+        app.fijarCarga("30")
         for n in 1...2 {
-            let reps = app.textFields["Repeticiones de la serie \(n)"], kg = app.textFields["Kilos de la serie \(n)"]
-            XCTAssertTrue(reps.waitForExistence(timeout: 10), "Sin la serie \(n)")
-            reps.tap()
-            reps.typeText("12")
-            kg.tap()
-            kg.typeText("30")
-            app.buttons["confirmar-serie-\(n)"].tap()
-            let hecha = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Serie \(n) hecha'")).firstMatch
-            XCTAssertTrue(hecha.waitForExistence(timeout: 5), "La serie \(n) no quedó registrada")
+            app.darOK()
+            let hecha = app.filaSerie(n)
+            XCTAssertEqual(XCTWaiter.wait(for: [expectation(for: NSPredicate(format: "label CONTAINS 'hecha'"), evaluatedWith: hecha)], timeout: 5), .completed, "La serie \(n) no quedó registrada")
         }
-        // Con la polea, las reps de la serie 3 heredan los 30.
-        let reps3 = app.textFields["Repeticiones de la serie 3"], kg3 = app.textFields["Kilos de la serie 3"]
-        reps3.tap()
-        reps3.typeText("10")
-        XCTAssertEqual(kg3.placeholderValue, "30", "con la polea la serie 3 hereda los 30")
+        // Con la polea, la serie 3 sigue con los 30.
+        XCTAssertTrue(app.filaSerie(3).label.contains("30 kilos"), app.filaSerie(3).label)
         let hoja = abrirSustituir()
         let fondos = app.buttons.matching(NSPredicate(format: "identifier == 'otro-ejercicio' AND label BEGINSWITH 'Fondos'")).firstMatch
         for _ in 0..<10 where !(fondos.exists && fondos.isHittable) { app.swipeUp() }
@@ -160,8 +137,8 @@ final class EntrenoUITests: XCTestCase {
         hoja.buttons["Sustituir"].tap()
         XCTAssertTrue(hoja.waitForNonExistence(timeout: 5), "La hoja no se cerró")
         // Ya en fondos, la serie 3 no sugiere los kg de la polea.
-        XCTAssertTrue(kg3.waitForExistence(timeout: 5))
-        XCTAssertEqual(kg3.placeholderValue, "–", "ya en fondos sugiere los kg de la polea")
+        XCTAssertTrue(app.filaSerie(3).waitForExistence(timeout: 5))
+        XCTAssertFalse(app.filaSerie(3).label.contains("30 kilos"), "ya en fondos sugiere los kg de la polea: \(app.filaSerie(3).label)")
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = "fondos-sin-los-kg-de-la-polea"; a.lifetime = .keepAlways; add(a)
     }
 

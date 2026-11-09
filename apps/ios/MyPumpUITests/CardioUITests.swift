@@ -41,7 +41,7 @@ final class CardioUITests: XCTestCase {
         let termine = app.buttons["termine-ejercicio"]
         for _ in 0..<6 where !(termine.exists && termine.isHittable) { app.swipeUp() }
         XCTAssertTrue(termine.waitForExistence(timeout: 10), "\(nombre): sin «Terminé este ejercicio»")
-        XCTAssertFalse(app.buttons["confirmar-serie-1"].exists, "\(nombre): pide series (reps y kg)")
+        XCTAssertFalse(app.okSerie.exists, "\(nombre): pide series (reps y kg)")
         XCTAssertFalse(app.staticTexts["leyenda-rir"].exists, "\(nombre): muestra la leyenda del RIR")
         XCTAssertFalse(app.staticTexts["Este ejercicio no tiene series esta semana."].exists, "\(nombre): tabla vacía")
         // La fila de la cinta (lo que lee VoiceOver es lo que se ve): sin «última vez» ni récord de las cargas de muestra.

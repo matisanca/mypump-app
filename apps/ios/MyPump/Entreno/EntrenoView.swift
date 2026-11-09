@@ -78,6 +78,12 @@ struct EntrenoView: View {
         .environment(preguntador)
         .preguntas(preguntador)
         .onChange(of: entrenamiento.motor?.dia.dia.id, initial: true) { _, _ in abrirParaCapturas() }
+        // El día se completa con el OK de la última serie, que puede salir del panel o del temporizador de Deshacer.
+        .onChange(of: entrenamiento.motor?.diaCompletado != nil) { _, hay in
+            guard hay, let m = entrenamiento.motor, let c = m.diaCompletado else { return }
+            m.diaCompletado = nil
+            completoDia(c)
+        }
         // «Ver mi guía» de la bienvenida (la presenta `Raiz`): abre la guía acá, en Entreno.
         .onChange(of: navegacion?.abrirGuia ?? false, initial: true) { _, pedida in
             guard pedida else { return }
@@ -247,6 +253,13 @@ private struct ListaEntreno: View {
                 withAnimation(.snappy) { lector.scrollTo("abierto-\(abierto)", anchor: nil) }
             }
         }
+        }
+        // El panel va fuera de la lista: deslizar el dial no puede mover la pantalla. Con el ejercicio ya cerrado sigue
+        // mientras se pueda deshacer la última serie.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let lugar = motor.dia.expandido ?? motor.deshacible?.lugar, motor.tarjeta(lugar)?.filas.isEmpty == false {
+                PanelCarga(motor: motor, lugar: lugar).id(lugar)
+            }
         }
         .scrollDismissesKeyboard(.interactively)
         // Como Dieta, la carga entera: trae la rutina si Mati la republicó (hallazgo 6).
@@ -745,7 +758,7 @@ private struct EjercicioEnLista: View {
                 }
                 // El cardio va por tiempo: sin tabla («0 de 0» y «no tiene series esta semana»), se marca con «Terminé».
                 if !t.filas.isEmpty {
-                    TablaSeries(motor: motor, lugar: lugar, tarjeta: t, alCompletarDia: alCompletarDia, enLista: true)
+                    TarjetaCarga(motor: motor, lugar: lugar, tarjeta: t, enLista: true)
                 }
                 // Solo en los ejercicios con series (el cardio se marca con «Terminé»), igual que en la página.
                 if !t.filas.isEmpty { DescansoEnTarjeta() }
@@ -897,7 +910,6 @@ struct FilaEjercicio: View {
                     } else if let s = pauta.series {
                         Chip(texto: "\(s) × \(pauta.reps ?? "—")")
                     }
-                    if let rir = pauta.rir { Chip(texto: "RIR \(rir)") }
                     Chip(texto: TiempoEntreno.fmtTiempo(Double(ejercicio.descansoSegundos ?? NormalizacionRutina.descansoPorDefecto)), icono: "timer")
                 }
                 .padding(.top, 5)

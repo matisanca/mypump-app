@@ -202,6 +202,8 @@ extension ModeloEntreno {
 
     public func cancelarCorreccion() { corrigiendo = nil }
 
+    public func limpiarGuardia() { guardia.limpiar() }
+
     /// Guardar la corrección abierta: pasa por los mismos topes y reescribe esa serie.
     public func guardarCorreccion(reps: Int, kg: Double?, preguntar: (Pregunta) async -> Bool) async -> ResultadoCorreccion {
         guard let c = corrigiendo, let ctx = contextoCarga(c.lugar) else { return .sinCambios }

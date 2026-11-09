@@ -1,4 +1,3 @@
-#if DEBUG
 import SwiftUI
 
 /// El dial de repeticiones: el número grande con el anterior y el siguiente apenas visibles. Deslizar hacia arriba suma y
@@ -143,4 +142,3 @@ struct DialReps: View {
             }
     }
 }
-#endif

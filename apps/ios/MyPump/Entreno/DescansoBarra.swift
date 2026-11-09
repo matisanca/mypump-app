@@ -130,7 +130,8 @@ private struct DescansoEnPestanas: ViewModifier {
         let visible = entrenamiento.motor?.descanso.visible == true
         Group {
             if #available(iOS 26.1, *) {
-                content.tabViewBottomAccessory(isEnabled: visible) { DescansoAccesorio() }
+                // Con el panel de carga arriba, el descanso va ahí: dos barras apiladas tapan media pantalla.
+                content.tabViewBottomAccessory(isEnabled: visible && entrenamiento.panelesCarga == 0) { DescansoAccesorio() }
             } else {
                 content
             }
@@ -138,7 +139,11 @@ private struct DescansoEnPestanas: ViewModifier {
         .task(id: visible) { await entrenamiento.correrDescanso() }
         .onAppear { entrenamiento.revisarActividad() }
         .onDisappear { entrenamiento.cerrarActividad() }
-        .onChange(of: fase) { _, nueva in if nueva == .active { entrenamiento.revisarActividad() } }
+        .onChange(of: fase) { _, nueva in
+            if nueva == .active { entrenamiento.revisarActividad() }
+            // Ir a segundo plano cierra la ventana de Deshacer: lo anotado no puede quedar dependiendo de que la app viva.
+            if nueva == .background { Task { await entrenamiento.motor?.vaciarDeshacer() } }
+        }
     }
 }
 
@@ -149,7 +154,7 @@ private struct IslaDeDescanso: ViewModifier {
         if #available(iOS 26.1, *) {
             content
         } else {
-            let visible = entrenamiento.motor?.descanso.visible == true
+            let visible = entrenamiento.motor?.descanso.visible == true && entrenamiento.panelesCarga == 0
             content
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if visible { DescansoBarra() }

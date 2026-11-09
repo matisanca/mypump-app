@@ -1,9 +1,8 @@
 import XCTest
 
-/// SER-01 con una cuenta de prueba (la demo no tiene historial): "Tocá para registrar lo de la última vez" es un botón,
-/// como en la web (`data-sugconfirm`), y tocarlo registra la serie. En la 101 era solo texto y no hacía nada (lo encontró
-/// Mati el 14-oct). Deja esa serie registrada en la semana actual de la cuenta de prueba. Recorre los ejercicios del día
-/// hasta encontrar uno con la pista (cada corrida gasta una serie): solo se saltea si a ninguno le queda.
+/// Con una cuenta de prueba: el OK del panel registra lo que dice (la carga simple reemplazó a la pista de la última vez).
+/// Deja esa serie registrada en la semana actual de la cuenta de prueba. Recorre los ejercicios del día hasta encontrar
+/// uno con el OK listo (cada corrida gasta una serie): solo se saltea si a ninguno le queda.
 @MainActor
 final class UltimaVezUITests: XCTestCase {
     func testTocarLaPistaDeLaUltimaVezRegistraLaSerie() throws {
@@ -13,14 +12,14 @@ final class UltimaVezUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-token", token, "-pestana", "entreno", "-sinOnboarding", "YES"]
         app.launch()
-        let pista = app.buttons["registrar-ultima-vez"]
+        let pista = app.okSerie
         var encontrada = false
         for n in 1...14 {
             let fila = app.buttons["fila-ejercicio-\(n)"]
             guard fila.waitForExistence(timeout: n == 1 ? 25 : 5) else { break }
             for _ in 0..<8 where !fila.isHittable { app.swipeUp() }
             fila.tap()
-            if pista.waitForExistence(timeout: 6) { encontrada = true; break }
+            if pista.waitForExistence(timeout: 6), pista.isEnabled { encontrada = true; break }
             fila.tap()   // la cierra: desde el 15-oct el ejercicio se abre en la lista, no en otra página
         }
         guard encontrada else {

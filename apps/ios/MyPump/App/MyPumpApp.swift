@@ -51,10 +51,6 @@ struct MyPumpApp: App {
 
     @ViewBuilder @MainActor private var raiz: some View {
         #if DEBUG
-        // Prototipo de la carga simple (rama nativa-carga-simple): datos de demo, sin cuenta ni red.
-        if DemoCarga.activo {
-            CargaSimpleMenu(inicial: DemoCarga.inicial)
-        } else
         // Capturas de diseño (`-bocetos YES`): las pestañas con las muestras, sin pasar por la bienvenida ni usar
         // ningún token. Solo en DEBUG.
         if UserDefaults.standard.bool(forKey: "bocetos") {

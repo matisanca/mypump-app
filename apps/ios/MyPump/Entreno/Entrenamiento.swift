@@ -21,6 +21,9 @@ final class Entrenamiento {
     /// El motor de la rutina activa, o nil sin rutina (o antes de tener cuenta).
     var motor: ModeloEntreno? { Proveedor.modelo.entreno }
 
+    /// Los paneles de carga a la vista (la lista y la página del ejercicio): mientras haya uno, el descanso va ahí.
+    var panelesCarga = 0
+
     /// Lo corre la raíz mientras la barra del descanso está a la vista: el descanso va contra una fecha de fin y este
     /// tick solo la mira (la barra se pinta con lo que deja).
     func correrDescanso() async {
