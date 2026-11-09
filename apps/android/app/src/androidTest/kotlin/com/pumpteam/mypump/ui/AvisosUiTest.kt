@@ -535,10 +535,9 @@ class AvisosUiTest : PruebaUi() {
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("ejercicio-ex_010"))
         p.nodo(etiqueta("tabla-series"))
-        p.escribir(etiqueta("campo-reps-1"), "10")
-        p.escribir(etiqueta("campo-kg-1"), "60")
-        p.tocar(etiqueta("confirmar-serie-1"))
-        p.nodo(etiqueta("descanso"))
+        fijarCarga("60")
+        darOK()
+        p.nodo(etiqueta("descanso-chip"))
         // A segundo plano con el descanso corriendo: queda la alarma del fin.
         escenario.moveToState(Lifecycle.State.CREATED)
         p.esperar("la alarma del fin") { CentroAvisos.finDescansoAgendado(app) }
@@ -565,6 +564,9 @@ class AvisosUiTest : PruebaUi() {
         p.esperar("sin la cuenta regresiva") { AvisosDePrueba.publicadas(app).none { it.id == CentroAvisos.ID_DESCANSO_EN_CURSO } }
         // Que termine en segundo plano (quedan entre 6 y 20 s: cada toque resta 15): el aviso sale, sin el pitido encima.
         // Se espera a ver cada toque: recién vuelta a primer plano, la barra puede tardar en pintar el anterior.
+        // (La barra flotante se ve fuera de Entreno: con el panel de la carga a la vista, el descanso va ahí.)
+        p.tocar(etiqueta("pestana-dieta"))
+        p.nodo(etiqueta("descanso"))
         while (true) {
             val s = segundos()
             if (s <= 20) break

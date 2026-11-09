@@ -208,7 +208,6 @@ object CardAccesible {
         } else {
             partes += "${pauta.series} series de ${pauta.reps ?: "—"}"
         }
-        pauta.rir?.let { partes += "RIR $it" }
         partes += "descanso ${TiempoEntreno.fmtTiempo(descansoSegundos.toDouble())}"
         ultima?.let { partes += "última vez ${Bonito.carga(it.valor)}, ${it.cuando}" }
         // Sin el «RIR n» (2.0.3: ya no se muestra; con el del plan diría «RIR 0» en todos).

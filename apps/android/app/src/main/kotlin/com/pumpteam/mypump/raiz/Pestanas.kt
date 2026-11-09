@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -86,6 +87,7 @@ import com.pumpteam.mypump.diseno.Radio
 import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.diseno.vidrio
 import com.pumpteam.mypump.entreno.BarraDescansoEntreno
+import com.pumpteam.mypump.entreno.LocalPanelesCarga
 import com.pumpteam.mypump.entreno.DialogoPreguntas
 import com.pumpteam.mypump.entreno.EntrenoPantalla
 import com.pumpteam.mypump.entreno.RelojDescanso
@@ -159,8 +161,9 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
         // Lo que tapa lo que flota abajo (la barra y el descanso, con el borde del sistema), medido: las pantallas lo
         // suman al final de su desplazamiento, y lo demás pasa por debajo de la barra, como en iOS.
         var abajo by remember { mutableStateOf(0.dp) }
+        val panelesCarga = remember { mutableIntStateOf(0) }
         Box(Modifier.fillMaxSize().background(MyPump.colores.fondo)) {
-            CompositionLocalProvider(LocalRellenoInferior provides abajo + Espacio.xs) {
+            CompositionLocalProvider(LocalRellenoInferior provides abajo + Espacio.xs, LocalPanelesCarga provides panelesCarga) {
                 Column(Modifier.fillMaxSize().consumeWindowInsets(WindowInsets.navigationBars)) {
                     val conBanner = esDemo || desdeCache
                     if (esDemo) {
@@ -219,7 +222,8 @@ fun AppConPestanas(vm: ModeloAppViewModel, modelo: ModeloApp) {
                     .padding(bottom = Espacio.xs),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                entreno?.let { BarraDescansoEntreno(it) }
+                // Con el panel de la carga arriba, el descanso va ahí: dos barras apiladas tapan media pantalla.
+                if (panelesCarga.intValue == 0) entreno?.let { BarraDescansoEntreno(it) }
                 BarraPestanas(navegacion, badges, Pestana.barra(conSuplementacion))
             }
             // Los avisos de abajo, apilados (revisión del 4-nov, hallazgo 19): «Ocultar» de la tarjeta de la guía («La

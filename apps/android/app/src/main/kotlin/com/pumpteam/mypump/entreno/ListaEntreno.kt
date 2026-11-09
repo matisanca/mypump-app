@@ -89,6 +89,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.key
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.sp
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloEntreno
@@ -154,6 +156,15 @@ fun ListaEntreno(
         modifier = Modifier.nestedScroll(comportamiento.nestedScrollConnection),
         containerColor = c.fondo,
         topBar = { BarraEntreno(titulo, "Semana ${motor.semanaMostrada} de ${motor.totalMostrado}", tituloEnBarra, comportamiento) },
+        // El panel de la carga va fuera de la lista: deslizar el dial no puede mover la pantalla. Con el ejercicio ya cerrado
+        // sigue mientras se pueda deshacer la última serie.
+        bottomBar = {
+            val deshacible by motor.deshacible.collectAsStateWithLifecycle()
+            val lugar = v.dia.expandido ?: deshacible?.lugar
+            if (lugar != null && motor.tarjeta(lugar)?.filas?.isNotEmpty() == true) {
+                key(lugar) { PanelCarga(motor, lugar, preguntador) }
+            }
+        },
     ) { relleno ->
         PullToRefreshBox(
             isRefreshing = recargando,
@@ -180,7 +191,8 @@ fun ListaEntreno(
                         .fillMaxWidth()
                         .padding(horizontal = Espacio.m)
                         // Al final, lo que tapa la barra de pestañas flotante: lo último queda arriba de ella.
-                        .padding(top = Espacio.xxs, bottom = Espacio.xl + LocalRellenoInferior.current),
+                        // (con el panel de la carga, ese lugar ya lo descuenta el Scaffold).
+                        .padding(top = Espacio.xxs, bottom = Espacio.xl + if (relleno.calculateBottomPadding() > 0.dp) 0.dp else LocalRellenoInferior.current),
                     verticalArrangement = Arrangement.spacedBy(Espacio.l),
                 ) {
                     // «Tu guía» mientras falta ver algo: verde y primera, arriba de todo, como iOS (revisión del 4-nov, hallazgo 5).
@@ -730,7 +742,6 @@ private fun FilaEjercicio(motor: ModeloEntreno, v: VistaEntreno, ejercicio: Ejer
                 if (calentamiento || cardio) ChipDato(if (calentamiento) "Calent." else "Cardio", icono = Iconos.Fuego, tono = c.alerta)
                 // Sin duración en el plan no va el «—»: el tiempo ya está en el nombre («10 min»).
                 if (porTiempo) pauta.reps?.let { ChipDato(it) } else ChipDato("${pauta.series} × ${pauta.reps ?: "—"}")
-                pauta.rir?.let { ChipDato("RIR $it") }
                 ChipDato(TiempoEntreno.fmtTiempo(descanso.toDouble()), icono = Iconos.Temporizador)
             }
             // El cardio y lo que va por tiempo no tienen "última vez" que buscar.

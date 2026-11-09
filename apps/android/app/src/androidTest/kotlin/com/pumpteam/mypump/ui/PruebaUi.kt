@@ -136,6 +136,29 @@ abstract class PruebaUi {
     }
 
     /** El tema oscuro que eligió el cliente ("Siempre en modo oscuro"). */
+    /**
+     * Da OK en el panel de la carga y, si la guardia pide otro toque (a menos de 10 s del anterior, sin cambiar reps), lo da.
+     * El segundo toque vale entre 0,5 y 3 s: un emulador lento puede llegar tarde, y entonces la guardia vuelve a pedir.
+     */
+    protected fun darOK() {
+        val ok = etiqueta("ok-serie")
+        val cuenta = etiqueta("series-confirmadas")
+        p.nodo(ok)
+        val antes = p.textosBajo(cuenta)
+        p.tocar(ok)
+        repeat(5) {
+            p.quieto(600)
+            if (!p.existe(ok) || p.textosBajo(cuenta) != antes) return
+            p.tocar(ok)
+        }
+    }
+
+    /** La carga única del ejercicio (sin pasar por el teclado: con el teclado arriba el panel se esconde). */
+    protected fun fijarCarga(texto: String) = p.escribir(etiqueta("carga-valor"), texto)
+
+    /** La serie ya quedó hecha (lo dice su fila). */
+    protected fun esperarHecha(n: Int) = p.esperar("la serie $n hecha") { p.descripcion(etiqueta("fila-serie-$n")).contains("hecha").takeIf { it } }
+
     protected fun guardarTemaOscuro() = guardarPreferencia(Apariencia.CLAVE, Apariencia.OSCURO)
 
     companion object {

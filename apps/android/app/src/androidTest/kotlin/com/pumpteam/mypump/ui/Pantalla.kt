@@ -277,6 +277,18 @@ class Pantalla(private val esperaMs: Long = 15_000) {
         quieto(300)
     }
 
+    /** Desliza con el dedo de verdad sobre un elemento, `dy` píxeles (negativo: hacia arriba). */
+    fun deslizarDeVerdad(s: Selector, dy: Int, ms: Int = 500) {
+        val r = esperar("$s a la vista") { nodos().firstOrNull(s::coincide)?.boundsInWindow }
+        val x = r.center.x.toInt()
+        val y = r.center.y.toInt()
+        Telefono.shell("input swipe $x $y $x ${y + dy} $ms")
+        quieto(400)
+    }
+
+    /** Lo que lee TalkBack de un elemento. */
+    fun descripcion(s: Selector): String = leer(s) { n -> n.config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ") ?: "" }
+
     /** Lo que tiene escrito un campo. */
     fun textoDe(s: Selector): String = leer(s) { n ->
         n.config.getOrNull(SemanticsProperties.EditableText)?.text ?: throw AssertionError("$s no es un campo")

@@ -55,10 +55,10 @@ class EntrenoUiTest : PruebaUi() {
         p.nodo(texto("Ejercicio 3: Jalón al pecho prono (dorsal ancho)"))
         p.esperar("el historial del jalón") { p.estado(jalon)?.contains("récord") == true }
         val valor = p.estado(jalon)!!
-        assertTrue(valor, valor.startsWith("Pendiente, 4 series de 10, RIR 0 (al fallo), descanso 2:30, última vez 58 kg × 9 · 4 series, "))
+        assertTrue(valor, valor.startsWith("Pendiente, 4 series de 10, descanso 2:30, última vez 58 kg × 9 · 4 series, "))
         assertTrue(valor, valor.endsWith(", récord 58 kg × 9"))
         val textos = p.textosBajo(jalon)
-        for (t in listOf("Jalón al pecho prono", "Dorsal ancho", "4 × 10", "RIR 0 (al fallo)", "2:30", "58 kg × 9")) {
+        for (t in listOf("Jalón al pecho prono", "Dorsal ancho", "4 × 10", "2:30", "58 kg × 9")) {
             assertTrue("falta «$t» en $textos", t in textos)
         }
         assertTrue(textos.toString(), textos.any { it.startsWith("Última: 58 kg × 9 · ") })
@@ -99,20 +99,20 @@ class EntrenoUiTest : PruebaUi() {
         abrirPaginaDelEjercicio("jalon-al-pecho-prono-dorsal-ancho-d1-0")
         p.nodo(etiqueta("tabla-series"))
         assertEquals(listOf("Jalón al pecho prono"), p.textosBajo(etiqueta("ejercicio-nombre")))
-        assertEquals(listOf("SERIES × REPS", "Series × reps", "4 × 10", "RIR", "RIR", "0", "al fallo", "DESCANSO", "Descanso", "2:30"), p.textosBajo(etiqueta("metricas")))
+        assertEquals(listOf("SERIES × REPS", "Series × reps", "4 × 10", "DESCANSO", "Descanso", "2:30"), p.textosBajo(etiqueta("metricas")))
         assertEquals(listOf("0 de 4"), p.textosBajo(etiqueta("series-confirmadas")))
         // SER-07: el agarre, prono por defecto.
         assertTrue(p.seleccionado(etiqueta("variante-Prono")))
-        // SER-01: lo de la última vez (la misma serie y el mismo agarre) a un toque.
-        p.esperar("la pista") { p.textosBajo(etiqueta("pista-serie")).any { it.contains("Tocá para registrar lo de la última vez: 58 kg × 10. O editá si hiciste otra cosa.") } }
+        // SER-01: la carga de la vez pasada ya está puesta y el OK dice qué registra (la misma serie y el mismo agarre).
+        p.esperar("la carga de la vez pasada") { (p.textoDe(etiqueta("carga-valor")) == "58").takeIf { it } }
+        p.esperar("el OK con lo de la vez pasada") { (p.descripcion(etiqueta("ok-serie")) == "OK, registrar 10 repeticiones con 58 kilos").takeIf { it } }
         p.nodo(texto("Récord a superar"))
-        p.tocar(etiqueta("confirmar-serie-1"))
+        darOK()
         p.esperar("1 de 4") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("1 de 4") }
-        p.esperar("lo registrado en los campos") { p.textoDe(etiqueta("campo-reps-1")) == "10" && p.textoDe(etiqueta("campo-kg-1")) == "58" }
-        p.nodo(texto("Serie 1 hecha. Tocá para corregirla"))
-        // SES-04: arranca el descanso del ejercicio.
-        p.nodo(etiqueta("descanso"))
-        assertEquals(listOf("Descanso / 2:30"), p.textosBajo(etiqueta("descanso-rotulo")))
+        assertEquals("Serie 1, hecha: 10 repeticiones, 58 kilos. Tocá para corregirla", p.descripcion(etiqueta("fila-serie-1")))
+        // SES-04: arranca el descanso del ejercicio (en el panel, y la tarjeta grande).
+        p.nodo(etiqueta("descanso-chip"))
+        assertTrue(p.textosBajo(etiqueta("descanso-en-tarjeta")).toString(), p.textosBajo(etiqueta("descanso-en-tarjeta")).any { it.contains("2:30") })
         // La serie sale por la cola, con el agarre en las notas (SER-07) y en la sesión que creó la cola.
         val carga = p.esperar("la serie en el servidor") { servidor.a("mypump_registrar_carga").firstOrNull() }
         for (parte in listOf(
@@ -121,15 +121,16 @@ class EntrenoUiTest : PruebaUi() {
         )) {
             assertTrue("falta $parte en $carga", carga.contains(parte))
         }
-        // SER-04: en kg la coma pasa a punto. 2.0.3: el RIR no se muestra ni se elige; se guarda el del plan (acá «0 al
-        // fallo», por eso las dos salen con 0) y la leyenda lo dice.
+        // SER-04: en kg la coma pasa a punto. 2.3.0: el RIR no se muestra ni se elige, siempre 0 (al fallo).
         assertEquals(listOf("Al fallo"), p.textosBajo(etiqueta("leyenda-rir")))
         assertFalse(p.existe(etiqueta("rir-serie-2")))
-        p.escribir(etiqueta("campo-reps-2"), "8")
-        p.escribir(etiqueta("campo-kg-2"), "52,5")
-        p.tocar(etiqueta("confirmar-serie-2"))
+        fijarCarga("52,5")
+        // Con otra carga las reps vuelven al plan: 10, y bajan a 8.
+        p.esperar("las reps del plan") { (p.descripcion(etiqueta("ok-serie")) == "OK, registrar 10 repeticiones con 52,5 kilos").takeIf { it } }
+        repeat(2) { p.tocar(etiqueta("reps-menos")) }
+        darOK()
         p.esperar("2 de 4") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("2 de 4") }
-        p.esperar("52,5 con coma") { p.textoDe(etiqueta("campo-kg-2")) == "52,5" }
+        assertEquals("Serie 2, hecha: 8 repeticiones, 52,5 kilos. Tocá para corregirla", p.descripcion(etiqueta("fila-serie-2")))
         val segunda = p.esperar("la segunda serie") { servidor.a("mypump_registrar_carga").firstOrNull { it.contains("\"p_serie\":2") } }
         assertTrue(segunda, segunda.contains("\"p_peso\":52.5") && segunda.contains("\"p_reps\":8") && segunda.contains("\"p_rir\":0"))
         // De vuelta en la lista, la card lo dice.
@@ -137,48 +138,39 @@ class EntrenoUiTest : PruebaUi() {
         p.esperar("la card con 2 de 4") { p.estado(jalon)?.startsWith("2 de 4 series, ") == true }
     }
 
-    /**
-     * SER-01: la pista "Tocá para registrar lo de la última vez" es un botón (el `data-sugconfirm` de la web) y registra la
-     * serie igual que el ✓. En la 101 de iOS era solo texto: Mati la tocaba y no pasaba nada (14-oct).
-     */
+    /** SER-01: el OK del panel registra la carga de la última vez con las reps que dice. */
     @Test
-    fun tocarLaPistaRegistraLoDeLaUltimaVez() {
+    fun elOKRegistraLoDeLaUltimaVez() {
         cuentaSinSesion()
         p.tocar(jalon)
-        val pista = etiqueta("registrar-ultima-vez")
-        p.nodo(texto("Registrar lo de la última vez: 58 kg × 10"))
-        assertTrue(p.habilitado(pista))
+        val ok = etiqueta("ok-serie")
+        p.esperar("el OK con 58 × 10") { (p.descripcion(ok) == "OK, registrar 10 repeticiones con 58 kilos").takeIf { it } }
+        assertTrue(p.habilitado(ok))
         // Con el dedo, como el cliente.
-        p.tocarDeVerdad(pista)
+        p.tocarDeVerdad(ok)
         p.esperar("1 de 4") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("1 de 4") }
-        p.esperar("lo de la última vez en los campos") { p.textoDe(etiqueta("campo-reps-1")) == "10" && p.textoDe(etiqueta("campo-kg-1")) == "58" }
-        p.nodo(etiqueta("descanso"))
         val carga = p.esperar("la serie en el servidor") { servidor.a("mypump_registrar_carga").firstOrNull() }
         assertTrue(carga, carga.contains("\"p_serie\":1") && carga.contains("\"p_peso\":58") && carga.contains("\"p_reps\":10"))
-        // La pista pasa a la serie 2, con lo de la última vez en esa serie.
-        p.nodo(texto("Registrar lo de la última vez: 58 kg × 9"))
-        p.tocar(pista)
+        // El OK pasa a la serie 2. Esta semana el plan cambia las reps (ENT-07), así que manda el plan: 10, con el mismo kilo.
+        p.esperar("el OK de la serie 2") { (p.descripcion(ok) == "OK, registrar 10 repeticiones con 58 kilos").takeIf { it } }
+        darOK()
         p.esperar("2 de 4") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("2 de 4") }
-        p.esperar("9 reps") { p.textoDe(etiqueta("campo-reps-2")) == "9" }
-        // Con algo escrito en la serie activa ya no es "lo de la última vez": la pista se va.
-        p.escribir(etiqueta("campo-reps-3"), "7")
-        p.esperarQueNoEste(pista)
     }
 
-    /** SER-04: al tocar un campo se selecciona todo; lo que se escribe reemplaza lo anterior (sin esto, 80 corregido a 7 quedaba "870"). */
+    /** SER-04: al tocar el campo se selecciona todo; lo que se escribe reemplaza lo anterior (sin esto, 80 corregido a 7 quedaba "870"). */
     @Test
     fun tocarUnCampoLoSeleccionaEntero() {
         demoEnUnEjercicio()
-        val kg = etiqueta("campo-kg-1")
-        val reps = etiqueta("campo-reps-1")
+        val kg = etiqueta("carga-valor")
         p.tocarDeVerdad(kg)
-        p.esperar("el foco en kg") { p.enfocado(kg) }
+        p.esperar("el foco en la carga") { p.enfocado(kg).takeIf { it } }
         p.teclear(kg, "80")
-        p.esperar("80") { p.textoDe(kg) == "80" }
-        p.tocarDeVerdad(reps)
-        p.esperar("el foco en reps") { p.enfocado(reps) }
+        p.esperar("80") { (p.textoDe(kg) == "80").takeIf { it } }
+        p.tocar(etiqueta("carga-mas"))   // el foco se va
+        p.esperar("sin foco") { (!p.enfocado(kg)).takeIf { it } }
+        val largo = p.textoDe(kg).length
         p.tocarDeVerdad(kg)
-        p.esperar("todo seleccionado") { p.enfocado(kg) && p.seleccion(kg) == (0 to 2) }
+        p.esperar("todo seleccionado") { (p.enfocado(kg) && p.seleccion(kg) == (0 to largo)).takeIf { it } }
         p.teclear(kg, "7")
         p.quieto(300)
         assertEquals("lo nuevo no reemplazó a lo anterior", "7", p.textoDe(kg))
@@ -213,7 +205,7 @@ class EntrenoUiTest : PruebaUi() {
         val card = etiqueta("ejercicio-ex_010")
         p.esperar("la card sustituida") { p.estado(card)?.contains("sustitución fijada") == true }
         val valor = p.estado(card)!!
-        assertTrue(valor, valor.startsWith("Pendiente, sustitución fijada, 4 series de 8-10, RIR 1-2, descanso 2:30"))
+        assertTrue(valor, valor.startsWith("Pendiente, sustitución fijada, 4 series de 8-10, descanso 2:30"))
         assertTrue(p.textosBajo(card).containsAll(listOf(elegida, "Fijado")))
         p.nodo(textoQueContiene("Ejercicio 3: $elegida"))
         // "Volver a Remo con barra" la deshace (la fila quedó abierta en la lista: a la página por «Técnica y notas»).
@@ -264,15 +256,13 @@ class EntrenoUiTest : PruebaUi() {
         p.tocar(etiqueta("ver-demo"))
         p.tocar(etiqueta("dia-mar"))
         abrirPaginaDelEjercicio("ex_111")
+        fijarCarga("30")
         for (n in 1..2) {
-            p.escribir(etiqueta("campo-reps-$n"), "12")
-            p.escribir(etiqueta("campo-kg-$n"), "30")
-            p.tocar(etiqueta("confirmar-serie-$n"))
+            darOK()
             p.esperar("$n de 3") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("$n de 3") }
         }
-        // Con la polea, las reps de la serie 3 heredan los 30.
-        p.escribir(etiqueta("campo-reps-3"), "10")
-        p.esperar("sugiere los 30 de la polea") { p.estado(etiqueta("campo-kg-3")) == "sugerido 30" }
+        // Con la polea, la serie 3 sigue con los 30.
+        assertTrue(p.descripcion(etiqueta("fila-serie-3")), p.descripcion(etiqueta("fila-serie-3")).contains("30 kilos"))
         p.tocar(etiqueta("sustituir"))
         p.nodo(etiqueta("hoja-sustituir"))
         p.tocar(texto("Fondos"))
@@ -281,8 +271,7 @@ class EntrenoUiTest : PruebaUi() {
         p.esperar("el sustituto") { p.textosBajo(etiqueta("ejercicio-nombre")) == listOf("Fondos") }
         // Ya en fondos, la serie 3 no sugiere los kg de la polea (y no se puede registrar sin cargar el kg).
         p.quieto(300)
-        assertEquals("ya en fondos sugiere los kg de la polea", null, p.estado(etiqueta("campo-kg-3")))
-        assertFalse(p.habilitado(etiqueta("confirmar-serie-3")))
+        assertFalse("ya en fondos sugiere los kg de la polea", p.descripcion(etiqueta("fila-serie-3")).contains("30 kilos"))
         Telefono.captura("38-fondos-sin-los-kg-de-la-polea-claro")
     }
 
@@ -313,9 +302,12 @@ class EntrenoUiTest : PruebaUi() {
     @Test
     fun elDescansoConMasMenosYSaltar() {
         demoEnUnEjercicio()
-        p.escribir(etiqueta("campo-reps-1"), "10")
-        p.escribir(etiqueta("campo-kg-1"), "60")
-        p.tocar(etiqueta("confirmar-serie-1"))
+        fijarCarga("60")
+        darOK()
+        // Con el panel a la vista el descanso va ahí; la barra flotante se ve en las otras pestañas.
+        p.nodo(etiqueta("descanso-chip"))
+        assertFalse("dos barras apiladas", p.existe(etiqueta("descanso")))
+        p.tocar(etiqueta("pestana-dieta"))
         p.nodo(etiqueta("descanso"))
         assertEquals(listOf("Descanso / 2:30"), p.textosBajo(etiqueta("descanso-rotulo")))
         val t0 = segundos()
@@ -338,11 +330,12 @@ class EntrenoUiTest : PruebaUi() {
         p.tocar(etiqueta("descanso-saltar"))
         p.esperarQueNoEste(etiqueta("descanso"))
 
-        // La serie 2 hereda el kg (SER-03): con las reps alcanza.
-        p.escribir(etiqueta("campo-reps-2"), "9")
-        p.tocar(etiqueta("confirmar-serie-2"))
+        // La serie 2 hereda el kg (SER-03).
+        p.tocar(etiqueta("pestana-entreno"))
+        darOK()
+        p.esperar("el kg heredado") { p.descripcion(etiqueta("fila-serie-2")).contains("60 kilos").takeIf { it } }
+        p.tocar(etiqueta("pestana-dieta"))
         p.nodo(etiqueta("descanso"))
-        p.esperar("el kg heredado") { p.textoDe(etiqueta("campo-kg-2")) == "60" }
         // Al terminar suena (una vez) y, a los 2 s, la barra se cierra sola. El "¡A la próxima serie!" en verde dura esos 2 s:
         // en un emulador lento puede no llegar a leerse, así que se anota pero no se exige (la regla la prueban los tests del
         // motor, EntrenoTest.descanso).
@@ -393,9 +386,8 @@ class EntrenoUiTest : PruebaUi() {
         p.nodo(texto("DÍA 1 · SEMANA 2 DE 4"))
         assertEquals(listOf("1 ejercicio"), p.textosBajo(etiqueta("entreno-cantidad")))
         p.tocar(etiqueta("ejercicio-press-d1-0"))
-        p.escribir(etiqueta("campo-reps-1"), "8")
-        p.escribir(etiqueta("campo-kg-1"), "60")
-        p.tocar(etiqueta("confirmar-serie-1"))
+        fijarCarga("60")
+        darOK()
         // ENT-17: con todo hecho, "¡Día completado!" (una vez) ofrece ir al día siguiente.
         p.nodo(etiqueta("pregunta"))
         p.nodo(texto("¡Día completado!"))
@@ -430,22 +422,18 @@ class EntrenoUiTest : PruebaUi() {
         assertEquals(listOf("Día cerrado esta semana"), p.textosBajo(etiqueta("entreno-cantidad")))
         p.nodo(texto("Día 1, Empuje, cerrado esta semana"))
 
-        // SES-07: corregir una serie en el día cerrado pregunta si se reabre, y usa la misma sesión.
+        // SES-07: corregir una serie en el día cerrado reescribe esa serie en la misma sesión, sin desmarcarla.
         abrirEnLaLista("press-d1-0")
-        p.tocar(etiqueta("confirmar-serie-1"))   // el lápiz (SER-06): la desconfirma
-        p.nodo(texto("Registrar lo que hiciste"))
-        p.escribir(etiqueta("campo-reps-1"), "9")
-        p.tocar(etiqueta("confirmar-serie-1"))
-        p.nodo(texto("Este día ya lo cerraste"))
-        p.nodo(texto("Lo marcaste como terminado. ¿Querés reabrirlo para seguir cargando series?"))
-        p.tocar(etiqueta("pregunta-si"))
-        p.esperarQueNoEste(etiqueta("pregunta"))
+        p.tocar(etiqueta("fila-serie-1"))
+        p.nodo(etiqueta("correccion-guardar"))
+        p.tocar(etiqueta("reps-mas"))
+        p.tocar(etiqueta("correccion-guardar"))
+        p.esperarQueNoEste(etiqueta("correccion-guardar"))
         p.esperar("la serie corregida") { servidor.a("mypump_registrar_carga").any { it.contains("\"p_reps\":9") && it.contains("ses-prueba-1") } }
+        assertTrue(p.descripcion(etiqueta("fila-serie-1")), p.descripcion(etiqueta("fila-serie-1")).contains("hecha: 9 repeticiones"))
         // "¡Día completado!" sale una sola vez por día.
         p.quieto(1_000)
         assertFalse(p.existe(etiqueta("pregunta")))
-        p.nodo(texto("SESIÓN COMPLETA"))
-        p.nodo(etiqueta("cerrar-sesion"))
     }
 
     /** ENT-14 y ENT-15: avanzar de semana con la pregunta de la web, y en la última, empezar el bloque nuevo. */

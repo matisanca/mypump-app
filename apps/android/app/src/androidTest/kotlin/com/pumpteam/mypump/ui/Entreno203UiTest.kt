@@ -82,9 +82,8 @@ class Entreno203UiTest : PruebaUi() {
         p.esperar("la 1 hecha") { fila(1).endsWith("hecha").takeIf { it } }
         p.tocar(etiqueta("preparacion-2"))
         p.esperar("la 2 hecha") { fila(2).endsWith("hecha").takeIf { it } }
-        p.nodo(etiqueta("descanso"))
-        assertEquals(listOf("Descanso / 0:30"), p.textosBajo(etiqueta("descanso-rotulo")))
-        p.tocar(etiqueta("descanso-saltar"))
+        p.esperar("el descanso de 0:30") { p.textosBajo(etiqueta("descanso-en-tarjeta")).any { it.contains("0:30") }.takeIf { it } }
+        p.tocar(etiqueta("saltar-descanso"))
         verBloque()
         Telefono.captura("v2-dos-tocadas-$sufijo")
         // Tocarla de nuevo la desmarca.
@@ -92,7 +91,7 @@ class Entreno203UiTest : PruebaUi() {
         p.esperar("la 2 sin hacer") { (!fila(2).endsWith("hecha")).takeIf { it } }
 
         // El kg en vivo: 62,5 en la primera efectiva → la aproximación al 60 % pasa a 37,5.
-        p.escribir(etiqueta("campo-kg-1"), "62,5")
+        fijarCarga("62,5")
         p.esperar("37,5 en la aproximación 1") { fila(2).contains("37,5 kilos").takeIf { it } }
 
         // «Ocultar» y «Mostrar».
@@ -143,25 +142,22 @@ class Entreno203UiTest : PruebaUi() {
     @Test fun preparacionSinKgYAyudaClaro() = sinKgYAyuda("claro")
     @Test fun preparacionSinKgYAyudaOscuro() = sinKgYAyuda("oscuro")
 
-    /** El RIR del plan: se guarda 1 (el primer número de «1-2»). E3: 62,5 × 10 contra 60 × 10 de la última vez avisa el récord. */
+    /** 2.3.0: todo al fallo; el RIR del plan (1-2) no se copia, va 0. E3: 62,5 × 10 contra 60 × 10 de la última vez avisa el récord. */
     @Test
     fun elRirDelPlanSeGuardaYElRecordSeAvisa() {
         rutinaConHistorial()
-        // Sin selector de RIR: la leyenda del plan, y se guarda el primer número del rango.
-        assertEquals(listOf("Dejando 1–2 en reserva"), p.textosBajo(etiqueta("leyenda-rir")))
-        p.escribir(etiqueta("campo-reps-1"), "10")
-        p.escribir(etiqueta("campo-kg-1"), "62,5")
-        p.tocar(etiqueta("confirmar-serie-1"))
+        assertEquals(listOf("Al fallo"), p.textosBajo(etiqueta("leyenda-rir")))
+        fijarCarga("62,5")
+        darOK()
         p.esperar("el aviso de récord") { p.textosBajo(etiqueta("aviso-record")).contains("Récord: +2,5 kg") }
         Telefono.captura("203-record-aviso")
         val carga = p.esperar("la serie en el servidor") { servidor.a("mypump_registrar_carga").firstOrNull() }
-        assertTrue(carga, carga.contains("\"p_peso\":62.5") && carga.contains("\"p_rir\":1"))
+        assertTrue(carga, carga.contains("\"p_peso\":62.5") && carga.contains("\"p_rir\":0"))
         // Se va solo.
         p.esperarQueNoEste(etiqueta("aviso-record"), ms = 8_000)
         // La segunda con el mismo peso y las mismas reps: ya avisado, no se repite.
-        p.tocar(etiqueta("descanso-saltar"))
-        p.escribir(etiqueta("campo-reps-2"), "10")
-        p.tocar(etiqueta("confirmar-serie-2"))
+        p.tocar(etiqueta("saltar-descanso"))
+        darOK()
         p.esperar("2 de 3") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("2 de 3") }
         assertTrue("no se repite", !p.existe(etiqueta("aviso-record")))
     }
@@ -176,10 +172,9 @@ class Entreno203UiTest : PruebaUi() {
         p.tocar(etiqueta("guardar-descanso"))
         p.esperarQueNoEste(etiqueta("hoja-descanso"))
         p.esperar("el botón con 2:15") { p.textosBajo(etiqueta("descanso-ejercicio")).contains("2:15") }
-        p.tocar(etiqueta("confirmar-serie-1"))   // lo de la última vez, de un toque
-        p.nodo(etiqueta("descanso"))
-        assertEquals(listOf("Descanso / 2:15"), p.textosBajo(etiqueta("descanso-rotulo")))
-        p.tocar(etiqueta("descanso-saltar"))
+        darOK()   // lo de la última vez, de un toque
+        p.esperar("el descanso de 2:15") { p.textosBajo(etiqueta("descanso-en-tarjeta")).any { it.contains("2:15") }.takeIf { it } }
+        p.tocar(etiqueta("saltar-descanso"))
         p.tocar(etiqueta("descanso-ejercicio"))
         p.tocar(etiqueta("descanso-del-plan"))
         p.esperar("de vuelta al del plan") { p.textosBajo(etiqueta("descanso-ejercicio")).contains("2:00") }

@@ -167,6 +167,7 @@ fun EjercicioPantalla(
         modifier = Modifier.nestedScroll(comportamiento.nestedScrollConnection),
         containerColor = c.fondo,
         topBar = { BarraEntreno(nombre.principal, null, tituloEnBarra, comportamiento, alVolver) },
+        bottomBar = { if (t.filas.isNotEmpty()) PanelCarga(motor, lugar, preguntador) },
     ) { relleno ->
         Column(
             modifier = Modifier
@@ -183,7 +184,8 @@ fun EjercicioPantalla(
                     .fillMaxWidth()
                     .padding(horizontal = Espacio.m)
                     // Al final, lo que tapa la barra de pestañas flotante (con el teclado abierto, nada: la tapa él).
-                    .padding(top = Espacio.xxs, bottom = Espacio.xl + rellenoInferior()),
+                    // (con el panel de la carga, ese lugar ya lo descuenta el Scaffold).
+                    .padding(top = Espacio.xxs, bottom = Espacio.xl + if (relleno.calculateBottomPadding() > 0.dp) 0.dp else rellenoInferior()),
                 verticalArrangement = Arrangement.spacedBy(Espacio.l),
             ) {
                 Encabezado(t, Modifier.onSizeChanged { altoEncabezado = it.height }) {
@@ -192,7 +194,7 @@ fun EjercicioPantalla(
                 MetricasPauta(t.pauta, t.descanso, t.efectivo.ejercicio.tipo)
                 t.nota?.let { NotaSemana(it) }
                 if (t.filas.isNotEmpty()) {
-                    TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia)
+                    TarjetaCarga(motor, v, lugar, t)
                     DescansoEnTarjeta(motor, enLista = false)
                 }
                 ASuperar(t, buscando = lugar in v.cargandoHistorial)
@@ -269,7 +271,7 @@ private fun Encabezado(t: ModeloEntreno.Tarjeta, modifier: Modifier = Modifier, 
     }
 }
 
-/** La pauta de la semana como métricas, no como chips: series × reps, RIR y descanso, con el número en Archivo. */
+/** La pauta de la semana como métricas, no como chips: series × reps y descanso, con el número en Archivo. */
 @Composable
 private fun MetricasPauta(pauta: Pauta, descanso: String, tipo: String?) {
     val c = MyPump.colores
@@ -278,10 +280,6 @@ private fun MetricasPauta(pauta: Pauta, descanso: String, tipo: String?) {
         pauta.reps?.let { r ->
             val s = pauta.series
             if (s != null && tipo != "cardio") add(Metrica("Series × reps", "$s × $r")) else add(Metrica("Duración", r))
-        }
-        pauta.rir?.let { rir ->
-            val (principal, detalle) = partirParentesis(rir)
-            add(Metrica("RIR", principal, detalle))
         }
         if (descanso.isNotEmpty() && descanso != "0:00") add(Metrica("Descanso", descanso))
     }
@@ -792,7 +790,7 @@ internal fun EjercicioEnLista(
         verticalArrangement = Arrangement.spacedBy(Espacio.s),
     ) {
         // El cardio va por tiempo: sin tabla («0 de 0» y «no tiene series esta semana»), se marca con «Terminé».
-        if (t.filas.isNotEmpty()) TablaSeries(motor, v, lugar, t, preguntador, alCompletarDia, enLista = true)
+        if (t.filas.isNotEmpty()) TarjetaCarga(motor, v, lugar, t, enLista = true)
         // Solo en los ejercicios con series, como en iOS (el cardio se marca con «Terminé»).
         if (t.filas.isNotEmpty()) DescansoEnTarjeta(motor)
         // Con la letra muy grande, uno debajo del otro: en un renglón partían las palabras («Sus-tituir»).

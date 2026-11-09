@@ -206,7 +206,12 @@ class ModeloAppViewModel(private val app: Application) : AndroidViewModel(app) {
         if (!visible) _reproductorGuia?.pausar()
         val m = _modelo.value ?: return
         m.enPrimerPlano = visible
-        if (visible) viewModelScope.launch { m.alVolverAPrimerPlano() }
+        if (visible) {
+            viewModelScope.launch { m.alVolverAPrimerPlano() }
+        } else {
+            // Ir a segundo plano cierra la ventana de Deshacer: lo anotado no puede quedar dependiendo de que la app viva.
+            viewModelScope.launch { m.entreno.value?.vaciarDeshacer() }
+        }
     }
 
     override fun onCleared() {

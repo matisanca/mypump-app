@@ -117,7 +117,7 @@ class CapturasTiendaTest : PruebaUi() {
 
             p.desplazar(etiqueta("entreno-lista"), 1_450f)
             p.tocar(etiqueta("ejercicio-jalon-al-pecho-prono-dorsal-ancho-d1-0"))
-            p.nodo(etiqueta("pista-serie"))
+            p.nodo(etiqueta("ok-serie"))
             mostrarElEjercicioAbierto("jalon-al-pecho-prono-dorsal-ancho-d1-0")
             esperarFotos()
             captura("$modo-2-ejercicio")

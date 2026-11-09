@@ -64,10 +64,10 @@ class CapturasUiTest : PruebaUi() {
             foto("14-entreno-cards")
 
             p.tocar(etiqueta("ejercicio-jalon-al-pecho-prono-dorsal-ancho-d1-0"))
-            p.nodo(etiqueta("pista-serie"))
+            p.nodo(etiqueta("ok-serie"))
             foto("15-entreno-ejercicio")
-            p.tocar(etiqueta("confirmar-serie-3"))
-            p.nodo(etiqueta("descanso"))
+            darOK()
+            p.nodo(etiqueta("descanso-chip"))
             foto("16-entreno-serie-y-descanso")
 
             p.tocar(etiqueta("sustituir"))

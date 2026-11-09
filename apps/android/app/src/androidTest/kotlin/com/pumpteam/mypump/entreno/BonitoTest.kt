@@ -85,7 +85,7 @@ class BonitoTest {
     @Test
     fun loQueLeeTalkBackEnLaCard() {
         assertEquals(
-            "Pendiente, 4 series de 10, RIR 0 (al fallo), descanso 2:30, última vez 58 kg × 9 · 4 series, hace 3 días, récord 58 kg × 9",
+            "Pendiente, 4 series de 10, descanso 2:30, última vez 58 kg × 9 · 4 series, hace 3 días, récord 58 kg × 9",
             CardAccesible.valor(
                 "pendiente", 0, 4, sustituido = false, fijado = false, manual = false, mensajes = 0, tipo = "compuesto",
                 pauta = Pauta(4, "10", "0 (al fallo)"), descansoSegundos = 150,
@@ -93,7 +93,7 @@ class BonitoTest {
             ),
         )
         assertEquals(
-            "2 de 4 series, sustitución fijada, 1 mensaje sin leer, 4 series de 8-10, RIR 1-2, descanso 2:30, primera vez con este ejercicio",
+            "2 de 4 series, sustitución fijada, 1 mensaje sin leer, 4 series de 8-10, descanso 2:30, primera vez con este ejercicio",
             CardAccesible.valor(
                 "pendiente", 2, 4, sustituido = true, fijado = true, manual = false, mensajes = 1, tipo = "compuesto",
                 pauta = Pauta(4, "8-10", "1-2"), descansoSegundos = 150, ultima = null, record = null, buscandoHistorial = false,

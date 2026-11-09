@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pumpteam.mypump.datos.ModeloApp
 import com.pumpteam.mypump.datos.ModeloEntreno
@@ -82,6 +83,14 @@ fun EntrenoPantalla(modelo: ModeloApp, preguntador: Preguntador) {
                         abierto = null
                         m.cambiarDia(sig)
                     }
+                }
+            }
+            // El día se completa con el OK de la última serie, que puede salir del panel o del temporizador de Deshacer.
+            val completadoPorOK by m.diaCompletado.collectAsStateWithLifecycle()
+            LaunchedEffect(completadoPorOK) {
+                completadoPorOK?.let {
+                    m.limpiarDiaCompletado()
+                    alCompletarDia(it)
                 }
             }
             AnimatedContent(
