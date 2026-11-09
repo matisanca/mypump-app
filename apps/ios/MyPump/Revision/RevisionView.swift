@@ -105,8 +105,6 @@ struct RevisionView: View {
         }
     }
 
-    /// GEN-05: al plan publicado le falta algo. No es para el cliente sino para la captura que le manda a Mati (qué
-    /// republicar): discreto, con el detalle chico y gris.
     /// Quien revisa otro día que el domingo lo ve acá (el dato lo carga el equipo). El domingo no agrega nada.
     @ViewBuilder private var diaDeRevision: some View {
         if let texto = SemanaRevision.textoDia(modelo.diaDeRevision) {
@@ -118,6 +116,8 @@ struct RevisionView: View {
         }
     }
 
+    /// GEN-05: al plan publicado le falta algo. No es para el cliente sino para la captura que le manda a Mati (qué
+    /// republicar): discreto, con el detalle chico y gris.
     @ViewBuilder private var avisoPlan: some View {
         if let aviso = modelo.avisoPlanIncompleto {
             HStack(alignment: .top, spacing: Espacio.s) {

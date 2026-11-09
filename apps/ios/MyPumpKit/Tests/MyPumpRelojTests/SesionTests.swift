@@ -73,6 +73,50 @@ func sesionDemo() -> SesionReloj {
         #expect(s.cierreSalud(ahora: T0 + 120_000) == .descartar)
     }
 
+    /// Llega otro día con el entreno abierto: se cierra el de antes, con sus series, y no se pierde.
+    @Test func alLlegarOtroDiaSeCierraElEntrenoDeAntes() throws {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        let previa = s
+        var r = try #require(s.rutina)
+        r.diaId = "otro"
+        r.generada = T0 + 120_000
+        for i in r.ejercicios.indices { for j in r.ejercicios[i].series.indices { r.ejercicios[i].series[j].confirmada = false } }
+        s.recibir(r)
+        #expect(s.cierreSalud(ahora: T0 + 200_000) == .descartar)
+        #expect(s.cierreSalud(tras: previa, ahora: T0 + 200_000) == .guardar(fin: T0 + 200_000))
+    }
+
+    @Test func enElMismoDiaEnCursoNoSeCierra() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        #expect(s.cierreSalud(tras: s, ahora: T0 + 120_000) == nil)
+    }
+
+    @Test func alTerminarSeCierraConLasSeriesDeHoy() {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        let previa = s
+        _ = s.terminar(ahora: T0 + 120_000)
+        #expect(s.cierreSalud(tras: previa, ahora: T0 + 120_000) == .guardar(fin: T0 + 120_000))
+    }
+
+    /// Reloj e iPhone alternados: una serie hecha en el iPhone también es actividad, el entreno no se recorta a la del reloj.
+    @Test func lasSeriesDelIPhoneCuentanComoActividad() throws {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        var r = try #require(s.rutina)
+        r.generada = T0 + 4_000_000
+        r.ejercicios[1].series[0].confirmada = true
+        r.ejercicios[1].series[0].reps = 10
+        s.recibir(r)
+        #expect(s.cierreSalud(ahora: T0 + 4_200_000) == .guardar(fin: T0 + 4_200_000))
+    }
+
     /// Una sesión guardada por una versión anterior (sin la hora de la última serie) se sigue leyendo.
     @Test func laUltimaSerieNoEsObligatoriaAlLeer() throws {
         var s = sesionConCuenta()

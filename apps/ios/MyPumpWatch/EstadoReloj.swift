@@ -233,7 +233,8 @@ final class EstadoReloj {
         propuestaSerie.reiniciar()
         // La primera serie confirmada sin «Empezar» arranca la sesión (y los sensores): esa serie no tiene ventana.
         if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: calibrando && sesion.rutina?.cuenta != "demo") } else { calibracion.abrirVentana() }
-        if conSalud { entreno.empezar() }
+        // Con el día ya terminado no se abre otro entreno de HealthKit: quedaría uno de segundos en Fitness.
+        if conSalud, !sesion.terminada { entreno.empezar() }
         WKInterfaceDevice.current().play(c.record != nil ? .success : .click)
         avisoRecord = c.record
         if c.descanso { correrDescanso() }
@@ -294,11 +295,12 @@ final class EstadoReloj {
     // MARK: - Interno
 
     private func cambiar(enviar: Bool = true, _ f: (inout SesionReloj) -> Void) {
+        let previa = sesion
         var s = sesion
         f(&s)
         sesion = s
         // El día se cerró (en el reloj o en el iPhone) o no hay nada empezado: el entreno de HealthKit no queda abierto.
-        if s.terminada || !s.iniciada { entreno.terminar(s.cierreSalud(ahora: Self.ahoraMs)) }
+        if let cierre = s.cierreSalud(tras: previa, ahora: Self.ahoraMs) { entreno.terminar(cierre) }
         ajustarSensores()
         guardar()
         actualizarComplicacion()

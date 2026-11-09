@@ -23,6 +23,8 @@ final class EntrenoSalud: NSObject {
     /// Las sesiones que se están cerrando, hasta que el sistema confirma que terminaron.
     private struct Cierre { let sesion: HKWorkoutSession; let builder: HKLiveWorkoutBuilder; let cierre: CierreSalud }
     private var cierres: [ObjectIdentifier: Cierre] = [:]
+    /// El permiso se contesta en diferido: si en el medio se terminó el día, la sesión ya no se abre.
+    private var quiereAbrir = false
 
     private static let fc = HKQuantityType(.heartRate)
     private static let energia = HKQuantityType(.activeEnergyBurned)
@@ -30,6 +32,7 @@ final class EntrenoSalud: NSObject {
     /// Arranca la sesión de entreno (una sola vez por entreno).
     func empezar() {
         guard sesion == nil, HKHealthStore.isHealthDataAvailable() else { return }
+        quiereAbrir = true
         let aCompartir: Set<HKSampleType> = [HKObjectType.workoutType()]
         let aLeer: Set<HKObjectType> = [Self.fc, Self.energia]
         // HealthKit llama a estas closures en su cola. El SDK ya las declara `@Sendable` (no heredan el MainActor); se
@@ -41,7 +44,7 @@ final class EntrenoSalud: NSObject {
     }
 
     private func abrir() {
-        guard sesion == nil else { return }
+        guard sesion == nil, quiereAbrir else { return }
         let config = HKWorkoutConfiguration()
         config.activityType = .traditionalStrengthTraining
         config.locationType = .indoor
@@ -61,6 +64,7 @@ final class EntrenoSalud: NSObject {
 
     /// Termina la sesión y la cierra según `cierre` (una sola vez: las llamadas siguientes no hacen nada).
     func terminar(_ cierre: CierreSalud) {
+        quiereAbrir = false
         guard let s = sesion, let b = builder else { return }
         sesion = nil
         builder = nil
@@ -118,7 +122,8 @@ final class EntrenoSalud: NSObject {
             return
         }
         guard s !== sesion else { return }
-        cerrar(s, b, cierre)
+        // Con el día en curso ya hay otra sesión midiendo: la recuperada se descarta para no dejar dos entrenos solapados.
+        cerrar(s, b, seguir ? .descartar : cierre)
     }
 
     fileprivate func actualizar(_ estadisticas: [HKQuantityType: HKStatistics]) {

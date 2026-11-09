@@ -68,6 +68,8 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         let mismoDia = rutina.map { $0.diaId == nueva.diaId && $0.semana == nueva.semana && $0.fecha == nueva.fecha } ?? false
         var r = nueva
         aplicarPendientes(&r)
+        // Una serie que llegó del iPhone también es actividad: el entreno no se recorta a la última hecha en el reloj.
+        if mismoDia, Self.confirmadas(r) > (rutina.map(Self.confirmadas) ?? 0) { ultimaSerie = max(ultimaSerie ?? 0, r.generada) }
         rutina = r
         if !mismoDia {
             terminada = r.diaFinalizado
@@ -455,6 +457,18 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     public static let olvidoTrasUltimaSerie = 30 * 60_000.0
     /// Con el entreno olvidado, el fin es la última serie más este margen (ms): el descanso y el cierre.
     public static let margenTrasUltimaSerie = 3 * 60_000.0
+
+    private static func confirmadas(_ r: RutinaReloj) -> Int { r.ejercicios.reduce(0) { $0 + $1.confirmadas } }
+
+    /// Si tras este cambio de estado hay que cerrar el entreno de HealthKit, cómo; nil si sigue abierto. Si llegó otro día
+    /// con una sesión en curso, lo que se cierra es el entreno de ANTES: la rutina nueva ya no tiene sus series.
+    public func cierreSalud(tras previa: SesionReloj, ahora: Double) -> CierreSalud? {
+        let otroDia = previa.rutina.map { p in
+            rutina.map { $0.diaId != p.diaId || $0.semana != p.semana || $0.fecha != p.fecha } ?? true
+        } ?? false
+        if otroDia, previa.iniciada, !previa.terminada { return previa.cierreSalud(ahora: ahora) }
+        return terminada || !iniciada ? cierreSalud(ahora: ahora) : nil
+    }
 
     /// Qué hacer con el entreno de HealthKit al cerrarse. Va a Salud solo si es un entreno de verdad: con cuenta (la demo
     /// no), con al menos una serie confirmada y con una duración creíble (hasta 6 h, el tope de `minutosSesion`).
