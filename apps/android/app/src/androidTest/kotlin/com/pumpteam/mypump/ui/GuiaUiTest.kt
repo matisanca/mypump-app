@@ -595,4 +595,86 @@ class GuiaUiTest : PruebaUi() {
         p.nodo(etiqueta("tarjeta-guia-completa"))
         foto("05-tarjeta-compacta")
     }
+
+    // «Lo que más te importa» (con la fixture `get-tomas-dolor`, inventada).
+
+    @Test
+    fun sinDolorLaGuiaEsLaDeSiempre() {
+        conGuia(fixture("get-tomas"))
+        guardarCuenta()
+        abrir()
+        abrirGuia()
+        assertFalse(p.existe(etiqueta("guia-dolor")))
+        assertFalse(p.existe(etiqueta("guia-intro")))
+        assertFalse(p.existe(etiqueta("guia-paso-videos")))
+        assertTrue(p.existe(texto("Mati")))
+    }
+
+    @Test
+    fun conDolorVaPrimeroSinMarcasYConSusPartes() {
+        conGuia(fixture("get-tomas-dolor"))
+        guardarCuenta()
+        abrir()
+        abrirGuia()
+        p.nodo(etiqueta("guia-dolor"))
+        assertTrue(p.existe(texto("Lo que más te importa")))
+        assertTrue(p.existe(texto("Bajar la panza sin perder fuerza")))
+        assertTrue(p.existe(textoQueContiene("la panza y que")))
+        assertFalse(p.existe(textoQueContiene("**")))
+        assertFalse(p.existe(textoQueContiene("##")))
+        assertTrue(p.existe(texto("Tus videos sobre esto")))
+        assertTrue(p.existe(textoQueContiene("Antes de nuestra videollamada del miércoles 7/3, hacé estos dos pasos.")))
+        assertTrue(p.existe(etiqueta("guia-paso-videos")))
+        assertTrue(p.existe(etiqueta("guia-paso-dudas")))
+        // Arriba del reproductor; la parte, justo después.
+        val dolor = p.nodo(etiqueta("guia-dolor"))
+        p.enPrincipal { assertTrue(dolor.boundsInRoot.top >= 0f) }
+        bajarHasta(etiqueta("guia-parte-0"))
+        assertTrue(p.existe(texto("Tu plan para estas semanas")))
+    }
+
+    @Test
+    fun laIntroSinFechaNoInventaNinguna() {
+        val sinFecha = org.json.JSONObject(fixture("get-tomas-dolor")).put("fecha_entrega", org.json.JSONObject.NULL).toString()
+        conGuia(sinFecha)
+        guardarCuenta()
+        abrir()
+        abrirGuia()
+        assertTrue(p.existe(textoQueContiene("Antes de nuestra videollamada, hacé estos dos pasos.")))
+        assertFalse(p.existe(textoQueContiene("videollamada del")))
+    }
+
+    @Test
+    fun dolorRaroNoRompeLaGuia() {
+        val raro = org.json.JSONObject(fixture("get-tomas")).put("dolor", "texto suelto").toString()
+        conGuia(raro)
+        guardarCuenta()
+        abrir()
+        abrirGuia()
+        assertFalse(p.existe(etiqueta("guia-dolor")))
+    }
+
+    @Test
+    fun capturasDelDolorClaroOscuroYLetraGrande() {
+        conGuia(fixture("get-tomas-dolor"))
+        guardarCuenta()
+        try {
+            for ((nombre, noche) in listOf("claro" to "no", "oscuro" to "yes")) {
+                Telefono.shell("cmd uimode night $noche")
+                abrir()
+                abrirGuia()
+                p.nodo(etiqueta("guia-dolor"))
+                Telefono.captura("guia-dolor-$nombre")
+            }
+            Telefono.shell("cmd uimode night no")
+            Telefono.shell("settings put system font_scale 1.5")
+            abrir()
+            abrirGuia()
+            p.nodo(etiqueta("guia-dolor"))
+            assertTrue(p.existe(etiqueta("guia-paso-videos")))
+            Telefono.captura("guia-dolor-letra-grande")
+        } finally {
+            Telefono.shell("cmd uimode night no")
+        }
+    }
 }

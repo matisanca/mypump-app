@@ -4,6 +4,10 @@
   "fecha_entrega": null,
   "fase": 2,
   "novedad_en": "2026-11-05T12:00:00-03:00",
+  "dolor": {
+    "titulo": "Sacarle el jugo a tu plan",
+    "texto": "Lo que más nos importa es que tengas todo tu plan en un solo lugar y sepas qué hacer cada día.\n\nPor eso armé estos videos cortos sobre cómo usar la app."
+  },
   "clips": [
     {
       "id": "FT-25a",

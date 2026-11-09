@@ -37,6 +37,8 @@ data class Guia(
      * la 2.1.0. Hace volver la tarjeta de Entreno si el cliente la había ocultado antes (ver `ReglasNovedad`).
      */
     val novedadEn: String? = null,
+    /** «Lo que más te importa». Opcional: sin el campo, o con el texto en blanco, null y la guía de siempre. */
+    val dolor: DolorGuia? = null,
 ) {
     fun clip(id: String): ClipGuia? = clips.firstOrNull { it.id == id }
 
@@ -70,6 +72,7 @@ data class Guia(
             // Solo si vinieron: la caché de una guía de antes queda igual que en la 2.1.0.
             if (fase != 1) put("fase", ValorJson.Numero(fase.toDouble()))
             novedadEn?.let { put("novedad_en", ValorJson.Texto(it)) }
+            dolor?.let { put("dolor", it.aValor()) }
         },
     )
 
@@ -89,6 +92,7 @@ data class Guia(
                 suplementacionCruda = (s as? JsonObject)?.let { ValorJson.desde(it) },
                 fase = o.entero("fase")?.takeIf { it == 2 } ?: 1,
                 novedadEn = o.cadena("novedad_en")?.trim()?.ifEmpty { null },
+                dolor = DolorGuia.desde(o["dolor"]),
             )
         }
 
@@ -410,3 +414,25 @@ data class ResumenGuia(
 private val BLOQUE_SUPLEMENTACION = Regex("^[\\s\u00a0\ufeff]*tu suplementaci[oóÓ]n[\\s\u00a0\ufeff]*$", RegexOption.IGNORE_CASE)
 
 internal fun esSuplementacion(bloque: String?): Boolean = BLOQUE_SUPLEMENTACION.matches(bloque ?: "")
+
+/**
+ * El texto del caso (`dolor` en `entregas_app_get`): `titulo` opcional y `texto` con párrafos separados por una línea en
+ * blanco; un párrafo «## Título» abre una parte aparte. Las reglas están en `ReglasDolor`.
+ */
+data class DolorGuia(val titulo: String?, val texto: String) {
+    fun aValor(): ValorJson = ValorJson.Objeto(
+        linkedMapOf(
+            "titulo" to (titulo?.let { ValorJson.Texto(it) } ?: ValorJson.Nulo),
+            "texto" to ValorJson.Texto(texto),
+        ),
+    )
+
+    companion object {
+        /** null si no es un objeto o no trae texto: un `dolor` raro es lo mismo que no tenerlo. */
+        fun desde(e: JsonElement?): DolorGuia? {
+            val o = e as? JsonObject ?: return null
+            val texto = o.cadena("texto")?.ifEmpty { null } ?: return null
+            return DolorGuia(o.cadena("titulo"), texto)
+        }
+    }
+}
