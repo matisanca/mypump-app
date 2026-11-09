@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -70,6 +72,7 @@ import com.pumpteam.mypump.diseno.superficieTarjeta
 import com.pumpteam.mypump.modelos.ClipGuia
 import com.pumpteam.mypump.modelos.ResumenGuia
 import com.pumpteam.mypump.reglas.ReglasAgenda
+import com.pumpteam.mypump.reglas.ReglasDolor
 import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.ReglasReproductor
 import com.pumpteam.mypump.reglas.SuplementacionVista
@@ -125,7 +128,14 @@ fun BarraAvance(fraccion: Float, modifier: Modifier = Modifier) {
 
 /** «Hola Tomás», una línea y el avance. */
 @Composable
-fun CabeceraGuia(saludo: String, linea: String, resumen: ResumenGuia?, modifier: Modifier = Modifier) {
+fun CabeceraGuia(
+    saludo: String,
+    linea: String,
+    resumen: ResumenGuia?,
+    modifier: Modifier = Modifier,
+    intro: ReglasDolor.Introduccion? = null,
+    alPaso: (ReglasDolor.Paso) -> Unit = {},
+) {
     val c = MyPump.colores
     Column(
         modifier = modifier
@@ -136,8 +146,13 @@ fun CabeceraGuia(saludo: String, linea: String, resumen: ResumenGuia?, modifier:
         verticalArrangement = Arrangement.spacedBy(Espacio.xs),
     ) {
         Text(saludo, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-        Text(linea, style = MaterialTheme.typography.bodyLarge)
-        Text("Mati", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
+        if (intro != null) {
+            Text(intro.texto, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("guia-intro"))
+            PasosGuia(intro.pasos, alPaso)
+        } else {
+            Text(linea, style = MaterialTheme.typography.bodyLarge)
+            Text("Mati", style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario)
+        }
         if (resumen != null) {
             Spacer(Modifier.height(4.dp))
             Text(ReglasGuia.textoAvance(resumen), style = MaterialTheme.typography.bodyMedium, color = c.textoSecundario, modifier = Modifier.testTag("guia-avance"))
@@ -146,9 +161,123 @@ fun CabeceraGuia(saludo: String, linea: String, resumen: ResumenGuia?, modifier:
     }
 }
 
+/**
+ * El mapa de pasos de la cabecera, como `.mapa` en `pack.html`. Tocar un paso lleva a lo suyo; con letra grande van uno
+ * abajo del otro.
+ */
+@Composable
+private fun PasosGuia(pasos: List<ReglasDolor.Paso>, alTocar: (ReglasDolor.Paso) -> Unit) {
+    val apilado = LocalDensity.current.fontScale > 1.3f
+    if (apilado) {
+        Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+            pasos.forEach { PasoGuia(it, pasos.size, apilado = true, alTocar, Modifier.fillMaxWidth()) }
+        }
+    } else {
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(Espacio.xs)) {
+            pasos.forEach { PasoGuia(it, pasos.size, apilado = false, alTocar, Modifier.weight(1f)) }
+        }
+    }
+}
+
+@Composable
+private fun PasoGuia(p: ReglasDolor.Paso, total: Int, apilado: Boolean, alTocar: (ReglasDolor.Paso) -> Unit, modifier: Modifier) {
+    val c = MyPump.colores
+    val circulo: @Composable () -> Unit = {
+        val borde = when (p.estado) {
+            ReglasDolor.EstadoPaso.PENDIENTE -> c.textoTerciario
+            else -> c.marca
+        }
+        val forma = CircleShape
+        Box(
+            Modifier
+                .size(32.dp)
+                .clip(forma)
+                .then(if (p.estado == ReglasDolor.EstadoPaso.HECHO) Modifier.background(c.marca) else Modifier.border(2.dp, borde, forma)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (p.estado == ReglasDolor.EstadoPaso.HECHO) {
+                Icon(Iconos.Tilde, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            } else {
+                Text(
+                    p.numero.toString(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (p.estado == ReglasDolor.EstadoPaso.AHORA) c.marcaTexto else c.textoSecundario,
+                )
+            }
+        }
+    }
+    val texto: @Composable (TextAlign) -> Unit = { a ->
+        Text(p.titulo, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, textAlign = a)
+    }
+    val fila = modifier
+        .testTag("guia-paso-${p.id}")
+        .heightIn(min = 48.dp)
+        .clearAndSetSemantics {
+            contentDescription = ReglasDolor.textoHablado(p, total)
+            role = Role.Button
+            onClick { alTocar(p); true }
+        }
+        .clickable(role = Role.Button) { alTocar(p) }
+    if (apilado) {
+        Row(fila, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Espacio.s)) {
+            circulo()
+            texto(TextAlign.Start)
+        }
+    } else {
+        Column(fila, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            circulo()
+            texto(TextAlign.Center)
+        }
+    }
+}
+
+/** Un recuadro de «Lo que más te importa» o de una parte «## Título»: el texto a la vista y abajo sus videos, si tiene. */
+@Composable
+fun TarjetaDolor(
+    titulo: String,
+    subtitulo: String?,
+    parrafos: List<String>,
+    etiqueta: String,
+    modifier: Modifier = Modifier,
+    videos: (@Composable () -> Unit)? = null,
+) {
+    val c = MyPump.colores
+    Column(
+        modifier
+            .fillMaxWidth()
+            .superficieTarjeta()
+            .border(1.dp, c.marca, RoundedCornerShape(Radio.tarjeta))
+            .testTag(etiqueta),
+    ) {
+        Column(
+            Modifier.padding(horizontal = Espacio.m + 4.dp, vertical = Espacio.m),
+            verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(titulo, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+                if (subtitulo != null) Text(subtitulo, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = c.marcaTexto)
+            }
+            parrafos.forEachIndexed { i, p ->
+                Text(p, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("$etiqueta-parrafo-$i"))
+            }
+        }
+        if (videos != null) {
+            HorizontalDivider(color = c.borde)
+            videos()
+        }
+    }
+}
+
 /** El encabezado de un capítulo plegable: título, «8 videos, unos 3 minutos» y la flechita. */
 @Composable
-fun EncabezadoBloque(bloque: ReglasGuia.Bloque, vistos: Int, abierto: Boolean, alTocar: () -> Unit, modifier: Modifier = Modifier) {
+fun EncabezadoBloque(
+    bloque: ReglasGuia.Bloque,
+    vistos: Int,
+    abierto: Boolean,
+    alTocar: () -> Unit,
+    modifier: Modifier = Modifier,
+    titulo: String = bloque.titulo,
+) {
     val c = MyPump.colores
     val estado = if (abierto) "abierto" else "cerrado"
     Row(
@@ -165,7 +294,7 @@ fun EncabezadoBloque(bloque: ReglasGuia.Bloque, vistos: Int, abierto: Boolean, a
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(bloque.titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(
                 bloque.resumen + if (vistos > 0) ", viste $vistos" else "",
                 style = MaterialTheme.typography.bodySmall,

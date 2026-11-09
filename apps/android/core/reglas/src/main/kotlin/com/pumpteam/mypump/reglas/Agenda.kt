@@ -35,6 +35,12 @@ object ReglasNovedad {
         return nuevos + ReglasGuia.ordenados(resto)
     }
 
+    /** Como arriba, con los videos de «Lo que más te importa» y sus partes antes que los demás, si hay `dolor`. */
+    fun ordenDeLaLista(g: Guia): List<ClipGuia> {
+        val (nuevos, resto) = g.clipsDeLaLista.partition { it.nuevo }
+        return nuevos + ReglasDolor.conDolorPrimero(ReglasGuia.ordenados(resto), g.dolor)
+    }
+
     /**
      * Los capítulos sobre [ordenados] (de [ordenDeLaLista]): primero «Novedad» con los nuevos y después los de siempre solo
      * con los que no son nuevos (lo ya visto queda abajo). Sin nuevos, [ReglasGuia.bloques].

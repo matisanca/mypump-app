@@ -157,7 +157,7 @@ class ControlReproductor(
      */
     fun usar(m: ModeloGuia, guia: Guia) {
         // Los nuevos arriba (2.2.0, «Novedad»): el mismo orden que la lista, así «Video N de M» y «Siguiente» coinciden.
-        val deLista = com.pumpteam.mypump.reglas.ReglasNovedad.ordenDeLaLista(guia.clipsDeLaLista)
+        val deLista = com.pumpteam.mypump.reglas.ReglasNovedad.ordenDeLaLista(guia)
         val nuevos = deLista + guia.clipsDeSuplementos
         val otraCuenta = m !== modelo
         if (otraCuenta) {

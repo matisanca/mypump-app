@@ -91,6 +91,7 @@ import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.ResumenGuia
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.reglas.ReglasAgenda
+import com.pumpteam.mypump.reglas.ReglasDolor
 import com.pumpteam.mypump.reglas.ReglasGuia
 import com.pumpteam.mypump.reglas.ReglasNovedad
 import com.pumpteam.mypump.reglas.ReglasVideo
@@ -174,6 +175,7 @@ fun GuiaPantalla(modelo: ModeloGuia, control: ControlReproductor, alVolver: () -
                 accionEntreno = ReglasGuia.accionEntreno(resumenServidor, ocultaAMano),
                 alAccionEntreno = modelo::ocultarDeEntreno,
                 transcriptos = audios.filter { it.estado == com.pumpteam.mypump.datos.ModeloAudioDudas.Estado.TRANSCRIPTO }.mapNotNull { it.texto },
+                hayAudios = audios.isNotEmpty(),
                 audioLlamada = { despuesAudio, m -> AudioDudaLlamada(modelo.audios, despuesAudio, m) },
                 // Sin la agenda del servidor (antes de la 021, o `ok: false`), nada de esto: la guía de la 2.1.0.
                 agendaPie = agenda?.let { a ->
@@ -256,6 +258,10 @@ private sealed interface Entrada {
     data object Cabecera : Entrada { override val clave = "cabecera" }
     data object Reproductor : Entrada { override val clave = "reproductor" }
     data class Bloque(val bloque: ReglasGuia.Bloque) : Entrada { override val clave = "bloque-${bloque.clave}" }
+    data class Dolor(val vista: ReglasDolor.Vista, val bloque: ReglasGuia.Bloque?) : Entrada { override val clave = "dolor" }
+    data class ParteDolor(val indice: Int, val parte: ReglasDolor.Parte, val bloque: ReglasGuia.Bloque?) : Entrada {
+        override val clave = "dolor-parte-$indice"
+    }
     data object Llamada : Entrada { override val clave = "llamada" }
     data object Suplementacion : Entrada { override val clave = "suplementacion" }
     data object Agenda : Entrada { override val clave = "agenda" }
@@ -276,13 +282,19 @@ private fun ContenidoGuia(
     alAccionEntreno: (ocultar: Boolean) -> Unit,
     alEnviarDuda: (video: String?, texto: String) -> Unit,
     transcriptos: List<String> = emptyList(),
+    hayAudios: Boolean = false,
     audioLlamada: (@Composable (despues: Boolean, Modifier) -> Unit)? = null,
     /** La agenda al final (2.2.0), con «Ir al próximo video». null: el servidor no la tiene y no se muestra nada nuevo. */
     agendaPie: (@Composable (Modifier, irAlProximo: (() -> Unit)?) -> Unit)? = null,
 ) {
     // Los nuevos arriba, en «Novedad» (2.2.0); sin nuevos, el orden y los capítulos de siempre.
-    val clips = remember(guia) { ReglasNovedad.ordenDeLaLista(guia.clipsDeLaLista) }
+    val clips = remember(guia) { ReglasNovedad.ordenDeLaLista(guia) }
     val bloques = remember(clips) { ReglasNovedad.bloques(clips) }
+    // «Lo que más te importa» y sus partes. Sin `dolor`, `reparto.resto` son todos los capítulos.
+    val vistaDolor = remember(guia) { ReglasDolor.vista(guia.dolor) }
+    val reparto = remember(bloques, vistaDolor) { ReglasDolor.reparto(bloques, vistaDolor) }
+    val hayDudas = guia.dudasLlamada.isNotEmpty() || guia.clips.any { !it.duda.isNullOrEmpty() } || pendientes.isNotEmpty() || hayAudios
+    val intro = remember(guia, hayDudas) { ReglasDolor.introduccion(guia, hayDudas) }
     // La etiqueta «Para ver antes de la entrega», solo con la agenda del servidor.
     val paraLaEntrega = remember(guia, agendaPie != null) {
         if (agendaPie == null) emptySet() else ReglasAgenda.obligatorios(guia).mapTo(HashSet()) { it.id }
@@ -317,15 +329,20 @@ private fun ContenidoGuia(
         val lista = rememberLazyListState()
         val alcance = LocalAlcanceApp.current
         val conAgenda = agendaPie != null
-        val entradas = remember(bloques, desdeCache, suple, dosColumnas, conAgenda) {
+        val entradas = remember(reparto, vistaDolor, desdeCache, suple, dosColumnas, conAgenda) {
             buildList {
                 if (desdeCache) add(Entrada.SinRed)
                 add(Entrada.Cabecera)
+                // Como en la web: en el teléfono, arriba del reproductor.
+                vistaDolor?.let { v ->
+                    add(Entrada.Dolor(v, reparto.principal))
+                    v.partes.forEachIndexed { i, p -> add(Entrada.ParteDolor(i, p, reparto.partes.getOrNull(i))) }
+                }
                 if (!dosColumnas) add(Entrada.Reproductor)
                 // Como la web (4/11): primero «Tu app», el recuadro de dudas para la videollamada y después los demás capítulos.
                 // La novedad (2.2.0) va arriba de todo.
-                bloques.filter { it.esNovedad }.forEach { add(Entrada.Bloque(it)) }
-                val (deLaApp, resto) = bloques.filterNot { it.esNovedad }.partition { ReglasGuia.esTuApp(it.titulo) }
+                reparto.resto.filter { it.esNovedad }.forEach { add(Entrada.Bloque(it)) }
+                val (deLaApp, resto) = reparto.resto.filterNot { it.esNovedad }.partition { ReglasGuia.esTuApp(it.titulo) }
                 deLaApp.forEach { add(Entrada.Bloque(it)) }
                 add(Entrada.Llamada)
                 resto.forEach { add(Entrada.Bloque(it)) }
@@ -354,7 +371,15 @@ private fun ContenidoGuia(
         }
         val volverALaLista: () -> Unit = {
             mostrarVolver = false
-            val i = entradas.indexOfFirst { it is Entrada.Bloque && control.actual in it.bloque.indices }
+            val i = entradas.indexOfFirst {
+                val b = when (it) {
+                    is Entrada.Bloque -> it.bloque
+                    is Entrada.Dolor -> it.bloque
+                    is Entrada.ParteDolor -> it.bloque
+                    else -> null
+                }
+                b != null && control.actual in b.indices
+            }
             if (i >= 0) alcance.launch { lista.animateScrollToItem(i) }
         }
         // «Ver por qué»: el video del suplemento se abre debajo de él, con su duda (como pack.html, A5).
@@ -422,6 +447,11 @@ private fun ContenidoGuia(
                     porQue = porQue,
                     reproductor = tarjetaReproductor,
                     paraLaEntrega = paraLaEntrega,
+                    intro = intro,
+                    alPaso = { paso ->
+                        val i = entradas.indexOf(if (paso.id == "videos") Entrada.Reproductor else Entrada.Llamada)
+                        if (i >= 0) alcance.launch { lista.animateScrollToItem(i) }
+                    },
                     agendaPie = agendaPie?.let { pie ->
                         { m ->
                             val proximo = ReglasAgenda.proximoQueFalta(guia, clips)?.let { c -> clips.indexOf(c) }?.takeIf { it >= 0 }
@@ -475,36 +505,59 @@ private fun LazyListScope.entradasGuia(
     porQue: PorQueSuplemento,
     reproductor: @Composable (Modifier) -> Unit,
     paraLaEntrega: Set<String> = emptySet(),
+    intro: ReglasDolor.Introduccion? = null,
+    alPaso: (ReglasDolor.Paso) -> Unit = {},
     agendaPie: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val ancho = Modifier.widthIn(max = 700.dp).fillMaxWidth()
+    // El capítulo plegable, suelto o adentro de un recuadro de «Lo que más te importa».
+    val capitulo: @Composable (ReglasGuia.Bloque, String?, Modifier) -> Unit = { b, titulo, m ->
+        val abierto = b.clave in abiertos
+        val vistos = b.indices.count { clips[it].visto }
+        Column(m.padding(bottom = if (abierto) Espacio.xs else 0.dp)) {
+            EncabezadoBloque(
+                b, vistos, abierto,
+                alTocar = { if (abierto) abiertos.remove(b.clave) else abiertos.add(b.clave) },
+                titulo = titulo ?: b.titulo,
+            )
+            if (abierto) {
+                for (i in b.indices) {
+                    val c = clips[i]
+                    FilaClip(
+                        clip = c,
+                        actual = i == control.actual,
+                        expandida = c.id in expandidas,
+                        alTocar = { control.reproducir(i) },
+                        alExpandir = { if (c.id in expandidas) expandidas.remove(c.id) else expandidas.add(c.id) },
+                        paraLaEntrega = c.id in paraLaEntrega,
+                    )
+                }
+            }
+        }
+    }
     for (e in entradas) {
         item(key = e.clave) {
             when (e) {
                 Entrada.SinRed -> AvisoSinRed(ancho.padding(bottom = Espacio.s))
-                Entrada.Cabecera -> CabeceraGuia(ReglasGuia.saludo(guia), ReglasGuia.lineaCabecera(guia), resumen, ancho.padding(bottom = Espacio.s))
+                Entrada.Cabecera -> CabeceraGuia(ReglasGuia.saludo(guia), ReglasGuia.lineaCabecera(guia), resumen, ancho.padding(bottom = Espacio.s), intro, alPaso)
                 Entrada.Reproductor -> reproductor(ancho.padding(bottom = Espacio.s))
-                is Entrada.Bloque -> {
-                    val b = e.bloque
-                    val abierto = b.clave in abiertos
-                    val vistos = b.indices.count { clips[it].visto }
-                    Column(ancho.padding(top = Espacio.xs).superficieTarjeta().padding(bottom = if (abierto) Espacio.xs else 0.dp)) {
-                        EncabezadoBloque(b, vistos, abierto, alTocar = { if (abierto) abiertos.remove(b.clave) else abiertos.add(b.clave) })
-                        if (abierto) {
-                            for (i in b.indices) {
-                                val c = clips[i]
-                                FilaClip(
-                                    clip = c,
-                                    actual = i == control.actual,
-                                    expandida = c.id in expandidas,
-                                    alTocar = { control.reproducir(i) },
-                                    alExpandir = { if (c.id in expandidas) expandidas.remove(c.id) else expandidas.add(c.id) },
-                                    paraLaEntrega = c.id in paraLaEntrega,
-                                )
-                            }
-                        }
-                    }
-                }
+                is Entrada.Bloque -> capitulo(e.bloque, null, ancho.padding(top = Espacio.xs).superficieTarjeta())
+                is Entrada.Dolor -> TarjetaDolor(
+                    titulo = ReglasDolor.TITULO_BLOQUE,
+                    subtitulo = e.vista.subtitulo,
+                    parrafos = e.vista.parrafos,
+                    etiqueta = "guia-dolor",
+                    modifier = ancho.padding(bottom = Espacio.s),
+                    videos = e.bloque?.let { b -> { capitulo(b, ReglasDolor.TITULO_VIDEOS, Modifier) } },
+                )
+                is Entrada.ParteDolor -> TarjetaDolor(
+                    titulo = e.parte.titulo,
+                    subtitulo = null,
+                    parrafos = e.parte.parrafos,
+                    etiqueta = "guia-parte-${e.indice}",
+                    modifier = ancho.padding(bottom = Espacio.s),
+                    videos = e.bloque?.let { b -> { capitulo(b, ReglasDolor.TITULO_VIDEOS, Modifier) } },
+                )
                 Entrada.Llamada -> DudasLlamada(
                     guia = guia,
                     despues = despues,
