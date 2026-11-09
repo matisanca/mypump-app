@@ -243,7 +243,6 @@ final class EstadoReloj {
         let s = salud
         var r: ResumenReloj?
         cambiar { r = $0.terminar(ahora: Self.ahoraMs, salud: s) }
-        entreno.terminar()
         resumen = r
         WKInterfaceDevice.current().play(.stop)
     }
@@ -252,9 +251,9 @@ final class EstadoReloj {
     func leerRechazos() { cambiar(enviar: false) { $0.leerRechazos() } }
 
     /// El sistema relanzó la app con un entreno de HealthKit abierto (se cerró o se colgó a mitad): si el día sigue en
-    /// curso se retoma la medición; si ya terminó (o no empezó), se cierra y se descarta.
+    /// curso se retoma la medición; si ya terminó (o no empezó), se cierra: va a Salud si hubo series.
     func recuperarEntreno() {
-        entreno.recuperar(seguir: conSalud && sesion.iniciada && !sesion.terminada)
+        entreno.recuperar(seguir: conSalud && sesion.iniciada && !sesion.terminada, cierre: sesion.cierreSalud(ahora: Self.ahoraMs))
     }
 
     func ajustarDescanso(_ s: Double) { cambiar(enviar: false) { $0.ajustarDescanso(s, ahora: Self.ahoraMs) } }
@@ -299,7 +298,7 @@ final class EstadoReloj {
         f(&s)
         sesion = s
         // El día se cerró (en el reloj o en el iPhone) o no hay nada empezado: el entreno de HealthKit no queda abierto.
-        if s.terminada || !s.iniciada { entreno.terminar() }
+        if s.terminada || !s.iniciada { entreno.terminar(s.cierreSalud(ahora: Self.ahoraMs)) }
         ajustarSensores()
         guardar()
         actualizarComplicacion()

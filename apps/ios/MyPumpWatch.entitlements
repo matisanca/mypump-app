@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- FC y calorías en vivo (HKWorkoutSession). El entreno no se guarda en Salud. -->
+	<!-- FC y calorías en vivo (HKWorkoutSession), y el entreno que se guarda en Salud al terminar. -->
 	<key>com.apple.developer.healthkit</key>
 	<true/>
 	<!-- El estado que leen las complicaciones (próximo entreno y descanso). -->

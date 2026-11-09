@@ -260,7 +260,7 @@ extension PuenteSalud {
             let suma = dentro.reduce(0) { $0 + $1.v }
             return (jsRound(suma / Double(dentro.count)), jsRound(dentro.reduce(0) { $1.v > $0 ? $1.v : $0 }))
         }
-        return ws.map { w in
+        return ws.filter { $0.fuenteId != bundleDelReloj }.map { w in
             let dur = w.duracion / 60
             let km = w.distancia.map { $0 / 1000 }
             let fc = fcDe(w.inicio, w.fin)

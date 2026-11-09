@@ -61,4 +61,16 @@ struct SemanaRevisionTests {
         #expect(SemanaRevision.fechaAviso(hoy: "2026-10-31", minutos: 600, completa: false, dia: 99) == "2026-11-01")
         #expect(SemanaRevision.fechaAviso(hoy: "no es fecha", minutos: 600, completa: false) == nil)
     }
+
+    /// El entreno que el reloj de MyPump guarda en Salud vuelve al iPhone por HealthKit: no se ingiere como si fuera externo.
+    @Test func elEntrenoDelRelojDeMyPumpNoSeIngiere() {
+        let propio = EntrenoCrudo(tipo: "strengthTraining", duracion: 3600, inicio: 1_000, fin: 3_601_000, kcal: 300,
+                                  fuenteId: PuenteSalud.bundleDelReloj)
+        let ajeno = EntrenoCrudo(tipo: "strengthTraining", duracion: 1800, inicio: 5_000_000, fin: 6_800_000, kcal: 150,
+                                 fuenteId: "com.apple.health.ABC")
+        let sinFuente = EntrenoCrudo(tipo: "walking", duracion: 600, inicio: 9_000_000, fin: 9_600_000)
+        let filas = PuenteSalud.entrenos([propio, ajeno, sinFuente], fc: [])
+        #expect(filas.map(\.tipo) == ["strengthTraining", "walking"])
+        #expect(filas.first?.kcal == 150)
+    }
 }

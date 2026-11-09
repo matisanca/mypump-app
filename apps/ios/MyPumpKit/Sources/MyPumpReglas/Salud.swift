@@ -13,6 +13,9 @@ import MyPumpModelos
 public enum PuenteSalud {
     /// `mypump_salud_diaria.fuente`. El motor desempata por fuente y el coach ve de dónde salió el dato.
     public static let fuente = "apple_health"
+    /// El entreno que guarda el reloj de MyPump vuelve al iPhone por HealthKit. Ese ya está en MyPump (es la sesión con sus
+    /// series): no se ingiere, para no contarlo dos veces en `mypump_entrenos_health`, los conteos y el paquete semanal.
+    public static let bundleDelReloj = "com.pumpteam.mypump.watchkitapp"
     /// HealthKit solo tiene SDNN; el motor le da menos peso que a un rMSSD.
     public static let metricaHRV = "sdnn"
     /// `readSamples` no pagina: si vuelven exactamente estas, se parte la ventana al medio.
@@ -134,9 +137,13 @@ public struct EntrenoCrudo: Sendable, Equatable {
     public var kcal: Double?
     /// Metros (`totalDistance`).
     public var distancia: Double?
+    /// El bundle de la app que lo guardó (`sourceRevision.source.bundleIdentifier`). nil si no se sabe.
+    public var fuenteId: String?
 
-    public init(tipo: String, duracion: Double, inicio: Double, fin: Double, kcal: Double? = nil, distancia: Double? = nil) {
+    public init(tipo: String, duracion: Double, inicio: Double, fin: Double, kcal: Double? = nil, distancia: Double? = nil,
+                fuenteId: String? = nil) {
         self.tipo = tipo; self.duracion = duracion; self.inicio = inicio; self.fin = fin; self.kcal = kcal; self.distancia = distancia
+        self.fuenteId = fuenteId
     }
 }
 

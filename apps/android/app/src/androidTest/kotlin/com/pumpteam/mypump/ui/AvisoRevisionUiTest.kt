@@ -9,6 +9,7 @@ import com.pumpteam.mypump.reglas.FechaLocal
 import com.pumpteam.mypump.reglas.FotosProgreso
 import java.time.Instant
 import java.time.ZoneId
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -84,7 +85,8 @@ class AvisoRevisionUiTest : PruebaUi() {
         abrir().also {
             p.tocar(etiqueta("pestana-revision"))
             p.nodo(etiqueta("dia-de-revision"))
-            p.esperar("el aviso agendado para $quiero") { CentroAvisos.domingoPendiente(app)?.takeIf { it == quiero } }
+            val agendado = p.esperar("el aviso agendado para $quiero") { CentroAvisos.domingoPendiente(app)?.takeIf { it == quiero } }
+            assertEquals(quiero, agendado)
         }.close()
     }
 }

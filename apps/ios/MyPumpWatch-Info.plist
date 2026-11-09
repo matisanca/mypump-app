@@ -21,7 +21,7 @@
 	<!-- HealthKit pide permiso de escritura de entrenamientos para poder abrir una sesión de entreno en el reloj. Pump
 	     Team no guarda el entreno en Salud (decisión de Mati): al terminar lo descarta. -->
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Pump Team necesita este permiso para medir tu entreno en vivo. No guardamos el entreno en Salud; el reloj registra tu frecuencia cardíaca y tus calorías activas como siempre.</string>
+	<string>Pump Team guarda tu entreno de fuerza en Salud y Fitness cuando lo terminás, con su duración y tus calorías.</string>
 	<!-- Tanda 4: con el conteo de reps prendido (viene así; se apaga en Mis datos) el reloj usa el acelerómetro y el
 	     giroscopio durante las series. Apagado, no se pide ni se usa. -->
 	<key>NSMotionUsageDescription</key>
