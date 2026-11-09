@@ -89,6 +89,36 @@ import MyPumpModelos
         #expect(await s.subirPendientes(token: "tok", archivos: { _ in [u] }) == 1)
     }
 
+    /// Revocó mientras viajaba un archivo: al terminar no queda anotado como subido y corta lo que falta.
+    @Test func revocarDuranteUnaSubidaNoDejaRecuerdos() async {
+        nonisolated(unsafe) var s: SubidaGrabaciones?
+        let t = TransporteProgramado { fn, _ in
+            if fn == "mypump_reps_estado" { return (200, #"{"automatica":true,"acepta":null}"#) }
+            await s?.olvidarSubidas()
+            return (200, #"{"ok":true}"#)
+        }
+        s = SubidaGrabaciones(cliente: cliente(t), defaults: defaults)
+        let urls = [archivo("2026-11-07-s6-a"), archivo("2026-11-08-s6-b")]
+        #expect(await s!.subirPendientes(token: "tok", archivos: { _ in urls }) == 0)
+        #expect(t.llamadas.filter { $0 == "subir" }.count == 1)
+        #expect(defaults.stringArray(forKey: SubidaGrabaciones.claveSubidas) == nil)
+    }
+
+    @Test func alVerRevocadoEnElServidorOlvidaLoSubido() async {
+        let u = archivo("2026-11-07-s6-a")
+        #expect(await subir(transporte(), [u]) == 1)
+        #expect(await subir(transporte(estado: (200, #"{"automatica":false,"acepta":false}"#)), [u]) == 0)
+        #expect(defaults.stringArray(forKey: SubidaGrabaciones.claveSubidas) == nil)
+    }
+
+    @Test func unArchivoDeMasNoSeMandaYNoFrena() async {
+        let t = transporte()
+        let grande = carpeta.appendingPathComponent("calibracion-2026-11-07-s6-a.mpcal")
+        try? Data(count: SubidaGrabaciones.topeBytes + 1).write(to: grande)
+        #expect(await subir(t, [grande, archivo("2026-11-08-s6-b")]) == 1)
+        #expect(t.llamadas.filter { $0 == "subir" }.count == 1)
+    }
+
     @Test func soloConElTokenYSinCuentaEnElCuerpo() async {
         nonisolated(unsafe) var visto: JSONValue?
         let t = TransporteProgramado { fn, cuerpo in
@@ -110,8 +140,10 @@ import MyPumpModelos
             SubidaGrabaciones.deLaCuenta(urls, cuenta: "yo", marcas: marcas, prendidas: prendidas, estado: e).map(\.lastPathComponent)
         }
         #expect(nombres(.init(acepta: true), prendidas: ["yo"]) == ["calibracion-a.mpcal"])
-        #expect(nombres(.init(automatica: true), prendidas: ["yo"]) == ["calibracion-a.mpcal", "calibracion-viejo.mpcal"])
-        #expect(nombres(.init(automatica: true), prendidas: ["yo", "otra"]) == ["calibracion-a.mpcal"])
+        #expect(nombres(.init(automatica: true), prendidas: ["yo"]) == ["calibracion-a.mpcal"], "sin la habilitación del servidor, lo viejo no")
+        #expect(nombres(.init(automatica: true, adoptarSinMarca: true), prendidas: ["yo"]) == ["calibracion-a.mpcal", "calibracion-viejo.mpcal"])
+        #expect(nombres(.init(automatica: true, adoptarSinMarca: true), prendidas: ["yo", "otra"]) == ["calibracion-a.mpcal"])
+        #expect(nombres(.init(automatica: true, adoptarSinMarca: true), prendidas: []) == ["calibracion-a.mpcal"], "si no se sabe quién grabó, tampoco")
     }
 
     @Test func elNombreDebeSerDeUnaSesion() {

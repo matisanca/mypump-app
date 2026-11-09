@@ -9,15 +9,20 @@ public struct EstadoSubidaReps: Equatable, Sendable {
     public var automatica: Bool
     /// nil = nunca se le preguntó.
     public var acepta: Bool?
+    /// Puede tomar los archivos viejos, sin marca de cuenta (el servidor lo pone a mano para una cuenta que grabó sola).
+    public var adoptarSinMarca = false
     public var puedeSubir: Bool { automatica || acepta == true }
 
-    public init(automatica: Bool = false, acepta: Bool? = nil) { self.automatica = automatica; self.acepta = acepta }
+    public init(automatica: Bool = false, acepta: Bool? = nil, adoptarSinMarca: Bool = false) {
+        self.automatica = automatica; self.acepta = acepta; self.adoptarSinMarca = adoptarSinMarca
+    }
 
     /// nil si la respuesta no es la esperada (token caído: la base contesta null).
     public init?(_ j: JSONValue) {
         guard case .bool(let a)? = j["automatica"] else { return nil }
         automatica = a
         if case .bool(let b)? = j["acepta"] { acepta = b }
+        if case .bool(let b)? = j["adoptar_sin_marca"] { adoptarSinMarca = b }
     }
 }
 
@@ -68,7 +73,7 @@ extension ClienteRPC {
 }
 
 /// Sube las grabaciones que falten. Corre fuera del hilo principal, de a una por vez, y nunca sin que el servidor la
-/// habilite. Lo que no se pudo subir sigue en el iPhone y se reintenta la próxima vez; nada se borra por subir.
+/// habilite. Lo que no se pudo subir sigue en el iPhone (hasta el tope de la carpeta) y se reintenta la próxima vez.
 public actor SubidaGrabaciones {
     /// Las ya subidas («sesión#hash»): si la sesión creció, el hash cambia y se vuelve a mandar.
     static let claveSubidas = "mypump-reps-subidas"
@@ -77,6 +82,10 @@ public actor SubidaGrabaciones {
     private let cliente: ClienteRPC
     private let defaults: UserDefaults
     private var corriendo = false
+    /// Sube al revocar: lo que viaja en ese momento no se recuerda como subido.
+    private var generacion = 0
+    /// El archivo más grande que acepta el servidor (20 MB).
+    public static let topeBytes = 20 * 1_024 * 1_024
 
     public init(cliente: ClienteRPC, defaults: UserDefaults = .standard) {
         self.cliente = cliente
@@ -86,11 +95,11 @@ public actor SubidaGrabaciones {
     public static func sha256(_ d: Data) -> String { SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined() }
 
     /// Los archivos de esta cuenta. `marcas` dice de quién es cada archivo recibido. Los viejos, sin marca, solo los toma
-    /// la cuenta automática y solo si en este iPhone nadie más grabó (`prendidas`, las cuentas con el modo prendido).
+    /// la cuenta que el servidor habilitó para eso, y solo si es la única con el modo prendido en este iPhone (`prendidas`).
     public static func deLaCuenta(_ urls: [URL], cuenta: String, marcas: [String: String], prendidas: [String], estado: EstadoSubidaReps) -> [URL] {
         urls.filter { u in
             if let c = marcas[u.lastPathComponent] { return c == cuenta }
-            return estado.automatica && prendidas.allSatisfy { $0 == cuenta }
+            return estado.automatica && estado.adoptarSinMarca && prendidas == [cuenta]
         }
     }
 
@@ -104,7 +113,10 @@ public actor SubidaGrabaciones {
     }
 
     /// Lo subido se olvida al revocar: si vuelve a aceptar, el servidor ya no lo tiene y hay que mandarlo de nuevo.
-    public func olvidarSubidas() { defaults.removeObject(forKey: Self.claveSubidas) }
+    public func olvidarSubidas() {
+        generacion += 1
+        defaults.removeObject(forKey: Self.claveSubidas)
+    }
 
     /// Cuántas subió. `alHabilitar` se llama con el estado cuando la cuenta puede subir (para prender la grabación).
     /// `archivos` elige según el estado: nunca archivos de otra cuenta del mismo iPhone.
@@ -114,18 +126,24 @@ public actor SubidaGrabaciones {
         guard !corriendo else { return 0 }
         corriendo = true
         defer { corriendo = false }
-        guard let estado = await cliente.estadoSubidaReps(token: token), estado.puedeSubir else { return 0 }
+        guard let estado = await cliente.estadoSubidaReps(token: token) else { return 0 }
+        guard estado.puedeSubir else {
+            if estado.acepta == false { olvidarSubidas() }   // revocó (quizá desde otro iPhone): si vuelve, se manda de nuevo
+            return 0
+        }
         await alHabilitar?(estado)
-        var subidas = defaults.stringArray(forKey: Self.claveSubidas) ?? []
+        let vuelta = generacion
         var cuenta = 0
         for u in archivos(estado) {
-            guard let sesion = Self.sesion(deArchivo: u), let datos = try? Data(contentsOf: u), !datos.isEmpty else { continue }
+            guard vuelta == generacion else { return cuenta }
+            guard let sesion = Self.sesion(deArchivo: u), let datos = try? Data(contentsOf: u), !datos.isEmpty, datos.count <= Self.topeBytes else { continue }
             let hash = Self.sha256(datos)
             let clave = "\(sesion)#\(hash)"
-            guard !subidas.contains(clave) else { continue }
+            guard !(defaults.stringArray(forKey: Self.claveSubidas) ?? []).contains(clave) else { continue }
             switch await cliente.subirGrabacion(token: token, sesion: sesion, sha256: hash, datos: datos) {
             case .hecho:
-                subidas.append(clave)
+                guard vuelta == generacion else { return cuenta }
+                let subidas = (defaults.stringArray(forKey: Self.claveSubidas) ?? []) + [clave]
                 defaults.set(Array(subidas.suffix(Self.topeRecuerdos)), forKey: Self.claveSubidas)
                 cuenta += 1
             case .rechazada:

@@ -16,6 +16,11 @@ enum DatosCalibracion {
     static let claveMarcas = "mypump-calibracion-marcas"
     /// La cuenta automática ya prendió la grabación una vez (si después la apaga a mano, no se vuelve a prender).
     static let claveAutomatica = "mypump-calibracion-automatica"
+    /// El alumno revocó y el servidor todavía no lo confirmó.
+    static let claveRevocarPendiente = "mypump-reps-revocar-pendiente"
+    /// Lo último que dijo el servidor (`ACEPTA` o `AUTOMATICA` por cuenta), para que el texto siga siendo cierto sin red.
+    static func claveSeManda(_ cuenta: String) -> String { "mypump-reps-se-manda-\(cuenta)" }
+    private static let quietudSegundos: TimeInterval = 15 * 60
     /// «?» = dos cuentas con el mismo archivo: no sube ninguna.
     private static func marcar(_ archivo: String, cuenta: String) {
         let defaults = UserDefaults.standard
@@ -30,11 +35,22 @@ enum DatosCalibracion {
     /// no salga queda en el iPhone para la próxima.
     @MainActor static func subirSiCorresponde() {
         let m = Proveedor.modelo
-        guard !m.conMuestras, let token = m.token, let cuenta = m.entreno?.cuentaReloj, cuenta != "demo" else { return }
-        let subida = subida, carpeta = carpeta
+        // La cuenta sale del token, no de `entreno`: al cambiar de link los dos están un rato desfasados.
+        guard m.fase == .listo, !m.conMuestras, let token = m.token else { return }
+        let cuenta = ModeloEntreno.hashCuenta(token)
+        guard cuenta != "demo" else { return }
+        let subida = subida, carpeta = carpeta, cliente = m.cliente
         Task.detached(priority: .utility) {
+            // Una revocación que no llegó al servidor va primero, y mientras no salga no se sube nada.
+            if UserDefaults.standard.bool(forKey: claveRevocarPendiente) {
+                guard await cliente.guardarConsentimientoReps(token: token, acepta: false, plataforma: "ios", app: nil) else { return }
+                UserDefaults.standard.set(false, forKey: claveRevocarPendiente)
+                await subida.olvidarSubidas()
+            }
             await subida.subirPendientes(token: token, archivos: { estado in
-                let urls = AlmacenCalibracion(carpeta: carpeta, tope: AlmacenCalibracion.topeIPhone).archivos().map(\.url)
+                // Con la sesión en curso el archivo crece: se espera a que quede quieto para no mandarlo una vez por serie.
+                let urls = AlmacenCalibracion(carpeta: carpeta, tope: AlmacenCalibracion.topeIPhone).archivos()
+                    .filter { Date().timeIntervalSince($0.fecha) >= quietudSegundos }.map(\.url)
                 let marcas = UserDefaults.standard.dictionary(forKey: claveMarcas) as? [String: String] ?? [:]
                 return SubidaGrabaciones.deLaCuenta(urls, cuenta: cuenta, marcas: marcas, prendidas: ModoCalibracion().cuentas, estado: estado)
             }, alHabilitar: { estado in
@@ -74,7 +90,6 @@ enum DatosCalibracion {
         guard escrito else { return }
         recibidos.append(nombre)
         defaults.set(Array(recibidos.suffix(2_000)), forKey: claveRecibidos)
-        Task { @MainActor in subirSiCorresponde() }
     }
 
     static func seguro(_ s: String) -> String {
@@ -116,14 +131,16 @@ struct CalibracionView: View {
     @State private var guardandoConsentimiento = false
     @State private var errorConsentimiento = false
 
-    /// BORRADOR para el OK de Mati: el texto del consentimiento.
+    /// BORRADOR, pendiente de aprobación: el texto del consentimiento.
     private static let textoConsentimiento = """
         Si lo prendés, MyPump recibe las series que grabaste y las que grabes con el Apple Watch: el movimiento del reloj, \
-        el ejercicio, las reps y los kilos. No incluye tu nombre. Se usa solo para mejorar el conteo de reps. Lo podés apagar \
-        cuando quieras: se dejan de mandar y se borra lo que ya recibimos.
+        el ejercicio, las reps, los kilos, la fecha y en qué muñeca llevás el reloj. No incluye tu nombre; queda asociado a tu \
+        cuenta para poder borrarlo. Se usa solo para mejorar el conteo de reps. Lo podés apagar cuando quieras: se dejan de \
+        mandar y se borra lo que ya recibimos.
         """
 
-    private var seManda: Bool { subidaEstado?.puedeSubir == true }
+    /// Sin red no hay estado: vale lo último que dijo el servidor (sin servidor nunca hubo: no se manda).
+    private var seManda: Bool { subidaEstado?.puedeSubir ?? UserDefaults.standard.bool(forKey: DatosCalibracion.claveSeManda(cuenta)) }
 
     /// Lo que pasa con el archivo, verdadero según la cuenta.
     private var textoArchivo: String {
@@ -139,8 +156,17 @@ struct CalibracionView: View {
             let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
             let ok = await Proveedor.modelo.cliente.guardarConsentimientoReps(token: token, acepta: acepta, plataforma: "ios", app: version)
             guardandoConsentimiento = false
-            guard ok else { errorConsentimiento = true; return }
+            guard ok else {
+                if acepta { errorConsentimiento = true; return }
+                // Revocar no se pierde por falta de red: se apaga acá y se reintenta antes de cualquier subida.
+                UserDefaults.standard.set(true, forKey: DatosCalibracion.claveRevocarPendiente)
+                subidaEstado?.acepta = false
+                UserDefaults.standard.set(false, forKey: DatosCalibracion.claveSeManda(cuenta))
+                return
+            }
+            UserDefaults.standard.set(false, forKey: DatosCalibracion.claveRevocarPendiente)
             subidaEstado?.acepta = acepta
+            UserDefaults.standard.set(acepta, forKey: DatosCalibracion.claveSeManda(cuenta))
             if acepta {
                 prendido = true
                 modo.poner(true, cuenta: cuenta)
@@ -170,6 +196,7 @@ struct CalibracionView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("El conteo de reps del Apple Watch es experimental: propone las reps al terminar la serie y vos las confirmás o corregís con la corona. Nunca registra una serie solo.")
                     Text(ModoCalibracion.textoPrivacidad)
+                    if seManda { Text("Además se manda a MyPump para mejorar el conteo.") }
                 }
             }
 
@@ -234,6 +261,8 @@ struct CalibracionView: View {
             sesiones = DatosCalibracion.sesiones()
             if let token = Proveedor.modelo.token, !Proveedor.modelo.conMuestras {
                 subidaEstado = await Proveedor.modelo.cliente.estadoSubidaReps(token: token)
+                if UserDefaults.standard.bool(forKey: DatosCalibracion.claveRevocarPendiente) { subidaEstado?.acepta = false }
+                if let e = subidaEstado { UserDefaults.standard.set(e.puedeSubir, forKey: DatosCalibracion.claveSeManda(cuenta)) }
             }
         }
     }

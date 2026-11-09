@@ -82,6 +82,15 @@ final class EstadoReloj {
         if !args.contains("-demo") { conexion.activar() }
         actualizarComplicacion()
         ajustarSensores()
+        #if DEBUG
+        // Capturas (`-proponerReps N`): el simulador no tiene sensores; se inyecta un conteo claro.
+        if let i = args.firstIndex(of: "-proponerReps"), i + 1 < args.count, let n = Int(args[i + 1]) {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(3))
+                self?.proponer(.init(reps: n, periodo: 2.5, calidad: 0.9, senal: .acel, desde: 5, hasta: 30, quieto: true, esfuerzo: 0.15, amplitud: 0.5))
+            }
+        }
+        #endif
     }
 
     // MARK: - El contador de reps y el modo calibración
