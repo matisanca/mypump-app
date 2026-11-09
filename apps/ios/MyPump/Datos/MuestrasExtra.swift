@@ -46,7 +46,9 @@ enum DemoUI {
     static var sinDescanso: Bool { valor("descanso") == "no" }
     /// `-historial muestra`: la demo con historial (60 kg × 10 hace 4 días en cada ejercicio), para ver el kg sugerido, la
     /// preparación con kg y el aviso de récord sin cuenta.
-    static var historialDeMuestra: Bool { valor("historial") == "muestra" }
+    static var historialDeMuestra: Bool { valor("historial") == "muestra" || cuatroSeries }
+    /// `-historial muestra4` (prototipo de carga): 80 kg × 10, 10, 9 y 8, para contar los toques de hoy.
+    static var cuatroSeries: Bool { valor("historial") == "muestra4" }
 
     /// `-cardio prueba`: la demo con la cinta tal como la manda el plan (sin duración, `progresion: []`), como cardio al
     /// principio del día 1 y como calentamiento al principio del día 2 (reporte del 4-nov: pedía reps, kg y RIR).
@@ -72,7 +74,8 @@ enum DemoUI {
     /// Las dos series de muestra (sin datos reales).
     static func filasDeMuestra(_ clave: String) -> [RegistroHistorico] {
         let hace4 = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-4 * 86400))
-        let j = (1...2).map { #"{"clave":"\#(clave)","registrado_en":"\#(hace4)","peso_kg":60,"reps_realizadas":10,"rir_real":2,"serie_numero":\#($0)}"# }
+        let filas: [(Int, Int, Int)] = cuatroSeries ? [(1, 10, 80), (2, 10, 80), (3, 9, 80), (4, 8, 80)] : [(1, 10, 60), (2, 10, 60)]
+        let j = filas.map { #"{"clave":"\#(clave)","registrado_en":"\#(hace4)","peso_kg":\#($0.2),"reps_realizadas":\#($0.1),"rir_real":2,"serie_numero":\#($0.0)}"# }
         return (try? JSONDecoder().decode([RegistroHistorico].self, from: Data("[\(j.joined(separator: ","))]".utf8))) ?? []
     }
 
