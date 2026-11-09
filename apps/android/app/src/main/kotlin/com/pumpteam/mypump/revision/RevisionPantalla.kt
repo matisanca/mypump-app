@@ -58,6 +58,7 @@ import com.pumpteam.mypump.raiz.AnclaRevision
 import com.pumpteam.mypump.raiz.LocalAlcanceApp
 import com.pumpteam.mypump.raiz.LocalNavegacion
 import com.pumpteam.mypump.reglas.PesoCorporal
+import com.pumpteam.mypump.reglas.SemanaRevision
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.TemporalAdjusters
@@ -174,6 +175,12 @@ fun RevisionPantalla(modelo: ModeloApp, alAbrirMisDatos: () -> Unit, alAbrirSalu
                         }
                         AvisoPlanIncompleto(modelo)
                     }
+                    Text(
+                        SemanaRevision.EXPLICACION,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MyPump.colores.textoSecundario,
+                        modifier = Modifier.testTag("nota-revision-semanal"),
+                    )
                     FotosSemana(fotos, pesoParaLasFotos, Modifier.seccion(AnclaRevision.FOTOS, secciones))
                     CheckSemanal(
                         revision,

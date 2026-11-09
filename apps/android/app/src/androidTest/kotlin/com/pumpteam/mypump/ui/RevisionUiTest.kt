@@ -135,6 +135,15 @@ class RevisionUiTest : PruebaUi() {
         Telefono.captura("aviso-fotos-claro")
     }
 
+    /** Un alumno no sabía si la revisión era diaria o semanal. */
+    @Test
+    fun revisionDiceQueEsSemanal() {
+        guardarCuenta()
+        abrir()
+        irARevision()
+        assertTrue(p.textosBajo(etiqueta("nota-revision-semanal")).any { it.contains("semanal") })
+    }
+
     @Test
     fun sinFotosEnModoOscuro() {
         guardarTemaOscuro()

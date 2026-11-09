@@ -121,6 +121,9 @@ object DiaCalendario {
  * servidor. Vectores: apps/shared/vectores/aviso_revision.json. Gemelo de `SemanaRevision` de iOS.
  */
 object SemanaRevision {
+    /** Lo que dice la pantalla de Revisión: un alumno no sabía si era diaria o semanal. Sin nombrar un día: cada alumno tiene el suyo. */
+    const val EXPLICACION = "La revisión es semanal: una vez por semana subís tus 3 fotos y completás el check. No hace falta hacerla todos los días."
+
     const val DIA_POR_DEFECTO = 7
 
     /** El aviso sale el día de revisión a las 11:00, hora del teléfono (es cuando se arma la ronda de Mati). */
