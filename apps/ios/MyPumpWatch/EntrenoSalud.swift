@@ -121,7 +121,13 @@ extension EntrenoSalud: HKWorkoutSessionDelegate {
     /// Solo la sesión vigente: la que cerró `terminar` ya no está. Si se cortó sola, queda libre para volver a abrirse.
     fileprivate func cambioSesion(_ s: HKWorkoutSession, corre: Bool, cerro: Bool) {
         guard s === sesion else { return }
-        if cerro { sesion = nil; builder = nil }
+        if cerro {
+            // Se cortó sola: se cierra de verdad para que `empezar` pueda abrir otra sin chocar con esta.
+            s.end()
+            builder?.discardWorkout()
+            sesion = nil
+            builder = nil
+        }
         alCambiarViva?(corre)
     }
 }

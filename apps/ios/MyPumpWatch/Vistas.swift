@@ -411,7 +411,7 @@ struct EjercicioVista: View {
                 if sinDescanso { recuperarCorona() }
             }
             .onChange(of: fase) { _, f in
-                if f == .active { recuperarCorona() }
+                if f == .active { estado.actividad(); recuperarCorona() }
             }
             .navigationTitle(e.bloque ?? "Serie")
         }

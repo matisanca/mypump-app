@@ -37,6 +37,8 @@ final class CalibracionReloj {
     @ObservationIgnored var transferir: ((URL, [String: Any]) -> Void)?
     /// Cada conteo en vivo (para el flujo final, `ConfirmacionReps`).
     @ObservationIgnored var alContar: ((ContadorReps.Resultado) -> Void)?
+    /// false: no corre el conteo de este segundo (palanca apagada o en el descanso, donde igual se descarta).
+    @ObservationIgnored var debeContar: (() -> Bool)?
 
     static var carpeta: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("calibracion-pendientes")
@@ -61,7 +63,8 @@ final class CalibracionReloj {
         // Una ventana desde ya (si se prendió a mitad de una serie); empezar, elegir o confirmar la reemplazan.
         let t = Self.ahora
         ventana += 1
-        Task { await motor.abrirVentana(en: t) }
+        let n = ventana
+        Task { await motor.abrirVentana(en: t, numero: n) }
         tick?.cancel()
         tick = Task { [weak self] in
             while !Task.isCancelled {
@@ -119,7 +122,8 @@ final class CalibracionReloj {
         contadas = nil
         conteo = nil
         let t = Self.ahora
-        Task { await motor.abrirVentana(en: t) }
+        let n = ventana
+        Task { await motor.abrirVentana(en: t, numero: n) }
     }
 
     func finDescanso() {
@@ -132,10 +136,10 @@ final class CalibracionReloj {
     private static let esperaMuestras: Double = 5
 
     private func contarEnVivo() async {
-        guard grabando else { return }
+        guard grabando, debeContar?() ?? true else { return }
         let v = ventana
         let ahora = Self.ahora
-        let (vivo, llego, arranco) = await motor.contar(hasta: ahora)
+        guard let (vivo, llego, arranco) = await motor.contar(hasta: ahora, ventana: v) else { return }
         guard v == ventana, grabando else { return }   // se confirmó o se abrió otra ventana mientras contaba
         sinMuestras = ahora - (llego ?? arranco) >= Self.esperaMuestras
         conteo = vivo
@@ -169,13 +173,14 @@ final class CalibracionReloj {
         ventana += 1
         contadas = nil
         conteo = nil
-        let orden = Self.siguienteOrden(e.sesion)
+        let numero = ventana
+        let orden = guardar ? Self.siguienteOrden(e.sesion) : 0
         let confirmada = Date().timeIntervalSince1970 * 1000
         let motor = self.motor
         Task {
             // El conteo, la compresión y la escritura corren en el actor (fuera del hilo principal).
             guard let (url, nombre, contadas) = await motor.cerrarYGuardar(
-                en: t, guardar: guardar, almacen: almacen,
+                en: t, numero: numero, guardar: guardar, almacen: almacen,
                 encabezado: { v, conteo in
                     EncabezadoSerie(sesion: e.sesion, orden: orden, confirmada: confirmada,
                                     ejercicio: ClaveEjercicio.de(e.ejercicio.nombre), nombre: e.ejercicio.nombre,
@@ -242,17 +247,20 @@ actor MotorCalibracion {
         ultimaLlegada = t
         g.agregar(acelerometro: a, giroscopio: w)
     }
-    func abrirVentana(en t: Double) { g.abrirVentana(en: t) }
+    /// La ventana que tiene abierta este actor: un tick pedido con otro número es de antes de cerrar o de abrir.
+    private var ventanaAbierta = 0
+    func abrirVentana(en t: Double, numero: Int) { g.abrirVentana(en: t); ventanaAbierta = numero }
     func marcarFinDescanso(en t: Double) { g.marcarFinDescanso(en: t) }
     func cerrar(en t: Double) -> GrabadoraSerie.Ventana? { g.cerrar(en: t) }
 
     /// Cierra la ventana, abre la siguiente y, si `guardar`, cuenta con la misma regla que la evaluación, arma el
     /// registro y lo escribe. Devuelve el archivo, su nombre y lo contado.
-    func cerrarYGuardar(en t: Double, guardar: Bool, almacen: AlmacenCalibracion,
+    func cerrarYGuardar(en t: Double, numero: Int, guardar: Bool, almacen: AlmacenCalibracion,
                         encabezado: @Sendable (GrabadoraSerie.Ventana, ContadorReps.Resultado) -> EncabezadoSerie,
                         nombre: String) -> (URL, String, Int)? {
         let v = g.cerrar(en: t)
         g.abrirVentana(en: t)
+        ventanaAbierta = numero
         guard guardar, let v else { return nil }
         let conteo = ContadorReps.contar(Array(v.cuadros[min(v.inicioConteo, v.cuadros.count)...]))
         guard let d = try? ArchivoCalibracion.datos(.init(encabezado: encabezado(v, conteo), cuadros: v.cuadros)),
@@ -261,8 +269,9 @@ actor MotorCalibracion {
     }
     func reiniciar() { g = GrabadoraSerie(); ultimaLlegada = nil }
     /// El contador sobre lo que va de la serie (nil sin ventana abierta) y cuándo llegó la última muestra.
-    func contar(hasta t: Double) -> (ContadorReps.Resultado?, Double?, Double) {
-        (g.contarEnVivo(hasta: t), ultimaLlegada, arranque)
+    func contar(hasta t: Double, ventana v: Int) -> (ContadorReps.Resultado?, Double?, Double)? {
+        guard v == ventanaAbierta else { return nil }
+        return (g.contarEnVivo(hasta: t), ultimaLlegada, arranque)
     }
 }
 

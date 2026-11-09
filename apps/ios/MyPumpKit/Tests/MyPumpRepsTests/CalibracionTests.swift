@@ -255,7 +255,7 @@ import MyPumpRepsHerramientas
         var falsa = conteo; falsa.reps = 6
         #expect(p.proponer(falsa) == 6)
         #expect(p.proponer(falsa) == nil, "lo mismo no se repite")
-        #expect(p.proponer(conteo) == 10, "la serie real la reemplaza")
+        #expect(p.proponer(conteo) == 10, "la serie real, más larga, la reemplaza")
         var sinTerminar = conteo; sinTerminar.quieto = false; sinTerminar.reps = 3
         #expect(p.proponer(sinTerminar) == nil, "lo que no es claro no mueve la corona")
         #expect(p.reps == 10)
@@ -349,6 +349,26 @@ import MyPumpRepsHerramientas
     }
 
     /// Un iPhone viejo no manda la clave: el reloj cuenta. Sólo un false explícito lo apaga.
+    /// Un relanzamiento del reloj no puede olvidar que el alumno giró ni que el número lo puso el reloj.
+    @Test func laPropuestaSobreviveAlRelanzamiento() throws {
+        var p = PropuestaSerie()
+        #expect(p.proponer(conteoParaPropuesta) == 10)
+        p.girar()
+        let leida = try JSONDecoder().decode(PropuestaSerie.self, from: JSONEncoder().encode(p))
+        #expect(leida == p && leida.tocada && leida.reps == 10)
+    }
+
+    /// Ya a la vista, una racha posterior más corta no cambia el número; si la serie siguió, sube.
+    @Test func elNumeroALaVistaSoloSube() {
+        var p = PropuestaSerie()
+        var c = conteoParaPropuesta
+        #expect(p.proponer(c) == 10)
+        c.reps = 6
+        #expect(p.proponer(c) == nil && p.reps == 10)
+        c.reps = 11
+        #expect(p.proponer(c) == 11)
+    }
+
     @Test func laPalancaDelContadorEsOpcional() throws {
         var r = RutinaReloj.demo(fecha: "2026-11-03", generada: 1)
         #expect(r.contadorReps == nil)
@@ -357,6 +377,8 @@ import MyPumpRepsHerramientas
         #expect(try JSONDecoder().decode(RutinaReloj.self, from: JSONEncoder().encode(r)).contadorReps == false)
     }
 }
+
+private let conteoParaPropuesta = ContadorReps.Resultado(reps: 10, periodo: 2.5, calidad: 0.9, senal: .acel, desde: 5, hasta: 30, quieto: true, esfuerzo: 0.15, amplitud: 0.5)
 
 @Suite struct EvaluacionRepsTests {
     @Test func losArchivosSinteticosDanElErrorPorFamilia() throws {

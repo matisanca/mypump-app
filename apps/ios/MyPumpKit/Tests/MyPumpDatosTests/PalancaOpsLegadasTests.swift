@@ -83,3 +83,14 @@ final class Palanca: @unchecked Sendable {
         #expect(PalancaRemota(.objeto(["reloj_contador_reps": .texto("false")])).contadorRepsReloj, "un tipo inesperado no cuenta")
     }
 }
+
+@Suite struct PalancaContadorArranqueTests {
+    @Test func apagadaSigueApagadaAlArrancarSinRed() {
+        let d = UserDefaults(suiteName: "palanca-\(UUID().uuidString)")!
+        #expect(PalancaRemota.arranque(defaults: d).contadorRepsReloj)
+        PalancaRemota(.objeto(["reloj_contador_reps": .bool(false)])).recordar(defaults: d)
+        #expect(!PalancaRemota.arranque(defaults: d).contadorRepsReloj)
+        PalancaRemota(.objeto([:])).recordar(defaults: d)
+        #expect(PalancaRemota.arranque(defaults: d).contadorRepsReloj)
+    }
+}

@@ -76,6 +76,8 @@ final class EstadoReloj {
         entreno.alCambiarViva = { [weak self] viva in self?.entrenoVivo = viva }
         calibracion.transferir = { [weak self] url, metadatos in self?.conexion.transferirArchivo(url, metadatos: metadatos) }
         calibracion.alContar = { [weak self] r in self?.proponer(r) }
+        calibracion.debeContar = { [weak self] in self.map { $0.contadorPrendido && $0.sesion.descanso == nil } ?? false }
+        restaurarPropuesta()
         conexion.alTransferirArchivo = { [weak self] url in self?.calibracion.recibido(url) }
         if !args.contains("-demo") { conexion.activar() }
         actualizarComplicacion()
@@ -104,25 +106,70 @@ final class EstadoReloj {
 
     /// Los sensores corren con la sesión empezada y abierta, si cuenta o si graba.
     private func ajustarSensores() {
-        calibracion.ajustar(prender: sesion.iniciada && !sesion.terminada && (contadorPrendido || calibrando))
+        let inactivo = Self.ahoraMs - ultimaActividad > Self.toleranciaInactivoMs
+        calibracion.ajustar(prender: sesion.iniciada && !sesion.terminada && !sesion.todoHecho && !inactivo && (contadorPrendido || calibrando))
     }
+
+    /// 20 min sin tocar el reloj ni confirmar: un entreno olvidado no deja los sensores a 100 Hz.
+    private static let toleranciaInactivoMs: Double = 20 * 60 * 1_000
+    @ObservationIgnored private var ultimaActividad = EstadoReloj.ahoraMs
+    @ObservationIgnored private var vigiaInactividad: Task<Void, Never>?
+
+    /// El alumno tocó, giró o miró el reloj.
+    func actividad() {
+        ultimaActividad = Self.ahoraMs
+        ajustarSensores()
+        vigiaInactividad?.cancel()
+        vigiaInactividad = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(Int(Self.toleranciaInactivoMs) + 1_000))
+            guard !Task.isCancelled else { return }
+            self?.ajustarSensores()
+        }
+    }
+
+    // La propuesta sobrevive a un relanzamiento: si no, se perdería que el alumno giró (y se le pisaría) o que el número
+    // de la corona lo puso el reloj. Atada a la serie en la corona.
+    private static let clavePropuesta = "mypump-reloj-propuesta"
+    private struct PropuestaGuardada: Codable { var serie: String; var propuesta: PropuestaSerie }
+    @ObservationIgnored private var propuestaEscrita: PropuestaSerie?
+
+    private func restaurarPropuesta() {
+        guard let d = UserDefaults.standard.data(forKey: Self.clavePropuesta),
+              let g = try? JSONDecoder().decode(PropuestaGuardada.self, from: d), g.serie == sesion.claveCorona else { return }
+        propuestaSerie = g.propuesta
+        propuestaEscrita = g.propuesta
+    }
+
+    private func guardarPropuesta() {
+        guard propuestaSerie != propuestaEscrita else { return }
+        propuestaEscrita = propuestaSerie
+        guard let serie = sesion.claveCorona, let d = try? JSONEncoder().encode(PropuestaGuardada(serie: serie, propuesta: propuestaSerie)) else {
+            UserDefaults.standard.removeObject(forKey: Self.clavePropuesta)
+            return
+        }
+        UserDefaults.standard.set(d, forKey: Self.clavePropuesta)
+    }
+
+    /// Cuándo cambió por última vez el número en la corona (un toque justo después no confirma lo que no vio).
+    @ObservationIgnored private var cambioPropuesta = 0.0
+    private static let graciaConfirmarMs: Double = 700
 
     /// Con la serie terminada y clara, la corona va a lo que contó el reloj y se pregunta «¿N reps?». Nunca encima de lo
     /// que el alumno giró ni durante el descanso (`PropuestaSerie`): la serie sigue en la ventana cuando el descanso cierra.
     private func proponer(_ r: ContadorReps.Resultado) {
         guard contadorPrendido, sesion.descanso == nil, let e = sesion.actual, e.proximaSerie != nil else { return }
         var p = propuestaSerie
-        let primera = p.reps == nil
         guard let n = p.proponer(r) else { return }
         propuestaSerie = p
+        cambioPropuesta = Self.ahoraMs
         cambiar(enviar: false) { $0.girarReps(n - $0.reps) }
-        // Que se note que la corona se movió sola, una vez por serie (también con VoiceOver).
-        if primera { WKInterfaceDevice.current().play(.click) }
+        // Que se note que la corona se movió sola, cada vez (también con VoiceOver).
+        WKInterfaceDevice.current().play(.click)
         AccessibilityNotification.Announcement(ConfirmacionReps.textoAccesible(n)).post()
     }
 
     /// La serie que está en la corona (ejercicio y número).
-    private var serieEnCurso: String? { sesion.actual.map { "\($0.lugar)#\($0.proximaSerie ?? -1)" } }
+    private var serieEnCurso: String? { sesion.claveCorona }
 
     /// La serie en la corona cambió sin confirmar ni elegir en el reloj (llegó la rutina con la serie hecha en el
     /// iPhone, otro día u otro ejercicio): la propuesta y la ventana eran de la anterior y no pasan a esta.
@@ -210,6 +257,7 @@ final class EstadoReloj {
     // MARK: - Acciones
 
     func elegir(_ lugar: String) {
+        actividad()
         let otro = lugar != sesion.lugar
         cambiar { $0.elegir(lugar) }
         if otro { propuestaSerie.reiniciar(); calibracion.abrirVentana() }
@@ -218,12 +266,17 @@ final class EstadoReloj {
     }
     /// El alumno giró las reps con la corona (la propuesta del reloj no pasa por acá).
     func girarReps(_ n: Int) {
+        ultimaActividad = Self.ahoraMs
         propuestaSerie.girar()
         cambiar(enviar: false) { $0.girarReps(n) }
     }
-    func girarKg(_ n: Int) { cambiar(enviar: false) { $0.girarKg(n) } }
+    func girarKg(_ n: Int) {
+        ultimaActividad = Self.ahoraMs
+        cambiar(enviar: false) { $0.girarKg(n) }
+    }
 
     func empezar() {
+        actividad()
         cambiar { $0.iniciar(ahora: Self.ahoraMs) }
         if conSalud { entreno.empezar() }
         calibracion.abrirVentana()
@@ -231,9 +284,11 @@ final class EstadoReloj {
 
     func confirmar() {
         let ahora = Self.ahoraMs
+        guard ahora - cambioPropuesta >= Self.graciaConfirmarMs else { return }
+        actividad()
         // Lo que se confirma, para la etiqueta de la grabación (antes de que la sesión pase a la serie siguiente).
         let etiqueta: CalibracionReloj.Etiqueta? = {
-            guard let r = sesion.rutina, let e = sesion.actual, let i = e.proximaSerie else { return nil }
+            guard calibrando, let r = sesion.rutina, r.cuenta != "demo", let e = sesion.actual, let i = e.proximaSerie else { return nil }
             return .init(sesion: CalibracionReloj.sesion(r), ejercicio: e, serie: i + 1, reps: sesion.reps,
                          kg: e.sinKg ? nil : (sesion.kg ?? 0), cuenta: r.cuenta,
                          propuesta: propuestaSerie.reps, corregida: propuestaSerie.corregida(confirmadas: sesion.reps))
@@ -244,7 +299,7 @@ final class EstadoReloj {
         guard let c else { return }
         propuestaSerie.reiniciar()
         // La primera serie confirmada sin «Empezar» arranca la sesión (y los sensores): esa serie no tiene ventana.
-        if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: calibrando && sesion.rutina?.cuenta != "demo") } else { calibracion.abrirVentana() }
+        if estabaGrabando, let etiqueta { calibracion.confirmar(etiqueta, guardar: true) } else { calibracion.abrirVentana() }
         if conSalud { entreno.empezar() }
         WKInterfaceDevice.current().play(c.record != nil ? .success : .click)
         avisoRecord = c.record
@@ -314,6 +369,7 @@ final class EstadoReloj {
         if s.terminada || !s.iniciada { entreno.terminar() }
         ajustarSensores()
         guardar()
+        guardarPropuesta()
         actualizarComplicacion()
         if enviar { sincronizar() }
     }

@@ -21,6 +21,15 @@ public struct PalancaRemota: Equatable, Sendable {
 
     public static let deFabrica = PalancaRemota()
 
+    /// El último valor leído de `reloj_contador_reps`: apagado, sigue apagado aunque el iPhone arranque sin red.
+    static let claveContadorReps = "mypump-palanca-contador-reps"
+    public static func arranque(defaults: UserDefaults = .standard) -> PalancaRemota {
+        var p = deFabrica
+        if defaults.object(forKey: claveContadorReps) as? Bool == false { p.contadorRepsReloj = false }
+        return p
+    }
+    public func recordar(defaults: UserDefaults = .standard) { defaults.set(contadorRepsReloj, forKey: Self.claveContadorReps) }
+
     /// Lo que devolvió `mypump_get_app_config`. Un valor que no es del tipo esperado no cuenta: queda el de fábrica.
     public init(_ j: JSONValue) {
         if case .bool(let b)? = j["migracion_ops_legadas"] { opsLegadas = b }

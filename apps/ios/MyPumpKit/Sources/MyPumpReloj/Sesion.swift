@@ -229,7 +229,7 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     }
 
     /// La serie que está en la corona (nil sin rutina o sin serie para hacer).
-    private var claveCorona: String? {
+    public var claveCorona: String? {
         guard let r = rutina, let e = actual, let i = e.proximaSerie else { return nil }
         // También el ejercicio y la fecha: una sustitución en el iPhone conserva el lugar y lo girado no le corresponde.
         return "\(r.rutinaId)#\(r.fecha)#\(r.diaId)#\(r.semana)#\(e.lugar)#\(e.nombre)#\(e.sinKg)#\(i)"

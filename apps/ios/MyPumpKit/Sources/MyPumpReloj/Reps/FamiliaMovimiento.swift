@@ -134,7 +134,7 @@ public enum ConfirmacionReps {
 /// - Mientras no las toque, la propuesta sigue a la última serie clara. En la grabación real el descanso generaba rachas
 ///   que parecían series: si la propuesta fuera de una sola vez, una de esas se gastaba la de la serie de verdad.
 /// - `corregida` compara lo que se confirma con lo propuesto; girar y volver al mismo número cuenta como aceptada.
-public struct PropuestaSerie: Equatable, Sendable {
+public struct PropuestaSerie: Codable, Equatable, Sendable {
     /// Lo que propuso el reloj en esta serie (nil = no propuso).
     public private(set) var reps: Int?
     /// El alumno giró las reps: no se le propone más nada en esta serie.
@@ -145,9 +145,10 @@ public struct PropuestaSerie: Equatable, Sendable {
     /// El alumno giró las reps.
     public mutating func girar() { tocada = true }
 
-    /// Las reps a poner en la corona si cambiaron, o nil.
+    /// Las reps a poner en la corona si cambiaron, o nil. Una vez a la vista el número solo puede subir (la serie siguió):
+    /// una racha posterior más corta no le cambia el número a alguien que ya lo está mirando para confirmar.
     public mutating func proponer(_ conteo: ContadorReps.Resultado) -> Int? {
-        guard !tocada, let n = ConfirmacionReps.propuesta(conteo), n != reps else { return nil }
+        guard !tocada, let n = ConfirmacionReps.propuesta(conteo), reps.map({ n > $0 }) ?? true else { return nil }
         reps = n
         return n
     }

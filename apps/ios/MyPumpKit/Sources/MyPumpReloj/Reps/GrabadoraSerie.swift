@@ -161,7 +161,7 @@ public struct GrabadoraSerie: Sendable {
         let cero = (t0 ?? 0) + Double(desde) / Self.hz
         let inicio = cero + r.desde
         if let h = ultimoHueco, r.reps > 0,
-           h.desde >= inicio, h.desde <= cero + r.hasta + ContadorReps.esperaFinal(periodo: r.periodo) {
+           h.hasta >= inicio - 1.5 * r.periodo, h.desde <= cero + r.hasta + ContadorReps.esperaFinal(periodo: r.periodo) {
             r.quieto = false
         }
         return r
