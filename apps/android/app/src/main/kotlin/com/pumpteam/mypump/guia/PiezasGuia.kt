@@ -190,13 +190,13 @@ private fun PasoGuia(p: ReglasDolor.Paso, total: Int, apilado: Boolean, alTocar:
         val forma = CircleShape
         Box(
             Modifier
-                .size(32.dp)
+                .size(32.dp * LocalDensity.current.fontScale.coerceAtMost(2f))
                 .clip(forma)
                 .then(if (p.estado == ReglasDolor.EstadoPaso.HECHO) Modifier.background(c.marca) else Modifier.border(2.dp, borde, forma)),
             contentAlignment = Alignment.Center,
         ) {
             if (p.estado == ReglasDolor.EstadoPaso.HECHO) {
-                Icon(Iconos.Tilde, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(Iconos.Tilde, contentDescription = null, tint = c.sobreMarca, modifier = Modifier.size(18.dp))
             } else {
                 Text(
                     p.numero.toString(),

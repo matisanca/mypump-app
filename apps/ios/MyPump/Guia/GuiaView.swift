@@ -246,7 +246,12 @@ struct GuiaView: View {
     /// Un paso del mapa de la cabecera: al reproductor o a las dudas para la videollamada.
     private func irAPaso(_ p: ReglasDolor.Paso, _ lector: ScrollViewProxy) {
         if p.id == "videos" {
-            irAlReproductor(lector, desde: nil)
+            if clase == .regular, let c = control.clipActual {
+                // En iPad el reproductor ya está a la vista: se va al video en la lista.
+                withAnimation(.snappy) { _ = abiertos.insert(bloqueDe(c)); lector.scrollTo(c.id, anchor: .center) }
+            } else {
+                irAlReproductor(lector, desde: nil)
+            }
         } else {
             withAnimation(.snappy) { lector.scrollTo("dudas-llamada", anchor: .top) }
         }

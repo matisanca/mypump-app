@@ -110,7 +110,8 @@ object ReglasDolor {
     private val ENTRE_PARRAFOS = Regex("\\r?\\n$E*?\\n")
     private val SALTOS = Regex("\\r\\n|[\\n\\r\\u000B\\u000C\\u0085\\u2028\\u2029]")
     private val NUMERALES = Regex("^#{1,6}(?:$E+|$)")
-    private val CITA = Regex("^>$E*")
+    /** Un «>» seguido de un número es un dato («> 54 de hematocrito»), no una cita. */
+    private val CITA = Regex("^>(?!$E*[0-9])$E*")
     private val SEPARADOR = Regex("^([-*_])(?:$E*\\1){2,}$E*$")
     private val VINETA = Regex("^[-*+•]$E+")
     private val INLINES = listOf(
@@ -143,12 +144,15 @@ object ReglasDolor {
             val v = VINETA.find(s)
             if (v != null) {
                 hayLista = true
-                limpiarInline(s.substring(v.range.last + 1)).takeIf { it.isNotEmpty() }?.let { lineas += "• $it" }
-            } else {
-                limpiarInline(s).takeIf { it.isNotEmpty() }?.let { lineas += it }
+                s.substring(v.range.last + 1).takeIf { recortar(it).isNotEmpty() }?.let { lineas += "• $it" }
+            } else if (recortar(s).isNotEmpty()) {
+                lineas += s
             }
         }
-        return if (lineas.isEmpty()) null else lineas.joinToString(if (hayLista) "\n" else " ")
+        if (lineas.isEmpty()) return null
+        // Sin lista, el párrafo entero: una marca puede abrir en una línea y cerrar en la otra.
+        val limpio = if (hayLista) lineas.map(::limpiarInline).filter { it.isNotEmpty() }.joinToString("\n") else limpiarInline(lineas.joinToString(" "))
+        return limpio.ifEmpty { null }
     }
 
     private fun limpiarLinea(s: String): String = limpiarInline(NUMERALES.replaceFirst(recortar(s), ""))

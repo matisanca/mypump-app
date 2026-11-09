@@ -450,7 +450,7 @@ private fun ContenidoGuia(
                     intro = intro,
                     alPaso = { paso ->
                         val i = entradas.indexOf(if (paso.id == "videos") Entrada.Reproductor else Entrada.Llamada)
-                        if (i >= 0) alcance.launch { lista.animateScrollToItem(i) }
+                        if (i >= 0) alcance.launch { lista.animateScrollToItem(i) } else volverALaLista()
                     },
                     agendaPie = agendaPie?.let { pie ->
                         { m ->

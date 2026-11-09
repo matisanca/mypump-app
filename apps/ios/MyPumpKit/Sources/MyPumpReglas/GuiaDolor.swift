@@ -46,8 +46,27 @@ public enum ReglasDolor {
         recortar(titulo ?? "").lowercased().replacingOccurrences(of: "á", with: "a") == "lo que mas te importa"
     }
 
+    /// La pantalla la pide muchas veces por repintado: se recuerda la última.
+    private final class Memo: @unchecked Sendable {
+        private let cerrojo = NSLock()
+        private var ultima: (dolor: DolorGuia, vista: Vista?)?
+        func valor(_ d: DolorGuia, _ armar: () -> Vista?) -> Vista? {
+            cerrojo.lock(); defer { cerrojo.unlock() }
+            if let u = ultima, u.dolor == d { return u.vista }
+            let v = armar()
+            ultima = (d, v)
+            return v
+        }
+    }
+    private static let memo = Memo()
+
     public static func vista(_ dolor: DolorGuia?) -> Vista? {
-        guard let dolor, !recortar(dolor.texto).isEmpty else { return nil }
+        guard let dolor else { return nil }
+        return memo.valor(dolor) { armar(dolor) }
+    }
+
+    private static func armar(_ dolor: DolorGuia) -> Vista? {
+        guard !recortar(dolor.texto).isEmpty else { return nil }
         var principal: [String] = []
         var partes: [(titulo: String, parrafos: [String])] = []
         for crudo in dividir(dolor.texto) {
@@ -147,20 +166,25 @@ public enum ReglasDolor {
         var hayLista = false
         var lineas: [String] = []
         for cruda in t.components(separatedBy: .newlines) {
-            let s = quitar(regla: "^#{1,6}(?:\(espacio)+|$)", de: quitar(regla: "^>\(espacio)*", de: recortar(cruda)))
+            let s = quitar(regla: "^#{1,6}(?:\(espacio)+|$)", de: quitar(regla: citaRegla, de: recortar(cruda)))
             if esSeparador(s) { continue }
             if let i = rango(de: "^[-*+•]\(espacio)+", en: s) {
                 hayLista = true
-                let resto = limpiarInline(String(s[i.upperBound...]))
-                if !resto.isEmpty { lineas.append("• " + resto) }
-            } else {
-                let limpia = limpiarInline(s)
-                if !limpia.isEmpty { lineas.append(limpia) }
+                let resto = String(s[i.upperBound...])
+                if !recortar(resto).isEmpty { lineas.append("• " + resto) }
+            } else if !recortar(s).isEmpty {
+                lineas.append(s)
             }
         }
         guard !lineas.isEmpty else { return nil }
-        return lineas.joined(separator: hayLista ? "\n" : " ")
+        // Sin lista, el párrafo entero: una marca puede abrir en una línea y cerrar en la otra.
+        let limpio = hayLista ? lineas.map(limpiarInline).filter { !$0.isEmpty }.joined(separator: "\n")
+                              : limpiarInline(lineas.joined(separator: " "))
+        return limpio.isEmpty ? nil : limpio
     }
+
+    /// Un «>» seguido de un número es un dato («> 54 de hematocrito»), no una cita.
+    private static let citaRegla = "^>(?!\(espacio)*[0-9])\(espacio)*"
 
     private static func limpiarLinea(_ s: String) -> String {
         limpiarInline(quitar(regla: "^#{1,6}(?:\(espacio)+|$)", de: recortar(s)))
@@ -196,8 +220,19 @@ public enum ReglasDolor {
         regex(p).firstMatch(in: s, range: NSRange(location: 0, length: (s as NSString).length)).flatMap { Range($0.range, in: s) }
     }
 
-    private static func regex(_ p: String) -> NSRegularExpression {
-        // Los patrones son constantes de este archivo: si uno no compila, lo agarran los tests.
-        try! NSRegularExpression(pattern: p)
+    private final class Compiladas: @unchecked Sendable {
+        private let cerrojo = NSLock()
+        private var porPatron: [String: NSRegularExpression] = [:]
+        func de(_ p: String) -> NSRegularExpression {
+            cerrojo.lock(); defer { cerrojo.unlock() }
+            if let r = porPatron[p] { return r }
+            // Los patrones son constantes de este archivo: si uno no compila, lo agarran los tests.
+            let r = try! NSRegularExpression(pattern: p)
+            porPatron[p] = r
+            return r
+        }
     }
+    private static let compiladas = Compiladas()
+
+    private static func regex(_ p: String) -> NSRegularExpression { compiladas.de(p) }
 }

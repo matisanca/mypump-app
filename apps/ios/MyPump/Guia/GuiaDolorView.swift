@@ -57,9 +57,7 @@ struct PasosGuia: View {
             ForEach(pasos) { p in
                 Button { alTocar(p) } label: { etiqueta(p, apilado: apilado) }
                     .buttonStyle(.plain)
-                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel(ReglasDolor.textoHablado(p, de: pasos.count))
-                    .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("guia-paso-\(p.id)")
             }
         }
@@ -85,7 +83,7 @@ struct PasosGuia: View {
         ZStack {
             if p.estado == .hecho {
                 Circle().fill(Color.marca)
-                Image(systemName: "checkmark").font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                Image(systemName: "checkmark").font(.subheadline.weight(.bold)).foregroundStyle(Color.sobreMarca)
             } else {
                 Circle().strokeBorder(p.estado == .ahora ? Color.marca : Color.secondary.opacity(0.5), lineWidth: 2)
                 Text(verbatim: "\(p.numero)").font(.subheadline.weight(.semibold))

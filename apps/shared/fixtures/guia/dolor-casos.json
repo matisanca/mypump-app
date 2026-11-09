@@ -189,5 +189,25 @@
    "Fin."
   ],
   "partes": []
+ },
+ {
+  "nombre": "mayor que seguido de numero no es cita",
+  "titulo": null,
+  "texto": "> 54 de hematocrito",
+  "subtitulo": null,
+  "parrafos": [
+   "> 54 de hematocrito"
+  ],
+  "partes": []
+ },
+ {
+  "nombre": "marca partida en dos lineas",
+  "titulo": null,
+  "texto": "Esto es **muy\nimportante** y sigue.",
+  "subtitulo": null,
+  "parrafos": [
+   "Esto es muy importante y sigue."
+  ],
+  "partes": []
  }
 ]
