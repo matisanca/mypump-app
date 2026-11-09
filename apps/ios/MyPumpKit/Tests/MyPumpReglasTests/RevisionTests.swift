@@ -114,3 +114,18 @@ struct ToFixedTests {
         #expect(PesoCorporal.textoDelta(1150) == "+1,1 kg")
     }
 }
+
+@Suite("Revisión: el aviso de las fotos de la semana")
+struct AvisoFotosTests {
+    @Test func apareceSoloSiFaltanYElServidorYaContesto() {
+        #expect(FotosProgreso.mostrarAviso(cargadas: true, posesDeLaSemana: []))
+        #expect(FotosProgreso.mostrarAviso(cargadas: true, posesDeLaSemana: ["frente", "perfil"]))
+        #expect(!FotosProgreso.mostrarAviso(cargadas: true, posesDeLaSemana: ["frente", "perfil", "espalda"]))
+        #expect(!FotosProgreso.mostrarAviso(cargadas: false, posesDeLaSemana: []), "sin saber qué hay no se dice nada")
+    }
+
+    @Test func elTextoEsElAprobado() {
+        #expect(FotosProgreso.avisoTitulo == "Tus fotos de la semana")
+        #expect(FotosProgreso.avisoCuerpo == "Esta semana todavía no subiste tus fotos. Sacalas en el mismo lugar y con la misma luz que siempre, con la misma ropa, el celu vertical a la altura del ombligo y a 2 o 3 metros. Frente, perfil y espalda. Así vemos bien cómo venís")
+    }
+}

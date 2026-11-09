@@ -92,6 +92,10 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
     private val _fotos = MutableStateFlow<List<FotoProgreso>>(emptyList())
     val fotos: StateFlow<List<FotoProgreso>> = _fotos.asStateFlow()
 
+    /** Ya contestó el servidor al menos una vez: antes de eso no se sabe qué fotos hay. */
+    private val _cargadas = MutableStateFlow(false)
+    val cargadas: StateFlow<Boolean> = _cargadas.asStateFlow()
+
     /** "<lunes>|<pose>" → la foto que espera subir. */
     private val _pendientes = MutableStateFlow<Map<String, FotoPendiente>>(leerCola())
     val pendientes: StateFlow<Map<String, FotoPendiente>> = _pendientes.asStateFlow()
@@ -126,7 +130,7 @@ class ModeloFotos(private val cliente: ClienteRpc, private val token: String, pr
     /** `loadFotos`: lo que ya está subido. Sin red queda lo de antes. */
     suspend fun cargar() {
         cliente.filas("mypump_get_fotos_progreso", mapOf("p_token" to texto(token), "p_desde" to ValorJson.Nulo), FotoProgreso::desde)
-            .valorONull()?.let { _fotos.value = it }
+            .valorONull()?.let { _fotos.value = it; _cargadas.value = true }
     }
 
     /** `_tomarFoto`: el JPEG ya reducido (900 px, 0,7, sin metadatos) se encola y se sube enseguida. */

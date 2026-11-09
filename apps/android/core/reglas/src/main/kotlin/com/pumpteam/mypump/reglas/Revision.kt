@@ -157,6 +157,15 @@ object SemanaRevision {
 }
 
 object FotosProgreso {
+    const val AVISO_TITULO = "Tus fotos de la semana"
+    const val AVISO_CUERPO = "Esta semana todavía no subiste tus fotos. Sacalas en el mismo lugar y con la misma luz que siempre, con la misma ropa, el celu vertical a la altura del ombligo y a 2 o 3 metros. Frente, perfil y espalda. Así vemos bien cómo venís"
+
+    /**
+     * El aviso de la pestaña Revisión: mientras falte alguna de las tres de esta semana (el mismo criterio del banner).
+     * Sin saber qué hay en el servidor no se dice nada: no se le puede decir «no subiste» a quien ya las subió.
+     */
+    fun mostrarAviso(cargadas: Boolean, posesDeLaSemana: Set<String>): Boolean = cargadas && posesDeLaSemana.size < 3
+
     val poses: List<Pair<String, String>> = listOf("frente" to "Frente", "perfil" to "Perfil", "espalda" to "Espalda")
     const val MAX_PENDIENTES = 3
 

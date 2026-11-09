@@ -127,6 +127,36 @@ class RevisionUiTest : PruebaUi() {
      * Con un reloj para ofrecer y la salud conectada, para que si alguna tarjeta quedara se viera.
      */
     @Test
+    fun sinFotosApareceElAvisoConLaGuiaEnClaroYOscuro() {
+        guardarCuenta()
+        abrir()
+        irARevision()
+        assertTrue(p.textosBajo(etiqueta("aviso-fotos")).any { it.contains("el celu vertical a la altura del ombligo") })
+        Telefono.captura("aviso-fotos-claro")
+    }
+
+    @Test
+    fun sinFotosEnModoOscuro() {
+        guardarTemaOscuro()
+        guardarCuenta()
+        abrir()
+        irARevision()
+        p.nodo(etiqueta("aviso-fotos"))
+        Telefono.captura("aviso-fotos-oscuro")
+    }
+
+    @Test
+    fun conLasTresFotosNoApareceElAviso() {
+        servidor.ponerFotos(mapOf(lunes to listOf("frente", "perfil", "espalda")))
+        guardarCuenta()
+        abrir()
+        irARevision()
+        p.esperar("las tres fotos") { p.existe(textoQueContiene("Completas")).takeIf { it } }
+        p.quieto(800)
+        assertFalse("Con las tres fotos el aviso no va", p.existe(etiqueta("aviso-fotos")))
+    }
+
+    @Test
     fun revisionSoloTieneLasFotosYElCheck() {
         servidor.relojes = listOf("oura")
         ModeloSalud.fuenteDelSistema = FuenteDeMentira()

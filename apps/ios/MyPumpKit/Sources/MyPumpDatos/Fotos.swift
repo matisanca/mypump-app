@@ -50,6 +50,8 @@ public final class ModeloFotos {
     }
 
     public private(set) var fotos: [FotoProgreso] = []
+    /// Ya contestó el servidor al menos una vez: antes de eso no se sabe qué fotos hay.
+    public private(set) var cargadas = false
     /// "<lunes>|<pose>" → la foto que espera subir.
     public private(set) var pendientes: [String: FotoPendiente] = [:]
     /// "<lunes>|<pose>" → URL firmada (1 h).
@@ -89,6 +91,7 @@ public final class ModeloFotos {
         if case .success(let filas) = await cliente.filas("mypump_get_fotos_progreso", ["p_token": .texto(token), "p_desde": .null],
                                                           como: FotoProgreso.self) {
             fotos = filas
+            cargadas = true
         }
     }
 

@@ -22,12 +22,26 @@ struct FotosSemana: View {
         modelo?.posesDeLaSemana ?? FotosProgreso.posesDeLaSemana(muestras, pendientes: [], semana: semana)
     }
 
+    /// Con la guía para sacarlas. Se va sola al subir las tres.
+    private var avisoFotos: some View {
+        VStack(alignment: .leading, spacing: Espacio.xs) {
+            Text(FotosProgreso.avisoTitulo).font(.headline)
+            Text(FotosProgreso.avisoCuerpo).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Espacio.s)
+        .background(Color.marcaSuave, in: .rect(cornerRadius: Radio.control, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("aviso-fotos")
+    }
+
     var body: some View {
         let semanas = FotosProgreso.semanas(fotos)
         let racha = FotosProgreso.racha(fotos)
         VStack(alignment: .leading, spacing: Espacio.s) {
             EncabezadoSeccion(titulo: "Fotos de la semana", detalle: hechas.count == 3 ? "Completas" : "\(hechas.count)/3")
             VStack(alignment: .leading, spacing: Espacio.m) {
+                if FotosProgreso.mostrarAviso(cargadas: modelo?.cargadas ?? true, posesDeLaSemana: hechas) { avisoFotos }
                 Label {
                     Text("Mismo lugar, misma luz, en ayunas. Las ve \(Text("solo Mati").bold()): no se publican ni salen de la app.")
                 } icon: {

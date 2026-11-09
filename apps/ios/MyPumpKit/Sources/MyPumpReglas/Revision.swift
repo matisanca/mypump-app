@@ -162,6 +162,15 @@ public enum SemanaRevision {
 /// recordatorio semanal y el comparador antes/después (que espera a las 4 semanas: antes compara luz y retención de
 /// líquido, no cambios reales).
 public enum FotosProgreso {
+    public static let avisoTitulo = "Tus fotos de la semana"
+    public static let avisoCuerpo = "Esta semana todavía no subiste tus fotos. Sacalas en el mismo lugar y con la misma luz que siempre, con la misma ropa, el celu vertical a la altura del ombligo y a 2 o 3 metros. Frente, perfil y espalda. Así vemos bien cómo venís"
+
+    /// El aviso de la pestaña Revisión: mientras falte alguna de las tres de esta semana (el mismo criterio del banner).
+    /// Sin saber qué hay en el servidor no se dice nada: no se le puede decir «no subiste» a quien ya las subió.
+    public static func mostrarAviso(cargadas: Bool, posesDeLaSemana: Set<String>) -> Bool {
+        cargadas && posesDeLaSemana.count < 3
+    }
+
     public static let poses: [(clave: String, etiqueta: String)] = [("frente", "Frente"), ("perfil", "Perfil"), ("espalda", "Espalda")]
     public static let maxPendientes = 3
     /// El servidor corta el body de más de 3 MB; el data URL se filtra antes de encolar.

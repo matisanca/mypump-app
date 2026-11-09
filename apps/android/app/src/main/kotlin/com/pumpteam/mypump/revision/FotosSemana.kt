@@ -116,6 +116,7 @@ fun FotosSemana(modelo: ModeloFotos?, peso: List<PesoCorporal.Punto>, modifier: 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(Espacio.s)) {
         EncabezadoSeccion("Fotos de la semana", detalle = if (hechas.size == 3) "Completas" else "${hechas.size}/3")
         Tarjeta(Modifier.animateContentSize(), espaciado = Espacio.m) {
+            if (FotosProgreso.mostrarAviso(modelo?.cargadas?.collectAsStateWithLifecycle()?.value ?: true, hechas)) AvisoFotos()
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Iconos.Candado, contentDescription = null, tint = c.marcaTexto, modifier = Modifier.padding(top = 2.dp).size(14.dp))
                 Text(
@@ -234,6 +235,25 @@ private data class EstadoPose(val lista: Boolean, val subiendo: Boolean, val esp
  * Marco vertical punteado con la cámara; subiendo, con la ruedita; con la foto, la miniatura y el tilde de marca. Con
  * [enFila], la versión horizontal para letra grande. Para TalkBack es un solo elemento: "Foto de frente, lista".
  */
+/** Con la guía para sacarlas. Se va sola al subir las tres. */
+@Composable
+private fun AvisoFotos() {
+    val c = MyPump.colores
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radio.control))
+            .background(c.marcaSuave)
+            .padding(Espacio.s)
+            .semantics(mergeDescendants = true) {}
+            .testTag("aviso-fotos"),
+        verticalArrangement = Arrangement.spacedBy(Espacio.xs),
+    ) {
+        Text(FotosProgreso.AVISO_TITULO, style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold), color = c.texto)
+        Text(FotosProgreso.AVISO_CUERPO, style = MaterialTheme.typography.bodyMedium, color = c.texto)
+    }
+}
+
 @Composable
 private fun MarcoPose(pose: String, nombre: String, estado: EstadoPose, enFila: Boolean) {
     val c = MyPump.colores

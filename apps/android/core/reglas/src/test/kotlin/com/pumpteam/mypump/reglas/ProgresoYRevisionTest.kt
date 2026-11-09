@@ -181,3 +181,19 @@ class FotosProgresoTest {
         assertEquals("1 semana", FotosProgreso.resumenComparador("2026-10-05", "2026-10-12", emptyList()))
     }
 }
+
+class AvisoFotosTest {
+    @Test
+    fun apareceSoloSiFaltanYElServidorYaContesto() {
+        assertTrue(FotosProgreso.mostrarAviso(true, emptySet()))
+        assertTrue(FotosProgreso.mostrarAviso(true, setOf("frente", "perfil")))
+        assertFalse(FotosProgreso.mostrarAviso(true, setOf("frente", "perfil", "espalda")))
+        assertFalse(FotosProgreso.mostrarAviso(false, emptySet()), "sin saber qué hay no se dice nada")
+    }
+
+    @Test
+    fun elTextoEsElAprobado() {
+        assertEquals("Tus fotos de la semana", FotosProgreso.AVISO_TITULO)
+        assertEquals("Esta semana todavía no subiste tus fotos. Sacalas en el mismo lugar y con la misma luz que siempre, con la misma ropa, el celu vertical a la altura del ombligo y a 2 o 3 metros. Frente, perfil y espalda. Así vemos bien cómo venís", FotosProgreso.AVISO_CUERPO)
+    }
+}
