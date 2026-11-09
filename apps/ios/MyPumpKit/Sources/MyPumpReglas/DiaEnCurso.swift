@@ -28,6 +28,11 @@ public struct DiaEnCurso: Sendable, Equatable {
     public var sustituciones: [String: JSONValue] = [:]
     /// El descanso elegido a mano por ejercicio (2.0.3, E2), por la clave del ejercicio que se hace: le gana al del plan.
     public var descansosPropios: [String: Int] = [:]
+    /// La carga simple de cada ejercicio del día (2.3.0), por lugar. Sin entrada, sale de la vez pasada. Se guarda en el teléfono.
+    public var cargas: [String: CargaSimple.Estado] = [:]
+    /// Los ejercicios (clave y semana) en que ya se aceptó o se dejó pasar la sugerencia de aumento: un ejercicio que está
+    /// dos veces en la semana sube una sola vez.
+    public var aumentosSemana: Set<String> = []
     /// E3 (2.0.3): el récord ya avisado hoy por lugar y serie («lugar|índice»). Es piso para el siguiente: el lápiz sobre
     /// una serie que ya dio récord no lo vuelve a avisar. Solo en memoria (al reabrir la app, lo confirmado ya es piso).
     public var recordsAvisados: [String: RecordSerie.Marca] = [:]
@@ -396,6 +401,7 @@ public struct DiaEnCurso: Sendable, Equatable {
     /// La variante (SER-07): vale para las series que se confirmen DESPUÉS.
     public mutating func elegirVariante(_ id: String, _ v: String) {
         guard ejercicios[id] != nil else { return }
+        if ejercicios[id]!.variante != v { cargas[id] = nil }   // un agarre, una carga: el otro trae su historia
         ejercicios[id]!.variante = v
     }
 
@@ -421,6 +427,7 @@ public struct DiaEnCurso: Sendable, Equatable {
     public mutating func sustituir(_ id: String, por sub: SustitutoEjercicio, efectivo: EjercicioEfectivo, fijado: Bool) -> [Efecto] {
         sustituciones[id] = SustitucionesEntreno.nueva(sub, original: efectivo, fijado: fijado, semana: semana, diaId: dia.id ?? "")
         historial[id] = nil
+        cargas[id] = nil   // otro ejercicio: su carga no es la del anterior
         return [.guardarSustituciones, .pedirHistorial(id)]
     }
 
@@ -428,6 +435,7 @@ public struct DiaEnCurso: Sendable, Equatable {
     public mutating func revertir(_ id: String) -> [Efecto] {
         sustituciones[id] = nil
         historial[id] = nil
+        cargas[id] = nil
         return [.guardarSustituciones, .pedirHistorial(id)]
     }
 
@@ -442,13 +450,14 @@ public struct DiaEnCurso: Sendable, Equatable {
         let s = e.series[idx]
         let ex = efectivo ?? plan
         guard !s.confirmada, s.rir.isEmpty, s.nombreRegistrado == nil, RIRDelPlan.lleva(ex) else { return }
-        ejercicios[id]!.series[idx].rir = RIRDelPlan.guardar(Progresiones.pauta(ex, semana: semana).rir)
+        // 2.3.0 (Mati, 9-nov): todo al fallo. El RIR del plan no se copia a lo registrado: una serie que lleva RIR va con 0.
+        ejercicios[id]!.series[idx].rir = RIRDelPlan.alFallo
     }
 
     /// La leyenda debajo de «Series efectivas»: «Al fallo» o «Dejando 1–2 en reserva». nil si el ejercicio no lleva RIR.
     public func leyendaRIR(_ id: String, efectivo: Ejercicio? = nil) -> String? {
         guard let ex = efectivo ?? ejercicio(id), RIRDelPlan.lleva(ex) else { return nil }
-        return RIRDelPlan.leyenda(Progresiones.pauta(ex, semana: semana).rir)
+        return "Al fallo"   // 2.3.0: nunca «Dejando N en reserva», aunque el plan traiga RIR.
     }
 
     // MARK: - Restaurar (lo que trae el servidor)

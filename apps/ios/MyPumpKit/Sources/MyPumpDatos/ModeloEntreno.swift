@@ -109,6 +109,14 @@ public final class ModeloEntreno {
     /// nueva la supera aunque lo deshecho viniera de un reloj un poco adelantado.
     @ObservationIgnored var pisoPorClave: [String: Double] = [:]
     @ObservationIgnored var restauracion = 0
+    /// Carga simple (2.3.0): el último OK deshacible (la foto, fuera de la observación), la serie que se está corrigiendo y
+    /// la guardia contra el OK apurado.
+    @ObservationIgnored var fotoOK: FotoOK?
+    public internal(set) var deshacible: OKDeshacible?
+    public internal(set) var corrigiendo: SerieEnCorreccion?
+    public internal(set) var guardia = GuardiaOK()
+    /// El día se completó con un OK cuya ventana venció después (no hay callback): la pantalla lo muestra y lo limpia.
+    public var diaCompletado: DiaCompletado?
     @ObservationIgnored var diaCompletadoMostrado = false
     /// Había un día guardado en este teléfono al arrancar (si no, el del almacenamiento viejo puede ganar).
     @ObservationIgnored var habiaDiaGuardado = false
@@ -167,6 +175,7 @@ public final class ModeloEntreno {
         let hoy = FechaJS.ymd(reloj(), zona: zona)
         preparacionHecha = (disco?.leer([String: [Int]].self, Archivo.preparacion) ?? [:]).filter { $0.key.hasPrefix(hoy + "|") }
         preparacionOculta = Set(disco?.leer([String].self, Archivo.preparacionOculta) ?? [])
+        leerCargas()
         guardarDiaVisualizado()
     }
 
@@ -174,6 +183,7 @@ public final class ModeloEntreno {
     /// que estaba corriendo, trae el historial del día, restaura la sesión del día (confirmándola con el servidor), los
     /// días completados de la semana y los comentarios.
     public func cargar() async {
+        await recuperarDeshacerGuardado()
         // Lo que se cambió y no llegó a la cola (la app se cerró en el medio), antes de leer el servidor.
         encolarSustituciones()
         podarSustituciones()
@@ -229,6 +239,8 @@ public final class ModeloEntreno {
     /// arma la sesión del nuevo, recuerda el día en este teléfono y restaura su sesión.
     public func cambiarDia(_ id: String) async {
         guard let nuevo = dias.first(where: { $0.id == id }), nuevo.id != dia.dia.id else { return }
+        await vaciarDeshacer()
+        guardarCargas()
         descanso.detener()
         guardarDescanso()
         podarSustituciones(sinPrecarga: true)
@@ -241,6 +253,7 @@ public final class ModeloEntreno {
         dia = DiaEnCurso(dia: nuevo, semana: semana, demo: demo, zona: zona)
         dia.sustituciones = sustituciones
         dia.descansosPropios = descansos
+        leerCargas()
         diaCompletadoMostrado = false
         guardarDiaVisualizado()
         async let historial: Void = precargarHistorial()
@@ -389,8 +402,15 @@ public final class ModeloEntreno {
     /// devuelve lo que eligió el cliente (reabrir el día cerrado; "¿Está bien cargado?").
     @discardableResult
     public func confirmarSerie(_ lugar: String, _ idx: Int, delReloj: Double? = nil, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
+        await confirmarSerieInterno(lugar, idx, delReloj: delReloj, demorar: false, preguntar: preguntar).completo
+    }
+
+    /// `demorar`: lo que escribe (cola y «día completado») no sale ahora y vuelve en `diferidos`, para poder deshacer el OK.
+    func confirmarSerieInterno(_ lugar: String, _ idx: Int, delReloj: Double? = nil, demorar: Bool,
+                               preguntar: (Pregunta) async -> Bool) async -> (completo: DiaCompletado?, diferidos: [DiaEnCurso.Efecto]) {
         var respuestas = DiaEnCurso.Respuestas()
         var completo: DiaCompletado?
+        var diferidos: [DiaEnCurso.Efecto] = []
         // La serie se fecha (y el récord y el volumen) con la hora de ahora en el iPhone, igual que el servidor
         // (`registrado_en` = now()). `delReloj` (ms): cuándo se hizo en el reloj; solo ancla el descanso y deja anotado
         // que la serie vino del reloj (una corrección posterior del reloj puede pisarla; un pendiente viejo, no).
@@ -404,8 +424,13 @@ public final class ModeloEntreno {
             let paso = dia.confirmarSerie(lugar, idx, efectivo: ef, respuestas: respuestas, hoy: FechaJS.ymd(cuando, zona: zona))
             anotarFecha(lugar, idx + 1, FechaJS.ymd(cuando, zona: zona), soloConfirmada: true)
             if let r = paso.record { avisoRecord = AvisoRecord(id: UUID(), lugar: lugar, texto: r.texto) }
-            if let c = await ejecutar(paso.efectos) { completo = c }
-            guard let p = paso.pregunta, let motivo = paso.motivo else { return completo }
+            var efectos = paso.efectos
+            if demorar {
+                diferidos += efectos.filter(Self.seDemora)
+                efectos.removeAll(where: Self.seDemora)
+            }
+            if let c = await ejecutar(efectos) { completo = c }
+            guard let p = paso.pregunta, let motivo = paso.motivo else { return (completo, diferidos) }
             let si = await preguntar(p)
             switch motivo {
             case .reabrir: respuestas.reabrir = si
@@ -440,7 +465,9 @@ public final class ModeloEntreno {
         let ef = ejercicios[i]
         let primera = dia.ejercicios[lugar]?.series.first
         let sugerido = dia.fila(lugar, 0, efectivo: efectivo(lista[i]).ejercicio)?.placeholderKg ?? ""
-        let kg = Preparacion.kgEfectivo(escrito: primera?.kg ?? "", sugerido: sugerido)
+        // La carga única se elige antes de empezar: la preparación se calcula con ella (sin heredarla como serie).
+        let conCarga = !(primera?.kg ?? "").isEmpty ? primera!.kg : (dia.cargas[lugar]?.carga.map(JS.texto) ?? "")
+        let kg = Preparacion.kgEfectivo(escrito: conCarga, sugerido: sugerido)
         let clave = "\(lugar)|\(kg.map { "\($0)" } ?? "-")|\(cacheEntradas?.firma ?? "")"
         if let c = cachePreparacion[lugar], c.clave == clave { return c.series }
         let series = Preparacion.series(dia: entradas, indice: i, nombre: ef.nombre, equipo: ef.equipo,
@@ -560,21 +587,34 @@ public final class ModeloEntreno {
     }
 
     /// El lápiz (SER-06).
-    public func editarSerie(_ lugar: String, _ idx: Int) async { await ejecutar(dia.editarSerie(lugar, idx)) }
+    /// Tocar una serie hecha abre la corrección: nunca la desmarca. El servidor no tiene cómo borrar una serie y una
+    /// desmarcada volvía al recargar (error de 2.2.0). Se reescribe con `guardarCorreccion`.
+    public func editarSerie(_ lugar: String, _ idx: Int) async {
+        guard dia.ejercicios[lugar]?.series[safe: idx]?.confirmada == true else { return }
+        await vaciarDeshacer()
+        corrigiendo = SerieEnCorreccion(lugar: lugar, indice: idx)
+    }
 
     /// El selector de RIR 0-5 (SER-02): la leyenda del valor actual es `CamposSerie.leyendaRIR`.
     public func elegirRIR(_ lugar: String, _ idx: Int, _ valor: Int) async { await ejecutar(dia.elegirRIR(lugar, idx, String(valor))) }
 
     /// Agarre o nivel (SER-07).
-    public func elegirVariante(_ lugar: String, _ v: String) { dia.elegirVariante(lugar, v) }
+    public func elegirVariante(_ lugar: String, _ v: String) {
+        dia.elegirVariante(lugar, v)
+        guardarCargas()
+    }
 
     /// "Marcar ejercicio completo"
     @discardableResult
-    public func marcarCompleto(_ lugar: String) async -> DiaCompletado? { await ejecutar(dia.marcarCompleto(lugar)) }
+    public func marcarCompleto(_ lugar: String) async -> DiaCompletado? {
+        await vaciarDeshacer()
+        return await ejecutar(dia.marcarCompleto(lugar))
+    }
 
     /// "Terminé este ejercicio" (SER-15)
     @discardableResult
     public func terminar(_ lugar: String, preguntar: (Pregunta) async -> Bool) async -> DiaCompletado? {
+        await vaciarDeshacer()
         if let p = dia.preguntaTerminar(lugar) {
             guard await preguntar(p) else { return nil }
         }
@@ -584,7 +624,10 @@ public final class ModeloEntreno {
     }
 
     /// "Reabrir ejercicio"
-    public func reabrir(_ lugar: String) async { await ejecutar(dia.reabrir(lugar)) }
+    public func reabrir(_ lugar: String) async {
+        await vaciarDeshacer()
+        await ejecutar(dia.reabrir(lugar))
+    }
 
     // MARK: - Sesión (SES-01/02/03)
 
@@ -796,6 +839,7 @@ public final class ModeloEntreno {
     /// `writeFinish`: PRIMERO vacía la cola (las series tienen que estar en la base antes de cerrar), después
     /// `finalizar_sesion` con la duración (null si pasa de 6 h). Un `false` es que no se cerró.
     public func cerrarDia(notas: String, fin: Double? = nil) async -> ResultadoCierre {
+        await vaciarDeshacer()
         guard !demo, let token else {
             // La demo no cierra nada en el servidor, pero el descanso termina igual.
             if demo {
@@ -842,6 +886,7 @@ public final class ModeloEntreno {
     /// `doAvanzarSemana`: manda la semana DESTINO (`actual + 1`, idempotente; el servidor nunca retrocede, 077),
     /// borra los cachés de sesión y recarga.
     public func avanzarSemana() async -> ResultadoAvance {
+        await vaciarDeshacer()
         guard let token, !demo else { return .error(SemanaEntreno.errorAvanzar(sinRed: false)) }
         let destino = semana + 1
         let r = await cliente.llamar("mypump_avanzar_semana", ["p_token": .texto(token), "p_semana_destino": .numero(Double(destino))])
@@ -863,6 +908,7 @@ public final class ModeloEntreno {
 
     /// `doEmpezarBloqueNuevo`: `activar_siguiente`, y si activó, lo mismo que avanzar.
     public func empezarBloqueNuevo() async -> ResultadoAvance {
+        await vaciarDeshacer()
         guard let token, !demo else { return .error(SemanaEntreno.errorBloqueNuevo(sinRed: false)) }
         let r = await cliente.llamar("mypump_activar_siguiente", ["p_token": .texto(token)])
         if case .success(let v) = r, AnclajeSwaps.esVerdadero(v) {
@@ -881,6 +927,7 @@ public final class ModeloEntreno {
     /// Lo que en la web es `location.reload()`: trae la rutina activa y arranca de nuevo. false si no llegó.
     @discardableResult
     public func recargar() async -> Bool {
+        await vaciarDeshacer()
         guard let token else { return false }
         guard case .success(let j) = await cliente.llamar("mypump_get_rutina_activa", ["p_token": .texto(token)]),
               case .lista(let filas) = j, let fila = filas.first,
@@ -908,6 +955,7 @@ public final class ModeloEntreno {
         let sustituciones = SustitucionesEntreno.compat(disco?.leer([String: JSONValue].self, Archivo.sustituciones(nueva.id)) ?? [:])
         let descansos = dia.descansosPropios
         dia = DiaEnCurso(dia: elegido, semana: semana, demo: demo, zona: zona)
+        leerCargas()
         dia.sustituciones = sustituciones
         dia.descansosPropios = descansos
         sustitucionesGuardadas = disco?.leer([String: JSONValue].self, SustitucionesServidor.archivoEncoladas(rutinaId: nueva.id)) ?? sustituciones
@@ -1072,6 +1120,7 @@ public final class ModeloEntreno {
 
     /// `confirmExSwap`: sin fijar vale solo por hoy. La serie se registra con el nombre del sustituto y el id del lugar.
     public func sustituir(_ lugar: String, por sub: SustitutoEjercicio, fijar: Bool) async {
+        await vaciarDeshacer()
         guard let ex = dia.ejercicio(lugar) else { return }
         let ef = efectivo(ex)
         invalidarHistorial(lugar)
@@ -1088,6 +1137,7 @@ public final class ModeloEntreno {
 
     /// "Volver a …"
     public func revertirSustitucion(_ lugar: String) async {
+        await vaciarDeshacer()
         pisoPorClave[lugar] = max(pisoPorClave[lugar] ?? 0, SustitucionesServidor.ts(dia.sustituciones[lugar]))
         invalidarHistorial(lugar)
         await ejecutar(dia.revertir(lugar))
@@ -1310,6 +1360,10 @@ public final class ModeloEntreno {
         static let descansos = "entreno-descansos.json"
         /// E1: los tildes de la preparación de hoy y los ejercicios con la preparación oculta.
         static let preparacion = "entreno-preparacion.json"
+        /// 2.3.0: lo escrito por un OK dentro de su ventana de Deshacer (si la app muere ahí, va a la cola al abrir).
+        static let okDemorado = "entreno-ok-demorado.json"
+        /// 2.3.0: la carga simple de la semana.
+        static func cargas(_ rutinaId: String) -> String { "entreno-cargas_\(rutinaId).json" }
         static let preparacionOculta = "entreno-preparacion-oculta.json"
         static func dia(_ rutinaId: String) -> String { "entreno-dia_\(rutinaId).json" }
         static func sustituciones(_ rutinaId: String) -> String { "ejercicios-swaps_\(rutinaId).json" }

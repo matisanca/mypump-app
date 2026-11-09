@@ -237,6 +237,22 @@ public enum HistorialEntreno {
         return JS.texto(p)
     }
 
+    /// La sesión anterior a `hoy` serie por serie, para la carga única: el mismo filtro de variante que `ultimaSerie`, pero
+    /// sin las filas de hoy (el historial trae también lo que se está cargando, y copiarlo falsearía la base).
+    public static func ultimaSesion(_ h: [RegistroHistorico], variante: String?, esDefault: Bool, antesDe hoy: String, zona: TimeZone) -> [CargaSimple.Referencia] {
+        let candidatas = h.filter { r in
+            guard fechaLocal(r.registradoEn, zona: zona) < hoy, r.reps != nil else { return false }
+            guard let v = JS.verdadero(variante) else { return true }
+            return JS.iguales(r.notas, v) || (esDefault && r.notas == nil)
+        }
+        guard let ultimo = candidatas.map({ fechaLocal($0.registradoEn, zona: zona) }).max() else { return [] }
+        let delDia = candidatas.filter { fechaLocal($0.registradoEn, zona: zona) == ultimo }
+        // Una fila por número de serie: si se corrigió, queda la más nueva (el historial viene de más nuevo a más viejo).
+        var porSerie: [Int: RegistroHistorico] = [:]
+        for r in delDia { let n = r.serie ?? (porSerie.count + 1); if porSerie[n] == nil { porSerie[n] = r } }
+        return porSerie.keys.sorted().compactMap { n in porSerie[n].flatMap { r in r.reps.map { CargaSimple.Referencia(reps: $0, kg: r.pesoKg.flatMap { $0 > 0 ? $0 : nil }) } } }
+    }
+
     /// `suggestedReps`: las reps de la última vez en esta serie.
     public static func repsSugeridas(_ h: [RegistroHistorico], indice idx: Int, variante: String?, esDefault: Bool, zona: TimeZone) -> String {
         guard let i = ultimaSerie(h, indice: idx, variante: variante, esDefault: esDefault, zona: zona), let r = h[i].reps else { return "" }
@@ -348,7 +364,7 @@ public struct FilaSerie: Equatable, Sendable {
         let haySugerido = repsSug != nil && (sinKg || !kgSug.isEmpty)
         let tipeo = !s.reps.isEmpty || !s.kg.isEmpty
         let her = sinKg ? "" : kgHeredable
-        let puede = tipeo ? (!s.reps.isEmpty && (sinKg || !s.kg.isEmpty || !her.isEmpty)) : haySugerido
+        let puede = tipeo ? (!s.reps.isEmpty && (sinKg || !s.kg.isEmpty || !her.isEmpty || !kgSug.isEmpty)) : haySugerido
         let pista = (!s.confirmada && activa && haySugerido && !tipeo)
             ? TextoConNegrita(antes: "✓ Tocá para registrar lo de la última vez · ", negrita: sinKg ? "\(repsMostrar) reps" : "\(kgSug)kg × \(repsMostrar)",
                               despues: " — o editá si hiciste otra cosa")
@@ -379,13 +395,18 @@ public enum ConfirmacionSerie {
                                  kgHeredable: String) -> (serie: SerieLocal, lista: Bool) {
         var s = s
         if s.reps.isEmpty && s.kg.isEmpty {
-            let usar = !repsUltimaVez.isEmpty ? repsUltimaVez : (ReglasEjercicio.repsDelPlan(repsPlan).map(JS.texto) ?? "")
-            let kg = sinKg ? "" : kgUltimaVez
+            // Lo de HOY le gana a lo de la semana pasada (error de 2.2.0: subías en la serie 1 y el ✓ de la 2 grababa el kilo
+            // viejo). Con otro kilo que la vez pasada, las reps de entonces ya no describen la serie: van las del plan.
+            let kg = sinKg ? "" : (!kgHeredable.isEmpty ? kgHeredable : kgUltimaVez)
+            let plan = ReglasEjercicio.repsDelPlan(repsPlan).map(JS.texto) ?? ""
+            let mismaCarga = sinKg || kgUltimaVez.isEmpty || kg == kgUltimaVez
+            let usar = !repsUltimaVez.isEmpty && (mismaCarga || plan.isEmpty) ? repsUltimaVez : plan
             if !usar.isEmpty { s.reps = usar }
             if !sinKg && !kg.isEmpty { s.kg = kg }
         }
         if sinKg { s.kg = "" }
-        if !sinKg && s.kg.isEmpty && !s.reps.isEmpty && !kgHeredable.isEmpty { s.kg = kgHeredable }
+        // Solo las reps escritas: el kilo sale de hoy o, en la primera serie, de la vez pasada (no hay que escribirlo otra vez).
+        if !sinKg && s.kg.isEmpty && !s.reps.isEmpty { s.kg = !kgHeredable.isEmpty ? kgHeredable : kgUltimaVez }
         return (s, !(s.reps.isEmpty || (!sinKg && s.kg.isEmpty)))
     }
 }

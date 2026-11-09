@@ -149,7 +149,7 @@ struct Entreno203Tests {
         var press = d.ejercicio("e2")!
         press.nombre = "Press banca con barra"; press.equipo = "barbell"
         d.fijarRIRDelPlan("e2", 0, efectivo: press)
-        #expect(d.ejercicios["e2"]!.series[0].rir == "1")
+        #expect(d.ejercicios["e2"]!.series[0].rir == "0", "2.3.0: todo al fallo, nunca el RIR del plan")
         #expect(RIRDelPlan.calibracion("… a 8 reps dejando 1–2 en reserva.", leyenda: "Dejando 0–1 en reserva") == "… a 8 reps dejando 0–1 en reserva.")
     }
 
@@ -165,12 +165,12 @@ struct Entreno203Tests {
         #expect(d.confirmarSerie("e1", 0).efectos.contains(.iniciarDescanso(segundos: 75)))
     }
 
-    /// El RIR del plan se pone al confirmar: el primer número del rango, 0 sin objetivo; el calentamiento queda null y una
+    /// 2.3.0: al confirmar va 0 (al fallo), aunque el plan traiga RIR; el calentamiento queda null y una
     /// serie ya registrada (con nombre) conserva el suyo.
     @Test func rirDelPlanAlConfirmar() throws {
         let j = #"{"id":"d1","bloques":[{"ejercicios":[{"id":"e1","nombre":"Press banca","series":2,"reps":"8","progresion":[{"semana":1,"series":2,"reps":"8","rir":"1-2"}]},{"id":"e2","nombre":"Curl","series":1,"reps":"12"},{"id":"e3","nombre":"Movilidad","tipo":"calentamiento","series":1,"reps":"10"}]}]}"#
         var d = DiaEnCurso(dia: try JSONDecoder().decode(Dia.self, from: Data(j.utf8)), semana: 1, sesionId: "s1")
-        #expect(d.leyendaRIR("e1") == "Dejando 1–2 en reserva" && d.leyendaRIR("e2") == "Al fallo")
+        #expect(d.leyendaRIR("e1") == "Al fallo" && d.leyendaRIR("e2") == "Al fallo")
         func cargaRIR(_ id: String, _ idx: Int) -> JSONValue? {
             d.escribir(id, idx, campo: "reps", valor: "8")
             d.escribir(id, idx, campo: "kg", valor: "10")
@@ -179,7 +179,7 @@ struct Entreno203Tests {
             guard case .encolar(_, let payload, _)? = p.efectos.first(where: { if case .encolar(let k, _, _) = $0 { return k == "carga" }; return false }) else { return nil }
             return payload["datos"]?["rir"]
         }
-        #expect(cargaRIR("e1", 0) == .numero(1))
+        #expect(cargaRIR("e1", 0) == .numero(0), "el RIR del plan (1-2) no se copia")
         #expect(cargaRIR("e2", 0) == .numero(0))
         #expect(cargaRIR("e3", 0) == .null, "el calentamiento no es serie dura")
         // Una serie que vino del servidor sin RIR y se corrige con el lápiz no se toca.

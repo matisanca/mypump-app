@@ -58,6 +58,8 @@ public enum RIRDelPlan {
     }
 
     /// Lo que se guarda en `rir_real` (como texto, igual que lo que se elegía en el selector).
+    public static let alFallo = "0"
+
     public static func guardar(_ objetivo: String?) -> String {
         guard let o = objetivo, !rpeRE.prueba(o), let primero = numeroRE.todas(o).first,
               let n = Double(primero.replacingOccurrences(of: ",", with: ".")), n.isFinite else { return "0" }

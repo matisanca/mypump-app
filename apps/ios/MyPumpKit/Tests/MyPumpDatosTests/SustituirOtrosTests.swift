@@ -141,13 +141,13 @@ struct SustituirOtrosTests {
         #expect(s2["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s2["peso"] == .numero(30)
                     && s2["notas"]?.comoTexto == "Soga" && s2["rir"] == .numero(2), "\(s2)")
         // El lápiz sobre la serie 1: se corrige el kg y sigue siendo de la extensión.
-        await m.editarSerie(lugar, 0)
+        await m.ejecutar(m.dia.editarSerie(lugar, 0))
         m.escribir(lugar, 0, campo: "kg", valor: "32")
         await m.confirmarSerie(lugar, 0) { _ in true }
         let s1 = try #require(await carga(0))
         #expect(s1["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && s1["peso"] == .numero(32) && s1["notas"]?.comoTexto == "Soga", "\(s1)")
         // Y otra vez el lápiz y el ✓, sin tocar nada: sigue siendo de la extensión, con su agarre.
-        await m.editarSerie(lugar, 0)
+        await m.ejecutar(m.dia.editarSerie(lugar, 0))
         await m.confirmarSerie(lugar, 0) { _ in true }
         let otraVez = try #require(await carga(0))
         #expect(otraVez["ejercicioNombre"]?.comoTexto == "Extensión tríceps en polea" && otraVez["peso"] == .numero(32)
@@ -196,7 +196,7 @@ struct SustituirOtrosTests {
                                          musculo: "abdominals", patron: "core_anti_extension", imagenes: .init(eccentric: nil, concentric: nil), mismoEquipo: false)
         await m.sustituir(lugar, por: plancha, fijar: false)
         #expect(m.tarjeta(lugar)?.filas[1].sinKg == true, "la plancha no lleva kg")
-        await m.editarSerie(lugar, 0)
+        await m.ejecutar(m.dia.editarSerie(lugar, 0))
         m.escribir(lugar, 0, campo: "reps", valor: "14")
         await m.confirmarSerie(lugar, 0) { _ in true }
         let s1 = try #require(await carga(0))
@@ -223,7 +223,7 @@ struct SustituirOtrosTests {
         #expect(s1["ejercicioNombre"]?.comoTexto == "Crunch" && s1["peso"] == .numero(25), "\(s1)")
 
         await m.revertirSustitucion(lugar)
-        await m.editarSerie(lugar, 0)
+        await m.ejecutar(m.dia.editarSerie(lugar, 0))
         m.escribir(lugar, 0, campo: "reps", valor: "14")
         await m.confirmarSerie(lugar, 0) { _ in true }
         let otraVez = try #require(await carga(0))

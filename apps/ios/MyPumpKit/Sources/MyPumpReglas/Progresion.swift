@@ -46,18 +46,8 @@ public enum Progresiones {
         guard !prog.isEmpty else { return nil }
         let sem = semanaJS(semanaActual)
 
-        func porSemana(_ s: Int) -> Progresion {
-            prog.first { $0.semana == s } ?? prog[max(0, min(s - 1, prog.count - 1))]
-        }
-        let cur = porSemana(sem)
-
-        // JS: ej.progresion.find(p => p.semana === sem - 1) || ej.progresion[sem - 2]. Sin acotar: fuera de rango
-        // es undefined, y eso también es "calibración".
-        var prev: Progresion?
-        if sem > 1 {
-            prev = prog.first { $0.semana == sem - 1 } ?? (sem - 2 < prog.count ? prog[sem - 2] : nil)
-        }
-        guard let prev else { return NotaProgresion(texto: textoCalibracion, cambia: false, calibracion: true) }
+        let (cur, anterior) = pasoDePlan(prog, semana: sem)
+        guard let prev = anterior else { return NotaProgresion(texto: textoCalibracion, cambia: false, calibracion: true) }
 
         let curReps = tope(cur.reps), prevReps = tope(prev.reps)
         let curSeries = tope(cur.series.map(String.init)), prevSeries = tope(prev.series.map(String.init))
@@ -95,6 +85,15 @@ public enum Progresiones {
             }
         }
         return NotaProgresion(texto: partes.joined(separator: " "), cambia: cambia, calibracion: false)
+    }
+
+    /// La pauta de la semana y la de la anterior, como las compara `nota`. Sin anterior (la primera semana, o fuera de rango)
+    /// es calibración.
+    static func pasoDePlan(_ prog: [Progresion], semana sem: Int) -> (actual: Progresion, anterior: Progresion?) {
+        let cur = prog.first { $0.semana == sem } ?? prog[max(0, min(sem - 1, prog.count - 1))]
+        // JS: ej.progresion.find(p => p.semana === sem - 1) || ej.progresion[sem - 2]. Sin acotar: fuera de rango es undefined.
+        let prev = sem > 1 ? (prog.first { $0.semana == sem - 1 } ?? (sem - 2 < prog.count ? prog[sem - 2] : nil)) : nil
+        return (cur, prev)
     }
 
     /// `semana || 1` de JS: null, undefined y 0 valen 1.

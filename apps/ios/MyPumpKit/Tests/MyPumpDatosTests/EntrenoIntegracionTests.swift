@@ -88,7 +88,7 @@ struct EntrenoIntegracionTests {
         await m.sustituir(lugar, por: sub, fijar: false)
         #expect(m.efectivo(m.dia.ejercicio(lugar)!).ejercicio.nombre == sub.nombre)
         // Una corrida anterior la dejó confirmada en el servidor: el lápiz la abre para volver a escribirla (SER-06).
-        if m.dia.ejercicios[lugar]?.series[0].confirmada == true { await m.editarSerie(lugar, 0) }
+        if m.dia.ejercicios[lugar]?.series[0].confirmada == true { await m.ejecutar(m.dia.editarSerie(lugar, 0)) }
         m.escribir(lugar, 0, campo: "reps", valor: "10")
         m.escribir(lugar, 0, campo: "kg", valor: "40")
         await m.elegirRIR(lugar, 0, 0)
@@ -182,7 +182,7 @@ struct EntrenoIntegracionTests {
 
         // Cargar una serie en el día cerrado pregunta, reabre y usa la MISMA sesión (SES-07).
         var preguntas: [String] = []
-        if m.dia.ejercicios[lugar]?.series[1].confirmada == true { await m.editarSerie(lugar, 1) }
+        if m.dia.ejercicios[lugar]?.series[1].confirmada == true { await m.ejecutar(m.dia.editarSerie(lugar, 1)) }
         m.escribir(lugar, 1, campo: "reps", valor: "8")
         m.escribir(lugar, 1, campo: "kg", valor: "40")
         await m.confirmarSerie(lugar, 1) { p in preguntas.append(p.titulo); return true }

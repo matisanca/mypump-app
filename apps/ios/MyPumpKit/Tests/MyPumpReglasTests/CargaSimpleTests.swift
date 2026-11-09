@@ -2,16 +2,17 @@ import XCTest
 import MyPumpModelos
 @testable import MyPumpReglas
 
-/// Prototipo de la carga simple: lo que no puede fallar (qué se registra) y dos conductas de hoy que motivan el cambio.
+/// La carga simple: lo que no puede fallar (qué se registra). Las series se confirman acá con el mismo efecto que el día en
+/// curso: lo del OK de verdad (cola, deshacer, persistencia) lo prueban `CargaSimpleModeloTests`.
 final class CargaSimpleTests: XCTestCase {
-    private let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+    private let t0 = 1_800_000_000_000.0
 
     private func ej(_ semanas: [(Int, String)], nombre: String = "Press banca con barra", tipo: String = "compuesto") -> Ejercicio {
         Ejercicio(id: "x", nombre: nombre, tipo: tipo, progresion: semanas.enumerated().map { Progresion(semana: $0.offset + 1, series: $0.element.0, reps: $0.element.1) })
     }
     private let refs: [CargaSimple.Referencia] = [.init(reps: 10, kg: 80), .init(reps: 10, kg: 80), .init(reps: 9, kg: 80), .init(reps: 8, kg: 80)]
     private func normal(_ g: Double = 0) -> CargaSimple {
-        CargaSimple(ejercicio: ej([(4, "10"), (4, "10"), (4, "10")]), semana: 2, ultimaVez: refs, equipo: .barra, recordKg: 80, guardiaSegundos: g)
+        CargaSimple(ejercicio: ej([(4, "10"), (4, "10"), (4, "10")]), semana: 2, ultimaVez: refs, equipo: .barra, recordKg: 80, guardiaMs: g * 1000)
     }
 
     func testBase_laVezPasadaPorSerie() {
@@ -107,47 +108,19 @@ final class CargaSimpleTests: XCTestCase {
     func testGuardia_rafagaSinTocarPideOtroToque() {
         var s = normal(10)
         XCTAssertEqual(s.confirmar(0, ahora: t0), .registrada)
-        XCTAssertEqual(s.confirmar(1, ahora: t0 + 3), .guardia)
+        XCTAssertEqual(s.confirmar(1, ahora: t0 + 3000), .guardia)
         XCTAssertFalse(s.series[1].confirmada)
-        XCTAssertEqual(s.confirmar(1, ahora: t0 + 4, insistio: true), .registrada)
+        XCTAssertEqual(s.confirmar(1, ahora: t0 + 4000, insistio: true), .registrada)
         s.ajustarReps(2, -1)
-        XCTAssertEqual(s.confirmar(2, ahora: t0 + 5), .registrada, "si tocó el dial, miró")
-        XCTAssertEqual(s.confirmar(3, ahora: t0 + 120), .registrada)
-    }
-
-    func testVerosimilitudSigueMandando() {
-        var s = normal()
-        s.fijarCarga(700)
-        guard case .preguntar = s.confirmar(0, ahora: t0) else { return XCTFail() }
-        XCTAssertFalse(s.series[0].confirmada)
-        XCTAssertEqual(s.confirmar(0, ahora: t0, registrarIgual: true), .registrada)
-    }
-
-    func testCorregirNoDesconfirma() {
-        var s = normal()
-        _ = s.confirmar(0, ahora: t0)
-        s.corregir(0, reps: 12, kg: 77.5)
-        XCTAssertTrue(s.series[0].confirmada)
-        XCTAssertEqual(s.reps(0), 12)
-        XCTAssertEqual(s.series[0].kg, 77.5)
-    }
-
-    func testVariasCargasEnUnaSesion_elPayloadEsElDeHoy() {
-        var s = normal()
-        _ = s.confirmar(0, ahora: t0)
-        let p = EscriturasEntreno.carga(sesionId: nil, dia: "d", semana: 2, ejercicio: "x", indice: 0, serie: s.serieLocal(0, rir: "0"), nombre: "Press", varianteEjercicio: nil)
-        guard case let .objeto(o) = p, case let .objeto(d)? = o["datos"] else { return XCTFail() }
-        XCTAssertEqual(d["peso"], .numero(80))
-        XCTAssertEqual(d["reps"], .numero(10))
-        XCTAssertEqual(d["rir"], .numero(0))
-        XCTAssertEqual(d["serie"], .numero(1))
+        XCTAssertEqual(s.confirmar(2, ahora: t0 + 5000), .registrada, "si tocó el dial, miró")
+        XCTAssertEqual(s.confirmar(3, ahora: t0 + 120000), .registrada)
     }
 
     func testGuardia_sumarYRestarLoMismoNoCuentaComoMirar() {
         var s = normal(10)
         _ = s.confirmar(0, ahora: t0)
         s.ajustarReps(1, 1); s.ajustarReps(1, -1)
-        XCTAssertEqual(s.confirmar(1, ahora: t0 + 3), .guardia)
+        XCTAssertEqual(s.confirmar(1, ahora: t0 + 3000), .guardia)
     }
 
     func testVariante_lasHechasNoSeMezclan() {
@@ -158,7 +131,7 @@ final class CargaSimpleTests: XCTestCase {
         s.moverCarga(1)
         XCTAssertEqual(s.hechasConOtraCarga, 0)
         XCTAssertEqual(s.aplicarCargaALasHechas(), [])
-        XCTAssertEqual(s.serieLocal(0, rir: "0").varianteRegistrada, "Prono")
+        XCTAssertEqual(s.series[0].variante, "Prono")
     }
 
     func testCambiarlasTambienSeVaAlConfirmarLaSiguiente() {
@@ -166,16 +139,8 @@ final class CargaSimpleTests: XCTestCase {
         _ = s.confirmar(0, ahora: t0)
         s.moverCarga(-1)
         XCTAssertEqual(s.hechasConOtraCarga, 1)
-        _ = s.confirmar(1, ahora: t0 + 100)
+        _ = s.confirmar(1, ahora: t0 + 100000)
         XCTAssertEqual(s.hechasConOtraCarga, 0, "bajar por fatiga no ofrece reescribir lo anterior")
-    }
-
-    func testDeshacerVuelveALaCargaActual() {
-        var s = normal()
-        _ = s.confirmar(0, ahora: t0)
-        s.moverCarga(1)
-        s.deshacer(0)
-        XCTAssertEqual(s.series[0].kg, 82.5)
     }
 
     func testAumentoSeInvalidaSiLaCargaCambioAMano() {
@@ -203,18 +168,23 @@ final class CargaSimpleTests: XCTestCase {
 
     func testModaIgnoraCeros() { XCTAssertEqual(AumentoCarga.moda([0, 0, 40]), 40) }
 
-    // MARK: Conductas de hoy que motivan el cambio
+}
 
-    /// Hoy: subiste en la serie 1 y tocás ✓ en la 2 sin escribir: se graba el kg de la semana pasada.
-    func testHoy_tildeSinEscribirGrabaElKgViejoAunqueHayasSubido() {
-        let (s, lista) = ConfirmacionSerie.completar(SerieLocal(), sinKg: false, repsPlan: "10", kgUltimaVez: "80", repsUltimaVez: "10", kgHeredable: "82.5")
-        XCTAssertTrue(lista)
-        XCTAssertEqual(s.kg, "80")
-    }
+private enum R: Equatable { case registrada, guardia, faltanDatos }
 
-    /// Hoy: escribir solo las reps en la serie 1 no alcanza: hay que escribir también el kilo.
-    func testHoy_soloRepsEnLaPrimeraNoDejaConfirmar() {
-        let f = FilaSerie.armar(SerieLocal(reps: "11"), activa: true, sinKg: false, repsPlan: "10", kgUltimaVez: "80", repsUltimaVez: "10", kgHeredable: "")
-        XCTAssertFalse(f.puedeConfirmar)
+private extension CargaSimple {
+    /// El OK de la serie: lo que evalúa y lo que el día en curso deja en la serie al registrarla.
+    mutating func confirmar(_ i: Int, ahora: Double, insistio: Bool = false) -> R {
+        switch evaluarOK(i, ahora: ahora, insistio: insistio) {
+        case .faltanDatos: return .faltanDatos
+        case .guardia: return .guardia
+        case let .lista(reps, kg):
+            series[i].reps = reps
+            series[i].kg = kg
+            series[i].confirmada = true
+            series[i].variante = varianteActual
+            anotarOK(ahora: ahora)
+            return .registrada
+        }
     }
 }

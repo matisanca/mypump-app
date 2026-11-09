@@ -18,11 +18,13 @@ extension ModeloEntreno {
             let conEquipo = hecho(plan)
             let sinKg = ReglasEjercicio.sinKg(ef)
             let local = dia.ejercicios[lugar]?.series ?? []
+            // La carga simple manda: lo que muestra el panel es lo que propone el reloj.
+            let carga = cargaSimple(lugar)
             let series: [SerieReloj] = local.indices.map { i in
                 let s = local[i]
                 let f = dia.fila(lugar, i, efectivo: ef)
-                return SerieReloj(numero: i + 1, repsSugeridas: Self.entero(f?.placeholderReps),
-                                  kgSugerido: sinKg ? nil : Self.numero(f?.placeholderKg),
+                return SerieReloj(numero: i + 1, repsSugeridas: carga?.reps(i) ?? Self.entero(f?.placeholderReps),
+                                  kgSugerido: sinKg ? nil : (carga?.series[safe: i]?.kg ?? Self.numero(f?.placeholderKg)),
                                   confirmada: s.confirmada, reps: s.confirmada ? Self.entero(s.reps) : nil,
                                   kg: s.confirmada && !sinKg ? Self.numero(s.kg) : nil)
             }
@@ -160,7 +162,19 @@ extension ModeloEntreno {
                 guard let previa = seriesDelReloj[claveFecha(lugar, i + 1)], previa < ec.creado else {
                     return r(.rechazado, Self.motivoYaCargada)
                 }
-                await editarSerie(lugar, i)
+                // Una corrección del reloj reescribe la serie en el mismo lugar: nunca la desmarca (mismo camino que corregir acá).
+                await vaciarDeshacer()
+                guard let ctx = contextoCarga(lugar) else { return r(.rechazado, "la serie ya no está en tu rutina.") }
+                switch dia.corregirSerie(lugar, i, reps: reps, kg: kg, efectivo: ctx.efectivo, registrarIgual: true) {
+                case .guardada(let efectos):
+                    await ejecutar(efectos)
+                case .sinCambios: break
+                case .faltanDatos, .rechazada, .preguntar:
+                    return r(.rechazado, "el iPhone no la pudo registrar.")
+                }
+                seriesDelReloj[claveFecha(lugar, i + 1)] = min(ec.creado, ahoraMs)
+                guardarCargas()
+                return r(.aplicado)
             }
             // El cronómetro arranca cuando se hizo la primera serie en el reloj, no cuando llegó.
             if inicioSesion == nil, ec.creado <= ahoraMs {
@@ -168,7 +182,13 @@ extension ModeloEntreno {
                 guardarInicio()
             }
             escribir(lugar, i, campo: "reps", valor: String(reps))
-            if let kg { escribir(lugar, i, campo: "kg", valor: JS.texto(kg)) }
+            if let kg {
+                escribir(lugar, i, campo: "kg", valor: JS.texto(kg))
+                // El kilo del reloj es la carga de las que faltan, igual que en el teléfono.
+                if let ctx = contextoCarga(lugar), cargaSimple(lugar)?.carga != kg, cargaSimple(lugar)?.mismoPeso == true {
+                    dia.cambiarCarga(lugar, contexto: ctx) { $0.fijarCarga(kg) }
+                }
+            }
             // Lo confirmó en el reloj: «¿está bien cargado?» y «reabrir el día» se contestan que sí.
             await confirmarSerie(lugar, i, delReloj: min(ec.creado, ahoraMs)) { _ in true }
             return dia.ejercicios[lugar]?.series[i].confirmada == true ? r(.aplicado) : r(.rechazado, "el iPhone no la pudo registrar.")

@@ -63,7 +63,7 @@ struct VolumenEnVivoTests {
         let v = VolumenMusculo.calcular(historial: [], enVivo: m.registrosVolumenEnVivo, hoy: "2026-10-15")
         #expect(v.total == 2 && v.totalHoy == 0)
         // Corregirla (el lápiz) no le cambia la fecha: el servidor conserva el `registrado_en`.
-        await m.editarSerie("jal-d1-0", 0)
+        await m.ejecutar(m.dia.editarSerie("jal-d1-0", 0))
         await m.confirmarSerie("jal-d1-0", 0) { _ in true }
         #expect(m.registrosVolumenEnVivo.first?.fecha == "2026-10-14")
     }
