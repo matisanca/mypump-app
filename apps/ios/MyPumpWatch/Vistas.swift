@@ -348,16 +348,17 @@ struct EjercicioVista: View {
                         if let leyenda = e.leyendaRIR {
                             Text(leyenda).font(.caption2).foregroundStyle(.secondary)
                         }
-                        // El reloj puso en las reps lo que contó (en calibración; fuera, el flujo final apagado). Se
-                        // ve mientras la corona siga en ese número; si el alumno gira, el número ya es suyo.
+                        // El reloj puso en las reps lo que contó. Se ve mientras la corona siga en ese número; si el
+                        // alumno gira, el número ya es suyo.
                         if let n = estado.propuesta, estado.propuestaSerie.enLaCorona(s.reps) {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(ConfirmacionReps.texto(n)).font(.headline).foregroundStyle(Marca.verde)
-                                Text("Lo contó el reloj. Girá para corregir.").font(.caption2).foregroundStyle(.secondary)
+                                Text("Experimental. Lo contó el reloj: girá para corregir.").font(.caption2).foregroundStyle(.secondary)
                             }
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel(ConfirmacionReps.textoAccesible(n))
                         }
+                        LineaConteo()
                         if estado.calibrando { LineaCalibracion() }
                         HStack(spacing: 6) {
                             CampoCorona(titulo: "Reps", valor: "\(s.reps)", activo: foco == .reps,
@@ -511,9 +512,29 @@ struct SeriesHechas: View {
     }
 }
 
-/// Tanda 4, modo calibración: «● Conté 7» mientras va la serie (el contador experimental; al terminar la serie lo pone
-/// en las reps, ver `EstadoReloj.proponer`) y
-/// la comparación de la última serie confirmada.
+/// Qué pasa con el conteo: nunca queda muda (va contando, no pudo, o por qué no).
+struct LineaConteo: View {
+    @Environment(EstadoReloj.self) private var estado
+    var body: some View {
+        let aviso = estado.avisoConteo
+        if let t = aviso.texto {
+            VStack(alignment: .leading, spacing: 2) {
+                if case .contando = aviso {
+                    Text(t).font(.footnote.weight(.semibold).monospacedDigit()).foregroundStyle(Marca.verde)
+                } else {
+                    Text(t).font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                if aviso == .falta_empezar {
+                    Button("Empezar") { estado.empezar() }
+                        .font(.footnote.weight(.semibold))
+                        .tint(Marca.verde)
+                }
+            }
+        }
+    }
+}
+
+/// Modo calibración: lo que va contando y la comparación de la última serie confirmada.
 struct LineaCalibracion: View {
     @Environment(EstadoReloj.self) private var estado
     var body: some View {

@@ -58,8 +58,8 @@ enum DatosCalibracion {
     }
 }
 
-/// Mis datos → Conteo de reps (con el reloj emparejado). Viene prendido; acá se apaga para la cuenta abierta,
-/// explica qué se graba y exporta los datos (un archivo por sesión).
+/// Mis datos → Conteo de reps (con el reloj emparejado). El contador va para todos; acá se prende la grabación de las
+/// series (apagada por defecto), se explica qué se graba y se exportan los datos (un archivo por sesión).
 struct CalibracionView: View {
     let cuenta: String
     private let modo = ModoCalibracion()
@@ -75,19 +75,22 @@ struct CalibracionView: View {
                     modo.poner(nuevo, cuenta: cuenta)
                     PuenteReloj.compartido.mandarRutina(forzar: true)
                 })) {
-                    Label { Text("Contar reps con el reloj") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
+                    Label { Text("Grabar mis series") } icon: { IconoAzulejo("waveform.path.ecg", color: .agua) }
                 }
                 .tint(Color.marcaVivo)
                 .accessibilityIdentifier("modo-calibracion")
             } header: {
-                Text("Apple Watch")
+                Text("Experimental")
             } footer: {
-                Text(ModoCalibracion.textoPrivacidad)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("El conteo de reps del Apple Watch es experimental: propone las reps al terminar la serie y vos las confirmás o corregís con la corona. Nunca registra una serie solo.")
+                    Text(ModoCalibracion.textoPrivacidad)
+                }
             }
 
             Section {
                 if sesiones.isEmpty {
-                    Text("Todavía no hay series grabadas. Entrená con el reloj y el conteo prendido.")
+                    Text("Todavía no hay series grabadas.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(sesiones) { s in

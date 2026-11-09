@@ -28,14 +28,15 @@ final class EstadoReloj {
     private(set) var salud = SaludEntreno()
     /// Se ve el iPhone ahora (WatchConnectivity alcanzable).
     var conectado = false
-    /// Tanda 4: el modo calibración y el contador experimental.
+    /// Los sensores: el contador de reps y, en el modo calibración, la grabación.
     let calibracion = CalibracionReloj()
-    /// Las reps que el reloj propuso con la corona en esta serie («¿10 reps?») y si el alumno las tocó: en el modo
-    /// calibración, en todas las familias; fuera, solo en las de `ConfirmacionReps.habilitadas` (vacía).
+    /// Las reps que el reloj propuso con la corona en esta serie («¿10 reps?») y si el alumno las tocó.
     private(set) var propuestaSerie = PropuestaSerie()
     var propuesta: Int? { propuestaSerie.reps }
     /// Sube cada vez que hay que entrar al día (llegó el día elegido o se tocó el que ya estaba): la raíz navega.
     private(set) var abrirDia = 0
+    /// La sesión de entreno corre (sin ella, con la muñeca baja los sensores se duermen).
+    private(set) var entrenoVivo = false
 
     @ObservationIgnored private let conexion = ConexionReloj()
     @ObservationIgnored private let entreno = EntrenoSalud()
@@ -72,7 +73,7 @@ final class EstadoReloj {
         }
         conexion.alFallarVersion = { [weak self] v in self?.cambiar(enviar: false) { $0.marcarIncompatible(version: v) } }
         entreno.alMedir = { [weak self] s in self?.salud = s }
-        entreno.alAbrir = { [weak self] in self?.calibracion.sesionDeEntrenoAbierta() }
+        entreno.alCambiarViva = { [weak self] viva in self?.entrenoVivo = viva }
         calibracion.transferir = { [weak self] url, metadatos in self?.conexion.transferirArchivo(url, metadatos: metadatos) }
         calibracion.alContar = { [weak self] r in self?.proponer(r) }
         conexion.alTransferirArchivo = { [weak self] url in self?.calibracion.recibido(url) }
@@ -81,33 +82,42 @@ final class EstadoReloj {
         ajustarSensores()
     }
 
-    // MARK: - Modo calibración (tanda 4)
+    // MARK: - El contador de reps y el modo calibración
 
-    /// El iPhone mandó el modo prendido para esta cuenta (también en la demo, o con `-calibracion` para las capturas).
+    /// El iPhone mandó el modo calibración (grabar las series a archivo) prendido para esta cuenta.
     var calibrando: Bool {
         guard let r = sesion.rutina else { return false }
         if r.demo && ProcessInfo.processInfo.arguments.contains("-calibracion") { return true }
         return r.calibracion == true
     }
 
-    /// Los sensores corren con la sesión empezada y abierta, en calibración o si algún ejercicio del día es de una
-    /// familia con el flujo final habilitado (ninguna por ahora). Si no, no se tocan.
-    private func ajustarSensores() {
-        let familias = sesion.rutina?.ejercicios.contains { ConfirmacionReps.cuenta($0.familia) } ?? false
-        calibracion.ajustar(prender: sesion.iniciada && !sesion.terminada && (calibrando || familias))
+    /// El contador está prendido para todos; solo el servidor lo apaga (`reloj_contador_reps`).
+    var contadorPrendido: Bool { sesion.rutina?.contadorReps != false }
+
+    /// Lo que dice la pantalla del ejercicio sobre el conteo.
+    var avisoConteo: AvisoConteo {
+        guard let e = sesion.actual else { return .ninguno }
+        return AvisoConteo.de(prendido: contadorPrendido, iniciada: sesion.iniciada && !sesion.terminada, enDescanso: sesion.descanso != nil,
+                              conPropuesta: propuestaSerie.enLaCorona(sesion.reps), muestras: calibracion.grabando && !calibracion.sinMuestras,
+                              sesionViva: entrenoVivo || !conSalud, conteo: calibracion.conteo, familia: e.familia)
     }
 
-    /// Con la serie terminada y clara, la corona va a lo que contó el reloj y se pregunta «¿N reps?» (en calibración,
-    /// en todas las familias; si no, solo en las habilitadas). Una sola vez por serie, y nunca encima de lo que el
-    /// alumno ya giró con la serie en marcha (`PropuestaSerie`).
-    private func proponer(_ r: ContadorReps.Resultado?) {
-        guard let r, let e = sesion.actual, e.proximaSerie != nil else { return }
+    /// Los sensores corren con la sesión empezada y abierta, si cuenta o si graba.
+    private func ajustarSensores() {
+        calibracion.ajustar(prender: sesion.iniciada && !sesion.terminada && (contadorPrendido || calibrando))
+    }
+
+    /// Con la serie terminada y clara, la corona va a lo que contó el reloj y se pregunta «¿N reps?». Nunca encima de lo
+    /// que el alumno giró ni durante el descanso (`PropuestaSerie`): la serie sigue en la ventana cuando el descanso cierra.
+    private func proponer(_ r: ContadorReps.Resultado) {
+        guard contadorPrendido, sesion.descanso == nil, let e = sesion.actual, e.proximaSerie != nil else { return }
         var p = propuestaSerie
-        guard let n = p.proponer(e.familia, conteo: r, calibrando: calibrando) else { return }
+        let primera = p.reps == nil
+        guard let n = p.proponer(r) else { return }
         propuestaSerie = p
         cambiar(enviar: false) { $0.girarReps(n - $0.reps) }
-        // Que se note que la corona se movió sola (también con VoiceOver).
-        WKInterfaceDevice.current().play(.click)
+        // Que se note que la corona se movió sola, una vez por serie (también con VoiceOver).
+        if primera { WKInterfaceDevice.current().play(.click) }
         AccessibilityNotification.Announcement(ConfirmacionReps.textoAccesible(n)).post()
     }
 
@@ -203,10 +213,12 @@ final class EstadoReloj {
         let otro = lugar != sesion.lugar
         cambiar { $0.elegir(lugar) }
         if otro { propuestaSerie.reiniciar(); calibracion.abrirVentana() }
+        // Con el entreno en curso (empezado en el iPhone o tras un cierre) la sesión de entreno mantiene vivos los sensores.
+        if conSalud, sesion.iniciada, !sesion.terminada { entreno.empezar() }
     }
     /// El alumno giró las reps con la corona (la propuesta del reloj no pasa por acá).
     func girarReps(_ n: Int) {
-        propuestaSerie.girar(contadas: calibracion.contadas)
+        propuestaSerie.girar()
         cambiar(enviar: false) { $0.girarReps(n) }
     }
     func girarKg(_ n: Int) { cambiar(enviar: false) { $0.girarKg(n) } }

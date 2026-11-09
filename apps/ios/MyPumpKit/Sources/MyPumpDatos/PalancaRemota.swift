@@ -12,6 +12,8 @@ public struct PalancaRemota: Equatable, Sendable {
     public var escrituraVuelta = true
     /// false: un swap de comida anclado que ya no coincide con la dieta se oculta, pero no se borra del servidor.
     public var anclajeBorraSwaps = true
+    /// false: el reloj no propone las reps (`reloj_contador_reps`). La ausencia de la clave = prendido.
+    public var contadorRepsReloj = true
     public var versionMinimaIOS: String?
     public var versionMinimaAndroid: String?
 
@@ -24,6 +26,7 @@ public struct PalancaRemota: Equatable, Sendable {
         if case .bool(let b)? = j["migracion_ops_legadas"] { opsLegadas = b }
         if case .bool(let b)? = j["migracion_escritura_vuelta"] { escrituraVuelta = b }
         if case .bool(let b)? = j["anclaje_borra_swaps"] { anclajeBorraSwaps = b }
+        if case .bool(let b)? = j["reloj_contador_reps"] { contadorRepsReloj = b }
         if case .texto(let s)? = j["version_minima_ios"], !s.isEmpty { versionMinimaIOS = s }
         if case .texto(let s)? = j["version_minima_android"], !s.isEmpty { versionMinimaAndroid = s }
     }

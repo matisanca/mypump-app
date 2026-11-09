@@ -5,17 +5,14 @@ import WatchKit
 import MyPumpReglas
 import MyPumpReloj
 
-/// El modo calibración en el reloj (tanda 4). Solo corre si el iPhone lo mandó prendido con la rutina
-/// (`RutinaReloj.calibracion`) o si el ejercicio es de una familia con el flujo final habilitado (lista vacía: nunca).
-/// Apagado, no toca los sensores ni pide el permiso de movimiento.
+/// Los sensores del reloj durante el entreno: el contador de reps (para todos, salvo que el servidor lo apague) y, solo en
+/// el modo calibración, la grabación a archivo.
 ///
-/// - Sensores: `CMBatchedSensorManager` (800 Hz de aceleración y 200 de giro; necesita la sesión de entreno de
-///   HealthKit abierta). Si no está o falla (sin la sesión, sin permiso de Salud), `CMMotionManager` a 100 Hz.
+/// - Sensores: `CMMotionManager` (aceleración total y giro). No pide permiso de movimiento. Sigue con la muñeca baja o la
+///   pantalla apagada mientras corra la sesión de entreno de HealthKit (`EntrenoSalud`).
 /// - La grabación es la del kit (`GrabadoraSerie`, en un actor fuera del hilo principal): grilla de 100 Hz y anillo de
-///   5 minutos. Cada segundo corre el contador sobre lo que va de la serie («Conté N»).
-/// - Al confirmar la serie, la ventana se guarda como un `.mpcal` (`ArchivoCalibracion`) con las reps confirmadas, el
-///   ejercicio, la familia, el equipo y lo que contó el contador, en una carpeta con tope (`AlmacenCalibracion`), y pasa
-///   al iPhone por `transferFile`. Se borra del reloj cuando el iPhone lo recibió. Nada va a ningún servidor.
+///   5 minutos. Cada segundo corre el contador sobre lo que va de la serie.
+/// - Al confirmar, y solo en calibración, la ventana se guarda como un `.mpcal` y pasa al iPhone por `transferFile`.
 @MainActor @Observable
 final class CalibracionReloj {
     /// Lo que contó el contador en lo que va de la serie (nil = no corre).
@@ -26,21 +23,20 @@ final class CalibracionReloj {
     private(set) var ultimaComparacion: String?
     /// Los sensores están corriendo.
     private(set) var grabando = false
+    /// Están prendidos y hace rato que no entregan nada.
+    private(set) var sinMuestras = false
 
     @ObservationIgnored private let motor = MotorCalibracion()
-    @ObservationIgnored private var batched: CMBatchedSensorManager?
     @ObservationIgnored private var tareas: [Task<Void, Never>] = []
     @ObservationIgnored private var movimiento: CMMotionManager?
     @ObservationIgnored private var tick: Task<Void, Never>?
-    @ObservationIgnored private(set) var fuente = "batched"
-    /// Cada arranque de los sensores y cada ventana tienen su número: un error de una corrida vieja o un conteo de la
-    /// ventana anterior que llega tarde se descartan.
-    @ObservationIgnored private var corrida = 0
+    @ObservationIgnored private let fuente = "motion"
+    /// Cada ventana tiene su número: un conteo de la ventana anterior que llega tarde se descarta.
     @ObservationIgnored private var ventana = 0
     /// Lo que se manda al iPhone: (url, nombre) → la conexión.
     @ObservationIgnored var transferir: ((URL, [String: Any]) -> Void)?
     /// Cada conteo en vivo (para el flujo final, `ConfirmacionReps`).
-    @ObservationIgnored var alContar: ((ContadorReps.Resultado?) -> Void)?
+    @ObservationIgnored var alContar: ((ContadorReps.Resultado) -> Void)?
 
     static var carpeta: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("calibracion-pendientes")
@@ -51,20 +47,17 @@ final class CalibracionReloj {
 
     // MARK: - Sensores
 
-    /// Prende o apaga los sensores según haga falta (lo llama `EstadoReloj` cada vez que cambia la sesión).
+    /// Prende o apaga los sensores según haga falta (lo llama `EstadoReloj` cada vez que cambia la sesión). Siempre a
+    /// 100 Hz, la frecuencia con la que se midió el contador: el `esfuerzo` necesita ver la vibración arriba de 2,5 Hz.
     func ajustar(prender: Bool) {
         if prender && !grabando { arrancar() } else if !prender && grabando { parar() }
     }
 
     private func arrancar() {
         grabando = true
-        corrida += 1
+        sinMuestras = false
         contadas = nil
-        if CMBatchedSensorManager.isAccelerometerSupported && CMBatchedSensorManager.isDeviceMotionSupported {
-            arrancarBatched()
-        } else {
-            arrancarMovimiento()
-        }
+        arrancarMovimiento()
         // Una ventana desde ya (si se prendió a mitad de una serie); empezar, elegir o confirmar la reemplazan.
         let t = Self.ahora
         ventana += 1
@@ -78,69 +71,21 @@ final class CalibracionReloj {
         }
     }
 
-    private func arrancarBatched() {
-        fuente = "batched"
-        let m = CMBatchedSensorManager()
-        batched = m
-        let motor = self.motor
-        let id = corrida
-        // Si cualquiera de los dos se corta con un error (sin la sesión de entreno), se pasa a CMMotionManager.
-        tareas.append(Task.detached { [weak self] in
-            do {
-                for try await lote in m.accelerometerUpdates() {
-                    await motor.agregar(acelerometro: lote.map { MuestraEjes(t: $0.timestamp, x: Float($0.acceleration.x), y: Float($0.acceleration.y), z: Float($0.acceleration.z)) })
-                }
-            } catch {
-                await self?.pasarAMovimiento(corrida: id)
-            }
-        })
-        tareas.append(Task.detached { [weak self] in
-            do {
-                for try await lote in m.deviceMotionUpdates() {
-                    await motor.agregar(giroscopio: lote.map { MuestraEjes(t: $0.timestamp, x: Float($0.rotationRate.x), y: Float($0.rotationRate.y), z: Float($0.rotationRate.z)) })
-                }
-            } catch {
-                await self?.pasarAMovimiento(corrida: id)
-            }
-        })
-    }
-
-    private func pasarAMovimiento(corrida id: Int) {
-        guard grabando, id == corrida, batched != nil, movimiento == nil else { return }
-        tareas.forEach { $0.cancel() }
-        tareas = []
-        batched = nil
-        arrancarMovimiento()
-    }
-
-    /// La sesión de entreno de HealthKit ya corre: si se había caído a `CMMotionManager` (los sensores arrancaron antes
-    /// que la sesión), se vuelve a `CMBatchedSensorManager`, que da más frecuencia.
-    func sesionDeEntrenoAbierta() {
-        guard grabando, batched == nil, CMBatchedSensorManager.isAccelerometerSupported,
-              CMBatchedSensorManager.isDeviceMotionSupported else { return }
-        corrida += 1
-        tareas.forEach { $0.cancel() }
-        tareas = []
-        movimiento?.stopDeviceMotionUpdates()
-        movimiento = nil
-        arrancarBatched()
-    }
-
-    /// `CMMotionManager` a la frecuencia más alta que dé el reloj (100 Hz): aceleración total (gravedad + usuario) y giro.
+    /// `CMMotionManager`: aceleración total (gravedad + usuario) y giro.
     private func arrancarMovimiento() {
-        fuente = "motion"
+        let hz = GrabadoraSerie.hz
         let m = CMMotionManager()
-        guard m.isDeviceMotionAvailable else { return }
-        m.deviceMotionUpdateInterval = 1.0 / 100
+        guard m.isDeviceMotionAvailable else { movimiento = nil; return }
+        m.deviceMotionUpdateInterval = 1.0 / hz
         movimiento = m
         let motor = self.motor
         let cola = OperationQueue()
         cola.maxConcurrentOperationCount = 1
-        let junta = Junta()
+        let junta = Junta(tope: Int(hz / 4))
         // Un solo consumidor en orden (la grabadora descarta lo que llega tarde).
         let (lotes, entrada) = AsyncStream.makeStream(of: ([MuestraEjes], [MuestraEjes]).self)
         tareas.append(Task.detached {
-            for await l in lotes { await motor.agregar(acelerometro: l.0, giroscopio: l.1) }
+            for await l in lotes { await motor.agregar(acelerometro: l.0, giroscopio: l.1, llego: Self.ahora) }
         })
         // Corre en `cola`: `@Sendable` para que no herede el MainActor (Swift 6 cortaría la app).
         m.startDeviceMotionUpdates(to: cola) { @Sendable d, _ in
@@ -148,7 +93,6 @@ final class CalibracionReloj {
             let a = MuestraEjes(t: d.timestamp, x: Float(d.gravity.x + d.userAcceleration.x), y: Float(d.gravity.y + d.userAcceleration.y),
                                 z: Float(d.gravity.z + d.userAcceleration.z))
             let g = MuestraEjes(t: d.timestamp, x: Float(d.rotationRate.x), y: Float(d.rotationRate.y), z: Float(d.rotationRate.z))
-            // De a 25 muestras (un cuarto de segundo) al actor.
             if let lote = junta.agregar(a, g) { entrada.yield(lote) }
         }
     }
@@ -157,9 +101,9 @@ final class CalibracionReloj {
         grabando = false
         tareas.forEach { $0.cancel() }
         tareas = []
-        batched = nil
         movimiento?.stopDeviceMotionUpdates()
         movimiento = nil
+        sinMuestras = false
         tick?.cancel()
         tick = nil
         contadas = nil
@@ -184,14 +128,19 @@ final class CalibracionReloj {
         Task { await motor.marcarFinDescanso(en: t) }
     }
 
+    /// Sin una muestra en este tiempo, los sensores no están entregando (permiso, sensor o la app suspendida).
+    private static let esperaMuestras: Double = 5
+
     private func contarEnVivo() async {
         guard grabando else { return }
         let v = ventana
-        let r = await motor.contar(hasta: Self.ahora)
+        let ahora = Self.ahora
+        let (vivo, llego, arranco) = await motor.contar(hasta: ahora)
         guard v == ventana, grabando else { return }   // se confirmó o se abrió otra ventana mientras contaba
-        conteo = r
-        contadas = r?.reps
-        alContar?(r)
+        sinMuestras = ahora - (llego ?? arranco) >= Self.esperaMuestras
+        conteo = vivo
+        contadas = vivo?.reps
+        if let vivo { alContar?(vivo) }
     }
 
     /// Lo de la serie que se confirma: el ejercicio y lo que se cargó.
@@ -287,9 +236,12 @@ final class CalibracionReloj {
 /// La grabadora del kit fuera del hilo principal.
 actor MotorCalibracion {
     private var g = GrabadoraSerie()
-    func agregar(acelerometro a: [MuestraEjes]) { g.agregar(acelerometro: a) }
-    func agregar(giroscopio w: [MuestraEjes]) { g.agregar(giroscopio: w) }
-    func agregar(acelerometro a: [MuestraEjes], giroscopio w: [MuestraEjes]) { g.agregar(acelerometro: a, giroscopio: w) }
+    private var ultimaLlegada: Double?
+    private let arranque = ProcessInfo.processInfo.systemUptime
+    func agregar(acelerometro a: [MuestraEjes], giroscopio w: [MuestraEjes], llego t: Double) {
+        ultimaLlegada = t
+        g.agregar(acelerometro: a, giroscopio: w)
+    }
     func abrirVentana(en t: Double) { g.abrirVentana(en: t) }
     func marcarFinDescanso(en t: Double) { g.marcarFinDescanso(en: t) }
     func cerrar(en t: Double) -> GrabadoraSerie.Ventana? { g.cerrar(en: t) }
@@ -307,11 +259,10 @@ actor MotorCalibracion {
               let url = try? almacen.guardar(d, nombre: nombre) else { return nil }
         return (url, nombre, conteo.reps)
     }
-    func reiniciar() { g = GrabadoraSerie() }
-    /// El contador sobre lo que va de la serie (nil sin ventana abierta).
-    func contar(hasta t: Double) -> ContadorReps.Resultado? {
-        guard g.inicioVentana != nil else { return nil }
-        return ContadorReps.contar(g.paraContar(hasta: t))
+    func reiniciar() { g = GrabadoraSerie(); ultimaLlegada = nil }
+    /// El contador sobre lo que va de la serie (nil sin ventana abierta) y cuándo llegó la última muestra.
+    func contar(hasta t: Double) -> (ContadorReps.Resultado?, Double?, Double) {
+        (g.contarEnVivo(hasta: t), ultimaLlegada, arranque)
     }
 }
 
@@ -319,11 +270,13 @@ actor MotorCalibracion {
 private final class Junta: @unchecked Sendable {
     private var a: [MuestraEjes] = []
     private var g: [MuestraEjes] = []
+    private let tope: Int
     private let candado = NSLock()
+    init(tope: Int) { self.tope = tope }
     func agregar(_ ma: MuestraEjes, _ mg: MuestraEjes) -> ([MuestraEjes], [MuestraEjes])? {
         candado.lock(); defer { candado.unlock() }
         a.append(ma); g.append(mg)
-        guard a.count >= 25 else { return nil }
+        guard a.count >= tope else { return nil }
         defer { a = []; g = [] }
         return (a, g)
     }

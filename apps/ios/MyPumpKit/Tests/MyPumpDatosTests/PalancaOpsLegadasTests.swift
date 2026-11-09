@@ -69,3 +69,17 @@ final class Palanca: @unchecked Sendable {
     init(prendida: Bool) { _prendida = prendida }
     var prendida: Bool { get { lock.withLock { _prendida } } set { lock.withLock { _prendida = newValue } } }
 }
+
+/// El contador de reps del reloj se apaga desde el servidor, sin publicar versión. Sin la clave, prendido.
+@Suite struct PalancaContadorRepsTests {
+    @Test func sinLaClaveQuedaPrendido() {
+        #expect(PalancaRemota(.objeto([:])).contadorRepsReloj)
+        #expect(PalancaRemota.deFabrica.contadorRepsReloj)
+    }
+
+    @Test func conFalseSeApagaYConCualquierOtraCosaNo() {
+        #expect(!PalancaRemota(.objeto(["reloj_contador_reps": .bool(false)])).contadorRepsReloj)
+        #expect(PalancaRemota(.objeto(["reloj_contador_reps": .bool(true)])).contadorRepsReloj)
+        #expect(PalancaRemota(.objeto(["reloj_contador_reps": .texto("false")])).contadorRepsReloj, "un tipo inesperado no cuenta")
+    }
+}

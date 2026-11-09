@@ -89,7 +89,8 @@ public enum EvaluacionReps {
             let e = r.encabezado
             let conteo: ContadorReps.Resultado?
             if recontar {
-                let desde = min(max(0, e.inicioConteo), r.cuadros.count)
+                // La regla de hoy: los últimos `topeConteoSegundos` de la ventana (lo guardado en archivos viejos era otra).
+                let desde = max(0, r.cuadros.count - Int(GrabadoraSerie.topeConteoSegundos * e.hz))
                 conteo = ContadorReps.contar(Array(r.cuadros[desde...]), hz: e.hz)
             } else {
                 conteo = e.conteo ?? e.contadas.map { ContadorReps.Resultado(reps: $0, periodo: 0, calidad: 0, senal: .ninguna, desde: 0, hasta: 0, quieto: false) }
@@ -125,6 +126,39 @@ public enum EvaluacionReps {
                     dentroDeUno: errores.filter { abs($0) <= 1 }.count,
                     errorMedio: n == 0 ? 0 : Double(errores.reduce(0, +)) / Double(n),
                     errorAbsolutoMedio: n == 0 ? 0 : Double(errores.map(abs).reduce(0, +)) / Double(n))
+    }
+
+    /// Repite una serie grabada segundo a segundo, por el mismo camino que en vivo: qué propone y cuándo.
+    public static func repetirEnVivo(_ r: ArchivoCalibracion.Registro) -> (propuesta: Int?, segundosAntesDelFin: Double?, propuestasDescartadas: Int) {
+        var g = GrabadoraSerie()
+        var p = PropuestaSerie()
+        let base = 5_000.0, hz = r.encabezado.hz
+        g.abrirVentana(en: base)
+        var i = 0, prop: Int?, cuando: Double?, cambios = 0
+        let finDescanso = r.encabezado.finDescanso.map { Double($0) / hz }
+        var ultimoTick = 0
+        while i < r.cuadros.count {
+            let j = min(r.cuadros.count, i + 25)
+            var ac: [MuestraEjes] = [], gi: [MuestraEjes] = []
+            for k in i..<j {
+                let c = r.cuadros[k], ts = base + (Double(k) + 0.5) / hz
+                ac.append(MuestraEjes(t: ts, x: c.ax, y: c.ay, z: c.az))
+                gi.append(MuestraEjes(t: ts, x: c.gx, y: c.gy, z: c.gz))
+            }
+            g.agregar(acelerometro: ac, giroscopio: gi)
+            i = j
+            let t = Double(i) / hz
+            if Int(t) > ultimoTick {
+                ultimoTick = Int(t)
+                let descansando = finDescanso.map { t < $0 } ?? false
+                if !descansando, let v = g.contarEnVivo(hasta: base + t), let n = p.proponer(v) {
+                    if prop != nil { cambios += 1 }
+                    prop = n; cuando = Double(r.cuadros.count) / hz - t
+                    if ProcessInfo.processInfo.environment["DETALLE"] != nil { print(String(format: "   t=%.0f n=%d q=%.2f P=%.1f tramo %.0f-%.0f", t, n, v.calidad, v.periodo, v.desde, v.hasta)) }
+                }
+            }
+        }
+        return (prop, cuando, cambios)
     }
 
     /// La tabla para la terminal.
