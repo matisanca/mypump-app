@@ -25,6 +25,6 @@
 	<!-- Tanda 4: con el conteo de reps prendido (viene así; se apaga en Mis datos) el reloj usa el acelerómetro y el
 	     giroscopio durante las series. Apagado, no se pide ni se usa. -->
 	<key>NSMotionUsageDescription</key>
-	<string>Pump Team usa el movimiento del reloj durante cada serie para proponerte las repeticiones que hiciste.</string>
+	<string>Pump Team usa el movimiento del reloj durante cada serie para proponerte las repeticiones que hiciste. Si aceptás en Mis datos, también para mejorar el conteo.</string>
 </dict>
 </plist>

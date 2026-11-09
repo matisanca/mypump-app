@@ -90,6 +90,9 @@ public struct ModoCalibracion: @unchecked Sendable {
     private let defaults: UserDefaults
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
+    /// Las cuentas que grabaron en este iPhone (hashes).
+    public var cuentas: [String] { defaults.stringArray(forKey: Self.clavePrendidas) ?? [] }
+
     public func prendido(cuenta: String) -> Bool {
         guard cuenta != "demo", !cuenta.isEmpty else { return false }
         return (defaults.stringArray(forKey: Self.clavePrendidas) ?? []).contains(cuenta)
