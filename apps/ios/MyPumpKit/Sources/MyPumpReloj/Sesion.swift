@@ -70,12 +70,15 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         aplicarPendientes(&r)
         // Una serie que llegó del iPhone también es actividad: el entreno no se recorta a la última hecha en el reloj.
         if mismoDia, Self.confirmadas(r) > (rutina.map(Self.confirmadas) ?? 0) { ultimaSerie = max(ultimaSerie ?? 0, r.generada) }
+        let anterior = rutina
         rutina = r
         if !mismoDia {
             terminada = r.diaFinalizado
             records = []
+            // Pasar la medianoche con la misma sesión (cambia solo la fecha) no la borra.
+            let mismaSesion = anterior?.diaId == r.diaId && anterior?.semana == r.semana && inicio != nil && inicio == r.inicioSesion
             inicio = r.inicioSesion
-            ultimaSerie = nil
+            if !mismaSesion { ultimaSerie = nil }
         } else {
             if inicio == nil { inicio = r.inicioSesion }
             // Cerrado en el iPhone: se termina también acá (la app del reloj cierra su sesión de entreno).
@@ -463,8 +466,9 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// Si tras este cambio de estado hay que cerrar el entreno de HealthKit, cómo; nil si sigue abierto. Si llegó otro día
     /// con una sesión en curso, lo que se cierra es el entreno de ANTES: la rutina nueva ya no tiene sus series.
     public func cierreSalud(tras previa: SesionReloj, ahora: Double) -> CierreSalud? {
+        // Pasar la medianoche con la misma sesión (igual día del plan e igual inicio) no es otro día: el entreno sigue.
         let otroDia = previa.rutina.map { p in
-            rutina.map { $0.diaId != p.diaId || $0.semana != p.semana || $0.fecha != p.fecha } ?? true
+            rutina.map { $0.diaId != p.diaId || $0.semana != p.semana || inicio != previa.inicio } ?? true
         } ?? false
         if otroDia, previa.iniciada, !previa.terminada { return previa.cierreSalud(ahora: ahora) }
         return terminada || !iniciada ? cierreSalud(ahora: ahora) : nil

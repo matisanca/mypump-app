@@ -88,6 +88,21 @@ func sesionDemo() -> SesionReloj {
         #expect(s.cierreSalud(tras: previa, ahora: T0 + 200_000) == .guardar(fin: T0 + 200_000))
     }
 
+    /// Un entreno que cruza la medianoche: cambia la fecha de la rutina y sigue siendo el mismo, con su última serie.
+    @Test func cruzarLaMedianocheNoCierraElEntreno() throws {
+        var s = sesionConCuenta()
+        s.iniciar(ahora: T0)
+        s.confirmar(ahora: T0 + 60_000)
+        let previa = s
+        var r = try #require(s.rutina)
+        r.fecha = "2026-11-04"
+        r.generada = T0 + 120_000
+        r.inicioSesion = T0
+        s.recibir(r)
+        #expect(s.cierreSalud(tras: previa, ahora: T0 + 200_000) == nil)
+        #expect(s.ultimaSerie == T0 + 60_000)
+    }
+
     @Test func enElMismoDiaEnCursoNoSeCierra() {
         var s = sesionConCuenta()
         s.iniciar(ahora: T0)
