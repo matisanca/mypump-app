@@ -231,7 +231,8 @@ public struct SesionReloj: Codable, Equatable, Sendable {
     /// La serie que está en la corona (nil sin rutina o sin serie para hacer).
     private var claveCorona: String? {
         guard let r = rutina, let e = actual, let i = e.proximaSerie else { return nil }
-        return "\(r.diaId)#\(r.semana)#\(e.lugar)#\(i)"
+        // También el ejercicio y la fecha: una sustitución en el iPhone conserva el lugar y lo girado no le corresponde.
+        return "\(r.rutinaId)#\(r.fecha)#\(r.diaId)#\(r.semana)#\(e.lugar)#\(e.nombre)#\(e.sinKg)#\(i)"
     }
 
     /// Un clic de la corona en kg: un paso del equipo (alineado a su grilla: un 21 de mancuerna sube a 22 y baja a 20),

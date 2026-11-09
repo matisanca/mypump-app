@@ -214,6 +214,12 @@ private struct ListaEntreno: View {
                 if let t = motor.relojEsperando {
                     AvisoProgresion(icono: "applewatch", texto: Text(t), tono: .alerta)
                 }
+                // Series del reloj que no se guardaron: quedan a la vista hasta que el alumno las lea.
+                if let p = motor.relojPerdidas {
+                    AvisoProgresion(icono: "applewatch", texto: Text(p.texto), tono: .alerta)
+                    Button("Entendido") { motor.leerRelojPerdidas() }
+                        .font(.subheadline.weight(.semibold))
+                }
                 // Con un solo día no hay nada que elegir: la web no lo muestra (`renderDayPicker`).
                 if motor.dias.count > 1 { SelectorDias(motor: motor) }
                 if motor.vacio {

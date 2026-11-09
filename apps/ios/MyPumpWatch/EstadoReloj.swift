@@ -337,7 +337,8 @@ final class EstadoReloj {
                 try? await Task.sleep(for: .milliseconds(Int(ColaReloj.reintento) + 500))
                 guard let self else { return }
                 if self.sesion.cola.vacia { self.reintento = nil; return }
-                self.sincronizar()
+                // Sin el iPhone no se reescribe la sesión cada 20 s: `alCambiarAlcance` fuerza el envío cuando vuelve.
+                if self.conectado { self.sincronizar() }
             }
         }
     }

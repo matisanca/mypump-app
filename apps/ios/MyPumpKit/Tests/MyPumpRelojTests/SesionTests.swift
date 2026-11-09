@@ -272,6 +272,16 @@ func sesionDemo() -> SesionReloj {
         #expect(s.ejercicio("press-banca-d1-0")?.series[0].reps == e.series[0].reps, "lo confirmado no cambia")
     }
 
+    @Test func loGiradoNoPasaAUnEjercicioSustituidoEnElIPhone() {
+        var s = sesionDemo()
+        s.girarReps(3)
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0 + 5_000)
+        r.ejercicios[0].nombre = "Press con mancuernas"
+        r.ejercicios[0].series[0].repsSugeridas = 7
+        s.recibir(r)
+        #expect(s.reps == 7, "otro ejercicio en el mismo lugar arranca con lo suyo")
+    }
+
     @Test func sinGirarLaCoronaSigueLoQueMandaElIPhone() {
         var s = sesionDemo()
         var r = RutinaReloj.demo(fecha: HOY, generada: T0 + 5_000)

@@ -183,6 +183,25 @@ extension ModeloEntreno {
     }
 }
 
+/// Series confirmadas en el reloj que el iPhone rechazó y no quedaron guardadas: el aviso de Entreno. Con los ids, para que
+/// un reenvío del mismo evento no las cuente dos veces.
+public struct PerdidasReloj: Codable, Equatable, Sendable {
+    public static let archivo = "reloj-perdidas.json"
+    public private(set) var ids: [UUID] = []
+    public private(set) var motivo = ""
+    public init() {}
+
+    mutating func sumar(_ nuevos: [UUID], motivo m: String) {
+        ids += nuevos.filter { !ids.contains($0) }
+        motivo = m
+    }
+
+    public var texto: String {
+        let n = ids.count
+        return "\(n) \(n == 1 ? "serie" : "series") del Apple Watch no se guardaron: \(motivo) Revisá y cargalas a mano."
+    }
+}
+
 /// Recibe los eventos del reloj en el iPhone: contesta los repetidos por id (guardados en el disco de la cuenta) y aplica
 /// el resto en orden sobre el motor de Entreno. Cada evento se contesta solo: uno pendiente (un «terminar» sin red) no
 /// traba a los de atrás. El id se anota ANTES de aplicar, así un lote duplicado que llega en el medio (otra vía de
@@ -230,7 +249,9 @@ public final class ReceptorReloj {
             enCurso.insert(e.id)
             let a = await motor.aplicarEventoReloj(e)
             enCurso.remove(e.id)
-            if a.resultado == .pendiente { aplicados.quitar(e.id) }
+            // Pendiente, se reintenta. Rechazado, tampoco queda anotado: si la respuesta se perdió, un reenvío tiene que volver a
+            // contestar el motivo (como `repetido`, el reloj la sacaba de su cola sin mostrar nada).
+            if a.resultado == .pendiente || a.resultado == .rechazado { aplicados.quitar(e.id) }
             _ = disco?.guardar(aplicados, Self.archivo)
             acuses.append(a)
         }
@@ -250,13 +271,11 @@ extension ReceptorReloj {
                 eventos.first { $0.id == a.id }.map { if case .serie = $0.evento { true } else { false } } == true
         }
         if !perdidas.isEmpty {
-            let motivo = perdidas.first?.motivo ?? ""
-            let n = perdidas.count
-            motor.relojEsperando = "\(n) \(n == 1 ? "serie" : "series") del Apple Watch no se guardaron: \(motivo) Cargalas a mano."
-            motor.relojPerdidas = true
-            return
+            var p = motor.relojPerdidas ?? PerdidasReloj()
+            p.sumar(perdidas.map(\.id), motivo: perdidas.first?.motivo ?? "")
+            motor.relojPerdidas = p
+            _ = motor.disco?.guardar(p, PerdidasReloj.archivo)
         }
-        if motor.relojPerdidas { return }
         let pendientes = Set(acuses.filter { $0.resultado == .pendiente }.map(\.id))
         guard let viejo = eventos.filter({ pendientes.contains($0.id) }).min(by: { $0.creado < $1.creado }) else {
             motor.relojEsperando = nil

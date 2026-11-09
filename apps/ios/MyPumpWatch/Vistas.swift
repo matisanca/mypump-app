@@ -398,7 +398,8 @@ struct EjercicioVista: View {
                                   isHapticFeedbackEnabled: true)
             .onChange(of: corona) { viejo, nuevo in
                 let d = Int(nuevo.rounded()) - Int(viejo.rounded())
-                guard d != 0 else { return }
+                // Con este ejercicio ya hecho la sesión pasó al siguiente: girar acá cambiaría una serie que no se ve.
+                guard d != 0, e.proximaSerie != nil, estado.sesion.lugar == lugar else { return }
                 if foco == .reps || e.sinKg { estado.girarReps(d) } else { estado.girarKg(d) }
             }
             .onAppear {
