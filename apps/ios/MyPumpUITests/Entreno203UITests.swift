@@ -99,7 +99,8 @@ final class Entreno203UITests: XCTestCase {
         app.fijarCarga("62,5")
         XCTAssertTrue(app.buttons["preparacion-2"].label.contains("37,5 kilos"), app.buttons["preparacion-2"].label)
 
-        // E3: confirmar 62,5 × 10 contra 60 × 10 de la última vez.
+        // E3: confirmar 62,5 × 10 contra 60 × 10 de la última vez. Con otra carga la base es la del plan.
+        app.fijarReps(10)
         app.darOK()
         let aviso = app.descendants(matching: .any)["aviso-record"]
         XCTAssertTrue(aviso.waitForExistence(timeout: 5), "No avisó el récord")

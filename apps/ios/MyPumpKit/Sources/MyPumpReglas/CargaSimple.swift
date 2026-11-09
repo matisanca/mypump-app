@@ -140,6 +140,8 @@ public struct CargaSimple: Equatable, Sendable {
         /// El cliente movió las reps: lo que marcó no se pisa con la base (lo mismo que «lo girado no se pisa» del reloj).
         public var tocada = false
         public var variante: String?
+        /// Hecha con el ejercicio anterior a una sustitución: no es de este ejercicio y la carga única nunca la toca.
+        public var ajena = false
     }
 
     public enum Aumento: Equatable, Sendable, Codable {
@@ -172,6 +174,8 @@ public struct CargaSimple: Equatable, Sendable {
         public var cargaCambioDesdeOK = false
         /// ms del último OK (para la guardia).
         public var ultimoOK: Double?
+        /// De qué ejercicio es (el lugar no alcanza: una sustitución lo conserva). nil en lo guardado antes de esto.
+        public var clave: String?
         public init() {}
     }
 
@@ -303,7 +307,7 @@ public struct CargaSimple: Equatable, Sendable {
     /// Las ya hechas con otro peso que la carga actual.
     public var hechasConOtraCarga: Int {
         guard mismoPeso, cargaCambioDesdeOK, let c = carga else { return 0 }
-        return series.filter { $0.confirmada && $0.kg != c && $0.variante == varianteActual }.count
+        return series.filter { $0.confirmada && !$0.ajena && $0.kg != c && $0.variante == varianteActual }.count
     }
 
     /// La vez pasada no fueron todas con el mismo peso.
@@ -336,7 +340,7 @@ public struct CargaSimple: Equatable, Sendable {
         guard mismoPeso, cargaCambioDesdeOK, let c = carga else { return [] }
         var tocadas: [Int] = []
         cargaCambioDesdeOK = false
-        for i in series.indices where series[i].confirmada && series[i].kg != c && series[i].variante == varianteActual {
+        for i in series.indices where series[i].confirmada && !series[i].ajena && series[i].kg != c && series[i].variante == varianteActual {
             series[i].kg = c
             tocadas.append(i)
         }

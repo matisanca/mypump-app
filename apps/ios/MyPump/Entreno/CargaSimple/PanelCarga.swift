@@ -63,7 +63,13 @@ struct PanelCarga: View {
         let enGuardia = motor.guardia.serie == i && motor.guardia.desde != nil
         return VStack(spacing: Espacio.xs) {
             HStack {
-                Text("Serie \(i + 1) de \(s.series.count)").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                // El récord entra en el renglón del título: la tarjeta puede estar fuera de vista y el panel no cambia de alto.
+                if let a = motor.avisoRecord, a.lugar == lugar {
+                    Label(a.texto, systemImage: "trophy.fill").labelStyle(EtiquetaCompacta()).font(.subheadline.weight(.bold))
+                        .foregroundStyle(Color.record).accessibilityIdentifier("aviso-record-panel")
+                } else {
+                    Text("Serie \(i + 1) de \(s.series.count)").font(.subheadline.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                }
                 Spacer()
                 DescansoChip(motor: motor)
             }

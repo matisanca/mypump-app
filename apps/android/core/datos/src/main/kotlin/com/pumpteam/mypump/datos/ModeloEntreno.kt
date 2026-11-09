@@ -1553,7 +1553,7 @@ class ModeloEntreno(
     )
 
     /** Lo que se escribe y sale recién cuando vence la ventana de Deshacer. */
-    private fun seDemora(e: DiaEnCurso.Efecto): Boolean = e is DiaEnCurso.Efecto.Encolar || e == DiaEnCurso.Efecto.DiaCompleto
+    private fun seDemora(e: DiaEnCurso.Efecto): Boolean = e is DiaEnCurso.Efecto.Encolar || e == DiaEnCurso.Efecto.AsegurarSesion || e == DiaEnCurso.Efecto.DiaCompleto
 
     /** El contexto del lugar: el ejercicio que se hace, su equipo real, el mensaje de la semana y hoy. */
     private fun contextoCarga(lugar: String): ContextoCarga? {

@@ -23,6 +23,16 @@ struct RelojModeloTests {
         ev(.serie(diaId: dia, semana: semana, lugar: lugar, indice: i, reps: reps, kg: kg), t, cuenta: cuenta, rutina: rutina)
     }
 
+    @Test func laSerieDelRelojGuardaLaCargaYNoOfreceCambiarLasHechas() async throws {
+        let b = Banco()
+        let m = b.modelo()
+        let receptor = ReceptorReloj(disco: b.disco)
+        _ = await receptor.recibir([ev(.serie(diaId: "d1", semana: 5, lugar: "jal-d1-0", indice: 0, reps: 9, kg: 62.5))], motor: m)
+        let c = try #require(m.cargaSimple("jal-d1-0"))
+        #expect(c.carga == 62.5)
+        #expect(c.hechasConOtraCarga == 0)
+    }
+
     @Test func laRutinaDelRelojEsLaDelDia() throws {
         let b = Banco()
         let m = b.modelo()

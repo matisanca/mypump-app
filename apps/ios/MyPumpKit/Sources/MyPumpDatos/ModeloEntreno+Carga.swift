@@ -9,7 +9,7 @@ extension ModeloEntreno {
     /// Lo que se escribe y sale recién cuando vence la ventana de Deshacer.
     static func seDemora(_ e: DiaEnCurso.Efecto) -> Bool {
         switch e {
-        case .encolar, .diaCompleto: return true
+        case .encolar, .diaCompleto, .asegurarSesion: return true
         default: return false
         }
     }
@@ -110,6 +110,10 @@ extension ModeloEntreno {
             return .guardia
         case .lista(let reps, let kg):
             guardia.limpiar()
+            // Dos toques no pueden cruzarse en la espera de la cola: el segundo pisaría la ventana del primero.
+            guard !okEnCurso else { return .guardia }
+            okEnCurso = true
+            defer { okEnCurso = false }
             await vaciarDeshacer()
             let e = dia.ejercicios[lugar]
             let foto = FotoOK(id: UUID(), lugar: lugar, indice: idx, ejercicio: e, estado: dia.estados[lugar], meta: dia.meta[lugar],
@@ -172,8 +176,23 @@ extension ModeloEntreno {
         fotoOK = nil
         deshacible = nil
         let c = await ejecutar(f.diferidos)
-        disco?.borrar(Archivo.okDemorado)
+        // Si mientras tanto entró otro OK, el archivo ya es el suyo.
+        if fotoOK == nil { disco?.borrar(Archivo.okDemorado) }
         if let c { diaCompletado = c }
+    }
+
+    /// Cierra la ventana cuando la rutina cambia: restaurar el ejercicio viejo sobre el día nuevo estaría mal. Lo anotado
+    /// igual sale.
+    func soltarDeshacer() {
+        guard let f = fotoOK else { return }
+        fotoOK = nil
+        deshacible = nil
+        let escrituras = f.diferidos.filter { if case .encolar = $0 { true } else { false } }
+        Task { [weak self] in
+            guard let self else { return }
+            await self.ejecutar(escrituras)
+            if self.fotoOK == nil { self.disco?.borrar(Archivo.okDemorado) }
+        }
     }
 
     func guardarOKDemorado(_ f: FotoOK) {

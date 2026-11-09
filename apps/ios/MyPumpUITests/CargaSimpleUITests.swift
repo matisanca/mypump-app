@@ -75,6 +75,7 @@ final class CargaSimpleUITests: XCTestCase {
         lanzar()
         app.darOK()
         espera("label CONTAINS 'hecha'", app.filaSerie(1))
+        app.traerArribaDelPanel(app.filaSerie(1))
         app.filaSerie(1).tap()
         XCTAssertTrue(app.buttons["correccion-guardar"].waitForExistence(timeout: 3), "No abrió la corrección")
         XCTAssertTrue(etiqueta(1).contains("hecha"), "Tocar una serie hecha la desmarcó")

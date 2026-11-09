@@ -156,6 +156,18 @@ abstract class PruebaUi {
     /** La carga única del ejercicio (sin pasar por el teclado: con el teclado arriba el panel se esconde). */
     protected fun fijarCarga(texto: String) = p.escribir(etiqueta("carga-valor"), texto)
 
+    /** Lleva el dial a [n] con el − y el +. */
+    protected fun fijarReps(n: Int) {
+        val ok = etiqueta("ok-serie")
+        repeat(40) {
+            val actual = Regex("""registrar (\d+)""").find(p.descripcion(ok))?.groupValues?.get(1)?.toInt() ?: 0
+            if (actual == n) return
+            p.tocar(etiqueta(if (actual < n) "reps-mas" else "reps-menos"))
+            p.quieto(100)
+        }
+        throw AssertionError("El dial no llegó a $n")
+    }
+
     /** La serie ya quedó hecha (lo dice su fila). */
     protected fun esperarHecha(n: Int) = p.esperar("la serie $n hecha") { p.descripcion(etiqueta("fila-serie-$n")).contains("hecha").takeIf { it } }
 

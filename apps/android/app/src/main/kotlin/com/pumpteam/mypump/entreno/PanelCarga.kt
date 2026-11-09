@@ -53,6 +53,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -171,12 +173,29 @@ private fun Activa(motor: ModeloEntreno, lugar: String, i: Int, s: CargaSimple, 
         motor.limpiarGuardia()
     }
 
+    // El récord entra en el renglón del título: la tarjeta puede estar fuera de vista y el panel no cambia de alto.
+    val record by motor.avisoRecord.collectAsStateWithLifecycle()
+    val recordAca = record?.takeIf { it.lugar == lugar }
+    LaunchedEffect(recordAca?.id) {
+        val id = recordAca?.id ?: return@LaunchedEffect
+        delay(3000)
+        motor.descartarRecord(id)
+    }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            "Serie ${i + 1} de ${s.series.size}",
-            style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold),
-            modifier = Modifier.weight(1f).semantics { heading() },
-        )
+        if (recordAca != null) {
+            Text(
+                recordAca.texto,
+                style = Letras.subtitulo.copy(fontWeight = FontWeight.Bold),
+                color = MyPump.colores.marcaTexto,
+                modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }.testTag("aviso-record-panel"),
+            )
+        } else {
+            Text(
+                "Serie ${i + 1} de ${s.series.size}",
+                style = Letras.subtitulo.copy(fontWeight = FontWeight.SemiBold),
+                modifier = Modifier.weight(1f).semantics { heading() },
+            )
+        }
         DescansoChip(motor)
     }
     DialReps(reps, s.diferencia(i), textoReferencia(i, s)) { delta ->

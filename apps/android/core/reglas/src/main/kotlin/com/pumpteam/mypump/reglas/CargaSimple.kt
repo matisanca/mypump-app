@@ -163,6 +163,8 @@ class CargaSimple(
         /** El cliente movió las reps: lo que marcó no se pisa con la base (lo mismo que «lo girado no se pisa» del reloj). */
         val tocada: Boolean = false,
         val variante: String? = null,
+        /** Hecha con el ejercicio anterior a una sustitución: no es de este ejercicio y la carga única nunca la toca. */
+        val ajena: Boolean = false,
     )
 
     sealed interface Aumento {
@@ -198,6 +200,8 @@ class CargaSimple(
         val cargaCambioDesdeOK: Boolean = false,
         /** ms del último OK (para la guardia). */
         val ultimoOK: Double? = null,
+        /** De qué ejercicio es (el lugar no alcanza: una sustitución lo conserva). null en lo guardado antes de esto. */
+        val clave: String? = null,
     ) {
         fun aValor(): ValorJson = ValorJson.Objeto(
             buildMap {
@@ -209,6 +213,7 @@ class CargaSimple(
                 put("kilos", ValorJson.Objeto(kilos.entries.associate { it.key.toString() to ValorJson.Numero(it.value) }))
                 put("cargaCambioDesdeOK", ValorJson.Booleano(cargaCambioDesdeOK))
                 ultimoOK?.let { put("ultimoOK", ValorJson.Numero(it)) }
+                clave?.let { put("clave", ValorJson.Texto(it)) }
             },
         )
 
@@ -247,6 +252,7 @@ class CargaSimple(
                 kilos = enteros(v["kilos"]),
                 cargaCambioDesdeOK = (v["cargaCambioDesdeOK"] as? ValorJson.Booleano)?.valor ?: false,
                 ultimoOK = v["ultimoOK"]?.comoNumero,
+                clave = v["clave"]?.comoTexto,
             )
         }
     }
@@ -372,7 +378,7 @@ class CargaSimple(
         get() {
             val c = carga
             if (!mismoPeso || !cargaCambioDesdeOK || c == null) return 0
-            return series.count { it.confirmada && it.kg != c && it.variante == varianteActual }
+            return series.count { it.confirmada && !it.ajena && it.kg != c && it.variante == varianteActual }
         }
 
     /** La vez pasada no fueron todas con el mismo peso. */
@@ -404,12 +410,16 @@ class CargaSimple(
         fijarCarga(AumentoCarga.mover(c, pasos, equipo))
     }
 
+    internal fun marcarAjenas(indices: Set<Int>) {
+        series = series.mapIndexed { i, x -> if (i in indices) x.copy(ajena = true) else x }
+    }
+
     /** La corrección de «me olvidé de cambiarla antes de empezar»: pasa las hechas a la carga actual. Devuelve cuáles. */
     fun aplicarCargaALasHechas(): List<Int> {
         val c = carga
         if (!mismoPeso || !cargaCambioDesdeOK || c == null) return emptyList()
         cargaCambioDesdeOK = false
-        val tocadas = series.indices.filter { series[it].confirmada && series[it].kg != c && series[it].variante == varianteActual }
+        val tocadas = series.indices.filter { series[it].confirmada && !series[it].ajena && series[it].kg != c && series[it].variante == varianteActual }
         series = series.mapIndexed { i, s -> if (i in tocadas) s.copy(kg = c) else s }
         return tocadas
     }

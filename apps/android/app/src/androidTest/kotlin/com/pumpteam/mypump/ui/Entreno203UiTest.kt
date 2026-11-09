@@ -148,18 +148,20 @@ class Entreno203UiTest : PruebaUi() {
         rutinaConHistorial()
         assertEquals(listOf("Al fallo"), p.textosBajo(etiqueta("leyenda-rir")))
         fijarCarga("62,5")
+        // Con otra carga la base es la del plan: para el récord (más kilo con las mismas reps) tienen que ser las 10.
+        fijarReps(10)
         darOK()
-        p.esperar("el aviso de récord") { p.textosBajo(etiqueta("aviso-record")).contains("Récord: +2,5 kg") }
+        p.esperar("el aviso de récord") { p.textosBajo(etiqueta("aviso-record-panel")).contains("Récord: +2,5 kg") }
         Telefono.captura("203-record-aviso")
         val carga = p.esperar("la serie en el servidor") { servidor.a("mypump_registrar_carga").firstOrNull() }
         assertTrue(carga, carga.contains("\"p_peso\":62.5") && carga.contains("\"p_rir\":0"))
         // Se va solo.
-        p.esperarQueNoEste(etiqueta("aviso-record"), ms = 8_000)
+        p.esperarQueNoEste(etiqueta("aviso-record-panel"), ms = 8_000)
         // La segunda con el mismo peso y las mismas reps: ya avisado, no se repite.
         p.tocar(etiqueta("saltar-descanso"))
         darOK()
         p.esperar("2 de 3") { p.textosBajo(etiqueta("series-confirmadas")) == listOf("2 de 3") }
-        assertTrue("no se repite", !p.existe(etiqueta("aviso-record")))
+        assertTrue("no se repite", !p.existe(etiqueta("aviso-record-panel")))
     }
 
     /** E2: elegir 2:15 para este ejercicio; es el que arranca al confirmar, y «Volver al del plan» deja el 2:00. */

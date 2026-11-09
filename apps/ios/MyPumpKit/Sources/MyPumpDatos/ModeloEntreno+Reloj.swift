@@ -182,6 +182,8 @@ extension ModeloEntreno {
                 inicioSesion = ec.creado
                 guardarInicio()
             }
+            // Deshacer restaura el ejercicio entero: una serie del reloj no puede entrar con una ventana abierta.
+            await vaciarDeshacer()
             escribir(lugar, i, campo: "reps", valor: String(reps))
             if let kg {
                 escribir(lugar, i, campo: "kg", valor: JS.texto(kg))
@@ -192,6 +194,8 @@ extension ModeloEntreno {
             }
             // Lo confirmó en el reloj: «¿está bien cargado?» y «reabrir el día» se contestan que sí.
             await confirmarSerie(lugar, i, delReloj: min(ec.creado, ahoraMs)) { _ in true }
+            // Como el OK del teléfono: la carga queda guardada y lo confirmado no ofrece «cambiarlas también».
+            if dia.ejercicios[lugar]?.series[i].confirmada == true { cambiarCarga(lugar) { $0.anotarOK(ahora: min(ec.creado, ahoraMs)) } }
             return dia.ejercicios[lugar]?.series[i].confirmada == true ? r(.aplicado) : r(.rechazado, "el iPhone no la pudo registrar.")
         case .terminar:
             // Sin nada hecho no hay qué cerrar; con algo hecho (aunque la sesión todavía no exista: sin red) se intenta.

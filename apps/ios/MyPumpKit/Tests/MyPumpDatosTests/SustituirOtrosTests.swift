@@ -58,6 +58,29 @@ struct SustituirOtrosTests {
         #expect(m.tarjeta("inv-d1-3")?.puedeSustituir == false)
     }
 
+    /// Revisión de la carga simple: tras sustituir, «Cambiarlas también» grababa con el peso nuevo las series del ejercicio
+    /// anterior, y la carga guardada pasaba al sustituto.
+    @Test func laCargaDelEjercicioAnteriorNoPasaAlSustitutoNiLasHechasSeReescriben() async throws {
+        let b = Banco()
+        let m = modeloOtros(b)
+        let lugar = "ext-d1-0"
+        m.cambiarCarga(lugar) { $0.fijarCarga(30) }
+        for i in 0..<2 {
+            m.escribir(lugar, i, campo: "reps", valor: "12")
+            m.escribir(lugar, i, campo: "kg", valor: "30")
+            await m.confirmarSerie(lugar, i) { _ in true }
+        }
+        let otro = try #require(m.otrosDelMismoMusculo(lugar).first { $0.nombre.hasPrefix("Patada") })
+        await m.sustituir(lugar, por: otro, fijar: false)
+        #expect(m.cargaSimple(lugar)?.carga != 30, "la carga de la polea no es la de la patada")
+        m.cambiarCarga(lugar) { $0.fijarCarga(8) }
+        #expect(m.cargaSimple(lugar)?.hechasConOtraCarga == 0, "las hechas son de otro ejercicio")
+        let antes = await b.cola.operaciones.count
+        await m.aplicarCargaALasHechas(lugar)
+        #expect(await b.cola.operaciones.count == antes)
+        #expect(m.dia.ejercicios[lugar]?.series[0].kg == "30")
+    }
+
     /// Hallazgo 2: al cambiar de movimiento a mitad del ejercicio, el kg y el agarre del plan pasaban al sustituto. La
     /// extensión en polea con Soga, 2 series de 30 kg × 12, y después «Fondos · Peso corporal»: la serie 3 sugería 30 kg y
     /// se grababa {ejercicioNombre: "Fondos", peso: 30, notas: "Soga"} (récord e historial de fondos sucios).

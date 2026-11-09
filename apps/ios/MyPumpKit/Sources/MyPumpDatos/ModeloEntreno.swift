@@ -116,6 +116,7 @@ public final class ModeloEntreno {
     public internal(set) var corrigiendo: SerieEnCorreccion?
     public internal(set) var guardia = GuardiaOK()
     /// El día se completó con un OK cuya ventana venció después (no hay callback): la pantalla lo muestra y lo limpia.
+    var okEnCurso = false
     public var diaCompletado: DiaCompletado?
     @ObservationIgnored var diaCompletadoMostrado = false
     /// Había un día guardado en este teléfono al arrancar (si no, el del almacenamiento viejo puede ganar).
@@ -183,6 +184,7 @@ public final class ModeloEntreno {
     /// que estaba corriendo, trae el historial del día, restaura la sesión del día (confirmándola con el servidor), los
     /// días completados de la semana y los comentarios.
     public func cargar() async {
+        await vaciarDeshacer()
         await recuperarDeshacerGuardado()
         // Lo que se cambió y no llegó a la cola (la app se cerró en el medio), antes de leer el servidor.
         encolarSustituciones()
@@ -940,6 +942,7 @@ public final class ModeloEntreno {
 
     /// Una rutina nueva (la trajo este modelo o `ModeloApp`): todo lo del día se arma de cero.
     public func reemplazarRutina(_ nueva: RutinaActiva) {
+        soltarDeshacer()
         historialEnVuelo.values.forEach { $0.cancel() }
         historialEnVuelo = [:]
         historialCargando = []
@@ -1133,6 +1136,7 @@ public final class ModeloEntreno {
                 s, SustitucionesServidor.horaDeUnCambio(ahoraMs + desfaseReloj, reemplaza: previa, piso: pisoPorClave[lugar] ?? 0))
         }
         await ejecutar(efectos)
+        guardarCargas()
     }
 
     /// "Volver a …"
@@ -1141,6 +1145,7 @@ public final class ModeloEntreno {
         pisoPorClave[lugar] = max(pisoPorClave[lugar] ?? 0, SustitucionesServidor.ts(dia.sustituciones[lugar]))
         invalidarHistorial(lugar)
         await ejecutar(dia.revertir(lugar))
+        guardarCargas()
     }
 
     /// `pruneExerciseSwaps` (SER-12): las no fijadas de otra semana o de un día cerrado se van.

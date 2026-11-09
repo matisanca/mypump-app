@@ -65,6 +65,26 @@ class SustituirOtrosTest {
         assertFalse(m.tarjeta("inv-d1-3")!!.puedeSustituir)
     }
 
+    /** Revisión de la carga simple: tras sustituir, «Cambiarlas también» grababa con el peso nuevo las series del ejercicio anterior. */
+    @Test
+    fun laCargaDelEjercicioAnteriorNoPasaAlSustitutoNiLasHechasSeReescriben() = enUnHilo { alcance ->
+        val b = Banco(alcance)
+        val m = b.modeloOtros(alcance)
+        val lugar = "ext-d1-0"
+        m.cambiarCarga(lugar) { it.fijarCarga(30.0) }
+        for (i in 0 until 2) {
+            m.escribir(lugar, i, "reps", "12")
+            m.escribir(lugar, i, "kg", "30")
+            m.confirmarSerie(lugar, i) { true }
+        }
+        val otro = m.otrosDelMismoMusculo(lugar).first { it.nombre.startsWith("Patada") }
+        m.sustituir(lugar, otro, fijar = false)
+        assertTrue(m.cargaSimple(lugar)?.carga != 30.0, "la carga de la polea no es la de la patada")
+        m.cambiarCarga(lugar) { it.fijarCarga(8.0) }
+        assertEquals(0, m.cargaSimple(lugar)?.hechasConOtraCarga, "las hechas son de otro ejercicio")
+        assertEquals("30", m.dia.value.ejercicios[lugar]?.series?.get(0)?.kg)
+    }
+
     /**
      * Hallazgo 2: al cambiar de movimiento a mitad del ejercicio, el kg y el agarre del plan pasaban al sustituto. La
      * extensión en polea con Soga, 2 series de 30 kg × 12, y después «Fondos · Peso corporal»: la serie 3 sugería 30 kg y se

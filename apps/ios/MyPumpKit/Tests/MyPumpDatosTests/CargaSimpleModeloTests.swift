@@ -35,6 +35,15 @@ struct CargaSimpleModeloTests {
 
     func ok(_ m: ModeloEntreno, _ i: Int) async -> ModeloEntreno.ResultadoOK { await m.okSerie(lugar, i, venceEn: nil) { _ in true } }
 
+    @Test func recargarConLaVentanaAbiertaLaCierraYNoDejaUnDeshacerFalso() async {
+        let b = Banco(); historial(b)
+        let m = await modelo(b)
+        #expect(await ok(m, 0) == .registrada)
+        await m.cargar()
+        #expect(m.deshacible == nil, "la serie ya salió: Deshacer no puede seguir ofrecido")
+        #expect(await cargasEnCola(b).count == 1)
+    }
+
     @Test func okDentroDeLaVentanaNoSaleHastaQueVence() async {
         let b = Banco(); historial(b)
         let m = await modelo(b)

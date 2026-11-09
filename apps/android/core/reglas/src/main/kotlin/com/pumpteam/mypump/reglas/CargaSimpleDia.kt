@@ -38,9 +38,13 @@ fun DiaEnCurso.cargaSimple(id: String, c: ContextoCarga): CargaSimple? {
     fun armar(estado: CargaSimple.Estado?): CargaSimple = CargaSimple(
         c.efectivo, semana, refs, c.equipo, sinKg, HistorialEntreno.recordKg(h), mensajeSemana = c.mensajeSemana, seriesLocales = e.series,
         estado = estado, yaAumentadoEstaSemana = claveAumento(id) in aumentosSemana,
-    ).also { it.varianteActual = if (variantesVisibles(id) == null) null else Js.verdadero(e.variante) }
+    ).also { s ->
+        s.varianteActual = if (variantesVisibles(id) == null) null else Js.verdadero(e.variante)
+        s.marcarAjenas(e.series.indices.filter { !esDelEjercicioActual(id, e.series[it]) }.toSet())
+    }
 
-    var estado = cargas[id] ?: return armar(null)
+    // La carga guardada de otro ejercicio (sustituido acá, en otro teléfono o republicado) no vale para este.
+    var estado = cargas[id]?.takeIf { it.clave == null || it.clave == ClaveEjercicio.de(nombreEfectivo(id)) } ?: return armar(null)
     // Se tocó algo antes de que llegara el historial (sin base): cuando llega, la carga no puede quedar vacía.
     if (estado.carga == null && estado.cargaUltimaVez == null && estado.aumento == CargaSimple.Aumento.NoCorresponde) {
         val base = armar(null)
@@ -53,7 +57,7 @@ fun DiaEnCurso.cargaSimple(id: String, c: ContextoCarga): CargaSimple? {
 fun DiaEnCurso.cambiarCarga(id: String, c: ContextoCarga, accion: (CargaSimple) -> Unit) {
     val s = cargaSimple(id, c) ?: return
     accion(s)
-    cargas = cargas + (id to s.estado)
+    cargas = cargas + (id to s.estado.copy(clave = ClaveEjercicio.de(nombreEfectivo(id))))
     if (s.aumento is CargaSimple.Aumento.Aceptado || s.aumento == CargaSimple.Aumento.Descartado) aumentosSemana = aumentosSemana + claveAumento(id)
 }
 

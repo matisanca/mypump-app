@@ -30,9 +30,11 @@ extension DiaEnCurso {
                                 recordKg: HistorialEntreno.recordKg(h), mensajeSemana: c.mensajeSemana, seriesLocales: e.series,
                                 estado: estado, yaAumentadoEstaSemana: aumentosSemana.contains(claveAumento(id)))
             s.varianteActual = variantesVisibles(id) == nil ? nil : JS.verdadero(e.variante)
+            for i in s.series.indices where i < e.series.count && !esDelEjercicioActual(id, e.series[i]) { s.series[i].ajena = true }
             return s
         }
-        guard var estado = cargas[id] else { return armar(nil) }
+        // La carga guardada de otro ejercicio (sustituido acá, en otro teléfono o republicado) no vale para este.
+        guard var estado = cargas[id], estado.clave == nil || estado.clave == ClaveEjercicio.de(nombreEfectivo(id)) else { return armar(nil) }
         // Se tocó algo antes de que llegara el historial (sin base): cuando llega, la carga no puede quedar vacía.
         if estado.carga == nil, estado.cargaUltimaVez == nil, estado.aumento == .noCorresponde {
             let base = armar(nil)
@@ -47,7 +49,9 @@ extension DiaEnCurso {
     public mutating func cambiarCarga(_ id: String, contexto c: ContextoCarga, _ accion: (inout CargaSimple) -> Void) {
         guard var s = cargaSimple(id, contexto: c) else { return }
         accion(&s)
-        cargas[id] = s.estado
+        var nuevo = s.estado
+        nuevo.clave = ClaveEjercicio.de(nombreEfectivo(id))
+        cargas[id] = nuevo
         switch s.aumento {
         case .aceptado, .descartado: aumentosSemana.insert(claveAumento(id))
         default: break
