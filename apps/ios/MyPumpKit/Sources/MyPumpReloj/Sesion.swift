@@ -164,6 +164,7 @@ public struct SesionReloj: Codable, Equatable, Sendable {
                 r.ejercicios[e].series[i].confirmada = true
                 r.ejercicios[e].series[i].reps = reps
                 r.ejercicios[e].series[i].kg = kg
+                Self.arrastrarCarga(&r.ejercicios[e], desde: i, kg: kg)
                 Self.actualizarEstado(&r.ejercicios[e])
             }
         }
@@ -282,6 +283,17 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         public var siguiente: String?
     }
 
+    /// La carga es una sola por ejercicio, como en el teléfono: lo que se confirmó es lo que proponen las que faltan. Si
+    /// cambió, las reps de la vez pasada ya no describen esa carga y vuelve a mandar el plan.
+    static func arrastrarCarga(_ e: inout EjercicioReloj, desde hecha: Int, kg: Double?) {
+        guard let kg, e.pesoPorSerie != true else { return }
+        let plan = ReglasEjercicio.repsDelPlan(e.repsPlan).map { Int($0) }
+        for i in e.series.indices where i > hecha && !e.series[i].confirmada {
+            if e.series[i].kgSugerido != kg, let plan { e.series[i].repsSugeridas = plan }
+            e.series[i].kgSugerido = kg
+        }
+    }
+
     /// Confirma la próxima serie del lugar con lo que marca la corona: la marca hecha, la pone en la cola (con
     /// «iniciar» antes si la sesión no había empezado, como el teléfono con la primera serie), avisa el récord y arranca
     /// el descanso. nil si no hay nada para confirmar.
@@ -302,6 +314,7 @@ public struct SesionReloj: Codable, Equatable, Sendable {
         e.series[si].confirmada = true
         e.series[si].reps = reps
         e.series[si].kg = kgSerie
+        Self.arrastrarCarga(&e, desde: si, kg: kgSerie)
         Self.actualizarEstado(&e)
         r.ejercicios[ei] = e
         rutina = r

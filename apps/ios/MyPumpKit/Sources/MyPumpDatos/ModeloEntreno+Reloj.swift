@@ -39,6 +39,7 @@ extension ModeloEntreno {
                 historiaSuficiente: RecordSerie.historiaSuficiente(historial, hoy: hoy, zona: zona))
             e.patron = patron(plan)
             e.leyendaRIR = leyendaRIR(lugar)
+            e.pesoPorSerie = carga?.mismoPeso == false ? true : nil
             return e
         }
         var r = RutinaReloj(cuenta: cuentaReloj, rutinaId: rutina.id, diaId: dia.dia.id ?? "", semana: semana, nombreDia: dia.dia.nombre ?? "",

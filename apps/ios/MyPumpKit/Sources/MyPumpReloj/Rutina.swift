@@ -103,6 +103,9 @@ public struct EjercicioReloj: Codable, Equatable, Sendable {
     public var sinPeso: Bool
     /// La preparación del plan (`aproximaciones`), si la trae; nil = la arma la app.
     public var aproximacionesPlan: [AproximacionReloj]?
+    /// La carga simple destildada en el teléfono: cada serie lleva su peso y el reloj no lo arrastra a las que faltan.
+    /// Opcional para que lo lea un reloj o un teléfono de la versión anterior.
+    public var pesoPorSerie: Bool?
     /// El descanso en segundos (el elegido a mano, si hay, o el del plan).
     public var descansoSegundos: Int
     /// "8-10"

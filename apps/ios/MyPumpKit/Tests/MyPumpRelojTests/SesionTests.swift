@@ -140,11 +140,9 @@ func sesionDemo() -> SesionReloj {
         #expect(c.record == "Récord: +2,5 kg")
         #expect(s.records == ["Press banca · Récord: +2,5 kg"])
         // La serie de hoy es el piso: 82,5 otra vez no vuelve a avisar; con una rep más, sí.
-        #expect(s.kg == 80, "la serie 2 arranca en lo sugerido, como en el teléfono")
-        s.girarKg(1)
+        #expect(s.kg == 82.5, "carga única: la serie 2 sigue con el kilo confirmado")
         let r12 = s.confirmar(ahora: T0 + 1)
         #expect(r12?.record == nil)
-        s.girarKg(1)
         s.girarReps(1)
         let r13 = s.confirmar(ahora: T0 + 2)
         #expect(r13?.record == "Récord: +1 rep")
@@ -260,6 +258,31 @@ func sesionDemo() -> SesionReloj {
         #expect(s.kg == kgGirado, "el kg girado no se pisa")
         s.elegir("press-banca-d1-0")
         #expect(s.reps == repsGiradas, "volver a entrar al ejercicio tampoco las pisa")
+    }
+
+    @Test func elKiloConfirmadoPasaALasSeriesQueFaltan() throws {
+        var s = sesionDemo()
+        s.girarKg(2)
+        let subido = try #require(s.kg)
+        try #require(s.confirmar(ahora: T0) != nil)
+        #expect(s.kg == subido, "el error de producción: la serie 2 volvía al kilo viejo")
+        // Aunque el teléfono mande la rutina antes de procesar la serie.
+        s.recibir(.demo(fecha: HOY, generada: T0 + 5_000))
+        #expect(s.kg == subido)
+        try #require(s.confirmar(ahora: T0 + 90_000) != nil)
+        let e = try #require(s.ejercicio("press-banca-d1-0"))
+        #expect(e.series[1].kg == subido)
+    }
+
+    @Test func conPesoPorSerieElRelojNoArrastraLaCarga() throws {
+        var r = RutinaReloj.demo(fecha: HOY, generada: T0)
+        r.ejercicios[0].pesoPorSerie = true
+        var s = SesionReloj()
+        s.recibir(r)
+        let segunda = r.ejercicios[0].series[1].kgSugerido
+        s.girarKg(2)
+        try #require(s.confirmar(ahora: T0) != nil)
+        #expect(s.kg == segunda)
     }
 
     @Test func alConfirmarLaCoronaVuelveALoSugeridoDeLaSerieSiguiente() throws {
