@@ -2,8 +2,9 @@
 --   1. Cortar, con los endpoints vivos:    nativa_reps_calibracion_revertir_1_cortar.sql
 --   2. Vaciar objetos y filas:             node nativa_reps_calibracion_vaciar.mjs vaciar --confirmar   (sin error = vacío)
 --   3. Sacar las rutas y funciones de mini-vision/server.mjs y reiniciar el servicio.
---   4. Este archivo.
---   5. Borrar el bucket:                   node nativa_reps_calibracion_vaciar.mjs bucket --confirmar
+--   4. Vaciar otra vez, ya sin endpoints:  node nativa_reps_calibracion_vaciar.mjs vaciar --confirmar   (alguien pudo aceptar y subir entre 1 y 3)
+--   5. Este archivo.
+--   6. Borrar el bucket:                   node nativa_reps_calibracion_vaciar.mjs bucket --confirmar
 -- Con esto aplicado la app vuelve a no subir.
 BEGIN;
 DROP FUNCTION IF EXISTS mypump_reps_total_bytes();

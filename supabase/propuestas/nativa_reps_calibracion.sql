@@ -45,15 +45,17 @@ CREATE TABLE IF NOT EXISTS mypump_reps_grabaciones (
   PRIMARY KEY (cliente_id, sesion)
 );
 
+-- Supabase dejó de dar permisos automáticos a las tablas nuevas. Sin esto service_role recibe 42501. anon, nada.
+GRANT SELECT, INSERT, UPDATE, DELETE ON mypump_reps_subida, mypump_reps_grabaciones TO service_role;
+GRANT SELECT ON mypump_reps_subida, mypump_reps_grabaciones TO authenticated;   -- el coach solo lee
+
 ALTER TABLE mypump_reps_subida ENABLE ROW LEVEL SECURITY;
 ALTER TABLE mypump_reps_grabaciones ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "admin all mypump_reps_subida" ON mypump_reps_subida;
-DROP POLICY IF EXISTS "admin all mypump_reps_grabaciones" ON mypump_reps_grabaciones;
-CREATE POLICY "admin all mypump_reps_subida" ON mypump_reps_subida FOR ALL
-  USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "admin all mypump_reps_grabaciones" ON mypump_reps_grabaciones FOR ALL
-  USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "coach lee mypump_reps_subida" ON mypump_reps_subida;
+DROP POLICY IF EXISTS "coach lee mypump_reps_grabaciones" ON mypump_reps_grabaciones;
+CREATE POLICY "coach lee mypump_reps_subida" ON mypump_reps_subida FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "coach lee mypump_reps_grabaciones" ON mypump_reps_grabaciones FOR SELECT USING (auth.role() = 'authenticated');
 
 -- La app: qué puede hacer esta cuenta. NULL = token caído.
 CREATE OR REPLACE FUNCTION mypump_reps_estado(p_token TEXT)
@@ -201,6 +203,11 @@ GRANT EXECUTE ON FUNCTION mypump_reps_total_bytes() TO service_role;
 
 COMMIT;
 
+-- «Escribinos y lo borramos» (quien ya no tiene acceso a la app): a mano, por cuenta; el barrido de mini-vision (hasta 50 cuentas
+-- cada 10 minutos) termina y deja `borrado_pendiente` en FALSE:
+--   INSERT INTO mypump_reps_subida (cliente_id, acepta, borrado_pendiente) VALUES ('<cliente_id>', FALSE, TRUE)
+--   ON CONFLICT (cliente_id) DO UPDATE SET automatica = FALSE, adoptar_sin_marca = FALSE, acepta = FALSE, borrado_pendiente = TRUE, actualizado_en = NOW();
+--
 -- La cuenta automática se habilita aparte, a mano, sin dejar el id en el repo. `adoptar_sin_marca` solo si en ese iPhone
 -- nunca grabó otra cuenta:
 --   INSERT INTO mypump_reps_subida (cliente_id, automatica, adoptar_sin_marca) VALUES ('<cliente_id>', TRUE, TRUE)

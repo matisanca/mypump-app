@@ -35,6 +35,16 @@ enum DatosCalibracion {
     /// no salga queda en el iPhone para la próxima.
     @MainActor static func subirSiCorresponde() {
         let m = Proveedor.modelo
+        // Con el link dado de baja no se sube más, pero revocar sigue valiendo: el servidor lo acepta y lo prometimos.
+        if m.fase == .tokenInvalido, !m.conMuestras, let viejo = m.token ?? UserDefaults.standard.string(forKey: "mypump_token_invalido") {
+            let cuenta = ModeloEntreno.hashCuenta(viejo), cliente = m.cliente
+            guard UserDefaults.standard.bool(forKey: claveRevocarPendiente(cuenta)) else { return }
+            Task.detached(priority: .utility) {
+                guard await cliente.guardarConsentimientoReps(token: viejo, acepta: false, plataforma: "ios", app: nil) else { return }
+                UserDefaults.standard.set(false, forKey: claveRevocarPendiente(cuenta))
+            }
+            return
+        }
         // La cuenta sale del token, no de `entreno`: al cambiar de link los dos están un rato desfasados.
         guard m.fase == .listo, !m.conMuestras, let token = m.token else { return }
         let cuenta = ModeloEntreno.hashCuenta(token)
@@ -54,6 +64,7 @@ enum DatosCalibracion {
                 let marcas = UserDefaults.standard.dictionary(forKey: claveMarcas) as? [String: String] ?? [:]
                 return SubidaGrabaciones.deLaCuenta(urls, cuenta: cuenta, marcas: marcas, prendidas: ModoCalibracion().cuentas, estado: estado)
             }, alHabilitar: { estado in
+                UserDefaults.standard.set(true, forKey: claveSeManda(cuenta))
                 guard estado.automatica else { return }
                 await MainActor.run { prenderAutomatica(cuenta: cuenta) }
             })
@@ -154,14 +165,29 @@ struct CalibracionView: View {
     private func consentir(_ acepta: Bool) {
         guard let token = Proveedor.modelo.token, !guardandoConsentimiento else { return }
         guardandoConsentimiento = true
+        let cuenta = ModeloEntreno.hashCuenta(token)   // revocación y marca, a la cuenta del token que se manda
         Task {
             let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+            // Una revocación que no llegó va primero: aceptar de nuevo no puede saltearse el borrado prometido.
+            if acepta, UserDefaults.standard.bool(forKey: DatosCalibracion.claveRevocarPendiente(cuenta)) {
+                guard await Proveedor.modelo.cliente.guardarConsentimientoReps(token: token, acepta: false, plataforma: "ios", app: version) else {
+                    guardandoConsentimiento = false
+                    errorConsentimiento = true
+                    return
+                }
+                UserDefaults.standard.set(false, forKey: DatosCalibracion.claveRevocarPendiente(cuenta))
+                await DatosCalibracion.subida.olvidarSubidas()
+            }
+            if !acepta {
+                // Antes de mandar: si la app muere en el camino la revocación sigue en pie, y lo que estaba subiendo se frena ya.
+                UserDefaults.standard.set(true, forKey: DatosCalibracion.claveRevocarPendiente(cuenta))
+                await DatosCalibracion.subida.olvidarSubidas()
+            }
             let ok = await Proveedor.modelo.cliente.guardarConsentimientoReps(token: token, acepta: acepta, plataforma: "ios", app: version)
             guardandoConsentimiento = false
             guard ok else {
                 if acepta { errorConsentimiento = true; return }
                 // Revocar no se pierde por falta de red: se apaga acá y se reintenta antes de cualquier subida.
-                UserDefaults.standard.set(true, forKey: DatosCalibracion.claveRevocarPendiente(cuenta))
                 subidaEstado?.acepta = false
                 UserDefaults.standard.set(false, forKey: DatosCalibracion.claveSeManda(cuenta))
                 return

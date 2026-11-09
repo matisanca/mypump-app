@@ -89,6 +89,14 @@ import MyPumpModelos
         #expect(await subir(t, [archivo("2026-11-07-s6-a"), archivo("2026-11-08-s6-b")]) == 1)
     }
 
+    @Test func unArchivoQueNoEntraEnElTopeNoFrenaALosDemas() async {
+        let t = TransporteProgramado { fn, cuerpo in
+            if fn == "mypump_reps_estado" { return (200, #"{"automatica":true,"acepta":null}"#) }
+            return cuerpo["sesion"] == .texto("2026-11-07-s6-a") ? (413, #"{"ok":false}"#) : (200, #"{"ok":true}"#)
+        }
+        #expect(await subir(t, [archivo("2026-11-07-s6-a"), archivo("2026-11-08-s6-b")]) == 1)
+    }
+
     @Test func revocadoEnElServidorNoSigueIntentando() async {
         let t = transporte(subir: (403, #"{"ok":false}"#))
         #expect(await subir(t, [archivo("2026-11-07-s6-a"), archivo("2026-11-08-s6-b")]) == 0)

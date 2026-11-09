@@ -16,6 +16,7 @@ const aqui = dirname(fileURLToPath(import.meta.url));
 const exec = promisify(execFile);
 // Tokens nuevos en cada test: el tope del día vive en la memoria del proceso.
 let TOK_A, TOK_B, TOK_AUTO, TOK_BAJA, corrida = 0;
+const carp = (id) => createHash('sha256').update(`reps:${id}`).digest('hex').slice(0, 32);
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── El doble ──
@@ -82,7 +83,7 @@ function rpc(fn, b) {
     default: throw new Error(`rpc desconocida ${fn}`);
   }
 }
-function listar(prefijo) {
+function listar(prefijo, limit = 100, offset = 0) {
   const p = prefijo.replace(/\/$/, '');
   const nivel = new Map();
   for (const k of db.objetos.keys()) {
@@ -92,7 +93,7 @@ function listar(prefijo) {
     if (i < 0) nivel.set(resto, { name: resto, id: 'obj' });
     else nivel.set(resto.slice(0, i), { name: resto.slice(0, i), id: null });
   }
-  return [...nivel.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...nivel.values()].sort((a, b) => a.name.localeCompare(b.name)).slice(offset, offset + limit);
 }
 const doble = createServer(async (req, res) => {
   const partes = [];
@@ -111,6 +112,10 @@ const doble = createServer(async (req, res) => {
   }
   const json = () => (crudo.length ? JSON.parse(crudo.toString()) : {});
   if (url.pathname.startsWith('/rest/v1/rpc/')) return contestar(200, rpc(url.pathname.split('/').pop(), json()));
+  if (url.pathname === '/rest/v1/mypump_reps_subida' && req.method === 'PATCH') {
+    db.subida.get(url.searchParams.get('cliente_id').replace('eq.', '')).pendiente = json().borrado_pendiente;
+    return contestar(200, []);
+  }
   if (url.pathname === '/rest/v1/mypump_reps_grabaciones') {
     if (req.method === 'GET') return contestar(200, rows(url));
     if (req.method === 'DELETE') {
@@ -124,7 +129,7 @@ const doble = createServer(async (req, res) => {
     db.filas.push(n);
     return contestar(201, []);
   }
-  if (url.pathname === '/storage/v1/object/list/reps-calibracion') return contestar(200, listar(json().prefix ?? ''));
+  if (url.pathname === '/storage/v1/object/list/reps-calibracion') return contestar(200, listar(json().prefix ?? '', json().limit, json().offset));
   if (url.pathname === '/storage/v1/object/reps-calibracion' && req.method === 'DELETE') {
     for (const p of json().prefixes) db.objetos.delete(p);
     return contestar(200, []);
@@ -225,7 +230,7 @@ test('sin consentimiento no sube; con consentimiento sí', async () => {
   await aceptarA();
   const r = await subir(b);
   assert.deepEqual([r.status, r.json], [200, { ok: true }]);
-  assert.deepEqual([...db.objetos.keys()], [`cli-a/2026-11-07-s6-a/${sha(b)}.mpcal`]);
+  assert.deepEqual([...db.objetos.keys()], [`${carp('cli-a')}/2026-11-07-s6-a/${sha(b)}.mpcal`]);
   assert.equal(db.filas[0].cliente_id, 'cli-a');
   assert.deepEqual(db.objetos.values().next().value, b);
 });
@@ -245,7 +250,7 @@ test('idempotente: el mismo hash no reescribe; más chica no reemplaza; más gra
   assert.equal((await subir(mpcal('x'))).json.ya, true);
   const b2 = mpcal('una serie y otra serie');
   assert.equal((await subir(b2)).status, 200);
-  assert.deepEqual([...db.objetos.keys()], [`cli-a/2026-11-07-s6-a/${sha(b2)}.mpcal`]);
+  assert.deepEqual([...db.objetos.keys()], [`${carp('cli-a')}/2026-11-07-s6-a/${sha(b2)}.mpcal`]);
   assert.equal(db.filas.length, 1);
   assert.equal(db.filas[0].sha256, sha(b2));
 });
@@ -333,8 +338,8 @@ for (const [nombre, tipo] of [['corte de red', 'red'], ['503', 503]]) {
     db.fallos[0].patron = { test: (id) => /mypump_reps_puede_subir/.test(id) && ++n >= 2 };
     const r = await subir(b2);
     assert.equal(r.status, 503);
-    assert.ok(db.objetos.has(`cli-a/2026-11-07-s6-a/${sha(b1)}.mpcal`), 'lo anterior no se tocó');
-    assert.ok(db.objetos.has(`cli-a/2026-11-07-s6-a/${sha(b2)}.mpcal`), 'lo nuevo tampoco');
+    assert.ok(db.objetos.has(`${carp('cli-a')}/2026-11-07-s6-a/${sha(b1)}.mpcal`), 'lo anterior no se tocó');
+    assert.ok(db.objetos.has(`${carp('cli-a')}/2026-11-07-s6-a/${sha(b2)}.mpcal`), 'lo nuevo tampoco');
     await salud();
   });
 
@@ -408,21 +413,21 @@ test('revocar borra todo lo de esa cuenta y nada de otra', async () => {
   assert.equal((await subir(mpcal('a2'), TOK_A, 's-2')).status, 200);
   assert.equal((await subir(mpcal('b'), TOK_B, 's-1')).status, 200);
   assert.equal((await consentir(TOK_A, false)).status, 200);
-  assert.deepEqual([...db.objetos.keys()].map((k) => k.split('/')[0]), ['cli-b']);
+  assert.deepEqual([...db.objetos.keys()].map((k) => k.split('/')[0]), [carp('cli-b')]);
   assert.deepEqual(db.filas.map((f) => f.cliente_id), ['cli-b']);
   assert.equal((await subir(mpcal('a3'), TOK_A, 's-3')).status, 403);
 });
 
 test('borra por carpeta también objetos sin fila', async () => {
   await aceptarA();
-  db.objetos.set('cli-a/huerfana/x.mpcal', Buffer.from('MPC1'));
+  db.objetos.set(`${carp('cli-a')}/huerfana/x.mpcal`, Buffer.from('MPC1'));
   assert.equal((await consentir(TOK_A, false)).status, 200);
   assert.equal(db.objetos.size, 0);
 });
 
 test('token dado de baja: puede revocar y se borra, pero no subir ni aceptar', async () => {
   db.subida.set('cli-baja', { automatica: false, acepta: true, pendiente: false });
-  db.objetos.set('cli-baja/s-1/x.mpcal', Buffer.from('MPC1'));
+  db.objetos.set(`${carp('cli-baja')}/s-1/x.mpcal`, Buffer.from('MPC1'));
   db.filas.push({ cliente_id: 'cli-baja', sesion: 's-1', sha256: 'c'.repeat(64), path: 'cli-baja/s-1/x.mpcal', bytes: 4 });
   assert.equal((await subir(mpcal(), TOK_BAJA)).status, 403);
   assert.equal((await consentir(TOK_BAJA, true)).status, 403);
@@ -465,6 +470,34 @@ test('revoca justo después del rechequeo: la revocación ve el archivo y lo bor
   assert.equal(db.filas.length, 0);
 });
 
+test('revocó y no se pudo borrar lo recién subido: la fila queda para el barrido', async () => {
+  await aceptarA();
+  const r = retener(/POST \/storage\/v1\/object\/reps-calibracion\//);
+  const sube = subir(mpcal());
+  await r.llegada;
+  assert.equal((await consentir(TOK_A, false)).status, 200);
+  fallar(/DELETE \/storage\/v1\/object\/reps-calibracion/, 503);
+  r.soltar();
+  assert.equal((await sube).status, 403);
+  assert.equal(db.objetos.size, 1);
+  assert.equal(db.filas.length, 1);
+  assert.deepEqual(rpc('mypump_reps_para_borrar', {}), ['cli-a']);
+});
+
+test('sin registrar, sin poder borrar y ya revocó: queda marcado para el barrido', async () => {
+  await aceptarA();
+  const r = retener(/POST \/storage\/v1\/object\/reps-calibracion\//);
+  const sube = subir(mpcal());
+  await r.llegada;
+  assert.equal((await consentir(TOK_A, false)).status, 200);
+  fallar(/POST \/rest\/v1\/mypump_reps_grabaciones/, 503);
+  fallar(/DELETE \/storage\/v1\/object\/reps-calibracion/, 503);
+  r.soltar();
+  assert.equal((await sube).status, 502);
+  assert.equal(db.subida.get('cli-a').pendiente, true);
+  assert.deepEqual(rpc('mypump_reps_para_borrar', {}), ['cli-a']);
+});
+
 test('rechequeo falla y además revocó: el barrido termina el borrado', async () => {
   await aceptarA();
   const b = mpcal();
@@ -496,6 +529,38 @@ test('se corta el cliente a mitad del cuerpo: no guarda nada', async () => {
   await salud();
 });
 
+test('la carpeta del bucket no lleva el id de la cuenta', async () => {
+  await aceptarA();
+  assert.equal((await subir(mpcal())).status, 200);
+  assert.ok(![...db.objetos.keys()][0].includes('cli-a'));
+});
+
+test('borra con más de una página de sesiones', async () => {
+  await aceptarA();
+  for (let i = 0; i < 230; i++) db.objetos.set(`${carp('cli-a')}/s-${i}/x.mpcal`, Buffer.from('MPC1'));
+  assert.equal((await consentir(TOK_A, false)).status, 200);
+  assert.equal(db.objetos.size, 0);
+});
+
+test('si el cliente se corta mientras se miran los topes, el lugar no queda ocupado', async () => {
+  await aceptarA();
+  const b = mpcal();
+  const r = retener(/GET \/rest\/v1\/mypump_reps_grabaciones/);
+  const q = request({ host: '127.0.0.1', port: puerto, path: '/reps/subir', method: 'POST', agent: false, headers: { ...cab(b), 'content-length': b.length } });
+  q.on('error', () => {});
+  q.flushHeaders();
+  await r.llegada;
+  q.destroy();
+  await espera(60);
+  r.soltar();
+  await espera(60);
+  assert.equal((await subir(b, TOK_A, 's-9')).status, 200);
+});
+
+test('un JSON que no es objeto recibe respuesta', async () => {
+  for (const c of ['null', '0', 'false']) assert.equal((await pedir('/reps/consentimiento', { cuerpo: Buffer.from(c) })).status, 400, c);
+});
+
 // ── El reverso ──
 const script = join(aqui, 'nativa_reps_calibracion_vaciar.mjs');
 const correrScript = (...a) => exec(process.execPath, [script, ...a], { env: { PATH: process.env.PATH, SUPABASE_URL: `http://127.0.0.1:${puertoDoble}`, SUPABASE_SERVICE_KEY: 'clave-de-prueba' } });
@@ -516,8 +581,14 @@ test('el reverso vacía objetos y filas, y el bucket recién vacío', async () =
   assert.equal(db.bucket, false);
 });
 
+test('el reverso pagina con más de cien carpetas', async () => {
+  for (let i = 0; i < 206; i++) db.objetos.set(`c-${i}/s/x.mpcal`, Buffer.from('MPC1'));
+  await correrScript('vaciar', '--confirmar');
+  assert.equal(db.objetos.size, 0);
+});
+
 test('el reverso falla a la vista si Storage no responde', async () => {
-  db.objetos.set('cli-a/s/x.mpcal', Buffer.from('MPC1'));
+  db.objetos.set(`${carp('cli-a')}/s/x.mpcal`, Buffer.from('MPC1'));
   fallar(/DELETE \/storage/, 503);
   await assert.rejects(correrScript('vaciar', '--confirmar'), /HTTP 503/);
   assert.equal(db.objetos.size, 1);
@@ -528,7 +599,7 @@ test('el barrido termina una revocación que quedó a medias', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'reps-barrido-'));
   const p = await libre();
   db.subida.set('cli-a', { automatica: false, acepta: false, pendiente: true });
-  db.objetos.set('cli-a/s/x.mpcal', Buffer.from('MPC1'));
+  db.objetos.set(`${carp('cli-a')}/s/x.mpcal`, Buffer.from('MPC1'));
   db.filas.push({ cliente_id: 'cli-a', sesion: 's', sha256: 'c'.repeat(64), path: 'cli-a/s/x.mpcal', bytes: 4 });
   fallar(/DELETE \/storage/, 503, 1);
   const h = spawn(process.execPath, [armarServidor(dir)], {

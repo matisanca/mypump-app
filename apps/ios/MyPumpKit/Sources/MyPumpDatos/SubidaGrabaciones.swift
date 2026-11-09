@@ -68,7 +68,7 @@ extension ClienteRPC {
         let status = (respuesta as? HTTPURLResponse)?.statusCode ?? 0
         if (200..<300).contains(status), (try? JSONDecoder().decode(JSONValue.self, from: cuerpo))?["ok"] == .bool(true) { return .hecho }
         if status == 403 { return .noHabilitada }
-        return status == 400 ? .rechazada : .reintentar
+        return status == 400 || status == 413 ? .rechazada : .reintentar
     }
 
     /// `POST <vision>/reps/consentimiento`. Con `acepta: false` el servidor borra además lo ya subido. true = guardado.

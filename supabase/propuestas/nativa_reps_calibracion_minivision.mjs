@@ -69,6 +69,27 @@ async function borrarObjetosReps(paths) {
   }
 }
 
+async function sacarObjetoReps(path) {
+  return borrarObjetosReps([path]).then(() => true, (e) => { console.error('[reps] borrar lo recién subido', e.message || e); return false; });
+}
+
+// Un objeto sin fila que el alumno ya revocó: sin esta marca el barrido no lo vería nunca.
+async function marcarBorradoSiRevoco(clienteId) {
+  try {
+    if (await puedeSubirReps(clienteId)) return;
+    await fetchReps(urlFilasReps('mypump_reps_subida', { cliente_id: clienteId }), {
+      method: 'PATCH', headers: svcHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ borrado_pendiente: true }),
+    });
+  } catch (e) {
+    console.error('[reps] marcar borrado pendiente', e.message || e);
+  }
+}
+
+// La carpeta de la cuenta en el bucket: no lleva el cliente_id, que en algunas cuentas contiene el nombre.
+function carpetaReps(clienteId) {
+  return createHash('sha256').update(`reps:${clienteId}`).digest('hex').slice(0, 32);
+}
+
 // Los objetos bajo una carpeta, a cualquier profundidad (Storage devuelve las carpetas con id null).
 async function listarObjetosReps(prefijo) {
   const paths = [];
@@ -92,10 +113,10 @@ async function listarObjetosReps(prefijo) {
 // nada. true solo si quedó vacío. No lanza: un fallo devuelve false y lo reintenta la app o el barrido.
 async function borrarGrabaciones(clienteId) {
   try {
-    await borrarObjetosReps(await listarObjetosReps(clienteId));
+    await borrarObjetosReps(await listarObjetosReps(carpetaReps(clienteId)));
     const filas = await fetchReps(urlFilasReps('mypump_reps_grabaciones', { cliente_id: clienteId }), { method: 'DELETE', headers: svcHeaders() });
     if (!filas.ok) throw new ErrorServicioReps(`borrar filas: HTTP ${filas.status}`);
-    return (await listarObjetosReps(clienteId)).length === 0;
+    return (await listarObjetosReps(carpetaReps(clienteId))).length === 0;
   } catch (e) {
     console.error('[reps] no se pudo borrar', e.message || e);
     return false;
@@ -123,6 +144,7 @@ if (process.env.MINI_VISION_SIN_ESCUCHAR !== '1') setInterval(barrerReps, BARRID
 // El cuerpo crudo, con tope y plazo. null si se cortó, se pasó o tardó de más.
 function leerCuerpoReps(req, largo) {
   return new Promise((resolve) => {
+    if (req.destroyed || req.socket?.destroyed) return resolve(null);   // se cortó mientras se miraban los topes
     const partes = [];
     let total = 0, listo = false;
     const fin = (v) => { if (!listo) { listo = true; clearTimeout(plazo); resolve(v); } };
@@ -145,7 +167,7 @@ function rechazarReps(req, res, status, error, origin) {
 }
 
 // ── POST /reps/subir — cuerpo: el .mpcal crudo; x-reps-token, x-reps-sesion, x-reps-sha256 y Content-Length ──
-// Idempotente: una fila por sesión y el objeto se llama como su contenido (`cliente/sesion/sha.mpcal`). El mismo hash no
+// Idempotente: una fila por sesión y el objeto se llama como su contenido (`carpeta/sesion/sha.mpcal`). El mismo hash no
 // vuelve a escribir (`ya: true`). Solo una versión más grande de la sesión reemplaza a la anterior.
 async function handleRepsSubir(req, res, origin) {
   let ocupada = null;
@@ -189,7 +211,7 @@ async function handleRepsSubir(req, res, origin) {
     if (buf.subarray(0, 4).toString('latin1') !== 'MPC1') return send(res, 400, { ok: false, error: 'formato inválido' }, origin);
     if (createHash('sha256').update(buf).digest('hex') !== sha256) return send(res, 400, { ok: false, error: 'hash no coincide' }, origin);
 
-    const path = `${clienteId}/${sesion}/${sha256}.mpcal`;
+    const path = `${carpetaReps(clienteId)}/${sesion}/${sha256}.mpcal`;
     const up = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET_REPS}/${path}`, {
       method: 'POST',
       signal: AbortSignal.timeout(ESPERA_CUERPO_REPS_MS),
@@ -206,17 +228,22 @@ async function handleRepsSubir(req, res, origin) {
     if (!reg?.ok) {
       // Sin fila no lo vería el tope de la cuenta. Con la red cortada la fila pudo haber entrado: también se saca, para
       // que un reintento no conteste `ya` sobre un archivo que no está.
-      await borrarObjetosReps([path]).catch(() => {});
-      await fetchReps(urlFilasReps('mypump_reps_grabaciones', { cliente_id: clienteId, sesion, sha256 }), { method: 'DELETE', headers: svcHeaders() }).catch(() => {});
+      if (await sacarObjetoReps(path)) {
+        await fetchReps(urlFilasReps('mypump_reps_grabaciones', { cliente_id: clienteId, sesion, sha256 }), { method: 'DELETE', headers: svcHeaders() }).catch(() => {});
+      } else {
+        await marcarBorradoSiRevoco(clienteId);
+      }
       return send(res, 502, { ok: false, error: 'guardado sin registrar' }, origin);
     }
 
     // Registrar y después volver a preguntar cierra la carrera con la revocación: o esta pregunta ve el «no», o la
     // revocación ve el archivo. Si no se pudo preguntar no se borra nada: el barrido lo levanta si de verdad revocó.
     if (!(await puedeSubirReps(clienteId))) {
-      await borrarObjetosReps([path]).catch((e) => console.error('[reps] borrar lo recién subido', e.message || e));
-      await fetchReps(urlFilasReps('mypump_reps_grabaciones', { cliente_id: clienteId, sesion, sha256 }), { method: 'DELETE', headers: svcHeaders() })
-        .catch((e) => console.error('[reps] borrar la fila recién subida', e.message || e));
+      // La fila se saca solo si el objeto salió: si no, es lo único que le avisa al barrido que queda algo por borrar.
+      if (await sacarObjetoReps(path)) {
+        await fetchReps(urlFilasReps('mypump_reps_grabaciones', { cliente_id: clienteId, sesion, sha256 }), { method: 'DELETE', headers: svcHeaders() })
+          .catch((e) => console.error('[reps] borrar la fila recién subida', e.message || e));
+      }
       return send(res, 403, { ok: false, error: 'no habilitado' }, origin);
     }
     if (previo?.path && previo.path !== path) {
@@ -248,7 +275,10 @@ async function handleRepsConsentimiento(req, res, origin) {
   try {
     if (!SERVICE_KEY) return send(res, 503, { ok: false, error: 'servicio no configurado' }, origin);
     const data = await leerBody(req, res, origin, 4 * 1024);
-    if (!data) return;
+    if (!data) {                                      // null: ya contestó o se cortó; `null`, `0` o `false` en el JSON: falta contestar
+      if (!res.headersSent && !req.socket?.destroyed) send(res, 400, { ok: false, error: 'pedido inválido' }, origin);
+      return;
+    }
     const { token, acepta, plataforma, app } = data || {};
     if (typeof acepta !== 'boolean') return send(res, 400, { ok: false, error: 'falta la decisión' }, origin);
     if (typeof token !== 'string' || token.length < 16 || token.length > 200) return send(res, 403, { ok: false, error: 'token inválido' }, origin);
