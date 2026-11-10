@@ -5,6 +5,7 @@ import com.pumpteam.mypump.modelos.FranjaEntrega
 import com.pumpteam.mypump.modelos.Guia
 import com.pumpteam.mypump.modelos.ReservaEntrega
 import com.pumpteam.mypump.modelos.ResumenGuia
+import com.pumpteam.mypump.modelos.TipoVideollamada
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.serialization.json.Json
@@ -402,10 +403,30 @@ class AgendaReglasTest {
         assertEquals("Agendá tu videollamada de comienzo", ReglasAgenda.textoTitulo(a.copy(textos = emptyMap())))
         assertEquals("Elegí el horario que mejor te quede.", ReglasAgenda.textoEncabezado(a, a.franjas))
         assertEquals("Elegí el horario que mejor te quede. Dura unas 2 horas.", ReglasAgenda.textoEncabezado(a, a.franjas.filter { it.id != "f3" }))
-        // La sala abierta, pisada.
+        // `sala_abierta` es de la 2.2.0: va el propio.
         val i = Instant.parse("2026-11-12T13:00:00Z")
         val r = ReservaEntrega("r", i, i.plusSeconds(3600), ReservaEntrega.Estado.CONFIRMADA, "https://meet.google.com/x", null, salaAbiertaEn = i)
-        assertEquals("Ya te espero", ReglasAgenda.textoEntrar(r, ar, a))
+        assertEquals(ReglasAgenda.TEXTO_SALA_ABIERTA, ReglasAgenda.textoEntrar(r, ar, a))
+        assertEquals(ReglasAgenda.TEXTO_SALA_ABIERTA, ReglasAgenda.texto(a, "sala_abierta", ReglasAgenda.TEXTO_SALA_ABIERTA))
+    }
+
+    @Test
+    fun losTextosDelServidorConPalabrasProhibidasOViejosSeDescartan() {
+        val a = AgendaEntrega.desde(j("""{"ok":true,"habilitada":true,"autorizada":true,"textos":{
+            "titulo":"Agendá tu ENTREGA","pendiente":"Te escribimos por WhatsApp","cambiar":"Hablalo con tu Coach",
+            "bloqueada":"Tu entrenador te espera","confirmar":"¿Confirmás el {dia}?","entreno_aviso":"Mirá la guía",
+            "hoy_sin_sala":"Hoy a las {hora}"}}"""))!!
+        assertEquals("Agendá tu videollamada de comienzo", ReglasAgenda.textoTitulo(a))
+        assertEquals(ReglasAgenda.TEXTO_PENDIENTE, ReglasAgenda.texto(a, "pendiente", ReglasAgenda.TEXTO_PENDIENTE))
+        assertEquals(ReglasAgenda.TEXTO_CAMBIAR, ReglasAgenda.texto(a, "cambiar", ReglasAgenda.TEXTO_CAMBIAR))
+        assertEquals("propio", ReglasAgenda.texto(a, "bloqueada", "propio"))
+        assertEquals("propio", ReglasAgenda.texto(a, "entreno_aviso", "propio"))
+        assertEquals("propio", ReglasAgenda.texto(a, "hoy_sin_sala", "propio"))
+        assertEquals("¿Confirmás el jueves 12?", ReglasAgenda.texto(a, "confirmar", "propio", dia = "jueves 12"))
+        // El `titulo` del servidor no pisa el de una revisión.
+        val bueno = a.copy(textos = mapOf("titulo" to "Elegí cuándo nos vemos"))
+        assertEquals("Elegí cuándo nos vemos", ReglasAgenda.textoTitulo(bueno))
+        assertEquals("Agendá tu videollamada de revisión", ReglasAgenda.textoTitulo(bueno.copy(tipo = TipoVideollamada.REVISION)))
     }
 
     @Test
@@ -419,7 +440,8 @@ class AgendaReglasTest {
         assertTrue(ReglasAgenda.esperandoSala(r, i.minusSeconds(20 * 60)))
         assertFalse(ReglasAgenda.esperandoSala(r, i.minusSeconds(20 * 60), a.avisoMin))
         assertTrue(ReglasAgenda.esperandoSala(r, i.minusSeconds(15 * 60), a.avisoMin))
-        assertEquals("Hoy a las 10:00", ReglasAgenda.textoHoy(r, ar, i.minusSeconds(60 * 60), a))
+        // `hoy_sin_sala` es de la 2.2.0: va el propio.
+        assertEquals("Tu videollamada de comienzo es hoy a las 10:00. El botón para entrar se habilita 10 minutos antes.", ReglasAgenda.textoHoy(r, ar, i.minusSeconds(60 * 60), a))
         // Un aviso_min que no tiene sentido se ignora.
         assertEquals(null, AgendaEntrega.desde(j("""{"ok":true,"aviso_min":-5}"""))!!.avisoMin)
     }

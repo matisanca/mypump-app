@@ -248,9 +248,16 @@ object ReglasAgenda {
 
     // ── Textos editables (spec §7: `textos` de `entregas_app_agenda`) ──
 
+    /** Claves de la 2.2.0 con otro sentido (la sala, el aviso de Entreno): ya no se usan, va el texto propio. */
+    val CLAVES_VIEJAS = setOf("hoy_sin_sala", "sala_abierta", "entreno_aviso")
+
+    /** Palabras que no van en los textos al alumno: un texto del servidor que las tenga se descarta. */
+    private val PROHIBIDAS = Regex("entrega|whatsapp|coach|entrenador", RegexOption.IGNORE_CASE)
+
     /**
      * El texto de [clave]: el del servidor si vino y no está vacío, con `{hora}`, `{dia}`, `{duracion}` y `{faltan}`
-     * reemplazados; si no, [propio]. Una clave que la app no usa se ignora.
+     * reemplazados; si no, [propio]. Una clave que la app no usa se ignora; las [CLAVES_VIEJAS] y un texto con «entrega»,
+     * «WhatsApp», «coach» o «entrenador» también.
      */
     fun texto(
         a: AgendaEntrega?,
@@ -261,7 +268,8 @@ object ReglasAgenda {
         duracion: String? = null,
         faltan: Int? = null,
     ): String {
-        val t = a?.textos?.get(clave)?.trim()?.ifEmpty { null } ?: return propio
+        if (clave in CLAVES_VIEJAS) return propio
+        val t = a?.textos?.get(clave)?.trim()?.ifEmpty { null }?.takeUnless { PROHIBIDAS.containsMatchIn(it) } ?: return propio
         return t.replace("{hora}", hora.orEmpty())
             .replace("{dia}", dia.orEmpty())
             .replace("{duracion}", duracion.orEmpty())
@@ -270,7 +278,11 @@ object ReglasAgenda {
             .trim()
     }
 
-    fun textoTitulo(a: AgendaEntrega?): String = texto(a, "titulo", "Agendá tu ${nombre(a?.tipo ?: TipoVideollamada.COMIENZO)}")
+    /** «Agendá tu videollamada de comienzo». El `titulo` del servidor no pisa el de una revisión. */
+    fun textoTitulo(a: AgendaEntrega?): String {
+        val propio = "Agendá tu ${nombre(a?.tipo ?: TipoVideollamada.COMIENZO)}"
+        return if (a?.tipo == TipoVideollamada.REVISION) propio else texto(a, "titulo", propio)
+    }
 
     /** La duración común de las franjas («alrededor de 1 hora»), o null si no todas duran lo mismo. */
     fun duracionComun(franjas: List<FranjaEntrega>): String? =
@@ -449,12 +461,10 @@ object ReglasAgenda {
         return if (m == 0) "$h h" else "$h h $m min"
     }
 
-    /** Con el botón: «Mati ya está en la sala» (o el `sala_abierta` del servidor) o «Ya podés entrar». */
-    fun textoEntrar(r: ReservaEntrega, zona: ZoneId, a: AgendaEntrega? = null): String {
-        if (r.salaAbiertaEn == null) return TEXTO_YA_PODES
-        val i = r.inicio ?: return TEXTO_SALA_ABIERTA
-        return texto(a, "sala_abierta", TEXTO_SALA_ABIERTA, hora(i, zona), dia(i, zona))
-    }
+    /** Con el botón: «Mati ya está en la sala» o «Ya podés entrar» (siempre los propios: `sala_abierta` es de la 2.2.0). */
+    @Suppress("UNUSED_PARAMETER")
+    fun textoEntrar(r: ReservaEntrega, zona: ZoneId, a: AgendaEntrega? = null): String =
+        if (r.salaAbiertaEn == null) TEXTO_YA_PODES else TEXTO_SALA_ABIERTA
 
     /** La etiqueta de arriba de la tarjeta: «Hoy», «Mañana», «En 3 días» (por día del calendario, en la zona del teléfono). */
     fun cuando(r: ReservaEntrega, zona: ZoneId, ahora: Instant): String? {
@@ -498,8 +508,8 @@ object ReglasAgenda {
         val desdeMin = a?.entrarDesdeMin
         if (r.estado != ReservaEntrega.Estado.CONFIRMADA || estadoEntrar(r, ahora, desdeMin) !is EstadoEntrar.Falta) return null
         if (i.atZone(zona).toLocalDate() != ahora.atZone(zona).toLocalDate()) return null
-        val propio = "Tu ${nombre(r.tipo)} es hoy a las ${hora(i, zona)}. El botón para entrar se habilita ${desdeMin ?: ENTRAR_DESDE_MIN} minutos antes."
-        return texto(a, "hoy_sin_sala", propio, hora(i, zona), dia(i, zona), r.fin?.let { duracion(i, it) })
+        // Siempre el propio: `hoy_sin_sala` es de la 2.2.0.
+        return "Tu ${nombre(r.tipo)} es hoy a las ${hora(i, zona)}. El botón para entrar se habilita ${desdeMin ?: ENTRAR_DESDE_MIN} minutos antes."
     }
 
     /** Un aviso local de la videollamada (sin permisos nuevos: solo si la app ya los tenía). */
