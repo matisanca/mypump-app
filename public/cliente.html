@@ -6488,7 +6488,28 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && STATE.mydayFecha && STATE.mydayFecha !== hoyLocal() && TOKEN && !(DATA && DATA._isDemo)) {
     loadMyday();   // hábitos y vasos de agua de HOY, no los de ayer
   }
+  if (!document.hidden) _relecturasAlVolver();
 });
+
+// Auditoría del 10/11, F7: Progreso se traía una sola vez (el «día de atraso») y Suplementación solo al abrir. Al volver a
+// la app, pasados unos minutos, se releen. Con escrituras en cola no se relee Progreso: mostraría la serie recién hecha
+// como si no estuviera.
+const RELEER_PROGRESO_MS = 5 * 60 * 1000;
+const RELEER_SUPL_MS = 10 * 60 * 1000;
+function _relecturasAlVolver(ahora) {
+  ahora = ahora || Date.now();
+  if (!TOKEN || (DATA && DATA._isDemo)) return;
+  const enCola = (() => { try { return Outbox.pending() > 0; } catch (_) { return false; } })();
+  if (STATE.progressLoaded && !STATE._cargandoProgreso && !enCola && ahora - (STATE.progresoLeidoEn || 0) >= RELEER_PROGRESO_MS) {
+    STATE._cargandoProgreso = true;
+    STATE.progresoLeidoEn = ahora;
+    Promise.resolve(loadProgressAndRender(true)).catch(() => {}).finally(() => { STATE._cargandoProgreso = false; });
+  }
+  if (ahora - (STATE.suplLeidaEn || 0) >= RELEER_SUPL_MS) {
+    STATE.suplLeidaEn = ahora;
+    loadSuplementacion();
+  }
+}
 // Reintentar en cuanto vuelva la conexión.
 window.addEventListener('online', () => { if (OUTBOX_ENABLED) Outbox.flushSoon(0); flushFotosSoon(); });
 
@@ -8516,7 +8537,7 @@ function renderProgress() {
   $$('[data-reintentar-progreso]').forEach(btn => btn.addEventListener('click', () => { STATE.progressLoaded = false; renderProgress(); }));
 }
 
-async function loadProgressAndRender() {
+async function loadProgressAndRender(refresco = false) {
   // Recorrer TODOS los días de la rutina (no solo el día actual): el progreso
   // debe mostrar cada ejercicio que el cliente entrenó en cualquiera de sus días.
   const dias = DATA._dias || [DATA.dia];
@@ -8565,6 +8586,8 @@ async function loadProgressAndRender() {
     if (porClave) {
       results = allEx.map(ex => ({ id: ex.id, ids: ex.ids, name: ex.nombre, dia: ex.dia, rows: porClave[ex.clave] || [] }));
     } else if (porClave === null) {
+      // Una relectura al volver a la app que no llega deja lo que ya se veía.
+      if (refresco && STATE.progressLoaded) return;
       // Falló la red. NO se cae al slot (mezclaría original y sustituto), NO
       // se pisa la caché de Entreno con [] (dejaba todas las cards en "Primera
       // vez" hasta recargar la app) y NO se marca cargado: al volver a abrir
@@ -8651,6 +8674,7 @@ async function loadProgressAndRender() {
     exercises,
   };
   STATE.progressLoaded = true;
+  STATE.progresoLeidoEn = Date.now();
   renderProgress();
 }
 
@@ -10871,6 +10895,7 @@ async function loadSuplementacion() {
   }
   STATE.supl = resp;
   STATE.suplDesdeCache = desdeCache;
+  STATE.suplLeidaEn = desdeCache ? 0 : Date.now();
   const tab = document.querySelector('.tab[data-scene="supl"]');
   if (tab) tab.hidden = !resp;
   // Si los datos dejan de estar estando en la pestaña, se vuelve a Entreno (como la app).

@@ -169,5 +169,40 @@ console.log('F14 · lo escrito no se borra si falla el envío');
   });
 }
 
+console.log('F7 · Progreso y Suplementación se releen al volver');
+{
+  const llamadas = [];
+  let pendientes = 0;
+  const ctx = {
+    console, TOKEN: 'tok', DATA: {}, STATE: { progressLoaded: true, progresoLeidoEn: 0, suplLeidaEn: 0 },
+    Outbox: { pending: () => pendientes },
+    loadProgressAndRender: async (r) => { llamadas.push('progreso:' + r); },
+    loadSuplementacion: async () => { llamadas.push('supl'); },
+  };
+  vm.createContext(ctx);
+  vm.runInContext('const RELEER_PROGRESO_MS = 5 * 60 * 1000;\nconst RELEER_SUPL_MS = 10 * 60 * 1000;\n' + funcion('_relecturasAlVolver'), ctx);
+  const T0 = 1_792_000_000_000;
+  await t('pasados unos minutos se releen, y al minuto no', async () => {
+    ctx._relecturasAlVolver(T0);
+    await new Promise((r) => setTimeout(r, 0));
+    igual(llamadas, ['progreso:true', 'supl'], 'primera vuelta');
+    ctx._relecturasAlVolver(T0 + 60_000);
+    igual(llamadas.length, 2, 'al minuto no se relee nada');
+    ctx._relecturasAlVolver(T0 + 6 * 60_000);
+    igual(llamadas.slice(2), ['progreso:true'], 'a los 6 minutos solo Progreso');
+  });
+  await t('con escrituras en cola Progreso espera', async () => {
+    pendientes = 1;
+    await new Promise((r) => setTimeout(r, 0));
+    const n = llamadas.length;
+    ctx._relecturasAlVolver(T0 + 60 * 60_000);
+    igual(llamadas.slice(n), ['supl'], 'solo Suplementación');
+  });
+  await t('una relectura sin red deja lo que se veía', async () => {
+    const f = funcion('loadProgressAndRender');
+    if (!/if \(refresco && STATE\.progressLoaded\) return;/.test(f)) throw new Error('el corte pisaría Progreso con «sin red»');
+  });
+}
+
 console.log(`\n${ok} OK · ${fail} fallas`);
 process.exit(fail ? 1 : 0);
