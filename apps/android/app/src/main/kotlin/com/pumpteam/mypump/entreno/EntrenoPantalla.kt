@@ -124,6 +124,7 @@ fun EntrenoPantalla(modelo: ModeloApp, preguntador: Preguntador) {
                 } else {
                     val tecnica by modelo.tecnica.collectAsStateWithLifecycle()
                     val tec = tecnica
+                    val feedback by modelo.feedback.collectAsStateWithLifecycle()
                     val slug = tecnicaSlug
                     if (tec != null && slug != null) {
                         androidx.activity.compose.BackHandler { tecnicaSlug = null }
@@ -142,6 +143,8 @@ fun EntrenoPantalla(modelo: ModeloApp, preguntador: Preguntador) {
                                 tecnicaNombre = n
                                 tecnicaSlug = s
                             },
+                            feedback = feedback,
+                            versionApp = modelo.versionApp,
                         )
                     }
                 }

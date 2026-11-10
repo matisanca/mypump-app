@@ -423,4 +423,42 @@ object Iconos {
     val Correr: ImageVector by lazy {
         simbolo("Correr", "M516.41-80v-198.09l-78.26-74.5-29.08 129.63q-4.48 18.16-19.78 27.97-15.29 9.82-33.68 6.34l-196.57-39.76q-18.43-3.48-28.27-18.56-9.84-15.07-6.36-33.51 3.48-18.43 18.68-28.77 15.19-10.34 33.63-6.1l148.41 31.28 62.09-314.43-65.79 25.37v93.61q0 18.43-12.57 31.01-12.58 12.58-31.01 12.58-18.44 0-31.13-12.7-12.7-12.7-12.7-31.13v-120.33q0-13.91 7.58-24.84 7.57-10.94 20.25-16.66l134.72-57.28q35.71-15 52.45-19.74 16.74-4.74 30.98-4.74 22.2 0 40.67 11.72 18.48 11.72 30.2 30.43l40.48 64q20.28 32.81 52.82 56.97 32.55 24.16 75.83 32.4 18.43 3.48 31.01 16.68 12.58 13.19 12.58 31.63 0 18.43-12.7 30.63-12.69 12.19-30.37 9.72-53.28-8-99.44-32.55-46.17-24.54-78.93-60.63l-22.08 111.63 69.6 65.85q6.96 6.72 10.44 15.29 3.48 8.58 3.48 17.78V-80q0 18.43-12.58 31.01Q578.43-36.41 560-36.41t-31.01-12.58Q516.41-61.57 516.41-80Zm24.07-663.59q-34.68 0-59.25-24.57-24.58-24.58-24.58-59.25 0-34.68 24.58-59.13Q505.8-911 540.48-911q34.67 0 59.13 24.46 24.46 24.45 24.46 59.13 0 34.67-24.46 59.25-24.46 24.57-59.13 24.57Z")
     }
+
+    /** La curita de «Me duele» (la `bandage.fill` de iOS), dibujada acá: una cápsula en diagonal con la gasa al medio. */
+    val Curita: ImageVector by lazy {
+        ImageVector.Builder(name = "Curita", defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+            .addGroup(rotate = -45f, pivotX = 12f, pivotY = 12f)
+            .addPath(
+                pathData = addPathNodes(
+                    rect(1.2f, 7.2f, 21.6f, 9.6f, 4.8f) + rect(8.4f, 8.6f, 7.2f, 6.8f, 1.4f) +
+                        rect(9.7f, 9.9f, 1.7f, 1.7f, 0.85f) + rect(12.6f, 9.9f, 1.7f, 1.7f, 0.85f) + rect(9.7f, 12.4f, 1.7f, 1.7f, 0.85f) + rect(12.6f, 12.4f, 1.7f, 1.7f, 0.85f),
+                ),
+                fill = SolidColor(Color.Black),
+                pathFillType = androidx.compose.ui.graphics.PathFillType.EvenOdd,
+            )
+            .clearGroup()
+            .build()
+    }
+
+    /** La bolsa de «Comprado» (la `bag.fill` de iOS). */
+    val Bolsa: ImageVector by lazy {
+        ImageVector.Builder(name = "Bolsa", defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+            .addPath(pathData = addPathNodes(rect(3.5f, 8f, 17f, 13.5f, 3.2f)), fill = SolidColor(Color.Black))
+            .addPath(
+                pathData = addPathNodes("M8.4,9.5V7.1a3.6,3.6 0 0 1 7.2,0V9.5"),
+                stroke = SolidColor(Color.Black), strokeLineWidth = 1.9f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
+            )
+            .build()
+    }
+
+    /** La pausa en círculo de «Lo dejaste» (la `pause.circle.fill` de iOS). */
+    val PausaEnCirculo: ImageVector by lazy {
+        ImageVector.Builder(name = "PausaEnCirculo", defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+            .addPath(
+                pathData = addPathNodes("M12,2a10,10 0 1 0 0,20a10,10 0 1 0 0,-20Z" + rect(8.4f, 7.8f, 2.6f, 8.4f, 1.3f) + rect(13f, 7.8f, 2.6f, 8.4f, 1.3f)),
+                fill = SolidColor(Color.Black),
+                pathFillType = androidx.compose.ui.graphics.PathFillType.EvenOdd,
+            )
+            .build()
+    }
 }
