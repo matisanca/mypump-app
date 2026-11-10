@@ -444,6 +444,7 @@ BEGIN
   IF v_puede <> 'ok' THEN RETURN v_puede; END IF;
   INSERT INTO mypump_gimnasio_fotos (id, gimnasio_id, cliente_id, zona, ronda, path, bytes, caras_tapadas, borde_blanco)
   VALUES (p_foto_id, p_gimnasio_id, p_cliente_id, p_zona, CASE WHEN v_estado = 'borrador' THEN 0 ELSE 1 END, p_path, p_bytes, p_caras, p_borde_blanco);
+  UPDATE mypump_gimnasio SET actualizado_en = NOW() WHERE id = p_gimnasio_id;      -- el barrido de abandonados mide esto
   RETURN 'ok';
 END;
 $$;
@@ -468,6 +469,7 @@ BEGIN
   IF v_path IS NULL THEN RETURN jsonb_build_object('resultado', 'no_encontrado'); END IF;
   IF NOT (v_estado = 'borrador' OR (v_estado = 'a_confirmar' AND v_ronda = 1)) THEN RETURN jsonb_build_object('resultado', 'estado'); END IF;
   DELETE FROM mypump_gimnasio_fotos WHERE id = p_foto_id;
+  UPDATE mypump_gimnasio SET actualizado_en = NOW() WHERE id = v_gim;      -- el barrido de abandonados mide esto
   RETURN jsonb_build_object('resultado', 'ok', 'path', v_path);
 END;
 $$;
@@ -552,7 +554,7 @@ BEGIN
   UPDATE mypump_gimnasio
      SET estado = CASE WHEN respondido_en IS NOT NULL THEN 'respondido' ELSE 'enviado' END,
          intentos = 0, reaperturas = reaperturas + 1, procesando_desde = NULL, actualizado_en = NOW()
-   WHERE estado = 'error' AND reaperturas < p_max AND actualizado_en <= NOW() - make_interval(hours => p_horas);
+   WHERE estado = 'error' AND fotos_borradas_en IS NULL AND reaperturas < p_max AND actualizado_en <= NOW() - make_interval(hours => p_horas);
   GET DIAGNOSTICS v_n = ROW_COUNT;
   RETURN v_n;
 END;
@@ -697,7 +699,13 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_fila mypump_gimnasio%ROWTYPE;
 BEGIN
+  -- Con la fila trabada: si el alumno la retomó o la envió mientras tanto, no se toca nada.
+  SELECT * INTO v_fila FROM mypump_gimnasio WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND OR v_fila.estado NOT IN ('listo','reemplazado','borrador','a_revisar','en_editor','error') THEN RETURN FALSE; END IF;
+  IF v_fila.estado NOT IN ('listo','reemplazado') AND v_fila.actualizado_en > NOW() - INTERVAL '1 day' THEN RETURN FALSE; END IF;
   DELETE FROM mypump_gimnasio_fotos WHERE gimnasio_id = p_id;
   -- Un borrador abandonado puede retomarse: sin marca, sus fotos nuevas vuelven a entrar al barrido.
   UPDATE mypump_gimnasio SET fotos_borradas_en = CASE WHEN estado = 'borrador' THEN NULL ELSE NOW() END, actualizado_en = NOW()
