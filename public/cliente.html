@@ -11837,7 +11837,9 @@ async function arrancarNovedades(llego, semilla, suplAntes, suplListo) {
   N.configurar({
     token: TOKEN || 'demo',
     host: () => document.getElementById('modalHost'),
-    ocupado: () => !!document.querySelector('#modalHost .modal-back:not(#novBack)') || _onboardingPendiente(),
+    // Otra hoja a la vista (las del #modalHost, la bienvenida y la vista de «Tu guía», que van directo al body): espera.
+    ocupado: () => !!document.querySelector('#modalHost .modal-back:not(#novBack), .gu-bienvenida, .gu-overlay')
+      || _onboardingPendiente(),
     puedeIr: (a) => a !== 'suplementacion' || !!STATE.supl,
     irA: (a) => setScene(a === 'rutina' ? 'train' : a === 'dieta' ? 'diet' : 'supl'),
   });

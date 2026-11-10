@@ -125,7 +125,7 @@
   const limpio = (s) => String(s == null ? '' : s).split(/[ \t\n\r]+/).filter(Boolean).join(' ');
   const TILDES = { á: 'a', à: 'a', ä: 'a', â: 'a', é: 'e', è: 'e', ë: 'e', ê: 'e', í: 'i', ì: 'i', ï: 'i', î: 'i',
     ó: 'o', ò: 'o', ö: 'o', ô: 'o', ú: 'u', ù: 'u', ü: 'u', û: 'u' };
-  const clave = (s) => Array.from(limpio(s).toLowerCase()).map((c) => TILDES[c] || c).join('');
+  const clave = (s) => Array.from(limpio(s).normalize('NFC').toLowerCase()).map((c) => TILDES[c] || c).join('');
   const listaTexto = (xs) => xs.length <= 1 ? (xs[0] || '') : xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1];
 
   function recortar(l) {
@@ -164,7 +164,8 @@
     return s || null;
   }
   function formatoPauta(series, reps) {
-    const r = reps || null;
+    // Repes con texto que no puede salir (RIR, fallo, guiones, dos puntos): se dicen solo las series.
+    const r = (reps && !/rir|fallo|[-–—:]/i.test(reps)) ? reps : null;
     const numerico = r != null && /^\d+( a \d+)?$/.test(r);
     const s = (n) => `${n} ${n === 1 ? 'serie' : 'series'}`;
     if (series != null && r != null) return numerico ? `${s(series)} de ${r}` : `${s(series)}, ${r}`;
@@ -286,7 +287,7 @@
   function formatoCantidad(q, unidad) {
     const num = formatoNumero(q);
     const u = unidadNormal(unidad);
-    if (['unidad', 'unidades', 'u', 'un', 'ud', 'uds'].includes(u)) return `${num} ${q === 1 ? 'unidad' : 'unidades'}`;
+    if (['unidad', 'unidades', 'u', 'un', 'ud', 'uds'].includes(u)) return `${num} ${num === '1' ? 'unidad' : 'unidades'}`;
     return `${num} ${limpio(unidad || '') || 'g'}`;
   }
   const letraOpcion = (i) => i < 10 ? String.fromCharCode(65 + i) : String(i + 1);
@@ -499,7 +500,8 @@
         const r = calcular(fa, fd);
         if (!r) return null;
         const n = { id: uuid(), fecha: ahora(), titular: r.titular, resumen: r.resumen, partes: r.partes, vista: false };
-        lista = [n].concat(lista).slice(0, MAXIMO);
+        // Las anteriores quedan vistas: se muestra la de esta publicación, nunca una vieja que no se llegó a abrir.
+        lista = [n].concat(lista.map((x) => x.vista ? x : Object.assign({}, x, { vista: true }))).slice(0, MAXIMO);
         guardarLista();
         return n;
       },

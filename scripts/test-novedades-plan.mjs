@@ -39,6 +39,10 @@ eq(N.formatoCantidad(1.25, 'g'), '1,3 g', 'decimal');
 eq(N.formatoCantidad(250, 'ml'), '250 ml', 'ml');
 eq(N.formatoCantidad(30, null), '30 g', 'sin unidad');
 eq(N.repsNormal(' 8–10 '), '8 a 10', 'reps');
+eq(N.formatoCantidad(1.04, 'u'), '1 unidad', 'singular redondeado');
+eq(N.formatoPauta(3, '10-12 al fallo'), '3 series', 'repes con texto prohibido');
+eq(N.formatoPauta(3, 'AMRAP'), '3 series, AMRAP', 'repes con texto');
+eq(N.clave('Pre\u0301nsa'), N.clave('Prénsa'), 'NFC');
 
 // ---- El modelo: la base y la lista en el navegador, por cuenta.
 const almacen = () => { const m = new Map(); return { m, leer: (k) => m.has(k) ? m.get(k) : null, guardar: (k, v) => m.set(k, v) }; };
@@ -93,6 +97,7 @@ let ahora = 1_000_000;
   m.observar({ rutina: conRutina.antes.rutina });
   for (let i = 0; i < 15; i++) m.observar({ rutina: i % 2 ? conRutina.antes.rutina : conRutina.despues.rutina });
   eq(m.lista.length, N.MAXIMO, 'tope');
+  eq(m.lista.filter((x) => !x.vista).length, 1, 'solo la última sin ver');
 }
 void caso;
 console.log(`novedades-plan: ${n} ok (${casos.length} casos compartidos)`);
