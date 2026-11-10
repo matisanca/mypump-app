@@ -235,6 +235,8 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
     public var cambio: String?
     /// Qué buscar en la tienda.
     public var comprar: CompraSuplemento?
+    /// Es un protector (un fármaco, `entregas_016`). Se muestra como los demás, pero no se marca «lo compré / lo estoy tomando».
+    public var protector: Bool = false
     /// El `video_id` que este ítem saca de la lista y de los conteos, con la regla de `entregas_012` y de pack.html sobre los
     /// valores tal como vienen: nombre no vacío, estado distinto de «sale» y `video_id` no vacío. nil si no saca ninguno.
     public var nombraVideo: String? {
@@ -251,7 +253,7 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case nombre, cantidad, momento, tomas, nota, detalle, estado, opcional, porQue = "por_que", videoId = "video_id", dias, antes, cambio, comprar
+        case nombre, cantidad, momento, tomas, nota, detalle, estado, opcional, porQue = "por_que", videoId = "video_id", dias, antes, cambio, comprar, protector
     }
 
     public init(from decoder: Decoder) throws {
@@ -272,6 +274,7 @@ public struct ItemSuplemento: Codable, Equatable, Sendable {
         antes = c.texto(.antes).flatMap { $0.isEmpty ? nil : $0 }
         cambio = c.texto(.cambio).flatMap { $0.isEmpty ? nil : $0 }
         comprar = (try? c.decodeIfPresent(CompraSuplemento.self, forKey: .comprar)).flatMap { $0?.vacia == false ? $0 : nil }
+        protector = c.booleano(.protector) ?? false
     }
 }
 

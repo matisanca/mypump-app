@@ -98,6 +98,8 @@ public final class ModeloApp {
     public private(set) var gimnasio: ModeloGimnasio?
     /// Técnica por video: existe con cuenta, pero solo llama al servidor con la palanca `tecnica_video` prendida.
     public private(set) var tecnica: ModeloTecnica?
+    /// Feedback del alumno: existe con cuenta, pero solo llama al servidor con `me_duele` o `suple_estado` prendidas.
+    public private(set) var feedback: ModeloFeedback?
     /// Progreso: se carga al abrir la pestaña (como la web).
     public private(set) var progreso: ModeloProgreso?
     /// El motor de Entreno de la rutina activa (también en la demo, donde no escribe nada).
@@ -229,7 +231,7 @@ public final class ModeloApp {
         disco = nil
         outbox = nil
         info = nil; rutina = nil; dieta = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; feedback = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
         esDemo = false
         sinRedEn = []
@@ -298,7 +300,7 @@ public final class ModeloApp {
         cacheCodigos = nil
         outbox = nil
         info = nil; swaps = [:]; ajustes = [:]; opcionesVistas = [:]; marcas = [:]; ordenMarcas = [:]; diaPasado = nil; comidasLibres = []; alimentosPropios = []; excluir = []
-        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
+        chat?.pararSondeo(); chat = nil; revision = nil; fotos = nil; gimnasio = nil; tecnica = nil; feedback = nil; progreso = nil; salud = nil; entreno = nil; guia = nil
         suplementacion = nil
     }
 
@@ -333,6 +335,7 @@ public final class ModeloApp {
         fotos = ModeloFotos(cliente: cliente, token: t, disco: disco)
         gimnasio = ModeloGimnasio(cliente: cliente, token: t, disco: disco)
         tecnica = ModeloTecnica(cliente: cliente, token: t, disco: disco)
+        feedback = ModeloFeedback(cliente: cliente, token: t, disco: disco)
         progreso = ModeloProgreso(cliente: cliente, token: t)
         guia = ModeloGuia(cliente: cliente, token: t, outbox: cola, disco: disco)
         suplementacion = ModeloSuplementacion(cliente: cliente, token: t, disco: disco)
@@ -510,6 +513,7 @@ public final class ModeloApp {
         _ = await (cargaChat, cargaRevision, cargaFotos)
         await sincronizarGimnasio()
         await sincronizarTecnica()
+        await sincronizarFeedback()
         await fotos?.drenar()
         diaCargado = FechaLocal.hoy()
         // Salud: sus lecturas, y con Apple Health conectada los 7 días y el historial pendiente (sin frenar la carga).
@@ -621,6 +625,12 @@ public final class ModeloApp {
         }
     }
 
+    /// Con las dos palancas apagadas no se llama a nada: la app es la de siempre.
+    private func sincronizarFeedback() async {
+        guard let feedback else { return }
+        if palanca.meDuele || palanca.supleEstado { await feedback.refrescar() } else { feedback.apagar() }
+    }
+
     private func sincronizarGimnasio() async {
         guard let gimnasio else { return }
         if palanca.gimnasioFotos {
@@ -674,6 +684,7 @@ public final class ModeloApp {
         await fotos?.drenar()
         await sincronizarGimnasio()
         await sincronizarTecnica()
+        await sincronizarFeedback()
         await salud?.alVolver()   // con Apple Health conectada: 7 días y retomar el historial (visibilitychange de la web)
         _ = await entreno?.alVolverAPrimerPlano()
     }
