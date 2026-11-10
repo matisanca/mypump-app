@@ -215,7 +215,7 @@ AS $$
                     AND NOT EXISTS (SELECT 1 FROM mypump_gimnasio_fotos f WHERE f.gimnasio_id = r.id AND f.zona = z AND NOT f.descartada)), '[]'::JSONB)
       ELSE '[]'::JSONB END,
     'equipos', CASE WHEN r.estado = 'listo' THEN
-        COALESCE((SELECT jsonb_agg(jsonb_build_object('tipo', e->>'tipo', 'zona', e->>'zona', 'cantidad', COALESCE((e->>'cantidad')::INTEGER, 1)))
+        COALESCE((SELECT jsonb_agg(jsonb_build_object('tipo', e->>'tipo', 'nombre', e->>'nombre', 'zona', e->>'zona', 'cantidad', COALESCE((e->>'cantidad')::INTEGER, 1)))
                   FROM jsonb_array_elements(COALESCE(r.inventario->'equipos', '[]'::JSONB)) e
                   WHERE COALESCE(e->>'estado', 'confirmado') = 'confirmado'), '[]'::JSONB)
       ELSE '[]'::JSONB END

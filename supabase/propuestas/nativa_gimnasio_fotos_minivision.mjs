@@ -8,7 +8,8 @@
 //   const tope = feature === 'fotos' ? RATE_FOTOS : feature === 'gimnasio' ? RATE_GIMNASIO : RATE_LIMIT;
 // En send(), para que la web pueda mandar los encabezados (fetch hace un preflight):
 //   headers['Access-Control-Allow-Headers'] = 'Content-Type, x-gimnasio-token, x-gimnasio-id, x-gimnasio-foto, x-gimnasio-zona';
-// El binario: `swiftc -O -o ~/pump-gimnasio/bin/tapar-caras gimnasio_tapar_caras/tapar_caras.swift`.
+// El binario: en la Mini `swiftc` no compila (Command Line Tools rotas: redefinition of module SwiftBridging). Compilar en la MacBook
+// con `swiftc -O -o tapar-caras gimnasio_tapar_caras/tapar_caras.swift` y copiarlo a ~/pump-gimnasio/bin/ (probado que corre en la Mini).
 //
 // INVARIANTES
 // - El cliente_id sale del TOKEN, jamás del pedido. El path lo arma el servidor; a la app nunca le llega.
