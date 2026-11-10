@@ -1687,6 +1687,17 @@ const TOKEN = (function() {
     return typeof t === 'string' && /^[a-zA-Z0-9_-]{16,64}$/.test(t);
   }
 
+  // Auditoría del 10/11, F21: el link queda en la barra, en el historial y en las capturas. Leído y guardado, se saca de
+  // la dirección (los demás parámetros quedan). Solo si quedó guardado: si el teléfono no deja guardar, recargar lo perdería.
+  function sacarDeLaDireccion(t) {
+    try {
+      if (localStorage.getItem(TOKEN_KEY) !== t) return;
+      var u = new URL(window.location.href);
+      u.searchParams.delete('t');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    } catch (e) {}
+  }
+
   // Prioridad 1: query string ?t=xxx
   var params = new URLSearchParams(window.location.search);
   var fromQuery = params.get('t');
@@ -1697,8 +1708,9 @@ const TOKEN = (function() {
     // que ya falló como inválido no vuelve a ganar: se usa el guardado.
     var invalido = null; try { invalido = localStorage.getItem('mypump_token_invalido'); } catch(e) {}
     var guardado = null; try { guardado = localStorage.getItem(TOKEN_KEY); } catch(e) {}
-    if (invalido === fromQuery && isValidToken(guardado) && guardado !== fromQuery) return guardado;
+    if (invalido === fromQuery && isValidToken(guardado) && guardado !== fromQuery) { sacarDeLaDireccion(guardado); return guardado; }
     try { localStorage.setItem(TOKEN_KEY, fromQuery); } catch(e) {}
+    sacarDeLaDireccion(fromQuery);
     return fromQuery;
   }
 
@@ -5322,7 +5334,7 @@ function renderExCard(ex, blockIdx) {
             <button class="ex-extra-row" data-acc="video-${ex.id}">${ICONS.video}<span class="label">Ver video tutorial</span><span class="chev">${ICONS.chevron}</span></button>
             <div class="ex-extra-content video" id="video-${ex.id}" hidden>
               ${ex.video_url.includes('youtube') || ex.video_url.includes('youtu.be')
-                ? `<iframe src="${ex.video_url}" allowfullscreen></iframe>`
+                ? `<iframe src="${ex.video_url}" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`
                 : `<div class="play">${ICONS.play}</div><span>video tutorial</span>`}
             </div>` : ''}
         </div>` : ''}

@@ -204,5 +204,58 @@ console.log('F7 · Progreso y Suplementación se releen al volver');
   });
 }
 
+console.log('F21 · el link no queda en la barra ni viaja en el Referer');
+{
+  const tok = 'AAAAAAAAAAAAAAAAAAAA';
+  const ini = html.indexOf('const TOKEN = (function() {');
+  const fin = html.indexOf('})();', ini) + 5;
+  const bloque = html.slice(ini, fin).replace('const TOKEN =', 'var TOKEN =');
+  const correr = (href, guardar = true) => {
+    const ls = new Map();
+    const u = new URL(href);
+    let reemplazo = null;
+    const ctx = {
+      URL, URLSearchParams,
+      window: { location: { search: u.search, pathname: u.pathname, href } },
+      history: { state: null, replaceState: (_s, _t, x) => { reemplazo = x; } },
+      localStorage: { getItem: (k) => ls.has(k) ? ls.get(k) : null, setItem: (k, v) => { if (guardar) ls.set(k, String(v)); } },
+    };
+    vm.createContext(ctx);
+    vm.runInContext(bloque, ctx);
+    return { token: ctx.TOKEN, reemplazo };
+  };
+  await t('se lee, se guarda y se saca de la dirección (lo demás queda)', async () => {
+    const r = correr(`https://app.ejemplo.com/cliente.html?t=${tok}&scene=diet#x`);
+    igual(r.token, tok, 'token');
+    igual(r.reemplazo, '/cliente.html?scene=diet#x', 'dirección');
+  });
+  await t('si el teléfono no deja guardar, el link queda (recargar no lo pierde)', async () => {
+    const r = correr(`https://app.ejemplo.com/cliente.html?t=${tok}`, false);
+    igual(r.token, tok, 'token');
+    igual(r.reemplazo, null, 'dirección');
+  });
+  await t('la app de Capacitor no recarga en bucle con el link de arranque', async () => {
+    const fuente = fs.readFileSync(path.join(raiz, 'public/js/deeplink.js'), 'utf8');
+    let recargas = 0;
+    const ls = new Map([['mypump_token', tok]]);
+    const ctx = {
+      URL, URLSearchParams, console,
+      location: { pathname: '/cliente.html', search: '?scene=diet', replace: () => { recargas++; } },
+      localStorage: { getItem: (k) => ls.has(k) ? ls.get(k) : null, setItem: (k, v) => ls.set(k, String(v)) },
+    };
+    ctx.window = ctx;
+    ctx.window.Capacitor = { Plugins: { App: { addListener: () => {}, getLaunchUrl: async () => ({ url: `https://app.ejemplo.com/?t=${tok}` }) } } };
+    vm.createContext(ctx);
+    vm.runInContext(fuente, ctx);
+    await new Promise((r) => setTimeout(r, 10));
+    igual(recargas, 0, 'recargas');
+  });
+  await t('el Referer manda solo el origen y los videos de YouTube siguen andando', async () => {
+    const h = fs.readFileSync(path.join(raiz, 'public/_headers'), 'utf8');
+    if (!/\/\*\n\s+Referrer-Policy: strict-origin-when-cross-origin/.test(h)) throw new Error('falta la política en _headers');
+    if (!/<iframe src="\$\{ex\.video_url\}" referrerpolicy="strict-origin-when-cross-origin"/.test(html)) throw new Error('el iframe de YouTube');
+  });
+}
+
 console.log(`\n${ok} OK · ${fail} fallas`);
 process.exit(fail ? 1 : 0);
