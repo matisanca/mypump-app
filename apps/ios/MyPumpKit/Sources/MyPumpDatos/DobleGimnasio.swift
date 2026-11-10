@@ -169,7 +169,7 @@ public final class DobleGimnasio: Transporte, @unchecked Sendable {
         case "borrador", "corte", "rechazo", "reintento":
             d.consentimientoAceptado = true
             d.abierta = ["id": .texto(id), "estado": .texto("borrador"), "modo": .texto("completa")]
-            if nombre == "corte" { d.proximasSubidas = [200, 0, 0] }
+            if nombre == "corte" { d.proximasSubidas = [200, 0] }
             if nombre == "rechazo" { d.proximasSubidas = [400] }
             if nombre == "reintento" { d.proximasSubidas = [503] }
         case "enProceso":

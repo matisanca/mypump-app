@@ -93,6 +93,12 @@ struct MisDatosView: View {
                     }
                     .accessibilityIdentifier("mis-datos-guia")
                 }
+                if let g = modelo.gimnasio, g.entradaVisible {
+                    NavigationLink { GimnasioRaiz(modelo: g) } label: {
+                        Label { Text(TextosGimnasio.entradaMisDatos) } icon: { IconoAzulejo("dumbbell.fill", color: .marcaTexto) }
+                    }
+                    .accessibilityIdentifier("mis-datos-gimnasio")
+                }
                 Button { fuentes = true } label: {
                     fila("Respaldo científico del plan", icono: "book.closed.fill", color: .marcaTexto)
                 }

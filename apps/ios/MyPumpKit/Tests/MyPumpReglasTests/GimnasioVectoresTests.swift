@@ -28,7 +28,7 @@ final class GimnasioVectoresTests: XCTestCase {
         let v = try vectores()
         guard case .objeto(let t)? = v["textos"] else { return XCTFail() }
         let enCodigo: [String: String] = [
-            "tarjetaTitulo": TextosGimnasio.tarjetaTitulo, "entradaMisDatos": TextosGimnasio.entradaMisDatos, "inicioTitulo": TextosGimnasio.inicioTitulo,
+            "tarjetaTitulo": TextosGimnasio.tarjetaTitulo, "confirmarTarjeta": TextosGimnasio.confirmarTarjeta, "entradaMisDatos": TextosGimnasio.entradaMisDatos, "inicioTitulo": TextosGimnasio.inicioTitulo,
             "inicioBajada": TextosGimnasio.inicioBajada, "avisoTerceros": TextosGimnasio.avisoTerceros, "botonEmpezar": TextosGimnasio.botonEmpezar,
             "consejoPermiso": TextosGimnasio.consejoPermiso, "noHay": TextosGimnasio.noHay, "noHayCorto": TextosGimnasio.noHayCorto,
             "sinFotos": TextosGimnasio.sinFotos, "opcional": TextosGimnasio.opcional, "consejoCamara": TextosGimnasio.consejoCamara,

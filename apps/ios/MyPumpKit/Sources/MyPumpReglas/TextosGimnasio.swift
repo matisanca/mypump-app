@@ -8,6 +8,7 @@ public enum TextosGimnasio {
     // Entrada
     public static let tarjetaTitulo = "Tu gimnasio"
     public static let entradaMisDatos = "Mi gimnasio"
+    public static let confirmarTarjeta = "Confirmanos qué de esto hay en tu gimnasio"
     // Inicio
     public static let inicioTitulo = "Mostranos tu gimnasio"
     public static let inicioBajada = "Sacale fotos a lo que hay y adaptamos tu plan a tus máquinas"
