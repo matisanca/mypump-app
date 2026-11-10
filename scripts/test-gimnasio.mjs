@@ -55,8 +55,6 @@ for (const c of V.decodificar) {
   const e = G.decodificarEstado(c.j);
   t(`decodificar hab ${JSON.stringify(c.j).slice(0, 40)}`, (e !== null) === c.habilitado);
   if (!e) continue;
-  t('version', e.consentimientoVersion === c.version);
-  t('aceptado', e.consentimientoAceptado === c.aceptado);
   t('abierta', (e.abierta ? e.abierta.estado : undefined) === c.abierta);
   if (c.equipos !== undefined) { t('equipos', e.vigente.equipos.length === c.equipos); t('cantidad', e.vigente.equipos[e.vigente.equipos.length - 1].cantidad === c.cantidad); }
   if (c.preguntas !== undefined) t('preguntas', e.abierta.preguntas.length === c.preguntas);
@@ -64,8 +62,8 @@ for (const c of V.decodificar) {
 
 // ── Lo que trae cuando ningún dato sobra: nunca nombres de IA ni RIR en lo que lee el alumno ──
 for (const [k, v] of Object.entries(G.T)) {
-  if (typeof v !== 'string' || k === 'avisoTerceros') continue;
-  t(`sin IA ni RIR: ${k}`, !/\bIA\b|inteligencia artificial|\bRIR\b/i.test(v), v);
+  if (typeof v !== 'string') continue;
+  t(`sin IA ni RIR: ${k}`, !/\bIA\b|inteligencia artificial|servicios externos|entrenador|\bRIR\b/i.test(v), v);
 }
 
 // ── Quitar metadatos: JPEG armado a mano con EXIF y GPS ──

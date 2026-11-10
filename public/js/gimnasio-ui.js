@@ -173,13 +173,11 @@
   const opcion = (texto, marcada, attrs) => `<button type="button" class="gim-op${marcada ? ' is-on' : ''}" aria-pressed="${marcada}" ${attrs}>${marcada ? IC.ok : IC.no}<span>${e(texto)}</span></button>`;
 
   // ── Pantallas ──
-  function pInicio(m) {
-    return `<h2 class="gim-h">${e(T.inicioTitulo)}</h2>
-      <p class="gim-sub">${e(T.inicioBajada)}</p>
-      ${m.necesitaAviso ? `<div class="gim-aviso" id="gimAviso">${e(T.avisoTerceros)}</div>` : ''}
-      ${nota(T.consejoPermiso)}
-      ${errorHtml()}
-      <button type="button" class="btn-primary" data-gim="empezar" id="gimEmpezar"${ui.ocupado ? ' disabled' : ''}>${e(T.botonEmpezar)}</button>`;
+  /* Sin carga abierta no hay nada que leer: se abre sola y sigue a las zonas. Solo se queda acá si no se pudo. */
+  function pArranque() {
+    if (!ui.error) return '<div class="tec-envio" id="gimArrancando"><div class="spinner" aria-hidden="true"></div></div>';
+    return `${errorHtml()}
+      <button type="button" class="btn-primary" data-gim="empezar" id="gimReintentar"${ui.ocupado ? ' disabled' : ''}>${e(T.botonReintentar)}</button>`;
   }
 
   function detalleZona(m, z, fotos) {
@@ -336,13 +334,12 @@
 
   function cuerpo(m) {
     if (m.envio) return pEnviando(m);
-    if (m.pantalla === 'zonas' && m.necesitaAviso) return pInicio(m);
     const d = tope();
     if (d && d.t === 'zona') return pZona(m, d.clave);
     if (d && d.t === 'revisar') return pRevisar(m);
     if (d && d.t === 'yaNoEsta') return pYaNoEsta(m);
     switch (m.pantalla) {
-      case 'inicio': return pInicio(m);
+      case 'inicio': return pArranque();
       case 'zonas': return pZonas(m);
       case 'recibido': return pRecibido();
       case 'preguntas': return pPreguntas(m);
@@ -399,6 +396,7 @@
     const t = document.getElementById('hdrTitle');
     if (t) t.textContent = titulo();
     firmarLoQueSeVe(m);
+    if (m.pantalla === 'inicio' && !m.envio && !ui.ocupado && !ui.error && escenaActiva()) empezar('completa');
   }
 
   function detalleTarjeta(m) {
@@ -454,14 +452,14 @@
     ui.ocupado = true; renderEscena();
     let r = 'ok';
     try { r = await m.empezar(modo); } finally { ui.ocupado = false; }
-    ui.error = r === 'ok' ? null : r === 'sinSenal' ? T.sinSenal : T.errorGenerico;
+    ui.error = r === 'ok' ? (m.pantalla === 'inicio' ? T.sinSenal : null) : r === 'sinSenal' ? T.sinSenal : T.errorGenerico;
     renderEscena();
   }
 
   // ── Toques ──
   const ACCIONES = {
     volver() { if (ui.pila.length) { if (tope().t === 'zona' && ui.modelo) ui.modelo.limpiarAvisoFoto(); ui.pila.pop(); ui.error = null; ui.firmaUrls = ''; renderEscena(); } else cerrar(); },
-    async empezar() { const m = ui.modelo; ui.ocupado = true; await m.aceptarAviso(); ui.ocupado = false; if (m.abierta) { ui.error = null; renderEscena(); return; } await empezar('completa'); },
+    empezar() { ui.error = null; return empezar('completa'); },
     zona(b) { apilar({ t: 'zona', clave: b.dataset.z }); },
     revisar() { apilar({ t: 'revisar' }); },
     yaNoEsta() { ui.marcadosQuitar = new Set(); apilar({ t: 'yaNoEsta' }); },
@@ -472,7 +470,7 @@
     },
     async borrar(b) {
       const r = await ui.modelo.borrarFoto(b.dataset.id);
-      ui.error = r === 'ok' ? null : r === 'sinSenal' ? T.sinSenal : T.errorGenerico;
+      ui.error = r === 'ok' ? (m.pantalla === 'inicio' ? T.sinSenal : null) : r === 'sinSenal' ? T.sinSenal : T.errorGenerico;
       renderEscena();
     },
     nohay(b) { ui.modelo.marcarNoHay(b.dataset.z, !ui.modelo.noHay.has(b.dataset.z)); },

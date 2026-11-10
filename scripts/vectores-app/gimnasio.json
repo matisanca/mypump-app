@@ -49,10 +49,8 @@
  "textos": {
   "tarjetaTitulo": "Tu gimnasio",
   "entradaMisDatos": "Mi gimnasio",
-  "inicioTitulo": "Mostranos tu gimnasio",
   "inicioBajada": "Sacale fotos a lo que hay y adaptamos tu plan a tus máquinas",
-  "avisoTerceros": "Para reconocer los equipos, tus fotos las procesan servicios externos de inteligencia artificial, sin tu nombre. Mati y tu entrenador deciden los cambios",
-  "botonEmpezar": "Entendido, empezar",
+  "botonReintentar": "Probar de nuevo",
   "consejoPermiso": "Si tu gimnasio no deja, pedí permiso o sacalas en un horario tranquilo",
   "noHay": "No hay en mi gimnasio",
   "noHayCorto": "No hay",
@@ -74,7 +72,7 @@
   "enviandoSeguir": "Queda guardado y se envía solo cuando vuelva la señal",
   "sinNovedad": "Sumá una foto o marcá algo que ya no esté",
   "errorGenerico": "No se pudo enviar. Probá de nuevo",
-  "recibido": "Recibido. Mati y tu entrenador lo están viendo. Te avisamos por WhatsApp",
+  "recibido": "Recibido. Mati lo está viendo. Te avisamos por WhatsApp",
   "sinCambios": "Mati revisó tu gimnasio y tu rutina encaja tal cual",
   "anterior": "Anterior",
   "siguiente": "Siguiente",
@@ -1042,15 +1040,11 @@
      "a": 1
     }
    },
-   "habilitado": true,
-   "version": "terceros-v1",
-   "aceptado": false
+   "habilitado": true
   },
   {
    "j": {
     "habilitado": true,
-    "consentimiento_version": "v9",
-    "consentimiento_aceptado": true,
     "abierta": {
      "id": "a",
      "estado": "estado_del_futuro",
@@ -1080,8 +1074,6 @@
     }
    },
    "habilitado": true,
-   "version": "v9",
-   "aceptado": true,
    "abierta": "estado_del_futuro",
    "equipos": 2,
    "cantidad": 2
@@ -1111,8 +1103,6 @@
     }
    },
    "habilitado": true,
-   "version": "terceros-v1",
-   "aceptado": false,
    "abierta": "a_confirmar",
    "preguntas": 1
   }

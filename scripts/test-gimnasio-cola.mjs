@@ -16,11 +16,11 @@ const TOK = 'token-de-prueba-0123456789';
 
 function doble(ini = {}) {
   const d = {
-    palanca: true, sinFuncion: false, habilitado: true, aceptado: false, sinRed: false, proximas: [], llamadas: [],
+    palanca: true, sinFuncion: false, habilitado: true, sinRed: false, proximas: [], llamadas: [],
     abierta: null, vigente: null, fotos: [], ultimoEnviar: null, ultimoResponder: null, cabeceras: null, ...ini,
   };
   const vista = () => ({
-    habilitado: true, consentimiento_version: 'terceros-v1', consentimiento_aceptado: d.aceptado,
+    habilitado: true,
     abierta: d.abierta ? { ...d.abierta, fotos: d.fotos.map(({ id, zona, ronda }) => ({ id, zona, ronda })) } : null,
     vigente: d.vigente,
   });
@@ -39,14 +39,12 @@ function doble(ini = {}) {
     if (fn === 'mypump_gimnasio_enviar') {
       if (!d.abierta || d.abierta.id !== p.p_id) return dato({ ok: false, error: 'no_encontrado' });
       if (d.abierta.estado !== 'borrador') return dato({ ok: true, ya: true, estado: 'enviado' });
-      if (p.p_consentimiento !== 'terceros-v1') return dato({ ok: false, error: 'sin_consentimiento' });
       d.ultimoEnviar = p;
       if (d.abierta.modo === 'completa') {
         const faltan = G.zonasFaltantes(d.fotos.map((f) => f.zona), p.p_no_hay);
         if (faltan.length) return dato({ ok: false, error: 'faltan_zonas', faltan });
       } else if (!d.fotos.length && !p.p_quitar.length) return dato({ ok: false, error: 'sin_novedad' });
       d.abierta = { ...d.abierta, estado: 'enviado' };
-      d.aceptado = true;
       return dato({ ok: true, ya: false, estado: 'enviado' });
     }
     if (fn === 'mypump_gimnasio_responder') {
@@ -99,7 +97,7 @@ function modelo(d, almacen = almacenMemoria(), token = TOK) {
   return m;
 }
 const foto = (b = [1, 2, 3]) => ({ bytes: new Uint8Array(b).buffer, miniatura: 'data:image/jpeg;base64,AA' });
-const borrador = (extra) => ({ abierta: { id: ID, estado: 'borrador', modo: 'completa' }, aceptado: true, ...extra });
+const borrador = (extra) => ({ abierta: { id: ID, estado: 'borrador', modo: 'completa' }, ...extra });
 const listo = async (m) => { await m.cargar(); await m.refrescar(); return m; };
 const TODAS = G.ZONAS.map((z) => z.clave).filter((z) => z !== 'otros');
 
@@ -135,18 +133,13 @@ t('token caído (null): se esconde', async () => {
   const d = doble(); d.rpc = async () => ({ ok: true, data: null });
   si(!(await listo(modelo(d))).estado);
 });
-t('aviso de terceros una sola vez', async () => {
-  const al = almacenMemoria(); const d = doble(); const m = await listo(modelo(d, al));
-  si(m.necesitaAviso); await m.aceptarAviso(); si(!m.necesitaAviso);
-  si(!(await listo(modelo(d, al))).necesitaAviso, 'al volver no se repite');
-});
-t('envío completo: fotos, no hay, nota y consentimiento', async () => {
+t('envío completo: fotos, no hay y nota', async () => {
   const d = doble(); const m = await listo(modelo(d));
-  await m.aceptarAviso(); eq(await m.empezar(), 'ok'); eq(m.pantalla, 'zonas');
+  eq(await m.empezar(), 'ok'); eq(m.pantalla, 'zonas');
   for (const z of TODAS.slice(0, -1)) eq(await m.agregar(z, foto()), 'guardada');
   m.marcarNoHay('bancos', true); m.fijarNota('x'.repeat(400)); eq(m.nota.length, 300);
   si(m.puedeEnviar); await m.enviarCarga();
-  eq(d.fotos.length, 8); eq(d.ultimoEnviar.p_no_hay, ['bancos']); eq(d.ultimoEnviar.p_consentimiento, 'terceros-v1'); eq(d.ultimoEnviar.p_nota.length, 300); eq(d.ultimoEnviar.p_quitar, []);
+  eq(d.fotos.length, 8); eq(d.ultimoEnviar.p_no_hay, ['bancos']); si(!('p_consentimiento' in d.ultimoEnviar)); eq(d.ultimoEnviar.p_nota.length, 300); eq(d.ultimoEnviar.p_quitar, []);
   eq(m.pantalla, 'recibido'); eq(m.envio, null); eq(m.cola.length, 0);
   eq(d.cabeceras['x-gimnasio-token'], TOK); eq(d.cabeceras['Content-Type'], 'image/jpeg');
 });
@@ -261,13 +254,6 @@ t('faltan_zonas del servidor: marca las zonas y vuelve a editar', async () => {
   await m.enviarCarga();
   eq(m.avisoEnvio, { faltan: ['poleas'] }); eq(m.envio, null); eq(m.pantalla, 'zonas');
 });
-t('sin_consentimiento: vuelve a mostrar el aviso', async () => {
-  const d = doble({ abierta: { id: ID, estado: 'borrador', modo: 'completa' } }); const m = await listo(modelo(d));
-  await m.aceptarAviso(); for (const z of TODAS) m.marcarNoHay(z, true);
-  const r0 = d.rpc;
-  d.rpc = async (fn, p) => (fn === 'mypump_gimnasio_enviar' ? { ok: true, data: { ok: false, error: 'sin_consentimiento' } } : r0(fn, p));
-  await m.enviarCarga(); si(m.necesitaAviso); eq(m.envio, null);
-});
 t('no_habilitado al enviar: se esconde', async () => {
   const d = doble(borrador()); const m = await listo(modelo(d)); await m.agregar('poleas', foto());
   const r0 = d.rpc;
@@ -288,7 +274,7 @@ t('enviar sin red queda guardado y al volver sale una sola vez', async () => {
 });
 t('el servidor ya tomó el envío: la marca se limpia sola', async () => {
   const al = almacenMemoria(); const d = doble(borrador()); const m = await listo(modelo(d, al));
-  m.borrador.envio = { tipo: 'enviar', gimnasioId: ID, noHay: [], nota: '', consentimiento: 'terceros-v1', quitar: [] };
+  m.borrador.envio = { tipo: 'enviar', gimnasioId: ID, noHay: [], nota: '', quitar: [] };
   d.abierta.estado = 'procesando'; await m.refrescar(); eq(m.envio, null);
 });
 t('volver a editar: cancela el envío, la cola sigue', async () => {
@@ -303,7 +289,7 @@ t('faltan fotos: la de la ronda va antes de responder y responde incompleto', as
     { id: 'foto_1', clase: 'foto', zona: 'bancos', texto: 't', fotos: [] },
     { id: 'sin_contestar', clase: 'elegir', multiple: false, texto: 't', opciones: [{ valor: 'a', texto: 'A' }] },
   ];
-  const d = doble({ abierta: { id: ID, estado: 'a_confirmar', modo: 'completa', preguntas }, aceptado: true }); const m = await listo(modelo(d));
+  const d = doble({ abierta: { id: ID, estado: 'a_confirmar', modo: 'completa', preguntas }, }); const m = await listo(modelo(d));
   eq(m.pantalla, 'preguntas');
   m.responder('peso', 32.5); eq(G.fotosPedidas(m.abierta.preguntas, m.respuestas), 1);
   await m.agregar('bancos', foto(), 'foto_1'); eq(m.respuestas.foto_1, 'subida');
@@ -316,18 +302,18 @@ t('faltan fotos: la de la ronda va antes de responder y responde incompleto', as
 });
 t('la foto de una pregunta rechazada: se la vuelve a pedir y no responde', async () => {
   const preguntas = [{ id: 'foto_1', clase: 'foto', zona: 'bancos', texto: 't' }];
-  const d = doble({ abierta: { id: ID, estado: 'a_confirmar', modo: 'completa', preguntas }, aceptado: true, proximas: [400] }); const m = await listo(modelo(d));
+  const d = doble({ abierta: { id: ID, estado: 'a_confirmar', modo: 'completa', preguntas }, proximas: [400] }); const m = await listo(modelo(d));
   await m.agregar('bancos', foto(), 'foto_1'); await m.enviarRespuestas();
   eq(m.envio, null); eq(m.respuestas.foto_1, undefined); eq(m.avisoFoto, 'rechazada'); eq(d.llamadas.includes('mypump_gimnasio_responder'), false);
 });
 t('parcial con algo que ya no está; sin vigente cae a completa; sin novedad avisa', async () => {
   const vigente = { id: 'v1', estado: 'listo', modo: 'completa', resultado: 'adaptada', equipos: [{ tipo: 'pec_deck', nombre: 'Pec deck', zona: 'empuje', cantidad: 1 }] };
-  const d = doble({ aceptado: true, vigente }); const m = await listo(modelo(d));
+  const d = doble({ vigente }); const m = await listo(modelo(d));
   eq(m.pantalla, 'listo'); si(m.entradaVisible); si(!m.tarjetaVisible);
   eq(await m.empezar('parcial'), 'ok'); eq(m.abierta.modo, 'parcial'); eq(m.faltantes, []);
   si(!m.puedeEnviar); m.alternarQuitar('pec_deck'); si(m.puedeEnviar);
   await m.enviarCarga(); eq(d.ultimoEnviar.p_quitar, ['pec_deck']); eq(m.pantalla, 'recibido');
-  const e = doble({ aceptado: true }); const n2 = await listo(modelo(e));
+  const e = doble({ }); const n2 = await listo(modelo(e));
   eq(await n2.empezar('parcial'), 'ok'); eq(n2.abierta.modo, 'completa');
 });
 t('una carga nueva no hereda el borrador de la anterior', async () => {
@@ -339,7 +325,7 @@ t('una carga nueva no hereda el borrador de la anterior', async () => {
 t('dos cuentas en un teléfono no se mezclan; otro link de la misma persona sigue la carga', async () => {
   const al = almacenMemoria(); const d = doble(borrador()); const m = await listo(modelo(d, al));
   await m.agregar('poleas', foto());
-  const ajena = doble({ aceptado: true }); const b = await listo(modelo(ajena, al, 'otra-cuenta-0123456789'));
+  const ajena = doble({ }); const b = await listo(modelo(ajena, al, 'otra-cuenta-0123456789'));
   eq(b.cola.length, 0, 'la de otro no se ve');
   await b.drenar(); eq(ajena.subidas(), 0);
   const mismo = await listo(modelo(d, al, 'link-nuevo-0123456789abc'));

@@ -181,7 +181,7 @@
   function pGrabar(m) {
     const s = ui.sel;
     return `<h2 class="gim-h gim-h-chico" id="tecEjercicio">${e(s.ejercicio.nombre)}</h2>
-      ${m.necesitaAviso ? `<div class="gim-aviso" id="tecAvisoTerceros">${e(T.avisoTerceros)}</div>` : ''}
+      ${m.necesitaAviso ? `<div class="gim-aviso" id="tecAvisoBreve">${e(T.avisoBreve)}</div>` : ''}
       <p class="gim-sub" id="tecConsejo">${e(T.consejo)}</p>
       ${s.url ? `<video class="tec-video" id="tecPrevia" src="${e(s.url)}#t=0.1" controls playsinline muted preload="metadata"></video>` : ''}
       ${s.validando ? `<div class="tec-envio" id="tecValidando"><div class="spinner" aria-hidden="true"></div>${nota(T.preparandoVideo)}</div>` : ''}

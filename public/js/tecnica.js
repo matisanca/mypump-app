@@ -23,7 +23,7 @@
   };
 
   const T = {
-    avisoTerceros: 'Para analizar tu técnica, partes de tu video las procesan servicios externos de inteligencia artificial, con la cara tapada y sin tu nombre. Mati revisa todo antes de que te llegue. El video se borra a los 90 días y lo podés sacar cuando quieras.',
+    avisoBreve: 'Mati revisa tu video antes de que te llegue la devolución. El video se borra a los 90 días y lo podés sacar cuando quieras.',
     mandar: 'Mandar mi técnica',
     titulo: 'Mi técnica',
     consejo: 'Apoyá el teléfono a unos 3 metros, a la altura de la cadera. De costado es lo mejor para casi todos los ejercicios. Que entre todo tu cuerpo. Una serie, de hasta 75 segundos. No grabes a otras personas.',
@@ -110,11 +110,9 @@
 
   /* null: token caído, apagado o una respuesta que no se entiende. En todos esos casos no se muestra nada. */
   function decodificarEstado(j) {
-    if (!j || typeof j !== 'object' || j.habilitado !== true || !texto(j.consentimiento_version)) return null;
+    if (!j || typeof j !== 'object' || j.habilitado !== true) return null;
     const t = j.topes && typeof j.topes === 'object' ? j.topes : {};
     return {
-      consentimientoVersion: j.consentimiento_version,
-      consentimientoAceptado: j.consentimiento_aceptado === true,
       topes: {
         duracionMin: positivo(t.duracion_min_s, TOPES_BASE.duracionMin),
         duracionMax: positivo(t.duracion_max_s, TOPES_BASE.duracionMax),

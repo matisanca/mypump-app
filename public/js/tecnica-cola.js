@@ -214,7 +214,7 @@
       this.progreso = 0;            // 0 a 1
       this.guardando = false;       // el video elegido se está pasando a IndexedDB
       this.aviso = null;
-      this.avisoAceptado = null;
+      this.avisoVisto = false;
       this.alCambiar = () => {};
       this.alProgreso = () => {};
 
@@ -233,7 +233,7 @@
     _avisar() { try { this.alCambiar(); } catch (_) {} }
 
     async cargar() {
-      try { this.avisoAceptado = (await this.almacen.leerKV(this._kvAviso)) || null; } catch (_) {}
+      try { this.avisoVisto = !!(await this.almacen.leerKV(this._kvAviso)); } catch (_) {}
       await this._releerCola(true);
     }
 
@@ -257,10 +257,8 @@
     get visibleEntrada() { return !!this.estado; }
     get envios() { return this.estado ? this.estado.envios.filter((e) => e.estado !== 'borrador') : []; }
     get topes() { return this.estado ? this.estado.topes : Tec.TOPES_BASE; }
-    get necesitaAviso() {
-      const e = this.estado;
-      return !!e && !e.consentimientoAceptado && this.avisoAceptado !== e.consentimientoVersion;
-    }
+    /* El aviso breve, solo la primera vez: es informativo y no frena ni condiciona el envío. */
+    get necesitaAviso() { return !!this.estado && !this.avisoVisto && !this.envios.length; }
     get bloqueo() { return Tec.bloqueo(this.estado, this.cola.length + (this.guardando ? 1 : 0), this.ahora()); }
     envio(id) { return this.envios.find((e) => e.id === id) || null; }
     limpiarAviso() { this.aviso = null; }
@@ -315,7 +313,7 @@
       const meta = {
         id: String(this.nuevoId()).toLowerCase(), cuenta: this.cuenta, servidorId: null,
         slug: ejercicio.slug, nombre: ejercicio.nombre, nota: Tec.notaRecortada(nota).trim() || null,
-        consentimiento: e.consentimientoVersion, bytes: archivo.size, tipo: archivo.type || 'video/mp4',
+        bytes: archivo.size, tipo: archivo.type || 'video/mp4',
         duracion: typeof duracion === 'number' && isFinite(duracion) ? duracion : null, creado: this.ahora(), fallos: 0, fallosBaratos: 0, pausado: false, soloMemoria: false,
       };
       try {
@@ -326,8 +324,8 @@
       this._vivos.set(meta.id, archivo);
       this.cola.push(meta);
       this.guardando = false;
-      this.avisoAceptado = e.consentimientoVersion;
-      try { await this.almacen.guardarKV(this._kvAviso, this.avisoAceptado); } catch (_) {}
+      this.avisoVisto = true;
+      try { await this.almacen.guardarKV(this._kvAviso, '1'); } catch (_) {}
       this._reintentosDeFondo = 0;
       this._avisar();
       this.drenar().catch(() => {});
@@ -412,7 +410,7 @@
     /* → 'sigue' | 'corta' | 'descartado' */
     async _crearEnServidor(item, reintentos = 1) {
       const r = await this.rpc('mypump_tecnica_nuevo', {
-        p_token: this.token, p_ejercicio_slug: item.slug, p_ejercicio_nombre: item.nombre, p_nota: item.nota, p_consentimiento: item.consentimiento,
+        p_token: this.token, p_ejercicio_slug: item.slug, p_ejercicio_nombre: item.nombre, p_nota: item.nota,
       });
       if (!r.ok) {
         if (r.clase === 'permanente') return this._descartarLocal(item, T.errorGenerico);
@@ -433,10 +431,6 @@
       switch (j.error) {
         case 'en_curso': return this._descartarLocal(item, T.enRevision, true);
         case 'tope_semanal': return this._descartarLocal(item, T.topeSemana(this.topes.porSemana), true);
-        case 'consentimiento':
-          this.avisoAceptado = null;
-          try { await this.almacen.borrarKV(this._kvAviso); } catch (_) {}
-          return this._descartarLocal(item, T.errorGenerico, true);
         case 'no_habilitado': this.apagar(); return this._descartarLocal(item, null);
         case 'reintentar':
           if (reintentos > 0) return this._crearEnServidor(item, reintentos - 1);

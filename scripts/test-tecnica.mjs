@@ -22,7 +22,7 @@ const video = (n = 1000) => new Blob([new Uint8Array(n)], { type: 'video/mp4' })
 const base = (extra = {}) => ({ ejercicio: EJ, nota: '', archivo: video(), duracion: 30, contenedorOk: true, ...extra });
 
 function doble(ini = {}) {
-  const d = { habilitado: true, aceptado: false, sinRed: false, sinFuncion: false, tokenCaido: false, envios: [], llamadas: [], proximasNuevo: [], proximasSubida: [], cancelados: [], ultimoNuevo: null, subidas: [], ...ini };
+  const d = { habilitado: true, sinRed: false, sinFuncion: false, tokenCaido: false, envios: [], llamadas: [], proximasNuevo: [], proximasSubida: [], cancelados: [], ultimoNuevo: null, subidas: [], ...ini };
   d.rpc = async (fn, p) => {
     d.llamadas.push(fn);
     if (d.sinRed) return { ok: false, status: 0, codigo: 'NETWORK', clase: 'red' };
@@ -30,7 +30,7 @@ function doble(ini = {}) {
     if (d.tokenCaido) return { ok: true, data: null };
     switch (fn) {
       case 'mypump_tecnica_get':
-        return { ok: true, data: d.habilitado ? { habilitado: true, consentimiento_version: 'v1', consentimiento_aceptado: d.aceptado, topes: { duracion_min_s: 4, duracion_max_s: 75, bytes_max: 5000, por_semana: 3 }, envios: d.envios } : { habilitado: false } };
+        return { ok: true, data: d.habilitado ? { habilitado: true, topes: { duracion_min_s: 4, duracion_max_s: 75, bytes_max: 5000, por_semana: 3 }, envios: d.envios } : { habilitado: false } };
       case 'mypump_tecnica_nuevo': {
         d.ultimoNuevo = p;
         if (d.proximasNuevo.length) return { ok: true, data: d.proximasNuevo.shift() };
@@ -76,10 +76,10 @@ const hasta = async (f) => { for (let i = 0; i < 400 && !f(); i++) await new Pro
 await caso('decodificar: apagado, token caído y raro no muestran nada', () => {
   assert.equal(Tec.decodificarEstado(null), null);
   assert.equal(Tec.decodificarEstado({ habilitado: false }), null);
-  assert.equal(Tec.decodificarEstado({ habilitado: true }), null);
+  assert.equal(Tec.decodificarEstado({ habilitado: 'si' }), null);
 });
 await caso('decodificar: estados desconocidos afuera; topes por defecto', () => {
-  const e = Tec.decodificarEstado({ habilitado: true, consentimiento_version: 'v', envios: [{ id: 'A', estado: 'procesando' }, { id: 'B', estado: 'enviado' }, 3] });
+  const e = Tec.decodificarEstado({ habilitado: true, envios: [{ id: 'A', estado: 'procesando' }, { id: 'B', estado: 'enviado' }, 3] });
   assert.deepEqual(e.envios.map((x) => x.id), ['b']);
   assert.equal(e.topes.duracionMax, 75);
   assert.equal(e.topes.bytesMax, 62914560);
@@ -152,12 +152,12 @@ await caso('ejercicios: sin repetir, sin cardio, con el sustituto aplicado', () 
   assert.deepEqual(l, [{ slug: 'Squat', nombre: 'Sentadilla' }, { slug: 'T-Bar', nombre: 'Remo T' }]);
   assert.equal(Tec.slugDe('Press Inclinado 30°'), 'press-inclinado-30');
 });
-await caso('textos: solo el aviso de terceros menciona la IA; nunca RIR ni reserva', () => {
+await caso('textos: nunca IA, servicios externos, entrenador, RIR ni reserva', () => {
   const planos = [];
   const juntar = (o) => { for (const v of Object.values(o)) { if (typeof v === 'string') planos.push(v); else if (typeof v === 'function') planos.push(v('X')); else if (v && typeof v === 'object') juntar(v); } };
   juntar(T);
-  const ia = planos.filter((s) => /inteligencia artificial|\bIA\b|autom[aá]tic|modelo|algoritmo/i.test(s));
-  assert.deepEqual(ia, [T.avisoTerceros]);
+  const ia = planos.filter((s) => /inteligencia artificial|\bIA\b|servicios externos|entrenador|autom[aá]tic|modelo|algoritmo/i.test(s));
+  assert.deepEqual(ia, []);
   assert.deepEqual(planos.filter((s) => /\bRIR\b|en reserva|exacto a las|a las \d/i.test(s)), []);
   assert.match(T.recibido, /1 a 2 días/);
 });
@@ -172,20 +172,20 @@ await caso('apagado o sin servidor: sin estado y sin subir', async () => {
     assert.deepEqual(d.subidas, []);
   }
 });
-await caso('envío completo: consentimiento, un nuevo, una subida, cola vacía, sin borrador a la vista', async () => {
+await caso('envío completo: un nuevo, una subida, cola vacía, sin borrador a la vista', async () => {
   const d = doble();
   const m = await modelo(d);
   assert.equal(m.necesitaAviso, true);
   assert.equal(await m.enviar(base({ nota: '  mirá la bajada ' })), 'ok');
   await hasta(() => d.subidas.length === 1 && !m.cola.length);
-  assert.deepEqual(d.ultimoNuevo, { p_token: TOK, p_ejercicio_slug: 'sentadilla', p_ejercicio_nombre: 'Sentadilla', p_nota: 'mirá la bajada', p_consentimiento: 'v1' });
+  assert.deepEqual(d.ultimoNuevo, { p_token: TOK, p_ejercicio_slug: 'sentadilla', p_ejercicio_nombre: 'Sentadilla', p_nota: 'mirá la bajada' });
   assert.equal(d.subidas[0], SID);
   await hasta(() => m.envios.length === 1);
   assert.equal(m.envios[0].estado, 'enviado');
   assert.equal(m.necesitaAviso, false);
   assert.equal(m.bloqueo, 'enRevision');
 });
-await caso('el aviso va una sola vez aunque el servidor todavía no lo sepa', async () => {
+await caso('el aviso va una sola vez', async () => {
   const d = doble({ proximasSubida: [{ status: 400, json: { error: 'video muy corto' } }] });
   const alm = almacenMemoria();
   const m = await modelo(d, { almacen: alm });

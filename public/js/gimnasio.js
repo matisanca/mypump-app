@@ -27,17 +27,14 @@
   const MAX_PX = 1600;
   const CALIDAD = 0.8;
   const MAX_BYTES = 8 * 1024 * 1024;
-  const CONSENTIMIENTO_VIGENTE = 'terceros-v1';
   const KILOS_MAXIMO = 400;
 
   const T = {
     tarjetaTitulo: 'Tu gimnasio',
     entradaMisDatos: 'Mi gimnasio',
     confirmarTarjeta: 'Confirmanos qué de esto hay en tu gimnasio',
-    inicioTitulo: 'Mostranos tu gimnasio',
     inicioBajada: 'Sacale fotos a lo que hay y adaptamos tu plan a tus máquinas',
-    avisoTerceros: 'Para reconocer los equipos, tus fotos las procesan servicios externos de inteligencia artificial, sin tu nombre. Mati y tu entrenador deciden los cambios',
-    botonEmpezar: 'Entendido, empezar',
+    botonReintentar: 'Probar de nuevo',
     consejoPermiso: 'Si tu gimnasio no deja, pedí permiso o sacalas en un horario tranquilo',
     noHay: 'No hay en mi gimnasio',
     noHayCorto: 'No hay',
@@ -59,7 +56,7 @@
     enviandoSeguir: 'Queda guardado y se envía solo cuando vuelva la señal',
     sinNovedad: 'Sumá una foto o marcá algo que ya no esté',
     errorGenerico: 'No se pudo enviar. Probá de nuevo',
-    recibido: 'Recibido. Mati y tu entrenador lo están viendo. Te avisamos por WhatsApp',
+    recibido: 'Recibido. Mati lo está viendo. Te avisamos por WhatsApp',
     sinCambios: 'Mati revisó tu gimnasio y tu rutina encaja tal cual',
     anterior: 'Anterior',
     siguiente: 'Siguiente',
@@ -227,8 +224,6 @@
   function decodificarEstado(j) {
     if (!j || typeof j !== 'object' || j.habilitado !== true) return null;
     return {
-      consentimientoVersion: texto(j.consentimiento_version) || CONSENTIMIENTO_VIGENTE,
-      consentimientoAceptado: j.consentimiento_aceptado === true,
       abierta: decodificarCarga(j.abierta),
       vigente: decodificarCarga(j.vigente),
     };
@@ -263,7 +258,7 @@
   }
 
   const API = {
-    ZONAS, ZONA_OPCIONAL, TOPE_FOTOS, MAX_NOTA, MAX_PX, CALIDAD, MAX_BYTES, CONSENTIMIENTO_VIGENTE, KILOS_MAXIMO, T,
+    ZONAS, ZONA_OPCIONAL, TOPE_FOTOS, MAX_NOTA, MAX_PX, CALIDAD, MAX_BYTES, KILOS_MAXIMO, T,
     nombreZona, zonasFaltantes, puedeEnviar, restan, puedeAgregar, notaRecortada,
     pantalla, tarjetaVisible, entradaVisible, clasificarSubida,
     respuestaValida, respuestasParaEnviar, fotosPedidas, kilos, fechaCorta,

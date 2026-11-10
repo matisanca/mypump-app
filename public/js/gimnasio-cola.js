@@ -177,7 +177,7 @@
       this.preparando = 0;          // fotos elegidas que todavía se están reduciendo: el envío las espera
     }
 
-    _borradorVacio() { return { gimnasioId: null, noHay: [], nota: '', quitar: [], respuestas: {}, avisoVersion: null, envio: null, borrarPendientes: [] }; }
+    _borradorVacio() { return { gimnasioId: null, noHay: [], nota: '', quitar: [], respuestas: {}, envio: null, borrarPendientes: [] }; }
     get _kvBorrador() { return `borrador:${this.cuenta}`; }
     get _kvEstado() { return `estado:${this.cuenta}`; }
     _avisar() { try { this.alCambiar(); } catch (_) {} }
@@ -223,10 +223,6 @@
     get tarjetaVisible() { return G.tarjetaVisible(!!this.estado, this.abierta && this.abierta.estado, !!this.vigente); }
     get entradaVisible() { return G.entradaVisible(!!this.estado, !!this.vigente); }
     get pantalla() { return G.pantalla(this.abierta ? this.abierta.estado : null, !!this.vigente); }
-    get necesitaAviso() {
-      const e = this.estado;
-      return !!e && !e.consentimientoAceptado && this.borrador.avisoVersion !== e.consentimientoVersion;
-    }
     get _colaDeLaCarga() {
       const a = this.abierta;
       if (!a) return [];
@@ -292,7 +288,7 @@
       const antes = JSON.stringify(b);
       const id = e.abierta ? e.abierta.id : null;
       if (b.gimnasioId !== id) {
-        b = { ...this._borradorVacio(), gimnasioId: id, avisoVersion: b.avisoVersion, envio: b.envio && b.envio.gimnasioId === id ? b.envio : null, borrarPendientes: id ? b.borrarPendientes : [] };
+        b = { ...this._borradorVacio(), gimnasioId: id, envio: b.envio && b.envio.gimnasioId === id ? b.envio : null, borrarPendientes: id ? b.borrarPendientes : [] };
       }
       // Lo que el servidor ya tomó deja de estar pendiente (un reintento devuelve `ya`).
       if (b.envio && e.abierta && ((b.envio.tipo === 'enviar' && e.abierta.estado !== 'borrador') || (b.envio.tipo === 'responder' && e.abierta.estado !== 'a_confirmar'))) {
@@ -324,13 +320,6 @@
 
     /* → 'ok' | 'sinSenal' | 'error' | 'tokenCaido'. `parcial` sin gimnasio vigente cae a la completa. */
     async empezar(modo = 'completa') { return this._nuevo(modo, 1); }
-
-    async aceptarAviso() {
-      if (!this.estado) return;
-      this.borrador.avisoVersion = this.estado.consentimientoVersion;
-      await this._guardarBorrador();
-    }
-
     async _nuevo(modo, reintentos) {
       const r = await this.rpc('mypump_gimnasio_nuevo', { p_token: this.token, p_modo: modo });
       if (!r.ok) return r.clase === 'permanente' ? 'error' : 'sinSenal';
@@ -598,13 +587,12 @@
     async enviarCarga() {
       const a = this.abierta, e = this.estado;
       if (!a || !e) return;
-      if (this.necesitaAviso) { this.avisoEnvio = 'sinConsentimiento'; this._avisar(); return; }
       this.avisoEnvio = null;
       this.totalEnvio = this.totalFotos;
       this.subidasEnvio = a.fotos.length;
       this.borrador.envio = {
         tipo: 'enviar', gimnasioId: a.id, noHay: this.borrador.noHay, nota: this.borrador.nota,
-        consentimiento: e.consentimientoVersion, quitar: a.modo === 'parcial' ? this.borrador.quitar : [],
+        quitar: a.modo === 'parcial' ? this.borrador.quitar : [],
       };
       await this._guardarBorrador();
       this._avisar();
@@ -637,7 +625,7 @@
       try {
         let r;
         if (e.tipo === 'enviar') {
-          r = await this.rpc('mypump_gimnasio_enviar', { p_token: this.token, p_id: e.gimnasioId, p_no_hay: e.noHay, p_nota: e.nota, p_consentimiento: e.consentimiento, p_quitar: e.quitar });
+          r = await this.rpc('mypump_gimnasio_enviar', { p_token: this.token, p_id: e.gimnasioId, p_no_hay: e.noHay, p_nota: e.nota, p_quitar: e.quitar });
         } else {
           const preguntas = this.abierta ? this.abierta.preguntas : [];
           r = await this.rpc('mypump_gimnasio_responder', { p_token: this.token, p_id: e.gimnasioId, p_respuestas: G.respuestasParaEnviar(preguntas, this.borrador.respuestas) });
@@ -664,12 +652,6 @@
         await this._guardarBorrador();
         switch (j.error) {
           case 'faltan_zonas': this.avisoEnvio = { faltan: Array.isArray(j.faltan) ? j.faltan.filter((z) => typeof z === 'string') : [] }; break;
-          case 'sin_consentimiento':
-            this.borrador.avisoVersion = null;
-            await this._guardarBorrador();
-            this.avisoEnvio = 'sinConsentimiento';
-            await this.refrescar();
-            break;
           case 'sin_novedad': this.avisoEnvio = 'sinNovedad'; break;
           case 'no_encontrado':
           case 'estado_invalido': await this.refrescar(); break;
