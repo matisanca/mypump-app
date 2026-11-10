@@ -14,7 +14,7 @@
    El VERSION se bumpea en cada cambio del set de assets para invalidar caches
    viejos en 'activate'.
    ============================================================= */
-const VERSION       = 'v54-20261110';
+const VERSION       = 'v55-20261110';
 const SHELL_CACHE   = `mypump-shell-${VERSION}`;
 const RUNTIME_CACHE = `mypump-runtime-${VERSION}`;
 const SUPABASE_LIB  = '/js/vendor/supabase-js.min.js';   // vendorizada el 20-sep-2026 (antes CDN)
@@ -42,6 +42,10 @@ const SHELL = [
   '/js/guia.js',
   '/js/reglas-entreno.js',
   '/js/carga-simple.js',
+  '/js/gimnasio.js',
+  '/js/gimnasio-cola.js',
+  '/js/gimnasio-ui.js',
+  '/css/gimnasio.css',
   '/js/healthkit-bridge.js',
   '/js/notificaciones.js',
   '/js/app.js',
@@ -75,6 +79,9 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;                       // POST/RPC → sin tocar
 
   const url = new URL(req.url);
+  // Gimnasio por fotos: ni las fotos ni sus llamadas pasan por un cache, tampoco si algún día se sirven del mismo origen.
+  // (Hoy ya no llegan acá: las subidas son POST y las URLs firmadas, de otro origen.)
+  if (url.pathname.startsWith('/gimnasio/')) return;
   // Lib de Supabase (vendorizada, mismo origen) → cache-first: cambia solo
   // cuando se reemplaza el archivo (y con él, VERSION).
   if (url.origin === location.origin && url.pathname === SUPABASE_LIB) {

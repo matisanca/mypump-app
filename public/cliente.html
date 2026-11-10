@@ -15,6 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 
 <link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/gimnasio.css">
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--color-bg-secondary);color:var(--color-text-primary);font-family:var(--font-sans);font-size:var(--font-size-base);line-height:var(--line-height-normal);-webkit-font-smoothing:antialiased}
@@ -1488,6 +1489,7 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
     <section class="scene" id="scene-salud"></section>
     <section class="scene" id="scene-cuerpo"></section>
     <section class="scene" id="scene-misdatos"></section>
+    <section class="scene" id="scene-gimnasio"></section>
   </main>
 
   <!-- REST TIMER -->
@@ -1591,6 +1593,9 @@ body.cs-con-panel #scene-train{padding-bottom:calc(var(--cs-alto,0px) + var(--sp
 <script src="/js/guia.js"></script>
 <script src="/js/reglas-entreno.js"></script>
 <script src="/js/carga-simple.js"></script>
+<script src="/js/gimnasio.js"></script>
+<script src="/js/gimnasio-cola.js"></script>
+<script src="/js/gimnasio-ui.js"></script>
 <script>
 /* Banco de pruebas de salud: carga el plugin de HealthKit simulado.
  *
@@ -1749,9 +1754,22 @@ let _web230 = (() => {
   } catch (_) { return false; }
 })();
 function web230() { return _web230; }
+/* «Gimnasio por fotos» (js/gimnasio*.js), detrás de `gimnasio_fotos`. Apagada, o sin el servidor nuevo, no se crea ni se llama nada. */
+function _gimPalanca(cfg) {
+  if (!window.GimnasioUI || !TOKEN || DEMO) return;
+  window.GimnasioUI.configurar({
+    token: TOKEN,
+    visionUrl: (window.MYPUMP_CONFIG && window.MYPUMP_CONFIG.VISION_URL) || '',
+    rpc: (fn, params) => window.mypumpDB.gimnasioRpc(fn, params),
+    irA: (escena) => setScene(escena),
+    alCambiarEntrada: () => { if (STATE.scene === 'misdatos') renderMisDatos(); },
+  });
+  window.GimnasioUI.aplicarPalanca(cfg && typeof cfg === 'object' ? cfg.gimnasio_fotos === true : null);
+}
 async function leerPalancaWeb230() {
   if (!window.mypumpDB.getAppConfig) return;
   const cfg = await window.mypumpDB.getAppConfig();
+  _gimPalanca(cfg);
   if (!cfg || typeof cfg !== 'object') return;
   if (Number.isInteger(cfg.dieta_dias_marcar)) _palancaDiasMarcar = cfg.dieta_dias_marcar;
   if (_hostDePrueba()) return;
@@ -10063,7 +10081,7 @@ function renderRecordatorio() {
   }
 
   document.querySelectorAll('.recordatorio-semanal').forEach(el => el.remove());
-  if (p.total === 0 || STATE.scene === 'revision') return;
+  if (p.total === 0 || STATE.scene === 'revision' || STATE.scene === 'gimnasio') return;
 
   const texto = p.faltaCheck && p.faltanFotos ? 'Te faltan tu check y tus fotos de la semana'
               : p.faltaCheck ? 'Te falta tu check de la semana'
@@ -10941,12 +10959,15 @@ function renderMisDatos() {
     <div class="md-ceja">Tu información</div>
     <div class="md-grupo">
       ${guia ? fila('mdGuia', 'Ver mi guía') : ''}
+      ${window.GimnasioUI && window.GimnasioUI.entradaVisible() ? fila('mdGimnasio', window.Gimnasio.T.entradaMisDatos) : ''}
       <button class="md-fila" data-fuentes="myday"><span>Respaldo científico del plan</span><span class="md-chev">${_CHEV_DER}</span></button>
       <a class="md-fila" href="/privacidad.html" target="_blank" rel="noopener"><span>Política de privacidad</span><span class="md-chev">${_CHEV_DER}</span></a>
       <a class="md-fila md-peligro" href="/eliminar-datos.html" target="_blank" rel="noopener"><span>Eliminar mis datos</span><span class="md-chev">${_CHEV_DER}</span></a>
     </div>
     <div class="md-pie md-legal">Pump Team no es un dispositivo médico. Ante cualquier duda de salud, consultá a tu médico.</div>`;
   document.getElementById('mdRec').onclick = () => setScene('salud');
+  const gim = document.getElementById('mdGimnasio');
+  if (gim) gim.onclick = () => window.GimnasioUI.abrir('misdatos');
   const g = document.getElementById('mdGuia');
   if (g) g.onclick = () => { try { window.MyPumpGuia.abrir(TOKEN); } catch (_) {} };
   const sw = document.getElementById('mdOscuro');
@@ -11209,7 +11230,8 @@ function setScene(scene) {
     // tabbar quedaría sin ningún tab marcado y el cliente se sentiría perdido.
     // 'salud' y 'chat' no comparten tab: salud se entra desde Revision, asi
     // que su tab marcado es el de Revision.
-    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision' : scene;
+    const tabDe = (scene === 'salud' || scene === 'progress' || scene === 'cuerpo' || scene === 'misdatos') ? 'revision'
+      : scene === 'gimnasio' ? (window.GimnasioUI.origen === 'misdatos' ? 'revision' : 'train') : scene;
     const active = t.getAttribute('data-scene') === tabDe;
     t.classList.toggle('is-active', active);
     t.setAttribute('aria-selected', active);
@@ -11271,6 +11293,11 @@ function setScene(scene) {
     $('#hdrTitle').textContent = 'Salud';
     if (dp) dp.hidden = true;
     if (hp) hp.hidden = true;
+  } else if (scene === 'gimnasio') {
+    $('#hdrEyebrow').textContent = window.GimnasioUI.origen === 'misdatos' ? 'REVISIÓN' : 'ENTRENAMIENTO';
+    $('#hdrTitle').textContent = window.GimnasioUI.titulo();
+    if (dp) dp.hidden = true;
+    if (hp) hp.hidden = true;
   }
 
   if (scene === 'train') renderTrain();
@@ -11281,6 +11308,7 @@ function setScene(scene) {
   if (scene === 'progress') renderProgress();
   if (scene === 'cuerpo') renderCuerpo();
   if (scene === 'misdatos') renderMisDatos();
+  if (scene === 'gimnasio') window.GimnasioUI.renderEscena();
   if (scene === 'supl') { STATE.suplAbierto = null; renderSupl(); }
   // Recordatorio semanal (P4) DESPUES de pintar la escena: cada render* re-arma
   // el innerHTML entero, asi que si el banner se insertaba antes, el propio
@@ -11331,6 +11359,7 @@ function _bienvenidaGuia() {
     _rt.apply(this, arguments);
     const r = document.getElementById('scene-train');
     if (r && window.MyPumpGuia && _guiaHost.dataset.montado) { r.insertBefore(_guiaHost, r.firstChild); _bienvenidaGuia(); }
+    if (r && window.GimnasioUI) window.GimnasioUI.montarTarjeta(r, _guiaHost);
   };
   renderProgress = function () {
     _rp.apply(this, arguments);
@@ -11383,7 +11412,7 @@ function _aplicarSceneDeURL() {
     const s = new URLSearchParams(location.search).get('scene');
     if (!s) return;
     const validas = $$('.scene').map(e => e.id.replace(/^scene-/, ''));
-    if (validas.indexOf(s) !== -1) setScene(s);
+    if (validas.indexOf(s) !== -1 && s !== 'gimnasio') setScene(s);   // al gimnasio se entra por la tarjeta o Mis datos
   } catch (e) {}
 }
 
@@ -11659,6 +11688,8 @@ async function init() {
   await restoreSesionDelDia();
   aplicarPendientesEntreno();
   if (!(DATA && DATA._isDemo)) leerPalancaWeb230().catch(() => {});
+  // Sin rutina publicada (cuenta real con el plan de ejemplo): la tarjeta del gimnasio también va, como en la app.
+  else if (TOKEN && !DEMO && window.mypumpDB.getAppConfig) window.mypumpDB.getAppConfig().then(_gimPalanca).catch(() => {});
 
   // Update header initial state (con offset de macrociclo: "SEM 13/24")
   const _wOff = DATA.rutina.semana_offset || 0;

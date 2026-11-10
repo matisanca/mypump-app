@@ -49,6 +49,11 @@ for (const m of seccionFns.matchAll(/^(mypump_[a-z0-9_]+|_mypump_[a-z0-9_]+)\(([
 }
 // Aplicada a mano desde supabase/propuestas de la rama nativa-230 (nativa_008b); todavía no está en el esquema volcado.
 firmas.set('mypump_get_revision_dia', new Set(['p_token']));
+// Gimnasio por fotos: propuesta sin aplicar (supabase/propuestas/nativa_gimnasio_fotos.sql, rama nativa-gimnasio). Si no existe, la web no muestra nada.
+firmas.set('mypump_gimnasio_get', new Set(['p_token']));
+firmas.set('mypump_gimnasio_nuevo', new Set(['p_token', 'p_modo']));
+firmas.set('mypump_gimnasio_enviar', new Set(['p_token', 'p_id', 'p_no_hay', 'p_nota', 'p_consentimiento', 'p_quitar']));
+firmas.set('mypump_gimnasio_responder', new Set(['p_token', 'p_id', 'p_respuestas']));
 console.log(`firmas leídas del esquema: ${firmas.size}`);
 
 /* Funciones declaradas en las migraciones del repo, aplicadas o no.

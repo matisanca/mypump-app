@@ -363,6 +363,19 @@ window.mypumpDB = {
     return await rpc('mypump_get_app_config', {});
   },
 
+  // «Gimnasio por fotos»: la cola tiene que saber si fue red, servidor o «no existe la función», y no toca _lastError
+  // (el resto de la app no se entera de lo que le pase a esta sección).
+  async gimnasioRpc(fn, params) {
+    try {
+      const { data, error, status } = await getClient().rpc(fn, params);
+      if (!error) return { ok: true, data };
+      const c = clasificarError(error, status);
+      return { ok: false, status: c.status, codigo: c.code, clase: c.code === 'NETWORK' ? 'red' : c.transitorio ? 'transitorio' : 'permanente' };
+    } catch (e) {
+      return { ok: false, status: 0, codigo: 'NETWORK', clase: 'red' };
+    }
+  },
+
   async getSesionesSemana(token, semana) {
     return await rpc('mypump_get_sesiones_semana', { p_token: token, p_semana: semana });
   },
